@@ -322,7 +322,7 @@ void PauseWindow::update()
 // return/objectives behave exactly as the legacy panel.
 bool PauseWindow::imguiPauseEnabled()
 {
-	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_PAUSE">();
+	static const bool s_on = false;
 	return s_on;
 }
 

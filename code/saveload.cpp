@@ -638,7 +638,7 @@ void Mission::loadDestroyAndRestore() {
 	resetOrderIngress();
 
 	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
 			fprintf(stderr,
 				"[MECHRESTORE v1] event=saveload_phase phase=post_destroy "

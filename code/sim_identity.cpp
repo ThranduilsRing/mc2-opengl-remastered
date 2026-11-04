@@ -72,7 +72,7 @@ namespace {
 using mc2_sim_identity::MoverRecord;
 
 bool simIdentityEnabled() {
-	static const bool on = mc2::gate::get<"MC2_SIM_IDENTITY">();
+	static const bool on = true;
 	return on;
 }
 

@@ -22,7 +22,7 @@ long MechWarrior::getVehicleStatus (void) {
 // MC2_PATH_JUMP_FAIL_BACKOFF is unset, s_jumpFailBackoffOn is false and every new
 // branch below is inert -> byte-identical legacy behavior (no stamp, no short-circuit).
 // Cached once at first use (repo getenv idiom, mover.cpp style).
-static const bool s_jumpFailBackoffOn = mc2::gate::get<"MC2_PATH_JUMP_FAIL_BACKOFF">();
+static const bool s_jumpFailBackoffOn = false;
 // Frames to suppress re-requesting a goal cell that just failed a jump solve.
 // ~45 path-manager update() frames ~= 0.5-1s of doomed re-solves eliminated.
 static const long kJumpFailBackoffFrames = 45;
@@ -487,7 +487,7 @@ void MechWarrior::updateActions (void) {
 	// run with MC2_DIAG_TAGS=COMBAT yields a hit-location distribution ("loc"
 	// field) to A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle bounds order spam.
 	static const bool s_aimedFireFixture =
-		mc2::gate::get<"MC2_AIMED_FIRE_FIXTURE">();
+		false;
 	if (s_aimedFireFixture && myVehicle && myVehicle->isMech() &&
 		Team::home && (myVehicle->getTeam() == Team::home) &&
 		(scenarioTime > 5.0f) && !curTacOrder.isCombatOrder() &&

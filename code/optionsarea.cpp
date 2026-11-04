@@ -32,7 +32,7 @@ OptionsArea.cpp			: Implementation of the OptionsArea component.
 // memory/feedback_deploy_path.md and CLAUDE.md "Debug Instrumentation Rule".
 // Default off; mirrors to crashbundle ring buffer so the last events survive
 // a crash even when stdout has been redirected.
-static const bool s_hkTrace = mc2::gate::get<"MC2_HOTKEY_TRACE">();
+static const bool s_hkTrace = false;
 #define HK_TRACE(fmt, ...) \
     do { \
         char _hkbuf[256]; \

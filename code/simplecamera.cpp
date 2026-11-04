@@ -445,7 +445,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			{
 				static int s_forceDrain = -1;
 				if (s_forceDrain < 0) {
-					s_forceDrain = mc2::gate::get<"MC2_PREVIEW_SCENE_DRAIN">();
+					s_forceDrain = false;
 				}
 				if (s_forceDrain == 1) worldScenePresent = true;
 			}

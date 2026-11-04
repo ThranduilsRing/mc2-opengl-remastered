@@ -111,7 +111,7 @@ static std::string ContentFloatKey(float value) {
 #include "mech_grounding.h"
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
-static const bool s_mechSkelTrace = mc2::gate::get<"MC2_MECH_SKEL_TRACE">();
+static const bool s_mechSkelTrace = false;
 #define MECH_SKEL_TRACE(fmt, ...) \
     do { if (s_mechSkelTrace) { \
         fprintf(stderr, "[MECH_SKEL] " fmt "\n", ##__VA_ARGS__); \
@@ -136,7 +136,7 @@ namespace {
 // to lift a buried mesh (pivot-not-at-base). All four mappings are even-parity
 // (winding preserved). Bake the winning combo as the default once confirmed.
 static inline int s_gltfAxis() { return mc2::gate::get<"MC2_GLTF_AXIS">(); }
-static inline float s_gltfYoff() { static float o = mc2::gate::get<"MC2_GLTF_YOFF">(); return o; }
+static inline float s_gltfYoff() { static float o = 0.0f; return o; }
 static inline float s_gltfYawDeg() { return mc2::gate::get<"MC2_GLTF_YAW_DEG">(); }
 static inline void applyYaw(float& X, float& Z) {
 	const float yaw = s_gltfYawDeg();
@@ -900,7 +900,7 @@ bool mechImportGpuEnabled() {
 // the actor shapeToWorld_root composed by the batcher, axis 2 stands the mech upright
 // (user-confirmed in-engine). Tunable for other rigs.
 int mechImportGpuAxis() {
-    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU_AXIS">();
+    static int v = 2;
     return v;
 }
 // World-up (Stuff.z, the shader's up after its (-x,z,y) swap) lift applied to the
@@ -917,7 +917,7 @@ float mechImportGpuLiftOverride(bool* hasOverride) {
 // Which world translation component the lift adds to (0=Stuff.x, 1=Stuff.y, 2=Stuff.z).
 // Default 1 (Stuff.y) — tuning which axis is world-up for the placed imported mech.
 int mechImportGpuLiftAxis() {
-    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU_LIFT_AXIS">();
+    static int v = 1;
     return v;
 }
 
@@ -1380,7 +1380,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
                                        const char* mc2Name, const float* rootToWorld12,
                                        float outXYZ[3]) {
     if (!mc2Name || !rootToWorld12 || !outXYZ) return false;
-    const bool diag = mc2::gate::get<"MC2_MECH_NODE_DIAG">();
+    const bool diag = false;
     for (ImportedAnimEntry& e : g_importedAnims) {
         if (static_cast<const void*>(e.multi) != typeKey) continue;
         if (e.nodeManifest.empty()) {
@@ -1524,7 +1524,7 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
     const size_t n = (globals.size() < e.invMWrest.size()) ? globals.size() : e.invMWrest.size();
     // Default: static rest lift (steady torso). MC2_MECH_IMPORT_DYNAMIC_LIFT=1 restores
     // the old per-frame lowest-vertex lift (follows ground but bobs each step).
-    const bool dynamicLift = mc2::gate::get<"MC2_MECH_IMPORT_DYNAMIC_LIFT">();
+    const bool dynamicLift = false;
     float lowestY = 1e30f;
     for (size_t i = 0; i < n; ++i) {
         aiMatrix4x4 D = (e.AS1 * rowMajorToAi(globals[i].m)) * e.invMWrest[i];
@@ -1680,7 +1680,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/5-pane-cells";
 	if (staticGlb) {
 		mc2::content::Asset cached;
-		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
+		cached.ground = autoGround ? 2 : 0;
 		cached.parameters = staticParameters;
 		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
 	}
@@ -1812,7 +1812,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	}
 
 	mc2::content::Asset asset;
-	asset.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
+	asset.ground = autoGround ? 2 : 0;
     asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);

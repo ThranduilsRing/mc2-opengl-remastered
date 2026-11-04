@@ -517,7 +517,7 @@ void Weather::render (void)
 		if (s_rainBatchMode < 0) {
 			// DEFAULT-ON since 2026-06-04 (smoke-clean mc2_17, geometrically identical
 			// to legacy — same verts/one draw call): only literal "0" opts out.
-			s_rainBatchMode = mc2::gate::get<"MC2_RAIN_BATCH">();
+			s_rainBatchMode = true;
 		}
 
 		if (s_rainBatchMode) {

@@ -25,7 +25,7 @@ std::string toLower(std::string v)
 
 bool uiDefsTraceEnabled()
 {
-    return mc2::gate::get<"MC2_UI_DEFS_TRACE">();
+    return false;
 }
 
 void uiDefsTrace(const char* fmt, ...)

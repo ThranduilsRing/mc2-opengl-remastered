@@ -8,7 +8,7 @@ class GameObjectManager;
 
 namespace mc2::world_trace {
 inline bool enabled() {
-    static const bool value = mc2::gate::get<"MC2_WORLD_ORDER_TRACE">();
+    static const bool value = false;
     return value;
 }
 void begin(long tick);

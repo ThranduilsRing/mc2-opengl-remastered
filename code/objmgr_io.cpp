@@ -447,8 +447,8 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 {
 	ZoneScopedN("GameObjectManager::prewarmStaticPropLightBakes");
-	static const bool s_enabled  = mc2::gate::get<"MC2_STATIC_REG_PREWARM">();
-	static const bool s_trace    = mc2::gate::get<"MC2_STATIC_REG_PREWARM_TRACE">();
+	static const bool s_enabled  = false;
+	static const bool s_trace    = false;
 	if (!s_enabled) return;
 
 	auto t0 = std::chrono::steady_clock::now();

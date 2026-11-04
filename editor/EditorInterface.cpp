@@ -817,7 +817,7 @@ void EditorInterface::update()
 	// land-pointer-change guard). Lets a -gen-map / -mission smoke capture same-session
 	// before/after-fix evidence without the ImGui panel. Read-only.
 	{
-		static bool   s_probeEnabled = mc2::gate::get<"MC2_TERRAIN_PROBE">();
+		static bool   s_probeEnabled = false;
 		static void*  s_lastProbedLand = (void*)1;   // != NULL and != any real land yet
 		if ( s_probeEnabled && land && (void*)land != s_lastProbedLand )
 		{

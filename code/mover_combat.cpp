@@ -28,7 +28,7 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 	// range (target distance from the ordered mover — an absurd range is the "eligible
 	// across the whole map" symptom). Gate MC2_TARGETING_GUARD + MC2_DIAG_TAGS=TARGETING.
 	{
-		static const bool s_tgtGuard = mc2::gate::get<"MC2_TARGETING_GUARD">();
+		static const bool s_tgtGuard = false;
 		if (s_tgtGuard &&
 		    tacOrder.origin == ORDER_ORIGIN_PLAYER &&
 		    tacOrder.code == TACTICAL_ORDER_ATTACK_OBJECT &&
