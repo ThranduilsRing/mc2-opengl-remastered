@@ -4036,14 +4036,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 791,
+          "line": 793,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1245,
+          "line": 1247,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4820,7 +4820,7 @@
         },
         {
           "path": "scripts/tests/test_gate_farm.py",
-          "line": 277,
+          "line": 298,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -5602,7 +5602,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-default-build-quiet.py",
-          "line": 181,
+          "line": 182,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())"
