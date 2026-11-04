@@ -43,7 +43,6 @@ constexpr auto MB_MODEMASK = 0x00003000;
 constexpr auto MB_MISCMASK = 0x0000C000;
 constexpr auto MB_NOFOCUS = 0x00008000;
 constexpr auto MB_TYPEMASK = 15;
-constexpr auto MB_TOPMOST = 0x40000;
 
 constexpr auto IDOK = 1;
 constexpr auto IDCANCEL = 2;
