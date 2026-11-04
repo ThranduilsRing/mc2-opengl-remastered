@@ -251,3 +251,11 @@ def test_farm_determinism_defaults_on_and_rows_log_their_host():
     assert '"--farm-determinism", action=argparse.BooleanOptionalAction, default=True' in src
     assert "determinism row host=farm" in inspect.getsource(gate.farm_stage)
     assert "local PC, farm fallback" in inspect.getsource(gate.farm_stage)
+
+
+def test_declared_view_bad_bound_is_an_argparse_error(capsys, monkeypatch):
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)   # the gate's contracts stage sets it
+    with pytest.raises(SystemExit) as exc:
+        gate.main(['--declared-view', 'a=high'])
+    assert exc.value.code == 2
+    assert 'not a number' in capsys.readouterr().err

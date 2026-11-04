@@ -57,7 +57,7 @@ L(Presence, "MC2_BOOT_TO_MECHLAB", Bool, false, "mech", "", "", verified),
 G("MC2_BOOT_TO_MISSION", String, "", "code", "", "MC2_BOOT_TO_MISSION=<mission FileName>: jump to a specific mission's logistics instead of the campaign's first mission.", passthrough | verified),
 G("MC2_BOOT_TO_SCREEN", String, "", "mech", "", "Headless harness: logistics screen to park on when MC2_BOOT_TO_BAY is set (purchase|bay|loadout|launch|briefing; unset = bay).", passthrough | verified),
 // history: docs/gate-history.md#MC2_BOOT_VIDEO
-L(Lead0, "MC2_BOOT_VIDEO", Bool, false, "code", "", "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...", registry(Trace, "MC2_TRACE_BOOT_VIDEO", -1, false) | verified),
+L(Lead0, "MC2_BOOT_VIDEO", Bool, false, "code", "", "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...", registry(Trace, "MC2_TRACE_BOOT_VIDEO", -1, false) | passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_FIXED_TICK", Bool, false, "code", "", "", verified),
 P("MC2_BRAIN_FIXED_TICK_HZ", Float, 10.0, "code", "", "Brain fixed-tick rate in Hz; clamps to 1..30.", clampRange(1.0, 30.0) | verified),
 L(AtoiNZ, "MC2_BRAIN_FIXED_TICK_TRACE", Bool, false, "code", "", "", verified),

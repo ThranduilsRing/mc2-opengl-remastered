@@ -1082,7 +1082,7 @@ def battery(args) -> int:
             results.append(result)
             if args.fail_fast and result_word(result) != 'PASS':
                 break
-        if (folder in FRONT_END_MODS and getattr(args, 'front_end', True)
+        if (folder in FRONT_END_MODS and args.front_end
                 and not (args.fail_fast and results and result_word(results[-1]) != 'PASS')):
             fe = front_end_walk(staged, folder, layers=layers)
             fe.update({'mod': display, 'mission': 'front-end walk', 'mission_source': 'sweep_campaign',

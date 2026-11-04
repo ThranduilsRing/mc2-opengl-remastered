@@ -852,7 +852,10 @@ def parse_declared_views(items):
     out = {}
     for item in items or ():
         name, sep, bound = item.partition("=")
-        out[name.strip()] = float(bound) if sep else DECLARED_MAD_BOUND
+        try:
+            out[name.strip()] = float(bound) if sep else DECLARED_MAD_BOUND
+        except ValueError:
+            raise argparse.ArgumentTypeError("--declared-view %r: bound %r is not a number (expected NAME or NAME=maxMAD)" % (item, bound))
     return out
 
 
@@ -1290,7 +1293,10 @@ def main(argv=None):
     if args.j < 1:
         ap.error("-j must be positive")
     global DECLARED_VIEWS
-    DECLARED_VIEWS = parse_declared_views(args.declared_view)
+    try:
+        DECLARED_VIEWS = parse_declared_views(args.declared_view)
+    except argparse.ArgumentTypeError as exc:
+        ap.error(str(exc))
     if args.drop_candidate:
         drop_candidate()
         return 0
