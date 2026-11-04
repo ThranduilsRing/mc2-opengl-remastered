@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------
 //
 // TerrTxm.cpp -- File contains class code for the Terrain Textures
+#include "mc2_czstring.h"
 #include "content_error.h"
 //
 //---------------------------------------------------------------------------//
@@ -111,7 +112,7 @@ extern bool InEditor;
 // At Present, this class doesn't load textures til it needs 'em.  Once loaded
 // they are loaded forever.  This may not be a problem, but if it becomes one,
 // the textures can be preloaded during the init.
-long TerrainTextures::init (const char *fileName, const char *baseName)
+long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 {
 	metadataLoaded = true;
 	if (InEditor)
@@ -587,7 +588,7 @@ long TerrainTextures::textureFromMemory (MemoryPtr ourRAM, long mipLevel)
 }
 	
 //---------------------------------------------------------------------------
-long TerrainTextures::loadTextureMemory (const char *textureName, long mipSize)
+long TerrainTextures::loadTextureMemory (mc2::czstring textureName, long mipSize)
 {
 	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 
@@ -600,7 +601,7 @@ long TerrainTextures::loadTextureMemory (const char *textureName, long mipSize)
 }	
 
 //---------------------------------------------------------------------------
-long TerrainTextures::loadDetailMemory (const char *textureName, long mipSize)
+long TerrainTextures::loadDetailMemory (mc2::czstring textureName, long mipSize)
 {
 	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
 
@@ -613,7 +614,7 @@ long TerrainTextures::loadDetailMemory (const char *textureName, long mipSize)
 }	
 
 //---------------------------------------------------------------------------
-long TerrainTextures::loadOverlayMemory (const char *textureName)
+long TerrainTextures::loadOverlayMemory (mc2::czstring textureName)
 {
 	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 

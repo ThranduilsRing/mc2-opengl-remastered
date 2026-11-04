@@ -8,6 +8,7 @@
 #ifndef TERRTXM2_H
 #include"terrtxm2.h"
 #endif
+#include "mc2_czstring.h"
 #include"tex_resolve_table.h"
 
 #ifndef PATHS_H
@@ -53,7 +54,7 @@
 inline constexpr int COLOR_MAP_TEXTURE_SIZE = 256;
 #define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
 
-void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf );
+void* DecodeJPG( mc2::czstring FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf );
 
 inline constexpr int MBOK = static_cast<int>(1);
 
@@ -63,7 +64,7 @@ extern "C" unsigned char* BurninJpeg_DecodeRGB(const unsigned char* data, int da
 extern "C" void BurninJpeg_FreePixels(unsigned char* px);
 
 // The decoded B,G,R,A colour map, or an empty vector when the sidecar is absent or unusable (the caller falls back to the .tga).
-inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, const char* fileName, long* outWidth)
+inline std::vector<unsigned char> tryLoadBurninJpg(mc2::czstring texturePath, mc2::czstring fileName, long* outWidth)
 {
 	if (outWidth) *outWidth = 0;
 
@@ -157,7 +158,7 @@ inline bool useKtx2Colormap() {
 }
 
 //---------------------------------------------------------------------------
-inline void saveTGAFile(MemoryPtr ColorMap, const char * fileName, long pixelWidth)
+inline void saveTGAFile(MemoryPtr ColorMap, mc2::czstring fileName, long pixelWidth)
 {
 	TGAFileHeader colorMapInfo;
 	colorMapInfo.image_id_len = 0;

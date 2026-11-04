@@ -4,6 +4,7 @@
 //           Plan v6 §1.                                                     //
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include "fx_trace.h"
 
 #include <cstdio>
@@ -65,7 +66,7 @@ void dump_class_table(const ClassMap& tbl) {
     }
 }
 
-void dump_table(const char* label, const CounterMap& tbl) {
+void dump_table(mc2::czstring label, const CounterMap& tbl) {
     if (tbl.empty()) {
         mc2::fmt::print_err("[FX_TRACE v1] {}: (empty)\n", mc2::fmt::safe(label));
         return;
@@ -112,28 +113,28 @@ bool is_enabled() {
     return g_enabled_value;
 }
 
-void record_spawn(const char* name) {
+void record_spawn(mc2::czstring name) {
     if (!g_tables) ensure_initialized();
     if (!name) name = "(null)";
     std::lock_guard<std::mutex> lock(g_tables->m);
     ++g_tables->spawn[name];
 }
 
-void record_draw(const char* name) {
+void record_draw(mc2::czstring name) {
     if (!g_tables) ensure_initialized();
     if (!name) name = "(null)";
     std::lock_guard<std::mutex> lock(g_tables->m);
     ++g_tables->draw[name];
 }
 
-void record_mlr_enqueue(const char* leaf_name) {
+void record_mlr_enqueue(mc2::czstring leaf_name) {
     if (!g_tables) ensure_initialized();
     if (!leaf_name) leaf_name = "(null)";
     std::lock_guard<std::mutex> lock(g_tables->m);
     ++g_tables->mlr_enqueue[leaf_name];
 }
 
-void record_class(unsigned int class_id, const char* name) {
+void record_class(unsigned int class_id, mc2::czstring name) {
     if (!g_tables) ensure_initialized();
     std::lock_guard<std::mutex> lock(g_tables->m);
     ClassEntry& e = g_tables->per_class[class_id];
@@ -143,7 +144,7 @@ void record_class(unsigned int class_id, const char* name) {
     }
 }
 
-void dump_and_reset(const char* reason) {
+void dump_and_reset(mc2::czstring reason) {
     if (!g_tables) return;
     std::lock_guard<std::mutex> lock(g_tables->m);
     mc2::fmt::print_err("[FX_TRACE v1] === dump ({}) ===\n", mc2::fmt::safe(reason ? reason : "?"));

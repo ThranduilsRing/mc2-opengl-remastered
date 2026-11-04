@@ -1,5 +1,6 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
+#include "mc2_czstring.h"
 #include "terrtxm2_internal.h"
 #include "content_error.h"
 #include "texture_assets.h"
@@ -141,7 +142,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		releaseColorMapScratch();
 }
 
-static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &value) {
+static long sReadIdFloat(FitIniFile* missionFile, mc2::czstring varName, float &value) {
 	long result = 0;
 	float tmpFloat;
 	result = missionFile->readIdFloat(const_cast<char *>(varName), tmpFloat);
