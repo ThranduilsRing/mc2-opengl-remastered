@@ -961,6 +961,78 @@ def stale_inventories(root: str, commit: str, regen=None) -> list[str]:
         return list(regen(snapshot))
 
 
+def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[str], str]]:
+    """The seconds-cheap checks a precheck would fail on: (label, command, fix hint). Same tables as precheck."""
+    rows = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]],
+             "fix the code, or lower the baseline via the ratchet's own --tighten (never raise it)") for label, script, args in RATCHETS]
+    rows += [("callers-refresh", py + ["tools/callers.py"], ""),
+             ("callers", py + ["tools/callers.py", "--check"], "wire the script into a caller or add it to tests/callers_allowlist.json with a reason")]
+    rows += [(label, py + [script, *args], "see the row's own output") for label, script, args in EARLY_ROWS]
+    rows.append(("ungated_tags", py + ["tools/ungated_log_tags.py", "--base", base_ref, "--head", ref],
+                 "gate the new log tag or register it as the check says"))
+    return rows
+
+
+def lint(root: str, ref: str, runner=None, regen=None) -> int:
+    """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags, stale inventories)
+    run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
+    runner = runner or run
+    started = time.monotonic()
+    failed: list[str] = []
+    try:
+        sha = git_out(root, "rev-parse", ref + "^{commit}")
+        base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+    except Stop as exc:
+        print("LINT FAIL " + str(exc))
+        return 1
+    rows = lint_rows([sys.executable, "-B"], base_ref, sha)
+    # callers-refresh must precede callers in one tree; every other row gets its own tree so they run concurrently.
+    chains = [[r for r in rows if r[0].startswith("callers")]] + [[r] for r in rows if not r[0].startswith("callers")]
+    with tempfile.TemporaryDirectory(prefix="lane-lint-", dir=precheck_scratch_base(root)) as scratch:
+        snap = os.path.join(scratch, "tree")   # one checkout shared by all rows: only callers-refresh writes (tests/callers.json), which no other row reads
+        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
+        if r.returncode:
+            print("LINT FAIL clone failed: " + failure_summary(r.stdout))
+            return 1
+        git_out(snap, "checkout", "--quiet", "--detach", sha)
+
+        def chain(i):
+            out = []
+            for label, cmd, hint in chains[i]:
+                t0 = time.monotonic()
+                r = runner(snap, cmd)
+                out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
+            return out
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=len(chains) + 1) as pool:
+            inv = pool.submit(lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
+            for f in [pool.submit(chain, i) for i in range(len(chains))]:
+                try:
+                    results = f.result()
+                except (Stop, OSError) as exc:
+                    failed.append("lint:" + str(exc).replace("\n", " "))
+                    continue
+                for label, rc, secs, tail, hint in results:
+                    if label == "callers-refresh":
+                        continue
+                    print(f"lint: {label}: {'PASS' if rc == 0 else 'FAIL'} ({secs:.0f}s)", flush=True)
+                    if rc:
+                        failed.append(label)
+                        print("  " + tail.replace("\n", "\n  "), flush=True)
+                        if hint:
+                            print("  fix: " + hint, flush=True)
+    try:
+        changed = inv.result()
+    except Stop as exc:
+        changed = []
+        failed.append("inventories:" + str(exc).replace(chr(10), " "))
+    print("lint: inventories: " + ("FAIL (stale: " + ", ".join(changed) + "; fix: tools/lane_merge.py --regenerate-all and commit)" if changed else "PASS"), flush=True)
+    if changed:
+        failed.append("inventories-stale")
+    print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
+    return int(bool(failed))
+
+
 def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
@@ -1114,6 +1186,7 @@ def pre_gate(root: str, exe: str | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
+    ap.add_argument("--lint", metavar="REF", help="seconds-fast subset of --precheck (ratchets, callers, early rows, ungated tags, stale inventories) with a fix per red; run it before --precheck")
     ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: conflicts, ratchets, callers, Python suites (fast, no native build; --with-link adds links)")
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
@@ -1216,6 +1289,8 @@ def main(argv: list[str] | None = None) -> int:
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
+    if args.lint:
+        return lint(args.root, args.lint)
     if args.precheck:
         return precheck(args.root, args.precheck, True if args.with_link else False if args.no_link else None)
     if args.pre_gate:
