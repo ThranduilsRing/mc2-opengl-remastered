@@ -100,7 +100,7 @@ class LoadScreen: public LogisticsScreen
 		aAnimation	outAnims[5];
 		aAnimation	inAnims[5];
 		aText		text;
-		int*		animIndices;
+		std::unique_ptr<int[]>	animIndices;
 
 
 };

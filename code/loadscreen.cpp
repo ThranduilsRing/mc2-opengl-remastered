@@ -38,6 +38,8 @@ TGAFileHeader* LoadScreen::progressTextureMemory = nullptr;
 TGAFileHeader* LoadScreen::progressBackground = nullptr;
 TGAFileHeader* LoadScreen::mergedTexture = nullptr;
 TGAFileHeader* LoadScreen::waitingForPlayersMemory = nullptr;
+// Owners of the raw TGA buffers the pointers above alias (the header + pixels live in one char block).
+static std::unique_ptr<char[]> s_progressBackgroundBuf, s_progressTextureBuf, s_mergedTextureBuf, s_waitingForPlayersBuf;
 
 std::unique_ptr<LoadScreen> LoadScreenWrapper::enterScreen = nullptr;
 std::unique_ptr<LoadScreen> LoadScreenWrapper::exitScreen = nullptr;
@@ -221,14 +223,10 @@ void LoadScreenWrapper::changeRes()
 void LoadScreen::changeRes( FitIniFile& outFile )
 {
 
-	if ( progressBackground )
-		delete [] progressBackground;
-
+	s_progressBackgroundBuf.reset();
 	progressBackground = nullptr;
 
-	if ( waitingForPlayersMemory )
-		delete [] waitingForPlayersMemory;
-
+	s_waitingForPlayersBuf.reset();
 	waitingForPlayersMemory = nullptr;
 
 	if ( !progressBackground )
@@ -260,7 +258,8 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 
 		long size = tgaFile.fileSize();
 	
-		progressBackground = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		s_progressBackgroundBuf = std::make_unique<char[]>(size);
+		progressBackground = reinterpret_cast<TGAFileHeader*>(s_progressBackgroundBuf.get());
 		tgaFile.read( reinterpret_cast<unsigned char*>(progressBackground), tgaFile.fileSize() );
 
 		tgaFile.close();
@@ -276,10 +275,12 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 
 		size = tgaFile.fileSize();
 
-		progressTextureMemory = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		s_progressTextureBuf = std::make_unique<char[]>(size);
+		progressTextureMemory = reinterpret_cast<TGAFileHeader*>(s_progressTextureBuf.get());
 		tgaFile.read( reinterpret_cast<unsigned char*>(progressTextureMemory), tgaFile.fileSize() );
 
-		mergedTexture = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		s_mergedTextureBuf = std::make_unique<char[]>(size);
+		mergedTexture = reinterpret_cast<TGAFileHeader*>(s_mergedTextureBuf.get());
 		memcpy( mergedTexture, progressTextureMemory, size );
 
 		tgaFile.close();
@@ -301,7 +302,8 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 
 		size = tgaFile.fileSize();
 
-		waitingForPlayersMemory = reinterpret_cast<TGAFileHeader*>(new char[size]);
+		s_waitingForPlayersBuf = std::make_unique<char[]>(size);
+		waitingForPlayersMemory = reinterpret_cast<TGAFileHeader*>(s_waitingForPlayersBuf.get());
 		tgaFile.read( reinterpret_cast<unsigned char*>(waitingForPlayersMemory), tgaFile.fileSize() );
 
 		flipTopToBottom( reinterpret_cast<BYTE*>((waitingForPlayersMemory + 1)), waitingForPlayersMemory->pixel_depth,
@@ -378,22 +380,11 @@ LoadScreen::LoadScreen(  )
 
 LoadScreen::~LoadScreen()
 {
-	if ( progressBackground )
-		delete [] progressBackground;
-
-	if ( progressTextureMemory )
-		delete [] progressTextureMemory;
-
-	if ( mergedTexture )
-		delete [] mergedTexture;
-
-	if ( animIndices )
-		delete [] animIndices;
-
-	if ( waitingForPlayersMemory)
-		delete [] waitingForPlayersMemory;
-
-	animIndices = nullptr;
+	s_progressBackgroundBuf.reset();
+	s_progressTextureBuf.reset();
+	s_mergedTextureBuf.reset();
+	s_waitingForPlayersBuf.reset();
+	animIndices.reset();
 
 	waitingForPlayersMemory = progressBackground = progressTextureMemory = mergedTexture = nullptr;
 }
@@ -459,7 +450,7 @@ void LoadScreen::init(FitIniFile& file, DWORD neverFlush)
 	if ( animObjectsCount )
 	{
 		char blockName[256];
-		animIndices = new int[animObjectsCount];
+		animIndices = std::make_unique<int[]>(animObjectsCount);
 		for ( int i= 0; i < animObjectsCount; i++ )
 		{
 			mc2::fmt::to_buf(blockName, "AnimObject{:d}", mc2::fmt::as_i32(i));
