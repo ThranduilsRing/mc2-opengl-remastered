@@ -251,10 +251,10 @@ bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
     const VkFence fence = s.curInFlight().get();
     const VkResult result = vkWaitForFences(s.dev, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
     health.composite_wait_us_last = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count();
-    if (!present_thread::onWorker()) {
-        mc2_hitch::RecordFenceWait(health.composite_wait_us_last / 1000.0);
-        mc2_hitch2::noteWait(mc2_hitch2::kSlot, "present_composite", health.composite_wait_us_last / 1000.0);
-    }
+    if (!present_thread::onWorker()) mc2_hitch::RecordFenceWait(health.composite_wait_us_last / 1000.0);
+    // The slot ledger and the slot-wait split count the composite fence on either thread (the present worker is the default).
+    mc2_hitch2::noteWait(mc2_hitch2::kSlot, "present_composite", health.composite_wait_us_last / 1000.0);
+    mc2_hitch2::stats().compositeWaitNs.fetch_add(static_cast<uint64_t>(health.composite_wait_us_last * 1000.0), std::memory_order_relaxed);
     if (result != VK_SUCCESS) return false;
     health.composite_wait_us_accum += health.composite_wait_us_last;
     ++health.composite_wait_samples;
@@ -2487,7 +2487,9 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     VkResult r;
     { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
       mc2::battlebench::NsScope benchAcquire(mc2::battlebench::PresAcquireNs, 0);
-      r = vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex); }
+      const auto acqT0 = std::chrono::steady_clock::now();
+      r = vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex);
+      mc2_hitch2::noteAcquire(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - acqT0).count())); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // Rebuild for the current drawable; minimized windows retry next frame.
         const int dw = static_cast<int>(drawableW), dh = static_cast<int>(drawableH);

@@ -2,6 +2,7 @@
 // [HITCH v2] line for every frame over twice the running median (diag tag HITCH). Render thread owns every writer except simJoin (main thread);
 // all are relaxed atomics, so a stale read only blurs one line.
 #pragma once
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -28,6 +29,12 @@ struct Stats {
     WaitLedger wait[2];
     std::atomic<uint64_t> stagedBytes{0};          // bytes written into explicit staging buffers (createFilled with TRANSFER_SRC, UploadBatch dedicated); ring bytes are uploadBytes
     std::atomic<uint64_t> uploadBytesFlushed{0};   // uploadBytes at the last UploadBatch flush; uploadBytes - this = bytes queued ahead of the next submit
+    // Slot-wait split (F2): worker WSI acquire and composite fence time (cumulative ns, plus the last acquire), the GPU span/busy of the last four frames
+    // read back by gpuprof (MC2_VK_GPU_TIMESTAMPS=1; -1 = no timers), and the other-mc2 process count sampled once per second off the frame threads.
+    std::atomic<uint64_t> acquireNs{0}, acquireLastNs{0}, compositeWaitNs{0};
+    std::atomic<int64_t> gpuSpanNs[4]{-1, -1, -1, -1}, gpuBusyNs[4]{-1, -1, -1, -1};
+    std::atomic<uint32_t> gpuIdx{0};
+    std::atomic<int> otherMc2{-1};
 };
 using WaitKind = int;   // index into Stats::wait
 inline constexpr WaitKind kOneShot = 0, kSlot = 1;
@@ -35,6 +42,29 @@ inline Stats& stats() { static Stats s; return s; }
 inline void noteStaged(uint64_t bytes) { stats().stagedBytes.fetch_add(bytes, std::memory_order_relaxed); }
 inline uint64_t pendingUploadBytes() { Stats& s = stats(); return s.uploadBytes.load(std::memory_order_relaxed) - s.uploadBytesFlushed.load(std::memory_order_relaxed); }
 inline void noteUploadsFlushed() { Stats& s = stats(); s.uploadBytesFlushed.store(s.uploadBytes.load(std::memory_order_relaxed), std::memory_order_relaxed); }
+inline void noteAcquire(uint64_t ns) { Stats& s = stats(); s.acquireNs.fetch_add(ns, std::memory_order_relaxed); s.acquireLastNs.store(ns, std::memory_order_relaxed); }
+inline void noteGpuFrame(double spanMs, double busyMs) {   // busy = sum of timed scopes (nested scopes overlap, so busy can exceed span)
+    Stats& s = stats();
+    const uint32_t i = s.gpuIdx.fetch_add(1, std::memory_order_relaxed) & 3u;
+    s.gpuSpanNs[i].store(static_cast<int64_t>(spanMs * 1e6), std::memory_order_relaxed);
+    s.gpuBusyNs[i].store(static_cast<int64_t>(busyMs * 1e6), std::memory_order_relaxed);
+}
+// Max GPU span / busy over the last four read-back frames, in ms; -1 when no timestamps were read. A slot wait at frame F waits on frame F-2's GPU work,
+// which the read-back ring reports within the next two frames, so the four-frame max covers it.
+inline void gpuMax4(double& spanMs, double& busyMs) {
+    Stats& s = stats();
+    int64_t sp = -1, bu = -1;
+    for (int i = 0; i < 4; ++i) { sp = std::max<int64_t>(sp, s.gpuSpanNs[i].load(std::memory_order_relaxed)); bu = std::max<int64_t>(bu, s.gpuBusyNs[i].load(std::memory_order_relaxed)); }
+    spanMs = sp < 0 ? -1.0 : sp / 1e6;
+    busyMs = bu < 0 ? -1.0 : bu / 1e6;
+}
+// Names what a slot wait of `ms` most likely waited on: gpu_busy (the GPU span covers at least half the wait), contended (GPU mostly idle for MC2 while
+// another mc2 runs), wsi_idle (GPU idle, no other mc2: the queue sat behind the acquire semaphore), unknown (no timestamps).
+inline const char* slotClass(double ms, double spanMs, int otherMc2) {
+    if (spanMs < 0.0) return otherMc2 > 0 ? "contended?" : "unknown";
+    if (spanMs >= 0.5 * ms) return "gpu_busy";
+    return otherMc2 > 0 ? "contended" : "wsi_idle";
+}
 
 // A point in time for window math: the window is "now minus this".
 struct Snapshot {
@@ -68,9 +98,19 @@ inline void noteWait(WaitKind kind, std::string_view why, double ms, uint64_t pe
         uint64_t prev = m->load(std::memory_order_relaxed);
         while (ns > prev && !m->compare_exchange_weak(prev, ns, std::memory_order_relaxed)) {}
     }
-    if (ms >= (kind == kOneShot ? 1.0 : 5.0) && s.missionReady.load(std::memory_order_relaxed) && w.logged.fetch_add(1, std::memory_order_relaxed) < 24 && mc2_diag::tagRequested("HITCH"))
-        std::fprintf(stderr, "[HITCH v2] %sWait why=%.*s ms=%.2f pending_upload_kb=%llu\n", kind == kOneShot ? "fence" : "slot", static_cast<int>(why.size()), why.data(), ms,
-                     static_cast<unsigned long long>(pendingUpload / 1024));
+    if (ms >= (kind == kOneShot ? 1.0 : 5.0) && s.missionReady.load(std::memory_order_relaxed) && w.logged.fetch_add(1, std::memory_order_relaxed) < 24 && mc2_diag::tagRequested("HITCH")) {
+        if (kind == kSlot) {
+            double span = -1.0, busy = -1.0;
+            gpuMax4(span, busy);
+            const int om = s.otherMc2.load(std::memory_order_relaxed);
+            std::fprintf(stderr, "[HITCH v2] slotWait why=%.*s ms=%.2f pending_upload_kb=%llu gpu_span4_ms=%.2f gpu_busy4_ms=%.2f acquire_last_ms=%.2f other_mc2=%d class=%s\n",
+                         static_cast<int>(why.size()), why.data(), ms, static_cast<unsigned long long>(pendingUpload / 1024), span, busy,
+                         s.acquireLastNs.load(std::memory_order_relaxed) / 1e6, om, slotClass(ms, span, om));
+        } else {
+            std::fprintf(stderr, "[HITCH v2] fenceWait why=%.*s ms=%.2f pending_upload_kb=%llu\n", static_cast<int>(why.size()), why.data(), ms,
+                         static_cast<unsigned long long>(pendingUpload / 1024));
+        }
+    }
 }
 // Times its scope and records it as one wait. A nested one-shot scope on the same thread records nothing (the outer one covers it).
 struct FenceWaitScope {
