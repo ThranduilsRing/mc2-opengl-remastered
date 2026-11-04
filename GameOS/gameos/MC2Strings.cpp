@@ -560,6 +560,7 @@ namespace
             }
             else
             {
+                auto& [legacyIdKey, priorKey] = *idIt;
                 const std::string oldSource = state.legacySourceById[record.legacyId];
                 const bool oldIsMC2Res = SourceIsMC2Res(oldSource);
                 const bool newIsMC2Res = SourceIsMC2Res(record.source);
@@ -568,16 +569,16 @@ namespace
                 {
                     // mc2res canonical key overrides a prior non-mc2res entry
                     Trace("legacyId %ld remapped to canonical mc2res key '%s' from prior key '%s'",
-                          record.legacyId, record.key.c_str(), idIt->second.c_str());
-                    idIt->second = record.key;
+                          record.legacyId, record.key.c_str(), priorKey.c_str());
+                    priorKey = record.key;
                     state.legacySourceById[record.legacyId] = record.source;
                 }
                 else if (oldIsMC2Res && !newIsMC2Res)
                 {
                     // Mod/game-specific entry overrides mc2res placeholder (e.g. "undefined")
                     Trace("legacyId %ld: mod key '%s' overrides mc2res placeholder '%s'",
-                          record.legacyId, record.key.c_str(), idIt->second.c_str());
-                    idIt->second = record.key;
+                          record.legacyId, record.key.c_str(), priorKey.c_str());
+                    priorKey = record.key;
                     state.legacySourceById[record.legacyId] = record.source;
                 }
                 else
@@ -586,7 +587,7 @@ namespace
                           record.legacyId,
                           record.sourceFile.c_str(),
                           record.key.c_str(),
-                          idIt->second.c_str());
+                          priorKey.c_str());
                 }
             }
         }
@@ -891,7 +892,8 @@ namespace MC2Strings
         if (it == State().byKey.end())
             return nullptr;
 
-        return it->second.text.c_str();
+        const auto& [mapKey, stringRecord] = *it;
+        return stringRecord.text.c_str();
     }
 
     const char* GetByLegacyId(long legacyId)
@@ -910,7 +912,8 @@ namespace MC2Strings
         const std::map<long, std::string>::const_iterator aliasIt = State().keyByLegacyAlias.find(legacyId);
         if (aliasIt != State().keyByLegacyAlias.end())
         {
-            const char* aliasText = Get(aliasIt->second.c_str());
+            const auto& [aliasId, aliasKey] = *aliasIt;
+            const char* aliasText = Get(aliasKey.c_str());
             if (aliasText && aliasText[0])
                 return aliasText;
         }
@@ -919,7 +922,8 @@ namespace MC2Strings
         if (it == State().keyByLegacyId.end())
             return nullptr;
 
-        return Get(it->second.c_str());
+        const auto& [mapKey, stringKey] = *it;
+        return Get(stringKey.c_str());
     }
 
     const char* GetByResourceId(unsigned int resourceId)
@@ -928,7 +932,10 @@ namespace MC2Strings
 
         const std::map<unsigned int, std::string>::const_iterator it = State().keyByResourceId.find(resourceId);
         if (it != State().keyByResourceId.end())
-            return Get(it->second.c_str());
+        {
+            const auto& [mapKey, stringKey] = *it;
+            return Get(stringKey.c_str());
+        }
 
         return GetByLegacyId(static_cast<long>(resourceId));
     }
@@ -944,7 +951,8 @@ namespace MC2Strings
         if (it == State().keyByResourceSymbol.end())
             return nullptr;
 
-        return Get(it->second.c_str());
+        const auto& [mapKey, stringKey] = *it;
+        return Get(stringKey.c_str());
     }
 
     const char* GetMenuText(mc2::czstring menuId, mc2::czstring commandId)
@@ -959,7 +967,8 @@ namespace MC2Strings
         if (it == State().keyByMenuBinding.end())
             return nullptr;
 
-        return Get(it->second.c_str());
+        const auto& [mapKey, stringKey] = *it;
+        return Get(stringKey.c_str());
     }
 
     const char* GetMenuTextByIds(unsigned int menuId, unsigned int commandId)

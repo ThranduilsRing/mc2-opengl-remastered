@@ -150,8 +150,8 @@ void loadManifest(mc2::czstring manifestPath) {
         std::string trimmed = trim(line);
         if (!trimmed.empty() && trimmed[0] != '#') {
             if (parseLine(line, path, w, h, chrome)) {
-                auto ins = st.manifest.emplace(std::move(path), NominalDims{w, h, chrome});
-                if (!ins.second) ++st.cManifestDupes;
+                const auto [entryIt, inserted] = st.manifest.emplace(std::move(path), NominalDims{w, h, chrome});
+                if (!inserted) ++st.cManifestDupes;
                 else             ++st.cManifestEntries;
             } else {
                 ++st.cManifestBadLines;
@@ -166,7 +166,7 @@ void loadManifest(mc2::czstring manifestPath) {
 }
 
 void firstUnknownWarning(State& st, const std::string& canon) {
-    if (st.seenUnknown.insert(canon).second) {
+    if (const auto [seenIt, inserted] = st.seenUnknown.insert(canon); inserted) {
         ++st.cUnknownAsset;
         if (st.traceEnabled) {
             log("[ASSET_SCALE v1] event=unknown_asset path=%s", canon.c_str());
@@ -179,7 +179,7 @@ void firstOobWarning(State& st, const std::string& canon, mc2::czstring tag,
                      int sx, int sy, int sw, int sh,
                      int cx, int cy, int cw, int ch) {
     std::string k = canon + "|" + (tag ? tag : "?");
-    bool first = st.seenOobFirst.insert(k).second;
+    const auto [seenIt, first] = st.seenOobFirst.insert(k);
     ++st.cOobBlit;
     // First occurrence is always-on. Subsequent only with trace.
     if (first || st.traceEnabled) {
@@ -197,7 +197,8 @@ const NominalDims* lookupNominal(State& st, const AssetKey& k) {
         firstUnknownWarning(st, k.str());
         return nullptr;
     }
-    return &it->second;
+    auto& [manifestKey, dims] = *it;
+    return &dims;
 }
 
 // ---- Self-tests ----------------------------------------------------------
@@ -411,7 +412,9 @@ bool isChromeAsset(const AssetKey& k) {
     if (k.empty()) return false;
     State& st = state();
     auto it = st.manifest.find(k.str());
-    return it != st.manifest.end() && it->second.chrome;
+    if (it == st.manifest.end()) return false;
+    const auto& [manifestKey, dims] = *it;
+    return dims.chrome;
 }
 
 } // namespace AssetScale

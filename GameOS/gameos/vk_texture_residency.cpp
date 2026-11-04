@@ -32,7 +32,7 @@ void invalidateUiImage(RenderCore::TextureHandle handle) {
 void TextureResidency::invalidate(RenderCore::TextureHandle handle) {
     table_->erase(handle);
     auto it=residents_.find(handle.raw());
-    if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
+    if (it!=residents_.end()) { auto& [raw,resident]=*it; if (resident.image) ctx_.retire(std::move(resident.image)); residents_.erase(it); }
 }
 void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     getOrCreateEngineVulkanContext().textures().requestDecoded(handle,std::move(decode));
@@ -40,8 +40,9 @@ void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_
 void TextureResidency::requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
     auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},0,false});
-    it->second.highPriority=true; it->second.contentVersion=service_.contentVersion(handle);
-    worker_.request(handle,std::move(decode),it->second.contentVersion);
+    auto& [raw,resident]=*it;
+    resident.highPriority=true; resident.contentVersion=service_.contentVersion(handle);
+    worker_.request(handle,std::move(decode),resident.contentVersion);
 }
 void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image) {
     getOrCreateEngineVulkanContext().textures().attach(handle,std::move(image));
@@ -276,13 +277,15 @@ void TextureResidency::pump() {
     { ZoneScopedN("TextureResidency.RetireImages"); for (auto handle : retired) {
         table_->erase(handle);
         auto it=residents_.find(handle.raw());
-        if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
+        if (it!=residents_.end()) { auto& [raw,resident]=*it; if (resident.image) ctx_.retire(std::move(resident.image)); residents_.erase(it); }
     } }
     { ZoneScopedN("TextureResidency.TakeDecoded"); for (auto& result : worker_.take()) {
         auto it=residents_.find(result.handle.raw());
-        if (!result.image || !service_.isLive(result.handle) || it==residents_.end() || result.contentVersion!=it->second.contentVersion) continue;
+        if (!result.image || !service_.isLive(result.handle) || it==residents_.end()) continue;
+        const auto& [raw,resident]=*it;
+        if (result.contentVersion!=resident.contentVersion) continue;
         Pending pending{result.handle,std::move(result.image),result.contentVersion};
-        if (it->second.highPriority) pending_.push_front(std::move(pending));
+        if (resident.highPriority) pending_.push_front(std::move(pending));
         else pending_.push_back(std::move(pending));
     } }
     // Queue order makes completion a prefix: idle resident images are never scanned.
@@ -293,7 +296,9 @@ void TextureResidency::pump() {
     std::deque<Pending> batch;
     pumpPendingTextureUploads(pending_,uploading_,batch,budget_,[this](const Pending& p) {
         auto it=residents_.find(p.handle.raw());
-        return it!=residents_.end() && service_.isLive(p.handle) && it->second.contentVersion==p.contentVersion;
+        if (it==residents_.end() || !service_.isLive(p.handle)) return false;
+        const auto& [raw,resident]=*it;
+        return resident.contentVersion==p.contentVersion;
     },[this,firstNew,started] {
         // A screen can request many images at once. Spread staging across
         // frames instead of draining the decoded queue on its first render.
@@ -320,7 +325,9 @@ void TextureResidency::pump() {
 }
 bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
-    return it!=residents_.end() && it->second.image && service_.isLive(handle);
+    if (it==residents_.end()) return false;
+    const auto& [raw,resident]=*it;
+    return resident.image && service_.isLive(handle);
 }
 uint64_t TextureResidency::residentBytes() const {
     uint64_t total=0;
@@ -401,17 +408,24 @@ void TextureResidency::release(RenderCore::TextureHandle handle) {
         auto it=residents_.find(handle.raw());
         if (it!=residents_.end()) {
             // Compatibility descriptors can read this view outside the bindless snapshots. The open-frame ticket covers those draws too.
-            if (it->second.image) ctx_.retire(std::move(it->second.image));
+            auto& [raw,resident]=*it;
+            if (resident.image) ctx_.retire(std::move(resident.image));
             residents_.erase(it);
         }
     }
 }
 VkImageView TextureResidency::view(RenderCore::TextureHandle handle, bool arrayView) const {
-    auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : (arrayView || (it!=residents_.end() && it->second.arrayView) ? arrayPlaceholder_->view.get() : placeholder_->view.get());
+    const auto it=residents_.find(handle.raw());
+    const Resident* resident=nullptr;
+    if (it!=residents_.end()) { const auto& [raw,found]=*it; resident=&found; }
+    if (resident && resident->image && service_.isLive(handle)) return resident->image->view.get();
+    return (arrayView || (resident && resident->arrayView)) ? arrayPlaceholder_->view.get() : placeholder_->view.get();
 }
 std::shared_ptr<const void> TextureResidency::imageOwner(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
-    return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image : placeholder_;
+    if (it==residents_.end()) return placeholder_;
+    const auto& [raw,resident]=*it;
+    return resident.image && service_.isLive(handle) ? resident.image : placeholder_;
 }
 VkDescriptorSet TextureResidency::descriptors() {
     auto& flight=flights_[ctx_.frameContext().slot];

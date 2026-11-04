@@ -124,7 +124,10 @@ public:
         auto* e = resolve(h);
         if (!e || e->users == UINT32_MAX || asset == kNoTextureNode) return false;
         auto it = byNode_.find(asset);
-        if (it != byNode_.end() && it->second.index != h.index()) return false;
+        if (it != byNode_.end()) {
+            const auto& [boundNode, bound] = *it;
+            if (bound.index != h.index()) return false;
+        }
         auto& binding = byNode_[asset]; binding.index = h.index(); ++binding.users;
         ++e->users;
         if (e->node == kNoTextureNode) e->node = asset;
@@ -188,7 +191,10 @@ public:
 
     std::shared_ptr<const KtxImage> cooked(const TextureKey& key) const {
         std::lock_guard<std::mutex> lk(mu_);
-        auto it = cooked_.find(key); return it == cooked_.end() ? nullptr : it->second;
+        auto it = cooked_.find(key);
+        if (it == cooked_.end()) return nullptr;
+        const auto& [cookedKey, image] = *it;
+        return image;
     }
     void cacheCooked(const TextureKey& key, std::shared_ptr<const KtxImage> image) {
         std::lock_guard<std::mutex> lk(mu_); cooked_[key] = std::move(image);
@@ -201,7 +207,7 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         auto it=byNode_.find(node);
         if (it==byNode_.end()) return false;
-        auto& binding=it->second; auto& e=entries_[binding.index];
+        auto& [boundNode, binding]=*it; auto& e=entries_[binding.index];
         if (e.users==UINT32_MAX) return false;
         ++e.users; ++binding.users; return true;
     }
@@ -209,7 +215,7 @@ public:
     void dropRef(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
         if (auto it = byNode_.find(node); it != byNode_.end()) {
-            auto& binding=it->second;
+            auto& [boundNode, binding]=*it;
             if (binding.users) { --binding.users; if (entries_[binding.index].users) --entries_[binding.index].users; }
         }
     }
@@ -219,7 +225,7 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
         if (it == byNode_.end()) return;
-        const auto binding=it->second;
+        const auto [boundNode, binding]=*it;
         Entry& e=entries_[binding.index];
         e.users=e.users>binding.users ? e.users-binding.users : 0;
         byNode_.erase(it);
@@ -238,7 +244,7 @@ public:
         Entry* e = resolve(h);
         if (!e) return false;
         uint32_t nodeUsers=0;
-        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { nodeUsers=it->second.users; byNode_.erase(it); }
+        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { const auto& [boundNode, binding]=*it; nodeUsers=binding.users; byNode_.erase(it); }
         e->node = newNode;
         ++e->contentVersion;
         if (newNode != kNoTextureNode) { auto& binding=byNode_[newNode]; binding.index=h.index(); binding.users+=nodeUsers; }
@@ -256,7 +262,8 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
         if (it == byNode_.end()) return TextureHandle::invalid();
-        const uint32_t idx=it->second.index;
+        const auto& [boundNode, binding]=*it;
+        const uint32_t idx=binding.index;
         return TextureHandle::make(idx, entries_[idx].generation);
     }
     uint32_t contentVersion(TextureHandle h) const {
@@ -335,7 +342,10 @@ public:
     void placeholder(std::shared_ptr<void> owner) { slots_[0].owner = std::move(owner); ++revision_; }
     uint32_t insert(TextureHandle h, std::shared_ptr<void> owner) {
         if (!h.isValid() || !owner) return 0;
-        if (auto it = indices_.find(h.raw()); it != indices_.end()) return it->second;
+        if (auto it = indices_.find(h.raw()); it != indices_.end()) {
+            const auto& [raw, existing] = *it;
+            return existing;
+        }
         uint32_t slot;
         if (!free_.empty()) { slot = free_.back(); free_.pop_back(); }
         else { if (slots_.size() >= capacity_) return 0; slot = static_cast<uint32_t>(slots_.size()); slots_.push_back({}); }
@@ -343,10 +353,14 @@ public:
     }
     bool erase(TextureHandle h) {
         auto it = indices_.find(h.raw()); if (it == indices_.end()) return false;
-        slots_[it->second] = {}; free_.push_back(it->second); indices_.erase(it); ++revision_; return true;
+        const auto [raw, slot] = *it;
+        slots_[slot] = {}; free_.push_back(slot); indices_.erase(it); ++revision_; return true;
     }
     uint32_t index(TextureHandle h) const {
-        auto it = indices_.find(h.raw()); return it == indices_.end() ? 0 : it->second;
+        auto it = indices_.find(h.raw());
+        if (it == indices_.end()) return 0;
+        const auto& [raw, slot] = *it;
+        return slot;
     }
     size_t availableSlots() const { return capacity_ > indices_.size()+1 ? capacity_-indices_.size()-1 : 0; }
     bool full(size_t reserved = 0) const { return reserved >= availableSlots(); }

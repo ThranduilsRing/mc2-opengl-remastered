@@ -142,7 +142,9 @@ struct TinyJson {
 
 static float getf(const std::map<std::string,float>& m, mc2::czstring key, float def) {
     auto it = m.find(key);
-    return (it != m.end()) ? it->second : def;
+    if (it == m.end()) return def;
+    const auto& [mapKey, value] = *it;
+    return value;
 }
 
 } // namespace
