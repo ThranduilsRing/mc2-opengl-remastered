@@ -18,7 +18,14 @@ def test_lint_rows_share_precheck_tables():
     assert not any("--tighten" in r[1] for r in rows)
 
 
-def test_lint_reports_red_with_fix_and_exit_code(tmp_path, capsys):
+def _no_branch_needed(monkeypatch):
+    """A shared clone in the precheck has no claude/nifty-mendeleev branch: resolve every ref to HEAD's sha."""
+    real = lm.git_out
+    monkeypatch.setattr(lm, "git_out", lambda root, *a: real(root, "rev-parse", "HEAD") if a[:1] == ("rev-parse",) else real(root, *a))
+
+
+def test_lint_reports_red_with_fix_and_exit_code(tmp_path, capsys, monkeypatch):
+    _no_branch_needed(monkeypatch)
     def runner(root, cmd):
         bad = "callers.py" in " ".join(cmd) and "--check" in cmd
         return subprocess.CompletedProcess(cmd, 1 if bad else 0, stdout="boom" if bad else "", stderr="")
@@ -30,7 +37,8 @@ def test_lint_reports_red_with_fix_and_exit_code(tmp_path, capsys):
     assert "lint: file_size: PASS" in out
 
 
-def test_lint_green(capsys):
+def test_lint_green(capsys, monkeypatch):
+    _no_branch_needed(monkeypatch)
     ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
     assert lm.lint(ROOT, "HEAD", runner=ok, regen=lambda r, c: []) == 0
     assert "LINT PASS" in capsys.readouterr().out
