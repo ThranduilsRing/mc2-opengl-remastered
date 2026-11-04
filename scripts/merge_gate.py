@@ -5,6 +5,9 @@ Run after lane_merge verification. Deploy consumes that build64-ninja tree;
 this gate never builds the engine a second time. Real runs require mc2-main
 on claude/nifty-mendeleev, or an explicit lane-owned install for rehearsal.
 Use --base for change selection, --full for the daily full sweep.
+
+CALLERS MUST WAIT AT LEAST 10800 s (3 h) for a full gate (W113 ran 90 min); a shorter caller timeout kills it mid-stage. A first
+SIGINT/SIGTERM/SIGBREAK is held until the running stage ends (finished stages stay recorded for reuse), then the gate stops.
 """
 from __future__ import annotations
 
@@ -666,7 +669,30 @@ def stock_copy(install, parent=None, keep=False):
 
 # Queue depth does not prove a live worker (W98/W99 lost 20 min per row to an unclaimed job): the farm is opt-in
 # (--farm-determinism) and a job nobody claims within this window is cancelled and run locally.
-FARM_CLAIM_SECONDS = 120
+FARM_CLAIM_SECONDS = 30       # W113: 120 s on every determinism row; a live worker claims within its 1 s poll
+FARM_HEARTBEAT_MAX_AGE_S = 60  # runner.py rewrites C:/mc2farm/heartbeat.json every poll; `host.py alive` reports its age
+
+STOP_REQUESTED = threading.Event()
+
+
+def install_stage_watchdog():
+    """Hold the first SIGINT/SIGTERM/SIGBREAK until the running stage finishes (execute() then stops before the next stage);
+    a second one restores the default so an operator can still abort. Main thread only."""
+    import signal
+
+    def handler(signum, _frame):
+        if STOP_REQUESTED.is_set():
+            signal.signal(signum, signal.SIG_DFL)
+            os.kill(os.getpid(), signum)
+            return
+        STOP_REQUESTED.set()
+        print(f"[merge_gate] signal {signum}: finishing the running stage, then stopping (send again to abort now)", flush=True)
+    for name in ("SIGINT", "SIGTERM", "SIGBREAK"):
+        if hasattr(signal, name):
+            try:
+                signal.signal(getattr(signal, name), handler)
+            except (ValueError, OSError):
+                pass
 
 
 def farm_stage(command, overrides, runner=None):
@@ -694,6 +720,12 @@ def farm_stage(command, overrides, runner=None):
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
 
+    try:
+        alive = runner(host + ["alive", "--max-age", str(FARM_HEARTBEAT_MAX_AGE_S)], cwd=ROOT, env=os.environ.copy())
+    except (OSError, subprocess.SubprocessError) as exc:
+        return local(f'heartbeat check unavailable: {exc}')
+    if alive.returncode:
+        return local('no live worker heartbeat (skipping the claim wait)')
     try:
         submitted = runner(host + ["submit", str(job), "--exe", str(ROOT / "build64-ninja/mc2.exe")], cwd=ROOT, env=os.environ.copy())
     except (OSError, subprocess.SubprocessError) as exc:
@@ -1120,6 +1152,13 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     completed = {} if completed is None else completed
     failed = False
     for name, command, overrides in steps:
+        if not dry_run and STOP_REQUESTED.is_set():
+            status = "FAIL: not run, gate interrupted after the previous stage (rerun reuses finished stages)"
+            print(f"[merge_gate] {name}: {status}", flush=True)
+            results.append((name, status, 0.0))
+            completed[name] = status
+            failed = True
+            continue
         if not dry_run and ACTIVE_STATE and ACTIVE_STATE.reusable(name, command, overrides):
             status = "REUSED: gate-state HEAD/exe/signature match"
             if name == 'mods':
@@ -1292,6 +1331,9 @@ def main(argv=None):
         jobs = "2"
     ap.add_argument("-j", type=int, default=int(jobs))
     args = ap.parse_args(argv)
+    STOP_REQUESTED.clear()
+    if not (args.dry_run or args.preflight) and threading.current_thread() is threading.main_thread():
+        install_stage_watchdog()
     if args.j < 1:
         ap.error("-j must be positive")
     global DECLARED_VIEWS

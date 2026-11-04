@@ -272,6 +272,8 @@ def main():
     wait.add_argument('id')
     wait.add_argument('--timeout', type=float, default=900)
     wait.add_argument('--queue-timeout', type=float, help='cancel only an unclaimed job after this many seconds')
+    alive = sub.add_parser('alive')
+    alive.add_argument('--max-age', type=float, default=60, help='worker heartbeat older than this many seconds counts as dead')
     fetch = sub.add_parser('fetch')
     fetch.add_argument('id')
     fetch.add_argument('destination', type=Path)
@@ -280,6 +282,11 @@ def main():
         print(remote(args, "$q=@(Get-ChildItem C:/mc2farm/jobs -File | Where-Object { $_.Extension -in '.json','.running' }); "
                            "@{depth=$q.Count} | ConvertTo-Json -Compress").strip())
         return
+    if args.action == 'alive':
+        text = remote(args, "$f='C:/mc2farm/heartbeat.json'; if (Test-Path $f) { [int]((Get-Date)-(Get-Item $f).LastWriteTime).TotalSeconds } else { -1 }").strip()
+        age = int(text) if re.fullmatch(r'-?\d+', text) else -1
+        print(f'heartbeat_age={age}')
+        raise SystemExit(0 if 0 <= age <= args.max_age else 1)
     if args.action == 'reseed':
         reseed(args)
         return

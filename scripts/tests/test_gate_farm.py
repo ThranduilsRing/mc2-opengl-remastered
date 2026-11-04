@@ -99,7 +99,7 @@ def test_farm_stage_preserves_checks_and_fetches_failures(tmp_path, failure):
                                stdout=('bad id' if failure == 'bad-id' else 'a' * 32) if action == 'submit' else '')
     result = gate.farm_stage(command, {'MC2_VULKAN_VALIDATION': '1', 'MC2_GATE_BASE': 'sha'}, runner=child)
     assert result.returncode == int(failure == 'wait')
-    expected = ['submit'] if failure in ('submit', 'bad-id') else ['submit', 'wait', 'fetch']
+    expected = ['alive', 'submit'] if failure in ('submit', 'bad-id') else ['alive', 'submit', 'wait', 'fetch']
     if failure in ('submit', 'bad-id', 'fetch'):
         expected.append('local')
     assert seen == expected
@@ -146,9 +146,11 @@ def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
     seen = []
     def run(command, **kw):
         seen.append(command)
-        if len(seen) == 1:
-            return SimpleNamespace(returncode=0, stdout='a' * 32)
+        if command[2] == 'alive':
+            return SimpleNamespace(returncode=0, stdout='heartbeat_age=1')
         if len(seen) == 2:
+            return SimpleNamespace(returncode=0, stdout='a' * 32)
+        if len(seen) == 3:
             assert command[-2:] == ['--queue-timeout', str(gate.FARM_CLAIM_SECONDS)]
             return SimpleNamespace(returncode=1, stdout='queue_timeout: unclaimed job cancelled')
         return SimpleNamespace(returncode=0, stdout='local PASS')
@@ -159,7 +161,33 @@ def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
 
 def test_farm_is_opt_in_and_claim_probe_is_short():
     assert not hasattr(gate, 'choose_farm')
-    assert gate.FARM_CLAIM_SECONDS <= 180
+    assert gate.FARM_CLAIM_SECONDS == 30
+
+
+def test_dead_farm_worker_skips_claim_wait_and_runs_locally(tmp_path):
+    seen = []
+    def run(command, **kw):
+        seen.append(command[2] if len(command) > 2 and 'host.py' in command[1] else 'local')
+        return SimpleNamespace(returncode=1 if seen[-1] == 'alive' else 0, stdout='heartbeat_age=-1')
+    command = [sys.executable, 'tools/sim_determinism.py', 'check', 'mc2_03', '--install', 'local', '--out', str(tmp_path / 'out')]
+    assert gate.farm_stage(command, {}, runner=run).returncode == 0
+    assert seen == ['alive', 'local']   # no submit, no wait: the 30 s claim window is never entered
+
+
+def test_interrupt_is_held_until_the_running_stage_ends(monkeypatch):
+    gate.STOP_REQUESTED.clear()
+    ran = []
+    def runner(command, **kw):
+        ran.append(command[0])
+        gate.STOP_REQUESTED.set()   # a signal lands mid-stage: that stage still completes
+        return SimpleNamespace(returncode=0, stdout='')
+    monkeypatch.setattr(gate, 'git', lambda *a: 'HEAD')
+    monkeypatch.setattr(gate, 'ACTIVE_STATE', None)
+    try:
+        rc = gate.execute([('one', ['a'], {}), ('two', ['b'], {})], 'HEAD', runner=runner)
+    finally:
+        gate.STOP_REQUESTED.clear()
+    assert ran == ['a'] and rc
 
 
 def test_mad_flags_only_undeclared_views_over_limit():
