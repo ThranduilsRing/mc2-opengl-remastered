@@ -159,7 +159,7 @@ VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
     }
     if (waited != VK_SUCCESS) {
         // Not signalled in 5 s (hung or lost device): resetting a pending fence is invalid, so hand back the no-fence sync a disabled resource gets.
-        std::fprintf(stderr, "[VK_IMAGE_RESOURCE] ERROR: frame fence wait failed (VkResult=%d) after 5 s; skipping this frame's sync\n", static_cast<int>(waited));
+        ilog("ERROR: frame fence wait failed (VkResult=%d) after 5 s; skipping this frame's sync", static_cast<int>(waited));
         return VkFrameSync{VK_NULL_HANDLE, p};
     }
     vkResetFences(r->device, 1, &fence);

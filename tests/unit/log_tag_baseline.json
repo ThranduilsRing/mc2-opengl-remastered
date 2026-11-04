@@ -3542,6 +3542,12 @@
     "bake_state",
     "waitidle_n",
     "waitidle_ms",
+    "fence_n",
+    "fence_ms",
+    "fence_max_ms",
+    "staged_kb",
+    "host_cpu_pct",
+    "other_mc2",
     "device"
    ],
    "count": 1
@@ -4126,6 +4132,9 @@
     "median",
     "waitidle_n",
     "waitidle_ms",
+    "fence_n",
+    "fence_ms",
+    "staged_kb",
     "pipelines",
     "upload_kb",
     "objmap_records",
@@ -4134,6 +4143,16 @@
     "bake_cache",
     "sim_join_ms",
     "scopes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "why",
+    "ms"
    ],
    "count": 1
   },

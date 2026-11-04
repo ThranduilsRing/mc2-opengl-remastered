@@ -107,7 +107,8 @@ bool firstWarning(const std::string& tag) {
     static auto* const mtx = new std::mutex;
     static auto* const warned = new std::unordered_set<std::string>;
     std::lock_guard<std::mutex> lock(*mtx);
-    const bool first = warned->insert(tag).second;
+    const auto [pos, first] = warned->insert(tag);
+    (void)pos;
     if (first) g_unknownTagWarnings.fetch_add(1, std::memory_order_relaxed);
     return first;
 }
