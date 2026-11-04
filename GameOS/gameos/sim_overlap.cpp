@@ -113,18 +113,18 @@ void violation(std::string_view kind, std::string_view site, bool hard = false) 
     const bool abortNow = hard || mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">();
     std::snprintf(g_lastSite, sizeof g_lastSite, "%.*s %.*s", static_cast<int>(kind.size()), kind.data(),
         static_cast<int>(site.size()), site.data());
+    if (n <= 20 || abortNow) {
+        std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u%s\n",
+            static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n, abortNow ? " abort=1" : "");
+        std::fflush(stderr);   // smoke/video_decode grep this line: it must be out before the bundle ends the process
+    }
     if (abortNow) {
         char line[192];
         std::snprintf(line, sizeof line, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u abort=1", static_cast<int>(kind.size()),
             kind.data(), static_cast<int>(site.size()), site.data(), n);
         if (g_fatalSink) g_fatalSink(line);
+        std::abort();
     }
-    if (n <= 20 || abortNow) {
-        std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u%s\n",
-            static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n, abortNow ? " abort=1" : "");
-        std::fflush(stderr);
-    }
-    if (abortNow) std::abort();
 }
 
 const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : o == Owner::Present ? "present" : "render"; }

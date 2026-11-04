@@ -4,7 +4,7 @@
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
 gate_count: 762
-registry_entry_count: 150
+registry_entry_count: 151
 verified_count: 730
 flags:
   - name: MC2_ABL_ARG_GUARD
@@ -3774,6 +3774,7 @@ flags:
     range: {lo: 0, hi: 3, style: clamp}
     smoke_passthrough: true
     verified: true
+    registry: {feature_id: MC2_SIM_FAULT_INJECT, kind: Trace, order: -1, default_on: false}
   - name: MC2_SIM_IDENTITY
     kind: Bool
     default: true

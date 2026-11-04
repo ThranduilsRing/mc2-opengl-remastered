@@ -622,6 +622,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude...",
     },
     {
+        "MC2_SIM_FAULT_INJECT", "MC2_SIM_FAULT_INJECT", EnvVarKind::Trace, false,
+        "Test-only crash-bundle fault injection: 1 worker throw, 2 worker invalid-parameter, 3 hard overlap violation; 0 = off.",
+    },
+    {
         "MC2_SIM_IDENTITY", "MC2_SIM_IDENTITY", EnvVarKind::Trace, true,
         "SIM-IDENTITY-HASH-1: emit a world-state hash (sorted-by-partId digest over mover position/rotation/gesture/anim-frame/damage/status/team plus...",
     },
