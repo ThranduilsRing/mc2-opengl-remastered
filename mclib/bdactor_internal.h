@@ -158,8 +158,7 @@ inline bool bdForceDynamicDefault() {
 }
 
 inline constexpr float SPINRATE = 90.0f;
-inline constexpr float BASE_NODE_RECYCLE_TIME = 0.25f;
-inline constexpr int MAX_WEAPON_NODES = 4;
+#include "dappear.h"  // BASE_NODE_RECYCLE_TIME, MAX_WEAPON_NODES
 
 // Free functions defined in the split pieces.
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs);

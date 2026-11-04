@@ -38,7 +38,6 @@
 #define NO_ERR					0
 #endif
 
-inline constexpr int MAX_LODS = 3;
 //---------------------------------------------------------------------------
 // Class definitions
 class AppearanceType

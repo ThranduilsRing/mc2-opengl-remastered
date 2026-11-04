@@ -32,7 +32,6 @@ static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 	return fileExists(ktx);
 }
 
-constexpr float EXPAND_FACTOR = 1.25f;
 
 constexpr int FX_POOF_ID = 32;
 constexpr int FX_JUMP_ID = 43;

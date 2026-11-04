@@ -94,7 +94,7 @@ enum Axes {
 	W_Axis
 };
 
-inline constexpr int MAX_LODS = 3;
+#include "daprtype.h"  // MAX_LODS
 
 inline constexpr int MAX_VIEWS = 4;
 inline constexpr int F2_VIEW = 0;

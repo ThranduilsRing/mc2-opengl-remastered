@@ -35,6 +35,8 @@ inline constexpr int TREE_APPR_TYPE = 0x11;
 inline constexpr int VEHICLE_APPR_TYPE = 0x12;
 inline constexpr int MECH_APPR_TYPE = 0x13;
 inline constexpr int GENERIC_APPR_TYPE = 0x14;
+
+inline constexpr int MAX_LODS = 3;  // appearance LOD slots (apprtype.h, camera.h)
 //---------------------------------------------------------------------------
 // Class definitions
 
