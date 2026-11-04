@@ -28,6 +28,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
+#include <chrono>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -42,11 +43,12 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWL
 // Mech lab: the in-game GPU mech material path into the panel (vulkan_mech_island.cpp, preview pass). One GPU
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
-static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH )
+static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
+                                float groundX, float groundY, float groundH )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
 	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
-	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
+	if ( mc2::gate::get<"MC2_MECHLAB_GPU_OFF">() || frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
 		return false;
 	// A gap in panel frames is a new lab visit: the batcher still holds the last mission's (freed) types.
 	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
@@ -70,6 +72,7 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	q.vpX = static_cast<int>( lroundf( vpX ) ); q.vpY = static_cast<int>( lroundf( vpY ) );
 	q.vpW = static_cast<int>( lroundf( vpW ) ); q.vpH = static_cast<int>( lroundf( vpH ) );
 	q.exposure = 1.0f;
+	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
 	if ( gosPostProcess* pp = getGosPostProcess() )
 	{
 		q.sceneW = pp->getWidth();
@@ -391,7 +394,16 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				}
 				bool gpuDraws = false;
 #ifdef MC2_VULKAN_ISLAND
-				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY ) )
+				// Contact-shadow anchor: the mech's smoothed feet centre and height from the last frame's projected bounds.
+				if ( framed_ && drawn_[3] - drawn_[1] > 8.f )
+				{
+					const float cx = ( drawn_[0] + drawn_[2] ) * 0.5f, cy = drawn_[3], hh = drawn_[3] - drawn_[1];
+					const float k = haveGround_ ? 0.08f : 1.f;
+					groundC_[0] += ( cx - groundC_[0] ) * k; groundC_[1] += ( cy - groundC_[1] ) * k; groundH_ += ( hh - groundH_ ) * k;
+					haveGround_ = true;
+				}
+				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f ) )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 #endif
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
@@ -580,7 +592,14 @@ long SimpleCamera::update()
 		pObject->recalcBounds();
 		pObject->scale(shapeScale);
 		if ( framed_ )
+		{
+			// Idle turntable once the fit has settled; the clock keeps running while paused so a drag does not bank a jump.
+			const double now = std::chrono::duration<double>( std::chrono::steady_clock::now().time_since_epoch() ).count();
+			if ( fitIters_ == 0 && !turntablePaused_ && turntableLastT_ > 0.0 )
+				rotation = std::fmod( rotation + 10.f * static_cast<float>( std::min( now - turntableLastT_, 0.1 ) ), 360.f );
+			turntableLastT_ = now;
 			pObject->rotation = this->rotation;
+		}
 
 		// we don't want to center around the feet
 		glm::vec3 mechPos = pObject->getRootNodeCenter();

@@ -245,7 +245,8 @@ struct MechIsland : mc2vk::IslandState {
     // legacy preview pass, own cleared depth). Fail-soft: a missing variant leaves previewReady false and the world path intact.
     mc2vk::OwnedShaderModule previewFrag;
     mc2vk::OwnedRenderPass previewRpass;
-    mc2vk::OwnedPipeline previewPipe, previewDepthPipe;
+    mc2vk::OwnedPipeline previewPipe, previewDepthPipe, backdropPipe;
+    mc2vk::OwnedShaderModule backdropVert, backdropFrag;
     mc2vk::OwnedFramebuffer previewFb;
     VkImageView previewFbViews[3] = {};
     int previewFbW = 0, previewFbH = 0;
@@ -774,6 +775,23 @@ bool init_island(MechIsland* s, int w, int h) {
             for (auto& attachment : cba) attachment.colorWriteMask = 0;
             ds.depthWriteEnable = VK_TRUE; ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
             ok = ok && mc2vk::create(s->previewDepthPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+            // Panel backdrop: fullscreen triangle over the panel viewport, alpha-blended into colour 0 only, no depth.
+            s->backdropVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_backdrop.vert.spv"));
+            s->backdropFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_backdrop.frag.spv"));
+            if (s->backdropVert && s->backdropFrag) {
+                stages[0].module = s->backdropVert.get(); stages[1].module = s->backdropFrag.get();
+                vin.vertexBindingDescriptionCount = 0; vin.vertexAttributeDescriptionCount = 0;
+                ds.depthTestEnable = VK_FALSE; ds.depthWriteEnable = VK_FALSE;
+                cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                cba[0].blendEnable = VK_TRUE;
+                cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                cba[0].colorBlendOp = VK_BLEND_OP_ADD;
+                cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+                cba[1].colorWriteMask = 0;
+                mc2vk::create(s->backdropPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+                if (s->backdropPipe) mc2vk::nameObject(s->device, s->backdropPipe.get(), "mech.preview.backdrop");
+            }
             s->previewReady = ok;
             if (ok) { mc2vk::nameObject(s->device, s->previewPipe.get(), "mech.preview"); mc2vk::nameObject(s->device, s->previewDepthPipe.get(), "mech.preview.depth"); }
         }
@@ -1233,6 +1251,11 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     VkRect2D scissor{{x0, y0}, {uint32_t(x1 - x0), uint32_t(y1 - y0)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
+    if (s->backdropPipe && !runSets.empty()) {
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &runSets[0], 5, dynOffsets);
+        vkCmdDraw(cb, 3, 1, 0, 0);
+    }
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
@@ -1340,6 +1363,13 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.lightingReady = lightSpan ? 1 : 0;
       u.sunAxisMc2Fix = mc2::options::current().sunAxisFix ? 1 : 0;
       u.fogColorRGB[3] = q.exposure;   // MECH_PREVIEW: panel exposure (the world pass leaves it 0)
+      // Backdrop (mech_backdrop.frag): feet centre and contact-shadow ellipse radii in panel-rect uv, y down.
+      if (q.groundH > 1.0f && q.vpW > 0 && q.vpH > 0) {
+          u.poolF[0] = (q.groundX - float(q.vpX)) / float(q.vpW);
+          u.poolF[1] = (q.groundY - float(q.vpY)) / float(q.vpH);
+          u.poolF[2] = 0.30f * q.groundH / float(q.vpW);
+          u.poolF[3] = 0.045f * q.groundH / float(q.vpH);
+      }
       for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = q.cameraWorldPos[k];
       u.shadeA[0] = feed.ambientStrength;  u.shadeA[1] = feed.specularStrength;
       u.shadeA[2] = feed.metalRoughness;   u.shadeA[3] = feed.glassRoughness;

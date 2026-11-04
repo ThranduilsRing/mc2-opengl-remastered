@@ -409,7 +409,7 @@ if(MC2_VULKAN)
     set(MC2_VK_SHADER_SRC_ALIAS_terrain_tier1_skirt_frag terrain_tier1)
     # Mech-lab panel pass: mech_tier1.frag baked with -DMECH_PREVIEW=1 (no terrain set 1,
     # in-shader exposure/tonemap for the RGBA8 preview target). Loaded by vulkan_mech_island.cpp.
-    list(APPEND MC2_VK_SHADER_BASENAMES mech_preview)
+    list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the

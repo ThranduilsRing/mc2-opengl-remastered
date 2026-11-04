@@ -58,7 +58,9 @@ public:
 	// field of view at a fixed camera distance, which this camera keeps itself: Camera::AltitudeTight is static and a second camera on the
 	// same screen (the component picture) rewrites it.
 	void setFramedPose( float fillFrac, float yaw, float pitch )
-	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = yaw; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; }
+	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = yaw; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; haveGround_ = false; turntableLastT_ = 0.0; }
+	// Mech-lab idle turntable (about 10 deg/s on a framed pose); paused while the player drags a component.
+	void setTurntablePaused( bool paused ) { turntablePaused_ = paused; }
 	void setScale( float newScale );
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
@@ -103,6 +105,10 @@ private:
 	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)
 	int					fitIters_ = 0;
 	bool				framed_ = false, haveDrawn_ = false;
+	bool				turntablePaused_ = false;
+	double				turntableLastT_ = 0.0;	// steady-clock seconds of the previous turntable step (0 = none)
+	float				groundC_[2] = {}, groundH_ = 0.f;	// smoothed mech feet centre / height (panel logical px) for the contact shadow
+	bool				haveGround_ = false;
 
     bool                bContextNotSet;
 

@@ -150,6 +150,7 @@ struct Mc2MechPreviewRequest {
     int vpX, vpY, vpW, vpH;    // projection rect in the panel's 800x600 logical space (y down), = the CPU path's viewMul/offset
     float exposure;            // linear scale before the panel tonemap
     int sceneW, sceneH;        // shared scene target size (island init / world-run size match)
+    float groundX, groundY, groundH;  // mech feet centre and screen height in the panel logical space (groundH 0 = no contact shadow)
 };
 // Posts (r != NULL) or cancels (NULL) the pending panel draw. The request is consumed by the next flush.
 void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r);
