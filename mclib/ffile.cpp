@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <mutex>
 // Format, print, and feed the crash-bundle ring in one call.
 namespace {
 
@@ -52,8 +53,12 @@ void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
 #include "Gates/gate.h"
 #include "fst_hash.h"
 
-MemoryPtr 		LZPacketBuffer = nullptr;
-unsigned int	LZPacketBufferSize = 512000;
+// One FILE* per archive is shared by every FastFile reader: serialize the seek+read pair (Main vs the sim overlap worker).
+static std::mutex s_fastFileIo;
+
+// Per-thread scratch: Main and the sim overlap worker can both read packets/FST in the same window.
+thread_local MemoryPtr 		LZPacketBuffer = nullptr;
+thread_local unsigned int	LZPacketBufferSize = 512000;
 
 extern char CDInstallPath[];
 void EnterWindowMode();
@@ -408,6 +413,7 @@ void FastFile::closeFast (DWORD fastFileHandle)
 //---------------------------------------------------------------------------
 long FastFile::seekFast (DWORD fastFileHandle, DWORD off, DWORD how)
 {
+	const std::lock_guard<std::mutex> ioLock(s_fastFileIo);
 	if ((fastFileHandle >= 0) && (fastFileHandle < numFiles) && files[fastFileHandle].inuse)
 	{
 		switch (how)
@@ -472,6 +478,7 @@ long FastFile::seekFast (DWORD fastFileHandle, DWORD off, DWORD how)
 //---------------------------------------------------------------------------
 long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 {
+	const std::lock_guard<std::mutex> ioLock(s_fastFileIo);
 	size;
 
 	long result = 0;

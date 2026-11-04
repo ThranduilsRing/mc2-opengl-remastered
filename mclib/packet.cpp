@@ -35,8 +35,8 @@
 #include"../GameOS/gameos/utils/mc2log.h"
 #include"packet_exact.h"
 //---------------------------------------------------------------------------
-extern MemoryPtr 	LZPacketBuffer;
-extern unsigned int LZPacketBufferSize;
+extern thread_local MemoryPtr 	LZPacketBuffer;
+extern thread_local unsigned int LZPacketBufferSize;
 //---------------------------------------------------------------------------
 // class PacketFile
 void PacketFile::clear (void)

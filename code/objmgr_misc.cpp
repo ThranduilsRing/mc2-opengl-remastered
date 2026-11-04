@@ -147,6 +147,12 @@ bool GameObjectManager::modifyMoverLists (MoverPtr mover, long action) {
 
 ObjectTypePtr GameObjectManager::loadObjectType (ObjectTypeNumber typeHandle, bool csvMover) {
 
+	// An already-loaded type is a no-op inside load(); a real load builds appearances/effects/shapes and reads FST, so it is
+	// Main-only. Direct load() bypassed the guard in get(): assert it here (a type the prewarm missed names the offender).
+	if (!objTypeManager->get(typeHandle, false)) {
+		const std::string site = "GameObjectManager::loadObjectType type=" + std::to_string(typeHandle);
+		mc2::overlap::assertOwner(mc2::overlap::Owner::Main, site);
+	}
 	return(objTypeManager->load(typeHandle, true, false, csvMover));
 }
 
