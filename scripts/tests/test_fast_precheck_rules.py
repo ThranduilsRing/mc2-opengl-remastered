@@ -84,6 +84,7 @@ def test_precheck_auto_link_follows_compiled_inputs(monkeypatch):
         raise lm.Stop(9, "stop here")
     monkeypatch.setattr(lm, "TreeLock", tree_lock)
     monkeypatch.setattr(lm, "stage", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(lm, "stale_inventories", lambda *a, **k: [])
     monkeypatch.setattr(lm, "run", lambda *a, **k: type("R", (), {"returncode": 0, "stdout": ""})())
     assert lm.precheck(ROOT, "tip", None) == 1  # forced stop inside the linked branch
     assert seen.get("linked")

@@ -334,6 +334,9 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 		v.argb = (DWORD(alphaValue) << 24) + (r << 16) + (g << 8) + b;
 	}
 
+	// Mech lab GPU path: the GPU mech island draws the panel; this pass only measures the framing extents.
+	if (g_previewBoundsOnly && !world)
+		return;
 	if (!world)
 	{
 		gos_SetRenderState(gos_State_Fog, 0);

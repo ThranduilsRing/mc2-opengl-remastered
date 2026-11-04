@@ -340,6 +340,7 @@ static std::optional<int> LoadModIndexCache(
     const char* cachePath,
     const char* expectedModId,
     const ModCacheSignature& expectedSig,
+    const char* dataDir,
     bool* sigMismatch   // out: header/modid ok but signature differs (stale)
 ) {
     if (sigMismatch) *sigMismatch = false;
@@ -386,6 +387,18 @@ static std::optional<int> LoadModIndexCache(
         *tab2 = '\0';
         std::string key    = line;
         std::string path   = tab1 + 1;
+        if (loaded == 0) {
+            // A cache copied from another install (deploy/clone) carries that install's absolute paths and
+            // still matches the signature; every _open would then fail silently. Rebuild instead.
+            const size_t n = strlen(dataDir);
+            bool same = path.size() >= n;
+            for (size_t i = 0; same && i < n; ++i) {
+                char a = path[i] == '\\' ? '/' : (char)tolower((unsigned char)path[i]);
+                char b = dataDir[i] == '\\' ? '/' : (char)tolower((unsigned char)dataDir[i]);
+                same = a == b;
+            }
+            if (!same) { fclose(f); return std::nullopt; }
+        }
         std::string modid  = tab2 + 1;
         auto existing = idx.find(key);
         if (existing == idx.end()) {
@@ -433,7 +446,7 @@ static bool TryLoadModCache(
     ComputeModDataSignature(dataDir, &diskSig);
 
     bool sigMismatch = false;
-    auto loaded = LoadModIndexCache(idx, shadowed, cachePath, modId, diskSig, &sigMismatch);
+    auto loaded = LoadModIndexCache(idx, shadowed, cachePath, modId, diskSig, dataDir, &sigMismatch);
     if (!loaded) {
         printf("[mod-cache] refresh modid='%s' reason=%s (files=%llu maxMtime=%llu)\n",
                modId,

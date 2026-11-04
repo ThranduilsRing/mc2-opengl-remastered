@@ -6,6 +6,7 @@
 
 #include <vk_mem_alloc.h>
 
+#include "hitch_stats.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
 
@@ -14,6 +15,7 @@ namespace mc2vk {
 UploadBatch::Span UploadBatch::stage(VulkanContext& ctx, VkDeviceSize bytes) {
     Span out;
     if (bytes == 0) bytes = 1;
+    mc2_hitch2::stats().uploadBytes.fetch_add(bytes, std::memory_order_relaxed);
     ctx.frameRingBuffer();   // the ring exists from here on, so its slot size is known
     if (bytes <= ctx.frameRingRange() / 4) {
         const FrameAlloc a = ctx.frameAlloc(bytes, 16);

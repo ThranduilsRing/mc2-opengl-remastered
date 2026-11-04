@@ -138,6 +138,30 @@ int mc2_vk_mech_island_enabled();
 // must then run the GL mech color flush so mechs still draw).
 int mc2_vk_mech_island_run(int w, int h);
 
+// Mech-lab panel: the in-game mech material path drawn into the UI preview target.
+// The lab stages its actor through the batcher (submitActor + flush builds the feed),
+// then posts a request; the preview dispatch (vulkan_legacy_shape_island.cpp) runs
+// the flush right after its own pass so the mech LOADs over the panel backdrop.
+struct Mc2MechPreviewRequest {
+    float worldToClipGL[16];   // same convention as Mc2MechFrameFeed::worldToClipGL (MC2 world -> preview clip, reverse-Z)
+    float cameraWorldPos[4];   // GL world (same as Mc2MechFrameFeed::cameraWorldPos)
+    const void* lights;        // GpuObjectLights rows (the lab actor submits lightDataIndex 0)
+    uint64_t lightBytes;
+    int vpX, vpY, vpW, vpH;    // projection rect in the panel's 800x600 logical space (y down), = the CPU path's viewMul/offset
+    float exposure;            // linear scale before the panel tonemap
+    int sceneW, sceneH;        // shared scene target size (island init / world-run size match)
+    float groundX, groundY, groundH;  // mech feet centre and screen height in the panel logical space (groundH 0 = no contact shadow)
+};
+// Posts (r != NULL) or cancels (NULL) the pending panel draw. The request is consumed by the next flush.
+void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r);
+// Records + submits the pending panel draw into the preview target views (VkImageView handles).
+// Returns 1 when it drew, 0 when nothing was pending or it failed (the caller keeps the CPU draw).
+int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, int w, int h);
+// 0 once a preview init/record failure latched (the lab then keeps the CPU mech draw); 1 otherwise.
+int mc2_vk_mech_preview_usable(void);
+// 1 when the last posted request drew. The lab keeps its CPU draw under the GPU one until this holds.
+int mc2_vk_mech_preview_drew_last(void);
+
 // Health accessor (mirrors the prop island's).
 void mc2_render_backend_mech_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,

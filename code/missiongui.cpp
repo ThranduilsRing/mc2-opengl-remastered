@@ -29,6 +29,7 @@
 #include <memory>
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "tick_commit.h"
 
 extern void releaseMissionSupportPreloads();
 
@@ -308,6 +309,9 @@ constexpr int TACMAP_ID = 0;
 constexpr int FLASH_JUMPERS = 31798;
 bool MissionInterfaceManager::startAnimation(long buttonId,bool isButton,bool isPressed,float timeToScroll,long numFlashes)
 {
+	// ABL callout on the sim worker: ControlGui animation/flash state is read by draw_screen.
+	if (mc2::tick::defer(mc2::tick::Queue::MoverUi, [=] { startAnimation(buttonId, isButton, isPressed, timeToScroll, numFlashes); }))
+		return true;
 	if (animationRunning)
 		return false;
 	else

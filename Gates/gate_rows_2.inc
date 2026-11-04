@@ -18,6 +18,7 @@ L(Lead0Kill, "MC2_MATERIAL_GPU_SAMPLE", Bool, true, "props", "", "GPU material a
 // history: docs/gate-history.md#MC2_MATERIAL_KTX
 L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_MECHLAB_3D_OFF", Bool, false, "code", "", "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech.", verified),
+L(Lead1, "MC2_MECHLAB_GPU_OFF", Bool, false, "code", "", "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass.", verified),
 L(Lead0Kill, "MC2_MECH_ANIM_ROTATION_ONLY", Bool, true, "mech", "", "", verified),
 L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
 P("MC2_MECH_FILL", Int, 2, "mech", "", "Mech lighting strength, ships ON at 2. Dev A/B override: 0 = original look, 1 = shared swapped sun + sun-sized fill, 2 = plus wrapped N.L and fresnel rim.", clampRange(0, 2) | verified),
@@ -197,6 +198,7 @@ L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare d
 G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed.", passthrough | verified),
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
+G("MC2_SAVE_DIR", String, "", "code", "", "Player-path harness only: directory used instead of ~/.mechcommander2/savegame for saves and quick saves; scripts/run_player_path.py always sets it.", passthrough | verified),
 L(Presence, "MC2_SCENE_LIGHTING_ASSERT", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_SCENE_LIGHTING_TRACE", Bool, false, "code", "", "", verified),
 L(Lead0Kill, "MC2_SCRATCH", Bool, true, "code", "2026-12-31", "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch.", verified),

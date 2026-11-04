@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 757
+gate_count: 761
 registry_entry_count: 150
-verified_count: 725
+verified_count: 729
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1859,6 +1859,14 @@ flags:
     rule: Std
     owner: unclassified
     doc: ""
+  - name: MC2_INPUT_SCRIPT
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Player-path harness only: file of scripted input commands (click/key/wait) fed into the engine input state; inert when unset."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_INVIEW_CONFLATION_TRACE
     kind: Bool
     default: false
@@ -2456,6 +2464,13 @@ flags:
     rule: Lead1
     owner: code
     doc: "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech."
+    verified: true
+  - name: MC2_MECHLAB_GPU_OFF
+    kind: Bool
+    default: false
+    rule: Lead1
+    owner: code
+    doc: "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass."
     verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool
@@ -3593,6 +3608,14 @@ flags:
     doc: "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed."
     smoke_passthrough: true
     verified: true
+  - name: MC2_SAVE_DIR
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Player-path harness only: directory used instead of ~/.mechcommander2/savegame for saves and quick saves; scripts/run_player_path.py always sets it."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_SCENE_LIGHTING_ASSERT
     kind: Bool
     default: false
@@ -3894,6 +3917,15 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_SOAK_AUTOWIN_COUNTDOWN
+    kind: Bool
+    default: false
+    rule: Presence
+    owner: code
+    doc: "With MC2_SOAK_AUTOWIN: end the mission through the normal results countdown (resultsDone on the sim worker) instead of the instant WIN_BIG."
+    smoke_passthrough: true
     verified: true
   - name: MC2_SOAK_AUTO_PURCHASE
     kind: Bool
@@ -3953,6 +3985,7 @@ flags:
     owner: code
     doc: "Seconds of scenario time before the soak autowin fires; negative clamps to 0."
     range: {lo: 0, hi: 3.4e+38, style: clamp}
+    smoke_passthrough: true
     verified: true
   - name: MC2_SPOTLIGHT_DIRECTION_FIX
     kind: Enum

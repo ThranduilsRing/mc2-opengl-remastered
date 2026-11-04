@@ -696,7 +696,13 @@ void Mission::updateSoakAutoWin() {
 		}
 		if (!s_soakWinEmitted && scenarioTime > winAfter)
 		{
-			scenarioResult = mis_PLAYER_WIN_BIG;
+			if (mc2::gate::get<"MC2_SOAK_AUTOWIN_COUNTDOWN">()) {
+				// Take the normal results countdown (resultsDone on the sim worker) instead of the instant end.
+				terminationResult = mis_PLAYER_WIN_BIG;
+				terminationCounterStarted = true;
+				missionTerminationTime = actualTime + 1.0;
+			} else
+				scenarioResult = mis_PLAYER_WIN_BIG;
 			s_soakWinEmitted = true;
 			printf("[SOAK] autowin mission=%s t=%.1f\n",
 				missionFileName, static_cast<float>(scenarioTime));
@@ -1361,7 +1367,7 @@ void Mission::overlapKick()
 				++s_pre.extraFrames;
 			ended = updatePass(true, false, true, true, early);
 			s_extraTickInFrame = false;
-			if (ended || loadInMissionSave)
+			if (ended || loadInMissionSave || saveInMissionSave)
 				break;
 		}
 		s_pre.ended = ended;

@@ -3533,6 +3533,20 @@
    "count": 1
   },
   {
+   "tag": "FIRST60",
+   "ver": 2,
+   "stream": "stdout",
+   "keys": [
+    "worst5",
+    "bake_cache",
+    "bake_state",
+    "waitidle_n",
+    "waitidle_ms",
+    "device"
+   ],
+   "count": 1
+  },
+  {
    "tag": "FONT_FALLBACK",
    "ver": 1,
    "stream": "log",
@@ -4103,6 +4117,27 @@
    "count": 1
   },
   {
+   "tag": "HITCH",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "ms",
+    "median",
+    "waitidle_n",
+    "waitidle_ms",
+    "pipelines",
+    "upload_kb",
+    "objmap_records",
+    "dirty_batches",
+    "bake_state",
+    "bake_cache",
+    "sim_join_ms",
+    "scopes"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HITCH_GL",
    "ver": -1,
    "stream": "stderr",
@@ -4424,6 +4459,35 @@
     "pos",
     "extent",
     "material"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INPUT_SCRIPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INPUT_SCRIPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "cmd"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INPUT_SCRIPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "script"
    ],
    "count": 1
   },
@@ -11884,6 +11948,7 @@
   "REPLAY_DIVERGED",
   "RESOLUTION",
   "RGBA",
+  "SAVELOAD",
   "SHADER",
   "SHADER ERROR",
   "SHADER_SCHEMA",

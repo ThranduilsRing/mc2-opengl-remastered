@@ -1,9 +1,16 @@
 #include <SDL2/SDL.h>
 #include <string.h> // memset
+#include <cstdio>
+#include <deque>
+#include <string>
+#include <initializer_list>
 #include <assert.h>
 #include "gos_input.h"
 #include "input_capture_policy.h"
 #include "mc2fmt.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
+#include "gos_screenshot.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>   // GetAsyncKeyState, GetSystemMetrics, SM_SWAPBUTTON
@@ -20,6 +27,120 @@ static input::MouseInfo g_mouse_info;
 static input::KeyboardInfo g_keyboard_info;
 
 namespace input {
+
+// ---------------------------------------------------------------------------------------------------------------------
+// MC2_INPUT_SCRIPT=<file>: a scripted player for the player-path harness (scripts/run_player_path.py).
+// It feeds the SAME state the engine reads: the mouse position/button state behind gos_GetMouseInfo / gos_GetKeyStatus
+// (GUI hit-testing and button handlers run for real) and the keyboard state behind gos_GetKey. It never touches the OS:
+// no SendInput, no cursor, no focus, so it works with the window unfocused, minimised or parked off-screen.
+// The file is tailed every frame, so the harness can append commands as it sees log markers. One command per line:
+//   wait N | move X Y | down [l|r] | up [l|r] | click X Y [l|r] | keydown KEY | keyup KEY | key KEY | shot PATH.tga | mark TEXT
+// X Y are logical 800x600 canvas pixels (normalised x/800, y/600 the way gos_GetMouseInfo reports them); KEY is an SDL
+// key name (Return, Escape, Space, F1, A). Every executed command logs `[INPUT_SCRIPT v1] frame=N cmd=...`.
+// Inert (one cached string test per frame) when the variable is unset.
+// ---------------------------------------------------------------------------------------------------------------------
+namespace {
+struct ScriptPlayer {
+    std::string path;
+    bool inited = false, active = false;
+    long readOff = 0;
+    std::string partial;
+    std::deque<std::string> q;
+    int waitFrames = 0;
+    long frame = 0;
+    bool mouseSet = false;
+    float nx = 0.f, ny = 0.f;
+    bool btn[2] = {false, false};      // left, right
+    bool keys[512] = {};
+    char lineBuf[256];
+
+    void init() {
+        inited = true;
+        path = mc2::gate::str<"MC2_INPUT_SCRIPT">();
+        active = !path.empty();
+        if (active)
+            mc2::fmt::print_out("[INPUT_SCRIPT v1] frame=0 script={}\n", mc2::fmt::safe(path.c_str()));
+    }
+    void pull() {
+        FILE* f = fopen(path.c_str(), "rb");
+        if (!f) return;
+        fseek(f, 0, SEEK_END);
+        const long size = ftell(f);
+        if (size > readOff) {
+            fseek(f, readOff, SEEK_SET);
+            std::string chunk(static_cast<size_t>(size - readOff), '\0');
+            const size_t got = fread(chunk.data(), 1, chunk.size(), f);
+            chunk.resize(got);
+            readOff += static_cast<long>(got);
+            partial += chunk;
+            size_t nl;
+            while ((nl = partial.find('\n')) != std::string::npos) {
+                std::string line = partial.substr(0, nl);
+                partial.erase(0, nl + 1);
+                while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
+                if (!line.empty() && line[0] != '#') q.push_back(line);
+            }
+        }
+        fclose(f);
+    }
+    static bool key_of(std::string_view name, int* sc) {
+        const std::string z(name);
+        const int v = static_cast<int>(SDL_GetScancodeFromName(z.c_str()));
+        if (v <= 0 || v >= 512) return false;
+        *sc = v;
+        return true;
+    }
+    void exec(std::string_view lineView) {
+        const std::string line(lineView);
+        char verb[32] = {}, a[96] = {}, b[96] = {}, c[32] = {};
+        const int n = sscanf(line.c_str(), "%31s %95s %95s %31s", verb, a, b, c);
+        const std::string v = verb;
+        auto push_front = [&](std::initializer_list<std::string> l) { q.insert(q.begin(), l.begin(), l.end()); };
+        auto btn_idx = [](char c0) { return (c0 == 'r' || c0 == 'R') ? 1 : 0; };
+        mc2::fmt::print_out("[INPUT_SCRIPT v1] frame={:d} cmd={}\n", mc2::fmt::as_i32(static_cast<int>(frame)), mc2::fmt::safe(line.c_str()));
+        if (v == "wait" && n >= 2) waitFrames = atoi(a);
+        else if (v == "move" && n >= 3) { nx = static_cast<float>(atof(a)) / 800.f; ny = static_cast<float>(atof(b)) / 600.f; mouseSet = true; }
+        else if (v == "down") btn[n >= 2 ? btn_idx(a[0]) : 0] = true;
+        else if (v == "up") btn[n >= 2 ? btn_idx(a[0]) : 0] = false;
+        else if (v == "click" && n >= 3) {
+            const std::string bn = n >= 4 ? c : "l";
+            push_front({std::string("move ") + a + " " + b, "wait 4", "down " + bn, "wait 4", "up " + bn, "wait 4"});
+        }
+        else if (v == "keydown" && n >= 2) { int sc; if (key_of(std::string_view(line).substr(line.find(' ') + 1), &sc)) keys[sc] = true; }
+        else if (v == "keyup" && n >= 2) { int sc; if (key_of(std::string_view(line).substr(line.find(' ') + 1), &sc)) keys[sc] = false; }
+        else if (v == "key" && n >= 2) {
+            const std::string name = line.substr(line.find(' ') + 1);
+            push_front({"keydown " + name, "wait 4", "keyup " + name, "wait 4"});
+        }
+        else if (v == "shot" && n >= 2) {   // a TGA of the next presented frame (the Vulkan readback the capture harness trusts)
+            const std::string p = line.substr(line.find(' ') + 1);
+            gos::screenshot::request(p.c_str());
+        }
+        else if (v != "mark")
+            mc2::fmt::print_out("[INPUT_SCRIPT v1] frame={:d} unknown command\n", mc2::fmt::as_i32(static_cast<int>(frame)));
+    }
+    void tick() {
+        if (!inited) init();
+        if (!active) return;
+        ++frame;
+        if (waitFrames > 0) { --waitFrames; return; }
+        if (q.empty()) pull();
+        while (waitFrames == 0 && !q.empty()) {
+            const std::string line = q.front();
+            q.pop_front();
+            exec(line);
+        }
+    }
+};
+ScriptPlayer g_script;
+} // namespace
+
+bool scriptMouseNorm(float* nx, float* ny) {
+    if (!g_script.active || !g_script.mouseSet) return false;
+    *nx = g_script.nx;
+    *ny = g_script.ny;
+    return true;
+}
 
 MouseInfo::MouseInfo()
     : x_(0), y_(0), rel_x_(0), rel_y_(0),
@@ -140,6 +261,7 @@ void setImguiWantsMouse(bool v) { s_imguiWantsMouse = v; }
 
 void updateMouseState() {
     MouseInfo* mi = &g_mouse_info;
+    g_script.tick();   // MC2_INPUT_SCRIPT: once per frame, before this frame's state is read
 
 #ifdef PLATFORM_WINDOWS
     // The editor's GL child HWND uses a custom WndProc (MC2EditorGLChild) that
@@ -167,6 +289,11 @@ void updateMouseState() {
     // menu) is active, where the game must remain clickable through/over ImGui windows.
     if (!capture::mouseButtonsReachGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
         button_state = 0;
+
+    if (g_script.active) {   // scripted buttons are OR-ed in after the ImGui gate: the script is the "player"
+        if (g_script.btn[0]) button_state |= SDL_BUTTON(SDL_BUTTON_LEFT);
+        if (g_script.btn[1]) button_state |= SDL_BUTTON(SDL_BUTTON_RIGHT);
+    }
 
     int buttons[] = {SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_X1, SDL_BUTTON_X2 };
 
@@ -215,7 +342,8 @@ void updateKeyboardState() {
     for(int i=0; i<array_len; ++i) {
 
         const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[i]);
-        const capture::Edge next = capture::nextEdge(prev, state[i] != 0);
+        const bool down = state[i] != 0 || (g_script.active && i < 512 && g_script.keys[i]);
+        const capture::Edge next = capture::nextEdge(prev, down);
         ki->last_state_[i] = static_cast<uint8_t>(next);
 
 #if 0

@@ -56,6 +56,9 @@ void updateKeyboardState();
 
 void resetKeypress();
 
+// MC2_INPUT_SCRIPT (scripted player, see gos_input.cpp): true + normalised 0..1 position once the script has moved the pointer.
+bool scriptMouseNorm(float* nx, float* ny);
+
 // Set by the ImGui layer each frame after NewFrame(); gates game mouse input.
 // The capture/focus/modal decisions these flags feed live in
 // input_capture_policy.h (pure, SDL-free); this header only publishes them.

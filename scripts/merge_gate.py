@@ -41,6 +41,52 @@ EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
 
+OFFLINE_STAGES = ("contracts", "harnesses", "pytest")
+
+
+def gate_env(name):
+    """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
+    stages run test suites that must see the same environment a lane sees."""
+    return {} if name in OFFLINE_STAGES else {"MC2_IN_GATE": "1"}
+
+
+def window_reusable(window, tree, now=None):
+    """A6: lane_merge verification may be reused when the window recorded the commit tree and it is still HEAD's tree
+    (content-addressed, no clock); a record without a tree keeps the old 20-minute clock."""
+    if window.get("tree"):
+        return window["tree"] == tree
+    return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
+
+# Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
+DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "video-decode": 250, "kit-visibility": 45, "quiet": 45,
+                         "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
+
+
+def stage_seconds(name):
+    """Seconds of `name` at the last gate that ran it (build64-ninja/gate-durations.json), else the W112 default."""
+    if ACTIVE_STATE is not None:
+        try:
+            value = json.loads(ACTIVE_STATE.path.with_name("gate-durations.json").read_text(encoding="utf-8")).get(name)
+            if isinstance(value, (int, float)) and value > 0:
+                return float(value)
+        except (OSError, ValueError):
+            pass
+    return float(DEFAULT_STAGE_SECONDS.get(name, 100 if name.startswith("saveload-") else 60))
+
+
+def balance_movable(movable, load_a, load_b, seconds=None):
+    """Longest-first split of rows that may run on either worker. -> (rows for A, rows for B), original order kept."""
+    seconds = seconds or stage_seconds
+    to_a, to_b = [], []
+    for step in sorted(movable, key=lambda s: -seconds(s[0])):
+        if load_a < load_b:
+            to_a.append(step)
+            load_a += seconds(step[0])
+        else:
+            to_b.append(step)
+            load_b += seconds(step[0])
+    return [s for s in movable if s in to_a], [s for s in movable if s in to_b]
+
 
 def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
@@ -354,6 +400,17 @@ class GateState:
             for option in ("--out", "--out-root"):
                 if option in command:
                     artefact = command[command.index(option) + 1]
+            if status == "PASS" and seconds > 0 and not self.read_only:
+                durations = self.path.with_name("gate-durations.json")
+                try:
+                    known = json.loads(durations.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    known = {}
+                known[name] = round(seconds, 1)
+                try:
+                    durations.write_text(json.dumps(known, sort_keys=True), encoding="utf-8")
+                except OSError:
+                    pass
             self.data["stages"][name] = dict(
                 head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
                 artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
@@ -393,6 +450,11 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
+        # What a player does: scripted menu input (MC2_INPUT_SCRIPT) -> New Campaign mission 1 past the first comm video, and Load Game.
+        # Real video decode and the real front end; every other smoke boots --mission under SmokeMode and skips both.
+        ("player-path", [py, "scripts/run_player_path.py", "--install", install, "--out", str(proof / "player-path")], {}),
+        # Real comm-video decode with the sim overlap worker ON (smoke mode skips the movie): red on a SIM_OVERLAP violation or no decode.
+        ("video-decode", [py, "scripts/video_decode_smoke.py", "--exe", install + "/mc2.exe", "--out", str(proof / "video-decode")], {}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
                             "--out", str(proof / "kit-visibility")], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
@@ -425,7 +487,9 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
-                       "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission))], {}))
+                       "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission)),
+                       # private save dir (engine MC2_SAVE_DIR): saveload overlaps the mods battery with no shared quicksave names
+                       "--save-dir", str(proof / ("saveload-" + mission) / "savegame")], {}))
     # Staging has one cache writer; two isolated smoke children lease their own slots.
     steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
     steps.append(("validation",
@@ -627,6 +691,7 @@ def farm_stage(command, overrides, runner=None):
     host = [sys.executable, "tools/farm/host.py"]
     def local(reason):
         print(f'[merge_gate] farm {reason}; repeating locally', flush=True)
+        print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
 
     try:
@@ -642,6 +707,7 @@ def farm_stage(command, overrides, runner=None):
     waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", str(FARM_CLAIM_SECONDS)], cwd=ROOT, env=os.environ.copy())
     if 'queue_timeout:' in waited.stdout:
         print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
+        print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
@@ -651,6 +717,7 @@ def farm_stage(command, overrides, runner=None):
         return local(f'fetch unavailable: {exc}')
     if fetched.returncode:
         return local('fetch failed')
+    print(f'[merge_gate] determinism row host=farm job={job_id}', flush=True)
     return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
 
 
@@ -856,7 +923,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         return execute(steps, head, True)
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
         if farm_determinism:
-            raise ValueError("farm scheduling requires no inherited host batch reservation")
+            print("[merge_gate] farm determinism off: an inherited host batch reservation forces local serial execution", flush=True)
         print("Coverage plan: inherited batch reservation requires serial execution")
         return execute(steps, head)
     pending = []
@@ -871,8 +938,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
-        mods_done = threading.Event()
-        save_lock = threading.Lock()
         def timed_child(command, cwd, env):
             started = time.monotonic()
             result = run_child(command, cwd=cwd, env=env)
@@ -882,19 +947,9 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             nonlocal harness_future
             if contracts and harness and command == contracts[1]:
                 harness_future = pool.submit(timed_child, harness[1], cwd,
-                    dict(os.environ, **harness[2], MC2_IN_GATE="1"))
+                    dict(os.environ, **harness[2]))
             if harness_future and command == harness[1]:
                 return harness_future.result()
-            if any(Path(arg).name == 'saveload_roundtrip.py' for arg in command):
-                queued = time.monotonic()
-                mods_done.wait()
-                # Both workers still share the user's quicksave filenames.
-                with save_lock:
-                    waited = time.monotonic() - queued
-                    result = timed_child(command, cwd=cwd, env=env)
-                    result.gate_scheduler_wait = waited
-                    print(f'[merge_gate] saveload scheduler wait={waited:.1f}s child={result.gate_elapsed:.1f}s', flush=True)
-                    return result
             return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
@@ -911,11 +966,16 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
-        # All save rows stay on stock, after tier1 and the mods_done barrier.
-        # Splitting them did not parallelize shared quicksave writes; it queued
-        # half the saves behind every determinism row on the other worker.
-        if not any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
-            mods_done.set()
+            # Balance the two workers by last-run durations (A2): A = post-deploy stock rows, B = mods; the
+            # headless/clone-safe rows go to whichever is lighter. Saves stay on A (install).
+            deploy_at = next((i for i, s in enumerate(stock) if s[0] == "deploy"), -1)
+            load_a = sum(stage_seconds(s[0]) for s in stock[deploy_at + 1:] if not s[2].get("MC2_GATE_SKIP_REASON")
+                         and s[0] not in ("contracts", "harnesses", "pytest"))
+            load_b = sum(stage_seconds(s[0]) for s in mods if not s[2].get("MC2_GATE_SKIP_REASON"))
+            to_a, determinism = balance_movable(determinism, load_a, load_b)
+            stock += to_a
+            print(f"[merge_gate] worker balance: A+={[s[0] for s in to_a]} B+={[s[0] for s in determinism]} (A={load_a:.0f}s B={load_b:.0f}s before)", flush=True)
+        # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
         if offline_result and not keep_going:
@@ -950,7 +1010,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             # stock harness writes to the live install's configs.
             if not copy_future:
                 result |= execute(mods, head, runner=runner, completed=completed)
-                mods_done.set()
             def auxiliary():
                 try:
                     result = 0
@@ -966,7 +1025,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                             remapped.append((n, command, e))
                         mod_rows = [s for s in remapped if s[0] == 'mods']
                         result |= execute(mod_rows, head, runner=runner, completed=completed)
-                        mods_done.set()
                         rest = [s for s in remapped if s[0] != 'mods']
                         if rest:
                             result |= execute(rest, head, runner=runner, completed=completed)
@@ -975,7 +1033,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
                     return 1
                 finally:
-                    mods_done.set()
                     if copy_future:
                         try:
                             copy_future.result()
@@ -1126,12 +1183,12 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     with game_batch() as batch_env:
                         waited = time.monotonic() - lease_started
                         held_started = time.monotonic()
-                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, MC2_IN_GATE="1"))
+                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name)))
                     held = time.monotonic() - held_started
                     EXCLUSIVE_SECONDS.append(held)
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
                 else:
-                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
+                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name)))
                 if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])
@@ -1211,7 +1268,7 @@ def main(argv=None):
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
-    ap.add_argument("--farm-determinism", action="store_true", help="offer determinism to the farm; a job no live worker claims within the probe window runs locally (default: local)")
+    ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")
@@ -1305,7 +1362,7 @@ def main(argv=None):
         for n, c, _ in steps:
             if n == "compare-captures-classic":
                 c[c.index("--compare-only") + 1] = str(classic_before)
-    if window and time.time() - window.get("started", 0) <= 1200:
+    if window and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
         reused = []
         for name, command, overrides in steps:
             if name == "harnesses" and "--unit" in command:
