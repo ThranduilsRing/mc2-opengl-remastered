@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 756;
+inline constexpr std::size_t kGateCount = 757;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -515,6 +515,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SMOKE_SEED", Kind::String, Rule::Std, {}},
     {"MC2_SNAPSHOT_MECH_EXTRACT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SOAK_AUTOWIN", Kind::Bool, Rule::Presence, {}},
+    {"MC2_SOAK_AUTOWIN_COUNTDOWN", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_AUTO_PURCHASE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_CHECK_SCREENS", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_KILL_ENEMY", Kind::Bool, Rule::Presence, {}},
