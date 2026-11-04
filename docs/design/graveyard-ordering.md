@@ -4,7 +4,7 @@ Code: `code/tick_commit.cpp` (`deferRetirement`, `retainRenderPacket`, `retireRe
 
 ## Rule
 
-`retireRenderPacket` drains the graveyard. Its commands destroy appearances and effects (`AppearanceTypeList` refcounts are not atomic), and the sim worker also reads and pushes them. So the drain must run after `mc2::overlap::waitWorker()`. `retireRenderPacket` starts with `assertSimQuiescent("graveyard drain")`; with `MC2_SIM_OVERLAP_AUDIT=2` a drain while the tick job is in flight reports `render-read-while-tick-in-flight`.
+`retireRenderPacket` drains the graveyard. Its commands destroy appearances and effects (`AppearanceTypeList` refcounts are not atomic), and the sim worker reads them (it never pushes: a worker push would trip `assertMainThread("defer render packet release")`). So the drain must run after `mc2::overlap::waitWorker()`. `retireRenderPacket` starts with `assertSimQuiescent("graveyard drain")`; with `MC2_SIM_OVERLAP_AUDIT=2` a drain while the tick job is in flight reports `render-read-while-tick-in-flight`.
 
 ## Which retirements can reach the graveyard
 
@@ -14,9 +14,10 @@ Code: `code/tick_commit.cpp` (`deferRetirement`, `retainRenderPacket`, `retireRe
 |---|---|
 | Sim worker, `collecting()` true (`releaseAppearance`, `retireObject`, `releaseEffect`) | No directly. It queues in `queues[Graveyard]`. |
 | `commitTickQueues` re-issues those commands | Only if a packet is retained then. It runs at the start of the next frame, before `retainRenderPacket`, and the inline consumer has already retired every packet, so no. They free immediately. |
-| Main thread between `retainRenderPacket` and `retireRenderPacket` (extract, `draw_screen`: for example the VTOL `retireObject` in `missiongui_style.cpp`) | Yes. This is the only route in the current inline consumer. |
+| Main thread between `retainRenderPacket` and `retireRenderPacket` (extract, `draw_screen`) | Yes, in principle. The VTOL `retireObject` sites are tick-side (`updateVTol`'s presentation branch, `missiongui_style.cpp:24-91`, returns before any retire), so they are not draw-time and do not land here. No known stock-play caller reaches the graveyard on this route. |
+| Worker with `collecting()` false | The only such gaps are the `updatePass` prologue and epilogue. A push there would trip the Main assert, so it is a bug, not a route. |
 
-Measured on mc2_01 (30 s): 4080 `retireRenderPacket` calls, every one with `left=0` and zero non-empty drains, even with 1100+ airstrikes spawned (pool of 130, strikes never retire their appearance mid-mission). A test knob that spawns work on the worker therefore cannot make the graveyard non-empty, so the ordering proof is the assert plus the call count, not drained-object count.
+The graveyard is empty in stock play, not proven empty in all play (the campaign CTD is not closed by this work). Measured on mc2_01 (30 s): 4080 `retireRenderPacket` calls, every one with `left=0` and zero non-empty drains, even with 1100+ airstrikes spawned (pool of 130, strikes never retire their appearance mid-mission). A test knob that spawns work on the worker therefore cannot make the graveyard non-empty, so the ordering proof is the assert plus the call count, not drained-object count.
 
 ## Proof row
 
