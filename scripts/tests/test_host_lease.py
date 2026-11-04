@@ -714,3 +714,20 @@ def test_gate_quiet_passes_the_gate_itself_and_its_children(lease, monkeypatch):
 def test_lease_busy_names_queue_head_not_unknown(lease):
     assert "unknown holder" in host_lease._describe(None)
     assert "lane7 smoke" in host_lease._describe({"label": "lane7 smoke", "pid": 5, "argv": ["run_smoke.py"], "cwd": "A:/x"})
+
+
+def test_a_second_gate_process_does_not_take_over_or_remove_the_live_gate_marker(lease):
+    holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], **console_child.child_kwargs(redirected=True))
+    try:
+        rec = {"pid": holder.pid, "created": host_lease.child_registry.process_create_time(holder.pid), "started": 1.0, "head": "full-gate"}
+        host_lease._write_record(host_lease.gate_window_path(), rec)
+        host_lease.open_gate_window("publish-head", "")          # we are not the pid that wrote it
+        assert host_lease._read(host_lease.gate_window_path())["head"] == "full-gate"
+        host_lease.close_gate_window()                            # nor may we remove it
+        assert host_lease._read(host_lease.gate_window_path())["pid"] == holder.pid
+        host_lease._write_record(host_lease.gate_window_path(), dict(rec, created="reused-pid"))   # a dead or reused holder is replaced
+        host_lease.open_gate_window("next", "")
+        assert host_lease._read(host_lease.gate_window_path())["pid"] == os.getpid()
+    finally:
+        holder.kill()
+        holder.wait()

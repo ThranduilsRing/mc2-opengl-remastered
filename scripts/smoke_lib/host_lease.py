@@ -269,6 +269,11 @@ def gate_window_path() -> Path:
 def open_gate_window(head: str = "", window: str = "") -> None:
     """Called by the merge gate for its whole run: lane (non-gate) game runs are refused while this marker is live."""
     pid = os.getpid()
+    held = _read(gate_window_path())
+    if held and held.get("pid") != pid and _holder_alive(held):
+        # Only the pid that wrote the marker owns it: a concurrent `merge_gate --publish` / `--drop-candidate` must not take over (and then delete) the running gate's marker.
+        _log_default(f"[host-lease] gate quiet marker is held by live gate pid {held.get('pid')}; not overwriting it")
+        return
     _write_record(gate_window_path(), {"pid": pid, "created": child_registry.process_create_time(pid), "started": time.time(),
                                        "head": head, "window": window, "cmdline": " ".join(sys.argv)[:300]})
 
