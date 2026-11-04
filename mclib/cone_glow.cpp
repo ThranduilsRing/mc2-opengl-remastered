@@ -19,6 +19,7 @@
 #include "render_submissions.h"
 #include "camera.h"
 #include "timing.h"
+#include "../code/render_view.h"
 
 #include <cmath>
 #include <cstdio>    // CONE-AIM-DIAG-1 / GHOST-LIGHT-DUMP-1 throttled dumps
@@ -1144,7 +1145,8 @@ void FlushFrame()
     if (s_tris.empty()) return;
     // Only flush the queue built THIS frame; a stale queue (renderLists
     // skipped a frame) is dropped by the turn guard in QueueConeGlow.
-    if (s_queueTurn == turn && mc2::renderSubmissions().active())
+    // Draw runs while the overlap worker ticks (and bumps the live turn): compare with the extracted turn.
+    if (s_queueTurn == mc2::render_view::clock().turn && mc2::renderSubmissions().active())
     {
         for (size_t i = 0; i < s_tris.size(); ++i)
             mc2::renderSubmissions().addVertices(0xffffffff, s_tris[i].v, MC2_ISSPOTLGT);

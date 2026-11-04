@@ -11,6 +11,7 @@
 #include "mc2fmt.h"
 #include "tgl_force_z.h"
 #include "battle_bench_sink.h"
+#include "../code/render_view.h"
 #include <algorithm>
 #include <span>
 #include <vector>
@@ -195,7 +196,8 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 	if (isSpotlight && (!view.night || lightsOut || mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 		return;
 	// World mode draws only leaves the hierarchy walk reached this frame (culled actors keep stale matrices).
-	if (world && lastTurnTransformed != static_cast<DWORD>(turn))
+	// Compare with the extracted turn: the overlap worker bumps the live turn (and may restamp a leaf) during draw.
+	if (world && static_cast<long>(lastTurnTransformed) < mc2::render_view::clock().turn)
 		return;
 	if (mc2::battlebench::output) ++mc2::battlebench::cpuLeaves;
 
