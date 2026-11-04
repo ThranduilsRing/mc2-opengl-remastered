@@ -671,6 +671,8 @@ void Mission::updateCheatsAndFrameRate() {
 }
 
 // Win the mission after the soak delay.
+void soakSupportTick(float scenarioTimeNow);   // artlry.cpp: MC2_SOAK_SUPPORT_EVERY
+
 void Mission::updateSoakAutoWin() {
 	// CRASH-SOAK auto-win (always compiled; gated on MC2_SOAK_AUTOWIN env).
 	// Independent of the #ifndef FINAL cheat path above so the harness works
@@ -1271,6 +1273,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 		updateSoakKillEnemy();
 		updateOrderLiveness();
 		updateSoakPilotPromote();
+		soakSupportTick(scenarioTime);
 	}
 	// Queue completion belongs to the tick, including its fixed frame length.
 	orderTickCompletion.reset();

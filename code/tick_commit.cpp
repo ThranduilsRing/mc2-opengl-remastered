@@ -2,6 +2,8 @@
 #include "../mclib/sim_overlap.h"
 #include "../mclib/texture_assets.h"
 #include "render_view.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
+#include "mc2fmt.h"
 #include <array>
 #include <vector>
 #include <cassert>
@@ -68,6 +70,14 @@ void retireRenderPacket(uint64_t sequence) {
     while (count < graveyard.size() && graveyard[count].sequence < oldest)
         ready.push_back(std::move(graveyard[count++].command));
     graveyard.erase(graveyard.begin(), graveyard.begin() + count);
+    if (!ready.empty()) {
+        // [GRAVEYARD v1]: how many drains destroyed real work (the R1 proof needs this to be >= 20 under the soak knob).
+        static uint64_t s_drains = 0, s_commands = 0;
+        ++s_drains;
+        s_commands += ready.size();
+        if (mc2_diag::tagRequested("GRAVEYARD") && (s_drains % 10) == 0)
+            mc2::fmt::print_out("[GRAVEYARD v1] drains={:d} commands={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_drains)), mc2::fmt::as_i32(static_cast<int>(s_commands)));
+    }
     for (auto& command : ready) command();
 }
 void commitTickQueues() {

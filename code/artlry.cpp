@@ -105,6 +105,25 @@ extern bool MLRVertexLimitReached;
 unsigned g_mc2ArtCreated = 0, g_mc2ArtReinit = 0, g_mc2ArtReinitFreed = 0, g_mc2ArtEnded = 0, g_mc2ArtBoomNoFx = 0;
 #endif
 
+// MC2_SOAK_SUPPORT_EVERY (test-only): periodic airstrikes drive artillery init/retire, which defers appearance destruction
+// into the tick graveyard, so the AUDIT=2 graveyard-drain-after-join proof sees real work. Off (0) = no effect.
+void soakSupportTick(float scenarioTimeNow) {
+	static const float every = mc2::gate::get<"MC2_SOAK_SUPPORT_EVERY">();
+	if (every <= 0.0f || !Team::home) return;
+	static float s_next = 0.0f;
+	static long s_n = 0;
+	if (scenarioTimeNow < s_next - every) { s_next = 0.0f; s_n = 0; }   // new mission
+	if (scenarioTimeNow < s_next) return;
+	s_next = scenarioTimeNow + every;
+	MoverPtr mover = Team::home->getMover(0);
+	if (!mover) return;
+	glm::vec3 loc = mover->getPosition();
+	loc.x += 200.0f + 40.0f * static_cast<float>(s_n % 5);
+	loc.y += 200.0f;
+	CallArtillery(mover->getCommanderId(), s_n % 3, loc, 4, false);
+	++s_n;
+}
+
 void CallArtillery (long commanderID, long strikeType, glm::vec3 strikeLoc, long secondsToImpact, bool randomOff) 
 {
 

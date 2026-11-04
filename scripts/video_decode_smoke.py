@@ -28,7 +28,11 @@ EARLY_EXIT = re.compile(r"\[SMOKE v1\] event=summary result=fail reason=early_ex
 RESULTS_DONE =re.compile(r"\[RESULTS v1\] resultsDone complete ")
 
 
-def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
+GRAVEYARD = re.compile(r"\[GRAVEYARD v1\] drains=(\d+) commands=(\d+)")
+MIN_DRAINS = 20
+
+
+def judge(text: str, require_results: bool = False, min_drains: int = 0) -> tuple[bool, str]:
     """(passed, reason) for one mission's concatenated runner output + kept game log."""
     m = VIOLATION.search(text)
     if m:
@@ -37,14 +41,20 @@ def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
         return False, "no '[VIDEO] init: opened' line: the comm video never decoded"
     if require_results and not RESULTS_DONE.search(text):
         return False, "no '[RESULTS v1] resultsDone complete' line: the results path was never reached"
-    return True, "video opened, no sim-overlap violation" + (", results path reached" if require_results else "")
+    drains = max((int(g.group(1)) for g in GRAVEYARD.finditer(text)), default=0)
+    if min_drains and drains < min_drains:
+        return False, f"only {drains} graveyard drain(s) with work under overlap (need {min_drains}): the R1 drain-after-join proof did not run"
+    return True, ("video opened, no sim-overlap violation" + (", results path reached" if require_results else "")
+                  + (f", {drains} graveyard drains with work" if min_drains else ""))
 
 
-def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, log_to: Path | None = None) -> tuple[bool, str]:
+def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, log_to: Path | None = None, support: bool = False) -> tuple[bool, str]:
     env = dict(os.environ, MC2_BOOT_VIDEO="1", MC2_SMOKE_REQUIRE_FINGERPRINT=os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1"))
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
         env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="12", MC2_DIAG_TAGS="RESULTS", MC2_SIM_OVERLAP_AUDIT="2")
+    if support:   # graveyard stress row (R1): periodic airstrikes fill the graveyard while the worker overlaps; AUDIT=2 flags a drain before the join
+        env.update(MC2_SOAK_SUPPORT_EVERY="1", MC2_DIAG_TAGS="GRAVEYARD", MC2_SIM_OVERLAP_AUDIT="2")
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
     proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
@@ -57,7 +67,7 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, 
     if log_to:
         log_to.parent.mkdir(parents=True, exist_ok=True)
         log_to.write_text(text, encoding="utf-8")
-    ok, why = judge(text, require_results=countdown)
+    ok, why = judge(text, require_results=countdown, min_drains=MIN_DRAINS if support else 0)
     # The end row ends the mission on purpose: run_smoke reports that as early_exit (rc=1), which is the pass shape.
     if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text):
         return True, why + " (mission ended by the countdown: early_exit)"
@@ -83,6 +93,11 @@ def main() -> int:
     ok, why = run_mission(args.exe, "mc2_01", args.end_duration, countdown=True,
                     log_to=Path(args.out) / "mc2_01_end.log" if args.out else None)
     print(f"[video_decode_smoke] mc2_01 end: {'PASS' if ok else 'FAIL'} - {why}")
+    bad += not ok
+    # graveyard stress row (R1): at least MIN_DRAINS non-empty drains during overlap
+    ok, why = run_mission(args.exe, "mc2_01", args.duration, support=True,
+                    log_to=Path(args.out) / "mc2_01_graveyard.log" if args.out else None)
+    print(f"[video_decode_smoke] mc2_01 graveyard: {'PASS' if ok else 'FAIL'} - {why}")
     bad += not ok
     return 1 if bad else 0
 
