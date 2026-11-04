@@ -94,7 +94,7 @@ enum Axes {
 	W_Axis
 };
 
-#define MAX_LODS				3
+inline constexpr int MAX_LODS = 3;
 
 inline constexpr int MAX_VIEWS = 4;
 inline constexpr int F2_VIEW = 0;

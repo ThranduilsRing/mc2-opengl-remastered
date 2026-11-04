@@ -943,5 +943,3 @@ float Camera::getCameraRotation (void)
 {
 	return worldCameraRotation;
 }
-
-#define OBSCURED_FACTOR	0.5f;

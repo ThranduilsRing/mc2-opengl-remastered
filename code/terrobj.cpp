@@ -293,7 +293,7 @@ inline float agsqrt( float _a, float _b )
 }
 
 constexpr float TREE_FALL_RATE = 15.0f;
-#define TREE_FALL_ACCEL		5.0f;
+constexpr float TREE_FALL_ACCEL = 5.0f;
 
 char lastName[256];
 

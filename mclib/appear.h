@@ -32,10 +32,6 @@ unsigned currentAppearanceRegistryGeneration (void); // apprtype.cpp
 class Camera;
 //---------------------------------------------------------------------------
 // Macro definitions
-#ifndef MAX_ULONG
-#define MAX_ULONG		0x70000000		//Must be able to square this and still get big number!!
-#endif
-
 #ifndef NO_ERR
 #define NO_ERR			0
 #endif

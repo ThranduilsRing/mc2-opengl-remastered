@@ -19,7 +19,7 @@ static unsigned long s_spotDiagMechActors     = 0;
 static unsigned long s_spotDiagMechCalls      = 0;
 
 
-#define SPIN_RATE		90.0f
+constexpr float SPIN_RATE = 90.0f;
 
 constexpr int FOOTPRINT_SLOP = 2;
 

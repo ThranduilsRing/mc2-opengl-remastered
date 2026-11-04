@@ -97,7 +97,7 @@ inline constexpr int MECH_STATE_FALLEN_FORWARD = 7;
 inline constexpr int MECH_STATE_FALLEN_BACKWARD = 8;
 inline constexpr int MECH_STATE_LIMPING_RIGHT = 9;
 
-#define BASE_NODE_RECYCLE_TIME		0.25f
+inline constexpr float BASE_NODE_RECYCLE_TIME = 0.25f;
 
 extern char MechStateByGesture[];
 

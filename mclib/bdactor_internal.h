@@ -158,8 +158,8 @@ inline bool bdForceDynamicDefault() {
 }
 
 inline constexpr float SPINRATE = 90.0f;
-#define BASE_NODE_RECYCLE_TIME		0.25f
-#define MAX_WEAPON_NODES			4
+inline constexpr float BASE_NODE_RECYCLE_TIME = 0.25f;
+inline constexpr int MAX_WEAPON_NODES = 4;
 
 // Free functions defined in the split pieces.
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs);

@@ -469,7 +469,7 @@ glm::vec3 debugGVActorPosition;
 float vehicleDebugAngle = 0.0;
 float turretDebugAngle = 0.0;
 float debugVelMag = 0.0;
-#define BASE_NODE_RECYCLE_TIME		0.25f
+constexpr float BASE_NODE_RECYCLE_TIME = 0.25f;
 //-----------------------------------------------------------------------------
 // class GVAppearance
 void GVAppearance::setWeaponNodeUsed (long weaponNode)

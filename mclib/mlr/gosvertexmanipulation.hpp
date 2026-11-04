@@ -6,16 +6,6 @@
 
 extern bool PerspectiveMode;
 
-#define FCR_TRICK 0
-
-#ifdef I_SAY_YES_TO_MULTI_TEXTURE
-	#define VERTEX_STRUCT_SIZE	0x28	//	(sizeof(GOSVertex2UV))
-	#define VERTEX_STRUCT_SIZEx2	0x50	//	(sizeof(GOSVertex2UV))
-#else
-	#define VERTEX_STRUCT_SIZE	0x20	//	(sizeof(GOSVertex))
-	#define VERTEX_STRUCT_SIZEx2	0x40	//(sizeof(GOSVertex))
-#endif
-
 //	copies vertex data into rasterizer format
 inline bool GOSCopyData (
 #ifdef I_SAY_YES_TO_MULTI_TEXTURE
@@ -275,6 +265,4 @@ inline bool GOSCopyTriangleData (
 	return true;
 }
 
-#undef VERTEX_STRUCT_SIZE
-#undef VERTEX_STRUCT_SIZEx2
 //#endif
