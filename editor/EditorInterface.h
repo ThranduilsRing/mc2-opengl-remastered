@@ -73,6 +73,7 @@ private:
 public:
 
 	static EditorInterface* instance(){ return s_instance; }
+	void dropMissionBrushes();   // EditorData::clear(): no brush may keep a freed mission appearance
 	// called from the object-delete broadcast
 	// (EditorObjectMgr::deleteBuilding/deleteSelectedObjects) so a delete that
 	// happens while a drag pointer is held cannot leave m_pDragObject dangling
