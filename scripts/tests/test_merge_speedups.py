@@ -964,7 +964,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
             det.set()
         if command[0] == "save":
             # Neither proof may share a window with the mods battery (W83).
-            assert mods_done.is_set() and not saving.is_set()
+            assert not saving.is_set()
             saving.set()
             saves.set()
         if command[0] == "kit":
@@ -985,7 +985,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     if not with_determinism:
         steps = [s for s in steps if s[0] not in ('determinism-mc2_10', 'kit-visibility', 'quiet')]
     assert gate.execute_parallel(steps, "head") == 0
-    assert calls.index("mods") < calls.index("save")
+    assert "mods" in calls and "save" in calls  # no barrier: private save dirs
     assert 'cleaned' in calls
     if with_determinism:
         assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
@@ -1207,3 +1207,27 @@ def test_ninja_build_warns_on_dirty_tree_and_stale_exe(monkeypatch, tmp_path):
     calls["status"] = ""
     monkeypatch.setattr(fpmod, "extract", lambda p: {"present": True, "sha": "b" * 12})
     assert nb.build_warning(str(tmp_path), "t") == ""
+
+
+def test_saveload_rows_use_private_save_dirs_and_never_wait_for_mods(tmp_path, monkeypatch):
+    import threading
+    import merge_gate as gate
+    full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
+    dirs = []
+    for n, c, _ in full:
+        if n.startswith("saveload-"):
+            d = c[c.index("--save-dir") + 1].replace("\\", "/")
+            assert d.endswith(n + "/savegame")
+            dirs.append(d)
+    assert len(dirs) == 5 and len(set(dirs)) == 5
+    # the engine redirect: run_fixture exports the private dir as MC2_SAVE_DIR
+    import saveload_roundtrip as rt
+    seen = {}
+    def fake_run(cmd, env=None, **kw):
+        seen.update(env)
+        raise RuntimeError("stop")
+    monkeypatch.setattr(rt.subprocess, "run", fake_run)
+    sdir = tmp_path / "sv"
+    with pytest.raises(RuntimeError):
+        rt.run_fixture("mc2_01", 10, 20, False, str(tmp_path / "o"), save_dir=str(sdir))
+    assert seen["MC2_SAVE_DIR"] == str(sdir) and sdir.is_dir()

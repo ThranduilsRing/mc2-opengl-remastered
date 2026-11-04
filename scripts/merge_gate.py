@@ -428,7 +428,9 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
-                       "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission))], {}))
+                       "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission)),
+                       # private save dir (engine MC2_SAVE_DIR): saveload overlaps the mods battery with no shared quicksave names
+                       "--save-dir", str(proof / ("saveload-" + mission) / "savegame")], {}))
     # Staging has one cache writer; two isolated smoke children lease their own slots.
     steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
     steps.append(("validation",
@@ -871,8 +873,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
-        mods_done = threading.Event()
-        save_lock = threading.Lock()
         def timed_child(command, cwd, env):
             started = time.monotonic()
             result = run_child(command, cwd=cwd, env=env)
@@ -885,16 +885,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     dict(os.environ, **harness[2], MC2_IN_GATE="1"))
             if harness_future and command == harness[1]:
                 return harness_future.result()
-            if any(Path(arg).name in ('saveload_roundtrip.py', 'run_player_path.py') for arg in command):
-                queued = time.monotonic()
-                mods_done.wait()
-                # Both workers still share the user's quicksave filenames.
-                with save_lock:
-                    waited = time.monotonic() - queued
-                    result = timed_child(command, cwd=cwd, env=env)
-                    result.gate_scheduler_wait = waited
-                    print(f'[merge_gate] saveload scheduler wait={waited:.1f}s child={result.gate_elapsed:.1f}s', flush=True)
-                    return result
             return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
@@ -911,11 +901,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
-        # All save rows stay on stock, after tier1 and the mods_done barrier.
-        # Splitting them did not parallelize shared quicksave writes; it queued
-        # half the saves behind every determinism row on the other worker.
-        if not any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
-            mods_done.set()
+        # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
         if offline_result and not keep_going:
@@ -950,7 +936,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             # stock harness writes to the live install's configs.
             if not copy_future:
                 result |= execute(mods, head, runner=runner, completed=completed)
-                mods_done.set()
             def auxiliary():
                 try:
                     result = 0
@@ -966,7 +951,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                             remapped.append((n, command, e))
                         mod_rows = [s for s in remapped if s[0] == 'mods']
                         result |= execute(mod_rows, head, runner=runner, completed=completed)
-                        mods_done.set()
                         rest = [s for s in remapped if s[0] != 'mods']
                         if rest:
                             result |= execute(rest, head, runner=runner, completed=completed)
@@ -975,7 +959,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
                     return 1
                 finally:
-                    mods_done.set()
                     if copy_future:
                         try:
                             copy_future.result()
