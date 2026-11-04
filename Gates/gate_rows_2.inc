@@ -18,6 +18,7 @@ L(Lead0Kill, "MC2_MATERIAL_GPU_SAMPLE", Bool, true, "props", "", "GPU material a
 // history: docs/gate-history.md#MC2_MATERIAL_KTX
 L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_MECHLAB_3D_OFF", Bool, false, "code", "", "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech.", verified),
+L(Lead1, "MC2_MECHLAB_GPU_OFF", Bool, false, "code", "", "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass.", verified),
 L(Lead0Kill, "MC2_MECH_ANIM_ROTATION_ONLY", Bool, true, "mech", "", "", verified),
 L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
 P("MC2_MECH_FILL", Int, 2, "mech", "", "Mech lighting strength, ships ON at 2. Dev A/B override: 0 = original look, 1 = shared swapped sun + sun-sized fill, 2 = plus wrapped N.L and fresnel rim.", clampRange(0, 2) | verified),

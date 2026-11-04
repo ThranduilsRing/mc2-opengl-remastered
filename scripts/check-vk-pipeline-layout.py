@@ -65,6 +65,7 @@ VBO_CONTRACT = {
 # (MC2_VK_SHADER_SRC_ALIAS_*) bakes them from another shader, so they reflect identically.
 SPV_ALIASES = {
     "terrain_tier1_skirt.frag": "terrain_tier1.frag",
+    "mech_preview.frag": "mech_tier1.frag",   # -DMECH_PREVIEW=1; same set-0 layout, set 1 unused
 }
 
 # ---------------------------------------------------------------------------

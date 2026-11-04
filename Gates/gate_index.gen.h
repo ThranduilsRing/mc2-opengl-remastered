@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 759;
+inline constexpr std::size_t kGateCount = 760;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -329,6 +329,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MATERIAL_GPU_SAMPLE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MDI_SUBMIT_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECHLAB_3D_OFF", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_MECHLAB_GPU_OFF", Kind::Bool, Rule::Lead1, {}},
     {"MC2_MECH_ANIM_ROTATION_ONLY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_BATCHER_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_FILL", Kind::Int, Rule::Prefix, {}},

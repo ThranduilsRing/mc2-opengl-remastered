@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 759
+gate_count: 760
 registry_entry_count: 148
-verified_count: 727
+verified_count: 728
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2464,6 +2464,13 @@ flags:
     rule: Lead1
     owner: code
     doc: "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech."
+    verified: true
+  - name: MC2_MECHLAB_GPU_OFF
+    kind: Bool
+    default: false
+    rule: Lead1
+    owner: code
+    doc: "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass."
     verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool

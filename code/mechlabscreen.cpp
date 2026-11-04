@@ -520,6 +520,7 @@ void MechLabScreen::update()
 
 	
 	camera.update();
+	mechCamera.setTurntablePaused( pDragComponent != nullptr );
 	mechCamera.update();
 
 	int oldSel = componentListBox.GetSelectedItem(); // need to check this before we update the list box
