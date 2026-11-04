@@ -28,6 +28,7 @@
 
 #include "vulkan_water_island_internal.h"
 #include "vk_one_shot.h"   // STEP 3.4P: recipe upload
+#include "hitch_stats.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -261,8 +262,11 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
             VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             si.commandBufferCount = 1; si.pCommandBuffers = &cb;
             const VkFence f = fence.get();
-            ok = (mc2vk::submitGraphics(si, f) == VK_SUCCESS) &&
-                 (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
+            ok = (mc2vk::submitGraphics(si, f) == VK_SUCCESS);
+            if (ok) {
+                mc2_hitch2::FenceWaitScope waitScope("water_one_shot");
+                ok = (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
+            }
         }
     }
     vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);

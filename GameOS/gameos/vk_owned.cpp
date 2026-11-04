@@ -8,6 +8,7 @@
 
 #include <vk_mem_alloc.h>
 
+#include "hitch_stats.h"
 #include "vulkan_context.h"
 
 namespace mc2vk {
@@ -29,6 +30,7 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     allocator_ = allocator;
     admission.commit(reinterpret_cast<uint64_t>(allocation), name);
     nameObjectAt(device, buffer_, name, i0, i1);
+    if (info.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) mc2_hitch2::noteStaged(requirements.size);   // every staging buffer, not only UploadBatch's
     return true;
 }
 

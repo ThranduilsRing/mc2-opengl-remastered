@@ -6,7 +6,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include "platform_windows.h"  // GetCurrentThreadId
 
+#include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -98,6 +100,18 @@ DiagState& state() {
     return s;
 }
 
+std::atomic<uint32_t> g_unknownTagWarnings{0};
+
+// True the first time an unknown tag is seen: each one warns once per process, however often MC2_DIAG_TAGS is parsed. Immortal like knownTags().
+bool firstWarning(const std::string& tag) {
+    static auto* const mtx = new std::mutex;
+    static auto* const warned = new std::unordered_set<std::string>;
+    std::lock_guard<std::mutex> lock(*mtx);
+    const bool first = warned->insert(tag).second;
+    if (first) g_unknownTagWarnings.fetch_add(1, std::memory_order_relaxed);
+    return first;
+}
+
 // Parse MC2_DIAG_TAGS into the enabled set.
 // Returns true if "all tags" mode (*), false otherwise.
 // Sets disabled=true if "none".
@@ -130,7 +144,7 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
         while (!tag.empty() && (tag.back()  == ' ' || tag.back()  == '\t')) tag.pop_back();
         if (!tag.empty()) {
             // Warn if unknown tag (to stderr, since file may not be open yet)
-            if (knownTags().find(tag) == knownTags().end()) {
+            if (knownTags().find(tag) == knownTags().end() && firstWarning(tag)) {
                 mc2::fmt::print_err("[MC2_DIAG] WARNING: unknown tag in MC2_DIAG_TAGS: {}\n", tag.c_str());
             }
             outTags.insert(tag);
@@ -249,18 +263,35 @@ bool tagEnabled(const char* tag) {
     return s.enabledTags.count(tag) > 0;
 }
 
+uint32_t unknownTagWarnings() { return g_unknownTagWarnings.load(std::memory_order_relaxed); }
+
 bool tagRequested(std::string_view tag) {
     // Read from the environment, not from the open file: the shutdown trace runs after shutdown() closed the JSONL file.
     if (mc2::gate::str<"MC2_DIAG_TAGS">().empty()) {
         for (const std::string_view t : kDefaultTags) if (t == tag) return true;
         return false;
     }
-    std::unordered_set<std::string> tags;
-    bool disabled = false;
-    if (parseTagsEnv(tags, disabled)) return true;
-    if (disabled) return false;
-    for (const auto& t : tags) if (t == tag) return true;
-    return false;
+    // The parse is cached per environment text (immortal: atexit and static destructors call this): a change to MC2_DIAG_TAGS re-parses, an
+    // unchanged one costs a string compare under an uncontended lock.
+    struct Parsed {
+        std::mutex mtx;
+        std::string text;
+        bool valid = false, all = false, disabled = false;
+        std::unordered_set<std::string> tags;
+    };
+    static Parsed* const cache = new Parsed;
+    const std::string text = mc2::gate::str<"MC2_DIAG_TAGS">();
+    std::lock_guard<std::mutex> lock(cache->mtx);
+    if (!cache->valid || cache->text != text) {
+        cache->tags.clear();
+        cache->disabled = false;
+        cache->all = parseTagsEnv(cache->tags, cache->disabled);
+        cache->text = text;
+        cache->valid = true;
+    }
+    if (cache->all) return true;
+    if (cache->disabled) return false;
+    return cache->tags.count(std::string(tag)) > 0;
 }
 
 bool writeEvent(const char* tag, int version, uint64_t frame, const char* dataJson) {

@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <string>
 
+#include "hitch_stats.h"
 #include "vk_owned.h"
 #include "vulkan_context.h"
 
@@ -30,6 +31,7 @@ bool submitAndWait(const VulkanContext& ctx, const VkSubmitInfo& si, uint64_t ti
     uint64_t value = 0;
     if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) return false;
     const GpuTicket t{value, 0};
+    mc2_hitch2::FenceWaitScope waitScope(why);
     if (ctx.wait(t, timeoutNs, why)) return true;
     ctx.waitIdle(why);
     ctx.poll();
@@ -56,6 +58,7 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
         if (ctx.submit(si, fence.get()) != VK_SUCCESS) break;
         submitted = true;
         const VkFence fenceHandle = fence.get();
+        mc2_hitch2::FenceWaitScope waitScope(why);
         ok = vkWaitForFences(device, 1, &fenceHandle, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
     } while (false);
     if (submitted && !ok) {

@@ -21,6 +21,40 @@
 #include "diagnostic_trace.h"
 #include "hitch_stats.h"
 #include "vulkan_context.h"
+#include "platform_windows.h"
+#include <tlhelp32.h>
+
+namespace {
+// Host load stamped into the FIRST60 line so a perf verdict taken on a busy machine can be discounted: whole-machine CPU busy percent between two
+// samples, and how many other mc2.exe processes were running.
+struct CpuSample { unsigned long long idle = 0, total = 0; };
+CpuSample sampleCpu() {
+    FILETIME i, k, u;
+    CpuSample s;
+    if (GetSystemTimes(&i, &k, &u)) {
+        auto q = [](const FILETIME& f) { return (static_cast<unsigned long long>(f.dwHighDateTime) << 32) | f.dwLowDateTime; };
+        s.idle = q(i);
+        s.total = q(k) + q(u);   // kernel time includes idle
+    }
+    return s;
+}
+double cpuBusyPct(const CpuSample& a, const CpuSample& b) {
+    const unsigned long long dt = b.total - a.total, di = b.idle - a.idle;
+    return dt ? 100.0 * (1.0 - static_cast<double>(di) / static_cast<double>(dt)) : -1.0;
+}
+int otherMc2Count() {
+    int n = 0;
+    const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) return -1;
+    PROCESSENTRY32W pe{};
+    pe.dwSize = sizeof pe;
+    const DWORD self = GetCurrentProcessId();
+    for (BOOL ok = Process32FirstW(snap, &pe); ok; ok = Process32NextW(snap, &pe))
+        if (pe.th32ProcessID != self && _wcsicmp(pe.szExeFile, L"mc2.exe") == 0) ++n;
+    CloseHandle(snap);
+    return n;
+}
+}  // namespace
 
 namespace {
 SmokeMode::State g_state;
@@ -164,10 +198,12 @@ void samplePerf(double frameMs) {
         static int s_n = 0;
         static double s_loadFrameMs = 0.0;
         static bool s_loadFrameSeen = false;
+        static CpuSample s_cpu0;
         if (g_missionReadyT && !s_loadFrameSeen) {
             // The frame that was running when mission_ready fired contains the whole mission load; it is reported apart, not in the window.
             s_loadFrameSeen = true;
             s_loadFrameMs = frameMs;
+            s_cpu0 = sampleCpu();
         } else if (g_missionReadyT && s_n < kN) {
             s_ms[s_n++] = frameMs;
             if (s_n == kN && mc2_diag::tagRequested("FIRST60")) {
@@ -186,9 +222,10 @@ void samplePerf(double frameMs) {
                 std::string w;
                 for (int i = 0; i < 5; ++i) w += std::to_string(worst[i]) + ":" + std::to_string(static_cast<int>(s_ms[worst[i]] * 10.0) / 10.0).substr(0, 6) + (i < 4 ? "," : "");
                 auto& hs = mc2_hitch2::stats();
-                mc2::fmt::print_out("[FIRST60 v2] worst5={} bake_cache={} bake_state={} waitidle_n={:d} waitidle_ms={:.2f} device={}\n", mc2::fmt::safe(w.c_str()),
+                mc2::fmt::print_out("[FIRST60 v2] worst5={} bake_cache={} bake_state={} waitidle_n={:d} waitidle_ms={:.2f} fence_n={:d} fence_ms={:.2f} fence_max_ms={:.2f} staged_kb={:d} host_cpu_pct={:.0f} other_mc2={:d} device={}\n", mc2::fmt::safe(w.c_str()),
                     mc2::fmt::safe(hs.bakeCache.load()), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::as_i32(static_cast<int>(hs.waitIdleCount.load())),
-                    hs.waitIdleNs.load() / 1e6, mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
+                    hs.waitIdleNs.load() / 1e6, mc2::fmt::as_i32(static_cast<int>(hs.fenceWaitCount.load())), hs.fenceWaitNs.load() / 1e6, hs.fenceWaitMaxNs.load() / 1e6,
+                    mc2::fmt::as_i32(static_cast<int>(hs.stagedBytes.load() / 1024)), cpuBusyPct(s_cpu0, sampleCpu()), mc2::fmt::as_i32(otherMc2Count()), mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
                 std::fflush(stdout);
             }
         }
@@ -197,9 +234,10 @@ void samplePerf(double frameMs) {
     {
         auto& hs = mc2_hitch2::stats();
         static std::vector<float> s_all;
-        static uint64_t s_frame = 0, s_wic = 0, s_win = 0, s_pc = 0, s_ub = 0, s_om = 0, s_db = 0, s_sj = 0;
+        static uint64_t s_frame = 0, s_wic = 0, s_win = 0, s_pc = 0, s_ub = 0, s_om = 0, s_db = 0, s_sj = 0, s_fc = 0, s_fn = 0, s_sb = 0;
         const uint64_t wic = hs.waitIdleCount.load(), win = hs.waitIdleNs.load(), pc = hs.pipelineCreates.load(), ub = hs.uploadBytes.load(),
-                       om = hs.objMapRecords.load(), db = hs.dirtyBatches.load(), sj = hs.simJoinNs.load();
+                       om = hs.objMapRecords.load(), db = hs.dirtyBatches.load(), sj = hs.simJoinNs.load(),
+                       fc = hs.fenceWaitCount.load(), fn = hs.fenceWaitNs.load(), sb = hs.stagedBytes.load();
         auto& sc = mc2_hitch2::scopes();
         if (g_missionReadyT) {
             ++s_frame;
@@ -215,14 +253,16 @@ void samplePerf(double frameMs) {
                     std::string scopes;
                     for (int i = 0; i < top; ++i) scopes += std::string(sc.slots[idx[i]].name) + "=" + std::to_string(sc.slots[idx[i]].ms).substr(0, 5) + (i + 1 < top ? "," : "");
                     if (mc2_diag::tagRequested("HITCH"))
-                    mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} scopes={}\n",
-                        mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6, mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
+                    mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} fence_n={} fence_ms={:.2f} staged_kb={} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} scopes={}\n",
+                        mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6,
+                        mc2::fmt::as_u64(fc - s_fc), (fn - s_fn) / 1e6, mc2::fmt::as_u64((sb - s_sb) / 1024), mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
                         mc2::fmt::as_u64(om - s_om), mc2::fmt::as_u64(db - s_db), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::safe(hs.bakeCache.load()), (sj - s_sj) / 1e6,
                         mc2::fmt::safe(scopes.c_str()));
                 }
             }
             if (s_all.size() < 20000) s_all.push_back(static_cast<float>(frameMs));
         }
+        s_fc = fc; s_fn = fn; s_sb = sb;
         s_wic = wic; s_win = win; s_pc = pc; s_ub = ub; s_om = om; s_db = db; s_sj = sj;
         sc.n = 0;
     }
