@@ -22,3 +22,4 @@ import pytest  # noqa: E402
 @pytest.fixture(autouse=True)
 def _no_inherited_gate_flag(monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")   # batch tests drive lane_merge without a precheck receipt (R2)

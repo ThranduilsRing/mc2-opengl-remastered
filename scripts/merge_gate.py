@@ -346,7 +346,7 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
-        if not (row.get('head') == self.head
+        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head)))
                 and (offline or sha is not None and row.get('exe_sha') == sha)
                 and stage_passed(row.get('status', ''))):
             return False
@@ -503,6 +503,19 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
 
 # Unknown inputs deliberately retain every stage. Only proven independent domains
 # can waive game proofs; generators/build configuration retain full coverage.
+def head_delta_nonruntime(old, new):
+    """True when old..new touches only docs/tooling paths (change_domains; unknown paths count as engine). A runtime stage
+    that passed at `old` with the same exe sha and the same signature inputs is then still valid at `new`."""
+    if not old or not new:
+        return False
+    try:
+        out = subprocess.run(['git', 'diff', '--name-only', f'{old}..{new}'], cwd=ROOT, capture_output=True, text=True,
+                             check=True, **console_child.child_kwargs(redirected=True)).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return bool(out) and change_domains(out) <= {'docs', 'tooling'}
+
+
 def change_domains(paths):
     domains = set()
     for raw in paths:
@@ -1336,8 +1349,8 @@ def main(argv=None):
         install_stage_watchdog()
         from smoke_lib import host_lease
         import atexit
-        host_lease.open_gate_window()   # lane game runs queue behind the whole gate, not just its stages
-        atexit.register(host_lease.close_gate_window)
+        host_lease.open_gate_window(git('rev-parse', 'HEAD'), str(args.window or ""))   # lane game launchers refuse (GATE QUIET) while this marker is live
+        atexit.register(host_lease.close_gate_window)   # backstop; the main() finally below is the normal removal
     if args.j < 1:
         ap.error("-j must be positive")
     global DECLARED_VIEWS
@@ -1349,7 +1362,11 @@ def main(argv=None):
         drop_candidate()
         return 0
     if args.publish:
-        return publish(git('rev-parse', 'HEAD'), args.dry_run)
+        head_now = git('rev-parse', 'HEAD')
+        if args.expect_head and git('rev-parse', args.expect_head + '^{commit}') != head_now:
+            print(f"[merge_gate] publish-v0.4: refused; HEAD {head_now[:12]} is not the expected {args.expect_head} (the deploy reads the live build)")
+            return 1
+        return publish(head_now, args.dry_run)
     if args.clean_output:
         if not (args.preflight and args.resume and args.proofs_dir):
             ap.error('--clean-output requires --preflight --resume --proofs-dir')
@@ -1484,6 +1501,9 @@ def main(argv=None):
                 return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
     finally:
         journal.__exit__(None, None, None)
+        if not (args.dry_run or args.preflight):
+            from smoke_lib import host_lease
+            host_lease.close_gate_window()
 
 
 if __name__ == "__main__":

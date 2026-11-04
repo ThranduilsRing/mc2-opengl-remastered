@@ -1033,6 +1033,39 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
     return int(bool(failed))
 
 
+PRECHECK_RECEIPTS = os.environ.get("MC2_PRECHECK_RECEIPTS", "A:/Games/mc2-ops/precheck")
+
+
+def receipt_path(sha: str) -> str:
+    return os.path.join(PRECHECK_RECEIPTS, sha + ".json")
+
+
+def write_receipt(root: str, tip: str, with_link, verdict: str) -> None:
+    """A green `--precheck` leaves a receipt for that exact tip SHA; `--batch` refuses a tip without one."""
+    sha = git_out(root, "rev-parse", tip + "^{commit}")
+    os.makedirs(PRECHECK_RECEIPTS, exist_ok=True)
+    body = {"tip": sha, "base_head": git_out(root, "rev-parse", "HEAD"), "base_tree": git_out(root, "rev-parse", "HEAD^{tree}"),
+            "verdict": verdict, "link": bool(with_link), "when": time.time()}
+    tmp = receipt_path(sha) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(body, f)
+    os.replace(tmp, receipt_path(sha))
+
+
+def missing_receipts(root: str, refs: list[str]) -> list[str]:
+    out = []
+    for ref in refs:
+        sha = git_out(root, "rev-parse", ref + "^{commit}")
+        try:
+            with open(receipt_path(sha), encoding="utf-8") as f:
+                ok = json.load(f).get("verdict") == "PASS"
+        except (OSError, ValueError):
+            ok = False
+        if not ok:
+            out.append(sha)
+    return out
+
+
 def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
@@ -1140,6 +1173,11 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
           + f"  WALL={time.monotonic() - started:.0f}", flush=True)
     link = "link=mc2,mc2fx,mc2fx_preview" if with_link else "link=skipped(batch --verify full and the gate build)"
     print("PRECHECK " + ("FAIL " + "; ".join(failed) if failed else f"PASS conflicts=0 ratchets=5 {link} callers=OK python=OK"))
+    if not failed:
+        try:
+            write_receipt(root, tip, with_link, "PASS")
+        except (OSError, Stop) as exc:
+            print(f"precheck: receipt not written ({exc}); --batch will refuse this tip")
     return int(bool(failed))
 
 
@@ -1189,6 +1227,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
                          "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
+    ap.add_argument("--no-receipt-check", action="store_true", help="--batch: merge tips without a green --precheck receipt (owner override; tests)")
     ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
@@ -1339,6 +1378,12 @@ def main(argv: list[str] | None = None) -> int:
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
             return 5 if would_abort else 0
+        if batch and not (args.no_receipt_check or os.environ.get("MC2_NO_RECEIPT_CHECK")):
+            missing = missing_receipts(root, refs)
+            if missing:
+                for sha in missing:
+                    print(f"PRECHECK MISSING {sha} (run tools/lane_merge.py --precheck on exactly this tip; receipts in {PRECHECK_RECEIPTS})")
+                raise Stop(5, "BATCH REFUSED: no green precheck receipt; nothing was merged")
         if batch and plan_batch(root, args, refs, resolutions_for):
             raise Stop(5, "BATCH REFUSED: a tip would abort on the blocking conflict(s) above; nothing was merged")
         merged = []        # (merge sha, follow-up sha, files) per merged tip

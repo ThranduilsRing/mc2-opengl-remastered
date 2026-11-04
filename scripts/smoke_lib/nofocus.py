@@ -400,11 +400,16 @@ class ExeRefused(RuntimeError):
 
 
 def _hold_host_lease(argv: Sequence[str]) -> None:
-    """Wait for the host-wide game lease before an engine (game or editor) launch; a launcher that starts the engine counts too."""
+    """Wait for the host-wide game lease before an engine (game or editor) launch; a launcher that starts the engine counts too.
+
+    A --headless engine opens no window or GPU device and takes no slot (run_smoke skips it too); taking one here after
+    the folder lease was the W114 lock-order inversion (host_lease.py LOCK ORDER)."""
     try:
         from . import exe_guard, host_lease
     except ImportError:
         from smoke_lib import exe_guard, host_lease
+    if "--headless" in (argv or ()):
+        return
     if any(exe_guard.engine_kind(a) is not None for a in argv or ()):
         host_lease.ensure_held("nofocus " + os.path.basename(sys.argv[0]))
 

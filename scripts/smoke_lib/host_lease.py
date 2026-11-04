@@ -9,6 +9,13 @@ While a full gate runs (gate window marker, see open_gate_window) pass/fail runs
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
+
+LOCK ORDER (every launcher): host game SLOT first, then the install's deploy-FOLDER lease (smoke_lib/deploy_lease.py).
+A process that holds a folder lease never waits for a slot: acquire() raises LockOrderError instead (W114: a headless
+det run held the candidate install's folder and waited for a slot while tier1 held a slot and waited for that folder;
+only the 3600 s bound broke it). --headless runs take no slot at all (run_smoke and nofocus both skip it). A slot held
+through a batch (MC2_HOST_LEASE_BATCH) counts as taken first. Inside the gate a folder wait whose holder is itself
+queued for a slot fails within deploy_lease.BLOCKED_HOLDER_S and names both sides.
 """
 from __future__ import annotations
 
@@ -207,6 +214,28 @@ class HostLeaseBusy(RuntimeError):
     """Another lane holds the host lease, or a game this process did not start is still running."""
 
 
+class LockOrderError(RuntimeError):
+    """This process asked for a host slot while it holds a deploy-folder lease (see LOCK ORDER above). Never retried."""
+
+
+def _folders_held_here() -> List[str]:
+    """Deploy-folder leases this process holds, read from the shared registry. A process can only hold one through
+    deploy_lease.acquire_lease, so deploy_lease is already loaded when it matters; no import here (the batch holder runs
+    this file as a script, where deploy_lease's package imports fail)."""
+    held: List[str] = []
+    for name in ("scripts.smoke_lib.deploy_lease", "smoke_lib.deploy_lease", "deploy_lease"):
+        mod = sys.modules.get(name)
+        if mod is not None and hasattr(mod, "held_by_pid"):
+            held += [f for f in mod.held_by_pid(os.getpid()) if f not in held]
+    return held
+
+
+def waiting_ticket(pid: int) -> Optional[dict]:
+    """The live slot-queue ticket of `pid` (it is waiting for a host slot), else None."""
+    tickets = (_read(lease_path().with_suffix(".queue.json")) or {}).get("tickets", [])
+    return next((t for t in tickets if t.get("pid") == pid and _holder_alive(t)), None)
+
+
 def _log_default(m: str) -> None:
     print(m, file=sys.stderr, flush=True)
 
@@ -250,17 +279,27 @@ def _read(path: Path) -> Optional[dict]:
         return None
 
 
-GATE_WINDOW_TTL_S = 4 * 3600.0           # a marker older than this is ignored: a hung gate must not starve lanes forever
+
+
+QUIET_PATH = Path("A:/Games/mc2-ops/GATE_QUIET.json")
+QUIET_OVERRIDE_ENV = "MC2_GATE_QUIET_OVERRIDE"   # "1" (set by an explicit --override-gate-quiet flag, owner only) lets one run through
+QUIET_RC = 75                                     # exit code of a launcher that refused: distinct from lease-busy (4)
+
+
+class GateQuiet(HostLeaseBusy):
+    """A merge gate is running its full pass: lane game runs are refused outright, not queued (W114 lost 2 h to two 3600 s lease waits)."""
+    rc = QUIET_RC
 
 
 def gate_window_path() -> Path:
-    return lease_path().with_suffix(".gate.json")
+    return lease_path().with_suffix(".gate.json") if redirected() else QUIET_PATH
 
 
-def open_gate_window() -> None:
-    """Called by the merge gate for its whole run: lane (non-gate) game runs queue behind it, with no interleaving between stages."""
+def open_gate_window(head: str = "", window: str = "") -> None:
+    """Called by the merge gate for its whole run: lane (non-gate) game runs are refused while this marker is live."""
     pid = os.getpid()
-    _write_record(gate_window_path(), {"pid": pid, "created": child_registry.process_create_time(pid), "started": time.time()})
+    _write_record(gate_window_path(), {"pid": pid, "created": child_registry.process_create_time(pid), "started": time.time(),
+                                       "head": head, "window": window, "cmdline": " ".join(sys.argv)[:300]})
 
 
 def close_gate_window() -> None:
@@ -272,12 +311,28 @@ def close_gate_window() -> None:
             pass
 
 
+def check_gate_quiet(log: Callable[[str], None] = _log_default) -> None:
+    """Raise GateQuiet when a live gate (not this process, not one of its children) holds the quiet marker. A stale one is logged and ignored."""
+    rec = _read(gate_window_path())
+    if not rec or rec.get("pid") == os.getpid() or os.environ.get("MC2_IN_GATE") == "1" or os.getppid() == rec.get("pid"):
+        return
+    if os.environ.get(QUIET_OVERRIDE_ENV) == "1":
+        log(f"[host-lease] GATE QUIET overridden ({QUIET_OVERRIDE_ENV}=1): gate pid {rec.get('pid')}")
+        return
+    if not _holder_alive(rec):
+        log(f"[host-lease] ignoring stale gate quiet marker (gate pid {rec.get('pid')} is dead)")
+        return
+    since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(rec.get("started", 0))))
+    raise GateQuiet(f"GATE QUIET: refusing game run (gate pid {rec.get('pid')} since {since}, head {rec.get('head') or '?'}, "
+                    f"window {rec.get('window') or '?'}); retry after the gate or pass the explicit override flag")
+
+
 def gate_window_blocks(now: Optional[float] = None) -> bool:
     """True while a live gate (not this process) holds the window and the marker is inside its TTL."""
     rec = _read(gate_window_path())
-    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec):
+    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec) or os.environ.get(QUIET_OVERRIDE_ENV) == "1":
         return False
-    return (now if now is not None else time.time()) - float(rec.get("started", 0)) <= GATE_WINDOW_TTL_S
+    return True                                  # pid alive (and same create time) is the only staleness test: a gate may run for hours
 
 
 def _holder_alive(rec: Optional[dict]) -> bool:
@@ -343,7 +398,7 @@ def _batch_member(rec: Optional[dict]) -> bool:
 
 def _describe(rec: Optional[dict]) -> str:
     if not rec:
-        return "unknown holder"
+        return "unknown holder (no record)"
     return (f"{rec.get('label', '?')} (pid {rec.get('pid')}, {' '.join(map(str, rec.get('argv', [])))}"
             f"{', in ' + str(rec['cwd']) if rec.get('cwd') else ''})")
 
@@ -393,12 +448,18 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     if disabled(log):
         log(f"[host-lease] OFF ({OFF_ENV}=off, owner): {label} launches without the host lease")
         return
+    check_gate_quiet(log)
     exclusive = _exclusive(exclusive) or any(word in (label + " " + sys.argv[0]).lower()
                                             for word in ("perf", "fps", "frame-time", "frametime", "tracy"))
     if holds():
         if exclusive and not all(_ours(_read(slot_path(i))) for i in range(slot_count())):
             raise HostLeaseBusy("cannot upgrade a held normal slot; release it before requesting exclusive")
         return
+    folders = _folders_held_here()
+    if folders:
+        raise LockOrderError(f"lock order: {label} (pid {os.getpid()}) asks for a host game slot while it holds the deploy-folder "
+                             f"lease of {', '.join(folders)}; take the slot first (smoke_lib/host_lease.py LOCK ORDER), "
+                             "or pass --headless for a run that needs no slot")
     scan = scan or foreign_engines
     if timeout_s is None:
         timeout_s = float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S)
@@ -408,7 +469,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     # Merge-gate stages and exclusive holds queue ahead of pass/fail runs; an exclusive at the head admits nobody behind it.
     priority = 0 if exclusive or os.environ.get("MC2_IN_GATE") == "1" else 1
     ticket = {"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()), "exclusive": exclusive,
-              "priority": priority}
+              "priority": priority, "label": label, "argv": sys.argv[:3], "cwd": os.getcwd()}
     granted = False
     try:
         while True:
@@ -470,7 +531,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                         _registered = True
                     return
                 why = ("a game this process did not start is running: " + ", ".join(f"{img} pid {pid}" for pid, img in foreign)
-                       if foreign else "the host game lease is held by " + _describe(live[0][1] if live else None))
+                       if foreign else "the host game lease is held by " + _describe(live[0][1] if live else (queue[0] if queue and queue[0] != ticket else None)))
             if not wait:
                 raise HostLeaseBusy(why + "; queued behind another lane")
             if clock() >= deadline:

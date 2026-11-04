@@ -16,7 +16,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/mechbay_preview_harness.py` | 165 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 237 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 265 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
-| `scripts/run_battle_bench.py` | 341 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
+| `scripts/run_battle_bench.py` | 340 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
 | `scripts/run_editor_capture.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 246 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 880 | `nofocus.spawn` | offscreen |

@@ -165,6 +165,11 @@ def commit_all(repo, msg):
     git(repo, "commit", "-q", "-m", msg)
 
 
+@pytest.fixture(autouse=True)
+def _no_receipts_by_default(monkeypatch):
+    monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")   # the receipt tests below unset it
+
+
 @pytest.fixture
 def env(tmp_path):
     repo = tmp_path / "repo"
@@ -633,7 +638,7 @@ def test_batch_checks_each_tip_and_tightens_once_before_verify(env, monkeypatch)
     monkeypatch.setattr(lm, 'run_ratchets', ratchets)
     verifies = []
     monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
-    rc = lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--root", str(repo), "--tools-dir", str(tools)])
+    rc = lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--root", str(repo), "--tools-dir", str(tools), "--no-receipt-check"])
     assert rc == 0
     assert verifies == ["build"]
     log = git(repo, "log", "--format=%s", "-8").splitlines()
@@ -721,7 +726,7 @@ def test_batch_refuses_to_start_when_a_later_tip_cannot_merge(env, capsys):
     _branch(repo, "lane_b", "a.txt", "from b\n", "lane b")
     head = git(repo, "rev-parse", "HEAD")
     lm = _load_module()
-    assert lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    assert lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools), "--no-receipt-check"]) == 5
     assert "BATCH REFUSED" in capsys.readouterr().err
     assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
 
@@ -991,7 +996,7 @@ def test_batch_auto_resolves_generated_conflicts_and_regenerates(env, monkeypatc
     monkeypatch.setattr(lm, "run", runner)
     monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
     monkeypatch.setattr(lm, "GENERATED_REGENERATORS", ((set(GENERATED_FILES), "regen.py", []),))
-    rc = lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools)])
+    rc = lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools), "--no-receipt-check"])
     assert rc == 0, capsys.readouterr().err
     assert ran.count("regen.py") == 2
     assert verifies == ["build"]
@@ -1224,3 +1229,22 @@ def test_rebuild_if_head_moved_fails_loudly(env):
     ok, msg = lm.rebuild_if_head_moved(str(repo), check=lambda r: False,
                                        runner=lambda root, cmd, env=None: subprocess.CompletedProcess(cmd, 0, ""))
     assert not ok and "still differs" in msg
+
+
+def test_batch_refuses_tip_without_precheck_receipt_and_accepts_after_pass(env, tmp_path, monkeypatch, capsys):
+    repo, tools = env
+    monkeypatch.delenv("MC2_NO_RECEIPT_CHECK")
+    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
+    head = git(repo, "rev-parse", "HEAD")
+    lm = _load_module()
+    monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
+    sha = git(repo, "rev-parse", "lane_a")
+    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    out = capsys.readouterr()
+    assert f"PRECHECK MISSING {sha}" in out.out and git(repo, "rev-parse", "HEAD") == head
+    lm.write_receipt(str(repo), "lane_a", False, "PASS")
+    assert lm.missing_receipts(str(repo), ["lane_a"]) == []
+    lm.write_receipt(str(repo), "lane_a", False, "FAIL")
+    assert lm.missing_receipts(str(repo), ["lane_a"]) == [sha]       # only a PASS receipt counts
+    (tmp_path / "receipts" / (sha + ".json")).write_text("{")
+    assert lm.missing_receipts(str(repo), ["lane_a"]) == [sha]       # corrupt receipt counts as missing

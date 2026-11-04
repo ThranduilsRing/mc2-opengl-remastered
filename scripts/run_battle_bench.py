@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import atexit
 import contextlib
 import hashlib
 import json
@@ -352,22 +351,21 @@ def resolve_lengths(runs, duration, acceptance):
     return runs or (2 if acceptance else 1), duration or (30 if acceptance else 20)
 
 
+@contextlib.contextmanager
 def hold_install(install):
+    """The install's folder lease for one launch, taken after its host slot (smoke_lib/host_lease.py LOCK ORDER)."""
     while True:
         try:
             deploy_lease.acquire_lease_waiting(str(install), "integrated battle benchmark", 30)
             break
+        except deploy_lease.LeaseDeadlock:
+            raise
         except deploy_lease.LeaseError:
             print("[battle-bench] install lease still occupied; retrying", flush=True)
-    done = threading.Event()
-    def refresh():
-        while not done.wait(30): deploy_lease.touch_lease(str(install))
-    thread = threading.Thread(target=refresh, daemon=True)
-    thread.start()
-    def release():
-        done.set(); thread.join(timeout=2)
+    try:
+        yield
+    finally:
         deploy_lease.release_lease(str(install))
-    atexit.register(release)
 
 
 def main():
@@ -393,7 +391,6 @@ def main():
         parser.error("--runs >=1 and --duration 20..30 required")
     started = time.monotonic()
     scenario = json.loads(SCENARIO.read_text(encoding="utf-8"))
-    hold_install(args.exe.parent.resolve())
     identity = ms.identity_block(generator="battle_bench", exe_path=args.exe, repo_root=ROOT, deploy_target=args.exe.parent)
     provenance = identity["binary_provenance"]
     head_ok = args.allow_non_head or provenance.get("source_head_matches_binary")  # a baseline exe is clean but deliberately not HEAD
@@ -420,13 +417,15 @@ def main():
         while True:
             try:
                 with (host_lease.exclusive_window("integrated battle benchmark") if args.acceptance else host_lease.shared_window()):
-                    if sha_file(args.exe) != identity["exe"]["sha256"]:
-                        raise ValueError("install binary changed while waiting; redeploy the recorded build")
-                    t0 = time.monotonic()
-                    try:
-                        return run()
-                    finally:
-                        held_s[0] += time.monotonic() - t0
+                    host_lease.acquire("integrated battle benchmark")   # the slot before the install folder (a no-op under the exclusive window)
+                    with hold_install(args.exe.parent.resolve()):
+                        if sha_file(args.exe) != identity["exe"]["sha256"]:
+                            raise ValueError("install binary changed while waiting; redeploy the recorded build")
+                        t0 = time.monotonic()
+                        try:
+                            return run()
+                        finally:
+                            held_s[0] += time.monotonic() - t0
             except host_lease.HostLeaseBusy:
                 print("[battle-bench] lease still occupied; retrying", flush=True)
                 time.sleep(1)

@@ -641,7 +641,7 @@ def test_lane_run_waits_out_the_gap_between_gate_stages(lease, monkeypatch):
         monkeypatch.delenv("MC2_IN_GATE", raising=False)
         with pytest.raises(host_lease.HostLeaseBusy):
             host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)
-        marker(time.time() - host_lease.GATE_WINDOW_TTL_S - 5)
+        host_lease._write_record(host_lease.gate_window_path(), {"pid": holder.pid, "created": "reused-pid", "started": time.time() - 99999})
         host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)   # stale marker: ignored
         assert host_lease.holds()
         host_lease.release()
@@ -659,3 +659,58 @@ def test_gate_window_open_close_roundtrip(lease):
     assert host_lease.gate_window_path().exists() and not host_lease.gate_window_blocks()   # our own marker never blocks us
     host_lease.close_gate_window()
     assert not host_lease.gate_window_path().exists()
+
+
+def _quiet_marker(pid, started=None, created="same"):
+    rec = {"pid": pid, "started": started or time.time(), "head": "abc123", "window": "114"}
+    if created == "same":
+        rec["created"] = host_lease.child_registry.process_create_time(pid)
+    host_lease._write_record(host_lease.gate_window_path(), rec)
+
+
+def test_gate_quiet_refuses_live_marker(lease, monkeypatch):
+    holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], **console_child.child_kwargs(redirected=True))
+    try:
+        monkeypatch.delenv("MC2_IN_GATE", raising=False)
+        monkeypatch.delenv(host_lease.QUIET_OVERRIDE_ENV, raising=False)
+        _quiet_marker(holder.pid)
+        with pytest.raises(host_lease.GateQuiet, match=rf"GATE QUIET: refusing game run \(gate pid {holder.pid} since ") as exc:
+            host_lease.acquire("lane run", wait=False, scan=lambda: [], log=lambda m: None)
+        assert exc.value.rc == host_lease.QUIET_RC != 4
+        assert not host_lease.holds()
+        monkeypatch.setenv(host_lease.QUIET_OVERRIDE_ENV, "1")      # the explicit owner override
+        host_lease.acquire("owner run", wait=False, scan=lambda: [], log=lambda m: None)
+        assert host_lease.holds()
+    finally:
+        holder.kill()
+        holder.wait()
+
+
+def test_gate_quiet_stale_marker_ignored_and_logged(lease, monkeypatch):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    _quiet_marker(2 ** 22 + 12345, created=None)                     # a dead pid
+    logged = []
+    host_lease.check_gate_quiet(logged.append)
+    assert any("stale gate quiet marker" in line for line in logged)
+
+
+def test_gate_quiet_passes_the_gate_itself_and_its_children(lease, monkeypatch):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    host_lease.open_gate_window("abc", "114")                        # our own marker: we are the gate
+    host_lease.check_gate_quiet(lambda m: None)
+    rec = host_lease._read(host_lease.gate_window_path())
+    assert rec["head"] == "abc" and rec["window"] == "114"
+    host_lease.close_gate_window()
+    holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], **console_child.child_kwargs(redirected=True))
+    try:
+        _quiet_marker(holder.pid)
+        monkeypatch.setenv("MC2_IN_GATE", "1")                       # a child run the gate started
+        host_lease.check_gate_quiet(lambda m: None)
+    finally:
+        holder.kill()
+        holder.wait()
+
+
+def test_lease_busy_names_queue_head_not_unknown(lease):
+    assert "unknown holder" in host_lease._describe(None)
+    assert "lane7 smoke" in host_lease._describe({"label": "lane7 smoke", "pid": 5, "argv": ["run_smoke.py"], "cwd": "A:/x"})
