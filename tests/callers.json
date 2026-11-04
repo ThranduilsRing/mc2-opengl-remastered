@@ -4246,7 +4246,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 310,
+          "line": 312,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -5651,7 +5651,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 850,
+          "line": 852,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -7788,7 +7788,7 @@
       "callers_by_basename": [
         {
           "path": "tools/mod_smoke.py",
-          "line": 913,
+          "line": 915,
           "evidence": "command",
           "reference": "scripts/sweep_campaign.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=secs + 120,"
@@ -11471,6 +11471,21 @@
       ]
     },
     {
+      "path": "tools/land_queue.py",
+      "basename": "land_queue.py",
+      "stem": "land_queue",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_land_queue.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.land_queue",
+          "text": "from tools import land_queue as lq  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "tools/lane_merge.py",
       "basename": "lane_merge.py",
       "stem": "lane_merge",
@@ -13182,14 +13197,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 600,
+          "line": 602,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 636,
+          "line": 638,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -13261,7 +13276,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 475,
+          "line": 477,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -13528,35 +13543,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 352,
+          "line": 354,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 474,
+          "line": 476,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 516,
+          "line": 518,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 618,
+          "line": 620,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 637,
+          "line": 639,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -18412,6 +18427,13 @@
       "path": "tools/test_kill_build_tree.py",
       "basename": "test_kill_build_tree.py",
       "stem": "test_kill_build_tree",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_land_queue.py",
+      "basename": "test_land_queue.py",
+      "stem": "test_land_queue",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
