@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
+#include "../../RenderCore/StaticPropOrigin.h"
 
 // ---------------------------------------------------------------------------
 // Slice 2, Stage 2.A — new method and free-function definitions
@@ -121,7 +122,8 @@ bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
     for (auto& [typeID, v] : s_persistentStaticStore) {
         if (idx < v.size()) {
             const float* m = v[idx].modelMatrix;
-            outXYZ[0] = m[12]; outXYZ[1] = m[13]; outXYZ[2] = m[14];
+            const StaticPropOrigin o = staticPropOriginRender(m);
+            outXYZ[0] = o.x; outXYZ[1] = o.y; outXYZ[2] = o.z;
             return true;
         }
         idx -= static_cast<uint32_t>(v.size());

@@ -7,6 +7,7 @@
 #include "visual_tuning_profile.h"
 #include "../../RenderCore/FramePackets.h"
 #include "shadow_mover_feed.h"
+#include "../../RenderCore/StaticPropOrigin.h"
 
 void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiShape* multi) {
     if (!multi || !multi->listOfShapes || !s_geometryFinalized || g_mechPreviewRenderDepth>0) return;
@@ -96,10 +97,11 @@ extern "C" void mc2_color_prop_island_end_frame() {
 }
 
 static uint64_t propLodKey(const GpuStaticPropInstance& inst) {
+    const StaticPropOrigin o = staticPropOriginStuff(inst.modelMatrix);
     uint32_t px, py, pz;
-    std::memcpy(&px, &inst.modelMatrix[12], 4);
-    std::memcpy(&py, &inst.modelMatrix[13], 4);
-    std::memcpy(&pz, &inst.modelMatrix[14], 4);
+    std::memcpy(&px, &o.x, 4);
+    std::memcpy(&py, &o.y, 4);
+    std::memcpy(&pz, &o.z, 4);
     return (((uint64_t(px) * 0x9E3779B1ull) ^ (uint64_t(py) * 0x85EBCA77ull) ^ (uint64_t(pz) * 0xC2B2AE3Dull)) << 8) ^ inst.typeID;
 }
 
@@ -134,7 +136,8 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         constexpr float kBand = 0.08f;
         auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g) {
             for (; b != e; ++b) {
-                const float dx = b->modelMatrix[12] - cx, dy = b->modelMatrix[13] - cy, dz = b->modelMatrix[14] - cz;
+                const StaticPropOrigin o = staticPropOriginRender(b->modelMatrix);
+                const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
                 const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
                 uint8_t& lod = s_lodState[propLodKey(*b)];
                 while (lod + 1 < g.count && d > g.dist[lod + 1] * (1.0f + kBand)) ++lod;
@@ -204,12 +207,10 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 reinterpret_cast<const GpuStaticPropInstance*>(out->instances112);
             for (uint32_t i = 0; i < out->count; ++i) {
                 const GpuStaticPropInstance& gi = insts[i];
-                // Translation lives in row 3 of a row-major 4x4 (col-major layout:
-                // indices 12,13,14 are the last column == translation for either
-                // convention used consistently across the island's mirror).
+                const StaticPropOrigin go = staticPropOriginRender(gi.modelMatrix);
                 mc2::fmt::print(f, "{}{{\"typeID\":{:d},\"posX\":{:.4f},\"posY\":{:.4f},\"posZ\":{:.4f},\"flags\":{:d}}}",
                     mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_u32(gi.typeID),
-                    gi.modelMatrix[12], gi.modelMatrix[13], gi.modelMatrix[14],
+                    go.x, go.y, go.z,
                     mc2::fmt::as_u32(gi.flags));
             }
             mc2::fmt::print(f, "]}}\n");
