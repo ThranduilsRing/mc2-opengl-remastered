@@ -11,6 +11,7 @@
 #ifndef DEBUGGING_H
 #define DEBUGGING_H
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<gameos.hpp>
 //#include<gameos/toolos.hpp>
@@ -86,7 +87,7 @@ class GameDebugWindow {
 			}
 		}
 		
-		void print (const char* s);
+		void print (mc2::czstring s);
 
 		void render (void);
 
@@ -97,7 +98,7 @@ class GameDebugWindow {
 				textBufferElem[0] = '\0';
 		}
 
-		static void setFont (const char* fontFile);
+		static void setFont (mc2::czstring fontFile);
 };
 
 //***************************************************************************

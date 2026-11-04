@@ -20,6 +20,7 @@
 #include"err.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<string.h>
 
 // sebi: uncommented on Windows as well, not sure why it is commented, probabaly has something to do with mutibyte stuff
@@ -549,12 +550,12 @@ class MasterComponent {
 		// EQUIP-ADD-FILL-1: initEXCEL fills name/abbreviation from the string
 		// table (IDS 32000/33000 + masterID); a NEW modded id has no string, so
 		// the gated ADD fill pass overwrites them from the def's DisplayName.
-		void setName (const char* n) {
+		void setName (mc2::czstring n) {
 			strncpy(name, n ? n : "", MAXLEN_COMPONENT_NAME - 1);
 			name[MAXLEN_COMPONENT_NAME - 1] = '\0';
 		}
 
-		void setAbbreviation (const char* a) {
+		void setAbbreviation (mc2::czstring a) {
 			strncpy(abbreviation, a ? a : "", MAXLEN_COMPONENT_ABBREV - 1);
 			abbreviation[MAXLEN_COMPONENT_ABBREV - 1] = '\0';
 		}
@@ -565,8 +566,8 @@ class MasterComponent {
 
 		void multiplyWeaponRanges (float factor);
 
-		static long loadMasterList (const char* fileName, long numComponents, float baseSensorRange);
-		static long saveMasterList (const char* fileName, long numComponents,float baseSensorRange);
+		static long loadMasterList (mc2::czstring fileName, long numComponents, float baseSensorRange);
+		static long saveMasterList (mc2::czstring fileName, long numComponents,float baseSensorRange);
 
 		static long freeMasterList (void);
 

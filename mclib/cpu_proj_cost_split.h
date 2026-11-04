@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cstdint>
 
 namespace mc2_cpu_proj_cost {
@@ -76,11 +77,11 @@ void frame_begin();   // Reset current-frame bucket accumulators.
 void frame_end();     // Commit current frame into ring buffer; print window stats if due.
 
 // Mission boundary hook — hard-reset ring buffer + frame counter.
-void hard_reset(const char* reason);
+void hard_reset(mc2::czstring reason);
 
 // Final-stats flush — called at process exit AND at mission load. Prints
 // the [CPU_PROJ v1 final] line using all per-frame samples retained.
-void final_stats(const char* reason);
+void final_stats(mc2::czstring reason);
 
 // Workload counter accumulators (per-call, accumulated into the current
 // frame's bucket). All gated on g_cpuProjEnabled at the entry point.

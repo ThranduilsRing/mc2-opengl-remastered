@@ -10,6 +10,7 @@
 // Screen-transform math mirrors MultiTransformShape (tgl.cpp:1918-1950) and the
 // z-range triangle rejection mirrors TG_Shape::Render (tgl.cpp:3303-3308).
 
+#include "mc2_czstring.h"
 #include <algorithm>
 #include "cone_glow.h"
 #include "cone_beam_links.h"
@@ -915,7 +916,7 @@ namespace {
 
 // Case-insensitive substring test (mirrors tgl.cpp's tgNameContainsCI, kept
 // local so this module does not reach into tgl internals).
-bool nameHasCI(const char* hay, const char* needle)
+bool nameHasCI(mc2::czstring hay, mc2::czstring needle)
 {
     if (!hay || !needle) return false;
     for (const char* h = hay; *h; ++h)
@@ -938,7 +939,7 @@ bool nameHasCI(const char* hay, const char* needle)
 // "Redbeaconlight02/03", "Greenbeaconlight01", "Bluebeaconlight" (tgl.cpp:73).
 // Unrecognised beacon cards (e.g. plain "runwaylight") get a warm amber, the
 // stock runway-edge tint.
-DWORD beaconRgbFromName(const char* nodeName)
+DWORD beaconRgbFromName(mc2::czstring nodeName)
 {
     if (nameHasCI(nodeName, "red"))   return 0x00ff2a18ul;
     if (nameHasCI(nodeName, "green")) return 0x0028ff3cul;

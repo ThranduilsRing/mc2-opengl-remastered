@@ -2,6 +2,7 @@
 //
 // See cpu_proj_cost_split.h header for spec, audit, and design rationale.
 
+#include "mc2_czstring.h"
 #include "cpu_proj_cost_split.h"
 
 #include <algorithm>
@@ -242,7 +243,7 @@ void frame_end() {
     }
 }
 
-void hard_reset(const char* reason) {
+void hard_reset(mc2::czstring reason) {
     if (!g_cpuProjEnabled) return;
     // Flush any partial-window data first so the just-ended mission's data
     // isn't silently dropped.
@@ -270,7 +271,7 @@ void hard_reset(const char* reason) {
     mc2::fmt::print_err("[CPU_PROJ v1] hard_reset reason={}\n", mc2::fmt::safe(reason ? reason : "(none)"));
 }
 
-void final_stats(const char* reason) {
+void final_stats(mc2::czstring reason) {
     if (!g_cpuProjEnabled) return;
     if (s_finalStatsEmitted) return;
     // Flush partial window (1..WINDOW_FRAMES-1 frames not yet stats'd).

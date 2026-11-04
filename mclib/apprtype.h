@@ -26,6 +26,7 @@
 #include"heap.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<stuff/stuffheaders.hpp>
 #include<memory>
 #include<string>
@@ -94,7 +95,7 @@ class AppearanceType
 			init();
 		}
 
-		virtual void init (const char *fileName) = 0;
+		virtual void init (mc2::czstring fileName) = 0;
 		
 		virtual void destroy (void);
 
@@ -142,7 +143,7 @@ class AppearanceTypeList
 		// only while the same registry is current (a freed type's address can be reused by the next mission's registry).
 		unsigned generation (void) const { return generation_; }
 
-		AppearanceTypePtr getAppearance (unsigned long apprNum, const char * apprFile);
+		AppearanceTypePtr getAppearance (unsigned long apprNum, mc2::czstring apprFile);
 		
 		long removeAppearance (AppearanceTypePtr which);
 		

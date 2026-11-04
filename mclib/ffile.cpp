@@ -38,6 +38,7 @@ void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
 #include"utilities.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"lz.h"
 #include "fst_hash.h"
 
@@ -146,7 +147,7 @@ long FastFile::writeFileEntries(FILE* handle, std::span<FILE_HANDLE> files, int 
 }
 
 //---------------------------------------------------------------------------
-long FastFile::open (const char* fName)
+long FastFile::open (mc2::czstring fName)
 {
 	//-------------------------------------------------------------
 	long fNameLength = static_cast<long>(strlen(fName));
@@ -310,7 +311,7 @@ void FastFile::close (void)
 	files = nullptr;
 	numFiles = 0;
 }
-long FastFile::create(const char* fName, bool compressed)
+long FastFile::create(mc2::czstring fName, bool compressed)
 {
 	if(handle)
 		return FILE_ALREADY_OPEN;
@@ -383,7 +384,7 @@ long FastFile::reserve(int num_files)
 }
 
 //---------------------------------------------------------------------------
-long FastFile::openFast (DWORD hash, const char *fName)
+long FastFile::openFast (DWORD hash, mc2::czstring fName)
 {
 	//------------------------------------------------------------------
 	//-- In order to use this, the file name must be part of the index.
@@ -628,7 +629,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 }
 
 //---------------------------------------------------------------------------
-long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
+long FastFile::writeFast (mc2::czstring fastFileName, void* buffer, int nbytes)
 {
 	if(handle == nullptr)
 		return FILE_NOT_OPEN;

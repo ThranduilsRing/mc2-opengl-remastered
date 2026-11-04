@@ -22,6 +22,7 @@
 #include"floathelp.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<stuff/stuff.hpp>
 #include "unit_anim_state.h"
 #include "presentation_phase.h"
@@ -554,7 +555,7 @@ public:
 			return position;
 		}
 		
-		virtual glm::vec3 getNodeNamePosition (const char *nodeName)
+		virtual glm::vec3 getNodeNamePosition (mc2::czstring nodeName)
 		{
 			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
@@ -778,7 +779,7 @@ public:
 		{
 		}
 
-		virtual void setMechName( const char* pName ){}
+		virtual void setMechName( mc2::czstring pName ){}
 		
 		virtual void startSmoking (long smokeLvl)
 		{

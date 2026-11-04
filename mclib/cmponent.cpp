@@ -13,6 +13,7 @@
 #include"cmponent.h"
 #endif
 
+#include "mc2_czstring.h"
 #include <new>
 
 #ifndef HEAP_H
@@ -623,7 +624,7 @@ bool MasterComponent::isDefensiveWeapon (void) {
 
 //---------------------------------------------------------------------------
 
-long MasterComponent::loadMasterList (const char* fileName, long listSize, float baseSensorRange) {
+long MasterComponent::loadMasterList (mc2::czstring fileName, long listSize, float baseSensorRange) {
 
 	freeMasterList();
 
@@ -684,7 +685,7 @@ long MasterComponent::loadMasterList (const char* fileName, long listSize, float
 
 
 //---------------------------------------------------------------------------
-long MasterComponent::saveMasterList (const char* fileName, long listSize, float baseSensorRange) 
+long MasterComponent::saveMasterList (mc2::czstring fileName, long listSize, float baseSensorRange) 
 {
 	//-----------------------------------------------------------------
 	// All components are in one data file. Save it in CSV format!
