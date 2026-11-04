@@ -2,7 +2,7 @@
 """build_all_targets - build EVERY target of the repo: the root tree, its opt-in tools, and the standalone projects.
 
 WHAT (three stages, all by default):
-  1. root tree  build-alltargets/  configured with ENABLE_MC2FX, ENABLE_MC2FX_PREVIEW, ENABLE_MC2WEAPON_GUI and MC2_EDITOR_IN_ALL,
+  1. root tree  build-alltargets/  configured with ENABLE_MC2FX, ENABLE_MC2FX_PREVIEW, ENABLE_MC2WEAPON_GUI (EditRel is in `all`),
      building the CMake `all` target plus ui_editor (EXCLUDE_FROM_ALL): game, EditRel, asset viewer, mc2fx, mc2fx_preview,
      mc2weapon_gui, the tool stubs and the root-tree test targets.
   2. standalone projects that have their own `project()` and build tree: tools/tg_import_dump, tools/gate_dump,
@@ -48,7 +48,7 @@ def cc_tree(tree: str) -> str:
     return "build-cc-" + tree.removeprefix("build64-")
 
 
-EXTRA = ["-DENABLE_MC2FX=ON", "-DENABLE_MC2FX_PREVIEW=ON", "-DENABLE_MC2WEAPON_GUI=ON", "-DMC2_EDITOR_IN_ALL=ON"]
+EXTRA = ["-DENABLE_MC2FX=ON", "-DENABLE_MC2FX_PREVIEW=ON", "-DENABLE_MC2WEAPON_GUI=ON"]
 ROOT_TARGETS = ["all", "ui_editor"]
 #: (source dir, build dir, target): projects with their own project() that no root build reaches.
 STANDALONE = [
