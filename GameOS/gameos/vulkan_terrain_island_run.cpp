@@ -35,9 +35,6 @@ extern "C" int mc2_vk_terrain_skirts_enabled() {
     return terrainSkirtsRequested() ? 1 : 0;
 }
 
-extern "C" int mc2_vk_terrain_visualdisplace_far_enabled() {
-    return terrainVisualDisplaceFarRequested() ? 1 : 0;
-}
 
 // FAIL-SOFT ISLAND-READY predicate. True only when the gate is on AND the island is in a
 // state where run() is expected to co-write this frame's LOD0 patches. The GL LOD-chunk
@@ -220,6 +217,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
     u.concreteDetail = (detail && s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
+    if (u.concreteDetail && s->cliffRockPresent) u.concreteDetail |= 2;   // TERRAIN-CLIFF-ROCK (bit 2: rock layers 2/3 bound)
     u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
@@ -241,8 +239,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // undisplaced; fail-soft, never a hole).
     u.visualSide        = feed.visualSide;
     u.visualDisplaceFar = feed.visualDisplaceFar;
-    u.visualMode        = (patch.visualMode == 2
-                           && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
+    // TERRAIN-HIRES-NEAR-1: frame-level flag for the frag (fine shading normal from the bake).
+    u.visualMode        = (s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
     u.edgeStitch        = static_cast<int32_t>(patch.edgeStitch);
     u.quadCountX        = patch.quadCountX;
     u.quadCountY        = patch.quadCountY;
@@ -573,18 +571,33 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         return da < db || (da == db && a < b);
     });
 
+    // TERRAIN-HIRES-NEAR-DIAG: diagonal-fitted mode-1 meshes are keyed to one bake; a rebake (rare) drops them.
+    const bool diagLive = feed.visualHeightCpu && feed.visualSide > 1 && s->visualHeightReady
+        && static_cast<uint64_t>(feed.visualHeightBytes) >= static_cast<uint64_t>(feed.visualSide) * feed.visualSide * sizeof(float);
+    if (diagLive && s->diagPatchVersion != feed.visualHeightVersion) {
+        if (!s->diagPatchCache.empty()) { mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_diag_patch_rebake"); s->diagPatchCache.clear(); }
+        s->diagPatchVersion = feed.visualHeightVersion;
+    }
     std::vector<TerrainDraw> draws;
     draws.reserve(patchCount);
     for (uint32_t i : drawOrder) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
-        const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
+        // TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are
+        // in bake (fine) units; uint16 indices cap it at 255x255 verts, else fall back to mode 2.
+        const bool bakeLive = s->visualHeightReady && feed.visualSide > 1;
+        int32_t mode = bakeLive ? pr.visualMode : 0;
+        if (mode == 1 && (pr.lodStep != 1 || pr.quadCountX * 4 + 1 > 255 || pr.quadCountY * 4 + 1 > 255)) mode = 2;
+        const int32_t meshQX = mode == 1 ? pr.quadCountX * 4 : pr.quadCountX;
+        const int32_t meshQY = mode == 1 ? pr.quadCountY * 4 : pr.quadCountY;
+        const PatchMesh* pm = (mode == 1 && diagLive)
+            ? getOrBuildPatch(s, meshQX, meshQY, pr.lodStep, feed.visualHeightCpu, feed.visualSide, pr.blockOriginX, pr.blockOriginY)
+            : getOrBuildPatch(s, meshQX, meshQY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
         TerrainDraw d{};
         d.patch = TerrainPatchConstants{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
-            static_cast<int32_t>(pr.edgeStitch),
-            (pr.visualMode == 2 && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0, pr.skirtDepth};
+            static_cast<int32_t>(pr.edgeStitch), mode, pr.skirtDepth};
         d.pm = pm;
-        if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) { d.sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep); d.skirtMask = pr.skirtEdgeMask; }
+        if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) { d.sm = getOrBuildSkirtMesh(s, meshQX, meshQY, pr.lodStep); d.skirtMask = pr.skirtEdgeMask; }
         draws.push_back(d);
     }
     const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),

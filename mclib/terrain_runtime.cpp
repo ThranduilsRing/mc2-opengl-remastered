@@ -5,6 +5,7 @@
 // See terrain_runtime.h and docs/recon/terrain-runtime-api-recon-1.md.
 //******************************************************************************
 #include <algorithm>
+#include <vector>
 #include "terrain.h"
 #include "terrain_runtime.h"
 #include "Gates/gate.h"
@@ -36,6 +37,35 @@ float groundElevation(const glm::vec3& worldPos)
 	static const bool s_gate = mc2::gate::get<"MC2_TERRAIN_RUNTIME_GROUNDING">();   // default OFF
 	return s_gate ? sampleGameplayHeight(worldPos)
 	              : land->getTerrainElevation(worldPos);
+}
+
+// UNIT-VISUAL-SNAP-1: CPU copy of the ACCEPTED 4x visual bake (empty = none). Render-only: the sim
+// never reads this. Set by Terrain::lodVisualHeight when the bake passes the signature/mean guards.
+static std::vector<float> s_cpuVisualHeight;
+static int s_cpuVisualV = 0;
+
+void setCpuVisualHeight(const float* vh, int V)
+{
+	if (vh && V > 1) { s_cpuVisualHeight.assign(vh, vh + static_cast<size_t>(V) * static_cast<size_t>(V)); s_cpuVisualV = V; }
+	else { s_cpuVisualHeight.clear(); s_cpuVisualV = 0; }
+}
+
+float visualHeightDelta(const glm::vec3& worldPos)
+{
+	static const bool s_on = mc2::gate::get<"MC2_UNIT_VISUAL_SNAP">();
+	if (!s_on || !land || s_cpuVisualV < 2) return 0.0f;
+	const float inv = 4.0f / Terrain::worldUnitsPerVertex;
+	float fx = (worldPos.x - Terrain::mapTopLeft3d.x) * inv;
+	float fy = (Terrain::mapTopLeft3d.y - worldPos.y) * inv;
+	const float hi = static_cast<float>(s_cpuVisualV - 1);
+	if (fx < 0.0f || fy < 0.0f || fx > hi || fy > hi) return 0.0f;
+	int x0 = static_cast<int>(fx), y0 = static_cast<int>(fy);
+	if (x0 >= s_cpuVisualV - 1) x0 = s_cpuVisualV - 2;
+	if (y0 >= s_cpuVisualV - 1) y0 = s_cpuVisualV - 2;
+	const float tx = fx - static_cast<float>(x0), ty = fy - static_cast<float>(y0);
+	const float* p = s_cpuVisualHeight.data() + static_cast<size_t>(y0) * s_cpuVisualV + x0;
+	const float v = (p[0] * (1 - tx) + p[1] * tx) * (1 - ty) + (p[s_cpuVisualV] * (1 - tx) + p[s_cpuVisualV + 1] * tx) * ty;
+	return v - land->getTerrainElevation(worldPos);
 }
 
 float sampleVisualHeight(const glm::vec3& worldPos)

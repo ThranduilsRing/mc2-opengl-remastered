@@ -38,7 +38,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     const bool visualDisplaceActive = terrainVisualDisplaceGateOn()
         && gos_TerrainFieldStore() && !gos_TerrainFieldStore()->visualHeight().empty() && s_visualSide > 0;
     const bool allLods = mc2_vk_terrain_all_lods_enabled() != 0;
-    const bool farDisplace = allLods && mc2_vk_terrain_visualdisplace_far_enabled() != 0;
     const bool skirts = mc2_vk_terrain_skirts_enabled() != 0;
     for (int i = 0; i < count; ++i) {
         const TerrainDrawCommand& cmd = cmds[i];
@@ -46,7 +45,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         const int qcY = (cmd.quadCountsPacked >> 8) & 0xFF;
         if (qcX <= 0 || qcY <= 0) continue;
         if (cmd.lodStep != 1 && !allLods) continue;
-        if (visualDisplaceActive && !(farDisplace && cmd.lodStep != 1)) continue;
         Mc2TerrainTier1Patch p{};
         p.blockOriginX = cmd.blockOriginX;
         p.blockOriginY = cmd.blockOriginY;
@@ -55,7 +53,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         p.lodStep = cmd.lodStep;
         p.skirtDepth = skirts && skirtDepths ? skirtDepths[i] : 0.0f;
         p.skirtEdgeMask = skirts && skirtEdgeMasks ? skirtEdgeMasks[i] : 0u;
-        p.visualMode = visualDisplaceActive && cmd.lodStep != 1 ? 2 : 0;
+        // TERRAIN-HIRES-NEAR-1: LOD0 draws the bake at 4x vertex density (mode 1), coarser
+        // bands Z-swap their coarse verts onto it (mode 2); both share the bake corner heights.
+        p.visualMode = visualDisplaceActive ? (cmd.lodStep == 1 ? 1 : 2) : 0;
         p.edgeStitch = edgeStitch ? edgeStitch[i] : 0u;
         s_vkTerrainPatches.push_back(p);
     }

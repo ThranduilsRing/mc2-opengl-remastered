@@ -28,6 +28,19 @@
       "name": "TerrainCementBuf"
     },
     {
+      "binding": 10,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "heightsFine",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "TerrainVisualHeightBuf"
+    },
+    {
       "binding": 11,
       "members": [
         {
@@ -35,7 +48,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1613"
+          "type": "_1629"
         }
       ],
       "name": "TerrainLightPoolVK"

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 254,
+    "glsl_blocks_with_binding": 255,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -844,6 +844,16 @@
         "std": null,
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/prop_material_vk.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/terrain_tier1.frag",
+        "line": 53,
+        "role": "TerrainVisualHeightBuf",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/terrain_tier1.frag",
         "branch": {}
       },
       {

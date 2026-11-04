@@ -345,7 +345,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 760);   // +MC2_MECH_FILL (mech lighting strength, ships ON at 2); -MC2_TERRAIN_MATERIAL_TEXTURES(+_STRENGTH) retired W107; +MC2_PLAY_MISSION_GOTO (dev test knob) W108.
+    REQUIRE(n == 761);   // +MC2_UNIT_VISUAL_SNAP (render-only unit snap, ships ON); +MC2_MECH_FILL (mech lighting strength, ships ON at 2); -MC2_TERRAIN_MATERIAL_TEXTURES(+_STRENGTH) retired W107; +MC2_PLAY_MISSION_GOTO (dev test knob) W108.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -917,7 +917,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         return v[0] == '1' ? 1 : v[0] == '0' ? 0 : -1;
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
-    const char* exact1[] = {"MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
+    const char* exact1[] = {"MC2_TERRAIN_SOLID_WINDOW_PARITY"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
                                 "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE",
                                 "MC2_VK_PROP_FENCE_DEFER", "MC2_VK_TERRAIN_FENCE_DEFER", "MC2_VK_WATER_FENCE_DEFER"};

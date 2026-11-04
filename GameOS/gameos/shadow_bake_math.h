@@ -230,9 +230,9 @@ inline uint64_t hashWords(const void* data, size_t bytes, uint64_t h = 146959810
     return fnv1a(p + i, bytes - i, h);
 }
 
-// Retain endpoints and sample the visual surface without copying its full 4x grid.
+// Retain endpoints and sample the visual surface without copying its full 4x grid (store mip maxima may trail the fine grid).
 inline std::vector<float> maskHeightGrid(std::span<const float> source, int sourceSide, int maskTexels) {
-    if (sourceSide < 2 || source.size() != size_t(sourceSide) * sourceSide || maskTexels < 1) return {};
+    if (sourceSide < 2 || source.size() < size_t(sourceSide) * sourceSide || maskTexels < 1) return {};
     const int side = (std::min)(sourceSide, maskTexels + 1);
     std::vector<float> out(size_t(side) * side);
     const double scale = double(sourceSide - 1) / (side - 1);

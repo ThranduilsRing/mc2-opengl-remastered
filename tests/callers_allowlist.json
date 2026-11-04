@@ -427,7 +427,11 @@
   "scripts/tests/test_stress_overlap.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "tools/perf/_census_run.py": "Manual census driver: runs the installed exe over mc2_01/03/10/17/24 and the bench_walk modes, writes proofs/census2; run by hand for a perf census (see docs/perf/2026-11-02-census-v2.md).",
   "tools/perf/_census_analyze.py": "Manual census analyzer: prints MAIN_BUSY, exclusive-cost columns and PERF_COUNTERS means from proofs/census2; run by hand after _census_run.py.",
+  "scripts/tests/test_terrain_export.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "tools/terrain_export/render_blender.py": "Run by Blender as --python HERE / \"render_blender.py\" from tools/terrain_export/render_matched.py (path built at runtime, not a literal).",
   "scripts/tests/test_via_menu.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/smoke_lib/via_menu.py": "Library imported by scripts/run_smoke.py (--via-menu) and tools/tracy_capture_compare.py through the smoke_lib package.",
-  "scripts/smoke_lib/cold_cache.py": "Library imported by scripts/run_smoke.py (--cold-cache) through the smoke_lib package."
+  "scripts/smoke_lib/cold_cache.py": "Library imported by scripts/run_smoke.py (--cold-cache) through the smoke_lib package.",
+  "tools/terrain_beautify/test_height_sig.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/mc2texcook/cook_cliff_rock.py": "Art cook script run by hand (--select riverbed) to produce data/terrain_layers/cliff_rock_*.ktx2; scripts/deploy_payload.py names it via the CLIFF_ROCK_COOK path constant, not a literal command."
 }

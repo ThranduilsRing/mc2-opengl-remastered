@@ -149,6 +149,8 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/cliff_albedo.ktx2",
     "data/terrain_layers/concrete_detail_pad.ktx2",    # CONCRETE-ROAD-PBR-DETAIL (cook_concrete_detail.py)
     "data/terrain_layers/concrete_detail_road.ktx2",
+    "data/terrain_layers/cliff_rock_ah.ktx2",          # TERRAIN-CLIFF-ROCK (cook_cliff_rock.py --select riverbed)
+    "data/terrain_layers/cliff_rock_nra.ktx2",
 ]
 
 # The two concrete/road detail KTX2s are generated, not tracked (about 1.4 MB each): cooked on demand at deploy time when absent.
@@ -176,6 +178,32 @@ def ensure_concrete_detail(src_root, cooker=subprocess.run):
     if r.returncode:
         log("[DEPLOY] WARN: concrete detail cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
 
+
+# TERRAIN-CLIFF-ROCK: the cliff rock pair is generated too (CC0 Poly Haven sets; licences in tools/mc2texcook/cliff_rock_provenance.json).
+CLIFF_ROCK_COOK = "tools/mc2texcook/cook_cliff_rock.py"
+CLIFF_ROCK_SRC = "C:/Users/Joe/Downloads/GameAsset/Terrain"
+CLIFF_ROCK_SET = "riverbed"
+
+
+def ensure_cliff_rock(src_root, cooker=subprocess.run):
+    """Cook data/terrain_layers/cliff_rock_{ah,nra}.ktx2 when missing (soft: steep faces keep the base look without them)."""
+    out = os.path.join(src_root, "data", "terrain_layers")
+    if all(os.path.isfile(os.path.join(src_root, r)) for r in TERRAIN_LAYER_PAYLOAD if "cliff_rock" in r):
+        return
+    if not os.path.isdir(CLIFF_ROCK_SRC):
+        log(f"[DEPLOY] WARN: cliff rock KTX2s absent and no cook source at {CLIFF_ROCK_SRC}: cliffs keep the base look")
+        return
+    os.makedirs(out, exist_ok=True)
+    log("cliff rock KTX2s absent: cooking them")
+    try:
+        r = cooker([sys.executable, os.path.join(src_root, CLIFF_ROCK_COOK), "--src", CLIFF_ROCK_SRC, "--out", out,
+                    "--sets", CLIFF_ROCK_SET, "--select", CLIFF_ROCK_SET],
+                   capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
+    except subprocess.TimeoutExpired:
+        log("[DEPLOY] WARN: cliff rock cook timed out after 300 s (skipped)")
+        return
+    if r.returncode:
+        log("[DEPLOY] WARN: cliff rock cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
@@ -1062,6 +1090,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # levelCount and HARD-FAIL if a present layer is mip-incomplete, so a stale
     # cook can never reach the payload silently. Re-cook, then re-deploy.
     ensure_concrete_detail(src_root)
+    ensure_cliff_rock(src_root)
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):

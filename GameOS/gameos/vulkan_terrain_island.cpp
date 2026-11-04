@@ -128,24 +128,6 @@ bool terrainSkirtsRequested() {
     return state == 1;
 }
 
-// VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band visual-displace mode-2 Z-swap
-// sub-gate. Requires ALL_LODS (mode-2 only exists on lodStep>1 bands). An explicit
-// opt-in (an Exact1 row: only "1" arms it; unset -> OFF regardless of the
-// umbrella, unlike SKIRTS which is now an umbrella member) so the oracle can isolate "VK bands undisplaced (GL owns displaced)" from
-// "VK bands displaced" -- if the Z-swap diverges, flip this OFF alone and keep rung 3/4.
-// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): DELIBERATELY stays an explicit opt-in
-// (NOT an umbrella family member, unlike ALL_LODS/SKIRTS). It is a far-band visual
-// ENHANCEMENT, not base content -- when OFF the coarse bands still render fully (via
-// ALL_LODS) merely undisplaced, so nothing VANISHES (the layer's "VK fallback" is the
-// undisplaced-but-present VK band). It also depends on visual_height_4x.r32 bakes the
-// 0.4c field lane does not ship, so arming it by default would risk a field regression.
-bool terrainVisualDisplaceFarRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2::gate::get<"MC2_VK_TERRAIN_VISUALDISPLACE_FAR">()) ? 1 : 0;
-    }
-    return state == 1;
-}
 
 std::string spv_dir() { return vk_island_util::spvDir(); }
 

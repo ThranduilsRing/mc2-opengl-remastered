@@ -86,6 +86,13 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
     return true;
 }
 
+void TerrainFieldStore::clearVisualHeight() {
+    visual_.clear();
+    visualSide_ = 0;
+    visualMipFloats_ = 0;
+    visualVersion_ = nextVersion();
+}
+
 namespace {
 
 // A field image (shore sidecar, cement atlas) covers the map at most a few texels per vertex; beyond kMaxSide * 4 on an edge it

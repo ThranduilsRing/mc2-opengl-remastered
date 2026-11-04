@@ -43,7 +43,19 @@ float sampleH(int mx, int my) {
     return uH.heights[mx + my * uT.mapSide];
 }
 
+#include "include/terrain_hires_near_vs.glsl"
+
 void main() {
+    // TERRAIN-HIRES-NEAR-1: LOD0 skirt strip on the 4x bake mesh (see terrain_tier1.vert).
+    if (uP.visualMode == 1) {
+        vec3 wp;
+        // Mode-1 edges are stitched to the shared corner heights, so the skirt only backstops
+        // sub-texel cracks; the full coarse-range drop showed as a striped wall under the
+        // near cull edge at cross_map_view (fine-height normals light the vertical face).
+        gl_Position = hiresNearClip(localOffset, isSkirtFlag == 0, float(isSkirtFlag) * min(uP.skirtDepth, 32.0), wp);
+        v_worldPos = wp;
+        return;
+    }
     int mapX = clamp(uP.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
     int mapY = clamp(uP.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
     float h  = sampleH(mapX, mapY);
@@ -80,7 +92,7 @@ void main() {
     // for a displaced block's skirt. Same VERBATIM non-stitched core as the main VS.
     if (uP.visualMode == 2 && isSkirtFlag == 0) {
         int u_visualSide = uT.visualSide;
-        float u_visualDisplaceFar = uT.visualDisplaceFar;
+        float u_visualDisplaceFar = uT.visualDisplaceFar * hiresEdgeW(mapX * 4, mapY * 4);  // TERRAIN-HIRES-NEAR-1 map-border fade
         float hv;
         int fxV, fyV;
         int  Sc2 = 0, along2 = 0; bool alongX2 = true;

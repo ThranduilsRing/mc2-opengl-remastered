@@ -45,6 +45,11 @@ namespace TerrainRuntime
 	// grounding sites.
 	float groundElevation(const glm::vec3& worldPos);
 
+	// UNIT-VISUAL-SNAP-1 (render only): visual-bake height minus gameplay height at worldPos; 0 when no
+	// bake is loaded or outside the map. Mech/vehicle MODEL draw heights add this; sim never reads it.
+	float visualHeightDelta(const glm::vec3& worldPos);
+	void setCpuVisualHeight(const float* vh, int V);   // nullptr clears (mission start / bake rejected)
+
 	// Render/visual surface height. == gameplay height today; may diverge later.
 	float sampleVisualHeight(const glm::vec3& worldPos);
 

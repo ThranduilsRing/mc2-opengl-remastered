@@ -12,7 +12,9 @@ L(Exact1, "MC2_TERRAIN_SOLID_WINDOW_PARITY", Bool, false, "terrain", "", "", ver
 // history: docs/gate-history.md#MC2_TERRAIN_TESS
 L(Lead0Kill, "MC2_TERRAIN_TESS", Bool, true, "gameos", "", "TCS/TES terrain tessellation (gameos_graphics.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_TESSELLATION", 3, true)),
 L(Lead0, "MC2_TERRAIN_TILE_CENSUS", Bool, false, "terrain", "", "", verified),
-L(Lead0, "MC2_TERRAIN_VISUAL_DISPLACE", Bool, false, "terrain", "", "", passthrough | verified),
+// TERRAIN-HIRES-NEAR-1: ships ON (temporary kill-switch, =0 disables).
+// history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE
+L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE", Bool, true, "terrain", "", "TERRAIN-HIRES-NEAR-1: draw the 4x visual height bake on VK terrain at every LOD (LOD0 at 4x density); no bake = unchanged.", passthrough | registry(Feature, "MC2_TERRAIN_VISUAL_DISPLACE", -1, true) | verified),
 P("MC2_TERRAIN_VISUAL_DISPLACE_FAR", Float, 1.0, "terrain", "", "", passthrough | clampRange(0.0, 1.0) | verified),
 // TERRAIN-VISUAL-HEIGHT-SAMPLE-1 companion fade.
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE
@@ -66,6 +68,7 @@ L(Presence, "MC2_UI_PASS_MEASURE", Bool, false, "gameos", "", "UI-PASS-DRAWCOUNT
 G("MC2_UNIT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated") | verified),
 // history: docs/gate-history.md#MC2_UNIT_PROFILE_DATA
 L(Lead0, "MC2_UNIT_PROFILE_DATA", Bool, false, "unclassified", "", "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).", passthrough | registry(Feature, "MC2_FEATURE_UNIT_PROFILE_DATA", -1, false) | verified),
+L(Lead0Kill, "MC2_UNIT_VISUAL_SNAP", Bool, true, "terrain", "2026-11-24", "UNIT-VISUAL-SNAP-1: draw mech/vehicle models at the visual-bake terrain height (render only); 0 = gameplay height. Retire after three green merge windows.", passthrough | verified),
 L(Presence, "MC2_VANISH_PROBE", Bool, false, "code", "", "", verified),
 G("MC2_VEGETATION_ATLAS", String, "", "gameos", "", "Allow env-var override at runtime too.", passthrough | verified),
 L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough | verified),
@@ -171,7 +174,6 @@ L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", "", verified | 
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LODFADE
 L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough | verified),
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
-L(Exact1, "MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Bool, false, "vk", "", "", verified | passthrough),
 // history: docs/gate-history.md#MC2_VK_VFX_TRACE
 L(Lead0, "MC2_VK_VFX_TRACE", Bool, false, "vk", "", "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.", registry(Trace, "MC2_TRACE_VK_VFX_TRACE", -1, false) | verified),
 L(Lead0Kill, "MC2_VK_WATER_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),

@@ -252,3 +252,16 @@ TEST_CASE("terrain fields: a one-plane cement write keeps the road-art plane") {
     CHECK(store.cementWords()[4] == 0x80010007u);
     CHECK(store.cementWords()[7] == 0x80010009u);
 }
+
+TEST_CASE("terrain fields: clearing the visual bake leaves no relief for the next mission") {
+    mc2terrain::TerrainFieldStore store;
+    const float fine[] = {1, 2, 3, 4};
+    const float mips[] = {7, 8};
+    REQUIRE(store.setVisualHeight(fine, 2, mips, 2));   // mission A: accepted bake
+    const uint64_t accepted = store.visualHeightVersion();
+    store.clearVisualHeight();                          // mission B: rejected or missing bake
+    CHECK(store.visualHeight().empty());
+    CHECK(store.visualSide() == 0);
+    CHECK(store.visualMipFloats() == 0);
+    CHECK(store.visualHeightVersion() != accepted);
+}

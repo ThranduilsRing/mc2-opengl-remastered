@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 760;
+inline constexpr std::size_t kGateCount = 761;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -567,6 +567,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TARGETING_GUARD", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_ADMISSION_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_CEMENT_DIAG_CONNECT", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_TERRAIN_CLIFF_ROCK", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CONTROLMAP", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CONTROLMAP_ALBEDO", Kind::Bool, Rule::Lead0, {}},
@@ -632,7 +633,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_SOLID_WINDOW_PARITY", Kind::Bool, Rule::Exact1, {}},
     {"MC2_TERRAIN_TESS", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_TILE_CENSUS", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_VISUAL_DISPLACE", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_TERRAIN_VISUAL_DISPLACE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS", Kind::Float, Rule::Prefix, {}},
@@ -667,6 +668,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_UI_PASS_MEASURE", Kind::Bool, Rule::Presence, {}},
     {"MC2_UNIT_DEFINITION_SOURCE", Kind::Enum, Rule::Std, "legacy|generated"},
     {"MC2_UNIT_PROFILE_DATA", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_UNIT_VISUAL_SNAP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VANISH_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VEGETATION_ATLAS", Kind::String, Rule::Std, {}},
     {"MC2_VEGETATION_CARDS", Kind::Bool, Rule::DefOnLead0, {}},
@@ -736,7 +738,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_TERRAIN_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_TERRAIN_PERF", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Kind::Bool, Rule::Exact1, {}},
     {"MC2_VK_VFX_TRACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_WATER_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_WATER_PERF", Kind::Bool, Rule::Lead1, {}},

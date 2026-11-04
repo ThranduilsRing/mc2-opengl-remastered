@@ -7,6 +7,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "mover_lamps.h"
+#include "terrain_runtime.h"
 
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (gv class).
@@ -117,6 +118,7 @@ void GVAppearance::updateGeometry (void)
 	
 		glm::vec3 xlatPosition;
 		mc2ToRender(xlatPosition, position);
+		xlatPosition.y += TerrainRuntime::visualHeightDelta(position);   // UNIT-VISUAL-SNAP-1: draw only
 	
 		if (xlatPosition.y < fogStart)
 		{

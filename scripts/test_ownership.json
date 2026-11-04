@@ -31,6 +31,7 @@
     {"module": "scripts/tests/test_battle_bench.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_perf_counters.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_rgp_capture.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_terrain_export.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_via_menu.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_capture_focus.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_campaign_liveness.py", "owners": ["scripts_tests"]},

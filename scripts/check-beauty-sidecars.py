@@ -88,6 +88,10 @@ ENGINE_SOURCES = [
 SIBLING_SIDECARS = {
     "visual_height_mips.r32": "mclib/terrain_init.cpp",
     "visual_damp.r32": "mclib/terrain_init.cpp",
+    # Exact gameplay-height signature binding the .beauty bake to the mission's
+    # elevations (UNIT-VISUAL-SNAP-1 / blocker 1). Without it the engine falls
+    # back to the legacy mean-corner guard, so it must ship with the bake.
+    "gameplay_height.sig": "mclib/terrain_init.cpp",
 }
 
 # Companion metadata files: required only when their principal is cooked.
@@ -529,6 +533,24 @@ def selftest() -> int:
         missing, drift, ok, _deg = audit(corpus, target)
         check("installed sidecar passes", not missing and not drift and len(ok) == 2,
               f"missing={missing} drift={drift}")
+
+        # Real repo: the signature is in the runtime set and the install path
+        # (the same one --install uses) delivers it to a scratch target.
+        real_names, real_errs = runtime_sidecars(REPO)
+        check("real repo: gameplay_height.sig in runtime set",
+              "gameplay_height.sig" in real_names and not real_errs, str(real_errs))
+        real_corpus = cooked_corpus(REPO, real_names)
+        sig_missions = [m for m, v in real_corpus.items() if "gameplay_height.sig" in v]
+        check("real repo: cooked sigs are tracked", len(sig_missions) > 0)
+        scratch = os.path.join(tmp, "scratch_target")
+        os.makedirs(os.path.join(scratch, "data", "missions"))
+        miss, _d, _o, _g = audit(real_corpus, scratch)
+        for mission, fn, dst in miss:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copyfile(real_corpus[mission][fn], dst)
+        check("scratch target carries gameplay_height.sig for every sig mission",
+              all(os.path.isfile(os.path.join(scratch, "data", "missions",
+                  m + ".beauty", "gameplay_height.sig")) for m in sig_missions))
 
         # Content drift must be distinguished from missing.
         with open(os.path.join(target, "data", "missions", "mc2_99.beauty",
