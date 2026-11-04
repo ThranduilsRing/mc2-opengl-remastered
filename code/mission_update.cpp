@@ -1330,6 +1330,7 @@ struct OverlapPre {
 	long earlyResult = 0;
 	long turn = 0;   // Mission::turn after the worker finished
 	uint32_t extraFrames = 0; // published to the main frame clock only after DrawScreen has joined
+	int unrun = 0;            // banked ticks a save request stopped; Main runs them after the frame part (none is lost)
 };
 OverlapPre s_pre;
 }
@@ -1367,8 +1368,9 @@ void Mission::overlapKick()
 				++s_pre.extraFrames;
 			ended = updatePass(true, false, true, true, early);
 			s_extraTickInFrame = false;
-			if (ended || loadInMissionSave || saveInMissionSave)
-				break;
+			if (ended || loadInMissionSave)
+				break;   // a load drops the rest, as the serial loop does
+			if (saveInMissionSave) { s_pre.unrun = ticks - tick - 1; break; }   // the save and the rest run on Main
 		}
 		s_pre.ended = ended;
 		s_pre.earlyResult = early;
@@ -1440,6 +1442,18 @@ long Mission::update (void)
 			// This frame's ticks already ran while the previous snapshot was drawn; only the frame part is left.
 			if (updatePass(true, true, false, false, earlyResult))
 				return earlyResult;
+			// A save request stopped the worker: its unrun ticks run here, serially, in the order the serial loop
+			// runs them (the first one's updateTickClock writes the save on Main).
+			for (int tick = 0; tick < pre.unrun && !loadInMissionSave; ++tick)
+			{
+				s_extraTickInFrame = true;
+				g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed);
+				const bool ended = updatePass(true, false, true, true, earlyResult);
+				mc2::tick::commitTickQueues();
+				s_extraTickInFrame = false;
+				if (ended)
+					return earlyResult;
+			}
 			updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 		}
 		else
