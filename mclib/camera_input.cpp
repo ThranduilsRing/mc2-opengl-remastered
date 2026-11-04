@@ -1,5 +1,7 @@
 // Camera: Camera::setPosition, zoom, tilt, rotate, scroll and the input smoothing.
 // Declared in the class headers; shared names in camera_internal.h.
+#include <algorithm>
+
 #include "camera_internal.h"
 #include "sim_trace.h"
 
@@ -36,21 +38,16 @@ void Camera::setPosition(glm::vec3 newPosition, bool swoopy)
 		if (!drawTerrainGrid)
 			maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
 
-		if (position.x > maxVisual)
-			position.x = maxVisual;
+		position.x = std::min(position.x, maxVisual);
 
-		if (position.y > maxVisual)
-			position.y = maxVisual;
+		position.y = std::min(position.y, maxVisual);
 
-		if (position.x < -maxVisual)
-			position.x = -maxVisual;
+		position.x = std::max(position.x, -maxVisual);
 
-		if (position.y < -maxVisual)
-			position.y = -maxVisual;
+		position.y = std::max(position.y, -maxVisual);
 
 		cameraShiftZ = land->getTerrainElevation(position);
-		if (cameraShiftZ < Terrain::waterElevation)
-			cameraShiftZ = Terrain::waterElevation;
+		cameraShiftZ = std::max(cameraShiftZ, Terrain::waterElevation);
 
 		if (swoopy)
 		{
@@ -267,15 +264,13 @@ void Camera::zoomValue (float value)
 	if (!usePerspective)
 	{
 		newScaleFactor = value;
-		if (newScaleFactor > zoomMax)
-			newScaleFactor = zoomMax;
+		newScaleFactor = std::min(newScaleFactor, zoomMax);
 	}
 	else
 	{
 		cameraAltitude = value;
 		cameraAltitudeDesired = cameraAltitude;
-		if (cameraAltitude < AltitudeMinimum)
-			cameraAltitude = AltitudeMinimum;
+		cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
 			
 		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
@@ -292,8 +287,7 @@ void Camera::ZoomIn (float amount)
 	if (!usePerspective)
 	{
 		newScaleFactor += amount;
-		if (newScaleFactor > zoomMax)
-			newScaleFactor = zoomMax;
+		newScaleFactor = std::min(newScaleFactor, zoomMax);
 	}
 	else
 	{
@@ -301,13 +295,12 @@ void Camera::ZoomIn (float amount)
 		// a fixed % of remaining altitude range regardless of current zoom level.
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
 		s_scrollMomentum += 1.0f;
-		if (s_scrollMomentum > 5.0f) s_scrollMomentum = 5.0f;
+		s_scrollMomentum = std::min(s_scrollMomentum, 5.0f);
 		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
 		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
 		float altRange = max(1.0f, cameraAltitudeDesired - AltitudeMinimum);
 		cameraAltitudeDesired -= altRange * (amount / sf) * 0.045f * speedMult;
-		if (cameraAltitudeDesired < AltitudeMinimum)
-			cameraAltitudeDesired = AltitudeMinimum;
+		cameraAltitudeDesired = std::max(cameraAltitudeDesired, AltitudeMinimum);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
 
@@ -320,8 +313,7 @@ void Camera::ZoomOut (float amount)
 	if (!usePerspective)
 	{
 		newScaleFactor -= amount;
-		if (newScaleFactor < zoomMin)
-			newScaleFactor = zoomMin;
+		newScaleFactor = std::max(newScaleFactor, zoomMin);
 	}
 	else
 	{
@@ -331,13 +323,12 @@ void Camera::ZoomOut (float amount)
 		// Proportional zoom: strip scaleFactor bake-in, step = % of remaining range.
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
 		s_scrollMomentum += 1.0f;
-		if (s_scrollMomentum > 5.0f) s_scrollMomentum = 5.0f;
+		s_scrollMomentum = std::min(s_scrollMomentum, 5.0f);
 		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
 		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
 		float altRange = max(1.0f, testMax - cameraAltitudeDesired);
 		cameraAltitudeDesired += altRange * (amount / sf) * 0.045f * speedMult;
-		if (cameraAltitudeDesired > testMax)
-			cameraAltitudeDesired = testMax;
+		cameraAltitudeDesired = std::min(cameraAltitudeDesired, testMax);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
 
@@ -463,13 +454,11 @@ void Camera::tiltValue (float value)
 	projectionAngle = value;
 	if (usePerspective)
 	{
-		if (projectionAngle < MIN_PERSPECTIVE)
-			projectionAngle = MIN_PERSPECTIVE;
+		projectionAngle = std::max(projectionAngle, MIN_PERSPECTIVE);
 	}
 	else
 	{
-		if (projectionAngle < MIN_ORTHO)
-			projectionAngle = MIN_ORTHO;
+		projectionAngle = std::max(projectionAngle, MIN_ORTHO);
 	}
 
 	calculateProjectionConstants();
@@ -481,13 +470,11 @@ void Camera::tiltUp (float amount)
 	projectionAngle -= amount;
 	if (usePerspective)
 	{
-		if (projectionAngle < MIN_PERSPECTIVE)
-			projectionAngle = MIN_PERSPECTIVE;
+		projectionAngle = std::max(projectionAngle, MIN_PERSPECTIVE);
 	}
 	else
 	{
-		if (projectionAngle < MIN_ORTHO)
-			projectionAngle = MIN_ORTHO;
+		projectionAngle = std::max(projectionAngle, MIN_ORTHO);
 	}
 
 	calculateProjectionConstants();
@@ -498,8 +485,7 @@ void Camera::tiltDown (float amount)
 {
 	projectionAngle += amount;
 
-	if (projectionAngle > MAX_PERSPECTIVE)
-		projectionAngle = MAX_PERSPECTIVE;
+	projectionAngle = std::min(projectionAngle, MAX_PERSPECTIVE);
 
 	calculateProjectionConstants();
 }
@@ -712,10 +698,10 @@ void Camera::applyScrollDelta(float dx, float dy)
 		float maxVisual = (Terrain::worldUnitsMapSide / 2) - (Terrain::worldUnitsPerVertex * 2.0f);
 		if (!drawTerrainGrid)
 			maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
-		if (scrollSmoothGoalX >  maxVisual) scrollSmoothGoalX =  maxVisual;
-		if (scrollSmoothGoalX < -maxVisual) scrollSmoothGoalX = -maxVisual;
-		if (scrollSmoothGoalY >  maxVisual) scrollSmoothGoalY =  maxVisual;
-		if (scrollSmoothGoalY < -maxVisual) scrollSmoothGoalY = -maxVisual;
+		scrollSmoothGoalX = std::min(scrollSmoothGoalX, maxVisual);
+		scrollSmoothGoalX = std::max(scrollSmoothGoalX, -maxVisual);
+		scrollSmoothGoalY = std::min(scrollSmoothGoalY, maxVisual);
+		scrollSmoothGoalY = std::max(scrollSmoothGoalY, -maxVisual);
 	}
 }
 
@@ -775,10 +761,10 @@ void Camera::updateInputSmoothing (glm::vec3 &newPosition)
 					float maxVisual = (Terrain::worldUnitsMapSide / 2) - (Terrain::worldUnitsPerVertex * 2.0f);
 					if (!drawTerrainGrid)
 						maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
-					if (scrollSmoothGoalX >  maxVisual) scrollSmoothGoalX =  maxVisual;
-					if (scrollSmoothGoalX < -maxVisual) scrollSmoothGoalX = -maxVisual;
-					if (scrollSmoothGoalY >  maxVisual) scrollSmoothGoalY =  maxVisual;
-					if (scrollSmoothGoalY < -maxVisual) scrollSmoothGoalY = -maxVisual;
+					scrollSmoothGoalX = std::min(scrollSmoothGoalX, maxVisual);
+					scrollSmoothGoalX = std::max(scrollSmoothGoalX, -maxVisual);
+					scrollSmoothGoalY = std::min(scrollSmoothGoalY, maxVisual);
+					scrollSmoothGoalY = std::max(scrollSmoothGoalY, -maxVisual);
 				}
 			}
 		}
@@ -870,8 +856,7 @@ void Camera::rotateLightRight(float amount)
 void Camera::rotateLightUp(float amount)
 {
 	lightPitch += amount;
-	if (lightPitch > 90.0)
-		lightPitch = 90.0;
+	lightPitch = std::min<double>(lightPitch, 90.0);
 
 	//Replace with TGL Lights
 	glm::mat4 lightToWorldMatrix;
@@ -886,8 +871,7 @@ void Camera::rotateLightUp(float amount)
 void Camera::rotateLightDown(float amount)
 {
 	lightPitch -= amount;
-	if (lightPitch < 5.0f)
-		lightPitch = 5.0f;
+	lightPitch = std::max(lightPitch, 5.0f);
 
 	//Replace with TGL Lights
 	glm::mat4 lightToWorldMatrix;

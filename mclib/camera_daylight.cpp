@@ -1,5 +1,7 @@
 // Camera: daylight fraction and sun pitch, HSI colour helpers and the per-frame light update.
 // Declared in the class headers; shared names in camera_internal.h.
+#include <algorithm>
+
 #include "camera_internal.h"
 #include "mc2fmt.h"
 
@@ -25,8 +27,8 @@ static void rgb2hsi(float r, float g, float b, float &hue, float &saturation, fl
 	}
 
 	float min = r;
-	if (g < min) { min = g; }
-	if (b < min) { min = b; }
+	min = std::min(min, g);
+	min = std::min(min, b);
 
 	saturation = 1.0 - (min / intensity);
 
@@ -201,8 +203,7 @@ void Camera::updateDaylight (bool bInitialize)
 			else
 			{
 				nightFactor = (NIGHT_START_PITCH - lightAltitude) / (NIGHT_START_PITCH - NIGHT_LIGHT_PITCH);
-				if (nightFactor > 1.0f)
-					nightFactor = 1.0f;
+				nightFactor = std::min(nightFactor, 1.0f);
 			}
 		
 			/* daytime */
@@ -244,12 +245,12 @@ void Camera::updateDaylight (bool bInitialize)
 				float I = fSunSetIntensity * fSunSetProportion + fDayLightIntensity * fOneMinusSunSetProportion;
 				float R, G, B;
 				hsi2rgb(H, S, I, R, G, B);
-				if (R > 0.99f) { R = 0.99f; }
-				if (G > 0.99f) { G = 0.99f; }
-				if (B > 0.99f) { B = 0.99f; }
-				if (R < 0.0f) { R = 0.0f; }
-				if (G < 0.0f) { G = 0.0f; }
-				if (B < 0.0f) { B = 0.0f; }
+				R = std::min(R, 0.99f);
+				G = std::min(G, 0.99f);
+				B = std::min(B, 0.99f);
+				R = std::max(R, 0.0f);
+				G = std::max(G, 0.0f);
+				B = std::max(B, 0.0f);
 				fLightRed = R * 255.0f;
 				fLightGreen = G * 255.0f;
 				fLightBlue = B * 255.0f;
@@ -315,12 +316,12 @@ void Camera::updateDaylight (bool bInitialize)
 				I = 0.85f/*arbitrary*/ * zb + I * (1.0f - zb);
 				I *= (1.0 - (fAzimuthCameraAngleRelativeToTheSun / 180.0/*degress*/) * (1.0 - (fAngleFromTheHorizon / fSunSetStartAngle)));
 				hsi2rgb(H, S, I, R, G, B);
-				if (R > 0.99f) { R = 0.99f; }
-				if (G > 0.99f) { G = 0.99f; }
-				if (B > 0.99f) { B = 0.99f; }
-				if (R < 0.0f) { R = 0.0f; }
-				if (G < 0.0f) { G = 0.0f; }
-				if (B < 0.0f) { B = 0.0f; }
+				R = std::min(R, 0.99f);
+				G = std::min(G, 0.99f);
+				B = std::min(B, 0.99f);
+				R = std::max(R, 0.0f);
+				G = std::max(G, 0.0f);
+				B = std::max(B, 0.0f);
 				fSkyRed = R * 255.0f;
 				fSkyGreen = G * 255.0f;
 				fSkyBlue = B * 255.0f;
@@ -408,9 +409,9 @@ void Camera::updateDaylight (bool bInitialize)
 		float fFogRed = fAmbientRed - fBlackSkyLevel;
 		float fFogGreen = fAmbientGreen - fBlackSkyLevel;
 		float fFogBlue = fAmbientBlue - fBlackSkyLevel;
-		if (0.0f > fFogRed) { fFogRed = 0.0f; }
-		if (0.0f > fFogGreen) { fFogGreen = 0.0f; }
-		if (0.0f > fFogBlue) { fFogBlue = 0.0f; }
+		fFogRed = std::max(fFogRed, 0.0f);
+		fFogGreen = std::max(fFogGreen, 0.0f);
+		fFogBlue = std::max(fFogBlue, 0.0f);
 
 		//float fTmpRed = (float)(dayLightRed) - fBlackSkyLevel;
 		//float fTmpGreen = (float)(dayLightGreen) - fBlackSkyLevel;
@@ -419,9 +420,9 @@ void Camera::updateDaylight (bool bInitialize)
 		float fTmpGreen = static_cast<float>((dayAmbientGreen)) - fBlackSkyLevel;
 		float fTmpBlue = static_cast<float>((dayAmbientBlue)) - fBlackSkyLevel;
 		float epsilon = 1.0;
-		if (epsilon > fTmpRed) { fTmpRed = epsilon; }
-		if (epsilon > fTmpGreen) { fTmpGreen = epsilon; }
-		if (epsilon > fTmpBlue) { fTmpBlue = epsilon; }
+		fTmpRed = std::max(fTmpRed, epsilon);
+		fTmpGreen = std::max(fTmpGreen, epsilon);
+		fTmpBlue = std::max(fTmpBlue, epsilon);
 
 		float fOneMinusFogTransparency = 1.0 - fFogTransparency;
 		fFogRed = fFogRed / fTmpRed * fOpaqueDayFogRed * fOneMinusFogTransparency;
@@ -436,9 +437,9 @@ void Camera::updateDaylight (bool bInitialize)
 		unsigned int fogRed = fFogRed;
 		unsigned int fogGreen = fFogGreen;
 		unsigned int fogBlue = fFogBlue;
-		if (0xff < fogRed) { fogRed = 0xff; }
-		if (0xff < fogGreen) { fogGreen = 0xff; }
-		if (0xff < fogBlue) { fogBlue = 0xff; }
+		fogRed = std::min<unsigned int>(0xff, fogRed);
+		fogGreen = std::min<unsigned int>(0xff, fogGreen);
+		fogBlue = std::min<unsigned int>(0xff, fogBlue);
 		fogColor = (fogRed << 16) + (fogGreen << 8) + fogBlue;
 
 		dayLightTime += frameLength;

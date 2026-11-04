@@ -1,5 +1,6 @@
 #include "footprints.h"
 #include "vk_scene_renderer.h"
+#include <algorithm>
 #include <atomic>
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
@@ -301,7 +302,7 @@ void GameCamera::renderViewUniforms() {
 						for (int i = 0; i < 16; ++i) {
 							float d = vu.worldToClipGL[i] - legacy[i];
 							if (d < 0.0f) d = -d;
-							if (d > maxDiff) maxDiff = d;
+							maxDiff = std::max(maxDiff, d);
 						}
 					}
 					const int ok = (legacy != nullptr) && (maxDiff <= 1e-5f) ? 1 : 0;
@@ -409,8 +410,8 @@ void GameCamera::renderTerrainSceneState() {
 	inputs.ambientColor = {static_cast<float>((ambient >> 16) & 255u)/255.0f,
 		static_cast<float>((ambient >> 8) & 255u)/255.0f, static_cast<float>(ambient & 255u)/255.0f};
 	float flatIntensity = lightDirection.z;
-	if (flatIntensity < 0.0f) flatIntensity = 0.0f;
-	if (flatIntensity > 1.0f) flatIntensity = 1.0f;
+	flatIntensity = std::max(flatIntensity, 0.0f);
+	flatIntensity = std::min(flatIntensity, 1.0f);
 	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
 		getLightGreen(flatIntensity)/255.0f, getLightBlue(flatIntensity)/255.0f};
 	inputs.authoredPitch = eye->getDayLightPitch();
@@ -1238,8 +1239,7 @@ long GameCamera::update (void)
 	float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 	float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
 	
-	if (cameraAltitude > testMax)
-		cameraAltitude = testMax;
+	cameraAltitude = std::min(cameraAltitude, testMax);
 
 	if ((cameraAltitude < testMax) && (cameraAltitudeDesired > testMax))
 		cameraAltitude = testMax;
@@ -1287,7 +1287,7 @@ long GameCamera::update (void)
 		goalRotTime  = 0.0f;
 		if (land) {
 			float elev = land->getTerrainElevation(position);
-			if (elev < Terrain::waterElevation) elev = Terrain::waterElevation;
+			elev = std::max(elev, Terrain::waterElevation);
 			position.z = elev;
 			goalPositionZ = elev;
 			cameraShiftZ  = elev;
