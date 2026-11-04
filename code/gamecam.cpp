@@ -1,6 +1,5 @@
 #include "footprints.h"
 #include "vk_scene_renderer.h"
-#include <algorithm>
 #include <atomic>
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------

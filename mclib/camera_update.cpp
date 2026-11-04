@@ -1,7 +1,6 @@
 #include "footprints.h"
 // Camera: the camera goal updates, Camera::update and render.
 // Declared in the class headers; shared names in camera_internal.h.
-#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <algorithm>
 #include "camera_internal.h"
