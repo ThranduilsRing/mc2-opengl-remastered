@@ -28,7 +28,11 @@ EARLY_EXIT = re.compile(r"\[SMOKE v1\] event=summary result=fail reason=early_ex
 RESULTS_DONE =re.compile(r"\[RESULTS v1\] resultsDone complete ")
 
 
-def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
+GRAVEYARD = re.compile(r"\[GRAVEYARD v1\] retire_calls=(\d+) nonempty=(\d+)")
+MIN_RETIRES = 200
+
+
+def judge(text: str, require_results: bool = False, min_retires: int = 0) -> tuple[bool, str]:
     """(passed, reason) for one mission's concatenated runner output + kept game log."""
     m = VIOLATION.search(text)
     if m:
@@ -37,14 +41,20 @@ def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
         return False, "no '[VIDEO] init: opened' line: the comm video never decoded"
     if require_results and not RESULTS_DONE.search(text):
         return False, "no '[RESULTS v1] resultsDone complete' line: the results path was never reached"
-    return True, "video opened, no sim-overlap violation" + (", results path reached" if require_results else "")
+    retires = max((int(g.group(1)) for g in GRAVEYARD.finditer(text)), default=0)
+    if min_retires and retires < min_retires:
+        return False, f"only {retires} graveyard drain call(s) audited (need {min_retires}): the R1 ordering proof did not run"
+    return True, ("video opened, no sim-overlap violation" + (", results path reached" if require_results else "")
+                  + (f", {retires} graveyard drain calls audited" if min_retires else ""))
 
 
-def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, log_to: Path | None = None) -> tuple[bool, str]:
+def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, log_to: Path | None = None, ordering: bool = False) -> tuple[bool, str]:
     env = dict(os.environ, MC2_BOOT_VIDEO="1", MC2_SMOKE_REQUIRE_FINGERPRINT=os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1"))
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
         env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="12", MC2_DIAG_TAGS="RESULTS", MC2_SIM_OVERLAP_AUDIT="2")
+    if ordering:   # graveyard ordering row (R1): AUDIT=2 flags a drain before the worker join; the counter shows the drain ran
+        env.update(MC2_DIAG_TAGS="GRAVEYARD", MC2_SIM_OVERLAP_AUDIT="2")
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
     proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
@@ -57,7 +67,7 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, 
     if log_to:
         log_to.parent.mkdir(parents=True, exist_ok=True)
         log_to.write_text(text, encoding="utf-8")
-    ok, why = judge(text, require_results=countdown)
+    ok, why = judge(text, require_results=countdown, min_retires=MIN_RETIRES if ordering else 0)
     # The end row ends the mission on purpose: run_smoke reports that as early_exit (rc=1), which is the pass shape.
     if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text):
         return True, why + " (mission ended by the countdown: early_exit)"
@@ -83,6 +93,11 @@ def main() -> int:
     ok, why = run_mission(args.exe, "mc2_01", args.end_duration, countdown=True,
                     log_to=Path(args.out) / "mc2_01_end.log" if args.out else None)
     print(f"[video_decode_smoke] mc2_01 end: {'PASS' if ok else 'FAIL'} - {why}")
+    bad += not ok
+    # graveyard stress row (R1): at least MIN_RETIRES audited drain calls, zero VIOLATION
+    ok, why = run_mission(args.exe, "mc2_01", args.duration, ordering=True,
+                    log_to=Path(args.out) / "mc2_01_graveyard_ordering.log" if args.out else None)
+    print(f"[video_decode_smoke] mc2_01 graveyard ordering: {'PASS' if ok else 'FAIL'} - {why}")
     bad += not ok
     return 1 if bad else 0
 

@@ -5644,7 +5644,7 @@
         },
         {
           "path": "scripts/video_decode_smoke.py",
-          "line": 50,
+          "line": 60,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors=\"replace\","

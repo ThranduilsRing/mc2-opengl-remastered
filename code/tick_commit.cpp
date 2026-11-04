@@ -2,6 +2,8 @@
 #include "../mclib/sim_overlap.h"
 #include "../mclib/texture_assets.h"
 #include "render_view.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
+#include "mc2fmt.h"
 #include <array>
 #include <vector>
 #include <cassert>
@@ -53,8 +55,8 @@ uint64_t retainRenderPacket() {
 }
 void retireRenderPacket(uint64_t sequence) {
     mc2::overlap::assertMainThread("retireRenderPacket");
-    // The graveyard commands destroy appearances (AppearanceTypeList refcounts) and the worker also pushes to the
-    // graveyard, so this must run after the join.
+    // The graveyard commands destroy appearances (AppearanceTypeList refcounts). The worker never pushes to the graveyard
+    // (a worker push would trip assertMainThread); this drain must still run after the join.
     mc2::overlap::assertSimQuiescent("graveyard drain");
     auto& slot = packets[sequence % packets.size()];
     if (!sequence || slot != sequence) std::abort();
@@ -68,6 +70,12 @@ void retireRenderPacket(uint64_t sequence) {
     while (count < graveyard.size() && graveyard[count].sequence < oldest)
         ready.push_back(std::move(graveyard[count++].command));
     graveyard.erase(graveyard.begin(), graveyard.begin() + count);
+    // [GRAVEYARD v1]: ordering-proof counter. Every call runs assertSimQuiescent above; nonempty = calls that destroyed work.
+    static uint64_t s_calls = 0, s_nonempty = 0;
+    ++s_calls;
+    if (!ready.empty()) ++s_nonempty;
+    if ((s_calls % 100) == 0 && mc2_diag::tagRequested("GRAVEYARD"))
+        mc2::fmt::print_out("[GRAVEYARD v1] retire_calls={:d} nonempty={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_calls)), mc2::fmt::as_i32(static_cast<int>(s_nonempty)));
     for (auto& command : ready) command();
 }
 void commitTickQueues() {

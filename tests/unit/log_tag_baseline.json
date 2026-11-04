@@ -4032,6 +4032,16 @@
    "count": 1
   },
   {
+   "tag": "GRAVEYARD",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "retire_calls",
+    "nonempty"
+   ],
+   "count": 1
+  },
+  {
    "tag": "GROUND_CONTACT_BLOB",
    "ver": -1,
    "stream": "stderr",
@@ -8786,6 +8796,28 @@
   {
    "tag": "SIM_OVERLAP",
    "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "site",
+    "count",
+    "abort"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "thread",
+    "in_flight",
+    "last_site"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
    "stream": "log",
    "keys": [
     "sample",
@@ -8799,27 +8831,9 @@
    "tag": "SIM_OVERLAP",
    "ver": 1,
    "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "SIM_OVERLAP",
-   "ver": 1,
-   "stream": "stderr",
    "keys": [
     "site",
     "count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SIM_OVERLAP",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "thread",
-    "in_flight",
-    "last_site"
    ],
    "count": 1
   },
@@ -11992,6 +12006,7 @@
   "FIRST60",
   "GLP",
   "GPUPROPS",
+  "GRAVEYARD",
   "HEARTBEAT",
   "INSTR",
   "ISO_DEPLOY",

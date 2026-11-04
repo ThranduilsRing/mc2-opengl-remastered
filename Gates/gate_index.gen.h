@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 761;
+inline constexpr std::size_t kGateCount = 762;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -499,6 +499,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SHAPE_C_PARITY_CHECK", Kind::Bool, Rule::Presence, {}},
     {"MC2_SHOT_RESULTS", Kind::Bool, Rule::Presence, {}},
     {"MC2_SIM_CLOCK_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_SIM_FAULT_INJECT", Kind::Int, Rule::Std, {}},
     {"MC2_SIM_IDENTITY", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_IDENTITY_TRACE", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_IDENTITY_TRACE_DETAIL", Kind::Bool, Rule::Std, {}},

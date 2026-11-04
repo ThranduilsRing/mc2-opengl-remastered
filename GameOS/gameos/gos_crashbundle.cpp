@@ -11,6 +11,7 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include "../../mclib/sim_overlap.h"
 #include <atomic>
 #include "crash_content.h"
 #ifdef _WIN32
@@ -34,6 +35,7 @@ void crashbundle_content_image(std::string_view, const void*, size_t) {}
 void crashbundle_mod(std::string_view, int) {}
 void crashbundle_save_point(std::string_view, std::string_view) {}
 extern "C" void crashbundle_device_lost(void) {}
+void crashbundle_fatal(std::string_view) {}
 extern "C" void crashbundle_trigger_test_crash(void) {
     volatile int* p = 0;
     *p = 0xDEADC0DE;
@@ -699,6 +701,31 @@ extern "C" void crashbundle_device_lost(void)
 // ---------------------------------------------------------------------------
 // Public init + test trigger
 // ---------------------------------------------------------------------------
+// Fatal-path entry for handlers that run outside SEH (SIGABRT, the CRT invalid-parameter handler, the overlap audit abort).
+// Builds a synthetic exception from the current context and runs the same pipeline as the unhandled-exception filter, so the
+// bundle holds crash.txt, last_trace.txt and a minidump whose stack runs through the caller. Output goes through WriteFile.
+void crashbundle_fatal(std::string_view what)
+{
+    char ring[512];
+    const size_t rn = what.size() < sizeof ring - 1 ? what.size() : sizeof ring - 1;
+    memcpy(ring, what.data(), rn);
+    ring[rn] = 0;
+    crashbundle_append(ring);
+    CONTEXT ctx;
+    RtlCaptureContext(&ctx);
+    EXCEPTION_RECORD rec;
+    memset(&rec, 0, sizeof rec);
+    rec.ExceptionCode = 0xE0004D46u;  // private "MC2 fatal" code
+    rec.ExceptionFlags = EXCEPTION_NONCONTINUABLE;
+#if defined(_M_X64)
+    rec.ExceptionAddress = reinterpret_cast<PVOID>(ctx.Rip);
+#endif
+    EXCEPTION_POINTERS ep;
+    ep.ExceptionRecord = &rec;
+    ep.ContextRecord = &ctx;
+    crashbundle_filter(&ep);
+}
+
 extern "C" void crashbundle_init(void)
 {
     if (g_cfg.initialized) return;
@@ -749,6 +776,7 @@ extern "C" void crashbundle_init(void)
     mc2_log_set_crash_sink(crashbundle_append);
     SetUnhandledExceptionFilter(crashbundle_filter);
     AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);
+    mc2::overlap::installFatalHandlers(crashbundle_fatal);
 }
 
 extern "C" void crashbundle_trigger_test_crash(void)

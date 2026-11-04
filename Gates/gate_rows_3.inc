@@ -23,6 +23,7 @@ L(Presence, "MC2_SHAPE_C_PARITY_CHECK", Bool, false, "terrain", "", "", passthro
 // its enum value (58).
 L(Presence, "MC2_SHOT_RESULTS", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_SIM_CLOCK_TRACE", Bool, false, "code", "", "", passthrough | verified),
+G("MC2_SIM_FAULT_INJECT", Int, 0, "code", "", "Test-only crash-bundle fault injection: 1 worker throw, 2 worker invalid-parameter, 3 hard overlap violation; 0 = off.", clampRange(0, 3) | passthrough | registry(Trace, "MC2_SIM_FAULT_INJECT", -1, false) | verified),
 // ── SIM-IDENTITY-HASH-1 ────────────────────────────────────────────────
 // Per-sim-frame world-state hash (mover positions / orientations / gesture
 // + anim phase / target ids) feeding the refuse-to-grade gate in

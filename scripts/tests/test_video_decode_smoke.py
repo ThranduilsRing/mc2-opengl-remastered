@@ -49,3 +49,18 @@ def test_end_row_real_pass_log_reaches_results():
     assert ok
     ok, why = v.judge(text.replace("resultsDone complete", "resultsDone"), require_results=True)
     assert not ok
+
+
+def test_graveyard_real_fail_log_names_drain_violation():
+    """Trimmed real log of the graveyard ordering row on an R1-revert build (retireRenderPacket before waitWorker) at AUDIT=2."""
+    ok, why = v.judge((FIXTURES / "video_smoke_graveyard_fail.txt").read_text(), min_retires=200)
+    assert not ok and "graveyard drain" in why
+
+
+def test_graveyard_real_pass_log_audits_drains():
+    """Trimmed real log of the same row on the fixed tree: 200+ audited drain calls, zero violation."""
+    text = (FIXTURES / "video_smoke_graveyard_pass.txt").read_text()
+    ok, why = v.judge(text, min_retires=200)
+    assert ok, why
+    ok, why = v.judge(text.replace("retire_calls=4200", "retire_calls=40").replace("retire_calls=2000", "retire_calls=40").replace("retire_calls=100", "retire_calls=40"), min_retires=200)
+    assert not ok and "ordering proof did not run" in why
