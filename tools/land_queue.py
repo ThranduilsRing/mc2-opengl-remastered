@@ -21,6 +21,8 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(HERE, "..", "scripts"))
+import console_child  # noqa: E402  (windowless children)
 DEFAULT_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 DEFAULT_QUEUE = os.environ.get("MC2_LAND_QUEUE", "A:/Games/mc2-ops/land_queue.json")
 NIFTY = "claude/nifty-mendeleev"
@@ -44,7 +46,8 @@ def save(path, state):
 
 
 def default_runner(cmd, cwd):
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, errors="replace")
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
     return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
 
 

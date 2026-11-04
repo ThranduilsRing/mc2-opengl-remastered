@@ -6,11 +6,14 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from tools import land_queue as lq  # noqa: E402
+import console_child  # noqa: E402
 
 
 def _git(root, *a):
-    return subprocess.run(["git", *a], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+    return subprocess.run(["git", *a], cwd=root, capture_output=True, text=True, check=True,
+                          **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
 def _real_git_else(result):
