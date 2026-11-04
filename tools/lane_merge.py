@@ -1036,9 +1036,9 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
 def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
-    Fast path (default, minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in a
-    disposable shared clone outside the main worktree. --with-link instead runs everything in the persistent
-    warm tree (PRECHECK_TREE, exclusive lock) and adds an incremental configure + link of mc2, mc2fx, mc2fx_preview.
+    Checks (minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in disposable shared
+    clones outside the main worktree. --with-link also runs, concurrently, an incremental configure + link of mc2, mc2fx,
+    mc2fx_preview in the persistent warm tree (PRECHECK_TREE); only that build holds its exclusive lock.
     with_link=None (default) turns the link on when the tip changes compiled inputs (compiled_inputs_changed); False (--no-link) opts out."""
     failed = []
     timings = []
@@ -1103,39 +1103,37 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
                 failed.append("inventories-stale:" + ",".join(changed))
         timed("inventories", inventory_fresh)
 
-        def run_steps(workdir):
-            for label, command in steps:
-                stage(label, workdir, command, (0, 3) if label == "tools_tests" else (0,))
-
-        if with_link:
+        def build_job():
+            # The warm tree lock covers only checkout + configure + link; ratchets, callers and pytest run in shared
+            # clones, so a queued precheck waits for a build (minutes), never for another precheck's whole run (W113: 1629 s).
             with TreeLock(PRECHECK_TREE + ".lock"):
                 timed("tree-checkout", lambda: ensure_precheck_tree(root, PRECHECK_TREE, commit))
-                run_steps(PRECHECK_TREE)
                 stage("configure", PRECHECK_TREE, py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])
                 stage("link-mc2", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])
                 stage("link-tools", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])
-        else:
-            # Independent chains run concurrently, each in its own shared clone (no shared generated files).
-            chains = [[s for s in steps if s[0] in {r[0] for r in RATCHETS}],
-                      [s for s in steps if s[0].startswith("callers") or s[0] in {r[0] for r in EARLY_ROWS}]] + [[s] for s in steps if s[0] in {p[0] for p in PYTHON_SUITES}]
-            with tempfile.TemporaryDirectory(prefix="lane-precheck-", dir=precheck_scratch_base(root)) as scratch:
-                def chain(i):
-                    snapshot = os.path.join(scratch, f"tree{i}")
-                    t0 = time.monotonic()
-                    r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
-                    if r.returncode:
-                        raise Stop(5, "clone failed: " + failure_summary(r.stdout))
-                    git_out(snapshot, "checkout", "--quiet", "--detach", commit)
-                    timings.append((f"clone{i}", time.monotonic() - t0))
-                    for label, command in chains[i]:
-                        stage(label, snapshot, command, (0, 3) if label == "tools_tests" else (0,))
-                from concurrent.futures import ThreadPoolExecutor
-                with ThreadPoolExecutor(max_workers=len(chains)) as pool:
-                    for f in [pool.submit(chain, i) for i in range(len(chains))]:
-                        try:
-                            f.result()
-                        except (Stop, OSError) as exc:
-                            failed.append(str(exc).replace("\n", " "))
+
+        # Independent chains run concurrently, each in its own shared clone (no shared generated files).
+        chains = [[s for s in steps if s[0] in {r[0] for r in RATCHETS}],
+                  [s for s in steps if s[0].startswith("callers") or s[0] in {r[0] for r in EARLY_ROWS}]] + [[s] for s in steps if s[0] in {p[0] for p in PYTHON_SUITES}]
+        with tempfile.TemporaryDirectory(prefix="lane-precheck-", dir=precheck_scratch_base(root)) as scratch:
+            def chain(i):
+                snapshot = os.path.join(scratch, f"tree{i}")
+                t0 = time.monotonic()
+                r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+                if r.returncode:
+                    raise Stop(5, "clone failed: " + failure_summary(r.stdout))
+                git_out(snapshot, "checkout", "--quiet", "--detach", commit)
+                timings.append((f"clone{i}", time.monotonic() - t0))
+                for label, command in chains[i]:
+                    stage(label, snapshot, command, (0, 3) if label == "tools_tests" else (0,))
+            from concurrent.futures import ThreadPoolExecutor
+            jobs = [lambda i=i: chain(i) for i in range(len(chains))] + ([build_job] if with_link else [])
+            with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+                for f in [pool.submit(job) for job in jobs]:
+                    try:
+                        f.result()
+                    except (Stop, OSError) as exc:
+                        failed.append(str(exc).replace("\n", " "))
     except (Stop, OSError) as exc:
         failed.append(str(exc).replace("\n", " "))
     print("precheck timing (s): " + "  ".join(f"{label}={secs:.0f}" for label, secs in timings)
