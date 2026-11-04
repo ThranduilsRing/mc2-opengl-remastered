@@ -346,7 +346,7 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
-        if not (row.get('head') == self.head
+        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head)))
                 and (offline or sha is not None and row.get('exe_sha') == sha)
                 and stage_passed(row.get('status', ''))):
             return False
@@ -503,6 +503,19 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
 
 # Unknown inputs deliberately retain every stage. Only proven independent domains
 # can waive game proofs; generators/build configuration retain full coverage.
+def head_delta_nonruntime(old, new):
+    """True when old..new touches only docs/tooling paths (change_domains; unknown paths count as engine). A runtime stage
+    that passed at `old` with the same exe sha and the same signature inputs is then still valid at `new`."""
+    if not old or not new:
+        return False
+    try:
+        out = subprocess.run(['git', 'diff', '--name-only', f'{old}..{new}'], cwd=ROOT, capture_output=True, text=True,
+                             check=True, **console_child.child_kwargs(redirected=True)).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return bool(out) and change_domains(out) <= {'docs', 'tooling'}
+
+
 def change_domains(paths):
     domains = set()
     for raw in paths:

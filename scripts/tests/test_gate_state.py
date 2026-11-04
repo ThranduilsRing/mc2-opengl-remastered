@@ -350,3 +350,21 @@ def test_cached_deploy_requires_actual_candidate_identity(journal, monkeypatch, 
     assert result == 0 and len(seen) == (1 if change == 'none' else 2)
     assert state.reused == (['deploy'] if change == 'none' else [])
     assert (target / 'identity').is_file()
+
+
+@pytest.mark.parametrize("paths,ok", [
+    (["docs/land-as-ready.md"], True),                       # doc
+    (["tests/callers.json"], True),                          # test fixture / inventory
+    (["scripts/tests/test_x.py"], True),                     # pytest file
+    (["scripts/run_smoke.py"], False),                       # runtime driver: engine
+    (["mclib/quad.cpp"], False),                             # C++
+    (["shaders/a.frag", "docs/a.md"], False),                # any runtime path poisons the set
+    (["data/missions/x.fit"], False),
+    (["some/unknown.bin"], False),                           # unknown stays engine
+    ([], False),                                             # no diff: not a delta we can vouch for
+])
+def test_stage_reuse_across_head_change_only_for_nonruntime_paths(monkeypatch, paths, ok):
+    done = types.SimpleNamespace(stdout="\n".join(paths))
+    monkeypatch.setattr(gate.subprocess, "run", lambda *a, **k: done)
+    assert gate.head_delta_nonruntime("old", "new") is ok
+    assert gate.head_delta_nonruntime("", "new") is False
