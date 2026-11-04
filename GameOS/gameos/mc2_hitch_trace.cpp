@@ -32,9 +32,9 @@ std::array<Clock::time_point, static_cast<size_t>(mc2_hitch::HitchSpanKind::kCou
 
 struct HitchInit {
     HitchInit() {
-        g_mc2HitchEnabled = false;
+        g_mc2HitchEnabled = mc2::gate::get<"MC2_HITCH_TRACE">();
         if (g_mc2HitchEnabled) {
-            const double v = 0.0f;   // row default 0 = keep the built-in threshold
+            const double v = mc2::gate::get<"MC2_HITCH_MS">();   // row default 0 = keep the built-in threshold
             if (v > 0.0) s_thresholdMs = v;
             mc2::fmt::print_err("[HITCH_INIT] enabled threshold={:.1f}ms\n", s_thresholdMs);
             fflush(stderr);

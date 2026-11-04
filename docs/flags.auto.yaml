@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 429
+gate_count: 438
 registry_entry_count: 124
-verified_count: 406
+verified_count: 415
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -905,6 +905,22 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
+  - name: MC2_FRAME_PASS_STATS
+    kind: Bool
+    default: false
+    rule: Exact1
+    owner: gameos
+    doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_FRAME_PASS_STATS_EVERY
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: ""
+    smoke_passthrough: true
+    verified: true
   - name: MC2_FX_FORCE_SPAWN
     kind: Enum
     default: ""
@@ -1051,6 +1067,22 @@ flags:
     kind: Int
     default: 0
     rule: Prefix
+    owner: gameos
+    doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_HITCH_MS
+    kind: Float
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_HITCH_TRACE
+    kind: Bool
+    default: false
+    rule: Presence
     owner: gameos
     doc: ""
     smoke_passthrough: true
@@ -1470,6 +1502,13 @@ flags:
     owner: code
     doc: "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path)."
     verified: true
+  - name: MC2_MECH_IMPORT_CLIP_DIAG
+    kind: Bool
+    default: false
+    rule: Presence
+    owner: mech
+    doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_FORCE_BONE
     kind: String
     default: "j_LThigh"
@@ -1489,6 +1528,13 @@ flags:
     default: 0
     rule: Prefix
     owner: code
+    doc: ""
+    verified: true
+  - name: MC2_MECH_IMPORT_FORCE_POSE
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: mech
     doc: ""
     verified: true
   - name: MC2_MECH_IMPORT_GPU
@@ -1938,6 +1984,22 @@ flags:
     doc: "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass."
     verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_PASS_ORDER, kind: Trace, order: -1, default_on: false}
+  - name: MC2_RENDER_PASS_TIME
+    kind: Bool
+    default: false
+    rule: Exact1
+    owner: gameos
+    doc: ""
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_RENDER_PASS_TIME_EVERY
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: ""
+    smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_PATH
     kind: Bool
     default: false
@@ -2569,6 +2631,13 @@ flags:
     doc: ""
     range: {lo: 0.05000000074505806, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     verified: true
+  - name: MC2_TERRAIN_LOD_CHUNK_FORCE_LOD
+    kind: Int
+    default: -1
+    rule: Prefix
+    owner: terrain
+    doc: ""
+    verified: true
   - name: MC2_TERRAIN_MATERIAL_LIB_FILE
     kind: String
     default: ""
@@ -3045,9 +3114,9 @@ flags:
   - name: MC2_VK_GPU_TIMESTAMPS
     kind: Bool
     default: false
-    rule: Presence
+    rule: Std
     owner: vk
-    doc: ""
+    doc: "GPU segment timestamps (verification/perf only): =1 arms, =0 or unset is off."
     smoke_passthrough: true
     verified: true
   - name: MC2_VK_LIGHTFEED_DEDUP

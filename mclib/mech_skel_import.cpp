@@ -38,7 +38,7 @@ bool rotationOnlyEnabled() {
 // clip/time dependence, so it fires even when clip playback is broken.
 //   =1 -> j_LThigh +90deg about local X    =2 -> +90 about local Y    =3 -> +90 about local Z
 int forcePoseMode() {
-    return 0;
+    return mc2::gate::get<"MC2_MECH_IMPORT_FORCE_POSE">();
 }
 std::string forcePoseBone() {
     return mc2::gate::str<"MC2_MECH_IMPORT_FORCE_BONE">();   // row default j_LThigh
@@ -198,7 +198,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         if (outDurTicks) *outDurTicks = 1.0;
         return true;
     }
-    const bool clipDiag = false;
+    const bool clipDiag = mc2::gate::get<"MC2_MECH_IMPORT_CLIP_DIAG">();
     const aiAnimation* anim = nullptr;
     for (unsigned a = 0; a < scene->mNumAnimations; ++a)
         if (clip == scene->mAnimations[a]->mName.C_Str()) { anim = scene->mAnimations[a]; break; }

@@ -150,6 +150,7 @@ L(Lead0Kill, "MC2_TERRAIN_LIGHTING_GPU", Bool, true, "terrain", "", "", passthro
 L(Lead0Kill, "MC2_TERRAIN_LOD_CHUNK", Bool, true, "terrain", "", "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path.", registry(Feature, "MC2_FEATURE_TERRAIN_LOD_CHUNK", -1, true) | verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIAG", Int, 0, "terrain", "", "", passthrough | verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", Float, 1.0, "terrain", "", "", rangeAbove(static_cast<double>(0.05f), 3.4028234663852886e38) | verified),
+P("MC2_TERRAIN_LOD_CHUNK_FORCE_LOD", Int, -1, "terrain", "", "", verified),
 G("MC2_TERRAIN_MATERIAL_LIB_FILE", String, "", "terrain", "", "", passthrough | verified),  // default not derivable from the tree
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar.
 // history: docs/gate-history.md#MC2_TERRAIN_OVERLAY_V2

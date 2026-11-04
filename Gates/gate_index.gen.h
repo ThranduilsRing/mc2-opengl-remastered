@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 429;
+inline constexpr std::size_t kGateCount = 438;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -128,6 +128,8 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FRAME_JOBS", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_FRAME_JOBS_BATCH", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAME_JOBS_WORKERS", Kind::Int, Rule::Prefix, {}},
+    {"MC2_FRAME_PASS_STATS", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_FRAME_PASS_STATS_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop|impact"},
     {"MC2_FX_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GLTF_AXIS", Kind::Int, Rule::Prefix, {}},
@@ -147,6 +149,8 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HDRI_SKY_AZ_OFFSET", Kind::Float, Rule::Prefix, {}},
     {"MC2_HEARTBEAT", Kind::Bool, Rule::Presence, {}},
     {"MC2_HEIGHT", Kind::Int, Rule::Prefix, {}},
+    {"MC2_HITCH_MS", Kind::Float, Rule::Prefix, {}},
+    {"MC2_HITCH_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_HUD_IMGUI_TABS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_HUD_READABILITY_V1", Kind::Bool, Rule::Lead0, {}},
     {"MC2_HUD_SCALE", Kind::Float, Rule::Prefix, {}},
@@ -198,9 +202,11 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MECH_BATCHER_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_FILL", Kind::Int, Rule::Prefix, {}},
     {"MC2_MECH_IMPORT_ANIMATE", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_MECH_IMPORT_CLIP_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_IMPORT_FORCE_BONE", Kind::String, Rule::Std, {}},
     {"MC2_MECH_IMPORT_FORCE_CLIP", Kind::String, Rule::Std, {}},
     {"MC2_MECH_IMPORT_FORCE_FRAME", Kind::Int, Rule::Prefix, {}},
+    {"MC2_MECH_IMPORT_FORCE_POSE", Kind::Int, Rule::Prefix, {}},
     {"MC2_MECH_IMPORT_GPU", Kind::Bool, Rule::Lead1, {}},
     {"MC2_MECH_IMPORT_GPU_LIFT", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_SKEL_BONE_DUMP", Kind::String, Rule::Std, {}},
@@ -258,6 +264,8 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RENDER_CONTRACT_ASSERT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_RENDER_PASS_CONTRACT_ASSERT", Kind::Bool, Rule::Lead1, {}},
     {"MC2_RENDER_PASS_ORDER", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_RENDER_PASS_TIME", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_RENDER_PASS_TIME_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_RENDER_PATH", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_RENDER_WATER_FASTPATH", Kind::Bool, Rule::Presence, {}},
@@ -338,6 +346,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_LOD_CHUNK", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_LOD_CHUNK_DIAG", Kind::Int, Rule::Prefix, {}},
     {"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", Kind::Float, Rule::Prefix, {}},
+    {"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD", Kind::Int, Rule::Prefix, {}},
     {"MC2_TERRAIN_MATERIAL_LIB_FILE", Kind::String, Rule::Std, {}},
     {"MC2_TERRAIN_OVERLAY_V2", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS", Kind::Bool, Rule::Lead0Kill, {}},
@@ -397,7 +406,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_FEED_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_FORCE_FAIL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_FRAMES_IN_FLIGHT", Kind::Int, Rule::Prefix, {}},
-    {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Presence, {}},
+    {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Std, {}},
     {"MC2_VK_LIGHTFEED_DEDUP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_MECH_FEED_NATIVE", Kind::Bool, Rule::Is01, {}},
     {"MC2_VK_MECH_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},

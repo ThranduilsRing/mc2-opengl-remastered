@@ -37,7 +37,7 @@ static const float LOD_DIST_THRESH[5] = {
 // shader/worldToClip/camera convention, NOT LOD/cull/skirt policy.
 static int lodForceLevel()
 {
-    static const int s_forceLod = -1;
+    static const int s_forceLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD">();
     return s_forceLod;
 }
 

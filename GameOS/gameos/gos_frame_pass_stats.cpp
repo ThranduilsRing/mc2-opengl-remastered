@@ -47,7 +47,7 @@ int emitEvery()
 {
     static int s_every = 0;
     if (s_every == 0) {
-        const int n = 0;
+        const int n = mc2::gate::get<"MC2_FRAME_PASS_STATS_EVERY">();
         s_every = (n > 0) ? n : 60;
     }
     return s_every;
@@ -75,7 +75,7 @@ void emitLine(unsigned long frameNo)
 static void initEnv()
 {
     if (s_inited) return;
-    s_envOn = false;
+    s_envOn = mc2::gate::get<"MC2_FRAME_PASS_STATS">();
     s_inited = true;
     if (s_envOn) {
         mc2::fmt::print_out("[FRAME_PASS_STATS v1] armed every={:d}\n", mc2::fmt::as_i32(emitEvery()));

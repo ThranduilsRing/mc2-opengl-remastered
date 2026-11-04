@@ -7537,7 +7537,7 @@
    "keys": [
     "env"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "RENDERER_FEATURES",
@@ -7556,7 +7556,7 @@
     "max_ssbo_bind",
     "max_tess_level"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "RENDER_BACKEND",

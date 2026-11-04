@@ -54,7 +54,7 @@ int emitEvery()
 {
     static int s_every = 0;
     if (s_every == 0) {
-        const int n = 0;
+        const int n = mc2::gate::get<"MC2_RENDER_PASS_TIME_EVERY">();
         s_every = (n > 0) ? n : 60;
     }
     return s_every;
@@ -118,7 +118,7 @@ void emitWindow()
 static void initEnv()
 {
     if (s_inited) return;
-    s_envOn = false;
+    s_envOn = mc2::gate::get<"MC2_RENDER_PASS_TIME">();
     s_inited = true;
     if (s_envOn) {
         mc2::fmt::print_out("[RENDER_PASS_TIME v1] armed every={:d}\n", mc2::fmt::as_i32(emitEvery()));
