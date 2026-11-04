@@ -20,3 +20,17 @@ def test_skipped_decode_fails():
 def test_played_passes():
     ok, _ = v.judge("[VIDEO] init: opened ./data/movies/V1A.bik (320x240, fps=15.00, audio=1)\n")
     assert ok
+
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+
+def test_judge_on_abort_shaped_log_fixture():
+    """Log shaped like the engine's real emit sites (sim_overlap.cpp violation(), mc2movie.cpp): a movie opened, then a hard abort."""
+    ok, why = v.judge((FIXTURES / "video_smoke_fail.txt").read_text())
+    assert not ok and "gos_NewEmptyTexture" in why
+
+
+def test_judge_on_pass_shaped_log_fixture():
+    ok, _ = v.judge((FIXTURES / "video_smoke_pass.txt").read_text())
+    assert ok

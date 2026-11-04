@@ -24,21 +24,26 @@ VIOLATION = re.compile(r"\[SIM_OVERLAP v1\] VIOLATION")
 OPENED = re.compile(r"\[VIDEO\] init: opened ")
 
 
-def judge(text: str) -> tuple[bool, str]:
+RESULTS_DONE = re.compile(r"\[RESULTS v1\] resultsDone complete ")
+
+
+def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
     """(passed, reason) for one mission's concatenated runner output + kept game log."""
     m = VIOLATION.search(text)
     if m:
         return False, "sim-overlap violation: " + text[m.start():m.start() + 160].splitlines()[0]
     if not OPENED.search(text):
         return False, "no '[VIDEO] init: opened' line: the comm video never decoded"
-    return True, "video opened, no sim-overlap violation"
+    if require_results and not RESULTS_DONE.search(text):
+        return False, "no '[RESULTS v1] resultsDone complete' line: the results path was never reached"
+    return True, "video opened, no sim-overlap violation" + (", results path reached" if require_results else "")
 
 
 def run_mission(exe: str, mission: str, duration: int, countdown: bool = False) -> tuple[bool, str]:
     env = dict(os.environ, MC2_BOOT_VIDEO="1", MC2_SMOKE_REQUIRE_FINGERPRINT=os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1"))
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
-        env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="15", MC2_DIAG_TAGS="RESULTS")
+        env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="12", MC2_DIAG_TAGS="RESULTS")
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
     proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
@@ -48,7 +53,7 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False) 
     if m:
         for log in Path(m.group(1).strip()).glob("*.log"):
             text += "\n" + log.read_text(encoding="utf-8", errors="replace")
-    ok, why = judge(text)
+    ok, why = judge(text, require_results=countdown)
     if proc.returncode != 0:
         ok, why = False, f"run_smoke rc={proc.returncode}; {why}"
     return ok, why

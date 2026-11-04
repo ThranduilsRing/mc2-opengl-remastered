@@ -139,6 +139,8 @@ bool ControlGui::resultsDone()
 	}
 	if( ( renderStatusInfo && objectiveTime > Team::home->objectives.Count() + 4 ) )
 	{
+		if (mc2_diag::tagRequested("RESULTS"))
+			mc2::fmt::print_out("[RESULTS v1] resultsDone complete objectiveTime={:.2f} forceGroupBar.removeAll next\n", static_cast<double>(objectiveTime));
 		// need to empty out force group bar now... (icons may own a live pilot
 		// video; ForceGroupBar::render reads them on Main, so commit on Main)
 		if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, [this] { forceGroupBar.removeAll(); }))
