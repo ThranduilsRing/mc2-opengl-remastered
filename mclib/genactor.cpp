@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 //---------------------------------------------------------------------------
 //
@@ -18,7 +19,7 @@
 
 //-----------------------------------------------------------------------------
 // class GenericAppearanceType
-void GenericAppearanceType::init (const char * fileName)
+void GenericAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 

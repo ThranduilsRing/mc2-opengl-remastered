@@ -20,6 +20,7 @@
 #include"lz.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<zlib.h>
 
 //#ifndef _MBCS
@@ -210,7 +211,7 @@ PacketFile::~PacketFile (void)
 }
 
 //---------------------------------------------------------------------------
-long PacketFile::open (const char* fName, FileMode _mode, long numChild, bool doNotLower)
+long PacketFile::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotLower)
 {
 	long openResult = File::open(fName, _mode, numChild, doNotLower);
 	
@@ -236,7 +237,7 @@ long PacketFile::open (FilePtr _parent, unsigned long fileSize, long numChild)
 }
 		
 //---------------------------------------------------------------------------
-long PacketFile::create (const char* fName)
+long PacketFile::create (mc2::czstring fName)
 {
 	long openResult = File::create(fName);
 	
@@ -249,7 +250,7 @@ long PacketFile::create (const char* fName)
 	return(openResult);
 }
 
-long PacketFile::createWithCase(const char* fName )
+long PacketFile::createWithCase(mc2::czstring fName )
 {
 	long openResult = File::createWithCase(fName);
 	

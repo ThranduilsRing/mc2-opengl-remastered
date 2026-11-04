@@ -17,6 +17,7 @@
 #ifndef MC2_MECH_TEXNAME_DERIVE_H
 #define MC2_MECH_TEXNAME_DERIVE_H
 
+#include "mc2_czstring.h"
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -36,7 +37,7 @@ inline std::string stripPath(std::string_view p) {
 
 // Damage/destruction/UI parts dropped from the intact bind-pose import. Replica
 // of skelMeshDropped.
-inline bool isDroppedMeshName(const char* n) {
+inline bool isDroppedMeshName(mc2::czstring n) {
     if (!n) return false;
     std::string s = n;
     for (char& c : s) c = static_cast<char>(((c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c));

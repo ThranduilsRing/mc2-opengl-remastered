@@ -25,6 +25,7 @@
 #include"msl.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
 #include "sim_overlap.h"
 #include "math/mc2_xform.h"  // mc2::math::quatXYZW
@@ -125,7 +126,7 @@ class GVAppearanceType : public AppearanceType
 			destroy();
 		}
 
-		virtual void init (const char *fileName);
+		virtual void init (mc2::czstring fileName);
 		
 		virtual void destroy (void);
 		
@@ -439,7 +440,7 @@ class GVAppearance : public ObjectAppearance
 
 		virtual long getLowestWeaponNode (void);
 		
-		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (mc2::czstring nodeName);
 		
  		virtual bool PerPolySelect (long mouseX, long mouseY);
 		// UI preview (SimpleCamera): sets the paint texture and highlight, returns the shape for TG_MultiShape::PreviewDraw.

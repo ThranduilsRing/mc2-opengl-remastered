@@ -20,6 +20,7 @@ ObjectAppearance.h	: Interface for the ObjectAppearance component, building and 
 #include"objstatus.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<memory>
 #include<string>
 
@@ -50,7 +51,7 @@ struct _NodeData
 	_NodeData (const _NodeData&) = delete;
 	_NodeData& operator= (const _NodeData&) = delete;
 
-	void setNodeId (const char *name)
+	void setNodeId (mc2::czstring name)
 	{
 		nodeName = name ? name : "";
 		nodeId = nodeName.data();

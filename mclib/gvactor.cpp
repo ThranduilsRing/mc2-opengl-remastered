@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------
 //
 //	gvactor.cpp - This file contains the code for the Ground Vehicle Actor class
+#include "mc2_czstring.h"
 #include "content_error.h"
 //
 //	MechCommander 2
@@ -42,7 +43,7 @@ static uint32_t s_lcSkipCountGV = 0u;
 // Sensor shape loaders (sensorTriangleShape, sensorCircleShape) use this so
 // a_contacts.tga can be absent in a slim deploy while the .ktx2 sidecar serves
 // the texture via route-2 in txmmgr.cpp.
-static bool textureOrKtxSidecarExists(const char* tgaPath)
+static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
@@ -62,7 +63,7 @@ TG_TypeMultiShapePtr GVAppearanceType::SensorTriangleShape = nullptr;
 TG_TypeMultiShapePtr GVAppearanceType::SensorCircleShape = nullptr;
 //-----------------------------------------------------------------------------
 // class GVAppearanceType
-void GVAppearanceType::init (const char * fileName)
+void GVAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 

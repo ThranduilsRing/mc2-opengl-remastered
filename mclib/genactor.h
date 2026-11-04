@@ -29,6 +29,7 @@
 #include"objectappearance.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"memfunc.h"
 
 //**************************************************************************************
@@ -140,7 +141,7 @@ class GenericAppearanceType : public AppearanceType
 			return false;
 		}
 		
-  		virtual void init (const char *fileName);
+  		virtual void init (mc2::czstring fileName);
 		
 		virtual void destroy (void);
 };

@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "mc2_czstring.h"
 #include "gosfx/gosfx.hpp"
 #include <stuff/stuff.hpp>
 
@@ -32,7 +33,7 @@ public:
     static LightManager* Instance;
 
     virtual gosFX::Light*
-        MakePointLight(const char* light_map = nullptr);
+        MakePointLight(mc2::czstring light_map = nullptr);
 
     struct Info {
         Stuff::RGBColor

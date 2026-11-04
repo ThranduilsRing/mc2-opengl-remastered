@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
@@ -961,7 +962,7 @@ bool GVAppearance::playDestruction (void)
 	return false;		//We didn't have a destruct effect.  Tell the object to play its default.
 }
 
-glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
+glm::vec3 GVAppearance::getNodeNamePosition (mc2::czstring nodeName)
 {
     if (!simPresentationPass && simPose->ready) {
         const auto node = simulationShape_ ? simulationShape_->GetNodeNameId(nodeName) : -1;

@@ -21,6 +21,7 @@
 // callers emit from the main/render thread.
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include <cstring>
 #include <format>
 #include <string>
@@ -31,7 +32,7 @@
 
 // Emit one marker line to stdout (appends '\n', flushes so smoke runners see
 // it before a crash) AND mirrors the raw line to the registered sink, if any.
-void mc2AuditLine(const char* line);
+void mc2AuditLine(mc2::czstring line);
 
 // std::format convenience over mc2AuditLine (formatted line capped at 1024).
 template <class... Args>
@@ -48,9 +49,9 @@ void mc2AuditLinef(std::format_string<Args...> fmt, Args&&... args)
 // every repeat. Per-tag capacity is 64 keys (kLogLineCap precedent,
 // GameOS/gameos/mc2_verify.cpp): once a tag's set is full, unseen keys also
 // return false, so a hot loop cannot flood stdout.
-bool mc2AuditOnce(const char* tag, unsigned long long key);
+bool mc2AuditOnce(mc2::czstring tag, unsigned long long key);
 
 // Optional diagnostic mirror (weak coupling — see header comment). The sink
 // receives the raw marker line (no trailing newline). Pass nullptr to clear.
-using Mc2AuditSink = void(*)(const char* line);
+using Mc2AuditSink = void(*)(mc2::czstring line);
 void mc2AuditSetSink(Mc2AuditSink sink);
