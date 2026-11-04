@@ -1,4 +1,5 @@
 {
+  "tools/test_tree_hash.py": "Pytest-discovered by the tools_tests precheck stage; guards tools/tree_hash_baseline.json (TreeIsland S0).",
   "tools/smoke/stall_inject.py": "Manual dev harness: proves the smoke sim-time extension by suspending mc2 mid-run; run by hand.",
   "scripts/tests/test_video_decode_smoke.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_rgp_capture.py":"Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
@@ -122,6 +123,7 @@
   "scripts/tests/test_gate_keep_candidate.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); merge_gate --keep-candidate.",
   "scripts/tests/test_fast_precheck_rules.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); ungated log tags, auto link, perf_counter-only WARN.",
   "scripts/tests/test_merge_speedups.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane_merge quick rows, ninja_build pdb guard.",
+  "scripts/tests/test_player_path.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); player-path scenario parsing and save-redirect guards.",
   "scripts/tests/test_deploy_bootstrap.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); deploy --bootstrap-from.",
   "scripts/tests/test_deploy_build_layout.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_deploy_coherence.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",

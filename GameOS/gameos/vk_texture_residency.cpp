@@ -1,5 +1,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
+#include "hitch_stats.h"
 #include "present_thread.h"
 #include "vk_texture_pending.h"
 #include <tracy/Tracy.hpp>
@@ -309,6 +310,7 @@ void TextureResidency::pump() {
     });
     if (uploading_.size() > firstNew) {
         ZoneScopedN("TextureResidency.SubmitBatch");
+        mc2_hitch2::Scope hitchResidency("residency.submit");
         // One command buffer and submit for the ready batch. Each image and
         // staging owner stays queued until this shared completion ticket retires.
         const GpuTicket ticket = ctx_.flushUploads();

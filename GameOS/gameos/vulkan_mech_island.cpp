@@ -77,6 +77,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <chrono>
 #include <map>
 #include <tuple>
@@ -240,6 +241,16 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe, depthPipe;
     mc2vk::OwnedBuffer vbo, ibo;
+    // Mech-lab panel pass: the same skinned material path, drawn into the UI preview target (RGBA8 color LOAD over the
+    // legacy preview pass, own cleared depth). Fail-soft: a missing variant leaves previewReady false and the world path intact.
+    mc2vk::OwnedShaderModule previewFrag;
+    mc2vk::OwnedRenderPass previewRpass;
+    mc2vk::OwnedPipeline previewPipe, previewDepthPipe, backdropPipe;
+    mc2vk::OwnedShaderModule backdropVert, backdropFrag;
+    mc2vk::OwnedFramebuffer previewFb;
+    VkImageView previewFbViews[3] = {};
+    int previewFbW = 0, previewFbH = 0;
+    bool previewReady = false;
 
     ~MechIsland() override { gpuTimer.destroy(); }
 };
@@ -711,6 +722,80 @@ bool init_island(MechIsland* s, int w, int h) {
             setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "mech.pipe");
+
+        // Mech-lab panel variants: same layout/state against the preview render pass (RGBA8 color + normal, D32 depth).
+        s->previewReady = false;
+        s->previewFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_preview.frag.spv"));
+        if (s->previewFrag) {
+            VkAttachmentDescription patt[3]{};
+            for (auto& a : patt) {
+                a.samples = VK_SAMPLE_COUNT_1_BIT;
+                a.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; a.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            }
+            // Color: LOAD the legacy preview pass's output (it leaves the target SHADER_READ_ONLY for the UI).
+            patt[0].format = VK_FORMAT_R8G8B8A8_UNORM;
+            patt[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; patt[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            patt[0].initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; patt[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            // The normal output is unused by the panel; depth is private to this pass (reverse-Z clear 0).
+            patt[1].format = VK_FORMAT_R8G8B8A8_UNORM;
+            patt[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; patt[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            patt[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; patt[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            patt[2].format = VK_FORMAT_D32_SFLOAT;
+            patt[2].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; patt[2].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            patt[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; patt[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            VkAttachmentReference pColor[2] = {{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
+            VkAttachmentReference pDepth{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+            VkSubpassDescription psub{};
+            psub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            psub.colorAttachmentCount = 2; psub.pColorAttachments = pColor; psub.pDepthStencilAttachment = &pDepth;
+            VkSubpassDependency pdeps[2]{};
+            pdeps[0].srcSubpass = VK_SUBPASS_EXTERNAL; pdeps[0].dstSubpass = 0;
+            pdeps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+            pdeps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            pdeps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            pdeps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            pdeps[1].srcSubpass = 0; pdeps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+            pdeps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            pdeps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            pdeps[1].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; pdeps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            VkRenderPassCreateInfo prci{};
+            prci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            prci.attachmentCount = 3; prci.pAttachments = patt;
+            prci.subpassCount = 1; prci.pSubpasses = &psub;
+            prci.dependencyCount = 2; prci.pDependencies = pdeps;
+            bool ok = mc2vk::create(s->previewRpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &prci, nullptr, h); });
+            gp.renderPass = s->previewRpass.get();
+            // Color variant first (current state = color/EQUAL), then the depth prepass variant.
+            stages[1].module = s->previewFrag.get();
+            ok = ok && mc2vk::create(s->previewPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+            vin.vertexAttributeDescriptionCount = 4; vin.pVertexAttributeDescriptions = depthVia;
+            stages[0].module = s->depthVert.get(); stages[1].module = s->depthFrag.get();
+            for (auto& attachment : cba) attachment.colorWriteMask = 0;
+            ds.depthWriteEnable = VK_TRUE; ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+            ok = ok && mc2vk::create(s->previewDepthPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+            // Panel backdrop: fullscreen triangle over the panel viewport, alpha-blended into colour 0 only, no depth.
+            s->backdropVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_backdrop.vert.spv"));
+            s->backdropFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_backdrop.frag.spv"));
+            if (s->backdropVert && s->backdropFrag) {
+                stages[0].module = s->backdropVert.get(); stages[1].module = s->backdropFrag.get();
+                vin.vertexBindingDescriptionCount = 0; vin.vertexAttributeDescriptionCount = 0;
+                ds.depthTestEnable = VK_FALSE; ds.depthWriteEnable = VK_FALSE;
+                cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                cba[0].blendEnable = VK_TRUE;
+                cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                cba[0].colorBlendOp = VK_BLEND_OP_ADD;
+                cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+                cba[1].colorWriteMask = 0;
+                mc2vk::create(s->backdropPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+                if (s->backdropPipe) mc2vk::nameObject(s->device, s->backdropPipe.get(), "mech.preview.backdrop");
+            }
+            s->previewReady = ok;
+            if (ok) { mc2vk::nameObject(s->device, s->previewPipe.get(), "mech.preview"); mc2vk::nameObject(s->device, s->previewDepthPipe.get(), "mech.preview.depth"); }
+        }
+        if (!s->previewReady) vlog("mech-lab preview variant unavailable (mech_preview.frag.spv / pipeline) -- lab keeps the CPU mech draw.");
     }
 
     s->inited = true;
@@ -1114,6 +1199,220 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
             feed.instanceCount, feed.boneCount, g_health.runs, g_health.stageUs,
             g_health.drawUs, us_fence_wait, g_health.totalUs);
         std::fflush(stderr);
+    }
+    return 1;
+}
+
+// ---- Mech-lab panel pass ------------------------------------------------------------------------------------------------
+namespace {
+bool g_previewPending = false;
+bool g_previewUnusable = false;   // latched: a preview init/record failure keeps the lab on its CPU mech draw
+Mc2MechPreviewRequest g_previewReq{};
+
+// First occurrence of each transient skip reason (the lab then keeps its CPU draw that frame).
+int previewSkip(std::string_view why) {   // callers pass string literals
+    static const char* s_last = nullptr;
+    if (why.data() != s_last) { s_last = why.data(); vlog("mech-lab preview skipped this frame (%.*s) -- CPU mech draw stays on.", int(why.size()), why.data()); }
+    return 0;
+}
+
+int previewFail(std::string_view why) {
+    g_previewUnusable = true;
+    vlog("mech-lab preview disabled (%.*s) -- the lab keeps the CPU mech draw.", int(why.size()), why.data());
+    return 0;
+}
+
+// Depth prepass + material runs into the preview framebuffer, viewport/scissor = the panel rect.
+bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFeed& feed,
+                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h) {
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+    VkClearValue clears[3]{};
+    clears[2].depthStencil = {0.0f, 0};   // reverse-Z far
+    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rbi.renderPass = s->previewRpass.get(); rbi.framebuffer = s->previewFb.get();
+    rbi.renderArea = {{0, 0}, {uint32_t(w), uint32_t(h)}};
+    rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.MechPreview");
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    const auto& q = g_previewReq;
+    // The request rect is in the panel's fixed 800x600 logical space (y down), the space the legacy preview pass
+    // projects with (vulkan_legacy_shape_island.cpp, proj 2/800 and -2/600); the target is that space scaled to w x h
+    // and stores rows bottom-up (drawPreviewToPanel flips v), so the rect's top edge sits at row h - vpY * sy.
+    const float sx = float(w) / 800.0f, sy = float(h) / 600.0f;
+    const float fx = float(q.vpX) * sx, fw = float(q.vpW) * sx, fh = float(q.vpH) * sy;
+    const float fy = float(h) - float(q.vpY + q.vpH) * sy;
+    const int x0 = std::clamp(int(fx), 0, w - 1), y0 = std::clamp(int(fy), 0, h - 1);
+    const int x1 = std::clamp(int(fx + fw + 0.5f), x0 + 1, w), y1 = std::clamp(int(fy + fh + 0.5f), y0 + 1, h);
+    // The viewport is the full panel rect (it may hang off the target); the scissor clips it to the target.
+    VkViewport vp{fx, fy, fw, fh, 0.0f, 1.0f};
+    VkRect2D scissor{{x0, y0}, {uint32_t(x1 - x0), uint32_t(y1 - y0)}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    if (s->backdropPipe && !runSets.empty()) {
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &runSets[0], 5, dynOffsets);
+        vkCmdDraw(cb, 3, 1, 0, 0);
+    }
+    VkDeviceSize vboOff = 0;
+    const VkBuffer vertexBuffer = s->vbo.get();
+    vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
+    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
+    for (const VkPipeline pipe : {s->previewDepthPipe.get(), s->previewPipe.get()}) {
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        VkDescriptorSet bound = VK_NULL_HANDLE;
+        for (uint32_t r = 0; r < feed.runCount; ++r) {
+            const Mc2MechDrawRun& run = feed.runs[r];
+            if (!run.indexCount || !run.instanceCount) continue;
+            if (runSets[r] != bound) {
+                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &runSets[r], 5, dynOffsets);
+                bound = runSets[r];
+            }
+            const MechRunPC pc{run.materialFlags, 0, 0};
+            vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+            vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
+        }
+    }
+    vkCmdEndRenderPass(cb);
+    gpuScope.end();
+    return vkEndCommandBuffer(cb) == VK_SUCCESS;
+}
+}  // namespace
+
+extern "C" void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r) {
+    g_previewPending = r != nullptr;
+    if (r) g_previewReq = *r;
+}
+
+extern "C" int mc2_vk_mech_preview_usable(void) { return (g_previewUnusable || g_mechSessionDeclined) ? 0 : 1; }
+
+namespace { bool g_previewDrewLast = false; }
+extern "C" int mc2_vk_mech_preview_drew_last(void) { return g_previewDrewLast ? 1 : 0; }
+
+static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h);
+extern "C" int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, int w, int h) {
+    if (!g_previewPending) return 0;
+    const int drew = mech_preview_flush_impl(colorView, normalView, depthView, w, h);
+    g_previewDrewLast = drew != 0;
+    return drew;
+}
+
+static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h) {
+    if (!g_previewPending) return 0;
+    g_previewPending = false;
+    if (g_previewUnusable || g_mechSessionDeclined) return 0;
+    if (!colorView || !normalView || !depthView || w <= 0 || h <= 0) return previewSkip("no_preview_target");
+    ZoneScopedN("VK-mech-preview");
+    const Mc2MechPreviewRequest& q = g_previewReq;
+    Mc2MechFrameFeed feed{};
+    if (!mc2_mech_island_get_frame_feed(&feed) || !feed.instances64 || !feed.instanceCount || !feed.runs || !feed.runCount) return previewSkip("no_frame_feed");
+
+    mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const MechIsland* parked = parkedIsland(); parked && (parked->w != q.sceneW || parked->h != q.sceneH))
+        rctx.retireIsland(mc2vk::IslandSlot::Mech);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<MechIsland>();
+        if (!init_island(fresh.get(), q.sceneW, q.sceneH)) {
+            rctx.waitIdle("mech_preview_init_failure");
+            // A build-phase failure is permanent; a readiness gate (context / shared GBuffer) retries next frame.
+            return g_mechInitReachedBuild ? previewFail(g_health.fallbackReason) : previewSkip("island_not_ready");
+        }
+        islandSlot() = std::move(fresh);
+    }
+    MechIsland* s = parkedIsland();
+    if (s->disabled || !s->inited) return previewSkip("island_disabled");
+    if (!s->previewReady) return previewFail("preview_variant_missing");
+    if (!upload_geometry_once(s) || !ensure_dummy_scheme(s)) return previewSkip("geometry_upload");
+
+    const VkDeviceSize ringAlign = rctx.frameAlignment();
+    const VkDeviceSize instBytes = VkDeviceSize(feed.instanceCount) * 64ull;
+    const VkDeviceSize boneBytes = VkDeviceSize(feed.boneCount ? feed.boneCount : 1) * 64ull;
+    const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
+    const VkDeviceSize boneOff = mc2vk::alignUp(instOff + instBytes, ringAlign);
+    const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + sizeof(gos_terrain_lighting::GpuTerrainLight));
+    if (!mainSpan) return previewSkip("frame_alloc");
+    uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
+    const uint32_t par = rctx.frameContext().slot;
+    if (!rctx.wait(s->submitted[par], 5000000000ull, "mech preview slot")) return previewFail("slot_timeout");
+
+    std::memcpy(mainPtr + instOff, feed.instances64, size_t(instBytes));
+    if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, size_t(feed.boneCount * 64ull));
+    std::memset(mainPtr + poolOff, 0, sizeof(gos_terrain_lighting::GpuTerrainLight));
+    mc2vk::FrameAlloc lightSpan;
+    if (s->wantLighting && q.lights && q.lightBytes) {
+        lightSpan = rctx.frameAlloc(VkDeviceSize(q.lightBytes));
+        if (lightSpan) std::memcpy(lightSpan.ptr, q.lights, size_t(q.lightBytes));
+    }
+
+    const VkDescriptorSet dummySet = get_scheme_set(s, 0, 0, 0, par);
+    std::vector<VkDescriptorSet> runSets(feed.runCount, dummySet);
+    s->materialReady = false;
+    for (uint32_t r = 0; s->wantMaterial && r < feed.runCount; ++r) {
+        const auto& run = feed.runs[r];
+        if (!run.indexCount || !run.instanceCount) continue;
+        if (const auto set = get_scheme_set(s, run.slot0Tex, run.aoTex, run.normalTex, par)) runSets[r] = set;
+    }
+
+    { MechFrameUBO u{};
+      std::memcpy(u.worldToClipGL, q.worldToClipGL, sizeof(u.worldToClipGL));
+      u.objectDepthBias = 0.0f;
+      u.materialReady = (s->wantMaterial && s->materialReady) ? 1 : 0;
+      u.lightingReady = lightSpan ? 1 : 0;
+      u.sunAxisMc2Fix = mc2::options::current().sunAxisFix ? 1 : 0;
+      u.fogColorRGB[3] = q.exposure;   // MECH_PREVIEW: panel exposure (the world pass leaves it 0)
+      // Backdrop (mech_backdrop.frag): feet centre and contact-shadow ellipse radii in panel-rect uv, y down.
+      if (q.groundH > 1.0f && q.vpW > 0 && q.vpH > 0) {
+          u.poolF[0] = (q.groundX - float(q.vpX)) / float(q.vpW);
+          u.poolF[1] = (q.groundY - float(q.vpY)) / float(q.vpH);
+          u.poolF[2] = 0.30f * q.groundH / float(q.vpW);
+          u.poolF[3] = 0.045f * q.groundH / float(q.vpH);
+      }
+      for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = q.cameraWorldPos[k];
+      u.shadeA[0] = feed.ambientStrength;  u.shadeA[1] = feed.specularStrength;
+      u.shadeA[2] = feed.metalRoughness;   u.shadeA[3] = feed.glassRoughness;
+      u.shadeB[0] = feed.glassLumaThresh;  u.shadeB[1] = feed.glassMaxChanThresh;
+      u.shadeB[2] = feed.importedGamma;    u.shadeB[3] = feed.importedAlbedoScale;
+      u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
+      static const int mechFill = mc2::gate::get<"MC2_MECH_FILL">();
+      u.miscI[1] = mechFill;
+      const auto& ambient = visualTuning_environment().sky.hemisphereSky;
+      for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
+      std::memcpy(mainPtr, &u, sizeof(u)); }
+    sync_ring_bindings(s, par, mainSpan, lightSpan);
+    const uint32_t dynOffsets[5] = {
+        uint32_t(mainSpan.offset), uint32_t(mainSpan.offset + instOff), uint32_t(mainSpan.offset + boneOff),
+        uint32_t(lightSpan ? lightSpan.offset : mainSpan.offset), uint32_t(mainSpan.offset + poolOff)};
+
+    // The preview target can be rebuilt (panel resize / texture service reset): rebuild the framebuffer on any change.
+    const VkImageView views[3] = {static_cast<VkImageView>(colorView), static_cast<VkImageView>(normalView), static_cast<VkImageView>(depthView)};
+    if (!s->previewFb || s->previewFbW != w || s->previewFbH != h || !std::equal(views, views + 3, s->previewFbViews)) {
+        for (const auto& t : s->submitted)
+            if (s->previewFb && !rctx.wait(t, 5000000000ull, "mech preview fb rebuild")) return previewFail("fb_rebuild_timeout");
+        s->previewFb.reset();
+        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fci.renderPass = s->previewRpass.get(); fci.attachmentCount = 3; fci.pAttachments = views;
+        fci.width = uint32_t(w); fci.height = uint32_t(h); fci.layers = 1;
+        if (!mc2vk::create(s->previewFb, s->device, [&](VkFramebuffer* f) { return vkCreateFramebuffer(s->device, &fci, nullptr, f); }))
+            return previewFail("framebuffer_failed");
+        std::copy(views, views + 3, s->previewFbViews);
+        s->previewFbW = w; s->previewFbH = h;
+    }
+
+    VkCommandBuffer cb = s->cbuf[par];
+    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h)) return previewFail("record_failed");
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) return previewFail("submit_failed");
+    s->submitted[par] = rctx.tracker().now();
+    static bool s_firstOk = false;
+    if (!s_firstOk) {
+        s_firstOk = true;
+        vlog("first mech-lab panel draw: inst=%u bones=%u runs=%u target=%dx%d panel=%d,%d %dx%d material=%d lighting=%d",
+             feed.instanceCount, feed.boneCount, feed.runCount, w, h, q.vpX, q.vpY, q.vpW, q.vpH,
+             s->materialReady ? 1 : 0, lightSpan ? 1 : 0);
     }
     return 1;
 }

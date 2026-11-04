@@ -4,6 +4,7 @@
 #include "abl_script_events.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "score_sort.h"
+#include "tick_commit.h"
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
@@ -170,6 +171,12 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 	return(defenders[bestTarget]);
 }
 
+// ABL runs on the sim worker; draw_screen reads eye on Main. Commit at the join.
+template<class F> static void eyeDefer(F f)
+{
+	if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, f)) f();
+}
+
 void execSetMovieMode (void) 
 {
 	//	SetMovieMode
@@ -178,7 +185,7 @@ void execSetMovieMode (void)
 	//		RETURN: NONE
 
 	if (eye)
-		eye->setMovieMode();
+		eyeDefer([=] { if (eye) eye->setMovieMode(); });
 }
 
 void execEndMovieMode (void) 
@@ -189,7 +196,7 @@ void execEndMovieMode (void)
 	//		RETURN: NONE
 
 	if (eye)
-		eye->endMovieMode();
+		eyeDefer([=] { if (eye) eye->endMovieMode(); });
 }
 
 void execGetGeneralAlarm (void) 
@@ -223,7 +230,7 @@ void execFadeToColor (void)
 	DWORD fadeTime = ABLi_popReal();
 	
 	if (eye)
-		eye->fadeToColor(fadeColor,fadeTime);
+		eyeDefer([=] { if (eye) eye->fadeToColor(fadeColor,fadeTime); });
 }
 
 void execForceMovieEnd (void)
@@ -274,7 +281,7 @@ void execSetCameraPosition(void) {
 	result.z = camPos[2];
 	
  	if (eye)
-		eye->setPosition(result,false);
+		eyeDefer([=] { if (eye) eye->setPosition(result,false); });
 }
 
 void execSetCameraGoalPosition (void) {
@@ -294,8 +301,7 @@ void execSetCameraGoalPosition (void) {
 	result.z = camPos[2];
 	
  	if (eye) {
-		eye->setGoalPosition(result);
-		eye->setGoalPosTime(time);
+		eyeDefer([=] { if (eye) { eye->setGoalPosition(result); eye->setGoalPosTime(time); } });
 	}
 }
 
@@ -356,7 +362,7 @@ void execSetCameraRotation (void) {
 	result.z = camRot[2];
  	
 	if (eye)
-		eye->setRotation(result);
+		eyeDefer([=] { if (eye) eye->setRotation(result); });
 }
 
 void execSetCameraGoalRotation (void) {
@@ -376,8 +382,7 @@ void execSetCameraGoalRotation (void) {
 	result.z = camRot[2];
 	
  	if (eye) {
-		eye->setGoalRotation(result);
-		eye->setGoalRotTime(time);
+		eyeDefer([=] { if (eye) { eye->setGoalRotation(result); eye->setGoalRotTime(time); } });
 	}
 }
 
@@ -427,7 +432,7 @@ void execSetCameraZoom (void) {
 	float camFOV = ABLi_popReal();
 
  	if (eye)
-		eye->setFieldOfView(camFOV);
+		eyeDefer([=] { if (eye) eye->setFieldOfView(camFOV); });
 }
 
 void execGetCameraGoalZoom (void) {
@@ -455,7 +460,7 @@ void execSetCameraGoalZoom (void) {
 	float time = ABLi_popReal();
 
  	if (eye)
-		eye->setFieldOfViewGoal(camFOV, time);
+		eyeDefer([=] { if (eye) eye->setFieldOfViewGoal(camFOV, time); });
 }
 
 void execSetCameraVelocity (void) {
@@ -478,7 +483,7 @@ void execSetCameraVelocity (void) {
 	result.z = camVel[2];
 	
  	if (eye)
-		eye->setVelocity(result);
+		eyeDefer([=] { if (eye) eye->setVelocity(result); });
 }
 
 void execGetCameraVelocity (void) {
@@ -524,8 +529,7 @@ void execSetCameraGoalVelocity (void) {
 	result.z = camVel[2];
 	
  	if (eye) {
-		eye->setGoalVelocity(result);
-		eye->setGoalVelTime(time);
+		eyeDefer([=] { if (eye) { eye->setGoalVelocity(result); eye->setGoalVelTime(time); } });
 	}
 }
 
@@ -561,7 +565,7 @@ void execSetCameraLookObject (void) {
 	long objectId = ABLi_popInteger();
 
  	if (eye)
-		eye->setCameraTargetId(objectId);
+		eyeDefer([=] { if (eye) eye->setCameraTargetId(objectId); });
 }
 
 void execGetCameraLookObject (void) {
@@ -645,7 +649,9 @@ void execFreezeGUI (void)
 	// Returns NOTHING.
 	
 	bool guiFlag = ABLi_popBoolean();
-	mission->missionInterface->freezeGUI(guiFlag);
+	auto* mi = mission->missionInterface;
+	if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, [mi, guiFlag] { mi->freezeGUI(guiFlag); }))
+		mi->freezeGUI(guiFlag);
 }
 
 void execLogisticsScreenId (void)

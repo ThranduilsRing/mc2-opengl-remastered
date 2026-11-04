@@ -135,3 +135,10 @@ shaders/vulkan/legacy_shape_tier1.frag::oGBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 # GBuffer1 = rc_gbuffer1_shadowHandled_flatUp(): up normal, alpha 1.0.
 # The vegetation pipeline alone enables all four attachment-1 write bits;
 # billboard, tube and mesh pipelines keep attachment 1 masked off.
+
+# MECH-LAB PREVIEW BACKDROP (mech_backdrop.frag). vulkan_mech_island.cpp:791 sets
+# `cba[1].colorWriteMask = 0` for the backdrop pipeline, so attachment 1 is write-masked
+# off; the declaration exists only because the preview renderpass has two colour
+# attachments and the FS must declare both. vec4(0.0) is the inert placeholder; it never
+# reaches the GBuffer. RISK IF THE MASK CHANGES: re-adjudicate this entry, do not carry it.
+shaders/vulkan/mech_backdrop.frag::oGBuffer1 = vec4(0.0);

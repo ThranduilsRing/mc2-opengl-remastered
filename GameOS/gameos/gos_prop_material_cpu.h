@@ -281,7 +281,9 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
 // selects the late fringe for every non-opaque packet. Class 2 shares class 1's LOD-aware coverage: a fixed hard cutoff
 // loses minified wire entirely.
 inline uint32_t packetAlphaClass(bool isOverride, const ModelOverrideRecord* source, uint32_t textureSlot) {
-    const uint32_t late = isOverride && source && source->lateCoverageFringe ? 2u : 1u;
+    // Override trees also take the late fringe: their canopy fringe is drawn inside the island pass, BEFORE the
+    // blended water, which then tints the leaves over the sea (the water overdraws the depth-less fringe).
+    const uint32_t late = isOverride && source && (source->lateCoverageFringe || source->overrideClass == "tree") ? 2u : 1u;
     if (isOverride && source && !source->materials.empty()) {
         for (const auto& m : source->materials)
             if (m.slot == textureSlot)

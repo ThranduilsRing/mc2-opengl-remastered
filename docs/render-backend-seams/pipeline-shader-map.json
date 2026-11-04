@@ -18,6 +18,7 @@
     "hzb_reduce": {"stages": ["shaders/vulkan/hzb_reduce.frag", "shaders/vulkan/hzb_reduce.vert"], "includes": []},
     "impact_decal": {"stages": ["shaders/vulkan/impact_decal.frag", "shaders/vulkan/impact_decal.vert"], "includes": []},
     "legacy_shape_tier1": {"stages": ["shaders/vulkan/legacy_shape_tier1.frag", "shaders/vulkan/legacy_shape_tier1.vert"], "includes": []},
+    "mech_backdrop": {"stages": ["shaders/vulkan/mech_backdrop.frag", "shaders/vulkan/mech_backdrop.vert"], "includes": []},
     "mech_depth": {"stages": ["shaders/vulkan/mech_depth.frag", "shaders/vulkan/mech_depth.vert"], "includes": []},
     "mech_tier1": {"stages": ["shaders/vulkan/mech_tier1.frag", "shaders/vulkan/mech_tier1.vert"], "includes": []},
     "motion_vectors": {"stages": ["shaders/vulkan/motion_vectors.frag"], "includes": []},

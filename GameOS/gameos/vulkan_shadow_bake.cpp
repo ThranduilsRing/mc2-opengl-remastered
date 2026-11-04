@@ -19,6 +19,7 @@
 #include "vk_depth_caster_pipeline.h"
 #include "vk_gpu_profile.h"
 #include "vk_island_util.h"
+#include "hitch_stats.h"
 #include "vulkan_color_prop_island.h"
 #include "vulkan_context.h"
 
@@ -481,12 +482,13 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
 
 bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in) {
     if (!inited_) return false;
+    mc2_hitch2::Scope hitchScope("shadow.bake_update");
     if (objectMapRecords_ == 0) statsEpoch_ = epoch;
     retire(epoch);
     // Cold tiles only read retained CPU uploads; queue barriers order shared scratch reuse.
     // Continue next frame without waiting two epochs; only the final submit must retire before release.
     if (recorded_ && !(coldPending_ && submitted_ && epoch > submittedEpoch_)) return false;
-    if (coldPending_) {
+    if (coldPending_) { mc2_hitch2::noteBake("cold", 0, 0, "miss");
         // Bound warm-up to about 100 frames on a 400-tile map, so the live
         // caster fallback gives way to the cheaper mask promptly.
         for (uint32_t tile = 0; tile < 4 && coldPending_; ++tile)
@@ -888,6 +890,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     recordedObjectGeneration_ = objectMapRecords_;
     cpuMs_ = std::chrono::duration<double, std::milli>(clk::now() - t0).count();
     warmReadMs_ = warmReadMs;
+    mc2_hitch2::stats().bakeCache.store(warm ? "hit" : "miss");
     if (recordedMask_ && warm) {
         mc2::fmt::print_err("[SHADOW_BAKE] warm: mask {}^2 BC4 from the cook cache (key {:016x}, read {:.2f} ms), object map re-recorded, cpu_ms={:.2f}\n",
                             layout_.texels, mc2::fmt::as_u64(contentKey_), warmReadMs, cpuMs_);
@@ -1210,6 +1213,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     incSubTiles_ += static_cast<uint32_t>(batch.size());
     ++incBatches_;
     ++dirtyBatches_;
+    mc2_hitch2::noteBake("dirty", 1, 0);
     return true;
 }
 
@@ -1487,6 +1491,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
     objectInitialized_ = true;
     ++objectMapRecords_;
+    mc2_hitch2::noteBake(coldPending_ ? std::string_view{} : warm_ && recordedMask_ ? "warm" : "object", 0, 1);
     return true;
 }
 

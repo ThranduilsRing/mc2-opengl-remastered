@@ -39,6 +39,7 @@ const std::unordered_set<std::string>& knownTags() {
         "CONFIG",
         "ENV",
         "FIRST60",  // [FIRST60 v1]: frame-time summary of the first 60 frames after mission_ready (gos_smoke.cpp). Opt-in; scripts/smoke_lib/via_menu.py sets it.
+        "HITCH",    // [HITCH v2]: one line per frame over 2x the running median (worst scopes, waitIdle/pipeline/upload/bake/sim-join deltas) plus the first waitIdle callers after mission_ready. Opt-in.
         "BUILD",
         "DEVICE",
         "SHADER_COMPILE",

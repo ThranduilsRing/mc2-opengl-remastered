@@ -6,6 +6,7 @@
 #include "pilot_pick.h"
 #include "gameos_resource.hpp"
 #include "Gates/gate.h"
+#include "tick_commit.h"
 #include <utility>
 
 
@@ -328,6 +329,8 @@ void ControlGui::handleVehicleClick( int ID )
 
 void ControlGui::unPressAllVehicleButtons()
 {
+	if (mc2::tick::defer(mc2::tick::Queue::MoverUi, [this] { unPressAllVehicleButtons(); }))
+		return;
 	for ( int i = LARGE_AIRSTRIKE; i < MAX_VEHICLE; i++ )
 	{
 		getButton( i )->press( 0 );

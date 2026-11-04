@@ -118,7 +118,6 @@ def test_farm_trio_overlaps_serial_saves_after_deploy(tmp_path, monkeypatch, fai
         if name == 'mods':
             mods_done.set()
         elif name == 'save':
-            assert mods_done.is_set()
             saving.set()
             assert farming.wait(2), 'farm must overlap saves'
         return SimpleNamespace(returncode=int(failure == name))
@@ -140,7 +139,7 @@ def test_farm_trio_overlaps_serial_saves_after_deploy(tmp_path, monkeypatch, fai
     assert gate.execute_parallel(steps, 'head', farm_determinism=True) == int(failure is not None)
     assert len([c for c in calls if c.startswith('farm-')]) == 3
     # Windowed validation must remain on the host even when the farm is selected.
-    assert calls.index('mods') < calls.index('save')
+    assert 'mods' in calls and 'save' in calls  # no mods->saveload barrier (private MC2_SAVE_DIR)
 
 
 def test_farm_queue_timeout_repeats_only_after_pending_job_cancelled(tmp_path):
@@ -204,7 +203,6 @@ def test_stock_takes_all_saves_after_tier1_and_mods(tmp_path, monkeypatch):
         elif command[0] == 'determinism':
             assert saving.wait(2), 'saves must overlap the determinism worker'
         elif 'tools/saveload_roundtrip.py' in command:
-            assert mods_done.is_set()
             install = command[command.index('--install') + 1]
             if install.endswith('install'):
                 assert tier_done.is_set()
@@ -244,6 +242,15 @@ def test_mad_flags_declared_view_needs_a_numeric_row_under_its_bound():
     assert gate.mad_flags('a | 0.60 | 0\n', {'a': 0.5}) == ['a=0.60 (declared bound 0.5)']   # declared-over-bound
     assert gate.mad_flags('a | 0.40 | 0\n', {'a'}) == []   # a bare set gets the default 0.5
     assert gate.parse_declared_views(['a', 'b=1.5']) == {'a': 0.5, 'b': 1.5}
+
+
+def test_farm_determinism_defaults_on_and_rows_log_their_host():
+    import inspect
+    import merge_gate as gate
+    src = inspect.getsource(gate)
+    assert '"--farm-determinism", action=argparse.BooleanOptionalAction, default=True' in src
+    assert "determinism row host=farm" in inspect.getsource(gate.farm_stage)
+    assert "local PC, farm fallback" in inspect.getsource(gate.farm_stage)
 
 
 def test_declared_view_bad_bound_is_an_argparse_error(capsys, monkeypatch):

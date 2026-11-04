@@ -1120,6 +1120,41 @@ TG_MultiShape* Mech3DAppearance::previewShape (void)
 	return mechShape;
 }
 
+bool Mech3DAppearance::submitPreviewGpu (bool freshSession)
+{
+	if (!mechShape || !mechType)
+		return false;
+	auto& batcher = GpuMechBatcher::instance();
+	// The lab has no map load. A new lab session drops the type records left by the last mission (onMapUnload keeps
+	// them, and their types are freed with the mission) exactly as the next mission's onMapLoad would; then register
+	// this type (idempotent) and build or extend the shared geometry.
+	if (freshSession)
+		batcher.onMapLoad();
+	batcher.registerTypeLod(mechType, static_cast<int>(currentLOD));
+	if (!batcher.isFinalized())
+		batcher.finalizeGeometry();
+	else
+		batcher.finalizePending();
+	if (!batcher.isFinalized())
+		return false;
+	mechShape->SetTextureHandle(0, localTextureHandle);
+	GpuMechSubmitDesc desc{};
+	desc.mechShape      = mechShape;
+	desc.mechType       = mechType;
+	desc.currentLOD     = static_cast<int>(currentLOD);
+	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
+	desc.slot6TexHandle = aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u;
+	desc.slot7TexHandle = normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u;
+	desc.lightDataIndex = 0u;	// the lab posts its own single light row
+	desc.renderFlags    = 0u;
+	if (aoValid) desc.renderFlags |= 0x10u;
+	if (normalValid) desc.renderFlags |= 0x20u;
+	desc.highlightARGB  = static_cast<uint32_t>(highlightColor);
+	desc.fogARGB        = 0u;
+	desc.objectIdRaw    = 0u;
+	return batcher.submitActor(desc);
+}
+
 long Mech3DAppearance::renderShadows (void)
 {
 	// The CPU blob shadows are gone: shadows come from the modern shadow path.

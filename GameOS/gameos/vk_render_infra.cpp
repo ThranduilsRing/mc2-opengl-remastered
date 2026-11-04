@@ -1,6 +1,7 @@
 #ifdef MC2_VULKAN_ISLAND
 #define NOMINMAX
 #include "vk_render_infra.h"
+#include "hitch_stats.h"
 #include "vulkan_context.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
@@ -523,7 +524,7 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     info=updated.data();
     const VkResult result=vkCreateGraphicsPipelines(dev,s.cache,n,info,allocator,out);
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
-    const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
+    const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
     return result;
@@ -535,7 +536,7 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     info=updated.data();
     const VkResult result=vkCreateComputePipelines(dev,s.cache,n,info,allocator,out);
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
-    const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
+    const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=compute count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo()); return result;
 }
