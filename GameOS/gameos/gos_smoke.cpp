@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -42,10 +43,10 @@ double cpuBusyPct(const CpuSample& a, const CpuSample& b) {
     const unsigned long long dt = b.total - a.total, di = b.idle - a.idle;
     return dt ? 100.0 * (1.0 - static_cast<double>(di) / static_cast<double>(dt)) : -1.0;
 }
-int otherMc2Count() {
+std::optional<int> otherMc2Count() {
     int n = 0;
     const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snap == INVALID_HANDLE_VALUE) return -1;
+    if (snap == INVALID_HANDLE_VALUE) return std::nullopt;
     PROCESSENTRY32W pe{};
     pe.dwSize = sizeof pe;
     const DWORD self = GetCurrentProcessId();
@@ -225,7 +226,7 @@ void samplePerf(double frameMs) {
                 mc2::fmt::print_out("[FIRST60 v2] worst5={} bake_cache={} bake_state={} waitidle_n={:d} waitidle_ms={:.2f} fence_n={:d} fence_ms={:.2f} fence_max_ms={:.2f} staged_kb={:d} host_cpu_pct={:.0f} other_mc2={:d} device={}\n", mc2::fmt::safe(w.c_str()),
                     mc2::fmt::safe(hs.bakeCache.load()), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::as_i32(static_cast<int>(hs.waitIdleCount.load())),
                     hs.waitIdleNs.load() / 1e6, mc2::fmt::as_i32(static_cast<int>(hs.fenceWaitCount.load())), hs.fenceWaitNs.load() / 1e6, hs.fenceWaitMaxNs.load() / 1e6,
-                    mc2::fmt::as_i32(static_cast<int>(hs.stagedBytes.load() / 1024)), cpuBusyPct(s_cpu0, sampleCpu()), mc2::fmt::as_i32(otherMc2Count()), mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
+                    mc2::fmt::as_i32(static_cast<int>(hs.stagedBytes.load() / 1024)), cpuBusyPct(s_cpu0, sampleCpu()), mc2::fmt::as_i32(otherMc2Count().value_or(-1)), mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
                 std::fflush(stdout);
             }
         }

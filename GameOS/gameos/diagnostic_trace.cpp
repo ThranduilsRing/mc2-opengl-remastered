@@ -102,12 +102,19 @@ DiagState& state() {
 
 std::atomic<uint32_t> g_unknownTagWarnings{0};
 
+// A function-local object that is never destroyed: atexit and static destructors still call tagRequested.
+template <class T> T& immortal() {
+    alignas(T) static unsigned char storage[sizeof(T)];
+    static T* const p = std::construct_at(reinterpret_cast<T*>(storage));
+    return *p;
+}
+
 // True the first time an unknown tag is seen: each one warns once per process, however often MC2_DIAG_TAGS is parsed. Immortal like knownTags().
 bool firstWarning(std::string_view tag) {
-    static auto* const mtx = new std::mutex;
-    static auto* const warned = new std::unordered_set<std::string>;
-    std::lock_guard<std::mutex> lock(*mtx);
-    const auto [pos, first] = warned->emplace(tag);
+    auto& mtx = immortal<std::mutex>();
+    auto& warned = immortal<std::unordered_set<std::string>>();
+    std::lock_guard<std::mutex> lock(mtx);
+    const auto [pos, first] = warned.emplace(tag);
     (void)pos;
     if (first) g_unknownTagWarnings.fetch_add(1, std::memory_order_relaxed);
     return first;
@@ -280,7 +287,7 @@ bool tagRequested(std::string_view tag) {
         bool valid = false, all = false, disabled = false;
         std::unordered_set<std::string> tags;
     };
-    static Parsed* const cache = new Parsed;
+    Parsed* const cache = &immortal<Parsed>();
     const std::string text = mc2::gate::str<"MC2_DIAG_TAGS">();
     std::lock_guard<std::mutex> lock(cache->mtx);
     if (!cache->valid || cache->text != text) {
