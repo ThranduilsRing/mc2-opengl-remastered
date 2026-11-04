@@ -24,7 +24,8 @@ VIOLATION = re.compile(r"\[SIM_OVERLAP v1\] VIOLATION")
 OPENED = re.compile(r"\[VIDEO\] init: opened ")
 
 
-RESULTS_DONE = re.compile(r"\[RESULTS v1\] resultsDone complete ")
+EARLY_EXIT = re.compile(r"\[SMOKE v1\] event=summary result=fail reason=early_exit stage=atexit")
+RESULTS_DONE =re.compile(r"\[RESULTS v1\] resultsDone complete ")
 
 
 def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
@@ -54,6 +55,9 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False) 
         for log in Path(m.group(1).strip()).glob("*.log"):
             text += "\n" + log.read_text(encoding="utf-8", errors="replace")
     ok, why = judge(text, require_results=countdown)
+    # The end row ends the mission on purpose: run_smoke reports that as early_exit (rc=1), which is the pass shape.
+    if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text):
+        return True, why + " (mission ended by the countdown: early_exit)"
     if proc.returncode != 0:
         ok, why = False, f"run_smoke rc={proc.returncode}; {why}"
     return ok, why
