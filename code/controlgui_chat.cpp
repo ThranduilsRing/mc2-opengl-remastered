@@ -129,20 +129,31 @@ void ControlGui::playMovie( const char* fileName )
 	}
 }
 
+void ControlGui::latchResults()
+{
+	resultsLatch.statusInfo = renderStatusInfo;
+	resultsLatch.objectiveTime = objectiveTime;
+	resultsLatch.resultsTime = resultsTime;
+	// MC2_SOAK_AUTOWIN_COUNTDOWN (test-only): skip the per-objective fade wait so the 30 s smoke window reaches this branch.
+	const float needTime = mc2::gate::get<"MC2_SOAK_AUTOWIN_COUNTDOWN">() ? 1.5f
+		: static_cast<float>((Team::home ? Team::home->objectives.Count() : 0) + 4);
+	resultsLatch.ready = renderStatusInfo && objectiveTime > needTime;
+}
+
 bool ControlGui::resultsDone()
 {
+	// Runs in updateTermination on the sim worker while the draw advances these timers: decide from the Main latch.
+	const ResultsLatch latch = resultsLatch;
 	if (mc2_diag::tagRequested("RESULTS")) {
 		static int s_calls = 0;
 		if ((s_calls++ % 60) == 0)
 			mc2::fmt::print_out("[RESULTS v1] resultsDone renderStatusInfo={:d} objectiveTime={:.2f} resultsTime={:.2f}\n",
-				mc2::fmt::as_i32(static_cast<int>(renderStatusInfo)), static_cast<double>(objectiveTime), static_cast<double>(resultsTime));
+				mc2::fmt::as_i32(static_cast<int>(latch.statusInfo)), static_cast<double>(latch.objectiveTime), static_cast<double>(latch.resultsTime));
 	}
-	// MC2_SOAK_AUTOWIN_COUNTDOWN (test-only): skip the per-objective fade wait so the 30 s smoke window reaches this branch.
-	const float needTime = mc2::gate::get<"MC2_SOAK_AUTOWIN_COUNTDOWN">() ? 1.5f : static_cast<float>(Team::home->objectives.Count() + 4);
-	if( ( renderStatusInfo && objectiveTime > needTime ) )
+	if (latch.ready)
 	{
 		if (mc2_diag::tagRequested("RESULTS"))
-			mc2::fmt::print_out("[RESULTS v1] resultsDone complete objectiveTime={:.2f} forceGroupBar.removeAll next\n", static_cast<double>(objectiveTime));
+			mc2::fmt::print_out("[RESULTS v1] resultsDone complete objectiveTime={:.2f} forceGroupBar.removeAll next\n", static_cast<double>(latch.objectiveTime));
 		// need to empty out force group bar now... (icons may own a live pilot
 		// video; ForceGroupBar::render reads them on Main, so commit on Main)
 		if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, [this] { forceGroupBar.removeAll(); }))

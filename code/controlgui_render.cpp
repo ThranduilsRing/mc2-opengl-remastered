@@ -468,6 +468,7 @@ extern const char* extractMoverHudStatus(Mover* mover);
 
 void ControlGui::extractHudSnapshot()
 {
+    latchResults();   // the last draw finished and no tick is in flight: resultsDone on the worker reads this
     auto& hud = mc2::render_view::stagingHud();
     hud.movers.clear(); hud.roster.clear(); hud.sensors.clear(); hud.coverage.clear(); hud.objectives.clear();
     hud.home = Team::home != nullptr;
