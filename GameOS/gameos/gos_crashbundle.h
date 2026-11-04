@@ -26,8 +26,6 @@ void crashbundle_append(const char* line);
 // Deliberate null-deref crash for smoke-testing the bundle path.
 // Write-access-violation at 0x0; SEH filter will fire.
 void crashbundle_trigger_test_crash(void);
-// Fatal-path bundle: appends `what` to the ring, then writes crash.txt, last_trace.txt and a minidump (stack = caller). The caller then aborts.
-void crashbundle_fatal(const char* what);
 
 #ifdef __cplusplus
 }
@@ -40,6 +38,9 @@ void crashbundle_fatal(const char* what);
 #include <string_view>
 #include <utility>
 #include "mc2fmt.h"
+
+// Fatal-path bundle: appends `what` to the ring, then writes crash.txt, last_trace.txt and a minidump (stack = caller). The caller then aborts.
+void crashbundle_fatal(std::string_view what);
 
 // std::format line -> stdout + crash-bundle ring. Cap is the line buffer size (output truncated to Cap-1 bytes); prefix is
 // prepended inside that cap (use "" for none).

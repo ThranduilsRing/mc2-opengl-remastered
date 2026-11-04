@@ -35,7 +35,7 @@ void crashbundle_content_image(std::string_view, const void*, size_t) {}
 void crashbundle_mod(std::string_view, int) {}
 void crashbundle_save_point(std::string_view, std::string_view) {}
 extern "C" void crashbundle_device_lost(void) {}
-extern "C" void crashbundle_fatal(const char*) {}
+void crashbundle_fatal(std::string_view) {}
 extern "C" void crashbundle_trigger_test_crash(void) {
     volatile int* p = 0;
     *p = 0xDEADC0DE;
@@ -704,9 +704,13 @@ extern "C" void crashbundle_device_lost(void)
 // Fatal-path entry for handlers that run outside SEH (SIGABRT, the CRT invalid-parameter handler, the overlap audit abort).
 // Builds a synthetic exception from the current context and runs the same pipeline as the unhandled-exception filter, so the
 // bundle holds crash.txt, last_trace.txt and a minidump whose stack runs through the caller. Output goes through WriteFile.
-extern "C" void crashbundle_fatal(const char* what)
+void crashbundle_fatal(std::string_view what)
 {
-    if (what) crashbundle_append(what);
+    char ring[512];
+    const size_t rn = what.size() < sizeof ring - 1 ? what.size() : sizeof ring - 1;
+    memcpy(ring, what.data(), rn);
+    ring[rn] = 0;
+    crashbundle_append(ring);
     CONTEXT ctx;
     RtlCaptureContext(&ctx);
     EXCEPTION_RECORD rec;

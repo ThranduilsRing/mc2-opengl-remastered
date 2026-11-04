@@ -15,7 +15,7 @@ namespace mc2::overlap {
 struct Hooks { void (*kick)(); void (*join)(); void (*extract)() = nullptr; };
 void installHooks(const Hooks& hooks);
 // Idempotent: routes SIGABRT and the CRT invalid-parameter handler into crashbundle_fatal. Called from crashbundle_init.
-void installFatalHandlers(void (*fatalSink)(const char*));
+void installFatalHandlers(void (*fatalSink)(std::string_view));
 void extractRender(); // main thread, at ExtractRenderSnapshot: builds the frame's render list/clock (G7b K3)
 void joinTail();   // main thread: wait for the sim worker to finish (no-op if none is in flight)
 

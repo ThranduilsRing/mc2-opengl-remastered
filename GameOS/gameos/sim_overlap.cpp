@@ -40,7 +40,7 @@ std::atomic<bool> g_presentThread{false};
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
 char g_lastSite[96] = "none";                // diagnostic only: site of the most recent violation (racy by design)
-void (*g_fatalSink)(const char*) = nullptr;   // crash-bundle writer, set by installFatalHandlers (the lib also links into tools without one)
+void (*g_fatalSink)(std::string_view) = nullptr;   // crash-bundle writer, set by installFatalHandlers (the lib also links into tools without one)
 
 // Audit levels above 2 add jitter with a private RNG, leaving the sim's streams unchanged.
 void jitterSleep() {
@@ -152,11 +152,11 @@ void onInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned
 
 void faultInject() {
     switch (mc2::gate::get<"MC2_SIM_FAULT_INJECT">()) {
-    case 1: throw std::runtime_error("MC2_SIM_FAULT_INJECT worker throw");
+    case 1: throw std::runtime_error("fault-inject worker throw");
 #ifdef _WIN32
     case 2: { wchar_t* bad = nullptr; wcscpy_s(bad, 4, L"x"); break; }   // CRT invalid parameter
 #endif
-    case 3: violation("fault-inject", "MC2_SIM_FAULT_INJECT", true); break;
+    case 3: violation("fault-inject", "test-knob", true); break;
     default: break;
     }
 }
@@ -201,7 +201,7 @@ void setRenderWorkerOwns(bool owns) { g_renderThread.store(owns, std::memory_ord
 void setPresentWorkerRegistered(bool registered) { g_presentThread.store(registered, std::memory_order_release); }
 void requireOwner(Owner domain, std::string_view site) { checkOwner(domain, site, true); }
 
-void installFatalHandlers(void (*fatalSink)(const char*)) {
+void installFatalHandlers(void (*fatalSink)(std::string_view)) {
     g_fatalSink = fatalSink;
     static std::once_flag once;
     std::call_once(once, [] {
