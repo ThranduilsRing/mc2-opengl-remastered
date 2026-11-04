@@ -33,6 +33,7 @@
 #include <tracy/Tracy.hpp>
 #include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
+#include "hitch_stats.h"
 #include "vk_device_profile.h"
 #include "vk_gpu_profile.h"
 #include "vk_validation_line.h"
@@ -569,8 +570,20 @@ void VulkanContext::retireIsland(IslandSlot slot) {
 void VulkanContext::waitIdle(std::string_view why) const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::waitIdle");
     if (device_ == VK_NULL_HANDLE) return;
+    ZoneScopedN("VK.WaitIdle");
+    const auto idleT0 = std::chrono::steady_clock::now();
     std::lock_guard<std::mutex> lock(submitMutex_);
     const VkResult r = vkDeviceWaitIdle(device_);
+    {
+        auto& hs = mc2_hitch2::stats();
+        const double idleMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - idleT0).count();
+        hs.waitIdleCount.fetch_add(1, std::memory_order_relaxed);
+        hs.waitIdleNs.fetch_add(static_cast<uint64_t>(idleMs * 1e6), std::memory_order_relaxed);
+        mc2_hitch2::scopes().add("VK.WaitIdle", idleMs);
+        // First 24 calls after mission_ready name their caller (the why tag) and the wait.
+        if (hs.missionReady.load(std::memory_order_relaxed) && hs.waitIdleLogged.fetch_add(1, std::memory_order_relaxed) < 24 && mc2_diag::tagRequested("HITCH"))
+            ctxlog("[HITCH v2] waitIdle why=%.*s ms=%.2f", static_cast<int>(why.size()), why.data(), idleMs);
+    }
     // A lost device ends the wait with an error; the release that follows is still safe, but the log must say the GPU did not drain.
     if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %.*s: VkResult=%d.", static_cast<int>(why.size()), why.data(), static_cast<int>(r));
     if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();

@@ -21,6 +21,7 @@
 #include <optional>
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
+#include "hitch_stats.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 
@@ -1654,6 +1655,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (auto* previous = parkedIsland()) previous->lateDraws.clear();
     ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
+    mc2_hitch2::Scope hitchTotal("props.island");
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
