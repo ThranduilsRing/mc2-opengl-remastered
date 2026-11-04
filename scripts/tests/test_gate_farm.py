@@ -121,7 +121,7 @@ def test_farm_trio_overlaps_serial_saves_after_deploy(tmp_path, monkeypatch, fai
             saving.set()
             assert farming.wait(2), 'farm must overlap saves'
         return SimpleNamespace(returncode=int(failure == name))
-    def farm(command, overrides):
+    def farm(command, overrides, local_env=None):
         assert 'deploy' in calls
         calls.append(command[0])
         farming.set()
@@ -172,6 +172,27 @@ def test_dead_farm_worker_skips_claim_wait_and_runs_locally(tmp_path):
     command = [sys.executable, 'tools/sim_determinism.py', 'check', 'mc2_03', '--install', 'local', '--out', str(tmp_path / 'out')]
     assert gate.farm_stage(command, {}, runner=run).returncode == 0
     assert seen == ['alive', 'local']   # no submit, no wait: the 30 s claim window is never entered
+
+
+def test_farm_local_fallback_runs_with_the_gate_stage_env(tmp_path, monkeypatch):
+    """W115: the fallback dropped execute()'s env, so the gate's own determinism child lost MC2_IN_GATE and GATE QUIET refused it."""
+    envs = []
+    def run(command, **kw):
+        if 'host.py' in command[1]:
+            return SimpleNamespace(returncode=1, stdout='heartbeat_age=-1')   # dead worker: straight to local
+        envs.append(kw['env'])
+        return SimpleNamespace(returncode=0, stdout='')
+    command = [sys.executable, 'tools/sim_determinism.py', 'check', 'mc2_24', '--install', 'local', '--out', str(tmp_path / 'out')]
+    monkeypatch.setattr(gate, 'git', lambda *a: 'HEAD')
+    monkeypatch.setattr(gate, 'ACTIVE_STATE', None)
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)
+    gate.FAILED_STAGES.clear()
+    remote = {gate.farm_key(command): {'MC2_X': '1'}}
+    def farm_runner(c, cwd, env):
+        return gate.farm_stage(c, remote[gate.farm_key(c)], runner=run, local_env=env)
+    assert gate.execute([('determinism-mc2_24', command, {'MC2_X': '1'})], 'HEAD', runner=farm_runner) == 0
+    assert envs and envs[0].get('MC2_IN_GATE') == '1' and envs[0].get('MC2_X') == '1'
+    assert 'farm_stage(command, remote_envs[farm_key(command)], local_env=env)' in Path(gate.__file__).read_text(encoding='utf-8')
 
 
 def test_interrupt_is_held_until_the_running_stage_ends(monkeypatch):

@@ -708,9 +708,11 @@ def install_stage_watchdog():
                 pass
 
 
-def farm_stage(command, overrides, runner=None):
-    """Submit one unchanged determinism check, wait, and fetch its evidence."""
+def farm_stage(command, overrides, runner=None, local_env=None):
+    """Submit one unchanged determinism check, wait, and fetch its evidence. local_env is the stage env execute()
+    built (MC2_IN_GATE / lease batch included); a local fallback runs with it so GATE QUIET treats it as the gate's own."""
     runner = run_child if runner is None else runner
+    local_env = dict(os.environ, **overrides) if local_env is None else local_env
     out = Path(command[command.index("--out") + 1])
     out.parent.mkdir(parents=True, exist_ok=True)
     remote = list(command)
@@ -731,7 +733,7 @@ def farm_stage(command, overrides, runner=None):
     def local(reason):
         print(f'[merge_gate] farm {reason}; repeating locally', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
-        return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
+        return runner(command, cwd=ROOT, env=local_env)
 
     try:
         alive = runner(host + ["alive", "--max-age", str(FARM_HEARTBEAT_MAX_AGE_S)], cwd=ROOT, env=os.environ.copy())
@@ -753,7 +755,7 @@ def farm_stage(command, overrides, runner=None):
     if 'queue_timeout:' in waited.stdout:
         print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
-        return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
+        return runner(command, cwd=ROOT, env=local_env)
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
     try:
@@ -1036,7 +1038,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         if farm:
             remote_envs = {farm_key(c): e for _, c, e in farm}
             def farm_runner(command, cwd, env):
-                return farm_stage(command, remote_envs[farm_key(command)])
+                return farm_stage(command, remote_envs[farm_key(command)], local_env=env)
             pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
         if mods:
             copy_context, copy_future = None, None
