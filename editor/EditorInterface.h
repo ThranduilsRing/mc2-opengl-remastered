@@ -117,6 +117,13 @@ public:
 	// forest-member objects, an out-of-range team, or an unchanged team.
 	bool applyObjectAlignment( EditorObject* obj, int newTeam );
 
+	// Right-click context menu (owner item 3): a short right-click on an object
+	// opens a Team menu that applies through applyObjectAlignment (one undo step).
+	// Returns true when an alignable object is under (screenX, screenY).
+	bool openObjectContextMenu( int screenX, int screenY );
+	EditorObject* contextMenuObject();
+	void renderObjectContextMenu();
+
 	// Smoke-only (-smoke-inspector-edit): place a throwaway drop zone, transform it
 	// via applyObjectTransform AND change its team via applyObjectAlignment, then
 	// undo through the same undo manager. Returns a bitmask: bit0 = transform moved
@@ -414,6 +421,9 @@ private:
 
 	bool						rightDrag;
 	unsigned long				lastRightClickTime;
+	long						m_contextMenuObjectID = -1;
+	glm::vec3					m_contextMenuObjectPos{};
+	bool						m_contextMenuPending = false;
 
 	HBITMAP m_hSplashBitMap;
 	HCURSOR m_hBusyCursor;

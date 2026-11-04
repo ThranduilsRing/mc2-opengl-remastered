@@ -169,6 +169,28 @@ bool EditorInterface::applyObjectTransform( EditorObject* obj, float worldX, flo
 	return true;
 }
 
+bool EditorInterface::openObjectContextMenu( int screenX, int screenY )
+{
+	EditorObjectMgr* mgr = EditorObjectMgr::instance();
+	EditorObject* obj = mgr ? mgr->getObjectAtScreenPosition( screenX, screenY ) : nullptr;
+	if ( !obj || !obj->appearance() || obj->getForestID() != -1 || !mgr->isAlignable( obj->getID() ) )
+		return false;
+	m_contextMenuObjectID = obj->getID();
+	m_contextMenuObjectPos = obj->getPosition();
+	m_contextMenuPending = true;
+	return true;
+}
+
+// The menu keeps an ID and a position, not a pointer: undo/redo can recreate the object.
+EditorObject* EditorInterface::contextMenuObject()
+{
+	EditorObjectMgr* mgr = EditorObjectMgr::instance();
+	if ( !mgr || m_contextMenuObjectID < 0 )
+		return nullptr;
+	EditorObject* obj = mgr->getObjectAtLocation( m_contextMenuObjectPos.x, m_contextMenuObjectPos.y );
+	return obj && obj->getID() == m_contextMenuObjectID ? obj : nullptr;
+}
+
 bool EditorInterface::applyObjectAlignment( EditorObject* obj, int newTeam )
 {
 	if ( !obj || !obj->appearance() )
