@@ -124,9 +124,9 @@ void violation(std::string_view kind, std::string_view site, bool hard = false) 
 const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : o == Owner::Present ? "present" : "render"; }
 
 // Bundle line written before a fast-fail so a worker CTD names its thread and the last audit site instead of a bare 0xC0000409.
-void logFatal(const char* what) {
+void logFatal(std::string_view what) {
     const char* role = t_role == kUnregistered ? "other" : ownerName(static_cast<Owner>(t_role));
-    std::fprintf(stderr, "[SIM_OVERLAP v1] FATAL %s thread=%s in_flight=%d last_site=%s\n", what, role,
+    std::fprintf(stderr, "[SIM_OVERLAP v1] FATAL %.*s thread=%s in_flight=%d last_site=%s\n", static_cast<int>(what.size()), what.data(), role,
         g_inFlight.load(std::memory_order_relaxed) ? 1 : 0, g_lastSite);
     std::fflush(stderr);
 }
