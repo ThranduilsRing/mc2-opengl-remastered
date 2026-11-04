@@ -2,6 +2,7 @@
 // Mirrors visual_tuning_profile.cpp's TinyJson reader 1:1 (fopen + minimal
 // parser + gos_Set* setters); this file owns a SEPARATE JSON schema.
 
+#include "mc2_czstring.h"
 #include "terrain_material_lib.h"
 
 #include <cstdio>
@@ -139,7 +140,7 @@ struct TinyJson {
     }
 };
 
-static float getf(const std::map<std::string,float>& m, const char* key, float def) {
+static float getf(const std::map<std::string,float>& m, mc2::czstring key, float def) {
     auto it = m.find(key);
     return (it != m.end()) ? it->second : def;
 }

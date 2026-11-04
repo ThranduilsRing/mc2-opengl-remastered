@@ -1,4 +1,5 @@
 // L1 compatibility environment: preserve legacy renderer values and color interpretation.
+#include "mc2_czstring.h"
 #include "visual_tuning_profile.h"
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include "Gates/gate.h"
@@ -254,7 +255,7 @@ std::string visualTuning_environmentJson() {
 
 namespace {
 
-static void applyKey(const char* key, float val, int& count) {
+static void applyKey(mc2::czstring key, float val, int& count) {
     if (strcmp(key, "exposure") == 0) {
         gos_SetExposure(val);
         count++;
@@ -338,7 +339,7 @@ static void applyKey(const char* key, float val, int& count) {
 
 } // namespace
 
-void visualTuning_applyProfile(const char* missionName) {
+void visualTuning_applyProfile(mc2::czstring missionName) {
     const auto base = readProfileSource("data/visual_tuning.json");
     std::vector<VisualTuningSource> sources{base};
     s_editableSource = base;

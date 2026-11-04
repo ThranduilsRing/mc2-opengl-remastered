@@ -1,6 +1,7 @@
 // GameOS formatting compatibility header and platform debugger sink.
 #pragma once
 
+#include "mc2_czstring.h"
 #include "../../mclib/mc2format.h"
 
 namespace mc2::fmt {
@@ -9,7 +10,7 @@ namespace mc2::fmt {
 #ifdef _WIN32
 extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char*);
 #endif
-inline void debug_out(const char* text) noexcept {
+inline void debug_out(mc2::czstring text) noexcept {
 #ifdef _WIN32
     OutputDebugStringA(text ? text : "");
 #else
