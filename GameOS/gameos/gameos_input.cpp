@@ -257,7 +257,7 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     // both candidate denominators, and the resulting normalized coord so the
     // logical-vs-drawable divergence (the dead-zone root cause) is visible in a
     // pasted console log. Throttled to "moved > 8px" to avoid flooding.
-    if (mc2::gate::get<"MC2_MOUSE_RECON">())
+    if (false)
     {
         static float s_lastX = -1.0f, s_lastY = -1.0f;
         const float dx = mi->x_ - s_lastX, dy = mi->y_ - s_lastY;

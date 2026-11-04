@@ -78,7 +78,7 @@ void gosRenderer::popRenderStates()
 // RENDER_STATES v1: kill-switch (default-off → short-circuit path runs).
 // MC2_RENDERSTATES_LEGACY=1 forces unconditional apply behavior.
 static bool gos_renderStatesLegacyEnabled() {
-    static const bool s = mc2::gate::get<"MC2_RENDERSTATES_LEGACY">();
+    static const bool s = false;
     return s;
 }
 
@@ -119,7 +119,7 @@ void gosRenderer::applyRenderStates() {
         // Optional diagnostic: print the first 8 mismatch reasons. Env-gated,
         // off by default per Debug Instrumentation Rule (keep, demote, don't
         // delete). MC2_RENDERSTATES_TRACE=1 to enable.
-        static const bool s_rsTrace = mc2::gate::get<"MC2_RENDERSTATES_TRACE">();
+        static const bool s_rsTrace = false;
         static int s_mismatchPrints = 0;
         if (s_rsTrace && !equal && s_mismatchPrints < 8) {
             s_mismatchPrints++;

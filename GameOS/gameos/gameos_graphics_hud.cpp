@@ -515,7 +515,7 @@ void gosRenderer::flushHUDBatch()
     // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
     // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
 
-    static const bool s_uiPassMeasure = mc2::gate::get<"MC2_UI_PASS_MEASURE">();
+    static const bool s_uiPassMeasure = false;
     if (s_uiPassMeasure) {
         // Publish the prior frame's measured CPU draw counts.
         mc2_ui_pass_begin_measure();
@@ -548,7 +548,7 @@ void gosRenderer::flushHUDBatch()
     {
         // Env-token-only memo (no disarm interaction): the env block is
         // process-static, so one getenv per process is exact.
-        static const bool s_hudDrawDumpEnv = mc2::gate::get<"MC2_VK_HUD_DRAW_DUMP">();
+        static const bool s_hudDrawDumpEnv = false;
         std::vector<mc2vk::VkHudDraw> nativeDraws;
         nativeDraws.reserve(hudBatch_.size());
         for (const HudDrawCall& call : hudBatch_) {

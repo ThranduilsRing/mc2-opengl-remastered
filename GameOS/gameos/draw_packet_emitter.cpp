@@ -51,7 +51,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
     // re-enable). These can fire per-type per-frame (e.g. packetCount=0 skip) and were
     // spamming the player console. Counters (stats.*) still increment; only the prints
     // are gated. ERRORs (genuine aborts) stay unconditional.
-    static const bool s_dpWarn = mc2::gate::get<"MC2_DRAW_PACKET_WARN">();
+    static const bool s_dpWarn = false;
 
     // Guard against sparse or corrupt typeId values.
     static constexpr uint32_t kMaxAllowedTypeId = 65535u;
@@ -237,7 +237,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
 // s_compareEnabled lives at the CALL SITE (Task 5), not here — this function is only
 // invoked when that gate fires. s_verboseEnabled lives here because it is read inside
 // the loop; evaluating getenv() per candidate would be a syscall loop.
-static const bool s_verboseEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COMPARE_VERBOSE">();
+static const bool s_verboseEnabled = false;
 
 DrawPacketCompareResult comparePacketsToLegacy(
     const StaticPropDrawPacketCandidate* candidates,

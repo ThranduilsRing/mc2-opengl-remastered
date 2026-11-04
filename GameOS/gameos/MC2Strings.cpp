@@ -94,7 +94,7 @@ namespace
 
     bool TraceEnabled()
     {
-        static const bool enabled = (mc2::gate::get<"MC2_STRINGS_TRACE">());
+        static const bool enabled = (false);
         return enabled;
     }
 
@@ -799,7 +799,7 @@ namespace
 #else
         mc2::fmt::to_buf(number, "{:d}", mc2::fmt::as_i32(value));
 #endif
-        if ( mc2::gate::get<"MC2_LOG_STRINGS">() )
+        if ( false )
         {
             mc2::fmt::print_out("[strings] missing prefix='{}' id={:d}\n", mc2::fmt::safe(prefix ? prefix : "null"), mc2::fmt::as_i32(value));
             fflush(stdout);
@@ -1047,9 +1047,5 @@ namespace MC2Strings
         // Refresh loaded flag in case catalog was previously empty
         State().loaded = !State().byKey.empty();
 
-        if (mc2::gate::get<"MC2_LOG_STRINGS">()) {
-            mc2::fmt::print_out("[strings] LoadModFits prefix={} keys={:d} legacyAliases={:d}\n", prefix.c_str(), mc2::fmt::as_u32((unsigned)State().byKey.size()), mc2::fmt::as_u32((unsigned)State().keyByLegacyAlias.size()));
-            fflush(stdout);
-        }
     }
 }

@@ -266,7 +266,7 @@ bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
 
 bool objectIdDirectChainGateEnabled() {
     static const bool on = []() {
-        return mc2::gate::get<"MC2_VK_OBJECTID_DIRECT_CHAIN">();
+        return false;
     }();
     return on;
 }
@@ -1676,7 +1676,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 dst.push_back({v.x, v.y, v.argb});
             // VK-FIELD-VFX-2 tail trace: log untextured tri-batch (kind==2) bbox+argb so we
             // can see the ACTUAL geometry the tail rasterizes (bars vs weapon beams).
-            static const bool s_vfxTailTrace = mc2::gate::get<"MC2_VK_VFX_TRACE">();
+            static const bool s_vfxTailTrace = false;
             // VK-FIELD-VFX-2 debug: log the beam LINES specifically (kind==1 alpha==1 — the
             // beam-axis line fallback; brackets/bars are alpha==3) to confirm they reach the tail.
             if (s_vfxTailTrace && d.kind == 1 && d.alphaMode == 1 && !d.vertices.empty()) {

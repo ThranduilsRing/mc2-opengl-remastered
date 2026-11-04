@@ -78,7 +78,7 @@ void initFromEnv() {
     if (s_initDone) return;
     s_initDone = true;
 
-    g_enabled = mc2::gate::get<"MC2_OBJECT_RECON_TRACY">();
+    g_enabled = false;
 
     if (g_enabled) {
         std::puts("[OBJECT_RECON v1] event=enabled note=accumulators_active");

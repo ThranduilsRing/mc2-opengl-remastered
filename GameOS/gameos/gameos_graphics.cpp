@@ -48,7 +48,7 @@ bool terrainNormalArrayEnabled() {
     // Visual is identical to the legacy individual-sampler path by design
     // (validated 5/5 ON). Explicit MC2_TERRAIN_NORMAL_ARRAY=0 forces the old
     // individual-sampler path.
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_NORMAL_ARRAY">();
+    static const bool enabled = true;
     return enabled;
 }
 
@@ -113,7 +113,7 @@ bool terrainNormalArrayEnabled() {
 // gpu_driven_water.comp pzOk admission gate (all three MUST agree; see
 // mclib/terrain_depth_bias.h). Exported via gameos.hpp for the water-stream TU.
 int mc2WaterBiasLegacy() {
-    static const int mode = mc2::gate::get<"MC2_WATER_BIAS_LEGACY">();
+    static const int mode = false;
     return mode;
 }
 

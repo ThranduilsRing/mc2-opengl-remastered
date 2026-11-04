@@ -145,11 +145,11 @@ const bool s_mechViewUniforms = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS">();
 // DEFAULT-ON: mode 2 (smoothed, hard-edge preserving) — the intended look that
 // fixes the corrupted ASE-averaged normals. Kill-switch MC2_MECH_NORMALS_MODE=0
 // restores cooked/legacy normals; =1 = faceted. User-approved 2026-05-28.
-int s_mechNormalsMode = mc2::gate::get<"MC2_MECH_NORMALS_MODE">();
+int s_mechNormalsMode = 2;
 // Smoothing angle for mode 2 (degrees): faces meeting at a shared vertex blend
 // only when within this angle, so a smaller value preserves MORE hard edges
 // (e.g. lower it to sharpen the cockpit). Env-tunable for dial-in; default 60.
-float s_mechNormalsSmoothDeg = mc2::gate::get<"MC2_MECH_NORMALS_SMOOTH_DEG">();   // row: default 60, clamps to [1, 179]
+float s_mechNormalsSmoothDeg = 60.0f;   // row: default 60, clamps to [1, 179]
 
 // MECH-NORMALS-FIX-1: per-node VBO byte ranges recorded during registerTypeLod.
 // Each entry is {startByte, endByte} in s_stagingVbo for one node's verts.
@@ -168,10 +168,10 @@ bool s_mechSpecularV1 = mc2::gate::get<"MC2_MECH_SPECULAR_V1">();
 // key (visual_tuning.json).
 float s_mechSpecularStrength = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();
 // Rows carry the defaults (0.85 / 0.25 / 0.12 / 0.18) and the clamps ([0.04, 1] roughness, [0, 1] thresholds).
-float s_mechMetalRoughness = mc2::gate::get<"MC2_MECH_METAL_ROUGHNESS">();
-float s_mechGlassRoughness = mc2::gate::get<"MC2_MECH_GLASS_ROUGHNESS">();
-float s_mechGlassLumaThresh = mc2::gate::get<"MC2_MECH_GLASS_LUMA_THRESH">();
-float s_mechGlassMaxChanThresh = mc2::gate::get<"MC2_MECH_GLASS_MAXCHAN_THRESH">();
+float s_mechMetalRoughness = 0.85f;
+float s_mechGlassRoughness = 0.25f;
+float s_mechGlassLumaThresh = 0.12f;
+float s_mechGlassMaxChanThresh = 0.18f;
 bool  s_mechSpecDebugMask = false;  // ImGui only; no env var
 
 // BT2018-MECH-MATERIAL-TUNING-1: live ImGui-tunable imported-mech albedo knobs
@@ -299,7 +299,7 @@ bool     s_lastFailWasLateReg      = false;
 // Map keyed by Mech3DAppearanceType* (the desc.mechType field on submitActor).
 // Value is the number of SpotLight_-prefixed TypeNodes seen during ANY LOD's
 // recipe build (max across LODs, since each instance only renders at one LOD).
-const bool s_mechSpotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
+const bool s_mechSpotlightRealTrace = false;
 std::unordered_map<const void*, uint32_t>
     s_spotlightRealTypeNodeCount;
 uint64_t s_spotlightReal_typeNodeEvents = 0;  // monotonic (a)

@@ -167,7 +167,7 @@ void gos_framectx_note_mismatch(const char* what) {
 }
 void gos_object_mvp_note_stale() {
     ++g_objMvpStaleCount;
-    static const bool s_fatal = mc2::gate::get<"MC2_OBJ_MVP_STALE_FATAL">();
+    static const bool s_fatal = false;
     if (s_fatal) {
         mc2::fmt::print_err("[OBJ_MVP] FATAL: object draw read a stale-view dispatch MVP snapshot (view-epoch mismatch); count={:d}\n", mc2::fmt::as_u32(g_objMvpStaleCount));
         fflush(stderr);
@@ -329,7 +329,7 @@ float gos_GetTerrainDaylightLevel() {
 // frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the
 // old bright-pads-at-night behaviour); default ON.
 void gos_SetTerrainMissionFlatLight(float r, float g, float b) {
-    static const bool s_enabled = mc2::gate::get<"MC2_CEMENT_MISSION_LIGHT">();
+    static const bool s_enabled = true;
     if (!s_enabled) { r = 1.0f; g = 1.0f; b = 1.0f; }
     if (g_gos_renderer) g_gos_renderer->setTerrainMissionFlatLight(r, g, b);
 }
@@ -483,7 +483,7 @@ void gos_GetTerrainMatHeight(float* rock, float* grass, float* dirt, float* conc
 // separate TU and needs the same MC2_TERRAIN_MATERIAL_LIB gate value to drive its
 // own u_useMaterialLib upload. Same cached-static evaluation as the bridge path.
 bool gos_TerrainMaterialLibEnabled() {
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
+    static const bool enabled = false;
     return enabled;
 }
 void gos_SetTerrainNormalsFromHeightStrength(float s) {
