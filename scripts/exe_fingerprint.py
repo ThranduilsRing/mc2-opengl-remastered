@@ -344,6 +344,21 @@ def sha_agrees(embedded_sha: str | None, other_sha: str | None) -> bool | None:
     return a[:n] == b[:n]
 
 
+def build_current(embedded_sha: str | None, head: str | None, repo_root, dirty: bool = False) -> bool:
+    """True when an exe built (clean) at embedded_sha is still the build of head: the same commit, or an
+    ancestor with no build input (scripts/build_inputs.txt) changed since. Data/test-only commits then
+    keep the exe, so they need no relink and keep its exe-keyed gate rows."""
+    if dirty or not embedded_sha or not head:
+        return False
+    if sha_agrees(embedded_sha, head):
+        return True
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    from smoke_lib.fingerprint import check_ancestor_fingerprint
+    return check_ancestor_fingerprint({"sha": embedded_sha, "dirty": 0}, head, repo_root)[1]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("binary", help="path to the binary to read")

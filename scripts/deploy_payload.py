@@ -1695,12 +1695,12 @@ def bootstrap_install(src, target, exe_name, pdb_name):
 
 def verify_published_identity(target, source_root, head):
     """Hash the published exe/shaders against the clean HEAD build, not its own CSV."""
-    from exe_fingerprint import extract, sha_agrees
+    from exe_fingerprint import extract, sha_agrees, build_current
     target, source_root = Path(target), Path(source_root)
     build = source_root / 'build64-ninja'
     for exe in (build / 'mc2.exe', target / 'mc2.exe'):
         fp = extract(exe)
-        if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
+        if not fp.get('present') or not build_current(fp.get('sha'), head, source_root, bool(fp.get('dirty'))):
             raise ValueError(f'{exe}: fingerprint != clean HEAD {head}')
     expected = {'mc2.exe': build / 'mc2.exe'}
     expected.update({p.relative_to(source_root).as_posix(): p
@@ -1917,11 +1917,14 @@ def rebuild_command():
     return f"cd {root} && " + (f"MC2_NINJA_TREE={tree} " if tree else "") + "py -3 scripts/ninja_build.py"
 
 
-def require_head_exe(exe, head):
-    """Reject stale/missing provenance from the executable bytes, never a header."""
-    from exe_fingerprint import extract, sha_agrees
+def require_head_exe(exe, head, root=None):
+    """Reject stale/missing provenance from the executable bytes, never a header. With root, a clean
+    ancestor build is accepted when no build input changed since (data/test-only commits)."""
+    from exe_fingerprint import extract, sha_agrees, build_current
     fp = extract(exe)
-    if not fp.get("present") or sha_agrees(fp.get("sha"), head) is not True:
+    current = (sha_agrees(fp.get("sha"), head) is True
+               or (root is not None and build_current(fp.get("sha"), head, root, bool(fp.get("dirty")))))
+    if not fp.get("present") or not current:
         fail(f"REFUSING stale/unattributable executable: {exe}\n"
              f"  embedded build sha={fp.get('sha', 'absent')} != HEAD {head} "
              f"({fp.get('reason', 'SHA mismatch')}).\n"
@@ -2012,7 +2015,7 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # exact source state (2026-07-12 grey-regression P0 mis-diagnosis class).
     source_head = git_head(src_root)
     src_commit = source_head
-    fp = require_head_exe(os.path.join(build_dir, exe_name), src_commit)
+    fp = require_head_exe(os.path.join(build_dir, exe_name), src_commit, src_root)
     if fp["dirty"]:
         msg = (f"embedded fingerprint says dirty build at {fp['sha']}. "
                f"COMMIT FIRST, rebuild ({rebuild_command()}), then deploy.")
@@ -2078,7 +2081,7 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
     installed = os.path.join(target, exe_name)
-    require_head_exe(installed, source_head)
+    require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):
         fail(f"REFUSING installed executable differs from validated source: {installed}")
     # Completeness BEFORE the manifest: a failure must not leave a manifest that says the deploy is complete.

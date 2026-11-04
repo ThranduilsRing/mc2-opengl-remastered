@@ -134,7 +134,7 @@ def clean_failed_outputs(state, proof):
 
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
-    from exe_fingerprint import extract, sha_agrees
+    from exe_fingerprint import extract, build_current
     from mod_smoke import load_known_failures
     from deploy_payload import verify_published_identity, staleness_report
     import saveload_roundtrip as saves
@@ -144,8 +144,9 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
     rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j" + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
-        if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
-            errors.append(f"{name} fingerprint != clean HEAD {head}; fix: {rebuild}")
+        # A clean ancestor build stays current when no build input changed since (data/test-only commits).
+        if not fp.get('present') or not build_current(fp.get('sha'), head, ROOT, bool(fp.get('dirty'))):
+            errors.append(f"{name} fingerprint != clean HEAD {head} (or a build-input-identical ancestor); fix: {rebuild}")
     bookmarks = set()
     for name, command, env in steps:
         if name.startswith('capture-') and '--bookmarks' in command and not env.get('MC2_GATE_SKIP_REASON'):
@@ -346,7 +347,7 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
-        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head)))
+        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
                 and (offline or sha is not None and row.get('exe_sha') == sha)
                 and stage_passed(row.get('status', ''))):
             return False
@@ -503,9 +504,29 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
 
 # Unknown inputs deliberately retain every stage. Only proven independent domains
 # can waive game proofs; generators/build configuration retain full coverage.
-def head_delta_nonruntime(old, new):
+# Proof inputs read by one row family only (stage-name prefixes). A commit that touches just these (e.g. a re-frozen
+# quiet baseline) reruns those rows and keeps every other row's evidence for the same exe.
+ROW_PROOF_INPUTS = {
+    "tests/contract/default_build_quiet_baseline.json": ("quiet",),
+    "scripts/check-default-build-quiet.py": ("quiet",),
+    "tools/save_noise_mask.json": ("saveload-",),
+    "tools/saveload_roundtrip.py": ("saveload-",),
+    "tests/saveload/": ("saveload-",),
+    "tests/smoke/sim_determinism/": ("determinism-",),
+    "tools/mod_smoke.py": ("mods",),
+}
+
+
+def row_scoped_input(path):
+    """The row prefixes a row-scoped proof input belongs to, or None for an ordinary path."""
+    p = path.replace("\\", "/").lower()
+    return next((rows for prefix, rows in ROW_PROOF_INPUTS.items() if p.startswith(prefix)), None)
+
+
+def head_delta_nonruntime(old, new, row=None):
     """True when old..new touches only docs/tooling paths (change_domains; unknown paths count as engine). A runtime stage
-    that passed at `old` with the same exe sha and the same signature inputs is then still valid at `new`."""
+    that passed at `old` with the same exe sha and the same signature inputs is then still valid at `new`. With row (a
+    stage name), a row-scoped proof input (ROW_PROOF_INPUTS) of another row is ignored and one of this row's is a change."""
     if not old or not new:
         return False
     try:
@@ -513,6 +534,12 @@ def head_delta_nonruntime(old, new):
                              check=True, **console_child.child_kwargs(redirected=True)).stdout.split()
     except (OSError, subprocess.CalledProcessError):
         return False
+    if row is not None:
+        scoped = {p: row_scoped_input(p) for p in out}
+        if any(rows and row.startswith(rows) for rows in scoped.values()):
+            return False
+        rest = [p for p, rows in scoped.items() if not rows]
+        return bool(out) and change_domains(rest) <= {'docs', 'tooling'}
     return bool(out) and change_domains(out) <= {'docs', 'tooling'}
 
 

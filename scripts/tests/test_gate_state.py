@@ -368,3 +368,19 @@ def test_stage_reuse_across_head_change_only_for_nonruntime_paths(monkeypatch, p
     monkeypatch.setattr(gate.subprocess, "run", lambda *a, **k: done)
     assert gate.head_delta_nonruntime("old", "new") is ok
     assert gate.head_delta_nonruntime("", "new") is False
+
+
+@pytest.mark.parametrize("paths,row,ok", [
+    (["tests/contract/default_build_quiet_baseline.json"], "quiet", False),          # the row whose baseline moved reruns
+    (["tests/contract/default_build_quiet_baseline.json"], "tier1", True),           # every other row keeps its evidence
+    (["tests/contract/default_build_quiet_baseline.json"], "determinism-mc2_03", True),
+    (["tests/contract/default_build_quiet_baseline.json", "tests/callers.json"], "mods", True),
+    (["tools/save_noise_mask.json"], "saveload-mc2_01", False),
+    (["tools/save_noise_mask.json"], "determinism-mc2_10", True),
+    (["tests/contract/default_build_quiet_baseline.json", "mclib/quad.cpp"], "tier1", False),  # engine path still poisons
+    (["tests/contract/default_build_quiet_baseline.json"], None, False),             # row-blind callers keep the old rule
+])
+def test_row_scoped_proof_input_reruns_only_its_row(monkeypatch, paths, row, ok):
+    done = types.SimpleNamespace(stdout="\n".join(paths))
+    monkeypatch.setattr(gate.subprocess, "run", lambda *a, **k: done)
+    assert gate.head_delta_nonruntime("old", "new", row) is ok
