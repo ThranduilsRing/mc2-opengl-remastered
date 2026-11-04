@@ -3545,7 +3545,15 @@
     "fence_n",
     "fence_ms",
     "fence_max_ms",
+    "behind_upload_ms",
+    "slot_n",
+    "slot_ms",
+    "slot_max_ms",
     "staged_kb",
+    "load_waitidle_ms",
+    "load_fence_ms",
+    "load_slot_ms",
+    "load_staged_kb",
     "host_cpu_pct",
     "other_mc2",
     "device"
@@ -4162,7 +4170,8 @@
    "stream": "stderr",
    "keys": [
     "why",
-    "ms"
+    "ms",
+    "pending_upload_kb"
    ],
    "count": 1
   },

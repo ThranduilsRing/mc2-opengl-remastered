@@ -29,10 +29,15 @@ bool beginTransientCommandBuffer(const VulkanContext& ctx, OwnedCommandPool& poo
 
 bool submitAndWait(const VulkanContext& ctx, const VkSubmitInfo& si, uint64_t timeoutNs, std::string_view why) {
     uint64_t value = 0;
+    const uint64_t pending = mc2_hitch2::pendingUploadBytes();   // the upload batch ctx.submit flushes ahead of this submit
     if (ctx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) return false;
     const GpuTicket t{value, 0};
-    mc2_hitch2::FenceWaitScope waitScope(why);
-    if (ctx.wait(t, timeoutNs, why)) return true;
+    bool done;
+    {
+        mc2_hitch2::FenceWaitScope waitScope(why, mc2_hitch2::kOneShot, pending);   // closed before the idle fallback, which waitidle_ms counts
+        done = ctx.wait(t, timeoutNs, why);
+    }
+    if (done) return true;
     ctx.waitIdle(why);
     ctx.poll();
     return ctx.isComplete(t);
@@ -55,10 +60,11 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
         VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
         si.commandBufferCount = 1;
         si.pCommandBuffers = &cb;
+        const uint64_t pending = mc2_hitch2::pendingUploadBytes();   // flushed ahead of this submit
         if (ctx.submit(si, fence.get()) != VK_SUCCESS) break;
         submitted = true;
         const VkFence fenceHandle = fence.get();
-        mc2_hitch2::FenceWaitScope waitScope(why);
+        mc2_hitch2::FenceWaitScope waitScope(why, mc2_hitch2::kOneShot, pending);
         ok = vkWaitForFences(device, 1, &fenceHandle, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
     } while (false);
     if (submitted && !ok) {

@@ -1719,7 +1719,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
         // Late coverage also reads this slot's descriptors and frame inputs.
         const VkFence lateFence = s->lateFence[par].get();
-        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS, "VK_PROP")) {
+        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, [&] { mc2_hitch2::FenceWaitScope lateWait("color_prop_late_fence", mc2_hitch2::kSlot); return vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS; }(), "VK_PROP")) {
             setFallback("late_fringe_fence_timeout"); vlog("LOUD: late fringe fence wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
     }

@@ -6,7 +6,6 @@
 
 #include "vk_image_resource.h"
 #include "diagnostic_trace.h"
-#include "hitch_stats.h"
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -116,15 +115,6 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     vci.subresourceRange = {aspectFor(format), 0, 1, 0, 1};
     if (!mc2vk::create(r->view, device, [&](VkImageView* out) { return vkCreateImageView(device, &vci, nullptr, out); })) return fail("vkCreateImageView");
 
-    // ---- double-buffered binary semaphore pairs + per-frame fences (blocker #4) ----
-    // Fence starts SIGNALED so the first vkImageResourceBeginFrame wait returns
-    // immediately (no submit has retired on this slot yet).
-    VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    for (int i = 0; i < 2; ++i) {
-        if (!mc2vk::create(r->frameFence[i], device, [&](VkFence* out) { return vkCreateFence(device, &fci, nullptr, out); })) return fail("vkCreateFence");
-    }
-
     return true;
 }
 
@@ -143,40 +133,5 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice) {
 }
 
 int vkImageResourceLiveCount() { return g_liveImages.load(std::memory_order_relaxed); }
-
-VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
-    const RenderCore::FrameFenceCore::Begin slot = r->frames.begin();
-    // A disabled resource (a failed CancelFrame) has a reset fence nothing will signal: wait on nothing and hand back a null fence.
-    if (!slot.mayWait) return VkFrameSync{VK_NULL_HANDLE, slot.slot};
-    const uint32_t p = slot.slot;
-    // Blocker #4: guarantee the prior submit on this slot retired before its binary
-    // semaphore is re-signalled. Fence created SIGNALED so frame 0 does not block.
-    const VkFence fence = r->frameFence[p].get();
-    VkResult waited;
-    {
-        mc2_hitch2::FenceWaitScope waitScope("image_resource_frame_fence");
-        waited = vkWaitForFences(r->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);   // bounded: an unsignalled fence must not hang the frame forever
-    }
-    if (waited != VK_SUCCESS) {
-        // Not signalled in 5 s (hung or lost device): resetting a pending fence is invalid, so hand back the no-fence sync a disabled resource gets.
-        ilog("ERROR: frame fence wait failed (VkResult=%d) after 5 s; skipping this frame's sync", static_cast<int>(waited));
-        return VkFrameSync{VK_NULL_HANDLE, p};
-    }
-    vkResetFences(r->device, 1, &fence);
-    return VkFrameSync{r->frameFence[p].get(), p};
-}
-
-bool vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync) {
-    if (!r || sync.parity > 1u || !sync.fence) return false;
-    VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    const VkDevice device = r->device;
-    // Create beside the old fence and swap on success: a failed vkCreateFence (device loss, out of memory) must not empty the owner.
-    mc2vk::OwnedFence fresh;
-    const bool recreated = mc2vk::create(fresh, device, [&](VkFence* out) { return vkCreateFence(device, &fci, nullptr, out); });
-    if (recreated) r->frameFence[sync.parity] = std::move(fresh);
-    r->frames.cancel(sync.parity, recreated);   // on failure the resource is disabled: BeginFrame never waits the reset, unsignalled old fence
-    return recreated;
-}
 
 #endif // MC2_VULKAN_ISLAND

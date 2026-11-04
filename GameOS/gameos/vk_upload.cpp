@@ -38,6 +38,7 @@ UploadBatch::Span UploadBatch::stage(VulkanContext& ctx, VkDeviceSize bytes) {
     out.ptr = info.pMappedData;
     dedicated_.push_back(std::move(buf));
     ++dedicatedStages_;
+    mc2_hitch2::noteStaged(bytes);
     return out;
 }
 
