@@ -181,7 +181,7 @@ namespace {
     static inline void lbInitFromEnv() {
         if (s_lbInit) return;
         s_lbInit = true;
-        s_lbEnabled = mc2::gate::get<"MC2_OBJECT_RECON_TRACY">();
+        s_lbEnabled = false;
         if (s_lbEnabled) {
             MC2_DIAG_PUTS("[LIGHTBRIDGE v1] event=enabled note=c5c6_populate_sizing_active");
             std::fflush(stdout);
@@ -240,7 +240,7 @@ namespace {
         if (s_lbRepointInit) return;
         s_lbRepointInit = true;
         // OFF only on explicit "0"; any other value (or unset) = ON.
-        s_lbRepointEnabled = mc2::gate::get<"MC2_LIGHTBRIDGE">();
+        s_lbRepointEnabled = true;
         MC2_DIAGF("[LIGHTBRIDGE v1] event=enabled mode=%s\n",
                     s_lbRepointEnabled ? "repoint" : "legacy");
         std::fflush(stdout);
@@ -291,7 +291,7 @@ namespace {
     static inline void bakeInitFromEnv() {
         if (s_bakeInit) return;
         s_bakeInit = true;
-        s_bakeEnabled = mc2::gate::get<"MC2_LIGHTBAKE">();
+        s_bakeEnabled = true;
         MC2_DIAGF("[LIGHTBAKE v1] event=enabled mode=%s\n",
                     s_bakeEnabled ? "bake" : "passthrough");
         std::fflush(stdout);
