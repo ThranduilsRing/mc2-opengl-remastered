@@ -1,0 +1,533 @@
+{
+ "exodus": {
+  "missions": {
+   "a_0_6": {
+    "objects": 349,
+    "sha256": "290c4947af16909cc0e96eac1519b78d0a90a01106864b1149b6a6c595d0e6c4",
+    "trees": 1,
+    "types": 1
+   },
+   "a_0_7": {
+    "objects": 1275,
+    "sha256": "89175eb26aeecca1ae93c074c9591beedb9a1bb5ba9cb3e8312867669a6e6b6b",
+    "trees": 798,
+    "types": 2
+   },
+   "a_1_3": {
+    "objects": 1124,
+    "sha256": "f0c76a3dfddbb75f2c69f564ecd34603700c5acabb45aa3b7181e0a30151a19b",
+    "trees": 898,
+    "types": 1
+   },
+   "a_1_6": {
+    "objects": 371,
+    "sha256": "ccd4becb70b88a6ac00eb4c3bb4a812b3bf1762e28f163a3a0b2c67a71dee63f",
+    "trees": 10,
+    "types": 3
+   },
+   "e_2_0a": {
+    "objects": 937,
+    "sha256": "0b33d12cb349ddef147b918efbcf05f66a252c951212de59cc3a12444c26d242",
+    "trees": 282,
+    "types": 4
+   },
+   "e_2_1": {
+    "objects": 391,
+    "sha256": "7a2d92aa4a702ec53c2898b2f2eaaea7d2bed2267cf3942e01aa691d7dc13500",
+    "trees": 32,
+    "types": 2
+   },
+   "e_3_0a": {
+    "objects": 1445,
+    "sha256": "dabdfc4f95acc8bc5b208c029cfb80863640a0049d34d810ba222e0e0bad4848",
+    "trees": 962,
+    "types": 6
+   },
+   "e_3_1": {
+    "objects": 774,
+    "sha256": "4576b05196a7f2b48a9f13ae37a3c87613830f7f20feef2bd47d4992a275d945",
+    "trees": 363,
+    "types": 2
+   },
+   "e_3_2": {
+    "objects": 1281,
+    "sha256": "aa40c1a5293bd2ce54caec24bee68d3d3038151433b69d39c89f30c1a826b5d9",
+    "trees": 866,
+    "types": 1
+   },
+   "e_4_1": {
+    "objects": 1072,
+    "sha256": "c64414f80dbdfe23921f0255ae4031aa3eeadf89d128757f5bc0de1be453b313",
+    "trees": 829,
+    "types": 2
+   },
+   "e_4_3": {
+    "objects": 1213,
+    "sha256": "06d164131417a362d604cb8bfe262b0788ebccbdf8b9fa61733a551cb7fbb7f9",
+    "trees": 804,
+    "types": 1
+   },
+   "e_4_6": {
+    "objects": 2153,
+    "sha256": "6c47569f6c8fae4485125b2923cf4046c3246a7c518de25a94fdcbd56ab74ee0",
+    "trees": 1744,
+    "types": 6
+   },
+   "e_4_7": {
+    "objects": 1837,
+    "sha256": "c3cc3de0dc8fb06146462d58c53bb191e607a279ecd331d1dd004fbf208fb8fb",
+    "trees": 861,
+    "types": 6
+   },
+   "x_2_5": {
+    "objects": 1397,
+    "sha256": "14312020dfdcf26ac7d3a9d48e03db3f76a4bbddff83e461866ff6159f660f00",
+    "trees": 957,
+    "types": 12
+   },
+   "x_4_2": {
+    "objects": 1024,
+    "sha256": "fc31c45d29d03fe23bd443eda9f01bb53387c6769a19b3ad7564356dbf90d32d",
+    "trees": 385,
+    "types": 4
+   },
+   "x_5_1a": {
+    "objects": 597,
+    "sha256": "a97691af244bd670c3cc2e87724b01104a695f530fd421b0a89eec3c66428e28",
+    "trees": 349,
+    "types": 3
+   }
+  },
+  "treeTypes": 403
+ },
+ "omnitech": {
+  "missions": {
+   "a_0_6": {
+    "objects": 349,
+    "sha256": "c6a985a502890a954f5382c627f2b00960891e64baf70bcb631d0a652bdddcfe",
+    "trees": 1,
+    "types": 1
+   },
+   "a_0_7": {
+    "objects": 1275,
+    "sha256": "3db3674b072794158a6ab5e97b6c68438e3ffe4f7d80eaea9735a78d634a0c8f",
+    "trees": 798,
+    "types": 2
+   },
+   "a_1_3": {
+    "objects": 1123,
+    "sha256": "a99b8da1ba7c110e7e658746b1c0c81edf84e693fcffc01a8dfdc3aebadf16ef",
+    "trees": 898,
+    "types": 1
+   },
+   "a_1_6": {
+    "objects": 249,
+    "sha256": "4277103995386de0b1fff4b94a1e83810b73c32b32cac4e686f4a31dead3d405",
+    "trees": 1,
+    "types": 1
+   },
+   "e3demo": {
+    "objects": 1517,
+    "sha256": "23167dbeba6defcb6ebb682751f0384e193328e49e1a02fa94f41c2b4cf6f553",
+    "trees": 624,
+    "types": 14
+   },
+   "e_2_0a": {
+    "objects": 937,
+    "sha256": "72730965b4b302317268f05dd42f7ca5cdc34582f3dcf13662455869f2092926",
+    "trees": 282,
+    "types": 4
+   },
+   "e_2_1": {
+    "objects": 391,
+    "sha256": "5709a5054ebbd85035160d22c6bb049616ea490c8ac88c2fc3b2dcd059016392",
+    "trees": 32,
+    "types": 2
+   },
+   "e_3_0a": {
+    "objects": 1449,
+    "sha256": "7ae4341e45376d1b6f2543713eec8963d65555daa6f3d767db8be4b188ea1b39",
+    "trees": 962,
+    "types": 6
+   },
+   "e_3_1": {
+    "objects": 774,
+    "sha256": "17180e20e81385a5b9e499c874c61857c1f91e8b1211718deb4d4768f523fe3a",
+    "trees": 363,
+    "types": 2
+   },
+   "e_3_2": {
+    "objects": 1305,
+    "sha256": "9ae52a5ced5418a085d25880525215d7c086688311b197637361c659dcb05e2a",
+    "trees": 866,
+    "types": 1
+   },
+   "e_4_1": {
+    "objects": 1072,
+    "sha256": "38d92548f43d193e67f4f6297bb8f01f844b82161098a016baa7c961ef0ba541",
+    "trees": 829,
+    "types": 2
+   },
+   "e_4_3": {
+    "objects": 1201,
+    "sha256": "f5a068f1400eb505b19964c4be3589c66197819e0a63d1e05f0244848caca0d9",
+    "trees": 804,
+    "types": 1
+   },
+   "e_4_6": {
+    "objects": 2153,
+    "sha256": "3080f294bdea9368d0c7fa12377deaeb698266a8ba377836722c327ade715f58",
+    "trees": 1744,
+    "types": 6
+   },
+   "e_4_7": {
+    "objects": 1838,
+    "sha256": "22021e6a21c383e3765425b34e0a3e24f2968c42a27c38e7e3de642d9b5ac78b",
+    "trees": 860,
+    "types": 6
+   },
+   "mw2_10_1_luthien": {
+    "objects": 2691,
+    "sha256": "f83d1728fcea4f9e87ff3b07726922da3ac08c61c6b32e540f2bf4a4c16e87c6",
+    "trees": 1633,
+    "types": 29
+   },
+   "mw2_10_2_luthien": {
+    "objects": 536,
+    "sha256": "8613f9aba4dbf6cf710f3562bdf32b3e74922ee3dd80e82d6e7290215cdcfdaa",
+    "trees": 25,
+    "types": 2
+   },
+   "mw2_1_1": {
+    "objects": 1904,
+    "sha256": "a7f591d02d4040171ef34bcab6eaf7494a42cb31429b74c95d35d58445a99d63",
+    "trees": 1184,
+    "types": 17
+   },
+   "mw2_1_2": {
+    "objects": 2433,
+    "sha256": "a8b3d4133da2813c409c189f8f83fcef734dcd408805204e326d63c02948a86d",
+    "trees": 1167,
+    "types": 17
+   },
+   "mw2_2_1": {
+    "objects": 857,
+    "sha256": "b7c01aabd34339e32f2526ee321fb2143603e5a3ee300d98fa8e85dfa2b51d5a",
+    "trees": 181,
+    "types": 4
+   },
+   "mw2_2_3": {
+    "objects": 564,
+    "sha256": "948921866f8daa82ea5d22338cdb4db6b98bf28014a4750efdd63e30b3dcdec3",
+    "trees": 2,
+    "types": 2
+   },
+   "mw2_2_4": {
+    "objects": 3410,
+    "sha256": "a2bb16b49cdaeffd699423baf31dff11d513bfb7d817ecdca7e266527a32a02e",
+    "trees": 2148,
+    "types": 9
+   },
+   "mw2_4_1": {
+    "objects": 2474,
+    "sha256": "a009157d1e8450f6ed9c9478a8a89af79da0b579c0584f314d92aa2e2771d8c5",
+    "trees": 1963,
+    "types": 8
+   },
+   "mw2_8_1": {
+    "objects": 3847,
+    "sha256": "44df8a1601d6b14889186b008d66dd56bc00833400edf722309468ca1cca1251",
+    "trees": 3662,
+    "types": 6
+   },
+   "mw2_n_0": {
+    "objects": 618,
+    "sha256": "5f5288ea6c41b9636d703a2880d94cfe07b01b86e7f269e4358a093bfd62ec7c",
+    "trees": 399,
+    "types": 17
+   },
+   "mw2_n_2": {
+    "objects": 5448,
+    "sha256": "189f83762ee71e57c2c3db17bda8dabb713ddfa7d2b6f9126b2ef09c6fcdf599",
+    "trees": 4876,
+    "types": 35
+   },
+   "mw2_n_3": {
+    "objects": 1802,
+    "sha256": "e48c27c6df4bbe1c036154b7b621f1fa081e8151af2c01d92a019861ce854a29",
+    "trees": 1028,
+    "types": 5
+   },
+   "mw2_n_32_oasis": {
+    "objects": 1170,
+    "sha256": "a3cf51822e180842ed2212b4f62013143e55405e6ae5f0bd6b5605b95a4488f7",
+    "trees": 448,
+    "types": 2
+   },
+   "mw2_n_33": {
+    "objects": 3116,
+    "sha256": "7ed881a4c130b06d6a4e12f05ac6972a9e6a3dd7857ef0513de08b687f039b1f",
+    "trees": 2535,
+    "types": 9
+   },
+   "mw2_n_35": {
+    "objects": 6212,
+    "sha256": "9a528646367c21702bb49274fdbfe99bff9755367670f505cbbc5eda6c0df953",
+    "trees": 5683,
+    "types": 36
+   },
+   "mw2_n_4": {
+    "objects": 1371,
+    "sha256": "4f6c97790786baac280ec827007e8a2ff2bf3ff6e7ef3fdfd41e0105c0ec35c8",
+    "trees": 622,
+    "types": 14
+   },
+   "mw2_n_6": {
+    "objects": 1281,
+    "sha256": "478be72f6798e478056ec5c875009166ca6714fa72762b6573305549103c7926",
+    "trees": 938,
+    "types": 6
+   },
+   "mw2_n_8": {
+    "objects": 1835,
+    "sha256": "400db8dbd38608f129883979f9974a2bee07599446a8aec0f5748126e429a37f",
+    "trees": 1452,
+    "types": 32
+   },
+   "mw2_w_1": {
+    "objects": 1249,
+    "sha256": "828fe51987da0a8bee56d96e603a1491b1eb85b1b50ed70e7fd03a6ca552e27b",
+    "trees": 1061,
+    "types": 26
+   },
+   "p": {
+    "objects": 13,
+    "sha256": "718c8c04cfe863410029970c5cf0fa6165e377a0e27bbd33650c85280656b531",
+    "trees": 6,
+    "types": 6
+   },
+   "x_2_5": {
+    "objects": 1396,
+    "sha256": "3f28a72b17b115a033af725ceeb2fd777ace8fb24966f383c59f66522de398d4",
+    "trees": 956,
+    "types": 12
+   },
+   "x_4_2": {
+    "objects": 1030,
+    "sha256": "9fbaa63d83d8b64aa6a8b56ecbeb18af115d1f17dd03ffe41b60db070694a15e",
+    "trees": 385,
+    "types": 4
+   },
+   "x_5_1a": {
+    "objects": 599,
+    "sha256": "aaac650f8cab658db22be86e4797cadc4434c6a0653975ad237ac3f216393419",
+    "trees": 349,
+    "types": 3
+   }
+  },
+  "treeTypes": 347
+ },
+ "stock": {
+  "missions": {
+   "ai_glenn": {
+    "objects": 276,
+    "sha256": "ac3775e70bcaa94e57e59309395e7c561f75849b741036f42c284135f3302b85",
+    "trees": 211,
+    "types": 5
+   },
+   "e3demo": {
+    "objects": 1517,
+    "sha256": "4728ba36d6bc5f4e6dc15854f3720b67eec0c8170dac49fcbe0ff254828e1d56",
+    "trees": 624,
+    "types": 14
+   },
+   "mc2_01": {
+    "objects": 1000,
+    "sha256": "cc2ff19aeef90baf0ce79ca8c08acf7ce88f6f888636814e5e15103955dba5e9",
+    "trees": 733,
+    "types": 11
+   },
+   "mc2_02": {
+    "objects": 1856,
+    "sha256": "dd59c47fecbbcc31257dec8046013f5401e4bd79e3545f024e9dbe2f8f7d6527",
+    "trees": 1301,
+    "types": 16
+   },
+   "mc2_03": {
+    "objects": 2560,
+    "sha256": "8dc379790c93e14901e2b08b54f260bc977f2e100da6266b9a43b962e5f919cd",
+    "trees": 2088,
+    "types": 6
+   },
+   "mc2_04": {
+    "objects": 1348,
+    "sha256": "64c468e46e59f1ac61acf0bbfb4a06aabbea43d34c139933cc09bdb6663f19c5",
+    "trees": 901,
+    "types": 27
+   },
+   "mc2_05": {
+    "objects": 846,
+    "sha256": "4b11da6c3ee796686ac0ea43fd008e44462b8bc92c5b7bea25a26b59cdbf7acc",
+    "trees": 3,
+    "types": 2
+   },
+   "mc2_06": {
+    "objects": 2642,
+    "sha256": "66fc31cfb5cd4a507f9421f9e9dd7b3ff4fce37d4af283b7068bae7314911296",
+    "trees": 2101,
+    "types": 6
+   },
+   "mc2_07": {
+    "objects": 3105,
+    "sha256": "7d9c8a655f8214f91739fead47eabe30ec3efe5fb9be779c0f53dc33f7070252",
+    "trees": 2687,
+    "types": 20
+   },
+   "mc2_08": {
+    "objects": 1710,
+    "sha256": "2f181fccb627f76037ebfb395f31399f1f101b651f722305ca8d3a071539eaec",
+    "trees": 479,
+    "types": 17
+   },
+   "mc2_09": {
+    "objects": 1366,
+    "sha256": "2d6084350ff46f6c7e7f227442e21a9d69604bd0a0319a443c047d354e0b1de9",
+    "trees": 213,
+    "types": 4
+   },
+   "mc2_10": {
+    "objects": 2629,
+    "sha256": "3bf68d9a51d3586133e5eac434b68249113a1f834849ff6012290efc73748395",
+    "trees": 2056,
+    "types": 8
+   },
+   "mc2_11": {
+    "objects": 2250,
+    "sha256": "8417263283f72beb81624472d6d2728497358aa8c952d0cdeead7fa00303c8f2",
+    "trees": 802,
+    "types": 10
+   },
+   "mc2_12": {
+    "objects": 1038,
+    "sha256": "c71f1ca5cf06aa8067dad4050a67859818cfe54805bd45b1606c4e82995fce01",
+    "trees": 245,
+    "types": 7
+   },
+   "mc2_14": {
+    "objects": 4668,
+    "sha256": "b2d33e0dcfd6bfd17c6529a03b8dfa744f505c66b33e114c2652c89fb768a091",
+    "trees": 3558,
+    "types": 18
+   },
+   "mc2_15": {
+    "objects": 2417,
+    "sha256": "d705822b5029068139e1002dc504b867b80b31b51a1eed84efb05e600bcdae05",
+    "trees": 1683,
+    "types": 4
+   },
+   "mc2_16": {
+    "objects": 4142,
+    "sha256": "065b61008ecb7968152b6493b6c8de6f646dea739423ae560ead4c697a8e4246",
+    "trees": 3811,
+    "types": 6
+   },
+   "mc2_17": {
+    "objects": 1538,
+    "sha256": "7bb3a132a27f8203103d159a4c0b39020f9cb79663ead44f53919a13140027e8",
+    "trees": 1182,
+    "types": 6
+   },
+   "mc2_18": {
+    "objects": 3419,
+    "sha256": "74a58bc6f8164444b6614be003075e7a2857c2171bf031d681d10f707e4d3d3f",
+    "trees": 2155,
+    "types": 9
+   },
+   "mc2_19": {
+    "objects": 2743,
+    "sha256": "beee35cdbe9cd814a733f494290b3f0565ba48031817cc0527a33e2797b0d1d4",
+    "trees": 1939,
+    "types": 3
+   },
+   "mc2_20": {
+    "objects": 2065,
+    "sha256": "42c8ac99656b1b232d6f94bbd5b4fd8aaae1daa2bb288c24019882d90d425326",
+    "trees": 1607,
+    "types": 6
+   },
+   "mc2_21": {
+    "objects": 3456,
+    "sha256": "21b79e6a87cd4a6bae108ee80f35d5e27cd39b2f71dddc84a7cfff456d6343b1",
+    "trees": 2692,
+    "types": 4
+   },
+   "mc2_22": {
+    "objects": 2503,
+    "sha256": "56d90a39515c1a26cfaeda9bf0c816e92573752d27e19d926c833272651c8e18",
+    "trees": 1472,
+    "types": 12
+   },
+   "mc2_23": {
+    "objects": 1931,
+    "sha256": "a17b4b4e4ab7d0da939d7701616b82bcc6c65d42c68ce3c6b445930dcb963e61",
+    "trees": 1042,
+    "types": 5
+   },
+   "mc2_24": {
+    "objects": 2677,
+    "sha256": "4010328bacbe5d3bbaf9f7a9fc593f761509e30834630e65cc51514fdeea0479",
+    "trees": 1836,
+    "types": 21
+   },
+   "mc2_demo": {
+    "objects": 989,
+    "sha256": "ed94736c22b0f2dd9a5a1576ef83eaaf133a99ba5059ea682710817987499764",
+    "trees": 674,
+    "types": 10
+   },
+   "mc2_m03": {
+    "objects": 1286,
+    "sha256": "c062a6dbae12f4bd419aeb865f2859aaa118eb250be64b471edf3074f698c417",
+    "trees": 939,
+    "types": 6
+   },
+   "mc2_m04": {
+    "objects": 2098,
+    "sha256": "2d542f545c3690bc760e4b06b6860c14b88d72d02dd34a52a8893a52968eb2ee",
+    "trees": 1712,
+    "types": 6
+   },
+   "mc2_m05": {
+    "objects": 4177,
+    "sha256": "8d51912a01570bb1025108b7cc24b29641526eaa494fbd34e674cbd78c34c9e3",
+    "trees": 4161,
+    "types": 4
+   },
+   "mc2_m07": {
+    "objects": 3974,
+    "sha256": "e369f93826e873e1d651b20ef1230272aa86fe872da670a9a23a3fabcc2a4fe8",
+    "trees": 3452,
+    "types": 4
+   },
+   "mc2_m08": {
+    "objects": 2485,
+    "sha256": "53aecb58729d6c4d68387b136460f9e089fc90e67ee1a82daa84cf54f485b8ac",
+    "trees": 2345,
+    "types": 4
+   },
+   "mc2_m09": {
+    "objects": 2386,
+    "sha256": "8ce4643275a08f9c6e9b2c4d323ba99a0cd32758686242ebd6d2302b3bd51f66",
+    "trees": 2129,
+    "types": 6
+   },
+   "objtest": {
+    "objects": 56,
+    "sha256": "47be4692037c257e9ff108a61c29996784f6ea1fb41e3b47985adeb5089182c3",
+    "trees": 3,
+    "types": 3
+   }
+  },
+  "treeTypes": 403
+ }
+}

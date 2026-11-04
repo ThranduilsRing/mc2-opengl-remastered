@@ -494,6 +494,10 @@ void __stdcall InitializeGameEngine()
                 }
     
                 S_snprintf(savePath, sizeof(savePath), "%s" PATH_SEPARATOR "%s" PATH_SEPARATOR, userDataDir, "savegame" );
+                // MC2_SAVE_DIR: player-path harness redirect so a scripted run never touches the player's saves.
+                const std::string saveDirOverride = mc2::gate::str<"MC2_SAVE_DIR">();
+                if (!saveDirOverride.empty())
+                    S_snprintf(savePath, sizeof(savePath), "%s" PATH_SEPARATOR, saveDirOverride.c_str());
 
                 MC2_LOG(Io, Debug, "{}", mc2::fmt::safe(savePath));
 

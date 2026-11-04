@@ -38,16 +38,23 @@ layout(set = 0, binding = 6) uniform sampler2D uMechAo;   // AO-1 (imported; GL 
 layout(set = 0, binding = 7) uniform sampler2D uMechNrm;  // NORMALS-1 (imported; GL unit 7)
 
 #define PREC highp
+// MECH_PREVIEW (mech_preview.frag.spv, baked from this source with -DMECH_PREVIEW=1): the
+// mech-lab panel pass. No terrain set 1 (no light pools, no ground grid), and the HDR
+// result is exposed and tonemapped in-shader because the RGBA8 panel target gets no post.
+#ifndef MECH_PREVIEW
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
+#endif
 layout(push_constant) uniform MechRunPC {
     uint materialFlags;    // bit0 = ALPHA_TEST (mech.frag ALPHA_TEST_BIT)
     uint poolFirst;
     uint poolCount;
 } uRun;
+#ifndef MECH_PREVIEW
 #define MC2_OBJECT_TERRAIN_GRID 1
 #include "../include/object_light_pool.hglsl"
+#endif
 #include "../include/mech_shading.hglsl"
 
 layout(location = 0) in vec2 vUv;
@@ -90,9 +97,47 @@ void main() {
         if ((vImportedMech & 2u) != 0u)
             rgb *= surface.ao;
         Nshade = surface.normal;
+#ifdef MECH_PREVIEW
+        {
+            // Mech-lab studio rig, fixed relative to the camera (the turntable spins the mech, not the lights):
+            // warm key upper-left, cool fill right, hard rim from behind, a sky/ground hemisphere ambient and a
+            // procedural softbox environment for the specular term.
+            vec3 Vs = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
+            vec3 cf = normalize(uFrame.cameraWorldPos.xyz);
+            vec3 cr = normalize(cross(vec3(0.0, 1.0, 0.0), cf));
+            vec3 cu = cross(cf, cr);
+            vec3 Lk = normalize(-0.60 * cr + 0.70 * cu + 0.50 * cf);
+            vec3 Lf = normalize( 0.80 * cr + 0.05 * cu + 0.55 * cf);
+            vec3 Lr = normalize( 0.20 * cr + 0.55 * cu - 0.85 * cf);
+            vec3 albedo = tex_color.rgb;
+            float nk = max(dot(Nshade, Lk), 0.0);
+            float nf = max(dot(Nshade, Lf), 0.0);
+            float nr = max(dot(Nshade, Lr), 0.0);
+            float hemi = 0.5 + 0.5 * Nshade.y;
+            vec3 amb = mix(vec3(0.16, 0.14, 0.12), vec3(0.42, 0.48, 0.58), hemi) * 0.42;
+            vec3 diff = amb + vec3(1.00, 0.93, 0.82) * 1.15 * nk
+                            + vec3(0.45, 0.55, 0.78) * 0.45 * nf
+                            + vec3(0.80, 0.90, 1.00) * 0.90 * nr;
+            rgb = albedo * diff;
+            rgb += vHighlight.rgb * vHighlight.a;
+            if ((vImportedMech & 2u) != 0u)
+                rgb *= surface.ao;
+            float ndv = clamp(dot(Nshade, Vs), 0.0, 1.0);
+            vec3 R = reflect(-Vs, Nshade);
+            float rough = clamp(uFrame.shadeA.z, 0.15, 0.9);
+            float shin = clamp(2.0 / (rough * rough) - 2.0, 4.0, 400.0);
+            float lobe = pow(max(dot(R, Lk), 0.0), shin) * 1.6
+                       + pow(max(dot(R, Lr), 0.0), shin * 0.7) * 1.1
+                       + pow(max(dot(R, Lf), 0.0), shin * 0.5) * 0.3;
+            vec3 envRefl = mix(vec3(0.05, 0.045, 0.04), vec3(0.30, 0.34, 0.42), 0.5 + 0.5 * R.y);
+            float fres = 0.05 + 0.95 * pow(1.0 - ndv, 5.0);
+            rgb += (envRefl * (0.25 + fres) + vec3(lobe)) * (0.10 + 0.25 * fres) * 2.0;
+        }
+#endif
 
 
         // A ground vehicle keeps its legacy look: no specular sheen, no light pools.
+#ifndef MECH_PREVIEW
         if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0 && vLegacyVehicle == 0u) {
             bool isGlass = msh_isGlass(tex_color.rgb, uFrame.shadeB.x, uFrame.shadeB.y);
             if (uFrame.miscI.x != 0) {
@@ -103,12 +148,15 @@ void main() {
                                          uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);
             }
         }
+#endif
 
+#ifndef MECH_PREVIEW
         if (uFrame.poolI.x > 0 && vLegacyVehicle == 0u)
             rgb += tex_color.rgb * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
                                                        uFrame.poolF.x, uFrame.poolF.y,
                                                        uFrame.poolI.z, uFrame.poolI.w,
                                                        uFrame.poolF.z);
+#endif
 
         // Per-actor haze fog (mech.frag:404).
         rgb = mix(rgb, vFog.rgb, vFog.a);
@@ -116,6 +164,13 @@ void main() {
         // FLAT silhouette fill — the axis-swap / skinning proof (distinct hue vs props).
         rgb = vec3(0.75, 0.45, 0.25) * (0.6 + 0.4 * vUv.y);
     }
+#ifdef MECH_PREVIEW
+    // Panel exposure (fogColorRGB.w; the world pass leaves it 0) + a Reinhard shoulder so
+    // the spec sheen rolls off instead of clipping on the 8-bit panel target.
+    rgb *= max(uFrame.fogColorRGB.w, 0.0);
+    // ACES (Narkowicz fit) filmic curve.
+    rgb = clamp((rgb * (2.51 * rgb + 0.03)) / (rgb * (2.43 * rgb + 0.59) + 0.14), 0.0, 1.0);
+#endif
     oColor = vec4(rgb, 1.0);
 
     // GBuffer1: MC2/GL-world shading normal, a=0.0 (screen-shadow-eligible).

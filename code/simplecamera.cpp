@@ -4,6 +4,9 @@
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
+#include "../GameOS/gameos/vulkan_mech_island.h"
+#include "../GameOS/gameos/gos_mech_batcher.h"
+#include "../GameOS/gameos/gos_postprocess.h"
 /*************************************************************************************************\
 SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 //---------------------------------------------------------------------------//
@@ -25,12 +28,65 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
+#include <chrono>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
 // Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
 extern bool g_previewCaptureBounds;
+extern bool g_previewBoundsOnly;
 extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
+extern std::atomic<uint32_t> g_mc2FrameCounter;
+void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWLightsData* out);
+
+#ifdef MC2_VULKAN_ISLAND
+// Mech lab: the in-game GPU mech material path into the panel (vulkan_mech_island.cpp, preview pass). One GPU
+// panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
+// Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
+static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
+                                float groundX, float groundY, float groundH )
+{
+	static uint32_t s_lastFrame = 0xffffffffu;
+	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
+	if ( mc2::gate::get<"MC2_MECHLAB_GPU_OFF">() || frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
+		return false;
+	// A gap in panel frames is a new lab visit: the batcher still holds the last mission's (freed) types.
+	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
+	s_lastFrame = frame;
+	if ( !mech->submitPreviewGpu( freshSession ) )
+		return false;	// batcher not finalized or no shape: the CPU mech draw stays on
+	GpuMechBatcher::instance().flush();
+
+	static TG_HWLightsData s_row;	// the lab actor's single light row (lightDataIndex 0)
+	ProbeGatherLightsForList( cam.getWorldLights(), static_cast<unsigned long>( cam.getNumLights() ), &s_row );
+	Mc2MechPreviewRequest q{};
+	const glm::mat4 m = cam.worldToClipGL();	// column-major; the island takes row-major (GL_FALSE), as gamecam.cpp packs it
+	const float* col = &m[0][0];
+	for ( int r = 0; r < 4; ++r )
+		for ( int c = 0; c < 4; ++c )
+			q.worldToClipGL[r * 4 + c] = col[c * 4 + r];
+	const glm::vec3 eye = cam.cameraOriginGL();
+	q.cameraWorldPos[0] = eye.x; q.cameraWorldPos[1] = eye.y; q.cameraWorldPos[2] = eye.z; q.cameraWorldPos[3] = 1.0f;
+	q.lights = &s_row;
+	q.lightBytes = sizeof( s_row );
+	q.vpX = static_cast<int>( lroundf( vpX ) ); q.vpY = static_cast<int>( lroundf( vpY ) );
+	q.vpW = static_cast<int>( lroundf( vpW ) ); q.vpH = static_cast<int>( lroundf( vpH ) );
+	q.exposure = 1.0f;
+	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
+	if ( gosPostProcess* pp = getGosPostProcess() )
+	{
+		q.sceneW = pp->getWidth();
+		q.sceneH = pp->getHeight();
+	}
+	if ( q.sceneW <= 0 || q.sceneH <= 0 )
+	{
+		q.sceneW = Environment.screenWidth;
+		q.sceneH = Environment.screenHeight;
+	}
+	mc2_vk_mech_preview_request( &q );
+	return true;
+}
+#endif
 
 extern bool drawOldWay;
 extern bool useFog;
@@ -303,8 +359,13 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				drawOldWay = true;
 			// Mechs, vehicles and components draw through TG_MultiShape::PreviewDraw (preview_draw.cpp).
 			TG_MultiShape* previewShape = nullptr;
+			Mech3DAppearance* labMech = nullptr;	// worldless panel mech: candidate for the GPU material path
 			if ( auto* mech = dynamic_cast<Mech3DAppearance*>(pObject.get()) )
+			{
 				previewShape = mech->previewShape();
+				if ( isPanelPreview && ( mission == nullptr || !mission->isActive() ) )
+					labMech = mech;
+			}
 			else if ( auto* bldg = dynamic_cast<BldgAppearance*>(pObject.get()) )
 				previewShape = bldg->previewShape();
 			else if ( auto* gv = dynamic_cast<GVAppearance*>(pObject.get()) )
@@ -331,7 +392,24 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					g_previewBoundsMinX = g_previewBoundsMinY = 1e9f;
 					g_previewBoundsMaxX = g_previewBoundsMaxY = -1e9f;
 				}
+				bool gpuDraws = false;
+#ifdef MC2_VULKAN_ISLAND
+				// Contact-shadow anchor: the mech's smoothed feet centre and height from the last frame's projected bounds.
+				if ( framed_ && drawn_[3] - drawn_[1] > 8.f )
+				{
+					const float cx = ( drawn_[0] + drawn_[2] ) * 0.5f, cy = drawn_[3], hh = drawn_[3] - drawn_[1];
+					const float k = haveGround_ ? 0.08f : 1.f;
+					groundC_[0] += ( cx - groundC_[0] ) * k; groundC_[1] += ( cy - groundC_[1] ) * k; groundH_ += ( hh - groundH_ ) * k;
+					haveGround_ = true;
+				}
+				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f ) )
+					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
+#endif
+				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
+				g_previewBoundsOnly = gpuDraws;
 				previewShape->PreviewDraw(view);
+				g_previewBoundsOnly = false;
 				if ( framed_ )
 				{
 					g_previewCaptureBounds = false;
@@ -514,7 +592,14 @@ long SimpleCamera::update()
 		pObject->recalcBounds();
 		pObject->scale(shapeScale);
 		if ( framed_ )
+		{
+			// Idle turntable once the fit has settled; the clock keeps running while paused so a drag does not bank a jump.
+			const double now = std::chrono::duration<double>( std::chrono::steady_clock::now().time_since_epoch() ).count();
+			if ( fitIters_ == 0 && !turntablePaused_ && turntableLastT_ > 0.0 )
+				rotation = std::fmod( rotation + 10.f * static_cast<float>( std::min( now - turntableLastT_, 0.1 ) ), 360.f );
+			turntableLastT_ = now;
 			pObject->rotation = this->rotation;
+		}
 
 		// we don't want to center around the feet
 		glm::vec3 mechPos = pObject->getRootNodeCenter();
@@ -593,7 +678,17 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	else
 		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(NoPathFileName) ));
 
-	pObject = std::make_unique<Mech3DAppearance>();	
+	// A mod chassis with no tgl ini (or an empty base shape) leaves no object, so
+	// hasObject() stays false and the mech lab keeps its silhouette statics.
+	if ( !appearanceType || appearanceType->baseShapeLoadFailed )
+	{
+		if ( appearanceType )
+			appearanceTypeList->removeAppearance( appearanceType );
+		this->popContext();
+		return;
+	}
+
+	pObject = std::make_unique<Mech3DAppearance>();
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
 	pObject->resetPaintScheme( highlight1, highlight2, baseColor );

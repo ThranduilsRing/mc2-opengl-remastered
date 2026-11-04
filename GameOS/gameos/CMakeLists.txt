@@ -407,6 +407,11 @@ if(MC2_VULKAN)
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
     # check-vk-pipeline-layout.py carries the same alias.
     set(MC2_VK_SHADER_SRC_ALIAS_terrain_tier1_skirt_frag terrain_tier1)
+    # Mech-lab panel pass: mech_tier1.frag baked with -DMECH_PREVIEW=1 (no terrain set 1,
+    # in-shader exposure/tonemap for the RGBA8 preview target). Loaded by vulkan_mech_island.cpp.
+    list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
+    set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
+    set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
@@ -428,17 +433,21 @@ if(MC2_VULKAN)
             if(NOT EXISTS "${_src}")
                 continue()
             endif()
+            set(_defs "")
+            if(DEFINED MC2_VK_SHADER_DEFINES_${_base}_${_stage})
+                set(_defs ${MC2_VK_SHADER_DEFINES_${_base}_${_stage}})
+            endif()
             if(MC2_GLSLANG_VALIDATOR)
                 add_custom_command(
                     OUTPUT "${_spv}"
-                    COMMAND "${MC2_GLSLANG_VALIDATOR}" -V "${_src}" -o "${_spv}"
+                    COMMAND "${MC2_GLSLANG_VALIDATOR}" -V ${_defs} "${_src}" -o "${_spv}"
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslang): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
             else()
                 add_custom_command(
                     OUTPUT "${_spv}"
-                    COMMAND "${MC2_GLSLC}" "${_src}" -o "${_spv}"
+                    COMMAND "${MC2_GLSLC}" ${_defs} "${_src}" -o "${_spv}"
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslc): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)

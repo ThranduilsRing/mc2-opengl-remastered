@@ -318,6 +318,10 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     sdir = save_dir or savegame_backup.default_dir()
     second_src = os.path.join(sdir, "testgame_resave.ims")
     env = dict(os.environ, **resave_env(save_at, load_at))
+    if save_dir:
+        # A private dir is also the engine's save path (MC2_SAVE_DIR), so concurrent gate rows never share quicksave names.
+        os.makedirs(save_dir, exist_ok=True)
+        env["MC2_SAVE_DIR"] = save_dir
     # A movie defers BOTH fixtures, preserving their gap. mc2_03 saves about
     # 449 ticks late: load_at + 120 used to terminate before its quickload.
     # Keep fixed headroom; duration is a wall timeout, not a simulation budget.

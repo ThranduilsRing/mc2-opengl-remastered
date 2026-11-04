@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
+#include "hitch_stats.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
@@ -405,6 +406,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
 
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
+    mc2_hitch2::Scope hitchTotal("terrain.island");
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -415,11 +417,15 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     // Pull this frame's LOD0 patch list + shared params from the GL terrain path.
     Mc2TerrainTier1Feed feed{};
-    if (!mc2_terrain_tier1_get_frame_feed(&feed)) { setFallback("no_terrain_feed"); return 0; }
+    bool gotFeed;
+    { ZoneScopedN("VKIsl.Terrain.GetFrameFeed"); mc2_hitch2::Scope hs("terrain.feed"); gotFeed = mc2_terrain_tier1_get_frame_feed(&feed); }
+    if (!gotFeed) { setFallback("no_terrain_feed"); return 0; }
     if (!feed.patches || feed.patchCount == 0) { setFallback("no_lod0_patches"); return 0; }
     if (feed.mapSide <= 0) { setFallback("bad_mapside"); return 0; }
 
-    if (!ensure_island_ready(w, h)) return 0;
+    bool islandReady;
+    { ZoneScopedN("VKIsl.Terrain.EnsureReady"); mc2_hitch2::Scope hs("terrain.ensure_ready"); islandReady = ensure_island_ready(w, h); }
+    if (!islandReady) return 0;
     TerrainIsland* s = parkedIsland();
     if (!s || s->disabled || !s->inited) return 0;
 
@@ -507,9 +513,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
       } }
     us_fence_wait = usSince(tFence0);
     s->setBoundFrame[par] = rctx.frameContext().frame;
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
+    bool moverBound;
+    { ZoneScopedN("VKIsl.Terrain.BindMoverShadow"); mc2_hitch2::Scope hs("terrain.bind_mover_shadow"); moverBound = mc2vk::bindMoverShadowDescriptors(s->device,s->set[par]); }
+    if (!moverBound) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
+        ZoneScopedN("VKIsl.Terrain.WriteDescriptors"); mc2_hitch2::Scope hs("terrain.write_descriptors");
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }
 

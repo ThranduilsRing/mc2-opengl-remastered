@@ -3,6 +3,7 @@
 #include <atomic>
 #include <print>
 #include "gameos.hpp"
+#include "hitch_stats.h"
 #include "../../RenderCore/TextureService.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
@@ -1058,7 +1059,9 @@ int main(int argc, char** argv)
         {
             ZoneScopedN("Frame.WaitWorker");
             mc2::battlebench::WaitScope waitSim(mc2::battlebench::WaitSimNs);
+            const auto joinT0 = std::chrono::steady_clock::now();
             mc2::overlap::joinTail();
+            mc2_hitch2::stats().simJoinNs.fetch_add(static_cast<uint64_t>(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - joinT0).count()), std::memory_order_relaxed);
         }
         presentJoinPending = false;
     }
@@ -1108,7 +1111,9 @@ int main(int argc, char** argv)
         {
             ZoneScopedN("Frame.WaitWorker");
             mc2::battlebench::WaitScope waitSim(mc2::battlebench::WaitSimNs);
+            const auto joinT0 = std::chrono::steady_clock::now();
             mc2::overlap::waitWorker();
+            mc2_hitch2::stats().simJoinNs.fetch_add(static_cast<uint64_t>(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - joinT0).count()), std::memory_order_relaxed);
         }
         // Drain the graveyard only once the sim worker is joined: its commands destroy appearances and effects that
         // the worker may be referencing (AppearanceTypeList refcounts are not atomic).

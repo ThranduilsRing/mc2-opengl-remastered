@@ -268,6 +268,15 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
         }
     }
 
+    // MC2_INPUT_SCRIPT: the scripted player owns the pointer once it has moved it (normalised space, as reported below)
+    {
+        float snx, sny;
+        if (input::scriptMouseNorm(&snx, &sny)) {
+            if (pXPosition) *pXPosition = snx;
+            if (pYPosition) *pYPosition = sny;
+        }
+    }
+
 	// as percentage of screen size
     
     // sebi: I do not like this percentage style and it does not work good, so
