@@ -68,6 +68,7 @@
 #endif
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "tick_commit.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 
 //---------------------------------------------------------------------------
@@ -123,8 +124,11 @@ void soakSupportTick(float scenarioTimeNow) {
 	loc.y += 200.0f;
 	CallArtillery(mover->getCommanderId(), s_n % 3, loc, 4, false);
 	++s_n;
-	if (mc2_diag::tagRequested("GRAVEYARD") && (s_n % 5) == 1)
-		mc2::fmt::print_out("[GRAVEYARD v1] event=strike n={:d} t={:.1f}\n", mc2::fmt::as_i32(static_cast<int>(s_n)), scenarioTimeNow);
+	if (mc2_diag::tagRequested("GRAVEYARD")) {
+		int live = 0;
+		for (long i = 0; i < ObjectManager->getNumArtillery(); i++) { ArtilleryPtr a = ObjectManager->getArtillery(i); if (a && a->getExists()) ++live; }
+		mc2::fmt::print_out("[GRAVEYARD v1] event=strike n={:d} t={:.1f} live={:d} pool={:d} collecting={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_n)), scenarioTimeNow, mc2::fmt::as_i32(live), mc2::fmt::as_i32(static_cast<int>(ObjectManager->getNumArtillery())), mc2::fmt::as_i32(mc2::tick::collecting() ? 1 : 0));
+	}
 }
 
 void CallArtillery (long commanderID, long strikeType, glm::vec3 strikeLoc, long secondsToImpact, bool randomOff) 
