@@ -861,14 +861,46 @@ def drop_candidate(candidate=None, root=None):
     print(f"[merge_gate] candidate dropped: {candidate}", flush=True)
 
 
+def candidate_identity(install, head, root=None):
+    """What the candidate actually runs: its mc2.exe must be the gate's build (same bytes as build64-ninja/mc2.exe) and that
+    build must be clean and current for head. Raises RuntimeError otherwise (e.g. the deploy failed and the copy still holds
+    the published exe). Returns the exe sha256 and the commit the exe was built from, which may be an ancestor of head."""
+    import exe_fingerprint
+    root = Path(root or ROOT)
+    exe, build = Path(install) / "mc2.exe", root / "build64-ninja" / "mc2.exe"
+    try:
+        digest, built = sha256_path(exe), sha256_path(build)
+    except OSError as exc:
+        raise RuntimeError(f"keep-candidate: cannot hash the candidate exe: {exc}") from exc
+    if digest != built:
+        raise RuntimeError(f"keep-candidate: {exe} is not the gate build {build} (deploy did not land); previous candidate kept")
+    fp = exe_fingerprint.extract(exe)
+    if not fp.get("present") or not exe_fingerprint.build_current(fp.get("sha"), head, root, bool(fp.get("dirty"))):
+        raise RuntimeError(f"keep-candidate: {exe} fingerprint sha={fp.get('sha', 'absent')} dirty={fp.get('dirty')} "
+                           f"is not a clean build of {head[:12]}; previous candidate kept")
+    return dict(exe_sha256=digest, exe_commit=fp["sha"])
+
+
+def sha256_path(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def keep_stock_copy(install, head, candidate=None, root=None):
-    """Stage campaign mods on the kept stock copy, move it to the fixed candidate path and record it."""
+    """Verify the deployed exe, stage campaign mods on the kept stock copy, move it to the fixed candidate path and record
+    it. The previous candidate and its record survive any verification or staging failure."""
     candidate = Path(candidate or CANDIDATE)
+    identity = candidate_identity(install, head, root)
     stage_candidate_mods(install)
     if candidate.exists():
         shutil.rmtree(candidate)
     os.replace(install, candidate)
-    (Path(root or ROOT) / CANDIDATE_MARK).write_text(json.dumps(dict(path=str(candidate), head=head, created=time.time())))
+    # head = the commit the gate proved; exe_commit = what the exe embeds (an ancestor after data-only commits).
+    (Path(root or ROOT) / CANDIDATE_MARK).write_text(json.dumps(dict(path=str(candidate), head=head, created=time.time(),
+                                                                     **identity)))
     return candidate
 
 

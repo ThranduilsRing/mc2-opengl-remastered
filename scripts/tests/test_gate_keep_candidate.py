@@ -48,6 +48,7 @@ def _window(monkeypatch, tmp_path, mods_source):
     monkeypatch.setattr(gate, "stock_copy", fake_stock_copy)
     monkeypatch.setattr(gate, "stage_published", lambda install: None)
     monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a, **k: 1)  # a red verdict must survive
+    monkeypatch.setattr(gate, "candidate_identity", lambda install, head, root=None: dict(exe_sha256="e" * 64, exe_commit=head[:12]))
     gate.CANDIDATE_ERRORS.clear()
     return seed
 
@@ -66,7 +67,8 @@ def test_staging_failure_cleans_copy_and_never_masks_verdict(monkeypatch, tmp_pa
     assert len(gate.CANDIDATE_ERRORS) == 1 and "MechCommanderOmnitech" in gate.CANDIDATE_ERRORS[0]
 
 
-def test_keep_stock_copy_stages_linked_mods_and_records(tmp_path):
+def test_keep_stock_copy_stages_linked_mods_and_records(monkeypatch, tmp_path):
+    monkeypatch.setattr(gate, "candidate_identity", lambda install, head, root=None: dict(exe_sha256="e" * 64, exe_commit="a" * 12))
     install = tmp_path / "seed-stock-abc"
     install.mkdir()
     (install / "mc2.exe").write_text("exe")
@@ -86,7 +88,8 @@ def test_keep_stock_copy_stages_linked_mods_and_records(tmp_path):
     for name in gate.CANDIDATE_MODS:
         staged = cand / "mods" / name / "data" / "x.fit"
         assert staged.read_text() == name and os.path.samefile(staged, src / name / "data" / "x.fit")
-    assert json.loads((root / gate.CANDIDATE_MARK).read_text())["path"] == str(cand)
+    mark = json.loads((root / gate.CANDIDATE_MARK).read_text())
+    assert mark["path"] == str(cand) and mark["exe_sha256"] == "e" * 64 and mark["exe_commit"] == "a" * 12
     gate.drop_candidate(cand, root)
     assert not cand.exists() and not (root / gate.CANDIDATE_MARK).exists()
 
@@ -100,3 +103,46 @@ def test_missing_mod_source_is_an_error(tmp_path):
     else:
         raise AssertionError("expected RuntimeError")
 
+
+
+def _identity_fixture(monkeypatch, tmp_path, install_exe, build_exe, fp):
+    root = tmp_path / "root"
+    (root / "build64-ninja").mkdir(parents=True)
+    (root / "build64-ninja" / "mc2.exe").write_bytes(build_exe)
+    install = tmp_path / "install"
+    install.mkdir()
+    (install / "mc2.exe").write_bytes(install_exe)
+    import exe_fingerprint
+    monkeypatch.setattr(exe_fingerprint, "extract", lambda exe: fp)
+    monkeypatch.setattr(exe_fingerprint, "build_current", lambda sha, head, root, dirty=False: not dirty and sha == "b" * 12)
+    return root, install
+
+
+def test_failed_deploy_never_replaces_the_previous_candidate(monkeypatch, tmp_path):
+    """W116 item 2: the copy still holds the published exe (deploy failed) -> old candidate and record survive."""
+    root, install = _identity_fixture(monkeypatch, tmp_path, b"published exe", b"gate build",
+                                      dict(present=True, sha="b" * 12, dirty=0))
+    cand = tmp_path / "cand"
+    cand.mkdir()
+    (cand / "mc2.exe").write_text("previous good candidate")
+    (root / gate.CANDIDATE_MARK).write_text(json.dumps(dict(path=str(cand), head="p" * 40)))
+    with pytest.raises(RuntimeError, match="deploy did not land"):
+        gate.keep_stock_copy(install, "h" * 40, candidate=cand, root=root)
+    assert (cand / "mc2.exe").read_text() == "previous good candidate"
+    assert json.loads((root / gate.CANDIDATE_MARK).read_text())["head"] == "p" * 40
+
+
+@pytest.mark.parametrize("fp", [dict(present=False), dict(present=True, sha="b" * 12, dirty=1),
+                                dict(present=True, sha="c" * 12, dirty=0)])
+def test_candidate_identity_refuses_unattributable_exe(monkeypatch, tmp_path, fp):
+    root, install = _identity_fixture(monkeypatch, tmp_path, b"gate build", b"gate build", fp)
+    with pytest.raises(RuntimeError, match="not a clean build"):
+        gate.candidate_identity(install, "h" * 40, root)
+
+
+def test_candidate_identity_records_exe_hash_and_source_commit(monkeypatch, tmp_path):
+    import hashlib
+    root, install = _identity_fixture(monkeypatch, tmp_path, b"gate build", b"gate build",
+                                      dict(present=True, sha="b" * 12, dirty=0))
+    assert gate.candidate_identity(install, "h" * 40, root) == dict(
+        exe_sha256=hashlib.sha256(b"gate build").hexdigest(), exe_commit="b" * 12)
