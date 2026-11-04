@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 762
-registry_entry_count: 151
-verified_count: 730
+gate_count: 752
+registry_entry_count: 150
+verified_count: 729
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1004,12 +1004,6 @@ flags:
     owner: editor
     doc: ""
     verified: true
-  - name: MC2_EDITOR_PANEL_W
-    kind: Int
-    default: 320
-    rule: Prefix
-    owner: editor
-    doc: ""
   - name: MC2_EDITOR_PICK_TRACE
     kind: Bool
     default: false
@@ -1625,12 +1619,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_GPU_PROPS_DEBUG_MODE
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: props
-    doc: ""
   - name: MC2_GPU_TRAIL_DISABLE
     kind: Bool
     default: false
@@ -1896,14 +1884,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_LEGACY_LIT_MC2_FRAME
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 22, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2681,12 +2661,6 @@ flags:
     owner: mech
     doc: ""
     verified: true
-  - name: MC2_MECH_PREVIEW_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: ""
   - name: MC2_MECH_RESTORE_TRACE
     kind: Bool
     default: false
@@ -2997,13 +2971,6 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
-  - name: MC2_OBJECT_POLY_OFFSET_UNITS
-    kind: Float
-    default: -1
-    rule: Prefix
-    owner: props
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_OBJECT_RECON_TRACY
     kind: Bool
     default: false
@@ -3040,12 +3007,6 @@ flags:
     owner: post
     doc: ""
     verified: true
-  - name: MC2_OOB_LETTERBOX
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: ""
   - name: MC2_OPTIONS_OVERRIDE
     kind: String
     default: ""
@@ -3226,16 +3187,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_PRESENTATION_DISABLED, kind: Trace, order: -1, default_on: false}
-  - name: MC2_PRESENT_THREAD
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    retire_by: 2026-11-02
-    doc: "P2 present worker; set 0 for the inline rollback. Retire within three merge windows."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_PRESENT_THREAD, kind: Feature, order: -1, default_on: true}
   - name: MC2_PREVIEW_FBO_SCALE
     kind: Int
     default: 0
@@ -4571,18 +4522,6 @@ flags:
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     verified: true
-  - name: MC2_TERRAIN_MASK_DISPATCH_SOLID
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: ""
-  - name: MC2_TERRAIN_MASK_DISPATCH_WATER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: ""
   - name: MC2_TERRAIN_MATERIAL_LIB
     kind: Bool
     default: false
@@ -5126,14 +5065,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_VEHICLE_AMBIENT_FLOOR
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 26, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -5907,3 +5838,5 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_DEBUG_RENDERER, kind: Retired, order: 8, default_on: false}
   - {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Retired, order: 13, default_on: false}
   - {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: true}
+  - {feature_id: MC2_FEATURE_LEGACY_LIT_MC2_FRAME, kind: Retired, order: 22, default_on: true}
+  - {feature_id: MC2_FEATURE_VEHICLE_AMBIENT_FLOOR, kind: Retired, order: 26, default_on: true}

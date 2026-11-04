@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 762;
+inline constexpr std::size_t kGateCount = 752;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -141,7 +141,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_EDITOR_GPU_TIMERS", Kind::Bool, Rule::Exact1, {}},
     {"MC2_EDITOR_MODE", Kind::Bool, Rule::Exact1, {}},
     {"MC2_EDITOR_MOVER_REFRESH", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_EDITOR_PANEL_W", Kind::Int, Rule::Prefix, {}},
     {"MC2_EDITOR_PICK_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_EDITOR_STATIC_PREWARM_OFF", Kind::Bool, Rule::Presence, {}},
     {"MC2_EDITOR_STATIC_PRIME_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -221,7 +220,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_GROUND_PICK_PARITY_TAG", Kind::String, Rule::Std, {}},
     {"MC2_GPU_PARTICLES", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_GPU_PARTICLES_LOG", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_GPU_PROPS_DEBUG_MODE", Kind::Int, Rule::Prefix, {}},
     {"MC2_GPU_TRAIL_DISABLE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GROUND_CONTACT_BLOB", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_HAZE_PARITY", Kind::Bool, Rule::Presence, {}},
@@ -258,7 +256,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_JUMPJETS_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHED", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHER_ENV_JSON", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_LEGACY_LIT_MC2_FRAME", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LEGACY_LOAD_BANNER", Kind::Bool, Rule::Presence, {}},
     {"MC2_LIGHTBAKE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBAKE_REBAKE_ON_READY", Kind::Bool, Rule::Lead0Kill, {}},
@@ -359,7 +356,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MECH_PICK_DEBUG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_MECH_PICK_PIERCE_FOG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_MECH_PICK_SELFTEST", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_MECH_PREVIEW_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_RESTORE_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_SKEL_BONE_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_MECH_SKEL_HEIGHT", Kind::Float, Rule::Prefix, {}},
@@ -400,13 +396,11 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OBJECT_ID_BUFFER_SELFTEST", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OBJECT_PARITY_TRACE", Kind::Bool, Rule::Exact1, {}},
     {"MC2_OBJECT_POLY_OFFSET_FACTOR", Kind::Float, Rule::Prefix, {}},
-    {"MC2_OBJECT_POLY_OFFSET_UNITS", Kind::Float, Rule::Prefix, {}},
     {"MC2_OBJECT_RECON_TRACY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OBJECT_WALK_FACTS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_OBJ_MVP_STALE_FATAL", Kind::Bool, Rule::Presence, {}},
     {"MC2_OOB_FOG", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OOB_FOG_COLOR", Kind::String, Rule::Std, {}},
-    {"MC2_OOB_LETTERBOX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OPTIONS_OVERRIDE", Kind::String, Rule::Std, {}},
     {"MC2_OS_CURSOR", Kind::Bool, Rule::Presence, {}},
     {"MC2_OVERLAY_BIAS_LEGACY", Kind::Bool, Rule::Lead0, {}},
@@ -430,7 +424,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PLAY_MISSION_SKIP_CINEMATICS", Kind::Bool, Rule::Std, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_PRESENTATION_DISABLED", Kind::Bool, Rule::Std, {}},
-    {"MC2_PRESENT_THREAD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_PREVIEW_FBO_SCALE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PREVIEW_SCENE_DRAIN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_PROJECTILE_SPEED_MULT", Kind::Float, Rule::Prefix, {}},
@@ -605,8 +598,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_MACRO_VARIATION", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_MACRO_VARIATION_STRENGTH", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_MASK_DISPATCH_SOLID", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_TERRAIN_MASK_DISPATCH_WATER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_TERRAIN_MATERIAL_LIB", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_MATERIAL_LIB_FILE", Kind::String, Rule::Std, {}},
     {"MC2_TERRAIN_MINE_AB", Kind::Bool, Rule::Presence, {}},
@@ -677,7 +668,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VEGETATION_MAX", Kind::Int, Rule::Prefix, {}},
     {"MC2_VEG_DEBUG_FORCE_VISIBLE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VEG_MAX_DIST", Kind::Float, Rule::Prefix, {}},
-    {"MC2_VEHICLE_AMBIENT_FLOOR", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VEHICLE_LIT_PATH", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VERIFY_MODE", Kind::String, Rule::Std, {}},
     {"MC2_VERTEX_PROJECT_FAST", Kind::Bool, Rule::Presence, {}},

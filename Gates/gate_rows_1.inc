@@ -77,7 +77,6 @@ G("MC2_GPU_GROUND_PICK_PARITY_TAG", String, "", "code", "", "", passthrough | ve
 // history: docs/gate-history.md#MC2_GPU_PARTICLES
 L(DefOnLead0, "MC2_GPU_PARTICLES", Bool, true, "code", "", "Native Card/CardCloud rendering; =0 suppresses these draws (CPU routes retired).", passthrough | registry(Feature, "MC2_GPU_PARTICLES", -1, true) | verified),
 L(Lead1, "MC2_GPU_PARTICLES_LOG", Bool, false, "code", "", "", passthrough | verified),
-P("MC2_GPU_PROPS_DEBUG_MODE", Int, 0, "props", "", ""),  // default not derivable from the tree
 L(Lead1, "MC2_GPU_TRAIL_DISABLE", Bool, false, "code", "", "", verified),
 L(Lead0P, "MC2_GROUND_CONTACT_BLOB", Bool, false, "code", "", "", passthrough | verified),
 // GvLightsOutClear (VEHICLE-NIGHT-LIT-2)
@@ -124,7 +123,6 @@ L(Presence, "MC2_LAUNCHED", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_LAUNCHER_ENV_JSON", Bool, true, "gameos", "", "", verified),
 // LegacyLitMc2Frame (VEHICLE-NIGHT-LIT-1)
 // history: docs/gate-history.md#MC2_LEGACY_LIT_MC2_FRAME
-L(Lead0Kill, "MC2_LEGACY_LIT_MC2_FRAME", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", passthrough | registry(Feature, "MC2_LEGACY_LIT_MC2_FRAME", 22, true)),
 L(Presence, "MC2_LEGACY_LOAD_BANNER", Bool, false, "code", "", "", verified),
 // LetterboxOpaque (DETERMINISM-RATCHET-2)
 L(Lead0Kill, "MC2_LIGHTBAKE", Bool, true, "code", "", "", verified),

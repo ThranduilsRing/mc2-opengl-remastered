@@ -76,7 +76,6 @@ void run() {
 
 void start() {
     mc2::overlap::assertMainThread("present_thread::start");
-    if (!mc2::gate::get<"MC2_PRESENT_THREAD">()) return;
     std::unique_lock lock(mutex);
     if (running) return;
     running = true;

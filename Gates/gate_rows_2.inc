@@ -48,7 +48,6 @@ L(Lead0, "MC2_MECH_PICK", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_MECH_PICK_DEBUG", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_MECH_PICK_PIERCE_FOG", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_MECH_PICK_SELFTEST", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_MECH_PREVIEW_TRACE", Bool, false, "mech", "", ""),
 L(Presence, "MC2_MECH_RESTORE_TRACE", Bool, false, "mech", "", "", passthrough | verified),
 G("MC2_MECH_SKEL_BONE_DUMP", String, "", "code", "", "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when...", verified),
 P("MC2_MECH_SKEL_HEIGHT", Float, 50.0, "code", "", "", verified),
@@ -97,13 +96,11 @@ L(DefOnLead0, "MC2_OBJECT_ID_BUFFER", Bool, true, "code", "", "R32_UINT MRT atta
 L(Lead0, "MC2_OBJECT_ID_BUFFER_SELFTEST", Bool, false, "code", "", "", verified),
 L(Exact1, "MC2_OBJECT_PARITY_TRACE", Bool, false, "code", "", "", verified),
 P("MC2_OBJECT_POLY_OFFSET_FACTOR", Float, -1.0, "props", "", "", passthrough),
-P("MC2_OBJECT_POLY_OFFSET_UNITS", Float, -1.0, "props", "", "", passthrough),
 L(Lead0, "MC2_OBJECT_RECON_TRACY", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Lead0, "MC2_OBJECT_WALK_FACTS", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_OBJ_MVP_STALE_FATAL", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_OOB_FOG", Bool, true, "post", "", "", verified),
 G("MC2_OOB_FOG_COLOR", String, "", "post", "", "", verified),
-L(Lead0Kill, "MC2_OOB_LETTERBOX", Bool, true, "post", "", ""),
 G("MC2_OPTIONS_OVERRIDE", String, "", "code", "", "Test channel: Key=Value,... options.cfg keys applied over the file at startup (smoke matrices, capture drivers); never saved.", passthrough | verified),
 L(Presence, "MC2_OS_CURSOR", Bool, false, "unclassified", "", "Hide the OS cursor.", verified),
 // RUNWAY-CLOSE-1: overlay-art flat-light exemption A/B arm (enum 63, LAST).
@@ -136,7 +133,6 @@ G("MC2_PLAY_MISSION_SKIP_CINEMATICS", Bool, false, "code", "", "Dev-only mission
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
 G("MC2_PRESENTATION_DISABLED", Bool, false, "code", "", "Replay proof: suppress presentation extraction updates while simulation continues.", passthrough | registry(Trace, "MC2_PRESENTATION_DISABLED", -1, false) | verified),
-L(Lead0Kill, "MC2_PRESENT_THREAD", Bool, true, "gameos", "2026-11-02", "P2 present worker; set 0 for the inline rollback. Retire within three merge windows.", passthrough | registry(Feature, "MC2_PRESENT_THREAD", -1, true) | verified),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 L(Lead1, "MC2_PREVIEW_SCENE_DRAIN", Bool, false, "code", "", "", verified),
 // PPC / direct-fire projectile knobs (gameplay; launcher-toggleable)

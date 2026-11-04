@@ -139,7 +139,7 @@ enum class RendererFeature : int {
     // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
-    LegacyLitMc2Frame        = 22,  // MC2_LEGACY_LIT_MC2_FRAME
+    LegacyLitMc2Frame        = 22,  // retired; preserve the numeric identifier
     LightPosColumnFix        = 23,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
@@ -158,7 +158,7 @@ enum class RendererFeature : int {
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 26,  // MC2_VEHICLE_AMBIENT_FLOOR
+    VehicleAmbientFloor      = 26,  // retired; preserve the numeric identifier
     COUNT                    = 27,
 };
 
@@ -283,8 +283,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [22] LegacyLitMc2Frame
     {
-        "MC2_LEGACY_LIT_MC2_FRAME", "MC2_LEGACY_LIT_MC2_FRAME", EnvVarKind::Feature, true,
-        "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
+        "MC2_FEATURE_LEGACY_LIT_MC2_FRAME", nullptr, EnvVarKind::Retired, true,
+        "Retired: the vehicle lit path always uses the MC2 frame (env var MC2_LEGACY_LIT_MC2_FRAME removed; it had no reader)."
     },
     // [23] LightPosColumnFix
     {
@@ -303,8 +303,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [26] VehicleAmbientFloor
     {
-        "MC2_VEHICLE_AMBIENT_FLOOR", "MC2_VEHICLE_AMBIENT_FLOOR", EnvVarKind::Feature, true,
-        "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
+        "MC2_FEATURE_VEHICLE_AMBIENT_FLOOR", nullptr, EnvVarKind::Retired, true,
+        "Retired: the vehicle ambient floor is unconditional (env var MC2_VEHICLE_AMBIENT_FLOOR removed; it had no reader)."
     },
 };
 
@@ -580,10 +580,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_PRESENTATION_DISABLED", "MC2_PRESENTATION_DISABLED", EnvVarKind::Trace, false,
         "Replay proof: suppress presentation extraction updates while simulation continues.",
-    },
-    {
-        "MC2_PRESENT_THREAD", "MC2_PRESENT_THREAD", EnvVarKind::Feature, true,
-        "P2 present worker; set 0 for the inline rollback. Retire within three merge windows.",
     },
     {
         "MC2_PROJECTILE_SPEED_MULT", "MC2_PROJECTILE_SPEED_MULT", EnvVarKind::Feature, false,
