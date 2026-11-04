@@ -328,6 +328,9 @@ TEST_CASE("content cook contract: class-scalar slot, BC5 Z rebuild, explicit alp
     CHECK(mc2prop::packetAlphaClass(true, &owner, 7) == 1u);       // unmapped slot of a package: stock coverage
     ModelOverrideRecord bare_override;
     CHECK(mc2prop::packetAlphaClass(true, &bare_override, 0) == 1u);  // provenance alone never selects the late fringe
+    bare_override.overrideClass = "tree";
+    CHECK(mc2prop::packetAlphaClass(true, &bare_override, 0) == 2u);  // override trees: canopy fringe after the water
+    bare_override.overrideClass = "staticprop";
     bare_override.lateCoverageFringe = true;
     CHECK(mc2prop::packetAlphaClass(true, &bare_override, 0) == 2u);  // explicit opt-in (procedural fences)
     owner.lateCoverageFringe = true;
