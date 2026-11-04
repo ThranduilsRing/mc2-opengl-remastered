@@ -297,7 +297,8 @@ def _acquire_locked(folder: str, intended_test: Optional[str]) -> str:
         age_min = f"{int(age // 60)}m" if age is not None else "?m"
         raise LeaseError(
             f"folder '{folder}' is busy (owner pid {entry.get('pid')}, "
-            f"host {entry.get('hostname')}, {age_min} old)"
+            f"host {entry.get('hostname')}, {age_min} old, "
+            f"for {entry.get('intended_test') or '?'} from {entry.get('worktree') or '?'})"
         )
     if entry:
         age = _age_secs(entry.get("last_used_utc", ""))
@@ -343,10 +344,42 @@ def touch_lease(folder: str) -> None:
             _write_registry(reg)
 
 
+class LeaseDeadlock(LeaseError):
+    """Inside the gate: the folder's holder is itself queued for a host slot (lock-order inversion, see host_lease LOCK ORDER)."""
+
+
+# A gate folder wait whose holder has been queued for a host slot this long fails at once instead of at the full bound.
+BLOCKED_HOLDER_S = 60.0
+
+
+def held_by_pid(pid: int) -> list:
+    """Folders whose lease `pid` on this host holds (no lock: the registry is replaced atomically)."""
+    host = socket.gethostname()
+    return [e.get("folder") or k for k, e in _read_registry().items()
+            if isinstance(e, dict) and e.get("pid") == pid and e.get("hostname") == host]
+
+
+def _holder_slot_wait(folder: str) -> str:
+    """'' unless the folder's holder (this host) is itself queued for a host game slot; then a line naming it."""
+    entry = _read_registry().get(_folder_key(folder))
+    if not isinstance(entry, dict) or not entry.get("pid") or entry.get("hostname") != socket.gethostname():
+        return ""
+    try:
+        from . import host_lease
+    except ImportError:
+        import host_lease                 # type: ignore
+    ticket = host_lease.waiting_ticket(entry["pid"])
+    return (f"holder pid {entry['pid']} ({entry.get('intended_test') or '?'}) is itself queued for a host game slot "
+            f"as '{ticket.get('label')}'" if ticket else "")
+
+
 def _acquire_waiting(folder: str, intended_test: Optional[str], what: str, wait_s: float) -> None:
-    """Take the lease for `folder`; while a live lease holds it, wait up to `wait_s` seconds (visible countdown) before raising the busy LeaseError."""
+    """Take the lease for `folder`; while a live lease holds it, wait up to `wait_s` seconds (visible countdown) before raising the busy LeaseError.
+
+    Inside the gate (MC2_IN_GATE=1) a holder queued for a host slot for BLOCKED_HOLDER_S raises LeaseDeadlock naming both sides."""
     from . import bounded_wait
     last: list = []
+    blocked_since: list = []
 
     def ready() -> str:
         try:
@@ -355,7 +388,17 @@ def _acquire_waiting(folder: str, intended_test: Optional[str], what: str, wait_
             return ""
         except LeaseError as exc:
             last[:] = [exc]
-            return str(exc)
+            blocked = _holder_slot_wait(folder)
+            if not blocked:
+                blocked_since.clear()
+                return str(exc)
+            blocked_since[:] = blocked_since or [time.monotonic()]
+            if os.environ.get("MC2_IN_GATE") == "1" and time.monotonic() - blocked_since[0] >= BLOCKED_HOLDER_S:
+                from . import host_lease
+                mine = "holds a host slot" if host_lease.holds() else "holds no host slot"
+                raise LeaseDeadlock(f"lock-order deadlock on {what}: {exc}; {blocked}; this process (pid {os.getpid()}) {mine}; "
+                                    f"gave up after {BLOCKED_HOLDER_S:.0f} s, not the {wait_s:.0f} s bound (smoke_lib/host_lease.py LOCK ORDER)")
+            return f"{exc}; {blocked}"
 
     if not bounded_wait.wait_until(ready, what, wait_s):
         raise last[0]

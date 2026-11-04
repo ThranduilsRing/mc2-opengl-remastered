@@ -9,6 +9,13 @@ While a full gate runs (gate window marker, see open_gate_window) pass/fail runs
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
+
+LOCK ORDER (every launcher): host game SLOT first, then the install's deploy-FOLDER lease (smoke_lib/deploy_lease.py).
+A process that holds a folder lease never waits for a slot: acquire() raises LockOrderError instead (W114: a headless
+det run held the candidate install's folder and waited for a slot while tier1 held a slot and waited for that folder;
+only the 3600 s bound broke it). --headless runs take no slot at all (run_smoke and nofocus both skip it). A slot held
+through a batch (MC2_HOST_LEASE_BATCH) counts as taken first. Inside the gate a folder wait whose holder is itself
+queued for a slot fails within deploy_lease.BLOCKED_HOLDER_S and names both sides.
 """
 from __future__ import annotations
 
@@ -205,6 +212,28 @@ def apply_affinity(proc) -> None:
 
 class HostLeaseBusy(RuntimeError):
     """Another lane holds the host lease, or a game this process did not start is still running."""
+
+
+class LockOrderError(RuntimeError):
+    """This process asked for a host slot while it holds a deploy-folder lease (see LOCK ORDER above). Never retried."""
+
+
+def _folders_held_here() -> List[str]:
+    """Deploy-folder leases this process holds, read from the shared registry. A process can only hold one through
+    deploy_lease.acquire_lease, so deploy_lease is already loaded when it matters; no import here (the batch holder runs
+    this file as a script, where deploy_lease's package imports fail)."""
+    held: List[str] = []
+    for name in ("scripts.smoke_lib.deploy_lease", "smoke_lib.deploy_lease", "deploy_lease"):
+        mod = sys.modules.get(name)
+        if mod is not None and hasattr(mod, "held_by_pid"):
+            held += [f for f in mod.held_by_pid(os.getpid()) if f not in held]
+    return held
+
+
+def waiting_ticket(pid: int) -> Optional[dict]:
+    """The live slot-queue ticket of `pid` (it is waiting for a host slot), else None."""
+    tickets = (_read(lease_path().with_suffix(".queue.json")) or {}).get("tickets", [])
+    return next((t for t in tickets if t.get("pid") == pid and _holder_alive(t)), None)
 
 
 def _log_default(m: str) -> None:
@@ -426,6 +455,11 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
         if exclusive and not all(_ours(_read(slot_path(i))) for i in range(slot_count())):
             raise HostLeaseBusy("cannot upgrade a held normal slot; release it before requesting exclusive")
         return
+    folders = _folders_held_here()
+    if folders:
+        raise LockOrderError(f"lock order: {label} (pid {os.getpid()}) asks for a host game slot while it holds the deploy-folder "
+                             f"lease of {', '.join(folders)}; take the slot first (smoke_lib/host_lease.py LOCK ORDER), "
+                             "or pass --headless for a run that needs no slot")
     scan = scan or foreign_engines
     if timeout_s is None:
         timeout_s = float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S)
