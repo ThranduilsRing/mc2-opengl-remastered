@@ -66,7 +66,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 942,
+          "line": 943,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -2794,14 +2794,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 610,
+          "line": 615,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 613,
+          "line": 618,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -3435,6 +3435,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
+        },
+        {
+          "path": "tools/lane_sim_rows.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "tools/log_tag_census.py",
@@ -4380,7 +4387,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 701,
+          "line": 702,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -5139,6 +5146,13 @@
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
+        },
+        {
+          "path": "tools/lane_sim_rows.py",
+          "line": 114,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate"
         }
       ]
     },
@@ -8924,6 +8938,13 @@
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
         },
         {
+          "path": "tools/lane_sim_rows.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "_git_util",
+          "text": "import _git_util"
+        },
+        {
           "path": "tools/test_git_util.py",
           "line": 9,
           "evidence": "import",
@@ -11595,6 +11616,49 @@
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 1256,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 1270,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 1363,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        }
+      ]
+    },
+    {
+      "path": "tools/lane_sim_rows.py",
+      "basename": "lane_sim_rows.py",
+      "stem": "lane_sim_rows",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/lane_merge.py",
+          "line": 68,
+          "evidence": "import",
+          "reference": "lane_sim_rows",
+          "text": "from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 1327,
+          "evidence": "import",
+          "reference": "lane_sim_rows",
+          "text": "import lane_sim_rows as lsr   # the module lane_merge itself imported"
         }
       ]
     },
@@ -13757,7 +13821,7 @@
         },
         {
           "path": "tools/test_land_queue.py",
-          "line": 307,
+          "line": 308,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke"
