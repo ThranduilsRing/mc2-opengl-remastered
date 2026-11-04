@@ -25,6 +25,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <cstdio>
+#include <functional>
 #include <string_view>
 #include "texture_assets.h"
 #include <cstdlib>
@@ -260,3 +261,5 @@ mc2::RenderSubmissions::~RenderSubmissions() = default;
 mc2::RenderSubmissions& mc2::renderSubmissions() { static RenderSubmissions queue; return queue; }
 
 namespace mc2::textures { bool ready() { return false; } }
+// No sim tick in the dump tool: TG_TypeShape::SetTextureHandle resolves inline.
+namespace mc2::tick { enum class Queue; bool defer(Queue, std::function<void()>) { return false; } }
