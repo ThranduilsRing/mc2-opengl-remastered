@@ -1324,7 +1324,8 @@ def test_infra_problems_are_not_run_and_block_the_receipt(env, monkeypatch, tmp_
     if case == "no_install":
         install = str(tmp_path / "nope")
     if case == "stale":
-        monkeypatch.setattr(lm, "stale_install", lambda r, i, s: "install exe was built from another commit")
+        import lane_sim_rows as lsr   # the module lane_merge itself imported
+        monkeypatch.setattr(lsr, "stale_install", lambda r, i, s: "install exe was built from another commit")
     ran = []
 
     def runner(root, cmd, env=None):
