@@ -318,3 +318,27 @@ def test_publish_refuses_when_head_is_not_expected(monkeypatch, capsys):
     assert not calls and 'refused' in capsys.readouterr().out
     monkeypatch.setattr(gate, 'git', lambda *a: 'aaaa')
     assert gate.main(['--publish', '--expect-head', 'aaaa']) == 0 and calls
+
+
+def test_farm_local_fallback_waits_for_the_game_row_on_the_same_install(tmp_path):
+    """W116 item 5: a farm fallback on the live install never launches beside the mods battery / a stock row there
+    (run_smoke's same-exe guard refused it); a row on a clone install does not wait."""
+    install, clone = tmp_path / 'install', tmp_path / 'clone'
+    order = []
+    def run(command, **kw):
+        if 'host.py' in command[1]:
+            return SimpleNamespace(returncode=1, stdout='heartbeat_age=-1')
+        order.append('fallback')
+        return SimpleNamespace(returncode=0, stdout='')
+    command = [sys.executable, 'tools/sim_determinism.py', 'check', 'mc2_03', '--install', str(install), '--out', str(tmp_path / 'out')]
+    held = gate.install_lock(['mod_smoke', '--exe', str(install / 'mc2.exe')])
+    assert held is gate.install_lock(command) and held is not gate.install_lock(['x', '--install', str(clone)])
+    with held:
+        worker = threading.Thread(target=lambda: gate.farm_stage(command, {}, runner=run))
+        worker.start()
+        worker.join(0.3)
+        order.append('battery done')
+    worker.join(5)
+    assert order == ['battery done', 'fallback']
+    with gate.install_lock(['x', '--install', str(clone)]):
+        assert gate.farm_stage(command, {}, runner=run).returncode == 0   # another install: no wait

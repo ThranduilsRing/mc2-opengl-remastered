@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from contextlib import contextmanager, nullcontext, redirect_stdout, redirect_stderr
 import os
 from pathlib import Path
 import subprocess
@@ -770,6 +770,22 @@ def install_stage_watchdog():
                 pass
 
 
+INSTALL_LOCKS = {}
+INSTALL_LOCKS_MUTEX = threading.Lock()
+
+
+def install_lock(command):
+    """One lock per game install a row launches from (--install, --base-install or --exe's folder). run_smoke refuses
+    a second mc2.exe on the same exe path, so local game rows on one install take turns; a clone has its own lock."""
+    for option in ("--install", "--base-install", "--exe"):
+        if option in command and command.index(option) + 1 < len(command):
+            path = Path(command[command.index(option) + 1])
+            key = os.path.normcase(str((path.parent if option == "--exe" else path).resolve()))
+            with INSTALL_LOCKS_MUTEX:
+                return INSTALL_LOCKS.setdefault(key, threading.RLock())
+    return nullcontext()
+
+
 def farm_stage(command, overrides, runner=None, local_env=None):
     """Submit one unchanged determinism check, wait, and fetch its evidence. local_env is the stage env execute()
     built (MC2_IN_GATE / lease batch included); a local fallback runs with it so GATE QUIET treats it as the gate's own."""
@@ -795,7 +811,8 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     def local(reason):
         print(f'[merge_gate] farm {reason}; repeating locally', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
-        return runner(command, cwd=ROOT, env=local_env)
+        with install_lock(command):  # never beside the mods battery or a stock row on the same exe
+            return runner(command, cwd=ROOT, env=local_env)
 
     try:
         alive = runner(host + ["alive", "--max-age", str(FARM_HEARTBEAT_MAX_AGE_S)], cwd=ROOT, env=os.environ.copy())
@@ -817,7 +834,8 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     if 'queue_timeout:' in waited.stdout:
         print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
-        return runner(command, cwd=ROOT, env=local_env)
+        with install_lock(command):  # never beside the mods battery or a stock row on the same exe
+            return runner(command, cwd=ROOT, env=local_env)
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
     try:
@@ -1091,7 +1109,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     dict(os.environ, **harness[2]))
             if harness_future and command == harness[1]:
                 return harness_future.result()
-            return run_child(command, cwd=cwd, env=env)
+            with install_lock(command):
+                return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
         stock = []
