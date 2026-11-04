@@ -2794,14 +2794,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 610,
+          "line": 644,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 613,
+          "line": 647,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -3001,6 +3001,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
+        },
+        {
+          "path": "scripts/tests/test_lease_lock_order.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child  # noqa: E402"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
@@ -4618,7 +4625,7 @@
         },
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 19,
+          "line": 18,
           "evidence": "import",
           "reference": "manifest_schema",
           "text": "import manifest_schema as ms"
@@ -5876,7 +5883,7 @@
         },
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 21,
+          "line": 20,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -6123,14 +6130,28 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 348,
+          "line": 368,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import host_lease"
+        },
+        {
+          "path": "scripts/smoke_lib/deploy_lease.py",
+          "line": 380,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 456,
+          "line": 397,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import host_lease"
+        },
+        {
+          "path": "scripts/smoke_lib/deploy_lease.py",
+          "line": 499,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import child_registry"
@@ -6151,7 +6172,7 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 26,
+          "line": 33,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait, child_registry"
@@ -6179,35 +6200,35 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 405,
+          "line": 408,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 420,
+          "line": 425,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 472,
+          "line": 477,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 493,
+          "line": 498,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 591,
+          "line": 596,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import win_input"
@@ -6353,6 +6374,13 @@
           "text": "from scripts.smoke_lib import manifest"
         },
         {
+          "path": "scripts/tests/test_lease_lock_order.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from scripts.smoke_lib import deploy_lease, host_lease, nofocus  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_native_harness.py",
           "line": 8,
           "evidence": "import",
@@ -6482,21 +6510,21 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 348,
+          "line": 380,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 26,
+          "line": 33,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 28,
+          "line": 35,
           "evidence": "import",
           "reference": "bounded_wait",
           "text": "import bounded_wait                   # type: ignore"
@@ -6547,21 +6575,21 @@
         },
         {
           "path": "scripts/smoke_lib/deploy_lease.py",
-          "line": 456,
+          "line": 499,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 26,
+          "line": 33,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 29,
+          "line": 36,
           "evidence": "import",
           "reference": "child_registry",
           "text": "import child_registry                 # type: ignore"
@@ -6687,6 +6715,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lease_lock_order.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.deploy_lease",
+          "text": "from scripts.smoke_lib import deploy_lease, host_lease, nofocus  # noqa: E402"
         }
       ]
     },
@@ -6712,28 +6747,28 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 405,
+          "line": 408,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 420,
+          "line": 425,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 472,
+          "line": 477,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 493,
+          "line": 498,
           "evidence": "import",
           "reference": "scripts.smoke_lib.exe_guard",
           "text": "from . import exe_guard"
@@ -6946,6 +6981,27 @@
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
+          "path": "scripts/smoke_lib/deploy_lease.py",
+          "line": 368,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from . import host_lease"
+        },
+        {
+          "path": "scripts/smoke_lib/deploy_lease.py",
+          "line": 370,
+          "evidence": "import",
+          "reference": "host_lease",
+          "text": "import host_lease                 # type: ignore"
+        },
+        {
+          "path": "scripts/smoke_lib/deploy_lease.py",
+          "line": 397,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from . import host_lease"
+        },
+        {
           "path": "scripts/smoke_lib/nofocus.py",
           "line": 389,
           "evidence": "import",
@@ -6954,14 +7010,14 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 405,
+          "line": 408,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 472,
+          "line": 477,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
@@ -7007,6 +7063,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import child_registry, host_lease  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lease_lock_order.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from scripts.smoke_lib import deploy_lease, host_lease, nofocus  # noqa: E402"
         }
       ]
     },
@@ -7326,6 +7389,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.nofocus",
           "text": "from scripts.smoke_lib import host_lease, nofocus  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lease_lock_order.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.nofocus",
+          "text": "from scripts.smoke_lib import deploy_lease, host_lease, nofocus  # noqa: E402"
         }
       ]
     },
@@ -7724,7 +7794,7 @@
         },
         {
           "path": "scripts/smoke_lib/nofocus.py",
-          "line": 591,
+          "line": 596,
           "evidence": "import",
           "reference": "scripts.smoke_lib.win_input",
           "text": "from . import win_input"
@@ -7739,7 +7809,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 20,
+          "line": 19,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages"
@@ -8397,6 +8467,13 @@
       "path": "scripts/tests/test_lane_names.py",
       "basename": "test_lane_names.py",
       "stem": "test_lane_names",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_lease_lock_order.py",
+      "basename": "test_lease_lock_order.py",
+      "stem": "test_lease_lock_order",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
