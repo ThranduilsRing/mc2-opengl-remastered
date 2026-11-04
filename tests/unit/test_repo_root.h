@@ -4,8 +4,8 @@
 // file via -DMC2_REPO_ROOT="A:/Games/mc2-laneN" is not part of the shared
 // compile-cache key, so a cache hit from a deleted worktree replays a dead path
 // (W114: test_mc2str.cpp.obj carried A:/Games/mc2-lane2). Resolve at runtime
-// instead: env MC2_REPO_ROOT, else walk up from the test exe, then from the cwd,
-// to the first directory containing tests/unit/fixtures.
+// instead: walk up from the test exe, then from the cwd, to the first directory
+// containing tests/unit/fixtures.
 #pragma once
 
 #include <cstdlib>
@@ -40,9 +40,6 @@ inline std::filesystem::path walkUp(std::filesystem::path p)
 inline const std::string &repoRoot()
 {
 	static const std::string root = []() -> std::string {
-		if (const char *env = std::getenv("MC2_REPO_ROOT"))
-			if (*env && isRoot(env))
-				return std::filesystem::path(env).generic_string();
 		std::filesystem::path exe;
 #if defined(_WIN32)
 		char *pgm = nullptr;

@@ -33,6 +33,7 @@
     {"module": "scripts/tests/test_rgp_capture.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_via_menu.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_capture_focus.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_cmake_no_abs_root_defines.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_campaign_liveness.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_campaign_roster.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_mech_capture_check.py", "owners": ["scripts_tests"]},
