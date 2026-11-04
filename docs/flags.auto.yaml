@@ -3807,7 +3807,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: code
-    retire_by: 2026-11-04
+    retire_by: 2026-11-25
     doc: "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows."
     smoke_passthrough: true
     verified: true
