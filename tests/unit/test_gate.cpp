@@ -1928,3 +1928,22 @@ TEST_CASE("tagRequested parses MC2_DIAG_TAGS and stays valid at atexit") {
     gate::invalidate("MC2_DIAG_TAGS");
     CHECK_FALSE(mc2_diag::tagRequested("CONFIG"));
 }
+
+// An unknown tag in MC2_DIAG_TAGS warns once per process, not once per tagRequested() call (the old per-call re-parse printed six warnings per
+// call: ~870 lines/s once a per-frame caller asked). Answers stay correct across repeated calls.
+namespace mc2_diag { uint32_t unknownTagWarnings(); }
+TEST_CASE("tagRequested warns once per unknown tag and caches the parse") {
+    EnvVar env("MC2_DIAG_TAGS");
+    env.set("CONFIG,UNKNOWN_TAG_A,UNKNOWN_TAG_B");
+    gate::invalidate("MC2_DIAG_TAGS");
+    const uint32_t before = mc2_diag::unknownTagWarnings();
+    for (int i = 0; i < 1000; ++i) CHECK(mc2_diag::tagRequested("CONFIG"));
+    CHECK(mc2_diag::unknownTagWarnings() - before == 2);
+    CHECK(mc2_diag::tagRequested("UNKNOWN_TAG_A"));
+    CHECK_FALSE(mc2_diag::tagRequested("BUILD"));
+    env.set("CONFIG,UNKNOWN_TAG_A,UNKNOWN_TAG_C");   // a changed value re-parses; only the new unknown tag warns
+    gate::invalidate("MC2_DIAG_TAGS");
+    CHECK(mc2_diag::tagRequested("UNKNOWN_TAG_C"));
+    CHECK(mc2_diag::unknownTagWarnings() - before == 3);
+    CHECK_FALSE(mc2_diag::tagRequested("UNKNOWN_TAG_B"));
+}

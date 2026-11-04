@@ -6,6 +6,7 @@
 
 #include "vk_image_resource.h"
 #include "diagnostic_trace.h"
+#include "hitch_stats.h"
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -151,7 +152,16 @@ VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
     // Blocker #4: guarantee the prior submit on this slot retired before its binary
     // semaphore is re-signalled. Fence created SIGNALED so frame 0 does not block.
     const VkFence fence = r->frameFence[p].get();
-    vkWaitForFences(r->device, 1, &fence, VK_TRUE, UINT64_MAX);
+    VkResult waited;
+    {
+        mc2_hitch2::FenceWaitScope waitScope("image_resource_frame_fence");
+        waited = vkWaitForFences(r->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);   // bounded: an unsignalled fence must not hang the frame forever
+    }
+    if (waited != VK_SUCCESS) {
+        // Not signalled in 5 s (hung or lost device): resetting a pending fence is invalid, so hand back the no-fence sync a disabled resource gets.
+        ilog("ERROR: frame fence wait failed (VkResult=%d) after 5 s; skipping this frame's sync", static_cast<int>(waited));
+        return VkFrameSync{VK_NULL_HANDLE, p};
+    }
     vkResetFences(r->device, 1, &fence);
     return VkFrameSync{r->frameFence[p].get(), p};
 }

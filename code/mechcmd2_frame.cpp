@@ -133,7 +133,8 @@ void __stdcall UpdateRenderers()
 					p0, p1,
 					ImVec2( q[0].u, q[0].v ), ImVec2( q[2].u, q[2].v ),
 					IM_COL32( ( c >> 16 ) & 0xff, ( c >> 8 ) & 0xff, c & 0xff, ( c >> 24 ) & 0xff ) );
-				if ( mc2_diag::tagRequested( "CURSOR" ) )
+				static const bool s_cursorTag = mc2_diag::tagRequested( "CURSOR" );   // per-frame path: ask once
+				if ( s_cursorTag )
 				{
 					static int s_n = 0;
 					if ( ( s_n++ % 30 ) == 0 )
