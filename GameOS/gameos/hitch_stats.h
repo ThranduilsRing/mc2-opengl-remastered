@@ -58,12 +58,11 @@ inline void gpuMax4(double& spanMs, double& busyMs) {
     spanMs = sp < 0 ? -1.0 : sp / 1e6;
     busyMs = bu < 0 ? -1.0 : bu / 1e6;
 }
-// Names what a slot wait of `ms` most likely waited on: gpu_busy (the GPU span covers at least half the wait), contended (GPU mostly idle for MC2 while
-// another mc2 runs), wsi_idle (GPU idle, no other mc2: the queue sat behind the acquire semaphore), unknown (no timestamps).
-inline const char* slotClass(double ms, double spanMs, int otherMc2) {
-    if (spanMs < 0.0) return otherMc2 > 0 ? "contended?" : "unknown";
-    if (spanMs >= 0.5 * ms) return "gpu_busy";
-    return otherMc2 > 0 ? "contended" : "wsi_idle";
+// Names what a slot wait of `ms` may have waited on, claiming only what the evidence carries: gpu_span (a recent frame's timestamp span covers at least
+// half the wait) or unknown. The samples are the last four the profiler resolved, not the waited frame (unavailable queries are dropped, the span includes
+// gaps, and the island's own submits are outside it), so a short span never proves the GPU idle: no WSI or contention verdict without per-ticket evidence.
+inline const char* slotClass(double ms, double spanMs, int /*otherMc2: reported on the line, not a verdict*/) {
+    return spanMs >= 0.0 && spanMs >= 0.5 * ms ? "gpu_span" : "unknown";
 }
 
 // A point in time for window math: the window is "now minus this".
