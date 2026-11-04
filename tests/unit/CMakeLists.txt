@@ -67,6 +67,7 @@ add_executable(mc2_tests
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
+    test_static_prop_origin.cpp  # prop instance origin layout: translation at [3][7][11]
     test_searchlight_aim.cpp
     test_cone_beam_links.cpp
     test_capability.cpp     # UNIT-PROFILE-SEAM-1

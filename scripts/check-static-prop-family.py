@@ -60,6 +60,12 @@ def main() -> int:
                          f"string dbgName — static-prop bind is invisible to "
                          f"[PIPELINE_BIND]/[FRAME_PLAN] (add a label)")
 
+    # Instance positions come from StaticPropOrigin.h: modelMatrix[12..14] is always 0 (translation is [3][7][11]).
+    for src in sorted((ROOT / "GameOS" / "gameos").glob("gos_static_prop_*.cpp")):
+        for i, ln in enumerate(src.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            if re.search(r"modelMatrix\s*\[\s*1[234]\s*\]", ln):
+                fails.append(f"{src.name}:{i}: modelMatrix[12..14] read (always 0); use RenderCore/StaticPropOrigin.h")
+
     if not LEDGER.exists():
         fails.append(f"ledger doc missing: {LEDGER.relative_to(ROOT)}")
 
