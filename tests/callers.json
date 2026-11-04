@@ -2794,14 +2794,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 614,
+          "line": 610,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 617,
+          "line": 613,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
