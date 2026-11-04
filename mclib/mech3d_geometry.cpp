@@ -4,6 +4,7 @@
 #include "texture_assets.h"
 #include "mech3d_internal.h"
 #include "footprints.h"
+#include "render_snap.h"
 #include "terrain_runtime.h"
 #include "../RenderCore/axis_convert.h"
 #include <format>
@@ -758,6 +759,7 @@ void Mech3DAppearance::updateGeometry (void)
 		glm::mat4	localResult;
 		
 		mc2ToRender(actualPosition, jumpNodePos);
+		mc2snap::liftRenderY(actualPosition, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -828,6 +830,7 @@ void Mech3DAppearance::updateGeometry (void)
 		glm::mat4	localResult;
 		
 		mc2ToRender(actualPosition, jumpNodePos);
+		mc2snap::liftRenderY(actualPosition, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -859,6 +862,7 @@ void Mech3DAppearance::updateGeometry (void)
 
 		glm::vec3 leftNodePos = getNodeIdPosition(leftArmNodeIndex);
 		mc2ToRender(leftShoulderPos, leftNodePos);
+		mc2snap::liftRenderY(leftShoulderPos, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, leftShoulderPos);
@@ -889,6 +893,7 @@ void Mech3DAppearance::updateGeometry (void)
 
 		glm::vec3 rightNodePos = getNodeIdPosition(rightArmNodeIndex);
 		mc2ToRender(rightShoulderPos, rightNodePos);
+		mc2snap::liftRenderY(rightShoulderPos, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, rightShoulderPos);
@@ -916,6 +921,7 @@ void Mech3DAppearance::updateGeometry (void)
 		glm::vec3 smokeNodePos = getNodePosition(0);
 		glm::vec3 smokePos;
 		mc2ToRender(smokePos, smokeNodePos);
+		mc2snap::liftRenderY(smokePos, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, smokePos);

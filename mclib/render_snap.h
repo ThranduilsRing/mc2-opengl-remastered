@@ -1,0 +1,12 @@
+// render_snap.h - UNIT-VISUAL-SNAP-2: render-only lift of unit effect anchors and the selection box.
+// The caller passes TerrainRuntime::visualHeightDelta(position) (0 when MC2_UNIT_VISUAL_SNAP is off or no bake).
+// Inputs are copies of render-space or box coordinates; the sim position and the node getters are never touched.
+#pragma once
+#include "math/glm_config.h"
+
+namespace mc2snap {
+// Render space: y is up (after mc2ToRender).
+inline void liftRenderY(glm::vec3& renderPos, float delta) { renderPos.y += delta; }
+// MC2 space: z is up (selection box corners).
+inline void liftBoxZ(glm::vec3* box, int n, float delta) { for (int i = 0; i < n; ++i) box[i].z += delta; }
+}

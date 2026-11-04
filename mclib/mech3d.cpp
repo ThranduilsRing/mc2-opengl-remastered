@@ -1,3 +1,5 @@
+#include "render_snap.h"
+#include "terrain_runtime.h"
 #include "Gates/preferences_legacy.h"
 // Mech 3D layer.  Controls how the mech moves through animations
 // For MechCommander 2
@@ -399,6 +401,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 		glm::mat4	localResult;
 		
 		mc2ToRender(actualPosition, jumpNodePos);
+		mc2snap::liftRenderY(actualPosition, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
