@@ -119,8 +119,9 @@ def test_post_merge_red_resets_nifty_and_next_tip_lands(repo, rc):
     assert _git(root, "rev-parse", "HEAD~1") == pre     # a's kept merge commit is gone, b's commit sits on pre
 
 
-@pytest.mark.parametrize("rc,out", [(3, "MERGE_HEAD present"), (4, "staged files"), (5, "precheck tree busy: lock x"),
-                                    (1, "REFUSED: journal lock"), (2, "PARTIAL: skipped rows")])
+@pytest.mark.parametrize("rc,out", [(3, "MERGE_HEAD present"), (4, "staged files"), (5, "lane_merge: precheck tree busy: lock x"),
+                                    (1, "[merge_gate] REFUSED: journal lock"),
+                                    (2, "[merge_gate] clock: 1.0 min verdict=PARTIAL REUSED=none SKIPPED=a")])
 def test_infra_failure_requeues_and_stops_the_loop(repo, rc, out):
     root, q = repo
     lq.submit(q, "claude/a", "aaa111")
@@ -274,7 +275,7 @@ def test_runtime_red_records_stages_range_and_next_head_gets_next_window(repo, p
     assert lq.load(q)["suspect"] == []
 
 
-@pytest.mark.parametrize("rc,out,kind", [(1, "REFUSED: dirty", "infra"), (2, "usage: merge_gate", "infra"),
+@pytest.mark.parametrize("rc,out,kind", [(1, "[merge_gate] REFUSED: dirty", "infra"), (2, "usage: merge_gate", "infra"),
                                          (2, "PARTIAL: 3 stages", "partial"), (1, "no stage line", "infra")])
 def test_non_runtime_reds_never_mark_a_suspect_range(repo, proofs, rc, out, kind):
     root, q = repo
@@ -313,3 +314,20 @@ def test_known_failure_renewal_works_with_new_counter(tmp_path):
     out = tmp_path / "kf.json"
     out.write_text(json.dumps(rows))
     assert mod_smoke.load_known_failures(str(out))
+
+
+@pytest.mark.parametrize("rc,out", [(5, "lane_merge: BATCH REFUSED: a tip would abort on the blocking conflict(s) above"),
+                                    (1, "Vulkan device profile REFUSED (no matching GPU)"), (1, "lint PARTIAL coverage note")])
+def test_real_reds_with_refused_or_partial_text_are_rejected_not_infra(repo, rc, out):
+    root, q = repo
+    lq.submit(q, "claude/a", "aaa111")
+    r = _land_runner(lambda st, sha: (rc, out) if st == "--precheck" else (0, ""))
+    assert lq.land(q, root, r) == 1
+    assert {e["branch"]: e for e in lq.load(q)["queue"]}["claude/a"]["status"] == "rejected"
+
+
+def test_gate_runtime_red_mentioning_refused_stays_runtime(repo, proofs):
+    root, q = repo
+    out = "Vulkan device profile REFUSED" + chr(10) + "[merge_gate] failed stages: smoke (1)"
+    assert lq.classify_gate(1, out) == ("runtime", ["smoke"])
+    assert lq.classify_gate(1, "[merge_gate] REFUSED: dirty")[0] == "infra"
