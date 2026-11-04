@@ -6,21 +6,22 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <span>
 #include <string>
 
 namespace mc2terrain {
 
-inline std::string gameplayHeightSig(int side, const float* elev, size_t count)
+inline std::string gameplayHeightSig(int side, std::span<const float> elev)
 {
     uint64_t h = 0xcbf29ce484222325ull;
-    auto mix = [&h](const unsigned char* p, size_t n) {
-        for (size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 0x100000001b3ull; }
+    auto mix = [&h](std::span<const unsigned char> bytes) {
+        for (const unsigned char b : bytes) { h ^= b; h *= 0x100000001b3ull; }
     };
     const uint32_t sideU = static_cast<uint32_t>(side);
     unsigned char sb[sizeof(sideU)];
     std::memcpy(sb, &sideU, sizeof(sideU));   // little endian, as the Python side writes it
-    mix(sb, sizeof(sb));
-    mix(reinterpret_cast<const unsigned char*>(elev), count * sizeof(float));
+    mix(sb);
+    mix({reinterpret_cast<const unsigned char*>(elev.data()), elev.size() * sizeof(float)});
     return std::format("{} {:016x}", side, h);
 }
 

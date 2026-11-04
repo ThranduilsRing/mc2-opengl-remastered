@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <format>
 #include <span>
+#include <string_view>
 #include <vector>
 #include "../GameOS/gameos/terrain_field_store.h"
 #include "../GameOS/gameos/height_sig.h"
@@ -33,7 +34,7 @@ struct BeautySigVerdict {
 };
 BeautySigVerdict s_beautySig;
 
-BeautySigVerdict computeBeautySig(const char* terrainName, int mapSide, const std::vector<float>& elev)
+BeautySigVerdict computeBeautySig(std::string_view terrainName, int mapSide, const std::vector<float>& elev)
 {
 	BeautySigVerdict v;
 	if (mapSide < 2 || elev.size() != static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide)) return v;
@@ -46,7 +47,7 @@ BeautySigVerdict computeBeautySig(const char* terrainName, int mapSide, const st
 	}
 	else
 	{
-		std::string stem = terrainName ? terrainName : "";
+		std::string stem(terrainName);
 		const auto slash = stem.find_last_of("/\\");
 		if (slash != std::string::npos) stem.erase(0, slash + 1);
 		if (const auto dot = stem.find_last_of('.'); dot != std::string::npos) stem.erase(dot);
@@ -59,7 +60,7 @@ BeautySigVerdict computeBeautySig(const char* terrainName, int mapSide, const st
 		{
 			size_t ll = strlen(line);
 			while (ll && (line[ll - 1] == '\n' || line[ll - 1] == '\r' || line[ll - 1] == ' ')) line[--ll] = '\0';
-			const std::string want = mc2terrain::gameplayHeightSig(mapSide, elev.data(), elev.size());
+			const std::string want = mc2terrain::gameplayHeightSig(mapSide, elev);
 			strncpy(v.want, want.c_str(), sizeof(v.want) - 1);
 			strncpy(v.got, line, sizeof(v.got) - 1);
 			v.state = (strcmp(v.got, v.want) == 0) ? 1 : 2;
@@ -1274,7 +1275,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 		{
 			TerrainLodInitFrame lf;
 			lodHeightUpload(lf);
-			s_beautySig = computeBeautySig(terrainName, static_cast<int>(realVerticesMapSide), lf.elev);
+			s_beautySig = computeBeautySig(terrainName ? terrainName : "",static_cast<int>(realVerticesMapSide), lf.elev);
 			lodControlMap();
 			lodOverlayV2();
 			lodShorelineMask();
