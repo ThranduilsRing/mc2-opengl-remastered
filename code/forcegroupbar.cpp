@@ -585,8 +585,13 @@ void ForceGroupBar::update( )
 	{
 		if ( (icons[t]->unit->isDestroyed() || icons[t]->unit->isDisabled()) && !icons[t]->unit->recoverBuddyWID )
 		{
-			if ( !icons[t]->isAnimatingDeath() )
-				icons[t]->beginDeathAnimation();
+			if ( icons[t]->unit->causeOfDeath == POWER_USED_UP )
+			{
+				if ( !icons[t]->isAnimatingDeath() )
+					icons[t]->beginDeathAnimation();
+			}
+			else
+				icons[t]->updateDeathAnimation();   // the draw is observational (G7b overlap)
 			if ( icons[t]->deathAnimationOver() || icons[t]->unit->causeOfDeath == POWER_USED_UP )
 			{
 				delete icons[t];
