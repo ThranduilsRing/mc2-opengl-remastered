@@ -1,0 +1,9 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/mech_backdrop.vert",
+  "ssbos": [],
+  "stage": "vert",
+  "ubos": [],
+  "variant": "default"
+}

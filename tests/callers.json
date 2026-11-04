@@ -5609,7 +5609,7 @@
         },
         {
           "path": "scripts/video_decode_smoke.py",
-          "line": 42,
+          "line": 44,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors=\"replace\","
@@ -13891,6 +13891,13 @@
           "evidence": "import",
           "reference": "pak_dump",
           "text": "import pak_dump  # noqa: E402"
+        },
+        {
+          "path": "tools/tree_hash.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "pak_dump",
+          "text": "import pak_dump  # noqa: E402"
         }
       ]
     },
@@ -17174,7 +17181,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 489,
+          "line": 498,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -18508,6 +18515,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/test_tree_hash.py",
+      "basename": "test_tree_hash.py",
+      "stem": "test_tree_hash",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/test_vfx_parity_oracle.py",
       "basename": "test_vfx_parity_oracle.py",
       "stem": "test_vfx_parity_oracle",
@@ -19343,6 +19357,21 @@
           "evidence": "import",
           "reference": "tracy_capture_compare",
           "text": "import tracy_capture_compare as tracy"
+        }
+      ]
+    },
+    {
+      "path": "tools/tree_hash.py",
+      "basename": "tree_hash.py",
+      "stem": "tree_hash",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_tree_hash.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tree_hash",
+          "text": "import tree_hash  # noqa: E402"
         }
       ]
     },
