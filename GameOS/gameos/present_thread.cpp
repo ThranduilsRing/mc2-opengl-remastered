@@ -1,10 +1,14 @@
 #include "present_thread.h"
+#include "present_thread_wait.h"
 #include "engine_present_vk.h"
 #include "vulkan_context.h"
+#include "vk_render_infra.h"
 #include "vk_texture_residency.h"
+#include "render_backend_select.h"
 #include "../../mclib/sim_overlap.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "Gates/gate.h"
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -12,6 +16,12 @@
 #include <thread>
 #include <vector>
 #include <cassert>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 namespace mc2vk::present_thread {
 namespace {
@@ -25,11 +35,40 @@ std::mutex mutex;
 std::condition_variable changed;
 std::thread worker;
 thread_local bool isWorker = false;
+std::atomic<std::thread::id> mainThread{};
 bool running = false, quitting = false, pending = false, busy = false, sealed = true, ready = false;
 bool rollback = false;
+bool failed = false;          // the worker's present path is broken; main recovers at the next frame top
+std::string failure;
 Packet packet{};
 int paceFps = 0;
 std::vector<ResidentTextureRef> retiredTextures;
+
+// Past kStall the session rolls back to the inline present (as before). Past kHung the worker is not coming back: a frozen game is worse
+// than an exit that names the wait, so leave unless a debugger holds the worker.
+constexpr auto kStall = std::chrono::seconds(5);
+constexpr auto kHung = std::chrono::seconds(30);
+
+bool debuggerAttached() {
+#ifdef _WIN32
+    return IsDebuggerPresent() != FALSE;
+#else
+    return false;
+#endif
+}
+
+// Main-side wait on the worker, `lock` held. Pumps the window thread's sent messages throughout (see present_thread_wait.h).
+template <class Pred>
+void waitWorker(std::unique_lock<std::mutex>& lock, Pred pred, const char* hungReason) {
+    if (detail::waitPumping(lock, changed, pred, pumpWindowMessages, kStall)) return;
+    std::fprintf(stderr, "[PRESENT_THREAD] STALL >5s; inline rollback after owner quiescence\n");
+    rollback = true;
+    while (!detail::waitPumping(lock, changed, pred, pumpWindowMessages, kHung - kStall)) {
+        if (debuggerAttached()) continue;
+        lock.unlock();
+        mc2::fatalBackendFailure(hungReason);
+    }
+}
 
 void run() {
     isWorker = true;
@@ -40,7 +79,6 @@ void run() {
         ready = true;
     }
     changed.notify_all();
-    auto lastPaced = std::chrono::steady_clock::now();
     for (;;) {
         Packet next;
         {
@@ -53,18 +91,21 @@ void run() {
         }
         mc2::overlap::registerThread(mc2::overlap::Owner::Render);
         next.retiredTextures.clear();
+        const auto started = detail::Clock::now();
         auto& present = getOrCreateEnginePresentVk();
-        present.setCaptureFrame(next.renderFrame, next.fireFrame);
-        if (!present.presentFrame(next.width, next.height, next.verify)) {
-            std::fprintf(stderr, "[PRESENT_THREAD] present failed: %s\n", present.health().fallback_reason.c_str());
-        }
-        if (next.fps > 0) {
-            const auto deadline = lastPaced + std::chrono::milliseconds(1000 / next.fps);
-            std::this_thread::sleep_until(deadline);
-            lastPaced = std::chrono::steady_clock::now();
+        if (infra::deviceLostLatched()) {
+            // No further queue work on a lost device: decline the frame and let main end the session.
+            reportFailure("Vulkan device lost");
+            seal();
         } else {
-            lastPaced = std::chrono::steady_clock::now();
+            present.setCaptureFrame(next.renderFrame, next.fireFrame);
+            if (!present.presentFrame(next.width, next.height, next.verify)) {
+                std::fprintf(stderr, "[PRESENT_THREAD] present failed: %s\n", present.health().fallback_reason.c_str());
+            }
         }
+        // The cap spaces present STARTS, so a late frame cannot buy a short interval for the one behind it. Main records the next frame
+        // during this sleep: the frame above is already sealed.
+        std::this_thread::sleep_until(detail::presentNotBefore(started, detail::Clock::now(), next.fps));
         {
             std::lock_guard lock(mutex);
             busy = false;
@@ -74,10 +115,19 @@ void run() {
 }
 }
 
+void pumpWindowMessages() {
+#ifdef _WIN32
+    if (std::this_thread::get_id() != mainThread.load(std::memory_order_relaxed)) return;
+    MSG m;
+    PeekMessageW(&m, nullptr, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);   // runs sent messages only; posted input stays for SDL
+#endif
+}
+
 void start() {
     mc2::overlap::assertMainThread("present_thread::start");
     std::unique_lock lock(mutex);
     if (running) return;
+    mainThread.store(std::this_thread::get_id(), std::memory_order_relaxed);
     running = true;
     quitting = false;
     ready = false;
@@ -94,12 +144,8 @@ void waitSealed(std::source_location site) {
     const auto began = std::chrono::steady_clock::now();
     if (!sealed) mc2::battlebench::noteVkWait(site.function_name(), began);
     mc2::battlebench::WaitScope timed(mc2::battlebench::WaitSealedNs);
-    if (!changed.wait_for(lock, std::chrono::seconds(5), [] { return sealed; })) {
-        std::fprintf(stderr, "[PRESENT_THREAD] STALL >5s; inline rollback after owner quiescence\n");
-        rollback = true;
-        changed.wait(lock, [] { return sealed; });
-    }
-    if (rollback) {
+    waitWorker(lock, [] { return sealed; }, "Vulkan present worker hung: no seal for 30 s");
+    if (rollback && std::this_thread::get_id() == mainThread.load(std::memory_order_relaxed)) {
         lock.unlock();
         stop();
         std::fprintf(stderr, "[PRESENT_THREAD] INLINE FALLBACK active\n");
@@ -108,7 +154,7 @@ void waitSealed(std::source_location site) {
 void waitIdle() {
     if (!running || isWorker) return;
     std::unique_lock lock(mutex);
-    changed.wait(lock, [] { return !pending && !busy; });
+    waitWorker(lock, [] { return !pending && !busy; }, "Vulkan present worker hung: not idle for 30 s");
 }
 void enqueue(uint32_t width, uint32_t height, bool verify, uint32_t renderFrame, uint32_t fireFrame) {
     mc2::overlap::assertMainThread("present_thread::enqueue");
@@ -129,7 +175,7 @@ void seal() {
     sealed = true;
     changed.notify_all();
 }
-void pace(uint64_t, int fps) {
+void pace(int fps) {
     mc2::overlap::assertMainThread("present_thread::pace");
     paceFps = fps;
 }
@@ -138,10 +184,22 @@ void forgetTexture(uint32_t handle) {
     auto retired = getOrCreateEngineVulkanContext().textures().detachLegacyUi(handle);
     for (auto& texture : retired) retiredTextures.push_back(std::move(texture));
 }
-void requestInline() {
-    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "present_thread::requestInline");
+void reportFailure(const std::string& reason) {
+    if (!isWorker) return;   // the inline present returns false to its host, which recovers on the spot
     std::lock_guard lock(mutex);
-    rollback = true;
+    if (!failed) failure = reason.empty() ? std::string("(unspecified)") : reason;
+    failed = true;
+}
+bool takeFailure(std::string& reason) {
+    mc2::overlap::assertMainThread("present_thread::takeFailure");
+    std::unique_lock lock(mutex);
+    if (!failed) return false;
+    // A failure is reported before its frame seals, so nothing is pending; wait out the pacing tail before main tears the path down.
+    if (running) waitWorker(lock, [] { return !pending && !busy; }, "Vulkan present worker hung: not idle for 30 s after a failure");
+    failed = false;
+    reason = std::move(failure);
+    failure.clear();
+    return true;
 }
 void stop() {
     mc2::overlap::assertMainThread("present_thread::stop");

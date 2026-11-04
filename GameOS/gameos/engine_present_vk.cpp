@@ -249,6 +249,7 @@ bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
     mc2::battlebench::NsScope benchWait(mc2::battlebench::PresCompositeWaitNs, 1);
     const auto start = std::chrono::steady_clock::now();
     const VkFence fence = s.curInFlight().get();
+    if (fence == VK_NULL_HANDLE) return false;   // a refused submit whose replacement fence failed to create
     const VkResult result = vkWaitForFences(s.dev, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
     health.composite_wait_us_last = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count();
     if (!present_thread::onWorker()) {
@@ -2369,7 +2370,7 @@ bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "presentFrame");
     if (impl_) impl_->frameFinished = false;
     const bool ok = presentFrameBody(drawableW, drawableH, verifyReadback);
-    if (!ok) present_thread::requestInline();
+    if (!ok) present_thread::reportFailure(health_.fallback_reason);   // worker only: main tears down and re-inits at the next frame top
     // Declined frames still retire their allocations and release the producer.
     if (impl_ && !impl_->frameFinished) finishFrame();
     if (present_thread::onWorker() && mc2::overlap::isOwner(mc2::overlap::Owner::Render)) present_thread::seal();
@@ -2390,7 +2391,10 @@ void EnginePresentVk::finishFrame() {
       gpuprof::frameEnd(); }
     { ZoneScopedN("VKIsl.Present.Tail.Finish.Boundary"); mc2::battlebench::NsScope ns(mc2::battlebench::PresBoundaryNs);
       s.ctx->frameBoundary(); }
-    if (present_thread::onWorker() && !waitCompositeSlot(s, health_)) present_thread::requestInline();
+    if (present_thread::onWorker() && !waitCompositeSlot(s, health_)) {
+        health_.fallback_reason = "composite slot fence wait failed";
+        present_thread::reportFailure(health_.fallback_reason);
+    }
     s.frameFinished = true;
     if (present_thread::onWorker() && (health_.present_frames % 300) == 1) logHealth();
 }
@@ -2404,6 +2408,12 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentFrame total (CPU)
     Impl& s = *impl_;
 
+    // Drawable dimensions are captured by main; the worker never pumps SDL. Minimized: present nothing and keep any WSI result pending,
+    // so the swapchain is rebuilt for the restored size instead of failing a zero-extent rebuild here.
+    if (drawableW == 0 || drawableH == 0) {
+        return true;   // nothing to present; try again next frame
+    }
+
     // WSI results are consumed only after main has transferred the next frame.
     if (s.lastWsiResult != VK_SUCCESS) {
         const VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
@@ -2414,14 +2424,10 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                 return false;
             }
         } else {
+            if (previous == VK_ERROR_DEVICE_LOST) infra::deviceLost();
             health_.fallback_reason = "vkQueuePresentKHR failed (" + std::to_string(static_cast<int>(previous)) + ")";
             return false;
         }
-    }
-
-    // Drawable dimensions are captured by main; the worker never pumps SDL.
-    if (drawableW == 0 || drawableH == 0) {
-        return true;   // nothing to present; try again next frame
     }
 
     // Resize: if the GL drawable changed, rebuild the shared image + swapchain to
@@ -2482,6 +2488,11 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         plog("present image is VK-only; copy-1 + GL->VK handoff deleted (item-8).");
     }
 
+    // A failed rebuild retires the old chain and leaves none: never acquire from a null swapchain.
+    if (!s.swapchain) {
+        health_.fallback_reason = "no swapchain (an earlier rebuild failed)";
+        return false;
+    }
     // Acquire leaves the fence signaled until submit, so declines can retry.
     uint32_t imageIndex = 0;
     VkResult r;
@@ -2649,9 +2660,10 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
       mc2::battlebench::NsScope benchSubmit(mc2::battlebench::PresTailSubmitNs);
       r = mc2vk::submitGraphics(si, s.curInFlight().get()); }  // drives acquire/present cadence
     if (r != VK_SUCCESS) {
-        // The fence is now unsignaled with no submit to signal it; returning false
-        // triggers the DISARM-2 present-failure path (vkpres.destroy() + deferred
-        // retry), which destroys and re-creates the fence SIGNALED — no hang.
+        // The reset fence has no submit to signal it. Swap in a SIGNALED one now, so no wait before the DISARM-2 teardown (main runs it
+        // at the next frame top when this is the worker) can block on it; a refused submit holds no reference to the old fence.
+        { VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+          mc2vk::create(s.curInFlight(), s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }); }
         health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string(static_cast<int>(r)) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;

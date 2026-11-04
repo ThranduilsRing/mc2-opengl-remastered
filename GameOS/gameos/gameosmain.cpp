@@ -1040,6 +1040,7 @@ int main(int argc, char** argv)
         ZoneScopedN("Frame.WaitSealed");
         mc2vk::present_thread::waitSealed();   // charges mc2::battlebench::WaitSealedNs inside
     }
+    gos::host::recoverAsyncPresentFailure();
     if (presentJoinPending) {
         gos::host::retirePresentHandles(g_mc2RenderFrame);
         {

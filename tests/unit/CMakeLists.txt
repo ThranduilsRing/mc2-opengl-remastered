@@ -29,6 +29,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 add_executable(mc2_tests
     test_present_handoff.cpp
+    test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
     test_cursor_map.cpp    # CURSOR-SCALE-1: logical 2D space -> ImGui display mapping of the software cursor
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui.cpp

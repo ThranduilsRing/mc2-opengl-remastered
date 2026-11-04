@@ -626,7 +626,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
 void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_menu, uint64_t start_tick) {
         if (mc2vk::present_thread::enabled()) {
             const int cap = s_vsync_active ? 0 : SmokeMode::missionHasStarted() ? s_fps_cap_mission : s_fps_cap_menu;
-            mc2vk::present_thread::pace(start_tick, cap);
+            mc2vk::present_thread::pace(cap);
             return;
         }
         // Frame cap: sleep to hold target frame time and reduce GPU thrashing.
