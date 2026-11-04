@@ -937,6 +937,9 @@ class Mech3DAppearance: public ObjectAppearance
 			return unitAnim().leftArmOff;
 		}
 
+		// UNIT-VISUAL-SNAP-2: effect anchor (mc2 space) lifted by the render-only visual-height delta; getters stay sim-true.
+		glm::vec3 snapAnchor (glm::vec3 nodePos) const;
+
 		virtual glm::vec3 getHitNodeLeft (void);
 		virtual glm::vec3 getHitNodeRight (void);
 

@@ -878,8 +878,7 @@ long Mech3DAppearance::render (long depthFixup)
 					glm::mat4	localToWorld;
 					glm::mat4	localResult;
 					
-					mc2ToRender(actualPosition, jumpNodePos);
-					mc2snap::liftRenderY(actualPosition, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
+					mc2ToRender(actualPosition, snapAnchor(jumpNodePos));
 					
  					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -904,8 +903,7 @@ long Mech3DAppearance::render (long depthFixup)
 						leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
 
 					glm::vec3 leftNodePos = getNodeIdPosition(leftArmNodeIndex);
-					mc2ToRender(leftShoulderPos, leftNodePos);
-					mc2snap::liftRenderY(leftShoulderPos, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
+					mc2ToRender(leftShoulderPos, snapAnchor(leftNodePos));
 		
  					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, leftShoulderPos);
@@ -930,8 +928,7 @@ long Mech3DAppearance::render (long depthFixup)
 						rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
 
 					glm::vec3 rightNodePos = getNodeIdPosition(rightArmNodeIndex);
-					mc2ToRender(rightShoulderPos, rightNodePos);
-					mc2snap::liftRenderY(rightShoulderPos, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
+					mc2ToRender(rightShoulderPos, snapAnchor(rightNodePos));
 					
  					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, rightShoulderPos);
@@ -953,8 +950,7 @@ long Mech3DAppearance::render (long depthFixup)
 							
 					glm::vec3 smokeNodePos = getNodePosition(0);
 					glm::vec3 smokePos;
-					mc2ToRender(smokePos, smokeNodePos);
-					mc2snap::liftRenderY(smokePos, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
+					mc2ToRender(smokePos, snapAnchor(smokeNodePos));
 					
 					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, smokePos);

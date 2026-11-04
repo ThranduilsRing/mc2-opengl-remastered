@@ -3,21 +3,19 @@
 #include "doctest.h"
 #include "render_snap.h"
 
-TEST_CASE("render snap: effect anchor lifts on render y only")
+TEST_CASE("render snap: effect anchor lifts on mc2 z only and the input is untouched")
 {
     const glm::vec3 sim(10.0f, 20.0f, 30.0f);
-    glm::vec3 anchor = sim;
-    mc2snap::liftRenderY(anchor, 12.5f);
+    const glm::vec3 anchor = mc2snap::liftAnchorZ(sim, 12.5f);
     CHECK(anchor.x == sim.x);
-    CHECK(anchor.z == sim.z);
-    CHECK(anchor.y == doctest::Approx(32.5f));
+    CHECK(anchor.y == sim.y);
+    CHECK(anchor.z == doctest::Approx(42.5f));
+    CHECK(sim == glm::vec3(10.0f, 20.0f, 30.0f));
 }
 
 TEST_CASE("render snap: zero delta (gate off or no bake) is an exact no-op")
 {
-    glm::vec3 anchor(1.0f, 2.0f, 3.0f);
-    mc2snap::liftRenderY(anchor, 0.0f);
-    CHECK(anchor == glm::vec3(1.0f, 2.0f, 3.0f));
+    CHECK(mc2snap::liftAnchorZ(glm::vec3(1.0f, 2.0f, 3.0f), 0.0f) == glm::vec3(1.0f, 2.0f, 3.0f));
 }
 
 TEST_CASE("render snap: selection box lifts all 8 corners on mc2 z only")

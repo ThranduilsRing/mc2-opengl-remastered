@@ -400,8 +400,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 		glm::mat4	localToWorld;
 		glm::mat4	localResult;
 		
-		mc2ToRender(actualPosition, jumpNodePos);
-		mc2snap::liftRenderY(actualPosition, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: effect anchor follows the drawn mesh
+		mc2ToRender(actualPosition, snapAnchor(jumpNodePos));
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
