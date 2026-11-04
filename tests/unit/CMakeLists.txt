@@ -315,9 +315,16 @@ target_compile_definitions(mc2_tests PRIVATE
     # (CMakeLists.txt:62,136). Header-include only; no GL context is created.
     $<$<PLATFORM_ID:Windows>:PLATFORM_WINDOWS>
     USE_ASSEMBLER_CODE=0
-    # MINIMAL-VIABLE-HARNESS-1: on-disk fixtures for the file-stack tests.
-    MC2_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
+# MC2_REPO_ROOT / MC2_TEST_FIXTURE_DIR are resolved at runtime by the force-included
+# test_repo_root.h: an absolute checkout path in a -D is baked into the object and not
+# in the compile-cache key (W114 replayed a deleted worktree's path).
+target_include_directories(mc2_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(MSVC)
+    target_compile_options(mc2_tests PRIVATE /FItest_repo_root.h)
+else()
+    target_compile_options(mc2_tests PRIVATE SHELL:-include\ test_repo_root.h)
+endif()
 
 if(MSVC)
     target_compile_options(mc2_tests PRIVATE /W4 /WX-)
@@ -432,7 +439,6 @@ target_sources(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
 )
 target_compile_features(mc2_tests PRIVATE cxx_std_23)
-target_compile_definitions(mc2_tests PRIVATE MC2_REPO_ROOT="${MC2_WORKTREE_ROOT}")
 target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils
     ${MC2_WORKTREE_ROOT}/3rdparty/include/SDL2
