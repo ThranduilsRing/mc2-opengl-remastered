@@ -1394,8 +1394,13 @@ extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
     }
     // Both parity fences signalled: the last submit retired and its products are final.
     for (auto& f : s->frameFence) { const VkFence fence = f.get(); if (fence) vkWaitForFences(s->device, 1, &fence, VK_TRUE, 2ull * 1000 * 1000 * 1000); }
-    std::fprintf(stderr, "[SHADOW_BAKE] load_bake steps=%d submits=%d ready=%d ms=%.1f\n", steps, submits, s->bake.ready() ? 1 : 0,
-                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+    void* av = nullptr; uint32_t ag = 0; Mc2ColorPropMaterialFeed mf{};
+    const int arr = mc2_color_prop_island_get_alpha_array(&av, &ag);
+    const int feed = mc2_color_prop_island_get_material_feed(&mf);
+    std::fprintf(stderr, "[SHADOW_BAKE] load_bake steps=%d submits=%d ready=%d ms=%.1f alpha_array=%d feed=%d bucketed=%d key_on=%d layers=%d alpha_ready=%d\n",
+                 steps, submits, s->bake.ready() ? 1 : 0,
+                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(), arr, feed, mf.bucketed ? 1 : 0,
+                 mf.arrayKeyOn != 0 ? 1 : 0, mf.packetAlbedoLayer ? 1 : 0, s->alphaReady ? 1 : 0);
     return 1;
 }
 
