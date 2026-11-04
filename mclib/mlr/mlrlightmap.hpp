@@ -49,45 +49,45 @@ namespace MidLevelRenderer {
 
 		inline void
 			SetPolygonMarker (int type)
-				{ Check_Object(this); Check_Object(stream); *stream << (type ? (static_cast<int>((static_cast<MemoryStreamData>(PolygonWithColor)))) : (static_cast<int>((static_cast<MemoryStreamData>(Polygon)))) ); }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << (type ? (static_cast<int>((static_cast<MemoryStreamData>(PolygonWithColor)))) : (static_cast<int>((static_cast<MemoryStreamData>(Polygon)))) ); }
 
 		inline void
 			AddColor(Stuff::RGBAColor color)
-				{ Check_Object(this); Check_Object(stream); *stream << color; }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << color; }
 
 		inline void
 			AddColor(Stuff::Scalar red, Stuff::Scalar green, Stuff::Scalar blue, Stuff::Scalar alpha)
-				{ Check_Object(this); Check_Object(stream); *stream << red << green << blue << alpha; }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << red << green << blue << alpha; }
 
 		inline void
 			AddCoord(glm::vec3 coord)
-				{ Check_Object(this); Check_Object(stream); *stream << coord; }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << coord; }
 
 		inline void
 			AddUVs(Stuff::Scalar u, Stuff::Scalar v)
-				{ Check_Object(this); Check_Object(stream); *stream << u << v; }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << u << v; }
 
 		inline void
 			AddInt(int i)
-				{ Check_Object(this); Check_Object(stream); *stream << i; }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << i; }
 
 		inline void
 			AddUShort(unsigned short i)
-				{ Check_Object(this); Check_Object(stream); *stream << i; }
+				{ Check_Object(this); Check_Object(stream.get()); *stream << i; }
 
 		inline void
 			AddState(int priority)
 				{
 					Check_Object(this);
-					Check_Object(stream);  
+					Check_Object(stream.get());  
 					*stream << static_cast<int>(LightMapRenderState);
 					state.SetPriority(priority);
-					state.Save(stream);
+					state.Save(stream.get());
 				}
 
 		const Vector2DScalar*
 			GetCurrentUVPointer()
-				{ Check_Object(this); Check_Object(stream); return Cast_Pointer(Vector2DScalar*, stream->GetPointer()); }
+				{ Check_Object(this); Check_Object(stream.get()); return Cast_Pointer(Vector2DScalar*, stream->GetPointer()); }
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -104,14 +104,14 @@ namespace MidLevelRenderer {
 			TestInstance();
 
 	protected:
-		static ClipPolygon2
-			*clipBuffer;
+		static std::unique_ptr<ClipPolygon2[]>
+			clipBuffer;
 
 		MLRState
 			state;
 
-		static Stuff::MemoryStream
-			*stream;
+		static std::unique_ptr<Stuff::MemoryStream>
+			stream;
 		static GOSVertexPool*
 			vertexPool;
 	};

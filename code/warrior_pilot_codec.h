@@ -198,7 +198,8 @@ inline bool decodeWarriorRecord(std::span<const std::uint8_t> bytes,
 // movePathRequest -> nullptr in MechWarrior::init(data); future requests are
 // re-enqueued by the normal fixed-tick path update in pilot order.
 // lastFailedJumpGoalCellR/C and lastJumpFailFrame -> -1 in init(false), so
-// no old failure suppresses a fresh deterministic path solve.
+// getJumpBackoff() returns std::nullopt and no old failure suppresses a fresh
+// deterministic path solve.
 // Sensor contacts -> loadActivateAndFinalize scans each restored team's
 // battlefield before resumed ABL, preserving enemyInLOS during the rebuild.
 // Music -> loadActivateAndFinalize calls playABLDigitalMusic(missionTuneNum)

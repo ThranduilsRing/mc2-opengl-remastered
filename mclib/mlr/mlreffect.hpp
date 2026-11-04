@@ -111,7 +111,7 @@ namespace MidLevelRenderer {
 				{};
 
 	protected:
-		static EffectClipPolygon *clipBuffer;
+		static std::unique_ptr<EffectClipPolygon[]> clipBuffer;
 
 		void
 			TurnAllVisible();
@@ -133,7 +133,7 @@ namespace MidLevelRenderer {
 
 		const Stuff::RGBAColor *colors;
 
-		static Stuff::DynamicArrayOf<Stuff::Vector4D> *transformedCoords;
+		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::Vector4D>> transformedCoords;
 
 		Stuff::DynamicArrayOf<int>	testList;
 

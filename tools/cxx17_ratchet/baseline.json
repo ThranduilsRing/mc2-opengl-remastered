@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 500,
+   "LG03": 454,
    "LG04": 12,
    "LG05": 108,
    "LG06": 514,
@@ -2735,10 +2735,10 @@
    "LG03": 5
   },
   "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-   "LG03": 10
+   "LG03": 6
   },
   "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-   "LG03": 9
+   "LG03": 5
   },
   "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
    "LG03": 5
@@ -2790,13 +2790,13 @@
    "LG14": 2
   },
   "mclib/mlr/mlreffect.cpp": {
-   "LG03": 6
+   "LG03": 2
   },
   "mclib/mlr/mlrindexedprimitivebase.cpp": {
    "LG03": 6
   },
   "mclib/mlr/mlrindexedtrianglecloud.cpp": {
-   "LG03": 4
+   "LG03": 2
   },
   "mclib/mlr/mlrinfinitelight.cpp": {
    "LG03": 2
@@ -2812,7 +2812,7 @@
    "LG14": 1
   },
   "mclib/mlr/mlrlightmap.cpp": {
-   "LG03": 18
+   "LG03": 2
   },
   "mclib/mlr/mlrlightmap.hpp": {
    "LG14": 1
@@ -2829,7 +2829,7 @@
    "LG03": 6
   },
   "mclib/mlr/mlrprimitivebase.cpp": {
-   "LG03": 16,
+   "LG03": 2,
    "LG04": 1
   },
   "mclib/mlr/mlrprimitivebase.hpp": {
@@ -2869,7 +2869,7 @@
    "LG06": 4
   },
   "mclib/mlr/mlrtrianglecloud.cpp": {
-   "LG03": 4
+   "LG03": 2
   },
   "mclib/mlr/owntrace.hpp": {
    "LG06": 1,
@@ -3397,7 +3397,7 @@
    "LG20": 3
   }
  },
- "head": "43f160824",
+ "head": "5f6faa7f2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

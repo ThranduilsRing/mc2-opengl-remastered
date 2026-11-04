@@ -13,10 +13,10 @@
 MLR_I_DT_PMesh::ClassData*
 	MLR_I_DT_PMesh::DefaultData = nullptr;
 
-DynamicArrayOf<Vector2DScalar>
-	*MLR_I_DT_PMesh::clipExtraTexCoords2;
-DynamicArrayOf<Vector2DScalar>
-	*MLR_I_DT_PMesh::texCoords2;
+std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
+	MLR_I_DT_PMesh::clipExtraTexCoords2;
+std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
+	MLR_I_DT_PMesh::texCoords2;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -34,13 +34,13 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	clipExtraTexCoords2 = new DynamicArrayOf<Vector2DScalar>;
-	Register_Object(clipExtraTexCoords2);
+	clipExtraTexCoords2 = std::make_unique<DynamicArrayOf<Vector2DScalar>>();
+	Register_Object(clipExtraTexCoords2.get());
 	clipExtraTexCoords2->SetLength(Limits::Max_Number_Vertices_Per_Mesh);
 
 
-	texCoords2 = new DynamicArrayOf<Vector2DScalar>;
-	Register_Object(texCoords2);
+	texCoords2 = std::make_unique<DynamicArrayOf<Vector2DScalar>>();
+	Register_Object(texCoords2.get());
 	texCoords2->SetLength(Limits::Max_Number_Vertices_Per_Mesh);
 
 }
@@ -50,10 +50,10 @@ void
 void
 	MLR_I_DT_PMesh::TerminateClass()
 {
-	Unregister_Object(clipExtraTexCoords2);
-	delete clipExtraTexCoords2;
-	Unregister_Object(texCoords2);
-	delete texCoords2;
+	Unregister_Object(clipExtraTexCoords2.get());
+	clipExtraTexCoords2.reset();
+	Unregister_Object(texCoords2.get());
+	texCoords2.reset();
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;

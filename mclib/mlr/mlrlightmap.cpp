@@ -14,21 +14,22 @@
 
 MLRLightMap::ClassData*
 	MLRLightMap::DefaultData = nullptr;
-Stuff::MemoryStream
-	*MLRLightMap::stream;
+std::unique_ptr<Stuff::MemoryStream>
+	MLRLightMap::stream;
+static std::unique_ptr<unsigned char[]> s_streamBuffer;
 GOSVertexPool*
 	MLRLightMap::vertexPool;
 
-DynamicArrayOf<Stuff::Vector4D>
-	*transformedCoords, *clipExtraCoords;
-DynamicArrayOf<RGBAColor>
-	*clipExtraColors;
-DynamicArrayOf<Vector2DScalar>
-	*clipExtraTexCoords;
-DynamicArrayOf<MLRClippingState>
-	*clippingStates;
-ClipPolygon2
-	*MLRLightMap::clipBuffer;
+std::unique_ptr<DynamicArrayOf<Stuff::Vector4D>>
+	transformedCoords, clipExtraCoords;
+std::unique_ptr<DynamicArrayOf<RGBAColor>>
+	clipExtraColors;
+std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
+	clipExtraTexCoords;
+std::unique_ptr<DynamicArrayOf<MLRClippingState>>
+	clippingStates;
+std::unique_ptr<ClipPolygon2[]>
+	MLRLightMap::clipBuffer;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -45,25 +46,25 @@ void
 		);
 	Register_Object(DefaultData);
 
-	unsigned char *ptr = new unsigned char [Limits::Max_Size_Of_LightMap_MemoryStream];
-	Register_Pointer(ptr);
+	s_streamBuffer = std::make_unique_for_overwrite<unsigned char[]>(Limits::Max_Size_Of_LightMap_MemoryStream);
+	Register_Pointer(s_streamBuffer.get());
 
-	stream = new MemoryStream(ptr, Limits::Max_Size_Of_LightMap_MemoryStream);
-	Register_Object(stream);
+	stream = std::make_unique<MemoryStream>(s_streamBuffer.get(), Limits::Max_Size_Of_LightMap_MemoryStream);
+	Register_Object(stream.get());
 
-	transformedCoords = new DynamicArrayOf<Stuff::Vector4D> (Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(transformedCoords);
-	clipExtraCoords = new DynamicArrayOf<Stuff::Vector4D> (2*Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clipExtraCoords);
-	clipExtraColors = new DynamicArrayOf<RGBAColor> (2*Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clipExtraColors);
-	clipExtraTexCoords = new DynamicArrayOf<Vector2DScalar> (2*Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clipExtraTexCoords);
-	clippingStates = new DynamicArrayOf<MLRClippingState> (Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clippingStates);
+	transformedCoords = std::make_unique<DynamicArrayOf<Stuff::Vector4D>>(Limits::Max_Number_Vertices_Per_Polygon);
+	Register_Object(transformedCoords.get());
+	clipExtraCoords = std::make_unique<DynamicArrayOf<Stuff::Vector4D>>(2*Limits::Max_Number_Vertices_Per_Polygon);
+	Register_Object(clipExtraCoords.get());
+	clipExtraColors = std::make_unique<DynamicArrayOf<RGBAColor>>(2*Limits::Max_Number_Vertices_Per_Polygon);
+	Register_Object(clipExtraColors.get());
+	clipExtraTexCoords = std::make_unique<DynamicArrayOf<Vector2DScalar>>(2*Limits::Max_Number_Vertices_Per_Polygon);
+	Register_Object(clipExtraTexCoords.get());
+	clippingStates = std::make_unique<DynamicArrayOf<MLRClippingState>>(Limits::Max_Number_Vertices_Per_Polygon);
+	Register_Object(clippingStates.get());
 
-	clipBuffer = new ClipPolygon2 [2];
-	Register_Pointer(clipBuffer);
+	clipBuffer = std::make_unique<ClipPolygon2[]>(2);
+	Register_Pointer(clipBuffer.get());
 
 	clipBuffer[0].Init(Limits::Max_Number_Of_Multitextures);
 	clipBuffer[1].Init(Limits::Max_Number_Of_Multitextures);
@@ -76,29 +77,25 @@ void
 {
 	clipBuffer[1].Destroy();
 	clipBuffer[0].Destroy();
-	Unregister_Pointer(clipBuffer);
-	delete [] clipBuffer;
+	Unregister_Pointer(clipBuffer.get());
+	clipBuffer.reset();
 
-	Unregister_Object(transformedCoords);
-	delete transformedCoords;
-	Unregister_Object(clipExtraCoords);
-	delete clipExtraCoords;
-	Unregister_Object(clipExtraColors);
-	delete clipExtraColors;
-	Unregister_Object(clipExtraTexCoords);
-	delete clipExtraTexCoords;
-	Unregister_Object(clippingStates);
-	delete clippingStates;
+	Unregister_Object(transformedCoords.get());
+	transformedCoords.reset();
+	Unregister_Object(clipExtraCoords.get());
+	clipExtraCoords.reset();
+	Unregister_Object(clipExtraColors.get());
+	clipExtraColors.reset();
+	Unregister_Object(clipExtraTexCoords.get());
+	clipExtraTexCoords.reset();
+	Unregister_Object(clippingStates.get());
+	clippingStates.reset();
 
-	stream->Rewind();
-	unsigned char *ptr = static_cast<unsigned char *>(stream->GetPointer());
+	Unregister_Object(stream.get());
+	stream.reset();
 
-	Unregister_Object(stream);
-	delete stream;
-	stream = nullptr;
-
-	Unregister_Pointer(ptr);
-	delete [] ptr;
+	Unregister_Pointer(s_streamBuffer.get());
+	s_streamBuffer.reset();
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
@@ -135,7 +132,7 @@ MLRLightMap::MLRLightMap(MLRTexture *tex) :
 MLRLightMap::~MLRLightMap()
 {
 	Check_Object(this);
-	Check_Object(stream);
+	Check_Object(stream.get());
 
 }
 
@@ -149,7 +146,7 @@ void
 	MLRLightMap::TestInstance()
 {
 	Verify(IsDerivedFrom(DefaultData));
-	Check_Object(stream);
+	Check_Object(stream.get());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
