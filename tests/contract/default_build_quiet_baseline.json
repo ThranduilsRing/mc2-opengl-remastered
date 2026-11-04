@@ -33,6 +33,10 @@
       "status": "keep",
       "reason": "Human-readable smoke oracle (fullyArmed=/skip=). Its parser smoke_lib/oracleparse.py was retired 2026-10-11 (owner ruling 2026-10-09 #11) with no replacement; the line stays until a gate owns it."
     },
+    "SIM_OVERLAP v1": {
+      "status": "keep",
+      "reason": "Prints only on an owner VIOLATION or at a worker/fatal crash (never in a clean run). scripts/video_decode_smoke.py fails the end row on the VIOLATION line; the FATAL bundle line names the thread and last site of an otherwise bare 0xC0000409."
+    },
     "SMOKE v1": {
       "status": "keep",
       "reason": "scripts/run_smoke.py, smoke_lib/runner.py and run_editor_playtest_smoke.py key their pass/fail verdict off the [SMOKE v1] line; run_editor_playtest_smoke.py requires it explicitly. This IS the harness's result channel."

@@ -53,6 +53,9 @@ uint64_t retainRenderPacket() {
 }
 void retireRenderPacket(uint64_t sequence) {
     mc2::overlap::assertMainThread("retireRenderPacket");
+    // The graveyard commands destroy appearances (AppearanceTypeList refcounts) and the worker also pushes to the
+    // graveyard, so this must run after the join.
+    mc2::overlap::assertSimQuiescent("graveyard drain");
     auto& slot = packets[sequence % packets.size()];
     if (!sequence || slot != sequence) std::abort();
     slot = 0;

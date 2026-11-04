@@ -24,21 +24,27 @@ VIOLATION = re.compile(r"\[SIM_OVERLAP v1\] VIOLATION")
 OPENED = re.compile(r"\[VIDEO\] init: opened ")
 
 
-def judge(text: str) -> tuple[bool, str]:
+EARLY_EXIT = re.compile(r"\[SMOKE v1\] event=summary result=fail reason=early_exit stage=atexit")
+RESULTS_DONE =re.compile(r"\[RESULTS v1\] resultsDone complete ")
+
+
+def judge(text: str, require_results: bool = False) -> tuple[bool, str]:
     """(passed, reason) for one mission's concatenated runner output + kept game log."""
     m = VIOLATION.search(text)
     if m:
         return False, "sim-overlap violation: " + text[m.start():m.start() + 160].splitlines()[0]
     if not OPENED.search(text):
         return False, "no '[VIDEO] init: opened' line: the comm video never decoded"
-    return True, "video opened, no sim-overlap violation"
+    if require_results and not RESULTS_DONE.search(text):
+        return False, "no '[RESULTS v1] resultsDone complete' line: the results path was never reached"
+    return True, "video opened, no sim-overlap violation" + (", results path reached" if require_results else "")
 
 
 def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, log_to: Path | None = None) -> tuple[bool, str]:
     env = dict(os.environ, MC2_BOOT_VIDEO="1", MC2_SMOKE_REQUIRE_FINGERPRINT=os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1"))
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
-        env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="15")
+        env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="12", MC2_DIAG_TAGS="RESULTS", MC2_SIM_OVERLAP_AUDIT="2")
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
     proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
@@ -51,7 +57,10 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, 
     if log_to:
         log_to.parent.mkdir(parents=True, exist_ok=True)
         log_to.write_text(text, encoding="utf-8")
-    ok, why = judge(text)
+    ok, why = judge(text, require_results=countdown)
+    # The end row ends the mission on purpose: run_smoke reports that as early_exit (rc=1), which is the pass shape.
+    if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text):
+        return True, why + " (mission ended by the countdown: early_exit)"
     if proc.returncode != 0:
         ok, why = False, f"run_smoke rc={proc.returncode}; {why}"
     return ok, why

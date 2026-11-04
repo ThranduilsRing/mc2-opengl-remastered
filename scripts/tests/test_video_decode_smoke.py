@@ -34,3 +34,18 @@ def test_judge_on_abort_shaped_log_fixture():
 def test_judge_on_pass_shaped_log_fixture():
     ok, _ = v.judge((FIXTURES / "video_smoke_pass.txt").read_text())
     assert ok
+
+
+def test_end_row_real_fail_log_names_removeall_violation():
+    """Trimmed real log of the mission-end row run on the P0-1 revert (resultsDone on the sim worker) at MC2_SIM_OVERLAP_AUDIT=2."""
+    ok, why = v.judge((FIXTURES / "video_smoke_end_fail.txt").read_text(), require_results=True)
+    assert not ok and "ForceGroupBar::removeAll" in why
+
+
+def test_end_row_real_pass_log_reaches_results():
+    """Trimmed real log of the same row on the fixed tree: video opened, resultsDone complete, countdown early_exit accepted."""
+    text = (FIXTURES / "video_smoke_end_pass.txt").read_text()
+    ok, _ = v.judge(text, require_results=True)
+    assert ok
+    ok, why = v.judge(text.replace("resultsDone complete", "resultsDone"), require_results=True)
+    assert not ok

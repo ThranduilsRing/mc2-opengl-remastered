@@ -5,10 +5,14 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <csignal>
 #include <cstdlib>
+#include <cstring>
+#include <exception>
 #include <mutex>
 #include <random>
 #include <thread>
+#include <utility>
 
 #include "Gates/gate.h"
 #ifdef TRACY_ENABLE
@@ -34,6 +38,8 @@ std::atomic<bool> g_renderThread{false};   // a dedicated render thread register
 std::atomic<bool> g_presentThread{false};
 std::atomic<bool> g_inFlight{false};
 std::atomic<unsigned> g_violations{0};
+char g_lastSite[96] = "none";                // diagnostic only: site of the most recent violation (racy by design)
+std::exception_ptr g_workerError;            // guarded by g_worker.m; rethrown on Main by waitWorker
 
 // Audit levels above 2 add jitter with a private RNG, leaving the sim's streams unchanged.
 void jitterSleep() {
@@ -71,7 +77,14 @@ void workerMain() {
             ZoneScopedN("SimOverlap.Tick");
 #endif
             jitterSleep();
-            job();
+            try {
+                job();
+            } catch (...) {
+                // Exception barrier: never unwind off the thread entry; hand it to Main at the join so the normal
+                // Main-side crash handling sees it, and name the worker as the origin.
+                std::lock_guard<std::mutex> lk(g_worker.m);
+                if (!g_workerError) g_workerError = std::current_exception();
+            }
         }
         {
             std::lock_guard<std::mutex> lk(g_worker.m);
@@ -98,6 +111,8 @@ void startWorker() {
 void violation(std::string_view kind, std::string_view site, bool hard = false) {
     const unsigned n = g_violations.fetch_add(1, std::memory_order_relaxed) + 1;
     const bool abortNow = hard || mc2::gate::get<"MC2_SIM_OVERLAP_AUDIT">();
+    std::snprintf(g_lastSite, sizeof g_lastSite, "%.*s %.*s", static_cast<int>(kind.size()), kind.data(),
+        static_cast<int>(site.size()), site.data());
     if (n <= 20 || abortNow) {
         std::fprintf(stderr, "[SIM_OVERLAP v1] VIOLATION %.*s site=%.*s count=%u%s\n",
             static_cast<int>(kind.size()), kind.data(), static_cast<int>(site.size()), site.data(), n, abortNow ? " abort=1" : "");
@@ -107,6 +122,27 @@ void violation(std::string_view kind, std::string_view site, bool hard = false) 
 }
 
 const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : o == Owner::Present ? "present" : "render"; }
+
+// Bundle line written before a fast-fail so a worker CTD names its thread and the last audit site instead of a bare 0xC0000409.
+void logFatal(std::string_view what) {
+    const char* role = t_role == kUnregistered ? "other" : ownerName(static_cast<Owner>(t_role));
+    std::fprintf(stderr, "[SIM_OVERLAP v1] FATAL %.*s thread=%s in_flight=%d last_site=%s\n", static_cast<int>(what.size()), what.data(), role,
+        g_inFlight.load(std::memory_order_relaxed) ? 1 : 0, g_lastSite);
+    std::fflush(stderr);
+}
+void onSigAbort(int) { logFatal("SIGABRT"); std::signal(SIGABRT, SIG_DFL); std::abort(); }
+#ifdef _WIN32
+void onInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned, uintptr_t) {
+    logFatal("invalid-parameter");
+    std::abort();   // keeps the process-ending behaviour; the bundle line above names the thread
+}
+#endif
+void installFatalLoggers() {
+    std::signal(SIGABRT, onSigAbort);
+#ifdef _WIN32
+    _set_invalid_parameter_handler(onInvalidParameter);
+#endif
+}
 
 // True when the calling thread may enter `domain`. Unregistered threads (job pool, tools) are not judged.
 bool owns(Owner domain) {
@@ -161,7 +197,7 @@ void joinTail() { if (g_hooks.join) g_hooks.join(); }
 void runOnWorker(std::function<void()> job) {
     {
         std::lock_guard<std::mutex> lk(g_worker.m);
-        if (!g_worker.started) { g_worker.started = true; startWorker(); }
+        if (!g_worker.started) { g_worker.started = true; installFatalLoggers(); startWorker(); }
         g_worker.job = std::move(job);
         g_worker.posted = true;
         g_inFlight.store(true, std::memory_order_release);
@@ -171,9 +207,20 @@ void runOnWorker(std::function<void()> job) {
 
 void waitWorker() {
     g_renderFence.store(false, std::memory_order_release);
-    if (!g_inFlight.load(std::memory_order_acquire)) return;
-    std::unique_lock<std::mutex> lk(g_worker.m);
-    g_worker.cv.wait(lk, [] { return !g_inFlight.load(std::memory_order_acquire); });
+    std::exception_ptr err;
+    if (g_inFlight.load(std::memory_order_acquire)) {
+        std::unique_lock<std::mutex> lk(g_worker.m);
+        g_worker.cv.wait(lk, [] { return !g_inFlight.load(std::memory_order_acquire); });
+        err = std::exchange(g_workerError, nullptr);
+    } else {
+        std::lock_guard<std::mutex> lk(g_worker.m);
+        err = std::exchange(g_workerError, nullptr);
+    }
+    if (err) {
+        std::fprintf(stderr, "[SIM_OVERLAP v1] worker job threw; rethrowing on Main\n");
+        std::fflush(stderr);
+        std::rethrow_exception(err);
+    }
 }
 
 bool jobInFlight() { return g_inFlight.load(std::memory_order_acquire); }

@@ -7907,6 +7907,26 @@
    "count": 1
   },
   {
+   "tag": "RESULTS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "objectiveTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RESULTS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "renderStatusInfo",
+    "objectiveTime",
+    "resultsTime"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RES_DIAG",
    "ver": -1,
    "stream": "stdout",
@@ -8753,9 +8773,27 @@
    "tag": "SIM_OVERLAP",
    "ver": 1,
    "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "stderr",
    "keys": [
     "site",
     "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "thread",
+    "in_flight",
+    "last_site"
    ],
    "count": 1
   },
@@ -11947,6 +11985,7 @@
   "PERF_COUNTER_WARN",
   "REPLAY_DIVERGED",
   "RESOLUTION",
+  "RESULTS",
   "RGBA",
   "SAVELOAD",
   "SHADER",

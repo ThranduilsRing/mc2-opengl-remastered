@@ -8,6 +8,8 @@
 #include <utility>
 #include "mc2str.h"
 #include "tick_commit.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 
 
 void ControlGui::beginPause()
@@ -129,8 +131,18 @@ void ControlGui::playMovie( const char* fileName )
 
 bool ControlGui::resultsDone()
 {
-	if( ( renderStatusInfo && objectiveTime > Team::home->objectives.Count() + 4 ) )
+	if (mc2_diag::tagRequested("RESULTS")) {
+		static int s_calls = 0;
+		if ((s_calls++ % 60) == 0)
+			mc2::fmt::print_out("[RESULTS v1] resultsDone renderStatusInfo={:d} objectiveTime={:.2f} resultsTime={:.2f}\n",
+				mc2::fmt::as_i32(static_cast<int>(renderStatusInfo)), static_cast<double>(objectiveTime), static_cast<double>(resultsTime));
+	}
+	// MC2_SOAK_AUTOWIN_COUNTDOWN (test-only): skip the per-objective fade wait so the 30 s smoke window reaches this branch.
+	const float needTime = mc2::gate::get<"MC2_SOAK_AUTOWIN_COUNTDOWN">() ? 1.5f : static_cast<float>(Team::home->objectives.Count() + 4);
+	if( ( renderStatusInfo && objectiveTime > needTime ) )
 	{
+		if (mc2_diag::tagRequested("RESULTS"))
+			mc2::fmt::print_out("[RESULTS v1] resultsDone complete objectiveTime={:.2f} forceGroupBar.removeAll next\n", static_cast<double>(objectiveTime));
 		// need to empty out force group bar now... (icons may own a live pilot
 		// video; ForceGroupBar::render reads them on Main, so commit on Main)
 		if (!mc2::tick::defer(mc2::tick::Queue::MoverUi, [this] { forceGroupBar.removeAll(); }))
