@@ -202,30 +202,114 @@ def test_dry_run_changes_nothing(repo):
     assert lq.load(q)["queue"][0]["status"] == "queued"
 
 
-def test_gate_green_tags_and_publishes_only_on_request(repo):
-    root, q = repo
+
+
+# ---- LQ-2: window counter, gate classification, tags, publish ----
+
+def _gate_runner(gate_rc=0, gate_out="", pre_rc=0, pre_out=""):
     seen = []
 
     def runner(cmd, cwd):
         if cmd[0] == "git":
             return lq.default_runner(cmd, cwd)
-        seen.append("--publish" in cmd)
-        return 0, ""
-    assert lq.gate(q, root, False, runner) == 0
-    assert lq.green_tags(root) == [1] and seen == [False]
-    _git(root, "commit", "-q", "--allow-empty", "-m", "next")
-    assert lq.gate(q, root, True, runner) == 0
-    assert lq.green_tags(root) == [1, 2] and seen[-2:] == [False, True]   # gate run, then publish run
+        if "--preflight" in cmd:
+            seen.append(("preflight", cmd[cmd.index("--window") + 1]))
+            return pre_rc, pre_out
+        if "--publish" in cmd:
+            seen.append(("publish", cmd[cmd.index("--expect-head") + 1]))
+            return 0, ""
+        seen.append(("gate", cmd[cmd.index("--window") + 1], "--resume" in cmd))
+        return gate_rc, gate_out
+    runner.seen = seen
+    return runner
 
 
-def test_gate_red_marks_range_since_last_green_suspect(repo):
+@pytest.fixture
+def proofs(tmp_path):
+    p = tmp_path / "proofs"
+    (p / "merge114").mkdir(parents=True)
+    (p / "merge114-gate").mkdir()
+    return str(p)
+
+
+def _commit(root, msg):
+    _git(root, "commit", "-q", "--allow-empty", "-m", msg)
+
+
+def test_window_is_max_merge_dir_plus_one_and_green_is_tagged(repo, proofs):
     root, q = repo
-    lq.gate(q, root, False, _real_git_else((0, "")))
-    _git(root, "commit", "-q", "--allow-empty", "-m", "bad tip")
-    assert lq.gate(q, root, True, _real_git_else((1, "stage red"))) == 1
-    assert lq.green_tags(root) == [1]                       # no new tag, no publish
-    s, = lq.load(q)["suspect"]
-    assert s["from"] == "nifty-green-1" and "bad tip" in s["commits"][0]
-    _git(root, "commit", "-q", "--allow-empty", "-m", "fix")
-    lq.gate(q, root, False, _real_git_else((0, "")))        # the next green clears it
-    assert lq.load(q)["suspect"] == [] and lq.green_tags(root) == [1, 2]
+    r = _gate_runner()
+    assert lq.gate(q, root, runner=r, proofs=proofs) == 0
+    assert r.seen == [("preflight", "115"), ("gate", "115", False)]
+    assert _git(root, "cat-file", "-t", "nifty-green-115") == "tag"
+    assert lq.load(q)["suspect"] == []
+    assert lq.gate(q, root, runner=r, proofs=proofs) == 0   # already tagged: nothing to gate
+    assert len(r.seen) == 2
+
+
+def test_preflight_failure_is_infra_and_consumes_no_window(repo, proofs):
+    root, q = repo
+    r = _gate_runner(pre_rc=1, pre_out="preflight FAIL")
+    assert lq.gate(q, root, runner=r, proofs=proofs) == lq.EX_BUSY
+    s = lq.load(q)
+    assert not s.get("window") and s["suspect"] == [] and not s.get("gate_infra")
+    assert lq.gate(q, root, runner=_gate_runner(), proofs=proofs) == 0
+    assert _git(root, "tag", "-l", "nifty-green-*") == "nifty-green-115"
+
+
+def test_runtime_red_records_stages_range_and_next_head_gets_next_window(repo, proofs):
+    root, q = repo
+    assert lq.gate(q, root, runner=_gate_runner(), proofs=proofs) == 0
+    _commit(root, "m1")
+    _commit(root, "m2")
+    red = _gate_runner(1, "x\n[merge_gate] failed stages: smoke (st), ratchets (st)\n")
+    assert lq.gate(q, root, runner=red, proofs=proofs) == 1
+    sus = lq.load(q)["suspect"]
+    assert len(sus) == 1 and sus[0]["red_stages"] == ["smoke", "ratchets"] and sus[0]["window"] == 116
+    assert [c.split(" ", 1)[1] for c in sus[0]["commits"]] == ["m2", "m1"]
+    _commit(root, "m3")
+    r = _gate_runner()
+    assert lq.gate(q, root, runner=r, proofs=proofs) == 0
+    assert r.seen[-1] == ("gate", "117", False)
+    assert lq.load(q)["suspect"] == []
+
+
+@pytest.mark.parametrize("rc,out,kind", [(1, "REFUSED: dirty", "infra"), (2, "usage: merge_gate", "infra"),
+                                         (2, "PARTIAL: 3 stages", "partial"), (1, "no stage line", "infra")])
+def test_non_runtime_reds_never_mark_a_suspect_range(repo, proofs, rc, out, kind):
+    root, q = repo
+    assert lq.gate(q, root, runner=_gate_runner(rc, out), proofs=proofs) == lq.EX_BUSY
+    s = lq.load(q)
+    assert s["suspect"] == [] and s["gate_infra"][0]["kind"] == kind
+
+
+def test_resume_at_same_head_keeps_its_window(repo, proofs):
+    root, q = repo
+    lq.gate(q, root, runner=_gate_runner(2, "PARTIAL"), proofs=proofs)
+    r = _gate_runner()
+    assert lq.gate(q, root, runner=r, proofs=proofs, resume=True) == 0
+    assert r.seen[-1] == ("gate", "115", True)
+
+
+def test_publish_only_for_tag_commit(repo, proofs):
+    root, q = repo
+    r = _gate_runner()
+    assert lq.gate(q, root, publish=True, runner=r, proofs=proofs) == 0
+    head = _git(root, "rev-parse", "HEAD")
+    assert r.seen[-1] == ("publish", head)
+    _commit(root, "later")
+    assert lq.publish_tag(q, root, 115, runner=r) == 1
+    assert r.seen[-1] == ("publish", head)   # no second publish
+
+
+def test_known_failure_renewal_works_with_new_counter(tmp_path):
+    import json
+    import mod_smoke
+    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools", "mod_known_failures.json")
+    rows = json.load(open(src))
+    rows = rows["failures"] if isinstance(rows, dict) and "failures" in rows else rows
+    for r in rows:
+        r["first_window"], r["expires_window"] = 115, 118
+    out = tmp_path / "kf.json"
+    out.write_text(json.dumps(rows))
+    assert mod_smoke.load_known_failures(str(out))

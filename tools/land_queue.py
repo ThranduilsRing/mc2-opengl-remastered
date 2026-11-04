@@ -16,6 +16,7 @@ A:/Games/mc2-ops/land_queue.json). See docs/land-as-ready.md.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -26,6 +27,7 @@ sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless children)
 DEFAULT_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 DEFAULT_QUEUE = os.environ.get("MC2_LAND_QUEUE", "A:/Games/mc2-ops/land_queue.json")
+DEFAULT_PROOFS = os.environ.get("MC2_PROOFS_DIR", "E:/mc2-archive-2026-10/proofs")
 NIFTY = "claude/nifty-mendeleev"
 TAG_PREFIX = "nifty-green-"
 TAIL = 600
@@ -238,45 +240,118 @@ def _land_locked(path, root, runner, py, dry_run):
     return 1 if rejected else 0
 
 
-def gate(path, root, publish=False, runner=None):
+def max_merge_window(proofs):
+    """Highest N among <proofs>/merge<N>* directories (0 when none)."""
+    try:
+        names = os.listdir(proofs)
+    except OSError:
+        return 0
+    return max([int(m.group(1)) for m in (re.match(r"merge(\d+)", n) for n in names) if m] or [0])
+
+
+def next_window(state, head, proofs):
+    """The window number for a gate at `head`. A rerun at the head of the last real gate keeps its number (resume);
+    otherwise max(merge<N>, last consumed)+1. The number is consumed only once a gate has really started."""
+    if state.get("window") and state.get("window_head") == head:
+        return state["window"]
+    return max(max_merge_window(proofs), state.get("window", 0)) + 1
+
+
+def classify_gate(rc, out):
+    """('green'|'runtime'|'partial'|'infra', red stage names). Only a runtime red may mark a suspect range."""
+    if rc == 0:
+        return "green", []
+    m = re.search(r"\[merge_gate\] failed stages: (.+)", out)
+    stages = [x.split(" (")[0].strip() for x in m.group(1).split(", ")] if m else []
+    if "REFUSED" in out or "preflight FAIL" in out or (rc == 2 and "usage:" in out):
+        return "infra", stages
+    if rc == 2 or "PARTIAL" in out:
+        return "partial", stages
+    return ("runtime", stages) if stages else ("infra", stages)
+
+
+def gate(path, root, publish=False, runner=None, resume=False, proofs=None):
     try:
         with QueueLock(path):
-            return _gate_locked(path, root, publish, runner or default_runner)
+            return _gate_locked(path, root, publish, runner or default_runner, resume, proofs or DEFAULT_PROOFS)
     except Busy as exc:
         print(f"land_queue: BUSY, {exc}")
         return EX_BUSY
 
 
-def _gate_locked(path, root, publish, runner):
+def _gate_locked(path, root, publish, runner, resume, proofs):
     state = load(path)
     nums = green_tags(root, runner)
     last = (TAG_PREFIX + str(nums[-1])) if nums else None
     _, head = git(root, "rev-parse", "HEAD", runner=runner)
-    nxt = (nums[-1] + 1) if nums else 1
-    window = str(nxt)
-    gate_cmd = [sys.executable, "-B", os.path.join(root, "scripts", "merge_gate.py"), "--full", "--window", window,
-                "--expect-head", head]
+    if git(root, "tag", "--points-at", head, "--list", TAG_PREFIX + "*", runner=runner)[1]:
+        print(f"land_queue: HEAD {head[:12]} is already green-tagged; nothing to gate")
+        return 0
+    why = nifty_problem(root, runner)
+    if why:
+        print(f"land_queue: BUSY, {why}")
+        return EX_BUSY
+    window = next_window(state, head, proofs)
+    mg = [sys.executable, "-B", os.path.join(root, "scripts", "merge_gate.py")]
+    pre_rc, pre_out = runner(mg + ["--preflight", "--window", str(window), "--expect-head", head], root)
+    if pre_rc:   # inputs not ready: GATE INFRA, no window consumed, no suspect range
+        print(f"land_queue: GATE INFRA (preflight rc={pre_rc}) for W{window}; nothing recorded:\n{pre_out[-TAIL:]}")
+        return EX_BUSY
+    state["window"], state["window_head"] = window, head
+    save(path, state)   # the number is consumed from here on
+    gate_cmd = mg + ["--full", "--window", str(window), "--expect-head", head,
+                     "--proofs-dir", os.path.join(proofs, f"merge{window}-gate")] + (["--resume"] if resume else [])
     rc, out = runner(gate_cmd, root)
-    if rc:
-        _, commits = git(root, "log", "--format=%h %s", f"{last}..{head}" if last else head, runner=runner)
-        state["suspect"].append({"from": last, "to": head, "commits": commits.splitlines(), "gate_rc": rc, "when": time.time()})
+    try:
+        os.makedirs(proofs, exist_ok=True)
+        with open(os.path.join(proofs, f"land_queue-gate-{window}.log"), "w", encoding="utf-8") as f:
+            f.write(out)
+    except OSError:
+        pass
+    kind, stages = classify_gate(rc, out)
+    if kind != "green":
+        entry = {"window": window, "kind": kind, "red_stages": stages, "from": last, "to": head, "gate_rc": rc, "when": time.time()}
+        if kind == "runtime":
+            rng = f"{last}..{head}" if last else head
+            extra = [] if last else ["-n", "50"]
+            _, commits = git(root, "log", "--first-parent", "--format=%h %s", *extra, rng, runner=runner)
+            entry["commits"] = commits.splitlines()
+            state["suspect"].append(entry)
+        else:
+            state.setdefault("gate_infra", []).append(entry)
         save(path, state)
-        print(f"land_queue: GATE RED at {head[:12]}; suspect range {last or 'root'}..{head[:12]} ({len(commits.splitlines())} commits)")
-        return 1
-    tag = TAG_PREFIX + window
-    trc, tout = git(root, "tag", tag, head, runner=runner)
+        print(f"land_queue: GATE {kind.upper()} W{window} at {head[:12]} rc={rc} stages={','.join(stages) or '-'}"
+              + (f"; suspect range {last or 'root'}..{head[:12]} ({len(entry['commits'])} first-parent commits)" if kind == "runtime" else ""))
+        return 1 if kind == "runtime" else EX_BUSY
+    tag = TAG_PREFIX + str(window)
+    trc, tout = git(root, "tag", "-a", tag, head, "-m", f"W{window} gate green; head {head[:12]}; proofs merge{window}-gate", runner=runner)
     if trc:
         print(f"land_queue: gate green but tagging {tag} failed: {tout}")
         return 1
     state["suspect"] = []   # a green gate at HEAD clears every earlier suspect range
     save(path, state)
-    print(f"land_queue: GATE GREEN {head[:12]} tagged {tag}")
+    print(f"land_queue: GATE GREEN {head[:12]} W{window} tagged {tag}")
     if publish:
-        prc, pout = runner([sys.executable, "-B", os.path.join(root, "scripts", "merge_gate.py"), "--publish", "--expect-head", head], root)
-        print(f"land_queue: publish {'OK' if prc == 0 else 'FAILED rc=' + str(prc) + ': ' + pout[-TAIL:]}")
-        return int(prc != 0)
+        return _publish(root, tag, runner)
     print("land_queue: not published (pass --publish after the montage has been viewed)")
     return 0
+
+
+def _publish(root, tag, runner):
+    """Publish the tagged payload: only while HEAD is still the tagged commit (the deploy reads the live build tree)."""
+    rc, sha = git(root, "rev-parse", tag + "^{commit}", runner=runner)
+    _, head = git(root, "rev-parse", "HEAD", runner=runner)
+    if rc or sha != head:
+        print(f"land_queue: publish REFUSED, HEAD {head[:12]} is not {tag} ({sha[:12]}); the live build is not that payload")
+        return 1
+    prc, pout = runner([sys.executable, "-B", os.path.join(root, "scripts", "merge_gate.py"), "--publish", "--expect-head", sha], root)
+    print(f"land_queue: publish {'OK' if prc == 0 else 'FAILED rc=' + str(prc) + ': ' + pout[-TAIL:]}")
+    return int(prc != 0)
+
+
+def publish_tag(path, root, window, runner=None):
+    with QueueLock(path):
+        return _publish(root, TAG_PREFIX + str(window), runner or default_runner)
 
 
 def status(path, root):
@@ -301,14 +376,19 @@ def main(argv=None):
     ln.add_argument("--dry-run", action="store_true")
     g = sub.add_parser("gate")
     g.add_argument("--publish", action="store_true")
+    g.add_argument("--resume", action="store_true")
+    pb = sub.add_parser("publish")
+    pb.add_argument("window", type=int)
     sub.add_parser("status")
     a = ap.parse_args(argv)
     if a.cmd == "submit":
         return submit(a.queue, a.branch, a.sha)
     if a.cmd == "land":
         return land(a.queue, a.root, dry_run=a.dry_run)
+    if a.cmd == "publish":
+        return publish_tag(a.queue, a.root, a.window)
     if a.cmd == "gate":
-        return gate(a.queue, a.root, a.publish)
+        return gate(a.queue, a.root, a.publish, resume=a.resume)
     return status(a.queue, a.root)
 
 

@@ -287,3 +287,13 @@ def test_declared_view_bad_bound_is_an_argparse_error(capsys, monkeypatch):
         gate.main(['--declared-view', 'a=high'])
     assert exc.value.code == 2
     assert 'not a number' in capsys.readouterr().err
+
+
+def test_publish_refuses_when_head_is_not_expected(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(gate, 'git', lambda *a: 'bbbb' if a[-1] == 'HEAD' else 'aaaa')
+    monkeypatch.setattr(gate, 'publish', lambda *a: calls.append(a) or 0)
+    assert gate.main(['--publish', '--expect-head', 'aaaa']) == 1
+    assert not calls and 'refused' in capsys.readouterr().out
+    monkeypatch.setattr(gate, 'git', lambda *a: 'aaaa')
+    assert gate.main(['--publish', '--expect-head', 'aaaa']) == 0 and calls

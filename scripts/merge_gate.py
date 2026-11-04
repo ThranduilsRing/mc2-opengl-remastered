@@ -1349,7 +1349,11 @@ def main(argv=None):
         drop_candidate()
         return 0
     if args.publish:
-        return publish(git('rev-parse', 'HEAD'), args.dry_run)
+        head_now = git('rev-parse', 'HEAD')
+        if args.expect_head and git('rev-parse', args.expect_head + '^{commit}') != head_now:
+            print(f"[merge_gate] publish-v0.4: refused; HEAD {head_now[:12]} is not the expected {args.expect_head} (the deploy reads the live build)")
+            return 1
+        return publish(head_now, args.dry_run)
     if args.clean_output:
         if not (args.preflight and args.resume and args.proofs_dir):
             ap.error('--clean-output requires --preflight --resume --proofs-dir')
