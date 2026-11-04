@@ -86,6 +86,7 @@ WORKFLOW_PANELS = {
     "ObjectivesSummary": "objectives", "CampaignOverview": "campaign_links",
     "MissionWriter": "mission_export",
     "MissionDefinitions": "mission_definitions",
+    "Rotate": "rotation",
 }
 MODEL_ONLY = {"ObjectivesSummary", "CampaignOverview"}
 BASELINE = REPO / "tests/smoke/editor/roundtrip-baseline.json"

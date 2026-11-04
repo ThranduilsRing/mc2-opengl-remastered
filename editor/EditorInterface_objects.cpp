@@ -36,6 +36,9 @@ void EditorInterface::rotateSelectedObjects( int direction )
 
 	undoMgr.AddAction(pAction);
 	pAction = nullptr;
+	// A rotation is an edit: without this, close/open never prompts and the yaw is lost.
+	if ( EditorData::instance )
+		EditorData::instance->MissionNeedsSaving( true );
 }
 
 // Frame the camera on the current selection. Recenters the camera's ground
@@ -111,6 +114,9 @@ void EditorInterface::rotateSelectedObjectsDegrees( float deg )
 
 	undoMgr.AddAction(pAction);
 	pAction = nullptr;
+	// A rotation is an edit: without this, close/open never prompts and the yaw is lost.
+	if ( EditorData::instance )
+		EditorData::instance->MissionNeedsSaving( true );
 }
 
 // Editable Inspector v1 transform. Reuses ModifyBuildingAction exactly like the

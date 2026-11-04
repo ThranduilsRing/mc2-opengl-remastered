@@ -293,8 +293,31 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	const auto waypointCount = brainUnit ? brainUnit->getWaypointCount() : 0;
 	const int orderType = brainUnit ? brainUnit->getOrderType() : Unit::ORDER_NONE;
 	const int stance = brainUnit ? brainUnit->getStance() : -1;
+	// Rotation (owner item 2): rotate the placed building and the brain unit through
+	// the user's [/] path, then prove the rotation survives save and reopen.
+	float buildingYaw = 0.0f;
+	float unitYaw = 0.0f;
+	bool rotateReady = false;
+	if (placed && brainUnit && placed->appearance() && brainUnit->appearance())
+	{
+		mgr->unselectAll();
+		mgr->select(*placed, true);
+		mgr->select(*brainUnit, true);
+		const float oldBuildingYaw = placed->appearance()->rotation;
+		const float oldUnitYaw = brainUnit->appearance()->rotation;
+		EditorData::instance->MissionNeedsSaving(false);
+		rotateSelectedObjects(1);
+		buildingYaw = placed->appearance()->rotation;
+		unitYaw = brainUnit->appearance()->rotation;
+		rotateReady = buildingYaw != oldBuildingYaw && unitYaw != oldUnitYaw
+			&& EditorData::instance->MissionNeedsSaving()
+			&& undoMgr.Undo() && placed->appearance()->rotation == oldBuildingYaw && brainUnit->appearance()->rotation == oldUnitYaw
+			&& undoMgr.Redo() && placed->appearance()->rotation == buildingYaw && brainUnit->appearance()->rotation == unitYaw;
+		mgr->unselectAll();
+	}
 	const bool authoredSaved = EditorData::instance->save("terrain_gen_out/e0_authored.pak", true);
 	// Undo removes the authored state before reload, so in-memory remnants cannot pass.
+	const bool removedRotation = rotateReady && undoMgr.Undo() && placed->appearance()->rotation != buildingYaw;
 	const bool removedBrain = brainReady && undoMgr.Undo() && brainUnit->getWaypointCount() + 1 == waypointCount
 		&& brainUnit->isOrderAuthored() == beforeAuthored;
 	const bool removedTeam = teamReady && undoMgr.Undo() && placed->getAlignment() == oldTeam;
@@ -309,6 +332,9 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	const bool brainReloaded = loadedBrain && loadedBrain->getID() == brainID && loadedBrain->isOrderAuthored()
 		&& loadedBrain->getOrderType() == orderType && loadedBrain->getStance() == stance && loadedBrain->getWaypointCount() == waypointCount
 		&& loadedBrain->getWaypoints().back().x == 32.0f && loadedBrain->getWaypoints().back().y == 48.0f;
+	const auto yawMatches = [](EditorObject* obj, float yaw) { return obj && obj->appearance() && fabsf(obj->appearance()->rotation - yaw) < 0.01f; };
+	EditorSmokePanelFact("rotation", "Rotate", rotateReady && removedRotation && objectReloaded && brainReloaded
+		&& yawMatches(loadedObject, buildingYaw) && yawMatches(loadedBrain, unitYaw));
 	EditorSmokePanelFact("terrain_paint", "PaintMaterial", terrainReady && removedTerrain && reloaded && land->getTerrain(mid, mid) == newType);
 	EditorSmokePanelFact("object_placement", "AssetBrowser", placementUndo && removedObject && objectReloaded);
 	EditorSmokePanelFact("teams_abl", "Inspector", teamReady && removedTeam && objectReloaded && loadedObject->getAlignment() == newTeam);
