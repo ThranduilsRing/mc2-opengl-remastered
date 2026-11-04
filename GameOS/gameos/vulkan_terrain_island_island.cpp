@@ -99,9 +99,8 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
       if (vmaMapMemory(s->allocator, pm.ibo.allocation(), &p) == VK_SUCCESS) {
           std::memcpy(p, indices.data(), static_cast<size_t>(iboBytes)); vmaUnmapMemory(s->allocator, pm.ibo.allocation()); } }
 
-    if (fine) return &s->diagPatchCache.emplace(dkey, std::move(pm)).first->second;
-    auto res = cache.emplace(key, std::move(pm));
-    return &res.first->second;
+    if (fine) return &(s->diagPatchCache[dkey] = std::move(pm));
+    return &(cache[key] = std::move(pm));
 }
 
 // VK-TERRAIN-SKIRT (rung 4): build (or fetch cached) a skirt-strip mesh for

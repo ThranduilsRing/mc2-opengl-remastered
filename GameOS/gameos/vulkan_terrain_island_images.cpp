@@ -8,6 +8,8 @@
 #include "gameos.hpp"
 #include <array>
 #include <filesystem>
+#include <string>
+#include <string_view>
 #include "../../RenderCore/KtxLoader.h"
 #include "Gates/gate_cold.h"
 #include "terrain_surface_cook.h"
@@ -704,11 +706,12 @@ void import_concrete_detail(TerrainIsland* s) {
     static const char* const kFiles[2] = {"data/terrain_layers/concrete_detail_pad.ktx2", "data/terrain_layers/concrete_detail_road.ktx2"};
     std::vector<uint8_t> px;
     int w = 0, h = 0;
-    auto appendLayer = [&](const char* f) {
+    auto appendLayer = [&](std::string_view file) {
+        const std::string f(file);
         RenderCore::KtxImage img;
         std::vector<uint8_t> rgba;
         int lw = 0, lh = 0;
-        if (!RenderCore::ktxLoadRgba8(f, img) || !img.isCompressed || !RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &lw, &lh) ||
+        if (!RenderCore::ktxLoadRgba8(f.c_str(), img) || !img.isCompressed || !RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &lw, &lh) ||
             lw <= 0 || lh <= 0 || (w != 0 && (lw != w || lh != h)))
             return false;
         w = lw; h = lh;

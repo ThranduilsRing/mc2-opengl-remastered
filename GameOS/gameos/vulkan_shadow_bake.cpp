@@ -602,8 +602,7 @@ bool ShadowBake::readHeightGrid() {
     const size_t visualFine = size_t(visualSide) * size_t(visualSide);
     const bool visual = visualSide == (coarseSide - 1) * 4 + 1 && store->visualHeight().size() >= visualFine;
     const int sourceSide = visual ? visualSide : coarseSide;
-    // The store keeps the bake's mip maxima after the fine grid; only the fine grid is the surface (passing the whole vector
-    // failed the size check, so no static bake ran and the mover pass drew every prop over the whole view).
+    // The store keeps mip maxima after the fine grid; only the fine grid is the surface (the whole vector failed the size check).
     const std::span<const float> source = visual ? std::span<const float>(store->visualHeight()).first(visualFine)
                                                  : std::span<const float>(store->height());
     heights_ = mc2shadow::maskHeightGrid(source, sourceSide, layout_.texels);

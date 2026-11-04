@@ -6,6 +6,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <format>
+#include <span>
 #include <vector>
 #include "../GameOS/gameos/terrain_field_store.h"
 
@@ -952,16 +955,11 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						int sigState = 0; // 0 none, 1 match, 2 mismatch
 						char sigGot[96] = "", sigWant[96] = "";
 						{
-							char sigPath[620];
-							strncpy(sigPath, vhPath, sizeof(sigPath) - 32);
-							sigPath[sizeof(sigPath) - 32] = '\0';
-							char* sb = strrchr(sigPath, '\\');
-							char* sf = strrchr(sigPath, '/');
-							char* sSlash = (sf > sb) ? sf : sb;
-							if (sSlash)
+							const std::filesystem::path vhFile(vhPath);
+							if (vhFile.has_parent_path())
 							{
-								strcpy(sSlash + 1, "gameplay_height.sig");
-								if (FILE* sg = fopen(sigPath, "rb"))
+								const std::string sigPath = std::filesystem::path(vhFile).replace_filename("gameplay_height.sig").string();
+								if (FILE* sg = fopen(sigPath.c_str(), "rb"))   // path-audit: loose-only (sidecar beside the beauty bake)
 								{
 									char line[96] = "";
 									if (fgets(line, sizeof(line), sg))
@@ -969,13 +967,13 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 										size_t ll = strlen(line);
 										while (ll && (line[ll - 1] == '\n' || line[ll - 1] == '\r' || line[ll - 1] == ' ')) line[--ll] = '\0';
 										uint64_t h = 0xcbf29ce484222325ull;
-										auto mix = [&h](const unsigned char* p, size_t n) {
-											for (size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 0x100000001b3ull; }
+										auto mix = [&h](std::span<const unsigned char> bytes) {
+											for (unsigned char b : bytes) { h ^= b; h *= 0x100000001b3ull; }
 										};
 										const uint32_t sideU = static_cast<uint32_t>(mapSide);
-										mix(reinterpret_cast<const unsigned char*>(&sideU), sizeof(sideU));
-										mix(reinterpret_cast<const unsigned char*>(elev.data()), elev.size() * sizeof(float));
-										snprintf(sigWant, sizeof(sigWant), "%d %016llx", mapSide, static_cast<unsigned long long>(h));
+										mix({reinterpret_cast<const unsigned char*>(&sideU), sizeof(sideU)});
+										mix({reinterpret_cast<const unsigned char*>(elev.data()), elev.size() * sizeof(float)});
+										*std::format_to_n(sigWant, sizeof(sigWant) - 1, "{} {:016x}", mapSide, h).out = '\0';
 										strncpy(sigGot, line, sizeof(sigGot) - 1);
 										sigState = (strcmp(sigGot, sigWant) == 0) ? 1 : 2;
 									}

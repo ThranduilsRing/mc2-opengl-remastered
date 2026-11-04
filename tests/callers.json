@@ -856,7 +856,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2071,
+          "line": 2100,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -4268,14 +4268,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1669,
+          "line": 1698,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1893,
+          "line": 1922,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4483,21 +4483,21 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1232,
+          "line": 1261,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1803,
+          "line": 1832,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2000,
+          "line": 2029,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5926,14 +5926,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 759,
+          "line": 787,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 799,
+          "line": 827,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -6404,7 +6404,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 799,
+          "line": 827,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -6591,7 +6591,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 759,
+          "line": 787,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -12689,6 +12689,13 @@
           "text": "from stock_missions import (  # noqa: E402"
         },
         {
+          "path": "tools/terrain_beautify/height_sig.py",
+          "line": 108,
+          "evidence": "import",
+          "reference": "stock_missions",
+          "text": "from stock_missions import resolve_missions_dir"
+        },
+        {
           "path": "tools/terrain_beautify/mission_smooth.py",
           "line": 38,
           "evidence": "import",
@@ -12890,6 +12897,13 @@
       ]
     },
     {
+      "path": "tools/mc2texcook/cook_cliff_rock.py",
+      "basename": "cook_cliff_rock.py",
+      "stem": "cook_cliff_rock",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/mc2texcook/cook_concrete_detail.py",
       "basename": "cook_concrete_detail.py",
       "stem": "cook_concrete_detail",
@@ -12902,6 +12916,13 @@
       "stem": "cook_pbr_maps",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/mc2texcook/cook_cliff_rock.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "cook_pbr_maps",
+          "text": "import cook_pbr_maps as pbr  # noqa: E402"
+        },
         {
           "path": "tools/mc2texcook/cook_concrete_detail.py",
           "line": 22,
@@ -17638,6 +17659,28 @@
       ]
     },
     {
+      "path": "tools/terrain_beautify/height_sig.py",
+      "basename": "height_sig.py",
+      "stem": "height_sig",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/terrain_beautify/test_height_sig.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "height_sig",
+          "text": "from height_sig import height_sig  # noqa: E402"
+        },
+        {
+          "path": "tools/terrain_beautify/test_height_sig.py",
+          "line": 39,
+          "evidence": "import_module",
+          "reference": "height_sig",
+          "text": "__import__(\"height_sig\").fnv1a64(b\"\\x02\\x00\\x00\\x00\" + b\"\\x00\" * 16), \"016x\")"
+        }
+      ]
+    },
+    {
       "path": "tools/terrain_beautify/marking_glyphs.py",
       "basename": "marking_glyphs.py",
       "stem": "marking_glyphs",
@@ -17707,6 +17750,13 @@
           "evidence": "import",
           "reference": "mission_terrain_analyzer",
           "text": "from mission_terrain_analyzer import (  # noqa: E402"
+        },
+        {
+          "path": "tools/terrain_beautify/height_sig.py",
+          "line": 50,
+          "evidence": "import",
+          "reference": "mission_terrain_analyzer",
+          "text": "import mission_terrain_analyzer as A"
         },
         {
           "path": "tools/terrain_beautify/mission_sidecar.py",
@@ -17983,6 +18033,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/terrain_beautify/test_height_sig.py",
+      "basename": "test_height_sig.py",
+      "stem": "test_height_sig",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/terrain_beautify/test_overlay_extract.py",
       "basename": "test_overlay_extract.py",
       "stem": "test_overlay_extract",
@@ -18044,6 +18101,13 @@
       "stem": "visual_heightfield",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/terrain_beautify/height_sig.py",
+          "line": 73,
+          "evidence": "import",
+          "reference": "visual_heightfield",
+          "text": "from visual_heightfield import upsample_corner_pinned"
+        },
         {
           "path": "tools/terrain_beautify/terrain_workbench.py",
           "line": 51,
