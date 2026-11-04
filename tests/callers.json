@@ -8051,6 +8051,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_cmake_no_abs_root_defines.py",
+      "basename": "test_cmake_no_abs_root_defines.py",
+      "stem": "test_cmake_no_abs_root_defines",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_console_child.py",
       "basename": "test_console_child.py",
       "stem": "test_console_child",
