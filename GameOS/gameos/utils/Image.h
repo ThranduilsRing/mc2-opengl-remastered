@@ -9,6 +9,7 @@ Cubemaps are identified with depth = 0.
 #ifndef _IMAGE_H_
 #define _IMAGE_H_
 
+#include "mc2_czstring.h"
 #include <stdio.h>
 #include <memory>
 
@@ -87,14 +88,14 @@ public:
 	unsigned char *create(const FORMAT fmt, const int w, const int h);
 	void clear();
 
-	bool loadFromFile(const char *fileName);
+	bool loadFromFile(mc2::czstring fileName);
 	void loadFromMemory(void *mem, const FORMAT fmt, const int w, const int h, const int d, const int mipMapCount, bool ownsMemory);
 
 	
-	bool loadTGA(const char *fileName);
-	bool loadBMP(const char *fileName);
-	bool loadJPG(const char *fileName);
-	bool loadPNG(const char *fileName);
+	bool loadTGA(mc2::czstring fileName);
+	bool loadBMP(mc2::czstring fileName);
+	bool loadJPG(mc2::czstring fileName);
+	bool loadPNG(mc2::czstring fileName);
 
 	bool loadTGA(FILE* file);
 	bool loadBMP(FILE* file);
@@ -112,7 +113,7 @@ public:
 	unsigned char *getPixels() { return pixels.get(); }
 
 private:
-	bool loadWIC(const char *fileName);
+	bool loadWIC(mc2::czstring fileName);
 	bool loadWICFromMemory(const unsigned char* mem, size_t len);
     bool loadTGA(const TGAHeader* header, unsigned char* readPixels);
     bool loadCompressedTGA(const TGAHeader* header, const unsigned char* readPixels, size_t len);

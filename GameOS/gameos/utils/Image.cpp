@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "utils/Image.h"
 #include <memory>
 
@@ -143,7 +144,7 @@ unsigned char *Image::create(const FORMAT fmt, const int w, const int h){
 	return pixels.get();
 }
 
-bool Image::loadFromFile(const char *fileName){
+bool Image::loadFromFile(mc2::czstring fileName){
 	const char *ext = strrchr(fileName, '.');
 	if (ext == nullptr) return false;
 
@@ -167,12 +168,12 @@ bool Image::loadFromFile(const char *fileName){
 	return false;
 }
 
-bool Image::loadJPG(const char *fileName)
+bool Image::loadJPG(mc2::czstring fileName)
 {
 	return loadWIC(fileName);
 }
 
-bool Image::loadPNG(const char *fileName)
+bool Image::loadPNG(mc2::czstring fileName)
 {
 	return loadWIC(fileName);
 }
@@ -296,7 +297,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 #endif
 }
 
-bool Image::loadWIC(const char *fileName)
+bool Image::loadWIC(mc2::czstring fileName)
 {
 #ifdef _WIN32
 	clear();
@@ -420,7 +421,7 @@ bool Image::loadWIC(const char *fileName)
 #endif
 }
 
-bool Image::loadTGA(const char *fileName){
+bool Image::loadTGA(mc2::czstring fileName){
 	clear();
 
 	FILE *file;
@@ -671,7 +672,7 @@ bool Image::loadCompressedTGA(const TGAHeader* header, const unsigned char* mem,
 	return true;
 }
 
-bool Image::loadBMP(const char *fileName){
+bool Image::loadBMP(mc2::czstring fileName){
 	clear();
 
 	FILE *file = fopen(fileName, "rb");

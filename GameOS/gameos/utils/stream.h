@@ -10,6 +10,7 @@
 */
 #pragma once
 
+#include "mc2_czstring.h"
 #include<sys/stat.h>
 #include<sys/types.h>
 
@@ -31,7 +32,7 @@ public:
 	virtual size_t write_word(short sh) = 0;
 	virtual size_t write_dword(unsigned int i) = 0;
 	virtual size_t write_float(float f) = 0;
-	virtual size_t write_cstr(const char* str) = 0;
+	virtual size_t write_cstr(mc2::czstring str) = 0;
 
 	virtual size_t read(void* pbuf, size_t size) const = 0;
 	virtual size_t read(void* pbuf, size_t size, size_t count) const = 0;
