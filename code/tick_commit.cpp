@@ -75,7 +75,7 @@ void retireRenderPacket(uint64_t sequence) {
         static uint64_t s_drains = 0, s_commands = 0;
         ++s_drains;
         s_commands += ready.size();
-        if (mc2_diag::tagRequested("GRAVEYARD") && (s_drains % 10) == 0)
+        if (mc2_diag::tagRequested("GRAVEYARD") && (s_drains <= 2 || (s_drains % 10) == 0))
             mc2::fmt::print_out("[GRAVEYARD v1] drains={:d} commands={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_drains)), mc2::fmt::as_i32(static_cast<int>(s_commands)));
     }
     for (auto& command : ready) command();

@@ -68,6 +68,7 @@
 #endif
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 
 //---------------------------------------------------------------------------
 
@@ -122,6 +123,8 @@ void soakSupportTick(float scenarioTimeNow) {
 	loc.y += 200.0f;
 	CallArtillery(mover->getCommanderId(), s_n % 3, loc, 4, false);
 	++s_n;
+	if (mc2_diag::tagRequested("GRAVEYARD") && (s_n % 5) == 1)
+		mc2::fmt::print_out("[GRAVEYARD v1] event=strike n={:d} t={:.1f}\n", mc2::fmt::as_i32(static_cast<int>(s_n)), scenarioTimeNow);
 }
 
 void CallArtillery (long commanderID, long strikeType, glm::vec3 strikeLoc, long secondsToImpact, bool randomOff) 
