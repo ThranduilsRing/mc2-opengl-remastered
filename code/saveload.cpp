@@ -3,6 +3,7 @@
 #include "save_exactness.h"
 #include "saved_objects_check.h"
 #include "save_sections.h"
+#include <optional>
 #include <span>
 #include "combat_clock_archive.h"
 #include "save_brain_section.h"
@@ -92,23 +93,22 @@ static mc2::save::Bytes captureFixSection()
 	bool loops = false;
 	soundSystem->getScriptMusicState(musicId, remaining, loops);
 	fix.music = {static_cast<std::int32_t>(musicId), remaining, loops};
-	auto slotOf = [](const MechWarrior* pilot) -> std::int32_t {
+	auto slotOf = [](const MechWarrior* pilot) -> std::optional<std::uint32_t> {
 		for (std::uint32_t i = 0; i < MAX_WARRIORS; ++i)
 			if (MechWarrior::warriorList[i] == pilot)
-				return static_cast<std::int32_t>(i);
-		return -1;
+				return i;
+		return std::nullopt;
 	};
 	for (std::uint32_t i = 0; i < MAX_WARRIORS; ++i) {
 		MechWarrior* w = MechWarrior::warriorList[i];
-		std::int32_t goalR = 0, goalC = 0, age = 0;
-		if (w && w->isUsed() && w->getJumpBackoff(goalR, goalC, age))
-			fix.backoffs.push_back({i, goalR, goalC, age});
+				if (const auto b = (w && w->isUsed()) ? w->getJumpBackoff() : std::nullopt)
+			fix.backoffs.push_back({i, b->goalR, b->goalC, b->age});
 	}
 	if (PathManager) {
 		for (PathQueueRecPtr rec = PathManager->queueFront; rec; rec = rec->next) {
-			const std::int32_t slot = slotOf(rec->pilot);
-			if (slot >= 0)
-				fix.paths.push_back({static_cast<std::uint32_t>(slot), static_cast<std::int32_t>(rec->num), static_cast<std::int32_t>(rec->selectionIndex), static_cast<std::uint32_t>(rec->moveParams)});
+			const auto slot = slotOf(rec->pilot);
+			if (slot)
+				fix.paths.push_back({*slot, static_cast<std::int32_t>(rec->num), static_cast<std::int32_t>(rec->selectionIndex), static_cast<std::uint32_t>(rec->moveParams)});
 		}
 	}
 	return mc2::save::encodeFixSection(std::move(fix));

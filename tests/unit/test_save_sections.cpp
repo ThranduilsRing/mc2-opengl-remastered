@@ -326,19 +326,16 @@ TEST_CASE("save sections: FIX1 round trips music, jump backoff and ordered path 
     in.paths = {{5, 4, 2, 0x11u}, {3, 0, -1, 0u}, {5, 49, 7, 0xFFFFFFFFu}};
     const Bytes bytes = encodeFixSection(in);
     REQUIRE_FALSE(bytes.empty());
-    FixSection out;
-    REQUIRE(decodeFixSection(bytes, out));
-    CHECK(out == in);
-    CHECK(out.valid(10));
-    CHECK_FALSE(out.valid(9));  // warrior index 9 out of range
-    for (std::size_t cut = 0; cut < bytes.size(); ++cut) {
-        FixSection partial;
-        CHECK_FALSE(decodeFixSection(std::span(bytes).first(cut), partial));
-    }
+    const auto out = decodeFixSection(bytes);
+    REQUIRE(out.has_value());
+    CHECK(*out == in);
+    CHECK(out->valid(10));
+    CHECK_FALSE(out->valid(9));  // warrior index 9 out of range
+    for (std::size_t cut = 0; cut < bytes.size(); ++cut)
+        CHECK_FALSE(decodeFixSection(std::span(bytes).first(cut)).has_value());
     Bytes trailing = bytes;
     trailing.push_back(0);
-    FixSection extra;
-    CHECK_FALSE(decodeFixSection(trailing, extra));
+    CHECK_FALSE(decodeFixSection(trailing).has_value());
     FixSection badSource = in;
     badSource.paths[0].source = fixMaxPathSource;
     CHECK_FALSE(badSource.valid(10));
@@ -353,7 +350,7 @@ TEST_CASE("save sections: FIX1 is an optional known section a container carries"
     SectionContainer back;
     REQUIRE(decodeSections(wire, back));
     REQUIRE(back.find(tagFix) != nullptr);
-    FixSection out;
-    CHECK(decodeFixSection(back.find(tagFix)->payload, out));
-    CHECK(out == FixSection{});
+    const auto out = decodeFixSection(back.find(tagFix)->payload);
+    REQUIRE(out.has_value());
+    CHECK(*out == FixSection{});
 }

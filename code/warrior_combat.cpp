@@ -48,17 +48,14 @@ void MechWarrior::noteJumpPathFailed (void) {
 	lastJumpFailFrame = MovePathManager_getFrameCounter();
 }
 
-bool MechWarrior::getJumpBackoff (int32_t &goalR, int32_t &goalC, int32_t &age) {
+std::optional<MechWarrior::JumpBackoffState> MechWarrior::getJumpBackoff () {
 
 	if (lastJumpFailFrame < 0)
-		return false;
+		return std::nullopt;
 	const long elapsed = MovePathManager_getFrameCounter() - lastJumpFailFrame;
 	if ((elapsed < 0) || (elapsed >= kJumpFailBackoffFrames))
-		return false;
-	goalR = lastFailedJumpGoalCellR;
-	goalC = lastFailedJumpGoalCellC;
-	age = static_cast<int32_t>(elapsed);
-	return true;
+		return std::nullopt;
+	return JumpBackoffState{lastFailedJumpGoalCellR, lastFailedJumpGoalCellC, static_cast<int32_t>(elapsed)};
 }
 
 void MechWarrior::setJumpBackoff (int32_t goalR, int32_t goalC, int32_t age) {

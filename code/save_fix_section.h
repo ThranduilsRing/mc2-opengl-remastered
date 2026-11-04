@@ -10,6 +10,8 @@
 
 #include <cmath>
 #include <cstdint>
+#include <optional>
+#include <span>
 #include <vector>
 
 namespace mc2::save {
@@ -68,13 +70,12 @@ inline Bytes encodeFixSection(FixSection value) {
     return a.good() ? a.bytes() : Bytes{};
 }
 
-inline bool decodeFixSection(std::span<const std::uint8_t> bytes, FixSection& value) {
+inline std::optional<FixSection> decodeFixSection(std::span<const std::uint8_t> bytes) {
     Archive a(bytes);
     FixSection staged;
     staged.serialize(a);
-    if (!a.finish()) return false;
-    value = std::move(staged);
-    return true;
+    if (!a.finish()) return std::nullopt;
+    return staged;
 }
 
 }  // namespace mc2::save

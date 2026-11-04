@@ -744,10 +744,11 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
         if (!mc2::save::restoreBrainSection(brain->payload, brain->version)) reject("brain_section");
     } // default: no brain runtime; the first brain tick allocates it from the mission files, as a v1 load always did
     if (const auto* fix = sections.find(mc2::save::tagFix)) {
-        mc2::save::FixSection value;
-        if (fix->version != mc2::save::fixSectionVersion || !mc2::save::decodeFixSection(fix->payload, value) || !value.valid(MAX_WARRIORS)) {
+        const auto decoded = fix->version == mc2::save::fixSectionVersion ? mc2::save::decodeFixSection(fix->payload) : std::nullopt;
+        if (!decoded || !decoded->valid(MAX_WARRIORS)) {
             reject("fix_section");
         } else {
+            const mc2::save::FixSection& value = *decoded;
             s_restoredMusic = value.music;
             for (const auto& b : value.backoffs) {
                 MechWarrior* w = MechWarrior::warriorList[b.warrior];
