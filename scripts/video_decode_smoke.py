@@ -54,9 +54,11 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, 
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
         env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="12", MC2_DIAG_TAGS="RESULTS", MC2_SIM_OVERLAP_AUDIT="2")
     if support:   # graveyard stress row (R1): periodic airstrikes fill the graveyard while the worker overlaps; AUDIT=2 flags a drain before the join
-        env.update(MC2_SOAK_SUPPORT_EVERY="1", MC2_DIAG_TAGS="GRAVEYARD", MC2_SIM_OVERLAP_AUDIT="2")
+        env.update(MC2_SOAK_SUPPORT_EVERY="0.1", MC2_DIAG_TAGS="GRAVEYARD", MC2_SIM_OVERLAP_AUDIT="2")
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
+    if support:   # the 30 s cap leaves ~16 s in the mission; strikes live ~15 s and the pool is 130, so run the sim 4x to recycle slots
+        cmd += ["--sim-speed", "4"]
     proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
                           **console_child.child_kwargs(redirected=True))
     text = proc.stdout + "\n" + proc.stderr

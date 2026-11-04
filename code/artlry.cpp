@@ -124,7 +124,7 @@ void soakSupportTick(float scenarioTimeNow) {
 	loc.y += 200.0f;
 	CallArtillery(mover->getCommanderId(), s_n % 3, loc, 4, false);
 	++s_n;
-	if (mc2_diag::tagRequested("GRAVEYARD")) {
+	if (mc2_diag::tagRequested("GRAVEYARD") && (s_n % 20) == 1) {
 		int live = 0;
 		for (long i = 0; i < ObjectManager->getNumArtillery(); i++) { ArtilleryPtr a = ObjectManager->getArtillery(i); if (a && a->getExists()) ++live; }
 		mc2::fmt::print_out("[GRAVEYARD v1] event=strike n={:d} t={:.1f} live={:d} pool={:d} collecting={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_n)), scenarioTimeNow, mc2::fmt::as_i32(live), mc2::fmt::as_i32(static_cast<int>(ObjectManager->getNumArtillery())), mc2::fmt::as_i32(mc2::tick::collecting() ? 1 : 0));
