@@ -52,7 +52,8 @@ void setCpuVisualHeight(const float* vh, int V)
 
 float visualHeightDelta(const glm::vec3& worldPos)
 {
-	if (!land || s_cpuVisualV < 2) return 0.0f;
+	static const bool s_on = mc2::gate::get<"MC2_UNIT_VISUAL_SNAP">();
+	if (!s_on || !land || s_cpuVisualV < 2) return 0.0f;
 	const float inv = 4.0f / Terrain::worldUnitsPerVertex;
 	float fx = (worldPos.x - Terrain::mapTopLeft3d.x) * inv;
 	float fy = (Terrain::mapTopLeft3d.y - worldPos.y) * inv;

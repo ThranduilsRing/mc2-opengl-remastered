@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 755;
+inline constexpr std::size_t kGateCount = 756;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -663,6 +663,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_UI_PASS_MEASURE", Kind::Bool, Rule::Presence, {}},
     {"MC2_UNIT_DEFINITION_SOURCE", Kind::Enum, Rule::Std, "legacy|generated"},
     {"MC2_UNIT_PROFILE_DATA", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_UNIT_VISUAL_SNAP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VANISH_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VEGETATION_ATLAS", Kind::String, Rule::Std, {}},
     {"MC2_VEGETATION_CARDS", Kind::Bool, Rule::DefOnLead0, {}},

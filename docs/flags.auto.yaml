@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 755
+gate_count: 756
 registry_entry_count: 150
-verified_count: 723
+verified_count: 724
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -5014,6 +5014,15 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_UNIT_PROFILE_DATA, kind: Feature, order: -1, default_on: false}
+  - name: MC2_UNIT_VISUAL_SNAP
+    kind: Bool
+    default: true
+    rule: Lead0Kill
+    owner: terrain
+    retire_by: 2026-11-24
+    doc: "UNIT-VISUAL-SNAP-1: draw mech/vehicle models at the visual-bake terrain height (render only); 0 = gameplay height. Retire after three green merge windows."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_VANISH_PROBE
     kind: Bool
     default: false
