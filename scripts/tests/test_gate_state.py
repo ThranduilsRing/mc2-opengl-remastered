@@ -22,6 +22,14 @@ def journal(tmp_path, monkeypatch):
     return tmp_path / "gate-state.json", exe
 
 
+def evidence(journal, name):
+    """A runtime row's --out folder holding one proof file (runtime rows reuse only on recorded evidence)."""
+    out = journal[0].parent / "evidence" / name
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "run.log").write_text(f"{name} proof")
+    return ["--out", str(out)]
+
+
 def run_state(journal, monkeypatch, steps, runner, head="head", resume=False, planned=None):
     path, exe = journal
     with gate.GateState(path, head, exe, path.parent / "proof", steps if planned is None else planned, resume) as state:
@@ -33,14 +41,14 @@ def run_state(journal, monkeypatch, steps, runner, head="head", resume=False, pl
 
 def test_stage_persisted_before_next_stage_and_resume_retries_failure(journal, monkeypatch, capsys):
     path, exe = journal
-    steps = [("one", ["one"], {}), ("two", ["two"], {})]
+    steps = [("one", ["one", *evidence(journal, "one")], {}), ("two", ["two", *evidence(journal, "two")], {})]
     def runner(cmd, **kw):
-        if cmd == ["two"]:
+        if cmd[0] == "two":
             row = json.loads(path.read_text())["stages"]["one"]
             assert row["head"] == "head" and row["exe_sha"]
             assert row["status"] == "PASS" and row["seconds"] >= 0
-            assert row["artefact_dir"] == str(path.parent / "proof")
-        return types.SimpleNamespace(returncode=int(cmd == ["two"]))
+            assert row["artefact_dir"] == str(path.parent / "evidence" / "one")  # the row's own --out
+        return types.SimpleNamespace(returncode=int(cmd[0] == "two"))
     assert run_state(journal, monkeypatch, steps, runner)[0] == 1
     seen = []
     def retry(cmd, **kw):
@@ -48,7 +56,7 @@ def test_stage_persisted_before_next_stage_and_resume_retries_failure(journal, m
         return types.SimpleNamespace(returncode=0)
     gate.FAILED_STAGES.clear()
     result, state = run_state(journal, monkeypatch, steps, retry, resume=True)
-    assert result == 0 and seen == [["two"]] and state.reused == ["one"]
+    assert result == 0 and [c[0] for c in seen] == ["two"] and state.reused == ["one"]
     assert not gate.FAILED_STAGES
     assert "REUSED: gate-state HEAD/exe/signature match" in capsys.readouterr().out
 
@@ -111,7 +119,8 @@ def test_runtime_reuses_only_identical_inputs_without_resume(journal, monkeypatc
     install.mkdir()
     manifest = install / '.deployed_manifest.csv'
     manifest.write_text('payload v1')
-    steps = [('saveload-mc2_03', ['check', '--mask', str(policy), '--install', str(install)], {})]
+    steps = [('saveload-mc2_03', ['check', '--mask', str(policy), '--install', str(install),
+                                  *evidence(journal, 'saveload')], {})]
     child = lambda *a, **kw: types.SimpleNamespace(returncode=0)
     run_state(journal, monkeypatch, steps, child)
     if change == 'input':
@@ -219,7 +228,7 @@ def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, m
 
 
 def test_dependency_reuse_accepts_resumed_pass_but_not_failed_source(journal, monkeypatch):
-    source = ("source", ["source"], {})
+    source = ("source", ["source", *evidence(journal, "source")], {})
     dependent = ("dependent", ["never-run"], {"MC2_GATE_SKIP_REASON": "covered", "MC2_GATE_REUSE_STAGE": "source"})
     runner = lambda *a, **kw: types.SimpleNamespace(returncode=0)
     run_state(journal, monkeypatch, [source], runner)
@@ -384,3 +393,31 @@ def test_row_scoped_proof_input_reruns_only_its_row(monkeypatch, paths, row, ok)
     done = types.SimpleNamespace(stdout="\n".join(paths))
     monkeypatch.setattr(gate.subprocess, "run", lambda *a, **k: done)
     assert gate.head_delta_nonruntime("old", "new", row) is ok
+
+
+@pytest.mark.parametrize("layout", ["out", "compare-only", "artifact-root", "none"])
+def test_resume_refuses_row_whose_evidence_file_was_deleted(journal, monkeypatch, layout):
+    """W116 item 4: a runtime row is reused only while every evidence file it recorded still hashes the same."""
+    root = journal[0].parent
+    a, b = root / "cap-a", root / "cap-b"
+    for d in (a, b):
+        d.mkdir()
+        (d / "shot.png").write_bytes(d.name.encode())
+    command, env, victim = {
+        "out": (["ab", "--out", str(a)], {}, a / "shot.png"),
+        "compare-only": (["ab", "--compare-only", str(a), str(b)], {}, b / "shot.png"),
+        "artifact-root": (["smoke"], {"MC2_SMOKE_ARTIFACT_ROOT": str(a)}, a / "shot.png"),
+        "none": (["smoke"], {}, None),
+    }[layout]
+    steps = [("visual", command, env)]
+    runner = lambda *a, **kw: types.SimpleNamespace(returncode=0)
+    run_state(journal, monkeypatch, steps, runner)
+    if layout != "none":
+        assert run_state(journal, monkeypatch, steps, runner, resume=True)[1].reused == ["visual"]
+        victim.unlink()
+    seen = []
+    def again(*a, **kw):
+        seen.append(a)
+        return types.SimpleNamespace(returncode=0)
+    result, state = run_state(journal, monkeypatch, steps, again, resume=True)
+    assert result == 0 and not state.reused and seen

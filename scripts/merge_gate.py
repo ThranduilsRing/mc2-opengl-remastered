@@ -353,13 +353,16 @@ class GateState:
             return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
         evidence = row.get('evidence', {})
-        if name == 'mods':
-            if not row.get('signature') or not evidence:
+        if not offline and name != 'deploy':
+            # Every runtime row is reused only on the evidence it recorded: a missing or edited file refuses it.
+            if (name == 'mods' and not row.get('signature')) or not evidence:
+                print(f'[merge_gate] {name}: no recorded evidence hash; rerunning', flush=True)
                 return False
             try:
                 signature = self.signature(*specs)
                 if not all(Path(p).is_file() and hashlib.sha256(Path(p).read_bytes()).hexdigest() == sha
                            for p, sha in evidence.items()):
+                    print(f'[merge_gate] {name}: recorded evidence missing or changed; rerunning', flush=True)
                     return False
             except (OSError, ValueError, KeyError):
                 return False
@@ -400,6 +403,12 @@ class GateState:
                     evidence = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                                 for root in roots for p in root.rglob('*')
                                 if p.is_file() and p.suffix in ('.json', '.log')}
+            elif name not in ('contracts', 'harnesses', 'pytest', 'deploy', 'mods') and stage_passed(status) \
+                    and not status.startswith('REUSED'):
+                try:
+                    evidence = row_evidence(command, overrides)
+                except OSError:
+                    evidence = {}
             artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
             for option in ("--out", "--out-root"):
                 if option in command:
@@ -504,6 +513,32 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
 
 # Unknown inputs deliberately retain every stage. Only proven independent domains
 # can waive game proofs; generators/build configuration retain full coverage.
+EVIDENCE_SUFFIXES = ('.json', '.log', '.png', '.md', '.csv', '.txt')
+
+
+def evidence_roots(command, overrides):
+    """Where a runtime row writes or reads its proof: --out/--out-root, both --compare-only inputs, MC2_SMOKE_ARTIFACT_ROOT."""
+    roots = []
+    for option, count in (('--out', 1), ('--out-root', 1), ('--compare-only', 2)):
+        if option in command:
+            i = command.index(option)
+            roots += [Path(arg) for arg in command[i + 1:i + 1 + count]]
+    if overrides.get('MC2_SMOKE_ARTIFACT_ROOT'):
+        roots.append(Path(overrides['MC2_SMOKE_ARTIFACT_ROOT']))
+    return [root if root.is_absolute() else ROOT / root for root in roots]
+
+
+def row_evidence(command, overrides):
+    """sha256 of every evidence file under the row's roots (empty = the row left nothing to reuse)."""
+    files = set()
+    for root in evidence_roots(command, overrides):
+        if root.is_file():
+            files.add(root)
+        elif root.is_dir():
+            files.update(p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in EVIDENCE_SUFFIXES)
+    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(files)}
+
+
 # Proof inputs read by one row family only (stage-name prefixes). A commit that touches just these (e.g. a re-frozen
 # quiet baseline) reruns those rows and keeps every other row's evidence for the same exe.
 ROW_PROOF_INPUTS = {
@@ -1500,8 +1535,11 @@ def main(argv=None):
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
-    for name, _, env in steps:
-        if name == "mods" or name.startswith(("determinism-", "saveload-")):
+    for name, command, env in steps:
+        # Rows with no output folder of their own write smoke artefacts here, so --resume has evidence to hash.
+        if (name == "mods" or name.startswith(("determinism-", "saveload-"))
+                or (name not in ("contracts", "harnesses", "pytest", "deploy", "publish-v0.4")
+                    and not any(o in command for o in ("--out", "--out-root", "--compare-only")))):
             env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
     for name, command, _ in steps:
         if name == 'mods' and window_number:
