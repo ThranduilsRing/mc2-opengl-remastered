@@ -137,7 +137,9 @@ bool ControlGui::resultsDone()
 			mc2::fmt::print_out("[RESULTS v1] resultsDone renderStatusInfo={:d} objectiveTime={:.2f} resultsTime={:.2f}\n",
 				mc2::fmt::as_i32(static_cast<int>(renderStatusInfo)), static_cast<double>(objectiveTime), static_cast<double>(resultsTime));
 	}
-	if( ( renderStatusInfo && objectiveTime > Team::home->objectives.Count() + 4 ) )
+	// MC2_SOAK_AUTOWIN_COUNTDOWN (test-only): skip the per-objective fade wait so the 30 s smoke window reaches this branch.
+	const float needTime = mc2::gate::get<"MC2_SOAK_AUTOWIN_COUNTDOWN">() ? 1.5f : static_cast<float>(Team::home->objectives.Count() + 4);
+	if( ( renderStatusInfo && objectiveTime > needTime ) )
 	{
 		if (mc2_diag::tagRequested("RESULTS"))
 			mc2::fmt::print_out("[RESULTS v1] resultsDone complete objectiveTime={:.2f} forceGroupBar.removeAll next\n", static_cast<double>(objectiveTime));
