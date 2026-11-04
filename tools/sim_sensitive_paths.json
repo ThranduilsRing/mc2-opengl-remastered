@@ -1,0 +1,32 @@
+{
+  "what": "Paths whose change can reach sim state, a saved field or the SIMID digest even when the tip calls itself render-only. lane_merge.py --precheck classifies a tip's diff (against its merge-base with nifty) with these fnmatch globs ('*' crosses '/'); one hit makes the precheck run saveload mc2_01 + mc2_10 and sim_determinism mc2_10.",
+  "why": "W114 (2026-11-04): a draw-only unit height snap leaked into MechAppearanceData::baseRootNodeHeight. sim_determinism stayed green (the field is not in SIMID); only the gate's saveload stage caught it. Map: A:/Games/mc2-ops/studies/fable-render-sim-boundary-2026-11-04.md (P1-P13).",
+  "patterns": [
+    "mclib/mech3d*",
+    "mclib/gvactor*",
+    "mclib/bdactor*",
+    "mclib/msl_shape*",
+    "mclib/msl.*",
+    "mclib/appear*",
+    "mclib/objectappearance.h",
+    "mclib/terrain*",
+    "mclib/sim_pose*",
+    "mclib/sim_identity.h",
+    "mclib/sim_overlap.h",
+    "mclib/presentation_phase.h",
+    "code/*_value_codec.h",
+    "code/mission_update*",
+    "code/mission_init_load.cpp",
+    "code/mission_movers.cpp",
+    "code/saveload*",
+    "code/objmgr_io.cpp",
+    "code/sim_identity.*",
+    "code/tick_commit*",
+    "code/appearance_owner.h",
+    "code/gameobj.cpp",
+    "code/artlry.cpp",
+    "GameOS/gameos/sim_overlap.cpp",
+    "GameOS/gameos/utils/timing.*",
+    "GameOS/gameos/gos_terrain_lod_chunk*"
+  ]
+}

@@ -1248,3 +1248,111 @@ def test_batch_refuses_tip_without_precheck_receipt_and_accepts_after_pass(env, 
     assert lm.missing_receipts(str(repo), ["lane_a"]) == [sha]       # only a PASS receipt counts
     (tmp_path / "receipts" / (sha + ".json")).write_text("{")
     assert lm.missing_receipts(str(repo), ["lane_a"]) == [sha]       # corrupt receipt counts as missing
+
+
+# ---- G3: sim/save-sensitive paths make --precheck require and run saveload + determinism rows ----
+
+def test_sim_path_classification():
+    from tools import lane_merge as lm
+    hit = lm.sim_sensitive_paths(["mclib/mech3d_update.cpp", "mclib/gvactor.h", "mclib/msl_shape.cpp", "mclib/appear.h",
+                                  "mclib/terrain_runtime.cpp", "code/mech_value_codec.h", "code/mission_update.cpp",
+                                  "code/saveload_load.cpp", "GameOS/gameos/sim_overlap.cpp", "code/tick_commit.cpp"])
+    assert len(hit) == 10
+    miss = ["mclib/txmmgr.cpp", "GameOS/gameos/gameos_graphics.cpp", "scripts/merge_gate.py", "docs/x.md", "shaders/terrain.frag",
+            "code/mech_ui.cpp", "tools/lane_merge.py"]
+    assert lm.sim_sensitive_paths(miss) == []
+    assert lm.sim_sensitive_paths(["a/b.cpp"], ["a/*"]) == ["a/b.cpp"]
+    assert lm.SIM_ROWS == ("saveload-mc2_01", "saveload-mc2_10", "determinism-mc2_10")
+
+
+def sim_tip(repo, tmp_path, monkeypatch, rel="mclib/mech3d.cpp"):
+    """A tip touching `rel`, a fake install deployed from it, receipts in tmp."""
+    from tools import lane_merge as lm
+    precheck_fixture(lm, repo, monkeypatch, None)
+    _branch(repo, "lane_s", rel, "x\n", "sim lane")
+    sha = git(repo, "rev-parse", "lane_s")
+    install = tmp_path / "inst"
+    install.mkdir()
+    (install / "mc2.exe").write_bytes(b"x")
+    (install / ".deployed_manifest.csv").write_text(
+        "manifest_version,v1,,,,\nrelpath,sha256,bytes,src_commit,timestamp,mtime_ns\nmc2.exe,0,1," + sha + ",t,1\n")
+    monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
+    return lm, sha, str(install)
+
+
+def test_precheck_runs_the_sim_rows_with_the_gates_commands_and_records_them(env, monkeypatch, tmp_path, capsys):
+    repo, _ = env
+    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
+    ran = []
+
+    def runner(root, cmd, env=None):
+        ran.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "")
+    assert lm.precheck(str(repo), "lane_s", False, sim_install=install, sim_runner=runner, sim_quiet=lambda: None) == 0
+    flat = [" ".join(c) for c in ran]
+    assert len(ran) == 3
+    assert all(install in f for f in flat)
+    sl = [f for f in flat if "saveload_roundtrip.py check" in f]
+    assert len(sl) == 2 and all("--mask tools/save_noise_mask.json" in f for f in sl)
+    assert any("--mission mc2_01" in f for f in sl) and any("--mission mc2_10" in f for f in sl)
+    assert any("sim_determinism.py check mc2_10" in f for f in flat)
+    rec = json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())
+    assert rec["verdict"] == "PASS" and rec["sim_rows"]["required"] and not rec["sim_rows"]["override"]
+    assert rec["sim_rows"]["paths"] == ["mclib/mech3d.cpp"] and set(rec["sim_rows"]["rows"].values()) == {"PASS"}
+    assert lm.missing_receipts(str(repo), ["lane_s"]) == []
+
+
+def test_a_red_sim_row_fails_the_precheck_with_the_first_differing_line(env, monkeypatch, tmp_path, capsys):
+    repo, _ = env
+    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
+
+    def runner(root, cmd, env=None):
+        j = " ".join(cmd)
+        bad = "--mission mc2_10" in j and "saveload" in j
+        return subprocess.CompletedProcess(cmd, 1 if bad else 0, "noise\nsave differs at packet 2 offset 77\nmore" if bad else "")
+    assert lm.precheck(str(repo), "lane_s", False, sim_install=install, sim_runner=runner, sim_quiet=lambda: None) == 1
+    out = capsys.readouterr().out
+    assert "PRECHECK FAIL" in out and "saveload-mc2_10: FAIL: save differs at packet 2 offset 77" in out
+    assert not (tmp_path / "receipts" / (sha + ".json")).exists()
+
+
+@pytest.mark.parametrize("case", ["quiet", "no_install", "stale", "lease_rc"])
+def test_infra_problems_are_not_run_and_block_the_receipt(env, monkeypatch, tmp_path, capsys, case):
+    repo, _ = env
+    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
+    quiet = (lambda: "GATE QUIET: gate pid 1") if case == "quiet" else (lambda: None)
+    if case == "no_install":
+        install = str(tmp_path / "nope")
+    if case == "stale":
+        monkeypatch.setattr(lm, "stale_install", lambda r, i, s: "install exe was built from another commit")
+    ran = []
+
+    def runner(root, cmd, env=None):
+        ran.append(cmd)
+        return subprocess.CompletedProcess(cmd, 75 if case == "lease_rc" else 0, "GATE QUIET: refusing game run")
+    assert lm.precheck(str(repo), "lane_s", False, sim_install=install, sim_runner=runner, sim_quiet=quiet) == 1
+    out = capsys.readouterr().out
+    assert "NOT RUN" in out and "PRECHECK FAIL" in out and "PRECHECK PASS" not in out
+    if case != "lease_rc":
+        assert ran == []
+    assert not (tmp_path / "receipts" / (sha + ".json")).exists()
+    assert lm.missing_receipts(str(repo), ["lane_s"]) == [sha]
+
+
+def test_no_sim_rows_is_an_explicit_recorded_override(env, monkeypatch, tmp_path):
+    repo, _ = env
+    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
+    assert lm.precheck(str(repo), "lane_s", False, sim_rows=False, sim_runner=lambda *a, **k: 1 / 0) == 0
+    rec = json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())
+    assert rec["sim_rows"]["override"] is True and rec["sim_rows"]["required"] and rec["sim_rows"]["rows"] == {}
+    assert lm.missing_receipts(str(repo), ["lane_s"]) == []
+
+
+def test_a_tip_without_sim_paths_runs_no_sim_rows_and_an_old_receipt_cannot_vouch_for_one(env, monkeypatch, tmp_path):
+    repo, _ = env
+    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch, rel="docs/note.md")
+    assert lm.precheck(str(repo), "lane_s", False, sim_runner=lambda *a, **k: 1 / 0) == 0
+    assert json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())["sim_rows"]["required"] is False
+    _branch(repo, "lane_t", "mclib/gvactor.cpp", "y\n", "sim lane 2")
+    lm.write_receipt(str(repo), "lane_t", False, "PASS")
+    assert lm.missing_receipts(str(repo), ["lane_t"]) == [git(repo, "rev-parse", "lane_t")]
