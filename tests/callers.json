@@ -3424,7 +3424,7 @@
         },
         {
           "path": "tools/land_queue.py",
-          "line": 25,
+          "line": 27,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless children)"
@@ -3788,7 +3788,7 @@
         },
         {
           "path": "tools/test_land_queue.py",
-          "line": 11,
+          "line": 12,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -4022,14 +4022,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 778,
+          "line": 791,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1232,
+          "line": 1245,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4567,7 +4567,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 647,
+          "line": 660,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -11492,7 +11492,7 @@
       "callers_by_stem": [
         {
           "path": "tools/test_land_queue.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "tools.land_queue",
           "text": "from tools import land_queue as lq  # noqa: E402"
@@ -11584,7 +11584,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 404,
+          "line": 409,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -13747,6 +13747,13 @@
           "evidence": "import",
           "reference": "tools.mod_smoke",
           "text": "from tools import mod_smoke"
+        },
+        {
+          "path": "tools/test_land_queue.py",
+          "line": 307,
+          "evidence": "import",
+          "reference": "mod_smoke",
+          "text": "import mod_smoke"
         }
       ]
     },
