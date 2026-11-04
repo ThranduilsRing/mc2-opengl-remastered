@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 349,
+   "LG03": 337,
    "LG04": 15,
    "LG05": 198,
    "LG06": 437,
@@ -1503,9 +1503,6 @@
   },
   "code/light.cpp": {
    "LG03": 2
-  },
-  "code/loadscreen.cpp": {
-   "LG03": 12
   },
   "code/locomotion_facet.h": {
    "LG06": 3
@@ -3400,7 +3397,7 @@
    "LG20": 3
   }
  },
- "head": "87ecc68b0",
+ "head": "43f160824",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
