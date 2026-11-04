@@ -192,6 +192,8 @@ def test_warm_tree_lock_covers_only_the_build(monkeypatch, tmp_path):
     monkeypatch.setattr(lm, "ensure_precheck_tree", lambda *a, **k: None)
     monkeypatch.setattr(lm, "stale_inventories", lambda *a, **k: [])
     monkeypatch.setattr(lm, "precheck_scratch_base", lambda root: str(tmp_path))
+    # "tip" is not a real ref: the sim-row classifier (added after this test) would run git merge-base on it and fail.
+    monkeypatch.setattr(lm, "tip_changed_paths", lambda root, tip: [])
 
     def fake_run(root, cmd, **k):
         text = " ".join(map(str, cmd))
