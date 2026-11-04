@@ -105,7 +105,9 @@ public:
         // The ref must be a set this registry issued (its base and count as registered), and the slot inside it.
         if (!set.valid() || slot >= set.count) return MaterialHandle::invalid();
         const auto it = setCountByBase_.find(set.base);
-        if (it == setCountByBase_.end() || it->second != set.count) return MaterialHandle::invalid();
+        if (it == setCountByBase_.end()) return MaterialHandle::invalid();
+        const auto& [setBase, setCount] = *it;
+        if (setCount != set.count) return MaterialHandle::invalid();
         return setSlots_[set.base + slot];
     }
 

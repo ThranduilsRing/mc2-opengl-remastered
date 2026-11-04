@@ -126,8 +126,10 @@ inline ImFont* findUiFont(const char* family, int requestedSize)
     }
 
     auto it = s_uiFonts.find(fontKey(fam, nearest));
-    if (it != s_uiFonts.end())
-        return it->second;
+    if (it != s_uiFonts.end()) {
+        const auto& [key, font] = *it;
+        return font;
+    }
     return ImGui::GetFont();
 }
 

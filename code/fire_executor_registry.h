@@ -108,7 +108,9 @@ class FireExecutorRegistry {
     const FireExecutorEntry* entryFor(const WeaponFireExecutorId& id) const {
         if (!id.valid()) return nullptr;
         auto it = bindings_.find(id.id);
-        return it == bindings_.end() ? nullptr : &it->second;
+        if (it == bindings_.end()) return nullptr;
+        const auto& [boundId, binding] = *it;
+        return &binding;
     }
 
     // Resolve a weapon's declared fireExecutor to its registered entry (or

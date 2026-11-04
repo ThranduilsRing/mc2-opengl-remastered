@@ -29,7 +29,9 @@ void shutdown() { profiles.clear(); initialized = false; }
 uint32_t getProfileIndex(mc2::czstring name) {
     if (!name) return 0;
     const auto it = profiles.find(name);
-    return it == profiles.end() ? 0 : it->second;
+    if (it == profiles.end()) return 0;
+    const auto& [profileName, profile] = *it;
+    return profile;
 }
 uint32_t profileCount() { return static_cast<uint32_t>(profiles.size()); }
 }
