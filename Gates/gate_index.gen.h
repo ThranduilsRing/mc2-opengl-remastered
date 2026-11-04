@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 761;
+inline constexpr std::size_t kGateCount = 760;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -526,7 +526,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SOAK_PILOT_PROMOTE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_SALVAGE_TRADEMOVER", Kind::Bool, Rule::Presence, {}},
     {"MC2_SOAK_STOP_AT_BAY", Kind::Bool, Rule::Presence, {}},
-    {"MC2_SOAK_SUPPORT_EVERY", Kind::Float, Rule::Prefix, {}},
     {"MC2_SOAK_WIN_AFTER_SEC", Kind::Float, Rule::Prefix, {}},
     {"MC2_SPOTLIGHT_DIRECTION_FIX", Kind::Enum, Rule::Std, "0|1|2"},
     {"MC2_SPOTLIGHT_REAL_TRACE", Kind::Bool, Rule::Presence, {}},

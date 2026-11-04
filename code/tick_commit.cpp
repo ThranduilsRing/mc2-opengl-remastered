@@ -70,19 +70,12 @@ void retireRenderPacket(uint64_t sequence) {
     while (count < graveyard.size() && graveyard[count].sequence < oldest)
         ready.push_back(std::move(graveyard[count++].command));
     graveyard.erase(graveyard.begin(), graveyard.begin() + count);
-    {
-        static uint64_t s_calls = 0;
-        if (mc2_diag::tagRequested("GRAVEYARD") && (++s_calls % 120) == 0)
-            mc2::fmt::print_out("[GRAVEYARD v1] retire_calls={:d} left={:d} oldest={:d} seq={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_calls)), mc2::fmt::as_i32(static_cast<int>(graveyard.size())), mc2::fmt::as_i32(static_cast<int>(oldest & 0x7fffffff)), mc2::fmt::as_i32(static_cast<int>(sequence)));
-    }
-    if (!ready.empty()) {
-        // [GRAVEYARD v1]: how many drains destroyed real work (the R1 proof needs this to be >= 20 under the soak knob).
-        static uint64_t s_drains = 0, s_commands = 0;
-        ++s_drains;
-        s_commands += ready.size();
-        if (mc2_diag::tagRequested("GRAVEYARD") && (s_drains <= 2 || (s_drains % 10) == 0))
-            mc2::fmt::print_out("[GRAVEYARD v1] drains={:d} commands={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_drains)), mc2::fmt::as_i32(static_cast<int>(s_commands)));
-    }
+    // [GRAVEYARD v1]: ordering-proof counter. Every call runs assertSimQuiescent above; nonempty = calls that destroyed work.
+    static uint64_t s_calls = 0, s_nonempty = 0;
+    ++s_calls;
+    if (!ready.empty()) ++s_nonempty;
+    if ((s_calls % 100) == 0 && mc2_diag::tagRequested("GRAVEYARD"))
+        mc2::fmt::print_out("[GRAVEYARD v1] retire_calls={:d} nonempty={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_calls)), mc2::fmt::as_i32(static_cast<int>(s_nonempty)));
     for (auto& command : ready) command();
 }
 void commitTickQueues() {

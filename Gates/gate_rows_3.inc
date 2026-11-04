@@ -79,7 +79,6 @@ L(Presence, "MC2_SOAK_PILOT_PROMOTE", Bool, false, "code", "", "--- MC2_SOAK_PIL
 // history: docs/gate-history.md#MC2_SOAK_SALVAGE_TRADEMOVER
 L(Presence, "MC2_SOAK_SALVAGE_TRADEMOVER", Bool, false, "code", "", "ISSUE-42a repro fixture (code/mission.cpp soak harness): with MC2_SOAK_AUTOWIN + MC2_SOAK_KILL_ENEMY, exercises the REAL mid-mission salvage-craft flow...", passthrough | registry(Trace, "MC2_TRACE_SOAK_SALVAGE_TRADEMOVER", -1, false) | verified),
 L(Presence, "MC2_SOAK_STOP_AT_BAY", Bool, false, "code", "", "SOAK-STOP-AT-BAY-1 (MC2_SOAK_STOP_AT_BAY).", verified),
-P("MC2_SOAK_SUPPORT_EVERY", Float, 0.0, "code", "", "Test-only soak knob (not a feature gate): every N s of scenario time call an airstrike beside the first player mover, filling the graveyard; 0 = off.", clampRange(0.0, 3.4e38) | passthrough | verified),
 P("MC2_SOAK_WIN_AFTER_SEC", Float, 5.0, "code", "", "Seconds of scenario time before the soak autowin fires; negative clamps to 0.", clampRange(0.0, 3.4e38) | passthrough | verified),
 // META-FIX-BATCH-1 (recurrence-proofing, designs C + E — 2026-07-16)
 // history: docs/gate-history.md#MC2_SPOTLIGHT_DIRECTION_FIX
