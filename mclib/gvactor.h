@@ -37,9 +37,7 @@
 #include<gosfx/gosfxheaders.hpp>
 #include <vector>  // T1.10: GVAppearance::spotlight{Lights,SlotIds,NodeIds}_
 //**************************************************************************************
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int GV_PART_BODY = 0;
 inline constexpr int GV_PART_TURRET = 1;

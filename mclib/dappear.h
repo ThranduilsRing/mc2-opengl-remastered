@@ -13,9 +13,7 @@
 	
 //---------------------------------------------------------------------------
 // Macro definitions
-#ifndef NO_ERR
-#define NO_ERR	0
-#endif
+#include "dstd.h"  // NO_ERR
 
 // Shared by the building, ground-vehicle and mech appearances (bdactor, gvactor, mech3d).
 inline constexpr float BASE_NODE_RECYCLE_TIME = 0.25f;

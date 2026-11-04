@@ -32,9 +32,7 @@ unsigned currentAppearanceRegistryGeneration (void); // apprtype.cpp
 class Camera;
 //---------------------------------------------------------------------------
 // Macro definitions
-#ifndef NO_ERR
-#define NO_ERR			0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr float HUD_DEPTH = 0.9999f; // HUD Objects draw over everything else (reverse-Z: near=1, far=0).
 

@@ -33,9 +33,7 @@
 #include"memfunc.h"
 
 //**************************************************************************************
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAX_GEN_ANIMATIONS = 5;
 

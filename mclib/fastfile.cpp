@@ -23,7 +23,6 @@ long		maxFastFiles = 0;
 
 long ffLastError = 0;
 
-#define NO_ERR		0
 //-----------------------------------------------------------------------------------
 bool FastFileInit (mc2::czstring fname)
 {

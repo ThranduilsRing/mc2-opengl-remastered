@@ -38,9 +38,7 @@
 #include<gosfx/gosfxheaders.hpp>
 #include <vector>  // T1.4: BldgAppearance::spotlightLights_/spotlightSlotIds_/spotlightNodeIds_
 //**************************************************************************************
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAX_BD_ANIMATIONS = 10;
 struct ModelOverrideRecord;

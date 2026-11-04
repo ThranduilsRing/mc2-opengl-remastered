@@ -14,9 +14,6 @@
 #define INIFILE_H
 
 // Error codes matching real inifile.h
-#ifndef NO_ERR
-#define NO_ERR 0x00000000
-#endif
 #define BLOCK_NOT_FOUND  0xFADA0000
 #define ID_NOT_FOUND     0xFADA0001
 

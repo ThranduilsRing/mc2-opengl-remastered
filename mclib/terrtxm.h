@@ -26,9 +26,7 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef NO_ERR
-#define NO_ERR		0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int BLANK_TILE = -1;
 

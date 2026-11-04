@@ -45,9 +45,7 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef NO_ERR
-#define NO_ERR		0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAPCELL_DIM = 3;
 // MOVE grid side limit (cells). 720 was the stock cap; fan campaign maps (REAP3) are 900 cells/side.

@@ -30,9 +30,7 @@
 //***********************************************************************
 // Macro Definitions
 
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr auto MAX_TREES = 20;
 
