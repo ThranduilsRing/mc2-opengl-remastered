@@ -347,6 +347,7 @@ class SoundSystem
 		// Save/load (FIX1): the script's music view as seconds left on the scenario clock, and its restore.
 		void getScriptMusicState (long &id, double &remaining, bool &loops);
 		void restoreScriptMusic (long id, double remaining, bool loops);
+		long musicTrackCount (void) const { return numDMS; }
 		static double musicSeconds (std::string_view wavPath);
 		
 		void playABLSFX (long sfxId);

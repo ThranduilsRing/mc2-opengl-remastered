@@ -197,7 +197,7 @@ inline bool decodeWarriorRecord(std::span<const std::uint8_t> bytes,
 // Runtime-only derived fields outside MechWarriorData (owner ruling):
 // movePathRequest -> nullptr in MechWarrior::init(data); future requests are
 // re-enqueued by the normal fixed-tick path update in pilot order.
-// lastFailedJumpGoalCellR/C and lastJumpFailFrame -> -1 in init(false), so
+// lastFailedJumpGoalCellR/C -> -1 and lastJumpFailFrame -> kNoJumpFailFrame in init(false), so
 // getJumpBackoff() returns std::nullopt and no old failure suppresses a fresh
 // deterministic path solve.
 // Sensor contacts -> loadActivateAndFinalize scans each restored team's

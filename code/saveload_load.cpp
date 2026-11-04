@@ -744,9 +744,11 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
         if (!mc2::save::restoreBrainSection(brain->payload, brain->version)) reject("brain_section");
     } // default: no brain runtime; the first brain tick allocates it from the mission files, as a v1 load always did
     if (const auto* fix = sections.find(mc2::save::tagFix)) {
-        const auto decoded = fix->version == mc2::save::fixSectionVersion ? mc2::save::decodeFixSection(fix->payload) : std::nullopt;
-        if (!decoded || !decoded->valid(MAX_WARRIORS)) {
-            reject("fix_section");
+        const std::int32_t musicCount = (soundSystem && soundSystem->musicTrackCount() > 0)
+            ? static_cast<std::int32_t>(soundSystem->musicTrackCount()) : std::numeric_limits<std::int32_t>::max();
+        const auto decoded = mc2::save::decodeValidFixSection(fix->version, fix->payload, MAX_WARRIORS, musicCount);
+        if (!decoded) {
+            reject("fix_section");  // exactly one [SAVE v2] event=reject line per bad section
         } else {
             const mc2::save::FixSection& value = *decoded;
             s_restoredMusic = value.music;
@@ -757,7 +759,9 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
             // Requests re-enter the queue in saved order; request() purges a pilot's earlier one, so each pilot keeps its last.
             for (const auto& p : value.paths) {
                 MechWarrior* w = MechWarrior::warriorList[p.warrior];
-                if (PathManager && w && w->isUsed()) PathManager->request(w, p.selectionIndex, p.moveParams, p.source);
+                // request() Fatals on an empty free list; refuse the item instead (a pilot with a queued record reuses it).
+                if (PathManager && w && w->isUsed() && (PathManager->freeList || w->getMovePathRequest()))
+                    PathManager->request(w, p.selectionIndex, p.moveParams, p.source);
             }
         }
     } // default: music re-armed from the mission tune, no jump backoff, no queued path (the next order re-requests), as a v1 load always did

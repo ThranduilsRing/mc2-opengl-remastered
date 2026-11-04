@@ -50,7 +50,7 @@ void MechWarrior::noteJumpPathFailed (void) {
 
 std::optional<MechWarrior::JumpBackoffState> MechWarrior::getJumpBackoff () {
 
-	if (lastJumpFailFrame < 0)
+	if (lastJumpFailFrame == kNoJumpFailFrame)
 		return std::nullopt;
 	const long elapsed = MovePathManager_getFrameCounter() - lastJumpFailFrame;
 	if ((elapsed < 0) || (elapsed >= kJumpFailBackoffFrames))
@@ -73,7 +73,7 @@ void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams
 	// is what collapses the queue width (the doomed solve was re-requested every AI
 	// tick with no failure memory). Only AI/non-home jumpers ever fail jump solves
 	// (jump path is enemy-only, mover.cpp), so player orders are never affected.
-	if (s_jumpFailBackoffOn && (lastJumpFailFrame >= 0)) {
+	if (s_jumpFailBackoffOn && (lastJumpFailFrame != kNoJumpFailFrame)) {
 		glm::vec3 goalLoc;
 		if (getMoveGoal(&goalLoc) != MOVEGOAL_NONE) {
 			int goalCellR, goalCellC;

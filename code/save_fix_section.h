@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <span>
 #include <vector>
@@ -53,8 +54,9 @@ struct FixSection {
     }
 
     // Range checks a reader applies before touching live state.
-    bool valid(std::uint32_t warriorCount) const {
-        if (music.id < -1 || music.remaining < 0.0) return false;
+    // musicCount is the music table size; the script music id indexes nothing, but a stale or hostile id is refused.
+    bool valid(std::uint32_t warriorCount, std::int32_t musicCount = std::numeric_limits<std::int32_t>::max()) const {
+        if (music.id < -1 || music.id >= musicCount || !std::isfinite(music.remaining) || music.remaining < 0.0) return false;
         for (const auto& b : backoffs)
             if (b.warrior >= warriorCount || b.age < 0) return false;
         for (const auto& p : paths)
@@ -76,6 +78,15 @@ inline std::optional<FixSection> decodeFixSection(std::span<const std::uint8_t> 
     staged.serialize(a);
     if (!a.finish()) return std::nullopt;
     return staged;
+}
+
+// Version check, decode and range check in one step; nullopt means the loader logs one reject and keeps the defaults.
+inline std::optional<FixSection> decodeValidFixSection(std::uint32_t version, std::span<const std::uint8_t> bytes,
+                                                       std::uint32_t warriorCount, std::int32_t musicCount) {
+    if (version != fixSectionVersion) return std::nullopt;
+    auto decoded = decodeFixSection(bytes);
+    if (!decoded || !decoded->valid(warriorCount, musicCount)) return std::nullopt;
+    return decoded;
 }
 
 }  // namespace mc2::save

@@ -14,6 +14,7 @@
 #include "object_shared_constants.h"
 #include "warrior_types.h"
 #include <array>
+#include <limits>
 #include <optional>
 namespace mc2::render_view { struct HudMover; }
 
@@ -689,6 +690,8 @@ class MechWarrior {
 		int32_t					lastFailedJumpGoalCellR;
 		int32_t					lastFailedJumpGoalCellC;
 		long					lastJumpFailFrame;
+		// No failure recorded. Frames can be negative after a restore at a low path-manager counter.
+		static constexpr long	kNoJumpFailFrame = std::numeric_limits<long>::min();
 
 		uint32_t                debugFlags;
 

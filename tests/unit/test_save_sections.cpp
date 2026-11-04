@@ -341,6 +341,33 @@ TEST_CASE("save sections: FIX1 round trips music, jump backoff and ordered path 
     CHECK_FALSE(badSource.valid(10));
 }
 
+TEST_CASE("save sections: FIX1 validation refuses non-finite music time, out-of-table ids and bad versions") {
+    using namespace mc2::save;
+    FixSection ok;
+    ok.music = {3, 5.0, false};
+    ok.backoffs = {{1, 2, 3, 4}};
+    CHECK(ok.valid(10, 8));
+    FixSection nan = ok;
+    nan.music.remaining = std::numeric_limits<double>::quiet_NaN();
+    CHECK_FALSE(nan.valid(10, 8));
+    FixSection inf = ok;
+    inf.music.remaining = std::numeric_limits<double>::infinity();
+    CHECK_FALSE(inf.valid(10, 8));
+    FixSection high = ok;
+    high.music.id = 8;  // table has ids 0..7
+    CHECK_FALSE(high.valid(10, 8));
+    CHECK(high.valid(10, 9));
+    FixSection silent = ok;
+    silent.music.id = -1;
+    CHECK(silent.valid(10, 8));
+    // The one-step helper the loader uses: any failure is a single nullopt (one reject line, defaults kept).
+    const Bytes good = encodeFixSection(ok);
+    CHECK(decodeValidFixSection(fixSectionVersion, good, 10, 8).has_value());
+    CHECK_FALSE(decodeValidFixSection(fixSectionVersion + 1, good, 10, 8).has_value());
+    CHECK_FALSE(decodeValidFixSection(fixSectionVersion, encodeFixSection(nan), 10, 8).has_value());
+    CHECK_FALSE(decodeValidFixSection(fixSectionVersion, std::span(good).first(good.size() - 1), 10, 8).has_value());
+}
+
 TEST_CASE("save sections: FIX1 is an optional known section a container carries") {
     using namespace mc2::save;
     SectionContainer c;
