@@ -8,6 +8,8 @@
 #include <utility>
 #include "mc2str.h"
 #include "tick_commit.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 
 
 void ControlGui::beginPause()
@@ -129,6 +131,12 @@ void ControlGui::playMovie( const char* fileName )
 
 bool ControlGui::resultsDone()
 {
+	if (mc2_diag::tagRequested("RESULTS")) {
+		static int s_calls = 0;
+		if ((s_calls++ % 60) == 0)
+			mc2::fmt::print_out("[RESULTS v1] resultsDone renderStatusInfo={:d} objectiveTime={:.2f} resultsTime={:.2f}\n",
+				mc2::fmt::as_i32(static_cast<int>(renderStatusInfo)), static_cast<double>(objectiveTime), static_cast<double>(resultsTime));
+	}
 	if( ( renderStatusInfo && objectiveTime > Team::home->objectives.Count() + 4 ) )
 	{
 		// need to empty out force group bar now... (icons may own a live pilot
