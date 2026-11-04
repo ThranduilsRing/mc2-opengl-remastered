@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "content_error.h"
 #include <format>
 #include <vector>
 #include "arm_node_remap.h"
@@ -45,12 +46,19 @@ void Mech3DAppearanceType::init (const char * fileName)
 	FullPathFileName mechIniName;
 	mechIniName.init(tglPath,fileName,".ini");
 
-	gosASSERT(fileExists(mechIniName));
-
 	FitIniFile mechFile;
 
-	long result = mechFile.open(mechIniName);
-	gosASSERT(result == NO_ERR);
+	long result = fileExists(mechIniName) ? mechFile.open(mechIniName) : -1;
+	if (result != NO_ERR)
+	{
+		// gosASSERT is a NO-OP in RelWithDebInfo, so a missing mech INI used to fall through into
+		// readIdFloat() on an UNOPENED FitIniFile: _lseek on a bad handle -> CRT invalid-parameter
+		// fast-fail (0xC0000409, no crash bundle). Flag the type so BattleMech::init substitutes the
+		// fallback chassis, and name the missing file in the content log.
+		baseShapeLoadFailed = true;
+		mc2::content::error(mc2::content::Kind::Shape, static_cast<const char*>(mechIniName), "missing mech appearance INI; fallback chassis used");
+		return;
+	}
 	
 	for (long i=0;i<MaxGestures;i++)
 	{

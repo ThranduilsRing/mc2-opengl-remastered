@@ -70,6 +70,9 @@ import _git_util  # noqa: E402  (shared git helpers)
 TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
 FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
 ARTIFACT_SUBJECT = "merge follow-up: regenerated artifacts"
+DERIVED_SUBJECT = "merge follow-up: regenerated derived inventories (gate floor, log tag baseline) and tightened ratchet baselines"
+LOG_TAG_BASELINE = "tests/unit/log_tag_baseline.json"
+RETIRED_NAMES = "Gates/retired_names.json"
 
 # Explicit output scopes: never stage unrelated work or compiler scratch files.
 ARTIFACTS = [
@@ -612,6 +615,11 @@ VERIFY_STEPS = {
 }
 
 
+#: Seconds-cheap contract rows a lane must see before the window (W109 found them late): (label, script relative to the root, args).
+EARLY_ROWS = [("sim_include_firewall", "scripts/check_sim_include_firewall.py", []),
+              ("log_tag_census", "tools/log_tag_census.py", ["--check"])]
+
+
 #: Seconds-cheap ownership/callers checks, run before the ~18 min build + doctest so a duplicate-ownership red shows at once.
 QUICK_ROWS = [("script_callers", ["tools/callers.py", "--check"]),
               ("test_ownership", ["-m", "pytest", "scripts/tests/test_contract_coverage.py", "-q", "-p", "no:cacheprovider"])]
@@ -683,6 +691,101 @@ def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[st
     return "OK", results
 
 
+def exe_matches_head(root: str, tree: str = "build64-ninja") -> bool | None:
+    """True/False: does the built mc2.exe embed the worktree HEAD? None when there is no exe or no readable fingerprint."""
+    exe = os.path.join(root, tree, "mc2.exe")
+    if not os.path.isfile(exe):
+        return None
+    sys.path.insert(0, os.path.join(root, "scripts"))
+    try:
+        from exe_fingerprint import extract, sha_agrees
+        fp = extract(exe)
+        if not fp.get("present"):
+            return None
+        return sha_agrees(fp.get("sha"), git_out(root, "rev-parse", "HEAD"))
+    except Exception:  # noqa: BLE001 - an unreadable fingerprint must not fail the window
+        return None
+
+
+def rebuild_if_head_moved(root: str, check=None, runner=None) -> tuple[bool, str]:
+    """After repairs/re-freezes HEAD moved but a json-only commit does not relink the exe: rebuild before the gate.
+    -> (ok, message). Not ok = the exe still fingerprints a different sha after the rebuild (the gate would refuse it)."""
+    check = check or exe_matches_head
+    if check(root) is not False:
+        return True, ""
+    print("lane_merge: exe fingerprint differs from HEAD; rebuilding before the gate", flush=True)
+    r = (runner or run)(root, [sys.executable, os.path.join(root, "scripts", "ninja_build.py")], env=verify_env(root))
+    if r.returncode:
+        return False, "rebuild before the gate failed:\n" + failure_summary(r.stdout)
+    if check(root) is False:
+        return False, "exe fingerprint still differs from HEAD after a rebuild; the gate would refuse this exe"
+    return True, ""
+
+
+def log_tag_loosened(old: dict, new: dict) -> list[str]:
+    """Why `new` is not a pure extension of the frozen census `old` (empty = only additions, safe to accept).
+
+    An emitter that vanished, lost count, or changed keys/version/stream is a harness-visible regression a re-freeze would hide."""
+    def table(doc):
+        return {(r["tag"], r["ver"], r["stream"], tuple(r["keys"])): r["count"] for r in doc.get("emitters", [])}
+    a, b = table(old), table(new)
+    why = [f"emitter {k[0]} v{k[1]} stream={k[2]} keys={','.join(k[3])}: count {n} -> {b.get(k, 0)}"
+           for k, n in sorted(a.items()) if b.get(k, 0) < n]
+    for key in ("consumed_tags", "plain_tags"):
+        why += [f"{key}: {t} no longer listed" for t in sorted(set(old.get(key, [])) - set(new.get(key, [])))]
+    return why
+
+
+def gate_floor_loosened(old_names: set[str], new_names: set[str], retired: set[str]) -> list[str]:
+    """Gates that left the table without being listed as retired: a lower floor would hide losing them."""
+    return sorted(old_names - new_names - retired)
+
+
+def _git_json(root: str, rev: str, path: str):
+    r = git(root, "show", f"{rev}:{path}")
+    if r.returncode:
+        return None
+    try:
+        return json.loads(r.stdout)
+    except ValueError:
+        return None
+
+
+def gate_names(path: Path):
+    try:
+        return {g["name"] for g in json.loads(path.read_text(encoding="utf-8"))["gates"]}
+    except (OSError, KeyError, TypeError, ValueError):
+        return None
+
+
+def regenerate_derived(root: str, base: str) -> list[str]:
+    """Batch-end regeneration of the derived inventories that used to need a hand follow-up.
+
+    Tighten-only: the log tag census may only gain emitters and the gate population floor may only follow additions
+    (or retirements listed in Gates/retired_names.json). Anything else restores the file and stops the window (exit 6)."""
+    changed = list(regenerate_all(root))
+    live = Path(root) / LOG_TAG_BASELINE
+    old = _git_json(root, "HEAD", LOG_TAG_BASELINE)
+    if old is not None and live.is_file():
+        bad = log_tag_loosened(old, json.loads(live.read_text(encoding="utf-8")))
+        if bad:
+            git(root, "checkout", "--", LOG_TAG_BASELINE)
+            raise Stop(6, "log tag census loosened by the merge (not auto-accepted; fix the lane or re-freeze by hand):\n  "
+                       + "\n  ".join(bad))
+    names_now, table_old = gate_names(Path(root) / "Gates" / "gate_table.json"), _git_json(root, base, "Gates/gate_table.json")
+    if names_now is not None and table_old is not None:
+        retired = _git_json(root, "HEAD", RETIRED_NAMES) or []
+        if isinstance(retired, dict):
+            retired = retired.get("names") or list(retired)
+        lost = gate_floor_loosened({g["name"] for g in table_old["gates"]}, names_now, set(retired))
+        if lost:
+            raise Stop(6, "gate table lost gates that are not in " + RETIRED_NAMES + " (population floor not lowered):\n  "
+                       + "\n  ".join(lost))
+        if sync_test_gate_floor(root):
+            changed.append(TEST_GATE)
+    return sorted(set(changed))
+
+
 def commit_tightened(root: str, pre_dirty: set[str], artifacts=()) -> str | None:
     """Commit exactly the baselines the ratchets tightened; skip any that was already dirty."""
     now_dirty = {p for _, p in status_entries(root)}
@@ -694,7 +797,8 @@ def commit_tightened(root: str, pre_dirty: set[str], artifacts=()) -> str | None
     if not changed:
         return None
     try:
-        return _git_util.commit_paths(root, changed, FOLLOWUP_SUBJECT, TRAILER or None)
+        derived = {TEST_GATE, LOG_TAG_BASELINE} & set(changed)
+        return _git_util.commit_paths(root, changed, DERIVED_SUBJECT if derived else FOLLOWUP_SUBJECT, TRAILER or None)
     except _git_util.GitError as e:
         raise Stop(5, "follow-up commit failed: " + str(e))
 
@@ -896,6 +1000,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
         # Refresh that generated input, then retain the strict wiring check.
         steps += [("callers-refresh", py + ["tools/callers.py"]),
                   ("callers", py + ["tools/callers.py", "--check"])]
+        steps += [(label, py + [script, *args]) for label, script, args in EARLY_ROWS]
         steps += [(label, py + args) for label, args in PYTHON_SUITES]
 
         tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", base_ref, "--head", commit])
@@ -915,7 +1020,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
         else:
             # Independent chains run concurrently, each in its own shared clone (no shared generated files).
             chains = [[s for s in steps if s[0] in {r[0] for r in RATCHETS}],
-                      [s for s in steps if s[0].startswith("callers")]] + [[s] for s in steps if s[0] in {p[0] for p in PYTHON_SUITES}]
+                      [s for s in steps if s[0].startswith("callers") or s[0] in {r[0] for r in EARLY_ROWS}]] + [[s] for s in steps if s[0] in {p[0] for p in PYTHON_SUITES}]
             with tempfile.TemporaryDirectory(prefix="lane-precheck-", dir=precheck_scratch_base(root)) as scratch:
                 def chain(i):
                     snapshot = os.path.join(scratch, f"tree{i}")
@@ -953,11 +1058,15 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         ("gate_gen", py + [os.path.join(root, "tools", "gate_gen.py"), "--check"]),
         ("cxx17", py + [os.path.join(root, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--worktree"]),
     ]
+    steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
     if os.path.isfile(exe):   # parse-level sanity of the headless smoke path; --resolve-only launches nothing
         steps.append(("headless-smoke", py + [os.path.join(root, "scripts", "run_smoke.py"), "--headless", "--ticks", "10",
                                               "--resolve-only", "--exe", exe]))
     failed = []
+    if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
+        print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)
+        failed.append("exe-fingerprint")
     for label, cmd in steps:
         if cmd is None:
             try:
@@ -1165,7 +1274,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
             pre_dirty = {path for _, path in status_entries(root)}
-            artifacts = regenerate_all(root)
+            artifacts = regenerate_derived(root, window_base)
             results = run_ratchets(root, tools_dir)
             failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
             if failed:
@@ -1195,6 +1304,11 @@ def main(argv: list[str] | None = None) -> int:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
             verdict, vresults = verify_merged(root, mode)
+            if batch and verdict == "OK":
+                fresh, why = rebuild_if_head_moved(root)
+                if not fresh:
+                    print("lane_merge: " + why, file=sys.stderr)
+                    verdict, vresults = "FAIL", [("exe-fingerprint", 1, why)]
         merge_sha, follow, _ = merged[-1] if merged else (git_out(root, "rev-parse", "--short=9", "HEAD"), None, 0)
         record.update(verify=verdict, merge_seconds=time.time() - window_started)
         if Path(root, "scripts/ninja_build.py").is_file():

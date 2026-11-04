@@ -6,6 +6,8 @@
 #include "mission_internal.h"
 #include "command_replay.h"
 #include "mission_init_frame.h"
+#include "mission_commander_team.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <new>
 
 
@@ -577,6 +579,7 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 						partName, static_cast<int>(commanderID), MAX_COMMANDERS - 1))
 					commanderID = MAX_COMMANDERS - 1;
 
+				mission_commander_team::notePartTeam(f.commanderPartTeam, commanderID, teamID);
 				if (commanderID > maxCommanderID)
 					maxCommanderID = commanderID;
 				if (teamID > maxTeamID)
@@ -651,7 +654,24 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 						"Mission::init: commandersToLoad[%ld] names uninitialized commander %ld / team %ld",
 						i, ctlCommander, ctlTeam))
 				{
-					mc2::content::error(mc2::content::Kind::MissionData, missionFileName, "invalid commander/team entry; falling back to home team");
+					// The logistics table is identity {i,i,i}, so a mission whose commander i has
+					// no team i (e.g. MCO: CommanderId 2 / TeamId 0 ally parts, two teams) lands
+					// here. That is valid data: use the team the commander's own parts declare.
+					// Only a commander with no usable parts team is a content error.
+					const bool ctlCmdOk = (ctlCommander > -1) && (ctlCommander < MAX_COMMANDERS) &&
+						(Commander::commanders[ctlCommander] != nullptr);
+					const long partTeam = mission_commander_team::resolvePartTeam(f.commanderPartTeam, ctlCommander, ctlCmdOk, MAX_TEAMS,
+						[](long t) { return Team::teams[t] != nullptr; });
+					if (partTeam > -1) {
+						if (mc2_diag::tagRequested("COMMANDER_TEAM"))
+							mc2::fmt::print_out("[COMMANDER_TEAM v1] commander={:d} logistics_team={:d} part_team={:d}\n", mc2::fmt::as_i32(ctlCommander),
+								mc2::fmt::as_i32(ctlTeam), mc2::fmt::as_i32(partTeam));
+						if (Commander::commanders[ctlCommander]->getTeam() == nullptr)
+							Commander::commanders[ctlCommander]->setTeam(Team::teams[partTeam]);
+						continue;
+					}
+					mc2::content::error(mc2::content::Kind::MissionData, missionFileName,
+						"commandersToLoad entry has no usable team and the commander has no part naming one; falling back to home team");
 					// mc10 load crash: the logistics table is identity {i,i,i}, so
 					// a mission with fewer teams than commanders named a null team
 					// and left the commander team-less; later code dereferences
@@ -970,6 +990,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 	MCTimeMissionABLLoad=x1-x;
 #endif
 }
+extern void preloadMissionSupportAtLoad();
 // Mission load sequence. Each phase is a member helper declared in mission.h, run in the original order; the
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
 void Mission::init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
@@ -1026,5 +1047,10 @@ initPartsHeader(f);
 	initInterface(f);
 initLabTimingAndClose();
 	initFinalizeGeometry();
+	// After the static-prop geometry is finalized: a type registered before it (the VTOL, Karnov) joins the batch and changes how other props shade.
+	// Registered after, it takes the CPU-fallback path exactly as when it was first loaded in gameplay. Still behind the loading screen.
+	preloadMissionSupportAtLoad();
+	// The warm registers mech-class types after finalizeGeometry; rebuild the shared VBO/IBO now, behind the loading screen, not at the first playable flush.
+	GpuMechBatcher::instance().finalizePending();
 	mc2::content::reportMission(missionName);
 }

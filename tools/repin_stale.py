@@ -29,10 +29,11 @@ def git(*args: str) -> str:
 
 
 def commits_behind(sha: str | None) -> int | None:
-    """Commits in HEAD that the baseline's exe sha does not have; None when the sha is unknown to this repo."""
+    """First-parent commits in HEAD past the baseline's exe sha (a merge window counts once, not as its lane originals plus the "merge lane:" copies);
+    None when the sha is unknown to this repo."""
     if not sha or not git("cat-file", "-t", sha):
         return None
-    out = git("rev-list", "--count", f"{sha}..HEAD")
+    out = git("rev-list", "--first-parent", "--count", f"{sha}..HEAD")
     return int(out) if out.isdigit() else None
 
 

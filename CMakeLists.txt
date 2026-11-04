@@ -505,6 +505,7 @@ set(SOURCES
     "code/mission_movers.cpp"
     "code/mission_init.cpp"
     "code/mission_init_load.cpp"
+    "code/startup_preload.cpp"
     "code/mission_init_parts.cpp"
     "code/mission_parts_archive.cpp"
     "code/mission2.cpp"

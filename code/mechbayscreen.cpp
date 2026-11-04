@@ -44,6 +44,7 @@ MechBayScreen::~MechBayScreen()
 void MechBayScreen::init(FitIniFile* file)
 {
 	// init button, texts, statics, rects
+	setLayoutNeeds( { "mcl_mb_layout.fit", 68, 24, 7, 0, 15, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( *file, "MechBayStatic", "MechBayTextEntry", "MechBayRect", "MechBayButton" );
 	defsHelpTextKey = "game.mcl_mb_layout.text.help_text";
 

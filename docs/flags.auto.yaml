@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 756
+gate_count: 757
 registry_entry_count: 150
-verified_count: 724
+verified_count: 725
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -316,6 +316,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under..."
+    smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_BOOT_VIDEO, kind: Trace, order: -1, default_on: false}
   - name: MC2_BRAIN_FIXED_TICK
@@ -2448,6 +2449,13 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
+  - name: MC2_MECHLAB_3D_OFF
+    kind: Bool
+    default: false
+    rule: Lead1
+    owner: code
+    doc: "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech."
     verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool

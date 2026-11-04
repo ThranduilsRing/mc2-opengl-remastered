@@ -2050,6 +2050,17 @@
    "count": 3
   },
   {
+   "tag": "COMMANDER_TEAM",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "commander",
+    "logistics_team",
+    "part_team"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CONE_AIM_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -2186,6 +2197,22 @@
     "kind",
     "path",
     "msg"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONTENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "path",
+    "msg",
+    "statics",
+    "rects",
+    "buttons",
+    "texts",
+    "edits"
    ],
    "count": 1
   },
@@ -3487,6 +3514,21 @@
     "solid",
     "overlay",
     "editor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FIRST60",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "n",
+    "avg_ms",
+    "p50_ms",
+    "p99_ms",
+    "max_ms",
+    "first_ms",
+    "load_frame_ms"
    ],
    "count": 1
   },
@@ -8730,6 +8772,17 @@
    "stream": "stdout",
    "keys": [
     "event",
+    "sim_s",
+    "need_s"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
     "stem",
     "source"
    ],
@@ -9120,6 +9173,28 @@
    "count": 1
   },
   {
+   "tag": "STARTUP_PRELOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "archives",
+    "mod_files"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STARTUP_PRELOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "files",
+    "mb",
+    "mod_mb",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "STATIC_LIGHT_ROW",
    "ver": 1,
    "stream": "stderr",
@@ -9277,6 +9352,16 @@
     "ms",
     "worst_step_ms",
     "playable_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_PRELOAD_LATE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "late_types",
+    "rebuild_ms"
    ],
    "count": 1
   },
@@ -10068,6 +10153,15 @@
    "keys": [
     "blend",
     "vertices"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VIA_MENU",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event"
    ],
    "count": 1
   },
@@ -11767,6 +11861,7 @@
   "EDITOR_PANEL_OPERATION",
   "EDITOR_SHELL",
   "ESMOKE",
+  "FIRST60",
   "GLP",
   "GPUPROPS",
   "HEARTBEAT",
@@ -11775,6 +11870,7 @@
   "LIGHT_CONTRACT",
   "LINK_GUARD",
   "MARAUDER",
+  "MISSION",
   "MISSION_OBJECTIVES",
   "MISSION_VERDICT",
   "MOD_HEALTH",
@@ -11810,6 +11906,7 @@
   "VERIFY",
   "VFX_",
   "VFX_BIRTH",
+  "VIA_MENU",
   "VIDEO",
   "VISUAL_CAPTURE",
   "VK_CAPABILITY",

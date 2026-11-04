@@ -18,6 +18,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 namespace {
 SmokeMode::State g_state;
@@ -32,6 +33,8 @@ size_t              g_frameIdx = 0;
 size_t              g_frameCount = 0;   // monotonic
 size_t              g_frameMsCap = 8192;
 bool                g_firstFrameSeen = false;
+double              g_simSeconds = 0.0;
+bool                g_simExtendLogged = false;
 uint32_t            g_fixedSimFrame = 0;     // S9D: sim-frames where fixed step advanced
 
 double elapsedMsSince(uint64_t t0) {
@@ -151,6 +154,31 @@ void emitTiming(const char* eventName) {
 }
 
 void samplePerf(double frameMs) {
+    // First 60 frames after mission_ready, every run (smoke mode or not): one [FIRST60 v1] line (only under MC2_DIAG_TAGS=FIRST60; via_menu.py sets it), so a via-menu run reports the frames a
+    // player sees first. Printed once; stdout is live only under MC2_LOG, as for every other line.
+    {
+        static constexpr int kN = 60;
+        static double s_ms[kN];
+        static int s_n = 0;
+        static double s_loadFrameMs = 0.0;
+        static bool s_loadFrameSeen = false;
+        if (g_missionReadyT && !s_loadFrameSeen) {
+            // The frame that was running when mission_ready fired contains the whole mission load; it is reported apart, not in the window.
+            s_loadFrameSeen = true;
+            s_loadFrameMs = frameMs;
+        } else if (g_missionReadyT && s_n < kN) {
+            s_ms[s_n++] = frameMs;
+            if (s_n == kN && mc2_diag::tagRequested("FIRST60")) {
+                std::vector<double> sorted(s_ms, s_ms + kN);
+                std::sort(sorted.begin(), sorted.end());
+                double sum = 0.0;
+                for (double v : sorted) sum += v;
+                mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f} load_frame_ms={:.2f}\n",
+                    mc2::fmt::as_i32(kN), sum / kN, sorted[kN / 2], sorted[kN - 2], sorted[kN - 1], s_ms[0], s_loadFrameMs);
+                std::fflush(stdout);
+            }
+        }
+    }
     if (!g_state.enabled) return;
     if (!g_firstFrameSeen) {
         g_firstFrameSeen = true;
@@ -258,7 +286,26 @@ bool shouldQuit() {
         return true;
     }
     double ms = elapsedMsSince(g_missionReadyT);
-    return ms >= static_cast<double>(g_state.durationSec) * 1000.0;
+    const double wallMs = static_cast<double>(g_state.durationSec) * 1000.0;
+    if (ms < wallMs) return false;
+    // The run is bounded by wall time, but mission scripts key off sim time (mc2_10 plays its
+    // intro video at 5 s of sim). A host stall inside the window starves the sim and the
+    // script event never fires, which is not an engine fault. Hold the quit until the sim has
+    // covered kMinSimSeconds, bounded by a 3x wall cap so a hung sim still ends the run.
+    constexpr double kMinSimSeconds = 10.0;
+    if (g_simSeconds < kMinSimSeconds && ms < wallMs * 3.0) {
+        if (!g_simExtendLogged) {
+            g_simExtendLogged = true;
+            mc2::fmt::print_out("[SMOKE v1] event=sim_extend sim_s={:.2f} need_s={:.1f}\n", g_simSeconds, kMinSimSeconds);
+            std::fflush(stdout);
+        }
+        return false;
+    }
+    return true;
+}
+
+void onSimTick(double scenarioTimeSeconds) {
+    g_simSeconds = scenarioTimeSeconds;
 }
 
 void markMissionReady() {

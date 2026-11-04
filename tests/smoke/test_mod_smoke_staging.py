@@ -131,7 +131,8 @@ def test_two_workers_cover_all_six_mods_and_carver_budget(tmp_path, monkeypatch)
     monkeypatch.setattr(mod_smoke, 'run_mod', run)
     args = SimpleNamespace(install_root=mods, base_install=base, exe=str(build / 'mc2.exe'),
         build_dir='build64-ninja', stage_root=tmp_path / 'stages', mod='', mission='',
-        keep_stages=False, workers=2, duration=15, timeout=300, fail_fast=False)
+        keep_stages=False, workers=2, duration=15, timeout=300, fail_fast=False,
+        front_end=False)
     args.window = 90
     assert mod_smoke.battery(args) == 0
     assert seen == {folder: 600 if folder == 'MCO-Carver5' else 300

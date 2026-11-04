@@ -457,8 +457,9 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	// MC2_BOOT_TO_BAY headless capture: skip all front-end fullscreen videos
 	// (campaign intro PreVideo e.g. poarintro.bik, mission cutscenes) so the
 	// automated boot reaches the bay/purchase screens deterministically instead
-	// of sitting on the intro for the capture window.
-	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
+	// of sitting on the intro for the capture window. Only with MC2_MENU_CANARY_SKIP_INTRO:
+	// run_smoke --via-menu boots the campaign too and plays the videos like a player.
+	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() && mc2::gate::get<"MC2_MENU_CANARY_SKIP_INTRO">() )
 	{
 		MC2_EVENT(Core, "VIDEO", 1, "event=skip name={} reason=boot_to_bay", std::string_view( fileName ));
 		return;

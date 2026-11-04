@@ -59,6 +59,7 @@ void PilotReadyScreen::init(FitIniFile* file)
 {
 	mechDisplay.init();
 	// init button, texts, statics, rects
+	setLayoutNeeds( { "mcl_pr_layout.fit", 74, 16, 5, 0, 14, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( *file, "PilotReadyStatic", "PilotReadyTextEntry", "PilotReadyRect", "PilotReadyButton" );
 	defsHelpTextKey = "game.mcl_pr_layout.text.help_text";
 

@@ -15,9 +15,11 @@
 #include "diagnostic_trace.h"
 #include <cmath>
 #include <cstdio>
+#include "startup_preload.h"
 #endif
 #ifdef MC2_ALLOC_STATS
 #include "artlry.h"
+#include "startup_preload.h"
 #endif
 
 
@@ -341,6 +343,7 @@ void __stdcall TerminateGameEngine()
 
 		//
 		//
+		stopStartupPreload();
 		FastFileFini();
 
 		//

@@ -66,7 +66,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 838,
+          "line": 942,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -87,7 +87,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 65,
+          "line": 66,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bwb"
@@ -791,7 +791,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1140,
+          "line": 1150,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -893,7 +893,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1074,
+          "line": 1084,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -1759,7 +1759,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 914,
+          "line": 915,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -2263,7 +2263,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1158,
+          "line": 1168,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -3073,6 +3073,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/video_decode_smoke.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/vk_shader_reload.py",
           "line": 15,
           "evidence": "import",
@@ -3494,7 +3501,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 47,
+          "line": 48,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
@@ -3633,6 +3640,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children)"
         },
         {
+          "path": "tools/smoke/stall_inject.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs  # noqa: E402"
+        },
+        {
           "path": "tools/sound_smoke.py",
           "line": 24,
           "evidence": "import",
@@ -3767,7 +3781,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
@@ -3957,7 +3971,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1016,
+          "line": 1026,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -4001,14 +4015,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1104,
+          "line": 1136,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1433,
+          "line": 1465,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -4232,7 +4246,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 309,
+          "line": 310,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4349,6 +4363,13 @@
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as ef"
+        },
+        {
+          "path": "tools/lane_merge.py",
+          "line": 701,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "from exe_fingerprint import extract, sha_agrees"
         }
       ]
     },
@@ -5530,6 +5551,13 @@
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
         },
         {
+          "path": "scripts/video_decode_smoke.py",
+          "line": 42,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors=\"replace\","
+        },
+        {
           "path": "tools/abl_refparam_check.py",
           "line": 39,
           "evidence": "command",
@@ -5566,7 +5594,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 849,
+          "line": 850,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5584,6 +5612,13 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True,"
+        },
+        {
+          "path": "tools/smoke/stall_inject.py",
+          "line": 73,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "p = subprocess.Popen([sys.executable, \"scripts/run_smoke.py\", \"--mission\", a.mission, \"--keep-logs\", \"--exe\", exe],"
         },
         {
           "path": "tools/sound_smoke.py",
@@ -5777,7 +5812,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1577,
+          "line": 1609,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "from run_visual_capture import smoke_capture"
@@ -5954,35 +5989,35 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 844,
+          "line": 854,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 905,
+          "line": 915,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 918,
+          "line": 928,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1103,
+          "line": 1113,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1289,
+          "line": 1299,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6161,6 +6196,20 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import render_options_pin"
+        },
+        {
+          "path": "scripts/smoke_lib/via_menu.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import nofocus"
+        },
+        {
+          "path": "scripts/smoke_lib/via_menu.py",
+          "line": 136,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib",
+          "text": "from . import host_lease"
         },
         {
           "path": "scripts/smoke_lib/win_input.py",
@@ -6420,7 +6469,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1289,
+          "line": 1299,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -6513,6 +6562,13 @@
       ]
     },
     {
+      "path": "scripts/smoke_lib/cold_cache.py",
+      "basename": "cold_cache.py",
+      "stem": "cold_cache",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/smoke_lib/crash_evidence.py",
       "basename": "crash_evidence.py",
       "stem": "crash_evidence",
@@ -6542,7 +6598,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 844,
+          "line": 854,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -6813,7 +6869,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 905,
+          "line": 915,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -6838,6 +6894,13 @@
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from . import exe_guard, host_lease"
+        },
+        {
+          "path": "scripts/smoke_lib/via_menu.py",
+          "line": 136,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.host_lease",
+          "text": "from . import host_lease"
         },
         {
           "path": "scripts/tests/test_fingerprint_cli.py",
@@ -6884,7 +6947,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 918,
+          "line": 928,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -7180,6 +7243,13 @@
           "text": "from . import nofocus, vk_validation"
         },
         {
+          "path": "scripts/smoke_lib/via_menu.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.nofocus",
+          "text": "from . import nofocus"
+        },
+        {
           "path": "scripts/tests/test_host_lease.py",
           "line": 15,
           "evidence": "import",
@@ -7196,7 +7266,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1103,
+          "line": 1113,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -7439,12 +7509,19 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1682,
+          "line": 1714,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runtime_bridge",
           "text": "from scripts.smoke_lib.runtime_bridge import RuntimeBridge"
         }
       ]
+    },
+    {
+      "path": "scripts/smoke_lib/via_menu.py",
+      "basename": "via_menu.py",
+      "stem": "via_menu",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "scripts/smoke_lib/vk_profile.py",
@@ -7612,7 +7689,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 49,
+          "line": 50,
           "evidence": "import",
           "reference": "stage_root",
           "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
@@ -7651,7 +7728,15 @@
       "path": "scripts/sweep_campaign.py",
       "basename": "sweep_campaign.py",
       "stem": "sweep_campaign",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 913,
+          "evidence": "command",
+          "reference": "scripts/sweep_campaign.py",
+          "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=secs + 120,"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -8618,6 +8703,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_via_menu.py",
+      "basename": "test_via_menu.py",
+      "stem": "test_via_menu",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_video_decode_smoke.py",
+      "basename": "test_video_decode_smoke.py",
+      "stem": "test_video_decode_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_vk_offline_proofs.py",
       "basename": "test_vk_offline_proofs.py",
       "stem": "test_vk_offline_proofs",
@@ -8659,6 +8758,21 @@
       "stem": "verify_campaign_assets",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "scripts/video_decode_smoke.py",
+      "basename": "video_decode_smoke.py",
+      "stem": "video_decode_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_video_decode_smoke.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "video_decode_smoke",
+          "text": "import video_decode_smoke as v  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "scripts/visual_diff.py",
@@ -11342,35 +11456,35 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 77,
+          "line": 78,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 100,
+          "line": 101,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 122,
+          "line": 123,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 133,
+          "line": 134,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 401,
+          "line": 402,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -13004,14 +13118,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 599,
+          "line": 600,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 635,
+          "line": 636,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -13083,7 +13197,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 474,
+          "line": 475,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -13350,35 +13464,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 351,
+          "line": 352,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 473,
+          "line": 474,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 515,
+          "line": 516,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 617,
+          "line": 618,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 636,
+          "line": 637,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -13901,7 +14015,7 @@
       "callers_by_stem": [
         {
           "path": "tools/tracy_capture_compare.py",
-          "line": 82,
+          "line": 83,
           "evidence": "import",
           "reference": "perf_baseline_report",
           "text": "import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)"
@@ -17075,7 +17189,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 892,
+          "line": 893,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -17203,6 +17317,13 @@
       "path": "tools/sim_trace_diff.py",
       "basename": "sim_trace_diff.py",
       "stem": "sim_trace_diff",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/smoke/stall_inject.py",
+      "basename": "stall_inject.py",
+      "stem": "stall_inject",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -19239,6 +19360,13 @@
           "evidence": "import",
           "reference": "tracy_capture_compare",
           "text": "import tracy_capture_compare as capture  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_via_menu.py",
+          "line": 89,
+          "evidence": "import",
+          "reference": "tracy_capture_compare",
+          "text": "import tracy_capture_compare as capture"
         },
         {
           "path": "tools/perf/mission_cpu_profile.py",

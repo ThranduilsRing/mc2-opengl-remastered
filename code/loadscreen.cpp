@@ -452,7 +452,8 @@ void LoadScreen::init(FitIniFile& file, DWORD neverFlush)
 	outAnims[4].init( &file, "" );
 
 
-	text.init( &file, "AnimObject18" );
+	// Stock keeps the "LOADING" text in AnimObject18; MCO ships it as Text0 and has no AnimObjects.
+	text.init( &file, NO_ERR == file.seekBlock( "AnimObject18" ) ? "AnimObject18" : "Text0" );
 	
 
 	if ( animObjectsCount )
@@ -552,8 +553,9 @@ void LoadScreen::render( int x, int y )
 	//ignoring animation information...
 	LogisticsScreen::render();
 
-	int curX = animObjects[0].animInfo.getXDelta();
-	int curY = animObjects[0].animInfo.getYDelta();
+	// MCO's mcl_loadingscreen.fit has no AnimObjects: animObjects is null, so no slide offset.
+	int curX = animObjectsCount ? static_cast<int>(animObjects[0].animInfo.getXDelta()) : 0;
+	int curY = animObjectsCount ? static_cast<int>(animObjects[0].animInfo.getYDelta()) : 0;
 	text.move( x + curX, y + curY );
 	text.render( );
 	text.move( -x - curX, -y - curY);

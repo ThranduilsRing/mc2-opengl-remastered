@@ -36,7 +36,7 @@ def run_mission(mission, install, seconds, batch=False, invulnerable=False, sim_
         env["MC2_PLAY_MISSION_GOTO"] = goto
     if mod:  # "NAME:deps:boot" -> explicit mod mission without touching smoke_missions.txt
         name, deps, boot = (mod.split(":") + ["", ""])[:3]
-        env.update(MC2_ACTIVE_MOD=name, MC2_MOD_DEPS=deps, MC2_BOOT_TO_BAY=boot)
+        env.update(MC2_ACTIVE_MOD=name, MC2_MOD_DEPS=deps, MC2_BOOT_TO_BAY=boot, MC2_MENU_CANARY_SKIP_INTRO="1")
     # The harness owns install leasing, process priority, timeouts and cleanup.
     cmd = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe",
            str(Path(install) / "mc2.exe"), "--mission", mission,

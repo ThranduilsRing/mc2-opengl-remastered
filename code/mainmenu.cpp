@@ -106,6 +106,7 @@ int MainMenu::init( FitIniFile& file )
 	file.seekBlock("Tunes");
 	file.readIdLong("TuneId",tuneId);
 
+	setLayoutNeeds( { "mcl_mm.fit", 14, 3, 10, 0, 2, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
 
 	FullPathFileName name;
@@ -435,6 +436,10 @@ void MainMenu::skipIntro()
 
 void MainMenu::update()
 {
+	{	// via-menu timing marker (scripts/run_smoke.py --via-menu reads its wallclock stamp): the first time the main menu runs
+		static bool s_menuMarked = false;
+		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu\n"); }
+	}
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
@@ -452,7 +457,9 @@ void MainMenu::update()
 		static bool s_bootToBayFired = false;
 		const std::string bootCampText = mc2::gate::str<"MC2_BOOT_TO_BAY">();   // "" when unset or empty
 		const char* bootCamp = bootCampText.c_str();
-		if ( !s_bootToBayFired && bootCamp[0] && LogisticsData::instance )
+		// The intro movie plays first unless it was skipped (MC2_MENU_CANARY_SKIP_INTRO, which MissionBegin honours by dropping it):
+		// a --via-menu run must pay it like a player; the headless harnesses all set the skip.
+		if ( !s_bootToBayFired && bootCamp[0] && LogisticsData::instance && !introMovie )
 		{
 			s_bootToBayFired = true;
 			LogisticsData::instance->startNewCampaign( bootCamp );

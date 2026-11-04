@@ -637,8 +637,22 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
 }
 
 extern "C" int mc2_vk_preview_active() { return g_previewActive ? 1 : 0; }
+// Batch scope: several cameras (mech lab: mech + component picture) share one preview texture; draws accumulate
+// and one pass runs when the last hold releases.
+static int g_previewHold=0;
+extern "C" void mc2_vk_preview_hold(int delta) {
+    if (delta>0) { if (g_previewHold++==0) { g_previewPending.clear(); g_previewVertices.clear(); } return; }
+    if (g_previewHold>0 && --g_previewHold==0) {
+        g_previewDispatch=true;
+        Mc2LegacyMlrFrame frame{};
+        mc2_vk_legacy_shape_island_run(g_previewW?g_previewW:800,g_previewH?g_previewH:600,&frame);
+        g_previewDispatch=false; g_previewVertices.clear();
+    }
+}
 extern "C" void mc2_vk_preview_begin(int width,int height) {
-    g_previewW=width; g_previewH=height; g_previewPending.clear(); g_previewVertices.clear(); g_previewActive=true;
+    g_previewW=width; g_previewH=height;
+    if (g_previewHold==0) { g_previewPending.clear(); g_previewVertices.clear(); }
+    g_previewActive=true;
 }
 extern "C" void mc2_vk_preview_capture(const Mc2LegacyMlrDraw* draw) {
     if (!draw || !draw->vertices || draw->vertexCount<3) return;
@@ -647,7 +661,9 @@ extern "C" void mc2_vk_preview_capture(const Mc2LegacyMlrDraw* draw) {
     auto d=*draw; d.vertices=bytes.data(); g_previewPending.push_back(d);
 }
 extern "C" void mc2_vk_preview_end() {
-    g_previewActive=false; g_previewDispatch=true;
+    g_previewActive=false;
+    if (g_previewHold>0) return;
+    g_previewDispatch=true;
     Mc2LegacyMlrFrame frame{};
     mc2_vk_legacy_shape_island_run(g_previewW,g_previewH,&frame);
     g_previewDispatch=false; g_previewVertices.clear();

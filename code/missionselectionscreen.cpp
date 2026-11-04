@@ -61,6 +61,7 @@ MissionSelectionScreen::~MissionSelectionScreen()
 
 void MissionSelectionScreen::init( FitIniFile* file )
 {
+	setLayoutNeeds( { "mcl_cm_layout.fit", 37, 11, 6, 0, 5, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( *file, "CMStatic", "CMTextEntry", "CMRect", "CMButton" );
 	// Route the hover help text (set by LogisticsScreen::update) into the defs help area.
 	defsHelpTextKey = "game.mission_selection.text.help_text_area";

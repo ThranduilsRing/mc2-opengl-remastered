@@ -74,6 +74,7 @@ int MechPurchaseScreen::init( FitIniFile& file )
 
 	mechDisplay.init();
 
+	setLayoutNeeds( { "mcl_m$.fit", 39, 4, 5, 0, 5, false } ); // stock element counts; see LayoutNeeds
 	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button" );
 
 	(static_cast<aObject*>(&inventoryListBox))->init( rects[0].left(), rects[0].top(),

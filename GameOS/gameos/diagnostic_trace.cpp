@@ -29,6 +29,7 @@ const std::unordered_set<std::string>& knownTags() {
     // Immortal (leaked on purpose): tagRequested() -> parseTagsEnv() calls this from atexit handlers, after a destructible static would be gone.
     static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::initializer_list<std::string>{
         "ABL_NEWPOWER_PART",
+        "SUPPORT_PRELOAD_LATE", // late mech-class types registered by the support warm and the shared-buffer rebuild that absorbs them. Opt-in.
         "GPU_CULL",
         "LIGHTBAKE_PROOF",
         "ANIM_GATE",
@@ -37,6 +38,7 @@ const std::unordered_set<std::string>& knownTags() {
         "TERRAIN_SOLID_AB",
         "CONFIG",
         "ENV",
+        "FIRST60",  // [FIRST60 v1]: frame-time summary of the first 60 frames after mission_ready (gos_smoke.cpp). Opt-in; scripts/smoke_lib/via_menu.py sets it.
         "BUILD",
         "DEVICE",
         "SHADER_COMPILE",
@@ -52,6 +54,7 @@ const std::unordered_set<std::string>& knownTags() {
         "OBJECTIVES",
         "COMBAT",   // COMBAT-TRACE-1: weapon-fire events (attacker/target wid+team). Opt-in.
         "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
+        "COMMANDER_TEAM", // [COMMANDER_TEAM v1]: a commander the logistics table cannot place takes the team its parts declare (code/mission_init.cpp). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.
         "VFX_COMBAT", // VFX combat-event trace the VFX oracle (Sol G3) reads to line effects up with weapon fire. Opt-in.
     }).release();
