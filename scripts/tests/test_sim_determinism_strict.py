@@ -166,3 +166,27 @@ def test_windowed_ticks_require_full_requested_run(monkeypatch, tmp_path, frames
 def test_check_passes_when_requested_window_fills_baseline(monkeypatch, tmp_path):
     rc, seen = run_check(monkeypatch, tmp_path, lambda d: d * 60)
     assert rc == 0 and seen == ["20"]
+
+
+_TICKS = "[SMOKE v1] event=tick_budget ticks=800\n[SMOKE v1] event=summary result=pass\n"
+_RENDER_ROW = "| mc2_03  | FAIL   | heartbeat_freeze_play,perf_counters_missing,vegetation_floor_missing | 0 | - | - | - | - |\n"
+
+
+@pytest.mark.parametrize("rc,text,ok", [
+    (0, _TICKS, True),
+    (1, _TICKS + _RENDER_ROW, True),                                                  # render-only buckets: headless by design
+    (1, _TICKS + _RENDER_ROW + "[runner] [DEPLOY_FINGERPRINT] HARD FAIL: smoke ran an exe whose identity failed\n", False),
+    (1, _TICKS + "> **DEPLOY_FINGERPRINT:** FAIL (required)\n" + _RENDER_ROW, False),
+    (1, _TICKS + "[DEPLOY_FINGERPRINT] MISMATCH: exe sha=abc expected=def\n" + _RENDER_ROW, False),
+    (1, _TICKS + "| mc2_03  | FAIL   | content_error,heartbeat_freeze_play | 0 | - |\n", False),  # a content failure stays red
+    (1, _TICKS + "| mc2_03  | FAIL   | crash_no_summary | 0 | - |\n", False),
+    (1, _TICKS, False),                                                               # rc=1 with no failed row: another gate failed
+    (1, _TICKS.replace("result=pass", "result=fail") + _RENDER_ROW, False),           # failed engine verdict
+    (1, _TICKS + "> **RUN INVALID — the missions' results do not count.**\n" + _RENDER_ROW, False),
+    (1, "[SMOKE v1] event=summary result=pass\n" + _RENDER_ROW, False),               # never reached the tick budget
+    (0, _TICKS + "Crash Report\n", False),
+    (2, _TICKS + _RENDER_ROW, False),
+])
+def test_headless_exit_ok_keeps_failed_verdicts_red(rc, text, ok):
+    """W116 item 3: rc=1 is only the render-gate verdict of a headless run, never a fingerprint or content failure."""
+    assert sim.headless_exit_ok(rc, text) is ok
