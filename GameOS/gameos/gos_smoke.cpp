@@ -1,4 +1,5 @@
 // GameOS/gameos/gos_smoke.cpp
+#include "mc2_czstring.h"
 #include "gos_smoke.h"
 
 #include <algorithm>
@@ -125,7 +126,7 @@ void parseArgs(int argc, char** argv) {
 
     // [[noreturn]] on lambdas requires C++23; use a local static function instead.
     struct ParseArgsFail {
-        [[noreturn]] static void missingValue(const char* flag) {
+        [[noreturn]] static void missingValue(mc2::czstring flag) {
             mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"{} requires value\"\n", mc2::fmt::safe(flag));
             std::fflush(stdout);
             std::exit(2);
@@ -199,7 +200,7 @@ void installAtexitSummary() {
     });
 }
 
-void emitTiming(const char* eventName) {
+void emitTiming(mc2::czstring eventName) {
     if (!g_state.enabled) return;
     double ms = elapsedMsSince(g_startupT0);
     mc2::fmt::print_out("[TIMING v1] event={} elapsed_ms={:.1f}\n", mc2::fmt::safe(eventName), ms);
@@ -364,7 +365,7 @@ void emitCleanSummary() {
     std::fflush(stdout);
 }
 
-void emitFailSummary(const char* reason, const char* stage) {
+void emitFailSummary(mc2::czstring reason, mc2::czstring stage) {
     if (!g_state.enabled) return;
     if (g_summaryEmitted.exchange(true)) return;
     mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason={} stage={}\n",

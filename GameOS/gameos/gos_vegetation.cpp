@@ -1,5 +1,6 @@
 // Vegetation population ownership and the per-frame GPU cull request. The population lives on the device (vk_vegetation_state);
 // the frame sends camera parameters and the block-visibility field, never a per-instance list.
+#include "mc2_czstring.h"
 #include "gos_vegetation.h"
 #include "vulkan_vfx_geometry.h"
 #ifdef MC2_VULKAN_ISLAND
@@ -134,7 +135,7 @@ mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
 }
 bool GosVegetation::isEnabled() { return !mc2::options::lowCost() && mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
 uint32_t GosVegetation::instanceCount() { return populationCount; }
-void GosVegetation::setAtlasPath(const char* path) { atlasOverride = path; }
+void GosVegetation::setAtlasPath(mc2::czstring path) { atlasOverride = path; }
 void GosVegetation::init() {
     if (initialized || !isEnabled()) return;
     const auto envPath = mc2::gate::str<"MC2_VEGETATION_ATLAS">();

@@ -1,6 +1,7 @@
 #ifndef GOS_POSTPROCESS_H
 #define GOS_POSTPROCESS_H
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <memory>
 #include <cstring>
@@ -272,7 +273,7 @@ private:
     // The retained HDRI source bytes the Vulkan sky and water islands upload; kept only while the Vulkan umbrella is armed.
     std::shared_ptr<struct HdriCpuImage> hdriCpu_;
     uint64_t      hdriCpuGeneration_ = 0;
-    void          loadHdri(const char* path, float* outSunAz, bool* outSunValid);   // sets hdriCpu_ and its generation
+    void          loadHdri(mc2::czstring path, float* outSunAz, bool* outSunValid);   // sets hdriCpu_ and its generation
     bool          hdriEnabled_     = false;  // resolved once from env at init
     bool          hdriReady_       = false;  // HDRI source is available to Vulkan
     // HDRI-SKY Item 2: GL-equirect azimuth (radians) of the baked sun in the

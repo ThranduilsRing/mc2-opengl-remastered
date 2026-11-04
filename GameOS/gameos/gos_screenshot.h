@@ -6,13 +6,14 @@
 // on the GL backend rejects the request with a log line and writes no file.
 #pragma once
 
+#include "mc2_czstring.h"
 #include "gos_screenshot_slot.h"   // DoneFn
 
 namespace gos { namespace screenshot {
 
 // Queue a TGA of the next presented frame. Returns false (and logs why) when a request is already pending, the path is empty, or the
 // Vulkan backend is not the one drawing. `done` may be null.
-bool request(const char* path, DoneFn done = nullptr);
+bool request(mc2::czstring path, DoneFn done = nullptr);
 
 // True while a request waits for the present readback; the present path reads the frame back when this is true.
 bool pending();

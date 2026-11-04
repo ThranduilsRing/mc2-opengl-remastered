@@ -2,6 +2,7 @@
 // See GameOS/include/mc2_verify.h for the contract and docs/verify-primitive.md
 // for the adoption protocol.
 
+#include "mc2_czstring.h"
 #include "mc2_verify.h"
 #include "platform_intrinsics.h"
 #include "Gates/gate.h"
@@ -73,7 +74,7 @@ long bump(volatile long* p)
 #endif
 }
 
-const char* basename_of(const char* file)
+const char* basename_of(mc2::czstring file)
 {
     const char* base = file;
     for (const char* p = file; *p; ++p)
@@ -82,7 +83,7 @@ const char* basename_of(const char* file)
     return base;
 }
 
-void emit_line(const char* line)
+void emit_line(mc2::czstring line)
 {
     mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
     std::fflush(stderr);
@@ -149,7 +150,7 @@ bool Fail(const char* file, int line, const char* cond, const char* fmt, ...)
     return false;
 }
 
-void MissionSummary(const char* label)
+void MissionSummary(mc2::czstring label)
 {
     const Mode m = mode();
     if (m == MODE_OFF)

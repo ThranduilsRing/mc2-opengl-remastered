@@ -40,6 +40,7 @@
 
 #pragma once
 
+#include "mc2_czstring.h"
 #include <array>
 #include <cstdint>
 
@@ -416,7 +417,7 @@ bool WaterFastPathOwnsArmedDraw();
 //                                indirect_solid_packed_quads=N
 //                                legacy_detail_overlay_quads=N
 // ---------------------------------------------------------------------------
-void ParityPrintMismatch(int frame, int quad, const char* layer, int tri,
+void ParityPrintMismatch(int frame, int quad, mc2::czstring layer, int tri,
                          int vert, const char* field,
                          uint32_t legacy, uint32_t fast);
 

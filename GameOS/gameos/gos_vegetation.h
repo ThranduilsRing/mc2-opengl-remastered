@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 
 namespace GosVegetation {
@@ -23,7 +24,7 @@ namespace GosVegetation {
 
     void init();
     void shutdown();
-    void setAtlasPath(const char* path);
+    void setAtlasPath(mc2::czstring path);
     // Most instances the placement may produce: the requested cap, the storage-buffer limit and what fits the residency preset + live GPU headroom,
     // so a big map places only what will be resident instead of placing everything and thinning it at upload. mapSpan bounds the region count.
     uint32_t populationCapacity(uint32_t requested, float mapSpan);
