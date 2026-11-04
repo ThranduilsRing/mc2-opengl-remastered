@@ -4032,6 +4032,16 @@
    "count": 1
   },
   {
+   "tag": "GRAVEYARD",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "retire_calls",
+    "nonempty"
+   ],
+   "count": 1
+  },
+  {
    "tag": "GROUND_CONTACT_BLOB",
    "ver": -1,
    "stream": "stderr",
@@ -11992,6 +12002,7 @@
   "FIRST60",
   "GLP",
   "GPUPROPS",
+  "GRAVEYARD",
   "HEARTBEAT",
   "INSTR",
   "ISO_DEPLOY",

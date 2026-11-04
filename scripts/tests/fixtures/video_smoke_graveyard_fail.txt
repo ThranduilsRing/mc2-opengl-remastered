@@ -1,0 +1,4 @@
+1 sim_overlap_violation marker line(s); first: [SIM_OVERLAP v1] VIOLATION render-read-while-tick-in-flight site=graveyard drain count=1 abort=1
+[runner] [ENV-DECLARED] 3 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_BOOT_VIDEO=1, MC2_DIAG_TAGS=GRAVEYARD, MC2_SIM_OVERLAP_AUDIT=2
+[SIM_OVERLAP v1] VIOLATION render-read-while-tick-in-flight site=graveyard drain count=1 abort=1
+[SIM_OVERLAP v1] FATAL SIGABRT thread=main in_flight=1 last_site=render-read-while-tick-in-flight graveyard drain
