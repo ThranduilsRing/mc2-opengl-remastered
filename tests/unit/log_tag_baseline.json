@@ -8711,6 +8711,13 @@
    "count": 1
   },
   {
+   "tag": "SHORELINE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "SHUTDOWN",
    "ver": -1,
    "stream": "stderr",
@@ -11747,7 +11754,7 @@
    "ver": 1,
    "stream": "stdout",
    "keys": [],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "WATER_SHORE_EDGE",
