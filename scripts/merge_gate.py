@@ -1334,6 +1334,10 @@ def main(argv=None):
     STOP_REQUESTED.clear()
     if not (args.dry_run or args.preflight) and threading.current_thread() is threading.main_thread():
         install_stage_watchdog()
+        from smoke_lib import host_lease
+        import atexit
+        host_lease.open_gate_window()   # lane game runs queue behind the whole gate, not just its stages
+        atexit.register(host_lease.close_gate_window)
     if args.j < 1:
         ap.error("-j must be positive")
     global DECLARED_VIEWS
