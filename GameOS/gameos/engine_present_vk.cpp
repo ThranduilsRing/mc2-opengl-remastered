@@ -11,6 +11,7 @@
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "mc2fmt.h"
 #include "mc2_hitch_trace.h"   // frame-fence wait attribution for the hitch trace
+#include "hitch_stats.h"
 #include "vk_island_util.h"
 #include "vk_texture_residency.h"
 #include "vk_one_shot.h"
@@ -250,7 +251,10 @@ bool waitCompositeSlot(EnginePresentVk::Impl& s, EnginePresentHealth& health) {
     const VkFence fence = s.curInFlight().get();
     const VkResult result = vkWaitForFences(s.dev, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000);
     health.composite_wait_us_last = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count();
-    if (!present_thread::onWorker()) mc2_hitch::RecordFenceWait(health.composite_wait_us_last / 1000.0);
+    if (!present_thread::onWorker()) {
+        mc2_hitch::RecordFenceWait(health.composite_wait_us_last / 1000.0);
+        mc2_hitch2::noteWait(mc2_hitch2::kSlot, "present_composite", health.composite_wait_us_last / 1000.0);
+    }
     if (result != VK_SUCCESS) return false;
     health.composite_wait_us_accum += health.composite_wait_us_last;
     ++health.composite_wait_samples;
@@ -2038,8 +2042,6 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Direct-chain: scene (+objectId) already Vulkan-owned by upstream islands, so
     // no per-image frame-begin and no GL<->VK handoff. The fences remain unused.
-    VkFrameSync fsScene{};
-    VkFrameSync fsObjectId{};
 
     // The worker retires the next slot before releasing main; inline mode retains the original wait here.
     if (!present_thread::enabled() && !waitCompositeSlot(s, health_)) return false;
@@ -2168,7 +2170,6 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     if (vkEndCommandBuffer(cc) != VK_SUCCESS)
         return false;
-    (void)fsScene; (void)fsObjectId;
 
     // VK-PRESENT-SINGLESUBMIT-1: NO submit and NO drain here. The recorded cbuf is
     // submitted by presentFrame together with the tail (HUD/ImGui + swapchain

@@ -26,22 +26,25 @@
 #include <tlhelp32.h>
 
 namespace {
-// Host load stamped into the FIRST60 line so a perf verdict taken on a busy machine can be discounted: whole-machine CPU busy percent between two
-// samples, and how many other mc2.exe processes were running.
-struct CpuSample { unsigned long long idle = 0, total = 0; };
+// Host load stamped into the FIRST60 line so a perf verdict taken on a busy machine can be discounted: CPU busy percent of everything except this
+// process between two samples, and how many other mc2.exe processes were running.
+struct CpuSample { unsigned long long idle = 0, total = 0, self = 0; };
 CpuSample sampleCpu() {
-    FILETIME i, k, u;
+    FILETIME i, k, u, c, e, sk, su;
     CpuSample s;
+    auto q = [](const FILETIME& f) { return (static_cast<unsigned long long>(f.dwHighDateTime) << 32) | f.dwLowDateTime; };
     if (GetSystemTimes(&i, &k, &u)) {
-        auto q = [](const FILETIME& f) { return (static_cast<unsigned long long>(f.dwHighDateTime) << 32) | f.dwLowDateTime; };
         s.idle = q(i);
         s.total = q(k) + q(u);   // kernel time includes idle
     }
+    if (GetProcessTimes(GetCurrentProcess(), &c, &e, &sk, &su)) s.self = q(sk) + q(su);
     return s;
 }
 double cpuBusyPct(const CpuSample& a, const CpuSample& b) {
-    const unsigned long long dt = b.total - a.total, di = b.idle - a.idle;
-    return dt ? 100.0 * (1.0 - static_cast<double>(di) / static_cast<double>(dt)) : -1.0;
+    const unsigned long long dt = b.total - a.total, di = b.idle - a.idle, ds = b.self - a.self;
+    if (!dt) return -1.0;
+    const double busy = static_cast<double>(dt - di), mine = static_cast<double>(ds);
+    return 100.0 * (busy > mine ? busy - mine : 0.0) / static_cast<double>(dt);
 }
 std::optional<int> otherMc2Count() {
     int n = 0;
@@ -200,11 +203,16 @@ void samplePerf(double frameMs) {
         static double s_loadFrameMs = 0.0;
         static bool s_loadFrameSeen = false;
         static CpuSample s_cpu0;
+        static mc2_hitch2::Snapshot s_base;   // every counter as it stood when the window opened: the window is now minus this
+        static int s_otherMc2 = -1;
         if (g_missionReadyT && !s_loadFrameSeen) {
             // The frame that was running when mission_ready fired contains the whole mission load; it is reported apart, not in the window.
             s_loadFrameSeen = true;
             s_loadFrameMs = frameMs;
             s_cpu0 = sampleCpu();
+            s_base = mc2_hitch2::takeSnapshot();
+            mc2_hitch2::beginWaitWindow();
+            s_otherMc2 = otherMc2Count().value_or(-1);   // the process snapshot costs ms: take it here, not in a window frame
         } else if (g_missionReadyT && s_n < kN) {
             s_ms[s_n++] = frameMs;
             if (s_n == kN && mc2_diag::tagRequested("FIRST60")) {
@@ -223,10 +231,16 @@ void samplePerf(double frameMs) {
                 std::string w;
                 for (int i = 0; i < 5; ++i) w += std::to_string(worst[i]) + ":" + std::to_string(static_cast<int>(s_ms[worst[i]] * 10.0) / 10.0).substr(0, 6) + (i < 4 ? "," : "");
                 auto& hs = mc2_hitch2::stats();
-                mc2::fmt::print_out("[FIRST60 v2] worst5={} bake_cache={} bake_state={} waitidle_n={:d} waitidle_ms={:.2f} fence_n={:d} fence_ms={:.2f} fence_max_ms={:.2f} staged_kb={:d} host_cpu_pct={:.0f} other_mc2={:d} device={}\n", mc2::fmt::safe(w.c_str()),
-                    mc2::fmt::safe(hs.bakeCache.load()), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::as_i32(static_cast<int>(hs.waitIdleCount.load())),
-                    hs.waitIdleNs.load() / 1e6, mc2::fmt::as_i32(static_cast<int>(hs.fenceWaitCount.load())), hs.fenceWaitNs.load() / 1e6, hs.fenceWaitMaxNs.load() / 1e6,
-                    mc2::fmt::as_i32(static_cast<int>(hs.stagedBytes.load() / 1024)), cpuBusyPct(s_cpu0, sampleCpu()), mc2::fmt::as_i32(otherMc2Count().value_or(-1)), mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
+                // Window numbers are the 60 frames after the load frame (now minus the snapshot taken at the load frame); load_* is everything before it.
+                const mc2_hitch2::Snapshot now = mc2_hitch2::takeSnapshot();
+                const auto& one = hs.wait[mc2_hitch2::kOneShot];
+                const auto& slot = hs.wait[mc2_hitch2::kSlot];
+                mc2::fmt::print_out("[FIRST60 v2] worst5={} bake_cache={} bake_state={} waitidle_n={:d} waitidle_ms={:.2f} fence_n={:d} fence_ms={:.2f} fence_max_ms={:.2f} behind_upload_ms={:.2f} slot_n={:d} slot_ms={:.2f} slot_max_ms={:.2f} staged_kb={:d} load_waitidle_ms={:.2f} load_fence_ms={:.2f} load_slot_ms={:.2f} load_staged_kb={:d} host_cpu_pct={:.0f} other_mc2={:d} device={}\n", mc2::fmt::safe(w.c_str()),
+                    mc2::fmt::safe(hs.bakeCache.load()), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::as_i32(static_cast<int>(now.idleN - s_base.idleN)),
+                    (now.idleNs - s_base.idleNs) / 1e6, mc2::fmt::as_i32(static_cast<int>(now.waitN[0] - s_base.waitN[0])), (now.waitNs[0] - s_base.waitNs[0]) / 1e6, one.windowMaxNs.load() / 1e6,
+                    (now.behindNs - s_base.behindNs) / 1e6, mc2::fmt::as_i32(static_cast<int>(now.waitN[1] - s_base.waitN[1])), (now.waitNs[1] - s_base.waitNs[1]) / 1e6, slot.windowMaxNs.load() / 1e6,
+                    mc2::fmt::as_i32(static_cast<int>((now.staged - s_base.staged) / 1024)), s_base.idleNs / 1e6, s_base.waitNs[0] / 1e6, s_base.waitNs[1] / 1e6,
+                    mc2::fmt::as_i32(static_cast<int>(s_base.staged / 1024)), cpuBusyPct(s_cpu0, sampleCpu()), mc2::fmt::as_i32(s_otherMc2), mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
                 std::fflush(stdout);
             }
         }
@@ -238,7 +252,7 @@ void samplePerf(double frameMs) {
         static uint64_t s_frame = 0, s_wic = 0, s_win = 0, s_pc = 0, s_ub = 0, s_om = 0, s_db = 0, s_sj = 0, s_fc = 0, s_fn = 0, s_sb = 0;
         const uint64_t wic = hs.waitIdleCount.load(), win = hs.waitIdleNs.load(), pc = hs.pipelineCreates.load(), ub = hs.uploadBytes.load(),
                        om = hs.objMapRecords.load(), db = hs.dirtyBatches.load(), sj = hs.simJoinNs.load(),
-                       fc = hs.fenceWaitCount.load(), fn = hs.fenceWaitNs.load(), sb = hs.stagedBytes.load();
+                       fc = hs.wait[0].count.load() + hs.wait[1].count.load(), fn = hs.wait[0].ns.load() + hs.wait[1].ns.load(), sb = hs.stagedBytes.load();
         auto& sc = mc2_hitch2::scopes();
         if (g_missionReadyT) {
             ++s_frame;

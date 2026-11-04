@@ -30,7 +30,6 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     allocator_ = allocator;
     admission.commit(reinterpret_cast<uint64_t>(allocation), name);
     nameObjectAt(device, buffer_, name, i0, i1);
-    if (info.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) mc2_hitch2::noteStaged(requirements.size);   // every staging buffer, not only UploadBatch's
     return true;
 }
 
@@ -51,6 +50,7 @@ bool OwnedBuffer::createFilled(VmaAllocator allocator, VkDevice device, const vo
         reset();
         return false;
     }
+    if (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) mc2_hitch2::noteStaged(bytes);   // createFilled with TRANSFER_SRC is a staging copy; the frame ring and other persistent buffers are not
     return true;
 }
 
