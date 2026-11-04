@@ -5,6 +5,7 @@ MC2_HOST_CORES_PER_SLOT selects physical cores per slot (default 2).
 Slot count has ONE source for every worktree: 3 while the owner cores 0-1 waiver file (WAIVER_PATH, holds an expiry epoch)
 is live, otherwise 2. MC2_HOST_GAME_SLOTS is honoured only under a private test/farm lease file. Cores 0..1 stay reserved.
 Queue order: merge-gate stages (MC2_IN_GATE=1) and exclusive holds go ahead of pass/fail runs; FIFO within a class.
+While a full gate runs (gate window marker, see open_gate_window) pass/fail runs also wait out the gaps between its stages.
 MC2_HOST_LEASE_EXCLUSIVE=1 reserves every slot. Batch hold/release keeps a reservation
 across a serial chain. Dead holders and tickets recover automatically. Private paths
 isolate tests; disabling leases requires MC2_OWNER_NO_LEASE=1.
@@ -249,6 +250,36 @@ def _read(path: Path) -> Optional[dict]:
         return None
 
 
+GATE_WINDOW_TTL_S = 4 * 3600.0           # a marker older than this is ignored: a hung gate must not starve lanes forever
+
+
+def gate_window_path() -> Path:
+    return lease_path().with_suffix(".gate.json")
+
+
+def open_gate_window() -> None:
+    """Called by the merge gate for its whole run: lane (non-gate) game runs queue behind it, with no interleaving between stages."""
+    pid = os.getpid()
+    _write_record(gate_window_path(), {"pid": pid, "created": child_registry.process_create_time(pid), "started": time.time()})
+
+
+def close_gate_window() -> None:
+    rec = _read(gate_window_path())
+    if rec and rec.get("pid") == os.getpid():
+        try:
+            gate_window_path().unlink()
+        except OSError:
+            pass
+
+
+def gate_window_blocks(now: Optional[float] = None) -> bool:
+    """True while a live gate (not this process) holds the window and the marker is inside its TTL."""
+    rec = _read(gate_window_path())
+    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec):
+        return False
+    return (now if now is not None else time.time()) - float(rec.get("started", 0)) <= GATE_WINDOW_TTL_S
+
+
 def _holder_alive(rec: Optional[dict]) -> bool:
     if not rec:
         return False
@@ -412,7 +443,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                         if (not slot_path(i).exists() or (_read(slot_path(i)) or {}).get("legacy_guard"))
                         and not any(affinity_mask(i) & mask for mask in occupied)]
                 legacy = any("slot" not in rec for _, rec in live) or (lease_path().exists() and _read(lease_path()) is None)
-                eligible = queue[0] == ticket and not foreign and not legacy and (not live if exclusive else
+                eligible = queue[0] == ticket and not foreign and not legacy and not (priority == 1 and gate_window_blocks()) and (not live if exclusive else
                             bool(free) and not any(r.get("exclusive") for _, r in live))
                 if eligible:
                     allocated = []

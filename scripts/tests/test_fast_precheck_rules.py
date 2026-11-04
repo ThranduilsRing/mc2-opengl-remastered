@@ -169,3 +169,37 @@ def test_print_err_is_a_print_site():
 def test_bad_git_range_fails_instead_of_passing(capsys):
     assert ult.main(["--base", "no-such-ref-xyz", "--head", "HEAD"]) == 1
     assert "FAIL" in capsys.readouterr().out
+
+
+def test_warm_tree_lock_covers_only_the_build(monkeypatch, tmp_path):
+    import threading
+    held = threading.local()   # the lock is per thread: the build runs concurrently with the check chains
+    seen = []
+
+    class Lock:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            held.now = True
+
+        def __exit__(self, *e):
+            held.now = False
+    monkeypatch.setattr(lm, "TreeLock", Lock)
+    monkeypatch.setattr(lm, "git_out", lambda root, *a: "abc")
+    monkeypatch.setattr(lm, "virtual_merge", lambda *a, **k: ("tree", []))
+    monkeypatch.setattr(lm, "virtual_head", lambda *a, **k: "vcommit")
+    monkeypatch.setattr(lm, "ensure_precheck_tree", lambda *a, **k: None)
+    monkeypatch.setattr(lm, "stale_inventories", lambda *a, **k: [])
+    monkeypatch.setattr(lm, "precheck_scratch_base", lambda root: str(tmp_path))
+
+    def fake_run(root, cmd, **k):
+        text = " ".join(map(str, cmd))
+        seen.append((text, getattr(held, "now", False)))
+        return type("R", (), {"returncode": 0, "stdout": ""})()
+    monkeypatch.setattr(lm, "run", fake_run)
+    assert lm.precheck(ROOT, "tip", True) == 0
+    build = [h for t, h in seen if "configure_ninja" in t or "ninja_build" in t]
+    other = [h for t, h in seen if "configure_ninja" not in t and "ninja_build" not in t]
+    assert len(build) == 3 and all(build)          # configure + two links run under the lock
+    assert len(other) >= 8 and not any(other)      # ratchets, callers, pytest suites never do

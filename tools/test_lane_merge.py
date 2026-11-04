@@ -104,7 +104,9 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
     assert len(seen) == 14
-    assert all(root == str(tree) for root, _ in seen)
+    # only configure + link run in the warm tree; the checks run in shared clones
+    build = [r for r, cmd in seen if any(x in " ".join(cmd) for x in ("configure_ninja.py", "ninja_build.py"))]
+    assert build and all(root == str(tree) for root in build)
     assert not lm._inside(str(tree), str(repo))
     for _, cmd in seen:
         if "scripts/ninja_build.py" in cmd:
@@ -114,7 +116,7 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     # second run reuses the existing tree (checkout, not worktree add)
     seen.clear()
     lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"])
-    assert seen and all(root == str(tree) for root, _ in seen)
+    assert seen and any(root == str(tree) for root, _ in seen)
     out = capsys.readouterr().out
     assert "link-mc2=" in out and "tree-checkout=" in out
 

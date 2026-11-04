@@ -104,6 +104,7 @@ def main():
             atomic_json(output / 'result.json', {'status': 'interrupted', 'returncode': None})
             path.replace(path.with_suffix('.done'))
         while not (root / 'stop').exists():
+            atomic_json(root / 'heartbeat.json', {'time': time.time()})  # host.py alive: file age = worker liveness
             poll_once(root)
             time.sleep(1)
 

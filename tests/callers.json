@@ -2703,7 +2703,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 27,
+          "line": 30,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -2794,14 +2794,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 552,
+          "line": 583,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 555,
+          "line": 586,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -3423,6 +3423,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/land_queue.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless children)"
+        },
+        {
           "path": "tools/lane_merge.py",
           "line": 65,
           "evidence": "import",
@@ -3780,6 +3787,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/test_land_queue.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/test_lane_merge.py",
           "line": 15,
           "evidence": "import",
@@ -3994,28 +4008,28 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 136,
+          "line": 139,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity, staleness_report"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 367,
+          "line": 370,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 746,
+          "line": 778,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1193,
+          "line": 1232,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4246,7 +4260,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 310,
+          "line": 312,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4289,7 +4303,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 134,
+          "line": 137,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4553,7 +4567,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 644,
+          "line": 647,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4792,7 +4806,7 @@
         },
         {
           "path": "scripts/tests/test_gate_farm.py",
-          "line": 249,
+          "line": 277,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -5651,7 +5665,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 850,
+          "line": 852,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -6137,7 +6151,7 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait, child_registry"
@@ -6475,14 +6489,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 27,
+          "line": 28,
           "evidence": "import",
           "reference": "bounded_wait",
           "text": "import bounded_wait                   # type: ignore"
@@ -6540,14 +6554,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 28,
+          "line": 29,
           "evidence": "import",
           "reference": "child_registry",
           "text": "import child_registry                 # type: ignore"
@@ -7788,7 +7802,7 @@
       "callers_by_basename": [
         {
           "path": "tools/mod_smoke.py",
-          "line": 913,
+          "line": 915,
           "evidence": "command",
           "reference": "scripts/sweep_campaign.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=secs + 120,"
@@ -8390,6 +8404,13 @@
       "path": "scripts/tests/test_lighting_divergence.py",
       "basename": "test_lighting_divergence.py",
       "stem": "test_lighting_divergence",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_lint.py",
+      "basename": "test_lint.py",
+      "stem": "test_lint",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -11464,6 +11485,21 @@
       ]
     },
     {
+      "path": "tools/land_queue.py",
+      "basename": "land_queue.py",
+      "stem": "land_queue",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_land_queue.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.land_queue",
+          "text": "from tools import land_queue as lq  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "tools/lane_merge.py",
       "basename": "lane_merge.py",
       "stem": "lane_merge",
@@ -11478,7 +11514,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 33,
+          "line": 36,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -11500,6 +11536,13 @@
         {
           "path": "scripts/tests/test_fast_precheck_rules.py",
           "line": 10,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lint.py",
+          "line": 9,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm  # noqa: E402"
@@ -11527,21 +11570,21 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 123,
+          "line": 125,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 134,
+          "line": 136,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 402,
+          "line": 404,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -13168,14 +13211,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 600,
+          "line": 602,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 636,
+          "line": 638,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -13247,7 +13290,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 475,
+          "line": 477,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -13514,35 +13557,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 352,
+          "line": 354,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 474,
+          "line": 476,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 516,
+          "line": 518,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 618,
+          "line": 620,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 637,
+          "line": 639,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -13672,14 +13715,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 135,
+          "line": 138,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 285,
+          "line": 288,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -14783,7 +14826,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 137,
+          "line": 140,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"
@@ -18398,6 +18441,13 @@
       "path": "tools/test_kill_build_tree.py",
       "basename": "test_kill_build_tree.py",
       "stem": "test_kill_build_tree",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_land_queue.py",
+      "basename": "test_land_queue.py",
+      "stem": "test_land_queue",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

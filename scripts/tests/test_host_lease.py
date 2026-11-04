@@ -629,3 +629,33 @@ def test_gate_tickets_go_ahead_of_a_queued_pass_fail_run(lease, monkeypatch, in_
     finally:
         waiting.kill()
         waiting.wait()
+
+
+def test_lane_run_waits_out_the_gap_between_gate_stages(lease, monkeypatch):
+    """A live gate window blocks pass/fail runs even when no gate ticket is queued; gate stages pass."""
+    holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], **console_child.child_kwargs(redirected=True))
+    try:
+        def marker(started):
+            host_lease._write_record(host_lease.gate_window_path(), {"pid": holder.pid, "created": host_lease.child_registry.process_create_time(holder.pid), "started": started})
+        marker(time.time())
+        monkeypatch.delenv("MC2_IN_GATE", raising=False)
+        with pytest.raises(host_lease.HostLeaseBusy):
+            host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)
+        marker(time.time() - host_lease.GATE_WINDOW_TTL_S - 5)
+        host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)   # stale marker: ignored
+        assert host_lease.holds()
+        host_lease.release()
+        marker(time.time())
+        monkeypatch.setenv("MC2_IN_GATE", "1")
+        host_lease.acquire("gate stage", wait=False, scan=lambda: [], log=lambda m: None)
+        assert host_lease.holds()
+    finally:
+        holder.kill()
+        holder.wait()
+
+
+def test_gate_window_open_close_roundtrip(lease):
+    host_lease.open_gate_window()
+    assert host_lease.gate_window_path().exists() and not host_lease.gate_window_blocks()   # our own marker never blocks us
+    host_lease.close_gate_window()
+    assert not host_lease.gate_window_path().exists()
