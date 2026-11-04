@@ -1272,3 +1272,15 @@ def test_window_reuse_is_keyed_on_the_tree_not_the_clock():
     assert not gate.window_reusable(window, "def", now=1)
     assert gate.window_reusable({"started": 100}, "x", now=200)
     assert not gate.window_reusable({"started": 100}, "x", now=5000)
+
+
+def test_in_gate_flag_only_on_game_stages():
+    import merge_gate as gate
+    for name in ("contracts", "harnesses", "pytest"):
+        assert gate.gate_env(name) == {}
+    for name in ("tier1", "mods", "saveload-mc2_01", "determinism-mc2_03"):
+        assert gate.gate_env(name) == {"MC2_IN_GATE": "1"}
+
+
+def test_conftest_clears_inherited_gate_flag():
+    assert "MC2_IN_GATE" not in os.environ

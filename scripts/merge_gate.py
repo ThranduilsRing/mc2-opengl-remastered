@@ -41,6 +41,14 @@ EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
 
+OFFLINE_STAGES = ("contracts", "harnesses", "pytest")
+
+
+def gate_env(name):
+    """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
+    stages run test suites that must see the same environment a lane sees."""
+    return {} if name in OFFLINE_STAGES else {"MC2_IN_GATE": "1"}
+
 
 def window_reusable(window, tree, now=None):
     """A6: lane_merge verification may be reused when the window recorded the commit tree and it is still HEAD's tree
@@ -931,7 +939,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             nonlocal harness_future
             if contracts and harness and command == contracts[1]:
                 harness_future = pool.submit(timed_child, harness[1], cwd,
-                    dict(os.environ, **harness[2], MC2_IN_GATE="1"))
+                    dict(os.environ, **harness[2]))
             if harness_future and command == harness[1]:
                 return harness_future.result()
             return run_child(command, cwd=cwd, env=env)
@@ -1167,12 +1175,12 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     with game_batch() as batch_env:
                         waited = time.monotonic() - lease_started
                         held_started = time.monotonic()
-                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, MC2_IN_GATE="1"))
+                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name)))
                     held = time.monotonic() - held_started
                     EXCLUSIVE_SECONDS.append(held)
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
                 else:
-                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, MC2_IN_GATE="1"))
+                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name)))
                 if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])
