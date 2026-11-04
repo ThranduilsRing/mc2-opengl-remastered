@@ -26,6 +26,7 @@ ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
 #include"tacordr.h"
 #include "mc2_dialog.h"
 #include "mc2fmt.h"
+#include "../mclib/sim_overlap.h"
 #include <utility>
 
 // Squad status: one short word for a mech's current activity, and a rank so a
@@ -777,6 +778,8 @@ void ForceGroupBar::render()
 
 void ForceGroupBar::removeAll()
 {
+	// Icons may own a live pilot video (gos texture); destroy only on Main (audit-only).
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Main, "ForceGroupBar::removeAll");
 	for ( int i = 0; i < iconCount; i++ )
 	{
 		if ( icons[i] )
