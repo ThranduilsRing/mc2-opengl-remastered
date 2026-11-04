@@ -19,10 +19,6 @@ using byte = unsigned char;
 //sebi
 //typedef unsigned size_t;
 
-#ifndef NULL
-#define NULL	0
-#endif
-
 #ifndef TRUE
 #define TRUE	1
 #endif

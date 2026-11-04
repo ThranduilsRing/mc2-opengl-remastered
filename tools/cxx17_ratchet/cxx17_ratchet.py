@@ -71,6 +71,9 @@ PLATFORM_API_EXEMPT = {
     "GameOS/include/platform_winbase.h": ("LG11",),
     "GameOS/src/platform_winbase.cpp": ("LG05", "LG06", "LG11"),
     "GameOS/include/platform_stdlib.h": ("LG06",),
+    # Win32 SDK stand-ins for non-Windows builds: they must spell NULL and the SDK typedefs as <windows.h> does.
+    "GameOS/include/platform_windef.h": ("LG01",),
+    "GameOS/include/platform_winnt.h": ("LG02",),
 }
 EXTS = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl")
 EXCLUDE_PARTS = {"3rdparty", "graphify-out", "__pycache__", ".git", "out", "Tracy"}

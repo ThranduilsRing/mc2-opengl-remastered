@@ -16,10 +16,6 @@ inline constexpr int BASE_BITS = 9;
 inline constexpr int MAX_BIT_INDEX = (1 << BASE_BITS);
 constexpr unsigned int NO_RAM_FOR_LZ_DECOMP = 0xCBCB0002;
 
-#ifndef NULL
-#define NULL			0
-#endif
-
 #include <zlib.h>
 
 using MemoryPtr = unsigned char*;
