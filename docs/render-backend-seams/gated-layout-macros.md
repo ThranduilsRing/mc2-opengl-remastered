@@ -534,7 +534,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:30`
+- Header: `GameOS/gameos/vk_image_resource.h:29`
 - Class: `VkImageResource`  (data-member)
 - Member: `mc2vk::OwnedRawImage     image;`
 - Consuming targets: gameos
@@ -542,7 +542,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:31`
+- Header: `GameOS/gameos/vk_image_resource.h:30`
 - Class: `VkImageResource`  (data-member)
 - Member: `VkDeviceSize      memSize = 0;`
 - Consuming targets: gameos
@@ -550,7 +550,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:32`
+- Header: `GameOS/gameos/vk_image_resource.h:31`
 - Class: `VkImageResource`  (data-member)
 - Member: `mc2vk::OwnedImageView    view;`
 - Consuming targets: gameos
@@ -558,7 +558,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:33`
+- Header: `GameOS/gameos/vk_image_resource.h:32`
 - Class: `VkImageResource`  (data-member)
 - Member: `uint32_t          w = 0, h = 0;`
 - Consuming targets: gameos
@@ -566,7 +566,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:34`
+- Header: `GameOS/gameos/vk_image_resource.h:33`
 - Class: `VkImageResource`  (data-member)
 - Member: `VkFormat          format  = VK_FORMAT_UNDEFINED;`
 - Consuming targets: gameos
@@ -574,7 +574,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:35`
+- Header: `GameOS/gameos/vk_image_resource.h:34`
 - Class: `VkImageResource`  (data-member)
 - Member: `VkImageUsageFlags usage   = 0;`
 - Consuming targets: gameos
@@ -582,15 +582,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_image_resource.h:38`
-- Class: `VkImageResource`  (data-member)
-- Member: `mc2vk::OwnedFence     frameFence[2];`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_image_resource.h:43`
+- Header: `GameOS/gameos/vk_image_resource.h:37`
 - Class: `VkImageResource`  (data-member)
 - Member: `VkDevice          device = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -3190,4 +3182,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 398 guard(s) analyzed, 0 violation(s).
+Result: 397 guard(s) analyzed, 0 violation(s).
