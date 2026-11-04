@@ -947,6 +947,20 @@ def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
             raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout + r.stderr))
 
 
+def stale_inventories(root: str, commit: str, regen=None) -> list[str]:
+    """A9: derived inventories that regenerating at `commit` would change (empty = fresh). The batch regenerates and
+    commits them anyway; failing here moves that cost from the merge window to the lane."""
+    regen = regen or regenerate_all
+    proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
+    with tempfile.TemporaryDirectory(prefix="stale-inv-", dir=proof_root) as scratch:
+        snapshot = os.path.join(scratch, "tree")
+        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+        if r.returncode:
+            raise Stop(5, "clone failed: " + failure_summary(r.stdout))
+        git_out(snapshot, "checkout", "--quiet", "--detach", commit)
+        return list(regen(snapshot))
+
+
 def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
@@ -1005,6 +1019,14 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
 
         tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", base_ref, "--head", commit])
         stage(tag_step[0], root, tag_step[1])
+
+        def inventory_fresh():
+            changed = stale_inventories(root, commit)
+            word = "FAIL" if changed else "PASS"
+            print(f"precheck: inventories: {word}" + (" (stale: " + ", ".join(changed) + "; regenerate with tools/lane_merge.py --regenerate-all and commit)" if changed else ""), flush=True)
+            if changed:
+                failed.append("inventories-stale:" + ",".join(changed))
+        timed("inventories", inventory_fresh)
 
         def run_steps(workdir):
             for label, command in steps:

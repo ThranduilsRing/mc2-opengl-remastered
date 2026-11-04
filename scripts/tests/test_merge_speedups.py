@@ -1284,3 +1284,18 @@ def test_in_gate_flag_only_on_game_stages():
 
 def test_conftest_clears_inherited_gate_flag():
     assert "MC2_IN_GATE" not in os.environ
+
+
+def test_stale_inventories_reports_what_regeneration_would_change(tmp_path):
+    repo = tmp_path / "r"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)
+    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    assert lm.stale_inventories(str(repo), sha, regen=lambda tree: ["docs/a.json"]) == ["docs/a.json"]
+    assert lm.stale_inventories(str(repo), sha, regen=lambda tree: []) == []
+
+
+def test_precheck_fails_on_stale_inventory():
+    import inspect
+    src = inspect.getsource(lm.precheck)
+    assert "stale_inventories(root, commit)" in src and 'failed.append("inventories-stale:' in src
