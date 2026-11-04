@@ -286,7 +286,7 @@ class EditorSmokeTests(unittest.TestCase):
 
     def test_all_required_workflows(self):
         self.assertEqual(smoke.grade_workflows(panel_lines()), "")
-        self.assertEqual(len(set(smoke.WORKFLOW_PANELS.values())), 8)
+        self.assertEqual(len(set(smoke.WORKFLOW_PANELS.values())), 9)
 
     def test_missing_failed_and_mislabelled_panel_are_red(self):
         lines = panel_lines()

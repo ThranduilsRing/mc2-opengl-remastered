@@ -708,6 +708,9 @@ int	EditorInterface::paintBuildings( int message )
 
 int EditorInterface::Erase()
 {
+	// Route mode: Delete removes the selected waypoint, not the unit.
+	if ( UnitBrainPanel::RouteDeleteSelected() )
+		return true;
 	if ( selecting && ( EditorObjectMgr::instance()->hasSelection() ||
 		land->hasSelection() ) )
 	{

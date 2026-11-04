@@ -4,6 +4,7 @@
 #include "CampaignSummaryPanel.h"
 #include "ObjectivesSummaryPanel.h"
 #include "UnitBrainPanel.h"
+#include "EditorCommands.h"
 #include "InspectorPanel.h"
 #include "AssetBrowser.h"
 #include "MapGeneratorDialog.h"
@@ -192,6 +193,99 @@ void EditorInterface::runCatalogReferenceSmoke()
 	}
 }
 
+static Unit* EditorSmokeUnitById(long id)
+{
+	EditorObjectMgr* mgr = EditorObjectMgr::instance();
+	if (mgr)
+		for (auto* u : mgr->getUnits())
+			if (u && u->getID() == id)
+				return u;
+	return nullptr;
+}
+
+static bool EditorSmokeRouteEq(const std::vector<glm::vec3>& a, const std::vector<glm::vec3>& b)
+{
+	if (a.size() != b.size())
+		return false;
+	for (size_t i = 0; i < a.size(); ++i)
+		if (fabsf(a[i].x - b[i].x) > 0.5f || fabsf(a[i].y - b[i].y) > 0.5f)
+			return false;
+	return true;
+}
+
+// S1 route tool: on the reloaded brain unit, author a route through the viewport gestures
+// (facade set, Alt insert, drag move, Ctrl delete-one, Shift stroke, click append, Delete key,
+// once->loop), each exactly one undo step; assign it to a second unit as one step; then save
+// -> reload -> equal. The game admits the saved keys through Mission::admitAuthoredRoutes.
+// Restores e0_authored.pak afterwards so later smoke sections see the same map.
+static bool runRouteSmoke(Unit* unit)
+{
+	EditorObjectMgr* mgr = EditorObjectMgr::instance();
+	Unit* peer = nullptr;
+	if (mgr)
+		for (auto* u : mgr->getUnits())
+			if (u && u != unit) { peer = u; break; }
+	if (!unit || !peer || !ActionUndoMgr::instance)
+		return false;
+	ActionUndoMgr& undo = *ActionUndoMgr::instance;
+	const glm::vec3 o = unit->getPosition();
+	const auto at = [&](float dx, float dy) { return glm::vec3(o.x + dx, o.y + dy, 0.0f); };
+	std::vector<std::vector<glm::vec3>> routes;
+	std::vector<int> types;
+	const auto snap = [&]() { routes.push_back(unit->getWaypoints()); types.push_back(unit->getOrderType()); };
+	const auto press = [&](const glm::vec3& p, bool ctrl, bool alt, bool shift) { return UnitBrainPanel::RoutePress(p.x, p.y, p.z, ctrl, alt, shift); };
+	const auto drag = [&](float dx, float dy) { const glm::vec3 p = at(dx, dy); UnitBrainPanel::RouteDrag(p.x, p.y, p.z); };
+	snap();
+	bool ok = EditorCommands::setRoute(unit, Unit::ORDER_MOVE, {at(256, 0), at(512, 0), at(512, 256)});
+	snap();
+	UnitBrainPanel::BeginWaypointPlace(unit->getID());
+	ok = ok && press(at(384, 8), false, true, false) && unit->getWaypointCount() == 4 && unit->getWaypoints()[1] == at(384, 8);
+	snap();
+	ok = ok && press(at(512, 0), false, false, false) && UnitBrainPanel::RouteGestureActive();
+	drag(640, 128);
+	ok = ok && UnitBrainPanel::RouteRelease() && unit->getWaypoints()[2] == at(640, 128);
+	snap();
+	ok = ok && press(at(384, 8), true, false, false) && unit->getWaypointCount() == 3;
+	snap();
+	ok = ok && press(at(768, 512), false, false, true);
+	drag(832, 512);
+	drag(1024, 512);
+	drag(1280, 512);
+	ok = ok && UnitBrainPanel::RouteRelease() && unit->getWaypointCount() == 6;
+	snap();
+	ok = ok && press(at(1280, 768), false, false, false) && unit->getWaypointCount() == 7;
+	snap();
+	ok = ok && UnitBrainPanel::RouteDeleteSelected() && unit->getWaypointCount() == 6;
+	snap();
+	UnitBrainPanel::EndWaypointPlace();
+	ok = ok && EditorCommands::setRoute(unit, Unit::ORDER_PATROL, unit->getWaypoints());
+	snap();
+	const size_t steps = routes.size() - 1;
+	bool undoOk = ok;
+	for (size_t k = steps; undoOk && k > 0; --k)
+		undoOk = undo.Undo() && unit->getWaypoints() == routes[k - 1] && unit->getOrderType() == types[k - 1];
+	for (size_t k = 1; undoOk && k <= steps; ++k)
+		undoOk = undo.Redo() && unit->getWaypoints() == routes[k] && unit->getOrderType() == types[k];
+	const std::vector<glm::vec3> peerBefore = peer->getWaypoints();
+	const bool assigned = undoOk && EditorCommands::assignRoute(unit, {unit, peer}) == 1
+		&& peer->getWaypoints() == unit->getWaypoints() && peer->getOrderType() == Unit::ORDER_PATROL
+		&& undo.Undo() && peer->getWaypoints() == peerBefore && unit->getWaypoints() == routes[steps]
+		&& undo.Redo() && peer->getWaypoints() == unit->getWaypoints();
+	const long unitId = unit->getID(), peerId = peer->getID();
+	const std::vector<glm::vec3> route = unit->getWaypoints();
+	const bool saved = assigned && EditorData::instance->save("terrain_gen_out/e0_route.pak", true);
+	const bool reloaded = saved && EditorData::initTerrainFromPCV("terrain_gen_out/e0_route.pak");
+	Unit* u = reloaded ? EditorSmokeUnitById(unitId) : nullptr;
+	Unit* p = reloaded ? EditorSmokeUnitById(peerId) : nullptr;
+	const bool equal = u && p && u->isOrderAuthored() && p->isOrderAuthored()
+		&& u->getOrderType() == Unit::ORDER_PATROL && p->getOrderType() == Unit::ORDER_PATROL
+		&& EditorSmokeRouteEq(u->getWaypoints(), route) && EditorSmokeRouteEq(p->getWaypoints(), route);
+	const bool restored = EditorData::initTerrainFromPCV("terrain_gen_out/e0_authored.pak");
+	fprintf(stderr, "[EDITOR_ROUTE v1] steps=%zu gestures=%d undo_redo=%d assigned=%d saved=%d reloaded=%d equal=%d restored=%d waypoints=%zu\n",
+		steps, ok ? 1 : 0, undoOk ? 1 : 0, assigned ? 1 : 0, saved ? 1 : 0, reloaded ? 1 : 0, equal ? 1 : 0, restored ? 1 : 0, route.size());
+	return equal && restored;
+}
+
 void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 {
 	if (!land || !EditorData::instance || !EditorObjectMgr::instance())
@@ -340,6 +434,8 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	EditorSmokePanelFact("teams_abl", "Inspector", teamReady && removedTeam && objectReloaded && loadedObject->getAlignment() == newTeam);
 	EditorSmokePanelFact("teams_abl", "UnitBrain", brainReady && removedBrain && brainReloaded);
 	EditorSmokePanelFact("mission_export", "MissionWriter", authoredSaved && reloaded && removedTerrain && removedObject && removedBrain && objectReloaded && brainReloaded);
+
+	EditorSmokePanelFact("route", "RouteTool", reloaded && runRouteSmoke(loadedBrain));
 
 	ObjectivesSummaryPanel::Open();
 	CObjectives& objectives = EditorData::instance->TeamsRef().TeamRef(0).ObjectivesRef();
