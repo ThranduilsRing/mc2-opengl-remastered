@@ -114,8 +114,8 @@ void main() {
             float nf = max(dot(Nshade, Lf), 0.0);
             float nr = max(dot(Nshade, Lr), 0.0);
             float hemi = 0.5 + 0.5 * Nshade.y;
-            vec3 amb = mix(vec3(0.16, 0.14, 0.12), vec3(0.42, 0.48, 0.58), hemi) * 0.55;
-            vec3 diff = amb + vec3(1.00, 0.93, 0.82) * 1.55 * nk
+            vec3 amb = mix(vec3(0.16, 0.14, 0.12), vec3(0.42, 0.48, 0.58), hemi) * 0.42;
+            vec3 diff = amb + vec3(1.00, 0.93, 0.82) * 1.15 * nk
                             + vec3(0.45, 0.55, 0.78) * 0.45 * nf
                             + vec3(0.80, 0.90, 1.00) * 0.90 * nr;
             rgb = albedo * diff;
