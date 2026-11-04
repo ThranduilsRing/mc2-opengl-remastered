@@ -7907,6 +7907,26 @@
    "count": 1
   },
   {
+   "tag": "RESULTS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "objectiveTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RESULTS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "renderStatusInfo",
+    "objectiveTime",
+    "resultsTime"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RES_DIAG",
    "ver": -1,
    "stream": "stdout",
@@ -11965,6 +11985,7 @@
   "PERF_COUNTER_WARN",
   "REPLAY_DIVERGED",
   "RESOLUTION",
+  "RESULTS",
   "RGBA",
   "SAVELOAD",
   "SHADER",
