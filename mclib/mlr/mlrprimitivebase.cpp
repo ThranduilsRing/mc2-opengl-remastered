@@ -54,11 +54,7 @@ std::unique_ptr<DynamicArrayOf<Vector4D>>
 std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
 	MLRPrimitiveBase::clipExtraTexCoords;
 
-#if COLOR_AS_DWORD
-std::unique_ptr<DynamicArrayOf<DWORD>>
-#else
 std::unique_ptr<DynamicArrayOf<RGBAColor>>
-#endif
     // sebi baseuse it is defined in base class!
 	//*MLR_I_C_PMesh::clipExtraColors;
 	MLRPrimitiveBase::clipExtraColors;

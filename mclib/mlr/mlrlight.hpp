@@ -14,11 +14,7 @@ namespace MidLevelRenderer {
 
 	struct MLRVertexData {
 		glm::vec3 *point;
-#if COLOR_AS_DWORD
-		DWORD *color;
-#else
 		Stuff::RGBAColor *color;
-#endif
 		glm::vec3 *normal;
 
 		int index;

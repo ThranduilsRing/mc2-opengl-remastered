@@ -30,9 +30,7 @@ inline bool GOSCopyData (
 	#endif
 #endif
 					int _offset
-#if FOG_HACK
 				 , int foggy = 1
-#endif	//	FOG_HACK
 						)
 {
 	//Changed for MC2  due to Perspective and Parallel mode BOTH supported
@@ -123,9 +121,7 @@ inline bool GOSCopyTriangleData (
 	#endif	//	I_SAY_YES_TO_MULTI_TEXTURE
 #endif	//	I_SAY_YES_TO_TEXTURE
 			 int offset0, int offset1, int offset2
-#if FOG_HACK
 			 , int foggy = 1
-#endif	//	FOG_HACK
 							 )
 {
 	//Changed for MC2  due to Perspective and Parallel mode BOTH supported

@@ -101,13 +101,11 @@ TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr);
 long openSourceFile (mc2::czstring sourceFileName);
 long closeSourceFile (void);
 
-#if !ANALYZE_ON
 #define	analyzeConstDefn(idPtr)
 #define	analyzeVarDecl(idPtr)
 #define	analyzeTypeDefn(idPtr)
 #define	analyzeRoutineHeader(idPtr)
 #define	analyzeBlock(idPtr)
-#endif
 
 //***************************************************************************
 

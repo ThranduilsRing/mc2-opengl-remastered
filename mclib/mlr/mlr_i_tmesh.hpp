@@ -85,11 +85,7 @@ namespace MidLevelRenderer {
 
 
 		virtual void
-#if COLOR_AS_DWORD
-			PaintMe(const DWORD *paintMe) {};
-#else
 			PaintMe(const Stuff::RGBAColor *paintMe) {};
-#endif
 
 
 //		void
