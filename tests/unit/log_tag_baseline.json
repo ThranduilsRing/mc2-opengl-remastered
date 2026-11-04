@@ -4428,6 +4428,35 @@
    "count": 1
   },
   {
+   "tag": "INPUT_SCRIPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INPUT_SCRIPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "cmd"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INPUT_SCRIPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "script"
+   ],
+   "count": 1
+  },
+  {
    "tag": "INSTR",
    "ver": 1,
    "stream": "buffer",
@@ -11884,6 +11913,7 @@
   "REPLAY_DIVERGED",
   "RESOLUTION",
   "RGBA",
+  "SAVELOAD",
   "SHADER",
   "SHADER ERROR",
   "SHADER_SCHEMA",

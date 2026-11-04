@@ -19,6 +19,7 @@ def _mods_source(tmp_path):
 
 
 def test_flags_parse_through_argparse(monkeypatch):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
     dropped, published = [], []
     monkeypatch.setattr(gate, "drop_candidate", lambda *a, **k: dropped.append(1))
     monkeypatch.setattr(gate, "publish", lambda head, dry: published.append(dry) or 0)

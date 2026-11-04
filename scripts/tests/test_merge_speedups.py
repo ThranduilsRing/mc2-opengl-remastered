@@ -239,7 +239,9 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 20
+    assert len(steps) == 22
+    video = next(cmd for name, cmd, _ in steps if name == "video-decode")
+    assert video[1].endswith("video_decode_smoke.py") and "video-decode" in video[-1]
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
@@ -372,6 +374,7 @@ def test_gate_refuses_real_run_in_lane(monkeypatch):
     import merge_gate as gate
     # In mc2-main on nifty the guards pass and main([]) would run the REAL gate (contracts -> this
     # pytest -> recursion). Pretend to be a lane worktree and never allow execution.
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setattr(gate, "ROOT", pathlib.Path("A:/Games/mc2-lane-not-main"))
     monkeypatch.setattr(gate, "execute", lambda *a, **k: pytest.fail("gate executed in a lane"))
     monkeypatch.setattr(gate, "git", lambda *a: "lane-head")
@@ -790,6 +793,8 @@ def test_parallel_validation_reuse_joins_both_workers(tmp_path, monkeypatch, cap
     monkeypatch.setattr(gate, "FAILED_STAGES", [])
     tier_done = threading.Event()
     det_done = threading.Event()
+    # this test needs tier1 (worker A) and determinism (worker B) concurrently: make A the loaded worker
+    monkeypatch.setattr(gate, "stage_seconds", lambda name: 1000.0 if name == "tier1" else 1.0)
     @contextmanager
     def copy(source):
         yield tmp_path / "clone"
@@ -964,7 +969,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
             det.set()
         if command[0] == "save":
             # Neither proof may share a window with the mods battery (W83).
-            assert mods_done.is_set() and not saving.is_set()
+            assert not saving.is_set()
             saving.set()
             saves.set()
         if command[0] == "kit":
@@ -974,6 +979,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
         return _r(0)
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "stage_seconds", lambda name: 1000.0 if name.startswith("saveload-") else 1.0)  # B is the light worker
     monkeypatch.setattr(gate, "stock_copy", copy)
     monkeypatch.setattr(gate, "run_child", runner)
     steps = [("deploy", ["deploy"], {}),
@@ -985,7 +991,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     if not with_determinism:
         steps = [s for s in steps if s[0] not in ('determinism-mc2_10', 'kit-visibility', 'quiet')]
     assert gate.execute_parallel(steps, "head") == 0
-    assert calls.index("mods") < calls.index("save")
+    assert "mods" in calls and "save" in calls  # no barrier: private save dirs
     assert 'cleaned' in calls
     if with_determinism:
         assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
@@ -1207,3 +1213,92 @@ def test_ninja_build_warns_on_dirty_tree_and_stale_exe(monkeypatch, tmp_path):
     calls["status"] = ""
     monkeypatch.setattr(fpmod, "extract", lambda p: {"present": True, "sha": "b" * 12})
     assert nb.build_warning(str(tmp_path), "t") == ""
+
+
+def test_saveload_rows_use_private_save_dirs_and_never_wait_for_mods(tmp_path, monkeypatch):
+    import threading
+    import merge_gate as gate
+    full = gate.affected_plan(gate.plan(6), ["scripts/merge_gate.py"], full=True)
+    dirs = []
+    for n, c, _ in full:
+        if n.startswith("saveload-"):
+            d = c[c.index("--save-dir") + 1].replace("\\", "/")
+            assert d.endswith(n + "/savegame")
+            dirs.append(d)
+    assert len(dirs) == 5 and len(set(dirs)) == 5
+    # the engine redirect: run_fixture exports the private dir as MC2_SAVE_DIR
+    import saveload_roundtrip as rt
+    seen = {}
+    def fake_run(cmd, env=None, **kw):
+        seen.update(env)
+        raise RuntimeError("stop")
+    monkeypatch.setattr(rt.subprocess, "run", fake_run)
+    sdir = tmp_path / "sv"
+    with pytest.raises(RuntimeError):
+        rt.run_fixture("mc2_01", 10, 20, False, str(tmp_path / "o"), save_dir=str(sdir))
+    assert seen["MC2_SAVE_DIR"] == str(sdir) and sdir.is_dir()
+
+
+def test_balance_movable_is_longest_first_and_keeps_order():
+    import merge_gate as gate
+    secs = {"a": 191, "b": 120, "c": 104, "d": 55, "e": 45, "f": 45}
+    rows = [(n, [n], {}) for n in "bacdef"]
+    to_a, to_b = gate.balance_movable(rows, 944, 876, seconds=lambda n: secs[n])
+    assert [r[0] for r in to_a] + [r[0] for r in to_b] != []
+    assert sorted(r[0] for r in to_a + to_b) == list("abcdef")
+    assert [r[0] for r in to_b][0] == "a"                      # longest goes to the lighter worker (B)
+    end_a = 944 + sum(secs[r[0]] for r in to_a)
+    end_b = 876 + sum(secs[r[0]] for r in to_b)
+    assert max(end_a, end_b) <= 876 + sum(secs.values()) - 200  # beats leaving every row on B
+    assert [r[0] for r in to_a] == [n for n in "bacdef" if n in {r[0] for r in to_a}]
+
+
+def test_gate_state_journals_stage_seconds_for_the_next_gate(tmp_path):
+    import merge_gate as gate
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"x")
+    state = gate.GateState(tmp_path / "gate-state.json", "head", exe, tmp_path, [("tier1", ["t"], {})])
+    state.record("tier1", ["t"], {}, "PASS", 123.4)
+    monkey = gate.ACTIVE_STATE
+    try:
+        gate.ACTIVE_STATE = state
+        assert gate.stage_seconds("tier1") == 123.4
+        assert gate.stage_seconds("determinism-mc2_24") == gate.DEFAULT_STAGE_SECONDS["determinism-mc2_24"]
+    finally:
+        gate.ACTIVE_STATE = monkey
+
+
+def test_window_reuse_is_keyed_on_the_tree_not_the_clock():
+    import merge_gate as gate
+    window = {"tree": "abc", "started": 0}
+    assert gate.window_reusable(window, "abc", now=10 ** 9)
+    assert not gate.window_reusable(window, "def", now=1)
+    assert gate.window_reusable({"started": 100}, "x", now=200)
+    assert not gate.window_reusable({"started": 100}, "x", now=5000)
+
+
+def test_in_gate_flag_only_on_game_stages():
+    import merge_gate as gate
+    for name in ("contracts", "harnesses", "pytest"):
+        assert gate.gate_env(name) == {}
+    for name in ("tier1", "mods", "saveload-mc2_01", "determinism-mc2_03"):
+        assert gate.gate_env(name) == {"MC2_IN_GATE": "1"}
+
+
+def test_conftest_clears_inherited_gate_flag():
+    assert "MC2_IN_GATE" not in os.environ
+
+
+def test_stale_inventories_reports_what_regeneration_would_change(tmp_path):
+    repo = tmp_path / "r"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)  # background-launch: allow git on a temp repo, no window
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)  # background-launch: allow git on a temp repo, no window
+    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()  # background-launch: allow git on a temp repo, no window
+    assert lm.stale_inventories(str(repo), sha, regen=lambda tree: ["docs/a.json"]) == ["docs/a.json"]
+    assert lm.stale_inventories(str(repo), sha, regen=lambda tree: []) == []
+
+
+def test_precheck_fails_on_stale_inventory():
+    import inspect
+    src = inspect.getsource(lm.precheck)
+    assert "stale_inventories(root, commit)" in src and 'failed.append("inventories-stale:' in src

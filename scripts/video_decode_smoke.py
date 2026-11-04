@@ -34,7 +34,7 @@ def judge(text: str) -> tuple[bool, str]:
     return True, "video opened, no sim-overlap violation"
 
 
-def run_mission(exe: str, mission: str, duration: int, countdown: bool = False) -> tuple[bool, str]:
+def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, log_to: Path | None = None) -> tuple[bool, str]:
     env = dict(os.environ, MC2_BOOT_VIDEO="1", MC2_SMOKE_REQUIRE_FINGERPRINT=os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1"))
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
@@ -48,6 +48,9 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False) 
     if m:
         for log in Path(m.group(1).strip()).glob("*.log"):
             text += "\n" + log.read_text(encoding="utf-8", errors="replace")
+    if log_to:
+        log_to.parent.mkdir(parents=True, exist_ok=True)
+        log_to.write_text(text, encoding="utf-8")
     ok, why = judge(text)
     if proc.returncode != 0:
         ok, why = False, f"run_smoke rc={proc.returncode}; {why}"
@@ -60,14 +63,16 @@ def main() -> int:
     ap.add_argument("--mission", action="append", default=[])
     ap.add_argument("--duration", type=int, default=30)
     ap.add_argument("--end-duration", type=int, default=30)
+    ap.add_argument("--out", help="directory for the per-mission full logs (merge-window proofs)")
     args = ap.parse_args()
     bad = 0
     for mission in args.mission or MISSIONS:
-        ok, why = run_mission(args.exe, mission, args.duration)
+        ok, why = run_mission(args.exe, mission, args.duration, log_to=Path(args.out) / (mission + ".log") if args.out else None)
         print(f"[video_decode_smoke] {mission}: {'PASS' if ok else 'FAIL'} - {why}")
         bad += not ok
     # mission-end row (P0-1): results countdown with pilot videos live
-    ok, why = run_mission(args.exe, "mc2_01", args.end_duration, countdown=True)
+    ok, why = run_mission(args.exe, "mc2_01", args.end_duration, countdown=True,
+                    log_to=Path(args.out) / "mc2_01_end.log" if args.out else None)
     print(f"[video_decode_smoke] mc2_01 end: {'PASS' if ok else 'FAIL'} - {why}")
     bad += not ok
     return 1 if bad else 0
