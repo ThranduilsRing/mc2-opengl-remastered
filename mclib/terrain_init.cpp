@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
 #include "mc2fmt.h"
+#include "terrain_runtime.h"
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -763,6 +764,7 @@ void Terrain::lodWaterShore() {
 // LOD chunk: load the 4x visual heightfield bake when its gate is on.
 void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 	auto& elev = lf.elev;
+	TerrainRuntime::setCpuVisualHeight(nullptr, 0);
 	// TERRAIN-VISUAL-HEIGHT-SAMPLE-1 Stage 1 (loader, log-only). Gate
 	// MC2_TERRAIN_VISUAL_HEIGHT default-OFF -> no load, no SSBO
 	// (byte-identical). Loads the 4x VISUAL heightfield bake into SSBO
@@ -997,10 +999,13 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							fflush(stdout);
 						}
 						else
+						{
 						gos_TerrainLodChunk_UploadVisualHeightFull(
 							vh.data(), V,
 							vmips.empty() ? nullptr : vmips.data(),
 							static_cast<int>(vmips.size()));
+						TerrainRuntime::setCpuVisualHeight(vh.data(), V);   // UNIT-VISUAL-SNAP-1 (render-only)
+						}
 						// TERRAIN-DISPLACEMENT-TRUTH-1: report the REAL state, not
 						// the stale Stage-1 lie. Stage 2 shipped: when
 						// MC2_TERRAIN_VISUAL_DISPLACE is on the vert shader

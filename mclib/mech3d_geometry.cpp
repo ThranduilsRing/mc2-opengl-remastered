@@ -4,6 +4,7 @@
 #include "texture_assets.h"
 #include "mech3d_internal.h"
 #include "footprints.h"
+#include "terrain_runtime.h"
 #include "../RenderCore/axis_convert.h"
 #include <format>
 #include "mover_lamps.h"
@@ -174,6 +175,7 @@ void Mech3DAppearance::updateGeometry (void)
 	
    	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
+	xlatPosition.y += TerrainRuntime::visualHeightDelta(position);   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
 
 	//Update flashing regardless of view!!!
 	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
