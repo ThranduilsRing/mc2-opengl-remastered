@@ -61,7 +61,7 @@ void vlog(const char* fmt, ...) {
 bool waterPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_WATER_PERF">();
+        state = false;
     }
     return state == 1;
 }

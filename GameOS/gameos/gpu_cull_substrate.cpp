@@ -14,7 +14,7 @@
 
 // MC2_GPU_CULL_SUBSTRATE_TRACE=1 — verbose per-frame lifecycle prints.
 // Default off; the 600-frame summary + first-flush banner emit unconditionally.
-static const bool s_substrateTrace = mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE_TRACE">();
+static const bool s_substrateTrace = false;
 #define SUBSTRATE_TRACE(fmt, ...) \
     do { if (s_substrateTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 

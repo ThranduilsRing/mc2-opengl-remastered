@@ -154,8 +154,8 @@ static bool captureSceneLighting(SceneLighting& s)
 
 void mc2SceneLightingTrace()
 {
-    const bool doTrace  = mc2::gate::get<"MC2_SCENE_LIGHTING_TRACE">();
-    const bool doAssert = mc2::gate::get<"MC2_SCENE_LIGHTING_ASSERT">();
+    const bool doTrace  = false;
+    const bool doAssert = false;
     if (!doTrace && !doAssert) return;
 
     static unsigned s_frame = 0;
@@ -344,7 +344,7 @@ void GameCamera::renderVanishProbe() {
 	// NOT matrix divergence (VIEW_UNIFORMS compare stays ok=1). One-shot
 	// per ~60 frames; coarse, off by default.
 	{
-		static const bool s_vanishProbe = mc2::gate::get<"MC2_VANISH_PROBE">();
+		static const bool s_vanishProbe = false;
 		if (s_vanishProbe) {
 			extern uint32_t gos_ProbeStaticInstanceCount();
 			extern bool     gos_ProbeStaticInstanceWorld(uint32_t, float[3]);
@@ -1212,7 +1212,7 @@ long GameCamera::update (void)
 	{
 		static int s_bookmarkTestFrames = -2;   // -2 = env unchecked
 		if (s_bookmarkTestFrames == -2) {
-			s_bookmarkTestFrames = mc2::gate::get<"MC2_BOOKMARK_SAVE_TEST">() ? 120 : -1;
+			s_bookmarkTestFrames = false ? 120 : -1;
 		}
 		if (s_bookmarkTestFrames > 0 && --s_bookmarkTestFrames == 0)
 			mc2_save_camera_bookmark(nullptr, 0);
@@ -1296,7 +1296,7 @@ long GameCamera::update (void)
 		cameraShift.y = 0.0f;
 	};
 
-	static const bool s_hzbForceHorizon = mc2::gate::get<"MC2_HZB_FORCE_HORIZON">();
+	static const bool s_hzbForceHorizon = false;
 	if (s_hzbSavedView.valid)
 	{
 		// MC2_HZB_VIEW_FILE wins: absolute coord replay from saved_view.txt
@@ -1316,15 +1316,15 @@ long GameCamera::update (void)
 		// Corner position as a fraction of the half-map extent (map is centered
 		// at origin: vegHalfMap = worldUnitsMapSide*0.5). +X=east, +Y=north.
 		// mc2_01 SE-looking-NW: X=+0.9 Y=-0.9 ROT~?  mc2_24 NW-looking-SE: X=-0.9 Y=+0.9.
-		static const float s_xf    = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_X">();
-		static const float s_yf    = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_Y">();
-		static const float s_rot   = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_ROT">();
-		static const float s_angle = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_ANGLE">();
-		static const float s_alt   = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_ALT">();
+		static const float s_xf    = 0.9f;
+		static const float s_yf    = -0.9f;
+		static const float s_rot   = 135.0f;
+		static const float s_angle = 12.0f;
+		static const float s_alt   = 150.0f;
 		// Position override is opt-in (MC2_HZB_FORCE_HORIZON_POS=1): place the
 		// camera at a map corner. Without it, the flythrough position is kept and
 		// only the pitch/altitude/rotation are forced (occlusion-rich over land).
-		static const bool s_forcePos = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_POS">();
+		static const bool s_forcePos = false;
 		if (s_forcePos) {
 			const float half = Terrain::worldUnitsMapSide * 0.5f;
 			position.x = s_xf * half;
@@ -1442,7 +1442,7 @@ long GameCamera::update (void)
 
 	// Tactical Overview diagnostic HUD — only under MC2_TACTICAL_OVERVIEW_DEBUG.
 	// Shows blend t / setpoint / altitude for tuning; off in normal play.
-	if (TacticalOverview::enabled() && mc2::gate::get<"MC2_TACTICAL_OVERVIEW_DEBUG">())
+	if (TacticalOverview::enabled() && false)
 	{
 		char ovtext[256];
 		sprintf(ovtext,"[TacOverview] t=%.3f setpt=%.2f fires=%d | tilt=%.1f alt=%.0f maxLo=%.0f  (F6=toggle, wheel=zoom)",

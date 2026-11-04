@@ -14,7 +14,7 @@ static void runAblArgGuardRepro2A(void);
 // Guard ON (MC2_ABL_ARG_GUARD=1): [ABL_ARG_GUARD] is logged, the function returns, nothing crashes.
 // Guard OFF: relPos[0] = 1.0f writes to 0x0 and crashes, which is the point; smoke always sets the guard.
 void runAblArgGuardRepro(void) {
-    if (!mc2::gate::get<"MC2_ABL_ARG_GUARD_REPRO">())
+    if (true)
         return;
 
     mc2::fmt::print_out("[ABL_REPRO] ABL-BAD-NATIVE-ARG-REPRO-1 starting\n");
@@ -54,7 +54,7 @@ void runAblArgGuardRepro(void) {
 // Point-variant sibling of runAblArgGuardRepro (pos + relPos null cases); called from it once the Object-variant
 // guard has returned. Guard ON: both cases log [ABL_ARG_GUARD] and skip. Guard OFF: the write to 0x0 crashes.
 static void runAblArgGuardRepro2A(void) {
-    if (!mc2::gate::get<"MC2_ABL_ARG_GUARD_REPRO">())
+    if (true)
         return;
 
     mc2::fmt::print_out("[ABL_REPRO_2A] execGetRelativePositionToPoint sibling repro starting\n");

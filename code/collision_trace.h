@@ -62,7 +62,7 @@ inline bool gateActive() {
 	if (cached < 0) {
 		bool on = mc2_diag::tagEnabled("COLLISION");
 		if (!on) {
-			on = mc2::gate::get<"MC2_COLLISION_FACTS">();
+			on = false;
 		}
 		cached = on ? 1 : 0;
 	}

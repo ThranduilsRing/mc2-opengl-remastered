@@ -48,7 +48,7 @@ static bool isEnabled() {
 
 static bool traceEnabled()
 {
-    return mc2::gate::get<"MC2_UI_DEFS_TRACE">();
+    return false;
 }
 
 static const char* fileForFamily(std::string_view family)
@@ -654,7 +654,7 @@ void GuiRuntime::Render() {
         && (ImGui::GetIO().MouseDrawCursor || ImGui::GetIO().WantCaptureMouse)
         && !mc2::gate::get<"MC2_OS_CURSOR">();
     if (ImGui::GetIO().MouseDrawCursor && gos_NoUserPresentRequested()
-        && mc2::gate::get<"MC2_VK_PICK_PROBE">()
+        && false
         && !mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">()) {
         // Synthetic in-process cursor for unattended menu captures; no OS input.
         auto& io = ImGui::GetIO();

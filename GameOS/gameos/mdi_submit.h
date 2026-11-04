@@ -20,7 +20,7 @@
 namespace mdi_submit {
 
 inline bool traceEnabled() {
-    static const bool s = mc2::gate::get<"MC2_MDI_SUBMIT_TRACE">();
+    static const bool s = false;
     return s;
 }
 

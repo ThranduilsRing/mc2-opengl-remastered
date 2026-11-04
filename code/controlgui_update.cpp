@@ -8,7 +8,7 @@
 namespace {
 	enum class CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
 	using enum CgPhase;
-	static const bool s_cgSplitOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
+	static const bool s_cgSplitOn = false || false;
 	struct CgScope {
 		int idx; std::chrono::steady_clock::time_point t0;
 		explicit CgScope(CgPhase i):idx(std::to_underlying(i)){ if(s_cgSplitOn) t0=std::chrono::steady_clock::now(); }
@@ -68,7 +68,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// pattern as MC2_BOOT_INFO above / MC2_BOOT_PAUSED (missiongui.cpp).
 	// Registered Trace, default unset -> byte-identical.
 	{
-		static const long s_bootObj = static_cast<long>(mc2::gate::get<"MC2_BOOT_OBJ">());
+		static const long s_bootObj = static_cast<long>(0);
 		if ( s_bootObj > 0 && Team::home )
 		{
 			extern std::atomic<uint32_t> g_mc2FrameCounter;
@@ -96,7 +96,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// pattern as MC2_BOOT_OBJ above. Registered Trace, default unset ->
 	// byte-identical.
 	{
-		static const long s_bootObjComplete = static_cast<long>(mc2::gate::get<"MC2_BOOT_OBJ_COMPLETE">());
+		static const long s_bootObjComplete = static_cast<long>(0);
 		if ( s_bootObjComplete > 0 && Team::home )
 		{
 			extern std::atomic<uint32_t> g_mc2FrameCounter;
@@ -131,7 +131,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// capture in the red band, S=110 in the blink band. Default 754 s keeps
 	// the original far-above-warning readout.
 	{
-		static const long s_bootTimer = static_cast<long>(mc2::gate::get<"MC2_BOOT_TIMER">());
+		static const long s_bootTimer = static_cast<long>(0);
 		// 754 s -> "012 : 34"-ish readout; far above the 5-minute red /
 		// 2-minute blink bands and never expires inside a 30 s capture run.
 		// The row reads 754 for an empty, non-numeric or non-positive value.

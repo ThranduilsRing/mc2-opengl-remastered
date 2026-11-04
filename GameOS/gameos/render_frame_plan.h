@@ -48,7 +48,7 @@ enum class PathKind {
 };
 
 inline bool traceEnabled() {
-    static const bool s = mc2::gate::get<"MC2_RENDER_FRAME_PLAN_TRACE">();
+    static const bool s = false;
     return s;
 }
 

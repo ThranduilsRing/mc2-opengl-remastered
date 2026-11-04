@@ -28,12 +28,12 @@ bool IsGlobalEnabled() {
 }
 
 bool IsParityEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN_PARITY">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
 bool IsTraceEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN_TRACE">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
@@ -48,7 +48,7 @@ bool IsWaterEnabled() {
 bool IsTerrainSolidEnabled() {
     static const bool s_enabled = [] {
         if (!IsGlobalEnabled()) return false;
-        return mc2::gate::get<"MC2_GPU_DRIVEN_TERRAIN_SOLID">();
+        return true;
     }();
     return s_enabled;
 }
@@ -56,7 +56,7 @@ bool IsTerrainSolidEnabled() {
 bool IsOverlayEnabled() {
     static const bool s_enabled = [] {
         if (!IsGlobalEnabled()) return false;
-        return mc2::gate::get<"MC2_GPU_DRIVEN_OVERLAY">();
+        return true;
     }();
     return s_enabled;
 }

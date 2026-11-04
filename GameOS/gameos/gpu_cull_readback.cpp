@@ -16,15 +16,15 @@ std::array<bool,RenderCore::VisibilityHistory::kSlots> pending{};
 bool initialized=false, forceNotReady=false;
 uint32_t snapshots=0, consumes=0;
 uint64_t dilatedTotal=0, orTotal=0;
-bool trace() { return mc2::gate::get<"MC2_GPU_CULL_READBACK_TRACE">(); }
-bool conservativeOr() { return mc2::gate::get<"MC2_GPU_CULL_CONSERVATIVE_OR">(); }
+bool trace() { return false; }
+bool conservativeOr() { return true; }
 }
-bool readback_isEnabled() { return mc2::gate::get<"MC2_GPU_CULL_READBACK">(); }
+bool readback_isEnabled() { return true; }
 bool readback_init(uint32_t maxActors) {
     if (!readback_isEnabled()) return true;
     readback_shutdown();
     history=RenderCore::VisibilityHistory(maxActors); pending.fill(false);
-    forceNotReady=mc2::gate::get<"MC2_GPU_CULL_FORCE_FENCE_NOT_READY">();
+    forceNotReady=false;
     initialized=true; snapshots=consumes=0; dilatedTotal=orTotal=0;
     MC2_DIAGF("[GPU_CULL v1] event=readback_init producer=vulkan maxActors=%u ring=3 forceNotReady=%d\n",maxActors,int(forceNotReady));
     readback_selftest();
