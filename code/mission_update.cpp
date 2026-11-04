@@ -45,7 +45,7 @@ static bool s_extraTickInFrame = false;
 
 static void simClockTraceTick(float scenarioTimeNow)
 {
-	static const bool s_traceEnabled = false;
+	static const bool s_traceEnabled = mc2::gate::get<"MC2_SIM_CLOCK_TRACE">();
 	if (!s_traceEnabled)
 		return;
 

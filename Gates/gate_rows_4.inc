@@ -1,17 +1,12 @@
 P("MC2_TERRAIN_SHORELINE_EDGE_JITTER", Float, 4.0, "terrain", "", "", clampRange(0.0, 32.0) | verified),
 G("MC2_TERRAIN_SHORELINE_FILE", String, "", "terrain", "", "", passthrough | verified),
-P("MC2_TERRAIN_SHORELINE_FOAM", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
-P("MC2_TERRAIN_SHORELINE_FOAM_HEIGHT", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SHORELINE_FOAM_RUN", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
-P("MC2_TERRAIN_SHORELINE_WET_HEIGHT", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Float, 0.78, "terrain", "", "Snow brightness dampen: <1 darkens detected-snow fragments.", verified),
-L(Lead0Kill, "MC2_TERRAIN_SOLID_NARROW", Bool, true, "terrain", "", "", verified),
 L(Exact1, "MC2_TERRAIN_SOLID_WINDOW_PARITY", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_TESS
 L(Lead0Kill, "MC2_TERRAIN_TESS", Bool, true, "gameos", "", "TCS/TES terrain tessellation (gameos_graphics.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_TESSELLATION", 3, true)),
-L(Lead0, "MC2_TERRAIN_TILE_CENSUS", Bool, false, "terrain", "", "", verified),
 // TERRAIN-HIRES-NEAR-1: ships ON (temporary kill-switch, =0 disables).
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE
 L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE", Bool, true, "terrain", "", "TERRAIN-HIRES-NEAR-1: draw the 4x visual height bake on VK terrain at every LOD (LOD0 at 4x density); no bake = unchanged.", passthrough | registry(Feature, "MC2_TERRAIN_VISUAL_DISPLACE", -1, true) | verified),
@@ -19,21 +14,15 @@ P("MC2_TERRAIN_VISUAL_DISPLACE_FAR", Float, 1.0, "terrain", "", "", passthrough 
 // TERRAIN-VISUAL-HEIGHT-SAMPLE-1 companion fade.
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE
 L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Bool, true, "terrain", "", "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units...", registry(Feature, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", -1, true) | verified),
-P("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS", Float, 256.0, "code", "", "World-unit radius of the mover object-fade of the visual terrain displacement; clamps to 32..1024.", clampRange(32.0, 1024.0) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_HEIGHT
 L(Lead0, "MC2_TERRAIN_VISUAL_HEIGHT", Bool, false, "terrain", "", "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_VISUAL_HEIGHT", -1, false) | verified),
 G("MC2_TERRAIN_VISUAL_HEIGHT_FILE", String, "", "terrain", "", "", passthrough | verified),
 G("MC2_TEST_CRASH_FRAME", Int, 0, "gameos", "", "Diagnostic: deliberately crash at this mission frame to prove bundle collection; zero disables injection.", passthrough | verified),
 // history: docs/gate-history.md#MC2_TEST_SPAWN
 L(Lead1, "MC2_TEST_SPAWN", Bool, false, "code", "", "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel.", passthrough | registry(Trace, "MC2_TRACE_TEST_SPAWN", -1, false) | verified),
-P("MC2_TEXMGR_KTX_PRIMARY", Int, 1, "mech", "", "", passthrough | verified),
 L(Presence, "MC2_TEXMGR_LOAD_TRACE", Bool, false, "code", "", "", passthrough | verified),
-L(Presence, "MC2_TEX_LIFECYCLE_TRACE", Bool, false, "props", "", "MC2_TEX_LIFECYCLE_TRACE=1 - same env flag used by mclib/txmmgr.cpp, mclib/msl.cpp, GameOS/gameos/gos_static_prop_batcher.cpp so all [TEX_LIFECYCLE v1]...", verified),
-L(Presence, "MC2_TEX_LIFECYCLE_TRACE_VERBOSE", Bool, false, "code", "", "", verified),
 // TRACKV quick-win: Probe-6 thin-record canary gate
 L(Presence, "MC2_THIN_DEBUG", Bool, false, "terrain", "", "", passthrough),
-L(Presence, "MC2_TOBJ_COST_SPLIT", Bool, false, "unclassified", "", "[TOBJSPLIT v1] env-gated RDTSC cost split for the recalcBounds slice.", passthrough | verified),
-L(Presence, "MC2_TOBJ_PARITY", Bool, false, "terrain", "", "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument.", passthrough | verified),
 // POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap on the composite.
 L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
 // ── TREE-DIAG-REGISTER-1 (closed by GATE-PARITY-CLOSE-1) ───────────────
@@ -43,38 +32,22 @@ L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
 // one only prints.
 // history: docs/gate-history.md#MC2_TREE_DIAG_TRACE
 L(Presence, "MC2_TREE_DIAG_TRACE", Bool, false, "props", "", "[DEFAULT-OFF, but the OFF token is UNSET, not '0'.]", passthrough | registry(Trace, "MC2_TREE_DIAG_TRACE", -1, false) | verified),
-L(Presence, "MC2_TREE_REG_TRACE", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_TUBE_PROFILE_LOG", Bool, false, "code", "", "", verified),
-L(Lead1, "MC2_TXMMGR_BOUNDS_TRACE", Bool, false, "code", "", "[TXMMGR_BOUNDS v1] - TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.", verified),
-L(Presence, "MC2_TYPE_TABLE_CAND_LOG", Bool, false, "props", "", "", passthrough | verified),
-L(Presence, "MC2_TYPE_TABLE_CAND_VERBOSE", Bool, false, "props", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_UI_COMMAND_FILE
 G("MC2_UI_COMMAND_FILE", String, "", "code", "", "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands.", passthrough | registry(Trace, "MC2_TRACE_UI_COMMAND_FILE", -1, false) | verified),
 G("MC2_UI_DEFS_IGNORE_PACKAGE_VERSION", Bool, false, "editor", "", "", verified),
-L(Presence, "MC2_UI_DEFS_LOADSCREEN", Bool, false, "editor", "", "", verified),
-L(Presence, "MC2_UI_DEFS_RESULTS", Bool, false, "editor", "", "", verified),
-L(Lead0, "MC2_UI_DEFS_TRACE", Bool, false, "unclassified", "", "", verified),
 // history: docs/gate-history.md#MC2_UI_IMGUI_INFO
-L(Lead0, "MC2_UI_IMGUI_INFO", Bool, false, "code", "", "INFO-IMGUI-SLICE-1: =1 renders the in-mission unit-Info panel as an ImGui window (unit name + health bar + loadout list with scrollbar) laid out inside...", registry(Trace, "MC2_TRACE_UI_IMGUI_INFO", -1, false) | verified),
 // history: docs/gate-history.md#MC2_UI_IMGUI_OBJ
-L(Lead0, "MC2_UI_IMGUI_OBJ", Bool, false, "code", "", "OBJ-IMGUI-SLICE-1: =1 renders the in-mission OBJECTIVES overlay as ImGui (baked left-edge frame from tools/ui_art_reconstruct.py + procedural...", registry(Trace, "MC2_TRACE_UI_IMGUI_OBJ", -1, false) | verified),
 // history: docs/gate-history.md#MC2_UI_IMGUI_PAUSE
-L(Lead0, "MC2_UI_IMGUI_PAUSE", Bool, false, "code", "", "PAUSE-IMGUI-SLICE-1: =1 renders the in-mission pause menu as an ImGui window (GAME PAUSED + objectives/save/load/options/abort/exit/return) laid out inside...", registry(Trace, "MC2_TRACE_UI_IMGUI_PAUSE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_UI_IMGUI_TIMER
-L(Lead0, "MC2_UI_IMGUI_TIMER", Bool, false, "code", "", "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission mission-timer display as ImGui (right-aligned MM:SS via HudFont + the TimerStatic atlas tile) laid out...", registry(Trace, "MC2_TRACE_UI_IMGUI_TIMER", -1, false) | verified),
 // history: docs/gate-history.md#MC2_UI_IMGUI_VIDEO
-L(Lead0, "MC2_UI_IMGUI_VIDEO", Bool, false, "code", "", "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel as ImGui - VideoStatic chrome tiles + the decoder's frame texture at the same...", registry(Trace, "MC2_TRACE_UI_IMGUI_VIDEO", -1, false) | verified),
-L(Presence, "MC2_UI_PASS_MEASURE", Bool, false, "gameos", "", "UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry inside the existing PassIdentity::UI RAII scope.", passthrough | verified),
 G("MC2_UNIT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated") | verified),
 // history: docs/gate-history.md#MC2_UNIT_PROFILE_DATA
 L(Lead0, "MC2_UNIT_PROFILE_DATA", Bool, false, "unclassified", "", "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).", passthrough | registry(Feature, "MC2_FEATURE_UNIT_PROFILE_DATA", -1, false) | verified),
 L(Lead0Kill, "MC2_UNIT_VISUAL_SNAP", Bool, true, "terrain", "2026-11-24", "UNIT-VISUAL-SNAP-1: draw mech/vehicle models at the visual-bake terrain height (render only); 0 = gameplay height. Retire after three green merge windows.", passthrough | verified),
-L(Presence, "MC2_VANISH_PROBE", Bool, false, "code", "", "", verified),
 G("MC2_VEGETATION_ATLAS", String, "", "gameos", "", "Allow env-var override at runtime too.", passthrough | verified),
 L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough | verified),
 P("MC2_VEGETATION_DENSITY", Int, 25, "code", "", "", verified),
 P("MC2_VEGETATION_MAX", Int, 5000000, "code", "", "", verified),
-L(Lead0, "MC2_VEG_DEBUG_FORCE_VISIBLE", Bool, false, "gameos", "", "", verified),
 P("MC2_VEG_MAX_DIST", Float, 4096.0, "gameos", "", "", verified),
 // VehicleAmbientFloor (VEHICLE-AMBIENT-FLOOR-1)
 // history: docs/gate-history.md#MC2_VEHICLE_AMBIENT_FLOOR
@@ -82,13 +55,10 @@ P("MC2_VEG_MAX_DIST", Float, 4096.0, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VEHICLE_LIT_PATH
 L(Lead0Kill, "MC2_VEHICLE_LIT_PATH", Bool, true, "mech", "", "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class.", passthrough | registry(Feature, "MC2_VEHICLE_LIT_PATH", 24, true) | verified),
 G("MC2_VERIFY_MODE", String, "", "gameos", "", "", passthrough | verified),
-L(Presence, "MC2_VERTEX_PROJECT_FAST", Bool, false, "gameos", "", "", passthrough | verified),
-L(Presence, "MC2_VERTEX_PROJECT_PARITY", Bool, false, "gameos", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VFX_DEBUG_MODE
 P("MC2_VFX_DEBUG_MODE", Int, 0, "gameos", "", "VFX-DEBUG-VIEWS-1: GPU particle billboard fragment-shader debug-mode selector (particle_billboard.frag u_debugMode, uploaded by gos_particle_bridge).", passthrough | range(0.0, 5.0) | registry(Trace, "MC2_DIAG_VFX_DEBUG_MODE", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_VFX_GPU_SIM_COMPARE
 L(DefOnLead0, "MC2_VFX_ORACLE_SHAPE", Bool, true, "code", "", "", verified),
-L(Lead1, "MC2_VFX_ORACLE_SHAPE_LOG", Bool, false, "unclassified", "", "", verified),
 // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE
 L(DefOnLead0, "MC2_VFX_ORACLE_TUBE", Bool, true, "code", "", "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...", registry(Feature, "MC2_VFX_ORACLE_TUBE", -1, true) | verified),
@@ -116,9 +86,6 @@ G("MC2_VISUAL_DIFF_MISSION", String, "", "gameos", "", "", verified),  // defaul
 G("MC2_VISUAL_DIFF_OUT", String, "", "gameos", "", "", verified),
 P("MC2_VISUAL_SETTLE", Int, 0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VISUAL_TUNING_FILE", String, "", "gameos", "", "", passthrough | verified),  // default not derivable from the tree
-L(Lead0Kill, "MC2_VIS_SEMANTICS", Bool, true, "code", "", "ONE gate.", verified | passthrough),
-L(Lead0, "MC2_VIS_SEMANTICS_TRACE", Bool, false, "code", "", "", verified | passthrough),
-P("MC2_VIS_SEMANTICS_TRACE_EVERY", Int, 120, "code", "", "", passthrough | verified),
 G("MC2_VK_DEVICE", String, "", "vk", "", "Harness GPU routing: Vulkan device whose name contains this text; empty = first discrete.", passthrough | verified),
 G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
@@ -126,16 +93,12 @@ G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 L(Lead0, "MC2_VK_FORCE_FAIL", Bool, false, "vk", "", "VK-P13-SELECTOR-1: presence-gated =1, default OFF.", passthrough | registry(Trace, "MC2_FEATURE_VK_FORCE_FAIL", -1, false) | verified),
 P("MC2_VK_FRAMES_IN_FLIGHT", Int, 3, "vk", "", "Frames in flight of the Vulkan present path: 3 (default); =2 retains two frames, =1 is the kill switch back to one frame.", passthrough | verified),
 L(Presence, "MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "", passthrough | verified),
-L(Presence, "MC2_VK_HUD_DRAW_DUMP", Bool, false, "gameos", "", "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact.", verified),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", "", verified | passthrough),
 L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_MECH_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
-L(Lead1, "MC2_VK_MECH_PERF", Bool, false, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
-L(Lead1, "MC2_VK_OBJECTID_DIRECT_CHAIN", Bool, false, "vk", "", "", passthrough | verified),
 // BUG-A pick-probe fixture (mouse->pick DPI regression fence)
 // history: docs/gate-history.md#MC2_VK_PICK_PROBE
-L(Presence, "MC2_VK_PICK_PROBE", Bool, false, "code", "", "BUG-A pick regression fence: default-OFF.", passthrough | registry(Trace, "MC2_VK_PICK_PROBE", -1, false) | verified),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX", Bool, true, "vk", "", "VK native screen-shadow, cloud and shoreline passes, on under the VK umbrella; =0 turns the VK passes off.", verified | passthrough),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_CLOUD", Bool, true, "vk", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_SHADOW", Bool, true, "vk", "", "", verified | passthrough),
@@ -158,7 +121,6 @@ L(Lead0Kill, "MC2_VK_PROP_LOD", Bool, true, "vk", "", "Distance LOD for model-ov
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VK_PROP_TEX_SLOTS", Int, 0, "vk", "", "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path.", verified),
-L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
 // history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false)),
@@ -171,33 +133,19 @@ L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough)
 L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LODFADE
-L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough | verified),
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
 // history: docs/gate-history.md#MC2_VK_VFX_TRACE
-L(Lead0, "MC2_VK_VFX_TRACE", Bool, false, "vk", "", "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.", registry(Trace, "MC2_TRACE_VK_VFX_TRACE", -1, false) | verified),
 L(Lead0Kill, "MC2_VK_WATER_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
-L(Lead1, "MC2_VK_WATER_PERF", Bool, false, "vk", "", "", passthrough | verified),
 L(Presence, "MC2_VPL_CULL", Bool, false, "terrain", "", "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the...", verified),
-L(Presence, "MC2_VPL_PICK", Bool, false, "code", "", "VPL-retirement Step 3 (3a): recursion-free tile selection.", verified),
-L(Presence, "MC2_VPL_REDUCE", Bool, false, "terrain", "", "", verified),
 L(Lead1, "MC2_VSYNC", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VULKAN_SPV_DIR", String, "shaders/vulkan", "vk", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VULKAN_VALIDATION", String, "", "vk", "", "", passthrough | verified),
-L(Presence, "MC2_WATER_ASPECT_DIAG", Bool, false, "code", "", "[WATER_ASPECT_DIAG v1] env-gated one-shot (MC2_WATER_ASPECT_DIAG=1), silent by default.", verified),
-L(Lead0, "MC2_WATER_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_WATER_DEBUG", Bool, false, "terrain", "", "MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.", passthrough | verified),
 P("MC2_WATER_DEBUG_MODE", Int, 0, "gameos", "", "", verified),
-L(Lead0Kill, "MC2_WATER_EDGE_FEATHER", Bool, true, "gameos", "", "", verified),
 P("MC2_WATER_EDGE_FEATHER_STRENGTH", Float, 1.0, "gameos", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
-L(Presence, "MC2_WATER_GATE_DIAG", Bool, false, "terrain", "", "S2.15 gate diag: editor fails to arm FAST water path - print once per (mission/state-change) what gate fails.", passthrough | verified),
 L(Lead0Kill, "MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", Bool, true, "terrain", "", "", verified),
 P("MC2_WATER_HDRI_LOD", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
-L(Lead0, "MC2_WATER_HDRI_REFL_FULL", Bool, false, "gameos", "", "", passthrough | verified),
-L(Presence, "MC2_WATER_MATERIAL_PROBE", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_WATER_REFLECTION", Bool, true, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_WATER_REFLECTION_RT", Bool, true, "terrain", "", "Half-resolution spatial water reflection; =0 falls back to sky only. WaterReflections in options.cfg selects Off/Sky only/Half-res.", passthrough | registry(Feature, "MC2_FEATURE_WATER_REFLECTION_RT", -1, true) | verified),
-L(Presence, "MC2_WATER_S6_COST", Bool, false, "terrain", "", "S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE per-frame setupTextures loop (NOT per-quad - the per-quad std::chrono COST_SPLIT scopes are...", passthrough | verified),
-L(Presence, "MC2_WATER_S6_TRACE", Bool, false, "terrain", "", "", verified),
 // ── WATER-SUN-SPEC-2 ───────────────────────────────────────────────────
 // Lives in kAuxEnvVars, not kFeatureTable: kFeatureTable is indexed by
 // RendererFeature and this gate needs no enum ordinal (nothing dispatches
@@ -215,7 +163,6 @@ L(Lead0Kill, "MC2_WATER_SHORE_MASK", Bool, true, "terrain", "", "WATER-SHORE-MAS
 // history: docs/gate-history.md#MC2_WATER_SHORE_MEANDER_FREQ
 G("MC2_WATER_SHORE_MODE", Enum, "", "terrain", "", "", tokens("|0|1|2|3") | verified),
 L(Lead0, "MC2_WATER_SKYTINT", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_WATER_STREAM_DEBUG", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_WATER_UPLOAD_NARROW", Bool, true, "terrain", "", ""),
 P("MC2_WIDTH", Int, 0, "gameos", "", "(c) #49 windowed-resolution oracle.", passthrough | verified),
 L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough | verified),
@@ -233,7 +180,6 @@ L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough | verified),
 // exactly-legacy, and the harness turns it on explicitly.
 // history: docs/gate-history.md#MC2_WINDOW_OFFSCREEN
 L(Lead0, "MC2_WINDOW_OFFSCREEN", Bool, false, "unclassified", "", "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...", passthrough | registry(Trace, "MC2_TRACE_WINDOW_OFFSCREEN", -1, false) | verified),
-G("MC2_WORLD_ORDER_TRACE", Bool, false, "code", "", "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.", passthrough | registry(Trace, "MC2_WORLD_ORDER_TRACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_XFORM_PARITY_FATAL
 L(Lead1, "MC2_XFORM_PARITY_FATAL", Bool, false, "code", "", "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant.", registry(Trace, "MC2_XFORM_PARITY_FATAL", -1, false) | verified),
 

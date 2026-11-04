@@ -330,10 +330,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior.",
     },
     {
-        "MC2_TRACE_AIMED_FIRE_FIXTURE", "MC2_AIMED_FIRE_FIXTURE", EnvVarKind::Trace, false,
-        "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack...",
-    },
-    {
         "MC2_TRACE_APPEAR_AUDIT", "MC2_APPEAR_AUDIT", EnvVarKind::Trace, false,
         "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST.",
     },
@@ -346,18 +342,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "INFO-CAPTURE fixture: =N force-selects the first home mover into the in-mission Info window and switches the command bar to the INFO tab ONCE at frame >= N...",
     },
     {
-        "MC2_TRACE_BOOT_INFO_SCROLL", "MC2_BOOT_INFO_SCROLL", EnvVarKind::Trace, false,
-        "INFO-IMGUI-SLICE-4 capture assist: =1 (with MC2_BOOT_INFO=N driving) pins the info-panel loadout list scrolled to bottom from frame N+3000 on BOTH paths -...",
-    },
-    {
-        "MC2_TRACE_BOOT_OBJ", "MC2_BOOT_OBJ", EnvVarKind::Trace, false,
-        "OBJ-CAPTURE fixture: =N calls ControlGui::startObjectives(1) ONCE at frame >= N (ControlGui::update), showing the in-mission objectives overlay.",
-    },
-    {
-        "MC2_TRACE_BOOT_OBJ_COMPLETE", "MC2_BOOT_OBJ_COMPLETE", EnvVarKind::Trace, false,
-        "OBJ-COMPLETE-CAPTURE fixture: =N force-resolves the first active non-hidden objective to OS_SUCCESSFUL ONCE at frame >= N (ControlGui::update) via the...",
-    },
-    {
         "MC2_TRACE_BOOT_PAUSED", "MC2_BOOT_PAUSED", EnvVarKind::Trace, false,
         "PAUSE-IMGUI-SLICE-0: =N auto-toggles the in-mission pause menu ONCE at frame >= N (MissionInterfaceManager::update).",
     },
@@ -366,20 +350,12 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "PAUSE-IMGUI-SLICE-3: =abort|exit invokes the ABORT MISSION / EXIT GAME confirm dialog ONCE after the MC2_BOOT_PAUSED pause menu has settled...",
     },
     {
-        "MC2_TRACE_BOOT_TIMER", "MC2_BOOT_TIMER", EnvVarKind::Trace, false,
-        "TIMER-CAPTURE fixture: =N force-arms the in-mission mission timer ONCE at frame >= N by setting mission->m_timeLimit = scenarioTime + 754 s...",
-    },
-    {
         "MC2_TRACE_BOOT_TIMER_SECS", "MC2_BOOT_TIMER_SECS", EnvVarKind::Trace, false,
         "TIMER-CAPTURE fixture parameter: =S overrides the remaining seconds the MC2_BOOT_TIMER fixture arms (default 754).",
     },
     {
         "MC2_TRACE_BOOT_VIDEO", "MC2_BOOT_VIDEO", EnvVarKind::Trace, false,
         "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...",
-    },
-    {
-        "MC2_BRAIN_FREEZE_TRACE", "MC2_BRAIN_FREEZE_TRACE", EnvVarKind::Trace, false,
-        "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps...",
     },
     {
         "MC2_FEATURE_CALLED_SHOT_FIX", "MC2_CALLED_SHOT_FIX", EnvVarKind::Feature, false,
@@ -392,10 +368,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TRACE_CEMENT_ATLAS_DUMP", "MC2_CEMENT_ATLAS_DUMP", EnvVarKind::Trace, false,
         "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so cell art can be inspected directly -- which cells actually carry painted markings is an...",
-    },
-    {
-        "MC2_TRACE_COLORMAP_DISPLACE_PROBE", "MC2_COLORMAP_DISPLACE_PROBE", EnvVarKind::Trace, false,
-        "COLORMAP-CPU-RETIRE-1 parity probe: logs displacement magnitude (maxDispMag in wu) from the CPU colormap displacement path.",
     },
     {
         "MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_PLAY", EnvVarKind::Trace, false,
@@ -412,10 +384,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TUNE_CONE_POOL_REACH", "MC2_CONE_POOL_REACH", EnvVarKind::Trace, false,
         "CONE-SPILL-POLICY-1: reach multiplier k for the extended beam/terrain intersection search (reach = k * authored coneLen * MC2_LIGHT_CONE_SPILL).",
-    },
-    {
-        "MC2_CONE_SPILL_COUPLING", "MC2_CONE_SPILL_COUPLING", EnvVarKind::Trace, false,
-        "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES and is now...",
     },
     {
         "MC2_DIAG_DEBUG_STATE_DUMP", "MC2_DEBUG_STATE_DUMP", EnvVarKind::Trace, false,
@@ -470,24 +438,12 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).",
     },
     {
-        "MC2_TRACE_FREEZE_MOVERS_AT", "MC2_FREEZE_MOVERS_AT", EnvVarKind::Trace, false,
-        "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on...",
-    },
-    {
         "MC2_FX_DEFS", nullptr, EnvVarKind::Feature, true,
         "Authored effect sidecars overlay the stock catalog; absent definitions are a no-op.",
     },
     {
         "MC2_FX_FORCE_SPAWN", "MC2_FX_FORCE_SPAWN", EnvVarKind::Trace, false,
         "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.",
-    },
-    {
-        "MC2_GOM_UPDATE_COST_SPLIT", "MC2_GOM_UPDATE_COST_SPLIT", EnvVarKind::Trace, false,
-        "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp).",
-    },
-    {
-        "MC2_TRACE_GPU_CULL_STATIC_LIGHT_ZERO_PROBE", "MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE", EnvVarKind::Trace, false,
-        "Static-prop light-bake observation gate, default OFF.",
     },
     {
         "MC2_GPU_PARTICLES", "MC2_GPU_PARTICLES", EnvVarKind::Feature, true,
@@ -502,16 +458,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice A: data-first HUD readability.",
     },
     {
-        "MC2_TRACE_IFACE_COST_SPLIT", "MC2_IFACE_COST_SPLIT", EnvVarKind::Trace, false,
-        "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl.",
-    },
-    {
         "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY", "MC2_LIGHTBAKE_REBAKE_ON_READY", EnvVarKind::Feature, true,
         "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load...",
-    },
-    {
-        "MC2_LIGHT_CONE_NODES", "MC2_LIGHT_CONE_NODES", EnvVarKind::Trace, true,
-        "LIGHT-CONE-MODELS-1: DEFAULT-ON.",
     },
     {
         "MC2_FEATURE_LIGHT_GRID", "MC2_LIGHT_GRID", EnvVarKind::Feature, true,
@@ -534,14 +482,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape.",
     },
     {
-        "MC2_TRACE_LINKUP", "MC2_LINKUP_TRACE", EnvVarKind::Trace, false,
-        "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP]...",
-    },
-    {
-        "MC2_TRACE_LOAD_RACE_DELAY_ATLAS", "MC2_LOAD_RACE_DELAY_ATLAS", EnvVarKind::Trace, false,
-        "gos_terrain_indirect.cpp negative control for the mission-load residency-race probes: when set (any value), BuildColormapAtlas() defers the real GL atlas...",
-    },
-    {
         "MC2_TRACE_LOAD_RACE_PROBE_FRAMES", "MC2_LOAD_RACE_PROBE_FRAMES", EnvVarKind::Trace, false,
         "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see...",
     },
@@ -556,10 +496,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TRACE_MOVER_COHERENCE_AUDIT", "MC2_MOVER_COHERENCE_AUDIT", EnvVarKind::Trace, false,
         "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...",
-    },
-    {
-        "MC2_FEATURE_MOVE_RECON", "MC2_MOVE_RECON", EnvVarKind::Trace, false,
-        "Pathfinding cost instrumentation (mclib/move_recon.cpp).",
     },
     {
         "MC2_TUNE_NIGHT_AMBIENT_FLOOR", "MC2_NIGHT_AMBIENT_FLOOR", EnvVarKind::Trace, false,
@@ -614,16 +550,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui.",
     },
     {
-        "MC2_TUNE_SHADOW_MIN_SUN_ALT", "MC2_SHADOW_MIN_SUN_ALT", EnvVarKind::Trace, false,
-        "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude...",
-    },
-    {
         "MC2_SIM_FAULT_INJECT", "MC2_SIM_FAULT_INJECT", EnvVarKind::Trace, false,
         "Test-only crash-bundle fault injection: 1 worker throw, 2 worker invalid-parameter, 3 hard overlap violation; 0 = off.",
-    },
-    {
-        "MC2_SIM_IDENTITY", "MC2_SIM_IDENTITY", EnvVarKind::Trace, true,
-        "SIM-IDENTITY-HASH-1: emit a world-state hash (sorted-by-partId digest over mover position/rotation/gesture/anim-frame/damage/status/team plus...",
     },
     {
         "MC2_SIM_IDENTITY_TRACE", "MC2_SIM_IDENTITY_TRACE", EnvVarKind::Trace, false,
@@ -718,26 +646,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands.",
     },
     {
-        "MC2_TRACE_UI_IMGUI_INFO", "MC2_UI_IMGUI_INFO", EnvVarKind::Trace, false,
-        "INFO-IMGUI-SLICE-1: =1 renders the in-mission unit-Info panel as an ImGui window (unit name + health bar + loadout list with scrollbar) laid out inside...",
-    },
-    {
-        "MC2_TRACE_UI_IMGUI_OBJ", "MC2_UI_IMGUI_OBJ", EnvVarKind::Trace, false,
-        "OBJ-IMGUI-SLICE-1: =1 renders the in-mission OBJECTIVES overlay as ImGui (baked left-edge frame from tools/ui_art_reconstruct.py + procedural...",
-    },
-    {
-        "MC2_TRACE_UI_IMGUI_PAUSE", "MC2_UI_IMGUI_PAUSE", EnvVarKind::Trace, false,
-        "PAUSE-IMGUI-SLICE-1: =1 renders the in-mission pause menu as an ImGui window (GAME PAUSED + objectives/save/load/options/abort/exit/return) laid out inside...",
-    },
-    {
-        "MC2_TRACE_UI_IMGUI_TIMER", "MC2_UI_IMGUI_TIMER", EnvVarKind::Trace, false,
-        "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission mission-timer display as ImGui (right-aligned MM:SS via HudFont + the TimerStatic atlas tile) laid out...",
-    },
-    {
-        "MC2_TRACE_UI_IMGUI_VIDEO", "MC2_UI_IMGUI_VIDEO", EnvVarKind::Trace, false,
-        "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel as ImGui - VideoStatic chrome tiles + the decoder's frame texture at the same...",
-    },
-    {
         "MC2_FEATURE_UNIT_PROFILE_DATA", "MC2_UNIT_PROFILE_DATA", EnvVarKind::Feature, false,
         "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).",
     },
@@ -760,10 +668,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_VK_FORCE_FAIL", "MC2_VK_FORCE_FAIL", EnvVarKind::Trace, false,
         "VK-P13-SELECTOR-1: presence-gated =1, default OFF.",
-    },
-    {
-        "MC2_VK_PICK_PROBE", "MC2_VK_PICK_PROBE", EnvVarKind::Trace, false,
-        "BUG-A pick regression fence: default-OFF.",
     },
     {
         "MC2_TRACE_VK_PRESENT_DUMP_FRAME", "MC2_VK_PRESENT_DUMP_FRAME", EnvVarKind::Trace, false,
@@ -790,10 +694,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).",
     },
     {
-        "MC2_TRACE_VK_VFX_TRACE", "MC2_VK_VFX_TRACE", EnvVarKind::Trace, false,
-        "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.",
-    },
-    {
         "MC2_FEATURE_WATER_REFLECTION_RT", "MC2_WATER_REFLECTION_RT", EnvVarKind::Feature, true,
         "Half-resolution spatial water reflection; =0 falls back to sky only. WaterReflections in options.cfg selects Off/Sky only/Half-res.",
     },
@@ -804,10 +704,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TRACE_WINDOW_OFFSCREEN", "MC2_WINDOW_OFFSCREEN", EnvVarKind::Trace, false,
         "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...",
-    },
-    {
-        "MC2_WORLD_ORDER_TRACE", "MC2_WORLD_ORDER_TRACE", EnvVarKind::Trace, false,
-        "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.",
     },
     {
         "MC2_XFORM_PARITY_FATAL", "MC2_XFORM_PARITY_FATAL", EnvVarKind::Trace, false,
