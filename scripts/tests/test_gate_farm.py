@@ -246,7 +246,8 @@ def test_mad_flags_declared_view_needs_a_numeric_row_under_its_bound():
     assert gate.parse_declared_views(['a', 'b=1.5']) == {'a': 0.5, 'b': 1.5}
 
 
-def test_declared_view_bad_bound_is_an_argparse_error(capsys):
+def test_declared_view_bad_bound_is_an_argparse_error(capsys, monkeypatch):
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)   # the gate's contracts stage sets it
     with pytest.raises(SystemExit) as exc:
         gate.main(['--declared-view', 'a=high'])
     assert exc.value.code == 2
