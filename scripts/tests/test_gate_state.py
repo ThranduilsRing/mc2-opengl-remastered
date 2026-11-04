@@ -421,3 +421,21 @@ def test_resume_refuses_row_whose_evidence_file_was_deleted(journal, monkeypatch
         return types.SimpleNamespace(returncode=0)
     result, state = run_state(journal, monkeypatch, steps, again, resume=True)
     assert result == 0 and not state.reused and seen
+
+
+@pytest.mark.parametrize("outcome,expected", [
+    ("winerror", "INFRA (1): WinError 32"), ("oserror", "INFRA: "), ("product", "FAIL (1)"), ("valueerror", "FAIL: ")])
+def test_infra_reds_get_their_own_status(journal, monkeypatch, outcome, expected):
+    """W116 item 7: a red row that failed on the host is INFRA, never a product FAIL (no suspect range)."""
+    def runner(cmd, **kw):
+        if outcome == "oserror":
+            raise OSError("handle is invalid")
+        if outcome == "valueerror":
+            raise ValueError("bad capture")
+        text = "[mod_smoke] PermissionError: [WinError 32] in use" if outcome == "winerror" else "[SMOKE v1] event=summary result=fail"
+        return types.SimpleNamespace(returncode=1, stdout=text)
+    gate.FAILED_STAGES.clear()
+    assert run_state(journal, monkeypatch, [("mods", ["mods"], {})], runner)[0] == 1
+    assert gate.FAILED_STAGES[0][1].startswith(expected)
+    assert gate.stage_passed(gate.FAILED_STAGES[0][1]) is False
+    assert gate.infra_status(0, "WinError 32") is None

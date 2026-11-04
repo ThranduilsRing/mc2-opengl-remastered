@@ -91,6 +91,17 @@ def balance_movable(movable, load_a, load_b, seconds=None):
     return [s for s in movable if s in to_a], [s for s in movable if s in to_b]
 
 
+# A red row whose child output names one of these failed on the host, not in the product: no suspect range.
+INFRA_RE = re.compile(r"WinError (?:32|5|112)\b|No space left on device|not enough space on the disk"
+                      r"|REFUSED: a merge gate is running|host[- ]lease[^\n]*(?:timed out|timeout)", re.I)
+
+
+def infra_status(returncode, output):
+    """'INFRA (rc): <marker>' for a red child whose output carries a host/infra marker, else None."""
+    match = INFRA_RE.search(output or "")
+    return f"INFRA ({returncode}): {match.group(0)}" if returncode and match else None
+
+
 def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
 
@@ -1363,14 +1374,17 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     verify_published_identity(target, ROOT, head)
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
-                status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else f"FAIL ({result.returncode})"
+                status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else (
+                    infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
                 if result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     if moved:
                         status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
-                status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
+                # The child could not be run or reaped (OS/subprocess error): the host failed, not the product.
+                kind = "INFRA: " if isinstance(exc, (OSError, subprocess.SubprocessError)) else "FAIL: "
+                status = kind + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
             failed |= not stage_passed(status)
         results.append((name, status, elapsed))
@@ -1597,9 +1611,11 @@ def main(argv=None):
                     scheduling["keep_candidate"] = True
                 result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started
-                # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows). The clock is information only.
+                # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows), 3 only infra reds. The clock is information only.
                 skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
-                verdict = "FAIL" if result else ("PARTIAL" if skipped else "PASS")
+                # INFRA: every red row failed on the host (INFRA status), so no product regression is claimed.
+                infra_only = bool(result and FAILED_STAGES and all(s.startswith("INFRA") for _, s in FAILED_STAGES))
+                verdict = "INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")
                 print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
                 print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (window box 120 min, cap 180; info only) verdict={verdict} REUSED={reused or 'none'}"
@@ -1616,7 +1632,7 @@ def main(argv=None):
                     (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time(),
                                                                         candidate=str(CANDIDATE) if args.keep_candidate and not CANDIDATE_ERRORS else None)))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
-                return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
+                return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2, "INFRA": 3}[verdict]
     finally:
         journal.__exit__(None, None, None)
         if not (args.dry_run or args.preflight):
