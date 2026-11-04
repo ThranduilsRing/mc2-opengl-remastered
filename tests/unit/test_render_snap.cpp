@@ -24,7 +24,7 @@ TEST_CASE("render snap: selection box lifts all 8 corners on mc2 z only")
 {
     glm::vec3 box[8];
     for (int i = 0; i < 8; ++i) box[i] = glm::vec3(float(i), float(-i), 100.0f);
-    mc2snap::liftBoxZ(box, 8, -9.0f);
+    mc2snap::liftBoxZ(box, -9.0f);
     for (int i = 0; i < 8; ++i) {
         CHECK(box[i].x == float(i));
         CHECK(box[i].y == float(-i));
