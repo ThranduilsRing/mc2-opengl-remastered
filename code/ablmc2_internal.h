@@ -16,6 +16,7 @@
 #include"mclib.h"
 #endif
 
+#include "mc2_czstring.h"
 #include "gos_crashbundle.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
@@ -144,10 +145,10 @@ extern bool	friendlyDestroyed;
 extern bool	enemyDestroyed;
 extern bool	invulnerableON;		// tutorials: mechs take damage but look like they are not
 void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj);
-void DEBUGWINS_print (const char* s, long window);
+void DEBUGWINS_print (mc2::czstring s, long window);
 
 // Emits an [ABL_ARG_GUARD] trace line (flushed, for smoke-log capture) when an exec* binding skips a null pointer arg.
-static inline void abl_arg_guard_log(const char* funcName, const char* paramName) {
+static inline void abl_arg_guard_log(mc2::czstring funcName, mc2::czstring paramName) {
 	const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
 	const char* modName = CurModule ? CurModule->getName() : "(unknown)";
 	printf("[ABL_ARG_GUARD] func=%s param=%s module=%s file=%s line=%d — null ptr, skipping\n",

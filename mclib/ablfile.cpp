@@ -1,8 +1,9 @@
+#include "mc2_czstring.h"
 #include "ablscan.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
-long (*ABLFile::createCB) (void** file, const char* fName) = nullptr;
-long (*ABLFile::openCB) (void** file, const char* fName) = nullptr;
+long (*ABLFile::createCB) (void** file, mc2::czstring fName) = nullptr;
+long (*ABLFile::openCB) (void** file, mc2::czstring fName) = nullptr;
 long (*ABLFile::closeCB) (void** file) = nullptr;
 bool (*ABLFile::eofCB) (void* file) = nullptr;
 long (*ABLFile::remainingCB) (void* file) = nullptr;
@@ -15,7 +16,7 @@ long (*ABLFile::writeCB) (void* file, unsigned char* buffer, long length) = null
 long (*ABLFile::writeByteCB) (void* file, unsigned char byte) = nullptr;
 long (*ABLFile::writeIntCB) (void* file, int32_t val) = nullptr;
 long (*ABLFile::writeLongCB) (void* file, long value) = nullptr;
-long (*ABLFile::writeStringCB) (void* file, const char* buffer) = nullptr;
+long (*ABLFile::writeStringCB) (void* file, mc2::czstring buffer) = nullptr;
 
 void ABLFile::init (void) {
 
@@ -33,7 +34,7 @@ void ABLFile::destroy (void) noexcept {
 
 //---------------------------------------------------------------------------
 
-long ABLFile::create (const char* fName) {
+long ABLFile::create (mc2::czstring fName) {
 
 	close();
 	fileName.clear();
@@ -49,7 +50,7 @@ long ABLFile::create (const char* fName) {
 
 //---------------------------------------------------------------------------
 
-long ABLFile::open (const char* fName) {
+long ABLFile::open (mc2::czstring fName) {
 
 	close();
 	fileName.clear();
@@ -203,7 +204,7 @@ long ABLFile::writeLong (long val) {
 
 //-----------------------------------------------------------------------------
 
-long ABLFile::writeString (const char* buffer) {
+long ABLFile::writeString (mc2::czstring buffer) {
 
 	if (file)
 		return(writeStringCB(file, buffer));

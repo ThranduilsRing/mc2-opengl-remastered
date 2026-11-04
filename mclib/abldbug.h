@@ -10,6 +10,7 @@
  
 #ifndef ABLDBUG_H
 #define ABLDBUG_H
+#include "mc2_czstring.h"
 
 #ifndef DABLDBUG_H
 #include"dabldbug.h"
@@ -171,7 +172,7 @@ class Debugger {
 
 		static char				message[512];
 
-		void (*printCallback)(const char* s);
+		void (*printCallback)(mc2::czstring s);
 
 	public:
 
@@ -194,7 +195,7 @@ class Debugger {
 			printCallback = nullptr;
 		}
 
-		long init (void (*callback)(const char* s), ABLModulePtr _module);
+		long init (void (*callback)(mc2::czstring s), ABLModulePtr _module);
 
 		void destroy (void);
 
@@ -218,7 +219,7 @@ class Debugger {
 			return(enabled);
 		}
 
-		long print (const char* s);
+		long print (mc2::czstring s);
 
 		void setModule (ABLModulePtr _module);
 

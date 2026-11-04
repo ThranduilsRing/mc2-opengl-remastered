@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -211,11 +212,11 @@ int32_t                 NumExecutions = 0;
 static std::vector<StackItem> stackStore;
 void ABL_openArena (void);
 void ABL_closeArena (void);
-void (*ABLDebugPrintCallback) (const char* s) = nullptr;
+void (*ABLDebugPrintCallback) (mc2::czstring s) = nullptr;
 long (*ABLRandomCallback) (long range) = nullptr;
 void (*ABLSeedRandomCallback) (unsigned long range) = nullptr;
 unsigned long (*ABLGetTimeCallback) (void) = nullptr;
-void (*ABLFatalCallback) (long code, const char* s) = nullptr;
+void (*ABLFatalCallback) (long code, mc2::czstring s) = nullptr;
 void (*ABLEndlessStateCallback) (UserFile* log) = nullptr;
 
 //***************************************************************************
@@ -295,7 +296,7 @@ void DefaultSeedRandom (unsigned long seed) {
 
 //---------------------------------------------------------------------------
 
-void DefaultDebugPrintCallback (const char* s) {
+void DefaultDebugPrintCallback (mc2::czstring s) {
 }
 
 //---------------------------------------------------------------------------
@@ -316,7 +317,7 @@ void ABLi_setRandomCallbacks (void (*seedRandomCallback) (unsigned long seed),
 
 //---------------------------------------------------------------------------
 
-void ABLi_setDebugPrintCallback (void (*debugPrintCallback) (const char* s)) {
+void ABLi_setDebugPrintCallback (void (*debugPrintCallback) (mc2::czstring s)) {
 
 	ABLDebugPrintCallback = debugPrintCallback;
 }
@@ -341,8 +342,8 @@ void ABLi_init (unsigned long runtimeStackSize,
 				unsigned long maxCodeBufferSize,
 				unsigned long maxRegisteredModules,
 				unsigned long maxStaticVariables,
-				long (*fileCreateCB) (void** file, const char* fName),
-				long (*fileOpenCB) (void** file, const char* fName),
+				long (*fileCreateCB) (void** file, mc2::czstring fName),
+				long (*fileOpenCB) (void** file, mc2::czstring fName),
 				long (*fileCloseCB) (void** file),
 				bool (*fileEofCB) (void* file),
 				long (*fileReadCB) (void* file, unsigned char* buffer, long length),
@@ -354,9 +355,9 @@ void ABLi_init (unsigned long runtimeStackSize,
 				long (*fileWriteByteCB) (void* file, unsigned char byte),
 				long (*fileWriteIntCB) (void* file, int32_t byte),
 				long (*fileWriteLongCB) (void* file, long value),
-				long (*fileWriteStringCB) (void* file, const char* buffer),
-				void (*debuggerPrintCallback) (const char* s),
-				void (*fatalCallback) (long code, const char* s),
+				long (*fileWriteStringCB) (void* file, mc2::czstring buffer),
+				void (*debuggerPrintCallback) (mc2::czstring s),
+				void (*fatalCallback) (long code, mc2::czstring s),
 				bool debugInfo,
 				bool debug,
 				bool profile) {
@@ -725,7 +726,7 @@ void ablRememberTypeUse(TypePtr type) {
 		activeCompile->typeUses.emplace_back(type, type->numInstances);
 }
 
-int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numLinesProcessed, long* numFilesProcessed, bool printLines) {
+int32_t ABLi_preProcess (mc2::czstring sourceFileName, long* numErrors, long* numLinesProcessed, long* numFilesProcessed, bool printLines) {
 
 	if (numErrors) *numErrors = 0;
 	if (numLinesProcessed) *numLinesProcessed = 0;
@@ -1055,7 +1056,7 @@ void ABLi_close (void) {
 
 //***************************************************************************
 
-ABLModulePtr ABLi_loadLibrary (const char* sourceFileName, long* numErrors, long* numLinesProcessed, long* numFilesProcessed, bool printLines, bool createInstance) {
+ABLModulePtr ABLi_loadLibrary (mc2::czstring sourceFileName, long* numErrors, long* numLinesProcessed, long* numFilesProcessed, bool printLines, bool createInstance) {
 
 	// Library symbols need their owning instance during preprocessing.
 	ABLModulePtr library = new ABLModule;
@@ -1150,7 +1151,7 @@ bool ABLi_enabled (void) {
 
 //***************************************************************************
 
-void ABLi_addFunction (const char* name,
+void ABLi_addFunction (mc2::czstring name,
 					   bool isOrder,
 					   const char* paramList,
 					   const char* returnType,
@@ -1437,7 +1438,7 @@ void routine (void) {
 
 //***************************************************************************
 
-SymTableNodePtr forwardState (const char* stateName) {
+SymTableNodePtr forwardState (mc2::czstring stateName) {
 
 	SymTableNodePtr stateSymbol = searchSymTableForState(stateName, SymTableDisplay[1]);
 	if (stateSymbol)

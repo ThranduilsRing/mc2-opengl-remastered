@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -113,13 +114,13 @@ static void clearScalarSlotPointerArm (StackItem* slot) {
 }
 
 //***************************************************************************
-int32_t ABLi_preProcess (const char* sourceFileName,
+int32_t ABLi_preProcess (mc2::czstring sourceFileName,
 					  long* numErrors = nullptr,
 					  long* numLinesProcessed = nullptr,
 					  long* numFilesProcessed = nullptr,
 					  bool printLines = false);
 
-ABLModulePtr ABLi_loadLibrary (const char* sourceFileName,
+ABLModulePtr ABLi_loadLibrary (mc2::czstring sourceFileName,
 					   long* numErrors = nullptr,
 					   long* numLinesProcessed = nullptr,
 					   long* numFilesProcessed = nullptr,
@@ -332,7 +333,7 @@ void UserFile::close (void) {
 
 //---------------------------------------------------------------------------
 
-long UserFile::open (const char* fileName) {
+long UserFile::open (mc2::czstring fileName) {
 
 	numLines = 0;
 	totalLines = 0;
@@ -345,7 +346,7 @@ long UserFile::open (const char* fileName) {
 
 //---------------------------------------------------------------------------
 
-void UserFile::write (const char* s) {
+void UserFile::write (mc2::czstring s) {
 
 	static char buffer[MAX_USER_FILE_LINELEN];
 	
@@ -868,7 +869,7 @@ char* ABLModule::getFileName (void) {
 
 //---------------------------------------------------------------------------
 
-void ABLModule::setName (const char* _name) {
+void ABLModule::setName (mc2::czstring _name) {
 
 	strncpy(name, _name, MAX_ABLMODULE_NAME);
 	name[MAX_ABLMODULE_NAME-1] = '\0';
@@ -952,7 +953,7 @@ bool ablSkipErroredModulesEnabled (void) {
 	static const bool s_on = mc2::gate::get<"MC2_ABL_SKIP_ERRORED_MODULES">();
 	return s_on;
 }
-static void ablReportSkippedErroredModule (long handle, const char* fileName, long errs) {
+static void ablReportSkippedErroredModule (long handle, mc2::czstring fileName, long errs) {
 	static std::set<long> s_reported;
 	if (s_reported.insert(handle).second) {
 		printf("[ABL-SKIP] handle=%ld file=%s compileErrors=%ld -> execution skipped (MC2_ABL_SKIP_ERRORED_MODULES)\n",
@@ -1186,7 +1187,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 
 //---------------------------------------------------------------------------
 
-SymTableNodePtr ABLModule::findSymbol (const char* symbolName, SymTableNodePtr curFunction, bool searchLibraries) {
+SymTableNodePtr ABLModule::findSymbol (mc2::czstring symbolName, SymTableNodePtr curFunction, bool searchLibraries) {
 
 	if (curFunction) {
         char* sn = strdup(symbolName);
@@ -1216,7 +1217,7 @@ SymTableNodePtr ABLModule::findSymbol (const char* symbolName, SymTableNodePtr c
 
 //---------------------------------------------------------------------------
 
-SymTableNodePtr ABLModule::findFunction (const char* functionName, bool searchLibraries) {
+SymTableNodePtr ABLModule::findFunction (mc2::czstring functionName, bool searchLibraries) {
 
 	SymTableNodePtr symbol = searchSymTableForFunction(functionName, ModuleRegistry[handle].moduleIdPtr->defn.info.routine.localSymTable);
 
@@ -1240,7 +1241,7 @@ SymTableNodePtr ABLModule::findFunction (const char* functionName, bool searchLi
 
 //---------------------------------------------------------------------------
 
-SymTableNodePtr ABLModule::findState (const char* stateName) {
+SymTableNodePtr ABLModule::findState (mc2::czstring stateName) {
 
 	SymTableNodePtr symbol = searchSymTableForState(stateName, ModuleRegistry[handle].moduleIdPtr->defn.info.routine.localSymTable);
 	return(symbol);
@@ -1248,7 +1249,7 @@ SymTableNodePtr ABLModule::findState (const char* stateName) {
 
 //---------------------------------------------------------------------------
 
-int ABLModule::findStateHandle (const char* stateName) {
+int ABLModule::findStateHandle (mc2::czstring stateName) {
 
 	for (long i = 1; i < ModuleRegistry[handle].numStateHandles; i++)
 		if (strcmp(stateName, ModuleRegistry[handle].stateHandles[i].name) == 0)

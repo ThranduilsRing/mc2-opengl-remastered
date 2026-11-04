@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -109,7 +110,7 @@ void enterLocalSymTable (SymTableNodePtr& IdPtr) {
 
 //***************************************************************************
 
-inline void enterNameLocalSymTable (SymTableNodePtr& IdPtr, const char* name) {
+inline void enterNameLocalSymTable (SymTableNodePtr& IdPtr, mc2::czstring name) {
 
 	IdPtr = enterSymTable(name, &SymTableDisplay[level]);
 }
@@ -231,7 +232,7 @@ void recordLibraryUsed (SymTableNodePtr memberNodePtr) {
 
 //***************************************************************************
 
-SymTableNodePtr searchSymTable (const char* name, SymTableNodePtr nodePtr) {
+SymTableNodePtr searchSymTable (mc2::czstring name, SymTableNodePtr nodePtr) {
 
 	while (nodePtr) {
 		long compareResult = strcmp(name, nodePtr->name);
@@ -247,7 +248,7 @@ SymTableNodePtr searchSymTable (const char* name, SymTableNodePtr nodePtr) {
 
 //***************************************************************************
 
-SymTableNodePtr searchSymTableForFunction (const char* name, SymTableNodePtr nodePtr) {
+SymTableNodePtr searchSymTableForFunction (mc2::czstring name, SymTableNodePtr nodePtr) {
 
 	while (nodePtr) {
 		long compareResult = strcmp(name, nodePtr->name);
@@ -267,7 +268,7 @@ SymTableNodePtr searchSymTableForFunction (const char* name, SymTableNodePtr nod
 
 //***************************************************************************
 
-SymTableNodePtr searchSymTableForState (const char* name, SymTableNodePtr nodePtr) {
+SymTableNodePtr searchSymTableForState (mc2::czstring name, SymTableNodePtr nodePtr) {
 
 	while (nodePtr) {
 		long compareResult = strcmp(name, nodePtr->name);
@@ -288,7 +289,7 @@ SymTableNodePtr searchSymTableForState (const char* name, SymTableNodePtr nodePt
 
 //***************************************************************************
 
-SymTableNodePtr searchSymTableForString (const char* name, SymTableNodePtr nodePtr) {
+SymTableNodePtr searchSymTableForString (mc2::czstring name, SymTableNodePtr nodePtr) {
 
 	while (nodePtr) {
 		long compareResult = strcmp(name, nodePtr->name);
@@ -309,7 +310,7 @@ SymTableNodePtr searchSymTableForString (const char* name, SymTableNodePtr nodeP
 
 //***************************************************************************
 
-SymTableNodePtr searchLibrarySymTable (const char* name, SymTableNodePtr nodePtr) {
+SymTableNodePtr searchLibrarySymTable (mc2::czstring name, SymTableNodePtr nodePtr) {
 
 	//-------------------------------------------------------------
 	// Since all libraries are at the symbol display 0-level, we'll
@@ -346,7 +347,7 @@ SymTableNodePtr searchLibrarySymTable (const char* name, SymTableNodePtr nodePtr
 
 //***************************************************************************
 
-SymTableNodePtr searchLibrarySymTableDisplay (const char* name) {
+SymTableNodePtr searchLibrarySymTableDisplay (mc2::czstring name) {
 
 	SymTableNodePtr nodePtr = searchLibrarySymTable(name, SymTableDisplay[0]);
 	return(nodePtr);
@@ -354,7 +355,7 @@ SymTableNodePtr searchLibrarySymTableDisplay (const char* name) {
 
 //***************************************************************************
 
-SymTableNodePtr searchSymTableDisplay (const char* name) {
+SymTableNodePtr searchSymTableDisplay (mc2::czstring name) {
 
     char* dup_name = strdup(name);
 	//---------------------------------------------------------------------
@@ -406,7 +407,7 @@ SymTableNodePtr searchSymTableDisplay (const char* name) {
 
 //***************************************************************************
 
-SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) {
+SymTableNodePtr enterSymTable (mc2::czstring name, SymTableNodePtr* ptrToNodePtr) {
 
 	SymTableNodePtr newNode = static_cast<SymTableNodePtr>(ABL_alloc(ABLPool::Symbol, sizeof(SymTableNode)));
 	if (!newNode)
@@ -526,7 +527,7 @@ SymTableNodePtr extractSymTable (SymTableNodePtr* tableRoot, SymTableNodePtr nod
 
 //***************************************************************************
 
-void enterStandardRoutine (const char* name, long routineKey, bool isOrder, const char* paramList, const char* returnType, void (*callback)(void)) {
+void enterStandardRoutine (mc2::czstring name, long routineKey, bool isOrder, mc2::czstring paramList, mc2::czstring returnType, void (*callback)(void)) {
 
 	long tableIndex = routineKey;
 	if (tableIndex == -1) {

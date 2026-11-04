@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<utility>
@@ -149,14 +150,14 @@ extern DebuggerPtr debugger;
 
 //***************************************************************************
 
-void ABL_Fatal (long errCode, const char* s) {
+void ABL_Fatal (long errCode, mc2::czstring s) {
 
 	ABLFatalCallback(errCode, s);
 }
 
 //---------------------------------------------------------------------------
 
-void ABL_Assert (bool test, long errCode, const char* s) {
+void ABL_Assert (bool test, long errCode, mc2::czstring s) {
 
 #ifdef _DEBUG
 	if (!test)

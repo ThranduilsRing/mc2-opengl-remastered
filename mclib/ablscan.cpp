@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
@@ -1061,7 +1062,7 @@ bool getSourceLine (void) {
 
 //---------------------------------------------------------------------------
 
-long openSourceFile (const char* sourceFileName) {
+long openSourceFile (mc2::czstring sourceFileName) {
 
 	if (!sourceFileName)
 		return(-1);
