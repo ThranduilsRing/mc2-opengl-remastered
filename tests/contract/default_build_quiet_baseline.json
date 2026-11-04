@@ -61,6 +61,14 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/vram.py parses the load_end / run_end GPU-memory lines into the smoke report and the perf baseline. GameOS/gameos/gpu_memory_report.cpp prints them only when the smoke harness or MC2_DIAG_VERBOSE asked for diagnostics (log() returns early otherwise), so a player's console stays quiet; this check grades a smoke log, which is why it sees the tag."
     },
+    "VISUAL_DAMP v1": {
+      "status": "keep",
+      "reason": "owner-approved W115 exception 2026-11-04; one-shot load lines; W116 applies A:/Games/mc2-ops/patches/visual_height_diag.patch and removes these rows"
+    },
+    "VISUAL_HEIGHT v1": {
+      "status": "keep",
+      "reason": "owner-approved W115 exception 2026-11-04; one-shot load lines; W116 applies A:/Games/mc2-ops/patches/visual_height_diag.patch and removes these rows"
+    },
     "VK_RESIDENCY v1": {
       "status": "keep",
       "reason": "FAIL-LOUD by design (GameOS/gameos/vk_render_infra.cpp, vk_frame_ring.cpp, gos_vegetation.cpp, shadow_quality.h): the unconditional lines report a refused allocation, a degraded shadow quality or a vegetation placement cap the user's hardware forced; the budget summary line is MC2_DIAG_VERBOSE. No parser consumes it."
