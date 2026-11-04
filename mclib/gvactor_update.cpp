@@ -8,6 +8,7 @@
 #include "mc2fmt.h"
 #include "mover_lamps.h"
 #include "terrain_runtime.h"
+#include "render_snap.h"
 
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (gv class).
@@ -118,7 +119,8 @@ void GVAppearance::updateGeometry (void)
 	
 		glm::vec3 xlatPosition;
 		mc2ToRender(xlatPosition, position);
-		xlatPosition.y += TerrainRuntime::visualHeightDelta(position);   // UNIT-VISUAL-SNAP-1: draw only
+		visualDelta_ = TerrainRuntime::visualHeightDelta(position);
+		xlatPosition.y += visualDelta_;   // UNIT-VISUAL-SNAP-1: draw only
 	
 		if (xlatPosition.y < fogStart)
 		{
@@ -274,7 +276,7 @@ void GVAppearance::updateGeometry (void)
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
 				glm::vec3 childPos =
-					getNodeIdPosition(spotlightNodeIds_[k]);
+					snapAnchor(getNodeIdPosition(spotlightNodeIds_[k]));
 				bool coneAimed = lampCursor.next(gvShape, spotlightNodeIds_[k], spotlightLights_[k], childPos);
 				// LIGHT-CONE-MODELS-1 (A/C): place the pool at the authored
 				// cone's FAR END — aim comes from the node's live transform
@@ -436,7 +438,7 @@ void GVAppearance::updateGeometry (void)
 			glm::vec3 dustPos = getNodeIdPosition(dustNodeIndex);
 
 			glm::vec3 wakePos;
-			mc2ToRender(wakePos, dustPos);
+			mc2ToRender(wakePos, snapAnchor(dustPos));
  			
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, wakePos);
@@ -462,7 +464,7 @@ void GVAppearance::updateGeometry (void)
 		glm::vec3 dustPos = getNodeIdPosition(dustNodeIndex);
 
 		glm::vec3 wakePos;
-		mc2ToRender(wakePos, dustPos);
+		mc2ToRender(wakePos, snapAnchor(dustPos));
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, wakePos);
@@ -490,7 +492,7 @@ void GVAppearance::updateGeometry (void)
 		glm::vec3 dustPos = getNodeIdPosition(activityNodeIndex);
 
 		glm::vec3 wakePos;
-		mc2ToRender(wakePos, dustPos);
+		mc2ToRender(wakePos, snapAnchor(dustPos));
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, wakePos);
@@ -518,6 +520,11 @@ void GVAppearance::updateGeometry (void)
 }
 
 // The contact markers are drawn only at sensor levels 1..4, so they are transformed at draw time, not every update.
+glm::vec3 GVAppearance::snapAnchor (glm::vec3 nodePos) const
+{
+	return mc2snap::liftAnchorZ(nodePos, visualDelta_);
+}
+
 void GVAppearance::transformSensorShapes()
 {
 	TG_MultiShape* marker = sensorLevel > 1 ? sensorCircleShape : sensorTriangleShape;

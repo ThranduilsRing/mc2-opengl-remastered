@@ -1,3 +1,5 @@
+#include "render_snap.h"
+#include "terrain_runtime.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <utility>
 #include <atomic>
@@ -263,6 +265,8 @@ bool Mech3DAppearance::recalcBounds (void)
 				boxCoords[7].y = position.y + mechType->typeUpperLeft.y;
 				boxCoords[7].z = position.z + mechType->typeLowerRight.z + baseRootNodeDifference;
 	
+				mc2snap::liftBoxZ(boxCoords, visualDelta_);   // UNIT-VISUAL-SNAP-2: selection box follows the drawn mesh
+
 				float maxX = 0.0f, maxY = 0.0f;
 				float minX = 0.0f, minY = 0.0f;
 
@@ -874,7 +878,7 @@ long Mech3DAppearance::render (long depthFixup)
 					glm::mat4	localToWorld;
 					glm::mat4	localResult;
 					
-					mc2ToRender(actualPosition, jumpNodePos);
+					mc2ToRender(actualPosition, snapAnchor(jumpNodePos));
 					
  					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -899,7 +903,7 @@ long Mech3DAppearance::render (long depthFixup)
 						leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
 
 					glm::vec3 leftNodePos = getNodeIdPosition(leftArmNodeIndex);
-					mc2ToRender(leftShoulderPos, leftNodePos);
+					mc2ToRender(leftShoulderPos, snapAnchor(leftNodePos));
 		
  					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, leftShoulderPos);
@@ -924,7 +928,7 @@ long Mech3DAppearance::render (long depthFixup)
 						rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
 
 					glm::vec3 rightNodePos = getNodeIdPosition(rightArmNodeIndex);
-					mc2ToRender(rightShoulderPos, rightNodePos);
+					mc2ToRender(rightShoulderPos, snapAnchor(rightNodePos));
 					
  					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, rightShoulderPos);
@@ -946,7 +950,7 @@ long Mech3DAppearance::render (long depthFixup)
 							
 					glm::vec3 smokeNodePos = getNodePosition(0);
 					glm::vec3 smokePos;
-					mc2ToRender(smokePos, smokeNodePos);
+					mc2ToRender(smokePos, snapAnchor(smokeNodePos));
 					
 					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, smokePos);

@@ -502,14 +502,15 @@ class Mech3DAppearance: public ObjectAppearance
 		long						simHitRightNodeIndex_ = -1;
 		bool						buildingSimPose_ = false;
 		// The shape, node indices and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
-		// the palette, the draw copy otherwise.
-		struct PoseView { TG_MultiShapePtr shape; long& rotNode; long& hitLeft; long& hitRight; long lod; glm::vec3 pos; float rot; };
+		// the palette, the draw copy otherwise. lift is the visual-height delta baked into that shape's transform (draw copy
+		// only); the getters subtract it (mc2snap::unliftNodeZ) so no caller, sim or presentation, ever sees it.
+		struct PoseView { TG_MultiShapePtr shape; long& rotNode; long& hitLeft; long& hitRight; long lod; glm::vec3 pos; float rot; float lift; };
 		PoseView poseView (void)
 		{
 			// Main can request simulation reads for LOS/UI; only inspect the build flag while owning Sim.
 			if (!simPresentationPass && (mc2::overlap::onSimWorker() || !mc2::overlap::jobInFlight()) && buildingSimPose_)
-				return { simulationShape_.get(), simRotationalNodeIndex_, simHitLeftNodeIndex_, simHitRightNodeIndex_, 0, simPosition_, simRotation_ };
-			return { mechShape, rotationalNodeIndex, hitLeftNodeIndex, hitRightNodeIndex, currentLOD, position, rotation };
+				return { simulationShape_.get(), simRotationalNodeIndex_, simHitLeftNodeIndex_, simHitRightNodeIndex_, 0, simPosition_, simRotation_, 0.0f };
+			return { mechShape, rotationalNodeIndex, hitLeftNodeIndex, hitRightNodeIndex, currentLOD, position, rotation, visualDelta_ };
 		}
 		long						rootNodeIndex;
 		long						leftArmNodeIndex;
@@ -936,6 +937,11 @@ class Mech3DAppearance: public ObjectAppearance
 		{
 			return unitAnim().leftArmOff;
 		}
+
+		// UNIT-VISUAL-SNAP-2: effect anchor (mc2 space) lifted by the render-only visual-height delta; the node getters are
+		// sim-true in every pass (they unlift the draw transform, see PoseView::lift), so this lifts exactly once.
+		glm::vec3 snapAnchor (glm::vec3 nodePos) const;
+		float visualDelta_ = 0.0f;   // visual-height delta sampled once per updateGeometry; body, box and effects share it
 
 		virtual glm::vec3 getHitNodeLeft (void);
 		virtual glm::vec3 getHitNodeRight (void);

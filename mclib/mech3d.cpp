@@ -1,3 +1,5 @@
+#include "render_snap.h"
+#include "terrain_runtime.h"
 #include "Gates/preferences_legacy.h"
 // Mech 3D layer.  Controls how the mech moves through animations
 // For MechCommander 2
@@ -398,7 +400,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 		glm::mat4	localToWorld;
 		glm::mat4	localResult;
 		
-		mc2ToRender(actualPosition, jumpNodePos);
+		mc2ToRender(actualPosition, snapAnchor(jumpNodePos));
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -472,12 +474,12 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_left",
 				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
-			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
+			result.x = wp[0]; result.y = wp[1]; result.z = wp[2] - pv_.lift;
 			return result;
 		}
 	}
 
-	result = mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,hitLeftNodeIndex);
+	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,hitLeftNodeIndex), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) &&
@@ -519,12 +521,12 @@ glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_right",
 				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
-			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
+			result.x = wp[0]; result.y = wp[1]; result.z = wp[2] - pv_.lift;
 			return result;
 		}
 	}
 
-	result = mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,hitRightNodeIndex);
+	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,hitRightNodeIndex), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 

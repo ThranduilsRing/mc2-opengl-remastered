@@ -1,5 +1,7 @@
 // Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection.
 // Declared in the class headers; shared names in mech3d_internal.h.
+#include "render_snap.h"
+#include "terrain_runtime.h"
 #include <atomic>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
@@ -712,7 +714,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		glm::mat4	localToWorld;
 		glm::mat4	localResult;
 				
-		mc2ToRender(leftShoulderPos, leftNodePos);
+		mc2ToRender(leftShoulderPos, snapAnchor(leftNodePos));
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, leftShoulderPos);
@@ -829,7 +831,7 @@ void Mech3DAppearance::blowRightArm (void)
 		glm::mat4	localToWorld;
 		glm::mat4	localResult;
 				
-		mc2ToRender(rightShoulderPos, rightNodePos);
+		mc2ToRender(rightShoulderPos, snapAnchor(rightNodePos));
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, rightShoulderPos);
@@ -949,7 +951,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 
 			glm::vec3 smokeNodePos = getNodePosition(0);	//Always SMOKE if it exists!!
 			glm::vec3 smokePos;
-			mc2ToRender(smokePos, smokeNodePos);
+			mc2ToRender(smokePos, snapAnchor(smokeNodePos));
 
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, smokePos);

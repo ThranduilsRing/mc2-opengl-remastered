@@ -42,7 +42,7 @@ def height_sig(elev: np.ndarray) -> str:
     side = int(elev.shape[0])
     if elev.shape != (side, side):
         raise ValueError("elev must be square")
-    payload = np.uint32(side).tobytes() + np.ascontiguousarray(elev, dtype="<f4").tobytes()
+    payload = np.array(side, dtype="<u4").tobytes() +np.ascontiguousarray(elev, dtype="<f4").tobytes()
     return f"{side} {fnv1a64(payload):016x}"
 
 

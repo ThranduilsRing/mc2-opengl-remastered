@@ -256,14 +256,15 @@ class GVAppearance : public ObjectAppearance
 		long										simRotationalNodeIndex_ = -1;
 		bool										buildingSimPose_ = false;
 		// The shape, node index and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
-		// the palette, the draw copy otherwise.
-		struct PoseView { TG_MultiShapePtr shape; long& rotNode; glm::vec3 pos; float rot; };
+		// the palette, the draw copy otherwise. lift is the visual-height delta baked into that shape's transform (draw copy
+		// only); the getters subtract it (mc2snap::unliftNodeZ) so no caller, sim or presentation, ever sees it.
+		struct PoseView { TG_MultiShapePtr shape; long& rotNode; glm::vec3 pos; float rot; float lift; };
 		PoseView poseView (void)
 		{
 			// Main can request simulation reads for LOS/UI; only inspect the build flag while owning Sim.
 			if (!simPresentationPass && (mc2::overlap::onSimWorker() || !mc2::overlap::jobInFlight()) && buildingSimPose_)
-				return { simulationShape_.get(), simRotationalNodeIndex_, simPosition_, simRotation_ };
-			return { gvShape, rotationalNodeIndex, position, rotation };
+				return { simulationShape_.get(), simRotationalNodeIndex_, simPosition_, simRotation_, 0.0f };
+			return { gvShape, rotationalNodeIndex, position, rotation, visualDelta_ };
 		}
 
 
@@ -470,6 +471,8 @@ class GVAppearance : public ObjectAppearance
 		virtual void startActivity (long effectId, bool loop);
 		virtual void stopActivity (void);
 
+		glm::vec3 snapAnchor (glm::vec3 nodePos) const;   // UNIT-VISUAL-SNAP-2: effect anchor lifted by the render-only delta
+		float visualDelta_ = 0.0f;   // sampled once per updateGeometry; body, box and effects share it
 		virtual glm::vec3 getNodeIdPosition (long nodeId);
 
 		virtual glm::vec3 getHitNode (void);

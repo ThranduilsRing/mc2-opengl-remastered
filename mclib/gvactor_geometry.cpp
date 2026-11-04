@@ -5,6 +5,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "gvactor_internal.h"
+#include "render_snap.h"
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -729,6 +730,7 @@ bool GVAppearance::recalcBounds (void)
 				boxCoords[7].y = position.y + minBox.y;
 				boxCoords[7].z = position.z + maxBox.z;
  	
+				mc2snap::liftBoxZ(boxCoords, visualDelta_);   // UNIT-VISUAL-SNAP-2: selection box follows the drawn mesh
 				float maxX = 0.0f, maxY = 0.0f;
 				float minX = 0.0f, minY = 0.0f;
 
@@ -992,7 +994,7 @@ glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
 
 	gvShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
    
-	result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName);
+	result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -1032,7 +1034,7 @@ glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 
 	gvShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
    
-	result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId);
+	result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 

@@ -4,6 +4,7 @@
 #include "texture_assets.h"
 #include "mech3d_internal.h"
 #include "footprints.h"
+#include "render_snap.h"
 #include "terrain_runtime.h"
 #include "../RenderCore/axis_convert.h"
 #include <format>
@@ -175,7 +176,9 @@ void Mech3DAppearance::updateGeometry (void)
 	
    	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
-	xlatPosition.y += TerrainRuntime::visualHeightDelta(position);   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
+	// No lift until update() has sampled baseRootNodeHeight (saved state) off this pose, so that sample is exact by construction.
+	visualDelta_ = baseRootNodeHeight == -99999.9f ? 0.0f : TerrainRuntime::visualHeightDelta(position);
+	xlatPosition.y += visualDelta_;   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
 
 	//Update flashing regardless of view!!!
 	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
@@ -390,7 +393,7 @@ void Mech3DAppearance::updateGeometry (void)
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
 				glm::vec3 childPos =
-					getNodeIdPosition(spotlightNodeIds_[k]);
+					snapAnchor(getNodeIdPosition(spotlightNodeIds_[k]));
 				bool coneAimed = lampCursor.next(mechShape, spotlightNodeIds_[k], spotlightLights_[k], childPos);
 				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
 				// END (node transform × cone geometry axis), grounded on
@@ -757,7 +760,7 @@ void Mech3DAppearance::updateGeometry (void)
 		glm::mat4	localToWorld;
 		glm::mat4	localResult;
 		
-		mc2ToRender(actualPosition, jumpNodePos);
+		mc2ToRender(actualPosition, snapAnchor(jumpNodePos));
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -827,7 +830,7 @@ void Mech3DAppearance::updateGeometry (void)
 		glm::mat4	localToWorld;
 		glm::mat4	localResult;
 		
-		mc2ToRender(actualPosition, jumpNodePos);
+		mc2ToRender(actualPosition, snapAnchor(jumpNodePos));
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
@@ -858,7 +861,7 @@ void Mech3DAppearance::updateGeometry (void)
 			leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
 
 		glm::vec3 leftNodePos = getNodeIdPosition(leftArmNodeIndex);
-		mc2ToRender(leftShoulderPos, leftNodePos);
+		mc2ToRender(leftShoulderPos, snapAnchor(leftNodePos));
 		
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, leftShoulderPos);
@@ -888,7 +891,7 @@ void Mech3DAppearance::updateGeometry (void)
 			rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
 
 		glm::vec3 rightNodePos = getNodeIdPosition(rightArmNodeIndex);
-		mc2ToRender(rightShoulderPos, rightNodePos);
+		mc2ToRender(rightShoulderPos, snapAnchor(rightNodePos));
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, rightShoulderPos);
@@ -915,7 +918,7 @@ void Mech3DAppearance::updateGeometry (void)
 				
 		glm::vec3 smokeNodePos = getNodePosition(0);
 		glm::vec3 smokePos;
-		mc2ToRender(smokePos, smokeNodePos);
+		mc2ToRender(smokePos, snapAnchor(smokeNodePos));
 		
  		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, smokePos);
@@ -998,6 +1001,11 @@ void Mech3DAppearance::updateGeometry (void)
 	 
 }	
 
+
+glm::vec3 Mech3DAppearance::snapAnchor (glm::vec3 nodePos) const
+{
+	return mc2snap::liftAnchorZ(nodePos, visualDelta_);
+}
 
 void Mech3DAppearance::updateSimPose (bool advanceClock)
 {
