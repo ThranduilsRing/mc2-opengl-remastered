@@ -3265,6 +3265,18 @@
    "new_array": 0,
    "owners": []
   },
+  "Parsed": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "GameOS/gameos/diagnostic_trace.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
   "PilotPromotionArea": {
    "delete": 1,
    "delete_array": 0,
@@ -4941,6 +4953,30 @@
    "owners": [
     "aListBox"
    ]
+  },
+  "std::mutex": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "GameOS/gameos/diagnostic_trace.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
+  "std::unordered_set<std::string>": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "GameOS/gameos/diagnostic_trace.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
   },
   "unit_ptr_type": {
    "delete": 2,
