@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <string_view>
 
 namespace mc2_hitch2 {
 
@@ -16,14 +17,21 @@ struct Stats {
     std::atomic<int> waitIdleLogged{0};
 };
 inline Stats& stats() { static Stats s; return s; }
+inline void noteBake(const char* state, int dirtyBatch, int objRecord, const char* cache = nullptr) {
+    Stats& s = stats();
+    if (state) s.bakeState.store(state);
+    if (cache) s.bakeCache.store(cache);
+    s.dirtyBatches.fetch_add(static_cast<uint64_t>(dirtyBatch), std::memory_order_relaxed);
+    s.objMapRecords.fetch_add(static_cast<uint64_t>(objRecord), std::memory_order_relaxed);
+}
 
 // A coarse named scope for the per-frame "worst scopes" list (one steady_clock pair, ~40 ns; keep it at region level, never per element).
 struct ScopeTable {
-    struct Slot { const char* name; double ms; };
+    struct Slot { std::string_view name; double ms; };
     static constexpr int kMax = 24;
     Slot slots[kMax];
     int n = 0;
-    void add(const char* name, double ms) {
+    void add(std::string_view name, double ms) {
         for (int i = 0; i < n; ++i) if (slots[i].name == name) { slots[i].ms += ms; return; }
         if (n < kMax) slots[n++] = {name, ms};
     }
@@ -31,9 +39,9 @@ struct ScopeTable {
 inline ScopeTable& scopes() { static ScopeTable t; return t; }   // render thread only
 
 struct Scope {
-    const char* name;
+    std::string_view name;
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    explicit Scope(const char* n) : name(n) {}
+    explicit Scope(std::string_view n) : name(n) {}
     ~Scope() { scopes().add(name, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
 };
 

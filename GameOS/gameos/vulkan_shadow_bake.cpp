@@ -488,8 +488,7 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     // Cold tiles only read retained CPU uploads; queue barriers order shared scratch reuse.
     // Continue next frame without waiting two epochs; only the final submit must retire before release.
     if (recorded_ && !(coldPending_ && submitted_ && epoch > submittedEpoch_)) return false;
-    if (coldPending_) {
-        mc2_hitch2::stats().bakeState.store("cold"); mc2_hitch2::stats().bakeCache.store("miss");
+    if (coldPending_) { mc2_hitch2::noteBake("cold", 0, 0, "miss");
         // Bound warm-up to about 100 frames on a 400-tile map, so the live
         // caster fallback gives way to the cheaper mask promptly.
         for (uint32_t tile = 0; tile < 4 && coldPending_; ++tile)
@@ -1214,8 +1213,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     incSubTiles_ += static_cast<uint32_t>(batch.size());
     ++incBatches_;
     ++dirtyBatches_;
-    mc2_hitch2::stats().dirtyBatches.fetch_add(1, std::memory_order_relaxed);
-    mc2_hitch2::stats().bakeState.store("dirty");
+    mc2_hitch2::noteBake("dirty", 1, 0);
     return true;
 }
 
@@ -1493,8 +1491,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
     objectInitialized_ = true;
     ++objectMapRecords_;
-    mc2_hitch2::stats().objMapRecords.fetch_add(1, std::memory_order_relaxed);
-    if (!coldPending_) mc2_hitch2::stats().bakeState.store(warm_ && recordedMask_ ? "warm" : "object");
+    mc2_hitch2::noteBake(coldPending_ ? nullptr : warm_ && recordedMask_ ? "warm" : "object", 0, 1);
     return true;
 }
 

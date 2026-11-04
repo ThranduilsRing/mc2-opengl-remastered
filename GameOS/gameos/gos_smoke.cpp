@@ -214,6 +214,7 @@ void samplePerf(double frameMs) {
                     std::partial_sort(idx, idx + top, idx + sc.n, [&](int a, int b) { return sc.slots[a].ms > sc.slots[b].ms; });
                     std::string scopes;
                     for (int i = 0; i < top; ++i) scopes += std::string(sc.slots[idx[i]].name) + "=" + std::to_string(sc.slots[idx[i]].ms).substr(0, 5) + (i + 1 < top ? "," : "");
+                    if (mc2_diag::tagRequested("HITCH"))
                     mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} scopes={}\n",
                         mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6, mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
                         mc2::fmt::as_u64(om - s_om), mc2::fmt::as_u64(db - s_db), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::safe(hs.bakeCache.load()), (sj - s_sj) / 1e6,
