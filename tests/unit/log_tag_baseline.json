@@ -8689,9 +8689,27 @@
    "tag": "SIM_OVERLAP",
    "ver": 1,
    "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "stderr",
    "keys": [
     "site",
     "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIM_OVERLAP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "thread",
+    "in_flight",
+    "last_site"
    ],
    "count": 1
   },
