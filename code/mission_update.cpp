@@ -1361,7 +1361,7 @@ void Mission::overlapKick()
 				++s_pre.extraFrames;
 			ended = updatePass(true, false, true, true, early);
 			s_extraTickInFrame = false;
-			if (ended || loadInMissionSave)
+			if (ended || loadInMissionSave || saveInMissionSave)
 				break;
 		}
 		s_pre.ended = ended;

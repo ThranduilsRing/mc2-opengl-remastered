@@ -7,6 +7,7 @@
 #include "brain_execution_policy.h"
 #include <utility>
 #include <string_view>
+#include "tick_commit.h"
 
 extern void preloadSupportRadioArchive(std::string_view name);
 extern void preloadSupportSample(unsigned id);
@@ -632,6 +633,8 @@ int MissionInterfaceManager::showObjectives()
 
 int MissionInterfaceManager::showObjectives(bool on)
 {
+	if (mc2::tick::defer(mc2::tick::Queue::MoverUi, [this, on] { showObjectives(on); }))
+		return 0;
 	controlGui.startObjectives( on );
 	return 0;
 }
