@@ -13,6 +13,7 @@
 
 class GameObject;
 class BldgAppearance;
+class Appearance;
 namespace gosFX { class Effect; }
 namespace RenderCore { class FrameArena; }
 
@@ -36,6 +37,8 @@ inline constexpr uint32_t HitTarget = 1u << 3;     // bolts
 inline constexpr uint32_t Timer = 1u << 4;         // artillery: draw the countdown
 inline constexpr uint32_t SeenAtExtract = 1u << 5; // artillery: appearance->canBeSeen() when windowsVisible was stamped
 inline constexpr uint32_t BoltGeometry = 1u << 6; // owns copied native beam/laser draw inputs
+inline constexpr uint32_t BombRun = 1u << 7;      // artillery: the bomber run had started at extract
+inline constexpr uint32_t NoTimerText = 1u << 8;  // artillery: sensor strike, the countdown text stays empty
 
 // What a mover's render() decided from the sim (contact status vs home, team, isOnGui, status).
 enum class Mode : uint8_t { None, Full, Sensor, SensorText, Fade, Own };
@@ -53,8 +56,10 @@ struct BoltDraw {
 struct RenderView {
     GameObject* obj = nullptr;
     // The tick can clear/reuse owner slots; releaseEffect retains these payloads until the join.
-    // Bolts: body, muzzle, hit, miss, water miss; carnage: body.
+    // Bolts: body, muzzle, hit, miss, water miss; carnage: body; artillery: hit, left contrail, right contrail.
     gosFX::Effect* effects[5]{};
+    // Artillery: strike appearance, bomber. A pool reuse on the tick retires both at the join, never mid-draw.
+    Appearance* appearances[2]{};
     BoltDraw bolt;
     const BoltDraw* frozenBolt = nullptr; // packet arena copy; inline tools may use bolt directly
     glm::vec3 position{0.0f};  // sim position
