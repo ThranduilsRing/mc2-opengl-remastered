@@ -4,6 +4,7 @@
 // buffer; the checks live here, free of the engine, so a malformed-file test can drive them.
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cstddef>
 #include <cstring>
 #include <vector>
@@ -55,8 +56,8 @@ bool readAllBytes (FileT& file, std::vector<unsigned char>& out)
 
 // Reads a whole TGA file and its header. Terrain textures are mod content, so an empty, unreadable or header-less file is
 // refused with a log line instead of being decoded. `what` names the texture in the log line.
-bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info, const char* what);
+bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info, mc2::czstring what);
 
 // True when the file holds the pixels its header claims; a truncated file is refused with a log line, never walked past its end.
-bool tgaPixelsPresent (const std::vector<unsigned char>& bytes, const TGAFileHeader& info, const char* what);
+bool tgaPixelsPresent (const std::vector<unsigned char>& bytes, const TGAFileHeader& info, mc2::czstring what);
 }

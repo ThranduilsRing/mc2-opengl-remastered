@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "utilities.h"
 #include "gameos_resource.hpp"
 #include "utils/mc2log.h"
@@ -8,7 +9,7 @@ HSTRRES gosResourceHandle = nullptr;
 
 namespace {
 
-void report(const char* event, unsigned int id, size_t length, int capacity, size_t copied)
+void report(mc2::czstring event, unsigned int id, size_t length, int capacity, size_t copied)
 {
     mc2::log::event<"RESOURCE_STRING", 1>(mc2::log::Stream::Err,
         "event={} id={} source_length={} capacity={} copied={}",

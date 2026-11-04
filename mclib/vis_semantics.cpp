@@ -2,6 +2,7 @@
 // vis_semantics.cpp — VISIBILITY-SEMANTICS-1. See vis_semantics.h for the
 // full rationale and the measured facts this encodes.
 //---------------------------------------------------------------------------
+#include "mc2_czstring.h"
 #include "vis_semantics.h"
 #include "objstatus.h"
 
@@ -116,7 +117,7 @@ static unsigned long trace_every()
     return s;
 }
 
-void trace(const char* cls, const void* actor, const MoverVis& v)
+void trace(mc2::czstring cls, const void* actor, const MoverVis& v)
 {
     if (!trace_enabled()) return;
     static unsigned long frameCounter = 0ul;

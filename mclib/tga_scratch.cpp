@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "tga_scratch.h"
 #include "content_error.h"
 
@@ -7,7 +8,7 @@
 
 namespace mc2::tga
 {
-bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info, const char* what)
+bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info, mc2::czstring what)
 {
 	if (readAllBytes(file, bytes) && readHeader(bytes, info))
 		return true;
@@ -17,7 +18,7 @@ bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info
 	return false;
 }
 
-bool tgaPixelsPresent (const std::vector<unsigned char>& bytes, const TGAFileHeader& info, const char* what)
+bool tgaPixelsPresent (const std::vector<unsigned char>& bytes, const TGAFileHeader& info, mc2::czstring what)
 {
 	if (bodyFits(bytes.size(), sizeof(TGAFileHeader), info.width, info.height, info.pixel_depth))
 		return true;

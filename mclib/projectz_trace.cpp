@@ -7,6 +7,7 @@
 // All code here is observation-only: printf, counter increment, summary emit.
 //---------------------------------------------------------------------------
 
+#include "mc2_czstring.h"
 #include "projectz_trace.h"
 #include "object_admission_predicate.h"
 
@@ -49,7 +50,7 @@ static const char* const s_catNames[CAT_COUNT] = {
 struct CatStat { uint32_t calls, parallel, rejected; };
 static CatStat s_catStat[CAT_COUNT] = {};
 
-static int cat_index(const char* cat) {
+static int cat_index(mc2::czstring cat) {
     if (!cat) return CAT_COUNT - 1;
     for (int i = 0; i < CAT_COUNT - 1; i++)
         if (strcmp(cat, s_catNames[i]) == 0) return i;
@@ -99,7 +100,7 @@ static bool pz_isfinite(float v) {
 #endif
 }
 
-static int hm_index(const char* id) {
+static int hm_index(mc2::czstring id) {
     // Pointer-equality fast path for known string literals.
     for (int i = 0; i < s_hmCount; i++) {
         if (s_hm[i].id == id) return i;
@@ -113,7 +114,7 @@ static int hm_index(const char* id) {
     return 0;  // overflow: accumulate into first slot
 }
 
-static bool is_consumes_z(const char* id) {
+static bool is_consumes_z(mc2::czstring id) {
     if (!id) return false;
     // weaponbolt beam block + actor vfx depth — flagged in inventory Observations O2.
     if (strncmp(id, "weaponbolt_beam_", 16) == 0) return true;
