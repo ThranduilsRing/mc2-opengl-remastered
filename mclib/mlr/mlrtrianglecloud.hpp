@@ -68,7 +68,7 @@ namespace MidLevelRenderer {
 		const int *usedNrOfTriangles;
 
 
-		static Stuff::DynamicArrayOf<MLRClippingState> *clipPerVertex; // , Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<MLRClippingState>> clipPerVertex; // , Max_Number_Vertices_Per_Mesh
 
 
 	};

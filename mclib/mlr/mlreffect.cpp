@@ -33,11 +33,11 @@ void EffectClipPolygon::Destroy()
 
 MLREffect::ClassData*
 	MLREffect::DefaultData = nullptr;
-EffectClipPolygon
-	*MLREffect::clipBuffer;
+std::unique_ptr<EffectClipPolygon[]>
+	MLREffect::clipBuffer;
 
-DynamicArrayOf<Vector4D>
-	*MLREffect::transformedCoords;
+std::unique_ptr<DynamicArrayOf<Vector4D>>
+	MLREffect::transformedCoords;
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,11 +55,11 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	transformedCoords = new DynamicArrayOf<Vector4D> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(transformedCoords);
+	transformedCoords = std::make_unique<DynamicArrayOf<Vector4D>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Object(transformedCoords.get());
 
-	clipBuffer = new EffectClipPolygon [2];
-	Register_Pointer(clipBuffer);
+	clipBuffer = std::make_unique<EffectClipPolygon[]>(2);
+	Register_Pointer(clipBuffer.get());
 
 	clipBuffer[0].Init();
 	clipBuffer[1].Init();
@@ -72,11 +72,11 @@ void
 {
 	clipBuffer[1].Destroy();
 	clipBuffer[0].Destroy();
-	Unregister_Pointer(clipBuffer);
-	delete [] clipBuffer;
+	Unregister_Pointer(clipBuffer.get());
+	clipBuffer.reset();
 
-	Unregister_Object(transformedCoords);
-	delete transformedCoords;
+	Unregister_Object(transformedCoords.get());
+	transformedCoords.reset();
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;

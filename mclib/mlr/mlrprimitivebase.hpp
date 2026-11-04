@@ -286,7 +286,7 @@ namespace MidLevelRenderer {
 		virtual void
 			Transform(glm::mat4*);
 
-		static ClipPolygon2 *clipBuffer;
+		static std::unique_ptr<ClipPolygon2[]> clipBuffer;
 
 		unsigned char	visible;	//	primitive visibilty per frame
 		unsigned char	passes;
@@ -300,22 +300,22 @@ namespace MidLevelRenderer {
 		Stuff::DynamicArrayOf<glm::vec3> coords;	// Base address of coordinate list 
 		Stuff::DynamicArrayOf<Vector2DScalar> texCoords;	// Base address of texture coordinate list 
 
-		static Stuff::DynamicArrayOf<Stuff::Vector4D> *transformedCoords;
+		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::Vector4D>> transformedCoords;
 
 		Stuff::DynamicArrayOf<unsigned char>	lengths;	// List of strip lengths 
 
 #if COLOR_AS_DWORD	// clipExtraColors for the future generations !!!
-		static Stuff::DynamicArrayOf<DWORD> *clipExtraColors; // , Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<DWORD>> clipExtraColors; // , Max_Number_Vertices_Per_Mesh
 #else
-		static Stuff::DynamicArrayOf<Stuff::RGBAColor> *clipExtraColors;  // , Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::RGBAColor>> clipExtraColors;  // , Max_Number_Vertices_Per_Mesh
 #endif
 
-		static Stuff::DynamicArrayOf<MLRClippingState> *clipPerVertex;  // , Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<MLRClippingState>> clipPerVertex;  // , Max_Number_Vertices_Per_Mesh
 
-		static Stuff::DynamicArrayOf<Stuff::Vector4D> *clipExtraCoords;  // , Max_Number_Vertices_Per_Mesh
-		static Stuff::DynamicArrayOf<Vector2DScalar> *clipExtraTexCoords;  // , Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::Vector4D>> clipExtraCoords;  // , Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Vector2DScalar>> clipExtraTexCoords;  // , Max_Number_Vertices_Per_Mesh
 
-		static Stuff::DynamicArrayOf<unsigned short> *clipExtraLength;  // , Max_Number_Primitives_Per_Frame
+		static std::unique_ptr<Stuff::DynamicArrayOf<unsigned short>> clipExtraLength;  // , Max_Number_Primitives_Per_Frame
 
 		MLRState	state, referenceState;
 

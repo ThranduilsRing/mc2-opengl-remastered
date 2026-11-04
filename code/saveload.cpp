@@ -3,9 +3,11 @@
 #include "save_exactness.h"
 #include "saved_objects_check.h"
 #include "save_sections.h"
+#include <optional>
 #include <span>
 #include "combat_clock_archive.h"
 #include "save_brain_section.h"
+#include "save_fix_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
 //	saveload.cpp - This file contains the mission Save Load class code
@@ -80,6 +82,36 @@ static void saveloadTrace(const char* op, const char* file, const char* missionF
     crashbundle_save_point(op, file ? file : "");
     MC2_LOG(Io, Info, "[SAVELOAD] op={} file={} mission={}",
             op, file ? file : "(null)", missionFile ? missionFile : "(null)");
+}
+
+// FIX1: script music view, failed-jump backoffs and the path queue, as values (save_fix_section.h).
+static mc2::save::Bytes captureFixSection()
+{
+	mc2::save::FixSection fix;
+	long musicId = -1;
+	double remaining = 0.0;
+	bool loops = false;
+	soundSystem->getScriptMusicState(musicId, remaining, loops);
+	fix.music = {static_cast<std::int32_t>(musicId), remaining, loops};
+	auto slotOf = [](const MechWarrior* pilot) -> std::optional<std::uint32_t> {
+		for (std::uint32_t i = 0; i < MAX_WARRIORS; ++i)
+			if (MechWarrior::warriorList[i] == pilot)
+				return i;
+		return std::nullopt;
+	};
+	for (std::uint32_t i = 0; i < MAX_WARRIORS; ++i) {
+		MechWarrior* w = MechWarrior::warriorList[i];
+				if (const auto b = (w && w->isUsed()) ? w->getJumpBackoff() : std::nullopt)
+			fix.backoffs.push_back({i, b->goalR, b->goalC, b->age});
+	}
+	if (PathManager) {
+		for (PathQueueRecPtr rec = PathManager->queueFront; rec; rec = rec->next) {
+			const auto slot = slotOf(rec->pilot);
+			if (slot)
+				fix.paths.push_back({*slot, static_cast<std::int32_t>(rec->num), static_cast<std::int32_t>(rec->selectionIndex), static_cast<std::uint32_t>(rec->moveParams)});
+		}
+	}
+	return mc2::save::encodeFixSection(std::move(fix));
 }
 
 void Mission::save (const char *saveFileName)
@@ -348,6 +380,8 @@ void Mission::save (const char *saveFileName)
     }
     if (auto brain = mc2::save::saveBrainSection(); !brain.empty())
         sections.add(mc2::save::tagBrain, mc2::save::brainSectionVersion, false, std::move(brain));
+    if (auto fix = captureFixSection(); !fix.empty())
+        sections.add(mc2::save::tagFix, mc2::save::fixSectionVersion, false, std::move(fix));
     mc2::save::Bytes container;
     std::string why;
     if (!mc2::save::encodeSections(sections, container, &why)) Fatal(0, "Save section container failed");

@@ -14,6 +14,7 @@
 #include "object_shared_constants.h"
 #include "warrior_types.h"
 #include <array>
+#include <limits>
 #include <optional>
 namespace mc2::render_view { struct HudMover; }
 
@@ -689,6 +690,8 @@ class MechWarrior {
 		int32_t					lastFailedJumpGoalCellR;
 		int32_t					lastFailedJumpGoalCellC;
 		long					lastJumpFailFrame;
+		// No failure recorded. Frames can be negative after a restore at a low path-manager counter.
+		static constexpr long	kNoJumpFailFrame = std::numeric_limits<long>::min();
 
 		uint32_t                debugFlags;
 
@@ -1473,6 +1476,11 @@ class MechWarrior {
 		}
 
 		void requestMovePath (long selectionIndex, unsigned long moveParams, long source);
+
+		// Save/load (FIX1): the failed-jump backoff while it is still live, as goal cell and age in path-manager frames.
+		struct JumpBackoffState { int32_t goalR; int32_t goalC; int32_t age; };
+		std::optional<JumpBackoffState> getJumpBackoff ();
+		void setJumpBackoff (int32_t goalR, int32_t goalC, int32_t age);
 
 		// PATHFINDING-JUMP-FAIL-1: stamp a doomed jump-solve failure (goal cell of
 		// the solve that returned no path). Called from Mover::calcMovePath on the

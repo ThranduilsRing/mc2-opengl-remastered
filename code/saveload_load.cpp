@@ -1,6 +1,8 @@
 #include "save_archive.h"
 #include "save_sections.h"
 #include "save_brain_section.h"
+#include "save_fix_section.h"
+#include <optional>
 #include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
@@ -17,6 +19,8 @@
 #include <new>
 
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
+// FIX1 music, held from applySaveSections until loadActivateAndFinalize re-arms the mission tune.
+static std::optional<mc2::save::FixMusic> s_restoredMusic;
 
 
 // Create the trigger-area and object managers.
@@ -662,6 +666,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 // existed). Defaults equal what a v1 load always reconstructed. B2 (BRN1), B3 (FIX1), M5 (WRLD) and PATH add one entry each.
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue) {
     turn = mc2::save::SavedMoverLists{}.turn; // Legacy v1 default, shared with WRLD v1.
+    s_restoredMusic.reset();
     auto reject = [&](std::string_view reason) {
         mc2::fmt::print_err("[SAVE v2] event=reject reason={} file={}\n", reason, fileName);
     };
@@ -738,6 +743,28 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
     if (const auto* brain = sections.find(mc2::save::tagBrain)) {
         if (!mc2::save::restoreBrainSection(brain->payload, brain->version)) reject("brain_section");
     } // default: no brain runtime; the first brain tick allocates it from the mission files, as a v1 load always did
+    if (const auto* fix = sections.find(mc2::save::tagFix)) {
+        const std::int32_t musicCount = (soundSystem && soundSystem->musicTrackCount() > 0)
+            ? static_cast<std::int32_t>(soundSystem->musicTrackCount()) : std::numeric_limits<std::int32_t>::max();
+        const auto decoded = mc2::save::decodeValidFixSection(fix->version, fix->payload, MAX_WARRIORS, musicCount);
+        if (!decoded) {
+            reject("fix_section");  // exactly one [SAVE v2] event=reject line per bad section
+        } else {
+            const mc2::save::FixSection& value = *decoded;
+            s_restoredMusic = value.music;
+            for (const auto& b : value.backoffs) {
+                MechWarrior* w = MechWarrior::warriorList[b.warrior];
+                if (w && w->isUsed()) w->setJumpBackoff(b.goalR, b.goalC, b.age);
+            }
+            // Requests re-enter the queue in saved order; request() purges a pilot's earlier one, so each pilot keeps its last.
+            for (const auto& p : value.paths) {
+                MechWarrior* w = MechWarrior::warriorList[p.warrior];
+                // request() Fatals on an empty free list; refuse the item instead (a pilot with a queued record reuses it).
+                if (PathManager && w && w->isUsed() && (PathManager->freeList || w->getMovePathRequest()))
+                    PathManager->request(w, p.selectionIndex, p.moveParams, p.source);
+            }
+        }
+    } // default: music re-armed from the mission tune, no jump backoff, no queued path (the next order re-requests), as a v1 load always did
 }
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
@@ -751,6 +778,10 @@ void Mission::loadActivateAndFinalize() {
 	SensorSystemManager::enemyInLOS = enemyInLOS;
 	// Re-arm the script's music clock after teardown stopped it, before resumed ABL can branch on silence.
 	soundSystem->playABLDigitalMusic(missionTuneNum);
+	// FIX1: the script's own music view overrides that re-arm (it may have stopped, ended or switched tunes).
+	if (s_restoredMusic)
+		soundSystem->restoreScriptMusic(s_restoredMusic->id, s_restoredMusic->remaining, s_restoredMusic->loops);
+	s_restoredMusic.reset();
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
 	// activate() re-centres on the first mover; a resumed game keeps the camera it was saved with.

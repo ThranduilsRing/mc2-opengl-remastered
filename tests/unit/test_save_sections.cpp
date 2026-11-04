@@ -315,3 +315,69 @@ TEST_CASE("save parts: an explicit PartsFormat tag makes legacy detection unambi
     CHECK_FALSE(partsAreShiftedLegacy(false, true, 0, 7));
     CHECK(mc2::save::kPartsFormatCurrent == 2);
 }
+
+#include "save_fix_section.h"
+
+TEST_CASE("save sections: FIX1 round trips music, jump backoff and ordered path requests") {
+    using namespace mc2::save;
+    FixSection in;
+    in.music = {7, 12.5, false};
+    in.backoffs = {{3, 40, 52, 11}, {9, -1, 0, 0}};
+    in.paths = {{5, 4, 2, 0x11u}, {3, 0, -1, 0u}, {5, 49, 7, 0xFFFFFFFFu}};
+    const Bytes bytes = encodeFixSection(in);
+    REQUIRE_FALSE(bytes.empty());
+    const auto out = decodeFixSection(bytes);
+    REQUIRE(out.has_value());
+    CHECK(*out == in);
+    CHECK(out->valid(10));
+    CHECK_FALSE(out->valid(9));  // warrior index 9 out of range
+    for (std::size_t cut = 0; cut < bytes.size(); ++cut)
+        CHECK_FALSE(decodeFixSection(std::span(bytes).first(cut)).has_value());
+    Bytes trailing = bytes;
+    trailing.push_back(0);
+    CHECK_FALSE(decodeFixSection(trailing).has_value());
+    FixSection badSource = in;
+    badSource.paths[0].source = fixMaxPathSource;
+    CHECK_FALSE(badSource.valid(10));
+}
+
+TEST_CASE("save sections: FIX1 validation refuses non-finite music time, out-of-table ids and bad versions") {
+    using namespace mc2::save;
+    FixSection ok;
+    ok.music = {3, 5.0, false};
+    ok.backoffs = {{1, 2, 3, 4}};
+    CHECK(ok.valid(10, 8));
+    FixSection nan = ok;
+    nan.music.remaining = std::numeric_limits<double>::quiet_NaN();
+    CHECK_FALSE(nan.valid(10, 8));
+    FixSection inf = ok;
+    inf.music.remaining = std::numeric_limits<double>::infinity();
+    CHECK_FALSE(inf.valid(10, 8));
+    FixSection high = ok;
+    high.music.id = 8;  // table has ids 0..7
+    CHECK_FALSE(high.valid(10, 8));
+    CHECK(high.valid(10, 9));
+    FixSection silent = ok;
+    silent.music.id = -1;
+    CHECK(silent.valid(10, 8));
+    // The one-step helper the loader uses: any failure is a single nullopt (one reject line, defaults kept).
+    const Bytes good = encodeFixSection(ok);
+    CHECK(decodeValidFixSection(fixSectionVersion, good, 10, 8).has_value());
+    CHECK_FALSE(decodeValidFixSection(fixSectionVersion + 1, good, 10, 8).has_value());
+    CHECK_FALSE(decodeValidFixSection(fixSectionVersion, encodeFixSection(nan), 10, 8).has_value());
+    CHECK_FALSE(decodeValidFixSection(fixSectionVersion, std::span(good).first(good.size() - 1), 10, 8).has_value());
+}
+
+TEST_CASE("save sections: FIX1 is an optional known section a container carries") {
+    using namespace mc2::save;
+    SectionContainer c;
+    c.add(tagFix, fixSectionVersion, false, encodeFixSection(FixSection{}));
+    Bytes wire;
+    REQUIRE(encodeSections(c, wire));
+    SectionContainer back;
+    REQUIRE(decodeSections(wire, back));
+    REQUIRE(back.find(tagFix) != nullptr);
+    const auto out = decodeFixSection(back.find(tagFix)->payload);
+    REQUIRE(out.has_value());
+    CHECK(*out == FixSection{});
+}

@@ -384,7 +384,7 @@ void MechWarrior::init (bool create) {
 	// PATHFINDING-JUMP-FAIL-1: no doomed jump yet (-1 = never failed).
 	lastFailedJumpGoalCellR = -1;
 	lastFailedJumpGoalCellC = -1;
-	lastJumpFailFrame = -1;
+	lastJumpFailFrame = kNoJumpFailFrame;
 
 	if (create)
 	{
@@ -880,7 +880,7 @@ void MechWarrior::clear (void) {
 	// PATHFINDING-JUMP-FAIL-1: no doomed jump yet (-1 = never failed).
 	lastFailedJumpGoalCellR = -1;
 	lastFailedJumpGoalCellC = -1;
-	lastJumpFailFrame = -1;
+	lastJumpFailFrame = kNoJumpFailFrame;
 	clearMoveOrders();
 	//for (i = 0; i < 2; i++) {
 	//	moveOrders.path[i] = new MovePath;

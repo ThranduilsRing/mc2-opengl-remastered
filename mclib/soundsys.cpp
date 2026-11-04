@@ -1286,6 +1286,22 @@ long SoundSystem::getCurrentMusicId (void)
 }
 
 //---------------------------------------------------------------------------
+void SoundSystem::getScriptMusicState (long &id, double &remaining, bool &loops)
+{
+	id = scriptMusic.currentId(scenarioTime);
+	loops = (id >= 0) && scriptMusic.loops;
+	remaining = ((id >= 0) && !loops) ? scriptMusic.endsAt - scenarioTime : 0.0;
+	if (remaining < 0.0)
+		remaining = 0.0;
+}
+
+//---------------------------------------------------------------------------
+void SoundSystem::restoreScriptMusic (long id, double remaining, bool loops)
+{
+	scriptMusic.request(id, scenarioTime, remaining, loops);
+}
+
+//---------------------------------------------------------------------------
 // Seconds of audio in a music file from its RIFF header: the fmt and data chunk headers sit in the first few KB.
 double SoundSystem::musicSeconds (std::string_view wavPath)
 {

@@ -43,31 +43,31 @@ void ClipPolygon2::Destroy()
 MLRPrimitiveBase::ClassData*
 	MLRPrimitiveBase::DefaultData = nullptr;
 
-DynamicArrayOf<Vector4D>
-	*MLRPrimitiveBase::transformedCoords;
+std::unique_ptr<DynamicArrayOf<Vector4D>>
+	MLRPrimitiveBase::transformedCoords;
 
-DynamicArrayOf<MLRClippingState>
-	*MLRPrimitiveBase::clipPerVertex;
-DynamicArrayOf<Vector4D>
-	*MLRPrimitiveBase::clipExtraCoords;
+std::unique_ptr<DynamicArrayOf<MLRClippingState>>
+	MLRPrimitiveBase::clipPerVertex;
+std::unique_ptr<DynamicArrayOf<Vector4D>>
+	MLRPrimitiveBase::clipExtraCoords;
 
-DynamicArrayOf<Vector2DScalar>
-	*MLRPrimitiveBase::clipExtraTexCoords;
+std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
+	MLRPrimitiveBase::clipExtraTexCoords;
 
 #if COLOR_AS_DWORD
-DynamicArrayOf<DWORD>
+std::unique_ptr<DynamicArrayOf<DWORD>>
 #else
-DynamicArrayOf<RGBAColor>
+std::unique_ptr<DynamicArrayOf<RGBAColor>>
 #endif
     // sebi baseuse it is defined in base class!
 	//*MLR_I_C_PMesh::clipExtraColors;
-	*MLRPrimitiveBase::clipExtraColors;
+	MLRPrimitiveBase::clipExtraColors;
 
-DynamicArrayOf<unsigned short>
-	*MLRPrimitiveBase::clipExtraLength;
+std::unique_ptr<DynamicArrayOf<unsigned short>>
+	MLRPrimitiveBase::clipExtraLength;
 
-ClipPolygon2
-	*MLRPrimitiveBase::clipBuffer;
+std::unique_ptr<ClipPolygon2[]>
+	MLRPrimitiveBase::clipBuffer;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -85,30 +85,24 @@ void
 		);
 	Register_Object(DefaultData);
 
-	transformedCoords = new DynamicArrayOf<Vector4D> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(transformedCoords);
+	transformedCoords = std::make_unique<DynamicArrayOf<Vector4D>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Object(transformedCoords.get());
 
-	clipPerVertex = new DynamicArrayOf<MLRClippingState> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(clipPerVertex);
-	clipExtraCoords = new DynamicArrayOf<Vector4D> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(clipExtraCoords);
-	clipExtraTexCoords = new DynamicArrayOf<Vector2DScalar> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(clipExtraTexCoords);
+	clipPerVertex = std::make_unique<DynamicArrayOf<MLRClippingState>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Object(clipPerVertex.get());
+	clipExtraCoords = std::make_unique<DynamicArrayOf<Vector4D>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Object(clipExtraCoords.get());
+	clipExtraTexCoords = std::make_unique<DynamicArrayOf<Vector2DScalar>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Object(clipExtraTexCoords.get());
 
-	clipExtraColors = new DynamicArrayOf<
-#if COLOR_AS_DWORD
-		DWORD
-#else
-		RGBAColor
-#endif
-	> (Limits::Max_Number_Primitives_Per_Frame);
-	Register_Object(clipExtraColors);
+	clipExtraColors = std::make_unique<std::remove_reference_t<decltype(*clipExtraColors)>>(Limits::Max_Number_Primitives_Per_Frame);
+	Register_Object(clipExtraColors.get());
 
-	clipExtraLength = new DynamicArrayOf<unsigned short> (Limits::Max_Number_Primitives_Per_Frame);
-	Register_Object(clipExtraLength);
+	clipExtraLength = std::make_unique<DynamicArrayOf<unsigned short>>(Limits::Max_Number_Primitives_Per_Frame);
+	Register_Object(clipExtraLength.get());
 
-	clipBuffer = new ClipPolygon2 [2];
-	Register_Pointer(clipBuffer);
+	clipBuffer = std::make_unique<ClipPolygon2[]>(2);
+	Register_Pointer(clipBuffer.get());
 
 	clipBuffer[0].Init(Limits::Max_Number_Of_Multitextures);
 	clipBuffer[1].Init(Limits::Max_Number_Of_Multitextures);
@@ -121,22 +115,22 @@ void
 {
 	clipBuffer[1].Destroy();
 	clipBuffer[0].Destroy();
-	Unregister_Pointer(clipBuffer);
-	delete [] clipBuffer;
+	Unregister_Pointer(clipBuffer.get());
+	clipBuffer.reset();
 
-	Unregister_Object(transformedCoords);
-	delete transformedCoords;
+	Unregister_Object(transformedCoords.get());
+	transformedCoords.reset();
 
-	Unregister_Object(clipPerVertex);
-	delete clipPerVertex;
-	Unregister_Object(clipExtraCoords);
-	delete clipExtraCoords;
-	Unregister_Object(clipExtraTexCoords);
-	delete clipExtraTexCoords;
-	Unregister_Object(clipExtraColors);
-	delete clipExtraColors;
-	Unregister_Object(clipExtraLength);
-	delete clipExtraLength;
+	Unregister_Object(clipPerVertex.get());
+	clipPerVertex.reset();
+	Unregister_Object(clipExtraCoords.get());
+	clipExtraCoords.reset();
+	Unregister_Object(clipExtraTexCoords.get());
+	clipExtraTexCoords.reset();
+	Unregister_Object(clipExtraColors.get());
+	clipExtraColors.reset();
+	Unregister_Object(clipExtraLength.get());
+	clipExtraLength.reset();
 
 
 	Unregister_Object(DefaultData);

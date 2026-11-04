@@ -13,8 +13,8 @@ extern DWORD gShowClippedPolys;
 //#######################    MLRTriangleCloud    ##############################
 //#############################################################################
 
-DynamicArrayOf<MLRClippingState>
-	*MLRTriangleCloud::clipPerVertex;
+std::unique_ptr<DynamicArrayOf<MLRClippingState>>
+	MLRTriangleCloud::clipPerVertex;
 
 
 MLRTriangleCloud::ClassData*
@@ -35,8 +35,8 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	clipPerVertex = new DynamicArrayOf<MLRClippingState> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Pointer(clipPerVertex);
+	clipPerVertex = std::make_unique<DynamicArrayOf<MLRClippingState>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Pointer(clipPerVertex.get());
 	
 }
 
@@ -45,8 +45,8 @@ void
 void
 	MLRTriangleCloud::TerminateClass()
 {
-	Unregister_Pointer(clipPerVertex);
-	delete clipPerVertex;
+	Unregister_Pointer(clipPerVertex.get());
+	clipPerVertex.reset();
 	
 
 	Unregister_Object(DefaultData);

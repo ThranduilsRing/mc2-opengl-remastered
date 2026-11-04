@@ -151,8 +151,8 @@ namespace MidLevelRenderer {
 	protected:
 		MLRState	state2, referenceState2;
 
-		static Stuff::DynamicArrayOf<Vector2DScalar> *texCoords2;	// Max_Number_Vertices_Per_Mesh
-		static Stuff::DynamicArrayOf<Vector2DScalar> *clipExtraTexCoords2;	// Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Vector2DScalar>> texCoords2;	// Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Vector2DScalar>> clipExtraTexCoords2;	// Max_Number_Vertices_Per_Mesh
 	};
 
 	MLR_I_DT_PMesh*

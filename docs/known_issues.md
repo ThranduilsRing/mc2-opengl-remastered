@@ -161,7 +161,7 @@ this lane changes no editor code and supplies no editor runtime receipt.
 
 ## Save format
 
-- **Mech weapon-node tables lose most entries across a save (pre-existing).** `Mech3DAppearance::copyTo` / `copyFrom` (`mclib/mech3d.cpp`) copy 10 BYTES of the 10-element tables `MechAppearanceData::nodeUsed` (`long[10]`) and `nodeRecycle` (`float[10]`) (`mclib/mech3d.h`), so a mech with three or more weapon nodes keeps only the first 2 longs / 2 floats of the stagger and recycle state across save and load. Fixing the size to 10 elements changes the saved bytes and post-load sim behaviour: it needs a save version bump and a baseline re-record, so it is left. B5.5a only bounded the copy to the real table size.
+- **Mech weapon-node tables lose most entries across a save (superseded for new saves).** ANIM v3 plus its WNOD marker now persist the full tables and win over the legacy copy on load; only a save older than that still carries the 10-byte copy described next. `Mech3DAppearance::copyTo` / `copyFrom` (`mclib/mech3d.cpp`) copy 10 BYTES of the 10-element tables `MechAppearanceData::nodeUsed` (`long[10]`) and `nodeRecycle` (`float[10]`) (`mclib/mech3d.h`), so a mech with three or more weapon nodes keeps only the first 2 longs / 2 floats of the stagger and recycle state across save and load. Fixing the size to 10 elements changes the saved bytes and post-load sim behaviour: it needs a save version bump and a baseline re-record, so it is left. B5.5a only bounded the copy to the real table size.
 
 ## Options / config
 

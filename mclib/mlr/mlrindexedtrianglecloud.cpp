@@ -18,8 +18,8 @@ extern unsigned short *indexOffset;	// [MidLevelRenderer::Max_Number_Vertices_Pe
 //####################    MLRIndexedTriangleCloud    ##########################
 //#############################################################################
 
-DynamicArrayOf<unsigned char>
-	*MLRIndexedTriangleCloud::visibleIndexedVertices;
+std::unique_ptr<DynamicArrayOf<unsigned char>>
+	MLRIndexedTriangleCloud::visibleIndexedVertices;
 
 
 MLRIndexedTriangleCloud::ClassData*
@@ -40,8 +40,8 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	visibleIndexedVertices = new DynamicArrayOf<unsigned char> (Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Pointer(visibleIndexedVertices);
+	visibleIndexedVertices = std::make_unique<DynamicArrayOf<unsigned char>>(Limits::Max_Number_Vertices_Per_Mesh);
+	Register_Pointer(visibleIndexedVertices.get());
 
 }
 
@@ -50,8 +50,8 @@ void
 void
 	MLRIndexedTriangleCloud::TerminateClass()
 {
-	Unregister_Pointer(visibleIndexedVertices);
-	delete visibleIndexedVertices;
+	Unregister_Pointer(visibleIndexedVertices.get());
+	visibleIndexedVertices.reset();
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
