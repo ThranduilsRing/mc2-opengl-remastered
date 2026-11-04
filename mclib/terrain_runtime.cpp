@@ -34,7 +34,7 @@ float groundElevation(const glm::vec3& worldPos)
 		return 0.0f;
 	// Gate exists for A/B + as the future gameplay/visual split flip-point.
 	// Both branches are byte-identical today.
-	static const bool s_gate = mc2::gate::get<"MC2_TERRAIN_RUNTIME_GROUNDING">();   // default OFF
+	static const bool s_gate = false;   // default OFF
 	return s_gate ? sampleGameplayHeight(worldPos)
 	              : land->getTerrainElevation(worldPos);
 }
@@ -82,7 +82,7 @@ float decalElevation(const glm::vec3& worldPos)
 		return 0.0f;
 	// Gate = the future flip-point where decals follow the VISUAL surface while
 	// units stay on gameplay height. Both branches byte-identical today.
-	static const bool s_gate = mc2::gate::get<"MC2_TERRAIN_RUNTIME_DECALS">();   // default OFF
+	static const bool s_gate = false;   // default OFF
 	return s_gate ? sampleVisualHeight(worldPos)
 	              : land->getTerrainElevation(worldPos);
 }
@@ -143,7 +143,7 @@ float sampleFeatureMask(const glm::vec3& worldPos, FeatureMask kind)
 
 bool parityGateEnabled()
 {
-	return mc2::gate::get<"MC2_TERRAIN_RUNTIME_PARITY">();
+	return false;
 }
 
 } // namespace TerrainRuntime

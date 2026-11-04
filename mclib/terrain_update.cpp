@@ -37,7 +37,7 @@ static const float LOD_DIST_THRESH[5] = {
 // shader/worldToClip/camera convention, NOT LOD/cull/skirt policy.
 static int lodForceLevel()
 {
-    static const int s_forceLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD">();
+    static const int s_forceLod = -1;
     return s_forceLod;
 }
 
@@ -89,7 +89,7 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
         const float dx = (bm.originX + bm.quadCountX * 0.5f) * 128.0f - halfMap + origin.x;
         const float dy = halfMap - (bm.originY + bm.quadCountY * 0.5f) * 128.0f - origin.z;
         auto level = chooseLodLevel(dx * dx + dy * dy, bm.lodLevel);
-        if (bm.hasConcrete) level = std::min(level, static_cast<uint8_t>(mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD">()));
+        if (bm.hasConcrete) level = std::min(level, static_cast<uint8_t>(0));
         return level;
     }
     static uint64_t cachedVersion = 0;
@@ -268,13 +268,13 @@ long Terrain::update (void)
 
 		// Diagnostic: one-shot dump of planes + first superchunk AABB + camera pos.
 		// MC2_TERRAIN_LOD_CHUNK_NO_CULL=1 bypasses frustum so GPU path can be tested.
-		static const bool s_noCull = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_CULL">();
+		static const bool s_noCull = false;
 		// [LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] When set, drop the near plane from the
 		// terrain AABB frustum test so near terrain isn't culled at a low/grazing
 		// pitch (near plane at NearPlaneDistance=-400). Other 5 planes intact;
 		// default OFF -> byte-identical to today.
 		// Default ON for this low-camera build; set MC2_LOWCAM_TERRAIN_NEAR=0 to disable.
-		static const bool s_lowCamNear = mc2::gate::get<"MC2_LOWCAM_TERRAIN_NEAR">();
+		static const bool s_lowCamNear = true;
 		static bool s_cullDiagDone = false;
 		if (!s_cullDiagDone && gCurrentFrame == 2) {
 			s_cullDiagDone = true;
@@ -443,7 +443,7 @@ long Terrain::update (void)
 		// independent angular test and never read s_blockMeta.inFrustum.
 		// MC2_TERRAIN_LOD_CHUNK_NO_APRON=1 disables it (A/B).
 		{
-			static const bool s_noApron = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_APRON">();
+			static const bool s_noApron = false;
 			if (!s_noApron)
 			{
 				const int side = s_terrainChunkSide;
@@ -547,7 +547,7 @@ long Terrain::update (void)
 				//   neighbor not in-frustum (cull edge) -> skirt (fallback until 10.2e apron)
 				// MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS=1 forces all skirts off (A/B).
 				{
-					static const bool s_noSkirts = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS">();
+					static const bool s_noSkirts = false;
 					// Phase 10.2b: PER-EDGE mask. Build order N,S,W,E (matches the
 					// driver's skirtEdgeOffset slots). A skirt is drawn on an edge
 					// only if its neighbour needs sealing — same-LOD edges draw no
@@ -560,7 +560,7 @@ long Terrain::update (void)
 					// (neighbour-min, cf c2d7eb46). Skirts are KEPT as a backstop (a
 					// skirt below a now-collinear edge is hidden, so it is harmless).
 					// MC2_TERRAIN_LOD_CHUNK_NO_STITCH=1 disables stitching (A/B).
-					static const bool s_noStitch = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_STITCH">();
+					static const bool s_noStitch = false;
 					uint8_t  edgeMask = 0;
 					uint32_t stitch   = 0;
 					{
@@ -593,7 +593,7 @@ long Terrain::update (void)
 						// Using the full range produced giant cliff walls on hilly
 						// terrain (mountains: elevRange in the thousands). Scale down
 						// and CAP. MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX overrides the cap.
-						static const float s_skirtMax = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX">();
+						static const float s_skirtMax = 256.0f;
 						float elevRange = bm.maxElev - bm.minElev;
 						float depth     = elevRange * 0.5f + 32.0f;
 						depth = std::min(depth, s_skirtMax);

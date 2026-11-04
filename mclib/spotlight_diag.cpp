@@ -22,7 +22,7 @@ CameraTags& slot_map()
     return s_map;
 }
 
-bool s_enabled_cached = mc2::gate::get<"MC2_SPOT_DIAG">();
+bool s_enabled_cached = false;
 
 } // namespace
 

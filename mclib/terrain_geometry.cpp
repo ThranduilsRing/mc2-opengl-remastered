@@ -37,7 +37,7 @@ namespace {
 	static constexpr int GP_COUNT_I = std::to_underlying(GeoPhase::GP_COUNT);
 	static const char* s_gpNames[GP_COUNT_I] = {
 		"total","slim","chunkProd","quadSetup","lightingPack","lightingCopy","indirectCompute" };
-	static const bool s_gpOn = mc2::gate::get<"MC2_GEOM_PHASE_SPLIT">();
+	static const bool s_gpOn = false;
 	static unsigned long long s_gpSum[GP_COUNT_I]     = {0};
 	static unsigned long long s_gpMax[GP_COUNT_I]     = {0};
 	static unsigned long long s_gpFrameNs[GP_COUNT_I] = {0};
@@ -124,10 +124,6 @@ void Terrain::geometry (void)
 	// workaround so visual A/B can confirm or refute the cull as root cause
 	// of the "terrain clips to small center region in editor" symptom.
 	// Default OFF: bit-identical legacy behavior. See handoff S2.13.
-	if (mc2::gate::get<"MC2_TERRAIN_CULL_WIDE">()) {
-		vClipConstant = 1.0e9f;
-		hClipConstant = 1.0e9f;
-	}
 
 
 	// VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are
@@ -137,7 +133,7 @@ void Terrain::geometry (void)
 	// self-comparison would be tautological/false-alarm; demote-not-
 	// silently-delete per the worktree Debug-instrumentation rule).
 	static const bool s_vplCull = mc2::gate::get<"MC2_VPL_CULL">();
-	static const bool s_vplReduce = mc2::gate::get<"MC2_VPL_REDUCE">();
+	static const bool s_vplReduce = false;
 
 	// F6 T1/T2: terrain admission Modern path. Replaces per-vertex
 	// projectForTerrainAdmission with a world-space frustum-plane test:
@@ -215,7 +211,7 @@ void Terrain::geometry (void)
 	// via eye->getCachedFrustumPlanes(). Single extraction shared across all sites.
 	// MC2_BLOCK_FRUSTUM_FALLBACK also needs planes; cache unconditionally when
 	// either feature is active so both share the single extraction.
-	static const bool s_blockFrustumFallback = mc2::gate::get<"MC2_BLOCK_FRUSTUM_FALLBACK">();
+	static const bool s_blockFrustumFallback = false;
 	if (s_admissionModern || s_blockFrustumFallback) {
 		eye->cacheFrustumPlanes();
 	}
@@ -300,7 +296,7 @@ void Terrain::geometry (void)
 		// unconditional near-field bypass and outside the horizontal cone -> dropped.
 		// Widen the near-field bypass radius (purely additive: only admits more
 		// blocks; dilation/superset invariants preserved). Default 4x; =1 = stock.
-		static const float s_lowCamSolidNear = mc2::gate::get<"MC2_LOWCAM_SOLID_NEAR">();
+		static const float s_lowCamSolidNear = 6.0f;
 		const float kNearField = 768.0f * s_lowCamSolidNear;   // CLIP_THRESHOLD_DISTANCE
 		const float kExtent    = 384.0f;   // VERTEX_EXTENT_RADIUS
 		const float blockR     = (verticesBlockSide * 0.5f) * worldUnitsPerVertex * 1.5f;
@@ -435,7 +431,7 @@ void Terrain::geometry (void)
 		// Used to A/B armed ((ii) skipped) vs MC2_GPU_DRIVEN_WATER=0
 		// ((ii) runs) - the only setupTextures delta between those is (ii),
 		// so this isolates (ii)'s real per-frame CPU contribution.
-		static const bool s_s6CostOn = mc2::gate::get<"MC2_WATER_S6_COST">();
+		static const bool s_s6CostOn = false;
 		static uint64_t s_s6QpcFreq = 0;
 		uint64_t s_s6QpcStart = 0;
 		if (s_s6CostOn)
@@ -478,7 +474,7 @@ void Terrain::geometry (void)
 		// OBSERVATIONAL ONLY — reads existing state, no rendering change.
 		// Emits exactly one line per armed<->fallback transition; silent every other frame.
 		{
-			static const bool s_fastpathDropLog = mc2::gate::get<"MC2_FASTPATH_DROP_LOG">();
+			static const bool s_fastpathDropLog = false;
 			if (s_fastpathDropLog)
 			{
 				static unsigned long s_dropFrame = 0;

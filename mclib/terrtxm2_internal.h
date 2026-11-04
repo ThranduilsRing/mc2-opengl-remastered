@@ -144,7 +144,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 
 inline bool skipColormapTiles() {
     static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT">()
-        && mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
+        && true;
     return s;
 }
 

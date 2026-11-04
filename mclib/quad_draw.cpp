@@ -29,7 +29,7 @@
 // unconditionally (NOT frame-modulo); a per-mission summary line asserts
 // checked > 0 (the v1 failure mode was checked == 0 = probe never fired).
 // Demote-don't-delete after green per the Debug-instrumentation rule.
-static const bool s_m2dPzParity = mc2::gate::get<"MC2_M2D_PZ_PARITY">();
+static const bool s_m2dPzParity = false;
 static int  s_m2dPzParityChecked = 0;       // quads the probe actually compared
 static int  s_m2dPzParityMismatch = 0;      // quads with any pzc/pzTri divergence
 static int  s_m2dPzParityEmitted = 0;       // first-N detail lines emitted so far
@@ -131,10 +131,10 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 void TerrainQuad::drawPathSelect(QuadDrawFrame& f) {
     // Keep the authored overlay route and its existing kill switches. Base
     // terrain readiness belongs to the native indirect/LOD producer.
-    static const bool fast = mc2::gate::get<"MC2_MODERN_TERRAIN_SURFACE">()
-        && mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORDS">()
-        && mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORDS_DRAW">()
-        && mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH">();
+    static const bool fast = true
+        && false
+        && false
+        && false;
     f.fastPathEligible = fast && gos_terrain_indirect::IsFrameSolidArmed()
         && (terrainHandle != 0 || (useOverlayTexture && overlayHandle != 0xffffffff)
             || (useWaterInterestTexture && terrainDetailHandle != 0xffffffff));
@@ -344,7 +344,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 		// W0 (default-zoom clip.w) + the real min/max clip.w to ground
 		// the 6 CRITICAL assumptions in the distance-proportional spec.
 		{
-			static const bool s_dbc = mc2::gate::get<"MC2_DEPTHBIAS_CALIB">();
+			static const bool s_dbc = false;
 			if (s_dbc) {
 				// Filter to VALID on-screen post-admission terrain verts
 				// ONLY: pz in [0,1) (the [0,1] glClipControl NDC-z the

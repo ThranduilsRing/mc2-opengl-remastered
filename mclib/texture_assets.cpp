@@ -216,10 +216,10 @@ DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD varian
     File file;
     const auto open=file.open(path);
     std::string provider;
-    if (mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">() != 0) {
+    if (1 != 0) {
         const auto sidecar=sidecarPath(source->name);
         RenderCore::KtxImage cooked; Bytes rgba; int w=0,h=0;
-        if (txmLoadCooked(path,sidecar.c_str(),mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">()==2,cooked,&provider) &&
+        if (txmLoadCooked(path,sidecar.c_str(),1==2,cooked,&provider) &&
             cooked.isCompressed && cooked.width==cooked.height &&
             RenderCore::ktxDecodeBlocksToRgba8(cooked,0,rgba,&w,&h) && w==h && w>0) {
             for (size_t i=0;i+3<rgba.size();i+=4) std::swap(rgba[i],rgba[i+2]);

@@ -159,7 +159,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	// texture-combo ID (content-blind), so a .tga edit never invalidates it on
 	// its own; this is the override. Regen re-caches new loose .txm (loose wins
 	// over FST), so the new art persists even after the env is unset.
-	if (mc2::gate::get<"MC2_FORCE_TXM_REGEN">())
+	if (false)
 		quickLoad = false;
 
 	tileCacheReqs = 0;

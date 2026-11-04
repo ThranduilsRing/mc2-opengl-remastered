@@ -152,7 +152,7 @@ bool Batcher::is_oracle_shape_log_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        s_val = mc2::gate::get<"MC2_VFX_ORACLE_SHAPE_LOG">();
+        s_val = false;
         s_init = true;
     }
     return s_val;

@@ -40,7 +40,7 @@ long TG_TypeMultiShape::GetTextureName (DWORD textureNum, char *tName, long name
 // Logs every TG_TypeMultiShape::SetTextureHandle call (the bdactor.cpp/genactor.cpp
 // "actor.update() → re-cache" pathway). Absence of these logs for a given multiType
 // during gameplay = appearance->touch() ran instead of update() (UPDATE_SKIP=1 path).
-static const bool s_msl_texLifecycleTrace = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">();
+static const bool s_msl_texLifecycleTrace = false;
 
 long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHandle)
 {
@@ -72,7 +72,7 @@ long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHand
 	// for narrow-window debugging where flood is acceptable.
 	if (s_msl_texLifecycleTrace) {
 		static uint32_t s_eventCount = 0;
-		static const bool s_verbose = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE_VERBOSE">();
+		static const bool s_verbose = false;
 		const bool firstWindow = (s_eventCount < 32);
 		const bool sample = ((s_eventCount & 0xFF) == 0);  // 1/256
 		if (s_verbose || firstWindow || sample) {

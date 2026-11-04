@@ -79,7 +79,7 @@ constexpr float kEpsilonLength = 0.01f;
 bool trail_disabled() {
     static int gate = -1;
     if (gate < 0) {
-        gate = mc2::gate::get<"MC2_GPU_TRAIL_DISABLE">();
+        gate = false;
     }
     return gate != 0;
 }

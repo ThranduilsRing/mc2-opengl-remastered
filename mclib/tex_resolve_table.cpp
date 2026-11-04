@@ -55,13 +55,13 @@ void initTexResolveTable(void)
 {
     // Default ON with explicit opt-out. MC2_MODERN_TEX_RESOLVE=0|false|off disables.
     // MC2_MODERN_TEX_RESOLVE_VALIDATE implies enabled regardless of the opt-out.
-    g_texResolveTable.validate = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE_VALIDATE">();
+    g_texResolveTable.validate = false;
     if (g_texResolveTable.validate) {
         g_texResolveTable.enabled = true;
     } else {
-        g_texResolveTable.enabled = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE">();   // promoted default ON
+        g_texResolveTable.enabled = true;   // promoted default ON
     }
-    g_texResolveTable.trace = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE_TRACE">();
+    g_texResolveTable.trace = false;
 
     g_texResolveTable.handles.clear();
     g_texResolveTable.stamps.clear();

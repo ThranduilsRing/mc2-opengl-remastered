@@ -24,7 +24,7 @@ bool enabled()
     // unconditionally, so =0 is stricter than stock, not looser.
     // VIS-SEMANTICS-FINISH-2: mover_model_shown() now has no live callers —
     // both job-(a) guards in cone_glow.cpp arm off vis_job_a_armed().
-    static const bool s = mc2::gate::get<"MC2_VIS_SEMANTICS">();
+    static const bool s = true;
     return s;
 }
 
@@ -103,14 +103,14 @@ bool selfLit(const MoverVis& v)
 
 bool trace_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_VIS_SEMANTICS_TRACE">();
+    static const bool s = false;
     return s;
 }
 
 static unsigned long trace_every()
 {
     static const unsigned long s = []() -> unsigned long {
-        const unsigned long n = static_cast<unsigned long>(mc2::gate::get<"MC2_VIS_SEMANTICS_TRACE_EVERY">());
+        const unsigned long n = static_cast<unsigned long>(120);
         return n ? n : 120ul;
     }();
     return s;

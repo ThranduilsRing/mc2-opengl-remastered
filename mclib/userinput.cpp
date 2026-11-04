@@ -125,7 +125,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	// texture handle for the states the GUI actually uses (NORMAL=21, LOGISTICS=43).
 	// A texHandle of 0 here means StaticInfo::init's loadTexture failed silently
 	// (the smoking gun for an invisible-but-positioned cursor quad).
-	if (mc2::gate::get<"MC2_LOG_CURSOR">())
+	if (false)
 	{
 		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 		if (f)
@@ -228,7 +228,7 @@ void UserInput::update (void)
 	// mission code consumes (norm * viewMul) plus the viewMul itself. If a dead
 	// zone persists, this tells us whether the final pixel actually reaches the
 	// bottom/right edge or saturates early -- isolating cursor-draw vs pick.
-	if (mc2::gate::get<"MC2_MOUSE_RECON">())
+	if (false)
 	{
 		static float s_lx = -1.0f, s_ly = -1.0f;
 		const float ddx = mouseXPosition - s_lx, ddy = mouseYPosition - s_ly;
@@ -560,7 +560,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	// so we get a steady heartbeat without spamming. Shows the exact render-gate
 	// state every frame the cursor would-or-wouldn't draw: drawMouse, mouseState,
 	// numCursors, and the resolved texture handle for the current state.
-	if (mc2::gate::get<"MC2_LOG_CURSOR">())
+	if (false)
 	{
 
 		static int s_frame = 0;
