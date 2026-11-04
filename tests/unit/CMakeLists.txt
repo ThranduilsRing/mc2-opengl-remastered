@@ -190,6 +190,7 @@ add_executable(mc2_tests
     test_debug_line_project.cpp  # debug overlay segment projection; header-only
     test_camera_pick_hash.cpp  # pick revision hash: altitude / shift each move it; header-only
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan
+    test_hitch_stats.cpp # hitch_stats.h direct fence-wait and staged-byte counters
     test_screenshot_slot.cpp  # screenshot request slot and its expiry; header-only
     test_tgl_force_z.cpp  # forceZ reverse-Z mirror, both render paths
     test_static_prop_selflit.cpp  # self-lit two-sided card predicate (stock coil yes, imported override no)
