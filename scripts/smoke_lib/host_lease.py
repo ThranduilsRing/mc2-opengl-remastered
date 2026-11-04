@@ -250,7 +250,6 @@ def _read(path: Path) -> Optional[dict]:
         return None
 
 
-GATE_WINDOW_TTL_S = 4 * 3600.0           # a marker older than this is ignored: a hung gate must not starve lanes forever
 
 
 QUIET_PATH = Path("A:/Games/mc2-ops/GATE_QUIET.json")
@@ -294,9 +293,6 @@ def check_gate_quiet(log: Callable[[str], None] = _log_default) -> None:
     if not _holder_alive(rec):
         log(f"[host-lease] ignoring stale gate quiet marker (gate pid {rec.get('pid')} is dead)")
         return
-    if time.time() - float(rec.get("started", 0)) > GATE_WINDOW_TTL_S:
-        log(f"[host-lease] ignoring gate quiet marker older than {GATE_WINDOW_TTL_S:.0f} s (gate pid {rec.get('pid')})")
-        return
     since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(rec.get("started", 0))))
     raise GateQuiet(f"GATE QUIET: refusing game run (gate pid {rec.get('pid')} since {since}, head {rec.get('head') or '?'}, "
                     f"window {rec.get('window') or '?'}); retry after the gate or pass the explicit override flag")
@@ -307,7 +303,7 @@ def gate_window_blocks(now: Optional[float] = None) -> bool:
     rec = _read(gate_window_path())
     if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec) or os.environ.get(QUIET_OVERRIDE_ENV) == "1":
         return False
-    return (now if now is not None else time.time()) - float(rec.get("started", 0)) <= GATE_WINDOW_TTL_S
+    return True                                  # pid alive (and same create time) is the only staleness test: a gate may run for hours
 
 
 def _holder_alive(rec: Optional[dict]) -> bool:

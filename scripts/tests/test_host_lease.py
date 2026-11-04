@@ -641,7 +641,7 @@ def test_lane_run_waits_out_the_gap_between_gate_stages(lease, monkeypatch):
         monkeypatch.delenv("MC2_IN_GATE", raising=False)
         with pytest.raises(host_lease.HostLeaseBusy):
             host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)
-        marker(time.time() - host_lease.GATE_WINDOW_TTL_S - 5)
+        host_lease._write_record(host_lease.gate_window_path(), {"pid": holder.pid, "created": "reused-pid", "started": time.time() - 99999})
         host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)   # stale marker: ignored
         assert host_lease.holds()
         host_lease.release()
