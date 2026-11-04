@@ -103,11 +103,11 @@ DiagState& state() {
 std::atomic<uint32_t> g_unknownTagWarnings{0};
 
 // True the first time an unknown tag is seen: each one warns once per process, however often MC2_DIAG_TAGS is parsed. Immortal like knownTags().
-bool firstWarning(const std::string& tag) {
+bool firstWarning(std::string_view tag) {
     static auto* const mtx = new std::mutex;
     static auto* const warned = new std::unordered_set<std::string>;
     std::lock_guard<std::mutex> lock(*mtx);
-    const auto [pos, first] = warned->insert(tag);
+    const auto [pos, first] = warned->emplace(tag);
     (void)pos;
     if (first) g_unknownTagWarnings.fetch_add(1, std::memory_order_relaxed);
     return first;
