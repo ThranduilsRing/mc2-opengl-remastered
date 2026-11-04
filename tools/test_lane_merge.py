@@ -1356,3 +1356,12 @@ def test_a_tip_without_sim_paths_runs_no_sim_rows_and_an_old_receipt_cannot_vouc
     _branch(repo, "lane_t", "mclib/gvactor.cpp", "y\n", "sim lane 2")
     lm.write_receipt(str(repo), "lane_t", False, "PASS")
     assert lm.missing_receipts(str(repo), ["lane_t"]) == [git(repo, "rev-parse", "lane_t")]
+
+
+def test_receipt_path_refuses_a_non_40_hex_sha_and_tests_use_a_private_dir():
+    from tools import lane_merge as lm
+    for bad in ("abc", "", "g" * 40, "a" * 39):
+        with pytest.raises(ValueError):
+            lm.receipt_path(bad)
+    assert lm.receipt_path("a" * 40).endswith("a" * 40 + ".json")
+    assert not os.path.normpath(lm.PRECHECK_RECEIPTS).startswith(os.path.normpath("A:/Games/mc2-ops"))

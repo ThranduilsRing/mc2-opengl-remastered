@@ -1039,6 +1039,8 @@ PRECHECK_RECEIPTS = os.environ.get("MC2_PRECHECK_RECEIPTS", "A:/Games/mc2-ops/pr
 
 
 def receipt_path(sha: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):   # a mocked or truncated rev-parse must never forge a receipt file
+        raise ValueError(f"precheck receipt needs a full 40-hex commit SHA, got {sha!r}")
     return os.path.join(PRECHECK_RECEIPTS, sha + ".json")
 
 

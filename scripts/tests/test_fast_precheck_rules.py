@@ -71,7 +71,7 @@ def test_precheck_link_defaults_and_flags():
 
 def test_precheck_auto_link_follows_compiled_inputs(monkeypatch):
     seen = {}
-    monkeypatch.setattr(lm, "git_out", lambda root, *a: "abc")
+    monkeypatch.setattr(lm, "git_out", lambda root, *a: "a" * 40)
     monkeypatch.setattr(lm, "virtual_merge", lambda *a, **k: ("tree", []))
     monkeypatch.setattr(lm, "virtual_head", lambda *a, **k: "vcommit")
     monkeypatch.setattr(lm, "compiled_inputs_changed", lambda root, pre, post="HEAD": seen.setdefault("changed", True))
@@ -186,7 +186,7 @@ def test_warm_tree_lock_covers_only_the_build(monkeypatch, tmp_path):
         def __exit__(self, *e):
             held.now = False
     monkeypatch.setattr(lm, "TreeLock", Lock)
-    monkeypatch.setattr(lm, "git_out", lambda root, *a: "abc")
+    monkeypatch.setattr(lm, "git_out", lambda root, *a: "a" * 40)
     monkeypatch.setattr(lm, "virtual_merge", lambda *a, **k: ("tree", []))
     monkeypatch.setattr(lm, "virtual_head", lambda *a, **k: "vcommit")
     monkeypatch.setattr(lm, "ensure_precheck_tree", lambda *a, **k: None)
