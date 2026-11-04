@@ -703,9 +703,7 @@ def exe_matches_head(root: str, tree: str = "build64-ninja") -> bool | None:
         fp = extract(exe)
         if not fp.get("present"):
             return None
-        head = git_out(root, "rev-parse", "HEAD")
-        # A clean ancestor exe with no build input changed since is current: no relink for data-only commits.
-        return bool(sha_agrees(fp.get("sha"), head) or build_current(fp.get("sha"), head, root, bool(fp.get("dirty"))))
+        return bool(sha_agrees(fp.get("sha"), head := git_out(root, "rev-parse", "HEAD")) or build_current(fp.get("sha"), head, root, bool(fp.get("dirty"))))  # current ancestor exe: no relink for data-only commits
     except Exception:  # noqa: BLE001 - an unreadable fingerprint must not fail the window
         return None
 

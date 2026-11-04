@@ -856,7 +856,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2100,
+          "line": 2103,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -4022,28 +4022,28 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 139,
+          "line": 150,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity, staleness_report"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 370,
+          "line": 385,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 793,
+          "line": 884,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1247,
+          "line": 1371,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4162,7 +4162,7 @@
         },
         {
           "path": "scripts/tests/test_gate_state.py",
-          "line": 327,
+          "line": 336,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload"
@@ -4274,7 +4274,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 312,
+          "line": 333,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4299,14 +4299,14 @@
           "line": 1698,
           "evidence": "import",
           "reference": "exe_fingerprint",
-          "text": "from exe_fingerprint import extract, sha_agrees"
+          "text": "from exe_fingerprint import extract, sha_agrees, build_current"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1922,
+          "line": 1923,
           "evidence": "import",
           "reference": "exe_fingerprint",
-          "text": "from exe_fingerprint import extract, sha_agrees"
+          "text": "from exe_fingerprint import extract, sha_agrees, build_current"
         },
         {
           "path": "scripts/manifest_schema.py",
@@ -4317,10 +4317,17 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 137,
+          "line": 148,
           "evidence": "import",
           "reference": "exe_fingerprint",
-          "text": "from exe_fingerprint import extract, sha_agrees"
+          "text": "from exe_fingerprint import extract, build_current"
+        },
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 932,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "import exe_fingerprint"
         },
         {
           "path": "scripts/ninja_build.py",
@@ -4372,6 +4379,20 @@
           "text": "from scripts.exe_fingerprint import (  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_fingerprint.py",
+          "line": 348,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "from exe_fingerprint import build_current"
+        },
+        {
+          "path": "scripts/tests/test_gate_keep_candidate.py",
+          "line": 115,
+          "evidence": "import",
+          "reference": "exe_fingerprint",
+          "text": "import exe_fingerprint"
+        },
+        {
           "path": "scripts/tests/test_gate_preflight.py",
           "line": 10,
           "evidence": "import",
@@ -4397,7 +4418,7 @@
           "line": 702,
           "evidence": "import",
           "reference": "exe_fingerprint",
-          "text": "from exe_fingerprint import extract, sha_agrees"
+          "text": "from exe_fingerprint import extract, sha_agrees, build_current"
         }
       ]
     },
@@ -4525,7 +4546,7 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2029,
+          "line": 2032,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -4581,7 +4602,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 660,
+          "line": 733,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -5602,7 +5623,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-default-build-quiet.py",
-          "line": 182,
+          "line": 183,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())"
@@ -5686,7 +5707,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 852,
+          "line": 873,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -7886,7 +7907,7 @@
       "callers_by_basename": [
         {
           "path": "tools/mod_smoke.py",
-          "line": 915,
+          "line": 936,
           "evidence": "command",
           "reference": "scripts/sweep_campaign.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=secs + 120,"
@@ -13394,14 +13415,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 602,
+          "line": 623,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 638,
+          "line": 659,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -13473,7 +13494,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 477,
+          "line": 498,
           "evidence": "import",
           "reference": "mc2x_import",
           "text": "from mc2x_import import fst as fst_lib"
@@ -13740,35 +13761,35 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 354,
+          "line": 375,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 476,
+          "line": 497,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 518,
+          "line": 539,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 620,
+          "line": 641,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 639,
+          "line": 660,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -13898,14 +13919,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 138,
+          "line": 149,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 288,
+          "line": 300,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -13919,7 +13940,7 @@
         },
         {
           "path": "scripts/tests/test_gate_state.py",
-          "line": 162,
+          "line": 171,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -13933,7 +13954,7 @@
         },
         {
           "path": "tools/test_land_queue.py",
-          "line": 308,
+          "line": 309,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke"
@@ -15016,7 +15037,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 140,
+          "line": 151,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"
