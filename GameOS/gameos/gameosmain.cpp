@@ -1101,7 +1101,6 @@ int main(int argc, char** argv)
         snap.draws.reset();
         RetireRenderSnapshot(packetSequence);
         RenderCore::framePackets().retire(packetSequence);
-        mc2::tick::retireRenderPacket(packetSequence);
 
         // Draw reads only the extracted snapshot. Wait before probes and frame counters touch live state;
         // the battle CPU timer includes any uncovered tick time rather than hiding it behind the frame cap.
@@ -1111,6 +1110,9 @@ int main(int argc, char** argv)
             mc2::battlebench::WaitScope waitSim(mc2::battlebench::WaitSimNs);
             mc2::overlap::waitWorker();
         }
+        // Drain the graveyard only once the sim worker is joined: its commands destroy appearances and effects that
+        // the worker may be referencing (AppearanceTypeList refcounts are not atomic).
+        mc2::tick::retireRenderPacket(packetSequence);
 
         {
             // Bump the canonical frame counter.
