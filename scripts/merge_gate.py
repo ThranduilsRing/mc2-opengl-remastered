@@ -689,6 +689,7 @@ def farm_stage(command, overrides, runner=None):
     host = [sys.executable, "tools/farm/host.py"]
     def local(reason):
         print(f'[merge_gate] farm {reason}; repeating locally', flush=True)
+        print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
 
     try:
@@ -704,6 +705,7 @@ def farm_stage(command, overrides, runner=None):
     waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", str(FARM_CLAIM_SECONDS)], cwd=ROOT, env=os.environ.copy())
     if 'queue_timeout:' in waited.stdout:
         print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
+        print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         return runner(command, cwd=ROOT, env=dict(os.environ, **overrides))
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
@@ -713,6 +715,7 @@ def farm_stage(command, overrides, runner=None):
         return local(f'fetch unavailable: {exc}')
     if fetched.returncode:
         return local('fetch failed')
+    print(f'[merge_gate] determinism row host=farm job={job_id}', flush=True)
     return subprocess.CompletedProcess(command, waited.returncode or fetched.returncode, waited.stdout + fetched.stdout)
 
 
@@ -915,7 +918,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         return execute(steps, head, True)
     if os.environ.get("MC2_HOST_LEASE_BATCH"):
         if farm_determinism:
-            raise ValueError("farm scheduling requires no inherited host batch reservation")
+            print("[merge_gate] farm determinism off: an inherited host batch reservation forces local serial execution", flush=True)
         print("Coverage plan: inherited batch reservation requires serial execution")
         return execute(steps, head)
     pending = []
@@ -1260,7 +1263,7 @@ def main(argv=None):
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
-    ap.add_argument("--farm-determinism", action="store_true", help="offer determinism to the farm; a job no live worker claims within the probe window runs locally (default: local)")
+    ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")

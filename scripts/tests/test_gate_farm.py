@@ -242,3 +242,12 @@ def test_mad_flags_declared_view_needs_a_numeric_row_under_its_bound():
     assert gate.mad_flags('a | 0.60 | 0\n', {'a': 0.5}) == ['a=0.60 (declared bound 0.5)']   # declared-over-bound
     assert gate.mad_flags('a | 0.40 | 0\n', {'a'}) == []   # a bare set gets the default 0.5
     assert gate.parse_declared_views(['a', 'b=1.5']) == {'a': 0.5, 'b': 1.5}
+
+
+def test_farm_determinism_defaults_on_and_rows_log_their_host():
+    import inspect
+    import merge_gate as gate
+    src = inspect.getsource(gate)
+    assert '"--farm-determinism", action=argparse.BooleanOptionalAction, default=True' in src
+    assert "determinism row host=farm" in inspect.getsource(gate.farm_stage)
+    assert "local PC, farm fallback" in inspect.getsource(gate.farm_stage)
