@@ -1291,7 +1291,8 @@ def main(argv: list[str] | None = None) -> int:
         if not merged and not batch:
             return 0
         mode = "none" if args.no_verify else args.verify
-        record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started)
+        record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started,
+                      tree=git_out(root, "rev-parse", "HEAD^{tree}"))
         record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
             qfailed = quick_rows(root)

@@ -41,6 +41,14 @@ EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
 
+
+def window_reusable(window, tree, now=None):
+    """A6: lane_merge verification may be reused when the window recorded the commit tree and it is still HEAD's tree
+    (content-addressed, no clock); a record without a tree keeps the old 20-minute clock."""
+    if window.get("tree"):
+        return window["tree"] == tree
+    return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
+
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
 DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "kit-visibility": 45, "quiet": 45,
                          "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
@@ -1335,7 +1343,7 @@ def main(argv=None):
         for n, c, _ in steps:
             if n == "compare-captures-classic":
                 c[c.index("--compare-only") + 1] = str(classic_before)
-    if window and time.time() - window.get("started", 0) <= 1200:
+    if window and window_reusable(window, git("rev-parse", "HEAD^{tree}")):
         reused = []
         for name, command, overrides in steps:
             if name == "harnesses" and "--unit" in command:
