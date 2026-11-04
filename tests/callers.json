@@ -2703,7 +2703,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 27,
+          "line": 30,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -2794,14 +2794,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 552,
+          "line": 583,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 555,
+          "line": 586,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -3994,28 +3994,28 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 136,
+          "line": 139,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity, staleness_report"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 367,
+          "line": 370,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 746,
+          "line": 778,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1193,
+          "line": 1232,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4289,7 +4289,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 134,
+          "line": 137,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees"
@@ -4553,7 +4553,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 644,
+          "line": 647,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4792,7 +4792,7 @@
         },
         {
           "path": "scripts/tests/test_gate_farm.py",
-          "line": 249,
+          "line": 277,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -6137,7 +6137,7 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from . import bounded_wait, child_registry"
@@ -6475,14 +6475,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 27,
+          "line": 28,
           "evidence": "import",
           "reference": "bounded_wait",
           "text": "import bounded_wait                   # type: ignore"
@@ -6540,14 +6540,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from . import bounded_wait, child_registry"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 28,
+          "line": 29,
           "evidence": "import",
           "reference": "child_registry",
           "text": "import child_registry                 # type: ignore"
@@ -8390,6 +8390,13 @@
       "path": "scripts/tests/test_lighting_divergence.py",
       "basename": "test_lighting_divergence.py",
       "stem": "test_lighting_divergence",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_lint.py",
+      "basename": "test_lint.py",
+      "stem": "test_lint",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -11478,7 +11485,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 33,
+          "line": 36,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -11500,6 +11507,13 @@
         {
           "path": "scripts/tests/test_fast_precheck_rules.py",
           "line": 10,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lint.py",
+          "line": 9,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm  # noqa: E402"
@@ -13672,14 +13686,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 135,
+          "line": 138,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 285,
+          "line": 288,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -14783,7 +14797,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 137,
+          "line": 140,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"
