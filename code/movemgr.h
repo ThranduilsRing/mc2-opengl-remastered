@@ -81,6 +81,9 @@ class MovePathManager {
 
 using MovePathManagerPtr = MovePathManager*;
 
+// Path-manager frame counter (advanced once per update()); the jump-fail backoff and its save record use this clock.
+extern long MovePathManager_getFrameCounter (void);
+
 #endif
 
 //***************************************************************************

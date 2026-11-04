@@ -344,6 +344,9 @@ class SoundSystem
 		void playABLDigitalMusic (long musicId);
 		void stopABLMusic (void);
 		long getCurrentMusicId (void);
+		// Save/load (FIX1): the script's music view as seconds left on the scenario clock, and its restore.
+		void getScriptMusicState (long &id, double &remaining, bool &loops);
+		void restoreScriptMusic (long id, double remaining, bool loops);
 		static double musicSeconds (std::string_view wavPath);
 		
 		void playABLSFX (long sfxId);

@@ -48,6 +48,26 @@ void MechWarrior::noteJumpPathFailed (void) {
 	lastJumpFailFrame = MovePathManager_getFrameCounter();
 }
 
+bool MechWarrior::getJumpBackoff (int32_t &goalR, int32_t &goalC, int32_t &age) {
+
+	if (lastJumpFailFrame < 0)
+		return false;
+	const long elapsed = MovePathManager_getFrameCounter() - lastJumpFailFrame;
+	if ((elapsed < 0) || (elapsed >= kJumpFailBackoffFrames))
+		return false;
+	goalR = lastFailedJumpGoalCellR;
+	goalC = lastFailedJumpGoalCellC;
+	age = static_cast<int32_t>(elapsed);
+	return true;
+}
+
+void MechWarrior::setJumpBackoff (int32_t goalR, int32_t goalC, int32_t age) {
+
+	lastFailedJumpGoalCellR = goalR;
+	lastFailedJumpGoalCellC = goalC;
+	lastJumpFailFrame = MovePathManager_getFrameCounter() - age;
+}
+
 void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams, long source) {
 
 	// PATHFINDING-JUMP-FAIL-1: short-circuit doomed jump re-requests. If the pilot's

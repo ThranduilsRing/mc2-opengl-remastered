@@ -315,3 +315,45 @@ TEST_CASE("save parts: an explicit PartsFormat tag makes legacy detection unambi
     CHECK_FALSE(partsAreShiftedLegacy(false, true, 0, 7));
     CHECK(mc2::save::kPartsFormatCurrent == 2);
 }
+
+#include "save_fix_section.h"
+
+TEST_CASE("save sections: FIX1 round trips music, jump backoff and ordered path requests") {
+    using namespace mc2::save;
+    FixSection in;
+    in.music = {7, 12.5, false};
+    in.backoffs = {{3, 40, 52, 11}, {9, -1, 0, 0}};
+    in.paths = {{5, 4, 2, 0x11u}, {3, 0, -1, 0u}, {5, 49, 7, 0xFFFFFFFFu}};
+    const Bytes bytes = encodeFixSection(in);
+    REQUIRE_FALSE(bytes.empty());
+    FixSection out;
+    REQUIRE(decodeFixSection(bytes, out));
+    CHECK(out == in);
+    CHECK(out.valid(10));
+    CHECK_FALSE(out.valid(9));  // warrior index 9 out of range
+    for (std::size_t cut = 0; cut < bytes.size(); ++cut) {
+        FixSection partial;
+        CHECK_FALSE(decodeFixSection(std::span(bytes).first(cut), partial));
+    }
+    Bytes trailing = bytes;
+    trailing.push_back(0);
+    FixSection extra;
+    CHECK_FALSE(decodeFixSection(trailing, extra));
+    FixSection badSource = in;
+    badSource.paths[0].source = fixMaxPathSource;
+    CHECK_FALSE(badSource.valid(10));
+}
+
+TEST_CASE("save sections: FIX1 is an optional known section a container carries") {
+    using namespace mc2::save;
+    SectionContainer c;
+    c.add(tagFix, fixSectionVersion, false, encodeFixSection(FixSection{}));
+    Bytes wire;
+    REQUIRE(encodeSections(c, wire));
+    SectionContainer back;
+    REQUIRE(decodeSections(wire, back));
+    REQUIRE(back.find(tagFix) != nullptr);
+    FixSection out;
+    CHECK(decodeFixSection(back.find(tagFix)->payload, out));
+    CHECK(out == FixSection{});
+}

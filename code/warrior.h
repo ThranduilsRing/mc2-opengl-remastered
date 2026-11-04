@@ -1474,6 +1474,10 @@ class MechWarrior {
 
 		void requestMovePath (long selectionIndex, unsigned long moveParams, long source);
 
+		// Save/load (FIX1): the failed-jump backoff while it is still live, as goal cell and age in path-manager frames.
+		bool getJumpBackoff (int32_t &goalR, int32_t &goalC, int32_t &age);
+		void setJumpBackoff (int32_t goalR, int32_t goalC, int32_t age);
+
 		// PATHFINDING-JUMP-FAIL-1: stamp a doomed jump-solve failure (goal cell of
 		// the solve that returned no path). Called from Mover::calcMovePath on the
 		// jump branch. No-op unless the backoff gate is on.
