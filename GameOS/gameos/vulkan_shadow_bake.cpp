@@ -1491,7 +1491,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
     objectInitialized_ = true;
     ++objectMapRecords_;
-    mc2_hitch2::noteBake(coldPending_ ? nullptr : warm_ && recordedMask_ ? "warm" : "object", 0, 1);
+    mc2_hitch2::noteBake(coldPending_ ? std::string_view{} : warm_ && recordedMask_ ? "warm" : "object", 0, 1);
     return true;
 }
 

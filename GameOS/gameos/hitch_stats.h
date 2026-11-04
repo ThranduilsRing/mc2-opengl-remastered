@@ -17,10 +17,10 @@ struct Stats {
     std::atomic<int> waitIdleLogged{0};
 };
 inline Stats& stats() { static Stats s; return s; }
-inline void noteBake(const char* state, int dirtyBatch, int objRecord, const char* cache = nullptr) {
+inline void noteBake(std::string_view state, int dirtyBatch, int objRecord, std::string_view cache = {}) {   // literals only (data() is stored)
     Stats& s = stats();
-    if (state) s.bakeState.store(state);
-    if (cache) s.bakeCache.store(cache);
+    if (!state.empty()) s.bakeState.store(state.data());
+    if (!cache.empty()) s.bakeCache.store(cache.data());
     s.dirtyBatches.fetch_add(static_cast<uint64_t>(dirtyBatch), std::memory_order_relaxed);
     s.objMapRecords.fetch_add(static_cast<uint64_t>(objRecord), std::memory_order_relaxed);
 }
