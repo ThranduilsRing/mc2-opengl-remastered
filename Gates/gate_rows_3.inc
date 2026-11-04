@@ -144,7 +144,7 @@ L(AtoiNZ, "MC2_TACTIC_WEIGHTS_B", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_TARGETING_GUARD", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_TERRAIN_ADMISSION_LEGACY", Bool, false, "terrain", "", "", verified),
 L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
-L(Lead0Kill, "MC2_TERRAIN_CLIFF_ROCK", Bool, true, "terrain", "", "TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo, normal, roughness, AO) on steep VK terrain faces, tinted to the mission palette; 0 = base look.", registry(Feature, "MC2_TERRAIN_CLIFF_ROCK", -1, true) | verified),
+L(Lead0Kill, "MC2_TERRAIN_CLIFF_ROCK", Bool, true, "terrain", "2026-11-24","TERRAIN-CLIFF-ROCK: CC0 photoscan rock (albedo, normal, roughness, AO) on steep VK terrain faces, tinted to the mission palette; 0 = base look.", registry(Feature, "MC2_TERRAIN_CLIFF_ROCK", -1, true) | verified),
 L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,
