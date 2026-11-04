@@ -933,6 +933,11 @@ void Start()
 	spec.envExtra.push_back(std::make_pair(
 		std::string(mc2::gate::name<"MC2_BRIDGE_MOVER_STATE">()), std::string("1")));
 
+	// The game sends stdout/stderr to NUL unless MC2_LOG is set (gameosmain.cpp), which left
+	// the bridge and the archived playtest log empty. Keep a caller's own MC2_LOG spec.
+	if (mc2::gate::str<"MC2_LOG">().empty())
+		spec.envExtra.push_back(std::make_pair(std::string("MC2_LOG"), std::string("1")));
+
 	// Mod-aware env: when the mission lives in a mod, mount it + ask for a state dump.
 	if (s_modActive)
 	{
