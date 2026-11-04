@@ -281,7 +281,7 @@ long GVAppearance::render (long depthFixup)
 					glm::vec3 dustPos = getNodeIdPosition(dustNodeIndex);
 
 					glm::vec3 wakePos;
-					mc2ToRender(wakePos, dustPos);
+					mc2ToRender(wakePos, snapAnchor(dustPos));
 					
 					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, wakePos);
@@ -319,7 +319,7 @@ long GVAppearance::render (long depthFixup)
 
 					glm::vec3 dustPos = getNodeIdPosition(activityNodeIndex);
 					glm::vec3 wakePos;
-					mc2ToRender(wakePos, dustPos);
+					mc2ToRender(wakePos, snapAnchor(dustPos));
 					
 					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 					mc2::math::buildTranslation(shapeOrigin, wakePos);

@@ -176,7 +176,8 @@ void Mech3DAppearance::updateGeometry (void)
 	
    	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
-	xlatPosition.y += TerrainRuntime::visualHeightDelta(position);   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
+	visualDelta_ = TerrainRuntime::visualHeightDelta(position);
+	xlatPosition.y += visualDelta_;   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
 
 	//Update flashing regardless of view!!!
 	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
@@ -1002,7 +1003,7 @@ void Mech3DAppearance::updateGeometry (void)
 
 glm::vec3 Mech3DAppearance::snapAnchor (glm::vec3 nodePos) const
 {
-	return mc2snap::liftAnchorZ(nodePos, TerrainRuntime::visualHeightDelta(position));
+	return mc2snap::liftAnchorZ(nodePos, visualDelta_);
 }
 
 void Mech3DAppearance::updateSimPose (bool advanceClock)

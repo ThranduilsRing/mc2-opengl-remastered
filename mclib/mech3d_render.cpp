@@ -265,7 +265,7 @@ bool Mech3DAppearance::recalcBounds (void)
 				boxCoords[7].y = position.y + mechType->typeUpperLeft.y;
 				boxCoords[7].z = position.z + mechType->typeLowerRight.z + baseRootNodeDifference;
 	
-				mc2snap::liftBoxZ(boxCoords, TerrainRuntime::visualHeightDelta(position));   // UNIT-VISUAL-SNAP-2: selection box follows the drawn mesh
+				mc2snap::liftBoxZ(boxCoords, visualDelta_);   // UNIT-VISUAL-SNAP-2: selection box follows the drawn mesh
 
 				float maxX = 0.0f, maxY = 0.0f;
 				float minX = 0.0f, minY = 0.0f;

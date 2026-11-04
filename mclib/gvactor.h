@@ -470,6 +470,8 @@ class GVAppearance : public ObjectAppearance
 		virtual void startActivity (long effectId, bool loop);
 		virtual void stopActivity (void);
 
+		glm::vec3 snapAnchor (glm::vec3 nodePos) const;   // UNIT-VISUAL-SNAP-2: effect anchor lifted by the render-only delta
+		float visualDelta_ = 0.0f;   // sampled once per updateGeometry; body, box and effects share it
 		virtual glm::vec3 getNodeIdPosition (long nodeId);
 
 		virtual glm::vec3 getHitNode (void);

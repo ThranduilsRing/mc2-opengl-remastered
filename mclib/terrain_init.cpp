@@ -862,7 +862,13 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
 				mc2::fmt::to_buf(vhPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
-			FILE* vf = fopen(vhPath, "rb");
+			if (s_beautySig.state == 2)   // one verdict gates the bake: no read, no damp, no mover stamp, no LOADED line
+				{
+					mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} gameplay height signature mismatch (sidecar '{}' vs loaded '{}'): bake does not belong to this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(s_beautySig.got), mc2::fmt::safe(s_beautySig.want));
+					fflush(stdout);
+					return;
+				}
+				FILE* vf = fopen(vhPath, "rb");
 			if (!vf)
 			{
 				mc2::fmt::print_out("[VISUAL_HEIGHT v1] bake NOT FOUND path={} (gate on, V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));
@@ -1013,24 +1019,18 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						// (a mod that edits one plateau passes the mean test above, not this).
 						// Absent (mod-shipped sidecar): the legacy mean guard still applies.
 						const int sigState = s_beautySig.state;
-						const char* const sigGot = s_beautySig.got;
 						const char* const sigWant = s_beautySig.want;
 						if (sigState == 1)
 						{
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIG OK path={} gameplay height signature '{}' matches; bake applied\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigWant));
 							fflush(stdout);
 						}
-						if (sigState == 2)
-						{
-							mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} gameplay height signature mismatch (sidecar '{}' vs loaded '{}'): bake does not belong to this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigGot), mc2::fmt::safe(sigWant));
-							fflush(stdout);
-						}
-						else if (sigState == 0 && cornerMean > 16.0)
+						if (sigState == 0 && cornerMean > 16.0)
 						{
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] REJECTED path={} mean corner offset {:.1f}wu > 16wu: bake does not match this terrain (mod?); drawing undisplaced\n", mc2::fmt::safe(vhPath), cornerMean);
 							fflush(stdout);
+							return;
 						}
-						else
 						{
 						gos_TerrainLodChunk_UploadVisualHeightFull(
 							vh.data(), V,
