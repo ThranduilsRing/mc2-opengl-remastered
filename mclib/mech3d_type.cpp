@@ -1,6 +1,7 @@
 // Mech3DAppearance: Mech3DAppearanceType init/destroy/setAnimation and the weapon-node lookups.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
+#include "render_snap.h"
 #include "../RenderCore/axis_convert.h"
 #include "content_error.h"
 #include <format>
@@ -723,7 +724,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 				        mechType->nodeData[nodeId].nodeId,
 				        wp[0], wp[1], wp[2],
 				        wp[0]-position.x, wp[1]-position.y, wp[2]-position.z);
-			result.x = wp[0]; result.y = wp[1]; result.z = wp[2];
+			result.x = wp[0]; result.y = wp[1]; result.z = wp[2] - pv_.lift;
 			return result;
 		}
 	}
@@ -742,7 +743,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
-	result = mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId);
+	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -772,7 +773,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
         float world[3];
         if (mc2mechanim::GetImportedNodeWorld(mechShape, type, nodeName,
                 glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), world))
-            return glm::vec3(world[0], world[1], world[2]);
+            return glm::vec3(world[0], world[1], world[2] - pv_.lift);
     }
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
@@ -791,7 +792,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
     
-	result = mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName);
+	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -824,7 +825,7 @@ glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
     
-	result = mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId);
+	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -859,7 +860,7 @@ glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
     
-	result = mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId);
+	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId), pv_.lift);
 
 	return result;
 }

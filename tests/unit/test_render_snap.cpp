@@ -29,3 +29,11 @@ TEST_CASE("render snap: selection box lifts all 8 corners on mc2 z only")
         CHECK(box[i].z == doctest::Approx(91.0f));
     }
 }
+
+TEST_CASE("render snap: node unlift is the inverse of the anchor lift and keeps the not-found zero vector")
+{
+    const glm::vec3 p(10.0f, 20.0f, 30.0f);
+    CHECK(mc2snap::unliftNodeZ(mc2snap::liftAnchorZ(p, 0.5f), 0.5f) == p);
+    CHECK(mc2snap::unliftNodeZ(glm::vec3(0.0f), 0.5f) == glm::vec3(0.0f));
+    CHECK(mc2snap::unliftNodeZ(p, 0.0f) == p);
+}

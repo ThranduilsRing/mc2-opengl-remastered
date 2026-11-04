@@ -12,6 +12,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "gvactor_internal.h"
+#include "render_snap.h"
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -519,7 +520,7 @@ glm::vec3 GVAppearance::getWeaponNodePosition (long nodeId)
 		weaponNodeId[nodeId - appearType->numSmokeNodes] = -2;
 
 	if (weaponNodeId[nodeId - appearType->numSmokeNodes] >= 0)
-		result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,weaponNodeId[nodeId - appearType->numSmokeNodes]);
+		result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,weaponNodeId[nodeId - appearType->numSmokeNodes]), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -555,7 +556,7 @@ glm::vec3 GVAppearance::getSmokeNodePosition (long nodeId)
 
 	gvShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
    
-	result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,appearType->nodeData[nodeId].nodeId);
+	result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,appearType->nodeData[nodeId].nodeId), pv_.lift);
 
 	return result;
 }
@@ -586,7 +587,7 @@ glm::vec3 GVAppearance::getDustNodePosition (long nodeId)
 
 	gvShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
    
-	result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,appearType->nodeData[nodeId+appearType->numWeaponNodes+appearType->numSmokeNodes].nodeId);
+	result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,appearType->nodeData[nodeId+appearType->numWeaponNodes+appearType->numSmokeNodes].nodeId), pv_.lift);
 
 	return result;
 }

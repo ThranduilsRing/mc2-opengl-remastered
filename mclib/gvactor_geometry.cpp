@@ -994,7 +994,7 @@ glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
 
 	gvShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
    
-	result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName);
+	result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -1034,7 +1034,7 @@ glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 
 	gvShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
    
-	result = gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId);
+	result = mc2snap::unliftNodeZ(gvShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 

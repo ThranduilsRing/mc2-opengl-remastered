@@ -176,7 +176,8 @@ void Mech3DAppearance::updateGeometry (void)
 	
    	glm::vec3 xlatPosition;
    	mc2ToRender(xlatPosition, position);
-	visualDelta_ = TerrainRuntime::visualHeightDelta(position);
+	// No lift until update() has sampled baseRootNodeHeight (saved state) off this pose, so that sample is exact by construction.
+	visualDelta_ = baseRootNodeHeight == -99999.9f ? 0.0f : TerrainRuntime::visualHeightDelta(position);
 	xlatPosition.y += visualDelta_;   // UNIT-VISUAL-SNAP-1: draw only, sim copy untouched
 
 	//Update flashing regardless of view!!!
@@ -392,7 +393,7 @@ void Mech3DAppearance::updateGeometry (void)
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
 				glm::vec3 childPos =
-					getNodeIdPosition(spotlightNodeIds_[k]);
+					snapAnchor(getNodeIdPosition(spotlightNodeIds_[k]));
 				bool coneAimed = lampCursor.next(mechShape, spotlightNodeIds_[k], spotlightLights_[k], childPos);
 				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
 				// END (node transform × cone geometry axis), grounded on
