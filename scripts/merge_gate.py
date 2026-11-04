@@ -1349,8 +1349,8 @@ def main(argv=None):
         install_stage_watchdog()
         from smoke_lib import host_lease
         import atexit
-        host_lease.open_gate_window()   # lane game runs queue behind the whole gate, not just its stages
-        atexit.register(host_lease.close_gate_window)
+        host_lease.open_gate_window(git('rev-parse', 'HEAD'), str(args.window or ""))   # lane game launchers refuse (GATE QUIET) while this marker is live
+        atexit.register(host_lease.close_gate_window)   # backstop; the main() finally below is the normal removal
     if args.j < 1:
         ap.error("-j must be positive")
     global DECLARED_VIEWS
@@ -1501,6 +1501,9 @@ def main(argv=None):
                 return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
     finally:
         journal.__exit__(None, None, None)
+        if not (args.dry_run or args.preflight):
+            from smoke_lib import host_lease
+            host_lease.close_gate_window()
 
 
 if __name__ == "__main__":

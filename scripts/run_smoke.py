@@ -694,6 +694,8 @@ def main():
                          "(0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing; NOT a path - "
                          "lane installs use --exe <path>/mc2.exe); "
                          "waits (see --wait-timeout) while another run holds it")
+    ap.add_argument("--override-gate-quiet", action="store_true",
+                    help="OWNER ONLY: run although a merge gate holds A:/Games/mc2-ops/GATE_QUIET.json (default: refuse, rc 75)")
     ap.add_argument("--no-lease", action="store_true",
                     help="OWNER ONLY (requires MC2_OWNER_NO_LEASE=1): skip the "
                          "deploy-folder lease system entirely. Agents never use "
@@ -914,13 +916,15 @@ def main():
     if not (args.verify_only or args.resolve_only or args.headless):
         from scripts.smoke_lib import host_lease as _host_lease
         _t_lease = time.monotonic()
+        if args.override_gate_quiet:
+            os.environ[_host_lease.QUIET_OVERRIDE_ENV] = "1"
         try:
             _host_lease.acquire(f"run_smoke {args.deploy or args.exe or 'auto'}", wait=not args.no_wait, timeout_s=args.wait_timeout,
                                 kill_orphans=args.kill_existing,
                                 exclusive=True if args.show_window or args.tier == "resolution" else None)
         except _host_lease.HostLeaseBusy as _busy:
             print(f"[runner] ERROR: {_busy}", file=sys.stderr)
-            sys.exit(4)
+            sys.exit(getattr(_busy, "rc", 4))
         _host_wait["lease_wait_s"] = round(time.monotonic() - _t_lease, 1)
         if _host_lease.redirected():
             _host_wait["host_load"] = {"checked": False, "note": "private host lease (test): the real host is not sampled"}

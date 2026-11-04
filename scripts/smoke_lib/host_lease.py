@@ -253,14 +253,25 @@ def _read(path: Path) -> Optional[dict]:
 GATE_WINDOW_TTL_S = 4 * 3600.0           # a marker older than this is ignored: a hung gate must not starve lanes forever
 
 
+QUIET_PATH = Path("A:/Games/mc2-ops/GATE_QUIET.json")
+QUIET_OVERRIDE_ENV = "MC2_GATE_QUIET_OVERRIDE"   # "1" (set by an explicit --override-gate-quiet flag, owner only) lets one run through
+QUIET_RC = 75                                     # exit code of a launcher that refused: distinct from lease-busy (4)
+
+
+class GateQuiet(HostLeaseBusy):
+    """A merge gate is running its full pass: lane game runs are refused outright, not queued (W114 lost 2 h to two 3600 s lease waits)."""
+    rc = QUIET_RC
+
+
 def gate_window_path() -> Path:
-    return lease_path().with_suffix(".gate.json")
+    return lease_path().with_suffix(".gate.json") if redirected() else QUIET_PATH
 
 
-def open_gate_window() -> None:
-    """Called by the merge gate for its whole run: lane (non-gate) game runs queue behind it, with no interleaving between stages."""
+def open_gate_window(head: str = "", window: str = "") -> None:
+    """Called by the merge gate for its whole run: lane (non-gate) game runs are refused while this marker is live."""
     pid = os.getpid()
-    _write_record(gate_window_path(), {"pid": pid, "created": child_registry.process_create_time(pid), "started": time.time()})
+    _write_record(gate_window_path(), {"pid": pid, "created": child_registry.process_create_time(pid), "started": time.time(),
+                                       "head": head, "window": window, "cmdline": " ".join(sys.argv)[:300]})
 
 
 def close_gate_window() -> None:
@@ -272,10 +283,29 @@ def close_gate_window() -> None:
             pass
 
 
+def check_gate_quiet(log: Callable[[str], None] = _log_default) -> None:
+    """Raise GateQuiet when a live gate (not this process, not one of its children) holds the quiet marker. A stale one is logged and ignored."""
+    rec = _read(gate_window_path())
+    if not rec or rec.get("pid") == os.getpid() or os.environ.get("MC2_IN_GATE") == "1" or os.getppid() == rec.get("pid"):
+        return
+    if os.environ.get(QUIET_OVERRIDE_ENV) == "1":
+        log(f"[host-lease] GATE QUIET overridden ({QUIET_OVERRIDE_ENV}=1): gate pid {rec.get('pid')}")
+        return
+    if not _holder_alive(rec):
+        log(f"[host-lease] ignoring stale gate quiet marker (gate pid {rec.get('pid')} is dead)")
+        return
+    if time.time() - float(rec.get("started", 0)) > GATE_WINDOW_TTL_S:
+        log(f"[host-lease] ignoring gate quiet marker older than {GATE_WINDOW_TTL_S:.0f} s (gate pid {rec.get('pid')})")
+        return
+    since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(rec.get("started", 0))))
+    raise GateQuiet(f"GATE QUIET: refusing game run (gate pid {rec.get('pid')} since {since}, head {rec.get('head') or '?'}, "
+                    f"window {rec.get('window') or '?'}); retry after the gate or pass the explicit override flag")
+
+
 def gate_window_blocks(now: Optional[float] = None) -> bool:
     """True while a live gate (not this process) holds the window and the marker is inside its TTL."""
     rec = _read(gate_window_path())
-    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec):
+    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec) or os.environ.get(QUIET_OVERRIDE_ENV) == "1":
         return False
     return (now if now is not None else time.time()) - float(rec.get("started", 0)) <= GATE_WINDOW_TTL_S
 
@@ -343,7 +373,7 @@ def _batch_member(rec: Optional[dict]) -> bool:
 
 def _describe(rec: Optional[dict]) -> str:
     if not rec:
-        return "unknown holder"
+        return "unknown holder (no record)"
     return (f"{rec.get('label', '?')} (pid {rec.get('pid')}, {' '.join(map(str, rec.get('argv', [])))}"
             f"{', in ' + str(rec['cwd']) if rec.get('cwd') else ''})")
 
@@ -393,6 +423,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     if disabled(log):
         log(f"[host-lease] OFF ({OFF_ENV}=off, owner): {label} launches without the host lease")
         return
+    check_gate_quiet(log)
     exclusive = _exclusive(exclusive) or any(word in (label + " " + sys.argv[0]).lower()
                                             for word in ("perf", "fps", "frame-time", "frametime", "tracy"))
     if holds():
@@ -408,7 +439,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
     # Merge-gate stages and exclusive holds queue ahead of pass/fail runs; an exclusive at the head admits nobody behind it.
     priority = 0 if exclusive or os.environ.get("MC2_IN_GATE") == "1" else 1
     ticket = {"pid": os.getpid(), "created": child_registry.process_create_time(os.getpid()), "exclusive": exclusive,
-              "priority": priority}
+              "priority": priority, "label": label, "argv": sys.argv[:3], "cwd": os.getcwd()}
     granted = False
     try:
         while True:
@@ -470,7 +501,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                         _registered = True
                     return
                 why = ("a game this process did not start is running: " + ", ".join(f"{img} pid {pid}" for pid, img in foreign)
-                       if foreign else "the host game lease is held by " + _describe(live[0][1] if live else None))
+                       if foreign else "the host game lease is held by " + _describe(live[0][1] if live else (queue[0] if queue and queue[0] != ticket else None)))
             if not wait:
                 raise HostLeaseBusy(why + "; queued behind another lane")
             if clock() >= deadline:
