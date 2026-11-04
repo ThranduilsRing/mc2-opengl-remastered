@@ -1,0 +1,9 @@
+1 sim_overlap_violation marker line(s); first: [SIM_OVERLAP v1] VIOLATION sim-thread-called-main-api site=ForceGroupBar::removeAll count=1 abort=1
+[runner] [ENV-DECLARED] 6 ambient MC2_* var(s) will reach mc2.exe and are recorded in the run manifest: MC2_BOOT_VIDEO=1, MC2_DIAG_TAGS=RESULTS, MC2_SIM_OVERLAP_AUDIT=2, MC2_SOAK_AUTOWIN=1, MC2_SOAK_AUTOWIN_COUNTDOWN=1, MC2_SOAK_WIN_AFTER_SEC=12
+[VIDEO] init: opened 'data/movies/v1a.bik' (128x72, sar=1.000, fps=15.00, audio=1)
+[VIDEO] init: opened data/movies/v1a.bik (128x72, fps=15.00, audio=1)
+[RESULTS v1] resultsDone renderStatusInfo=0 objectiveTime=0.00 resultsTime=0.00
+[RESULTS v1] resultsDone renderStatusInfo=1 objectiveTime=0.11 resultsTime=0.52
+[RESULTS v1] resultsDone complete objectiveTime=1.52 forceGroupBar.removeAll next
+[SIM_OVERLAP v1] VIOLATION sim-thread-called-main-api site=ForceGroupBar::removeAll count=1 abort=1
+[SIM_OVERLAP v1] FATAL SIGABRT thread=sim in_flight=1 last_site=sim-thread-called-main-api ForceGroupBar::removeAll
