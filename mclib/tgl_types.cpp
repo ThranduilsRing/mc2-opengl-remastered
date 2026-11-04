@@ -1,5 +1,6 @@
 // TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation.
 // Declared in the class headers; shared names in tgl_internal.h.
+#include "mc2_czstring.h"
 #include <memory>
 #include "tgl_internal.h"
 #include "mc2fmt.h"
@@ -14,7 +15,7 @@
 // the Lightsnflags.tga atlas. These cards are single flat quads with no
 // billboarding, so they backface-cull (vanish) as the RTS camera orbits toward
 // top-down; Render() renders them two-sided when the gate below is on.
-static bool tgNameContainsCI(const char* hay, const char* needle)
+static bool tgNameContainsCI(mc2::czstring hay, mc2::czstring needle)
 {
 	if (!hay || !needle) return false;
 	const size_t nlen = strlen(needle);
@@ -142,7 +143,7 @@ std::unique_ptr<TG_Shape> TG_TypeNode::CreateFrom (void)
 //users to load the ase file themselves and manage their own memory for it.
 //It allocates memory for internal Lists (vector stores owned by the shape).
 //
-long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
+long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, mc2::czstring fileName)
 {
 	char *nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_NAME);
 	gosASSERT(nodeName != nullptr);
@@ -425,7 +426,7 @@ void TG_Shape::destroy (void)
 //
 // NOTE: Only takes the first HELPOBJECT from the ASE file.  Multi-object
 // Files will require user intervention to parse!!
-long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
+long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, mc2::czstring fileName)
 {
 	char *nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_NAME);
 	gosASSERT(nodeName != nullptr);

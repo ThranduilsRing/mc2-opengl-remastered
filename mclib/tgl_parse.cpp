@@ -1,5 +1,6 @@
 // TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile), textures, imported meshes, camera/fog/light setup.
 // Declared in the class headers; shared names in tgl_internal.h.
+#include "mc2_czstring.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "tgl_internal.h"
@@ -16,7 +17,7 @@
 //
 // NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 // Files will require user intervention to parse!!
-long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
+long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 {
 	char *nodeName = strstr(reinterpret_cast<char *>(aseBuffer),ASE_NODE_NAME);
 	gosASSERT(nodeName != nullptr);
@@ -657,7 +658,7 @@ long TG_TypeShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 // The caller moves in its vertex and triangle vectors; the shape owns them and copies node identity. The shape's
 // init() defaults (alphaTestOn=false, filterOn=true, hot* sentinels) remain
 // in place; callers that need different values use the existing setters.
-void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
+void TG_TypeShape::InitFromImportedMesh(mc2::czstring nodeIdIn, mc2::czstring parentIdIn,
                                         const glm::vec3& center,
                                         std::vector<TG_TypeVertex>&& vertices,
                                         std::vector<TG_TypeTriangle>&& triangles)

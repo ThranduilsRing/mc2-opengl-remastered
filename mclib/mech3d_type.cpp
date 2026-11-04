@@ -1,5 +1,6 @@
 // Mech3DAppearance: Mech3DAppearanceType init/destroy/setAnimation and the weapon-node lookups.
 // Declared in the class headers; shared names in mech3d_internal.h.
+#include "mc2_czstring.h"
 #include "mech3d_internal.h"
 #include "render_snap.h"
 #include "../RenderCore/axis_convert.h"
@@ -40,7 +41,7 @@ const char* MechAnimationNames[MaxGestures+2] =
 	"FallForwardDam"	//Destroyed States
 };																
 
-void Mech3DAppearanceType::init (const char * fileName)
+void Mech3DAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 
@@ -753,7 +754,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	return result;
 }
 
-glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
+glm::vec3 Mech3DAppearance::getNodeNamePosition (mc2::czstring nodeName)
 {
     if (!simPresentationPass && simPose->ready) {
         if (S_stricmp(nodeName, "cockpit") == 0) return simPose->cockpit;
@@ -991,7 +992,7 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 // getWeaponNode() picks from) and returns the matching index, or -1. Read-only:
 // unlike getWeaponNode() this does NOT call setWeaponNodeUsed() -- the caller is
 // choosing a specific declared socket, not consuming a round-robin slot.
-long Mech3DAppearance::resolveWeaponNodeBySocketName (const char* socketName)
+long Mech3DAppearance::resolveWeaponNodeBySocketName (mc2::czstring socketName)
 {
 	if (!socketName || !socketName[0])
 		return -1;

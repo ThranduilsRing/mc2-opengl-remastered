@@ -1,5 +1,6 @@
 // Multi shape layer: TG_TypeMultiShape loading: binary copy, ASE import, texture setup, save and destroy, with the asset-load audit events.
 // Declared in the class headers; shared names in msl_internal.h.
+#include "mc2_czstring.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "msl_internal.h"
 #include "mc2fmt.h"
@@ -26,7 +27,7 @@
 // Smoke: the `asset_load_fail` red bucket counts parse_fail (+
 // required_missing + appr_type_fail) — deliberately NOT bare file_missing.
 
-static unsigned long long mslAssetKey(const char* event, const char* path)
+static unsigned long long mslAssetKey(mc2::czstring event, mc2::czstring path)
 {
 	// djb2 over event+path — dedup key for mc2AuditOnce.
 	unsigned long long h = 5381;
@@ -35,7 +36,7 @@ static unsigned long long mslAssetKey(const char* event, const char* path)
 	return h;
 }
 
-static void mslAssetLoadEvent(const char* event, const char* loader,
+static void mslAssetLoadEvent(mc2::czstring event, mc2::czstring loader,
                               const char* reason, const char* path)
 {
 	if (!mc2AuditOnce("ASSET_LOAD", mslAssetKey(event, path)))
@@ -142,7 +143,7 @@ long TG_TypeMultiShape::BuildContentIR(mc2::content::Asset&& asset, std::string_
     return NO_ERR;
 }
 
-long TG_TypeMultiShape::LoadBinaryCopy(const char* fileName)
+long TG_TypeMultiShape::LoadBinaryCopy(mc2::czstring fileName)
 {
     mc2::content::Asset cached;
     cached.legacyBounds = true;
@@ -152,7 +153,7 @@ long TG_TypeMultiShape::LoadBinaryCopy(const char* fileName)
     return result == NO_ERR ? BuildContentIR(frontend.ExtractContentIR(), fileName) : result;
 }
 
-static bool preferStockBinary(const char* ase, const char* binary, bool forceASE)
+static bool preferStockBinary(mc2::czstring ase, mc2::czstring binary, bool forceASE)
 {
     if (forceASE || !fileExists(binary)) return false;
     if (!fileExists(ase, FILE_ON_DISK)) return true;
@@ -160,7 +161,7 @@ static bool preferStockBinary(const char* ase, const char* binary, bool forceASE
     return LookupModPriority(binary) < LookupModPriority(ase);
 }
 
-long TG_TypeMultiShape::LoadTGMultiShapeFromASE(const char* fileName, bool forceMakeBinary, IProviderEngine* armProvider)
+long TG_TypeMultiShape::LoadTGMultiShapeFromASE(mc2::czstring fileName, bool forceMakeBinary, IProviderEngine* armProvider)
 {
     ZoneScopedN("Shape.Load");
     ZoneText(fileName, strlen(fileName));
@@ -376,7 +377,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 #include "assimp_importer.h"
 #endif
 
-long TG_TypeMultiShape::LoadFromFile(const char* baseName)
+long TG_TypeMultiShape::LoadFromFile(mc2::czstring baseName)
 {
 	if (!baseName || !*baseName)
 	{
@@ -431,7 +432,7 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 }
 
 //-------------------------------------------------------------------------------
-void TG_TypeMultiShape::SaveBinaryCopy (const char *fileName)
+void TG_TypeMultiShape::SaveBinaryCopy (mc2::czstring fileName)
 {
 	File binFile;
 	binFile.create(fileName);

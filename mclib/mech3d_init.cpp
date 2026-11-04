@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <algorithm>
@@ -14,7 +15,7 @@
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.
 // Used to gate TGL texture loading so sensor shapes work when .tga is absent
 // in a slim deploy (route-2 in txmmgr.cpp will decode the .ktx2 instead).
-static bool textureOrKtxSidecarExists(const char* tgaPath)
+static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;

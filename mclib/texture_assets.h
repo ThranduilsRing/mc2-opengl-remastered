@@ -1,5 +1,6 @@
 // Session-owned texture source API; source identity is independent of GPU residency.
 #pragma once
+#include "mc2_czstring.h"
 #include <gameos.hpp>
 #include <cstdint>
 #include <memory>
@@ -18,16 +19,16 @@ void flushSources(bool all);
 void adoptOwned(DWORD asset) noexcept;
 void disown(DWORD asset) noexcept;
 void releaseOwned(DWORD asset) noexcept;
-DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD variant=0, DWORD lifetime=0);
-DWORD findAndRetain(const char* path, gos_TextureFormat format, DWORD hints, DWORD variant=0, DWORD lifetime=0);
+DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant=0, DWORD lifetime=0);
+DWORD findAndRetain(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant=0, DWORD lifetime=0);
 DWORD retain(DWORD asset);
 void release(DWORD asset);
 DWORD sourceId(DWORD asset);
 void commitTickTextures(); // main only, after joining the tick
 DWORD fromPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
 DWORD fromRawPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
-long save(DWORD asset,const char* path);
-long refresh(const char* match,long& missing);
+long save(DWORD asset,mc2::czstring path);
+long refresh(mc2::czstring match,long& missing);
 DWORD uvScale(DWORD asset);
 bool logicalSize(DWORD asset,DWORD& w,DWORD& h);
 const char* name(DWORD asset);

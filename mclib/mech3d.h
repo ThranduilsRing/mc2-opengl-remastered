@@ -26,6 +26,7 @@
 #include"msl.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
 #include "sim_overlap.h"
 
@@ -205,7 +206,7 @@ class Mech3DAppearanceType: public AppearanceType
 			destroy();
 		}
 		
-		virtual void init (const char *fileName);
+		virtual void init (mc2::czstring fileName);
 		
 		long getTotalNodes (void)
 		{
@@ -813,7 +814,7 @@ class Mech3DAppearance: public ObjectAppearance
 		
 		virtual glm::vec3 getNodePosition (long nodeId);
 		
-		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (mc2::czstring nodeName);
 		
 		virtual long getWeaponNode (long weapontype);
 
@@ -826,7 +827,7 @@ class Mech3DAppearance: public ObjectAppearance
 		// GetNodeId scan). Pure lookup: does NOT increment nodeUsed / recycle and
 		// does NOT touch nodeData -- authoritative-vs-fallback is owned by the pure
 		// chooseWeaponNode() (hardpoint.h). Used only at load-time mount resolution.
-		virtual long resolveWeaponNodeBySocketName (const char* socketName);
+		virtual long resolveWeaponNodeBySocketName (mc2::czstring socketName);
 
 		virtual long getLowestWeaponNode (void);
 		
@@ -912,7 +913,7 @@ class Mech3DAppearance: public ObjectAppearance
 			sensorTriangleShape->SetAlphaValue(0xff - aVal);
 		}
 
-		virtual void setMechName( const char* pName )
+		virtual void setMechName( mc2::czstring pName )
 		{
 			strcpy( mechName, pName );
 		}

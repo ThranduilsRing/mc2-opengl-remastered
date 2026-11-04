@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
 #include "sim_overlap.h"
@@ -40,7 +41,7 @@ std::shared_ptr<const Bytes> readBytes(File& file) {
     file.seek(0);
     return file.read(bytes->data(), count) == count ? bytes : nullptr;
 }
-static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
+static bool tryReadTgaLogicalSize(File& textureFile, mc2::czstring name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
 {
 	logicalWidth = 0;
 	logicalHeight = 0;
@@ -104,7 +105,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uv
 	return logicalWidth && logicalHeight;
 }
 
-static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, RenderCore::KtxImage& out, std::string* resolvedProvider = nullptr)
+static bool txmLoadCooked(mc2::czstring source, mc2::czstring sidecar, bool prefer, RenderCore::KtxImage& out, std::string* resolvedProvider = nullptr)
 {
     File cooked;
     if (cooked.open(sidecar) != NO_ERR) return false;
@@ -200,7 +201,7 @@ void startSources() {
     }));
 }
 
-DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
+DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
     ZoneScopedN("TextureSource.Load");
     if (!RenderCore::activeTextureService || !path || !*path) return kInvalidAsset;
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) {
@@ -320,7 +321,7 @@ DWORD fromPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width
 DWORD fromRawPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
     return pixels(data,format,hints,width,bytesPerPixel);
 }
-long save(DWORD asset, const char* path) {
+long save(DWORD asset, mc2::czstring path) {
     auto source=liveSource(asset);
     if (!source || !source->bytes || source->bytes->empty()) return ~NO_ERR;
     File file; const auto error=file.create(path);
@@ -328,7 +329,7 @@ long save(DWORD asset, const char* path) {
     const auto size=static_cast<long>(source->bytes->size());
     return file.write(const_cast<uint8_t*>(source->bytes->data()),size)==size ? NO_ERR : ~NO_ERR;
 }
-long refresh(const char* match, long& missing) {
+long refresh(mc2::czstring match, long& missing) {
     missing=0; if (!match || !*match || !sourcesIfReady()) return 0;
     std::string needle=match;
     for (char& c:needle) c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));

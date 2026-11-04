@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: BldgAppearanceType and TreeAppearanceType init/destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include "mc2_czstring.h"
 #include "bdactor_internal.h"
 #include "content_error.h"
 #include "texture_assets.h"
@@ -116,7 +117,7 @@ static bool importOverrideRenderShape(const ModelOverrideRecord& ov, std::string
 #endif
 }
 
-void BldgAppearanceType::init (const char * fileName)
+void BldgAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 
@@ -669,7 +670,7 @@ void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNu
 		shape->ClearAnimation();
 }
 
-void TreeAppearanceType::init (const char * fileName)
+void TreeAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 
