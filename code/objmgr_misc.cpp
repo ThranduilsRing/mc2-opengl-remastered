@@ -2,7 +2,7 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
-#include "../mclib/battle_bench_sink.h"
+#include "objmgr_walk_ns.h"
 #include "../mclib/sim_overlap.h"
 #include "impact_presentation.h"
 
@@ -575,6 +575,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
         updateActiveSweep();
 		int frameJobsPrePassCount = 0;
 		updateFrameJobsPrepass(frameJobsPrePassCount);
+		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{

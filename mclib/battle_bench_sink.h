@@ -34,6 +34,8 @@ enum class Field : unsigned {
     // Present tail, written by the present worker (or main when the worker is off). Nanoseconds; all end in "_ns".
     PresAcquireNs, PresTailNs, PresTailHudNs, PresTailImguiNs, PresTailBlitNs, PresTailSubmitNs,
     PresCollectNs, PresBoundaryNs, PresCompositeWaitNs, PresQueuePresentNs,
+    // Terrain-object walks on main (D2 census): presentation walk, extract terrain list, render walk. Nanoseconds.
+    WalkPresNs, WalkExtractNs, WalkRenderNs,
     NumFields
 };
 using enum Field;
@@ -44,7 +46,8 @@ inline constexpr const char* kFieldNames[FieldCount] = {
     "extract.bytes", "heap_allocs",
     "walk.visited", "walk.recalc", "walk.ground", "walk.touch", "walk.update",
     "pres.acquire_ns", "pres.tail_ns", "pres.tail_hud_ns", "pres.tail_imgui_ns", "pres.tail_blit_ns", "pres.tail_submit_ns",
-    "pres.collect_ns", "pres.boundary_ns", "pres.composite_wait_ns", "pres.queue_present_ns"};
+    "pres.collect_ns", "pres.boundary_ns", "pres.composite_wait_ns", "pres.queue_present_ns",
+    "walk.pres_ns", "walk.extract_ns", "walk.render_ns"};
 inline std::atomic<uint64_t> cur[FieldCount]{};
 inline std::atomic<uint64_t> tot[FieldCount]{};
 inline std::atomic<uint64_t> totFrames{0};
