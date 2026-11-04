@@ -17,6 +17,7 @@
 #include "mc2fmt.h"
 #include "brain_execution_policy.h"
 #include "Gates/gate.h"
+#include "objmgr_walk_ns.h"
 
 GameObjectManager::GameObjectManager() { init(); }
 GameObjectManager::~GameObjectManager() { destroy(); }
@@ -1075,6 +1076,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 	if (terrain)
 	{
 		ZoneScopedN("RenderObjects.Terrain");
+		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkRenderNs};   // D2 census; RAII covers the early return
 		// Cull-cascade consumer (object render). Post-8c source of truth for
 		// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
 		// slim reduction loop in mclib/terrain.cpp; the extract walks it.

@@ -9,6 +9,7 @@
 #include <utility>
 #include "diagnostic_trace.h"
 #include "gpu_cull_compute.h"
+#include "objmgr_walk_ns.h"
 
 
 // ---------------------------------------------------------------------------
@@ -941,6 +942,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 
 	if (renderObjects)
 	{
+		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkExtractNs};   // D2 census
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
 			if (!Terrain::objBlockInfo[terrainBlock].active)
