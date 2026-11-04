@@ -1003,26 +1003,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ClipPolygon2": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "mclib/mlr/mlrlightmap.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlrprimitivebase.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 2,
-   "owners": [
-    "",
-    "ClipPolygon2"
-   ]
-  },
   "CollisionSystem": {
    "delete": 1,
    "delete_array": 0,
@@ -1255,21 +1235,6 @@
    "new_array": 0,
    "owners": []
   },
-  "DynamicArrayOf<#ifCOLOR_AS_DWORDDWORD#elseRGBAColor#endif>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrprimitivebase.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "ClipPolygon2"
-   ]
-  },
   "DynamicArrayOf<DynamicArrayOf<Vector2DScalar>": {
    "delete": 2,
    "delete_array": 0,
@@ -1285,146 +1250,34 @@
     ""
    ]
   },
-  "DynamicArrayOf<MLRClippingState>": {
-   "delete": 3,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrprimitivebase.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrtrianglecloud.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "",
-    "ClipPolygon2"
-   ]
-  },
-  "DynamicArrayOf<RGBAColor>": {
+  "DynamicArrayOf<Vector2DScalar>": {
    "delete": 1,
    "delete_array": 0,
    "files": {
-    "mclib/mlr/mlrlightmap.cpp": {
+    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
      "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
-  "DynamicArrayOf<Stuff::Vector4D>": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 2,
      "new": 2
     }
    },
    "new": 2,
    "new_array": 0,
    "owners": [
-    ""
-   ]
-  },
-  "DynamicArrayOf<Vector2DScalar>": {
-   "delete": 7,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-     "delete": 2,
-     "new": 2
-    },
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete": 1,
-     "new": 2
-    },
-    "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrprimitivebase.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 8,
-   "new_array": 0,
-   "owners": [
-    "",
-    "ClipPolygon2",
     "MLR_I_MT_PMesh"
    ]
   },
-  "DynamicArrayOf<Vector4D>": {
-   "delete": 3,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlreffect.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "mclib/mlr/mlrprimitivebase.cpp": {
-     "delete": 2,
-     "new": 2
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "ClipPolygon2",
-    "EffectClipPolygon"
-   ]
-  },
-  "DynamicArrayOf<unsignedchar>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrindexedtrianglecloud.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "DynamicArrayOf<unsignedshort>": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrindexedprimitivebase.cpp": {
      "delete": 1,
      "new": 1
-    },
-    "mclib/mlr/mlrprimitivebase.cpp": {
-     "delete": 1,
-     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "",
-    "ClipPolygon2"
+    ""
    ]
   },
   "Editor": {
@@ -1486,21 +1339,6 @@
    "new": 2,
    "new_array": 0,
    "owners": []
-  },
-  "EffectClipPolygon": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "mclib/mlr/mlreffect.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "EffectClipPolygon"
-   ]
   },
   "Elemental": {
    "delete": 0,
@@ -2874,22 +2712,16 @@
    "owners": []
   },
   "MemoryStream": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
-    "mclib/mlr/mlrlightmap.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/stuff/trace.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
-   "owners": [
-    ""
-   ]
+   "owners": []
   },
   "MidLevelRenderer::MLRClipper": {
    "delete": 3,
@@ -4976,7 +4808,6 @@
   "code/gamesound.cpp": 1,
   "code/infowindow.cpp": 1,
   "code/job_system.cpp": 1,
-  "code/loadscreen.cpp": 7,
   "code/logistics.cpp": 1,
   "code/logisticsdata_modify.cpp": 3,
   "code/logisticspilotlistbox.cpp": 1,
@@ -5065,7 +4896,7 @@
   "mclib/mlr/mlrinfinitelight.cpp": 1,
   "mclib/mlr/mlrinfinitelightwithfalloff.cpp": 1,
   "mclib/mlr/mlrlight.cpp": 1,
-  "mclib/mlr/mlrlightmap.cpp": 2,
+  "mclib/mlr/mlrlightmap.cpp": 1,
   "mclib/mlr/mlrlookuplight.cpp": 5,
   "mclib/mlr/mlrpointlight.cpp": 1,
   "mclib/mlr/mlrprimitivebase.cpp": 1,
