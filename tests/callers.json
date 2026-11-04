@@ -3423,6 +3423,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/land_queue.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless children)"
+        },
+        {
           "path": "tools/lane_merge.py",
           "line": 65,
           "evidence": "import",
@@ -3775,6 +3782,13 @@
         {
           "path": "tools/test_journal_comment_ratchet.py",
           "line": 15,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tools/test_land_queue.py",
+          "line": 11,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -11478,7 +11492,7 @@
       "callers_by_stem": [
         {
           "path": "tools/test_land_queue.py",
-          "line": 9,
+          "line": 10,
           "evidence": "import",
           "reference": "tools.land_queue",
           "text": "from tools import land_queue as lq  # noqa: E402"
