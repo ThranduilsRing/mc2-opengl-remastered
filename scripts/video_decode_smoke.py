@@ -38,7 +38,7 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False) 
     env = dict(os.environ, MC2_BOOT_VIDEO="1", MC2_SMOKE_REQUIRE_FINGERPRINT=os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1"))
     env.pop("MC2_SIM_OVERLAP", None)   # default ON is the point
     if countdown:   # mission-end row: normal results countdown, so resultsDone runs on the sim worker with a live pilot video
-        env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="6")
+        env.update(MC2_SOAK_AUTOWIN="1", MC2_SOAK_AUTOWIN_COUNTDOWN="1", MC2_SOAK_WIN_AFTER_SEC="15")
     cmd = [sys.executable, str(ROOT / "scripts" / "run_smoke.py"), "--mission", mission, "--duration", str(duration),
            "--keep-logs", "--exe", exe]
     proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, errors="replace",
@@ -59,7 +59,7 @@ def main() -> int:
     ap.add_argument("--exe", required=True)
     ap.add_argument("--mission", action="append", default=[])
     ap.add_argument("--duration", type=int, default=30)
-    ap.add_argument("--end-duration", type=int, default=90)
+    ap.add_argument("--end-duration", type=int, default=30)
     args = ap.parse_args()
     bad = 0
     for mission in args.mission or MISSIONS:
