@@ -41,6 +41,36 @@ EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
 
+# Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
+DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "kit-visibility": 45, "quiet": 45,
+                         "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
+
+
+def stage_seconds(name):
+    """Seconds of `name` at the last gate that ran it (build64-ninja/gate-durations.json), else the W112 default."""
+    if ACTIVE_STATE is not None:
+        try:
+            value = json.loads(ACTIVE_STATE.path.with_name("gate-durations.json").read_text(encoding="utf-8")).get(name)
+            if isinstance(value, (int, float)) and value > 0:
+                return float(value)
+        except (OSError, ValueError):
+            pass
+    return float(DEFAULT_STAGE_SECONDS.get(name, 100 if name.startswith("saveload-") else 60))
+
+
+def balance_movable(movable, load_a, load_b, seconds=None):
+    """Longest-first split of rows that may run on either worker. -> (rows for A, rows for B), original order kept."""
+    seconds = seconds or stage_seconds
+    to_a, to_b = [], []
+    for step in sorted(movable, key=lambda s: -seconds(s[0])):
+        if load_a < load_b:
+            to_a.append(step)
+            load_a += seconds(step[0])
+        else:
+            to_b.append(step)
+            load_b += seconds(step[0])
+    return [s for s in movable if s in to_a], [s for s in movable if s in to_b]
+
 
 def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
@@ -354,6 +384,17 @@ class GateState:
             for option in ("--out", "--out-root"):
                 if option in command:
                     artefact = command[command.index(option) + 1]
+            if status == "PASS" and seconds > 0 and not self.read_only:
+                durations = self.path.with_name("gate-durations.json")
+                try:
+                    known = json.loads(durations.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    known = {}
+                known[name] = round(seconds, 1)
+                try:
+                    durations.write_text(json.dumps(known, sort_keys=True), encoding="utf-8")
+                except OSError:
+                    pass
             self.data["stages"][name] = dict(
                 head=self.head, exe_sha=self.exe_sha(), status=status, seconds=seconds,
                 artefact_dir=artefact, scheduler_wait_seconds=scheduler_wait,
@@ -901,6 +942,15 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
                             and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
+            # Balance the two workers by last-run durations (A2): A = post-deploy stock rows, B = mods; the
+            # headless/clone-safe rows go to whichever is lighter. Saves stay on A (install).
+            deploy_at = next((i for i, s in enumerate(stock) if s[0] == "deploy"), -1)
+            load_a = sum(stage_seconds(s[0]) for s in stock[deploy_at + 1:] if not s[2].get("MC2_GATE_SKIP_REASON")
+                         and s[0] not in ("contracts", "harnesses", "pytest"))
+            load_b = sum(stage_seconds(s[0]) for s in mods if not s[2].get("MC2_GATE_SKIP_REASON"))
+            to_a, determinism = balance_movable(determinism, load_a, load_b)
+            stock += to_a
+            print(f"[merge_gate] worker balance: A+={[s[0] for s in to_a]} B+={[s[0] for s in determinism]} (A={load_a:.0f}s B={load_b:.0f}s before)", flush=True)
         # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
         offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0

@@ -790,6 +790,8 @@ def test_parallel_validation_reuse_joins_both_workers(tmp_path, monkeypatch, cap
     monkeypatch.setattr(gate, "FAILED_STAGES", [])
     tier_done = threading.Event()
     det_done = threading.Event()
+    # this test needs tier1 (worker A) and determinism (worker B) concurrently: make A the loaded worker
+    monkeypatch.setattr(gate, "stage_seconds", lambda name: 1000.0 if name == "tier1" else 1.0)
     @contextmanager
     def copy(source):
         yield tmp_path / "clone"
@@ -974,6 +976,7 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
         return _r(0)
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "stage_seconds", lambda name: 1000.0 if name.startswith("saveload-") else 1.0)  # B is the light worker
     monkeypatch.setattr(gate, "stock_copy", copy)
     monkeypatch.setattr(gate, "run_child", runner)
     steps = [("deploy", ["deploy"], {}),
@@ -1231,3 +1234,32 @@ def test_saveload_rows_use_private_save_dirs_and_never_wait_for_mods(tmp_path, m
     with pytest.raises(RuntimeError):
         rt.run_fixture("mc2_01", 10, 20, False, str(tmp_path / "o"), save_dir=str(sdir))
     assert seen["MC2_SAVE_DIR"] == str(sdir) and sdir.is_dir()
+
+
+def test_balance_movable_is_longest_first_and_keeps_order():
+    import merge_gate as gate
+    secs = {"a": 191, "b": 120, "c": 104, "d": 55, "e": 45, "f": 45}
+    rows = [(n, [n], {}) for n in "bacdef"]
+    to_a, to_b = gate.balance_movable(rows, 944, 876, seconds=lambda n: secs[n])
+    assert [r[0] for r in to_a] + [r[0] for r in to_b] != []
+    assert sorted(r[0] for r in to_a + to_b) == list("abcdef")
+    assert [r[0] for r in to_b][0] == "a"                      # longest goes to the lighter worker (B)
+    end_a = 944 + sum(secs[r[0]] for r in to_a)
+    end_b = 876 + sum(secs[r[0]] for r in to_b)
+    assert max(end_a, end_b) <= 876 + sum(secs.values()) - 200  # beats leaving every row on B
+    assert [r[0] for r in to_a] == [n for n in "bacdef" if n in {r[0] for r in to_a}]
+
+
+def test_gate_state_journals_stage_seconds_for_the_next_gate(tmp_path):
+    import merge_gate as gate
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"x")
+    state = gate.GateState(tmp_path / "gate-state.json", "head", exe, tmp_path, [("tier1", ["t"], {})])
+    state.record("tier1", ["t"], {}, "PASS", 123.4)
+    monkey = gate.ACTIVE_STATE
+    try:
+        gate.ACTIVE_STATE = state
+        assert gate.stage_seconds("tier1") == 123.4
+        assert gate.stage_seconds("determinism-mc2_24") == gate.DEFAULT_STAGE_SECONDS["determinism-mc2_24"]
+    finally:
+        gate.ACTIVE_STATE = monkey
