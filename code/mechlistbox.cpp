@@ -201,7 +201,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	weightText.setText( text );
 
 	// ---- MC2_LOG_LOGISTICS mech-list item diagnostic (env-gated, no behavior change) ----
-	if ( pMech && mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
+	if ( pMech && false ) {
 		char chassisBuf[256] = "";
 		cLoadString( pMech->getChassisName(), chassisBuf, sizeof(chassisBuf) );
 		bool mechListLog = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);

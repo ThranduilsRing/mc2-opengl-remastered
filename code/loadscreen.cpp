@@ -565,7 +565,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 	// default; MC2_LEGACY_LOAD_BANNER=1 restores the old overlay if some
 	// genuinely blocking path turns out to need it.
 	{
-		static const bool s_legacyBanner = mc2::gate::get<"MC2_LEGACY_LOAD_BANNER">();
+		static const bool s_legacyBanner = false;
 		if ( !s_legacyBanner )
 			return;
 	}

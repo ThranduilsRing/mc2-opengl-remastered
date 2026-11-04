@@ -24,7 +24,7 @@ void MissionInterfaceManager::doAttack()
 	// issue before adding any suppression. Gate MC2_TARGETING_GUARD +
 	// MC2_DIAG_TAGS=TARGETING. Read via get_diagnostic_events("TARGETING").
 	{
-		static const bool s_tgtGuard = mc2::gate::get<"MC2_TARGETING_GUARD">();
+		static const bool s_tgtGuard = false;
 		if ( s_tgtGuard && eye && mc2_diag::tagEnabled("TARGETING") )
 		{
 			static uint64_t s_tg_orders = 0, s_tg_staleWID = 0, s_tg_behind = 0, s_tg_far = 0;
@@ -805,7 +805,7 @@ namespace {
 		{
 			// Default OFF: anchored zoom still reads as a pan in practice; use the
 			// legacy fixed-pivot wheel zoom. Opt in with MC2_LOWCAM_ZOOM_ANCHOR=1.
-			cached = mc2::gate::get<"MC2_LOWCAM_ZOOM_ANCHOR">();
+			cached = false;
 		}
 		return cached != 0;
 	}

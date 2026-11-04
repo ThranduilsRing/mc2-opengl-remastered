@@ -120,9 +120,9 @@ void frameJobsInit() {
 
     if (mc2::gate::isSet<"MC2_FRAME_JOBS_BATCH">())
         g_batch = std::max(1, mc2::gate::get<"MC2_FRAME_JOBS_BATCH">());
-    g_trace = mc2::gate::get<"MC2_FRAME_JOBS_TRACE">();
+    g_trace = false;
 
-    g_touchEnabled = g_enabled && mc2::gate::get<"MC2_FRAME_JOBS_TOUCH">();
+    g_touchEnabled = g_enabled && false;
 
     if (!g_enabled) return;
 

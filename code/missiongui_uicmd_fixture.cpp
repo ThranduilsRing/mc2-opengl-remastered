@@ -84,7 +84,7 @@ extern "C" int mc2FreezeMoversActive()
 	if (s_freezeMoversAt == -2) {
 		// MC2_FREEZE_MOVERS_AT=<frame> lets a capture run freeze WITHOUT driving
 		// the command channel at all. Unset -> -1 -> never engages.
-		s_freezeMoversAt = mc2::gate::get<"MC2_FREEZE_MOVERS_AT">();   // row default -1 = never engages
+		s_freezeMoversAt = -1;   // row default -1 = never engages
 	}
 	const long mf = mc2FreezeMoversMissionFrame();
 	if (!s_freezeMoversOn && s_freezeMoversAt >= 0 && mf >= s_freezeMoversAt) {

@@ -45,7 +45,7 @@ static bool s_extraTickInFrame = false;
 
 static void simClockTraceTick(float scenarioTimeNow)
 {
-	static const bool s_traceEnabled = mc2::gate::get<"MC2_SIM_CLOCK_TRACE">();
+	static const bool s_traceEnabled = false;
 	if (!s_traceEnabled)
 		return;
 
@@ -331,7 +331,7 @@ void Mission::updateFrontEnd() {
 	// pans and the editor run their own loops and self-publish, so this
 	// never clobbers their publish.
 	{
-		static const bool s_mvpPublishEarly = mc2::gate::get<"MC2_MVP_PUBLISH_EARLY">();
+		static const bool s_mvpPublishEarly = true;
 		if (s_mvpPublishEarly && eye && eye->active && turn > 1)
 		{
 			gos_SetWorldToClipGL(eye->worldToClipGL());
@@ -443,7 +443,7 @@ void Mission::updateDisplacementDamp() {
 			s_moverCells.push_back((mp.x + halfMap) / wupv);
 			s_moverCells.push_back((halfMap - mp.y) / wupv);
 		}
-		static const float s_objfadeRadiusWu = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS">();   // the row clamps to [32, 1024]
+		static const float s_objfadeRadiusWu = 256.0f;   // the row clamps to [32, 1024]
 		gos_TerrainLodChunk_UpdateVisualDampMovers(
 			s_moverCells.data(), static_cast<int>((s_moverCells.size() / 2)),
 			s_objfadeRadiusWu / wupv, 48.0f / wupv);
@@ -953,7 +953,7 @@ void Mission::updateOrderLiveness() {
 		{
 			extern float metersPerWorldUnit;
 			const float stepWU = (metersPerWorldUnit > 0.0f)
-				? (mc2::gate::get<"MC2_FIXTURE_ORDER_MOVE_M">() / metersPerWorldUnit) : mc2::gate::get<"MC2_FIXTURE_ORDER_MOVE_M">();
+				? (300.0f / metersPerWorldUnit) : 300.0f;
 			for (int mi = 0; mi < ObjectManager->numMechs &&
 				 s_olIssuedMove < kOrderLivenessCap; ++mi)
 			{

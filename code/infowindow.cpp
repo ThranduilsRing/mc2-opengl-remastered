@@ -374,7 +374,7 @@ void InfoWindow::drawName( const char* name )
 // INFO-IMGUI-SLICE-1: gate. Default OFF -> legacy procedural panel, byte-identical.
 bool InfoWindow::imguiInfoEnabled()
 {
-	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_INFO">();
+	static const bool s_on = false;
 	return s_on;
 }
 
@@ -829,7 +829,7 @@ void InfoWindow::renderImGui()
 			// effect when either env is unset (normal play).
 			{
 				static const long s_bootInfoScroll = static_cast<long>(mc2::gate::get<"MC2_BOOT_INFO">());
-				static const bool s_scrollPin = mc2::gate::get<"MC2_BOOT_INFO_SCROLL">();
+				static const bool s_scrollPin = false;
 				if ( s_bootInfoScroll > 0 && s_scrollPin )
 				{
 					extern std::atomic<uint32_t> g_mc2FrameCounter;
@@ -944,7 +944,7 @@ void InfoWindow::render()
 	// env is unset (normal play).
 	{
 		static const long s_bootInfoScroll = static_cast<long>(mc2::gate::get<"MC2_BOOT_INFO">());
-		static const bool s_scrollPin = mc2::gate::get<"MC2_BOOT_INFO_SCROLL">();
+		static const bool s_scrollPin = false;
 		if ( s_bootInfoScroll > 0 && s_scrollPin )
 		{
 			extern std::atomic<uint32_t> g_mc2FrameCounter;

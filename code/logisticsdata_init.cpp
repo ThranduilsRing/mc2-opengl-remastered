@@ -21,7 +21,7 @@
 // Mission::init() directly and never touches LogisticsData, so this flip is a no-op for smoke
 // mission_ready_ms -- validated via soak on the real splash/logistics path instead.
 static const bool s_smartLoad      = mc2::gate::get<"MC2_SMART_LOAD">();   // default ON
-static const bool s_smartLoadTrace = mc2::gate::get<"MC2_SMART_LOAD_TRACE">();
+static const bool s_smartLoadTrace = false;
 
 #define SMART_LOAD_TRACE_LOG(fmt, ...) do { \
     if (s_smartLoadTrace) { printf("[SMART_LOAD] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } \
@@ -43,7 +43,7 @@ void LogisticsData::init()
 	}
 
 #define LOG_INIT_TIME(label) do { \
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
+	if ( false ) { \
 		ULONGLONG _t = GetTickCount64(); \
 		printf("[LOGISTICS_INIT] " label " t=%llums\n", static_cast<unsigned long long>(_t)); fflush(stdout); \
 	} } while(0)
@@ -308,7 +308,7 @@ void LogisticsData::initPilots()
 	// roster path. Stock ~52; an MC2X/MCO compat roster (mc2x-compat/mco-compat
 	// data/objects/pilots.csv, VFS-overlaid) should report ~100+. Confirms whether
 	// the campaign/compat roster won over base stock.
-	if ( mc2::gate::get<"MC2_LOG_PILOTS">() )
+	if ( false )
 	{
 		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32(static_cast<int>(std::ssize(pilots))), mc2::fmt::safe(pilotPath));
 		fflush(stdout);
@@ -335,15 +335,15 @@ void LogisticsData::initVariants()
 
 
 
-	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: artPath='{}' objectPath='{}'", mc2::fmt::safe(artPath), mc2::fmt::safe(objectPath)); } while (0);
-	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv path='{}'", mc2::fmt::safe(variantPath)); } while (0);
+	do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: artPath='{}' objectPath='{}'", mc2::fmt::safe(artPath), mc2::fmt::safe(objectPath)); } while (0);
+	do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv path='{}'", mc2::fmt::safe(variantPath)); } while (0);
 
 	CSVFile variantFile;
 	long csvOpenResult = variantFile.open( variantPath );
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
+	if ( false ) {
 		const char* modOwner = LookupModOwner(variantPath);
 		unsigned long fsz = (csvOpenResult == NO_ERR) ? variantFile.fileSize() : 0;
-		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv open={} size={:d} tier={}", mc2::fmt::safe((csvOpenResult == NO_ERR) ? "OK" : "FAIL"), mc2::fmt::as_u32(static_cast<unsigned long>(fsz)), mc2::fmt::safe(modOwner ? modOwner : "base-or-fastfile")); } while (0);
+		do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv open={} size={:d} tier={}", mc2::fmt::safe((csvOpenResult == NO_ERR) ? "OK" : "FAIL"), mc2::fmt::as_u32(static_cast<unsigned long>(fsz)), mc2::fmt::safe(modOwner ? modOwner : "base-or-fastfile")); } while (0);
 	}
 
 	FullPathFileName pakPath;
@@ -455,7 +455,7 @@ void LogisticsData::initVariants()
 
 	}
 
-	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">() && mc2_diag::tagRequested("LOGISTICS")) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: vehicles={:d} buildings={:d} object2.pak packets={:d}", mc2::fmt::as_i32(static_cast<int>(std::ssize(vehicles))), mc2::fmt::as_i32(static_cast<int>(std::ssize(buildings))), mc2::fmt::as_i32(static_cast<int>(pakFile.getNumPackets()))); } while (0);
+	do { if (false && mc2_diag::tagRequested("LOGISTICS")) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: vehicles={:d} buildings={:d} object2.pak packets={:d}", mc2::fmt::as_i32(static_cast<int>(std::ssize(vehicles))), mc2::fmt::as_i32(static_cast<int>(std::ssize(buildings))), mc2::fmt::as_i32(static_cast<int>(pakFile.getNumPackets()))); } while (0);
 
 	// BT2018-FIRST-CLASS P3: package chassis (mods with the package_chassis capability) append
 	// after every buildings.csv row, so stock chassis keep their ids and order. Their fitID is
@@ -517,7 +517,7 @@ void LogisticsData::initVariants()
 	}
 
 	// ---- post-load diagnostics ----
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
+	if ( false ) {
 		int totalVariants = 0;
 		bool shadowhawkFound = false;
 		for ( auto it = variants.begin(); it != variants.end(); ++it ) {
@@ -529,11 +529,11 @@ void LogisticsData::initVariants()
 			S_strlwr(fnLow);
 			if ( strstr(fnLow, "shadowhawk") ) shadowhawkFound = true;
 		}
-		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: total variants loaded={:d}", mc2::fmt::as_i32(totalVariants)); } while (0);
+		do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: total variants loaded={:d}", mc2::fmt::as_i32(totalVariants)); } while (0);
 		if ( shadowhawkFound )
-			do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK VARIANT LOADED"); } while (0);
+			do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK VARIANT LOADED"); } while (0);
 		else
-			do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK NOT IN VARIANTS"); } while (0);
+			do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK NOT IN VARIANTS"); } while (0);
 	}
 }
 

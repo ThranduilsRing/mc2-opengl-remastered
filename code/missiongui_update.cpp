@@ -237,7 +237,7 @@ void MissionInterfaceManager::update (void)
 	// brackets/bars. Gated, default-OFF -> zero effect on normal play. Runs before
 	// the mover render (Camera::render) so isSelected() is set when brackets draw.
 	{
-		static const int s_vkSelectTest = mc2::gate::get<"MC2_VK_SELECT_TEST">();
+		static const int s_vkSelectTest = false;
 		if (s_vkSelectTest)
 			selectVisible();
 	}
@@ -254,7 +254,7 @@ void MissionInterfaceManager::update (void)
 
 	// Scripted picks do not need to wait for the mission's intro movie. The
 	// objects and their presentation bounds are live after the first turns.
-	if (turn > 90 && ObjectManager && mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+	if (turn > 90 && ObjectManager && false) {
 		ObjectManager->findObjectByMouse(-999998, -999998);
 	}
 	if (eye && eye->inMovieMode)
@@ -706,7 +706,7 @@ void MissionInterfaceManager::update (void)
 	// the same gos_GetMouseInfo normalize). See gos_GetMouseInfo BUG-A fix.
 	{
 		static bool s_pickProbeDone = false;
-		if (!s_pickProbeDone && (turn > 20) && mc2::gate::get<"MC2_VK_PICK_PROBE">())
+		if (!s_pickProbeDone && (turn > 20) && false)
 		{
 			s_pickProbeDone = true;
 			const char* be = mc2::gate::raw<"MC2_RENDER_BACKEND">();   // echoed as typed
@@ -877,7 +877,7 @@ void MissionInterfaceManager::update (void)
 		// does not project back onto the cursor.
 		// The legacy inverseProject walked every quad per cursor/camera-change frame
 		// (85-126 ms on a 1024-cell map); it is now only the discrete-click path.
-		static const bool s_pickParityDiag = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
+		static const bool s_pickParityDiag = false;
 		const std::chrono::steady_clock::time_point _cpuT0 =
 			s_gpParityOn ? std::chrono::steady_clock::now()
 			             : std::chrono::steady_clock::time_point{};
@@ -1253,7 +1253,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 	// MC2_DIAG_TAGS=CURSOR_TARGET. Read via get_diagnostic_events("CURSOR_TARGET").
 	// Recon only — no behavior change.
 	{
-		static const bool s_cursorTargetTrace = mc2::gate::get<"MC2_CURSOR_TARGET_TRACE">();
+		static const bool s_cursorTargetTrace = false;
 		if ( s_cursorTargetTrace && target && eye && mc2_diag::tagEnabled("CURSOR_TARGET") )
 		{
 			glm::vec3 _ct_pos = target->getPosition();

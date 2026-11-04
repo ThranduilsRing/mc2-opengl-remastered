@@ -1931,7 +1931,7 @@ void MissionBegin::render()
 
 	animJustBegun = false;
 	if (pCurScreen && ImGui::GetCurrentContext() && gos_NoUserPresentRequested()
-		&& mc2::gate::get<"MC2_VK_PICK_PROBE">()) {
+		&& false) {
 		// Sample an actual logistics button without touching the OS pointer.
 		if (auto* button = pCurScreen->getButton(MB_MSG_NEXT)) {
 			auto& io = ImGui::GetIO();

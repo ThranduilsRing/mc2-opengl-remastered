@@ -101,7 +101,7 @@ void GameTacMap::init( unsigned char* bitmapData, int dataSize )
 
 bool GameTacMap::usingImGui() const
 {
-	return mc2::gate::get<"MC2_HUD_IMGUI_TACMAP">() && !HudImGui::pinnedToLegacy();
+	return false && !HudImGui::pinnedToLegacy();
 }
 
 void GameTacMap::update()
