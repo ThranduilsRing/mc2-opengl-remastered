@@ -709,7 +709,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_FEED_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_FORCE_FAIL", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_FRAMES_IN_FLIGHT", Kind::Int, Rule::Prefix, {}},
-    {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Presence, {}},
+    {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Std, {}},
     {"MC2_VK_HUD_DRAW_DUMP", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_LIGHTFEED_DEDUP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_MECH_FEED_NATIVE", Kind::Bool, Rule::Is01, {}},
