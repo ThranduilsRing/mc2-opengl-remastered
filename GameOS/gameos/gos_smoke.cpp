@@ -19,6 +19,8 @@
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
+#include "hitch_stats.h"
+#include "vulkan_context.h"
 
 namespace {
 SmokeMode::State g_state;
@@ -175,9 +177,53 @@ void samplePerf(double frameMs) {
                 for (double v : sorted) sum += v;
                 mc2::fmt::print_out("[FIRST60 v1] n={:d} avg_ms={:.2f} p50_ms={:.2f} p99_ms={:.2f} max_ms={:.2f} first_ms={:.2f} load_frame_ms={:.2f}\n",
                     mc2::fmt::as_i32(kN), sum / kN, sorted[kN / 2], sorted[kN - 2], sorted[kN - 1], s_ms[0], s_loadFrameMs);
+                // v2 tail: the five worst frames (index:ms), the bake cache state the window ran under, and the GPU, so a cold-cache 2070 run is not mistaken for a regression.
+                int worst[5];
+                int order[kN];
+                for (int i = 0; i < kN; ++i) order[i] = i;
+                std::partial_sort(order, order + 5, order + kN, [&](int a, int b) { return s_ms[a] > s_ms[b]; });
+                for (int i = 0; i < 5; ++i) worst[i] = order[i];
+                std::string w;
+                for (int i = 0; i < 5; ++i) w += std::to_string(worst[i]) + ":" + std::to_string(static_cast<int>(s_ms[worst[i]] * 10.0) / 10.0).substr(0, 6) + (i < 4 ? "," : "");
+                auto& hs = mc2_hitch2::stats();
+                mc2::fmt::print_out("[FIRST60 v2] worst5={} bake_cache={} bake_state={} waitidle_n={:d} waitidle_ms={:.2f} device={}\n", mc2::fmt::safe(w.c_str()),
+                    mc2::fmt::safe(hs.bakeCache.load()), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::as_i32(static_cast<int>(hs.waitIdleCount.load())),
+                    hs.waitIdleNs.load() / 1e6, mc2::fmt::safe(mc2vk::getOrCreateEngineVulkanContext().health().deviceName));
                 std::fflush(stdout);
             }
         }
+    }
+    // Per-hitch frame record (diag tag HITCH): a frame over twice the running median (and over 12 ms) names its worst scopes and the counter deltas since the last frame.
+    {
+        auto& hs = mc2_hitch2::stats();
+        static std::vector<float> s_all;
+        static uint64_t s_frame = 0, s_wic = 0, s_win = 0, s_pc = 0, s_ub = 0, s_om = 0, s_db = 0, s_sj = 0;
+        const uint64_t wic = hs.waitIdleCount.load(), win = hs.waitIdleNs.load(), pc = hs.pipelineCreates.load(), ub = hs.uploadBytes.load(),
+                       om = hs.objMapRecords.load(), db = hs.dirtyBatches.load(), sj = hs.simJoinNs.load();
+        auto& sc = mc2_hitch2::scopes();
+        if (g_missionReadyT) {
+            ++s_frame;
+            if (frameMs >= 12.0 && s_all.size() >= 30 && mc2_diag::tagRequested("HITCH")) {
+                std::vector<float> tmp(s_all);
+                std::nth_element(tmp.begin(), tmp.begin() + tmp.size() / 2, tmp.end());
+                const double med = tmp[tmp.size() / 2];
+                if (frameMs > 2.0 * med) {
+                    int idx[mc2_hitch2::ScopeTable::kMax];
+                    for (int i = 0; i < sc.n; ++i) idx[i] = i;
+                    const int top = sc.n < 5 ? sc.n : 5;
+                    std::partial_sort(idx, idx + top, idx + sc.n, [&](int a, int b) { return sc.slots[a].ms > sc.slots[b].ms; });
+                    std::string scopes;
+                    for (int i = 0; i < top; ++i) scopes += std::string(sc.slots[idx[i]].name) + "=" + std::to_string(sc.slots[idx[i]].ms).substr(0, 5) + (i + 1 < top ? "," : "");
+                    mc2::fmt::print_err("[HITCH v2] frame={} ms={:.1f} median={:.1f} waitidle_n={} waitidle_ms={:.2f} pipelines={} upload_kb={} objmap_records={} dirty_batches={} bake_state={} bake_cache={} sim_join_ms={:.2f} scopes={}\n",
+                        mc2::fmt::as_u64(s_frame), frameMs, med, mc2::fmt::as_u64(wic - s_wic), (win - s_win) / 1e6, mc2::fmt::as_u64(pc - s_pc), mc2::fmt::as_u64((ub - s_ub) / 1024),
+                        mc2::fmt::as_u64(om - s_om), mc2::fmt::as_u64(db - s_db), mc2::fmt::safe(hs.bakeState.load()), mc2::fmt::safe(hs.bakeCache.load()), (sj - s_sj) / 1e6,
+                        mc2::fmt::safe(scopes.c_str()));
+                }
+            }
+            if (s_all.size() < 20000) s_all.push_back(static_cast<float>(frameMs));
+        }
+        s_wic = wic; s_win = win; s_pc = pc; s_ub = ub; s_om = om; s_db = db; s_sj = sj;
+        sc.n = 0;
     }
     if (!g_state.enabled) return;
     if (!g_firstFrameSeen) {
@@ -311,6 +357,7 @@ void onSimTick(double scenarioTimeSeconds) {
 void markMissionReady() {
     if (!g_missionReadyT) {
         g_missionReadyT = SDL_GetPerformanceCounter();
+        mc2_hitch2::stats().missionReady.store(true);
         if (g_state.enabled) emitTiming("mission_ready");
     }
 }
