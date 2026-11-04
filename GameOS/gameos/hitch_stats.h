@@ -29,7 +29,8 @@ struct Stats {
     std::atomic<uint64_t> stagedBytes{0};          // bytes written into explicit staging buffers (createFilled with TRANSFER_SRC, UploadBatch dedicated); ring bytes are uploadBytes
     std::atomic<uint64_t> uploadBytesFlushed{0};   // uploadBytes at the last UploadBatch flush; uploadBytes - this = bytes queued ahead of the next submit
 };
-enum WaitKind : int { kOneShot = 0, kSlot = 1 };
+using WaitKind = int;   // index into Stats::wait
+inline constexpr WaitKind kOneShot = 0, kSlot = 1;
 inline Stats& stats() { static Stats s; return s; }
 inline void noteStaged(uint64_t bytes) { stats().stagedBytes.fetch_add(bytes, std::memory_order_relaxed); }
 inline uint64_t pendingUploadBytes() { Stats& s = stats(); return s.uploadBytes.load(std::memory_order_relaxed) - s.uploadBytesFlushed.load(std::memory_order_relaxed); }

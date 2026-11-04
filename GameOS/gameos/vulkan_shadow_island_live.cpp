@@ -4,7 +4,6 @@
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
-
 #include <volk.h>
 #include "Gates/gate.h"
 #include "hitch_stats.h"
@@ -776,8 +775,7 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     if (s->recording && s->recordEpoch == epoch) return true;
     const uint32_t par = static_cast<uint32_t>(epoch % mc2vk::kMaxFramesInFlight);
     const VkFence fence = s->frameFence[par].get();
-    { ZoneScopedN("VKIsl.Shadow.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
-      mc2_hitch2::FenceWaitScope slotWait("shadow_island_live", mc2_hitch2::kSlot);
+    { ZoneScopedN("VKIsl.Shadow.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs); mc2_hitch2::FenceWaitScope slotWait("shadow_island_live", mc2_hitch2::kSlot);
       if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
           setFallback("fence_timeout"); s->disabled = true; return false;
       } }
