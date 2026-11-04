@@ -239,7 +239,9 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 21
+    assert len(steps) == 22
+    video = next(cmd for name, cmd, _ in steps if name == "video-decode")
+    assert video[1].endswith("video_decode_smoke.py") and "video-decode" in video[-1]
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
@@ -372,6 +374,7 @@ def test_gate_refuses_real_run_in_lane(monkeypatch):
     import merge_gate as gate
     # In mc2-main on nifty the guards pass and main([]) would run the REAL gate (contracts -> this
     # pytest -> recursion). Pretend to be a lane worktree and never allow execution.
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setattr(gate, "ROOT", pathlib.Path("A:/Games/mc2-lane-not-main"))
     monkeypatch.setattr(gate, "execute", lambda *a, **k: pytest.fail("gate executed in a lane"))
     monkeypatch.setattr(gate, "git", lambda *a: "lane-head")

@@ -981,7 +981,10 @@ def precheck(root: str, tip: str, with_link: bool | None = None) -> int:
 
     def stage(label, workdir, command, ok=(0,)):
         t0 = time.monotonic()
-        r = run(workdir, command, env=verify_env(workdir))
+        env = verify_env(workdir)
+        if label in {p[0] for p in PYTHON_SUITES}:
+            env["MC2_IN_GATE"] = "1"   # the gate's env: a test that breaks under it must fail here, not in the window (W112)
+        r = run(workdir, command, env=env)
         secs = time.monotonic() - t0
         timings.append((label, secs))
         word = "KNOWN" if r.returncode == 3 and 3 in ok else "PASS" if r.returncode == 0 else "FAIL"

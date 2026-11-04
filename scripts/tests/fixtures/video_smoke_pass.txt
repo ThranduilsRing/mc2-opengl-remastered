@@ -1,0 +1,5 @@
+[runner] mission=mc2_02 duration=30 exe=E:/mc2-installs/lane/mc2.exe
+[DEPLOY_FINGERPRINT] OK: exe sha=0123abcd matches worktree HEAD
+[VIDEO] init: opened ./data/movies/V3G.bik (320x240, fps=15.00, audio=1)
+[SIM_OVERLAP v1] worker started
+[runner] PASS mc2_02

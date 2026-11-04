@@ -196,7 +196,7 @@ def test_battery_isolates_workers_and_cleans_even_on_exception(tmp_path, monkeyp
     monkeypatch.setattr(mod_smoke, "run_mod", run)
     args = SimpleNamespace(install_root=str(mods), stage_root=str(tmp_path / "stages"), base_install=str(base),
                            exe=str(build / "mc2.exe"), build_dir="build64-ninja", mod="", mission="",
-                           keep_stages=False, duration=10, timeout=60, fail_fast=False, window=90)
+                           keep_stages=False, duration=10, timeout=60, fail_fast=False, window=90, front_end=False)
     if crash:
         with pytest.raises(OSError, match="fixture launch failure"):
             mod_smoke.battery(args)

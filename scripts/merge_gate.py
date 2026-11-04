@@ -58,7 +58,7 @@ def window_reusable(window, tree, now=None):
     return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
-DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "kit-visibility": 45, "quiet": 45,
+DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "video-decode": 250, "kit-visibility": 45, "quiet": 45,
                          "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
 
 
@@ -453,6 +453,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         # What a player does: scripted menu input (MC2_INPUT_SCRIPT) -> New Campaign mission 1 past the first comm video, and Load Game.
         # Real video decode and the real front end; every other smoke boots --mission under SmokeMode and skips both.
         ("player-path", [py, "scripts/run_player_path.py", "--install", install, "--out", str(proof / "player-path")], {}),
+        # Real comm-video decode with the sim overlap worker ON (smoke mode skips the movie): red on a SIM_OVERLAP violation or no decode.
+        ("video-decode", [py, "scripts/video_decode_smoke.py", "--exe", install + "/mc2.exe", "--out", str(proof / "video-decode")], {}),
         ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
                             "--out", str(proof / "kit-visibility")], {}),
         # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
