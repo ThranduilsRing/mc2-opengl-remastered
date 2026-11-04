@@ -683,7 +683,7 @@ def install_stage_watchdog():
     def handler(signum, _frame):
         if STOP_REQUESTED.is_set():
             signal.signal(signum, signal.SIG_DFL)
-            os.kill(os.getpid(), signum)
+            signal.raise_signal(signum)
             return
         STOP_REQUESTED.set()
         print(f"[merge_gate] signal {signum}: finishing the running stage, then stopping (send again to abort now)", flush=True)
