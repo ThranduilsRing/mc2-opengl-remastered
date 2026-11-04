@@ -39,7 +39,7 @@ std::unordered_map<uint64_t, uint8_t>        s_lodState;
 std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable; // v0: cross-seam mirror
 
 // [GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope).
-bool s_gpuPropsTrace = mc2::gate::get<"MC2_GPUPROPS_TRACE">();
+bool s_gpuPropsTrace = false;
 // g_regCall counts EVERY registerType invocation after the null guard and
 // BEFORE the idempotent s_typeIndex.count early-return, so 0 for a path means
 // registerType was genuinely never invoked on it.
@@ -462,7 +462,7 @@ CoalesceForceDisarm s_coalesceForceDisarm = CoalesceForceDisarm::None;
 // Step 12.1 — trace gate for noisy non-lifecycle COALESCE diagnostics.
 // Lifecycle events (armed/disarmed/ready/permutation_state when forced)
 // are always-on; future per-frame diagnostics gated behind this env.
-extern const bool s_coalesceTrace = mc2::gate::get<"MC2_SUBSTRATE_COALESCE_TRACE">();
+extern const bool s_coalesceTrace = false;
 
 extern const uint32_t s_globalInstanceCap = []() {
     if (mc2::gate::isNonEmpty<"MC2_STATIC_PROP_GLOBAL_CAP">()) {

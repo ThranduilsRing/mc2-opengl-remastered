@@ -288,7 +288,7 @@ void samplePerf(double frameMs) {
         // this as a gameplay-ready signal — mission_ready is authoritative.
         emitTiming("first_frame");
         {
-            const int v = mc2::gate::get<"MC2_SMOKE_PERF_SAMPLES">();   // row default 0 = keep the built-in cap
+            const int v = 0;   // row default 0 = keep the built-in cap
             if (v > 0 && v < 1000000) g_frameMsCap = static_cast<size_t>(v);
         }
         g_frameMs.assign(g_frameMsCap, 0.0);

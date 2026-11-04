@@ -13,7 +13,7 @@
 // pumps it each frame. This makes the atlas GENUINELY absent for ~30s so the
 // reviewer can confirm the atlas/texel probes (a)/(b) actually FIRE when the
 // atlas is the cause.
-extern const bool s_loadRaceDelayAtlas = mc2::gate::get<"MC2_LOAD_RACE_DELAY_ATLAS">();
+extern const bool s_loadRaceDelayAtlas = false;
 
 namespace gos_terrain_indirect_detail {}
 using namespace gos_terrain_indirect_detail;
@@ -38,12 +38,12 @@ bool IsEnabled() {
 }
 
 bool IsParityCheckEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_PARITY_CHECK">();
+    static const bool s = false;
     return s;
 }
 
 bool IsTraceEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
+    static const bool s = false;
     return s;
 }
 
@@ -53,7 +53,7 @@ bool IsTraceEnabled() {
 // Same idiom as IsEnabled() above: literal "0" => OFF == current HEAD
 // full-range behavior (the safety escape hatch); absent or anything else => ON.
 bool SolidWindowEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_SOLID_NARROW">();
+    static const bool s = true;
     return s;
 }
 
@@ -66,7 +66,7 @@ bool IsSolidWindowParityEnabled() {
 }
 
 bool IsCostSplitEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_COST_SPLIT">();
+    static const bool s = false;
     return s;
 }
 
@@ -151,12 +151,12 @@ bool IsMineEnabled() {
 // other value INCLUDING UNSET opts in. Stock play now gets the retirement;
 // `MC2_TERRAIN_INDIRECT_OVERLAY=0` is the built-in revert.
 bool IsOverlayEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
+    static const bool s = true;
     return s;
 }
 
 bool IsOverlayParityCheckEnabled() {
-    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY_PARITY_CHECK">();
+    static const bool s = false;
     return s;
 }
 
@@ -224,7 +224,7 @@ namespace gos_terrain_indirect {
 
 bool IsLightCostSplitEnabled() {
     if (!g_lcsInit) {                       // cache once -- getenv per-call is slow
-        g_lcsOn   = mc2::gate::get<"MC2_LIGHT_COST_SPLIT">();
+        g_lcsOn   = false;
         g_lcsInit = true;
     }
     return g_lcsOn;

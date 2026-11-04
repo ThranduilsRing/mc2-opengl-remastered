@@ -387,7 +387,7 @@ extern uint32_t s_lastUploadedSlot;
 inline void coalesce_resetEnvOnce() {
     static bool s_done = false;
     if (s_done) return;
-    s_coalesceEnvDisabled = mc2::gate::get<"MC2_SUBSTRATE_COALESCE_LEGACY">();
+    s_coalesceEnvDisabled = false;
 
     // Step 12B.1 — exact, case-sensitive string match on the four valid
     // values; anything else (including unset) leaves None. Process-once.
@@ -440,7 +440,7 @@ inline int popIndex(GpuStaticPropPopulation pop) {
 
 inline void initTraceOnce() {
     if (!s_objbatcherTraceInit) {
-        s_objbatcherTrace     = mc2::gate::get<"MC2_OBJBATCHER_TRACE">();
+        s_objbatcherTrace     = false;
         s_objbatcherTraceInit = true;
     }
     if (!s_atexitRegistered) {

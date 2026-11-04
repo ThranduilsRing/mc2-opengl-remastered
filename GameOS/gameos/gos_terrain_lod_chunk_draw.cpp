@@ -5,7 +5,7 @@
 
 bool terrainLodCheckerDiagEnabled()
 {
-    static const bool s_on = mc2::gate::get<"MC2_TERRAIN_LOD_CHECKER_DIAG">();
+    static const bool s_on = true;
     return s_on;
 }
 

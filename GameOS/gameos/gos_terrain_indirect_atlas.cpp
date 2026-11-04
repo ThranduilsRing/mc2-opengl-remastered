@@ -52,7 +52,7 @@ static bool s_indirectTrace = false;
 static bool s_indirectTraceKnown = false;
 bool traceOn() {
     if (!s_indirectTraceKnown) {
-        s_indirectTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
+        s_indirectTrace = false;
         s_indirectTraceKnown = true;
     }
     return s_indirectTrace;

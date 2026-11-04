@@ -18,7 +18,7 @@ bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ra
     // while staticReg.registered stays true (no submitMultiShape fallback). Frames 0-3
     // + every 120th. count=0 on a tree regIdx = the smoking gun. Default-off.
     {
-        static const bool s_td = mc2::gate::get<"MC2_STATIC_LEAF_DIAG">();
+        static const bool s_td = false;
         static uint32_t s_tdFrame = 0xFFFFFFFFu;
         static int s_tdN = 0;
         if (s_td) {
@@ -121,7 +121,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
     ++s_diag_ranges_drawn;
     // 2026-05-10 diag: env-gated dump of multi-leaf ranges (MC2_REGFLUSH_MULTI=1).
     {
-        static const bool s_traceMulti = mc2::gate::get<"MC2_REGFLUSH_MULTI">();
+        static const bool s_traceMulti = false;
         static std::set<uint32_t> s_seenMulti;
         if (s_traceMulti && rng.count > 1 && s_seenMulti.size() < 100 &&
             s_seenMulti.find(regIdx) == s_seenMulti.end()) {
@@ -269,7 +269,7 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
     // which flush branch it takes and whether the recipe LEAF data it replays is
     // itself zero (the suspected root cause). Default-off: zero behavior change.
     {
-        static const bool s_leafDiag = mc2::gate::get<"MC2_STATIC_LEAF_DIAG">();
+        static const bool s_leafDiag = false;
         static int s_leafDiagLogged = 0;
         if (s_leafDiag && rng.count > 0 && s_leafDiagLogged < 48) {
             ++s_leafDiagLogged;

@@ -3,7 +3,7 @@
 
 int mc2ShaderPathTint()
 {
-    static const int value = mc2::gate::get<"MC2_SHADER_PATH_TINT">();
+    static const int value = 0;
     return value;
 }
 

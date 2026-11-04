@@ -302,7 +302,7 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
                 // is not ready yet, keep the old skip (conservative; the words
                 // bake before the first decal build in the mission-load order).
                 // Killswitch MC2_MISSING_RUNWAY_FIX=0 -> old blanket skip.
-                static const bool s_runwayFix = mc2::gate::get<"MC2_MISSING_RUNWAY_FIX">();
+                static const bool s_runwayFix = true;
                 bool fragOwnsTile = true;
                 if (s_runwayFix && g_cementLayerMapReady && blocks) {
                     auto cemCorner = [&](long r, long c2) -> bool {
@@ -359,7 +359,7 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
     // cement, alpha, overlayId) combo with count + world bbox. Answers "what
     // IS the runway in this map's data" without knowing its coords up front.
     {
-        static const bool s_tileCensus = mc2::gate::get<"MC2_TERRAIN_TILE_CENSUS">();
+        static const bool s_tileCensus = false;
         if (s_tileCensus) {
             struct Agg { long n; float minX, maxX, minY, maxY; };
             std::map<unsigned long long, Agg> agg;

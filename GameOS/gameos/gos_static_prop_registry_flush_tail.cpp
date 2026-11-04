@@ -29,7 +29,7 @@ void flushZeroLightProbe(uint64_t s_diag_flush_calls) {
     // With MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE set, zeroLightSlots should reach 0 after
     // mission load. Without it, zeroLightSlots counts all props not yet on screen.
     // Emit every ~300 flushes. Gate default-OFF.
-    static const bool s_staticLightZeroProbe = mc2::gate::get<"MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE">();
+    static const bool s_staticLightZeroProbe = false;
     static const bool s_staticEagerGate      = mc2::gate::get<"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE">();
     if (s_staticLightZeroProbe && (s_diag_flush_calls % 300) == 0) {
         uint32_t aliveProps = 0u, zeroLightSlots = 0u;
@@ -83,7 +83,7 @@ void flushZeroLightProbe(uint64_t s_diag_flush_calls) {
 
 // Print the per-call flush counters and the stale-drop discriminator.
 void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total, uint64_t& s_diag_ranges_tombstone, uint64_t& s_diag_ranges_stale_frame, uint64_t& s_diag_ranges_stale_after_drawn, uint64_t& s_diag_ranges_drawn, uint64_t& s_diag_leaves_appended, uint64_t& s_diag_persistent_vanish, uint64_t s_diag_total_ns, bool s_guard2, std::unordered_map<int, uint64_t>& s_staleByType, std::unordered_map<uint32_t, uint32_t>& s_staleStreak) {
-    static const bool s_regflushTrace = mc2::gate::get<"MC2_REGFLUSH_DIAG_TRACE">();
+    static const bool s_regflushTrace = false;
     if (s_regflushTrace && (s_diag_flush_calls % 600) == 0) {
         const double mean_us = (s_diag_flush_calls > 0)
             ? (static_cast<double>(s_diag_total_ns) /

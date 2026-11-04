@@ -51,11 +51,6 @@ const float* mc2_chunkDetailAntiTileYZW()
     static bool s_init = false;
     if (!s_init) {
         s_init = true;
-        if (mc2::gate::get<"MC2_TERRAIN_DETAIL_ANTITILE">()) {
-            s_yzw[0] = mc2::gate::get<"MC2_TERRAIN_DETAIL_LOD1_STRENGTH">();    // .y LOD1 fade (row default 0.4)
-            s_yzw[1] = 1.0f;                                                    // .z enable
-            s_yzw[2] = mc2::gate::get<"MC2_TERRAIN_DETAIL_MACRO_STRENGTH">();   // .w macro (chunk: off, row default 0)
-        }
     }
     return s_yzw;
 }

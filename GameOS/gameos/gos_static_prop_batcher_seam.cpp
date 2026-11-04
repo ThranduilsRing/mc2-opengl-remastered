@@ -631,8 +631,8 @@ const RenderCore::StaticPropTypeDesc* batcher_getStaticPropTypeDescTable(uint32_
 }
 
 void batcher_buildCandidateLog() {
-    static const bool gate    = mc2::gate::get<"MC2_TYPE_TABLE_CAND_LOG">();
-    static const bool verbose = mc2::gate::get<"MC2_TYPE_TABLE_CAND_VERBOSE">();
+    static const bool gate    = false;
+    static const bool verbose = false;
     if (!gate) return;
 
     if (s_typeDescTable.empty()) {
