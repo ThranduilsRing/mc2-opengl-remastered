@@ -6,6 +6,7 @@
 #include "save_archive.h"
 #include "appearance_rng.h"
 #include "command_replay.h"
+#include "tick_commit.h"
 
 
 namespace { std::uint64_t s_vtolHash = 14695981039346656037ull; }
@@ -122,19 +123,10 @@ void MissionInterfaceManager::updateVTol()
 				else if (vTol[vtolNum]->unitAnim().currentFrame >= 300)
 				{
 					paintingVtol[vtolNum] = 0;
-					vTol[vtolNum].reset();
-					
-					if (dustCloud[vtolNum])
-					{
-						dustCloud[vtolNum]->Kill();
-						dustCloud[vtolNum].reset();
-					}
-					
-					if (recoveryBeam[vtolNum])
-					{
-						recoveryBeam[vtolNum]->Kill();
-						recoveryBeam[vtolNum].reset();
-					}
+					// HudSnapshot::vtols still points at these during the overlapped draw.
+					mc2::tick::retireObject(vTol[vtolNum].release());
+					mc2::tick::releaseEffect(dustCloud[vtolNum]);
+					mc2::tick::releaseEffect(recoveryBeam[vtolNum]);
 
 					//We should have set this when the helo was brought in.
 					// Let it takeoff now that the vtol is out of the way.
@@ -245,19 +237,10 @@ void MissionInterfaceManager::updateVTol()
 				else if ((vTol[vtolNum]->getCurrentGestureId() == 2) && (!vTol[vtolNum]->getInTransition()))
 				{
 					paintingVtol[vtolNum] = 0;
-					vTol[vtolNum].reset();
-					
-					if (dustCloud[vtolNum])
-					{
-						dustCloud[vtolNum]->Kill();
-						dustCloud[vtolNum].reset();
-					}
-					
-					if (recoveryBeam[vtolNum])
-					{
-						recoveryBeam[vtolNum]->Kill();
-						recoveryBeam[vtolNum].reset();
-					}
+					// HudSnapshot::vtols still points at these during the overlapped draw.
+					mc2::tick::retireObject(vTol[vtolNum].release());
+					mc2::tick::releaseEffect(dustCloud[vtolNum]);
+					mc2::tick::releaseEffect(recoveryBeam[vtolNum]);
 
 					//Check if mech was recovered.  If not, restore the resource points!!!
 					// This can happen if we call in a recovery vehicle and the mech is destroyed
