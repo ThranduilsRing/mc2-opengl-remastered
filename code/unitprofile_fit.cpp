@@ -2,6 +2,7 @@
 // UNIT-PROFILE-SEAM-1: optional, additive .fit [UnitProfile] data read.
 // inifile.h drags file.h -> stdio/fcntl/heap (real file I/O), which the
 // doctest target forbids, so this populator lives in its own engine-only TU.
+#include "mc2_czstring.h"
 #include "unitprofile.h"
 #include "unit_definition.h"             // SINGLE-SOURCE-UNIT-DEFINITION-1: mergeUIProfile (single UI resolution)
 #include "action_anim_tag.h"             // UNIT-PREVIEW-DUMP-1: ActionAnimTag + animTagResolves
@@ -104,7 +105,7 @@ const char* kGeneratedUnitsRoot = "data/defs/units/core/";
 
 // Lower-case a stem into `dst` (chassis stems on disk are lower-cased by the
 // converter's write_unit()). Truncates safely.
-void lowerCopy(char* dst, unsigned long cap, const char* src) {
+void lowerCopy(char* dst, unsigned long cap, mc2::czstring src) {
     unsigned long n = 0;
     if (src) for (const char* p = src; *p && n + 1 < cap; ++p)
         dst[n++] = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
@@ -119,7 +120,7 @@ void reportUnitSourceFinding(const ModderFinding& f) {
 }
 } // namespace
 
-bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
+bool sourceGeneratedChassisFacets(mc2::czstring chassisStem, UnitProfile& p,
                                   const char* typeName) {
     if (!mc2UnitDefinitionSourceIsGenerated())   // gate legacy (default) -> no-op
         return false;
@@ -203,7 +204,7 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
     return locoOk || dmgOk;
 }
 
-bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName,
+bool sourceGeneratedVariantJump(mc2::czstring chassisStem, mc2::czstring variantName,
                                 bool* jumpOut) {
     if (!mc2UnitDefinitionSourceIsGenerated())   // gate legacy (default) -> no-op
         return false;
@@ -268,7 +269,7 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
 //     one "[UnitDefinition:VALIDATE]" line per finding. NO spawn rejection.
 // The validator consults the SAME theActionExecutorRegistry() gameplay queries
 // use, so its verdict can never diverge from the runtime executor resolution.
-void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeName) {
+void validateAndReportUnitProfile(const UnitProfile& profile, mc2::czstring typeName) {
     if (!mc2UnitProfileDataEnabled())
         return;   // gate OFF: no validation, no output -> parity with legacy
 
@@ -394,7 +395,7 @@ const char* weaponCategoryToken(ComponentFormType form) {
     }
 }
 
-void copyToken(char* dst, size_t cap, const char* src) {
+void copyToken(char* dst, size_t cap, mc2::czstring src) {
     if (!src) { dst[0] = '\0'; return; }
     strncpy(dst, src, cap - 1);
     dst[cap - 1] = '\0';

@@ -23,6 +23,7 @@
 // through the facade + the shared resolution helpers below, so the two parsers
 // can no longer diverge on facet values even while both still run.
 
+#include "mc2_czstring.h"
 #include "unitprofile.h"         // UnitProfile (owns the facets this facade views)
 #include "capability.h"          // CapabilitySet, Capability, UnitAction
 #include "locomotion_facet.h"    // LocomotionModel
@@ -78,7 +79,7 @@ class UnitDefinition {
     const char*        identity_;   // human/modder label (the .fit filename); never owned
     const UnitProfile& profile_;    // the facet owner on the ObjectType; never owned
   public:
-    UnitDefinition(const char* identity, const UnitProfile& profile)
+    UnitDefinition(mc2::czstring identity, const UnitProfile& profile)
         : identity_(identity ? identity : ""), profile_(profile) {}
 
     // Identity join label (Phase 3 formalizes namespaced ids; today = .fit name).
@@ -94,10 +95,10 @@ class UnitDefinition {
     // the shared chooseUIAsset decision. `legacy` is the accessor's own legacy
     // slot value (iconFileNames[]/atlas). Keeps the "declared-else-legacy" verdict
     // in ONE place so logistics and sim never diverge on it.
-    const char* iconAsset(const char* legacy)       const { return chooseUIAsset(ui().icon, legacy); }
-    const char* portraitAsset(const char* legacy)   const { return chooseUIAsset(ui().portrait, legacy); }
-    const char* minimapAsset(const char* legacy)    const { return chooseUIAsset(ui().minimap, legacy); }
-    const char* silhouetteAsset(const char* legacy) const { return chooseUIAsset(ui().silhouette, legacy); }
+    const char* iconAsset(mc2::czstring legacy)       const { return chooseUIAsset(ui().icon, legacy); }
+    const char* portraitAsset(mc2::czstring legacy)   const { return chooseUIAsset(ui().portrait, legacy); }
+    const char* minimapAsset(mc2::czstring legacy)    const { return chooseUIAsset(ui().minimap, legacy); }
+    const char* silhouetteAsset(mc2::czstring legacy) const { return chooseUIAsset(ui().silhouette, legacy); }
 
     long nameStringId(long legacy)         const { return chooseUIStringId(ui().nameStringId, legacy); }
     long encyclopediaStringId(long legacy) const { return chooseUIStringId(ui().encyclopediaStringId, legacy); }

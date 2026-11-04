@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include <memory>
 #include "Gates/preferences_legacy.h"
 #define OPTIONSAREA_CPP
@@ -1802,11 +1803,11 @@ void HotKeyListItem::update()
 
 }
 
-void HotKeyListItem::setDescription( const char* pText )
+void HotKeyListItem::setDescription( mc2::czstring pText )
 {
 	description.setText( pText );
 }
-void HotKeyListItem::setKey( const char* pText )
+void HotKeyListItem::setKey( mc2::czstring pText )
 {
 	text.setText( pText );
 }

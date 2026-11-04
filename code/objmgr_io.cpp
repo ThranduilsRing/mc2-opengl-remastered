@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "save_archive.h"
 #include "content_error.h"
 #include <string>
@@ -507,7 +508,7 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 // WATCHID-LOAD-GUARD-1: rate-limited diagnostic for invalid watch data read
 // from an untrusted/corrupt/cross-version save. Emits a one-time stderr line
 // (visible without any diag tag) plus a rate-limited WATCHID_LOAD JSONL event.
-static void mc2_watchidLoadDiag(const char* what, long a, long b)
+static void mc2_watchidLoadDiag(mc2::czstring what, long a, long b)
 {
 	static unsigned long s_loadDrops = 0;
 	++s_loadDrops;

@@ -2,6 +2,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include"platform_io.h" // for _chmod()
 
 #include <cstring>
@@ -121,7 +122,7 @@ int CPrefs::applyPrefs(bool applyRes) {
 }
 
 namespace {
-template<std::size_t N> void remember(char (&entries)[10][N], const char* name) {
+template<std::size_t N> void remember(char (&entries)[10][N], mc2::czstring name) {
     if (!name) return;
     char saved[N]{};
     std::strncpy(saved, name, N - 1);
@@ -131,6 +132,6 @@ template<std::size_t N> void remember(char (&entries)[10][N], const char* name) 
     std::memcpy(entries[0], saved, N);
 }
 }
-void CPrefs::setNewName(const char* name) { remember(playerName, name); }
-void CPrefs::setNewUnit(const char* name) { remember(unitName, name); }
-void CPrefs::setNewIP(const char* name) { remember(ipAddresses, name); }
+void CPrefs::setNewName(mc2::czstring name) { remember(playerName, name); }
+void CPrefs::setNewUnit(mc2::czstring name) { remember(unitName, name); }
+void CPrefs::setNewIP(mc2::czstring name) { remember(ipAddresses, name); }

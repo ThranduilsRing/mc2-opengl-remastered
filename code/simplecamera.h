@@ -7,6 +7,7 @@ SimpleCamera.h		: Interface for the camera that renders a single object
 //===========================================================================//
 \*************************************************************************************************/
 
+#include "mc2_czstring.h"
 #include"camera.h"
 
 #include <memory>
@@ -21,15 +22,15 @@ public:
 	SimpleCamera();
 	~SimpleCamera();
 
-	void setMech( const char* fileName, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
-	void setComponent( const char* fileName );
-	void setBuilding( const char* fileName );
-	void setVehicle( const char* vehicle, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
+	void setMech( mc2::czstring fileName, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
+	void setComponent( mc2::czstring fileName );
+	void setBuilding( mc2::czstring fileName );
+	void setVehicle( mc2::czstring vehicle, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
 	ObjectAppearance* getObjectAppearance() const { return pObject.get(); }
 
 	void init( float left, float right, float top, float bottom );
 
-	void setObject( const char* fileName, long type, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
+	void setObject( mc2::czstring fileName, long type, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
 
 	void render() override;
 	virtual void render(long xOffset, long yOffset);

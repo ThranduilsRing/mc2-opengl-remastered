@@ -4,6 +4,7 @@
 // allocates runtime object-type numbers after the legacy Object2.pak packets. With no such
 // mod mounted the registry is empty and every caller keeps its stock path.
 
+#include "mc2_czstring.h"
 #include "package_chassis.h"
 #include "inifile.h"
 #include "file.h"
@@ -21,7 +22,7 @@ namespace {
 std::vector<mc2pkg::PackageChassis> g_chassis;
 bool g_built = false;
 
-void collectChassisDef(const char* absPath, void* user) {
+void collectChassisDef(mc2::czstring absPath, void* user) {
     const auto base = std::filesystem::path(absPath).filename().string();
     if (_stricmp(base.c_str(), "chassisdef.fit") == 0)
         static_cast<std::vector<std::string>*>(user)->push_back(absPath);
