@@ -425,11 +425,6 @@ void EnterWindowMode();
 void EnterFullScreenMode();
 void __stdcall ExitGameOS();
 
-#define BOTTOM_OFFSET	5 * Environment.screenHeight/640.f
-
-#define FORCEGROUP_LEFT		ForceGroupIcon::selectionRect[0].left
-#define FORCEGROUP_WIDTH	(ForceGroupIcon::selectionRect[7].right - ForceGroupIcon::selectionRect[0].left)
-#define FORCEGROUP_HEIGHT	(ForceGroupIcon::selectionRect[0].bottom - ForceGroupIcon::selectionRect[0].top)
 
 extern float frameRate;
  
@@ -543,7 +538,8 @@ void ForceGroupBar::update( )
 	screen.x = userInput->getMouseHudX();
 	screen.y = userInput->getMouseHudY();
 
-	 if ( screen.x > FORCEGROUP_LEFT && screen.x < FORCEGROUP_LEFT + FORCEGROUP_WIDTH
+	 const auto& fgRects = ForceGroupIcon::selectionRect;   // the bar spans icon 0's left to icon 7's right
+	 if ( screen.x > fgRects[0].left && screen.x < fgRects[0].left + (fgRects[7].right - fgRects[0].left)
 		  && screen.y > FORCEGROUP_TOP )
 	 {
 		 if ( ControlGui::instance->isSelectingInfoObject() )

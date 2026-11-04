@@ -2573,11 +2573,6 @@ enum gosLIGHTTYPE
 
 
 //
-// Maximum distance for lights
-//
-#define LIGHT_RANGE_MAX	(static_cast<float>(sqrt(3.402823466e+38f)))
-
-//
 // Light definition (Identical to D3DLIGHT7)
 //
 struct gosLIGHT

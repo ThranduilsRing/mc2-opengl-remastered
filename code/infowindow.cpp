@@ -94,7 +94,7 @@ ControlButton InfoWindow::buttons[2] = {0};
 InfoWindow* InfoWindow::s_instance = nullptr;
 
 
-#define SCROLLAMOUNT		3.f * Environment.screenWidth/640.f
+static float scrollAmount() { return 3.f * Environment.screenWidth/640.f; }
 extern float WeaponRanges[NUM_WEAPON_RANGE_TYPES][2];
 
 // initialize statics
@@ -862,14 +862,14 @@ void InfoWindow::renderImGui()
 		// (InfoWindow::update: getMouseLeftButtonState()==MC2_MOUSE_DOWN fires
 		// handleClick every frame — code/infowindow.cpp:901-914; MC2_MOUSE_DOWN
 		// is the held state, mclib/userinput.h:32), each frame stepping
-		// scrollPos by SCROLLAMOUNT = 3.f*Environment.screenWidth/640.f thumb
+		// scrollPos by scrollAmount() = 3.f*Environment.screenWidth/640.f thumb
 		// px (code/infowindow.cpp:82, handleClick :1444-1457, setScrollPos
 		// clamp :1529-1537). Thumb px convert to content px via increment =
 		// infoLength/(SCROLLMAX-SCROLLMIN) (drawScrollingStuff :1192) where
 		// SCROLLMAX = buttons[1].location[0].y - buttonHeight - 2 and
 		// buttonHeight = physRange^2/(physRange+infoLength) clamped to
 		// SCROLLBUTTONHEIGHT (render() :796-806). ImGui equivalent with the
-		// same constants: step_dev = SCROLLAMOUNT * scrollMaxY_dev /
+		// same constants: step_dev = scrollAmount() * scrollMaxY_dev /
 		// (SCROLLMAX_dyn - SCROLLMIN).
 		const float physRange = buttons[1].location[0].y - buttons[0].location[2].y;
 		const float infoLen = ( sy > 0.0f ) ? loadoutScrollMax / sy : 0.0f;
@@ -879,7 +879,7 @@ void InfoWindow::renderImGui()
 		const float scrollMaxDyn = buttons[1].location[0].y - thumbH - 2.0f;
 		const float trackRange = scrollMaxDyn - static_cast<float>(SCROLLMIN);
 		const float stepDev = ( trackRange > 0.0f )
-			? SCROLLAMOUNT * loadoutScrollMax / trackRange : 0.0f;
+			? scrollAmount() * loadoutScrollMax / trackRange : 0.0f;
 
 		ImGui::PushStyleVar( ImGuiStyleVar_WindowMinSize, ImVec2( 1.0f, 1.0f ) );
 		ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );
@@ -1661,11 +1661,11 @@ void InfoWindow::handleClick( int ID )
 	switch( ID )
 	{
 	case SCROLLUP:
-		setScrollPos( scrollPos - SCROLLAMOUNT );
+		setScrollPos( scrollPos - scrollAmount() );
 		break;
 
 	case SCROLLDOWN:
-		setScrollPos( scrollPos + SCROLLAMOUNT );
+		setScrollPos( scrollPos + scrollAmount() );
 		break;
 
 	}

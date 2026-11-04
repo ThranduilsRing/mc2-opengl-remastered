@@ -65,11 +65,6 @@ DWORD ForceGroupIcon::pilotVideoTexture = 0;
 MechWarrior*	ForceGroupIcon::pilotVideoPilot = nullptr;
 
 
-#define HEALTH_BAROFFSET 12.0f * Environment.screenHeight/600.f
-#define HEALTH_BARLENGTH 31.0f * Environment.screenWidth/600.f
-#define HEALTH_BARHEIGHT	2.0f * Environment.screenHeight/600.f
-#define TEXT_HEIGHT				8.0f * Environment.screenHeight/480.f
-
 float			ForceGroupIcon::unitIconX = 32;
 float			ForceGroupIcon::unitIconY = 38;
 float			PilotIcon::pilotIconX = 25;
