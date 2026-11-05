@@ -297,3 +297,20 @@ def test_build_runs_before_the_gpu_lock_and_on_cores_32_63():
     assert "BCPUS=32-63" in r and "-j16 mc2" in r
     assert "case $r in build|unit) ;; *) NEEDGPU=1" in r   # build-only / unit-only rows never take the lock
     assert "    build)" in r
+
+
+def test_filler_push_is_noop_at_the_current_sha_and_otherwise_bundles_and_syncs(monkeypatch, tmp_path):
+    import box_filler_push
+    sent = []
+    monkeypatch.setattr(box_run, "git", lambda *a, repo=None: SHA)
+    def fake_run(cmd, **kw):
+        sent.append((cmd[-1], kw.get("input")))
+        out = SHA if "current_sha" in cmd[-1] and "cat >" not in cmd[-1] else ""
+        return SimpleNamespace(returncode=0, stdout=out, stderr="")
+    monkeypatch.setattr(box_filler_push, "run", fake_run)
+    assert box_filler_push.main(["--repo", str(tmp_path)]) == 0 and len(sent) == 1   # already current: nothing uploaded, no sync
+    sent.clear()
+    monkeypatch.setattr(box_filler_push, "run", lambda cmd, **kw: (sent.append((cmd[-1], kw.get("input"))), SimpleNamespace(returncode=0, stdout="", stderr=""))[1])
+    monkeypatch.setattr(box_filler_push.subprocess, "run", lambda cmd, **kw: (Path(cmd[6]).write_bytes(b"B") if "bundle" in cmd else None, SimpleNamespace(returncode=0, stdout="", stderr=""))[1])
+    assert box_filler_push.main(["--repo", str(tmp_path)]) == 0
+    assert any("incoming/nifty.bundle" in c for c, _ in sent) and any("-g build" in c and "sync.sh" in c for c, _ in sent)
