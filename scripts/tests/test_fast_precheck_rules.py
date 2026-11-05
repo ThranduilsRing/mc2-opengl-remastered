@@ -29,6 +29,31 @@ def test_ungated_tag_fails():
     assert len(bad) == 1 and "[NEWTAG]" in bad[0] and bad[0].startswith("mclib/x.cpp:10")
 
 
+_HDR = "diff --git a/mclib/x.cpp b/mclib/x.cpp\n--- a/mclib/x.cpp\n+++ b/mclib/x.cpp\n"
+_OLD = '-    std::fprintf(stderr, "[NEWTAG v1] event=x\\n");\n'
+
+
+def test_rewritten_print_with_same_tag_passes():
+    assert ult.check_diff(_HDR + "@@ -10,1 +10,1 @@\n" + _OLD + "+" + PRINT.replace("std::fprintf", "mc2::fmt::print_err") + "\n", set()) == []
+
+
+def test_rewritten_multiline_print_passes():
+    old = '-    fprintf(stderr,\n-        "[NEWTAG v1] event=x\\n");\n'
+    assert ult.check_diff(_HDR + "@@ -10,2 +10,1 @@\n" + old + "+" + PRINT.replace("std::fprintf", "mc2::fmt::print_err") + "\n", set()) == []
+
+
+def test_new_ungated_tag_still_fails_next_to_a_rewrite():
+    other = '+    std::fprintf(stderr, "[OTHERTAG v1] event=y\\n");\n'
+    bad = ult.check_diff(_HDR + "@@ -10,1 +10,2 @@\n" + _OLD + "+" + PRINT + "\n" + other, set())
+    assert len(bad) == 1 and "[OTHERTAG]" in bad[0]
+
+
+def test_tag_moved_to_a_different_hunk_still_fails():
+    diff = _HDR + "@@ -10,1 +10,0 @@\n" + _OLD + "@@ -50,0 +49,1 @@\n+" + PRINT + "\n"
+    bad = ult.check_diff(diff, set())
+    assert len(bad) == 1 and "[NEWTAG]" in bad[0]
+
+
 def test_gated_tag_passes_guard_in_window():
     guarded = _diff('    if (mc2_diag::tagRequested("NEWTAG"))', PRINT)
     assert ult.check_diff(guarded, set()) == []
