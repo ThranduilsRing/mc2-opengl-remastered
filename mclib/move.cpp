@@ -469,7 +469,7 @@ GameObjectFootPrint* tempSpecialAreaFootPrints = nullptr;
 
 void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long numSpecialAreas, GameObjectFootPrint* specialAreaFootPrints) {
 
-	mc2::fmt::print_out("[MOVE_BD] enter h={} w={} mapData={:016X} specials={}\n", height, width, mc2::fmt::as_ptr(static_cast<void*>(mapData)), numSpecialAreas); fflush(stdout);
+	printf("[MOVE_BD] enter h=%ld w=%ld mapData=%p specials=%ld\n", height, width, static_cast<void*>(mapData), numSpecialAreas); fflush(stdout);
 
 	EditorSave = true;
 
@@ -482,7 +482,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	GameMap->init(height, width, 0, mapData);
 
 	if (GameMap->map.empty()) { MC2_LOG(Io, Error, "move: the built mission map is {} x {} cells, so it is empty; no move data is built", height, width); return; }
-	mc2::fmt::print_out("[MOVE_BD] GameMap->init OK map={:016X}\n", mc2::fmt::as_ptr(static_cast<void*>(GameMap->map.data()))); fflush(stdout);
+	printf("[MOVE_BD] GameMap->init OK map=%p\n", static_cast<void*>(GameMap->map.data())); fflush(stdout);
 
 	long numOffMap = 0;
 	for (long r = 0; r < height; r++)
