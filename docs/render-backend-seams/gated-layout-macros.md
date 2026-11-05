@@ -590,7 +590,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:17`
+- Header: `GameOS/gameos/vk_light_lists.h:18`
 - Class: `LightLists`  (data-member)
 - Member: `ComputePipeline pipeline_;`
 - Consuming targets: gameos
@@ -598,7 +598,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:18`
+- Header: `GameOS/gameos/vk_light_lists.h:19`
 - Class: `LightLists`  (data-member)
 - Member: `ComputeSets sets_;`
 - Consuming targets: gameos
@@ -606,7 +606,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:19`
+- Header: `GameOS/gameos/vk_light_lists.h:20`
 - Class: `LightLists`  (data-member)
 - Member: `FrameAlloc params_;`
 - Consuming targets: gameos
@@ -614,7 +614,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:21`
+- Header: `GameOS/gameos/vk_light_lists.h:22`
 - Class: `LightLists`  (data-member)
 - Member: `uint64_t attempted_ = ~uint64_t(0), retryAt_ = 0, failures_ = 0;`
 - Consuming targets: gameos
@@ -622,7 +622,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:22`
+- Header: `GameOS/gameos/vk_light_lists.h:23`
 - Class: `LightLists`  (data-member)
 - Member: `uint32_t retryDelay_ = 1;`
 - Consuming targets: gameos
@@ -630,7 +630,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:23`
+- Header: `GameOS/gameos/vk_light_lists.h:24`
 - Class: `LightLists`  (data-member)
 - Member: `const char* failure_ = nullptr;`
 - Consuming targets: gameos
@@ -638,7 +638,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:25`
+- Header: `GameOS/gameos/vk_light_lists.h:26`
 - Class: `LightLists`  (data-member)
 - Member: `uint32_t poolWords_ = 0;`
 - Consuming targets: gameos
@@ -686,7 +686,39 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:91`
+- Header: `GameOS/gameos/vk_light_lists.h:74`
+- Class: `LightLists`  (data-member)
+- Member: `uint32_t entries = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:76`
+- Class: `LightLists`  (data-member)
+- Member: `const auto& l = lights[i];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:78`
+- Class: `LightLists`  (data-member)
+- Member: `const float r = l.farDistance * 1.001f + 0.01f;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:79`
+- Class: `LightLists`  (data-member)
+- Member: `uint32_t span[2];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_light_lists.h:103`
 - Class: `LightLists`  (data-member)
 - Member: `return true;`
 - Consuming targets: gameos
@@ -694,7 +726,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_light_lists.h:98`
+- Header: `GameOS/gameos/vk_light_lists.h:110`
 - Class: `LightLists`  (data-member)
 - Member: `const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;`
 - Consuming targets: gameos
@@ -3206,4 +3238,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 400 guard(s) analyzed, 0 violation(s).
+Result: 404 guard(s) analyzed, 0 violation(s).
