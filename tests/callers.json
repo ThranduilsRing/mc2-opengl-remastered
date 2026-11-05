@@ -3262,6 +3262,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/box_run.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/bt2018_import/convert_all_bt2018.py",
           "line": 42,
           "evidence": "import",
