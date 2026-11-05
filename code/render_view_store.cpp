@@ -55,7 +55,7 @@ std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence) {
     FrameDraws* frame;
     {
         std::lock_guard<std::mutex> lock(g_poolMutex);
-        if (g_pool.empty()) frame = new FrameDraws();
+        if (g_pool.empty()) frame = std::make_unique<FrameDraws>().release();
         else { frame = g_pool.back().release(); g_pool.pop_back(); }
     }
     frame->sequence = sequence;
