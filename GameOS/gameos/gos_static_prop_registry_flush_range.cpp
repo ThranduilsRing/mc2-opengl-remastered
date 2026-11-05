@@ -26,8 +26,8 @@ bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ra
             if (fr != s_tdFrame) { s_tdFrame = fr; s_tdN = 0; }
             if ((fr <= 3u || (fr % 120u) == 0u) && s_tdN < 90) {
                 ++s_tdN;
-                const int tid = (rng.count > 0 && rng.first < s_recipes.size())
-                                  ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
+                const int tid = (rng.count > 0 && rng.begin < s_recipes.size())
+                                  ? static_cast<int>(s_recipes[rng.begin].typeID) : -1;
                 mc2::fmt::print_err("[TOMBDIAG] sample=first90_per_frame frame={:d} regIdx={:d} count={:d} multi={:d} typeID={:d}{}\n", mc2::fmt::as_u32(fr), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>((rng.multi() != nullptr))), mc2::fmt::as_i32(tid), mc2::fmt::safe((rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : ""));
                 fflush(stderr);
             }
@@ -47,7 +47,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
     // Suppressing the draw means the offscreen actor doesn't render this
     // frame; the next frame after it returns to view will refresh the
     // cache and the static path resumes correctly.
-    const bool isFirstFlush = !rng.firstFlushSeen;
+    const bool isFirstFlush = !rng.beginFlushSeen;
     if (rng.multi()->getCachedFrame() != currentFrame) {
         if (isFirstFlush) {
             ++s_firstFrameSkipCount;
@@ -79,10 +79,10 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
             // here via cull-gated update — so a few transient counts are expected;
             // a PERSISTENT/GROWING count for an on-screen typeID is the bug.)
             ++s_diag_ranges_stale_after_drawn;
-            const int tid = (rng.first < s_recipes.size())
-                              ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
+            const int tid = (rng.begin < s_recipes.size())
+                              ? static_cast<int>(s_recipes[rng.begin].typeID) : -1;
             static std::set<int> s_loggedStaleTypes;
-            if (s_loggedStaleTypes.insert(tid).second) {
+            if (auto [loggedPos, firstLog] = s_loggedStaleTypes.insert(tid); firstLog) {
                 mc2::fmt::print_err("[STATIC_PROP_REGISTRY] event=stale_frame_drop_after_drawn typeID={:d} regIdx={:d} currentFrame={:d} cachedFrame={:d} (update/touch skip suspected — see R2B-STATIC-NATURAL-TOUCH-PRESERVE-1)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi()->getCachedFrame()));
                 fflush(stderr);
             }
@@ -114,7 +114,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
         ++s_diag_ranges_stale_frame;
         return true;
     }
-    rng.firstFlushSeen = true;
+    rng.beginFlushSeen = true;
     // GUARD-2: a successful draw clears the consecutive-stale streak for this range
     // so only persistent (never-drawn-again) ranges accumulate toward kVanishFrames.
     if (s_guard2 && !s_staleStreak.empty()) s_staleStreak.erase(regIdx);
@@ -126,7 +126,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
         if (s_traceMulti && rng.count > 1 && s_seenMulti.size() < 100 &&
             s_seenMulti.find(regIdx) == s_seenMulti.end()) {
             s_seenMulti.insert(regIdx);
-            uint32_t firstTid = s_recipes[rng.first].typeID;
+            uint32_t firstTid = s_recipes[rng.begin].typeID;
             mc2::fmt::print_err("[REGFLUSH_MULTI v1] sample=first100_distinct_regidx regIdx={:d} count={:d} firstTypeID={:d} multi={:016X}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(firstTid), mc2::fmt::as_u64(rng.multiId.value));
             fflush(stderr);
         }
@@ -199,7 +199,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
             static const bool s_zlr_print = mc2_diag::tagRequested("STATIC_LIGHT_ROW");
             if (s_zlr_print && !s_zlr_firstShown) {
                 s_zlr_firstShown = true;
-                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mc2::vkLights::active() ? mc2::vkLights::getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi()->getCachedGpuLightIndex()));
+                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.begin].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mc2::vkLights::active() ? mc2::vkLights::getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi()->getCachedGpuLightIndex()));
                 fflush(stderr);
             }
         }
@@ -250,7 +250,7 @@ void flushSeamProbe(uint32_t regIdx, RecipeRange& rng, const float (&actorWorldC
         static const bool s_seamFlush = mc2::gate::get<"MC2_MODOVERRIDE_TRACE">();
         static int s_seamFlushLogged = 0;
         if (s_seamFlush && rng.count > 0 && s_seamFlushLogged < 200) {
-            const uint32_t t0 = s_recipes[rng.first].typeID;
+            const uint32_t t0 = s_recipes[rng.begin].typeID;
             if (t0 == 33u || t0 == 41u || t0 == 42u || t0 == 43u) {
                 ++s_seamFlushLogged;
                 mc2::fmt::print_err("[SEAMPROBE] sample=first200 flush-emit regIdx={:d} firstTypeID={:d} count={:d} extentRadius={:.2f} rootCtr=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(t0), mc2::fmt::as_u32(rng.count), rng.extentRadius, actorWorldCenter[0], actorWorldCenter[1], actorWorldCenter[2]);
@@ -273,12 +273,12 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
         static int s_leafDiagLogged = 0;
         if (s_leafDiag && rng.count > 0 && s_leafDiagLogged < 48) {
             ++s_leafDiagLogged;
-            const float* m0 = s_recipes[rng.first].modelMatrix;
+            const float* m0 = s_recipes[rng.begin].modelMatrix;
             const uint32_t midI = rng.count / 2u;
-            const float* mm = s_recipes[rng.first + midI].modelMatrix;
+            const float* mm = s_recipes[rng.begin + midI].modelMatrix;
             const bool leaf0Zero = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
             const bool midZero   = (mm[0]==0.0f && mm[3]==0.0f && mm[7]==0.0f && mm[11]==0.0f);
-            mc2::fmt::print_err("[LEAFDIAG] sample=first48 regIdx={:d} typeID={:d} count={:d} cachedBlob={:d} freshLight={:d} storedLight={:d} leaf0_rawXYZ=({:.1f},{:.1f},{:.1f}) leaf0Zero={:d} midZero={:d}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>(useCachedBlob)), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_u32(s_recipes[rng.first].lightDataIndex), -m0[3], m0[11], m0[7], mc2::fmt::as_i32(static_cast<int>(leaf0Zero)), mc2::fmt::as_i32(static_cast<int>(midZero)));
+            mc2::fmt::print_err("[LEAFDIAG] sample=first48 regIdx={:d} typeID={:d} count={:d} cachedBlob={:d} freshLight={:d} storedLight={:d} leaf0_rawXYZ=({:.1f},{:.1f},{:.1f}) leaf0Zero={:d} midZero={:d}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.begin].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32(static_cast<int>(useCachedBlob)), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_u32(s_recipes[rng.begin].lightDataIndex), -m0[3], m0[11], m0[7], mc2::fmt::as_i32(static_cast<int>(leaf0Zero)), mc2::fmt::as_i32(static_cast<int>(midZero)));
             fflush(stderr);
         }
     }
@@ -290,7 +290,7 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
 void flushLegacyRange(GpuStaticPropBatcher& batcher, RecipeRange& rng, uint32_t freshLightIdx) {
     if (s_staticFrozenReg) return; // already present in the all-recipes store
     for (uint32_t i = 0; i < rng.count; ++i) {
-        GpuStaticPropInstance inst = s_recipes[rng.first + i];
+        GpuStaticPropInstance inst = s_recipes[rng.begin + i];
         inst.lightDataIndex = freshLightIdx;
         batcher.submitCachedInstance(inst);
     }
@@ -298,7 +298,7 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, RecipeRange& rng, uint32_t 
 
 void flushCachedRange(GpuStaticPropBatcher& batcher, bool storeDirty, RecipeRange& rng) {
     if (storeDirty && !s_staticFrozenReg)
-        batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
+        batcher.appendPersistentStaticRange(&s_recipes[rng.begin], rng.count);
 }
 
 }  // namespace GpuStaticPropRegistry

@@ -58,7 +58,7 @@ extern bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName,
 namespace GpuStaticPropRegistry {
 
 struct RecipeRange {
-    uint32_t       first;   // index into s_recipes
+    uint32_t       begin;   // index into s_recipes
     uint32_t       count;   // 0 = invalidated (tombstone)
     TG_InstanceId  multiId; // generation-checked borrow of the actor-owned instance
     TG_MultiShape* multi() const { return TglInstanceRegistry::get().resolve(multiId); }

@@ -58,6 +58,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 #include <algorithm>
 
 #include "render_backend_select.h"
@@ -444,19 +445,18 @@ int read_num_array(mc2::czstring p, const char** pp, float* out, int maxN) {
     return n;
 }
 
-bool read_scalar(mc2::czstring obj, mc2::czstring key, float* out) {
-    std::string pat = std::string("\"") + key + "\"";
+std::optional<float> read_scalar(mc2::czstring obj, mc2::czstring key) {
+    std::string pat = std::string(R"(")") + key + R"(")";
     const char* k = strstr(obj, pat.c_str());
-    if (!k) return false;
+    if (!k) return std::nullopt;
     k += pat.size();
     while (*k && *k != ':') ++k;
-    if (*k != ':') return false;
+    if (*k != ':') return std::nullopt;
     ++k;
     char* end = nullptr;
     float v = static_cast<float>(strtod(k, &end));
-    if (end == k) return false;
-    *out = v;
-    return true;
+    if (end == k) return std::nullopt;
+    return v;
 }
 
 bool load_bookmarks(mc2::czstring path, std::string& missionOut,
@@ -504,9 +504,9 @@ bool load_bookmarks(mc2::czstring path, std::string& missionOut,
                 b.hasPos = true;
             }
         }
-        read_scalar(obj.c_str(), "rot", &b.rot);
-        read_scalar(obj.c_str(), "proj", &b.proj);
-        read_scalar(obj.c_str(), "alt", &b.alt);
+        if (const auto v = read_scalar(obj.c_str(), "rot")) b.rot = *v;
+        if (const auto v = read_scalar(obj.c_str(), "proj")) b.proj = *v;
+        if (const auto v = read_scalar(obj.c_str(), "alt")) b.alt = *v;
         out.push_back(b);
         p += 6;
     }
@@ -604,7 +604,7 @@ void parse_focus() {
         else if (!std::strcmp(arg, "all")) g_focus.walk = 2;
         else {
             g_focus.index = std::atoi(arg);
-            if (g_focus.index < 0) g_focus.index = 0;
+            g_focus.index = std::max(g_focus.index, 0);
         }
     }
     g_focus.zoom = static_cast<float>(mc2::gate::get<"MC2_CAPTURE_FOCUS_ZOOM">());

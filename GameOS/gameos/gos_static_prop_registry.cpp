@@ -336,12 +336,12 @@ int32_t registerRecipe(TG_MultiShape* multi,
                        const std::vector<GpuStaticPropInstance>& batch) {
     if (batch.empty() || !multi || !multi->usesTypeMaterials()) return -1;
     RecipeRange rng;
-    rng.first = static_cast<uint32_t>(s_recipes.size());
+    rng.begin = static_cast<uint32_t>(s_recipes.size());
     rng.count = static_cast<uint32_t>(batch.size());
     rng.multiId = multi->stableId();
     rng.pinsReleased      = false;
     rng.registeredOnFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
-    rng.firstFlushSeen    = false;
+    rng.beginFlushSeen    = false;
     rng.lightDataIndex    = 0xFFFFFFFFu;  // 2026-05-11 per-instance capture sentinel
     rng.extentRadius      = 0.0f;
     rng.shapeName[0]      = '\0';         // populated by late-spawn path if Appearance* available
@@ -351,7 +351,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     ++s_registryGeneration;   // 2b Stage 2: spawn = structural change
     // RECIPE-SLOT-RECYCLE: reuse a tombstoned regIdx when available (caps max regIdx
     // -> caps the baked-light high-water S -> caps the per-frame light upload/scan).
-    // The reused slot's parallel arrays are reset; leaf storage still appends (rng.first
+    // The reused slot's parallel arrays are reset; leaf storage still appends (rng.begin
     // was set from s_recipes.size() above, and the leaves were inserted at the end).
     int32_t regIdx;
     if (s_recipeRecycle && !s_recipeRangeFreeList.empty()) {
@@ -369,7 +369,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     if (!batch.empty()) {
         s_typeIDToRecipeIndex[batch[0].typeID] = regIdx;
     }
-    SP_TRACE("register regIdx=%d first=%u count=%u", regIdx, rng.first, rng.count);
+    SP_TRACE("register regIdx=%d first=%u count=%u", regIdx, rng.begin, rng.count);
 
     // Pin every mcTextureNodeIndex referenced by this recipe's multi-shape.
     // mc2::textures::ready() evicts textures during gameplay (txmmgr.cpp:update);
@@ -428,7 +428,7 @@ void markVisible(int32_t regIdx, uint32_t lightDataIndex, float extentRadius) {
     // 2026-05-22 F4 T3: store per-prop extent radius for GPU cull record.
     rng.extentRadius = extentRadius;
     if (lightOrExtentChanged) {
-        for (uint32_t k = rng.first; k < rng.first + rng.count; ++k) {
+        for (uint32_t k = rng.begin; k < rng.begin + rng.count; ++k) {
             s_recipes[k].lightDataIndex = lightDataIndex;  // range light → every leaf
         }
         ++s_registryGeneration;   // 2b Stage 2: immutable-field (light/extent) write
@@ -466,15 +466,18 @@ void invalidate(int32_t regIdx) {
     // (typeID would otherwise be zeroed out by the loop below). Only
     // tombstone if our regIdx still owns the mapping; a newer recipe
     // with the same typeID may have taken over.
-    if (rng.count > 0 && rng.first < s_recipes.size()) {
-        const uint32_t typeID = s_recipes[rng.first].typeID;
+    if (rng.count > 0 && rng.begin < s_recipes.size()) {
+        const uint32_t typeID = s_recipes[rng.begin].typeID;
         auto it = s_typeIDToRecipeIndex.find(typeID);
-        if (it != s_typeIDToRecipeIndex.end() && it->second == regIdx) {
-            it->second = -1;
+        if (it != s_typeIDToRecipeIndex.end()) {
+            auto& [typeKey, ownerIdx] = *it;
+            if (ownerIdx == regIdx) {
+                ownerIdx = -1;
+            }
         }
     }
     for (uint32_t i = 0; i < rng.count; ++i) {
-        auto& recipe = s_recipes[rng.first + i];
+        auto& recipe = s_recipes[rng.begin + i];
         GpuStaticPropBatcher::instance().forgetLodState(recipe);
         recipe = GpuStaticPropInstance{};
     }
@@ -511,7 +514,8 @@ bool isReady(int32_t regIdx) {
 int32_t getRecipeIndexForType(uint32_t typeID) {
     auto it = s_typeIDToRecipeIndex.find(typeID);
     if (it == s_typeIDToRecipeIndex.end()) return -1;
-    return it->second;
+    const auto& [typeKey, recipeIdx] = *it;
+    return recipeIdx;
 }
 
 const char* getRecipeShapeName(int32_t recipeIndex) {
@@ -617,7 +621,7 @@ void flush() {
         // captured by registerStatic (typically the root/base mesh whose
         // local-to-actor transform is identity), so its modelMatrix
         // translation IS the actor's xlatPosition.
-        const float* rootMtx = s_recipes[rng.first].modelMatrix;
+        const float* rootMtx = s_recipes[rng.begin].modelMatrix;
         const float actorWorldCenter[3] = {
             -rootMtx[3],   // raw.x = -stuff.x
              rootMtx[11],  // raw.y =  stuff.z
@@ -632,7 +636,7 @@ void flush() {
         // 2A review fix (adversarial + renderspine M1): take the cached path for
         // THIS range ONLY when it is provably equivalent to legacy — i.e. the
         // legacy freshLightIdx selector resolves to the exact value the cached
-        // path would submit (s_recipes[rng.first].lightDataIndex, stamped to the
+        // path would submit (s_recipes[rng.begin].lightDataIndex, stamped to the
         // range light by markVisible). This self-heals every light divergence the
         // cached path could otherwise introduce, falling back to the legacy
         // per-leaf path (which uses freshLightIdx directly) for that range:
@@ -646,7 +650,7 @@ void flush() {
         // instead of the per-frame bucket.
         const bool useCachedBlob =
             freshLightIdx != 0xFFFFFFFFu
-            && freshLightIdx == s_recipes[rng.first].lightDataIndex;
+            && freshLightIdx == s_recipes[rng.begin].lightDataIndex;
         flushLeafDiag(regIdx, rng, freshLightIdx, useCachedBlob);
         if (!useCachedBlob) {
             flushLegacyRange(batcher, rng, freshLightIdx);
@@ -681,14 +685,14 @@ static bool recipeValid(int32_t recipeIndex) {
 bool staticPropGetModelMatrix(int32_t recipeIndex, float out[16]) {
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    memcpy(out, s_recipes[rng.first].modelMatrix, sizeof(float) * 16);
+    memcpy(out, s_recipes[rng.begin].modelMatrix, sizeof(float) * 16);
     return true;
 }
 
 bool staticPropGetTypeId(int32_t recipeIndex, uint32_t* out) {
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    *out = s_recipes[rng.first].typeID;
+    *out = s_recipes[rng.begin].typeID;
     return true;
 }
 
@@ -703,7 +707,7 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
     for (uint32_t i = 0; i < rng.count; ++i) {
-        memcpy(s_recipes[rng.first + i].modelMatrix, in, sizeof(float) * 16);
+        memcpy(s_recipes[rng.begin + i].modelMatrix, in, sizeof(float) * 16);
     }
     ++s_registryGeneration;   // force persistent-static store rebuild next flush
     return true;
@@ -713,7 +717,7 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
 bool staticPropSetActorTint(int32_t recipeIndex, uint32_t word) {
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    const uint32_t firstRecipe = std::invoke(&RecipeRange::first, rng);
+    const uint32_t firstRecipe = std::invoke(&RecipeRange::begin, rng);
     const uint32_t recipeCount = rng.count;
     bool changed = false;
     for (uint32_t i = 0; i < recipeCount; ++i) {
@@ -764,7 +768,7 @@ uint8_t getPopulationsEverTagged() { return s_popsEverTagged; }
 // shadow-map build to replay all rigid buildings into the world-fixed depth map.
 // Appends one live recipe's leaves to `out`; nothing for a tombstone or a stale range. Returns the number appended.
 static size_t appendRecipeLeaves(const RecipeRange& rng, std::vector<GpuStaticPropInstance>& out) {
-    const size_t begin = rng.first;
+    const size_t begin = rng.begin;
     const size_t end = begin + rng.count;
     if (rng.count == 0 || end > s_recipes.size()) return 0;
     out.insert(out.end(), s_recipes.begin() + static_cast<std::ptrdiff_t>(begin), s_recipes.begin() + static_cast<std::ptrdiff_t>(end));
@@ -872,30 +876,24 @@ void staticPropRegistryClearMaterialCache() {
 }
 
 
-bool staticPropGetTexArrayLayer(int32_t recipeIndex, int32_t* out) {
-    if (!out) return false;
-    *out = -1;
-    if (!recipeValid(recipeIndex)) return false;
+std::optional<int32_t> staticPropGetTexArrayLayer(int32_t recipeIndex) {
+    if (!recipeValid(recipeIndex)) return std::nullopt;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    const uint32_t typeID = s_recipes[rng.first].typeID;
-    if (typeID >= static_cast<uint32_t>(s_typeMatCache.size())) return false;
+    const uint32_t typeID = s_recipes[rng.begin].typeID;
+    if (typeID >= static_cast<uint32_t>(s_typeMatCache.size())) return std::nullopt;
     const StaticPropTypeMaterialCache& c = s_typeMatCache[typeID];
-    if (!c.hasPrimary) return false;
-    *out = c.texArrayLayer;
-    return true;
+    if (!c.hasPrimary) return std::nullopt;
+    return c.texArrayLayer;
 }
 
-bool staticPropGetMaterialIdx(int32_t recipeIndex, uint32_t* out) {
-    if (!out) return false;
-    *out = 0xFFFFFFFFu;
-    if (!recipeValid(recipeIndex)) return false;
+std::optional<uint32_t> staticPropGetMaterialIdx(int32_t recipeIndex) {
+    if (!recipeValid(recipeIndex)) return std::nullopt;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    const uint32_t typeID = s_recipes[rng.first].typeID;
-    if (typeID >= static_cast<uint32_t>(s_typeMatCache.size())) return false;
+    const uint32_t typeID = s_recipes[rng.begin].typeID;
+    if (typeID >= static_cast<uint32_t>(s_typeMatCache.size())) return std::nullopt;
     const StaticPropTypeMaterialCache& c = s_typeMatCache[typeID];
-    if (!c.hasPrimary || !c.hasMaterialIdx) return false;
-    *out = c.materialIdx;
-    return true;
+    if (!c.hasPrimary || !c.hasMaterialIdx) return std::nullopt;
+    return c.materialIdx;
 }
 
 bool staticPropGetMaterialCacheInfo(int32_t recipeIndex,
@@ -903,7 +901,7 @@ bool staticPropGetMaterialCacheInfo(int32_t recipeIndex,
     if (!out) return false;
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    const uint32_t typeID = s_recipes[rng.first].typeID;
+    const uint32_t typeID = s_recipes[rng.begin].typeID;
     if (typeID >= static_cast<uint32_t>(s_typeMatCache.size())) return false;
     const StaticPropTypeMaterialCache& c = s_typeMatCache[typeID];
     if (!c.hasPrimary) return false;
@@ -932,7 +930,7 @@ bool staticPropGetInstanceFlags(int32_t recipeIndex, uint32_t* out) {
     *out = 0u;
     if (!recipeValid(recipeIndex)) return false;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    *out = s_recipes[rng.first].flags;
+    *out = s_recipes[rng.begin].flags;
     return true;
 }
 

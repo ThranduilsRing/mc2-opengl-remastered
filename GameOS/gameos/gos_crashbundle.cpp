@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "mc2_czstring.h"
 #include "vk_render_infra.h"
 // gos_crashbundle.cpp
@@ -118,7 +119,7 @@ extern "C" void crashbundle_append(mc2::czstring line)
     size_t n = strlen(line);
     if (n == 0) return;
     // Trim to avoid pathological lines blowing out the ring in one write.
-    if (n > kRingBytes / 2) n = kRingBytes / 2;
+    n = std::min(n, kRingBytes / 2);
 
     // Spinlock — short critical sections only.
     while (InterlockedCompareExchange(&g_ring_lock, 1, 0) != 0) {
@@ -412,7 +413,7 @@ static void copy_file_to_clipboard(mc2::czstring path)
     if (h == INVALID_HANDLE_VALUE) return;
     DWORD sz = GetFileSize(h, nullptr);
     if (sz == INVALID_FILE_SIZE || sz == 0) { CloseHandle(h); return; }
-    if (sz > 1024 * 1024) sz = 1024 * 1024; // sanity cap
+    sz = std::min<DWORD>(sz, 1024 * 1024); // sanity cap
 
     // allocate via GlobalAlloc — clipboard owns it after SetClipboardData
     HGLOBAL hMemA = GlobalAlloc(GMEM_MOVEABLE, sz + 1);

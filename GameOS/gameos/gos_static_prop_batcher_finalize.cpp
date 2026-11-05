@@ -1,5 +1,6 @@
 // Finalize native prop geometry, CPU material sources and packet metadata once per mission.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include <cstring>
@@ -388,9 +389,10 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                     s_materialInventory.push_back(inv);
                 }
                 // Per-draw-slot usage counter accumulates on every reference (insert OR hit).
-                if (it->second < s_materialInventory.size())
-                    s_materialInventory[it->second].usageCount += 1u;
-                s_packetMaterialIdx.push_back(it->second);
+                const auto& [matKey, matIdx] = *it;
+                if (matIdx < s_materialInventory.size())
+                    s_materialInventory[matIdx].usageCount += 1u;
+                s_packetMaterialIdx.push_back(matIdx);
             }
 
             const size_t byteSize = s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
@@ -603,9 +605,9 @@ void GpuStaticPropBatcher::armCoalesce(StaticPropFinalizeFrame& f) {
             if (layerForType[typeID] < 0) continue;
             const uint32_t layer = static_cast<uint32_t>(layerForType[typeID]);
             if (t.alphaClass == 0u) {
-                if (layer + 1u > uniqueTexOff) uniqueTexOff = layer + 1u;
+                uniqueTexOff = std::max(uniqueTexOff, layer + 1u);
             } else {
-                if (layer + 1u > uniqueTexOn)  uniqueTexOn  = layer + 1u;
+                uniqueTexOn = std::max(uniqueTexOn, layer + 1u);
             }
         }
         MC2_DIAGFE(stderr, "[COALESCE v1] event=armed types=%u "

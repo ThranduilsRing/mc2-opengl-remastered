@@ -1,5 +1,6 @@
 // CPU static-prop geometry/material ownership, persistent instance tables and IBL tuning.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "Gates/render_options.h"
@@ -302,7 +303,7 @@ static double iblSunRotateLift(const float (*C)[3]) {
             for (int ch = 0; ch < 3; ++ch) {
                 const double deficit =
                     static_cast<double>(iblSunRotateFloor()) - iblEvalShL2Cpu(C, ch, nx, ny, nz);
-                if (deficit > worstDeficit) worstDeficit = deficit;
+                worstDeficit = std::max(worstDeficit, deficit);
             }
         }
     }

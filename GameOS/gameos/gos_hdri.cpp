@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <vector>
 #include <algorithm>
+#include <optional>
 
 // tinyexr brings in miniz transitively. Define implementation macros
 // in EXACTLY this one TU. miniz.c is compiled separately (registered
@@ -38,14 +39,14 @@
 // To find "the sun" robustly we (1) compute the max luminance over the upper
 // half, (2) keep texels within a fraction of that max, (3) take the
 // luminance-weighted *circular* mean of their azimuths (sum of unit vectors)
-// so the wrap at +/-PI is handled correctly. Returns false if no above-horizon
+// so the wrap at +/-PI is handled correctly. Returns nullopt if no above-horizon
 // energy is found.
-static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
+static std::optional<float> scanHdriSunAzGL(const float* px, int w, int h)
 {
-    if (!px || w <= 0 || h <= 0 || !outAzGL) return false;
+    if (!px || w <= 0 || h <= 0) return std::nullopt;
 
     const int halfRows = h / 2;          // upper half = above horizon
-    if (halfRows <= 0) return false;
+    if (halfRows <= 0) return std::nullopt;
 
     // Pass 1: peak luminance in the upper half.
     float maxLum = 0.0f;
@@ -55,10 +56,10 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
             const float* p = row + static_cast<size_t>(c) * 4u;
             // Rec.709 luma; HDRI is linear so this is physical luminance.
             const float lum = 0.2126f * p[0] + 0.7152f * p[1] + 0.0722f * p[2];
-            if (lum > maxLum) maxLum = lum;
+            maxLum = std::max(maxLum, lum);
         }
     }
-    if (!(maxLum > 0.0f)) return false;
+    if (!(maxLum > 0.0f)) return std::nullopt;
 
     // Pass 2: luminance-weighted circular mean of azimuths over the brightest
     // texels (top fraction of peak). 0.5 of peak keeps the sun disk + immediate
@@ -80,9 +81,8 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
             wsum += static_cast<double>(lum);
         }
     }
-    if (!(wsum > 0.0)) return false;
-    *outAzGL = static_cast<float>(atan2(sy, sx));
-    return true;
+    if (!(wsum > 0.0)) return std::nullopt;
+    return static_cast<float>(atan2(sy, sx));
 }
 
 // HDRI-BC6H-1: gate — MC2_HDRI_BC6H controls BC6H sidecar upload.
@@ -162,12 +162,15 @@ void buildRgba16fChain(HdriCpuImage& out, const float* pixels, int w, int h)
     std::vector<float> level(pixels, pixels + static_cast<size_t>(w) * h * 4);
     appendHalfLevel(out, level, w, h);
     while (w > 1 || h > 1) {
-        const int nw = std::max(1, w >> 1), nh = std::max(1, h >> 1);
+        const int nw = std::max(1, w >> 1);
+        const int nh = std::max(1, h >> 1);
         std::vector<float> next(static_cast<size_t>(nw) * nh * 4);
         for (int y = 0; y < nh; ++y) {
-            const int y0 = std::min(2 * y, h - 1), y1 = std::min(2 * y + 1, h - 1);
+            const int y0 = std::min(2 * y, h - 1);
+            const int y1 = std::min(2 * y + 1, h - 1);
             for (int x = 0; x < nw; ++x) {
-                const int x0 = std::min(2 * x, w - 1), x1 = std::min(2 * x + 1, w - 1);
+                const int x0 = std::min(2 * x, w - 1);
+                const int x1 = std::min(2 * x + 1, w - 1);
                 for (int c = 0; c < 4; ++c) {
                     const float sum = level[(static_cast<size_t>(y0) * w + x0) * 4 + c] + level[(static_cast<size_t>(y0) * w + x1) * 4 + c]
                                     + level[(static_cast<size_t>(y1) * w + x0) * 4 + c] + level[(static_cast<size_t>(y1) * w + x1) * 4 + c];
@@ -193,9 +196,8 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
     if (!path || !*path) return false;
     auto scanSun = [&](const float* pixels, int w, int h) {
         if (!outSunAzGL) return;
-        float az = 0.0f;
-        if (scanHdriSunAzGL(pixels, w, h, &az)) {
-            *outSunAzGL = az;
+        if (const auto az = scanHdriSunAzGL(pixels, w, h)) {
+            *outSunAzGL = *az;
             if (outSunValid) *outSunValid = true;
         }
     };

@@ -216,17 +216,18 @@ std::string cmdScreenshot(std::string_view req, uint32_t frame)
 {
     if (!s_pendingShotPath.empty())
         return makeReply(false, "screenshot already pending: " + s_pendingShotPath, "");
-    CreateDirectoryA("dev_shell_out", nullptr);  // ok if it already exists
+    std::error_code mkdirEc;
+    std::filesystem::create_directories("dev_shell_out", mkdirEc);  // ok if it already exists
     s_pendingShotPath = sanitizeShotName(jsonGetString(req, "name"), frame);
     return makeReply(true, "",
-        "{\"scheduled\":true,\"path\":\"" + jsonEscape(s_pendingShotPath)
-        + "\",\"note\":\"captured at end of current frame; poll last_screenshot to confirm\"}");
+        R"j({"scheduled":true,"path":")j" + jsonEscape(s_pendingShotPath)
+        + R"j(","note":"captured at end of current frame; poll last_screenshot to confirm"})j");
 }
 
 std::string cmdLastScreenshot()
 {
     return makeReply(true, "",
-        "{\"result\":\"" + jsonEscape(s_lastShotResult.empty() ? "none" : s_lastShotResult) + "\"}");
+        R"j({"result":")j" + jsonEscape(s_lastShotResult.empty() ? "none" : s_lastShotResult) + R"j("})j");
 }
 
 std::string cmdGetGate(std::string_view req)
@@ -236,8 +237,8 @@ std::string cmdGetGate(std::string_view req)
     // The client names the variable: a runtime name, so this asks the environment directly.
     const char* v = mc2::gate::envText(name.c_str());
     return makeReply(true, "",
-        "{\"name\":\"" + jsonEscape(name) + "\",\"value\":"
-        + (v ? "\"" + jsonEscape(v) + "\"" : "null") + "}");
+        R"j({"name":")j" + jsonEscape(name) + R"j(","value":)j"
+        + (v ? R"j(")j" + jsonEscape(v) + R"j(")j" : "null") + "}");
 }
 
 // Honesty contract: this updates the PROCESS environment. Gates that are
@@ -257,9 +258,9 @@ std::string cmdSetGate(std::string_view req)
     // Typed gates cache their parse; drop it so live-read sites see the new value.
     mc2::gate::invalidate(name);
     return makeReply(true, "",
-        "{\"name\":\"" + jsonEscape(name) + "\",\"value\":\"" + jsonEscape(value)
-        + "\",\"applied\":\"process_env_only\",\"note\":\"live-read gates apply on next check;"
-          " init-read gates (static const reads) require restart\"}");
+        R"j({"name":")j" + jsonEscape(name) + R"j(","value":")j" + jsonEscape(value)
+        + R"j(","applied":"process_env_only","note":"live-read gates apply on next check;)j"
+          R"j( init-read gates (static const reads) require restart"})j");
 }
 
 // Live .tga reload: txmmgr caches textures by filename, so an edited loose
@@ -278,9 +279,9 @@ std::string cmdTextureRefresh(std::string_view req)
     long skippedNoFile = 0;
     const long refreshed = mc2::textures::refresh(name.c_str(), skippedNoFile);
     return makeReply(true, "",
-        "{\"refreshed\":" + std::to_string(refreshed)
-        + ",\"skipped_no_file\":" + std::to_string(skippedNoFile)
-        + ",\"note\":\"skipped = matching nodes with no loose disk file (FST-only)\"}");
+        R"j({"refreshed":)j" + std::to_string(refreshed)
+        + R"j(,"skipped_no_file":)j" + std::to_string(skippedNoFile)
+        + R"j(,"note":"skipped = matching nodes with no loose disk file (FST-only)"})j");
 }
 
 // The frame graph, made visible. Composes ONLY existing observe-only data:
@@ -327,12 +328,12 @@ std::string cmdFramegraph(std::string_view req)
         const RenderPassContract* c = contractFor(kFramePassOrder[i]);
         if (!c) continue;
         if (passes.size() > 1) passes += ',';
-        passes += "{\"name\":\"" + jsonEscape(c->name)
-            + "\",\"owner\":\"" + jsonEscape(c->ownerSubsystem)
-            + "\",\"kill_switch\":" + (c->killSwitchEnv
-                ? "\"" + jsonEscape(c->killSwitchEnv) + "\"" : "null")
-            + ",\"reads\":" + resList(c->reads)
-            + ",\"writes\":" + resList(c->writes) + "}";
+        passes += R"j({"name":")j" + jsonEscape(c->name)
+            + R"j(","owner":")j" + jsonEscape(c->ownerSubsystem)
+            + R"j(","kill_switch":)j" + (c->killSwitchEnv
+                ? R"j(")j" + jsonEscape(c->killSwitchEnv) + R"j(")j" : "null")
+            + R"j(,"reads":)j" + resList(c->reads)
+            + R"j(,"writes":)j" + resList(c->writes) + "}";
     }
     passes += ']';
 
@@ -353,9 +354,9 @@ std::string cmdFramegraph(std::string_view req)
             }
             if (!producer) continue;
             if (edges.size() > 1) edges += ',';
-            edges += "{\"from\":\"" + jsonEscape(producer->name)
-                + "\",\"to\":\"" + jsonEscape(consumer->name)
-                + "\",\"resource\":\"" + std::string(toString(consumer->reads[r])) + "\"}";
+            edges += R"j({"from":")j" + jsonEscape(producer->name)
+                + R"j(","to":")j" + jsonEscape(consumer->name)
+                + R"j(","resource":")j" + std::string(toString(consumer->reads[r])) + R"j("})j";
         }
     }
     edges += ']';
