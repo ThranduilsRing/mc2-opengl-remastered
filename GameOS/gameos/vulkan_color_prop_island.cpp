@@ -1162,7 +1162,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         {   // The compaction pass: set 0 only (same layout, bound with the same dynamic offsets); the push is the HZB-active flag.
             s->cullShader = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "color_prop_cull.comp.spv"));
             if (!s->cullShader) { setFallback("tier1_cull_spv_load_failed"); return false; }
-            VkPushConstantRange cpcr{VK_SHADER_STAGE_COMPUTE_BIT, 0, 4};
+            const VkPushConstantRange cpcr = {VK_SHADER_STAGE_COMPUTE_BIT, 0, 4};
             const VkDescriptorSetLayout cullSetLayout = s->dsl.get();
             VkPipelineLayoutCreateInfo cli{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
             cli.setLayoutCount = 1; cli.pSetLayouts = &cullSetLayout; cli.pushConstantRangeCount = 1; cli.pPushConstantRanges = &cpcr;

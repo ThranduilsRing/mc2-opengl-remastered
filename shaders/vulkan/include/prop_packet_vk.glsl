@@ -15,7 +15,9 @@ struct PropPacket {
 layout(set = 0, binding = 15, std430) readonly buffer PropPackets {
     PropPacket p[];
 } uPacketTbl;
+#ifdef MC2_PROP_PACKET_BASE_PUSH   // the vertex stage only; the FS reads the row index the VS forwards
 layout(push_constant) uniform PacketBasePC {
     uint packetBase;   // first row of the list this vkCmdDrawIndexedIndirectCount call draws
 } uPacketBase;
+#endif
 #define uPacket (uPacketTbl.p[vPacketIdx])
