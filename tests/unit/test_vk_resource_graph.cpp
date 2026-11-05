@@ -69,3 +69,43 @@ TEST_CASE("VkResourceGraph/every creation field participates in slot compatibili
     REQUIRE(p.valid);
     CHECK(p.slots == 0);
 }
+TEST_CASE("VkResourceGraph/imported read image first read is no barrier (R7), wide masks, buffers") {
+    const State lut{2, 0x8000000000ull, 0x8000000000ull, false};   // a 64-bit sync2 stage
+    auto p = compile({{{}, true, lut}}, {{{{0, lut}}}, {{{0, lut}}}});
+    REQUIRE(p.valid);
+    CHECK(p.barriers[0].empty());
+    CHECK(p.barriers[1].empty());
+    Image buf{{}, true, write};
+    buf.buffer = true;
+    p = compile({buf}, {{{{0, read}}}, {{{0, write}}}});
+    REQUIRE(p.valid);
+    CHECK(p.barriers[0].size() == 1);
+    CHECK(p.barriers[1].size() == 1);
+}
+TEST_CASE("VkResourceGraph/mip levels merge into runs and state carries across frames") {
+    Image chain = scratch();
+    chain.mips = 4;
+    const State storage{3, 4, 4, true};
+    // The first write covers every mip, then mip 0 is read alone, then mips 1-3 are read together.
+    auto p = compile({chain}, {{{{0, storage}}}, {{{0, read, 0, 1}}}, {{{0, read, 1, 3}}}});
+    REQUIRE(p.valid);
+    REQUIRE(p.barriers[0].size() == 1);
+    CHECK(p.barriers[0][0].mipCount == 4);
+    REQUIRE(p.barriers[1].size() == 1);
+    CHECK(p.barriers[1][0].baseMip == 0);
+    CHECK(p.barriers[1][0].mipCount == 1);
+    REQUIRE(p.barriers[2].size() == 1);
+    CHECK(p.barriers[2][0].baseMip == 1);
+    CHECK(p.barriers[2][0].mipCount == 3);
+    CHECK_FALSE(compile({chain}, {{{{0, storage, 0, 2}}}}).valid);   // a fresh image's first write covers every mip
+    // Frame N+1 starts where frame N ended: the layout round trip is one transition, not a transition from UNDEFINED.
+    Image imported = chain;
+    imported.imported = true;
+    imported.initial = write;
+    const std::vector<graph::State> carried = p.finalStates;
+    auto frame2 = compile({imported}, {{{{0, write}}}}, &carried);
+    REQUIRE(frame2.valid);
+    REQUIRE(frame2.barriers[0].size() == 1);   // every mip ended in the same read state: one barrier covers all four
+    CHECK(frame2.barriers[0][0].mipCount == 4);
+    CHECK(frame2.barriers[0][0].before.layout == read.layout);
+}

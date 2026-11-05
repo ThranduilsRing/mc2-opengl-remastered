@@ -1,7 +1,10 @@
 #pragma once
-// Fixed-order, single-queue whole-image graph. Compile at resource creation;
+// Fixed-order, single-queue resource graph. Compile at resource creation;
 // execute barriers immediately before each pass, outside render passes.
 // A transient's first write must initialize the whole image (clear/copy).
+// Masks are 64-bit (synchronization2 stage/access values). Buffers are images with
+// `buffer = true` (layout always 0). Images may carry several mip levels; the state is tracked per mip.
+// State can be carried across frames: feed Plan::finalStates of one compile as `carry` of the next.
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -9,7 +12,8 @@
 
 namespace mc2vk::graph {
 struct State {
-    uint32_t layout = 0, stages = 0, access = 0;
+    uint32_t layout = 0;
+    uint64_t stages = 0, access = 0;
     bool write = false;
 };
 struct Image {
@@ -17,26 +21,51 @@ struct Image {
     std::array<uint32_t, 6> key{};
     bool imported = false;
     State initial{};
+    uint32_t mips = 1;     // mip levels tracked separately (1 for a buffer)
+    bool buffer = false;   // a buffer: no layout
 };
-struct Use { unsigned image; State state; };
+// mipCount 0 = every mip from baseMip to the end.
+struct Use { unsigned image; State state; uint32_t baseMip = 0, mipCount = 0; };
 struct Pass { std::vector<Use> uses; };
 struct Lifetime { int firstPass = -1, lastPass = -1, slot = -1; };
-struct Barrier { unsigned image; State before, after; };
+struct Barrier { unsigned image; State before, after; uint32_t baseMip = 0, mipCount = 1; };
 struct Plan {
     bool valid = false;
     unsigned slots = 0;
     std::vector<Lifetime> lifetimes;
     std::vector<std::vector<Barrier>> barriers;
+    std::vector<unsigned> mipOffset;   // first flattened state index of every image
+    std::vector<State> finalStates;    // per image per mip after the last pass: the `carry` of the next compile
 };
 
-inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& passes) {
+inline bool sameState(const State& a, const State& b) {
+    return a.layout == b.layout && a.stages == b.stages && a.access == b.access && a.write == b.write;
+}
+
+inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& passes,
+                    const std::vector<State>* carry = nullptr) {
     Plan plan;
     plan.lifetimes.resize(images.size());
     plan.barriers.resize(passes.size());
+    plan.mipOffset.resize(images.size() + 1);
+    unsigned total = 0;
+    for (unsigned i = 0; i < images.size(); ++i) {
+        plan.mipOffset[i] = total;
+        total += std::max(images[i].mips, 1u);
+    }
+    plan.mipOffset[images.size()] = total;
+    if (carry && carry->size() != total) return plan;
+    auto range = [&](const Use& use, uint32_t& m0, uint32_t& n) {
+        const uint32_t mips = std::max(images[use.image].mips, 1u);
+        m0 = use.baseMip;
+        n = use.mipCount ? use.mipCount : (m0 < mips ? mips - m0 : 0);
+        return n > 0 && m0 + n <= mips;
+    };
     for (unsigned p = 0; p < passes.size(); ++p) {
         std::vector<bool> seen(images.size());
         for (const auto& use : passes[p].uses) {
-            if (use.image >= images.size() || seen[use.image] || !use.state.stages) return plan;
+            uint32_t m0, n;
+            if (use.image >= images.size() || seen[use.image] || !use.state.stages || !range(use, m0, n)) return plan;
             seen[use.image] = true;
             auto& life = plan.lifetimes[use.image];
             if (life.firstPass < 0) life.firstPass = int(p);
@@ -55,7 +84,8 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
         auto& life = plan.lifetimes[i];
         for (unsigned s = 0; s < owners.size(); ++s) {
             unsigned previous = owners[s];
-            if (images[previous].key == images[i].key && plan.lifetimes[previous].lastPass < life.firstPass) {
+            if (images[previous].key == images[i].key && images[previous].mips == images[i].mips &&
+                images[previous].buffer == images[i].buffer && plan.lifetimes[previous].lastPass < life.firstPass) {
                 life.slot = int(s);
                 owners[s] = i;
                 break;
@@ -64,45 +94,75 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
         if (life.slot < 0) { life.slot = int(owners.size()); owners.push_back(i); }
     }
     plan.slots = unsigned(owners.size());
-    std::vector<State> states(images.size());
+    std::vector<State> states(total);
+    std::vector<State> visible(total);   // stages/access the last producer barrier made the contents visible to
     std::vector<bool> initialized(images.size());
     std::vector<int> slotOwner(plan.slots, -1);
-    std::vector<State> visible(images.size());   // stages/access the last producer barrier made the contents visible to
     for (unsigned i = 0; i < images.size(); ++i) {
-        states[i] = images[i].imported ? images[i].initial : State{};
-        initialized[i] = images[i].imported && images[i].initial.layout != 0;
+        if (!images[i].imported) continue;
+        const unsigned mips = plan.mipOffset[i + 1] - plan.mipOffset[i];
+        for (unsigned m = 0; m < mips; ++m) {
+            const State s = carry ? (*carry)[plan.mipOffset[i] + m] : images[i].initial;
+            states[plan.mipOffset[i] + m] = s;
+            if (!s.write) visible[plan.mipOffset[i] + m] = s;   // an imported read state is already visible to what it names
+        }
+        const State& s0 = states[plan.mipOffset[i]];
+        initialized[i] = s0.layout != 0 || s0.stages != 0;
     }
     for (unsigned p = 0; p < passes.size(); ++p) {
-        for (auto use : passes[p].uses) {
-            auto& before = states[use.image];
-            bool fresh = !initialized[use.image];
+        for (const auto& use : passes[p].uses) {
+            uint32_t m0, n;
+            range(use, m0, n);
+            const unsigned base = plan.mipOffset[use.image];
+            const bool fresh = !initialized[use.image];
             if (fresh) {
-                if (!use.state.write) return plan; // No reading undefined transient contents.
+                if (!use.state.write) return plan;                                       // No reading undefined transient contents.
+                if (m0 != 0 || n != plan.mipOffset[use.image + 1] - base) return plan;   // The first write covers every mip.
                 const int slot = plan.lifetimes[use.image].slot;
+                State discarded{};
                 if (slot >= 0 && slotOwner[slot] >= 0) {
-                    before = states[slotOwner[slot]];
-                    before.layout = 0; // Discard, but retire every access to the old slot occupant.
+                    discarded = states[plan.mipOffset[slotOwner[slot]]];
+                    discarded.layout = 0; // Discard, but retire every access to the old slot occupant.
                 }
+                for (uint32_t m = 0; m < n; ++m) states[base + m] = discarded;
                 if (slot >= 0) slotOwner[slot] = int(use.image);
                 initialized[use.image] = true;
             }
-            if (fresh || before.layout != use.state.layout || before.write || use.state.write) {
-                plan.barriers[p].push_back({use.image, before, use.state});
-                before = use.state;
-                visible[use.image] = use.state;
-            } else {
-                // Read/read: a reader with a stage/access the producer barrier did not cover needs its own barrier. A later writer waits for ALL readers.
-                auto& vis = visible[use.image];
-                if ((use.state.stages & ~vis.stages) || (use.state.access & ~vis.access)) {
-                    plan.barriers[p].push_back({use.image, before, use.state});
-                    vis.stages |= use.state.stages;
-                    vis.access |= use.state.access;
+            // Per mip, then merge neighbouring mips that need the same transition into one barrier.
+            bool open = false;
+            Barrier cur{};
+            for (uint32_t m = m0; m < m0 + n; ++m) {
+                auto& before = states[base + m];
+                auto& vis = visible[base + m];
+                bool need = false;
+                const State src = before;
+                if (fresh || before.layout != use.state.layout || before.write || use.state.write) {
+                    need = true;
+                    before = use.state;
+                    vis = use.state;
+                } else {
+                    // Read/read: a reader with a stage/access the producer barrier did not cover needs its own barrier. A later writer waits for ALL readers.
+                    if ((use.state.stages & ~vis.stages) || (use.state.access & ~vis.access)) {
+                        need = true;
+                        vis.stages |= use.state.stages;
+                        vis.access |= use.state.access;
+                    }
+                    before.stages |= use.state.stages;
+                    before.access |= use.state.access;
                 }
-                before.stages |= use.state.stages;
-                before.access |= use.state.access;
+                if (!need) { open = false; continue; }
+                if (open && sameState(cur.before, src) && cur.baseMip + cur.mipCount == m) {
+                    ++cur.mipCount;
+                    plan.barriers[p].back().mipCount = cur.mipCount;
+                } else {
+                    cur = {use.image, src, use.state, m, 1};
+                    plan.barriers[p].push_back(cur);
+                    open = true;
+                }
             }
         }
     }
+    plan.finalStates = std::move(states);
     plan.valid = true;
     return plan;
 }
