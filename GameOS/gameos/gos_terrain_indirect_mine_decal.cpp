@@ -1,4 +1,5 @@
 // Native mine bake and cement overlay producer. Texture data stays in the shared GOS cache.
+#include <algorithm>
 #include <vector>
 #include "gos_terrain_indirect_internal.h"
 #include "../../mclib/texture_assets.h"
@@ -316,7 +317,7 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
                     const bool c2 = cemCorner(tileR + 1, tileC + 1);
                     const bool c3 = cemCorner(tileR + 1, tileC);
                     fragOwnsTile = (c0 || c1 || c2 || c3)
-                                   && deriveMaskIdFromCorners(c0, c1, c2, c3) >= 0;
+                                   && deriveMaskIdFromCorners(c0, c1, c2, c3).has_value();
                     // PAD-EDGE-ROAD-1: road-adjacent pad-edge transition tiles
                     // revert to the stock decal (PopulateRecipeCementWords
                     // bakes NO cement word for them — complementary predicate).
@@ -348,7 +349,7 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
     // The second plane shares the cement atlas and buffer: valid | adopt | art layer.
     // Keep the first plane intact so transparent road texels retain their cement base.
     auto* fields = gos_TerrainFieldStore();
-    const size_t plane = size_t(mapSide) * size_t(mapSide);
+    const size_t plane = static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide);
     std::vector<uint32_t> surfaceWords(2 * plane, 0u);
     if (fields && fields->cementWords().size() >= plane)
         std::copy_n(fields->cementWords().begin(), plane, surfaceWords.begin());
@@ -379,21 +380,23 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
                         (static_cast<unsigned long long>((texData & 0xffffu)) << 8) |
                         (static_cast<unsigned long long>((static_cast<int>(ovT) + 1)) << 2) |
                         (static_cast<unsigned>(cem) << 1) | static_cast<unsigned>(alp);
-                    const float wx = float(tC - half) * wupv;
-                    const float wy = float(half - tR) * wupv;
+                    const float wx = static_cast<float>(tC - half) * wupv;
+                    const float wy = static_cast<float>(half - tR) * wupv;
                     auto it = agg.find(key);
                     if (it == agg.end())
                         agg[key] = { 1, wx, wx, wy, wy };
                     else {
-                        Agg& a = it->second; ++a.n;
-                        if (wx < a.minX) a.minX = wx; if (wx > a.maxX) a.maxX = wx;
-                        if (wy < a.minY) a.minY = wy; if (wy > a.maxY) a.maxY = wy;
+                        auto& [aggKey, a] = *it; ++a.n;
+                        a.minX = std::min(a.minX, wx);
+                        a.maxX = std::max(a.maxX, wx);
+                        a.minY = std::min(a.minY, wy);
+                        a.maxY = std::max(a.maxY, wy);
                     }
                 }
             }
-            for (auto& kv : agg) {
-                const unsigned long long k = kv.first;
-                mc2::fmt::print_out("[TILE_CENSUS v1] terr={:d} tex={:d} ov={:d} cement={:d} alpha={:d} n={:d} bbox=({:.0f},{:.0f})-({:.0f},{:.0f})\n", mc2::fmt::as_i32(static_cast<long>((k >> 40))), mc2::fmt::as_u32(static_cast<unsigned long>(((k >> 8) & 0xffffu))), mc2::fmt::as_i32(static_cast<int>(((k >> 2) & 0x3f)) - 1), mc2::fmt::as_u64((k >> 1) & 1ull), mc2::fmt::as_u64(k & 1ull), mc2::fmt::as_i32(kv.second.n), kv.second.minX, kv.second.minY, kv.second.maxX, kv.second.maxY);
+            for (auto& [cellKey, cell] : agg) {
+                const unsigned long long k = cellKey;
+                mc2::fmt::print_out("[TILE_CENSUS v1] terr={:d} tex={:d} ov={:d} cement={:d} alpha={:d} n={:d} bbox=({:.0f},{:.0f})-({:.0f},{:.0f})\n", mc2::fmt::as_i32(static_cast<long>((k >> 40))), mc2::fmt::as_u32(static_cast<unsigned long>(((k >> 8) & 0xffffu))), mc2::fmt::as_i32(static_cast<int>(((k >> 2) & 0x3f)) - 1), mc2::fmt::as_u64((k >> 1) & 1ull), mc2::fmt::as_u64(k & 1ull), mc2::fmt::as_i32(cell.n), cell.minX, cell.minY, cell.maxX, cell.maxY);
             }
             fflush(stdout);
         }
@@ -464,7 +467,7 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
                 ? g_cementAlphaLayerIndexBySlot[slot] : 0xffffu;
             if (artLayer != 0xffffu && !gos_TerrainLodChunk_OverlaySidecarLoaded()) {
                 static const bool adopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
-                surfaceWords[plane + size_t(tileR) * mapSide + tileC] =
+                surfaceWords[plane + static_cast<size_t>(tileR) * mapSide + tileC] =
                     0x80000000u | (adopt ? 0x00010000u : 0u) | artLayer;
                 ++cookedRoads;
                 continue;
@@ -503,8 +506,8 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
             PostcompVertexPtr p3 = p0 + mapSide;
 
             auto cornerXY = [&](long tR, long tC, float& wx, float& wy) {
-                wx = float(tC - half) * wupv;     // fillWorldCacheVertex vx
-                wy = float(half - tR) * wupv;     // fillWorldCacheVertex vy
+                wx = static_cast<float>(tC - half) * wupv;     // fillWorldCacheVertex vx
+                wy = static_cast<float>(half - tR) * wupv;     // fillWorldCacheVertex vy
             };
 
             DecalVert c[4];
@@ -711,7 +714,7 @@ void BuildHardSurfaceTile(long tr, long tc) {
     const auto* fields = gos_TerrainFieldStore();
     const auto wordAt = [&](int row, int col) -> uint32_t {
         if (!fields || row < 0 || col < 0 || row >= mapSide || col >= mapSide) return 0;
-        const size_t index = size_t(row) * size_t(mapSide) + size_t(col);
+        const size_t index = static_cast<size_t>(row) * static_cast<size_t>(mapSide) + static_cast<size_t>(col);
         return index < fields->cementWords().size() ? fields->cementWords()[index] : 0;
     };
     const MapData::WorldQuadTerrainCacheEntry* e = Terrain::mapData->getTerrainFaceCacheEntry(tr, tc);
@@ -767,26 +770,26 @@ void BuildHardSurfaceTile(long tr, long tc) {
     const uint32_t word = wordAt(tr, tc);
     for (int row = 0; row < kHsRes; ++row) {
         for (int col = 0; col < kHsRes; ++col) {
-            const float u = (float(col) + 0.5f) / kHsRes;
-            const float v = (float(row) + 0.5f) / kHsRes;
+            const float u = (static_cast<float>(col) + 0.5f) / kHsRes;
+            const float v = (static_cast<float>(row) + 0.5f) / kHsRes;
             float atlasAlpha = coverage[row, col] / 255.0f;
             if ((word & 0x00800000u) && fields) {
                 const auto& atlas = fields->cementAtlas();
                 const int grid = g_cementAtlasGridSide;
                 if (grid > 0 && atlas.width > 0 && atlas.height > 0 && !atlas.texels.empty()) {
-                    const int layer = int(word & 0xffffu);
-                    const int x = std::min(int((float(layer % grid) + u) * atlas.width / grid), atlas.width - 1);
-                    const int y = std::min(int((float(layer / grid) + v) * atlas.height / grid), atlas.height - 1);
-                    atlasAlpha = atlas.texels[(size_t(y) * atlas.width + x) * 4 + 3] / 255.0f;
+                    const int layer = static_cast<int>(word & 0xffffu);
+                    const int x = std::min(static_cast<int>((static_cast<float>(layer % grid) + u) * atlas.width / grid), atlas.width - 1);
+                    const int y = std::min(static_cast<int>((static_cast<float>(layer / grid) + v) * atlas.height / grid), atlas.height - 1);
+                    atlasAlpha = atlas.texels[(static_cast<size_t>(y) * atlas.width + x) * 4 + 3] / 255.0f;
                 }
             }
-            const float cement = mc2::vegetation::cementWordCoverage(int(tr), int(tc), u, v, atlasAlpha, wordAt);
-            coverage[row, col] = uint8_t(255 * mc2::vegetation::renderedHardSurfaceCoverage(
+            const float cement = mc2::vegetation::cementWordCoverage(static_cast<int>(tr), static_cast<int>(tc), u, v, atlasAlpha, wordAt);
+            coverage[row, col] = static_cast<uint8_t>(255 * mc2::vegetation::renderedHardSurfaceCoverage(
                 cement, coverage[row, col] / 255.0f, overlayDrawn) + 0.5f);
         }
     }
     const bool solid = std::all_of(blk, blk + kHsRes * kHsRes, [](uint8_t value) { return value == 255; });
-    if (solid) g_hs.texels.resize(size_t(b) * kHsRes * kHsRes);
+    if (solid) g_hs.texels.resize(static_cast<size_t>(b) * kHsRes * kHsRes);
     g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(cacheW) + static_cast<size_t>(tc)] = solid ? -2 : b;
 }
 
@@ -817,7 +820,7 @@ static void FlushHardSurfaceTiles() {
     if (!g_hs.built) return;
     for (const uint32_t t : g_hsPending) {
         g_hs.blockOf[t] = -1;
-        BuildHardSurfaceTile(long(t / uint32_t(g_hs.side)), long(t % uint32_t(g_hs.side)));
+        BuildHardSurfaceTile(static_cast<long>(t / static_cast<uint32_t>(g_hs.side)), static_cast<long>(t % static_cast<uint32_t>(g_hs.side)));
     }
     g_hsPending.clear();
 }
@@ -848,7 +851,7 @@ void MarkDecalDirtyTile(long row, long col) {
         MarkDecalDirty();
         return;
     }
-    const uint32_t t = uint32_t(row * g_hs.side + col);
+    const uint32_t t = static_cast<uint32_t>(row * g_hs.side + col);
     g_hsPending.push_back(t); g_hsDirty.push_back(t);
     ++g_hsVersion;
     g_decalVBODirty = true;
@@ -861,7 +864,7 @@ HardSurfaceDirty TakeHardSurfaceDirty() {
     d.all = g_hsDirtyAll || g_hsDirty.size() > d.rects.size();
     if (!d.all) {
         for (const uint32_t t : g_hsDirty) {
-            const float col = float(t % uint32_t(g_hs.side)), row = float(t / uint32_t(g_hs.side)), half = float(g_hs.half);
+            const float col = static_cast<float>(t % static_cast<uint32_t>(g_hs.side)), row = static_cast<float>(t / static_cast<uint32_t>(g_hs.side)), half = static_cast<float>(g_hs.half);
             d.rects[d.count++] = {(col - 1.0f - half) * g_hs.wupv, (half - (row + 2.0f)) * g_hs.wupv,
                                   (col + 2.0f - half) * g_hs.wupv, (half - (row - 1.0f)) * g_hs.wupv};
         }

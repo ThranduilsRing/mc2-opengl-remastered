@@ -54,7 +54,7 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
     for (const auto& inst : instances) {
         const auto it = meshes.find(inst.meshId);
         if (it == meshes.end()) continue;
-        const auto& mesh = it->second;
+        const auto& [meshKey, mesh] = *it;
         VfxParticleDraw draw{};
         draw.start = static_cast<uint32_t>(vertices.size());
         draw.count = static_cast<uint32_t>(mesh.indices.size());

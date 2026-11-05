@@ -154,10 +154,10 @@ static void BuildLightGrid(uint32_t numLights) {
         const float r = radius(L);
         if (!(r > 0.0f)) continue;            // NaN-safe: excludes r<=0 and NaN
         ++live;
-        if (L.position[0] - r < minX) minX = L.position[0] - r;
-        if (L.position[1] - r < minY) minY = L.position[1] - r;
-        if (L.position[0] + r > maxX) maxX = L.position[0] + r;
-        if (L.position[1] + r > maxY) maxY = L.position[1] + r;
+        minX = std::min(minX, L.position[0] - r);
+        minY = std::min(minY, L.position[1] - r);
+        maxX = std::max(maxX, L.position[0] + r);
+        maxY = std::max(maxY, L.position[1] + r);
     }
     if (live < kLightGridMinLights) return;
     const float spanX = maxX - minX, spanY = maxY - minY;
@@ -180,9 +180,10 @@ static void BuildLightGrid(uint32_t numLights) {
         y0 = static_cast<int>(std::floor((L.position[1] - r - minY) * invH));
         x1 = static_cast<int>(std::floor((L.position[0] + r - minX) * invW));
         y1 = static_cast<int>(std::floor((L.position[1] + r - minY) * invH));
-        if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
-        if (x1 > static_cast<int>(dim) - 1) x1 = static_cast<int>(dim) - 1;
-        if (y1 > static_cast<int>(dim) - 1) y1 = static_cast<int>(dim) - 1;
+        x0 = std::max(x0, 0);
+        y0 = std::max(y0, 0);
+        x1 = std::min(x1, static_cast<int>(dim) - 1);
+        y1 = std::min(y1, static_cast<int>(dim) - 1);
     };
     // Circle/rectangle rejection removes the AABB corners without dropping any
     // sphere that can reach a fragment in this cell (including raised objects).
@@ -259,8 +260,9 @@ static void BuildLightGrid(uint32_t numLights) {
         static uint32_t s_peakCell = 0;
         uint32_t peak = 0;
         for (uint32_t c = 0; c < cells; ++c)
-            if (s_gridHeader[c * 2u + 1u] > peak) peak = s_gridHeader[c * 2u + 1u];
-        if (peak > s_peakCell) {
+            peak = std::max(peak, static_cast<uint32_t>(s_gridHeader[c * 2u + 1u]));
+        const bool newPeakCell = peak > s_peakCell;
+        if (newPeakCell) {
             s_peakCell = peak;
             MC2_DIAGFE(stderr,
                 "[LIGHT_GRID v1] dim=%u lights=%u stamped=%u peak_cell=%u avg_cell=%.2f\n",
@@ -296,10 +298,11 @@ const GpuTerrainLight* GetLightPoolCpu(uint32_t* outCount) {
     return s_lightBuf.data();
 }
 
-bool GetLightGridCpu(LightGridCpu& out) {
+std::optional<LightGridCpu> GetLightGridCpu() {
     if (!s_initialized || s_lightGridDim == 0 ||
         s_gridHeader.empty() || s_gridIndices.empty())
-        return false;
+        return std::nullopt;
+    LightGridCpu out{};
     out.dim         = s_lightGridDim;
     out.minXY[0]    = s_lightGridMin[0];
     out.minXY[1]    = s_lightGridMin[1];
@@ -309,7 +312,7 @@ bool GetLightGridCpu(LightGridCpu& out) {
     out.headerWords = static_cast<uint32_t>(s_gridHeader.size());
     out.indices     = s_gridIndices.data();
     out.indexWords  = static_cast<uint32_t>(s_gridIndices.size());
-    return true;
+    return out;
 }
 
 const void* GetObjectLightPoolUpload(size_t& bytes) {
@@ -325,8 +328,9 @@ const void* GetObjectLightPoolUpload(size_t& bytes) {
         // Over the cap, keep the lights whose circle reaches closest to the camera (not the first by source order),
         // in source order, and remap the grid's indices to the kept slots.
         std::vector<uint32_t> keptHeader, keptIndices;
-        LightGridCpu grid{};
-        const bool indexed = GetLightGridCpu(grid);
+        const auto gridOpt = GetLightGridCpu();
+        const bool indexed = gridOpt.has_value();
+        LightGridCpu grid = gridOpt.value_or(LightGridCpu{});
         if (s_lastNumLights > kObjectPoolLights) {
             std::vector<std::pair<float, uint32_t>> order(s_lastNumLights);
             for (uint32_t i = 0; i < s_lastNumLights; ++i) {
@@ -452,7 +456,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
         static const uint32_t s_capOverride = static_cast<uint32_t>(mc2::gate::get<"MC2_LIGHT_POOL_MAX">());
         const uint32_t defaultCap = 256u;
         const uint32_t want = s_capOverride ? s_capOverride : defaultCap;
-        if (want > s_maxLights) s_maxLights = want;
+        s_maxLights = std::max(s_maxLights, want);
     }
 
     // Pre-size pack buffers
@@ -549,8 +553,8 @@ void PackAndDispatch() {
             if (v.vertexNum < 0 || static_cast<uint32_t>(v.vertexNum) >= s_numVertices) continue;
 
             const uint32_t uvn = static_cast<uint32_t>(v.vertexNum);
-            if (uvn < packMinVN) packMinVN = uvn;
-            if (uvn > packMaxVN) packMaxVN = uvn;
+            packMinVN = std::min(packMinVN, uvn);
+            packMaxVN = std::max(packMaxVN, uvn);
 
             GpuTerrainVertexInput& vi = s_packBuf[uvn];
             vi.xy[0]      = v.vx;
@@ -580,7 +584,7 @@ void PackAndDispatch() {
                     else                                  hf = 0.0f;
                 }
                 const double delta = fabs(static_cast<double>(hf) - static_cast<double>(v.hazeFactor));
-                if (delta > hpFrameMaxAbs) hpFrameMaxAbs = delta;
+                hpFrameMaxAbs = std::max(hpFrameMaxAbs, delta);
                 if (delta > 1e-4) ++hpFrameViol;
             }
 
@@ -609,7 +613,7 @@ void PackAndDispatch() {
         // Step 7: MC2_HAZE_PARITY — fold this frame into running totals, emit a
         // summary every 600 frames (matches the file's 600-frame cadence).
         if (s_hazeParity) {
-            if (hpFrameMaxAbs > s_hazeParityMaxAbsDelta) s_hazeParityMaxAbsDelta = hpFrameMaxAbs;
+            s_hazeParityMaxAbsDelta = std::max(s_hazeParityMaxAbsDelta, hpFrameMaxAbs);
             s_hazeParityViolations += hpFrameViol;
             ++s_hazeParitySummaryFrames;
             if (s_hazeParitySummaryFrames % 600 == 0) {
@@ -791,9 +795,9 @@ void PackAndDispatch() {
                 const float core  = s_lightRealismPoolCore;    // closeDistance scale
                 float farD   = tl->farDistance * spill;
                 float closeD = tl->closeDistance * core;
-                if (farD < 1.0f) farD = 1.0f;
-                if (closeD < 0.0f) closeD = 0.0f;
-                if (closeD > farD - 1.0f) closeD = farD - 1.0f;
+                farD = std::max(farD, 1.0f);
+                closeD = std::max(closeD, 0.0f);
+                closeD = std::min(closeD, farD - 1.0f);
                 gl.closeDistance   = closeD;
                 gl.farDistance     = farD;
                 gl.oneOverDistance = 1.0f / (farD - closeD);
@@ -828,7 +832,8 @@ void PackAndDispatch() {
         {
             static uint32_t s_peakWanted = 0;
             static bool     s_warnedDrop = false;
-            if (poolWanted > s_peakWanted) {
+            const bool newPeakWanted = poolWanted > s_peakWanted;
+            if (newPeakWanted) {
                 s_peakWanted = poolWanted;
                 MC2_DIAGFE(stderr,
                     "[LIGHT_POOL_CAP v1] peak_wanted=%u packed=%u cap=%u dropped=%u\n",

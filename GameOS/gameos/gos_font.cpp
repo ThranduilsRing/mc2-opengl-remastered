@@ -68,8 +68,8 @@ bool gos_load_glyphs(mc2::czstring glyphFile, gosGlyphInfo& gi)
         if(shifted_u < 0 || shifted_v < 0) {
             MC2_LOG(Core, Debug, "glyph pre-fold underflow in {} at idx {:d} (u={:d} minx={:d} v={:d} maxy={:d} ascent={:d}); clamping to 0",
                   mc2::fmt::safe(glyphFile), mc2::fmt::as_u32(i), mc2::fmt::as_u32(g.u), mc2::fmt::as_i32(g.minx), mc2::fmt::as_u32(g.v), mc2::fmt::as_i32(g.maxy), mc2::fmt::as_u32(gi.font_ascent_));
-            if(shifted_u < 0) shifted_u = 0;
-            if(shifted_v < 0) shifted_v = 0;
+            shifted_u = std::max(shifted_u, 0);
+            shifted_v = std::max(shifted_v, 0);
         }
         g.u = static_cast<uint32_t>(shifted_u);
         g.v = static_cast<uint32_t>(shifted_v);
@@ -172,8 +172,8 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
                                 &top, &bot)) {
             continue;
         }
-        if(top < global_top) global_top = top;
-        if(bot > global_bot) global_bot = bot;
+        global_top = std::min(global_top, top);
+        global_bot = std::max(global_bot, bot);
     }
 
     int top_trim = (global_bot >= 0) ? global_top : 0;
@@ -181,8 +181,7 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
         ? (global_bot - global_top + 1)
         : static_cast<int>(font_height);
 
-    if(visible_height < 1) visible_height = 1;
-    if(visible_height > static_cast<int>(font_height)) visible_height = static_cast<int>(font_height);
+    visible_height = std::clamp(visible_height, 1, static_cast<int>(font_height));
 
     for(uint32_t c = 0; c < gi.num_glyphs_; ++c) {
         gosGlyphMetrics& g = gi.glyphs_[c];

@@ -1,3 +1,4 @@
+#include <optional>
 #include <SDL2/SDL.h>
 #include <string.h> // memset
 #include <cstdio>
@@ -179,14 +180,14 @@ void resetKeypress() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-static int sdl2idx(int button) {
+static std::optional<int> sdl2idx(int button) {
     switch(button) {
         case SDL_BUTTON_LEFT: return 0;
         case SDL_BUTTON_MIDDLE: return 1;
         case SDL_BUTTON_RIGHT: return 2;
         case SDL_BUTTON_X1: return 3;
         case SDL_BUTTON_X2: return 4;
-        default: return -1;
+        default: return std::nullopt;
     }
 }
 
@@ -204,8 +205,9 @@ void handleMouseButton(const SDL_Event* event) {
     assert(event);
 
     MouseInfo* mi = &g_mouse_info;
-    int idx = sdl2idx(event->button.button);
-    if(idx != -1 && idx < MouseInfo::NUM_BUTTONS) {
+    const auto idxOpt = sdl2idx(event->button.button);
+    if(idxOpt && *idxOpt < MouseInfo::NUM_BUTTONS) {
+        const int idx = *idxOpt;
         mi->button_state_[idx] = event->type == SDL_MOUSEBUTTONUP ? KS_PRESSED : KS_RELEASED;
     }
 }
@@ -299,9 +301,10 @@ void updateMouseState() {
 
     for(unsigned int b=0; b < sizeof(buttons)/sizeof(buttons[0]); ++b) {
 
-        int idx = sdl2idx(buttons[b]);
-        if(idx == -1 || idx >= MouseInfo::NUM_BUTTONS)
+        const auto idxOpt = sdl2idx(buttons[b]);
+        if(!idxOpt || *idxOpt >= MouseInfo::NUM_BUTTONS)
             continue;
+        const int idx = *idxOpt;
 
         const capture::Edge prev = static_cast<capture::Edge>(mi->button_state_[idx]);
         const capture::Edge next = capture::nextEdge(prev, (button_state & SDL_BUTTON(buttons[b])) != 0);

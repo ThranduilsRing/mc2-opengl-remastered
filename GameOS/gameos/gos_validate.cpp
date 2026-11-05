@@ -1,4 +1,5 @@
 // gos_validate.cpp - Validation mode: auto-run, telemetry, screenshot, JSON log
+#include <algorithm>
 #include "mc2_czstring.h"
 #include "gos_validate.h"
 #include "gos_crashbundle.h"
@@ -63,8 +64,7 @@ void validateRecordShaderError(mc2::czstring msg) {
 void validateRecordFrame(float frameMs) {
     s_telemetry.framesRendered++;
     s_telemetry.totalFrameMs += frameMs;
-    if (frameMs > s_telemetry.maxFrameMs)
-        s_telemetry.maxFrameMs = frameMs;
+    s_telemetry.maxFrameMs = std::max(s_telemetry.maxFrameMs, frameMs);
     // The screenshot is read back by the present path of the next frame, which is the last one the run draws.
     if (s_config.enabled && s_config.screenshotPath[0] && s_telemetry.framesRendered == s_config.maxFrames - 1)
         gos::screenshot::request(s_config.screenshotPath);

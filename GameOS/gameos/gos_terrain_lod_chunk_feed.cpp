@@ -127,8 +127,8 @@ extern "C" void mc2_terrain_feed_dump_consumed(const Mc2TerrainTier1Feed* f, uin
     field("shore_mask", f->shorelineMaskRgba, static_cast<size_t>(f->shorelineMaskW) * f->shorelineMaskH * 4);
     field("shore_field", f->shoreFieldTexels, static_cast<size_t>(f->shoreFieldW) * f->shoreFieldH * sizeof(float));
     field("light_pool", poolCount > 0 ? f->poolLights : nullptr, static_cast<size_t>(poolCount) * 48);
-    field("light_header", gridDim > 0 ? f->lightGridHeader : nullptr, gridDim > 0 ? size_t(f->lightGridHeaderWords) * 4 : 0);
-    field("light_indices", gridDim > 0 ? f->lightGridIndices : nullptr, gridDim > 0 ? size_t(f->lightGridIndexWords) * 4 : 0);
+    field("light_header", gridDim > 0 ? f->lightGridHeader : nullptr, gridDim > 0 ? static_cast<size_t>(f->lightGridHeaderWords) * 4 : 0);
+    field("light_indices", gridDim > 0 ? f->lightGridIndices : nullptr, gridDim > 0 ? static_cast<size_t>(f->lightGridIndexWords) * 4 : 0);
     json += R"json(},"versions":[)json";
     const uint64_t versions[] = {f->heightVersion, f->cementVersion, f->visualHeightVersion, f->colormapVersion,
         f->cementAtlasVersion, f->shorelineMaskVersion, f->shoreFieldVersion, f->matNormalVersion, f->staticShadowGeneration};
@@ -339,8 +339,8 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
                 out->numPoolLights = 0;
             } else {
                 out->poolLights = pl;   // numPoolLights (<= n, capped 256) entries are read
-                gos_terrain_lighting::LightGridCpu lg{};
-                if (gos_terrain_lighting::GetLightGridCpu(lg)) {
+                if (const auto lgOpt = gos_terrain_lighting::GetLightGridCpu()) {
+                    const auto& lg = *lgOpt;
                     out->lightGridDim        = static_cast<int32_t>(lg.dim);
                     out->lightGridMin[0]     = lg.minXY[0];
                     out->lightGridMin[1]     = lg.minXY[1];

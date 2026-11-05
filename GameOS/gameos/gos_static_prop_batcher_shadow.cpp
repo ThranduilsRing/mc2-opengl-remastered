@@ -92,8 +92,8 @@ extern "C" void mc2_color_prop_island_end_frame() {
     s_bucketsByType.clear();
     s_lastUploadedSlot = 0xFFFFFFFFu;
     s_typeInstanceCountPrevFrame.clear();
-    for (const auto& kv : s_typeRanges)
-        s_typeInstanceCountPrevFrame[kv.first] = kv.second.instanceCount;
+    for (const auto& [rangeType, range] : s_typeRanges)
+        s_typeInstanceCountPrevFrame[rangeType] = range.instanceCount;
 }
 
 static uint64_t propLodKey(const GpuStaticPropInstance& inst) {
@@ -162,8 +162,8 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     }
     std::vector<uint32_t> typeIds;
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
-    for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
-    for (const auto& kv : s_bucketsByType) typeIds.push_back(kv.first);
+    for (const auto& [storeType, storeInsts] : s_persistentStaticStore) typeIds.push_back(storeType);
+    for (const auto& [bucketType, bucketRef] : s_bucketsByType) typeIds.push_back(bucketType);
     if (lodActive) for (const auto& [lodTid, lodVec] : s_lodOut) if (!lodVec.empty()) typeIds.push_back(lodTid);
     std::sort(typeIds.begin(), typeIds.end());
     typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
@@ -179,12 +179,12 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         }
         auto it = s_persistentStaticStore.find(tid);
         if (it != s_persistentStaticStore.end()) {
-            const std::vector<GpuStaticPropInstance>& insts = it->second;
+            const auto& [storeKey, insts] = *it;
             s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
         }
         auto bt = s_bucketsByType.find(tid);
         if (bt != s_bucketsByType.end()) {
-            const PerTypeBucket& b = bt->second;
+            const auto& [bucketKey, b] = *bt;
             s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.end());
         }
     }

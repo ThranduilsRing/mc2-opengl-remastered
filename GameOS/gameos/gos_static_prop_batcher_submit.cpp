@@ -29,7 +29,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         return false;  // Layer B: caller calls shape->Render() on false.
     }
 
-    const uint32_t typeID = it->second;
+    const auto& [typeKey, typeID] = *it;
     const GpuStaticPropType& type = s_types[typeID];
     PerTypeBucket& bucket = s_bucketsByType[typeID];
 
@@ -380,7 +380,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             static std::set<const TG_TypeShape*> s_loggedStaleTypes;
             const TG_TypeShape* ts0 =
                 static_cast<const TG_TypeShape*>(firstShapeNodeLeaf->myType);
-            if (s_loggedStaleTypes.insert(ts0).second) {
+            if (auto [loggedPos, firstLog] = s_loggedStaleTypes.insert(ts0); firstLog) {
                 MC2_DIAGFE(stderr,
                     "[LIGHTROW_FRESHNESS v1] event=stale_row_regathered "
                     "nodeId=%s caller=%s staleIndex=%u cachedFrame=%u currentFrame=%u "

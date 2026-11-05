@@ -115,7 +115,7 @@ uint64_t GpuStaticPropBatcher::persistentStaticGen() { return s_persistentStatic
 void GpuStaticPropBatcher::setPersistentStaticGen(uint64_t g) { s_persistentStaticGen = g; }
 
 uint32_t gos_ProbeStaticInstanceCount() {
-    uint32_t n = 0; for (auto& kv : s_persistentStaticStore) n += static_cast<uint32_t>(kv.second.size());
+    uint32_t n = 0; for (auto& [typeKey, insts] : s_persistentStaticStore) n += static_cast<uint32_t>(insts.size());
     return n;
 }
 bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
@@ -133,7 +133,7 @@ bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
 
 void GpuStaticPropBatcher::clearPersistentStatic() {
     // Keep the map + per-type vector capacity; just reset sizes (rebuild refills).
-    for (auto& kv : s_persistentStaticStore) kv.second.clear();
+    for (auto& [typeKey, insts] : s_persistentStaticStore) insts.clear();
     s_persistentStaticGen = 0xFFFFFFFFFFFFFFFFull;  // invalid until the rebuild sets it
 }
 
@@ -176,7 +176,8 @@ bool GpuStaticPropBatcher::buildRecipeFromShape(
 
     GpuStaticPropInstance inst{};
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
-    inst.typeID           = it->second;
+    const auto& [typeKey, regTypeId] = *it;
+    inst.typeID           = regTypeId;
     inst.actorTint = 0x0002ffffu;        // kNeutral|I=1 until the appearance supplies its light word
     inst.flags            = flags;
     inst.lightDataIndex   = 0xFFFFFFFFu; // sentinel; flush() patches per-frame
@@ -215,7 +216,8 @@ bool batcher_typeIdForTypeShape(const void* typeShape, uint32_t* outTypeId) {
     if (!ts) return false;
     auto it = s_typeIndex.find(ts->stableId());
     if (it == s_typeIndex.end()) return false;
-    if (outTypeId) *outTypeId = it->second;
+    const auto& [typeKey, regTypeId] = *it;
+    if (outTypeId) *outTypeId = regTypeId;
     return true;
 }
 
@@ -224,7 +226,12 @@ void batcher_queryTypeShape(const void* typeShape, int* outRegistered, int* outF
     if (outRegistered) *outRegistered = (ts && s_typeIndex.count(ts->stableId())) ? 1 : 0;
     if (outFailed) {
         auto it = ts ? s_failedTypes.find(ts->stableId()) : s_failedTypes.end();
-        *outFailed = (it != s_failedTypes.end() && it->second) ? 1 : 0;
+        bool failed = false;
+        if (it != s_failedTypes.end()) {
+            const auto& [failKey, failFlag] = *it;
+            failed = failFlag;
+        }
+        *outFailed = failed ? 1 : 0;
     }
 }
 
@@ -333,7 +340,8 @@ uint32_t batcher_getInstanceCap(uint32_t typeID) {
 uint32_t batcher_getTypeUploadedInstanceCount(uint32_t typeID) {
     auto it = s_typeRanges.find(typeID);
     if (it == s_typeRanges.end()) return 0u;
-    return it->second.instanceCount;
+    const auto& [rangeKey, range] = *it;
+    return range.instanceCount;
 }
 
 // M1 FROZEN-STATIC-CULL-RECORDS: module-scope copy of the per-type global
@@ -357,8 +365,11 @@ static void rebuildStaticBaseInstanceTableIfDirty() {
     for (unsigned int typeID : s_sortedTypeOrder) {
         if (typeID >= s_types.size()) continue;
         auto it = s_persistentStaticStore.find(typeID);
-        const uint32_t cnt = (it != s_persistentStaticStore.end())
-                                 ? static_cast<uint32_t>(it->second.size()) : 0u;
+        uint32_t cnt = 0u;
+        if (it != s_persistentStaticStore.end()) {
+            const auto& [storeKey, storeInsts] = *it;
+            cnt = static_cast<uint32_t>(storeInsts.size());
+        }
         const uint32_t group = s_types[typeID].alphaClass;
         s_staticBaseInstanceForType[typeID] = groupCursor[group];
         groupCursor[group] += cnt;
@@ -474,7 +485,11 @@ bool batcher_getDrawSlotEntry(uint32_t slot, ExtractedStaticPropPacket* out) {
 
     // instanceCount from previous frame's flush() snapshot
     const auto it = s_typeInstanceCountPrevFrame.find(out->typeId);
-    out->instanceCount = (it != s_typeInstanceCountPrevFrame.end()) ? it->second : 0u;
+    out->instanceCount = 0u;
+    if (it != s_typeInstanceCountPrevFrame.end()) {
+        const auto& [prevKey, prevCount] = *it;
+        out->instanceCount = prevCount;
+    }
 
     // texArrayLayer from per-packet sidecar (v2.2). Sentinel -1 if not available.
     {
@@ -550,8 +565,11 @@ void batcher_compareSnapshotPackets(RenderSnapshot* snap) {
         // Informational only — different-frame authority by design; NOT in ok gate.
         {
             const auto typeIt = s_typeRanges.find(row.typeId);
-            const uint32_t currentInstCount =
-                (typeIt != s_typeRanges.end()) ? typeIt->second.instanceCount : 0u;
+            uint32_t currentInstCount = 0u;
+            if (typeIt != s_typeRanges.end()) {
+                const auto& [rangeKey, range] = *typeIt;
+                currentInstCount = range.instanceCount;
+            }
             if (row.instanceCount != currentInstCount) {
                 ++snap->spInstanceCountMismatch;
             }
@@ -698,7 +716,8 @@ void batcher_prepareBaseInstanceTable() {
         if (kvIt == s_bucketsByType.end()) continue;
         const uint32_t group = s_types[typeID].alphaClass;
         baseInstanceForType[typeID] = groupCursor[group];
-        groupCursor[group] += static_cast<uint32_t>(kvIt->second.instances.size());
+        const auto& [bucketKey, bucket] = *kvIt;
+        groupCursor[group] += static_cast<uint32_t>(bucket.instances.size());
     }
     const uint32_t offGroupCount = groupCursor[0];
     const uint32_t totalCount    = offGroupCount + groupCursor[1];
