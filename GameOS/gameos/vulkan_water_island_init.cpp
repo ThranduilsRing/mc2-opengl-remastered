@@ -315,10 +315,6 @@ bool init_island(WaterIsland* s, int w, int h) {
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
-        VkFenceCreateInfo fnci{}; fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (!mc2vk::create(s->fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fnci, nullptr, h); })) {
-            vlog("vkCreateFence failed."); return false;
-        }
     }
 
     if (!init_reflection(s)) return false;

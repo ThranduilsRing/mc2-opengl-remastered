@@ -289,7 +289,7 @@ struct SpatialAA::Impl {
     }
     void uploadLookup(VkCommandBuffer cb, Texture& tex, uint32_t width, uint32_t height, VkDeviceSize offset) {
         imageBarrier(cb, tex.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+                     (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT), VK_PIPELINE_STAGE_TRANSFER_BIT);
         VkBufferImageCopy copy{}; copy.bufferOffset = offset; copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}; copy.imageExtent = {width, height, 1};
         vkCmdCopyBufferToImage(cb, lookupUpload.get(), tex.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
         imageBarrier(cb, tex.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -327,9 +327,9 @@ struct SpatialAA::Impl {
     }
     void recordCompute(VkCommandBuffer cb, const VkImageResource& output) {
         imageBarrier(cb, cmaaEdges.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-            0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+            0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT), VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
         imageBarrier(cb, heads.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+            0, VK_ACCESS_TRANSFER_WRITE_BIT, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT), VK_PIPELINE_STAGE_TRANSFER_BIT);
         VkClearColorValue emptyHeads{};
         for (auto& value : emptyHeads.uint32) value = UINT32_MAX;
         VkImageSubresourceRange headRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
@@ -387,13 +387,15 @@ void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
     const char* names[] = {"VKIsl.AA.Off", "VKIsl.AA.SMAA1x", "VKIsl.AA.FXAA", "VKIsl.AA.CMAA2"};
     MC2_VK_GPU_SCOPE(scope, cb, names[s.mode]);
     // Scratch images are shared across frame slots on one queue; retire prior reads before overwriting them.
-    memoryBarrier(cb, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                  VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    // Explicit stage set (was ALL_COMMANDS->ALL_COMMANDS): the scene's color writes plus the previous frame's AA reads/writes of the scratch images.
+    constexpr VkPipelineStageFlags kAaStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+    memoryBarrier(cb, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, kAaStages, kAaStages);
     if (s.mode == 1) { s.recordGraph(cb, output); return; }
     imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     imageBarrier(cb, s.input.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+                 (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT), VK_PIPELINE_STAGE_TRANSFER_BIT);
     VkImageCopy copy{}; copy.srcSubresource = copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}; copy.extent = {s.w, s.h, 1};
     vkCmdCopyImage(cb, output.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s.input.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
     imageBarrier(cb, s.input.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

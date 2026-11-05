@@ -70,6 +70,7 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
     std::vector<State> visible(images.size());   // stages/access the last producer barrier made the contents visible to
     for (unsigned i = 0; i < images.size(); ++i) {
         states[i] = images[i].imported ? images[i].initial : State{};
+        visible[i] = states[i];   // an imported image's initial state is already visible to its first same-state reader
         initialized[i] = images[i].imported && images[i].initial.layout != 0;
     }
     for (unsigned p = 0; p < passes.size(); ++p) {

@@ -221,7 +221,6 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
     mc2vk::OwnedCommandPool cpool;
-    mc2vk::OwnedFence fence;
 
     // STEP 3.4P: the native Vulkan lighting + cull/pack producers (declared last: released first). `nativeFailed` = init was tried and refused, so the
     // GL readback feed stays in use for the session.

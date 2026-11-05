@@ -341,7 +341,8 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
 
     // ---- record ----
     // Hand-off from earlier frames' work on this queue (their cull read lightOut; the vertex stage read thin / recipes).
-    cmdBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+               VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuCompute, cb, "VKIsl.Terrain.CullCompute");
     vkCmdFillBuffer(cb, header_[par].get(), 0, 16, 0);
