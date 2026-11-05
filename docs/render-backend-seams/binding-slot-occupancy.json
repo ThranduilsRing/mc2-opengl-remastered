@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 258,
+    "glsl_blocks_with_binding": 262,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -212,6 +212,16 @@
         "branch": {
           "1": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 14,
+        "role": "SrcVertices",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
+        "branch": {}
       },
       {
         "side": "glsl",
@@ -621,11 +631,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_depth.vert",
-        "line": 11,
+        "line": 12,
         "role": "InstanceBuffer",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/mech_depth.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 15,
+        "role": "BonePalette",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
         "branch": {}
       },
       {
@@ -1293,11 +1313,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_depth.vert",
-        "line": 13,
+        "line": 14,
         "role": "BoneBuffer",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/mech_depth.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 16,
+        "role": "Jobs",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
         "branch": {}
       },
       {
@@ -1724,6 +1754,16 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/mech_depth.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 17,
+        "role": "DstVertices",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
         "branch": {}
       },
       {
@@ -2981,6 +3021,7 @@
     "shaders/vulkan/mech_backdrop.vert",
     "shaders/vulkan/mech_depth.frag",
     "shaders/vulkan/mech_depth.vert",
+    "shaders/vulkan/mech_skin.comp",
     "shaders/vulkan/mech_tier1.frag",
     "shaders/vulkan/mech_tier1.vert",
     "shaders/vulkan/postprocess.frag",
