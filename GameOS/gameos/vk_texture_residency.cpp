@@ -21,6 +21,7 @@
 #include <utility>
 #include <chrono>
 #include <cstdio>
+#include "mc2fmt.h"
 
 namespace mc2vk {
 bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
@@ -154,7 +155,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     if (uint32_t(image.mipCount)>fullChain) return {};
     VkPhysicalDeviceProperties deviceProps{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(),&deviceProps);
     if (layers>deviceProps.limits.maxImageArrayLayers) {
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture layers=%u limit=%u fallback=placeholder\n",layers,deviceProps.limits.maxImageArrayLayers);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture layers={:d} limit={:d} fallback=placeholder\n",mc2::fmt::as_u32(layers),mc2::fmt::as_u32(deviceProps.limits.maxImageArrayLayers));
         return {};
     }
     VkFormatProperties properties{}; vkGetPhysicalDeviceFormatProperties(ctx_.physicalDevice(), VkFormat(image.vkFormat), &properties);
@@ -183,7 +184,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
             reduced.pixels.erase(reduced.pixels.begin(),reduced.pixels.begin()+skip);
             reduced.mipByteOffsets.erase(reduced.mipByteOffsets.begin());
             for(auto& offset:reduced.mipByteOffsets) offset-=skip;
-            std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture extent=%ux%u fallback=mip_%ux%u\n",w,h,reduced.width,reduced.height);
+            mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} fallback=mip_{:d}x{:d}\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_u32(reduced.width),mc2::fmt::as_u32(reduced.height));
             return upload(reduced,useMips,async,layers,arrayView,vegetation);
         }
         if(!blocks && (w>1 || h>1)) {
@@ -204,10 +205,10 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
                             image.pixels.data()+(size_t(layer)*w*h+size_t(y*2)*w+x*2)*stride,stride);
                 }
             }
-            std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture extent=%ux%u fallback=resample_%ux%u\n",w,h,reduced.width,reduced.height);
+            mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} fallback=resample_{:d}x{:d}\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_u32(reduced.width),mc2::fmt::as_u32(reduced.height));
             return upload(reduced,useMips,async,layers,arrayView,vegetation);
         }
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture extent=%ux%u bytes=%zu fallback=placeholder\n",w,h,expected);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} bytes={:d} fallback=placeholder\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_size(expected));
         return {};
     }
     OwnedBuffer staging;
@@ -306,7 +307,7 @@ void TextureResidency::pump() {
         // A missing resident is terminal failure, distinct from a queued upload.
         // Retained handles may reacquire, and dynamic pages may submit newer pixels.
         residents_.erase(p.handle.raw());
-        std::fprintf(stderr,"[VK_RESIDENCY v1] dropped=upload handle=%u attempts=%u fallback=placeholder\n",p.handle.raw(),p.attempts);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] dropped=upload handle={:d} attempts={:d} fallback=placeholder\n",mc2::fmt::as_u32(p.handle.raw()),mc2::fmt::as_u32(p.attempts));
     });
     if (uploading_.size() > firstNew) {
         ZoneScopedN("TextureResidency.SubmitBatch");

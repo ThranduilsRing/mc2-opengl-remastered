@@ -72,6 +72,7 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full nigh
 #include <chrono>
 #include <algorithm>
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
+#include "mc2fmt.h"
 
 
 namespace {
@@ -484,22 +485,20 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
                 sunFound = true;
             }
         }
-        std::fprintf(stderr,
-            "[PROP_LIGHT_VERTEX_PROBE v1] idx=%zu numLights=%d "
-            "ambient=(%.4f,%.4f,%.4f) sunColor=(%.4f,%.4f,%.4f) sunFound=%d\n",
-            idx, n, ambient[0], ambient[1], ambient[2],
-            sunColor[0], sunColor[1], sunColor[2], sunFound ? 1 : 0);
+        mc2::fmt::print_err("[PROP_LIGHT_VERTEX_PROBE v1] idx={:d} numLights={:d} ambient=({:.4f},{:.4f},{:.4f}) sunColor=({:.4f},{:.4f},{:.4f}) sunFound={:d}\n",
+            mc2::fmt::as_size(idx), mc2::fmt::as_i32(n), ambient[0], ambient[1], ambient[2],
+            sunColor[0], sunColor[1], sunColor[2], mc2::fmt::as_i32(sunFound ? 1 : 0));
     };
     // Real per-instance lightDataIndex values actually used this
     // frame (first few real props), instead of a blind 0..7 scan.
     {
         const GpuStaticPropInstance* insts =
             reinterpret_cast<const GpuStaticPropInstance*>(feed.instances112);
-        std::fprintf(stderr, "[PROP_LIGHT_VERTEX_PROBE v1] real inst.lightDataIndex sample: ");
+        mc2::fmt::print_err("[PROP_LIGHT_VERTEX_PROBE v1] real inst.lightDataIndex sample: ");
         for (uint32_t ii = 0; ii < feed.count && ii < 12; ++ii) {
-            std::fprintf(stderr, "[%u]=%u typeID=%u ", ii, insts[ii].lightDataIndex, insts[ii].typeID);
+            mc2::fmt::print_err("[{:d}]={:d} typeID={:d} ", mc2::fmt::as_u32(ii), mc2::fmt::as_u32(insts[ii].lightDataIndex), mc2::fmt::as_u32(insts[ii].typeID));
         }
-        std::fprintf(stderr, "\n");
+        mc2::fmt::print_err("\n");
         std::fflush(stderr);
         // Scan the ACTUAL indices these instances use (dedup small set).
         uint32_t seen[12]; int seenCount = 0;
@@ -1566,7 +1565,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                 s_dumped = true;
                 s_pktDump = std::fopen(dp, "w");
                 if (s_pktDump)
-                    std::fprintf(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
+                    mc2::fmt::print(s_pktDump, "typeID,packet,layerOff,layerOn,uvScaleX,uvScaleY,indexCount,firstIndex,baseVertex,instCount,firstInstance\n");
             }
         }
 
@@ -1623,10 +1622,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         continue;
                     }
                     if (s_pktDump && fringePass == 0)
-                        std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
-                                     tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
-                                     pkt.indexCount, pkt.firstIndex,
-                                     static_cast<int32_t>(pkt.baseVertex), instCount, i);
+                        mc2::fmt::print(s_pktDump, "{:d},{:d},{:d},{:d},{:.4f},{:.4f},{:d},{:d},{:d},{:d},{:d}\n",
+                                     mc2::fmt::as_u32(tid), mc2::fmt::as_u32(pk), mc2::fmt::as_i32(pc.layerOff), mc2::fmt::as_i32(pc.layerOn), pc.uvScaleX, pc.uvScaleY,
+                                     mc2::fmt::as_u32(pkt.indexCount), mc2::fmt::as_u32(pkt.firstIndex),
+                                     mc2::fmt::as_i32(static_cast<int32_t>(pkt.baseVertex)), mc2::fmt::as_u32(instCount), mc2::fmt::as_u32(i));
                     vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                         0, sizeof(pc), &pc);
                     mc2::battlebench::add(mc2::battlebench::DrawProps), vkCmdDrawIndexed(cb, pkt.indexCount, instCount,
@@ -1774,9 +1773,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         ++calls;
         unchanged += maskUnchanged;
         if (calls % 256 == 0)
-            std::fprintf(stderr, "[DRAWSCREEN_MASK] calls=%llu unchanged=%llu writes=%llu items=%u\n",
-                         static_cast<unsigned long long>(calls), static_cast<unsigned long long>(unchanged),
-                         static_cast<unsigned long long>(calls - unchanged), instanceCount);
+            mc2::fmt::print_err("[DRAWSCREEN_MASK] calls={:d} unchanged={:d} writes={:d} items={:d}\n",
+                         mc2::fmt::as_u64(static_cast<unsigned long long>(calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(unchanged)),
+                         mc2::fmt::as_u64(static_cast<unsigned long long>(calls - unchanged)), mc2::fmt::as_u32(instanceCount));
     }
     if (!maskUnchanged) {
         ZoneScopedN("VKIsl.Props.MaskDescriptorWrite");
@@ -1901,15 +1900,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             static bool s_lit_dumped = false;
             if (mc2::gate::get<"MC2_VK_PROP_LIGHT_PROBE">() && !s_lit_dumped) {
                 s_lit_dumped = true;
-                std::fprintf(stderr,
-                    "[PROP_LIGHT_PROBE v1] lightingReady=%d haveLightFeed=%d tier1=%d "
-                    "wantLighting=%d wantMaterial=%d materialReady=%d "
-                    "iblShStrength=%.4f iblSh0=(%.4f,%.4f,%.4f) "
-                    "lightDataCpuBytes=%llu terrainSun=(%.3f,%.3f,%.3f)\n",
-                    u.lightingReady, haveLightFeed ? 1 : 0, s->tier1 ? 1 : 0,
-                    s->wantLighting ? 1 : 0, s->wantMaterial ? 1 : 0, u.materialReady,
+                mc2::fmt::print_err("[PROP_LIGHT_PROBE v1] lightingReady={:d} haveLightFeed={:d} tier1={:d} wantLighting={:d} wantMaterial={:d} materialReady={:d} iblShStrength={:.4f} iblSh0=({:.4f},{:.4f},{:.4f}) lightDataCpuBytes={:d} terrainSun=({:.3f},{:.3f},{:.3f})\n",
+                    mc2::fmt::as_i32(u.lightingReady), mc2::fmt::as_i32(haveLightFeed ? 1 : 0), mc2::fmt::as_i32(s->tier1 ? 1 : 0),
+                    mc2::fmt::as_i32(s->wantLighting ? 1 : 0), mc2::fmt::as_i32(s->wantMaterial ? 1 : 0), mc2::fmt::as_i32(u.materialReady),
                     u.iblShStrength, u.iblSh[0][0], u.iblSh[0][1], u.iblSh[0][2],
-                    static_cast<unsigned long long>(lightFeed.lights.bytes),
+                    mc2::fmt::as_u64(static_cast<unsigned long long>(lightFeed.lights.bytes)),
                     u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
                 std::fflush(stderr);
             }
@@ -2004,10 +1999,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             // [VK_PROPS_PERF] — water-style per-frame us breakdown (MC2_VK_PROP_PERF).
             // record_submit_us = record + submit (+ inline fence wait under killswitch);
             // fence_wait_us = the deferred retire (beginFrame wait) or the inline wait.
-            std::fprintf(stderr,
-                "[VK_PROPS_PERF] tier1=1 inst=%u type_runs=%lu stage_us=%.1f "
-                "record_submit_us=%.1f fence_wait_us=%.1f island_total_us=%.1f\n",
-                instanceCount, g_health.typeRuns, g_health.stageInstUs,
+            mc2::fmt::print_err("[VK_PROPS_PERF] tier1=1 inst={:d} type_runs={:d} stage_us={:.1f} record_submit_us={:.1f} fence_wait_us={:.1f} island_total_us={:.1f}\n",
+                mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(g_health.typeRuns), g_health.stageInstUs,
                 g_health.drawUs, us_fence_wait, g_health.totalUs);
             std::fflush(stderr);
         }

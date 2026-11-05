@@ -36,6 +36,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <new>
+#include "mc2fmt.h"
 
 // Opaque owner: the VK-owned (non-exportable) scene-depth image the islands share.
 // No GL import — sceneDepthTex_ is a plain-GL placeholder owned by gos_postprocess.
@@ -56,7 +57,7 @@ void slog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     std::vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
-    std::printf("[VK_SHARED_SCENE_DEPTH] %s\n", buf);
+    mc2::fmt::print_out("[VK_SHARED_SCENE_DEPTH] {}\n", mc2::fmt::safe(buf));
     std::fflush(stdout);
 }
 } // namespace

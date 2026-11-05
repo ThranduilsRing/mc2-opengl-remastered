@@ -18,6 +18,7 @@
 #include "mc2_diag_verbose.h"
 #include "../../mclib/vk_object_lights.h"
 #include "../../RenderCore/gpu_abi/GpuObjectLights.h"
+#include "mc2fmt.h"
 
 bool mc2vkSharedLightFeedEnabled()
 {
@@ -107,15 +108,13 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const mc2::vkLights::Fee
     ++copies_;
 
     if (copies_ == 1 && mc2DiagVerbose()) {
-        std::fprintf(stderr,
-            "[VK_LIGHTFEED_DEDUP v2] armed: persistent dirty-row LightsData per frame slot (%llu B) -- killswitch MC2_VK_LIGHTFEED_DEDUP=0\n",
-            static_cast<unsigned long long>(cpuBytes));
+        mc2::fmt::print_err("[VK_LIGHTFEED_DEDUP v2] armed: persistent dirty-row LightsData per frame slot ({:d} B) -- killswitch MC2_VK_LIGHTFEED_DEDUP=0\n",
+            mc2::fmt::as_u64(static_cast<unsigned long long>(cpuBytes)));
         std::fflush(stderr);
     }
     if (copies_ == 600 && mc2DiagVerbose()) {   // ~10 s receipt: hits ~= copies when both islands share
-        std::fprintf(stderr,
-            "[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits=%lu fallbacks=%lu bytes/frame=%llu\n",
-            hits_, fallbacks_, static_cast<unsigned long long>(bytes_));
+        mc2::fmt::print_err("[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits={:d} fallbacks={:d} bytes/frame={:d}\n",
+            mc2::fmt::as_u32(hits_), mc2::fmt::as_u32(fallbacks_), mc2::fmt::as_u64(static_cast<unsigned long long>(bytes_)));
         std::fflush(stderr);
     }
 
