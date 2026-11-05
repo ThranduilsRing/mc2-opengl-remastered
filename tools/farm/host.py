@@ -358,10 +358,18 @@ def main():
             raise SystemExit(0 if result['status'] == 'completed' and result['returncode'] == 0 else 1)
         if args.queue_timeout is not None and time.monotonic() - started >= args.queue_timeout:
             # Rename races atomically with the runner's claim. Never cancel a running job.
-            cancelled = remote(args, f"try {{ Move-Item -LiteralPath C:/mc2farm/jobs/{args.id}.json "
-                               f"-Destination C:/mc2farm/jobs/{args.id}.cancelled -ErrorAction Stop; 'queue_timeout' }} catch {{ }}")
+            try:
+                cancelled = remote(args, f"try {{ Move-Item -LiteralPath C:/mc2farm/jobs/{args.id}.json "
+                                   f"-Destination C:/mc2farm/jobs/{args.id}.cancelled -ErrorAction Stop; 'queue_timeout' }} catch {{ }}")
+            except subprocess.CalledProcessError as exc:
+                # Farm unreachable at cancel time: report it as a queue timeout so the caller runs the row locally.
+                print(f'queue_timeout: cancel failed ({exc}); farm unreachable, repeat locally')
+                raise SystemExit(1)
             if 'queue_timeout' in cancelled:
-                remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})
+                try:
+                    remote(args, CLEAN_PS % {'r': ROOT, 'id': args.id})
+                except subprocess.CalledProcessError as exc:
+                    print(f'warning: farm cleanup failed after cancel ({exc})')
                 print('queue_timeout: unclaimed job cancelled; safe to repeat locally')
                 raise SystemExit(1)
             args.queue_timeout = None  # already claimed or completed; never cancel a running job

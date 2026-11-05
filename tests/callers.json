@@ -65,8 +65,8 @@
           "text": "from bootstrap_worktree_build import cache_args"
         },
         {
-          "path": "tools/lane_merge.py",
-          "line": 943,
+          "path": "tools/lane_precheck.py",
+          "line": 108,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -88,6 +88,13 @@
         {
           "path": "tools/test_lane_merge.py",
           "line": 66,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "import bootstrap_worktree_build as bwb"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 1373,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bwb"
@@ -4043,14 +4050,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 884,
+          "line": 886,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1371,
+          "line": 1373,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4331,7 +4338,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 932,
+          "line": 934,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint"
@@ -4408,7 +4415,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1204,
+          "line": 1205,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint as fpmod"
@@ -4422,7 +4429,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 702,
+          "line": 687,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees, build_current"
@@ -5121,63 +5128,63 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1091,
+          "line": 1092,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1117,
+          "line": 1118,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1146,
+          "line": 1147,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1164,
+          "line": 1165,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1220,
+          "line": 1221,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1243,
+          "line": 1244,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1257,
+          "line": 1258,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1272,
+          "line": 1273,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1281,
+          "line": 1282,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -5278,7 +5285,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1203,
+          "line": 1204,
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
@@ -5859,7 +5866,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1131,
+          "line": 1132,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as tt"
@@ -9064,6 +9071,13 @@
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
         },
         {
+          "path": "tools/lane_precheck.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "_git_util",
+          "text": "import _git_util  # noqa: E402"
+        },
+        {
           "path": "tools/lane_sim_rows.py",
           "line": 18,
           "evidence": "import",
@@ -11361,6 +11375,13 @@
           "evidence": "import",
           "reference": "tools.farm.host",
           "text": "from tools.farm import host"
+        },
+        {
+          "path": "scripts/tests/test_farm_runner.py",
+          "line": 398,
+          "evidence": "import",
+          "reference": "tools.farm.host",
+          "text": "from tools.farm import host"
         }
       ]
     },
@@ -11770,6 +11791,28 @@
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
+        },
+        {
+          "path": "tools/test_lane_merge.py",
+          "line": 1372,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm"
+        }
+      ]
+    },
+    {
+      "path": "tools/lane_precheck.py",
+      "basename": "lane_precheck.py",
+      "stem": "lane_precheck",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/lane_merge.py",
+          "line": 68,
+          "evidence": "import",
+          "reference": "lane_precheck",
+          "text": "from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401"
         }
       ]
     },
@@ -11781,7 +11824,7 @@
       "callers_by_stem": [
         {
           "path": "tools/lane_merge.py",
-          "line": 68,
+          "line": 69,
           "evidence": "import",
           "reference": "lane_sim_rows",
           "text": "from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401"
@@ -15108,7 +15151,7 @@
         },
         {
           "path": "scripts/tests/test_merge_speedups.py",
-          "line": 1230,
+          "line": 1231,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt"

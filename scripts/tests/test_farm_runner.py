@@ -391,3 +391,18 @@ def test_deployed_runner_replaces_interrupted_and_requeued_jobs(tmp_path):
     assert json.loads((tmp_path / 'results/old/result.json').read_text())['status'] == 'interrupted'
     assert json.loads((tmp_path / 'results/sample/result.json').read_text())['returncode'] == 0
     assert 'deployed job ran' in (tmp_path / 'results/sample/job.log').read_text()
+
+
+def test_queue_timeout_cancel_ssh_failure_reports_timeout_not_traceback(monkeypatch, capsys):
+    """A CalledProcessError while cancelling must print queue_timeout: so merge_gate falls back to a local row."""
+    from tools.farm import host
+    def remote(args, script):
+        if 'Move-Item' in script:
+            raise subprocess.CalledProcessError(255, 'ssh')
+        return ''
+    monkeypatch.setattr(host, 'remote', remote)
+    monkeypatch.setattr(sys, 'argv', ['host.py', 'wait', 'b' * 32, '--timeout', '5', '--queue-timeout', '0'])
+    with pytest.raises(SystemExit) as exited:
+        host.main()
+    assert exited.value.code == 1
+    assert 'queue_timeout:' in capsys.readouterr().out

@@ -1087,6 +1087,7 @@ def test_game_batch_releases_and_reaps_its_holder(monkeypatch, fail):
 
 
 def test_only_capture_stages_take_the_exclusive_hold_one_at_a_time(monkeypatch):
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     from contextlib import contextmanager
     import merge_gate as gate
     calls = []
