@@ -170,6 +170,9 @@ struct PropPacketRow {
     int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, materialId, pad;
 };
 static_assert(sizeof(PropPacketRow) == 32);
+// The vertex+fragment push block (prop_packet_vk.glsl): the packet-row buffer's device address and the first row of the list one indirect call draws.
+struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t pad; };
+static_assert(sizeof(PropPacketPush) == 16);
 struct PropRunRow { uint32_t first, count, coreStart, coreN, fringeStart, fringeN, lateStart, lateN; };
 static_assert(sizeof(PropRunRow) == 32);
 struct PropDrawCmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
@@ -1048,9 +1051,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
         b[nb].binding = 9; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT; ++nb;   // the HZB visibility words feed the compaction pass
-        if (s->tier1) {   // GPU-driven props: packet rows (VS reads the row index, FS the rows), run table, compacted slots, indirect commands
-            b[nb].binding = 15; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        if (s->tier1) {   // GPU-driven props: run table, compacted slots, indirect commands (the packet rows are read by device address, no binding)
             b[nb].binding = 16; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT; ++nb;
             b[nb].binding = 17; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -1140,11 +1141,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // uvScale). Well inside the Vulkan-guaranteed minimum
         // maxPushConstantsSize of 128 bytes (spec table 32.1) -- no need to
         // pack into half floats or move to the per-instance SSBO path.
-        // GPU-driven props: the per-packet data moved to the packet-row SSBO (binding 15), indexed by packetBase + gl_DrawID; the push is the
-        // first row of the list the indirect call draws.
+        // GPU-driven props: the per-packet data moved to the packet-row buffer, indexed by packetBase + gl_DrawID; the push is that buffer's device
+        // address plus the first row of the list the indirect call draws (PropPacketPush; read by both stages).
         VkPushConstantRange pcr{};
-        pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        pcr.offset = 0; pcr.size = 4;
+        pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        pcr.offset = 0; pcr.size = sizeof(PropPacketPush);
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1675,21 +1676,21 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
         const VkDeviceSize runBytes = static_cast<VkDeviceSize>(s->runScratch.empty() ? 1 : s->runScratch.size()) * sizeof(PropRunRow);
         const VkDeviceSize compactBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(uint32_t);
         const VkDeviceSize cmdBytes = kPropCmdHeader + static_cast<VkDeviceSize>(cmdTotal) * sizeof(PropDrawCmd);
-        if (!ensure(g.pkt, g.pktCap, pktBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.packets") ||
+        if (!ensure(g.pkt, g.pktCap, pktBytes, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, true, "colorprop.packets") ||
             !ensure(g.run, g.runCap, runBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.runs") ||
             !ensure(g.compact, g.compactCap, compactBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false, "colorprop.compact") ||
             !ensure(g.cmd, g.cmdCap, cmdBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, true, "colorprop.indirect")) return false;
         if (rebound) {
-            const VkBuffer bufs[4] = {g.pkt.get(), g.run.get(), g.compact.get(), g.cmd.get()};
-            VkDescriptorBufferInfo infos[4];
-            VkWriteDescriptorSet wr[4]{};
-            for (uint32_t k = 0; k < 4; ++k) {
+            const VkBuffer bufs[3] = {g.run.get(), g.compact.get(), g.cmd.get()};
+            VkDescriptorBufferInfo infos[3];
+            VkWriteDescriptorSet wr[3]{};
+            for (uint32_t k = 0; k < 3; ++k) {
                 infos[k] = {bufs[k], 0, VK_WHOLE_SIZE};
                 wr[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                wr[k].dstSet = s->set[par]; wr[k].dstBinding = 15 + k; wr[k].descriptorCount = 1;
+                wr[k].dstSet = s->set[par]; wr[k].dstBinding = 16 + k; wr[k].descriptorCount = 1;
                 wr[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wr[k].pBufferInfo = &infos[k];
             }
-            vkUpdateDescriptorSets(s->device, 4, wr, 0, nullptr);
+            vkUpdateDescriptorSets(s->device, 3, wr, 0, nullptr);
         }
         // Rows and commands are laid out core, fringe, late; the cmd buffer starts with the three list counts.
         const uint32_t counts[4] = {coreTotal, fringeTotal, s->lateCount, 0};
@@ -1758,7 +1759,8 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
         auto drawList = [&](VkPipeline pipe, uint32_t first, uint32_t n, uint32_t listWord) {
             if (n == 0) return;
             mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
-            vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(first), &first);
+            const PropPacketPush push{s->gpu[par].pkt.deviceAddress(), first, 0};
+            vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
             mc2::battlebench::add(mc2::battlebench::DrawProps);
             vkCmdDrawIndexedIndirectCount(cb, cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(first) * sizeof(PropDrawCmd), cmdBuf,
                                           static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), std::min(n, s->drawIndirectLimit), sizeof(PropDrawCmd));
@@ -2167,7 +2169,8 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     // The late list lives in the main pass's per-parity buffers; its instanceCounts were written by that pass's compaction dispatch, which the
     // main submit precedes in queue order (the compute-to-indirect barrier there covers later commands in submission order).
     const VkBuffer cmdBuf = s->gpu[par].cmd.get();
-    vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(lateStart),&lateStart);
+    const PropPacketPush latePush{s->gpu[par].pkt.deviceAddress(), lateStart, 0};
+    vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(latePush),&latePush);
     mc2::battlebench::add(mc2::battlebench::DrawProps);
     vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,2u * sizeof(uint32_t),
                                   std::min(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
