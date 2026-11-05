@@ -3980,21 +3980,21 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 417,
+          "line": 421,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 921,
+          "line": 925,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1421,
+          "line": 1425,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4106,7 +4106,7 @@
         },
         {
           "path": "scripts/tests/test_gate_preflight.py",
-          "line": 93,
+          "line": 98,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload"
@@ -4275,7 +4275,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 969,
+          "line": 973,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint"
@@ -4553,7 +4553,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 768,
+          "line": 772,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -11610,6 +11610,13 @@
           "text": "from tools import lane_merge as lm  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_lint_slots.py",
+          "line": 91,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_merge_speedups.py",
           "line": 12,
           "evidence": "import",
@@ -11739,11 +11746,18 @@
           "text": "import lint_slots as lane_merge  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_lint_slots.py",
+          "line": 92,
+          "evidence": "import",
+          "reference": "lint_slots",
+          "text": "import lint_slots as ls  # noqa: E402"
+        },
+        {
           "path": "tools/lane_merge.py",
           "line": 67,
           "evidence": "import",
           "reference": "lint_slots",
-          "text": "from lint_slots import LintSlots, pin_cpus, scratch_dir  # noqa: E402"
+          "text": "from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402"
         }
       ]
     },
@@ -13855,7 +13869,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 332,
+          "line": 336,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"

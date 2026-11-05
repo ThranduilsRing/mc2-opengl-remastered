@@ -1,5 +1,6 @@
 """Host-wide lint worker semaphore and forced scratch cleanup, split out of lane_merge.py (file-size ratchet)."""
 import os
+import re
 import shutil
 import tempfile
 import contextlib
@@ -44,19 +45,58 @@ class LintSlots:
                 fh.close()
         return None
 
+    def _take_ticket(self):
+        """Join the FIFO: a ticket file named by start time, held under an OS lock while we wait (dead waiters' tickets are unlocked)."""
+        qdir = os.path.join(self.dir, "queue")
+        os.makedirs(qdir, exist_ok=True)
+        path = os.path.join(qdir, f"{time.time_ns():020d}-{os.getpid()}-{id(self) & 0xFFFF:04x}.q")
+        fh = open(path, "a+")
+        self._lock(fh)
+        return fh, path
+
+    def _is_head(self, own_path):
+        """True when no earlier live ticket exists. An earlier ticket whose lock we can take belongs to a dead waiter: remove it."""
+        qdir = os.path.dirname(own_path)
+        for name in sorted(os.listdir(qdir)):
+            path = os.path.join(qdir, name)
+            if path == own_path or name > os.path.basename(own_path):
+                return True
+            try:
+                with open(path, "a+") as other:
+                    try:
+                        self._lock(other)
+                    except OSError:
+                        return False      # a live waiter started earlier
+                    young = time.time() - os.path.getmtime(path) < 2   # created but not yet locked by its owner
+                if young:
+                    return False
+                with contextlib.suppress(OSError):
+                    os.remove(path)
+            except OSError:
+                continue
+        return True
+
     def acquire(self, wait_s=7200):
+        """Grant slots in start order: take a ticket, wait until no earlier live ticket remains, then take a free slot."""
         deadline = time.monotonic() + wait_s
         announced = False
-        while True:
-            fh = self.try_acquire()
-            if fh:
-                return fh
-            if time.monotonic() >= deadline:
-                raise TimeoutError("no lint slot free in " + self.dir)
-            if not announced:
-                print(f"lint: waiting for lint slot ({self.n} busy)", flush=True)
-                announced = True
-            self.sleep(2)
+        ticket, tpath = self._take_ticket()
+        try:
+            while True:
+                if self._is_head(tpath):
+                    fh = self.try_acquire()
+                    if fh:
+                        return fh
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("no lint slot free in " + self.dir)
+                if not announced:
+                    print(f"lint: waiting for lint slot ({self.n} busy)", flush=True)
+                    announced = True
+                self.sleep(2)
+        finally:
+            ticket.close()
+            with contextlib.suppress(OSError):
+                os.remove(tpath)
 
     def run(self, fn, *args):
         fh = self.acquire()
@@ -87,7 +127,44 @@ def scratch_dir(prefix, parent=None):
         rmtree_force(path)
 
 
-CPU_SPLIT_DEFAULT = {"gate": 0x00FF, "lane": 0xFF00}   # Ryzen 7 5800X3D, 16 logical CPUs: merge gate on 0-7, lane_merge lane work on 8-15
+SCRATCH_NAME = re.compile(r"(lane-lint-|stale-inv-)[A-Za-z0-9_]{8}")   # exactly what tempfile.mkdtemp(prefix=...) produces
+
+
+def _newest_mtime(path):
+    newest = os.path.getmtime(path)
+    with contextlib.suppress(OSError):
+        for entry in os.scandir(path):
+            newest = max(newest, entry.stat().st_mtime)
+    return newest
+
+
+def sweep_stale_scratch(parents, max_age_s=7200, now=None):
+    """Remove lane-lint-*/stale-inv-* scratch dirs left by dead lints: each matched by exact mkdtemp name, older than
+    max_age_s (newest of the dir and its top-level entries), and not held by a live process (a rename of a dir that any
+    process has open or as its cwd fails on Windows, which is the liveness test). Returns the removed paths."""
+    now, removed = now or time.time(), []
+    for parent in parents:
+        try:
+            names = os.listdir(parent) if parent else []
+        except OSError:
+            continue
+        for name in names:
+            path = os.path.join(parent, name)
+            try:
+                if not SCRATCH_NAME.fullmatch(name) or not os.path.isdir(path) or os.path.islink(path):
+                    continue
+                if now - _newest_mtime(path) < max_age_s:
+                    continue
+                parked = path + ".sweeping"
+                os.rename(path, parked)   # fails while a live process holds the tree
+            except OSError:
+                continue
+            rmtree_force(parked)
+            removed.append(path)
+    return removed
+
+
+CPU_SPLIT_DEFAULT ={"gate": 0x00FF, "lane": 0xFF00}   # Ryzen 7 5800X3D, 16 logical CPUs: merge gate on 0-7, lane_merge lane work on 8-15
 
 
 def cpu_masks():
