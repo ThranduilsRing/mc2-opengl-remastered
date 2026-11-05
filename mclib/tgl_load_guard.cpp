@@ -137,7 +137,7 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 		if (s_magentaHandle == 0xffffffff)
 		{
 			DWORD texels[16];
-			for (unsigned int & texel : texels)
+			for (DWORD& texel : texels)
 				texel = 0xffff00ff;   // A=ff R=ff G=00 B=ff
 			s_magentaHandle = mc2::textures::fromPixels(
 				texels, gos_Texture_Solid,
