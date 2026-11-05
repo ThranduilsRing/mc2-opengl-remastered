@@ -98,6 +98,7 @@ for row in "${ROWS[@]}"; do
   esac
   gr bash -c "cd $S && $cmd" > $OUT/$name.log 2>&1; rc=$?
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
+  printf "%s\t%s\n" "$row" "$rc" >> $OUT/rows.tsv
   [ $rc = 0 ] || RES=1
   tick "row:$name"
 done
@@ -145,6 +146,8 @@ def main():
     repo = Path(a.repo)
     if a.seed:
         return seed(repo)
+    if a.gate and not a.rows:
+        a.rows = ["determinism:mc2_01", "saveload:mc2_01"]
     if not a.rows:
         ap.error("give at least one row, e.g. smoke-lite")
     if git("status", "--porcelain", "--untracked-files=no", repo=repo):
@@ -174,6 +177,8 @@ def main():
     # gpu choice
     cap0 = 1 if (any(r.startswith("capture") for r in a.rows) and not a.capture_any_gpu) else 0
     gpu = a.gpu
+    if a.gate:
+        gpu = "3"   # advisory clang gate evidence runs on the reserved gate GPU (lock /workspace/locks/gpu3)
     if gpu == "3" and not a.gate:
         print("[box_run] GPU 3 is reserved for merge gates (--gate)")
         return 2
@@ -192,7 +197,34 @@ def main():
     scr.unlink(missing_ok=True)
     print(f"[box_run] gpu={gpu} (see run log for the one taken) sha={sha[:12]} rc={r.returncode} reports={local_out}")
     print("[box_run] timings: " + ", ".join(f"{k}={v:.0f}s" for k, v in t.items()) + f", total={time.time() - t0:.0f}s")
+    if a.gate:
+        write_receipt(local_out, sha, branch, a.rows, r.returncode)
     return r.returncode
+
+
+def write_receipt(local_out, sha, branch, rows, rc):
+    """Advisory clang-gate receipt: sha, rows with verdicts, the box build fingerprint. The PC gate keeps the MSVC tier1."""
+    import json
+    verdicts = {}
+    tsv = local_out / "rows.tsv"
+    if tsv.exists():
+        for line in tsv.read_text().splitlines():
+            row, _, code = line.rpartition("\t")
+            verdicts[row] = "PASS" if code.strip() == "0" else f"FAIL(rc={code.strip()})"
+    fp = ""
+    for lg in sorted(local_out.glob("*.log")):
+        for ln in lg.read_text(errors="replace").splitlines():
+            if "DEPLOY_FINGERPRINT" in ln or "BUILD_FINGERPRINT" in ln:
+                fp = ln.strip()[:300]
+                break
+        if fp:
+            break
+    rec = {"kind": "box-clang-gate-advisory", "sha": sha, "branch": branch, "gpu": 3, "toolchain": "clang-20 + libc++ + lld, RelWithDebInfo, ccache",
+           "rows": [{"row": r, "verdict": verdicts.get(r, "NOT RUN")} for r in rows], "fingerprint": fp, "script_rc": rc,
+           "note": "advisory; box ms are ratio-only; the PC gate keeps the MSVC tier1"}
+    out = local_out / "gate_receipt.json"
+    out.write_text(json.dumps(rec, indent=2))
+    print(f"[box_run] gate receipt: {out}")
 
 
 if __name__ == "__main__":
