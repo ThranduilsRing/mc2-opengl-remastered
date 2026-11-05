@@ -1,6 +1,5 @@
 // Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection.
 // Declared in the class headers; shared names in mech3d_internal.h.
-#include <ankerl/unordered_dense.h>
 #include "render_snap.h"
 #include "terrain_runtime.h"
 #include <atomic>
@@ -309,7 +308,7 @@ long Mech3DAppearance::update (bool animate)
 						static const bool s_animCadGuard = false;
 						if (s_animCadGuard)
 						{
-							static ankerl::unordered_dense::map<void*, uint32_t> s_lastAdvanceFrame;
+							static std::unordered_map<void*, uint32_t> s_lastAdvanceFrame;
 							static uint64_t s_ac_advances = 0, s_ac_doubles = 0;
 							++s_ac_advances;
 							const uint32_t _ac_frame = mc2::overlap::simulationFrame(g_mc2FrameCounter);

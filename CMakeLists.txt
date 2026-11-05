@@ -126,8 +126,9 @@ endif()
 #   mc2.exe -mission mc2_01
 #
 # Notes:
-#   * gos_Malloc/gos_Free are already plain malloc/free (see GameOS/gameos/
-#     gameos.cpp:245). So ASan sees every new/delete with zero bypass work.
+#   * gos_Malloc/gos_Free and the global operator new/delete go to mimalloc in normal builds. Under
+#     MC2_ASAN, GameOS/gameos/mc2_alloc_backend.h routes them to the CRT malloc/free instead, so ASan
+#     sees every engine allocation (mimalloc would hide the whole heap from it).
 #   * No custom slab remains in mclib/tgl.cpp; GOSVertexPool is plain storage.
 #     If a custom slab returns, annotate it with __asan_poison_memory_region.
 # ---------------------------------------------------------------------------
