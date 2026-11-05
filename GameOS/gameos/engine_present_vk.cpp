@@ -355,14 +355,16 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, nullptr);
     std::vector<VkPresentModeKHR> pms(pmCount);
     if (pmCount) vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, pms.data());
-    bool haveMailbox = false, haveImmediate = false;
+    bool haveMailbox = false, haveImmediate = false, haveRelaxed = false;
     for (auto m : pms) {
+        if (m == VK_PRESENT_MODE_FIFO_RELAXED_KHR) haveRelaxed = true;
         if (m == VK_PRESENT_MODE_MAILBOX_KHR)   haveMailbox = true;
         if (m == VK_PRESENT_MODE_IMMEDIATE_KHR) haveImmediate = true;
     }
     const bool vsyncOn = mc2::gate::get<"MC2_VSYNC">();
     if (vsyncOn) {
-        s.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        // FIFO_RELAXED (AMD guide): a late frame presents at once instead of waiting a whole extra vblank; FIFO when the surface lacks it.
+        s.presentMode = haveRelaxed ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR;
     } else if (haveMailbox) {
         s.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     } else if (haveImmediate) {
@@ -604,7 +606,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if ((scene->w < s.imgW || scene->h < s.imgH) && !s.scaledComposite.image) {
         if (!vkImageResourceCreate(&s.scaledComposite, s.dev, s.phys, scene->w, scene->h,
                 VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+                VK_IMAGE_USAGE_SAMPLED_BIT |
                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 "present.renderResolutionColor")) return false;
     }
@@ -1852,7 +1854,6 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
                                VK_FORMAT_R8G8B8A8_UNORM,
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                               VK_IMAGE_USAGE_STORAGE_BIT |
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
         reason = "vkImageResourceCreate(VK-only RGBA8) failed";
         return false;

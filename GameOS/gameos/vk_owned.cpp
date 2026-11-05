@@ -4,9 +4,13 @@
 
 #include "vk_owned.h"
 
+#include <cstdio>
 #include <cstring>
 
 #include <vk_mem_alloc.h>
+
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 #include "hitch_stats.h"
 #include "vulkan_context.h"
@@ -24,7 +28,15 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     vkDestroyBuffer(device,probe,nullptr);
     infra::Admission admission(requirements.size,name);
     if(!admission) return false;
-    if (vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, nullptr) != VK_SUCCESS) return false;
+    VmaAllocationInfo placed{};
+    if (vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, &placed) != VK_SUCCESS) return false;
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {   // where the buffer landed (audit S2): DL = DEVICE_LOCAL, HV = HOST_VISIBLE, HC = HOST_CACHED
+        VkMemoryPropertyFlags pf = 0;
+        vmaGetMemoryTypeProperties(allocator, placed.memoryType, &pf);
+        std::fprintf(stderr, "[VK_MEM v1] name=%.*s i0=%d i1=%d bytes=%llu memtype=%u %s%s%s\n", static_cast<int>(name.size()), name.data(), i0, i1,
+                     static_cast<unsigned long long>(info.size), placed.memoryType, (pf & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) ? "DL " : "",
+                     (pf & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? "HV " : "", (pf & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) ? "HC" : "");
+    }
     buffer_ = buffer;
     allocation_ = allocation;
     allocator_ = allocator;

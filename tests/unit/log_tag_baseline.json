@@ -10839,6 +10839,19 @@
    "count": 1
   },
   {
+   "tag": "VK_MEM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "i0",
+    "i1",
+    "bytes",
+    "memtype"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ONE_SHOT",
    "ver": -1,
    "stream": "stderr",
