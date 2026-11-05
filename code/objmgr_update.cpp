@@ -415,6 +415,11 @@ void GameObjectManager::updateActiveSweep() {
 		// predicted branch, no counter writes, byte-identical.
 		mc2_object_walk_trace::SweepScope objWalk;
 		const bool objWalkOn = objWalk.active;
+		// framesSinceActive is read only by the MC2_DESTROY_TRACE log line and the
+		// conflation probe (the other consumer, the lifecycle gate, is compile-time off).
+		// With none of them on, nobody can observe the sweep: skip the O(maxObjects) walk.
+		static const bool s_destroyTraceOn = mc2::gate::get<"MC2_DESTROY_TRACE">();
+		if (!objWalkOn && !s_destroyTraceOn && !s_inViewConflationEnabled && !s_gpuCullLifecycle) return;
 		const long maxObjs = getMaxObjects();
 		if (objWalkOn) mc2_object_walk_trace::g_counters.objectsWalked = maxObjs;
 		for (long i = 1; i <= maxObjs; i++) {
@@ -660,10 +665,12 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
         for (long i = 0; i < info.numObjects; ++i) {
             auto* object = objList[info.firstHandle + i];
             if (!object || !object->getExists()) continue;
-            if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) continue;
+            // Static trees/terrain objects are never advanced here (and never in `advanced` unless
+            // already updated above), so test them before the linear `advanced` search.
             const auto kind = object->getObjectClass();
             if ((kind == TREE || kind == TERRAINOBJECT) &&
                 !object->getFlag(OBJECT_FLAG_FALLING) && !object->getFlag(OBJECT_FLAG_JUSTCREATED)) continue;
+            if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) continue;
             advance(object);
         }
     }
