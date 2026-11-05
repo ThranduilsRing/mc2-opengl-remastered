@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "unitprofile.h"
 #include "Gates/gate.h"
 #include <cstdlib>
@@ -17,7 +18,7 @@ bool mc2UnitDefinitionSourceIsGenerated() {
 }
 
 // UNIT-SOURCE-FLIP-SWITCH-1: pure slug — mirrors extract.py::_variant_slug.
-const char* mc2GeneratedVariantSlug(const char* variantName, int index,
+const char* mc2GeneratedVariantSlug(mc2::czstring variantName, int index,
                                     char* out, unsigned long cap) {
     if (!out || cap == 0) return out;
     unsigned long n = 0;
@@ -51,12 +52,12 @@ const char* mc2GeneratedVariantSlug(const char* variantName, int index,
 // Reuse the SAME parse functions the .fit path uses (parseLocomotionModel /
 // parseDamageSchema), keeping the current value as the fallback so an
 // unrecognized token is a no-op (per-field legacy fallback).
-bool mc2ApplyGeneratedLocomotion(const char* token, UnitProfile& p) {
+bool mc2ApplyGeneratedLocomotion(mc2::czstring token, UnitProfile& p) {
     if (!token || !token[0]) return false;
     p.locomotion = parseLocomotionModel(token, p.locomotion);
     return true;
 }
-bool mc2ApplyGeneratedDamageSchema(const char* token, UnitProfile& p) {
+bool mc2ApplyGeneratedDamageSchema(mc2::czstring token, UnitProfile& p) {
     if (!token || !token[0]) return false;
     p.damageSchema = parseDamageSchema(token, p.damageSchema);
     return true;

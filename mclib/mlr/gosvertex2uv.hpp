@@ -109,9 +109,7 @@ namespace MidLevelRenderer {
 				const glm::mat4 &m,
 				Stuff::Scalar *uv1,
 				Stuff::Scalar *uv2
-#if FOG_HACK
 				, int foggy
-#endif
 			);
 	protected:
 	};
@@ -124,9 +122,7 @@ void
 		const glm::mat4 &m,
 		Stuff::Scalar *uv1,
 		Stuff::Scalar *uv2
-#if FOG_HACK
 				, int foggy
-#endif
 	)
 {
 	Check_Pointer(this);
@@ -271,7 +267,6 @@ void
 ;		fstp        st(0)
 	}
 #else
-#if FOG_HACK
 	if(foggy)
 	{
 		*(reinterpret_cast<BYTE *>(&frgb) + 3) =
@@ -281,7 +276,6 @@ void
 	{
 		*(reinterpret_cast<BYTE *>(&frgb) + 3) = 0xff;
 	}
-#endif
 
 	rhw = 1.0f/rhw;
 

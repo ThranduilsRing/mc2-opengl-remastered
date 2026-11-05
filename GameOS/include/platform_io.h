@@ -45,7 +45,7 @@
 #define _O_RDONLY O_RDONLY
 #define _O_CREAT O_CREAT
 #define _O_TRUNC O_TRUNC
-#define _O_BINARY  0 // all files are binary on linux
+constexpr auto _O_BINARY = 0;  // all files are binary on linux
 #define _O_RDWR O_RDWR
 
 long _filelength(int fd);

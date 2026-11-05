@@ -1,6 +1,7 @@
 // GameOS/gameos/gos_smoke.h
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <string>
 
@@ -67,7 +68,7 @@ void installAtexitSummary();
 
 // Lifecycle milestones -- emit [TIMING v1] event=<name> elapsed_ms=<n>.
 // elapsed measured from the performance counter captured in parseArgs.
-void emitTiming(const char* eventName);
+void emitTiming(mc2::czstring eventName);
 
 // Per-frame sampler. Call once per rendered frame with frame duration in ms.
 // After mission_ready has been emitted, samples land in the perf ring buffer.
@@ -79,7 +80,7 @@ void emitCleanSummary();
 
 // Emit [SMOKE v1] event=summary result=fail reason=<r> stage=<s>.
 // Safe to call from any point after parseArgs.
-void emitFailSummary(const char* reason, const char* stage);
+void emitFailSummary(mc2::czstring reason, mc2::czstring stage);
 
 // Resolve --mission stem to concrete paths (.fit/.abl/.pak).
 // Emits [SMOKE v1] event=mission_resolve. Returns true when at least the

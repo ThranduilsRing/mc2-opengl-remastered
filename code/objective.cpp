@@ -1555,7 +1555,7 @@ static condition_species_type ConditionSpeciesMap(const char *speciesString) {
 	int i;
 	for (i = 0; i < static_cast<int>(NUM_CONDITION_SPECIES); i += 1) {
 		if (0 == strcmp(speciesString, g_conditionSpeciesStringArray[i])) {
-			retval = (condition_species_type)i;
+			retval = static_cast<condition_species_type>(i);
 			break;
 		}
 	}
@@ -1568,7 +1568,7 @@ static action_species_type ActionSpeciesMap(const char *speciesString) {
 	int i;
 	for (i = 0; i < static_cast<int>(NUM_ACTION_SPECIES); i += 1) {
 		if (0 == strcmp(speciesString, g_actionSpeciesStringArray[i])) {
-			retval = (action_species_type)i;
+			retval = static_cast<action_species_type>(i);
 			break;
 		}
 	}
@@ -1638,7 +1638,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 		int tempInt;
 		result = sReadIdLongInt(missionFile, "ResolvedStatus", tempInt);
 		if (NO_ERR == result) {
-			m_resolvedStatus = (objective_status_type)tempInt;
+			m_resolvedStatus = static_cast<objective_status_type>(tempInt);
 		}
 		result = sReadIdBoolean(missionFile, "ChangedStatus", m_changedStatus);
 		/*end state data*/
@@ -1668,7 +1668,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 				int ispecies = 0;
 				result = sReadIdWholeNum(missionFile, "ConditionSpecies", ispecies);
 				if (NO_ERR != result) { continue; }
-				species = (condition_species_type)ispecies;
+				species = static_cast<condition_species_type>(ispecies);
 			} else {
 				species = ConditionSpeciesMap(speciesText->c_str());
 			}

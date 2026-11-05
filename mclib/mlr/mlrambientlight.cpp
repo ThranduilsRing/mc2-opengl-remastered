@@ -88,11 +88,7 @@ void
 void
 	MLRAmbientLight::LightVertex(const MLRVertexData& vertexData)
 {
-#if COLOR_AS_DWORD
-	TO_DO;
-#else
 	vertexData.color->red += (color.red*intensity);
 	vertexData.color->green += (color.green*intensity);
 	vertexData.color->blue += (color.blue*intensity);
-#endif
 }

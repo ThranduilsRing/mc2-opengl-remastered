@@ -666,7 +666,7 @@ void AttackOrders::init (void) {
 void SituationOrders::init (void) {
 
 	time = 0.0;
-	mode = SITUATION_NORMAL;
+	mode = static_cast<long>(SITUATION_NORMAL);
 	defFormation = 10.0;
 	curFormation = 10.0;
 	openFire = false;

@@ -69,7 +69,7 @@ bool Terrain::raycastTerrain(
     if (N < 2) return false;
     const int Nq = N - 1;                        // quad/cell grid dimension
     const float VS = Terrain::worldUnitsPerVertex; // 128.0f
-    const float halfMap = VS * 0.5f * float(N - 1); // = worldUnitsMapSide * 0.5
+    const float halfMap = VS * 0.5f * static_cast<float>(N - 1); // = worldUnitsMapSide * 0.5
 
     // Helper: get elevation at vertex grid coords (vx, vy), clamped.
     // Note: terrainElevation(indexY, indexX) — Y is row param order!
@@ -99,8 +99,8 @@ bool Terrain::raycastTerrain(
         cx = (cx < 0) ? 0 : (cx >= Nq ? Nq - 1 : cx);
         cy = (cy < 0) ? 0 : (cy >= Nq ? Nq - 1 : cy);
         // TL, TR, BR, BL world positions
-        float tlx = float(cx)     * VS - halfMap, tly = halfMap - float(cy)     * VS;
-        float trx = float(cx + 1) * VS - halfMap, tby = halfMap - float(cy + 1) * VS;
+        float tlx = static_cast<float>(cx)     * VS - halfMap, tly = halfMap - static_cast<float>(cy)     * VS;
+        float trx = static_cast<float>(cx + 1) * VS - halfMap, tby = halfMap - static_cast<float>(cy + 1) * VS;
         float h00 = getElev(cx,     cy);
         float h10 = getElev(cx + 1, cy);
         float h01 = getElev(cx,     cy + 1);
@@ -162,10 +162,10 @@ bool Terrain::raycastTerrain(
         if (cx >= 0 && cx < Nq && cy >= 0 && cy < Nq)
         {
             // World-space corners of this cell.
-            float tlx = float(cx)     * VS - halfMap;
-            float tly = halfMap - float(cy)     * VS;   // top-left world Y (north)
-            float trx = float(cx + 1) * VS - halfMap;
-            float tby = halfMap - float(cy + 1) * VS;   // bottom-right world Y (south)
+            float tlx = static_cast<float>(cx)     * VS - halfMap;
+            float tly = halfMap - static_cast<float>(cy)     * VS;   // top-left world Y (north)
+            float trx = static_cast<float>(cx + 1) * VS - halfMap;
+            float tby = halfMap - static_cast<float>(cy + 1) * VS;   // bottom-right world Y (south)
 
             float h00 = getElev(cx,     cy);     // TL elevation
             float h10 = getElev(cx + 1, cy);     // TR elevation

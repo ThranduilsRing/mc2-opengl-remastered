@@ -40,6 +40,7 @@
 #include"soundsys.h"
 #endif
 
+#include <algorithm>
 #include<gameos.hpp>
 
 #include "gos_profiler.h"
@@ -584,8 +585,7 @@ __inline void getLargest (long &currentLargest, MoverPtr mover, long contactStat
 			break;
 	}
 
-	if (thisMoverSize > currentLargest)
-		currentLargest = thisMoverSize;
+	currentLargest = std::max(currentLargest, thisMoverSize);
 }
 
 //---------------------------------------------------------------------------

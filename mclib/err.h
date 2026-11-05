@@ -9,12 +9,13 @@
 
 #ifndef ERR_H
 #define	ERR_H
+#include "mc2_czstring.h"
 
 //***************************************************************************
 
-void Fatal (long errCode, const char* errMessage);
+void Fatal (long errCode, mc2::czstring errMessage);
 
-void Assert (bool test, long errCode, const char* errMessage);
+void Assert (bool test, long errCode, mc2::czstring errMessage);
 
 //***************************************************************************
 

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gameos.hpp"
 #include "gameos_music_cache.h"
 #include "gos_profiler.h"
@@ -226,7 +227,7 @@ void gos_DestroyAudio() {
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
 //
-void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, const char* file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
+void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, mc2::czstring file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
 {
     gosASSERT(hgosaudio);
     if(!g_sound_engine) { *hgosaudio = nullptr; return; }   // --headless: no audio engine

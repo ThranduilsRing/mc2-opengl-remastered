@@ -129,11 +129,11 @@ bool UpdateFieldWaterCoverage(float elevation) {
             box={minX,minY,maxX,maxY};
             bool wet=true; // outside the field, the material uses its legacy fallback
             if (u0>=0 && u1<=1 && v0>=0 && v1<=1) {
-                const int x0=std::clamp(int(std::floor(u0*(h.width-1))),0,h.width-2);
-                const int x1=std::clamp(int(std::floor(u1*(h.width-1))),0,h.width-2);
-                const int y0=std::clamp(int(std::floor(v0*(h.height-1))),0,h.height-2);
-                const int y1=std::clamp(int(std::floor(v1*(h.height-1))),0,h.height-2);
-                const float dx=b[2]/float(h.width-1), dy=b[3]/float(h.height-1);
+                const int x0=std::clamp(static_cast<int>(std::floor(u0*(h.width-1))),0,h.width-2);
+                const int x1=std::clamp(static_cast<int>(std::floor(u1*(h.width-1))),0,h.width-2);
+                const int y0=std::clamp(static_cast<int>(std::floor(v0*(h.height-1))),0,h.height-2);
+                const int y1=std::clamp(static_cast<int>(std::floor(v1*(h.height-1))),0,h.height-2);
+                const float dx=b[2]/static_cast<float>(h.width-1), dy=b[3]/static_cast<float>(h.height-1);
                 wet=false;
                 const float emptyMin=std::numeric_limits<float>::max();
                 box={emptyMin,emptyMin,
@@ -143,7 +143,7 @@ bool UpdateFieldWaterCoverage(float elevation) {
                     for (int sy=0;sy<4;++sy) {
                         float p[4];
                         for (int sx=0;sx<4;++sx)
-                            p[sx]=h.texels[size_t(std::clamp(y+sy-1,0,h.height-1))*h.width+std::clamp(x+sx-1,0,h.width-1)];
+                            p[sx]=h.texels[static_cast<size_t>(std::clamp(y+sy-1,0,h.height-1))*h.width+std::clamp(x+sx-1,0,h.width-1)];
                         rows[sy][0]=p[1]; rows[sy][1]=p[1]+(p[2]-p[0])/6.0f;
                         rows[sy][2]=p[2]-(p[3]-p[1])/6.0f; rows[sy][3]=p[2];
                     }
@@ -169,8 +169,8 @@ bool UpdateFieldWaterCoverage(float elevation) {
                     box[3]=std::max(box[3],cell[3]);
                 }
             }
-            g_fieldWetRecipes[id]=uint8_t(wet);
-            g_fieldWetChunks[c] |= uint8_t(wet);
+            g_fieldWetRecipes[id]=static_cast<uint8_t>(wet);
+            g_fieldWetChunks[c] |= static_cast<uint8_t>(wet);
         }
     }
     return true;
@@ -282,10 +282,10 @@ void Build() {
         return blocks[mx + my * mapSide];
     };
     auto worldX = [halfSide, wupv](long mx) -> float {
-        return float(mx - halfSide) * wupv;
+        return static_cast<float>(mx - halfSide) * wupv;
     };
     auto worldY = [halfSide, wupv](long my) -> float {
-        return float(halfSide - my) * wupv;
+        return static_cast<float>(halfSide - my) * wupv;
     };
 
     g_recipes.reserve(static_cast<size_t>((mapSide * mapSide / 8)));  // rough upper bound
@@ -471,8 +471,8 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
     if (trace) {
         const auto* store=gos_TerrainFieldStore();
         std::fprintf(stderr,"[WATER_VIS v1] mode=%d shore_active=%d field=%d kind=%d water=%.3f extent=%.3f wet=%zu/%zu\n",
-            gos_WaterShoreMode(),int(shoreFieldActive),int(field),store?int(store->waterShoreHeightKind()):-1,
-            double(f.waterElevation),double(f.shoreExt),size_t(std::count(g_fieldWetRecipes.begin(),g_fieldWetRecipes.end(),uint8_t(1))),g_recipes.size());
+            gos_WaterShoreMode(),static_cast<int>(shoreFieldActive),static_cast<int>(field),store?static_cast<int>(store->waterShoreHeightKind()):-1,
+            static_cast<double>(f.waterElevation),static_cast<double>(f.shoreExt),static_cast<size_t>(std::count(g_fieldWetRecipes.begin(),g_fieldWetRecipes.end(),static_cast<uint8_t>(1))),g_recipes.size());
     }
     // Mode 3 adds 60 wu solely for field carving. Without that field, the
     // legacy alpha ramp cannot cover those extra dry candidates.
@@ -485,8 +485,8 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
         const float cy=m[1]*x+m[5]*y+m[9]*z+m[13];
         const float cw=m[3]*x+m[7]*y+m[11]*z+m[15];
         const float e=std::abs(cw)*0.0001f+0.001f; // conservative at screen edges
-        return uint32_t(cw < -e) | (uint32_t(cx < -cw-e)<<1) | (uint32_t(cx > cw+e)<<2)
-            | (uint32_t(cy < -cw-e)<<3) | (uint32_t(cy > cw+e)<<4);
+        return static_cast<uint32_t>(cw < -e) | (static_cast<uint32_t>(cx < -cw-e)<<1) | (static_cast<uint32_t>(cx > cw+e)<<2)
+            | (static_cast<uint32_t>(cy < -cw-e)<<3) | (static_cast<uint32_t>(cy > cw+e)<<4);
     };
     const float amplitude=std::abs(f.frameCos);
     for (size_t c=0;c<g_waterChunks.size();++c) {
@@ -509,7 +509,7 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
                         f.waterElevation+((i&4)?amplitude:-amplitude));
                 if (dryOutside) continue;
                 if (trace) std::fprintf(stderr,"[WATER_VIS v1] wet_recipe=%u bounds=%.1f/%.1f/%.1f/%.1f\n",id,
-                    double(box[0]),double(box[1]),double(box[2]),double(box[3]));
+                    static_cast<double>(box[0]),static_cast<double>(box[1]),static_cast<double>(box[2]),static_cast<double>(box[3]));
                 return true;
             }
             const float x[4]={r.v0x,r.v1x,r.v2x,r.v3x}, y[4]={r.v0y,r.v1y,r.v2y,r.v3y};
@@ -520,7 +520,7 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
             if (bottomLeft ? (!(clips[0]&clips[1]&clips[3]) || !(clips[1]&clips[2]&clips[3]))
                            : (!(clips[0]&clips[1]&clips[2]) || !(clips[0]&clips[2]&clips[3]))) {
                 if (trace) std::fprintf(stderr,"[WATER_VIS v1] visible_recipe=%u xy=%.1f/%.1f min_elev=%.3f bits=0x%x masks=%u/%u/%u/%u\n",
-                    id,double(r.v0x),double(r.v0y),double(std::min({r.v0e,r.v1e,r.v2e,r.v3e})),r.waterBits,clips[0],clips[1],clips[2],clips[3]);
+                    id,static_cast<double>(r.v0x),static_cast<double>(r.v0y),static_cast<double>(std::min({r.v0e,r.v1e,r.v2e,r.v3e})),r.waterBits,clips[0],clips[1],clips[2],clips[3]);
                 return true;
             }
         }

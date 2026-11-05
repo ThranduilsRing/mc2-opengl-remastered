@@ -7,6 +7,8 @@ TacMap.cpp			: Implementation of the TacMap component.
 \*************************************************************************************************/
 
 #include"tacmap.h"
+
+#include <algorithm>
 #include"tgainfo.h"
 #include"gameos.hpp"
 
@@ -23,14 +25,10 @@ void TacMap::worldToTacMap( glm::vec3& world, int xOffset, int yOffset, int xSiz
 	int tacY;
 
 	land->worldToCell( world, tacY, tacX );	
-	if ( tacX < 0 )
-		tacX = 0;
-	if ( tacY < 0 )
-		tacY = 0;
-	if ( tacX > land->realVerticesMapSide * MAPCELL_DIM )
-		tacX = land->realVerticesMapSide * MAPCELL_DIM;
-	if ( tacY > land->realVerticesMapSide * MAPCELL_DIM )
-		tacY = land->realVerticesMapSide * MAPCELL_DIM;
+	tacX = std::max(tacX, 0);
+	tacY = std::max(tacY, 0);
+	tacX = std::min<long>(tacX, land->realVerticesMapSide * MAPCELL_DIM);
+	tacY = std::min<long>(tacY, land->realVerticesMapSide * MAPCELL_DIM);
 	
 	tac.x = static_cast<float>(tacX) * static_cast<float>(xSize) /(static_cast<float>(land->realVerticesMapSide) * MAPCELL_DIM);
 	tac.y = static_cast<float>(tacY) * static_cast<float>(ySize)/(static_cast<float>(land->realVerticesMapSide) * MAPCELL_DIM);

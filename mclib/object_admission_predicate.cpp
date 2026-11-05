@@ -1,4 +1,5 @@
 // mclib/object_admission_predicate.cpp
+#include "mc2_czstring.h"
 #include "object_admission_predicate.h"
 #include "Gates/gate.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -195,7 +196,7 @@ ProjectZBypassMode projectZBypassMode() {
     return s_bypassMode;
 }
 
-void logProjectZBypassDisagreement(const char* wrapper,
+void logProjectZBypassDisagreement(mc2::czstring wrapper,
                                    const glm::vec3& world,
                                    const Stuff::Vector4D& legacyRawClip,
                                    bool legacyAdmit,
@@ -353,7 +354,7 @@ bool clipSpaceFrustumAdmitSphere(const Stuff::Vector4D& rawClip, float worldRadi
 int objectAdmissionPredicate_selftest() {
     int fails = 0;
 
-    auto runCase = [&](const char* name, const Stuff::Vector4D& rawClip, bool expected) {
+    auto runCase = [&](mc2::czstring name, const Stuff::Vector4D& rawClip, bool expected) {
         bool actual = clipSpaceFrustumAdmit(rawClip);
         const char* result = (actual == expected) ? "pass" : "fail";
         if (actual != expected) ++fails;

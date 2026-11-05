@@ -15,6 +15,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -612,36 +613,31 @@ void __stdcall InitializeGameEngine()
 				if (result != NO_ERR)
 					Camera::MAX_PERSPECTIVE = 88.0f;
 
-				if (Camera::MAX_PERSPECTIVE > 90.0f)
-					Camera::MAX_PERSPECTIVE = 90.0f;
+				Camera::MAX_PERSPECTIVE = std::min(Camera::MAX_PERSPECTIVE, 90.0f);
 
 				result = systemFile.readIdFloat("MinPerspective",Camera::MIN_PERSPECTIVE);
 				if (result != NO_ERR)
 					Camera::MIN_PERSPECTIVE = 18.0f;
 
-				if (Camera::MIN_PERSPECTIVE < -89.0f)
-					Camera::MIN_PERSPECTIVE = -89.0f;
+				Camera::MIN_PERSPECTIVE = std::max(Camera::MIN_PERSPECTIVE, -89.0f);
 
 				result = systemFile.readIdFloat("MaxOrtho",Camera::MAX_ORTHO);
 				if (result != NO_ERR)
 					Camera::MAX_ORTHO = 88.0f;
 
-				if (Camera::MAX_ORTHO > 90.0f)
-					Camera::MAX_ORTHO = 90.0f;
+				Camera::MAX_ORTHO = std::min(Camera::MAX_ORTHO, 90.0f);
 
 				result = systemFile.readIdFloat("MinOrtho",Camera::MIN_ORTHO);
 				if (result != NO_ERR)
 					Camera::MIN_ORTHO = 18.0f;
 
-				if (Camera::MIN_ORTHO < 0.0f)
-					Camera::MIN_ORTHO = 0.0f;
+				Camera::MIN_ORTHO = std::max(Camera::MIN_ORTHO, 0.0f);
 
 				result = systemFile.readIdFloat("AltitudeMinimum",Camera::AltitudeMinimum);
 				if (result != NO_ERR)
 					Camera::AltitudeMinimum = 10.0f;
 
-				if (Camera::AltitudeMinimum < 1.0f)
-					Camera::AltitudeMinimum = 1.0f;
+				Camera::AltitudeMinimum = std::max(Camera::AltitudeMinimum, 1.0f);
 
 				result = systemFile.readIdFloat("AltitudeMaximumHi",Camera::AltitudeMaximumHi);
 				if (result != NO_ERR)

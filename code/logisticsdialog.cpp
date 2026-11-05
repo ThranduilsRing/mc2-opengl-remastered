@@ -915,7 +915,7 @@ void LogisticsSaveDialog::update()
 			displayName = edits[0].entry();
 		{
 			/*if there is a selected item and it matches the text in the editbox, then use that selected item*/
-			aLocalizedListItem* pSelectedItem = 0;
+			aLocalizedListItem* pSelectedItem = nullptr;
 			int selectedIndex = gameListBox.GetSelectedItem();
 			if ((0 <= selectedIndex) && (gameListBox.GetItemCount() > selectedIndex))
 			{

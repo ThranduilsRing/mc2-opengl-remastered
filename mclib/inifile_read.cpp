@@ -1,11 +1,12 @@
 // FitIniFile: seekBlock and the scalar readId* readers, readIdString and getIdStringLength.
 // Declared in the class headers; shared names in inifile_internal.h.
+#include "mc2_czstring.h"
 #include "inifile_internal.h"
 #include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
-long FitIniFile::seekBlock (const char *blockId)
+long FitIniFile::seekBlock (mc2::czstring blockId)
 {
 	unsigned long blockNum = 0;
 	

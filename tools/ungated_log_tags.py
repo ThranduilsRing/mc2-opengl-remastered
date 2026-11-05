@@ -42,13 +42,30 @@ def allowed_names(baseline_json: str) -> set[str]:
     return {k.split()[0] for k in tags}
 
 
+def _removed_tags(lines: list[str], start: int) -> set[str]:
+    """Tags printed on removed lines of the hunk beginning at lines[start]: a rewritten print is not a new one."""
+    out: set[str] = set()
+    in_print = False   # a removed run that opened with a print call keeps its continuation lines (multi-line fprintf)
+    for raw in lines[start:]:
+        if raw.startswith(("@@", "diff ")):
+            break
+        if not raw.startswith("-") or raw.startswith("--- "):
+            in_print = False
+            continue
+        in_print = in_print or bool(PRINT.search(raw))
+        if in_print:
+            out.update(t.group(1) for t in TAG.finditer(raw))
+    return out
+
+
 def check_diff(diff: str, allowed: set[str]) -> list[str]:
     """Return 'path:line: [TAG]' for each ungated added print of a bracketed tag."""
     bad = []
     path = None
     window: list[str] = []
     lineno = 0
-    for raw in diff.splitlines():
+    lines = diff.splitlines()
+    for idx, raw in enumerate(lines):
         if raw.startswith("+++ "):
             path = None if raw[4:] == "/dev/null" else raw[4:].removeprefix("b/")
             continue
@@ -57,6 +74,7 @@ def check_diff(diff: str, allowed: set[str]) -> list[str]:
         m = HUNK.match(raw)
         if m:
             lineno, window = int(m.group(1)), []
+            removed = _removed_tags(lines, idx + 1)
             continue
         if path is None or not SOURCE.search(path) or not raw or raw[0] not in " +":
             continue
@@ -64,7 +82,7 @@ def check_diff(diff: str, allowed: set[str]) -> list[str]:
         if raw[0] == "+" and PRINT.search(text):
             for t in TAG.finditer(text):
                 name = t.group(1)
-                if name in allowed:
+                if name in allowed or name in removed:
                     continue
                 if GUARD.search(text) or any(GUARD.search(w) for w in window[-GUARD_WINDOW:]):
                     continue

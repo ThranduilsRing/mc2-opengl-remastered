@@ -11,6 +11,7 @@
 // HEADER-ONLY on purpose (mclib is linked by standalone tools that do not link GameOS).
 #pragma once
 
+#include "mc2_czstring.h"
 #include <algorithm>
 #include <cstddef>
 #include <string>
@@ -20,7 +21,7 @@ namespace mc2::str {
 
 // A legacy `const char*` may be null, which means "no text"; std::string(nullptr) is undefined behaviour.
 // Every pointer that enters a std::string from older code passes through here.
-inline std::string from_c(const char* p) { return p ? std::string(p) : std::string(); }
+inline std::string from_c(mc2::czstring p) { return p ? std::string(p) : std::string(); }
 
 namespace detail {
 constexpr unsigned char fold(unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') ? static_cast<unsigned char>(c + ('a' - 'A')) : c; }

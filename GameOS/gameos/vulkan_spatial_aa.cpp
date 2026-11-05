@@ -215,7 +215,7 @@ struct SpatialAA::Impl {
     }
     OwnedPipeline makeGraphics(VkShaderModule vs, VkShaderModule fs) {
         VkPipelineShaderStageCreateInfo stages[2]{};
-        for (int i = 0; i < 2; ++i) { stages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; stages[i].pName = "main"; }
+        for (auto & stage : stages) { stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; stage.pName = "main"; }
         stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vs;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = fs;
         VkPipelineVertexInputStateCreateInfo vi{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -239,8 +239,8 @@ struct SpatialAA::Impl {
         if (w > 16384 || h > 16384) return false; // reference candidate coordinate packing
         if (!cmaaEdges.create(*ctx, (w + 1) / 2, h, VK_FORMAT_R32_UINT, VK_IMAGE_USAGE_STORAGE_BIT) ||
             !heads.create(*ctx, (w + 1) / 2, (h + 1) / 2, VK_FORMAT_R32_UINT, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) return false;
-        const VkDeviceSize pixels = VkDeviceSize(w) * h;
-        const VkDeviceSize bytes[] = {pixels * 4, VkDeviceSize((w + 1) / 2) * ((h + 1) / 2) * 4, pixels * 16, 64, 12};
+        const VkDeviceSize pixels = static_cast<VkDeviceSize>(w) * h;
+        const VkDeviceSize bytes[] = {pixels * 4, static_cast<VkDeviceSize>((w + 1) / 2) * ((h + 1) / 2) * 4, pixels * 16, 64, 12};
         VkPhysicalDeviceProperties props{}; vkGetPhysicalDeviceProperties(ctx->physicalDevice(), &props);
         if ((pixels + 127) / 128 > props.limits.maxComputeWorkGroupCount[0] ||
             (bytes[1] / 4 + 31) / 32 > props.limits.maxComputeWorkGroupCount[1]) return false;
@@ -300,11 +300,11 @@ struct SpatialAA::Impl {
             VkRenderPassBeginInfo ri{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO}; ri.renderPass = renderPass.get(); ri.framebuffer = framebuffers[i].get();
             ri.renderArea.extent = {w, h}; ri.clearValueCount = 1; ri.pClearValues = &clear;
             vkCmdBeginRenderPass(cb, &ri, VK_SUBPASS_CONTENTS_INLINE);
-            VkViewport vp{0, 0, float(w), float(h), 0, 1}; VkRect2D sc{{0, 0}, {w, h}};
+            VkViewport vp{0, 0, static_cast<float>(w), static_cast<float>(h), 0, 1}; VkRect2D sc{{0, 0}, {w, h}};
             vkCmdSetViewport(cb, 0, 1, &vp); vkCmdSetScissor(cb, 0, 1, &sc);
             infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics[i].get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout.get(), 0, 1, &sets[i], 0, nullptr);
-            float metrics[] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), float(w), float(h)};
+            float metrics[] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), static_cast<float>(w), static_cast<float>(h)};
             vkCmdPushConstants(cb, layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(metrics), metrics);
             vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
     }

@@ -9,6 +9,7 @@
 // tripped guard is visible in artifacts even on a headless run. Appending a
 // well-formed {"tag":"JOBS_FATAL",...} line is line-compatible with the JSONL
 // reader (mc2_diag emits one JSON object per line).
+#include "mc2_czstring.h"
 #include "jobs_fatal.h"
 
 #include <atomic>
@@ -33,7 +34,7 @@ const char* tracePath() {
 
 // Append one JSONL record. Best-effort: on any failure we still proceed (the
 // caller of fatal() aborts regardless; logOnce() simply drops the line).
-void appendTrace(const char* tag, const char* condOrTag,
+void appendTrace(mc2::czstring tag, mc2::czstring condOrTag,
                  const char* file, int line) {
     const char* path = tracePath();
     if (std::strcmp(path, "off") == 0) return;
@@ -43,7 +44,7 @@ void appendTrace(const char* tag, const char* condOrTag,
 
     // Minimal JSON escaping for the fields we control (cond/tag/file are code
     // literals, but escape defensively so a backslash in a path can't break it).
-    auto esc = [](const char* s) {
+    auto esc = [](mc2::czstring s) {
         std::string out;
         for (const char* c = s; c && *c; ++c) {
             if (*c == '"' || *c == '\\') out += '\\';
@@ -74,12 +75,12 @@ void appendTrace(const char* tag, const char* condOrTag,
 
 namespace mc2 { namespace jobs { namespace detail {
 
-void fatal(const char* cond, const char* file, int line) {
+void fatal(mc2::czstring cond, mc2::czstring file, int line) {
     appendTrace("JOBS_FATAL", cond, file, line);
     std::abort();
 }
 
-void logOnce(const char* tag, const char* file, int line) {
+void logOnce(mc2::czstring tag, mc2::czstring file, int line) {
     // One record per distinct call site (file:line), first hit only. A tiny
     // guarded set keeps this alloc-light and thread-safe; the reentrancy guard
     // that calls this is off the memory-corruption path so a mutex here is fine.

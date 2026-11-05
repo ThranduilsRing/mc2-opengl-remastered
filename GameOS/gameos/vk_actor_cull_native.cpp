@@ -6,8 +6,6 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "mc2_diag_verbose.h"
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include <array>
 #include <algorithm>
@@ -57,25 +55,25 @@ struct NativeCull final : mc2vk::IslandState {
         vkGetPhysicalDeviceQueueFamilyProperties(ctx.physicalDevice(),&familyCount,families.data());
         const uint32_t bits=ctx.graphicsFamily()<familyCount ? families[ctx.graphicsFamily()].timestampValidBits : 0;
         timed=bits!=0; timestampPeriod=properties.limits.timestampPeriod;
-        timestampMask=bits && bits<64 ? (uint64_t(1)<<bits)-1 : UINT64_MAX;
-        capacity=cap; bytes=VkDeviceSize(4+cap)*sizeof(uint32_t);
+        timestampMask=bits && bits<64 ? (static_cast<uint64_t>(1)<<bits)-1 : UINT64_MAX;
+        capacity=cap; bytes=static_cast<VkDeviceSize>(4+cap)*sizeof(uint32_t);
         const auto S=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         if (!pipeline.create(ctx.device(),vk_island_util::spvDir()+"vk_actor_cull.comp.spv",{{0,S},{1,U},{2,S}},"actorCull") ||
             !sets.create(ctx.device(),pipeline,3,"actorCull.sets")) return false;
         for (uint32_t i=0;i<3;++i) {
             auto& slot=slots[i];
-            if (!slot.records.createHostWritable(ctx.allocator(),ctx.device(),VkDeviceSize(cap)*sizeof(GpuActorRecord),
-                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"actorCull.records",int(i)) ||
+            if (!slot.records.createHostWritable(ctx.allocator(),ctx.device(),static_cast<VkDeviceSize>(cap)*sizeof(GpuActorRecord),
+                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"actorCull.records",static_cast<int>(i)) ||
                 !slot.params.createHostWritable(ctx.allocator(),ctx.device(),sizeof(CullParams),
-                                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,"actorCull.params",int(i))) return false;
+                                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,"actorCull.params",static_cast<int>(i))) return false;
             VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; info.size=bytes;
             info.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             VmaAllocationCreateInfo device{}; device.usage=VMA_MEMORY_USAGE_AUTO;
-            if (!slot.output.create(ctx.allocator(),ctx.device(),info,device,"actorCull.output",int(i))) return false;
+            if (!slot.output.create(ctx.allocator(),ctx.device(),info,device,"actorCull.output",static_cast<int>(i))) return false;
             info.usage=VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             VmaAllocationCreateInfo host{}; host.usage=VMA_MEMORY_USAGE_AUTO;
             host.flags=VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-            if (!slot.staging.create(ctx.allocator(),ctx.device(),info,host,"actorCull.readback",int(i)) ||
+            if (!slot.staging.create(ctx.allocator(),ctx.device(),info,host,"actorCull.readback",static_cast<int>(i)) ||
                 !mc2vk::beginTransientCommandBuffer(ctx,slot.pool,slot.cb)) return false;
             // beginTransientCommandBuffer returns a begun command buffer; initialize it
             // empty now so the first submission can reset the pool like every later one.
@@ -154,7 +152,7 @@ NativeCullSubmit nativeCullSubmit(uint32_t i, std::span<const GpuActorRecord> re
     bufferBarrier(slot.cb,slot.staging.get(),VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
                   VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT);
     // The tail beyond the submitted records has no reader this frame.
-    const VkDeviceSize usedBytes=VkDeviceSize(4+params.counts[0])*sizeof(uint32_t);
+    const VkDeviceSize usedBytes=static_cast<VkDeviceSize>(4+params.counts[0])*sizeof(uint32_t);
     VkBufferCopy copy{0,0,usedBytes}; vkCmdCopyBuffer(slot.cb,slot.output.get(),slot.staging.get(),1,&copy);
     bufferBarrier(slot.cb,slot.staging.get(),VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
                   VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_READ_BIT);
@@ -176,14 +174,14 @@ bool nativeCullPoll(uint32_t i, NativeCullHeader& header, uint32_t& count,
     vmaInvalidateAllocation(ctx.allocator(),slot.staging.allocation(),0,VK_WHOLE_SIZE);
     std::memcpy(&header,mapped,sizeof(header));
     const bool valid=header.frame==slot.frame;
-    if (valid) std::memcpy(visibility.data(),mapped+4,size_t(slot.count)*sizeof(uint32_t));
+    if (valid) std::memcpy(visibility.data(),mapped+4,static_cast<size_t>(slot.count)*sizeof(uint32_t));
     slot.staging.unmap();
     if (!valid) return false;
     count=slot.count; std::copy_n(slot.ids.data(),count,ids.data());
     if (s->timed) {
         uint64_t ticks[2]{};
         if (vkGetQueryPoolResults(ctx.device(),slot.queries.get(),0,2,sizeof(ticks),ticks,sizeof(uint64_t),VK_QUERY_RESULT_64_BIT)==VK_SUCCESS)
-            s->lastDispatchNs=static_cast<uint64_t>(double((ticks[1]-ticks[0])&s->timestampMask)*s->timestampPeriod);
+            s->lastDispatchNs=static_cast<uint64_t>(static_cast<double>((ticks[1]-ticks[0])&s->timestampMask)*s->timestampPeriod);
     }
     if (++s->readySamples==1 || s->readySamples%256==0) {
         if (s->lastDispatchNs) MC2_DIAGF("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=%llu readback_bytes=%llu\n",

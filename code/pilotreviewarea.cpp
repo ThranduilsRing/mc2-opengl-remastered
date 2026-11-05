@@ -1817,7 +1817,7 @@ SpecialtyListItem::SpecialtyListItem( int newID )
 	pressedAnim = *s_pressedAnim;
 	highlightAnim = *s_highlightAnim;
 	description = *s_description;
-	int iconType = MechWarrior::skillTypes[newID];
+	int iconType = static_cast<int>(MechWarrior::skillTypes[newID]);
 	icon = *s_skillIcons[iconType];
 	radioButton  = *s_radioButton;
 	outline = *s_outline;

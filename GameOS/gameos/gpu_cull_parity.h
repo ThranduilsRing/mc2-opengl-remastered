@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 
 namespace gpu_cull {
@@ -11,7 +12,7 @@ namespace gpu_cull {
 //   catName   — short string: "Mech", "GV", "Gate", "Turret", "Other"
 //   recCenter — worldCenter[3] from the GpuActorRecord (raw MC2 world coords)
 //   posX, posY, posZ — actor's position (MC2 world coords, same space as recCenter)
-void parity_checkRecord(uint32_t actorId, const char* catName,
+void parity_checkRecord(uint32_t actorId, mc2::czstring catName,
                         const float recCenter[3],
                         float posX, float posY, float posZ);
 

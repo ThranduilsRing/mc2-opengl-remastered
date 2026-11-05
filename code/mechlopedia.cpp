@@ -135,7 +135,7 @@ int Mechlopedia::init()
 // ENCYCLO-UNDEFINED-FILTER-1: data rows without a resolved display name come
 // through as "undefined" (missing string ids / placeholder variants); hide
 // them from every encyclopedia list.
-static bool mc2IsUndefinedName( const char* n )
+static bool mc2IsUndefinedName( mc2::czstring n )
 {
 	return !n || !n[0] || S_stricmp( n, "undefined" ) == 0;
 }
@@ -293,8 +293,8 @@ void Mechlopedia::syncEntityList()
 	// key not found (mirror side). Log both counts to tell them apart.
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
-		printf("[ENCYCLO] syncEntityList screen=%ld legacyItems=%d mirrorOk=%d\n",
-			currentScreen, static_cast<int>(items.size()), static_cast<int>(ok));
+		mc2::fmt::print_out("[ENCYCLO] syncEntityList screen={:d} legacyItems={:d} mirrorOk={:d}\n",
+			mc2::fmt::as_long(currentScreen), mc2::fmt::as_i32(static_cast<int>(items.size())), mc2::fmt::as_i32(static_cast<int>(ok)));
 		fflush(stdout);
 	}
 
@@ -645,7 +645,7 @@ void cleanLegacyDescription( std::string& text )
 // Mirror a populated weapon-loadout ComponentListBox into the ImGui defs-page
 // list, preserving the per-weapon-range item colors the box assigned (short =
 // olive, medium = blue, long = red, components = gold).
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const char* listKey )
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
 {
 	std::vector<std::string>  items;
 	std::vector<unsigned int> colors;

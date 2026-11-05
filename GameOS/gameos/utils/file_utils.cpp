@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "file_utils.h"
 
 #include <stdint.h>
@@ -15,7 +16,7 @@ const char kPathSeparatorAsChar = '\\';
 const char *const kPathSeparator = "\\";
 #endif
 
-uint64_t get_file_mod_time_ms(const char* fname)
+uint64_t get_file_mod_time_ms(mc2::czstring fname)
 {
 #if PLATFORM_WINDOWS
 	struct _stat fi = { 0 };
@@ -29,7 +30,7 @@ uint64_t get_file_mod_time_ms(const char* fname)
 
 }
 
-std::string get_path(const char* fname)
+std::string get_path(mc2::czstring fname)
 {
     const char* pathend = strrchr(fname, filesystem::kPathSeparatorAsChar);
     if(!pathend)

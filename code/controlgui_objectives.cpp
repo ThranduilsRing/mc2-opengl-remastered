@@ -573,7 +573,7 @@ void ControlGui::renderVideoImGui()
 		{
 			// letterbox fill (opaque black) when the aspect-fit quad does not
 			// cover the dest rect — same condition as video_render.
-			if ( qx0 > (float)rx || qy0 > (float)ry ||
+			if ( qx0 > static_cast<float>(rx) || qy0 > static_cast<float>(ry) ||
 				 qx1 < static_cast<float>(( rx + rw )) || qy1 < static_cast<float>(( ry + rh )) )
 				dl->AddRectFilled(
 					ImVec2( AX( static_cast<float>(rx) ), AY( static_cast<float>(ry) ) ),

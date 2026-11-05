@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gos_hdri.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
@@ -95,7 +96,7 @@ static bool hdriBc6hOn()
 
 // Derive sidecar path: replace trailing ".exr" with ".ktx2".
 // Returns false if path does not end with ".exr" or output buffer is too small.
-static bool deriveSidecarKtx2(const char* exrPath, char* outBuf, size_t outBufLen)
+static bool deriveSidecarKtx2(mc2::czstring exrPath, char* outBuf, size_t outBufLen)
 {
     if (!exrPath || !outBuf || outBufLen < 2) return false;
     const size_t n = strlen(exrPath);
@@ -184,7 +185,7 @@ void buildRgba16fChain(HdriCpuImage& out, const float* pixels, int w, int h)
 }  // namespace
 
 // Decode source bytes only; the native sky and water owners upload their own images.
-bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
+bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
 {
     if (outSunValid) *outSunValid = false;
     if (!outCpu) return false;
@@ -252,7 +253,7 @@ bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, Hd
     float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
     const int result = LoadEXR(&pixels, &w, &h, path, &error);
     if (result != TINYEXR_SUCCESS || !pixels || w <= 0 || h <= 0 ||
-        w > int(RenderCore::kKtxMaxEdge) || h > int(RenderCore::kKtxMaxEdge)) {
+        w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge)) {
         MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=decode_failed path=%s error=%s\n", path, error ? error : "invalid_extent");
         if (pixels) free(pixels);
         if (error) FreeEXRErrorMessage(error);

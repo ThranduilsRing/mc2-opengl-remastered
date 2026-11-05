@@ -4,6 +4,8 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <algorithm>
+
 #include"gosfxheaders.hpp"
 
 //##########################################################################
@@ -1915,9 +1917,7 @@ gosFX::ComplexCurve::ComputeRange(
 		--key;
 		Stuff::Scalar h,l;
 		key->ComputeRange(&l, &h, key[1].m_time - key->m_time);
-		if (h > *hi)
-			*hi = h;
-		if (l < *low)
-			*low = l;
+		*hi = std::max(*hi, h);
+		*low = std::min(*low, l);
 	}
 }

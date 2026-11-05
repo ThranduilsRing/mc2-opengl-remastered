@@ -230,9 +230,9 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 		};
 		const std::string btn = line.substr(12);
 		int id = -1;
-		for (size_t b = 0; b < sizeof(kBtns) / sizeof(kBtns[0]); ++b) {
-			if (btn == kBtns[b].name) {
-				id = kBtns[b].id;
+		for (const auto & btnElem : kBtns) {
+			if (btn == btnElem.name) {
+				id = btnElem.id;
 				break;
 			}
 		}
@@ -340,8 +340,8 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		else if (arg.compare(0, 6, "class ") == 0 || arg.compare(0, 5, "name ") == 0) {
 			const bool byClass = (arg.compare(0, 6, "class ") == 0);
 			std::string needle = arg.substr(byClass ? 6 : 5);
-			for (size_t c = 0; c < needle.size(); ++c)
-				needle[c] = static_cast<char>(toupper(static_cast<unsigned char>(needle[c])));
+			for (auto & needleElem : needle)
+				needleElem = static_cast<char>(toupper(static_cast<unsigned char>(needleElem)));
 			long n = 0;
 			for (long i = 0; i < pTeam->getRosterSize(); i++) {
 				Mover* m = static_cast<Mover*>(pTeam->getMover(i));
@@ -352,8 +352,8 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 					std::string hay = byClass
 						? std::string(getObjectClassName(m->getObjectClass()))
 						: std::string(m->getName() ? m->getName() : "");
-					for (size_t c = 0; c < hay.size(); ++c)
-						hay[c] = static_cast<char>(toupper(static_cast<unsigned char>(hay[c])));
+					for (auto & hayElem : hay)
+						hayElem = static_cast<char>(toupper(static_cast<unsigned char>(hayElem)));
 					hit = (hay.find(needle) != std::string::npos);
 				}
 				m->setSelected(hit);
@@ -395,7 +395,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		int cols = 0, rows = 0;
 		std::sscanf(line.c_str() + 9, "%d %d", &cols, &rows);
 		extern std::string mc2PickGridReport(int, int);
-		note = std::string(1, char(10)) + mc2PickGridReport(cols > 0 ? cols : 8, rows > 0 ? rows : 5);
+		note = std::string(1, static_cast<char>(10)) + mc2PickGridReport(cols > 0 ? cols : 8, rows > 0 ? rows : 5);
 		result = "ok";
 	}
 	else if (line.compare(0, 6, "mouse ") == 0) {

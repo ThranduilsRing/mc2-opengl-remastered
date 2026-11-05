@@ -410,7 +410,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 		localResult = localToWorld * shapeOrigin;
 					
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
+ 		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,nullptr);
 		jumpJetEffect->Start(&info);
 	}
 

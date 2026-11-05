@@ -9,6 +9,7 @@
 #include "hitch_stats.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "mc2fmt.h"
 
 namespace mc2vk {
 
@@ -53,7 +54,7 @@ bool UploadBatch::build(const VulkanContext& ctx, OwnedCommandPool& pool, VkComm
     } while (false);
     if (!ok) {
         dropped_ += recorders_.size();
-        std::fprintf(stderr, "[VK_UPLOAD v1] the batch command buffer could not be built: %zu upload(s) dropped.\n", recorders_.size());
+        mc2::fmt::print_err("[VK_UPLOAD v1] the batch command buffer could not be built: {:d} upload(s) dropped.\n", mc2::fmt::as_size(recorders_.size()));
         std::fflush(stderr);
         cb = VK_NULL_HANDLE;
     } else {

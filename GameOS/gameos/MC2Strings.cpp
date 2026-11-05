@@ -19,6 +19,7 @@
  * - Added locale path seam with en_us as the current fixed default.
  ***************************************************************/
 
+#include "mc2_czstring.h"
 #include "MC2Strings.h"
 #include "utils/mc2log.h"
 
@@ -39,8 +40,8 @@
 
 // Forward-declare mod file enumeration from mclib/file.cpp.
 // MC2Strings must not pull in all of file.h; this thin seam is intentional.
-using ModFitCallback = void (*)(const char* absPath, void* userData);
-void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userData);
+using ModFitCallback = void (*)(mc2::czstring absPath, void* userData);
+void EnumerateModFitFiles(mc2::czstring keyPrefix, ModFitCallback cb, void* userData);
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -217,7 +218,7 @@ namespace
         return trimmed;
     }
 
-    bool ReadWholeFile(const char* path, std::string& out)
+    bool ReadWholeFile(mc2::czstring path, std::string& out)
     {
         out.clear();
 
@@ -488,8 +489,8 @@ namespace
         if (!dir)
             return;
 
-        struct dirent* entry = 0;
-        while ((entry = readdir(dir)) != 0)
+        struct dirent* entry = nullptr;
+        while ((entry = readdir(dir)) != nullptr)
         {
             const char* name = entry->d_name;
             const size_t len = std::strlen(name);
@@ -559,6 +560,7 @@ namespace
             }
             else
             {
+                auto& [legacyIdKey, priorKey] = *idIt;
                 const std::string oldSource = state.legacySourceById[record.legacyId];
                 const bool oldIsMC2Res = SourceIsMC2Res(oldSource);
                 const bool newIsMC2Res = SourceIsMC2Res(record.source);
@@ -567,16 +569,16 @@ namespace
                 {
                     // mc2res canonical key overrides a prior non-mc2res entry
                     Trace("legacyId %ld remapped to canonical mc2res key '%s' from prior key '%s'",
-                          record.legacyId, record.key.c_str(), idIt->second.c_str());
-                    idIt->second = record.key;
+                          record.legacyId, record.key.c_str(), priorKey.c_str());
+                    priorKey = record.key;
                     state.legacySourceById[record.legacyId] = record.source;
                 }
                 else if (oldIsMC2Res && !newIsMC2Res)
                 {
                     // Mod/game-specific entry overrides mc2res placeholder (e.g. "undefined")
                     Trace("legacyId %ld: mod key '%s' overrides mc2res placeholder '%s'",
-                          record.legacyId, record.key.c_str(), idIt->second.c_str());
-                    idIt->second = record.key;
+                          record.legacyId, record.key.c_str(), priorKey.c_str());
+                    priorKey = record.key;
                     state.legacySourceById[record.legacyId] = record.source;
                 }
                 else
@@ -585,7 +587,7 @@ namespace
                           record.legacyId,
                           record.sourceFile.c_str(),
                           record.key.c_str(),
-                          idIt->second.c_str());
+                          priorKey.c_str());
                 }
             }
         }
@@ -621,7 +623,7 @@ namespace
             State().keyByLegacyAlias[id] = textKey;
     }
 
-    std::string MenuBindingKey(const char* menuId, const char* commandId)
+    std::string MenuBindingKey(mc2::czstring menuId, mc2::czstring commandId)
     {
         std::string key;
         if (menuId)
@@ -746,7 +748,7 @@ namespace
         return "en_us";
     }
 
-    void AddTextRootCandidates(std::vector<std::string>& dirs, std::string_view root, const char* locale)
+    void AddTextRootCandidates(std::vector<std::string>& dirs, std::string_view root, mc2::czstring locale)
     {
         if (root.empty() || !locale || !locale[0])
             return;
@@ -774,7 +776,7 @@ namespace
         AddEngineSupportRootCandidates(dirs, root);
     }
 
-    const char* MissingMarker(const char* prefix, const char* value)
+    const char* MissingMarker(mc2::czstring prefix, mc2::czstring value)
     {
         static char buffers[8][256];
         static unsigned int index = 0;
@@ -791,7 +793,7 @@ namespace
         return buffer;
     }
 
-    const char* MissingMarkerNumber(const char* prefix, long value)
+    const char* MissingMarkerNumber(mc2::czstring prefix, long value)
     {
         char number[64] = {0};
 #ifdef _MSC_VER
@@ -854,7 +856,7 @@ namespace MC2Strings
         // These are NOT discoverable via raw filesystem scan (only the base data/ dir is on-disk).
         // EnumerateModFitFiles returns them sorted by filename — last-write-wins for aliases.
         {
-            struct Loader { static void cb(const char* absPath, void* /*ud*/) {
+            struct Loader { static void cb(mc2::czstring absPath, void* /*ud*/) {
                 LoadFile(absPath);
             }};
             std::string prefix = std::string("data/defs/text/") + locale + "/";
@@ -879,7 +881,7 @@ namespace MC2Strings
         return Load();
     }
 
-    const char* Get(const char* key)
+    const char* Get(mc2::czstring key)
     {
         if (!key || !key[0])
             return nullptr;
@@ -890,7 +892,8 @@ namespace MC2Strings
         if (it == State().byKey.end())
             return nullptr;
 
-        return it->second.text.c_str();
+        const auto& [mapKey, stringRecord] = *it;
+        return stringRecord.text.c_str();
     }
 
     const char* GetByLegacyId(long legacyId)
@@ -909,7 +912,8 @@ namespace MC2Strings
         const std::map<long, std::string>::const_iterator aliasIt = State().keyByLegacyAlias.find(legacyId);
         if (aliasIt != State().keyByLegacyAlias.end())
         {
-            const char* aliasText = Get(aliasIt->second.c_str());
+            const auto& [aliasId, aliasKey] = *aliasIt;
+            const char* aliasText = Get(aliasKey.c_str());
             if (aliasText && aliasText[0])
                 return aliasText;
         }
@@ -918,7 +922,8 @@ namespace MC2Strings
         if (it == State().keyByLegacyId.end())
             return nullptr;
 
-        return Get(it->second.c_str());
+        const auto& [mapKey, stringKey] = *it;
+        return Get(stringKey.c_str());
     }
 
     const char* GetByResourceId(unsigned int resourceId)
@@ -927,12 +932,15 @@ namespace MC2Strings
 
         const std::map<unsigned int, std::string>::const_iterator it = State().keyByResourceId.find(resourceId);
         if (it != State().keyByResourceId.end())
-            return Get(it->second.c_str());
+        {
+            const auto& [mapKey, stringKey] = *it;
+            return Get(stringKey.c_str());
+        }
 
         return GetByLegacyId(static_cast<long>(resourceId));
     }
 
-    const char* GetByResourceSymbol(const char* resourceSymbol)
+    const char* GetByResourceSymbol(mc2::czstring resourceSymbol)
     {
         if (!resourceSymbol || !resourceSymbol[0])
             return nullptr;
@@ -943,10 +951,11 @@ namespace MC2Strings
         if (it == State().keyByResourceSymbol.end())
             return nullptr;
 
-        return Get(it->second.c_str());
+        const auto& [mapKey, stringKey] = *it;
+        return Get(stringKey.c_str());
     }
 
-    const char* GetMenuText(const char* menuId, const char* commandId)
+    const char* GetMenuText(mc2::czstring menuId, mc2::czstring commandId)
     {
         if (!menuId || !menuId[0] || !commandId || !commandId[0])
             return nullptr;
@@ -958,7 +967,8 @@ namespace MC2Strings
         if (it == State().keyByMenuBinding.end())
             return nullptr;
 
-        return Get(it->second.c_str());
+        const auto& [mapKey, stringKey] = *it;
+        return Get(stringKey.c_str());
     }
 
     const char* GetMenuTextByIds(unsigned int menuId, unsigned int commandId)
@@ -975,7 +985,7 @@ namespace MC2Strings
         return GetMenuText(menu, command);
     }
 
-    bool HasKey(const char* key)
+    bool HasKey(mc2::czstring key)
     {
         return Get(key) != nullptr;
     }
@@ -990,17 +1000,17 @@ namespace MC2Strings
         return GetByResourceId(resourceId) != nullptr;
     }
 
-    bool HasResourceSymbol(const char* resourceSymbol)
+    bool HasResourceSymbol(mc2::czstring resourceSymbol)
     {
         return GetByResourceSymbol(resourceSymbol) != nullptr;
     }
 
-    bool HasMenuBinding(const char* menuId, const char* commandId)
+    bool HasMenuBinding(mc2::czstring menuId, mc2::czstring commandId)
     {
         return GetMenuText(menuId, commandId) != nullptr;
     }
 
-    const char* MissingKey(const char* key)
+    const char* MissingKey(mc2::czstring key)
     {
         return MissingMarker("key", key);
     }
@@ -1015,12 +1025,12 @@ namespace MC2Strings
         return MissingMarkerNumber("resourceId", static_cast<long>(resourceId));
     }
 
-    const char* MissingResourceSymbol(const char* resourceSymbol)
+    const char* MissingResourceSymbol(mc2::czstring resourceSymbol)
     {
         return MissingMarker("resourceSymbol", resourceSymbol);
     }
 
-    const char* MissingMenuBinding(const char* menuId, const char* commandId)
+    const char* MissingMenuBinding(mc2::czstring menuId, mc2::czstring commandId)
     {
         const std::string key = MenuBindingKey(menuId, commandId);
         return MissingMarker("menu", key.c_str());
@@ -1037,7 +1047,7 @@ namespace MC2Strings
         // will overwrite any wrong keyByLegacyAlias entries with correct cveg keys.
         const char* locale = ActiveLocale();
         struct Loader {
-            static void cb(const char* absPath, void* /*ud*/) {
+            static void cb(mc2::czstring absPath, void* /*ud*/) {
                 LoadFile(absPath);
             }
         };

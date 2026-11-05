@@ -154,7 +154,7 @@ bool
 	char *p = buffer;
 	int i = 0;
 
-	Check_Object(FileStreamManager::Instance);
+	Check_Object(FileStreamManager::Instance.get());
 	const char *eol = "\r\n";
 	DWORD eol_length = static_cast<DWORD>(strlen(eol));
 

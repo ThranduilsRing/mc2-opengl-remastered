@@ -13,6 +13,7 @@
 
 //---------------------------------------------------------------------------
 // Include files
+#include "mc2_czstring.h"
 #include <algorithm>
 #include <memory>
 #ifndef APPEAR_H
@@ -37,9 +38,7 @@
 #include<gosfx/gosfxheaders.hpp>
 #include <vector>  // T1.4: BldgAppearance::spotlightLights_/spotlightSlotIds_/spotlightNodeIds_
 //**************************************************************************************
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAX_BD_ANIMATIONS = 10;
 struct ModelOverrideRecord;
@@ -187,7 +186,7 @@ class BldgAppearanceType : public AppearanceType
 			return false;
 		}
 		
-  		virtual void init (const char *fileName);
+  		virtual void init (mc2::czstring fileName);
 
 		virtual void destroy (void);
 
@@ -534,7 +533,7 @@ class BldgAppearance : public ObjectAppearance
 			return result;
 		}
 		
-		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (mc2::czstring nodeName);
 		
 		virtual void startActivity (long effectId, bool loop);
 		virtual void stopActivity (void);
@@ -613,7 +612,7 @@ class TreeAppearanceType : public AppearanceType
 			destroy();
 		}
 
-		virtual void init (const char *fileName);
+		virtual void init (mc2::czstring fileName);
 
 		virtual void destroy (void);
 

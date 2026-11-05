@@ -1,4 +1,5 @@
 // Object-light gathering and diagnostics for the native Vulkan feeds.
+#include "mc2_czstring.h"
 #include "render_scene_support.h"
 #include "mc2fmt.h"
 
@@ -89,7 +90,7 @@ static const char* lightRowCensusTypeName(unsigned t) {
     default: return "UNKNOWN";
     }
 }
-static void lightRowCensusEmit(const char* tag, unsigned t) {
+static void lightRowCensusEmit(mc2::czstring tag, unsigned t) {
     const LightRowCensusRec& r = s_lightRowCensusTab[t & 7];
     mc2::fmt::print_err("[LIGHT_ROW_CENSUS v1] {} type={:d}({}) seen={:d} src=({:.3f},{:.3f},{:.3f}) up=({:.3f},{:.3f},{:.3f}) maxSrcAbs={:.3f} falloff=({:.1f},{:.1f}) fix={:d}\n", mc2::fmt::safe(tag), mc2::fmt::as_u32(t), mc2::fmt::safe(lightRowCensusTypeName(t)), mc2::fmt::as_u32(r.seen), r.src[0], r.src[1], r.src[2], r.up[0], r.up[1], r.up[2], r.maxSrcAbs, r.falloff[0], r.falloff[1], mc2::fmt::as_i32(s_lightPosColumnFix ? 1 : 0));
     std::fflush(stderr);
@@ -260,8 +261,8 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 				rec.up[0]  = row[12]; rec.up[1]  = row[13]; rec.up[2]  = row[14];
 				rec.falloff[0] = lights->lightFalloff[num_lights][0];
 				rec.falloff[1] = lights->lightFalloff[num_lights][1];
-				for (int c = 0; c < 3; ++c) {
-					const float a = rec.src[c] < 0.0f ? -rec.src[c] : rec.src[c];
+				for (const auto srcElem : rec.src) {
+					const float a = srcElem < 0.0f ? -srcElem : srcElem;
 					if (a > rec.maxSrcAbs) rec.maxSrcAbs = a;
 				}
 				// One line the first time a POSITIONAL type ever appears — this

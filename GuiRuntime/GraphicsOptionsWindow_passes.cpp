@@ -25,7 +25,7 @@ void drawDrawPacketsSection() {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Frame");
         ImGui::TableSetColumnIndex(1);
-        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u64((unsigned long long)g_dpSnapshot.frame));
+        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u64(static_cast<unsigned long long>(g_dpSnapshot.frame)));
         ImGui::TextUnformatted(buf);
 
         ImGui::TableNextRow();
@@ -107,16 +107,16 @@ void drawDrawPacketsSection() {
     }
 
     static int s_selTypeId = 0;
-    if (s_selTypeId >= (int)typeCount) s_selTypeId = 0;
+    if (s_selTypeId >= static_cast<int>(typeCount)) s_selTypeId = 0;
 
     ImGui::SetNextItemWidth(110.f);
     ImGui::InputInt("TypeId##dp", &s_selTypeId, 1, 10);
-    s_selTypeId = std::clamp(s_selTypeId, 0, (int)typeCount - 1);
+    s_selTypeId = std::clamp(s_selTypeId, 0, static_cast<int>(typeCount) - 1);
     ImGui::SameLine();
     ImGui::TextDisabled("/ %u", typeCount - 1u);
 
     RenderCore::StaticPropTypeDesc desc{};
-    const bool descOk = batcher_getStaticPropTypeDesc((uint32_t)s_selTypeId, &desc);
+    const bool descOk = batcher_getStaticPropTypeDesc(static_cast<uint32_t>(s_selTypeId), &desc);
 
     if (descOk) {
         if (ImGui::BeginTable("##dptype", 2,
@@ -158,7 +158,7 @@ void drawDrawPacketsSection() {
         if (ImGui::SmallButton("Copy CSV##dp")) {
             const char* alphaStr = desc.alphaClass == 0 ? "OPAQUE"
                                  : desc.alphaClass == 1 ? "ALPHA_TEST" : "?";
-            mc2::fmt::to_buf(buf, "typeId,firstPacket,packetCount,alphaClass\n{:d},{:d},{:d},{}", mc2::fmt::as_u32((uint32_t)s_selTypeId), mc2::fmt::as_u32(desc.firstPacket), mc2::fmt::as_u32(desc.packetCount), mc2::fmt::safe(alphaStr));
+            mc2::fmt::to_buf(buf, "typeId,firstPacket,packetCount,alphaClass\n{:d},{:d},{:d},{}", mc2::fmt::as_u32(static_cast<uint32_t>(s_selTypeId)), mc2::fmt::as_u32(desc.firstPacket), mc2::fmt::as_u32(desc.packetCount), mc2::fmt::safe(alphaStr));
             ImGui::SetClipboardText(buf);
         }
         if (ImGui::IsItemHovered())
@@ -179,8 +179,8 @@ void drawDrawPacketsSection() {
                           IM_COL32(45, 45, 45, 255));
 
         if (descOk && desc.packetCount > 0u) {
-            const float x0 = p0.x + availW * ((float)desc.firstPacket / (float)total);
-            float       x1 = p0.x + availW * ((float)(desc.firstPacket + desc.packetCount) / (float)total);
+            const float x0 = p0.x + availW * (static_cast<float>(desc.firstPacket) / static_cast<float>(total));
+            float       x1 = p0.x + availW * (static_cast<float>(desc.firstPacket + desc.packetCount) / static_cast<float>(total));
             if (x1 < x0 + 2.f) x1 = x0 + 2.f;
             dl->AddRectFilled(ImVec2(x0, p0.y + 2.f), ImVec2(x1, p0.y + barH - 2.f),
                               IM_COL32(255, 220, 50, 200));
@@ -319,7 +319,7 @@ void drawDrawPacketsSection() {
                 ImGui::SetClipboardText(buf);
                 char cbuf[1024]; int cn = 0;
                 cn += mc2::fmt::to_buf_n(cbuf+cn, sizeof(cbuf)-cn, "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
-                for (uint32_t r = 0; r < sel.rowCount && cn < (int)sizeof(cbuf)-80; ++r) {
+                for (uint32_t r = 0; r < sel.rowCount && cn < static_cast<int>(sizeof(cbuf))-80; ++r) {
                     const DrawPacketPropRow& row = sel.rows[r];
                     const char* plName = row.pipelineId == 1 ? "opaque"
                                        : row.pipelineId == 2 ? "alpha_test" : "invalid";

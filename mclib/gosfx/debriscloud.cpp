@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include"gosfxheaders.hpp"
 //==========================================================================//
 // File:	 gosFX_DebrisCloud.cpp											//
@@ -200,14 +202,8 @@ void
 		debrisSpheres[i].center = center;
 		*stream >> debrisSpheres[i].radius;
 
-		if(debrisSpheres[i].radius < minRadius)
-		{
-			minRadius = debrisSpheres[i].radius;
-		}
-		if(debrisSpheres[i].radius > maxRadius)
-		{
-			maxRadius = debrisSpheres[i].radius;
-		}
+		minRadius = std::min(minRadius, debrisSpheres[i].radius);
+		maxRadius = std::max(maxRadius, debrisSpheres[i].radius);
 
 		//
 		//---------------

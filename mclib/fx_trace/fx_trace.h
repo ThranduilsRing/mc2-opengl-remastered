@@ -26,6 +26,7 @@
 //===========================================================================//
 
 #pragma once
+#include "mc2_czstring.h"
 
 namespace mc2 {
 namespace fx_trace {
@@ -36,9 +37,9 @@ bool is_enabled();
 // Per-counter recording entrypoints. name is expected to be a stable string
 // pointer (string-literal or interned spec name); the table keys by pointer
 // identity OR string-equality (impl handles both).
-void record_spawn(const char* name);
-void record_draw(const char* name);
-void record_mlr_enqueue(const char* leaf_name);
+void record_spawn(mc2::czstring name);
+void record_draw(mc2::czstring name);
+void record_mlr_enqueue(mc2::czstring leaf_name);
 
 // C10: per-ClassID distribution counter. Called from gosFX::Effect::Start
 // (per-Start-event semantics — counts effects that actually spawn).
@@ -46,10 +47,10 @@ void record_mlr_enqueue(const char* leaf_name);
 // spec name (for first-sighting cross-reference). Maintains:
 //   - per-class total Start count
 //   - first-seen spec name for each class (one-shot)
-void record_class(unsigned int class_id, const char* name);
+void record_class(unsigned int class_id, mc2::czstring name);
 
 // Called at mission boundaries (and atexit) to dump and reset.
-void dump_and_reset(const char* reason);
+void dump_and_reset(mc2::czstring reason);
 
 } // namespace fx_trace
 } // namespace mc2

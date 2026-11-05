@@ -10,6 +10,7 @@
 #define DCAMERA_H
 //---------------------------------------------------------------------------
 // Include Files
+#include <cstdint>
 
 //---------------------------------------------------------------------------
 // Class Definitions
@@ -21,12 +22,13 @@ using CameraPtr = Camera*;
 
 //---------------------------------------------------------------------------
 // Enum Definitions
-enum CameraClass
+enum class CameraClass : int32_t
 {
 	INVALID_CAMERA = -1,
 	BASE_CAMERA = 0,
 	OBJECT_CAMERA 
 };
+using enum CameraClass;
 
 //---------------------------------------------------------------------------
 #endif

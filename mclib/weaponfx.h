@@ -7,6 +7,7 @@
 
 #ifndef WEAPONFX_H
 #define WEAPONFX_H
+#include "mc2_czstring.h"
 //---------------------------------------------------------------------------------
 // weapon FX Equivalancy.  Now reads in data from CSV for GOS Effects
 inline constexpr int BUILDING_EXPLOSION_ID = 45;
@@ -83,7 +84,7 @@ class WeaponEffects
 		
 		void destroy (void);
 		
-		void init (const char *effectCSVFileName);
+		void init (mc2::czstring effectCSVFileName);
 		
 		char *GetEffectName (long effectId)
 		{

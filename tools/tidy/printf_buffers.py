@@ -88,8 +88,10 @@ def translate_format(lit: str, args: list):
         if conv in "di":
             if prec is not None:
                 raise Bail("precision on an integer")
-            if length in ("", "l"):
+            if length == "":
                 wrap = "as_i32"
+            elif length == "l":
+                wrap = "as_long"
             elif length == "ll":
                 wrap = "as_i64"
             else:
@@ -102,7 +104,7 @@ def translate_format(lit: str, args: list):
                 if not prec or int(prec) == 0 or flags or (width and int(width) > int(prec)):
                     raise Bail("precision on an integer")
                 w, zero = prec, True
-            wrap = {"": "as_u32", "l": "as_u32", "ll": "as_u64", "z": "as_size"}.get(length)
+            wrap = {"": "as_u32", "l": "as_ulong", "ll": "as_u64", "z": "as_size"}.get(length)
             if wrap is None:
                 raise Bail("length " + length + " on %" + conv)
             spec_type = "d" if conv == "u" else conv

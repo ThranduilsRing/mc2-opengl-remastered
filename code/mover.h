@@ -10,6 +10,7 @@
 
 #ifndef MOVER_H
 #define MOVER_H
+#include "mc2_czstring.h"
 #include "dradio.h"
 #include "unit_anim_state.h"
 
@@ -142,17 +143,19 @@ inline constexpr auto NO_RAM_FOR_XLAT_HS = 0xFFFA000F;
 
 //------------------------------------------------------------------------------
 // Enums
-enum WeaponSortType {
+enum class WeaponSortType : int32_t {
 	WEAPONSORT_ATTACKCHANCE,
 	NUM_WEAPONSORT_TYPES
 };
+using enum WeaponSortType;
 
-enum SpeedState {
+enum class SpeedState : int32_t {
 	SPEED_STATE_STATIONARY,
 	SPEED_STATE_MOVING,
 	SPEED_STATE_MOVING_FAST,
 	NUM_MOVE_STATES
 };
+using enum SpeedState;
 
 enum DeathCause
 {
@@ -1132,7 +1135,7 @@ public:
 //			return(frame);
 //		}
 
-		virtual long getSpeedState (void) {
+		virtual SpeedState getSpeedState (void) {
 			return(SPEED_STATE_STATIONARY);
 		}
 
@@ -1281,7 +1284,7 @@ public:
 
 		virtual void setPilotHandle (long _pilotHandle);
 
-		virtual void loadPilot (const char* pilotFileName, const char* brainFileName, LogisticsPilot *lPilot);
+		virtual void loadPilot (mc2::czstring pilotFileName, mc2::czstring brainFileName, LogisticsPilot *lPilot);
 
 		virtual void setCommanderId (long _commanderId);
 
@@ -1317,7 +1320,7 @@ public:
 //			return(netPlayerId);
 //		}
 
-		void setNetPlayerName(const char *name) {
+		void setNetPlayerName(mc2::czstring name) {
             strncpy(netPlayerName,name,255);
 		}
 
@@ -1733,7 +1736,7 @@ public:
 		// validateLoadoutHardpointJoins(). Logs modder-readable findings; changes NO
 		// runtime state and NO visual mount (inventory[].facing / getWeaponNode still
 		// own that -- slice 4). Stock -> nothing gathered -> silent. Defined in mover.cpp.
-		void validateLoadoutHardpointJoins (const char* unitLabel) const;
+		void validateLoadoutHardpointJoins (mc2::czstring unitLabel) const;
 
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);

@@ -429,9 +429,9 @@ void MissionInterfaceManager::destroy (void)
 	hotKeyHeaderFont.destroy();
 
 	// A drop-ship VTOL still in flight at mission end owns its appearance (the appearance heap no longer sweeps it).
-	for (long i = 0; i < MAX_TEAMS; i++)
+	for (auto & vTolElem : vTol)
 	{
-		vTol[i].reset();
+		vTolElem.reset();
 	}
 
 	keyboardRef.reset();
@@ -741,9 +741,9 @@ void MissionInterfaceManager::initTacMap( PacketFile* file, int packet )
 
 	swapTime = 0.f;
 
-	for ( int i = 0; i < MAX_ICONS; i++ )
+	for (auto & oldTarget : oldTargets)
 	{
-		oldTargets[i] = nullptr;
+		oldTarget = nullptr;
 	}
 
 	target = nullptr;

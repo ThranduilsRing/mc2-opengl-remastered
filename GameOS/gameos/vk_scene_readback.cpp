@@ -7,8 +7,6 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #include "vulkan_shared_scene_depth.h"
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include <glm/gtc/packing.hpp>
 #include <array>
@@ -49,8 +47,8 @@ bool extent(const Images& images, uint32_t channels, int& width, int& height) {
         const auto* image = images[i];
         if (!image || !image->image || (image->format != formats[i] && !(i == 0 && image->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)) || !image->w || !image->h ||
             !(image->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) || image->w > INT32_MAX || image->h > INT32_MAX) return false;
-        if (width && (unsigned(width) != image->w || unsigned(height) != image->h)) return false;
-        width = int(image->w); height = int(image->h);
+        if (width && (static_cast<unsigned>(width) != image->w || static_cast<unsigned>(height) != image->h)) return false;
+        width = static_cast<int>(image->w); height = static_cast<int>(image->h);
     }
     return width > 0 && height > 0;
 }
@@ -75,7 +73,7 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
         for (size_t p=0;p<sampleCount;++p)
             if (points[p].x<0 || points[p].y<0 || points[p].x>=sourceW || points[p].y>=sourceH) return false;
     }
-    const size_t pixels = points ? sampleCount : size_t(w)*size_t(h);
+    const size_t pixels = points ? sampleCount : static_cast<size_t>(w)*static_cast<size_t>(h);
     const bool packedColor = images[0] && images[0]->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
     const uint32_t strides[3] = {packedColor ? 4u : 8u, 4, 4};
     if (pixels > count || pixels > 1024*1024) return false;
@@ -98,11 +96,11 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
             std::vector<VkBufferImageCopy> copies(points ? sampleCount : 1);
             for(size_t p=0;p<copies.size();++p) {
                 auto& copy=copies[p]; copy.bufferOffset = offsets[i] + (points ? p*strides[i] : 0);
-                copy.imageSubresource = {VkImageAspectFlags(i == 1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT), 0, 0, 1};
+                copy.imageSubresource = {static_cast<VkImageAspectFlags>(i == 1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT), 0, 0, 1};
                 copy.imageOffset = points ? VkOffset3D{points[p].x,points[p].y,0} : VkOffset3D{x,y,0};
-                copy.imageExtent = points ? VkExtent3D{1,1,1} : VkExtent3D{uint32_t(w),uint32_t(h),1};
+                copy.imageExtent = points ? VkExtent3D{1,1,1} : VkExtent3D{static_cast<uint32_t>(w),static_cast<uint32_t>(h),1};
             }
-            vkCmdCopyImageToBuffer(cb, images[i]->image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging.get(), uint32_t(copies.size()), copies.data());
+            vkCmdCopyImageToBuffer(cb, images[i]->image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging.get(), static_cast<uint32_t>(copies.size()), copies.data());
             imageBarrier(cb, *images[i], i, false);
         }
         VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
@@ -126,7 +124,7 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
                 color = glm::unpackHalf4x16(packed);
             }
             for (unsigned c = 0; c < 4; ++c)
-                out[p].rgba[c] = std::isnan(color[c]) ? 0 : uint8_t(std::lround(std::clamp(color[c], 0.0f, 1.0f)*255.0f));
+                out[p].rgba[c] = std::isnan(color[c]) ? 0 : static_cast<uint8_t>(std::lround(std::clamp(color[c], 0.0f, 1.0f)*255.0f));
         }
         if (channels & SceneDepth) std::memcpy(&out[p].depth, data+offsets[1]+4*p, 4);
         if (channels & SceneObjectId) std::memcpy(&out[p].objectId, data+offsets[2]+4*p, 4);
@@ -160,8 +158,8 @@ bool sceneReadbackSelfTest() {
             (i == 1 ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))) return false;
     std::array<uint8_t, 96> data{};
     for (unsigned p = 0; p < 6; ++p) {
-        const uint64_t color = glm::packHalf4x16(glm::vec4(float(p)/4.0f, 0.5f, 0.25f, 1.0f));
-        const float depth = float(p)/8.0f; const uint32_t id = 0xA50000u+p;
+        const uint64_t color = glm::packHalf4x16(glm::vec4(static_cast<float>(p)/4.0f, 0.5f, 0.25f, 1.0f));
+        const float depth = static_cast<float>(p)/8.0f; const uint32_t id = 0xA50000u+p;
         std::memcpy(data.data()+8*p, &color, 8); std::memcpy(data.data()+48+4*p, &depth, 4); std::memcpy(data.data()+72+4*p, &id, 4);
     }
     OwnedBuffer upload;
@@ -176,7 +174,7 @@ bool sceneReadbackSelfTest() {
             barrier.image = images[i]->image.get(); barrier.subresourceRange = {aspects(i),0,1,0,1};
             vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&barrier);
             VkBufferImageCopy copy{}; copy.bufferOffset=offsets[i];
-            copy.imageSubresource={VkImageAspectFlags(i==1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),0,0,1}; copy.imageExtent={2,3,1};
+            copy.imageSubresource={static_cast<VkImageAspectFlags>(i==1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),0,0,1}; copy.imageExtent={2,3,1};
             vkCmdCopyBufferToImage(cb,upload.get(),images[i]->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
             barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask=accesses(i);
             barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; barrier.newLayout=attachment(i);
@@ -186,7 +184,7 @@ bool sceneReadbackSelfTest() {
     auto correct=[](const ScenePixel& pixel, unsigned p) {
         const unsigned r[6]={0,64,128,191,255,255};
         return pixel.rgba[0]==r[p] && pixel.rgba[1]==128 && pixel.rgba[2]==64 && pixel.rgba[3]==255 &&
-               pixel.depth==float(p)/8.0f && pixel.objectId==0xA50000u+p;
+               pixel.depth==static_cast<float>(p)/8.0f && pixel.objectId==0xA50000u+p;
     };
     std::array<ScenePixel,6> pixels{};
     if (!readImages(images,0,0,2,3,SceneAll,pixels.data(),pixels.size())) return false;

@@ -57,7 +57,7 @@ inline bool idIsBodyChar(char c) {
 
 // ASCII-lowercase a single char (leaves non-uppercase untouched).
 inline char idToLower(char c) {
-    return (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c;
+    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
 }
 
 // --- segment validation -----------------------------------------------------

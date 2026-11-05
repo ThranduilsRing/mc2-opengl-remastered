@@ -51,12 +51,13 @@ enum RadioMessageType {
 	RADIO_MESSAGE_COUNT
 };
 
-enum RadioNoise
+enum class RadioNoise : int32_t
 {
 	SHORT_STATIC,
 	LONG_STATIC,
 	CLICK
 };
+using enum RadioNoise;
 
 //******************************************************************************************
 #endif

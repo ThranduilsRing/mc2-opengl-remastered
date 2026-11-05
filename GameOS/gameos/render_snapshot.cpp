@@ -239,8 +239,8 @@ RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence)
 
         // Count alive records for arena allocation.
         uint32_t aliveCount = 0;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(views.size()); ++i) {
-            if (views[i].alive) ++aliveCount;
+        for (auto & view : views) {
+            if (view.alive) ++aliveCount;
         }
 
         // Allocate from frame arena.

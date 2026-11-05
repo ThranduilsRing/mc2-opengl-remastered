@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "tick_commit.h"
 //---------------------------------------------------------------------------
 //
@@ -161,7 +162,7 @@ void GameObjectManager::init (void) {
 
 //---------------------------------------------------------------------------
 
-void GameObjectManager::init (const char* objTypeDataFile, long objTypeHeapSize, long objHeapSize) {
+void GameObjectManager::init (mc2::czstring objTypeDataFile, long objTypeHeapSize, long objHeapSize) {
 
 	// The previous manager goes first (its destroy() deletes the static type/object heaps the new init() recreates).
 	ownedTypeManager.reset();

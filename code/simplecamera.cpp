@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "vk_scene_renderer.h"
 #include <tracy/Tracy.hpp>
 #include "utils/mc2log.h"
@@ -628,7 +629,7 @@ long SimpleCamera::update()
 	return 0;
 }
 
-void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1, long highlight2 )
+void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highlight1, long highlight2 )
 {
 	ZoneScopedN("SimpleCamera::setMech");
 	this->pushContext();
@@ -702,7 +703,7 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	this->popContext();
 }
 
-void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, long h2)
+void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, long h2)
 {
     this->pushContext();
 
@@ -764,7 +765,7 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 }
 
 
-void SimpleCamera::setComponent(const char* fileName )
+void SimpleCamera::setComponent(mc2::czstring fileName )
 {
 	this->pushContext();
 
@@ -830,7 +831,7 @@ void SimpleCamera::setScale( float newAltitude )
 	shapeScale = newAltitude;
 }
 
-void SimpleCamera::setBuilding( const char* pBuilding )
+void SimpleCamera::setBuilding( mc2::czstring pBuilding )
 {
 	shapeScale = 0.0f;
 
@@ -839,7 +840,7 @@ void SimpleCamera::setBuilding( const char* pBuilding )
 	bIsComponent = 0;
 }
 
-void SimpleCamera::setObject( const char* pFileName, long type, long base, long highlight, long h2 )
+void SimpleCamera::setObject( mc2::czstring pFileName, long type, long base, long highlight, long h2 )
 {
 	if ( !pFileName || !strlen( pFileName ) )
 	{

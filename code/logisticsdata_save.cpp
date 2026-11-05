@@ -189,7 +189,7 @@ long	LogisticsData::load( FitIniFile& file )
 	clearVariants();
 
 	if ( !missionInfo )
-		missionInfo = new LogisticsMissionInfo;
+		missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
 
 	missionInfo->load( file );
 

@@ -1,5 +1,6 @@
 // Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state.
 // Declared in the class headers; shared names in msl_internal.h.
+#include "mc2_czstring.h"
 #include "msl_internal.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -88,7 +89,7 @@ bool _TG_Animation::LoadBinaryCopy (File *binFile)
 }
 
 //-------------------------------------------------------------------------------
-long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
+long TG_AnimateShape::LoadBinaryCopy (mc2::czstring fileName)
 {
 	File binFile;
 	long result = binFile.open(fileName);
@@ -132,7 +133,7 @@ long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
 }
 
 //-------------------------------------------------------------------------------
-void TG_AnimateShape::SaveBinaryCopy (const char *fileName)
+void TG_AnimateShape::SaveBinaryCopy (mc2::czstring fileName)
 {
 	File binFile;
 	binFile.create(fileName);
@@ -176,7 +177,7 @@ FilePtr tglLogFile = static_cast<FilePtr>(nullptr);
 //It sets up a pointer to the multi-shape so that animation data for each
 //Node in the Multi-Shape can be loaded.
 //It mallocs memory.
-long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG_TypeMultiShapePtr shape, bool skipIfBinary, bool forceMakeBinary)
+long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (mc2::czstring fileName, TG_TypeMultiShapePtr shape, bool skipIfBinary, bool forceMakeBinary)
 {
 	//------------------------------------------------------
 	// New!  Checks for Binary file to load instead.

@@ -6,6 +6,7 @@
 #ifndef GOS_STATIC_PROP_BATCHER_INTERNAL_H
 #define GOS_STATIC_PROP_BATCHER_INTERNAL_H
 
+#include "mc2_czstring.h"
 #include <atomic>
 #include "gos_static_prop_batcher.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -406,7 +407,7 @@ inline void coalesce_resetEnvOnce() {
 // name (getTextureName returns the .tga/.txm source path, never .ktx2). Strip
 // the last extension that appears AFTER the last path separator (so a dot in a
 // directory name is never mistaken for an extension), then append ".orm.ktx2".
-static std::string deriveOrmSidecar(const char* srcName) {
+static std::string deriveOrmSidecar(mc2::czstring srcName) {
     std::string s(srcName ? srcName : "");
     size_t sep = s.find_last_of("/\\");
     size_t dot = s.find_last_of('.');

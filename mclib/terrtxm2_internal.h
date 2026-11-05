@@ -8,6 +8,7 @@
 #ifndef TERRTXM2_H
 #include"terrtxm2.h"
 #endif
+#include "mc2_czstring.h"
 #include"tex_resolve_table.h"
 
 #ifndef PATHS_H
@@ -48,11 +49,12 @@
 #include<cstdint>		// BURNIN-DISK-JPEG: uint8_t for stb_image pixel buffer
 #include "mc2_dialog.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 inline constexpr int COLOR_MAP_TEXTURE_SIZE = 256;
 #define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
 
-void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf );
+void* DecodeJPG( mc2::czstring FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf );
 
 inline constexpr int MBOK = static_cast<int>(1);
 
@@ -62,7 +64,7 @@ extern "C" unsigned char* BurninJpeg_DecodeRGB(const unsigned char* data, int da
 extern "C" void BurninJpeg_FreePixels(unsigned char* px);
 
 // The decoded B,G,R,A colour map, or an empty vector when the sidecar is absent or unusable (the caller falls back to the .tga).
-inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, const char* fileName, long* outWidth)
+inline std::vector<unsigned char> tryLoadBurninJpg(mc2::czstring texturePath, mc2::czstring fileName, long* outWidth)
 {
 	if (outWidth) *outWidth = 0;
 
@@ -80,7 +82,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	if (jFileSize <= 0)
 	{
 		jpgFile.close();
-		printf("[BURNIN_JPG] fallback name=%s reason=empty-file\n", fileName);
+		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=empty-file\n", mc2::fmt::safe(fileName));
 		return {};
 	}
 
@@ -89,7 +91,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	if (jFileSize > kMaxJpgBytes)
 	{
 		jpgFile.close();
-		printf("[BURNIN_JPG] fallback name=%s reason=file-too-large (%ld bytes)\n", fileName, jFileSize);
+		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=file-too-large ({:d} bytes)\n", mc2::fmt::safe(fileName), mc2::fmt::as_long(jFileSize));
 		return {};
 	}
 
@@ -97,7 +99,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	if (jpgFile.read(jpgBytes.data(), jFileSize) != jFileSize)
 	{
 		jpgFile.close();
-		printf("[BURNIN_JPG] fallback name=%s reason=read-failed\n", fileName);
+		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=read-failed\n", mc2::fmt::safe(fileName));
 		return {};
 	}
 	jpgFile.close();
@@ -106,13 +108,13 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	unsigned char* rgb = BurninJpeg_DecodeRGB(jpgBytes.data(), static_cast<int>(jFileSize), &w, &h);
 	if (!rgb)
 	{
-		printf("[BURNIN_JPG] fallback name=%s reason=jpeg-decode-failed\n", fileName);
+		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=jpeg-decode-failed\n", mc2::fmt::safe(fileName));
 		return {};
 	}
 	if (w <= 0 || h <= 0 || w != h)
 	{
 		BurninJpeg_FreePixels(rgb);
-		printf("[BURNIN_JPG] fallback name=%s reason=bad-dims (%dx%d)\n", fileName, w, h);
+		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=bad-dims ({:d}x{:d})\n", mc2::fmt::safe(fileName), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
 		return {};
 	}
 
@@ -135,8 +137,8 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 
 	BurninJpeg_FreePixels(rgb);
 
-	printf("[BURNIN_JPG] loaded name=%s %dx%d (from %zu jpg bytes)\n",
-		fileName, w, h, static_cast<size_t>(jFileSize));
+	mc2::fmt::print_out("[BURNIN_JPG] loaded name={} {:d}x{:d} (from {:d} jpg bytes)\n",
+		mc2::fmt::safe(fileName), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_size(static_cast<size_t>(jFileSize)));
 
 	if (outWidth) *outWidth = static_cast<long>(w);
 	return colorMap;
@@ -156,7 +158,7 @@ inline bool useKtx2Colormap() {
 }
 
 //---------------------------------------------------------------------------
-inline void saveTGAFile(MemoryPtr ColorMap, const char * fileName, long pixelWidth)
+inline void saveTGAFile(MemoryPtr ColorMap, mc2::czstring fileName, long pixelWidth)
 {
 	TGAFileHeader colorMapInfo;
 	colorMapInfo.image_id_len = 0;

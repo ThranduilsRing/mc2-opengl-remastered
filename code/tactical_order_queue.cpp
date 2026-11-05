@@ -138,14 +138,16 @@ std::expected<std::optional<AuthoredRoute>, std::string> readAuthoredRoute(
         const auto key = lower(trim(rest.substr(0, equal)));
         if (!key.starts_with("order") && !key.starts_with("waypoint")) continue;
         if (equal == rest.npos) return std::unexpected("missing_value");
-        if (!fields.emplace(key, Field{type, std::string(trim(rest.substr(equal + 1)))}).second)
-            return std::unexpected("duplicate_key");
+        const auto [fieldIt, inserted] = fields.emplace(key, Field{type, std::string(trim(rest.substr(equal + 1)))});
+        if (!inserted) return std::unexpected("duplicate_key");
     }
     if (fields.empty()) return std::optional<AuthoredRoute>{};
     const auto number = [&]<class T>(std::string_view key, std::string_view type, T& value) {
         const auto it = fields.find(key);
-        if (it == fields.end() || it->second.type != type) return false;
-        const auto& s = it->second.value;
+        if (it == fields.end()) return false;
+        const auto& [fieldKey, field] = *it;
+        if (field.type != type) return false;
+        const auto& s = field.value;
         const auto r = std::from_chars(s.data(), s.data() + s.size(), value);
         return r.ec == std::errc{} && r.ptr == s.data() + s.size();
     };

@@ -8,6 +8,7 @@
 #pragma once
 
 #include"stuff.hpp"
+#include <memory>
 
 namespace Stuff {
 
@@ -262,10 +263,10 @@ namespace Stuff {
 				{return length * sizeof(T);}
 		T*
 			GetData()
-				{return data;}
+				{return data.get();}
 		const T*
 			GetData() const
-				{return data;}
+				{return data.get();}
 
 #if 0
 		bool
@@ -290,8 +291,8 @@ namespace Stuff {
 		void
 			CopyArray(const DynamicArrayOf<T>&);
 
-		T 
-			*data;
+		std::unique_ptr<T[]>
+			data;
 		size_t
 			length;
 	};
@@ -322,7 +323,7 @@ namespace Stuff {
 		Verify(length == length_to_set);
 		#if defined(_ARMOR)
 			if (length_to_set > 0)
-				Check_Pointer(data);
+				Check_Pointer(data.get());
 			else
 				Verify(!data);
 		#endif
@@ -349,8 +350,7 @@ namespace Stuff {
 	{ 
 		if (data != nullptr)
 		{
-			Unregister_Pointer(data);
-			delete[] data;
+			Unregister_Pointer(data.get());
 		}
 	}
 
@@ -365,7 +365,7 @@ namespace Stuff {
 	template <class T> inline T&
 		DynamicArrayOf<T>::operator[](size_t i) 
 	{
-		Check_Pointer(data);
+		Check_Pointer(data.get());
 		Verify(i < length);  
 		return data[i]; 
 	}
@@ -403,23 +403,21 @@ namespace Stuff {
 		{
 			if (length_to_set > 0)
 			{
-				T* new_data = new T[length_to_set];
-				Register_Pointer(new_data);
+				std::unique_ptr<T[]> new_data = std::make_unique_for_overwrite<T[]>(length_to_set);
+				Register_Pointer(new_data.get());
 				if (data != nullptr)
 				{
 					// Do not memcopy, object semantics may be required
 					size_t i = Min(length_to_set, length);
 					while (i--)
 						new_data[i] = data[i];
-					Unregister_Pointer(data);
-					delete[] data;
+					Unregister_Pointer(data.get());
 				}
-				data = new_data;
+				data = std::move(new_data);
 			}
 			else
 			{
-				Unregister_Pointer(data);
-				delete[] data;
+				Unregister_Pointer(data.get());
 				data = nullptr;
 			}
 			length = length_to_set;
@@ -450,18 +448,16 @@ namespace Stuff {
 			{
 				if (data != nullptr)
 				{
-					Unregister_Pointer(data);
-					delete[] data;
+					Unregister_Pointer(data.get());
 				}
 				length = length_to_set;
-				data = new T[length];
-				Register_Pointer(data);
+				data = std::make_unique_for_overwrite<T[]>(length);
+				Register_Pointer(data.get());
 			}
 			else
 			{
 				Verify(length_to_set == 0);
-				Unregister_Pointer(data);
-				delete[] data;
+				Unregister_Pointer(data.get());
 				data = nullptr;
 			}
 		}
@@ -472,7 +468,7 @@ namespace Stuff {
 	{ 
 		if (array.length > 0)
 		{
-			Check_Pointer(array.data);
+			Check_Pointer(array.data.get());
 			AssignData(&array.data[0], array.length);
 		}
 		else
@@ -481,8 +477,8 @@ namespace Stuff {
 			Verify(array.data == nullptr);
 			if (data != nullptr)
 			{
-				Unregister_Pointer(data);
-				delete[] data;
+				Unregister_Pointer(data.get());
+				data = nullptr;
 				length = 0;
 			}
 		}

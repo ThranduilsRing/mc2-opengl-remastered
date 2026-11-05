@@ -115,11 +115,11 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 
 bool MechWarrior::anyPlayerInCombat (void)
 {
-	for (long i=0;i<MAX_WARRIORS;i++)
+	for (auto & warriorElem : warriorList)
 	{
-		if (warriorList[i] && 
-			(warriorList[i]->getVehicle() && (warriorList[i]->getVehicle()->getCommanderId() == Commander::home->getId())) &&
-			(warriorList[i]->getCurrentTarget()))
+		if (warriorElem && 
+			(warriorElem->getVehicle() && (warriorElem->getVehicle()->getCommanderId() == Commander::home->getId())) &&
+			(warriorElem->getCurrentTarget()))
 		{
 			return true;
 		}

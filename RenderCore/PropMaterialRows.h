@@ -9,12 +9,12 @@ namespace RenderCore {
 // Returns the number of rows changed.
 inline std::size_t dropPerTextureRows(std::span<PropMaterialGpu> rows) {
     std::size_t changed = 0;
-    for (std::size_t i = 0; i < rows.size(); ++i) {
-        auto& m = rows[i].material;
+    for (auto & row : rows) {
+        auto& m = row.material;
         if (!(m.flags & MaterialFlags::kPerTexture)) continue;
         m.flags &= ~(MaterialFlags::kPerTexture | MaterialFlags::kNormalMap | MaterialFlags::kMetallicRoughness);
         m.albedoTex = m.normalTex = m.metallicRoughnessTex = m.emissiveTex = kMaterialTexAbsent;
-        rows[i].reserved[1] = 0;
+        row.reserved[1] = 0;
         ++changed;
     }
     return changed;

@@ -674,7 +674,7 @@ bool is_mode_supported(int width, int height, int bpp) {
 	desired.w = width;
 	desired.h = height;
 	desired.refresh_rate = 0;
-	desired.driverdata = 0;
+	desired.driverdata = nullptr;
 
     SDL_DisplayMode returned;
     

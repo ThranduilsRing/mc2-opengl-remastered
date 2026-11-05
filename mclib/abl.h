@@ -10,6 +10,7 @@
 #ifndef ABL_H
 #define	ABL_H
 
+#include "mc2_czstring.h"
 #include <span>
 
 #ifndef ABLGEN_H
@@ -40,8 +41,8 @@ void ABLi_init (unsigned long runtimeStackSize, // = 20480,
 				unsigned long maxCodeBufferSize, // = 10240,
 				unsigned long maxRegisteredModules, // = 200,
 				unsigned long maxStaticVariables, // = 100,
-				long (*fileCreateCB) (void** file, const char* fName),
-				long (*fileOpenCB) (void** file, const char* fName),
+				long (*fileCreateCB) (void** file, mc2::czstring fName),
+				long (*fileOpenCB) (void** file, mc2::czstring fName),
 				long (*fileCloseCB) (void** file),
 				bool (*fileEofCB) (void* file),
 				long (*fileReadCB) (void* file, unsigned char* buffer, long length),
@@ -53,9 +54,9 @@ void ABLi_init (unsigned long runtimeStackSize, // = 20480,
 				long (*fileWriteByteCB) (void* file, unsigned char byte),
 				long (*fileWriteIntCB) (void* file, int32_t value),
 				long (*fileWriteLongCB) (void* file, long value),
-				long (*fileWriteStringCB) (void* file, const char* buffer),
-				void (*debuggerPrintCallback) (const char* s),
-				void (*ablFatalCallback) (long code, const char* s),
+				long (*fileWriteStringCB) (void* file, mc2::czstring buffer),
+				void (*debuggerPrintCallback) (mc2::czstring s),
+				void (*ablFatalCallback) (long code, mc2::czstring s),
 				bool debugInfo = false,
 				bool debug = false,
 				bool profile = false);
@@ -68,7 +69,7 @@ void ABLi_setRealParam (ABLParamPtr paramList, int index, float value);
 
 void ABLi_deleteParamList (ABLParamPtr paramList);
 
-int32_t ABLi_preProcess (const char* sourceFileName,
+int32_t ABLi_preProcess (mc2::czstring sourceFileName,
 					  long* numErrors = nullptr,
 					  long* numLinesProcessed = nullptr,
 					  long* numFilesProcessed = nullptr,
@@ -78,7 +79,7 @@ int32_t ABLi_preProcess (const char* sourceFileName,
 // syntax errors before registration.
 bool ablSkipErroredModulesEnabled (void);
 
-ABLModulePtr ABLi_loadLibrary (const char* sourceFileName,
+ABLModulePtr ABLi_loadLibrary (mc2::czstring sourceFileName,
 					   long* numErrors = nullptr,
 					   long* numLinesProcessed = nullptr,
 					   long* numFilesProcessed = nullptr,
@@ -109,7 +110,7 @@ void ABLi_close (void);
 
 bool ABLi_enabled (void);
 
-void ABLi_addFunction (const char* name,
+void ABLi_addFunction (mc2::czstring name,
 					   bool isOrder,
 					   const char* paramList,
 					   const char* returnType,
@@ -117,7 +118,7 @@ void ABLi_addFunction (const char* name,
 
 void ABLi_setRandomCallbacks (void (*seedRandomCallback) (unsigned long seed),
 							  long (*randomCallback) (long range));
-void ABLi_setDebugPrintCallback (void (*ABLDebugPrintCallback) (const char* s));
+void ABLi_setDebugPrintCallback (void (*ABLDebugPrintCallback) (mc2::czstring s));
 void ABLi_setGetTimeCallback (unsigned long (*ABLGetTimeCallback) (void));
 
 void ABLi_setEndlessStateCallback (void (*endlessStateCallback) (UserFile* log));

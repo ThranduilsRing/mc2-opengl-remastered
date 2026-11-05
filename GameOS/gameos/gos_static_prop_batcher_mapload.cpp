@@ -1,5 +1,6 @@
 // GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include "mc2_czstring.h"
 #include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
 #include "static_caster_set.h"
@@ -102,7 +103,7 @@ void GpuStaticPropBatcher::onMapLoad() {
 // V-IBL-STATIC-2: select per-mission SH coefficient set. Called from
 // Mission::init right after onMapLoad(); safe to call with nullptr/empty
 // (resolves to "default"); the registry names the set, else default.
-void GpuStaticPropBatcher::setMissionForIbl(const char* missionName) {
+void GpuStaticPropBatcher::setMissionForIbl(mc2::czstring missionName) {
     s_currentShSet = &RenderCore::lookupShSet(missionName);
 }
 

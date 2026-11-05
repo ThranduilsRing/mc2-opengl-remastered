@@ -8,7 +8,7 @@
 #include "../mclib/camera.h"
 #include "../mclib/appear.h"   // DRAW_BARS (maskWorldBars)
 #include "Gates/gate.h"
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 
 TacticalOverview g_tacticalOverview;
 
@@ -71,7 +71,7 @@ const TacticalOverview::CardHit* TacticalOverview::cardHitAt(float x, float y) c
     for (int i = 0; i < cardHitCount_; ++i)
         if (x >= cardHit_[i].l && x <= cardHit_[i].r && y >= cardHit_[i].t && y <= cardHit_[i].b)
             return &cardHit_[i];
-    return 0;
+    return nullptr;
 }
 
 void TacticalOverview::advance(float dt) {

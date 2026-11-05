@@ -1,5 +1,7 @@
 // GroundVehicle: hit and attack helpers, status/move chunks, handleWeaponHit, fireWeapon and handleWeaponFire.
 // Declared in the class headers; shared names in gvehicl_internal.h.
+#include <algorithm>
+
 #include "gvehicl_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -573,10 +575,8 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 				numMissiles = missileAmount;
 			else {
 				numMissiles = (float(missileAmount) / 2.0) + 0.5;
-				if (numMissiles < 1)
-					numMissiles = 1;
-				if (numMissiles > missileAmount)
-					numMissiles = missileAmount;
+				numMissiles = std::max<long>(numMissiles, 1);
+				numMissiles = std::min(numMissiles, missileAmount);
 			}
 
 			//-----------------------------------------------
@@ -766,10 +766,8 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			{
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
 				long numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
-				if (numMissiles < 1)
-					numMissiles = 1;
-				if (numMissiles > missileAmount)
-					numMissiles = missileAmount;
+				numMissiles = std::max<long>(numMissiles, 1);
+				numMissiles = std::min(numMissiles, missileAmount);
 
 				if (numMissiles) {
 					WeaponShotInfo curShotInfo;

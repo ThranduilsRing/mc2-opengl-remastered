@@ -9,6 +9,7 @@
 
 #ifndef ABLPARSE_H
 #define	ABLPARSE_H
+#include "mc2_czstring.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -97,16 +98,14 @@ TypePtr stdRandom (void);
 TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr);
 
 // FILE routines
-long openSourceFile (const char* sourceFileName);
+long openSourceFile (mc2::czstring sourceFileName);
 long closeSourceFile (void);
 
-#if !ANALYZE_ON
 #define	analyzeConstDefn(idPtr)
 #define	analyzeVarDecl(idPtr)
 #define	analyzeTypeDefn(idPtr)
 #define	analyzeRoutineHeader(idPtr)
 #define	analyzeBlock(idPtr)
-#endif
 
 //***************************************************************************
 

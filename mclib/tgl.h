@@ -10,6 +10,7 @@
 
 #ifndef TGL_H
 #define TGL_H
+#include "mc2_czstring.h"
 #include "tgl_registry.h"
 //-------------------------------------------------------------------------------
 // Include Files
@@ -547,7 +548,7 @@ class TG_TypeNode
 		//
 		// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual long ParseASEFile (BYTE *aseBuffer, const char *filename)
+		virtual long ParseASEFile (BYTE *aseBuffer, mc2::czstring filename)
 		{
 			return 0;
 		}
@@ -559,7 +560,7 @@ class TG_TypeNode
 		//
 		// NOTE: Only takes the first HELPEROBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual long MakeFromHelper (BYTE *aseBuffer, const char *filename);
+		virtual long MakeFromHelper (BYTE *aseBuffer, mc2::czstring filename);
 
 		//Function returns 0 if OK.  -1 if file not found or file not ASE Format.		
 		//This function loads the ASE file into the TG_Triangle and TG_Vertex lists.
@@ -686,8 +687,8 @@ class TG_TypeShape : public TG_TypeNode
 			hotYellowRGB = 0x00FEfF91;
 			hotGreenRGB = 0x000081b6;
 
-			vb_ = ib_ = 0;
-			vdecl_ = 0;
+			vb_ = ib_ = nullptr;
+			vdecl_ = nullptr;
 		}
 		
 		TG_TypeShape (void)
@@ -778,7 +779,7 @@ class TG_TypeShape : public TG_TypeNode
 		//
 		// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual long ParseASEFile (BYTE *aseBuffer, const char *filename);	//filename for error reporting ONLY
+		virtual long ParseASEFile (BYTE *aseBuffer, mc2::czstring filename);	//filename for error reporting ONLY
 
 		//Function return 0 is OK.  -1 if file is not ASE Format or missing data.
 		//This function simply parses the ASE buffers handed to it.  This allows
@@ -787,7 +788,7 @@ class TG_TypeShape : public TG_TypeNode
 		//
 		// NOTE: Only takes the first HELPEROBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual long MakeFromHelper (BYTE *aseBuffer, const char *filename);
+		virtual long MakeFromHelper (BYTE *aseBuffer, mc2::czstring filename);
 
 		//Function returns 0 if OK.  -1 if file not found or file not ASE Format.		
 		//This function loads the ASE file into the TG_Triangle and TG_Vertex lists.
@@ -843,7 +844,7 @@ class TG_TypeShape : public TG_TypeNode
 		// and sets nodeId/parentId/nodeCenter. Texture wiring happens separately via the existing
 		// CreateListOfTextures method (driven from TG_TypeMultiShape).
 		// No Assimp types appear in this signature — header stays clean.
-		void InitFromImportedMesh(const char* nodeIdIn, const char* parentIdIn,
+		void InitFromImportedMesh(mc2::czstring nodeIdIn, mc2::czstring parentIdIn,
 		                          const glm::vec3& center,
 		                          std::vector<TG_TypeVertex>&& vertices,
 		                          std::vector<TG_TypeTriangle>&& triangles);

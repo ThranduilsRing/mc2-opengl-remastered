@@ -12,6 +12,7 @@
 // Include Files
 #include "texture_assets.h"
 #ifndef MAPDATA_H
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mapdata.h"
 #endif
@@ -2429,7 +2430,7 @@ float MapData::terrainElevation (const glm::vec3 &position)
 					static float s_maxAbs = 0.0f;
 					static long  s_count  = 0;
 					float a = fabsf(dispContrib);
-					if (a > s_maxAbs) s_maxAbs = a;
+					s_maxAbs = std::max(s_maxAbs, a);
 					s_count++;
 					if (s_count % 50000 == 0)
 						mc2::fmt::print_out("[COLORMAP_PROBE] samples={:d} maxDispMag={:.4f} wu\n", mc2::fmt::as_i32(s_count), s_maxAbs);
@@ -2489,8 +2490,7 @@ void MapData::selectVertex( unsigned long tileRow, unsigned long tileCol, bool b
 		hasSelection --;
 
 
-	if ( hasSelection < 0 )
-		hasSelection = 0;
+	hasSelection = std::max(hasSelection, 0);
 }
 
 //---------------------------------------------------------------------------

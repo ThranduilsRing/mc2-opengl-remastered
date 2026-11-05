@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
@@ -185,7 +186,7 @@ class MouseCursorData
 		}
 		
 				
-		void initCursors (const char *cursorFile);
+		void initCursors (mc2::czstring cursorFile);
 };
 
 //---------------------------------------------------------------------------
@@ -316,7 +317,7 @@ class UserInput
 			cursors.reset();
 		}
 
-		void initMouseCursors (const char *mouseFile);
+		void initMouseCursors (mc2::czstring mouseFile);
 		
 		void destroy (void)
 		{

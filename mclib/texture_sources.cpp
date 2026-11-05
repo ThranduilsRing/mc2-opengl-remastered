@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
 #include "sim_overlap.h"
@@ -37,15 +38,15 @@ void TextureSources::collectRetired() {
     for (auto texture : retired)
         if (retireCpu_) retireCpu_(texture);
 }
-std::string TextureSources::nameKey(const char* name, DWORD variant) {
+std::string TextureSources::nameKey(mc2::czstring name, DWORD variant) {
     std::string key=name ? name : "";
     for (char& c : key) {
         if (c=='\\') c='/';
-        else if (c>='A' && c<='Z') c=char(c-'A'+'a');
+        else if (c>='A' && c<='Z') c=static_cast<char>(c-'A'+'a');
     }
     return key+'|'+std::to_string(variant);
 }
-std::shared_ptr<TextureSource> TextureSources::find(const char* name, DWORD variant) {
+std::shared_ptr<TextureSource> TextureSources::find(mc2::czstring name, DWORD variant) {
     const std::string key=nameKey(name,variant);
     std::shared_ptr<TextureSource> source;
     DWORD id=0;
@@ -133,7 +134,7 @@ void disown(DWORD asset) noexcept {
 }
 void releaseOwned(DWORD asset) noexcept { disown(asset); release(asset); }
 
-DWORD findAndRetain(const char* path, gos_TextureFormat, DWORD, DWORD variant, DWORD) {
+DWORD findAndRetain(mc2::czstring path, gos_TextureFormat, DWORD, DWORD variant, DWORD) {
     auto* ready=sourcesIfReady(); if (!ready) return 0;
     auto& store=*ready; auto source=store.find(path,variant);
     return source && store.retain(source) ? source->asset : 0;

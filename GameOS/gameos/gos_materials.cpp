@@ -1,4 +1,5 @@
 // CPU profile-name indices used by native mech instance metadata.
+#include "mc2_czstring.h"
 #include "gos_materials.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -9,7 +10,7 @@ namespace gos_materials {
 namespace {
 bool initialized = false;
 std::unordered_map<std::string, uint32_t> profiles;
-void add(const char* name) { profiles.emplace(name, static_cast<uint32_t>(profiles.size())); }
+void add(mc2::czstring name) { profiles.emplace(name, static_cast<uint32_t>(profiles.size())); }
 }
 void init() {
     if (initialized) return;
@@ -25,10 +26,12 @@ void init() {
                        mc2::fmt::as_size(profiles.size()));
 }
 void shutdown() { profiles.clear(); initialized = false; }
-uint32_t getProfileIndex(const char* name) {
+uint32_t getProfileIndex(mc2::czstring name) {
     if (!name) return 0;
     const auto it = profiles.find(name);
-    return it == profiles.end() ? 0 : it->second;
+    if (it == profiles.end()) return 0;
+    const auto& [profileName, profile] = *it;
+    return profile;
 }
 uint32_t profileCount() { return static_cast<uint32_t>(profiles.size()); }
 }

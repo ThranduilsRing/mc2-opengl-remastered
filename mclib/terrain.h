@@ -45,9 +45,7 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef NO_ERR
-#define NO_ERR		0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAPCELL_DIM = 3;
 // MOVE grid side limit (cells). 720 was the stock cap; fan campaign maps (REAP3) are 900 cells/side.
@@ -90,10 +88,11 @@ bool mc2TerrainLodChunkEnabled();
 // then, mc2_24 sand renders are improved by routing low-saturation sand
 // pixels into slot 2 (dirt) consistently — see notes in
 // shaders/include/terrain_common.hglsl and shaders/gos_terrain.frag.
-enum TerrainMaterialProfile {
+enum class TerrainMaterialProfile : int32_t {
 	TERRAIN_MAT_PROFILE_LEGACY   = 0,
 	TERRAIN_MAT_PROFILE_SAND_M24 = 1,
 };
+using enum TerrainMaterialProfile;
 extern int g_terrainMaterialProfile;
 
 //------------------------------------------------

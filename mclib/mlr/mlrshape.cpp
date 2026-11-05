@@ -84,20 +84,12 @@ MLRShape::MLRShape(
 					test = 2;
 				}
 
-#if COLOR_AS_DWORD
-				DWORD* colors;
-#else
 				RGBAColor *colors, testColor(1.0f, 1.0f, 1.0f, 1.0f);
-#endif
 				Cast_Pointer(MLRIndexedPolyMesh*, pt_old)->GetColorData(&colors, &nr);
 
 				for(i=0;i<nr;i++)
 				{
-#if COLOR_AS_DWORD
-					if(colors[i] != 0xffffffff)
-#else
 					if(colors[i] != testColor)
-#endif
 					{
 						break;
 					}

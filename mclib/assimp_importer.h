@@ -11,6 +11,7 @@
 // runtime structures. Rendering is downstream and unchanged. No Assimp types
 // are exposed in TG_* class headers.
 #pragma once
+#include "mc2_czstring.h"
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 
@@ -41,7 +42,7 @@ class TG_TypeMultiShape;
 // becomes one shape with the node's WORLD transform baked into positions/normals, so
 // hierarchy, node TRS and mesh instancing survive. Off for mechs, whose node
 // translations are animation pivots.
-long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround = true,
+long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool autoGround = true,
                             bool authoredColors = false, bool bakeNodeTransforms = false);
 
 #endif // ENABLE_ASSIMP_IMPORTER

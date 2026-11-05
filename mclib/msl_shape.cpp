@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 // Multi shape layer: TG_MultiShape texture handles, node rotation and position queries, light list, render, shadows, detach and child tests.
 // Declared in the class headers; shared names in msl_internal.h.
@@ -118,7 +119,7 @@ long TG_TypeMultiShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 
 //-------------------------------------------------------------------------------
 //This function rotates the heirarchy from this node down.  Used for torso twists, arms, etc.
-long TG_MultiShape::SetNodeRotation (const char *nodeName, glm::quat *rot)
+long TG_MultiShape::SetNodeRotation (mc2::czstring nodeName, glm::quat *rot)
 {
 	for (long i=0;i<numTG_Shapes;i++)
 	{
@@ -222,7 +223,7 @@ long TG_MultiShape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
 }	
 
 //-------------------------------------------------------------------------------
-glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, const char *nodeId)
+glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, mc2::czstring nodeId)
 {
 	// Hierarchy transforms already contain the world pose. The legacy pos/rot
 	// parameters do not participate in this query.
@@ -277,7 +278,7 @@ glm::quat moveem;
 // This function takes the shape named nodeName and all of its children and stops processing
 // them forever.  Since we can never re-attach a mech arm in the field, this is OK!
 // However, should we want this functionality, it is easy to add!
-void TG_MultiShape::StopUsing (const char *nodeName)
+void TG_MultiShape::StopUsing (mc2::czstring nodeName)
 {
 	//First, find all shapes which are children of nodeName, including nodeName!
 	TG_ShapeRecPtr childChain[MAX_NODES];
@@ -325,7 +326,7 @@ void TG_MultiShape::StopUsing (const char *nodeName)
 // This function takes the shape named nodeName and all of its children, detaches them
 // from the current heirarchy and stuffs them into a new MultiShape which it passes back
 // Uses are endless but for now limited to blowing the arms off of the mechs!
-TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
+TG_MultiShapePtr TG_MultiShape::Detach (mc2::czstring nodeName)
 {
 	//First, find all shapes which are children of nodeName, including nodeName!
 	TG_ShapeRecPtr childChain[MAX_NODES];
@@ -432,7 +433,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 
 //-------------------------------------------------------------------------------
 // Tells me if the passed in nodeName is a child of the parentName.
-bool TG_MultiShape::isChildOf (const char *nodeName, const char* parentName)
+bool TG_MultiShape::isChildOf (mc2::czstring nodeName, mc2::czstring parentName)
 {
 	//First, find all shapes which are children of nodeName, including nodeName!
 	TG_ShapeRecPtr childChain[MAX_NODES];

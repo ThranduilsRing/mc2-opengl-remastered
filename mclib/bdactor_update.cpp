@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "unit_animation_tick.h"
 // BldgAppearance / TreeAppearance: BldgAppearance::update and the activity/flash helpers.
 // Declared in the class headers; shared names in bdactor_internal.h.
@@ -181,7 +183,7 @@ void BldgAppearance::updateFrameEffects()
 			// Simpler: overflow = spotlights_found - registered (under-counts
 			// nodeName misses; honest enough for the H1 disambiguation).
 			diagOverflow = diagSpotlightsFound - diagRegistered;
-			if (diagOverflow < 0) diagOverflow = 0;
+			diagOverflow = std::max(diagOverflow, 0);
 			s_spotDiagBldgRegistered += static_cast<unsigned long>(diagRegistered);
 			s_spotDiagBldgOverflows  += static_cast<unsigned long>(diagOverflow);
 			++s_spotDiagBldgActors;
@@ -319,7 +321,7 @@ void BldgAppearance::updateFrameEffects()
 						if ((s_n++ % 600) < 12)
 						{
 							float oldSpill = spill;
-							if (oldSpill > 200.0f) oldSpill = 200.0f;
+							oldSpill = std::min(oldSpill, 200.0f);
 							glm::vec3 oldP;
 							oldP.x = childPos.x + aimW.x * oldSpill;
 							oldP.y = childPos.y + aimW.y * oldSpill;
@@ -361,7 +363,7 @@ void BldgAppearance::updateFrameEffects()
 						if (mc2_cone_glow::pool_policy() == 0)
 						{
 							float oldSpill = spill;
-							if (oldSpill > 200.0f) oldSpill = 200.0f;
+							oldSpill = std::min(oldSpill, 200.0f);
 							childPos.x += aimW.x * oldSpill;
 							childPos.y += aimW.y * oldSpill;
 							childPos.z += aimW.z * oldSpill;
@@ -530,8 +532,7 @@ long BldgAppearance::update (bool animate)
 			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
 				unitAnim().nodeRecycle[i] -= frameLength;
-				if (unitAnim().nodeRecycle[i] < 0.0f)
-					unitAnim().nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] = std::max(unitAnim().nodeRecycle[i], 0.0f);
 			}
 		}
 	}
@@ -564,8 +565,7 @@ long BldgAppearance::update (bool animate)
 		if (appearType->spinMe && land)
 		{
 			//Make sure we are above the water level
-			if (position.z < Terrain::waterElevation)
-				position.z = Terrain::waterElevation;
+			position.z = std::max(position.z, Terrain::waterElevation);
 		}
 
 		mc2ToRender(xlatPosition, position);

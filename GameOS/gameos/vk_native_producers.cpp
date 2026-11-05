@@ -10,8 +10,6 @@
 #include "vulkan_context.h"
 #include "mc2_diag_verbose.h"
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include <algorithm>
@@ -95,7 +93,7 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
         } else {
             return false;
         }
-        for (uint32_t p = 0; p < kSlots; ++p) ringBound_[p] = VK_NULL_HANDLE;
+        for (auto & ringBoundElem : ringBound_) ringBoundElem = VK_NULL_HANDLE;
     }
     ready_ = true;
     // Warn only when quads the cull can really emit may not fit (a bound above the capacity), not on the raw recipe total.

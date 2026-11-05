@@ -59,10 +59,10 @@ namespace Stuff {
 			folderEntries;
 		Stuff::SortedChainOf<DirectoryEntry*, Stuff::MString>
 			fileEntries;
-		Stuff::SortedChainIteratorOf<DirectoryFolder*, Stuff::MString>
-			*folderWalker;
-		Stuff::SortedChainIteratorOf<DirectoryEntry*, Stuff::MString>
-			*fileWalker;
+		std::unique_ptr<Stuff::SortedChainIteratorOf<DirectoryFolder*, Stuff::MString>>
+			folderWalker;
+		std::unique_ptr<Stuff::SortedChainIteratorOf<DirectoryEntry*, Stuff::MString>>
+			fileWalker;
 	};
 
 	//##########################################################################

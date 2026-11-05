@@ -901,7 +901,7 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 				setDefsElementText( skillKey, specialtySkills[i] );
 				textObjects[9+i].resize( textObjects[9+i].width(), textObjects[9+i].font.height() );
 				textObjects[9+i].setHelpID( skillIDs[i] + IDS_SPECIALTY_HELP1 );
-				skillIcons[i] = specialtySkillIcons[MechWarrior::skillTypes[skillIDs[i]]];
+				skillIcons[i] = specialtySkillIcons[static_cast<int>(MechWarrior::skillTypes[skillIDs[i]])];
 				skillIcons[i].resize( skillLocations[i].right - skillLocations[i].left,
 									  skillLocations[i].bottom - skillLocations[i].top );
 				skillIcons[i].moveTo( skillLocations[i].left, skillLocations[i].top );

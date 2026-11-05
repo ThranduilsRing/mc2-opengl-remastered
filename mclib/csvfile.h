@@ -12,6 +12,7 @@
 
 #ifndef CSVFILE_H
 #define CSVFILE_H
+#include "mc2_czstring.h"
 //---------------------------------------------------------------------------
 // Include files
 
@@ -89,7 +90,7 @@ class CSVFile : public File
 		CSVFile (void);
 		~CSVFile (void);
 
-		virtual long open (const char* fName, FileMode _mode = READ, long numChildren = 50);
+		virtual long open (mc2::czstring fName, FileMode _mode = READ, long numChildren = 50);
 		virtual long open (FilePtr _parent, unsigned long fileSize, long numChildren = 50);
 		
 		virtual long create (char* fName);

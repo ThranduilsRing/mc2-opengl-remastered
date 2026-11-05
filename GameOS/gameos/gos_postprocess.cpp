@@ -3,6 +3,7 @@
 // skybox,shadow,executor}.cpp; the names they share are declared in gos_postprocess_internal.h.
 
 
+#include "mc2_czstring.h"
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
 
@@ -78,7 +79,7 @@ void gosPostProcess::setSkyNumber(int skyNumber)
     }
 }
 
-void gosPostProcess::loadHdri(const char* path, float* outSunAz, bool* outSunValid)
+void gosPostProcess::loadHdri(mc2::czstring path, float* outSunAz, bool* outSunValid)
 {
     hdriCpu_.reset();
     auto cpu = std::make_shared<HdriCpuImage>();
@@ -354,7 +355,7 @@ void gosPostProcess::endScene()
     auto& present=mc2vk::getOrCreateEnginePresentVk();
     if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
         exposure_,mode,
-        sceneObjectIdReady() ? int(RenderWorld::MechHandleIndexBase()) : 0,
+        sceneObjectIdReady() ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,
         lowLightGain_,lowLightTint_,casEnabled_,casSharpness_,tonemapMode_,x,y,w,h);
 #endif
     drawShadowDebugOverlay();

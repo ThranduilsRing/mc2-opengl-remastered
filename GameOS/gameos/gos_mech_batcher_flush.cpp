@@ -506,8 +506,8 @@ static void emitBatcherStats(MechFlushFrame& f) {
                           == kGpuMechFallbackReasonCount,
                       "kFallbackNames must cover every GpuMechFallbackReason");
         uint32_t fallbackTotal = 0;
-        for (int i = 0; i < kGpuMechFallbackReasonCount; ++i)
-            fallbackTotal += s_fallbacksThisFrame[i];
+        for (const auto fallbacksThisFrameElem : s_fallbacksThisFrame)
+            fallbackTotal += fallbacksThisFrameElem;
         extern std::atomic<uint32_t> g_mc2FrameCounter;
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "

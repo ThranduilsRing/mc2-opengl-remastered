@@ -436,10 +436,10 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 						loadedWeights[kv.idx] = (val < 0.0f) ? 0.0f : val;
 				}
 				float sum = 0.0f;
-				for (int i = 0; i < NUM_TACTICS; i++) sum += loadedWeights[i];
+				for (const auto loadedWeight : loadedWeights) sum += loadedWeight;
 				if (sum > 0.0f) {
 					float inv = 1.0f / sum;
-					for (int i = 0; i < NUM_TACTICS; i++) loadedWeights[i] *= inv;
+					for (auto & loadedWeight : loadedWeights) loadedWeight *= inv;
 				}
 				int loadCount = 0;
 				for (unsigned long i = 1; i <= numWarriors; i++) {

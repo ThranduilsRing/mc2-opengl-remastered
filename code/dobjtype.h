@@ -13,9 +13,7 @@
 	
 //---------------------------------------------------------------------------
 // Macro definitions
-#ifndef NO_ERR
-#define NO_ERR	0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr unsigned int CANT_LOAD_INVALID_OBJECT = 0xBEEF0001;
 inline constexpr unsigned int OBJECT_TYPE_NUMBER_OUT_OF_RANGE = 0xBEEF0002;

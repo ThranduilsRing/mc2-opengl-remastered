@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<string.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -56,7 +57,7 @@ extern TokenCodeType	statementEndList[];
 
 extern bool  EnterStateSymbol;
 extern ABLModulePtr		CurFSM;
-SymTableNodePtr forwardState (const char* stateName);
+SymTableNodePtr forwardState (mc2::czstring stateName);
 extern SymTableNodePtr	CurModuleIdPtr;
 
 //***************************************************************************

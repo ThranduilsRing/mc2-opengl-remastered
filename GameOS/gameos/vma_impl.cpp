@@ -23,8 +23,8 @@
 // With volk owning dispatch we can NOT use VMA's static entry points. Use the
 // dynamic path: VMA takes its function pointers from the VmaVulkanFunctions we
 // populate from volk (via vmaImportVulkanFunctionsFromVolk) at allocator create.
-#define VMA_STATIC_VULKAN_FUNCTIONS  0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+// VMA_STATIC_VULKAN_FUNCTIONS=0 / VMA_DYNAMIC_VULKAN_FUNCTIONS=1 come from the
+// gameos and gameos_editor compile definitions (GameOS/gameos/CMakeLists.txt).
 
 // VMA is generated code and trips a handful of MSVC /W4 warnings (unreferenced
 // params, nameless struct/union, conditional-expression-is-constant, unused

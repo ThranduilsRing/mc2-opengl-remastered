@@ -21,6 +21,7 @@
 // This header is pure/IO-free (doctest target): the sig-line parse/format and
 // the match rule. The FindFirstFile walk lives in mclib/file.cpp.
 
+#include "mc2_czstring.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -39,7 +40,7 @@ inline bool modCacheSignatureMatches(const ModCacheSignature& a,
 // Cache line: "sig <fileCount> <maxMtime>" (both unsigned decimal).
 // Returns no value on any malformation (wrong tag, missing/garbage numbers,
 // trailing junk) -- caller treats that as a stale cache and rebuilds.
-inline std::optional<ModCacheSignature> parseModCacheSigLine(const char* line) {
+inline std::optional<ModCacheSignature> parseModCacheSigLine(mc2::czstring line) {
     if (!line) return std::nullopt;
     if (std::strncmp(line, "sig ", 4) != 0) return std::nullopt;
     const char* p = line + 4;

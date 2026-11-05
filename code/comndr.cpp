@@ -60,7 +60,7 @@ void Commander::init (void) {
 	id = -1;
 	team = nullptr;
 	for (long i = 0; i < MAX_MOVERGROUPS; i++) {
-		groups[i] = new MoverGroup;
+		groups[i] = std::make_unique_for_overwrite<MoverGroup>();
 		groups[i]->setId(i);
 	}
 
@@ -72,8 +72,7 @@ void Commander::init (void) {
 void Commander::destroy (void) {
 
 	for (long i = 0; i < MAX_MOVERGROUPS; i++) {
-		delete groups[i];
-		groups[i] = nullptr;
+		groups[i].reset();
 	}
 
 	numCommanders--;
@@ -88,7 +87,7 @@ long Commander::setGroup (long id, long numMates, MoverPtr* moverList, long poin
 	// If so, we need to determine
 	Assert((id >= 0) && (id < MAX_MOVERGROUPS), 0, " Commander::bad id in setGroup ");
 
-	MoverGroupPtr curGroup = groups[id];
+	MoverGroupPtr curGroup = groups[id].get();
 
 	Assert(curGroup != nullptr, 0, " Commander::setGroup has null group ");
 

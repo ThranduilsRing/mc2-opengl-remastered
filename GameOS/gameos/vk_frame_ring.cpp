@@ -11,6 +11,7 @@
 #include "mc2_diag_verbose.h"
 #include "RenderCore/GpuResidencyPolicy.h"
 #include "Gates/render_options.h"
+#include "mc2fmt.h"
 
 namespace mc2vk {
 
@@ -25,7 +26,7 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     if(perSlot*(FrameRingCore::kSlots+1)>policy.textureUpload) {
         refusedCapacity_ = (std::max)(refusedCapacity_, perSlot);
         if (++policyRefusals_ == 1)
-            std::fprintf(stderr,"[VK_RESIDENCY v1] refused=framering bytes=%llu policy=%llu fallback=skip_draw count=1 (repeats counted until recovery)\n",perSlot*(FrameRingCore::kSlots+1),policy.textureUpload);
+            mc2::fmt::print_err("[VK_RESIDENCY v1] refused=framering bytes={:d} policy={:d} fallback=skip_draw count=1 (repeats counted until recovery)\n",mc2::fmt::as_u64(perSlot*(FrameRingCore::kSlots+1)),mc2::fmt::as_u64(policy.textureUpload));
         return false;
     }
     OwnedBuffer fresh;
@@ -47,7 +48,7 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     core_.setCapacity(perSlot);
     ++growths_;
     if (policyRefusals_ && perSlot >= refusedCapacity_) {
-        std::fprintf(stderr, "[VK_RESIDENCY v1] framering recovered refused_count=%llu\n", static_cast<unsigned long long>(policyRefusals_));
+        mc2::fmt::print_err("[VK_RESIDENCY v1] framering recovered refused_count={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(policyRefusals_)));
         policyRefusals_ = 0; refusedCapacity_ = 0;
     }
     MC2_DIAGFE(stderr, "[VK_FRAMERING v1] capacity=%llu bytes per slot (growth %u).\n", static_cast<unsigned long long>(perSlot), growths_);

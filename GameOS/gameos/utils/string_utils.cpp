@@ -1,6 +1,7 @@
 #ifndef STRING_UTILS_H
 #define STRING_UTILS_H
 
+#include "mc2_czstring.h"
 #include <memory.h>
 #include <malloc.h>
 #include <string.h>
@@ -19,7 +20,7 @@ void StringFree(wchar_t* s)
 	free(s);
 }
 
-char* StringDup(const char* s)
+char* StringDup(mc2::czstring s)
 {
 	if( ! s )
 		return nullptr;
@@ -41,7 +42,7 @@ wchar_t* StringDup(const wchar_t* s)
 	return ss;
 }
 
-inline char* StringDupSafe(const char* s)
+inline char* StringDupSafe(mc2::czstring s)
 {
 	if( s == nullptr)
 		return nullptr;
@@ -144,7 +145,7 @@ inline BOOL CopyToStaticString(char *szStaticString, int32 iStaticStringLen, con
 };
 */
 
-inline const char* StringGetExtention(const char* pstr)
+inline const char* StringGetExtention(mc2::czstring pstr)
 {
     assert(pstr);
     const char* ext = strrchr(pstr, '.');

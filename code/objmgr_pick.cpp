@@ -15,27 +15,27 @@ static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid
 	if (!dirty) return;
 	grid.clear();
 	GameObjectHandle maxHandle = -1;
-	for (int i = 0; i < int(movers.size()); ++i) {
+	for (int i = 0; i < static_cast<int>(movers.size()); ++i) {
 		auto* mover = movers[i];
 		const auto p = mover->getPosition();
 		grid.add(p.x, p.y, i, om.entityId(mover->getHandle()));
 		maxHandle = std::max(maxHandle, mover->getHandle());
 	}
 	grid.finish();
-	s_moverOrdinalByHandle.assign(size_t(maxHandle + 1), -1);
-	for (int i = 0; i < int(movers.size()); ++i)
+	s_moverOrdinalByHandle.assign(static_cast<size_t>(maxHandle + 1), -1);
+	for (int i = 0; i < static_cast<int>(movers.size()); ++i)
 		s_moverOrdinalByHandle[movers[i]->getHandle()] = int(i);
 	dirty = false;
 }
 
 std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(const glm::vec3& position, float radius) {
-	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, size_t(numMovers)));
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, static_cast<size_t>(numMovers)));
 	return moverGrid.query(position.x, position.y, radius);
 }
 
 int GameObjectManager::moverOrdinal(GameObjectHandle handle) {
-	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, size_t(numMovers)));
-	return (handle >= 0 && size_t(handle) < s_moverOrdinalByHandle.size()) ? s_moverOrdinalByHandle[handle] : -1;
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, static_cast<size_t>(numMovers)));
+	return (handle >= 0 && static_cast<size_t>(handle) < s_moverOrdinalByHandle.size()) ? s_moverOrdinalByHandle[handle] : -1;
 }
 
 std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyBuildings(const glm::vec3& position, float radius) {
@@ -412,7 +412,7 @@ bool pickSphereOutsideScreen(const glm::vec3& pos, const AppearanceType* type) {
     const float wMax = dot(wc) + radius * len(wc);
     const float pad = 2.f * gameplayPickPad() + 2.f;
     for (int i = 0; i < 4; ++i) {
-        const float extent = i < 2 ? float(Environment.screenWidth) : float(Environment.screenHeight);
+        const float extent = i < 2 ? static_cast<float>(Environment.screenWidth) : static_cast<float>(Environment.screenHeight);
         const float tol = wMax > 0.f && extent > 0.f ? pad * 2.f * wMax / extent : 0.f;
         if (dot(s_planes[i]) + radius * len(s_planes[i]) + tol < 0.f) return true;
     }
@@ -438,7 +438,7 @@ bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
             cache.ulx=l; cache.uly=t; cache.lrx=r; cache.lry=b;
             cache.cameraRevision=revision; cache.valid=true;
         }
-        rect.left=float(l); rect.top=float(t); rect.right=float(r); rect.bottom=float(b);
+        rect.left=static_cast<float>(l); rect.top=static_cast<float>(t); rect.right=static_cast<float>(r); rect.bottom=static_cast<float>(b);
     } else {
         glm::vec3 lo, hi;
         mc2ToRender(lo, type->typeUpperLeft);
@@ -520,7 +520,7 @@ bool cursorOnProjectedBox(BldgAppearance* ba, long x, long y) {
         hull[n++] = pts[i];
     }
     --n;	// the last point repeats the first
-    const glm::vec2 p{float(x), float(y)};
+    const glm::vec2 p{static_cast<float>(x), static_cast<float>(y)};
     const float pad = gameplayPickPad();
     bool inside = n >= 3;
     for (int i = 0; i < n; ++i) {
@@ -629,7 +629,7 @@ void gameplayPickBattery(GameObjectManager& manager) {
             else ++misses;
         }
         mc2::fmt::print_out("[PICK_BATTERY] revision={} class={} id={} hits={} miss={} wrong={} overlap={}\n",
-            revision, int(c.obj->getObjectClass()), c.obj->getPartId(), hits, misses, wrong, overlap);
+            revision, static_cast<int>(c.obj->getObjectClass()), c.obj->getPartId(), hits, misses, wrong, overlap);
     }
     busy = false;
 }
@@ -737,9 +737,9 @@ std::string mc2PickGridReport(int cols, int rows) {
         Stuff::Vector4D sp; glm::vec3 pos = obj->getPosition(); eye->projectForScreenXY(pos, sp);
         auto* app = obj->getAppearance();
         std::snprintf(line, sizeof line, "  (%ld,%ld) -> id=%d cls=%d type=%s pos=(%.0f,%.0f) screen=(%.0f,%.0f w=%.2f) rect=%s(%.0f,%.0f,%.0f,%.0f) winVis=%d turn=%d nameId=%ld\n",
-            x, y, int(obj->getPartId()), int(obj->getObjectClass()), (app && app->getAppearanceType()) ? app->getAppearanceType()->name : "?",
+            x, y, static_cast<int>(obj->getPartId()), static_cast<int>(obj->getObjectClass()), (app && app->getAppearanceType()) ? app->getAppearanceType()->name : "?",
             pos.x, pos.y, sp.x, sp.y, sp.w, ok ? "" : "BAD", rect.left, rect.top, rect.right, rect.bottom,
-            int(obj->getWindowsVisible()), int(::turn), app ? long(app->getObjectNameId()) : -1L);
+            static_cast<int>(obj->getWindowsVisible()), static_cast<int>(::turn), app ? long(app->getObjectNameId()) : -1L);
         out += line;
     }
     return out;

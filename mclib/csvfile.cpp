@@ -21,6 +21,7 @@
 #include"heap.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
@@ -641,7 +642,7 @@ long CSVFile::byteToTextHex (char *result, byte num, unsigned long bufLen)
 }	
 
 //---------------------------------------------------------------------------
-long CSVFile::open (const char* fName, FileMode _mode, long numChild)
+long CSVFile::open (mc2::czstring fName, FileMode _mode, long numChild)
 {
 	long result = File::open(fName,_mode,numChild);
 	if (result != NO_ERR)

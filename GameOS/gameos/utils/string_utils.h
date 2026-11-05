@@ -1,11 +1,12 @@
 #ifndef STRING_UTILS_H
 #define STRING_UTILS_H
+#include "mc2_czstring.h"
 
 void StringFree(char* s);
 void StringFree(wchar_t* s);
-char* StringDup(const char* s);
+char* StringDup(mc2::czstring s);
 wchar_t* StringDup(const wchar_t* s);
-char* StringDupSafe(const char* s);
+char* StringDupSafe(mc2::czstring s);
 wchar_t* StringDupSafe(const wchar_t* s);
 
 // this function assume that szPath and szLowerPath are valid pointers
@@ -20,7 +21,7 @@ wchar_t* StringToWString(const char* string);
 BOOL CopyToStaticString(char *szStaticString, int32 iStaticStringLen, const char *szSource);
 */
 
-const char* StringGetExtention(const char* pstr);
+const char* StringGetExtention(mc2::czstring pstr);
 
 // aka C99 snprintf
 int StringFormat(char* buf, size_t buf_size, const char* format, ...);

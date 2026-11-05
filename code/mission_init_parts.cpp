@@ -1,4 +1,6 @@
 // Mission Part initialization shared by the engine and offline fixtures.
+#include <algorithm>
+
 #include "mission_init_frame.h"
 #include "mc2fmt.h"
 
@@ -98,11 +100,9 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 			for (numAlternatives = 0; numAlternatives < MAX_ALTERNATIVES; numAlternatives++)
 				if (alternatives[numAlternatives] == -1)
 					break;
-			if (maxAlternatives[squadIndex] < numAlternatives)
-				maxAlternatives[squadIndex] = numAlternatives;
+			maxAlternatives[squadIndex] = std::max(maxAlternatives[squadIndex], numAlternatives);
 
-			if (numAlternatives > bigAlternatives)
-				bigAlternatives = numAlternatives;
+			bigAlternatives = std::max(bigAlternatives, numAlternatives);
 		}
 
 		if (MPlayer && (bigAlternatives > 0)) {
@@ -117,8 +117,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 			if (GameDifficulty >= 2)
 			{
 				randomAlternative[s]--;
-				if (randomAlternative[s] < 1)
-					randomAlternative[s] = 1;
+				randomAlternative[s] = std::max<long>(randomAlternative[s], 1);
 			}
 		}
 

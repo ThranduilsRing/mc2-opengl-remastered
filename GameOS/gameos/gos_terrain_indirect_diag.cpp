@@ -1,5 +1,6 @@
 // gos_terrain_indirect: parity printer, 600-frame summary and the recipe-versus-live parity comparison.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
+#include "mc2_czstring.h"
 #include "gos_terrain_indirect_internal.h"
 
 
@@ -15,7 +16,7 @@ long long s_paritySummaryMismatches   = 0;
 
 namespace gos_terrain_indirect {
 
-void ParityPrintMismatch(int frame, int quad, const char* layer, int tri,
+void ParityPrintMismatch(int frame, int quad, mc2::czstring layer, int tri,
                          int vert, const char* field,
                          uint32_t legacy, uint32_t fast) {
     if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
@@ -195,12 +196,12 @@ int ParityCompareRecipeFrame() {
 
         const long  mx = vn0 % mapSide;
         const long  my = vn0 / mapSide;
-        const float e_wx0 = float(mx     - halfSide) * wupv;
-        const float e_wy0 = float(halfSide - my    ) * wupv;
-        const float e_wx1 = float(mx + 1 - halfSide) * wupv;
+        const float e_wx0 = static_cast<float>(mx     - halfSide) * wupv;
+        const float e_wy0 = static_cast<float>(halfSide - my    ) * wupv;
+        const float e_wx1 = static_cast<float>(mx + 1 - halfSide) * wupv;
         const float e_wy1 = e_wy0;
         const float e_wx2 = e_wx1;
-        const float e_wy2 = float(halfSide - (my + 1)) * wupv;
+        const float e_wy2 = static_cast<float>(halfSide - (my + 1)) * wupv;
         const float e_wx3 = e_wx0;
         const float e_wy3 = e_wy2;
 

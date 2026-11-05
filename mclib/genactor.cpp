@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 //---------------------------------------------------------------------------
 //
@@ -18,7 +19,7 @@
 
 //-----------------------------------------------------------------------------
 // class GenericAppearanceType
-void GenericAppearanceType::init (const char * fileName)
+void GenericAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 
@@ -322,9 +323,9 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (int i=0;i<8;i++)
+		for (const auto & boxCoord : boxCoords)
 		{
-			testRadius = glm::length(boxCoords[i]);
+			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}

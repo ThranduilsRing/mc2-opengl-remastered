@@ -77,6 +77,8 @@
 
 #include<stdio.h>
 
+#include <algorithm>
+
 //***************************************************************************
 
 constexpr int TACORDERCHUNK_UNITORDER_BITS = 1;
@@ -1515,8 +1517,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 
 							if (MPlayer) 
 							{
-								if (pointsAvailable > 255.0f)
-									pointsAvailable = 255.0f;
+								pointsAvailable = std::min(pointsAvailable, 255.0f);
 
 								WeaponShotInfo refitInfo;
 								refitInfo.init(0,
@@ -1592,8 +1593,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 							target->burnRefitPoints(pointsUsed);
 							if (MPlayer) 
 							{
-								if (pointsAvailable > 255.0f)
-									pointsAvailable = 255.0f;
+								pointsAvailable = std::min(pointsAvailable, 255.0f);
 
 								WeaponShotInfo refitInfo;
 								refitInfo.init(0,

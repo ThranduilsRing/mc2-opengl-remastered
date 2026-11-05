@@ -22,7 +22,7 @@ inline void putLE(std::vector<uint8_t>& bytes, uint64_t word, unsigned count) {
 }
 inline uint64_t getLE(std::span<const uint8_t> bytes, size_t offset, unsigned count) {
     uint64_t word = 0;
-    for (unsigned i = 0; i < count; ++i) word |= uint64_t(bytes[offset + i]) << (8 * i);
+    for (unsigned i = 0; i < count; ++i) word |= static_cast<uint64_t>(bytes[offset + i]) << (8 * i);
     return word;
 }
 

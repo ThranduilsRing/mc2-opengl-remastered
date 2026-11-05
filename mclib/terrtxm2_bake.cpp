@@ -1,5 +1,6 @@
 // TerrainColorMap: fractal base mesh, shadow burn-in, detail / water texture reset and light recalc, and the base texture reset.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
+#include "mc2_czstring.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "content_error.h"
@@ -61,7 +62,7 @@ void rescaleMap (float *dst, float *src, long dstSize, long srcSize)
 }
 
 //---------------------------------------------------------------------------
-void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold, long Noise)
+void TerrainColorMap::refractalizeBaseMesh (mc2::czstring fileName, long Threshold, long Noise)
 {
 	//Find max and min vertex elevations for scaling below.
 	float maxVertex = land->getTerrainElevation(0,0);
@@ -231,7 +232,7 @@ void TerrainColorMap::refractalizeBaseMesh (const char *fileName, long Threshold
 float ContrastEnhance = 1.5f;
 float ShadowEnhance = 2.0f;
 //---------------------------------------------------------------------------
-void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
+void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 {
 	//-----------------------------------------------------------------
 	// for each pixel in the colormap, figure out where light is and
@@ -780,7 +781,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 }
 	
 //---------------------------------------------------------------------------
-inline bool textureIsOKFormat (const char *fileName)
+inline bool textureIsOKFormat (mc2::czstring fileName)
 {
 	File tgaFile;
 	long result = tgaFile.open(fileName);
@@ -807,7 +808,7 @@ inline bool textureIsOKFormat (const char *fileName)
 }
 
 //---------------------------------------------------------------------------
-void TerrainColorMap::resetDetailTexture (const char *fileName)
+void TerrainColorMap::resetDetailTexture (mc2::czstring fileName)
 {
 	if (!textureIsOKFormat(fileName))
 	{
@@ -837,7 +838,7 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 }
 
 //---------------------------------------------------------------------------
-void TerrainColorMap::resetWaterTexture (const char *fileName)
+void TerrainColorMap::resetWaterTexture (mc2::czstring fileName)
 {
 	if (!textureIsOKFormat(fileName))
 	{
@@ -867,7 +868,7 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 }
 
 //---------------------------------------------------------------------------
-void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
+void TerrainColorMap::resetWaterDetailTextures (mc2::czstring fileName)
 {
 	//Then, load up the water detail texture(s).
 	// Water detail texture is named the same as the colormap with .water0000 in name
@@ -900,9 +901,9 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 		{
 			if (!i)		//If we found the first one OK, erase the current ones!!
 			{
-				for (long j=0;j<MAX_WATER_DETAIL_TEXTURES;j++)
+				for (auto & waterDetailNodeIndexElem : waterDetailNodeIndex)
 				{
-					waterDetailNodeIndex[j].reset();
+					waterDetailNodeIndexElem.reset();
 				}
 
 				numWaterDetailFrames = 0;
@@ -922,7 +923,7 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 }
 
 //---------------------------------------------------------------------------
-void TerrainColorMap::recalcLight(const char *fileName)
+void TerrainColorMap::recalcLight(mc2::czstring fileName)
 {
 	FullPathFileName colorMapName;
 	colorMapName.init(texturePath,fileName,".tga");
@@ -1044,7 +1045,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 }
 
 //---------------------------------------------------------------------------
-void TerrainColorMap::resetBaseTexture (const char *fileName)
+void TerrainColorMap::resetBaseTexture (mc2::czstring fileName)
 {
 	// The existing tiles go first, so a replacement TGA that is refused below leaves the map without colour tiles rather than reading past
 	// the end of the file.

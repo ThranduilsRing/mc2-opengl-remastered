@@ -9,6 +9,7 @@
 
 #ifndef ABLSYMT_H
 #define ABLSYMT_H
+#include "mc2_czstring.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -226,25 +227,25 @@ struct _Type {
 //***************************************************************************
 
 void searchLocalSymTable (SymTableNodePtr& IdPtr);
-SymTableNodePtr searchLocalSymTableForFunction (const char* name);
+SymTableNodePtr searchLocalSymTableForFunction (mc2::czstring name);
 void searchThisSymTable (SymTableNodePtr& IdPtr, SymTableNodePtr thisTable);
 void searchAllSymTables (SymTableNodePtr& IdPtr);
 void enterLocalSymTable (SymTableNodePtr& IdPtr);
-void enterNameLocalSymTable (SymTableNodePtr& IdPtr, const char* name);
+void enterNameLocalSymTable (SymTableNodePtr& IdPtr, mc2::czstring name);
 void searchAndFindAllSymTables (SymTableNodePtr& IdPtr);
 void searchAndEnterLocalSymTable (SymTableNodePtr& IdPtr);
 /*inline*/ void searchAndEnterThisTable (SymTableNodePtr& IdPtr, SymTableNodePtr thisTable);
 inline SymTableNodePtr symTableSuccessor (SymTableNodePtr nodeX);
 
-SymTableNodePtr searchSymTable (const char* name, SymTableNodePtr nodePtr);
-SymTableNodePtr searchSymTableForFunction (const char* name, SymTableNodePtr nodePtr);
-SymTableNodePtr searchSymTableForState (const char* name, SymTableNodePtr nodePtr);
-SymTableNodePtr searchSymTableForString (const char* name, SymTableNodePtr nodePtr);
-SymTableNodePtr searchSymTableDisplay (const char* name);
-SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr);
+SymTableNodePtr searchSymTable (mc2::czstring name, SymTableNodePtr nodePtr);
+SymTableNodePtr searchSymTableForFunction (mc2::czstring name, SymTableNodePtr nodePtr);
+SymTableNodePtr searchSymTableForState (mc2::czstring name, SymTableNodePtr nodePtr);
+SymTableNodePtr searchSymTableForString (mc2::czstring name, SymTableNodePtr nodePtr);
+SymTableNodePtr searchSymTableDisplay (mc2::czstring name);
+SymTableNodePtr enterSymTable (mc2::czstring name, SymTableNodePtr* ptrToNodePtr);
 SymTableNodePtr insertSymTable (SymTableNodePtr* tableRoot, SymTableNodePtr newNode);
 SymTableNodePtr extractSymTable (SymTableNodePtr* tableRoot, SymTableNodePtr nodeKill);
-void enterStandardRoutine (const char* name, long routineKey, bool isOrder, const char* paramList, const char* returnType, void (*callback)(void));
+void enterStandardRoutine (mc2::czstring name, long routineKey, bool isOrder, mc2::czstring paramList, mc2::czstring returnType, void (*callback)(void));
 void enterScope (SymTableNodePtr symTableRoot);
 SymTableNodePtr exitScope (void);
 void initSymTable (void);

@@ -38,12 +38,12 @@ long LogisticsData::updateAvailability()
 	int newMechAvailableCount = 0;
 	int oldPilotAvailableCount = 0;
 	int newPilotAvailableCount= 0;
-	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+	for (auto & pilot : pilots)
 	{
-		if ( (*pIter).bAvailable )
+		if ( pilot.bAvailable )
 			oldPilotAvailableCount++;
 
-		(*pIter).setAvailable( 0 );
+		pilot.setAvailable( 0 );
 	}
 
 
@@ -91,13 +91,13 @@ long LogisticsData::updateAvailability()
 
 	}
 
-	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
+	for (auto & component : components)
 	{
-		if ( available[(*cIter).getID()] || bAll )
+		if ( available[component.getID()] || bAll )
 		{
-			if ( !(*cIter).isAvailable() )
+			if ( !component.isAvailable() )
 				bNewWeapons = true;
-			(*cIter).setAvailable( 1 );
+			component.setAvailable( 1 );
 		}
 	}
 
@@ -106,11 +106,11 @@ long LogisticsData::updateAvailability()
  	missionInfo->getAdditionalPurachaseFiles( pFileNames, count );
 
 
-	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+	for (auto & variant : variants)
 	{
-		if ( (*vIter)->isAvailable()  && !((*vIter)->getID() >> 16 ))
+		if ( variant->isAvailable()  && !(variant->getID() >> 16 ))
 			oldMechAvailableCount++;
-		(*vIter)->setAvailable(0);
+		variant->setAvailable(0);
 	}
 
 	for (int i = 0; i < count; i++ )
@@ -134,22 +134,22 @@ long LogisticsData::updateAvailability()
 		size_t enableWireForced = applyEquipmentEnableWireIfEnabled( available, 255 );
 		if ( enableWireForced > 0 )
 		{
-			for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
+			for (auto & component : components)
 			{
-				if ( available[(*cIter).getID()] && !(*cIter).isAvailable() )
+				if ( available[component.getID()] && !component.isAvailable() )
 				{
 					bNewWeapons = true;
-					(*cIter).setAvailable( 1 );
+					component.setAvailable( 1 );
 				}
 			}
 		}
 	}
 
-	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
+	for (auto & component : components)
 	{
-		if ( !available[(*cIter).getID()]  )
+		if ( !available[component.getID()]  )
 		{
-			(*cIter).setAvailable( 0 );
+			component.setAvailable( 0 );
 		}
 	}
 
@@ -166,16 +166,16 @@ long LogisticsData::updateAvailability()
 		if ( NO_ERR != file.readIdString( tmp, chassisFileName, 254 ) )
 			break;
 
-		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+		for (auto & variant : variants)
 		{
-			const std::string& mechName = (*vIter)->getFileName();
+			const std::string& mechName = variant->getFileName();
 			char realName[1024];
 			_splitpath( mechName.c_str(), nullptr, nullptr, realName, nullptr );
 			if ( S_stricmp( realName, chassisFileName ) == 0 )
 			{
 				componentCount = 255;
 				bool bRight = true;
-				(*vIter)->getComponents( componentCount, componentArray );
+				variant->getComponents( componentCount, componentArray );
 				for ( int i = 0; i < componentCount; i++ )
 				{
 					if ( !available[componentArray[i]] ) // unavailable componets
@@ -187,9 +187,9 @@ long LogisticsData::updateAvailability()
 
 				if ( bRight )
 				{
-					(*vIter)->setAvailable( true );
+					variant->setAvailable( true );
 
-					if (  !((*vIter)->getID() >> 16 ) )
+					if (  !(variant->getID() >> 16 ) )
 						newMechAvailableCount++;
 				}
 			}
@@ -200,15 +200,15 @@ long LogisticsData::updateAvailability()
 	// [Chassis] Purchasable) instead of every campaign's purchase file naming it. The same
 	// component rule as the [Mechs] block applies: a variant whose equipment is not yet
 	// available in this campaign stays out of the shop.
-	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+	for (auto & variant : variants)
 	{
-		const std::string stem = std::filesystem::path( (*vIter)->getFileName() ).stem().string();
+		const std::string stem = std::filesystem::path( variant->getFileName() ).stem().string();
 		const mc2pkg::PackageChassis* pc = packageChassisByStem( stem );
-		if ( !pc || !pc->purchasable || (*vIter)->isAvailable() )
+		if ( !pc || !pc->purchasable || variant->isAvailable() )
 			continue;
 		componentCount = 255;
 		bool bRight = true;
-		(*vIter)->getComponents( componentCount, componentArray );
+		variant->getComponents( componentCount, componentArray );
 		for ( int i = 0; i < componentCount; i++ )
 		{
 			if ( componentArray[i] < 0 || componentArray[i] >= 255 || !available[componentArray[i]] )
@@ -219,8 +219,8 @@ long LogisticsData::updateAvailability()
 		}
 		if ( bRight )
 		{
-			(*vIter)->setAvailable( true );
-			if ( !((*vIter)->getID() >> 16) )
+			variant->setAvailable( true );
+			if ( !(variant->getID() >> 16) )
 				newMechAvailableCount++;
 		}
 	}
@@ -240,20 +240,20 @@ long LogisticsData::updateAvailability()
 
 		// The purchase file names a pilot in its own case (PMWChopper) and the pilot FIT is lower case (pmwchopper): the match ignores ASCII case.
 		const std::string pilotKey = mc2::str::from_c( pilotName );
-		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+		for (auto & pilot : pilots)
 		{
-			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
+			if ( mc2::str::iequals( pilot.getFileName(), pilotKey ) )
 			{
-				(*pIter).setAvailable( true );
+				pilot.setAvailable( true );
 			}
 
 		}
 	}
 
-	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+	for (auto & pilot : pilots)
 	{
 		
-		if ( (*pIter).bAvailable )
+		if ( pilot.bAvailable )
 			newPilotAvailableCount++;
 	}
 
@@ -467,11 +467,11 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 			break;
 
 		const std::string pilotKey = mc2::str::from_c( pilotName );
-		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+		for (auto & pilotElem : pilots)
 		{
-			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
+			if ( mc2::str::iequals( pilotElem.getFileName(), pilotKey ) )
 			{
-				(*pIter).setAvailable( true );
+				pilotElem.setAvailable( true );
 				bNewPilots = true;
 				if (observation) { accepted("pilot", "available", objectiveObservationQuote(pilotKey)); }
 				
@@ -489,9 +489,9 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		if ( NO_ERR != file.readIdString( tmp, chassisFileName, 255 ) )
 			break;
 
-		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+		for (auto & variant : variants)
 		{
-			const std::string& mechName = (*vIter)->getFileName();
+			const std::string& mechName = variant->getFileName();
 			char realName[255];
 			_splitpath( mechName.c_str(), nullptr, nullptr, realName, nullptr );
 			if ( S_stricmp( realName, chassisFileName ) == 0 )
@@ -499,7 +499,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 				long componentCount = 255;
 				long componentArray[256];
 				bool bRight = true;
-				(*vIter)->getComponents( componentCount, componentArray );
+				variant->getComponents( componentCount, componentArray );
 				for ( int i = 0; i < componentCount; i++ )
 				{
 					LogisticsComponent* pComp = getComponent(componentArray[i]);
@@ -512,7 +512,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 
 				if ( bRight )
 				{
-					(*vIter)->setAvailable( true );
+					variant->setAvailable( true );
 					newAvailableCount++;
 					if (observation) { accepted("mech", "available", objectiveObservationQuote(mechName)); }
 				}

@@ -1,4 +1,5 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
+#include "mc2_czstring.h"
 #include "platform_io.h"
 #include "platform_str.h"
 #include "prefs.h"
@@ -7,7 +8,7 @@
 extern int loadPreferenceHotKeys(FitIniFile&);
 extern int savePreferenceHotKeys(std::string&);
 extern unsigned long long preferenceHotKeysFingerprint();
-int CPrefs::load(const char* name) {
+int CPrefs::load(mc2::czstring name) {
     FullPathFileName path;
     path.init("./", name, ".cfg");
     loadedDefault_ = S_stricmp(name, "options") == 0;

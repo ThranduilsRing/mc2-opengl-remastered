@@ -13,6 +13,7 @@
 //***************************************************************************
 #pragma once
 
+#include "mc2_czstring.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include <cstdio>
 #include <chrono>
@@ -51,7 +52,7 @@ struct SolveScope {
 	MoveLayerRevisions revisions;
 	bool previousRevisionMatch = false;
 
-	explicit SolveScope(const char* variantName, const mc2::OpenHeap& searchHeap)
+	explicit SolveScope(mc2::czstring variantName, const mc2::OpenHeap& searchHeap)
 		: active(mc2_diag::tagEnabled("PATH")),
 		  variant(variantName),
 		  nodes(0), openPeak(0), len(-1), trunc(0), fail(1),

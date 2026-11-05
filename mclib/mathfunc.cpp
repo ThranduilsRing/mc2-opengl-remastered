@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #ifndef STUFF_STUFF_HPP
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"stuff/stuff.hpp"
 #endif
@@ -92,10 +93,8 @@ float my_acos (float val)
 	// most likely a round-off error, or if it's actually out
 	// of the domain range...
 
-	if (val < -1.0)
-		val = -1.0;
-	if (val > 1.0)
-		val = 1.0;
+	val = std::max<double>(val, -1.0);
+	val = std::min<double>(val, 1.0);
 
 	return(acos(val));
 }

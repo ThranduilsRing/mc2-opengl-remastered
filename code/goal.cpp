@@ -209,9 +209,9 @@ bool GoalManager::fillWallGateRegion (long row, long col, long region) {
 		return(false);
 
 	regionMap[row][col] = region;
-	for (long dir = 0; dir < 4; dir ++) {
-		long adjR = row + adjCell[dir][0];
-		long adjC = col + adjCell[dir][1];
+	for (auto & adjCellElem : adjCell) {
+		long adjR = row + adjCellElem[0];
+		long adjC = col + adjCellElem[1];
 		if ((adjR >= 0) && (adjR < GameMap->height) && (adjC >= 0) && (adjC < GameMap->width))
 			if (regionMap[adjR][adjC] == -1)
 				fillWallGateRegion(adjR, adjC, region);
@@ -266,9 +266,9 @@ bool GoalManager::fillRegion (long row, long col, long region) {
 		
 		if (filling) {
 			regionMap[row][col] = region;
-			for (long dir = 0; dir < 4; dir ++) {
-				long adjR = row + adjCell[dir][0];
-				long adjC = col + adjCell[dir][1];
+			for (auto & adjCellElem : adjCell) {
+				long adjR = row + adjCellElem[0];
+				long adjC = col + adjCellElem[1];
 				if ((adjR >= 0) && (adjR < GameMap->height) && (adjC >= 0) && (adjC < GameMap->width))
 					if (regionMap[adjR][adjC] == -1) {
 						//--------------------------------------------

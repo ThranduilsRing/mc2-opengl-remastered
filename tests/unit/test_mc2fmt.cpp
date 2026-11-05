@@ -3,7 +3,7 @@
 
 #include "doctest.h"
 
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 #include "msvc_printf_reference.h"
 
 #include <cstdio>

@@ -180,12 +180,10 @@ void
 
 	MLRLookUpLight::InitializeClass();
 
-#if FOG_HACK
 //	for(int i=0;i<Limits::Max_Number_Of_FogStates;i++)
 //	{
 //		GOSVertex::SetFogTableEntry(i+1, 700.0f, 1000.0f, 0.0f);
 //	}
-#endif
 
 	gos_PopCurrentHeap();
 

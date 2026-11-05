@@ -41,6 +41,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <new>
+#include "mc2fmt.h"
 
 // Opaque owner: the VK-only (non-exportable) image the islands share. No GL import
 // — the FBO color attachment is a plain-GL placeholder owned by gos_postprocess.
@@ -62,7 +63,7 @@ void slog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     std::vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
-    std::printf("[VK_SHARED_SCENE_COLOR] %s\n", buf);
+    mc2::fmt::print_out("[VK_SHARED_SCENE_COLOR] {}\n", mc2::fmt::safe(buf));
     std::fflush(stdout);
 }
 

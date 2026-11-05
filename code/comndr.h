@@ -27,6 +27,7 @@
 
 #ifndef GROUP_H
 #include"group.h"
+#include <memory>
 #endif
 
 #ifndef DTEAM_H
@@ -50,7 +51,7 @@ class Commander {
 
 		int                     id;
 		TeamPtr					team;
-		MoverGroupPtr			groups[MAX_MOVERGROUPS];
+		std::unique_ptr<MoverGroup>	groups[MAX_MOVERGROUPS];
 
 		static long				numCommanders;
 		static CommanderPtr		commanders[MAX_COMMANDERS];
@@ -89,7 +90,7 @@ class Commander {
 		}
 
 		virtual MoverGroupPtr getGroup (long groupNumber) {
-			return(groups[groupNumber]);
+			return(groups[groupNumber].get());
 		}
 
 		long setGroup (long id, long numMates, MoverPtr* moverList, long point);

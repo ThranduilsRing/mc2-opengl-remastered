@@ -16,7 +16,7 @@ unsigned char *_mbsdec(const unsigned char* start, const unsigned char* current)
 {
     // only ok for C locale and single byte character set
     if(start >= current)
-        return 0;
+        return nullptr;
     return const_cast<unsigned char*>(current - 1);
 }
 

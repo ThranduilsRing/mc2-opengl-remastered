@@ -58,8 +58,7 @@ LogisticsData::~LogisticsData()
 	variants.clear();
 	vehicles.clear();
 
-	delete missionInfo;
-	missionInfo = nullptr;
+	missionInfo.reset();
 
 #ifndef VIEWER
 	ChatWindow::static_destroy();

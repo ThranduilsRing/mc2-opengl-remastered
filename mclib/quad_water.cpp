@@ -54,15 +54,15 @@ void TerrainQuad::drawWater (void)
 			                 + Terrain::worldUnitsMapSide * 0.5f;
 			const float py = Terrain::mapTopLeft3d.y
 			                 - Terrain::worldUnitsMapSide * 0.5f;
-			for (int k = 0; k < 4; ++k)
+			for (auto & vertex : vertices)
 			{
-				const float dx = vertices[k]->vx - px;
-				const float dy = vertices[k]->vy - py;
+				const float dx = vertex->vx - px;
+				const float dy = vertex->vy - py;
 				const double d2 = static_cast<double>(dx) * dx + static_cast<double>(dy) * dy;
 				if (!g_cpuWaterProbeAny || d2 < g_cpuWaterProbeBestD2)
 				{
 					g_cpuWaterProbeBestD2 = d2;
-					g_cpuWaterProbeZ = vertices[k]->wz + WATER_DEPTH_FUDGE;
+					g_cpuWaterProbeZ = vertex->wz + WATER_DEPTH_FUDGE;
 					g_cpuWaterProbeAny = true;
 				}
 			}
