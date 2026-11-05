@@ -820,8 +820,7 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
         return out;
     }
     mc2vk::ScenePixel pixel;
-    if (!mc2vk::readScenePixels(screenX, screenY, 1, 1,
-                              mc2vk::SceneDepth | mc2vk::SceneObjectId, &pixel, 1)) {
+    if (!mc2vk::readScenePixels(screenX, screenY, 1, 1, mc2vk::SceneDepth | mc2vk::SceneObjectId, std::span<mc2vk::ScenePixel>(&pixel, 1))) {
         out.lookupFailReason = "NATIVE_READBACK_UNAVAILABLE";
         return out;
     }
