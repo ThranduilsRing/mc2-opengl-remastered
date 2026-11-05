@@ -1942,7 +1942,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:53`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:54`
 - Class: `CountFn`  (data-member)
 - Member: `uint32_t draws = 0;`
 - Consuming targets: gameos
@@ -1950,7 +1950,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:54`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:55`
 - Class: `CountFn`  (data-member)
 - Member: `const int32_t* dst = active_ && r + 1 < runOff_.size() ? dst_.data() + runOff_[r] : nullptr;`
 - Consuming targets: gameos
@@ -1958,7 +1958,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:55`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:56`
 - Class: `CountFn`  (data-member)
 - Member: `uint32_t k = 0;`
 - Consuming targets: gameos
@@ -1966,7 +1966,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:57`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:58`
 - Class: `CountFn`  (data-member)
 - Member: `const bool skinned = dst && dst[k] >= 0;`
 - Consuming targets: gameos
@@ -1974,7 +1974,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:58`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:59`
 - Class: `CountFn`  (data-member)
 - Member: `uint32_t n = 1;`
 - Consuming targets: gameos
@@ -1982,7 +1982,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:61`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:62`
 - Class: `CountFn`  (data-member)
 - Member: `const VkBuffer want = skinned ? skinned_[slot_].get() : bindPoseVbo;`
 - Consuming targets: gameos
@@ -1990,7 +1990,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:63`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:64`
 - Class: `CountFn`  (data-member)
 - Member: `const VkDeviceSize zero = 0;`
 - Consuming targets: gameos
@@ -1998,7 +1998,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:71`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:72`
 - Class: `CountFn`  (data-member)
 - Member: `return draws;`
 - Consuming targets: gameos
@@ -2006,7 +2006,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:81`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:82`
 - Class: `MechSkinPass`  (data-member)
 - Member: `VkDevice device_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -2014,7 +2014,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:82`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:83`
 - Class: `MechSkinPass`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
@@ -2022,7 +2022,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:83`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:84`
 - Class: `MechSkinPass`  (data-member)
 - Member: `uint32_t slot_ = 0;`
 - Consuming targets: gameos
@@ -2030,7 +2030,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:84`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:85`
 - Class: `MechSkinPass`  (data-member)
 - Member: `bool active_ = false;`
 - Consuming targets: gameos
@@ -2038,7 +2038,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:85`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:86`
 - Class: `MechSkinPass`  (data-member)
 - Member: `uint32_t plannedInstances_ = 0;`
 - Consuming targets: gameos
@@ -2046,7 +2046,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:86`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:87`
 - Class: `MechSkinPass`  (data-member)
 - Member: `uint32_t maxCount_ = 0;`
 - Consuming targets: gameos
@@ -2054,7 +2054,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:87`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:88`
 - Class: `MechSkinPass`  (data-member)
 - Member: `uint32_t jobCount_ = 0;`
 - Consuming targets: gameos
@@ -2062,7 +2062,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:89`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:90`
 - Class: `MechSkinPass`  (data-member)
 - Member: `std::vector<Job> jobs_;`
 - Consuming targets: gameos
@@ -2070,7 +2070,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:92`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:93`
 - Class: `MechSkinPass`  (data-member)
 - Member: `std::vector<uint8_t> bad_, used_;`
 - Consuming targets: gameos
@@ -2078,7 +2078,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:93`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:94`
 - Class: `MechSkinPass`  (data-member)
 - Member: `std::unordered_map<uint64_t, uint32_t> region_;`
 - Consuming targets: gameos
@@ -2086,7 +2086,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:95`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:96`
 - Class: `MechSkinPass`  (data-member)
 - Member: `uint64_t vertexCap_[kMaxFramesInFlight] = {}, jobCap_[kMaxFramesInFlight] = {};`
 - Consuming targets: gameos
@@ -2094,7 +2094,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:97`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:98`
 - Class: `MechSkinPass`  (data-member)
 - Member: `ComputePipeline pipe_;`
 - Consuming targets: gameos
@@ -2102,7 +2102,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_mech_skin.h:98`
+- Header: `GameOS/gameos/vulkan_mech_skin.h:99`
 - Class: `MechSkinPass`  (data-member)
 - Member: `ComputeSets sets_;`
 - Consuming targets: gameos
