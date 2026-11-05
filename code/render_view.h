@@ -122,6 +122,10 @@ struct HudSnapshot {
     int objectiveStatus = 0, objectiveCount = 0;
     long resourcePoints = 0;
     float timeLimit = 0;
+    void clear() {   // keeps vector capacity (recycled frames)
+        movers.clear(); roster.clear(); sensors.clear(); coverage.clear(); objectives.clear(); blips.clear(); vtols.clear();
+        home = ended = false; objectiveStatus = objectiveCount = 0; resourcePoints = 0; timeLimit = 0;
+    }
     const HudMover& mover(const GameObject* object) const {
         for (const auto& row : movers) if (row.object == object) return row;
         static const HudMover empty;
