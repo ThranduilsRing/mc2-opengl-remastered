@@ -469,18 +469,18 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     if offscreen is None:
         offscreen = True
     _vet_engine_exe(argv)
-    _hold_host_lease(argv)
-    proc = subprocess.Popen(
-        list(argv),
-        env=apply_env(env, small_window=small_window, offscreen=offscreen, perf=show_window),
-        **popen_kwargs(show_window=show_window, **kw))
-    _record_child(proc, argv)
+    child_env = apply_env(env, small_window=small_window, offscreen=offscreen, perf=show_window)
     try:
         from . import exe_guard, host_lease
     except ImportError:
         from smoke_lib import exe_guard, host_lease
-    if any(exe_guard.engine_kind(a) is not None for a in argv):
-        host_lease.apply_affinity(proc)
+    # The lease (slot, queue, core reservation) is keyed off the device the child actually gets, not this process's env.
+    with host_lease.keyed_by(child_env.get("MC2_VK_DEVICE")):
+        _hold_host_lease(argv)
+        proc = subprocess.Popen(list(argv), env=child_env, **popen_kwargs(show_window=show_window, **kw))
+        _record_child(proc, argv)
+        if any(exe_guard.engine_kind(a) is not None for a in argv):
+            host_lease.apply_affinity(proc)
     return proc
 
 

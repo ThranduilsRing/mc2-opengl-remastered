@@ -733,6 +733,28 @@ def test_gpu_split_parse_and_per_device_lease_paths(lease, monkeypatch):
     assert host_lease.lease_path() == lane_path                     # no pin: a lane run
 
 
+def test_game_cores_follow_the_device_half(monkeypatch):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
+    lane = set(host_lease.game_cores())
+    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
+    gate = set(host_lease.game_cores())
+    masks = host_lease._cpu_split()
+    assert lane and gate and not lane & gate
+    assert all(masks["lane"] >> c & 1 for c in lane) and all(masks["gate"] >> c & 1 for c in gate)
+
+
+def test_keyed_by_restores_and_the_child_env_keys_the_lease(lease, monkeypatch):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
+    lane_path = host_lease.lease_path()
+    with host_lease.keyed_by("NVIDIA"):
+        assert host_lease.lease_path() != lane_path
+    assert host_lease.lease_path() == lane_path
+    with host_lease.keyed_by(None):
+        assert host_lease.lease_path() == lane_path
+
+
 def test_a_gate_device_run_acquires_and_gate_device_env_restores(lease, monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")

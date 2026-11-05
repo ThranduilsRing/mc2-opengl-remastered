@@ -129,8 +129,19 @@ def on_gate_device(env=None) -> bool:
 @contextmanager
 def gate_device_env():
     """The gate process's own lease calls (hold, release_batch) run as gate-device callers."""
+    with keyed_by(gpu_split()["gate"]):
+        yield
+
+
+@contextmanager
+def keyed_by(device: Optional[str]):
+    """Run lease calls keyed to `device` (the MC2_VK_DEVICE a child is about to get), so the lease, the queue and the core
+    reservation follow the env the child actually receives and not this process's own. None = no change."""
+    if not device:
+        yield
+        return
     prev = os.environ.get("MC2_VK_DEVICE")
-    os.environ["MC2_VK_DEVICE"] = gpu_split()["gate"]
+    os.environ["MC2_VK_DEVICE"] = device
     try:
         yield
     finally:
@@ -158,15 +169,37 @@ def affinity_mask(slot: int) -> int:
     return ((1 << (width * 2)) - 1) << (4 + slot * max(2, width) * 2)
 
 
+def _cpu_split() -> dict:
+    """{"gate": mask, "lane": mask} from A:/Games/mc2-ops/CPU_SPLIT (same file and defaults as tools/lint_slots.cpu_masks)."""
+    masks = {"gate": 0x00FF, "lane": 0xFF00}
+    try:
+        for line in Path("A:/Games/mc2-ops/CPU_SPLIT").read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() in masks and v.strip():
+                masks[k.strip()] = int(v.strip(), 0)
+    except (OSError, ValueError):
+        pass
+    return masks
+
+
 def game_cores():
-    """Use the host's explicit reservation, including for old leases."""
+    """Use the host's explicit reservation, including for old leases. Per device: a game on the gate's GPU takes its cores from
+    the gate's CPU half (CPU_SPLIT, minus the desktop cores), every other game from the lane half of the plan's game cores,
+    so two concurrent games never share cores."""
     plan = Path("A:/Games/mc2-ops/core_plan.json")
+    desktop = {0, 1}
+    cores = None
     if plan.is_file():
-        return json.loads(plan.read_text(encoding="utf-8"))["game"]
-    count = os.cpu_count() or 0
-    if count < 8:
+        data = json.loads(plan.read_text(encoding="utf-8"))
+        cores, desktop = data["game"], set(data.get("desktop", desktop))
+    elif (os.cpu_count() or 0) < 8:
         raise RuntimeError('three-way core partition needs at least 8 logical CPUs')
-    return list(range(count - 4, count))
+    else:
+        cores = list(range((os.cpu_count() or 0) - 4, os.cpu_count() or 0))
+    masks = _cpu_split()
+    if on_gate_device():
+        return [c for c in range(masks["gate"].bit_length()) if masks["gate"] >> c & 1 and c not in desktop] or cores
+    return [c for c in cores if masks["lane"] >> c & 1] or cores
 
 
 @contextmanager
@@ -452,9 +485,11 @@ def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
 
 
 def release() -> None:
-    """Give the lease back if this process holds it."""
-    with _queue_lock():
-        _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
+    """Give the lease back if this process holds it (on either GPU: a child env can key it to the other device)."""
+    split = gpu_split()
+    for device in dict.fromkeys((os.environ.get("MC2_VK_DEVICE"), split["gate"], split["lane"])):
+        with keyed_by(device), _queue_lock():
+            _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
 
 
 _registered = False
