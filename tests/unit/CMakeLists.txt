@@ -27,6 +27,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
     test_present_handoff.cpp
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing

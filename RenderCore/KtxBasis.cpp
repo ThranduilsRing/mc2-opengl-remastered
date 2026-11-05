@@ -5,10 +5,6 @@
 // every consumer (residency upload, decode fallback) sees what it sees for a stored BC file.
 // WHY: Basis files are small on disk and transcode to the GPU's native block format in milliseconds; the transcoder is vendored
 // under 3rdparty/basisu (Apache-2.0). 2D single-layer single-face only: no current caller uses arrays or cubes.
-// The vendored headers carry debug asserts that do not compile under clang (ambiguous safe_shift_left); this TU only wraps them.
-#ifndef NDEBUG
-#define NDEBUG 1
-#endif
 #include "KtxLoader.h"
 
 #include <algorithm>
@@ -27,7 +23,8 @@ void initTranscoder() {
 }
 
 size_t levelBlockBytes(uint32_t w, uint32_t h, uint32_t level, uint32_t blockBytes) {
-    const uint32_t lw = std::max(1u, w >> level), lh = std::max(1u, h >> level);
+    const uint32_t lw = std::max(1u, w >> level);
+    const uint32_t lh = std::max(1u, h >> level);
     return size_t((lw + 3u) / 4u) * ((lh + 3u) / 4u) * blockBytes;
 }
 

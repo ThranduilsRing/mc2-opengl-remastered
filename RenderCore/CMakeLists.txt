@@ -1,5 +1,8 @@
 # RenderCore/CMakeLists.txt
 #
+# KtxBasis.cpp includes vendored basisu headers whose debug asserts do not compile under clang (ambiguous safe_shift_left).
+set_source_files_properties(KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)
+#
 # KtxLoader.cpp promoted this from INTERFACE to STATIC.
 # All INTERFACE consumers (renderworld, gameadapters, editorbridge) still link
 # correctly; the PUBLIC include dir + compile feature propagate unchanged.
