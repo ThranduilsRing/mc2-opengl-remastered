@@ -252,7 +252,7 @@ void Mission::save (const char *saveFileName)
 		static_cast<unsigned int>(clockArchive.bytes().size()), STORAGE_TYPE_RAW);
 
 	dmyFile.close();
-	DeleteFile(tmpName);
+	removeSaveScratchFile(tmpName);
 	free(tmpRAM);
 
 	currentPacket += MOVE_saveData(&saveFile, currentPacket, {.cells = true, .areas = true, .doors = true, .links = true});
@@ -279,7 +279,7 @@ void Mission::save (const char *saveFileName)
 	currentPacket++;
 
 	dmyFile.close();
-	DeleteFile(tmpName);
+	removeSaveScratchFile(tmpName);
 	free(tmpRAM);
 
 	loadProgress = 80.0f;
@@ -315,7 +315,7 @@ void Mission::save (const char *saveFileName)
 
 	dmyFile.close();
 
-	DeleteFile(tmpName);
+	removeSaveScratchFile(tmpName);
 	free(tmpRAM);
 
 	long currentMissionNum = LogisticsData::instance->getCurrentMissionNum();

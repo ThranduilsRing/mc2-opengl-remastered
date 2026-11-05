@@ -630,7 +630,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	result = missionFile.readIdULong("NumParts",numParts);
 	gosASSERT(result == NO_ERR);
 	if (numParts)
-		for (long i = 1; i < long(numParts + 1); i++) {
+		for (long i = 1; i < static_cast<long>(numParts + 1); i++) {
 			char partName[12];
 			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			

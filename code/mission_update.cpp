@@ -1,6 +1,7 @@
 #include "tick_commit.h"
 #include "vk_scene_renderer.h"
 #include "sim_tick_cost.h"
+#include <algorithm>
 #include <atomic>
 #include "command_replay.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
@@ -114,7 +115,7 @@ namespace {
 				std::chrono::duration_cast<std::chrono::nanoseconds>(
 					std::chrono::steady_clock::now() - t0).count();
 			s_misNs[idx] += ns;
-			if (ns > s_misMax[idx]) s_misMax[idx] = ns;
+			s_misMax[idx] = std::max(s_misMax[idx], ns);
 		}
 	};
 }

@@ -872,11 +872,7 @@ float applyDifficultyWeapon (float dmg, bool isPlayer)
 		dmg = (static_cast<float>((static_cast<long>((dmg / 0.25)))) * 0.25);
 	}
 
-	if (dmg < 0.0)
-		dmg = 0.0;
-
-	if (dmg > 255.0)
-		dmg = 255.0;
+	dmg = std::clamp(dmg, 0.0f, 255.0f);
 		
 	return dmg;
 }

@@ -77,7 +77,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 
 		long bigAlternatives = 0;
 
-		for (int i = 1; i < long(numParts + 1); i++) {
+		for (int i = 1; i < static_cast<long>(numParts + 1); i++) {
 			char partName[12];
 			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 
@@ -137,7 +137,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 		long i;
 #endif
 
-		for (int i = 1; i < long(numParts + 1); i++)
+		for (int i = 1; i < static_cast<long>(numParts + 1); i++)
 		{
 			long selectedPartId = i;
 			char partName[12];
