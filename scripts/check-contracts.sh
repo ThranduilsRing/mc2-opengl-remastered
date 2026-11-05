@@ -1544,6 +1544,7 @@ run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_ki
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3"
 run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
+run_check "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
 run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
 fi   # end of the real board (skipped under --selftest-render, above)
