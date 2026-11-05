@@ -644,7 +644,7 @@ struct _gosAudio_ChannelInfo
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
 //
-void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType,  const char* file_name, gosAudio_Format* ga_wf = 0, void* data = 0, int size = 0, bool only2D = 0);
+void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType,  const char* file_name, gosAudio_Format* ga_wf = nullptr, void* data = nullptr, int size = 0, bool only2D = 0);
 void __stdcall gosAudio_CreateResource( HGOSAUDIO * hgosaudio, const char * identifier_name, HGOSFILE file, DWORD offset, bool only2D = 0);
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -671,7 +671,7 @@ void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudi
 //  Channel number -1 used in SetVolume and SetPanning will alter the windows master
 //  volume and balance
 void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties, float value1, float value2 = 0.0f, float value3 = 0.0f );
-void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties, float* value1, float* value2 = 0, float* value3 = 0 );
+void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties, float* value1, float* value2 = nullptr, float* value3 = nullptr );
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -1086,7 +1086,7 @@ extern HGOSHEAP ParentClientHeap;
 // Not filling in the heap parameter on gos_Malloc's tells the Memory Manager to allocate memory in
 // the heap currently on top of the heap stack.
 //
-void* __stdcall gos_Malloc( size_t bytes, HGOSHEAP Heap = 0 );
+void* __stdcall gos_Malloc( size_t bytes, HGOSHEAP Heap = nullptr );
 void __stdcall gos_Free( void* ptr );
 
 //
@@ -2850,7 +2850,7 @@ using gos_RebuildFunction = void (__stdcall *)( DWORD, void *);
 // Hints should be set to any combination of gos_TextureHints or 0 is a good default.
 //
 //
-DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints=0, gos_RebuildFunction pFunc=0, void *pInstance=0 );
+DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
 
 //
 // Loads a texture from a memory image, returns a texture handle
@@ -2866,7 +2866,7 @@ DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* Fi
 //
 // Hints should be set to any combination of gos_TextureHints or 0 is a good default.
 //
-DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* FileName, BYTE* pBitmap, DWORD Size, DWORD Hints=0, gos_RebuildFunction pFunc=0, void *pInstance=0 );
+DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* FileName, BYTE* pBitmap, DWORD Size, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
 
 //
 // TEXMGR-COMPRESSED-UPLOAD-1: create a single-level block-compressed (BC7) 2D
@@ -2900,7 +2900,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int He
 // For square textures, place the width in HeightWidth
 // For Rectangular textures, use RECT_TEX(width,height) to pack the width and height values
 //
-DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints=0, gos_RebuildFunction pFunc=0, void *pInstance=0 );
+DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
 
 //
 // Destroy a texture handle (unload from memory)
@@ -3041,7 +3041,7 @@ enum
 //
 //
 //
-void __stdcall AddDebuggerMenuItem( const char* Name, bool(__stdcall *CheckMark)(), void(__stdcall *Activated)(), bool(__stdcall *Greyed)()=0, DWORD(__stdcall *Callback)( const char* Name, DWORD MenuFunction)=0 );
+void __stdcall AddDebuggerMenuItem( const char* Name, bool(__stdcall *CheckMark)(), void(__stdcall *Activated)(), bool(__stdcall *Greyed)()=nullptr, DWORD(__stdcall *Callback)( const char* Name, DWORD MenuFunction)=nullptr );
 
 //
 // Deletes a debugger menu item

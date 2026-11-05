@@ -165,7 +165,7 @@ void tglReadImportSource(FitIniFile& ini, std::span<char, 256> source)
 bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
                           const char* assetPath, bool* failFlag)
 {
-	const bool loaded = (shape != 0) && (rc == 0) && (shape->GetNumShapes() > 0);
+	const bool loaded = (shape != nullptr) && (rc == 0) && (shape->GetNumShapes() > 0);
 	if (loaded)
 		return true;
 	MC2_VERIFY(false, "required shape load failed ctx=%s path=%s",

@@ -1778,8 +1778,8 @@ void MissionBegin::render()
 	long xOffset = 0;
 	long yOffset = 0;
 	
-	LogisticsScreen* pOtherScreen = 0;
-	LogisticsScreen* pCurScreen = 0;
+	LogisticsScreen* pOtherScreen = nullptr;
+	LogisticsScreen* pCurScreen = nullptr;
 	if ( curScreenX > -1 && curScreenY > -1 )
 	{
 		pCurScreen = screens[curScreenX][curScreenY];

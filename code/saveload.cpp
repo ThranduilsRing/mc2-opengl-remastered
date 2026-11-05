@@ -357,7 +357,7 @@ void Mission::save (const char *saveFileName)
             handles(std::span(ObjectManager->vehicles, ObjectManager->maxVehicles)),
             handles(std::span(ObjectManager->moverList, ObjectManager->getNumMovers())),
             handles(std::span(ObjectManager->goodMoverList, ObjectManager->numGoodMovers)),
-            handles(std::span(ObjectManager->badMoverList, ObjectManager->numBadMovers)), turn};
+            handles(std::span(ObjectManager->badMoverList, static_cast<std::int32_t>(ObjectManager->numBadMovers))), turn};
         mc2::save::Archive archive;
         lists.serialize(archive);
         if (!archive.good()) Fatal(0, "WRLD save section failed");

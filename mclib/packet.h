@@ -96,7 +96,7 @@ class PacketFile : public File
 			usesCheckSum = TRUE;
 		}
 
-		int readPacketOffset (int packet, int *lastType = 0);
+		int readPacketOffset (int packet, int *lastType = nullptr);
 		int readPacket (int packet, unsigned char *buffer);
 		int readPackedPacket (int packet, unsigned char *buffer);
 

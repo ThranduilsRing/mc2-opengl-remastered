@@ -37,7 +37,7 @@ void crashbundle_save_point(std::string_view, std::string_view) {}
 extern "C" void crashbundle_device_lost(void) {}
 void crashbundle_fatal(std::string_view) {}
 extern "C" void crashbundle_trigger_test_crash(void) {
-    volatile int* p = 0;
+    volatile int* p = nullptr;
     *p = 0xDEADC0DE;
 }
 #else
