@@ -54,8 +54,12 @@ OFFLINE_STAGES = ("contracts", "harnesses", "pytest")
 
 def gate_env(name):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
-    stages run test suites that must see the same environment a lane sees."""
-    return {} if name in OFFLINE_STAGES else {"MC2_IN_GATE": "1"}
+    stages run test suites that must see the same environment a lane sees. Game stages are also pinned to the gate's side
+    of the GPU split (A:/Games/mc2-ops/GPU_SPLIT) so lane game runs on the other GPU proceed during the window."""
+    if name in OFFLINE_STAGES:
+        return {}
+    from smoke_lib import host_lease
+    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.gpu_split()["gate"]}
 
 
 def window_reusable(window, tree, now=None):
@@ -1338,11 +1342,13 @@ def game_batch():
         yield {}
         return
     tag = f"merge-gate-{os.getpid()}"
-    pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)
+    with host_lease.gate_device_env():   # the exclusive hold covers the gate's GPU only
+        pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
-        host_lease.release_batch(tag)
+        with host_lease.gate_device_env():
+            host_lease.release_batch(tag)
         import psutil
         try:
             holder = psutil.Process(pid)

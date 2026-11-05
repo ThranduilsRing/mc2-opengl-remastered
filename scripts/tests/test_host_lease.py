@@ -639,6 +639,7 @@ def test_lane_run_waits_out_the_gap_between_gate_stages(lease, monkeypatch):
             host_lease._write_record(host_lease.gate_window_path(), {"pid": holder.pid, "created": host_lease.child_registry.process_create_time(holder.pid), "started": started})
         marker(time.time())
         monkeypatch.delenv("MC2_IN_GATE", raising=False)
+        monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")                # a run on the gate's GPU
         with pytest.raises(host_lease.HostLeaseBusy):
             host_lease.acquire("pass/fail", wait=False, scan=lambda: [], log=lambda m: None)
         host_lease._write_record(host_lease.gate_window_path(), {"pid": holder.pid, "created": "reused-pid", "started": time.time() - 99999})
@@ -674,7 +675,12 @@ def test_gate_quiet_refuses_live_marker(lease, monkeypatch):
         monkeypatch.delenv("MC2_IN_GATE", raising=False)
         monkeypatch.delenv(host_lease.QUIET_OVERRIDE_ENV, raising=False)
         _quiet_marker(holder.pid)
-        with pytest.raises(host_lease.GateQuiet, match=rf"GATE QUIET: refusing game run \(gate pid {holder.pid} since ") as exc:
+        monkeypatch.setenv("MC2_VK_DEVICE", "AMD")                  # the lane's GPU is not the gate's: not refused
+        host_lease.acquire("lane run", wait=False, scan=lambda: [], log=lambda m: None)
+        assert host_lease.holds()
+        host_lease.release()
+        monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")               # the gate's GPU is busy
+        with pytest.raises(host_lease.GateQuiet, match=rf"GATE QUIET: the gate's device \(NVIDIA\) is busy, refusing game run on it \(gate pid {holder.pid} since ") as exc:
             host_lease.acquire("lane run", wait=False, scan=lambda: [], log=lambda m: None)
         assert exc.value.rc == host_lease.QUIET_RC != 4
         assert not host_lease.holds()
@@ -688,6 +694,7 @@ def test_gate_quiet_refuses_live_marker(lease, monkeypatch):
 
 def test_gate_quiet_stale_marker_ignored_and_logged(lease, monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
     _quiet_marker(2 ** 22 + 12345, created=None)                     # a dead pid
     logged = []
     host_lease.check_gate_quiet(logged.append)
@@ -709,6 +716,34 @@ def test_gate_quiet_passes_the_gate_itself_and_its_children(lease, monkeypatch):
     finally:
         holder.kill()
         holder.wait()
+
+
+def test_gpu_split_parse_and_per_device_lease_paths(lease, monkeypatch):
+    assert host_lease._parse_gpu_split("# c\ngate=AMD\nlane = NVIDIA\nbogus=1\n") == {"gate": "AMD", "lane": "NVIDIA"}
+    assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
+    lane_path = host_lease.lease_path()
+    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
+    assert host_lease.lease_path() != lane_path                     # the gate's GPU has its own slots, queue and locks
+    monkeypatch.delenv("MC2_VK_DEVICE")
+    monkeypatch.setenv("MC2_IN_GATE", "1")
+    assert host_lease.lease_path() != lane_path
+    monkeypatch.delenv("MC2_IN_GATE")
+    assert host_lease.lease_path() == lane_path                     # no pin: a lane run
+
+
+def test_a_gate_device_run_acquires_and_gate_device_env_restores(lease, monkeypatch):
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
+    host_lease.acquire("gate stage", wait=False, scan=lambda: [], log=lambda m: None)
+    assert host_lease.holds()
+    host_lease.release()
+    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
+    with host_lease.gate_device_env():
+        assert host_lease.on_gate_device()
+        assert host_lease.os.environ["MC2_VK_DEVICE"] == "NVIDIA"
+    assert host_lease.os.environ["MC2_VK_DEVICE"] == "AMD"           # restored
 
 
 def test_lease_busy_names_queue_head_not_unknown(lease):

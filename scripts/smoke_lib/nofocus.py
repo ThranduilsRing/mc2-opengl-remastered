@@ -198,40 +198,42 @@ def allow_foreground() -> bool:
     return bool(v) and v != "0"
 
 
-def gpu_request(out: dict, perf: bool = False) -> str:
-    """The GPU a run asks for: "2070" (pass/fail default), "xtx", or "default" (perf runs and MC2_HARNESS_GPU=any: no routing, nothing asserted)."""
-    mode = (out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower()  # runners scrub the child env; read the shell too
-    perf = perf or out.get("MC2_VK_GPU_TIMESTAMPS", "0") not in ("", "0") or out.get("MC2_FPS_CAP") == "0"         or any(k.startswith("MC2_TRACY") for k in out)
-    if mode == "2070" or (mode == "auto" and not perf):
-        return "2070"
-    return "xtx" if mode == "xtx" else "default"
+def gpu_hint(out: dict) -> "Optional[str]":
+    """The MC2_VK_DEVICE substring this run asks for (None = MC2_HARNESS_GPU=any: no routing, nothing asserted). See host_lease.device_hint."""
+    try:
+        from . import host_lease
+    except ImportError:
+        from smoke_lib import host_lease
+    # runners scrub the child env; read the shell too
+    return host_lease.device_hint({k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out)
 
 
 def route_gpu(out: dict, perf: bool = False) -> None:
-    """Pass/fail runs go to the RTX 2070 SUPER so they do not contaminate perf runs on the 7900 XTX.
+    """Route the run to its side of the GPU split (A:/Games/mc2-ops/GPU_SPLIT; default gate = RTX 2070 SUPER, lanes = 7900 XTX),
+    so the gate's game runs and lane game runs never share a GPU.
 
-    MC2_HARNESS_GPU = auto (default) | xtx | 2070 overrides. Perf = MC2_VK_GPU_TIMESTAMPS, Tracy,
-    uncapped FPS, or a visible-window (show_window) run. An explicit MC2_VK_DEVICE wins.
+    MC2_HARNESS_GPU = auto (default) | xtx | 2070 | any overrides. An explicit MC2_VK_DEVICE wins.
     The engine reads MC2_VK_DEVICE (a device-name substring): the Vulkan loader on this host ignores
     VK_LOADER_DRIVERS_SELECT and the engine takes the first discrete device, always the 7900 XTX.
     """
-    if gpu_request(out, perf) == "2070":
-        out.setdefault("MC2_VK_DEVICE", "NVIDIA")
+    hint = gpu_hint(out)
+    if hint:
+        out.setdefault("MC2_VK_DEVICE", hint)
 
 
 def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]", log_text: str = "") -> "Optional[str]":
     """A message when the device the engine logged is not the one the run asked for, else None. `devices` = the logged [VK_PROFILE] device names.
 
-    The implicit pass/fail default (hint NVIDIA) is only asserted when the hint matched a device: a host with no such card
+    The implicit lane default is only asserted when the hint matched a device: a host with no such card
     (the farm laptop) makes the engine log "matches no accepted device", and that run is not red. An explicit
-    MC2_HARNESS_GPU=2070|xtx, or an explicit MC2_VK_DEVICE other than the default, always asserts."""
-    want = out.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(gpu_request(out, perf))
+    MC2_HARNESS_GPU=2070|xtx, an explicit MC2_VK_DEVICE, or a gate run always asserts."""
+    want = gpu_hint(out)
     if not want:
         return None
     # Explicit = the user asked: MC2_HARNESS_GPU=2070|xtx, or MC2_VK_DEVICE in the shell. A harness-derived hint stays skippable.
     explicit = ((out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower() in ("2070", "xtx")
-                or bool(os.environ.get("MC2_VK_DEVICE"))
-                or want.lower() != "nvidia")   # a hint other than the implicit default was typed by someone: it must match
+                or bool(os.environ.get("MC2_VK_DEVICE")) or os.environ.get("MC2_IN_GATE") == "1"
+                or want != gpu_hint({k: v for k, v in out.items() if k != "MC2_VK_DEVICE"}))   # a hint other than the implicit one was typed by someone: it must match
     if not explicit and "matches no accepted device" in log_text:
         return None
     if not devices:
