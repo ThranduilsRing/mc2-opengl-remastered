@@ -146,6 +146,14 @@ def git(*a, repo):
     return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
+def probe():
+    try:
+        r = run([*SSH[:-1], "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", HOST, "true"], capture_output=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return 1
+    return r.returncode
+
+
 def seed(repo):
     """One-time: /workspace/golden-install (+terrain_layers, textures from the Windows golden) and /workspace/golden-material."""
     gw = Path(GOLDEN_WIN)
@@ -169,10 +177,13 @@ def main():
     ap.add_argument("--capture-any-gpu", action="store_true", help="allow capture and smoke rows on GPU 1-3 (they present; mc2_01 dies after the 60 s present-retry budget) (needs a build with claude/vk-headless-present eac614635)")
     ap.add_argument("--gate", action="store_true", help="merge gate: allow GPU 3")
     ap.add_argument("--seed", action="store_true", help="one-time golden install seeding")
+    ap.add_argument("--probe", action="store_true", help="exit 0 if the box answers ssh within 15 s (merge_gate picks the box route or the Windows-full fallback with it)")
     ap.add_argument("--repo", default=str(Path(__file__).resolve().parents[1]))
     ap.add_argument("rows", nargs="*")
     a = ap.parse_args([x for x in sys.argv[1:] if x != "--"])
     repo = Path(a.repo)
+    if a.probe:
+        return probe()
     if a.seed:
         return seed(repo)
     if a.gate and not a.rows:
@@ -218,6 +229,9 @@ def main():
     out_remote = f"/workspace/lanes/{branch}/out/{sha[:8]}"
     local_out = repo / "proofs" / "box" / sha[:8]
     local_out.mkdir(parents=True, exist_ok=True)
+    if a.gate:   # a receipt must come from THIS run, never a leftover of an earlier run at the same sha
+        for stale in ("rows.tsv", "fingerprints.tsv", "gate_receipt.json"):
+            (local_out / stale).unlink(missing_ok=True)
     scr = Path(tempfile.gettempdir()) / "box_lane.sh"
     scr.write_text(REMOTE, newline="\n")
     run([*SCP, str(scr), f"{HOST}:/workspace/lanes/.box_lane_{branch}.sh"], check=True)
@@ -231,8 +245,20 @@ def main():
     print(f"[box_run] gpu={gpu} (see run log for the one taken) sha={sha[:12]} rc={r.returncode} reports={local_out}")
     print("[box_run] timings: " + ", ".join(f"{k}={v:.0f}s" for k, v in t.items()) + f", total={time.time() - t0:.0f}s")
     if a.gate:
-        write_receipt(local_out, sha, branch, a.rows, r.returncode)
+        return gate_verdict(write_receipt(local_out, sha, branch, a.rows, r.returncode))
     return r.returncode
+
+
+def gate_verdict(rec):
+    """merge_gate's box stage exit code: 0 every row PASS; 1 a row FAILed (a red gate row, never waived); 3 BOX_INFRA (no
+    row verdicts, or rows that never ran: the box failed, not the product, and merge_gate falls back to the Windows rows)."""
+    rows = rec["rows"]
+    for r in rows:
+        print(f"[box_run] gate row {r['row']}: {r['verdict']} exe_sha256_16={r.get('exe_sha256_16', '-')} data_fp={r.get('data_fingerprint', '-')}")
+    if not rows or any(r["verdict"] == "NOT RUN" for r in rows):
+        print("BOX_INFRA: " + ", ".join(r["row"] for r in rows if r["verdict"] == "NOT RUN") + " produced no verdict (remote run died before them)")
+        return 3
+    return 0 if all(r["verdict"] == "PASS" for r in rows) else 1
 
 
 def write_receipt(local_out, sha, branch, rows, rc):
@@ -266,7 +292,14 @@ def write_receipt(local_out, sha, branch, rows, rc):
     out = local_out / "gate_receipt.json"
     out.write_text(json.dumps(rec, indent=2))
     print(f"[box_run] gate receipt: {out}")
+    return rec
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (subprocess.CalledProcessError, OSError) as exc:
+        if "--gate" not in sys.argv:
+            raise
+        print(f"BOX_INFRA: box_run could not reach or drive the box: {exc}")
+        sys.exit(3)

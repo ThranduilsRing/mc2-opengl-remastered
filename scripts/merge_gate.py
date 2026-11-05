@@ -32,6 +32,10 @@ import console_child
 ROOT = Path(__file__).resolve().parents[1]
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
+#: Rows the box gate (tools/box_run.py --gate: GPU 3, clang/libc++ build, Linux baselines) proves instead of the PC. The PC keeps
+#: determinism-mc2_10 and saveload-mc2_10 as the MSVC canary; the daily --full gate keeps every row on the PC. A red box row is a red gate row.
+BOX_OFFLOADED = ("determinism-mc2_03", "determinism-mc2_16", "determinism-mc2_24", "saveload-mc2_01")
+BOX_GATE_COMMAND = ["tools/box_run.py", "--gate"]
 sys.path.insert(0, str(ROOT / "tools"))
 from lane_merge import git_bash, run_logged  # noqa: E402
 
@@ -93,7 +97,7 @@ def balance_movable(movable, load_a, load_b, seconds=None):
 
 # A red row whose child output names one of these failed on the host, not in the product: no suspect range.
 INFRA_RE = re.compile(r"WinError (?:32|5|112)\b|No space left on device|not enough space on the disk"
-                      r"|REFUSED: a merge gate is running|host[- ]lease[^\n]*(?:timed out|timeout)", re.I)
+                      r"|REFUSED: a merge gate is running|host[- ]lease[^\n]*(?:timed out|timeout)|BOX_INFRA", re.I)
 
 
 def infra_status(returncode, output):
@@ -104,6 +108,34 @@ def infra_status(returncode, output):
 
 def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
+
+
+def box_reachable(runner=None):
+    """True when the rented box answers ssh (box_run --probe, 15 s cap). Anything else selects the Windows-full fallback."""
+    try:
+        return (runner or run_child)([sys.executable, str(ROOT / BOX_GATE_COMMAND[0]), "--probe"], cwd=ROOT, env=os.environ.copy()).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def apply_box_route(steps, full=False):
+    """Policy: with a live box-gate stage the offloaded PC rows are REUSED from it (execute() grades them red when the
+    box stage is red; nothing is waived). A skipped box stage, or the daily --full gate, leaves every PC row as planned."""
+    box = next((s for s in steps if s[0] == "box-gate"), None)
+    if full or box is None or box[2].get("MC2_GATE_SKIP_REASON"):
+        return steps
+    why = "box gate (GPU 3, clang/libc++, Linux baselines) proves this row; the PC keeps determinism-mc2_10 and saveload-mc2_10 as the MSVC canary"
+    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=why, MC2_GATE_REUSE_STAGE="box-gate")
+             if n in BOX_OFFLOADED and not e.get("MC2_GATE_SKIP_REASON") else e) for n, c, e in steps]
+
+
+def box_fallback(reused, completed):
+    """Windows-full fallback: when the box stage died of BOX_INFRA (box failed, no product verdict) the offloaded rows run on the PC."""
+    if not str(completed.get("box-gate", "")).startswith("INFRA"):
+        return reused, False
+    strip = ("MC2_GATE_SKIP_REASON", "MC2_GATE_REUSE_STAGE")
+    return [(n, c, {k: v for k, v in e.items() if k not in strip} if e.get("MC2_GATE_REUSE_STAGE") == "box-gate" else e)
+            for n, c, e in reused], True
 
 
 def farm_key(command):
@@ -519,6 +551,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     steps.append(("validation",
                   [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
                   {"MC2_VULKAN_VALIDATION": "1"}))
+    # First, so the serial path has its verdict before the reused rows are graded; execute_parallel starts it in the background at gate start.
+    steps.insert(0, ("box-gate", [py, *BOX_GATE_COMMAND], {}))
     return steps
 
 
@@ -1104,7 +1138,11 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             and s[0] != 'determinism-' + WINDOWED_DETERMINISM
             and not s[2].get("MC2_GATE_SKIP_REASON")]
     steps = [s for s in steps if s not in farm]
-    with ThreadPoolExecutor(max_workers=3 if farm else 2) as pool:
+    box = [s for s in steps if s[0] == "box-gate" and not s[2].get("MC2_GATE_SKIP_REASON")]
+    steps = [s for s in steps if s not in box]
+    with ThreadPoolExecutor(max_workers=2 + bool(farm) + bool(box)) as pool:
+        # The box gate needs no PC game slot: start it now and let it run beside every PC row.
+        box_future = pool.submit(execute, box, head, runner=run_child, completed=completed) if box else None
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
@@ -1217,6 +1255,15 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         for future in pending:
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
+        if box_future:
+            box_result = box_future.result()
+            reused, fell_back = box_fallback(reused, completed)
+            if fell_back:
+                print("[merge_gate] BOX UNAVAILABLE MID-RUN (BOX_INFRA): the box produced no verdicts; running the offloaded rows on the PC "
+                      "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED), flush=True)
+                FAILED_STAGES[:] = [f for f in FAILED_STAGES if f[0] != "box-gate"]
+                box_result = 0
+            result |= box_result
         if reused:
             result |= execute(reused, head, runner=runner, completed=completed)
     return result
@@ -1450,6 +1497,8 @@ def main(argv=None):
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
     ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
+    ap.add_argument("--box-gate", action=argparse.BooleanOptionalAction, default=True, help="start tools/box_run.py --gate on box GPU 3 at gate start (default ON); it proves determinism mc2_03/16/24 and saveload mc2_01, "
+                    "and the PC keeps determinism mc2_10 + saveload mc2_10 as the MSVC canary. --no-box-gate, an unreachable box, or --full keeps every row on the PC")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")
@@ -1521,6 +1570,14 @@ def main(argv=None):
             raise ValueError("--expect-pre-exe-sha requires --before-dir")
         planned = (plan(args.j, proof, args.capture_before_runs, args.before_dir) if args.before_dir
                    else plan(args.j, proof, args.capture_before_runs))
+        asked = [n for g in args.stages or [] for n in g.split(',')]
+        if "box-gate" not in asked:
+            if not args.box_gate:
+                planned = [s for s in planned if s[0] != "box-gate"]
+            elif not (args.dry_run or args.stages) and not box_reachable():
+                print("[merge_gate] BOX UNREACHABLE: the box did not answer ssh; WINDOWS-FULL FALLBACK, determinism and saveload run on the PC "
+                      "(box-gate stage dropped, no box evidence for this gate)", flush=True)
+                planned = [s for s in planned if s[0] != "box-gate"]
         steps = select_stages(planned, args.stages, args.skip)
         omitted = [step for step in planned if step[0] not in {s[0] for s in steps}]
     except ValueError as exc:
@@ -1543,6 +1600,7 @@ def main(argv=None):
         steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
     else:
         steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
+    steps = apply_box_route(steps, full=args.full or not base)
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
         # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
         classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")

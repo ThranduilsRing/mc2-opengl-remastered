@@ -427,6 +427,7 @@
   "scripts/tests/test_nightly_dual_gpu.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json during lane precheck.",
   "scripts/tests/test_gate_state.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
   "scripts/tests/test_gate_farm.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
+  "scripts/tests/test_gate_box_route.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests).",
   "tools/test_mkmerge.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests).",
   "scripts/tests/test_sim_overlap_audit_gate.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_stress_overlap.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
