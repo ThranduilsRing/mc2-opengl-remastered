@@ -1,6 +1,7 @@
 // mech_skel_import.cpp — shared skeleton/FK importer math (see header).
 // The one place the FK chain lives; harness and game both link this TU.
 #include "mech_skel_import.h"
+#include "clip_sample.h"
 
 #include <assimp/scene.h>
 #include <assimp/anim.h>
@@ -61,35 +62,21 @@ void computeGlobalsForced(const aiNode* n, const aiMatrix4x4& parent,
 // pose) and only rotation is taken from the channel (falling back to nodeDefault's
 // rotation if the channel has no rotation keys).
 aiMatrix4x4 sampleChannel(const aiNodeAnim* ch, double t,
-                          const aiMatrix4x4& nodeDefault, bool rotationOnly) {
-    auto lerpVec = [&](const aiVectorKey* keys, unsigned n) -> aiVector3D {
-        if (n == 1) return keys[0].mValue;
-        unsigned i = 0;
-        while (i + 1 < n && keys[i + 1].mTime <= t) ++i;
-        if (i + 1 >= n) return keys[n - 1].mValue;
-        double t0 = keys[i].mTime, t1 = keys[i + 1].mTime;
-        float f = (t1 > t0) ? static_cast<float>(((t - t0) / (t1 - t0))) : 0.0f;
-        return keys[i].mValue * (1.0f - f) + keys[i + 1].mValue * f;
-    };
-    aiVector3D pos = ch->mNumPositionKeys ? lerpVec(ch->mPositionKeys, ch->mNumPositionKeys) : aiVector3D(0, 0, 0);
-    aiVector3D scl = ch->mNumScalingKeys ? lerpVec(ch->mScalingKeys, ch->mNumScalingKeys) : aiVector3D(1, 1, 1);
-    aiQuaternion rot;
-    if (ch->mNumRotationKeys == 0) {
-        // No rotation keys: identity unless rotation-only fallback fills it below.
-    } else if (ch->mNumRotationKeys == 1) {
-        rot = ch->mRotationKeys[0].mValue;
-    } else if (ch->mNumRotationKeys > 1) {
-        unsigned i = 0;
-        while (i + 1 < ch->mNumRotationKeys && ch->mRotationKeys[i + 1].mTime <= t) ++i;
-        if (i + 1 >= ch->mNumRotationKeys) {
-            rot = ch->mRotationKeys[ch->mNumRotationKeys - 1].mValue;
-        } else {
-            double t0 = ch->mRotationKeys[i].mTime, t1 = ch->mRotationKeys[i + 1].mTime;
-            float f = (t1 > t0) ? static_cast<float>(((t - t0) / (t1 - t0))) : 0.0f;
-            aiQuaternion::Interpolate(rot, ch->mRotationKeys[i].mValue, ch->mRotationKeys[i + 1].mValue, f);
-            rot.Normalize();
-        }
-    }
+                          const aiMatrix4x4& nodeDefault, bool rotationOnly, double secPerTick) {
+    aiVector3D pos = ch->mNumPositionKeys
+        ? clip::sampleVec3<aiVectorKey, aiVector3D>(ch->mPositionKeys, ch->mNumPositionKeys, t, secPerTick)
+        : aiVector3D(0, 0, 0);
+    aiVector3D scl = ch->mNumScalingKeys
+        ? clip::sampleVec3<aiVectorKey, aiVector3D>(ch->mScalingKeys, ch->mNumScalingKeys, t, secPerTick)
+        : aiVector3D(1, 1, 1);
+    aiQuaternion rot;  // no rotation keys: identity unless rotation-only fallback fills it below
+    if (ch->mNumRotationKeys)
+        rot = clip::sampleQuat<aiQuatKey, aiQuaternion>(
+            ch->mRotationKeys, ch->mNumRotationKeys, t, secPerTick,
+            [](aiQuaternion& out, const aiQuaternion& a, const aiQuaternion& b, float f) {
+                aiQuaternion::Interpolate(out, a, b, f);
+                out.Normalize();
+            });
     if (rotationOnly) {
         // Keep bind translation+scale (rigid bone length); use channel rotation,
         // or the bind rotation when this channel carries no rotation keys.
@@ -114,16 +101,16 @@ aiMatrix4x4 sampleChannel(const aiNodeAnim* ch, double t,
 }
 
 void computeGlobals(const aiNode* n, const aiMatrix4x4& parent,
-                    const std::map<std::string, const aiNodeAnim*>& chans, double t,
+                    const std::map<std::string, const aiNodeAnim*>& chans, double t, double secPerTick,
                     bool rotationOnly, std::map<std::string, aiMatrix4x4>& globals) {
     auto it = chans.find(n->mName.C_Str());
     aiMatrix4x4 local = (it != chans.end())
-                            ? sampleChannel(it->second, t, n->mTransformation, rotationOnly)
+                            ? sampleChannel(it->second, t, n->mTransformation, rotationOnly, secPerTick)
                             : n->mTransformation;
     aiMatrix4x4 global = parent * local;
     globals[n->mName.C_Str()] = global;
     for (unsigned i = 0; i < n->mNumChildren; ++i)
-        computeGlobals(n->mChildren[i], global, chans, t, rotationOnly, globals);
+        computeGlobals(n->mChildren[i], global, chans, t, secPerTick, rotationOnly, globals);
 }
 
 // Map node name -> parent node name across the whole tree.
@@ -232,7 +219,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         chans[anim->mChannels[c]->mNodeName.C_Str()] = anim->mChannels[c];
 
     std::map<std::string, aiMatrix4x4> globals;
-    computeGlobals(scene->mRootNode, aiMatrix4x4(), chans, t, rotationOnlyEnabled(), globals);
+    computeGlobals(scene->mRootNode, aiMatrix4x4(), chans, t, 1.0 / tps, rotationOnlyEnabled(), globals);
 
     // Return the joint GLOBAL (FK world) matrix per bone — NOT global*inverseBind.
     // The BT2018 rig has a DIFFERENT inverse-bind per mesh-part for the same bone
@@ -254,7 +241,7 @@ void EvaluateRestGpuBones(const aiScene* scene,
     std::map<std::string, const aiNodeAnim*> none;  // no clip -> node defaults (rest)
     std::map<std::string, aiMatrix4x4> globals;
     // Rest has no channels, so rotationOnly is moot — pass false.
-    computeGlobals(scene->mRootNode, aiMatrix4x4(), none, 0.0, false, globals);
+    computeGlobals(scene->mRootNode, aiMatrix4x4(), none, 0.0, 0.001, false, globals);
     out.assign(boneNames.size(), GpuBone{});
     for (size_t i = 0; i < boneNames.size(); ++i) {
         auto g = globals.find(boneNames[i]);
