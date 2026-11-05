@@ -1373,6 +1373,40 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     s->bake.markSubmitted(s->recordEpoch);
 }
 
+// F1 (hitch): run the static bake (cold tiles, or the warm cache upload plus the object map) behind the load screen instead of in the first mission frames,
+// where its ~48 ms of GPU work became a present slot wait. Steps the same per-frame path the frames use (each step waits its parity fence) until the bake
+// is retired, or nothing is due for a few steps (inputs not ready: the frames bake as before), or 4 s pass.
+extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
+    ShadowIsland* s = parkedIsland();
+    if (!s || s->disabled || !s->inited || mc2::options::lowCost()) return 1;
+    ZoneScopedN("VKIsl.Shadow.LoadBake");
+    const auto t0 = std::chrono::steady_clock::now();
+    // The family prewarm bound the alpha casters before textures().finishLoading(), when the alpha-ON array was not resident yet; bind it now,
+    // or the bake waits for alpha (kMaxAlphaWaitFrames) until the first in-mission frame refreshes it.
+    refresh_alpha_casters(s);
+    int steps = 0, idle = 0, submits = 0;
+    while (s->bake.wantsFrame() && idle < 2 * static_cast<int>(mc2vk::kMaxFramesInFlight) + 2 && steps < 1024
+           && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(4)) {
+        const bool before = s->bake.inFlight();
+        mc2_vk_shadow_island_submit_frame();
+        ++steps;
+        if (s->disabled) break;
+        const bool busy = s->bake.inFlight();
+        submits += (busy && !before) ? 1 : 0;
+        idle = busy ? 0 : idle + 1;
+    }
+    // Both parity fences signalled: the last submit retired and its products are final.
+    for (auto& f : s->frameFence) { const VkFence fence = f.get(); if (fence) vkWaitForFences(s->device, 1, &fence, VK_TRUE, 2ull * 1000 * 1000 * 1000); }
+    void* av = nullptr; uint32_t ag = 0; Mc2ColorPropMaterialFeed mf{};
+    const int arr = mc2_color_prop_island_get_alpha_array(&av, &ag);
+    const int feed = mc2_color_prop_island_get_material_feed(&mf);
+    std::fprintf(stderr, "[SHADOW_BAKE] load_bake steps=%d submits=%d ready=%d ms=%.1f alpha_array=%d feed=%d bucketed=%d key_on=%d layers=%d alpha_ready=%d\n",
+                 steps, submits, s->bake.ready() ? 1 : 0,
+                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(), arr, feed, mf.bucketed ? 1 : 0,
+                 mf.arrayKeyOn != 0 ? 1 : 0, mf.packetAlbedoLayer ? 1 : 0, s->alphaReady ? 1 : 0);
+    return 1;
+}
+
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
 // island. g_dynShadowReadyThisFrame is set true at the tail of a successful
 // mc2_vk_shadow_island_run() (recorded, and usable once the frame is submitted: the

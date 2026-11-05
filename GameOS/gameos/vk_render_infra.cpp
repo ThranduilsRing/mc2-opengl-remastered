@@ -41,6 +41,7 @@ extern "C" int mc2_vk_legacy_shape_island_prewarm(int,int);
 extern "C" int mc2_vk_vfx_island_prewarm(int,int);
 extern "C" int mc2_vk_water_island_prewarm(int,int);
 extern "C" int mc2_vk_shadow_island_prewarm(int,int);
+extern "C" int mc2_vk_shadow_island_load_bake(int,int);
 extern "C" int mc2_vk_overlay_prewarm(int,int);
 extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
@@ -606,6 +607,7 @@ void prewarm(int width,int height) {
     if(auto* post=getGosPostProcess()) { post->prewarmVkFog(); post->prewarmVkScreenFx(); post->prewarmVkHzb(); }
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     getOrCreateEngineVulkanContext().textures().finishLoading();
+    warm("shadow_bake",mc2_vk_shadow_island_load_bake);   // F1: after every family, so the bake inputs (prop geometry, alpha array) are resident
     saveCache();
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] pipeline_creation_ms=%.3f\n",s.creationMs-pipelineMsBefore);
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;

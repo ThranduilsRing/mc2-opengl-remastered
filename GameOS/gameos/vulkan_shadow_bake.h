@@ -26,6 +26,7 @@
 
 #include <array>
 #include <cstdint>
+#include <chrono>
 #include <future>
 #include <optional>
 #include <span>
@@ -93,6 +94,8 @@ public:
 
     // The products of the last submitted bake; null / 0 before the first.
     bool ready() const { return maskReady_; }
+    // A bake is recorded and not yet retired, or the cache read is still running (the load-time drain keeps stepping while either holds).
+    bool inFlight() const { return recorded_ || (cacheLoad_.valid() && cacheLoad_.wait_for(std::chrono::seconds(0)) != std::future_status::ready); }
     VkImageView maskView() const { return maskReady_ ? maskView_.get() : VK_NULL_HANDLE; }
     VkImageView objectView() const { return objectReady_ ? objectView_.get() : VK_NULL_HANDLE; }
     const float* objectMatrix() const { return objectMatrix_.data(); }

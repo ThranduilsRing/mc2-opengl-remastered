@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "Gates/gate.h"
+#include "hitch_stats.h"
 #include "vk_gpu_timestamps.h"
 #include "vk_one_shot.h"
 #include "vk_owned.h"
@@ -149,6 +150,7 @@ void readSlot(uint32_t slot, uint32_t& used) {
         if (k < nNames) { perName[k] += ms; ++callsOf[k]; }
     }
     if (!any) return;
+    mc2_hitch2::noteGpuFrame(static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6, sumMs);
     if (mc2::battlebench::output) {
         // One record, one fputs: the sim worker writes tick records to the same stream, so a record built in pieces would interleave.
         char line[4096];

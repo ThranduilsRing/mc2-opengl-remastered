@@ -4160,6 +4160,12 @@
     "bake_state",
     "bake_cache",
     "sim_join_ms",
+    "slot_ms",
+    "acquire_ms",
+    "composite_wait_ms",
+    "gpu_span4_ms",
+    "gpu_busy4_ms",
+    "other_mc2",
     "scopes"
    ],
    "count": 1
@@ -4172,6 +4178,22 @@
     "why",
     "ms",
     "pending_upload_kb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "why",
+    "ms",
+    "pending_upload_kb",
+    "gpu_span4_ms",
+    "gpu_busy4_ms",
+    "acquire_last_ms",
+    "other_mc2",
+    "class"
    ],
    "count": 1
   },
@@ -8622,6 +8644,18 @@
    "keys": [
     "resident_mb",
     "transient_peak_mb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "steps",
+    "submits",
+    "ready",
+    "ms"
    ],
    "count": 1
   },
