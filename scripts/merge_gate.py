@@ -28,6 +28,7 @@ import math
 from concurrent.futures import ThreadPoolExecutor
 
 import console_child
+import gate_reuse
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
@@ -743,7 +744,7 @@ def install_plan(steps, install):
             # Candidate names are random and their siblings are deleted at exit.
             # Keep the existing incremental payload cache across windows, scoped
             # to this worktree; battery() still removes every disposable install.
-            stage_root = Path('E:/mc2-archive-2026-10/proofs') / (ROOT.name + '-mods-stage')
+            stage_root = Path('E:/mc2-installs') / (ROOT.name + '-mods-stage')  # persistent; gate_reuse seals/verifies _cache
             command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
@@ -787,9 +788,8 @@ def stock_copy(install, parent=None, keep=False):
                 if mod_stage.resolve().parent != parent:
                     raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
                 shutil.rmtree(mod_stage)
-            size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
             shutil.rmtree(target)
-            print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
+            print(f"[merge_gate] removed {target}", flush=True)
 
 
 # Queue depth does not prove a live worker (W98/W99 lost 20 min per row to an unclaimed job): the farm is opt-in
@@ -1023,7 +1023,8 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
         return execute_parallel(install_plan(steps, install), head, dry_run, keep_going, **scheduling)
     if dry_run:
         return prove(candidate)
-    with stock_copy(CANDIDATE_SEED, **(dict(keep=True) if keep_candidate else {})) as install:
+    seed = gate_reuse.deployed_seed(ROOT, head) or CANDIDATE_SEED
+    with stock_copy(seed, parent=CANDIDATE_SEED.parent, **(dict(keep=True) if keep_candidate else {})) as install:
         try:
             return prove(install)
         finally:
@@ -1364,6 +1365,20 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             results.append((name, status, 0.0))
             # Keep original elapsed time and evidence paths in the receipt.
             continue
+        reuse_note = None
+        if not dry_run and not overrides.get("MC2_GATE_SKIP_REASON"):
+            if name == 'mods' and (entry := gate_reuse.mods_begin(command, overrides, ROOT, head)):
+                reuse_note = f"REUSED: gate-reuse mods key={entry['key'][:16]} stored={entry['created']}"
+            elif name == 'deploy' and '--allow-new-target' in command and \
+                    gate_reuse.install_current(command[command.index('--allow-new-target') - 1], ROOT, head):
+                reuse_note = "REUSED: gate-reuse deployed payload already matches HEAD"
+        if reuse_note:
+            print(f"[merge_gate] {name}: {reuse_note}", flush=True)
+            if ACTIVE_STATE:
+                ACTIVE_STATE.reused.append(name)
+            completed[name] = reuse_note
+            results.append((name, reuse_note, 0.0))
+            continue
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
             reused = overrides.get("MC2_GATE_REUSE_STAGE")
@@ -1441,6 +1456,10 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 status = kind + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
             failed |= not stage_passed(status)
+            if name == 'mods':
+                gate_reuse.mods_end(status == "PASS")
+            elif name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
+                gate_reuse.save_deployed(command[command.index('--allow-new-target') - 1], ROOT, head)
         results.append((name, status, elapsed))
         completed[name] = status
         if not dry_run and ACTIVE_STATE:
