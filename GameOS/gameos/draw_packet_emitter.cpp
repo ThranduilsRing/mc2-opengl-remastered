@@ -11,6 +11,7 @@
 #include "gos_static_prop_batcher.h"   // batcher_getPacketDrawInfo
 #include "../../RenderCore/StaticPropTypeDesc.h"  // v1: type table walk
 
+#include <algorithm>
 #include <vector>
 #include <cstdint>
 #include <cstdio>
@@ -44,7 +45,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
     uint32_t maxTypeId = 0u;
     for (size_t i = 0; i < propCount; ++i) {
         const uint32_t tid = snap.staticProps.data[i].typeId;
-        if (tid > maxTypeId) maxTypeId = tid;
+        maxTypeId = std::max(maxTypeId, tid);
     }
 
     // [DRAW_PACKET v1] WARNING family is default-SILENT (set MC2_DRAW_PACKET_WARN=1 to

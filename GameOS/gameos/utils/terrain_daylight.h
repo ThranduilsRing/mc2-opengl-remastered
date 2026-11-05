@@ -88,6 +88,7 @@
 //
 // Everything here is constexpr-friendly, allocation-free, and side-effect-free.
 
+#include <algorithm>
 #include <cmath>
 
 namespace terrain_daylight {
@@ -142,7 +143,7 @@ inline float from_authored_pitch(float pitchDeg) {
 inline float from_runtime_night(bool isNight, float nightFactor) {
     if (isNight) return 0.0f;
     if (!(nightFactor <= 1.0f)) nightFactor = 1.0f;  // >1 or NaN -> full night
-    if (nightFactor < 0.0f)     nightFactor = 0.0f;
+    nightFactor = std::max(nightFactor, 0.0f);
     return 1.0f - nightFactor;
 }
 
