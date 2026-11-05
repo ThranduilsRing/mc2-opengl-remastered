@@ -30,7 +30,7 @@ REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR ; rows on stdin (one per line)
 set -uo pipefail
 GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS
-L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install
+L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; MIRROR=/workspace/toolchains/mirror.git
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
 mkdir -p /workspace/locks $L $OUT
 # GPU lock = flock on /workspace/locks/gpuN (the idle filler's convention; released when this script exits, no stale locks).
