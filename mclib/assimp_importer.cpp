@@ -260,8 +260,7 @@ static void noteUnsupportedSkin(const char* what, const char* meshName) {
 	if (once) return;
 	once = true;
 	if (mc2_diag::tagRequested("CONFIG"))
-		mc2::fmt::print_err("[CONFIG] glTF import: {} (mesh '{}'): imported rigidly on one bone, per-vertex skin weights dropped; further occurrences not logged
-",
+		mc2::fmt::print_err("[CONFIG] glTF import: {} (mesh '{}'): imported rigidly on one bone, per-vertex skin weights dropped; further occurrences not logged\n",
 			what, mc2::fmt::safe(meshName));
 }
 
