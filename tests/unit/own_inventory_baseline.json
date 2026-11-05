@@ -1858,49 +1858,10 @@
    "new_array": 0,
    "owners": []
   },
-  "LogisticsMissionInfo": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata.cpp": {
-     "delete": 1
-    },
-    "code/logisticsdata_init.cpp": {
-     "new": 2
-    },
-    "code/logisticsdata_save.cpp": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    "LogisticsData"
-   ]
-  },
-  "LogisticsPilot": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_inventory.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "LogisticsData"
-   ]
-  },
   "LogisticsVariant": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/logisticsdata_init.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "code/logisticsdata_inventory.cpp": {
      "delete": 1
     },
@@ -1911,7 +1872,7 @@
      "new": 1
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": [
     "LogisticsData"
@@ -1930,25 +1891,17 @@
    "owners": []
   },
   "MC2Movie": {
-   "delete": 4,
+   "delete": 2,
    "delete_array": 0,
    "files": {
-    "code/logistics.cpp": {
-     "delete": 2,
-     "new": 1
-    },
-    "code/logistics_begin.cpp": {
-     "new": 1
-    },
     "code/mainmenu.cpp": {
      "delete": 2,
      "new": 1
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "Logistics",
     "MainMenu"
    ]
   },
@@ -2960,21 +2913,6 @@
    "new_array": 0,
    "owners": [
     "Mission"
-   ]
-  },
-  "MoverGroup": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/comndr.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "Commander"
    ]
   },
   "MultiPlayer": {
@@ -4068,12 +4006,8 @@
   },
   "aObject": {
    "delete": 3,
-   "delete_array": 2,
+   "delete_array": 1,
    "files": {
-    "code/mpparameterscreen.cpp": {
-     "delete_array": 1,
-     "new_array": 2
-    },
     "code/pilotreviewarea.cpp": {
      "delete": 3,
      "new": 4
@@ -4090,22 +4024,17 @@
     }
    },
    "new": 7,
-   "new_array": 4,
+   "new_array": 2,
    "owners": [
     "ActivePilotListItem",
     "LogisticsScreen",
-    "SpecialtyListItem",
-    "aPlayerParams"
+    "SpecialtyListItem"
    ]
   },
   "aRect": {
    "delete": 9,
-   "delete_array": 7,
+   "delete_array": 6,
    "files": {
-    "code/mpparameterscreen.cpp": {
-     "delete_array": 1,
-     "new_array": 2
-    },
     "code/pilotreviewarea.cpp": {
      "delete": 9,
      "new": 10
@@ -4120,25 +4049,20 @@
     }
    },
    "new": 10,
-   "new_array": 8,
+   "new_array": 6,
    "owners": [
     "ActivePilotListItem",
     "DeadPilotListItem",
     "LogisticsScreen",
     "SpecialtyListItem",
     "aComboBox",
-    "aDropList",
-    "aPlayerParams"
+    "aDropList"
    ]
   },
   "aText": {
    "delete": 14,
-   "delete_array": 2,
+   "delete_array": 1,
    "files": {
-    "code/mpparameterscreen.cpp": {
-     "delete_array": 1,
-     "new_array": 2
-    },
     "code/pilotreviewarea.cpp": {
      "delete": 14,
      "new": 15
@@ -4152,13 +4076,12 @@
     }
    },
    "new": 19,
-   "new_array": 4,
+   "new_array": 2,
    "owners": [
     "ActivePilotListItem",
     "DeadPilotListItem",
     "LogisticsScreen",
-    "SpecialtyListItem",
-    "aPlayerParams"
+    "SpecialtyListItem"
    ]
   },
   "aTextListItem": {
