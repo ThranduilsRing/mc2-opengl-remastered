@@ -48,6 +48,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
 
+#include "platform_stdlib.h"   // _putenv_s on Linux
 #include <cassert>
 #include <cctype>
 #include <cstdarg>
