@@ -1294,6 +1294,22 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vk_texture_residency.h:100`
+- Class: `Flight`  (data-member)
+- Member: `uint64_t frame = ~static_cast<uint64_t>(0);`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_texture_residency.h:101`
+- Class: `Flight`  (data-member)
+- Member: `uint64_t revision = ~static_cast<uint64_t>(0);`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vk_texture_residency.h:102`
 - Class: `Flight`  (data-member)
 - Member: `std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;`
@@ -3182,4 +3198,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 397 guard(s) analyzed, 0 violation(s).
+Result: 399 guard(s) analyzed, 0 violation(s).
