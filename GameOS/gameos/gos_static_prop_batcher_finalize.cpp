@@ -7,6 +7,7 @@
 #include "gos_static_prop_finalize_frame.h"
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 // Does a packet alpha-test: its own flag, or its texture slot carrying alpha on the type source (null/released texture list reads as no alpha).
 bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
@@ -69,12 +70,14 @@ void GpuStaticPropBatcher::publishGeometry() {
     s_stagingVbo.shrink_to_fit();
     s_stagingIbo.shrink_to_fit();
 
-    mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets, cpu_geometry_bytes={:d} tris={:d} acmr_before={:.4f} acmr_after={:.4f}\n",
+    mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets, cpu_geometry_bytes={:d}\n",
                  mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()),
-                 mc2::fmt::as_u64(s_sharedVboBytes + s_sharedIboBytes),
-                 mc2::fmt::as_u64(s_meshoptTris),
-                 s_meshoptTris ? s_meshoptMissesBefore / static_cast<double>(s_meshoptTris) : 0.0,
-                 s_meshoptTris ? s_meshoptMissesAfter / static_cast<double>(s_meshoptTris) : 0.0);
+                 mc2::fmt::as_u64(s_sharedVboBytes + s_sharedIboBytes));
+    if (mc2_diag::tagRequested("GPUPROPS"))
+        mc2::fmt::print_err("[GPUPROPS] meshopt: tris={:d} acmr_before={:.4f} acmr_after={:.4f}\n",
+                     mc2::fmt::as_u64(s_meshoptTris),
+                     s_meshoptTris ? s_meshoptMissesBefore / static_cast<double>(s_meshoptTris) : 0.0,
+                     s_meshoptTris ? s_meshoptMissesAfter / static_cast<double>(s_meshoptTris) : 0.0);
 
     if (s_gpuPropsTrace) {
         mc2::fmt::print_err("[GPUPROPS v1] event=register_summary path={:d} regCalls[init={:d} ims={:d} splog={:d} unk={:d}] lateDrops[init={:d} ims={:d} splog={:d} unk={:d}] typeIndexSize={:d}\n",
