@@ -878,12 +878,13 @@ int main(int argc, char** argv)
 
     //signal(SIGTRAP, SIG_IGN);
 
-#ifdef _WIN32
     // crashbundle_init installs the richer SEH filter (crash bundle +
     // diagnostic dialog). It supersedes the legacy mc2_unhandled_exception_filter
     // above; the old function is retained in this TU for reference but is
-    // no longer the registered filter.
+    // no longer the registered filter. On Linux it only starts the crashpad
+    // handler (the minidump writer there).
     crashbundle_init();
+#ifdef _WIN32
     (void)&mc2_unhandled_exception_filter; // silence "unused" warning
 #endif
     g_startup_t0 = SDL_GetPerformanceCounter();
