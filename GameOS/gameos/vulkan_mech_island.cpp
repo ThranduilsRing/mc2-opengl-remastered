@@ -1114,8 +1114,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
     // Plan the pre-skin of this frame (flags the skinnable instances in the ring copy only; the CPU feed and GL are untouched).
-    s->skin.plan(par, feed.runs, feed.runCount, static_cast<const uint8_t*>(feed.instances64), mainPtr + instOff, feed.instanceCount,
-                 s->vboBytes / (s->vertexStride ? s->vertexStride : 1));
+    s->skin.plan(par, std::span<const Mc2MechDrawRun>(feed.runs, feed.runCount), std::span<const uint8_t>(static_cast<const uint8_t*>(feed.instances64), static_cast<size_t>(feed.instanceCount) * 64),
+                 std::span<uint8_t>(mainPtr + instOff, static_cast<size_t>(feed.instanceCount) * 64), s->vboBytes / (s->vertexStride ? s->vertexStride : 1));
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame copy of the CPU LightsData array (the byte source of the GL SSBO upload) into a frame-ring span (binding 4)
     // so calc_light reads the same ObjectLights[] the GL mech VS does. If the CPU array is not ready this frame, lighting is simply not marked ready

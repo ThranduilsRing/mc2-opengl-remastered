@@ -206,7 +206,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     skinInstances_.assign(static_cast<const uint8_t*>(feed.instances64), static_cast<const uint8_t*>(feed.instances64) + instBytes);
     skinParity_ = parity;
     skinVboBytes_ = feed.vboBytes;
-    skin_.plan(parity, runs_.data(), static_cast<uint32_t>(runs_.size()), static_cast<const uint8_t*>(feed.instances64), skinInstances_.data(), feed.instanceCount, vertexCount);
+    skin_.plan(parity, runs_, std::span<const uint8_t>(static_cast<const uint8_t*>(feed.instances64), static_cast<size_t>(feed.instanceCount) * 64), skinInstances_, vertexCount);
     if (!instBuf_[parity].upload(skinInstances_.data(), instBytes)) { skin_.cancel(); runs_.clear(); stagedInstances_ = 0; }
 }
 

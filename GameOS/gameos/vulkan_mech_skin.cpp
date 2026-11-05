@@ -68,7 +68,12 @@ bool MechSkinPass::ensure(uint32_t slot, uint64_t vertices, uint64_t jobs) {
     return true;
 }
 
-void MechSkinPass::plan(uint32_t slot, const Mc2MechDrawRun* runs, uint32_t runCount, const uint8_t* srcInstances, uint8_t* instances, uint32_t instanceCount, uint64_t vboVertices) {
+void MechSkinPass::plan(uint32_t slot, std::span<const Mc2MechDrawRun> runSpan, std::span<const uint8_t> srcSpan, std::span<uint8_t> dstSpan, uint64_t vboVertices) {
+    const Mc2MechDrawRun* runs = runSpan.data();
+    const uint32_t runCount = static_cast<uint32_t>(runSpan.size());
+    const uint8_t* srcInstances = srcSpan.data();
+    uint8_t* instances = dstSpan.data();
+    const uint32_t instanceCount = static_cast<uint32_t>(std::min(srcSpan.size(), dstSpan.size()) / kInstanceBytes);
     active_ = false;
     plannedInstances_ = 0;
     jobs_.clear();
@@ -131,9 +136,9 @@ void MechSkinPass::plan(uint32_t slot, const Mc2MechDrawRun* runs, uint32_t runC
         for (uint32_t k = 0; k < run.instanceCount; ++k) {
             const uint32_t i = run.instanceBase + k;
             if (bad_[i]) continue;
-            const auto it = region_.find((static_cast<uint64_t>(i) << 32) | static_cast<uint32_t>(run.baseVertex));
-            if (it == region_.end()) continue;
-            dst_[runOff_[r] + k] = static_cast<int32_t>(it->second);
+            const uint64_t key = (static_cast<uint64_t>(i) << 32) | static_cast<uint32_t>(run.baseVertex);
+            if (!region_.contains(key)) continue;
+            dst_[runOff_[r] + k] = static_cast<int32_t>(region_.at(key));
         }
     }
     // Flag exactly the instances that every run draws from the skinned region: a half-flagged instance would pose twice.

@@ -23,6 +23,7 @@
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
 
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -38,7 +39,7 @@ public:
 
     // Plans the frame of `slot` (the caller has retired the slot's previous submit). `srcInstances` is the CPU copy of the 64 B instance records and `instances` the
     // destination copy (maybe write-combined: only flag words are written); flagged ones get kMechRenderFlagPreskinned there. `vboVertices` is the vertex count of the bind-pose VBO. Afterwards active() says whether record() has work.
-    void plan(uint32_t slot, const Mc2MechDrawRun* runs, uint32_t runCount, const uint8_t* srcInstances, uint8_t* instances, uint32_t instanceCount, uint64_t vboVertices);
+    void plan(uint32_t slot, std::span<const Mc2MechDrawRun> runs, std::span<const uint8_t> srcInstances, std::span<uint8_t> instances, uint64_t vboVertices);
     bool active() const noexcept { return active_; }
     void cancel() noexcept { active_ = false; }   // a frame that stops before plan() must not draw last frame regions
 
