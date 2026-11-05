@@ -470,7 +470,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("capture-after", capture + ["--out", str(proof / "after")], {}),
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
-        ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
+        # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
+        ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
