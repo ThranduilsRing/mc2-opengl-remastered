@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <algorithm>
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 #include "vulkan_terrain_island.h"
 
 
@@ -182,7 +183,7 @@ void Terrain::geometry (void)
 		static bool s_vplCullRetiredLogged = false;
 		if (!s_vplCullRetiredLogged) {
 			s_vplCullRetiredLogged = true;
-			fprintf(stderr,
+			mc2::fmt::print_err(
 				"[VPL_CULL v1] event=retired reason=vpl_body_deleted_slim_is_sole_producer\n");
 			fflush(stderr);
 		}
@@ -192,7 +193,7 @@ void Terrain::geometry (void)
 		static bool s_vplReduceRetiredLogged = false;
 		if (!s_vplReduceRetiredLogged) {
 			s_vplReduceRetiredLogged = true;
-			fprintf(stderr,
+			mc2::fmt::print_err(
 				"[VPL_REDUCE v1] event=retired reason=vpl_body_deleted_slim_is_sole_reduction_producer\n");
 			fflush(stderr);
 		}
@@ -397,10 +398,10 @@ void Terrain::geometry (void)
 		++s_prodFrame;
 		if (s_prodFrame <= 3 || (s_prodFrame % 600) == 0)
 		{
-			printf("[TerrainLOD prod] frame=%lu objBlocks=%ld objVerts=%ld solidWindow=%ld slimVerts=0\n",
+			mc2::fmt::print_out("[TerrainLOD prod] frame={} objBlocks={} objVerts={} solidWindow={} slimVerts=0\n",
 			       s_prodFrame, pBlocks, pVerts, pWin);
 			if (pBlocks == 0)
-				printf("[TerrainLOD prod] WARNING: zero active obj blocks — terrain-object AI would be gated off\n");
+				mc2::fmt::print_out("[TerrainLOD prod] WARNING: zero active obj blocks — terrain-object AI would be gated off\n");
 			fflush(stdout);
 		}
 	}
@@ -513,7 +514,7 @@ void Terrain::geometry (void)
 					{
 						reason = "RECOVERY";
 					}
-					printf("[FASTPATH_DROP] frame=%lu transition=%s reason=%s chunk=%d water=%d solid=%d overlay=%d editor=%d\n",
+					mc2::fmt::print_out("[FASTPATH_DROP] frame={} transition={} reason={} chunk={} water={} solid={} overlay={} editor={}\n",
 						s_dropFrame,
 						nowArmed ? "FALLBACK_TO_ARMED" : "ARMED_TO_FALLBACK",
 						reason,
@@ -562,7 +563,7 @@ void Terrain::geometry (void)
 		if (s_armedSkipOn) {
 			static uint32_t s_qsSkipFrames = 0;
 			if ((++s_qsSkipFrames % 600) == 0) {
-				printf("[QUADSETUP_SKIP v1] fullyArmed=%d skip=%d quadsSkipped=%ld waterCandidates=%ld pickingCarveout=none\n",
+				mc2::fmt::print_out("[QUADSETUP_SKIP v1] fullyArmed={} skip={} quadsSkipped={} waterCandidates={} pickingCarveout=none\n",
 				       fullyArmed ? 1 : 0, skipSetup ? 1 : 0,
 				       quadsSkipped, waterCandidates);
 				fflush(stdout);
@@ -583,7 +584,7 @@ void Terrain::geometry (void)
 			s_s6Max = std::max(s_s6Max, s6Ms);
 			if ((s_s6Frames % 600) == 0)
 			{
-				printf("[WATER_S6COST v1] event=summary frames=%u quadSetupTextures_ms mean=%.4f min=%.4f max=%.4f (window of 600)\n",
+				mc2::fmt::print_out("[WATER_S6COST v1] event=summary frames={} quadSetupTextures_ms mean={:.4f} min={:.4f} max={:.4f} (window of 600)\n",
 				       s_s6Frames, s_s6Sum / 600.0, s_s6Min, s_s6Max);
 				fflush(stdout);
 				s_s6Sum = 0.0; s_s6Min = 1e30; s_s6Max = 0.0;
