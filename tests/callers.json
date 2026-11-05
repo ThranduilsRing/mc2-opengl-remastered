@@ -59,7 +59,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 192,
+          "line": 218,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
@@ -8366,6 +8366,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_harness_timeout.py",
+      "basename": "test_harness_timeout.py",
+      "stem": "test_harness_timeout",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_host_lease.py",
       "basename": "test_host_lease.py",
       "stem": "test_host_lease",
@@ -10039,6 +10046,13 @@
           "evidence": "import",
           "reference": "tools.build_contract_harnesses",
           "text": "from tools import build_contract_harnesses as builder"
+        },
+        {
+          "path": "scripts/tests/test_harness_timeout.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "build_contract_harnesses",
+          "text": "import build_contract_harnesses as bch  # noqa: E402"
         }
       ]
     },
