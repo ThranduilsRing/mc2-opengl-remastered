@@ -26,7 +26,7 @@ code and the proof of a finished conversion, not a leak detector.
 | terrain | 6 | 0 | 0 | +0 | 0 | - |
 | vfx | 2 | 0 | 0 | +0 | 0 | - |
 | water | 4 | 0 | 0 | +0 | 0 | - |
-| present | 2 | 1 | 0 | +1 | 1 | Memory 1/0 |
+| present | 3 | 1 | 0 | +1 | 1 | Memory 1/0 |
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
@@ -40,7 +40,7 @@ Total over all islands: created 12, released 11, imbalance +1.
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
-| `engine_present_vk.cpp` | 1 | 0 | +1 |
+| `engine_present_vk_imgui.cpp` | 1 | 0 | +1 |
 | `vulkan_context.cpp` | 1 | 1 | +0 |
 | `vk_render_infra.cpp` | 10 | 10 | +0 |
 

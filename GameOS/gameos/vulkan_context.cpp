@@ -882,8 +882,12 @@ bool VulkanContext::isComplete(const GpuTicket& t) const {
 
 bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::wait");
-    if (isComplete(t)) return true;
+    if (tracker_.isComplete(t)) return true;
     if (gfxTimeline_ == VK_NULL_HANDLE) return false;
+    // No counter poll before the wait: a value the GPU already passed still goes through vkWaitSemaphores, the only host sync point the
+    // validation layers (and the readback contract) recognise. A caller that waits then touches or reuses the memory right away (one-shot
+    // readbacks) would otherwise retire nothing. The deferred batch is flushed first so the value is on the queue.
+    { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }
     VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
     wi.semaphoreCount = 1;
     wi.pSemaphores = &gfxTimeline_;

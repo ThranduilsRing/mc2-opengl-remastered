@@ -9,6 +9,7 @@
 
 #include "vulkan_shadow_mech_casters.h"
 
+#include "diagnostic_trace.h"
 #include "mc2fmt.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vk_island_util.h"
@@ -110,7 +111,10 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     dsai.descriptorPool = pool_.get();
     dsai.descriptorSetCount = kMaxFramesInFlight;
     dsai.pSetLayouts = setLayouts;
-    if (MC2_VK_ALLOC_SETS(device_, &dsai, set_) != VK_SUCCESS) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor set allocation failed.\n"); return false; }
+    if (MC2_VK_ALLOC_SETS(device_, &dsai, set_) != VK_SUCCESS) {
+        if (mc2_diag::tagRequested("VK_SHADOW_MECH")) mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor set allocation failed.\n");
+        return false;
+    }
 
     VkPipelineLayoutCreateInfo plci{};
     plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

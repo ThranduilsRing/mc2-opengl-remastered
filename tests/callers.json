@@ -11545,7 +11545,15 @@
       "path": "tools/gfxr/capture_replay.py",
       "basename": "capture_replay.py",
       "stem": "capture_replay",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_capture_focus.py",
+          "line": 69,
+          "evidence": "command",
+          "reference": "tools/gfxr/capture_replay.py",
+          "text": "out = subprocess.run([sys.executable, \"-B\", str(ROOT / \"tools/gfxr/capture_replay.py\"), \"--help\"],"
+        }
+      ],
       "callers_by_stem": []
     },
     {

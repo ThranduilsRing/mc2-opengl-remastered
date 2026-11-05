@@ -285,7 +285,7 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp vulkan_spatial_aa.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp)
     endif()
 endif()
 

@@ -62,3 +62,10 @@ def test_cli_exposes_flags(tool):
     out = subprocess.run([sys.executable, "-B", str(ROOT / tool), "--help"],  # background-launch: allow --help only, no engine or window
                          capture_output=True, text=True, timeout=60)
     assert "--focus-zoom" in out.stdout and "--focus " in out.stdout.replace("--focus  ", "--focus ")
+
+
+def test_gfxr_capture_replay_cli_help():
+    # The GFXR capture/replay wrapper is driven by hand from the box; --help is its offline caller (no gfxrecon, no engine).
+    out = subprocess.run([sys.executable, "-B", str(ROOT / "tools/gfxr/capture_replay.py"), "--help"],
+                         capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0 and "usage" in out.stdout.lower()
