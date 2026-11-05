@@ -387,8 +387,11 @@ void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
     const char* names[] = {"VKIsl.AA.Off", "VKIsl.AA.SMAA1x", "VKIsl.AA.FXAA", "VKIsl.AA.CMAA2"};
     MC2_VK_GPU_SCOPE(scope, cb, names[s.mode]);
     // Scratch images are shared across frame slots on one queue; retire prior reads before overwriting them.
-    memoryBarrier(cb, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                  VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    constexpr VkPipelineStageFlags kScratchStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    constexpr VkAccessFlags kScratchAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT |
+                                             VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    memoryBarrier(cb, kScratchAccess, kScratchAccess, kScratchStages, kScratchStages);
     if (s.mode == 1) { s.recordGraph(cb, output); return; }
     imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
