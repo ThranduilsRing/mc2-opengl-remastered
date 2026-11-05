@@ -787,8 +787,8 @@ class MCMSG_PlayerSetup {
 
 		void init (void) {
 			type = MCMSG_PLAYER_SETUP;
-			for (long i = 0; i < MAX_MULTIPLAYER_MOVERS; i++)
-				moverData[i] = 0;
+			for (auto & moverDataElem : moverData)
+				moverDataElem = 0;
 		}
 };
 

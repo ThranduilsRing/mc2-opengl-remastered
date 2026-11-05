@@ -336,8 +336,8 @@ void GameObjectManager::detectStaticCollision (GameObjectPtr obj1, GameObjectPtr
 
 void GameObjectManager::updateCaptureList (void) {
 
-	for (int i = 0; i < MAX_TEAMS; i++)
-		numCaptures[i] = 0;
+	for (auto & numCapture : numCaptures)
+		numCapture = 0;
 	for (int i = 0; i < getNumMovers(); i++) {
 		MoverPtr mover = getMover(i);
 		if (mover->isDisabled())

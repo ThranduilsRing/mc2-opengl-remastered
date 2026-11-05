@@ -45,11 +45,11 @@ void DEBUGWINS_init (void) {
 
 void DEBUGWINS_destroy (void) {
 
-	for (long i = 0; i < NUM_DEBUG_WINDOWS; i++)
-		if (DebugWindow[i]) {
-			DebugWindow[i]->destroy();
-			delete DebugWindow[i];
-			DebugWindow[i] = nullptr;
+	for (auto & DebugWindowElem : DebugWindow)
+		if (DebugWindowElem) {
+			DebugWindowElem->destroy();
+			delete DebugWindowElem;
+			DebugWindowElem = nullptr;
 		}
 }	
 
@@ -353,7 +353,7 @@ void DEBUGWINS_renderSpecialWindows (void) {
 
 void DEBUGWINS_render (void) {
 
-	for (long i = 0; i < NUM_DEBUG_WINDOWS; i++)
-		DebugWindow[i]->render();
+	for (auto & DebugWindowElem : DebugWindow)
+		DebugWindowElem->render();
 	DEBUGWINS_renderSpecialWindows();
 }

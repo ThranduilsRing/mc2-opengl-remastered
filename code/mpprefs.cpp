@@ -130,11 +130,11 @@ void MPPrefs::begin()
 	comboBox[0].ListBox().removeAllItems( true );
 	comboBox[0].SelectItem( -1 );
 
-	for ( int i = 0; i < 10; i++ )
+	for (auto & playerNameElem : prefs.playerName)
 	{
-		if ( strlen( prefs.playerName[i] ) )
+		if ( strlen( playerNameElem ) )
 		{
-			comboBox[0].AddItem( prefs.playerName[i], 0xffffffff );
+			comboBox[0].AddItem( playerNameElem, 0xffffffff );
 		}
 		else
 			break;
@@ -145,12 +145,12 @@ void MPPrefs::begin()
 	comboBox[1].ListBox().removeAllItems( true );
 	comboBox[1].SelectItem( -1 );
 
-	for (int i = 0; i < 10; i++ )
+	for (auto & unitNameElem : prefs.unitName)
 	{
-		if ( strlen( prefs.unitName[i] ) )
+		if ( strlen( unitNameElem ) )
 		{
 			
-			comboBox[1].AddItem( prefs.unitName[i], 0xffffffff );
+			comboBox[1].AddItem( unitNameElem, 0xffffffff );
 		}
 		else
 			break;
@@ -280,13 +280,13 @@ void MPPrefs::update()
 
 	int oldSel = comboBox[2].GetSelectedItem();
 	bool bExpanded = 0;
-	for (int i = 0; i < 3; i++ )
+	for (auto & comboBoxElem : comboBox)
 	{
-		if ( comboBox[i].ListBox().isShowing() )
+		if ( comboBoxElem.ListBox().isShowing() )
 		{
 			bExpanded = true;
 		}
-		comboBox[i].update();
+		comboBoxElem.update();
 
 		
 	}
@@ -408,13 +408,13 @@ void MPPrefs::updateBaseColors( std::span<const MC2Player> players, bool bDrawRe
 
 	if ( getButton(MP_PREFS_BASE )->isPressed() )
 	{
-		for( size_t i = 0; i < players.size(); i++ )
+		for(const auto & player : players)
 		{
-			if ( players[i].commanderID == MPlayer->commanderID )
+			if ( player.commanderID == MPlayer->commanderID )
 			{
 				for ( int j = FIRST_COLOR_RECT; j < LAST_COLOR_RECT+1; j++ )
 				{
-					if ( MPlayer->colors[players[i].baseColor[BASECOLOR_PREFERENCE]] == rects[j].getColor() )
+					if ( MPlayer->colors[player.baseColor[BASECOLOR_PREFERENCE]] == rects[j].getColor() )
 					{
 						GUI_RECT rect = { (rects[j].globalX() - 1), (rects[j].globalY() - 1),
 							static_cast<long>(rects[j].right()), static_cast<long>(rects[j].bottom()) };
@@ -429,7 +429,7 @@ void MPPrefs::updateBaseColors( std::span<const MC2Player> players, bool bDrawRe
 			{
 				for ( int j = FIRST_COLOR_RECT; j < LAST_COLOR_RECT+1; j++ )
 				{
-					if ( MPlayer->colors[players[i].baseColor[BASECOLOR_SELF]] == rects[j].getColor() && bDrawRect )
+					if ( MPlayer->colors[player.baseColor[BASECOLOR_SELF]] == rects[j].getColor() && bDrawRect )
 					{
 						statics[21].moveTo( rects[j].globalX(), rects[j].globalY() );
 						statics[21].render();
@@ -452,13 +452,13 @@ void MPPrefs::updateStripeColors(std::span<const MC2Player> players, bool bDrawR
 {
 	if ( getButton(MP_PREFS_STRIPE )->isPressed() )
 	{
-		for( size_t i = 0; i < players.size(); i++ )
+		for(const auto & player : players)
 		{
-			if ( players[i].commanderID == MPlayer->commanderID )
+			if ( player.commanderID == MPlayer->commanderID )
 			{
 				for ( int j = FIRST_COLOR_RECT; j < LAST_COLOR_RECT+1; j++ )
 				{
-					if ( MPlayer->colors[players[i].stripeColor] == rects[j].getColor() )
+					if ( MPlayer->colors[player.stripeColor] == rects[j].getColor() )
 					{
 						GUI_RECT rect = { (rects[j].globalX() - 1), (rects[j].globalY() - 1),
 							static_cast<long>((rects[j].right())), static_cast<long>((rects[j].bottom())) };
@@ -499,12 +499,12 @@ void MPPrefs ::render(int OffsetX, int OffsetY )
 				(camera.bounds[3] - camera.bounds[1]) * sy );
 		}
 
-		for ( int i = 0; i < 3; i++ )
+		for (auto & comboBoxElem : comboBox)
 		{
-			if ( !comboBox[i].ListBox().isShowing() )			
-				comboBox[i].render();
+			if ( !comboBoxElem.ListBox().isShowing() )			
+				comboBoxElem.render();
 			else 
-				pObject = &comboBox[i];
+				pObject = &comboBoxElem;
 		}
 
 		// x out colors that are already taken

@@ -913,12 +913,12 @@ void ForceGroupIcon::renderUnitIconBack( float left, float top, float right, flo
 
 	gos_VERTEX vertices[5];
 
-	for ( int i = 0; i < 5; i++ )
+	for (auto & vertex : vertices)
 	{
-		vertices[i].argb = 0xffffffff;
-		vertices[i].frgb = 0;
-		vertices[i].z = 0;
-		vertices[i].rhw = .5;
+		vertex.argb = 0xffffffff;
+		vertex.frgb = 0;
+		vertex.z = 0;
+		vertex.rhw = .5;
 	}
 
 	vertices[0].u = vertices[1].u = u;
@@ -1373,12 +1373,12 @@ PilotIcon::PilotIcon()
 void PilotIcon::render( float left, float top, float right, float bottom ) 
 {
 	gos_VERTEX pilotLocation[5];
-	for ( int i = 0; i < 5; i++ )
+	for (auto & pilotLocationElem : pilotLocation)
 	{
-		pilotLocation[i].argb = 0xffffffff;
-		pilotLocation[i].rhw = .5;
-		pilotLocation[i].frgb = 0;
-		pilotLocation[i].z = 0;
+		pilotLocationElem.argb = 0xffffffff;
+		pilotLocationElem.rhw = .5;
+		pilotLocationElem.frgb = 0;
+		pilotLocationElem.z = 0;
 	}
 	pilotLocation[0].x = pilotLocation[1].x = left;
 	pilotLocation[3].x = pilotLocation[2].x = right;
