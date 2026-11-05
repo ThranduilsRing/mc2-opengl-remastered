@@ -91,3 +91,20 @@ def test_only_accepts_a_single_doctest_case_and_wildcards(monkeypatch):
     assert builder.main(["--run", "--only", case]) == 0
     assert commands[2][0][-1] == "--test-case=" + case
     assert builder.unknown_selection(["job_system_harness/*", case, "icon_atlas_harness", "nope/*"]) == ["nope/*"]
+
+
+# run_with_tree_timeout: rc passthrough, and a hung child is killed on timeout (was scripts/tests/test_harness_timeout.py).
+def test_tree_timeout_preserves_rc():
+    import os
+    rc = builder.run_with_tree_timeout([sys.executable, "-c", "import sys; sys.exit(7)"], os.getcwd(), dict(os.environ), 60)
+    assert rc == 7
+
+
+def test_tree_timeout_kills_a_hang():
+    import os
+    import time
+    started = time.monotonic()
+    rc = builder.run_with_tree_timeout([sys.executable, "-c", "import time; time.sleep(600)"], os.getcwd(),
+                                       dict(os.environ), 2)
+    assert rc is None
+    assert time.monotonic() - started < 30
