@@ -66,6 +66,19 @@ def test_client_exit_codes(capsys):
     assert box_health.main([], runner=runner_of(Done('{"no_ok": 1}'))) == box_health.RC_UNREACHABLE
 
 
+def test_remote_health_parsers(tmp_path, monkeypatch):
+    import box_health_remote as bhr
+    assert bhr.max_gb("12.0 GB") == 12.0 and bhr.max_gb("2.0 TiB") == 2048 and bhr.max_gb("") is None and bhr.max_gb(None) is None
+    monkeypatch.setattr(sup, "FILLER", str(tmp_path))
+    assert bhr.filler_rows(5) == {}                      # no current_sha yet
+    (tmp_path / "current_sha").write_text("abc\n")
+    rd = tmp_path / "results" / "abc"
+    (rd / "failed").mkdir(parents=True)
+    (rd / "mc2_10-wolfman-2-1.json").write_text("{}")
+    (rd / "failed" / "mc2_01-cross_map_view-1-1.log").write_text("")
+    assert bhr.filler_rows(5) == {"ok": ["mc2_10-wolfman-2-1"], "failed": ["mc2_01-cross_map_view-1-1"]}
+
+
 def test_client_ssh_fails_fast():
     cmd = box_health.ssh_cmd("x")
     s = " ".join(cmd)
