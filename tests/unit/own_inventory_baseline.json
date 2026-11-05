@@ -1235,21 +1235,6 @@
    "new_array": 0,
    "owners": []
   },
-  "DynamicArrayOf<DynamicArrayOf<Vector2DScalar>": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete": 2,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "DynamicArrayOf<Vector2DScalar>": {
    "delete": 1,
    "delete_array": 0,
@@ -1263,21 +1248,6 @@
    "new_array": 0,
    "owners": [
     "MLR_I_MT_PMesh"
-   ]
-  },
-  "DynamicArrayOf<unsignedshort>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlrindexedprimitivebase.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
    ]
   },
   "Editor": {
@@ -1420,18 +1390,6 @@
    "delete_array": 0,
    "files": {
     "mclib/stuff/filestreammanager.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "FileStreamManager": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/stuff.cpp": {
      "new": 1
     }
    },
@@ -3241,36 +3199,6 @@
    "new_array": 0,
    "owners": []
   },
-  "SortedChainIteratorOf<DirectoryEntry*,MString>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestream.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "Directory"
-   ]
-  },
-  "SortedChainIteratorOf<DirectoryFolder*,MString>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestream.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "Directory"
-   ]
-  },
   "SortedChainIteratorOf<T,V>": {
    "delete": 0,
    "delete_array": 0,
@@ -3375,21 +3303,6 @@
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
-  "T": {
-   "delete": 0,
-   "delete_array": 6,
-   "files": {
-    "mclib/stuff/marray.hpp": {
-     "delete_array": 6,
-     "new_array": 2
-    }
-   },
-   "new": 0,
-   "new_array": 2,
    "owners": [
     ""
    ]
@@ -3596,23 +3509,6 @@
    "files": {
     "editor/Editor.cpp": {
      "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
-  "TraceManager": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/gosfx/effectlibrary.cpp": {
-     "delete": 1
-    },
-    "mclib/stuff/trace.cpp": {
      "new": 1
     }
    },
@@ -4325,7 +4221,7 @@
    "owners": []
   },
   "gosFX::LightManager": {
-   "delete": 0,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "code/mechcmd2.cpp": {
@@ -4336,11 +4232,16 @@
     },
     "mclib/effect_resources.cpp": {
      "new": 1
+    },
+    "mclib/gosfx/effectlibrary.cpp": {
+     "delete": 1
     }
    },
    "new": 3,
    "new_array": 0,
-   "owners": []
+   "owners": [
+    ""
+   ]
   },
   "gosFX::PertCloud": {
    "delete": 0,
@@ -4537,21 +4438,6 @@
     "gosFont"
    ]
   },
-  "gosGlyphMetrics": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "GameOS/gameos/gos_font.cpp": {
-     "delete_array": 2,
-     "new_array": 3
-    }
-   },
-   "new": 0,
-   "new_array": 3,
-   "owners": [
-    ""
-   ]
-  },
   "gosMesh": {
    "delete": 0,
    "delete_array": 0,
@@ -4710,12 +4596,10 @@
   "GameOS/gameos/gameos.cpp": 1,
   "GameOS/gameos/gameos_fileio.cpp": 1,
   "GameOS/gameos/gameos_graphics.cpp": 1,
-  "GameOS/gameos/gameos_graphics_font.cpp": 14,
   "GameOS/gameos/gameos_graphics_internal.h": 4,
   "GameOS/gameos/gameos_graphics_material_internal.h": 1,
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
   "GameOS/gameos/gameos_sound.cpp": 1,
-  "GameOS/gameos/gos_font.cpp": 6,
   "GameOS/gameos/utils/stream.cpp": 1,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
@@ -4838,8 +4722,7 @@
   "mclib/stuff/registeredclass.cpp": 1,
   "mclib/stuff/socket.cpp": 1,
   "mclib/stuff/sortedchain.cpp": 2,
-  "mclib/stuff/stuff.cpp": 1,
-  "mclib/stuff/trace.cpp": 3,
+  "mclib/stuff/trace.cpp": 2,
   "mclib/stuff/tree.cpp": 2
  }
 }
