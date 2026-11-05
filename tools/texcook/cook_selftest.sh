@@ -4,7 +4,7 @@
 set -euo pipefail
 W=${W:?set W to a scratch dir}
 mkdir -p "$W"
-(cd tools/texcook/bc7enc_rdo && ${CXX:-clang++} -O2 -fopenmp -fno-strict-aliasing -include cstdint bc7enc.cpp bc7decomp.cpp bc7decomp_ref.cpp \
+(cd tools/texcook/bc7enc_rdo && ${CXX:-g++} -O2 -fopenmp -fno-strict-aliasing -include cstdint bc7enc.cpp bc7decomp.cpp bc7decomp_ref.cpp \
     lodepng.cpp test.cpp rgbcx.cpp utils.cpp ert.cpp rdo_bc_encoder.cpp -o "$W/bc7enc")
 python3 -c "
 from PIL import Image; import numpy as np
