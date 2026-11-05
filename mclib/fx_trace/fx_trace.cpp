@@ -57,7 +57,7 @@ void dump_class_table(const ClassMap& tbl) {
         return;
     }
     unsigned long long total = 0;
-    for (const auto& kv : tbl) total += kv.second.count;
+    for (const auto& [id, st] : tbl) total += st.count;
     mc2::fmt::print_err("[FX_TRACE v1] class total={:d} unique={:d}\n", mc2::fmt::as_u64(total), mc2::fmt::as_size(tbl.size()));
     for (const auto& [classId, stats] : tbl) {
         mc2::fmt::print_err("[FX_TRACE v1] class id={:d} count={:d} first_name={}\n", mc2::fmt::as_u32(classId), mc2::fmt::as_u64(stats.count), stats.first_seen_name.empty()
@@ -72,7 +72,7 @@ void dump_table(mc2::czstring label, const CounterMap& tbl) {
         return;
     }
     unsigned long long total = 0;
-    for (const auto& kv : tbl) total += kv.second;
+    for (const auto& [key, cnt] : tbl) total += cnt;
     mc2::fmt::print_err("[FX_TRACE v1] {} total={:d} unique={:d}\n", mc2::fmt::safe(label), mc2::fmt::as_u64(total), mc2::fmt::as_size(tbl.size()));
     for (const auto& [name, count] : tbl) {
         mc2::fmt::print_err("[FX_TRACE v1] {} name={} count={:d}\n", mc2::fmt::safe(label), name.c_str(), mc2::fmt::as_u64(count));

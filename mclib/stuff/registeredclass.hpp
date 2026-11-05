@@ -65,10 +65,10 @@ namespace Stuff {
 		bool
 			IsDerivedFrom(ClassID class_id) const;
 		bool
-			IsDerivedFrom(const char* parent) const;
+			IsDerivedFrom(mc2::czstring parent) const;
 
 		static ClassData*
-			FindClassData(const char* name);
+			FindClassData(mc2::czstring name);
 		static ClassData*
 			FindClassData(ClassID class_id)
 				{
@@ -156,7 +156,7 @@ namespace Stuff {
 			DeriveClass(RegisteredClass__ClassData* child);
 
 		RegisteredClass__ClassData*
-			FindClassData(const char* name);
+			FindClassData(mc2::czstring name);
 
 		RegisteredClass::ClassID
 			classID;
@@ -199,7 +199,7 @@ namespace Stuff {
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//
 	inline bool
-		RegisteredClass::IsDerivedFrom(const char* parent) const
+		RegisteredClass::IsDerivedFrom(mc2::czstring parent) const
 	{
 		Check_Object(this);
 		Check_Object(classData);
@@ -220,7 +220,7 @@ namespace Stuff {
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//
 	inline RegisteredClass::ClassData*
-		RegisteredClass::FindClassData(const char* name)
+		RegisteredClass::FindClassData(mc2::czstring name)
 	{
 		return DefaultData->FindClassData(name);
 	}
