@@ -340,6 +340,750 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 - Consuming targets: gameos, gameos_main, gui_runtime
 - Reached by define: gameos[gameos(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)]
 
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:26`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VulkanContext*   ctx   = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:27`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkInstance       inst  = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:28`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkPhysicalDevice phys  = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:29`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkDevice         dev   = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:30`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkQueue          gfxQ  = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:31`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t         gfxFamily = UINT32_MAX;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:34`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t         presentFamily = UINT32_MAX;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:36`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkQueue          presentQ  = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:39`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedSwapchain    swapchain;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:40`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkFormat                 scFormat  = VK_FORMAT_UNDEFINED;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:41`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkExtent2D               scExtent  = {0, 0};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:43`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkPresentModeKHR         presentMode = VK_PRESENT_MODE_FIFO_KHR;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:44`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `std::vector<VkImage>     scImages;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:53`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedSemaphore     acquireSems[mc2vk::kMaxFramesInFlight];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:54`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedFence         inFlights[mc2vk::kMaxFramesInFlight];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:55`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t slotCount = 1;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:63`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkCommandBuffer compositeCbufs[mc2vk::kMaxFramesInFlight] = {};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:64`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool            compositePending = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:65`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool frameFinished = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:66`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t captureFrame = 0, captureFireFrame = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:67`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkResult lastWsiResult = VK_SUCCESS;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:69`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkImageView     pendingShadowDebugView = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:70`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `int             pendingShadowDebugLayer = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:75`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:76`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkDescriptorSet upscaleSet = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:77`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `SpatialAA spatialAA;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:78`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t        imgW = 0, imgH = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:81`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::ReadbackToken readbackToken;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:82`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint64_t        readbackTag = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:83`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t        readbackW = 0, readbackH = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:84`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:87`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool            imguiVkInited = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:88`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool            imguiVkFailed = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:89`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedRenderPass    imguiRenderPass;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:90`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedFramebuffer   imguiFramebuffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:91`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `ImDrawData*     pendingImguiDrawData = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:92`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `PresentImguiSnapshot ownedImgui;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:101`
+- Class: `ImguiTexEntry`  (data-member)
+- Member: `VkImageView serviceView=VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:103`
+- Class: `ImguiTexEntry`  (data-member)
+- Member: `VkDescriptorSet set = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:104`
+- Class: `ImguiTexEntry`  (data-member)
+- Member: `uint64_t lastUsedFrame = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:106`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `std::unordered_map<uint64_t, ImguiTexEntry> imguiTex;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:107`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedSampler imguiTexSampler;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:108`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint64_t imguiTexFrame = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:110`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `std::vector<VkHudDraw> pendingHudDraws;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:113`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint32_t        hudCanvasW = 0, hudCanvasH = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:114`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool            hudColorVkFailed = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:115`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedRenderPass    hudColorRenderPass;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:116`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedFramebuffer   hudColorFramebuffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:117`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipelineLayout hudColorLayout;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:118`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline      hudColorTriPipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:121`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline      hudColorLinePipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:122`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline      hudColorTriOpaquePipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:123`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline      hudColorLineOpaquePipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:124`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule  hudColorVert;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:125`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule  hudColorFrag;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:126`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedDescriptorSetLayout hudTexDsl;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:127`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedDescriptorPool hudTexPool;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:128`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipelineLayout hudTexLayout;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:129`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline      hudTexPipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:130`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline      hudTexOpaquePipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:133`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule  hudTexVert;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:134`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule  hudTexFrag;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:136`
+- Class: `HudTextureMirror`  (data-member)
+- Member: `uint32_t serial = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:137`
+- Class: `HudTextureMirror`  (data-member)
+- Member: `uint32_t width = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:138`
+- Class: `HudTextureMirror`  (data-member)
+- Member: `uint32_t height = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:140`
+- Class: `HudTextureMirror`  (data-member)
+- Member: `mc2vk::OwnedRawBuffer buffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:141`
+- Class: `HudTextureMirror`  (data-member)
+- Member: `VkDeviceSize bytes = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:142`
+- Class: `HudTextureMirror`  (data-member)
+- Member: `VkDescriptorSet set = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:154`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `std::unordered_map<uint64_t, HudTextureMirror> hudTextureMirrors;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:155`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `uint64_t hudMirrorFrameCounter = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:157`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool            compositeVkFailed = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:158`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedRenderPass    compositeRenderPass;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:159`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedFramebuffer   compositeFramebuffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:160`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedSampler       compositeSampler;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:162`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedDescriptorSetLayout compositeDsl;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:163`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedDescriptorPool compositePool;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:164`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkDescriptorSet  compositeSet = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:165`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipelineLayout compositeLayout;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:166`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline       compositePipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:167`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule   compositeVert;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:168`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule   compositeFrag;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:170`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `bool             shadowDebugVkFailed = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:171`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedRenderPass     shadowDebugRenderPass;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:172`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedFramebuffer    shadowDebugFramebuffer;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:173`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedSampler        shadowDebugSampler;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:174`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedDescriptorSetLayout shadowDebugDsl;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:175`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedDescriptorPool shadowDebugPool;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:176`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `VkDescriptorSet  shadowDebugSet = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:177`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipelineLayout shadowDebugLayout;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:178`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedPipeline       shadowDebugPipe;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:179`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule   shadowDebugVert;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:180`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `mc2vk::OwnedShaderModule   shadowDebugFrag;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/engine_present_vk_internal.h:184`
+- Class: `EnginePresentVk`  (data-member)
+- Member: `Impl& operator=(const Impl&) = delete;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
 - Header: `GameOS/gameos/gos_postprocess.h:152`
@@ -3246,4 +3990,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 405 guard(s) analyzed, 0 violation(s).
+Result: 498 guard(s) analyzed, 0 violation(s).

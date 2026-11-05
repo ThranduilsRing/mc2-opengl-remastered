@@ -30,18 +30,18 @@ code and the proof of a finished conversion, not a leak detector.
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
-| context | 2 | 1 | 1 | +0 | 2 | - |
+| context | 2 | 2 | 2 | +0 | 4 | - |
 | textures | 2 | 0 | 0 | +0 | 0 | - |
 | render_infra | 2 | 10 | 10 | +0 | 20 | Pipeline 4/5, PipelineCache 2/1 |
 
-Total over all islands: created 12, released 11, imbalance +1.
+Total over all islands: created 13, released 12, imbalance +1.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
 | `engine_present_vk_imgui.cpp` | 1 | 0 | +1 |
-| `vulkan_context.cpp` | 1 | 1 | +0 |
+| `vulkan_context.cpp` | 2 | 2 | +0 |
 | `vk_render_infra.cpp` | 10 | 10 | +0 |
 
 ## Conversion order
