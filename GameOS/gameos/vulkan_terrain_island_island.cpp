@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
+#include "Gates/gate_cold.h"
+#include <cstdlib>
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -697,6 +699,11 @@ bool init_island(TerrainIsland* s, int w, int h) {
         stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
+        // vk-present-instance 8: constant_id 0 = csm debug viz mode (was a per-draw UBO branch).
+        const int32_t csmDebugSpec = std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());
+        const VkSpecializationMapEntry csmDebugEntry{0, 0, sizeof(int32_t)};
+        VkSpecializationInfo csmDebugInfo{1, &csmDebugEntry, sizeof(int32_t), &csmDebugSpec};
+        stages[1].pSpecializationInfo = &csmDebugInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;
