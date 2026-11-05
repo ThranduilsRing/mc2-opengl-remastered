@@ -1220,25 +1220,25 @@ int main(int argc, char** argv)
 
     mc2_object_recon::drainOnShutdown();
     projectz_shutdown();
-    std::fprintf(stderr, "[SHUTDOWN] engine begin\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] engine begin\n"); std::fflush(stderr);
     Environment.TerminateGameEngine();
-    std::fprintf(stderr, "[SHUTDOWN] engine end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] engine end\n"); std::fflush(stderr);
     AssetScale::shutdown();
 
 #ifdef MC2_IMGUI
     if (!headless) GuiRuntime::Shutdown();
 #endif
     if (!headless) gos_DestroyRenderer();   // headless: process exit frees the state-only renderer
-    std::fprintf(stderr, "[SHUTDOWN] renderer end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] renderer end\n"); std::fflush(stderr);
 
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
     if (!headless) gos::host::shutdownVulkanBackend();
-    std::fprintf(stderr, "[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
 
     if (!headless) graphics::destroy_window(win);
 
     gos_DestroyAudio();
-    std::fprintf(stderr, "[SHUTDOWN] audio end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] audio end\n"); std::fflush(stderr);
 
     // Return validation exit code if in validate mode
     if (getValidateConfig().enabled)
