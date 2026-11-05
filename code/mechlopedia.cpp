@@ -1,4 +1,3 @@
-#include "mc2_czstring.h"
 #include <memory>
 #include "mc2fmt.h"
 #include "utils/mc2log.h"

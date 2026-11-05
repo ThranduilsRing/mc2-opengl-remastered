@@ -1,4 +1,3 @@
-#include "mc2_czstring.h"
 #include <memory>
 #include "Gates/preferences_legacy.h"
 #define OPTIONSAREA_CPP

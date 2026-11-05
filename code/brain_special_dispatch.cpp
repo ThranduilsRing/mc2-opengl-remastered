@@ -58,7 +58,6 @@
 // or any order/movement/attack/OPORD function.
 // Verified by inspection: no warrior pointer, no tac-order type, no slot writes.
 
-#include "mc2_czstring.h"
 #include "brain_execution_policy.h"
 #include "brain_special_internal.h"
 #include "brain_special_frame.h"

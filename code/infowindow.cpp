@@ -1,4 +1,3 @@
-#include "mc2_czstring.h"
 #include "render_view.h"
 #include <algorithm>
 #include "Gates/preferences_legacy.h"

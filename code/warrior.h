@@ -11,7 +11,6 @@
 #ifndef WARRIOR_H
 #define	WARRIOR_H
 
-#include "mc2_czstring.h"
 #include "object_shared_constants.h"
 #include "warrior_types.h"
 #include <array>
