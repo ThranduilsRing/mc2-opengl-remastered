@@ -29,7 +29,7 @@ CAPTURE_SH = r'''#!/bin/bash
 D=@GDIR@/@TAG@; rm -rf $D; mkdir -p $D
 export VK_LAYER_PATH=@GFXR@/share/vulkan/explicit_layer.d VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_gfxreconstruct
 export GFXRECON_CAPTURE_FILE=$D/cap.gfxr GFXRECON_CAPTURE_FILE_TIMESTAMP=false GFXRECON_CAPTURE_FRAMES=@FRAMES@
-export GFXRECON_LOG_FILE=$D/capture.log GFXRECON_LOG_LEVEL=info
+export GFXRECON_LOG_FILE=$D/capture.log GFXRECON_LOG_LEVEL=info @ENV@
 # the harness needs >=2 poses (single-pose sweeps drop the capture): write a 2-pose file, the chosen pose twice
 python3 -c "import json,sys;d=json.load(open('tests/visual/bookmarks/@BOOKMARKS@.json'));b=[x for x in d['bookmarks'] if x['name']=='@POSE@'][0];c=dict(b,name='@POSE@_2');d['bookmarks']=[b,c];json.dump(d,open('$D/pose.json','w'))" || exit 8
 python3 scripts/run_visual_capture.py --mission @MISSION@ --bookmarks $D/pose.json --exe $INSTALL/mc2 \
@@ -100,7 +100,7 @@ def fill(t, **kv):
 def cmd_capture(a):
     frames = f"{a.start}-{a.start + a.frames - 1}"
     text = fill(CAPTURE_SH, gdir=GDIR, gfxr=GFXR, tag=a.tag, frames=frames, mission=a.mission, bookmarks=a.bookmarks, pose=a.pose,
-                trigger=a.trigger_frame).replace("$GFXR_BIN", GFXR + "/bin")
+                trigger=a.trigger_frame, env=' '.join(a.env)).replace("$GFXR_BIN", GFXR + "/bin")
     # one bookmark file may hold many poses; the harness sweeps them all, so the pose is chosen by a one-pose file when given
     push_script(f"cap_{a.tag}.sh", text)
     rc, _ = box_row(f"cap_{a.tag}.sh", "0", a.repo)   # presenting rows run on GPU 0 only (box-game-runs.md)
@@ -182,6 +182,7 @@ def main():
     c.add_argument("--mission", default="mc2_10")
     c.add_argument("--bookmarks", default="mc2_10_camera", help="bookmark file stem under tests/visual/bookmarks (one pose per file is best)")
     c.add_argument("--pose", default="wolfman", help="bookmark name inside the file")
+    c.add_argument("--env", action="append", default=[], help="extra GFXRECON_* KEY=VALUE for the layer (e.g. GFXRECON_MEMORY_TRACKING_MODE=unassisted)")
     c.add_argument("--frames", type=int, default=10, help="N frames to capture")
     c.add_argument("--start", type=int, default=215, help="first captured frame (1-based present count)")
     c.add_argument("--trigger-frame", type=int, default=200)
