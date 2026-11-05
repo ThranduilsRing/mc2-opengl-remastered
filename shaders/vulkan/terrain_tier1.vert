@@ -19,6 +19,8 @@
 // — the value read is identical (float[mapSide*mapSide], row-major).
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_ARB_shader_draw_parameters : require
+#extension GL_EXT_buffer_reference : require
 
 // Attribute 0: ivec2 localOffset (int16 lx,ly), integer format (mirrors the GL VAO
 // glVertexAttribIPointer(0, 2, GL_SHORT, stride=4, 0)). VK feeds R16G16_SINT.

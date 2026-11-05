@@ -747,7 +747,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 31,
+        "line": 33,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -757,7 +757,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1_skirt.vert",
-        "line": 25,
+        "line": 27,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -859,7 +859,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 38,
+        "line": 40,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -869,7 +869,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1_skirt.vert",
-        "line": 30,
+        "line": 32,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
