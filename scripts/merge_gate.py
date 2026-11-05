@@ -614,7 +614,7 @@ def change_domains(paths):
             domains.add("engine")
         elif ((suffix == ".py" and (p.startswith(("scripts/tests/", "tests/")) or "/tests/" in p or Path(p).name.startswith("test_")))
               or p.startswith(("tools/lane_merge.py", "tools/file_size_ratchet", "tools/cxx17_ratchet/",
-                               "tools/dup_lines_ratchet", "tools/axis_swizzle_ratchet", "tests/callers",
+                               "tools/dup_check", "tools/axis_swizzle_ratchet", "tests/callers",
                                "scripts/run_tools_tests.py", "scripts/run_scripts_tests.py", "scripts/module_test_cache.py",
                                "scripts/check-contracts.sh", "scripts/test_audit_site/"))):
             domains.add("tooling")
