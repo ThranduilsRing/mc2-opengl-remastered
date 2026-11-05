@@ -131,15 +131,22 @@ def test_a_layer_without_the_canary_is_not_confirmed():
     assert "canary=fired" in vk_validation.describe(vk_validation.parse(ENABLED))
 
 
-def test_a_known_unexpired_entry_is_not_red_and_an_expired_or_unlisted_one_is():
+def test_a_known_unexpired_entry_is_not_red_and_an_expired_or_unlisted_one_is(tmp_path):
+    import json
     from datetime import date
-    entries = vk_validation.known_entries(today=date(2026, 11, 6))
+    f = tmp_path / "known.json"
+    f.write_text(json.dumps({"known": [{"id": "SYNC-HAZARD-WRITE_AFTER_WRITE", "text_contains": "shadow.bake.mask", "reason": "t", "reviewed": "2026-11-05", "expires": "2026-12-05"}]}))
+    entries = vk_validation.known_entries(today=date(2026, 11, 6), path=f)
     assert vk_validation.is_known("SYNC-HAZARD-WRITE_AFTER_WRITE", "x shadow.bake.mask y", entries)
     assert not vk_validation.is_known("SYNC-HAZARD-WRITE_AFTER_WRITE", "some other image", entries)
     assert not vk_validation.is_known("VUID-vkCmdDraw-None-02699", "shadow.bake.mask", entries)
-    assert vk_validation.known_entries(today=date(2027, 1, 1)) == []           # the review window ran out: red again
-    s = logparse.parse_log("\n".join([ENABLED, SYNC, ERROR]) + "\n")
-    assert s.marker_counts.get("vk_validation_error") in (1, 2)                # the known hit leaves at most the unlisted VUID (the entry may have expired)
+    assert vk_validation.known_entries(today=date(2027, 1, 1), path=f) == []   # the review window ran out: red again
+
+
+def test_the_shipped_known_list_is_empty_so_a_shadow_bake_regression_is_red():
+    assert vk_validation.known_entries() == []
+    s = logparse.parse_log("\n".join([ENABLED, SYNC]) + "\n")
+    assert s.marker_counts.get("vk_validation_error") == 1
 
 
 def test_a_raw_layer_error_line_is_red_unless_known():

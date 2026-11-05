@@ -118,7 +118,7 @@ bool g_debugNames = false;
 // counter. Because there is exactly one engine context, a file-static back
 // pointer is sufficient (set in init()).
 VulkanContext* g_cbContext = nullptr;
-std::atomic<bool> g_canaryArmed{false};   // true only inside runValidationCanary
+thread_local bool g_canaryArmed = false;   // true only on the calling thread inside runValidationCanary (the layer reports synchronously on that thread)
 std::atomic<int> g_canaryHits{0};
 
 // One validation-layer message in the engine log (vk_validation_line.h); the smoke parser grades an error red and counts the warnings. The layer limits
@@ -137,7 +137,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
     const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
     // The known-bad canary (runValidationCanary) is a deliberate violation: it proves the layer is live on this host and is not an engine error.
-    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) && g_canaryArmed.load(std::memory_order_relaxed)) {
+    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) && g_canaryArmed && std::strstr(id, "VkBufferCreateInfo-size") != nullptr) {
         g_canaryHits.fetch_add(1, std::memory_order_relaxed);
         validationLog("info", "canary_fired", std::string(id));
         return VK_FALSE;
@@ -182,10 +182,10 @@ void runValidationCanary(VkDevice device) {
     bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     g_canaryHits.store(0);
-    g_canaryArmed.store(true);
+    g_canaryArmed = true;
     VkBuffer b = VK_NULL_HANDLE;
     const VkResult r = vkCreateBuffer(device, &bci, nullptr, &b);
-    g_canaryArmed.store(false);
+    g_canaryArmed = false;
     if (r == VK_SUCCESS && b != VK_NULL_HANDLE) vkDestroyBuffer(device, b, nullptr);
     if (g_canaryHits.load() == 0)
         validationLog("error", "canary_missed", "the deliberate zero-size vkCreateBuffer drew no validation message: the layer is not live on this host");

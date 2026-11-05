@@ -48,6 +48,6 @@ is recorded in `.claude/cleanup/lane2-state.md`.
 - **Raw-VUID backstop.** A raw `Validation Error: [ VUID...` line that is not in the engine format (loader/second instance/tool process) is the red bucket
   `vk_validation_raw`.
 - **Known list.** `tests/syncval/known_vuids.json` holds the reviewed hits that do not fail a row. Every entry has an `expires` date; after it the hit is red again.
-  It starts with the shadow.bake.mask WAW hazard (expires 2026-12-05). No other allowlist.
+  It ships empty (the shadow.bake.mask WAW was fixed in vkcore, so a regression is red). No other allowlist.
 - **GPU-AV.** `MC2_VULKAN_VALIDATION=gpu-assisted` (run mode, never default; RESERVE_BINDING_SLOT dropped as obsolete). Box row: `tools/box_run.py -- syncval:gpuav`.
 - **Gate.** `scripts/merge_gate.py` stage `syncval`: smoke-lite (mc2_01 day + mc2_10 night) with `MC2_VULKAN_VALIDATION=sync`; the box row `syncval:*` is the same run.
