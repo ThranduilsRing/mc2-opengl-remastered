@@ -123,7 +123,7 @@ for row in "${ROWS[@]}"; do
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
-                 cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
+                 cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
     sh:*)        cmd="${row#sh:}" ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
