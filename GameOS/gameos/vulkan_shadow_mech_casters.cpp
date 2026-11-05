@@ -198,8 +198,13 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     }
 }
 
-void ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset) const {
-    if (!hasCasters() || !geomUploaded_ || !pipeline_) return;
+uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask) const {
+    if (!hasCasters() || !geomUploaded_ || !pipeline_) return 0;
+    if (runMask) {
+        bool any = false;
+        for (size_t k = 0; k < runs_.size() && !any; ++k) any = runMask[k] != 0;
+        if (!any) return 0;
+    }
     mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.get());
     const VkDescriptorSet set = set_[parity % kMaxFramesInFlight];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.get(), 0, 1, &set, 1, &uboOffset);
@@ -207,8 +212,14 @@ void ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t ubo
     const VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &offset);
     vkCmdBindIndexBuffer(cb, ibo_.get(), 0, VK_INDEX_TYPE_UINT32);
-    for (const Mc2MechDrawRun& r : runs_)
+    uint32_t drawn = 0;
+    for (size_t k = 0; k < runs_.size(); ++k) {
+        if (runMask && !runMask[k]) continue;
+        const Mc2MechDrawRun& r = runs_[k];
         mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, r.indexCount, r.instanceCount, r.firstIndex, r.baseVertex, r.instanceBase);
+        ++drawn;
+    }
+    return drawn;
 }
 
 }  // namespace mc2vk

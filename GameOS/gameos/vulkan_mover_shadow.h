@@ -3,6 +3,7 @@
 #include "shadow_mover_fit.h"
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
+#include "vulkan_mech_island.h"   // Mc2MechDrawRun
 #include "vulkan_shadow_island_live.h"
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include <span>
@@ -26,7 +27,18 @@ public:
     uint32_t actorCount() const { return actorCount_; }
     uint32_t visibleActorCount() const { return static_cast<uint32_t>(spheres_.size()-props_.size()); }
 
+    // Per-frame mech actor spheres (MC2 frame) and the instance -> actor map. Called once per frame before the local-light passes; prepare() reuses it.
+    void refreshMechActors(const float cameraRows[16], mc2shadow::Vec3 sun);
+    // Per-run draw masks for ShadowMechCasters::record: 1 = some mech of the run can matter to that map. False (mask all ones) when the map is unknown.
+    bool runMaskView(const std::vector<Mc2MechDrawRun>& runs, std::vector<uint8_t>& mask) const;
+    bool runMaskLight(const std::vector<Mc2MechDrawRun>& runs, const float pos[3], float farDistance, std::vector<uint8_t>& mask) const;
+
 private:
+    struct MechActor { mc2shadow::MoverSphere sphere; bool inView; };
+    void updateGround();
+    std::vector<MechActor> actors_;
+    std::vector<int32_t> instActor_;
+    bool actorsFresh_ = false;
     struct Bounds { mc2shadow::Vec3 lo, hi; bool valid = false; };
     mc2shadow::MoverSphere propSphere(const GpuStaticPropInstance& instance, const Bounds& bounds) const;
     void appendMechs(const float cameraRows[16], mc2shadow::Vec3 sun, float ground);
