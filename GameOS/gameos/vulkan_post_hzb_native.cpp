@@ -307,12 +307,14 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
 bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     auto* s = &state;
     if (s->cullCapacity >= count) return true;
-    // The color pass can still be reading the old mask after the HZB ticket.
-    // Only capacity growth replaces its storage/descriptors; retire every reader.
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("hzb_capacity");
+    // The color pass can still be reading the old mask after the HZB ticket: park the old storage and pool until the frame that may use them has
+    // completed (deferred destroy) instead of idling the device.
+    auto& ectx = mc2vk::getOrCreateEngineVulkanContext();
     s->previousCount = 0; // the retired mask no longer supplies telemetry
     s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
-    s->cullPool.reset(); s->visibility.reset(); s->instances.reset();
+    if (s->cullPool) ectx.retire(std::move(s->cullPool));
+    if (s->visibility) ectx.retire(std::move(s->visibility), uint64_t(s->cullCapacity) * sizeof(uint32_t));
+    if (s->instances) ectx.retire(std::move(s->instances));
     s->cullSet = VK_NULL_HANDLE;
     // The shader samples a fixed 16-slot level array; a deeper pyramid cannot be addressed.
     if (s->mipCount < 1 || s->mipCount > int(kCullMaxLevels)) return false;
@@ -865,7 +867,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL HZB pass. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = s->cbuf[0u];
+    VkCommandBuffer cb = s->cbuf[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot % mc2vk::kMaxFramesInFlight];   // one command buffer per frame slot
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
