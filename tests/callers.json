@@ -3994,7 +3994,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1425,
+          "line": 1438,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4776,6 +4776,13 @@
       "stem": "merge_gate",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_box_hygiene.py",
+          "line": 299,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
+        },
         {
           "path": "scripts/tests/test_fast_precheck_rules.py",
           "line": 13,
@@ -7953,6 +7960,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_box_hygiene.py",
+      "basename": "test_box_hygiene.py",
+      "stem": "test_box_hygiene",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_box_queue.py",
       "basename": "test_box_queue.py",
       "stem": "test_box_queue",
@@ -9746,11 +9760,105 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/box/deploy.sh",
+      "basename": "deploy.sh",
+      "stem": "deploy",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box/env.sh",
+      "basename": "env.sh",
+      "stem": "env",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box/filler/repin.sh",
+      "basename": "repin.sh",
+      "stem": "repin",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box/filler/run_job.py",
+      "basename": "run_job.py",
+      "stem": "run_job",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box/filler/status.py",
+      "basename": "status.py",
+      "stem": "status",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_box_hygiene.py",
+          "line": 209,
+          "evidence": "import",
+          "reference": "status",
+          "text": "import status"
+        }
+      ]
+    },
+    {
+      "path": "tools/box/filler/sync.sh",
+      "basename": "sync.sh",
+      "stem": "sync",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box/lane_cleanup.sh",
+      "basename": "lane_cleanup.sh",
+      "stem": "lane_cleanup",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box/mc2-diskwatch.sh",
+      "basename": "mc2-diskwatch.sh",
+      "stem": "mc2-diskwatch",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box_filler_push.py",
+      "basename": "box_filler_push.py",
+      "stem": "box_filler_push",
+      "callers_by_basename": [
+        {
+          "path": "scripts/merge_gate.py",
+          "line": 1131,
+          "evidence": "command",
+          "reference": "tools/box_filler_push.py",
+          "text": "r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))"
+        }
+      ],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_box_queue.py",
+          "line": 302,
+          "evidence": "import",
+          "reference": "box_filler_push",
+          "text": "import box_filler_push"
+        }
+      ]
+    },
+    {
       "path": "tools/box_run.py",
       "basename": "box_run.py",
       "stem": "box_run",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_box_hygiene.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "box_run",
+          "text": "import box_run"
+        },
         {
           "path": "scripts/tests/test_box_queue.py",
           "line": 13,
@@ -9764,6 +9872,20 @@
           "evidence": "import",
           "reference": "box_run",
           "text": "import box_run"
+        },
+        {
+          "path": "tools/box_filler_push.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "box_run",
+          "text": "import box_run"
+        },
+        {
+          "path": "tools/box_filler_push.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "box_run",
+          "text": "from box_run import SSH, SSH_STDIN, run"
         }
       ]
     },
@@ -11603,6 +11725,13 @@
           "text": "from tools.lane_merge import git_bash   # a bare \"bash\" from a Python child is the WSL launcher, not Git Bash"
         },
         {
+          "path": "scripts/tests/test_box_hygiene.py",
+          "line": 276,
+          "evidence": "import",
+          "reference": "lane_merge",
+          "text": "import lane_merge"
+        },
+        {
           "path": "scripts/tests/test_contract_coverage.py",
           "line": 11,
           "evidence": "import",
@@ -11765,6 +11894,13 @@
           "evidence": "import",
           "reference": "lint_slots",
           "text": "import lint_slots as ls  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lint_slots.py",
+          "line": 191,
+          "evidence": "import",
+          "reference": "lint_slots",
+          "text": "import lint_slots"
         },
         {
           "path": "tools/lane_merge.py",
