@@ -131,9 +131,7 @@ void execStatement (void) {
 			if (!idPtr) {
 				static const bool s_ablTrace = mc2::gate::get<"MC2_ABL_TRACE">();
 				if (s_ablTrace) {
-					const char* _cbmsg = "[ABL_EXEC] NULL idPtr at TKN_IDENTIFIER; skipping statement";
-					puts(_cbmsg); fflush(stdout);
-					crashbundle_append(_cbmsg);
+					crashbundle_printf<512>("", "[ABL_EXEC] NULL idPtr at TKN_IDENTIFIER; skipping statement");
 				}
 				break;
 			}

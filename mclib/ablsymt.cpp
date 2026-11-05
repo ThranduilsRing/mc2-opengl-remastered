@@ -18,12 +18,6 @@
 #ifndef ABLGEN_H
 #include"ablgen.h"
 #include "gos_crashbundle.h"
-#define CB_PRINTF(fmt, ...) do { \
-    char _cbbuf[512]; \
-    snprintf(_cbbuf, sizeof(_cbbuf), fmt, ##__VA_ARGS__); \
-    puts(_cbbuf); fflush(stdout); \
-    crashbundle_append(_cbbuf); \
-} while(0)
 #endif
 
 #ifndef ABLERR_H
@@ -535,8 +529,8 @@ void enterStandardRoutine (mc2::czstring name, long routineKey, bool isOrder, mc
 			// Hard-bail: ABL_Fatal is soft in release so the original code
 			// would continue and OOB-write FunctionCallbackTable[256..],
 			// corrupting adjacent BSS and wrecking earlier slots.
-			CB_PRINTF("[ABL_REG] FULL: cannot register '%s' (table size=%d). Skipping.",
-				name ? name : "(null)", MAX_STANDARD_FUNCTIONS);
+			crashbundle_printf<512>("", "[ABL_REG] FULL: cannot register '{}' (table size={:d}). Skipping.",
+				mc2::fmt::safe(name), mc2::fmt::as_i32(MAX_STANDARD_FUNCTIONS));
 			return;
 		}
 		tableIndex = NumStandardFunctions++;
@@ -548,11 +542,11 @@ void enterStandardRoutine (mc2::czstring name, long routineKey, bool isOrder, mc
 	// or investigating dispatch issues.
 	static const bool s_ablRegTrace = mc2::gate::get<"MC2_ABL_REG_TRACE">();
 	if (s_ablRegTrace) {
-		CB_PRINTF("[ABL_REG] key=%3ld name=%-28s params=%-8s ret=%s cb=%p",
-			tableIndex, name ? name : "(null)",
+		crashbundle_printf<512>("", "[ABL_REG] key={:3d} name={:<28} params={:<8} ret={} cb={:016X}",
+			mc2::fmt::as_long(tableIndex), mc2::fmt::safe(name),
 			paramList ? paramList : "",
 			returnType ? returnType : "",
-			reinterpret_cast<void*>(callback));
+			mc2::fmt::as_ptr(reinterpret_cast<void*>(callback)));
 	}
 
 	SymTableNodePtr routineIdPtr;

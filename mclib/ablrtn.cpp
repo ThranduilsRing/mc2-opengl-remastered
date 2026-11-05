@@ -555,23 +555,23 @@ profile = true;
 	}
 
 #ifdef TEST_ABLFILE
-	ABLFile* aFile = new ABLFile;
-	aFile->create("ablFile.txt");
-	aFile->writeString("Testing writeString");
-	aFile->writeByte(nullptr);
-	aFile->writeInt(100);
-	aFile->close();
-	delete aFile;
-	aFile = nullptr;
+	{
+		auto aFile = std::make_unique<ABLFile>();
+		aFile->create("ablFile.txt");
+		aFile->writeString("Testing writeString");
+		aFile->writeByte(nullptr);
+		aFile->writeInt(100);
+		aFile->close();
+	}
 
 	unsigned char s[100];
-	ABLFile* bFile = new ABLFile;
-	bFile->open("ablFile.txt");
-	bFile->readString(s);
-	int32_t val = bFile->readInt();
-	bFile->close();
-	delete bFile;
-	bFile = nullptr;
+	{
+		auto bFile = std::make_unique<ABLFile>();
+		bFile->open("ablFile.txt");
+		bFile->readString(s);
+		int32_t val = bFile->readInt();
+		bFile->close();
+	}
 #endif
 }
 
@@ -690,7 +690,7 @@ void ABL_free (ABLPool which, void* block) {
 			continue;
 		if (activeCompile)
 			activeCompile->forget(block, static_cast<ABLPool>(index));
-		const size_t size = found->second;
+		[[maybe_unused]] const auto [liveBlock, size] = *found;
 		pool.live.erase(found);
 		pool.memory.deallocate(block, size, kAblAlign);
 		return;
@@ -722,7 +722,7 @@ void ablRememberSymbolInsertion(SymTableNodePtr* slot) {
 }
 void ablRememberTypeUse(TypePtr type) {
 	if (activeCompile && std::none_of(activeCompile->typeUses.begin(), activeCompile->typeUses.end(),
-		[type](const auto& entry) { return entry.first == type; }))
+		[type](const auto& entry) { return std::get<0>(entry) == type; }))
 		activeCompile->typeUses.emplace_back(type, type->numInstances);
 }
 

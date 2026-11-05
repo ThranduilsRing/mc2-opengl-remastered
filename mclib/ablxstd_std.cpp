@@ -100,7 +100,7 @@ void execStdReturn (void) {
 			// Copy the array/record...
 			char* dest = reinterpret_cast<char*>(targetPtr);
 			char* src = tos->address;
-			const size_t capacity = std::min(static_cast<size_t>(std::max(0L, targetTypePtr->size)), sizeof(StackItem));
+			const size_t capacity = static_cast<size_t>(std::clamp(static_cast<long>(targetTypePtr->size), 0L, static_cast<long>(sizeof(StackItem))));
 			const size_t sourceSize = src && expressionTypePtr && expressionTypePtr->form == FRM_ARRAY
 			    ? static_cast<size_t>(std::max(0L, expressionTypePtr->size)) : 0;
 			const size_t size = std::min(capacity, sourceSize);

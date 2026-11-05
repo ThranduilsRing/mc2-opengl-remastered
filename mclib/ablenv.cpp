@@ -14,6 +14,7 @@
 #include<cassert>
 #include<new>
 #include<set>
+#include<string_view>
 #include<vector>
 #include"platform_str.h"
 #include "Gates/gate.h"
@@ -955,9 +956,9 @@ bool ablSkipErroredModulesEnabled (void) {
 }
 static void ablReportSkippedErroredModule (long handle, mc2::czstring fileName, long errs) {
 	static std::set<long> s_reported;
-	if (s_reported.insert(handle).second) {
-		printf("[ABL-SKIP] handle=%ld file=%s compileErrors=%ld -> execution skipped (MC2_ABL_SKIP_ERRORED_MODULES)\n",
-			handle, fileName ? fileName : "?", errs);
+	if (const auto [it, inserted] = s_reported.insert(handle); inserted) {
+		mc2::fmt::print_out("[ABL-SKIP] handle={:d} file={} compileErrors={:d} -> execution skipped (MC2_ABL_SKIP_ERRORED_MODULES)\n",
+			mc2::fmt::as_long(handle), fileName ? fileName : "?", mc2::fmt::as_long(errs));
 		fflush(stdout);
 	}
 }
@@ -1309,7 +1310,7 @@ int ABLModule::setStaticReal (char* name, float value) {
 		return(3);
 
 	StackItemPtr dataPtr = staticData + symbol->defn.info.data.offset;
-	*(reinterpret_cast<float*>(dataPtr)) = value;
+	dataPtr->real = value;
 	return(0);
 }
 
@@ -1334,7 +1335,7 @@ float ABLModule::getStaticReal (char* name) {
     }
 
 	StackItemPtr dataPtr = staticData + symbol->defn.info.data.offset;
-	return(*(reinterpret_cast<float*>(dataPtr)));
+	return(dataPtr->real);
 }
 
 //---------------------------------------------------------------------------
@@ -1440,13 +1441,11 @@ char* ABLModule::getSourceFile (int fileNumber) {
 char* ABLModule::getSourceDirectory (int fileNumber, char* directory) {
 
 	char* fileName = ModuleRegistry[handle].sourceFiles[fileNumber];
-	int curChar = static_cast<int>(strlen(fileName));
-	while ((curChar > -1) && (fileName[curChar] != '\\') && (fileName[curChar] != '/'))
-		curChar--;
-	if (curChar == -1)
+	const size_t lastSeparator = std::string_view(fileName).find_last_of("/\\");
+	if (lastSeparator == std::string_view::npos)
 		return(nullptr);
 	strcpy(directory, fileName);
-	directory[curChar + 1] = '\0';
+	directory[lastSeparator + 1] = '\0';
 	return(directory);
 }
 

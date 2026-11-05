@@ -3,6 +3,12 @@
 #include "abldbug_internal.h"
 #include "mc2fmt.h"
 
+#include <cstring>
+
+namespace {
+// The debugger's dest buffers are the 255-byte valString locals and the 512-byte static message; the smaller bound is the safe one.
+constexpr size_t kDestCap = 255;
+}
 
 //---------------------------------------------------------------------------
 
@@ -69,7 +75,7 @@ void Debugger::sprintLineNumber (char* dest) {
 
 	//--------------------------
 	// PRINT LINE NUMBER HERE...
-	sprintf(dest, "LINE#");
+	mc2::fmt::to_buf_n(dest, kDestCap, "LINE#");
 }
 
 //---------------------------------------------------------------------------
@@ -80,21 +86,21 @@ void Debugger::sprintDataValue (char* dest, StackItemPtr data, TypePtr dataType)
 		dataType = IntegerTypePtr;
 
 	if (dataType == IntegerTypePtr)
-		sprintf(dest, "%d", data->integer);
+		mc2::fmt::to_buf_n(dest, kDestCap, "{:d}", mc2::fmt::as_i32(data->integer));
 	else if (dataType == RealTypePtr)
-		sprintf(dest, "%0.6f", data->real);
+		mc2::fmt::to_buf_n(dest, kDestCap, "{:.6f}", data->real);
 	else if (dataType == BooleanTypePtr)
-		sprintf(dest, "%s", (data->integer == 1) ? "true" : "false");
+		mc2::fmt::to_buf_n(dest, kDestCap, "{}", (data->integer == 1) ? "true" : "false");
 	else if (dataType == CharTypePtr)
-		sprintf(dest, "%c", data->byte);
+		mc2::fmt::to_buf_n(dest, kDestCap, "{}", mc2::fmt::as_char(data->byte));
 	else if (dataType->form == FRM_ARRAY) {
 		if (dataType->info.array.elementTypePtr == CharTypePtr) {
 			// PRINT CHAR ARRAY HERE...
-			sprintf(dest, "CHAR ARRAY");
+			mc2::fmt::to_buf_n(dest, kDestCap, "CHAR ARRAY");
 		}
 		else {
 			// PRINT ARRAY HERE...
-			sprintf(dest, "ARRAY");
+			mc2::fmt::to_buf_n(dest, kDestCap, "ARRAY");
 		}
 	}
 }
@@ -110,11 +116,11 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 
 	if (symbol->defn.key == DFN_CONST) {
 		if (typePtr == IntegerTypePtr)
-			sprintf(dest, "%d", symbol->defn.info.constant.value.integer);
+			mc2::fmt::to_buf_n(dest, kDestCap, "{:d}", mc2::fmt::as_i32(symbol->defn.info.constant.value.integer));
 		else if (typePtr == CharTypePtr)
-			sprintf(dest, "%c", symbol->defn.info.constant.value.character);
+			mc2::fmt::to_buf_n(dest, kDestCap, "{}", mc2::fmt::as_char(symbol->defn.info.constant.value.character));
 		else
-			sprintf(dest, "%.4f", symbol->defn.info.constant.value.real);
+			mc2::fmt::to_buf_n(dest, kDestCap, "{:.4f}", symbol->defn.info.constant.value.real);
 		}
 	else {
 		//--------------------------------------------------------------------
@@ -149,14 +155,14 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 		if ((typePtr->form != FRM_ARRAY) /*&& (typePtr->form != FRM_RECORD)*/) {
 			ABL_Assert(dataPtr != nullptr, 0, " Debugger.sprintSimpleValue(): dataPtr is NULL ");
 			if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM))
-				sprintf(dest, "%d", *(reinterpret_cast<int*>(dataPtr)));
+				mc2::fmt::to_buf_n(dest, kDestCap, "{:d}", dataPtr->integer);
 			else if (typePtr == CharTypePtr)
-				sprintf(dest, "\"%c\"", *(reinterpret_cast<char*>(dataPtr)));
+				mc2::fmt::to_buf_n(dest, kDestCap, "\"{}\"", mc2::fmt::as_char(dataPtr->byte));
 			else
-				sprintf(dest, "%.4f", *(reinterpret_cast<float*>(dataPtr)));
+				mc2::fmt::to_buf_n(dest, kDestCap, "{:.4f}", ablLoadFloat(dataPtr));
 			}
 		else
-			sprintf(dest, "ARRAY");
+			mc2::fmt::to_buf_n(dest, kDestCap, "ARRAY");
 	}
 
 	return(ABL_NO_ERR);
@@ -175,7 +181,7 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 	// level is less than the current scope level, follow the static links
 	// to the proper stack frame base...
 	if (symbol->defn.key == DFN_CONST)
-		sprintf(dest, "\"%s\"", symbol->defn.info.constant.value.stringPtr);
+		mc2::fmt::to_buf_n(dest, kDestCap, "\"{}\"", mc2::fmt::safe(symbol->defn.info.constant.value.stringPtr));
 	else {
 		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
@@ -227,16 +233,16 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 
 		if ((typePtr->form != FRM_ARRAY)) {
 			if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM))
-				sprintf(dest, "%d", *(reinterpret_cast<int*>(elementAddress)));
+				mc2::fmt::to_buf_n(dest, kDestCap, "{:d}", *(reinterpret_cast<int*>(elementAddress)));
 			else if (typePtr == CharTypePtr)
-				sprintf(dest, "\"%c\"", *(reinterpret_cast<char*>(elementAddress)));
+				mc2::fmt::to_buf_n(dest, kDestCap, "\"{}\"", *(reinterpret_cast<char*>(elementAddress)));
 			else
-				sprintf(dest, "%.4f", *(reinterpret_cast<float*>(elementAddress)));
+				mc2::fmt::to_buf_n(dest, kDestCap, "{:.4f}", ablLoadFloat(elementAddress));
 			}
 		else if (typePtr->info.array.elementTypePtr == CharTypePtr)
-			sprintf(dest, "\"%s\"", reinterpret_cast<char*>(elementAddress));
+			mc2::fmt::to_buf_n(dest, kDestCap, "\"{}\"", mc2::fmt::safe(reinterpret_cast<char*>(elementAddress)));
 		else
-			sprintf(dest, "Could you be more specific?");
+			mc2::fmt::to_buf_n(dest, kDestCap, "Could you be more specific?");
 	}
 
 	return(ABL_NO_ERR);
@@ -426,7 +432,8 @@ void Debugger::showValue (void) {
 		else {
 			char message[255];
 			sprintDataValue(message, tos, typePtr);
-			strcat(message, "\n");
+			const size_t used = std::strlen(message);
+			mc2::fmt::to_buf_n(message + used, sizeof(message) - used, "\n");
 			print(message);
 		}
 
