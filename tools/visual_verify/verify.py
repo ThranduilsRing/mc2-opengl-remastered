@@ -14,7 +14,7 @@ manifest (tools/visual_verify/regions/<bookmark>.json):
      crop contact-sheet dir a human or agent can Read for eyeball judgment.
 
 This reuses the shared PNG codec (tools/visual/png_io) and the same
-epsilon/mean-delta idea as tools/visual/visual_diff.py, but operates on the
+epsilon/mean-delta idea as the old whole-frame diff, but operates on the
 committed *regions* rather than the whole frame -- so the automated grade lines
 up with what the fleet actually cropped and complained about.
 
@@ -62,7 +62,7 @@ import regions as regionlib  # noqa: E402
 import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
 from smoke_lib import render_options_pin  # noqa: E402  (the render options are an input of the picture)
 
-EPSILON_LSB = 2  # per-channel LSB treated as dither noise (matches visual_diff.py)
+EPSILON_LSB = 2  # per-channel LSB treated as dither noise
 
 # Default thresholds when a region omits some/all (kept lenient; determinism makes
 # a true match ~0, so any real geometry/lighting change trips these).

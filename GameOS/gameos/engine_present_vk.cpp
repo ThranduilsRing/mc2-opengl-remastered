@@ -82,6 +82,7 @@ struct EnginePresentVk::Impl {
 
     mc2vk::OwnedSurface surface;   // released with the instance it was made on (the engine context's), before the swapchain below
     uint32_t         presentFamily = UINT32_MAX;
+    bool offscreen = false;   // Linux: the window surface is not presentable from this GPU; composite and capture readback run, nothing is presented
     VkQueue          presentQ  = VK_NULL_HANDLE;
 
     // swapchain
@@ -310,6 +311,12 @@ mc2vk::OwnedShaderModule loadSpv(VkDevice device, const std::string& path) {
 
 // -------- swapchain (re)build against the SHARED device -------------------
 bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
+    if (s.offscreen) {   // no usable surface: every surface query is skipped
+        s.presentFamily = s.gfxFamily;
+        s.presentQ = s.gfxQ;
+        s.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        return true;
+    }
     // The shared context picked gfxFamily; confirm it can present to our surface.
     VkBool32 canPresent = VK_FALSE;
     if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, s.gfxFamily, s.surface.get(), &canPresent)
@@ -377,6 +384,12 @@ void destroySwapchainOnly(EnginePresentVk::Impl& s) {
 
 bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
                     VkSwapchainKHR oldSwapchain, std::string& reason) {
+    if (s.offscreen) {   // one placeholder image index, never touched: the tail skips the blit and the present
+        s.scFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        s.scExtent = {w, h};
+        s.scImages.assign(1, VK_NULL_HANDLE);
+        return true;
+    }
     VkSurfaceCapabilitiesKHR caps{};
     if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s.phys, s.surface.get(), &caps) != VK_SUCCESS) {
         reason = "vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed"; return false;
@@ -468,6 +481,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
 // old happy path (create with oldSwapchain=old, then destroy old) -> no gate.
 bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
                       EnginePresentHealth& health, std::string& reason) {
+    if (s.offscreen) { s.scExtent = {w, h}; return true; }
     // Full quiesce: no present/blit submit may still reference the old swapchain
     // when we retire it, and the surface must be settled before recreate.
     s.ctx->waitIdle("present_swapchain_rebuild");
@@ -1928,6 +1942,15 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     if (!SDL_Vulkan_CreateSurface(window_, s.inst, &rawSurface))
         return fail(std::string("SDL_Vulkan_CreateSurface: ") + SDL_GetError());
     s.surface = mc2vk::OwnedSurface(s.inst, rawSurface);
+    {
+        // Xvfb is only presentable from the GPU its loader picks; on the others no queue family supports the window surface.
+        // Run offscreen there (no swapchain, no present): the shared image is still composited and the capture readback reads it.
+        VkBool32 canPresent = VK_FALSE;
+        if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, s.gfxFamily, s.surface.get(), &canPresent) != VK_SUCCESS || canPresent != VK_TRUE) {
+            s.offscreen = true;
+            plog("window surface not presentable from this GPU; running offscreen (capture readback only, no present).");
+        }
+    }
 #endif
 
     // ---- queue confirm + present mode -------------------------------------
@@ -2489,7 +2512,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     // A failed rebuild retires the old chain and leaves none: never acquire from a null swapchain.
-    if (!s.swapchain) {
+    if (!s.offscreen && !s.swapchain) {
         health_.fallback_reason = "no swapchain (an earlier rebuild failed)";
         return false;
     }
@@ -2499,7 +2522,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
       mc2::battlebench::NsScope benchAcquire(mc2::battlebench::PresAcquireNs, 0);
       const auto acqT0 = std::chrono::steady_clock::now();
-      r = vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex);
+      r = s.offscreen ? VK_SUCCESS : vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex);
       mc2_hitch2::noteAcquire(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - acqT0).count())); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // Rebuild for the current drawable; minimized windows retry next frame.
@@ -2611,6 +2634,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
+    if (!s.offscreen) {
     // swapchain image: UNDEFINED -> TRANSFER_DST. srcStage includes
     // COLOR_ATTACHMENT_OUTPUT (the acquire wait stage) to form the acquire
     // execution dependency (sync-validation WAR guard, per the T0 harness note).
@@ -2635,6 +2659,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     barrier(s.curCbuf(), scImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_ACCESS_TRANSFER_WRITE_BIT, 0,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
     // Return the shared image to COLOR_ATTACHMENT for the next native composite.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -2644,17 +2669,17 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     }
 
     // Submit the composite and tail together, ordered after acquire. Reset the slot fence only for a real submit.
-    VkSemaphore imgRenderSem = s.renderSems[imageIndex].get();
-    VkSemaphore waitSem      = s.curAcquireSem().get();
+    VkSemaphore imgRenderSem = s.offscreen ? VK_NULL_HANDLE : s.renderSems[imageIndex].get();
+    VkSemaphore waitSem      = s.offscreen ? VK_NULL_HANDLE : s.curAcquireSem().get();
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkCommandBuffer submitCbufs[2] = { s.curCompositeCbuf(), s.curCbuf() };
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount   = 1;
+    si.waitSemaphoreCount   = s.offscreen ? 0 : 1;
     si.pWaitSemaphores      = &waitSem;
     si.pWaitDstStageMask    = &waitStage;
     si.commandBufferCount   = 2;
     si.pCommandBuffers      = submitCbufs;
-    si.signalSemaphoreCount = 1;
+    si.signalSemaphoreCount = s.offscreen ? 0 : 1;
     si.pSignalSemaphores    = &imgRenderSem;
     { const VkFence inFlightFence = s.curInFlight().get(); vkResetFences(s.dev, 1, &inFlightFence); }
     s.compositePending = false;   // consumed by this submit (success or fail-soft)
@@ -2691,7 +2716,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     // Main may now record frame N+1. Only the queue and immutable WSI handles are touched here.
     { ZoneScopedN("VKIsl.Present.QueuePresent");
       mc2::battlebench::NsScope benchPresent(mc2::battlebench::PresQueuePresentNs);
-      s.lastWsiResult = s.ctx->present(s.presentQ, pi); }
+      s.lastWsiResult = s.offscreen ? VK_SUCCESS : s.ctx->present(s.presentQ, pi); }
     return true;
 }
 

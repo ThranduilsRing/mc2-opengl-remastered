@@ -365,6 +365,7 @@ def build_inventory(root: Path, paths: list[str] | None = None, *, excluded=(), 
     items = {p: {"path": p, "basename": PurePosixPath(p).name, "stem": PurePosixPath(p).stem,
                  "callers_by_basename": [], "callers_by_stem": []} for p in scripts}
     found = {}
+    targets = Targets(scripts, "", root)   # index built once; only `source` changes per file
     for source in files:
         if source in omit or PurePosixPath(source).name in {"callers.json", "callers_allowlist.json"}:
             continue
@@ -378,7 +379,7 @@ def build_inventory(root: Path, paths: list[str] | None = None, *, excluded=(), 
         except (OSError, UnicodeError):
             continue
         lines = content.splitlines()
-        targets = Targets(scripts, source, root)
+        targets.source = source
         if suffix in {".py", ".pyw"}:
             refs = _python_refs(content, source, root)
         elif suffix == ".json":

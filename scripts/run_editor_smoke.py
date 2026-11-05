@@ -69,6 +69,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402
 
 DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.4\Mission Editor.exe"
+# The install the owned-marker, new-shell and non-render panel workflows may run from (and the stock-data oracle base).
+EDITOR_SMOKE_INSTALL = Path(os.environ.get("MC2_EDITOR_SMOKE_INSTALL") or Path(DEFAULT_EXE).parent)
 
 # Run the editor window minimized/non-activating during smoke (set from --minimized).
 MINIMIZED = True
@@ -627,8 +629,8 @@ def write_roundtrip_ledger(path: Path, results: list, groups: dict, evidence: Pa
 
 
 def marker_reload_provenance(exe):
-    if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
-        raise ValueError("owned marker reload is restricted to lane3")
+    if exe.parent != EDITOR_SMOKE_INSTALL.resolve():
+        raise ValueError("owned marker reload is restricted to the editor smoke install")
     fingerprint = exe_fingerprint.extract(exe)
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
         timeout=10, **child_kwargs(redirected=True)).strip()
@@ -636,7 +638,7 @@ def marker_reload_provenance(exe):
         raise ValueError("legacy editor requires a clean build fingerprint matching worktree HEAD; "
                          f"exe={exe.as_posix()} expected_sha={head[:12]} "
                          f"observed={json.dumps(fingerprint, sort_keys=True)}; "
-                         "rebuild EditRel and deploy the matching executable to lane3")
+                         "rebuild EditRel and deploy the matching executable to the editor smoke install")
     return dict(fingerprint=fingerprint, exe_sha256=hashlib.sha256(exe.read_bytes()).hexdigest(), head=head)
 
 
@@ -1167,8 +1169,8 @@ def run_new_model(exe: Path, stock: StockInputs, directory: Path, timeout: int) 
     try:
         if not exe.exists():
             raise ValueError(f"new shell executable missing: {exe}")
-        if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
-            raise ValueError("new shell smoke is restricted to lane3")
+        if exe.parent != EDITOR_SMOKE_INSTALL.resolve():
+            raise ValueError("new shell smoke is restricted to the editor smoke install")
         if not exe_guard.exe_has_offscreen(exe):
             raise ValueError("new shell lacks background-window support")
         fingerprint = exe_fingerprint.extract(exe)
@@ -1423,7 +1425,7 @@ def grade_chooser(name, directory, lines):
     views = [dict(re.findall(r"(\w+)=([^\s]+)", line)) for line in lines if line.startswith("[EDITOR_CHOOSER_VIEW v1] ")]
     if views != [dict(family=family, stage=stage, changed="1", widgets="1") for family in families for stage in ("browse", "search")]:
         raise ValueError("chooser browse/search widget evidence missing or duplicated")
-    independent = oracle(Path("A:/Games/mc2-opengl/mc2-win64-lane3"), Path("A:/Games/mc2-opengl"),
+    independent = oracle(EDITOR_SMOKE_INSTALL, Path("A:/Games/mc2-opengl"),
                          "MC2X-CVE-G" if name == "chooser_mod" else "")
     for family in families:
         preview = (directory / f"{family}-preview.tsv").read_text().strip().split("\t")
@@ -1668,7 +1670,7 @@ def _oracle_exists(independent, key):
 
 
 def panel_render_host_allowed(exe: Path) -> bool:
-    if exe.parent == Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
+    if exe.parent == EDITOR_SMOKE_INSTALL.resolve():
         return True
     from tools.repo_intel.lane_model import lane_for
     lane = lane_for(str(exe.parent))
@@ -1681,9 +1683,9 @@ def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout
     provenance = {}
     start = time.time()
     try:
-        allowed = panel_render_host_allowed(exe) if name == "panel_render" else exe.parent == Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve()
+        allowed = panel_render_host_allowed(exe) if name == "panel_render" else exe.parent == EDITOR_SMOKE_INSTALL.resolve()
         if not allowed or not exe.exists():
-            raise ValueError("panel smoke requires its owned builder install (other workflows require lane3)")
+            raise ValueError("panel smoke requires its owned builder install (other workflows require the editor smoke install)")
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
                                        **child_kwargs(redirected=True)).strip()
         fingerprint = exe_fingerprint.extract(exe)

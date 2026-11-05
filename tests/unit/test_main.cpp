@@ -1,8 +1,11 @@
 // tests/unit/test_main.cpp
 // doctest entry-point translation unit. The macro must appear in exactly
 // ONE TU; every other test*.cpp just `#include "doctest.h"`.
-// Own main (instead of DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN): the process leaves through _Exit after the run and a flush, because
-// on the Linux box the test binary hung in static teardown after "Status: SUCCESS" and held the GPU lock for hours.
+//
+// Custom main instead of DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN: on the Linux box mc2_tests printed
+// "[doctest] Status:" and then hung in exit (futex_wait on a thread that never ran), holding the GPU
+// lock for an hour. Static destructors of linked engine code can wait for threads that are never
+// joined, so skip them: flush the streams and leave through _Exit with the doctest result.
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h"
 

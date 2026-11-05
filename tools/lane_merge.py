@@ -59,12 +59,13 @@ import subprocess
 import sys
 import time
 import tempfile
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
+from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
+from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 
 #: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
@@ -101,7 +102,6 @@ GENERATORS = [
 REGENERABLE = {
     "tools/file_size_ratchet.baseline.json",
     "tools/cxx17_ratchet/baseline.json",
-    "tools/dup_lines_ratchet.baseline.json",
     "tools/axis_swizzle_ratchet.baseline.json",
     "scripts/gl_shader_variants.json",
 }
@@ -156,14 +156,12 @@ def is_regenerable(path):
 TIGHTENED_BASELINES = [
     "tools/file_size_ratchet.baseline.json",
     "tools/cxx17_ratchet/baseline.json",
-    "tools/dup_lines_ratchet.baseline.json",
     "tools/axis_swizzle_ratchet.baseline.json",
 ]
 # (label, script relative to the tools dir, args)
 RATCHETS = [
     ("file_size", "file_size_ratchet.py", ["--check", "--tighten", "--worktree"]),
     ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--tighten", "--worktree"]),
-    ("dup_lines", "dup_lines_ratchet.py", ["--check", "--worktree"]),
     ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--tighten", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
@@ -171,12 +169,6 @@ RATCHETS = [
 BUG_TABLES = {".claude/cleanup/BUGS-FOUND-FIXED.md"}
 ROW = re.compile(r"^\| (\d+) \|")
 UNMERGED = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
-
-
-class Stop(Exception):
-    def __init__(self, code: int, msg: str):
-        super().__init__(msg)
-        self.code = code
 
 
 def run(root: str, cmd: list[str], env: dict | None = None) -> subprocess.CompletedProcess:  # non-git commands (the ratchets)
@@ -203,16 +195,6 @@ def run_logged(root, cmd, env=None, log_path=None):
                 if failure_line(line):
                     failures.append(line)
             return subprocess.CompletedProcess(cmd, child.wait(), "".join(dict.fromkeys(failures + list(tail))))
-
-
-def failure_line(line):
-    """Keep pytest/doctest names and source locations even before a long tail."""
-    return bool(re.search(r"FAILED|FAIL:|ERROR|VIOLATION|PERF_COUNTER_WARN|test case:|TEST CASE:|\.(?:py|cpp|h)[:(]\d+", line))
-
-
-def failure_summary(output):
-    rows = output.splitlines()
-    return "\n".join(dict.fromkeys([line for line in rows if failure_line(line)] + rows[-8:]))
 
 
 def git(root: str, *args: str) -> subprocess.CompletedProcess:
@@ -849,9 +831,18 @@ def regenerate_all(root, *, dry_run=False):
         if os.path.exists(os.path.join(root, "CLAUDE.md")):
             raise Stop(6, "regenerate-all: missing log_tag_census.py")
         return []
-    for label, script, args in GENERATORS:
-        r = run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+    # The generators write disjoint artifacts (ARTIFACTS) and none reads another's output, so they run concurrently
+    # (about 4 at a time: the precheck budget is shared with the suites). Failures are reported in table order.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def generate(g):
+        label, script, args = g
+        return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+    with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(GENERATORS))) as pool:
+        results = list(pool.map(generate, GENERATORS))
+    for label, r in results:
         print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
+    for label, r in results:
         if r.returncode:
             raise Stop(6, f"regenerate-all {label} failed:\n{r.stdout}")
     # Windows text-mode generators can otherwise dirty every expected JSON
@@ -877,83 +868,12 @@ PYTHON_SUITES = [
 ]
 
 
-PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", "E:/mc2-installs/_precheck/tree")
-
-
-def _inside(path: str, root: str) -> bool:
-    path, root = os.path.abspath(path), os.path.abspath(root)
-    try:
-        return os.path.commonpath([path, root]) == root
-    except ValueError:   # different drives
-        return False
-
-
-def precheck_scratch_base(root: str) -> str | None:
-    """Scratch parent for the fast path: G:/mc2-tmp (lane-rules), else the OS temp dir. Never inside the main worktree."""
-    base = "G:/mc2-tmp" if os.path.isdir("G:/mc2-tmp") else None
-    if _inside(base or tempfile.gettempdir(), root):
-        raise Stop(5, f"precheck scratch {base or tempfile.gettempdir()} is inside {root}")
-    return base
-
-
-class TreeLock:
-    """Exclusive OS file lock (the OS drops it if the holder dies); two prechecks never share the warm tree."""
-    def __init__(self, path, wait_s=3600, sleep=time.sleep, clock=time.monotonic):
-        self.path, self.wait_s, self.sleep, self.clock, self.fh = path, wait_s, sleep, clock, None
-
-    def _try(self):
-        if os.name == "nt":
-            import msvcrt
-            msvcrt.locking(self.fh.fileno(), msvcrt.LK_NBLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(self.fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-    def __enter__(self):
-        os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
-        self.fh = open(self.path, "a+")
-        deadline = self.clock() + self.wait_s
-        announced = False
-        while True:
-            try:
-                self._try()
-                return self
-            except OSError:
-                if self.clock() >= deadline:
-                    self.fh.close()
-                    raise Stop(5, "precheck tree busy: lock " + self.path + " held past wait")
-                if not announced:
-                    print("precheck: warm tree busy (another --with-link run); waiting", flush=True)
-                    announced = True
-                self.sleep(5)
-
-    def __exit__(self, *exc):
-        self.fh.close()   # closing drops the OS lock
-
-
-def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
-    """Create the persistent warm worktree once (detached, outside the main worktree), then park it on `commit`."""
-    if _inside(tree, root):
-        raise Stop(5, f"warm precheck tree {tree} is inside {root}")
-    if not os.path.exists(os.path.join(tree, ".git")):
-        os.makedirs(os.path.dirname(os.path.abspath(tree)), exist_ok=True)
-        r = git(root, "worktree", "add", "--detach", "--force", os.path.abspath(tree), commit)
-        if r.returncode:
-            raise Stop(5, "cannot create warm tree: " + failure_summary(r.stdout + r.stderr))
-        from bootstrap_worktree_build import ensure_deps
-        ensure_deps(os.path.abspath(tree), os.path.abspath(root))
-    else:
-        r = git(tree, "checkout", "--quiet", "-f", "--detach", commit)
-        if r.returncode:
-            raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout + r.stderr))
-
-
 def stale_inventories(root: str, commit: str, regen=None) -> list[str]:
     """A9: derived inventories that regenerating at `commit` would change (empty = fresh). The batch regenerates and
     commits them anyway; failing here moves that cost from the merge window to the lane."""
     regen = regen or regenerate_all
     proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
-    with tempfile.TemporaryDirectory(prefix="stale-inv-", dir=proof_root) as scratch:
+    with scratch_dir("stale-inv-", proof_root) as scratch:
         snapshot = os.path.join(scratch, "tree")
         r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
         if r.returncode:
@@ -974,12 +894,23 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
     return rows
 
 
+REGEN_WORKERS = 4   # regenerate_all's inner pool; counted against a lint's CPU budget
+
+
 def lint(root: str, ref: str, runner=None, regen=None) -> int:
+    """One host slot per lint run (granted FIFO by LintSlots), after sweeping dead lints' scratch."""
+    sweep_stale_scratch([precheck_scratch_base(root), "E:/mc2-archive-2026-10/proofs"])
+    hold = LintSlots().acquire()   # host-wide JOBS cap across all `--lint` processes, released when this run ends
+    try:
+        return _lint_locked(root, ref, runner, regen)
+    finally:
+        hold.close()
+
+
+def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags, stale inventories)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
-    runner = runner or run
-    started = time.monotonic()
-    failed: list[str] = []
+    runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
@@ -989,7 +920,8 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
     rows = lint_rows([sys.executable, "-B"], base_ref, sha)
     # callers-refresh must precede callers in one tree; every other row gets its own tree so they run concurrently.
     chains = [[r for r in rows if r[0].startswith("callers")]] + [[r] for r in rows if not r[0].startswith("callers")]
-    with tempfile.TemporaryDirectory(prefix="lane-lint-", dir=precheck_scratch_base(root)) as scratch:
+    # lint never takes the precheck TreeLock (own shared clones)
+    with scratch_dir("lane-lint-", precheck_scratch_base(root)) as scratch:
         snap = os.path.join(scratch, "tree")   # one checkout shared by all rows: only callers-refresh writes (tests/callers.json), which no other row reads
         r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
         if r.returncode:
@@ -1005,7 +937,9 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
                 out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=len(chains) + 1) as pool:
+        # Budget: the inventories worker fans out REGEN_WORKERS generators, the rows get the rest of the lane half's CPUs.
+        row_workers = max(1, min(len(chains), bin(cpu_masks()["lane"]).count("1") - REGEN_WORKERS))
+        with ThreadPoolExecutor(max_workers=row_workers + 1) as pool:
             inv = pool.submit(lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
             for f in [pool.submit(chain, i) for i in range(len(chains))]:
                 try:
@@ -1096,6 +1030,8 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         env = verify_env(workdir)
         if label in {p[0] for p in PYTHON_SUITES}:
             env["MC2_IN_GATE"] = "1"   # the gate's env: a test that breaks under it must fail here, not in the window (W112)
+            # Two suites (+ the link) share the host budget instead of each taking all of JOBS (about 18 processes).
+            env["MC2_TEST_JOBS"] = str(max(1, int(host_jobs()) // (3 if with_link else 2)))
         r = run(workdir, command, env=env)
         secs = time.monotonic() - t0
         timings.append((label, secs))
@@ -1149,8 +1085,9 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             with TreeLock(PRECHECK_TREE + ".lock"):
                 timed("tree-checkout", lambda: ensure_precheck_tree(root, PRECHECK_TREE, commit))
                 stage("configure", PRECHECK_TREE, py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])
-                stage("link-mc2", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])
-                stage("link-tools", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])
+                link_j = str(max(1, int(host_jobs()) // 2))   # suites take JOBS/3 each; the sum stays near JOBS
+                stage("link-mc2", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2", "-j" + link_j])
+                stage("link-tools", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + link_j])
 
         # Independent chains run concurrently, each in its own shared clone (no shared generated files).
         chains = [[s for s in steps if s[0] in {r[0] for r in RATCHETS}],
@@ -1344,11 +1281,18 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
 
+def cpu_mode(args) -> str:
+    """"gate" (CPUs 0-7) only for the merge itself (--batch or a single tip); --lint, --precheck, --pre-gate, --regenerate-all are lane work."""
+    lane_only = args.lint or args.precheck or args.pre_gate or args.regenerate_all
+    return "gate" if (args.batch or args.ref) and not lane_only else "lane"
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
+    pin_cpus(cpu_mode(args))   # children inherit; only --batch / merge-gate stages take the gate half (CPU_SPLIT), lane modes stay off it
     if args.lint:
         return lint(args.root, args.lint)
     if args.precheck:

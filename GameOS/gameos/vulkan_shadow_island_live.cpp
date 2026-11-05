@@ -952,7 +952,10 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
     if (drawCasters) {
     draw_static_runs(s, cb, s->instRuns, alphaBound);
-    s->mech.record(cb, s->parity, dynamicOffset);
+    // Only the mechs inside the view-swept set can land in the fitted map.
+    static std::vector<uint8_t> viewMask;
+    s->mover.runMaskView(s->mech.runs(), viewMask);
+    s->mech.record(cb, s->parity, dynamicOffset, viewMask.data());
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
@@ -1175,8 +1178,11 @@ static void record_local_shadows(ShadowIsland* s) {
             lightMatrix(tiles[t], m);
             uint32_t dyn = 0;
             if (!local_ubo_slice(s, m, dyn)) break;
+            // Only the mechs inside this light's reach can cast into its tile.
+            static std::vector<uint8_t> tileMask;
+            s->mover.runMaskLight(s->mech.runs(), tiles[t].pos, tiles[t].farDistance, tileMask);
             local_tile_viewport(cb, t);
-            s->mech.record(cb, s->parity, dyn);
+            s->mech.record(cb, s->parity, dyn, tileMask.data());
         }
     }
     vkCmdEndRenderPass(cb);
@@ -1267,10 +1273,11 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     if (!s || s->disabled || !upload_geometry_once(s) || !begin_frame(s,g_shadowFrameEpoch)) return;
     refresh_alpha_casters(s);
     s->mech.stage(g_shadowFrameEpoch);
+    const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
+    s->mover.refreshMechActors(cameraRows,light);   // mech spheres for the per-map run masks below and for prepare()
     record_bake(s);
     record_local_shadows(s);   // LOCAL-LIGHTS-2
     const auto start=std::chrono::steady_clock::now();
-    const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
     const auto props=std::span(static_cast<const GpuStaticPropInstance*>(instances),instanceCount);
     if (!s->mover.prepare(s->size,cameraRows,light,props,s->bake.ready())) return;
     const auto& selected=s->mover.props();

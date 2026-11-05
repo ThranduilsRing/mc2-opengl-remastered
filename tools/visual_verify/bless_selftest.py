@@ -171,7 +171,7 @@ def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H,
                    "engine_capture_fired": True}],
         "n_captured": 1, "n_requested": 1,
         "declared_env": {"MC2_SMOKE_FREEZE_ANIM": "1"},
-        "backend": backend if backend is not None else {"requested": "gl", "drew": ["gl"]},
+        "backend": backend if backend is not None else {"requested": "vulkan", "drew": ["vulkan"]},
     }
     if options is not None:
         doc["render_options"] = _default_options() if options == "defaults" else options
@@ -310,7 +310,7 @@ def main() -> int:
         check("T6 the golden records the 17 render options, the declared env and the backend",
               g["capture_env"]["render_options"] == _default_options() and len(g["capture_env"]["render_options"]) == len(_default_options())
               and g["capture_env"]["declared_env"] == {"MC2_SMOKE_FREEZE_ANIM": "1"}
-              and g["capture_env"]["backend"] == {"requested": "gl", "drew": ["gl"]})
+              and g["capture_env"]["backend"] == {"requested": "vulkan", "drew": ["vulkan"]})
         # T16 -- verify.py grades only a candidate whose options agree with the golden's (or whose differing keys --vary names).
         cand = json.loads((r1 / "capture_run.json").read_text(encoding="utf-8"))
         check("T16 a candidate with the golden's options is accepted",
