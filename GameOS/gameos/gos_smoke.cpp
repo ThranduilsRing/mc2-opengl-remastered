@@ -25,12 +25,17 @@
 #include "hitch_stats.h"
 #include "vulkan_context.h"
 #include "platform_windows.h"
+#ifndef LINUX_BUILD
 #include <tlhelp32.h>
+#endif
 
 namespace {
 // Host load stamped into the FIRST60 line so a perf verdict taken on a busy machine can be discounted: CPU busy percent of everything except this
 // process between two samples, and how many other mc2.exe processes were running.
 struct CpuSample { unsigned long long idle = 0, total = 0, self = 0; };
+#ifdef LINUX_BUILD
+CpuSample sampleCpu() { return {}; }   // host-load stamp is Windows-only
+#else
 CpuSample sampleCpu() {
     FILETIME i, k, u, c, e, sk, su;
     CpuSample s;
@@ -42,12 +47,17 @@ CpuSample sampleCpu() {
     if (GetProcessTimes(GetCurrentProcess(), &c, &e, &sk, &su)) s.self = q(sk) + q(su);
     return s;
 }
+#endif
 double cpuBusyPct(const CpuSample& a, const CpuSample& b) {
     const unsigned long long dt = b.total - a.total, di = b.idle - a.idle, ds = b.self - a.self;
     if (!dt) return -1.0;
     const double busy = static_cast<double>(dt - di), mine = static_cast<double>(ds);
     return 100.0 * (busy > mine ? busy - mine : 0.0) / static_cast<double>(dt);
 }
+#ifdef LINUX_BUILD
+std::optional<int> otherMc2Count() { return std::nullopt; }
+void startOtherMc2Sampler() {}
+#else
 std::optional<int> otherMc2Count() {
     int n = 0;
     const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -72,6 +82,7 @@ void startOtherMc2Sampler() {
         }
     }).detach();
 }
+#endif
 }  // namespace
 
 namespace {
