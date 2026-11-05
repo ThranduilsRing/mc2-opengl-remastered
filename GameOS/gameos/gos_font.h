@@ -1,6 +1,9 @@
 #ifndef GOS_FONT_H
 #define GOS_FONT_H
 
+#include <cstdint>
+#include <memory>
+
 struct gosGlyphMetrics {
     int32_t minx;
     int32_t maxx;
@@ -19,7 +22,7 @@ struct gosGlyphInfo {
           ink_top_(nullptr), ink_bot_(nullptr), ink_valid_(nullptr) {}
     uint32_t num_glyphs_;
     uint32_t start_glyph_;
-    gosGlyphMetrics* glyphs_;
+    std::unique_ptr<gosGlyphMetrics[]> glyphs_;
     uint32_t max_advance_;
     uint32_t font_ascent_;
     uint32_t font_line_skip_;
@@ -34,16 +37,15 @@ struct gosGlyphInfo {
     // 1 if the glyph has any opaque pixels, 0 otherwise (sentinel —
     // can't use ink_top==ink_bot==0 since a real glyph may legitimately
     // span a single row at offset 0).
-    int8_t*  ink_top_;
-    int8_t*  ink_bot_;
-    uint8_t* ink_valid_;
+    std::unique_ptr<int8_t[]>  ink_top_;
+    std::unique_ptr<int8_t[]>  ink_bot_;
+    std::unique_ptr<uint8_t[]> ink_valid_;
 };
 
 // Atlas extracted from a .d3f file. Pixels are 8-bit alpha, square or
-// rectangular per format version. Caller takes ownership and must
-// delete[] pixels.
+// rectangular per format version. Caller takes ownership of pixels.
 struct gosD3FAtlas {
-    uint8_t* pixels;
+    std::unique_ptr<uint8_t[]> pixels;
     int      width;
     int      height;
 };
