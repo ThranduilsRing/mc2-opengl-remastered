@@ -66,7 +66,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 943,
+          "line": 941,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import ensure_deps"
@@ -3445,7 +3445,14 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 65,
+          "line": 63,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
+        },
+        {
+          "path": "tools/lane_merge_trust.py",
+          "line": 11,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -4422,7 +4429,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 702,
+          "line": 700,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees, build_current"
@@ -9051,10 +9058,10 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 67,
+          "line": 65,
           "evidence": "import",
           "reference": "_git_util",
-          "text": "import _git_util  # noqa: E402  (shared git helpers)"
+          "text": "import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)"
         },
         {
           "path": "tools/lane_sim_rows.py",
@@ -11767,6 +11774,21 @@
       ]
     },
     {
+      "path": "tools/lane_merge_trust.py",
+      "basename": "lane_merge_trust.py",
+      "stem": "lane_merge_trust",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/lane_merge.py",
+          "line": 65,
+          "evidence": "import",
+          "reference": "lane_merge_trust",
+          "text": "import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)"
+        }
+      ]
+    },
+    {
       "path": "tools/lane_sim_rows.py",
       "basename": "lane_sim_rows.py",
       "stem": "lane_sim_rows",
@@ -11774,7 +11796,7 @@
       "callers_by_stem": [
         {
           "path": "tools/lane_merge.py",
-          "line": 68,
+          "line": 66,
           "evidence": "import",
           "reference": "lane_sim_rows",
           "text": "from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401"
