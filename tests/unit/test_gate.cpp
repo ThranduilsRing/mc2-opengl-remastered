@@ -1516,6 +1516,7 @@ vkp::DeviceCaps fullCaps() {
     c.shaderSampledImageArrayNonUniformIndexing = c.descriptorBindingPartiallyBound = true;
     c.dynamicRendering = c.synchronization2 = true;
     c.independentBlend = c.samplerAnisotropy = c.shaderSampledImageArrayDynamicIndexing = true;
+    c.multiDrawIndirect = c.drawIndirectFirstInstance = c.drawIndirectCount = true;
     c.maxImageDimension2D = 16384;
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
@@ -1713,9 +1714,9 @@ TEST_CASE("vk profile: the line names the device, both versions, what is missing
     const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
     CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
                   "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext,sampler_anisotropy:core enabled=timelineSemaphore,bufferDeviceAddress,"
+                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext,sampler_anisotropy:core,indirect_draw:core enabled=timelineSemaphore,bufferDeviceAddress,"
                   "descriptorIndexing,runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,shaderSampledImageArrayDynamicIndexing,dynamicRendering,"
-                  "synchronization2,independentBlend,samplerAnisotropy "
+                  "synchronization2,independentBlend,samplerAnisotropy,multiDrawIndirect,drawIndirectFirstInstance,drawIndirectCount "
                   "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
     CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);

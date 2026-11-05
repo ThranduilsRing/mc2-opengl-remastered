@@ -26,6 +26,8 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     c.independentBlend = core10.independentBlend == VK_TRUE;
     c.samplerAnisotropy = core10.samplerAnisotropy == VK_TRUE;
     c.shaderSampledImageArrayDynamicIndexing = core10.shaderSampledImageArrayDynamicIndexing == VK_TRUE;
+    c.multiDrawIndirect = core10.multiDrawIndirect == VK_TRUE;
+    c.drawIndirectFirstInstance = core10.drawIndirectFirstInstance == VK_TRUE;
 
     if (c.usableApi() >= makeApi(1, 1)) {             // physical-device properties2 is core from 1.1
         VkPhysicalDeviceIDProperties id{};
@@ -70,6 +72,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     }
     vkGetPhysicalDeviceFeatures2(pd, &f2);
 
+    c.drawIndirectCount = f12.drawIndirectCount == VK_TRUE;
     c.timelineSemaphore = f12.timelineSemaphore == VK_TRUE;
     c.bufferDeviceAddress = f12.bufferDeviceAddress == VK_TRUE;
     c.descriptorIndexing = f12.descriptorIndexing == VK_TRUE;
