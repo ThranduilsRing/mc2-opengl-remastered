@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -35,7 +35,7 @@ RC_NO_BASELINE = 78     # determinism/saveload row refused: no Linux baseline fi
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 # `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
-NO_GPU_ROWS = ("build", "unit")   # rows that never touch a GPU: no GPU lock, queue group "build"
+NO_GPU_ROWS = ("build", "unit", "unit-san")   # rows that never touch a GPU: no GPU lock, queue group "build"
 GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
 
 # a retry must never reuse a row's --out dir (sim_determinism refuses an existing one and the row would be VOID): one fresh dir per attempt
@@ -108,7 +108,7 @@ mkdir -p $TMPDIR; CPUS="$((4*N))-$((4*N+3))"   # box quota is ~30.7 CPUs and a g
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
-CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
+CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|unit-san|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
 RES=0
 FPPY='import sys, json, os
 sys.path.insert(0, "tools")
@@ -120,8 +120,8 @@ print("digest=%s stock=%s baseline=%s problems=%d" % (fp["digest"], fp["stock_di
 sys.exit(7 if want and want != fp["digest"] else 0)'
 for row in "${ROWS[@]}"; do
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=${name:0:50}-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"
-  case $row in build|unit|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
-  case $row in unit) TMO=1200;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
+  case $row in build|unit|unit-san|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
+  case $row in unit-san) TMO=3000;; unit) TMO=1200;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
@@ -132,6 +132,9 @@ for row in "${ROWS[@]}"; do
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
                  cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && cd build64-tests && ./mc2_tests --no-breaks" ;;   # cwd = build dir: clang __FILE__ is ../tests/unit/x.cpp and source-reading cases resolve it against cwd
+    unit-san)    # same doctest tier under clang ASan+UBSan in its OWN tree (build64-tests-san); UBSan recovers (all findings listed) and is counted from log_path files
+                 SANF="-fsanitize=address,undefined -fno-omit-frame-pointer"
+                 cmd="cmake -S tests/unit -B build64-tests-san -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS='-stdlib=libc++ $SANF' -DCMAKE_C_FLAGS='$SANF' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld $SANF' -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests-san -j16 -k 0 mc2_tests && cd build64-tests-san && rm -f \$OUT/ubsan.* && ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1:log_path=\$OUT/ubsan ./mc2_tests --no-breaks; rc=\$?; n=\$(cat \$OUT/ubsan.* 2>/dev/null | grep -c 'runtime error'); echo \"[san] rc=\$rc ubsan_findings=\$n\"; [ \$rc = 0 ] && [ \$n = 0 ]" ;;
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
     gpu:*)       cmd="${row#gpu:}" ;;   # arbitrary command that runs the game: takes the lock
