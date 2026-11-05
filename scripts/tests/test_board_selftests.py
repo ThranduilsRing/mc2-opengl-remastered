@@ -15,7 +15,7 @@ from scripts import console_child
 from tools.lane_merge import git_bash   # a bare "bash" from a Python child is the WSL launcher, not Git Bash
 
 # Each selftest is a windowless console child (spelled out per call so the launch and caller scanners see it).
-OPTS = dict(cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+OPTS = dict(cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,  # = run_tools_tests.TIMEOUT_S: Idle-priority sh pipelines take minutes under load
             env={**os.environ, "PYTHONUTF8": "1"})
 
 
@@ -105,8 +105,8 @@ def test_split_path_selftest():
 
 
 def test_path_norm_selftest():
-    # Same fork-heavy sh pipeline as the mover-registry selftest: 2.7 s idle, 231 s at Idle priority under full CPU load.
-    _assert_pass(subprocess.run(["sh", "scripts/check-path-normalization.sh", "--self-test"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))
+    # Fork-heavy sh pipeline: 2.7 s idle, 231 s at Idle priority under full CPU load.
+    _assert_pass(subprocess.run(["sh", "scripts/check-path-normalization.sh", "--self-test"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
 def test_res_aspect_selftest():
@@ -123,7 +123,7 @@ def test_order_gate_selftest():
 
 def test_mover_registry_selftest():
     # Idle-priority shell pipelines can spend most of their wall time unscheduled.
-    _assert_pass(subprocess.run(["sh", "scripts/check-mover-registry-coherence.sh", "--self-test"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))
+    _assert_pass(subprocess.run(["sh", "scripts/check-mover-registry-coherence.sh", "--self-test"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
 def test_tgl_load_selftest():
@@ -175,7 +175,7 @@ def test_review_pack_registry_guard():
 
 
 def test_fail_reason_selftest():
-    _assert_pass(subprocess.run([git_bash(), "scripts/check-contracts.sh", "--selftest"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))
+    _assert_pass(subprocess.run([git_bash(), "scripts/check-contracts.sh", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
 def test_object_mvp_currency_selftest():
