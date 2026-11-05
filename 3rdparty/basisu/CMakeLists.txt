@@ -8,5 +8,5 @@ target_compile_definitions(basisu_transcoder PUBLIC BASISD_SUPPORT_KTX2=1 BASISD
 set_target_properties(basisu_transcoder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # basisu_containers_impl.h uses std::terminate without including <exception> (libc++ does not pull it in transitively).
 if(NOT MSVC)
-    target_compile_options(basisu_transcoder PRIVATE -include exception)
+    target_compile_options(basisu_transcoder PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include exception>")
 endif()
