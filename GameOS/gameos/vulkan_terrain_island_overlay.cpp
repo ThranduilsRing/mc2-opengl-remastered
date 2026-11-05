@@ -376,7 +376,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     if (!mc2_terrain_tier1_get_frame_feed(&feed) || !feed.patches || feed.patchCount == 0) return 0;
 
     // ---- resolve textures (GL calls) and size the vertex streams BEFORE recording ----
-    struct Item { uint32_t first; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: low two bits select overlay/decal/mine, bit2 static stream
+    struct Item { uint32_t firstVtx; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: low two bits select overlay/decal/mine, bit2 static stream
     std::vector<Item> items;
     VkDeviceSize dynBytes = 0;
     for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
@@ -494,7 +494,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     };
     const Item* prevItem = nullptr;
     for (const Item& it : items) {
-        if (prevItem && pendCount != 0 && it.kind == prevItem->kind && it.tex->set[par] == prevItem->tex->set[par] && it.first == pendFirst + pendCount) {
+        if (prevItem && pendCount != 0 && it.kind == prevItem->kind && it.tex->set[par] == prevItem->tex->set[par] && it.firstVtx == pendFirst + pendCount) {
             pendCount += it.count;
             const int mk = (it.kind & 3u) == 1u ? 1 : 0;
             ++drawn[mk]; verts += it.count;
@@ -519,7 +519,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 1, 1, &it.tex->set[par], 0, nullptr);
             boundTex = it.tex->set[par];
         }
-        pendFirst = it.first; pendCount = it.count; prevItem = &it;
+        pendFirst = it.firstVtx; pendCount = it.count; prevItem = &it;
         ++drawn[kind]; verts += it.count;
         if (sourceKind == 2) ++mineDraws;
     }

@@ -376,7 +376,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     // per run, the push constant carries the run's first record). All patches draw first, then all skirt strips: they are opaque, depth-tested
     // and write depth, so the order between the two kinds only moves early-Z efficiency.
     struct Cmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
-    struct Run { const void* mesh; uint32_t first, count; };
+    struct Run { const void* mesh; uint32_t firstRec, count; };
     std::vector<TerrainPatchConstants> recs;           // patches, then skirt edges
     std::vector<Cmd> cmds;                             // same indexing as recs
     std::vector<const SkirtMesh*> skirtMeshOf;         // per skirt record
@@ -417,10 +417,10 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
             vkCmdBindIndexBuffer(cb, ib, 0, VK_INDEX_TYPE_UINT16);
             for (uint32_t done = 0; done < r.count;) {
                 const uint32_t n = std::min<uint32_t>(r.count - done, 65535u);   // multiDrawIndirect guarantees at least 65535 per call
-                const uint64_t addr = recBase + static_cast<uint64_t>(r.first + done) * sizeof(TerrainPatchConstants);
+                const uint64_t addr = recBase + static_cast<uint64_t>(r.firstRec + done) * sizeof(TerrainPatchConstants);
                 vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(addr), &addr);
                 mc2::battlebench::add(mc2::battlebench::DrawTerrain);
-                vkCmdDrawIndexedIndirect(cb, drawBuf, cmdBase + static_cast<VkDeviceSize>(r.first + done) * sizeof(Cmd), n, sizeof(Cmd));
+                vkCmdDrawIndexedIndirect(cb, drawBuf, cmdBase + static_cast<VkDeviceSize>(r.firstRec + done) * sizeof(Cmd), n, sizeof(Cmd));
                 done += n;
             }
         }
