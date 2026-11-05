@@ -145,6 +145,7 @@ struct gosPostProcess::VkPostHzbNative {
     std::vector<PropBounds> propBounds;
     uint32_t boundsGeneration = UINT32_MAX;
     uint32_t cullCapacity = 0, previousCount = 0;
+    uint64_t visibilityBytes = 0;   // size `visibility` was made with (cullCapacity is bumped, or zeroed by a bounds rebuild, before the old buffer retires)
     uint64_t visibilityGeneration = 0;
     uint64_t measuredFrames = 0, totalCulled = 0, totalTested = 0;
     mc2vk::OwnedBuffer visibility, instances, localBounds;
@@ -311,13 +312,14 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     s->previousCount = 0; // the retired mask no longer supplies telemetry
     s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
     if (s->cullPool) ectx.retire(std::move(s->cullPool));
-    if (s->visibility) ectx.retire(std::move(s->visibility), static_cast<uint64_t>(s->cullCapacity) * sizeof(uint32_t));
+    if (s->visibility) ectx.retire(std::move(s->visibility), s->visibilityBytes);
     if (s->instances) ectx.retire(std::move(s->instances));
     s->cullSet = VK_NULL_HANDLE;
     // The shader samples a fixed 16-slot level array; a deeper pyramid cannot be addressed.
     if (s->mipCount < 1 || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
     if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
         !make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    s->visibilityBytes = static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t);
     // A recycled Vulkan handle must not leave consumers bound to the old mask.
     static uint64_t nextVisibilityGeneration = 0;
     s->visibilityGeneration = ++nextVisibilityGeneration;
