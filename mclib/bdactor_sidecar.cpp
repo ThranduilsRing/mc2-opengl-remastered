@@ -6,9 +6,21 @@
 #include <string_view>
 #include "mc2fmt.h"
 
+#ifndef PLATFORM_WINDOWS
+#include "platform_io.h"
+#endif
+
+// The sidecar path comes from FullPathFileName (lower-cased); the asset on disk is mixed case
+// (HangarGLB.mcasset.json). Windows is case-insensitive; on Linux a plain ifstream missed it, so
+// the axis/yaw never applied and the GLB imported with the default orientation (hangar on its end).
+// Same case-folding resolver File::open uses (mc2_native_path); Windows behaviour is unchanged.
 static std::optional<std::string> readTextFile(const char* path)
 {
 	std::ifstream f(path, std::ios::in | std::ios::binary);
+#ifndef PLATFORM_WINDOWS
+	if (!f)
+		f.open(mc2_native_path(path), std::ios::in | std::ios::binary);
+#endif
 	if (!f)
 		return std::nullopt;
 	std::ostringstream ss;
