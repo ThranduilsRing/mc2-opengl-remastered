@@ -21,9 +21,27 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402
 
-KEY = os.environ.get("MC2_BOX_KEY", "C:/SPB_Data/.ssh/mc2farm_ed25519")
-HOST = os.environ.get("MC2_BOX_HOST", "root@14.227.95.149")
-PORT = os.environ.get("MC2_BOX_PORT", "30598")
+BOX_FILE = os.environ.get("MC2_BOX_FILE", "A:/Games/mc2-ops/BOX")   # the one address file: host=, port=, key= lines
+
+
+def load_box_config(path=None):
+    """{host, port, key} from the BOX file (missing or unreadable file: {}); the callers fall back to the constants below"""
+    cfg = {}
+    try:
+        for ln in Path(path or BOX_FILE).read_text().splitlines():
+            k, sep, v = ln.partition("=")
+            if sep and not ln.lstrip().startswith("#") and v.strip():
+                cfg[k.strip()] = v.strip()
+    except OSError:
+        pass
+    return cfg
+
+
+_CFG = load_box_config()
+# precedence: environment, then the BOX file, then these constants (the current box)
+KEY = os.environ.get("MC2_BOX_KEY") or _CFG.get("key", "C:/SPB_Data/.ssh/mc2farm_ed25519")
+HOST = os.environ.get("MC2_BOX_HOST") or _CFG.get("host", "root@14.227.95.149")
+PORT = os.environ.get("MC2_BOX_PORT") or _CFG.get("port", "30598")
 MIRROR = "/workspace/toolchains/mirror.git"
 GOLDEN_WIN = "A:/Games/mc2-opengl/mc2-win64-v0.4c"
 _SSH_OPTS = ["-i", KEY, "-p", PORT, "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "StrictHostKeyChecking=accept-new", HOST]
@@ -31,7 +49,8 @@ SSH = ["ssh", "-n", *_SSH_OPTS]        # -n: ssh must not swallow our stdin (eve
 SSH_STDIN = ["ssh", *_SSH_OPTS]        # the two calls that pipe the remote script in
 # verdicts beyond PASS/FAIL; every one of them is NOT green (exit code != 0), and none is ever retried by this tool
 RC_LOCK_TIMEOUT = 76    # waited 30 min for a GPU lock (was 75, the same code as other failures)
-RC_NO_BASELINE = 78     # determinism/saveload row refused: no Linux baseline file recorded
+RC_BOX_INFRA = 77       # the box refused to start: /workspace has less than the free-disk floor (MC2_BOX_MIN_FREE_GB, default 15)
+RC_NO_BASELINE = 78    # determinism/saveload row refused: no Linux baseline file recorded
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 # `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
@@ -48,12 +67,27 @@ GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS < <(printf %s "$6" | base64 -d); 
 L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; MIRROR=/workspace/toolchains/mirror.git
 #@@FRESH_FN@@
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
+#@@LANE_FLOOR@@
+if [ ! -d $L ]; then   # a NEW lane dir needs room: below the floor, evict the oldest idle lane dirs (no process, no lock) first
+  LFLOOR=${MC2_BOX_LANE_FLOOR_GB:-30}; FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
+  if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then
+    bash /workspace/mc2-box/lane_cleanup.sh evict "$LFLOOR" "$BR"
+    FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
+    if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then echo "[box_run] BOX_INFRA: ${FREE_GB:-0} GB free on /workspace, floor $LFLOOR GB, nothing idle to evict: not creating lane dir $BR"; exit 77; fi
+  fi
+fi
+#@@END_LANE_FLOOR@@
 mkdir -p /workspace/locks $L $OUT
-GOT=""; WANTF=""; trap '[ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner' EXIT   # a dead run must not leave a stale owner file
+GOT=""; WANTF=""; trap '[ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row' EXIT   # a dead run must not leave a stale owner file
 exec 8>$L/.lane.lock; flock 8   # one run per lane at a time: src, install and out are shared (fd 8 is not passed on to rows)
+#@@DISK_GUARD@@
+FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
+if [ "${FREE_GB:-0}" -lt "${MC2_BOX_MIN_FREE_GB:-15}" ]; then echo "[box_run] BOX_INFRA: ${FREE_GB:-0} GB free on /workspace, floor ${MC2_BOX_MIN_FREE_GB:-15} GB: not starting a build"; exit 77; fi
+#@@END_DISK_GUARD@@
+[ -f /workspace/locks/cores.env ] && . /workspace/locks/cores.env   # the one core map (BUILD_CPUS, GPU<n>_CPUS)
 rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
 [ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
-BCPUS=32-63   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
+BCPUS=${BUILD_CPUS:-32-63}   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
 export GIT_LFS_SKIP_SMUDGE=1
 # source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
 if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
@@ -85,7 +119,9 @@ export TMPDIR=$L/tmp; mkdir -p $TMPDIR
 grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): cores 32-63, no GPU lock
 take_lock() {   # taken lazily, just before the first row that runs the game
 CAP0=${5:-0}; LW0=$SECONDS   # the 30 min wait is measured from here (the build already ran)
-if [ "$GPU" = auto ]; then cand="0 1 2"; [ "$CAP0" = 1 ] && cand=0; else cand=$GPU; fi
+if [ "$GPU" = auto ]; then cand="0 1 2"; [ "$CAP0" = 1 ] && cand=0
+elif [ "$GPU" = 3 ] || [ "${MC2_GPU_STRICT:-0}" = 1 ]; then cand=$GPU   # gate GPU and --gpu-strict: only that GPU
+else cand=$GPU; for o in 0 1 2; do [ "$o" = "$GPU" ] && continue; [ "$CAP0" = 1 ] && [ "$o" != 0 ] && continue; cand="$cand $o"; done; fi   # busy requested GPU falls back to the others at once
 GOT=""
 for g in $cand; do exec 9>>/workspace/locks/gpu$g; flock -n 9 && { GOT=$g; break; }; done
 if [ -z "$GOT" ]; then
@@ -104,7 +140,7 @@ echo "[box_run] gpu=$GPU locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
-mkdir -p $TMPDIR; CPUS="$((4*N))-$((4*N+3))"   # box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
+mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.env GPU<n>_CPUS, else the old 4-per-GPU formula; box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
@@ -118,8 +154,10 @@ p = sd.baseline_path(sys.argv[2])
 want = json.load(open(p))["data_fingerprint"]["digest"] if os.path.exists(p) else None
 print("digest=%s stock=%s baseline=%s problems=%d" % (fp["digest"], fp["stock_digest"], want, len(fp["problems"])))
 sys.exit(7 if want and want != fp["digest"] else 0)'
+RIDX=0
 for row in "${ROWS[@]}"; do
-  name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=${name:0:50}-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"
+  RIDX=$((RIDX+1))
+  name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
   case $row in build|unit|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
   case $row in unit) TMO=1200;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
@@ -148,6 +186,7 @@ for row in "${ROWS[@]}"; do
       printf "%s\t%s\n" "$row" 7 >> $OUT/rows.tsv; RES=1; continue
     fi ;;
   esac
+  [ -n "$GOT" ] && [ "$RUN" = gr ] && echo "$row" > /workspace/locks/gpu$GOT.row   # STATUS.json shows the row the GPU is on
   $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
@@ -258,6 +297,8 @@ def verdict(rc, codes=()):
     """(name, exit code). PASS only for rc 0 with every row 0; LOCK_TIMEOUT and NO_BASELINE are distinct and NEVER green."""
     if rc == RC_LOCK_TIMEOUT:
         return "LOCK_TIMEOUT", RC_LOCK_TIMEOUT
+    if rc == RC_BOX_INFRA:
+        return "BOX_INFRA", 3
     if rc == 0 and all(c == "0" for c in codes):
         return "PASS", 0
     if str(RC_NO_BASELINE) in codes and all(c in ("0", str(RC_NO_BASELINE)) for c in codes):
@@ -301,6 +342,36 @@ def box_has(sha):
     return run([*SSH, f"git -C {MIRROR} cat-file -e {sha}^{{commit}}"], capture_output=True).returncode == 0
 
 
+def box_status():
+    """print /workspace/STATUS.json (written every 60 s by the filler loop); exit 0 when it is readable"""
+    r = run([*SSH, "cat /workspace/STATUS.json"], capture_output=True, text=True)
+    if r.returncode or not r.stdout.strip():
+        print("[box_run] no STATUS.json on the box (filler loop not running?)", file=sys.stderr)
+        return 1
+    print(r.stdout.rstrip())
+    return 0
+
+
+def box_cleanup(branch, dry_run):
+    """remove a lane on the box (dir, .box_lane script, mirror ref, worktree entry); refuses a lane a live process uses"""
+    key = lane_key(branch, "0" * 40)
+    r = run([*SSH, f"bash /workspace/mc2-box/lane_cleanup.sh one {key}" + (" --dry-run" if dry_run else "")], capture_output=True, text=True)
+    print((r.stdout or "").rstrip() or (r.stderr or "").rstrip())
+    return r.returncode
+
+
+def deploy_box(revert=None):
+    """upload tools/box/ and run its deploy.sh (apply, or revert [TS]); every replaced box file is backed up first"""
+    src = Path(__file__).resolve().parent / "box"
+    if revert is None:
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tf:
+            tf.add(src, arcname=".", filter=lambda ti: (setattr(ti, "uid", 0), setattr(ti, "gid", 0), ti)[2])
+        r = run([*SSH_STDIN, "rm -rf /workspace/mc2-box.incoming && mkdir -p /workspace/mc2-box.incoming && tar xf - -C /workspace/mc2-box.incoming && bash /workspace/mc2-box.incoming/deploy.sh apply"], input=buf.getvalue())
+        return r.returncode
+    return run([*SSH, f"bash /workspace/mc2-box.incoming/deploy.sh revert {revert}".rstrip()]).returncode
+
+
 def main():
     ap =argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--gpu", default="auto", help="0-2, or auto (first free of 0-2; captures need 0); 3 needs --gate")
@@ -310,13 +381,24 @@ def main():
     ap.add_argument("--probe", action="store_true", help="exit 0 if the box answers ssh within 15 s (merge_gate picks the box route or the Windows-full fallback with it)")
     ap.add_argument("--queue", action="store_true", help="submit to the box's pueue group (gpuN, or gate with --gate) and print the task id at once instead of blocking")
     ap.add_argument("--wait", metavar="ID", help="block until queued task ID ends, copy the reports back, print ONE verdict line (exit code = the task's)")
-    ap.add_argument("--status", metavar="ID", help="print ONE state line for queued task ID (exit 0 done+ok, 1 failed, 2 queued/running)")
+    ap.add_argument("--status", metavar="ID", nargs="?", const="", help="with ID: ONE state line for queued task ID (exit 0 done+ok, 1 failed, 2 queued/running); with no ID: print the box's STATUS.json (GPU lock holders, load, free disk)")
+    ap.add_argument("--gpu-strict", action="store_true", help="wait for the --gpu N GPU only; without it a busy GPU N falls back to any free GPU of 0-2 at once")
+    ap.add_argument("--cleanup", metavar="BRANCH", help="remove BRANCH's lane on the box (dir, runner script, mirror ref, worktree entry); refuses a lane a live process uses")
+    ap.add_argument("--dry-run", action="store_true", help="with --cleanup: only print what would be removed")
+    ap.add_argument("--deploy-box", action="store_true", help="install tools/box/ on the box (backs up what it replaces); --revert [TS] undoes it")
+    ap.add_argument("--revert", metavar="TS", nargs="?", const="", help="with --deploy-box: restore the backup TS (default newest)")
     ap.add_argument("--repo", default=str(Path(__file__).resolve().parents[1]))
     ap.add_argument("rows", nargs="*")
     a = ap.parse_args([x for x in sys.argv[1:] if x != "--"])
     repo = Path(a.repo)
     if a.probe:
         return probe()
+    if a.cleanup:
+        return box_cleanup(a.cleanup, a.dry_run)
+    if a.deploy_box:
+        return deploy_box(a.revert)
+    if a.status == "":
+        return box_status()
     if a.wait or a.status:
         return task_verdict(a.wait or a.status, repo, wait=bool(a.wait))
     if a.seed:
@@ -379,6 +461,7 @@ def main():
             (local_out / stale).unlink(missing_ok=True)
     # one ssh: the remote script arrives on stdin (cat > file) and runs at once; rows travel as one base64 argument
     script = f"/workspace/lanes/.box_lane_{branch}.sh"
+    runner = "env MC2_GPU_STRICT=1 bash" if a.gpu_strict else "bash"   # a busy --gpu N falls back to auto unless --gpu-strict
     if a.queue:   # submit to the pueue group and return the task id; --wait/--status give the verdict later
         if gpu == "auto":
             gpu = "0" if cap0 else pick_gpu()
@@ -393,7 +476,7 @@ def main():
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()
             if rb.returncode == 0 and bt and bt[-1].isdigit():
                 after = f"-a {bt[-1]} "
-        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
+        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
                 input=REMOTE.encode(), capture_output=True)   # bytes: text mode would turn LF into CRLF on Windows and bash chokes on the CR
         out = r.stdout.decode(errors="replace") if isinstance(r.stdout, bytes) else r.stdout
         err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
@@ -401,7 +484,7 @@ def main():
         print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {err.strip()[-200:]}")
         return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode())
+    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode())
     t["remote (build+install+rows)"] = time.time() - t1
     t2 = time.time()
     fetch_back(out_remote, local_out)

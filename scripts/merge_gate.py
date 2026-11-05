@@ -1111,7 +1111,20 @@ def publish(head, dry_run=False):
     rc = execute([("publish-v0.4", deploy[1], {})], head, dry_run)
     if rc == 0 and not dry_run:
         drop_candidate()
+        push_box_filler()
     return rc
+
+
+def push_box_filler():
+    """After a publish the box's idle filler should build the new nifty tip: best effort, never fails the publish"""
+    script = ROOT / "tools" / "box_filler_push.py"
+    if os.environ.get("MC2_NO_BOX_FILLER_PUSH") or not script.is_file():
+        return
+    try:
+        r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
+        print(f"[merge_gate] box filler push: rc={r.returncode} {(r.stdout or r.stderr).strip()[-160:]}")
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"[merge_gate] box filler push skipped: {exc}")
 
 
 def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determinism=False):

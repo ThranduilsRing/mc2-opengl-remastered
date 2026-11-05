@@ -1,0 +1,4 @@
+PATH=/usr/local/bin:/usr/bin:/bin
+# Tracked copy: tools/box/mc2-box-hygiene.cron (deployed to /etc/cron.d/mc2-box-hygiene by `box_run.py --deploy-box`).
+17 4 * * * root bash /workspace/mc2-box/lane_cleanup.sh daily >> /workspace/lane_cleanup.log 2>&1
+47 4 * * * root bash /workspace/mc2-box/lane_cleanup.sh mirror >> /workspace/lane_cleanup.log 2>&1
