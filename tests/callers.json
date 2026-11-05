@@ -137,7 +137,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 173,
+          "line": 174,
           "evidence": "command",
           "reference": "scripts/build_review_pack.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/build_review_pack.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -425,7 +425,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 145,
+          "line": 146,
           "evidence": "command",
           "reference": "scripts/check-beauty-sidecars.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-beauty-sidecars.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -586,7 +586,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 161,
+          "line": 162,
           "evidence": "command",
           "reference": "scripts/check-capture-provenance.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-capture-provenance.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -674,7 +674,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 133,
+          "line": 134,
           "evidence": "command",
           "reference": "scripts/check-counter-honesty.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-counter-honesty.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1107,7 +1107,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 137,
+          "line": 138,
           "evidence": "command",
           "reference": "scripts/check-hardlink-isolation.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-hardlink-isolation.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1210,7 +1210,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 116,
+          "line": 117,
           "evidence": "command",
           "reference": "scripts/check-launcher-ascii.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-launcher-ascii.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1381,10 +1381,10 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 125,
+          "line": 126,
           "evidence": "command",
           "reference": "scripts/check-mover-registry-coherence.sh",
-          "text": "_assert_pass(subprocess.run([\"sh\", \"scripts/check-mover-registry-coherence.sh\", \"--self-test\"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))"
+          "text": "_assert_pass(subprocess.run([\"sh\", \"scripts/check-mover-registry-coherence.sh\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
         }
       ],
       "callers_by_stem": []
@@ -1484,7 +1484,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 181,
+          "line": 182,
           "evidence": "command",
           "reference": "scripts/check-object-mvp-currency.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-object-mvp-currency.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1521,7 +1521,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 120,
+          "line": 121,
           "evidence": "command",
           "reference": "scripts/check-order-gate-coverage.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-order-gate-coverage.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1588,7 +1588,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 108,
+          "line": 109,
           "evidence": "command",
           "reference": "scripts/check-path-normalization.sh",
           "text": "_assert_pass(subprocess.run([\"sh\", \"scripts/check-path-normalization.sh\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1692,7 +1692,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 112,
+          "line": 113,
           "evidence": "command",
           "reference": "scripts/check-res-aspect-contract.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-res-aspect-contract.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1714,7 +1714,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 169,
+          "line": 170,
           "evidence": "command",
           "reference": "scripts/check-review-anchor-stability.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-review-anchor-stability.py\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -1966,7 +1966,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 149,
+          "line": 150,
           "evidence": "command",
           "reference": "scripts/check-stock-mission-data.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/check-stock-mission-data.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -2010,7 +2010,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 129,
+          "line": 130,
           "evidence": "command",
           "reference": "scripts/check-tgl-load-callers.sh",
           "text": "_assert_pass(subprocess.run([\"sh\", \"scripts/check-tgl-load-callers.sh\", \"--self-test\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -4609,7 +4609,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 141,
+          "line": 142,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/make-isolated-deploy.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -5321,7 +5321,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 165,
+          "line": 166,
           "evidence": "command",
           "reference": "scripts/provenance_gate.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"scripts/provenance_gate.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -14075,7 +14075,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 153,
+          "line": 154,
           "evidence": "command",
           "reference": "tools/own_inventory.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"tools/own_inventory.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
@@ -14432,7 +14432,7 @@
         },
         {
           "path": "scripts/tests/test_board_selftests.py",
-          "line": 157,
+          "line": 158,
           "evidence": "command",
           "reference": "tools/pointer_order_scan.py",
           "text": "_assert_pass(subprocess.run([sys.executable, \"tools/pointer_order_scan.py\", \"--selftest\"], **OPTS, **console_child.child_kwargs(redirected=True)))"
