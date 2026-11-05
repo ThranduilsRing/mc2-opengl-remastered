@@ -104,16 +104,17 @@ def test_queue_submits_one_ssh_to_the_group_and_returns_the_task_id(monkeypatch,
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "determinism"])
     assert rc == 0
     pueue = [s for s in sent if "pueue add" in s[0]]
-    assert len(pueue) == 1
-    cmd, stdin = pueue[0]
-    assert "-g gpu1 --print-task-id" in cmd and stdin == box_run.REMOTE.encode()
+    assert len(pueue) == 2   # build task (build group, no GPU slot) then the GPU task that waits on it
+    assert "-g build " in pueue[0][0] and base64.b64encode(b"build").decode() in pueue[0][0]
+    cmd, stdin = pueue[1]
+    assert "-g gpu1 -a 12 --print-task-id" in cmd and stdin == box_run.REMOTE.encode()
     assert base64.b64encode(b"determinism").decode() in cmd
     assert "queued task=12 group=gpu1" in capsys.readouterr().out
 
 
 def test_queue_gate_goes_to_the_gate_group(monkeypatch, tmp_path):
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gate"])
-    assert rc == 0 and any("-g gate --print-task-id" in s[0] for s in sent)
+    assert rc == 0 and any("-g gate -a 12 --print-task-id" in s[0] for s in sent)
 
 
 def test_blocking_mode_stays_the_default_one_ssh_run(monkeypatch, tmp_path):
@@ -282,3 +283,17 @@ def test_unit_row_configures_the_doctest_tier_with_the_box_clang_toolchain():
     i = box_run.REMOTE.index("    unit)")
     row = box_run.REMOTE[i:box_run.REMOTE.index("    sh:*)", i)]
     assert "-S tests/unit" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
+
+
+def test_build_and_unit_rows_queue_in_the_build_group_and_hold_no_gpu_slot(monkeypatch, tmp_path):
+    rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "build"])
+    pueue = [s for s in sent if "pueue add" in s[0]]
+    assert rc == 0 and len(pueue) == 1 and "-g build --print-task-id" in pueue[0][0] and "-g gpu" not in pueue[0][0]
+
+
+def test_build_runs_before_the_gpu_lock_and_on_cores_32_63():
+    r = box_run.REMOTE
+    assert r.index("ninja -C build64-ninja") < r.index("flock -n 9") < r.index("gr bash -c")   # build, then lock, then rows
+    assert "BCPUS=32-63" in r and "-j16 mc2" in r
+    assert "case $r in build|unit) ;; *) NEEDGPU=1" in r   # build-only / unit-only rows never take the lock
+    assert "    build)" in r

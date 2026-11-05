@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | sh:<command>
+Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | sh:<command>
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -35,6 +35,7 @@ RC_NO_BASELINE = 78     # determinism/saveload row refused: no Linux baseline fi
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 # `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
+NO_GPU_ROWS = ("build", "unit")   # rows that never touch a GPU: no GPU lock, queue group "build"
 GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
 
 # a retry must never reuse a row's --out dir (sim_determinism refuses an existing one and the row would be VOID): one fresh dir per attempt
@@ -49,6 +50,39 @@ L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; 
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
 mkdir -p /workspace/locks $L $OUT
 rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
+[ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
+BCPUS=32-63   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
+export GIT_LFS_SKIP_SMUDGE=1
+# source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
+if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
+tick source
+# build: shared ccache keyed without the directory so every lane hits the same objects
+export CCACHE_BASEDIR=/workspace/lanes CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
+cd $S
+[ -f build64-ninja/build.ninja ] || nice -n 19 taskset -c "$BCPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+ -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
+ -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+ -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
+nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j16 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
+[ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
+tick build
+# install: link the big immutable data from the golden install, copy everything else, then deploy the lane build over it
+if [ ! -d $I ]; then
+  mkdir -p $I; cp -al $GOLD/data $I/ 2>/dev/null; rm -rf $I/data/missions $I/data/terrain_layers
+  cp -a $GOLD/data/missions $I/data/ 2>/dev/null; [ -d $GOLD/data/terrain_layers ] && cp -a $GOLD/data/terrain_layers $I/data/
+  for f in $GOLD/*; do b=$(basename $f); [ "$b" = data ] && continue; case $b in *.fst) cp -al $f $I/;; *) cp -a $f $I/;; esac; done
+fi
+# deploy_payload.py is Windows-shaped (SDL2.dll, mc2.exe); on Linux the lane build is the binary plus its shaders
+cp -f build64-ninja/mc2 $I/mc2 && chmod +x $I/mc2 || { echo "[box_run] DEPLOY FAILED"; exit 6; }
+# optional payload: only what THIS tree built (a lane without crashpad has no crashpad_handler; deploy must never require it)
+for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-ninja/$opt $I/$opt && chmod +x $I/$opt || { echo "[box_run] DEPLOY FAILED: $opt"; exit 6; }; }; done
+mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/
+tick install
+export INSTALL=$I OUT
+NEEDGPU=0; for r in "${ROWS[@]}"; do case $r in build|unit) ;; *) NEEDGPU=1;; esac; done
+if [ $NEEDGPU = 0 ]; then   # build-only / unit-only: never touches a GPU, so never takes the lock
+  gr() { "$@"; }; CPUS=$BCPUS; GPU=none; export TMPDIR=$L/tmp; mkdir -p $TMPDIR
+else
 # GPU lock = flock on /workspace/locks/gpuN (the idle filler's convention; released when this script exits, no stale locks).
 # While waiting, gpuN.want is touched so the filler starts no new job there.
 CAP0=${5:-0}; WANTF=""
@@ -69,40 +103,12 @@ fi
 [ -n "$WANTF" ] && rm -f "$WANTF"; WANTF=""
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
 echo "[box_run] gpu=$GPU locked lock_wait_secs=$SECONDS"
-[ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
 mkdir -p $TMPDIR; CPUS="$((4*N))-$((4*N+3))"   # box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
-BCPUS=16-63
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
-export GIT_LFS_SKIP_SMUDGE=1
-# source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
-if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
-tick source
-# build: shared ccache keyed without the directory so every lane hits the same objects
-export CCACHE_BASEDIR=/workspace/lanes CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
-cd $S
-[ -f build64-ninja/build.ninja ] || nice -n 19 taskset -c "$BCPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
- -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
- -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
- -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
-nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j24 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
-[ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
-tick build
-# install: link the big immutable data from the golden install, copy everything else, then deploy the lane build over it
-if [ ! -d $I ]; then
-  mkdir -p $I; cp -al $GOLD/data $I/ 2>/dev/null; rm -rf $I/data/missions $I/data/terrain_layers
-  cp -a $GOLD/data/missions $I/data/ 2>/dev/null; [ -d $GOLD/data/terrain_layers ] && cp -a $GOLD/data/terrain_layers $I/data/
-  for f in $GOLD/*; do b=$(basename $f); [ "$b" = data ] && continue; case $b in *.fst) cp -al $f $I/;; *) cp -a $f $I/;; esac; done
 fi
-# deploy_payload.py is Windows-shaped (SDL2.dll, mc2.exe); on Linux the lane build is the binary plus its shaders
-cp -f build64-ninja/mc2 $I/mc2 && chmod +x $I/mc2 || { echo "[box_run] DEPLOY FAILED"; exit 6; }
-# optional payload: only what THIS tree built (a lane without crashpad has no crashpad_handler; deploy must never require it)
-for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-ninja/$opt $I/$opt && chmod +x $I/$opt || { echo "[box_run] DEPLOY FAILED: $opt"; exit 6; }; }; done
-mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/
-tick install
-export INSTALL=$I OUT
 RES=0
 FPPY='import sys, json, os
 sys.path.insert(0, "tools")
@@ -123,7 +129,8 @@ for row in "${ROWS[@]}"; do
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
-                 cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
+                 cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
+    build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*)        cmd="${row#sh:}" ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
@@ -368,8 +375,17 @@ def main():
         if gpu == "auto":
             gpu = "0" if cap0 else pick_gpu()
         grp = "gate" if a.gate else f"gpu{gpu}"
+        if all(x in NO_GPU_ROWS for x in a.rows):
+            grp = "build"   # build-only / unit-only: never touches a GPU, so it queues in the build group and holds no gpuN slot
         label = f"box_run:{branch}:{sha[:8]}:{grp}"
-        r = run([*SSH_STDIN, f"cat > {script} && {PUEUE} add -g {grp} --print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
+        after = ""
+        if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
+            rb = run([*SSH_STDIN, f"cat > {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])}"],
+                     input=REMOTE.encode(), capture_output=True)
+            bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()
+            if rb.returncode == 0 and bt and bt[-1].isdigit():
+                after = f"-a {bt[-1]} "
+        r = run([*SSH_STDIN, f"cat > {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
                 input=REMOTE.encode(), capture_output=True)   # bytes: text mode would turn LF into CRLF on Windows and bash chokes on the CR
         out = r.stdout.decode(errors="replace") if isinstance(r.stdout, bytes) else r.stdout
         err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
