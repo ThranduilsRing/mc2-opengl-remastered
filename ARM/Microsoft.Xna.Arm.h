@@ -30,7 +30,7 @@ namespace Microsoft
 				virtual void AddProperty(const char* key, const char* value) = 0;
 				virtual ~IProviderRelationship() {}
 			};
-			typedef IProviderRelationship *IProviderRelationshipPtr;
+			using IProviderRelationshipPtr = IProviderRelationship *;
 
             struct IProviderAsset
             {
@@ -39,13 +39,13 @@ namespace Microsoft
                 virtual void Close(void) = 0;
 				virtual ~IProviderAsset() {};
             };
-            typedef IProviderAsset *IProviderAssetPtr;
+            using IProviderAssetPtr = IProviderAsset *;
 
             struct IProviderEngine {
 				virtual IProviderAsset* OpenAsset(const char* iniName, AssetType, ProviderType) = 0;
 				virtual ~IProviderEngine() {};
             };
-            typedef IProviderEngine *IProviderEnginePtr;
+            using IProviderEnginePtr = IProviderEngine *;
 
 
 			class MyProviderRelationship : public IProviderRelationship {

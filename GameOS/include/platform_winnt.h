@@ -51,7 +51,7 @@ using PSZ = char*;
 using PVOID = void*;
 using LPVOID = void*;
 
-typedef void *HANDLE;
+using HANDLE = void *;
 
 /* FIXME for __WIN64 */
 #ifndef  __ptr64
@@ -144,7 +144,7 @@ typedef void *HANDLE;
 #define DECLARE_HANDLE(n) typedef struct n##__{int i;}*n
 #else
 
-typedef PVOID HANDLE;
+using HANDLE = PVOID;
 #define DECLARE_HANDLE(n) typedef HANDLE n
 #endif
 
