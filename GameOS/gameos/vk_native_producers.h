@@ -96,6 +96,12 @@ public:
     VkBuffer tileList(uint32_t par) const noexcept { return tileList_[par % kSlots].get(); }
     static constexpr uint32_t kMaxTiles = 1u << 18;   // 8K half-res is 138240 tiles; the tile grid is clamped to this
     uint32_t maxThin() const noexcept { return maxThin_; }
+    // Tiles one frame may dispatch: kMaxTiles capped by maxComputeWorkGroupCount[0] (the reflection dispatch is 1-D, one group per tile).
+    uint32_t maxTiles() const noexcept { return maxTiles_; }
+    // Health of the last slot read back: the visible-quad and tile counts the GPU cull produced (valid once a slot completed a frame).
+    uint32_t lastVisible() const noexcept { return lastVisible_; }
+    uint32_t lastTiles() const noexcept { return lastTiles_; }
+    uint32_t eligibleBound() const noexcept { return eligibleBound_; }
 
     // Stages this frame's inputs into slot `par` (the slot must be retired) and records lighting -> cull/pack -> draw-args with the barriers, ending
     // with the hand-off to the vertex stage and the indirect draw. With `parity`, also copies the outputs to the readback buffers. False = nothing recorded.
@@ -119,6 +125,9 @@ private:
     VmaAllocator allocator_ = nullptr;
     const VulkanContext* ctx_ = nullptr;
     uint32_t numVertices_ = 0, recipeCount_ = 0, maxThin_ = 0;
+    uint32_t maxTiles_ = kMaxTiles, eligibleBound_ = 0;
+    uint32_t lastVisible_ = 0, lastTiles_ = 0, healthFrames_ = 0;
+    bool healthPending_[kSlots] = {};   // slot `par`'s healthHdr_ holds a completed frame's header (read when the slot is recorded again, after its host wait)
     VkBuffer recipes_ = VK_NULL_HANDLE;
     bool lightOutCleared_ = false;
 
@@ -132,6 +141,7 @@ private:
     OwnedBuffer argsUbo_[kSlots];   // thin capacity + this frame's reflection dispatch size
     OwnedBuffer header_[kSlots], drawArgs_[kSlots], thin_[kSlots];   // device-local
     OwnedBuffer tileMask_[kSlots], tileList_[kSlots];                // reflection tiles: one bit per tile (cleared per frame) and the compacted list
+    OwnedBuffer healthHdr_[kSlots];   // host-visible copy of header_[par] (visible count, tile count) for the [WATER] health line
     // Parity readback (host-visible), made on first use.
     OwnedBuffer parityHdr_, parityThin_, parityLight_;
     uint32_t parityLightFirst_ = 0, parityLightCount_ = 0;

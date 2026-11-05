@@ -700,6 +700,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     const auto lock = lockSubmit(submitMutex_);
     flushPendingLocked();
     const VkResult r = vkDeviceWaitIdle(device_);
+    if (r == VK_SUCCESS) hostSyncedGfx_ = std::max(hostSyncedGfx_, tracker_.lastSubmitted(QueueKind::Graphics));   // an idle device is a host sync point for everything submitted
     {
         auto& hs = mc2_hitch2::stats();
         const double idleMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - idleT0).count();
@@ -901,8 +902,29 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
     // Only a wait that blocked is counted; a one-shot caller's open scope counts its own.
     if (!mc2_hitch2::inOneShotScope()) mc2_hitch2::noteWait(mc2_hitch2::kSlot, why, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - waitT0).count());
     if (r != VK_SUCCESS) ctxlog("timeline wait for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));
+    if (r == VK_SUCCESS && t.gfx > hostSyncedGfx_) hostSyncedGfx_ = t.gfx;
     poll();
     return tracker_.isComplete(t);
+}
+
+bool VulkanContext::hostSynced(const GpuTicket& t, std::string_view why) const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::hostSynced");
+    if (t.gfx <= hostSyncedGfx_) return true;
+    if (gfxTimeline_ == VK_NULL_HANDLE) return tracker_.isComplete(t);
+    if (!tracker_.isComplete(t)) {
+        poll();
+        if (!tracker_.isComplete(t)) return false;   // still in flight: no wait, the frame does not block on a readback
+    }
+    // The GPU passed the value already, so a zero-timeout wait returns at once; it is still the vkWaitSemaphores the layers retire accesses on.
+    VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
+    wi.semaphoreCount = 1;
+    wi.pSemaphores = &gfxTimeline_;
+    wi.pValues = &t.gfx;
+    const VkResult r = vkWaitSemaphores(device_, &wi, 0);
+    if (r == VK_SUCCESS) { hostSyncedGfx_ = t.gfx; return true; }
+    if (r != VK_TIMEOUT) ctxlog("timeline host sync for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));
+    if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();
+    return false;
 }
 
 void VulkanContext::beginFrame() {

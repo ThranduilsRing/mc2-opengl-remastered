@@ -359,6 +359,8 @@ extern "C" int mc2_vk_water_island_run(
                 vkEndCommandBuffer(cb);
                 setFallback("native_record_failed"); s->disabled = true; return 0;
             }
+            g_health.waterVisible = s->native->lastVisible(); g_health.waterTiles = s->native->lastTiles();
+            g_health.waterEligibleBound = s->native->eligibleBound(); g_health.waterTileCap = s->native->maxTiles();
         }
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};

@@ -75,6 +75,9 @@ struct WaterIslandHealth {
     unsigned long usedInterop = 0;
     unsigned long thinRecords = 0;   // records fed this frame
     unsigned long recipeCount = 0;   // recipe rows uploaded once
+    // GPU cull health (NativeProducers::lastVisible/lastTiles): the last completed frame's visible quads and reflection tiles against the CPU
+    // eligible bound and the tile dispatch cap. visible == 0 on a map with water, or visible > eligible, is a regression visible in the log.
+    unsigned long waterVisible = 0, waterEligibleBound = 0, waterTiles = 0, waterTileCap = 0;
     double copyColorInUs = 0.0, copyDepthInUs = 0.0, drawUs = 0.0, colorOutUs = 0.0, totalUs = 0.0;
 };
 

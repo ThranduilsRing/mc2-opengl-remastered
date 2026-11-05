@@ -11633,6 +11633,28 @@
    "count": 1
   },
   {
+   "tag": "WATER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "WATER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "visible",
+    "eligible_bound",
+    "capacity",
+    "tiles",
+    "tile_cap",
+    "over_bound",
+    "dropped"
+   ],
+   "count": 1
+  },
+  {
    "tag": "WATER_ASPECT_DIAG",
    "ver": 1,
    "stream": "stderr",

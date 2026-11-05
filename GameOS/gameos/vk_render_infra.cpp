@@ -20,6 +20,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -67,6 +68,8 @@ struct State {
     VkDevice dev=VK_NULL_HANDLE; VkPhysicalDevice phys=VK_NULL_HANDLE; VkPipelineCache cache=VK_NULL_HANDLE;
     CacheHeader identity; std::filesystem::path cachePath;
     std::mutex mutex; bool dirty=false; uint64_t creations=0; double creationMs=0;
+    // Driver compiles run outside `mutex` against `cache`; shutdown() waits here until none is in flight before destroying it.
+    std::condition_variable compileIdle; uint32_t compiling=0;
     std::chrono::steady_clock::time_point saved, started;
     std::unordered_map<uint64_t,Allocation> allocations;
     std::unordered_map<VkShaderModule,Shader> shaders;
@@ -199,7 +202,11 @@ void init(VkDevice device, VkPhysicalDevice physical) {
 }
 void saveCache() { auto& s=state(); std::lock_guard lock(s.mutex); saveLocked(s); }
 VkPipelineCache cacheHandle() { return state().cache; }
-void shutdown() { auto& s=state(); saveCache(); if(s.cache) vkDestroyPipelineCache(s.dev,s.cache,nullptr); s.cache=VK_NULL_HANDLE;
+void shutdown() { auto& s=state();
+    {   // a worker may still be inside vkCreate*Pipelines with s.cache: the cache goes only once every compile returned
+        std::unique_lock lock(s.mutex); s.compileIdle.wait(lock,[&]{ return s.compiling==0; });
+        saveLocked(s); if(s.cache) vkDestroyPipelineCache(s.dev,s.cache,nullptr); s.cache=VK_NULL_HANDLE;
+    }
     if(s.markerMap) { vkUnmapMemory(s.dev,s.markerMemory); s.markerMap=nullptr; }
     if(s.marker) { vkDestroyBuffer(s.dev,s.marker,nullptr); s.marker=VK_NULL_HANDLE; }
     if(s.markerMemory) { release(reinterpret_cast<uint64_t>(s.markerMemory)); vkFreeMemory(s.dev,s.markerMemory,nullptr); s.markerMemory=VK_NULL_HANDLE; }
@@ -524,10 +531,10 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     }
     info=updated.data();
     // The driver compile (the slow part) runs outside the infra mutex so binds and lookups on other threads never wait behind it; the pipeline cache is internally synchronized.
-    const VkPipelineCache cache=s.cache;
+    const VkPipelineCache cache=s.cache; ++s.compiling;
     lock.unlock();
     const VkResult result=vkCreateGraphicsPipelines(dev,cache,n,info,allocator,out);
-    lock.lock();
+    lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
@@ -539,10 +546,10 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     std::vector<VkComputePipelineCreateInfo> updated(info,info+n); LatestStages latest;
     for(auto& item:updated) if(const auto result=latest.update(item.stage); result!=VK_SUCCESS) { std::fill(out,out+n,VK_NULL_HANDLE); return result; }
     info=updated.data();
-    const VkPipelineCache cache=s.cache;
+    const VkPipelineCache cache=s.cache; ++s.compiling;
     lock.unlock();   // compile outside the infra mutex, as in graphics()
     const VkResult result=vkCreateComputePipelines(dev,cache,n,info,allocator,out);
-    lock.lock();
+    lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
