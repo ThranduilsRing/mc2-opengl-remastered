@@ -32,7 +32,7 @@
    "LG06": 2,
    "LG07": 0,
    "LG08": 0,
-   "LG09": 7,
+   "LG09": 8,
    "LG10": 3,
    "LG11": 0,
    "LG12a": 0,
@@ -78,7 +78,7 @@
    "LG06": 7,
    "LG07": 2,
    "LG08": 1,
-   "LG09": 5,
+   "LG09": 6,
    "LG10": 4,
    "LG11": 3,
    "LG12a": 0,
@@ -278,7 +278,7 @@
   "EditorBridge/EditorRenderBridge.h": {},
   "GameAdapters/MechRenderAdapter.cpp": {
    "LG05": 3,
-   "LG09": 7
+   "LG09": 8
   },
   "GameAdapters/MechRenderAdapter.h": {},
   "GameAdapters/MissionEnvironmentAdapter.cpp": {},
@@ -1360,6 +1360,7 @@
    "LG10": 1
   },
   "GuiRuntime/PlayerFrontEnd.cpp": {
+   "LG09": 1,
    "LG11": 2
   },
   "GuiRuntime/PlayerFrontEnd.h": {},
@@ -2474,7 +2475,7 @@
    "LG03": 10,
    "LG05": 3,
    "LG06": 8,
-   "LG09": 0,
+   "LG09": 1,
    "LG10": 8,
    "LG12b": 6
   },
@@ -4466,7 +4467,7 @@
    "LG20": 3
   }
  },
- "head": "4682e5744",
+ "head": "ec17163ec",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
