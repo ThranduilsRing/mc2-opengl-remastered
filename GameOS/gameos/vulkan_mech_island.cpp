@@ -830,13 +830,31 @@ bool upload_geometry_once(MechIsland* s) {
     s->vertexStride = feed.vertexStride;
 
     // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing instead of drawing unfilled buffers.
-    if (!s->vbo.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "mech.vbo") ||
-        !s->ibo.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "mech.ibo")) {
-        static bool s_logged = false;
-        if (!s_logged) { s_logged = true; vlog("mech geometry upload failed (buffer creation or map); retrying each frame, logged once."); }
-        s->vbo.reset();
-        s->ibo.reset();
-        return false;
+    // Static geometry is read every frame by the prepass, colour pass and shadow casters (mc2_vk_mech_island_shared_geometry): stage once into device-local memory.
+    {
+        mc2vk::OwnedBuffer stageVertices, stageIndices;
+        bool ok = stageVertices.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.vertices") &&
+                  stageIndices.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.indices") &&
+                  s->vbo.createDeviceLocal(s->allocator, s->device, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.vbo") &&
+                  s->ibo.createDeviceLocal(s->allocator, s->device, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.ibo");
+        if (ok) {
+            auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+            ok = mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+                const VkBufferCopy vertices{0, 0, feed.vboBytes}, indices{0, 0, feed.iboBytes};
+                vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
+                vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
+                VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
+                vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+            }, "mech_geometry_upload");
+        }
+        if (!ok) {
+            static bool s_logged = false; if (!s_logged) { s_logged = true; vlog("mech geometry upload failed (buffer creation or copy); retrying each frame, logged once."); }
+            s->vbo.reset();
+            s->ibo.reset();
+            return false;
+        }
     }
     s->geomGen = feed.geomGen;
     g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
@@ -853,6 +871,16 @@ bool upload_geometry_once(MechIsland* s) {
 // ===========================================================================
 
 extern "C" int mc2_vk_mech_island_enabled() {
+    return 1;
+}
+
+// The shadow casters bind the island's device-local mech VBO/IBO (one copy, two consumers). Uploads on demand; 0 = not ready.
+extern "C" int mc2_vk_mech_island_shared_geometry(uint64_t* vbo, uint64_t* ibo, uint32_t* geomGen) {
+    MechIsland* s = parkedIsland();
+    if (!s || !s->inited || !upload_geometry_once(s) || !s->vbo || !s->ibo) return 0;
+    *vbo = reinterpret_cast<uint64_t>(s->vbo.get());
+    *ibo = reinterpret_cast<uint64_t>(s->ibo.get());
+    *geomGen = s->geomGen;
     return 1;
 }
 

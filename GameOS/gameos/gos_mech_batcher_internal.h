@@ -144,6 +144,10 @@ extern float                        s_vkMechObjectDepthBias;
 extern bool                         s_vkMechFrameReady;
 extern bool                         s_vkMechShadowReady;
 extern std::vector<uint8_t>         s_vkVboNativeCopy;
+// Deduped, meshopt-ordered geometry the Vulkan islands upload (indices local to the packet's node base). Derived from the
+// staging soup by uploadMechGeometryVbo(); s_vkPacketBaseVertex[i] is s_packets[i]'s base vertex in s_vkVboNativeCopy.
+extern std::vector<uint32_t>        s_vkIboNativeCopy;
+extern std::vector<int32_t>         s_vkPacketBaseVertex;
 extern uint32_t                     s_vkMechGeomGen;
 extern uint32_t                     s_vkMechSnapshotGeomGen;
 
