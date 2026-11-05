@@ -52,13 +52,12 @@ def main():
         os.remove(p)
     env = dict(os.environ, MC2_TEST_CRASH_FRAME="200")
     strace = shutil.which("strace")
-    wrap = os.path.join(inst, "mc2_strace")
-    if strace:
-        open(wrap, "w").write("#!/bin/sh\nexec %s -f -e trace=connect,sendto,sendmsg -o %s/net.txt %s \"$@\"\n" % (strace, out, exe))
-        os.chmod(wrap, 0o755)
-    cmd = [sys.executable, "scripts/run_smoke.py", "--mission", "mc2_01", "--duration", "15", "--keep-logs", "--exe", wrap if strace else exe]
+    cmd = [sys.executable, "scripts/run_smoke.py", "--mission", "mc2_01", "--duration", "15", "--keep-logs", "--exe", exe]
     r = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
     open(os.path.join(out, "crash_run.log"), "w").write(r.stdout)
+    if strace:  # second run under strace for the network check only (a tracer would block the handler's own ptrace)
+        subprocess.run([strace, "-f", "-e", "trace=connect,sendto,sendmsg", "-o", os.path.join(out, "net.txt")] + cmd,
+                       env=dict(env, MC2_TEST_CRASH_FRAME="0"), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print("strace:", strace, "smoke rc:", r.returncode)
     for line in r.stdout.splitlines():
         if "[CRASH]" in line:
