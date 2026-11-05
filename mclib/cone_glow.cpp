@@ -104,7 +104,7 @@ bool localConeAxis(const TG_TypeShape* ts, glm::vec3& axisOut, float& lenOut)
         const float p = verts[i].position.x * axisOut.x
                       + verts[i].position.y * axisOut.y
                       + verts[i].position.z * axisOut.z;
-        if (p > maxProj) maxProj = p;
+        maxProj = std::max(maxProj, p);
     }
     if (maxProj < 0.5f) return false;
     lenOut = maxProj;
@@ -833,14 +833,14 @@ void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeI
                         float d = vx * dy - vy * dx;
                         if (d < 0.0f) d = -d;
                         perp[j] = d;
-                        if (d > perpMax) perpMax = d;
+                        perpMax = std::max(perpMax, d);
                     }
                     if (perpMax > 0.5f)   // non-degenerate screen spread
                     {
                         for (int j = 0; j < nVerts; ++j)
                         {
                             float rN = perp[j] / perpMax;      // 0 core -> 1 rim
-                            if (rN > 1.0f) rN = 1.0f;
+                            rN = std::min(rN, 1.0f);
                             xv[j].fade *= std::pow(1.0f - rN, featherExp);
                         }
                     }
@@ -876,7 +876,7 @@ void QueueConeGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, long nodeI
             // (~16% of the lamp colour at the emitter) instead of vanishing.
             constexpr float kVolumeGain = 2.5f;
             DWORD a = static_cast<DWORD>((alphaPeak * s.fade * kVolumeGain));
-            if (a > 255) a = 255;
+            a = std::min<DWORD>(a, 255);
             // The ISSPOTLGT pass blends ONE/ONE (VK legacy ADD pipeline, GL
             // gos_Alpha_OneOne): vertex alpha is ignored, so the fade must be
             // premultiplied into RGB, as QueueBeaconGlow already does. Writing
@@ -1043,7 +1043,7 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
 
         float radPx = radius * pixPerWu;
         if (radPx < 2.0f)   { ++dClipped; continue; }   // sub-pixel -> skip
-        if (radPx > 400.0f) radPx = 400.0f;             // sanity clamp
+        radPx = std::min(radPx, 400.0f);                // sanity clamp
 
         // A quad carries a unit-disc coordinate to legacy_shape_tier1.frag.
         // Its analytic falloff avoids the old five flat bands and twelve-sided rim.

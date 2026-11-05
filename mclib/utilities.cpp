@@ -15,6 +15,7 @@ Utilities.cpp			: Implementation of the Utilities component.
 #include"mclib.h"
 #include"../GameOS/gameos/gos_profiler.h"
 #include "mc2fmt.h"
+#include <algorithm>
 
 
 #pragma warning(disable:4514)
@@ -31,30 +32,13 @@ void drawRect( const GUI_RECT& area, DWORD color )
 			return;
 		GUI_RECT clientArea = area;
 
-		if ( clientArea.left < 0 )
-			clientArea.left = 0;
+		const long maxX = Environment.screenWidth;
+		const long maxY = Environment.screenHeight;
+		clientArea.left = std::clamp( clientArea.left, 0L, maxX );
+		clientArea.right = std::clamp( clientArea.right, 0L, maxX );
+		clientArea.top = std::clamp( clientArea.top, 0L, maxY );
+		clientArea.bottom = std::clamp( clientArea.bottom, 0L, maxY );
 
-		if ( clientArea.right < 0 )
-			clientArea.right = 0;
-
-		if ( clientArea.top < 0 )
-			clientArea.top = 0;
-
-		if ( clientArea.bottom < 0 )
-			clientArea.bottom = 0;
-
-		if ( clientArea.left >= Environment.screenWidth )
-			clientArea.left = Environment.screenWidth;
-
-		if ( clientArea.right >= Environment.screenWidth )
-			clientArea.right = Environment.screenWidth;
-
-		if ( clientArea.top >= Environment.screenHeight )
-			clientArea.top = Environment.screenHeight;
-
-		if ( clientArea.bottom >= Environment.screenHeight )
-			clientArea.bottom = Environment.screenHeight;
-		
 		
 		gos_VERTEX v[4];
 
@@ -103,29 +87,12 @@ void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 		|| ( clientArea.top > Environment.screenHeight && clientArea.bottom > Environment.screenHeight ) )
 		return;
 
-	if ( clientArea.left < 0 )
-		clientArea.left = 0;
-
-	if ( clientArea.right < 0 )
-		clientArea.right = 0;
-
-	if ( clientArea.top < 0 )
-		clientArea.top = 0;
-
-	if ( clientArea.bottom < 0 )
-		clientArea.bottom = 0;
-
-	if ( clientArea.left >= Environment.screenWidth - 1 )
-		clientArea.left = Environment.screenWidth - 1;
-
-	if ( clientArea.right >= Environment.screenWidth - 1 )
-		clientArea.right = Environment.screenWidth - 1;
-
-	if ( clientArea.top >= Environment.screenHeight - 1 )
-		clientArea.top = Environment.screenHeight - 1;
-
-	if ( clientArea.bottom >= Environment.screenHeight - 1 )
-		clientArea.bottom = Environment.screenHeight - 1;
+	const long maxX = Environment.screenWidth - 1;
+	const long maxY = Environment.screenHeight - 1;
+	clientArea.left = std::clamp( clientArea.left, 0L, maxX );
+	clientArea.right = std::clamp( clientArea.right, 0L, maxX );
+	clientArea.top = std::clamp( clientArea.top, 0L, maxY );
+	clientArea.bottom = std::clamp( clientArea.bottom, 0L, maxY );
 
 	gos_SetRenderState( gos_State_Texture, 0 );
 	gos_SetRenderState( gos_State_ZWrite, 0 );

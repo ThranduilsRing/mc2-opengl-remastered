@@ -289,7 +289,7 @@ bool ValidateScene(const aiScene* scene, std::string_view pathView) {
 		// Node names only drive animation binding (M2); bind-pose/static import does
 		// not bind by name.
 		if (len > 0) {
-			if (!seen.insert(name).second) {
+			if (const auto [seenAt, isNew] = seen.insert(name); !isNew) {
 				STOP(("[importer] %s: duplicate node name '%s' (breaks node-ID lookup)",
 				      path, name));
 				return false;
@@ -450,9 +450,10 @@ std::vector<DWORD> windowCellIds(const aiMesh& mesh) {
         parent.try_emplace(id, id);
         const auto& p = mesh.mVertices[v];
         if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) continue;
-        for (auto at = positions.lower_bound(p.x - tolerance);
-             at != positions.end() && at->first <= p.x + tolerance; ++at) {
-            const auto& [position, canonicalId] = at->second;
+        for (auto at = positions.lower_bound(p.x - tolerance); at != positions.end(); ++at) {
+            const auto& [sortedX, candidate] = *at;
+            if (sortedX > p.x + tolerance) break;
+            const auto& [position, canonicalId] = candidate;
             if (std::abs(p.y - position.y) > tolerance || std::abs(p.z - position.z) > tolerance) continue;
             const DWORD a = root(id), b = root(canonicalId);
             const auto [low, high] = std::minmax(a, b);
@@ -808,7 +809,7 @@ void ComputeBoundingBox(TG_TypeMultiShape* out) {
 	const float dy = out->maxBox.y - out->minBox.y;
 	const float dz = out->maxBox.z - out->minBox.z;
 	out->extentRadius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
-	if (out->extentRadius < 1.0f) out->extentRadius = 1.0f;  // defensive floor
+	out->extentRadius = std::max(out->extentRadius, 1.0f);  // defensive floor
 }
 
 } // anonymous namespace
@@ -1232,7 +1233,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
                 aiMatrix4x4 D = (e.AS1 * rowMajorToAi(bake.rest[i].m)) * e.invMWrest[i];
                 if (i < e.boneLowest.size()) {
                     const aiVector3D p = D * e.boneLowest[i];
-                    if (p.y < lowestY) lowestY = p.y;
+                    lowestY = std::min(lowestY, p.y);
                 }
             }
             e.restLift = (lowestY < 1e29f) ? -lowestY : 0.0f;
@@ -1286,12 +1287,12 @@ static void rebakeImportedPresentation(ImportedAnimEntry& e, const std::vector<m
             d.position   = mechToMC2Pos(p);
             d.position.y += e.groundDy;          // preserve the import-grounded offset
             d.normal     = mechToMC2Vec(n);
-            if (d.position.x < e.multi->minBox.x) e.multi->minBox.x = d.position.x;
-            if (d.position.y < e.multi->minBox.y) e.multi->minBox.y = d.position.y;
-            if (d.position.z < e.multi->minBox.z) e.multi->minBox.z = d.position.z;
-            if (d.position.x > e.multi->maxBox.x) e.multi->maxBox.x = d.position.x;
-            if (d.position.y > e.multi->maxBox.y) e.multi->maxBox.y = d.position.y;
-            if (d.position.z > e.multi->maxBox.z) e.multi->maxBox.z = d.position.z;
+            e.multi->minBox.x = std::min(e.multi->minBox.x, d.position.x);
+            e.multi->minBox.y = std::min(e.multi->minBox.y, d.position.y);
+            e.multi->minBox.z = std::min(e.multi->minBox.z, d.position.z);
+            e.multi->maxBox.x = std::max(e.multi->maxBox.x, d.position.x);
+            e.multi->maxBox.y = std::max(e.multi->maxBox.y, d.position.y);
+            e.multi->maxBox.z = std::max(e.multi->maxBox.z, d.position.z);
         }
     }
     ComputeBoundingBox(e.multi);
@@ -1302,7 +1303,8 @@ void mc2mechanim::CopyImportedActorPose(const void* source, const void* destinat
     for (auto& entry : g_importedAnims) {
         const auto found = entry.actors.find(source);
         if (found != entry.actors.end()) {
-            entry.actors[destination] = found->second;
+            const auto& [foundKey, foundState] = *found;
+            entry.actors[destination] = foundState;
             auto& draw = entry.actors[destination];
             if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);
             else rebakeImportedPresentation(entry, draw.lastGlobals);
@@ -1329,8 +1331,9 @@ int mc2mechanim::ImportedGpuModelDelta(const void* actorKey, const float** mats1
         if (!e.gpuMode) continue;
         auto it = e.actors.find(actorKey);
         if (it != e.actors.end()) {
-            if (mats16) *mats16 = it->second.modelDelta.empty() ? nullptr : it->second.modelDelta.data();
-            return static_cast<int>((it->second.modelDelta.size() / 16));
+            const auto& [stateKey, state] = *it;
+            if (mats16) *mats16 = state.modelDelta.empty() ? nullptr : state.modelDelta.data();
+            return static_cast<int>((state.modelDelta.size() / 16));
         }
     }
     return 0;
@@ -1343,7 +1346,10 @@ float mc2mechanim::ImportedGpuLift(const void* actorKey) {
     for (const ImportedAnimEntry& e : g_importedAnims) {
         if (!e.gpuMode) continue;
         auto it = e.actors.find(actorKey);
-        if (it != e.actors.end()) return it->second.gpuLift;
+        if (it != e.actors.end()) {
+            const auto& [stateKey, state] = *it;
+            return state.gpuLift;
+        }
     }
     return 0.0f;
 }
@@ -1402,9 +1408,10 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
                 mc2::fmt::print_err("[MECH_IMPORT] node '{}' not in manifest (-> legacy)\n", mc2::fmt::safe(mc2Name));
             return false;
         }
+        const auto& [manifestNode, jointName] = *mit;
         int idx = -1;
         for (size_t i = 0; i < e.names.size(); ++i)
-            if (e.names[i] == mit->second) { idx = static_cast<int>(i); break; }
+            if (e.names[i] == jointName) { idx = static_cast<int>(i); break; }
         if (idx < 0) {
             static int s_warnJoint = 0;
             if (s_warnJoint++ < 8)
@@ -1413,7 +1420,10 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         }
         ActorAnimState* s = nullptr;
         auto ait = e.actors.find(actorKey);
-        if (ait != e.actors.end()) s = &ait->second;
+        if (ait != e.actors.end()) {
+            auto& [stateKey, state] = *ait;
+            s = &state;
+        }
         else if (!actorKey && !e.cpuState.lastGlobals.empty()) s = &e.cpuState;
         if (!s || idx >= static_cast<int>(s->lastGlobals.size())) {
             if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}' joint '{}' idx={:d}: no actor state / lastGlobals empty (actors={:d})\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), mc2::fmt::as_i32(idx), mc2::fmt::as_size(e.actors.size())); }
@@ -1510,7 +1520,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;
     if (advanceClock) s.clipTimeSec += dt * (e.pinnedClip.empty() ? s.playRate : 1.0f);
     if (s.durationSec > 0.0f) {
-        if (holdAtEnd) { if (s.clipTimeSec > s.durationSec) s.clipTimeSec = s.durationSec; }
+        if (holdAtEnd) { s.clipTimeSec = std::min(s.clipTimeSec, s.durationSec); }
         else while (s.clipTimeSec >= s.durationSec) s.clipTimeSec -= s.durationSec;
     }
     const float frame = s.clipTimeSec * 30.0f;
@@ -1532,7 +1542,7 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
         aiToRowMajor(D, &s.modelDelta[i * 16]);
         if (dynamicLift && i < e.boneLowest.size()) {
             const aiVector3D p = D * e.boneLowest[i];
-            if (p.y < lowestY) lowestY = p.y;
+            lowestY = std::min(lowestY, p.y);
         }
     }
     s.gpuLift = dynamicLift ? ((lowestY < 1e29f) ? -lowestY : 0.0f) : e.restLift;
@@ -1591,8 +1601,9 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         if (authoritative) *authoritative = static_cast<const mc2::sim::ImportedAnimState&>(s);
         // Prune despawned actors' states (untouched for a while).
         for (auto it = e.actors.begin(); it != e.actors.end(); ) {
-            const unsigned age = frameStamp - it->second.lastFrame;
-            if (it->first != actorKey && age < 0x80000000u && age > ACTOR_STATE_STALE_FRAMES)
+            const auto& [pruneKey, pruneState] = *it;
+            const unsigned age = frameStamp - pruneState.lastFrame;
+            if (pruneKey != actorKey && age < 0x80000000u && age > ACTOR_STATE_STALE_FRAMES)
                 it = e.actors.erase(it);
             else ++it;
         }
@@ -1771,12 +1782,13 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 				if (me->mNumBones == 0 || skelMeshDropped(me->mName.C_Str())) continue;
 				auto it = bake.nameIdx.find(me->mBones[0]->mName.C_Str());
 				if (it == bake.nameIdx.end()) continue;
-				const float* rm = bake.rest[it->second].m;
+				const auto& [boneName, boneIdx] = *it;
+				const float* rm = bake.rest[boneIdx].m;
 				const aiMatrix4x4& off = me->mBones[0]->mOffsetMatrix;
 				for (unsigned v = 0; v < me->mNumVertices; ++v) {
 					aiVector3D p = applyRowMajor16(rm, off * me->mVertices[v]);
 					float c[3] = {p.x, p.y, p.z};
-					for (int k = 0; k < 3; ++k) { if (c[k] < lo[k]) lo[k] = c[k]; if (c[k] > hi[k]) hi[k] = c[k]; }
+					for (int k = 0; k < 3; ++k) { lo[k] = std::min(lo[k], c[k]); hi[k] = std::max(hi[k], c[k]); }
 				}
 			}
 			float ext = 0.0f;

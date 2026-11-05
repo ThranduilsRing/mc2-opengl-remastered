@@ -5,6 +5,7 @@
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "stuff/stuff.hpp"   // Stuff::Vector4D
 #include "math/mc2_xform.h" // glm::vec3 (for logProjectZBypassDisagreement)
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -213,7 +214,7 @@ void logProjectZBypassDisagreement(mc2::czstring wrapper,
     for (int i = 0; i < 5; ++i) {
         if (std::strcmp(wrapper, s_names[i]) == 0) { idx = i; break; }
     }
-    if (idx < 0) idx = 0;  // unknown wrapper: slot 0
+    idx = std::max(idx, 0);  // unknown wrapper: slot 0
     if (s_counts[idx] >= 64) return;
     ++s_counts[idx];
     MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=disagree wrapper=%s "

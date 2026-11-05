@@ -56,7 +56,9 @@ public:
     std::shared_ptr<TextureSource> fromCpuTexture(DWORD texture) const {
         std::lock_guard lock(indexMutex_);
         auto it = cpuTextures_.find(texture);
-        return it == cpuTextures_.end() ? nullptr : it->second.lock();
+        if (it == cpuTextures_.end()) return nullptr;
+        const auto& [textureKey, weakSource] = *it;
+        return weakSource.lock();
     }
     // Only the tick appends; main drains after joining. Asset ids never recycle.
     void requestCreate(DWORD asset) { creates_.push_back(asset); }

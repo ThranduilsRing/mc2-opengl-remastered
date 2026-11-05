@@ -114,13 +114,22 @@ aiMatrix4x4 sampleChannel(const aiNodeAnim* ch, double t,
     return aiMatrix4x4(scl, rot, pos);
 }
 
+aiMatrix4x4 globalOrIdentity(const std::map<std::string, aiMatrix4x4>& globals, const std::string& bone) {
+    const auto g = globals.find(bone);
+    if (g == globals.end()) return aiMatrix4x4();
+    const auto& [boneName, matrix] = *g;
+    return matrix;
+}
+
 void computeGlobals(const aiNode* n, const aiMatrix4x4& parent,
                     const std::map<std::string, const aiNodeAnim*>& chans, double t,
                     bool rotationOnly, std::map<std::string, aiMatrix4x4>& globals) {
     auto it = chans.find(n->mName.C_Str());
-    aiMatrix4x4 local = (it != chans.end())
-                            ? sampleChannel(it->second, t, n->mTransformation, rotationOnly)
-                            : n->mTransformation;
+    aiMatrix4x4 local = n->mTransformation;
+    if (it != chans.end()) {
+        const auto& [chanName, chan] = *it;
+        local = sampleChannel(chan, t, n->mTransformation, rotationOnly);
+    }
     aiMatrix4x4 global = parent * local;
     globals[n->mName.C_Str()] = global;
     for (unsigned i = 0; i < n->mNumChildren; ++i)
@@ -192,8 +201,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         computeGlobalsForced(scene->mRootNode, aiMatrix4x4(), forcePoseBone().c_str(), extra, globals);
         out.assign(boneNames.size(), GpuBone{});
         for (size_t i = 0; i < boneNames.size(); ++i) {
-            auto g = globals.find(boneNames[i]);
-            rowMajor(g != globals.end() ? g->second : aiMatrix4x4(), out[i].m);
+            rowMajor(globalOrIdentity(globals, boneNames[i]), out[i].m);
         }
         if (outTimeTicks) *outTimeTicks = 0.0;
         if (outDurTicks) *outDurTicks = 1.0;
@@ -243,8 +251,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
     // joint global. skin = global(bone) * (offset_part * vertex).
     out.assign(boneNames.size(), GpuBone{});
     for (size_t i = 0; i < boneNames.size(); ++i) {
-        auto g = globals.find(boneNames[i]);
-        rowMajor(g != globals.end() ? g->second : aiMatrix4x4(), out[i].m);
+        rowMajor(globalOrIdentity(globals, boneNames[i]), out[i].m);
     }
     return true;
 }
@@ -258,8 +265,7 @@ void EvaluateRestGpuBones(const aiScene* scene,
     computeGlobals(scene->mRootNode, aiMatrix4x4(), none, 0.0, false, globals);
     out.assign(boneNames.size(), GpuBone{});
     for (size_t i = 0; i < boneNames.size(); ++i) {
-        auto g = globals.find(boneNames[i]);
-        rowMajor(g != globals.end() ? g->second : aiMatrix4x4(), out[i].m);
+        rowMajor(globalOrIdentity(globals, boneNames[i]), out[i].m);
     }
 }
 
