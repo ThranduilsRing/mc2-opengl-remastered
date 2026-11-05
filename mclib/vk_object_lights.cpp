@@ -516,9 +516,16 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
         packet.rows.resize(packet.rows.size() + 128);
     }
 
-    packet.rows[packet.count] = *light_data;
+    // Dynamic rows are re-appended every frame at stable slot positions. Keep the row's generation when the
+    // content is unchanged so the shared light feed (vk_shared_light_feed.cpp) skips the GPU-memory copy for it.
+    // A generation identifies content: it advances only when the bytes differ. revision still advances per append.
     packet.generations.resize(packet.rows.size());
-    packet.generations[packet.count] = packet.revision = ++s_nextRowGeneration;
+    const uint64_t newGeneration = ++s_nextRowGeneration;
+    packet.revision = newGeneration;
+    if (0 != memcmp(packet.rows.data() + packet.count, light_data, sizeof(TG_HWLightsData))) {
+        packet.rows[packet.count] = *light_data;
+        packet.generations[packet.count] = newGeneration;
+    }
     uint32_t rv = packet.count;
     packet.count++;
     packet.dedup.emplace(hash, rv);  // O(1) avg insert
