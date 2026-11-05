@@ -265,3 +265,7 @@ def test_presubmit_warns_when_the_tip_lacks_the_box_clang_fix(monkeypatch, capsy
     assert "WARNING" in capsys.readouterr().err
     monkeypatch.setattr(box_run.subprocess, "run", lambda cmd, **kw: SimpleNamespace(returncode=0))
     assert box_run.check_behind_box_fix(".") == 0 and capsys.readouterr().err == ""
+
+
+def test_copy_back_never_tars_the_home_dir_when_the_out_dir_is_missing():
+    assert box_run.BACK.startswith("cd {out} || exit 0;")

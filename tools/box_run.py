@@ -188,7 +188,7 @@ def seed(repo):
 
 PUEUE = "/workspace/toolchains/pueue/pueue"   # queue: see box-game-runs.md "Queue"
 # copy-back: only *.tsv, *.json and the last 200 lines of each log (the full logs stay on the box)
-BACK = ("cd {out} && mkdir -p .tails && for f in *.log; do [ -f \"$f\" ] && tail -n 200 \"$f\" > .tails/$f; done; "
+BACK = ("cd {out} || exit 0; mkdir -p .tails && for f in *.log; do [ -f \"$f\" ] && tail -n 200 \"$f\" > .tails/$f; done; "
         "find . -type f \\( -name '*.tsv' -o -name '*.json' -o -path './.tails/*' \\) | tar cf - -T -")
 
 
