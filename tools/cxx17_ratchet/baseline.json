@@ -55,7 +55,7 @@
    "LG06": 342,
    "LG07": 0,
    "LG08": 144,
-   "LG09": 295,
+   "LG09": 242,
    "LG10": 80,
    "LG11": 59,
    "LG12a": 58,
@@ -402,7 +402,7 @@
   },
   "GameOS/gameos/gameos_graphics_debug.cpp": {},
   "GameOS/gameos/gameos_graphics_draw.cpp": {
-   "LG09": 2,
+   "LG09": 1,
    "LG17": 5
   },
   "GameOS/gameos/gameos_graphics_font.cpp": {
@@ -472,7 +472,6 @@
    "LG20": 1
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
-   "LG09": 1,
    "LG12a": 4
   },
   "GameOS/gameos/gameosmain_init.cpp": {
@@ -516,7 +515,6 @@
   "GameOS/gameos/gos_hdri.cpp": {
    "LG05": 2,
    "LG06": 2,
-   "LG09": 1,
    "LG10": 4,
    "LG17": 1
   },
@@ -570,7 +568,7 @@
   },
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 1,
-   "LG09": 2,
+   "LG09": 1,
    "LG20": 3
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -581,8 +579,7 @@
   "GameOS/gameos/gos_postprocess_internal.h": {},
   "GameOS/gameos/gos_postprocess_skybox.cpp": {},
   "GameOS/gameos/gos_postprocess_targets.cpp": {
-   "LG06": 2,
-   "LG09": 3
+   "LG06": 2
   },
   "GameOS/gameos/gos_profiler.h": {},
   "GameOS/gameos/gos_prop_material_cpu.h": {},
@@ -637,7 +634,6 @@
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
    "LG08": 3,
-   "LG09": 1,
    "LG10": 2
   },
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": {},
@@ -654,8 +650,7 @@
    "LG08": 10
   },
   "GameOS/gameos/gos_static_prop_batcher_shadow.cpp": {
-   "LG08": 5,
-   "LG09": 1
+   "LG08": 5
   },
   "GameOS/gameos/gos_static_prop_batcher_state.cpp": {
    "LG10": 1
@@ -694,12 +689,10 @@
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
    "LG08": 1,
-   "LG09": 9,
    "LG10": 2
   },
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": {
-   "LG06": 1,
-   "LG09": 4
+   "LG06": 1
   },
   "GameOS/gameos/gos_terrain_indirect_dispatch.cpp": {},
   "GameOS/gameos/gos_terrain_indirect_internal.h": {},
@@ -711,7 +704,6 @@
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG04": 1,
    "LG05": 3,
-   "LG09": 1,
    "LG10": 16,
    "LG16": 1
   },
@@ -729,7 +721,6 @@
   "GameOS/gameos/gos_terrain_lod_chunk_gates.cpp": {},
   "GameOS/gameos/gos_terrain_lod_chunk_internal.h": {},
   "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
-   "LG09": 2,
    "LG10": 6,
    "LG17": 2
   },
@@ -737,7 +728,6 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": {
    "LG05": 1,
    "LG08": 2,
-   "LG09": 16,
    "LG10": 3
   },
   "GameOS/gameos/gos_terrain_water_stream.h": {
@@ -754,7 +744,6 @@
   "GameOS/gameos/gos_vegetation.cpp": {
    "LG06": 1,
    "LG08": 1,
-   "LG09": 12,
    "LG17": 2
   },
   "GameOS/gameos/gos_vegetation.h": {
@@ -4477,7 +4466,7 @@
    "LG20": 3
   }
  },
- "head": "53df47582",
+ "head": "4682e5744",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

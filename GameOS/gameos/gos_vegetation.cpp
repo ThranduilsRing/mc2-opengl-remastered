@@ -28,7 +28,7 @@ extern const float* gos_GetTerrainMVPMat4();
 namespace {
 uint32_t populationCount = 0;   // instances resident on the device
 auto cell(const GosVegetation::Instance& i) {
-    return std::pair{int(std::floor(i.x/128.0f)),int(std::floor(i.y/128.0f))};
+    return std::pair{static_cast<int>(std::floor(i.x/128.0f)),static_cast<int>(std::floor(i.y/128.0f))};
 }
 std::vector<uint32_t> visibility(1024, 2u);
 bool initialized = false, atlasReady = false, summaryEmitted = false;
@@ -56,12 +56,12 @@ std::optional<mc2tex::DecodedTexture> builtinAtlas() {
         if (i == 0) {
             cellWidth = tile->width; cellHeight = tile->height;
             atlas.width = cellWidth * 4; atlas.height = cellHeight * 2;
-            atlas.pixels.resize(size_t(atlas.width) * atlas.height * 4);
+            atlas.pixels.resize(static_cast<size_t>(atlas.width) * atlas.height * 4);
         }
         if (tile->width != cellWidth || tile->height != cellHeight) return std::nullopt;
         for (int y = 0; y < cellHeight; ++y) {
             const size_t dst = ((i / 4 * cellHeight + y) * atlas.width + i % 4 * cellWidth) * 4;
-            std::copy_n(tile->pixels.data() + size_t(y) * cellWidth * 4, size_t(cellWidth) * 4,
+            std::copy_n(tile->pixels.data() + static_cast<size_t>(y) * cellWidth * 4, static_cast<size_t>(cellWidth) * 4,
                         atlas.pixels.data() + dst);
         }
     }
@@ -95,18 +95,18 @@ std::optional<mc2tex::TextureArrayCpu> builtinCards() {
 mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
     mc2tex::TextureArrayCpu array;
     if (decoded.width % 4 || decoded.height % 2) return array;
-    uint32_t w = uint32_t(decoded.width / 4), h = uint32_t(decoded.height / 2);
+    uint32_t w = static_cast<uint32_t>(decoded.width / 4), h = static_cast<uint32_t>(decoded.height / 2);
     if (!w || !h) return array;
     array.width = w; array.height = h; array.layers = 8; array.vkFormat = mc2tex::kVkFormatRgba8Unorm;
     const size_t components = decoded.layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
     std::array<std::vector<uint8_t>, 8> layer;
     std::array<float, 8> coverage{};
     for (size_t k = 0; k < layer.size(); ++k) {
-        layer[k].resize(size_t(w) * h * 4);
+        layer[k].resize(static_cast<size_t>(w) * h * 4);
         for (uint32_t y = 0; y < h; ++y) {
             for (uint32_t x = 0; x < w; ++x) {
                 const size_t src = ((k / 4 * h + y) * decoded.width + k % 4 * w + x) * components;
-                const size_t dst = (size_t(y) * w + x) * 4;
+                const size_t dst = (static_cast<size_t>(y) * w + x) * 4;
                 std::copy_n(decoded.pixels.data() + src, 3, layer[k].data() + dst);
                 layer[k][dst + 3] = components == 4 ? decoded.pixels[src + 3] : 255;
             }
@@ -177,12 +177,12 @@ uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
     vkGetPhysicalDeviceProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), &properties);
     uint32_t cap = mc2::vegetation::storagePopulationCapacity(requested, properties.limits.maxStorageBufferRange);
     // Regions are 128-unit cells, so their count is bounded by the map area whatever the instance count.
-    const double side = double(mapSpan) / 128.0 + 2.0;
-    const uint64_t regionBound = uint64_t(side * side);
+    const double side = static_cast<double>(mapSpan) / 128.0 + 2.0;
+    const uint64_t regionBound = static_cast<uint64_t>(side * side);
     uint32_t lo = 0, hi = cap;   // largest n in [0, cap] that fits whole (stride 1); fit is monotone in n
     while (lo < hi) {
         const uint32_t mid = lo + (hi - lo + 1) / 2;
-        const uint64_t regions = uint64_t(mid) < regionBound ? uint64_t(mid) : regionBound;
+        const uint64_t regions = static_cast<uint64_t>(mid) < regionBound ? static_cast<uint64_t>(mid) : regionBound;
         if (mc2veg::State::strideFor(mid, regions) == 1) lo = mid; else hi = mid - 1;
     }
     if (lo < cap) mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation capacity sized to fit the largest whole population (no thinning): requested_max={:d} capacity={:d}\n", mc2::fmt::as_u32(cap), mc2::fmt::as_u32(lo));
@@ -231,11 +231,11 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
             pad = std::max(pad, 1.5f * sorted[j].scale);
         }
         gpuRegions.push_back({(key.first + 0.5f) * 128.0f, (key.second + 0.5f) * 128.0f, (lo + hi) * 0.5f,
-            std::sqrt(2.0f * 64.0f * 64.0f + (hi - lo) * (hi - lo) * 0.25f) + pad, uint32_t(begin), uint32_t(end), 0u, 0u});
+            std::sqrt(2.0f * 64.0f * 64.0f + (hi - lo) * (hi - lo) * 0.25f) + pad, static_cast<uint32_t>(begin), static_cast<uint32_t>(end), 0u, 0u});
         begin = end;
     }
     if (gpu.upload(mc2vk::getOrCreateEngineVulkanContext(), gpuInstances, gpuRegions)) {
-        populationCount = uint32_t(sorted.size());
+        populationCount = static_cast<uint32_t>(sorted.size());
         peak = std::max(peak, populationCount);
     }
 #else
@@ -275,7 +275,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     cp.misc[2]=std::max(lz,0.0f);
     cp.misc[3]=time;
     cp.grid[0]=halfMap; cp.grid[1]=blockSide;
-    cp.counts[3]=chunkSide>0 ? uint32_t(chunkSide) : 0u;
+    cp.counts[3]=chunkSide>0 ? static_cast<uint32_t>(chunkSide) : 0u;
     cp.flags[0]=force ? 1u : 0u;
     cp.flags[2]=trimCards ? 1u : 0u;
     if (mc2_vk_vfx_vegetation_run(cp,mvp,visibility,pp->getWidth(),pp->getHeight())) {

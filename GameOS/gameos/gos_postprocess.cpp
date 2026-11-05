@@ -354,7 +354,7 @@ void gosPostProcess::endScene()
     auto& present=mc2vk::getOrCreateEnginePresentVk();
     if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
         exposure_,mode,
-        sceneObjectIdReady() ? int(RenderWorld::MechHandleIndexBase()) : 0,
+        sceneObjectIdReady() ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,
         lowLightGain_,lowLightTint_,casEnabled_,casSharpness_,tonemapMode_,x,y,w,h);
 #endif
     drawShadowDebugOverlay();

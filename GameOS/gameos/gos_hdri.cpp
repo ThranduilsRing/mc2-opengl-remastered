@@ -252,7 +252,7 @@ bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, Hd
     float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
     const int result = LoadEXR(&pixels, &w, &h, path, &error);
     if (result != TINYEXR_SUCCESS || !pixels || w <= 0 || h <= 0 ||
-        w > int(RenderCore::kKtxMaxEdge) || h > int(RenderCore::kKtxMaxEdge)) {
+        w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge)) {
         MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=decode_failed path=%s error=%s\n", path, error ? error : "invalid_extent");
         if (pixels) free(pixels);
         if (error) FreeEXRErrorMessage(error);

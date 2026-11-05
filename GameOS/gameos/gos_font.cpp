@@ -182,7 +182,7 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
         : static_cast<int>(font_height);
 
     if(visible_height < 1) visible_height = 1;
-    if(visible_height > (int)font_height) visible_height = static_cast<int>(font_height);
+    if(visible_height > static_cast<int>(font_height)) visible_height = static_cast<int>(font_height);
 
     for(uint32_t c = 0; c < gi.num_glyphs_; ++c) {
         gosGlyphMetrics& g = gi.glyphs_[c];

@@ -482,7 +482,7 @@ void frameLoadRaceProbes() {
                     if (mc2vk::sceneReadbackExtent(lrW,lrH,mc2vk::SceneColor)) {
                         mc2vk::ScenePoint points[3];
                         mc2vk::ScenePixel pixels[3];
-                        for (int i=0;i<3;++i) points[i]={int(ptsN[i][0]*lrW),int(ptsN[i][1]*lrH)};
+                        for (int i=0;i<3;++i) points[i]={static_cast<int>(ptsN[i][0]*lrW),static_cast<int>(ptsN[i][1]*lrH)};
                         if (mc2vk::readSceneSamples(points,3,mc2vk::SceneColor,pixels))
                             for (int i=0;i<3;++i) std::memcpy(px[i],pixels[i].rgba,4);
                     }

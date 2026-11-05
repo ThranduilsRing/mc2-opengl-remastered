@@ -114,14 +114,14 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
 	DL_GetError();    /* Clear any existing error */
 
     /* Get symbol */
-    fptr = (get_string_by_id_fptr)DL_LoadFunction(module, "getStringById");
+    fptr = reinterpret_cast<get_string_by_id_fptr>(DL_LoadFunction(module, "getStringById"));
     if ((error = DL_GetError())) {
         mc2::fmt::print_err("Couldn't load function getStringById in {} (not exported?): {}\n", mc2::fmt::safe(FileName), mc2::fmt::safe(error));
         return nullptr;
     }
 
     init_string_resources_fptr init_fptr;
-    init_fptr = (init_string_resources_fptr)DL_LoadFunction(module, "initStringResources");
+    init_fptr = reinterpret_cast<init_string_resources_fptr>(DL_LoadFunction(module, "initStringResources"));
     if ((error = DL_GetError())) {
         mc2::fmt::print_err("Couldn't load function initStringResources in {} (not exported?): {}\n", mc2::fmt::safe(FileName), mc2::fmt::safe(error));
         return nullptr;
@@ -156,7 +156,7 @@ void __stdcall gos_CloseResourceDLL(HSTRRES handle)
     DL_GetError();
 
     const char *error;
-    free_fptr = (free_string_resources_fptr)DL_LoadFunction(pstrres->module, "freeStringResources");
+    free_fptr = reinterpret_cast<free_string_resources_fptr>(DL_LoadFunction(pstrres->module, "freeStringResources"));
     if ((error = DL_GetError())) {
         mc2::fmt::print_err("Couldn't find hello: {}\n", mc2::fmt::safe(error));
     } else {
