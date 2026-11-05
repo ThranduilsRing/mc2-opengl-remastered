@@ -146,7 +146,6 @@ bool mechPerfGateRequested() {
 // CPU geometry + LightsData feed is unconditional under the VK mech island.
 // The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
 
-
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
