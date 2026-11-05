@@ -457,6 +457,12 @@ if(WIN32)
     list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
 endif()
 find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
+# KtxBasis.cpp needs the vendored transcoder; this standalone project must build it itself (a bare
+# "basisu_transcoder" is only a -l flag here: "ld.lld: unable to find library -lbasisu_transcoder" on the box).
+if(NOT TARGET basisu_transcoder)
+    enable_language(C)   # zstddeclib.c
+    add_subdirectory("${MC2_WORKTREE_ROOT}/3rdparty/basisu" "${CMAKE_BINARY_DIR}/basisu")
+endif()
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
     SDL2::SDL2
