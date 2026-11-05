@@ -1,6 +1,9 @@
 // MissionInterfaceManager: the per-frame update() and the hover/target pick (updateTarget).
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
+#include <algorithm>
 #include <atomic>
+#include <filesystem>
+#include <system_error>
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 #include "cursor_world_pick.h"
@@ -44,7 +47,7 @@ namespace {
 					++s_both;
 					const double dx = a.x - b.x, dy = a.y - b.y;
 					const double dist = sqrt(dx*dx + dy*dy);
-					if (dist > s_maxD) s_maxD = dist;
+					s_maxD = std::max(s_maxD, dist);
 					if (dist < 0.01) ++s_exact;
 					else if (dist <= Terrain::worldUnitsPerCell * 1.5) ++s_adj;
 					else
@@ -210,7 +213,8 @@ void MissionInterfaceManager::update (void)
 							gos_SetGlobalDebugView(idx + 1);
 						} else {
 							s_stage = idx * 2 + 1;
-							_mkdir("dev_shell_out");
+							std::error_code mkdirEc;
+							std::filesystem::create_directory("dev_shell_out", mkdirEc);
 							char nm[32];
 							mc2::fmt::to_buf(nm, "view_{:d}", mc2::fmt::as_i32(idx + 1));
 							gos_dev_shell::scheduleScreenshot(nm);
