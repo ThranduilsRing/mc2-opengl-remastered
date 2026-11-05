@@ -561,6 +561,6 @@ if(TARGET gameos_main)
 endif()
 
 # A single generated object supplies identity to game, editor, and tool consumers.
-target_link_libraries(gameos PUBLIC mc2_build_identity)
-target_link_libraries(gameos_editor PUBLIC mc2_build_identity)
+target_link_libraries(gameos PUBLIC mc2_build_identity mimalloc_static)
+target_link_libraries(gameos_editor PUBLIC mc2_build_identity mimalloc_static)
 target_link_libraries(gameos_main PUBLIC mc2_build_identity)
