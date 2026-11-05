@@ -37,7 +37,7 @@ TEST_CASE("VkResourceGraph/alias only exact compatible disjoint lifetimes") {
     CHECK(p.slots == 2);
 }
 TEST_CASE("VkResourceGraph/imported read state seeds visibility") {
-    auto p = compile({{{}, true, read}}, {{{{0, read}}}});
+    auto p = compile({{{}, true, rdState}}, {{{{0, rdState}}}});
     REQUIRE(p.valid);
     CHECK(p.barriers[0].empty()); // initial read state already visible: no spurious barrier for an identical reader
 }
