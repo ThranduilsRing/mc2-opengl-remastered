@@ -13,14 +13,12 @@ void build_layout(S* s) {
     b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     b[5].binding = 7; b[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    b[6].binding = 15; b[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    b[7].binding = 17; b[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    b[6].binding = 17; b[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     VkDescriptorSetLayoutCreateInfo lci{};
     vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl);
     VkPushConstantRange pcr{};
-    pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; pcr.offset = 0; pcr.size = 4;
+    pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = 16;
     VkPipelineLayoutCreateInfo plci{};
     plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
 }

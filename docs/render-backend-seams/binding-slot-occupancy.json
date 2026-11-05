@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 261,
+    "glsl_blocks_with_binding": 259,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -1045,7 +1045,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 130,
+        "line": 131,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1064,26 +1064,6 @@
       }
     ],
     "set0:binding15": [
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 15,
-        "role": "PropPackets",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/prop_packet_vk.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 15,
-        "role": "PropPackets",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/prop_packet_vk.glsl",
-        "branch": {}
-      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
@@ -1503,8 +1483,8 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "4": 0,
-          "8": 0
+          "3": 0,
+          "7": 0
         }
       },
       {
@@ -1609,8 +1589,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "4": 0,
-          "8": 0
+          "3": 0,
+          "7": 0
         }
       },
       {
@@ -1709,7 +1689,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 66,
+        "line": 67,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2115,7 +2095,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 69,
+        "line": 70,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2463,8 +2443,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
         "branch": {
-          "4": 0,
-          "6": 0
+          "3": 0,
+          "5": 0
         }
       },
       {
@@ -2555,7 +2535,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {
@@ -2594,7 +2574,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {
@@ -2633,7 +2613,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {
@@ -2672,7 +2652,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {
@@ -2711,7 +2691,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {
@@ -2750,7 +2730,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {
@@ -2789,7 +2769,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "4": 0
+          "3": 0
         }
       },
       {

@@ -139,6 +139,9 @@ public:
 
     VkBuffer get() const noexcept { return buffer_; }
     VmaAllocation allocation() const noexcept { return allocation_; }
+    // The buffer's device address (buffer device address is a required device feature). Queried once in `create` and cached; 0 unless the buffer
+    // was created with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT.
+    VkDeviceAddress deviceAddress() const noexcept { return address_; }
     void markDeferred() { if(allocation_) infra::defer(reinterpret_cast<uint64_t>(allocation_)); }
     explicit operator bool() const noexcept { return buffer_ != VK_NULL_HANDLE; }
 
@@ -157,10 +160,12 @@ private:
         VkBuffer b = buffer_; buffer_ = other.buffer_; other.buffer_ = b;
         VmaAllocation a = allocation_; allocation_ = other.allocation_; other.allocation_ = a;
         VmaAllocator al = allocator_; allocator_ = other.allocator_; other.allocator_ = al;
+        VkDeviceAddress ad = address_; address_ = other.address_; other.address_ = ad;
     }
     VkBuffer buffer_ = VK_NULL_HANDLE;
     VmaAllocation allocation_ = nullptr;
     VmaAllocator allocator_ = nullptr;
+    VkDeviceAddress address_ = 0;
 };
 
 // A VMA image and its allocation.

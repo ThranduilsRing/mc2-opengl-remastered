@@ -57,6 +57,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.

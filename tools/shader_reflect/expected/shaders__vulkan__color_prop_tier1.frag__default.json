@@ -35,7 +35,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1229"
+          "type": "_1235"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -48,7 +48,7 @@
           "matrix_stride": null,
           "name": "materials",
           "offset": 0,
-          "type": "_1898"
+          "type": "_1906"
         }
       ],
       "name": "PropMaterials"
@@ -78,19 +78,6 @@
         }
       ],
       "name": "TerrainLightGridIndicesVK"
-    },
-    {
-      "binding": 15,
-      "members": [
-        {
-          "array_stride": 32,
-          "matrix_stride": null,
-          "name": "p",
-          "offset": 0,
-          "type": "_198"
-        }
-      ],
-      "name": "PropPackets"
     }
   ],
   "stage": "frag",
