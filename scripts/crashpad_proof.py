@@ -62,11 +62,16 @@ def main():
     for line in r.stdout.splitlines():
         if "[CRASH]" in line:
             print(line[:240])
-    for p in glob.glob("smoke_logs/**/*", recursive=True):
-        if os.path.isfile(p):
-            for line in open(p, errors="replace"):
-                if "[CRASH]" in line:
-                    print(os.path.basename(p), line.strip()[:240])
+    print("install:", sorted(os.listdir(inst))[:40])
+    for p in glob.glob(os.path.join(inst, "crashes", "**", "*"), recursive=True):
+        print("  crashes:", p, os.path.getsize(p) if os.path.isfile(p) else "dir")
+    arts = sorted(glob.glob("tests/smoke/artifacts/*"), key=os.path.getmtime)
+    for a in arts[-2:-1] or arts[-1:]:
+        for p in glob.glob(os.path.join(a, "**", "*"), recursive=True):
+            if os.path.isfile(p) and os.path.getsize(p) < 50_000_000:
+                for line in open(p, errors="replace"):
+                    if "[CRASH]" in line or "crashpad" in line.lower() or "SIGSEGV" in line:
+                        print(os.path.basename(p), line.strip()[:240])
     net = os.path.join(out, "net.txt")
     if os.path.exists(net):
         lines = [l for l in open(net, errors="replace") if "AF_INET" in l or "AF_INET6" in l]
