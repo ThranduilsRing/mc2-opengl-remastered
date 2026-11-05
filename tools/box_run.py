@@ -129,7 +129,7 @@ for row in "$@"; do
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
-                 cmd="cmake -S \$PWD/tests/unit -B \$PWD/build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
+                 cmd="grep -q '^CMAKE_HOME_DIRECTORY:INTERNAL=/' build64-tests/CMakeCache.txt 2>/dev/null || rm -rf build64-tests; cmake -S \$PWD/tests/unit -B \$PWD/build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
     sh:*)        cmd="${row#sh:}" ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
@@ -145,9 +145,10 @@ for row in "$@"; do
     fi ;;
   esac
   case $row in unit|sh:*) runner=cr ;; *) runner=gr ;; esac
-  $runner timeout -k 10 $ROWCAP bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
+  cap=$ROWCAP; [ "$row" = unit ] && cap=900   # a doctest run that has printed its verdict and not exited (the hang) must not sit out the full cap
+  $runner timeout -k 10 $cap bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
   # the doctest binary can hang at exit after a complete run: a printed SUCCESS status stands for the exit code (124 = the cap killed it)
-  [ "$row" = unit ] && [ $rc = 124 ] && grep -aq "Status: SUCCESS" $OUT/$name.log && { echo "[box_run] unit: doctest hung at exit after SUCCESS; accepted"; rc=0; }
+  [ "$row" = unit ] && [ $rc = 124 ] && [ "$(grep -a '^\[doctest\] Status:' $OUT/$name.log | tail -1)" = "[doctest] Status: SUCCESS!" ] && { echo "[box_run] unit: doctest hung at exit after SUCCESS; accepted"; rc=0; }
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
   printf "%s\t%s\n" "$row" "$rc" >> $OUT/rows.tsv
