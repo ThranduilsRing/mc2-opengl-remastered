@@ -84,6 +84,7 @@ extern "C" void mc2_vfx_pass_end();
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
+#include "mc2fmt.h"
 #include "../RenderCore/SceneLighting.h"  // SCENE-LIGHTING-STATE-1 canonical mirror
 #include "../GameOS/gameos/utils/terrain_daylight.h"  // TERRAIN-AMBIENT-FLOOR-2 daylight gate (pure)
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
@@ -181,10 +182,10 @@ void mc2SceneLightingTrace()
     if (sunDiverged) ++s_sunMismatch;
 
     if (doTrace) {
-        fprintf(stderr,
-            "[SCENE_LIGHTING] frame=%u sun_cam=(%.2f,%.2f,%.2f) sun_terrain=(%.2f,%.2f,%.2f) "
-            "shadow=(%.2f,%.2f,%.2f) dtheta_cam_terrain=%.1fdeg sun_rgb=(%.2f,%.2f,%.2f) intensity=%.2f "
-            "ambient_rgb=(%.2f,%.2f,%.2f) worldLights=%d active=%d sky=%d ibl_sh=%d sun_match=%d cum_sun_mismatch=%u\n",
+        mc2::fmt::print_err(
+            "[SCENE_LIGHTING] frame={:d} sun_cam=({:.2f},{:.2f},{:.2f}) sun_terrain=({:.2f},{:.2f},{:.2f}) "
+            "shadow=({:.2f},{:.2f},{:.2f}) dtheta_cam_terrain={:.1f}deg sun_rgb=({:.2f},{:.2f},{:.2f}) intensity={:.2f} "
+            "ambient_rgb=({:.2f},{:.2f},{:.2f}) worldLights={:d} active={:d} sky={:d} ibl_sh={:d} sun_match={:d} cum_sun_mismatch={:d}\n",
             s_frame, s.sun_dir[0], s.sun_dir[1], s.sun_dir[2], tx, ty, tz,
             s.shadow_sun_dir[0], s.shadow_sun_dir[1], s.shadow_sun_dir[2], dtheta,
             s.sun_color[0], s.sun_color[1], s.sun_color[2], s.sun_intensity,
@@ -194,8 +195,8 @@ void mc2SceneLightingTrace()
         fflush(stderr);
     }
     if (doAssert && sunDiverged) {
-        fprintf(stderr,
-            "[SCENE_LIGHTING] WARN frame=%u camera_sun vs terrain_sun diverge by %.1fdeg "
+        mc2::fmt::print_err(
+            "[SCENE_LIGHTING] WARN frame={:d} camera_sun vs terrain_sun diverge by {:.1f}deg "
             "(EXPECTED today: object path uses the corrected terrain sun because worldLights[0] "
             "was ~90deg off -- see static_prop.vert STATIC-PROP-TERRAIN-SUN-DIFFUSE). Not a regression.\n",
             s_frame, dtheta);
@@ -319,9 +320,9 @@ void GameCamera::renderViewUniforms() {
 					{
 						static const bool s_xformFatal = mc2::gate::get<"MC2_XFORM_PARITY_FATAL">();
 						if (s_xformFatal && ok == 0) {
-							fprintf(stderr,
+							mc2::fmt::print_err(
 							        "[XFORM_PARITY_FATAL] ViewUniforms.worldToClipGL diverged from legacy "
-							        "terrain MVP: frame=%d max_diff=%.6f (>1e-5). MC2_XFORM_PARITY_FATAL=1 -> abort.\n",
+							        "terrain MVP: frame={:d} max_diff={:.6f} (>1e-5). MC2_XFORM_PARITY_FATAL=1 -> abort.\n",
 							        s_vuCompareFrame, maxDiff);
 							fflush(stderr);
 							abort();
@@ -367,16 +368,16 @@ void GameCamera::renderVanishProbe() {
 						(wout.z >= 0.0f && wout.z <= w);
 					if (inFr) ++inCount;
 					++total;
-					fprintf(stderr,
-						"[VANISH_PROBE] frame=%d inst=%u/%u world=(%.0f,%.0f,%.0f) "
-						"clip=(%.1f,%.1f,%.1f,w=%.1f) ndc=(%.3f,%.3f,%.3f) inFrustum=%d\n",
+					mc2::fmt::print_err(
+						"[VANISH_PROBE] frame={:d} inst={:d}/{:d} world=({:.0f},{:.0f},{:.0f}) "
+						"clip=({:.1f},{:.1f},{:.1f},w={:.1f}) ndc=({:.3f},{:.3f},{:.3f}) inFrustum={:d}\n",
 						s_vpFrame, i, n, wp[0], wp[1], wp[2],
 						wout.x, wout.y, wout.z, w,
 						(w != 0.0f ? wout.x / w : 0.0f),
 						(w != 0.0f ? wout.y / w : 0.0f),
 						(w != 0.0f ? wout.z / w : 0.0f), inFr ? 1 : 0);
 				}
-				fprintf(stderr, "[VANISH_PROBE] frame=%d storeCount=%u sampled=%d inFrustum=%d\n",
+				mc2::fmt::print_err("[VANISH_PROBE] frame={:d} storeCount={:d} sampled={:d} inFrustum={:d}\n",
 					s_vpFrame, n, total, inCount);
 				fflush(stderr);
 			}
@@ -1257,17 +1258,17 @@ long GameCamera::update (void)
 		HzbSavedView v{}; v.valid = false;
 		if (!s_hzbViewFile || !s_hzbViewFile[0]) return v;
 		FILE* f = fopen(s_hzbViewFile, "r");
-		if (!f) { fprintf(stderr, "[HZB_VIEW_FILE] cannot open '%s'\n", s_hzbViewFile); fflush(stderr); return v; }
+		if (!f) { mc2::fmt::print_err("[HZB_VIEW_FILE] cannot open '{}'\n", s_hzbViewFile); fflush(stderr); return v; }
 		int n = fscanf(f, "X=%f Y=%f Z=%f ROT=%f ANGLE=%f ALT=%f",
 		               &v.x, &v.y, &v.z, &v.rot, &v.angle, &v.alt);
 		fclose(f);
 		if (n == 6) {
 			v.valid = true;
-			fprintf(stderr, "[HZB_VIEW_FILE] loaded X=%.4f Y=%.4f Z=%.4f ROT=%.4f ANGLE=%.4f ALT=%.4f\n",
+			mc2::fmt::print_err("[HZB_VIEW_FILE] loaded X={:.4f} Y={:.4f} Z={:.4f} ROT={:.4f} ANGLE={:.4f} ALT={:.4f}\n",
 			        v.x, v.y, v.z, v.rot, v.angle, v.alt);
 			fflush(stderr);
 		} else {
-			fprintf(stderr, "[HZB_VIEW_FILE] parse failed (n=%d) in '%s'\n", n, s_hzbViewFile);
+			mc2::fmt::print_err("[HZB_VIEW_FILE] parse failed (n={:d}) in '{}'\n", n, s_hzbViewFile);
 			fflush(stderr);
 		}
 		return v;
@@ -1359,18 +1360,18 @@ long GameCamera::update (void)
 		FILE* df = fopen(dumpPath, "w");
 		if (df)
 		{
-			fprintf(df, "X=%.4f Y=%.4f Z=%.4f ROT=%.4f ANGLE=%.4f ALT=%.4f\n",
+			mc2::fmt::print(df, "X={:.4f} Y={:.4f} Z={:.4f} ROT={:.4f} ANGLE={:.4f} ALT={:.4f}\n",
 			        position.x, position.y, position.z,
 			        cameraRotation, projectionAngle, cameraAltitude);
 			fclose(df);
-			fprintf(stderr, "[HZB_VIEW_DUMP v1] saved X=%.4f Y=%.4f Z=%.4f ROT=%.4f ANGLE=%.4f ALT=%.4f\n",
+			mc2::fmt::print_err("[HZB_VIEW_DUMP v1] saved X={:.4f} Y={:.4f} Z={:.4f} ROT={:.4f} ANGLE={:.4f} ALT={:.4f}\n",
 			        position.x, position.y, position.z,
 			        cameraRotation, projectionAngle, cameraAltitude);
 			fflush(stderr);
 		}
 		else
 		{
-			fprintf(stderr, "[HZB_VIEW_DUMP v1] ERROR: cannot open '%s' for write\n", dumpPath);
+			mc2::fmt::print_err("[HZB_VIEW_DUMP v1] ERROR: cannot open '{}' for write\n", dumpPath);
 			fflush(stderr);
 		}
 	}
@@ -1392,7 +1393,7 @@ long GameCamera::update (void)
 	}		
 
 	char text[1024];
-	sprintf(text,"Near Plane: %f     Far Plane: %f",Camera::NearPlaneDistance,Camera::FarPlaneDistance);
+	mc2::fmt::to_buf(text,"Near Plane: {:f}     Far Plane: {:f}",Camera::NearPlaneDistance,Camera::FarPlaneDistance);
 
 	DWORD width, height;
 	Stuff::Vector4D moveHere;
@@ -1423,7 +1424,7 @@ long GameCamera::update (void)
 	if (DisplayCameraAngle)
 	{
 		char text[1024];
-		sprintf(text,"Camera Angle: %f degrees    Camera Altitude: %f    CameraPosition: X=%f Y=%f Z=%f   CameraRotation: %f",projectionAngle,cameraAltitude,position.x,position.y,position.z,cameraRotation);
+		mc2::fmt::to_buf(text,"Camera Angle: {:f} degrees    Camera Altitude: {:f}    CameraPosition: X={:f} Y={:f} Z={:f}   CameraRotation: {:f}",projectionAngle,cameraAltitude,position.x,position.y,position.z,cameraRotation);
 		
 		DWORD width, height;
 		Stuff::Vector4D moveHere;
@@ -1444,7 +1445,7 @@ long GameCamera::update (void)
 	if (TacticalOverview::enabled() && false)
 	{
 		char ovtext[256];
-		sprintf(ovtext,"[TacOverview] t=%.3f setpt=%.2f fires=%d | tilt=%.1f alt=%.0f maxLo=%.0f  (F6=toggle, wheel=zoom)",
+		mc2::fmt::to_buf(ovtext,"[TacOverview] t={:.3f} setpt={:.2f} fires={:d} | tilt={:.1f} alt={:.0f} maxLo={:.0f}  (F6=toggle, wheel=zoom)",
 			g_tacticalOverview.blend(), g_tacticalOverview.setpoint(),
 			g_tacticalOverview.hotkeyFires(), projectionAngle, cameraAltitude,
 			Camera::AltitudeMaximumLo);
@@ -1521,7 +1522,7 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 {
 	if (outPath && outPathLen > 0) outPath[0] = 0;
 	if (!eye) {
-		fprintf(stderr, "[BOOKMARK_SAVE v1] ERROR: eye is null\n");
+		mc2::fmt::print_err("[BOOKMARK_SAVE v1] ERROR: eye is null\n");
 		fflush(stderr);
 		return;
 	}
@@ -1542,7 +1543,7 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 	strftime(stamp, sizeof(stamp), "%H%M%S", lt);
 
 	char path[512];
-	snprintf(path, sizeof(path), "%s/%s_saved_%s.json", dir, stem, stamp);
+	mc2::fmt::to_buf(path, "{}/{}_saved_{}.json", dir, stem, stamp);
 
 	glm::vec3 pos = eye->getPosition();
 	float rot   = eye->getCameraRotation();
@@ -1551,31 +1552,31 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 
 	FILE* f = fopen(path, "w");
 	if (!f) {
-		fprintf(stderr, "[BOOKMARK_SAVE v1] ERROR: cannot open '%s' for write\n", path);
+		mc2::fmt::print_err("[BOOKMARK_SAVE v1] ERROR: cannot open '{}' for write\n", path);
 		fflush(stderr);
 		return;
 	}
-	fprintf(f, "{\n  \"schema_v\": 1,\n  \"mission\": \"%s\",\n", stem);
-	fprintf(f, "  \"_note\": \"Saved in-game via Save Camera Bookmark button. "
+	mc2::fmt::print(f, "{{\n  \"schema_v\": 1,\n  \"mission\": \"{}\",\n", stem);
+	mc2::fmt::print(f, "  \"_note\": \"Saved in-game via Save Camera Bookmark button. "
 	           "Duplicate entry keeps >=2 bookmarks (single-pose files silently fail).\",\n");
-	fprintf(f, "  \"bookmarks\": [\n");
+	mc2::fmt::print(f, "  \"bookmarks\": [\n");
 	for (int i = 0; i < 2; ++i) {
-		fprintf(f,
-		    "    {\n"
-		    "      \"name\": \"saved_%s%s\",\n"
-		    "      \"pos\": [%.4f, %.4f, %.4f],\n"
-		    "      \"rot\": %.4f,\n"
-		    "      \"proj\": %.4f,\n"
-		    "      \"alt\": %.4f\n"
-		    "    }%s\n",
+		mc2::fmt::print(f,
+		    "    {{\n"
+		    "      \"name\": \"saved_{}{}\",\n"
+		    "      \"pos\": [{:.4f}, {:.4f}, {:.4f}],\n"
+		    "      \"rot\": {:.4f},\n"
+		    "      \"proj\": {:.4f},\n"
+		    "      \"alt\": {:.4f}\n"
+		    "    }}{}\n",
 		    stamp, (i == 0) ? "" : "_dup",
 		    pos.x, pos.y, pos.z, rot, proj, alt,
 		    (i == 0) ? "," : "");
 	}
-	fprintf(f, "  ]\n}\n");
+	mc2::fmt::print(f, "  ]\n}}\n");
 	fclose(f);
-	fprintf(stderr, "[BOOKMARK_SAVE v1] wrote %s (mission=%s pos=[%.2f,%.2f,%.2f] "
-	        "rot=%.2f proj=%.2f alt=%.2f)\n",
+	mc2::fmt::print_err("[BOOKMARK_SAVE v1] wrote {} (mission={} pos=[{:.2f},{:.2f},{:.2f}] "
+	        "rot={:.2f} proj={:.2f} alt={:.2f})\n",
 	        path, stem, pos.x, pos.y, pos.z, rot, proj, alt);
 	fflush(stderr);
 	if (outPath && outPathLen > 0) {

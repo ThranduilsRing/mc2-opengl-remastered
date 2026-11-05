@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "render_view.h"
 #include "Gates/preferences_legacy.h"
 #define FORCEGROUPBAR_CPP
@@ -161,7 +162,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 			}
 
 	unsigned long aByte = static_cast<unsigned long>((alpha * 255.0f));
-	if ( aByte > 255 ) aByte = 255;
+	aByte = (std::min)( aByte, 255UL );
 	const unsigned long aBits = aByte << 24;
 
 	// These icons are world-anchored (true screen positions from the GL
@@ -325,7 +326,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 				}
 			}
 
-	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f )); if ( aB > 255 ) aB = 255;
+	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f )); aB = (std::min)( aB, 255UL );
 	const unsigned long aBits = aB << 24;
 	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : nullptr;
 	const unsigned long iconArgb = 0xff000000 | ( aB << 16 ) | ( aB << 8 ) | aB;
@@ -733,8 +734,7 @@ void ForceGroupBar::render()
 			maxUnits = 0;
 
 
-		if ( maxUnits > 16 )
-			maxUnits = 16;
+		maxUnits = (std::min)( maxUnits, 16 );
 	}
 
 

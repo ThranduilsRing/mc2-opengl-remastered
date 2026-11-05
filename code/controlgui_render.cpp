@@ -589,10 +589,8 @@ void ControlGui::render( bool bPaused )
 			//   - icons roll in hard over alt 6000 -> 6500 (just past gameplay cap)
 			//   - squad cards take over above alt 12000 (full by 14000)
 			const float alt = eye->getCameraAltitude();
-			float iconViz = ( alt - 6000.0f ) / 500.0f;
-			if ( iconViz < 0.0f ) iconViz = 0.0f; else if ( iconViz > 1.0f ) iconViz = 1.0f;
-			float cardViz = ( alt - 12000.0f ) / 2000.0f;
-			if ( cardViz < 0.0f ) cardViz = 0.0f; else if ( cardViz > 1.0f ) cardViz = 1.0f;
+			float iconViz = std::clamp( ( alt - 6000.0f ) / 500.0f, 0.0f, 1.0f );
+			float cardViz = std::clamp( ( alt - 12000.0f ) / 2000.0f, 0.0f, 1.0f );
 			float iconW = iconViz * ( 1.0f - cardViz );
 			float markerA = iconViz;
 

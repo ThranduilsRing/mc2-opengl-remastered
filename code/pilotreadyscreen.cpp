@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 /*************************************************************************************************\
 PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
@@ -188,8 +189,7 @@ void PilotReadyScreen::begin()
 		if ( playerCount )
 			maxUnits = MAX_MULTIPLAYER_MECHS_IN_LOGISTICS/playerCount;
 
-		if ( maxUnits > 12 )
-			maxUnits = 12;
+		maxUnits = (std::min)( maxUnits, 12 );
 	}
 
 	for ( int i = 0; i < 12; i++ )

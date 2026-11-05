@@ -997,8 +997,7 @@ void InfoWindow::render()
 
 		buttonHeight =  physicalRange * physicalRange/(physicalRange + RealRange);
 
-		if ( buttonHeight < SCROLLBUTTONHEIGHT )
-			buttonHeight = SCROLLBUTTONHEIGHT;
+		buttonHeight = (std::max)( buttonHeight, static_cast<float>(SCROLLBUTTONHEIGHT) );
 
 		SCROLLMAX = buttons[1].location[0].y - buttonHeight - 2;
 		
@@ -1030,8 +1029,7 @@ void InfoWindow::render()
 		
 		float barStatus = hudInfo.health;
 			
-		if (barStatus > 1.0f)
-			barStatus = 1.0f;
+		barStatus = (std::min)( barStatus, 1.0f );
 
 		if (barStatus >= 0.5)
 			color = SB_GREEN;
@@ -1139,8 +1137,7 @@ void InfoWindow::update()
 
 			buttonHeight =  physicalRange * physicalRange/(physicalRange + RealRange);
 
-			if ( buttonHeight < SCROLLBUTTONHEIGHT )
-				buttonHeight = SCROLLBUTTONHEIGHT;
+			buttonHeight = (std::max)( buttonHeight, static_cast<float>(SCROLLBUTTONHEIGHT) );
 
 			if ( mouseY > scrollPos + SCROLLMIN && mouseY < scrollPos + SCROLLMIN + buttonHeight )
 			{
@@ -1164,11 +1161,8 @@ void InfoWindow::update()
 							newScrollPos = scrollPos + buttonHeight;
 					}
 
-					if( newScrollPos < 0 )
-							newScrollPos = 0;
-
-					if( newScrollPos > infoLength )
-						newScrollPos = infoLength;
+					newScrollPos = (std::max)( newScrollPos, 0.0f );
+					newScrollPos = (std::min)( newScrollPos, infoLength );
 
 					
 					setScrollPos( newScrollPos );
