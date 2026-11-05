@@ -80,7 +80,9 @@ if [ ! -d $I ]; then
   for f in $GOLD/*; do b=$(basename $f); [ "$b" = data ] && continue; case $b in *.fst) cp -al $f $I/;; *) cp -a $f $I/;; esac; done
 fi
 export MC2_GOLDEN_MATERIAL_ROOT=/workspace/golden-material
+ln -f build64-ninja/mc2 build64-ninja/mc2.exe   # deploy_payload looks for mc2.exe; the Linux binary is mc2
 python3 scripts/deploy_payload.py $I --classic-assets --allow-new-target --ninja > $OUT/deploy.log 2>&1 || { tail -15 $OUT/deploy.log; echo "[box_run] DEPLOY FAILED"; exit 6; }
+[ -f $I/mc2.exe ] && cp -f $I/mc2.exe $I/mc2 && chmod +x $I/mc2
 tick install
 export INSTALL=$I OUT
 RES=0
