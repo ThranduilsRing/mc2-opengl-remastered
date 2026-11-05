@@ -863,6 +863,7 @@ struct ImportedAnimEntry {
     TG_TypeShape*       shape = nullptr;   // merged slot-0 shape (listOfTypeVertices)
     TG_TypeMultiShape*  multi = nullptr;   // for per-frame bbox refresh
     std::vector<std::string> names;        // skeleton, parallel to clip globals
+    std::shared_ptr<const mc2skel::SkelPlan> plan;  // flattened node/channel tables for names (borrows scene; declared after imp so it dies first)
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
@@ -1017,7 +1018,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
         std::vector<mc2skel::GpuBone> g;
         for (int f = 0; f <= frames; ++f) {
             double tt = 0, dd = 0;
-            if (!mc2skel::EvaluateClipGpuBones(e.scene, clip, static_cast<float>(f), e.names, g, &tt, &dd)) break;
+            if (!mc2skel::EvaluateClipGpuBones(*e.plan, clip, static_cast<float>(f), g, &tt, &dd)) break;
             for (int k = 0; k < 2; ++k) {
                 const aiMatrix4x4 M = e.AS1 * rowMajorToAi(g[feet[k]].m);
                 pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
@@ -1145,6 +1146,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;
+    e.plan = mc2skel::BuildPlan(scene, e.names);
     LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets);  // 1A nodes + AO + NORMALS tex names
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
@@ -1543,7 +1545,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
-    return mc2skel::EvaluateClipGpuBones(e.scene, s.activeClip, frame, e.names, globals, &tt, &dd);
+    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd);
 }
 
 // Build the GPU per-bone MODEL delta from sampled globals into s.modelDelta, plus the
