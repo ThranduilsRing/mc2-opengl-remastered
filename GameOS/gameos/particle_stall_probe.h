@@ -19,7 +19,7 @@
 namespace mc2 {
 
 inline bool particleStallTraceEnabled() {
-    static const bool s = mc2::gate::get<"MC2_PARTICLE_FLUSH_STALL_TRACE">();
+    static const bool s = false;
     return s;
 }
 

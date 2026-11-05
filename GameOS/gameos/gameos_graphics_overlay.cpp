@@ -11,7 +11,7 @@
 // constant NDC offset. Single consumer is the VS (no compute admission gate
 // mirrors the overlay bias). See mclib/terrain_depth_bias.h.
 static int mc2OverlayBiasLegacy() {
-    static const int mode = mc2::gate::get<"MC2_OVERLAY_BIAS_LEGACY">();
+    static const int mode = false;
     return mode;
 }
 
@@ -62,7 +62,7 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
     out->mapHalfExtent = pp ? pp->getMapHalfExtent() : 0.0f;
     out->biasLegacy = mc2OverlayBiasLegacy();
     static const int s_cementAdopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
-    static const int s_seamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
+    static const int s_seamFix = true;
     out->cementAdopt = s_cementAdopt;
     out->seamFix = s_seamFix;
 }

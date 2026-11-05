@@ -2424,7 +2424,7 @@ float MapData::terrainElevation (const glm::vec3 &position)
 
 				// Probe: MC2_COLORMAP_DISPLACE_PROBE=1 logs displacement magnitude.
 				// Requires MC2_COLORMAP_CPU_RETIRE=0 so cpuColorMap is still alive.
-				static const bool s_probe = mc2::gate::get<"MC2_COLORMAP_DISPLACE_PROBE">();
+				static const bool s_probe = false;
 				if (s_probe) {
 					static float s_maxAbs = 0.0f;
 					static long  s_count  = 0;

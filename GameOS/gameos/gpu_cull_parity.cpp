@@ -8,7 +8,7 @@
 namespace gpu_cull {
 
 static bool parity_isEnabled_impl() {
-    return mc2::gate::get<"MC2_GPU_CULL_AABB_PARITY">();
+    return false;
 }
 
 bool parity_isEnabled() {

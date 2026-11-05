@@ -32,7 +32,7 @@ void compute_dispatch() {
     const auto records=substrate_currentRecords();
     const float* matrix=gos_GetTerrainMVPMat4();
     if (!matrix || records.empty()) return;
-    const float dilation=mc2::gate::get<"MC2_GPU_CULL_FRUSTUM_DILATION">();
+    const float dilation=0.08f;
     if (readback_submit(records,matrix,dilation,frame)) readback_frameEnd(frame++);
 }
 void compute_emitParitySummary() {

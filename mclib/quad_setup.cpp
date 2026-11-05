@@ -20,11 +20,11 @@ static inline void pz_capture_vert_preds(int slot) {
 // single legacy-loop entry where CPU water is the live producer. It clears
 // g_cpuWaterProbeAny / g_cpuWaterProbeBestD2 and bumps g_cpuWaterProbeStamp.
 
-static const bool s_shapeCParityCheck = mc2::gate::get<"MC2_SHAPE_C_PARITY_CHECK">();
+static const bool s_shapeCParityCheck = false;
 // Default ON post Slice-1 flip (2026-04-29). Tier1 parity validated:
 // 19.7M field-equality checks across 5 missions, zero mismatches.
 // A value starting with "0" still opts out for bisection; any other value (including unset) opts in.
-static const bool s_shapeCEnabled = mc2::gate::get<"MC2_MODERN_TERRAIN_PATCHES">();
+static const bool s_shapeCEnabled = true;
 
 // Per-triangle diagnostic hook for terrain addTriangle sites.
 // Observation-only; must be called AFTER addTriangle so it cannot affect submission.

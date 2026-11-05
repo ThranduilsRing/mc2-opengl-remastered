@@ -12,7 +12,7 @@
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
-static const bool s_spotDiagMechEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static const bool s_spotDiagMechEnabled = false;
 static unsigned long s_spotDiagMechRegistered = 0;
 static unsigned long s_spotDiagMechOverflows  = 0;
 static unsigned long s_spotDiagMechActors     = 0;

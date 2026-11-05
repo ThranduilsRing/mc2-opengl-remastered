@@ -41,9 +41,9 @@ void initInstrBanner() {
         const bool destr   = mc2::gate::get<"MC2_DESTROY_TRACE">();
         const bool smoke   = mc2::gate::get<"MC2_SMOKE_MODE">();
         const bool waterFp = mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">();
-        const bool waterPc = mc2::gate::get<"MC2_RENDER_WATER_PARITY_CHECK">();
-        const bool vpFast  = mc2::gate::get<"MC2_VERTEX_PROJECT_FAST">();
-        const bool vpPar   = mc2::gate::get<"MC2_VERTEX_PROJECT_PARITY">();
+        const bool waterPc = false;
+        const bool vpFast  = false;
+        const bool vpPar   = false;
         // [OBJECT_RECON v1] read MC2_OBJECT_RECON_TRACY here so the gate is
         // live before any update kernel runs. drainPerFrame() lazy-inits
         // too, but eager init avoids missing the very-first-frame data.
@@ -59,9 +59,9 @@ void initInstrBanner() {
         const bool suTrace = mc2::gate::get<"MC2_STATIC_UPDATE_TRACE">();
         // Default ON; MC2_GPU_CULL_SUBSTRATE=0 opts out.
         bool gpuCullSubstrate = mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE">();
-        bool gpuCullParity    = mc2::gate::get<"MC2_GPU_CULL_AABB_PARITY">();
+        bool gpuCullParity    = false;
         const bool shrHR      = mc2::gate::get<"MC2_SHADER_HOT_RELOAD">();
-        const bool revZ       = mc2::gate::get<"MC2_REVERSE_Z_TRACE">();
+        const bool revZ       = false;
         // T3.1: (E) SpotLight_ -> real illumination. The
         // new TG_Light registration path is the unconditional production
         // behavior. MC2_SPOTLIGHT_REAL_TRACE counters remain (Debug

@@ -34,7 +34,7 @@ bool TacticalOverview::enabled() {
     // Default ON; opt out with MC2_TACTICAL_OVERVIEW=0.
     static int cached = -1;
     if (cached < 0) {
-        cached = mc2::gate::get<"MC2_TACTICAL_OVERVIEW">();
+        cached = true;
     }
     return cached != 0;
 }
@@ -43,7 +43,7 @@ bool TacticalOverview::tintEnabled() {
     if (!enabled()) return false;
     static int cached = -1;
     if (cached < 0) {
-        cached = mc2::gate::get<"MC2_TACTICAL_OVERVIEW_TINT">();   // default ON; only "=0" disables
+        cached = true;   // default ON; only "=0" disables
     }
     return cached != 0;
 }
@@ -78,7 +78,7 @@ void TacticalOverview::advance(float dt) {
     if (!enabled()) return;
     float before = state_.t();
     state_.update(dt);
-    if (before != state_.t() && mc2::gate::get<"MC2_TACTICAL_OVERVIEW_DEBUG">()) {
+    if (before != state_.t() && false) {
         char buf[96];
         mc2::fmt::to_buf(buf, "[TacOverview] t={:.3f} iconA={:.3f}", state_.t(), state_.iconAlpha());
         mc2::fmt::debug_out(buf);
@@ -134,7 +134,7 @@ bool TacticalOverview::formationLineEnabled()
     static int cached = -1;
     if ( cached < 0 )
     {
-        cached = mc2::gate::get<"MC2_TACMAP_FORMATION_LINE">();
+        cached = false;
     }
     return cached == 1;
 }

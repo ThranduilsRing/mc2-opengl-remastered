@@ -446,7 +446,7 @@ void	LogisticsData::setMissionCompleted( )
 
 			// Carry-over diagnostics distinguish filtering from inventory recovery failure.
 			{
-				static const bool s_logiFlowTrace = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
+				static const bool s_logiFlowTrace = false;
 				if ( s_logiFlowTrace && pMover && mc2_diag::tagEnabled("LOGISTICS") )
 				{
 					int  _lg_otc  = pMover->getObjectType() ? static_cast<int>(pMover->getObjectType()->getObjectTypeClass()) : -1;
@@ -477,7 +477,7 @@ void	LogisticsData::setMissionCompleted( )
 				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() );
 
 				{
-					static const bool s_lfResolve = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
+					static const bool s_lfResolve = false;
 					if ( s_lfResolve && mc2_diag::tagEnabled("LOGISTICS") )
 					{
 						const char* _r_pn = (pMover->getPilot() && pMover->getPilot()->getName()) ? pMover->getPilot()->getName() : "";
@@ -531,7 +531,7 @@ void	LogisticsData::setMissionCompleted( )
 								mc2::fmt::print_out( "[LOGISTICS] setMissionCompleted: no variant for surviving mech '{}' -- mech lost\n",
 								        mc2::fmt::safe(vname) );
 								fflush( stdout );
-								if ( mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">() && mc2_diag::tagEnabled("LOGISTICS") )
+								if ( false && mc2_diag::tagEnabled("LOGISTICS") )
 								{
 									char _ml_vn[80]; const char* _ml_s = vname ? vname : "";
 									size_t _ml_k; for(_ml_k=0;_ml_k<79 && _ml_s[_ml_k];++_ml_k) _ml_vn[_ml_k]=(_ml_s[_ml_k]=='\\'||_ml_s[_ml_k]=='"')?'_':_ml_s[_ml_k]; _ml_vn[_ml_k]='\0';

@@ -32,7 +32,7 @@ static void initBrainTaskQGate() {
     if (s_brainTaskQGateGen == mc2::brainpolicy::generation()) return;
     s_brainTaskQGateGen      = mc2::brainpolicy::generation();
     s_brainTaskQEnabled     = mc2::brainpolicy::techBrain();
-    s_brainTaskQTraceEnabled = mc2::gate::get<"MC2_BRAIN_TASKQ_TRACE">();
+    s_brainTaskQTraceEnabled = false;
 }
 
 // Brain runtime (slot writes + short-circuit): on under the TechBrain policy; re-derived once per mission load.
@@ -45,7 +45,7 @@ static void initBrainRuntimeGate() {
     if (s_brainRuntimeGateGen == mc2::brainpolicy::generation()) return;
     s_brainRuntimeGateGen      = mc2::brainpolicy::generation();
     s_brainRuntimeEnabled      = mc2::brainpolicy::techBrain();
-    s_brainRuntimeTraceEnabled = mc2::gate::get<"MC2_BRAIN_RUNTIME_TRACE">();
+    s_brainRuntimeTraceEnabled = false;
     s_brainRuntimeApplyEnabled = s_brainRuntimeEnabled;
     // Mode source: MC2_BRAIN_RUNTIME_FORCE_MODE env override only; per-unit FIT loader may override per-warrior.
     s_brainRuntimeForcedMode   = BrainRuntimeMode::Legacy;
@@ -98,10 +98,10 @@ void setBrainFixedTickState(uint32_t tickIndex, float accum, float simLast) {
 static void initBrainFixedTickGate() {
     if (s_brainFixedTickGateChecked) return;
     s_brainFixedTickGateChecked = true;
-    s_brainFixedTickEnabled = mc2::gate::get<"MC2_BRAIN_FIXED_TICK">();
-    s_brainFixedTickTrace   = mc2::gate::get<"MC2_BRAIN_FIXED_TICK_TRACE">();
+    s_brainFixedTickEnabled = false;
+    s_brainFixedTickTrace   = false;
     if (s_brainFixedTickEnabled) {
-        const float hz = mc2::gate::get<"MC2_BRAIN_FIXED_TICK_HZ">();   // the row clamps to [1, 30]
+        const float hz = 10.0f;   // the row clamps to [1, 30]
         s_brainFixedTickHz     = hz;
         s_brainFixedTickPeriod = 1.0f / hz;
         mc2::fmt::print_err("[BRAIN_FIXED_TICK] init: hz={:.1f} period={:.4f}s trace={:d}\n", s_brainFixedTickHz, s_brainFixedTickPeriod, mc2::fmt::as_i32(static_cast<int>(s_brainFixedTickTrace)));
@@ -176,18 +176,6 @@ long MechWarrior::runBrain (void) {
 		auto* playerUnit = getVehicle();
         if (playerUnit && playerUnit->getTeam() == Team::home && Commander::home
             && playerUnit->getCommanderId() == Commander::home->getId()) {
-            if (mc2::gate::get<"MC2_BRAIN_FREEZE_TRACE">()) {
-                auto* path = getMovePath();
-                const auto pos = playerUnit->getPosition();
-                auto* target = ObjectManager->getByWatchID(curTacOrder.targetWID);
-                mc2::fmt::print_err("[BRAIN_FREEZE_TRACE] wid={} brainState={} curTacOrder.code={} movePath.numSteps={} moveState={} hasBrain={} orderState={} mainGoal={} goalWID={} genOrder={} pos=({:.0f},{:.0f}) lastMoveErr={} t={:.2f} status={} weapons={} pending={} target={} los={} mapSide={:.0f}\n",
-                    vehicleWID, static_cast<int>(brainState), static_cast<int>(curTacOrder.code), path ? path->numSteps : -1,
-                    moveOrders.moveState, brain ? 1 : 0, static_cast<int>(orderState), static_cast<int>(mainGoalAction),
-                    mainGoalObjectWID, static_cast<int>(tacOrder[ORDERSTATE_GENERAL].code), pos.x, pos.y, LastMoveCalcErr,
-                    scenarioTime, static_cast<int>(playerUnit->getStatus()), static_cast<int>(playerUnit->numWeapons),
-                    getMovePathRequest() != nullptr, curTacOrder.targetWID, target ? static_cast<int>(playerUnit->lineOfSight(target)) : -1,
-                    Terrain::worldUnitsMapSide);
-            }
             return 0;
         }
 	}
@@ -596,7 +584,7 @@ long MechWarrior::runBrain (void) {
 	//   lastMoveErr       LastMoveCalcErr: no-path (LR path fail / MOVE-data
 	//                     area-graph misread) class.
 	{
-		static const bool s_aiFreezeTrace = mc2::gate::get<"MC2_BRAIN_FREEZE_TRACE">();
+		static const bool s_aiFreezeTrace = false;
 		if (s_aiFreezeTrace) {
 			MovePathPtr mp = getMovePath();
 			MoverPtr traceVehicle = getVehicle();

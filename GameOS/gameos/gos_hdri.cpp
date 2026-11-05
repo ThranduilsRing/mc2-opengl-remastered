@@ -89,7 +89,7 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
 // Read at first use, not at static-init time: the launcher writes this variable after the exe starts.
 static bool hdriBc6hOn()
 {
-    static const bool on = mc2::gate::get<"MC2_HDRI_BC6H">();
+    static const bool on = true;
     return on;
 }
 

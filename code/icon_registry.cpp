@@ -168,7 +168,7 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
     texture = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(registry.atlas.data()), gos_Texture_Alpha, 0, registry.edge);
     mc2::textures::adoptOwned(texture);
     mc2::fmt::print_out("[ICON_REGISTRY] icons={} atlas={}x{}\n", registry.icons.size(), registry.edge, registry.edge);
-    if (mc2::gate::get<"MC2_LOG_MECH_ICON">() || mc2::gate::get<"MC2_LOG_MECHICON">()) {
+    if (false || false) {
         std::filesystem::create_directories("debug_state", ec);
         FILE* dump = fopen("debug_state/icon_registry.tga", "wb");
         if (dump) {

@@ -26,7 +26,7 @@ void GVAppearance::updateRenderShape()
 	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) return;
 	mc2::overlap::assertMainThread("GVAppearance::updateRenderShape");
 	// findMoverByMouse selects vehicles by the stock screen rectangle, not triangles.
-	if (g_mc2FrameCounter.load(std::memory_order_relaxed) == 60 && mc2::gate::get<"MC2_VK_PICK_PROBE">())
+	if (g_mc2FrameCounter.load(std::memory_order_relaxed) == 60 && false)
 		mc2::fmt::print_out("[VEHICLE_PICK] appearance={} pos=({:.2f},{:.2f}) bounds=({:.6f},{:.6f},{:.6f},{:.6f})\n",
 			appearType->name, position.x, position.y, upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
 	if (!appearType->renderLods[0] || status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED) {

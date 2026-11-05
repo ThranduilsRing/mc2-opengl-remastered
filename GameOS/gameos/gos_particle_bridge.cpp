@@ -23,7 +23,7 @@ bool s_groupLog_initialized = false;
 bool s_groupLog_value       = false;
 bool groupLogEnabled() {
     if (!s_groupLog_initialized) {
-        s_groupLog_value = mc2::gate::get<"MC2_GOSFX_GROUP_LOG">();
+        s_groupLog_value = false;
         s_groupLog_initialized = true;
     }
     return s_groupLog_value;

@@ -56,7 +56,7 @@ void observeFrame(bool active) {
 namespace {
 	static float s_bridgeNextEmitTime = 0.0f;   // scenarioTime of next burst
 	static float bridgeMoverPeriodSec() {
-		return mc2::gate::get<"MC2_BRIDGE_MOVER_PERIOD_SEC">();   // the row clamps to >= 0.25
+		return 2.0f;   // the row clamps to >= 0.25
 	}
 
 	static const char* bridgeWarriorStatusName(long s) {

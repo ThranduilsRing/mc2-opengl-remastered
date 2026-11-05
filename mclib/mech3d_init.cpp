@@ -18,7 +18,7 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
-	const bool ktxPrimary = (mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">() != 0);   // default mode 1
+	const bool ktxPrimary = (1 != 0);   // default mode 1
 	if (!ktxPrimary)
 		return false;
 	char ktx[1024];

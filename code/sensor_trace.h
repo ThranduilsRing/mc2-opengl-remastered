@@ -69,7 +69,7 @@ inline bool gateActive() {
 	if (cached < 0) {
 		bool on = mc2_diag::tagEnabled("SENSOR");
 		if (!on) {
-			on = mc2::gate::get<"MC2_SENSOR_SCAN_FACTS">();
+			on = false;
 		}
 		cached = on ? 1 : 0;
 	}

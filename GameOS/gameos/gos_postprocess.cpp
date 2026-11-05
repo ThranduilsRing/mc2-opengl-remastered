@@ -220,7 +220,7 @@ void gosPostProcess::init(int w, int h)
 
     // OOB-FOG-1: far-plane fog over the out-of-bounds region. Default ON.
     {
-        fogOobEnabled_ = mc2::gate::get<"MC2_OOB_FOG">();
+        fogOobEnabled_ = true;
         if (mc2::gate::isSet<"MC2_OOB_FOG_COLOR">()) {
             const std::string colorEnv = mc2::gate::str<"MC2_OOB_FOG_COLOR">();
             float r, g, b;
@@ -363,7 +363,7 @@ void gosPostProcess::endScene()
 
 float mc2ShadowMinSunAltDeg()
 {
-    static const float s_minAltDeg = mc2::gate::get<"MC2_SHADOW_MIN_SUN_ALT">();
+    static const float s_minAltDeg = 15.0f;
     return s_minAltDeg;
 }
 

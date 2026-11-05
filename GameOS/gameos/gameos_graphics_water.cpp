@@ -195,7 +195,7 @@ static float mc2WaterHdriLodDefault()
         if (mc2::gate::isNonEmpty<"MC2_WATER_HDRI_LOD">()) {
             s_lod = mc2::gate::get<"MC2_WATER_HDRI_LOD">();
         } else {
-            const bool fullRate = mc2::gate::get<"MC2_WATER_HDRI_REFL_FULL">();
+            const bool fullRate = false;
             s_lod = fullRate ? 1.0f : 4.0f;
         }
     }
@@ -321,7 +321,7 @@ void gosRenderer::renderWaterFastPath(
     }
     // VK-PARITY-F3: edge feather killswitch/strength, map half extent, authored sky tint, frustum aspect.
     {
-        static const int s_vkWEdgeFeather = mc2::gate::get<"MC2_WATER_EDGE_FEATHER">();
+        static const int s_vkWEdgeFeather = true;
         static const float s_vkWEdgeFeatherStr = mc2::gate::get<"MC2_WATER_EDGE_FEATHER_STRENGTH">();
         extern bool g_cameraProjAspectNative;
         const float vkVpAspect = ppVk->getHeight() > 0

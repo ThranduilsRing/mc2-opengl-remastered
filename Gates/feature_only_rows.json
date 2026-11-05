@@ -82,5 +82,19 @@
   "order": 1,
   "defaultOn": true,
   "doc": "Retired: the static-prop batcher is the only world-prop path."
+ },
+ {
+  "featureId": "MC2_FEATURE_LEGACY_LIT_MC2_FRAME",
+  "kind": "Retired",
+  "order": 22,
+  "defaultOn": true,
+  "doc": "Retired: the vehicle lit path always uses the MC2 frame (env var MC2_LEGACY_LIT_MC2_FRAME removed; it had no reader)."
+ },
+ {
+  "featureId": "MC2_FEATURE_VEHICLE_AMBIENT_FLOOR",
+  "kind": "Retired",
+  "order": 26,
+  "defaultOn": true,
+  "doc": "Retired: the vehicle ambient floor is unconditional (env var MC2_VEHICLE_AMBIENT_FLOOR removed; it had no reader)."
  }
 ]

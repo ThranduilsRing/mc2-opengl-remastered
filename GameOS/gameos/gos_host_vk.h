@@ -15,6 +15,9 @@ void advanceFrameCounter();
 // Destroy islands, present resources and the shared Vulkan device before the SDL window.
 void shutdownVulkanBackend();
 void retirePresentHandles(unsigned long frameCounter);
+// Frame top, after waitSealed: run the inline present's failure recovery for a failure the present worker handed back, and end the session
+// once the device is lost. A no-op on a healthy frame.
+void recoverAsyncPresentFailure();
 // Submit/present native work, or hold the previous frame while a minimized surface recovers.
 void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter);
 }}

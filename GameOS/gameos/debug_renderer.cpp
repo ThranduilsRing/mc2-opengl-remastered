@@ -34,7 +34,7 @@ static constexpr size_t kVertCapacity = 65536;
 static Queue* s_active = nullptr;
 
 Queue::Queue()
-    : testCanary(mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">()) {
+    : testCanary(false) {
     s_active = this;
 }
 

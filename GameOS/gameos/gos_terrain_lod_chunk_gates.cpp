@@ -17,10 +17,10 @@
 
 extern const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
 // CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
-extern const bool kTglcCementAtlasSeamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
+extern const bool kTglcCementAtlasSeamFix = true;
 // NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
 // GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
-extern const bool kTglcLightPoolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
+extern const bool kTglcLightPoolSoft = true;
 // NIGHT-LIGHT-POOLS-4: default dropped 0.5 -> 0.25 (5-mech group still read as
 // one saturated egg at 0.5; compression can't help five overlapping full discs).
 extern const float kTglcLightPoolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
@@ -29,7 +29,7 @@ extern const float kTglcLightPoolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER
 extern const float kTglcLightPoolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
 // NIGHT-LIGHT-POOLS-4: mover pools combine by per-channel MAX (no additive
 // stacking across an overlapping lance); =0 restores the additive sum.
-extern const bool kTglcLightPoolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
+extern const bool kTglcLightPoolMoverMax = true;
 // NIGHT-LIGHT-POOLS-3: tone-compress the summed pool term (default ON;
 // =0 restores the legacy min(pool,1) hard clamp -> stacked-pool blowout).
 extern const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
@@ -39,8 +39,8 @@ extern const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRE
 // (mix() collapses, no darkening). Recommended ~0.7. MC2_MOVER_CONTACT_SHADOW.
 extern const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
 extern const float kTglcMacroVariation    = []() {
-    if (!mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION">()) return 0.0f;
-    return mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION_STRENGTH">();
+    if (true) return 0.0f;
+    return 1.0f;
 }();
 // WATER-FAR-BAND-ATTRIB-1 (batch3 item C): default flipped ON to match
 // WATER-EDGE-FEATHER (54a70e2d). With water feathered ON and terrain feather
@@ -49,8 +49,8 @@ extern const float kTglcMacroVariation    = []() {
 // angles (mc2_01 saved_205644; MC2_WATER_DEBUG_MODE=2 shows water alpha
 // already 0 across the band -> the navy pixels are terrain, not water).
 // Killswitch: MC2_TERRAIN_EDGE_FEATHER=0.
-extern const bool kTglcEdgeFeather = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER">();
-extern const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER_STRENGTH">();
+extern const bool kTglcEdgeFeather = true;
+extern const float kTglcEdgeFeatherStr    = 1.0f;
 
 TerrainShorelineKnobs gos_TerrainShorelineKnobs() {
     TerrainShorelineKnobs k;
@@ -60,13 +60,13 @@ TerrainShorelineKnobs gos_TerrainShorelineKnobs() {
     if (gosPostProcess* pp = getGosPostProcess()) k.waterElevation = pp->getWaterElevation();
     k.timeSeconds  = gos_GetShaderClockSeconds();
     k.strength     = mc2::gate::get<"MC2_TERRAIN_SHORELINE_STRENGTH">();
-    k.foamStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM">();
+    k.foamStrength = 1.0f;
     // Band widths are HORIZONTAL runs from the waterline (wet 16 wu, foam 5 wu by default); the legacy _HEIGHT names
     // are aliases read only while the _RUN name is unset.
     k.wetRun  = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_WET_RUN">()  ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_RUN">()
-                                                                     : mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_HEIGHT">();
+                                                                     : 16.0f;
     k.foamRun = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_FOAM_RUN">() ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
-                                                                     : mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_HEIGHT">();
+                                                                     : 5.0f;
     // Static world-XY jitter on the run so the lobes stop tracing the mesh waterline's straight segments; 0 = exact contour.
     k.edgeJitter = mc2::gate::get<"MC2_TERRAIN_SHORELINE_EDGE_JITTER">();
     return k;

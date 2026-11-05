@@ -122,7 +122,7 @@ bool TextureResidency::init() {
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
     // diagnostic opt-in; players see a blank image until the upload publishes.
-    if (mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">())
+    if (false)
         image.pixels={255,0,255,255, 0,0,0,255, 0,0,0,255, 255,0,255,255};
     else
         image.pixels.assign(16,0);

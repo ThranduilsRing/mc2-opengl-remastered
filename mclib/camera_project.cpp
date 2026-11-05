@@ -215,7 +215,7 @@ static bool pickInvert4x4d (const double (&m)[4][4], double (&out)[4][4])
 // MC2_TERRAIN_PICK_PARITY diagnostic: names which gate of pickTerrainRay refused (first few only).
 static bool pickFail (int code, long sx, long sy)
 {
-	static const bool s_dbg = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
+	static const bool s_dbg = false;
 	static int s_left = 12;
 	if (s_dbg && s_left > 0)
 	{
@@ -444,12 +444,12 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 	// (projectForSelectionPicking uses the same matrix the GPU renders with), so
 	// picking uses IT even when the chunk RENDER path is on (MC2_TERRAIN_LOD_CHUNK).
 	// Opt back into the raycast picker with MC2_TERRAIN_RAYCAST_PICK to debug it.
-	static const bool s_lodChunkPick = mc2::gate::get<"MC2_TERRAIN_RAYCAST_PICK">();
+	static const bool s_lodChunkPick = false;
 	// PARITY DIAGNOSTIC: when MC2_TERRAIN_PICK_PARITY is set we compute BOTH
 	// the heightfield raycast hit AND the legacy quadList result for the same
 	// screen coords, log the delta, and still return exactly what the active
 	// mode (raycast-if-flag-on-else-legacy) would have returned.
-	static const bool s_pickParity = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
+	static const bool s_pickParity = false;
 	bool   parityRaycastHit = false;
 	glm::vec3 parityRaycastPt;
 	parityRaycastPt.x = parityRaycastPt.y = parityRaycastPt.z = 0.0f;
@@ -553,7 +553,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 	// This path never calls inverseProjectForPicking / inverseProjectZ, so
 	// the !usePerspective recursion (inverseProjectZ) is structurally
 	// unreachable from picking regardless of CTRL+ALT+P toggle state.
-	static const bool s_vplPickTrace = mc2::gate::get<"MC2_VPL_PICK">();
+	static const bool s_vplPickTrace = false;
 	{
 		static bool s_announced = false;
 		if (s_vplPickTrace && !s_announced)
@@ -623,8 +623,8 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 	// Fix = single pass (no cap) + pick the FRONTMOST tile that CONTAINS the
 	// cursor (min eye-distance), reusing the same projection + containment test.
 	// Gated MC2_LOWCAM_PICK (default ON; =0 -> exact legacy two-stage below).
-	static const bool s_lowCamPick = mc2::gate::get<"MC2_LOWCAM_PICK">();
-	static const bool s_capTrace = mc2::gate::get<"MC2_PICK_CAP_TRACE">();
+	static const bool s_lowCamPick = true;
+	static const bool s_capTrace = false;
 
 	if (s_lowCamPick)
 	{

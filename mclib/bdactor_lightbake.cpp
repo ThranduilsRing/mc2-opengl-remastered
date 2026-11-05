@@ -260,7 +260,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 			// above this function. One line per real bake (MISS path only --
 			// a HIT recomputes nothing, so it has no bake state to attribute).
 			{
-				static const bool s_bakeOrdProbe = mc2::gate::get<"MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE">();
+				static const bool s_bakeOrdProbe = false;
 				if (s_bakeOrdProbe) {
 					static unsigned long long s_bakeOrd = 0;
 					const unsigned long long ord = s_bakeOrd++;

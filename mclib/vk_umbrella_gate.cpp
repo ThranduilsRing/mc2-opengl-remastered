@@ -6,7 +6,7 @@ namespace mc2vkgate {
 
 bool vfxTraceOn()
 {
-    return mc2::gate::get<"MC2_VK_VFX_TRACE">();
+    return false;
 }
 
 } // namespace mc2vkgate

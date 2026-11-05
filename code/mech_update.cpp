@@ -10,7 +10,7 @@
 
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp).
 // Read at static-init like the other readers, before any in-main env application.
-static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+static const bool s_gpuCullLifecycle = false;
 
 
 constexpr int GestureGoalFallenBackward = 8;
@@ -96,7 +96,7 @@ long BattleMech::update (void)
 			// ISSUE-50 diagnostics: MC2_LINKUP_TRACE=1 logs each off-GUI
 			// home mover's link-up state ~once/sec so the latch is
 			// observable in the field. Default OFF = no output.
-			static const bool s_linkupTrace = mc2::gate::get<"MC2_LINKUP_TRACE">();
+			static const bool s_linkupTrace = false;
 			const bool linkupLos =
 				Team::home->teamLineOfSight(position, getAppearRadius());
 			if (s_linkupTrace && ((turn & 31) == 0))

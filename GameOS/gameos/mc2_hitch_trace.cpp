@@ -42,7 +42,7 @@ struct HitchInit {
         // GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate. OR-in the
         // shared accumulation flag so the orphan macros count under either gate
         // without forcing the rest of the hitch trace (threshold emit) on.
-        g_mc2GpuBufCounter = mc2::gate::get<"MC2_GPUBUF_COUNTER">();
+        g_mc2GpuBufCounter = false;
         g_mc2GpuBufAccumOn = g_mc2HitchEnabled || g_mc2GpuBufCounter;
         if (g_mc2GpuBufCounter) {
             mc2::fmt::print_err("[GPUBUF_INIT] enabled (per-frame orphan counter)\n");

@@ -104,7 +104,7 @@ void Terrain::render (void)
 	// quad.cpp:422-476 (replicated inline; we do not touch quad.cpp state). Does
 	// NOT enqueue or draw anything. Behavior is identical when the var is unset.
 	{
-		static bool s_mineAB = mc2::gate::get<"MC2_TERRAIN_MINE_AB">();
+		static bool s_mineAB = false;
 		if (s_mineAB && GameMap && quadList && numberQuads > 0)
 		{
 			static unsigned long s_mineABFrame = 0;
@@ -305,7 +305,7 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 	const bool g5 = (Terrain::terrainTextures2 != nullptr);
 	// S2.15 gate diag: editor fails to arm FAST water path - print once
 	// per (mission/state-change) what gate fails. Throttled by signature.
-	static const bool s_gateDiag = mc2::gate::get<"MC2_WATER_GATE_DIAG">();
+	static const bool s_gateDiag = false;
 	if (s_gateDiag)
 	{
 		const bool solidArmed = gos_terrain_indirect::IsFrameSolidArmed();
@@ -331,7 +331,7 @@ void Terrain::renderWater (void)
 	// out-of-frustum or non-water by map data) vs handle-valid (the upper bound
 	// on the actually-emitting subset). Mirrors the MC2_THIN_DEBUG pattern in
 	// quad.cpp: prints 5 frames after a 1200-frame warmup hold-off, then dormant.
-	static const bool s_waterDebugOn = mc2::gate::get<"MC2_WATER_DEBUG">();
+	static const bool s_waterDebugOn = false;
 	static uint32_t s_total = 0;
 	static uint32_t s_handleValid = 0;
 	static uint32_t s_detailEligibleByHandle = 0;
@@ -352,7 +352,7 @@ void Terrain::renderWater (void)
 	// legacy draw-side skipped this frame, GPU fast path owns it".
 	const bool s6FastPathOwns = gos_terrain_indirect::WaterFastPathOwnsArmedDraw();
 	{
-		static const bool s_waterS6Trace = mc2::gate::get<"MC2_WATER_S6_TRACE">();
+		static const bool s_waterS6Trace = false;
 		if (s_waterS6Trace)
 		{
 			static int s_lastS6 = -1;
@@ -379,7 +379,7 @@ void Terrain::renderWater (void)
 	// CPU sample on armed frames (CPU water and the GPU fast path are
 	// mutually exclusive per frame). Pure writes, zero behavior change.
 	{
-		static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">();
+		static const bool s_depthTransProbe = false;
 		if (s_depthTransProbe)
 		{
 			extern float              g_cpuWaterProbeZ;
@@ -487,7 +487,7 @@ void Terrain::renderWaterFastPath (void)
 	// MC2_WATER_DEBUG=1 parallel timer (matches the legacy renderWater printer
 	// style at terrain.cpp:1004-1077, post-warmup window of 5 frames). Lets
 	// gate B Tracy/perf comparison run side-by-side with one env var.
-	static const bool s_waterDebugOn = mc2::gate::get<"MC2_WATER_DEBUG">();
+	static const bool s_waterDebugOn = false;
 	static uint64_t s_qpcFreq2 = 0;
 	static uint64_t s_qpcStart2 = 0;
 	static uint32_t s_framesPrinted2 = 0;
@@ -526,7 +526,7 @@ void Terrain::renderWaterFastPath (void)
 
 	{
 		static bool s_dumped = false;
-		if (!s_dumped && mc2::gate::get<"MC2_WATER_STREAM_DEBUG">()) {
+		if (!s_dumped && false) {
 			s_dumped = true;
 			mc2::fmt::print_err("[WATER_FAST v1] event=alpha_uniforms waterElevation={:.3f} alphaDepth={:.3f} alphaEdgeByte={:d} alphaMiddleByte={:d} alphaDeepByte={:d}\n", static_cast<double>(Terrain::waterElevation), static_cast<double>(MapData::alphaDepth), mc2::fmt::as_u32(static_cast<unsigned>(((Terrain::alphaEdge   >> 24) & 0xFFu))), mc2::fmt::as_u32(static_cast<unsigned>(((Terrain::alphaMiddle >> 24) & 0xFFu))), mc2::fmt::as_u32(static_cast<unsigned>(((Terrain::alphaDeep   >> 24) & 0xFFu))));
 			fflush(stderr);

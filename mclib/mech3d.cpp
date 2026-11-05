@@ -23,7 +23,7 @@
 
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
 // Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
-const bool s_lcTrace = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE_TRACE">();
+const bool s_lcTrace = false;
 bool InEditor = false;
 
 constexpr int BODYSTATE_NORMAL = 0;
@@ -424,7 +424,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	// single savegame load correlates each mech's restored type against
 	// its later submit/register events.
 	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
 			std::fprintf(stderr,
 				"[MECHRESTORE v1] event=copyfrom type=%p restored_lod=%d "

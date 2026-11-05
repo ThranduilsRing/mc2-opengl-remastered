@@ -68,7 +68,7 @@ long releaseAppearanceType (unsigned gen, AppearanceTypePtr which)
 // the shared counters read by the per-run verdict in gameosmain.cpp and written
 // by the appearance (apprtype/mech3d) and terrain-residency (txmmgr) paths.
 // See docs/tier1_env_vars.md.
-bool g_loadRaceTrace                     = mc2::gate::get<"MC2_LOAD_RACE_TRACE">();
+bool g_loadRaceTrace                     = false;
 long g_loadRaceApprNull                  = 0;    // getAppearance() NULL returns
 long g_loadRaceMechDegrade               = 0;    // Mech3DAppearance::init degrade-branch hits
 long g_loadRaceMechDegradeReal           = 0;    // ...of which real actors (obj != NULL)

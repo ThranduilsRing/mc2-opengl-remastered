@@ -6,7 +6,7 @@
 // First-shape always-on (one stderr line on the first call after process start).
 // Per-summary every 600 GatherLightsParameters calls when env=1. `calls=N`
 // because GatherLightsParameters runs once per submitMultiShape (many per frame).
-static const bool s_spotDiagPackEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static const bool s_spotDiagPackEnabled = false;
 static bool          s_spotDiagPackFirstHit  = false;
 static unsigned long s_spotDiagPackCalls     = 0;
 static unsigned long s_spotDiagPackActiveSum = 0;
@@ -17,7 +17,7 @@ static unsigned long s_spotDiagPackPointSum  = 0;
 // HIGH-WATER populated light count across all GatherLightsParameters calls and
 // emits a summary line. Answers "do stock missions ever exceed 16 lights/object?"
 // Does NOT change behavior when ON.
-static const bool    s_lightClampProbe        = mc2::gate::get<"MC2_LIGHT_CLAMP_PROBE">();
+static const bool    s_lightClampProbe        = false;
 static uint32_t      s_lightClampProbeHighWater = 0;
 static unsigned long s_lightClampProbeCalls     = 0;
 
@@ -65,7 +65,7 @@ static const bool    s_lightPosColumnFix      = mc2::gate::get<"MC2_LIGHT_POS_CO
 // every shader actually decodes as the light origin), so the receipt shows
 // directly whether the position survives the upload under either gate state.
 // Observation only: never changes a single uploaded float.
-static const bool    s_lightRowCensus = mc2::gate::get<"MC2_LIGHT_ROW_CENSUS">();
+static const bool    s_lightRowCensus = false;
 namespace {
 struct LightRowCensusRec {
     unsigned long seen;
@@ -103,7 +103,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	// Stage 2.D.2 diagnostic: dump gathered lights when MC2_OBJECT_PARITY_TRACE=1.
 	// Fired once per session to avoid per-frame spam. Shows what GPU UBO gets.
 	static bool s_lightDumpDone = false;
-	const bool doLightTrace = (!s_lightDumpDone && mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">());
+	const bool doLightTrace = (!s_lightDumpDone && false);
 
 	uint32_t num_lights = 0;
 	// LIGHT-CLAMP-RAISE-STAGE1-1: runtime population now reaches the full GPU ABI

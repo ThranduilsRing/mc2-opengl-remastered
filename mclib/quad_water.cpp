@@ -47,7 +47,7 @@ void TerrainQuad::drawWater (void)
 		extern float    g_cpuWaterProbeZ;
 		extern double   g_cpuWaterProbeBestD2;
 		extern bool     g_cpuWaterProbeAny;
-		static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">();
+		static const bool s_depthTransProbe = false;
 		if (s_depthTransProbe)
 		{
 			const float px = Terrain::mapTopLeft3d.x

@@ -437,7 +437,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 		f.sections.find(mc2::save::tagObjectSlots) != nullptr );
 
 	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
 			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load mechFinalized={:d} appearanceListNull={:d}\n", mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}
@@ -456,7 +456,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 		gpu_cull::readback_init(maxActors + maxActors / 4u + staticPropHeadroom);
 	}
 	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
 			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror maxActors={:d}\n", mc2::fmt::as_u32(static_cast<uint32_t>(ObjectManager->getMaxObjects())));
 	}
@@ -806,7 +806,7 @@ void Mission::loadActivateAndFinalize() {
 	gos_SetHudScaleActive(true);
 	gos_SetHudCanvasActive(true);
 	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
 			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_finalize mechFinalized={:d} appearanceListNull={:d}\n", mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}

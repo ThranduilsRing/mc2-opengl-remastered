@@ -51,7 +51,7 @@ bool isEnabled()
 {
     static int cached = -1;
     if (cached < 0) {
-        cached = mc2::gate::get<"MC2_GROUND_CONTACT_BLOB">();
+        cached = false;
     }
     return cached == 1;
 }

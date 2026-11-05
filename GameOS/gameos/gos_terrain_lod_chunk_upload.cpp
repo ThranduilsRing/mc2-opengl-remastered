@@ -255,6 +255,6 @@ void gos_TerrainLightPoolKnobs(int* soft, float* moverDim, float* moverScale,
 
 float gos_TerrainPadGlowSpillWu()
 {
-    static const float s_v = mc2::gate::get<"MC2_PAD_AREA_GLOW_SPILL">();
+    static const float s_v = 48.0f;
     return s_v;
 }

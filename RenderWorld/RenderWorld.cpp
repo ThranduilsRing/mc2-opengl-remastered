@@ -197,7 +197,7 @@ bool s_canaryRan = false;
 
 void runPassiveStableFrameCanary() {
     if (s_canaryRan) return;
-    if (!mc2::gate::get<"MC2_OBJECT_ID_BUFFER_SELFTEST">()) return;
+    if (true) return;
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
         std::fprintf(stderr,
             "[OBJECT_ID_SELFTEST v1] mode=passive_stable_frame result=SKIPPED reason=env_disabled\n");
@@ -290,7 +290,7 @@ void runPassiveStableFrameCanary() {
 // FAIL is a STOP: indicates the record table is corrupt or the
 // generation-bump logic is broken.
 void runSubstrateSelfTest() {
-    if (!mc2::gate::get<"MC2_RENDER_WORLD_SELFTEST">()) return;
+    if (true) return;
 
     // Use a high handle index unlikely to collide with real registrations.
     const uint32_t kTestIndex = 0xFFFFEu;  // 20-bit max minus one
@@ -403,7 +403,7 @@ void runSubstrateSelfTest() {
 // FAIL is a STOP: the mech substrate is broken; M2.6 pickup will be
 // unreliable.
 void RunMechObjectIdSelfTest() {
-    if (!mc2::gate::get<"MC2_MECH_OBJECT_ID_SELFTEST">()) {
+    if (true) {
         MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=SKIPPED reason=env_disabled\n");
         return;
@@ -699,22 +699,22 @@ bool IsStaticPropPickDebugEnabled() {
 // IsStaticPropPickEnabled / IsStaticPropPickDebugEnabled. Process-
 // lifetime cached; restart required to flip.
 bool IsMechPickEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_MECH_PICK">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
 bool IsMechPickDebugEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_MECH_PICK_DEBUG">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
 bool IsMechPickPierceFogEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_MECH_PICK_PIERCE_FOG">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
 bool IsGpuGroundPickParityEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 

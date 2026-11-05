@@ -391,7 +391,7 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 	// than "0", or env var absent). Compile-time ENABLE_ASSIMP_IMPORTER is the
 	// master gate; this is the per-launch override.
 	{
-		if (mc2::gate::get<"MC2_ASSIMP_IMPORT">()) {
+		if (true) {
 			// Probe order: .glb then .fbx. On any importer failure, fall
 			// through to ASE so a broken modder asset can't render the mech
 			// un-loadable. Stock-install playability is paramount.

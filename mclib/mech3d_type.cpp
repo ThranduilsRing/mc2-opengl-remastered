@@ -718,7 +718,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 				mechType->nodeData[nodeId].nodeId,
 				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
 			static int s_diagN = 0;
-			if (mc2::gate::get<"MC2_MECH_NODE_DIAG">() && s_diagN++ < 24)
+			if (false && s_diagN++ < 24)
 				fprintf(stderr, "[NODE-DIAG-CALLER] mech pos=(%.1f,%.1f,%.1f) node='%s' world=(%.1f,%.1f,%.1f) delta=(%.1f,%.1f,%.1f)\n",
 				        position.x, position.y, position.z,
 				        mechType->nodeData[nodeId].nodeId,

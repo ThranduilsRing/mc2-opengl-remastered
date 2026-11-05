@@ -125,7 +125,7 @@ bool GpuMechBatcher::isVehicleTypeRegistered(const TG_TypeMultiShape* typeMulti)
 void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape* typeMulti, int lod) {
     const TypeLodKey key{mechType, lod};
     if (s_typeLodIndex.count(key)) return;  // idempotent
-    static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
+    static const bool s_mechRestoreTrace = false;
     if (s_geometryFinalized) {
         // Late registration (post-finalizeGeometry). DO NOT drop: stage
         // the type into the retained s_stagingVbo/Ibo (fall through to
@@ -168,7 +168,7 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
         mc2mechanim::ImportedGpuTypeInfo(static_cast<const void*>(typeMulti), &importBoneIdx, &importNumVerts);
     const bool importGpu = (importJointCount > 0 && importJointCount <= 255);
 
-    static const bool s_nodeTrace = mc2::gate::get<"MC2_MECH_NODE_TRACE">();
+    static const bool s_nodeTrace = false;
     if (s_nodeTrace) {
         mc2::fmt::print_err("[MECHREG v1] event=register type={:016X} lod={:d} numBones={:d}\n", mc2::fmt::as_ptr(const_cast<void*>(mechType)), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
     }
@@ -490,6 +490,6 @@ void GpuMechBatcher::finalizePending() {
     MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",
         s_typeLodRecords.size(), lateAdded, s_geometryFinalized ? 1 : 0);
-    if (mc2::gate::get<"MC2_MECH_RESTORE_TRACE">())
+    if (false)
         mc2::fmt::print_err("[MECHRESTORE v1] event=finalize_pending types={:d} lateAdded={:d} rebuilt={:d}\n", mc2::fmt::as_size(s_typeLodRecords.size()), mc2::fmt::as_u32(lateAdded), mc2::fmt::as_i32(s_geometryFinalized ? 1 : 0));
 }

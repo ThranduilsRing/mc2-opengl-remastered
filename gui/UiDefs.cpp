@@ -32,7 +32,7 @@ bool UiDefs::gameOsUiDefsEnabled()
     // The data/defs GameOS UI path is the replacement path, not an opt-in demo.
     // Set MC2_GAMEOS_UI_DEFS=0/false/off/no to force the legacy GameOS FIT path
     // when comparing behavior or bisecting UI regressions.
-    return mc2::gate::get<"MC2_GAMEOS_UI_DEFS">();   // Std row, default on
+    return true;   // Std row, default on
 }
 
 bool UiDefs::editorUiDefsEnabled()
@@ -73,7 +73,7 @@ std::string UiDefs::replacementPathForLegacyFit(const char* legacyFitPath)
     // pure legacy renders it correctly. Pin them to legacy until authored.
     // MC2_UI_DEFS_LOADSCREEN=1 opts back in for iteration.
     if (stem.rfind("mcl_loadingscreen", 0) == 0) {
-        static const bool s_loadDefs = mc2::gate::get<"MC2_UI_DEFS_LOADSCREEN">();
+        static const bool s_loadDefs = false;
         if (!s_loadDefs) {
             uiDefsTrace("legacy FIT %s -> LEGACY (loadscreen page opt-out)", legacyFitPath ? legacyFitPath : "<null>");
             return std::string();
@@ -81,7 +81,7 @@ std::string UiDefs::replacementPathForLegacyFit(const char* legacyFitPath)
     }
 
     if (stem == "mcui_mr_layout") {
-        static const bool s_resultsDefs = mc2::gate::get<"MC2_UI_DEFS_RESULTS">();
+        static const bool s_resultsDefs = false;
         if (!s_resultsDefs) {
             uiDefsTrace("legacy FIT %s -> LEGACY (results page opt-out)", legacyFitPath ? legacyFitPath : "<null>");
             return std::string();

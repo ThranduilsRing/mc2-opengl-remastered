@@ -8,7 +8,7 @@
 
 
 
-extern const bool s_alphaTrace = mc2::gate::get<"MC2_ALPHA_TEST_TRACE">();
+extern const bool s_alphaTrace = false;
 // NOTE: raw gos_terrain_indirect_getDispatchMvp16() is phase-private to terrain/
 // water passes — object draw uses gos_GetObjectDrawMVP() (the accessor above).
 // Enforced by scripts/check-object-mvp-currency.py.
@@ -49,7 +49,7 @@ extern const bool s_treeDiagTrace = mc2::gate::get<"MC2_TREE_DIAG_TRACE">();
 // per-frame and 600-frame summary streams are env-gated to keep the log quiet by
 // default. Pattern mirrors the [INSTR v1] schema family + the 600-frame window
 // used by [OBJBATCHER v1] / [TGL_POOL v1].
-extern const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
+extern const bool s_spotlightRealTrace = false;
 
 // MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1 — forces the legacy per-type-cap
 // coalesce layout (keeps existing path; new global-pool path is disabled).

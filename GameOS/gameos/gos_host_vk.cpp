@@ -18,6 +18,7 @@
 #include "../../RenderWorld/RenderWorld.h"   // advanceFrame: the handle-slot clock
 #include <SDL2/SDL.h>
 #include <string>
+#include <string_view>
 #include <cstdio>
 #include <tracy/Tracy.hpp>
 #ifdef _WIN32
@@ -26,6 +27,7 @@
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"
 #include "engine_present_vk.h"
+#include "vk_render_infra.h"
 #endif
 
 extern SDL_Window* g_sdl_window;
@@ -183,6 +185,32 @@ static void advanceHandleClock(unsigned long frameCounter) {
 #endif
     RenderWorld::advanceFrame(frameNo, doneFrame);
 }
+#ifdef MC2_VULKAN
+namespace {
+// VK-FAILSOFT-DISARM-2 recovery, shared by the inline present and the worker's handed-back failure. A lost device never comes back, and a
+// not-VK-owned decline is structural: both are fatal. Anything else tears the present stack down and re-enters the deferred-init retry.
+void recoverPresentFailure(mc2vk::EnginePresentVk& vkpres, std::string_view fr) {
+    vkpres.logHealth();
+    if (mc2vk::infra::deviceLostLatched()) mc2::fatalBackendFailure(("Vulkan device lost: " + std::string(fr)).c_str());
+    if (fr.find("not VK-owned") != std::string_view::npos) mc2::fatalBackendFailure(std::string(fr).c_str());
+    mc2::fmt::print_out("[VK_PRESENT] present failure treated as transient: {} -- tearing down and retrying init (session stays VK).\n",
+           fr.empty() ? std::string_view("(unspecified)") : fr);
+    fflush(stdout);
+    vkpres.destroy();
+    g_vkPresentInitDeferred = true;
+}
+}  // namespace
+#endif
+void recoverAsyncPresentFailure() {
+#ifdef MC2_VULKAN
+    // A loss seen by any submit (not only the present) ends the session before main records on the lost device again.
+    if (mc2vk::infra::deviceLostLatched()) mc2::fatalBackendFailure("Vulkan device lost");
+    std::string reason;
+    if (!mc2vk::present_thread::takeFailure(reason)) return;
+    mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
+    if (vkpres.valid()) recoverPresentFailure(vkpres, reason);
+#endif
+}
 void retirePresentHandles(unsigned long) {
     const auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
     const auto& tracker = ctx.tracker();
@@ -297,17 +325,7 @@ void presentOrSwap(graphics::RenderWindowHandle win, unsigned long frameCounter)
                 // remaining fatal case is the structural not-VK-owned
                 // decline (config plainly cannot composite; retry
                 // cannot help; it is fatal, there is no GL fallback).
-                const std::string fr = vkpres.health().fallback_reason;
-                vkpres.logHealth();
-                if (fr.find("not VK-owned") != std::string::npos) {
-                    mc2::fatalBackendFailure(fr.c_str());
-                } else {
-                    mc2::fmt::print_out("[VK_PRESENT] present failure treated as transient: {} -- tearing down and retrying init (session stays VK).\n",
-                           fr.empty() ? "(unspecified)" : fr.c_str());
-                    fflush(stdout);
-                    vkpres.destroy();
-                    g_vkPresentInitDeferred = true;
-                }
+                recoverPresentFailure(vkpres, vkpres.health().fallback_reason);
             }
         }
     }

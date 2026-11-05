@@ -1348,7 +1348,7 @@ void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before
 }
 
 bool ShadowBake::diagOn() {
-    static const bool s_on = mc2::gate::get<"MC2_SHADOW_DIAG">();
+    static const bool s_on = false;
     return s_on;
 }
 

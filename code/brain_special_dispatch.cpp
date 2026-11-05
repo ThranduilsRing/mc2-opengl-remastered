@@ -165,7 +165,7 @@ static bool s_brainCommitPhaseEnabled() { return mc2::brainpolicy::techBrain(); 
 // Needs BOTH gates: WEIGHTS to populate selectedTactic, WEIGHTS_B to wire it. With B
 // OFF the field is left at its init default (TACTIC_NONE) → byte-identical to pre-B.
 bool s_tacticWeightsBEnabled() {
-    static const bool kGate = mc2::gate::get<"MC2_TACTIC_WEIGHTS_B">();
+    static const bool kGate = false;
     return kGate;
 }
 

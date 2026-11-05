@@ -32,7 +32,7 @@ bool mc2StableLightSkipEnabled() {
 }
 
 static bool mc2StableLightSkipDiagEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP_DIAG">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
@@ -147,11 +147,11 @@ void recordStableLightSkipDiag(bool armed, bool eligible,
 extern uint32_t mc2StaticLightHighWater();  // txmmgr.cpp — s_staticLightHighWater accessor
 
 bool mc2LightbridgeStableSkipEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_LIGHTBRIDGE_STABLE_SKIP">();
+    static const bool s_enabled = true;
     return s_enabled;
 }
 static bool mc2LightbridgeStableSkipDiagEnabled() {
-    static const bool s_diagEnabled = mc2::gate::get<"MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG">();
+    static const bool s_diagEnabled = false;
     return s_diagEnabled;
 }
 // STABLE-LIGHT-SKIP-BROADEN-1: extend the LBSS resubmit-skip to the legacy
@@ -168,7 +168,7 @@ static bool mc2LightbridgeStableSkipDiagEnabled() {
 // + MC2_STABLE_LIGHT_SKIP armed (same invariant proof: baked static prefix
 // [0..s_staticLightHighWater) persists frame-to-frame under MC2_LIGHTBAKE).
 bool mc2StableLightSkipTouchEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP_TOUCH">();
+    static const bool s_enabled = true;
     return s_enabled;
 }
 
@@ -237,7 +237,7 @@ void lbssRecordTree(bool taken, bool blk_idx)
 // MC2_FRAME_JOBS_TOUCH_DIAG=1 — enable per-300-frame print (independent of lbss diag)
 // Counters are cumulative per-frame accumulators, reset every 300 frames.
 bool mc2FrameJobsTouchDiagEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_FRAME_JOBS_TOUCH_DIAG">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 
@@ -297,7 +297,7 @@ namespace mc2_lightslot_trace {
     static inline void initFromEnv() {
         if (s_inited) return;
         s_inited   = true;
-        s_enabled  = mc2::gate::get<"MC2_LIGHTSLOT_TRACE">();
+        s_enabled  = false;
     }
 
     // Record one static-prop tree instance's resolved light slot + its type.

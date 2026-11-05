@@ -147,7 +147,7 @@ bool playedObjectiveClick[100];
 // OBJ-IMGUI-SLICE-1: gate. Default OFF -> legacy tile/font overlay, byte-identical.
 bool ControlGui::imguiObjEnabled()
 {
-	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_OBJ">();
+	static const bool s_on = false;
 	return s_on;
 }
 
@@ -423,13 +423,13 @@ void ControlGui::renderObjectivesImGui()
 // SMALLPANELS-IMGUI-SLICE-1: gates. Default OFF -> legacy draws, byte-identical.
 bool ControlGui::imguiTimerEnabled()
 {
-	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_TIMER">();
+	static const bool s_on = false;
 	return s_on;
 }
 
 bool ControlGui::imguiVideoEnabled()
 {
-	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_VIDEO">();
+	static const bool s_on = false;
 	return s_on;
 }
 

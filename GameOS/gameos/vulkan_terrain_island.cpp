@@ -76,7 +76,7 @@ bool terrainFenceDeferEnabled() {
 bool terrainPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_TERRAIN_PERF">();
+        state = false;
     }
     return state == 1;
 }

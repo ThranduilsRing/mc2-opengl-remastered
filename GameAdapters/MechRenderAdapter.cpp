@@ -188,7 +188,7 @@ BattleMech* findMechByHandle(RenderCore::RenderObjectHandle h) {
 // Free function in the global namespace so RenderWorld.cpp can
 // forward-declare and call it without a header dependency.
 void RunMechPickSelfTest() {
-    if (!mc2::gate::get<"MC2_MECH_PICK_SELFTEST">()) return;
+    if (true) return;
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
         mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=SKIP reason=substrate_off\n");
         return;

@@ -309,9 +309,6 @@ void init(const char* manifestPath) {
     st.inited = true;
     st.traceEnabled = mc2::gate::get<"MC2_ASSET_SCALE_TRACE">();
     loadManifest(manifestPath);
-    if (mc2::gate::get<"MC2_ASSET_SCALE_SELFTEST">()) {
-        runSelfTests();
-    }
 }
 
 void shutdown() {

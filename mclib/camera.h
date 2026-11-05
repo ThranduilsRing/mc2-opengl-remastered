@@ -803,13 +803,13 @@ class Camera
 		                                             Stuff::Vector4D& screen,
 		                                             float worldRadius) {
 			// Default ON for this low-camera build; set MC2_LOWCAM_OBJ_NEARPAD=0 to disable.
-			static const bool s_lowcamObjNearPad = mc2::gate::get<"MC2_LOWCAM_OBJ_NEARPAD">();
+			static const bool s_lowcamObjNearPad = true;
 			if (!s_lowcamObjNearPad || worldRadius <= 0.0f)
 				return projectForObjectAdmission(point, screen);
 			// [LOW-CAMERA-OBJECT-CULL-1 v2] getExtentRadius() is a tight extent; near
 			// objects still pop at low pitch. Scale the near-plane pad radius. Default
 			// 2.5x; MC2_LOWCAM_OBJ_NEARPAD_SCALE=k overrides (=1 = tight stock pad).
-			static const float s_objNearPadScale = mc2::gate::get<"MC2_LOWCAM_OBJ_NEARPAD_SCALE">();
+			static const float s_objNearPadScale = 4.0f;
 			worldRadius *= s_objNearPadScale;
 
 			const int64_t _f3_cull_t0 = ::mc2_cpu_proj_cost::cull_admission_begin_ns();

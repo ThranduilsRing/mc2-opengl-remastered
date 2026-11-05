@@ -23,7 +23,7 @@ extern unsigned long long g_ifaceCgFrameNs[8];
 namespace missiongui_detail {
 	static const char* s_mfNames[MF_COUNT] = {"TOTAL","invProj","LOS","controlGui","updateTarget","postTarget","drawBars","rollovers",
 		"cg.pauseWnd","cg.btnHover","cg.rosterScan","cg.moverState","cg.tacMap","cg.infoWnd","cg.vehicleTab","cg.fgBar"};
-	const bool s_mfOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
+	const bool s_mfOn = false || false;
 	static unsigned long long s_mfSum[MF_COUNT]={0}, s_mfMax[MF_COUNT]={0};
 	unsigned long long s_mfFrameNs[MF_COUNT]={0};
 	static unsigned long long s_mfFrames=0;
@@ -87,7 +87,7 @@ namespace missiongui_detail {
 	// default sample rate keeps the oracle from freezing the game if someone
 	// enables the gate without tuning; set MC2_GPU_GROUND_PICK_PARITY_SAMPLE=1
 	// for a dense interactive parity capture (move the cursor by hand).
-	static int s_gpSampleN = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_SAMPLE">();   // the row reads 30 below 1
+	static int s_gpSampleN = 30;   // the row reads 30 below 1
 	static const std::string s_gpMissionTagText = mc2::gate::str<"MC2_GPU_GROUND_PICK_PARITY_TAG">();   // "" when unset or empty
 	static const char* s_gpMissionTag = s_gpMissionTagText.empty() ? "?" : s_gpMissionTagText.c_str();
 	// Center-probe knob: unattended smoke parks the cursor at (0,0), so the
@@ -98,7 +98,7 @@ namespace missiongui_detail {
 	// GPU-vs-CPU ground-pos delta over the terrain the camera is looking at
 	// (incl. displaced terrain), which the parked-cursor path cannot. Same
 	// throttle as the cursor path. Diagnostic-only; result never consumed.
-	const bool s_gpCenter = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_CENTER">();
+	const bool s_gpCenter = false;
 	static unsigned long long s_gpSites=0;          // eligible parity sites seen
 	static unsigned long long s_gpCompared=0;        // both CPU+GPU produced a point
 	static unsigned long long s_gpGpuInvalid=0;      // GPU had no world pos (fallback)

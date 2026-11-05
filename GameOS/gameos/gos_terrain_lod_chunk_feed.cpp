@@ -206,7 +206,7 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
     out->useCement          = cementLive ? 1 : 0;
     out->useTransitionMask  = gos_terrain_indirect_isTransitionMaskReady() ? 1 : 0;
     {
-        out->cementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">() ? 1 : 0;
+        out->cementDiagConnect = false ? 1 : 0;
     }
     // Null until the words of this map were uploaded: the island then keeps an all-zero (no cement) field of the same size.
     const size_t cementPlane = static_cast<size_t>(s_mapSide) * static_cast<size_t>(s_mapSide);

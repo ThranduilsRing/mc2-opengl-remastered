@@ -48,7 +48,7 @@ static const bool s_lateSpawnRegEnabled =
 // follow-up). Set MC2_STATIC_PER_INSTANCE_LIGHT=0 to opt back into the
 // historical multi-cache path.
 const bool s_perInstanceLight =
-    mc2::gate::get<"MC2_STATIC_PER_INSTANCE_LIGHT">();
+    true;
 
 // STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2: the static per-type instance block lives in a persistent batcher
 // store, rebuilt only when the registry generation changes, and the per-frame static instance re-push is skipped
@@ -67,7 +67,7 @@ static uint64_t s_registryGeneration = 0;
 // [TEX_LIFECYCLE v1] events stream together under one invocation.
 // See docs/superpowers/specs/2026-05-06-static-prop-texture-pin-fix.md
 static const bool s_texPinTrace =
-    mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">();
+    false;
 #define TEX_LC_PIN(fmt, ...)                                            \
     do { if (s_texPinTrace) {                                           \
         printf("[TEX_LIFECYCLE v1] " fmt "\n", ##__VA_ARGS__);          \
@@ -115,7 +115,7 @@ static uint8_t s_popsEverTagged = 0u;
 // Leaf storage (s_recipes) still appends -- that is a slower RAM-only growth, not the
 // per-frame cost this targets.
 static std::vector<uint32_t>              s_recipeRangeFreeList;
-static const bool s_recipeRecycle = mc2::gate::get<"MC2_STATIC_RECIPE_RECYCLE">();
+static const bool s_recipeRecycle = true;
 // The all-recipes persistent instance store still serves the population split.
 const bool s_staticFrozenReg = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();
 

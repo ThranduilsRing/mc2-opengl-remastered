@@ -524,7 +524,7 @@ bool          s_telemetryEverEmitted[16]   = {};
 } // namespace
 
 void initRenderPassTelemetry() {
-    s_telemetryEnabled = mc2::gate::get<"MC2_RENDER_PASS_TELEMETRY">();
+    s_telemetryEnabled = false;
     if (s_telemetryEnabled) {
         mc2::fmt::print_out("[RENDER_PASS v1] telemetry ACTIVE (sample every {:d} frames)\n", mc2::fmt::as_u32(static_cast<unsigned>(kTelemetryFrameInterval)));
         fflush(stdout);
@@ -764,7 +764,7 @@ const RenderCore::RenderPassContract* findPassContract(RenderCore::RenderPassId 
 
 void initRenderPassOrder() {
     s_frame.orderEnabled = s_frame.forceEnabled || mc2::gate::get<"MC2_RENDER_PASS_ORDER">();
-    s_frame.telEnabled = s_frame.forceEnabled || mc2::gate::get<"MC2_RENDER_PASS_TELEMETRY">();
+    s_frame.telEnabled = s_frame.forceEnabled || false;
 }
 
 void _test_forceOrderAudit(bool enabled) {
@@ -791,7 +791,7 @@ unsigned long g_fboSamples = 0;
 }
 
 void validateTargetAtPassBegin(RenderCore::RenderPassId id) {
-    static const bool enabled = mc2::gate::get<"MC2_FRAMEGRAPH_AMBIENT_GUARD">();
+    static const bool enabled = true;
     if (!enabled) return;
     static const bool s_fatal = mc2::gate::isSet<"MC2_FRAMEGRAPH_AMBIENT_FATAL">();
     // Native destination readiness. The legacy fbo_* dump keys retain their
@@ -964,7 +964,7 @@ static void passScopeViolation(const char* what, PassIdentity id, const char* hi
 } // anonymous namespace (scope-tracking helpers)
 
 void initRenderPassScope() {
-    s_scope.traceEnabled  = mc2::gate::get<"MC2_RENDER_PASS_CONTRACT_TRACE">();
+    s_scope.traceEnabled  = false;
     s_scope.assertEnabled = mc2::gate::get<"MC2_RENDER_PASS_CONTRACT_ASSERT">();
     s_scope.depth         = 0;
     s_scope.overflowed    = false;

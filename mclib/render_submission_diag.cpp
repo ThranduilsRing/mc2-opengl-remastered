@@ -8,7 +8,7 @@
 // frame-jobs workers; the increment only happens on the rare overflow path.
 // A teardown dump surfaces any nonzero counter even with the trace gate off, so
 // silent pool exhaustion can no longer pass unnoticed.
-bool g_txmmgrBoundsTrace = mc2::gate::get<"MC2_TXMMGR_BOUNDS_TRACE">();
+bool g_txmmgrBoundsTrace = false;
 std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented{0};
 namespace {

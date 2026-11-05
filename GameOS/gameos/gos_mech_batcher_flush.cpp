@@ -224,7 +224,7 @@ static void traceLatch() {
         s_mechBatcherTraceInit = true;
     }
     if (!s_mechLightTraceInit) {
-        s_mechLightTrace     = mc2::gate::get<"MC2_MECH_LIGHT_TRACE">();
+        s_mechLightTrace     = false;
         s_mechLightTraceInit = true;
     }
     if (s_mechLightTrace) {

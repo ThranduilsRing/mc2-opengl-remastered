@@ -270,7 +270,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			{
 				handle = *modHandle;
 				++g_resolveOpens;
-				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(m_fileName.c_str(), "mechicon"))
+				if (false && strstr(m_fileName.c_str(), "mechicon"))
 					printf("[MECHICON] File::open MOD-HIT: %s\n", m_fileName.c_str());
 			}
 			else
@@ -278,7 +278,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 				handle = _open(m_fileName.c_str(), _O_RDONLY | _O_BINARY);
 				if (handle != INVALID_HANDLE_VALUE)
 					++g_resolveOpens;
-				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(m_fileName.c_str(), "mechicon") && handle != INVALID_HANDLE_VALUE)
+				if (false && strstr(m_fileName.c_str(), "mechicon") && handle != INVALID_HANDLE_VALUE)
 					printf("[MECHICON] File::open LOOSE: %s\n", m_fileName.c_str());
 				if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
 					std::string key = NormalizeKey(m_fileName.c_str());
@@ -324,7 +324,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			fastFile = FastFileFind(m_fileName.c_str(),fastFileHandle);
 			if (fastFile)
 				++g_resolveOpens;
-			if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && fastFile && strstr(m_fileName.c_str(), "mechicon"))
+			if (false && fastFile && strstr(m_fileName.c_str(), "mechicon"))
 				printf("[MECHICON] File::open FST-HIT: %s\n", m_fileName.c_str());
 			if (fastFile && logFileResolve >= 2) {
 				std::string key = NormalizeKey(m_fileName.c_str());

@@ -20,7 +20,7 @@ namespace {
 // for a debug-coloured overlay. Gated MC2_OVERLAY_MAGENTA_TRACE + MC2_DIAG_TAGS=OVERLAY_MAGENTA; read via
 // get_diagnostic_events("OVERLAY_MAGENTA").
 void tracePlaceholder(const char* filename, const char* texname, int w, int h) {
-    static const bool s_magentaTrace = mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">();
+    static const bool s_magentaTrace = false;
     if (!s_magentaTrace || !mc2_diag::tagEnabled("OVERLAY_MAGENTA"))
         return;
     char fn[256];

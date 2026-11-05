@@ -916,7 +916,7 @@ void Mission::initAblCoreLibs(MissionInitFrame& f) {
 		{ "corebrain", false },   // MCO / wolfman-MC2X core
 		{ "mc2xcore",  false },   // cveg / MC2X-R52 core
 	};
-	const bool ablCoreTrace = mc2::gate::get<"MC2_ABL_CORE_TRACE">();
+	const bool ablCoreTrace = false;
 	for (const AblCoreLib& lib : kAblCoreLibs) {
 		FullPathFileName libPath;
 		libPath.init(missionPath, lib.name, ".abx");

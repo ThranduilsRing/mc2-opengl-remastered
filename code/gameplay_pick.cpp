@@ -194,7 +194,7 @@ static const char* selftestOutcomeName(GameplayPickResult::Outcome o) {
 
 void RunGameplayPickSelfTest()
 {
-    if (!mc2::gate::get<"MC2_GAMEPLAY_PICK_SELFTEST">()) return;
+    if (true) return;
 
     // Defense: substrate must be on for step 8 to be meaningful. If
     // substrate is off, every step 1-7 still asserts correctly, BUT

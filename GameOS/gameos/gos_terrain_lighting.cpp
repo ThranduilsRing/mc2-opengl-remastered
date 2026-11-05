@@ -40,7 +40,7 @@ extern bool  useFog;           // defined in mclib/terrain.cpp
 // Step 8c). Deltas ~0 stock: binary clamp (MinHaze==MaxClip==50000) on both
 // sides; GetApproximateLength->length() only diverges if setFarClipDistance
 // reshapes the haze band. Retire in Step 8c.
-static const bool s_hazeParity = mc2::gate::get<"MC2_HAZE_PARITY">();
+static const bool s_hazeParity = false;
 static double  s_hazeParityMaxAbsDelta = 0.0;
 static uint64_t s_hazeParityViolations = 0;
 static uint64_t s_hazeParitySummaryFrames = 0;
@@ -231,8 +231,8 @@ static void BuildLightGrid(uint32_t numLights) {
             }
     }
 
-    static const bool moverMax=mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
-    static const bool poolSoft=mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
+    static const bool moverMax=true;
+    static const bool poolSoft=true;
     static const float contactShadow=mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
     if(moverMax && contactShadow==0.0f) {
         gos_terrain_lighting::GridMoverDominance dominance(std::span{s_lightBuf}.first(numLights),poolSoft,moverScale);
@@ -385,15 +385,15 @@ const void* GetObjectLightPoolUpload(size_t& bytes) {
 // Shared object-pool parameters for native mech and prop consumers.
 void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     if (!out) return;
-    static const bool s_objects = mc2::gate::get<"MC2_LIGHT_POOL_OBJECTS">();   // default ON
+    static const bool s_objects = true;   // default ON
     // Knob values lockstep with the terrain-chunk consumer defaults
     // (gos_terrain_lod_chunk.cpp / gameos_graphics.cpp overlay path).
-    static const bool s_poolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
+    static const bool s_poolSoft = true;
     // Rows: MOVER_DIM default 0.25 range(0, 1); MOVER_RADIUS default 0.6 range (0, 1] (exclusive lower
     // bound); out of range falls back to the default.
     static const float s_poolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
     static const float s_poolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
-    static const bool s_poolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
+    static const bool s_poolMoverMax = true;
     static const bool s_poolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
     // POOL-CONSUMERS-1: object-side intensity scale (objects hold baked light
     // rows already; keep the additive pool below the terrain level so the
@@ -637,7 +637,7 @@ void PackAndDispatch() {
         // pools rendered at red sensor-blip positions of UNSEEN enemies
         // (positional intel leak) and off-screen lights burned pool budget.
         // Skip !active — legacy parity. Killswitch MC2_LIGHT_POOL_VIS_GATE=0.
-        static const bool s_visGate = mc2::gate::get<"MC2_LIGHT_POOL_VIS_GATE">();   // default ON
+        static const bool s_visGate = true;   // default ON
         // NIGHT-LIGHT-POOLS-2a: mover-light classification for the pool
         // consumer (frag dims mover pools; the compute vertex-lighting
         // consumer ignores the pad field — no legacy deviation). Slot tags
@@ -674,7 +674,7 @@ void PackAndDispatch() {
         // world-light slot + (E)-owner attribution (mc2_spotlight_diag), so a
         // rendered pool with no visible caster can be traced to its owner.
         // Default-off, zero cost when unset.
-        static const bool s_poolDump = mc2::gate::get<"MC2_LIGHT_POOL_DUMP">();
+        static const bool s_poolDump = false;
         static unsigned long s_poolDumpFrame = 0;
         const bool dumpThisFrame = s_poolDump && ((s_poolDumpFrame++ % 240) == 0);
         std::unordered_map<const void*, long> ptrToSlot;

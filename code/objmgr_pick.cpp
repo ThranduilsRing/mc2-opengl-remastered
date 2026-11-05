@@ -286,7 +286,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	// FIX: build the rect from in-front corners only (skip w<=1e-4). If ALL corners are
 	// behind the camera the object has no valid screen rect this frame -> not pickable.
 	// Killswitch MC2_PICK_BEHIND_LEGACY=1 restores the byte-identical legacy behavior.
-	static const bool s_pickBehindLegacy = mc2::gate::get<"MC2_PICK_BEHIND_LEGACY">();
+	static const bool s_pickBehindLegacy = false;
 	int behindCount = 0;
 
 	for (long i=0;i<8;i++)
@@ -333,7 +333,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	// Read via get_diagnostic_events("CURSOR_TARGET"). No behavior change.
 	if (behindCount > 0)
 	{
-		static const bool s_cursorTargetTrace = mc2::gate::get<"MC2_CURSOR_TARGET_TRACE">();
+		static const bool s_cursorTargetTrace = false;
 		if (s_cursorTargetTrace && mc2_diag::tagEnabled("CURSOR_TARGET"))
 		{
 			char _ct_buf[256];
@@ -538,7 +538,7 @@ void gameplayPickBattery(GameObjectManager& manager) {
     static bool busy = false;
     static uint32_t previous = 0, tested = 0;
     static int stable = 0;
-    if (busy || turn <= 90 || !eye || !mc2::gate::get<"MC2_VK_PICK_PROBE">()) return;
+    if (busy || turn <= 90 || !eye || !false) return;
     const auto revision = eye->getViewProjectionRevision();
     if (revision != previous) { previous = revision; stable = 0; }
     if (++stable < 4 || tested == revision) return;

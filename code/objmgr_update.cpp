@@ -17,7 +17,7 @@
 // MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based update() gating.
 // Default off — legacy inView/canBeSeen/blockActive path unchanged.
 // ---------------------------------------------------------------------------
-static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+static const bool s_gpuCullLifecycle = false;
 
 // ---------------------------------------------------------------------------
 // GOM Recon: object type classification & mutation tracking (read-only).
@@ -38,7 +38,7 @@ static bool mc2SkipStaticNaturalEnabled (void)
 	// so they still tick every frame regardless of this gate.
 	static int cached = -1;
 	if (cached < 0) {
-		cached = mc2::gate::get<"MC2_SKIP_STATIC_TREES">();
+		cached = true;
 	}
 	return(cached != 0);
 }
@@ -51,7 +51,7 @@ static bool mc2SkipStaticBuildingsEnabled (void)
 	// With this unset the binary is BYTE-IDENTICAL to the pre-broadening path.
 	static int cached = -1;
 	if (cached < 0) {
-		cached = mc2::gate::get<"MC2_SKIP_STATIC_BUILDINGS">();
+		cached = false;
 	}
 	return(cached != 0);
 }
@@ -60,7 +60,7 @@ static bool mc2SkipStaticNaturalDiagEnabled (void)
 {
 	static int cached = -1;
 	if (cached < 0)
-		cached = mc2::gate::get<"MC2_SKIP_STATIC_TREES_DIAG">() ? 1 : 0;
+		cached = false ? 1 : 0;
 	return(cached != 0);
 }
 
@@ -116,7 +116,7 @@ static bool mc2StaticTypeNameStartsWith (const char* typeName, const char* prefi
 //
 // Env-gated MC2_INVIEW_CONFLATION_TRACE=1 per debug_instrumentation_rule.md.
 // 120-frame summary roll matches [TOBJPARITY v1] cadence.
-static bool s_inViewConflationEnabled = mc2::gate::get<"MC2_INVIEW_CONFLATION_TRACE">();
+static bool s_inViewConflationEnabled = false;
 // Hysteresis floor for sim_cand (Stage 0 tunable knob per spec §9 Q3).
 // Default 4 frames matches conservative recommendation.
 static const uint8_t s_inViewConflationHysteresisN = 4u;
@@ -297,7 +297,7 @@ static void emitGpuCullRecord(GameObjectPtr obj,
 // of instrumented phases (unattributed gaps: framesSinceActive sweep, captureList,
 // FRAME-JOBS prepass, etc.).
 namespace gomcost {
-static const bool s_enabled = mc2::gate::get<"MC2_GOM_UPDATE_COST_SPLIT">();
+static const bool s_enabled = false;
 enum class Phase {
     kStaticTouch = 0, kMoverUpdate, kOtherFx, kSubstrateFlush, kTotal, kPhaseCount
 };

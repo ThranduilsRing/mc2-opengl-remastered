@@ -156,7 +156,7 @@ static float getf(const std::map<std::string,float>& m, const char* key, float d
 // the shipped 0.7 default. Gate OFF -> member stays at its 0.0f C++
 // initializer -> byte-identical.
 static void applyControlAlbedoStrength(const std::map<std::string,float>& v, bool jsonLoaded) {
-    if (!mc2::gate::get<"MC2_TERRAIN_CONTROLMAP_ALBEDO">()) return;  // gate OFF -> no-op, member stays 0.0f
+    if (true) return;  // gate OFF -> no-op, member stays 0.0f
 
     float strength = jsonLoaded ? getf(v, "controlAlbedoStrength", 0.7f) : 0.7f;
     if (mc2::gate::isNonEmpty<"MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH">())
@@ -168,8 +168,8 @@ static void applyControlAlbedoStrength(const std::map<std::string,float>& v, boo
 void terrainMaterials_apply(const char* /*missionName*/) {
     const std::string pathEnv = mc2::gate::str<"MC2_TERRAIN_MATERIAL_LIB_FILE">();   // "" when unset or empty
     const char* path = !pathEnv.empty() ? pathEnv.c_str() : "data/terrain_materials.json";
-    bool materialLibGateOn = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
-    bool controlAlbedoGateOn = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP_ALBEDO">();
+    bool materialLibGateOn = false;
+    bool controlAlbedoGateOn = false;
 
     if (!materialLibGateOn && !controlAlbedoGateOn)
         return;  // all gates OFF -> silent no-op

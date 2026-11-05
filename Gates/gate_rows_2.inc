@@ -1,87 +1,40 @@
-L(Presence, "MC2_LOG_LOGISTICS_FLOW", Bool, false, "code", "", "", verified),
-L(Presence, "MC2_LOG_MECHICON", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_LOG_MECH_ICON", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_LOG_PILOTS", Bool, false, "code", "", "PILOTS-ROSTER diagnostic (MC2_LOG_PILOTS=1): how many pilots loaded + the roster path.", verified),
 L(Presence, "MC2_LOG_PREVIEW", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_LOG_STRINGS", Bool, false, "gameos", "", "", verified),
-L(Lead0Kill, "MC2_LOWCAM_OBJ_NEARPAD", Bool, true, "code", "", "Default ON for this low-camera build; set MC2_LOWCAM_OBJ_NEARPAD=0 to disable.", verified),
-P("MC2_LOWCAM_OBJ_NEARPAD_SCALE", Float, 4.0, "code", "", "[LOW-CAMERA-OBJECT-CULL-1 v2] getExtentRadius() is a tight extent; near objects still pop at low pitch.", verified),
-L(Lead0Kill, "MC2_LOWCAM_PICK", Bool, true, "code", "", "[LOW-CAMERA-PICK-RAY-1 v2] Two root causes make the legacy picker mis-land at LOW/grazing pitch (greybeard + adversarial recon, both in the EXISTING...", verified),
-P("MC2_LOWCAM_SOLID_NEAR", Float, 6.0, "terrain", "", "[LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this loop) is the SECOND terrain visibility gate - independent of the frustum inFrustum...", verified),
-L(Lead0Kill, "MC2_LOWCAM_TERRAIN_NEAR", Bool, true, "terrain", "", "[LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] When set, drop the near plane from the terrain AABB frustum test so near terrain isn't culled at a low/grazing pitch...", verified),
-L(Lead0, "MC2_LOWCAM_ZOOM_ANCHOR", Bool, false, "code", "", "Default OFF: anchored zoom still reads as a pan in practice; use the legacy fixed-pivot wheel zoom.", verified),
-L(Presence, "MC2_M2D_PZ_PARITY", Bool, false, "terrain", "", "MC2_M2D_PZ_PARITY probe (VPL Step 8b precursor validator).", verified),
 // history: docs/gate-history.md#MC2_MATERIAL_GPU
 L(Lead0Kill, "MC2_MATERIAL_GPU", Bool, true, "unclassified", "", "GPU material table upload/bind/compare for static props (default-ON as of v5, 2026-05-26).", passthrough | registry(Feature, "MC2_FEATURE_MATERIAL_GPU", 9, true) | verified),
 // history: docs/gate-history.md#MC2_MATERIAL_GPU_SAMPLE
 L(Lead0Kill, "MC2_MATERIAL_GPU_SAMPLE", Bool, true, "props", "", "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26).", passthrough | registry(Feature, "MC2_FEATURE_MATERIAL_GPU_SAMPLE", 10, true) | verified),
 // history: docs/gate-history.md#MC2_MATERIAL_KTX
-L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_MECHLAB_3D_OFF", Bool, false, "code", "", "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech.", verified),
 L(Lead1, "MC2_MECHLAB_GPU_OFF", Bool, false, "code", "", "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass.", verified),
-L(Lead0Kill, "MC2_MECH_ANIM_ROTATION_ONLY", Bool, true, "mech", "", "", verified),
 L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
 P("MC2_MECH_FILL", Int, 2, "mech", "", "Mech lighting strength, ships ON at 2. Dev A/B override: 0 = original look, 1 = shared swapped sun + sun-sized fill, 2 = plus wrapped N.L and fresnel rim.", clampRange(0, 2) | verified),
-P("MC2_MECH_GLASS_LUMA_THRESH", Float, 0.12, "mech", "", "", clampRange(0.0, 1.0) | verified),
-P("MC2_MECH_GLASS_MAXCHAN_THRESH", Float, 0.18, "mech", "", "", clampRange(0.0, 1.0) | verified),
-P("MC2_MECH_GLASS_ROUGHNESS", Float, 0.25, "mech", "", "", clampRange(0.04, 1.0) | verified),
 L(Lead1, "MC2_MECH_IMPORT_ANIMATE", Bool, false, "code", "", "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).", verified),
 L(Presence, "MC2_MECH_IMPORT_CLIP_DIAG", Bool, false, "mech", "", "", verified),
-L(Lead1, "MC2_MECH_IMPORT_DYNAMIC_LIFT", Bool, false, "code", "", "Default: static rest lift (steady torso).", verified),
 G("MC2_MECH_IMPORT_FORCE_BONE", String, "j_LThigh", "mech", "", "", verified),
 G("MC2_MECH_IMPORT_FORCE_CLIP", String, "", "code", "", "BT2018-SKEL-ENGINE-1B: by default bake the REST (bind) pose.", verified),
 P("MC2_MECH_IMPORT_FORCE_FRAME", Int, 0, "code", "", "", verified),
 P("MC2_MECH_IMPORT_FORCE_POSE", Int, 0, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_GPU", Bool, false, "code", "", "", verified),
-P("MC2_MECH_IMPORT_GPU_AXIS", Int, 2, "code", "", "", verified),
 P("MC2_MECH_IMPORT_GPU_LIFT", Float, 0.0, "code", "", "", verified),
-P("MC2_MECH_IMPORT_GPU_LIFT_AXIS", Int, 1, "code", "", "", verified),
-L(Presence, "MC2_MECH_LIGHT_TRACE", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_MECH_LOD_TRACE", Bool, false, "mech", "", "MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.", verified),
-P("MC2_MECH_METAL_ROUGHNESS", Float, 0.85, "mech", "", "", clampRange(0.04, 1.0) | verified),
-L(Presence, "MC2_MECH_NODE_DIAG", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_MECH_NODE_TRACE", Bool, false, "mech", "", "", verified),
-P("MC2_MECH_NORMALS_MODE", Int, 2, "mech", "", "", verified),
-P("MC2_MECH_NORMALS_SMOOTH_DEG", Float, 60.0, "mech", "", "", clampRange(1.0, 179.0) | verified),
-L(Lead0, "MC2_MECH_OBJECT_ID_SELFTEST", Bool, false, "code", "", "", verified),
-L(Lead0, "MC2_MECH_PICK", Bool, false, "code", "", "", verified),
-L(Lead0, "MC2_MECH_PICK_DEBUG", Bool, false, "code", "", "", verified),
-L(Lead0, "MC2_MECH_PICK_PIERCE_FOG", Bool, false, "code", "", "", verified),
-L(Lead0, "MC2_MECH_PICK_SELFTEST", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_MECH_PREVIEW_TRACE", Bool, false, "mech", "", ""),
-L(Presence, "MC2_MECH_RESTORE_TRACE", Bool, false, "mech", "", "", passthrough | verified),
 G("MC2_MECH_SKEL_BONE_DUMP", String, "", "code", "", "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when...", verified),
 P("MC2_MECH_SKEL_HEIGHT", Float, 50.0, "code", "", "", verified),
-L(Presence, "MC2_MECH_SKEL_TRACE", Bool, false, "code", "", "BT2018-SKEL-ENGINE-1A - bind-pose bake trace (default OFF).", verified),
 P("MC2_MECH_SPECULAR_STRENGTH", Float, 0.05, "mech", "", "", clampRange(0.0, 4.0) | verified),
 L(Lead0Kill, "MC2_MECH_SPECULAR_V1", Bool, true, "mech", "", "", verified),
 G("MC2_MECH_SURFACE_MATERIAL", Enum, "", "mech", "", "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load.", tokens("|0|metal061b|none|painted_subtle") | verified),
 L(Lead0Kill, "MC2_MECH_VIEWUNIFORMS", Bool, true, "mech", "", "", verified),
 L(Lead0, "MC2_MENU_CANARY_SKIP_INTRO", Bool, false, "code", "", "", passthrough | verified),
-L(Presence, "MC2_MIF_SPLIT", Bool, false, "code", "", "", passthrough | verified),
-L(Lead0Kill, "MC2_MISSING_RUNWAY_FIX", Bool, true, "terrain", "", "", verified),
 L(Presence, "MC2_MISSION_CYCLE_TEST", Bool, false, "code", "", "", passthrough | verified),
 // MissionIntroLegacyRender (TRACKV-CI-GATE-RESTORE-1)
 L(Presence, "MC2_MISSION_SPLIT", Bool, false, "code", "", "", passthrough | verified),
-L(Lead0Kill, "MC2_MODERN_TERRAIN_PATCHES", Bool, true, "terrain", "", "Default ON post Slice-1 flip (2026-04-29).", passthrough | verified),
-L(Lead0Kill, "MC2_MODERN_TERRAIN_SURFACE", Bool, true, "terrain", "", "", passthrough | verified),
-G("MC2_MODERN_TEX_RESOLVE", Bool, true, "code", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified),
-L(Presence, "MC2_MODERN_TEX_RESOLVE_TRACE", Bool, false, "code", "", "", verified),
-L(Presence, "MC2_MODERN_TEX_RESOLVE_VALIDATE", Bool, false, "code", "", "Default ON with explicit opt-out.", verified),
 L(Presence, "MC2_MODOVERRIDE_TRACE", Bool, false, "props", "", "", verified),
 G("MC2_MOD_DEPS", String, "", "code", "", "Stock campaign: no active mod.", passthrough | verified),
 L(Lead1, "MC2_MOD_HEALTH_DIAG", Bool, false, "code", "", "MC2_MOD_HEALTH_DIAG=1 - emit [MOD_HEALTH v1] AI-liveness milestone lines (tools/mod_smoke.py sets it).", passthrough | verified),
-L(Presence, "MC2_MOUSE_RECON", Bool, false, "unclassified", "", "MC2_MOUSE_RECON: env-gated one-shot-ish confirm log.", verified),
 // META-FIX-BATCH-3 (recurrence-proofing, designs A + B — 2026-07-16)
 // history: docs/gate-history.md#MC2_MOVER_COHERENCE_AUDIT
 L(Lead0, "MC2_MOVER_COHERENCE_AUDIT", Bool, false, "code", "", "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...", passthrough | registry(Trace, "MC2_TRACE_MOVER_COHERENCE_AUDIT", -1, false) | verified),
 P("MC2_MOVER_CONTACT_SHADOW", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 1.0) | verified),
 P("MC2_MOVER_FIXTURE", Int, 0, "sim", "", "M6 dev selector: =N tops the mission up to N movers on two teams with move/attack orders (code/mover_budget_fixture.h, tools/mover_budget.py). 0 = off.", passthrough | range(0, 1000) | verified),
-L(Lead0, "MC2_MOVE_CHUNK_SHADOW", Bool, false, "code", "", "", passthrough | verified),
-L(Lead0, "MC2_MOVE_PATH_CACHE_SHADOW", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_MOVE_RECON
-L(Lead0, "MC2_MOVE_RECON", Bool, false, "code", "", "Pathfinding cost instrumentation (mclib/move_recon.cpp).", passthrough | registry(Trace, "MC2_FEATURE_MOVE_RECON", -1, false) | verified),
-L(DefOnAtoiNZ, "MC2_MVP_PUBLISH_EARLY", Bool, true, "code", "", "", verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_NIGHT_AMBIENT_FLOOR
 P("MC2_NIGHT_AMBIENT_FLOOR", Int, 0, "code", "", "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in...", clampRange(0, 64) | registry(Trace, "MC2_TUNE_NIGHT_AMBIENT_FLOOR", -1, false) | verified),
 // history: docs/gate-history.md#MC2_NO_ACTIVATE
@@ -89,44 +42,24 @@ L(Lead0, "MC2_NO_ACTIVATE", Bool, false, "editor", "", "Mission Editor (editor/E
 // history: docs/gate-history.md#MC2_NO_CURSOR_GRAB
 L(Lead0Def, "MC2_NO_CURSOR_GRAB", Bool, false, "gameos", "", "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window...", registry(Trace, "MC2_TRACE_NO_CURSOR_GRAB", -1, false) | verified),
 L(Presence, "MC2_NO_LAUNCHER", Bool, false, "gameos", "", "", passthrough | verified),
-L(Presence, "MC2_OBJBATCHER_TRACE", Bool, false, "props", "", "", verified),
 G("MC2_OBJECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", passthrough | tokens("|legacy|modern") | verified),
-L(Exact1, "MC2_OBJECT_ADMISSION_SELFTEST", Bool, false, "gameos", "", "Optional startup selftest - hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression.", verified),
 // history: docs/gate-history.md#MC2_OBJECT_ID_BUFFER
 L(DefOnLead0, "MC2_OBJECT_ID_BUFFER", Bool, true, "code", "", "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5).", passthrough | registry(Feature, "MC2_FEATURE_OBJECT_ID_BUFFER", 2, true) | verified),
-L(Lead0, "MC2_OBJECT_ID_BUFFER_SELFTEST", Bool, false, "code", "", "", verified),
-L(Exact1, "MC2_OBJECT_PARITY_TRACE", Bool, false, "code", "", "", verified),
 P("MC2_OBJECT_POLY_OFFSET_FACTOR", Float, -1.0, "props", "", "", passthrough),
-P("MC2_OBJECT_POLY_OFFSET_UNITS", Float, -1.0, "props", "", "", passthrough),
-L(Lead0, "MC2_OBJECT_RECON_TRACY", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Lead0, "MC2_OBJECT_WALK_FACTS", Bool, false, "code", "", "", verified),
-L(Presence, "MC2_OBJ_MVP_STALE_FATAL", Bool, false, "gameos", "", "", verified),
-L(Lead0Kill, "MC2_OOB_FOG", Bool, true, "post", "", "", verified),
 G("MC2_OOB_FOG_COLOR", String, "", "post", "", "", verified),
-L(Lead0Kill, "MC2_OOB_LETTERBOX", Bool, true, "post", "", ""),
 G("MC2_OPTIONS_OVERRIDE", String, "", "code", "", "Test channel: Key=Value,... options.cfg keys applied over the file at startup (smoke matrices, capture drivers); never saved.", passthrough | verified),
 L(Presence, "MC2_OS_CURSOR", Bool, false, "unclassified", "", "Hide the OS cursor.", verified),
 // RUNWAY-CLOSE-1: overlay-art flat-light exemption A/B arm (enum 63, LAST).
-L(Lead0, "MC2_OVERLAY_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
 // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): the DELIVERED cure for the
 // concrete patchwork. Default ON. Supersedes MC2_OVERLAY_CEMENT_SHADOW_MATCH.
 // history: docs/gate-history.md#MC2_OVERLAY_CEMENT_ADOPT
 L(Lead0Kill, "MC2_OVERLAY_CEMENT_ADOPT", Bool, true, "terrain", "", "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay...", passthrough | registry(Feature, "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", 25, true) | verified),
 // CEMENT-PATCHY-CAUSE-1: the concrete patchwork is a TWO-SHADER SEAM, not
 // an atlas-tone problem. Attribution receipt in .claude/CEMENT-PATCHY-CAUSE-1-STATUS.md.
-L(Presence, "MC2_OVERLAY_MAGENTA_TRACE", Bool, false, "gameos", "", "", verified),
 // OVERLAY-TILE-HIRES-1: high-resolution terrain overlay tiles.
 // history: docs/gate-history.md#MC2_OVERLAY_TILE_HIRES
 G("MC2_OVERLAY_TILE_HIRES", String, "256", "terrain", "", "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...", passthrough | registry(Feature, "MC2_OVERLAY_TILE_HIRES", -1, true) | verified),
-P("MC2_PAD_AREA_GLOW_SPILL", Float, 48.0, "terrain", "", "", passthrough | clampRange(4.0, 127.0) | verified),
-P("MC2_PAD_EDGE_ROAD_FIX", Int, 1, "terrain", "", "", range(0, 2) | verified),
-L(Presence, "MC2_PARTICLE_FLUSH_STALL_TRACE", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_PATCHSTREAM_THIN_RECORDS", Bool, false, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_PATCHSTREAM_THIN_RECORDS_DRAW", Bool, false, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-JUMP-FAIL-1: backoff gate + constants.", passthrough | verified),
-L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
-L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_PLAYTEST_EXE", String, "", "editor", "", "", verified),
 G("MC2_PLAY_MISSION", Bool, false, "code", "", "Dev-only scripted mission commander and objective verdict reporting.", passthrough | verified),
 G("MC2_PLAY_MISSION_GOTO", String, "", "code", "", "Dev-only: order the home lance to world position x,y during a mission test.", passthrough | verified),
@@ -136,16 +69,11 @@ G("MC2_PLAY_MISSION_SKIP_CINEMATICS", Bool, false, "code", "", "Dev-only mission
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
 G("MC2_PRESENTATION_DISABLED", Bool, false, "code", "", "Replay proof: suppress presentation extraction updates while simulation continues.", passthrough | registry(Trace, "MC2_PRESENTATION_DISABLED", -1, false) | verified),
-L(Lead0Kill, "MC2_PRESENT_THREAD", Bool, true, "gameos", "2026-11-02", "P2 present worker; set 0 for the inline rollback. Retire within three merge windows.", passthrough | registry(Feature, "MC2_PRESENT_THREAD", -1, true) | verified),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
-L(Lead1, "MC2_PREVIEW_SCENE_DRAIN", Bool, false, "code", "", "", verified),
 // PPC / direct-fire projectile knobs (gameplay; launcher-toggleable)
 // history: docs/gate-history.md#MC2_PROJECTILE_SPEED_MULT
 P("MC2_PROJECTILE_SPEED_MULT", Float, 1.0, "code", "", "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).", passthrough | rangeAbove(0.0, 10.0) | registry(Feature, "MC2_PROJECTILE_SPEED_MULT", -1, false) | verified),
 G("MC2_PROJECTZ_BYPASS_MODE", Enum, "", "code", "", "", tokens("|Compare|Off|Bypass") | verified),
-P("MC2_PROJECTZ_GUARD_PX", Int, 0, "code", "", "", passthrough | verified),  // default not derivable from the tree
-L(Presence, "MC2_PROJECTZ_HEATMAP", Bool, false, "code", "", "", passthrough | verified),
-L(Presence, "MC2_PROJECTZ_SUMMARY", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PROJECTZ_TRACE", Bool, false, "code", "", "", passthrough | verified),
 // PropBaseLightDir (PROP-BASE-LIGHT-DIR-1)
 G("MC2_PROP_DEBUG_VIEW", Enum, "0", "render", "", "Prop material view: 0 off, 1 albedo, 2 world normal, 3 raw normal sample (BC5 RG), 4 roughness, 5 metallic, 6 AO, 7 material id hash.", passthrough | registry(Trace, "MC2_DIAG_PROP_DEBUG_VIEW", -1, false) | tokens("0|1|2|3|4|5|6|7") | verified),
@@ -154,38 +82,26 @@ L(DefOnAtoiNZ, "MC2_PROP_FIXB_MVP", Bool, true, "props", "", "", verified),  // 
 // FOGLIGHT-LATCH-1: diagnostic probe for the one-shot per-actor light latch.
 L(Presence, "MC2_PURCHASE_ALL", Bool, false, "code", "", "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g.", verified),
 L(Lead0Kill, "MC2_QUADSETUP_ARMED_SKIP", Bool, true, "terrain", "", "", passthrough | verified),
-L(Lead0Kill, "MC2_RAIN_BATCH", Bool, true, "code", "", "", verified),
 P("MC2_RDC_CAPTURE_FRAME", Int, 0, "gameos", "", "", verified),
 G("MC2_RDC_CAPTURE_PATH", String, "", "gameos", "", "Expand and VALIDATE the path template here, at arm time -- deliberately NOT down in resolveApiOnce().", verified),
 L(Presence, "MC2_RDC_EXIT_AFTER", Bool, false, "gameos", "", "", verified),
 P("MC2_RDC_MAX_WAIT", Int, 600, "gameos", "", "RenderDoc capture: frames to wait past the armed frame before giving up.", passthrough | verified),
 G("MC2_RDC_MISSION", String, "", "gameos", "", "", verified),
 L(Presence, "MC2_REBUILD_MOD_CACHE", Bool, false, "code", "", "", reread | verified),
-L(Presence, "MC2_REGFLUSH_DIAG_TRACE", Bool, false, "props", "", "", passthrough | verified),
 L(Presence, "MC2_REGFLUSH_GUARD2", Bool, false, "props", "", "STATIC-REGISTRY-CURRENTNESS-GUARD-2: generalize the R2b stale_after_drawn counter beyond the single tree case.", passthrough | verified),
-L(Presence, "MC2_REGFLUSH_MULTI", Bool, false, "props", "", "", verified),
-L(Exact1, "MC2_RENDERSTATES_LEGACY", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_RENDERSTATES_TRACE", Bool, false, "gameos", "", "Optional diagnostic: print the first 8 mismatch reasons.", verified),
 // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
 // history: docs/gate-history.md#MC2_RENDER_BACKEND
 G("MC2_RENDER_BACKEND", String, "", "unclassified", "", "Legacy selector, read only to report an ignored value: the engine renders on Vulkan only (the gl opt-out was removed).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND", -1, false) | verified),
 L(Lead0, "MC2_RENDER_CONTRACT_ASSERT", Bool, false, "code", "", "", passthrough),
-L(Presence, "MC2_RENDER_FRAME_DRIVER", Bool, false, "gameos", "", "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam.", verified),
-L(Presence, "MC2_RENDER_FRAME_PLAN_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_RENDER_PASS_CONTRACT_ASSERT", Bool, false, "code", "", "", verified),
-L(Lead1, "MC2_RENDER_PASS_CONTRACT_TRACE", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_RENDER_PASS_ORDER
 L(Lead0, "MC2_RENDER_PASS_ORDER", Bool, false, "code", "", "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass.", registry(Trace, "MC2_FEATURE_RENDER_PASS_ORDER", -1, false) | verified),
-L(Lead1, "MC2_RENDER_PASS_TELEMETRY", Bool, false, "code", "", "", passthrough | verified),
 L(Exact1, "MC2_RENDER_PASS_TIME", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_RENDER_PASS_TIME_EVERY", Int, 0, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_PATH", Bool, false, "props", "", "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes.", verified),
 P("MC2_RENDER_SCALE", Float, 1.0, "post", "", "Scene resolution relative to output; spatial cubic upscale, native HUD. Restart to apply.", clampRange(0.5, 1.0) | passthrough | verified),
-L(Lead1, "MC2_RENDER_SNAPSHOT_LOG", Bool, false, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_WATER_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
 P("MC2_RENDER_WATER_FASTPATH_DEBUG", Int, 0, "gameos", "", ""),
-L(Presence, "MC2_RENDER_WATER_PARITY_CHECK", Bool, false, "terrain", "", "", passthrough | verified),
-L(Lead0, "MC2_RENDER_WORLD_SELFTEST", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_RESOLVE_TRACE_FILE
 G("MC2_REPLAY_CONTENT", String, "", "code", "", "Mission/mod content digest supplied and checked by tools/command_replay.py.", passthrough | registry(Trace, "MC2_REPLAY_CONTENT", -1, false) | verified),
 G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative...", passthrough | registry(Trace, "MC2_TRACE_RESOLVE_TRACE_FILE", -1, false) | verified),
@@ -193,19 +109,15 @@ G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (m
 // history: docs/gate-history.md#MC2_RES_ASSERT
 G("MC2_RES_ASSERT", String, "", "code", "", "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): audit mode, unset/0 = off, fatal = abort, anything else = log.", passthrough | registry(Trace, "MC2_TRACE_RES_ASSERT", -1, false) | verified),
 L(Presence, "MC2_RES_DIAG", Bool, false, "post", "", "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native...", passthrough | verified),
-L(Presence, "MC2_REVERSE_Z_TRACE", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.", passthrough),
 G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed.", passthrough | verified),
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
 G("MC2_SAVE_DIR", String, "", "code", "", "Player-path harness only: directory used instead of ~/.mechcommander2/savegame for saves and quick saves; scripts/run_player_path.py always sets it.", passthrough | verified),
-L(Presence, "MC2_SCENE_LIGHTING_ASSERT", Bool, false, "code", "", "", verified),
-L(Presence, "MC2_SCENE_LIGHTING_TRACE", Bool, false, "code", "", "", verified),
 L(Lead0Kill, "MC2_SCRATCH", Bool, true, "code", "2026-12-31", "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch.", verified),
 P("MC2_SCREENSHOT_AT_FRAME", Int, -1, "gameos", "", "", passthrough | verified),
 G("MC2_SCREENSHOT_PATH", String, "", "gameos", "", "Oracle: deterministic backbuffer screenshot at a target frame.", passthrough | verified),
 G("MC2_SCREENXY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 G("MC2_SELECTION_PICKING_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
-L(Lead0, "MC2_SENSOR_SCAN_FACTS", Bool, false, "code", "", "", verified),
 // SetupTexturesLegacyForce (TRACKV-CI-GATE-RESTORE-1)
 // history: docs/gate-history.md#MC2_SETUPTEXTURES_LEGACY_FORCE

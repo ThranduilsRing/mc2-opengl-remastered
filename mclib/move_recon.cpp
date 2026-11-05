@@ -280,9 +280,9 @@ void moveReconFrameTick()
     if (!s_initialized) {
         s_initialized = true;
         g_moveReconEnabled =
-            (mc2::gate::get<"MC2_MOVE_RECON">() && mc2::gate::get<"MC2_DIAG_VERBOSE">()) ||
-            mc2::gate::get<"MC2_MOVE_CHUNK_SHADOW">() ||       // alt enable
-            mc2::gate::get<"MC2_MOVE_PATH_CACHE_SHADOW">();    // alt enable
+            (false && mc2::gate::get<"MC2_DIAG_VERBOSE">()) ||
+            false ||       // alt enable
+            false;    // alt enable
         if (g_moveReconEnabled && !s_atexitRegistered) {
             std::atexit(moveReconEmit);
             s_atexitRegistered = true;

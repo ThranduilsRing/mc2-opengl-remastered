@@ -100,7 +100,7 @@ void Logistics::start (long startMode)
 	bMissionLoaded  = 0;
 	userInput->setMouseCursor( mState_LOGISTICS );
 	// Record the inherited cursor state to diagnose missing cursors after loading.
-	if ( mc2::gate::get<"MC2_LOG_CURSOR">() )
+	if ( false )
 	{
 		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 		if (f) { MC2_LOG(Ui, Info, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32(static_cast<int>(UserInput::drawMouse)));   }

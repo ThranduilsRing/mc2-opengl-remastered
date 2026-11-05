@@ -13,7 +13,7 @@
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (gv class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
-static const bool s_spotDiagGvEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static const bool s_spotDiagGvEnabled = false;
 static unsigned long s_spotDiagGvRegistered = 0;
 static unsigned long s_spotDiagGvOverflows  = 0;
 static unsigned long s_spotDiagGvActors     = 0;

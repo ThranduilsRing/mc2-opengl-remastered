@@ -205,7 +205,7 @@ bool s_debugEnabledKnown = false;
 bool s_debugEnabled = false;
 bool DebugOn() {
     if (!s_debugEnabledKnown) {
-        s_debugEnabled = mc2::gate::get<"MC2_WATER_STREAM_DEBUG">();
+        s_debugEnabled = false;
         s_debugEnabledKnown = true;
     }
     return s_debugEnabled;
@@ -385,7 +385,7 @@ void Build() {
     // Recomputes the VS thickness formula CPU-side over the populated recipes so a
     // smoke can assert the elevation path is live (max > 0), not a flat unbound read.
     {
-        static const bool s_waterMatProbe = mc2::gate::get<"MC2_WATER_MATERIAL_PROBE">();
+        static const bool s_waterMatProbe = false;
         if (s_waterMatProbe && !g_recipes.empty()) {
             float tmin = 1e30f, tmax = -1e30f;
             for (const WaterRecipe& r : g_recipes) {

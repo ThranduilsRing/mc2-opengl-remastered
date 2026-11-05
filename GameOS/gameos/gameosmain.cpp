@@ -631,7 +631,7 @@ static void draw_screen( void )
         // tier1 smoke A/B that is byte-identical with the gate OFF vs ON.
         // The Tracy sub-zones and frameBannerTick stay OUTSIDE the seam (they
         // are game-only), so both branches keep them identically.
-        static const bool s_useRenderFrameDriver = mc2::gate::get<"MC2_RENDER_FRAME_DRIVER">();
+        static const bool s_useRenderFrameDriver = false;
         if (s_useRenderFrameDriver) {
             RenderFrameDesc rfd;
             rfd.host = RenderHostKind::Game;
@@ -873,20 +873,6 @@ int main(int argc, char** argv)
     // Optional startup selftest — hard-fails on any boundary violation so the
     // operator knows immediately if the predicate body has a regression.
     {
-        if (mc2::gate::get<"MC2_OBJECT_ADMISSION_SELFTEST">()) {
-            int fails = objectAdmissionPredicate_selftest();
-            std::printf("[OBJECT_ADMISSION v1] event=selftest_summary fails=%d\n", fails);
-            std::fflush(stdout);
-            if (fails != 0) {
-                // Hard fail — selftest is opt-in (env-gated); when an operator
-                // turned it on and a case failed, the predicate body has a real
-                // boundary error and we must NOT continue into rendering.
-                // Failing loudly here surfaces the bug; smoke runner reports
-                // the abort as a failed mission.
-                gosASSERT(false);
-                std::abort();
-            }
-        }
     }
     initInstrBanner();
 
@@ -1054,6 +1040,7 @@ int main(int argc, char** argv)
         ZoneScopedN("Frame.WaitSealed");
         mc2vk::present_thread::waitSealed();   // charges mc2::battlebench::WaitSealedNs inside
     }
+    gos::host::recoverAsyncPresentFailure();
     if (presentJoinPending) {
         gos::host::retirePresentHandles(g_mc2RenderFrame);
         {

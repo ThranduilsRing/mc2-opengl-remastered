@@ -13,7 +13,7 @@ static constexpr int kMaxBeamsPerNode = 8;
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
 // line per BldgAppearance instance that walks the lazy-init block). Periodic
 // summary emits every 600 update() calls when env=1. Demote-not-delete.
-static const bool s_spotDiagBldgEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static const bool s_spotDiagBldgEnabled = false;
 static unsigned long s_spotDiagBldgRegistered = 0;   // total lights added
 static unsigned long s_spotDiagBldgOverflows  = 0;   // pool-overflow count
 static unsigned long s_spotDiagBldgActors     = 0;   // actor first-hits
@@ -271,7 +271,7 @@ void BldgAppearance::updateFrameEffects()
 					const mc2_cone_glow::NodeBeam& b = beams[beamIdx];
 					mc2_cone_glow::ConfigureBeamLight(spotlightLights_[k], b);
 					childPos = b.apex;
-					static const bool s_beamDiag = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
+					static const bool s_beamDiag = false;
 					static unsigned long s_b = 0;
 					if (s_beamDiag && (s_b++ % 600) < 8)
 						mc2::fmt::print_err("[LOCAL_LIGHT_BEAM v1] node={:d} beam={:d}/{:d} apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f}) len={:.1f} cosHalf={:.3f}\n", mc2::fmt::as_i32(beamNode), mc2::fmt::as_i32(beamIdx), mc2::fmt::as_i32(nBeams), b.apex.x, b.apex.y, b.apex.z, b.aim.x, b.aim.y, b.aim.z, b.length, b.cosHalf);
@@ -287,7 +287,7 @@ void BldgAppearance::updateFrameEffects()
 				// for a lamp node with no cone mesh, in which case the pool
 				// keeps the node origin and no coupling is possible at all.)
 				{
-					static const bool s_reach = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
+					static const bool s_reach = false;
 					static unsigned long s_r = 0;
 					if (s_reach && (s_r++ % 600) < 6)
 					{
@@ -312,7 +312,7 @@ void BldgAppearance::updateFrameEffects()
 					// frame, so the two are directly comparable without an A/B
 					// rebuild. horizErr is how far the old pool sat from where
 					// the beam actually lands — the user-visible decoupling.
-					static const bool s_coneDiag = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
+					static const bool s_coneDiag = false;
 					if (s_coneDiag)
 					{
 						static unsigned long s_n = 0;

@@ -36,6 +36,8 @@ void prewarm(int width, int height);
 void saveCache();
 VkPipelineCache cacheHandle();
 void deviceLost();
+// True once any thread saw VK_ERROR_DEVICE_LOST. The device never comes back: callers stop queue work and the host exits at the next frame top.
+bool deviceLostLatched();
 VkResult graphics(VkDevice, VkPipelineCache, uint32_t, const VkGraphicsPipelineCreateInfo*, const VkAllocationCallbacks*, VkPipeline*);
 VkResult compute(VkDevice, VkPipelineCache, uint32_t, const VkComputePipelineCreateInfo*, const VkAllocationCallbacks*, VkPipeline*);
 void shader(VkShaderModule, std::string_view path, std::span<const uint32_t> code);

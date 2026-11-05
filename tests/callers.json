@@ -20744,6 +20744,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/window_cycle.py",
+      "basename": "window_cycle.py",
+      "stem": "window_cycle",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/witness_smoke.py",
       "basename": "witness_smoke.py",
       "stem": "witness_smoke",

@@ -8,7 +8,7 @@
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
-static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+static const bool s_gpuCullLifecycle = false;
 
 // Sim-time stand-ins for "has left the screen" (camera-independent): how long a withdrawing vehicle / an ejected vehicle
 // pilot lives before it is removed.

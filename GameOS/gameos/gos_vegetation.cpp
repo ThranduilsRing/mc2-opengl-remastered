@@ -256,7 +256,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     auto* pp = getGosPostProcess();
     if (!mvp || !pp) { reason="missing_buffers"; return; }
 #ifdef MC2_VULKAN_ISLAND
-    const bool force = mc2::gate::get<"MC2_VEG_DEBUG_FORCE_VISIBLE">();
+    const bool force = false;
     const float maxDist = mc2::gate::get<"MC2_VEG_MAX_DIST">();
     const float fadeStart = maxDist*0.5f;
     // Conservative clip-space sphere planes (region sphere and per-instance tests run on the device).

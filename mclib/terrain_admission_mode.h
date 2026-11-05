@@ -11,7 +11,7 @@
 
 namespace mc2_terrain_admission {
 inline bool isModern() {
-    static const bool s = !mc2::gate::get<"MC2_TERRAIN_ADMISSION_LEGACY">();
+    static const bool s = !false;
     return s;
 }
 } // namespace mc2_terrain_admission

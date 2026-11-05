@@ -181,7 +181,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	{
 		// Diagnostic: alpha-0 skips are invisible by design,
 		// but a PERMANENTLY alpha-0 mech icon is the blank-icon bug signature.
-		if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mc2::textures::ready())
+		if (false && textureHandle && mc2::textures::ready())
 		{
 			const char* nm = mc2::textures::name(textureHandle);
 			if (nm && strstr(nm, "mechicon"))
@@ -209,7 +209,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	// Diagnostic: trace every bridge draw of the mech-icon
 	// atlas (texture handle 59 observed via [MECHICON] loadTexture log lines —
 	// name lookup keeps this robust across runs).
-	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mc2::textures::ready())
+	if (false && textureHandle && mc2::textures::ready())
 	{
 		const char* nm = mc2::textures::name(textureHandle);
 		if (nm && strstr(nm, "mechicon"))
@@ -353,7 +353,7 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				strcat( buffer, ".tga" );
 			int ID = mc2::textures::load( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
 			textureHandle = ID;
-			if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(buffer, "mechicon") )
+			if ( false && strstr(buffer, "mechicon") )
 			{
 				printf("[mechicon-load] aObject::init loading '%s' (blockName='%s')\n",
 				       buffer, blockName);
@@ -723,7 +723,7 @@ void	aObject::render(long x, long y)
 	
 void	aObject::setTexture( const char* fileName )
 {
-	if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon") )
+	if ( false && strstr(fileName, "mechicon") )
 	{
 		printf("[mechicon-load] aObject::setTexture '%s'\n", fileName);
 		fflush(stdout);

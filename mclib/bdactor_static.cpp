@@ -239,10 +239,6 @@ void BldgAppearance::registerStatic() {
 		// ('Spotlight_Building01', 'SpotLight_Building', 'Spotlight_SensorCon',
 		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
 		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
-		if (mc2::gate::get<"MC2_CONE_LEAF_DUMP">()) {
-			mc2::fmt::print_err("[CONE_LEAF] type={} leaf={:d} node='{}' isSpot={:d} isWin={:d} lightsOut={:d}\n", mc2::fmt::safe(appearType ? appearType->name : "?"), mc2::fmt::as_i32(i), mc2::fmt::safe(child->getNodeName() ? child->getNodeName() : "(null)"), mc2::fmt::as_i32(static_cast<int>(child->GetIsSpotlight())), mc2::fmt::as_i32(static_cast<int>(child->GetIsWindow())), mc2::fmt::as_i32(static_cast<int>(child->GetLightsOut())));
-			fflush(stderr);
-		}
 		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
 		// must NOT enter the persistent-bucket recipe. submitMultiShape has
 		// skipped them unconditionally since T3.1 (gos_static_prop_batcher.cpp
@@ -354,7 +350,7 @@ void BldgAppearance::registerStatic() {
 	}
 	// 2026-05-10 diag: env-gated per-building outcome. MC2_BLDG_REG_TRACE=1.
 	{
-		static const bool s_trace = mc2::gate::get<"MC2_BLDG_REG_TRACE">();
+		static const bool s_trace = false;
 		static int s_loggedCount = 0;
 		if (s_trace && s_loggedCount < 80) {
 			++s_loggedCount;

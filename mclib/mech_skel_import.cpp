@@ -29,7 +29,7 @@ namespace {
 // translation, which MC2 wants (the game positions the mech in the world).
 // Set MC2_MECH_ANIM_ROTATION_ONLY=0 to apply raw channels (old behaviour).
 bool rotationOnlyEnabled() {
-    return mc2::gate::get<"MC2_MECH_ANIM_ROTATION_ONLY">();  // default ON; only explicit "0" disables
+    return true;  // default ON; only explicit "0" disables
 }
 
 // DIAGNOSTIC (default OFF): MC2_MECH_IMPORT_FORCE_POSE forces a single known static

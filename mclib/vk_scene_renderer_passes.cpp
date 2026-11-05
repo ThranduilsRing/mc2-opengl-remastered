@@ -261,7 +261,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 		// begin(executorOwnBeginTopLevel @ Render.3DObjects)/end wrapper brackets
 		// both regardless. Gate OFF -> today's order verbatim (byte-identical).
 		// Gate ON -> mech flush, then static-prop flush.
-		static const bool s_reorderSpMech = mc2::gate::get<"MC2_FRAMEGRAPH_REORDER_SPMECH">();
+		static const bool s_reorderSpMech = false;
 
 		// Unit A: static-prop batcher flush, scoped by Pass_SpColor. Captured pre-
 		// flush eligibility lives in the extern flags read in Render.GpuStaticProps;

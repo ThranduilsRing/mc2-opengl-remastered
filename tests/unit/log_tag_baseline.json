@@ -1211,33 +1211,6 @@
    "count": 1
   },
   {
-   "tag": "BRAIN_FREEZE_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "wid",
-    "brainState",
-    "curTacOrder.code",
-    "movePath.numSteps",
-    "moveState",
-    "hasBrain",
-    "orderState",
-    "mainGoal",
-    "goalWID",
-    "genOrder",
-    "pos",
-    "lastMoveErr",
-    "t",
-    "status",
-    "weapons",
-    "pending",
-    "target",
-    "los",
-    "mapSide"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BRAIN_FSM_INSTATE",
    "ver": -1,
    "stream": "stderr",
@@ -2077,20 +2050,6 @@
    "count": 1
   },
   {
-   "tag": "CONE_LEAF",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "type",
-    "leaf",
-    "node",
-    "isSpot",
-    "isWin",
-    "lightsOut"
-   ],
-   "count": 1
-  },
-  {
    "tag": "CONE_QUEUE_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -2452,16 +2411,6 @@
     "lighting",
     "vfx",
     "propMat"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DECOR_SHADOW",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "frame"
    ],
    "count": 1
   },
@@ -3566,13 +3515,6 @@
    "stream": "log",
    "keys": [],
    "count": 2
-  },
-  {
-   "tag": "FRAMECAP",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
   },
   {
    "tag": "FRAMECAP",
@@ -6322,16 +6264,6 @@
    "count": 1
   },
   {
-   "tag": "OBJECT_ADMISSION",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "fails"
-   ],
-   "count": 1
-  },
-  {
    "tag": "OBJECT_ID_SELFTEST",
    "ver": 1,
    "stream": "stderr",
@@ -8395,20 +8327,6 @@
     "numTris",
     "numVerts",
     "finalized"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SEARCHLIGHT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "x",
-    "y",
-    "yaw",
-    "pitch",
-    "apex",
-    "aim"
    ],
    "count": 1
   },

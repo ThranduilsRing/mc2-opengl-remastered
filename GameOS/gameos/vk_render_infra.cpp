@@ -634,6 +634,7 @@ void deviceLost() {
     std::fprintf(stderr,"[VK_BREADCRUMBS v1] device_lost snapshot=debug_state/gpu_breadcrumbs.txt\n");
     crashbundle_device_lost();
 }
+bool deviceLostLatched() { return state().lossReported.load(); }
 }
 void mc2PrewarmMissionPipelines() {
     if(auto* post=getGosPostProcess()) mc2vk::infra::prewarm(post->getWidth(),post->getHeight());

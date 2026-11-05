@@ -116,7 +116,7 @@ bool localConeAxis(const TG_TypeShape* ts, glm::vec3& axisOut, float& lenOut)
 
 bool nodes_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_NODES">();
+    static const bool s = true;
     return s;
 }
 
@@ -149,7 +149,7 @@ bool nodes_enabled()
 // miss policy is revisited -- see .claude/CONE-SPILL-GRADE-1-STATUS.md).
 bool spill_coupling_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_CONE_SPILL_COUPLING">();
+    static const bool s = false;
     return s;
 }
 
@@ -231,7 +231,7 @@ bool spot_direction_exaggerate()
 
 bool glow_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_GLOW">();
+    static const bool s = true;
     return s;
 }
 
@@ -262,7 +262,7 @@ float spill_scale()
 // =1 re-arms.
 static bool vis_gate_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_VIS_GATE">();
+    static const bool s = false;
     return s;
 }
 
@@ -273,7 +273,7 @@ static bool vis_gate_enabled()
 // MC2_LIGHT_CONE_VIS_GATE — see the note there. =1 re-arms.
 bool mover_vis_gate_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_LIGHT_MOVER_VIS_GATE">();
+    static const bool s = false;
     return s;
 }
 
@@ -379,7 +379,7 @@ static float realism_cone_feather()
 // CONE-AIM-DIAG-1 (batch-7 item 4): per-node aim/apex dump. Default-off.
 static bool aim_diag_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
+    static const bool s = false;
     return s;
 }
 
@@ -388,7 +388,7 @@ static bool aim_diag_enabled()
 // "the building light appears to be on the other side". Default OFF.
 static bool aim_flip_enabled()
 {
-    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_AIM_FLIP">();
+    static const bool s = false;
     return s;
 }
 

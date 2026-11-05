@@ -88,7 +88,7 @@ int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
 // decal-only revert (no cement word on road-adjacent tiles — the outline-seam
 // regression form, kept for A/B).
 static int PadEdgeRoadFixMode() {
-    static const int s = mc2::gate::get<"MC2_PAD_EDGE_ROAD_FIX">();
+    static const int s = 1;
     return s;
 }
 bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
@@ -744,7 +744,7 @@ void PopulateRecipeCementWords() {
                 if (IsPavedOverlayType(ovT)) ++pavedSubset;
             }
         }
-        static const bool s_adoptTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
+        static const bool s_adoptTrace = false;
         if (s_adoptTrace) {
             mc2::fmt::print_out("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission={} tiles={:d} paved_subset={:d} overlay_id_subset={:d} art_saved_vs_paved={:d} art_saved_vs_overlay_id={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(authoredArtMarked), mc2::fmt::as_i32(pavedSubset), mc2::fmt::as_i32(overlayIdSubset), mc2::fmt::as_i32(authoredArtMarked - pavedSubset), mc2::fmt::as_i32(authoredArtMarked - overlayIdSubset));
             fflush(stdout);

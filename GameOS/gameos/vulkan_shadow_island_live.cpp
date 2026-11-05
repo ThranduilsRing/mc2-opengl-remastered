@@ -1229,7 +1229,7 @@ static void record_local_shadows(ShadowIsland* s) {
     if (++frames % 600 == 1 && mc2::gate::get<"MC2_DIAG_VERBOSE">())
         vlog("[LOCAL_SHADOW v1] tiles=%u baked_now=%u bakes_total=%llu static_leaves=%zu mech_casters=%d",
              usedCount, bakeCount, static_cast<unsigned long long>(L.bakesTotal), L.leaves.size(), s->mech.hasCasters() ? 1 : 0);
-    if (bakeCount > 0 && mc2::gate::get<"MC2_LIGHT_CONE_DIAG">())
+    if (bakeCount > 0 && false)
         for (uint32_t i = 0; i < usedCount; ++i) {
             const Tile& T = tiles[used[i]];
             float aim[3];

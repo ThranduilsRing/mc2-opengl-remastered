@@ -250,7 +250,8 @@ private:
     VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth
 #endif
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
-    mutable std::mutex submitMutex_;
+    // timed: main pumps window messages while the present worker holds it in WSI
+    mutable std::timed_mutex submitMutex_;
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
 

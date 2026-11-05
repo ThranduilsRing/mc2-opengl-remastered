@@ -57,12 +57,4 @@ void BldgAppearance::updateSearchlight()
     // Lights and glow below must sample THIS frame's lamp hierarchy.
     bldgShape->InvalidateHierarchy();
     bldgShape->TransformMultiShape_HierarchyOnly(&translation, &root);
-    if (mc2::gate::get<"MC2_LIGHT_CONE_DIAG">()) {
-        static unsigned count = 0;
-        const auto beam = mc2_cone_glow::GetSearchlightBeam(bldgShape, pitchNode);
-        if ((count++ % 120) < 2 && beam)
-            mc2::fmt::print_err("[SEARCHLIGHT] x={:.1f} y={:.1f} yaw={:.2f} pitch={:.2f} apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f})\n",
-                position.x, position.y, searchlightYaw_, searchlightPitch_, beam->apex.x, beam->apex.y, beam->apex.z,
-                beam->aim.x, beam->aim.y, beam->aim.z);
-    }
 }

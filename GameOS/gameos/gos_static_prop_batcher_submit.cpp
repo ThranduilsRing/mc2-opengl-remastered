@@ -39,7 +39,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     // after a useful sample window AND at process exit (whichever fires first).
     if (!s_submitTypeHistInit) {
         s_submitTypeHistInit    = true;
-        s_submitTypeHistEnabled = mc2::gate::get<"MC2_SUBMIT_TYPEHIST">();
+        s_submitTypeHistEnabled = false;
         if (s_submitTypeHistEnabled) atexit(emitSubmitTypeHistAtExit);
     }
     if (s_submitTypeHistEnabled) {

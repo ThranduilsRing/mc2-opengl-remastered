@@ -55,7 +55,9 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
+#include <chrono>
 #include <memory>
+#include <mutex>
 #include <vector>
 #include "../../mclib/battle_bench_wait.h"
 
@@ -65,6 +67,22 @@ VulkanContext::VulkanContext() = default;
 VulkanContext::~VulkanContext() { destroy(); }
 
 namespace {
+
+// The present worker holds submitMutex_ across vkQueuePresentKHR, and a Win32 WSI call may SendMessage to the window thread (main). Main keeps
+// answering sent messages while it waits here, or both threads stop (pumpWindowMessages is a no-op off main).
+std::unique_lock<std::timed_mutex> lockSubmit(std::timed_mutex& m) {
+    std::unique_lock<std::timed_mutex> lock(m, std::try_to_lock);
+    if (lock.owns_lock()) return lock;
+    if (present_thread::onWorker()) { lock.lock(); return lock; }
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (!lock.try_lock_for(std::chrono::milliseconds(2))) {
+        present_thread::pumpWindowMessages();
+        if (std::chrono::steady_clock::now() < deadline) continue;
+        present_thread::hungWait("submitMutex_ held >30s by the present worker");
+        deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    }
+    return lock;
+}
 
 void ctxlog(const char* fmt, ...) {
     std::fprintf(stderr, "[VK_ENGINE_CONTEXT] ");
@@ -572,7 +590,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     if (device_ == VK_NULL_HANDLE) return;
     ZoneScopedN("VK.WaitIdle");
     const auto idleT0 = std::chrono::steady_clock::now();
-    std::lock_guard<std::mutex> lock(submitMutex_);
+    const auto lock = lockSubmit(submitMutex_);
     const VkResult r = vkDeviceWaitIdle(device_);
     {
         auto& hs = mc2_hitch2::stats();
@@ -591,8 +609,8 @@ void VulkanContext::waitIdle(std::string_view why) const {
 
 VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::submit");
-    if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE) return VK_ERROR_DEVICE_LOST;
-    std::lock_guard<std::mutex> lock(submitMutex_);   // the value and the queue order must agree
+    if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE || infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;
+    const auto lock = lockSubmit(submitMutex_);   // the value and the queue order must agree
 #ifdef MC2_VULKAN_ISLAND
     flushUploadsLocked();   // queued uploads run ahead of every submit that may sample them
 #endif
@@ -600,9 +618,10 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
 }
 
 VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
-    std::lock_guard<std::mutex> lock(submitMutex_);
+    const auto lock = lockSubmit(submitMutex_);
     present_thread::seal(); // Next-frame submits must stay behind this present, even when main wakes immediately.
     mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
+    if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;   // no queue work on a lost device
     return vkQueuePresentKHR(queue, &info);
 }
 
@@ -625,7 +644,7 @@ GpuTicket VulkanContext::flushUploadsLocked() const {
 }
 
 GpuTicket VulkanContext::flushUploads() const {
-    std::lock_guard<std::mutex> lock(submitMutex_);
+    const auto lock = lockSubmit(submitMutex_);
     return flushUploadsLocked();
 }
 #endif
@@ -667,7 +686,7 @@ void VulkanContext::poll() const {
     uint64_t v = 0;
     const VkResult result = vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v);
     if (result == VK_SUCCESS) {
-        std::lock_guard<std::mutex> lock(submitMutex_);
+        const auto lock = lockSubmit(submitMutex_);
         tracker_.setCompleted(QueueKind::Graphics, v);
     }
     if (result == VK_ERROR_DEVICE_LOST) infra::deviceLost();

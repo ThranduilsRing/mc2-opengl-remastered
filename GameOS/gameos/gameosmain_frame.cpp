@@ -90,7 +90,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 emitStaticPropDrawPackets(snap, s_candidates.data(), kMaxPackets);
 
             // DrawPacket v2: per-frame field compare. Set MC2_DRAW_PACKET_COMPARE=1 to enable.
-            static const bool s_dpCompareEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COMPARE">();
+            static const bool s_dpCompareEnabled = false;
             if (s_dpCompareEnabled) {
                 comparePacketsToLegacy(s_candidates.data(), stats.emitted,
                     static_cast<uint32_t>(snap.frameIndex));
@@ -98,7 +98,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
 
             // DrawPacket v3: candidate → RenderCore::DrawPacket[] ABI promotion.
             // No dispatch; legacy flush() unchanged. Set MC2_DRAW_PACKET_V3=1 to enable.
-            static const bool s_v3Enabled = mc2::gate::get<"MC2_DRAW_PACKET_V3">();
+            static const bool s_v3Enabled = false;
             static bool s_finalizeWarnedOnce = false;
 
             if (s_v3Enabled) {
@@ -132,7 +132,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // totally benign mismatch -> console spam. Dropped that condition; the remaining
             // overflow/invalidRanges/materialMismatches are genuine but are now also gated
             // off by default so a shipping/player build is silent.
-            static const bool s_drawPacketWarn = mc2::gate::get<"MC2_DRAW_PACKET_WARN">();
+            static const bool s_drawPacketWarn = false;
             if (s_drawPacketWarn
                     && (stats.overflow
                         || stats.invalidRanges > 0
@@ -141,7 +141,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             }
 
             // Full log line under MC2_RENDER_SNAPSHOT_LOG=1.
-            static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
+            static const bool s_logEnabled = false;
             if (s_logEnabled) {
                 mc2::fmt::print_err("[DRAW_PACKET v1] frame={:d} emitted={:d} expected={:d} old_expected={:d} distinct_types={:d} static_props={:d} invalid={:d} skipped={:d} mat_mismatch={:d} overflow={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(stats.emitted), mc2::fmt::as_u32(stats.expectedPackets), mc2::fmt::as_u32(stats.oldExpected), mc2::fmt::as_u32(stats.distinctTypes), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(stats.invalidRanges), mc2::fmt::as_u32(stats.skippedRanges), mc2::fmt::as_u32(stats.materialMismatches), mc2::fmt::as_i32(stats.overflow ? 1 : 0));
             }
@@ -626,7 +626,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
 void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_menu, uint64_t start_tick) {
         if (mc2vk::present_thread::enabled()) {
             const int cap = s_vsync_active ? 0 : SmokeMode::missionHasStarted() ? s_fps_cap_mission : s_fps_cap_menu;
-            mc2vk::present_thread::pace(start_tick, cap);
+            mc2vk::present_thread::pace(cap);
             return;
         }
         // Frame cap: sleep to hold target frame time and reduce GPU thrashing.
@@ -636,7 +636,7 @@ void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_men
             bool inMission = SmokeMode::missionHasStarted();
             int cap = inMission ? s_fps_cap_mission : s_fps_cap_menu;
             static bool s_capTraceLast = !inMission;
-            static const bool s_capTrace = mc2::gate::get<"MC2_FRAMECAP_TRACE">();
+            static const bool s_capTrace = false;
             if (s_capTrace && s_capTraceLast != inMission) {
                 mc2::fmt::print_err("[FRAMECAP] cap switched: inMission={:d} cap={:d}\n", mc2::fmt::as_i32(static_cast<int>(inMission)), mc2::fmt::as_i32(cap));
                 fflush(stderr);

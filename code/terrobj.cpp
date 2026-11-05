@@ -196,7 +196,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
 #include "platform_intrinsics.h"
 #include <stdlib.h>
 #include <stdio.h>
-static bool s_tobjSplitEnabled = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
+static bool s_tobjSplitEnabled = false;
 std::atomic<unsigned long long> g_tobjAngularCyc{0ULL};
 std::atomic<unsigned long long> g_tobjProjCyc{0ULL};
 unsigned long long g_tobjUpdateCyc  = 0ULL;
@@ -263,7 +263,7 @@ void g_tobjSplitRollAndMaybeEmit() {
 // Demote-not-delete (debug_instrumentation_rule.md).
 // Mirrors [TOBJSPLIT v1]: file-static enable flag, same 120-frame roll
 // interval, accumulators defined here, roll called from objmgr.cpp.
-static bool s_tobjParityEnabled = mc2::gate::get<"MC2_TOBJ_PARITY">();
+static bool s_tobjParityEnabled = false;
 static unsigned long long g_tobjParitySamples   = 0ULL;
 static unsigned long long g_tobjParityViolation = 0ULL;
 static unsigned long long g_tobjParityFrameCount = 0ULL;
