@@ -5,10 +5,10 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
-import lane_merge  # noqa: E402
+import lint_slots as lane_merge  # noqa: E402
 
 HOLD = (
-    "import sys,time;sys.path.insert(0,sys.argv[1]);import lane_merge;"
+    "import sys,time;sys.path.insert(0,sys.argv[1]);import lint_slots as lane_merge;"
     "s=lane_merge.LintSlots(directory=sys.argv[2],n=1);fh=s.acquire();print('held',flush=True);time.sleep(60)"
 )
 
@@ -58,3 +58,19 @@ def test_dead_process_frees_slot(tmp_path):
         if p.poll() is None:
             p.kill()
             p.wait()
+
+
+def test_cpu_split_masks_and_child_inherits():
+    assert lane_merge.cpu_masks()["gate"] & lane_merge.cpu_masks()["lane"] == 0
+    code = ("import os,sys,subprocess;sys.path.insert(0,sys.argv[1]);os.environ.pop('MC2_NO_CPU_PIN',None);import lint_slots as l;"
+            "m=l.pin_cpus(sys.argv[2]);"
+            "c=subprocess.run([sys.executable,'-c','import ctypes;k=ctypes.windll.kernel32;p=ctypes.c_size_t();s=ctypes.c_size_t();"
+            "k.GetProcessAffinityMask(ctypes.c_void_p(k.GetCurrentProcess()),ctypes.byref(p),ctypes.byref(s));print(hex(p.value))'],capture_output=True,text=True);"
+            "print('child',c.stdout.strip(),'parent',hex(m))")
+    if os.name != "nt":
+        return
+    tools = os.path.join(os.path.dirname(__file__), "..", "..", "tools")
+    for mode in ("gate", "lane"):
+        want = lane_merge.cpu_masks()[mode]
+        out = subprocess.run([sys.executable, "-B", "-c", code, tools, mode], capture_output=True, text=True).stdout
+        assert f"child {hex(want)} parent {hex(want)}" in out or want & ~((1 << (os.cpu_count() or 1)) - 1)

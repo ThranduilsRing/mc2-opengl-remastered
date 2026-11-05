@@ -126,6 +126,7 @@
   "scripts/tests/test_gate_wait.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); gate_wait one-verdict wrapper.",
   "scripts/tests/test_gate_keep_candidate.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); merge_gate --keep-candidate.",
   "scripts/tests/test_lint.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane_merge --lint.",
+  "scripts/tests/test_lint_slots.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane_merge --lint slots and CPU split.",
   "scripts/tests/test_fast_precheck_rules.py":"Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); ungated log tags, auto link, perf_counter-only WARN.",
   "scripts/tests/test_merge_speedups.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane_merge quick rows, ninja_build pdb guard.",
   "scripts/tests/test_player_path.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); player-path scenario parsing and save-redirect guards.",
