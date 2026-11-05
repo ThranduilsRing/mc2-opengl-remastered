@@ -998,7 +998,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 				// 3D mech behind: the cell is only an outline so the mech reads through the grid.
 				if ( gridBridge )
 				{
-					const GUI_RECT cell = { x + xOffset, y + yOffset, x + xOffset + payloadIcon.width() - 1, y + yOffset + payloadIcon.height() - 1 };
+					const GUI_RECT cell = { x + xOffset, y + yOffset, static_cast<long>(x + xOffset + payloadIcon.width() - 1), static_cast<long>(y + yOffset + payloadIcon.height() - 1) };
 					drawEmptyRect( cell, 0xb0d0d8e0, 0xb0d0d8e0 );
 				}
 				else
