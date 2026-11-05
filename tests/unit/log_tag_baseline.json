@@ -8573,7 +8573,13 @@
     "steps",
     "submits",
     "ready",
-    "ms"
+    "ms",
+    "alpha_array",
+    "feed",
+    "bucketed",
+    "key_on",
+    "layers",
+    "alpha_ready"
    ],
    "count": 1
   },
@@ -11985,6 +11991,8 @@
   "PERF",
   "PERF_COUNTERS",
   "PERF_COUNTER_WARN",
+  "PRESENT_THREAD",
+  "RENDER_BACKEND",
   "REPLAY_DIVERGED",
   "RESOLUTION",
   "RESULTS",
