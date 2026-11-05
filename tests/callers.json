@@ -2716,13 +2716,6 @@
           "text": "import console_child  # noqa: E402"
         },
         {
-          "path": "scripts/new_lane.py",
-          "line": 49,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
           "path": "scripts/ninja_build.py",
           "line": 24,
           "evidence": "import",
@@ -3249,7 +3242,7 @@
         },
         {
           "path": "tools/blender_pipeline/blender_runner.py",
-          "line": 26,
+          "line": 25,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
@@ -3295,13 +3288,6 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
-        },
-        {
-          "path": "tools/build_quiet.py",
-          "line": 23,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
           "path": "tools/callers.py",
@@ -3409,13 +3395,6 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
-          "path": "tools/handoff_append.py",
-          "line": 42,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
-        },
-        {
           "path": "tools/host_inventory.py",
           "line": 27,
           "evidence": "import",
@@ -3428,13 +3407,6 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
-        },
-        {
-          "path": "tools/kill_build_tree.py",
-          "line": 23,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402"
         },
         {
           "path": "tools/land_queue.py",
@@ -3463,13 +3435,6 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
-        },
-        {
-          "path": "tools/make_handoff.py",
-          "line": 23,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
           "path": "tools/mapgen/scale_review.py",
@@ -3505,20 +3470,6 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/mech_import/blender_runner.py",
-          "line": 24,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/mission_order_ingress_witness.py",
-          "line": 17,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child"
         },
         {
           "path": "tools/mkmerge.py",
@@ -3717,13 +3668,6 @@
           "text": "import console_child  # noqa: E402"
         },
         {
-          "path": "tools/temporal_ab.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child"
-        },
-        {
           "path": "tools/terrain_beautify/cook_markings.py",
           "line": 99,
           "evidence": "import",
@@ -3792,13 +3736,6 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
-        },
-        {
-          "path": "tools/test_handoff_append.py",
-          "line": 15,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
           "path": "tools/test_journal_comment_ratchet.py",
@@ -3927,25 +3864,11 @@
           "text": "import console_child  # noqa: E402"
         },
         {
-          "path": "tools/visual_verify/capture_index.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
           "path": "tools/visual_verify/quickload_cement_check.py",
           "line": 39,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/visual_verify/test_capture_index.py",
-          "line": 15,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (scripts/ is on sys.path through capture_index)"
         },
         {
           "path": "tools/visual_verify/vk_replay.py",
@@ -5214,13 +5137,6 @@
       ]
     },
     {
-      "path": "scripts/new_lane.py",
-      "basename": "new_lane.py",
-      "stem": "new_lane",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "scripts/ninja_build.py",
       "basename": "ninja_build.py",
       "stem": "ninja_build",
@@ -5699,20 +5615,6 @@
           "text": "result = subprocess.run([sys.executable, str(ROOT / \"scripts/run_smoke.py\"),"
         },
         {
-          "path": "tools/mission_order_ingress_witness.py",
-          "line": 177,
-          "evidence": "command",
-          "reference": "scripts/run_smoke.py",
-          "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
-        },
-        {
-          "path": "tools/mission_order_ingress_witness.py",
-          "line": 274,
-          "evidence": "command",
-          "reference": "scripts/run_smoke.py",
-          "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
-        },
-        {
           "path": "tools/mod_smoke.py",
           "line": 873,
           "evidence": "command",
@@ -5959,13 +5861,6 @@
           "text": "import run_visual_capture as rvc  # noqa: E402  (the hardened launcher we build on)"
         }
       ]
-    },
-    {
-      "path": "scripts/run_vk_field_check.py",
-      "basename": "run_vk_field_check.py",
-      "stem": "run_vk_field_check",
-      "callers_by_basename": [],
-      "callers_by_stem": []
     },
     {
       "path": "scripts/shader_common.py",
@@ -7967,13 +7862,6 @@
       ]
     },
     {
-      "path": "scripts/test_visual_diff.py",
-      "basename": "test_visual_diff.py",
-      "stem": "test_visual_diff",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "scripts/tests/conftest.py",
       "basename": "conftest.py",
       "stem": "conftest",
@@ -8569,13 +8457,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "scripts/tests/test_mission_order_ingress_witness.py",
-      "basename": "test_mission_order_ingress_witness.py",
-      "stem": "test_mission_order_ingress_witness",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "scripts/tests/test_mod_smoke.py",
       "basename": "test_mod_smoke.py",
       "stem": "test_mod_smoke",
@@ -8993,21 +8874,6 @@
       ]
     },
     {
-      "path": "scripts/visual_diff.py",
-      "basename": "visual_diff.py",
-      "stem": "visual_diff",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "scripts/test_visual_diff.py",
-          "line": 7,
-          "evidence": "import",
-          "reference": "visual_diff",
-          "text": "import visual_diff  # noqa: E402"
-        }
-      ]
-    },
-    {
       "path": "scripts/vk_shader_reload.py",
       "basename": "vk_shader_reload.py",
       "stem": "vk_shader_reload",
@@ -9042,13 +8908,6 @@
       "stem": "_git_util",
       "callers_by_basename": [],
       "callers_by_stem": [
-        {
-          "path": "tools/handoff_append.py",
-          "line": 44,
-          "evidence": "import",
-          "reference": "_git_util",
-          "text": "import _git_util  # noqa: E402  (shared git helpers)"
-        },
         {
           "path": "tools/lane_merge.py",
           "line": 67,
@@ -9604,6 +9463,34 @@
           "evidence": "import",
           "reference": "blender_runner",
           "text": "from blender_runner import build_blender_cmd, find_blender_exe, run_blender_script  # noqa: E402"
+        },
+        {
+          "path": "tools/blender_pipeline/tests/test_driver_dryrun.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "blender_runner",
+          "text": "import blender_runner as br  # noqa: E402"
+        },
+        {
+          "path": "tools/mech_import/build_marauder.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "blender_runner",
+          "text": "from blender_runner import find_blender_exe, run_blender_script  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "blender_runner",
+          "text": "from blender_runner import find_blender_exe  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "blender_runner",
+          "text": "from blender_runner import find_blender_exe"
         }
       ]
     },
@@ -10097,13 +9984,6 @@
           "text": "from tools import build_contract_harnesses as builder"
         }
       ]
-    },
-    {
-      "path": "tools/build_quiet.py",
-      "basename": "build_quiet.py",
-      "stem": "build_quiet",
-      "callers_by_basename": [],
-      "callers_by_stem": []
     },
     {
       "path": "tools/callers.py",
@@ -11248,22 +11128,8 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "scripts/tests/test_mission_order_ingress_witness.py",
-          "line": 10,
-          "evidence": "import",
-          "reference": "mc2_cmd",
-          "text": "import mc2_cmd"
-        },
-        {
           "path": "tools/dev_shell/watch.py",
           "line": 22,
-          "evidence": "import",
-          "reference": "mc2_cmd",
-          "text": "from mc2_cmd import send_command"
-        },
-        {
-          "path": "tools/mission_order_ingress_witness.py",
-          "line": 18,
           "evidence": "import",
           "reference": "mc2_cmd",
           "text": "from mc2_cmd import send_command"
@@ -11572,13 +11438,6 @@
       ]
     },
     {
-      "path": "tools/handoff_append.py",
-      "basename": "handoff_append.py",
-      "stem": "handoff_append",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/host_inventory.py",
       "basename": "host_inventory.py",
       "stem": "host_inventory",
@@ -11620,21 +11479,6 @@
           "evidence": "import",
           "reference": "journal_comment_ratchet",
           "text": "import journal_comment_ratchet as j  # noqa: E402"
-        }
-      ]
-    },
-    {
-      "path": "tools/kill_build_tree.py",
-      "basename": "kill_build_tree.py",
-      "stem": "kill_build_tree",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/test_kill_build_tree.py",
-          "line": 9,
-          "evidence": "import",
-          "reference": "kill_build_tree",
-          "text": "import kill_build_tree as kbt  # noqa: E402"
         }
       ]
     },
@@ -11862,13 +11706,6 @@
           "text": "import log_tag_census as lc  # noqa: E402"
         }
       ]
-    },
-    {
-      "path": "tools/make_handoff.py",
-      "basename": "make_handoff.py",
-      "stem": "make_handoff",
-      "callers_by_basename": [],
-      "callers_by_stem": []
     },
     {
       "path": "tools/mapgen/__init__.py",
@@ -12846,13 +12683,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/mc2_launcher/parity_check.py",
-      "basename": "parity_check.py",
-      "stem": "parity_check",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/mc2data/stock_corpus.py",
       "basename": "stock_corpus.py",
       "stem": "stock_corpus",
@@ -13575,21 +13405,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/mech_import/blender_runner.py",
-      "basename": "blender_runner.py",
-      "stem": "blender_runner",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/mech_import/build_marauder.py",
-          "line": 20,
-          "evidence": "import",
-          "reference": "blender_runner",
-          "text": "from blender_runner import find_blender_exe, run_blender_script"
-        }
-      ]
-    },
-    {
       "path": "tools/mech_import/build_marauder.py",
       "basename": "build_marauder.py",
       "stem": "build_marauder",
@@ -13734,21 +13549,6 @@
           "evidence": "import",
           "reference": "tools.mission_codec",
           "text": "from tools.mission_codec import Install"
-        }
-      ]
-    },
-    {
-      "path": "tools/mission_order_ingress_witness.py",
-      "basename": "mission_order_ingress_witness.py",
-      "stem": "mission_order_ingress_witness",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "scripts/tests/test_mission_order_ingress_witness.py",
-          "line": 9,
-          "evidence": "import",
-          "reference": "mission_order_ingress_witness",
-          "text": "import mission_order_ingress_witness as subject"
         }
       ]
     },
@@ -14355,13 +14155,6 @@
       ]
     },
     {
-      "path": "tools/perf_snapshot.py",
-      "basename": "perf_snapshot.py",
-      "stem": "perf_snapshot",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/phase/asm_dead_scan.py",
       "basename": "asm_dead_scan.py",
       "stem": "asm_dead_scan",
@@ -14772,7 +14565,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 1673,
+          "line": 1675,
           "evidence": "import",
           "reference": "tools.repo_intel.lane_model",
           "text": "from tools.repo_intel.lane_model import lane_for"
@@ -17863,21 +17656,6 @@
       ]
     },
     {
-      "path": "tools/temporal_ab.py",
-      "basename": "temporal_ab.py",
-      "stem": "temporal_ab",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/test_temporal_ab.py",
-          "line": 3,
-          "evidence": "import",
-          "reference": "temporal_ab",
-          "text": "import temporal_ab as ab"
-        }
-      ]
-    },
-    {
       "path": "tools/terrain_beautify/control_map_tool.py",
       "basename": "control_map_tool.py",
       "stem": "control_map_tool",
@@ -18794,23 +18572,9 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/test_handoff_append.py",
-      "basename": "test_handoff_append.py",
-      "stem": "test_handoff_append",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/test_journal_comment_ratchet.py",
       "basename": "test_journal_comment_ratchet.py",
       "stem": "test_journal_comment_ratchet",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/test_kill_build_tree.py",
-      "basename": "test_kill_build_tree.py",
-      "stem": "test_kill_build_tree",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -18924,13 +18688,6 @@
       "path": "tools/test_sim_determinism.py",
       "basename": "test_sim_determinism.py",
       "stem": "test_sim_determinism",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/test_temporal_ab.py",
-      "basename": "test_temporal_ab.py",
-      "stem": "test_temporal_ab",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -20392,27 +20149,6 @@
           "text": "from png_io import encode_png"
         },
         {
-          "path": "tests/visual/test_visual_diff.py",
-          "line": 25,
-          "evidence": "import",
-          "reference": "png_io",
-          "text": "from png_io import encode_png  # noqa: E402"
-        },
-        {
-          "path": "tools/visual/triptych.py",
-          "line": 13,
-          "evidence": "import",
-          "reference": "png_io",
-          "text": "from png_io import encode_png"
-        },
-        {
-          "path": "tools/visual/visual_diff.py",
-          "line": 35,
-          "evidence": "import",
-          "reference": "png_io",
-          "text": "from png_io import decode_png  # noqa: E402"
-        },
-        {
           "path": "tools/visual_verify/bless.py",
           "line": 155,
           "evidence": "import",
@@ -20441,28 +20177,6 @@
           "text": "from png_io import decode_png, encode_png  # noqa: E402"
         }
       ]
-    },
-    {
-      "path": "tools/visual/triptych.py",
-      "basename": "triptych.py",
-      "stem": "triptych",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/visual/visual_diff.py",
-          "line": 36,
-          "evidence": "import",
-          "reference": "triptych",
-          "text": "from triptych import build_heatmap, write_triptych  # noqa: E402"
-        }
-      ]
-    },
-    {
-      "path": "tools/visual/visual_diff.py",
-      "basename": "visual_diff.py",
-      "stem": "visual_diff",
-      "callers_by_basename": [],
-      "callers_by_stem": []
     },
     {
       "path": "tools/visual_verify/ab.py",
@@ -20591,21 +20305,6 @@
       ]
     },
     {
-      "path": "tools/visual_verify/capture_index.py",
-      "basename": "capture_index.py",
-      "stem": "capture_index",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/visual_verify/test_capture_index.py",
-          "line": 14,
-          "evidence": "import",
-          "reference": "capture_index",
-          "text": "import capture_index  # noqa: E402"
-        }
-      ]
-    },
-    {
       "path": "tools/visual_verify/montage_compact.py",
       "basename": "montage_compact.py",
       "stem": "montage_compact",
@@ -20685,13 +20384,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/visual_verify/test_capture_index.py",
-      "basename": "test_capture_index.py",
-      "stem": "test_capture_index",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/visual_verify/test_verify_backend.py",
       "basename": "test_verify_backend.py",
       "stem": "test_verify_backend",
@@ -20748,13 +20440,6 @@
           "text": "import vk_replay  # noqa: E402"
         }
       ]
-    },
-    {
-      "path": "tools/vk_feed_diff.py",
-      "basename": "vk_feed_diff.py",
-      "stem": "vk_feed_diff",
-      "callers_by_basename": [],
-      "callers_by_stem": []
     },
     {
       "path": "tools/vk_ownership_ledger.py",
