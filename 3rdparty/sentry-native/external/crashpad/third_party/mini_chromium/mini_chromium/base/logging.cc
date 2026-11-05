@@ -16,6 +16,10 @@
 
 #if BUILDFLAG(IS_POSIX)
 #include <paths.h>
+// mclib/paths.h shadows the libc header through the global include path; keep the libc macro available.
+#ifndef _PATH_DEVNULL
+#define _PATH_DEVNULL "/dev/null"
+#endif
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>

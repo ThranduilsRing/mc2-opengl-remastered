@@ -7,5 +7,6 @@ is GameOS/gameos/gos_crashpad.cpp and gos_crashbundle.cpp. crashpad_handler(.exe
 
 Pruned from the upstream tree to keep git small (about 21 MB): all .git* metadata, the breakpad backend, benchmarks,
 tests, examples, ndk, fuzzing-examples, libunwindstack-ndk, the unused GN build files (external/crashpad/build, .gn,
-Makefiles) and editor/CI dot files. No source patches. Re-vendor by cloning the commit above with
+Makefiles) and editor/CI dot files. One source patch: util/posix/close_stdio.cc and mini_chromium base/logging.cc define
+_PATH_DEVNULL when missing (mclib/paths.h shadows <paths.h> on the Linux box build, where mclib is a global include dir). Re-vendor by cloning the commit above with
 --recurse-submodules and deleting the same folders.
