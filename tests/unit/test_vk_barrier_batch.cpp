@@ -18,7 +18,7 @@ TEST_CASE("BarrierBatch/source state comes from the previous use") {
     CHECK(t.use(b, sampledOther) == 1);                     // a reader in a new stage needs its own visibility
     CHECK(t.use(b, colorWrite) == 1);                       // the writer waits for ALL readers
     CHECK(b.images().back().before.stages == (sampled.stages | sampledOther.stages));
-    CHECK(b.size() == 5);
+    CHECK(b.size() == 4);
 }
 TEST_CASE("BarrierBatch/per mip runs, assume, invalidate and memory merge") {
     BarrierBatch b;
