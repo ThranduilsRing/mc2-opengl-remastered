@@ -227,8 +227,8 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
     if (vis && mips) {
         std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
         size_t at = 0;
-        for (int l = 0; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += size_t(s->levels[static_cast<size_t>(l)].w) * size_t(s->levels[static_cast<size_t>(l)].h); }
-        const auto fetch = [&](int l, int x, int y) { return mips[offset[static_cast<size_t>(l)] + size_t(y) * size_t(s->levels[static_cast<size_t>(l)].w) + size_t(x)]; };
+        for (int l = 0; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].h); }
+        const auto fetch = [&](int l, int x, int y) { return mips[offset[static_cast<size_t>(l)] + static_cast<size_t>(y) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) + static_cast<size_t>(x)]; };
         ++g_parity.checks;
         for (size_t i = 0; i < pc.ids.size(); ++i) {
             const auto p = mc2hzb::project_prop(pc.inst[i], pc.worldToClip, pc.bias, pc.bounds, pc.w, pc.h, pc.mips);
@@ -267,12 +267,12 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
         PropBounds b{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}, false};
         bool invalid = false;
         for (uint32_t p = 0; p < geom.typePacketCount[t]; ++p) {
-            const uint64_t pk = uint64_t(geom.typeFirstPacket[t]) + p;
+            const uint64_t pk = static_cast<uint64_t>(geom.typeFirstPacket[t]) + p;
             if (pk >= geom.packetCount) { invalid = true; break; }
             const auto& packet = geom.packets[pk];
-            if (uint64_t(packet.firstIndex) + packet.indexCount > ib / sizeof(uint32_t)) { invalid = true; break; }
+            if (static_cast<uint64_t>(packet.firstIndex) + packet.indexCount > ib / sizeof(uint32_t)) { invalid = true; break; }
             for (uint32_t k = 0; k < packet.indexCount; ++k) {
-                const uint64_t vi = uint64_t(packet.baseVertex) + ix[packet.firstIndex + k];
+                const uint64_t vi = static_cast<uint64_t>(packet.baseVertex) + ix[packet.firstIndex + k];
                 if (vi >= vb / geom.vertexStride) { invalid = true; break; }
                 float pos[3];
                 std::memcpy(pos, vx + vi * geom.vertexStride, sizeof(pos));
@@ -293,7 +293,7 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
                              b.hi[0], b.hi[1], b.hi[2], 0.0f});
     s->localBounds.reset();
     const size_t bytes = gpuBounds.size() * sizeof(gpuBounds[0]);
-    if (!make_buffer(s, (std::max)(bytes, size_t(32)), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+    if (!make_buffer(s, (std::max)(bytes, static_cast<size_t>(32)), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                      s->localBounds, "hzb.local_bounds") ||
         (bytes && !s->localBounds.upload(gpuBounds.data(), bytes))) return false;
     s->cullCapacity = 0; // descriptors must follow the new map's bounds buffer
@@ -311,9 +311,9 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     s->previousCount = 0; // the retired mask no longer supplies telemetry
     s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
     s->cullPool.reset(); s->projected.reset(); s->visibility.reset(); s->instances.reset();
-    if (!make_buffer(s, uint64_t(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->projected, "hzb.projected") ||
-        !make_buffer(s, uint64_t(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
-        !make_buffer(s, uint64_t(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->projected, "hzb.projected") ||
+        !make_buffer(s, static_cast<uint64_t>(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
+        !make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
     // A recycled Vulkan handle must not leave consumers bound to the old mask.
     static uint64_t nextVisibilityGeneration = 0;
     s->visibilityGeneration = ++nextVisibilityGeneration;
@@ -338,7 +338,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
         pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; pi.stage.module = s->cullShader.get(); pi.stage.pName = "main"; pi.layout = s->cullLayout.get();
         if (!mc2vk::create(s->cullPipe,s->device,[&](VkPipeline* p){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
     }
-    const uint32_t levels = uint32_t(s->mipCount);
+    const uint32_t levels = static_cast<uint32_t>(s->mipCount);
     VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, levels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, levels*4}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     pci.maxSets = levels; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
@@ -816,7 +816,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         }
     }
     parity_check(s);   // the previous check frame's mask is readable now (ticket waited above)
-    if (!s->instances.upload(feed.instances112, uint64_t(feed.count)*sizeof(GpuStaticPropInstance))) {
+    if (!s->instances.upload(feed.instances112, static_cast<uint64_t>(feed.count)*sizeof(GpuStaticPropInstance))) {
         setFallback("instances_upload_failed"); s->disabled = true; return false;
     }
 
@@ -828,7 +828,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         VkDeviceSize bytes = 0;
         for (int l = 0; l < s->mipCount; ++l) {
             parityOffset[l] = bytes;
-            bytes += VkDeviceSize(s->levels[static_cast<size_t>(l)].w) * VkDeviceSize(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
+            bytes += static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].w) * static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
         }
         if (!s->parityMips || s->parityMipBytes < bytes) {
             s->parityMips.reset();
@@ -911,7 +911,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                   VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuCull, cb, "VKIsl.Post.HzbCull");
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullPipe.get());
-    for (uint32_t level = 0; level < uint32_t(s->mipCount); ++level) {
+    for (uint32_t level = 0; level < static_cast<uint32_t>(s->mipCount); ++level) {
         struct CullParams {
             uint32_t count, level, typeCount, levels;
             float worldToClip[16];
@@ -982,7 +982,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         auto& pc = s->parity;
         const uint32_t stride = (std::max)(1u, feed.count / kParitySamples);
         pc.ids.clear(); pc.inst.clear();
-        for (uint32_t i = uint32_t(g_parity.checks % stride); i < feed.count; i += stride) {
+        for (uint32_t i = static_cast<uint32_t>(g_parity.checks % stride); i < feed.count; i += stride) {
             pc.ids.push_back(i);
             pc.inst.push_back(static_cast<const GpuStaticPropInstance*>(feed.instances112)[i]);
         }

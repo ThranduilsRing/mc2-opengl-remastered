@@ -55,7 +55,7 @@
    "LG06": 342,
    "LG07": 0,
    "LG08": 144,
-   "LG09": 348,
+   "LG09": 295,
    "LG10": 80,
    "LG11": 59,
    "LG12a": 58,
@@ -979,14 +979,12 @@
   "GameOS/gameos/view_registry.h": {},
   "GameOS/gameos/visual_tuning_profile.cpp": {
    "LG06": 2,
-   "LG09": 3,
    "LG11": 1
   },
   "GameOS/gameos/visual_tuning_profile.h": {
    "LG06": 1
   },
   "GameOS/gameos/vk_actor_cull_native.cpp": {
-   "LG09": 7,
    "LG13": 2
   },
   "GameOS/gameos/vk_actor_cull_native.h": {},
@@ -1011,9 +1009,7 @@
   "GameOS/gameos/vk_frame_ring.h": {
    "LG10": 1
   },
-  "GameOS/gameos/vk_gpu_profile.cpp": {
-   "LG09": 1
-  },
+  "GameOS/gameos/vk_gpu_profile.cpp": {},
   "GameOS/gameos/vk_gpu_profile.h": {},
   "GameOS/gameos/vk_gpu_timestamps.h": {},
   "GameOS/gameos/vk_hdri_source.h": {
@@ -1058,7 +1054,6 @@
   "GameOS/gameos/vk_resource_graph.h": {},
   "GameOS/gameos/vk_scene_readback.cpp": {
    "LG05": 1,
-   "LG09": 9,
    "LG13": 2,
    "LG17": 3
   },
@@ -1105,13 +1100,13 @@
   "GameOS/gameos/vulkan_context.h": {},
   "GameOS/gameos/vulkan_ground_lighting.h": {},
   "GameOS/gameos/vulkan_impact_decals.cpp": {
-   "LG09": 11
+   "LG09": 4
   },
   "GameOS/gameos/vulkan_impact_decals.h": {},
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": {
    "LG06": 2,
    "LG08": 6,
-   "LG09": 4,
+   "LG09": 2,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_legacy_shape_island.h": {
@@ -1133,7 +1128,6 @@
   "GameOS/gameos/vulkan_post_hzb_native.cpp": {
    "LG03": 1,
    "LG06": 2,
-   "LG09": 13,
    "LG10": 2,
    "LG13": 2
   },
@@ -1196,7 +1190,7 @@
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
    "LG08": 7,
-   "LG09": 3
+   "LG09": 2
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
    "LG09": 1
@@ -1205,7 +1199,6 @@
   "GameOS/gameos/vulkan_vfx_island.cpp": {
    "LG06": 2,
    "LG08": 5,
-   "LG09": 4,
    "LG13": 2,
    "LG14": 1
   },
@@ -1215,7 +1208,7 @@
   },
   "GameOS/gameos/vulkan_water_island_images.cpp": {
    "LG08": 1,
-   "LG09": 7
+   "LG09": 1
   },
   "GameOS/gameos/vulkan_water_island_init.cpp": {},
   "GameOS/gameos/vulkan_water_island_internal.h": {
@@ -4484,7 +4477,7 @@
    "LG20": 3
   }
  },
- "head": "1ef4bed24",
+ "head": "53df47582",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

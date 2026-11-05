@@ -184,7 +184,7 @@ struct TerrainIsland : mc2vk::IslandState {
     VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
     mc2vk::LightLists lightLists;
     Mc2GroundLightingFrame groundFrame{};
-    uint64_t groundFrameNo = ~uint64_t(0);
+    uint64_t groundFrameNo = ~static_cast<uint64_t>(0);
     mc2vk::OwnedPipelineLayout  playout;
     mc2vk::OwnedPipeline        pipe;
     mc2vk::OwnedShaderModule    vert;

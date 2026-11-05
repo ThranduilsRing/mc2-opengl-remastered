@@ -151,7 +151,7 @@ std::vector<Mc2LegacyMlrDraw> g_pending;
 bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
     // Explicit legacy producer boundary: CPU/gos bytes stay legacy-owned; the service owns their Vulkan image.
     auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
-    e.texture=textures.acquireLegacy(w,h,fmt,bytes,size_t(byteCount));
+    e.texture=textures.acquireLegacy(w,h,fmt,bytes,static_cast<size_t>(byteCount));
     return bool(e.texture);
 }
 
@@ -221,7 +221,7 @@ bool init_island(Island* s, int w, int h) {
     s->depthRes  = mc2SharedSceneDepthGetResource();
     if (!s->preview && (!s->colorRes || !s->normalRes || !s->depthRes)) { setFallback("shared_gbuffer_not_ready"); return false; }
     if (s->preview) {
-        s->previewColor=ctx.textures().createRenderTarget(uint32_t(w),uint32_t(h));
+        s->previewColor=ctx.textures().createRenderTarget(static_cast<uint32_t>(w),static_cast<uint32_t>(h));
         if (!s->previewColor) return false;
         if (!s->previewNormal.createSampled2D(ctx.allocator(),s->device,VK_FORMAT_R8G8B8A8_UNORM,w,h,1,
                                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview.normal") ||
