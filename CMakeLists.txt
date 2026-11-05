@@ -339,6 +339,7 @@ include(cmake/Mc2SimFpContract.cmake)
 
 add_subdirectory("./Gates" "./out/Gates")
 add_subdirectory("./mclib/" "./out/mclib")
+add_subdirectory("./3rdparty/basisu" "./out/3rdparty/basisu")
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
 add_subdirectory("./GameAdapters" "./out/GameAdapters")
