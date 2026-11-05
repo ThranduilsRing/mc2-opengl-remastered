@@ -322,7 +322,20 @@ bool VulkanContext::init(bool wantPresent) {
     ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
     ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
     ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    // vk-present-instance 3: the messenger create info rides the instance create chain, so create-time messages are captured too
+    // (the persistent messenger below is created from the same info and destroyed before the instance).
+    VkDebugUtilsMessengerCreateInfoEXT mci{};
+    mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    mci.pfnUserCallback = engine_ctx_debug_cb;
     if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+    if (wantValidation && debugUtilsExt) {
+        if (ici.pNext) valFeaturesInfo.pNext = &mci; else ici.pNext = &mci;
+    }
 
     r = vkCreateInstance(&ici, nullptr, &instance_);
     if (r != VK_SUCCESS) return fail("vkCreateInstance failed");
@@ -334,14 +347,6 @@ bool VulkanContext::init(bool wantPresent) {
         auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
             vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT");
         if (pfnCreate) {
-            VkDebugUtilsMessengerCreateInfoEXT mci{};
-            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            mci.pfnUserCallback = engine_ctx_debug_cb;
             VkResult mr = pfnCreate(instance_, &mci, nullptr, &messenger_);
             if (mr == VK_SUCCESS) {
                 ctxlog("validation messenger engaged (preset=%s).", valPreset);
