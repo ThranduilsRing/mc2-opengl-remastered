@@ -737,10 +737,10 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 		numRPoints = MaxResourcePoints;
 	if (MPlayer) {
 		numRPoints = MPlayer->missionSettings.resourcePoints;
-		for (auto & i : MPlayer->playerInfo) {
-			i.resourcePoints = MPlayer->missionSettings.resourcePoints;
-			i.resourcePointsGained = 0;
-			i.resourcePointsAtStart = MPlayer->missionSettings.resourcePoints;
+		for (auto & playerInfoElem : MPlayer->playerInfo) {
+			playerInfoElem.resourcePoints = MPlayer->missionSettings.resourcePoints;
+			playerInfoElem.resourcePointsGained = 0;
+			playerInfoElem.resourcePointsAtStart = MPlayer->missionSettings.resourcePoints;
 		}
 	}
 	LogisticsData::instance->setResourcePoints(numRPoints);
@@ -881,9 +881,9 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 			MOVE_buildData(moveSide, moveSide, nullptr /*all-passable blank*/, 0, nullptr);
 			if (GameMap) {
 				GameMap->placeMoversCallback = PlaceMovers;
-				for (auto & level : GlobalMoveMap) {
-					level->isGateDisabledCallback = IsGateDisabled;
-					level->isGateOpenCallback = IsGateOpen;
+				for (auto & GlobalMoveMapElem : GlobalMoveMap) {
+					GlobalMoveMapElem->isGateDisabledCallback = IsGateDisabled;
+					GlobalMoveMapElem->isGateOpenCallback = IsGateOpen;
 				}
 			}
 		}

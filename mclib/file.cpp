@@ -677,10 +677,10 @@ void File::close (void)
 	// handle to NULL and their filename to NULL.  It will also close any
 	// of THEIR children.
 	// Index loop: a child's close() clears its own slot through removeChild(), never resizing the list.
-	for (auto & i : m_children)
+	for (auto & childrenElem : m_children)
 	{
-		if (i)
-			i->close();
+		if (childrenElem)
+			childrenElem->close();
 	}
 	m_children.clear();
 	

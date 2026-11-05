@@ -290,17 +290,22 @@ public:
     // --- Query API ---
     const EquipmentRegistryEntry* byQualifiedId(std::string_view id) const {
         auto it = byId_.find(id);
-        return (it == byId_.end()) ? nullptr : &entries_[it->second];
+        if (it == byId_.end()) return nullptr;
+        const auto& [qualifiedId, index] = *it;
+        return &entries_[index];
     }
     const EquipmentRegistryEntry* byLegacyMasterId(long ord) const {
         auto it = byOrdinal_.find(ord);
         if (it == byOrdinal_.end()) return nullptr;
-        return byQualifiedId(it->second);
+        const auto& [legacyOrd, qualifiedId] = *it;
+        return byQualifiedId(qualifiedId);
     }
     // core:<slug> for an ordinal (empty if none).
     std::string qualifiedIdFor(long ord) const {
         auto it = byOrdinal_.find(ord);
-        return (it == byOrdinal_.end()) ? std::string() : it->second;
+        if (it == byOrdinal_.end()) return std::string();
+        const auto& [legacyOrd, qualifiedId] = *it;
+        return qualifiedId;
     }
     // Ordinal for a qualified id (-1 if none).
     long legacyMasterIdFor(std::string_view id) const {
@@ -616,7 +621,7 @@ inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
     line += (f.rangeOrdinal >= 0 && f.rangeOrdinal <= 2) ? kRangeNames[f.rangeOrdinal]
                                                          : "0";
     line += ",";
-    for (bool i : f.crit) { line += i ? "Yes" : "No"; line += ","; }
+    for (const auto critElem : f.crit) { line += critElem ? "Yes" : "No"; line += ","; }
     // ammoType token: '1' = finite ammo when an ammo row is linked, else '0'.
     if (!f.ammoToken.empty())
         line += f.ammoToken;

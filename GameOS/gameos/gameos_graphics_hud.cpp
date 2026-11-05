@@ -485,7 +485,7 @@ void gosRenderer::flushHUDBatch()
                     { static_cast<float>(width_) * 0.5f, static_cast<float>(height_) * 0.25f },
                     { static_cast<float>(width_) * 0.5f, static_cast<float>(height_) * 0.95f },
                 };
-                for (auto probePt : probePts) {
+                for (const auto & probePt : probePts) {
                     float px = probePt[0];
                     float py = probePt[1];
                     const float hudScale = gos_GetHudScale();

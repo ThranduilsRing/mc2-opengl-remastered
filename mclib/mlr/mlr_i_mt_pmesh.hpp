@@ -155,8 +155,8 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<const Vector2DScalar*> multiTexCoordsPointers;
 
-		static Stuff::DynamicArrayOf<Stuff::DynamicArrayOf<Vector2DScalar> > *clipExtraMultiTexCoords;	// Max_Number_Vertices_Per_Mesh
-		static Stuff::DynamicArrayOf<Stuff::DynamicArrayOf<Vector2DScalar> > *extraMultiTexCoords;	// Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::DynamicArrayOf<Vector2DScalar> > > clipExtraMultiTexCoords;	// Max_Number_Vertices_Per_Mesh
+		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::DynamicArrayOf<Vector2DScalar> > > extraMultiTexCoords;	// Max_Number_Vertices_Per_Mesh
 	};
 
 	MLRShape*

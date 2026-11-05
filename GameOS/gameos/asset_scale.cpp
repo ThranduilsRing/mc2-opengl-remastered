@@ -1,4 +1,5 @@
 // GameOS/gameos/asset_scale.cpp
+#include "mc2_czstring.h"
 #include "asset_scale.h"
 #include <string_view>
 
@@ -48,7 +49,7 @@ void log(const char* fmt, ...) {
     va_end(ap);
 }
 
-std::string canonicalize(const char* raw) {
+std::string canonicalize(mc2::czstring raw) {
     if (!raw) return std::string();
     std::string s(raw);
     // backslash -> forward
@@ -121,7 +122,7 @@ bool parseLine(std::string_view raw, std::string& path,
     return true;
 }
 
-void loadManifest(const char* manifestPath) {
+void loadManifest(mc2::czstring manifestPath) {
     State& st = state();
     FILE* f = std::fopen(manifestPath, "rb");
     if (!f) {
@@ -149,8 +150,8 @@ void loadManifest(const char* manifestPath) {
         std::string trimmed = trim(line);
         if (!trimmed.empty() && trimmed[0] != '#') {
             if (parseLine(line, path, w, h, chrome)) {
-                auto ins = st.manifest.emplace(std::move(path), NominalDims{w, h, chrome});
-                if (!ins.second) ++st.cManifestDupes;
+                const auto [entryIt, inserted] = st.manifest.emplace(std::move(path), NominalDims{w, h, chrome});
+                if (!inserted) ++st.cManifestDupes;
                 else             ++st.cManifestEntries;
             } else {
                 ++st.cManifestBadLines;
@@ -165,7 +166,7 @@ void loadManifest(const char* manifestPath) {
 }
 
 void firstUnknownWarning(State& st, const std::string& canon) {
-    if (st.seenUnknown.insert(canon).second) {
+    if (const auto [seenIt, inserted] = st.seenUnknown.insert(canon); inserted) {
         ++st.cUnknownAsset;
         if (st.traceEnabled) {
             log("[ASSET_SCALE v1] event=unknown_asset path=%s", canon.c_str());
@@ -173,12 +174,12 @@ void firstUnknownWarning(State& st, const std::string& canon) {
     }
 }
 
-void firstOobWarning(State& st, const std::string& canon, const char* tag,
+void firstOobWarning(State& st, const std::string& canon, mc2::czstring tag,
                      uint32_t aw, uint32_t ah, uint32_t nw, uint32_t nh,
                      int sx, int sy, int sw, int sh,
                      int cx, int cy, int cw, int ch) {
     std::string k = canon + "|" + (tag ? tag : "?");
-    bool first = st.seenOobFirst.insert(k).second;
+    const auto [seenIt, first] = st.seenOobFirst.insert(k);
     ++st.cOobBlit;
     // First occurrence is always-on. Subsequent only with trace.
     if (first || st.traceEnabled) {
@@ -196,7 +197,8 @@ const NominalDims* lookupNominal(State& st, const AssetKey& k) {
         firstUnknownWarning(st, k.str());
         return nullptr;
     }
-    return &it->second;
+    auto& [manifestKey, dims] = *it;
+    return &dims;
 }
 
 // ---- Self-tests ----------------------------------------------------------
@@ -299,11 +301,11 @@ void runSelfTests() {
 
 } // anonymous namespace
 
-AssetKey key(const char* rawPath) {
+AssetKey key(mc2::czstring rawPath) {
     return AssetKey(canonicalize(rawPath));
 }
 
-void init(const char* manifestPath) {
+void init(mc2::czstring manifestPath) {
     State& st = state();
     if (st.inited) return;
     st.inited = true;
@@ -410,7 +412,9 @@ bool isChromeAsset(const AssetKey& k) {
     if (k.empty()) return false;
     State& st = state();
     auto it = st.manifest.find(k.str());
-    return it != st.manifest.end() && it->second.chrome;
+    if (it == st.manifest.end()) return false;
+    const auto& [manifestKey, dims] = *it;
+    return dims.chrome;
 }
 
 } // namespace AssetScale

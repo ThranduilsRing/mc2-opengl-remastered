@@ -16,15 +16,16 @@
 // enum defined in action_executor_registry.h (LOCO_MECH_WALKER, LOCO_TRACKED,
 // LOCO_WHEELED, LOCO_HOVER, LOCO_INFANTRY) so the registry's compatibility sets
 // and the facet speak the same id language.
+#include "mc2_czstring.h"
 #include "action_executor_registry.h"   // LocomotionModel enum
 
 // Case-insensitive ASCII equality for a facet token vs a fixed key.
-inline bool locomotionTokenEquals(const char* a, const char* key) {
+inline bool locomotionTokenEquals(mc2::czstring a, mc2::czstring key) {
     if (!a || !key) return false;
     for (; *a && *key; ++a, ++key) {
         char ca = *a, ck = *key;
-        if (ca >= 'A' && ca <= 'Z') ca = char(ca - 'A' + 'a');
-        if (ck >= 'A' && ck <= 'Z') ck = char(ck - 'A' + 'a');
+        if (ca >= 'A' && ca <= 'Z') ca = static_cast<char>(ca - 'A' + 'a');
+        if (ck >= 'A' && ck <= 'Z') ck = static_cast<char>(ck - 'A' + 'a');
         if (ca != ck) return false;
     }
     return *a == '\0' && *key == '\0';
@@ -34,7 +35,7 @@ inline bool locomotionTokenEquals(const char* a, const char* key) {
 // Unknown / empty / null token -> `fallback` (the class-default the caller
 // supplies), so stock .fits that omit the key preserve parity. Recognized
 // tokens mirror the enum: MechWalker, Tracked, Wheeled, Hover, Infantry.
-inline LocomotionModel parseLocomotionModel(const char* token,
+inline LocomotionModel parseLocomotionModel(mc2::czstring token,
                                             LocomotionModel fallback) {
     if (!token || token[0] == '\0') return fallback;
     if (locomotionTokenEquals(token, "MechWalker")) return LOCO_MECH_WALKER;
@@ -50,7 +51,7 @@ inline LocomotionModel parseLocomotionModel(const char* token,
 // supplied; an unknown one echoes the fallback and therefore differs. Pure —
 // lets loaders report "unknown Locomotion token 'X', kept legacy" instead of
 // silently applying the fallback.
-inline bool locomotionTokenKnown(const char* token) {
+inline bool locomotionTokenKnown(mc2::czstring token) {
     if (!token || token[0] == '\0') return false;
     return parseLocomotionModel(token, LOCO_WHEELED)
         == parseLocomotionModel(token, LOCO_MECH_WALKER);

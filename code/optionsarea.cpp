@@ -1802,11 +1802,11 @@ void HotKeyListItem::update()
 
 }
 
-void HotKeyListItem::setDescription( const char* pText )
+void HotKeyListItem::setDescription( mc2::czstring pText )
 {
 	description.setText( pText );
 }
-void HotKeyListItem::setKey( const char* pText )
+void HotKeyListItem::setKey( mc2::czstring pText )
 {
 	text.setText( pText );
 }

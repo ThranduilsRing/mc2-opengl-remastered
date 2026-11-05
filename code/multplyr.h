@@ -99,7 +99,6 @@ public:
 #define	SERVER_HANDLES_ALL_WEAPONHITS	TRUE
 
 inline constexpr auto MAX_MC_PLAYERS = 8;
-#define	MAX_TEAMS						8
 #define	MAX_LOCAL_MOVERS				MAX_MOVERGROUP_COUNT	// 16
 inline constexpr auto MAX_MULTIPLAYER_MOVERS = 96;
 inline constexpr auto MAX_MULTIPLAYER_MECHS_IN_LOGISTICS = 36;
@@ -787,8 +786,8 @@ class MCMSG_PlayerSetup {
 
 		void init (void) {
 			type = MCMSG_PLAYER_SETUP;
-			for (unsigned char & i : moverData)
-				i = 0;
+			for (auto & moverDataElem : moverData)
+				moverDataElem = 0;
 		}
 };
 

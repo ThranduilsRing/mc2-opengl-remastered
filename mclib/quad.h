@@ -97,8 +97,8 @@ class TerrainQuad
 
 		void init (void)
 		{
-			for (auto & vertice : vertices)
-				vertice = nullptr;
+			for (auto & vertex : vertices)
+				vertex = nullptr;
 			
 			terrainHandle = 0xffffffff;
 			terrainDetailHandle = 0xffffffff;

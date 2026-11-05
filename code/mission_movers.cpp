@@ -658,9 +658,9 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	}
 
 	long teamSize[MAX_TEAMS][2];
-	for (auto & i : teamSize) {
-		i[0] = 0;
-		i[1] = 0;
+	for (auto & teamSizeElem : teamSize) {
+		teamSizeElem[0] = 0;
+		teamSizeElem[1] = 0;
 	}
 /*	for (i = 0; i < MAX_MC_PLAYERS; i++)
 		if (dropZoneSetup[i] > -1)

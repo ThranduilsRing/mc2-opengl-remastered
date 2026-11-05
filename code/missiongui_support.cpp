@@ -485,7 +485,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, wakePos);
 					
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 	
 		dustCloud[commanderID]->SetLoopOff();
 		dustCloud[commanderID]->SetExecuteOn();

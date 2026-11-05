@@ -77,11 +77,7 @@ namespace MidLevelRenderer {
 
 
 		virtual void
-#if COLOR_AS_DWORD
-			PaintMe(const DWORD *paintMe) {};
-#else
 			PaintMe(const Stuff::RGBAColor *paintMe) {};
-#endif
 
 
 
@@ -129,8 +125,8 @@ namespace MidLevelRenderer {
 		
 	};
 
-	#define ICO_X 0.525731112119133606f
-	#define ICO_Z 0.850650808352039932f
+	inline constexpr float ICO_X = 0.525731112119133606f;
+	inline constexpr float ICO_Z = 0.850650808352039932f;
 
 	extern float vdata[12][3];
 	extern unsigned int tindices [20][3];

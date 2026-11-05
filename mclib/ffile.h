@@ -23,6 +23,7 @@
 #include<file.h>
 #endif
 
+#include "mc2_czstring.h"
 #include<sys/types.h>
 #include<sys/stat.h>
 
@@ -81,7 +82,7 @@ class FastFile
 		~FastFile (void);
 
 
-		long open (const char* fName);
+		long open (mc2::czstring fName);
 		void close (void);
 
 		bool isOpen (void)
@@ -109,7 +110,7 @@ class FastFile
 
 		const char* getFileName() { return fileName.get(); }
 
-		long openFast (DWORD hash, const char *fName);
+		long openFast (DWORD hash, mc2::czstring fName);
 
 		void closeFast (DWORD localHandle);
 
@@ -126,9 +127,9 @@ class FastFile
 		}
 
 
-		long create(const char* fName, bool compressed);
+		long create(mc2::czstring fName, bool compressed);
 		long reserve(int num_files);
-		long writeFast (const char* fastFileName, void* buffer, int nbytes);
+		long writeFast (mc2::czstring fastFileName, void* buffer, int nbytes);
 };
 
 //---------------------------------------------------------------------------

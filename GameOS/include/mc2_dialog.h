@@ -15,12 +15,13 @@
 // Include after <windows.h> / the engine headers that declare MessageBox.
 //----------------------------------------------------------------------------
 
+#include "mc2_czstring.h"
 #include <cstdio>
 
 // Defined in GameOS/gameos/gameos_input.cpp (game and editor builds).
 bool gos_NoUserPresentRequested();
 
-inline int mc2MessageBox(const char* text, const char* title, unsigned type, int unattendedResult)
+inline int mc2MessageBox(mc2::czstring text, mc2::czstring title, unsigned type, int unattendedResult)
 {
     if (gos_NoUserPresentRequested()) {
         std::fprintf(stderr, "[DIALOG_SUPPRESSED] title=\"%s\" result=%d text=\"%s\"\n",

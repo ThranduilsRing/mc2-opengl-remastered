@@ -1,5 +1,6 @@
 // MechWarrior: tac-order calculation, goal manager, save/load and the data copy.
 // Declared in the class headers; shared names in warrior_internal.h.
+#include "mc2_czstring.h"
 #include "warrior_internal.h"
 #include "mc2fmt.h"
 #include "tacorder_terrain_queue.h"
@@ -7,7 +8,7 @@
 static_assert(MAX_QUEUED_TACORDERS_PER_WARRIOR == 16, "WQT2 target count must match the runtime queue");
 
 
-std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3& pos, const char* name )
+std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3& pos, mc2::czstring name )
 {
 	int appearanceType = (BLDG_TYPE << 24);
 	AppearanceTypePtr buildingAppearanceType = appearanceTypeList->getAppearance(appearanceType, name );
@@ -972,9 +973,9 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum, bool staticValues, b
 	curEventTrigger			= staticData.curEventTrigger;
 
 	// Pool reset: every warrior releases its markers BEFORE the slice cursor goes back to 0, never after.
-	for (auto & i : MechWarrior::warriorList)
-		if (i)
-			i->resetQueueMarkers();
+	for (auto & MechWarriorwarriorElem : MechWarrior::warriorList)
+		if (MechWarriorwarriorElem)
+			MechWarriorwarriorElem->resetQueueMarkers();
 	TacOrderQueuePos = 0;
 
 	for (long i = 0; i < numWarriors; i++)

@@ -7,6 +7,7 @@
 //           Stage 0' instrumentation continues firing through the adapter.  //
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include "gosfx/gosfxheaders.hpp"
 #include "spec_library.h"
 #include "fx_trace/fx_trace.h"
@@ -83,7 +84,7 @@ void SpecLibrary::Save(Stuff::MemoryStream* stream)
     }
 }
 
-gosFX::Effect::Specification* SpecLibrary::Find(const char* name)
+gosFX::Effect::Specification* SpecLibrary::Find(mc2::czstring name)
 {
     // fx_trace v1: per-name spawn-event counter (env-gated, default-off).
     // Preserved verbatim from gosFX::EffectLibrary::Find at B1 Stage 2' C1.

@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------
 //
 //	gvactor.cpp - This file contains the code for the Ground Vehicle Actor class
+#include "mc2_czstring.h"
 #include "content_error.h"
 //
 //	MechCommander 2
@@ -42,7 +43,7 @@ static uint32_t s_lcSkipCountGV = 0u;
 // Sensor shape loaders (sensorTriangleShape, sensorCircleShape) use this so
 // a_contacts.tga can be absent in a slim deploy while the .ktx2 sidecar serves
 // the texture via route-2 in txmmgr.cpp.
-static bool textureOrKtxSidecarExists(const char* tgaPath)
+static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
@@ -62,7 +63,7 @@ TG_TypeMultiShapePtr GVAppearanceType::SensorTriangleShape = nullptr;
 TG_TypeMultiShapePtr GVAppearanceType::SensorCircleShape = nullptr;
 //-----------------------------------------------------------------------------
 // class GVAppearanceType
-void GVAppearanceType::init (const char * fileName)
+void GVAppearanceType::init (mc2::czstring fileName)
 {
 	AppearanceType::init(fileName);
 
@@ -418,12 +419,12 @@ void GVAppearanceType::destroy (void)
 	for (auto& shape : renderLods) shape.reset();
 	AppearanceType::destroy();
 
-	for (long i=0;i<MAX_LODS;i++)
+	for (auto & gvShapeElem : gvShape)
 	{
-		if (gvShape[i])
+		if (gvShapeElem)
 		{
-			delete gvShape[i];
-			gvShape[i] = nullptr;
+			delete gvShapeElem;
+			gvShapeElem = nullptr;
 		}
 	}
 
@@ -439,10 +440,10 @@ void GVAppearanceType::destroy (void)
 		gvDmgShape = nullptr;
 	}
 
-	for (int i=0;i<MAX_GV_ANIMATIONS;i++)
+	for (auto & gvAnimDataElem : gvAnimData)
 	{
-		delete gvAnimData[i];
-		gvAnimData[i] = nullptr;
+		delete gvAnimDataElem;
+		gvAnimDataElem = nullptr;
 	}
 
 	nodeDataStore.reset();
@@ -468,7 +469,6 @@ glm::vec3 debugGVActorPosition;
 float vehicleDebugAngle = 0.0;
 float turretDebugAngle = 0.0;
 float debugVelMag = 0.0;
-#define BASE_NODE_RECYCLE_TIME		0.25f
 //-----------------------------------------------------------------------------
 // class GVAppearance
 void GVAppearance::setWeaponNodeUsed (long weaponNode)
@@ -1005,7 +1005,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (auto boxCoord : boxCoords)
+		for (const auto & boxCoord : boxCoords)
 		{
 			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
@@ -1084,8 +1084,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// Removing these lines is NOT the fix either: registration is still
 		// consumed elsewhere in the batcher. Fix the eligibility predicate
 		// (submitted-ness, not registered-ness) if this ever goes live.
-		for (auto & i : appearType->gvShape)
-			GpuStaticPropBatcher::instance().registerMultiShape(i);
+		for (auto & gvShapeElem : appearType->gvShape)
+			GpuStaticPropBatcher::instance().registerMultiShape(gvShapeElem);
 		// An override body with per-object maps is one shared shape per LOD (paint is shader-side), so it joins the
 		// batcher here, before finalize, and draws through submitMultiShape instead of the CPU fallback.
 		if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name); ov && ov->usesObjectMaps())
@@ -1095,8 +1095,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
 		// Stock bodies (and the destroyed shape) draw from per-node matrices through the mech batcher.
-		for (auto & i : appearType->gvShape)
-			GpuMechBatcher::instance().registerVehicleType(i);
+		for (auto & gvShapeElem : appearType->gvShape)
+			GpuMechBatcher::instance().registerVehicleType(gvShapeElem);
 		GpuMechBatcher::instance().registerVehicleType(appearType->gvDmgShape);
 	}
 }

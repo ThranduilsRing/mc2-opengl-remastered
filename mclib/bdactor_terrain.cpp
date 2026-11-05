@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance terrain/move-map/line-of-sight marking and cell coverage.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include <algorithm>
 #include <memory>
 #include "mc2fmt.h"
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
@@ -149,8 +150,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					}
 					
 					float cellLocalHeight = vertexPos.z * metersPerWorldUnit * 0.25f;
-					if (cellLocalHeight > 15.0f)
-						cellLocalHeight = 15.0f;
+					cellLocalHeight = std::min(cellLocalHeight, 15.0f);
 						
 					//ONLY mark LOS on cells that are impassable with forests.  Maybe everything?
 					if (pTmp->passable && (pTmp->lineOfSight < cellLocalHeight))
@@ -230,8 +230,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 						if (type != 18)
 						{
 							float cellLocalHeight = vertexPos.z * metersPerWorldUnit * 0.25f;
-							if (cellLocalHeight > 15.0f)
-								cellLocalHeight = 15.0f;
+							cellLocalHeight = std::min(cellLocalHeight, 15.0f);
 								
 							if (pTmp->lineOfSight < cellLocalHeight)
 								pTmp->lineOfSight = cellLocalHeight+0.5f;
@@ -351,14 +350,10 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						continue;
 					}
 					
-					if (cellR < minRow)
-						minRow = cellR;
-					if (cellR > maxRow)
-						maxRow = cellR;
-					if (cellC < minCol)
-						minCol = cellC;
-					if (cellC > maxCol)
-						maxCol = cellC;
+					minRow = std::min(minRow, cellR);
+					maxRow = std::max(maxRow, cellR);
+					minCol = std::min(minCol, cellC);
+					maxCol = std::max(maxCol, cellC);
 						
 					if (numCoords > (maxCoords - 2))
 						Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
@@ -389,14 +384,10 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						continue;
 					}
 					
-					if (cellR < minRow)
-						minRow = cellR;
-					if (cellR > maxRow)
-						maxRow = cellR;
-					if (cellC < minCol)
-						minCol = cellC;
-					if (cellC > maxCol)
-						maxCol = cellC;
+					minRow = std::min(minRow, cellR);
+					maxRow = std::max(maxRow, cellR);
+					minCol = std::min(minCol, cellC);
+					maxCol = std::max(maxCol, cellC);
 						
 					MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 					if (appearType->isForestClump) {
@@ -468,8 +459,7 @@ void BldgAppearance::markLOS (bool clearIt)
 					float currentCellHeight = curCell->getLocalHeight();
 					
 					float cellLocalHeight = vertexPos.z * metersPerWorldUnit * 0.25f;
-					if (cellLocalHeight > 15.0f)
-						cellLocalHeight = 15.0f;
+					cellLocalHeight = std::min(cellLocalHeight, 15.0f);
 
 					if (cellLocalHeight > currentCellHeight)
 						GameMap->setLocalHeight(cellR, cellC, cellLocalHeight+0.5f);

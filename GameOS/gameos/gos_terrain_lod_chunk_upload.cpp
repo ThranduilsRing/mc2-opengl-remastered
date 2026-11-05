@@ -16,7 +16,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     auto* store = gos_TerrainFieldStore();
     if (!store || !store->setHeight(elevations, mapSide)) return;
     s_mapSide = mapSide;
-    s_halfMap = float(mapSide) * 128.0f * 0.5f;
+    s_halfMap = static_cast<float>(mapSide) * 128.0f * 0.5f;
 }
 
 void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int V,
@@ -42,7 +42,7 @@ void gos_TerrainLodChunk_ClearVisualHeight()
 void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
 {
     if (!damp01 || side <= 0) return;
-    const size_t count = size_t(side) * size_t(side);
+    const size_t count = static_cast<size_t>(side) * static_cast<size_t>(side);
     s_visualDampStatic.assign(damp01, damp01 + count);
     s_visualDampCombined = s_visualDampStatic;
     s_visualDampSide = side;

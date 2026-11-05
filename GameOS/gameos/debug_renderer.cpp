@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include <algorithm>
 #include "debug_renderer.h"
 
@@ -184,7 +185,7 @@ void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, u
     }
 }
 
-void drawTextWorld(Vec3 pos, const char* text, uint32_t rgba) {
+void drawTextWorld(Vec3 pos, mc2::czstring text, uint32_t rgba) {
     (void)pos; (void)text; (void)rgba;   // reserved: no world-space text yet
 }
 

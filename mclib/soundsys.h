@@ -9,6 +9,7 @@
 
 #ifndef SOUNDSYS_H
 #define SOUNDSYS_H
+#include "mc2_czstring.h"
 #include <optional>
 //---------------------------------------------------------------------------
 // Include files
@@ -298,7 +299,7 @@ class SoundSystem
 			gamePaused = false;
 		}
 		
-		long init (const char *soundFileName);
+		long init (mc2::czstring soundFileName);
 		virtual void destroy (void);
 		
 		void preloadSoundBite (long sampleId);
@@ -309,7 +310,7 @@ class SoundSystem
 		
 		std::optional<long> playDigitalMusic (long musicId);
 		
-		std::optional<long> playDigitalStream (const char *streamName);
+		std::optional<long> playDigitalStream (mc2::czstring streamName);
 											 
 		bool isDigitalMusicPlaying (void);
 		bool isPlayingSample(long sampleId);
@@ -320,7 +321,7 @@ class SoundSystem
 		void stopBettySample (void);
 
 		
-		long playSupportSample (unsigned long supportSampleId, const char* fileName = nullptr);
+		long playSupportSample (unsigned long supportSampleId, mc2::czstring fileName = nullptr);
 		
  		void stopDigitalSample (unsigned long sampleHandleNumber);
 		void stopDigitalMusic (void);

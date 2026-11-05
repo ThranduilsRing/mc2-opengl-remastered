@@ -3,6 +3,7 @@
 // See tgl_load_guard.h for the contract.
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include "tgl_load_guard.h"
 #include "inifile.h"
 #include "content_error.h"
@@ -21,7 +22,7 @@
 //---------------------------------------------------------------------------
 namespace {
 
-unsigned long long guardKey(const char* ctx, const char* path)
+unsigned long long guardKey(mc2::czstring ctx, mc2::czstring path)
 {
 	unsigned long long h = 5381;
 	for (const char* p = ctx;  p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
@@ -162,7 +163,7 @@ void tglReadImportSource(FitIniFile& ini, std::span<char, 256> source)
 }
 
 //---------------------------------------------------------------------------
-bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
+bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, mc2::czstring ctx,
                           const char* assetPath, bool* failFlag)
 {
 	const bool loaded = (shape != nullptr) && (rc == 0) && (shape->GetNumShapes() > 0);
@@ -194,7 +195,7 @@ bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
 }
 
 //---------------------------------------------------------------------------
-long tglLoadShapeChecked(TG_TypeMultiShape* shape, const char* asePath,
+long tglLoadShapeChecked(TG_TypeMultiShape* shape, mc2::czstring asePath,
                          const char* ctx, bool* failFlag)
 {
 	long rc = shape ? shape->LoadTGMultiShapeFromASE(asePath) : -1;

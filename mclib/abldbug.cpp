@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include "abldbug_internal.h"
 #include "mc2fmt.h"
 
@@ -392,7 +393,7 @@ void Debugger::operator delete (void* us) {
 
 //---------------------------------------------------------------------------
 
-long Debugger::init (void (*callback)(const char* s), ABLModulePtr _module) {
+long Debugger::init (void (*callback)(mc2::czstring s), ABLModulePtr _module) {
 
 	printCallback = callback;
 	module = _module;
@@ -413,7 +414,7 @@ void Debugger::destroy (void) {
 
 //---------------------------------------------------------------------------
 
-long Debugger::print (const char* s) {
+long Debugger::print (mc2::czstring s) {
 
 	if (printCallback)
 		(*printCallback)(s);

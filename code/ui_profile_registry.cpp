@@ -2,6 +2,7 @@
 // UI-PROFILE-1 (Phase-2 slice 6): optional additive-merge UIProfile registry.
 // inifile.h drags file I/O (forbidden in the doctest target), so this engine-only
 // TU owns the impure load; the pure facet + override decision are in ui_profile.h.
+#include "mc2_czstring.h"
 #include "ui_profile_registry.h"
 #include "ui_profile.h"
 #include "unitprofile.h"      // mc2UnitProfileDataEnabled()
@@ -14,7 +15,7 @@ namespace {
 
 // Lowercase a filename key so lookup is case-insensitive (chassis filenames are
 // stored lowercased by LogisticsChassis::init).
-std::string lowerKey(const char* s) {
+std::string lowerKey(mc2::czstring s) {
     std::string k;
     if (s) for (const char* p = s; *p; ++p) k += static_cast<char>(std::tolower(static_cast<unsigned char>(*p)));
     return k;
@@ -39,7 +40,7 @@ void readBlockInto(FitIniFile& fit, UIProfile& p) {
 
 // Strip directory + extension from a chassis filename, leaving the stem that a
 // UIProfile block is keyed on (e.g. "objects/mech_hbk4g.csv" -> "mech_hbk4g").
-std::string chassisStem(const char* fileName) {
+std::string chassisStem(mc2::czstring fileName) {
     std::string s = lowerKey(fileName);
     const size_t slash = s.find_last_of("/\\");
     if (slash != std::string::npos) s = s.substr(slash + 1);
@@ -93,7 +94,7 @@ UIProfileRegistry& registry() {
 
 } // namespace
 
-const UIProfile* uiProfileForChassis(const char* chassisFileName) {
+const UIProfile* uiProfileForChassis(mc2::czstring chassisFileName) {
     // Gate OFF -> always null -> legacy (parity). Cheap early-out before any open.
     if (!mc2UnitProfileDataEnabled()) return nullptr;
     if (!chassisFileName || !chassisFileName[0]) return nullptr;

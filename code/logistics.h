@@ -92,7 +92,7 @@ class Logistics
 		int DoBeginMission();
 		void playFullScreenVideo( const char* fileName );
 
-		MC2MoviePtr	bMovie;
+		std::unique_ptr<MC2Movie>	bMovie;
 
 
 	private:

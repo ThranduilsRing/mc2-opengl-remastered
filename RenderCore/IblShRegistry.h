@@ -76,9 +76,9 @@ constexpr bool nameEqualsCI(const char* a, const char* b) {
 // Find an SH set by name. Returns nullptr if not found.
 inline const IblShSet* findShSetByName(const char* setName) {
     if (setName == nullptr || setName[0] == '\0') return nullptr;
-    for (const auto & kIblShSet : kIblShSets) {
-        if (detail::nameEqualsCI(kIblShSet.name, setName)) {
-            return &kIblShSet;
+    for (const auto & iblShSet : kIblShSets) {
+        if (detail::nameEqualsCI(iblShSet.name, setName)) {
+            return &iblShSet;
         }
     }
     return nullptr;

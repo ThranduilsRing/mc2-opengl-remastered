@@ -762,12 +762,12 @@ void GameTacMap::drawSensor( const glm::vec3& pos, float radius, long color )
 
 	radius *= (static_cast<float>((right - left)))/(land->metersPerCell * land->realVerticesMapSide * 3.f);
 
-	for (auto & i : sqare)
+	for (auto & sqareElem : sqare)
 	{
-		i.z = 0;
-		i.rhw = .5;
-		i.argb = color;
-		i.frgb = 0;
+		sqareElem.z = 0;
+		sqareElem.rhw = .5;
+		sqareElem.argb = color;
+		sqareElem.frgb = 0;
 	}
 
 	worldToTacMap( (glm::vec3&)pos, sqare[0] );
@@ -814,14 +814,14 @@ void GameTacMap::drawBlip( const glm::vec3& pos, long color, int type )
 	unsigned long gosID = mc2::textures::sourceId( blipHandle );
 	gos_SetRenderState( gos_State_Texture, gosID );
 
-	for (auto & i : triangle)
+	for (auto & triangleElem : triangle)
 	{
-		i.z = 0;
-		i.rhw = .5;
-		i.argb = color;
-		i.frgb = 0;
-		i.u = 0.f;
-		i.v = 0.f;
+		triangleElem.z = 0;
+		triangleElem.rhw = .5;
+		triangleElem.argb = color;
+		triangleElem.frgb = 0;
+		triangleElem.u = 0.f;
+		triangleElem.v = 0.f;
 	}
 
 	

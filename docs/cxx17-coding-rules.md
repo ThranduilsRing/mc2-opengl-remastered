@@ -179,6 +179,12 @@ lifetime exceeds the call, store `std::string` (owning) instead. Never
 return `std::string_view` from a function that builds the string
 internally.
 
+**`mc2::czstring` (GameOS/include/mc2_czstring.h).** A read-only parameter that is
+forwarded to a C API (fopen, strcmp/_stricmp, strcpy, printf family, Win32, ABL
+tables) or kept as a C string is typed `mc2::czstring` (= `const char*`, contract:
+NUL-terminated), never `std::string_view` + `.data()`: a view is not NUL-terminated.
+The cxx17 ratchet (LG06) does not count the alias; it is a contract, not residue.
+
 ## 5. Use cautiously
 
 ### 5.1 `std::variant<...>`

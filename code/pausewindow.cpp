@@ -272,17 +272,17 @@ void PauseWindow::update()
 
 		for ( int i = 0; i < buttonCount; i++ )
 		{
-			for (auto & j : buttons[i].location)
+			for (auto & locationElem : buttons[i].location)
 			{
-				j.x -= delta;
+				locationElem.x -= delta;
 			}
 		}
 
 		for (int i = 0; i < staticCount; i++ )
 		{
-			for (auto & j : statics[i].location)
+			for (auto & locationElem : statics[i].location)
 			{
-				j.x -= delta;
+				locationElem.x -= delta;
 			}
 		}
 

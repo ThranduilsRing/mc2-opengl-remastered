@@ -948,7 +948,7 @@ void Artillery::updatePresentation()
  			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 			rightContrail->Start(&info);
 		}
 		
@@ -964,7 +964,7 @@ void Artillery::updatePresentation()
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 			leftContrail->Start(&info);
 		}
 	}
@@ -989,7 +989,7 @@ void Artillery::updatePresentation()
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			leftContrail->Execute(&info);
 		}
@@ -1007,7 +1007,7 @@ void Artillery::updatePresentation()
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			rightContrail->Execute(&info);
 		}
@@ -1017,7 +1017,7 @@ void Artillery::updatePresentation()
 		glm::vec3 at; mc2ToRender(at, position);
 		glm::mat4 origin(1.0f); mc2::math::buildTranslation(origin, at);
 		mc2::math::Obb bounds;
-		gosFX::Effect::ExecuteInfo fx((Stuff::Time)scenarioTime, &origin, &bounds);
+		gosFX::Effect::ExecuteInfo fx(static_cast<Stuff::Time>(scenarioTime), &origin, &bounds);
 		if (!presentationImpactStarted) { presentationImpactStarted = true; hitEffect->Start(&fx); }
 		if (!hitEffect->Execute(&fx)) {
 			hitEffect->Kill(); hitEffect.reset();
@@ -1677,7 +1677,7 @@ void Artillery::Load (ArtilleryData *data)
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, actualPosition);
 
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 			hitEffect->Start(&info);
 		} 
 	}

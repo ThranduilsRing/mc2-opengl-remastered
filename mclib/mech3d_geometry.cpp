@@ -19,7 +19,6 @@ static unsigned long s_spotDiagMechActors     = 0;
 static unsigned long s_spotDiagMechCalls      = 0;
 
 
-#define SPIN_RATE		90.0f
 
 constexpr int FOOTPRINT_SLOP = 2;
 
@@ -571,7 +570,7 @@ void Mech3DAppearance::updateGeometry (void)
 				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 				mc2::math::buildTranslation(shapeOrigin, rFootPosition[currentRightPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 				rightDustPoofEffect[currentRightPoof]->Start(&info);
 				rightFootPoofDraw[currentRightPoof] = true;
 				
@@ -601,7 +600,7 @@ void Mech3DAppearance::updateGeometry (void)
 				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 				mc2::math::buildTranslation(shapeOrigin, rFootPosition[currentRightPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 				rightDustPoofEffect[currentRightPoof]->Start(&info);
 				rightFootPoofDraw[currentRightPoof] = true;
 				
@@ -645,7 +644,7 @@ void Mech3DAppearance::updateGeometry (void)
 				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 				mc2::math::buildTranslation(shapeOrigin, lFootPosition[currentLeftPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 				leftDustPoofEffect[currentLeftPoof]->Start(&info);
 				leftFootPoofDraw[currentLeftPoof] = true;
 				
@@ -675,7 +674,7 @@ void Mech3DAppearance::updateGeometry (void)
 				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 				mc2::math::buildTranslation(shapeOrigin, lFootPosition[currentLeftPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 				leftDustPoofEffect[currentLeftPoof]->Start(&info);
 				leftFootPoofDraw[currentLeftPoof] = true;
 				
@@ -770,7 +769,7 @@ void Mech3DAppearance::updateGeometry (void)
 		localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 		localResult = localToWorld * shapeOrigin;
 					
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
+ 		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,nullptr);
 		jumpJetEffect->Start(&info);
 		
 		jumpFXSetup = true;
@@ -787,7 +786,7 @@ void Mech3DAppearance::updateGeometry (void)
 			mc2::math::buildTranslation(shapeOrigin, rFootPosition[i]);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			bool result = rightDustPoofEffect[i]->Execute(&info);
 			if (!result)
@@ -805,7 +804,7 @@ void Mech3DAppearance::updateGeometry (void)
 			mc2::math::buildTranslation(shapeOrigin, lFootPosition[i]);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			bool result = leftDustPoofEffect[i]->Execute(&info);
 			if (!result)
@@ -841,7 +840,7 @@ void Mech3DAppearance::updateGeometry (void)
 		localResult = localToWorld * shapeOrigin;
 					
  		mc2::math::Obb boundingBox;
-   		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+   		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,&boundingBox);
 		jumpJetEffect->Execute(&info);
 	}
 	
@@ -872,7 +871,7 @@ void Mech3DAppearance::updateGeometry (void)
 		localResult = localToWorld * shapeOrigin;
 		
  		mc2::math::Obb boundingBox;
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,&boundingBox);
 		bool result = leftShoulderBoom->Execute(&info);
 		if (!result)
 		{
@@ -902,7 +901,7 @@ void Mech3DAppearance::updateGeometry (void)
 		localResult = localToWorld * shapeOrigin;
 		
  		mc2::math::Obb boundingBox;
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,&boundingBox);
 		bool result = rightShoulderBoom->Execute(&info);
 		if (!result)
 		{
@@ -924,7 +923,7 @@ void Mech3DAppearance::updateGeometry (void)
 		mc2::math::buildTranslation(shapeOrigin, smokePos);
 				
 		mc2::math::Obb boundingBox;
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 		
 		if (isSmoking > 0)
 		{
@@ -970,7 +969,7 @@ void Mech3DAppearance::updateGeometry (void)
 		localResult = localToWorld * shapeOrigin;
 		
  		mc2::math::Obb boundingBox;
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,&boundingBox);
 		
 		waterWake->Execute(&info);
 	}
@@ -989,7 +988,7 @@ void Mech3DAppearance::updateGeometry (void)
 				
 		
  		mc2::math::Obb boundingBox;
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 		
 		bool result = helicopterDustCloud->Execute(&info);
 		if (!result)

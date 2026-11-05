@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "Gates/preferences_legacy.h"
 // Shared surface of the bdactor translation units (bdactor*.cpp).
 // bdactor.cpp keeps the shared globals and the Bldg accessors/init/status/bounds code; the rest of the
@@ -130,10 +131,10 @@ void recordStableLightSkipDiag(bool armed, bool eligible, bool notRegistered, bo
 void lbssRecordBldg(bool eligible, bool taken, bool blk_idx, bool blk_gen, bool blk_noelig);
 
 // Shared helpers defined in bdactor.cpp and the sidecar piece.
-bool textureOrKtxSidecarExists(const char* tgaPath);
-bool staticRegIsNaturalBuildingName(const char* name);
-void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char* name);
-void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase, bool* failFlag);
+bool textureOrKtxSidecarExists(mc2::czstring tgaPath);
+bool staticRegIsNaturalBuildingName(mc2::czstring name);
+void bdLogStaticRegInvalid(mc2::czstring kind, int reason, int regIdx, mc2::czstring name);
+void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, mc2::czstring importSourceBase, bool* failFlag);
 
 // [LIGHTSLOT v1] trace entry points (state is private to bdactor_diag.cpp).
 namespace mc2_lightslot_trace {
@@ -157,8 +158,7 @@ inline bool bdForceDynamicDefault() {
 }
 
 inline constexpr float SPINRATE = 90.0f;
-#define BASE_NODE_RECYCLE_TIME		0.25f
-#define MAX_WEAPON_NODES			4
+#include "dappear.h"  // BASE_NODE_RECYCLE_TIME, MAX_WEAPON_NODES
 
 // Free functions defined in the split pieces.
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs);

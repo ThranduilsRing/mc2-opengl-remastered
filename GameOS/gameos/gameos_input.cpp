@@ -359,11 +359,11 @@ void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
 gosEnum_KeyIndex remap_sdl_to_gos(const SDL_Scancode scancode) {
 
     if(scancode >= SDL_SCANCODE_1 && scancode <= SDL_SCANCODE_9)
-        return (gosEnum_KeyIndex)(scancode - SDL_SCANCODE_1 + KEY_1);
+        return static_cast<gosEnum_KeyIndex>(scancode - SDL_SCANCODE_1 + KEY_1);
     if(scancode == SDL_SCANCODE_0) return KEY_0;
 
     if(scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z)
-        return (gosEnum_KeyIndex)(scancode - SDL_SCANCODE_A + KEY_A);
+        return static_cast<gosEnum_KeyIndex>(scancode - SDL_SCANCODE_A + KEY_A);
 
     switch(scancode) {
         case SDL_SCANCODE_ESCAPE: return KEY_ESCAPE;
@@ -632,7 +632,7 @@ const char* __stdcall gos_DescribeKey( DWORD Key )
     DWORD ascii = Key&0xFF; (void)ascii; // may be 0 if extended key
     bool is_extended = (Key&0x100)!=0; (void)is_extended;
 
-    SDL_Scancode scancode = remap_gos_to_sdl((gosEnum_KeyIndex)k);
+    SDL_Scancode scancode = remap_gos_to_sdl(static_cast<gosEnum_KeyIndex>(k));
     return SDL_GetScancodeName(scancode);
 }
 
@@ -650,7 +650,7 @@ gosEnum_KeyStatus __stdcall gos_GetKeyStatus(gosEnum_KeyIndex index)
 
     if(index >= KEY_LMOUSE && index <= KEY_MOUSEX2) {
         gosASSERT(index > 0 && index <= input::MouseInfo::NUM_BUTTONS);
-        return (gosEnum_KeyStatus)mi->button_state_[index-1];
+        return static_cast<gosEnum_KeyStatus>(mi->button_state_[index-1]);
     }
 
     // if keyboard
@@ -660,10 +660,10 @@ gosEnum_KeyStatus __stdcall gos_GetKeyStatus(gosEnum_KeyIndex index)
             int asfa=0;
             (void)asfa;
         }
-        SDL_Scancode sc = remap_gos_to_sdl((gosEnum_KeyIndex)(index & 0xFF));
+        SDL_Scancode sc = remap_gos_to_sdl(static_cast<gosEnum_KeyIndex>(index & 0xFF));
         gosASSERT(sc>=0 && sc<sizeof(ki->last_state_)/sizeof(ki->last_state_[0]));
 
-        return (gosEnum_KeyStatus)ki->last_state_[sc];
+        return static_cast<gosEnum_KeyStatus>(ki->last_state_[sc]);
     }
 
     return KEY_FREE;

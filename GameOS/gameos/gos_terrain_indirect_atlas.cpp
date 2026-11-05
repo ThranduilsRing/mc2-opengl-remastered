@@ -98,12 +98,12 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
     const PostcompVertex& p3 = blocks[mx       + (my + 1) * mapSide];
 
     // World X/Y from map indices (gos_terrain_water_stream.cpp:125-130)
-    const float wx0 = float(mx     - halfSide) * wupv;
-    const float wy0 = float(halfSide - my    ) * wupv;
-    const float wx1 = float(mx + 1 - halfSide) * wupv;
+    const float wx0 = static_cast<float>(mx     - halfSide) * wupv;
+    const float wy0 = static_cast<float>(halfSide - my    ) * wupv;
+    const float wx1 = static_cast<float>(mx + 1 - halfSide) * wupv;
     const float wy1 = wy0;
     const float wx2 = wx1;
-    const float wy2 = float(halfSide - (my + 1)) * wupv;
+    const float wy2 = static_cast<float>(halfSide - (my + 1)) * wupv;
     const float wx3 = wx0;
     const float wy3 = wy2;
 
@@ -397,7 +397,7 @@ void BuildCementCatalogAtlas() {
         }
         auto image = mc2::textures::image(nodeIdx);
         if (!image || image->width != txmSize || image->height != txmSize ||
-            image->vkFormat != 37 || image->pixels.size() < size_t(txmSize) * txmSize * 4) continue;
+            image->vkFormat != 37 || image->pixels.size() < static_cast<size_t>(txmSize) * txmSize * 4) continue;
         // Record-but-don't-break past atlas budget cap: we still want the
         // diag totals to reflect TRUE counts for tier1.  Atlas allocation
         // gated on size below to avoid memory blowup.
@@ -431,7 +431,7 @@ void BuildCementCatalogAtlas() {
             if (nodeIdx == 0xffffffffu || nodeIdx >= static_cast<DWORD>(mc2::textures::kTextureAssetLimit)) { ++alphaSkipped; continue; }
             auto image = mc2::textures::image(nodeIdx);
             if (!image || image->width != txmSize || image->height != txmSize ||
-                image->vkFormat != 37 || image->pixels.size() < size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
+                image->vkFormat != 37 || image->pixels.size() < static_cast<size_t>(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
             if (cementNodeIndices.size() >= 1024) { truncated = true; ++alphaSkipped; continue; }
             if (slot >= 0 && slot < MC_MAX_TERRAIN_TXMS) {
                 g_cementAlphaLayerIndexBySlot[slot] = static_cast<uint16_t>(cementNodeIndices.size());
@@ -492,8 +492,8 @@ void BuildCementCatalogAtlas() {
     for (int k = 0; k < N; ++k) {
         const auto& pixels = cementImages[k]->pixels;
         for (size_t i = 0; i < tileBuf.size(); ++i)
-            tileBuf[i] = (uint32_t(pixels[i*4+3]) << 24) | (uint32_t(pixels[i*4]) << 16) |
-                         (uint32_t(pixels[i*4+1]) << 8) | uint32_t(pixels[i*4+2]);
+            tileBuf[i] = (static_cast<uint32_t>(pixels[i*4+3]) << 24) | (static_cast<uint32_t>(pixels[i*4]) << 16) |
+                         (static_cast<uint32_t>(pixels[i*4+1]) << 8) | static_cast<uint32_t>(pixels[i*4+2]);
 
         const int col  = k % gridSide;
         const int row  = k / gridSide;

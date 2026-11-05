@@ -123,9 +123,9 @@ static_assert(kTerrainSubPassCount == static_cast<int>(TerrainPath::Count),
     "one sub-pass row per TerrainPath");
 
 inline const TerrainSubPass* findTerrainSubPass(TerrainPath p) {
-    for (const auto & kTerrainSubPasse : kTerrainSubPasses)
-        if (kTerrainSubPasse.path == p)
-            return &kTerrainSubPasse;
+    for (const auto & terrainSubPass : kTerrainSubPasses)
+        if (terrainSubPass.path == p)
+            return &terrainSubPass;
     return nullptr;
 }
 
@@ -137,8 +137,8 @@ inline const TerrainSubPass* findTerrainSubPass(TerrainPath p) {
 // is removed and latchActuallyImplemented is not flipped back to false, tests will catch it.
 // ---------------------------------------------------------------------------
 inline bool allDeclaredLatchProducersImplemented() {
-    for (const auto & kTerrainSubPasse : kTerrainSubPasses)
-        if (kTerrainSubPasse.producesTerrainLatch && !kTerrainSubPasse.latchActuallyImplemented)
+    for (const auto & terrainSubPass : kTerrainSubPasses)
+        if (terrainSubPass.producesTerrainLatch && !terrainSubPass.latchActuallyImplemented)
             return false;
     return true;
 }
@@ -146,9 +146,9 @@ inline bool allDeclaredLatchProducersImplemented() {
 // Returns the first path that declares the latch but hasn't implemented it,
 // or TerrainPath::Count if all are implemented.
 inline TerrainPath firstUnimplementedLatchProducer() {
-    for (const auto & kTerrainSubPasse : kTerrainSubPasses)
-        if (kTerrainSubPasse.producesTerrainLatch && !kTerrainSubPasse.latchActuallyImplemented)
-            return kTerrainSubPasse.path;
+    for (const auto & terrainSubPass : kTerrainSubPasses)
+        if (terrainSubPass.producesTerrainLatch && !terrainSubPass.latchActuallyImplemented)
+            return terrainSubPass.path;
     return TerrainPath::Count;
 }
 
@@ -189,9 +189,9 @@ inline TerrainPath dominantTerrainPathLive() {
 // SHARED-INVARIANT helper
 // ---------------------------------------------------------------------------
 inline bool allTerrainSubPassesWriteMainColorDepth() {
-    for (const auto & kTerrainSubPasse : kTerrainSubPasses) {
-        if (kTerrainSubPasse.writes[0] != RenderResourceId::MainColor) return false;
-        if (kTerrainSubPasse.writes[1] != RenderResourceId::MainDepth) return false;
+    for (const auto & terrainSubPass : kTerrainSubPasses) {
+        if (terrainSubPass.writes[0] != RenderResourceId::MainColor) return false;
+        if (terrainSubPass.writes[1] != RenderResourceId::MainDepth) return false;
     }
     return true;
 }

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "render_view.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/ui_texture.h"
@@ -63,11 +64,6 @@ std::unique_ptr<MC2Movie>	ForceGroupIcon::bMovie = nullptr;
 DWORD ForceGroupIcon::pilotVideoTexture = 0;
 MechWarrior*	ForceGroupIcon::pilotVideoPilot = nullptr;
 
-
-#define HEALTH_BAROFFSET 12.0f * Environment.screenHeight/600.f
-#define HEALTH_BARLENGTH 31.0f * Environment.screenWidth/600.f
-#define HEALTH_BARHEIGHT	2.0f * Environment.screenHeight/600.f
-#define TEXT_HEIGHT				8.0f * Environment.screenHeight/480.f
 
 float			ForceGroupIcon::unitIconX = 32;
 float			ForceGroupIcon::unitIconY = 38;
@@ -690,7 +686,7 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 
 }
 
-bool IsDbcsString(const char* pszString)
+bool IsDbcsString(mc2::czstring pszString)
 {
 	if (pszString) {
 		while (*pszString) {
@@ -913,12 +909,12 @@ void ForceGroupIcon::renderUnitIconBack( float left, float top, float right, flo
 
 	gos_VERTEX vertices[5];
 
-	for (auto & vertice : vertices)
+	for (auto & vertex : vertices)
 	{
-		vertice.argb = 0xffffffff;
-		vertice.frgb = 0;
-		vertice.z = 0;
-		vertice.rhw = .5;
+		vertex.argb = 0xffffffff;
+		vertex.frgb = 0;
+		vertex.z = 0;
+		vertex.rhw = .5;
 	}
 
 	vertices[0].u = vertices[1].u = u;
@@ -1373,12 +1369,12 @@ PilotIcon::PilotIcon()
 void PilotIcon::render( float left, float top, float right, float bottom ) 
 {
 	gos_VERTEX pilotLocation[5];
-	for (auto & i : pilotLocation)
+	for (auto & pilotLocationElem : pilotLocation)
 	{
-		i.argb = 0xffffffff;
-		i.rhw = .5;
-		i.frgb = 0;
-		i.z = 0;
+		pilotLocationElem.argb = 0xffffffff;
+		pilotLocationElem.rhw = .5;
+		pilotLocationElem.frgb = 0;
+		pilotLocationElem.z = 0;
 	}
 	pilotLocation[0].x = pilotLocation[1].x = left;
 	pilotLocation[3].x = pilotLocation[2].x = right;

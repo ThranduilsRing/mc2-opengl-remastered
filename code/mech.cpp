@@ -303,9 +303,9 @@ long BattleMech::calcLegStatus (void)
 long BattleMech::calcTorsoStatus (void)
 {
 	if (body[MECH_BODY_LOCATION_CTORSO].damageState == IS_DAMAGE_PARTIAL)
-		torsoStatus = TORSO_STATUS_IMPAIRED;
+		torsoStatus = static_cast<char>(TORSO_STATUS_IMPAIRED);
 	else
-		torsoStatus = TORSO_STATUS_NORMAL;
+		torsoStatus = static_cast<char>(TORSO_STATUS_NORMAL);
 
 	return(torsoStatus);
 }

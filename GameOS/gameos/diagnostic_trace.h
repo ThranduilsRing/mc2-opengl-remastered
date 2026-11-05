@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <string_view>
 
@@ -19,7 +20,7 @@ namespace mc2_diag {
 // Call once at engine startup with the session_id and pid from debug_state_dump.
 // Parses env vars, opens file, rotates if needed.
 // Safe to call multiple times (idempotent after first call).
-void init(const char* sessionId, int pid);
+void init(mc2::czstring sessionId, int pid);
 
 // Write one diagnostic event. Returns false if JSONL disabled or tag not in whitelist.
 // tag: registered tag name (e.g. "GPU_CULL", "ANIM_GATE")
@@ -27,7 +28,7 @@ void init(const char* sessionId, int pid);
 // frame: current frame index (pass 0 if not available)
 // dataJson: raw JSON object string, e.g. "{\"count\":5,\"ms\":1.2}"
 //           Must be a valid JSON object (starts with {, ends with }).
-bool writeEvent(const char* tag, int version, uint64_t frame, const char* dataJson);
+bool writeEvent(mc2::czstring tag, int version, uint64_t frame, mc2::czstring dataJson);
 
 // Flush pending writes. Safe to call from crash/signal handler (no allocation).
 void flush();
@@ -44,6 +45,6 @@ bool enabled();
 bool tagRequested(std::string_view tag);
 
 // Is the given tag in the current whitelist?
-bool tagEnabled(const char* tag);
+bool tagEnabled(mc2::czstring tag);
 
 } // namespace mc2_diag

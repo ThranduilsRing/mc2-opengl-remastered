@@ -42,9 +42,9 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         nearest = (std::max)(nearest, z);
     }
     out.pixels[0] = (std::max)(0.0f, std::floor(x0)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0)-1);
-    out.pixels[2] = (std::min)(float(w-1), std::ceil(x1)+1); out.pixels[3] = (std::min)(float(h-1), std::ceil(y1)+1);
+    out.pixels[2] = (std::min)(static_cast<float>(w-1), std::ceil(x1)+1); out.pixels[3] = (std::min)(static_cast<float>(h-1), std::ceil(y1)+1);
     const float extent = (std::max)(out.pixels[2]-out.pixels[0], out.pixels[3]-out.pixels[1]);
-    while (out.lod+1 < uint32_t(levels) && float(1u << out.lod) < extent) ++out.lod;
+    while (out.lod+1 < static_cast<uint32_t>(levels) && static_cast<float>(1u << out.lod) < extent) ++out.lod;
     out.nearest = nearest;
     out.keep = 0;
     return out;
@@ -58,14 +58,14 @@ inline bool hzb_hidden(const ProjectedProp& p, int baseW, int baseH, Fetch&& fet
     if (p.keep != 0) return false;
     int lw = baseW, lh = baseH;
     for (uint32_t l = 0; l < p.lod; ++l) { lw = (std::max)(1, (lw + 1) / 2); lh = (std::max)(1, (lh + 1) / 2); }
-    const float scale = float(1u << p.lod);
-    const int x0 = (std::clamp)(int(std::floor(p.pixels[0] / scale)), 0, lw - 1);
-    const int y0 = (std::clamp)(int(std::floor(p.pixels[1] / scale)), 0, lh - 1);
-    const int x1 = (std::clamp)(int(std::floor(p.pixels[2] / scale)), 0, lw - 1);
-    const int y1 = (std::clamp)(int(std::floor(p.pixels[3] / scale)), 0, lh - 1);
+    const float scale = static_cast<float>(1u << p.lod);
+    const int x0 = (std::clamp)(static_cast<int>(std::floor(p.pixels[0] / scale)), 0, lw - 1);
+    const int y0 = (std::clamp)(static_cast<int>(std::floor(p.pixels[1] / scale)), 0, lh - 1);
+    const int x1 = (std::clamp)(static_cast<int>(std::floor(p.pixels[2] / scale)), 0, lw - 1);
+    const int y1 = (std::clamp)(static_cast<int>(std::floor(p.pixels[3] / scale)), 0, lh - 1);
     float farthest = 1.0f;
     for (int y = y0; y <= y1; ++y)
-        for (int x = x0; x <= x1; ++x) farthest = (std::min)(farthest, fetch(int(p.lod), x, y));
+        for (int x = x0; x <= x1; ++x) farthest = (std::min)(farthest, fetch(static_cast<int>(p.lod), x, y));
     return p.nearest < farthest - 0.00002f;
 }
 

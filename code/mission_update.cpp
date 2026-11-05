@@ -17,6 +17,7 @@
 #include <string>
 #include "mission_shot.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
 //
@@ -70,10 +71,9 @@ static void simClockTraceTick(float scenarioTimeNow)
 		double wallElapsedSec = static_cast<double>((nowMs - s_wallStartMs)) / 1000.0;
 		double simElapsedSec = static_cast<double>((scenarioTimeNow - s_scenarioStart));
 		double ratio = (wallElapsedSec > 0.0) ? (simElapsedSec / wallElapsedSec) : 0.0;
-		fprintf(stderr,
-			"[SIM-CLOCK-TRACE] wall=%.3fs sim=%.3fs ratio(sim/wall)=%.3f frames=%llu frameLength=%.5f\n",
+		mc2::fmt::print_err("[SIM-CLOCK-TRACE] wall={:.3f}s sim={:.3f}s ratio(sim/wall)={:.3f} frames={:d} frameLength={:.5f}\n",
 			wallElapsedSec, simElapsedSec, ratio,
-			static_cast<unsigned long long>(s_frameCount), static_cast<double>(frameLength));
+			mc2::fmt::as_u64(static_cast<unsigned long long>(s_frameCount)), static_cast<double>(frameLength));
 		fflush(stderr);
 		s_lastEmitWallMs = nowMs;
 	}
@@ -95,12 +95,12 @@ namespace {
 	static bool s_misAtexit = false;
 	static void misEmit() {
 		if (!s_misSplit) return;
-		std::printf("[MISSION_SPLIT v1] event=shutdown frames=%llu", s_misFrames);
+		mc2::fmt::print_out("[MISSION_SPLIT v1] event=shutdown frames={:d}", mc2::fmt::as_u64(s_misFrames));
 		for (int i = 0; i < MS_COUNT_I; i++)
-			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_misNames[i],
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_misNames[i]),
 				s_misFrames ? static_cast<double>(s_misNs[i])/s_misFrames/1000.0 : 0.0,
 				static_cast<double>(s_misMax[i])/1000.0);
-		std::printf("\n"); std::fflush(stdout);
+		mc2::fmt::print_out("\n"); std::fflush(stdout);
 	}
 	struct MisScope {
 		int idx; std::chrono::steady_clock::time_point t0;
@@ -262,7 +262,7 @@ void Mission::updateDevHotkeys() {
 				pM->setStatus(OBJECT_STATUS_DISABLED, /*force=*/true);
 				++killed;
 			}
-			printf("[DEVHOTKEY] kill-all-enemy killed=%d (Ctrl+Alt+Shift+K)\n", killed);
+			mc2::fmt::print_out("[DEVHOTKEY] kill-all-enemy killed={:d} (Ctrl+Alt+Shift+K)\n", mc2::fmt::as_i32(killed));
 			fflush(stdout);
 			missionLineChanged = turn;
 		}
@@ -704,8 +704,8 @@ void Mission::updateSoakAutoWin() {
 			} else
 				scenarioResult = mis_PLAYER_WIN_BIG;
 			s_soakWinEmitted = true;
-			printf("[SOAK] autowin mission=%s t=%.1f\n",
-				missionFileName, static_cast<float>(scenarioTime));
+			mc2::fmt::print_out("[SOAK] autowin mission={} t={:.1f}\n",
+				mc2::fmt::safe(missionFileName), static_cast<float>(scenarioTime));
 			fflush(stdout);
 		}
 	}
@@ -738,8 +738,8 @@ void Mission::updateSoakKillEnemy() {
 			if (pChkVar && LogisticsData::instance)
 				present = LogisticsData::instance->getVariantsInInventory(
 					pChkVar, /*bIncludeForceGroup=*/true);
-			printf("[SOAK] salvage-in-loadbay name=%s present=%d\n",
-				s_soakKilledVariant, present > 0 ? 1 : 0);
+			mc2::fmt::print_out("[SOAK] salvage-in-loadbay name={} present={:d}\n",
+				mc2::fmt::safe(s_soakKilledVariant), mc2::fmt::as_i32(present > 0 ? 1 : 0));
 			fflush(stdout);
 			s_soakInventoryChecked = true;
 		}
@@ -784,8 +784,8 @@ void Mission::updateSoakKillEnemy() {
 				}
 				++killed;
 			}
-			printf("[SOAK] kill-enemy killed=%d first=%s\n",
-				killed, s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)");
+			mc2::fmt::print_out("[SOAK] kill-enemy killed={:d} first={}\n",
+				mc2::fmt::as_i32(killed), mc2::fmt::safe(s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)"));
 			fflush(stdout);
 			s_soakKillDone = true;
 		}
@@ -845,14 +845,14 @@ void Mission::updateSoakKillEnemy() {
 				strncpy(s_soakKilledVariant, pTrade->variantName,
 					sizeof(s_soakKilledVariant) - 1);
 				s_soakKilledVariant[sizeof(s_soakKilledVariant) - 1] = '\0';
-				printf("[SOAK] salvage-trademover name=%s variant=%s pilot=%s\n",
-					pTrade->getName() ? pTrade->getName() : "(null)",
-					s_soakKilledVariant, newPilotName);
+				mc2::fmt::print_out("[SOAK] salvage-trademover name={} variant={} pilot={}\n",
+					mc2::fmt::safe(pTrade->getName() ? pTrade->getName() : "(null)"),
+					mc2::fmt::safe(s_soakKilledVariant), mc2::fmt::safe(newPilotName));
 				fflush(stdout);
 			}
 			else
 			{
-				printf("[SOAK] salvage-trademover no-candidate\n");
+				mc2::fmt::print_out("[SOAK] salvage-trademover no-candidate\n");
 				fflush(stdout);
 			}
 			s_soakTradeDone = true;
@@ -880,8 +880,8 @@ void Mission::updateSoakKillEnemy() {
 					++salvCount;
 				}
 			}
-			printf("[SOAK] salvage-check items=%d first=%s\n",
-				salvCount, s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)");
+			mc2::fmt::print_out("[SOAK] salvage-check items={:d} first={}\n",
+				mc2::fmt::as_i32(salvCount), mc2::fmt::safe(s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)"));
 			fflush(stdout);
 			s_soakSalvageDone = true;
 		}
@@ -935,9 +935,9 @@ void Mission::updateOrderLiveness() {
 				olPilot->orderAttackObject(false, ORDER_ORIGIN_COMMANDER,
 					olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
 					FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
-				printf("[ORDER_FIXTURE] kind=attack wid=%lu tgt=%lu t=%.1f\n",
-					static_cast<unsigned long>(pM->getWatchID()),
-					static_cast<unsigned long>(olEnemy->getWatchID()),
+				mc2::fmt::print_out("[ORDER_FIXTURE] kind=attack wid={:d} tgt={:d} t={:.1f}\n",
+					mc2::fmt::as_ulong(static_cast<unsigned long>(pM->getWatchID())),
+					mc2::fmt::as_ulong(static_cast<unsigned long>(olEnemy->getWatchID())),
 					static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
@@ -1011,8 +1011,8 @@ void Mission::updateOrderLiveness() {
 					mc2::fmt::as_u64(static_cast<unsigned long long>(pM->getWatchID())),
 					olPos.x, olPos.y, olGoal.x, olGoal.y, pM->distanceFrom(olGoal));
 				++s_olIssuedMove;
-				printf("[ORDER_FIXTURE] kind=move wid=%lu tgt=0 t=%.1f\n",
-					static_cast<unsigned long>(pM->getWatchID()), static_cast<float>(scenarioTime));
+				mc2::fmt::print_out("[ORDER_FIXTURE] kind=move wid={:d} tgt=0 t={:.1f}\n",
+					mc2::fmt::as_ulong(static_cast<unsigned long>(pM->getWatchID())), static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
 			s_olMoveIssued = true;
@@ -1065,10 +1065,9 @@ void Mission::updateOrderLiveness() {
 					++olStalled;
 			}
 			const bool olPass = (s_olIssuedMove > 0) && (olStalled == 0);
-			printf("ORDER_LIVENESS_SUMMARY issued_move=%d moved=%d "
-				"refused=%d stalled=%d verdict=%s\n",
-				s_olIssuedMove, olMoved, olRefused, olStalled,
-				olPass ? "PASS" : "FAIL");
+			mc2::fmt::print_out("ORDER_LIVENESS_SUMMARY issued_move={:d} moved={:d} refused={:d} stalled={:d} verdict={}\n",
+				mc2::fmt::as_i32(s_olIssuedMove), mc2::fmt::as_i32(olMoved), mc2::fmt::as_i32(olRefused), mc2::fmt::as_i32(olStalled),
+				mc2::fmt::safe(olPass ? "PASS" : "FAIL"));
 			fflush(stdout);
 			s_olSummaryDone = true;
 		}
@@ -1134,13 +1133,13 @@ void Mission::updateSoakPilotPromote() {
 				lPilot->soakAddGunnery(11.0f);
 				bool promoted = lPilot->promotePilot();
 				const long rankAfter = lPilot->getRank();
-				printf("[SOAK] pilot-promote pilot=%s rankBefore=%ld rankAfter=%ld ok=%d\n",
-					pilotName, rankBefore, rankAfter, promoted ? 1 : 0);
+				mc2::fmt::print_out("[SOAK] pilot-promote pilot={} rankBefore={:d} rankAfter={:d} ok={:d}\n",
+					mc2::fmt::safe(pilotName), mc2::fmt::as_long(rankBefore), mc2::fmt::as_long(rankAfter), mc2::fmt::as_i32(promoted ? 1 : 0));
 				fflush(stdout);
 			}
 			else
 			{
-				printf("[SOAK] pilot-promote no-deployed-pilot\n");
+				mc2::fmt::print_out("[SOAK] pilot-promote no-deployed-pilot\n");
 				fflush(stdout);
 			}
 			s_soakPromoteFired = true;

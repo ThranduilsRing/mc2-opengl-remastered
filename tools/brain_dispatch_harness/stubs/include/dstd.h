@@ -13,6 +13,4 @@ typedef signed int     int32;
 typedef float          float32;
 typedef double         float64;
 
-#ifndef NO_ERR
-#define NO_ERR 0x00000000
-#endif
+inline constexpr int NO_ERR = 0;  // shared success code (mirrors mclib/dstd.h)

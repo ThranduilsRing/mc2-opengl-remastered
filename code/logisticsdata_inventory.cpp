@@ -384,18 +384,17 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 	if ( !s_tried )
 	{
 		s_tried = true;
-		LogisticsPilot* p = new LogisticsPilot;
+		auto p = std::make_unique_for_overwrite<LogisticsPilot>();
 		char nm[] = "PMWScout";
 		if ( p->init( nm ) == -1 )
 		{
-			delete p;
-			p = nullptr;
+			p.reset();
 		}
 		else
 		{
 			p->setAvailable( false );
 		}
-		s_vehiclePilot = p;
+		s_vehiclePilot = p.release();
 	}
 	return s_vehiclePilot;
 }

@@ -5,6 +5,7 @@ Utilities.cpp			: Implementation of the Utilities component.
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 \*************************************************************************************************/
+#include "mc2_czstring.h"
 #include"utilities.h"
 #include "texture_assets.h"
 #include "../RenderCore/TextureService.h"
@@ -236,7 +237,7 @@ void StaticInfo::getData(unsigned char * buffer)
 
 }
 
-void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffsetX, long hiResOffsetY, DWORD neverFlush )
+void StaticInfo::init( FitIniFile& file, mc2::czstring blockName, long hiResOffsetX, long hiResOffsetY, DWORD neverFlush )
 {
 	ZoneScopedN("StaticInfo::init");
 	memset( location, 0, sizeof( location ) );

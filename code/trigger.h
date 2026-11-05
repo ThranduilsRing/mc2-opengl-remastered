@@ -58,9 +58,9 @@ class TriggerAreaManager {
 		void init (void) {
 			for (auto & triggerArea : triggerAreas)
 				triggerArea.type = static_cast<char>(std::to_underlying(TRIGGER_AREA_NONE));
-			for (auto & r : map)
+			for (auto & mapElem : map)
 				for (long c = 0; c < MAX_MAP_CELL_WIDTH / 3; c++)
-					r[c] = 0;
+					mapElem[c] = 0;
 		}
 
 		TriggerAreaManager (void) {

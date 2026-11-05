@@ -30,13 +30,11 @@
 //***********************************************************************
 // Macro Definitions
 
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr auto MAX_TREES = 20;
 
-enum ActorState
+enum class ActorState : int32_t
 {
 	ACTOR_STATE_INVALID = -1,
 	ACTOR_STATE_NORMAL = 0,
@@ -47,6 +45,7 @@ enum ActorState
 	ACTOR_STATE_FALLEN_DMG,			//Used for Trees
 	MAX_ACTOR_STATES
 };
+using enum ActorState;
 
 struct ActorData
 {

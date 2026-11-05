@@ -518,12 +518,12 @@ void aTcpipPanel::begin()
 
 	comboBox.ListBox().removeAllItems(true);
 
-	for ( int i = 0; i < 10; i++ )
+	for (auto & ipAddress : prefs.ipAddresses)
 	{
-		if ( !strlen( prefs.ipAddresses[i] ) )
+		if ( !strlen( ipAddress ) )
 			break;
 
-		comboBox.AddItem( prefs.ipAddresses[i], 0xffffffff );
+		comboBox.AddItem( ipAddress, 0xffffffff );
 	}
 
 	bExpanded = 0;
@@ -600,12 +600,12 @@ void aTcpipPanel::init(FitIniFile* pFile)
 	
 	addChild( &comboBox );
 
-	for ( int i = 0; i < 10; i++ )
+	for (auto & ipAddress : prefs.ipAddresses)
 	{
-		if ( !strlen( prefs.ipAddresses[i] ) )
+		if ( !strlen( ipAddress ) )
 			break;
 
-		comboBox.AddItem( prefs.ipAddresses[i], 0xffffffff );
+		comboBox.AddItem( ipAddress, 0xffffffff );
 	}
 
 	addChild( &helpRect );
@@ -756,8 +756,8 @@ void aTcpipPanel::update()
 	{
 		// now look for 3 periods
 		int dotIndex[5];
-		for (int & i : dotIndex)
-			i = -1;
+		for (auto & dotIndexElem : dotIndex)
+			dotIndexElem = -1;
 
 		dotIndex[4] = static_cast<int>(str.size());
 

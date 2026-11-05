@@ -1,5 +1,6 @@
 // BldgAppearance / TreeAppearance: TreeAppearance init, status, bounds, update, terrain marking, LOD select and destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include <algorithm>
 #include <atomic>
 #include <algorithm>
 #include "bdactor_internal.h"
@@ -128,8 +129,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		for (int i=0;i<8;i++)
 		{
 			testRadius = glm::length(boxCoords[i]);
-			if (OBBRadius < testRadius)
-				OBBRadius = testRadius;
+			OBBRadius = std::max(OBBRadius, testRadius);
 		}
 
 		appearType->boundsUpperLeftX = (-OBBRadius * 2.0);
@@ -629,8 +629,7 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					pTmp->forest = true;
 						
 					float cellLocalHeight = vertexPos.z * metersPerWorldUnit * 0.25f;
-					if (cellLocalHeight > 15.0f)
-						cellLocalHeight = 15.0f;
+					cellLocalHeight = std::min(cellLocalHeight, 15.0f);
 						
 					if (pTmp->lineOfSight < cellLocalHeight)
 						pTmp->lineOfSight = cellLocalHeight+0.5f;
@@ -692,8 +691,7 @@ void TreeAppearance::markLOS (bool clearIt)
 				float currentCellHeight = curCell->getLocalHeight();
 				
 				float cellLocalHeight = vertexPos.z * metersPerWorldUnit * 0.25f;
-				if (cellLocalHeight > 15.0f)
-					cellLocalHeight = 15.0f;
+				cellLocalHeight = std::min(cellLocalHeight, 15.0f);
 				
 				if (!clearIt)
 				{

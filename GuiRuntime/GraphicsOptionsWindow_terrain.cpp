@@ -30,7 +30,7 @@ static const TerrainMode kTerrainModes[] = {
     { 10.0f, "Height Normal",     "height-texture-derived normal as RGB (centered around 0.5)" },
     { -1.0f, "Tess Alive Probe",  "solid red = tessellation frag shader is running" },
 };
-static const int kTerrainModeCount = (int)(sizeof(kTerrainModes) / sizeof(kTerrainModes[0]));
+static const int kTerrainModeCount = static_cast<int>(sizeof(kTerrainModes) / sizeof(kTerrainModes[0]));
 static const int kDiagnosticStart  = 8; // index into kTerrainModes where diagnostics begin
 void drawTerrainSection() {
     bool terrainDraw = gos_GetTerrainDrawEnabled();
@@ -51,9 +51,9 @@ void drawTerrainSection() {
     const float pad   = ImGui::GetStyle().ItemSpacing.y;
 
     float childH = (lineH + pad) * 2.0f                                  // OFF row
-                 + (lineH * 2.2f + pad) * (float)(kDiagnosticStart - 1)  // visual 1..7
+                 + (lineH * 2.2f + pad) * static_cast<float>(kDiagnosticStart - 1)  // visual 1..7
                  + (lineH + pad) * 1.2f                                   // separator + label
-                 + (lineH * 2.2f + pad) * (float)(kTerrainModeCount - kDiagnosticStart);
+                 + (lineH * 2.2f + pad) * static_cast<float>(kTerrainModeCount - kDiagnosticStart);
     childH = std::clamp(childH, 120.0f, 420.0f);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
@@ -96,7 +96,7 @@ void drawTerrainSection() {
         if (m.value < -0.5f)
             mc2::fmt::to_buf(heading, "[-1]  {}", mc2::fmt::safe(m.name));
         else
-            mc2::fmt::to_buf(heading, "[{:d}]  {}", mc2::fmt::as_i32((int)(m.value + 0.5f)), mc2::fmt::safe(m.name));
+            mc2::fmt::to_buf(heading, "[{:d}]  {}", mc2::fmt::as_i32(static_cast<int>(m.value + 0.5f)), mc2::fmt::safe(m.name));
 
         ImU32 headCol = active ? IM_COL32(120, 255, 120, 255)
                                : IM_COL32(230, 230, 230, 255);

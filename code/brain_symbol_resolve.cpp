@@ -1,6 +1,7 @@
 // UNITQUERY-SETTARGETPRIORITY-1: brain symbol resolver (pure, engine-free).
 // See brain_symbol_resolve.h. Symbol tables mirror code/warrior.h
 // (TargetPriorityType, enum order) and code/dcontact.h (CONTACT_CRITERIA_* flags).
+#include "mc2_czstring.h"
 #include "brain_symbol_resolve.h"
 
 #include <cctype>
@@ -49,7 +50,7 @@ const SymEntry kSymbols[] = {
 
 // Copy token[b..e) into buf (null-terminated), trimming ASCII whitespace from
 // both ends. Returns false if the trimmed span is empty or does not fit.
-bool copyTrimmed(const char* s, size_t len, char* buf, size_t bufsz) {
+bool copyTrimmed(mc2::czstring s, size_t len, char* buf, size_t bufsz) {
     size_t b = 0, e = len;
     while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
@@ -60,7 +61,7 @@ bool copyTrimmed(const char* s, size_t len, char* buf, size_t bufsz) {
     return true;
 }
 
-bool resolveTrimmed(const char* tok, long* out) {
+bool resolveTrimmed(mc2::czstring tok, long* out) {
     // Try a bare decimal integer (full-consume required).
     char* endp = nullptr;
     long v = std::strtol(tok, &endp, 10);
@@ -74,14 +75,14 @@ bool resolveTrimmed(const char* tok, long* out) {
 
 } // namespace
 
-bool brainResolveSymbolToken(const char* token, long* out) {
+bool brainResolveSymbolToken(mc2::czstring token, long* out) {
     if (!token || !out) return false;
     char buf[64];
     if (!copyTrimmed(token, std::strlen(token), buf, sizeof(buf))) return false;
     return resolveTrimmed(buf, out);
 }
 
-bool brainResolveIntExpr(const char* expr, long* out) {
+bool brainResolveIntExpr(mc2::czstring expr, long* out) {
     if (!expr || !out) return false;
     long sum = 0;
     int terms = 0;

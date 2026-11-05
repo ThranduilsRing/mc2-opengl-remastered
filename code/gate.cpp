@@ -17,6 +17,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 #include"terrain_runtime.h"
 #include "Gates/gate.h"
+#include <algorithm>
 #include <cstdio>
 
 #ifndef MCLIB_H
@@ -614,8 +615,7 @@ void Gate::extractRenderView (mc2::render_view::RenderView& view)
 			if (totalDmgLvl > 0.0)
 				barStatus -= getDamage() / totalDmgLvl;
 			
-			if (barStatus < 0.0)
-				barStatus = 0.0;
+			barStatus = std::max<double>(barStatus, 0.0);
 
 			DWORD color = 0xff7f7f7f;
 			if ((teamId > -1) && (teamId < 8) && getTeam()) {

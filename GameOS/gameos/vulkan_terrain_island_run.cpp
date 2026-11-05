@@ -135,7 +135,7 @@ bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     if (vkPoolLights > 0 && feed.poolLights && mc2::gate::get<"MC2_LIGHT_GRID">()) {
         const char* failure = nullptr;
-        if (s->lightLists.stage(ctx, feed.poolLights, uint32_t(vkPoolLights), feed.lightPoolMoverScale, lp, failure)) {
+        if (s->lightLists.stage(ctx, feed.poolLights, static_cast<uint32_t>(vkPoolLights), feed.lightPoolMoverScale, lp, failure)) {
             vkGridDim = mc2vk::LightLists::kDim;
             return true;
         }

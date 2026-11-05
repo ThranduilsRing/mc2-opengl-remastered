@@ -105,7 +105,7 @@ void flushWindow(uint64_t frame) {
                  (g.spanSumMs - g.sumSumMs) / n, g.rowCount, g.windowDropped, g.windowOverflow);
     for (uint32_t i = 0; i < g.rowCount; ++i) {
         const Row& r = g.rows[i];
-        std::fprintf(stderr, " %s=%.3f(x%.1f)", r.name, r.sumMs / n, r.frames ? double(r.calls) / r.frames : 0.0);
+        std::fprintf(stderr, " %s=%.3f(x%.1f)", r.name, r.sumMs / n, r.frames ? static_cast<double>(r.calls) / r.frames : 0.0);
     }
     std::fprintf(stderr, "\n");
     std::fflush(stderr);

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gameos.hpp"
 #include "strres.h"
 #include "MC2Strings.h"
@@ -11,13 +12,13 @@
 #include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
-static void* DL_Open(const char* name) {
+static void* DL_Open(mc2::czstring name) {
 	return SDL_LoadObject(name);
 }
 static void DL_Close(void* handle) {
 	SDL_UnloadObject(handle);
 }
-static void* DL_LoadFunction(void* handle, const char* name) {
+static void* DL_LoadFunction(void* handle, mc2::czstring name) {
 	return SDL_LoadFunction(handle, name);
 }
 // mimic dlerror
@@ -29,13 +30,13 @@ static const char* DL_GetError() {
 #else
 #include <dlfcn.h>
 
-static void* DL_Open(const char* name) {
+static void* DL_Open(mc2::czstring name) {
     return dlopen(name, RTLD_LAZY);
 }
 static void DL_Close(void* handle) {
 	dlclose(handle);
 }
-static void* DL_LoadFunction(void* handle, const char* name) {
+static void* DL_LoadFunction(void* handle, mc2::czstring name) {
 	return dlsym(handle, name);
 }
 static const char* DL_GetError() {
@@ -45,7 +46,7 @@ static const char* DL_GetError() {
 #endif
 
 
-static int MC2_IsMC2ResDLL(char const* fileName)
+static int MC2_IsMC2ResDLL(mc2::czstring fileName)
 {
     if (!fileName)
         return 0;
@@ -70,7 +71,7 @@ static int MC2_IsMC2ResDLL(char const* fileName)
     return 0;
 }
 
-HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings, int num)
+HSTRRES __stdcall gos_OpenResourceDLL(mc2::czstring FileName, const char** strings, int num)
 {
     const char *error;
     void *module;
@@ -114,14 +115,14 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
 	DL_GetError();    /* Clear any existing error */
 
     /* Get symbol */
-    fptr = (get_string_by_id_fptr)DL_LoadFunction(module, "getStringById");
+    fptr = reinterpret_cast<get_string_by_id_fptr>(DL_LoadFunction(module, "getStringById"));
     if ((error = DL_GetError())) {
         mc2::fmt::print_err("Couldn't load function getStringById in {} (not exported?): {}\n", mc2::fmt::safe(FileName), mc2::fmt::safe(error));
         return nullptr;
     }
 
     init_string_resources_fptr init_fptr;
-    init_fptr = (init_string_resources_fptr)DL_LoadFunction(module, "initStringResources");
+    init_fptr = reinterpret_cast<init_string_resources_fptr>(DL_LoadFunction(module, "initStringResources"));
     if ((error = DL_GetError())) {
         mc2::fmt::print_err("Couldn't load function initStringResources in {} (not exported?): {}\n", mc2::fmt::safe(FileName), mc2::fmt::safe(error));
         return nullptr;
@@ -156,7 +157,7 @@ void __stdcall gos_CloseResourceDLL(HSTRRES handle)
     DL_GetError();
 
     const char *error;
-    free_fptr = (free_string_resources_fptr)DL_LoadFunction(pstrres->module, "freeStringResources");
+    free_fptr = reinterpret_cast<free_string_resources_fptr>(DL_LoadFunction(pstrres->module, "freeStringResources"));
     if ((error = DL_GetError())) {
         mc2::fmt::print_err("Couldn't find hello: {}\n", mc2::fmt::safe(error));
     } else {

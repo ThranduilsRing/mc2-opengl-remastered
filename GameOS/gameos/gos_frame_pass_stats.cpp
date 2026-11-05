@@ -145,8 +145,8 @@ void FrameEnd(unsigned long frameNo)
         emitLine(frameNo);
 
     // Reset for the next frame.
-    for (auto & s_row : s_rows)
-        s_row = PassRow{};
+    for (auto & row : s_rows)
+        row = PassRow{};
     s_agg = FrameAggregates{};
 }
 

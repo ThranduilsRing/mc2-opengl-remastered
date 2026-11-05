@@ -33,7 +33,8 @@ inline bool hdriFromCpu(VkPhysicalDevice phys, VkFormat& fmt, std::vector<std::v
     if (img->format == HdriCpuImage::Format::Rgba16f) {
         for (size_t i = 0; i < img->levels.size(); ++i) {
             const int lw = (w0 >> i) > 0 ? (w0 >> i) : 1, lh = (h0 >> i) > 0 ? (h0 >> i) : 1;
-            if (img->dims[i].first != lw || img->dims[i].second != lh || img->levels[i].size() != static_cast<size_t>(lw) * lh * 8) {
+            const auto& [dw, dh] = img->dims[i];
+            if (dw != lw || dh != lh || img->levels[i].size() != static_cast<size_t>(lw) * lh * 8) {
                 reason = "RGBA16F level does not match the mip chain"; return false;
             }
         }

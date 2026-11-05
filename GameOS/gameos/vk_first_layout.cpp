@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -67,7 +68,7 @@ bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkIm
                 break;
         }
     }, "first_layout_timeout");
-    if (!ok) std::fprintf(stderr, "[VK_FIRST_LAYOUT] the first-layout submit failed (start=%d)\n", static_cast<int>(start));
+    if (!ok) mc2::fmt::print_err("[VK_FIRST_LAYOUT] the first-layout submit failed (start={:d})\n", mc2::fmt::as_i32(static_cast<int>(start)));
     return ok;
 }
 

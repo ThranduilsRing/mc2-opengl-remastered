@@ -756,7 +756,7 @@ void MissionInterfaceManager::update (void)
 			struct Cfg { const char* label; float ratio; };
 			const Cfg cfgs[2] = { {"4K@225%", 2.25f}, {"1080p@100%", 1.0f} };
 			bool allOK = true;
-			for (auto cfg : cfgs)
+			for (const auto & cfg : cfgs)
 			{
 				Environment.drawableWidth  = static_cast<int>((logW * cfg.ratio + 0.5f));
 				Environment.drawableHeight = static_cast<int>((logH * cfg.ratio + 0.5f));

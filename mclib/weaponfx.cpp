@@ -11,6 +11,7 @@
 #include"mclib.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"weaponfx.h"
 //---------------------------------------------------------------------------------
 // weapon FX Equivalancy.  Stores names now for GOS FX
@@ -26,7 +27,7 @@ void WeaponEffects::destroy (void)
 }
 		
 //---------------------------------------------------------------------------------
-void WeaponEffects::init (const char *effectCSVFileName)
+void WeaponEffects::init (mc2::czstring effectCSVFileName)
 {
 	FullPathFileName effectsName;
 	effectsName.init(objectPath,effectCSVFileName,".csv");

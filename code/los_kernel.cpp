@@ -212,8 +212,8 @@ float terrainElevation(const Snapshot& s, const glm::vec3& position)
 	triPos.y = s.worldUnitsPerVertex * floor(_upperLeft.y);
 	triPos.z = e1;
 
-	bool tlx = (long(s.topLeftVertexX) & 1);
-	bool tly = (long(s.topLeftVertexY) & 1);
+	bool tlx = (static_cast<int32_t>(s.topLeftVertexX) & 1);
+	bool tly = (static_cast<int32_t>(s.topLeftVertexY) & 1);
 
 	long x = meshOffsetX - s.topLeftVertexX;
 	long y = meshOffsetY - s.topLeftVertexY;

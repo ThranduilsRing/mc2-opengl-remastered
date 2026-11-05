@@ -247,11 +247,11 @@ void ChatWindow::refillListBox( aListBox& listBox, char** chatTexts, long* playe
 		int item = (curItem+i)%maxCount;
 		int playerID = playerIDs[i] & 0x00ffffff;
 		MC2Player* player = &MPlayer->playerInfo[0];
-		for ( int j = 0; j < MAX_MC_PLAYERS; j++ )
+		for (auto & playerInfoElem : MPlayer->playerInfo)
 		{
-			if ( MPlayer->playerInfo[j].commanderID == playerID )
+			if ( playerInfoElem.commanderID == playerID )
 			{
-				player = &MPlayer->playerInfo[j];
+				player = &playerInfoElem;
 				break;
 			}
 		}

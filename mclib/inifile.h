@@ -29,9 +29,6 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef 	NO_ERR
-#define	NO_ERR						0x00000000
-#endif
 
 inline constexpr unsigned int BLOCK_NOT_FOUND = 0xFADA0000;
 inline constexpr unsigned int ID_NOT_FOUND = 0xFADA0001;

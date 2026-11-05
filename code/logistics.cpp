@@ -301,8 +301,7 @@ long Logistics::update (void)
 			{
 				//OLD Movie's Over.
 				//Whack it.
-				delete bMovie;
-				bMovie = nullptr;
+				bMovie.reset();
 
 				FullPathFileName path;
 				path.init( moviePath, "credits", ".bik" );
@@ -313,7 +312,7 @@ long Logistics::update (void)
 				movieRect.right = Environment.screenWidth;
 				movieRect.bottom = Environment.screenHeight;
 
-				bMovie = new MC2Movie;
+				bMovie = std::make_unique_for_overwrite<MC2Movie>();
 				bMovie->init(path,movieRect,true);
 				soundSystem->playDigitalMusic(33);
 			}
@@ -321,8 +320,7 @@ long Logistics::update (void)
 			{
 				//Movie's Over.
 				//Whack it.
-				delete bMovie;
-				bMovie = nullptr;
+				bMovie.reset();
 
 				soundSystem->playDigitalMusic(LogisticsData::instance->getCurrentMissionTune());
 				userInput->mouseOn();	

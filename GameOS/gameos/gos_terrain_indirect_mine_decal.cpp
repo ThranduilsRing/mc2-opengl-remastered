@@ -538,9 +538,9 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
                     const float bMaxX = ob[0] + ob[2];
                     const float bMinY = ob[1] - ob[3];
                     bool allInside = true;
-                    for (int k = 0; k < 4; ++k) {
-                        if (c[k].wx < bMinX || c[k].wx > bMaxX ||
-                            c[k].wy < bMinY || c[k].wy > bMaxY) { allInside = false; break; }
+                    for (auto & cElem : c) {
+                        if (cElem.wx < bMinX || cElem.wx > bMaxX ||
+                            cElem.wy < bMinY || cElem.wy > bMaxY) { allInside = false; break; }
                     }
                     if (allInside) { ++sidecarSuppressed; continue; }   // sidecar owns this tile's overlay
                 }
@@ -573,9 +573,9 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
             // ROAD-PBR-ABANDON-1: the per-tile PBR material-id bake
             // (ROAD-PBR-ASPHALT-1/GRAVEL-1, d7c0ff2d) is retired — stock form
             // restored: every tile takes the legacy tgl road-tile path.
-            for (auto & k : c) {
-                k.fog  = 1.0f;          // frag discards FogValue (terrain_overlay.frag:48)
-                k.argb = 0xffffffffu;   // frag discards Color    (terrain_overlay.frag:48)
+            for (auto & cElem : c) {
+                cElem.fog  = 1.0f;          // frag discards FogValue (terrain_overlay.frag:48)
+                cElem.argb = 0xffffffffu;   // frag discards Color    (terrain_overlay.frag:48)
             }
 
             // uvMode: mirror worldQuadUVMode (mapdata.cpp:115-118). The cache's

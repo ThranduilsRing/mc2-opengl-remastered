@@ -178,7 +178,7 @@ long Camera::update (void)
 			break;
 			
 		default:
-			return INVALID_CAMERA;
+			return static_cast<long>(INVALID_CAMERA);
 	}
 
 	float oldNightFactor = nightFactor;
@@ -375,7 +375,7 @@ long Camera::update (void)
 	// Also decay scroll momentum (used for adaptive scroll-speed zoom).
 	{
 		s_scrollMomentum -= frameLength * 4.0f;
-		if (s_scrollMomentum < 0.0f) s_scrollMomentum = 0.0f;
+		s_scrollMomentum = std::max(s_scrollMomentum, 0.0f);
 
 		float diff = cameraAltitudeDesired - cameraAltitude;
 		// [CAMERA-SMOOTHING-1] knob>0: frame-rate-independent exponential
@@ -387,8 +387,7 @@ long Camera::update (void)
 			cameraAltitude += diff * zoomStep;
 		else
 			cameraAltitude = cameraAltitudeDesired;
-		if (cameraAltitude < AltitudeMinimum)
-			cameraAltitude = AltitudeMinimum;
+		cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
 		float _ap = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float _tm = AltitudeMaximumLo + ((AltitudeMaximumHi - AltitudeMaximumLo) * _ap);
 		if (_tm > 0.0f)

@@ -29,15 +29,15 @@ unsigned long EllipseElement::s_textureHandle = 0;
 //---------------------------------------------------------------------------
 EllipseElement::EllipseElement (Stuff::Vector2DOf<long> &cntr, Stuff::Vector2DOf<long> &ortho, long clr, long depth) : Element(depth)
 {
-	for (auto & i : location)
+	for (auto & locationElem : location)
 	{
-		i.argb = clr;
-		i.frgb = 0;
+		locationElem.argb = clr;
+		locationElem.frgb = 0;
 
-		i.u = 0.f;
-		i.v = 0.f;
-		i.rhw = .5;
-		i.z  =0.f;
+		locationElem.u = 0.f;
+		locationElem.v = 0.f;
+		locationElem.rhw = .5;
+		locationElem.z  =0.f;
 	}
 
 	location[0].x = location[1].x = cntr.x - ortho.x/2;

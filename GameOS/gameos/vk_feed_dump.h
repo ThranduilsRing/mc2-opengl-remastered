@@ -36,6 +36,7 @@
 // sim-frozen-for-sweep predicate (VK-MECH-CAPTURE-DETERMINISM-1): declared in
 // gos_visual_capture.h (single shared declaration, extern "C").
 #include "gos_visual_capture.h"
+#include "mc2fmt.h"
 
 namespace mc2vkfeeddump {
 
@@ -63,11 +64,7 @@ inline bool readyToDump() {
         static bool warned = false;
         if (!warned) {
             warned = true;
-            std::fprintf(stderr,
-                "[VK_FEED_DUMP] WARNING: MC2_VK_FEED_DUMP set without a bookmark "
-                "capture (MC2_VISUAL_BOOKMARK_CAPTURE/MC2_VISUAL_CAPTURE_FRAME) -- "
-                "dumping on first successful feed, NOT guaranteed frame-identical "
-                "across runs. Pair with a bookmark for a real golden comparison.\n");
+            mc2::fmt::print_err("[VK_FEED_DUMP] WARNING: MC2_VK_FEED_DUMP set without a bookmark capture (MC2_VISUAL_BOOKMARK_CAPTURE/MC2_VISUAL_CAPTURE_FRAME) -- dumping on first successful feed, NOT guaranteed frame-identical across runs. Pair with a bookmark for a real golden comparison.\n");
         }
         return true;
     }

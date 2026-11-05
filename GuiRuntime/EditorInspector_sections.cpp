@@ -102,7 +102,7 @@ void drawCameraBookmarkSave() {
         // Directory = MC2_BOOKMARK_SAVE_DIR or ./saved_bookmarks; the file is
         // directly consumable by MC2_VISUAL_BOOKMARK_CAPTURE.
         if (ImGui::Button("Save Camera Bookmark")) {
-            mc2_save_camera_bookmark(s_bookmarkPath, (int)sizeof(s_bookmarkPath));
+            mc2_save_camera_bookmark(s_bookmarkPath, static_cast<int>(sizeof(s_bookmarkPath)));
         }
         if (s_bookmarkPath[0]) {
             ImGui::TextDisabled("wrote: %s", s_bookmarkPath);
@@ -270,7 +270,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                     RenderDebugView curView = StaticPropShaderModeToView(batcher_getDebugMaterialMode());
                     const char* curName = RenderDebugViewName(curView);
                     if (ImGui::BeginCombo("Debug View##sp", curName)) {
-                        for (int i = 0; i < int(RenderDebugView::_Count); ++i) {
+                        for (int i = 0; i < static_cast<int>(RenderDebugView::_Count); ++i) {
                             RenderDebugView v = RenderDebugView(i);
                             if (!RenderDebugViewSupported(v, kDebugViewMask_StaticPropOpaque))
                                 continue;
@@ -940,7 +940,7 @@ void drawRenderPassContracts() {
             ImGui::TableHeadersRow();
             for (const auto & c : RenderCore::kRenderPassContracts) {
                 ImGui::TableNextRow();
-                ImGui::TableNextColumn(); ImGui::Text("%u", (unsigned)c.id);
+                ImGui::TableNextColumn(); ImGui::Text("%u", static_cast<unsigned>(c.id));
                 ImGui::TableNextColumn(); ImGui::TextUnformatted(c.name);
                 ImGui::TableNextColumn(); ImGui::TextUnformatted(c.ownerSubsystem);
                 ImGui::TableNextColumn(); ImGui::TextUnformatted(c.viewUniformsBound ? "Y" : "-");
@@ -958,7 +958,7 @@ void drawMaterialInventory() {
     if (ImGui::CollapsingHeader("Material Inventory##matinv")) {
         const uint32_t invCount = batcher_getStaticPropMaterialInventoryCount();
         ImGui::TextDisabled("Static-prop lane only -- read-only snapshot.");
-        ImGui::Text("Materials: %u", (unsigned)invCount);
+        ImGui::Text("Materials: %u", static_cast<unsigned>(invCount));
         if (invCount == 0u) {
             ImGui::TextDisabled("(empty -- mission not loaded or MC2_MATERIAL_GPU=0)");
         } else if (ImGui::BeginTable("matinv_table", 10,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <cstddef>
 #include <array>
@@ -131,7 +132,7 @@ public:
     // Called from Mission::init right after onMapLoad(). Safe to call with
     // nullptr/empty (-> "default"). Per-mission registry lives
     // in RenderCore/IblShRegistry.h (kMissionShMap).
-    static void setMissionForIbl(const char* missionName);
+    static void setMissionForIbl(mc2::czstring missionName);
 
     // V-IBL-STATIC-2: inspector accessor. Returns the active SH set name
     // (e.g. "default"). Never returns nullptr.

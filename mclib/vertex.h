@@ -24,9 +24,7 @@
 inline constexpr int BOTTOMRIGHT = 0;
 inline constexpr int BOTTOMLEFT = 1;
 
-#ifndef NO_ERR
-#define NO_ERR				0
-#endif
+#include "dstd.h"  // NO_ERR
 
 //---------------------------------------------------------------------------
 // Classes

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include <memory>
 #include "../../mclib/sim_overlap.h"
 #include "gameos.hpp"
@@ -45,15 +46,15 @@ void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__st
     // TODO: maybe use dconsole for this
 }
 
-void __stdcall AddStatistic( const char* Name, const char* TypeName, gosType Type, void* Value, DWORD Flags )
+void __stdcall AddStatistic( mc2::czstring Name, mc2::czstring TypeName, gosType Type, void* Value, DWORD Flags )
 {
 }
-void __stdcall StatisticFormat(char const* s)
+void __stdcall StatisticFormat(mc2::czstring s)
 {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
-void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf )
+void* DecodeJPG( mc2::czstring FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf )
 {
     return nullptr;
 }
@@ -80,7 +81,7 @@ static bool g_gos_exit_game_os = false;
 #ifdef _WIN32
 #include <windows.h>
 #include <dbghelp.h>
-static void mc2_log_exit_caller(const char* fn)
+static void mc2_log_exit_caller(mc2::czstring fn)
 {
     static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
     static bool s_once = false;
@@ -181,7 +182,7 @@ double __stdcall gos_GetHiResTime()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-HGOSHEAP __stdcall gos_CreateMemoryHeap(char const* HeapName, DWORD MaximumSize/* = 0*/, HGOSHEAP parentHeap/* = ParentClientHeap*/)
+HGOSHEAP __stdcall gos_CreateMemoryHeap(mc2::czstring HeapName, DWORD MaximumSize/* = 0*/, HGOSHEAP parentHeap/* = ParentClientHeap*/)
 {
     gos_Heap* pheap = new gos_Heap();
     memset(pheap, 0, sizeof(gos_Heap));
@@ -547,7 +548,7 @@ static const char* g_user_base_config_dir = ".config";
 static const char* g_user_config_dir = ".mechcommander2";
 
 // TODO: use inifile.h functionality for this
-void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD* szData, bool HKLM/*=false*/)
+void __stdcall gos_LoadDataFromRegistry( mc2::czstring keyName, void* pData, DWORD* szData, bool HKLM/*=false*/)
 {
     // this code can be useful to get registry file location
     
@@ -619,7 +620,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
     }
 }
 
-void __stdcall gos_SaveDataToRegistry( const char* keyName,  void* pData,  DWORD szData )
+void __stdcall gos_SaveDataToRegistry( mc2::czstring keyName,  void* pData,  DWORD szData )
 {
     // TODO:
 }

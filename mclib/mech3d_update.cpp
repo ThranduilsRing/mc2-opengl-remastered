@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "render_snap.h"
 #include "terrain_runtime.h"
+#include <algorithm>
 #include <atomic>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
@@ -46,8 +47,7 @@ long Mech3DAppearance::update (bool animate)
 			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
 				unitAnim().nodeRecycle[i] -= frameLength;
-				if (unitAnim().nodeRecycle[i] < 0.0f)
-					unitAnim().nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] = std::max(unitAnim().nodeRecycle[i], 0.0f);
 			}
 		}
 	}
@@ -376,8 +376,7 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 
-	if (unitAnim().currentFrame < 0.0f)
-		unitAnim().currentFrame = 0.0f;
+	unitAnim().currentFrame = std::max(unitAnim().currentFrame, 0.0f);
 //		STOP(("CurrentFrame of animation can never be less then zero.  Frame %f,  NumFrames %f, GestureId %d",currentFrame,mechType->getNumFrames(currentGestureId),currentGestureId));
 		
 	if ((unitAnim().currentFrame > 0.0f) && (unitAnim().currentFrame >= mechType->getNumFrames(unitAnim().currentGestureId)))

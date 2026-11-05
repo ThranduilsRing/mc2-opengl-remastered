@@ -1,7 +1,7 @@
 // MechWarrior: tactical-order queue API.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 
 
 // QUEUED PLAYER ORDERS routines

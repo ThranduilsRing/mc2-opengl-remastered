@@ -8,6 +8,7 @@
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "startup_preload.h"
 #ifdef MC2_IMGUI
 #include "imgui.h"
 #include "ui_texture.h"

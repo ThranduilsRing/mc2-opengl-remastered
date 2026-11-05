@@ -28,8 +28,6 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate_cold.h"   // str<>()
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
@@ -134,7 +132,7 @@ constexpr uint32_t kVfxSlots = mc2vk::kMaxFramesInFlight * kVfxCallsPerFrame;
 struct SpritePage {
     VkDescriptorSet set[kVfxSlots]{};
     VkImageView bound[kVfxSlots]{};
-    uint64_t lastUsedFrame=~uint64_t(0);
+    uint64_t lastUsedFrame=~static_cast<uint64_t>(0);
 };
 
 struct VfxIsland : mc2vk::IslandState {
@@ -181,7 +179,7 @@ struct VfxIsland : mc2vk::IslandState {
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
     uint64_t         vegTicket[mc2vk::kMaxFramesInFlight] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
-    uint64_t         slotFrame = ~uint64_t(0);   // engine frame of callInFrame
+    uint64_t         slotFrame = ~static_cast<uint64_t>(0);   // engine frame of callInFrame
     uint32_t         callInFrame = 0;
 
     int  w = 0, h = 0;
@@ -224,8 +222,8 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
         if (!vegetationAtlas) return std::nullopt;
         if (s->loadedVegetation != vegetationAtlas) {
             RenderCore::KtxImage image;
-            image.width = int(vegetationAtlas->width); image.height = int(vegetationAtlas->height);
-            image.vkFormat = vegetationAtlas->vkFormat; image.mipCount = int(vegetationAtlas->levels.size());
+            image.width = static_cast<int>(vegetationAtlas->width); image.height = static_cast<int>(vegetationAtlas->height);
+            image.vkFormat = vegetationAtlas->vkFormat; image.mipCount = static_cast<int>(vegetationAtlas->levels.size());
             image.isCompressed = image.vkFormat == mc2tex::kVkFormatBc7Unorm;
             image.blockSizeBytes = image.isCompressed ? 16 : 0;
             for (const auto& level : vegetationAtlas->levels) {
@@ -588,8 +586,8 @@ void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRi
     if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
     else          { up.camUp[1]=1.0f; }
     if (!camRight) up.camRight[0]=1.0f;
-    up.camRight[3] = 2.0f / float(w);
-    up.camUp[3] = 2.0f / float(h);
+    up.camRight[3] = 2.0f / static_cast<float>(w);
+    up.camUp[3] = 2.0f / static_cast<float>(h);
     std::memcpy(dst, &up, sizeof(up));
 }
 

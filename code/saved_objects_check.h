@@ -109,8 +109,8 @@ constexpr int64_t kMaxSlots = 1 << 20;
 inline int64_t slotCount(const HeaderCounts& h)
 {
 	int64_t total = static_cast<int64_t>(h.elementals) + h.lights;
-	for (int c = 0; c < kClassCount; ++c)
-		total += h.byClass[c];
+	for (const auto byClassElem : h.byClass)
+		total += byClassElem;
 	return total;
 }
 
@@ -118,8 +118,8 @@ inline bool plausibleHeader(const HeaderCounts& h)
 {
 	if (h.elementals < 0 || h.lights < 0)
 		return false;
-	for (int c = 0; c < kClassCount; ++c)
-		if (h.byClass[c] < 0)
+	for (const auto byClassElem : h.byClass)
+		if (byClassElem < 0)
 			return false;
 	const int64_t total = slotCount(h);
 	return total > 0 && total < kMaxSlots;

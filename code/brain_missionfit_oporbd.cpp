@@ -1,5 +1,6 @@
 // BRAIN-MISSIONFIT-OPORD-CONSUMER-1: pure parser for carver mission.fit PrimaryOPORD blocks.
 // See brain_missionfit_oporbd.h. Raw line scan — FitIniFile cannot see brace-blocks.
+#include "mc2_czstring.h"
 #include "brain_missionfit_oporbd.h"
 
 #include <cctype>
@@ -9,7 +10,7 @@
 namespace {
 
 // Value token after "<key> =" on a line. Writes the trimmed token; returns true if non-empty.
-bool lineKeyToken(const char* line, const char* key, char* out, size_t outsz) {
+bool lineKeyToken(mc2::czstring line, mc2::czstring key, char* out, size_t outsz) {
     const char* p = std::strstr(line, key);
     if (!p) return false;
     p += std::strlen(key);
@@ -28,7 +29,7 @@ bool lineKeyToken(const char* line, const char* key, char* out, size_t outsz) {
 
 // Float after a single-char axis ('x'/'y') as in "x=3008.000". Boundary-aware: an axis char
 // preceded by a letter is rejected (so "index=0" does NOT match 'x='). Returns true on success.
-bool axisFloat(const char* line, char axis, float* out) {
+bool axisFloat(mc2::czstring line, char axis, float* out) {
     for (const char* p = std::strchr(line, axis); p; p = std::strchr(p + 1, axis)) {
         if (p > line && std::isalpha(static_cast<unsigned char>(p[-1]))) continue;  // reject 'inde[x]='
         const char* q = p + 1;
@@ -45,19 +46,19 @@ bool axisFloat(const char* line, char axis, float* out) {
     return false;
 }
 
-void setType(MissionFitOpord& r, const char* tok) {
+void setType(MissionFitOpord& r, mc2::czstring tok) {
     std::strncpy(r.primaryType, tok, sizeof(r.primaryType) - 1);
     r.primaryType[sizeof(r.primaryType) - 1] = '\0';
 }
 
 // Copy a token into a fixed char buffer with NUL-termination.
-void copyTok(char* dst, size_t dstsz, const char* tok) {
+void copyTok(char* dst, size_t dstsz, mc2::czstring tok) {
     std::strncpy(dst, tok, dstsz - 1);
     dst[dstsz - 1] = '\0';
 }
 
 // String value of `key = "quoted"` or `key = bareword`. Strips surrounding quotes.
-bool lineKeyString(const char* line, const char* key, char* out, size_t outsz) {
+bool lineKeyString(mc2::czstring line, mc2::czstring key, char* out, size_t outsz) {
     const char* p = std::strstr(line, key);
     if (!p) return false;
     // Ensure key boundary (preceding char not alnum) so "Help" != "AttackerHelp".
@@ -82,7 +83,7 @@ bool lineKeyString(const char* line, const char* key, char* out, size_t outsz) {
 }
 
 // Boundary-aware float for a named key: "EngageRadius = 300.0". Rejects substring keys.
-bool lineKeyFloat(const char* line, const char* key, float* out) {
+bool lineKeyFloat(mc2::czstring line, mc2::czstring key, float* out) {
     const char* p = std::strstr(line, key);
     if (!p) return false;
     if (p > line && (std::isalnum(static_cast<unsigned char>(p[-1])) || p[-1] == '_')) return false;
@@ -99,7 +100,7 @@ bool lineKeyFloat(const char* line, const char* key, float* out) {
 }
 
 // Tri-state bool for a named key: present → 0/1 ("true"→1), absent → leaves *out untouched.
-bool lineKeyBool(const char* line, const char* key, int* out) {
+bool lineKeyBool(mc2::czstring line, mc2::czstring key, int* out) {
     char tok[16];
     const char* p = std::strstr(line, key);
     if (!p) return false;
@@ -117,7 +118,7 @@ void slotReset(MissionFitOpordSlot& s) {
 }
 
 // Parse one slot-body line (type/loop/Waypoint/target) into slot s.
-void slotParseLine(MissionFitOpordSlot& s, const char* buf) {
+void slotParseLine(MissionFitOpordSlot& s, mc2::czstring buf) {
     char tok[24];
     if (s.type[0] == '\0' && lineKeyToken(buf, "type", tok, sizeof(tok))) copyTok(s.type, sizeof(s.type), tok);
     if (lineKeyToken(buf, "loop", tok, sizeof(tok))) s.loop = (std::strcmp(tok, "true") == 0);
@@ -151,7 +152,7 @@ void slotParseLine(MissionFitOpordSlot& s, const char* buf) {
 
 } // namespace
 
-int parseMissionFitOpords(const char* text, MissionFitOpord* out, int maxOut) {
+int parseMissionFitOpords(mc2::czstring text, MissionFitOpord* out, int maxOut) {
     if (!text || !out || maxOut <= 0) return 0;
 
     int count = 0;
@@ -262,7 +263,7 @@ MissionFitOpordSlot* slotFor(MissionFitBrain& b, SubKind k) {
 }
 
 // A non-"type" tactic line "Word = float" → name/weight.
-void tacticParseLine(MissionFitBrain& b, const char* buf) {
+void tacticParseLine(MissionFitBrain& b, mc2::czstring buf) {
     if (b.tacticCount >= kMissionFitMaxTactics) return;
     char name[24];
     // Grab the leading word.
@@ -286,7 +287,7 @@ void tacticParseLine(MissionFitBrain& b, const char* buf) {
     ++b.tacticCount;
 }
 
-int countBraces(const char* s) {
+int countBraces(mc2::czstring s) {
     int d = 0;
     for (const char* q = s; *q; ++q) { if (*q == '{') ++d; else if (*q == '}') --d; }
     return d;
@@ -294,7 +295,7 @@ int countBraces(const char* s) {
 
 } // namespace
 
-int parseMissionFitBrains(const char* text, MissionFitBrain* out, int maxOut) {
+int parseMissionFitBrains(mc2::czstring text, MissionFitBrain* out, int maxOut) {
     if (!text || !out || maxOut <= 0) return 0;
 
     int count = 0;

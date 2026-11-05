@@ -31,6 +31,7 @@
 #include <unordered_set>
 #include <vector>
 #include <utility>
+#include "mc2fmt.h"
 
 extern long turn;
 extern "C" int mc2_vk_terrain_island_prewarm(int,int);
@@ -117,7 +118,7 @@ void saveLocked(State& s) {
     std::error_code ec; std::filesystem::rename(tmp,s.cachePath,ec);
     if (!ec) {
         s.dirty=false; s.saved=std::chrono::steady_clock::now();
-        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] saved_bytes=%zu pipelines=%llu creation_ms=%.3f\n",bytes,s.creations,s.creationMs);
+        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] saved_bytes={:d} pipelines={:d} creation_ms={:.3f}\n",mc2::fmt::as_size(bytes),mc2::fmt::as_u64(s.creations),s.creationMs);
     }
 }
 }
@@ -151,8 +152,8 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     // Diagnostic clamp only: it cannot raise either the physical or preset budget.
     const int mbOverride=mc2::gate::get<"MC2_GPU_BUDGET_MB">();
     if(mbOverride>0) s.budget=std::min(s.budget,uint64_t(mbOverride)*MiB);
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] budget_bytes=%llu physical_bytes=%llu source=%s safety_bytes=%llu quality=%d maxImageDimension2D=%u\n",
-        s.budget,s.physicalBudget,memoryBudget?(uma?"VK_EXT_memory_budget+uma":"VK_EXT_memory_budget"):(uma?"heap_half+uma":"heap_half"),available-s.physicalBudget,mc2::options::current().shadowQuality,s.imageEdge);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_RESIDENCY v1] budget_bytes={:d} physical_bytes={:d} source={} safety_bytes={:d} quality={:d} maxImageDimension2D={:d}\n",
+        mc2::fmt::as_u64(s.budget),mc2::fmt::as_u64(s.physicalBudget),mc2::fmt::safe(memoryBudget?(uma?"VK_EXT_memory_budget+uma":"VK_EXT_memory_budget"):(uma?"heap_half+uma":"heap_half")),mc2::fmt::as_u64(available-s.physicalBudget),mc2::fmt::as_i32(mc2::options::current().shadowQuality),mc2::fmt::as_u32(s.imageEdge));
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
     char key[160]{}; size_t at=std::snprintf(key,sizeof(key),"%08x-%08x-%08x-",p.vendorID,p.deviceID,p.driverVersion);
     for(auto b:p.pipelineCacheUUID) at+=std::snprintf(key+at,sizeof(key)-at,"%02x",b);
@@ -171,7 +172,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     }}
     VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO}; ci.initialDataSize=data.size(); ci.pInitialData=data.data();
     if(vkCreatePipelineCache(device,&ci,nullptr,&s.cache)!=VK_SUCCESS) { ci.initialDataSize=0; ci.pInitialData=nullptr; status="driver_rejected"; vkCreatePipelineCache(device,&ci,nullptr,&s.cache); }
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] status=%s initial_bytes=%zu %s\n",status,data.size(),s.driver);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] status={} initial_bytes={:d} {}\n",mc2::fmt::safe(status),mc2::fmt::as_size(data.size()),mc2::fmt::safe(s.driver));
     bool amd=false;
     for(auto& e:extensions) {
         if(!std::strcmp(e.extensionName,VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) s.checkpoints=vkCmdSetCheckpointNV!=nullptr;
@@ -195,7 +196,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
             }
         }
     }
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_BREADCRUMBS v1] sink=%s cpu_ring=256 %s\n",s.markerMap?"AMD_buffer_marker":s.checkpoints?"NV_checkpoints":"CPU",s.packages);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_BREADCRUMBS v1] sink={} cpu_ring=256 {}\n",mc2::fmt::safe(s.markerMap?"AMD_buffer_marker":s.checkpoints?"NV_checkpoints":"CPU"),mc2::fmt::safe(s.packages));
 }
 void saveCache() { auto& s=state(); std::lock_guard lock(s.mutex); saveLocked(s); }
 VkPipelineCache cacheHandle() { return state().cache; }
@@ -269,10 +270,10 @@ bool imageSupported(const VkImageCreateInfo& info,std::string_view name) {
 uint32_t shadowTier(uint32_t requested,uint64_t bpp,uint32_t copies) {
     uint32_t tier=requested; while(tier>512 && (tier>imageLimit() || !admit(uint64_t(tier)*tier*bpp*copies))) tier/=2;
     if(!admit(uint64_t(tier)*tier*bpp*copies)) {
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=shadow_map side=%u fallback=off\n",requested);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] refused=shadow_map side={:d} fallback=off\n",mc2::fmt::as_u32(requested));
         return 0;
     }
-    if(tier!=requested) std::fprintf(stderr,"[VK_RESIDENCY v1] refused=shadow_map side=%u fallback=side_%u\n",requested,tier);
+    if(tier!=requested) mc2::fmt::print_err("[VK_RESIDENCY v1] refused=shadow_map side={:d} fallback=side_{:d}\n",mc2::fmt::as_u32(requested),mc2::fmt::as_u32(tier));
     return tier;
 }
 std::string ledgerJson() {
@@ -484,7 +485,7 @@ void reload() {
         breadcrumb("pipeline","reloaded",p.recipe->hash);
     }
     s.dirty=true;
-    std::fprintf(stderr,"[VK_SHADER_RELOAD v1] success pipelines=%zu shader=%s old=%016llx new=%016llx retirement=graphics_timeline\n",pending.size(),path.c_str(),expectedOld,expectedNew); std::fflush(stderr);
+    mc2::fmt::print_err("[VK_SHADER_RELOAD v1] success pipelines={:d} shader={} old={:016x} new={:016x} retirement=graphics_timeline\n",mc2::fmt::as_size(pending.size()),path.c_str(),mc2::fmt::as_u64(expectedOld),mc2::fmt::as_u64(expectedNew)); std::fflush(stderr);
 }
 // Some owners keep their original shader modules for later pipeline variants. Those variants must use the latest reload too.
 struct LatestStages {
@@ -527,7 +528,7 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=graphics count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(getOrCreateEngineVulkanContext().tracker().frameNo()));
     return result;
 }
 VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out) {
@@ -539,7 +540,7 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=compute count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo()); return result;
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=compute count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(getOrCreateEngineVulkanContext().tracker().frameNo())); return result;
 }
 void bind(VkCommandBuffer cb,VkPipelineBindPoint point,VkPipeline pipeline) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=pipelineTokens().find(pipeline);
@@ -575,11 +576,11 @@ void frame() {
         s.firstFrameStarted=true; s.previousFrame=now;
         if(s.firstFrames.size()==120) {
             std::sort(s.firstFrames.begin(),s.firstFrames.end());
-            if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_FIRST_FRAMES v1] count=120 p95_ms=%.3f max_ms=%.3f late_pipeline_creations=%llu\n",s.firstFrames[113],s.firstFrames.back(),s.creations-s.prewarmCreations); s.measureFrames=false;
+            if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_FIRST_FRAMES v1] count=120 p95_ms={:.3f} max_ms={:.3f} late_pipeline_creations={:d}\n",s.firstFrames[113],s.firstFrames.back(),mc2::fmt::as_u64(s.creations-s.prewarmCreations)); s.measureFrames=false;
         }
     }
     const uint64_t f=getOrCreateEngineVulkanContext().tracker().frameNo();
-    if(f%120==0) { const auto json=ledgerJson(); if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] %s\n",json.c_str()); }
+    if(f%120==0) { const auto json=ledgerJson(); if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_RESIDENCY v1] {}\n",json.c_str()); }
     if(std::chrono::steady_clock::now()-s.saved>std::chrono::seconds(30)) saveCache();
 }
 void prewarm(int width,int height) {
@@ -609,7 +610,7 @@ void prewarm(int width,int height) {
     getOrCreateEngineVulkanContext().textures().finishLoading();
     warm("shadow_bake",mc2_vk_shadow_island_load_bake);   // F1: after every family, so the bake inputs (prop geometry, alpha array) are resident
     saveCache();
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] pipeline_creation_ms=%.3f\n",s.creationMs-pipelineMsBefore);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_LOAD_RESOURCE v1] pipeline_creation_ms={:.3f}\n",s.creationMs-pipelineMsBefore);
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }
@@ -631,7 +632,7 @@ void deviceLost() {
         }
     }
     std::error_code ec; std::filesystem::create_directories("debug_state",ec); crashSnapshot("debug_state");
-    std::fprintf(stderr,"[VK_BREADCRUMBS v1] device_lost snapshot=debug_state/gpu_breadcrumbs.txt\n");
+    mc2::fmt::print_err("[VK_BREADCRUMBS v1] device_lost snapshot=debug_state/gpu_breadcrumbs.txt\n");
     crashbundle_device_lost();
 }
 bool deviceLostLatched() { return state().lossReported.load(); }

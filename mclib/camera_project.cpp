@@ -1,5 +1,7 @@
 // Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject.
 // Declared in the class headers; shared names in camera_internal.h.
+#include <algorithm>
+
 #include "camera_internal.h"
 #include "mc2fmt.h"
 //---------------------------------------------------------------------------
@@ -290,8 +292,8 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 		double ta = (-half - ro[ax]) / d[ax];
 		double tb = ( half - ro[ax]) / d[ax];
 		if (ta > tb) { const double t = ta; ta = tb; tb = t; }
-		if (ta > t0) t0 = ta;
-		if (tb < t1) t1 = tb;
+		t0 = std::max(t0, ta);
+		t1 = std::min(t1, tb);
 	}
 	if (t0 > t1) return pickFail(10, screenX, screenY);
 	const double ox = ro[0] + t0*d[0], oy = ro[1] + t0*d[1], oz = ro[2] + t0*d[2];
@@ -642,9 +644,9 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 				const float vx = t->vertices[c]->vx;
 				const float vy = t->vertices[c]->vy;
 				const float vz = t->vertices[c]->pVertex->elevation;
-				if (vx < mn.x) mn.x = vx; if (vx > mx.x) mx.x = vx;
-				if (vy < mn.y) mn.y = vy; if (vy > mx.y) mx.y = vy;
-				if (vz < mn.z) mn.z = vz; if (vz > mx.z) mx.z = vz;
+				mn.x = std::min(mn.x, vx); mx.x = std::max(mx.x, vx);
+				mn.y = std::min(mn.y, vy); mx.y = std::max(mx.y, vy);
+				mn.z = std::min(mn.z, vz); mx.z = std::max(mx.z, vz);
 			}
 			if (!quadAabbInFrustum(planes, mn, mx))
 				continue;
@@ -706,9 +708,9 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 			const float vx = currentTile->vertices[c]->vx;
 			const float vy = currentTile->vertices[c]->vy;
 			const float vz = currentTile->vertices[c]->pVertex->elevation;
-			if (vx < mn.x) mn.x = vx; if (vx > mx.x) mx.x = vx;
-			if (vy < mn.y) mn.y = vy; if (vy > mx.y) mx.y = vy;
-			if (vz < mn.z) mn.z = vz; if (vz > mx.z) mx.z = vz;
+			mn.x = std::min(mn.x, vx); mx.x = std::max(mx.x, vx);
+			mn.y = std::min(mn.y, vy); mx.y = std::max(mx.y, vy);
+			mn.z = std::min(mn.z, vz); mx.z = std::max(mx.z, vz);
 		}
 
 		if (quadAabbInFrustum(planes, mn, mx) && (currentClosest < 100))
@@ -756,8 +758,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 				const double dx = static_cast<double>(sc.x) - static_cast<double>(screenPos.x);
 				const double dy = static_cast<double>(sc.y) - static_cast<double>(screenPos.y);
 				const double dsq = dx * dx + dy * dy;
-				if (dsq < tileNearestSq)
-					tileNearestSq = dsq;
+				tileNearestSq = std::min(tileNearestSq, dsq);
 			}
 
 			if (s_overThisTileProjected(corners, valid, screenPos.x, screenPos.y))
@@ -828,14 +829,12 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 			}
 		}
 
-		if (tileR < 0)
-			tileR = 0;
+		tileR = std::max<long>(tileR, 0);
 
 		if (tileR >= Terrain::realVerticesMapSide)
 			tileR = Terrain::realVerticesMapSide-1;
 
-		if (tileC < 0)
-			tileC = 0;
+		tileC = std::max<long>(tileC, 0);
 
 		if (tileC >= Terrain::realVerticesMapSide)
 			tileC = Terrain::realVerticesMapSide-1;

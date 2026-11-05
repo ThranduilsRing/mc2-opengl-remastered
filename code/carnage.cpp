@@ -686,7 +686,7 @@ void Carnage::updatePresentation()
 			
 			if (gosEffect && gosEffect->IsExecuted())
 			{
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 				gosEffect->Start(&info);
 			}
 
@@ -776,7 +776,7 @@ void Carnage::updatePresentation()
 			localToWorld = shapeOrigin * gosFX::Effect_Into_Motion;
 		
  			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 			
 			bool result = gosEffect->Execute(&info);
 			if (!result)

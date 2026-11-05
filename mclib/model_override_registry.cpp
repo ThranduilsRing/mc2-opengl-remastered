@@ -1,5 +1,6 @@
 // model_override_registry.cpp -- see the header.
 // ONLY engine TU permitted to include nlohmann/json (scripts/check-json-isolation.sh).
+#include "mc2_czstring.h"
 #include "model_override_registry.h"
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -316,7 +317,7 @@ std::string ModelOverrideRegistry::selectedCondition(std::string_view mission, s
     return wildcard ? wildcard->condition : std::string();
 }
 
-const ModelOverrideRecord* ModelOverrideRegistry::resolve(const char* overrideClass, const char* appearanceName) const {
+const ModelOverrideRecord* ModelOverrideRegistry::resolve(mc2::czstring overrideClass, mc2::czstring appearanceName) const {
     if (!overrideClass || !appearanceName) return nullptr;
     const std::string cls  = normalizeKey(overrideClass);
     const std::string name = normalizeKey(appearanceName);

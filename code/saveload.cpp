@@ -357,7 +357,7 @@ void Mission::save (const char *saveFileName)
             handles(std::span(ObjectManager->vehicles, ObjectManager->maxVehicles)),
             handles(std::span(ObjectManager->moverList, ObjectManager->getNumMovers())),
             handles(std::span(ObjectManager->goodMoverList, ObjectManager->numGoodMovers)),
-            handles(std::span(ObjectManager->badMoverList, ObjectManager->numBadMovers)), static_cast<std::int32_t>(turn)};
+            handles(std::span(ObjectManager->badMoverList, static_cast<std::int32_t>(ObjectManager->numBadMovers))), static_cast<std::int32_t>(turn)};
         mc2::save::Archive archive;
         lists.serialize(archive);
         if (!archive.good()) Fatal(0, "WRLD save section failed");
@@ -640,11 +640,9 @@ void Mission::loadDestroyAndRestore() {
 	{
 		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_destroy "
-				"mechFinalized=%d appearanceListNull=%d\n",
-				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == nullptr) ? 1 : 0);
+			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_destroy mechFinalized={:d} appearanceListNull={:d}\n",
+				mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0),
+				mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}
 
 	// Fresh type indices must precede restored actors, whose appearance addresses can be reused.

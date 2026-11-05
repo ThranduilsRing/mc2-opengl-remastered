@@ -15,6 +15,7 @@
 //   CONTACT_CRITERIA_* -> code/dcontact.h  (bit flags)
 // Keep the tables in sync with those headers.
 
+#include "mc2_czstring.h"
 #include <cstdint>
 
 // Resolve a single token to its integer value.
@@ -24,7 +25,7 @@
 // Leading/trailing ASCII whitespace is ignored.
 // Returns true and writes *out on success; false (leaving *out untouched) on an
 // unknown symbol or a malformed integer.
-bool brainResolveSymbolToken(const char* token, long* out);
+bool brainResolveSymbolToken(mc2::czstring token, long* out);
 
 // Resolve a '+'-joined expression to the sum of its terms. Each term is resolved
 // by brainResolveSymbolToken (symbol or bare int). Whitespace around '+' and at
@@ -33,4 +34,4 @@ bool brainResolveSymbolToken(const char* token, long* out);
 //   "-1" -> -1     "2" -> 2     "A+B" (no spaces) -> A summed with B
 // Returns false if the expression is empty, has an empty term (e.g. a trailing
 // '+'), or any term fails to resolve.
-bool brainResolveIntExpr(const char* expr, long* out);
+bool brainResolveIntExpr(mc2::czstring expr, long* out);

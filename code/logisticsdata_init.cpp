@@ -56,7 +56,7 @@ void LogisticsData::init()
 	initVariants();
 	LOG_INIT_TIME("after_initVariants");
 
-	missionInfo = new LogisticsMissionInfo;
+	missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
 
 	FitIniFile file;
 	if ( NO_ERR != file.open( "data" PATH_SEPARATOR "campaign" PATH_SEPARATOR "campaign.fit" ) )
@@ -91,7 +91,7 @@ void LogisticsData::initPhaseA()
 	if ( m_phaseAComplete ) return;
 	SMART_LOAD_TRACE_LOG("Phase A begin");
 
-	missionInfo = new LogisticsMissionInfo;
+	missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
 	FitIniFile file;
 	if ( NO_ERR != file.open( "data" PATH_SEPARATOR "campaign" PATH_SEPARATOR "campaign.fit" ) )
 		Assert( 0, 0, "coudln't find the campaign file\n" );
@@ -485,13 +485,12 @@ void LogisticsData::initVariants()
 		char buffer[256];
 		int varCount = 0;
 		while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
-			LogisticsVariant* pVariant = new LogisticsVariant;
+			auto pVariant = std::make_unique_for_overwrite<LogisticsVariant>();
 			if (0 == pVariant->init(&mechFile, job.chassis, varCount))
-				job.varList.push_back(pVariant);
+				job.varList.push_back(pVariant.release());
 			else
 			{
 				MC2_LOG(Io, Warn, "logistics: mech file {} variant {} (CSV row {}) is malformed and is skipped", job.path, varCount, row);
-				delete pVariant;
 			}
 			varCount++;
 			row += 97;

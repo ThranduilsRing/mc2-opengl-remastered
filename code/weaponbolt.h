@@ -296,7 +296,7 @@ class WeaponBolt : public GameObject
 
 			prev_position = glm::vec3(0.0f);
 			gpu_trail_kind = mc2::particles::GpuTrailKind::None;
-			for (auto & _i : trail_history) (_i = glm::vec3(0.0f));
+			for (auto & trail_historyElem : trail_history) (trail_historyElem = glm::vec3(0.0f));
 			trail_head = 0;
 			trail_count = 0;
 		}

@@ -394,7 +394,7 @@ class GroundVehicle : public Mover {
 			return(movementEnabled && (dynamics.max.groundVehicle.speed != 0) );
 		}
 
-		virtual long getSpeedState (void);
+		virtual SpeedState getSpeedState (void);
 
 		virtual void disable (unsigned long cause);
 		

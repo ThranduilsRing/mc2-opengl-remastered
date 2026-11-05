@@ -1,5 +1,6 @@
 #ifndef HUDTABREGISTRY_H
 #define HUDTABREGISTRY_H
+#include "mc2_czstring.h"
 /*************************************************************************************************\
 hudtabregistry.h : data-driven registry for the in-mission command-bar tab strip
                    (IN-MISSION-HUD-IMGUI-SCOPE-1 slice C, MC2_HUD_IMGUI_TABS).
@@ -85,7 +86,7 @@ namespace HudTabs
 			return -1;
 		}
 
-		int indexOfId( const char* id ) const;
+		int indexOfId( mc2::czstring id ) const;
 
 		// Next index from active in registration order (direction > 0 forward,
 		// otherwise backward), wrapping. Active index unchanged.

@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #ifndef MCLIB_H
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mclib.h"
 #endif
@@ -690,14 +691,12 @@ long Turret::update (void)
 			if (turretFacing < 0.0)
 			{
 				turretTurnRate = maxRate*frameLength;
-				if (turretTurnRate > fabs(turretFacing))
-					turretTurnRate = fabs(turretFacing);
+				turretTurnRate = std::min(turretTurnRate, fabs(turretFacing));
 			}
 			else
 			{
 				turretTurnRate = -maxRate*frameLength;
-				if (turretTurnRate < -turretFacing)
-					turretTurnRate = -turretFacing;
+				turretTurnRate = std::max(turretTurnRate, -turretFacing);
 			}
 			
 			setFlag(OBJECT_FLAG_FACING_TARGET,false);
@@ -723,14 +722,12 @@ long Turret::update (void)
 			if (turretFacing < 0.0)
 			{
 				turretTurnRate = maxRate*frameLength;
-				if (turretTurnRate > fabs(turretFacing))
-					turretTurnRate = fabs(turretFacing);
+				turretTurnRate = std::min(turretTurnRate, fabs(turretFacing));
 			}
 			else
 			{
 				turretTurnRate = -maxRate*frameLength;
-				if (turretTurnRate < -turretFacing)
-					turretTurnRate = -turretFacing;
+				turretTurnRate = std::max(turretTurnRate, -turretFacing);
 			}
 
 			setFlag(OBJECT_FLAG_FACING_TARGET,false);
@@ -780,8 +777,7 @@ long Turret::update (void)
 	if ((static_cast<TurretTypePtr>(getObjectType()))->weaponMasterId[0] == -1)
 	{
 		turretPitch = (1.0f - (spotDistance / (ourExtentRadius))) * MAX_TURRET_PITCH;
-		if (turretPitch > 0.0f)
-			turretPitch = 0.0f;
+		turretPitch = std::min(turretPitch, 0.0f);
 	}
 
 	//--------------------------------------------------------------------------
@@ -1019,8 +1015,7 @@ float Turret::calcAttackChance (GameObjectPtr target, long* range, long weaponId
 		else if ((mech->tonnage >= 80) && (mech->tonnage < 100) && mech->getPilot()->isAssaultMechSpecialist())
 			attackChance -= 10.0f;
 			
-		if (attackChance < 5.0f)
-			attackChance = 5.0f;
+		attackChance = std::max(attackChance, 5.0f);
 	}
  	
 	return(attackChance);
@@ -1387,10 +1382,8 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 				numMissiles = missileAmount;
 			else {
 				numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
-				if (numMissiles < 1)
-					numMissiles = 1;
-				if (numMissiles > missileAmount)
-					numMissiles = missileAmount;
+				numMissiles = std::max<long>(numMissiles, 1);
+				numMissiles = std::min(numMissiles, missileAmount);
 			}
 
 			//-----------------------------------------------------------------------------
@@ -1563,10 +1556,8 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 				// (and missed) the target, and in how many clusters...
 				long missileAmount = MasterComponent::masterList[weaponMasterId].getWeaponAmmoAmount();
 				long numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
-				if (numMissiles < 1)
-					numMissiles = 1;
-				if (numMissiles > missileAmount)
-					numMissiles = missileAmount;
+				numMissiles = std::max<long>(numMissiles, 1);
+				numMissiles = std::min(numMissiles, missileAmount);
 
 				//-----------------------------------------------------------------------------
 				// Is the missile short-range(SRM) or long-range(LRM)? SRMs are handled with
@@ -2006,8 +1997,7 @@ void Turret::extractRenderView (mc2::render_view::RenderView& view)
 			if (totalDmgLvl > 0.0)
 				barStatus -= getDamage() / totalDmgLvl;
 			
-			if (barStatus < 0.0)
-				barStatus = 0.0;
+			barStatus = std::max<double>(barStatus, 0.0);
 			
 			DWORD color = 0xff7f7f7f;
 			if ((teamId > -1) && (teamId < 8)) {
@@ -2193,10 +2183,8 @@ long Turret::calcFireRanges (void) {
 			long range = MasterComponent::masterList[weaponMasterId].getWeaponRange();
 			float minWeaponRange = WeaponRanges[range][0];
 			float maxWeaponRange = WeaponRanges[range][1];
-			if (maxWeaponRange > maxRange)
-				maxRange = maxWeaponRange;
-			if (minWeaponRange < minRange)
-				minRange = minWeaponRange;
+			maxRange = std::max(maxRange, maxWeaponRange);
+			minRange = std::min(minRange, minWeaponRange);
 			numFunctionalWeapons++;
 		}
 	}

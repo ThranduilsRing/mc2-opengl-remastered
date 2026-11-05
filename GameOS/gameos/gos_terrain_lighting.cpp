@@ -240,7 +240,7 @@ static void BuildLightGrid(uint32_t numLights) {
         for(uint32_t c=0;c<cells;++c) {
             const uint32_t first=s_gridHeader[2*c],count=s_gridHeader[2*c+1];
             const uint32_t begin=static_cast<uint32_t>(compact.size());
-            const float x0=minX+float(c%dim)*cellW,y0=minY+float(c/dim)*cellH;
+            const float x0=minX+static_cast<float>(c%dim)*cellW,y0=minY+static_cast<float>(c/dim)*cellH;
             dominance.appendCell(std::span{s_lightBuf}.first(numLights),std::span{s_gridIndices}.subspan(first,count),x0,y0,x0+cellW,y0+cellH,compact);
             s_gridHeader[2*c]=begin;s_gridHeader[2*c+1]=static_cast<uint32_t>(compact.size())-begin;
         }

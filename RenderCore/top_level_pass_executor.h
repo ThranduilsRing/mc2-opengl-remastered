@@ -117,9 +117,9 @@ static constexpr unsigned kTopLevelExecutorPassCount =
 // Find the TopLevelPassContract for the given pass id, or nullptr if not executor-owned.
 // Pure, constexpr-compatible, no GL.
 inline const TopLevelPassContract* findTopLevelExecutorPass(RenderPassId id) {
-    for (const auto & kTopLevelExecutorPasse : kTopLevelExecutorPasses) {
-        if (kTopLevelExecutorPasse.id == id)
-            return &kTopLevelExecutorPasse;
+    for (const auto & topLevelExecutorPass : kTopLevelExecutorPasses) {
+        if (topLevelExecutorPass.id == id)
+            return &topLevelExecutorPass;
     }
     return nullptr;
 }
@@ -193,9 +193,9 @@ static constexpr unsigned kTopLevelStateDescCount =
 // Find the TopLevelStateDesc for the given pass id, or nullptr if the executor does
 // not apply state for it. Pure, constexpr-compatible, no GL.
 inline const TopLevelStateDesc* findTopLevelStateDesc(RenderPassId id) {
-    for (const auto & i : kTopLevelStateDesc) {
-        if (i.id == id)
-            return &i;
+    for (const auto & topLevelStateDescElem : kTopLevelStateDesc) {
+        if (topLevelStateDescElem.id == id)
+            return &topLevelStateDescElem;
     }
     return nullptr;
 }

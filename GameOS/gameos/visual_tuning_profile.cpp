@@ -1,4 +1,5 @@
 // L1 compatibility environment: preserve legacy renderer values and color interpretation.
+#include "mc2_czstring.h"
 #include "visual_tuning_profile.h"
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include "Gates/gate.h"
@@ -59,7 +60,7 @@ std::map<std::string, float> engineDefaults() {
         {"vignette",0}, {"topWarmthStrength",0},
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
-        {"waterSkyTintStrength",0}, {"waterReflections",float(mc2::options::current().waterReflections)},
+        {"waterSkyTintStrength",0}, {"waterReflections",static_cast<float>(mc2::options::current().waterReflections)},
         {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
@@ -254,7 +255,7 @@ std::string visualTuning_environmentJson() {
 
 namespace {
 
-static void applyKey(const char* key, float val, int& count) {
+static void applyKey(mc2::czstring key, float val, int& count) {
     if (strcmp(key, "exposure") == 0) {
         gos_SetExposure(val);
         count++;
@@ -269,7 +270,7 @@ static void applyKey(const char* key, float val, int& count) {
         count++;
     } else if (strcmp(key, "waterReflections") == 0) {
         if (val >= 0 && val <= 2 && std::floor(val) == val) {
-            gos_SetWaterReflectionQuality(int(val));
+            gos_SetWaterReflectionQuality(static_cast<int>(val));
             count++;
         }
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
@@ -338,7 +339,7 @@ static void applyKey(const char* key, float val, int& count) {
 
 } // namespace
 
-void visualTuning_applyProfile(const char* missionName) {
+void visualTuning_applyProfile(mc2::czstring missionName) {
     const auto base = readProfileSource("data/visual_tuning.json");
     std::vector<VisualTuningSource> sources{base};
     s_editableSource = base;
@@ -382,7 +383,7 @@ bool visualTuning_saveCurrentToMission() {
     current["exposure"]                  = gos_GetExposure();
     current["staticPropIblStrength"]     = g_iblShStrength;
     current["waterSkyTintStrength"]      = gos_GetWaterSkyTintStrength();
-    current["waterReflections"]         = float(gos_GetWaterReflectionQuality());
+    current["waterReflections"]         = static_cast<float>(gos_GetWaterReflectionQuality());
     current["vfxBrightness"]             = gos_vfx_getBrightness();
     current["vfxAdditiveBrightness"]     = gos_vfx_getAdditiveBrightness();
     current["vfxLitStrength"]            = gos_vfx_getLitStrength();  // VFX-LIT-PARTICLES-MVP-1

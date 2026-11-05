@@ -1,4 +1,5 @@
 
+#include "mc2_czstring.h"
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -189,7 +190,7 @@ void maybeRotate(const std::filesystem::path& path) {
 
 namespace mc2_diag {
 
-void init(const char* sessionId, int pid) {
+void init(mc2::czstring sessionId, int pid) {
     DiagState& s = state();
     std::lock_guard<std::mutex> lock(s.mtx);
 
@@ -266,7 +267,7 @@ bool enabled() {
     return s.initialized && !s.disabled && s.file != nullptr;
 }
 
-bool tagEnabled(const char* tag) {
+bool tagEnabled(mc2::czstring tag) {
     if (!tag) return false;
     const DiagState& s = state();
     if (!enabled()) return false;
@@ -305,7 +306,7 @@ bool tagRequested(std::string_view tag) {
     return cache->tags.count(std::string(tag)) > 0;
 }
 
-bool writeEvent(const char* tag, int version, uint64_t frame, const char* dataJson) {
+bool writeEvent(mc2::czstring tag, int version, uint64_t frame, mc2::czstring dataJson) {
     if (!tag || !dataJson) return false;
 
     DiagState& s = state();

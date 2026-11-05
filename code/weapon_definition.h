@@ -52,6 +52,7 @@
 // ordinal space. This header is the shared CONTRACT those later slices implement
 // against; it introduces no runtime read, no gate, no mc2srcdata change.
 
+#include "mc2_czstring.h"
 #include "hardpoint.h"       // WeaponTag, HardpointProfile, hardpointAcceptsWeapon
 #include "damage_schema.h"   // DamageLocationId
 
@@ -74,7 +75,7 @@
 inline constexpr int WEAPON_NAME_CAP = 64;   // includes the NUL terminator
 
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset" id).
-inline unsigned int weaponIdHash(const char* name) {
+inline unsigned int weaponIdHash(mc2::czstring name) {
     if (!name || name[0] == '\0') return 0u;
     unsigned int h = 2166136261u;   // FNV offset basis
     for (const char* p = name; *p; ++p) {
@@ -90,7 +91,7 @@ struct WeaponId {
 
     WeaponId() : id(0u) { name[0] = '\0'; }
 
-    explicit WeaponId(const char* n) : id(weaponIdHash(n)) {
+    explicit WeaponId(mc2::czstring n) : id(weaponIdHash(n)) {
         int i = 0;
         if (n) {
             for (; n[i] && i < WEAPON_NAME_CAP - 1; ++i) name[i] = n[i];
@@ -107,7 +108,7 @@ inline bool operator==(const WeaponId& a, const WeaponId& b) { return a.id == b.
 inline bool operator!=(const WeaponId& a, const WeaponId& b) { return a.id != b.id; }
 
 // Convenience factory so callers read `makeWeaponId("core:ac20")`.
-inline WeaponId makeWeaponId(const char* name) { return WeaponId(name); }
+inline WeaponId makeWeaponId(mc2::czstring name) { return WeaponId(name); }
 
 // -------------------------------------------------------------------------
 // String-id fields -- generic fixed, trivially-copyable id buffers.
@@ -122,7 +123,7 @@ inline constexpr int WEAPON_STRID_CAP = 64;
 struct WeaponStringId {
     char v[WEAPON_STRID_CAP];
     WeaponStringId() { v[0] = '\0'; }
-    explicit WeaponStringId(const char* s) {
+    explicit WeaponStringId(mc2::czstring s) {
         int i = 0;
         if (s) { for (; s[i] && i < WEAPON_STRID_CAP - 1; ++i) v[i] = s[i]; }
         v[i] = '\0';
@@ -218,7 +219,7 @@ struct WeaponFireExecutorId {
 
     WeaponFireExecutorId() : id(0u) { name[0] = '\0'; }
 
-    explicit WeaponFireExecutorId(const char* n) : id(weaponIdHash(n)) {
+    explicit WeaponFireExecutorId(mc2::czstring n) : id(weaponIdHash(n)) {
         int i = 0;
         if (n) { for (; n[i] && i < WEAPON_NAME_CAP - 1; ++i) name[i] = n[i]; }
         name[i] = '\0';
@@ -237,7 +238,7 @@ inline bool operator!=(const WeaponFireExecutorId& a, const WeaponFireExecutorId
 }
 
 // Convenience factory: `makeFireExecutorId("beam_direct")`.
-inline WeaponFireExecutorId makeFireExecutorId(const char* name) {
+inline WeaponFireExecutorId makeFireExecutorId(mc2::czstring name) {
     return WeaponFireExecutorId(name);
 }
 
@@ -318,7 +319,7 @@ struct WeaponPresentationProfile {
     WeaponPresentationProfile() {}
 
     // Map a (event, kind) pair to an asset string id.
-    void setEventAsset(WeaponEvent ev, WeaponAssetKind kind, const char* assetId) {
+    void setEventAsset(WeaponEvent ev, WeaponAssetKind kind, mc2::czstring assetId) {
         eventAssets[weaponEventIndex(ev)][weaponAssetKindIndex(kind)] =
             WeaponStringId(assetId);
     }

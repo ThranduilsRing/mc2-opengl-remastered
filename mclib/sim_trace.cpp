@@ -1,4 +1,5 @@
 // The [DT] determinism trace; see sim_trace.h. An empty translation unit when MC2_SIM_TRACE is OFF.
+#include "mc2_czstring.h"
 #include <atomic>
 #include "sim_trace.h"
 
@@ -29,7 +30,7 @@ void setTime(double scenarioTime)
 	s_time = scenarioTime;
 }
 
-void stack(const char* tag)
+void stack(mc2::czstring tag)
 {
 	if (!s_basePrinted) {
 		s_basePrinted = true;

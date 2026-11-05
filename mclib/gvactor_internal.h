@@ -85,12 +85,10 @@ extern "C" int mc2FreezeMoversActive();
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C3: GPU visibility queries
 #include "../code/gameobj.h"  // C3: full GameObject definition for obj->getHandle() in init()
 
-#define SPIN_RATE		90.0f
+#include "dappear.h"  // SPIN_RATE, EXPAND_FACTOR, MAX_WEAPON_NODES
 
-#define EXPAND_FACTOR 		(1.25f)
 
 inline constexpr int MAX_SMOKE_NODES = 2;
-#define MAX_WEAPON_NODES	4
 inline constexpr int MAX_FOOT_NODES = 2;
 
 // Globals defined in gvactor.cpp (or elsewhere in the engine) that the split pieces share.

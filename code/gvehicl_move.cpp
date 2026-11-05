@@ -235,7 +235,7 @@ void GroundVehicle::calcThrottleLimits (long& minThrottle, long& maxThrottle) {
 }
 
 
-long GroundVehicle::getSpeedState (void) {
+SpeedState GroundVehicle::getSpeedState (void) {
 
 	if (velocityMag != 0.0)
 		return(SPEED_STATE_MOVING_FAST);

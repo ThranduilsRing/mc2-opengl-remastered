@@ -149,11 +149,11 @@ inline const char* targetName(TargetFbo t) {
 
 inline const Contract* find(const char* pass) {
     if (!pass) return nullptr;
-    for (const auto & kContract : kContracts) {
-        const char* a = kContract.pass;
+    for (const auto & contract : kContracts) {
+        const char* a = contract.pass;
         const char* b = pass;
         while (*a && *a == *b) { ++a; ++b; }
-        if (*a == '\0' && *b == '\0') return &kContract;
+        if (*a == '\0' && *b == '\0') return &contract;
     }
     return nullptr;
 }

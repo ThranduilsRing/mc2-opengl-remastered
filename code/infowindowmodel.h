@@ -44,12 +44,12 @@ namespace InfoWindowModel
 		if ( recs.empty() || out.empty() )
 			return 0;
 		int count = 0;
-		for ( size_t w = 0; w < recs.size(); ++w )
+		for (const auto & rec : recs)
 		{
 			int found = -1;
 			for ( int j = 0; j < count; ++j )
 			{
-				if ( out[j].masterID == recs[w].masterID )
+				if ( out[j].masterID == rec.masterID )
 				{
 					found = j;
 					break;
@@ -58,18 +58,18 @@ namespace InfoWindowModel
 			if ( found >= 0 )
 			{
 				out[found].totalCount++;
-				if ( recs[w].working )
+				if ( rec.working )
 					out[found].workingCount++;
 				continue;   // legacy: duplicates do NOT add ammo
 			}
 			if ( static_cast<size_t>(count) >= out.size() )
 				continue;
 			ComponentRow& row = out[count++];
-			row.masterID = recs[w].masterID;
+			row.masterID = rec.masterID;
 			row.totalCount = 1;
-			row.workingCount = recs[w].working ? 1 : 0;
-			row.ammo = recs[w].ammo;
-			row.range = recs[w].range;
+			row.workingCount = rec.working ? 1 : 0;
+			row.ammo = rec.ammo;
+			row.range = rec.range;
 		}
 		return count;
 	}

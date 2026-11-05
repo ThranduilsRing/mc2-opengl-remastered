@@ -246,9 +246,9 @@ static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
         const uint32_t* row = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
             const uint32_t c = row[px];
-            lum.push_back(0.299f * float((c >> 16) & 0xFFu)
-                        + 0.587f * float((c >>  8) & 0xFFu)
-                        + 0.114f * float( c        & 0xFFu));
+            lum.push_back(0.299f * static_cast<float>((c >> 16) & 0xFFu)
+                        + 0.587f * static_cast<float>((c >>  8) & 0xFFu)
+                        + 0.114f * static_cast<float>( c        & 0xFFu));
         }
     }
     std::vector<float> sorted(lum);
@@ -261,9 +261,9 @@ static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
         const uint32_t* row = &atlasBuf[static_cast<size_t>((dstY + py)) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
             const uint32_t c = row[px];
-            const float b = float( c        & 0xFFu);
-            const float g = float((c >>  8) & 0xFFu);
-            const float r = float((c >> 16) & 0xFFu);
+            const float b = static_cast<float>( c        & 0xFFu);
+            const float g = static_cast<float>((c >>  8) & 0xFFu);
+            const float r = static_cast<float>((c >> 16) & 0xFFu);
             const float L = 0.299f * r + 0.587f * g + 0.114f * b;
             if (L < p50 || L > p90) continue;
             sr += r; sg += g; sb += b; ++cnt;
@@ -350,9 +350,9 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
         for (int px = 0; px < txmSize; ++px) {
             const uint32_t c = row[px];
             if ((c & 0xFF000000u) == 0u) continue;   // transparent surround
-            const float L = 0.299f * float((c >> 16) & 0xFFu)
-                          + 0.587f * float((c >>  8) & 0xFFu)
-                          + 0.114f * float( c        & 0xFFu);
+            const float L = 0.299f * static_cast<float>((c >> 16) & 0xFFu)
+                          + 0.587f * static_cast<float>((c >>  8) & 0xFFu)
+                          + 0.114f * static_cast<float>( c        & 0xFFu);
             ++tot;
             lums.push_back(L);
             if (L - s.lum > kConcreteMarkDelta) ++offBand;   // BRIGHT side only

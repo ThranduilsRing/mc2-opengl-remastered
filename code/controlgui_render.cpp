@@ -162,14 +162,14 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 				float dist = sqrtf( dx * dx + dy * dy );
 				float feather = cov[k].r * 0.18f + 1.0f;
 				float c = ( cov[k].r - dist ) / feather;	// soft edge
-				if ( c > coverage ) coverage = c;
+				coverage = std::max(coverage, c);
 				if ( coverage >= 1.0f ) break;
 			}
 			coverage = std::clamp(coverage, 0.0f, 1.0f);
 
 			float a = D * ( 1.0f - coverage );
 			if ( a <= 0.003f ) continue;	// fully sighted: full brightness
-			unsigned long aB = static_cast<unsigned long>(( a * 255.0f )); if ( aB > 255 ) aB = 255;
+			unsigned long aB = static_cast<unsigned long>(( a * 255.0f )); aB = std::min<unsigned long>(aB, 255);
 			unsigned long col = ( aB << 24 );	// black veil
 
 			gos_VERTEX q[4];
@@ -191,7 +191,7 @@ static void renderOverviewEnemyMarkers( Camera* eye, float alpha )
 		return;
 
 	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f ));
-	if ( aB > 255 ) aB = 255;
+	aB = std::min<unsigned long>(aB, 255);
 	const unsigned long aBits = aB << 24;
 	const float w = 8.0f, h = 12.0f;
 

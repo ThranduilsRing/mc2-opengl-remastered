@@ -8,6 +8,7 @@
 #include "hitch_stats.h"
 #include "vk_owned.h"
 #include "vulkan_context.h"
+#include "mc2fmt.h"
 
 namespace mc2vk {
 
@@ -71,7 +72,7 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
         // The GPU may still be executing the submit, and the fence and the pool are destroyed on return: wait for the device
         // first. A hung device is turned into a lost one by the driver, which ends the wait.
         const std::string w(why);
-        std::fprintf(stderr, "[VK_ONE_SHOT] %s: the fence did not signal in time; waiting for the device before releasing it\n", w.c_str());
+        mc2::fmt::print_err("[VK_ONE_SHOT] {}: the fence did not signal in time; waiting for the device before releasing it\n", w.c_str());
         ctx.waitIdle(why);
     }
     return ok;

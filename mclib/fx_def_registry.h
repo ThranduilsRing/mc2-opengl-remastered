@@ -30,6 +30,7 @@
 // Without authored definitions, ApplyAll()
 // is a no-op and the loaded blob is byte-identical to stock.
 #pragma once
+#include "mc2_czstring.h"
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -78,7 +79,7 @@ public:
     int mergeFromDir(std::string_view dir);
 
     // Returns the def for effectName (case-insensitive), or nullptr.
-    const EffectDef* resolve(const char* effectName) const;
+    const EffectDef* resolve(mc2::czstring effectName) const;
 
     int count() const { return static_cast<int>(defs_.size()); }
 

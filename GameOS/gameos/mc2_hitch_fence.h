@@ -2,6 +2,7 @@
 // submit by waiting on one fence; that wait is where a GPU-bound hitch shows up on the CPU, so the trace reports
 // it per frame. Header-only and free of Vulkan types so it can be unit-tested.
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -20,7 +21,7 @@ struct FenceWaitStats {
     bool record(double ms) {
         if (!std::isfinite(ms) || ms < 0.0) return false;
         totalMs += ms;
-        if (ms > maxMs) maxMs = ms;
+        maxMs = std::max(maxMs, ms);
         ++count;
         return true;
     }

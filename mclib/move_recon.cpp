@@ -3,6 +3,7 @@
 
 #include "move_recon.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -130,11 +131,11 @@ void moveReconPathCacheSample(int startR, int startC, int goalR, int goalC,
         else                                     g_pcache_path_mismatch++;
         if (moverHereHash != s_pcache[slot].moverHereHash) g_pcache_mover_here_diverged++;
         uint64_t gap = (frame >= s_pcache[slot].frame) ? (frame - s_pcache[slot].frame) : 0;
-        if (gap > g_pcache_max_frame_gap) g_pcache_max_frame_gap = gap;
+        g_pcache_max_frame_gap = std::max(g_pcache_max_frame_gap, gap);
 
         if (sameKeyAsLast) {
             s_pcBurstSaved += nodes;
-            if (s_pcBurstSaved > g_pcache_max_burst_saved) g_pcache_max_burst_saved = s_pcBurstSaved;
+            g_pcache_max_burst_saved = std::max(g_pcache_max_burst_saved, s_pcBurstSaved);
         } else {
             s_pcBurstSaved = nodes;
         }
@@ -187,10 +188,10 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
         int ofR0 = sgMinR - pMinR, ofR1 = pMaxR - sgMaxR;
         int ofC0 = sgMinC - pMinC, ofC1 = pMaxC - sgMaxC;
         overflow = 0;
-        if (ofR0 > overflow) overflow = ofR0;
-        if (ofR1 > overflow) overflow = ofR1;
-        if (ofC0 > overflow) overflow = ofC0;
-        if (ofC1 > overflow) overflow = ofC1;
+        overflow = std::max(overflow, ofR0);
+        overflow = std::max(overflow, ofR1);
+        overflow = std::max(overflow, ofC0);
+        overflow = std::max(overflow, ofC1);
     }
 
     g_chunkShadow_calls++;
@@ -202,7 +203,7 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
         if (overflow == 0) g_chunkShadow_inside0++;
         if (overflow <= 1) g_chunkShadow_inside1++;
         if (overflow <= 2) g_chunkShadow_inside2++;
-        if (static_cast<uint64_t>(overflow) > g_chunkShadow_maxOverflow) g_chunkShadow_maxOverflow = static_cast<uint64_t>(overflow);
+        g_chunkShadow_maxOverflow = std::max(g_chunkShadow_maxOverflow, static_cast<uint64_t>(overflow));
     }
     if (nodes > g_chunkShadow_worstNodes) {
         g_chunkShadow_worstNodes = nodes;
@@ -216,7 +217,7 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
     g_rect2_nodes += inRect2;
     if (nodes > 0) {
         uint64_t reduct1 = (nodes > inRect1) ? ((nodes - inRect1) * 100 / nodes) : 0;
-        if (reduct1 > g_rect_maxReductPct1) g_rect_maxReductPct1 = reduct1;
+        g_rect_maxReductPct1 = std::max(g_rect_maxReductPct1, reduct1);
     }
 
     if (s_chunkShadowSamplePrints < 40) {
@@ -298,14 +299,10 @@ void moveReconFrameTick()
 
     g_moveRecon_frames++;
 
-    if (g_moveRecon_frame_ctrl_ns         > g_moveRecon_max_ctrl_ns)
-        g_moveRecon_max_ctrl_ns         = g_moveRecon_frame_ctrl_ns;
-    if (g_moveRecon_frame_pathlock_ns     > g_moveRecon_max_pathlock_ns)
-        g_moveRecon_max_pathlock_ns     = g_moveRecon_frame_pathlock_ns;
-    if (g_moveRecon_frame_astar_local_ns  > g_moveRecon_max_astar_local_ns)
-        g_moveRecon_max_astar_local_ns  = g_moveRecon_frame_astar_local_ns;
-    if (g_moveRecon_frame_astar_global_ns > g_moveRecon_max_astar_global_ns)
-        g_moveRecon_max_astar_global_ns = g_moveRecon_frame_astar_global_ns;
+    g_moveRecon_max_ctrl_ns = std::max(g_moveRecon_max_ctrl_ns, g_moveRecon_frame_ctrl_ns);
+    g_moveRecon_max_pathlock_ns = std::max(g_moveRecon_max_pathlock_ns, g_moveRecon_frame_pathlock_ns);
+    g_moveRecon_max_astar_local_ns = std::max(g_moveRecon_max_astar_local_ns, g_moveRecon_frame_astar_local_ns);
+    g_moveRecon_max_astar_global_ns = std::max(g_moveRecon_max_astar_global_ns, g_moveRecon_frame_astar_global_ns);
 
     if (g_moveRecon_frames % 30 == 0) {
         mc2::fmt::print_out("[MOVE_RECON v1] frame={:d} movers={:d} ctrl_ns={:d} pathlock_ns={:d} astar_local_ns={:d} astar_global_ns={:d} calcMovePath_calls={:d} offmap_noops={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frames)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_movers)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_ctrl_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_pathlock_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_astar_local_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_frame_astar_global_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_calcMovePath_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_moveRecon_offmap_noops)));

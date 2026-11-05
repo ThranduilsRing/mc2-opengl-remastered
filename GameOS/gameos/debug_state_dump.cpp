@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "vk_render_infra.h"
 #include "shadow_quality.h"
 #include "debug_state_dump.h"
@@ -153,7 +154,7 @@ constexpr uint32_t kHistorySlots       = 8u;
 // populated on the first maybeWriteRenderState() call when MC2_DEBUG_STATE_DUMP=1.
 static RenderSnapshot s_lastSnap{};
 
-std::string jsonEscape(const char* s) {
+std::string jsonEscape(mc2::czstring s) {
     std::string out;
     if (!s) return out;
     for (const unsigned char c : std::string(s)) {

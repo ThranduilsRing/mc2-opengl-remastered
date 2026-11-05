@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 // The [DT] determinism trace, a compile-time facility (CMake option MC2_SIM_TRACE, default OFF; no runtime gate).
 //
 // WHAT: MC2_SIM_TRACE_LINE(...) prints one `[DT] f=<render frame> t=<scenario time> <TAG> ...` line per event at the places a
@@ -21,7 +22,7 @@ namespace mc2_sim_trace {
 
 // Self-contained on purpose: this header sits in sim TUs, so it may not pull GameOS's mc2fmt.h (sim include firewall).
 // safe() is mc2::fmt::safe for the trace: a null C string prints "(null)" as printf("%s") did.
-inline const char* safe(const char* s) noexcept { return s ? s : "(null)"; }
+inline const char* safe(mc2::czstring s) noexcept { return s ? s : "(null)"; }
 
 // The scenario clock the lines carry; the simulation sets it once per sim frame.
 void setTime(double scenarioTime);
@@ -43,7 +44,7 @@ void line(std::format_string<Args...> fmt, Args&&... args)
 
 // A `[DT] f=.. t=.. <tag> stack=<addr> <addr> ...` line of the caller's return addresses (absolute; the first call also prints the
 // address of prefix() as TRACEBASE so a symbolizer can rebase them against the PDB; line() is a template and has no one address).
-void stack(const char* tag);
+void stack(mc2::czstring tag);
 
 } // namespace mc2_sim_trace
 

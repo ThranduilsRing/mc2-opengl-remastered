@@ -78,14 +78,14 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 		Buttons[i].location[2].x = Buttons[i].location[3].x = x + width;
 		Buttons[i].location[1].y = Buttons[i].location[2].y = y + height;
 
-		for (auto & j : Buttons[i].location)
+		for (auto & locationElem : Buttons[i].location)
 		{
-			j.argb = 0xffffffff;
-			j.frgb = 0;
-			j.rhw = .5;
-			j.u = 0.f;
-			j.v = 0.f;
-			j.z = 0.f;
+			locationElem.argb = 0xffffffff;
+			locationElem.frgb = 0;
+			locationElem.rhw = .5;
+			locationElem.u = 0.f;
+			locationElem.v = 0.f;
+			locationElem.z = 0.f;
 		}
 		}
 			
@@ -489,12 +489,12 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 		// Walk DOWN the resolution ladder and use the best fit that exists.
 		static const int fallbackWidths[] = { 1920, 1680, 1600, 1440, 1366, 1280, 1024, 800, 640 };
 		bool opened = false;
-		for ( int fi = 0; fi < static_cast<int>((sizeof(fallbackWidths)/sizeof(fallbackWidths[0]))); fi++ )
+		for (const auto fallbackWidth : fallbackWidths)
 		{
-			if ( fallbackWidths[fi] >= resolutionX )
+			if ( fallbackWidth >= resolutionX )
 				continue; // only try LOWER (or equal-lower) candidates
 			char fallbackName[32];
-			mc2::fmt::to_buf(fallbackName, "buttonlayout{:d}.fit", mc2::fmt::as_i32(fallbackWidths[fi]));
+			mc2::fmt::to_buf(fallbackName, "buttonlayout{:d}.fit", mc2::fmt::as_i32(fallbackWidth));
 			char fallbackPath[256];
 			strcpy( fallbackPath, artPath );
 			strcat( fallbackPath, fallbackName );

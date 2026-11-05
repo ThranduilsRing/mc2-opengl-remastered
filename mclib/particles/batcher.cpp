@@ -9,6 +9,7 @@
 #include "../battle_bench_sink.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
+#include <algorithm>
 #include <mlr/mlr.hpp>
 
 #include <cstdio>
@@ -279,7 +280,7 @@ void Batcher::Flush() {
     const unsigned int n = static_cast<unsigned int>(impl_->staging.size());
     ++g_nonempty_flush_total;
     g_records_flushed_total += n;
-    if (n > g_records_per_flush_max) g_records_per_flush_max = n;
+    g_records_per_flush_max = std::max(g_records_per_flush_max, n);
     if (g_log_value && !g_first_flush_reported) {
         g_first_flush_reported = true;
         mc2::fmt::print_err("[GPU_PARTICLES v1] event=first_flush records={:d} groups={:d}\n", mc2::fmt::as_u32(n), mc2::fmt::as_u32(static_cast<unsigned>(impl_->groups.size())));

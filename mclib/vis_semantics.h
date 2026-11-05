@@ -57,6 +57,7 @@
 #ifndef VIS_SEMANTICS_H
 #define VIS_SEMANTICS_H
 
+#include "mc2_czstring.h"
 #include <utility>
 
 namespace mc2_vis {
@@ -161,7 +162,7 @@ bool selfLit(const MoverVis& v);
 // (default 120 frames). This is how the measurement table in
 // .claude/VISIBILITY-SEMANTICS-1-STATUS.md was produced.
 bool trace_enabled();
-void trace(const char* cls, const void* actor, const MoverVis& v);
+void trace(mc2::czstring cls, const void* actor, const MoverVis& v);
 
 } // namespace mc2_vis
 

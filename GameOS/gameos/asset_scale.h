@@ -15,6 +15,7 @@
 //     startup and prints PASS/FAIL per case.
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -42,10 +43,10 @@ private:
 
 // Canonicalize: lowercase, backslash->forward, strip leading "./",
 // strip leading "data/", collapse "//" -> "/".
-AssetKey key(const char* rawPath);
+AssetKey key(mc2::czstring rawPath);
 
 // Lifecycle (called from gameosmain.cpp).
-void init(const char* manifestPath);
+void init(mc2::czstring manifestPath);
 void shutdown();
 
 // All transform/lookup APIs take actualW/actualH; the manifest stores only

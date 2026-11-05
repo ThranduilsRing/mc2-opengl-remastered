@@ -1,5 +1,6 @@
 #include "render_snap.h"
 #include "terrain_runtime.h"
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <utility>
 #include <atomic>
@@ -282,17 +283,13 @@ bool Mech3DAppearance::recalcBounds (void)
 					
 					if (i)
 					{
-						if (bcsp[i].x > maxX)
-							maxX = bcsp[i].x;
+						maxX = std::max(maxX, bcsp[i].x);
 						
-						if (bcsp[i].x < minX)
-							minX = bcsp[i].x;
+						minX = std::min(minX, bcsp[i].x);
 							
-						if (bcsp[i].y > maxY)
-							maxY = bcsp[i].y;
+						maxY = std::max(maxY, bcsp[i].y);
 						
-						if (bcsp[i].y < minY)
-							minY = bcsp[i].y;
+						minY = std::min(minY, bcsp[i].y);
 					}
 				}
 		

@@ -173,11 +173,7 @@ void
 //
 void
 	MLR_I_L_TMesh::SetColorData(
-#if COLOR_AS_DWORD
-		const DWORD *data,
-#else
 		const RGBAColor *data,
-#endif
 		int dataSize
 	)
 {
@@ -196,11 +192,7 @@ void
 //
 void
 	MLR_I_L_TMesh::PaintMe(
-#if COLOR_AS_DWORD
-		const DWORD *paintMe
-#else
 		const RGBAColor *paintMe
-#endif
 		
 	)
 {
@@ -217,19 +209,10 @@ void
 
 	int k, len = static_cast<int>(litColors.GetLength());
 
-#if COLOR_AS_DWORD
-	DWORD argb = GOSCopyColor(paintMe);
-
-	for(k=0;k<len;k++)
-	{
-		litColors[k] = argb;
-	}
-#else
 	for(k=0;k<len;k++)
 	{
 		litColors[k] = *paintMe;
 	}
-#endif
 	// set the to use colors to the original colors ...
 	// only lighting could overwrite this;
 	actualColors = &litColors;

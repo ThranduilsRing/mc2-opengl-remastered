@@ -58,9 +58,9 @@ void LogisticsMissionInfo::clear()
 	{
 		for ( int i = 0; i < groupCount; i++ )
 		{
-			for ( auto iter = groups[i].infos.begin(); iter != groups[i].infos.end(); ++iter )
+			for (auto & info : groups[i].infos)
 			{
-				delete (*iter);
+				delete info;
 			}
 		}
 

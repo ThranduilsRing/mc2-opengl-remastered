@@ -16,6 +16,7 @@
 #include"heap.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<string.h>
 
 
@@ -34,7 +35,7 @@ long GameDebugWindow::fontHeight = 0;
 
 //---------------------------------------------------------------------------
 
-void GameDebugWindow::setFont (const char* fontFile) {
+void GameDebugWindow::setFont (mc2::czstring fontFile) {
 
 	if (font) {
 		gos_DeleteFont(font);
@@ -52,7 +53,7 @@ void GameDebugWindow::setFont (const char* fontFile) {
 
 //---------------------------------------------------------------------------
 
-void GameDebugWindow::print (const char* s) {
+void GameDebugWindow::print (mc2::czstring s) {
 	
 	if (numLines < MAX_DEBUG_WINDOW_LINES)
 		strcpy(textBuffer[numLines++], s);

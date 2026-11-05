@@ -35,7 +35,8 @@
 
 namespace mc2res {
 
-enum Mode { kOff = 0, kLog = 1, kFatal = 2 };
+enum class Mode : int32_t { kOff = 0, kLog = 1, kFatal = 2 };
+using enum Mode;
 
 inline Mode mode() {
     static const Mode s_mode = []() -> Mode {

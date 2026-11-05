@@ -8,7 +8,7 @@
 #include "../mclib/camera.h"
 #include "../mclib/appear.h"   // DRAW_BARS (maskWorldBars)
 #include "Gates/gate.h"
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 
 TacticalOverview g_tacticalOverview;
 

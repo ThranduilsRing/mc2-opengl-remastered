@@ -1041,16 +1041,16 @@ long MovePath::init (long numberOfSteps) {
 		maxNumberOfSteps = numberOfSteps;
 		return(maxNumberOfSteps);
 	}
-	for (auto & i : stepList) {
-		i.distanceToGoal = 0.0;
-		i.destination.x = 0.0;
-		i.destination.y = 0.0;
-		i.destination.z = 0.0;
-		i.direction = 0;
-		i.area = 0; // sebi: init var
+	for (auto & stepElem : stepList) {
+		stepElem.distanceToGoal = 0.0;
+		stepElem.destination.x = 0.0;
+		stepElem.destination.y = 0.0;
+		stepElem.destination.z = 0.0;
+		stepElem.direction = 0;
+		stepElem.area = 0; // sebi: init var
 		// should we set cells[] to something as well?
-		i.cell[0] = 0; 
-		i.cell[1] = 0; 
+		stepElem.cell[0] = 0; 
+		stepElem.cell[1] = 0; 
 	}
 	return(-1);
 }

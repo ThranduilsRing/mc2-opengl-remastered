@@ -11,6 +11,7 @@
 //   [PARTICLE_FLUSH_STALL] path=tube      calls=300 avg_us=9.1  max_us=2100.0 (SPIKE: implicit-sync stall)
 #pragma once
 
+#include "mc2_czstring.h"
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -35,7 +36,7 @@ inline ParticleStallAccum& particleStallAccum(int idx) {
     return s_acc[idx < 0 || idx > 2 ? 0 : idx];
 }
 
-inline void particleStallRecord(int idx, const char* path, double us) {
+inline void particleStallRecord(int idx, mc2::czstring path, double us) {
     ParticleStallAccum& a = particleStallAccum(idx);
     a.calls++;
     a.total_us += us;
@@ -58,7 +59,7 @@ inline void particleStallRecord(int idx, const char* path, double us) {
 struct ScopedFlushTimer {
     int idx_; const char* path_; bool on_;
     std::chrono::steady_clock::time_point t0_;
-    ScopedFlushTimer(int idx, const char* path)
+    ScopedFlushTimer(int idx, mc2::czstring path)
         : idx_(idx), path_(path), on_(particleStallTraceEnabled()) {
         if (on_) t0_ = std::chrono::steady_clock::now();
     }

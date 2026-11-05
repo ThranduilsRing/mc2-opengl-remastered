@@ -1,5 +1,6 @@
 // BattleMech: fireGateTrace, fireWeapon and handleWeaponFire (kept together: the order-gate contract reads both).
 // Declared in the class headers; shared names in mech_internal.h.
+#include "mc2_czstring.h"
 #include "mech_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -11,7 +12,7 @@
 // terrain, range re-check, shots, per-hotspot ripple-recycle). Emits one COMBAT
 // JSONL event per refusal so 'decision said fire but nothing came out' is
 // classifiable headlessly. Pairs with the 'nofire' event in combatDecisionTree.
-static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site)
+static void fireGateTrace (unsigned long wid, long weaponIndex, mc2::czstring site)
 {
 	static const bool s_fireDecisionTrace =
 		mc2::gate::get<"MC2_FIRE_DECISION_TRACE">();

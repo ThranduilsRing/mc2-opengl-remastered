@@ -221,7 +221,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			eye->freezeScriptedCameraForCapture(); result = "ok";
 			if (mc2::battlebench::output) std::fprintf(mc2::battlebench::output,
 				"{\"type\":\"view\",\"frame\":%llu,\"sim_s\":%.6f,\"pos\":[%.3f,%.3f],\"yaw\":%.3f,\"alt\":%.3f,\"pitch\":%.3f}\n",
-				static_cast<unsigned long long>(mc2::battlebench::frame), double(scenarioTime), x, y, yaw, altitude, pitch);
+				static_cast<unsigned long long>(mc2::battlebench::frame), static_cast<double>(scenarioTime), x, y, yaw, altitude, pitch);
 		}
 		return true;
 	}
@@ -273,10 +273,10 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
         const int count=sscanf(line.c_str()+(copy?14:15),"%ld %ld %u",&id,&sourceId,&slot);
         auto* obj=ObjectManager ? ObjectManager->findByPartId(id) : nullptr;
         auto* shape=shapeOf(obj);
-        if (!shape || (copy && count<2) || slot>=unsigned(shape->GetNumTextures())) { result="blocked";note="material_copy <dstPartId> <srcPartId> [slot], material_state <partId>";return true; }
+        if (!shape || (copy && count<2) || slot>=static_cast<unsigned>(shape->GetNumTextures())) { result="blocked";note="material_copy <dstPartId> <srcPartId> [slot], material_state <partId>";return true; }
         if (copy) {
             auto* source=shapeOf(ObjectManager->findByPartId(sourceId));
-            if (!source || slot>=unsigned(source->GetNumTextures()) || !mc2::textures::ready()) { result="blocked";note="source has no slot";return true; }
+            if (!source || slot>=static_cast<unsigned>(source->GetNumTextures()) || !mc2::textures::ready()) { result="blocked";note="source has no slot";return true; }
             const DWORD node=source->GetTextureHandle(slot),old=shape->GetTextureHandle(slot);
             if (node==0xffffffffu || node==old || !mc2::textures::sourceId(node)) { result="blocked";note="source slot must name different resident art";return true; }
             mc2::textures::retain(node); // adopts one manager/service reference for the destination

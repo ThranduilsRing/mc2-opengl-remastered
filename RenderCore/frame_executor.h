@@ -74,9 +74,9 @@ static constexpr unsigned kExecutorIslandCount =
 // Find the IslandContract for the given island id, or nullptr if not owned.
 // Pure, constexpr-compatible, no GL.
 inline const IslandContract* findIslandContract(ExecutorIslandId id) {
-    for (const auto & kExecutorIsland : kExecutorIslands) {
-        if (kExecutorIsland.id == id)
-            return &kExecutorIsland;
+    for (const auto & executorIsland : kExecutorIslands) {
+        if (executorIsland.id == id)
+            return &executorIsland;
     }
     return nullptr;
 }

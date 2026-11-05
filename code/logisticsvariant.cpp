@@ -183,9 +183,9 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 		if (up.encyclopediaStringId != UI_STRING_ID_UNSET) uiEncyclopediaIDOverride = up.encyclopediaStringId;
 		// REPORT-ONLY asset-resolve check (UPV_UI_ASSET_MISSING): a declared icon
 		// file that does not exist would silently fall back to the legacy slot.
-		for (auto & s : uiIconOverride) {
-			if (!s.empty() && !fileExists(s.c_str()))
-				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", fileName, s, mc2::fmt::as_i32(static_cast<int>(UPV_UI_ASSET_MISSING)));
+		for (auto & uiIconOverrideElem : uiIconOverride) {
+			if (!uiIconOverrideElem.empty() && !fileExists(uiIconOverrideElem.c_str()))
+				mc2::fmt::print_out("[UIProfile:VALIDATE] {}: declared UI asset '{}' not found (reason={:d})\n", fileName, uiIconOverrideElem, mc2::fmt::as_i32(static_cast<int>(UPV_UI_ASSET_MISSING)));
 		}
 	}
 

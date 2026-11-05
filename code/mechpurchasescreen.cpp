@@ -299,12 +299,12 @@ void MechPurchaseScreen::begin()
 	oldCBillsAmount = LogisticsData::instance->getCBills();
 
 
-	for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
+	for (auto & mechElem : mechList)
 		{
-			if ( (*iter)->getForceGroup() )
+			if ( mechElem->getForceGroup() )
 				continue;
 		
-			prevInventory.push_back( *(*iter) );
+			prevInventory.push_back( *mechElem );
 			
 	
 			bool bFound = 0;
@@ -312,13 +312,13 @@ void MechPurchaseScreen::begin()
 			for ( int i = 0; i < inventoryListBox.GetItemCount(); i++ )
 			{
 				if ( (static_cast<MechListBoxItem*>(inventoryListBox.GetItem(i)))->getMech()->getVariant()
-					== (*iter)->getVariant() )
+					== mechElem->getVariant() )
 					bFound = true;
 			}
 
 			if ( !bFound )
 			{
-				MechListBoxItem* item = new MechListBoxItem( (*iter), 1 );
+				MechListBoxItem* item = new MechListBoxItem( mechElem, 1 );
 				inventoryListBox.AddItem( item );	
 
 			}
@@ -387,11 +387,11 @@ void MechPurchaseScreen::end()
 
 
 		unsigned long base, color1, color2;
-		for (auto & pIter : prevInventory)
+		for (auto & prevInventoryElem : prevInventory)
 		{
-			pIter.getColors(base, color1, color2);
-			LogisticsData::instance->addMechToInventory( pIter.getVariant(), pIter.getPilot(),
-				pIter.getForceGroup(), true );
+			prevInventoryElem.getColors(base, color1, color2);
+			LogisticsData::instance->addMechToInventory( prevInventoryElem.getVariant(), prevInventoryElem.getPilot(),
+				prevInventoryElem.getForceGroup(), true );
 		}
 
 	}

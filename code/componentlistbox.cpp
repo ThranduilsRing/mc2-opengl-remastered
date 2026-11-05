@@ -388,20 +388,20 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 	//	}
 	}
 
-	for (auto & iter : masterComponentList)
+	for (auto & masterComponentElem : masterComponentList)
 		{
-			if ( iter->getComponent()->isAvailable() )
+			if ( masterComponentElem->getComponent()->isAvailable() )
 			{
-				if ( iter->getComponent()->getType() == type ||
-					iter->getComponent()->getType() == otherNewType ||
-					 iter->getComponent()->getType() == orThis ||
-					 ( orThis2 != -1 && iter->getComponent()->getType() == orThis2 ) )
+				if ( masterComponentElem->getComponent()->getType() == type ||
+					masterComponentElem->getComponent()->getType() == otherNewType ||
+					 masterComponentElem->getComponent()->getType() == orThis ||
+					 ( orThis2 != -1 && masterComponentElem->getComponent()->getType() == orThis2 ) )
 				{
-					if ( iter->globalX() > globalX() )
+					if ( masterComponentElem->globalX() > globalX() )
 					{
-						iter->move( -globalX(), 0 );
+						masterComponentElem->move( -globalX(), 0 );
 					}
-					addSortedItem( iter );
+					addSortedItem( masterComponentElem );
 				}
 			}
 		}

@@ -74,7 +74,7 @@ class ContactInfo {
 				teams[i] = 0;
 				teamSpotter[i] = 0;
 			}
-			for (unsigned short & sensor : sensors)
+			for (auto & sensor : sensors)
 				sensor = NO_SENSOR_CONTACT;
 		}
 

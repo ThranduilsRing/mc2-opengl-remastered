@@ -1,5 +1,6 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include "mc2_czstring.h"
 #include <atomic>
 #include "brain_execution_policy.h"
 #include "job_system.h"
@@ -64,7 +65,7 @@ static bool mc2SkipStaticNaturalDiagEnabled (void)
 	return(cached != 0);
 }
 
-static bool mc2StaticTypeNameStartsWith (const char* typeName, const char* prefix)
+static bool mc2StaticTypeNameStartsWith (mc2::czstring typeName, mc2::czstring prefix)
 {
 	return(typeName && prefix && (std::strncmp(typeName, prefix, std::strlen(prefix)) == 0));
 }

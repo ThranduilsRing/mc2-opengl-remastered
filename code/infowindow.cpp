@@ -93,7 +93,7 @@ ControlButton InfoWindow::buttons[2] = {0};
 InfoWindow* InfoWindow::s_instance = nullptr;
 
 
-#define SCROLLAMOUNT		3.f * Environment.screenWidth/640.f
+static float scrollAmount() { return 3.f * Environment.screenWidth/640.f; }
 extern float WeaponRanges[NUM_WEAPON_RANGE_TYPES][2];
 
 // initialize statics
@@ -140,11 +140,11 @@ void InfoWindow::init( FitIniFile& file )
 	//memset( buttonData, 0, sizeof( buttonData ) );
 
 
-	for (auto & i : buttonData)
+	for (auto & buttonDataElem : buttonData)
 	{
-		if ( i.textureHandle )
+		if ( buttonDataElem.textureHandle )
 		{
-			mc2::textures::release( i.textureHandle );
+			mc2::textures::release( buttonDataElem.textureHandle );
 		}
 	}
 
@@ -363,7 +363,7 @@ void InfoWindow::setUnit(Mover* pNewMover)
 	}
 }
 
-void InfoWindow::drawName( const char* name )
+void InfoWindow::drawName( mc2::czstring name )
 {
 	GUI_RECT rect = { NAMELEFT, NAMETOP, NAMERIGHT, SCROLLTOP};
 	drawRect( rect, 0xff000000 );
@@ -590,7 +590,7 @@ void InfoWindow::renderImGui()
 			ImDrawList* cdl = ImGui::GetWindowDrawList();
 			// legacy row wrap width: COMPONENTLEFT .. SCROLLLEFT
 			const float wrapW = static_cast<float>(( SCROLLLEFT - COMPONENTLEFT )) * sx;
-			auto BitmapRow = [&]( const char* text, ImU32 col ){
+			auto BitmapRow = [&]( mc2::czstring text, ImU32 col ){
 				const ImVec2 cur = ImGui::GetCursorScreenPos();
 				const float h = HudFont::DrawWrapped( cdl, rowFont,
 					cur.x, cur.y, wrapW, col, text, sx, sy );
@@ -861,14 +861,14 @@ void InfoWindow::renderImGui()
 		// (InfoWindow::update: getMouseLeftButtonState()==MC2_MOUSE_DOWN fires
 		// handleClick every frame — code/infowindow.cpp:901-914; MC2_MOUSE_DOWN
 		// is the held state, mclib/userinput.h:32), each frame stepping
-		// scrollPos by SCROLLAMOUNT = 3.f*Environment.screenWidth/640.f thumb
+		// scrollPos by scrollAmount() = 3.f*Environment.screenWidth/640.f thumb
 		// px (code/infowindow.cpp:82, handleClick :1444-1457, setScrollPos
 		// clamp :1529-1537). Thumb px convert to content px via increment =
 		// infoLength/(SCROLLMAX-SCROLLMIN) (drawScrollingStuff :1192) where
 		// SCROLLMAX = buttons[1].location[0].y - buttonHeight - 2 and
 		// buttonHeight = physRange^2/(physRange+infoLength) clamped to
 		// SCROLLBUTTONHEIGHT (render() :796-806). ImGui equivalent with the
-		// same constants: step_dev = SCROLLAMOUNT * scrollMaxY_dev /
+		// same constants: step_dev = scrollAmount() * scrollMaxY_dev /
 		// (SCROLLMAX_dyn - SCROLLMIN).
 		const float physRange = buttons[1].location[0].y - buttons[0].location[2].y;
 		const float infoLen = ( sy > 0.0f ) ? loadoutScrollMax / sy : 0.0f;
@@ -878,7 +878,7 @@ void InfoWindow::renderImGui()
 		const float scrollMaxDyn = buttons[1].location[0].y - thumbH - 2.0f;
 		const float trackRange = scrollMaxDyn - static_cast<float>(SCROLLMIN);
 		const float stepDev = ( trackRange > 0.0f )
-			? SCROLLAMOUNT * loadoutScrollMax / trackRange : 0.0f;
+			? scrollAmount() * loadoutScrollMax / trackRange : 0.0f;
 
 		ImGui::PushStyleVar( ImGuiStyleVar_WindowMinSize, ImVec2( 1.0f, 1.0f ) );
 		ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );
@@ -1046,15 +1046,15 @@ void InfoWindow::render()
 		v[1].y = v[2].y = HEALTHBOTTOM;
 
 		unsigned long dimColor = ( color & 0xff7f7f7f );
-		for (auto & i : v)
-			i.argb = dimColor;
+		for (auto & vElem : v)
+			vElem.argb = dimColor;
 
 		gos_DrawQuads( v, 4 );
 
 		v[2].x = v[3].x = HEALTHLEFT + (HEALTHRIGHT - HEALTHLEFT)* barStatus;
 
-		for (auto & i : v)
-			i.argb = color | 0xff000000;
+		for (auto & vElem : v)
+			vElem.argb = color | 0xff000000;
 
 		gos_DrawQuads( v, 4 );
 		
@@ -1310,12 +1310,12 @@ void InfoWindow::extractLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 	eq[2] = pUnit->jumpJets;
 	eq[3] = pUnit->isMech() ? pUnit->sensor : 255;
 
-	for ( int e = 0; e < 4; e++ )
+	for (const auto eqElem : eq)
 	{
-		if ( eq[e] != 255 )
+		if ( eqElem != 255 )
 		{
 			char tmpName[256];
-			cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[eq[e]].masterID, tmpName, 255 );
+			cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[eqElem].masterID, tmpName, 255 );
 			out.push_back( { std::string( tmpName ), 0xffc29b00u } );
 		}
 	}
@@ -1638,11 +1638,11 @@ void InfoWindow::drawScrollingStuff()
 
 
 
-		for (const auto & specialtie : pilotRows.specialties)
+		for (const auto & specialty : pilotRows.specialties)
 		{
 			if ( curY > NAMETOP )
 			{
-				componentFont.render( specialtie.c_str(), NAMELEFT, curY, NAMERIGHT - NAMELEFT, height, 0xff005392, 0, 0 );
+				componentFont.render( specialty.c_str(), NAMELEFT, curY, NAMERIGHT - NAMELEFT, height, 0xff005392, 0, 0 );
 			}
 			curY += height;
 		}
@@ -1660,11 +1660,11 @@ void InfoWindow::handleClick( int ID )
 	switch( ID )
 	{
 	case SCROLLUP:
-		setScrollPos( scrollPos - SCROLLAMOUNT );
+		setScrollPos( scrollPos - scrollAmount() );
 		break;
 
 	case SCROLLDOWN:
-		setScrollPos( scrollPos + SCROLLAMOUNT );
+		setScrollPos( scrollPos + scrollAmount() );
 		break;
 
 	}
@@ -1686,8 +1686,8 @@ void InfoWindow::drawDivider( float yVal )
 
 
 	memset( v, 0, sizeof( gos_VERTEX ) * 2 );
-	for (auto & i : v)
-		i.rhw = .5f;
+	for (auto & vElem : v)
+		vElem.rhw = .5f;
 
 	v[0].x = DIVIDERLEFT;
 	v[0].y = v[1].y = yVal;

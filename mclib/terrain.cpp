@@ -58,7 +58,7 @@ std::unique_ptr<char[]> Terrain::colorMapNameOwner;
 // C1 tactical material profile (see terrain.h). Default LEGACY = exact
 // pre-C1 byte-for-byte behavior; only mc2_24 currently flips to a
 // non-LEGACY profile.
-int							g_terrainMaterialProfile = TERRAIN_MAT_PROFILE_LEGACY;
+int							g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_LEGACY);
 
 // Terrain LOD chunk renderer gate — DEFAULT ON (cutover 2026-06-09). Opt out with
 // MC2_TERRAIN_LOD_CHUNK=0. Cached once. Single source of truth (see terrain.h).

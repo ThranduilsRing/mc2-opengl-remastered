@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "Gates/preferences_legacy.h"
 #include "sim_overlap.h"
@@ -158,7 +159,7 @@ void SoundSystem::destroy (void)
 }
 
 //---------------------------------------------------------------------------
-long SoundSystem::init (const char *soundFileName)
+long SoundSystem::init (mc2::czstring soundFileName)
 {
 	gosAudio_ClearMusicCache();
 	if (useSound)
@@ -766,7 +767,7 @@ std::optional<long> SoundSystem::playDigitalMusic (long musicId)
 }
 
 //---------------------------------------------------------------------------
-std::optional<long> SoundSystem::playDigitalStream (const char *streamName)
+std::optional<long> SoundSystem::playDigitalStream (mc2::czstring streamName)
 {
     if (mc2::tick::collecting()) {
         const std::string name = streamName ? streamName : "";
@@ -874,7 +875,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 }
 
 //---------------------------------------------------------------------------
-long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
+long SoundSystem::playSupportSample (unsigned long supportSampleId, mc2::czstring fileName)
 {
     const bool queued = mc2::tick::collecting();
     if (queued) {
@@ -948,9 +949,9 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 //---------------------------------------------------------------------------
 bool SoundSystem::isPlayingSample (long sampleId)
 {
-	for (long i : channelSampleId)
+	for (const auto channelSampleIdElem : channelSampleId)
 	{
-		if (sampleId == i)
+		if (sampleId == channelSampleIdElem)
 			return TRUE;
 	}
 

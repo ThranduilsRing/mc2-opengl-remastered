@@ -8,6 +8,7 @@
 
 //---------------------------------------------------------------------------
 // Include Files
+#include "mc2_czstring.h"
 #include "content_error.h"
 #include <string>
 #ifndef MCLIB_H
@@ -215,7 +216,7 @@ bool ObjectType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collid
 	return(true);
 }
 
-void ObjectType::setAppearanceTypeName (const char* name)
+void ObjectType::setAppearanceTypeName (mc2::czstring name)
 {
 	if (!name) return;
 	appearNameStore = name;
@@ -226,7 +227,7 @@ void ObjectType::setAppearanceTypeName (const char* name)
 //* GAMEOBJECT TYPE MANAGER class
 //***************************************************************************
 
-long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes) {
+long ObjectTypeManager::init (mc2::czstring objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes) {
 
 	destroy();
 	FullPathFileName objectName;

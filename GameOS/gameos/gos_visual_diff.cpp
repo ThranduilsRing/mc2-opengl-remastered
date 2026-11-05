@@ -15,6 +15,7 @@
 // values (60-90) suffice -- the intro-pan wall-clock jitter is upstream of
 // the latch and cancels across runs. Per-mission frameN tuning lives in the
 // Python harness.
+#include "mc2_czstring.h"
 #include "gos_visual_diff.h"
 #include "gos_screenshot.h"
 #include "gos_smoke.h"
@@ -48,7 +49,7 @@ struct State {
 State s_state;
 
 // The presented frame was read back and written (or the write failed).
-void onCaptureDone(const char* path, bool ok, int w, int h) {
+void onCaptureDone(mc2::czstring path, bool ok, int w, int h) {
     if (ok) {
         const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
         mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_done out={} w={:d} h={:d} mission={}\n", mc2::fmt::safe(path), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::safe(mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)"));

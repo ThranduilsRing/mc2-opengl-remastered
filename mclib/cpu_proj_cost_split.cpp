@@ -2,6 +2,7 @@
 //
 // See cpu_proj_cost_split.h header for spec, audit, and design rationale.
 
+#include "mc2_czstring.h"
 #include "cpu_proj_cost_split.h"
 
 #include <algorithm>
@@ -121,10 +122,10 @@ static void emit_window_stats() {
     const size_t nFrames = s_winNs[0].size();
     std::vector<int64_t> projTotal(nFrames, 0);
     for (size_t f = 0; f < nFrames; ++f) {
-        for (auto & s_winN : s_winNs) {
+        for (auto & winN : s_winNs) {
             // All bucket rings are kept in lock-step (same number of frames).
-            if (f < s_winN.size())
-                projTotal[f] += s_winN[f];
+            if (f < winN.size())
+                projTotal[f] += winN[f];
         }
     }
 
@@ -210,13 +211,13 @@ void init_from_env() {
 
 void frame_begin() {
     if (!g_cpuProjEnabled) return;
-    for (auto & b : s_curFrameBucket) {
-        b.ns       = 0;
-        b.workload = 0;
+    for (auto & curFrameBucketElem : s_curFrameBucket) {
+        curFrameBucketElem.ns       = 0;
+        curFrameBucketElem.workload = 0;
     }
-    for (auto & s : s_curFrameSidecar) {
-        s.ns       = 0;
-        s.workload = 0;
+    for (auto & curFrameSidecarElem : s_curFrameSidecar) {
+        curFrameSidecarElem.ns       = 0;
+        curFrameSidecarElem.workload = 0;
     }
 }
 
@@ -242,7 +243,7 @@ void frame_end() {
     }
 }
 
-void hard_reset(const char* reason) {
+void hard_reset(mc2::czstring reason) {
     if (!g_cpuProjEnabled) return;
     // Flush any partial-window data first so the just-ended mission's data
     // isn't silently dropped.
@@ -270,7 +271,7 @@ void hard_reset(const char* reason) {
     mc2::fmt::print_err("[CPU_PROJ v1] hard_reset reason={}\n", mc2::fmt::safe(reason ? reason : "(none)"));
 }
 
-void final_stats(const char* reason) {
+void final_stats(mc2::czstring reason) {
     if (!g_cpuProjEnabled) return;
     if (s_finalStatsEmitted) return;
     // Flush partial window (1..WINDOW_FRAMES-1 frames not yet stats'd).

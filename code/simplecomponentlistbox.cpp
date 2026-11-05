@@ -112,7 +112,7 @@ void ComponentListBox::setComponents( long componentCount, LogisticsComponent** 
 			MemSet(finalListCount, 0);
 			for ( int j = 0; j < componentCount; j++ )
 			{
-				if ( components[j]->getRangeType() == (LogisticsComponent::WEAPON_RANGE)i ) // short, med, long
+				if ( components[j]->getRangeType() == static_cast<LogisticsComponent::WEAPON_RANGE>(i) ) // short, med, long
 				{
 					bool bFound = 0;
                     int k = 0;

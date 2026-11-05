@@ -249,9 +249,9 @@ long LogisticsPilot::load( FitIniFile& file )
 void LogisticsPilot::clearIcons()
 {
 	// clear out the old ones
-	for ( auto iter = killedIcons.begin(); iter != killedIcons.end(); ++iter )
+	for (auto & killedIcon : killedIcons)
 	{
-		delete (*iter);
+		delete killedIcon;
 	}
 
 	killedIcons.clear();
@@ -262,9 +262,9 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 #ifndef VIEWER
 	
 	// clear out the old ones
-	for ( auto iter = killedIcons.begin(); iter != killedIcons.end(); ++iter )
+	for (auto & killedIcon : killedIcons)
 	{
-		delete (*iter);
+		delete killedIcon;
 	}
 
 	killedIcons.clear();
@@ -535,7 +535,7 @@ int LogisticsPilot::turnAverageIntoRank( float avg)
 int			LogisticsPilot::getSpecialtySkillCount() const
 {
 	int count = 0;
-	for (bool specialtySkill : specialtySkills)
+	for (const auto specialtySkill : specialtySkills)
 	{
 		if ( specialtySkill )
 		count++;

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "brain_special_dispatch.h"
 #include "mc2fmt.h"
 #include <cstdio>
@@ -30,7 +31,7 @@
 //   "^\s*trans\s+(\w+);"  → TRANS(target)
 //   "^\s*transBack\s*;"   → TRANS_BACK
 //   else                  → OTHER_TODO (variable decls, misc — counted but not detail-traced)
-int scanFsmTodosFromFile(const char* missionName, BrainSpecialBody& outBody) {
+int scanFsmTodosFromFile(mc2::czstring missionName, BrainSpecialBody& outBody) {
     outBody.fsmTodos.clear();
 
     char fitPath[256];

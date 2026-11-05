@@ -191,9 +191,6 @@ void
 
 	Scalar falloff = 1.0f;
 
-#if COLOR_AS_DWORD
-	TO_DO;
-#else
 	if(GetFalloff(length, falloff))
 	{
 		light_color.red *= falloff;
@@ -214,5 +211,4 @@ void
 		vertexData.color->green += light_color.green;
 		vertexData.color->blue += light_color.blue;
 	}
-#endif
 }

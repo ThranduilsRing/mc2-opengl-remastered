@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include "../../RenderCore/MissionEnvironment.h"
 #include <string_view>
 
@@ -13,7 +14,7 @@
 //
 // Override profile path with env var MC2_VISUAL_TUNING_FILE.
 
-void visualTuning_applyProfile(const char* missionName);
+void visualTuning_applyProfile(mc2::czstring missionName);
 bool visualTuning_saveCurrentToMission();  // write current slider state to JSON for active mission
 
 const char* visualTuning_getProfilePath();

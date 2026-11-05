@@ -7,6 +7,7 @@
 //
 //***************************************************************************
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 
 #ifndef ABLGEN_H
@@ -78,7 +79,7 @@ TokenCodeType	CaseLabelStartList[] = {
 					TKN_NONE
 				};
 
-SymTableNodePtr forwardState (const char* stateName);
+SymTableNodePtr forwardState (mc2::czstring stateName);
 
 //***************************************************************************
 

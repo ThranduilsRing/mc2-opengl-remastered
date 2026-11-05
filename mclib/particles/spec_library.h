@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "mc2_czstring.h"
 #include "gosfx/effect.hpp"
 #include <stuff/stuff.hpp>
 
@@ -29,7 +30,7 @@ public:
     void Load(Stuff::MemoryStream* stream);
     void Save(Stuff::MemoryStream* stream);
 
-    gosFX::Effect::Specification* Find(const char* name);
+    gosFX::Effect::Specification* Find(mc2::czstring name);
 
     // Index-based access used by gosFX::EffectLibrary::MakeEffect forwarder.
     gosFX::Effect::Specification* At(unsigned index);

@@ -1,4 +1,5 @@
 // Mover: tactical orders, weapon helpers, weapon-fire/critical-hit/radio chunk queues, contacts and weapon queries.
+#include "mc2_czstring.h"
 #include "content_error.h"
 #include <cstdio>
 // Declared in mover.h; shared names in mover_internal.h.
@@ -216,7 +217,7 @@ void Mover::setPilotHandle (long _pilotHandle) {
 	}
 }
 
-void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, LogisticsPilot *lPilot) {
+void Mover::loadPilot (mc2::czstring pilotFileName, mc2::czstring brainFileName, LogisticsPilot *lPilot) {
 
 	if (pilot) {
 		MechWarrior::freeWarrior(pilot);
@@ -716,7 +717,7 @@ long Mover::getWeaponShots (long weaponIndex) {
 
 	// All ammo, as listed in the Master Component Table, is a fixed index
 	// greater than the weapon itself.
-	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoType())
+	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoType() != WEAPON_AMMO_NONE)
 		return(ammoTypeTotal[inventory[weaponIndex].ammoIndex].curAmount);
 
 	return(UNLIMITED_SHOTS);
@@ -819,7 +820,7 @@ void Mover::calcAmmoTotals (void)
 			if (newAmmoType) 
 			{
 				totalList[numAmmoTypes].masterId = MasterComponent::masterList[weaponMasterId].getWeaponAmmoMasterId();
-				if (MasterComponent::masterList[weaponMasterId].getWeaponAmmoType()) 
+				if (MasterComponent::masterList[weaponMasterId].getWeaponAmmoType() != WEAPON_AMMO_NONE) 
 				{
 					totalList[numAmmoTypes].curAmount = 0;
 					totalList[numAmmoTypes].maxAmount = 0;
@@ -1158,7 +1159,7 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 	if (listSize == -1) {
 		for (long item = numOther; item < (numOther + count); item++) {
 			scored[item - numOther].id = static_cast<std::int32_t>(item);
-			switch (sortType) {
+			switch (static_cast<WeaponSortType>(sortType)) {
 				case WEAPONSORT_ATTACKCHANCE:
 					scored[item - numOther].score = calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, nullptr);
 					break;
@@ -1179,7 +1180,7 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 			if (weaponList[item] == -1)
 				sortValue = -999.0;
 			else
-				switch (sortType) {
+				switch (static_cast<WeaponSortType>(sortType)) {
 					case WEAPONSORT_ATTACKCHANCE:
 						sortValue = calcAttackChance(target, aimLocation, scenarioTime, weaponList[item], 0.0, nullptr);
 						break;

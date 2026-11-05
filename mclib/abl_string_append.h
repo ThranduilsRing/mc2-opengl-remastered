@@ -4,6 +4,7 @@
 // in a char[50]; two 19-character positions made it 65 characters) and corrupted the neighbouring heap block.
 #pragma once
 
+#include "mc2_czstring.h"
 #include <algorithm>
 #include <cstddef>
 #include <span>
@@ -12,7 +13,7 @@
 namespace abl {
 
 // A possibly-null C string as a view (null is the empty text).
-inline std::string_view textOf(const char* s) noexcept {
+inline std::string_view textOf(mc2::czstring s) noexcept {
 	return s ? std::string_view{s} : std::string_view{};
 }
 

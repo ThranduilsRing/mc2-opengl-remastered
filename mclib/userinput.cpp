@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "utils/mc2log.h"
 //---------------------------------------------------------------------------
 //
@@ -57,7 +58,7 @@ extern volatile bool 	mc2IsInMouseTimer;
 void MouseTimerInit();
 void MouseTimerKill();
 //---------------------------------------------------------------------------
-void MouseCursorData::initCursors (const char *cursorFileName)
+void MouseCursorData::initCursors (mc2::czstring cursorFileName)
 {
 	ZoneScopedN("MouseCursorData::initCursors");
 	//New
@@ -495,7 +496,7 @@ void UserInput::update (void)
 }
 
 //---------------------------------------------------------------------------
-void UserInput::initMouseCursors (const char *mouseFile)
+void UserInput::initMouseCursors (mc2::czstring mouseFile)
 {
 	ZoneScopedN("UserInput::initMouseCursors");
 	if (cursors)

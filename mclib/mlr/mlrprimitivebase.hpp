@@ -21,11 +21,7 @@ namespace MidLevelRenderer {
 		void Destroy();
 
 		Stuff::DynamicArrayOf<Stuff::Vector4D> coords; // [Max_Number_Vertices_Per_Polygon]
-#if COLOR_AS_DWORD
-		Stuff::DynamicArrayOf<DWORD> colors; //[Max_Number_Vertices_Per_Polygon];
-#else
 		Stuff::DynamicArrayOf<Stuff::RGBAColor>  colors; //[Max_Number_Vertices_Per_Polygon];
-#endif
 		Stuff::DynamicArrayOf<Vector2DScalar> texCoords; //[2*Max_Number_Vertices_Per_Polygon];
 		Stuff::DynamicArrayOf<MLRClippingState> clipPerVertex; //[Max_Number_Vertices_Per_Polygon];
 	};
@@ -304,11 +300,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<unsigned char>	lengths;	// List of strip lengths 
 
-#if COLOR_AS_DWORD	// clipExtraColors for the future generations !!!
-		static std::unique_ptr<Stuff::DynamicArrayOf<DWORD>> clipExtraColors; // , Max_Number_Vertices_Per_Mesh
-#else
 		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::RGBAColor>> clipExtraColors;  // , Max_Number_Vertices_Per_Mesh
-#endif
 
 		static std::unique_ptr<Stuff::DynamicArrayOf<MLRClippingState>> clipPerVertex;  // , Max_Number_Vertices_Per_Mesh
 
@@ -374,11 +366,7 @@ namespace MidLevelRenderer {
 	struct ClipData2
 	{
 		Stuff::Vector4D *coords;
-#if COLOR_AS_DWORD
-		DWORD *colors;
-#else
 		Stuff::RGBAColor *colors;
-#endif
 		Vector2DScalar *texCoords;
 		MLRClippingState *clipPerVertex;
 
