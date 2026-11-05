@@ -50,6 +50,7 @@ add_executable(mc2_tests
     test_hashing.cpp
     test_projection.cpp     # currently scope-stopped; placeholder skipped case
     test_argb_pack.cpp
+    test_mech_tangent_sign.cpp
     test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_camera_start_pick.cpp
