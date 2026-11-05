@@ -104,16 +104,17 @@ def test_queue_submits_one_ssh_to_the_group_and_returns_the_task_id(monkeypatch,
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "determinism"])
     assert rc == 0
     pueue = [s for s in sent if "pueue add" in s[0]]
-    assert len(pueue) == 1
-    cmd, stdin = pueue[0]
-    assert "-g gpu1 --print-task-id" in cmd and stdin == box_run.REMOTE.encode()
+    assert len(pueue) == 2   # build task (build group, no GPU slot) then the GPU task that waits on it
+    assert "-g build " in pueue[0][0] and base64.b64encode(b"build").decode() in pueue[0][0]
+    cmd, stdin = pueue[1]
+    assert "-g gpu1 -a 12 --print-task-id" in cmd and stdin == box_run.REMOTE.encode()
     assert base64.b64encode(b"determinism").decode() in cmd
     assert "queued task=12 group=gpu1" in capsys.readouterr().out
 
 
 def test_queue_gate_goes_to_the_gate_group(monkeypatch, tmp_path):
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gate"])
-    assert rc == 0 and any("-g gate --print-task-id" in s[0] for s in sent)
+    assert rc == 0 and any("-g gate -a 12 --print-task-id" in s[0] for s in sent)
 
 
 def test_blocking_mode_stays_the_default_one_ssh_run(monkeypatch, tmp_path):
@@ -280,5 +281,65 @@ def test_deploy_never_requires_files_the_lane_tree_did_not_build():
 def test_unit_row_configures_the_doctest_tier_with_the_box_clang_toolchain():
     # defect: a bare `cmake -S tests/unit` on the box found no compiler ("CMAKE_CXX_COMPILER not set")
     i = box_run.REMOTE.index("    unit)")
-    row = box_run.REMOTE[i:box_run.REMOTE.index("    sh:*)", i)]
-    assert "-S tests/unit" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
+    row = box_run.REMOTE[i:box_run.REMOTE.index("    build)", i)]
+    assert "-S \\$PWD/tests/unit" in row and "box_exclude.txt" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
+
+
+def test_build_and_unit_rows_queue_in_the_build_group_and_hold_no_gpu_slot(monkeypatch, tmp_path):
+    rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "build"])
+    pueue = [s for s in sent if "pueue add" in s[0]]
+    assert rc == 0 and len(pueue) == 1 and "-g build --print-task-id" in pueue[0][0] and "-g gpu" not in pueue[0][0]
+
+
+def test_build_runs_before_the_gpu_lock_and_on_cores_32_63():
+    r = box_run.REMOTE
+    assert r.index("ninja -C build64-ninja") < r.index("take_lock; LOCKED=1") < r.index("$RUN timeout -k 30")   # build, then lazy lock, then rows
+    assert "BCPUS=32-63" in r and "-j16 mc2" in r
+    assert "    build)" in r
+
+
+def test_filler_push_is_noop_at_the_current_sha_and_otherwise_bundles_and_syncs(monkeypatch, tmp_path):
+    import box_filler_push
+    sent = []
+    monkeypatch.setattr(box_run, "git", lambda *a, repo=None: SHA)
+    def fake_run(cmd, **kw):
+        sent.append((cmd[-1], kw.get("input")))
+        out = SHA if "current_sha" in cmd[-1] and "cat >" not in cmd[-1] else ""
+        return SimpleNamespace(returncode=0, stdout=out, stderr="")
+    monkeypatch.setattr(box_filler_push, "run", fake_run)
+    assert box_filler_push.main(["--repo", str(tmp_path)]) == 0 and len(sent) == 1   # already current: nothing uploaded, no sync
+    sent.clear()
+    monkeypatch.setattr(box_filler_push, "run", lambda cmd, **kw: (sent.append((cmd[-1], kw.get("input"))), SimpleNamespace(returncode=0, stdout="", stderr=""))[1])
+    monkeypatch.setattr(box_filler_push.subprocess, "run", lambda cmd, **kw: (Path(cmd[6]).write_bytes(b"B") if "bundle" in cmd else None, SimpleNamespace(returncode=0, stdout="", stderr=""))[1])
+    assert box_filler_push.main(["--repo", str(tmp_path)]) == 0
+    assert any("incoming/nifty.bundle" in c for c, _ in sent) and any("-g build" in c and "sync.sh" in c for c, _ in sent)
+
+
+def test_only_game_rows_take_the_lock_cpu_rows_run_first_under_timeout():
+    r = box_run.REMOTE
+    assert "case $r in build|unit|cpu:*|sh:*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
+    assert "build|unit|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
+    assert "$RUN timeout -k 30 $TMO bash -c" in r and "unit) TMO=1200" in r and "smoke*|capture:*) TMO=600" in r and "*) TMO=1800" in r
+    assert "sh:*|cpu:*)  cmd=" in r and "gpu:*)" in r
+    assert "(SECONDS - LW0)" in r   # the 30 min lock wait is not eaten by the build
+
+
+def test_exit_trap_clears_the_owner_file_and_lane_lock_serialises_runs():
+    r = box_run.REMOTE
+    assert "rm -f /workspace/locks/gpu$GOT.owner" in r and r.index("trap '") < r.index("take_lock()")
+    assert "exec 8>$L/.lane.lock; flock 8" in r and "8>&-" in r
+    assert "CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1" in r
+
+
+def test_ssh_options_fail_fast_and_script_is_uploaded_under_a_temp_name(monkeypatch, tmp_path):
+    o = " ".join(box_run.SSH)
+    assert "BatchMode=yes" in o and "ConnectTimeout=15" in o and "StrictHostKeyChecking=accept-new" in o
+    rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "determinism"])
+    assert all(".new.$$ && mv -f" in c for c, _ in sent if "pueue add" in c)
+
+
+def test_cap0_is_dropped_once_head_contains_the_headless_present_fix(monkeypatch, tmp_path):
+    monkeypatch.setattr(box_run, "has_vk_headless", lambda repo: True)
+    rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "smoke-lite"])
+    cmd = [c for c, _ in sent if "pueue add" in c][-1]
+    assert " 1 " + base64.b64encode(b"smoke-lite").decode() not in cmd and " 0 " + base64.b64encode(b"smoke-lite").decode() in cmd

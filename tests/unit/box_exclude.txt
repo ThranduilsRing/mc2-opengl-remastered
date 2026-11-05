@@ -1,0 +1,9 @@
+# doctest cases the Linux box's clang/libc++ run excludes (box_run.py unit row). One pattern per line, `# reason` after it.
+# Only data- or ABI-dependent cases belong here; a real failure is reported, never listed. The PC (MSVC) runs every case.
+stock fst parity* # reads the stock FST archives from a Windows install path; the box has no such install under the test's search roots
+ObjectSlot real saves BLDG # reads real stock saves/data from the Windows install tree
+save fields: MechData inherited census* # the save codec rejects the LP64 sample (mover_ammo): `long` is 8 bytes on Linux, 4 on MSVC; the saved layout is Windows-defined
+save fields: GroundVehicleData inherited census* # same LP64 reject (mover_control)
+save fields: GateData inherited census* # same LP64 reject
+save fields: WeaponBoltData independent inherited census* # same LP64 reject
+save fields: ANIM independent member census* # asserts sizeof(T) from the MSVC layout (+14 padding); libc++/LP64 lays the struct out differently
