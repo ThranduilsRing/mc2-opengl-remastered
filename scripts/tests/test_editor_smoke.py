@@ -1429,7 +1429,7 @@ class NativePanelHostOwnershipTests(unittest.TestCase):
     def test_other_worktree_and_unregistered_installs_are_rejected(self):
         with patch.object(smoke, "REPO", Path("A:/Games/different-worktree")):
             self.assertFalse(smoke.panel_render_host_allowed(Path("A:/Games/mc2-opengl/mc2-win64-lane2/Mission Editor Smoke.exe")))
-        self.assertFalse(smoke.panel_render_host_allowed(Path("A:/Games/mc2-opengl/mc2-win64-v0.4/Mission Editor Smoke.exe")))
+        self.assertFalse(smoke.panel_render_host_allowed(Path("A:/Games/mc2-opengl/mc2-win64-v0.4c/Mission Editor Smoke.exe")))
 
     def test_owned_render_case_reaches_fingerprint_validation(self):
         with scratch_directory() as directory:

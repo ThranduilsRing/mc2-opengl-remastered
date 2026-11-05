@@ -1285,7 +1285,7 @@ class FrozenParityTests(unittest.TestCase):
 
     def test_owned_marker_reload_requires_clean_current_lane3_executable(self):
         from scripts.run_editor_smoke import marker_reload_provenance
-        exe = Path("A:/Games/mc2-opengl/mc2-win64-lane3/Mission Editor.exe").resolve()
+        exe = (Path("A:/Games/mc2-opengl/mc2-win64-v0.4") / "Mission Editor.exe").resolve()
         head = "0123456789abcdef"
         with patch("scripts.run_editor_smoke.subprocess.check_output", return_value=head), patch.object(Path, "read_bytes", return_value=b"editor"):
             for fingerprint, observed in (({"present": False, "reason": "banner-absent"}, '"reason": "banner-absent"'),
@@ -1301,7 +1301,7 @@ class FrozenParityTests(unittest.TestCase):
                     self.assertIn("rebuild EditRel", detail)
             with patch("scripts.run_editor_smoke.exe_fingerprint.extract", return_value={"present": True, "sha12": head[:12], "dirty": False}):
                 self.assertEqual(marker_reload_provenance(exe)["head"], head)
-        with self.assertRaisesRegex(ValueError, "restricted to lane3"):
+        with self.assertRaisesRegex(ValueError, "restricted to the editor smoke install"):
             marker_reload_provenance(self.root / "editor.exe")
 
     def test_enemy_cells_same_count_and_remapped_player_controls(self):

@@ -25,8 +25,7 @@ py -3 tools/blender_pipeline/batch_driver.py my_batch.json `
     --deploy-tgl-dir "A:/Games/mc2-opengl/mc2-win64-v0.3/data/tgl"
 ```
 
-Blender discovery (same pattern as `tools/mech_import/blender_runner.py`,
-vendored in `blender_runner.py` here): `--blender` CLI arg >
+Blender discovery (`blender_runner.py` here, the single copy): `--blender` CLI arg >
 `BLENDER_EXECUTABLE` env > known installs (5.1/5.0/4.2) > PATH.
 
 ## Manifest

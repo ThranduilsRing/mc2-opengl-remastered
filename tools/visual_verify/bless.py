@@ -181,7 +181,6 @@ MIN_LUMA_STDDEV = 0.5
 # (tools/visual_verify/vk_golden_plan.md). Each backend lists the environment its runs must have declared, beside the animation freeze that
 # every named-backend golden needs (an unfrozen night pose is the run-to-run noise that refused 13 regions of the GL 1080p set).
 BACKEND_DECLARED_ENV = {
-    "gl": {"MC2_RENDER_BACKEND": "gl"},
     "vulkan": {"MC2_RENDER_BACKEND": "vulkan", "MC2_VK_SHARED_GBUFFER": "1"},
 }
 FREEZE_ENV = {"MC2_SMOKE_FREEZE_ANIM": "1"}

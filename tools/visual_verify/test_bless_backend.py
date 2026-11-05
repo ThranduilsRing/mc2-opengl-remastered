@@ -54,8 +54,8 @@ def test_vulkan_golden_records_its_backend(world):
 
 def test_unnamed_golden_records_the_requested_backend(world):
     root, exe = world
-    g = blesslib.bless(_runs(root, exe, {"requested": "gl", "drew": ["gl"]}, {"MC2_SMOKE_FREEZE_ANIM": "1", "MC2_RENDER_BACKEND": "gl"}, "gl"), root / "golden")
-    assert g["backend"] == "gl"
+    g = blesslib.bless(_runs(root, exe, VK, VK_ENV, "unnamed"), root / "golden")
+    assert g["backend"] == "vulkan"
 
 
 @pytest.mark.parametrize("backend, declared, needle", [
