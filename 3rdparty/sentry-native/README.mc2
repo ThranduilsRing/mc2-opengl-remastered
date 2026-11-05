@@ -1,0 +1,10 @@
+sentry-native 0.17.5 (https://github.com/getsentry/sentry-native), commit af9e9367913edf07f54e4f2f9655ce96af0c1681.
+License: MIT (LICENSE in this folder; crashpad is Apache-2.0, see external/crashpad/LICENSE).
+
+Used ONLY as the crashpad out-of-process minidump writer: SENTRY_BACKEND=crashpad, SENTRY_TRANSPORT=none, no DSN, so
+nothing is ever uploaded (crashpad is started with an empty upload URL). Wired in the root CMakeLists.txt; the engine side
+is GameOS/gameos/gos_crashpad.cpp and gos_crashbundle.cpp. crashpad_handler(.exe) is built next to mc2 and deployed with it.
+
+Pruned from the upstream tree to keep git small (about 21 MB): all .git* metadata, the breakpad backend, benchmarks,
+tests, examples, ndk, fuzzing-examples, libunwindstack-ndk. No source patches. Re-vendor by cloning the commit above with
+--recurse-submodules and deleting the same folders.
