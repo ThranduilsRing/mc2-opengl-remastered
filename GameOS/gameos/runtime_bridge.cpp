@@ -2,6 +2,7 @@
 #include "runtime_bridge_protocol.h"
 #include "../../3rdparty/include/nlohmann/json.hpp"
 #include "../include/build_identity.h"
+#include "diagnostic_trace.h"
 #include "../../Gates/gate_cold.h"
 #ifdef _WIN32
 #include <winsock2.h>
@@ -181,7 +182,9 @@ void shutdown() { if (configured()) transport().close(); }
 namespace mc2::bridge {
 bool configured() {
     static const bool warned = [] {
-        if (mc2::gate::get<"MC2_BRIDGE">()) std::printf("[BRIDGE v0] ev=unsupported protocol=1\n");
+        if (mc2::gate::get<"MC2_BRIDGE">() && mc2_diag::tagRequested("BRIDGE")) {
+            std::printf("[BRIDGE v0] ev=unsupported protocol=1\n");
+        }
         return true;
     }();
     (void)warned;
