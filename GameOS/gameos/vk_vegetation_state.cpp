@@ -35,9 +35,9 @@ void State::release() {
 }
 
 void State::clear(mc2vk::VulkanContext& ctx) {
-    ctx.waitIdle("veg_clear");
-    instances_.reset();
-    regions_.reset();
+    // In-flight frames may still read these: retire on the open-frame ticket instead of idling the device.
+    if (instances_) ctx.retire(std::move(instances_));
+    if (regions_) ctx.retire(std::move(regions_));
     for (Slot& s : slot_) s = Slot{};
     instanceCount_ = regionCount_ = 0;
     for (VkBuffer& b : ringBound_) b = VK_NULL_HANDLE;

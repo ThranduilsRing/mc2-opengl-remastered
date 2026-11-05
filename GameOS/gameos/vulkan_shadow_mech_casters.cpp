@@ -154,8 +154,9 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     }
 
     if (!geomUploaded_ || feed.geomGen != geomGen_) {
-        // The geometry is shared by both parities and may still be read by a frame in flight: a map change or a normals rebuild is rare, so the device idles.
-        getOrCreateEngineVulkanContext().waitIdle("shadow_mech_geometry");
+        // The geometry is shared by both parities and may still be read by a frame in flight: the old buffers retire on the open-frame ticket and fresh ones take the upload.
+        if (vbo_) getOrCreateEngineVulkanContext().retire(std::move(vbo_), vboCap_);
+        if (ibo_) getOrCreateEngineVulkanContext().retire(std::move(ibo_), iboCap_);
         if (!ensureBuffer(vbo_, vboCap_, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "shadow.mechVbo") ||
             !ensureBuffer(ibo_, iboCap_, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "shadow.mechIbo")) {
             geomUploaded_ = false;
