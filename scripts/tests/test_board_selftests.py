@@ -105,7 +105,8 @@ def test_split_path_selftest():
 
 
 def test_path_norm_selftest():
-    _assert_pass(subprocess.run(["sh", "scripts/check-path-normalization.sh", "--self-test"], **OPTS, **console_child.child_kwargs(redirected=True)))
+    # Same fork-heavy sh pipeline as the mover-registry selftest: 2.7 s idle, 231 s at Idle priority under full CPU load.
+    _assert_pass(subprocess.run(["sh", "scripts/check-path-normalization.sh", "--self-test"], **dict(OPTS, timeout=600), **console_child.child_kwargs(redirected=True)))
 
 
 def test_res_aspect_selftest():
