@@ -18,8 +18,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
 layout(location = 0) in vec3 v_worldPos;
-// vk-present-instance 8: the debug viz mode is a specialization constant (set once at pipeline create from MC2_SHADOW_DEBUG_MODE), so mode 0 compiles the whole chain out.
-layout(constant_id = 0) const int kCsmDebugMode = 0;
+layout(constant_id = 0) const int kCsmDebugMode = 0;   // vk-present-instance 8: spec constant from MC2_SHADOW_DEBUG_MODE; mode 0 compiles the debug chain out
 layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
 
@@ -459,8 +458,7 @@ void main() {
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
-        // Resolve before local lighting so the debug inputs do not stay live through its loop.
-        // Bypasses the normal composite entirely so each channel can be inspected in
+        // Resolve before local lighting so the debug inputs do not stay live through its loop. Bypasses the normal composite so each channel can be inspected in
         // isolation on a live capture. No effect when kCsmDebugMode==0.
         if (kCsmDebugMode == 1)      { fragColor = vec4(vec3(normalLight), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 2) { fragColor = vec4(lightDir * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }

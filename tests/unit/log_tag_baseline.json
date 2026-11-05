@@ -10507,6 +10507,18 @@
    "count": 1
   },
   {
+   "tag": "VK_DESC_ALLOC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "pool",
+    "sets",
+    "site"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ENGINE_CONTEXT",
    "ver": -1,
    "stream": "stderr",
