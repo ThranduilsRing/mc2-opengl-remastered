@@ -1,5 +1,7 @@
 // Mover: attack chance, shutdown/startup, refit and recover.
 // Declared in mover.h; shared names in mover_internal.h.
+#include <algorithm>
+
 #include "mover_internal.h"
 #include "Gates/gate.h"
 
@@ -195,9 +197,9 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		float armMod  = ArmShotModifier;
 		float legMod  = LegShotModifier;
 		if (s_calledShotFix) {
-			if (headMod < 0.30f) headMod = 0.30f;
-			if (armMod  < 0.45f) armMod  = 0.45f;
-			if (legMod  < 0.50f) legMod  = 0.50f;
+			headMod = std::max(headMod, 0.30f);
+			armMod = std::max(armMod, 0.45f);
+			legMod = std::max(legMod, 0.50f);
 		}
 		switch (aimLocation)
 		{
@@ -223,11 +225,9 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 			attackChance += 20.0f;
 	}
 	
-	if (attackChance > 95.0f)
-		attackChance = 95.0f;
+	attackChance = std::min(attackChance, 95.0f);
 	
-	if (attackChance < 5.0f)
-		attackChance = 5.0f;
+	attackChance = std::max(attackChance, 5.0f);
 		
 	return(attackChance);
 }
@@ -270,8 +270,7 @@ void Mover::ammoExplosion (long ammoIndex) {
 
 	// This is big ass damage for an ammo explosion!!!!
 	// Happens with the Hunchback right now.
-	if (damage > 255.0f)
-		damage = 255.0f;
+	damage = std::min(damage, 255.0f);
 
 	shotInfo.init(0, inventory[ammoIndex].masterID, damage, bodyLocation, 0.0);
 
@@ -407,8 +406,7 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 				continue;
 			if (armor[i].curArmor < armor[i].maxArmor) {
 				float pointsToUse = areaMax / repairCount;
-				if (pointsToUse > refitPoints)
-					pointsToUse = refitPoints;
+				pointsToUse = std::min(pointsToUse, refitPoints);
 				float repairValue = pointsToUse * refitCostArray[ARMOR_REFIT_COST][REFIT_VEHICLE];
 
 				if ((armor[i].curArmor + repairValue) > armor[i].maxArmor) {
@@ -421,8 +419,7 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 			}
 			if ((i < numBodyLocations) && (body[i].curInternalStructure < body[i].maxInternalStructure)) {
 				float pointsToUse = areaMax / repairCount;
-				if (pointsToUse > refitPoints)
-					pointsToUse = refitPoints;
+				pointsToUse = std::min(pointsToUse, refitPoints);
 				float repairValue = pointsToUse * refitCostArray[INTERNAL_REFIT_COST][REFIT_VEHICLE];
 				if ((body[i].curInternalStructure + repairValue) > body[i].maxInternalStructure) {
 					repairValue = body[i].maxInternalStructure - body[i].curInternalStructure;
@@ -451,8 +448,7 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 			if ((rearmCount > 0) && (refitPoints > 0.0) && (ammoTypeTotal[i].curAmount < ammoTypeTotal[i].maxAmount)) {
 				bool recalc = (ammoTypeTotal[i].curAmount == 0);
 				float pointsToUse = areaMax / rearmCount;
-				if (pointsToUse > refitPoints)
-					pointsToUse = refitPoints;
+				pointsToUse = std::min(pointsToUse, refitPoints);
 				float repairValue = pointsToUse * refitCostArray[AMMO_REFIT_COST][REFIT_VEHICLE] * MasterComponent::masterList[ammoTypeTotal[i].masterId].getAmmoPerTon();
 				if ((ammoTypeTotal[i].curAmount + repairValue) > ammoTypeTotal[i].maxAmount) {
 					repairValue = ammoTypeTotal[i].maxAmount - ammoTypeTotal[i].curAmount;
@@ -565,8 +561,7 @@ bool Mover::recover (void) {
 			if ((i < numBodyLocations) && (body[i].curInternalStructure < body[i].maxInternalStructure)) 
 			{
 				float pointsToUse = recoverAmount / repairCount;
-				if (pointsToUse > recoverPoints)
-					pointsToUse = recoverPoints;
+				pointsToUse = std::min(pointsToUse, recoverPoints);
 				float repairValue = pointsToUse * recoverCost;
 				if ((body[i].curInternalStructure + repairValue) > body[i].maxInternalStructure) 
 				{

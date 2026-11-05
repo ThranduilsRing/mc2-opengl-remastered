@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "render_view.h"
 // Mover: sensor text, waypoint drawing, optimal cells, mover placement, ejection and Save/CopyTo/Load.
 // Declared in mover.h; shared names in mover_internal.h.
@@ -42,7 +44,7 @@ void Mover::getWeaponBandsPresent( bool present[3] )
 {
 	present[0] = present[1] = present[2] = false;	// short / medium / long
 	int total = static_cast<int>(numOther) + static_cast<int>(numWeapons) + static_cast<int>(numAmmos);
-	if ( total > MAX_MOVER_INVENTORY_ITEMS ) total = MAX_MOVER_INVENTORY_ITEMS;
+	total = std::min(total, MAX_MOVER_INVENTORY_ITEMS);
 	for ( int j = 0; j < total; j++ )
 	{
 		MasterComponent& mc = MasterComponent::masterList[inventory[j].masterID];

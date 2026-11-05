@@ -1,5 +1,7 @@
 // Mover: multiplayer MoveChunk/StatusChunk build, pack, unpack and compare, plus MoverDynamics and MoverControl.
 // Declared in mover.h; shared names in mover_internal.h.
+#include <algorithm>
+
 #include "terrain_part_chunk.h"
 #include "mover_internal.h"
 #include "mc2fmt.h"
@@ -163,8 +165,7 @@ void MoveChunk::build (MoverPtr mover, MovePathPtr path1, MovePathPtr path2) {
 //			Assert(curStep > 1, curStep, " MoveChunk.build: path2 and curStep == 1 ");
 			if (numSteps < (MOVECHUNK_NUM_STEPS + 1)) {
 				long numAdditionalSteps = (MOVECHUNK_NUM_STEPS + 1) - numSteps;
-				if (path2->numSteps < numAdditionalSteps)
-					numAdditionalSteps = path2->numSteps;
+				numAdditionalSteps = std::min(numAdditionalSteps, path2->numSteps);
 				for (long i = 0; i < numAdditionalSteps; i++) {
 					Assert(curStep <= MOVECHUNK_NUM_STEPS, curStep, " MoveChunk.build: path2 and bad curStep > MOVECHUNK_NUM_STEPS ");
 					stepPos[curStep][0] = path2->stepList[i].cell[0];
@@ -760,8 +761,7 @@ void MoverDynamics::init (FitIniFilePtr dynamicsFile)
 		result = dynamicsFile->readIdLong("maxVehicleYawRate", tmp);
         max.groundVehicle.yawRate = tmp;
 		Assert(result == NO_ERR, result, " MoverDynamics.init: vehicle error 3 ");
-		if (max.groundVehicle.yawRate < 720)
-			max.groundVehicle.yawRate = 720;
+		max.groundVehicle.yawRate = std::max(max.groundVehicle.yawRate, 720);
 
 		result = dynamicsFile->readIdLong("maxVehiclePivotRate", tmp);
         max.groundVehicle.pivotRate = tmp;

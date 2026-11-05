@@ -1,5 +1,7 @@
 // MissionInterfaceManager: MC2_MIF_SPLIT / MC2_IFACE_COST_SPLIT phase timing and the GPU-ground-pick parity oracle.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
+#include <algorithm>
+
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 
@@ -58,8 +60,8 @@ namespace missiongui_detail {
 		++s_mfFrames; s_mfFrameNs[MF_TOTAL]=totalNs;
 		for (int c=0;c<8;c++) { s_mfFrameNs[MF_CG_FIRST+c]=g_ifaceCgFrameNs[c]; g_ifaceCgFrameNs[c]=0; }
 		for (int i=0;i<MF_COUNT;i++) {
-			s_mfSum[i]+=s_mfFrameNs[i]; if(s_mfFrameNs[i]>s_mfMax[i]) s_mfMax[i]=s_mfFrameNs[i];
-			s_mfWinSum[i]+=s_mfFrameNs[i]; if(s_mfFrameNs[i]>s_mfWinMax[i]) s_mfWinMax[i]=s_mfFrameNs[i];
+			s_mfSum[i]+=s_mfFrameNs[i]; s_mfMax[i] = std::max(s_mfMax[i], s_mfFrameNs[i]);
+			s_mfWinSum[i]+=s_mfFrameNs[i]; s_mfWinMax[i] = std::max(s_mfWinMax[i], s_mfFrameNs[i]);
 			s_mfFrameNs[i]=0;
 		}
 		if (++s_mfWinFrames >= MF_WINDOW_FRAMES) mfEmitWindow("window");
@@ -167,8 +169,8 @@ namespace missiongui_detail {
 		const double dHoriz = std::sqrt(static_cast<double>(dx)*dx + static_cast<double>(dy)*dy);
 		const double dVert  = std::fabs(static_cast<double>(dz));
 		++s_gpcCompared;
-		s_gpcDeltaSum += dHoriz; if (dHoriz > s_gpcDeltaMax) s_gpcDeltaMax = dHoriz;
-		s_gpcDeltaZSum += dVert; if (dVert  > s_gpcDeltaZMax) s_gpcDeltaZMax = dVert;
+		s_gpcDeltaSum += dHoriz; s_gpcDeltaMax = std::max(s_gpcDeltaMax, dHoriz);
+		s_gpcDeltaZSum += dVert; s_gpcDeltaZMax = std::max(s_gpcDeltaZMax, dVert);
 		int b = dHoriz <= 0.5 ? 0 : dHoriz <= 1.0 ? 1 : dHoriz <= 2.0 ? 2
 		        : dHoriz <= 5.0 ? 3 : dHoriz <= 20.0 ? 4 : 5;
 		++s_gpcHist[b];
@@ -185,7 +187,7 @@ namespace missiongui_detail {
 		if (!s_gpAtexit) { s_gpAtexit = true; std::atexit(gpEmit); }
 		++s_gpSites;
 		s_gpCpuNs += cpuNs; ++s_gpCpuSamples;
-		if (cpuNs > s_gpCpuMaxNs) s_gpCpuMaxNs = cpuNs;
+		s_gpCpuMaxNs = std::max(s_gpCpuMaxNs, cpuNs);
 		if ((s_gpSites % static_cast<unsigned long long>(s_gpSampleN)) != 0) return;
 		if (!RenderWorld::IsObjectIdBufferEnabled()) { ++s_gpFbUnavail; return; }
 		float vMulX, vMulY, vAddX, vAddY;
@@ -208,7 +210,7 @@ namespace missiongui_detail {
 			std::chrono::duration_cast<std::chrono::nanoseconds>(
 				std::chrono::steady_clock::now() - g0).count();
 		s_gpGpuNs += gpuNs; ++s_gpGpuSamples;
-		if (gpuNs > s_gpGpuMaxNs) s_gpGpuMaxNs = gpuNs;
+		s_gpGpuMaxNs = std::max(s_gpGpuMaxNs, gpuNs);
 		// Classify the GPU result. lookupFailReason distinguishes buffer-absent
 		// (NO_FBO_OR_TEX / NO_POSTPROCESS -> R3) from an in-scene sky/far pixel.
 		if (!res.worldPosValid) {
@@ -243,8 +245,8 @@ namespace missiongui_detail {
 		const double dHoriz = std::sqrt(static_cast<double>(dx)*dx + static_cast<double>(dy)*dy);
 		const double dVert  = std::fabs(static_cast<double>(dz));
 		++s_gpCompared;
-		s_gpDeltaSum += dHoriz; if (dHoriz > s_gpDeltaMax) s_gpDeltaMax = dHoriz;
-		s_gpDeltaZSum += dVert; if (dVert  > s_gpDeltaZMax) s_gpDeltaZMax = dVert;
+		s_gpDeltaSum += dHoriz; s_gpDeltaMax = std::max(s_gpDeltaMax, dHoriz);
+		s_gpDeltaZSum += dVert; s_gpDeltaZMax = std::max(s_gpDeltaZMax, dVert);
 		int b = dHoriz <= 0.5 ? 0 : dHoriz <= 1.0 ? 1 : dHoriz <= 2.0 ? 2
 		        : dHoriz <= 5.0 ? 3 : dHoriz <= 20.0 ? 4 : 5;
 		++s_gpHist[b];

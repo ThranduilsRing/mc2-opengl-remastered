@@ -1,5 +1,7 @@
 // Mover: diagnostic dumps: chunk dump helpers, updateDebugWindow and the combat-log weapon fire/hit printers.
 // Declared in mover.h; shared names in mover_internal.h.
+#include <algorithm>
+
 #include "mover_internal.h"
 #include "mc2fmt.h"
 
@@ -405,8 +407,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 		if (moveOrders->numGlobalSteps > 0) {
 			mc2::fmt::to_buf(s, "LR:");
 			long lastIndex = moveOrders->curGlobalStep + 8;
-			if (lastIndex > moveOrders->numGlobalSteps)
-				lastIndex = moveOrders->numGlobalSteps;
+			lastIndex = std::min<long>(lastIndex, moveOrders->numGlobalSteps);
 			for (long i = 0; i < lastIndex; i++) {
 				char ss[15];
 				if (i == moveOrders->curGlobalStep)

@@ -99,8 +99,7 @@ bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
 		MPlayer->getPlayers( playerCount );
 		maxUnits = MAX_MULTIPLAYER_MECHS_IN_LOGISTICS/playerCount;
 
-		if ( maxUnits > 12 )
-			maxUnits = 12;
+		maxUnits = std::min(maxUnits, 12);
 	}
 #endif
 
