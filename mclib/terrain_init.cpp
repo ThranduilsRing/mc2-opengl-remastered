@@ -1232,13 +1232,13 @@ void Terrain::initMaterialProfile() {
 		const char *profileKey = colorMapName ? colorMapName
 		                       : terrainName  ? terrainName
 		                                      : "";
-		g_terrainMaterialProfile = TERRAIN_MAT_PROFILE_LEGACY;
+		g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_LEGACY);
 		// TERRAIN-CLASSIFY-TUNING-1: sync dirt sat window with profile so the
 		// ImGui-tunable uniforms start at the right defaults for this mission.
 		// Sand_M24 washes out to low-saturation sand; widen the dirt sat gate.
 		extern void gos_SetTerrainClassDirt(float rMinusGLo, float rMinusGHi, float rBrightLo, float rBrightHi);
 		if (profileKey[0] != '\0' && _stricmp(profileKey, "mc2_24") == 0) {
-			g_terrainMaterialProfile = TERRAIN_MAT_PROFILE_SAND_M24;
+			g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_SAND_M24);
 			// Sand_M24: widen R-G band + raise brightness ceiling for bright sun-lit sand
 			gos_SetTerrainClassDirt(-0.02f, 0.12f, 0.18f, 0.80f);
 		} else {

@@ -142,17 +142,19 @@ inline constexpr auto NO_RAM_FOR_XLAT_HS = 0xFFFA000F;
 
 //------------------------------------------------------------------------------
 // Enums
-enum WeaponSortType {
+enum class WeaponSortType : int32_t {
 	WEAPONSORT_ATTACKCHANCE,
 	NUM_WEAPONSORT_TYPES
 };
+using enum WeaponSortType;
 
-enum SpeedState {
+enum class SpeedState : int32_t {
 	SPEED_STATE_STATIONARY,
 	SPEED_STATE_MOVING,
 	SPEED_STATE_MOVING_FAST,
 	NUM_MOVE_STATES
 };
+using enum SpeedState;
 
 enum DeathCause
 {
@@ -1132,7 +1134,7 @@ public:
 //			return(frame);
 //		}
 
-		virtual long getSpeedState (void) {
+		virtual SpeedState getSpeedState (void) {
 			return(SPEED_STATE_STATIONARY);
 		}
 

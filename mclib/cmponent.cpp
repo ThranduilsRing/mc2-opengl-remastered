@@ -164,7 +164,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 
 	}
 
-	int ammoType = WEAPON_AMMO_NONE;
+	WeaponAmmoType ammoType = WEAPON_AMMO_NONE;
 	if ( field )
 	{
 		if (strcmp(field, "1") == 0)
@@ -228,7 +228,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			stats.weapon.recycleTime = recycleTime;
 			stats.weapon.heat = heat;
 			stats.weapon.ammoAmount = 1;
-			stats.weapon.ammoType = ammoType;
+			stats.weapon.ammoType = static_cast<unsigned char>(ammoType);
 			stats.weapon.range = rangeType;
 			stats.weapon.specialEffect = specialEffect;
 			stats.weapon.ammoMasterId = ammoMasterId;
@@ -470,7 +470,7 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(WEAPON_AMMO_NONE));
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(static_cast<int>(WEAPON_AMMO_NONE)));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 

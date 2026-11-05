@@ -268,9 +268,9 @@ bool BattleMech::pivotTo (void) {
 	return(false);
 }
 
-long BattleMech::getSpeedState (void) {
+SpeedState BattleMech::getSpeedState (void) {
 
-	return(mechSpeedStateArray[appearance->getCurrentGestureId()]);
+	return(static_cast<SpeedState>(mechSpeedStateArray[appearance->getCurrentGestureId()]));
 }
 
 void BattleMech::updateMoveStateGoal (void) {

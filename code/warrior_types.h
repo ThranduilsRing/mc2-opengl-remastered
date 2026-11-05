@@ -46,7 +46,7 @@ enum OrderType {
 	NUM_ORDER_TYPES
 };
 
-enum SituationType {
+enum class SituationType : int32_t {
 	SITUATION_NORMAL,
 	SITUATION_ENGAGE,
 	SITUATION_WITHDRAW,
@@ -56,8 +56,9 @@ enum SituationType {
 	SITUATION_SUICIDAL,
 	NUM_SITUATIONS
 };
+using enum SituationType;
 
-enum MechType {
+enum class MechType : int32_t {
 	MECH_TYPE_NONE,
 	MECH_TYPE_HOLLANDER,
 	MECH_TYPE_COMMANDO,
@@ -80,22 +81,25 @@ enum MechType {
 	MECH_TYPE_MASAKARI,
 	NUM_MECH_TYPES
 };
+using enum MechType;
 
-enum WeaponClass {
+enum class WeaponClass : int32_t {
 	WEAPON_CLASS_NONE,
 	WEAPON_CLASS_BALLISTIC,
 	WEAPON_CLASS_ENERGY,
 	WEAPON_CLASS_MISSILE,
 	NUM_WEAPON_CLASSES
 };
+using enum WeaponClass;
 
-enum MechWarriorRole {
+enum class MechWarriorRole : int32_t {
 	MWR_POINT,
 	MWR_WINGMAN,
 	MWR_REARGUARD,
 	MWR_SCOUT,
 	NUM_MECHWARRIOR_ROLES
 };
+using enum MechWarriorRole;
 
 enum Skill {
 	MWS_PILOTING,
@@ -104,13 +108,14 @@ enum Skill {
 	NUM_SKILLS
 };
 
-enum PersonalityTrait {
+enum class PersonalityTrait : int32_t {
 	MWP_PROFESSIONALISM,
 	MWP_DECORUM,
 	MWP_AGGRESSIVENESS,
 	MWP_COURAGE,
 	NUM_PERSONALITY_TRAITS
 };
+using enum PersonalityTrait;
 
 enum WarriorRank {
 	WARRIOR_RANK_GREEN,
@@ -149,7 +154,7 @@ enum SpecialtySkill {
 };
 
 
-enum SpecialtySkillType
+enum class SpecialtySkillType : int32_t
 {
 	WEAPON_SPECIALTY = 0,
 	CHASSIS_SPECIALTY = 1,
@@ -157,18 +162,20 @@ enum SpecialtySkillType
 	OTHER_SPECIALTY = 3
 
 };
+using enum SpecialtySkillType;
 
 inline constexpr int FIRST_REGULAR_SPECIALTY = 0;
 inline constexpr int FIRST_VETERAN_SPECIALTY = 8;
 inline constexpr int FIRST_ELITE_SPECIALTY = 14;
 inline constexpr int FIRST_ACE_SPECIALTY = 20;
 
-enum CombatValueType {
+enum class CombatValueType : int32_t {
 	CV_CURRENT,
 	CV_FIELDED,
 	CV_NEW,
 	NUM_CV_TYPES
 };
+using enum CombatValueType;
 
 enum CombatStats {
 	COMBAT_STAT_CAREER,

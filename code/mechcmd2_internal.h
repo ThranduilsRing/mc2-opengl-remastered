@@ -92,7 +92,8 @@ extern CPrefs prefs;
 #include "../GuiRuntime/GuiRuntime.h"
 #endif
 
-enum ProcType { CPU_UNKNOWN, CPU_PENTIUM, CPU_MMX, CPU_KATMAI };
+enum class ProcType : int32_t { CPU_UNKNOWN, CPU_PENTIUM, CPU_MMX, CPU_KATMAI };
+using enum ProcType;
 
 
 inline constexpr int MAX_KILL_AT_START = 100;

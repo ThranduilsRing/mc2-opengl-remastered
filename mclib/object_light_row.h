@@ -133,7 +133,7 @@ struct LightInput {
 // SlotOverrides below. A policy that changed behaviour by enum value would be
 // the old implicit-order problem wearing a new hat.
 //-----------------------------------------------------------------------------
-enum ClassPolicy : uint32_t {
+enum class ClassPolicy : uint32_t {
 	kClassNone        = 0,   // no policy: raw gather (legacy GatherLightsParameters)
 	kClassBuilding    = 1,   // sun-slot recolour  (terrain light sample)
 	kClassTree        = 2,   // ambient-slot recolour + sun DISABLED
@@ -141,6 +141,7 @@ enum ClassPolicy : uint32_t {
 	kClassVehicle     = 4,   // sun-slot recolour, per frame
 	kClassGenericProp = 5    // building pattern
 };
+using enum ClassPolicy;
 
 // A declared override of ONE light in the source list. Replaces exactly one
 // legacy mutation of the shared list. `index` is the light's position in

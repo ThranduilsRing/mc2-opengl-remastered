@@ -71,7 +71,7 @@ enum ComponentFormType {
 	NUM_COMPONENT_FORMS
 };
 
-enum WeaponAmmoType {
+enum class WeaponAmmoType : int32_t {
 	WEAPON_AMMO_NONE,		// unlimited ammo (energy weapons)
 	WEAPON_AMMO_SRM,
 	WEAPON_AMMO_LRM,
@@ -79,6 +79,7 @@ enum WeaponAmmoType {
 	WEAPON_AMMO_LIMITED,	// not SRM, LRM or ST, but still finite ammo amount
 	NUM_WEAPON_AMMO_TYPES
 };
+using enum WeaponAmmoType;
 
 enum class WeaponStateType {
 	WEAPON_STATE_READY,
@@ -319,8 +320,8 @@ class MasterComponent {
 			stats.weapon.ammoAmount = weaponAmmo;
 		}
 
-		unsigned long getWeaponAmmoType (void) {
-			return(stats.weapon.ammoType);
+		WeaponAmmoType getWeaponAmmoType (void) {
+			return(static_cast<WeaponAmmoType>(stats.weapon.ammoType));
 		}
 
 		void setWeaponAmmoType (long ammoType)
