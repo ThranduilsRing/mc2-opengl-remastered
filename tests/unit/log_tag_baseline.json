@@ -3814,7 +3814,10 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "cpu_geometry_bytes"
+    "cpu_geometry_bytes",
+    "tris",
+    "acmr_before",
+    "acmr_after"
    ],
    "count": 1
   },
