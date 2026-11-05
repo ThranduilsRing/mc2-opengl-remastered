@@ -505,6 +505,16 @@ def test_ktx2_container_round_trip():
     assert levels[0] == img.tobytes()
 
 
+def test_base_color_is_tagged_unorm_not_srgb():
+    # The mech and legacy shaders read albedo as raw sRGB bytes at gamma 1.0; an sRGB tag (146/43)
+    # makes the sampler decode it a second time and darkens every cooked mech.
+    assert texcook.ROLES["base_color"].vk_format == texcook.VK_BC7_UNORM == 145
+    img = (np.arange(8 * 8 * 4) % 251).astype(np.uint8).reshape(8, 8, 4)
+    vk, _, _, _ = texcook.read_ktx2(texcook.cook_ktx2(img, "base_color", compress=False, cache_dir=None))
+    assert vk == texcook.VK_RGBA8_UNORM
+    assert texcook._dfd(texcook.VK_BC7_UNORM) == texcook._dfd(texcook.ROLES["orm"].vk_format)   # linear transfer
+
+
 # --------------------------------------------------------------------------- validator
 
 def test_validator_rejects_broken_gltf(tmp_path):

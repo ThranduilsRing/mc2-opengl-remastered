@@ -2,7 +2,10 @@
 mip filter and tiers, one KTX2 writer, one cache.
 
 Role contract (CONTRACT_VERSION bumps whenever an output byte could change):
-  base_color  sRGB   BC7_SRGB (146)  linear-light, alpha-premultiplied box mips;
+  base_color  sRGB   BC7 (145)       sRGB-encoded bytes tagged UNORM: the mech and
+                                     legacy shaders read albedo as raw sRGB bytes at
+                                     gamma 1.0, so a sampler-side sRGB decode darkens
+                                     it. Linear-light, alpha-premultiplied box mips;
                                      MASK materials keep level-0 alpha-test coverage
                                      per mip. Runtime tiers data/tgl/{32..1024} are
                                      REAL downscales (never enlarged, never copies of
@@ -37,7 +40,7 @@ from . import cache, provenance
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 
-CONTRACT_VERSION = "mc2-texcook/1"
+CONTRACT_VERSION = "mc2-texcook/2"   # /2: base_color tagged UNORM (145/37), not sRGB
 TEXCONV = Path(os.environ.get("MC2_TEXCONV", "A:/Games/mc2-tools/texconv/texconv.exe"))
 TIERS = (32, 64, 128, 256, 512, 1024)
 
@@ -54,7 +57,7 @@ class Role:
 
 
 ROLES = {
-    "base_color": Role(True, VK_BC7_SRGB, "BC7_UNORM", "color"),
+    "base_color": Role(True, VK_BC7_UNORM, "BC7_UNORM", "color"),
     "emissive": Role(True, VK_BC7_SRGB, "BC7_UNORM", "color"),
     "normal": Role(False, VK_BC5_UNORM, "BC5_UNORM", "normal"),
     "orm": Role(False, VK_BC7_UNORM, "BC7_UNORM", "linear"),
@@ -190,7 +193,7 @@ def _texconv_level(level: np.ndarray, fmt: str, workdir: Path) -> bytes:
 def encode_levels(levels: list[np.ndarray], role: str, compress=True) -> tuple[int, list[bytes]]:
     r = ROLES[role]
     if not compress:
-        return (VK_RGBA8_SRGB if r.srgb else VK_RGBA8_UNORM), [lv.tobytes() for lv in levels]
+        return (VK_RGBA8_SRGB if r.vk_format == VK_BC7_SRGB else VK_RGBA8_UNORM), [lv.tobytes() for lv in levels]
     if not TEXCONV.is_file():
         raise RuntimeError(f"texconv not found at {TEXCONV} (set MC2_TEXCONV); refusing to download one")
     with tempfile.TemporaryDirectory(prefix="mc2tex-") as d:
