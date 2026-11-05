@@ -263,3 +263,5 @@ mc2::RenderSubmissions& mc2::renderSubmissions() { static RenderSubmissions queu
 namespace mc2::textures { bool ready() { return false; } }
 // No sim tick in the dump tool: TG_TypeShape::SetTextureHandle resolves inline.
 namespace mc2::tick { enum class Queue; bool defer(Queue, std::function<void()>) { return false; } }
+// assimp_importer.cpp's one-time skin-refusal note; the dump tool has no diag-tag registry.
+namespace mc2_diag { bool tagRequested(std::string_view) { return false; } }

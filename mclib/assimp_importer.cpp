@@ -18,6 +18,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 
@@ -247,6 +248,20 @@ inline glm::vec3 mechToMC2Vec(const aiVector3D& v) {
 inline bool skelMeshDropped(const char* n) {
     // GLB-TEXNAME-DERIVE-EXTRACT-1: shared with the game-free harness.
     return mech_texname::isDroppedMeshName(n);
+}
+
+//-----------------------------------------------------------------------------
+// MULTI-BONE-1: the importer binds every mesh part rigidly to ONE bone (mBones[0]) and
+// stores the bone index in a byte. A skinned mesh with several influences loses its
+// weights; more than 256 bones wraps. Neither is supported: say so once (diag tag CONFIG,
+// default-on) instead of silently rendering a wrong pose. Stock BT2018 GLBs never trigger it.
+static void noteUnsupportedSkin(std::string_view what, std::string_view meshName) {
+	static bool once = false;
+	if (once) return;
+	once = true;
+	if (mc2_diag::tagRequested("CONFIG"))
+		mc2::fmt::print_err("[CONFIG] glTF import: {} (mesh '{}'): imported rigidly on one bone, per-vertex skin weights dropped; further occurrences not logged\n",
+			std::string(what).c_str(), std::string(meshName).c_str());
 }
 
 //-----------------------------------------------------------------------------
@@ -487,6 +502,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		++bake->importedParts;
 		if (mesh->mNumBones >= 1) {
 			if (mesh->mNumBones == 1) ++bake->partsSingleBone;
+			else noteUnsupportedSkin("multi-bone mesh", mesh->mName.C_Str());
 			const aiBone* bone = mesh->mBones[0];
 			if (auto it = bake->nameIdx.find(bone->mName.C_Str()); it != bake->nameIdx.end()) {
 				const auto& [name, index] = *it;
@@ -705,6 +721,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 		const aiMesh* me = scene->mMeshes[m];
 		++bake.importedParts;
 		if (me->mNumBones == 1) ++bake.partsSingleBone;
+		else noteUnsupportedSkin("multi-bone mesh", me->mName.C_Str());
 		const aiBone* bone = me->mBones[0];
 		const float* rm = nullptr;
 		int boneIndex = -1;
@@ -840,11 +857,12 @@ struct ActorAnimState : mc2::sim::ImportedAnimState {
 };
 
 struct ImportedAnimEntry {
-    Assimp::Importer*   imp   = nullptr;   // owns scene; session-lifetime (never freed)
+    std::unique_ptr<Assimp::Importer> imp;   // owns scene; freed with the entry (UnregisterImportedType)
     const aiScene*      scene = nullptr;
     TG_TypeShape*       shape = nullptr;   // merged slot-0 shape (listOfTypeVertices)
     TG_TypeMultiShape*  multi = nullptr;   // for per-frame bbox refresh
     std::vector<std::string> names;        // skeleton, parallel to clip globals
+    std::shared_ptr<const mc2skel::SkelPlan> plan;  // flattened node/channel tables for names (borrows scene; declared after imp so it dies first)
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
@@ -999,7 +1017,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
         std::vector<mc2skel::GpuBone> g;
         for (int f = 0; f <= frames; ++f) {
             double tt = 0, dd = 0;
-            if (!mc2skel::EvaluateClipGpuBones(e.scene, clip, static_cast<float>(f), e.names, g, &tt, &dd)) break;
+            if (!mc2skel::EvaluateClipGpuBones(*e.plan, clip, static_cast<float>(f), g, &tt, &dd)) break;
             for (int k = 0; k < 2; ++k) {
                 const aiMatrix4x4 M = e.AS1 * rowMajorToAi(g[feet[k]].m);
                 pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
@@ -1123,10 +1141,11 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
         aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_SortByPType);
     if (!scene) return;
     ImportedAnimEntry e;
-    e.imp = imp.release(); e.scene = scene;
+    e.imp = std::move(imp); e.scene = scene;
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;
+    e.plan = mc2skel::BuildPlan(scene, e.names);
     LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets);  // 1A nodes + AO + NORMALS tex names
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
@@ -1202,6 +1221,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
             MW.Inverse();
             e.invMWrest[i] = MW;
         }
+        if (bake.rest.size() > 256) noteUnsupportedSkin("more than 256 bones (bone index wraps)", path);
         const int nv = e.shape->GetNumTypeVertices();
         e.perVertexBone.assign(nv > 0 ? nv : 0, 0);
         for (const ImportPartRec& pr : parts) {
@@ -1254,6 +1274,16 @@ bool mc2mechanim::AnyImportedAnim() { return !g_importedAnims.empty(); }
 
 // IMPORTED-ACTOR-STABLE-KEY-1: erase this actor's per-frame state from every imported
 // type so a freed-then-reused instance address can't inherit a stale pose. Idempotent.
+// IMPORTED-TYPE-LIFETIME-1: an entry holds raw shape/multi pointers into a type that the
+// type list frees; drop the entry (and its aiScene) when that type dies, else a reused
+// address resolves to a stale entry (wrong skeleton / use-after-free). Idempotent.
+void mc2mechanim::UnregisterImportedType(const void* multi) {
+    if (!multi) return;
+    std::erase_if(g_importedAnims, [multi](const ImportedAnimEntry& e) {
+        return static_cast<const void*>(e.multi) == multi;
+    });
+}
+
 void mc2mechanim::UnregisterImportedActor(const void* actorKey) {
     if (!actorKey) return;
     for (ImportedAnimEntry& e : g_importedAnims)
@@ -1514,7 +1544,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
-    return mc2skel::EvaluateClipGpuBones(e.scene, s.activeClip, frame, e.names, globals, &tt, &dd);
+    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd);
 }
 
 // Build the GPU per-bone MODEL delta from sampled globals into s.modelDelta, plus the

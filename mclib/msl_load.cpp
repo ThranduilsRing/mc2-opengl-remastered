@@ -374,6 +374,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 // identically to a build that never had the importer compiled in.
 #ifdef ENABLE_ASSIMP_IMPORTER
 #include "assimp_importer.h"
+#include "mech_anim_runtime.h"
 #endif
 
 long TG_TypeMultiShape::LoadFromFile(const char* baseName)
@@ -457,6 +458,9 @@ void TG_TypeMultiShape::SaveBinaryCopy (const char *fileName)
 //-------------------------------------------------------------------------------
 void TG_TypeMultiShape::destroy (void)
 {
+#ifdef ENABLE_ASSIMP_IMPORTER
+	mc2mechanim::UnregisterImportedType(this);	// IMPORTED-TYPE-LIFETIME-1: no stale entry / leaked aiScene past the type
+#endif
     stableIdentity_.renew(this);
     contentSockets_.clear();
 	// The owners release the nodes (~TG_TypeNode is virtual, B7o.1: the derived destructor runs destroy() once); the view goes with them.
