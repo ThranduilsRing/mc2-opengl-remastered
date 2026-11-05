@@ -150,6 +150,9 @@ public:
                 int i0 = -1, int i1 = -1);
     // A host-visible buffer the CPU writes in random order (a per-frame feed, a copy of CPU geometry).
     bool createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
+    // A buffer the CPU writes sequentially and the GPU reads every frame (UBO/SSBO feeds): prefers device-local host-visible memory
+    // (ReBAR) so the GPU does not read across PCIe; falls back to host memory where the device has no such heap. Never read back.
+    bool createGpuRead(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
     // A host-writable buffer holding a copy of `bytes` of CPU data (copy-once geometry). On any failure the buffer is left empty,
     // so a caller that retries later never holds a half-filled buffer.
     bool createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name);

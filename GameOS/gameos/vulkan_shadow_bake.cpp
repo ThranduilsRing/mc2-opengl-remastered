@@ -1172,7 +1172,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         (!inst.empty() && !incInstances_.upload(inst.data(), inst.size() * sizeof(GpuStaticPropInstance), instBase))) return false;
     if (incHeightsGen_[par] != heightsGen_) {
         ZoneScopedN("ShadowBake.Dirty.HeightUpload");
-        if (!makeHostBuffer(incHeights_[par], allocator_, device_, heights_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
+        if (!makeGpuReadBuffer(incHeights_[par], allocator_, device_, heights_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
             !incHeights_[par].upload(heights_.data(), heights_.size() * sizeof(float))) return false;
         incHeightsGen_[par] = heightsGen_;
     }
@@ -1226,10 +1226,10 @@ bool ShadowBake::ensureIncremental() {
     // otherwise incParams_ alone skips creation of the remaining resources.
     OwnedBuffer params, casterUbo, passBuffer, instances;
     incInstanceCap_ = 65536;
-    if (!makeHostBuffer(params, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
-        !makeHostBuffer(casterUbo, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
-        !makeHostBuffer(passBuffer, allocator_, device_, 3 * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyPass") ||
-        !makeHostBuffer(instances, allocator_, device_, kMaxFramesInFlight * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
+    if (!makeGpuReadBuffer(params, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
+        !makeGpuReadBuffer(casterUbo, allocator_, device_, kMaxFramesInFlight * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
+        !makeGpuReadBuffer(passBuffer, allocator_, device_, 3 * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyPass") ||
+        !makeGpuReadBuffer(instances, allocator_, device_, kMaxFramesInFlight * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
         blog("dirty-update buffers failed.");
         return false;
     }

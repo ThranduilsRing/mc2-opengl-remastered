@@ -306,7 +306,9 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
     mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool;   // one-shot command buffers only (allocated and freed per use)
+    mc2vk::OwnedCommandPool slotPool[mc2vk::kMaxFramesInFlight];   // per-slot pools for cbuf: vkResetCommandPool instead of per-cb reset
+    mc2vk::OwnedCommandPool latePool[mc2vk::kMaxFramesInFlight];   // per-slot pools for lateCbuf
 };
 
 // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
@@ -324,10 +326,10 @@ bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = !hostVisible ? 0
-              : gpuReadHeavy ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-                             : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    aci.usage = hostVisible ? VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE : VMA_MEMORY_USAGE_AUTO;   // every host-visible buffer here is CPU-written and GPU-read
+    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+    if (hostVisible) aci.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;   // callers write with map+memcpy and no flush
+    (void)gpuReadHeavy;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -1256,18 +1258,26 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (!mc2vk::create(s->slotPool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
+                vlog("vkCreateCommandPool failed."); return false;
+            }
+            cai.commandPool = s->slotPool[i].get();
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) {
+                vlog("vkAllocateCommandBuffers failed."); return false;
+            }
+            if (!mc2vk::create(s->latePool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) return false;
+            cai.commandPool = s->latePool[i].get();
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->lateCbuf[i]) != VK_SUCCESS) return false;
         }
-        if (vkAllocateCommandBuffers(s->device, &cai, s->lateCbuf) != VK_SUCCESS) return false;
     }
 
     // VK-P11 STATIC-PROP MATERIAL: bind a valid dummy albedo array + layer SSBO now
@@ -1520,7 +1530,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     ColorPropIsland* s = in.s; VkCommandBuffer cb = in.cb; const int w = in.w, h = in.h; const uint32_t par = in.par;
     const uint32_t nDyn = in.nDyn; const uint32_t* dynOffsets = in.dynOffsets; const Mc2GroundLightingFrame* ground = in.ground;
     const bool hzbCulled = in.hzbCulled; const uint32_t instanceCount = in.instanceCount; const GpuStaticPropInstance* insts = in.insts;
-        vkResetCommandBuffer(cb, 0);
+        vkResetCommandPool(s->device, s->slotPool[par].get(), 0);   // cb is s->cbuf[par]
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -2022,7 +2032,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     s->lateDraws.clear();
     const uint32_t par = s->lateParity;
     VkCommandBuffer cb = s->lateCbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->latePool[par].get(), 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { s->disabled = true; return; }

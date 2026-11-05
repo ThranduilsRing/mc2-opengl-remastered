@@ -177,7 +177,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe;
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[kVfxSlots];   // per-slot pools: vkResetCommandPool instead of per-cb reset
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
     uint64_t         vegTicket[mc2vk::kMaxFramesInFlight] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
@@ -542,13 +542,15 @@ bool init_island(VfxIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* o) { return vkCreateCommandPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateCommandPool failed."); return false; }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = kVfxSlots;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
+        for (uint32_t i = 0; i < kVfxSlots; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* o) { return vkCreateCommandPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateCommandPool failed."); return false; }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
+        }
     }
 
     s->inited = true;
@@ -682,7 +684,7 @@ extern "C" int mc2_vk_vfx_island_run(
 
     // Record: one renderpass, per-group pipeline + sub-range draw.
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -796,7 +798,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     if (!page || s->disabled) return false;
 
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

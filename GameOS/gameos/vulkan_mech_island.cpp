@@ -231,7 +231,7 @@ struct MechIsland : mc2vk::IslandState {
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). The timer owns its query pool and is torn down first.
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool instead of per-cb reset (game pass and lab preview share cbuf[par])
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -495,13 +495,15 @@ bool init_island(MechIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) { vlog("cmd pool failed."); return false; }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) { vlog("cmd pool failed."); return false; }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
+        }
     }
 
     // VK-DRAW-PERF-1: 3-stamp GPU timer (pass-start / draws-start / pass-end).
@@ -878,7 +880,7 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
 static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, int h, const Mc2MechFrameFeed& feed,
                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5],
                         const Mc2GroundLightingFrame* ground, int poolN, unsigned long& runsOut) {
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1227,8 +1229,8 @@ int previewFail(std::string_view why) {
 
 // Depth prepass + material runs into the preview framebuffer, viewport/scissor = the panel rect.
 bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFeed& feed,
-                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h) {
-    vkResetCommandBuffer(cb, 0);
+                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par) {
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
@@ -1405,7 +1407,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
     }
 
     VkCommandBuffer cb = s->cbuf[par];
-    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h)) return previewFail("record_failed");
+    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h, par)) return previewFail("record_failed");
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) return previewFail("submit_failed");

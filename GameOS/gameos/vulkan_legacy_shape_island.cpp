@@ -120,7 +120,7 @@ struct Island : mc2vk::IslandState {
     mc2vk::GpuTicket submitted[kSubmissionSlots];
     uint32_t nextSlot = 0;
 
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[kSubmissionSlots];   // one pool per slot: vkResetCommandPool per frame instead of per-cb reset
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
@@ -240,13 +240,15 @@ bool init_island(Island* s, int w, int h) {
     {   // command pool + per-submission command buffers
         VkCommandPoolCreateInfo cpi{};
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cpi.flags = 0;
         cpi.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
-        VkCommandBufferAllocateInfo cbi{};
-        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = kSubmissionSlots;
-        if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+        for (uint32_t i = 0; i < kSubmissionSlots; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
+            VkCommandBufferAllocateInfo cbi{};
+            cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cbi.commandPool = s->cpool[i].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cbi, &s->cbuf[i]) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+        }
     }
 
     {   // World materials use full regenerated mips; preview stays clamped to level zero.
@@ -569,7 +571,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     const uint32_t uboOffset = static_cast<uint32_t>(span.offset);
 
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

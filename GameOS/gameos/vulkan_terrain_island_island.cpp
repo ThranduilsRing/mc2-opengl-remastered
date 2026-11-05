@@ -17,8 +17,9 @@ bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, V
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    aci.usage = hostVisible ? VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE : VMA_MEMORY_USAGE_AUTO;   // host-visible here = CPU-written, GPU-read: ReBAR device-local where available
+    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+    if (hostVisible) aci.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;   // callers write with map+memcpy and no flush
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed."); return false;
     }
@@ -471,16 +472,21 @@ bool init_island(TerrainIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
         if (!mc2vk::create(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2 * mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
+        for (uint32_t i = 0; i < 2 * mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->slotPool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
+                vlog("vkCreateCommandPool failed."); return false;
+            }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->slotPool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) {
+                vlog("vkAllocateCommandBuffers failed."); return false;
+            }
         }
     }
 

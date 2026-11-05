@@ -167,6 +167,7 @@ struct gosPostProcess::VkPostFogNative {
     struct Frame {
         VkDescriptorSet edgeSet = VK_NULL_HANDLE, oobSet = VK_NULL_HANDLE;
         VkCommandBuffer cbuf = VK_NULL_HANDLE;
+        mc2vk::OwnedCommandPool cpool;   // per-frame-slot pool: vkResetCommandPool instead of per-cb reset
         mc2vk::OwnedBuffer edgeUbo, oobUbo;
         uint64_t ticket = 0;
     } frames[mc2vk::kMaxFramesInFlight];
@@ -183,7 +184,6 @@ struct gosPostProcess::VkPostFogNative {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline   edgePipe;
     mc2vk::OwnedPipeline   oobPipe;
-    mc2vk::OwnedCommandPool cpool;
 };
 
 namespace {
@@ -195,8 +195,8 @@ bool make_buffer(gosPostProcess::VkPostFogNative* s, VkDeviceSize size,
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;   // per-frame GPU-read feed: ReBAR device-local where available
+    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed."); return false;
     }
@@ -470,17 +470,17 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
-            vlog("vkCreateCommandPool failed (%d).", static_cast<int>(r)); return false;
-        }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai.commandBufferCount = 1;
         for (auto& frame : s->frames) {
+            if (!mc2vk::create(frame.cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
+                vlog("vkCreateCommandPool failed (%d).", static_cast<int>(r)); return false;
+            }
+            cai.commandPool = frame.cpool.get();
             r = vkAllocateCommandBuffers(s->device, &cai, &frame.cbuf);
             if (r != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r)); return false; }
         }
@@ -606,7 +606,7 @@ bool gosPostProcess::runVkPostFogNative()
     // to the GL fog pass (native-or-decline). No GL<->VK semaphore handoff. ----
     VkCommandBuffer cb = frame.cbuf;
 
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, frame.cpool.get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

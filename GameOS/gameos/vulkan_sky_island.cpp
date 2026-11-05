@@ -85,7 +85,7 @@ struct Island : mc2vk::IslandState {
     mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];          // per engine frame slot: the last submit that used cbuf[slot]
     uint64_t hdriGeneration = 0; bool hdriAttempted = false, hdriReal = false;   // the CPU HDRI generation imported
 
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
@@ -122,7 +122,7 @@ void update_set(Island* s) {
 bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) {
     VkCommandBufferAllocateInfo cbi{};
     cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    cbi.commandPool = s->cpool[0].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return false;
     VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -133,7 +133,7 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     const bool ok = mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 30ull * 1000 * 1000 * 1000, "sky copy-once");
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool[0].get(), 1, &cb);
     return ok;
 }
 
@@ -256,12 +256,14 @@ bool init_island(Island* s, int w, int h) {
     {
         VkCommandPoolCreateInfo cpi{};
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; cpi.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
-        VkCommandBufferAllocateInfo cbi{};
-        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+        cpi.flags = 0; cpi.queueFamilyIndex = s->gfxFamily;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
+            VkCommandBufferAllocateInfo cbi{};
+            cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cbi.commandPool = s->cpool[i].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cbi, &s->cbuf[i]) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+        }
     }
     {   // sampler: same as the water island's HDRI sampler (linear, clamp, full mip range)
         VkSamplerCreateInfo sci{};
@@ -437,7 +439,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot"), "VK_SKY")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
 
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }

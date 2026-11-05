@@ -10851,6 +10851,23 @@
    "count": 1
   },
   {
+   "tag": "VK_MEM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "heap",
+    "device_local",
+    "size_mb",
+    "budget_mb",
+    "usage_mb",
+    "alloc_mb",
+    "blocks_mb",
+    "allocs",
+    "blocks"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ONE_SHOT",
    "ver": -1,
    "stream": "stderr",

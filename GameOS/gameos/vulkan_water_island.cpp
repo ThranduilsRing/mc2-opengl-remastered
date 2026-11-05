@@ -107,8 +107,8 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;   // per-frame GPU-read feed: ReBAR device-local where available
+    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -244,7 +244,7 @@ bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeC
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record) {
     VkCommandBufferAllocateInfo cai{};
     cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    cai.commandPool = s->cpool[0].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return false;
     VkCommandBufferBeginInfo bi{};
@@ -267,7 +267,7 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
             }
         }
     }
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool[0].get(), 1, &cb);
     return ok;
 }
 

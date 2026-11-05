@@ -66,9 +66,9 @@ struct NativeCull final : mc2vk::IslandState {
             !sets.create(ctx.device(),pipeline,3,"actorCull.sets")) return false;
         for (uint32_t i=0;i<3;++i) {
             auto& slot=slots[i];
-            if (!slot.records.createHostWritable(ctx.allocator(),ctx.device(),VkDeviceSize(cap)*sizeof(GpuActorRecord),
+            if (!slot.records.createGpuRead(ctx.allocator(),ctx.device(),VkDeviceSize(cap)*sizeof(GpuActorRecord),
                                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"actorCull.records",int(i)) ||
-                !slot.params.createHostWritable(ctx.allocator(),ctx.device(),sizeof(CullParams),
+                !slot.params.createGpuRead(ctx.allocator(),ctx.device(),sizeof(CullParams),
                                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,"actorCull.params",int(i))) return false;
             VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; info.size=bytes;
             info.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
