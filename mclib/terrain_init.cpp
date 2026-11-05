@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "terrain_runtime.h"
 #include <cmath>
 #include <cstdint>
@@ -1020,7 +1021,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						// Absent (mod-shipped sidecar): the legacy mean guard still applies.
 						const int sigState = s_beautySig.state;
 						const char* const sigWant = s_beautySig.want;
-						if (sigState == 1)
+						if (sigState == 1 && mc2_diag::tagRequested("VISUAL_HEIGHT"))   // success info: opt-in; mismatches stay fail-loud
 						{
 							mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIG OK path={} gameplay height signature '{}' matches; bake applied\n", mc2::fmt::safe(vhPath), mc2::fmt::safe(sigWant));
 							fflush(stdout);
@@ -1071,9 +1072,11 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						const double meanAbs = cnt ? sumAbs / static_cast<double>(cnt) : 0.0;
 						const double frac5  = cnt ? (100.0 * static_cast<double>(moved5)  / static_cast<double>(cnt)) : 0.0;
 						const double frac50 = cnt ? (100.0 * static_cast<double>(moved50) / static_cast<double>(cnt)) : 0.0;
+						if (mc2_diag::tagRequested("VISUAL_HEIGHT")) {   // W115 quiet: load summary is opt-in (MC2_DIAG_TAGS=VISUAL_HEIGHT)
 						mc2::fmt::print_out("[VISUAL_HEIGHT v1] LOADED path={} V={:d} mapSide={:d} bytes={:d} (Stage 2: geometry {} when MC2_TERRAIN_VISUAL_DISPLACE on)\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide), mc2::fmt::as_size(want), mc2::fmt::safe(displaceOn ? "DISPLACED" : "will displace"));
 						mc2::fmt::print_out("[VISUAL_HEIGHT v1] displacement-amplitude vs coarse grid: max={:.1f}wu mean={:.2f}wu moved>5wu={:.1f}% moved>50wu={:.2f}% (vertex spacing=128wu; if mean<~5wu the reshape is near-invisible -- re-bake with visual_heightfield.py --reshape)\n", maxAbs, meanAbs, frac5, frac50);
 						fflush(stdout);
+						}
 
 						// TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement
 						// fade (objfade). Load the static damp sidecar
@@ -1150,6 +1153,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								};
 								const double innerP99 = p99(inner);
 								const double annP99 = p99(annulus);
+								if (mc2_diag::tagRequested("VISUAL_HEIGHT"))   // W115 quiet: drift summary is opt-in; size/missing lines above stay fail-loud
 								mc2::fmt::print_out("[VISUAL_DAMP v1] {} side={:d} objfade drift-near-objects: inner(damp==0) cells={:d} p99={:.3f}wu max={:.3f}wu (must be ~0) fade-annulus cells={:d} p99={:.2f}wu\n", mc2::fmt::safe(haveSidecar ? "LOADED" : "ALL-ONES (no sidecar)"), mc2::fmt::as_i32(mapSide), mc2::fmt::as_size(inner.size()), innerP99, innerMax, mc2::fmt::as_size(annulus.size()), annP99);
 								fflush(stdout);
 							}
