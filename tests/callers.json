@@ -11587,6 +11587,13 @@
       ]
     },
     {
+      "path": "tools/glb_uv_mirror_stats.py",
+      "basename": "glb_uv_mirror_stats.py",
+      "stem": "glb_uv_mirror_stats",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/gpu_abi_gen.py",
       "basename": "gpu_abi_gen.py",
       "stem": "gpu_abi_gen",
