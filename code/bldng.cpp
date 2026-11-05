@@ -305,9 +305,9 @@ long BuildingType::init (FilePtr objFile, unsigned long fileSize) {
 		cLoadString(objectNameID, s, 254);
 	}
 
-	for (long i=0;i<18;i++)
+	for (const auto WallTypeElem : WallType)
 	{
-		if (objTypeNum == WallType[i])
+		if (objTypeNum == WallTypeElem)
 		{
 			setSubType(BUILDING_SUBTYPE_WALL);
 			break;

@@ -53,8 +53,8 @@ void GameSoundSystem::purgeSoundSystem (void)
 	// dump the Radio Message Queue.
 	messagesInQueue = 0;
 	wholeMsgDone = true;
-	for (long i=0;i<MAX_QUEUED_MESSAGES;i++)
-		queue[i] = nullptr;
+	for (auto & queueElem : queue)
+		queueElem = nullptr;
 
 	generalAlarmTimer = 0.0f;
 			
@@ -146,11 +146,11 @@ long i;
 //---------------------------------------------------------------------------
 bool GameSoundSystem::checkMessage (MechWarriorPtr pilot, byte priority, unsigned long messageType)
 {
-	for (long i=0;i<MAX_QUEUED_MESSAGES;i++)
+	for (const auto & queueElem : queue)
 	{
-		if (queue[i])
-			if ((queue[i]->pilot == pilot && priority > queue[i]->priority) ||			// I'm already saying something more important, or
-					(queue[i]->priority > 1 && queue[i]->msgType == messageType))		// someone else is saying this
+		if (queueElem)
+			if ((queueElem->pilot == pilot && priority > queueElem->priority) ||			// I'm already saying something more important, or
+					(queueElem->priority > 1 && queueElem->msgType == messageType))		// someone else is saying this
 				return FALSE;
 	}
 	return TRUE;

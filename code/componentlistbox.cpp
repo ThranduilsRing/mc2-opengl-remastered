@@ -202,9 +202,9 @@ void	ComponentListItem::update()
 {
 
 	int bCanAdd = MechLabScreen::instance()->canAddComponent( pComponent );
-	for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
+	for (auto & animation : animations)
 	{
-		animations[i].update();
+		animation.update();
 	}
 	bool isInside = pointInside( userInput->getMouseX(), userInput->getMouseY() );
 
@@ -229,9 +229,9 @@ void	ComponentListItem::update()
 		{
 			if ( animations[0].getState() != aAnimGroup::PRESSED )
 			{
-				for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
+				for (auto & animation : animations)
 				{
-					animations[i].setState( aAnimGroup::PRESSED );
+					animation.setState( aAnimGroup::PRESSED );
 					
 				}
 			}
@@ -243,8 +243,8 @@ void	ComponentListItem::update()
 		}
 		else
 		{
-			for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
-				animations[i].setState( aAnimGroup::DISABLED );
+			for (auto & animation : animations)
+				animation.setState( aAnimGroup::DISABLED );
 
 			if ( COMPONENT_TOO_HOT == bCanAdd )
 			{
@@ -273,9 +273,9 @@ void	ComponentListItem::update()
 	{
 		if ( animations[0].getState() != aAnimGroup::HIGHLIGHT )
 		{
-			for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
+			for (auto & animation : animations)
 			{
-				animations[i].setState( aAnimGroup::HIGHLIGHT );
+				animation.setState( aAnimGroup::HIGHLIGHT );
 			}
 
 			soundSystem->playDigitalSample( LOG_HIGHLIGHTBUTTONS );
@@ -287,8 +287,8 @@ void	ComponentListItem::update()
 	else if ( !bCanAdd )
 	{
 		state = aListItem::ENABLED;
-		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
-			animations[i].setState( aAnimGroup::NORMAL );
+		for (auto & animation : animations)
+			animation.setState( aAnimGroup::NORMAL );
 
 		disabledText.setText( "" );
 	}
@@ -308,8 +308,8 @@ void	ComponentListItem::update()
 			soundSystem->playDigitalSample( LOG_WRONGBUTTON );
 		}
 
-		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
-			animations[i].setState( aAnimGroup::DISABLED );
+		for (auto & animation : animations)
+			animation.setState( aAnimGroup::DISABLED );
 
 		if ( COMPONENT_TOO_HOT == bCanAdd )
 		{
@@ -388,20 +388,20 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 	//	}
 	}
 
-	for ( auto iter = masterComponentList.begin(); iter != masterComponentList.end(); ++iter )
+	for (auto & masterComponentElem : masterComponentList)
 		{
-			if ( (*iter)->getComponent()->isAvailable() )
+			if ( masterComponentElem->getComponent()->isAvailable() )
 			{
-				if ( (*iter)->getComponent()->getType() == type ||
-					(*iter)->getComponent()->getType() == otherNewType ||
-					 (*iter)->getComponent()->getType() == orThis ||
-					 ( orThis2 != -1 && (*iter)->getComponent()->getType() == orThis2 ) )
+				if ( masterComponentElem->getComponent()->getType() == type ||
+					masterComponentElem->getComponent()->getType() == otherNewType ||
+					 masterComponentElem->getComponent()->getType() == orThis ||
+					 ( orThis2 != -1 && masterComponentElem->getComponent()->getType() == orThis2 ) )
 				{
-					if ( (*iter)->globalX() > globalX() )
+					if ( masterComponentElem->globalX() > globalX() )
 					{
-						(*iter)->move( -globalX(), 0 );
+						masterComponentElem->move( -globalX(), 0 );
 					}
-					addSortedItem( (*iter) );
+					addSortedItem( masterComponentElem );
 				}
 			}
 		}

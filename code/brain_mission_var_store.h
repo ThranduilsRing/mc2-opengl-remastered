@@ -39,11 +39,11 @@ struct MissionVarStore {
     void reset() {
         count = 0;
         // Zero the entries for cleanliness (not strictly required, but avoids stale reads on edge cases).
-        for (int i = 0; i < kMissionVarStoreCap; ++i) {
-            entries[i].key[0]   = '\0';
-            entries[i].value[0] = '\0';
-            entries[i].lastWriterWID  = 0;
-            entries[i].lastWriteTick  = 0;
+        for (auto & entry : entries) {
+            entry.key[0]   = '\0';
+            entry.value[0] = '\0';
+            entry.lastWriterWID  = 0;
+            entry.lastWriteTick  = 0;
         }
     }
 

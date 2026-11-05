@@ -206,15 +206,15 @@ void LogisticsPilotListBoxItem::update()
 {
 	bool isInside = pointInside( userInput->getMouseX(), userInput->getMouseY() );
 
-	for ( int i = 0; i < 3; i++ )
-		animations[i].update();
+	for (auto & animation : animations)
+		animation.update();
 
 	if ( state == aListItem::SELECTED ) 
 	{
 		if ( animations[0].getState() != aAnimGroup::PRESSED )
 		{
-			for ( int i = 0; i < 3; i++ )
-				animations[i].setState( aAnimGroup::PRESSED );
+			for (auto & animation : animations)
+				animation.setState( aAnimGroup::PRESSED );
 		}
 
 		if ( userInput->isLeftDoubleClick() && isInside )
@@ -240,16 +240,16 @@ void LogisticsPilotListBoxItem::update()
 	{
 		if ( animations[0].getState() != aAnimGroup::HIGHLIGHT )
 		{
-			for ( int i = 0; i < 3; i++ )
-				animations[i].setState( aAnimGroup::HIGHLIGHT );
+			for (auto & animation : animations)
+				animation.setState( aAnimGroup::HIGHLIGHT );
 		}
 	}
 	else
 	{
 		if ( animations[0].getState() != aAnimGroup::NORMAL )
 		{
-			for ( int i = 0; i < 3; i++ )
-				animations[i].setState( aAnimGroup::NORMAL );
+			for (auto & animation : animations)
+				animation.setState( aAnimGroup::NORMAL );
 		}
 	}
 

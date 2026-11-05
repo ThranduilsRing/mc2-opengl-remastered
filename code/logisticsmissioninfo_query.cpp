@@ -219,9 +219,9 @@ int			LogisticsMissionInfo::getAdditionalPurachaseFiles( const char** list, long
 	{
 		long i = 0;
 		
-		for ( auto iter = additionalPurchaseFiles.begin(); iter != additionalPurchaseFiles.end(); ++iter )
+		for (auto & additionalPurchaseFile : additionalPurchaseFiles)
 		{
-			list[i++] = iter->get();
+			list[i++] = additionalPurchaseFileget();
 		}
 	}
 

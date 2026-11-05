@@ -187,13 +187,13 @@ long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
 	{
 		MissionGroup* pGroup = &groups[s];
 		long count = 0;
-		for ( auto iter = pGroup->infos.begin(); iter != pGroup->infos.end(); ++iter )
+		for (auto & info : pGroup->infos)
 		{
-			if ( mc2::str::iequals( (*iter)->fileName, missionName ) )
+			if ( mc2::str::iequals( info->fileName, missionName ) )
 			{
 				currentStage = s;
 				currentMission = count;
-				currentMissionName = mc2::str::erase_first( (*iter)->fileName, ".fit" );
+				currentMissionName = mc2::str::erase_first( info->fileName, ".fit" );
 				return 0;
 			}
 			count++;

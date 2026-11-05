@@ -140,11 +140,11 @@ void InfoWindow::init( FitIniFile& file )
 	//memset( buttonData, 0, sizeof( buttonData ) );
 
 
-	for (int i = 0; i < 2; i++ )
+	for (auto & buttonDataElem : buttonData)
 	{
-		if ( buttonData[i].textureHandle )
+		if ( buttonDataElem.textureHandle )
 		{
-			mc2::textures::release( buttonData[i].textureHandle );
+			mc2::textures::release( buttonDataElem.textureHandle );
 		}
 	}
 
@@ -958,10 +958,10 @@ void InfoWindow::render()
 	GUI_RECT tmpRect = { SCROLLBOXLEFT, SCROLLBOXBOTTOM, SCROLLBOXRIGHT, INFOTOP + INFOHEIGHT };
 	drawRect( tmpRect, 0xff000000 );
 
-	for ( int i = 0; i < 2; i++ )
+	for (auto & button : buttons)
 	{
-		if ( buttons[i].isEnabled() )
-			buttons[i].render();
+		if ( button.isEnabled() )
+			button.render();
 	}
 	
 	long scrollBarLength = buttons[1].location[0].y - buttons[0].location[2].y - 4 - SCROLLBUTTONHEIGHT;
@@ -1046,15 +1046,15 @@ void InfoWindow::render()
 		v[1].y = v[2].y = HEALTHBOTTOM;
 
 		unsigned long dimColor = ( color & 0xff7f7f7f );
-		for ( int i = 0; i < 4; i++ )
-			v[i].argb = dimColor;
+		for (auto & vElem : v)
+			vElem.argb = dimColor;
 
 		gos_DrawQuads( v, 4 );
 
 		v[2].x = v[3].x = HEALTHLEFT + (HEALTHRIGHT - HEALTHLEFT)* barStatus;
 
-		for (int i = 0; i < 4; i++ )
-			v[i].argb = color | 0xff000000;
+		for (auto & vElem : v)
+			vElem.argb = color | 0xff000000;
 
 		gos_DrawQuads( v, 4 );
 		
@@ -1095,15 +1095,15 @@ void InfoWindow::update()
 	if ( icon )
 		icon->update();
 
-	for ( int i = 0; i < 2; i++ )
+	for (auto & button : buttons)
 	{	
-		if ( buttons[i].location[0].x <= mouseX && mouseX <= buttons[i].location[2].x
-				&& mouseY >= buttons[i].location[0].y && mouseY <= buttons[i].location[1].y  )
+		if ( button.location[0].x <= mouseX && mouseX <= button.location[2].x
+				&& mouseY >= button.location[0].y && mouseY <= button.location[1].y  )
 		{
-			if ( userInput->getMouseLeftButtonState() == MC2_MOUSE_DOWN && buttons[i].isEnabled() )
+			if ( userInput->getMouseLeftButtonState() == MC2_MOUSE_DOWN && button.isEnabled() )
 			{
 				{
-					handleClick( buttons[i].ID );
+					handleClick( button.ID );
 					return;
 				}
 			}
@@ -1310,12 +1310,12 @@ void InfoWindow::extractLoadoutRows( std::vector<InfoLoadoutRow>& out ) const
 	eq[2] = pUnit->jumpJets;
 	eq[3] = pUnit->isMech() ? pUnit->sensor : 255;
 
-	for ( int e = 0; e < 4; e++ )
+	for (const auto eqElem : eq)
 	{
-		if ( eq[e] != 255 )
+		if ( eqElem != 255 )
 		{
 			char tmpName[256];
-			cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[eq[e]].masterID, tmpName, 255 );
+			cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[eqElem].masterID, tmpName, 255 );
 			out.push_back( { std::string( tmpName ), 0xffc29b00u } );
 		}
 	}
@@ -1638,11 +1638,11 @@ void InfoWindow::drawScrollingStuff()
 
 
 
-		for ( size_t s = 0; s < pilotRows.specialties.size(); s++ )
+		for (const auto & specialty : pilotRows.specialties)
 		{
 			if ( curY > NAMETOP )
 			{
-				componentFont.render( pilotRows.specialties[s].c_str(), NAMELEFT, curY, NAMERIGHT - NAMELEFT, height, 0xff005392, 0, 0 );
+				componentFont.render( specialty.c_str(), NAMELEFT, curY, NAMERIGHT - NAMELEFT, height, 0xff005392, 0, 0 );
 			}
 			curY += height;
 		}
@@ -1686,8 +1686,8 @@ void InfoWindow::drawDivider( float yVal )
 
 
 	memset( v, 0, sizeof( gos_VERTEX ) * 2 );
-	for ( int i = 0; i < 2; i++ )
-		v[i].rhw = .5f;
+	for (auto & vElem : v)
+		vElem.rhw = .5f;
 
 	v[0].x = DIVIDERLEFT;
 	v[0].y = v[1].y = yVal;
