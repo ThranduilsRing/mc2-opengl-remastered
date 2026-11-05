@@ -4,6 +4,7 @@
   "tools/smoke/stall_inject.py": "Manual dev harness: proves the smoke sim-time extension by suspending mc2 mid-run; run by hand.",
   "scripts/tests/test_video_decode_smoke.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_cmake_no_abs_root_defines.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
+  "scripts/tests/test_saveload_linux_baselines.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "scripts/tests/test_rgp_capture.py":"Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
   "tools/perf/_census_v3.py": "Operator-run census driver (python tools/perf/_census_v3.py run|walk|battle|analyze); documented in docs/perf/2026-11-02-census-v3.md.",
   "scripts/tests/test_perf_counters.py": "Pytest-discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json.",
