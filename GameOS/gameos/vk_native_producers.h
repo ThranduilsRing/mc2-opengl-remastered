@@ -43,8 +43,9 @@ struct VkWaterCullParams {
     float   clip[16];       // the four columns of u_worldToClipGL: the raw 16 floats the GL path uploads with GL_FALSE
     float   misc0[4];       // waterElevation, frameCos, shoreExt, unused
     int32_t misc1[4];       // recipeCount, maxThinRecords, mapSide, biasLegacy
+    int32_t misc2[4];       // half-res reflection image width, height (0 = reflection off), unused x2
 };
-static_assert(sizeof(VkWaterCullParams) == 96, "WaterCullParams std140 size (water_cull_pack.comp.slang)");
+static_assert(sizeof(VkWaterCullParams) == 112, "WaterCullParams std140 size (water_cull_pack.comp.slang)");
 
 // Mirror of DrawArgsParams in shaders/vulkan/water_draw_args.comp.slang.
 struct VkDrawArgsParams { int32_t v[4]; };
@@ -58,7 +59,8 @@ struct WaterCullFrame {
     float    shoreExt;
     uint32_t mapSide;
     int32_t  biasLegacy;
-    uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;
+    uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;   // 8x8 tile grid of the half-res reflection image (0 = reflection off)
+    uint32_t reflectionHalfW = 0, reflectionHalfH = 0;       // half-res reflection image size in pixels
 };
 
 // Result of one GL-vs-VK comparison (parity frames only).
@@ -90,6 +92,9 @@ public:
 
     VkBuffer thin(uint32_t par) const noexcept { return thin_[par % kSlots].get(); }
     VkBuffer drawArgs(uint32_t par) const noexcept { return drawArgs_[par % kSlots].get(); }
+    // Tiles (8x8 half-res) that contain admitted water: the reflection compute runs one workgroup per entry (count in drawArgs words 4..6).
+    VkBuffer tileList(uint32_t par) const noexcept { return tileList_[par % kSlots].get(); }
+    static constexpr uint32_t kMaxTiles = 1u << 18;   // 8K half-res is 138240 tiles; the tile grid is clamped to this
     uint32_t maxThin() const noexcept { return maxThin_; }
 
     // Stages this frame's inputs into slot `par` (the slot must be retired) and records lighting -> cull/pack -> draw-args with the barriers, ending
@@ -126,6 +131,7 @@ private:
     VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     OwnedBuffer argsUbo_[kSlots];   // thin capacity + this frame's reflection dispatch size
     OwnedBuffer header_[kSlots], drawArgs_[kSlots], thin_[kSlots];   // device-local
+    OwnedBuffer tileMask_[kSlots], tileList_[kSlots];                // reflection tiles: one bit per tile (cleared per frame) and the compacted list
     // Parity readback (host-visible), made on first use.
     OwnedBuffer parityHdr_, parityThin_, parityLight_;
     uint32_t parityLightFirst_ = 0, parityLightCount_ = 0;

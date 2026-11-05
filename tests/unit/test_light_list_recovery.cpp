@@ -70,6 +70,7 @@ struct LightLists {
     const char* failure_ = nullptr;
     std::array<FrameAlloc,3> spans_{};
     static constexpr uint32_t kDim = 64;
+    uint32_t poolWords_ = 0;
     float minInv[4]{};
 #include "light_lists_stage.inc"
 };
@@ -101,7 +102,7 @@ TEST_CASE("LightLists/optional failures retain terrain bindings and recover next
         mc2vk::ctx.rejectAll = fault == 4;
         TerrainIsland island;
         std::vector<gos_terrain_lighting::GpuTerrainLight> lights(4096);
-        lights[0].lightType = 1; lights[0].farDistance = 10;
+        for (int i = 0; i < 80; ++i) { lights[i].lightType = 1; lights[i].farDistance = 10; }   // pool must exceed the 1 MiB fault threshold
         Mc2TerrainTier1Feed feed; feed.poolLights = lights.data();
         int32_t count = 4096, dim = 64;
         mc2vk::FrameAlloc spans[3];
@@ -119,7 +120,7 @@ TEST_CASE("LightLists/optional failures retain terrain bindings and recover next
         CHECK(island.lightLists.sets_.valid);
         for (uint32_t slot = 0; slot < mc2vk::kMaxFramesInFlight; ++slot)
             CHECK(island.lightLists.sets_.set(slot) != 0);
-        CHECK(spans[2].bytes->size() == 64u*64u*4096u*4u);
+        CHECK(spans[2].bytes->size() > 4u); CHECK(spans[2].bytes->size() <= (1u + 64u*64u*4096u)*4u);
     }
 }
 
@@ -133,6 +134,7 @@ TEST_CASE("LightLists/failures cache same-frame attempts and back off with bound
         mc2vk::ctx.rejectAll = fault == 4;
         TerrainIsland island;
         std::vector<gos_terrain_lighting::GpuTerrainLight> lights(4096);
+        for (int i = 0; i < 80; ++i) { lights[i].lightType = 1; lights[i].farDistance = 10; }   // pool must exceed the 1 MiB fault threshold
         Mc2TerrainTier1Feed feed; feed.poolLights = lights.data();
         // Terrain and overlays call the real stage wrapper repeatedly. Only
         // fallback allocations may repeat: the accelerator tries once per frame.

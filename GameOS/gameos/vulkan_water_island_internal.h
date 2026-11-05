@@ -97,6 +97,8 @@ struct WaterVsParams {
     float p2[4];             // uvOffsetY, fudge, alphaEdgeByte, alphaMiddleByte      (off 96)
     float p3[4];             // alphaDeepByte, shoreFlat, shoreDepthK, pad            (off 112)
 };
+// The VS-params UBO the island stages: WaterVsParams (what water_geom.vert reads) then inverse(worldToClip) at offset 128 (water_reflection.comp).
+constexpr size_t kWaterVsUboSize = sizeof(WaterVsParams) + 16 * sizeof(float);
 static_assert(sizeof(WaterVsParams) == 128, "WaterVsParams std140 size (water_geom.vert)");
 static_assert(offsetof(WaterVsParams, p0) == 64 && offsetof(WaterVsParams, p1) == 80 &&
               offsetof(WaterVsParams, p2) == 96 && offsetof(WaterVsParams, p3) == 112, "WaterVsParams offsets");

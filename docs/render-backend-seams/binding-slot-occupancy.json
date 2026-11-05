@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 258,
+    "glsl_blocks_with_binding": 256,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -468,7 +468,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 3,
         "role": "VegParams",
         "std": "std140",
@@ -786,7 +786,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 4,
         "role": "VegVis",
         "std": "std430",
@@ -827,7 +827,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 9,
+        "line": 10,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -849,7 +849,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 54,
+        "line": 53,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -879,7 +879,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 13,
+        "line": 14,
         "role": "sceneDepth",
         "std": null,
         "type": "sampler2D",
@@ -937,7 +937,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 14,
+        "line": 15,
         "role": "reflectionOut",
         "std": null,
         "type": "image2D",
@@ -991,6 +991,16 @@
         "branch": {
           "3": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 17,
+        "role": "WaterTiles",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/water_reflection.comp",
+        "branch": {}
       }
     ],
     "set0:binding13": [
@@ -1055,7 +1065,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 33,
+        "line": 32,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
@@ -1067,7 +1077,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 26,
+        "line": 25,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1079,7 +1089,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 25,
+        "line": 24,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -1414,7 +1424,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 5,
         "role": "VegInst",
         "std": "std430",
@@ -1800,7 +1810,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 6,
         "role": "VegReg",
         "std": "std430",
@@ -2032,7 +2042,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 7,
         "role": "VegCounts",
         "std": "std430",
@@ -2111,7 +2121,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 31,
+        "line": 30,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",
@@ -2140,7 +2150,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 8,
         "role": "VegOffsets",
         "std": "std430",
@@ -2238,7 +2248,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 9,
         "role": "VegDense",
         "std": "std430",
@@ -2316,7 +2326,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
+        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 10,
         "role": "VegArgs",
         "std": "std430",
@@ -2384,38 +2394,8 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_compact.comp",
-        "line": 11,
-        "role": "VegVisList",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/vegetation_cull.comp",
-        "line": 11,
-        "role": "VegVisList",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/vegetation_region.comp",
-        "line": 11,
-        "role": "VegVisList",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 12,
+        "line": 13,
         "role": "sceneColor",
         "std": null,
         "type": "sampler2D",
@@ -3011,7 +2991,7 @@
     "shaders/vulkan/terrain_tier1_skirt.vert",
     "shaders/vulkan/vegetation_compact.comp",
     "shaders/vulkan/vegetation_cull.comp",
-    "shaders/vulkan/vegetation_region.comp",
+    "shaders/vulkan/vegetation_scan.comp",
     "shaders/vulkan/vfx_particle.frag",
     "shaders/vulkan/vfx_particle.vert",
     "shaders/vulkan/vfx_vegetation.frag",

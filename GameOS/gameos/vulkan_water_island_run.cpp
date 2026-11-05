@@ -7,6 +7,7 @@
 #include "vk_barrier_batch_vk.h"
 #include <cmath>
 #include "mc2fmt.h"
+#include "utils/vec.h"   // inverseMat4
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
@@ -211,7 +212,7 @@ extern "C" int mc2_vk_water_island_run(
     // this replaces is kept only under the MC2_VK_WATER_FENCE_DEFER=0 killswitch.
     // The parameter UBOs go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence); the ring slot belongs to the
     // frame, not to the parity, so staging them here races nothing.
-    const VkDeviceSize fsUboOff = mc2vk::alignUp(sizeof(WaterVsParams), slotCtx.frameAlignment());
+    const VkDeviceSize fsUboOff = mc2vk::alignUp(kWaterVsUboSize, slotCtx.frameAlignment());
     const mc2vk::FrameAlloc uboSpan = slotCtx.frameAlloc(fsUboOff + sizeof(WaterFsParams));
     if (!uboSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
 
@@ -282,6 +283,11 @@ extern "C" int mc2_vk_water_island_run(
             && WaterStream::NativeWaterInFrustum(*nat,shoreSdf);
         vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
+        {   // the reflection compute reads inverse(worldToClip) from here instead of inverting per thread
+            mat4 clip; std::memcpy(&clip, vsLocal.worldToClipGL, sizeof(vsLocal.worldToClipGL));
+            const mat4 inv = inverseMat4(clip);
+            std::memcpy(base + sizeof(WaterVsParams), &inv, 16 * sizeof(float));
+        }
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
         // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
         // takes the SH-L2 fallback -- same semantics as GL !isHdriReady().
@@ -305,7 +311,7 @@ extern "C" int mc2_vk_water_island_run(
         fsLocal.DEEP_COLOR[3] = reflectThisFrame ? 1.0f : 0.0f;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         if (s->ringBound[par] != uboSpan.buffer) {
-            mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterVsParams));
+            mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, kWaterVsUboSize);
             mc2vk::writeDynamicBinding(s->device, s->set[par], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterFsParams));
             s->ringBound[par] = uboSpan.buffer;
         }
@@ -344,8 +350,9 @@ extern "C" int mc2_vk_water_island_run(
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
             if (reflectThisFrame) {
-                wf.reflectionGroupsX=uint32_t(((w+1)/2+7)/8);
-                wf.reflectionGroupsY=uint32_t(((h+1)/2+7)/8);
+                wf.reflectionHalfW=uint32_t((w+1)/2); wf.reflectionHalfH=uint32_t((h+1)/2);
+                wf.reflectionGroupsX=(wf.reflectionHalfW+7)/8;
+                wf.reflectionGroupsY=(wf.reflectionHalfH+7)/8;
             }
             if (!s->native->record(cb, par, snap, wf, false)) {
                 // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.

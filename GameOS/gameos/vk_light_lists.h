@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cmath>
 #include <cstring>
 #include <cstdio>
 #include <limits>
@@ -22,6 +23,7 @@ class LightLists {
     uint32_t retryDelay_ = 1;
     const char* failure_ = nullptr;
     std::array<FrameAlloc, 3> spans_{};
+    uint32_t poolWords_ = 0;
 public:
     static constexpr uint32_t kDim = 64;
     float minInv[4]{};
@@ -67,13 +69,29 @@ public:
             failure = "frame_ring_allocation";
             // The index buffer dominates. Refuse it before consuming any smaller
             // spans, and never repeat partial allocations in the same frame.
-            if (!(spans_[2] = ctx.frameAlloc(VkDeviceSize(kDim) * kDim * count * 4)) ||
+            // Pooled: one shared index pool (word 0 is its allocation cursor) instead of a full count-entry slice per cell. The pool is sized from the
+            // exact worst case: the cells each light's bounding box touches (a superset of the shader's circle test), so no cell is ever cut short.
+            uint32_t entries = 0;
+            for (uint32_t i = 0; i < count; ++i) {
+                const auto& l = lights[i];
+                if (!l.lightType || !(l.farDistance > 0)) continue;
+                const float r = l.farDistance * 1.001f + 0.01f;
+                uint32_t span[2];
+                for (unsigned a = 0; a < 2; ++a) {
+                    const float c0 = std::floor((l.position[a] - r - minInv[a]) * minInv[a + 2]), c1 = std::floor((l.position[a] + r - minInv[a]) * minInv[a + 2]);
+                    span[a] = c1 < 0.0f || c0 > float(kDim - 1) ? 0u : uint32_t((std::min)(c1, float(kDim - 1)) - (std::max)(c0, 0.0f)) + 1u;
+                }
+                entries += span[0] * span[1];
+            }
+            poolWords_ = 1 + (std::min)(entries, kDim * kDim * count);
+            if (!(spans_[2] = ctx.frameAlloc(VkDeviceSize(poolWords_) * 4)) ||
                 !(spans_[0] = ctx.frameAlloc(VkDeviceSize(count) * 48)) ||
                 !(spans_[1] = ctx.frameAlloc(kDim * kDim * 8)) ||
                 !(params_ = ctx.frameAlloc(32))) return fail();
             std::memcpy(spans_[0].ptr, pool, size_t(count) * 48);
+            *static_cast<uint32_t*>(spans_[2].ptr) = 1;
             std::memcpy(params_.ptr, minInv, 16);
-            const uint32_t info[]{kDim, count, std::bit_cast<uint32_t>(moverScale), 0};
+            const uint32_t info[]{kDim, count, std::bit_cast<uint32_t>(moverScale), poolWords_};
             std::memcpy(static_cast<char*>(params_.ptr) + 16, info, 16);
             frame_ = frame;
             if (failures_)

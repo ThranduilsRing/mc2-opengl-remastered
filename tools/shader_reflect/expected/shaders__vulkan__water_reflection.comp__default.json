@@ -2,7 +2,21 @@
   "defines": [],
   "outputs": [],
   "shader": "shaders/vulkan/water_reflection.comp",
-  "ssbos": [],
+  "ssbos": [
+    {
+      "binding": 12,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "tiles",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "WaterTiles"
+    }
+  ],
   "stage": "comp",
   "ubos": [
     {
@@ -42,6 +56,13 @@
           "name": "p3",
           "offset": 112,
           "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "invWorldToClip",
+          "offset": 128,
+          "type": "mat4"
         }
       ],
       "name": "WaterVsParams"

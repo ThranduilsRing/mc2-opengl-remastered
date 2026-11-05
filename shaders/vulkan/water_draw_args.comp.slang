@@ -7,10 +7,11 @@
 // Set 0:
 //   b0  StructuredBuffer<uint>      header; [0] = visibleCount
 //   b1  RWStructuredBuffer<uint>    draw (words 0..3), reflection dispatch (4..6)
+//   header[1] = number of 8x8 half-res tiles holding water (the reflection dispatches one workgroup per tile)
 //   b2  ConstantBuffer<DrawArgsParams>
 
 struct DrawArgsParams {
-    int4 v;   // maxThinRecords, vertsPerRecord, reflection dispatch groups x/y
+    int4 v;   // maxThinRecords, vertsPerRecord, reflection tile grid x/y (0 = reflection off)
 };
 
 [[vk::binding(0, 0)]] StructuredBuffer<uint> header;
@@ -26,9 +27,9 @@ void main(uint3 tid : SV_DispatchThreadID)
     drawArgs[1] = 1u;
     drawArgs[2] = 0u;
     drawArgs[3] = 0u;
-    // No water admitted by this frame's cull -> zero reflection invocations.
-    drawArgs[4] = count != 0u ? uint(P.v.z) : 0u;
-    drawArgs[5] = uint(P.v.w);
+    // One workgroup per tile that holds water; no water (or reflection off) -> zero invocations.
+    drawArgs[4] = min(header[1], uint(P.v.z) * uint(P.v.w));
+    drawArgs[5] = 1u;
     drawArgs[6] = 1u;
     drawArgs[7] = 0u;
 }
