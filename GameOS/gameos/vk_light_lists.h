@@ -22,8 +22,10 @@ class LightLists {
     uint32_t retryDelay_ = 1;
     const char* failure_ = nullptr;
     std::array<FrameAlloc, 3> spans_{};
+    uint32_t poolWords_ = 0;
 public:
     static constexpr uint32_t kDim = 64;
+    static constexpr uint32_t kPoolPerCell = 64;
     float minInv[4]{};
     bool stage(VulkanContext& ctx, const void* pool, uint32_t count, float moverScale, FrameAlloc (&out)[3], const char*& failure) {
         const auto frame = ctx.tracker().frameNo();
@@ -67,13 +69,17 @@ public:
             failure = "frame_ring_allocation";
             // The index buffer dominates. Refuse it before consuming any smaller
             // spans, and never repeat partial allocations in the same frame.
-            if (!(spans_[2] = ctx.frameAlloc(VkDeviceSize(kDim) * kDim * count * 4)) ||
+            // Pooled: one shared index pool (word 0 is its allocation cursor) instead of a full count-entry slice per cell. A pool of kPoolPerCell entries
+            // per cell on average is exact for every map seen; a cell that would overrun it is cut short rather than overwrite a neighbour.
+            poolWords_ = 1 + (std::min)(kDim * kDim * count, kDim * kDim * kPoolPerCell);
+            if (!(spans_[2] = ctx.frameAlloc(VkDeviceSize(poolWords_) * 4)) ||
                 !(spans_[0] = ctx.frameAlloc(VkDeviceSize(count) * 48)) ||
                 !(spans_[1] = ctx.frameAlloc(kDim * kDim * 8)) ||
                 !(params_ = ctx.frameAlloc(32))) return fail();
             std::memcpy(spans_[0].ptr, pool, size_t(count) * 48);
+            *static_cast<uint32_t*>(spans_[2].ptr) = 1;
             std::memcpy(params_.ptr, minInv, 16);
-            const uint32_t info[]{kDim, count, std::bit_cast<uint32_t>(moverScale), 0};
+            const uint32_t info[]{kDim, count, std::bit_cast<uint32_t>(moverScale), poolWords_};
             std::memcpy(static_cast<char*>(params_.ptr) + 16, info, 16);
             frame_ = frame;
             if (failures_)
