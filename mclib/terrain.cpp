@@ -12,6 +12,7 @@
 // Include Files
 
 #include "terrain_internal.h"
+#include <algorithm>
 #include "mc2fmt.h"
 
 
@@ -230,8 +231,8 @@ void recomputeBlockAabb(TerrainBlockMeta& bm)
                 elev = 33.0f;   // blankVertex elevation (mapdata.cpp:641)
             else
                 elev = blks[vx + vy * mapSide].elevation;
-            if (elev < mn) mn = elev;
-            if (elev > mx) mx = elev;
+            mn = std::min(mn, elev);
+            mx = std::max(mx, elev);
         }
     }
     bm.minElev   = mn;
@@ -254,16 +255,16 @@ void recomputeSuperchunkAabb(int scX, int scY)
             if (bx >= Terrain::s_terrainChunkSide || by >= Terrain::s_terrainChunkSide) continue;
             const TerrainBlockMeta& bm =
                 Terrain::s_blockMeta[bx + by * Terrain::s_terrainChunkSide];
-            float wMinX =  float(bm.originX)                  * 128.0f - halfMap;
-            float wMaxX =  float(bm.originX + bm.quadCountX)  * 128.0f - halfMap;
-            float wMaxY =  halfMap - float(bm.originY)                  * 128.0f;
-            float wMinY =  halfMap - float(bm.originY + bm.quadCountY)  * 128.0f;
-            if (wMinX < xMin) xMin = wMinX;
-            if (wMaxX > xMax) xMax = wMaxX;
-            if (wMinY < yMin) yMin = wMinY;
-            if (wMaxY > yMax) yMax = wMaxY;
-            if (bm.minElev < zMin) zMin = bm.minElev;
-            if (bm.maxElev > zMax) zMax = bm.maxElev;
+            float wMinX =  static_cast<float>(bm.originX)                  * 128.0f - halfMap;
+            float wMaxX =  static_cast<float>(bm.originX + bm.quadCountX)  * 128.0f - halfMap;
+            float wMaxY =  halfMap - static_cast<float>(bm.originY)                  * 128.0f;
+            float wMinY =  halfMap - static_cast<float>(bm.originY + bm.quadCountY)  * 128.0f;
+            xMin = std::min(xMin, wMinX);
+            xMax = std::max(xMax, wMaxX);
+            yMin = std::min(yMin, wMinY);
+            yMax = std::max(yMax, wMaxY);
+            zMin = std::min(zMin, bm.minElev);
+            zMax = std::max(zMax, bm.maxElev);
         }
     }
     sc.worldMinX = xMin; sc.worldMaxX = xMax;
@@ -351,7 +352,7 @@ long Terrain::init (PacketFile* pakFile, int whichPacket, unsigned long visibleV
 		STOP(("Unable to seek Packet %d in file %s",whichPacket,pakFile->getFilename()));
 	
 	int tmp = pakFile->getPacketSize();
-	realVerticesMapSide = sqrt( float(tmp/ sizeof(PostcompVertex)));
+	realVerticesMapSide = sqrt( static_cast<float>(tmp/ sizeof(PostcompVertex)));
 	
 	if (!justResaveAllMaps)
 	{

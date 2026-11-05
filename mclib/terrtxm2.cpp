@@ -11,6 +11,9 @@
 //---------------------------------------------------------------------------
 // Include Files
 #include "mc2_czstring.h"
+#include <algorithm>
+#include <filesystem>
+#include <system_error>
 #include"platform_windows.h" /*only for declaration of DeleteFile() */
 #include "texture_assets.h"
 
@@ -245,13 +248,11 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 		
 		
 		float textureAdjustFactor = (textureOffset / COLOR_MAP_RES);
-		if (uvData->minU <= textureAdjustFactor)
-			uvData->minU = textureAdjustFactor;
+		uvData->minU = std::max(uvData->minU, textureAdjustFactor);
 		//else
 			//uvData->minU += xAdjust;
 			
-		if (uvData->minV <= textureAdjustFactor)
-			uvData->minV = textureAdjustFactor;
+		uvData->minV = std::max(uvData->minV, textureAdjustFactor);
 		//else
 			//uvData->minV += yAdjust;
 			
@@ -373,7 +374,7 @@ long TerrainColorMap::saveWaterDetail(mc2::czstring fileName)
 		textureFileOpenResult = textureFile.create(waterDetailFile);
 		textureFile.deleteFile(); /*what is this supposed to do?*/
 		textureFile.close();
-		DeleteFile(waterDetailFile);
+		{ std::error_code rmEc; std::filesystem::remove(waterDetailFile, rmEc); }
 	}
 	return result;
 }

@@ -131,8 +131,8 @@ static void fillWorldCacheVertex (Vertex& vertex, PostcompVertexPtr pVertex, lon
 {
 	vertex.init();
 	vertex.pVertex = pVertex;
-	vertex.vx = float(tileC - Terrain::halfVerticesMapSide) * Terrain::worldUnitsPerVertex;
-	vertex.vy = float(Terrain::halfVerticesMapSide - tileR) * Terrain::worldUnitsPerVertex;
+	vertex.vx = static_cast<float>(tileC - Terrain::halfVerticesMapSide) * Terrain::worldUnitsPerVertex;
+	vertex.vy = static_cast<float>(Terrain::halfVerticesMapSide - tileR) * Terrain::worldUnitsPerVertex;
 	vertex.posTile = (tileR << 16) + (tileC & 0x0000ffff);
 }
 
@@ -291,7 +291,7 @@ void MapData::buildTerrainFaceCache (volatile float* progress, float progressRan
 		}
 
 		if (progress && (cacheWidth > 0))
-			*progress += progressRange / float(cacheWidth);
+			*progress += progressRange / static_cast<float>(cacheWidth);
 	}
 }
 
@@ -332,32 +332,32 @@ bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEn
 		if (duringMissionLoad)
 		{
 			++gTerrainTilesRealizedDuringLoad;
-			TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
+			TracyPlot("Terrain tiles realized during mission load", static_cast<int64_t>(gTerrainTilesRealizedDuringLoad));
 			++gTerrainColormapRealizedLoad;
-			TracyPlot("Terrain colormap realized load", int64_t(gTerrainColormapRealizedLoad));
+			TracyPlot("Terrain colormap realized load", static_cast<int64_t>(gTerrainColormapRealizedLoad));
 		}
 		else
 		{
 			++gTerrainTilesFirstRealizedDuringGameplay;
-			TracyPlot("Terrain tiles first realized during gameplay", int64_t(gTerrainTilesFirstRealizedDuringGameplay));
+			TracyPlot("Terrain tiles first realized during gameplay", static_cast<int64_t>(gTerrainTilesFirstRealizedDuringGameplay));
 			++gTerrainColormapRealizedGameplay;
-			TracyPlot("Terrain colormap realized gameplay", int64_t(gTerrainColormapRealizedGameplay));
+			TracyPlot("Terrain colormap realized gameplay", static_cast<int64_t>(gTerrainColormapRealizedGameplay));
 		}
 	}
 	if (realizedDetail)
 	{
-		if (duringMissionLoad) { ++gTerrainDetailRealizedLoad; TracyPlot("Terrain detail realized load", int64_t(gTerrainDetailRealizedLoad)); }
-		else                   { ++gTerrainDetailRealizedGameplay; TracyPlot("Terrain detail realized gameplay", int64_t(gTerrainDetailRealizedGameplay)); }
+		if (duringMissionLoad) { ++gTerrainDetailRealizedLoad; TracyPlot("Terrain detail realized load", static_cast<int64_t>(gTerrainDetailRealizedLoad)); }
+		else                   { ++gTerrainDetailRealizedGameplay; TracyPlot("Terrain detail realized gameplay", static_cast<int64_t>(gTerrainDetailRealizedGameplay)); }
 	}
 	if (realizedOverlay)
 	{
-		if (duringMissionLoad) { ++gTerrainOverlayRealizedLoad; TracyPlot("Terrain overlay realized load", int64_t(gTerrainOverlayRealizedLoad)); }
-		else                   { ++gTerrainOverlayRealizedGameplay; TracyPlot("Terrain overlay realized gameplay", int64_t(gTerrainOverlayRealizedGameplay)); }
+		if (duringMissionLoad) { ++gTerrainOverlayRealizedLoad; TracyPlot("Terrain overlay realized load", static_cast<int64_t>(gTerrainOverlayRealizedLoad)); }
+		else                   { ++gTerrainOverlayRealizedGameplay; TracyPlot("Terrain overlay realized gameplay", static_cast<int64_t>(gTerrainOverlayRealizedGameplay)); }
 	}
 	if (realizedBase)
 	{
-		if (duringMissionLoad) { ++gTerrainBaseRealizedLoad; TracyPlot("Terrain base realized load", int64_t(gTerrainBaseRealizedLoad)); }
-		else                   { ++gTerrainBaseRealizedGameplay; TracyPlot("Terrain base realized gameplay", int64_t(gTerrainBaseRealizedGameplay)); }
+		if (duringMissionLoad) { ++gTerrainBaseRealizedLoad; TracyPlot("Terrain base realized load", static_cast<int64_t>(gTerrainBaseRealizedLoad)); }
+		else                   { ++gTerrainBaseRealizedGameplay; TracyPlot("Terrain base realized gameplay", static_cast<int64_t>(gTerrainBaseRealizedGameplay)); }
 	}
 
 	return realizedColorMapTile;
@@ -380,16 +380,16 @@ void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float pro
 	gTerrainOverlayRealizedGameplay = 0;
 	gTerrainBaseRealizedLoad = 0;
 	gTerrainBaseRealizedGameplay = 0;
-	TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
-	TracyPlot("Terrain tiles first realized during gameplay", int64_t(gTerrainTilesFirstRealizedDuringGameplay));
-	TracyPlot("Terrain colormap realized load", int64_t(0));
-	TracyPlot("Terrain colormap realized gameplay", int64_t(0));
-	TracyPlot("Terrain detail realized load", int64_t(0));
-	TracyPlot("Terrain detail realized gameplay", int64_t(0));
-	TracyPlot("Terrain overlay realized load", int64_t(0));
-	TracyPlot("Terrain overlay realized gameplay", int64_t(0));
-	TracyPlot("Terrain base realized load", int64_t(0));
-	TracyPlot("Terrain base realized gameplay", int64_t(0));
+	TracyPlot("Terrain tiles realized during mission load", static_cast<int64_t>(gTerrainTilesRealizedDuringLoad));
+	TracyPlot("Terrain tiles first realized during gameplay", static_cast<int64_t>(gTerrainTilesFirstRealizedDuringGameplay));
+	TracyPlot("Terrain colormap realized load", static_cast<int64_t>(0));
+	TracyPlot("Terrain colormap realized gameplay", static_cast<int64_t>(0));
+	TracyPlot("Terrain detail realized load", static_cast<int64_t>(0));
+	TracyPlot("Terrain detail realized gameplay", static_cast<int64_t>(0));
+	TracyPlot("Terrain overlay realized load", static_cast<int64_t>(0));
+	TracyPlot("Terrain overlay realized gameplay", static_cast<int64_t>(0));
+	TracyPlot("Terrain base realized load", static_cast<int64_t>(0));
+	TracyPlot("Terrain base realized gameplay", static_cast<int64_t>(0));
 
 	const long cacheWidth = worldQuadCacheWidth();
 	std::vector<DWORD> handlesToWarm;
@@ -434,7 +434,7 @@ void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float pro
 					if (entry.usesColorMap() && entry.terrainHandle == handle)
 					{
 						++gTerrainTilesRealizedDuringLoad;
-						TracyPlot("Terrain tiles realized during mission load", int64_t(gTerrainTilesRealizedDuringLoad));
+						TracyPlot("Terrain tiles realized during mission load", static_cast<int64_t>(gTerrainTilesRealizedDuringLoad));
 						counted = true;
 						break;
 					}
@@ -443,7 +443,7 @@ void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float pro
 		}
 
 		if (progress && totalHandles)
-			*progress += progressRange / float(totalHandles);
+			*progress += progressRange / static_cast<float>(totalHandles);
 	}
 }
 
@@ -735,8 +735,8 @@ void MapData::calcLight (void)
 			if (Terrain::recalcShadows)
 			{
 				glm::vec3 vertexPos;
-				vertexPos.x = ((float(x) * Terrain::worldUnitsPerVertex) + Terrain::mapTopLeft3d.x);
-				vertexPos.y = (Terrain::mapTopLeft3d.y - (float(y) * Terrain::worldUnitsPerVertex));
+				vertexPos.x = ((static_cast<float>(x) * Terrain::worldUnitsPerVertex) + Terrain::mapTopLeft3d.x);
+				vertexPos.y = (Terrain::mapTopLeft3d.y - (static_cast<float>(y) * Terrain::worldUnitsPerVertex));
 				vertexPos.z = 0.0f;
 				vertexPos.z = terrainElevation(vertexPos);
 				v0->shadow = 0;
@@ -962,8 +962,8 @@ long MapData::update (void)
 		long PVx = float2long(topLeftVertex.x+0.5f);
 		long PVy = float2long(topLeftVertex.y+0.5f);
 
-		float fTLVx = float(PVx) - (Terrain::visibleVerticesPerSide>>1);
-		float fTLVy = float(PVy) - (Terrain::visibleVerticesPerSide>>1);
+		float fTLVx = static_cast<float>(PVx) - (Terrain::visibleVerticesPerSide>>1);
+		float fTLVy = static_cast<float>(PVy) - (Terrain::visibleVerticesPerSide>>1);
 		
 		long TLVx = float2long(fTLVx);
 		long TLVy = float2long(fTLVy);
@@ -1117,8 +1117,8 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 			
 			//----------------------------------------------------------------------
 			// From Blocks and vertex, calculate the World Position
-			currentVertex->vx = float(topLeftX - Terrain::halfVerticesMapSide) * Terrain::worldUnitsPerVertex;
-			currentVertex->vy = float(Terrain::halfVerticesMapSide - topLeftY) * Terrain::worldUnitsPerVertex;
+			currentVertex->vx = static_cast<float>(topLeftX - Terrain::halfVerticesMapSide) * Terrain::worldUnitsPerVertex;
+			currentVertex->vy = static_cast<float>(Terrain::halfVerticesMapSide - topLeftY) * Terrain::worldUnitsPerVertex;
 			//----------------------------------------------------------------------
 			
 			long posTileR = topLeftY;
@@ -1495,12 +1495,12 @@ float MapData::terrainAngle (const glm::vec3 &position, glm::vec3* normal)
 	upperLeft.x *= Terrain::worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * Terrain::oneOverWorldUnitsPerVertex);
-	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
+	if (static_cast<float>(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= Terrain::worldUnitsPerVertex;
 
 	Stuff::Vector2DOf<float> _upperLeft;
-	_upperLeft.Multiply(upperLeft,float(Terrain::oneOverWorldUnitsPerVertex));
+	_upperLeft.Multiply(upperLeft,static_cast<float>(Terrain::oneOverWorldUnitsPerVertex));
 	
 	Stuff::Vector2DOf<long> meshOffset;
 	meshOffset.x = float2long(_upperLeft.x);
@@ -1803,12 +1803,12 @@ glm::vec3 MapData::terrainNormal (const glm::vec3& position)
 	upperLeft.x *= Terrain::worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * Terrain::oneOverWorldUnitsPerVertex);
-	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
+	if (static_cast<float>(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= Terrain::worldUnitsPerVertex;
 
 	Stuff::Vector2DOf<float> _upperLeft;
-	_upperLeft.Multiply(upperLeft,float(Terrain::oneOverWorldUnitsPerVertex));
+	_upperLeft.Multiply(upperLeft,static_cast<float>(Terrain::oneOverWorldUnitsPerVertex));
 	
 	Stuff::Vector2DOf<long> meshOffset;
 	meshOffset.x = float2long(_upperLeft.x);
@@ -2088,22 +2088,22 @@ float MapData::terrainElevation (const glm::vec3 &position)
 	upperLeft.x *= Terrain::worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * Terrain::oneOverWorldUnitsPerVertex);
-	if (float(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
+	if (static_cast<float>(position.y * Terrain::oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= Terrain::worldUnitsPerVertex;
 
 	Stuff::Vector2DOf<float> _upperLeft;
-	_upperLeft.Multiply(upperLeft,float(Terrain::oneOverWorldUnitsPerVertex));
+	_upperLeft.Multiply(upperLeft,static_cast<float>(Terrain::oneOverWorldUnitsPerVertex));
 	
 	Stuff::Vector2DOf<long> meshOffset;
 	meshOffset.x = floor(_upperLeft.x);
 	meshOffset.y = floor(_upperLeft.y);
 
-	if (long(floor(_upperLeft.x)) != float2long(_upperLeft.x))
-		PAUSE(("Long != float2long  %d  ->  %d",long(floor(_upperLeft.x)),float2long(_upperLeft.x)));
+	if (static_cast<long>(floor(_upperLeft.x)) != float2long(_upperLeft.x))
+		PAUSE(("Long != float2long  %d  ->  %d",static_cast<long>(floor(_upperLeft.x)),float2long(_upperLeft.x)));
 		
-	if (long(floor(_upperLeft.y)) != float2long(_upperLeft.y))
-		PAUSE(("Long != float2long  %d  ->  %d",long(floor(_upperLeft.y)),float2long(_upperLeft.y)));
+	if (static_cast<long>(floor(_upperLeft.y)) != float2long(_upperLeft.y))
+		PAUSE(("Long != float2long  %d  ->  %d",static_cast<long>(floor(_upperLeft.y)),float2long(_upperLeft.y)));
 
 	long verticesMapSide = Terrain::verticesBlockSide * Terrain::blocksMapSide;
 
@@ -2130,14 +2130,14 @@ float MapData::terrainElevation (const glm::vec3 &position)
 	triPos.y = Terrain::worldUnitsPerVertex * floor(_upperLeft.y);
 	triPos.z = pVertex1->elevation;
 	
-	if (long(topLeftVertex.x) != float2long(topLeftVertex.x))
-		PAUSE(("Long != float2long  %d  ->  %d",long(topLeftVertex.x),float2long(topLeftVertex.x)));
+	if (static_cast<long>(topLeftVertex.x) != float2long(topLeftVertex.x))
+		PAUSE(("Long != float2long  %d  ->  %d",static_cast<long>(topLeftVertex.x),float2long(topLeftVertex.x)));
 		
-	if (long(topLeftVertex.y) != float2long(topLeftVertex.y))
-		PAUSE(("Long != float2long  %d  ->  %d",long(topLeftVertex.y),float2long(topLeftVertex.y)));
+	if (static_cast<long>(topLeftVertex.y) != float2long(topLeftVertex.y))
+		PAUSE(("Long != float2long  %d  ->  %d",static_cast<long>(topLeftVertex.y),float2long(topLeftVertex.y)));
 
-	bool tlx = (long(topLeftVertex.x) & 1);
-	bool tly = (long(topLeftVertex.y) & 1);
+	bool tlx = (static_cast<long>(topLeftVertex.x) & 1);
+	bool tly = (static_cast<long>(topLeftVertex.y) & 1);
 
 	long x = meshOffset.x - topLeftVertex.x;
 	long y = meshOffset.y - topLeftVertex.y;
