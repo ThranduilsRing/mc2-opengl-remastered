@@ -49,6 +49,8 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     // The feature structs are only valid to chain at the versions / with the extensions that define them.
     if (c.usableApi() < kFloorApi) return c;
 
+    VkPhysicalDeviceVulkan11Features f11{};
+    f11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     VkPhysicalDeviceVulkan12Features f12{};
     f12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     VkPhysicalDeviceVulkan13Features f13{};
@@ -62,6 +64,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     f2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     void** tail = &f2.pNext;
     auto chain = [&](auto& s) { *tail = &s; tail = &s.pNext; };
+    chain(f11);
     chain(f12);
     const bool core13 = c.usableApi() >= kUseApi13;
     if (core13) {
@@ -73,6 +76,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     vkGetPhysicalDeviceFeatures2(pd, &f2);
 
     c.drawIndirectCount = f12.drawIndirectCount == VK_TRUE;
+    c.shaderDrawParameters = f11.shaderDrawParameters == VK_TRUE;
     c.timelineSemaphore = f12.timelineSemaphore == VK_TRUE;
     c.bufferDeviceAddress = f12.bufferDeviceAddress == VK_TRUE;
     c.descriptorIndexing = f12.descriptorIndexing == VK_TRUE;

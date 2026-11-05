@@ -81,6 +81,7 @@ struct DeviceCaps {
     bool multiDrawIndirect = false;
     bool drawIndirectFirstInstance = false;
     bool drawIndirectCount = false;
+    bool shaderDrawParameters = false;   // gl_DrawID: the per-draw packet table index
     // Limits.
     uint32_t maxImageDimension2D = 0;
     uint32_t maxBoundDescriptorSets = 0;
@@ -199,12 +200,13 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     if (c.samplerAnisotropy) e.enabledFeatures.push_back("samplerAnisotropy");
 
     // Required: the static-prop colour pass is GPU-driven (compute compaction into VkDrawIndexedIndirectCommand, vkCmdDrawIndexedIndirectCount).
-    const bool indirect = c.multiDrawIndirect && c.drawIndirectFirstInstance && c.drawIndirectCount;
+    const bool indirect = c.multiDrawIndirect && c.drawIndirectFirstInstance && c.drawIndirectCount && c.shaderDrawParameters;
     add("indirect_draw", Need::Required, indirect, Route::Core);
     if (indirect) {
         e.enabledFeatures.push_back("multiDrawIndirect");
         e.enabledFeatures.push_back("drawIndirectFirstInstance");
         e.enabledFeatures.push_back("drawIndirectCount");
+        e.enabledFeatures.push_back("shaderDrawParameters");
     }
 
     e.accepted = e.missingRequired.empty();
