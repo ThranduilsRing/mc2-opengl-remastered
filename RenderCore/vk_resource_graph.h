@@ -168,6 +168,29 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
             }
         }
     }
+    // Cross-frame retire. A plan is compiled once and replayed every frame, so the first write of a transient re-enters a slot whose previous
+    // frame's last accesses (the reads of the final passes) may still be in flight. The write discards the contents (layout 0 stays) but its
+    // edge must source every end-of-plan stage/access of the images sharing the slot; a zero source would be emitted as TOP_OF_PIPE / NONE,
+    // which waits for nothing and is a write-after-read hazard on the second frame.
+    std::vector<State> slotEnd(plan.slots);
+    for (unsigned i = 0; i < images.size(); ++i) {
+        const int slot = plan.lifetimes[i].slot;
+        if (images[i].imported || slot < 0) continue;
+        for (unsigned m = plan.mipOffset[i]; m < plan.mipOffset[i + 1]; ++m) {
+            slotEnd[slot].stages |= states[m].stages;
+            slotEnd[slot].access |= states[m].access;
+            slotEnd[slot].write = slotEnd[slot].write || states[m].write;
+        }
+    }
+    for (unsigned p = 0; p < passes.size(); ++p) {
+        for (auto& b : plan.barriers[p]) {
+            const auto& life = plan.lifetimes[b.image];
+            if (images[b.image].imported || life.slot < 0 || life.firstPass != int(p)) continue;   // only the fresh (first-write) edge
+            b.before.stages |= slotEnd[life.slot].stages;
+            b.before.access |= slotEnd[life.slot].access;
+            b.before.write = b.before.write || slotEnd[life.slot].write;
+        }
+    }
     plan.finalStates = std::move(states);
     plan.valid = true;
     return plan;
