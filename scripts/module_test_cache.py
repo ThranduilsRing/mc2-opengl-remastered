@@ -58,7 +58,29 @@ def _sha_file(path: str) -> str:
     return h.hexdigest()
 
 
+def _shared_cache_dir() -> str | None:
+    """Throwaway `clone --shared` prechecks have a fresh git dir every time, so a per-gitdir cache never hits. Entries are
+    content-keyed (file hashes), so one directory shared by every worktree is safe: MC2_TEST_CACHE_DIR, else
+    G:/mc2-tmp/module-test-cache (PC), else /workspace/cache (box)."""
+    d = os.environ.get("MC2_TEST_CACHE_DIR")
+    if not d:
+        if os.path.isdir("G:/mc2-tmp"):
+            d = "G:/mc2-tmp/module-test-cache"
+        elif os.path.isdir("/workspace/cache"):
+            d = "/workspace/cache"
+    try:
+        if d:
+            os.makedirs(d, exist_ok=True)
+            return d
+    except OSError:
+        pass
+    return None
+
+
 def _cache_file(root: str, tier: str) -> str:
+    shared = _shared_cache_dir()
+    if shared:
+        return os.path.normpath(os.path.join(shared, f"mc2_testcache_{tier}.json"))
     r = subprocess.run(["git", "-C", root, "rev-parse", "--git-path", f"mc2_testcache_{tier}.json"],
                        capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True))
     p = r.stdout.strip()

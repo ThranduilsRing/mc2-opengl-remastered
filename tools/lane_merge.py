@@ -834,9 +834,18 @@ def regenerate_all(root, *, dry_run=False):
         if os.path.exists(os.path.join(root, "CLAUDE.md")):
             raise Stop(6, "regenerate-all: missing log_tag_census.py")
         return []
-    for label, script, args in GENERATORS:
-        r = run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+    # The generators write disjoint artifacts (ARTIFACTS) and none reads another's output, so they run concurrently
+    # (about 4 at a time: the precheck budget is shared with the suites). Failures are reported in table order.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def generate(g):
+        label, script, args = g
+        return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+    with ThreadPoolExecutor(max_workers=min(4, len(GENERATORS))) as pool:
+        results = list(pool.map(generate, GENERATORS))
+    for label, r in results:
         print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
+    for label, r in results:
         if r.returncode:
             raise Stop(6, f"regenerate-all {label} failed:\n{r.stdout}")
     # Windows text-mode generators can otherwise dirty every expected JSON
@@ -1010,6 +1019,8 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         env = verify_env(workdir)
         if label in {p[0] for p in PYTHON_SUITES}:
             env["MC2_IN_GATE"] = "1"   # the gate's env: a test that breaks under it must fail here, not in the window (W112)
+            # Two suites (+ the link) share the host budget instead of each taking all of JOBS (about 18 processes).
+            env["MC2_TEST_JOBS"] = str(max(1, int(host_jobs()) // (3 if with_link else 2)))
         r = run(workdir, command, env=env)
         secs = time.monotonic() - t0
         timings.append((label, secs))
@@ -1063,8 +1074,9 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             with TreeLock(PRECHECK_TREE + ".lock"):
                 timed("tree-checkout", lambda: ensure_precheck_tree(root, PRECHECK_TREE, commit))
                 stage("configure", PRECHECK_TREE, py + ["scripts/configure_ninja.py", "--build-dir", "build64-ninja"])
-                stage("link-mc2", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2", "-j" + host_jobs()])
-                stage("link-tools", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + host_jobs()])
+                link_j = str(max(1, int(host_jobs()) // 2))   # suites take JOBS/3 each; the sum stays near JOBS
+                stage("link-mc2", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2", "-j" + link_j])
+                stage("link-tools", PRECHECK_TREE, py + ["scripts/ninja_build.py", "mc2fx", "mc2fx_preview", "-j" + link_j])
 
         # Independent chains run concurrently, each in its own shared clone (no shared generated files).
         chains = [[s for s in steps if s[0] in {r[0] for r in RATCHETS}],
