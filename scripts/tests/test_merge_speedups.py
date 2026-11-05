@@ -196,7 +196,7 @@ def test_oversize_pdb_that_cannot_be_deleted_is_reported(tmp_path, monkeypatch, 
 
 
 def test_merge_ratchets_scan_worktree_before_verify():
-    assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 4
+    assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 3   # file_size, cxx17, axis_swizzle (dup_lines -> dup_check, tidy-tools)
     assert lm.verify_env(ROOT)["MC2_NINJA_TREE"] == "build64-ninja" and lm.verify_env(ROOT)["MC2_UNIT_BUILD_DIR"] == os.path.join(ROOT, "build-cc-tests")
 
 
@@ -245,7 +245,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
-    assert by_name["contracts"][0][-1] == "-j6"
+    assert by_name["contracts"][0][-2:] == ["-j6", "--no-cache"]   # the gate never takes a shared-cache PASS
     assert by_name["harnesses"][0][-2:] == ["-j", "6"]
     assert "--ninja" in by_name["deploy"][0] and "--require-clean" in by_name["deploy"][0]
     assert [name for name, _, _ in steps[:6]] == ["box-gate", "capture-before", "deploy", "capture-after", "compare-captures", "contracts"]

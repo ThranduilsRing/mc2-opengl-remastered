@@ -5,6 +5,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import console_child  # noqa: E402
 import lint_slots as lane_merge  # noqa: E402
 
 HOLD = (
@@ -40,7 +42,8 @@ def test_run_releases_on_exception(tmp_path):
 
 def test_dead_process_frees_slot(tmp_path):
     tools = os.path.join(os.path.dirname(__file__), "..", "..", "tools")
-    p = subprocess.Popen([sys.executable, "-B", "-c", HOLD, tools, str(tmp_path)], stdout=subprocess.PIPE, text=True)
+    p = subprocess.Popen([sys.executable, "-B", "-c", HOLD, tools, str(tmp_path)], stdout=subprocess.PIPE, text=True,
+                         **console_child.child_kwargs(redirected=True))
     try:
         assert p.stdout.readline().strip() == "held"
         s = lane_merge.LintSlots(directory=str(tmp_path), n=1)
@@ -72,5 +75,6 @@ def test_cpu_split_masks_and_child_inherits():
     tools = os.path.join(os.path.dirname(__file__), "..", "..", "tools")
     for mode in ("gate", "lane"):
         want = lane_merge.cpu_masks()[mode]
-        out = subprocess.run([sys.executable, "-B", "-c", code, tools, mode], capture_output=True, text=True).stdout
+        out = subprocess.run([sys.executable, "-B", "-c", code, tools, mode], capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True)).stdout
         assert f"child {hex(want)} parent {hex(want)}" in out or want & ~((1 << (os.cpu_count() or 1)) - 1)

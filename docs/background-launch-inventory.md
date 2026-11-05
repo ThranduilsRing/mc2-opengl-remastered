@@ -17,18 +17,16 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/renderdoc_capture.py` | 237 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 265 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_battle_bench.py` | 340 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
-| `scripts/run_editor_capture.py` | 47 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_capture.py` | 46 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 246 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 880 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1192 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1718 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 882 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1194 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1720 | `nofocus.spawn` | offscreen |
 | `scripts/run_player_path.py` | 136 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 400 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 426 | `nofocus.spawn` | offscreen |
-| `scripts/run_vk_field_check.py` | 223 | `nofocus.spawn` | offscreen |
-| `scripts/run_vk_field_check.py` | 265 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 317 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 102 | `nofocus.spawn` | offscreen |
 | `scripts/test_release_zip_install.py` | 262 | `nofocus.run` | offscreen |
@@ -50,7 +48,6 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/perf/mission_cpu_profile.py` | 259 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
 | `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
 | `tools/perf/rgp_capture.py` | 70 | `subprocess.Popen` **raw, allowed:** minimized no-activate profiler panel, never an engine. | offscreen |
-| `tools/perf_snapshot.py` | 105 | `nofocus.spawn` | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
 | `tools/tracy_capture_compare.py` | 280 | `subprocess.Popen` **raw, allowed:** Tracy recorder console tool, windowless via nofocus.hidden_kwargs. | offscreen |
 | `tools/tracy_capture_compare.py` | 311 | `nofocus.spawn` | offscreen |
@@ -60,7 +57,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 487 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/window_cycle.py` | 113 | `nofocus.spawn` | offscreen |
 
-Total engine launch sites: 50
+Total engine launch sites: 47
 
 ## Shell launchers (RULE 9)
 

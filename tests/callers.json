@@ -3010,6 +3010,13 @@
           "text": "from scripts import console_child  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_lint_slots.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_merge_speedups.py",
           "line": 13,
           "evidence": "import",
@@ -4778,7 +4785,7 @@
         },
         {
           "path": "scripts/tests/test_gate_box_route.py",
-          "line": 10,
+          "line": 15,
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate"
@@ -7946,13 +7953,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "scripts/tests/test_box_queue.py",
-      "basename": "test_box_queue.py",
-      "stem": "test_box_queue",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "scripts/tests/test_bt2018_mechs.py",
       "basename": "test_bt2018_mechs.py",
       "stem": "test_bt2018_mechs",
@@ -9745,15 +9745,8 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "scripts/tests/test_box_queue.py",
-          "line": 13,
-          "evidence": "import",
-          "reference": "box_run",
-          "text": "import box_run"
-        },
-        {
           "path": "scripts/tests/test_gate_box_route.py",
-          "line": 11,
+          "line": 16,
           "evidence": "import",
           "reference": "box_run",
           "text": "import box_run"
@@ -11740,7 +11733,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_lint_slots.py",
-          "line": 8,
+          "line": 10,
           "evidence": "import",
           "reference": "lint_slots",
           "text": "import lint_slots as lane_merge  # noqa: E402"
