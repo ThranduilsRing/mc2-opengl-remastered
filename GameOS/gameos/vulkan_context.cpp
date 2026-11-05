@@ -604,8 +604,10 @@ void VulkanContext::waitIdle(std::string_view why) const {
             ctxlog("[HITCH v2] waitIdle why=%.*s ms=%.2f", static_cast<int>(why.size()), why.data(), idleMs);
         // Mid-mission device idles are stalls the contract forbids (only drainDeferred waits): name each distinct caller once, tag or no tag. Render thread only.
         if (hs.missionReady.load(std::memory_order_relaxed)) {
+            static std::mutex s_warnedMutex;
             static std::vector<std::string> s_warned;
             const std::string w(why);
+            std::lock_guard<std::mutex> warnLock(s_warnedMutex);
             if (s_warned.size() < 32 && std::find(s_warned.begin(), s_warned.end(), w) == s_warned.end()) {
                 s_warned.push_back(w);
                 ctxlog("WARNING waitIdle after mission ready why=%s ms=%.2f (retire the resource on a ticket instead).", w.c_str(), idleMs);
@@ -806,15 +808,13 @@ void VulkanContext::destroy() {
     gpuprof::shutdown(*this);
 #endif
     g_debugNames = false;
-    if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }
-#ifdef MC2_VULKAN_ISLAND
-    releaseOneShotPool();   // the shared one-shot command pool goes with the device
-#endif   // parked owners go ahead of the allocator and the device
+    if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }   // parked owners go ahead of the allocator and the device
 #ifdef MC2_VULKAN_ISLAND
     // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     textures_.reset();
     deferred_.drainAll();
+    releaseOneShotPool();   // the shared one-shot command pool goes with the device, after every island that might submit one-shots
     if (textureServiceOwner_) { RenderCore::activeTextureService = nullptr; textureServiceOwner_.reset(); }
     lightFeed_.release();
     frameRing_.release();

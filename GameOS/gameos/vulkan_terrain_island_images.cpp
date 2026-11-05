@@ -40,10 +40,7 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         {feed.heightCpu, size_t(feed.heightBytes) / sizeof(float)}, uint32_t(feed.mapSide));
     if (!gradients) return false;
     if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
-    // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
-    // rare rewrite: mission load / crater deform). Under the deferred retire a prior
-    // terrain submit may still be reading it — device-idle before rewriting in place.
-    // (The old inline post-submit fence wait used to provide this guarantee for free.)
+    // VK-TERRAIN-FENCE-DEFER-1: the height SSBO is version-gated (rare rewrite: mission load / crater deform) and a prior terrain submit may still read it.
     // A rewrite (crater deform) replaces the buffer instead: the old one retires on the open-frame ticket and the descriptors repoint lazily per parity.
     if (s->heightVersionCopied != UINT64_MAX &&
         !replace_host_buffer(s, s->heightBuf, s->heightCapBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.heightBuf")) return false;

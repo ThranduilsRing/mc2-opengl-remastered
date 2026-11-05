@@ -38,7 +38,7 @@ bool runFits(const Mc2MechDrawRun& r, uint64_t indexCount, uint64_t vertexCount,
 
 bool ShadowMechCasters::ensureBuffer(OwnedBuffer& buffer, VkDeviceSize& capacity, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name) {
     if (buffer && bytes <= capacity) return true;
-    // The caller has retired every submit that read this buffer (the frame fence for a parity buffer, an idle device for the geometry).
+    // The caller has retired every submit that read this buffer (the frame fence for a parity buffer; the geometry buffers retire on the open-frame ticket).
     const VkDeviceSize cap = bytes + bytes / 2 + 4096;
     OwnedBuffer fresh;
     if (!fresh.createHostWritable(allocator_, device_, cap, usage, name)) {
