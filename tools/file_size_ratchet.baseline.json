@@ -14,10 +14,10 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2900,
+  "GameOS/gameos/engine_present_vk.cpp": 2915,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 2104,
   "GameOS/include/gameos.hpp": 3367,
-  "code/artlry.cpp": 1721,
+  "code/artlry.cpp": 1715,
   "code/bldng.cpp": 1713,
   "code/brain_special_dispatch.cpp": 2696,
   "code/gamecam.cpp": 1592,
@@ -42,7 +42,7 @@
   "mclib/ablenv.cpp": 1709,
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1935,
-  "mclib/camera.h": 1857,
+  "mclib/camera.h": 1858,
   "mclib/file.cpp": 1751,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2508,
@@ -53,7 +53,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "78f9c8c3b",
+ "head": "65396f872",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -62,7 +62,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 388,
+   "files": 390,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3367
@@ -86,7 +86,7 @@
    "max_lines": 1016
   },
   "code": {
-   "files": 490,
+   "files": 491,
    "files_over_1500": 20,
    "files_over_3000": 0,
    "max_lines": 2696
@@ -104,7 +104,7 @@
    "max_lines": 1510
   },
   "mclib": {
-   "files": 568,
+   "files": 569,
    "files_over_1500": 9,
    "files_over_3000": 0,
    "max_lines": 2508
@@ -116,7 +116,7 @@
    "max_lines": 542
   },
   "tools": {
-   "files": 649,
+   "files": 651,
    "files_over_1500": 4,
    "files_over_3000": 1,
    "max_lines": 3363
@@ -137,7 +137,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2900
+   "lines": 2915
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -213,7 +213,7 @@
   },
   {
    "file": "mclib/camera.h",
-   "lines": 1857
+   "lines": 1858
   },
   {
    "file": "code/multplyr.h",
@@ -249,7 +249,7 @@
   }
  ],
  "total": {
-  "files": 2631,
+  "files": 2637,
   "files_over_1500": 38,
   "files_over_3000": 2,
   "max_lines": 3367

@@ -879,9 +879,12 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-   "LG06": 2,
+   "LG06": 1,
    "LG13": 2,
    "LG17": 1
+  },
+  "GameOS/gameos/vulkan_shadow_island_state.h": {
+   "LG06": 0
   },
   "GameOS/gameos/vulkan_shared_scene_color.cpp": {
    "LG03": 1,
@@ -3397,7 +3400,7 @@
    "LG20": 3
   }
  },
- "head": "561290db8",
+ "head": "65396f872",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
