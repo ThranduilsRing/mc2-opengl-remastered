@@ -363,6 +363,15 @@ if(MC2_VULKAN)
         NAMES glslc
         HINTS ENV VULKAN_SDK
         PATH_SUFFIXES Bin bin)
+    # spirv-opt -O post-step for every glslang/glslc/slang output (SPIRV-Tools from the pinned Vulkan SDK;
+    # the box uses its apt spirv-tools). --preserve-bindings/--preserve-spec-constants keep the descriptor
+    # interface byte-stable; names/debug info are kept (no --strip-debug) so reflection tools see them.
+    # Absent tool = the unoptimised SPIR-V ships (still correct).
+    find_program(MC2_SPIRV_OPT
+        NAMES spirv-opt
+        HINTS ENV VULKAN_SDK
+        PATH_SUFFIXES Bin bin)
+    set(MC2_VK_SPIRV_OPT_FLAGS -O --preserve-bindings --preserve-spec-constants --target-env=vulkan1.0)
 
     set(MC2_VK_SHADER_SRC_DIR "${CMAKE_SOURCE_DIR}/shaders/vulkan")
     set(MC2_VK_SPV_OUT_DIR "${CMAKE_BINARY_DIR}/shaders/vulkan")
@@ -437,10 +446,15 @@ if(MC2_VULKAN)
             if(DEFINED MC2_VK_SHADER_DEFINES_${_base}_${_stage})
                 set(_defs ${MC2_VK_SHADER_DEFINES_${_base}_${_stage}})
             endif()
+            set(_optcmd "")
+            if(MC2_SPIRV_OPT)
+                set(_optcmd COMMAND "${MC2_SPIRV_OPT}" ${MC2_VK_SPIRV_OPT_FLAGS} "${_spv}" -o "${_spv}")
+            endif()
             if(MC2_GLSLANG_VALIDATOR)
                 add_custom_command(
                     OUTPUT "${_spv}"
                     COMMAND "${MC2_GLSLANG_VALIDATOR}" -V ${_defs} "${_src}" -o "${_spv}"
+                    ${_optcmd}
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslang): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
@@ -448,6 +462,7 @@ if(MC2_VULKAN)
                 add_custom_command(
                     OUTPUT "${_spv}"
                     COMMAND "${MC2_GLSLC}" ${_defs} "${_src}" -o "${_spv}"
+                    ${_optcmd}
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslc): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
@@ -494,11 +509,15 @@ if(MC2_VULKAN)
             if(_spv IN_LIST MC2_VK_SPV_OUTPUTS)
                 message(FATAL_ERROR "Duplicate GLSL/Slang shader output: ${_spv}")
             endif()
+            set(_optargs "")
+            if(MC2_SPIRV_OPT)
+                set(_optargs --spirv-opt "${MC2_SPIRV_OPT}")
+            endif()
             add_custom_command(OUTPUT "${_spv}"
                 COMMAND "${Python3_EXECUTABLE}"
                     "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py"
                     "${_src}" -o "${_spv}"
-                    --slangc "${MC2_SLANGC}" --spirv-cross "${MC2_SPIRV_CROSS}"
+                    --slangc "${MC2_SLANGC}" --spirv-cross "${MC2_SPIRV_CROSS}" ${_optargs}
                 DEPENDS ${MC2_SLANG_DEPENDS}
                     "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py"
                     "${CMAKE_SOURCE_DIR}/tools/gpu_abi_gen.py"
