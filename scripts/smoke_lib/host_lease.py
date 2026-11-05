@@ -85,8 +85,74 @@ def waiver_active(now: Optional[float] = None) -> bool:
         return False   # an empty or half-written waiver must never raise the slot count
 
 
-def slot_path(slot: int) -> Path:
-    path = lease_path()
+GPU_SPLIT_PATH = Path("A:/Games/mc2-ops/GPU_SPLIT")   # lines `gate=NVIDIA`, `lane=AMD` (device-name substrings, like MC2_VK_DEVICE)
+GPU_SPLIT_DEFAULT = {"gate": "NVIDIA", "lane": "AMD"}  # gate = RTX 2070 SUPER, lanes = RX 7900 XTX
+
+
+def _parse_gpu_split(text: str) -> dict:
+    split = dict(GPU_SPLIT_DEFAULT)
+    for line in text.splitlines():
+        k, _, v = line.partition("=")
+        if k.strip() in split and v.strip():
+            split[k.strip()] = v.strip()
+    return split
+
+
+def gpu_split() -> dict:
+    """{"gate": substring, "lane": substring}: which GPU the merge gate's game runs use and which the lanes use."""
+    if redirected():
+        return dict(GPU_SPLIT_DEFAULT)
+    try:
+        return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
+    except OSError:
+        return dict(GPU_SPLIT_DEFAULT)
+
+
+def device_hint(env=None) -> Optional[str]:
+    """The MC2_VK_DEVICE substring a run with this env goes to: explicit MC2_VK_DEVICE, MC2_HARNESS_GPU=2070|xtx,
+    else the gate's device inside the gate (MC2_IN_GATE=1) and the lane device elsewhere. None = unrouted (MC2_HARNESS_GPU=any)."""
+    env = os.environ if env is None else env
+    mode = (env.get("MC2_HARNESS_GPU") or "").lower()
+    hint = env.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(mode)
+    if hint or mode == "any":
+        return hint or None
+    return gpu_split()["gate" if env.get("MC2_IN_GATE") == "1" else "lane"]
+
+
+def on_gate_device(env=None) -> bool:
+    """True when this run uses the gate's GPU: a gate stage, or any run routed to the gate's device."""
+    env = os.environ if env is None else env
+    hint = device_hint(env)
+    return env.get("MC2_IN_GATE") == "1" or bool(hint and gpu_split()["gate"].lower() in hint.lower())
+
+
+@contextmanager
+def gate_device_env():
+    """The gate process's own lease calls (hold, release_batch) run as gate-device callers."""
+    with keyed_by(gpu_split()["gate"]):
+        yield
+
+
+@contextmanager
+def keyed_by(device: Optional[str]):
+    """Run lease calls keyed to `device` (the MC2_VK_DEVICE a child is about to get), so the lease, the queue and the core
+    reservation follow the env the child actually receives and not this process's own. None = no change."""
+    if not device:
+        yield
+        return
+    prev = os.environ.get("MC2_VK_DEVICE")
+    os.environ["MC2_VK_DEVICE"] = device
+    try:
+        yield
+    finally:
+        if prev is None:
+            os.environ.pop("MC2_VK_DEVICE", None)
+        else:
+            os.environ["MC2_VK_DEVICE"] = prev
+
+
+def slot_path(slot: int, path: Optional[Path] = None) -> Path:
+    path = path or lease_path()
     return path if slot == 0 else path.with_name(path.stem + f".slot{slot}" + path.suffix)
 
 
@@ -103,15 +169,37 @@ def affinity_mask(slot: int) -> int:
     return ((1 << (width * 2)) - 1) << (4 + slot * max(2, width) * 2)
 
 
+def _cpu_split() -> dict:
+    """{"gate": mask, "lane": mask} from A:/Games/mc2-ops/CPU_SPLIT (same file and defaults as tools/lint_slots.cpu_masks)."""
+    masks = {"gate": 0x00FF, "lane": 0xFF00}
+    try:
+        for line in Path("A:/Games/mc2-ops/CPU_SPLIT").read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() in masks and v.strip():
+                masks[k.strip()] = int(v.strip(), 0)
+    except (OSError, ValueError):
+        pass
+    return masks
+
+
 def game_cores():
-    """Use the host's explicit reservation, including for old leases."""
+    """Use the host's explicit reservation, including for old leases. Per device: a game on the gate's GPU takes its cores from
+    the gate's CPU half (CPU_SPLIT, minus the desktop cores), every other game from the lane half of the plan's game cores,
+    so two concurrent games never share cores."""
     plan = Path("A:/Games/mc2-ops/core_plan.json")
+    desktop = {0, 1}
+    cores = None
     if plan.is_file():
-        return json.loads(plan.read_text(encoding="utf-8"))["game"]
-    count = os.cpu_count() or 0
-    if count < 8:
+        data = json.loads(plan.read_text(encoding="utf-8"))
+        cores, desktop = data["game"], set(data.get("desktop", desktop))
+    elif (os.cpu_count() or 0) < 8:
         raise RuntimeError('three-way core partition needs at least 8 logical CPUs')
-    return list(range(count - 4, count))
+    else:
+        cores = list(range((os.cpu_count() or 0) - 4, os.cpu_count() or 0))
+    masks = _cpu_split()
+    if on_gate_device():
+        return [c for c in range(masks["gate"].bit_length()) if masks["gate"] >> c & 1 and c not in desktop] or cores
+    return [c for c in cores if masks["lane"] >> c & 1] or cores
 
 
 @contextmanager
@@ -246,6 +334,21 @@ def redirected() -> bool:
 
 
 def lease_path() -> Path:
+    """One lease file set per GPU: the lane device keeps the original path, the gate's device gets its own, so the gate's
+    exclusive hold covers only its GPU."""
+    base = _base_lease_path()
+    return base.with_name(base.stem + ".gpu-gate" + base.suffix) if on_gate_device() else base
+
+
+def _sibling_holders() -> List[dict]:
+    """Live slot records of the OTHER device's lease: their engines are managed, not foreign."""
+    base = _base_lease_path()
+    gate = base.with_name(base.stem + ".gpu-gate" + base.suffix)
+    other = base if lease_path() == gate else gate
+    return [r for r in (_read(slot_path(i, other)) for i in range(6)) if r and _holder_alive(r)]
+
+
+def _base_lease_path() -> Path:
     override = os.environ.get(PATH_ENV)
     if override:
         return Path(override)
@@ -292,7 +395,7 @@ class GateQuiet(HostLeaseBusy):
 
 
 def gate_window_path() -> Path:
-    return lease_path().with_suffix(".gate.json") if redirected() else QUIET_PATH
+    return _base_lease_path().with_suffix(".gate.json") if redirected() else QUIET_PATH
 
 
 def open_gate_window(head: str = "", window: str = "") -> None:
@@ -319,8 +422,8 @@ def close_gate_window() -> None:
 def check_gate_quiet(log: Callable[[str], None] = _log_default) -> None:
     """Raise GateQuiet when a live gate (not this process, not one of its children) holds the quiet marker. A stale one is logged and ignored."""
     rec = _read(gate_window_path())
-    if not rec or rec.get("pid") == os.getpid() or os.environ.get("MC2_IN_GATE") == "1" or os.getppid() == rec.get("pid"):
-        return
+    if not rec or rec.get("pid") == os.getpid() or os.environ.get("MC2_IN_GATE") == "1" or os.getppid() == rec.get("pid") or not on_gate_device():
+        return                                   # a run on the lane's GPU never waits for the gate
     if os.environ.get(QUIET_OVERRIDE_ENV) == "1":
         log(f"[host-lease] GATE QUIET overridden ({QUIET_OVERRIDE_ENV}=1): gate pid {rec.get('pid')}")
         return
@@ -328,14 +431,14 @@ def check_gate_quiet(log: Callable[[str], None] = _log_default) -> None:
         log(f"[host-lease] ignoring stale gate quiet marker (gate pid {rec.get('pid')} is dead)")
         return
     since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(rec.get("started", 0))))
-    raise GateQuiet(f"GATE QUIET: refusing game run (gate pid {rec.get('pid')} since {since}, head {rec.get('head') or '?'}, "
+    raise GateQuiet(f"GATE QUIET: the gate's device ({gpu_split()['gate']}) is busy, refusing game run on it (gate pid {rec.get('pid')} since {since}, head {rec.get('head') or '?'}, "
                     f"window {rec.get('window') or '?'}); retry after the gate or pass the explicit override flag")
 
 
 def gate_window_blocks(now: Optional[float] = None) -> bool:
     """True while a live gate (not this process) holds the window and the marker is inside its TTL."""
     rec = _read(gate_window_path())
-    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec) or os.environ.get(QUIET_OVERRIDE_ENV) == "1":
+    if not rec or rec.get("pid") == os.getpid() or not _holder_alive(rec) or os.environ.get(QUIET_OVERRIDE_ENV) == "1" or not on_gate_device():
         return False
     return True                                  # pid alive (and same create time) is the only staleness test: a gate may run for hours
 
@@ -382,9 +485,11 @@ def _try_take(path: Path, label: str) -> Tuple[bool, Optional[dict]]:
 
 
 def release() -> None:
-    """Give the lease back if this process holds it."""
-    with _queue_lock():
-        _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
+    """Give the lease back if this process holds it (on either GPU: a child env can key it to the other device)."""
+    split = gpu_split()
+    for device in dict.fromkeys((os.environ.get("MC2_VK_DEVICE"), split["gate"], split["lane"])):
+        with keyed_by(device), _queue_lock():
+            _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
 
 
 _registered = False
@@ -499,7 +604,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                         killed, note = child_registry.kill_if_orphan(pid)
                         log(f"[host-lease] game PID {pid}: {note}")
                     foreign = scan()
-                managed = [r for _, r in live]
+                managed = [r for _, r in live] + _sibling_holders()   # the other GPU's engines are not foreign
                 foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
                 # Slot IDs keep two-core spacing even for a narrower caller. Check
                 # recorded masks as well, including leases from the old layout.

@@ -103,6 +103,19 @@ def crop_box(img, c):
             max(int(c[3] * h), int(c[1] * h) + 1))
 
 
+def capture_gpus(cap_dir: Path) -> list:
+    """The GPU device names a capture dir's manifests logged (run_visual_capture records them), sorted."""
+    names = set()
+    for mf in Path(cap_dir).glob("*_capture_manifest.json"):
+        try:
+            m = json.loads(mf.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        rec = m.get("gpu") or (m.get("extra") or {}).get("gpu") or {}
+        names.update(rec.get("logged") or [])
+    return sorted(names)
+
+
 def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
     if not bookmarks:
         bookmarks = sorted(p.name for p in gl_dir.iterdir()
@@ -162,8 +175,12 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
         fp99 = "n/a" if r["flip_p99"] is None else f"{r['flip_p99']:.4f}"
         print(f"{r['bookmark']} | {fmean} | {fp99} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
               + "".join(f" | {c['mad']:.2f}/" + ("n/a" if c["flip_mean"] is None else f"{c['flip_mean']:.4f}") for c in r["crops"]))
+    gpu_a, gpu_b = capture_gpus(gl_dir), capture_gpus(vk_dir)
+    if gpu_a and gpu_b and gpu_a != gpu_b:
+        print(f"[ab] WARNING: the two sides ran on different GPUs ({gpu_a} vs {gpu_b}); the diff is not a clean A/B")
     (out / "summary.json").write_text(json.dumps(
-        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows}, indent=2))
+        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows,
+         "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
     return rows
 
