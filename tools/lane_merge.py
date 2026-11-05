@@ -838,8 +838,10 @@ def regenerate_all(root, *, dry_run=False):
     def generate(g):
         label, script, args = g
         return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
-    with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(GENERATORS))) as pool:
-        results = list(pool.map(generate, GENERATORS))
+    # Compiled SPIR-V is toolchain-bound: the Linux box's output differs byte-wise from the committed Windows build, so it is skipped there.
+    gens = [g for g in GENERATORS if os.name == 'nt' or g[0] != 'SPIR-V pilots']
+    with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(gens))) as pool:
+        results = list(pool.map(generate, gens))
     for label, r in results:
         print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
     for label, r in results:
