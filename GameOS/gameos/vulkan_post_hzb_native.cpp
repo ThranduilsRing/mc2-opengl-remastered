@@ -458,6 +458,16 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         return false;
     }
     s->phys = ctx.physicalDevice();
+    {   // hzb_cull.comp uses subgroupElect + subgroupAdd in the compute stage
+        VkPhysicalDeviceSubgroupProperties sg{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES};
+        VkPhysicalDeviceProperties2 p2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &sg};
+        vkGetPhysicalDeviceProperties2(s->phys, &p2);
+        const VkSubgroupFeatureFlags need = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+        if (!(sg.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) || (sg.supportedOperations & need) != need) {
+            setFallback("subgroup_ops_unsupported");
+            return false;
+        }
+    }
     s->device = ctx.device();
     s->queue = ctx.graphicsQueue();
     s->gfxFamily = ctx.graphicsFamily();
