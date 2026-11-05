@@ -1,0 +1,393 @@
+#include "sentry_session.h"
+#include "sentry_alloc.h"
+#include "sentry_backend.h"
+#include "sentry_core.h"
+#include "sentry_database.h"
+#include "sentry_envelope.h"
+#include "sentry_json.h"
+#include "sentry_options.h"
+#include "sentry_scope.h"
+#include "sentry_string.h"
+#include "sentry_utils.h"
+#include "sentry_value.h"
+
+#include <assert.h>
+#include <string.h>
+
+static const char *
+status_as_string(sentry_session_status_t status)
+{
+    switch (status) {
+    case SENTRY_SESSION_STATUS_OK:
+        return "ok";
+    case SENTRY_SESSION_STATUS_CRASHED:
+        return "crashed";
+    case SENTRY_SESSION_STATUS_ABNORMAL:
+        return "abnormal";
+    case SENTRY_SESSION_STATUS_EXITED:
+        return "exited";
+    default:
+        UNREACHABLE("invalid session status");
+        return "invalid";
+    }
+}
+
+static sentry_session_status_t
+status_from_string(const char *status)
+{
+    if (sentry__string_eq(status, "ok")) {
+        return SENTRY_SESSION_STATUS_OK;
+    } else if (sentry__string_eq(status, "exited")) {
+        return SENTRY_SESSION_STATUS_EXITED;
+    } else if (sentry__string_eq(status, "crashed")) {
+        return SENTRY_SESSION_STATUS_CRASHED;
+    } else if (sentry__string_eq(status, "abnormal")) {
+        return SENTRY_SESSION_STATUS_ABNORMAL;
+    } else {
+        return SENTRY_SESSION_STATUS_OK;
+    }
+}
+
+sentry_session_t *
+sentry__session_new(const sentry_scope_t *scope)
+{
+    sentry_value_t release_value = sentry__scope_ref_release(scope);
+    char *release = sentry_value_is_null(release_value)
+        ? NULL
+        : sentry__string_clone(sentry_value_as_string(release_value));
+    sentry_value_decref(release_value);
+
+    sentry_value_t environment_value = sentry__scope_ref_environment(scope);
+    char *environment = sentry_value_is_null(environment_value)
+        ? NULL
+        : sentry__string_clone(sentry_value_as_string(environment_value));
+    sentry_value_decref(environment_value);
+
+    if (!release) {
+        sentry_free(environment);
+        return NULL;
+    }
+
+    sentry_session_t *rv = SENTRY_MAKE(sentry_session_t);
+    if (!rv) {
+        sentry_free(release);
+        sentry_free(environment);
+        return NULL;
+    }
+
+    rv->release = release;
+    rv->environment = environment;
+    rv->session_id = sentry_uuid_new_v4();
+    rv->distinct_id = sentry_value_new_null();
+    rv->status = SENTRY_SESSION_STATUS_OK;
+    rv->init = true;
+    rv->errors = 0;
+    rv->started_us = sentry__usec_time();
+    rv->duration_us = (uint64_t)-1;
+
+    return rv;
+}
+
+void
+sentry__session_free(sentry_session_t *session)
+{
+    if (!session) {
+        return;
+    }
+    sentry_value_decref(session->distinct_id);
+    sentry_free(session->release);
+    sentry_free(session->environment);
+    sentry_free(session);
+}
+
+void
+sentry__session_to_json(
+    const sentry_session_t *session, sentry_jsonwriter_t *jw)
+{
+    sentry__jsonwriter_write_object_start(jw);
+    if (session->init) {
+        sentry__jsonwriter_write_key(jw, "init");
+        sentry__jsonwriter_write_bool(jw, true);
+    }
+    sentry__jsonwriter_write_key(jw, "sid");
+    sentry__jsonwriter_write_uuid(jw, &session->session_id);
+    sentry__jsonwriter_write_key(jw, "status");
+    sentry__jsonwriter_write_str(jw, status_as_string(session->status));
+    if (!sentry_value_is_null(session->distinct_id)) {
+        char *did = sentry__value_stringify(session->distinct_id);
+        if (did) {
+            sentry__jsonwriter_write_key(jw, "did");
+            sentry__jsonwriter_write_str(jw, did);
+            sentry_free(did);
+        }
+    }
+    sentry__jsonwriter_write_key(jw, "errors");
+    sentry__jsonwriter_write_int32(jw, (int32_t)session->errors);
+
+    sentry__jsonwriter_write_key(jw, "started");
+    sentry__jsonwriter_write_usec_timestamp(jw, session->started_us);
+
+    // if there is a duration stored on the struct (that happens after
+    // reading back from disk) we use that, otherwise we calculate the
+    // difference to the start time.
+    sentry__jsonwriter_write_key(jw, "duration");
+    double duration;
+    if (session->duration_us != (uint64_t)-1) {
+        duration = (double)session->duration_us / 1000000.0;
+    } else {
+        duration
+            = (double)(sentry__usec_time() - session->started_us) / 1000000.0;
+    }
+    sentry__jsonwriter_write_double(jw, duration);
+
+    sentry__jsonwriter_write_key(jw, "attrs");
+    sentry__jsonwriter_write_object_start(jw);
+    sentry__jsonwriter_write_key(jw, "release");
+    sentry__jsonwriter_write_str(jw, session->release);
+    sentry__jsonwriter_write_key(jw, "environment");
+    sentry__jsonwriter_write_str(jw, session->environment);
+    sentry__jsonwriter_write_object_end(jw);
+
+    sentry__jsonwriter_write_object_end(jw);
+}
+
+sentry_session_t *
+sentry__session_from_json(const char *buf, size_t buflen)
+{
+    sentry_value_t value = sentry_value_from_json(buf, buflen);
+    if (sentry_value_is_null(value)) {
+        return NULL;
+    }
+
+    sentry_value_t attrs = sentry_value_get_by_key(value, "attrs");
+    if (sentry_value_is_null(attrs)) {
+        sentry_value_decref(value);
+        return NULL;
+    }
+    char *release = sentry__string_clone(
+        sentry_value_as_string(sentry_value_get_by_key(attrs, "release")));
+    if (!release) {
+        sentry_value_decref(value);
+        return NULL;
+    }
+
+    sentry_session_t *rv = SENTRY_MAKE(sentry_session_t);
+    if (!rv) {
+        sentry_free(release);
+        sentry_value_decref(value);
+        return NULL;
+    }
+    rv->session_id
+        = sentry__value_as_uuid(sentry_value_get_by_key(value, "sid"));
+
+    rv->distinct_id = sentry_value_get_by_key_owned(value, "did");
+
+    rv->release = release;
+    rv->environment = sentry__string_clone(
+        sentry_value_as_string(sentry_value_get_by_key(attrs, "environment")));
+
+    const char *status
+        = sentry_value_as_string(sentry_value_get_by_key(value, "status"));
+    rv->status = status_from_string(status);
+
+    rv->init = sentry_value_is_true(sentry_value_get_by_key(value, "init"));
+
+    rv->errors = (uint64_t)sentry_value_as_int32(
+        sentry_value_get_by_key(value, "errors"));
+    rv->started_us = sentry__iso8601_to_usec(
+        sentry_value_as_string(sentry_value_get_by_key(value, "started")));
+
+    double duration
+        = sentry_value_as_double(sentry_value_get_by_key(value, "duration"));
+    rv->duration_us = (uint64_t)(duration * 1000000);
+
+    sentry_value_decref(value);
+
+    return rv;
+}
+
+sentry_session_t *
+sentry__session_from_path(const sentry_path_t *path)
+{
+    size_t buf_len;
+    char *buf = sentry__path_read_to_buffer(path, &buf_len);
+    if (!buf) {
+        return NULL;
+    }
+
+    sentry_session_t *rv = sentry__session_from_json(buf, buf_len);
+    sentry_free(buf);
+    return rv;
+}
+
+// takes the initial update of the current session, or returns NULL if it was
+// taken already or would be dropped for missing consent (only `http_retry`
+// sends it later; a `cache_keep` copy never leaves the cache). A session added
+// to an envelope counts as sent, so `init` turns false before the backend and
+// the session file see it. Must be called with the session lock held.
+static sentry_envelope_t *
+take_session_start_update(sentry_options_t *options)
+{
+    sentry_session_t *session = options->session;
+    if (!session || !session->init) {
+        return NULL;
+    }
+    if (options->run && sentry__run_should_skip_upload(options->run)
+        && !options->http_retry) {
+        return NULL;
+    }
+    sentry_envelope_t *envelope = sentry__envelope_new(options);
+    sentry__envelope_add_session(envelope, session);
+    session->init = false;
+    return envelope;
+}
+
+void
+sentry_start_session(void)
+{
+    sentry_end_session();
+    sentry_envelope_t *envelope = NULL;
+    sentry_options_t *options = sentry__options_lock();
+    SENTRY_WITH_SCOPE (scope) {
+        if (options) {
+            sentry__mutex_lock(&options->session_lock);
+            options->session = sentry__session_new(scope);
+            if (options->session) {
+                sentry_value_t user = sentry__scope_ref_user(scope);
+                sentry__session_sync_user(options->session, user,
+                    options->run ? options->run->installation_id : NULL);
+                sentry_value_decref(user);
+                envelope = take_session_start_update(options);
+                sentry__session_notify_changed(options);
+                sentry__run_write_session(options->run, options->session);
+            }
+            sentry__mutex_unlock(&options->session_lock);
+        }
+    }
+    sentry__options_unlock();
+
+    if (envelope) {
+        // submit outside the options lock, like `sentry__capture_session`
+        SENTRY_WITH_OPTIONS (opts) {
+            sentry__capture_envelope(opts->transport, envelope, opts);
+            envelope = NULL;
+        }
+        sentry_envelope_free(envelope);
+    }
+}
+
+void
+sentry__session_send_start_update(const sentry_options_t *options)
+{
+    sentry_options_t *mut_options = (sentry_options_t *)options;
+    sentry__mutex_lock(&mut_options->session_lock);
+    sentry_envelope_t *envelope = take_session_start_update(mut_options);
+    if (envelope) {
+        sentry__session_notify_changed(mut_options);
+        sentry__run_write_session(mut_options->run, mut_options->session);
+    }
+    sentry__mutex_unlock(&mut_options->session_lock);
+
+    if (envelope) {
+        sentry__capture_envelope(options->transport, envelope, options);
+    }
+}
+
+void
+sentry__record_errors_on_current_session(
+    const sentry_options_t *options, uint32_t error_count)
+{
+    sentry_options_t *mut_options = (sentry_options_t *)options;
+    sentry__mutex_lock(&mut_options->session_lock);
+    if (mut_options->session) {
+        mut_options->session->errors += error_count;
+    }
+    sentry__mutex_unlock(&mut_options->session_lock);
+}
+
+static sentry_session_t *
+sentry__end_session_internal(const sentry_options_t *options)
+{
+    sentry_options_t *mut_options = (sentry_options_t *)options;
+    sentry__mutex_lock(&mut_options->session_lock);
+    sentry_session_t *session = mut_options->session;
+    mut_options->session = NULL;
+    sentry__run_clear_session(mut_options->run);
+    if (session) {
+        sentry__session_notify_changed(mut_options);
+    }
+    sentry__mutex_unlock(&mut_options->session_lock);
+
+    if (session && session->status == SENTRY_SESSION_STATUS_OK) {
+        session->status = SENTRY_SESSION_STATUS_EXITED;
+    }
+    return session;
+}
+
+sentry_session_t *
+sentry__end_current_session_with_status(
+    const sentry_options_t *options, sentry_session_status_t status)
+{
+    sentry_session_t *session = sentry__end_session_internal(options);
+    if (session) {
+        session->status = status;
+    }
+    return session;
+}
+
+static void
+sentry__capture_session(
+    const sentry_options_t *options, sentry_session_t *session)
+{
+    sentry_envelope_t *envelope = sentry__envelope_new(options);
+    sentry__envelope_add_session(envelope, session);
+    sentry__capture_envelope(options->transport, envelope, options);
+}
+
+void
+sentry_end_session(void)
+{
+    SENTRY_WITH_OPTIONS (options) {
+        sentry_session_t *session = sentry__end_session_internal(options);
+        if (session) {
+            sentry__capture_session(options, session);
+            sentry__session_free(session);
+        }
+    }
+}
+
+void
+sentry_end_session_with_status(sentry_session_status_t status)
+{
+    SENTRY_WITH_OPTIONS (options) {
+        sentry_session_t *session
+            = sentry__end_current_session_with_status(options, status);
+        if (session) {
+            sentry__capture_session(options, session);
+            sentry__session_free(session);
+        }
+    }
+}
+
+void
+sentry__session_notify_changed(const sentry_options_t *options)
+{
+    if (options && options->backend && options->backend->session_changed_func) {
+        options->backend->session_changed_func(
+            options->backend, options, options->session);
+    }
+}
+
+void
+sentry__session_sync_user(
+    sentry_session_t *session, sentry_value_t user, const char *installation_id)
+{
+    sentry_value_t did = sentry_value_get_by_key(user, "id");
+    sentry_value_decref(session->distinct_id);
+    if (sentry_value_is_null(did) && installation_id) {
+        session->distinct_id = sentry_value_new_string(installation_id);
+    } else {
+        sentry_value_incref(did);
+        session->distinct_id = did;
+    }
+}

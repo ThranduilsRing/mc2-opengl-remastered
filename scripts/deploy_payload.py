@@ -954,6 +954,15 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         fail(f"source exe not found: {exe_src}")
     items.append((exe_src, exe_name, "exe"))
 
+    # Out-of-process minidump writer (sentry-native crashpad backend): mc2 copies it next to itself at link
+    # time and gos_crashpad.cpp starts it from the exe's folder. Without it the in-process dump stays in charge.
+    if exe_name.lower() != EDITOR_EXE:
+        handler_name = "crashpad_handler" if native else "crashpad_handler.exe"
+        handler_src = os.path.join(build_dir, handler_name)
+        if require_build and not os.path.isfile(handler_src):
+            fail(f"crashpad handler not found: {handler_src}")
+        items.append((handler_src, handler_name, "exe"))
+
     pdb_src = os.path.join(build_dir, pdb_name)
     if not native:
         items.append((pdb_src, pdb_name, "pdb"))  # presence checked later

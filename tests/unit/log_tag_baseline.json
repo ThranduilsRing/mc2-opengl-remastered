@@ -2264,9 +2264,18 @@
   {
    "tag": "CRASH",
    "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "minidump"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CRASH",
+   "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 3
   },
   {
    "tag": "CRASH",
@@ -2276,6 +2285,15 @@
     "code",
     "flags",
     "addr"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CRASH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "database"
    ],
    "count": 1
   },
