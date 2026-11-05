@@ -108,6 +108,8 @@ private:
         bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);
+    void writeSlotSets(mc2vk::VulkanContext& ctx, uint32_t par);   // rewrites one parity's sets; called only after that parity's ticket wait
+    bool descDirty_[kSlots] = {};
     mc2vk::ComputePipeline cull_, scan_, compact_;
     mc2vk::ComputeSets sets_;
     bool pipelinesTried_ = false, pipelinesOk_ = false;
