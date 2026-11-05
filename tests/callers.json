@@ -2285,7 +2285,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -8772,7 +8772,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -10445,6 +10445,20 @@
           "text": "from tools.content_pipeline import provenance"
         },
         {
+          "path": "tools/mc2texcook/mc2texcook.py",
+          "line": 267,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import texcook"
+        },
+        {
+          "path": "tools/mc2texcook/repack_ktx2.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import texcook  # noqa: E402"
+        },
+        {
           "path": "tools/scifi_kit/art/content.py",
           "line": 174,
           "evidence": "import",
@@ -11071,6 +11085,20 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
           "text": "from tools.content_pipeline import provenance, texcook"
+        },
+        {
+          "path": "tools/mc2texcook/mc2texcook.py",
+          "line": 267,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from tools.content_pipeline import texcook"
+        },
+        {
+          "path": "tools/mc2texcook/repack_ktx2.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from tools.content_pipeline import texcook  # noqa: E402"
         }
       ]
     },
@@ -13260,6 +13288,29 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/mc2texcook/check_ktx2_valid.py",
+      "basename": "check_ktx2_valid.py",
+      "stem": "check_ktx2_valid",
+      "callers_by_basename": [
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 1547,
+          "evidence": "command",
+          "reference": "tools/mc2texcook/check_ktx2_valid.py",
+          "text": "run_check \"ktx2_valid\"                  \"py -3 -B tools/mc2texcook/check_ktx2_valid.py\""
+        }
+      ],
+      "callers_by_stem": [
+        {
+          "path": "tools/mc2texcook/repack_ktx2.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "check_ktx2_valid",
+          "text": "import check_ktx2_valid  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "tools/mc2texcook/cook_burnin_bc7.py",
       "basename": "cook_burnin_bc7.py",
       "stem": "cook_burnin_bc7",
@@ -13367,6 +13418,13 @@
           "text": "import mc2texcook  # noqa: E402"
         },
         {
+          "path": "tools/mc2texcook/check_ktx2_valid.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "mc2texcook",
+          "text": "import mc2texcook"
+        },
+        {
           "path": "tools/mc2texcook/tests/test_mc2texcook.py",
           "line": 28,
           "evidence": "import",
@@ -13374,6 +13432,13 @@
           "text": "import mc2texcook  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "tools/mc2texcook/repack_ktx2.py",
+      "basename": "repack_ktx2.py",
+      "stem": "repack_ktx2",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/mc2texcook/tests/test_cook_terrain_layers.py",
