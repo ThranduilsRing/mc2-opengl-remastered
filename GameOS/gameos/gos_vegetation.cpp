@@ -231,7 +231,8 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
             lo = std::min(lo, sorted[j].z); hi = std::max(hi, sorted[j].z);
             pad = std::max(pad, 1.5f * sorted[j].scale);
         }
-        gpuRegions.push_back({(key.first + 0.5f) * 128.0f, (key.second + 0.5f) * 128.0f, (lo + hi) * 0.5f,
+        const auto [cellX, cellY] = key;
+        gpuRegions.push_back({(cellX + 0.5f) * 128.0f, (cellY + 0.5f) * 128.0f, (lo + hi) * 0.5f,
             std::sqrt(2.0f * 64.0f * 64.0f + (hi - lo) * (hi - lo) * 0.25f) + pad, static_cast<uint32_t>(begin), static_cast<uint32_t>(end), 0u, 0u});
         begin = end;
     }

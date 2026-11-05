@@ -2111,6 +2111,13 @@
   },
   {
    "tag": "CONFIG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "CONFIG",
    "ver": 1,
    "stream": "buffer",
    "keys": [
@@ -2264,9 +2271,18 @@
   {
    "tag": "CRASH",
    "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "minidump"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CRASH",
+   "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 3
   },
   {
    "tag": "CRASH",
@@ -2276,6 +2292,15 @@
     "code",
     "flags",
     "addr"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CRASH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "database"
    ],
    "count": 1
   },
@@ -3808,6 +3833,17 @@
    "stream": "stderr",
    "keys": [
     "cpu_geometry_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tris",
+    "acmr_before",
+    "acmr_after"
    ],
    "count": 1
   },
@@ -10851,6 +10887,13 @@
    "count": 1
   },
   {
+   "tag": "VK_MECH_SKIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "VK_MEM",
    "ver": 1,
    "stream": "stderr",
@@ -10864,6 +10907,19 @@
     "blocks_mb",
     "allocs",
     "blocks"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_MEM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "i0",
+    "i1",
+    "bytes",
+    "memtype"
    ],
    "count": 1
   },
@@ -11275,6 +11331,16 @@
    "count": 1
   },
   {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "vkFormat",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_RESOURCE_GRAPH",
    "ver": -1,
    "stream": "stderr",
@@ -11336,7 +11402,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 10
+   "count": 11
   },
   {
    "tag": "VK_SHARED_SCENE_COLOR",

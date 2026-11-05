@@ -1,6 +1,7 @@
 // Terrain: Terrain::geometry with its GeoScope timing and ground-pick parity probe.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <algorithm>
 #include "terrain_internal.h"
 #include "vulkan_terrain_island.h"
 
@@ -73,7 +74,7 @@ namespace {
 		int culprit = std::to_underlying(GP_SLIM); unsigned long long cmax = 0;
 		for (int i = 0; i < GP_COUNT_I; i++) {
 			s_gpSum[i] += s_gpFrameNs[i];
-			if (s_gpFrameNs[i] > s_gpMax[i]) s_gpMax[i] = s_gpFrameNs[i];
+			s_gpMax[i] = std::max(s_gpMax[i], s_gpFrameNs[i]);
 			if (i != std::to_underlying(GP_TOTAL) && s_gpFrameNs[i] > cmax) { cmax = s_gpFrameNs[i]; culprit = i; }
 		}
 		if (totalNs > 5000000ULL) {  // >5ms spike
@@ -239,8 +240,8 @@ void Terrain::geometry (void)
 			const long bx = b % blocksMapSide;
 			const long by = b / blocksMapSide;
 			glm::vec3 mn(
-				float(bx * verticesBlockSide - halfVerticesMapSide) * worldUnitsPerVertex,
-				float(halfVerticesMapSide - (by + 1) * verticesBlockSide) * worldUnitsPerVertex,
+				static_cast<float>(bx * verticesBlockSide - halfVerticesMapSide) * worldUnitsPerVertex,
+				static_cast<float>(halfVerticesMapSide - (by + 1) * verticesBlockSide) * worldUnitsPerVertex,
 				kBlockZMin);
 			glm::vec3 mx(
 				mn.x + worldUnitsBlockSide,
@@ -288,7 +289,7 @@ void Terrain::geometry (void)
 		static std::vector<uint8_t> s_prodBlock;
 		s_prodBlock.assign(nB, 0);
 
-		const float hMapW      = float(halfVerticesMapSide) * worldUnitsPerVertex;
+		const float hMapW      = static_cast<float>(halfVerticesMapSide) * worldUnitsPerVertex;
 		// [LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this
 		// loop) is the SECOND terrain visibility gate — independent of the frustum
 		// inFrustum set we relaxed via MC2_LOWCAM_TERRAIN_NEAR. At grazing pitch,
@@ -306,8 +307,8 @@ void Terrain::geometry (void)
 		{
 			const long bx = b % blocksMapSide, by = b / blocksMapSide;
 			glm::vec3 bc(
-				(float(bx * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex - hMapW,
-				hMapW - (float(by * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex,
+				(static_cast<float>(bx * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex - hMapW,
+				hMapW - (static_cast<float>(by * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex,
 				cameraPos.z);
 			glm::vec3 oc; oc = bc - cameraPos;
 			Camera::cameraFrame.trans_to_frame(oc);
@@ -578,8 +579,8 @@ void Terrain::geometry (void)
 			static double   s_s6Max = 0.0;
 			s_s6Frames++;
 			s_s6Sum += s6Ms;
-			if (s6Ms < s_s6Min) s_s6Min = s6Ms;
-			if (s6Ms > s_s6Max) s_s6Max = s6Ms;
+			s_s6Min = std::min(s_s6Min, s6Ms);
+			s_s6Max = std::max(s_s6Max, s6Ms);
 			if ((s_s6Frames % 600) == 0)
 			{
 				printf("[WATER_S6COST v1] event=summary frames=%u quadSetupTextures_ms mean=%.4f min=%.4f max=%.4f (window of 600)\n",

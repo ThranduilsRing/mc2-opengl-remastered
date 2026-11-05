@@ -150,7 +150,7 @@ namespace Stuff {
 			#endif
 
 		public:
-			BitTrace(const char* name);
+			BitTrace(mc2::czstring name);
 
 			void
 				Set();
@@ -392,7 +392,7 @@ namespace Stuff {
                   bool start_sampling
 					);
 				void
-					SaveTraceLog(const char* filename);
+					SaveTraceLog(mc2::czstring filename);
 				void
 					MarkTraceLog();
 				void

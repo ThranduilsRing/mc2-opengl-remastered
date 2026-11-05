@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 259,
+    "glsl_blocks_with_binding": 266,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -126,7 +126,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 8,
+        "line": 12,
         "role": "levelDepth",
         "std": null,
         "type": "sampler2D",
@@ -212,6 +212,16 @@
         "branch": {
           "1": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 14,
+        "role": "SrcVertices",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
+        "branch": {}
       },
       {
         "side": "glsl",
@@ -336,7 +346,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 40,
+        "line": 48,
         "role": "ShadowFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -551,7 +561,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 51,
+        "line": 53,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -581,8 +591,8 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 9,
-        "role": "ProjectedBounds",
+        "line": 13,
+        "role": "Visibility",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/hzb_cull.comp",
@@ -621,11 +631,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_depth.vert",
-        "line": 11,
+        "line": 12,
         "role": "InstanceBuffer",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/mech_depth.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 15,
+        "role": "BonePalette",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
         "branch": {}
       },
       {
@@ -727,7 +747,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 55,
+        "line": 63,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -747,7 +767,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 31,
+        "line": 33,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -757,7 +777,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1_skirt.vert",
-        "line": 25,
+        "line": 27,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -859,7 +879,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.vert",
-        "line": 38,
+        "line": 40,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -869,7 +889,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1_skirt.vert",
-        "line": 30,
+        "line": 32,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -1055,7 +1075,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 129,
+        "line": 131,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1088,6 +1108,16 @@
     "set0:binding16": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 23,
+        "role": "Runs",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_cull.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
         "line": 25,
         "role": "u_macroGradient",
@@ -1098,6 +1128,26 @@
       }
     ],
     "set0:binding17": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 24,
+        "role": "Compact",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_cull.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_tier1.vert",
+        "line": 132,
+        "role": "Compact",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_tier1.vert",
+        "branch": {}
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_decal_tier1.frag",
@@ -1156,6 +1206,16 @@
       }
     ],
     "set0:binding18": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 27,
+        "role": "Cmds",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_cull.comp",
+        "branch": {}
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
@@ -1233,7 +1293,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 57,
+        "line": 59,
         "role": "TypeAlbedoLayer",
         "std": "std430",
         "type": "buffer",
@@ -1243,8 +1303,8 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 10,
-        "role": "Visibility",
+        "line": 14,
+        "role": "Instances",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/hzb_cull.comp",
@@ -1263,11 +1323,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/mech_depth.vert",
-        "line": 13,
+        "line": 14,
         "role": "BoneBuffer",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/mech_depth.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 16,
+        "role": "Jobs",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
         "branch": {}
       },
       {
@@ -1659,7 +1729,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 66,
+        "line": 67,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -1669,8 +1739,8 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 11,
-        "role": "Instances",
+        "line": 16,
+        "role": "TypeBounds",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/hzb_cull.comp",
@@ -1694,6 +1764,16 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/mech_depth.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/mech_skin.comp",
+        "line": 17,
+        "role": "DstVertices",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/mech_skin.comp",
         "branch": {}
       },
       {
@@ -1832,16 +1912,6 @@
     "set0:binding4": [
       {
         "side": "glsl",
-        "file": "shaders/vulkan/hzb_cull.comp",
-        "line": 13,
-        "role": "TypeBounds",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/hzb_cull.comp",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/impact_decal.frag",
         "line": 5,
         "role": "ImpactFrame",
@@ -1957,7 +2027,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 63,
+        "line": 65,
         "role": "TypeAlbedoLayerOn",
         "std": "std430",
         "type": "buffer",
@@ -2065,7 +2135,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 69,
+        "line": 70,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2173,7 +2243,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 90,
+        "line": 93,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2348,12 +2418,12 @@
     "set0:binding9": [
       {
         "side": "glsl",
-        "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 127,
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 16,
         "role": "HzbVisibility",
         "std": "std430",
         "type": "buffer",
-        "source": "shaders/vulkan/color_prop_tier1.vert",
+        "source": "shaders/vulkan/color_prop_cull.comp",
         "branch": {}
       },
       {
@@ -2464,7 +2534,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop_alpha.frag",
-        "line": 6,
+        "line": 7,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2967,6 +3037,7 @@
     "shaders/vulkan/aa_smaa_weights.frag",
     "shaders/vulkan/cloud_shadow.frag",
     "shaders/vulkan/cloud_shadow.vert",
+    "shaders/vulkan/color_prop_cull.comp",
     "shaders/vulkan/color_prop_tier1.frag",
     "shaders/vulkan/color_prop_tier1.vert",
     "shaders/vulkan/edge_fog.frag",
@@ -2990,6 +3061,7 @@
     "shaders/vulkan/mech_backdrop.vert",
     "shaders/vulkan/mech_depth.frag",
     "shaders/vulkan/mech_depth.vert",
+    "shaders/vulkan/mech_skin.comp",
     "shaders/vulkan/mech_tier1.frag",
     "shaders/vulkan/mech_tier1.vert",
     "shaders/vulkan/postprocess.frag",

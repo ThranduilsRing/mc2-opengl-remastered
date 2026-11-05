@@ -4,6 +4,8 @@
 #include "../RenderCore/FrameArena.h"
 #include "../mclib/sim_overlap.h"
 #include <cstdlib>
+#include <mutex>
+#include <utility>
 #include "../mclib/battle_bench_sink.h"
 
 namespace mc2::render_view {
@@ -12,6 +14,8 @@ namespace {
 RenderClock g_clock;
 RenderList g_list;
 HudSnapshot g_hud;
+std::mutex g_poolMutex;
+std::vector<std::unique_ptr<FrameDraws>> g_pool;   // recycled frames: vectors keep their capacity
 thread_local const FrameDraws* g_drawFrame = nullptr;
 thread_local RenderCore::FrameArena* g_drawArena = nullptr;
 }  // namespace
@@ -45,7 +49,28 @@ std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence) {
             + (h.movers.empty() ? 0 : 1) + (h.roster.empty() ? 0 : 1) + (h.sensors.empty() ? 0 : 1) + (h.coverage.empty() ? 0 : 1)
             + (h.objectives.empty() ? 0 : 1) + (h.blips.empty() ? 0 : 1) + (h.vtols.empty() ? 0 : 1));
     }
-    return std::make_shared<const FrameDraws>(FrameDraws{sequence, g_clock, g_list, g_hud});
+    // Hand the staged streams to the frame by swapping with a recycled FrameDraws (no per-frame element copy, no
+    // allocation once the pool is warm); staging takes the recycled, emptied vectors and their capacity. The clock is a
+    // small POD and stays readable outside a draw scope (Mission::update), so it is copied.
+    FrameDraws* frame;
+    {
+        std::lock_guard<std::mutex> lock(g_poolMutex);
+        if (g_pool.empty()) frame = std::make_unique<FrameDraws>().release();
+        else { frame = g_pool.back().release(); g_pool.pop_back(); }
+    }
+    frame->sequence = sequence;
+    frame->clock = g_clock;
+    frame->list.terrain.swap(g_list.terrain);
+    frame->list.movers.swap(g_list.movers);
+    frame->list.other.swap(g_list.other);
+    std::swap(frame->hud, g_hud);
+    return std::shared_ptr<const FrameDraws>(frame, [](const FrameDraws* done) {
+        auto* f = const_cast<FrameDraws*>(done);   // sole owner here; empty the streams (marker holders release on this thread) and recycle
+        f->list.clear();
+        f->hud.clear();
+        std::lock_guard<std::mutex> lock(g_poolMutex);
+        g_pool.emplace_back(f);
+    });
 }
 
 RenderCore::FrameArena* drawArena() { return g_drawArena; }

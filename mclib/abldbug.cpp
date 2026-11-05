@@ -523,13 +523,13 @@ void Debugger::processCommand (long commandId, char* strParam1, int numParam1, A
 			if (moduleParam1) {
 				debugModule = moduleParam1;
 				print(" ");
-				sprintf(message, "SET MODULE: %s", debugModule->getName());
+				mc2::fmt::to_buf(message, "SET MODULE: {}", mc2::fmt::safe(debugModule->getName()));
 				print(message);
 				}
 			else {
 				print(" ");
 				displayModuleInstanceRegistry();
-				sprintf(message, "CURRENT MODULE: %s", debugModule->getName());
+				mc2::fmt::to_buf(message, "CURRENT MODULE: {}", mc2::fmt::safe(debugModule->getName()));
 				print(message);
 			}
 			break;
@@ -573,13 +573,13 @@ void Debugger::processCommand (long commandId, char* strParam1, int numParam1, A
 		case DEBUG_COMMAND_BREAKPOINT_SET:
 			print(" ");
 			debugModule->getBreakPointManager()->add(numParam1);
-			sprintf(message, "SET BP: %s (%d)", debugModule->getName(), numParam1);
+			mc2::fmt::to_buf(message, "SET BP: {} ({:d})", mc2::fmt::safe(debugModule->getName()), numParam1);
 			print(message);
 			break;
 		case DEBUG_COMMAND_BREAKPOINT_REMOVE:
 			print(" ");
 			debugModule->getBreakPointManager()->remove(numParam1);
-			sprintf(message, "REMOVE BP: %s (%d)", debugModule->getName(), numParam1);
+			mc2::fmt::to_buf(message, "REMOVE BP: {} ({:d})", mc2::fmt::safe(debugModule->getName()), numParam1);
 			print(message);
 			break;
 		case DEBUG_COMMAND_WATCH_SET: {
@@ -611,7 +611,7 @@ void Debugger::processCommand (long commandId, char* strParam1, int numParam1, A
 			bool store = debugModule->getWatchManager()->getStore(idPtr);
 			bool fetch = debugModule->getWatchManager()->getFetch(idPtr);
 			if (store || fetch) {
-				sprintf(message, "SET WATCH: %s.%s (", debugModule->getName(), strParam1);
+				mc2::fmt::to_buf(message, "SET WATCH: {}.{} (", mc2::fmt::safe(debugModule->getName()), mc2::fmt::safe(strParam1));
 				if (store)
 					strcat(message, "s");
 				if (fetch)
@@ -619,7 +619,7 @@ void Debugger::processCommand (long commandId, char* strParam1, int numParam1, A
 				strcat(message, ")");
 				}
 			else
-				sprintf(message, "REMOVE WATCH: %s.%s", debugModule->getName(), strParam1);
+				mc2::fmt::to_buf(message, "REMOVE WATCH: {}.{}", mc2::fmt::safe(debugModule->getName()), mc2::fmt::safe(strParam1));
 			print(message);
 			}
 			break;
@@ -655,7 +655,7 @@ void Debugger::processCommand (long commandId, char* strParam1, int numParam1, A
 			break;
 		case DEBUG_COMMAND_INFO: {
 			print(" ");
-			sprintf(message, "CURRENT MODULE: %s", debugModule->getName());
+			mc2::fmt::to_buf(message, "CURRENT MODULE: {}", mc2::fmt::safe(debugModule->getName()));
 			print(message);
 			ModuleInfo moduleInfo;
 			debugModule->getInfo(&moduleInfo);

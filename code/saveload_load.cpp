@@ -200,7 +200,7 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 #endif
 		
 	ablFile.close();
-	DeleteFile(dmpName);
+	removeSaveScratchFile(dmpName);
 
 #ifdef USE_ABL_LOAD
 	missionBrain = ABLi_getModule(missionScriptHandle);
@@ -598,7 +598,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	auto& loadFile = f.loadFile; auto& result = f.result; auto& currentPacket = f.currentPacket;
 	auto& tmpName = f.tmpName; auto& missionFile = f.missionFile; auto& rps = f.rps;
 	missionFile.close();
-	DeleteFile(tmpName);
+	removeSaveScratchFile(tmpName);
 
 	if (loadFile.seekPacket(currentPacket) != NO_ERR)
 		STOP(("Logistics Data missing from IN-Mission Save"));
@@ -629,7 +629,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 
 	logisticsFile.close();
 
-	DeleteFile(tmpName);
+	removeSaveScratchFile(tmpName);
 
 	//-------------------------------------------------------------------------------------------
 	// Load the CurrentMission number in logistics cause Heidi don't save it with logisticsData.

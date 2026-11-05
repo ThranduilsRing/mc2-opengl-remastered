@@ -13,6 +13,7 @@
 //   FC5 many children: the child list holds the default 50 and a child that closes itself leaves its slot free for the next one.
 
 #include "doctest.h"
+#include "Gates/gate_name.h"
 
 #include "file.h"
 #include "inifile.h"
@@ -646,9 +647,9 @@ struct Corpus
 	void mount (const Deploy &deploy)
 	{
 		mods = (deploy.root / "mods").string();
-		putEnv("MC2_ACTIVE_MOD", active);
-		putEnv("MC2_MOD_DEPS", deps);
-		putEnv("MC2_REBUILD_MOD_CACHE", "1");
+		putEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(),active);
+		putEnv(mc2::gate::name<"MC2_MOD_DEPS">(),deps);
+		putEnv(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
 		InitModSearchPaths(mods.c_str());
 	}
 };
@@ -681,7 +682,7 @@ TEST_CASE("FC9 the resolver corpus hands back the provider and bytes it names")
 {
 	Corpus corpus("vfs_resolution.json");
 	Deploy deploy(corpus.fixture);
-	EnvRestore activeEnv("MC2_ACTIVE_MOD"), depsEnv("MC2_MOD_DEPS"), rebuildEnv("MC2_REBUILD_MOD_CACHE");
+	EnvRestore activeEnv(mc2::gate::name<"MC2_ACTIVE_MOD">()), depsEnv(mc2::gate::name<"MC2_MOD_DEPS">()), rebuildEnv(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">());
 	CwdRestore cwd;
 	fs::current_path(deploy.root);
 	corpus.mount(deploy);
@@ -727,8 +728,8 @@ TEST_CASE("FC9 the resolver corpus hands back the provider and bytes it names")
 		CHECK(fs::exists(provider));
 		CHECK(readWholeFile(provider) == resolved.bytes);
 	}
-	putEnv("MC2_ACTIVE_MOD", "");
-	putEnv("MC2_MOD_DEPS", "");
+	putEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(),"");
+	putEnv(mc2::gate::name<"MC2_MOD_DEPS">(),"");
 	InitModSearchPaths("");
 }
 
@@ -736,7 +737,7 @@ TEST_CASE("FC10 the resolver corpus attributes each mod hit to the layer the fix
 {
 	Corpus corpus("vfs_resolution.json");
 	Deploy deploy(corpus.fixture);
-	EnvRestore activeEnv("MC2_ACTIVE_MOD"), depsEnv("MC2_MOD_DEPS"), rebuildEnv("MC2_REBUILD_MOD_CACHE");
+	EnvRestore activeEnv(mc2::gate::name<"MC2_ACTIVE_MOD">()), depsEnv(mc2::gate::name<"MC2_MOD_DEPS">()), rebuildEnv(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">());
 	CwdRestore cwd;
 	fs::current_path(deploy.root);
 	corpus.mount(deploy);
@@ -756,8 +757,8 @@ TEST_CASE("FC10 the resolver corpus attributes each mod hit to the layer the fix
 	}
 
 	// Stock mode: the same requests now see no mod layer at all.
-	putEnv("MC2_ACTIVE_MOD", "");
-	putEnv("MC2_MOD_DEPS", "");
+	putEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(),"");
+	putEnv(mc2::gate::name<"MC2_MOD_DEPS">(),"");
 	InitModSearchPaths(corpus.mods.c_str());
 	for (const MlJson *row : corpus.rows) {
 		const std::string layer = need(*row, "layer")->s;
@@ -770,7 +771,7 @@ TEST_CASE("FC11 the resolver corpus does not depend on request order")
 {
 	Corpus corpus("vfs_resolution.json");
 	Deploy deploy(corpus.fixture);
-	EnvRestore activeEnv("MC2_ACTIVE_MOD"), depsEnv("MC2_MOD_DEPS"), rebuildEnv("MC2_REBUILD_MOD_CACHE");
+	EnvRestore activeEnv(mc2::gate::name<"MC2_ACTIVE_MOD">()), depsEnv(mc2::gate::name<"MC2_MOD_DEPS">()), rebuildEnv(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">());
 	CwdRestore cwd;
 	fs::current_path(deploy.root);
 	corpus.mount(deploy);
@@ -789,7 +790,7 @@ TEST_CASE("FC11 the resolver corpus does not depend on request order")
 			CHECK(resolved.bytes == bytes->s);
 		}
 	}
-	putEnv("MC2_ACTIVE_MOD", "");
-	putEnv("MC2_MOD_DEPS", "");
+	putEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(),"");
+	putEnv(mc2::gate::name<"MC2_MOD_DEPS">(),"");
 	InitModSearchPaths("");
 }

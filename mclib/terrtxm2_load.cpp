@@ -1,6 +1,7 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "mc2_czstring.h"
+#include <bit>
 #include "terrtxm2_internal.h"
 #include "content_error.h"
 #include "texture_assets.h"
@@ -117,13 +118,13 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 
 	//Grab every xth pixel from every yth scan line!
 	float cMapWidth = numTexturesAcross * COLOR_MAP_TEXTURE_SIZE;
-	float xSkip = cMapWidth / float(dWidth);
+	float xSkip = cMapWidth / static_cast<float>(dWidth);
 	float ySkip = xSkip;
 
 	long xOffset = 0, yOffset = 0;
 
-	DWORD *currentColor = reinterpret_cast<DWORD *>(ColorMap);
-	DWORD *currentBfr = reinterpret_cast<DWORD *>(bfr);
+	DWORD *currentColor = std::bit_cast<DWORD *>(ColorMap);
+	DWORD *currentBfr = std::bit_cast<DWORD *>(bfr);
 	for (long i=0;i<(dWidth * dWidth);i++)
 	{
 		*currentBfr = *currentColor;
@@ -135,7 +136,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		}
 
 		currentBfr++;
-		currentColor = (reinterpret_cast<DWORD *>(ColorMap)) + long(xOffset * xSkip) + (long(yOffset*ySkip) * static_cast<long>(cMapWidth));
+		currentColor = (std::bit_cast<DWORD *>(ColorMap)) + static_cast<long>(xOffset * xSkip) + (static_cast<long>(yOffset*ySkip) * static_cast<long>(cMapWidth));
 	}
 
 	if (!wasColorMapAround)
@@ -295,8 +296,8 @@ long TerrainColorMap::init (char *fileName)
 			numTexturesAcross = numTextures;
 			fractionPerTexture = 1.0f / numTextures;
 
-			float checkNum = float(jpgColorMapWidth) / float(COLOR_MAP_TEXTURE_SIZE);
-			if (checkNum != float(numTextures))
+			float checkNum = static_cast<float>(jpgColorMapWidth) / static_cast<float>(COLOR_MAP_TEXTURE_SIZE);
+			if (checkNum != static_cast<float>(numTextures))
 				{
 					mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
 				return flatFallback();
@@ -322,7 +323,7 @@ long TerrainColorMap::init (char *fileName)
 						}
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache");
-							textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+							textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 							mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
@@ -427,8 +428,8 @@ long TerrainColorMap::init (char *fileName)
 				numTexturesAcross = numTextures;
 				fractionPerTexture = 1.0f / numTextures;
 
-				float checkNum = float(colorMapInfo.width) / float(COLOR_MAP_TEXTURE_SIZE);
-				if (checkNum != float(numTextures))
+				float checkNum = static_cast<float>(colorMapInfo.width) / static_cast<float>(COLOR_MAP_TEXTURE_SIZE);
+				if (checkNum != static_cast<float>(numTextures))
 					{
 						mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
 					return flatFallback();
@@ -472,7 +473,7 @@ long TerrainColorMap::init (char *fileName)
 							}
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileCache");
-								textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+								textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 								mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 							}
 							if (i % 50 == 0)
@@ -622,7 +623,7 @@ long TerrainColorMap::init (char *fileName)
 						{
 							ZoneScopedN("TerrainColorMap::init normalMap tileCache");
 							normalMapTextures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(
-								reinterpret_cast<DWORD *>(tileRAM), gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE));
+								std::bit_cast<DWORD *>(tileRAM), gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE));
 							mc2::textures::setSessionLifetime(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}

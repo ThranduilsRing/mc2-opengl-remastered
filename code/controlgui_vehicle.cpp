@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "render_view.h"
 // ControlGui: the vehicle tab: update, render, click handling and the vehicle command state.
 // Declared in the class headers; shared names in controlgui_internal.h.
@@ -94,8 +95,7 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 		else
 			maxUnits = 0;
 
-		if ( maxUnits > MAX_ICONS )
-			maxUnits = MAX_ICONS;
+		maxUnits = (std::min)( maxUnits, static_cast<long>(MAX_ICONS) );
 
 	}
 	
@@ -483,8 +483,7 @@ void ControlGui::renderHoverTip()
 	const long w = static_cast<long>(width), h = static_cast<long>(height);
 	if ( left + w + 2 * pad > Environment.screenWidth )
 		left = Environment.screenWidth - w - 2 * pad;
-	if ( left < 0 )
-		left = 0;
+	left = (std::max)( left, 0L );
 	if ( top + h + 2 * pad > Environment.screenHeight )
 		top = g_hoverTipY - h - 2 * pad - 4;
 	GUI_RECT box = { left, top, left + w + 2 * pad, top + h + 2 * pad };

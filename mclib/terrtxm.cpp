@@ -2,6 +2,10 @@
 //
 // TerrTxm.cpp -- File contains class code for the Terrain Textures
 #include "mc2_czstring.h"
+#include <bit>
+#include <algorithm>
+#include <filesystem>
+#include <system_error>
 #include "content_error.h"
 //
 //---------------------------------------------------------------------------//
@@ -374,7 +378,7 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 			
 			memset(ourRAM,0,16 * 16 * sizeof(DWORD));
 			
-			textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,16);
+			textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,16);
 			// textureFromMemoryRaw memcpy's into its own cache block, so this buffer is scratch (BUGS 53: it was never freed, 181 blocks per mission).
 			std::free(ourRAM);
 			mc2::textures::setSessionLifetime(textures[nextAvailable].mcTextureNodeIndex, 0x1);
@@ -549,7 +553,7 @@ long TerrainTextures::textureFromMemoryAlpha (MemoryPtr ourRAM, long mipLevel)
 	// RGB makes the keyed region transparent-black so edges fade cleanly to the
 	// terrain underneath with no colored halo.
 	{
-		DWORD* px = reinterpret_cast<DWORD*>(ourRAM);                 // BGRA-in-memory: B=byte0,G=byte1,R=byte2
+		DWORD* px = std::bit_cast<DWORD*>(ourRAM);                 // BGRA-in-memory: B=byte0,G=byte1,R=byte2
 		const long n = mipLevel * mipLevel;
 		for (long i = 0; i < n; ++i) {
 			const DWORD c = px[i];
@@ -562,7 +566,7 @@ long TerrainTextures::textureFromMemoryAlpha (MemoryPtr ourRAM, long mipLevel)
 				px[i] = 0u;                         // transparent black -> no magenta/pink fringe
 		}
 	}
-	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Keyed,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(ourRAM),gos_Texture_Keyed,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
 	mc2::textures::setSessionLifetime(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 
 	nextAvailable++;
@@ -576,7 +580,7 @@ long TerrainTextures::textureFromMemoryAlpha (MemoryPtr ourRAM, long mipLevel)
 //---------------------------------------------------------------------------
 long TerrainTextures::textureFromMemory (MemoryPtr ourRAM, long mipLevel)
 {
-	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
 	mc2::textures::setSessionLifetime(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 
 	nextAvailable++;
@@ -1284,8 +1288,7 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 					dst[2] = static_cast<unsigned char>((combPercent * static_cast<float>(src[2]) + destPercent * static_cast<float>(dst[2])));
 				}
 				//Alpha: DO NOT COMBINE (match the legacy loop) — keep the max.
-				if (dst[3] < src[3])
-					dst[3] = src[3];
+				dst[3] = std::max(dst[3], src[3]);
 			}
 		}
 		return;
@@ -1479,7 +1482,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 		if (!listTransitionFile)
 		{
 			//Check for the magic list and then for all of the textures on the magic list.
-			CreateDirectory(texturePath,nullptr);
+			{ std::error_code dirEc; std::filesystem::create_directory(texturePath, dirEc); }
 
 			FullPathFileName listPath;
 			listPath.init(texturePath,localBaseName,".lst");

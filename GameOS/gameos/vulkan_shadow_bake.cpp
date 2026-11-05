@@ -73,7 +73,8 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     lci.bindingCount = 2; lci.pBindings = b;
     if (!create(casterDsl_, device_, [&](auto* h) { return vkCreateDescriptorSetLayout(device_, &lci, nullptr, h); })) { blog("caster layout failed."); return false; }
     const VkDescriptorSetLayout setLayouts[2] = {casterDsl_.get(), alphaDsl_};
-    VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16};
+    VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ShadowDrawPush)};   // alpha row array address + first row
+    if (!drawRing_.init(allocator_, device_, 1u << 16)) { blog("draw ring failed."); return false; }
     VkPipelineLayoutCreateInfo plci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     plci.setLayoutCount = 2; plci.pSetLayouts = setLayouts;
     plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
@@ -446,7 +447,8 @@ bool ShadowBake::computeTypeBounds(const ShadowBakeInputs& in) {
     return true;
 }
 
-void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, bool& alphaBound, VkPipeline opaque, VkPipeline alpha) {
+void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, VkPipeline opaque, VkPipeline alpha) {
+    std::vector<ShadowDraw> draws;
     for (const InstRun& run : runs) {
         if (run.typeID >= in.typeFirstPacket.size() || run.typeID >= in.typePacketCount.size()) continue;
         const uint32_t first = in.typeFirstPacket[run.typeID], count = in.typePacketCount[run.typeID];
@@ -455,26 +457,18 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
             if (pk >= in.packets.size()) break;
             const Mc2ShadowPacket& pkt = in.packets[pk];
             const bool alphaPacket = in.alphaReady && in.alphaSet != VK_NULL_HANDLE && pk < in.packetAlpha.size() && in.packetAlpha[pk].layer >= 0;
-            if (alphaPacket) {
-                if (!alphaBound) {
-                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, alpha);
-                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 1, 1, &in.alphaSet, 0, nullptr);
-                    alphaBound = true;
-                }
-                const CasterPacketAlpha& pa = in.packetAlpha[pk];
-                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
-                vkCmdPushConstants(cb, casterLayout_.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-            } else if (alphaBound) {
-                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
-                alphaBound = false;
-            }
-            mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
+            ShadowDraw d{pkt.indexCount, pkt.firstIndex, pkt.baseVertex, run.firstInstance, run.count, -1, 0.0f, 0.0f};
+            if (alphaPacket) { const CasterPacketAlpha& pa = in.packetAlpha[pk]; d.layer = pa.layer; d.scaleX = pa.scaleX; d.scaleY = pa.scaleY; }
+            draws.push_back(d);
         }
     }
+    // One indirect multi-draw for the opaque packets and one for the alpha-tested ones (the order of a depth-only pass is irrelevant).
+    drawRing_.record(cb, casterLayout_.get(), opaque, alpha, in.alphaSet, draws);
 }
 
 bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in) {
     if (!inited_) return false;
+    drawRing_.begin(static_cast<uint32_t>(epoch % kMaxFramesInFlight));
     mc2_hitch2::Scope hitchScope("shadow.bake_update");
     if (objectMapRecords_ == 0) statsEpoch_ = epoch;
     retire(epoch);
@@ -974,8 +968,7 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 0, 1, &windowSet, 1, &casterOff);
         vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
-        bool alphaBound = false;
-        drawRuns(cb, in, runs, alphaBound, windowOpaque_.get(), windowAlpha_.get());
+        drawRuns(cb, in, runs, windowOpaque_.get(), windowAlpha_.get());
     }
     vkCmdEndRenderPass(cb);
     stamp(1);
@@ -1483,8 +1476,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaque_.get());
         vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
-        bool alphaBound = false;
-        drawRuns(cb, in, objectRuns_, alphaBound, objectOpaque_.get(), objectAlpha_.get());
+        drawRuns(cb, in, objectRuns_, objectOpaque_.get(), objectAlpha_.get());
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();

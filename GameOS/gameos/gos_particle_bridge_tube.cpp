@@ -64,8 +64,8 @@ void submit(const std::vector<VfxGeometryVertex>& vertices, const std::vector<Vf
 extern "C" void gos_tube_ribbon_enqueue(const float* positions, const float* colors, const float* uvs,
     unsigned numVerts, const unsigned short* indices, unsigned numIndices, unsigned mlrHandle, int blendMode) {
     if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || !mlrHandle) return;
-    ribbons.push_back({{positions, positions + size_t(numVerts)*3}, {colors, colors + size_t(numVerts)*4},
-                       {uvs, uvs + size_t(numVerts)*2}, {indices, indices + numIndices}, mlrHandle, blendMode});
+    ribbons.push_back({{positions, positions + static_cast<size_t>(numVerts)*3}, {colors, colors + static_cast<size_t>(numVerts)*4},
+                       {uvs, uvs + static_cast<size_t>(numVerts)*2}, {indices, indices + numIndices}, mlrHandle, blendMode});
 }
 extern "C" void gos_tube_ribbon_flush_deferred() {
     if (ribbons.empty()) return;

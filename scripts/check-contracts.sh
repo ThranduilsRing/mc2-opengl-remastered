@@ -77,12 +77,17 @@ NO_CACHE="${CONTRACTS_NO_CACHE:-0}"
 # --rows REGEX runs only the rows whose label matches (ERE, unanchored): the inner-loop filter for iterating on one check. It is a
 # PARTIAL board and says so; the full board stays mandatory per batch.
 ROWS_RE=""
+SKIP_RE=""
 ROWS_SKIPPED=0
 _ARGS=()
 while [ $# -gt 0 ]; do
     if [ "$1" = "--rows" ]; then
         [ $# -ge 2 ] || { echo "--rows needs a regex" >&2; exit 1; }
         ROWS_RE="$2"; shift 2; continue
+    fi
+    if [ "$1" = "--skip-rows" ]; then   # inverse of --rows: the box runs every row but the Windows-only ones
+        [ $# -ge 2 ] || { echo "--skip-rows needs a regex" >&2; exit 1; }
+        SKIP_RE="$2"; shift 2; continue
     fi
     _ARGS+=("$1"); shift
 done
@@ -183,6 +188,7 @@ SEEN_LABELS=""
 SEEN_CMDS=""
 
 _row_selected() {   # 0 = run this row (no --rows filter, or the label matches)
+    if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then ROWS_SKIPPED=$((ROWS_SKIPPED + 1)); return 1; fi
     [ -z "$ROWS_RE" ] && return 0
     if [[ "$1" =~ $ROWS_RE ]]; then return 0; fi
     ROWS_SKIPPED=$((ROWS_SKIPPED + 1))
@@ -1544,6 +1550,7 @@ run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_ki
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3"
 run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
+run_check "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
 run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
 fi   # end of the real board (skipped under --selftest-render, above)
@@ -1623,7 +1630,8 @@ if [ "$KNOWN_COUNT" -gt 0 ]; then
     echo "  A ledger entry that matches no finding is itself a FAIL, so this"
     echo "  cannot quietly outlive its condition -- nor hide a blind checker."
 fi
-if [ -n "$ROWS_RE" ]; then
+if [ -n "$ROWS_RE" ] || [ -n "$SKIP_RE" ]; then
+    ROWS_RE="${ROWS_RE:-skip:$SKIP_RE}"
     echo ""
     echo "  PARTIAL BOARD: --rows '$ROWS_RE' ran $((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT)) row(s) and skipped $ROWS_SKIPPED."
     echo "  This is NOT a green board; run the full board (no --rows) before committing a batch."

@@ -154,7 +154,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.z = ul.z;
 
 	pos2.x = (ul.x-offsets);
-	pos2.y = float(ul.y);
+	pos2.y = static_cast<float>(ul.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
@@ -167,7 +167,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.y = (ul.y-offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(ul.x);
+	pos2.x = static_cast<float>(ul.x);
 	pos2.y = (ul.y-offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
@@ -182,7 +182,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.z = ul.z;
 
 	pos2.x = (br.x+offsets);
-	pos2.y = float(ul.y);
+	pos2.y = static_cast<float>(ul.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
@@ -195,7 +195,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.y = (ul.y-offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(br.x);
+	pos2.x = static_cast<float>(br.x);
 	pos2.y = (ul.y-offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
@@ -210,7 +210,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.z = ul.z;
 
 	pos2.x = (br.x+offsets);
-	pos2.y = float(br.y);
+	pos2.y = static_cast<float>(br.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
@@ -223,7 +223,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.y = (br.y+offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(br.x);
+	pos2.x = static_cast<float>(br.x);
 	pos2.y = (br.y+offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
@@ -238,7 +238,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.z = ul.z;
 
 	pos2.x = (ul.x-offsets);
-	pos2.y = float(br.y);
+	pos2.y = static_cast<float>(br.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
@@ -251,7 +251,7 @@ void Appearance::drawSelectBox (DWORD color)
 	pos1.y = (br.y+offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(ul.x);
+	pos2.x = static_cast<float>(ul.x);
 	pos2.y = (br.y+offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;

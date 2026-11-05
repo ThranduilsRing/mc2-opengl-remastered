@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "mc2_czstring.h"
 #include "vk_render_infra.h"
 // gos_crashbundle.cpp
@@ -12,6 +13,7 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include "gos_crashpad.h"
 #include "../../mclib/sim_overlap.h"
 #include <atomic>
 #include "crash_content.h"
@@ -29,7 +31,9 @@
 char missionName[1024];
 
 #ifndef _WIN32
-extern "C" void crashbundle_init(void) {}
+// Linux: crashpad installs the fatal-signal handlers and its handler child writes the minidump into
+// <exe_dir>/crashes/crashpad/pending; there is no in-process bundle writer on this platform.
+extern "C" void crashbundle_init(void) { crashpad_start(); }
 extern "C" void crashbundle_append(const char*) {}
 void crashbundle_content_fd(int, std::string_view, std::string_view) {}
 void crashbundle_content_image(std::string_view, const void*, size_t) {}
@@ -118,7 +122,7 @@ extern "C" void crashbundle_append(mc2::czstring line)
     size_t n = strlen(line);
     if (n == 0) return;
     // Trim to avoid pathological lines blowing out the ring in one write.
-    if (n > kRingBytes / 2) n = kRingBytes / 2;
+    n = (std::min)(n, kRingBytes / 2);
 
     // Spinlock — short critical sections only.
     while (InterlockedCompareExchange(&g_ring_lock, 1, 0) != 0) {
@@ -188,14 +192,45 @@ static void build_crash_folder(void)
     mc2::fmt::to_buf_n(g_crash_txtA, _countof(g_crash_txtA), "{}\\crash.txt", mc2::fmt::safe(g_crash_folderA));
 }
 
+// Exactly one dump writer per crash. When the crashpad handler child started, crashpad's unhandled-exception
+// filter (installed first, captured by crashbundle_init as the "previous" filter) writes the dump out of process
+// into <exe_dir>/crashes/crashpad/pending and this file only records its path. Our in-process MiniDumpWriteDump
+// stays as the fallback when the handler is absent or did not start, and for live dumps (no exception).
+static LPTOP_LEVEL_EXCEPTION_FILTER g_crashpad_filter = nullptr;
+static char g_minidump_path[MAX_PATH];
+
+static void append_minidump_note(void)
+{
+    char line[MAX_PATH + 32];
+    const int n = mc2::fmt::to_buf(line, "\nMinidump: {}\n", mc2::fmt::safe(g_minidump_path));
+    if (n <= 0 || n >= static_cast<int>(sizeof line)) return;
+    HANDLE h = CreateFileA(g_crash_txtA, FILE_APPEND_DATA, FILE_SHARE_READ, nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return;
+    DWORD wrote = 0;
+    WriteFile(h, line, static_cast<DWORD>(n), &wrote, nullptr);
+    CloseHandle(h);
+}
+
 // Writes the minidump
 static void write_minidump(EXCEPTION_POINTERS* ep)
 {
+    g_minidump_path[0] = 0;
+    if (ep && g_crashpad_filter && crashpad_active()) {
+        __try { g_crashpad_filter(ep); }
+        __except (EXCEPTION_EXECUTE_HANDLER) {}
+        if (crashpad_newest_dump(g_minidump_path, sizeof g_minidump_path)) {
+            append_minidump_note();
+            return;
+        }
+        // The handler did not produce a dump: fall through to the in-process writer.
+    }
     char path[MAX_PATH];
     mc2::fmt::to_buf_n(path, _countof(path), "{}\\minidump.dmp", mc2::fmt::safe(g_crash_folderA));
     HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
+    mc2::fmt::to_buf_n(g_minidump_path, _countof(g_minidump_path), "{}", mc2::fmt::safe(path));
     MINIDUMP_EXCEPTION_INFORMATION mei;
     mei.ThreadId = GetCurrentThreadId();
     mei.ExceptionPointers = ep;
@@ -205,6 +240,7 @@ static void write_minidump(EXCEPTION_POINTERS* ep)
     MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
                       h, t, ep ? &mei : nullptr, nullptr, nullptr);
     CloseHandle(h);
+    append_minidump_note();
 }
 
 // Writes the ring buffer snapshot to last_trace.txt
@@ -412,7 +448,7 @@ static void copy_file_to_clipboard(mc2::czstring path)
     if (h == INVALID_HANDLE_VALUE) return;
     DWORD sz = GetFileSize(h, nullptr);
     if (sz == INVALID_FILE_SIZE || sz == 0) { CloseHandle(h); return; }
-    if (sz > 1024 * 1024) sz = 1024 * 1024; // sanity cap
+    sz = std::min<DWORD>(sz, 1024 * 1024); // sanity cap
 
     // allocate via GlobalAlloc — clipboard owns it after SetClipboardData
     HGLOBAL hMemA = GlobalAlloc(GMEM_MOVEABLE, sz + 1);
@@ -656,6 +692,10 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
                                       ep->ExceptionRecord->ExceptionCode, g_crash_folderA);
             if (mn >= static_cast<int>(sizeof(mk))) mn = static_cast<int>(sizeof(mk)) - 1;
             if (mn > 0) { fwrite(mk, 1, static_cast<size_t>(mn), stderr); fflush(stderr); }
+            char dm[MAX_PATH + 32];
+            int dn = mc2::fmt::to_buf(dm, "[CRASH] minidump={}\n", mc2::fmt::safe(g_minidump_path));
+            if (dn >= static_cast<int>(sizeof(dm))) dn = static_cast<int>(sizeof(dm)) - 1;
+            if (dn > 0) { fwrite(dm, 1, static_cast<size_t>(dn), stderr); fflush(stderr); }
             TerminateProcess(GetCurrentProcess(),
                              ep->ExceptionRecord->ExceptionCode);
         }
@@ -775,7 +815,13 @@ extern "C" void crashbundle_init(void)
             g_content.mod("base", -1);
     } catch (...) {}
     mc2_log_set_crash_sink(crashbundle_append);
-    SetUnhandledExceptionFilter(crashbundle_filter);
+    // Order matters: crashpad installs its unhandled-exception filter first, ours goes on top and calls it
+    // (write_minidump) for the out-of-process dump, so the two never compete for the same exception.
+    crashpad_start();
+    {
+        LPTOP_LEVEL_EXCEPTION_FILTER prev = SetUnhandledExceptionFilter(crashbundle_filter);
+        if (crashpad_active() && prev != crashbundle_filter) g_crashpad_filter = prev;
+    }
     AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);
     mc2::overlap::installFatalHandlers(crashbundle_fatal);
 }

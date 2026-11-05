@@ -1,5 +1,7 @@
 // gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
+#include <optional>
+#include <algorithm>
 #include "gos_terrain_indirect_internal.h"
 #include "terrain_surface_cook.h"
 #include <unordered_set>
@@ -61,9 +63,9 @@ static constexpr uint32_t kCementMaskIdMask     = 0x3Fu;       // 6 bits (14 sha
 
 // binNumber = (c0?8:0)|(c1?4:0)|(c2?2:0)|(c3?1:0); 0 and 15 are degenerate.
 // maskId = binNumber - 1 (0..13).
-int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
+std::optional<int> deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
     const uint32_t bn = (c0 ? 8u : 0u) | (c1 ? 4u : 0u) | (c2 ? 2u : 0u) | (c3 ? 1u : 0u);
-    if (bn == 0u || bn == 15u) return -1;
+    if (bn == 0u || bn == 15u) return std::nullopt;
     return static_cast<int>((bn - 1u));
 }
 
@@ -334,8 +336,8 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
                               k, s.r, s.g, s.b);
     if (!s.ok) return;
     s.lum = 0.299f * s.r + 0.587f * s.g + 0.114f * s.b;
-    const float mx = std::max(s.r, std::max(s.g, s.b));
-    const float mn = std::min(s.r, std::min(s.g, s.b));
+    const float mx = std::max({s.r, s.g, s.b});
+    const float mn = std::min({s.r, s.g, s.b});
     s.chroma = (mx > 1.f) ? ((mx - mn) / mx) : 0.f;
 
     // Marking census: texels a long way off the cell's own band luminance are
@@ -396,11 +398,11 @@ void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
 // within a luminance window, then re-medians once over the admitted set so the
 // reference is the family's own tone rather than the whole atlas's.
 // Returns the family reference in refR/refG/refB and the canonical cell index.
-int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
+std::optional<int> ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
                                   float& refR, float& refG, float& refB) {
     std::vector<float> okL;
     for (int k = 0; k < NT; ++k) if (st[static_cast<size_t>(k)].ok) okL.push_back(st[static_cast<size_t>(k)].lum);
-    if (okL.empty()) return -1;
+    if (okL.empty()) return std::nullopt;
     std::sort(okL.begin(), okL.end());
     const float medL = okL[okL.size() / 2];
 
@@ -437,12 +439,12 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
     refR = medOf(&CementCellStats::r);
     refG = medOf(&CementCellStats::g);
     refB = medOf(&CementCellStats::b);
-    if (!(refR > 0.f && refG > 0.f && refB > 0.f)) return -1;
+    if (!(refR > 0.f && refG > 0.f && refB > 0.f)) return std::nullopt;
 
     // Canonical cell = family member closest to the reference that carries NO
     // markings (substituting a marked cell everywhere would smear paint across
     // the whole apron). Lowest index wins ties -> deterministic across runs.
-    int canon = -1; float bestD = 1e30f;
+    std::optional<int> canon; float bestD = 1e30f;
     for (int k = 0; k < NT; ++k) {
         const CementCellStats& c = st[static_cast<size_t>(k)];
         if (!c.family || c.marks) continue;
@@ -583,21 +585,21 @@ void PopulateRecipeCementWords() {
                     const bool c1 = (l1 != 0xFFFFu);
                     const bool c2 = (l2 != 0xFFFFu);
                     const bool c3 = (l3 != 0xFFFFu);
-                    const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
+                    const std::optional<int> maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
                     if (c0 && c1 && c2 && c3) {
                         // Mixed cement variants are still one opaque pad. Their
                         // cached alpha must not expose the prelit colormap.
                         cementWord = kCementLayerValidBit | static_cast<uint32_t>(cementLayerIdx);
                         ++cementQuadCount;
-                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                    } else if (maskId && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
                         // Explicit road suppression precedes authored alpha coverage.
-                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
+                    } else if (maskId && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
-                                   | (static_cast<uint32_t>((maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
+                                   | (static_cast<uint32_t>((*maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
                                    | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
                         ++transitionQuadCount;
                     } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
@@ -774,7 +776,7 @@ void CollectUniqueNodeIds() {
         uint32_t nodeId;
         memcpy(&nodeId, &rec._wp2, 4);
         if (!gos_terrain_arm::IsTileHandle(nodeId, static_cast<uint32_t>(mc2::textures::kTextureAssetLimit))) continue;
-        if (seen.insert(nodeId).second) {
+        if (auto [seenPos, isNewNode] = seen.insert(nodeId); isNewNode) {
             g_uniqueTerrainNodeIds.push_back(nodeId);
         }
     }

@@ -51,7 +51,7 @@ void main() {
     storeVec3(d + 3u, mat3(boneT) * nrm);
     uDst.w[d + 6u] = uSrc.w[s + 6u];
     uDst.w[d + 7u] = uSrc.w[s + 7u];
-    uDst.w[d + 8u] = 0u;            // bone 0 ...
+    uDst.w[d + 8u] = uSrc.w[s + 8u] & 0xFF000000u;   // bone 0 (byte 3 = tangent handedness, passed through) ...
     uDst.w[d + 9u] = 0xFFu;         // ... weight 1: a consumer that ignored the flag would blend bone 0, so the flag is load-bearing
     // Tangent: the same octahedral decode the colour VS did, rotated by the blended bone, re-encoded.
     uint tw = uSrc.w[s + 10u];

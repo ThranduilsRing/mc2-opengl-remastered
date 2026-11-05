@@ -10,6 +10,7 @@
 #ifndef ABLEXEC_H
 #define ABLEXEC_H
 
+#include <cstring>
 #include <utility>
 
 #ifndef ABLGEN_H
@@ -71,6 +72,17 @@ union StackItem {
 };
 
 using StackItemPtr = StackItem*;
+
+// Typed-address float access: the stack and static data hold a float at a byte Address, read and written as bytes.
+inline float ablLoadFloat(const void* p) noexcept {
+	float v;
+	std::memcpy(&v, p, sizeof v);
+	return v;
+}
+
+inline void ablStoreFloat(void* p, float v) noexcept {
+	std::memcpy(p, &v, sizeof v);
+}
 
 struct ABLStackItem {
 	long			type;	// an ABLStackItemType value

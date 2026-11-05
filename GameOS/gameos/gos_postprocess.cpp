@@ -193,7 +193,7 @@ void gosPostProcess::init(int w, int h)
                 hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';
             }
 
-            hdriReady_ = bool(hdriCpu_);
+            hdriReady_ = static_cast<bool>(hdriCpu_);
 
         } else {
             MC2_DIAGFE(stderr,

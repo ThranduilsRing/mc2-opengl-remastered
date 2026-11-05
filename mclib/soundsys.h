@@ -10,6 +10,7 @@
 #ifndef SOUNDSYS_H
 #define SOUNDSYS_H
 #include "mc2_czstring.h"
+#include <algorithm>
 #include <optional>
 //---------------------------------------------------------------------------
 // Include files
@@ -136,12 +137,7 @@ inline MusicFadeStep advanceMusicFade (MusicFade& fade, float frameLength, float
 			return MusicFadeStep::Ended;
 		}
 
-		level = fabs(fade.time) / fadeDownTime;
-		if (level < 0.0f)
-			level = 0.0f;
-
-		if (level > 1.0f)
-			level = 1.0f;
+		level = std::clamp(static_cast<float>(fabs(fade.time) / fadeDownTime), 0.0f, 1.0f);
 
 		return MusicFadeStep::FadingDown;
 	}
@@ -156,12 +152,7 @@ inline MusicFadeStep advanceMusicFade (MusicFade& fade, float frameLength, float
 		return MusicFadeStep::FadingUp;
 	}
 
-	level = (fadeDownTime - fabs(fade.time)) / fadeDownTime;
-	if (level < 0.0f)
-		level = 0.0f;
-
-	if (level > 1.0f)
-		level = 1.0f;
+	level = std::clamp(static_cast<float>((fadeDownTime - fabs(fade.time)) / fadeDownTime), 0.0f, 1.0f);
 
 	return MusicFadeStep::FadingUp;
 }

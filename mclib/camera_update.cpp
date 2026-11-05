@@ -468,7 +468,7 @@ long Camera::update (void)
 			s_motionInit = true;
 		} else {
 			float dRot = cameraRotation - s_prevRotation;
-			if (dRot < 0.0f) dRot = -dRot;
+			dRot = std::fabs(dRot);
 			// wrap-around: rotation is in degrees, fold to [0,180]
 			if (dRot > 180.0f) dRot = 360.0f - dRot;
 

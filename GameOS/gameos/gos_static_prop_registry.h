@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <optional>
 #include <vector>
 #include "gos_static_prop_batcher.h"
 
@@ -275,9 +276,9 @@ uint64_t getRegistryGeneration();
 // Returns false + *out=0 if recipeIndex invalid, tombstoned, or out is null.
 bool staticPropGetInstanceFlags(int32_t recipeIndex, uint32_t* out);
 
-// Returns false + sets *out to sentinel if recipeIndex invalid/tombstoned or !hasPrimary.
-bool staticPropGetTexArrayLayer(int32_t recipeIndex, int32_t* out);
-bool staticPropGetMaterialIdx(int32_t recipeIndex, uint32_t* out);
+// Returns nullopt if recipeIndex invalid/tombstoned or !hasPrimary.
+std::optional<int32_t> staticPropGetTexArrayLayer(int32_t recipeIndex);
+std::optional<uint32_t> staticPropGetMaterialIdx(int32_t recipeIndex);
 
 // Fills *out with full cache entry for inspector/counter use.
 // Returns false if recipeIndex invalid, tombstoned, or !hasPrimary.

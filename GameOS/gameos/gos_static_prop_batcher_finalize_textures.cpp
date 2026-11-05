@@ -1,5 +1,6 @@
 // Assemble CPU albedo arrays and per-packet layers for native prop consumers.
 // and the per-packet layer tables. The orchestrator is in gos_static_prop_batcher_finalize.cpp.
+#include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "gos_static_prop_finalize_frame.h"
@@ -95,14 +96,15 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
 
                 auto it = sourceToLayer.find(sourceHandle);
                 if (it != sourceToLayer.end()) {
-                    layerForPacket[globalPktIdx] = it->second;
+                    const auto& [srcKey, srcLayer] = *it;
+                    layerForPacket[globalPktIdx] = srcLayer;
                     // VK-P11 MATERIAL FIX: FIRST-VALID-LAYER-WINS (was pIdx==0 only).
                     // A multi-packet type whose packet 0 hit the no-dims skip left
                     // layerForType==-1 (the "no_primary" teal bucket) even though a
                     // later packet had a valid layer. Record the first VALID (>=0)
                     // layer so the VK material feed textures the type.
-                    if (layerForType[typeID] < 0) layerForType[typeID] = it->second;
-                    packetsInGroup.emplace_back(globalPktIdx, it->second);
+                    if (layerForType[typeID] < 0) layerForType[typeID] = srcLayer;
+                    packetsInGroup.emplace_back(globalPktIdx, srcLayer);
                     continue;
                 }
 
@@ -177,8 +179,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         // layer; per-type uvScale maps [0,1] UV → sub-region.
         int maxW = 0, maxH = 0;
         for (const auto& u : uniques) {
-            if (u.w > maxW) maxW = u.w;
-            if (u.h > maxH) maxH = u.h;
+            maxW = std::max(maxW, u.w);
+            maxH = std::max(maxH, u.h);
         }
         if (maxW <= 0 || maxH <= 0) {
             // Defensive — shouldn't happen because skip-path filtered W/H<=0.

@@ -9,9 +9,22 @@
 // A new field can consume existing padding without changing sizeof. Structured
 // binding arity still changes, so the census fails to compile in that case too.
 #define SAVE_FIELD_SHAPE(value, ...) \
-    (void)[](auto& object) { auto& [__VA_ARGS__] = object; return std::tie(__VA_ARGS__); }(value)
+    (void)static_cast<void (*)(std::remove_cvref_t<decltype(value)>&)>( \
+        [](auto& object) { auto& [__VA_ARGS__] = object; (void)std::tie(__VA_ARGS__); })
 
 namespace save_probe {
+// Members of #pragma pack(1) structs can be misaligned and binding a reference to one is undefined:
+// run fn on an aligned copy of a trivially copyable member and write the copy back.
+template<class T, class M, class F> void viaCopy(T& object, M member, F&& fn) {
+    using V = std::remove_cvref_t<decltype(object.*member)>;
+    if constexpr (std::is_trivially_copyable_v<V>) {
+        V copy{};
+        std::memcpy(static_cast<void*>(&copy), static_cast<const void*>(&(object.*member)), sizeof(V));
+        fn(copy);
+        if constexpr (!std::is_const_v<T>)
+            std::memcpy(static_cast<void*>(&(object.*member)), static_cast<const void*>(&copy), sizeof(V));
+    } else fn(object.*member);
+}
 template<class T> bool equal(const T& a, const T& b) {
     if constexpr (std::is_array_v<T>) {
         for (size_t i = 0; i < std::size(a); ++i) if (!save_probe::equal(a[i], b[i])) return false;
@@ -41,7 +54,7 @@ template<class T> void pattern(T& value, unsigned char seed) {
 template<class T, class... M> T patterned(M... members) {
     T value{};
     unsigned char seed = 1;
-    (pattern(value.*members, seed++), ...);
+    (viaCopy(value, members, [&](auto& field) { pattern(field, seed++); }), ...);
     return value;
 }
 
@@ -66,11 +79,18 @@ bool roundtrip(T sample, Codec codec, M... members) {
     T decoded{};
     // Default member initializers can equal the pattern and hide an omission.
     // Zero each independently listed field before invoking the actual decoder.
-    (save_probe::zero(decoded.*members), ...);
+    (save_probe::viaCopy(decoded, members, [](auto& field) { save_probe::zero(field); }), ...);
     mc2::save::Archive reader(writer.bytes());
     codec(reader, decoded);
     REQUIRE(reader.finish());
-    return (save_probe::equal(expected.*members, decoded.*members) && ...);
+    auto same = [&](auto member) {
+        bool equalFields = false;
+        save_probe::viaCopy(expected, member, [&](const auto& e) {
+            save_probe::viaCopy(decoded, member, [&](const auto& d) { equalFields = save_probe::equal(e, d); });
+        });
+        return equalFields;
+    };
+    return (same(members) && ...);
 }
 
 // Pin native padding separately; a new member must update this independent census.

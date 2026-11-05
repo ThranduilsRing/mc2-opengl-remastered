@@ -57,8 +57,8 @@
 namespace {
 // [LIGHT_COST_SPLIT v1] RAII cycle bracket. Cached-bool early-out; no Tracy
 // zone by design (per-leaf hot loop -- a Tracy zone would bust the 100ns floor).
-struct LcsBucket { enum E { C2, C6, C5 }; };
-template<int K> struct LcsScope {
+enum class LcsBucket { C2, C6, C5 };
+template<LcsBucket K> struct LcsScope {
     bool on; unsigned long long t0;
     LcsScope(): on(gos_terrain_indirect::IsLightCostSplitEnabled()) { if (on) t0 = __rdtsc(); }
     ~LcsScope() {

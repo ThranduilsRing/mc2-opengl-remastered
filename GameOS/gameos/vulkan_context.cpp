@@ -728,7 +728,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     const auto lock = lockSubmit(submitMutex_);
     flushPendingLocked();
     const VkResult r = vkDeviceWaitIdle(device_);
-    if (r == VK_SUCCESS) hostSyncedGfx_ = std::max(hostSyncedGfx_, tracker_.lastSubmitted(QueueKind::Graphics));   // an idle device is a host sync point for everything submitted
+    if (r == VK_SUCCESS) hostSyncedGfx_ = (std::max)(hostSyncedGfx_, tracker_.lastSubmitted(QueueKind::Graphics));   // an idle device is a host sync point for everything submitted
     {
         auto& hs = mc2_hitch2::stats();
         const double idleMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - idleT0).count();

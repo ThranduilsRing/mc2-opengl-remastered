@@ -348,7 +348,8 @@ bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
     if (static_cast<uint32_t>(recipeIndex) >= s_staticLightHighWater) return false;
     auto it = s_bakedStaticLight.find(recipeIndex);
     if (it == s_bakedStaticLight.end()) return false;
-    out = it->second;
+    const auto& [recipeKey, bakedLight] = *it;
+    out = bakedLight;
     return true;
 }
 
@@ -499,7 +500,8 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     const uint64_t hash = fnv1a_64_struct(light_data, sizeof(TG_HWLightsData));
     auto it = packet.dedup.find(hash);
     if (it != packet.dedup.end()) {
-        const uint32_t slot = it->second;
+        const auto& [dedupHash, dedupSlot] = *it;
+        const uint32_t slot = dedupSlot;
         // Verify with memcmp on hash match (collision safety).
         if (slot < packet.count &&
             0 == memcmp(packet.rows.data() + slot, light_data, sizeof(TG_HWLightsData))) {
@@ -558,13 +560,16 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
         GatherLightsParameters(&entry.data);
         decomposeActorLightColor(&entry.data, actorColor);
         entry.actorLightSlot = 0u;
-        it = packet.templates.emplace(key, entry).first;
+        const auto [emplacedIt, emplacedNew] = packet.templates.emplace(key, entry);
+        (void)emplacedNew;
+        it = emplacedIt;
     } else {
         ++s_lbFrameHit;  // [LIGHTBRIDGE v1] template hit (trailing FNV+memcmp = retirable redundancy)
     }
 
-    *light_data = it->second.data;
-    const bool perActor = (it->second.actorLightSlot != 0xFFFFFFFFu);
+    const auto& [templateKey, cachedTemplate] = *it;
+    *light_data = cachedTemplate.data;
+    const bool perActor = (cachedTemplate.actorLightSlot != 0xFFFFFFFFu);
     if (perActor)
         decomposeActorLightColor(light_data, actorColor);
 
@@ -586,10 +591,12 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
         const uint64_t combined =
             key ^ (static_cast<uint64_t>(actorARGB) * 0x9E3779B97F4A7C15ULL);
         auto sit = packet.actorSlots.find(combined);
-        if (sit != packet.actorSlots.end() &&
-            sit->second.tmpl == key && sit->second.actorARGB == actorARGB) {
-            ++s_lightSlotActorKeyHits;  // [LIGHTSLOT v1] per-actor-color slot-cache hit
-            return sit->second.slot;   // no FNV, no memcmp
+        if (sit != packet.actorSlots.end()) {
+            const auto& [slotKey, slotEntry] = *sit;
+            if (slotEntry.tmpl == key && slotEntry.actorARGB == actorARGB) {
+                ++s_lightSlotActorKeyHits;  // [LIGHTSLOT v1] per-actor-color slot-cache hit
+                return slotEntry.slot;   // no FNV, no memcmp
+            }
         }
         const uint32_t slot = addLightDataStructure(light_data);
         packet.actorSlots[combined] =

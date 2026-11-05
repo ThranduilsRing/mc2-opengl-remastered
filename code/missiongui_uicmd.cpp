@@ -1,6 +1,8 @@
 // MissionInterfaceManager: UI-command channel: file polling, verb dispatch and the ack epilogue.
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include <atomic>
+#include <filesystem>
+#include <system_error>
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -288,7 +290,8 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 		} else if (name.empty()) {
 			note = "missing name";
 		} else {
-			_mkdir("dev_shell_out");  // capture hook does not create it
+			std::error_code mkdirEc;
+			std::filesystem::create_directory("dev_shell_out", mkdirEc);  // capture hook does not create it
 			gos_dev_shell::scheduleScreenshot(name.c_str());
 			result = "ok";
 			note = "dev_shell_out/" + name + ".tga at end of frame";

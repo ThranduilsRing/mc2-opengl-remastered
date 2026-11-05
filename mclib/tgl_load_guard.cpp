@@ -18,6 +18,7 @@
 #include <cstring>
 #include <cmath>
 #include "Gates/gate.h"
+#include <string_view>
 
 //---------------------------------------------------------------------------
 namespace {
@@ -25,8 +26,11 @@ namespace {
 unsigned long long guardKey(mc2::czstring ctx, mc2::czstring path)
 {
 	unsigned long long h = 5381;
-	for (const char* p = ctx;  p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
-	for (const char* p = path; p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
+	const auto mix = [&h](std::string_view s) {
+		for (const unsigned char c : s) h = h * 33 + c;
+	};
+	mix(ctx ? std::string_view(ctx) : std::string_view());
+	mix(path ? std::string_view(path) : std::string_view());
 	return h;
 }
 

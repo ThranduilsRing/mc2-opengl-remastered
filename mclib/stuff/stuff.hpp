@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "mc2_czstring.h"
+
 #pragma warning(disable: 4018)	// signed/unsigned mismatches
 #pragma warning(disable: 4097)	// typedef synonyms
 #pragma warning(disable: 4100)	// unreferenced parameters
@@ -187,10 +189,10 @@ namespace Stuff {
 	void TerminateClasses();
 }
 
-#define GROUP_STUFF "Stuff::"
-#define GROUP_STUFF_TEST "Stuff::Test"
-#define GROUP_STUFF_MEMORY "Stuff::Memory"
-#define GROUP_STUFF_TRACE "Stuff::Trace"
+inline constexpr mc2::czstring GROUP_STUFF = "Stuff::";
+inline constexpr mc2::czstring GROUP_STUFF_TEST = "Stuff::Test";
+inline constexpr mc2::czstring GROUP_STUFF_MEMORY = "Stuff::Memory";
+inline constexpr mc2::czstring GROUP_STUFF_TRACE = "Stuff::Trace";
 
 #include"style.hpp"
 #include"mstring.hpp"

@@ -51,12 +51,12 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
     unsigned total = 0;
     for (unsigned i = 0; i < images.size(); ++i) {
         plan.mipOffset[i] = total;
-        total += std::max(images[i].mips, 1u);
+        total += (std::max)(images[i].mips, 1u);
     }
     plan.mipOffset[images.size()] = total;
     if (carry && carry->size() != total) return plan;
     auto range = [&](const Use& use, uint32_t& m0, uint32_t& n) {
-        const uint32_t mips = std::max(images[use.image].mips, 1u);
+        const uint32_t mips = (std::max)(images[use.image].mips, 1u);
         m0 = use.baseMip;
         n = use.mipCount ? use.mipCount : (m0 < mips ? mips - m0 : 0);
         return n > 0 && m0 + n <= mips;

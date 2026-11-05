@@ -14,19 +14,15 @@
  ],
  "types": {
   "ABLFile": {
-   "delete": 3,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "mclib/ablenv.cpp": {
      "delete": 1,
      "new": 1
-    },
-    "mclib/ablrtn.cpp": {
-     "delete": 2,
-     "new": 2
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""

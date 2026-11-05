@@ -40,7 +40,7 @@ namespace Stuff {
 	//
 	public:
 		void
-			SetName(const char *entryname)
+			SetName(mc2::czstring entryname)
 				{Check_Object(this); Check_Pointer(entryname); m_name = entryname;}
 		const char*
 			GetName() const
@@ -69,7 +69,7 @@ namespace Stuff {
 					*contents = m_text;
 				}
 		void
-			SetEntry(const char *contents)
+			SetEntry(mc2::czstring contents)
 				{Check_Object(this); m_text = contents;}
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

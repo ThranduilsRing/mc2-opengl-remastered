@@ -8,6 +8,7 @@
 #include "mission_init_frame.h"
 #include "mission_commander_team.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
+#include <algorithm>
 #include <new>
 
 
@@ -528,7 +529,7 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 			numParts = 0;
 		}
 		if (numParts)
-			for (int i = 1; i < long(numParts + 1); i++) {
+			for (int i = 1; i < static_cast<long>(numParts + 1); i++) {
 				char partName[12];
 				mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 
@@ -869,8 +870,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		// Size the grid from the terrain, clamp to the engine cap FIRST, then round down to a
 		// SECTOR_DIM multiple (rounding before the clamp left a 1024 side, which is not one).
 		int moveSide = terrainCells;
-		if (moveSide > MAX_MAP_CELL_WIDTH)
-			moveSide = MAX_MAP_CELL_WIDTH;
+		moveSide = std::min<int>(moveSide, MAX_MAP_CELL_WIDTH);
 		if (moveSide % SECTOR_DIM != 0)
 			moveSide = (moveSide / SECTOR_DIM) * SECTOR_DIM;  // round down
 		if (moveSide > 0) {

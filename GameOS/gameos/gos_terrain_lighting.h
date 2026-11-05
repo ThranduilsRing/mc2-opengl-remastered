@@ -1,6 +1,7 @@
 #pragma once
 // CPU input contract for native Vulkan terrain lighting and shared light-pool bindings.
 
+#include <optional>
 #include <cstdint>
 #include <cstddef>   // offsetof (struct-layout static_asserts)
 
@@ -125,7 +126,7 @@ struct LightGridCpu {
     const uint32_t* indices;
     uint32_t        indexWords;
 };
-bool GetLightGridCpu(LightGridCpu& out);
+std::optional<LightGridCpu> GetLightGridCpu();
 
 // Object fragment binding: fixed light prefix, grid parameters, then {offset,count}
 // cells and indices. The 256-light cap preserves source order; excess producer

@@ -594,7 +594,23 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
 
     VkDescriptorSet boundSet = VK_NULL_HANDLE;
     unsigned long drawn = 0, verts = 0;
+    // Draw order is the blend order, so only ADJACENT entries merge: same texture set, pass and alpha-test flag, with the vertex ranges abutting.
+    // One vkCmdDraw then covers exactly the vertices the separate draws would have, in the same order.
+    uint32_t pendFirst = 0, pendCount = 0;
+    auto flushPending = [&]() {
+        if (pendCount == 0) return;
+        mc2::battlebench::add(mc2::battlebench::DrawLegacy), vkCmdDraw(cb, pendCount, 1, pendFirst, 0);
+        pendCount = 0;
+    };
+    const Resolved* prevR = nullptr;
     for (const Resolved& r : list) {
+        const uint32_t firstVtx = static_cast<uint32_t>((r.byteOff / kVertexStride));
+        if (prevR && pendCount != 0 && r.t->set[par] == prevR->t->set[par] && r.d->pass == prevR->d->pass && r.d->alphaTest == prevR->d->alphaTest &&
+            firstVtx == pendFirst + pendCount) {
+            pendCount += r.d->vertexCount; ++drawn; verts += r.d->vertexCount; prevR = &r;
+            continue;
+        }
+        flushPending();
         VkDescriptorSet set = r.t->set[par];
         if (set != boundSet) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &uboOffset);
@@ -610,9 +626,10 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
                                 (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
                                 (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
-        mc2::battlebench::add(mc2::battlebench::DrawLegacy), vkCmdDraw(cb, r.d->vertexCount, 1, static_cast<uint32_t>((r.byteOff / kVertexStride)), 0);
+        pendFirst = firstVtx; pendCount = r.d->vertexCount; prevR = &r;
         ++drawn; verts += r.d->vertexCount;
     }
+    flushPending();
     vkCmdEndRenderPass(cb);
     gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }

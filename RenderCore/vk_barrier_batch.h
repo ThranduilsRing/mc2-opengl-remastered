@@ -59,8 +59,8 @@ public:
         reset(image, aspect, mips, layers, initial);
     }
     void reset(uint64_t image, uint32_t aspect, uint32_t mips = 1, uint32_t layers = 1, State initial = {}) {
-        image_ = image; aspect_ = aspect; layers_ = std::max(layers, 1u);
-        cur_.assign(std::max(mips, 1u), initial);
+        image_ = image; aspect_ = aspect; layers_ = (std::max)(layers, 1u);
+        cur_.assign((std::max)(mips, 1u), initial);
         vis_.assign(cur_.size(), initial.write ? State{} : initial);
     }
     uint64_t image() const { return image_; }
@@ -109,8 +109,8 @@ public:
     }
 private:
     template <class F> void forEach(uint32_t baseMip, uint32_t mipCount, F&& f) {
-        const uint32_t n = uint32_t(cur_.size());
-        const uint32_t end = mipCount ? std::min(baseMip + mipCount, n) : n;
+        const uint32_t n = static_cast<uint32_t>(cur_.size());
+        const uint32_t end = mipCount ? (std::min)(baseMip + mipCount, n) : n;
         for (uint32_t m = baseMip; m < end; ++m) f(m);
     }
     uint64_t image_ = 0;

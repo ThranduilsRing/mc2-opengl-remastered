@@ -733,7 +733,7 @@ class RenderSubmissions
 
 		void clearArrays (void)
 		{
-            for (auto& bin : textureBins_) bin.second = MC_RenderTextureBin{};
+            for (auto& [binKey, bin] : textureBins_) bin = MC_RenderTextureBin{};
 
 			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = nullptr;
 

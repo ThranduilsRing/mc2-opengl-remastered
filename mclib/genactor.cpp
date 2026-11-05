@@ -326,8 +326,7 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		for (const auto & boxCoord : boxCoords)
 		{
 			testRadius = glm::length(boxCoord);
-			if (OBBRadius < testRadius)
-				OBBRadius = testRadius;
+			OBBRadius = std::max(OBBRadius, testRadius);
 		}
 
 		appearType->boundsUpperLeftX = (-OBBRadius * 2.0);
@@ -622,8 +621,7 @@ bool GenericAppearance::recalcBounds (void)
 
 			appearType->boundsLowerRightY = (OBBRadius * eye->getTiltFactor() * 2.0f);
 			
-			if (screenPos.z > 0.999999f)
-				screenPos.z = 0.999999f;
+			screenPos.z = std::min(screenPos.z, 0.999999f);
 			//-------------------------------------------------------------------------
 			// do a rough check if on screen.  If no where near, do NOT do the below.
 			// Mighty mighty slow!!!!
@@ -696,17 +694,10 @@ bool GenericAppearance::recalcBounds (void)
 
 					if (i)
 					{
-						if (bcsp[i].x > maxX)
-							maxX = bcsp[i].x;
-						
-						if (bcsp[i].x < minX)
-							minX = bcsp[i].x;
-							
-						if (bcsp[i].y > maxY)
-							maxY = bcsp[i].y;
-						
-						if (bcsp[i].y < minY)
-							minY = bcsp[i].y;
+						maxX = std::max(maxX, bcsp[i].x);
+						minX = std::min(minX, bcsp[i].x);
+						maxY = std::max(maxY, bcsp[i].y);
+						minY = std::min(minY, bcsp[i].y);
 					}
 				}
 		

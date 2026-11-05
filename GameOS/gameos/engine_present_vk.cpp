@@ -1097,18 +1097,11 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
     const std::vector<uint8_t>& rgba = *d.textureRgba;
-    std::vector<uint32_t> packed(static_cast<size_t>(d.textureWidth) * static_cast<size_t>(d.textureHeight));
-    for (size_t i = 0; i < packed.size(); ++i) {
-        const size_t b = i * 4u;
-        packed[i] = static_cast<uint32_t>(rgba[b]) |
-                    (static_cast<uint32_t>(rgba[b + 1]) << 8) |
-                    (static_cast<uint32_t>(rgba[b + 2]) << 16) |
-                    (static_cast<uint32_t>(rgba[b + 3]) << 24);
-    }
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
-    std::memcpy(mapped, packed.data(), static_cast<size_t>(bytes));
+    // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
+    std::memcpy(mapped, rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -1524,8 +1517,23 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     {
         // Xvfb is only presentable from the GPU its loader picks; on the others no queue family supports the window surface.
         // Run offscreen there (no swapchain, no present): the shared image is still composited and the capture readback reads it.
-        VkBool32 canPresent = VK_FALSE;
-        if (vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, s.gfxFamily, s.surface.get(), &canPresent) != VK_SUCCESS || canPresent != VK_TRUE) {
+        // Offscreen only when EVERY family answered and none can present. A failed query is an error, not proof of "no present": the
+        // offscreen path has no frame pacing, so on a failed query keep the normal swapchain path (chooseQueuesAndPresentMode decides).
+        uint32_t qfCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(s.phys, &qfCount, nullptr);
+        bool anyPresent = false, queryFailed = false;
+        for (uint32_t q = 0; q < qfCount && !anyPresent; ++q) {
+            VkBool32 canPresent = VK_FALSE;
+            const VkResult qr = vkGetPhysicalDeviceSurfaceSupportKHR(s.phys, q, s.surface.get(), &canPresent);
+            if (qr != VK_SUCCESS) {
+                queryFailed = true;
+                plog("ERROR: vkGetPhysicalDeviceSurfaceSupportKHR(family %u) failed (%d); not falling back to offscreen.",
+                     q, static_cast<int>(qr));
+            } else if (canPresent == VK_TRUE) {
+                anyPresent = true;
+            }
+        }
+        if (!anyPresent && !queryFailed) {
             s.offscreen = true;
             plog("window surface not presentable from this GPU; running offscreen (capture readback only, no present).");
         }

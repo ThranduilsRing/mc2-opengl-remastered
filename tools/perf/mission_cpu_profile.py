@@ -533,7 +533,9 @@ def main(argv=None):
     directory = args.out.resolve() / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     directory.mkdir(parents=True)
     report = {"exe": str(exe), "exe_sha256": hashlib.sha256(exe.read_bytes()).hexdigest(),
-              "seconds": args.seconds, "runs": {}, "errors": {}}
+              "seconds": args.seconds, "runs": {}, "errors": {},
+              # the GPU the runs ask for (lane side of A:/Games/mc2-ops/GPU_SPLIT unless MC2_VK_DEVICE/MC2_HARNESS_GPU say otherwise)
+              "gpu": {"requested": nofocus.gpu_hint({})}}
     intro = ("# Mission CPU profile\n\n"
              "Elapsed inclusive CPU-zone time (includes waits), not OS CPU consumption. "
              "Tables contain the union of top-N by total and event p95. Nested zone totals overlap. "

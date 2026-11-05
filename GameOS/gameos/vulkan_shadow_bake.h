@@ -23,6 +23,7 @@
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
+#include "vulkan_shadow_draw_ring.h"
 
 #include <array>
 #include <cstdint>
@@ -132,7 +133,8 @@ private:
     bool coldPending_ = false;
     bool recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in);
     bool recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in, uint32_t queryBase);
-    void drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, bool& alphaBound, VkPipeline opaque, VkPipeline alpha);
+    void drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, VkPipeline opaque, VkPipeline alpha);
+    ShadowDrawRing drawRing_;   // the static-prop caster draws of the frame's regions as indirect records
     void retire(uint64_t epoch);
     uint64_t contentKey(const ShadowBakeInputs& in, uint64_t casterHash);
     bool ensureEncoder();

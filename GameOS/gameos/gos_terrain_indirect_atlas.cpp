@@ -551,7 +551,7 @@ void BuildCementCatalogAtlas() {
             CementCellComputeStats(atlasBuf, atlasPixelSide, gridSide, txmSize, k, st[static_cast<size_t>(k)]);
 
         float refR = 0.f, refG = 0.f, refB = 0.f;
-        const int canon = ClassifyConcreteFamily(st, NT, refR, refG, refB);
+        const int canon = ClassifyConcreteFamily(st, NT, refR, refG, refB).value_or(-1);
 
         // Census prints regardless of either gate, so a map can be judged --
         // and the "do markings live in solid concrete cells?" question answered

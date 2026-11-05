@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "2812709b913f90d4ff9a465d9b25ef8c77c8f1db2b0f4c702dadba43efa73cbe",
-  "spirv_sha256": "16678d83a293a65817a2f4abb69dd539c14f3fdc1cf3d30aab8baa7b243ab388",
+  "source_sha256": "458c869a9ac4d193308fcb727115e5f3a84f0d17eeaaedd3bff0f0e62b90297b",
+  "spirv_sha256": "d36fa859bcf7ef3e3c33696a30a052dcd7065e36f3bc8aea33f54fba7b4978d0",
   "bindings": {
     "ubos": [
       {
@@ -522,6 +522,10 @@
       {
         "name": "vLegacyVehicle",
         "location": 10
+      },
+      {
+        "name": "vTangentW",
+        "location": 11
       },
       {
         "name": "vTangentGL",

@@ -182,6 +182,7 @@ struct ShadowIsland : mc2vk::IslandState {
     VkDescriptorSet                 alphaSet = VK_NULL_HANDLE;   // allocated from alphaPool, freed with it
     mc2vk::OwnedSampler             alphaSampler;
     mc2vk::OwnedPipelineLayout      playout;
+    mc2vk::ShadowDrawRing           drawRing;   // the static-prop caster draws of a frame's passes as indirect records (one slice per parity)
     mc2vk::OwnedShaderModule        vert;
     mc2vk::OwnedShaderModule        frag;
     mc2vk::OwnedShaderModule        alphaFrag;
@@ -299,7 +300,7 @@ bool ensure_inst_capacity(ShadowIsland* s, uint32_t parity, VkDeviceSize bytes) 
 }
 
 // The per-packet push constant of the alpha-tested caster (vec2 uvScale, int layer, pad); declared above the pipelines so the layout checker pairs it with them.
-constexpr VkPushConstantRange kCasterPushRange{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16};
+constexpr VkPushConstantRange kCasterPushRange{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16};
 
 // The static-prop caster shaders. Loaded above the pipeline builder so the offline layout checker, which pairs a vertex binding with the shader names named
 // before it in the file, checks the prop caster stride and attributes against shadow_prop.vert.
@@ -560,6 +561,7 @@ bool init_island(ShadowIsland* s, int size) {
     // of the per-packet layer and UV scale), so the set 0 binding of a pass stays valid across a switch of pipeline. ----
     {
         if (!load_caster_modules(s)) { setFallback("spv_load_failed"); return false; }
+        if (!s->drawRing.init(s->allocator, s->device, 1u << 17)) { setFallback("draw_ring_failed"); return false; }
 
         // Set 1: the alpha-ON albedo array the colour island imported (bound later, when it exists).
         VkDescriptorSetLayoutBinding ab{};
@@ -736,6 +738,7 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     s->recordEpoch = epoch;
     s->parity = par;
     s->passCount = 0;
+    s->drawRing.begin(par);
     s->recording = true;
     s->stagedInstances = nullptr;
     s->stagedInstanceCount = 0;
@@ -863,8 +866,10 @@ static void record_bake(ShadowIsland* s) {
 
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
 
-// The static-prop caster draws of a run list (alpha-tested packets switch to the alpha pipeline and set 1, and back).
-static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs, bool& alphaBound) {
+// The static-prop caster draws of a run list: one indirect multi-draw of the opaque packets and one of the alpha-tested ones (alpha pipeline and set 1).
+static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs) {
+    static thread_local std::vector<mc2vk::ShadowDraw> draws;
+    draws.clear();
     for (const InstRun& run : runs) {
         if (run.typeID >= s->typeRuns.size()) continue;
         const TypeRun& tr = s->typeRuns[run.typeID];
@@ -873,23 +878,12 @@ static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vec
             if (pk >= s->packets.size()) break;
             const Mc2ShadowPacket& pkt = s->packets[pk];
             const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
-            if (alphaPacket) {
-                if (!alphaBound) {
-                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
-                    const VkDescriptorSet aset = s->alphaSet;
-                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
-                    alphaBound = true;
-                }
-                const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk];
-                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
-                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-            } else if (alphaBound) {
-                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-                alphaBound = false;
-            }
-            mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
+            mc2vk::ShadowDraw d{pkt.indexCount, pkt.firstIndex, pkt.baseVertex, run.firstInstance, run.count, -1, 0.0f, 0.0f};
+            if (alphaPacket) { const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk]; d.layer = pa.layer; d.scaleX = pa.scaleX; d.scaleY = pa.scaleY; }
+            draws.push_back(d);
         }
     }
+    s->drawRing.record(cb, s->playout.get(), s->pipe.get(), s->alphaPipe.get(), s->alphaSet, draws);
 }
 
 // Appends one depth-only render pass to the frame's command buffer: the static-prop casters, then the mech casters, into `fb`. The light-space matrix goes to
@@ -934,13 +928,12 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     const VkDescriptorSet set = s->set[s->parity];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &dynamicOffset);
-    bool alphaBound = false;   // the alpha-tested pipeline and set 1 are bound
     const VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuf = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
     if (drawCasters) {
-    draw_static_runs(s, cb, s->instRuns, alphaBound);
+    draw_static_runs(s, cb, s->instRuns);
     // Only the mechs inside the view-swept set can land in the fitted map.
     static std::vector<uint8_t> viewMask;
     s->mover.runMaskView(s->mech.runs(), viewMask);
@@ -999,8 +992,7 @@ static void local_draw_static(ShadowIsland* s, VkCommandBuffer cb, const std::ve
     const VkBuffer vertexBuf = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
-    bool alphaBound = false;
-    draw_static_runs(s, cb, runs, alphaBound);
+    draw_static_runs(s, cb, runs);
 }
 
 static void local_barrier(VkCommandBuffer cb, VkPipelineStageFlags src, VkAccessFlags srcAccess,

@@ -1937,7 +1937,7 @@ void MissionBegin::render()
 			auto& io = ImGui::GetIO();
 			float width = 0, height = 0;
 			GuiRuntime::GetDisplaySize(width, height);
-			int x = 0, y = 0, w = int(width), h = int(height);
+			int x = 0, y = 0, w = static_cast<int>(width), h = static_cast<int>(height);
 			gos_ComputeUiCanvasBox(w, h, &x, &y, &w, &h);
 			if (width > 0 && height > 0)
 				io.MousePos = ImVec2((x + (button->left() + button->right()) * .5f * w / 800.f) * io.DisplaySize.x / width,

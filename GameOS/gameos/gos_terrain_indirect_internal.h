@@ -15,6 +15,7 @@
 // parity-printer schema, env-gate semantics).
 //
 
+#include <optional>
 #include <atomic>
 #include "gos_terrain_indirect.h"
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
@@ -170,12 +171,12 @@ extern int     g_cementAtlasTileCount;
 extern bool    g_cementLayerMapReady;
 extern int     g_cementCatalogTruncated;
 extern uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
-int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3);
+std::optional<int> deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3);
 bool PadEdgeRoadFixEnabled();
 extern uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 extern bool     g_cementAlphaLayerMapReady;
 void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf, int atlasPixelSide, int gridSide, int txmSize, int k, CementCellStats& s);
-int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT, float& refR, float& refG, float& refB);
+std::optional<int> ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT, float& refR, float& refG, float& refB);
 bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks, bool overlayMetadata = true);
 void PopulateRecipeCementWords();
 extern std::vector<uint32_t> g_uniqueTerrainNodeIds;

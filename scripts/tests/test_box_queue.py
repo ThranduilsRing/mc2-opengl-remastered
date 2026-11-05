@@ -282,7 +282,7 @@ def test_unit_row_configures_the_doctest_tier_with_the_box_clang_toolchain():
     # defect: a bare `cmake -S tests/unit` on the box found no compiler ("CMAKE_CXX_COMPILER not set")
     i = box_run.REMOTE.index("    unit)")
     row = box_run.REMOTE[i:box_run.REMOTE.index("    build)", i)]
-    assert "-S tests/unit" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
+    assert "-S \\$PWD/tests/unit" in row and "box_exclude.txt" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
 
 
 def test_build_and_unit_rows_queue_in_the_build_group_and_hold_no_gpu_slot(monkeypatch, tmp_path):
@@ -317,8 +317,9 @@ def test_filler_push_is_noop_at_the_current_sha_and_otherwise_bundles_and_syncs(
 
 def test_only_game_rows_take_the_lock_cpu_rows_run_first_under_timeout():
     r = box_run.REMOTE
-    assert "case $r in build|unit|lint|cpu:*|sh:*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
-    assert "build|unit|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
+    assert "case $r in build|unit|unit-san|lint|cpu:*|sh:*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
+    assert "unit-san)" in r and "build64-tests-san" in r and "-fsanitize=address,undefined" in r   # sanitizer row: own tree
+    assert "build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
     assert "$RUN timeout -k 30 $TMO bash -c" in r and "unit) TMO=1200" in r and "smoke*|capture:*) TMO=600" in r and "*) TMO=1800" in r
     assert "sh:*|cpu:*)  cmd=" in r and "gpu:*)" in r
     assert "(SECONDS - LW0)" in r   # the 30 min lock wait is not eaten by the build
@@ -348,6 +349,6 @@ def test_cap0_is_dropped_once_head_contains_the_headless_present_fix(monkeypatch
 def test_lint_row_is_cpu_only_and_skips_the_build():
     assert "lint" in box_run.NO_GPU_ROWS
     assert "python3 tools/lane_merge.py --lint HEAD" in box_run.REMOTE
-    assert 'case $row in build|unit|lint|cpu:*|sh:*) RUN=grc' in box_run.REMOTE   # taskset 32-63, never the GPU lock
+    assert 'case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc' in box_run.REMOTE   # taskset 32-63, never the GPU lock
     assert 'ONLY_LINT=1' in box_run.REMOTE and 'if [ -z "$ONLY_LINT" ]; then' in box_run.REMOTE
     assert 'grep -a "LINT FAIL"' in box_run.REMOTE

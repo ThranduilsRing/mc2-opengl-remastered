@@ -14,8 +14,45 @@ import console_child  # noqa: E402
 import ninja_build  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _in_process_lane_merge(monkeypatch):
+    """lm.main(--batch/--precheck) hands off to the trusted mc2-main copy unless already trusted; these tests drive this tree's code in-process."""
+    monkeypatch.setenv("MC2_LANE_MERGE_TRUSTED", "1")
+
+
 def _r(rc, out=""):
     return types.SimpleNamespace(returncode=rc, stdout=out)
+
+
+@pytest.mark.parametrize("flag", ["--precheck", "--batch"])
+def test_precheck_and_batch_run_the_trusted_copy(monkeypatch, tmp_path, flag):
+    trusted = tmp_path / "trusted"
+    (trusted / "tools").mkdir(parents=True)
+    (trusted / "tools" / "lane_merge.py").write_text("# trusted\n")
+    monkeypatch.delenv("MC2_LANE_MERGE_TRUSTED")
+    monkeypatch.setenv("MC2_TRUSTED_ROOT", str(trusted))
+    seen = {}
+
+    def fake_call(cmd, **kw):
+        seen["cmd"], seen["env"] = cmd, kw["env"]
+        return 7
+    monkeypatch.setattr(lm.lane_merge_trust.subprocess, "call", fake_call)
+    candidate = str(tmp_path / "candidate")
+    assert lm.main([flag, "tip", "--root", candidate]) == 7
+    assert seen["cmd"][1] == str(trusted / "tools" / "lane_merge.py")   # never the candidate's own script
+    assert seen["cmd"][2:] == [flag, "tip", "--root", candidate]
+    assert seen["env"]["MC2_LANE_MERGE_TRUSTED"] == "1"                # the child does not re-exec again
+    seen.clear()
+    assert lm.main([flag, "tip"]) == 7                                  # no --root given: the candidate tree is passed explicitly
+    assert seen["cmd"][-2] == "--root" and seen["cmd"][-1]
+
+
+def test_trusted_script_is_none_for_itself_or_when_missing(monkeypatch, tmp_path):
+    monkeypatch.delenv("MC2_LANE_MERGE_TRUSTED")
+    monkeypatch.setenv("MC2_TRUSTED_ROOT", str(tmp_path))                # no tools/lane_merge.py there
+    assert lm.lane_merge_trust.trusted_script() is None
+    monkeypatch.setenv("MC2_TRUSTED_ROOT", ROOT)                         # this very tree
+    assert lm.lane_merge_trust.trusted_script() is None
 
 
 def test_quick_rows_green_and_red():
@@ -519,8 +556,9 @@ def test_window_never_publishes_to_v04(monkeypatch, tmp_path, failure):
     from contextlib import contextmanager
     import merge_gate as gate
     @contextmanager
-    def candidate(*args):
+    def candidate(*args, **kwargs):
         yield tmp_path
+    monkeypatch.setattr(gate.gate_reuse, "deployed_seed", lambda *a, **k: None)
     monkeypatch.setattr(gate, "stock_copy", candidate)
     staged = []
     monkeypatch.setattr(gate, "stage_published", lambda install: staged.append(install))
@@ -1124,7 +1162,7 @@ def test_gate_reuses_only_fresh_same_head_unit_receipt(tmp_path, monkeypatch, fr
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    assert gate.main(["--dry-run", "--no-box", "--proofs-dir", str(tmp_path / "proof")]) == 0   # the box route has its own python-only split
     cmd = next(c for n, c, _ in seen if n == "harnesses")
     assert ("--python-only" in cmd) == fresh
 
@@ -1284,7 +1322,8 @@ def test_in_gate_flag_only_on_game_stages():
     for name in ("contracts", "harnesses", "pytest"):
         assert gate.gate_env(name) == {}
     for name in ("tier1", "mods", "saveload-mc2_01", "determinism-mc2_03"):
-        assert gate.gate_env(name) == {"MC2_IN_GATE": "1"}
+        from smoke_lib import host_lease
+        assert gate.gate_env(name) == {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.gpu_split()["gate"]}   # pinned to the gate's GPU
 
 
 def test_conftest_clears_inherited_gate_flag():

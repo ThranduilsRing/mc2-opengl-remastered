@@ -1,5 +1,6 @@
 // GpuStaticPropRegistry: the persistent-store rebuild, diagnostic summaries and
 // cull-record version bump. The orchestrator is in gos_static_prop_registry.cpp.
+#include <algorithm>
 #include "gos_static_prop_registry_internal.h"
 #include "mc2fmt.h"
 
@@ -14,11 +15,11 @@ void flushFrozenStoreRebuild(GpuStaticPropBatcher& batcher, bool storeDirty) {
         RecipeRange& rng = s_recipeRanges[regIdx];
         if (rng.count == 0 || !rng.multi()) continue;
         for (uint32_t i = 0; i < rng.count; ++i) {
-            const uint32_t ri = rng.first + i;
+            const uint32_t ri = rng.begin + i;
             if (ri >= s_recipes.size()) break;
             s_recipes[ri].lightDataIndex = regIdx;
         }
-        batcher.appendPersistentStaticRange(&s_recipes[rng.first], rng.count);
+        batcher.appendPersistentStaticRange(&s_recipes[rng.begin], rng.count);
     }
 }
 
@@ -68,7 +69,7 @@ void flushZeroLightProbe(uint64_t s_diag_flush_calls) {
                 float amb[3] = {0,0,0}, sun[3] = {0,0,0};
                 const bool baked = mc2PeekStaticLightSlotSummary(ri, &nL, amb, sun);
                 uint32_t typeID = 0u;
-                if (r.first < s_recipes.size()) typeID = s_recipes[r.first].typeID;
+                if (r.begin < s_recipes.size()) typeID = s_recipes[r.begin].typeID;
                 float m[16] = {0};
                 const bool haveM = staticPropGetModelMatrix(ri, m);
                 const char* tname = "-";
@@ -96,8 +97,11 @@ void flushDiagSummary(uint64_t s_diag_flush_calls, uint64_t& s_diag_ranges_total
         // actionable on-screen-vanish signal; transient off-screen noise stays low.
         if (s_guard2) {
             int worstType = -1; uint64_t worstCount = 0;
-            for (const auto& kv : s_staleByType)
-                if (kv.second > worstCount) { worstCount = kv.second; worstType = kv.first; }
+            for (const auto& [staleType, staleCount] : s_staleByType) {
+                const bool worse = staleCount > worstCount;
+                if (worse) worstType = staleType;
+                worstCount = std::max(worstCount, staleCount);
+            }
             mc2::fmt::print_err("[REGFLUSH_GUARD2 v1] event=summary persistent_vanish={:d} stale_types={:d} worst_typeID={:d} worst_stale_total={:d} live_streaks={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_diag_persistent_vanish)), mc2::fmt::as_size(s_staleByType.size()), mc2::fmt::as_i32(worstType), mc2::fmt::as_u64(static_cast<unsigned long long>(worstCount)), mc2::fmt::as_size(s_staleStreak.size()));
             fflush(stderr);
         }

@@ -30,6 +30,7 @@
 // cells here.
 
 #include "doctest.h"
+#include "Gates/gate_name.h"
 
 #include "file.h"
 #include "inifile.h"
@@ -168,7 +169,7 @@ void removeModTree ()
 
 void setActiveMod (const char* modId)
 {
-	_putenv_s("MC2_ACTIVE_MOD", modId ? modId : "");
+	_putenv_s(mc2::gate::name<"MC2_ACTIVE_MOD">(),modId ? modId : "");
 }
 
 // ---- per-API probes ---------------------------------------------------------
@@ -267,7 +268,7 @@ TEST_CASE("loose-only: every spelling resolves loose (tier 1), bytes identical")
 
 TEST_CASE("layer priority is spelling-independent: mod > loose > FST")
 {
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
 	const std::string fstPath = scratchPath("archive3.fst");
 	authorFst(fstPath, kCanonical, fitPayload(3));
 	buildLoose(fitPayload(2));
@@ -310,7 +311,7 @@ TEST_CASE("layer priority is spelling-independent: mod > loose > FST")
 
 	remove(fstPath.c_str());
 	removeModTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
 }
 
 TEST_CASE("absent path: clean miss on every API, every spelling")

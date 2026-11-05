@@ -103,7 +103,7 @@ static int64_t percentile_inplace(std::vector<int64_t>& v, double pct) {
 static int64_t max_inplace(const std::vector<int64_t>& v) {
     if (v.empty()) return 0;
     int64_t m = v[0];
-    for (auto x : v) if (x > m) m = x;
+    for (auto x : v) m = std::max(m, static_cast<int64_t>(x));
     return m;
 }
 

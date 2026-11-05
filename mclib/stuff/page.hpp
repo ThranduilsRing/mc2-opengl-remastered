@@ -44,7 +44,7 @@ namespace Stuff {
 	//
 	public:
 		void
-			SetName(const char *pagename)
+			SetName(mc2::czstring pagename)
 				{Check_Object(this); m_name = pagename;}
 		const char*
 			GetName() const
@@ -70,10 +70,10 @@ namespace Stuff {
 				{Check_Object(this); return m_notes.IsEmpty();}
 
 		bool
-			DoesNoteExist(const char *entryname)
+			DoesNoteExist(mc2::czstring entryname)
 				{Check_Object(this); return FindNote(entryname) != nullptr;}
 		Note*
-			FindNote(const char *entryname);
+			FindNote(mc2::czstring entryname);
 		Note*
 			GetNote(unsigned index);
 
@@ -83,15 +83,15 @@ namespace Stuff {
 				{Check_Object(this); return new NoteIterator(&m_notes);}
 
 		ChainOf<Note*>*
-			MakeNoteChain(const char* prefix);
+			MakeNoteChain(mc2::czstring prefix);
 
 		Note*
-			AddNote(const char* entryname);
+			AddNote(mc2::czstring entryname);
 		Note*
-			SetNote(const char* entryname);
+			SetNote(mc2::czstring entryname);
 
 		void
-			DeleteNote(const char *entryname);
+			DeleteNote(mc2::czstring entryname);
 		void
 			DeleteAllNotes();
 
@@ -105,18 +105,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const char **contents,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const char *contents
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const char *contents
 			);
 
@@ -126,18 +126,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				int *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				int value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				int value
 			);
 
@@ -147,18 +147,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				Scalar *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				Scalar value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				Scalar value
 			);
 
@@ -168,18 +168,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				bool *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				bool value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				bool value
 			);
 
@@ -189,18 +189,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				glm::vec3 *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const glm::vec3 &value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const glm::vec3 &value
 			);
 
@@ -210,18 +210,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				RGBColor *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const RGBColor &value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const RGBColor &value
 			);
 
@@ -231,18 +231,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				RGBAColor *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const RGBAColor &value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				const RGBAColor &value
 			);
 
@@ -252,18 +252,18 @@ namespace Stuff {
 	public:
 		bool
 			GetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				NotationFile *value,
 				bool required=false
 			);
 		void
 			SetEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				NotationFile *value
 			);
 		void
 			AppendEntry(
-				const char *entryname,
+				mc2::czstring entryname,
 				NotationFile *value
 			);
 

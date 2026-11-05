@@ -144,6 +144,7 @@ layout(location = 7) flat out int  vMechSunFound;
 layout(location = 8) out vec3 vTangentGL;           // NORMALS-1 world tangent
 layout(location = 9) flat out uint vImportedMech;   // renderFlags >> 3 & 7
 layout(location = 10) flat out uint vLegacyVehicle; // renderFlags bit 6: ground vehicle, legacy shading
+layout(location = 11) flat out float vTangentW;     // tangent handedness (a_boneIndices.w: 1 = mirrored UV island)
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
@@ -202,6 +203,7 @@ void main() {
     // (MC2_USE_VIEW_UNIFORMS) -- verbatim, same SSBO bytes.
     vImportedMech = (inst.renderFlags >> 3) & 7u;
     vLegacyVehicle = legacyVehicle ? 1u : 0u;
+    vTangentW = (a_boneIndices.w != 0u) ? -1.0 : 1.0;
     {
         vec2 te = a_tangentOct;                                  // s16-normalized [-1,1]
         vec3 tLocal = vec3(te.xy, 1.0 - abs(te.x) - abs(te.y));

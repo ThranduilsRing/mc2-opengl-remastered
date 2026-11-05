@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -54,8 +54,10 @@ RC_NO_BASELINE = 78    # determinism/saveload row refused: no Linux baseline fil
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 # `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
-NO_GPU_ROWS = ("build", "unit", "lint")   # rows that never touch a GPU: no GPU lock, queue group "build"
-GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
+NO_GPU_ROWS = ("build", "unit", "unit-san", "lint")   # rows that never touch a GPU: no GPU lock, queue group "build"
+# plus what needs no Windows: the doctests, the Linux-capable contract rows (scripts/box_contracts.sh) and smoke-lite
+GATE_ROWS = ([f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
+             + ["unit", "sh:bash scripts/box_contracts.sh", "smoke-lite"])
 
 # a retry must never reuse a row's --out dir (sim_determinism refuses an existing one and the row would be VOID): one fresh dir per attempt
 FRESH_FN = 'fresh() { local d=$1 n=0; while [ -e "$d.a$n" ]; do n=$((n+1)); done; printf %s "$d.a$n"; }'
@@ -149,7 +151,7 @@ mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
-CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|lint|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
+CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|unit-san|lint|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
 RES=0
 FPPY='import sys, json, os
 sys.path.insert(0, "tools")
@@ -163,8 +165,8 @@ RIDX=0
 for row in "${ROWS[@]}"; do
   RIDX=$((RIDX+1))
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
-  case $row in build|unit|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
-  case $row in unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
+  case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
+  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
@@ -174,8 +176,13 @@ for row in "${ROWS[@]}"; do
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
-                 cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && cd build64-tests && ./mc2_tests --no-breaks" ;;   # cwd = build dir: clang __FILE__ is ../tests/unit/x.cpp and source-reading cases resolve it against cwd
+                 cmd="grep -q '^CMAKE_HOME_DIRECTORY:INTERNAL=/' build64-tests/CMakeCache.txt 2>/dev/null || rm -rf build64-tests; cmake -S \$PWD/tests/unit -B \$PWD/build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && cd build64-tests && ./mc2_tests --no-breaks --test-case-exclude=\"\$(grep -v '^#' ../tests/unit/box_exclude.txt | sed 's/ *#.*//' | paste -sd,)\"" ;;
+                 # cwd = the build dir: cmake emits sources relative to it, so a __FILE__-relative test finds its files only from there.
+                 # tests/unit/box_exclude.txt: the cases that are data- or ABI-dependent on this box, each with its reason (tracked, not a ratchet row)
     lint)        cmd="python3 tools/lane_merge.py --lint HEAD" ;;   # CPU-only: lane_merge's own lint (exit code = verdict) against the mirror's claude/nifty-mendeleev
+    unit-san)    # same doctest tier under clang ASan+UBSan in its OWN tree (build64-tests-san); UBSan recovers (all findings listed) and is counted from log_path files
+                 SANF="-fsanitize=address,undefined -fno-sanitize=vptr -fsanitize-recover=address -fno-omit-frame-pointer"   # vptr off: the harness links stub subsets of the engine, so typeinfo for Mover/Appearance is never emitted and a vptr check only fails the link
+                 cmd="cmake -S tests/unit -B build64-tests-san -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS='-stdlib=libc++ $SANF' -DCMAKE_C_FLAGS='$SANF' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld $SANF' -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests-san -j16 -k 0 mc2_tests && cd build64-tests-san && rm -f \$OUT/ubsan.* \$OUT/asan.* && ASAN_OPTIONS=detect_leaks=0:halt_on_error=0:log_path=\$OUT/asan UBSAN_OPTIONS=print_stacktrace=1:log_path=\$OUT/ubsan ./mc2_tests --no-breaks; rc=\$?; n=\$(cat \$OUT/ubsan.* 2>/dev/null | grep -c 'runtime error'); a=\$(cat \$OUT/asan.* 2>/dev/null | grep -c 'ERROR: AddressSanitizer'); echo \"[san] rc=\$rc ubsan_findings=\$n asan_findings=\$a\"; [ \$rc = 0 ] && [ \$n = 0 ] && [ \$a = 0 ]" ;;
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
     gpu:*)       cmd="${row#gpu:}" ;;   # arbitrary command that runs the game: takes the lock

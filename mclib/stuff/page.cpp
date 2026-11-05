@@ -54,7 +54,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 Note*
-	Page::FindNote(const char *entryname)
+	Page::FindNote(mc2::czstring entryname)
 {
 	Check_Object(this);
 	Check_Pointer(entryname);
@@ -84,7 +84,7 @@ Note*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 ChainOf<Note*>*
-	Page::MakeNoteChain(const char *entryname)
+	Page::MakeNoteChain(mc2::czstring entryname)
 {
 	Check_Object(this);
 	Check_Pointer(entryname);
@@ -106,7 +106,7 @@ ChainOf<Note*>*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 Note*
-	Page::AddNote(const char *entryname)
+	Page::AddNote(mc2::czstring entryname)
 {
 	Check_Object(this);
 	Check_Pointer(entryname);
@@ -123,7 +123,7 @@ Note*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	Page::DeleteNote(const char *entryname)
+	Page::DeleteNote(mc2::czstring entryname)
 {
 	Check_Object(this);
 	Check_Pointer(entryname);
@@ -157,7 +157,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const char **contents,
 		bool required
 	)
@@ -188,7 +188,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const char *contents
 	)
 {
@@ -207,7 +207,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const char *contents
 	)
 {
@@ -224,7 +224,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		int *contents,
 		bool required
 	)
@@ -255,7 +255,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		int contents
 	)
 {
@@ -273,7 +273,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		int contents
 	)
 {
@@ -289,7 +289,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		Scalar *contents,
 		bool required
 	)
@@ -320,7 +320,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		Scalar value
 	)
 {
@@ -338,7 +338,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		Scalar value
 	)
 {
@@ -354,7 +354,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		bool *contents,
 		bool required
 	)
@@ -385,7 +385,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		bool value
 	)
 {
@@ -403,7 +403,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		bool value
 	)
 {
@@ -419,7 +419,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		glm::vec3 *contents,
 		bool required
 	)
@@ -450,7 +450,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const glm::vec3 &value
 	)
 {
@@ -468,7 +468,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const glm::vec3 &value
 	)
 {
@@ -484,7 +484,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		RGBColor *contents,
 		bool required
 	)
@@ -515,7 +515,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const RGBColor &value
 	)
 {
@@ -533,7 +533,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const RGBColor &value
 	)
 {
@@ -549,7 +549,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		RGBAColor *contents,
 		bool required
 	)
@@ -580,7 +580,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const RGBAColor &value
 	)
 {
@@ -598,7 +598,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		const RGBAColor &value
 	)
 {
@@ -614,7 +614,7 @@ void
 //
 bool
 	Page::GetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		NotationFile *contents,
 		bool required
 	)
@@ -645,7 +645,7 @@ bool
 //
 void
 	Page::SetEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		NotationFile *value
 	)
 {
@@ -663,7 +663,7 @@ void
 //
 void
 	Page::AppendEntry(
-		const char *entryname,
+		mc2::czstring entryname,
 		NotationFile *value
 	)
 {

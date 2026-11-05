@@ -12,6 +12,7 @@
 // Include Files
 
 #ifndef DCAMERA_H
+#include <algorithm>
 #include"dcamera.h"
 #include "sim_overlap.h"
 #endif
@@ -599,7 +600,7 @@ class Camera
 		// eased altitude until it settles. See camera.cpp update().
 		void beginZoomAnchor (const glm::vec3& A, float h0, const glm::vec3& T0)
 		{
-			if (h0 < 1.0f) h0 = 1.0f;
+			h0 = std::max(h0, 1.0f);
 			zoomAnchorWorld = A;
 			zoomAnchorPivot = T0;
 			zoomAnchorH0    = h0;
@@ -1738,8 +1739,7 @@ class Camera
 			setCameraRotation(rot.y,rot.y);
 		
 			cameraAltitude = rot.z;
-			if (cameraAltitude < AltitudeMinimum)
-				cameraAltitude = AltitudeMinimum;
+			cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
 					
 			float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 			float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);

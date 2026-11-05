@@ -199,7 +199,7 @@ namespace Stuff {
 	}
 
 	inline Scalar
-		AtoF(const char* v)
+		AtoF(mc2::czstring v)
 	{
 		return static_cast<Scalar>(atof(v));
 	}

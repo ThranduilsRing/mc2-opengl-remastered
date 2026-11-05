@@ -5,6 +5,7 @@
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 //==========================================================================//
 // File:	 gosFX_ShardCloud.cpp											//
 // Contents: Base gosFX::ShardCloud Component								//
@@ -147,8 +148,8 @@ void
 			ShardCloudClassID,
 			"gosFX::ShardCloud",
 			SpinningCloud::DefaultData,
-			(Effect::Factory)&Make,
-			(Specification::Factory)&Specification::Make
+			effectFactoryThunk<&Make>,
+			specificationFactoryThunk<&Specification::Make>
 		);
 	Register_Object(DefaultData);
 }
@@ -293,7 +294,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-        if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
+        if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">() && mc2_diag::tagRequested("VFX_PRIMITIVE")) {
             static bool reported = false;
             if (!reported) {
                 reported = true;

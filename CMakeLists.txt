@@ -327,6 +327,21 @@ if(ENABLE_ASSIMP_IMPORTER)
     message(STATUS "ENABLE_ASSIMP_IMPORTER=ON — vendored Assimp at 3rdparty/assimp/ (FBX + GLTF, static, debug-info stripped: ASSIMP-PDB-SLIM-1)")
 endif()
 
+# ---------------------------------------------------------------------------
+# Out-of-process crash minidumps: vendored sentry-native 0.17.5 (MIT), crashpad backend, NO transport,
+# no DSN, so nothing is ever uploaded. Only the crashpad_handler child process and the in-process client
+# are used (GameOS/gameos/gos_crashpad.cpp). crashpad_handler(.exe) is built next to mc2 and ships in the
+# deploy payload. Source: 3rdparty/sentry-native/ (see its README.mc2).
+# ---------------------------------------------------------------------------
+set(SENTRY_BACKEND         "crashpad" CACHE STRING "" FORCE)
+set(SENTRY_TRANSPORT       "none"     CACHE STRING "" FORCE)
+set(SENTRY_BUILD_TESTS     OFF CACHE BOOL "" FORCE)
+set(SENTRY_BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
+set(SENTRY_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(SENTRY_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(SENTRY_ENABLE_INSTALL  OFF CACHE BOOL "" FORCE)
+add_subdirectory(3rdparty/sentry-native out/3rdparty/sentry-native)
+
 # Source/execution charset UTF-8 for first-party code only: set after the vendored subdirectories
 # above, since assimp passes its own /source-charset (the two switches are mutually exclusive).
 if(MSVC)
@@ -343,6 +358,9 @@ target_include_directories(mimalloc_static PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty
 target_compile_definitions(mimalloc_static PUBLIC MI_STATIC_LIB)
 if(MSVC)
     target_compile_options(mimalloc_static PRIVATE /W0)
+    # mimalloc's decl.h maps mi_likely(x) to "(x) [[likely]]" under MSVC C++20+, which src/prim/os.c then uses inside a ternary
+    # (error C2059 'attribute specifier'); C++17 takes its plain (x) branch. Vendored C sources compiled as C++ only.
+    set_target_properties(mimalloc_static PROPERTIES CXX_STANDARD 17)
 else()
     target_compile_options(mimalloc_static PRIVATE -w)
     target_link_libraries(mimalloc_static PUBLIC pthread)
@@ -773,6 +791,12 @@ foreach(_dll ${FFmpegLGPL_RUNTIME_DLLS})
                 "${_dll}" "$<TARGET_FILE_DIR:mc2>")
 endforeach()
 install(FILES ${FFmpegLGPL_RUNTIME_DLLS} DESTINATION ".")
+
+# crashpad_handler(.exe) is the out-of-process minidump writer; it must sit next to mc2(.exe).
+add_dependencies(mc2 crashpad_handler)
+add_custom_command(TARGET mc2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:crashpad_handler>" "$<TARGET_FILE_DIR:mc2>")
 
 # Other runtime DLLs (SDL2/ZLIB/mc2res). Same rationale as the
 # editor target — without these mc2.exe fails at launch with a

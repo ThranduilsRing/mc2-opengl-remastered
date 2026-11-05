@@ -542,7 +542,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	NotationFile::SaveAs(const char* file_name)
+	NotationFile::SaveAs(mc2::czstring file_name)
 {
 	Check_Object(this);
 
@@ -804,7 +804,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 Page*
-	NotationFile::FindPage(const char *pagename)
+	NotationFile::FindPage(mc2::czstring pagename)
 {
 	Check_Object(this);
 	Check_Pointer(pagename);
@@ -824,7 +824,7 @@ Page*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 Page*
-	NotationFile::GetPage(const char *pagename)
+	NotationFile::GetPage(mc2::czstring pagename)
 {
 	Page *page = FindPage(pagename);
 	if (!page)
@@ -839,7 +839,7 @@ Page*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 Page*
-	NotationFile::SetPage(const char *pagename)
+	NotationFile::SetPage(mc2::czstring pagename)
 {
 	Check_Object(this);
 	Check_Pointer(pagename);
@@ -854,7 +854,7 @@ Page*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 Page*
-	NotationFile::AddPage(const char *pagename)
+	NotationFile::AddPage(mc2::czstring pagename)
 {
 	Check_Object(this);
 	Check_Pointer(pagename);
@@ -871,7 +871,7 @@ Page*
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
-	NotationFile::DeletePage(const char *pagename)
+	NotationFile::DeletePage(mc2::czstring pagename)
 {
 	Check_Object(this);
 	Check_Pointer(pagename);

@@ -130,6 +130,19 @@ struct DDSURFACEDESC2 {
 };
 #endif
 
+#include <filesystem>
+#include <system_error>
+
+// Remove a save-time scratch file; a missing file is not an error (same as the old DeleteFile).
+inline void removeSaveScratchFile(const FullPathFileName& path)
+{
+	const char* name = path;
+	if (!name)
+		return;
+	std::error_code ec;
+	std::filesystem::remove(name, ec);
+}
+
 //----------------------------------------------------------------------------------------------------
 // Globals
 extern float loadProgress;

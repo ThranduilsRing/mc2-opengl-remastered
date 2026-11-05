@@ -31,68 +31,10 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 KTX2_MAGIC = b"\xabKTX 20\xbb\r\n\x1a\n"  # 12 bytes
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 VK_FORMAT_R8G8B8A8_UNORM = 37
 VK_FORMAT_R8G8B8A8_SRGB  = 43
-
-# ---------------------------------------------------------------------------
-# Pre-built DFDs (80 bytes each, including the leading dfdTotalSize uint32)
-# ---------------------------------------------------------------------------
-
-# KHR Basic Descriptor Block for RGBA8 -- 92 bytes total.
-#
-# Layout (all LE):
-#   offset  0: dfdTotalSize = 92  (uint32)  -- includes this field
-#   offset  4: vendorId=0 (uint16) | descriptorType=0 (uint16)
-#   offset  8: versionNumber=2 (uint16) | descriptorBlockSize=80 (uint16)
-#                descriptorBlockSize counts bytes from colorModel through end of samples
-#   offset 12: colorModel=1(RGBSDA), colorPrimaries=1(BT709), transferFunction, flags=0
-#   offset 16: texelBlockDimension[0-3] = 0,0,0,0
-#   offset 20: bytesPlane[0-7] = 4,0,0,0,0,0,0,0
-#   offset 28: 4 samples x 16 bytes = 64 bytes
-#                each: bitOffset(uint16) bitLength(uint8) channelType(uint8)
-#                      samplePosition(uint32) lower(int32) upper(int32)
-#
-DFD_RGBA8_UNORM = bytes([
-    # dfdTotalSize = 92 (0x5C)
-    0x5C, 0x00, 0x00, 0x00,
-    # vendorId=0, descriptorType=0
-    0x00, 0x00, 0x00, 0x00,
-    # versionNumber=2 (uint16), descriptorBlockSize=80 (0x50) (uint16)
-    0x02, 0x00, 0x50, 0x00,
-    # colorModel=1(RGBSDA), colorPrimaries=1(BT709), transferFunction=1(LINEAR), flags=0
-    0x01, 0x01, 0x01, 0x00,
-    # texelBlockDimension[0-3] = 0,0,0,0
-    0x00, 0x00, 0x00, 0x00,
-    # bytesPlane[0-7]: plane0=4, rest=0
-    0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    # Sample 0 (R): bitOffset=0 (uint16), bitLength=7 (uint8), channelType=0x00 (R)
-    0x00, 0x00, 0x07, 0x00,
-    # samplePosition[0-3] = 0 (packed as uint32)
-    0x00, 0x00, 0x00, 0x00,
-    # lower=0 (int32), upper=255 (int32)
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-    # Sample 1 (G): bitOffset=8
-    0x08, 0x00, 0x07, 0x01,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-    # Sample 2 (B): bitOffset=16
-    0x10, 0x00, 0x07, 0x02,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-    # Sample 3 (A): bitOffset=24, channelType=0x0F (alpha)
-    0x18, 0x00, 0x07, 0x0F,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-])
-
-# sRGB: same as UNORM but transferFunction byte (offset 14) = 2 (SRGB)
-DFD_RGBA8_SRGB = bytearray(DFD_RGBA8_UNORM)
-DFD_RGBA8_SRGB[14] = 0x02
-DFD_RGBA8_SRGB = bytes(DFD_RGBA8_SRGB)
-
-assert len(DFD_RGBA8_UNORM) == 92, f"DFD_RGBA8_UNORM is {len(DFD_RGBA8_UNORM)} bytes, expected 92"
-assert len(DFD_RGBA8_SRGB)  == 92, f"DFD_RGBA8_SRGB is {len(DFD_RGBA8_SRGB)} bytes, expected 92"
 
 # ---------------------------------------------------------------------------
 # TXM (MC2 static-prop texture) reader
@@ -224,11 +166,10 @@ def _load_image(path: Path, txm_size: int = 0):
 
 
 def _apply_preset(img, preset: str):
-    """Return (rgba_image, vk_format, dfd_bytes).
+    """Return (rgba_image, vk_format).
 
     rgba_image -- PIL Image in RGBA mode, ready for mip generation
     vk_format  -- VK_FORMAT_* constant
-    dfd_bytes  -- pre-built DFD block
     """
     try:
         from PIL import Image  # type: ignore
@@ -239,12 +180,12 @@ def _apply_preset(img, preset: str):
         # sRGB.  Pillow's convert('RGBA') preserves source channel data;
         # we treat the stored bytes as sRGB-encoded (i.e. no linearisation).
         rgba = img.convert("RGBA")
-        return rgba, VK_FORMAT_R8G8B8A8_SRGB, DFD_RGBA8_SRGB
+        return rgba, VK_FORMAT_R8G8B8A8_SRGB
 
     elif preset == "normal":
         # Linear.  No color space conversion.
         rgba = img.convert("RGBA")
-        return rgba, VK_FORMAT_R8G8B8A8_UNORM, DFD_RGBA8_UNORM
+        return rgba, VK_FORMAT_R8G8B8A8_UNORM
 
     elif preset == "orm":
         # Pack R=AO G=roughness B=metalness A=255.
@@ -253,16 +194,16 @@ def _apply_preset(img, preset: str):
         r, g, b = rgb.split()
         alpha = Image.new("L", rgb.size, 255)
         rgba = Image.merge("RGBA", (r, g, b, alpha))
-        return rgba, VK_FORMAT_R8G8B8A8_UNORM, DFD_RGBA8_UNORM
+        return rgba, VK_FORMAT_R8G8B8A8_UNORM
 
     elif preset == "mask":
         # Grayscale -> RGBA with R=G=B=gray, A=255.
         # If already RGBA, pass through.
         if img.mode == "RGBA":
-            return img.copy(), VK_FORMAT_R8G8B8A8_UNORM, DFD_RGBA8_UNORM
+            return img.copy(), VK_FORMAT_R8G8B8A8_UNORM
         gray = img.convert("L")
         rgba = Image.merge("RGBA", (gray, gray, gray, Image.new("L", gray.size, 255)))
-        return rgba, VK_FORMAT_R8G8B8A8_UNORM, DFD_RGBA8_UNORM
+        return rgba, VK_FORMAT_R8G8B8A8_UNORM
 
     else:
         sys.exit(f"ERROR: unknown preset '{preset}'. "
@@ -316,93 +257,16 @@ def _generate_mips(base_img):
 # KTX2 writer
 # ---------------------------------------------------------------------------
 
-def write_ktx2(out_path: Path, mips, vk_format: int, dfd: bytes) -> None:
-    """Write a valid KTX2 file (RGBA8, no supercompression) to out_path.
+def write_ktx2(out_path: Path, mips, vk_format: int) -> None:
+    """Write a KTX2 (RGBA8, no supercompression, smallest level first, 24+16n DFD).
 
-    KTX2 file layout (Khronos spec r7):
-        offset   0 : magic (12 bytes)
-        offset  12 : header fields (9 x uint32 = 36 bytes)
-        offset  48 : index fields: dfdByteOffset, dfdByteLength,
-                     kvdByteOffset, kvdByteLength (4 x uint32 = 16 bytes)
-                     sgdByteOffset, sgdByteLength (2 x uint64 = 16 bytes)
-        offset  80 : level index (levelCount x 24 bytes each)
-        after idx  : DFD
-        after DFD  : KV data (empty)
-        after KV   : mip pixel data (mip 0 first, largest)
+    The one writer lives in tools/content_pipeline/texcook.py; this only adapts PIL mips.
     """
-    level_count = len(mips)
-    width0, height0 = mips[0].size
-
-    # --- Layout calculation ---
-    HEADER_SIZE      = 80  # magic(12) + 9*uint32(36) + 4*uint32(16) + 2*uint64(16)
-    level_index_size = level_count * 24
-    dfd_start        = HEADER_SIZE + level_index_size
-    dfd_size         = len(dfd)   # always 80
-    kvd_start        = dfd_start + dfd_size
-    kvd_size         = 0
-    mip_data_start   = kvd_start + kvd_size  # no alignment padding needed for uncompressed
-
-    # Collect pixel data for all mip levels.
-    mip_bytes: list[bytes] = []
-    for m in mips:
-        mip_bytes.append(m.tobytes())  # raw RGBA8 row-major
-
-    # Compute per-level byte offsets (absolute from start of file).
-    level_offsets: list[int] = []
-    offset = mip_data_start
-    for b in mip_bytes:
-        level_offsets.append(offset)
-        offset += len(b)
-
-    # --- Assemble header ---
-    buf = bytearray()
-
-    # Magic
-    buf += KTX2_MAGIC
-
-    # 9 x uint32
-    buf += struct.pack(
-        "<9I",
-        vk_format,   # vkFormat
-        1,           # typeSize
-        width0,      # pixelWidth
-        height0,     # pixelHeight
-        0,           # pixelDepth
-        0,           # layerCount
-        1,           # faceCount
-        level_count, # levelCount
-        0,           # supercompressionScheme (NONE)
-    )
-
-    # Index: dfdByteOffset, dfdByteLength, kvdByteOffset, kvdByteLength (4 x uint32)
-    buf += struct.pack("<4I", dfd_start, dfd_size, kvd_start, kvd_size)
-
-    # sgdByteOffset, sgdByteLength (2 x uint64)
-    buf += struct.pack("<2Q", 0, 0)
-
-    assert len(buf) == HEADER_SIZE, f"header is {len(buf)} bytes, expected {HEADER_SIZE}"
-
-    # --- Level index ---
-    for i, mb in enumerate(mip_bytes):
-        byte_len = len(mb)
-        buf += struct.pack("<3Q",
-                           level_offsets[i],  # byteOffset
-                           byte_len,           # byteLength
-                           byte_len)           # uncompressedByteLength
-
-    assert len(buf) == dfd_start, f"buf is {len(buf)} at DFD start, expected {dfd_start}"
-
-    # --- DFD ---
-    buf += dfd
-
-    # --- KV data (empty) ---
-    # (nothing to append)
-
-    # --- Pixel data ---
-    for mb in mip_bytes:
-        buf += mb
-
-    out_path.write_bytes(bytes(buf))
+    if str(_REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(_REPO_ROOT))
+    from tools.content_pipeline import texcook
+    w, h = mips[0].size
+    out_path.write_bytes(texcook.write_ktx2(vk_format, w, h, [m.tobytes() for m in mips]))
 
 
 # ---------------------------------------------------------------------------
@@ -435,10 +299,10 @@ def main() -> int:
     out_path: Path = args.output.resolve() if args.output else in_path.with_suffix(".ktx2")
 
     img = _load_image(in_path, txm_size=args.size)
-    rgba, vk_format, dfd = _apply_preset(img, args.preset)
+    rgba, vk_format = _apply_preset(img, args.preset)
     mips = _generate_mips(rgba)
 
-    write_ktx2(out_path, mips, vk_format, dfd)
+    write_ktx2(out_path, mips, vk_format)
 
     w, h = mips[0].size
     fmt_name = "SRGB" if vk_format == VK_FORMAT_R8G8B8A8_SRGB else "UNORM"

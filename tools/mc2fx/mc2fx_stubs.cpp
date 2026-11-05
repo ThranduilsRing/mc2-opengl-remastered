@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdarg>
+#include <string_view>
 
 #include "platform_windows.h"
 #include "gameos.hpp"
@@ -179,3 +180,6 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned int,
                                    const GosVfxMeshInstance*, unsigned int) {}
 
 namespace mc2::textures { bool ready() { return false; } }
+
+// gosfx point/shard clouds guard their [VFX_PRIMITIVE] lines with mc2_diag::tagRequested (diagnostic_trace.cpp is engine-only): no tags in the tool.
+namespace mc2_diag { bool tagRequested(std::string_view) { return false; } }

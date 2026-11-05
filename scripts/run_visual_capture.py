@@ -563,8 +563,17 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     for line in backend_disagree:
         print(f"[viscap] FAIL render backend: {line}", file=sys.stderr)
 
+    # The GPU the run asked for and the one the engine logged, so A/Bs never mix GPUs.
+    try:
+        from smoke_lib import vk_profile
+        logged_gpus = sorted({p.device for p in vk_profile.parse(log_path.read_text(encoding="utf-8", errors="replace"))})
+    except Exception:
+        logged_gpus = []
+    gpu_rec = {"requested": nofocus.gpu_hint(env), "logged": logged_gpus}
+
     return {
         "mission": mission_token,
+        "gpu": gpu_rec,
         "backend": {"requested": want_backend,
                     "drew": sorted({d for d in (capture_backend.drew(sc) for _n, sc in sidecars if sc) if d}),
                     "disagree": backend_disagree},
@@ -616,6 +625,7 @@ def write_manifest(result: dict, exe: Path) -> Path:
             "mc2_env": result.get("mc2_env"),
             "render_options": result.get("render_options"),
             "backend": result.get("backend"),
+            "gpu": result.get("gpu"),
         },
     )
     rep = ms.report_summary(

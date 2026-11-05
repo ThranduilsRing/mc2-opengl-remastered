@@ -47,10 +47,10 @@ def _cook_one(src_path: Path, dst_path: Path, preset: str, txm_size: int) -> tup
     """Cook a single file in-process. Returns (src_w, src_h) of the loaded image."""
     img = mc2texcook._load_image(src_path, txm_size=txm_size)
     src_w, src_h = img.size
-    rgba, vk_format, dfd = mc2texcook._apply_preset(img, preset)
+    rgba, vk_format = mc2texcook._apply_preset(img, preset)
     mips = mc2texcook._generate_mips(rgba)
     dst_path.parent.mkdir(parents=True, exist_ok=True)
-    mc2texcook.write_ktx2(dst_path, mips, vk_format, dfd)
+    mc2texcook.write_ktx2(dst_path, mips, vk_format)
     return src_w, src_h
 
 

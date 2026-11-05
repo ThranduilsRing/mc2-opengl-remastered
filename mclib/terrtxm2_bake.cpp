@@ -1,6 +1,8 @@
 // TerrainColorMap: fractal base mesh, shadow burn-in, detail / water texture reset and light recalc, and the base texture reset.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "mc2_czstring.h"
+#include <bit>
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "content_error.h"
@@ -72,11 +74,9 @@ void TerrainColorMap::refractalizeBaseMesh (mc2::czstring fileName, long Thresho
 		for (long x=0;x<Terrain::realVerticesMapSide;x++)
 		{
 			float currentElevation = land->getTerrainElevation(y,x);
-			if (currentElevation < minVertex)
-				minVertex = currentElevation;
+			minVertex = std::min(minVertex, currentElevation);
 				
-			if (currentElevation > maxVertex)
-				maxVertex = currentElevation;
+			maxVertex = std::max(maxVertex, currentElevation);
 		}
 	}
 	
@@ -318,11 +318,9 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 					{
 						BYTE val = *lMap;
 						lMap += 3;
-						if (val > mapMax)
-							mapMax = val;
+						mapMax = std::max(mapMax, val);
 							
-						if (val < mapMin)
-							mapMin = val;
+						mapMin = std::min(mapMin, val);
 					}
 				}
 				else
@@ -333,11 +331,9 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 					{
 						BYTE val = *lMap;
 						lMap += 4;
-						if (val > mapMax)
-							mapMax = val;
+						mapMax = std::max(mapMax, val);
 							
-						if (val < mapMin)
-							mapMin = val;
+						mapMin = std::min(mapMin, val);
 					}
 				}
 				
@@ -357,8 +353,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 							h += (val - mapMin)/mapMax * ( Terrain::userMax - Terrain::userMin );
 							*hMap = h * ShadowEnhance;
    						
-							if (highPoint < *hMap)
-								highPoint = *hMap;
+							highPoint = std::max(highPoint, *hMap);
 								
 							hMap++;
  						}
@@ -379,8 +374,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 							h += (val - mapMin)/mapMax * ( Terrain::userMax - Terrain::userMin );
 							*hMap = h * ShadowEnhance;
 							
-							if (highPoint < *hMap)
-								highPoint = *hMap;
+							highPoint = std::max(highPoint, *hMap);
 								
 							hMap++;
 						}
@@ -419,8 +413,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 				
 				*sMap = 0.0f;
 				
-				if (highPoint < *hMap)
-					highPoint = *hMap;
+				highPoint = std::max(highPoint, *hMap);
 					
 				hMap++;
 				sMap++;
@@ -504,8 +497,8 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 				//-----------------------------------------------------
 				// Try and project shadow lines.
 				glm::vec3 vertexPos;
-				vertexPos.x = ((float(x) * worldUnitsPerPixel) + Terrain::mapTopLeft3d.x);
-				vertexPos.y = (Terrain::mapTopLeft3d.y - (float(y) * worldUnitsPerPixel));
+				vertexPos.x = ((static_cast<float>(x) * worldUnitsPerPixel) + Terrain::mapTopLeft3d.x);
+				vertexPos.y = (Terrain::mapTopLeft3d.y - (static_cast<float>(y) * worldUnitsPerPixel));
 				vertexPos.z = *thisHeight * ShadowEnhance;
 					
 				if ((shadowDir.x != 0.0f) || (shadowDir.y != 0.0f))
@@ -738,7 +731,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, mc2::czstring fileName)
 	
 	// Shadow map is now done being calculated.
 	// Apply the shadows to the magical terrain.
-	DWORD *cMap = reinterpret_cast<DWORD *>(ColorMap);
+	DWORD *cMap = std::bit_cast<DWORD *>(ColorMap);
 	for (int i=0;i<(pixelWidth * pixelWidth);i++)
 	{
 		if (shadowMap[i] != 0.0f)
@@ -995,8 +988,8 @@ void TerrainColorMap::recalcLight(mc2::czstring fileName)
 		numTexturesAcross = numTextures;
 		fractionPerTexture = 1.0f / numTextures;
 			
-		float checkNum = float(colorMapInfo.width) / float(COLOR_MAP_TEXTURE_SIZE);
-		if (checkNum != float(numTextures))
+		float checkNum = static_cast<float>(colorMapInfo.width) / static_cast<float>(COLOR_MAP_TEXTURE_SIZE);
+		if (checkNum != static_cast<float>(numTextures))
 			{
 				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
 				releaseColorMapScratch(); return;
@@ -1034,7 +1027,7 @@ void TerrainColorMap::recalcLight(mc2::czstring fileName)
 
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex.reset(mc2::textures::fromPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+				textures[i].mcTextureNodeIndex.reset(mc2::textures::fromPixels(std::bit_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}
@@ -1172,8 +1165,8 @@ void TerrainColorMap::resetBaseTexture (mc2::czstring fileName)
 		numTexturesAcross = numTextures;
 		fractionPerTexture = 1.0f / numTextures;
 
-		float checkNum = float(colorMapInfo.width) / float(COLOR_MAP_TEXTURE_SIZE);
-		if (checkNum != float(numTextures))
+		float checkNum = static_cast<float>(colorMapInfo.width) / static_cast<float>(COLOR_MAP_TEXTURE_SIZE);
+		if (checkNum != static_cast<float>(numTextures))
 			{
 				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(colorMapName), "colormap tile size mismatch; flat fallback");
 				releaseColorMapScratch(); return;
@@ -1211,7 +1204,7 @@ void TerrainColorMap::resetBaseTexture (mc2::czstring fileName)
 			{
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex.reset(mc2::textures::fromPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+				textures[i].mcTextureNodeIndex.reset(mc2::textures::fromPixels(std::bit_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}

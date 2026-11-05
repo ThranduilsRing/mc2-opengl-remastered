@@ -210,7 +210,8 @@ int EffectDefRegistry::mergeFromDir(std::string_view dir) {
     for (auto& def : parsed) {
         auto it = byKey_.find(def.effectKey);
         if (it != byKey_.end()) {
-            defs_[it->second] = std::move(def);  // mod wins on dup key
+            const auto& [dupKey, dupIndex] = *it;
+            defs_[dupIndex] = std::move(def);  // mod wins on dup key
         } else {
             byKey_[def.effectKey] = defs_.size();
             defs_.push_back(std::move(def));
@@ -224,7 +225,8 @@ const EffectDef* EffectDefRegistry::resolve(mc2::czstring effectName) const {
     if (!effectName || defs_.empty()) return nullptr;
     auto it = byKey_.find(fxdefLower(effectName));
     if (it == byKey_.end()) return nullptr;
-    return &defs_[it->second];
+    const auto& [foundKey, foundIndex] = *it;
+    return &defs_[foundIndex];
 }
 
 namespace {

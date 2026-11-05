@@ -123,11 +123,11 @@ def _parse_level_index(data: bytes, level_count: int) -> list[dict]:
 
 def _cook_to_bytes(image, preset: str) -> bytes:
     """Run the cook pipeline and return the raw KTX2 bytes (via a temp file)."""
-    rgba, vk_format, dfd = mc2texcook._apply_preset(image, preset)
+    rgba, vk_format = mc2texcook._apply_preset(image, preset)
     mips = mc2texcook._generate_mips(rgba)
     with tempfile.NamedTemporaryFile(suffix=".ktx2", delete=False) as f:
         tmp = Path(f.name)
-    mc2texcook.write_ktx2(tmp, mips, vk_format, dfd)
+    mc2texcook.write_ktx2(tmp, mips, vk_format)
     data = tmp.read_bytes()
     tmp.unlink()
     return data
@@ -334,13 +334,12 @@ class TestMipChain(unittest.TestCase):
         hdr  = _parse_ktx2_header(data)
         entries = _parse_level_index(data, hdr["level_count"])
 
-        # Each entry: offset + length <= next entry's offset (or end of file)
-        for i, e in enumerate(entries):
-            end = e["byte_offset"] + e["byte_length"]
-            if i + 1 < len(entries):
-                self.assertLessEqual(end, entries[i + 1]["byte_offset"])
-            else:
-                self.assertLessEqual(end, len(data))
+        # KTX2 stores the smallest level first: file offsets descend with level index.
+        order = sorted(entries, key=lambda e: e["byte_offset"])
+        self.assertEqual(order, entries[::-1])
+        for a, b in zip(order, order[1:]):
+            self.assertLessEqual(a["byte_offset"] + a["byte_length"], b["byte_offset"])
+        self.assertLessEqual(order[-1]["byte_offset"] + order[-1]["byte_length"], len(data))
 
 
 class TestPixelData(unittest.TestCase):
@@ -406,9 +405,9 @@ class TestValidateManifestCompat(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".ktx2", delete=False) as f:
             tmp = Path(f.name)
         try:
-            rgba, vk_format, dfd = mc2texcook._apply_preset(img, preset)
+            rgba, vk_format = mc2texcook._apply_preset(img, preset)
             mips = mc2texcook._generate_mips(rgba)
-            mc2texcook.write_ktx2(tmp, mips, vk_format, dfd)
+            mc2texcook.write_ktx2(tmp, mips, vk_format)
             result = self._read_ktx2_header_inline(tmp)
         finally:
             tmp.unlink(missing_ok=True)

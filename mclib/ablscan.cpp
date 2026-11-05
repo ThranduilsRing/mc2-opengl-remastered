@@ -14,6 +14,8 @@
 #include<string.h>
 #include"platform_str.h"
 #include<time.h>
+#include <filesystem>
+#include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef ABLGEN_H
@@ -458,11 +460,7 @@ void languageDirective (void) {
 
 			char fullPath[255];
 			long curChar = static_cast<long>(strlen(SourceFiles[0]));
-#ifdef LINUX_BUILD
-            const char path_separator = '/';
-#else
-            const char path_separator = '\\';
-#endif
+			const char path_separator = static_cast<char>(std::filesystem::path::preferred_separator);
 			while ((curChar > -1) && (SourceFiles[0][curChar] != path_separator))
 				curChar--;
 			if (curChar == -1)
@@ -1051,7 +1049,7 @@ bool getSourceLine (void) {
 		if (printFlag) 
 		{
 			char printBuffer[MAXLEN_SOURCELINE + 9];
-			sprintf(printBuffer, "%4d %d: %s", lineNumber, level, sourceBuffer);
+			mc2::fmt::to_buf(printBuffer, "{:4d} {:d}: {}", mc2::fmt::as_i32(lineNumber), mc2::fmt::as_i32(level), mc2::fmt::safe(sourceBuffer));
 			printLine(printBuffer);
 		}
 		return(true);
@@ -1144,7 +1142,7 @@ void printLine (char* line) {
 		saveChPtr = &line[MAXLEN_PRINTLINE];
 		*saveChPtr = '\0';
 	}
-	printf("%s", line);
+	mc2::fmt::print_out("{}", mc2::fmt::safe(line));
 	if (saveChPtr)
 		*saveChPtr = saveCh;
 }
@@ -1169,7 +1167,7 @@ void initPageHeader (char* fileName) {
 void printPageHeader (void) {
 
 	//putchar(CHAR_FORMFEED);
-	printf("Page %d   %s   %s\n\n", ++pageNumber, sourceName, date);
+	mc2::fmt::print_out("Page {:d}   {}   {}\n\n", mc2::fmt::as_i32(++pageNumber), mc2::fmt::safe(sourceName), mc2::fmt::safe(date));
 }
 
 //***************************************************************************

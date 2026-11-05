@@ -25,15 +25,17 @@ import hashlib
 import threading
 import re
 import math
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
 
 import console_child
+import gate_reuse
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
 #: Rows the box gate (tools/box_run.py --gate: GPU 3, clang/libc++ build, Linux baselines) proves instead of the PC. The PC keeps
 #: determinism-mc2_10 and saveload-mc2_10 as the MSVC canary; the daily --full gate keeps every row on the PC. A red box row is a red gate row.
+BOX_GATE_TIMEOUT_S = 2400  # the box stage's wall cap as seen from the PC; past it the stage is BOX_INFRA and the PC rows run
 BOX_OFFLOADED = ("determinism-mc2_03", "determinism-mc2_16", "determinism-mc2_24", "saveload-mc2_01")
 BOX_GATE_COMMAND = ["tools/box_run.py", "--gate"]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -48,13 +50,17 @@ EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
 
-OFFLINE_STAGES = ("contracts", "harnesses", "pytest")
+OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
 
 
 def gate_env(name):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
-    stages run test suites that must see the same environment a lane sees."""
-    return {} if name in OFFLINE_STAGES else {"MC2_IN_GATE": "1"}
+    stages run test suites that must see the same environment a lane sees. Game stages are also pinned to the gate's side
+    of the GPU split (A:/Games/mc2-ops/GPU_SPLIT) so lane game runs on the other GPU proceed during the window."""
+    if name in OFFLINE_STAGES:
+        return {}
+    from smoke_lib import host_lease
+    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.gpu_split()["gate"]}
 
 
 def window_reusable(window, tree, now=None):
@@ -125,8 +131,40 @@ def apply_box_route(steps, full=False):
     if full or box is None or box[2].get("MC2_GATE_SKIP_REASON"):
         return steps
     why = "box gate (GPU 3, clang/libc++, Linux baselines) proves this row; the PC keeps determinism-mc2_10 and saveload-mc2_10 as the MSVC canary"
-    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=why, MC2_GATE_REUSE_STAGE="box-gate")
-             if n in BOX_OFFLOADED and not e.get("MC2_GATE_SKIP_REASON") else e) for n, c, e in steps]
+    out = []
+    for n, c, e in steps:
+        if e.get("MC2_GATE_SKIP_REASON"):
+            out.append((n, c, e))
+        elif n in BOX_OFFLOADED:
+            out.append((n, c, dict(e, MC2_GATE_SKIP_REASON=why, MC2_GATE_REUSE_STAGE="box-gate")))
+        elif n == "contracts" and "--rows" not in c and "--skip-rows" not in c:
+            # The box runs every row but the PC-only ones (scripts/box_contracts_pc_only.txt); the PC runs exactly those. The
+            # Linux half is a reused step: green box = reused, red box = red, dead box = box_fallback runs it here.
+            pc = box_contracts_pc_only()
+            reuse = dict(e, MC2_GATE_SKIP_REASON="box gate runs the Linux-capable contract rows (scripts/box_contracts.sh)", MC2_GATE_REUSE_STAGE="box-gate")
+            if pc:
+                rx = "^(" + "|".join(pc) + ")$"
+                out += [(n, c + ["--rows", rx], e), ("contracts-linux", c + ["--skip-rows", rx], reuse)]
+            else:
+                out.append((n, c, reuse))
+        elif n == "harnesses" and "--unit" in c:
+            # doctests move to the box (clang/libc++); the PC keeps the Python contracts. Dead box: unit-linux runs the native tier here.
+            # The PC still compiles mc2_tests with MSVC (no run): the box's clang cannot prove the MSVC build of the test tree.
+            out += [(n, ["--python-only" if a == "--unit" else a for a in c], e),
+                    ("unit-msvc-build", [a for a in c if a != "--run"] + ["--unit-only"], e),
+                    ("unit-linux", c, dict(e, MC2_GATE_SKIP_REASON="box gate runs the doctest tier (box_run unit row)", MC2_GATE_REUSE_STAGE="box-gate"))]
+        else:
+            out.append((n, c, e))
+    return out
+
+
+def box_contracts_pc_only():
+    """Contract row labels that need Windows (scripts/box_contracts_pc_only.txt, one per line, # comments)."""
+    try:
+        lines = (ROOT / "scripts" / "box_contracts_pc_only.txt").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return [ln.strip() for ln in lines if ln.strip() and not ln.lstrip().startswith("#")]
 
 
 def box_fallback(reused, completed):
@@ -393,7 +431,7 @@ class GateState:
     def reusable(self, name, command, overrides):
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
-        offline = name in ('contracts', 'harnesses', 'pytest')
+        offline = name in OFFLINE_STAGES
         if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
                 and (offline or sha is not None and row.get('exe_sha') == sha)
                 and stage_passed(row.get('status', ''))):
@@ -729,7 +767,7 @@ def affected_plan(steps, paths, full=False):
         if name.startswith("capture-") and not name.endswith("-classic"):
             cmd += ["--env-declare", "MC2_OPTIONS_OVERRIDE=RemasteredBuildings=TRUE"]
     # Offline failures must appear before taking a game lease or copying payloads.
-    offline = {"contracts", "harnesses", "pytest"}
+    offline = set(OFFLINE_STAGES)
     return [s for s in selected if s[0] in offline] + [s for s in selected if s[0] not in offline]
 
 
@@ -747,7 +785,7 @@ def install_plan(steps, install):
             # Candidate names are random and their siblings are deleted at exit.
             # Keep the existing incremental payload cache across windows, scoped
             # to this worktree; battery() still removes every disposable install.
-            stage_root = Path('E:/mc2-archive-2026-10/proofs') / (ROOT.name + '-mods-stage')
+            stage_root = Path('E:/mc2-installs') / (ROOT.name + '-mods-stage')  # persistent; gate_reuse seals/verifies _cache
             command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
@@ -791,9 +829,8 @@ def stock_copy(install, parent=None, keep=False):
                 if mod_stage.resolve().parent != parent:
                     raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
                 shutil.rmtree(mod_stage)
-            size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file())
             shutil.rmtree(target)
-            print(f"[merge_gate] removed {target}: {size / 2**30:.2f} GiB logical (physical space not measured)", flush=True)
+            print(f"[merge_gate] removed {target}", flush=True)
 
 
 # Queue depth does not prove a live worker (W98/W99 lost 20 min per row to an unclaimed job): the farm is opt-in
@@ -1027,7 +1064,8 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
         return execute_parallel(install_plan(steps, install), head, dry_run, keep_going, **scheduling)
     if dry_run:
         return prove(candidate)
-    with stock_copy(CANDIDATE_SEED, **(dict(keep=True) if keep_candidate else {})) as install:
+    seed = gate_reuse.deployed_seed(ROOT, head) or CANDIDATE_SEED
+    with stock_copy(seed, parent=CANDIDATE_SEED.parent, **(dict(keep=True) if keep_candidate else {})) as install:
         try:
             return prove(install)
         finally:
@@ -1166,7 +1204,15 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
     steps = [s for s in steps if s not in box]
     with ThreadPoolExecutor(max_workers=2 + bool(farm) + bool(box)) as pool:
         # The box gate needs no PC game slot: start it now and let it run beside every PC row.
-        box_future = pool.submit(execute, box, head, runner=run_child, completed=completed) if box else None
+        # A daemon thread, not a pool worker: a hung box must not block the pool's shutdown after the timeout below.
+        box_future = Future() if box else None
+        if box:
+            def box_main():
+                try:
+                    box_future.set_result(execute(box, head, runner=run_child, completed=completed))
+                except BaseException as exc:  # noqa: BLE001 - surfaced through result()
+                    box_future.set_exception(exc)
+            threading.Thread(target=box_main, name="box-gate", daemon=True).start()
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
@@ -1203,13 +1249,13 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             # headless/clone-safe rows go to whichever is lighter. Saves stay on A (install).
             deploy_at = next((i for i, s in enumerate(stock) if s[0] == "deploy"), -1)
             load_a = sum(stage_seconds(s[0]) for s in stock[deploy_at + 1:] if not s[2].get("MC2_GATE_SKIP_REASON")
-                         and s[0] not in ("contracts", "harnesses", "pytest"))
+                         and s[0] not in OFFLINE_STAGES)
             load_b = sum(stage_seconds(s[0]) for s in mods if not s[2].get("MC2_GATE_SKIP_REASON"))
             to_a, determinism = balance_movable(determinism, load_a, load_b)
             stock += to_a
             print(f"[merge_gate] worker balance: A+={[s[0] for s in to_a]} B+={[s[0] for s in determinism]} (A={load_a:.0f}s B={load_b:.0f}s before)", flush=True)
         # Save rows have private MC2_SAVE_DIR dirs, so they no longer wait for the mods battery.
-        offline = [s for s in stock if s[0] in ("contracts", "harnesses", "pytest")]
+        offline = [s for s in stock if s[0] in OFFLINE_STAGES]
         offline_result = execute(offline, head, runner=runner, completed=completed) if offline else 0
         if offline_result and not keep_going:
             return 1
@@ -1280,11 +1326,17 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
         if box_future:
-            box_result = box_future.result()
+            try:
+                box_result = box_future.result(timeout=BOX_GATE_TIMEOUT_S)
+            except FutureTimeout:
+                # A hung box stage is infrastructure, not a verdict: fall back to the PC rows (the box side's own wall caps should have ended it).
+                print(f"[merge_gate] box-gate exceeded {BOX_GATE_TIMEOUT_S}s: BOX_INFRA (timeout)", flush=True)
+                completed["box-gate"] = "INFRA (timeout): BOX_INFRA"
+                box_result = 3
             reused, fell_back = box_fallback(reused, completed)
             if fell_back:
                 print("[merge_gate] BOX UNAVAILABLE MID-RUN (BOX_INFRA): the box produced no verdicts; running the offloaded rows on the PC "
-                      "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED), flush=True)
+                      "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED or n in ("contracts", "contracts-linux", "unit-linux")), flush=True)
                 FAILED_STAGES[:] = [f for f in FAILED_STAGES if f[0] != "box-gate"]
                 box_result = 0
             result |= box_result
@@ -1337,11 +1389,13 @@ def game_batch():
         yield {}
         return
     tag = f"merge-gate-{os.getpid()}"
-    pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)
+    with host_lease.gate_device_env():   # the exclusive hold covers the gate's GPU only
+        pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
-        host_lease.release_batch(tag)
+        with host_lease.gate_device_env():
+            host_lease.release_batch(tag)
         import psutil
         try:
             holder = psutil.Process(pid)
@@ -1380,6 +1434,20 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             completed[name] = status
             results.append((name, status, 0.0))
             # Keep original elapsed time and evidence paths in the receipt.
+            continue
+        reuse_note = None
+        if not dry_run and not overrides.get("MC2_GATE_SKIP_REASON"):
+            if name == 'mods' and (entry := gate_reuse.mods_begin(command, overrides, ROOT, head)):
+                reuse_note = f"REUSED: gate-reuse mods key={entry['key'][:16]} stored={entry['created']}"
+            elif name == 'deploy' and '--allow-new-target' in command and \
+                    gate_reuse.install_current(command[command.index('--allow-new-target') - 1], ROOT, head):
+                reuse_note = "REUSED: gate-reuse deployed payload already matches HEAD"
+        if reuse_note:
+            print(f"[merge_gate] {name}: {reuse_note}", flush=True)
+            if ACTIVE_STATE:
+                ACTIVE_STATE.reused.append(name)
+            completed[name] = reuse_note
+            results.append((name, reuse_note, 0.0))
             continue
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
@@ -1458,6 +1526,10 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                 status = kind + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
             failed |= not stage_passed(status)
+            if name == 'mods':
+                gate_reuse.mods_end(status == "PASS")
+            elif name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
+                gate_reuse.save_deployed(command[command.index('--allow-new-target') - 1], ROOT, head)
         results.append((name, status, elapsed))
         completed[name] = status
         if not dry_run and ACTIVE_STATE:
@@ -1523,6 +1595,7 @@ def main(argv=None):
     ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
     ap.add_argument("--box-gate", action=argparse.BooleanOptionalAction, default=True, help="start tools/box_run.py --gate on box GPU 3 at gate start (default ON); it proves determinism mc2_03/16/24 and saveload mc2_01, "
                     "and the PC keeps determinism mc2_10 + saveload mc2_10 as the MSVC canary. --no-box-gate, an unreachable box, or --full keeps every row on the PC")
+    ap.add_argument("--no-box", dest="box_gate", action="store_false", help="escape hatch, same as --no-box-gate: every row stays on the PC")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")

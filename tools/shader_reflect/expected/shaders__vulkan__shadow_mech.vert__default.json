@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "bones",
           "offset": 0,
-          "type": "_77"
+          "type": "_95"
         }
       ],
       "name": "BoneBuffer"
