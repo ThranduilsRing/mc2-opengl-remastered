@@ -99,6 +99,8 @@ def main(argv=None) -> int:
     log_path = out / "stdout.txt"
 
     env = os.environ.copy()
+    for k in runner.unregistered_ambient(env):   # harness-only knobs: fatal under the engine's MC2_CONFIG_STRICT=1
+        env.pop(k, None)
     env.update(runner.FORCED_ENV)
     for k, v in runner.SOFT_ENV.items():
         env.setdefault(k, v)
