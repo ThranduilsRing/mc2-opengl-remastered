@@ -168,7 +168,8 @@ class ControlGui
 		void beginPause();
 		void endPause();
 
-		bool resultsDone();
+		bool resultsDone();		// sim worker: reads the latch below, never the draw-written fields
+		void latchResults();	// Main at the HUD extract (no tick in flight, last draw finished)
 
 		void startObjectives( bool bStart );
 		bool objectivesStarted() { return renderObjectives; }
@@ -390,6 +391,9 @@ class ControlGui
 		float				resultsTime;
 		bool				renderObjectives;
 		float				objectiveTime;
+		// The draw path writes renderStatusInfo/resultsTime/objectiveTime; latchResults copies them on Main for resultsDone.
+		struct ResultsLatch { bool ready = false, statusInfo = false; float objectiveTime = 0, resultsTime = 0; };
+		ResultsLatch		resultsLatch;
 		
 		float				tabFlashTime;
 		static long OBJECTIVESTOP;

@@ -34,6 +34,7 @@
 
 #include<gameos.hpp>
 
+#include "sim_overlap.h"
 #include "mc2_audit.h"   // META-FIX design B PART 2: appr_type_fail backstop
 
 #include<algorithm>
@@ -237,6 +238,7 @@ void AppearanceType::destroy (void)
 AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, const char *appearFile)
 {
 	ZoneScopedN("Appearance.GetType");
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Sim, "AppearanceTypeList::getAppearance");   // numUsers++ / registry push: Sim side or quiescent Main only
 	if (appearFile) ZoneText(appearFile, strlen(appearFile));
 	//----------------------------------------------------------------
 	// The type of appearance is stored in the upper 8 bits of the
@@ -339,6 +341,7 @@ long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 	// A null type (failed load) has nothing to release; a null registry slot must never match.
 	if (!which)
 		return(-1);
+	mc2::overlap::assertOwner(mc2::overlap::Owner::Sim, "AppearanceTypeList::removeAppearance");   // numUsers-- / registry erase
 	auto found = std::find_if(types.begin(), types.end(),
 		[which](const std::unique_ptr<AppearanceType>& known) { return known && known.get() == which; });
 	if (found == types.end())

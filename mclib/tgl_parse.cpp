@@ -4,6 +4,8 @@
 #include "texture_assets.h"
 #include "tgl_internal.h"
 #include "mc2fmt.h"
+#include "sim_overlap.h"
+#include "../code/tick_commit.h"
 
 
 //-------------------------------------------------------------------------------
@@ -621,10 +623,20 @@ long TG_TypeShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHandle)
 		return(-1);
 
 	listOfTextures[textureNum].mcTextureNodeIndex = gosTextureHandle;
+	if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) {
+		// The draw reads this type slot while the worker ticks, and sourceId() returns 0 there: keep the node only and
+		// resolve the gos handle on Main at the commit (after commitTickTextures created the pending sources).
+		const DWORD node = gosTextureHandle;
+		if (mc2::tick::defer(mc2::tick::Queue::MoverUi, [this, textureNum, node] {
+				if (textureNum < numTextures && listOfTextures[textureNum].mcTextureNodeIndex == node)
+					listOfTextures[textureNum].gosTextureHandle = mc2::textures::sourceId(node);
+			}))
+			return(0);
+	}
 	listOfTextures[textureNum].gosTextureHandle = mc2::textures::sourceId(gosTextureHandle);
 
 	return(0);
-}	
+}
 
 //-------------------------------------------------------------------------------
 //Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.

@@ -1223,11 +1223,11 @@ void ForceGroupIcon::setLocationIndex( int i )
 	locationIndex = i; 
 }
 
+// Draw only: reads deathAnimationTime. The deselection, the clock and the group removal live in
+// updateDeathAnimation (ForceGroupBar::update, quiescent frame part); the draw overlaps the sim worker.
 void ForceGroupIcon::drawDeathEffect()
 {
-	unit->setSelected( 0 );
 	bool bFinished = true;
-	deathAnimationTime += frameLength;
     int i = 0;
 	for (; i < NUM_DEATH_INFOS - 1; i++ )
 	{
@@ -1279,6 +1279,21 @@ void ForceGroupIcon::drawDeathEffect()
 	if ( bFinished )
 	{
 		drawRect( selectionRect[locationIndex], animationInfos[i].color );
+	}
+}
+
+// Main, frame part (ForceGroupBar::update, before extract and the kick): the sim-side half of the death
+// animation. Same order as the old draw: the frame that begins the animation adds no time, each later frame
+// adds frameLength, and the group removal runs once, on the frame the icon is deleted.
+void ForceGroupIcon::updateDeathAnimation()
+{
+	if ( !deathAnimationTime )
+		beginDeathAnimation();
+	else
+		deathAnimationTime += frameLength;
+	unit->setSelected( 0 );
+	if ( deathAnimationOver() )
+	{
 		unit->addToUnitGroup( -1 );
 		//------------------------------------------------------------
 		// This tells all machines to drop this mover from the team...

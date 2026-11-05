@@ -1222,6 +1222,7 @@ int main(int argc, char** argv)
 
     mc2vk::present_thread::stop();
     if (presentJoinPending) mc2::overlap::joinTail();
+    mc2::overlap::shutdownWorker();   // the sim worker is joined before engine and static teardown
     // Write validation results if game exited before frame limit
     if (getValidateConfig().enabled) {
         validateWriteResults();

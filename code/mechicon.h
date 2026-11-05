@@ -117,6 +117,7 @@ public:
 		void beginDeathAnimation( ){ deathAnimationTime = .0001f; } 
 		bool deathAnimationOver(){ return deathAnimationTime > animationInfos[NUM_DEATH_INFOS-1].time; }
 		bool isAnimatingDeath() { return deathAnimationTime ? 1 : 0; }
+		void updateDeathAnimation();   // frame part only: deselect, advance, drop from the group when over
 
 protected:
 

@@ -22,6 +22,7 @@ void joinTail();   // main thread: wait for the sim worker to finish (no-op if n
 // Sim worker.
 void runOnWorker(std::function<void()> job);   // main thread only; one job at a time
 void waitWorker();                             // main thread only; returns once the job has finished
+void shutdownWorker();                         // main thread only, at exit: waits out any job, stops and joins the worker
 bool jobInFlight();                            // true between runOnWorker and the worker finishing the job
 bool onSimWorker();                            // true on the sim worker thread
 uint32_t simulationFrame(uint32_t serialFrame); // worker's tick epoch; render's frame counter stays unchanged during draw

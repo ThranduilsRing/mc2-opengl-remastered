@@ -57,6 +57,13 @@ struct Worker {
     std::function<void()> job;
     bool posted = false;
     bool started = false;
+    bool quit = false;                 // shutdownWorker: the worker returns once no job is posted
+#ifdef _WIN32
+    HANDLE thread = nullptr;
+#else
+    std::thread thread;
+    ~Worker() { if (thread.joinable()) thread.detach(); }   // exit() without shutdownWorker must not std::terminate
+#endif
 };
 Worker g_worker;
 
@@ -72,7 +79,8 @@ void workerMain() {
         std::function<void()> job;
         {
             std::unique_lock<std::mutex> lk(g_worker.m);
-            g_worker.cv.wait(lk, [] { return g_worker.posted; });
+            g_worker.cv.wait(lk, [] { return g_worker.posted || g_worker.quit; });
+            if (!g_worker.posted) return;   // quit with nothing posted
             job = std::move(g_worker.job);
             g_worker.posted = false;
         }
@@ -101,10 +109,9 @@ unsigned __stdcall workerThunk(void*) { workerMain(); return 0; }
 void startWorker() {
 #ifdef _WIN32
     // 8 MB stack: the ABL VM and the path/LOS recursion run here instead of on the main thread.
-    HANDLE h = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 8u << 20, workerThunk, nullptr, 0, nullptr));
-    if (h) CloseHandle(h);
+    g_worker.thread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 8u << 20, workerThunk, nullptr, 0, nullptr));
 #else
-    std::thread(workerMain).detach();
+    g_worker.thread = std::thread(workerMain);
 #endif
 }
 
@@ -239,6 +246,28 @@ void waitWorker() {
         std::unique_lock<std::mutex> lk(g_worker.m);
         g_worker.cv.wait(lk, [] { return !g_inFlight.load(std::memory_order_acquire); });
     }
+}
+
+void shutdownWorker() {
+    waitWorker();
+    {
+        std::lock_guard<std::mutex> lk(g_worker.m);
+        if (!g_worker.started) return;
+        g_worker.quit = true;
+    }
+    g_worker.cv.notify_all();
+#ifdef _WIN32
+    if (g_worker.thread) {
+        WaitForSingleObject(g_worker.thread, INFINITE);
+        CloseHandle(g_worker.thread);
+        g_worker.thread = nullptr;
+    }
+#else
+    if (g_worker.thread.joinable()) g_worker.thread.join();
+#endif
+    std::lock_guard<std::mutex> lk(g_worker.m);
+    g_worker.started = false;
+    g_worker.quit = false;
 }
 
 bool jobInFlight() { return g_inFlight.load(std::memory_order_acquire); }

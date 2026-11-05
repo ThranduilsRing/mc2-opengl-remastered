@@ -68,6 +68,7 @@
 #endif
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "tick_commit.h"
 
 //---------------------------------------------------------------------------
 
@@ -1191,6 +1192,16 @@ void Artillery::drawSelectBox (unsigned char color)
 void Artillery::extractRenderView (mc2::render_view::RenderView& view)
 {
 	GameObject::extractRenderView(view);
+	// The draw reads only these copies: a pool reuse on the overlap tick re-inits this slot mid-draw (F2).
+	view.effects[0] = hitEffect.get();
+	view.effects[1] = leftContrail.get();
+	view.effects[2] = rightContrail.get();
+	view.appearances[0] = appearance;
+	view.appearances[1] = bomber.get();
+	if (bomber && bombRunStarted)
+		view.flags |= mc2::render_view::BombRun;
+	if (artilleryType == ARTILLERY_SENSOR)
+		view.flags |= mc2::render_view::NoTimerText;
 	if (!inView)
 		return;
 	view.flags |= mc2::render_view::Visible;
@@ -1211,9 +1222,14 @@ void Artillery::extractRenderView (mc2::render_view::RenderView& view)
 
 void Artillery::renderView (const mc2::render_view::RenderView& view)
 {
+	gosFX::Effect* const hitFx = view.effects[0];
+	gosFX::Effect* const leftFx = view.effects[1];
+	gosFX::Effect* const rightFx = view.effects[2];
+	Appearance* const strike = view.appearances[0];
+	Appearance* const bomberView = view.appearances[1];
 	if (view.has(mc2::render_view::Visible))
 	{
-		if (hitEffect )
+		if (hitFx)
 		{
 			gosFX::Effect::DrawInfo drawInfo;
 			drawInfo.m_clipper = theClipper;
@@ -1242,7 +1258,7 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			drawInfo.m_parentToWorld = &shapeOrigin;
 
 			if (!MLRVertexLimitReached)
-				hitEffect->Draw(&drawInfo);
+				hitFx->Draw(&drawInfo);
 		}
 		if (view.has(mc2::render_view::Timer))
 		{
@@ -1250,20 +1266,10 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			// Draw it.
 			char text[256];
 
-			switch (artilleryType)
-			{
-				case ARTILLERY_LARGE:
-					mc2::fmt::to_buf(text,"{:02.2f}",view.value[0]);
-				break;
-
-				case ARTILLERY_SMALL:
-					mc2::fmt::to_buf(text,"{:02.2f}",view.value[0]);
-				break;
-				
-				case ARTILLERY_SENSOR:
-					text[0] = 0; // players are confused by sensor count down
-				break;
-			}
+			if (view.has(mc2::render_view::NoTimerText))
+				text[0] = 0; // players are confused by sensor count down
+			else
+				mc2::fmt::to_buf(text,"{:02.2f}",view.value[0]);
 			
 			DWORD width, height;
 			Stuff::Vector4D moveHere;
@@ -1281,19 +1287,19 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 		
 			globalFloatHelp->setFloatHelp(text,moveHere,SD_GREEN,0x0,gosFontScale,false,false,false,false);
 		
-			if (view.has(mc2::render_view::SeenAtExtract))
+			if (view.has(mc2::render_view::SeenAtExtract) && strike)
 			{
-				appearance->setVisibility(true,true);
-				appearance->render(-1);
+				strike->setVisibility(true,true);
+				strike->render(-1);
 			}
 		}
 	}
-	
-	if (bomber && bombRunStarted)
+
+	if (bomberView && view.has(mc2::render_view::BombRun))
 	{
-		bomber->setVisibility(true,true);
-		bomber->render();
-		bomber->renderShadows();
+		bomberView->setVisibility(true,true);
+		bomberView->render();
+		bomberView->renderShadows();
 	
 		gosFX::Effect::DrawInfo drawInfo;
 		drawInfo.m_clipper = theClipper;
@@ -1311,9 +1317,9 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 		drawInfo.m_state = mlrState;
 		drawInfo.m_clippingFlags = 0x0;
 			
- 		if (leftContrail)
+ 		if (leftFx)
 		{
-			glm::vec3 lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
+			glm::vec3 lPosition = bomberView->getDustNodePosition(GV_LEFT_DUST_ID);
 			
 			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
@@ -1326,12 +1332,12 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
 			if (!MLRVertexLimitReached)
-				leftContrail->Draw(&drawInfo);
+				leftFx->Draw(&drawInfo);
 		}
-		
-		if (rightContrail)
+
+		if (rightFx)
 		{
-			glm::vec3 lPosition = bomber->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomberView->getNodeNamePosition("activity_node");
 			
 			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
@@ -1344,7 +1350,7 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
 			if (!MLRVertexLimitReached)
-				rightContrail->Draw(&drawInfo);
+				rightFx->Draw(&drawInfo);
 		}
 	}
 }
@@ -1359,25 +1365,13 @@ long Artillery::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayCh
 void Artillery::destroy (void) 
 {
 	//Must delete here too in case effect was NOT over when mission ended!
-	if (hitEffect)
-	{
-		hitEffect->Kill();
-		hitEffect.reset();
-	}
-				
-	if (leftContrail)
-	{
-		leftContrail->Kill();
-		leftContrail.reset();
-	}
-	
-	if (rightContrail)
-	{
-		rightContrail->Kill();
-		rightContrail.reset();
-	}
-
-	bomber.reset();
+	// A pool reuse runs this on the overlap tick while the frame draws the previous extract: the releases wait for the
+	// join when the tick is collecting (inline otherwise), so the view's copied pointers stay valid through the draw (F2).
+	mc2::tick::releaseEffect(hitEffect);
+	mc2::tick::releaseEffect(leftContrail);
+	mc2::tick::releaseEffect(rightContrail);
+	if (bomber)
+		mc2::tick::retireObject(bomber.release());
 
 	// The round owns its strike appearance; the per-mission appearance heap no longer reclaims it in bulk.
 	if (appearance)

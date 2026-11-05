@@ -50,7 +50,7 @@ G("MC2_SIM_IDENTITY", Bool, true, "code", "", "SIM-IDENTITY-HASH-1: emit a world
 G("MC2_SIM_IDENTITY_TRACE", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: emit one `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` line per SIM frame to stdout.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_SIM_IDENTITY_TRACE_DETAIL
 G("MC2_SIM_IDENTITY_TRACE_DETAIL", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE_DETAIL", -1, false) | verified),
-L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "2026-11-04", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows.", passthrough | verified),
+L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "2026-11-25", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows.", passthrough | verified),
 P("MC2_SIM_OVERLAP_AUDIT", Int, 0, "code", "", "G7: 1 aborts on overlap violations; 2 also arms the render fence; 3..52 adds 0..(value-2) ms of jitter using a private RNG.", passthrough | clampRange(0, 52) | verified),
 P("MC2_SIM_SPEED", Float, 1.0, "code", "", "SIM-SPEED-BUTTON-1: play (wall clock) = seed of the HUD/dev-shell dt multiplier; harness fixed-step clock, unfocused = floor(N) 1/30 s steps per drawn frame.", passthrough | clampRange(0.25, 4.0) | verified),
 L(Lead0, "MC2_SKIP_STATIC_BUILDINGS", Bool, false, "code", "", "", verified),
