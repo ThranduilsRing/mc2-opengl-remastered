@@ -32,6 +32,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import console_child  # noqa: E402
 
 CTCACHE = os.environ.get("MC2_CTCACHE", "/workspace/tools/ctcache/clang-tidy")
 CACHE_DIR = os.environ.get("MC2_CTCACHE_DIR", "/workspace/cache/ctcache")
@@ -119,13 +120,14 @@ def run_full(args, tree, tus, jobs, run_ct, tidy_bin):
         cmd += ["-fix", "-header-filter", "^$", "-checks", "-*," + args.checks, "-clang-apply-replacements-binary",
                 find_tool(["clang-apply-replacements-20", "clang-apply-replacements"]) or "clang-apply-replacements"]
     cmd += ["^" + re.escape(p) + "$" for p in tus]
-    r = subprocess.run(pinned(cmd), cwd=ROOT, env=tool_env(not args.fix and not args.no_cache), capture_output=True, text=True, errors="replace")
+    r = subprocess.run(pinned(cmd), cwd=ROOT, env=tool_env(not args.fix and not args.no_cache), capture_output=True, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
     return r
 
 
 def run_diff(args, tree, jobs, diff_py, tidy_bin, guards):
     d = subprocess.run(["git", "-C", ROOT, "diff", "-U0", "--no-color", args.diff, "--"] + [f"*{e}" for e in HDR_EXT],
-                       capture_output=True, text=True, errors="replace")
+                       capture_output=True, text=True, errors="replace", **console_child.child_kwargs(redirected=True))
     if d.returncode:
         return None, d.stderr
     # drop the diff hunks of excluded files so the guards hold here as well
@@ -135,7 +137,7 @@ def run_diff(args, tree, jobs, diff_py, tidy_bin, guards):
         return subprocess.CompletedProcess([], 0, "", ""), 0
     cmd = [sys.executable, diff_py, "-p1", "-path", tree, "-j", str(jobs), "-quiet", "-clang-tidy-binary", tidy_bin]
     r = subprocess.run(pinned(cmd), cwd=ROOT, env=tool_env(not args.no_cache), input="".join(keep), capture_output=True, text=True,
-                       errors="replace")
+                       errors="replace", **console_child.child_kwargs(redirected=True))
     return r, len(keep)
 
 

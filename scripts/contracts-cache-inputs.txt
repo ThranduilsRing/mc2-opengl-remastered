@@ -40,7 +40,7 @@ gated_layout_macros: @CPP
 counter_honesty: @CPP
 own_inventory: @CPP
 pointer_order_scan: @CPP
-dup_lines_ratchet: @ALLSRC
+dup_check: @ALLSRC
 file_size_ratchet: @ALLSRC
 axis_swizzle_ratchet: @ALLSRC docs/axis-conversion-sites.md
 render_contract_gbuf1: @ALLSRC

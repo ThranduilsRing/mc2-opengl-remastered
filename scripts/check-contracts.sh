@@ -89,7 +89,7 @@ done
 set -- ${_ARGS[@]+"${_ARGS[@]}"}
 # Named presets for --rows (the regex form still works for anything else).
 case "$ROWS_RE" in
-    split) ROWS_RE="cxx17_ratchet|dup_lines|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
+    split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
     tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
 esac
 for arg in "$@"; do
@@ -102,7 +102,7 @@ for arg in "$@"; do
         --jobs=*) JOBS="${arg#--jobs=}" ;;
         --rows=*) ROWS_RE="${arg#--rows=}"
                   case "$ROWS_RE" in
-                      split) ROWS_RE="cxx17_ratchet|dup_lines|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
+                      split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
                       tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
                   esac ;;
         # Internal. Registers synthetic rows instead of the real board so the
@@ -111,9 +111,9 @@ for arg in "$@"; do
         --help|-h)
             echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N] [--rows REGEX] [--no-cache]"
             echo "  --no-cache    run every row (default: rows that PASSED on identical declared inputs are 'PASS (cached)')"
-            echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_lines'."
+            echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_check'."
             echo "                A PARTIAL board: it is for iterating mid-batch, never a substitute for the full board."
-            echo "  --rows split  the file-split rows (cxx17_ratchet dup_lines gate_gen file_size split_path split_map background_launch scripts_tests)"
+            echo "  --rows split  the file-split rows (cxx17_ratchet dup_check gate_gen file_size split_path split_map background_launch scripts_tests)"
             echo "  --rows tidy   the tidy-batch rows (cxx17_ratchet file_size background_launch tools_tests)"
             echo "  Rows run in parallel by default (CONTRACTS_JOBS / -jN size the pool,"
             echo "  --serial = old behaviour). Rows that build, launch or write shared"
@@ -914,11 +914,12 @@ run_check "golden_coverage"          "py -3 scripts/check-golden-coverage.py --q
 run_check "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
 # D8 (opus-consistency-review): copy-paste is the recurring GL<->VK drift source -- a fix
 # lands in one copy and the twin keeps the bug. Duplicated-line count (runs of >= 8 normalized
-# lines occurring twice) per owned dir may only fall. Scans the COMMITTED tree, so another
-# agent's dirty working tree cannot flap it. Selftest lives in scripts/tests (scripts_tests row).
-run_check "dup_lines_ratchet"        "py -3 tools/dup_lines_ratchet.py --check"
+# lines occurring twice) may only fall. PMD CPD (>= 60 tokens) on the COMMITTED tip vs the merge base, no
+# baseline file; runs on the box (or streams the trees there from the PC); no PMD/box = INFRA, never a pass.
+# Selftest lives in scripts/tests (scripts_tests row).
+run_check "dup_check"                "py -3 tools/dup_check.py --check"
 # D11 (opus-consistency-review): the MC2->render-space axis swap (x,y,z)->(-x,z,y) is re-typed at
-# ~180 sites (shaders + C++); dup_lines_ratchet cannot see one-line copies. Token-level count may
+# ~180 sites (shaders + C++); dup_check cannot see one-line copies. Token-level count may
 # only fall until the typed helper replaces them. HEAD-scanned like the row above. Work queue:
 # docs/axis-conversion-sites.md. Selftest lives in scripts/tests (scripts_tests row).
 run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --check"
