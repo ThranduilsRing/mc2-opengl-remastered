@@ -329,7 +329,7 @@ extern "C" int mc2_vk_water_island_run(
         vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Water);
         {
         ZoneScopedN("VKIsl.Water.Record");   // VK-ISLAND-TRACY-1: command-buffer record
-        vkResetCommandBuffer(cb, 0);
+        vkResetCommandPool(s->device, s->cpool[par].get(), 0);
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

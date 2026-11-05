@@ -188,7 +188,7 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule        alphaFrag;
     mc2vk::OwnedPipeline            pipe;
     mc2vk::OwnedPipeline            alphaPipe;   // foliage and fence casters: discards the texels the colour pass discards
-    mc2vk::OwnedCommandPool         cpool;
+    mc2vk::OwnedCommandPool         cpool[mc2vk::kMaxFramesInFlight];   // one pool per parity: vkResetCommandPool instead of per-cb reset
     // The mech casters share the render pass and the UBO above, the static map the render pass and the geometry; declared last so they are released first.
     mc2vk::ShadowMechCasters        mech;
     mc2vk::ShadowBake               bake;   // borrows the alpha layout and the caster geometry above, so it is released first
@@ -613,16 +613,18 @@ bool init_island(ShadowIsland* s, int size) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
-            vlog("vkCreateCommandPool failed."); return false;
-        }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
+                vlog("vkCreateCommandPool failed."); return false;
+            }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) {
+                vlog("vkAllocateCommandBuffers failed."); return false;
+            }
         }
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -738,7 +740,7 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
           setFallback("fence_timeout"); s->disabled = true; return false;
       } }
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);   // also drops a recording an earlier frame never submitted
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // also drops a recording an earlier frame never submitted
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

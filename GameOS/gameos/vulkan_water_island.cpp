@@ -246,7 +246,7 @@ bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeC
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record) {
     VkCommandBufferAllocateInfo cai{};
     cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    cai.commandPool = s->cpool[0].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return false;
     VkCommandBufferBeginInfo bi{};
@@ -269,7 +269,7 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
             }
         }
     }
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool[0].get(), 1, &cb);
     return ok;
 }
 

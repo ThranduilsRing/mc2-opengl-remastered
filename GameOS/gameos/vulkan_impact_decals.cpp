@@ -129,7 +129,7 @@ struct State {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipeline mulPipe, addPipe;
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[kSlots];   // one pool per slot: vkResetCommandPool instead of per-cb reset
 };
 std::unique_ptr<State> g_state;
 
@@ -301,11 +301,13 @@ bool build(State* s, int w, int h) {
     }
     {
         VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; pci.queueFamilyIndex = ctx.graphicsFamily();
-        if (!mc2vk::create(s->cpool, dev, [&](auto* o) { return vkCreateCommandPool(dev, &pci, nullptr, o); })) return false;
-        VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = kSlots;
-        if (vkAllocateCommandBuffers(dev, &cai, s->cbuf) != VK_SUCCESS) return false;
+        pci.flags = 0; pci.queueFamilyIndex = ctx.graphicsFamily();
+        for (uint32_t i = 0; i < kSlots; ++i) {
+            if (!mc2vk::create(s->cpool[i], dev, [&](auto* o) { return vkCreateCommandPool(dev, &pci, nullptr, o); })) return false;
+            VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(dev, &cai, &s->cbuf[i]) != VK_SUCCESS) return false;
+        }
     }
     s->inited = true;
     std::fprintf(stderr, "[VK_IMPACT_DECALS] initialized %dx%d: box decals over shared depth/normal, %u-layer procedural atlas, cap %u.\n", w, h,
@@ -397,7 +399,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     }
 
     VkCommandBuffer cb = s->cbuf[slot];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[slot].get(), 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { decline("record_failed"); return 0; }

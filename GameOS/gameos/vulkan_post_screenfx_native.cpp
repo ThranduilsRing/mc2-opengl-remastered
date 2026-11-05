@@ -205,6 +205,7 @@ struct gosPostProcess::VkPostScreenFx {
     struct Frame {
         VkDescriptorSet cloudSet = VK_NULL_HANDLE, shoreSet = VK_NULL_HANDLE, shadowSet = VK_NULL_HANDLE;
         VkCommandBuffer cbuf[2]{}; // shadow, then cloud/shoreline
+        mc2vk::OwnedCommandPool cpool[2];   // one pool per cb (the two are recorded and submitted at different points of the frame): vkResetCommandPool instead of per-cb reset
         mc2vk::OwnedBuffer cloudUbo, shoreUbo, shadowUbo;
         uint64_t ticket[2]{};
     } frames[mc2vk::kMaxFramesInFlight];
@@ -228,7 +229,6 @@ struct gosPostProcess::VkPostScreenFx {
     mc2vk::OwnedPipeline    cloudPipe;
     mc2vk::OwnedPipeline    shorePipe;
     mc2vk::OwnedPipeline    shadowPipe;
-    mc2vk::OwnedCommandPool cpool;
 };
 
 namespace {
@@ -608,18 +608,20 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        VkResult rr = mc2vk::createChecked(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); });
-        if (rr != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", static_cast<int>(rr)); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = 2;
+        cai.commandBufferCount = 1;
         for (auto& frame : s->frames) {
-            rr = vkAllocateCommandBuffers(s->device, &cai, frame.cbuf);
-            if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
+            for (uint32_t k = 0; k < 2; ++k) {
+                VkResult rr = mc2vk::createChecked(frame.cpool[k], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); });
+                if (rr != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", static_cast<int>(rr)); return false; }
+                cai.commandPool = frame.cpool[k].get();
+                rr = vkAllocateCommandBuffers(s->device, &cai, &frame.cbuf[k]);
+                if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
+            }
         }
     }
 
@@ -754,7 +756,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
     VkCommandBuffer cb = frame.cbuf[0];
 
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, frame.cpool[0].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -938,7 +940,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
     VkCommandBuffer cb = frame.cbuf[1];
 
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, frame.cpool[1].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
