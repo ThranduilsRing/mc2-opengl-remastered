@@ -1344,11 +1344,43 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
 
+#: The tree whose tools/lane_merge.py grades candidates (the mc2-main worktree on the nifty tip). Override: $MC2_TRUSTED_ROOT.
+TRUSTED_ROOT = "A:/Games/mc2-main"
+
+
+def trusted_script(own_script: str = os.path.abspath(__file__)) -> str | None:
+    """The trusted copy of this script, or None when we already are it (or it does not exist, or we were re-executed from it)."""
+    if os.environ.get("MC2_LANE_MERGE_TRUSTED"):
+        return None
+    path = os.path.join(os.environ.get("MC2_TRUSTED_ROOT", TRUSTED_ROOT), "tools", "lane_merge.py")
+    if not os.path.isfile(path) or os.path.normcase(os.path.realpath(path)) == os.path.normcase(os.path.realpath(own_script)):
+        return None
+    return path
+
+
+def reexec_trusted(argv: list[str], root: str) -> int | None:
+    """--precheck and --batch grade a candidate: run the trusted lane_merge.py (never the candidate's own, which the candidate could have
+    edited to pass itself) with --root pointing at the candidate tree. None = already trusted, run in-process."""
+    script = trusted_script()
+    if script is None:
+        return None
+    cmd = [sys.executable, script, *argv]
+    if not any(a == "--root" or a.startswith("--root=") for a in argv):
+        cmd += ["--root", root]
+    print(f"lane_merge: running the trusted {script} against {root}", flush=True)
+    return subprocess.call(cmd, env={**os.environ, "MC2_LANE_MERGE_TRUSTED": "1"},  # background-launch: allow trusted copy of this tool, console child
+                           **console_child.child_kwargs())
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
+    if args.precheck or args.batch:
+        rc = reexec_trusted(list(sys.argv[1:] if argv is None else argv), args.root)
+        if rc is not None:
+            return rc
     if args.lint:
         return lint(args.root, args.lint)
     if args.precheck:
