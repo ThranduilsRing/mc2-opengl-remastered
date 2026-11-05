@@ -82,9 +82,7 @@ def ownership_problems(modules, ownership, board, external_owners=None):
     aggregate = ownership.get("aggregate_owner")
     if aggregate not in commands:
         issues.append(f"missing aggregate contract row: {aggregate}")
-    for module in modules:
-        if module not in tests:
-            issues.append(f"zero owners: {module}")
+    # A discovered module with no entry is owned by the aggregate (scripts_tests): a new test file needs no row.
     for module in tests:
         if module not in modules:
             issues.append(f"stale ownership entry: {module}")
@@ -195,7 +193,7 @@ def test_ownership_rejects_missing_duplicate_and_stale_owners():
         {"module": "scripts/tests/test_aggregate.py", "owners": ["scripts_tests"]}]}
     assert ownership_problems(modules, good, board) == []
     missing = {"aggregate_owner": "scripts_tests", "tests": good["tests"][:1]}
-    assert ownership_problems(modules, missing, board) == ["zero owners: scripts/tests/test_aggregate.py"]
+    assert ownership_problems(modules, missing, board) == []   # unlisted = owned by the aggregate
     duplicate = {"aggregate_owner": "scripts_tests", "tests": [
         *good["tests"], {"module": "scripts/tests/test_direct.py", "owners": ["direct"]}]}
     assert ownership_problems(modules, duplicate, board) == [

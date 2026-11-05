@@ -82,7 +82,7 @@ ARTIFACTS = [
     "docs/render-backend-seams/gated-layout-macros.md",
     "docs/render-backend-seams/binding-slot-occupancy.json",
     "tools/shader_reflect/expected", "shaders/spv",
-    "tests/unit/own_inventory_baseline.json", "tests/callers.json",
+    "tests/unit/own_inventory_baseline.json",
     ".claude/cleanup/vk-ownership-ledger.md",
 ]
 GENERATORS = [
@@ -93,7 +93,6 @@ GENERATORS = [
     ("shader reflection", "tools/shader_reflect/reflect.py", ["--update"]),
     ("SPIR-V pilots", "tools/shader_offline_build/build_variants.py", []),
     ("ownership inventory", "tools/own_inventory.py", ["--write-baseline"]),
-    ("script callers", "tools/callers.py", []),
     ("Vulkan ownership", "tools/vk_ownership_ledger.py", ["--write"]),
 ]
 
@@ -113,7 +112,7 @@ REGENERABLE.update(p for p in ARTIFACTS if p.endswith((".json", ".md")))
 GENERATED = {
     "Gates/gate_index.gen.h", "Gates/gate_table.json", "Gates/feature_only_rows.json",
     "RenderCore/RendererFeatureRegistry.h", "docs/flags.auto.yaml",
-    "tests/callers.json", "docs/split-map.md",
+    "docs/split-map.md",
     "docs/background-launch-inventory.md", "docs/background-launch-child-baseline.json",
     "tests/unit/log_tag_baseline.json",
 }
@@ -131,7 +130,6 @@ GENERATED_REGENERATORS = (
     ({"docs/split-map.md"}, "tools/split/split_map.py", ["--write"]),
     ({"docs/background-launch-inventory.md", "docs/background-launch-child-baseline.json"},
      "scripts/check-background-launch.py", ["--write", "--quiet"]),
-    ({"tests/callers.json"}, "tools/callers.py", []),
     ({"tests/unit/log_tag_baseline.json"}, "tools/log_tag_census.py", ["--write"]),
 )
 
@@ -886,8 +884,7 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
     """The seconds-cheap checks a precheck would fail on: (label, command, fix hint). Same tables as precheck."""
     rows = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]],
              "fix the code, or lower the baseline via the ratchet's own --tighten (never raise it)") for label, script, args in RATCHETS]
-    rows += [("callers-refresh", py + ["tools/callers.py"], ""),
-             ("callers", py + ["tools/callers.py", "--check"], "wire the script into a caller or add it to tests/callers_allowlist.json with a reason")]
+    rows += [("callers", py + ["tools/callers.py", "--check"], "wire the script into a caller or add it to tests/callers_allowlist.json with a reason")]
     rows += [(label, py + [script, *args], "see the row's own output") for label, script, args in EARLY_ROWS]
     rows.append(("ungated_tags", py + ["tools/ungated_log_tags.py", "--base", base_ref, "--head", ref],
                  "gate the new log tag or register it as the check says"))
@@ -918,11 +915,10 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
         print("LINT FAIL " + str(exc))
         return 1
     rows = lint_rows([sys.executable, "-B"], base_ref, sha)
-    # callers-refresh must precede callers in one tree; every other row gets its own tree so they run concurrently.
-    chains = [[r for r in rows if r[0].startswith("callers")]] + [[r] for r in rows if not r[0].startswith("callers")]
+    chains = [[r] for r in rows]   # every row is independent: concurrent
     # lint never takes the precheck TreeLock (own shared clones)
     with scratch_dir("lane-lint-", precheck_scratch_base(root)) as scratch:
-        snap = os.path.join(scratch, "tree")   # one checkout shared by all rows: only callers-refresh writes (tests/callers.json), which no other row reads
+        snap = os.path.join(scratch, "tree")   # one checkout shared by all rows
         r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
@@ -948,8 +944,6 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
                     failed.append("lint:" + str(exc).replace("\n", " "))
                     continue
                 for label, rc, secs, tail, hint in results:
-                    if label == "callers-refresh":
-                        continue
                     print(f"lint: {label}: {'PASS' if rc == 0 else 'FAIL'} ({secs:.0f}s)", flush=True)
                     if rc:
                         failed.append(label)
@@ -1061,10 +1055,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         py = [sys.executable, "-B"]
         steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
                  for label, script, args in RATCHETS]
-        # A virtual merge can shift caller locations without conflicting in JSON.
-        # Refresh that generated input, then retain the strict wiring check.
-        steps += [("callers-refresh", py + ["tools/callers.py"]),
-                  ("callers", py + ["tools/callers.py", "--check"])]
+        steps += [("callers", py + ["tools/callers.py", "--check"])]
         steps += [(label, py + [script, *args]) for label, script, args in EARLY_ROWS]
         steps += [(label, py + args) for label, args in PYTHON_SUITES]
 

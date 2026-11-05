@@ -118,11 +118,18 @@ def test_allowlist_and_stale_check(tmp_path, monkeypatch, capsys):
     (tmp_path / "tests/callers_allowlist.json").write_text('{"scripts/manual.py":"Manual maintainer CLI"}')
     assert callers.main(["--root", str(tmp_path)]) == 0
     assert callers.main(["--root", str(tmp_path), "--check"]) == 0
-    (tmp_path / "tests/callers.json").write_text("{}")
+    assert not (tmp_path / "tests/callers.json").exists()   # computed at check time, never written by default
+    (tmp_path / "tests/callers_allowlist.json").write_text('{}')
     assert callers.main(["--root", str(tmp_path), "--check"]) == 1
-    assert "stale" in capsys.readouterr().err
+    assert "no caller" in capsys.readouterr().err
     (tmp_path / "tests/callers_allowlist.json").write_text('{"scripts/manual.py":""}')
     assert callers.main(["--root", str(tmp_path), "--check"]) == 2
+
+
+def test_collected_pytest_module_is_its_own_caller_with_no_allowlist_row(root):
+    inventory = build(root, {"scripts/tests/test_new_thing.py": "def test_x():\n    pass\n",
+                                  "scripts/tests/helper.py": "", "scripts/tests/sub/test_deep.py": "", "tools/test_other.py": ""})
+    assert callers.uncalled_scripts(inventory) == ["scripts/tests/helper.py", "scripts/tests/sub/test_deep.py", "tools/test_other.py"]
 
 
 def test_git_spawn_uses_console_child(monkeypatch, root):
