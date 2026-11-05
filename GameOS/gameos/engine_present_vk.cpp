@@ -88,6 +88,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedSwapchain    swapchain;
     VkFormat                 scFormat  = VK_FORMAT_UNDEFINED;
     VkExtent2D               scExtent  = {0, 0};
+    VkSurfaceTransformFlagBitsKHR scTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;   // preTransform the chain was built with
     VkPresentModeKHR         presentMode = VK_PRESENT_MODE_FIFO_KHR;
     std::vector<VkImage>     scImages;
     std::vector<mc2vk::OwnedSemaphore> renderSems;   // one per image (present-wait target)
@@ -431,6 +432,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     admission.commit(reinterpret_cast<uint64_t>(s.swapchain.get()),"targets.swapchain",true);
     s.scFormat = chosen.format;
     s.scExtent = extent;
+    s.scTransform = caps.currentTransform;
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, nullptr);
@@ -2417,7 +2419,26 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     // WSI results are consumed only after main has transferred the next frame.
     if (s.lastWsiResult != VK_SUCCESS) {
         const VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
-        if (previous == VK_ERROR_OUT_OF_DATE_KHR || previous == VK_SUBOPTIMAL_KHR) {
+        // vk-present-instance 2a: SUBOPTIMAL rebuilds only when the surface extent or transform differs from the chain's; otherwise the
+        // chain is still the best the surface offers and a rebuild would loop (a drain per frame). Logged once.
+        bool suboptimalOnly = false;
+        if (previous == VK_SUBOPTIMAL_KHR) {
+            VkSurfaceCapabilitiesKHR caps{};
+            if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s.phys, s.surface.get(), &caps) == VK_SUCCESS) {
+                VkExtent2D cur = caps.currentExtent;
+                if (cur.width == 0xFFFFFFFFu) cur = {drawableW, drawableH};
+                cur.width  = std::clamp(cur.width,  caps.minImageExtent.width,  caps.maxImageExtent.width);
+                cur.height = std::clamp(cur.height, caps.minImageExtent.height, caps.maxImageExtent.height);
+                suboptimalOnly = cur.width == s.scExtent.width && cur.height == s.scExtent.height && caps.currentTransform == s.scTransform;
+            }
+            if (suboptimalOnly) {
+                static bool logged = false;
+                if (!logged) { logged = true; plog("SUBOPTIMAL with unchanged extent/transform: keeping the swapchain (logged once)."); }
+            }
+        }
+        if (suboptimalOnly) {
+            // keep going
+        } else if (previous == VK_ERROR_OUT_OF_DATE_KHR || previous == VK_SUBOPTIMAL_KHR) {
             std::string reason;
             if (!rebuildSwapchain(s, drawableW, drawableH, health_, reason)) {
                 health_.fallback_reason = reason;
@@ -2605,6 +2626,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     {   // Tail.Blit: barriers + blit + vkEndCommandBuffer
     ZoneScopedN("VKIsl.Present.Tail.Blit");
     mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
+    MC2_VK_GPU_SCOPE(blitScope, s.curCbuf(), "VKIsl.Present.Blit");   // vk-present-instance 2a: barriers + blit were charged to Present.ImGui
     // The composite's color writes precede the swapchain blit.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2640,6 +2662,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    blitScope.end();
     vkEndCommandBuffer(s.curCbuf());
     }
 
@@ -2666,6 +2689,11 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         // at the next frame top when this is the worker) can block on it; a refused submit holds no reference to the old fence.
         { VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
           mc2vk::create(s.curInFlight(), s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }); }
+        // vk-present-instance 2a: the acquire signalled this slot's acquire semaphore and the refused submit never waited on it, so the next
+        // acquire into the slot would re-signal a signalled semaphore (VUID-vkAcquireNextImageKHR-semaphore-01286). Quiesce, then replace it.
+        { s.ctx->waitIdle("present_submit_failed");
+          VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+          mc2vk::create(s.curAcquireSem(), s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); }); }
         health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string(static_cast<int>(r)) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
