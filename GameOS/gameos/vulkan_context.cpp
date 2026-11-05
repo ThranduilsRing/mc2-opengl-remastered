@@ -882,8 +882,7 @@ void VulkanContext::logHealth() const {
         const auto mb = [](VkDeviceSize b) { return static_cast<unsigned long long>(b >> 20); };
         if (mc2_diag::tagRequested("VK_MEM"))
             for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
-                std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u
-",
+                std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u\n",
                              i, (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? 1 : 0, mb(mp.memoryHeaps[i].size), mb(budgets[i].budget), mb(budgets[i].usage),
                              mb(budgets[i].statistics.allocationBytes), mb(budgets[i].statistics.blockBytes), budgets[i].statistics.allocationCount, budgets[i].statistics.blockCount);
     }
