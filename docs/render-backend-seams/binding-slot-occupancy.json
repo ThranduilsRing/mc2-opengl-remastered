@@ -336,7 +336,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 40,
+        "line": 48,
         "role": "ShadowFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -727,7 +727,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 55,
+        "line": 63,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -2464,7 +2464,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop_alpha.frag",
-        "line": 6,
+        "line": 7,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
