@@ -173,18 +173,15 @@ bool sceneReadbackSelfTest() {
     if (!submitOneShot(ctx, [&](VkCommandBuffer cb) {
         const size_t offsets[3] = {0,48,72};
         for (unsigned i = 0; i < 3; ++i) {
-            VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.image = images[i]->image.get(); barrier.subresourceRange = {aspects(i),0,1,0,1};
-            vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&barrier);
+            const VkImageSubresourceRange rng{aspects(i),0,1,0,1};
+            auto& bctx = getOrCreateEngineVulkanContext();
+            sync::cmdImageBarrier(bctx,cb,images[i]->image.get(),rng,VK_IMAGE_LAYOUT_UNDEFINED,VK_PIPELINE_STAGE_2_NONE,0,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT);
             VkBufferImageCopy copy{}; copy.bufferOffset=offsets[i];
             copy.imageSubresource={VkImageAspectFlags(i==1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),0,0,1}; copy.imageExtent={2,3,1};
             vkCmdCopyBufferToImage(cb,upload.get(),images[i]->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
-            barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask=accesses(i);
-            barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; barrier.newLayout=attachment(i);
-            vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,stages(i),0,0,nullptr,0,nullptr,1,&barrier);
+            sync::cmdImageBarrier(bctx,cb,images[i]->image.get(),rng,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                attachment(i),VkPipelineStageFlags2(stages(i)),VkAccessFlags2(accesses(i)));
         }
     },"scene readback test upload")) return false;
     auto correct=[](const ScenePixel& pixel, unsigned p) {
