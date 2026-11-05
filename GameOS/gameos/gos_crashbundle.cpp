@@ -122,7 +122,7 @@ extern "C" void crashbundle_append(mc2::czstring line)
     size_t n = strlen(line);
     if (n == 0) return;
     // Trim to avoid pathological lines blowing out the ring in one write.
-    n = std::min(n, kRingBytes / 2);
+    n = (std::min)(n, kRingBytes / 2);
 
     // Spinlock — short critical sections only.
     while (InterlockedCompareExchange(&g_ring_lock, 1, 0) != 0) {
