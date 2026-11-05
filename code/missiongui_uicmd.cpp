@@ -395,7 +395,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		int cols = 0, rows = 0;
 		std::sscanf(line.c_str() + 9, "%d %d", &cols, &rows);
 		extern std::string mc2PickGridReport(int, int);
-		note = std::string(1, char(10)) + mc2PickGridReport(cols > 0 ? cols : 8, rows > 0 ? rows : 5);
+		note = std::string(1, static_cast<char>(10)) + mc2PickGridReport(cols > 0 ? cols : 8, rows > 0 ? rows : 5);
 		result = "ok";
 	}
 	else if (line.compare(0, 6, "mouse ") == 0) {

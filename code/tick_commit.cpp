@@ -11,7 +11,7 @@
 namespace mc2::tick {
 namespace {
 // One tick producer; main owns these only after the join. No mutex is needed.
-std::array<std::vector<std::function<void()>>, size_t(Queue::Count)> queues;
+std::array<std::vector<std::function<void()>>, static_cast<size_t>(Queue::Count)> queues;
 // CPU packet leases are independent of GPU tickets. A release waits for every
 // packet admitted before it, including when recording completes out of order.
 std::array<uint64_t, 3> packets{};
@@ -24,7 +24,7 @@ std::vector<RetiredCommand> graveyard;
 }
 bool defer(Queue queue, std::function<void()> command) {
     if (!collecting()) return false;
-    queues[size_t(queue)].push_back(std::move(command));
+    queues[static_cast<size_t>(queue)].push_back(std::move(command));
     return true;
 }
 bool deferRetirement(Queue queue, std::function<void()> command) {
