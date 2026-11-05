@@ -79,7 +79,10 @@ void* OwnedBuffer::map() const {
 }
 
 void OwnedBuffer::unmap() const {
-    if (buffer_ != VK_NULL_HANDLE) vmaUnmapMemory(allocator_, allocation_);
+    if (buffer_ != VK_NULL_HANDLE) {
+        vmaFlushAllocation(allocator_, allocation_, 0, VK_WHOLE_SIZE);   // no-op on coherent memory; makes map()+memcpy writes visible on non-coherent ReBAR types
+        vmaUnmapMemory(allocator_, allocation_);
+    }
 }
 
 bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offset) const {
