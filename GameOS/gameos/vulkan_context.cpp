@@ -591,6 +591,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     ZoneScopedN("VK.WaitIdle");
     const auto idleT0 = std::chrono::steady_clock::now();
     const auto lock = lockSubmit(submitMutex_);
+    flushPendingLocked();
     const VkResult r = vkDeviceWaitIdle(device_);
     {
         auto& hs = mc2_hitch2::stats();
@@ -619,6 +620,7 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
 
 VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
     const auto lock = lockSubmit(submitMutex_);
+    flushPendingLocked();   // the frame's batched work goes ahead of the present on the queue
     present_thread::seal(); // Next-frame submits must stay behind this present, even when main wakes immediately.
     mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
     if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;   // no queue work on a lost device
@@ -652,6 +654,15 @@ GpuTicket VulkanContext::flushUploads() const {
 VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
     assert(si.pNext == nullptr && "submit(): the timeline info is appended here; pass a plain VkSubmitInfo");
     if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
+    if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
+        const uint64_t deferred = tracker_.noteSubmit(QueueKind::Graphics);
+        pendingCbs_.insert(pendingCbs_.end(), si.pCommandBuffers, si.pCommandBuffers + si.commandBufferCount);
+        pendingValue_ = deferred;
+        if (outValue) *outValue = deferred;
+        if (pendingCbs_.size() >= 64) flushPendingLocked();
+        return VK_SUCCESS;
+    }
+    flushPendingLocked();   // keep queue order: everything deferred so far goes before this submit
     const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
     // vkQueueSubmit2: the caller's VkSubmitInfo is translated (binary semaphores keep value 0; the stage masks are widened to the 64-bit
     // sync2 type; a caller's wait stage of 0 means TOP_OF_PIPE as in the legacy call). The caller's binary signals go first, the
@@ -696,9 +707,45 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
     return r;
 }
 
+VkResult VulkanContext::queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const {
+    return route("synchronization2") == profile::Route::Core ? vkQueueSubmit2(q, 1, &si, fence) : vkQueueSubmit2KHR(q, 1, &si, fence);
+}
+
+void VulkanContext::flushPendingLocked() const {
+    if (pendingCbs_.empty()) return;
+    std::vector<VkCommandBufferSubmitInfo> cbs(pendingCbs_.size());
+    for (size_t i = 0; i < cbs.size(); ++i) {
+        cbs[i] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+        cbs[i].commandBuffer = pendingCbs_[i];
+    }
+    VkSemaphoreSubmitInfo sig{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+    sig.semaphore = gfxTimeline_;
+    sig.value = pendingValue_;
+    sig.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    VkSubmitInfo2 out{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
+    out.commandBufferInfoCount = uint32_t(cbs.size());
+    out.pCommandBufferInfos = cbs.data();
+    out.signalSemaphoreInfoCount = 1;
+    out.pSignalSemaphoreInfos = &sig;
+    const uint64_t value = pendingValue_;
+    pendingCbs_.clear();
+    pendingValue_ = 0;
+    VkResult r = queueSubmit2(gfxQueue_, out, VK_NULL_HANDLE);
+    if (r != VK_SUCCESS) {
+        ctxlog("the batched submit failed: VkResult=%d (the timeline value is signalled empty to stay in step).", static_cast<int>(r));
+        if (r == VK_ERROR_DEVICE_LOST) { infra::deviceLost(); return; }
+        out.commandBufferInfoCount = 0;
+        out.pCommandBufferInfos = nullptr;
+        r = queueSubmit2(gfxQueue_, out, VK_NULL_HANDLE);
+        if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();
+    }
+    (void)value;
+}
+
 void VulkanContext::poll() const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::poll");
     if (gfxTimeline_ == VK_NULL_HANDLE) return;
+    { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // a poll means someone wants completion: the batch must be on the queue
     uint64_t v = 0;
     const VkResult result = vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v);
     if (result == VK_SUCCESS) {
@@ -777,6 +824,7 @@ void VulkanContext::endFrame() {
 #ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
 #endif
+    { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // the sealed frame ticket must be on the queue
 #ifdef MC2_VULKAN_ISLAND
     if (textures_) textures_->sealFrame();
 #endif

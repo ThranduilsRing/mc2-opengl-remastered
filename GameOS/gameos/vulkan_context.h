@@ -141,9 +141,7 @@ public:
     }
 
     // vkQueueSubmit2 through the entry point of the device's route (core 1.3 or KHR); the submit funnel is its only caller.
-    VkResult queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const {
-        return route("synchronization2") == profile::Route::Core ? vkQueueSubmit2(q, 1, &si, fence) : vkQueueSubmit2KHR(q, 1, &si, fence);
-    }
+    VkResult queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const;   // defined in vulkan_context.cpp (the funnel's own file)
 
     const EngineContextHealth& health() const { return health_; }
     EngineContextHealth&       mutableHealth() { return health_; }
@@ -174,6 +172,10 @@ public:
     VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
 private:
     VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
+    // Plain submits (command buffers only: no fence, no binary semaphores) are collected and go out as ONE vkQueueSubmit2 with one timeline
+    // signal (the newest value) at the next flush point: a submit that carries a fence or a semaphore, present, poll (so isComplete/wait),
+    // waitIdle and endFrame. Queue order equals call order; the older tickets complete with the batch.
+    void flushPendingLocked() const;   // submitMutex_ held
     GpuTicket flushUploadsLocked() const;
 public:
     CompletionTracker&       tracker()       { return tracker_; }
@@ -257,6 +259,8 @@ private:
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
+    mutable std::vector<VkCommandBuffer> pendingCbs_;   // submitMutex_
+    mutable uint64_t pendingValue_ = 0;                  // submitMutex_: the timeline value the pending batch signals (0 = none)
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
 
