@@ -15,6 +15,7 @@
 //===========================================================================//
 
 #include <algorithm>
+#include <array>
 #include "ground_contact_blob.h"
 
 #ifndef GAMECAM_H
@@ -101,7 +102,7 @@ float ambientCoupledAlpha()
 // Push one contact-darkening quad (2 triangles) centered at worldPos.
 void pushBlob(const glm::vec3& worldPos, float radius, unsigned int argb)
 {
-    float wz[4];
+    std::array<float, 4> wz;
     float wx[4] = { worldPos.x - radius, worldPos.x + radius,
                     worldPos.x + radius, worldPos.x - radius };
     float wy[4] = { worldPos.y - radius, worldPos.y - radius,

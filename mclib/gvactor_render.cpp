@@ -1,6 +1,7 @@
 // GVAppearance: shadow and body rendering (reads the vehicle-lit-path gate).
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include <atomic>
+#include <array>
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
 #include "prop_light_contract.h"
@@ -48,8 +49,8 @@ long GVAppearance::render (long depthFixup)
 		uint32_t color = SD_BLUE;
 		uint32_t highLight = 0x007f7f7f;
 		if ((teamId > -1) && (teamId < 8)) {
-			static uint32_t highLightTable[3] = {0x00007f00, 0x0000007f, 0x007f0000};
-			static uint32_t colorTable[3] = {SB_GREEN | 0xff000000, SB_BLUE| 0xff000000, SB_RED | 0xff000000};
+			static std::array<uint32_t, 3> highLightTable = {0x00007f00, 0x0000007f, 0x007f0000};
+			static std::array<uint32_t, 3> colorTable = {SB_GREEN | 0xff000000, SB_BLUE| 0xff000000, SB_RED | 0xff000000};
 			color = colorTable[homeTeamRelationship];
 			highLight = highLightTable[homeTeamRelationship];
 		}

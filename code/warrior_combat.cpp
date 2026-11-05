@@ -5,6 +5,7 @@
 //								WARRIOR.CPP
 
 #include "warrior_internal.h"
+#include <array>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "sim_trace.h"
@@ -303,7 +304,7 @@ long MechWarrior::combatDecisionTree (void) {
 			mc2::gate::get<"MC2_FIRE_DECISION_TRACE">();
 		if (s_fireDecisionTrace && !firedWeapon && curTacOrder.isCombatOrder() &&
 			mc2_diag::tagEnabled("COMBAT")) {
-			long tally[6] = {0, 0, 0, 0, 0, 0};	// [0]=rd [1]=am [2]=rn [3]=lk [4]=ch [5]=hot
+			std::array<long, 6> tally = {0, 0, 0, 0, 0, 0};	// [0]=rd [1]=am [2]=rn [3]=lk [4]=ch [5]=hot
 			for (long tw = 0; tw < myVehicle->numWeapons; tw++) {
 				switch (weaponsStatus[tw]) {
 					case WEAPON_STATUS_NOT_READY:	tally[0]++; break;
@@ -447,7 +448,7 @@ void MechWarrior::updateActions (void) {
 		// missile tubes and caught non-tube lasers. Spread across up to 8
 		// DISTINCT mechs (per-WID latch) so at least one with a tube weapon
 		// fires, then stop. dmgDone/target=NULL -> FX only, no real damage.
-		static long s_firedWIDs[8];
+		static std::array<long, 8> s_firedWIDs;
 		static int  s_firedMechs = 0;
 		if (s_firedMechs < 8 && myVehicle && scenarioTime > 5.0f && myVehicle->canFireWeapons()) {
 			long wid = myVehicle->getWatchID();

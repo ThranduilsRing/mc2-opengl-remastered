@@ -1,6 +1,7 @@
 // MLR_I_TMesh: the CreateIndexedTri* test shapes (CastRay, which had no caller, went at step 5 S5.11).
 // Declared in the class headers; shared names in mlr_i_tmesh_internal.h.
 #include "mlr_i_tmesh_internal.h"
+#include <array>
 #include <memory>
 
 
@@ -29,7 +30,7 @@ MLRShape*
 
 	int i, j, k;
 	long    nrTri = static_cast<long>(ceil (icoInfo.all * pow (4.0f, icoInfo.depth)));
-	glm::vec3 v[3];
+	std::array<glm::vec3, 3> v;
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{

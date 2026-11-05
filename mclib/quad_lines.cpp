@@ -1,6 +1,7 @@
 // TerrainQuad: the passability / LOS / debug-cell line draws and the mine draw.
 // Declared in the class headers; shared names in quad_internal.h.
 #include "quad_internal.h"
+#include <array>
 
 
 //---------------------------------------------------------------------------
@@ -780,7 +781,7 @@ void TerrainQuad::drawDebugCellLine (void)
 							color = XP_GREEN;
 						}
 						else {
-							static DWORD debugColors[4] = {0, XP_RED, XP_WHITE, XP_BLUE};
+							static std::array<DWORD, 4> debugColors = {0, XP_RED, XP_WHITE, XP_BLUE};
 							DWORD cellDebugValue = curCell->getDebug();
 							if (cellDebugValue)
 								color = debugColors[cellDebugValue];

@@ -1,6 +1,7 @@
 // Pure line-of-sight kernel: see los_kernel.h. Every expression below mirrors the legacy code it replaces
 // (MapData::terrainElevation, Terrain::worldToCell/getCellPos, Team::lineOfSight); do not "tidy" the float/double mix.
 #include <cmath>  // before any other include: which floor/sqrt overload a call binds must not depend on include order
+#include <array>
 #include "los_kernel.h"
 #include "job_system.h"
 #include <cstring>
@@ -159,10 +160,10 @@ float terrainElevation(const Snapshot& s, const glm::vec3& position)
 	if (s.elevationOverride)
 		return s.elevationOverride(position);
 
-	glm::vec3 triVert[3];
+	std::array<glm::vec3, 3> triVert;
 	glm::vec2 upperLeft;
 	glm::vec3 triPos;
-	glm::vec3 triangleVector[2];
+	std::array<glm::vec3, 2> triangleVector;
 	glm::vec3 perpendicularVec;
 	float result = 0.0;
 
@@ -237,7 +238,7 @@ float terrainElevation(const Snapshot& s, const glm::vec3& position)
 	// Triangle corners as (right, down, vertex) in the legacy order; vertex 0..3 = upper-left, upper-right,
 	// lower-right, lower-left. The bottom triangles swap the two edge vectors.
 	struct Corner { bool right; bool down; int vertex; };
-	const float elev[4] = { e1, e2, e3, e4 };
+	const std::array<float, 4> elev = { e1, e2, e3, e4 };
 	Corner corner[3];
 	if (bottomRight)
 	{

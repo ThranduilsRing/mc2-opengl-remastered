@@ -1,5 +1,6 @@
 // static_caster_set.cpp -- see the header.
 #include "static_caster_set.h"
+#include <array>
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "gos_static_prop_registry.h"
@@ -59,7 +60,7 @@ void StaticCasterSet::endRebuild() {
             at += n;
         }
     }
-    uint32_t byKind[4] = {0, 0, 0, 0};
+    std::array<uint32_t, 4> byKind = {0, 0, 0, 0};
     for (const StaticCasterEntry& e : entries_) ++byKind[static_cast<uint8_t>(e.kind) & 3u];
     mc2::fmt::print_err("[SHADOW_BAKE] caster_set version={} entries={} terrain_objects={} buildings={} turrets={} gates={} load_leaves={} load_hash={:016x}\n",
                         mc2::fmt::as_u64(version_), mc2::fmt::as_size(entries_.size()), byKind[0], byKind[1], byKind[2], byKind[3],

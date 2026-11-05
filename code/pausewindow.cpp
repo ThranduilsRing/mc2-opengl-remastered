@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/ui_texture.h"
+#include <array>
 #include "../mclib/texture_assets.h"
 #define PAUSEWINDOW_CPP
 /*************************************************************************************************\
@@ -671,8 +672,8 @@ void PauseWindow::renderImGuiConfirm()
 	// interpolateColor per segment — mclib/utilities.cpp); the anim restarts
 	// when the hover begins (gui/abutton.cpp: highlightData.begin() on entry).
 	// The outline rect uses the same textColors[state], so it pulses too.
-	static float s_hoverT[2] = { -1.f, -1.f };
-	static float s_pressT[2] = { -1.f, -1.f };
+	static std::array<float, 2> s_hoverT = { -1.f, -1.f };
+	static std::array<float, 2> s_pressT = { -1.f, -1.f };
 	auto animColor = []( float t, float tMid, float tEnd, unsigned long cEnds,
 			unsigned long cMid, bool loops ) -> unsigned long {
 		if ( t > tEnd )
