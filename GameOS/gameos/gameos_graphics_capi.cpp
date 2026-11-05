@@ -224,7 +224,7 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // backends import them as they are (gos_GetTextureTexels).
 DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
                                             const uint8_t* blockData, size_t byteLen,
-                                            const char* name )
+                                            const char* name, gos_TextureFormat format )
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewCompressedTexture2D");
     const bool bc7 = vkFormat == mc2tex::kVkFormatBc7Unorm || vkFormat == mc2tex::kVkFormatBc7Srgb;
@@ -245,7 +245,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
     tex.has_mipmaps = false;
 
     auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);
-    gosTexture* ptex = new gosTexture(tex, gos_Texture_Solid, name, blockVkFormat, std::move(blocks));
+    gosTexture* ptex = new gosTexture(tex, format, name, blockVkFormat, std::move(blocks));
     return g_gos_renderer->addTexture(ptex);
 }
 
