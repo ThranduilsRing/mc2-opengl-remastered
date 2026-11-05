@@ -101,7 +101,8 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/immutable_pose_bits") {
             });
         jobs::stopPool();
         for (size_t i = 0; i < inputs.size(); ++i) {
-            CAPTURE(workers, i);
+            CAPTURE(workers);
+            CAPTURE(i);
             CHECK(std::memcmp(&actual[i], &legacy[i], sizeof(PoseMatrices)) == 0);
             // All stock node/shape/hit/cockpit positions use these exact slots.
             const auto at = [](const glm::mat4& m) { return glm::vec3(-m[0][3], m[2][3], m[1][3]); };
