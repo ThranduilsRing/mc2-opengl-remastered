@@ -15005,6 +15005,13 @@
       ]
     },
     {
+      "path": "tools/rga_census.py",
+      "basename": "rga_census.py",
+      "stem": "rga_census",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/save_craft_stale.py",
       "basename": "save_craft_stale.py",
       "stem": "save_craft_stale",
