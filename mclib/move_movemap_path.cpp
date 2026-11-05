@@ -146,8 +146,10 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 		if (g_moveReconEnabled) {
 			if (_shPFirst) { _shPMinR = _shPMaxR = bestRow; _shPMinC = _shPMaxC = bestCol; _shPFirst = false; }
 			else {
-				if (bestRow < _shPMinR) _shPMinR = bestRow; else if (bestRow > _shPMaxR) _shPMaxR = bestRow;
-				if (bestCol < _shPMinC) _shPMinC = bestCol; else if (bestCol > _shPMaxC) _shPMaxC = bestCol;
+				_shPMinR = std::min(_shPMinR, bestRow);
+				_shPMaxR = std::max(_shPMaxR, bestRow);
+				_shPMinC = std::min(_shPMinC, bestCol);
+				_shPMaxC = std::max(_shPMaxC, bestCol);
 			}
 			if (bestRow >= _shRLo[0] && bestRow <= _shRHi[0] && bestCol >= _shCLo[0] && bestCol <= _shCHi[0]) _shInRect0++;
 			if (bestRow >= _shRLo[1] && bestRow <= _shRHi[1] && bestCol >= _shCLo[1] && bestCol <= _shCHi[1]) _shInRect1++;
@@ -273,8 +275,10 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 			if (g_moveReconEnabled) {
-				if (curRow < _shFMinR) _shFMinR = curRow; else if (curRow > _shFMaxR) _shFMaxR = curRow;
-				if (curCol < _shFMinC) _shFMinC = curCol; else if (curCol > _shFMaxC) _shFMaxC = curCol;
+				_shFMinR = std::min(_shFMinR, curRow);
+				_shFMaxR = std::max(_shFMaxR, curRow);
+				_shFMinC = std::min(_shFMinC, curCol);
+				_shFMaxC = std::max(_shFMaxC, curCol);
 				unsigned long long cellKey = (static_cast<unsigned long long>(static_cast<unsigned>(curRow)) << 16) ^ static_cast<unsigned>(curCol);
 				_shPathHash = (_shPathHash ^ cellKey) * 1099511628211ull;
 				unsigned long long mh = (map[mapRowStartTable[curRow] + curCol].flags & MOVEFLAG_MOVER_HERE) ? 1ull : 0ull;
@@ -410,7 +414,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 				path->setCell(curCell, cell_r, cell_c);
 				path->stepList[curCell].area = GlobalMoveMap[moveLevel]->calcArea(cell_r, cell_c);
 
-				map[curRow * maxWidth + curCol].setFlag(MOVEFLAG_STEP);
+				nodeAt(curRow, curCol).setFlag(MOVEFLAG_STEP);
 				int cellOffsetIndex = map[mapRowStartTable[curRow] + curCol].parent << 1;
 				curRow += cellShift[cellOffsetIndex++];
 				curCol += cellShift[cellOffsetIndex];
@@ -515,7 +519,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
     int curCol = startC;
 	int curRow = startR;
 
-	MoveMapNodePtr curMapNode = &map[curRow * maxWidth + curCol];
+	MoveMapNodePtr curMapNode = &nodeAt(curRow, curCol);
 	curMapNode->g = 0;
 	if (!ZeroHPrime)
 		curMapNode->hPrime = calcHPrime(curRow, curCol);
@@ -554,7 +558,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;
-		MoveMapNodePtr bestMapNode = &map[bestRow * maxWidth + bestCol];
+		MoveMapNodePtr bestMapNode = &nodeAt(bestRow, bestCol);
 		bestMapNode->clearFlag(MOVEFLAG_OPEN);
 
 		int bestNodeG = bestMapNode->g;
@@ -583,7 +587,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 			int succCol = bestCol + cellShift[cellOffsetIndex++];
 			if (succRow > 0 && succRow < height_loc && succCol > 0 && succCol < width_loc) {
 
-				MoveMapNodePtr succMapNode = &map[succRow * max_width_loc + succCol];
+				MoveMapNodePtr succMapNode = &std::mdspan<MoveMapNode, std::dextents<std::size_t, 2>>(map.data(), static_cast<std::size_t>(maxHeight), static_cast<std::size_t>(max_width_loc))[succRow, succCol];
                 int cost = succMapNode->cost;
 				if (cost < COST_BLOCKED) {
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
@@ -647,7 +651,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 		int numCells = 0;
 		while ((curRow != startR) || (curCol != startC)) {
 			numCells += 1;
-			int cellOffsetIndex = map[curRow * maxWidth + curCol].parent * 2;
+			int cellOffsetIndex = nodeAt(curRow, curCol).parent * 2;
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 		}
@@ -698,7 +702,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 			}
 #endif
 			path->target = target;
-			path->cost = map[bestRow * maxWidth + bestCol].g;
+			path->cost = nodeAt(bestRow, bestCol).g;
 			curRow = bestRow;
 			curCol = bestCol;
 			int curCell = numCells;
@@ -741,7 +745,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 			while ((curRow != startR) || (curCol != startC)) {
 				curCell--;
-				int parent = reverseShift[map[curRow * maxWidth + curCol].parent];
+				int parent = reverseShift[nodeAt(curRow, curCol).parent];
 				if (parent > 7)
 					path->setDirection(curCell, parent);
 				else
@@ -764,8 +768,8 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 				path->setDestination(curCell, stepDest);
 				path->setCell(curCell, cell_r, cell_c);
 
-				map[curRow * maxWidth + curCol].setFlag(MOVEFLAG_STEP);
-				int cellOffsetIndex = map[curRow * maxWidth + curCol].parent << 1;
+				nodeAt(curRow, curCol).setFlag(MOVEFLAG_STEP);
+				int cellOffsetIndex = nodeAt(curRow, curCol).parent << 1;
 				curRow += cellShift[cellOffsetIndex++];
 				curCol += cellShift[cellOffsetIndex];
 			}

@@ -139,10 +139,10 @@ inline bool MoveMap::adjacentCellOpenJUMP (long r, long c, long dir) {
 	if (!inMapBounds(adjRow, adjCol, height, width))
 		return(false);
 
-	if (map[adjRow * maxWidth + adjCol].flags & MOVEFLAG_MOVER_HERE)
+	if (nodeAt(adjRow, adjCol).flags & MOVEFLAG_MOVER_HERE)
 		return(false);
 
-	return(map[adjRow * maxWidth + adjCol].cost < COST_BLOCKED);
+	return(nodeAt(adjRow, adjCol).cost < COST_BLOCKED);
 }
 
 inline int MoveMap::calcHPrime (int r, int c) {
@@ -226,7 +226,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 
 	gosASSERT(cost > 0);
 	gosASSERT(g >= 0);
-	MoveMapNodePtr curMapNode = &map[r * maxWidth + c];
+	MoveMapNodePtr curMapNode = &nodeAt(r, c);
 	if (curMapNode->g > (g + cost)) {
 		curMapNode->cost = cost;
 		curMapNode->g = g + cost;
@@ -250,7 +250,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 				long succRow = r + cellShift[cellOffsetIndex++];
 				long succCol = c + cellShift[cellOffsetIndex++];
 				if (inMapBounds(succRow, succCol, height, width)) {
-					MoveMapNodePtr succMapNode = &map[succRow * maxWidth + succCol];
+					MoveMapNodePtr succMapNode = &nodeAt(succRow, succCol);
 					if (succMapNode->cost < COST_BLOCKED)
 						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < maxHPrime)) {
 							char dirToParent = reverseShift[dir];

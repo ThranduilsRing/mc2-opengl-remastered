@@ -43,6 +43,7 @@
 #include<cstddef>
 #include<cstdint>
 #include<cstring>
+#include<mdspan>
 #include<vector>
 #include"open_heap.h"	// the per-solver open list (mc2::OpenHeap)
 
@@ -621,45 +622,45 @@ class MissionMap {
 		// default off-map; setters no-op off-map.
 		unsigned long getTerrain (long row, long col) {
 			if (!inBounds(row, col)) return(0);
-			return(map[row * width + col].getTerrain());
+			return(cellAt(row, col).getTerrain());
 		}
 
 		void setTerrain (long row, long col, unsigned long terrain) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setTerrain(terrain);
+			cellAt(row, col).setTerrain(terrain);
 			rev.statics++;
 		}
 
 		unsigned long getOverlay (long row, long col) {
 			if (!inBounds(row, col)) return(0);
-			return(map[row * width + col].getOverlay());
+			return(cellAt(row, col).getOverlay());
 		}
 
 		void setOverlay (long row, long col, unsigned long overlay) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setOverlay(overlay);
+			cellAt(row, col).setOverlay(overlay);
 			rev.statics++;
 		}
 
 		bool getMover (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getMover());
+			return(cellAt(row, col).getMover());
 		}
 
 		void setMover (long row, long col, bool moverHere) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setMover(moverHere);
+			cellAt(row, col).setMover(moverHere);
 			rev.mover++;
 		}
 
 		unsigned long getGate (long row, long col) {
 			if (!inBounds(row, col)) return(0);
-			return(map[row * width + col].getGate());
+			return(cellAt(row, col).getGate());
 		}
 
 		void setGate (long row, long col, unsigned long gate) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setGate(gate);
+			cellAt(row, col).setGate(gate);
 			rev.gate++;
 		}
 
@@ -667,12 +668,12 @@ class MissionMap {
 			// Treat off-map as impassable instead of indexing map[] OOB.
 			if (!inBounds(row, col))
 				return(false);
-			return(map[row * width + col].getPassable());
+			return(cellAt(row, col).getPassable());
 		}
 
 		void setPassable (long row, long col, bool passable) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setPassable(passable);
+			cellAt(row, col).setPassable(passable);
 			rev.statics++;
 		}
 
@@ -684,7 +685,7 @@ class MissionMap {
 				return(false);
 			}
 			if (g_moveReconEnabled) g_moveRecon_getPathlock_calls++;
-			return(map[row * width + col].getPathlock(level));
+			return(cellAt(row, col).getPathlock(level));
 		}
 
 		void setPathlock (long level, long row, long col, bool pathlock) {
@@ -696,18 +697,18 @@ class MissionMap {
 				return;
 			}
 			if (g_moveReconEnabled) g_moveRecon_setPathlock_calls++;
-			map[row * width + col].setPathlock(level, pathlock);
+			cellAt(row, col).setPathlock(level, pathlock);
 			rev.pathlock++;
 		}
 
 		unsigned long getMine (long row, long col) {
 			if (!inBounds(row, col)) return(0);
-			return(map[row * width + col].getMine());
+			return(cellAt(row, col).getMine());
 		}
 
 		void setMine (long row, long col, unsigned long mine) {
 			if (!inBounds(row, col)) return;
-			MapCellPtr cell = &map[row * width + col];
+			MapCellPtr cell = &cellAt(row, col);
 			const unsigned long oldMine = cell->getMine();
 			cell->setMine(mine);
 			rev.mine++;
@@ -735,7 +736,7 @@ class MissionMap {
 			if (tileMineCount.empty()) return true;
 			if (tileR < 0 || tileC < 0) return false;
 			if (tileR >= (height / MAPCELL_DIM) || tileC >= tileMineCountWidth) return false;
-			return tileMineCount[tileR * tileMineCountWidth + tileC] > 0;
+			return std::mdspan<const unsigned char, std::dextents<std::size_t, 2>>(tileMineCount.data(), static_cast<std::size_t>(height / MAPCELL_DIM), static_cast<std::size_t>(tileMineCountWidth))[tileR, tileC] > 0;
 		}
 
 		// Rebuilds tileMineCount from current cell contents. Called after a packet
@@ -744,30 +745,30 @@ class MissionMap {
 
 		bool getPreserved (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getPreserved());
+			return(cellAt(row, col).getPreserved());
 		}
 
 		void setPreserved (long row, long col, bool preserved) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setPreserved(preserved);
+			cellAt(row, col).setPreserved(preserved);
 			rev.preserved++;
 		}
 
 		void setLocalHeight (long row, long col, DWORD localElevation) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setLocalHeight(localElevation);
+			cellAt(row, col).setLocalHeight(localElevation);
 			rev.statics++;
 		}
 
 		DWORD getLocalHeight (long row, long col) {
 			if (!inBounds(row, col)) return(0);
-			return(map[row * width + col].getLocalHeight());
+			return(cellAt(row, col).getLocalHeight());
 		}
 
 		void setCellDebug (long row, long col, DWORD value, DWORD level) {
 			if( row >= 0 && row < height && col >= 0 && col < width )
 			{
-				DWORD curValue = map[row * width + col].getDebug();
+				DWORD curValue = cellAt(row, col).getDebug();
 				if (curValue && (curValue != value)) {
 					for (long i = 0; i < numDebugCells; i++)
 						if (debugCells[i][0] == row)
@@ -788,7 +789,7 @@ class MissionMap {
 								debugCells[i][2] = debugCells[numDebugCells][2];
 								break;
 							}
-					map[row * width + col].setDebug(0);
+					cellAt(row, col).setDebug(0);
 					}
 				else {
 					if (numDebugCells < MAX_DEBUG_CELLS) {
@@ -796,7 +797,7 @@ class MissionMap {
 						debugCells[numDebugCells][1] = col;
 						debugCells[numDebugCells][2] = level;
 						numDebugCells++;
-						map[row * width + col].setDebug(value);
+						cellAt(row, col).setDebug(value);
 					}
 				}
 			}
@@ -825,122 +826,122 @@ class MissionMap {
 
 		DWORD getCellDebug (long row, long col) {
 			if (!inBounds(row, col)) return(0);
-			return(map[row * width + col].getDebug());
+			return(cellAt(row, col).getDebug());
 		}
 
 		bool getWall (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getWall());
+			return(cellAt(row, col).getWall());
 		}
 
 		void setWall (long row, long col, bool wallHere) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setWall(wallHere);
+			cellAt(row, col).setWall(wallHere);
 			rev.statics++;
 		}
 
 		bool getRoad (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getRoad());
+			return(cellAt(row, col).getRoad());
 		}
 
 		void setRoad (long row, long col, bool roadHere) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setRoad(roadHere);
+			cellAt(row, col).setRoad(roadHere);
 			rev.statics++;
 		}
 
 		bool getShallowWater (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getShallowWater());
+			return(cellAt(row, col).getShallowWater());
 		}
 
 		void setShallowWater (long row, long col, bool shallowWaterHere) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setShallowWater(shallowWaterHere);
+			cellAt(row, col).setShallowWater(shallowWaterHere);
 			rev.statics++;
 		}
 
 		bool getDeepWater (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getDeepWater());
+			return(cellAt(row, col).getDeepWater());
 		}
 
 		void setDeepWater (long row, long col, bool deepWaterHere) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setDeepWater(deepWaterHere);
+			cellAt(row, col).setDeepWater(deepWaterHere);
 			rev.statics++;
 		}
 
 		bool getBuildGate (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getBuildGate());
+			return(cellAt(row, col).getBuildGate());
 		}
 
 		void setBuildGate (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setBuildGate(set);
+			cellAt(row, col).setBuildGate(set);
 			rev.statics++;
 		}
 
 		bool getBuildWall (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getBuildWall());
+			return(cellAt(row, col).getBuildWall());
 		}
 
 		void setBuildWall (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setBuildWall(set);
+			cellAt(row, col).setBuildWall(set);
 			rev.statics++;
 		}
 
 		bool getBuildLandBridge (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getBuildLandBridge());
+			return(cellAt(row, col).getBuildLandBridge());
 		}
 
 		void setBuildLandBridge (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setBuildLandBridge(set);
+			cellAt(row, col).setBuildLandBridge(set);
 			rev.statics++;
 		}
 
 		bool getForest (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getForest());
+			return(cellAt(row, col).getForest());
 		}
 
 		void setForest (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setForest(set);
+			cellAt(row, col).setForest(set);
 			rev.statics++;
 		}
 
 		bool getOffMap (long row, long col) {
 			// Off the grid IS off-map -> true is the correct answer here.
 			if (!inBounds(row, col)) return(true);
-			return(map[row * width + col].getOffMap());
+			return(cellAt(row, col).getOffMap());
 		}
 
 		void setOffMap (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setOffMap(set);
+			cellAt(row, col).setOffMap(set);
 			rev.statics++;
 		}
 
 		bool getBuildSpecial (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getBuildSpecial());
+			return(cellAt(row, col).getBuildSpecial());
 		}
 
 		bool getBuildNotSet (long row, long col) {
 			if (!inBounds(row, col)) return(false);
-			return(map[row * width + col].getBuildNotSet());
+			return(cellAt(row, col).getBuildNotSet());
 		}
 
 		void setBuildNotSet (long row, long col, bool set) {
 			if (!inBounds(row, col)) return;
-			map[row * width + col].setBuildNotSet(set);
+			cellAt(row, col).setBuildNotSet(set);
 			rev.statics++;
 		}
 
@@ -956,17 +957,22 @@ class MissionMap {
 			return((row > -1) && (row < height) && (col > -1) && (col < width));
 		}
 
+		// Unchecked 2D view of the cell grid (row-major, same index as row * width + col).
+		MapCell& cellAt (long row, long col) {
+			return std::mdspan<MapCell, std::dextents<std::size_t, 2>>(map.data(), static_cast<std::size_t>(height), static_cast<std::size_t>(width))[row, col];
+		}
+
 		MapCellPtr getCell (long row, long col) {
 			gosASSERT(inBounds(row, col));
-			return(&map[row * width + col]);
+			return(&cellAt(row, col));
 		}
 
 		void preserveCell (long row, long col) {
 			if (!inBounds(row, col)) return;
-			preservedCells[numPreservedCells].data = map[row * width + col].data;
+			preservedCells[numPreservedCells].data = cellAt(row, col).data;
 			preservedCells[numPreservedCells].row = row;
 			preservedCells[numPreservedCells].col = col;
-			map[row * width + col].setPreserved(1);
+			cellAt(row, col).setPreserved(1);
 			rev.preserved++;
 			numPreservedCells++;
 		}
@@ -1585,7 +1591,7 @@ class GlobalMap {
 			// Out-of-range = no area (mirrors the areaId<0 sentinel).
 			if ((row < 0) || (row >= height) || (col < 0) || (col >= width))
 				return(-1);
-			long areaId = areaMap[row * width + col];
+			long areaId = std::mdspan<short, std::dextents<std::size_t, 2>>(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width))[row, col];
 			if (areaId < 0)
 				return(-1);
 			return(areaId);
@@ -1863,12 +1869,17 @@ class MoveMap {
 
 		void setTarget (glm::vec3 targetPos);
 
+		// Unchecked 2D view of the solve grid (row-major, same index as row * maxWidth + col).
+		MoveMapNode& nodeAt (long row, long col) {
+			return std::mdspan<MoveMapNode, std::dextents<std::size_t, 2>>(map.data(), static_cast<std::size_t>(maxHeight), static_cast<std::size_t>(maxWidth))[row, col];
+		}
+
 		char getCost (long row, long col) {
 			// Off-map: return a high (avoid) cost rather than indexing map[] OOB.
 			// Real paths are inBounds-gated elsewhere, so this only guards stray
 			// off-grid queries on oversized maps (MOVE grid < terrain grid).
 			if (!inBounds(row, col)) return(static_cast<char>(127));
-			return(map[row * width + col].cost);
+			return std::mdspan<MoveMapNode, std::dextents<std::size_t, 2>>(map.data(), static_cast<std::size_t>(height), static_cast<std::size_t>(width))[row, col].cost;
 		}
 
 		void setCost (long row, long col, long newCost);

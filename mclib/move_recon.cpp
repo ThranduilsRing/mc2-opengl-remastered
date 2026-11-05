@@ -206,8 +206,8 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
         g_chunkShadow_maxOverflow = std::max(g_chunkShadow_maxOverflow, static_cast<uint64_t>(overflow));
     }
     if (nodes > g_chunkShadow_worstNodes) {
-        g_chunkShadow_worstNodes = nodes;
         g_chunkShadow_worstOverflow = (overflow >= 0 ? static_cast<uint64_t>(overflow) : 0);
+        g_chunkShadow_worstNodes = nodes;
     }
 
     // RECT_CORRIDOR_SHADOW projection: constrained nodes <= popped-in-corridor.

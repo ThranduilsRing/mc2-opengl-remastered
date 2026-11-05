@@ -7,7 +7,7 @@
 void MoveMap::setCost (long row, long col, long newCost) {
 	// Oversized terrain can extend beyond the movement grid.
 	if (!inBounds(row, col)) return;
-	map[row * maxWidth + col].cost = newCost;
+	nodeAt(row, col).cost = newCost;
 }
 
 void MoveMap::adjustCost (long row, long col, long costAdj) {
@@ -211,7 +211,7 @@ inline long MoveMap::markGoals (glm::vec3 finalGoal) {
 		if (doorSide == 0) {
 			if (finalGoalR == (cellR + 1))
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
-						map[cellR * width + finalGoalC].setFlag(MOVEFLAG_GOAL);
+						std::mdspan<MoveMapNode, std::dextents<std::size_t, 2>>(map.data(), static_cast<std::size_t>(height), static_cast<std::size_t>(width))[cellR, finalGoalC].setFlag(MOVEFLAG_GOAL);
 						numGoalCells++;
 						nextToGoal = true;
 					}
@@ -219,7 +219,7 @@ inline long MoveMap::markGoals (glm::vec3 finalGoal) {
 		else {
 			if (finalGoalR == (cellR - 1))
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
-						map[cellR * maxWidth + finalGoalC].setFlag(MOVEFLAG_GOAL);
+						nodeAt(cellR, finalGoalC).setFlag(MOVEFLAG_GOAL);
 						numGoalCells++;
 						nextToGoal = true;
 					}
@@ -258,7 +258,7 @@ inline long MoveMap::markGoals (glm::vec3 finalGoal) {
 		bool nextToGoal = false;
 		if (finalGoalC == (cellC + 1 - doorSide * 2))
 			if ((finalGoalR >= cellR) && (finalGoalR < (cellR + doorLength))) {
-				map[finalGoalR * maxWidth + cellC].setFlag(MOVEFLAG_GOAL);
+				nodeAt(finalGoalR, cellC).setFlag(MOVEFLAG_GOAL);
 				numGoalCells++;
 				nextToGoal = true;
 			}
@@ -481,14 +481,14 @@ long MoveMap::setUp (long mapULr,
 				// set as an overlay, we'll just treat them as such for now.
 				
 				if (mapCell->getPathlock(moveLevel == 2))
-					adjustMoveMapCellCost(&map[cellRow * maxWidth + cellCol], pathLockCost);
+					adjustMoveMapCellCost(&nodeAt(cellRow, cellCol), pathLockCost);
 			}
 		}
 
 	if (FindingEscapePath)
 		markEscapeGoals(goalPos);
 	else
-		map[goalR * maxWidth + goalC].setFlag(MOVEFLAG_GOAL);
+		nodeAt(goalR, goalC).setFlag(MOVEFLAG_GOAL);
 
 	if (params & MOVEPARAM_STATIONARY_MOVERS)
 		if (placeStationaryMoversCallback)
@@ -682,7 +682,7 @@ long MoveMap::setUp (long level,
 				setCost(cellRow, cellCol, cost);
 
 				if (mapCell->getPathlock(moveLevel == 2))
-					adjustMoveMapCellCost(&map[cellRow * maxWidth + cellCol], pathLockCost);
+					adjustMoveMapCellCost(&nodeAt(cellRow, cellCol), pathLockCost);
 			}
 		}
 

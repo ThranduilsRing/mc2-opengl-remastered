@@ -619,17 +619,18 @@ void GlobalMap::print (char* fileName) {
 	File debugFile;
 	debugFile.create(fileName);
 
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	char outString[500];
 	for (long row = 0; row < height; row++) {
 		outString[0] = '\0';
 		for (long col = 0; col < width; col++) {
-			if (areaMap[row * width + col] == -2)
+			if (areaView[row, col] == -2)
 				strcat(outString, ">< ");
-			else if (areaMap[row * width + col] == -1)
+			else if (areaView[row, col] == -1)
 				strcat(outString, "** ");
 			else {
 				char chStr[8];
-				mc2::fmt::to_buf(chStr, "{:02x} ", mc2::fmt::as_u32(areaMap[row * width + col]));
+				mc2::fmt::to_buf(chStr, "{:02x} ", mc2::fmt::as_u32(areaView[row, col]));
 				strcat(outString, chStr);
 			}
 		}
