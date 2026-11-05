@@ -89,7 +89,13 @@ TEST_CASE("save fields: ANIM independent member census") {
         velocityMagnitude, gvAnimationState, gvFrameRate, isReversed, isLooping, setFirstFrame,
         canTransition, bdAnimationState, bdFrameRate, withdrawSeconds, smokeLevel, wakeRequested,
         activityEffect, activityLoop, ejectionSerial, destructionSerial, imported);
-    CHECK(save_probe::memberBytes<T>(ANIM_MEMBERS) + 14 == sizeof(T));
+    // Native padding differs by ABI: the long members are 4 bytes (LLP64) on Windows, 8 (LP64) on Linux.
+#ifdef _WIN32
+    constexpr size_t animPadding = 14;
+#else
+    constexpr size_t animPadding = 26;
+#endif
+    CHECK(save_probe::memberBytes<T>(ANIM_MEMBERS) + animPadding == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, ANIM_MEMBERS));
 }
 
