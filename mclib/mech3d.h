@@ -865,7 +865,7 @@ class Mech3DAppearance: public ObjectAppearance
 		{
 			mc2_vis::MoverVis v;
 			v.sensorLevel   = sensorLevel;
-			v.meshAlpha     = mechShape ? (unsigned)mechShape->GetAlphaValue() : 255u;
+			v.meshAlpha     = mechShape ? static_cast<unsigned>(mechShape->GetAlphaValue()) : 255u;
 			v.status        = status;
 			v.relation      = homeTeamRelationship;
 			v.legacyVisible = visible;

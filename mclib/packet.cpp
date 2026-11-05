@@ -171,7 +171,7 @@ long PacketFile::afterOpen (void)
 
 		// The count comes from the file and sizes the seek table: it must describe a table that fits in the file (a mod packet file with a bad
 		// header used to overrun the table or fail an assert).
-		if (numPackets < 0 || 8LL + 4LL * numPackets > (long long)getLength())
+		if (numPackets < 0 || 8LL + 4LL * numPackets > static_cast<long long>(getLength()))
 		{
 			// One line per process: a mod with many bad packet files must not flood the log, and a malformed file never stops the game.
 			MC2_LOG_ONCE(Io, Error, "[PACKET_HEADER_BAD] file={} packets={} bytes={} (the header claims more packets than the file holds; rejected)",

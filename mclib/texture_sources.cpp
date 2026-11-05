@@ -41,7 +41,7 @@ std::string TextureSources::nameKey(const char* name, DWORD variant) {
     std::string key=name ? name : "";
     for (char& c : key) {
         if (c=='\\') c='/';
-        else if (c>='A' && c<='Z') c=char(c-'A'+'a');
+        else if (c>='A' && c<='Z') c=static_cast<char>(c-'A'+'a');
     }
     return key+'|'+std::to_string(variant);
 }

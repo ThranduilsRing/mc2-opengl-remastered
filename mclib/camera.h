@@ -73,7 +73,7 @@ namespace mc2_cpu_proj_cost {
 inline signed short int float2short(float _in)
 {
 	#if 1
-	return short(floor(_in));
+	return static_cast<short>(floor(_in));
 	#else
 	_in-=0.5f;
 	_in+=12582912.0f;

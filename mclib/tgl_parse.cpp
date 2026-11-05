@@ -576,9 +576,9 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		}
 		else
 		{
-			listOfTypeVertices[i].normal.x /= float(vertexNormalCount[i]);
-			listOfTypeVertices[i].normal.y /= float(vertexNormalCount[i]);
-			listOfTypeVertices[i].normal.z /= float(vertexNormalCount[i]);
+			listOfTypeVertices[i].normal.x /= static_cast<float>(vertexNormalCount[i]);
+			listOfTypeVertices[i].normal.y /= static_cast<float>(vertexNormalCount[i]);
+			listOfTypeVertices[i].normal.z /= static_cast<float>(vertexNormalCount[i]);
 
 			if (glm::length(listOfTypeVertices[i].normal) > Stuff::SMALL)
 				listOfTypeVertices[i].normal = glm::normalize(listOfTypeVertices[i].normal);

@@ -400,7 +400,7 @@ class GVAppearance : public ObjectAppearance
 		{
 			mc2_vis::MoverVis v;
 			v.sensorLevel   = sensorLevel;
-			v.meshAlpha     = gvShape ? (unsigned)gvShape->GetAlphaValue() : 255u;
+			v.meshAlpha     = gvShape ? static_cast<unsigned>(gvShape->GetAlphaValue()) : 255u;
 			v.status        = status;
 			v.relation      = homeTeamRelationship;
 			v.legacyVisible = visible;

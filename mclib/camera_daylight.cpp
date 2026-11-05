@@ -495,7 +495,7 @@ void Camera::updateLetterboxAndFade (void)
 			inFadeMode = false;
 		}
 		
-		fadeAlpha = (fadeStart >> 24) + (fadePercent * (float(fadeColor >> 24) - float(fadeStart >> 24)));
+		fadeAlpha = (fadeStart >> 24) + (fadePercent * (static_cast<float>(fadeColor >> 24) - static_cast<float>(fadeStart >> 24)));
 	}
 }
 

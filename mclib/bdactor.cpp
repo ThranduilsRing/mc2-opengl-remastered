@@ -878,7 +878,7 @@ bool BldgAppearance::playDestruction (void)
 			mc2::math::buildRotation(shapeOrigin, rot);
 			mc2::math::buildTranslation(shapeOrigin, tPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 			destructFX->Start(&info);
 			
 			return true;

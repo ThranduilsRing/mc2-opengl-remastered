@@ -1097,7 +1097,7 @@ void TerrainTextures::combineTxm (MemoryPtr dest, DWORD binNumber, long type, lo
 	{
 		if (maskRAM[i])
 		{
-			float combPercent = float(maskRAM[i]) / 255.0f;
+			float combPercent = static_cast<float>(maskRAM[i]) / 255.0f;
 			float destPercent = 1.0f - combPercent;
 
 			if (combPercent == 1.0f)
@@ -1121,16 +1121,16 @@ void TerrainTextures::combineTxm (MemoryPtr dest, DWORD binNumber, long type, lo
 			}
 			else
 			{
-				float combValue = combPercent * float(*combineRAM);
-				float destValue = destPercent * float(*dest);
+				float combValue = combPercent * static_cast<float>(*combineRAM);
+				float destValue = destPercent * static_cast<float>(*dest);
 				combValue += destValue;
 				unsigned char value = static_cast<unsigned char>(combValue);
 				*dest = value;
 				dest++;
 				combineRAM++;
 
-				combValue = combPercent * float(*combineRAM);
-				destValue = destPercent * float(*dest);
+				combValue = combPercent * static_cast<float>(*combineRAM);
+				destValue = destPercent * static_cast<float>(*dest);
 				combValue += destValue;
 				value = static_cast<unsigned char>(combValue);
 				*dest = value;
@@ -1138,8 +1138,8 @@ void TerrainTextures::combineTxm (MemoryPtr dest, DWORD binNumber, long type, lo
 				combineRAM++;
 
 
-				combValue = combPercent * float(*combineRAM);
-				destValue = destPercent * float(*dest);
+				combValue = combPercent * static_cast<float>(*combineRAM);
+				destValue = destPercent * static_cast<float>(*dest);
 				combValue += destValue;
 				value = static_cast<unsigned char>(combValue);
 				*dest = value;
@@ -1266,7 +1266,7 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 				const unsigned char* src = combineRAM + ((sy * ovSize + sx) << 2);
 				unsigned char* dst = dest + ((y * mipSize + x) << 2);
 
-				const float combPercent = float(src[3]) / 255.0f;
+				const float combPercent = static_cast<float>(src[3]) / 255.0f;
 				if (combPercent == 0.0f)
 					continue;
 				if (combPercent == 1.0f)
@@ -1278,9 +1278,9 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 				else
 				{
 					const float destPercent = 1.0f - combPercent;
-					dst[0] = static_cast<unsigned char>((combPercent * float(src[0]) + destPercent * float(dst[0])));
-					dst[1] = static_cast<unsigned char>((combPercent * float(src[1]) + destPercent * float(dst[1])));
-					dst[2] = static_cast<unsigned char>((combPercent * float(src[2]) + destPercent * float(dst[2])));
+					dst[0] = static_cast<unsigned char>((combPercent * static_cast<float>(src[0]) + destPercent * static_cast<float>(dst[0])));
+					dst[1] = static_cast<unsigned char>((combPercent * static_cast<float>(src[1]) + destPercent * static_cast<float>(dst[1])));
+					dst[2] = static_cast<unsigned char>((combPercent * static_cast<float>(src[2]) + destPercent * static_cast<float>(dst[2])));
 				}
 				//Alpha: DO NOT COMBINE (match the legacy loop) — keep the max.
 				if (dst[3] < src[3])
@@ -1292,7 +1292,7 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 
 	for (int i=0;i<(mipSize * mipSize);i++)
 	{
-		float combPercent = float(*(combineRAM+3)) / 255.0f;
+		float combPercent = static_cast<float>(*(combineRAM+3)) / 255.0f;
 		float destPercent = 1.0f - combPercent;
 
 		if (combPercent != 0.0)
@@ -1318,16 +1318,16 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 			}
 			else
 			{
-				float combValue = combPercent * float(*combineRAM);
-				float destValue = destPercent * float(*dest);
+				float combValue = combPercent * static_cast<float>(*combineRAM);
+				float destValue = destPercent * static_cast<float>(*dest);
 				combValue += destValue;
 				unsigned char value = static_cast<unsigned char>(combValue);
 				*dest = value;
 				dest++;
 				combineRAM++;
 	
-				combValue = combPercent * float(*combineRAM);
-				destValue = destPercent * float(*dest);
+				combValue = combPercent * static_cast<float>(*combineRAM);
+				destValue = destPercent * static_cast<float>(*dest);
 				combValue += destValue;
 				value = static_cast<unsigned char>(combValue);
 				*dest = value;
@@ -1335,8 +1335,8 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 				combineRAM++;
 	
 	
-				combValue = combPercent * float(*combineRAM);
-				destValue = destPercent * float(*dest);
+				combValue = combPercent * static_cast<float>(*combineRAM);
+				destValue = destPercent * static_cast<float>(*dest);
 				combValue += destValue;
 				value = static_cast<unsigned char>(combValue);
 				*dest = value;

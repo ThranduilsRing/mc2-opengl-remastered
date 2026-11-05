@@ -193,7 +193,7 @@
    "LG06": 514,
    "LG07": 0,
    "LG08": 43,
-   "LG09": 134,
+   "LG09": 117,
    "LG10": 276,
    "LG11": 47,
    "LG12a": 88,
@@ -3120,13 +3120,11 @@
   },
   "mclib/camera.h": {
    "LG05": 2,
-   "LG09": 1,
    "LG10": 2,
    "LG13": 1,
    "LG14": 1
   },
   "mclib/camera_daylight.cpp": {
-   "LG09": 1,
    "LG10": 18
   },
   "mclib/camera_frustum_math.h": {
@@ -4280,7 +4278,6 @@
   "mclib/terrain_update.cpp": {},
   "mclib/terrtxm.cpp": {
    "LG06": 4,
-   "LG09": 5,
    "LG10": 1,
    "LG11": 1,
    "LG12a": 2,
@@ -4325,7 +4322,7 @@
   "mclib/texture_assets.cpp": {
    "LG05": 1,
    "LG06": 5,
-   "LG09": 8
+   "LG09": 2
   },
   "mclib/texture_assets.h": {
    "LG06": 4
@@ -4334,7 +4331,6 @@
   "mclib/texture_sources.cpp": {
    "LG06": 4,
    "LG08": 2,
-   "LG09": 1,
    "LG11": 1
   },
   "mclib/texture_sources_internal.h": {
@@ -4375,8 +4371,7 @@
    "LG06": 2
   },
   "mclib/tgl_parse.cpp": {
-   "LG06": 2,
-   "LG09": 3
+   "LG06": 2
   },
   "mclib/tgl_registry.h": {
    "LG09": 1
@@ -4489,7 +4484,7 @@
    "LG20": 3
   }
  },
- "head": "38cf7717a",
+ "head": "1ef4bed24",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -25,7 +25,7 @@
 
 namespace mc2::textures {
 namespace {
-constexpr size_t kMaxSourceBytes = size_t(512) * 1024 * 1024;
+constexpr size_t kMaxSourceBytes = static_cast<size_t>(512) * 1024 * 1024;
 constexpr DWORD kInvalidAsset = 0xffffffffu;
 using Bytes = std::vector<uint8_t>;
 std::string sidecarPath(std::string_view name) {
@@ -163,14 +163,14 @@ std::shared_ptr<const RenderCore::KtxImage> decodeUi(UiSource source) {
         if (!decoded) return {};
         image->width = decoded->width; image->height = decoded->height;
         if (decoded->layout == mc2tex::PixelLayout::RGB8) {
-            image->pixels.resize(size_t(image->width) * image->height * 4);
+            image->pixels.resize(static_cast<size_t>(image->width) * image->height * 4);
             for (size_t i=0, j=0; i+2 < decoded->pixels.size() && j+3 < image->pixels.size(); i+=3,j+=4) {
                 std::copy_n(decoded->pixels.data()+i,3,image->pixels.data()+j); image->pixels[j+3]=255;
             }
         } else image->pixels = std::move(decoded->pixels);
     } else {
         image->width = source.width; image->height = source.height;
-        if (source.bytes->size() != size_t(image->width) * image->height * 4) return {};
+        if (source.bytes->size() != static_cast<size_t>(image->width) * image->height * 4) return {};
         image->pixels = *source.bytes;
         for (size_t i=0; i < image->pixels.size(); i+=4) {
             std::swap(image->pixels[i],image->pixels[i+2]);
@@ -290,7 +290,7 @@ DWORD sourceId(DWORD asset) {
             TEXTUREPTR lock{};
             gos_LockTexture(source->cpuTexture,0,0,&lock);
             if (lock.pTexture) {
-                const size_t bytes=size_t(lock.Width)*lock.Height*sizeof(DWORD);
+                const size_t bytes=static_cast<size_t>(lock.Width)*lock.Height*sizeof(DWORD);
                 memcpy(lock.pTexture,source->bytes->data(),(std::min)(bytes,source->bytes->size()));
                 gos_UnLockTexture(source->cpuTexture);
             }
@@ -302,10 +302,10 @@ DWORD sourceId(DWORD asset) {
 namespace {
 DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
     if (!RenderCore::activeTextureService || !data || !width ||
-        width>RenderCore::kKtxMaxEdge || bytesPerPixel!=4 || size_t(width)*width*4>kMaxSourceBytes) return kInvalidAsset;
+        width>RenderCore::kKtxMaxEdge || bytesPerPixel!=4 || static_cast<size_t>(width)*width*4>kMaxSourceBytes) return kInvalidAsset;
     auto source=std::make_shared<TextureSource>();
     const auto* begin=reinterpret_cast<const uint8_t*>(data);
-    source->bytes=std::make_shared<const Bytes>(begin,begin+size_t(width)*width*4);
+    source->bytes=std::make_shared<const Bytes>(begin,begin+static_cast<size_t>(width)*width*4);
     source->width=source->height=source->logicalWidth=source->logicalHeight=width;
     source->format=format; source->hints=hints;
     auto& store=sourceStore();

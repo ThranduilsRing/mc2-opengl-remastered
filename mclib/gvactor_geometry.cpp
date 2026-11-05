@@ -949,7 +949,7 @@ bool GVAppearance::playDestruction (void)
 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 			mc2::math::buildTranslation(shapeOrigin, tPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 			destructFX->Start(&info);
 			
 			return true;
