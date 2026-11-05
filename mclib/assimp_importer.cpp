@@ -18,6 +18,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 
@@ -247,6 +248,21 @@ inline glm::vec3 mechToMC2Vec(const aiVector3D& v) {
 inline bool skelMeshDropped(const char* n) {
     // GLB-TEXNAME-DERIVE-EXTRACT-1: shared with the game-free harness.
     return mech_texname::isDroppedMeshName(n);
+}
+
+//-----------------------------------------------------------------------------
+// MULTI-BONE-1: the importer binds every mesh part rigidly to ONE bone (mBones[0]) and
+// stores the bone index in a byte. A skinned mesh with several influences loses its
+// weights; more than 256 bones wraps. Neither is supported: say so once (diag tag CONFIG,
+// default-on) instead of silently rendering a wrong pose. Stock BT2018 GLBs never trigger it.
+static void noteUnsupportedSkin(const char* what, const char* meshName) {
+	static bool once = false;
+	if (once) return;
+	once = true;
+	if (mc2_diag::tagRequested("CONFIG"))
+		mc2::fmt::print_err("[CONFIG] glTF import: {} (mesh '{}'): imported rigidly on one bone, per-vertex skin weights dropped; further occurrences not logged
+",
+			what, mc2::fmt::safe(meshName));
 }
 
 //-----------------------------------------------------------------------------
@@ -487,6 +503,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		++bake->importedParts;
 		if (mesh->mNumBones >= 1) {
 			if (mesh->mNumBones == 1) ++bake->partsSingleBone;
+			else noteUnsupportedSkin("multi-bone mesh", mesh->mName.C_Str());
 			const aiBone* bone = mesh->mBones[0];
 			if (auto it = bake->nameIdx.find(bone->mName.C_Str()); it != bake->nameIdx.end()) {
 				const auto& [name, index] = *it;
@@ -705,6 +722,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 		const aiMesh* me = scene->mMeshes[m];
 		++bake.importedParts;
 		if (me->mNumBones == 1) ++bake.partsSingleBone;
+		else noteUnsupportedSkin("multi-bone mesh", me->mName.C_Str());
 		const aiBone* bone = me->mBones[0];
 		const float* rm = nullptr;
 		int boneIndex = -1;
@@ -1202,6 +1220,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
             MW.Inverse();
             e.invMWrest[i] = MW;
         }
+        if (bake.rest.size() > 256) noteUnsupportedSkin("more than 256 bones (bone index wraps)", path);
         const int nv = e.shape->GetNumTypeVertices();
         e.perVertexBone.assign(nv > 0 ? nv : 0, 0);
         for (const ImportPartRec& pr : parts) {
