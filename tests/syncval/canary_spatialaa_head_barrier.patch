@@ -1,0 +1,13 @@
+diff --git a/GameOS/gameos/vulkan_spatial_aa.cpp b/GameOS/gameos/vulkan_spatial_aa.cpp
+index 1d017cfa9..cac2e8b66 100644
+--- a/GameOS/gameos/vulkan_spatial_aa.cpp
++++ b/GameOS/gameos/vulkan_spatial_aa.cpp
+@@ -390,7 +390,7 @@ void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
+     // Explicit stage set (was ALL_COMMANDS->ALL_COMMANDS): the scene's color writes plus the previous frame's AA reads/writes of the scratch images.
+     constexpr VkPipelineStageFlags kAaStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+-    memoryBarrier(cb, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, kAaStages, kAaStages);
++    (void)kAaStages;   // CANARY: head barrier removed on purpose; sync validation must report a hazard
+     if (s.mode == 1) { s.recordGraph(cb, output); return; }
+     imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
