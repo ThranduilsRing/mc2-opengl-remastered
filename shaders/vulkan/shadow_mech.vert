@@ -28,8 +28,9 @@ layout(set = 0, binding = 2, std430) readonly buffer BoneBuffer { GpuMechBone bo
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
-    mat4 boneT = mat4(0.0);
-    for (int i = 0; i < 4; ++i) {
+    const bool preskinned = (inst.renderFlags & MECH_RENDER_FLAG_PRESKINNED) != 0u;   // posed by mech_skin.comp: identity, no bone fetch
+    mat4 boneT = mat4(preskinned ? 1.0 : 0.0);
+    for (int i = 0; i < 4 && !preskinned; ++i) {
         float w = a_boneWeights[i];
         if (w > 0.0) {
             GpuMechBone b = uBones.bones[a_boneIndices[i] + inst.baseBoneOffset];

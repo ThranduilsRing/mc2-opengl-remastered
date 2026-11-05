@@ -95,6 +95,7 @@ void resetFrameSnapshots() {
 std::vector<uint8_t>         s_vkVboNativeCopy;
 std::vector<uint32_t>        s_vkIboNativeCopy;
 std::vector<int32_t>         s_vkPacketBaseVertex;
+std::vector<uint32_t>        s_vkPacketVertexCount;
 // Geometry generation: bumped on every rebuild of the VBO copy AND of s_stagingIbo, so a consumer that keeps its own copy of both (the VK shadow island) re-uploads exactly when either changed.
 uint32_t                     s_vkMechGeomGen = 0;
 // The geometry generation the run / instance / bone snapshots were built against: their firstIndex ranges index THAT index set.
@@ -349,6 +350,7 @@ void GpuMechBatcher::onMapLoad() {
     s_vkVboNativeCopy.clear();   // VK-MECH-FEED-NATIVE-1: geometry rebuilt per map
     s_vkIboNativeCopy.clear();
     s_vkPacketBaseVertex.clear();
+    s_vkPacketVertexCount.clear();
     s_nodeVboRanges.clear();   // MECH-NORMALS-FIX-1: per-node ranges are per-mission
     s_geometryFinalized = false;
     s_pendingSubmits.clear();

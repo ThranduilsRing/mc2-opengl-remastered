@@ -148,6 +148,7 @@ extern std::vector<uint8_t>         s_vkVboNativeCopy;
 // staging soup by uploadMechGeometryVbo(); s_vkPacketBaseVertex[i] is s_packets[i]'s base vertex in s_vkVboNativeCopy.
 extern std::vector<uint32_t>        s_vkIboNativeCopy;
 extern std::vector<int32_t>         s_vkPacketBaseVertex;
+extern std::vector<uint32_t>        s_vkPacketVertexCount;   // vertices of the packet node range (0 when the dedupe was skipped)
 extern uint32_t                     s_vkMechGeomGen;
 extern uint32_t                     s_vkMechSnapshotGeomGen;
 

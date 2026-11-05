@@ -49,6 +49,7 @@ struct Mc2MechDrawRun {
     uint32_t instanceBase;  // first instance index into the instance SSBO snapshot
     uint32_t instanceCount;
     uint32_t materialFlags; // bit0: ALPHA_TEST
+    uint32_t vertexCount;   // vertices of the node range starting at baseVertex (every index of the run lies in it); 0 = unknown, never pre-skinned
     uint64_t slot0Tex;      // LIVE service texture ID of this run's paint scheme (0 = none)
     uint64_t aoTex;         // service texture ID of the per-type AO map (0 = none)
     uint64_t normalTex;     // service texture ID of the per-type normal map (0 = none)

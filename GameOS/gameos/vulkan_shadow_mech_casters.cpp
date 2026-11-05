@@ -132,6 +132,8 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
         return false;
     }
     nameObject(device_, pipeline_.get(), "shadow.mechPipe");
+    // A failed pipeline build leaves the pre-skin off: the casters then blend bones inline as before.
+    if (!skin_.init(device_, allocator_, spvDir)) mc2::fmt::print_err("[VK_SHADOW_MECH] GPU pre-skin unavailable; casters blend bones inline.\n");
     inited_ = true;
     return true;
 }
@@ -141,6 +143,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     stagedEpoch_ = epoch;
     runs_.clear();
     stagedInstances_ = 0;
+    skin_.cancel();
 
     Mc2MechShadowFeed feed{};
     if (!mc2_mech_island_get_shadow_feed(&feed)) return;
@@ -181,7 +184,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     if (!ensureBuffer(instBuf_[parity], instCap_[parity], instBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechInst") ||
         !ensureBuffer(boneBuf_[parity], boneCap_[parity], boneBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.mechBone")) return;
     if (instBuf_[parity].get() != oldInst || boneBuf_[parity].get() != oldBone) writeDescriptors(parity);
-    if (!instBuf_[parity].upload(feed.instances64, instBytes) || !boneBuf_[parity].upload(feed.bones64, boneBytes)) return;
+    if (!boneBuf_[parity].upload(feed.bones64, boneBytes)) return;
 
     const uint64_t vertexCount = feed.vboBytes / vertexStride_;
     uint32_t dropped = 0;
@@ -198,6 +201,18 @@ void ShadowMechCasters::stage(uint64_t epoch) {
         static bool logged = false;
         if (!logged) { logged = true; mc2::fmt::print_err("[VK_SHADOW_MECH] {} of {} mech runs point outside the staged buffers and are not drawn.\n", dropped, feed.runCount); }
     }
+
+    // Pre-skin the staged instances once for every caster pass of this epoch; the flags go into the uploaded copy only.
+    skinInstances_.assign(static_cast<const uint8_t*>(feed.instances64), static_cast<const uint8_t*>(feed.instances64) + instBytes);
+    skinParity_ = parity;
+    skinVboBytes_ = feed.vboBytes;
+    skin_.plan(parity, runs_.data(), static_cast<uint32_t>(runs_.size()), static_cast<const uint8_t*>(feed.instances64), skinInstances_.data(), feed.instanceCount, vertexCount);
+    if (!instBuf_[parity].upload(skinInstances_.data(), instBytes)) { skin_.cancel(); runs_.clear(); stagedInstances_ = 0; }
+}
+
+void ShadowMechCasters::recordSkin(VkCommandBuffer cb) {
+    if (!skin_.active() || !hasCasters() || !geomUploaded_) return;
+    skin_.record(cb, vertexBuf_, skinVboBytes_, boneBuf_[skinParity_].get(), VK_WHOLE_SIZE, 0);
 }
 
 uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask) const {
@@ -214,11 +229,14 @@ uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t
     const VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &offset);
     vkCmdBindIndexBuffer(cb, indexBuf_, 0, VK_INDEX_TYPE_UINT32);
+    VkBuffer boundVertex = vertexBuf;
     uint32_t drawn = 0;
     for (size_t k = 0; k < runs_.size(); ++k) {
         if (runMask && !runMask[k]) continue;
         const Mc2MechDrawRun& r = runs_[k];
-        mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, r.indexCount, r.instanceCount, r.firstIndex, r.baseVertex, r.instanceBase);
+        skin_.drawRun(cb, static_cast<uint32_t>(k), r, vertexBuf, boundVertex, [&](uint32_t n, uint32_t first, int32_t baseVertex) {
+            mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, r.indexCount, n, r.firstIndex, baseVertex, first);
+        });
         ++drawn;
     }
     return drawn;

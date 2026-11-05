@@ -20,6 +20,7 @@
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
+#include "vulkan_mech_skin.h"
 
 #include <cstdint>
 #include <string_view>
@@ -38,6 +39,10 @@ public:
     // The caller has retired the previous use of that parity (the island's frame fence). A feed that is not ready, or whose run list does not fit its own
     // buffers, leaves nothing to draw this epoch.
     void stage(uint64_t epoch);
+
+    // Records the once-per-epoch compute pre-skin of the staged mechs into `cb` (no render pass open), ordered before every caster pass of the epoch.
+    // Call right after stage(); a no-op when nothing was planned.
+    void recordSkin(VkCommandBuffer cb);
 
     bool hasCasters() const { return !runs_.empty() && stagedEpoch_ != kNoEpoch; }
 
@@ -71,6 +76,10 @@ private:
     VkBuffer vertexBuf_ = VK_NULL_HANDLE, indexBuf_ = VK_NULL_HANDLE;   // borrowed from the mech island (device-local, shared)
     VkDeviceSize instCap_[kMaxFramesInFlight] = {}, boneCap_[kMaxFramesInFlight] = {};
     std::vector<Mc2MechDrawRun> runs_;   // the runs that passed validation this epoch
+    MechSkinPass skin_;                  // compute pre-skin of the staged instances; the casters read its regions through the 0x80 instance flag
+    std::vector<uint8_t> skinInstances_; // the instance records uploaded this epoch (the feed copy plus the pre-skin flags)
+    uint32_t skinParity_ = 0;
+    uint64_t skinVboBytes_ = 0;
 
     // Declared in creation order: released in reverse, so the pipeline goes before its layout and shaders, the sets with their pool before the layout.
     OwnedBuffer instBuf_[kMaxFramesInFlight], boneBuf_[kMaxFramesInFlight];

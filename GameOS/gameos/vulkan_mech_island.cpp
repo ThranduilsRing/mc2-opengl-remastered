@@ -53,6 +53,7 @@
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
+#include "vulkan_mech_skin.h"
 #include "vk_texture_residency.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
@@ -190,6 +191,8 @@ struct MechIsland : mc2vk::IslandState {
     // Copy-once mech geometry (VK-owned copies of the shared mech VBO/IBO).
     uint32_t vertexStride = 48;
     bool     geomUploaded = false;
+    uint64_t vboBytes = 0;   // size of the bind-pose VBO copy (the skin pass reads it as a storage buffer)
+    mc2vk::MechSkinPass skin;   // once-per-frame compute pre-skin; unusable => every pass blends bones inline as before
     uint32_t geomGen = 0;   // generation of the feed the buffers were filled from
 
     // Per-frame data (UBO, instance + bone snapshots, LightsData, night pool) lives in the engine frame ring; every scheme set binds it with dynamic
@@ -464,6 +467,8 @@ bool init_island(MechIsland* s, int w, int h) {
     s->allocator = ctx.allocator();
     if (s->device == VK_NULL_HANDLE || s->allocator == VK_NULL_HANDLE) { setFallback("engine_vk_device_or_allocator_null"); return false; }
     g_health.vulkanAvailable = 1;
+    // A failed pipeline build leaves the pass unusable: every consumer then blends bones inline as before.
+    if (!s->skin.init(s->device, s->allocator, spv_dir())) vlog("mech GPU skin unavailable (pipeline build failed); passes blend bones inline.");
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -835,7 +840,7 @@ bool upload_geometry_once(MechIsland* s) {
         mc2vk::OwnedBuffer stageVertices, stageIndices;
         bool ok = stageVertices.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.vertices") &&
                   stageIndices.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.indices") &&
-                  s->vbo.createDeviceLocal(s->allocator, s->device, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.vbo") &&
+                  s->vbo.createDeviceLocal(s->allocator, s->device, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.vbo") &&
                   s->ibo.createDeviceLocal(s->allocator, s->device, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.ibo");
         if (ok) {
             auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -845,8 +850,8 @@ bool upload_geometry_once(MechIsland* s) {
                 vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
                 VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
                 barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
-                vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+                vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
             }, "mech_geometry_upload");
         }
         if (!ok) {
@@ -857,6 +862,7 @@ bool upload_geometry_once(MechIsland* s) {
         }
     }
     s->geomGen = feed.geomGen;
+    s->vboBytes = feed.vboBytes;
     g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
     s->geomUploaded = true;
     vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",
@@ -903,7 +909,7 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
 // dynamic offsets are prepared by mc2_vk_mech_island_run on the main thread; this touches only the command buffer and the island timers.
 static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, int h, const Mc2MechFrameFeed& feed,
                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5],
-                        const Mc2GroundLightingFrame* ground, int poolN, unsigned long& runsOut) {
+                        const Mc2GroundLightingFrame* ground, int poolN, VkBuffer boneBuffer, VkDeviceSize boneRange, unsigned long& runsOut) {
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -914,6 +920,9 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     s->gpuTimer.reset(cb);
     s->gpuTimer.write(cb, 0);
+
+    // Pre-skin every skinnable instance once (palette upload -> COMPUTE -> VERTEX_INPUT); the depth and colour passes below read the result.
+    if (s->skin.active()) s->skin.record(cb, s->vbo.get(), s->vboBytes, boneBuffer, boneRange, dynOffsets[2]);
 
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -931,6 +940,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
+    VkBuffer boundVertex = vertexBuffer;   // tracks the vertex buffer a pre-skinned draw swapped in
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
@@ -950,7 +960,9 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         }
         const MechRunPC pc{run.materialFlags,0,0};
         vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
-        mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
+        s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, [&](uint32_t n, uint32_t first, int32_t baseVertex) {
+            mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb,run.indexCount,n,run.firstIndex,baseVertex,first);
+        });
     }
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
     const auto groundSet = s->groundLighting.set(par);
@@ -973,7 +985,9 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
         const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-        mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
+        s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, [&](uint32_t n, uint32_t first, int32_t baseVertex) {
+            mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb, run.indexCount, n, run.firstIndex, baseVertex, first);
+        });
         ++runs;
     }
     // The retained feed counts actor/node pairs once, across material packets and idle-frame reuse.
@@ -1099,6 +1113,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, static_cast<size_t>((feed.boneCount * 64ull))); }
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
+    // Plan the pre-skin of this frame (flags the skinnable instances in the ring copy only; the CPU feed and GL are untouched).
+    s->skin.plan(par, feed.runs, feed.runCount, static_cast<const uint8_t*>(feed.instances64), mainPtr + instOff, feed.instanceCount,
+                 s->vboBytes / (s->vertexStride ? s->vertexStride : 1));
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame copy of the CPU LightsData array (the byte source of the GL SSBO upload) into a frame-ring span (binding 4)
     // so calc_light reads the same ObjectLights[] the GL mech VS does. If the CPU array is not ready this frame, lighting is simply not marked ready
@@ -1180,7 +1197,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     ZoneNamedN(zMechRec, "VK-mech-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Mechs);
     unsigned long runsRec = 0;
-    if (!record_mech(s, cb, par, w, h, feed, runSets, dynOffsets, &*ground, poolN, runsRec)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    if (!record_mech(s, cb, par, w, h, feed, runSets, dynOffsets, &*ground, poolN, mainSpan.buffer, mainSpan.range, runsRec)) { setFallback("record_failed"); s->disabled = true; return 0; }
     g_health.runs = runsRec;
 
     // Render-pass dependencies order shared attachments; the ticket protects

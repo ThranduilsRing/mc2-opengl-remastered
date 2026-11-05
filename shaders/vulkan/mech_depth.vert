@@ -8,14 +8,16 @@ layout(location=4) in vec4 a_boneWeights;
 #include "include/mech_frame_ubo_vk.glsl"
 #include "../include/gpu_abi_mech_instance.gen.hglsl"
 #include "../include/axis.hglsl"
+#include "../include/mech_render_flags.hglsl"
 layout(set=0,binding=1,std430) readonly buffer InstanceBuffer { GpuMechInstance instances[]; } uInst;
 struct GpuMechBone { vec4 row0,row1,row2,row3; };
 layout(set=0,binding=2,std430) readonly buffer BoneBuffer { GpuMechBone bones[]; } uBones;
 layout(location=0) out vec2 vUv;
 void main() {
     GpuMechInstance inst=uInst.instances[gl_InstanceIndex];
-    mat4 boneT=mat4(0.0);
-    for(int bi=0;bi<4;++bi) {
+    const bool preskinned=(inst.renderFlags&MECH_RENDER_FLAG_PRESKINNED)!=0u;   // posed by mech_skin.comp: identity, no bone fetch
+    mat4 boneT=mat4(preskinned?1.0:0.0);
+    for(int bi=0;bi<4&&!preskinned;++bi) {
         float w=a_boneWeights[bi];
         if(w>0.0) {
             GpuMechBone bn=uBones.bones[a_boneIndices[bi]+inst.baseBoneOffset];
