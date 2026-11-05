@@ -69,7 +69,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         return true;
     }
     if (instBytes > maxRange || regBytes > maxRange || regions.size() > 65535u) {   // 65535: guaranteed indirect dispatch groups in x, one per visible region
-        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage, residency budget or region count (65535 indirect groups) exceeded\n");
+        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded\n");
         return false;
     }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());
