@@ -95,6 +95,7 @@ set(SOURCES ${SOURCES}
     gos_visual_diff.cpp
     gos_rdoc_capture.cpp
     gos_crashbundle.cpp
+    gos_crashpad.cpp
     mc2_verify.cpp
     gos_smoke.cpp
     sim_overlap.cpp
@@ -316,7 +317,7 @@ mc2_enable_pch(gameos)
 # KtxLoader.cpp lives in rendercore (STATIC) and is called from
 # gos_static_prop_batcher.cpp. Make the dependency explicit so CMake
 # orders the link correctly and gameos_editor gets the same resolution.
-target_link_libraries(gameos PRIVATE rendercore)
+target_link_libraries(gameos PRIVATE rendercore sentry)
 
 # VULKAN-BACKEND-SKELETON-1: link the Vulkan loader + define MC2_VULKAN only
 # when the option is ON. gameos_editor gets the same treatment below.
@@ -520,7 +521,7 @@ endif()
 set(GAMEOS_EDITOR_SOURCES ${SOURCES})
 list(REMOVE_ITEM GAMEOS_EDITOR_SOURCES gos_render.cpp)
 add_library(gameos_editor ${GAMEOS_EDITOR_SOURCES})
-target_link_libraries(gameos_editor PRIVATE rendercore)
+target_link_libraries(gameos_editor PRIVATE rendercore sentry)
 if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: headers only -- volk owns runtime dispatch.
     target_link_libraries(gameos_editor PRIVATE Vulkan::Headers)

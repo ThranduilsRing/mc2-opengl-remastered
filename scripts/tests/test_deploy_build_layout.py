@@ -76,6 +76,7 @@ def _ninja_tree(tmp_path):
     b = tmp_path / "build64-ninja"
     _touch(b / "build.ninja")
     _touch(b / "mc2.exe")
+    _touch(b / "crashpad_handler.exe")
     for dll in dp.RUNTIME_DLLS:
         _touch(b / dll)
     _touch(b / "shaders/vulkan/fixture.vert.spv")
@@ -129,9 +130,11 @@ def test_dynamic_resource_dll_is_required(tmp_path):
 def test_native_payload_has_no_windows_runtime(tmp_path):
     b = _ninja_tree(tmp_path)
     _touch(b / "mc2")
+    _touch(b / "crashpad_handler")
     items = dp.enumerate_payload(str(ROOT), str(b), "mc2", "mc2.pdb")
     rel = {r for _s, r, _k in items}
     assert "mc2" in rel
+    assert "crashpad_handler" in rel
     assert not any(r.endswith((".exe", ".dll", ".pdb", ".bat")) for r in rel)
 
 
