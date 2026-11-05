@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|nowater|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | sh:<command>
+Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | sh:<command>
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -120,6 +120,11 @@ for row in "${ROWS[@]}"; do
                    aa_cmaa)   cmd="$sv MC2_OPTIONS_OVERRIDE=SpatialAA=3 python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
                    cold_bake) rm -rf $OUT/coldhome; mkdir -p $OUT/coldhome   # a fresh $HOME is a fresh user dir, so no <userdir>/cache/shadow: the bake runs cold
                               cmd="$sv HOME=$OUT/coldhome XDG_CONFIG_HOME=$OUT/coldhome python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
+                   imgui|resize) # direct launch (run_smoke does not pass MC2_IMGUI_* through and cannot resize); graded here: layer_enabled present, zero severity=error
+                              envx=""; wm=""
+                              [ $arm = imgui ] && envx="MC2_IMGUI_DEMO=1"
+                              [ $arm = resize ] && { command -v xdotool >/dev/null || apt-get install -y -qq xdotool >/dev/null 2>&1; wm='( sleep 7; w=\$(xdotool search --onlyvisible --name . 2>/dev/null | tail -1); xdotool windowsize \$w 1100 700; sleep 2; xdotool windowsize \$w 1500 900 ) &'; }
+                              cmd="cd $I && $wm env $sv $envx ./mc2 --profile stock --mission mc2_01 --duration 18 > $OUT/syncval_$arm.game.log 2>&1; g=\$?; grep -a 'VK_VALIDATION v1' $OUT/syncval_$arm.game.log | grep -c 'severity=error' | sed 's/^/[syncval] errors=/'; grep -aq 'id=layer_enabled' $OUT/syncval_$arm.game.log || { echo '[syncval] layer not live'; exit 1; }; ! grep -a 'VK_VALIDATION v1' $OUT/syncval_$arm.game.log | grep -aq 'severity=error' && [ \$g = 0 ]" ;;
                    nowater)   cmd="$sv python3 scripts/run_smoke.py --mission gaea_peaks_01 --allow-any-mission --keep-logs --exe $I/mc2" ;;
                    canary)    cmd="git apply tests/syncval/canary_spatialaa_head_barrier.patch && { ninja -C build64-ninja -j16 mc2 > $OUT/canary_build.log 2>&1; b=\$?; git checkout -q -- GameOS/gameos/vulkan_spatial_aa.cpp; [ \$b = 0 ] || exit 9; cp -f build64-ninja/mc2 $I/mc2; rm -rf smoke_logs; $sv python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2; grep -rqa 'SYNC-HAZARD' smoke_logs && { echo '[syncval] canary: hazard reported, as required'; exit 0; }; echo '[syncval] canary: NO hazard reported (validation is not live or the canary is stale)'; exit 1; }" ;;
                    *) echo "[box_run] unknown syncval arm $arm"; RES=2; continue ;;
