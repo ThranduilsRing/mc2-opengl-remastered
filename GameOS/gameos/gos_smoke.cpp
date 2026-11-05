@@ -24,13 +24,18 @@
 #include "hitch_stats.h"
 #include "vulkan_context.h"
 #include "platform_windows.h"
+#ifdef _WIN32
 #include <tlhelp32.h>
+#endif
 
 namespace {
 // Host load stamped into the FIRST60 line so a perf verdict taken on a busy machine can be discounted: CPU busy percent of everything except this
 // process between two samples, and how many other mc2.exe processes were running.
 struct CpuSample { unsigned long long idle = 0, total = 0, self = 0; };
 CpuSample sampleCpu() {
+#ifndef _WIN32
+    return {};   // no host-load source off Windows: zeros read as unknown (cpuBusyPct returns -1)
+#else
     FILETIME i, k, u, c, e, sk, su;
     CpuSample s;
     auto q = [](const FILETIME& f) { return (static_cast<unsigned long long>(f.dwHighDateTime) << 32) | f.dwLowDateTime; };
@@ -40,6 +45,7 @@ CpuSample sampleCpu() {
     }
     if (GetProcessTimes(GetCurrentProcess(), &c, &e, &sk, &su)) s.self = q(sk) + q(su);
     return s;
+#endif
 }
 double cpuBusyPct(const CpuSample& a, const CpuSample& b) {
     const unsigned long long dt = b.total - a.total, di = b.idle - a.idle, ds = b.self - a.self;
@@ -47,6 +53,10 @@ double cpuBusyPct(const CpuSample& a, const CpuSample& b) {
     const double busy = static_cast<double>(dt - di), mine = static_cast<double>(ds);
     return 100.0 * (busy > mine ? busy - mine : 0.0) / static_cast<double>(dt);
 }
+#ifndef _WIN32
+// No process-snapshot API off Windows: the count is reported as unknown (-1 in the stats).
+std::optional<int> otherMc2Count() { return std::nullopt; }
+#else
 std::optional<int> otherMc2Count() {
     int n = 0;
     const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -59,12 +69,15 @@ std::optional<int> otherMc2Count() {
     CloseHandle(snap);
     return n;
 }
+#endif
 // The process snapshot costs ms, so with HITCH requested a detached sampler refreshes the count once per second for the slot-wait split.
 void startOtherMc2Sampler() {
     static std::atomic<bool> started{false};
     if (started.exchange(true)) return;
     std::thread([] {
+#ifdef _WIN32
         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#endif
         for (;;) {
             mc2_hitch2::stats().otherMc2.store(otherMc2Count().value_or(-1), std::memory_order_relaxed);
             std::this_thread::sleep_for(std::chrono::seconds(1));
