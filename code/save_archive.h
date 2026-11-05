@@ -21,6 +21,11 @@
 #include <variant>
 #include <vector>
 
+// Fields of #pragma pack(1) structs can be misaligned: binding a reference to one is undefined, so go through a copy.
+#define MC2_SAVE_PACKED(archive, field) \
+    do { auto packedCopy_ = (field); (archive)(packedCopy_); \
+         if ((archive).reading() && (archive).good()) (field) = packedCopy_; } while (0)
+
 namespace mc2::save {
 
 using Bytes = std::vector<std::uint8_t>;

@@ -27,7 +27,7 @@ long legacyHash(const std::string& text) {
 	for (i = 0; i < len; i++) {
 		std::memcpy(&r, padded.data() + 4 * i, sizeof(r));
 		r = r >> (i & 31);	// x64 sar: the count is masked to five bits
-		ret += r;
+		ret = static_cast<Stuff::IteratorPosition>(static_cast<unsigned>(ret) + static_cast<unsigned>(r));
 	}
 	int word;
 	std::memcpy(&word, padded.data() + 4 * i, sizeof(word));

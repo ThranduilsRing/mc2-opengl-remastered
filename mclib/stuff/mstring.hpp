@@ -523,7 +523,7 @@ namespace Stuff {
 		{
 			memcpy(&r, stringText.get() + 4 * i, sizeof(r));
 			r = r >> (i & 31);
-			ret += r;
+			ret = static_cast<IteratorPosition>(static_cast<unsigned>(ret) + static_cast<unsigned>(r));	// wraps; unsigned so it is defined
 		}
 
 		// The 1-3 trailing bytes, zero-extended: the low bytes of the next word, read without passing the text. The old mask

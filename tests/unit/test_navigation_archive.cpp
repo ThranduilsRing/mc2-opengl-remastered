@@ -17,8 +17,10 @@ TEST_CASE("save fields: map links independent census") {
     CHECK_FALSE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagMapDoors));
     bytes[4] = 2;
     CHECK_FALSE(mc2::save::decodeNavigationRecord(bytes, std::span(decoded), mc2::save::tagDoorLinks));
-    CHECK(decoded[0].cost == sample.cost);
-    CHECK(decoded[0].openCost == sample.openCost);
+    const int decodedCost = decoded[0].cost, sampleCost = sample.cost;   // copies: the struct is packed, a CHECK would bind misaligned references
+    const int decodedOpenCost = decoded[0].openCost, sampleOpenCost = sample.openCost;
+    CHECK(decodedCost == sampleCost);
+    CHECK(decodedOpenCost == sampleOpenCost);
 }
 
 #define DOOR_MEMBERS &T::row, &T::col, &T::length, &T::open, &T::teamID, &T::area, \

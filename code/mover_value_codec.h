@@ -1,12 +1,21 @@
 // Packet F inherited mover values; never archive MoverControl/Dynamics vptrs.
 #pragma once
+#include <cstring>
 #include "mover.h"
 #include "object_value_codec.h"
 
 namespace mc2::save {
+// Raw 32-bit pattern of an enum slot: a stale or corrupt value outside the enumerators must reach the range check
+// below, and loading it as the enum type is undefined.
+template<class E> inline std::int32_t enumBits(const E& e) {
+    static_assert(sizeof(E) == sizeof(std::int32_t));
+    std::int32_t bits;
+    std::memcpy(&bits, &e, sizeof(bits));
+    return bits;
+}
 inline void moverControlFields(Archive& a, MoverControl& v) {
-    auto type = static_cast<std::int32_t>(v.type);
-    auto data = static_cast<std::int32_t>(v.dataType);
+    auto type = enumBits(v.type);
+    auto data = enumBits(v.dataType);
     a(type, data);
     if (!a.good()) return;
     if (type < CONTROL_BASE || type > CONTROL_NET ||
@@ -26,7 +35,7 @@ inline void moverControlFields(Archive& a, MoverControl& v) {
     else if (a.reading()) v.settings = {};
 }
 inline void moverDynamicsFields(Archive& a, MoverDynamics& v) {
-    auto type = static_cast<std::int32_t>(v.type);
+    auto type = enumBits(v.type);
     a(type);
     if (!a.good()) return;
     if (type < DYNAMICS_BASE || type > DYNAMICS_ELEMENTAL) {

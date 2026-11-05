@@ -492,7 +492,7 @@ private:
     {
         int hash = seed ^ xPrimed ^ yPrimed;
 
-        hash *= 0x27d4eb2d;
+        hash = (int)((unsigned)hash * 0x27d4eb2du);   // wraps by design; unsigned so it is defined
         return hash;
     }
 
@@ -501,7 +501,7 @@ private:
     {
         int hash = seed ^ xPrimed ^ yPrimed ^ zPrimed;
 
-        hash *= 0x27d4eb2d;
+        hash = (int)((unsigned)hash * 0x27d4eb2du);   // wraps by design; unsigned so it is defined
         return hash;
     }
 
@@ -510,7 +510,7 @@ private:
     {
         int hash = Hash(seed, xPrimed, yPrimed);
 
-        hash *= hash;
+        hash = (int)((unsigned)hash * (unsigned)hash);
         hash ^= hash << 19;
         return hash * (1 / 2147483648.0f);
     }
@@ -520,7 +520,7 @@ private:
     {
         int hash = Hash(seed, xPrimed, yPrimed, zPrimed);
 
-        hash *= hash;
+        hash = (int)((unsigned)hash * (unsigned)hash);
         hash ^= hash << 19;
         return hash * (1 / 2147483648.0f);
     }
@@ -1780,10 +1780,10 @@ private:
         float xs = InterpQuintic(xd0);
         float ys = InterpQuintic(yd0);
 
-        x0 *= PrimeX;
-        y0 *= PrimeY;
-        int x1 = x0 + PrimeX;
-        int y1 = y0 + PrimeY;
+        x0 = (int)((unsigned)x0 * (unsigned)PrimeX);
+        y0 = (int)((unsigned)y0 * (unsigned)PrimeY);
+        int x1 = (int)((unsigned)x0 + (unsigned)PrimeX);
+        int y1 = (int)((unsigned)y0 + (unsigned)PrimeY);
 
         float xf0 = Lerp(GradCoord(seed, x0, y0, xd0, yd0), GradCoord(seed, x1, y0, xd1, yd0), xs);
         float xf1 = Lerp(GradCoord(seed, x0, y1, xd0, yd1), GradCoord(seed, x1, y1, xd1, yd1), xs);
@@ -1809,12 +1809,12 @@ private:
         float ys = InterpQuintic(yd0);
         float zs = InterpQuintic(zd0);
 
-        x0 *= PrimeX;
-        y0 *= PrimeY;
-        z0 *= PrimeZ;
-        int x1 = x0 + PrimeX;
-        int y1 = y0 + PrimeY;
-        int z1 = z0 + PrimeZ;
+        x0 = (int)((unsigned)x0 * (unsigned)PrimeX);
+        y0 = (int)((unsigned)y0 * (unsigned)PrimeY);
+        z0 = (int)((unsigned)z0 * (unsigned)PrimeZ);
+        int x1 = (int)((unsigned)x0 + (unsigned)PrimeX);
+        int y1 = (int)((unsigned)y0 + (unsigned)PrimeY);
+        int z1 = (int)((unsigned)z0 + (unsigned)PrimeZ);
 
         float xf00 = Lerp(GradCoord(seed, x0, y0, z0, xd0, yd0, zd0), GradCoord(seed, x1, y0, z0, xd1, yd0, zd0), xs);
         float xf10 = Lerp(GradCoord(seed, x0, y1, z0, xd0, yd1, zd0), GradCoord(seed, x1, y1, z0, xd1, yd1, zd0), xs);
@@ -1926,10 +1926,10 @@ private:
         float xs = InterpHermite((float)(x - x0));
         float ys = InterpHermite((float)(y - y0));
 
-        x0 *= PrimeX;
-        y0 *= PrimeY;
-        int x1 = x0 + PrimeX;
-        int y1 = y0 + PrimeY;
+        x0 = (int)((unsigned)x0 * (unsigned)PrimeX);
+        y0 = (int)((unsigned)y0 * (unsigned)PrimeY);
+        int x1 = (int)((unsigned)x0 + (unsigned)PrimeX);
+        int y1 = (int)((unsigned)y0 + (unsigned)PrimeY);
 
         float xf0 = Lerp(ValCoord(seed, x0, y0), ValCoord(seed, x1, y0), xs);
         float xf1 = Lerp(ValCoord(seed, x0, y1), ValCoord(seed, x1, y1), xs);
@@ -1948,12 +1948,12 @@ private:
         float ys = InterpHermite((float)(y - y0));
         float zs = InterpHermite((float)(z - z0));
 
-        x0 *= PrimeX;
-        y0 *= PrimeY;
-        z0 *= PrimeZ;
-        int x1 = x0 + PrimeX;
-        int y1 = y0 + PrimeY;
-        int z1 = z0 + PrimeZ;
+        x0 = (int)((unsigned)x0 * (unsigned)PrimeX);
+        y0 = (int)((unsigned)y0 * (unsigned)PrimeY);
+        z0 = (int)((unsigned)z0 * (unsigned)PrimeZ);
+        int x1 = (int)((unsigned)x0 + (unsigned)PrimeX);
+        int y1 = (int)((unsigned)y0 + (unsigned)PrimeY);
+        int z1 = (int)((unsigned)z0 + (unsigned)PrimeZ);
 
         float xf00 = Lerp(ValCoord(seed, x0, y0, z0), ValCoord(seed, x1, y0, z0), xs);
         float xf10 = Lerp(ValCoord(seed, x0, y1, z0), ValCoord(seed, x1, y1, z0), xs);
@@ -2142,10 +2142,10 @@ private:
         float xs = InterpHermite((float)(xf - x0));
         float ys = InterpHermite((float)(yf - y0));
 
-        x0 *= PrimeX;
-        y0 *= PrimeY;
-        int x1 = x0 + PrimeX;
-        int y1 = y0 + PrimeY;
+        x0 = (int)((unsigned)x0 * (unsigned)PrimeX);
+        y0 = (int)((unsigned)y0 * (unsigned)PrimeY);
+        int x1 = (int)((unsigned)x0 + (unsigned)PrimeX);
+        int y1 = (int)((unsigned)y0 + (unsigned)PrimeY);
 
         int hash0 = Hash(seed, x0, y0) & (255 << 1);
         int hash1 = Hash(seed, x1, y0) & (255 << 1);
@@ -2178,12 +2178,12 @@ private:
         float ys = InterpHermite((float)(yf - y0));
         float zs = InterpHermite((float)(zf - z0));
 
-        x0 *= PrimeX;
-        y0 *= PrimeY;
-        z0 *= PrimeZ;
-        int x1 = x0 + PrimeX;
-        int y1 = y0 + PrimeY;
-        int z1 = z0 + PrimeZ;
+        x0 = (int)((unsigned)x0 * (unsigned)PrimeX);
+        y0 = (int)((unsigned)y0 * (unsigned)PrimeY);
+        z0 = (int)((unsigned)z0 * (unsigned)PrimeZ);
+        int x1 = (int)((unsigned)x0 + (unsigned)PrimeX);
+        int y1 = (int)((unsigned)y0 + (unsigned)PrimeY);
+        int z1 = (int)((unsigned)z0 + (unsigned)PrimeZ);
 
         int hash0 = Hash(seed, x0, y0, z0) & (255 << 2);
         int hash1 = Hash(seed, x1, y0, z0) & (255 << 2);
