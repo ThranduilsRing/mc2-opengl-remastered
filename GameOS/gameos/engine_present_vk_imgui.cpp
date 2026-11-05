@@ -4,6 +4,7 @@
 #include "engine_present_vk_internal.h"
 #include "diagnostic_trace.h"   // mc2_diag::tagRequested: the [VK_IMGUI] lines print only when asked for
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include "vk_texture_residency.h"   // TextureResidency::view(): vulkan_context.h only forward-declares it (clang needs the full type here)
 #include "imgui_impl_vulkan.h"
 
 #include <cstdint>
