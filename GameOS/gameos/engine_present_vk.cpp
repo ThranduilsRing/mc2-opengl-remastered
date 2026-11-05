@@ -94,7 +94,9 @@ struct EnginePresentVk::Impl {
 
     // per-frame sync: one acquire semaphore, one in-flight fence and one pair of command buffers per frame slot. slot() = engine frame % slotCount;
     // slotCount defaults to kMaxFramesInFlight; MC2_VK_FRAMES_IN_FLIGHT=1 pins every frame to slot 0.
-    mc2vk::OwnedCommandPool   cpool;
+    mc2vk::OwnedCommandPool   cpool;   // readback command buffer only
+    mc2vk::OwnedCommandPool   tailPool[mc2vk::kMaxFramesInFlight];        // per-slot pools: vkResetCommandPool instead of per-cb reset
+    mc2vk::OwnedCommandPool   compositePool[mc2vk::kMaxFramesInFlight];   // (tail and composite are recorded at different points of a frame)
     VkCommandBuffer cbufs[mc2vk::kMaxFramesInFlight] = {};   // present tail: overlay + HUD/ImGui + blit
     mc2vk::OwnedSemaphore     acquireSems[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedFence         inFlights[mc2vk::kMaxFramesInFlight];
@@ -1949,16 +1951,20 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     // ---- command pool/buffer + acquire sem + in-flight fence --------------
     {
         VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s.gfxFamily;
         if (!mc2vk::create(s.cpool, s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
             return fail("vkCreateCommandPool failed");
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai.commandPool = s.cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s.dev, &cai, s.cbufs) != VK_SUCCESS)
-            return fail("vkAllocateCommandBuffers failed");
+        cai.commandBufferCount = 1;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s.tailPool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
+                return fail("vkCreateCommandPool(tail) failed");
+            cai.commandPool = s.tailPool[i].get();
+            if (vkAllocateCommandBuffers(s.dev, &cai, &s.cbufs[i]) != VK_SUCCESS)
+                return fail("vkAllocateCommandBuffers failed");
+        }
         VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -1974,11 +1980,15 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
         // composite time, submitted together with the tail cbuf in ONE submit).
         VkCommandBufferAllocateInfo cai2{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai2.commandPool = s.cpool.get();
         cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai2.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s.dev, &cai2, s.compositeCbufs) != VK_SUCCESS)
-            return fail("vkAllocateCommandBuffers(composite) failed");
+        cai2.commandBufferCount = 1;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s.compositePool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
+                return fail("vkCreateCommandPool(composite) failed");
+            cai2.commandPool = s.compositePool[i].get();
+            if (vkAllocateCommandBuffers(s.dev, &cai2, &s.compositeCbufs[i]) != VK_SUCCESS)
+                return fail("vkAllocateCommandBuffers(composite) failed");
+        }
     }
 
     // ---- shared exportable interop image + GL view + copy-1 FBO -----------
@@ -2056,7 +2066,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
-    vkResetCommandBuffer(cc, 0);
+    vkResetCommandPool(s.dev, s.compositePool[s.slot()].get(), 0);   // cc is s.compositeCbufs[slot]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
@@ -2523,7 +2533,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     VkImage scImg = s.scImages[imageIndex];
     ZoneNamedN(zTailRec, "VKIsl.Present.TailRecord", true);   // VK-ISLAND-TRACY-1: overlay/HUD/ImGui + blit record (to fn return)
     mc2::battlebench::NsScope benchTail(mc2::battlebench::PresTailNs);
-    vkResetCommandBuffer(s.curCbuf(), 0);
+    vkResetCommandPool(s.dev, s.tailPool[s.slot()].get(), 0);   // curCbuf() is s.cbufs[slot]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.curCbuf(), &bi);
@@ -2800,7 +2810,7 @@ void EnginePresentVk::verifyReadbackContent() {
         cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
         if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { ctx.readbacks().release(ctx, tok); return; }
     }
-    vkResetCommandBuffer(s.readbackCbuf, 0);
+    vkResetCommandPool(s.dev, s.cpool.get(), 0);   // cpool holds only readbackCbuf
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.readbackCbuf, &bi);

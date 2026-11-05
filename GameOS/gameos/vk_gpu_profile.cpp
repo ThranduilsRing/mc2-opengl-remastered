@@ -56,7 +56,8 @@ struct State {
     std::atomic<uint64_t> frame{0};
     // frameEnd's query-reset / Tracy-collect submit: one persistent pool, a command buffer per ring slot, each reused once its last submit completed
     // (a pool created and destroyed per frame cost ~3 ms while Tracy was connected).
-    OwnedCommandPool endPool;
+    OwnedCommandPool endPool[kRing];   // one pool per ring slot: vkResetCommandPool instead of per-cb reset
+    bool endPoolsReady = false;
     VkCommandBuffer endCb[kRing] = {};
     GpuTicket       endTicket[kRing] = {};
     // window aggregation
@@ -260,7 +261,8 @@ void shutdown(VulkanContext& ctx) {
     if (g.tracy) { tracy::DestroyVkContext(g.tracy); g.tracy = nullptr; }
 #endif
     if (g.pool) { vkDestroyQueryPool(g.device, g.pool, nullptr); g.pool = VK_NULL_HANDLE; }
-    g.endPool.reset();
+    for (OwnedCommandPool& p : g.endPool) p.reset();
+    g.endPoolsReady = false;
     for (uint32_t i = 0; i < kRing; ++i) { g.endCb[i] = VK_NULL_HANDLE; g.endTicket[i] = {}; }
     g.timers = false;
     g.labels = false;
@@ -285,18 +287,23 @@ void frameEnd() {
     }
     if (used || tracyLive) {
         const uint32_t cslot = static_cast<uint32_t>(f % kRing);
-        if (!g.endPool) {
+        if (!g.endPoolsReady) {
             VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-            pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            pci.flags = 0;
             pci.queueFamilyIndex = g.ctx->graphicsFamily();
             const VkDevice dev = g.device;
-            if (create(g.endPool, dev, [&](VkCommandPool* h) { return vkCreateCommandPool(dev, &pci, nullptr, h); })) {
+            bool ok = true;
+            for (uint32_t i = 0; i < kRing && ok; ++i) {
+                ok = create(g.endPool[i], dev, [&](VkCommandPool* h) { return vkCreateCommandPool(dev, &pci, nullptr, h); });
+                if (!ok) break;
                 VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-                ai.commandPool = g.endPool.get();
+                ai.commandPool = g.endPool[i].get();
                 ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                ai.commandBufferCount = kRing;
-                if (vkAllocateCommandBuffers(dev, &ai, g.endCb) != VK_SUCCESS) { g.endPool.reset(); for (VkCommandBuffer& c : g.endCb) c = VK_NULL_HANDLE; }
+                ai.commandBufferCount = 1;
+                ok = vkAllocateCommandBuffers(dev, &ai, &g.endCb[i]) == VK_SUCCESS;
             }
+            if (!ok) { for (OwnedCommandPool& p : g.endPool) p.reset(); for (VkCommandBuffer& c : g.endCb) c = VK_NULL_HANDLE; }
+            g.endPoolsReady = true;   // a failed create leaves endCb null: the submit below is skipped, as before
         }
         VkCommandBuffer cb = g.endCb[cslot];
         // The slot's previous submit is kRing frames old (at most 2 frames are in flight), so this wait returns at once; a slot that never completes
@@ -304,7 +311,7 @@ void frameEnd() {
         if (cb != VK_NULL_HANDLE && g.ctx->wait(g.endTicket[cslot], 100'000'000ull, "gpuprof_end_cb")) {
             VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
             bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            if (vkResetCommandBuffer(cb, 0) == VK_SUCCESS && vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS) {
+            if (vkResetCommandPool(g.device, g.endPool[cslot].get(), 0) == VK_SUCCESS && vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS) {
                 if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
 #ifdef TRACY_ENABLE
                 if (tracyLive) TracyVkCollect(g.tracy, cb);
