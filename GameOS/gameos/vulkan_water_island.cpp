@@ -129,7 +129,7 @@ void write_descriptors(WaterIsland* s, int only) {
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
         // Bindings 0 and 1 (the parameter UBOs) at the frame ring's current buffer; the slot re-points them at its next frame (ringBound cleared).
         if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer()) {
-            mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterVsParams));
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kWaterVsUboSize);
             mc2vk::writeDynamicBinding(s->device, s->set[i], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterFsParams));
         }
         s->ringBound[i] = VK_NULL_HANDLE;
@@ -138,6 +138,13 @@ void write_descriptors(WaterIsland* s, int only) {
         // a frame that takes the readback feed (opt-out, null MVP) rebinds its slot to thinBuf first (vulkan_water_island_run.cpp).
         VkDescriptorBufferInfo thinInfo{ (s->thinNative[i] && s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet w[2]{};
+        if (s->native && s->native->ready()) {   // binding 12: the reflection compute's water tile list
+            VkDescriptorBufferInfo tileInfo{ s->native->tileList(static_cast<uint32_t>(i)), 0, VK_WHOLE_SIZE };
+            VkWriteDescriptorSet tw{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            tw.dstSet = s->set[i]; tw.dstBinding = 12; tw.descriptorCount = 1;
+            tw.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; tw.pBufferInfo = &tileInfo;
+            vkUpdateDescriptorSets(s->device, 1, &tw, 0, nullptr);
+        }
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
         w[0].dstBinding = 5; w[0].descriptorCount = 1;
         w[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[0].pBufferInfo = &recInfo;

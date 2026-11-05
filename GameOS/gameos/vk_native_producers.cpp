@@ -61,7 +61,7 @@ bool NativeProducers::prewarmPipelines(const VulkanContext& ctx) {
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     const VkDescriptorType SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;   // frame-ring bindings
     if (!lightP_.create(device_, dir + "terrain_lighting.comp.spv", {{0, SD}, {1, SD}, {2, S}, {3, UD}}, "producers.terrainLighting")) return false;
-    if (!cullP_.create(device_, dir + "water_cull_pack.comp.spv", {{0, S}, {1, S}, {2, S}, {3, UD}, {4, S}}, "producers.waterCull")) return false;
+    if (!cullP_.create(device_, dir + "water_cull_pack.comp.spv", {{0, S}, {1, S}, {2, S}, {3, UD}, {4, S}, {5, S}, {6, S}}, "producers.waterCull")) return false;
     if (!argsP_.create(device_, dir + "water_draw_args.comp.spv", {{0, S}, {1, S}, {2, U}}, "producers.waterArgs")) return false;
     if (!lightSets_.create(device_, lightP_, kSlots, "producers.lightSets") || !cullSets_.create(device_, cullP_, kSlots, "producers.cullSets") ||
         !argsSets_.create(device_, argsP_, kSlots, "producers.argsSets")) return false;
@@ -85,7 +85,9 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
         if (!argsUbo_[p].upload(&ap, sizeof(ap))) return false;
         if (!makeDevice(header_[p], 16, kStorage | dst | src, "producers.header", static_cast<int>(p)) ||
             !makeDevice(drawArgs_[p], 32, kStorage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "producers.drawArgs", static_cast<int>(p)) ||
-            !makeDevice(thin_[p], static_cast<VkDeviceSize>(maxThin_) * 48u, kStorage | src, "producers.thin", static_cast<int>(p))) return false;
+            !makeDevice(thin_[p], static_cast<VkDeviceSize>(maxThin_) * 48u, kStorage | src, "producers.thin", static_cast<int>(p)) ||
+            !makeDevice(tileMask_[p], kMaxTiles / 8u, kStorage | dst, "producers.tileMask", static_cast<int>(p)) ||
+            !makeDevice(tileList_[p], static_cast<VkDeviceSize>(kMaxTiles) * 4u, kStorage, "producers.tileList", static_cast<int>(p))) return false;
     }
     writeAll();
     {   // the ring bindings need a valid buffer from the start; record() re-points them at the span of its frame
@@ -283,6 +285,8 @@ void NativeProducers::writeAll() {
         cullSets_.write(device_, p, 1, S, lightOut_.get());
         cullSets_.write(device_, p, 2, S, thin_[p].get());
         cullSets_.write(device_, p, 4, S, header_[p].get());
+        cullSets_.write(device_, p, 5, S, tileMask_[p].get());
+        cullSets_.write(device_, p, 6, S, tileList_[p].get());
         argsSets_.write(device_, p, 0, S, header_[p].get());
         argsSets_.write(device_, p, 1, S, drawArgs_[p].get());
         argsSets_.write(device_, p, 2, U, argsUbo_[p].get());
@@ -317,8 +321,10 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     wp.misc0[0] = W.waterElevation; wp.misc0[1] = W.frameCos; wp.misc0[2] = W.shoreExt;
     wp.misc1[0] = static_cast<int32_t>(recipeCount_); wp.misc1[1] = static_cast<int32_t>(maxThin_);
     wp.misc1[2] = static_cast<int32_t>(W.mapSide); wp.misc1[3] = W.biasLegacy;
+    const bool tilesOk = W.reflectionGroupsX * W.reflectionGroupsY != 0 && W.reflectionGroupsX * W.reflectionGroupsY <= kMaxTiles;
+    wp.misc2[0] = tilesOk ? static_cast<int32_t>(W.reflectionHalfW) : 0; wp.misc2[1] = tilesOk ? static_cast<int32_t>(W.reflectionHalfH) : 0;
     const VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6,
-        static_cast<int32_t>(W.reflectionGroupsX), static_cast<int32_t>(W.reflectionGroupsY)}};
+        tilesOk ? static_cast<int32_t>(W.reflectionGroupsX) : 0, tilesOk ? static_cast<int32_t>(W.reflectionGroupsY) : 0}};
     if (!argsUbo_[par].upload(&ap, sizeof(ap))) return false;
 
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
@@ -345,6 +351,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuCompute, cb, "VKIsl.Terrain.CullCompute");
     vkCmdFillBuffer(cb, header_[par].get(), 0, 16, 0);
+    vkCmdFillBuffer(cb, tileMask_[par].get(), 0, VK_WHOLE_SIZE, 0);
     if (!lightOutCleared_) {
         vkCmdFillBuffer(cb, lightOut_.get(), 0, VK_WHOLE_SIZE, 0xFFFFFFFFu);   // the engine no-tint white sentinel, like the GL output SSBO's clear
         lightOutCleared_ = true;
@@ -363,7 +370,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     argsP_.dispatch(cb, 1);
     gpuCompute.end();
 
-    VkPipelineStageFlags toStages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+    VkPipelineStageFlags toStages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;   // compute: the reflection reads the tile list
     VkAccessFlags toAccess = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     if (parity) { toStages |= VK_PIPELINE_STAGE_TRANSFER_BIT; toAccess |= VK_ACCESS_TRANSFER_READ_BIT; }
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, toStages, toAccess);
