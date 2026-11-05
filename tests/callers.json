@@ -65,6 +65,13 @@
           "text": "from bootstrap_worktree_build import cache_args"
         },
         {
+          "path": "tools/lane_precheck.py",
+          "line": 108,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "from bootstrap_worktree_build import ensure_deps"
+        },
+        {
           "path": "tools/reload_leak.py",
           "line": 52,
           "evidence": "import",
@@ -9043,6 +9050,13 @@
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
         },
         {
+          "path": "tools/lane_precheck.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "_git_util",
+          "text": "import _git_util  # noqa: E402"
+        },
+        {
           "path": "tools/lane_sim_rows.py",
           "line": 18,
           "evidence": "import",
@@ -11756,6 +11770,21 @@
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm"
+        }
+      ]
+    },
+    {
+      "path": "tools/lane_precheck.py",
+      "basename": "lane_precheck.py",
+      "stem": "lane_precheck",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/lane_merge.py",
+          "line": 68,
+          "evidence": "import",
+          "reference": "lane_precheck",
+          "text": "from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401"
         }
       ]
     },
