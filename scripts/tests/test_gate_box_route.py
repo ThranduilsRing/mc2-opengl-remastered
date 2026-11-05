@@ -175,10 +175,10 @@ def test_wait_blocks_fetches_reports_and_prints_one_verdict_line(monkeypatch, ca
         assert out_remote == "/workspace/lanes/br/out/abcd1234"
         (Path(local_out) / "rows.tsv").write_text("smoke-lite\t0\ncapture\t1\n")
     monkeypatch.setattr(box_run, "fetch_back", fake_fetch)
-    assert box_run.task_verdict(5, tmp_path, wait=True) == 0
+    assert box_run.task_verdict(5, tmp_path, wait=True) == 1     # one failing row is never a PASS, whatever the script rc
     assert any("pueue wait 5" in c for c in calls)
     lines = capsys.readouterr().out.strip().splitlines()
-    assert len(lines) == 1 and "state=Done rc=0 rows=1/2" in lines[0]
+    assert len(lines) == 1 and "state=Done rc=0 rows=1/2" in lines[0] and "verdict=FAIL" in lines[0]
 
 
 def test_failed_task_exits_1(monkeypatch, tmp_path):
@@ -222,16 +222,51 @@ def test_queue_submits_one_ssh_to_the_group_and_returns_the_task_id(monkeypatch,
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "determinism"])
     assert rc == 0
     pueue = [s for s in sent if "pueue add" in s[0]]
-    assert len(pueue) == 1
-    cmd, stdin = pueue[0]
-    assert "-g gpu1 --print-task-id" in cmd and stdin == box_run.REMOTE
+    assert len(pueue) == 2 and "-g build --print-task-id" in pueue[0][0]     # GPU rows: a build task first, then the GPU task after it
+    cmd, stdin = pueue[1]
+    assert "-g gpu1 -a 12 --print-task-id" in cmd and stdin == box_run.REMOTE.encode()
     assert base64.b64encode(b"determinism").decode() in cmd
     assert "queued task=12 group=gpu1" in capsys.readouterr().out
 
 
 def test_queue_gate_goes_to_the_gate_group(monkeypatch, tmp_path):
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gate"])
-    assert rc == 0 and any("-g gate --print-task-id" in s[0] for s in sent)
+    assert rc == 0 and any("-g gate -a 12 --print-task-id" in s[0] for s in sent)
+
+
+def test_remote_script_reaches_ssh_as_lf_only_bytes(monkeypatch, tmp_path):
+    # Mocked at the subprocess level so the real run() wrapper runs: text mode would make CRLF on Windows (bash: `pipefail\r`).
+    seen = []
+    monkeypatch.setattr(box_run, "fetch_back", lambda *a: None)
+    monkeypatch.setattr(box_run, "git", lambda *a, repo=None: ("br" if "--abbrev-ref" in a else "deadbeef" * 5) if a[0] == "rev-parse" else "")
+    monkeypatch.setattr(box_run, "pick_gpu", lambda: "2")
+
+    def fake_sp(cmd, **kw):
+        seen.append(kw.get("input"))
+        return SimpleNamespace(returncode=0, stdout=("12\n" if "pueue add" in cmd[-1] else ""), stderr=b"")
+    monkeypatch.setattr(box_run.subprocess, "run", fake_sp)
+    monkeypatch.setattr(sys, "argv", ["box_run.py", "--repo", str(tmp_path), "--gpu", "0", "determinism"])
+    box_run.main()
+    scripts = [i for i in seen if i]
+    assert scripts and all(isinstance(i, bytes) and b"\r" not in i for i in scripts)
+    seen.clear()
+    monkeypatch.setattr(sys, "argv", ["box_run.py", "--repo", str(tmp_path), "--queue", "--gpu", "0", "determinism"])
+    box_run.main()
+    scripts = [i for i in seen if i]
+    assert len(scripts) == 2 and all(isinstance(i, bytes) and b"\r" not in i for i in scripts)
+
+
+def test_bare_gate_names_the_first_remote_stderr_line_next_to_box_infra(capsys):
+    assert box_run.gate_verdict({"rows": []}, "bash: line 2: set: pipefail\r: invalid option name") == 3
+    out = capsys.readouterr().out
+    assert "BOX_INFRA:" in out and "first remote stderr line: bash: line 2" in out
+
+
+def test_box_infra_twice_at_the_same_head_is_flagged(tmp_path):
+    state = tmp_path / "s.json"
+    assert gate.box_infra_repeated("abc", "INFRA (3): BOX_INFRA", state) is False
+    assert gate.box_infra_repeated("abc", "INFRA (3): BOX_INFRA", state) is True
+    assert gate.box_infra_repeated("def", "INFRA (3): BOX_INFRA", state) is False
 
 
 def test_blocking_mode_stays_the_default_one_ssh_run(monkeypatch, tmp_path):
@@ -239,3 +274,28 @@ def test_blocking_mode_stays_the_default_one_ssh_run(monkeypatch, tmp_path):
     rc, sent = queued_main(monkeypatch, tmp_path, ["--gpu", "0", "determinism"])
     assert not any("pueue" in s[0] for s in sent)
     assert sum("bash /workspace/lanes/.box_lane_br.sh" in s[0] for s in sent) == 1
+
+
+def _sent_gpu_arg(monkeypatch, tmp_path, argv):
+    seen = []
+    monkeypatch.setattr(box_run, "fetch_back", lambda *a: None)
+    monkeypatch.setattr(box_run, "pick_gpu", lambda: "0")
+    monkeypatch.setattr(box_run, "git", lambda *a, repo=None: ("br" if "--abbrev-ref" in a else "deadbeef" * 5) if a[0] == "rev-parse" else "")
+    monkeypatch.setattr(box_run.subprocess, "run", lambda cmd, **kw: (seen.append(cmd), SimpleNamespace(returncode=0, stdout="12\n" if any("pueue add" in str(c) for c in cmd) else "", stderr=b""))[1])
+    monkeypatch.setattr(sys, "argv", ["box_run.py", "--repo", str(tmp_path), *argv])
+    rc = box_run.main()
+    return rc, [c[-1] for c in seen if "box_lane_" in str(c[-1])]
+
+
+def test_explicit_gpu_is_passed_through_and_never_replaced(monkeypatch, tmp_path):
+    for argv, grp in ((["--gpu", "2", "smoke-lite"], None), (["--queue", "--gpu", "2", "smoke-lite"], "-g gpu2 ")):
+        rc, cmds = _sent_gpu_arg(monkeypatch, tmp_path, argv)
+        assert any(" bash /workspace/lanes/.box_lane_br.sh 2 br " in c for c in cmds) or any(" -- bash /workspace/lanes/.box_lane_br.sh 2 br " in c for c in cmds)
+        assert grp is None or any(grp in c for c in cmds)
+    # the remote half dies loudly if the lock it got is not the GPU asked for
+    assert 'GPU_MISMATCH' in box_run.REMOTE and 'cand=$GPU' in box_run.REMOTE
+
+
+def test_bad_gpu_value_is_refused(monkeypatch, tmp_path, capsys):
+    rc, _ = _sent_gpu_arg(monkeypatch, tmp_path, ["--gpu", "7", "unit"])
+    assert rc == 2 and "--gpu must be" in capsys.readouterr().out

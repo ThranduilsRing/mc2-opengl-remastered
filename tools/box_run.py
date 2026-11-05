@@ -8,7 +8,7 @@
 Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to the box mirror, clang build in
 /workspace/lanes/<branch>/src (ccache, -j16, pinned to the GPU's 8 cores), install = hardlink copy of the golden install
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
-<worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
+E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
 Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
@@ -74,7 +74,7 @@ if [ ! -d $I ]; then
   cp -a $GOLD/data/missions $I/data/ 2>/dev/null; [ -d $GOLD/data/terrain_layers ] && cp -a $GOLD/data/terrain_layers $I/data/
   for f in $GOLD/*; do b=$(basename $f); [ "$b" = data ] && continue; case $b in *.fst) cp -al $f $I/;; *) cp -a $f $I/;; esac; done
 fi
-# deploy_payload.py is Windows-shaped (SDL2.dll, mc2.exe); on Linux the lane build is the binary plus its shaders
+# deploy_payload.py is Windows-shaped (SDL2.dll, the Windows game exe); on Linux the lane build is the binary plus its shaders
 cp -f build64-ninja/mc2 $I/mc2 && chmod +x $I/mc2 || { echo "[box_run] DEPLOY FAILED"; exit 6; }
 # optional payload: only what THIS tree built (a lane without crashpad has no crashpad_handler; deploy must never require it)
 for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-ninja/$opt $I/$opt && chmod +x $I/$opt || { echo "[box_run] DEPLOY FAILED: $opt"; exit 6; }; }; done
@@ -99,6 +99,7 @@ if [ -z "$GOT" ]; then
   done
 fi
 [ -n "$WANTF" ] && rm -f "$WANTF"; WANTF=""
+[ "$GPU" != auto ] && [ "$GPU" != "$GOT" ] && { echo "[box_run] GPU_MISMATCH: asked for GPU $GPU, locked $GOT"; exit 77; }   # --gpu N never lands elsewhere
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
 echo "[box_run] gpu=$GPU locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
@@ -208,7 +209,7 @@ def seed(repo):
 PUEUE = "/workspace/toolchains/pueue/pueue"   # queue: see box-game-runs.md "Queue"
 # copy-back: only *.tsv, *.json and the last 200 lines of each log (the full logs stay on the box)
 BACK = ("cd {out} || exit 0; mkdir -p .tails && for f in *.log; do [ -f \"$f\" ] && tail -n 200 \"$f\" > .tails/$f; done; "
-        "find . -type f \\( -name '*.tsv' -o -name '*.json' -o -path './.tails/*' \\) | tar cf - -T -")
+        "find . -type f \\( -name '*.tsv' -o -name '*.json' -o -name '*.png' -o -path './.tails/*' \\) | tar cf - -T -")
 
 
 def rows_b64(rows):
@@ -228,6 +229,11 @@ def pick_gpu():
         if len(p) == 2 and p[1].isdigit():
             load[p[0]] = int(p[1])
     return min(("0", "1", "2"), key=lambda g: (load.get(g, 99), g))
+
+
+def local_reports(repo, sha8):
+    """Where the fetched reports land: the proofs archive, never the worktree (a copy under <repo>/proofs gets committed)."""
+    return Path(os.environ.get("MC2_BOX_PROOFS", "E:/mc2-archive-2026-10/proofs/box")) / Path(repo).resolve().name / sha8
 
 
 def fetch_back(out_remote, local_out):
@@ -273,13 +279,13 @@ def task_verdict(tid, repo, wait):
     parts = label.split(":")   # box_run:<branch>:<sha8>:<group>
     rows = ""
     if state == "Done" and len(parts) == 4:
-        local_out = Path(repo) / "proofs" / "box" / parts[2]
+        local_out = local_reports(repo, parts[2])
         local_out.mkdir(parents=True, exist_ok=True)
         fetch_back(f"/workspace/lanes/{parts[1]}/out/{parts[2]}", local_out)
         tsv = local_out / "rows.tsv"
         v = row_codes(tsv)
         rows = f" rows={sum(x == '0' for x in v)}/{len(v)} reports={local_out}"
-    name, code = verdict(rc, row_codes(Path(repo) / "proofs" / "box" / parts[2] / "rows.tsv") if state == "Done" and len(parts) == 4 else ()) if rc is not None else ("", 2)
+    name, code = verdict(rc, row_codes(local_reports(repo, parts[2]) / "rows.tsv") if state == "Done" and len(parts) == 4 else ()) if rc is not None else ("", 2)
     print(f"[box_run] task={tid} state={state} rc={'-' if rc is None else rc}{rows}" + (f" verdict={name}" if name else ""))
     return code
 
@@ -366,13 +372,16 @@ def main():
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
     cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
     gpu = a.gpu
+    if gpu not in ("auto", "0", "1", "2", "3"):
+        print(f"[box_run] --gpu must be 0-2 or auto, got {gpu!r}")
+        return 2
     if a.gate:
         gpu = "3"   # advisory clang gate evidence runs on the reserved gate GPU (lock /workspace/locks/gpu3)
     if gpu == "3" and not a.gate:
         print("[box_run] GPU 3 is reserved for merge gates (--gate)")
         return 2
     out_remote = f"/workspace/lanes/{branch}/out/{sha[:8]}"
-    local_out = repo / "proofs" / "box" / sha[:8]
+    local_out = local_reports(repo, sha[:8])
     local_out.mkdir(parents=True, exist_ok=True)
     if a.gate:   # a receipt must come from THIS run, never a leftover of an earlier run at the same sha
         for stale in ("rows.tsv", "fingerprints.tsv", "gate_receipt.json"):
@@ -401,8 +410,13 @@ def main():
         print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {err.strip()[-200:]}")
         return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode())
+    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode(), stderr=subprocess.PIPE)
     t["remote (build+install+rows)"] = time.time() - t1
+    err_bytes = getattr(r, "stderr", None) or b""
+    err_text = err_bytes.decode(errors="replace") if isinstance(err_bytes, bytes) else str(err_bytes)
+    if err_text:
+        sys.stderr.write(err_text)   # stderr was captured only to name the cause on a BOX_INFRA line; show it as before
+    first_err = next((ln.strip() for ln in err_text.splitlines() if ln.strip()), "")
     t2 = time.time()
     fetch_back(out_remote, local_out)
     t["copy-back"] = time.time() - t2
@@ -411,18 +425,18 @@ def main():
     name, code = verdict(r.returncode, row_codes(local_out / "rows.tsv"))
     print(f"[box_run] verdict={name}")
     if a.gate:
-        return gate_verdict(write_receipt(local_out, sha, branch, a.rows, r.returncode))
+        return gate_verdict(write_receipt(local_out, sha, branch, a.rows, r.returncode), first_err)
     return code
 
 
-def gate_verdict(rec):
+def gate_verdict(rec, first_err=""):
     """merge_gate's box stage exit code: 0 every row PASS; 1 a row FAILed (a red gate row, never waived); 3 BOX_INFRA (no
     row verdicts, or rows that never ran: the box failed, not the product, and merge_gate falls back to the Windows rows)."""
     rows = rec["rows"]
     for r in rows:
         print(f"[box_run] gate row {r['row']}: {r['verdict']} exe_sha256_16={r.get('exe_sha256_16', '-')} data_fp={r.get('data_fingerprint', '-')}")
     if not rows or any(r["verdict"] in ("NOT RUN", "LOCK_TIMEOUT") for r in rows):   # LOCK_TIMEOUT: never ran, not green; the box was busy, so the PC rows stand in
-        print("BOX_INFRA: " + ", ".join(r["row"] for r in rows if r["verdict"] in ("NOT RUN", "LOCK_TIMEOUT")) + " produced no verdict (remote run died or timed out on the GPU lock before them)")
+        print("BOX_INFRA: " + ", ".join(r["row"] for r in rows if r["verdict"] in ("NOT RUN", "LOCK_TIMEOUT")) + " produced no verdict (remote run died or timed out on the GPU lock before them)" + (f"; first remote stderr line: {first_err[:300]}" if first_err else ""))
         return 3
     return 0 if all(r["verdict"] == "PASS" for r in rows) else 1
 
