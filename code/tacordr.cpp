@@ -78,6 +78,7 @@
 #include<stdio.h>
 
 #include <algorithm>
+#include "mc2fmt.h"
 
 //***************************************************************************
 
@@ -1999,14 +2000,14 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			curPos.z = 0.0;
 			int cell[2];
 			land->worldToCell(curPos, cell[0], cell[1]);
-			sprintf(s, "move to pt (%.0f, %.0f) [%d, %d]",
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "move to pt ({:.0f}, {:.0f}) [{:d}, {:d}]",
 				moveParams.wayPath.points[0],
 				moveParams.wayPath.points[1],
 				cell[0], cell[1]);
 			}
 			break;
 		case TACTICAL_ORDER_MOVETO_OBJECT:
-			sprintf(s, "move to obj (%d)", target ? target->getPartId() : 0);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "move to obj ({:d})", mc2::fmt::as_i32(target ? target->getPartId() : 0));
 			break;
 		case TACTICAL_ORDER_JUMPTO_POINT: {
 			glm::vec3 curPos;
@@ -2015,14 +2016,14 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			curPos.z = 0.0;
 			int cell[2];
 			land->worldToCell(curPos, cell[0], cell[1]);
-			sprintf(s, "jump to pt (%.0f, %.0f), cell:(%d, %d)",
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "jump to pt ({:.0f}, {:.0f}), cell:({:d}, {:d})",
 				moveParams.wayPath.points[0],
 				moveParams.wayPath.points[1],
 				cell[0], cell[1]);
 			}
 			break;
 		case TACTICAL_ORDER_JUMPTO_OBJECT:
-			sprintf(s, "jump to obj (%d)", target ? target->getPartId() : 0);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "jump to obj ({:d})", mc2::fmt::as_i32(target ? target->getPartId() : 0));
 			break;
 		case TACTICAL_ORDER_TRAVERSE_PATH:
 			strcpy(s, "traverse path");
@@ -2056,12 +2057,12 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			break;
 		case TACTICAL_ORDER_ATTACK_OBJECT: {
 			const char* tacticCode[] = {"  ", "RT", "LT", "RR", "SF", "TT", "JS"};
-			sprintf(s, "attack obj (%d) %s", target ? target->getPartId() : 0, tacticCode[attackParams.tactic]);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack obj ({:d}) {}", mc2::fmt::as_i32(target ? target->getPartId() : 0), tacticCode[attackParams.tactic]);
 			}
 			break;
 		case TACTICAL_ORDER_ATTACK_POINT: {
 			const char* tacticCode[] = {"  ", "RT", "LT", "RR", "SF", "TT", "JS"};
-			sprintf(s, "attack pt (%.0f, %.0f) %s",
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack pt ({:.0f}, {:.0f}) {}",
 				attackParams.targetPoint.x,
 				attackParams.targetPoint.y,
 				tacticCode[attackParams.tactic]);
@@ -2081,17 +2082,17 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			GameObjectPtr obj;
 			long goalType = pilot->getMoveGoal(&goalPos, &obj);
 			if ((goalType > 0) && obj) {
-				sprintf(s, "capture obj (%d) [%d]", target ? target->getPartId() : 0, obj->getPartId());
+				mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "capture obj ({:d}) [{:d}]", mc2::fmt::as_i32(target ? target->getPartId() : 0), mc2::fmt::as_i32(obj->getPartId()));
 				}
 			else
-				sprintf(s, "capture obj (%d) [GOAL?]", target ? target->getPartId() : 0);
+				mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "capture obj ({:d}) [GOAL?]", mc2::fmt::as_i32(target ? target->getPartId() : 0));
 			}
 			break;
 		case TACTICAL_ORDER_REFIT:
-			sprintf(s, "refit obj (%d)", target ? target->getPartId() : 0);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "refit obj ({:d})", mc2::fmt::as_i32(target ? target->getPartId() : 0));
 			break;
 		case TACTICAL_ORDER_GETFIXED:
-			sprintf(s, "get fixed (%d)", target ? target->getPartId() : 0);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "get fixed ({:d})", mc2::fmt::as_i32(target ? target->getPartId() : 0));
 			break;
 		case TACTICAL_ORDER_LOAD_INTO_CARRIER:
 			strcpy(s, "load carrier");

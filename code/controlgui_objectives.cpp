@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "render_view.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
@@ -335,11 +336,9 @@ void ControlGui::renderObjectivesImGui()
 			const float totalLength = ( AX( static_cast<float>(OBJECTIVESTOTALRIGHT) ) - totalW )
 				- ( AX( OBJECTIVESLEFT + shiftX ) + descW );
 			long numberOfDots = static_cast<long>(( totalLength / dotW ));
-			if ( 3 > numberOfDots )
-				numberOfDots = 3;
+			numberOfDots = (std::max)( numberOfDots, 3L );
 			char dots[256];
-			long nd = numberOfDots - 2;
-			if ( nd > 255 ) nd = 255;
+			long nd = (std::min)( numberOfDots - 2, 255L );
 			{ int i = 0; for ( ; i < nd; i++ ) dots[i] = '.'; dots[i] = 0; }
 			const float dotFinalLength = dotW * static_cast<float>(nd);
 			ShadowText( AX( static_cast<float>(OBJECTIVESTOTALRIGHT) ) - totalW - dotFinalLength,
