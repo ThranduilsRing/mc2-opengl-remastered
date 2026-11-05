@@ -9,6 +9,8 @@ import os
 import tempfile
 
 os.environ["MC2_CURSOR_GUARD_OFF"] = "1"
+os.environ.setdefault("MC2_LINT_SLOTS_DIR", os.path.join(tempfile.gettempdir(), f"mc2-lint-slots-test-{os.getpid()}"))   # lint tests never share the real host slots
+os.environ["MC2_NO_CPU_PIN"] = "1"
 
 # Precheck receipts go to a private dir in tests, never to the real A:/Games/mc2-ops/precheck (a mocked git_out once left a forged abc.json there).
 os.environ["MC2_PRECHECK_RECEIPTS"] = os.path.join(tempfile.gettempdir(), f"mc2-precheck-receipts-test-{os.getpid()}")

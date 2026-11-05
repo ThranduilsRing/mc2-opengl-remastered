@@ -250,8 +250,8 @@ def test_preset_run_uses_only_selected_corpus_tree(monkeypatch, layout):
     binary = "mc2_tests" + (".exe" if bch.os.name == "nt" else "")
     selected = tree / "RelWithDebInfo" / binary if layout == "config" else tree / binary
     monkeypatch.setattr(Path, "is_file", lambda path: path == selected if layout != "missing" else "build64-tests" in str(path))
-    runtime = Mock(return_value=SimpleNamespace(returncode=0))
-    monkeypatch.setattr(bch.subprocess, "run", runtime)
+    runtime = Mock(return_value=0)
+    monkeypatch.setattr(bch, "run_with_tree_timeout", runtime)
     ok, info = bch.build_and_run_unit_tests("RelWithDebInfo", True, only=["camera_frustum_harness"], preset="clang-cl-dev")
     assert ok == (layout != "missing")
     if layout == "missing":

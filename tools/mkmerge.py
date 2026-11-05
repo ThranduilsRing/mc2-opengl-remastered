@@ -12,6 +12,20 @@ OPS = Path('A:/Games/mc2-ops/briefs')
 ROOT = Path('A:/Games/mc2-main')
 
 
+def failure_class(text):
+    """Only explicit fixture/stale/KNOWN receipts permit a setup-only retry."""
+    low = text.lower()
+    if any(word in low for word in ('missing camera', 'camera fixture', 'fixture missing', 'first-save reference')):
+        return 'fixture'
+    if any(word in low for word in ('stale', 'fingerprint', 'missing viewer', 'missing exe')):
+        return 'stale-input'
+    if ('known' in low and 'mod' in low
+            and not any(word in low for word in ('new:', 'new error', 'ceiling exceeded'))
+            and not re.search(r'\bnew\s*=\s*[1-9]', low)):
+        return 'known-mod'
+    return 'real'
+
+
 def continuation(n, root):
     build = root / 'build64-ninja'
     window = json.loads((build / 'merge-window.json').read_text(encoding='utf-8'))

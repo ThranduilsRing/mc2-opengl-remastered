@@ -15,7 +15,7 @@ Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
 """
-import argparse, os, subprocess, sys, tempfile, time
+import argparse, base64, io, json, os, subprocess, sys, tarfile, tempfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -32,12 +32,13 @@ SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
 
 REMOTE = r'''#!/bin/bash
-# box_run.py remote half: args GPU BRANCH SHA OUTDIR ; rows on stdin (one per line)
+# box_run.py remote half: args GPU BRANCH SHA OUTDIR CAP0 ROWS_B64 (rows newline-joined, base64)
 set -uo pipefail
-GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS; ROWS=("${ROWS[@]%$'\r'}")
+GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS < <(printf %s "$6" | base64 -d); ROWS=("${ROWS[@]%$'\r'}")   # $5 = cap0, $6 = base64 of the rows
 L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; MIRROR=/workspace/toolchains/mirror.git
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
 mkdir -p /workspace/locks $L $OUT
+rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
 # GPU lock = flock on /workspace/locks/gpuN (the idle filler's convention; released when this script exits, no stale locks).
 # While waiting, gpuN.want is touched so the filler starts no new job there.
 CAP0=${5:-0}; WANTF=""
@@ -57,12 +58,13 @@ if [ -z "$GOT" ]; then
 fi
 [ -n "$WANTF" ] && rm -f "$WANTF"; WANTF=""
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
-echo "[box_run] gpu=$GPU locked"
+echo "[box_run] gpu=$GPU locked lock_wait_secs=$SECONDS"
 [ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
-mkdir -p $TMPDIR; CPUS="$((8*N))-$((8*N+7))"
+mkdir -p $TMPDIR; CPUS="$((4*N))-$((4*N+3))"   # box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
+BCPUS=16-63
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 export GIT_LFS_SKIP_SMUDGE=1
 # source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
@@ -71,11 +73,11 @@ tick source
 # build: shared ccache keyed without the directory so every lane hits the same objects
 export CCACHE_BASEDIR=/workspace/lanes CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 cd $S
-[ -f build64-ninja/build.ninja ] || taskset -c "$CPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+[ -f build64-ninja/build.ninja ] || nice -n 19 taskset -c "$BCPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
  -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
  -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
-taskset -c "$CPUS" ninja -C build64-ninja -j16 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
+nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j24 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
 [ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
 tick build
 # install: link the big immutable data from the golden install, copy everything else, then deploy the lane build over it
@@ -146,6 +148,14 @@ def git(*a, repo):
     return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
+def probe():
+    try:
+        r = run([*SSH[:-1], "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", HOST, "true"], capture_output=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return 1
+    return r.returncode
+
+
 def seed(repo):
     """One-time: /workspace/golden-install (+terrain_layers, textures from the Windows golden) and /workspace/golden-material."""
     gw = Path(GOLDEN_WIN)
@@ -163,16 +173,87 @@ def seed(repo):
     tar.unlink(missing_ok=True); tmp.rmdir()
 
 
+PUEUE = "/workspace/toolchains/pueue/pueue"   # queue: see box-game-runs.md "Queue"
+# copy-back: only *.tsv, *.json and the last 200 lines of each log (the full logs stay on the box)
+BACK = ("cd {out} && mkdir -p .tails && for f in *.log; do [ -f \"$f\" ] && tail -n 200 \"$f\" > .tails/$f; done; "
+        "find . -type f \\( -name '*.tsv' -o -name '*.json' -o -path './.tails/*' \\) | tar cf - -T -")
+
+
+def rows_b64(rows):
+    return base64.b64encode("\n".join(rows).encode()).decode()
+
+
+def ssh_out(cmd):
+    return run([*SSH, cmd], capture_output=True, text=True).stdout
+
+
+def pick_gpu():
+    """least-loaded of the lane GPUs 0-2 by queued+running pueue tasks (ties: lowest)"""
+    out = ssh_out(f"for g in 0 1 2; do echo $g $({PUEUE} status -g gpu$g --json | jq '[.tasks[]|select(.status|tostring|test(\"Queued|Running\"))]|length'); done")
+    load = {}
+    for line in out.splitlines():
+        p = line.split()
+        if len(p) == 2 and p[1].isdigit():
+            load[p[0]] = int(p[1])
+    return min(("0", "1", "2"), key=lambda g: (load.get(g, 99), g))
+
+
+def fetch_back(out_remote, local_out):
+    r = subprocess.run([*SSH, BACK.format(out=out_remote)], capture_output=True, **console_child.child_kwargs(redirected=True))
+    if r.stdout:
+        with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:
+            tf.extractall(local_out, filter="data")
+
+
+def task_state(tid):
+    """(state, rc or None, label) of a pueue task; state is Queued/Running/Done/... or missing"""
+    d = json.loads(ssh_out(f"{PUEUE} status --json") or "{}").get("tasks", {})
+    t = d.get(str(tid))
+    if not t:
+        return "missing", None, ""
+    st = t["status"]
+    state, body = next(iter(st.items())) if isinstance(st, dict) else (st, None)
+    res = body.get("result") if isinstance(body, dict) else None
+    rc = None if state != "Done" else (0 if res == "Success" else res.get("Failed", 1) if isinstance(res, dict) else 1)
+    return state, rc, t.get("label", "")
+
+
+def task_verdict(tid, repo, wait):
+    """ONE line: box_run task=<id> state=<..> rc=<..> rows=<pass>/<total>. --wait blocks, then copies the reports back."""
+    if wait:
+        run([*SSH, f"{PUEUE} wait {tid} >/dev/null 2>&1"])
+    state, rc, label = task_state(tid)
+    parts = label.split(":")   # box_run:<branch>:<sha8>:<group>
+    rows = ""
+    if state == "Done" and len(parts) == 4:
+        local_out = Path(repo) / "proofs" / "box" / parts[2]
+        local_out.mkdir(parents=True, exist_ok=True)
+        fetch_back(f"/workspace/lanes/{parts[1]}/out/{parts[2]}", local_out)
+        tsv = local_out / "rows.tsv"
+        v = [ln.rpartition("\t")[2].strip() for ln in tsv.read_text().splitlines()] if tsv.exists() else []
+        rows = f" rows={sum(x == '0' for x in v)}/{len(v)} reports={local_out}"
+    print(f"[box_run] task={tid} state={state} rc={'-' if rc is None else rc}{rows}")
+    return 2 if rc is None else (0 if rc == 0 else 1)
+
+
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap =argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--gpu", default="auto", help="0-2, or auto (first free of 0-2; captures need 0); 3 needs --gate")
     ap.add_argument("--capture-any-gpu", action="store_true", help="allow capture and smoke rows on GPU 1-3 (they present; mc2_01 dies after the 60 s present-retry budget) (needs a build with claude/vk-headless-present eac614635)")
     ap.add_argument("--gate", action="store_true", help="merge gate: allow GPU 3")
     ap.add_argument("--seed", action="store_true", help="one-time golden install seeding")
+    ap.add_argument("--probe", action="store_true", help="exit 0 if the box answers ssh within 15 s (merge_gate picks the box route or the Windows-full fallback with it)")
+    ap.add_argument("--queue", action="store_true", help="submit to the box's pueue group (gpuN, or gate with --gate) and print the task id at once instead of blocking")
+    ap.add_argument("--wait", metavar="ID", help="block until queued task ID ends, copy the reports back, print ONE verdict line (exit code = the task's)")
+    ap.add_argument("--status", metavar="ID", help="print ONE state line for queued task ID (exit 0 done+ok, 1 failed, 2 queued/running)")
     ap.add_argument("--repo", default=str(Path(__file__).resolve().parents[1]))
     ap.add_argument("rows", nargs="*")
     a = ap.parse_args([x for x in sys.argv[1:] if x != "--"])
     repo = Path(a.repo)
+    if a.probe:
+        return probe()
+    if a.wait or a.status:
+        return task_verdict(a.wait or a.status, repo, wait=bool(a.wait))
     if a.seed:
         return seed(repo)
     if a.gate and not a.rows:
@@ -208,6 +289,7 @@ def main():
                    f"{ref}:refs/lanes/{branch} && rm /workspace/lanes_{branch}.bundle"], check=True)
     t["bundle+push"] = time.time() - t0
     # gpu choice
+    # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
     cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu) else 0
     gpu = a.gpu
     if a.gate:
@@ -218,21 +300,44 @@ def main():
     out_remote = f"/workspace/lanes/{branch}/out/{sha[:8]}"
     local_out = repo / "proofs" / "box" / sha[:8]
     local_out.mkdir(parents=True, exist_ok=True)
-    scr = Path(tempfile.gettempdir()) / "box_lane.sh"
-    scr.write_text(REMOTE, newline="\n")
-    run([*SCP, str(scr), f"{HOST}:/workspace/lanes/.box_lane_{branch}.sh"], check=True)
+    if a.gate:   # a receipt must come from THIS run, never a leftover of an earlier run at the same sha
+        for stale in ("rows.tsv", "fingerprints.tsv", "gate_receipt.json"):
+            (local_out / stale).unlink(missing_ok=True)
+    # one ssh: the remote script arrives on stdin (cat > file) and runs at once; rows travel as one base64 argument
+    script = f"/workspace/lanes/.box_lane_{branch}.sh"
+    if a.queue:   # submit to the pueue group and return the task id; --wait/--status give the verdict later
+        if gpu == "auto":
+            gpu = "0" if cap0 else pick_gpu()
+        grp = "gate" if a.gate else f"gpu{gpu}"
+        label = f"box_run:{branch}:{sha[:8]}:{grp}"
+        r = run([*SSH, f"cat > {script} && {PUEUE} add -g {grp} --print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
+                input=REMOTE, text=True, capture_output=True)
+        tid = r.stdout.strip().splitlines()[-1] if r.returncode == 0 and r.stdout.strip() else ""
+        print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {r.stderr.strip()[-200:]}")
+        return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH, f"bash /workspace/lanes/.box_lane_{branch}.sh {gpu} {branch} {sha} {out_remote} {cap0}"], input="\n".join(a.rows) + "\n", text=True)
+    r = run([*SSH, f"cat > {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE, text=True)
     t["remote (build+install+rows)"] = time.time() - t1
     t2 = time.time()
-    run([*SCP, "-r", f"{HOST}:{out_remote}/.", str(local_out)])
+    fetch_back(out_remote, local_out)
     t["copy-back"] = time.time() - t2
-    scr.unlink(missing_ok=True)
     print(f"[box_run] gpu={gpu} (see run log for the one taken) sha={sha[:12]} rc={r.returncode} reports={local_out}")
     print("[box_run] timings: " + ", ".join(f"{k}={v:.0f}s" for k, v in t.items()) + f", total={time.time() - t0:.0f}s")
     if a.gate:
-        write_receipt(local_out, sha, branch, a.rows, r.returncode)
+        return gate_verdict(write_receipt(local_out, sha, branch, a.rows, r.returncode))
     return r.returncode
+
+
+def gate_verdict(rec):
+    """merge_gate's box stage exit code: 0 every row PASS; 1 a row FAILed (a red gate row, never waived); 3 BOX_INFRA (no
+    row verdicts, or rows that never ran: the box failed, not the product, and merge_gate falls back to the Windows rows)."""
+    rows = rec["rows"]
+    for r in rows:
+        print(f"[box_run] gate row {r['row']}: {r['verdict']} exe_sha256_16={r.get('exe_sha256_16', '-')} data_fp={r.get('data_fingerprint', '-')}")
+    if not rows or any(r["verdict"] == "NOT RUN" for r in rows):
+        print("BOX_INFRA: " + ", ".join(r["row"] for r in rows if r["verdict"] == "NOT RUN") + " produced no verdict (remote run died before them)")
+        return 3
+    return 0 if all(r["verdict"] == "PASS" for r in rows) else 1
 
 
 def write_receipt(local_out, sha, branch, rows, rc):
@@ -266,7 +371,14 @@ def write_receipt(local_out, sha, branch, rows, rc):
     out = local_out / "gate_receipt.json"
     out.write_text(json.dumps(rec, indent=2))
     print(f"[box_run] gate receipt: {out}")
+    return rec
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (subprocess.CalledProcessError, OSError) as exc:
+        if "--gate" not in sys.argv:
+            raise
+        print(f"BOX_INFRA: box_run could not reach or drive the box: {exc}")
+        sys.exit(3)

@@ -37,7 +37,6 @@
   "scripts/delivery-fixes.json",
   "scripts/extract_gl_shader_variants.py",
   "scripts/gl_shader_variants.json",
-  "scripts/run_vk_field_check.py",
   "scripts/smoke_lib/logparse.py",
   "scripts/smoke_lib/nofocus.py",
   "tests/unit/test_argb_pack.cpp",

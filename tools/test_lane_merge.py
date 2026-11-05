@@ -18,7 +18,6 @@ TOOL = os.path.join(HERE, "lane_merge.py")
 
 FSIZE = "tools/file_size_ratchet.baseline.json"
 CXX = "tools/cxx17_ratchet/baseline.json"
-DUP = "tools/dup_lines_ratchet.baseline.json"
 AXIS = "tools/axis_swizzle_ratchet.baseline.json"
 SHADERS = "scripts/gl_shader_variants.json"
 
@@ -43,7 +42,6 @@ sys.exit(0)
 FAKES = {
     "file_size_ratchet.py": FSIZE,
     "cxx17_ratchet/cxx17_ratchet.py": CXX,
-    "dup_lines_ratchet.py": DUP,
     "axis_swizzle_ratchet.py": AXIS,
     "split/split_map.py": None,
 }
@@ -80,7 +78,7 @@ def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monk
     before = git(repo, "rev-parse", "HEAD")
     seen = precheck_fixture(lm, repo, monkeypatch, red)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 11    # 5 ratchets + callers refresh + callers --check + 2 early rows + 2 suites
+    assert len(seen) == 10    # 4 ratchets + callers refresh + callers --check + 2 early rows + 2 suites
     assert not any(is_native(cmd) for _, cmd in seen)
     assert all(not lm._inside(root, str(repo)) for root, _ in seen)   # scratch is never inside the main worktree
     caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
@@ -103,14 +101,14 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     tree = tmp_path / "warm" / "tree"
     seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
-    assert len(seen) == 14
+    assert len(seen) == 13
     # only configure + link run in the warm tree; the checks run in shared clones
     build = [r for r, cmd in seen if any(x in " ".join(cmd) for x in ("configure_ninja.py", "ninja_build.py"))]
     assert build and all(root == str(tree) for root in build)
     assert not lm._inside(str(tree), str(repo))
     for _, cmd in seen:
         if "scripts/ninja_build.py" in cmd:
-            assert "-j" + lm.host_jobs() in cmd
+            assert "-j" + str(max(1, int(lm.host_jobs()) // 2)) in cmd   # precheck link stages take JOBS/2 beside the suites (precheck-speed)
     assert any("mc2fx" in cmd and "mc2fx_preview" in cmd for _, cmd in seen)
     assert (tree / ".git").exists()
     # second run reuses the existing tree (checkout, not worktree add)
@@ -177,7 +175,7 @@ def env(tmp_path):
     git(repo, "init", "-q", "-b", "main")
     git(repo, "config", "user.email", "t@example.com")
     git(repo, "config", "user.name", "t")
-    for rel in (FSIZE, CXX, DUP, AXIS, SHADERS):
+    for rel in (FSIZE, CXX, AXIS, SHADERS):
         write(repo, rel, "base\n")
     write(repo, "a.txt", "a\n")
     write(repo, "b.txt", "b\n")
@@ -910,10 +908,11 @@ def test_every_generated_file_has_a_regenerator():
     assert lm.GENERATED == set().union(*(files for files, _, _ in lm.GENERATED_REGENERATORS))
 
 
-def test_dup_lines_is_checked_without_repinning():
+def test_dup_check_has_no_baseline_and_is_not_a_lane_merge_ratchet():
+    # copy-paste is compared against the merge base by tools/dup_check.py (check-contracts row), not pinned in a file
     lm = _load_module()
-    _, _, args = next(r for r in lm.RATCHETS if r[0] == 'dup_lines')
-    assert '--check' in args and '--tighten' not in args
+    assert all(r[0] != 'dup_lines' for r in lm.RATCHETS)
+    assert not any('dup_lines' in p for p in lm.TIGHTENED_BASELINES) and not any('dup_lines' in p for p in lm.REGENERABLE)
 
 
 @pytest.mark.parametrize("path,script,args", [
@@ -1366,3 +1365,17 @@ def test_receipt_path_refuses_a_non_40_hex_sha_and_tests_use_a_private_dir():
             lm.receipt_path(bad)
     assert lm.receipt_path("a" * 40).endswith("a" * 40 + ".json")
     assert not os.path.normpath(lm.PRECHECK_RECEIPTS).startswith(os.path.normpath("A:/Games/mc2-ops"))
+
+
+def test_ensure_precheck_tree_recreates_tree_that_lost_its_git(env, monkeypatch, tmp_path):
+    from tools import lane_merge as lm
+    import bootstrap_worktree_build as bwb
+    repo, _ = env
+    monkeypatch.setattr(bwb, "ensure_deps", lambda *a, **k: None)
+    tree = tmp_path / "warm" / "tree"
+    lm.ensure_precheck_tree(str(repo), str(tree), "HEAD")
+    assert (tree / ".git").exists()
+    (tree / ".git").unlink()                      # lose the link, keep leftover build files
+    (tree / "build64-ninja").mkdir()
+    lm.ensure_precheck_tree(str(repo), str(tree), "HEAD")
+    assert (tree / ".git").exists() and not (tree / "build64-ninja").exists()

@@ -82,7 +82,7 @@ def art_changed(base: str) -> bool:
                             capture_output=True, text=True, check=True,
                             **console_child.child_kwargs(redirected=True))
     return any(p.startswith(ART_PREFIXES) or p.endswith((".blend", ".glb", ".ktx2", ".png", ".tga", ".fit", ".pak", ".fst"))
-               or p.startswith(("scripts/kit", "scripts/run_tools_tests", "scripts/check-contracts", "scripts/console_child", "scripts/manifest_schema", "scripts/mc2_env_pin", "scripts/module_test_cache", "scripts/test_audit_site/", "requirements", "pyproject.toml", "pytest.ini", "conftest.py"))
+               or p.startswith(("scripts/kit", "scripts/run_tools_tests", "scripts/console_child", "scripts/test_audit_site/", "requirements", "pyproject.toml", "pytest.ini", "conftest.py"))
                for p in (line.replace("\\", "/").lower() for line in result.stdout.split("\0")))
 
 

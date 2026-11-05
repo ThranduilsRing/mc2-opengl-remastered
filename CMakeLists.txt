@@ -1,9 +1,10 @@
 cmake_minimum_required (VERSION 3.10)
 project(mc2 VERSION 0.5.2)
 
-# Opt-in shared compile cache (scripts/configure_ninja.py --compile-cache). sccache cannot cache a compile that writes the shared
-# compiler PDB (/Zi + /Fd), so the cached tree swaps /Zi for /Z7 (debug info lives in each .obj; the linker still writes mc2.pdb).
-# Every other flag, the sim FP contract included, is untouched. OFF by default: the default tree keeps /Zi.
+# Shared compile cache: scripts/configure_ninja.py turns it ON by default (opt out: --no-compile-cache); the option itself defaults OFF.
+# sccache cannot cache a compile that writes the shared compiler PDB (/Zi + /Fd), so the cached tree swaps /Zi for /Z7 (debug info
+# lives in each .obj; the linker still writes mc2.pdb, symbolization verified 2026-11-05). Every other flag, the sim FP contract
+# included, is untouched.
 option(MC2_COMPILE_CACHE "Compile through a shared cache launcher: /Zi becomes /Z7 so the compiles are cacheable" OFF)
 if(MC2_COMPILE_CACHE AND MSVC)
     foreach(_mc2_cc_var CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)

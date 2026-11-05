@@ -89,7 +89,7 @@ done
 set -- ${_ARGS[@]+"${_ARGS[@]}"}
 # Named presets for --rows (the regex form still works for anything else).
 case "$ROWS_RE" in
-    split) ROWS_RE="cxx17_ratchet|dup_lines|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
+    split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
     tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
 esac
 for arg in "$@"; do
@@ -102,7 +102,7 @@ for arg in "$@"; do
         --jobs=*) JOBS="${arg#--jobs=}" ;;
         --rows=*) ROWS_RE="${arg#--rows=}"
                   case "$ROWS_RE" in
-                      split) ROWS_RE="cxx17_ratchet|dup_lines|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
+                      split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
                       tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
                   esac ;;
         # Internal. Registers synthetic rows instead of the real board so the
@@ -111,9 +111,9 @@ for arg in "$@"; do
         --help|-h)
             echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N] [--rows REGEX] [--no-cache]"
             echo "  --no-cache    run every row (default: rows that PASSED on identical declared inputs are 'PASS (cached)')"
-            echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_lines'."
+            echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_check'."
             echo "                A PARTIAL board: it is for iterating mid-batch, never a substitute for the full board."
-            echo "  --rows split  the file-split rows (cxx17_ratchet dup_lines gate_gen file_size split_path split_map background_launch scripts_tests)"
+            echo "  --rows split  the file-split rows (cxx17_ratchet dup_check gate_gen file_size split_path split_map background_launch scripts_tests)"
             echo "  --rows tidy   the tidy-batch rows (cxx17_ratchet file_size background_launch tools_tests)"
             echo "  Rows run in parallel by default (CONTRACTS_JOBS / -jN size the pool,"
             echo "  --serial = old behaviour). Rows that build, launch or write shared"
@@ -914,11 +914,12 @@ run_check "golden_coverage"          "py -3 scripts/check-golden-coverage.py --q
 run_check "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
 # D8 (opus-consistency-review): copy-paste is the recurring GL<->VK drift source -- a fix
 # lands in one copy and the twin keeps the bug. Duplicated-line count (runs of >= 8 normalized
-# lines occurring twice) per owned dir may only fall. Scans the COMMITTED tree, so another
-# agent's dirty working tree cannot flap it. Selftest lives in scripts/tests (scripts_tests row).
-run_check "dup_lines_ratchet"        "py -3 tools/dup_lines_ratchet.py --check"
+# lines occurring twice) may only fall. PMD CPD (>= 60 tokens) on the COMMITTED tip vs the merge base, no
+# baseline file; runs on the box (or streams the trees there from the PC); no PMD/box = INFRA, never a pass.
+# Selftest lives in scripts/tests (scripts_tests row).
+run_check "dup_check"                "py -3 tools/dup_check.py --check"
 # D11 (opus-consistency-review): the MC2->render-space axis swap (x,y,z)->(-x,z,y) is re-typed at
-# ~180 sites (shaders + C++); dup_lines_ratchet cannot see one-line copies. Token-level count may
+# ~180 sites (shaders + C++); dup_check cannot see one-line copies. Token-level count may
 # only fall until the typed helper replaces them. HEAD-scanned like the row above. Work queue:
 # docs/axis-conversion-sites.md. Selftest lives in scripts/tests (scripts_tests row).
 run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --check"
@@ -1507,7 +1508,7 @@ run_check "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-s
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
 run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
-run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py -q -p no:cacheprovider"
+run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py scripts/tests/test_gate_box_route.py -q -p no:cacheprovider"
 run_check "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
 run_check "gate_receipts"              "py -3 -B -m pytest scripts/tests/test_gate_state.py -q -p no:cacheprovider"
 # Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.
@@ -1541,7 +1542,7 @@ run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_ki
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
-run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art"
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3"
 run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"

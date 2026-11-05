@@ -9,7 +9,7 @@ Claude-specific machinery to plain commands.
 
 | CLAUDE.md says | You do |
 |---|---|
-| build | `py -3 tools/build_quiet.py --target mc2` |
+| build | `py -3 scripts/ninja_build.py mc2` |
 | deploy | `py -3 scripts/deploy_payload.py --target game` (commit first) |
 | smoke | copy the command from CLAUDE.md verbatim, or `py -3 tools/witness_smoke.py --install <dir> --mission mc2_01 --expect "<regex>"` |
 | repo state | `py -3 tools/repo_intel/repo_query.py preflight --expect-branch claude/nifty-mendeleev --expect-root A:/Games/mc2-main` |

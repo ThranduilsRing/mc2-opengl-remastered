@@ -1,4 +1,4 @@
-"""Shared git helpers for the orchestrator tools (handoff_append, lane_merge) and the tidy tools.
+"""Shared git helpers for the orchestrator tools (lane_merge) and the tidy tools.
 
 WHAT: run git without a console window and without losing output, read the merge state, parse `git status`, and commit exactly the paths
 named (never the whole index).

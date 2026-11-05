@@ -1,0 +1,114 @@
+"""Warm precheck tree and failure-summary helpers split out of lane_merge.py (imported there)."""
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import sys
+import tempfile
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(HERE, "..", "scripts"))
+sys.path.insert(0, HERE)
+import _git_util  # noqa: E402
+
+
+def git(root: str, *args: str):
+    return _git_util.git(root, *args, merge_stderr=True)
+
+
+class Stop(Exception):
+    def __init__(self, code: int, msg: str):
+        super().__init__(msg)
+        self.code = code
+
+
+def failure_line(line):
+    """Keep pytest/doctest names and source locations even before a long tail."""
+    return bool(re.search(r"FAILED|FAIL:|ERROR|VIOLATION|PERF_COUNTER_WARN|test case:|TEST CASE:|\.(?:py|cpp|h)[:(]\d+", line))
+
+
+def failure_summary(output):
+    rows = output.splitlines()
+    return "\n".join(dict.fromkeys([line for line in rows if failure_line(line)] + rows[-8:]))
+
+
+PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", "E:/mc2-installs/_precheck/tree")
+
+
+def _inside(path: str, root: str) -> bool:
+    path, root = os.path.abspath(path), os.path.abspath(root)
+    try:
+        return os.path.commonpath([path, root]) == root
+    except ValueError:   # different drives
+        return False
+
+
+def precheck_scratch_base(root: str) -> str | None:
+    """Scratch parent for the fast path: G:/mc2-tmp (lane-rules), else the OS temp dir. Never inside the main worktree."""
+    base = "G:/mc2-tmp" if os.path.isdir("G:/mc2-tmp") else None
+    if _inside(base or tempfile.gettempdir(), root):
+        raise Stop(5, f"precheck scratch {base or tempfile.gettempdir()} is inside {root}")
+    return base
+
+
+class TreeLock:
+    """Exclusive OS file lock (the OS drops it if the holder dies); two prechecks never share the warm tree."""
+    def __init__(self, path, wait_s=3600, sleep=time.sleep, clock=time.monotonic):
+        self.path, self.wait_s, self.sleep, self.clock, self.fh = path, wait_s, sleep, clock, None
+
+    def _try(self):
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(self.fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(self.fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def __enter__(self):
+        os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
+        self.fh = open(self.path, "a+")
+        deadline = self.clock() + self.wait_s
+        announced = False
+        while True:
+            try:
+                self._try()
+                return self
+            except OSError:
+                if self.clock() >= deadline:
+                    self.fh.close()
+                    raise Stop(5, "precheck tree busy: lock " + self.path + " held past wait")
+                if not announced:
+                    print("precheck: warm tree busy (another --with-link run); waiting", flush=True)
+                    announced = True
+                self.sleep(5)
+
+    def __exit__(self, *exc):
+        self.fh.close()   # closing drops the OS lock
+
+
+def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
+    """Create the persistent warm worktree once (detached, outside the main worktree), then park it on `commit`."""
+    if _inside(tree, root):
+        raise Stop(5, f"warm precheck tree {tree} is inside {root}")
+    if not os.path.exists(os.path.join(tree, ".git")):
+        if os.path.isdir(tree) and os.listdir(tree):
+            # Lost its .git (leftover build/deps only): drop the dead registration and the husk, then recreate below.
+            print(f"[lane_merge] warm precheck tree {tree} has no .git; recreating it", flush=True)
+            git(root, "worktree", "prune")
+            shutil.rmtree(tree, ignore_errors=True)
+            if os.path.isdir(tree) and os.listdir(tree):
+                raise Stop(5, f"warm precheck tree {tree} has no .git and cannot be removed; delete it by hand, then "
+                              f"`git -C {root} worktree prune` and rerun")
+        os.makedirs(os.path.dirname(os.path.abspath(tree)), exist_ok=True)
+        r = git(root, "worktree", "add", "--detach", "--force", os.path.abspath(tree), commit)
+        if r.returncode:
+            raise Stop(5, "cannot create warm tree: " + failure_summary(r.stdout))
+        from bootstrap_worktree_build import ensure_deps
+        ensure_deps(os.path.abspath(tree), os.path.abspath(root))
+    else:
+        r = git(tree, "checkout", "--quiet", "-f", "--detach", commit)
+        if r.returncode:
+            raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout)
+                       + f" (recreate with: delete {tree}, `git -C {root} worktree prune`, rerun)")

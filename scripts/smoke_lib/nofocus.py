@@ -455,7 +455,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     A perf run therefore wants BOTH -- visible-but-parked-offscreen is full
     throughput AND zero desktop pixels -- which the old coupling made
     unexpressible: `show_window=True` silently put a full options.cfg-sized
-    window back on the user's screen (tools/perf_snapshot.py:106,
+    window back on the user's screen (e.g.
     tools/menu_oracle.py:101). `offscreen` therefore defaults to True
     unconditionally; only a desktop-composite capture harness passes False,
     and only a user-present session is granted it (see apply_env).
