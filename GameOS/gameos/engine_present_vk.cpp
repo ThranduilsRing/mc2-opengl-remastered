@@ -24,6 +24,7 @@
 #include "vulkan_context.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2_diag_verbose.h"
+#include "diagnostic_trace.h"   // mc2_diag::tagRequested
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
 #include "Gates/render_options.h"
@@ -1509,7 +1510,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         const bool vp = drawData->OwnerViewport && drawData->OwnerViewport->RendererUserData;
         if (!(ctx && bd && vp)) {
             static uint32_t s_skipped = 0;
-            if (s_skipped++ < 3)
+            if (s_skipped++ < 3 && mc2_diag::tagRequested("VK_IMGUI"))
                 std::fprintf(stderr, "[VK_IMGUI] draw data skipped: ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
                              static_cast<int>(ctx), static_cast<int>(bd), static_cast<int>(vp), static_cast<void*>(drawData->OwnerViewport));
             return false;
@@ -1539,7 +1540,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
             }
         }
         static uint32_t s_logged = 0;
-        if (skipped != 0 && s_logged < kImguiLogCap) {
+        if (skipped != 0 && s_logged < kImguiLogCap && mc2_diag::tagRequested("VK_IMGUI")) {
             ++s_logged;
             std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name)\n", skipped);
         }

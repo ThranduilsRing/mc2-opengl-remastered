@@ -119,12 +119,34 @@ def cached_configure(src, bdir, extra=()):
 UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 min
 
 
-def run_with_tree_timeout(command, cwd, env, timeout):
-    """Run command; return its rc, or None after killing its whole process tree on timeout."""
-    extra = {} if os.name == "nt" else {"start_new_session": True}
-    proc = subprocess.Popen(command, cwd=cwd, env=env, **console_child.child_kwargs(**extra))
+def print_failed_cases(log_path):
+    """Echo the doctest failure headers (file:line + TEST CASE name) and the summary from a captured run."""
     try:
-        return proc.wait(timeout=timeout)
+        lines = Path(log_path).read_text(errors="replace").splitlines()
+    except OSError:
+        return
+    print("---- failing doctest cases (file:line, name) ----")
+    for i, ln in enumerate(lines):
+        if ln.startswith("TEST CASE:"):
+            print((lines[i - 1] + "  " if i else "") + ln)
+    print("\n".join(ln for ln in lines if ln.startswith("[doctest]")))
+
+
+def run_with_tree_timeout(command, cwd, env, timeout, log_path=None):
+    """Run command; return its rc, or None after killing its whole process tree on timeout.
+
+    log_path: capture the child's output there (echoed afterwards) so the caller can summarise failures."""
+    extra = {} if os.name == "nt" else {"start_new_session": True}
+    if log_path:
+        out = open(log_path, "w", encoding="utf-8", errors="replace")
+        extra.update(stdout=out, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(command, cwd=cwd, env=env, **console_child.child_kwargs(redirected=bool(log_path), **extra))
+    try:
+        rc = proc.wait(timeout=timeout)
+        if log_path:
+            out.close()
+            print(Path(log_path).read_text(errors="replace"), end="")
+        return rc
     except subprocess.TimeoutExpired:
         if os.name == "nt":
             subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
@@ -194,8 +216,15 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     if asan:
         # The allocation probe owns leak checks; ASan supplies bounds and lifetime evidence.
         env.setdefault("ASAN_OPTIONS", "detect_leaks=0:halt_on_error=0:print_stacktrace=1")
-    rc = run_with_tree_timeout(command, REPO_ROOT, env, UNIT_RUN_TIMEOUT_S)
-    tag = "asan " if asan else ""
+    unit_log = Path(tempfile.gettempdir()) / f"mc2_tests_{os.getpid()}.log"
+    rc = run_with_tree_timeout(command, REPO_ROOT, env, UNIT_RUN_TIMEOUT_S, log_path=unit_log)
+    if rc:
+        print_failed_cases(unit_log)
+    try:
+        unit_log.unlink()
+    except OSError:
+        pass
+    tag ="asan " if asan else ""
     if rc is None:
         return False, f"{tag}doctest TIMED OUT after {UNIT_RUN_TIMEOUT_S}s (process tree killed)"
     verdict = "passed" if rc == 0 else f"failed (rc={rc})"
