@@ -462,8 +462,8 @@ extern "C" int mc2_unitpreview_collect_witness(UnitPreviewWitnessRow* out, int m
         r.isMech = (ot->getObjectClass() == BATTLEMECH) ? 1 : 0;
         r.socketCount = 0;
         r.missingSocketCount = 0;
-        for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
-            r.animTagAvailable[a] = 0;
+        for (auto & animTagAvailableElem : r.animTagAvailable)
+            animTagAvailableElem = 0;
 
         // Mech-specific presentation facts: sockets + per-gesture clip presence.
         std::vector<DeclaredSocketCheck> declared;
@@ -520,8 +520,8 @@ extern "C" int mc2_unitpreview_collect_witness(UnitPreviewWitnessRow* out, int m
         in.profile.locomotion = ot->profile().locomotion;
         in.declaredSockets = declared;
         if (mtype) {
-            for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
-                in.animFallbacks.push_back(NeededAnimFallback(r.animTagAvailable[a] != 0));
+            for (const auto animTagAvailableElem : r.animTagAvailable)
+                in.animFallbacks.push_back(NeededAnimFallback(animTagAvailableElem != 0));
         }
         const std::vector<UnitProfileFinding> findings =
             validateUnitDefinition(in, theActionExecutorRegistry());

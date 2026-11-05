@@ -972,9 +972,9 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum, bool staticValues, b
 	curEventTrigger			= staticData.curEventTrigger;
 
 	// Pool reset: every warrior releases its markers BEFORE the slice cursor goes back to 0, never after.
-	for (long i = 0; i < MAX_WARRIORS; i++)
-		if (MechWarrior::warriorList[i])
-			MechWarrior::warriorList[i]->resetQueueMarkers();
+	for (auto & MechWarriorwarriorElem : MechWarrior::warriorList)
+		if (MechWarriorwarriorElem)
+			MechWarriorwarriorElem->resetQueueMarkers();
 	TacOrderQueuePos = 0;
 
 	for (long i = 0; i < numWarriors; i++)

@@ -742,9 +742,9 @@ void SalvageMechArea::render(long xOffset, long yOffset)
 
 		}
 
-		for (int i = 0; i < 3; i++ )
+		for (auto & attributeMeter : attributeMeters)
 		{
-			attributeMeters[i].render(xOffset, yOffset);
+			attributeMeter.render(xOffset, yOffset);
 		}
 
 		if ( !xOffset && !yOffset )
