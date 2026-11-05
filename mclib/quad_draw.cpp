@@ -1,5 +1,7 @@
 // TerrainQuad: TerrainQuad::draw: the SOLID / DRAWALPHA terrain and overlay submission, the M2d decal producer and its parity probe.
 // Declared in the class headers; shared names in quad_internal.h.
+#include <algorithm>
+
 #include "quad_internal.h"
 #include "texture_assets.h"
 #include "mc2fmt.h"
@@ -366,8 +368,8 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 					static int   s_w = 0;
 					static float s_cwMin = 1e30f, s_cwMax = -1e30f, s_cwSum = 0.0f;
 					static int   s_first = 0;
-					if (cw < s_cwMin) s_cwMin = cw;
-					if (cw > s_cwMax) s_cwMax = cw;
+					s_cwMin = std::min(s_cwMin, cw);
+					s_cwMax = std::max(s_cwMax, cw);
 					s_cwSum += cw;
 					if (s_first < 12) {
 						++s_first;

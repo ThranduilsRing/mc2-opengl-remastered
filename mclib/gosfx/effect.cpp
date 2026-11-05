@@ -1,5 +1,6 @@
 #include"gosfxheaders.hpp"
 #include"fx_trace/fx_trace.h"
+#include <algorithm>
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zones
 
 // [B1 C16] (diagnostic) GOSFX_HEAP + GOSFX_CHILD counters
@@ -67,7 +68,7 @@ namespace gosFX {
             pagefile   = static_cast<long long>(pmc.PagefileUsage);
         }
 #endif
-        if (workingSet > g_diagHeapPeakBytes) g_diagHeapPeakBytes = workingSet;
+        g_diagHeapPeakBytes = std::max(g_diagHeapPeakBytes, workingSet);
 
         long long creates  = g_effectCreates.load();
         long long destroys = g_effectDestroys.load();

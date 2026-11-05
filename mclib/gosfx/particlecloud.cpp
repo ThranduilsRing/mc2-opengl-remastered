@@ -1,4 +1,5 @@
 #include"gosfxheaders.hpp"
+#include <algorithm>
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
 //==========================================================================//
 // File:	 gosFX_ParticleCloud.cpp										//
@@ -598,8 +599,7 @@ void
 		spec->m_minimumDeviation.ComputeValue(m_age, seed);
 	Stuff::Scalar pitch_range =
 		spec->m_maximumDeviation.ComputeValue(m_age, seed) - pitch_min;
-	if (pitch_range < 0.0f)
-		pitch_range = 0.0f;
+	pitch_range = std::max(pitch_range, 0.0f);
 	pitch_min +=
 		pitch_range * Stuff::Random::GetFraction() - Stuff::Pi_Over_2;
 	mc2::math::YawPitchRange

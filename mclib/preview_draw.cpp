@@ -264,10 +264,10 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 		v.frgb = (world && !isSpotlight) ? worldFog : 0xff000000;
 		if (g_previewCaptureBounds)
 		{
-			if (v.x < g_previewBoundsMinX) g_previewBoundsMinX = v.x;
-			if (v.x > g_previewBoundsMaxX) g_previewBoundsMaxX = v.x;
-			if (v.y < g_previewBoundsMinY) g_previewBoundsMinY = v.y;
-			if (v.y > g_previewBoundsMaxY) g_previewBoundsMaxY = v.y;
+			g_previewBoundsMinX = std::min(g_previewBoundsMinX, v.x);
+			g_previewBoundsMaxX = std::max(g_previewBoundsMaxX, v.x);
+			g_previewBoundsMinY = std::min(g_previewBoundsMinY, v.y);
+			g_previewBoundsMaxY = std::max(g_previewBoundsMaxY, v.y);
 		}
 
 		// Base colour: the hot-colour markers, else an authored vertex colour.

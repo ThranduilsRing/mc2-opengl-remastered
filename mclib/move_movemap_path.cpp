@@ -1,5 +1,7 @@
 // Pathfinding: MoveMap::calcPath and calcPathJUMP.
 // Declared in the class headers; shared names in move_internal.h.
+#include <algorithm>
+
 #include "move_internal.h"
 #include "mc2fmt.h"
 
@@ -78,9 +80,9 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 		for (int p = 0; p < 3; p++) {
 			int lo;
 			lo = (chMinR - p) * cs;            _shRLo[p] = (lo < 0 ? 0 : lo);
-			_shRHi[p] = (chMaxR + p) * cs + cs - 1; if (_shRHi[p] > height - 1) _shRHi[p] = height - 1;
+			_shRHi[p] = (chMaxR + p) * cs + cs - 1; _shRHi[p] = std::min(_shRHi[p], height - 1);
 			lo = (chMinC - p) * cs;            _shCLo[p] = (lo < 0 ? 0 : lo);
-			_shCHi[p] = (chMaxC + p) * cs + cs - 1; if (_shCHi[p] > width - 1) _shCHi[p] = width - 1;
+			_shCHi[p] = (chMaxC + p) * cs + cs - 1; _shCHi[p] = std::min(_shCHi[p], width - 1);
 		}
 	}
 
@@ -100,8 +102,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 
 	// Let's use their hPrime as a barrier for cutting off the search...
 	maxHPrime = calcHPrime(startR, startC) * 2.5;
-	if (maxHPrime < 500)
-		maxHPrime = 500;
+	maxHPrime = std::max<long>(maxHPrime, 500);
 	
 	// Storage was sized at init; each solve starts with an empty OPEN list below.
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
@@ -133,7 +134,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 
 		if (_pathTrace) {
 			long openN = openHeap.size();
-			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
+			_ptOpenPeak = std::max(_ptOpenPeak, openN);
 		}
 
 		PQNode bestPQNode;
@@ -506,8 +507,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 	}
 
 	maxHPrime = calcHPrime(startR, startC) * 2.5;
-	if (maxHPrime < 500)
-		maxHPrime = 500;
+	maxHPrime = std::max<long>(maxHPrime, 500);
 	
 	// Storage was sized at init; each solve starts with an empty OPEN list below.
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
@@ -546,7 +546,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 		if (_pathTrace) {
 			long openN = openHeap.size();
-			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
+			_ptOpenPeak = std::max(_ptOpenPeak, openN);
 		}
 
 		PQNode bestPQNode;

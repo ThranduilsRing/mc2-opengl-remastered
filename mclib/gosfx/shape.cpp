@@ -1,6 +1,7 @@
 #include"gosfxheaders.hpp"
 
 #include "particles/batcher.h"
+#include <algorithm>
 #include <mlr/mlrindexedprimitivebase.hpp>
 #include <vector>
 #include <unordered_set>
@@ -345,8 +346,7 @@ void
 			for (int v=0; v<vertex_count; ++v)
 			{
 				Stuff::Scalar len = mc2::math::lengthSquared(points[v]);
-				if (len > m_radius)
-					m_radius = len;
+				m_radius = std::max(m_radius, len);
 			}
 		}
 		m_radius = Stuff::Sqrt(m_radius);

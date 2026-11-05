@@ -36,6 +36,7 @@
 //#include"font.h"
 //#endif
 
+#include <algorithm>
 #include <gameos.hpp>
 #include "gos_visual_capture.h"       // VISUAL-CAPTURE-CLEAN-1
 #include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
@@ -499,8 +500,7 @@ void Appearance::drawBars (void)
 	
 	DWORD					color;
 	
-	if (barStatus > 1.0f)
-		barStatus = 1.0f;
+	barStatus = std::min(barStatus, 1.0f);
 
 	if (!barColor)
 	{

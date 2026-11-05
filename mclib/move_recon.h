@@ -4,6 +4,7 @@
 // State lives in mclib so both mclib (move.h inlines) and code/ (mover/mech/warrior/objmgr)
 // can reference it without creating a dependency in the wrong direction.
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include "move_recon_stats.h"
@@ -143,8 +144,7 @@ struct MoveReconNodeCounter {
     {
         if (g_moveReconEnabled) {
             g_moveRecon_al_nodesPopped += n;
-            if (n > g_moveRecon_al_maxNodes)
-                g_moveRecon_al_maxNodes = n;
+            g_moveRecon_al_maxNodes = std::max(g_moveRecon_al_maxNodes, n);
             if (found) g_moveRecon_al_goalFound++;
             else       g_moveRecon_al_goalMissed++;
         }

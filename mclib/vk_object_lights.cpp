@@ -1,5 +1,6 @@
 // Vulkan CPU object-light rows, baked static slots and per-frame dedup caches.
 // Declared in the class headers; shared names in render_scene_support.h.
+#include <algorithm>
 #include <atomic>
 #include "render_scene_support.h"
 #include "vk_object_lights.h"
@@ -649,7 +650,7 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
     // registry's markVisible() (range-aware). The earlier bake-time per-recipe
     // persist was wrong for multi-leaf ranges (compare-oracle caught it) and is
     // removed. The light-table SLOT content here is unchanged.
-    if (ri + 1 > s_staticLightHighWater) s_staticLightHighWater = ri + 1;
+    s_staticLightHighWater = std::max(s_staticLightHighWater, ri + 1);
     // CRITICAL: the frame a recipe FIRST bakes, this-frame's count was
     // set to the OLD (smaller) S at frame-start resetLightData. Without
     // this bump, a later dynamic addLightDataStructure append THIS frame
@@ -658,8 +659,7 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
     // to S keeps same-frame dynamic appends strictly above [0..S). Only
     // skips some low dynamic slots that frame (harmless -- dynamic is
     // per-frame ephemeral, rebuilt from S next resetLightData).
-    if (packet.count < s_staticLightHighWater)
-        packet.count = s_staticLightHighWater;
+    packet.count = std::max(packet.count, s_staticLightHighWater);
 }
 
 mc2::vkLights::LightSlotPeek mc2::vkLights::peekLightSlot(uint32_t idx)

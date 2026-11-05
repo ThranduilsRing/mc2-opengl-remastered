@@ -1,4 +1,5 @@
 // Stock footprint atlas and persistent ground quads; weapon marks belong to impact_presentation.
+#include <algorithm>
 #include <cmath>
 #include "footprints.h"
 #include "Gates/preferences_legacy.h"
@@ -105,7 +106,7 @@ void render()
             }
             if (haze != 0.0f) {
                 const DWORD distanceFog = float2long((1.0f - haze) * 255.0f);
-                if (distanceFog < fogValue) fogValue = distanceFog;
+                fogValue = std::min(fogValue, distanceFog);
                 fog = static_cast<float>(fogValue) / 255.0f;
             }
         }

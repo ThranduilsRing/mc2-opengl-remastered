@@ -1,5 +1,7 @@
 // Pathfinding: MoveMap::calcEscapePath, writeDebug and destroy.
 // Declared in the class headers; shared names in move_internal.h.
+#include <algorithm>
+
 #include "move_internal.h"
 #include "mc2fmt.h"
 
@@ -43,8 +45,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 
 	// Let's use their hPrime as a barrier for cutting off the search...
 	maxHPrime = 500; //float2short(calcHPrime(startR, startC) * 2.5);
-	if (maxHPrime < 500)
-		maxHPrime = 500;
+	maxHPrime = std::max<long>(maxHPrime, 500);
 	
 	// Storage was sized at init; each solve starts with an empty OPEN list below.
 	solveJumpOnBlocked = ctx.jumpOnBlocked();
@@ -75,7 +76,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 
 		if (_pathTrace) {
 			long openN = openHeap.size();
-			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
+			_ptOpenPeak = std::max(_ptOpenPeak, openN);
 		}
 
 		PQNode bestPQNode;
