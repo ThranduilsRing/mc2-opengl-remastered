@@ -41,7 +41,7 @@ def test_sizeof_of_a_non_array_keeps_the_size_in_to_buf_n():
 
 def test_snprintf_s_truncate_statement_form_only():
     out, _, _ = conv('#include <a.h>\nvoid f(){ char n[8]; _snprintf_s(n, sizeof(n), _TRUNCATE, "%ld", v); int k = _snprintf_s(n, 8, _TRUNCATE, "%d", v); }\n')
-    assert 'mc2::fmt::to_buf(n, "{:d}", mc2::fmt::as_i32(v));' in out
+    assert 'mc2::fmt::to_buf(n, "{:d}", mc2::fmt::as_long(v));' in out
     assert "int k = _snprintf_s" in out                      # value used: left alone
 
 
@@ -59,7 +59,7 @@ def test_widths_flags_and_alignment():
 
 def test_length_modifiers_follow_llp64():
     out, _, _ = conv('#include <a.h>\nvoid f(){ snprintf(b, 64, "%ld %lu %lld %llu %zu", a, b2, c, d, e); }\n')
-    assert "as_i32(a)" in out and "as_u32(b2)" in out and "as_i64(c)" in out and "as_u64(d)" in out and "as_size(e)" in out
+    assert "as_long(a)" in out and "as_ulong(b2)" in out and "as_i64(c)" in out and "as_u64(d)" in out and "as_size(e)" in out
 
 
 def test_braces_and_percent_literals():

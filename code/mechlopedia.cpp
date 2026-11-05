@@ -294,7 +294,7 @@ void Mechlopedia::syncEntityList()
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		mc2::fmt::print_out("[ENCYCLO] syncEntityList screen={:d} legacyItems={:d} mirrorOk={:d}\n",
-			mc2::fmt::as_i32(currentScreen), mc2::fmt::as_i32(static_cast<int>(items.size())), mc2::fmt::as_i32(static_cast<int>(ok)));
+			mc2::fmt::as_long(currentScreen), mc2::fmt::as_i32(static_cast<int>(items.size())), mc2::fmt::as_i32(static_cast<int>(ok)));
 		fflush(stdout);
 	}
 

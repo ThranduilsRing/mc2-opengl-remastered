@@ -512,7 +512,7 @@ static void mc2_watchidLoadDiag(const char* what, long a, long b)
 	static unsigned long s_loadDrops = 0;
 	++s_loadDrops;
 	if (s_loadDrops == 1)
-		mc2::fmt::print_err("[WATCHID_LOAD] invalid watch data on load ({} a={:d} b={:d}); slot invalidated. Further occurrences rate-limited.\n", mc2::fmt::safe(what), mc2::fmt::as_i32(a), mc2::fmt::as_i32(b));
+		mc2::fmt::print_err("[WATCHID_LOAD] invalid watch data on load ({} a={:d} b={:d}); slot invalidated. Further occurrences rate-limited.\n", mc2::fmt::safe(what), mc2::fmt::as_long(a), mc2::fmt::as_long(b));
 	if (mc2_diag::tagEnabled("WATCHID_LOAD") &&
 		(s_loadDrops == 1 || (s_loadDrops & 0xFF) == 0)) {
 		char _wl_buf[160];

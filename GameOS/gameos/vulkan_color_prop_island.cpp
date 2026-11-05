@@ -2000,7 +2000,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             // record_submit_us = record + submit (+ inline fence wait under killswitch);
             // fence_wait_us = the deferred retire (beginFrame wait) or the inline wait.
             mc2::fmt::print_err("[VK_PROPS_PERF] tier1=1 inst={:d} type_runs={:d} stage_us={:.1f} record_submit_us={:.1f} fence_wait_us={:.1f} island_total_us={:.1f}\n",
-                mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(g_health.typeRuns), g_health.stageInstUs,
+                mc2::fmt::as_u32(instanceCount), mc2::fmt::as_ulong(g_health.typeRuns), g_health.stageInstUs,
                 g_health.drawUs, us_fence_wait, g_health.totalUs);
             std::fflush(stderr);
         }

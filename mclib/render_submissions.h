@@ -147,7 +147,7 @@ class gos_VERTEXManager
 				g_txmmgr_vertex_block_exhausted.fetch_add(1, std::memory_order_relaxed);
 				if (g_txmmgrBoundsTrace)
 					mc2::fmt::print_err("[TXMMGR_BOUNDS v1] vertex_block_exhausted need={:d} cur={:d} total={:d}\n",
-							mc2::fmt::as_i32(numVertices), mc2::fmt::as_i32(currentVertex), mc2::fmt::as_i32(totalVertices));
+							mc2::fmt::as_long(numVertices), mc2::fmt::as_long(currentVertex), mc2::fmt::as_long(totalVertices));
 				return nullptr;
 			}
 			gos_VERTEX *start = reinterpret_cast<gos_VERTEX *>(storage);

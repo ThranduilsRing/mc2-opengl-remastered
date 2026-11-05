@@ -936,8 +936,8 @@ void Mission::updateOrderLiveness() {
 					olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
 					FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
 				mc2::fmt::print_out("[ORDER_FIXTURE] kind=attack wid={:d} tgt={:d} t={:.1f}\n",
-					mc2::fmt::as_u32(static_cast<unsigned long>(pM->getWatchID())),
-					mc2::fmt::as_u32(static_cast<unsigned long>(olEnemy->getWatchID())),
+					mc2::fmt::as_ulong(static_cast<unsigned long>(pM->getWatchID())),
+					mc2::fmt::as_ulong(static_cast<unsigned long>(olEnemy->getWatchID())),
 					static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
@@ -1012,7 +1012,7 @@ void Mission::updateOrderLiveness() {
 					olPos.x, olPos.y, olGoal.x, olGoal.y, pM->distanceFrom(olGoal));
 				++s_olIssuedMove;
 				mc2::fmt::print_out("[ORDER_FIXTURE] kind=move wid={:d} tgt=0 t={:.1f}\n",
-					mc2::fmt::as_u32(static_cast<unsigned long>(pM->getWatchID())), static_cast<float>(scenarioTime));
+					mc2::fmt::as_ulong(static_cast<unsigned long>(pM->getWatchID())), static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
 			s_olMoveIssued = true;
@@ -1134,7 +1134,7 @@ void Mission::updateSoakPilotPromote() {
 				bool promoted = lPilot->promotePilot();
 				const long rankAfter = lPilot->getRank();
 				mc2::fmt::print_out("[SOAK] pilot-promote pilot={} rankBefore={:d} rankAfter={:d} ok={:d}\n",
-					mc2::fmt::safe(pilotName), mc2::fmt::as_i32(rankBefore), mc2::fmt::as_i32(rankAfter), mc2::fmt::as_i32(promoted ? 1 : 0));
+					mc2::fmt::safe(pilotName), mc2::fmt::as_long(rankBefore), mc2::fmt::as_long(rankAfter), mc2::fmt::as_i32(promoted ? 1 : 0));
 				fflush(stdout);
 			}
 			else

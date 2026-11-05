@@ -887,7 +887,7 @@ void InitModSearchPaths(const char* modsRoot) {
             s_summaryRegistered = true;
             atexit([]() {
                 mc2::fmt::print_out("[file-resolve] opens={:d} misses={:d}\n",
-                       mc2::fmt::as_u32(g_resolveOpens), mc2::fmt::as_u32(g_resolveMisses));
+                       mc2::fmt::as_ulong(g_resolveOpens), mc2::fmt::as_ulong(g_resolveMisses));
                 fflush(stdout);
             });
         }

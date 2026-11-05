@@ -90,7 +90,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(const char* texturePath, cons
 	if (jFileSize > kMaxJpgBytes)
 	{
 		jpgFile.close();
-		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=file-too-large ({:d} bytes)\n", mc2::fmt::safe(fileName), mc2::fmt::as_i32(jFileSize));
+		mc2::fmt::print_out("[BURNIN_JPG] fallback name={} reason=file-too-large ({:d} bytes)\n", mc2::fmt::safe(fileName), mc2::fmt::as_long(jFileSize));
 		return {};
 	}
 

@@ -114,7 +114,7 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const mc2::vkLights::Fee
     }
     if (copies_ == 600 && mc2DiagVerbose()) {   // ~10 s receipt: hits ~= copies when both islands share
         mc2::fmt::print_err("[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits={:d} fallbacks={:d} bytes/frame={:d}\n",
-            mc2::fmt::as_u32(hits_), mc2::fmt::as_u32(fallbacks_), mc2::fmt::as_u64(static_cast<unsigned long long>(bytes_)));
+            mc2::fmt::as_ulong(hits_), mc2::fmt::as_ulong(fallbacks_), mc2::fmt::as_u64(static_cast<unsigned long long>(bytes_)));
         std::fflush(stderr);
     }
 

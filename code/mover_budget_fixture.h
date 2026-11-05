@@ -58,7 +58,7 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
             ++added;
         }
         mc2::fmt::print_out("[MOVER_FIXTURE v1] result=spawned requested={:d} base={:d} added={:d} movers={:d}\n",
-            mc2::fmt::as_i32(target), mc2::fmt::as_i32(start), mc2::fmt::as_i32(added), mc2::fmt::as_i32(static_cast<long>(ObjectManager->getNumMovers())));
+            mc2::fmt::as_long(target), mc2::fmt::as_long(start), mc2::fmt::as_long(added), mc2::fmt::as_long(static_cast<long>(ObjectManager->getNumMovers())));
         std::fflush(stdout);
         nextOrders = turn + 1;
     }
