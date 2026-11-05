@@ -97,10 +97,10 @@
       "commit": "886dd319",
       "gate": "MC2_OVERLAY_CEMENT_ADOPT",
       "expect_default": "ON",
-      "exe_needle": "art_saved_vs_paved",
       "code_evidence": [
         {
           "path": "GameOS/gameos/gos_terrain_indirect.cpp",
+          "alternate_paths": ["GameOS/gameos/gos_terrain_indirect_cement.cpp"],
           "needle": "TileIsRoadArt(my, mx, mapSide, blocks)"
         }
       ],
@@ -119,7 +119,7 @@
           ]
         }
       ],
-      "note": "The TileIsRoadArt runway superset guard. Adds NO gate of its own; it runs inside `if (OverlayCementAdoptEnabled() && Terrain::mapData)` (gos_terrain_indirect.cpp:1826), so MC2_OVERLAY_CEMENT_ADOPT is genuinely its gate and is recorded as such rather than left null -- a null would have graded the default axis an unconditional YES and claimed delivery on an install where the adopt gate is off. exe_needle is a printf format literal unique to this commit, so the binary tier can answer even though the fix adds no uniform."
+      "note": "The TileIsRoadArt runway superset guard. Adds NO gate of its own; it runs inside `if (OverlayCementAdoptEnabled() && Terrain::mapData)` (gos_terrain_indirect.cpp:1826), so MC2_OVERLAY_CEMENT_ADOPT is genuinely its gate and is recorded as such rather than left null -- a null would have graded the default axis an unconditional YES and claimed delivery on an install where the adopt gate is off. NO exe_needle on purpose: the fix adds no uniform and no literal that survives in the exe (the only unique one, art_saved_vs_paved, sits behind a static-false trace flag and is compiled out), and reusing MC2_OVERLAY_CEMENT_ADOPT would duplicate OVERLAY-CEMENT-ADOPT-1 without discriminating. Evidence is the TileIsRoadArt code needle (source@sha) plus ancestry."
     },
     {
       "id": "WATER-SHORE-MASK-1",
