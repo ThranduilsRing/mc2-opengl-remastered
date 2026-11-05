@@ -340,7 +340,7 @@ bool VulkanContext::init(bool wantPresent) {
             for (const auto& ep : lext)
                 if (std::strcmp(ep.extensionName, VK_EXT_LAYER_SETTINGS_EXTENSION_NAME) == 0) { layerSettingsExt = true; break; }
             if (layerSettingsExt) instExts.push_back(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME);
-            else validationLog("error", "layer_too_old", "VK_LAYER_KHRONOS_validation does not offer VK_EXT_layer_settings (spec " + std::to_string(layerSpec) + "): the engine's sync/best-practices settings and duplicate cap are not applied; update the Vulkan SDK");
+            else validationLog("warning", "layer_settings_unavailable","VK_LAYER_KHRONOS_validation does not offer VK_EXT_layer_settings (spec " + std::to_string(layerSpec) + "): the engine's sync/best-practices settings and duplicate cap are not applied; update the Vulkan SDK");
         } else {
             wantValidation = false;
             health_.validationEnabled = false;

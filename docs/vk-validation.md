@@ -37,3 +37,17 @@ is recorded in `.claude/cleanup/lane2-state.md`.
 
 `tests/smoke/test_vk_validation.py` (the parser, the grading, the report line, the red bucket, a missing layer) and the `vk validation line:` cases in
 `tests/unit/test_gate.cpp` (one message is always one line, the id has no spaces, the text no quotes or newlines and is capped).
+
+## Enforcement (lane vk-validation-ci)
+
+- **Layer settings.** With validation on, the engine chains `VkLayerSettingsCreateInfoEXT` (when `VK_EXT_layer_settings` is offered): `duplicate_message_limit`, plus
+  sync-val queue-submit checks for `sync` and the best-practices groups for `best-practices`. The `layer_enabled` line prints the layer spec/impl version.
+- **Handles and labels.** Every `[VK_VALIDATION v1]` text starts with the object handles/names and the innermost command-buffer/queue debug label of the hit.
+- **Canary.** Right after device creation the engine issues one deliberate zero-size `vkCreateBuffer`; the layer's reply prints `info id=canary_fired`. A run that asked
+  for validation without `layer_enabled` AND `canary_fired` is red (`vk_validation_unconfirmed`): a loaded-but-mute layer is not coverage, on any host.
+- **Raw-VUID backstop.** A raw `Validation Error: [ VUID...` line that is not in the engine format (loader/second instance/tool process) is the red bucket
+  `vk_validation_raw`.
+- **Known list.** `tests/syncval/known_vuids.json` holds the reviewed hits that do not fail a row. Every entry has an `expires` date; after it the hit is red again.
+  It starts with the shadow.bake.mask WAW hazard (expires 2026-12-05). No other allowlist.
+- **GPU-AV.** `MC2_VULKAN_VALIDATION=gpu-assisted` (run mode, never default; RESERVE_BINDING_SLOT dropped as obsolete). Box row: `tools/box_run.py -- syncval:gpuav`.
+- **Gate.** `scripts/merge_gate.py` stage `syncval`: smoke-lite (mc2_01 day + mc2_10 night) with `MC2_VULKAN_VALIDATION=sync`; the box row `syncval:*` is the same run.
