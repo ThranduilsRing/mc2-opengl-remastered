@@ -830,9 +830,7 @@ bool upload_geometry_once(MechIsland* s) {
     s->vertexStride = feed.vertexStride;
 
     // A failed copy leaves both buffers empty, so the next frame's retry starts from nothing instead of drawing unfilled buffers.
-    // Static geometry is read by the prepass, the colour pass and the shadow casters every frame: stage it once into device-local
-    // memory (same pattern as the colour-prop island) instead of host-random memory read across the bus. The shadow casters bind
-    // these same buffers (mc2_vk_mech_island_shared_geometry).
+    // Static geometry is read every frame by the prepass, colour pass and shadow casters (mc2_vk_mech_island_shared_geometry): stage once into device-local memory.
     {
         mc2vk::OwnedBuffer stageVertices, stageIndices;
         bool ok = stageVertices.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.vertices") &&
@@ -852,8 +850,7 @@ bool upload_geometry_once(MechIsland* s) {
             }, "mech_geometry_upload");
         }
         if (!ok) {
-            static bool s_logged = false;
-            if (!s_logged) { s_logged = true; vlog("mech geometry upload failed (buffer creation or copy); retrying each frame, logged once."); }
+            static bool s_logged = false; if (!s_logged) { s_logged = true; vlog("mech geometry upload failed (buffer creation or copy); retrying each frame, logged once."); }
             s->vbo.reset();
             s->ibo.reset();
             return false;
