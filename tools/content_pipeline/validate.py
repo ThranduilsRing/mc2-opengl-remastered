@@ -165,7 +165,7 @@ def validate_gltf(path):
         doc, buffers, _ = gltf_io.load_document(path)
     except (ValueError, OSError, KeyError, json.JSONDecodeError) as e:
         return [("error", "LOAD", str(e))]
-    return validate_document(doc, buffers)
+    return validate_document(doc, buffers) + run_khronos_validator(path)
 
 
 def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
@@ -200,6 +200,7 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
     dups = sorted({n for n in names if n and names.count(n) > 1})
     if dups:
         _err(issues, "RUNTIME_NODE_NAME", f"duplicate node names {dups[:4]} (the importer keys shapes by node name)")
+    issues.extend(_truncation_collisions(names))
     tris = 0
     for mi, mesh in enumerate(doc["meshes"]):
         for p in mesh["primitives"]:
@@ -216,6 +217,83 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
                     and not (Path(texture_root) / uri).with_suffix(".ktx2").is_file():
                 _err(issues, "RUNTIME_TEXTURE", f"image {uri!r} not found under {texture_root}")
     return issues
+
+
+TG_NODE_ID_CHARS = 23  # TG_NODE_ID is 24 including the NUL; tgl_parse.cpp strncpy-truncates longer names
+
+
+def _truncation_collisions(names):
+    """Distinct names that become the same node id after the engine's 23-char truncation."""
+    seen = {}
+    issues = []
+    for n in names:
+        if not n:
+            continue
+        short = n[:TG_NODE_ID_CHARS]
+        if short in seen and seen[short] != n:
+            _err(issues, "RUNTIME_NODE_NAME_TRUNC",
+                 f"node names {seen[short]!r} and {n!r} collide after {TG_NODE_ID_CHARS}-char truncation")
+        seen.setdefault(short, n)
+    return issues
+
+
+def validate_skinned_glb(path, *, significant_weight=0.01):
+    """Skinned-mech profile (the static profile rejects skins outright): structurally valid, one skin
+    with joints + inverse bind matrices (per skin), every skinned primitive has JOINTS_0/WEIGHTS_0, no joint
+    index outside the skin, no node-name truncation collisions, and every part driven by ONE
+    significant bone (the importer rigidises each part to its first bone, so soft skinning would
+    render wrong silently)."""
+    issues = validate_gltf(path)
+    if any(s == "error" for s, _, _ in issues):
+        return issues
+    doc, buffers, _ = gltf_io.load_document(path)
+    skins = doc.get("skins") or []
+    if not skins:
+        _err(issues, "SKIN_COUNT", "no skin in a skinned-mech GLB")
+        return issues
+    for si, skin in enumerate(skins):
+        if not skin.get("joints"):
+            _err(issues, "SKIN_JOINTS", f"skin {si} has no joints")
+        if "inverseBindMatrices" not in skin:
+            _err(issues, "SKIN_IBM", f"skin {si} has no inverseBindMatrices")
+    joints = max((skin.get("joints") or [] for skin in skins), key=len)
+    issues.extend(_truncation_collisions([n.get("name", "") for n in doc.get("nodes", [])]))
+    for mi, mesh in enumerate(doc.get("meshes", [])):
+        for pi, p in enumerate(mesh["primitives"]):
+            attrs = p["attributes"]
+            if "JOINTS_0" not in attrs and "WEIGHTS_0" not in attrs:
+                continue
+            if "JOINTS_0" not in attrs or "WEIGHTS_0" not in attrs:
+                _err(issues, "SKIN_ATTRS", f"mesh {mi} primitive {pi} has only one of JOINTS_0/WEIGHTS_0")
+                continue
+            j = np.asarray(gltf_io.read_accessor(doc, buffers, attrs["JOINTS_0"]))
+            w = np.asarray(gltf_io.read_accessor(doc, buffers, attrs["WEIGHTS_0"]), dtype=np.float64)
+            if j.size and int(j.max()) >= max(len(joints), 1):
+                _err(issues, "SKIN_JOINT_RANGE", f"mesh {mi} primitive {pi} joint index {int(j.max())} >= {len(joints)}")
+            if w.size:
+                if w.dtype.kind in "ui":
+                    w = w / float(np.iinfo(np.asarray(gltf_io.read_accessor(doc, buffers, attrs["WEIGHTS_0"])).dtype).max)
+                bones = set(j.reshape(-1, 4)[w.reshape(-1, 4) > significant_weight].tolist())
+                if len(bones) > 1:
+                    _err(issues, "SKIN_MULTI_BONE",
+                         f"mesh {mi} primitive {pi} is weighted to {len(bones)} bones; the importer supports one bone per part")
+    return issues
+
+
+def run_khronos_validator(path):
+    """Official glTF-Validator when its CLI (`gltf_validator`) is on PATH; no-op otherwise."""
+    import shutil
+    import subprocess
+    exe = shutil.which("gltf_validator")
+    if not exe:
+        return []
+    r = subprocess.run([exe, "-o", str(path)], capture_output=True, text=True, timeout=120)
+    try:
+        report = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return [("error", "KHRONOS_VALIDATOR", f"validator output unreadable (rc={r.returncode})")]
+    return [("error", "KHRONOS_" + m.get("code", ""), m.get("message", "")) for m in report.get("issues", {}).get("messages", [])
+            if m.get("severity") == 0]
 
 
 def errors(issues):

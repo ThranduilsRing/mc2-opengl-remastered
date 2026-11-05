@@ -635,3 +635,10 @@ def test_authored_glass_ids_survive_ingest_and_export(tmp_path):
     output, binary = gltf_io.split_glb(raw)
     attrs = output['meshes'][0]['primitives'][0]['attributes']
     np.testing.assert_array_equal(gltf_io.read_accessor(output, [binary], attrs['TEXCOORD_1']), expected)
+
+
+def test_truncation_collision_flagged():
+    a = "x" * 23 + "_left"
+    b = "x" * 23 + "_right"
+    assert any(c == "RUNTIME_NODE_NAME_TRUNC" for _, c, _ in validate._truncation_collisions([a, b]))
+    assert not validate._truncation_collisions([a, "other"])
