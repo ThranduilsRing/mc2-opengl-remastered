@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include <algorithm>
+#include <cstring>
 #include "gos_static_prop_batcher_internal.h"
 #include "static_caster_set.h"
 #include "gos_static_prop_selflit.h"
@@ -323,6 +324,10 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         uint8_t* const vboPtr = s_stagingVbo.data() + static_cast<size_t>(baseVertex) * kVertexStride;
         const uint32_t firstPkt = static_cast<uint32_t>(s_packets.size()) - packetCountForThisType;
         std::vector<uint32_t> tmp;
+        // Position (3 floats) is at vertex offset 0; copy it out so meshopt reads real floats.
+        std::vector<float> positions(static_cast<size_t>(typeVertCount) * 3);
+        for (uint32_t v = 0; v < typeVertCount; ++v)
+            std::memcpy(positions.data() + static_cast<size_t>(v) * 3, vboPtr + static_cast<size_t>(v) * kVertexStride, 3 * sizeof(float));
         for (uint32_t p = firstPkt; p < s_packets.size(); ++p) {
             const GpuStaticPropPacket& pk = s_packets[p];
             uint32_t* idx = s_stagingIbo.data() + pk.firstIndex;
@@ -332,8 +337,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
             s_meshoptMissesBefore += meshopt_analyzeVertexCache(idx, n, typeVertCount, 16, 0, 0).acmr * (n / 3);
             tmp.resize(n);
             meshopt_optimizeVertexCache(tmp.data(), idx, n, typeVertCount);
-            // Position (3 floats) is at vertex offset 0.
-            meshopt_optimizeOverdraw(idx, tmp.data(), n, reinterpret_cast<const float*>(vboPtr), typeVertCount, kVertexStride, 1.05f);
+            meshopt_optimizeOverdraw(idx, tmp.data(), n, positions.data(), typeVertCount, 3 * sizeof(float), 1.05f);
         }
         if (typeVertCount != 0 && packetCountForThisType != 0) {
             const uint32_t rangeFirst = s_packets[firstPkt].firstIndex;
