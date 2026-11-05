@@ -140,7 +140,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
     const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
     if (g_amdChecksExpected.load(std::memory_order_relaxed) &&
-        (std::strstr(id, "AvoidImageToImageCopy") || std::strstr(id, "ClearAttachment-ClearImage-color")))
+        (std::strstr(id, "AvoidImageToImageCopy") || std::strstr(id, "ClearAttachment-ClearImage") ||   // layer 1.3.x names (no "AMD-" infix); 1.4.x adds -color/-depth-stencil
+         std::strstr(id, "CmdBuffer-highBarrierCount") || std::strstr(id, "CreatePipelinesLayout-KeepLayoutSmall")))
         g_amdCanarySeen.store(true, std::memory_order_relaxed);
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         if (g_cbContext) g_cbContext->mutableHealth().validationErrors.fetch_add(1, std::memory_order_relaxed);
@@ -818,7 +819,7 @@ void VulkanContext::destroy() {
     gpuprof::shutdown(*this);
 #endif
     if (g_amdChecksExpected.load() && !g_amdCanarySeen.load())
-        validationLog("warning", "amd_canary_missing", "preset best-practices ran but neither BestPractices-AMD-vkImage-AvoidImageToImageCopy nor -ClearAttachment-ClearImage-color was reported: the AMD checks did not apply (layer too old, or VK_LAYER_ENABLES ignored)");
+        validationLog("warning", "amd_canary_missing", "preset best-practices ran but none of AvoidImageToImageCopy / ClearAttachment-ClearImage / CmdBuffer-highBarrierCount / KeepLayoutSmall was reported: the AMD checks did not apply (layer too old, or VK_LAYER_ENABLES ignored)");
     g_debugNames = false;
     if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }   // parked owners go ahead of the allocator and the device
 #ifdef MC2_VULKAN_ISLAND
