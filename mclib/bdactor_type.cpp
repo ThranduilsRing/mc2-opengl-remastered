@@ -567,10 +567,10 @@ void BldgAppearanceType::init (const char * fileName)
  		}
 	}
 
-	for (int i=0;i<MAX_LODS;i++)
+	for (auto & bldgShapeElem : bldgShape)
 	{
-		if (bldgShape[i])
-			bldgShape[i]->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
+		if (bldgShapeElem)
+			bldgShapeElem->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 	}
 
 	// An authored window color is the legacy signal for an occupied building.
@@ -629,12 +629,12 @@ void BldgAppearanceType::destroy (void)
 	nodeDataStore.reset();
 	nodeData = nullptr;
 
-	for (long i=0;i<MAX_LODS;i++)
+	for (auto & bldgShapeElem : bldgShape)
 	{
-		if (bldgShape[i])
+		if (bldgShapeElem)
 		{
-			delete bldgShape[i];
-			bldgShape[i] = nullptr;
+			delete bldgShapeElem;
+			bldgShapeElem = nullptr;
 		}
 	}
 
@@ -647,12 +647,12 @@ void BldgAppearanceType::destroy (void)
 		bldgDmgShape = nullptr;
 	}
 	
- 	for (int i=0;i<MAX_BD_ANIMATIONS;i++)
+ 	for (auto & bdAnimDataElem : bdAnimData)
 	{
-		if (bdAnimData[i])
+		if (bdAnimDataElem)
 		{
-			delete bdAnimData[i];
-			bdAnimData[i] = nullptr;
+			delete bdAnimDataElem;
+			bdAnimDataElem = nullptr;
 		}
 	}
 }
@@ -882,21 +882,21 @@ void TreeAppearanceType::destroy (void)
     propMaterialSource = nullptr;
 	AppearanceType::destroy();
 
-	for (long i=0;i<MAX_LODS;i++)
+	for (auto & treeShapeElem : treeShape)
 	{
-		if (treeShape[i])
+		if (treeShapeElem)
 		{
-			delete treeShape[i];
-			treeShape[i] = nullptr;
+			delete treeShapeElem;
+			treeShapeElem = nullptr;
 		}
 	}
 
-	for (long i = 0; i < MAX_LODS; i++)
+	for (auto & treeRenderShapeElem : treeRenderShape)
 	{
-		if (treeRenderShape[i])
+		if (treeRenderShapeElem)
 		{
-			delete treeRenderShape[i];
-			treeRenderShape[i] = nullptr;
+			delete treeRenderShapeElem;
+			treeRenderShapeElem = nullptr;
 		}
 	}
 	treeRenderShapeLodCount = 0;

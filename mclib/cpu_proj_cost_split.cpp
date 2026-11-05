@@ -121,10 +121,10 @@ static void emit_window_stats() {
     const size_t nFrames = s_winNs[0].size();
     std::vector<int64_t> projTotal(nFrames, 0);
     for (size_t f = 0; f < nFrames; ++f) {
-        for (int b = 0; b < BUCKET_COUNT; ++b) {
+        for (auto & winN : s_winNs) {
             // All bucket rings are kept in lock-step (same number of frames).
-            if (f < s_winNs[b].size())
-                projTotal[f] += s_winNs[b][f];
+            if (f < winN.size())
+                projTotal[f] += winN[f];
         }
     }
 
@@ -210,13 +210,13 @@ void init_from_env() {
 
 void frame_begin() {
     if (!g_cpuProjEnabled) return;
-    for (int b = 0; b < BUCKET_COUNT; ++b) {
-        s_curFrameBucket[b].ns       = 0;
-        s_curFrameBucket[b].workload = 0;
+    for (auto & curFrameBucketElem : s_curFrameBucket) {
+        curFrameBucketElem.ns       = 0;
+        curFrameBucketElem.workload = 0;
     }
-    for (int s = 0; s < SIDECAR_COUNT; ++s) {
-        s_curFrameSidecar[s].ns       = 0;
-        s_curFrameSidecar[s].workload = 0;
+    for (auto & curFrameSidecarElem : s_curFrameSidecar) {
+        curFrameSidecarElem.ns       = 0;
+        curFrameSidecarElem.workload = 0;
     }
 }
 

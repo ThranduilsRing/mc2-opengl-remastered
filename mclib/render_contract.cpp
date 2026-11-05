@@ -911,9 +911,9 @@ void endPass(RenderCore::RenderPassId id) {
     for (int i = 0; i < readCount; ++i) {
         mc2::fmt::print_err(" read={}:{}", mc2::fmt::safe(resourceName(c->reads[i])), mc2::fmt::safe(readOk[i] ? "ok" : "MISSING"));
     }
-    for (int i = 0; i < 4; ++i) {
-        if (c->writes[i] == RenderCore::RenderResourceId::Unknown) break;
-        mc2::fmt::print_err(" write={}", mc2::fmt::safe(resourceName(c->writes[i])));
+    for (const auto & writeElem : c->writes) {
+        if (writeElem == RenderCore::RenderResourceId::Unknown) break;
+        mc2::fmt::print_err(" write={}", mc2::fmt::safe(resourceName(writeElem)));
     }
     mc2::fmt::print_err("\n");
 }

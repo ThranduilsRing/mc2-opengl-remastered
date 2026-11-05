@@ -468,8 +468,8 @@ profile = true;
 	
 	//----------------------------------
 	// Initialize the character table...
-	for (long curCh = 0; curCh < 256; curCh++)
-		charTable[curCh] = CHR_SPECIAL;
+	for (auto & charTableElem : charTable)
+		charTableElem = CHR_SPECIAL;
 	for (long curCh = '0'; curCh <= '9'; curCh++)
 		charTable[curCh] = CHR_DIGIT;
 	for (long curCh = 'A'; curCh <= 'Z'; curCh++)
@@ -771,9 +771,9 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	NumStaticVariables = 0;
 	NumOrderCalls = 0;
 	NumStateHandles = 1;
-	for (int i = 0; i < MAX_STATE_HANDLES_PER_MODULE; i++) {
-		StateHandleList[i].name[0] = '\0';
-		StateHandleList[i].state = nullptr;
+	for (auto & StateHandleElem : StateHandleList) {
+		StateHandleElem.name[0] = '\0';
+		StateHandleElem.state = nullptr;
 	}
 
 	long openErr = ABL_NO_ERR;

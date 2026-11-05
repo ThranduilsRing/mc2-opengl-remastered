@@ -239,9 +239,9 @@ long TerrainColorMap::init (char *fileName)
 				mc2::fmt::to_buf(waterDetailBaseName, "defaults" PATH_SEPARATOR "default_water");
 			}
 		}
-		for (long i=0;i<MAX_WATER_DETAIL_TEXTURES;i++)
+		for (auto & waterDetailNodeIndexElem : waterDetailNodeIndex)
 		{
-			waterDetailNodeIndex[i].reset();
+			waterDetailNodeIndexElem.reset();
 		}
 		mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 		waterFile.init(texturePath,dName,".tga");

@@ -343,9 +343,9 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (int i=0;i<8;i++)
+		for (const auto & boxCoord : boxCoords)
 		{
-			testRadius = glm::length(boxCoords[i]);
+			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}

@@ -39,8 +39,8 @@ namespace {
 	// when MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE=0.)
 	bool bldgTypeHasAnimations(const BldgAppearanceType* t) {
 		if (!t) return false;
-		for (long i = 0; i < MAX_BD_ANIMATIONS; ++i) {
-			if (t->bdAnimData[i] != nullptr) return true;
+		for (const auto & bdAnimDataElem : t->bdAnimData) {
+			if (bdAnimDataElem != nullptr) return true;
 		}
 		return false;
 	}

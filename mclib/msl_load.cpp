@@ -396,10 +396,10 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 			// through to ASE so a broken modder asset can't render the mech
 			// un-loadable. Stock-install playability is paramount.
 			static const char* const kImportExts[] = { ".glb", ".fbx" };
-			for (size_t e = 0; e < sizeof(kImportExts) / sizeof(kImportExts[0]); ++e)
+			for (const auto & importExt : kImportExts)
 			{
 				FullPathFileName probePath;
-				probePath.init(tglPath, baseName, kImportExts[e]);
+				probePath.init(tglPath, baseName, importExt);
 				const bool exists = fileExists(probePath, FILE_ON_DISK);
 				if (exists)
 				{

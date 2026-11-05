@@ -418,12 +418,12 @@ void GVAppearanceType::destroy (void)
 	for (auto& shape : renderLods) shape.reset();
 	AppearanceType::destroy();
 
-	for (long i=0;i<MAX_LODS;i++)
+	for (auto & gvShapeElem : gvShape)
 	{
-		if (gvShape[i])
+		if (gvShapeElem)
 		{
-			delete gvShape[i];
-			gvShape[i] = nullptr;
+			delete gvShapeElem;
+			gvShapeElem = nullptr;
 		}
 	}
 
@@ -439,10 +439,10 @@ void GVAppearanceType::destroy (void)
 		gvDmgShape = nullptr;
 	}
 
-	for (int i=0;i<MAX_GV_ANIMATIONS;i++)
+	for (auto & gvAnimDataElem : gvAnimData)
 	{
-		delete gvAnimData[i];
-		gvAnimData[i] = nullptr;
+		delete gvAnimDataElem;
+		gvAnimDataElem = nullptr;
 	}
 
 	nodeDataStore.reset();
@@ -1005,9 +1005,9 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (int i=0;i<8;i++)
+		for (const auto & boxCoord : boxCoords)
 		{
-			testRadius = glm::length(boxCoords[i]);
+			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}
@@ -1084,19 +1084,19 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// Removing these lines is NOT the fix either: registration is still
 		// consumed elsewhere in the batcher. Fix the eligibility predicate
 		// (submitted-ness, not registered-ness) if this ever goes live.
-		for (int i = 0; i < MAX_LODS; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShape[i]);
+		for (auto & gvShapeElem : appearType->gvShape)
+			GpuStaticPropBatcher::instance().registerMultiShape(gvShapeElem);
 		// An override body with per-object maps is one shared shape per LOD (paint is shader-side), so it joins the
 		// batcher here, before finalize, and draws through submitMultiShape instead of the CPU fallback.
 		if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name); ov && ov->usesObjectMaps())
-			for (int i = 0; i < MAX_LODS; ++i)
-				if (appearType->renderLods[i])
-					GpuStaticPropBatcher::instance().registerMultiShape(appearType->renderLods[i].get(), true, ov);
+			for (const auto & renderLod : appearType->renderLods)
+				if (renderLod)
+					GpuStaticPropBatcher::instance().registerMultiShape(renderLod.get(), true, ov);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
 		// Stock bodies (and the destroyed shape) draw from per-node matrices through the mech batcher.
-		for (int i = 0; i < MAX_LODS; ++i)
-			GpuMechBatcher::instance().registerVehicleType(appearType->gvShape[i]);
+		for (auto & gvShapeElem : appearType->gvShape)
+			GpuMechBatcher::instance().registerVehicleType(gvShapeElem);
 		GpuMechBatcher::instance().registerVehicleType(appearType->gvDmgShape);
 	}
 }

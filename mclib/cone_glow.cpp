@@ -1148,8 +1148,8 @@ void FlushFrame()
     // Draw runs while the overlap worker ticks (and bumps the live turn): compare with the extracted turn.
     if (s_queueTurn == mc2::render_view::clock().turn && mc2::renderSubmissions().active())
     {
-        for (size_t i = 0; i < s_tris.size(); ++i)
-            mc2::renderSubmissions().addVertices(0xffffffff, s_tris[i].v, MC2_ISSPOTLGT);
+        for (auto & tri : s_tris)
+            mc2::renderSubmissions().addVertices(0xffffffff, tri.v, MC2_ISSPOTLGT);
     }
     s_tris.clear();
 }

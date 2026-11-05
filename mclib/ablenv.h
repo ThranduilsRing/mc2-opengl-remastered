@@ -78,8 +78,8 @@ class UserFile {
 			filePtr.close();
 			numLines = 0;
 			totalLines = 0;
-			for (long i = 0; i < MAX_USER_FILE_LINES; i++)
-				lines[i][0] = '\0';
+			for (auto & line : lines)
+				line[0] = '\0';
 		}
 
 		UserFile (void) {

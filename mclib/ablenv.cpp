@@ -401,13 +401,13 @@ void UserFile::setup (void) {
 
 void UserFile::cleanup (void) {
 
-	for (long i = 0; i < MAX_USER_FILES; i++) 
+	for (auto & file : files) 
 	{
-		if (files[i]) {
-			if (files[i]->inUse)
-				files[i]->close();
-			delete files[i];
-			files[i] = nullptr;
+		if (file) {
+			if (file->inUse)
+				file->close();
+			delete file;
+			file = nullptr;
 		}
 	}
 }

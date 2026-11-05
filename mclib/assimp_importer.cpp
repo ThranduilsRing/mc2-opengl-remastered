@@ -385,8 +385,8 @@ std::optional<std::string> DeriveMC2TextureName(const aiScene* scene, const aiMa
 		aiString matName;
 		if (mat->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
 			std::string mn = matName.C_Str();
-			for (size_t i = 0; i < mn.size(); ++i)
-				if (mn[i] >= 'A' && mn[i] <= 'Z') mn[i] = static_cast<char>((mn[i] - 'A' + 'a'));
+			for (auto & mnElem : mn)
+				if (mnElem >= 'A' && mnElem <= 'Z') mnElem = static_cast<char>((mnElem - 'A' + 'a'));
 			if (mn.find("leaf") != std::string::npos ||
 			    mn.find("leaves") != std::string::npos ||
 			    mn.find("foliage") != std::string::npos)
@@ -1010,10 +1010,10 @@ void measureClipStrides(ImportedAnimEntry& e) {
         // 2 * range / duration along the foot's dominant horizontal axis. (A per-frame
         // "lowest frames" test picked swing frames on in-place BT clips and over-read ~4x.)
         float sum = 0.0f; int n = 0;
-        for (int k = 0; k < 2; ++k) {
-            if (pos[k].size() < 3) continue;
-            const auto [xlo, xhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.x; }));
-            const auto [zlo, zhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.z; }));
+        for (auto & po : pos) {
+            if (po.size() < 3) continue;
+            const auto [xlo, xhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.x; }));
+            const auto [zlo, zhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.z; }));
             sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
             ++n;
         }
@@ -1795,7 +1795,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			const char* dumpPath = dumpPathStr.c_str();
 			if (FILE* bf = fopen(dumpPath, "w")) {
 				double sum = 0.0;
-				for (const auto& b : bake.rest) for (int k = 0; k < 16; ++k) sum += b.m[k];
+				for (const auto& b : bake.rest) for (const auto mElem : b.m) sum += mElem;
 				const char* clipLabel = bake.forcedClip.empty() ? "rest" : bake.forcedClip.c_str();
 				mc2::fmt::print(bf, "{{\n  \"clip\": \"{}\",\n  \"frame\": {:d},\n  \"boneCount\": {:d},\n  \"checksum\": {:.6f},\n  \"bones\": [\n", mc2::fmt::safe(clipLabel), mc2::fmt::as_i32(bake.forcedFrame), mc2::fmt::as_size(bake.names.size()), sum);
 				for (size_t i = 0; i < bake.names.size(); ++i) {
