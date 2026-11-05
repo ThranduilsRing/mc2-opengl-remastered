@@ -77,12 +77,17 @@ NO_CACHE="${CONTRACTS_NO_CACHE:-0}"
 # --rows REGEX runs only the rows whose label matches (ERE, unanchored): the inner-loop filter for iterating on one check. It is a
 # PARTIAL board and says so; the full board stays mandatory per batch.
 ROWS_RE=""
+SKIP_RE=""
 ROWS_SKIPPED=0
 _ARGS=()
 while [ $# -gt 0 ]; do
     if [ "$1" = "--rows" ]; then
         [ $# -ge 2 ] || { echo "--rows needs a regex" >&2; exit 1; }
         ROWS_RE="$2"; shift 2; continue
+    fi
+    if [ "$1" = "--skip-rows" ]; then   # inverse of --rows: the box runs every row but the Windows-only ones
+        [ $# -ge 2 ] || { echo "--skip-rows needs a regex" >&2; exit 1; }
+        SKIP_RE="$2"; shift 2; continue
     fi
     _ARGS+=("$1"); shift
 done
@@ -183,6 +188,7 @@ SEEN_LABELS=""
 SEEN_CMDS=""
 
 _row_selected() {   # 0 = run this row (no --rows filter, or the label matches)
+    if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then ROWS_SKIPPED=$((ROWS_SKIPPED + 1)); return 1; fi
     [ -z "$ROWS_RE" ] && return 0
     if [[ "$1" =~ $ROWS_RE ]]; then return 0; fi
     ROWS_SKIPPED=$((ROWS_SKIPPED + 1))
@@ -1624,7 +1630,8 @@ if [ "$KNOWN_COUNT" -gt 0 ]; then
     echo "  A ledger entry that matches no finding is itself a FAIL, so this"
     echo "  cannot quietly outlive its condition -- nor hide a blind checker."
 fi
-if [ -n "$ROWS_RE" ]; then
+if [ -n "$ROWS_RE" ] || [ -n "$SKIP_RE" ]; then
+    ROWS_RE="${ROWS_RE:-skip:$SKIP_RE}"
     echo ""
     echo "  PARTIAL BOARD: --rows '$ROWS_RE' ran $((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT)) row(s) and skipped $ROWS_SKIPPED."
     echo "  This is NOT a green board; run the full board (no --rows) before committing a batch."

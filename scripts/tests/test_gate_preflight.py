@@ -104,6 +104,7 @@ def test_deploy_bytes_verified_before_runtime(tmp_path, monkeypatch):
         checked.append((target, head))
         raise ValueError('shader byte mismatch')
     monkeypatch.setattr(deploy_payload, 'verify_published_identity', corrupt)
+    monkeypatch.setattr(gate.gate_reuse, 'install_current', lambda *a: False)   # gate-reuse's pre-deploy probe: a miss, so the deploy runs
     calls = []
     def runner(command, **kw):
         calls.append(command)

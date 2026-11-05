@@ -282,7 +282,7 @@ def test_unit_row_configures_the_doctest_tier_with_the_box_clang_toolchain():
     # defect: a bare `cmake -S tests/unit` on the box found no compiler ("CMAKE_CXX_COMPILER not set")
     i = box_run.REMOTE.index("    unit)")
     row = box_run.REMOTE[i:box_run.REMOTE.index("    build)", i)]
-    assert "-S tests/unit" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
+    assert "-S \\$PWD/tests/unit" in row and "box_exclude.txt" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
 
 
 def test_build_and_unit_rows_queue_in_the_build_group_and_hold_no_gpu_slot(monkeypatch, tmp_path):

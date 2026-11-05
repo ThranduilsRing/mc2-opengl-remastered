@@ -1162,7 +1162,7 @@ def test_gate_reuses_only_fresh_same_head_unit_receipt(tmp_path, monkeypatch, fr
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    assert gate.main(["--dry-run", "--no-box", "--proofs-dir", str(tmp_path / "proof")]) == 0   # the box route has its own python-only split
     cmd = next(c for n, c, _ in seen if n == "harnesses")
     assert ("--python-only" in cmd) == fresh
 

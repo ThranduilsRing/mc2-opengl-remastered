@@ -1,0 +1,30 @@
+# Contract rows that need Windows; the merge gate keeps them on the PC. One check-contracts.sh row label per line.
+# Measured from one real box run at nifty cde8d76ff (scripts/box_contracts.sh on the Linux box): 120 of 140 rows pass there; these 20 do not,
+# for the reason on each line (Windows tools/paths, no Vulkan SDK on the box, or a mirror without the branch ref). Re-derive after a box toolchain change.
+abl_static_alloc
+analyze_dangling
+background_launch
+delivery_installs
+gate_gen_check
+gate_inputs
+gate_receipts
+kit_art
+kit_visibility
+mapgen_fof
+material_gpu_mirror
+mission_codec_golden
+mod_packaging
+mod_smoke
+script_callers
+shadow_bake_init
+sim_fp_contract
+staged_hygiene
+vk_pipeline_layout
+vk_shaders_compile
+# analyze_dangling, sim_fp_contract: need C:\LLVM\bin\clang-cl.exe (/fp:precise MSVC-ABI probes)
+# gate_gen_check: needs the MSVC generator for tools/gate_dump; the box has Unix Makefiles only
+# delivery_installs, mod_packaging, mod_smoke, mission_codec_golden, mapgen_fof, kit_art, kit_visibility, background_launch: read A:/ installs / .exe paths
+# gate_inputs, gate_receipts, shadow_bake_init, abl_static_alloc, script_callers: Windows paths or the PC's gate state (script_callers also wants a caller row for box_contracts.sh)
+# material_gpu_mirror: check script uses `set -o pipefail` under dash (a box shell issue, not a product failure)
+# vk_pipeline_layout, vk_shaders_compile: need glslc/spirv-cross/slangc (no Vulkan SDK on the box)
+# staged_hygiene: the box mirror has no claude/nifty-mendeleev ref
