@@ -1,4 +1,5 @@
 #include "gos_render.h"
+#include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -90,7 +91,7 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
         static const char* s_lastReason = nullptr;
         if (forbidReason != s_lastReason) {
             s_lastReason = forbidReason;
-            printf("[CURSOR_GUARD] mouse grab REFUSED (%s) -- the window is not "
+            mc2::fmt::print_out("[CURSOR_GUARD] mouse grab REFUSED ({}) -- the window is not "
                    "visible to the user, so it may not capture the pointer.\n",
                    forbidReason ? forbidReason : "?");
             fflush(stdout);
@@ -300,7 +301,7 @@ static void apply_unattended_window_styles(SDL_Window* window)
     LONG_PTR ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
     SetWindowLongPtr(hwnd, GWL_EXSTYLE,
                      ex | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
-    printf("[CURSOR_GUARD] unattended run -- window marked WS_EX_NOACTIVATE "
+    mc2::fmt::print_out("[CURSOR_GUARD] unattended run -- window marked WS_EX_NOACTIVATE "
            "(cannot be activated, no taskbar/Alt-Tab entry) and SDL mouse "
            "auto-capture disabled.\n");
     fflush(stdout);
@@ -520,7 +521,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // ISSUE-49 verification diag (existing MC2_RES_DIAG gate): one boot
         // line proving whether the OS window carries the resizable flag.
         if (window && mc2::gate::get<"MC2_RES_DIAG">()) {
-            printf("[RES_DIAG] window flags: resizable=%d windowed_env=%d windowed_hint=%d\n",
+            mc2::fmt::print_out("[RES_DIAG] window flags: resizable={} windowed_env={} windowed_hint={}\n",
                 (SDL_GetWindowFlags(window) & SDL_WINDOW_RESIZABLE) ? 1 : 0,
                 mc2::gate::get<"MC2_WINDOWED">() ? 1 : 0,
                 windowed_hint ? 1 : 0);
@@ -555,7 +556,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         if (window_offscreen_requested() && mc2::gate::get<"MC2_RES_DIAG">()) {
             int px = 0, py = 0;
             SDL_GetWindowPosition(window, &px, &py);
-            printf("[RES_DIAG] offscreen window origin=%d,%d size=%dx%d\n",
+            mc2::fmt::print_out("[RES_DIAG] offscreen window origin={},{} size={}x{}\n",
                    px, py, width, height);
             fflush(stdout);
         }
