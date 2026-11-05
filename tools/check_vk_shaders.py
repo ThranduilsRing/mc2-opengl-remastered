@@ -61,8 +61,12 @@ def compile_one(kind, exe, src_path):
             return slang_compile.bake(Path(src_path), Path(spv))
         if kind == "glslang":
             cmd = [exe, "-V", src_path, "-o", spv]
+            if os.path.basename(src_path) == "hzb_cull.comp":  # subgroup ops; mirrors MC2_VK_SHADER_DEFINES_hzb_cull_comp
+                cmd[1:1] = ["--target-env", "vulkan1.1"]
         else:
             cmd = [exe, src_path, "-o", spv]
+            if os.path.basename(src_path) == "hzb_cull.comp":
+                cmd[1:1] = ["--target-env=vulkan1.1"]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
         except FileNotFoundError:
