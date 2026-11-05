@@ -469,6 +469,8 @@ bool VulkanContext::init(bool wantPresent) {
     VkPhysicalDeviceFeatures optionalWaterFeatures{};
     vkGetPhysicalDeviceFeatures(phys_, &optionalWaterFeatures);
     enableFeatures.features.depthClamp = optionalWaterFeatures.depthClamp;
+    VkPhysicalDeviceVulkan11Features en11{};
+    en11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     VkPhysicalDeviceVulkan12Features en12{};
     en12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     VkPhysicalDeviceVulkan13Features en13{};
@@ -481,6 +483,10 @@ bool VulkanContext::init(bool wantPresent) {
         enableFeatures.features.independentBlend = featureEnabled("independentBlend") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.samplerAnisotropy = featureEnabled("samplerAnisotropy") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.shaderSampledImageArrayDynamicIndexing = featureEnabled("shaderSampledImageArrayDynamicIndexing") ? VK_TRUE : VK_FALSE;
+        enableFeatures.features.multiDrawIndirect = featureEnabled("multiDrawIndirect") ? VK_TRUE : VK_FALSE;
+        enableFeatures.features.drawIndirectFirstInstance = featureEnabled("drawIndirectFirstInstance") ? VK_TRUE : VK_FALSE;
+        en11.shaderDrawParameters = featureEnabled("shaderDrawParameters") ? VK_TRUE : VK_FALSE;
+        en12.drawIndirectCount = featureEnabled("drawIndirectCount") ? VK_TRUE : VK_FALSE;
         en12.timelineSemaphore = featureEnabled("timelineSemaphore") ? VK_TRUE : VK_FALSE;
         en12.bufferDeviceAddress = featureEnabled("bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
         en12.descriptorIndexing = featureEnabled("descriptorIndexing") ? VK_TRUE : VK_FALSE;
@@ -493,6 +499,7 @@ bool VulkanContext::init(bool wantPresent) {
         if (featureEnabled("synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
         void** tail = &enableFeatures.pNext;
         auto chain = [&](auto& s) { *tail = &s; tail = &s.pNext; };
+        chain(en11);
         chain(en12);
         if (drCore || s2Core) chain(en13);
         if (featureEnabled("dynamicRendering") && !drCore) chain(enDr);

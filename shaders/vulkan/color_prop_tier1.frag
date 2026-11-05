@@ -86,7 +86,8 @@ layout(location = 14) in vec2 vTree;
 flat layout(location = 15) in uvec2 vWindow;
 flat layout(location = 16) in uvec3 vTeam;
 
-// The vertex stage's push block; the FS reads only packetAlphaTest.
+// This draw's PropPacket row (VS: packetBase + gl_DrawID); the packet table the include declares is read through it.
+flat layout(location = 17) in uint vPacketIdx;
 #include "include/prop_packet_vk.glsl"
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
