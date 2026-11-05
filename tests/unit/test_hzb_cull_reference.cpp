@@ -149,7 +149,7 @@ TEST_CASE("hzb ref: mip selection at footprint boundaries") {
         const float extent = (std::max)(p.pixels[2] - p.pixels[0], p.pixels[3] - p.pixels[1]);
         uint32_t expect = 0;
         while (expect + 1 < uint32_t(LEVELS) && float(1u << expect) < extent) ++expect;
-        CAPTURE(r.px); CAPTURE(extent);
+        CAPTURE(r.px, extent);
         CHECK(p.lod == expect);
         CHECK(p.lod >= r.lod);   // footprint margin can only raise the level
     }
