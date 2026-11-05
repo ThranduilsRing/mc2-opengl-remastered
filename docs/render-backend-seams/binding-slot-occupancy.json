@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 255,
+    "glsl_blocks_with_binding": 261,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -551,7 +551,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 51,
+        "line": 53,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -1045,7 +1045,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 129,
+        "line": 130,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1066,6 +1066,26 @@
     "set0:binding15": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/color_prop_tier1.frag",
+        "line": 15,
+        "role": "PropPackets",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/prop_packet_vk.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_tier1.vert",
+        "line": 15,
+        "role": "PropPackets",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/prop_packet_vk.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
         "line": 25,
         "role": "u_materialWeights",
@@ -1078,6 +1098,16 @@
     "set0:binding16": [
       {
         "side": "glsl",
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 23,
+        "role": "Runs",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_cull.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
         "line": 24,
         "role": "u_macroGradient",
@@ -1088,6 +1118,26 @@
       }
     ],
     "set0:binding17": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 24,
+        "role": "Compact",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_cull.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_tier1.vert",
+        "line": 132,
+        "role": "Compact",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_tier1.vert",
+        "branch": {}
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_decal_tier1.frag",
@@ -1146,6 +1196,16 @@
       }
     ],
     "set0:binding18": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 27,
+        "role": "Cmds",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/color_prop_cull.comp",
+        "branch": {}
+      },
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
@@ -1223,7 +1283,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 57,
+        "line": 59,
         "role": "TypeAlbedoLayer",
         "std": "std430",
         "type": "buffer",
@@ -1443,8 +1503,8 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "3": 0,
-          "7": 0
+          "4": 0,
+          "8": 0
         }
       },
       {
@@ -1549,8 +1609,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "3": 0,
-          "7": 0
+          "4": 0,
+          "8": 0
         }
       },
       {
@@ -1947,7 +2007,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 63,
+        "line": 65,
         "role": "TypeAlbedoLayerOn",
         "std": "std430",
         "type": "buffer",
@@ -2163,7 +2223,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 90,
+        "line": 93,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2338,12 +2398,12 @@
     "set0:binding9": [
       {
         "side": "glsl",
-        "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 127,
+        "file": "shaders/vulkan/color_prop_cull.comp",
+        "line": 16,
         "role": "HzbVisibility",
         "std": "std430",
         "type": "buffer",
-        "source": "shaders/vulkan/color_prop_tier1.vert",
+        "source": "shaders/vulkan/color_prop_cull.comp",
         "branch": {}
       },
       {
@@ -2403,8 +2463,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
         "branch": {
-          "3": 0,
-          "5": 0
+          "4": 0,
+          "6": 0
         }
       },
       {
@@ -2495,7 +2555,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2534,7 +2594,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2573,7 +2633,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2612,7 +2672,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2651,7 +2711,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2690,7 +2750,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2729,7 +2789,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "3": 0
+          "4": 0
         }
       },
       {
@@ -2927,6 +2987,7 @@
     "shaders/vulkan/aa_smaa_weights.frag",
     "shaders/vulkan/cloud_shadow.frag",
     "shaders/vulkan/cloud_shadow.vert",
+    "shaders/vulkan/color_prop_cull.comp",
     "shaders/vulkan/color_prop_tier1.frag",
     "shaders/vulkan/color_prop_tier1.vert",
     "shaders/vulkan/edge_fog.frag",

@@ -1,0 +1,69 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/color_prop_cull.comp",
+  "ssbos": [
+    {
+      "binding": 9,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "culled",
+          "offset": 0,
+          "type": "uint"
+        },
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "visible",
+          "offset": 4,
+          "type": "uint"
+        }
+      ],
+      "name": "HzbVisibility"
+    },
+    {
+      "binding": 16,
+      "members": [
+        {
+          "array_stride": 32,
+          "matrix_stride": null,
+          "name": "r",
+          "offset": 0,
+          "type": "_11"
+        }
+      ],
+      "name": "Runs"
+    },
+    {
+      "binding": 17,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "c",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "Compact"
+    },
+    {
+      "binding": 18,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "w",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "Cmds"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [],
+  "variant": "default"
+}
