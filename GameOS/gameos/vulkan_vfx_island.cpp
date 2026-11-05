@@ -691,12 +691,11 @@ extern "C" int mc2_vk_vfx_island_run(
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
-    VkClearValue clears[3]{};   // all LOAD; ignored
-    VkRenderPassBeginInfo rbi{};
+    VkRenderPassBeginInfo rbi{};   // all attachments LOAD: no clear values
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
@@ -807,12 +806,11 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
     const bool culled = veg->record(slotCtx, cb, vegPar, span, cullOff, visOff, params, visibility);
     if (culled) {
-        VkClearValue clears[3]{};
-        VkRenderPassBeginInfo rbi{};
+        VkRenderPassBeginInfo rbi{};   // all attachments LOAD: no clear values
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-        rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vegetation");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());

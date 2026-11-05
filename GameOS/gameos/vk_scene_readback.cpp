@@ -36,7 +36,7 @@ VkPipelineStageFlags stages(unsigned i) {
 }
 VkAccessFlags accesses(unsigned i) {
     return (i == 1 ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                   : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) | VK_ACCESS_SHADER_READ_BIT;
+                   : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);   // attachment layout: attachment access only
 }
 Images activeImages() {
     return {mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0), mc2SharedSceneDepthGetResource(),

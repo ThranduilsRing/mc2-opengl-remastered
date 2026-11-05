@@ -363,13 +363,12 @@ extern "C" int mc2_vk_water_island_run(
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         record_reflection(s,cb,par,uboOffsets,reflectThisFrame);
-        // All attachments LOAD -> clear values ignored (array must still cover them).
-        VkClearValue clears[3]{};
+        // All attachments LOAD: no clear values.
         VkRenderPassBeginInfo rbi{};
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-        rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
