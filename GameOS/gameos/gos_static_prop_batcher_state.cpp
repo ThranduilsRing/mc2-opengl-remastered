@@ -11,6 +11,10 @@ constexpr uint32_t STATIC_PROP_GLOBAL_CAP_DEFAULT = 131072u;
 // Immutable per-map geometry.
 uint64_t s_sharedVboBytes = 0;
 uint64_t s_sharedIboBytes = 0;
+// meshopt ordering report: triangles and summed vertex-cache misses (16-entry FIFO) before/after, per map.
+uint64_t s_meshoptTris = 0;
+double   s_meshoptMissesBefore = 0.0;
+double   s_meshoptMissesAfter = 0.0;
 
 uint32_t s_frameSlot = 0;
 size_t   s_instanceCapacity = 0;

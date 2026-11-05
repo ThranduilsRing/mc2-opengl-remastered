@@ -31,6 +31,7 @@
 #include<vector>
 #endif
 
+#include "mc2_czstring.h"
 #include "unitprofile.h"            // UNIT-PROFILE-SEAM-1
 
 inline constexpr int MAX_NAME = 25;
@@ -131,7 +132,7 @@ class ObjectType {
 		// Mod-tolerance: back-fill appearance name for stub ObjectTypes created
 		// when a mission-referenced ObjectNumber doesn't exist in the pak.
 		// Stores the name in the same owned string as the normal init path.
-		void setAppearanceTypeName (const char* name);
+		void setAppearanceTypeName (mc2::czstring name);
 			
 		bool getPotentialContact (void) {
 			return(potentialContact);
@@ -245,7 +246,7 @@ class ObjectTypeManager {
 		// to ~2100). Costs 8*(4096-1024)=24KB on the table[] allocation. When
 		// objTypeNum is valid-in-range but pak has no such packet, load() falls
 		// through cleanly via seekPacket failure → switch default → return NULL.
-		long init (const char* objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes = 4096);
+		long init (mc2::czstring objectFileName, long objectTypeCacheSize, long objectCacheSize, long maxObjectTypes = 4096);
 			
 		void destroy (void);
 							

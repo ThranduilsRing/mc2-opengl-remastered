@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 
 // TERRAIN-MATERIAL-LIB-1: optional data-defined terrain material tuning.
 //
@@ -32,4 +33,4 @@
 // (TERRAIN-CONTROLMAP-SAMPLE-1) can fully repaint the albedo instead of a
 // faint tint pull. 0.0 (gate OFF) is algebraically identical to pre-slice.
 
-void terrainMaterials_apply(const char* missionName);
+void terrainMaterials_apply(mc2::czstring missionName);

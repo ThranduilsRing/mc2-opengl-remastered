@@ -1,6 +1,7 @@
 // MechWarrior: tactical-order switching, pilot alarms and event history.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include <array>
 #include "mission.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
@@ -67,7 +68,7 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 		}
 		if (newTacOrder.code != TACTICAL_ORDER_NONE) {
 			Assert((moveOrders.path[0] != nullptr) && (moveOrders.path[1] != nullptr), 0, " bad warrior path ");
-			MovePathPtr tempPath[2];
+			std::array<MovePathPtr, 2> tempPath;
 			for (long i = 0; i < 2; i++) {
 				tempPath[i] = moveOrders.path[i];
 				tempPath[i]->numSteps = 0;
@@ -115,11 +116,11 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 
 bool MechWarrior::anyPlayerInCombat (void)
 {
-	for (long i=0;i<MAX_WARRIORS;i++)
+	for (auto & warriorElem : warriorList)
 	{
-		if (warriorList[i] && 
-			(warriorList[i]->getVehicle() && (warriorList[i]->getVehicle()->getCommanderId() == Commander::home->getId())) &&
-			(warriorList[i]->getCurrentTarget()))
+		if (warriorElem && 
+			(warriorElem->getVehicle() && (warriorElem->getVehicle()->getCommanderId() == Commander::home->getId())) &&
+			(warriorElem->getCurrentTarget()))
 		{
 			return true;
 		}

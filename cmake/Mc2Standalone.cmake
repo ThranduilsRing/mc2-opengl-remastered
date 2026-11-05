@@ -75,10 +75,10 @@ function(mc2_asan_runtime target)
         COMMENT "MC2_ASAN: ASan runtime beside ${target}")
 endfunction()
 
-# mc2fmt.h (GameOS/include, header-only) is what the printf-to-format conversions of mclib/ and code/ sources include; every standalone project that
+# mc2fmt.h (mclib/, header-only) is what the printf-to-format conversions of mclib/ and code/ sources include; every standalone project that
 # compiles an engine source needs it on its include path, not only the ones that already pull in gameos.hpp.
 get_filename_component(_mc2_standalone_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-include_directories("${_mc2_standalone_root}/GameOS/include")
+include_directories("${_mc2_standalone_root}/GameOS/include" "${_mc2_standalone_root}/mclib")
 
 # Link the gate registry (Gates/, STATIC lib mc2_gate) into a standalone target. Linking it
 # before any source reads a gate proves the LNK2019 class absent: a project that compiles an

@@ -3,6 +3,7 @@
 // See tgl_load_guard.h for the contract.
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include "tgl_load_guard.h"
 #include "inifile.h"
 #include "content_error.h"
@@ -21,7 +22,7 @@
 //---------------------------------------------------------------------------
 namespace {
 
-unsigned long long guardKey(const char* ctx, const char* path)
+unsigned long long guardKey(mc2::czstring ctx, mc2::czstring path)
 {
 	unsigned long long h = 5381;
 	for (const char* p = ctx;  p && *p; ++p) h = h * 33 + static_cast<unsigned char>(*p);
@@ -136,8 +137,8 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 		if (s_magentaHandle == 0xffffffff)
 		{
 			DWORD texels[16];
-			for (int i = 0; i < 16; ++i)
-				texels[i] = 0xffff00ff;   // A=ff R=ff G=00 B=ff
+			for (DWORD& texel : texels)
+				texel = 0xffff00ff;   // A=ff R=ff G=00 B=ff
 			s_magentaHandle = mc2::textures::fromPixels(
 				texels, gos_Texture_Solid,
 				gosHint_DisableMipmap | gosHint_DontShrink, 4);
@@ -162,10 +163,10 @@ void tglReadImportSource(FitIniFile& ini, std::span<char, 256> source)
 }
 
 //---------------------------------------------------------------------------
-bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
+bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, mc2::czstring ctx,
                           const char* assetPath, bool* failFlag)
 {
-	const bool loaded = (shape != 0) && (rc == 0) && (shape->GetNumShapes() > 0);
+	const bool loaded = (shape != nullptr) && (rc == 0) && (shape->GetNumShapes() > 0);
 	if (loaded)
 		return true;
 	MC2_VERIFY(false, "required shape load failed ctx=%s path=%s",
@@ -194,7 +195,7 @@ bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
 }
 
 //---------------------------------------------------------------------------
-long tglLoadShapeChecked(TG_TypeMultiShape* shape, const char* asePath,
+long tglLoadShapeChecked(TG_TypeMultiShape* shape, mc2::czstring asePath,
                          const char* ctx, bool* failFlag)
 {
 	long rc = shape ? shape->LoadTGMultiShapeFromASE(asePath) : -1;

@@ -166,17 +166,19 @@ enum LegStatusType {
 	NUM_LEG_STATUSES
 };
 
-enum TorsoStatusType {
+enum class TorsoStatusType : int32_t {
 	TORSO_STATUS_NORMAL,
 	TORSO_STATUS_IMPAIRED,
 	NUM_TORSO_STATUSES
 };
+using enum TorsoStatusType;
 
-enum MechPilotCheckCondition {
+enum class MechPilotCheckCondition : int32_t {
 	MECH_PILOT_CHECK_CONDITION_NO_LEG,
 	MECH_PILOT_CHECK_CONDITION_NO_HIP,
 	NUM_MECH_PILOT_CHECK_CONDITIONS
 };
+using enum MechPilotCheckCondition;
 
 enum MechStatusChunkBodyState {
 	MECH_STATUSCHUNK_BODYSTATE_NORMAL,
@@ -640,7 +642,7 @@ class BattleMech : public Mover {
 			return(legStatus != LEG_STATUS_DESTROYED);
 		}
 
-		virtual long getSpeedState (void);
+		virtual SpeedState getSpeedState (void);
 
 		// UNIT-PROFILE-SEAM-1 / UNITPROFILE-TYPELOAD-SOURCE-1
 		// Single owner of the INSTANCE-loadout-derived capability write. CAP_JUMP

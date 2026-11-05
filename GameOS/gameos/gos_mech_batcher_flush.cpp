@@ -457,7 +457,8 @@ void MechFlushFrame::collectRuns() {
         Mc2MechDrawRun run{};
         run.firstIndex    = pkt.firstIndex;
         run.indexCount    = pkt.indexCount;
-        run.baseVertex    = pkt.baseVertex;
+        run.baseVertex    = dc.globalPacketIdx < s_vkPacketBaseVertex.size() ? s_vkPacketBaseVertex[dc.globalPacketIdx] : pkt.baseVertex;
+        run.vertexCount   = dc.globalPacketIdx < s_vkPacketVertexCount.size() ? s_vkPacketVertexCount[dc.globalPacketIdx] : 0u;
         run.instanceBase  = dc.instanceBase;
         run.instanceCount = dc.instanceCount;
         run.materialFlags = dc.materialFlags;
@@ -506,8 +507,8 @@ static void emitBatcherStats(MechFlushFrame& f) {
                           == kGpuMechFallbackReasonCount,
                       "kFallbackNames must cover every GpuMechFallbackReason");
         uint32_t fallbackTotal = 0;
-        for (int i = 0; i < kGpuMechFallbackReasonCount; ++i)
-            fallbackTotal += s_fallbacksThisFrame[i];
+        for (const auto fallbacksThisFrameElem : s_fallbacksThisFrame)
+            fallbackTotal += fallbacksThisFrameElem;
         extern std::atomic<uint32_t> g_mc2FrameCounter;
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "

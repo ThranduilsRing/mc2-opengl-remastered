@@ -1,5 +1,6 @@
 #ifndef MAINMENU_H
 #define MAINMENU_H
+#include "mc2_czstring.h"
 #include <memory>
 /*************************************************************************************************\
 MainMenu.h			: Interface for the MainMenu component.
@@ -60,7 +61,7 @@ class MainMenu: public LogisticsScreen
 		virtual void update();
 		virtual void render();
 
-		void setHostLeftDlg( const char* playerName );
+		void setHostLeftDlg( mc2::czstring playerName );
 
 		void setDrawBackground( bool bDrawBackground );
 		void skipIntro();

@@ -1,5 +1,6 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include "mc2_czstring.h"
 #include <atomic>
 #include "brain_execution_policy.h"
 #include "job_system.h"
@@ -64,7 +65,7 @@ static bool mc2SkipStaticNaturalDiagEnabled (void)
 	return(cached != 0);
 }
 
-static bool mc2StaticTypeNameStartsWith (const char* typeName, const char* prefix)
+static bool mc2StaticTypeNameStartsWith (mc2::czstring typeName, mc2::czstring prefix)
 {
 	return(typeName && prefix && (std::strncmp(typeName, prefix, std::strlen(prefix)) == 0));
 }
@@ -507,6 +508,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 		if (frameJobsEnabled()) {
 			// Build flat handle list with basic eligibility filter.
 			// Intentionally loose — isRecalcBoundsWorkerSafe() filters inside the lambda.
+			{ ZoneScopedN("FrameJobs.BuildList");
 			for (int block = 0; block < Terrain::numObjBlocks; ++block) {
 				if (!Terrain::objBlockInfo[block].active) continue;
 				long h = Terrain::objBlockInfo[block].firstHandle;
@@ -519,6 +521,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 					if (auto* appearance = obj->getAppearance()) appearance->flushSimEvents();
 					s_frameJobsHandles.push_back(h);
 				}
+			}
 			}
 
 			const int count = static_cast<int>(s_frameJobsHandles.size());
@@ -576,6 +579,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			int candidates = 0, skipped_not_split_safe = 0;
 
 			// Filter s_frameJobsHandles to split-safe appearance types only.
+			{ ZoneScopedN("FrameJobs.Touch.Filter");
 			for (long h : s_frameJobsHandles) {
 				++candidates;
 				GameObjectPtr obj = objList[h];
@@ -583,6 +587,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 				AppearancePtr ap = obj->getAppearance();
 				if (!ap || !ap->isTouchSplitSafe()) { ++skipped_not_split_safe; continue; }
 				s_splitHandles.push_back(h);
+			}
 			}
 			int worker_submitted = static_cast<int>(s_splitHandles.size());
 
@@ -608,11 +613,13 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			int serial_commits = 0;
 			int prev_resubmit_calls = g_workerResubmitCalls.load(std::memory_order_relaxed);
 			auto _tc0 = std::chrono::high_resolution_clock::now();
+			{ ZoneScopedN("FrameJobs.Touch.Commit");
 			for (long h : s_splitHandles) {
 				GameObjectPtr obj = objList[h];
 				if (!obj) continue;
 				AppearancePtr ap = obj->getAppearance();
 				if (ap) { ap->touchSerialCommit(); ++serial_commits; }
+			}
 			}
 			auto _tc1 = std::chrono::high_resolution_clock::now();
 			float commit_us = std::chrono::duration<float, std::micro>(_tc1 - _tc0).count();

@@ -7,12 +7,13 @@
 //===========================================================================//
 
 
-enum PlatformType
+enum class PlatformType : int32_t
 {
 	Platform_Game,
 	Platform_MFC,
 	Platform_DLL
 };
+using enum PlatformType;
 
 
 

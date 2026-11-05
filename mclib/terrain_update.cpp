@@ -98,7 +98,7 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
     const int side = store->mapSide();
     const int blockSide = (side - 1 + 19) / 20;
     if (cachedVersion != store->heightVersion() || cachedSide != side) {
-        errors.resize(size_t(blockSide) * blockSide);
+        errors.resize(static_cast<size_t>(blockSide) * blockSide);
         for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x)
             errors[x + y * blockSide] = mc2terrain::terrainPatchHeightErrors(store->height(), side,
                 x * 20, y * 20,
@@ -107,7 +107,7 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
         cachedVersion = store->heightVersion();
         cachedSide = side;
     }
-    const size_t errorIndex = size_t(bm.originX / 20) + size_t(bm.originY / 20) * size_t(blockSide);
+    const size_t errorIndex = static_cast<size_t>(bm.originX / 20) + static_cast<size_t>(bm.originY / 20) * static_cast<size_t>(blockSide);
     if (errorIndex >= errors.size()) return bm.lodLevel;   // block outside the cooked grid: keep its authored level
     const auto& error = errors[errorIndex];
     // Projection derivatives use the camera's own transform and pixel convention.
@@ -165,10 +165,10 @@ long Terrain::update (void)
 		const int cells[][2] = { {3,3}, {30,30}, {90,90}, {150,150} };
 		int samples = 0, mismGame = 0, mismVis = 0, mismMat = 0, mismWater = 0;
 		const float legacyWater = getWaterElevation();
-		for (int i = 0; i < 4; ++i)
+		for (auto cell : cells)
 		{
 			glm::vec3 pos;
-			getCellPos(cells[i][0], cells[i][1], pos);   // fills xy + z=legacy elevation
+			getCellPos(cell[0], cell[1], pos);   // fills xy + z=legacy elevation
 			if (!Terrain::IsValidTerrainPosition(pos))
 				continue;
 			++samples;
@@ -314,8 +314,8 @@ long Terrain::update (void)
 					float legY = tileRowToWorldCoord[row];  // halfMap - row*128
 					float legZ = blks[col + row * side].elevation;
 					// Chunk shader formula (what the GLSL vertex shader computes).
-					float chkX = float(col) * 128.0f - halfMap;
-					float chkY = halfMap - float(row) * 128.0f;
+					float chkX = static_cast<float>(col) * 128.0f - halfMap;
+					float chkY = halfMap - static_cast<float>(row) * 128.0f;
 					float chkZ = blks[col + row * side].elevation;
 					mc2::fmt::print_out("[TerrainLOD parity] sample[{:d}]=({:d},{:d}) legacy=({:.1f},{:.1f},{:.1f}) chunk=({:.1f},{:.1f},{:.1f}) {}\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(col), mc2::fmt::as_i32(row), legX, legY, legZ, chkX, chkY, chkZ, mc2::fmt::safe((legX==chkX && legY==chkY && legZ==chkZ) ? "MATCH" : "MISMATCH"));
 				}
@@ -346,10 +346,10 @@ long Terrain::update (void)
 			const TerrainBlockMeta& cbm = s_blockMeta[cbx + cby * s_terrainChunkSide];
 			float cbHalfMap = worldUnitsMapSide * 0.5f;
 			glm::vec3 cbMn, cbMx;
-			cbMn.x = float(cbm.originX) * 128.0f - cbHalfMap;
-			cbMx.x = float(cbm.originX + cbm.quadCountX) * 128.0f - cbHalfMap;
-			cbMx.y = cbHalfMap - float(cbm.originY) * 128.0f;
-			cbMn.y = cbHalfMap - float(cbm.originY + cbm.quadCountY) * 128.0f;
+			cbMn.x = static_cast<float>(cbm.originX) * 128.0f - cbHalfMap;
+			cbMx.x = static_cast<float>(cbm.originX + cbm.quadCountX) * 128.0f - cbHalfMap;
+			cbMx.y = cbHalfMap - static_cast<float>(cbm.originY) * 128.0f;
+			cbMn.y = cbHalfMap - static_cast<float>(cbm.originY + cbm.quadCountY) * 128.0f;
 			cbMn.z = -200.0f; cbMx.z = 2500.0f;
 			mc2::fmt::print_out("[TerrainLOD v1] DIAG120 center block=({:d},{:d}) originXY=({:d},{:d}) AABB x=[{:.1f},{:.1f}] y=[{:.1f},{:.1f}]\n", mc2::fmt::as_i32(cbx), mc2::fmt::as_i32(cby), mc2::fmt::as_i32(cbm.originX), mc2::fmt::as_i32(cbm.originY), cbMn.x, cbMx.x, cbMn.y, cbMx.y);
 			static const char* pn2[6] = {"left","right","bottom","top","near","far"};
@@ -410,10 +410,10 @@ long Terrain::update (void)
 
 						// World-space AABB (same formula as recomputeSuperchunkAabb).
 						glm::vec3 bmMn, bmMx;
-						bmMn.x =  float(bm.originX)                  * 128.0f - halfMap;
-						bmMx.x =  float(bm.originX + bm.quadCountX)  * 128.0f - halfMap;
-						bmMx.y =  halfMap - float(bm.originY)                  * 128.0f;
-						bmMn.y =  halfMap - float(bm.originY + bm.quadCountY)  * 128.0f;
+						bmMn.x =  static_cast<float>(bm.originX)                  * 128.0f - halfMap;
+						bmMx.x =  static_cast<float>(bm.originX + bm.quadCountX)  * 128.0f - halfMap;
+						bmMx.y =  halfMap - static_cast<float>(bm.originY)                  * 128.0f;
+						bmMn.y =  halfMap - static_cast<float>(bm.originY + bm.quadCountY)  * 128.0f;
 						// Use conservative z-range matching old MC2_BLOCK_FRUSTUM_FALLBACK path
 						// (kBlockZMin=-200, kBlockZMax=2500) so tight actual elevations don't cause
 						// spurious frustum failure. Actual elevations still used for skirt depth below.

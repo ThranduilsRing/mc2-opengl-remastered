@@ -65,7 +65,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     const uint64_t bytes = residentBytes + RenderCore::vegetationStagingBytes(instances.size(), regions.size());
     if (residentBytes > policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations < 128 ||
         properties.limits.maxComputeWorkGroupSize[0] < 128 || properties.limits.maxComputeSharedMemorySize < 128 * sizeof(uint32_t)) {
-        std::fprintf(stderr, "[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n", bytes, policy.vegetation);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] refused=vegetation bytes={:d} policy={:d} fallback=off reason=preset_budget_or_device_limits\n", mc2::fmt::as_u64(bytes), mc2::fmt::as_u64(policy.vegetation));
         return true;
     }
     if (instBytes > maxRange || regBytes > maxRange) {
@@ -253,8 +253,8 @@ bool State::ensureDrawLayout(mc2vk::VulkanContext& ctx) {
 }
 
 void State::drawIndirect(VkCommandBuffer cb, uint32_t par) const {
-    vkCmdDrawIndirect(cb, slot_[par].args.get(), 0, 1, 16);
-    vkCmdDrawIndirect(cb, slot_[par].args.get(), 16, 1, 16);
+    // Both strips are one multi-draw: the two 16 B commands sit back to back at the head of the args buffer (vegetation_scan.comp; multiDrawIndirect is required).
+    vkCmdDrawIndirect(cb, slot_[par].args.get(), 0, 2, 16);
 }
 
 }  // namespace mc2veg

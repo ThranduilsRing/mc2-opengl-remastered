@@ -1,8 +1,9 @@
 // Pathfinding: GlobalMap doors: door/area links, link costs, path-cost lookups and the sector build.
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
+#include <algorithm>
 #include <mdspan>
-#include <unordered_map>
+#include <ankerl/unordered_dense.h>
 #include <vector>
 
 
@@ -148,7 +149,7 @@ void GlobalMap::calcAreaDoors (void) {
 // distinct geometry once instead of once per door pair (3060-cell blank map: ~30 s -> under 1 s).
 namespace {
 std::vector<signed char> s_openSector;             // per sector: -1 unknown, 0 mixed, 1 uniformly open
-std::unordered_map<uint32_t, long> s_openLinkCost; // (hover, start r/c, goal r/c within the sector) -> link cost
+ankerl::unordered_dense::map<uint32_t, long> s_openLinkCost; // (hover, start r/c, goal r/c within the sector) -> link cost
 
 bool sectorUniformlyOpen (long mapULr, long mapULc) {
 	for (long r = 0; r < SECTOR_DIM; r++)
@@ -323,8 +324,7 @@ void GlobalMap::calcDoorLinks (void) {
 		for (long s = 0; s < 2; s++) {
 			long areaNumDoors = areas[doors[d].area[s]].numDoors;
 			linkTotal += (areaNumDoors - 1) + NUM_EXTRA_DOOR_LINKS;
-			if (areaNumDoors > maxDoors)
-				maxDoors = areaNumDoors;
+			maxDoors = std::max(maxDoors, areaNumDoors);
 		}
 	linkTotal += 2 * (maxDoors + NUM_EXTRA_DOOR_LINKS) + 2 * NUM_EXTRA_DOOR_LINKS;
 	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, static_cast<size_t>(linkTotal));
@@ -362,8 +362,7 @@ void GlobalMap::calcDoorLinks (void) {
 						linkIndex++;
 					}
 				}
-			if (areaNumDoors > maxDoors)
-				maxDoors = areaNumDoors;
+			maxDoors = std::max(maxDoors, areaNumDoors);
 		}
 	}
 

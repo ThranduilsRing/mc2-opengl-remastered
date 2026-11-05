@@ -97,8 +97,8 @@ private:
     struct Flight {
         VkDescriptorSet set = VK_NULL_HANDLE;
         GpuTicket ticket;
-        uint64_t frame = ~uint64_t(0);
-        uint64_t revision = ~uint64_t(0);
+        uint64_t frame = ~static_cast<uint64_t>(0);
+        uint64_t revision = ~static_cast<uint64_t>(0);
         std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;
     };
     std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr, uint32_t layers = 1, bool arrayView = false, bool vegetation = false);

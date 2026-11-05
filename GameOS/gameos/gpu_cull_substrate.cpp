@@ -113,7 +113,7 @@ void substrate_init(uint32_t maxActors) {
     s_firstFlushDone = false;
     s_staticPrefixCount        = 0u;   // M1: no frozen prefix until the registry rebuilds it
     s_staticPrefixVisibleCount = 0u;
-    for (uint32_t i = 0u; i < RING_FRAMES; ++i) s_staticDirty[i] = 0u;
+    for (auto & staticDirtyElem : s_staticDirty) staticDirtyElem = 0u;
 
     // Per-slot layout: [GpuActorRecordHeader][GpuActorRecord * maxActors]
     s_slotBytes = sizeof(GpuActorRecordHeader) + maxActors * sizeof(GpuActorRecord);
@@ -145,7 +145,7 @@ void substrate_shutdown() {
     s_staticRecords.reset();
     s_staticPrefixCount        = 0u;
     s_staticPrefixVisibleCount = 0u;
-    for (uint32_t i = 0u; i < RING_FRAMES; ++i) s_staticDirty[i] = 0u;
+    for (auto & staticDirtyElem : s_staticDirty) staticDirtyElem = 0u;
 
     s_recordData      = nullptr;
     s_maxActors      = 0;
@@ -230,7 +230,7 @@ void substrate_rebuildStaticPrefix(const GpuActorRecord* recs, uint32_t count) {
     }
     s_staticPrefixCount        = count;
     s_staticPrefixVisibleCount = vis;
-    for (uint32_t s = 0u; s < RING_FRAMES; ++s) s_staticDirty[s] = 1u;
+    for (auto & staticDirtyElem : s_staticDirty) staticDirtyElem = 1u;
     SUBSTRATE_TRACE("event=rebuild_static_prefix count=%u vis=%u", count, vis);
 }
 

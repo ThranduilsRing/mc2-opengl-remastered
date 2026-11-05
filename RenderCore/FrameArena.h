@@ -7,6 +7,7 @@
 // Overflow fails closed: returns null/empty and increments overflowCount.
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -78,8 +79,7 @@ public:
         offset_  = aligned + bytes;
         ++stats_.allocCount;
         stats_.usedBytes = offset_;
-        if (offset_ > stats_.highWaterBytes)
-            stats_.highWaterBytes = offset_;
+        stats_.highWaterBytes = (std::max)(stats_.highWaterBytes, offset_);
         return p;
     }
 

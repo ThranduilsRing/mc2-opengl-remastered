@@ -30,7 +30,7 @@ std::atomic<std::FILE*> g_override[3] = {};   // Err, Out, Dbg (Dbg unused)
 
 std::FILE* fileFor(Stream s) noexcept {
     if (s == Stream::Dbg) return nullptr;
-    std::FILE* o = g_override[size_t(s)].load(std::memory_order_acquire);
+    std::FILE* o = g_override[static_cast<size_t>(s)].load(std::memory_order_acquire);
     if (o) return o;
     return s == Stream::Out ? stdout : stderr;
 }
@@ -49,7 +49,7 @@ bool ieq(std::string_view a, std::string_view b) {
     if (a.size() != n) return false;
     for (size_t i = 0; i < n; ++i) {
         char c = a[i];
-        if (c >= 'A' && c <= 'Z') c = char(c - 'A' + 'a');
+        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
         if (c != b[i]) return false;
     }
     return true;
@@ -76,7 +76,7 @@ Slot g_slots[kSlots];
 
 Slot* claimSlot(uint64_t key) noexcept {
     if (key == 0) key = 1;
-    size_t h = size_t((key * 0x9E3779B97F4A7C15ull) >> 40) % kSlots;
+    size_t h = static_cast<size_t>((key * 0x9E3779B97F4A7C15ull) >> 40) % kSlots;
     for (size_t p = 0; p < kProbe; ++p) {
         Slot& s = g_slots[(h + p) % kSlots];
         uint64_t k = s.key.load(std::memory_order_acquire);
@@ -94,8 +94,8 @@ std::atomic<uint64_t> g_frame{0};
 
 }  // namespace
 
-const char* catName(Cat c) noexcept { return size_t(c) < kCatCount ? kCatNames[size_t(c)] : "?"; }
-const char* levelName(Level l) noexcept { return size_t(l) < 7 ? kLevelNames[size_t(l)] : "?"; }
+const char* catName(Cat c) noexcept { return static_cast<size_t>(c) < kCatCount ? kCatNames[static_cast<size_t>(c)] : "?"; }
+const char* levelName(Level l) noexcept { return static_cast<size_t>(l) < 7 ? kLevelNames[static_cast<size_t>(l)] : "?"; }
 
 bool streamsLiveFor(bool envSet) noexcept { return envSet; }
 
@@ -126,7 +126,7 @@ ParsedSpec parseSpec(std::string_view spec) {
                     r.levelSet[i] = true; r.level[i] = lv; r.eventOff[i] = (lv == Level::Off);
                 };
                 if (all) for (size_t i = 0; i < kCatCount; ++i) apply(i);
-                else apply(size_t(cat));
+                else apply(static_cast<size_t>(cat));
             } else if (tok[sep] == '=' && !all) {
                 // cat=topic[+topic...]
                 size_t tp = 0;
@@ -155,7 +155,7 @@ static void applyParsed(const ParsedSpec& p) {
         std::lock_guard<std::mutex> lk(g_topicMu);
         auto& t = topicTable();
         for (const auto& x : p.topics) t.push_back(x);
-        detail::g_topicCount.store(int(t.size()), std::memory_order_release);
+        detail::g_topicCount.store(static_cast<int>(t.size()), std::memory_order_release);
     }
 }
 
@@ -256,14 +256,14 @@ void vevent(Stream s, std::string_view tag, int ver, std::string_view fmt,
 }
 
 void setStreamOverrideForTest(Stream s, std::FILE* f) noexcept {
-    if (size_t(s) < 3) g_override[size_t(s)].store(f, std::memory_order_release);
+    if (static_cast<size_t>(s) < 3) g_override[static_cast<size_t>(s)].store(f, std::memory_order_release);
 }
 
 bool allowRateAt(uint64_t key, double perSecond, int64_t nowNs) noexcept {
     if (!(perSecond > 0.0)) return false;
     Slot* s = claimSlot(key);
     if (!s) return true;   // fail open
-    const int64_t interval = int64_t(1e9 / perSecond);
+    const int64_t interval = static_cast<int64_t>(1e9 / perSecond);
     int64_t next = s->next.load(std::memory_order_relaxed);
     for (;;) {
         if (next != 0 && nowNs < next) return false;

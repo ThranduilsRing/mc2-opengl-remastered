@@ -2111,6 +2111,13 @@
   },
   {
    "tag": "CONFIG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "CONFIG",
    "ver": 1,
    "stream": "buffer",
    "keys": [
@@ -3807,7 +3814,10 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "cpu_geometry_bytes"
+    "cpu_geometry_bytes",
+    "tris",
+    "acmr_before",
+    "acmr_after"
    ],
    "count": 1
   },
@@ -10839,6 +10849,26 @@
    "count": 1
   },
   {
+   "tag": "VK_MECH_SKIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_MEM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "i0",
+    "i1",
+    "bytes",
+    "memtype"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ONE_SHOT",
    "ver": -1,
    "stream": "stderr",
@@ -11246,6 +11276,16 @@
    "count": 1
   },
   {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "vkFormat",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_RESOURCE_GRAPH",
    "ver": -1,
    "stream": "stderr",
@@ -11307,7 +11347,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 10
+   "count": 11
   },
   {
    "tag": "VK_SHARED_SCENE_COLOR",

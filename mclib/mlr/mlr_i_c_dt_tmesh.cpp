@@ -65,9 +65,6 @@ MLR_I_C_DT_TMesh::MLR_I_C_DT_TMesh(
 		break;
 		default:
 		{
-#if COLOR_AS_DWORD
-			MemoryStreamIO_Read(stream, &colors);
-#else
 			Stuff::DynamicArrayOf<DWORD> smallColors;
 
 			MemoryStreamIO_Read(stream, &smallColors);
@@ -96,7 +93,6 @@ MLR_I_C_DT_TMesh::MLR_I_C_DT_TMesh(
 
 				colors[i].alpha = (theColor & 0xff) * One_Over_256;
 			}
-#endif
 		}
 		break;
 	}
@@ -149,9 +145,6 @@ void
 
 	MLR_I_TMesh::Save(stream);
 
-#if COLOR_AS_DWORD
-	MemoryStreamIO_Write(stream, &colors);
-#else
 	Stuff::DynamicArrayOf<DWORD> smallColors;
 	int i, len = static_cast<int>(colors.GetLength());
 
@@ -165,7 +158,6 @@ void
 	}
 
 	MemoryStreamIO_Write(stream, &smallColors);
-#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -177,11 +169,7 @@ bool
 	Check_Object(pMesh);
 
 	int len;
-#if COLOR_AS_DWORD
-	DWORD *_colors;
-#else
 	RGBAColor *_colors;
-#endif
 
 	MLR_I_DT_TMesh::Copy(pMesh);
 
@@ -195,11 +183,7 @@ bool
 //
 void
 	MLR_I_C_DT_TMesh::SetColorData(
-#if COLOR_AS_DWORD
-		const DWORD *data,
-#else
 		const RGBAColor *data,
-#endif
 		int dataSize
 	)
 {
@@ -216,11 +200,7 @@ void
 //
 void
 	MLR_I_C_DT_TMesh::GetColorData(
-#if COLOR_AS_DWORD
-		DWORD **data,
-#else
 		RGBAColor **data,
-#endif
 		int *dataSize
 	)
 {
@@ -233,11 +213,7 @@ void
 //
 void
 	MLR_I_C_DT_TMesh::PaintMe(
-#if COLOR_AS_DWORD
-		const DWORD *paintMe
-#else
 		const RGBAColor *paintMe
-#endif
 		
 	)
 {
@@ -246,19 +222,10 @@ void
 
 	int k, len = static_cast<int>(colors.GetLength());
 
-#if COLOR_AS_DWORD
-	DWORD argb = GOSCopyColor(paintMe);
-
-	for(k=0;k<len;k++)
-	{
-		colors[k] = argb;
-	}
-#else
 	for(k=0;k<len;k++)
 	{
 		colors[k] = *paintMe;
 	}
-#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

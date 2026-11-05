@@ -160,8 +160,8 @@ static constexpr int kPassAmbientCount =
     sizeof(kPassAmbient) / sizeof(kPassAmbient[0]);
 
 inline const AmbientContract* findAmbient(RenderPassId id) {
-    for (int i = 0; i < kPassAmbientCount; ++i)
-        if (kPassAmbient[i].id == id) return &kPassAmbient[i];
+    for (const auto & passAmbientElem : kPassAmbient)
+        if (passAmbientElem.id == id) return &passAmbientElem;
     return nullptr;
 }
 
@@ -239,9 +239,9 @@ inline AmbientMismatch compareAmbient(const AmbientContract& decl, const Ambient
 // must re-assert it (terrain). Drop the terrain re-assert -> invisible scene.
 inline bool colorMaskHandshakeDeclared() {
     bool anyDisables = false, anyReasserts = false;
-    for (int i = 0; i < kPassAmbientCount; ++i) {
-        if (kPassAmbient[i].disablesColorWrite)      anyDisables  = true;
-        if (kPassAmbient[i].reassertsColorMaskAllOn) anyReasserts = true;
+    for (const auto & passAmbientElem : kPassAmbient) {
+        if (passAmbientElem.disablesColorWrite)      anyDisables  = true;
+        if (passAmbientElem.reassertsColorMaskAllOn) anyReasserts = true;
     }
     return anyDisables && anyReasserts;
 }
@@ -250,9 +250,9 @@ inline bool colorMaskHandshakeDeclared() {
 // it. Drop the producer -> 4 post passes silently bail (documented landmine).
 inline bool terrainLatchHandshakeDeclared() {
     bool anyProduces = false, anyConsumes = false;
-    for (int i = 0; i < kPassAmbientCount; ++i) {
-        if (kPassAmbient[i].producesTerrainLatch) anyProduces = true;
-        if (kPassAmbient[i].consumesTerrainLatch) anyConsumes = true;
+    for (const auto & passAmbientElem : kPassAmbient) {
+        if (passAmbientElem.producesTerrainLatch) anyProduces = true;
+        if (passAmbientElem.consumesTerrainLatch) anyConsumes = true;
     }
     return anyProduces && anyConsumes;
 }

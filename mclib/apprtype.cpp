@@ -28,6 +28,7 @@
 #include"genactor.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"cident.h"
 #include"inifile.h"
 #include"paths.h"
@@ -88,7 +89,7 @@ long g_loadRaceLastTerrainPath           = 0;    // last preflight: 0=none 1=gpu
 // Class AppearanceType
 #include "content_error.h"
 
-void AppearanceType::init (const char *fileName)
+void AppearanceType::init (mc2::czstring fileName)
 {
 	nameStore = fileName;
 	name = nameStore.data();
@@ -235,7 +236,7 @@ void AppearanceType::destroy (void)
 
 //---------------------------------------------------------------------------
 // class AppearanceTypeList
-AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, const char *appearFile)
+AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, mc2::czstring appearFile)
 {
 	ZoneScopedN("Appearance.GetType");
 	mc2::overlap::assertOwner(mc2::overlap::Owner::Sim, "AppearanceTypeList::getAppearance");   // numUsers++ / registry push: Sim side or quiescent Main only

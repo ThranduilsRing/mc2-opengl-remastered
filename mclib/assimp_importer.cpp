@@ -11,6 +11,7 @@
 // Spec: docs/superpowers/specs/2026-04-27-assimp-mech-importer-design.md
 // Plan: docs/superpowers/plans/2026-04-27-assimp-mech-importer.md
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
+#include "mc2_czstring.h"
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
 #include "content_ir.h"
@@ -18,6 +19,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 
@@ -73,9 +75,9 @@ public:
 class ContentIO final : public Assimp::IOSystem {
 public:
     std::vector<std::pair<std::string, uint64_t>> dependencies;
-    bool Exists(const char* path) const override { return fileExists(path) != 0; }
+    bool Exists(mc2::czstring path) const override { return fileExists(path) != 0; }
     char getOsSeparator() const override { return '/'; }
-    Assimp::IOStream* Open(const char* path, const char* mode) override {
+    Assimp::IOStream* Open(mc2::czstring path, mc2::czstring mode) override {
         if (!mode || mode[0] != 'r') return nullptr;
         File source;
         if (source.open(path) != NO_ERR || source.fileSize() > (256u << 20)) return nullptr;
@@ -83,8 +85,7 @@ public:
         stream->bytes.resize(source.fileSize());
         if (!stream->bytes.empty() && source.read(stream->bytes.data(), static_cast<long>(stream->bytes.size())) !=
             static_cast<long>(stream->bytes.size())) return nullptr;
-        uint64_t digest = 14695981039346656037ull;
-        for (const auto byte : stream->bytes) { digest ^= byte; digest *= 1099511628211ull; }
+        const uint64_t digest = mc2::content::sourceBytesDigest(path, stream->bytes);
         const std::pair<std::string, uint64_t> identity{path, digest};
         if (std::find(dependencies.begin(), dependencies.end(), identity) == dependencies.end()) dependencies.push_back(identity);
         return stream.release();  // Assimp takes ownership until Close.
@@ -244,9 +245,23 @@ inline glm::vec3 mechToMC2Vec(const aiVector3D& v) {
 
 // Damage/destruction/UI parts excluded from the intact bind-pose import (they
 // overlap the intact geometry; needed later for damage states — POC drops them).
-inline bool skelMeshDropped(const char* n) {
+inline bool skelMeshDropped(mc2::czstring n) {
     // GLB-TEXNAME-DERIVE-EXTRACT-1: shared with the game-free harness.
     return mech_texname::isDroppedMeshName(n);
+}
+
+//-----------------------------------------------------------------------------
+// MULTI-BONE-1: the importer binds every mesh part rigidly to ONE bone (mBones[0]) and
+// stores the bone index in a byte. A skinned mesh with several influences loses its
+// weights; more than 256 bones wraps. Neither is supported: say so once (diag tag CONFIG,
+// default-on) instead of silently rendering a wrong pose. Stock BT2018 GLBs never trigger it.
+static void noteUnsupportedSkin(std::string_view what, std::string_view meshName) {
+	static bool once = false;
+	if (once) return;
+	once = true;
+	if (mc2_diag::tagRequested("CONFIG"))
+		mc2::fmt::print_err("[CONFIG] glTF import: {} (mesh '{}'): imported rigidly on one bone, per-vertex skin weights dropped; further occurrences not logged\n",
+			std::string(what).c_str(), std::string(meshName).c_str());
 }
 
 //-----------------------------------------------------------------------------
@@ -318,7 +333,7 @@ std::optional<const aiNode*> FindNodeForMesh(const aiNode* node, unsigned meshId
 // Strip leading directory components from a texture path. Assimp can return
 // absolute Windows paths, relative paths, or bare filenames depending on the
 // source authoring tool; legacy texture manager looks up by base name.
-const char* StripPath(const char* p) {
+const char* StripPath(mc2::czstring p) {
 	const char* slash1 = strrchr(p, '/');
 	const char* slash2 = strrchr(p, '\\');
 	const char* base = (slash1 > slash2) ? slash1 + 1 : (slash2 ? slash2 + 1 : p);
@@ -385,8 +400,8 @@ std::optional<std::string> DeriveMC2TextureName(const aiScene* scene, const aiMa
 		aiString matName;
 		if (mat->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
 			std::string mn = matName.C_Str();
-			for (size_t i = 0; i < mn.size(); ++i)
-				if (mn[i] >= 'A' && mn[i] <= 'Z') mn[i] = static_cast<char>((mn[i] - 'A' + 'a'));
+			for (auto & mnElem : mn)
+				if (mnElem >= 'A' && mnElem <= 'Z') mnElem = static_cast<char>((mnElem - 'A' + 'a'));
 			if (mn.find("leaf") != std::string::npos ||
 			    mn.find("leaves") != std::string::npos ||
 			    mn.find("foliage") != std::string::npos)
@@ -487,6 +502,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		++bake->importedParts;
 		if (mesh->mNumBones >= 1) {
 			if (mesh->mNumBones == 1) ++bake->partsSingleBone;
+			else noteUnsupportedSkin("multi-bone mesh", mesh->mName.C_Str());
 			const aiBone* bone = mesh->mBones[0];
 			if (auto it = bake->nameIdx.find(bone->mName.C_Str()); it != bake->nameIdx.end()) {
 				const auto& [name, index] = *it;
@@ -705,6 +721,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, 
 		const aiMesh* me = scene->mMeshes[m];
 		++bake.importedParts;
 		if (me->mNumBones == 1) ++bake.partsSingleBone;
+		else noteUnsupportedSkin("multi-bone mesh", me->mName.C_Str());
 		const aiBone* bone = me->mBones[0];
 		const float* rm = nullptr;
 		int boneIndex = -1;
@@ -840,11 +857,12 @@ struct ActorAnimState : mc2::sim::ImportedAnimState {
 };
 
 struct ImportedAnimEntry {
-    Assimp::Importer*   imp   = nullptr;   // owns scene; session-lifetime (never freed)
+    std::unique_ptr<Assimp::Importer> imp;   // owns scene; freed with the entry (UnregisterImportedType)
     const aiScene*      scene = nullptr;
     TG_TypeShape*       shape = nullptr;   // merged slot-0 shape (listOfTypeVertices)
     TG_TypeMultiShape*  multi = nullptr;   // for per-frame bbox refresh
     std::vector<std::string> names;        // skeleton, parallel to clip globals
+    std::shared_ptr<const mc2skel::SkelPlan> plan;  // flattened node/channel tables for names (borrows scene; declared after imp so it dies first)
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
@@ -999,7 +1017,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
         std::vector<mc2skel::GpuBone> g;
         for (int f = 0; f <= frames; ++f) {
             double tt = 0, dd = 0;
-            if (!mc2skel::EvaluateClipGpuBones(e.scene, clip, static_cast<float>(f), e.names, g, &tt, &dd)) break;
+            if (!mc2skel::EvaluateClipGpuBones(*e.plan, clip, static_cast<float>(f), g, &tt, &dd)) break;
             for (int k = 0; k < 2; ++k) {
                 const aiMatrix4x4 M = e.AS1 * rowMajorToAi(g[feet[k]].m);
                 pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
@@ -1010,10 +1028,10 @@ void measureClipStrides(ImportedAnimEntry& e) {
         // 2 * range / duration along the foot's dominant horizontal axis. (A per-frame
         // "lowest frames" test picked swing frames on in-place BT clips and over-read ~4x.)
         float sum = 0.0f; int n = 0;
-        for (int k = 0; k < 2; ++k) {
-            if (pos[k].size() < 3) continue;
-            const auto [xlo, xhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.x; }));
-            const auto [zlo, zhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.z; }));
+        for (auto & po : pos) {
+            if (po.size() < 3) continue;
+            const auto [xlo, xhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.x; }));
+            const auto [zlo, zhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.z; }));
             sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
             ++n;
         }
@@ -1028,7 +1046,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
 // (MC2 semantic name -> source joint) from the GLB's sidecar
 // <stem>.package.json. Minimal flat-map scan (no JSON dependency; the generator
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
-void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& out,
+void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& out,
                      std::string& aoOut, std::string& normalOut,
                      std::map<std::string, aiVector3D>* socketOut = nullptr) {
     if (!glbPath) return;
@@ -1109,24 +1127,21 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
     mc2::fmt::print_err("[MECH_IMPORT] package '{}': {:d} nodes, ao='{}' normal='{}'\n", side.c_str(), mc2::fmt::as_size(out.size()), aoOut.c_str(), normalOut.c_str());
 }
 
-// Keep a dedicated parse alive for the runtime re-bake: the import's own Importer
-// is a stack local that frees its scene on return. Same flags → identical
-// post-processed mesh ordering/vertices as the merge that recorded `parts`.
-void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBake& bake,
-                          const std::vector<ImportPartRec>& parts, float groundDy) {
+// Keep the import's own parse alive for the runtime re-bake (the GLB is parsed once; the caller
+// hands over its Importer). Ownership transfers only once the entry is stored.
+void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const SkelBake& bake,
+                          const std::vector<ImportPartRec>& parts, float groundDy,
+                          std::unique_ptr<Assimp::Importer>& imp) {
     TG_TypeNodePtr slot = out->GetTypeNode(0);
     if (!slot || slot->GetNodeType() != SHAPE_NODE) return;
-    auto imp = std::make_unique<Assimp::Importer>();
-    imp->SetIOHandler(std::make_unique<ContentIO>().release());
-    const aiScene* scene = imp->ReadFile(path,
-        aiProcess_Triangulate | aiProcess_GenSmoothNormals |
-        aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_SortByPType);
+    const aiScene* scene = imp->GetScene();
     if (!scene) return;
     ImportedAnimEntry e;
-    e.imp = imp.release(); e.scene = scene;
+    e.imp = std::move(imp); e.scene = scene;
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;
+    e.plan = mc2skel::BuildPlan(scene, e.names);
     LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets);  // 1A nodes + AO + NORMALS tex names
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
@@ -1202,6 +1217,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
             MW.Inverse();
             e.invMWrest[i] = MW;
         }
+        if (bake.rest.size() > 256) noteUnsupportedSkin("more than 256 bones (bone index wraps)", path);
         const int nv = e.shape->GetNumTypeVertices();
         e.perVertexBone.assign(nv > 0 ? nv : 0, 0);
         for (const ImportPartRec& pr : parts) {
@@ -1254,6 +1270,16 @@ bool mc2mechanim::AnyImportedAnim() { return !g_importedAnims.empty(); }
 
 // IMPORTED-ACTOR-STABLE-KEY-1: erase this actor's per-frame state from every imported
 // type so a freed-then-reused instance address can't inherit a stale pose. Idempotent.
+// IMPORTED-TYPE-LIFETIME-1: an entry holds raw shape/multi pointers into a type that the
+// type list frees; drop the entry (and its aiScene) when that type dies, else a reused
+// address resolves to a stale entry (wrong skeleton / use-after-free). Idempotent.
+void mc2mechanim::UnregisterImportedType(const void* multi) {
+    if (!multi) return;
+    std::erase_if(g_importedAnims, [multi](const ImportedAnimEntry& e) {
+        return static_cast<const void*>(e.multi) == multi;
+    });
+}
+
 void mc2mechanim::UnregisterImportedActor(const void* actorKey) {
     if (!actorKey) return;
     for (ImportedAnimEntry& e : g_importedAnims)
@@ -1514,7 +1540,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
-    return mc2skel::EvaluateClipGpuBones(e.scene, s.activeClip, frame, e.names, globals, &tt, &dd);
+    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd);
 }
 
 // Build the GPU per-bone MODEL delta from sampled globals into s.modelDelta, plus the
@@ -1669,22 +1695,24 @@ static void CollectContentSockets(const aiNode* node, mc2::content::Asset& asset
     for (unsigned c = 0; c < node->mNumChildren; ++c) CollectContentSockets(node->mChildren[c], asset);
 }
 
-long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
+long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
                             bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
-	// The shipped cooker's GLBs contain their vertex/index buffers. Keep arbitrary
-	// mod GLBs on dependency tracking (they may reference external buffers).
-	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
-		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
+	// Every .glb checks the native cook cache before any parse (S1). Only unskinned, self-contained
+	// GLBs ever store under this key (see the staticParameters assignment after the parse), so a hit
+	// is always a valid unskinned IR; skinned GLBs and external-buffer GLBs never hit.
+	const bool staticGlb = std::string_view(path).ends_with(".glb");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/5-pane-cells";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) +
+		(bakeNodeTransforms ? ":static-glb/5-pane-cells" : ":flat-glb/1");
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? 2 : 0;
 		cached.parameters = staticParameters;
 		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
 	}
-	Assimp::Importer imp;
+	auto impOwner = std::make_unique<Assimp::Importer>();
+	Assimp::Importer& imp = *impOwner;
 	auto io = std::make_unique<ContentIO>();
 	auto* sources = io.get();
 	imp.SetIOHandler(io.release());
@@ -1795,7 +1823,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			const char* dumpPath = dumpPathStr.c_str();
 			if (FILE* bf = fopen(dumpPath, "w")) {
 				double sum = 0.0;
-				for (const auto& b : bake.rest) for (int k = 0; k < 16; ++k) sum += b.m[k];
+				for (const auto& b : bake.rest) for (const auto mElem : b.m) sum += mElem;
 				const char* clipLabel = bake.forcedClip.empty() ? "rest" : bake.forcedClip.c_str();
 				mc2::fmt::print(bf, "{{\n  \"clip\": \"{}\",\n  \"frame\": {:d},\n  \"boneCount\": {:d},\n  \"checksum\": {:.6f},\n  \"bones\": [\n", mc2::fmt::safe(clipLabel), mc2::fmt::as_i32(bake.forcedFrame), mc2::fmt::as_size(bake.names.size()), sum);
 				for (size_t i = 0; i < bake.names.size(); ++i) {
@@ -1822,7 +1850,8 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
         asset.parameters += ":" + std::to_string(digest);
     // Skinned imports keep their skeleton/clip path; they never populate the
     // static cache namespace that can bypass scene decoding.
-    if (staticGlb && !bake.active) asset.parameters = staticParameters;
+    // Self-contained means the main file is the only dependency Assimp opened.
+    if (staticGlb && !bake.active && sources->dependencies.size() <= 1) asset.parameters = staticParameters;
     if (!bake.active && mc2::content::loadCached(asset, path))
         return out->BuildContentIR(std::move(asset), path);
     CollectContentSockets(scene->mRootNode, asset);
@@ -1839,7 +1868,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// both. A skin material name contains the variant token ("widow"/"bha"/"sldf");
 		// base is plain "<chassis>_base". First skinned mesh sets a fallback; the scan
 		// keeps going and upgrades to a variant if one shows up.
-		auto isVariantMat = [](const char* mn){
+		auto isVariantMat = [](mc2::czstring mn){
 			if (!mn) return false;
 			std::string s(mn); for (char& c : s) c = static_cast<char>(tolower(c));
 			return s.find("widow") != std::string::npos
@@ -1925,7 +1954,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	// auto-ground so the stored offset matches the static pose. Reuses the forced
 	// clip as the loop. Keeps its own Assimp scene alive (session lifetime).
 	if (animateImport && bake.active && !animParts.empty())
-		RegisterImportedAnim(path, out, bake, animParts, groundDyApplied);
+		RegisterImportedAnim(path, out, bake, animParts, groundDyApplied, impOwner);
 
 	SPEW(("ASSIMP", "%s: %u meshes, %u materials imported",
 	      path, scene->mNumMeshes, scene->mNumMaterials));

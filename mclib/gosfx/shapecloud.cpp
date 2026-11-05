@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include"gosfxheaders.hpp"
 //==========================================================================//
 // File:	 gosFX_ShapeCloud.cpp											//
@@ -167,8 +169,7 @@ void
 			for (int v=0; v<vertex_count; ++v)
 			{
 				Stuff::Scalar len = mc2::math::lengthSquared(points[v]);
-				if (len > m_radius)
-					m_radius = len;
+				m_radius = std::max(m_radius, len);
 			}
 		}
 		m_radius = Stuff::Sqrt(m_radius);

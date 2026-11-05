@@ -243,7 +243,11 @@ def bake(src, out, entry='main', defines=(), exe=None, cross=None):
         if error:
             return False, error
         dependencies(src)
+        # A shader needing wave ops opts in with a `// slang-profile: spirv_1_3` line.
+        found = re.search(r'^// slang-profile: (spirv_\d_\d)\s*$',
+                          src.read_text(encoding='utf-8', errors='replace'), re.M)
         ok, diag = compile_slang(exe, src, src.suffixes[-2][1:], out, entry,
+                                 profile=found.group(1) if found else DEFAULT_PROFILE,
                                  defines=defines)
         if not ok:
             return ok, diag

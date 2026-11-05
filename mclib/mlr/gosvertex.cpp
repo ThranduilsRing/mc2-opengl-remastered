@@ -13,9 +13,7 @@ Scalar
 	ViewportScalars::AddX,
 	ViewportScalars::AddY;
 
-#if FOG_HACK
 	BYTE GOSVertex::fogTable[Limits::Max_Number_Of_FogStates][1024];
-#endif
 
 //#############################################################################
 //############################    GOSVertex   #################################

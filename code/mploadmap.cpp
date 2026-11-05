@@ -269,7 +269,7 @@ void MPLoadMap::addFile( const char* pFileName, bool bSeedSingle )
 	}
 }
 
-void MPLoadMap::seedFromFile( const char* pFileName )
+void MPLoadMap::seedFromFile( mc2::czstring pFileName )
 {
 	FullPathFileName path;
 	path.init( missionPath, pFileName, ".csv" );

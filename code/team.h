@@ -79,9 +79,9 @@ class Team {
 			init();
 		}
 			
-		virtual long init (long _id, FitIniFile *pMissionFile = 0);
+		virtual long init (long _id, FitIniFile *pMissionFile = nullptr);
 
-		virtual long loadObjectives (FitIniFile *pMissionFile = 0);
+		virtual long loadObjectives (FitIniFile *pMissionFile = nullptr);
 
 		long getId (void) {
 			return(id);

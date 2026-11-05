@@ -113,9 +113,6 @@ void EnumerateModFiles(std::string_view keyPrefix, ModFitCallback cb, void* user
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef	NO_ERR
-#define	NO_ERR					0x00000000
-#endif
 
 inline constexpr unsigned int DISK_FULL_ERR = 0xBADF0001;
 inline constexpr unsigned int SHARE_ERR = 0xBADF0002;

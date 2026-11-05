@@ -4,6 +4,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
 
@@ -785,7 +786,7 @@ static bool weaponFormToTag (ComponentFormType form, WeaponTag& out) {
 // gathers only DECLARED joins (hardpointId != 0 AND resolvable to a profile),
 // runs the pure validator, and logs findings. NO runtime/visual-mount change.
 // Stock loadouts declare no hardpointId -> `joins` empty -> silent (parity).
-void Mover::validateLoadoutHardpointJoins (const char* unitLabel) const {
+void Mover::validateLoadoutHardpointJoins (mc2::czstring unitLabel) const {
 	if (!mc2UnitProfileDataEnabled())
 		return;
 

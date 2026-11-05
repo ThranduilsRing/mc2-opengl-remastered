@@ -1,5 +1,6 @@
 // MechWarrior: target priority list, attacker/target bookkeeping and weapons-status queries.
 // Declared in the class headers; shared names in warrior_internal.h.
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "warrior_internal.h"
 #include "sim_trace.h"
@@ -405,8 +406,7 @@ void MechWarrior::updateAttackerStatus (unsigned long attackerWID, float time) {
 
 GameObjectPtr MechWarrior::calcTurretThreats (float threatRange, long minThreat) {
 
-	if (minThreat < 1)
-		minThreat = 1;
+	minThreat = std::max<long>(minThreat, 1);
 
 	long turretThreat[256];
 	long turretControlThreat[256];

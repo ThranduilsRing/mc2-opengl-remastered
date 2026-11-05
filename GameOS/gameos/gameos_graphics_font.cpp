@@ -28,12 +28,6 @@ gosFont::~gosFont()
     if(tex_id_ != INVALID_TEXTURE_ID)
         gosRendererDeleteTexture(tex_id_);
 
-    delete[] gi_.glyphs_;
-    delete[] gi_.ink_top_;
-    delete[] gi_.ink_bot_;
-    delete[] gi_.ink_valid_;
-    delete[] font_name_;
-    delete[] font_id_;
 }
 
 // ui-phase1: "fontFile,pointSize" request-splitting helper so gosFont::load()
@@ -138,8 +132,7 @@ gosFont* gosFont::load(const char* fontFile) {
                     uint32_t a = atlas.pixels[i];
                     rgba[i] = (a) | (a << 8) | (a << 16) | (a << 24);
                 }
-                delete[] atlas.pixels;
-                atlas.pixels = nullptr;
+                atlas.pixels.reset();
 
                 if(gosTexture* tex = gosRendererGetTexture(tex_id)) {
                     tex->setRgbaMirror(atlas.width, atlas.height, TF_RGBA8, rgba);
@@ -147,12 +140,10 @@ gosFont* gosFont::load(const char* fontFile) {
                 }
                 rgbaOwner.reset();
 
-                gosFont* font = new gosFont();
-                font->gi_ = gi;
-                font->font_name_ = new char[strlen(fname) + 1];
-                strcpy(font->font_name_, fname);
-                font->font_id_ = new char[strlen(fontFile) + 1];
-                strcpy(font->font_id_, fontFile);
+                gosFont* font = new gosFont();   // ref-counted, private dtor: stays raw (destroy())
+                font->gi_ = std::move(gi);
+                font->font_name_ = fname;
+                font->font_id_ = fontFile;
                 font->tex_id_ = tex_id;
 
                 d3fNameOwner.reset();
@@ -162,11 +153,6 @@ gosFont* gosFont::load(const char* fontFile) {
             // calibrate_vertical allocated, including the per-glyph ink
             // bounds arrays, before falling through to the .bmp+.glyph
             // path.
-            delete[] gi.glyphs_;
-            delete[] gi.ink_top_;
-            delete[] gi.ink_bot_;
-            delete[] gi.ink_valid_;
-            delete[] atlas.pixels;
         }
         d3fNameOwner.reset();
     }
@@ -175,12 +161,12 @@ gosFont* gosFont::load(const char* fontFile) {
     const char* glyph_ext = ".glyph";
 
 	const size_t textureNameSize = strlen(fname) + sizeof('/') + strlen(dir) + strlen(tex_ext) + 1;
-    char* textureName = new char[textureNameSize];
-	memset(textureName, 0, textureNameSize);
+    auto textureNameOwner = std::make_unique<char[]>(textureNameSize);
+    char* textureName = textureNameOwner.get();
 
 	const size_t glyphNameSize = strlen(fname) + sizeof('/') + strlen(dir) + strlen(glyph_ext) + 1;
-    char* glyphName = new char[glyphNameSize];
-	memset(glyphName, 0, glyphNameSize);
+    auto glyphNameOwner = std::make_unique<char[]>(glyphNameSize);
+    char* glyphName = glyphNameOwner.get();
 
     uint32_t formatted_len = S_snprintf(textureName, textureNameSize, "%s/%s%s", dir, fname, tex_ext);
 	gosASSERT(formatted_len <= textureNameSize - 1);
@@ -190,23 +176,17 @@ gosFont* gosFont::load(const char* fontFile) {
 
     DWORD tex_id = gosRendererAddFontBmpTexture(textureName);
 
-    gosFont* font = new gosFont();
+    gosFont* font = new gosFont();   // ref-counted, private dtor: stays raw (destroy())
     if(!gos_load_glyphs(glyphName, font->gi_)) {
         delete font;
         STOP(("Failed to load font glyphs: %s\n", glyphName));
         return nullptr;
     }
 
-    font->font_name_ = new char[strlen(fname) + 1];
-    strcpy(font->font_name_, fname);
-
-    font->font_id_ = new char[strlen(fontFile) + 1];
-    strcpy(font->font_id_, fontFile);
+    font->font_name_ = fname;
+    font->font_id_ = fontFile;
 
     font->tex_id_ = tex_id;
-
-    delete[] textureName;
-    delete[] glyphName;
 
     return font;
 

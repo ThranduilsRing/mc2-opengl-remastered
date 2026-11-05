@@ -301,13 +301,13 @@ void CollisionGrid::traverse (void)
 				if (g + 1 != cellEnd)
 					checkGrid(obj,g + 1,cellEnd);
 
-				if (x < long(xGridWidth-1))
+				if (x < static_cast<int32_t>(xGridWidth-1))
 				{
 					//---------------------
 					// Check grid at x+1,y
 					checkGrid(obj,base + cellStart[gridIndex+1],base + cellStart[gridIndex+2]);
 
-					if (y < long(yGridWidth-1))
+					if (y < static_cast<int32_t>(yGridWidth-1))
 					{
 						//-----------------------
 						// Check grid at x+1,y+1
@@ -315,7 +315,7 @@ void CollisionGrid::traverse (void)
 					}
 				}
 
-				if (y < long(yGridWidth-1))
+				if (y < static_cast<int32_t>(yGridWidth-1))
 				{
 					//---------------------
 					// Check grid at x,y+1

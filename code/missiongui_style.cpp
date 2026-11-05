@@ -43,7 +43,7 @@ void MissionInterfaceManager::updateVTol()
 						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 						mc2::math::buildTranslation(shapeOrigin, wakePos);
 
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+						gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 
 						recoveryBeam[vtolNum]->SetLoopOff();
 						recoveryBeam[vtolNum]->SetExecuteOn();
@@ -64,7 +64,7 @@ void MissionInterfaceManager::updateVTol()
 				mc2::math::buildTranslation(shapeOrigin, wakePos);
 
 				mc2::math::Obb boundingBox;
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 
 				dustCloud[vtolNum]->Execute(&info);
 			}
@@ -83,7 +83,7 @@ void MissionInterfaceManager::updateVTol()
 				mc2::math::buildTranslation(shapeOrigin, wakePos);
 
 				mc2::math::Obb boundingBox;
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 
 				recoveryBeam[vtolNum]->Execute(&info);
 			}

@@ -111,7 +111,7 @@ Vulkan gates. Readers in `GameOS/gameos/vulkan_*.cpp`; `MC2_VULKAN_SPV_DIR` is r
   - `1` / `core` / present-but-empty — core validation only (backward-compatible with the historical bare `=1`).
   - `sync` — core + `VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT`.
   - `gpu-assisted` — core + `VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT` (+ reserve-binding-slot). May need extra plumbing/extensions; fails soft if the layer can't honor it.
-  - `best-practices` — core + `VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT`. May emit best-practice **warnings** (logged as `validation-warning:`, non-failing) — probe still passes.
+  - `best-practices` — core + `VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT` + the 18 BestPractices-AMD checks (the preset sets `VK_LAYER_ENABLES=VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD` and `VK_LAYER_DUPLICATE_MESSAGE_LIMIT=200` before `vkCreateInstance`; teardown logs `validation-warning: amd_canary_missing` if neither AvoidImageToImageCopy nor ClearImage-color was reported). May emit best-practice **warnings** (logged as `validation-warning:`, non-failing) — probe still passes.
   - `debug-printf` — core + `VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT`. May need extra plumbing; fails soft.
   Extra features chain into `VkInstanceCreateInfo.pNext` via `VkValidationFeaturesEXT`. Unknown value → falls back to `core` + warns. Resolved preset name is logged at startup. Only ERROR-severity validation messages fail a probe; WARNING-severity ones are visible but non-failing.
 ### The VK gate model (VK-P14 GATE-CONSOLIDATION-1)

@@ -13,6 +13,7 @@
 #include"cmponent.h"
 #endif
 
+#include "mc2_czstring.h"
 #include <new>
 
 #ifndef HEAP_H
@@ -149,22 +150,22 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	}
 
 	field = strtok(nullptr, ",");
-	for (long location = 0; location < NUM_BODY_LOCATIONS; location++) 
+	for (char & location : criticalSpacesReq) 
 	{
 		if ( field )
 		{
 			if (strcmp(field, "No") == 0)
-				criticalSpacesReq[location] = -1;
+				location = -1;
 			else if (strcmp(field, "Yes") == 0)
-				criticalSpacesReq[location] = 0;
+				location = 0;
 			else
-				criticalSpacesReq[location] = atoi(field);
+				location = atoi(field);
 		}
 			field = strtok(nullptr, ",");
 
 	}
 
-	int ammoType = WEAPON_AMMO_NONE;
+	WeaponAmmoType ammoType = WEAPON_AMMO_NONE;
 	if ( field )
 	{
 		if (strcmp(field, "1") == 0)
@@ -228,7 +229,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			stats.weapon.recycleTime = recycleTime;
 			stats.weapon.heat = heat;
 			stats.weapon.ammoAmount = 1;
-			stats.weapon.ammoType = ammoType;
+			stats.weapon.ammoType = static_cast<unsigned char>(ammoType);
 			stats.weapon.range = rangeType;
 			stats.weapon.specialEffect = specialEffect;
 			stats.weapon.ammoMasterId = ammoMasterId;
@@ -308,14 +309,14 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	for (long location = 0; location < NUM_BODY_LOCATIONS; location++) 
+	for (char location : criticalSpacesReq) 
 	{
-		if (criticalSpacesReq[location] == -1)
+		if (location == -1)
 			mc2::fmt::to_buf(piece,"No");
-		else if (criticalSpacesReq[location] == 0)
+		else if (location == 0)
 			mc2::fmt::to_buf(piece,"Yes");
 		else
-			Fatal(criticalSpacesReq[location],"Bad Data");
+			Fatal(location,"Bad Data");
 
 		strcat(dataLine,piece);
 		strcat(dataLine,comma);
@@ -470,7 +471,7 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
-			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(WEAPON_AMMO_NONE));
+			mc2::fmt::to_buf(piece,"{:d}",mc2::fmt::as_i32(static_cast<int>(WEAPON_AMMO_NONE)));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
@@ -623,7 +624,7 @@ bool MasterComponent::isDefensiveWeapon (void) {
 
 //---------------------------------------------------------------------------
 
-long MasterComponent::loadMasterList (const char* fileName, long listSize, float baseSensorRange) {
+long MasterComponent::loadMasterList (mc2::czstring fileName, long listSize, float baseSensorRange) {
 
 	freeMasterList();
 
@@ -684,7 +685,7 @@ long MasterComponent::loadMasterList (const char* fileName, long listSize, float
 
 
 //---------------------------------------------------------------------------
-long MasterComponent::saveMasterList (const char* fileName, long listSize, float baseSensorRange) 
+long MasterComponent::saveMasterList (mc2::czstring fileName, long listSize, float baseSensorRange) 
 {
 	//-----------------------------------------------------------------
 	// All components are in one data file. Save it in CSV format!

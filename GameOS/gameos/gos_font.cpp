@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include <algorithm>
 #include<inttypes.h>
 #include <stdio.h>
@@ -11,7 +12,7 @@
 #include "utils/mc2log.h"
 #include "mc2fmt.h"
 
-bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
+bool gos_load_glyphs(mc2::czstring glyphFile, gosGlyphInfo& gi)
 {
     FILE* glyph_info = fopen(glyphFile, "rb");
     if(!glyph_info) {
@@ -29,7 +30,7 @@ bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
 
     size_t num_structs_read = 0;
 
-    gi.glyphs_ = new gosGlyphMetrics[gi.num_glyphs_];
+    gi.glyphs_ = std::make_unique_for_overwrite<gosGlyphMetrics[]>(gi.num_glyphs_);
 
     while(num_structs_read != gi.num_glyphs_) {
         size_t got = fread(&gi.glyphs_[num_structs_read],
@@ -42,8 +43,7 @@ bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
             MC2_LOG(Core, Debug, "gos_load_glyphs: short read on {}, expected {:d} glyphs, got {:d}",
                   mc2::fmt::safe(glyphFile), mc2::fmt::as_u32(gi.num_glyphs_), mc2::fmt::as_u32(static_cast<uint32_t>(num_structs_read)));
             fclose(glyph_info);
-            delete[] gi.glyphs_;
-            gi.glyphs_ = nullptr;
+            gi.glyphs_.reset();
             gi.num_glyphs_ = 0;
             return false;
         }
@@ -167,7 +167,7 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
     for(uint32_t c = scan_lo; c <= scan_hi && c < gi.num_glyphs_; ++c) {
         if(!gi.glyphs_[c].valid) continue;
         int top, bot;
-        if(!scan_glyph_v_extent(atlas.pixels, atlas.width, atlas.height,
+        if(!scan_glyph_v_extent(atlas.pixels.get(), atlas.width, atlas.height,
                                 bX[c], bY[c], bW[c], static_cast<int>(font_height),
                                 &top, &bot)) {
             continue;
@@ -182,7 +182,7 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
         : static_cast<int>(font_height);
 
     if(visible_height < 1) visible_height = 1;
-    if(visible_height > (int)font_height) visible_height = static_cast<int>(font_height);
+    if(visible_height > static_cast<int>(font_height)) visible_height = static_cast<int>(font_height);
 
     for(uint32_t c = 0; c < gi.num_glyphs_; ++c) {
         gosGlyphMetrics& g = gi.glyphs_[c];
@@ -202,20 +202,14 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
     // (post-shift), so a glyph that sat at atlas band row top_trim has
     // ink_top=0; an extended glyph that reaches above the trim line has
     // a negative ink_top.
-    delete[] gi.ink_top_;
-    delete[] gi.ink_bot_;
-    delete[] gi.ink_valid_;
-    gi.ink_top_   = new int8_t[gi.num_glyphs_];
-    gi.ink_bot_   = new int8_t[gi.num_glyphs_];
-    gi.ink_valid_ = new uint8_t[gi.num_glyphs_];
-    memset(gi.ink_top_,   0, gi.num_glyphs_);
-    memset(gi.ink_bot_,   0, gi.num_glyphs_);
-    memset(gi.ink_valid_, 0, gi.num_glyphs_);
+    gi.ink_top_   = std::make_unique<int8_t[]>(gi.num_glyphs_);
+    gi.ink_bot_   = std::make_unique<int8_t[]>(gi.num_glyphs_);
+    gi.ink_valid_ = std::make_unique<uint8_t[]>(gi.num_glyphs_);
 
     for(uint32_t c = 0; c < gi.num_glyphs_; ++c) {
         if(!gi.glyphs_[c].valid) continue;
         int top, bot;
-        if(!scan_glyph_v_extent(atlas.pixels, atlas.width, atlas.height,
+        if(!scan_glyph_v_extent(atlas.pixels.get(), atlas.width, atlas.height,
                                 bX[c], bY[c], bW[c], static_cast<int>(font_height),
                                 &top, &bot)) {
             continue;
@@ -271,15 +265,14 @@ bool parse_v4(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     }
 
     size_t pixel_count = static_cast<size_t>(dwSize) * static_cast<size_t>(dwSize);
-    uint8_t* pixels = new uint8_t[pixel_count];
-    if(!read_bytes(f, pixels, pixel_count)) {
-        delete[] pixels;
+    auto pixels = std::make_unique_for_overwrite<uint8_t[]>(pixel_count);
+    if(!read_bytes(f, pixels.get(), pixel_count)) {
         return false;
     }
 
     gi.num_glyphs_   = 256;
     gi.start_glyph_  = 0;
-    gi.glyphs_       = new gosGlyphMetrics[256];
+    gi.glyphs_       = std::make_unique_for_overwrite<gosGlyphMetrics[]>(256);
     gi.font_ascent_  = dwFontHeight;     // overwritten by calibrate_vertical
     gi.font_line_skip_ = dwFontHeight;   // overwritten by calibrate_vertical
     zero_glyphs(gi);
@@ -308,7 +301,7 @@ bool parse_v4(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     }
     gi.max_advance_ = max_adv ? max_adv : dwFontHeight;
 
-    atlas.pixels = pixels;
+    atlas.pixels = std::move(pixels);
     atlas.width  = static_cast<int>(dwSize);
     atlas.height = static_cast<int>(dwSize);
 
@@ -342,15 +335,14 @@ bool parse_v1(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     if(!read_bytes(f, nC,       sizeof(nC)))       return false;
 
     size_t pixel_count = static_cast<size_t>(dwWidth) * static_cast<size_t>(dwHeight);
-    uint8_t* pixels = new uint8_t[pixel_count];
-    if(!read_bytes(f, pixels, pixel_count)) {
-        delete[] pixels;
+    auto pixels = std::make_unique_for_overwrite<uint8_t[]>(pixel_count);
+    if(!read_bytes(f, pixels.get(), pixel_count)) {
         return false;
     }
 
     gi.num_glyphs_   = 256;
     gi.start_glyph_  = 0;
-    gi.glyphs_       = new gosGlyphMetrics[256];
+    gi.glyphs_       = std::make_unique_for_overwrite<gosGlyphMetrics[]>(256);
     gi.font_ascent_  = dwFontHeight;
     gi.font_line_skip_ = dwFontHeight;
     zero_glyphs(gi);
@@ -385,7 +377,7 @@ bool parse_v1(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     }
     gi.max_advance_ = max_adv ? max_adv : dwFontHeight;
 
-    atlas.pixels = pixels;
+    atlas.pixels = std::move(pixels);
     atlas.width  = static_cast<int>(dwWidth);
     atlas.height = static_cast<int>(dwHeight);
 
@@ -399,9 +391,9 @@ bool parse_v1(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 
 } // anonymous namespace
 
-bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
+bool gos_load_d3f(mc2::czstring d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 {
-    atlas.pixels = nullptr;
+    atlas.pixels.reset();
     atlas.width = atlas.height = 0;
 
     FILE* f = fopen(d3fFile, "rb");
@@ -425,11 +417,9 @@ bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     fclose(f);
 
     if(!ok) {
-        delete[] gi.glyphs_;
-        gi.glyphs_ = nullptr;
+        gi.glyphs_.reset();
         gi.num_glyphs_ = 0;
-        delete[] atlas.pixels;
-        atlas.pixels = nullptr;
+        atlas.pixels.reset();
         atlas.width = atlas.height = 0;
     }
     return ok;

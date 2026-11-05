@@ -11,6 +11,8 @@
 // vec3(-x, z, y) swizzle, exactly like static_prop.vert forwards v_normal.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_ARB_shader_draw_parameters : require
+#extension GL_EXT_buffer_reference : require
 
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
@@ -84,6 +86,7 @@ flat layout(location = 13) out uint vMaterialFlags;
 layout(location = 14) out vec2 vTree; // ambient AO, tree material active
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
+flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -124,18 +127,15 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
     return clamp(outLight, vec3(0.0), vec3(1.0));
 }
 
-layout(set = 0, binding = 9, std430) readonly buffer HzbVisibility {
-    uint culled;
-    uint visible[];
-} uHzb;
+// Compacted slot list written by color_prop_cull.comp: the draw's firstInstance is the run's first slot, so
+// compact[gl_InstanceIndex] is the surviving instance's slot. HZB-culled instances are not in the list.
+layout(set = 0, binding = 17, std430) readonly buffer Compact {
+    uint c[];
+} uCompact;
 
 void main() {
-    // Render-only: the instance feed and game/AI visibility are never modified.
-    if (uPacket.hzbEnabled != 0 && uHzb.visible[gl_InstanceIndex] == 0u) {
-        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        return;
-    }
-    GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
+    vPacketIdx = uPacketBase.packetBase + uint(gl_DrawIDARB);
+    GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + uCompact.c[gl_InstanceIndex]];
     // Importer reserves alpha 0x7d/0x7e for UV1 glass IDs with white/black seeds.
     uint lightTag = a_aRGBLight >> 24;
     bool windowCell = (inst.flags & 64u) != 0u && (lightTag == 0x7du || lightTag == 0x7eu);

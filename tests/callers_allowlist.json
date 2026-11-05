@@ -291,6 +291,7 @@
   "scripts/smoke_lib/cold_cache.py": "Library imported by scripts/run_smoke.py (--cold-cache) through the smoke_lib package.",
   "tools/terrain_beautify/test_height_sig.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/mc2texcook/cook_cliff_rock.py": "Art cook script run by hand (--select riverbed) to produce data/terrain_layers/cliff_rock_*.ktx2; scripts/deploy_payload.py names it via the CLIFF_ROCK_COOK path constant, not a literal command.",
+  "tools/texcook/cook_selftest.sh": "Manual proof for the offline texture cook: builds bc7enc_rdo and cooks two textures (W=<dir> bash tools/texcook/cook_selftest.sh).",
   "tools/box/deploy.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/env.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/filler/repin.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",

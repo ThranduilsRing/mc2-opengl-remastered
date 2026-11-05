@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "i",
           "offset": 0,
-          "type": "_378"
+          "type": "_363"
         }
       ],
       "name": "Instances"
@@ -56,24 +56,17 @@
       "name": "TypeHotColors"
     },
     {
-      "binding": 9,
+      "binding": 17,
       "members": [
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "culled",
-          "offset": 0,
-          "type": "uint"
-        },
         {
           "array_stride": 4,
           "matrix_stride": null,
-          "name": "visible",
-          "offset": 4,
+          "name": "c",
+          "offset": 0,
           "type": "uint"
         }
       ],
-      "name": "HzbVisibility"
+      "name": "Compact"
     }
   ],
   "stage": "vert",

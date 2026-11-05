@@ -1,11 +1,14 @@
 // GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include "mc2_czstring.h"
 #include <algorithm>
+#include <cstring>
 #include "gos_static_prop_batcher_internal.h"
 #include "static_caster_set.h"
 #include "gos_static_prop_selflit.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "meshoptimizer.h"
 
 // ---------------------------------------------------------------------------
 // DEBUG-VIEW-REGISTRY-1: static-prop shader mode <-> RenderDebugView mapping.
@@ -69,6 +72,8 @@ void GpuStaticPropBatcher::onMapLoad() {
     std::vector<uint32_t>().swap(s_stagingIbo);
     s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
     s_sharedIboBytes = 0;
+    s_meshoptTris = 0;
+    s_meshoptMissesBefore = s_meshoptMissesAfter = 0.0;
 #ifdef MC2_VULKAN_ISLAND
     mc2_vk_shadow_island_invalidate_geometry();
     mc2shadow::staticCasterSet().clear();   // the next mission rebuilds it once its geometry is final
@@ -102,7 +107,7 @@ void GpuStaticPropBatcher::onMapLoad() {
 // V-IBL-STATIC-2: select per-mission SH coefficient set. Called from
 // Mission::init right after onMapLoad(); safe to call with nullptr/empty
 // (resolves to "default"); the registry names the set, else default.
-void GpuStaticPropBatcher::setMissionForIbl(const char* missionName) {
+void GpuStaticPropBatcher::setMissionForIbl(mc2::czstring missionName) {
     s_currentShSet = &RenderCore::lookupShSet(missionName);
 }
 
@@ -311,6 +316,40 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         ++packetCountForThisType;
 
         runStart = runEnd;
+    }
+
+    // Reorder GPU geometry for the vertex cache / overdraw / fetch. Only this GPU copy changes: triangle and vertex
+    // sets are identical, and localVertIdx / aRGBLight travel with each vertex, so sim and hot-colour data are untouched.
+    {
+        const uint32_t typeVertCount = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride) - baseVertex;
+        uint8_t* const vboPtr = s_stagingVbo.data() + static_cast<size_t>(baseVertex) * kVertexStride;
+        const uint32_t firstPkt = static_cast<uint32_t>(s_packets.size()) - packetCountForThisType;
+        std::vector<uint32_t> tmp;
+        // Position (3 floats) is at vertex offset 0; copy it out so meshopt reads real floats.
+        std::vector<float> positions(static_cast<size_t>(typeVertCount) * 3);
+        for (uint32_t v = 0; v < typeVertCount; ++v)
+            std::memcpy(positions.data() + static_cast<size_t>(v) * 3, vboPtr + static_cast<size_t>(v) * kVertexStride, 3 * sizeof(float));
+        for (uint32_t p = firstPkt; p < s_packets.size(); ++p) {
+            const GpuStaticPropPacket& pk = s_packets[p];
+            uint32_t* idx = s_stagingIbo.data() + pk.firstIndex;
+            const size_t n = pk.indexCount;
+            if (n == 0) continue;
+            s_meshoptTris += n / 3;
+            s_meshoptMissesBefore += meshopt_analyzeVertexCache(idx, n, typeVertCount, 16, 0, 0).acmr * (n / 3);
+            tmp.resize(n);
+            meshopt_optimizeVertexCache(tmp.data(), idx, n, typeVertCount);
+            meshopt_optimizeOverdraw(idx, tmp.data(), n, positions.data(), typeVertCount, 3 * sizeof(float), 1.05f);
+        }
+        if (typeVertCount != 0 && packetCountForThisType != 0) {
+            const uint32_t rangeFirst = s_packets[firstPkt].firstIndex;
+            const size_t rangeCount = s_stagingIbo.size() - rangeFirst;
+            meshopt_optimizeVertexFetch(vboPtr, s_stagingIbo.data() + rangeFirst, rangeCount, vboPtr, typeVertCount, kVertexStride);
+            for (uint32_t p = firstPkt; p < s_packets.size(); ++p) {
+                const GpuStaticPropPacket& pk = s_packets[p];
+                if (pk.indexCount == 0) continue;
+                s_meshoptMissesAfter += meshopt_analyzeVertexCache(s_stagingIbo.data() + pk.firstIndex, pk.indexCount, typeVertCount, 16, 0, 0).acmr * (pk.indexCount / 3);
+            }
+        }
     }
 
     const uint32_t numVerts = typeShape->numTypeVertices;

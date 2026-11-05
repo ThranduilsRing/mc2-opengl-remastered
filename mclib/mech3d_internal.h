@@ -121,8 +121,8 @@ extern float mechDebugAngle[];
 extern float torsoDebugAngle[];
 
 // mstates.h (included by mech3d.cpp only, it defines the tables) -- what the pieces need from it.
-#define MAX_TRANSITION_GESTURES			10
-#define GESTURE_OFFSET_SIZE		100
+inline constexpr int MAX_TRANSITION_GESTURES = 10;
+inline constexpr int GESTURE_OFFSET_SIZE = 100;
 extern char hotSpotFinderArray[28];
 extern char mechSpeedStateArray[28];
 extern char transitionArray[1000];

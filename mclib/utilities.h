@@ -6,6 +6,7 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
+#include "mc2_czstring.h"
 #include<gameos.hpp>
 #include<string.h>
 #include<string>
@@ -19,7 +20,7 @@ class StaticInfo
 {
 public:
 
-	void init( FitIniFile& file, const char* blockName, long hiResOffsetX = 0, long hiResOffsetY = 0, DWORD neverFlush = 0x2 );
+	void init( FitIniFile& file, mc2::czstring blockName, long hiResOffsetX = 0, long hiResOffsetY = 0, DWORD neverFlush = 0x2 );
 	void render();
 	bool isInside( int mouseX, int mouseY );
 

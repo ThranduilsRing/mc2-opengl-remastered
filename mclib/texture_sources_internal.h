@@ -1,5 +1,6 @@
 // Engine-side VFS sources. TextureService owns the index and each live payload.
 #pragma once
+#include "mc2_czstring.h"
 #include "texture_assets.h"
 #include "../RenderCore/TextureService.h"
 #include <string>
@@ -28,6 +29,7 @@ struct TextureSource final : RenderCore::TextureSourcePayload {
     DWORD logicalWidth = 0, logicalHeight = 0;
     DWORD cpuTexture = 0;
     bool file = false;
+    bool cookedBc7 = false;  // bytes are the CPU RGBA8 copy of a BC7 sidecar; the GPU copy keeps the blocks
     std::shared_ptr<CpuTextureRetireQueue> retired;
 };
 
@@ -41,7 +43,7 @@ public:
         std::lock_guard lock(indexMutex_);
         return asset < assets_.size() ? assets_[asset].lock() : nullptr;
     }
-    std::shared_ptr<TextureSource> find(const char* name, DWORD variant);
+    std::shared_ptr<TextureSource> find(mc2::czstring name, DWORD variant);
     DWORD publish(std::shared_ptr<TextureSource> source);
     bool retain(const std::shared_ptr<TextureSource>& source);
     void release(const std::shared_ptr<TextureSource>& source);
@@ -67,7 +69,7 @@ private:
     // indexMutex_ before calling into the service.
     mutable std::mutex indexMutex_;
     std::vector<DWORD> creates_;
-    static std::string nameKey(const char* name, DWORD variant);
+    static std::string nameKey(mc2::czstring name, DWORD variant);
     // Weak indices never extend payload lifetime. IDs are monotonic for the session;
     // retiring a source cannot make a stale DWORD name a different source later.
     std::vector<std::weak_ptr<TextureSource>> assets_;

@@ -15,6 +15,7 @@
 // Full Stuff headers needed for ModernClipResult (struct members must be complete types).
 // Include the umbrella header so the Stuff type hierarchy is initialized in correct order
 // (stuff.hpp -> point3d.hpp -> vector3d.hpp; stuff.hpp -> vector4d.hpp).
+#include "mc2_czstring.h"
 #include "stuff/stuff.hpp"
 #include "math/mc2_xform.h"
 
@@ -90,7 +91,7 @@ ProjectZBypassMode projectZBypassMode();
 // Logs a disagreement between Legacy and Bypass at low rate (first ~64 per
 // wrapper per process). Wrapper-name is one of: object, effect,
 // lighting_shadow, debug_overlay, selection_picking.
-void logProjectZBypassDisagreement(const char* wrapper,
+void logProjectZBypassDisagreement(mc2::czstring wrapper,
                                    const glm::vec3& world,
                                    const Stuff::Vector4D& legacyRawClip,
                                    bool legacyAdmit,

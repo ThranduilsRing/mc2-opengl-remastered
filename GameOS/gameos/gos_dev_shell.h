@@ -9,6 +9,7 @@
 // Client: tools/dev_shell/mc2_cmd.py. Port: 9877 (MC2_DEV_SHELL_PORT).
 #pragma once
 
+#include "mc2_czstring.h"
 #include <stdint.h>
 #include <string>
 
@@ -34,12 +35,12 @@ void capturePendingScreenshot(uint32_t frame);
 typedef bool (*CommandHandler)(const char* paramsJson,
                                std::string& dataJsonOut,
                                std::string& errorOut);
-void registerCommand(const char* name, CommandHandler fn);
+void registerCommand(mc2::czstring name, CommandHandler fn);
 
 // RESULTS-CAPTURE-1: engine-side screenshot scheduling — game code (e.g.
 // MissionResults) can request the same end-of-frame capture the socket
 // "screenshot" command uses. No-op when the shell gate is OFF or a shot is
 // already pending. name is sanitized like the socket path.
-void scheduleScreenshot(const char* name);
+void scheduleScreenshot(mc2::czstring name);
 
 }  // namespace gos_dev_shell

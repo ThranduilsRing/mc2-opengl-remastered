@@ -1,6 +1,7 @@
 // BattleMech: inventory hits, critical hits, status/move chunks and handleWeaponHit.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include <array>
 #include "mc2fmt.h"
 #include "sim_trace.h"
 
@@ -317,7 +318,7 @@ long BattleMech::buildStatusChunk (void) {
 	if (pilot) {
 		if (inJump) {
 			statusChunk.jumpOrder = true;
-			int cellRC[2];
+			std::array<int, 2> cellRC;
 			land->worldToCell(jumpGoal, cellRC[0], cellRC[1]);
 			statusChunk.targetCellRC[0] = cellRC[0];
 			statusChunk.targetCellRC[1] = cellRC[1];

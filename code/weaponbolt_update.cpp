@@ -498,7 +498,7 @@ void WeaponBolt::updatePresentation()
 		if (!effect) return;
 		glm::vec3 world; mc2ToRender(world, at);
 		glm::mat4 origin(1.0f); mc2::math::buildTranslation(origin, world);
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime, &origin, nullptr);
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime), &origin, nullptr);
 		effect->Start(&info);
 	};
 	if (!presentationStarted) {
@@ -554,7 +554,7 @@ void WeaponBolt::updatePresentation()
 		localResult = localToWorld * shapeOrigin;
  
 		mc2::math::Obb boundingBox;
-   		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+   		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,&boundingBox);
 
 		bool result = gosEffect->Execute(&info);
 		if (!result)
@@ -586,7 +586,7 @@ void WeaponBolt::updatePresentation()
 		localResult = localToWorld * shapeOrigin;
 			
  		mc2::math::Obb boundingBox;
-   		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+   		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&localResult,&boundingBox);
 
 		bool result = muzzleEffect->Execute(&info);
 		if (!result)
@@ -744,7 +744,7 @@ void WeaponBolt::updatePresentation()
 			mc2::math::buildTranslation(shapeOrigin, tPosition);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			bool result = hitEffect->Execute(&info);
 			if (!result)
@@ -815,7 +815,7 @@ void WeaponBolt::updatePresentation()
 			mc2::math::buildTranslation(shapeOrigin, tPosition);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			bool result = missEffect->Execute(&info);
 			if (!result)
@@ -888,7 +888,7 @@ void WeaponBolt::updatePresentation()
 			mc2::math::buildTranslation(shapeOrigin, tPosition);
 	
 			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 	
 			bool result = waterMissEffect->Execute(&info);
 			if (!result)

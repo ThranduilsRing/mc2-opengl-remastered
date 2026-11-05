@@ -1183,7 +1183,7 @@ class MechWarrior {
 
 		long setBrain (long brainHandle);
 
-		void setBrainName (const char *brainName);
+		void setBrainName (mc2::czstring brainName);
 		
 		ABLModulePtr getBrain (void) {
 			return(brain);
@@ -1877,7 +1877,7 @@ class MechWarrior {
 
 		bool isCloseToFirstTacOrder( glm::vec3& pos );
 
-		std::unique_ptr<BldgAppearance> getWayPointMarker( const glm::vec3& pos, const char* name );
+		std::unique_ptr<BldgAppearance> getWayPointMarker( const glm::vec3& pos, mc2::czstring name );
 
 
 		void setDebugString (long stringNum, char* s) {

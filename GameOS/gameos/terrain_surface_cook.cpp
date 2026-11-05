@@ -17,10 +17,10 @@ std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, ui
     std::array<float, 6> errors;
     errors.fill(std::numeric_limits<float>::infinity());
     errors[0] = 0;
-    if (!side || heights.size() != size_t(side) * side || originX >= side || originY >= side
+    if (!side || heights.size() != static_cast<size_t>(side) * side || originX >= side || originY >= side
         || !quadsX || !quadsY || quadsX >= side - originX || quadsY >= side - originY) return errors;
     constexpr uint32_t strides[] = {1, 2, 4, 5, 10, 20};
-    const auto h = [&](uint32_t x, uint32_t y) { return heights[originX + x + size_t(originY + y) * side]; };
+    const auto h = [&](uint32_t x, uint32_t y) { return heights[originX + x + static_cast<size_t>(originY + y) * side]; };
     for (size_t level = 1; level < errors.size(); ++level) {
         const auto step = strides[level];
         if (quadsX % step || quadsY % step) continue;
@@ -28,7 +28,7 @@ std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, ui
         for (uint32_t y = 0; y <= quadsY; ++y) for (uint32_t x = 0; x <= quadsX; ++x) {
             const uint32_t x0 = std::min(x / step * step, quadsX - step);
             const uint32_t y0 = std::min(y / step * step, quadsY - step);
-            const float u = float(x - x0) / step, v = float(y - y0) / step;
+            const float u = static_cast<float>(x - x0) / step, v = static_cast<float>(y - y0) / step;
             const float tl = h(x0, y0), br = h(x0 + step, y0 + step);
             const float coarse = u >= v ? tl + u * (h(x0 + step, y0) - tl) + v * (br - h(x0 + step, y0))
                 : tl + v * (h(x0, y0 + step) - tl) + u * (br - h(x0, y0 + step));
@@ -52,7 +52,7 @@ const std::array<float, 256>& srgbTable() {
     static const auto table = [] {
         std::array<float, 256> values{};
         for (size_t i = 0; i < values.size(); ++i) {
-            const float v = float(i) / 255.0f;
+            const float v = static_cast<float>(i) / 255.0f;
             values[i] = v <= 0.04045f ? v / 12.92f : std::pow((v + 0.055f) / 1.055f, 2.4f);
         }
         return values;
@@ -63,18 +63,18 @@ SurfaceColor sourceColor(const SurfaceCookInput& in, size_t pixel) {
     if (in.rgba.empty()) return in.color[pixel];
     const auto* p = in.rgba.data() + pixel * 4;
     if (in.srgb) { const auto& table = srgbTable(); return {table[p[0]], table[p[1]], table[p[2]], 1}; }
-    return {float(p[0]) / 255.0f, float(p[1]) / 255.0f, float(p[2]) / 255.0f, 1};
+    return {static_cast<float>(p[0]) / 255.0f, static_cast<float>(p[1]) / 255.0f, static_cast<float>(p[2]) / 255.0f, 1};
 }
 SurfaceColor colorAt(const SurfaceCookInput& in, float u, float v) {
     // Clamp texel addresses, not coordinates: matches Vulkan LINEAR/CLAMP_TO_EDGE at the borders.
-    const float px = u * float(in.colorWidth) - 0.5f, py = v * float(in.colorHeight) - 0.5f;
-    const int x = int(std::floor(px)), y = int(std::floor(py));
+    const float px = u * static_cast<float>(in.colorWidth) - 0.5f, py = v * static_cast<float>(in.colorHeight) - 0.5f;
+    const int x = static_cast<int>(std::floor(px)), y = static_cast<int>(std::floor(py));
     auto at = [&](int xx, int yy) {
-        return sourceColor(in, size_t(std::clamp(yy, 0, int(in.colorHeight) - 1)) * in.colorWidth +
-                               size_t(std::clamp(xx, 0, int(in.colorWidth) - 1)));
+        return sourceColor(in, static_cast<size_t>(std::clamp(yy, 0, static_cast<int>(in.colorHeight) - 1)) * in.colorWidth +
+                               static_cast<size_t>(std::clamp(xx, 0, static_cast<int>(in.colorWidth) - 1)));
     };
-    return mixColor(mixColor(at(x, y), at(x + 1, y), px - float(x)),
-                    mixColor(at(x, y + 1), at(x + 1, y + 1), px - float(x)), py - float(y));
+    return mixColor(mixColor(at(x, y), at(x + 1, y), px - static_cast<float>(x)),
+                    mixColor(at(x, y + 1), at(x + 1, y + 1), px - static_cast<float>(x)), py - static_cast<float>(y));
 }
 
 constexpr float kBlur = 0.0020f, kDiag = kBlur * 0.707f;
@@ -85,10 +85,10 @@ using AxisSamples = std::array<AxisSample, 9>;
 AxisSamples axisSamples(float uv, uint32_t extent, size_t axis) {
     AxisSamples samples{};
     for (size_t k = 0; k < samples.size(); ++k) {
-        const float p = (uv + kOffsets[k][axis]) * float(extent) - 0.5f;
-        const int i = int(std::floor(p));
-        samples[k] = {uint32_t(std::clamp(i, 0, int(extent) - 1)),
-                      uint32_t(std::clamp(i + 1, 0, int(extent) - 1)), p - float(i)};
+        const float p = (uv + kOffsets[k][axis]) * static_cast<float>(extent) - 0.5f;
+        const int i = static_cast<int>(std::floor(p));
+        samples[k] = {static_cast<uint32_t>(std::clamp(i, 0, static_cast<int>(extent) - 1)),
+                      static_cast<uint32_t>(std::clamp(i + 1, 0, static_cast<int>(extent) - 1)), p - static_cast<float>(i)};
     }
     return samples;
 }
@@ -113,7 +113,7 @@ SurfaceColor filteredColor(const SurfaceCookInput& in, const AxisSamples& xs, co
     auto sum = _mm_setzero_ps();
     for (size_t k = 0; k < xs.size(); ++k) {
         const auto& x = xs[k]; const auto& y = ys[k];
-        const size_t a = size_t(y.lo) * in.colorWidth, b = size_t(y.hi) * in.colorWidth;
+        const size_t a = static_cast<size_t>(y.lo) * in.colorWidth, b = static_cast<size_t>(y.hi) * in.colorWidth;
         const auto c = blend(blend(at(a + x.lo), at(a + x.hi), x.t),
                              blend(at(b + x.lo), at(b + x.hi), x.t), y.t);
         sum = _mm_add_ps(sum, c);
@@ -140,35 +140,35 @@ float catmull(float t, float a, float b, float c, float d) {
                    (-a + 3.0f * b - 3.0f * c + d) * t * t * t);
 }
 float shoreAt(const SurfaceCookInput& in, float u, float v) {
-    const float px = u * float(in.shoreWidth - 1), py = v * float(in.shoreHeight - 1);
-    const int x = int(std::floor(px)), y = int(std::floor(py));
+    const float px = u * static_cast<float>(in.shoreWidth - 1), py = v * static_cast<float>(in.shoreHeight - 1);
+    const int x = static_cast<int>(std::floor(px)), y = static_cast<int>(std::floor(py));
     float cols[4];
     for (int row = 0; row < 4; ++row) {
         float r[4];
         for (int col = 0; col < 4; ++col)
-            r[col] = in.shore[size_t(std::clamp(y - 1 + row, 0, int(in.shoreHeight) - 1)) * in.shoreWidth +
-                              size_t(std::clamp(x - 1 + col, 0, int(in.shoreWidth) - 1))];
-        cols[row] = catmull(px - float(x), r[0], r[1], r[2], r[3]);
+            r[col] = in.shore[static_cast<size_t>(std::clamp(y - 1 + row, 0, static_cast<int>(in.shoreHeight) - 1)) * in.shoreWidth +
+                              static_cast<size_t>(std::clamp(x - 1 + col, 0, static_cast<int>(in.shoreWidth) - 1))];
+        cols[row] = catmull(px - static_cast<float>(x), r[0], r[1], r[2], r[3]);
     }
-    return catmull(py - float(y), cols[0], cols[1], cols[2], cols[3]);
+    return catmull(py - static_cast<float>(y), cols[0], cols[1], cols[2], cols[3]);
 }
 float waterPaint(const SurfaceColor& c) {
     const float t = std::clamp((std::min(c[1], c[2]) - c[0]) / 0.08f, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 void hashWord(uint64_t& hash, uint32_t word) {
-    const uint8_t bytes[] = {uint8_t(word), uint8_t(word >> 8), uint8_t(word >> 16), uint8_t(word >> 24)};
+    const uint8_t bytes[] = {static_cast<uint8_t>(word), static_cast<uint8_t>(word >> 8), static_cast<uint8_t>(word >> 16), static_cast<uint8_t>(word >> 24)};
     hash = surfaceHash(bytes, hash);
 }
 } // namespace
 
 std::vector<SurfaceColor> surfaceColorsFromRgba(std::span<const uint8_t> rgba, bool srgb) {
-    if (rgba.empty() || rgba.size() % 4 != 0 || rgba.size() / 4 > uint64_t(SurfaceAsset::kMaxSide) * SurfaceAsset::kMaxSide)
+    if (rgba.empty() || rgba.size() % 4 != 0 || rgba.size() / 4 > static_cast<uint64_t>(SurfaceAsset::kMaxSide) * SurfaceAsset::kMaxSide)
         return {};
     std::vector<SurfaceColor> colors(rgba.size() / 4);
     for (size_t i = 0; i < colors.size(); ++i) {
         for (size_t c = 0; c < 3; ++c) {
-            const float v = float(rgba[i * 4 + c]) / 255.0f;
+            const float v = static_cast<float>(rgba[i * 4 + c]) / 255.0f;
             colors[i][c] = !srgb ? v : v <= 0.04045f ? v / 12.92f : std::pow((v + 0.055f) / 1.055f, 2.4f);
         }
         colors[i][3] = 1;
@@ -177,7 +177,7 @@ std::vector<SurfaceColor> surfaceColorsFromRgba(std::span<const uint8_t> rgba, b
 }
 
 bool validSurfaceCookInput(const SurfaceCookInput& in) {
-    const uint64_t pixels = uint64_t(in.colorWidth) * in.colorHeight;
+    const uint64_t pixels = static_cast<uint64_t>(in.colorWidth) * in.colorHeight;
     const bool bytes = !in.rgba.empty();
     if (in.colorWidth == 0 || in.colorHeight == 0 || in.colorWidth > SurfaceCookInput::kMaxSourceSide ||
         in.colorHeight > SurfaceCookInput::kMaxSourceSide || !sizeOk(in.outputWidth, in.outputHeight) ||
@@ -188,7 +188,7 @@ bool validSurfaceCookInput(const SurfaceCookInput& in) {
         for (float c : color) if (!std::isfinite(c) || c < 0 || c > 1) return false;
     if (in.followCoast) {
         if (!sizeOk(in.shoreWidth, in.shoreHeight) || in.shoreWidth < 2 || in.shoreHeight < 2 ||
-            in.shore.size() != uint64_t(in.shoreWidth) * in.shoreHeight) return false;
+            in.shore.size() != static_cast<uint64_t>(in.shoreWidth) * in.shoreHeight) return false;
         for (float b : in.shoreBounds) if (!std::isfinite(b)) return false;
         if (in.shoreBounds[2] <= 0 || in.shoreBounds[3] <= 0) return false;
         for (float h : in.shore) if (!std::isfinite(h)) return false;
@@ -200,11 +200,11 @@ uint64_t surfaceCookSourceHash(const SurfaceCookInput& in) {
     if (!validSurfaceCookInput(in)) return 0;
     uint64_t hash = 14695981039346656037ull;
     for (uint32_t word : {SurfaceAsset::kEvaluator, in.colorWidth, in.colorHeight, in.outputWidth, in.outputHeight,
-                          uint32_t(in.followCoast), uint32_t(in.staticBreakup)}) hashWord(hash, word);
+                          static_cast<uint32_t>(in.followCoast), static_cast<uint32_t>(in.staticBreakup)}) hashWord(hash, word);
     for (float value : {in.topLeftX, in.topLeftY, in.worldSpan}) hashWord(hash, std::bit_cast<uint32_t>(value));
     if (!in.rgba.empty()) {
         hashWord(hash, 0x41424752u); // RGBA byte source, distinct from a caller's linear float source
-        hashWord(hash, uint32_t(in.srgb));
+        hashWord(hash, static_cast<uint32_t>(in.srgb));
         hash = surfaceHash(in.rgba, hash);
     } else {
         for (const auto& color : in.color)
@@ -231,7 +231,7 @@ SurfaceColor followCoast(const SurfaceCookInput& in, SurfaceColor base, float u,
     const bool water = thick > 0;
     const float paint = waterPaint(base), want = water ? 1.0f - paint : paint;
     if (want < 0.02f) return base;
-    const float ex = 1.0f / float(in.shoreWidth - 1), ey = 1.0f / float(in.shoreHeight - 1);
+    const float ex = 1.0f / static_cast<float>(in.shoreWidth - 1), ey = 1.0f / static_cast<float>(in.shoreHeight - 1);
     float gx = shoreAt(in, hnX + ex, hnY) - shoreAt(in, hnX - ex, hnY);
     float gy = shoreAt(in, hnX, hnY - ey) - shoreAt(in, hnX, hnY + ey);
     const float len2 = gx * gx + gy * gy;
@@ -240,8 +240,8 @@ SurfaceColor followCoast(const SurfaceCookInput& in, SurfaceColor base, float u,
     gx *= scale; gy *= scale;
     auto found = base;
     for (int k = 1; k <= 4; ++k) {
-        const auto c = colorAt(in, (wx + gx * (40.0f * float(k)) - in.topLeftX) / in.worldSpan,
-                                   (in.topLeftY - (wy + gy * (40.0f * float(k)))) / in.worldSpan);
+        const auto c = colorAt(in, (wx + gx * (40.0f * static_cast<float>(k)) - in.topLeftX) / in.worldSpan,
+                                   (in.topLeftY - (wy + gy * (40.0f * static_cast<float>(k)))) / in.worldSpan);
         const float p = waterPaint(c);
         if (water ? p > 0.5f : p < 0.5f) { found = c; break; }
     }
@@ -301,16 +301,16 @@ float evaluateSurfaceBreakup(float worldX, float worldY) {
 }
 
 std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side) {
-    if (side < 2 || side > 4097 || heights.size() != uint64_t(side) * side) return {};
+    if (side < 2 || side > 4097 || heights.size() != static_cast<uint64_t>(side) * side) return {};
     for (float h : heights) if (!std::isfinite(h)) return {};
     SurfaceGradients result;
     result.side = side + 2;
-    result.texels.resize(size_t(result.side) * result.side);
+    result.texels.resize(static_cast<size_t>(result.side) * result.side);
     const auto height = [&](int x, int y) {
-        return heights[size_t(std::clamp(y, 0, int(side) - 1)) * side + size_t(std::clamp(x, 0, int(side) - 1))];
+        return heights[static_cast<size_t>(std::clamp(y, 0, static_cast<int>(side) - 1)) * side + static_cast<size_t>(std::clamp(x, 0, static_cast<int>(side) - 1))];
     };
-    for (int y = -1; y <= int(side); ++y) for (int x = -1; x <= int(side); ++x)
-        result.texels[size_t(y + 1) * result.side + size_t(x + 1)] = {
+    for (int y = -1; y <= static_cast<int>(side); ++y) for (int x = -1; x <= static_cast<int>(side); ++x)
+        result.texels[static_cast<size_t>(y + 1) * result.side + static_cast<size_t>(x + 1)] = {
             -(height(x + 1, y) - height(x - 1, y)) / 256.0f,
              (height(x, y + 1) - height(x, y - 1)) / 256.0f};
     return result;
@@ -321,20 +321,20 @@ std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& in) {
     if (source == 0) return {};
     SurfaceAsset candidate;
     candidate.width = in.outputWidth; candidate.height = in.outputHeight; candidate.sourceHash = source;
-    candidate.macroColor.resize(size_t(candidate.width) * candidate.height);
+    candidate.macroColor.resize(static_cast<size_t>(candidate.width) * candidate.height);
     std::vector<AxisSamples> xs(candidate.width), ys(candidate.height);
     for (uint32_t x=0; x<candidate.width; ++x)
-        xs[x]=axisSamples((float(x)+0.5f)/float(candidate.width),in.colorWidth,0);
+        xs[x]=axisSamples((static_cast<float>(x)+0.5f)/static_cast<float>(candidate.width),in.colorWidth,0);
     for (uint32_t y=0; y<candidate.height; ++y)
-        ys[y]=axisSamples((float(y)+0.5f)/float(candidate.height),in.colorHeight,1);
+        ys[y]=axisSamples((static_cast<float>(y)+0.5f)/static_cast<float>(candidate.height),in.colorHeight,1);
     const auto rows = [&](uint32_t first, uint32_t end) {
         for (uint32_t y=first; y<end; ++y)
             for (uint32_t x=0; x<candidate.width; ++x) {
-                candidate.macroColor[size_t(y)*candidate.width+x]=followCoast(in,filteredColor(in,xs[x],ys[y]),
-                    (float(x)+0.5f)/float(candidate.width),(float(y)+0.5f)/float(candidate.height));
-                if (in.staticBreakup) candidate.macroColor[size_t(y)*candidate.width+x][3] = evaluateSurfaceBreakup(
-                    in.topLeftX + (float(x)+0.5f)/float(candidate.width)*in.worldSpan,
-                    in.topLeftY - (float(y)+0.5f)/float(candidate.height)*in.worldSpan);
+                candidate.macroColor[static_cast<size_t>(y)*candidate.width+x]=followCoast(in,filteredColor(in,xs[x],ys[y]),
+                    (static_cast<float>(x)+0.5f)/static_cast<float>(candidate.width),(static_cast<float>(y)+0.5f)/static_cast<float>(candidate.height));
+                if (in.staticBreakup) candidate.macroColor[static_cast<size_t>(y)*candidate.width+x][3] = evaluateSurfaceBreakup(
+                    in.topLeftX + (static_cast<float>(x)+0.5f)/static_cast<float>(candidate.width)*in.worldSpan,
+                    in.topLeftY - (static_cast<float>(y)+0.5f)/static_cast<float>(candidate.height)*in.worldSpan);
             }
     };
     if (candidate.macroColor.size() >= 1024u*1024u && candidate.height > 1) {
@@ -364,17 +364,17 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
     std::span<const float> materials, uint32_t side, std::span<const uint8_t> control, uint32_t controlSide,
     uint32_t width, uint32_t height, bool sandProfile) {
     if (!validSurfaceAsset(surface, surface.sourceHash) || !sizeOk(width, height) ||
-        (!materials.empty() && (side < 2 || materials.size() != uint64_t(side) * side)) ||
-        (!control.empty() && (controlSide < 1 || control.size() != uint64_t(controlSide) * controlSide * 4))) return {};
+        (!materials.empty() && (side < 2 || materials.size() != static_cast<uint64_t>(side) * side)) ||
+        (!control.empty() && (controlSide < 1 || control.size() != static_cast<uint64_t>(controlSide) * controlSide * 4))) return {};
     const auto smooth = [](float lo, float hi, float v) {
         const float t = std::clamp((v - lo) / (hi - lo), 0.0f, 1.0f);
         return t * t * (3.0f - 2.0f * t);
     };
-    std::vector<uint8_t> result(size_t(width) * height * 4);
+    std::vector<uint8_t> result(static_cast<size_t>(width) * height * 4);
     for (uint32_t y = 0; y < height; ++y) for (uint32_t x = 0; x < width; ++x) {
-        const float u = (float(x) + 0.5f) / width, v = (float(y) + 0.5f) / height;
-        const auto& c = surface.macroColor[size_t(std::min(uint32_t(v * surface.height), surface.height - 1)) * surface.width +
-                                           std::min(uint32_t(u * surface.width), surface.width - 1)];
+        const float u = (static_cast<float>(x) + 0.5f) / width, v = (static_cast<float>(y) + 0.5f) / height;
+        const auto& c = surface.macroColor[static_cast<size_t>(std::min(static_cast<uint32_t>(v * surface.height), surface.height - 1)) * surface.width +
+                                           std::min(static_cast<uint32_t>(u * surface.width), surface.width - 1)];
         const float bright = std::max({c[0], c[1], c[2]});
         const float darkest = std::min({c[0], c[1], c[2]});
         const float saturation = (bright - darkest) / std::max(bright, 1e-10f);
@@ -389,7 +389,7 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
         grass /= total; dirt /= total;
         if (!materials.empty()) {
             const float px = u * (side - 1), py = v * (side - 1);
-            const uint32_t ix = uint32_t(px), iy = uint32_t(py);
+            const uint32_t ix = static_cast<uint32_t>(px), iy = static_cast<uint32_t>(py);
             float semanticGrass = 0, semanticDirt = 0;
             const std::mdspan<const float, std::dextents<size_t, 2>> grid(materials.data(), side, side);
             for (uint32_t dy = 0; dy < 2; ++dy) for (uint32_t dx = 0; dx < 2; ++dx) {
@@ -407,9 +407,9 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
         }
         float concrete = 0;
         if (!control.empty()) {
-            const size_t i = (size_t(std::min(uint32_t(v * controlSide), controlSide - 1)) * controlSide +
-                                     std::min(uint32_t(u * controlSide), controlSide - 1)) * 4;
-            const float sum = float(control[i]) + control[i+1] + control[i+2] + control[i+3];
+            const size_t i = (static_cast<size_t>(std::min(static_cast<uint32_t>(v * controlSide), controlSide - 1)) * controlSide +
+                                     std::min(static_cast<uint32_t>(u * controlSide), controlSide - 1)) * 4;
+            const float sum = static_cast<float>(control[i]) + control[i+1] + control[i+2] + control[i+3];
             if (sum > 0) {
                 grass = control[i+1] / sum; dirt = control[i+2] / sum; concrete = control[i+3] / sum;
                 snow = 0;
@@ -417,13 +417,13 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
         }
         // Snow is additive over the (1 - snow) remainder, as the runtime classifier did.
         grass *= 1.0f - snow; dirt *= 1.0f - snow;
-        const size_t i = (size_t(y) * width + x) * 4;
+        const size_t i = (static_cast<size_t>(y) * width + x) * 4;
         const float w[] = {grass, dirt, snow, concrete};
         // Quantization must not turn a convex material blend into negative rock.
         unsigned remaining = 255;
         for (size_t k = 0; k < 4; ++k) {
-            const unsigned q = std::min(k == 2 ? 255u : remaining, unsigned(std::lround(std::clamp(w[k], 0.0f, 1.0f) * 255)));
-            result[i+k] = uint8_t(q); if (k != 2) remaining -= q;
+            const unsigned q = std::min(k == 2 ? 255u : remaining, static_cast<unsigned>(std::lround(std::clamp(w[k], 0.0f, 1.0f) * 255)));
+            result[i+k] = static_cast<uint8_t>(q); if (k != 2) remaining -= q;
         }
     }
     return result;

@@ -452,11 +452,11 @@ vec3 rgbeToRGB(unsigned char *rgbe){
 }
 
 unsigned int toRGBA(const vec4 &u){
-	return (int(u.x * 255) | (int(u.y * 255) << 8) | (int(u.z * 255) << 16) | (int(u.w * 255) << 24));
+	return (static_cast<int>(u.x * 255) | (static_cast<int>(u.y * 255) << 8) | (static_cast<int>(u.z * 255) << 16) | (static_cast<int>(u.w * 255) << 24));
 }
 
 unsigned int toBGRA(const vec4 &u){
-	return (int(u.z * 255) | (int(u.y * 255) << 8) | (int(u.x * 255) << 16) | (int(u.w * 255) << 24));
+	return (static_cast<int>(u.z * 255) | (static_cast<int>(u.y * 255) << 8) | (static_cast<int>(u.x * 255) << 16) | (static_cast<int>(u.w * 255) << 24));
 }
 
 mat2 operator + (const mat2 &m, const mat2 &n){

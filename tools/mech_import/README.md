@@ -57,10 +57,10 @@ after the source albedo** so MC2's importer derives the matching on-disk `.tga`.
 1. `_out/MadCat.glb` → `<game>/data/tgl/MadCat.glb`
 2. albedo `.tga` (name = importer-derived) → `<game>/data/tgl/` + `data/tgl/<ObjectTextureSize>/`
 3. add `[Import]` `st Source = "Madcat"` to `data/tgl/madcat.ini` — this block **is**
-   the opt-in (`mclib/mech3d.cpp:346`); only LOD0 of a mech with it uses the importer.
+   the opt-in (`[Import] Source=` read in `mclib/mech3d_type.cpp`); only LOD0 of a mech with it uses the importer.
    There is no runtime env-var gate — the build just needs `ENABLE_ASSIMP_IMPORTER`
    (CMake option, default ON). Any extension in `Source` is stripped; the engine
-   probes `.glb` then `.fbx`, falling back to `.ase` (`mclib/msl.cpp:438`).
+   probes `.glb` then `.fbx`, falling back to `.ase` (`TG_TypeMultiShape::LoadFromFile` in `mclib/msl_load.cpp`).
 4. run the game; verify in `mc2_24` (no intro cinematic). Debug/tuning env vars:
    `MC2_GLTF_AXIS` / `MC2_GLTF_YOFF` /
    `MC2_GLTF_GROUND` (orientation / lift / grounding).

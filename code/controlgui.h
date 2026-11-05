@@ -118,7 +118,7 @@ class ControlButton
 	static void makeUVs( gos_VERTEX* vertices, int State, ButtonData& data );
 
 	static void initButtons( FitIniFile& file, long buttonCount, 
-			ControlButton* buttons, ButtonData* buttonData, const char* str, aFont* font = 0 );
+			ControlButton* buttons, ButtonData* buttonData, const char* str, aFont* font = nullptr );
 
 
 	enum States

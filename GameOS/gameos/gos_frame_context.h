@@ -18,6 +18,7 @@
 // globals it is compared against, so it cannot diverge yet. It is wired now so the
 // safety net already exists when the authority slice makes the globals shims: at
 // that point a shim diverging from the context becomes a counted/fatal event.
+#include "mc2_czstring.h"
 #include <atomic>
 #include <cstdint>
 
@@ -29,7 +30,7 @@ extern long     g_viewContentEpoch;  // semantic VIEW-CONTENT epoch (VIEW-EPOCH-
 unsigned long   gos_object_mvp_stale_count();          // object draw fell back to live MVP
 unsigned long   gos_object_mvp_used_count();           // object draw used depth-matched snapshot
 unsigned long   gos_framectx_mismatch_count();         // this slice's M-guard counter
-void            gos_framectx_note_mismatch(const char* what);
+void            gos_framectx_note_mismatch(mc2::czstring what);
 
 // Read-only coherent snapshot of this frame's authoritative state.
 struct RenderFrameContext {

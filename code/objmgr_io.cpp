@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "save_archive.h"
 #include "content_error.h"
 #include <string>
@@ -447,7 +448,7 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 {
 	ZoneScopedN("GameObjectManager::prewarmStaticPropLightBakes");
-	static const bool s_enabled  = false;
+	static const bool s_enabled  = true;   // ships ON (presentation-terrain 2026-11-05): offscreen registered props otherwise never leave needsFullBakeNextFrame and take the full update() every frame
 	static const bool s_trace    = false;
 	if (!s_enabled) return;
 
@@ -466,9 +467,8 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 		if (!cam || cam->getNumLights() == 0) { ++skipped_no_lights; return; }
 		++attempted;
 		if (s_trace) {
-			fprintf(stderr,
-				"STATIC_REG_PREWARM_TRACE: obj=%p recipeIdx=%d\n",
-				static_cast<void*>(obj), app->getStaticRecipeIndex());
+			mc2::fmt::print_err("STATIC_REG_PREWARM_TRACE: obj={:016X} recipeIdx={:d}\n",
+				mc2::fmt::as_ptr(static_cast<void*>(obj)), mc2::fmt::as_i32(app->getStaticRecipeIndex()));
 		}
 		if (app->prewarmStaticLightBake(cam)) {
 			++baked;
@@ -497,28 +497,23 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 	auto t1 = std::chrono::steady_clock::now();
 	long long elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
 
-	printf("STATIC_REG_PREWARM: enabled=1"
-	       " attempted=%d baked=%d"
-	       " skipped_no_lights=%d skipped_not_registered=%d"
-	       " skipped_no_multishape=%d failed_no_cached_index=%d"
-	       " remaining_needs_full_bake=%d elapsed_us=%lld\n",
-	       attempted, baked,
-	       skipped_no_lights, skipped_not_registered,
-	       skipped_no_multishape, failed_no_cached_index,
-	       remaining_needs_full_bake, elapsed_us);
+	mc2::fmt::print_out("STATIC_REG_PREWARM: enabled=1 attempted={:d} baked={:d} skipped_no_lights={:d} skipped_not_registered={:d} skipped_no_multishape={:d} failed_no_cached_index={:d} remaining_needs_full_bake={:d} elapsed_us={:d}\n",
+	       mc2::fmt::as_i32(attempted), mc2::fmt::as_i32(baked),
+	       mc2::fmt::as_i32(skipped_no_lights), mc2::fmt::as_i32(skipped_not_registered),
+	       mc2::fmt::as_i32(skipped_no_multishape), mc2::fmt::as_i32(failed_no_cached_index),
+	       mc2::fmt::as_i32(remaining_needs_full_bake), mc2::fmt::as_i64(elapsed_us));
 	fflush(stdout);
 }
 
 // WATCHID-LOAD-GUARD-1: rate-limited diagnostic for invalid watch data read
 // from an untrusted/corrupt/cross-version save. Emits a one-time stderr line
 // (visible without any diag tag) plus a rate-limited WATCHID_LOAD JSONL event.
-static void mc2_watchidLoadDiag(const char* what, long a, long b)
+static void mc2_watchidLoadDiag(mc2::czstring what, long a, long b)
 {
 	static unsigned long s_loadDrops = 0;
 	++s_loadDrops;
 	if (s_loadDrops == 1)
-		fprintf(stderr, "[WATCHID_LOAD] invalid watch data on load (%s a=%ld b=%ld); "
-			"slot invalidated. Further occurrences rate-limited.\n", what, a, b);
+		mc2::fmt::print_err("[WATCHID_LOAD] invalid watch data on load ({} a={:d} b={:d}); slot invalidated. Further occurrences rate-limited.\n", mc2::fmt::safe(what), mc2::fmt::as_long(a), mc2::fmt::as_long(b));
 	if (mc2_diag::tagEnabled("WATCHID_LOAD") &&
 		(s_loadDrops == 1 || (s_loadDrops & 0xFF) == 0)) {
 		char _wl_buf[160];

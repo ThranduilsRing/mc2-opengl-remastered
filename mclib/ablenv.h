@@ -10,6 +10,7 @@
 #ifndef ABLENV_H
 #define ABLENV_H
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<memory>
 
@@ -78,8 +79,8 @@ class UserFile {
 			filePtr.close();
 			numLines = 0;
 			totalLines = 0;
-			for (long i = 0; i < MAX_USER_FILE_LINES; i++)
-				lines[i][0] = '\0';
+			for (auto & line : lines)
+				line[0] = '\0';
 		}
 
 		UserFile (void) {
@@ -96,9 +97,9 @@ class UserFile {
 
 		void close (void);
 
-		long open (const char* fileName);
+		long open (mc2::czstring fileName);
 
-		void write (const char* s);
+		void write (mc2::czstring s);
 
 		static void setup (void);
 
@@ -243,7 +244,7 @@ class ABLModule {
 			return(name);
 		}
 
-		void setName (const char* _name);
+		void setName (mc2::czstring _name);
 
 		unsigned long* getOrderCallFlags (void) {
 			return(orderCallFlags);
@@ -310,13 +311,13 @@ class ABLModule {
 		long execute (ABLParamPtr paramList = nullptr);
 		long execute (ABLParamPtr moduleParamList, SymTableNodePtr functionIdPtr);
 
-		SymTableNodePtr findSymbol (const char* symbolName, SymTableNodePtr curFunction = nullptr, bool searchLibraries = false);
+		SymTableNodePtr findSymbol (mc2::czstring symbolName, SymTableNodePtr curFunction = nullptr, bool searchLibraries = false);
 
-		SymTableNodePtr findFunction (const char* functionName, bool searchLibraries = false);
+		SymTableNodePtr findFunction (mc2::czstring functionName, bool searchLibraries = false);
 
-		SymTableNodePtr findState (const char* stateName);
+		SymTableNodePtr findState (mc2::czstring stateName);
 
-		int findStateHandle (const char* stateName);
+		int findStateHandle (mc2::czstring stateName);
 
 		char* getSourceFile (int fileNumber);
 

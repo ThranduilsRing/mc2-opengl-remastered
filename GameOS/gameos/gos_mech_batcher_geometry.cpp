@@ -5,6 +5,9 @@
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
 #include <chrono>
+#include <string>
+#include <unordered_map>
+#include "meshoptimizer.h"
 
 
 // ---------------------------------------------------------------------------
@@ -419,15 +422,81 @@ void uploadMechGeometryVbo() {
         // Each range is [start, end) in work; recomputeMechNodeNormals modifies
         // work in place over that range only (bounded by the endByte param added
         // in MECH-NORMALS-FIX-1 so normals from adjacent nodes are never blended).
-        for (const auto& rng : s_nodeVboRanges) {
-            recomputeMechNodeNormals(work, rng.first, rng.second,
+        for (const auto& [rngStart, rngEnd] : s_nodeVboRanges) {
+            recomputeMechNodeNormals(work, rngStart, rngEnd,
                                      s_mechNormalsMode, s_mechNormalsSmoothDeg);
         }
     }
 
-    // The exact bytes the Vulkan islands upload (the normals-recomputed copy; s_stagingVbo stays the pristine cooked data).
-    // Copy-once per map / normals rebuild.
-    s_vkVboNativeCopy = std::move(work);
+    // Dedupe the triangle soup per node into indexed geometry, then meshopt it: vertex cache and overdraw per packet (a packet is one
+    // draw), vertex fetch per node (a node's packets share its vertex range). Done AFTER the normals recompute, which works on the
+    // soup layout. Any inconsistency between the node ranges and the packet table keeps the soup as is.
+    constexpr size_t kStride = sizeof(GpuMechVertex);
+    std::vector<uint8_t> dvbo;
+    std::vector<uint32_t> dibo = s_stagingIbo;
+    std::vector<int32_t> pktBase(s_packets.size(), 0);
+    std::vector<uint32_t> pktCount(s_packets.size(), 0);
+    bool ok = !s_nodeVboRanges.empty() && !s_stagingIbo.empty();
+    size_t pk = 0;
+    dvbo.reserve(work.size());
+    for (size_t n = 0; ok && n < s_nodeVboRanges.size(); ++n) {
+        const auto& [nodeStart, nodeEnd] = s_nodeVboRanges[n];
+        const size_t soupBase = nodeStart / kStride;
+        const size_t soupCount = (nodeEnd - nodeStart) / kStride;
+        const size_t firstPk = pk;
+        while (pk < s_packets.size() && static_cast<size_t>(s_packets[pk].baseVertex) == soupBase) ++pk;
+        if (pk == firstPk) { ok = false; break; }
+        const uint32_t ibFirst = s_packets[firstPk].firstIndex;
+        const uint32_t ibEnd = s_packets[pk - 1].firstIndex + s_packets[pk - 1].indexCount;
+        if (ibEnd > dibo.size()) { ok = false; break; }
+
+        std::unordered_map<std::string, uint32_t> seen;
+        seen.reserve(soupCount);
+        std::vector<uint32_t> remap(soupCount);
+        std::vector<uint8_t> uniq;
+        uniq.reserve(soupCount * kStride);
+        for (size_t v = 0; v < soupCount; ++v) {
+            const char* bytes = reinterpret_cast<const char*>(work.data() + (soupBase + v) * kStride);
+            const auto [it, inserted] = seen.emplace(std::string(bytes, kStride), static_cast<uint32_t>(seen.size()));
+            if (inserted) uniq.insert(uniq.end(), bytes, bytes + kStride);
+            remap[v] = it->second;
+        }
+        const size_t nUniq = uniq.size() / kStride;
+        for (uint32_t i = ibFirst; i < ibEnd; ++i) {
+            if (dibo[i] >= soupCount) { ok = false; break; }
+            dibo[i] = remap[dibo[i]];
+        }
+        if (!ok) break;
+        std::vector<float> positions(nUniq * 3);
+        for (size_t i = 0; i < nUniq; ++i) std::memcpy(&positions[i * 3], uniq.data() + i * kStride, 3 * sizeof(float));
+        for (size_t p = firstPk; p < pk; ++p) {
+            uint32_t* idx = dibo.data() + s_packets[p].firstIndex;
+            const size_t cnt = s_packets[p].indexCount;
+            meshopt_optimizeVertexCache(idx, idx, cnt, nUniq);
+            meshopt_optimizeOverdraw(idx, idx, cnt, positions.data(), nUniq, 3 * sizeof(float), 1.05f);
+        }
+        std::vector<uint8_t> fetched(uniq.size());
+        meshopt_optimizeVertexFetch(fetched.data(), dibo.data() + ibFirst, ibEnd - ibFirst, uniq.data(), nUniq, kStride);
+        const int32_t newBase = static_cast<int32_t>(dvbo.size() / kStride);
+        for (size_t p = firstPk; p < pk; ++p) { pktBase[p] = newBase; pktCount[p] = static_cast<uint32_t>(nUniq); }
+        dvbo.insert(dvbo.end(), fetched.begin(), fetched.end());
+    }
+    if (ok && pk != s_packets.size()) ok = false;
+    if (ok) {
+        MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=dedupe soup_verts=%zu indexed_verts=%zu indices=%zu\n",
+            work.size() / kStride, dvbo.size() / kStride, dibo.size());
+        s_vkVboNativeCopy = std::move(dvbo);
+        s_vkIboNativeCopy = std::move(dibo);
+        s_vkPacketBaseVertex = std::move(pktBase);
+        s_vkPacketVertexCount = std::move(pktCount);
+    } else {
+        MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=dedupe_skipped reason=node_packet_mismatch\n");
+        s_vkVboNativeCopy = std::move(work);
+        s_vkIboNativeCopy = s_stagingIbo;
+        s_vkPacketBaseVertex.resize(s_packets.size());
+        for (size_t i = 0; i < s_packets.size(); ++i) s_vkPacketBaseVertex[i] = s_packets[i].baseVertex;
+        s_vkPacketVertexCount.assign(s_packets.size(), 0);
+    }
     ++s_vkMechGeomGen;
 }
 

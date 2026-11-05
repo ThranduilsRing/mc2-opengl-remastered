@@ -10,6 +10,7 @@
 
 //--------------
 // Include Files
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<gameos.hpp>
 #include "mc2fmt.h"
@@ -18,7 +19,7 @@
 // Error Handling routines
 //***************************************************************************
 
-void Fatal (long errCode, const char* errMessage) {
+void Fatal (long errCode, mc2::czstring errMessage) {
 
 	char msg[512];
 	mc2::fmt::to_buf(msg, " [FATAL {:d}] {} ", mc2::fmt::as_i32(errCode), mc2::fmt::safe(errMessage));
@@ -27,7 +28,7 @@ void Fatal (long errCode, const char* errMessage) {
 
 //---------------------------------------------------------------------------
 
-void Assert (bool test, long errCode, const char* errMessage) {
+void Assert (bool test, long errCode, mc2::czstring errMessage) {
 
 	if (!test) {
 		char msg[512];

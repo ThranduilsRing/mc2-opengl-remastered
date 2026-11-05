@@ -10,9 +10,10 @@
 // in mclib/fastfile.h still resolves here at link time.
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include "fst_hash.h"
 
-extern "C" uint32_t elfHash(const char* name)
+extern "C" uint32_t elfHash(mc2::czstring name)
 {
     uint32_t h = 0, g;
     while (*name)
@@ -25,7 +26,7 @@ extern "C" uint32_t elfHash(const char* name)
     return h;
 }
 
-extern "C" void fst_normalize_key(char* dst, const char* src)
+extern "C" void fst_normalize_key(char* dst, mc2::czstring src)
 {
     // memory/fst_forward_slash_invariant.md: backslash inputs must collapse
     // to forward slash before hashing. file.cpp does this in-place around
@@ -56,7 +57,7 @@ extern "C" void fst_normalize_loose_key_inplace(char* s)
 // backslash -> '/', every other byte -> tolower. Folds case AND slashes so a
 // mod-overlay path resolves to one canonical index key regardless of how the
 // caller spelled it.
-std::string fst_normalize_loose_key(const char* src)
+std::string fst_normalize_loose_key(mc2::czstring src)
 {
     std::string s = src ? src : "";
     for (char& c : s)

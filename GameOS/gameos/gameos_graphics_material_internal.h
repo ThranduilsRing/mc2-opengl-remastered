@@ -80,12 +80,13 @@ namespace gosFX { void DiagFrameTick(); }
 #include "platform_io.h"
 #endif
 
+// Build-type name written into the BUILD diag event (gameos_graphics.cpp).
 #if defined(_DEBUG)
-#  define MC2_DIAG_BUILD_CONFIG "Debug"
+inline constexpr const char* kDiagBuildConfig = "Debug";
 #elif defined(NDEBUG)
-#  define MC2_DIAG_BUILD_CONFIG "Release"
+inline constexpr const char* kDiagBuildConfig = "Release";
 #else
-#  define MC2_DIAG_BUILD_CONFIG "RelWithDebInfo"
+inline constexpr const char* kDiagBuildConfig = "RelWithDebInfo";
 #endif
 #include "gos_terrain_bridge.h"
 #include "gos_terrain_lod_chunk.h"

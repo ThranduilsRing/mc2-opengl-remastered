@@ -20,6 +20,7 @@
 #include"lz.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<zlib.h>
 
 //#ifndef _MBCS
@@ -171,7 +172,7 @@ long PacketFile::afterOpen (void)
 
 		// The count comes from the file and sizes the seek table: it must describe a table that fits in the file (a mod packet file with a bad
 		// header used to overrun the table or fail an assert).
-		if (numPackets < 0 || 8LL + 4LL * numPackets > (long long)getLength())
+		if (numPackets < 0 || 8LL + 4LL * numPackets > static_cast<long long>(getLength()))
 		{
 			// One line per process: a mod with many bad packet files must not flood the log, and a malformed file never stops the game.
 			MC2_LOG_ONCE(Io, Error, "[PACKET_HEADER_BAD] file={} packets={} bytes={} (the header claims more packets than the file holds; rejected)",
@@ -210,7 +211,7 @@ PacketFile::~PacketFile (void)
 }
 
 //---------------------------------------------------------------------------
-long PacketFile::open (const char* fName, FileMode _mode, long numChild, bool doNotLower)
+long PacketFile::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotLower)
 {
 	long openResult = File::open(fName, _mode, numChild, doNotLower);
 	
@@ -236,7 +237,7 @@ long PacketFile::open (FilePtr _parent, unsigned long fileSize, long numChild)
 }
 		
 //---------------------------------------------------------------------------
-long PacketFile::create (const char* fName)
+long PacketFile::create (mc2::czstring fName)
 {
 	long openResult = File::create(fName);
 	
@@ -249,7 +250,7 @@ long PacketFile::create (const char* fName)
 	return(openResult);
 }
 
-long PacketFile::createWithCase(const char* fName )
+long PacketFile::createWithCase(mc2::czstring fName )
 {
 	long openResult = File::createWithCase(fName);
 	

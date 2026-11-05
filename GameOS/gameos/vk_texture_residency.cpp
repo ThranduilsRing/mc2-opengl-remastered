@@ -11,8 +11,6 @@
 #include "engine_present_vk.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include "utils/mc2log.h"
 #include "diagnostic_trace.h"
@@ -21,6 +19,7 @@
 #include <utility>
 #include <chrono>
 #include <cstdio>
+#include "mc2fmt.h"
 
 namespace mc2vk {
 bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
@@ -31,7 +30,7 @@ void invalidateUiImage(RenderCore::TextureHandle handle) {
 void TextureResidency::invalidate(RenderCore::TextureHandle handle) {
     table_->erase(handle);
     auto it=residents_.find(handle.raw());
-    if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
+    if (it!=residents_.end()) { auto& [raw,resident]=*it; if (resident.image) ctx_.retire(std::move(resident.image)); residents_.erase(it); }
 }
 void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     getOrCreateEngineVulkanContext().textures().requestDecoded(handle,std::move(decode));
@@ -39,8 +38,9 @@ void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_
 void TextureResidency::requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
     auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},0,false});
-    it->second.highPriority=true; it->second.contentVersion=service_.contentVersion(handle);
-    worker_.request(handle,std::move(decode),it->second.contentVersion);
+    auto& [raw,resident]=*it;
+    resident.highPriority=true; resident.contentVersion=service_.contentVersion(handle);
+    worker_.request(handle,std::move(decode),resident.contentVersion);
 }
 void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image) {
     getOrCreateEngineVulkanContext().textures().attach(handle,std::move(image));
@@ -154,12 +154,26 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     if (uint32_t(image.mipCount)>fullChain) return {};
     VkPhysicalDeviceProperties deviceProps{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(),&deviceProps);
     if (layers>deviceProps.limits.maxImageArrayLayers) {
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture layers=%u limit=%u fallback=placeholder\n",layers,deviceProps.limits.maxImageArrayLayers);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture layers={:d} limit={:d} fallback=placeholder\n",mc2::fmt::as_u32(layers),mc2::fmt::as_u32(deviceProps.limits.maxImageArrayLayers));
         return {};
     }
     VkFormatProperties properties{}; vkGetPhysicalDeviceFormatProperties(ctx_.physicalDevice(), VkFormat(image.vkFormat), &properties);
     constexpr auto need=VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-    if ((properties.optimalTilingFeatures & need)!=need) return {};
+    if ((properties.optimalTilingFeatures & need)!=need) {
+        // A device without this BC format (BC6H has no RGBA8 form): decode the chain on the CPU and upload RGBA8 instead.
+        if (!blocks || layers!=1 || (image.vkFormat>=143 && image.vkFormat<=144)) return {};
+        RenderCore::KtxImage decoded;
+        decoded.alpha=image.alpha; decoded.width=image.width; decoded.height=image.height; decoded.isSrgb=image.isSrgb;
+        decoded.mipCount=image.mipCount; decoded.vkFormat=image.isSrgb ? 43u : 37u;
+        for (int level=0;level<image.mipCount;++level) {
+            std::vector<uint8_t> rgba;
+            if (!RenderCore::ktxDecodeBlocksToRgba8(image,level,rgba)) return {};
+            decoded.mipByteOffsets.push_back(decoded.pixels.size());
+            decoded.pixels.insert(decoded.pixels.end(),rgba.begin(),rgba.end());
+        }
+        std::fprintf(stderr,"[VK_RESIDENCY v1] bc_unsupported vkFormat=%u fallback=rgba8 %ux%u\n",image.vkFormat,w,h);
+        return upload(decoded,useMips,async,layers,arrayView,vegetation);
+    }
     std::vector<VkBufferImageCopy> copies;
     size_t expected=0;
     for (int level=0;level<image.mipCount;++level) {
@@ -183,7 +197,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
             reduced.pixels.erase(reduced.pixels.begin(),reduced.pixels.begin()+skip);
             reduced.mipByteOffsets.erase(reduced.mipByteOffsets.begin());
             for(auto& offset:reduced.mipByteOffsets) offset-=skip;
-            std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture extent=%ux%u fallback=mip_%ux%u\n",w,h,reduced.width,reduced.height);
+            mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} fallback=mip_{:d}x{:d}\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_u32(reduced.width),mc2::fmt::as_u32(reduced.height));
             return upload(reduced,useMips,async,layers,arrayView,vegetation);
         }
         if(!blocks && (w>1 || h>1)) {
@@ -204,10 +218,10 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
                             image.pixels.data()+(size_t(layer)*w*h+size_t(y*2)*w+x*2)*stride,stride);
                 }
             }
-            std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture extent=%ux%u fallback=resample_%ux%u\n",w,h,reduced.width,reduced.height);
+            mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} fallback=resample_{:d}x{:d}\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_u32(reduced.width),mc2::fmt::as_u32(reduced.height));
             return upload(reduced,useMips,async,layers,arrayView,vegetation);
         }
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=texture extent=%ux%u bytes=%zu fallback=placeholder\n",w,h,expected);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} bytes={:d} fallback=placeholder\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_size(expected));
         return {};
     }
     OwnedBuffer staging;
@@ -275,13 +289,15 @@ void TextureResidency::pump() {
     { ZoneScopedN("TextureResidency.RetireImages"); for (auto handle : retired) {
         table_->erase(handle);
         auto it=residents_.find(handle.raw());
-        if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
+        if (it!=residents_.end()) { auto& [raw,resident]=*it; if (resident.image) ctx_.retire(std::move(resident.image)); residents_.erase(it); }
     } }
     { ZoneScopedN("TextureResidency.TakeDecoded"); for (auto& result : worker_.take()) {
         auto it=residents_.find(result.handle.raw());
-        if (!result.image || !service_.isLive(result.handle) || it==residents_.end() || result.contentVersion!=it->second.contentVersion) continue;
+        if (!result.image || !service_.isLive(result.handle) || it==residents_.end()) continue;
+        const auto& [raw,resident]=*it;
+        if (result.contentVersion!=resident.contentVersion) continue;
         Pending pending{result.handle,std::move(result.image),result.contentVersion};
-        if (it->second.highPriority) pending_.push_front(std::move(pending));
+        if (resident.highPriority) pending_.push_front(std::move(pending));
         else pending_.push_back(std::move(pending));
     } }
     // Queue order makes completion a prefix: idle resident images are never scanned.
@@ -292,7 +308,9 @@ void TextureResidency::pump() {
     std::deque<Pending> batch;
     pumpPendingTextureUploads(pending_,uploading_,batch,budget_,[this](const Pending& p) {
         auto it=residents_.find(p.handle.raw());
-        return it!=residents_.end() && service_.isLive(p.handle) && it->second.contentVersion==p.contentVersion;
+        if (it==residents_.end() || !service_.isLive(p.handle)) return false;
+        const auto& [raw,resident]=*it;
+        return resident.contentVersion==p.contentVersion;
     },[this,firstNew,started] {
         // A screen can request many images at once. Spread staging across
         // frames instead of draining the decoded queue on its first render.
@@ -306,7 +324,7 @@ void TextureResidency::pump() {
         // A missing resident is terminal failure, distinct from a queued upload.
         // Retained handles may reacquire, and dynamic pages may submit newer pixels.
         residents_.erase(p.handle.raw());
-        std::fprintf(stderr,"[VK_RESIDENCY v1] dropped=upload handle=%u attempts=%u fallback=placeholder\n",p.handle.raw(),p.attempts);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] dropped=upload handle={:d} attempts={:d} fallback=placeholder\n",mc2::fmt::as_u32(p.handle.raw()),mc2::fmt::as_u32(p.attempts));
     });
     if (uploading_.size() > firstNew) {
         ZoneScopedN("TextureResidency.SubmitBatch");
@@ -319,7 +337,9 @@ void TextureResidency::pump() {
 }
 bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
-    return it!=residents_.end() && it->second.image && service_.isLive(handle);
+    if (it==residents_.end()) return false;
+    const auto& [raw,resident]=*it;
+    return resident.image && service_.isLive(handle);
 }
 uint64_t TextureResidency::residentBytes() const {
     uint64_t total=0;
@@ -400,17 +420,24 @@ void TextureResidency::release(RenderCore::TextureHandle handle) {
         auto it=residents_.find(handle.raw());
         if (it!=residents_.end()) {
             // Compatibility descriptors can read this view outside the bindless snapshots. The open-frame ticket covers those draws too.
-            if (it->second.image) ctx_.retire(std::move(it->second.image));
+            auto& [raw,resident]=*it;
+            if (resident.image) ctx_.retire(std::move(resident.image));
             residents_.erase(it);
         }
     }
 }
 VkImageView TextureResidency::view(RenderCore::TextureHandle handle, bool arrayView) const {
-    auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : (arrayView || (it!=residents_.end() && it->second.arrayView) ? arrayPlaceholder_->view.get() : placeholder_->view.get());
+    const auto it=residents_.find(handle.raw());
+    const Resident* resident=nullptr;
+    if (it!=residents_.end()) { const auto& [raw,found]=*it; resident=&found; }
+    if (resident && resident->image && service_.isLive(handle)) return resident->image->view.get();
+    return (arrayView || (resident && resident->arrayView)) ? arrayPlaceholder_->view.get() : placeholder_->view.get();
 }
 std::shared_ptr<const void> TextureResidency::imageOwner(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
-    return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image : placeholder_;
+    if (it==residents_.end()) return placeholder_;
+    const auto& [raw,resident]=*it;
+    return resident.image && service_.isLive(handle) ? resident.image : placeholder_;
 }
 VkDescriptorSet TextureResidency::descriptors() {
     auto& flight=flights_[ctx_.frameContext().slot];

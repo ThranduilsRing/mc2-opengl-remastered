@@ -19,6 +19,7 @@
 #ifndef MC2_RENDER_SUBMISSIONS_H
 #include"render_submissions.h"
 #endif
+#include "mc2_czstring.h"
 #include"tex_resolve_table.h"
 
 #ifndef INIFILE_H
@@ -29,9 +30,7 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef NO_ERR
-#define NO_ERR		0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAX_WATER_DETAIL_TEXTURES = 256;
 
@@ -175,14 +174,14 @@ class TerrainColorMap
 			tex_resolve(detailTextureNodeIndex.get());
 			return (detailTextureNodeIndex.get());
 		}
-		long saveDetailTexture(const char *fileName);
+		long saveDetailTexture(mc2::czstring fileName);
 
 		DWORD getWaterTextureHandle (void)
 		{
 			tex_resolve(waterTextureNodeIndex.get());
 			return waterTextureNodeIndex.get();
 		}
-		long saveWaterTexture(const char *fileName);
+		long saveWaterTexture(mc2::czstring fileName);
 
 		DWORD getWaterDetailHandle (long frameNum)
 		{
@@ -194,7 +193,7 @@ class TerrainColorMap
 			else
 				return 0xffffffff;
 		}
-		long saveWaterDetail(const char *fileName);
+		long saveWaterDetail(mc2::czstring fileName);
 
 		DWORD getWaterDetailNumFrames (void)
 		{
@@ -251,17 +250,17 @@ class TerrainColorMap
  		//Mike, these functions will reload these textures from disk.
 		// This allows us to change them in the editor and reload here.
 		// Pass in the filename of the mission!!!!
-		void resetBaseTexture (const char *fileName);
-		void resetDetailTexture (const char *fileName);
-		void resetWaterTexture (const char *fileName);
-		void resetWaterDetailTextures (const char *fileName);
+		void resetBaseTexture (mc2::czstring fileName);
+		void resetDetailTexture (mc2::czstring fileName);
+		void resetWaterTexture (mc2::czstring fileName);
+		void resetWaterDetailTextures (mc2::czstring fileName);
 		
 		//Pass in filename of height map to write new data to.
-		void refractalizeBaseMesh (const char *fileName, long Threshold, long Noise);
+		void refractalizeBaseMesh (mc2::czstring fileName, long Threshold, long Noise);
 		
-		void burnInShadows (bool doBumpPass = true, const char * fileName = nullptr);
+		void burnInShadows (bool doBumpPass = true, mc2::czstring fileName = nullptr);
 		
-		void recalcLight(const char *fileName);
+		void recalcLight(mc2::czstring fileName);
 
 		static long getNumTypes (void)
 		{

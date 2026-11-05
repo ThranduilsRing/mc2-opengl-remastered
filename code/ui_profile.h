@@ -1,5 +1,6 @@
 #ifndef UI_PROFILE_H
 #define UI_PROFILE_H
+#include "mc2_czstring.h"
 // UI-PROFILE-1 (Phase 2, slice 6 of the UNIT-PROFILE arc).
 //
 // PURE FACET. A unit's PRESENTATION-UI layer: how it appears in menus/HUD --
@@ -33,7 +34,7 @@ inline constexpr int UI_ASSET_NAME_CAP = 64;   // includes the NUL terminator
 struct UIAssetName {
     char v[UI_ASSET_NAME_CAP];
     UIAssetName() { v[0] = '\0'; }
-    explicit UIAssetName(const char* s) {
+    explicit UIAssetName(mc2::czstring s) {
         int i = 0;
         if (s) { for (; s[i] && i < UI_ASSET_NAME_CAP - 1; ++i) v[i] = s[i]; }
         v[i] = '\0';
@@ -84,7 +85,7 @@ struct UIProfile {
 
 // Filename seam: return the declared asset filename if non-empty, else `legacy`.
 // Used at getSmallIconFileName / getMediumIconFileName / getLargeIconFileName.
-inline const char* chooseUIAsset(const UIAssetName& declared, const char* legacy) {
+inline const char* chooseUIAsset(const UIAssetName& declared, mc2::czstring legacy) {
     return declared.empty() ? legacy : declared.c_str();
 }
 

@@ -473,7 +473,7 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 	// Read in the Objectives.  Safe to have none.
 	{
 		numObjectives = 0; // this refers to the number of *old* objectives
-		objectives = 0;
+		objectives = nullptr;
 
 		warning1 = FALSE;
 		warning2 = FALSE;

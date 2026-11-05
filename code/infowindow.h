@@ -6,6 +6,7 @@ InfoWindow.h			: Interface for the InfoWindow component.
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 \*************************************************************************************************/
+#include "mc2_czstring.h"
 #include"mclib.h"
 
 #ifndef CONTROLGUI_H
@@ -144,7 +145,7 @@ class InfoWindow
 		void drawDivider( float yVal );
 		void drawSkillBar( int skill, float yVal, float height );
 		void setScrollPos( int where );
-		void drawName( const char* name );
+		void drawName( mc2::czstring name );
 
 		ForceGroupIcon* icon;	// raw: only setUnit() frees it; ~ForceGroupIcon reads its Mover, which may be gone when InfoWindow dies
 

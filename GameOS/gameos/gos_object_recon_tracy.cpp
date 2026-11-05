@@ -21,6 +21,7 @@
 //   run (matches [TGL_POOL v1] discipline in mclib/tgl.cpp:3457-3472).
 // - Shutdown summary: unconditional final emit.
 
+#include "mc2_czstring.h"
 #include "gos_object_recon_tracy.h"
 #include <cstdio>
 #include <cstdlib>
@@ -28,7 +29,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
-extern "C" void crashbundle_append(const char* line); // mclib/tgl.cpp helper
+extern "C" void crashbundle_append(mc2::czstring line); // mclib/tgl.cpp helper
 
 namespace mc2_object_recon {
 
@@ -65,7 +66,7 @@ namespace {
 
     inline void resetCounters(Counters& c) { c = Counters{}; }
 
-    void emitLine(const char* tag, uint32_t frame, const Counters& c) {
+    void emitLine(mc2::czstring tag, uint32_t frame, const Counters& c) {
         char buf[1024];
         mc2::fmt::to_buf(buf, "[OBJECT_RECON v1] {}={:d} bldg_update={{ns:{:d},calls:{:d}}} tree_update={{ns:{:d},calls:{:d}}} generic_update={{ns:{:d},calls:{:d}}} mShape={{ns:{:d},calls:{:d}}} shape={{ns:{:d},calls:{:d},alloc:{:d},xform:{:d},vlight:{:d},flight:{:d},emit:{:d}}}", mc2::fmt::safe(tag), mc2::fmt::as_u32(static_cast<unsigned>(frame)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.bldg_update_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.bldg_update_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.tree_update_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.tree_update_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.generic_update_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.generic_update_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.mShape_total_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.mShape_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_total_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_calls)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_alloc_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_xform_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_vlight_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_flight_ns)), mc2::fmt::as_u64(static_cast<unsigned long long>(c.shape_emit_ns)));
         std::puts(buf);

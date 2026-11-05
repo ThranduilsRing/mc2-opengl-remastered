@@ -1,6 +1,7 @@
 // LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup.
 // Declared in the class headers; shared names in logisticsvariant_internal.h.
 #include "logisticsvariant_internal.h"
+#include <array>
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
@@ -526,7 +527,7 @@ int			LogisticsVariant::getOptimalRangeString( uint32_t& color ) const
 {
 	float rangeDamage[3];
 
-	uint32_t rangeColors[3] = {0xff6e7c00, 0xff005392,0xffa21600  };
+	std::array<uint32_t, 3> rangeColors = {0xff6e7c00, 0xff005392,0xffa21600  };
 
 
 	memset( rangeDamage, 0, sizeof ( float ) * 3 );
@@ -621,9 +622,9 @@ void LogisticsVehicle::init( FitIniFile& file )
 	baseArmor = 0;
 
 	unsigned char pts;
-	for ( int i = 0; i < 5; i++ )
+	for (auto & part : parts)
 	{
-		file.seekBlock( parts[i] );
+		file.seekBlock( part );
 		file.readIdUChar( "MaxArmorPoints", pts );
 		baseArmor += pts;
 		file.readIdUChar( "CurInternalStructure", pts );

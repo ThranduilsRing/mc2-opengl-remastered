@@ -1,5 +1,6 @@
 // GroundVehicle: the per-frame update, the GPU-lagged visibility gate, and Save/CopyTo/Load.
 // Declared in the class headers; shared names in gvehicl_internal.h.
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
 #include "tacticaloverview.h"
@@ -110,10 +111,7 @@ long GroundVehicle::update (void)
 		else
 		{
 			float elev = TerrainRuntime::groundElevation(position);
-			if (position.z < elev)
-			{
-				position.z = elev;
-			}
+			position.z = std::max(position.z, elev);
 		}
 	
 		updateAnimations();		//Keep calling so they stop moving!
@@ -354,8 +352,7 @@ long GroundVehicle::update (void)
 	}
 
 	float velMult = velMag * frameLength;
-	if (velMult > DistanceToWaypoint)
-		velMult = DistanceToWaypoint;
+	velMult = std::min(velMult, DistanceToWaypoint);
 	vel *= velMult * worldUnitsPerMeter;
 
 	{

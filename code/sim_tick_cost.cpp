@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdio>
 #include <vector>
+#include "mc2fmt.h"
 
 void mc2::diagnostic::TickCost::begin() {
     if (enabled_ && !running_) {
@@ -27,8 +28,8 @@ mc2::diagnostic::TickCost::~TickCost() {
     double total = 0;
     for (auto value : samples) total += value;
     std::sort(samples.begin(), samples.end());
-    std::printf("[SIM_TICK_COST v1] ticks=%zu avg_ms=%.4f p95_ms=%.4f p99_ms=%.4f max_ms=%.4f\n",
-        samples.size(), total / samples.size(), samples[samples.size() * 95 / 100],
+    mc2::fmt::print_out("[SIM_TICK_COST v1] ticks={:d} avg_ms={:.4f} p95_ms={:.4f} p99_ms={:.4f} max_ms={:.4f}\n",
+        mc2::fmt::as_size(samples.size()), total / samples.size(), samples[samples.size() * 95 / 100],
         samples[samples.size() * 99 / 100], samples.back());
     std::fflush(stdout);
     samples.clear();

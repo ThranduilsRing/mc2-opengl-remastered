@@ -1,5 +1,6 @@
 #include"gosfxheaders.hpp"
 #include "particles/batcher.h"
+#include <algorithm>
 #include <mdspan>
 //==========================================================================//
 // File:	 gosFX_gosFX::PertCloud.cpp										//
@@ -355,8 +356,7 @@ void
 				perturbance
 			);
 		perturbance = temp*temp + perturbance*perturbance;
-		if (perturbance > bound)
-			bound = perturbance;
+		bound = std::max(bound, perturbance);
 		even = -even;
 	}
 	particle->m_radius = Stuff::Sqrt(bound);

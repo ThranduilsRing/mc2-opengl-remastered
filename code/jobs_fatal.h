@@ -18,16 +18,17 @@
 //                  DEGRADE (serial fallback), not crash — graceful for the
 //                  player, still detectable in the trace.
 #pragma once
+#include "mc2_czstring.h"
 
 namespace mc2 { namespace jobs { namespace detail {
 
 // Writes a FATAL trace record to MC2_DIAGNOSTIC_TRACE_FILE then aborts.
 // [[noreturn]]: never returns.
-[[noreturn]] void fatal(const char* cond, const char* file, int line);
+[[noreturn]] void fatal(mc2::czstring cond, mc2::czstring file, int line);
 
 // Writes a LOGONCE trace record the first time a given (tag) is seen; cheap
 // no-op on subsequent calls. Never aborts.
-void logOnce(const char* tag, const char* file, int line);
+void logOnce(mc2::czstring tag, mc2::czstring file, int line);
 
 }}} // namespace mc2::jobs::detail
 

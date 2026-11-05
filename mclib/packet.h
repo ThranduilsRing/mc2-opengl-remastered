@@ -8,6 +8,7 @@
 
 #ifndef PACKET_H
 #define PACKET_H
+#include "mc2_czstring.h"
 //---------------------------------------------------------------------------
 // Include Files
 
@@ -84,11 +85,11 @@ class PacketFile : public File
 		PacketFile (void);
 		~PacketFile (void);
 		
-		virtual long open (const char* fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
+		virtual long open (mc2::czstring fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
 		virtual long open (FilePtr _parent, unsigned long fileSize, long numChildren = 50);
 		
-		virtual long create (const char* fName);
-		virtual long createWithCase(const char* fName ); // don't strlwr for me please!
+		virtual long create (mc2::czstring fName);
+		virtual long createWithCase(mc2::czstring fName ); // don't strlwr for me please!
 		virtual void close (void);
 
 		void forceUseCheckSum (void)
@@ -96,7 +97,7 @@ class PacketFile : public File
 			usesCheckSum = TRUE;
 		}
 
-		int readPacketOffset (int packet, int *lastType = 0);
+		int readPacketOffset (int packet, int *lastType = nullptr);
 		int readPacket (int packet, unsigned char *buffer);
 		int readPackedPacket (int packet, unsigned char *buffer);
 

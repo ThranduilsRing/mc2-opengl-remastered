@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include "mc2str.h"
 #include <format>
@@ -574,8 +575,8 @@ static void rgb2hsi(float r, float g, float b, float &hue, float &saturation, fl
 	}
 
 	float min = r;
-	if (g < min) { min = g; }
-	if (b < min) { min = b; }
+	min = std::min(min, g);
+	min = std::min(min, b);
 
 	saturation = 1.0 - (min / intensity);
 
@@ -693,12 +694,12 @@ int aColorPicker::handleMessage( unsigned long message, const void* who )
 					float intensity = 0.99f;
 					float R, G, B;
 					hsi2rgb(hue, saturation, intensity, R, G, B);
-					if (R > 0.99f) { R = 0.99f; }
-					if (G > 0.99f) { G = 0.99f; }
-					if (B > 0.99f) { B = 0.99f; }
-					if (R < 0.0f) { R = 0.0f; }
-					if (G < 0.0f) { G = 0.0f; }
-					if (B < 0.0f) { B = 0.0f; }
+					R = std::min(R, 0.99f);
+					G = std::min(G, 0.99f);
+					B = std::min(B, 0.99f);
+					R = std::max(R, 0.0f);
+					G = std::max(G, 0.0f);
+					B = std::max(B, 0.0f);
 					int newColor = 0xff000000 | ((static_cast<int>((R * 255.0))) << 16) | ((static_cast<int>((G * 255.0))) << 8)
 						| ((static_cast<int>((B * 255.0))) << 0);
 					//if (tab0Button.isPressed()) {

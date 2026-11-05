@@ -223,7 +223,7 @@ inline uint64_t hashWords(const void* data, size_t bytes, uint64_t h = 146959810
     size_t i = 0;
     for (; i + 8 <= bytes; i += 8) {
         uint64_t w = 0;
-        for (int k = 0; k < 8; ++k) w |= uint64_t(p[i + static_cast<size_t>(k)]) << (8 * k);
+        for (int k = 0; k < 8; ++k) w |= static_cast<uint64_t>(p[i + static_cast<size_t>(k)]) << (8 * k);
         h = (h ^ w) * 0x9E3779B97F4A7C15ull;
         h ^= h >> 29;
     }
@@ -232,22 +232,22 @@ inline uint64_t hashWords(const void* data, size_t bytes, uint64_t h = 146959810
 
 // Retain endpoints and sample the visual surface without copying its full 4x grid (store mip maxima may trail the fine grid).
 inline std::vector<float> maskHeightGrid(std::span<const float> source, int sourceSide, int maskTexels) {
-    if (sourceSide < 2 || source.size() < size_t(sourceSide) * sourceSide || maskTexels < 1) return {};
+    if (sourceSide < 2 || source.size() < static_cast<size_t>(sourceSide) * sourceSide || maskTexels < 1) return {};
     const int side = (std::min)(sourceSide, maskTexels + 1);
-    std::vector<float> out(size_t(side) * side);
-    const double scale = double(sourceSide - 1) / (side - 1);
+    std::vector<float> out(static_cast<size_t>(side) * side);
+    const double scale = static_cast<double>(sourceSide - 1) / (side - 1);
     for (int y = 0; y < side; ++y) {
         const double gy = y * scale;
-        const int iy = (std::min)(int(gy), sourceSide - 2);
-        const float fy = float(gy - iy);
+        const int iy = (std::min)(static_cast<int>(gy), sourceSide - 2);
+        const float fy = static_cast<float>(gy - iy);
         for (int x = 0; x < side; ++x) {
             const double gx = x * scale;
-            const int ix = (std::min)(int(gx), sourceSide - 2);
-            const float fx = float(gx - ix);
-            const size_t i = size_t(iy) * sourceSide + ix;
+            const int ix = (std::min)(static_cast<int>(gx), sourceSide - 2);
+            const float fx = static_cast<float>(gx - ix);
+            const size_t i = static_cast<size_t>(iy) * sourceSide + ix;
             const float a = source[i] + fx * (source[i + 1] - source[i]);
             const float b = source[i + sourceSide] + fx * (source[i + sourceSide + 1] - source[i + sourceSide]);
-            out[size_t(y) * side + x] = a + fy * (b - a);
+            out[static_cast<size_t>(y) * side + x] = a + fy * (b - a);
         }
     }
     return out;

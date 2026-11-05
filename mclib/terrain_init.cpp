@@ -1,5 +1,6 @@
 // Terrain: Terrain::init (mission terrain load), the block / mover list helpers it uses.
 // Declared in the class headers; shared names in terrain_internal.h.
+#include "mc2_czstring.h"
 #include "terrain_internal.h"
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
@@ -681,7 +682,7 @@ float shoreFieldHalfToFloat(uint16_t h) {
 // SHORE-FIELD-1: the cooked coastline field (tools/terrain_beautify/cook_shore_field.py):
 // a float16 pseudo-height grid stored relative to the water level, corner-aligned on the map (side = (mapSide-1)*k+1 for any
 // k >= 1). Returns false when the sidecar is absent or does not fit the map.
-bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int& side) {
+bool loadShoreField(mc2::czstring stem, int mapSide, std::vector<float>& out, int& side) {
 	char path[600];
 	mc2::fmt::to_buf(path, "data/missions/{}.beauty/shore_field.r16f", mc2::fmt::safe(stem));
 	FILE* f = fopen(path, "rb");  // path-audit: loose-only
@@ -1232,13 +1233,13 @@ void Terrain::initMaterialProfile() {
 		const char *profileKey = colorMapName ? colorMapName
 		                       : terrainName  ? terrainName
 		                                      : "";
-		g_terrainMaterialProfile = TERRAIN_MAT_PROFILE_LEGACY;
+		g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_LEGACY);
 		// TERRAIN-CLASSIFY-TUNING-1: sync dirt sat window with profile so the
 		// ImGui-tunable uniforms start at the right defaults for this mission.
 		// Sand_M24 washes out to low-saturation sand; widen the dirt sat gate.
 		extern void gos_SetTerrainClassDirt(float rMinusGLo, float rMinusGHi, float rBrightLo, float rBrightHi);
 		if (profileKey[0] != '\0' && _stricmp(profileKey, "mc2_24") == 0) {
-			g_terrainMaterialProfile = TERRAIN_MAT_PROFILE_SAND_M24;
+			g_terrainMaterialProfile = static_cast<int>(TERRAIN_MAT_PROFILE_SAND_M24);
 			// Sand_M24: widen R-G band + raise brightness ceiling for bright sun-lit sand
 			gos_SetTerrainClassDirt(-0.02f, 0.12f, 0.18f, 0.80f);
 		} else {

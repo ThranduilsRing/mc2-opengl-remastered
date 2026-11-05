@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdio>
 #include <span>
+#include "mc2fmt.h"
 
 // Task types - added in BRAIN-RUNTIME-1B.
 // NOTE: avoid names that collide with legacy #define macros (e.g. dstd.h #define NONE -1).
@@ -111,11 +112,11 @@ public:
 
     // debug dump (MC2_BRAIN_TASKQ_TRACE gate, cheap)
     void dumpTrace(int32_t warrior_id_for_log) const {
-        std::fprintf(stderr, "BRAIN_TASKQ: wid=%d pending=%d\n", warrior_id_for_log, count_);
+        mc2::fmt::print_err("BRAIN_TASKQ: wid={:d} pending={:d}\n", mc2::fmt::as_i32(warrior_id_for_log), mc2::fmt::as_i32(count_));
         for (int i = 0; i < count_; ++i) {
             const BrainTaskEntry& e = entries_[i];
-            std::fprintf(stderr, "  [%d] tier=%u frame_ms=%u seq=%u wid=%d\n",
-                i, (unsigned)e.priority_tier, e.insertion_frame_ms, e.stable_seq_id, e.warrior_id);
+            mc2::fmt::print_err("  [{:d}] tier={:d} frame_ms={:d} seq={:d} wid={:d}\n",
+                mc2::fmt::as_i32(i), mc2::fmt::as_u32((unsigned)e.priority_tier), mc2::fmt::as_u32(e.insertion_frame_ms), mc2::fmt::as_u32(e.stable_seq_id), mc2::fmt::as_i32(e.warrior_id));
         }
     }
 

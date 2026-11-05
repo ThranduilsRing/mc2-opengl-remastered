@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include <memory>
 #include "../../mclib/sim_overlap.h"
 #include "gameos.hpp"
@@ -7,6 +8,7 @@
 #include <time.h>
 #include <stdlib.h> // rand
 #include <new>      // std::bad_alloc
+#include "mc2_alloc_backend.h" // allocator behind gos_Malloc and the global operator new/delete (mimalloc; CRT under MC2_ASAN)
 #include "utils/timing.h"
 #include "utils/timing_math.h"
 
@@ -45,15 +47,15 @@ void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__st
     // TODO: maybe use dconsole for this
 }
 
-void __stdcall AddStatistic( const char* Name, const char* TypeName, gosType Type, void* Value, DWORD Flags )
+void __stdcall AddStatistic( mc2::czstring Name, mc2::czstring TypeName, gosType Type, void* Value, DWORD Flags )
 {
 }
-void __stdcall StatisticFormat(char const* s)
+void __stdcall StatisticFormat(mc2::czstring s)
 {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
-void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf )
+void* DecodeJPG( mc2::czstring FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf )
 {
     return nullptr;
 }
@@ -80,7 +82,7 @@ static bool g_gos_exit_game_os = false;
 #ifdef _WIN32
 #include <windows.h>
 #include <dbghelp.h>
-static void mc2_log_exit_caller(const char* fn)
+static void mc2_log_exit_caller(mc2::czstring fn)
 {
     static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
     static bool s_once = false;
@@ -181,7 +183,7 @@ double __stdcall gos_GetHiResTime()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-HGOSHEAP __stdcall gos_CreateMemoryHeap(char const* HeapName, DWORD MaximumSize/* = 0*/, HGOSHEAP parentHeap/* = ParentClientHeap*/)
+HGOSHEAP __stdcall gos_CreateMemoryHeap(mc2::czstring HeapName, DWORD MaximumSize/* = 0*/, HGOSHEAP parentHeap/* = ParentClientHeap*/)
 {
     gos_Heap* pheap = new gos_Heap();
     memset(pheap, 0, sizeof(gos_Heap));
@@ -219,6 +221,15 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 #include "alloc_stats_proof.inc"
 #endif
 
+// ALLOCATOR: mimalloc (static, 3rdparty/mimalloc) backs gos_Malloc/gos_Free and every global operator new/delete below, aligned and
+// sized forms included (MC2_ASAN builds use the CRT malloc instead, see mc2_alloc_backend.h). CRT malloc/free stay CRT: never free()
+// a block from new/gos_Malloc, never delete/gos_Free a malloc'd block; the guard in gos_Free/aligned delete aborts on a mismatch.
+#ifdef PLATFORM_WINDOWS
+#define MC2_DELETE_NOEXCEPT
+#else
+#define MC2_DELETE_NOEXCEPT noexcept
+#endif
+
 void* operator new(size_t sz) {
     // A replaced operator new must not return null: callers (and the compiler) assume the result is valid.
     void* p = gos_Malloc(sz ? sz : 1, nullptr);
@@ -226,17 +237,45 @@ void* operator new(size_t sz) {
         throw std::bad_alloc();
     return p;
 }
-void operator delete(void* ptr)
-#ifndef PLATFORM_WINDOWS
-noexcept 
-#endif
-{
-    gos_Free(ptr);
+void* operator new[](size_t sz) {
+    void* p = gos_Malloc(sz ? sz : 1, nullptr);
+    if (!p)
+        throw std::bad_alloc();
+    return p;
 }
+void* operator new(size_t sz, const std::nothrow_t&) noexcept { return gos_Malloc(sz ? sz : 1, nullptr); }
+void* operator new[](size_t sz, const std::nothrow_t&) noexcept { return gos_Malloc(sz ? sz : 1, nullptr); }
+void operator delete(void* ptr) MC2_DELETE_NOEXCEPT { gos_Free(ptr); }
+void operator delete[](void* ptr) MC2_DELETE_NOEXCEPT { gos_Free(ptr); }
+void operator delete(void* ptr, const std::nothrow_t&) noexcept { gos_Free(ptr); }
+void operator delete[](void* ptr, const std::nothrow_t&) noexcept { gos_Free(ptr); }
+void operator delete(void* ptr, size_t) MC2_DELETE_NOEXCEPT { gos_Free(ptr); }
+void operator delete[](void* ptr, size_t) MC2_DELETE_NOEXCEPT { gos_Free(ptr); }
+
+void* operator new(size_t sz, std::align_val_t al) {
+    void* p = mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al));
+    if (!p)
+        throw std::bad_alloc();
+    return p;
+}
+void* operator new[](size_t sz, std::align_val_t al) {
+    void* p = mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al));
+    if (!p)
+        throw std::bad_alloc();
+    return p;
+}
+void* operator new(size_t sz, std::align_val_t al, const std::nothrow_t&) noexcept { return mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al)); }
+void* operator new[](size_t sz, std::align_val_t al, const std::nothrow_t&) noexcept { return mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al)); }
+void operator delete(void* ptr, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete[](void* ptr, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete(void* ptr, size_t, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete[](void* ptr, size_t, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete(void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete[](void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
 
 void* __cdecl operator new[](size_t size, HGOSHEAP Heap)
 {
-    return malloc(size);
+    return gos_Malloc(size, Heap);
 }
 
 void* __stdcall gos_Malloc(size_t bytes, HGOSHEAP Heap/* = 0*/)
@@ -263,17 +302,17 @@ void* __stdcall gos_Malloc(size_t bytes, HGOSHEAP Heap/* = 0*/)
     }
     */
 #ifdef MC2_ALLOC_STATS
-    void* p = malloc(bytes);
+    void* p = mc2a_malloc(bytes);
     if (p) {
         if (!tl_inTracker) {
             g_allocStatsLive.fetch_add(1, std::memory_order_relaxed);
-            g_allocStatsBytes.fetch_add(static_cast<long long>(_msize(p)), std::memory_order_relaxed);
+            g_allocStatsBytes.fetch_add(static_cast<long long>(mc2a_usable(p)), std::memory_order_relaxed);
             trackAlloc(p, bytes);
         }
     }
     return p;
 #else
-    return malloc(bytes);
+    return mc2a_malloc(bytes);
 #endif
 }
 void __stdcall gos_Free(void* ptr)
@@ -288,11 +327,12 @@ void __stdcall gos_Free(void* ptr)
 #ifdef MC2_ALLOC_STATS
     if (ptr && !tl_inTracker) {
         g_allocStatsLive.fetch_sub(1, std::memory_order_relaxed);
-        g_allocStatsBytes.fetch_sub(static_cast<long long>(_msize(ptr)), std::memory_order_relaxed);
+        g_allocStatsBytes.fetch_sub(static_cast<long long>(mc2a_usable(ptr)), std::memory_order_relaxed);
         trackFree(ptr);
     }
 #endif
-    free(ptr);
+    mc2a_check_owned(ptr, "gos_Free");
+    mc2a_free(ptr);
 }
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -547,7 +587,7 @@ static const char* g_user_base_config_dir = ".config";
 static const char* g_user_config_dir = ".mechcommander2";
 
 // TODO: use inifile.h functionality for this
-void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD* szData, bool HKLM/*=false*/)
+void __stdcall gos_LoadDataFromRegistry( mc2::czstring keyName, void* pData, DWORD* szData, bool HKLM/*=false*/)
 {
     // this code can be useful to get registry file location
     
@@ -619,7 +659,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
     }
 }
 
-void __stdcall gos_SaveDataToRegistry( const char* keyName,  void* pData,  DWORD szData )
+void __stdcall gos_SaveDataToRegistry( mc2::czstring keyName,  void* pData,  DWORD szData )
 {
     // TODO:
 }

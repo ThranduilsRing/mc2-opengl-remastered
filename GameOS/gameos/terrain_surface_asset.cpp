@@ -30,7 +30,7 @@ uint64_t surfaceHash(std::span<const uint8_t> bytes, uint64_t seed) {
 
 bool validSurfaceAsset(const SurfaceAsset& asset, uint64_t expectedSource) {
     if (!validSize(asset.width, asset.height) || asset.sourceHash != expectedSource || expectedSource == 0 ||
-        asset.macroColor.size() != uint64_t(asset.width) * asset.height) return false;
+        asset.macroColor.size() != static_cast<uint64_t>(asset.width) * asset.height) return false;
     for (const auto& pixel : asset.macroColor)
         for (float channel : pixel)
             if (!std::isfinite(channel) || channel < 0.0f || channel > 1.0f) return false;
@@ -44,14 +44,14 @@ std::optional<SurfaceAsset> decodeSurfaceAsset(std::span<const uint8_t> bytes, u
     const auto width = static_cast<uint32_t>(getLE(bytes, 12, 4));
     const auto height = static_cast<uint32_t>(getLE(bytes, 16, 4));
     if (!validSize(width, height)) return {};
-    const uint64_t payloadBytes = uint64_t(width) * height * kPixelBytes;
+    const uint64_t payloadBytes = static_cast<uint64_t>(width) * height * kPixelBytes;
     if (getLE(bytes, 40, 8) != payloadBytes || bytes.size() != kHeaderBytes + payloadBytes ||
         surfaceHash(bytes.subspan(kHeaderBytes)) != getLE(bytes, 32, 8)) return {};
     SurfaceAsset candidate;
     candidate.width = width; candidate.height = height; candidate.sourceHash = expectedSource;
-    candidate.macroColor.resize(size_t(width) * height);
+    candidate.macroColor.resize(static_cast<size_t>(width) * height);
     if constexpr (std::endian::native == std::endian::little) {
-        std::memcpy(candidate.macroColor.data(), bytes.data() + kHeaderBytes, size_t(payloadBytes));
+        std::memcpy(candidate.macroColor.data(), bytes.data() + kHeaderBytes, static_cast<size_t>(payloadBytes));
     } else {
         size_t offset = kHeaderBytes;
         for (auto& pixel : candidate.macroColor)

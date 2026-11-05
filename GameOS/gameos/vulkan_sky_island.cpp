@@ -11,8 +11,6 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
@@ -192,7 +190,7 @@ bool ensure_hdri(Island* s, uint64_t generation) {
     auto createStaging = [&]() -> bool {
         offs.assign(levels.size(), 0);
         VkDeviceSize total = 0;
-        for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15))); }
+        for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~static_cast<size_t>(15))); }
         VkBufferCreateInfo bci{};
         bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; bci.size = total ? total : 16; bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         VmaAllocationCreateInfo aci{};

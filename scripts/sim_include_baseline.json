@@ -786,30 +786,6 @@
       "occurrence": 1
     },
     {
-      "tu": "code/sim_identity.cpp",
-      "file": "code/sim_identity.cpp",
-      "chain": [
-        "code/sim_identity.cpp",
-        "GameOS/include/mc2fmt.h"
-      ],
-      "rule": "gameos",
-      "subject": "mc2fmt.h",
-      "evidence": "#include \"mc2fmt.h\"",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/warrior.cpp",
-      "file": "code/warrior.cpp",
-      "chain": [
-        "code/warrior.cpp",
-        "GameOS/include/mc2fmt.h"
-      ],
-      "rule": "gameos",
-      "subject": "mc2fmt.h",
-      "evidence": "#include \"mc2fmt.h\"",
-      "occurrence": 1
-    },
-    {
       "tu": "code/mission_update.cpp",
       "file": "code/mission_internal.h",
       "chain": [

@@ -137,7 +137,7 @@ class gosRenderer {
             // to not waste space
             gosASSERT(textureList_.size() > texture_id);
             delete textureList_[texture_id];
-            textureList_[texture_id] = 0;
+            textureList_[texture_id] = nullptr;
         }
 
         gosTextAttribs& getTextAttributes() { return curTextAttribs_; }

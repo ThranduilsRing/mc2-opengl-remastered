@@ -262,8 +262,6 @@ void
 	//
 	Scalar cosine = -(glm::dot(light_z, (*vertexData.normal))) * intensity;
 
-#if COLOR_AS_DWORD
-#else
 	if (cosine > SMALL)
 	{
 		light_color.red *= cosine;
@@ -273,7 +271,6 @@ void
 		vertexData.color->green += light_color.green;
 		vertexData.color->blue += light_color.blue;
 	}
-#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

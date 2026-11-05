@@ -486,8 +486,8 @@ void MissionBriefingScreen::begin()
 
 	statics[VIDEO_SCREEN].setColor( 0 );
 
-	for ( int i = 0; i < MAX_OBJECTIVES; i++ )
-		objectiveButtons[i].reset();
+	for (auto & objectiveButton : objectiveButtons)
+		objectiveButton.reset();
 	for ( int mi = 0; mi < MAX_OBJECTIVES; mi++ )
 		objMarkerFx[mi] = objMarkerFy[mi] = -1.f;
 	dropZoneFx = dropZoneFy = -1.f;

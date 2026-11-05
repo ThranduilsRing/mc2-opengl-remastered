@@ -44,6 +44,7 @@
 // When a bookmark file IS configured the free-capture path is fully suppressed
 // (before/during/after the sweep) so a bookmark run emits ONLY deterministic
 // bookmark PNGs and zero frame*.png -- see active() / onPostRenderFrame().
+#include "mc2_czstring.h"
 #include "gos_visual_capture.h"
 
 #include "gos_smoke.h"
@@ -170,15 +171,15 @@ void deflate_stored(const std::vector<unsigned char>& raw,
     }
     // Adler-32 of the raw stream.
     uint32_t a = 1, b = 0;
-    for (size_t i = 0; i < raw.size(); ++i) {
-        a = (a + raw[i]) % 65521;
+    for (const auto rawElem : raw) {
+        a = (a + rawElem) % 65521;
         b = (b + a) % 65521;
     }
     put_u32_be(z, (b << 16) | a);
 }
 
 // Write an 8-bit RGB PNG. `rgb` is row-major, top-to-bottom, w*h*3 bytes.
-bool write_png_rgb(const char* path, int w, int h,
+bool write_png_rgb(mc2::czstring path, int w, int h,
                    const std::vector<unsigned char>& rgb) {
     // Build the filtered scanline stream (filter byte 0 = None per row).
     std::vector<unsigned char> raw;
@@ -423,7 +424,7 @@ struct Bookmark {
 
 // Read a JSON number array "[a, b, c]" starting at *p (after the key); returns
 // count parsed, advances *pp past the closing bracket.
-int read_num_array(const char* p, const char** pp, float* out, int maxN) {
+int read_num_array(mc2::czstring p, const char** pp, float* out, int maxN) {
     while (*p && *p != '[') ++p;
     if (*p != '[') { *pp = p; return 0; }
     ++p;
@@ -443,7 +444,7 @@ int read_num_array(const char* p, const char** pp, float* out, int maxN) {
     return n;
 }
 
-bool read_scalar(const char* obj, const char* key, float* out) {
+bool read_scalar(mc2::czstring obj, mc2::czstring key, float* out) {
     std::string pat = std::string("\"") + key + "\"";
     const char* k = strstr(obj, pat.c_str());
     if (!k) return false;
@@ -458,7 +459,7 @@ bool read_scalar(const char* obj, const char* key, float* out) {
     return true;
 }
 
-bool load_bookmarks(const char* path, std::string& missionOut,
+bool load_bookmarks(mc2::czstring path, std::string& missionOut,
                     std::vector<Bookmark>& out) {
     FILE* f = fopen(path, "rb");
     if (!f) return false;

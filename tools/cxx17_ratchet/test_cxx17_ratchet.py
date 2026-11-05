@@ -59,6 +59,7 @@ class Idioms(unittest.TestCase):
         self.assertEqual(n("void load(const char* name, int a);\n", "LG06"), 1)
         self.assertEqual(n("void load(const std::string& name);\n", "LG06"), 1)
         self.assertEqual(n("void load(std::string_view name);\nconst char* g = x;\n", "LG06"), 0)
+        self.assertEqual(n("void load(mc2::czstring name, int a);\n", "LG06"), 0)
 
     def test_lg07(self):
         self.assertEqual(n("template<class T, class = std::enable_if_t<X<T>>> void f();\n", "LG07"), 1)
@@ -78,6 +79,16 @@ class Idioms(unittest.TestCase):
         self.assertEqual(n("x = max(lo, min(hi, x));\n", "LG10"), 1)
         self.assertEqual(n("if (v < lo) v = lo;\nif (v > hi) v = hi;\n", "LG10"), 1)
         self.assertEqual(n("x = std::clamp(x, lo, hi);\ny = max(a, b);\n", "LG10"), 0)
+        # one-sided clamps (clang-tidy readability-use-std-min-max), body on the same line or the next
+        self.assertEqual(n("if (v > hi) v = hi;\n", "LG10"), 1)
+        self.assertEqual(n("if (lo > v)\n    v = lo;\n", "LG10"), 1)
+        self.assertEqual(n("if (v > hi) v = other;\nif (w < 0) w = -w;\nv = std::max(v, lo);\n", "LG10"), 0)
+
+    def test_lg09_functional(self):
+        self.assertEqual(n("float a = float(x); size_t b = size_t(y);\n", "LG09"), 1)
+        self.assertEqual(n("int a = static_cast<int>(x);\nstd::function<int(int)> f;\nint g = int();\n"
+                           "operator int() const;\nint (*fp)(int);\nx.int_(1);\n", "LG09"), 0)
+        self.assertEqual(n("foo(uint32_t(a) + 1);\n", "LG09"), 1)
 
     def test_lg11(self):
         self.assertEqual(n("CreateDirectoryA(p, 0);\n", "LG11"), 1)

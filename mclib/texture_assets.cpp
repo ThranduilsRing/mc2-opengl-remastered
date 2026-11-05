@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
 #include "sim_overlap.h"
@@ -25,7 +26,7 @@
 
 namespace mc2::textures {
 namespace {
-constexpr size_t kMaxSourceBytes = size_t(512) * 1024 * 1024;
+constexpr size_t kMaxSourceBytes = static_cast<size_t>(512) * 1024 * 1024;
 constexpr DWORD kInvalidAsset = 0xffffffffu;
 using Bytes = std::vector<uint8_t>;
 std::string sidecarPath(std::string_view name) {
@@ -40,7 +41,7 @@ std::shared_ptr<const Bytes> readBytes(File& file) {
     file.seek(0);
     return file.read(bytes->data(), count) == count ? bytes : nullptr;
 }
-static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
+static bool tryReadTgaLogicalSize(File& textureFile, mc2::czstring name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
 {
 	logicalWidth = 0;
 	logicalHeight = 0;
@@ -104,7 +105,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uv
 	return logicalWidth && logicalHeight;
 }
 
-static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, RenderCore::KtxImage& out, std::string* resolvedProvider = nullptr)
+static bool txmLoadCooked(mc2::czstring source, mc2::czstring sidecar, bool prefer, RenderCore::KtxImage& out, std::string* resolvedProvider = nullptr)
 {
     File cooked;
     if (cooked.open(sidecar) != NO_ERR) return false;
@@ -163,14 +164,14 @@ std::shared_ptr<const RenderCore::KtxImage> decodeUi(UiSource source) {
         if (!decoded) return {};
         image->width = decoded->width; image->height = decoded->height;
         if (decoded->layout == mc2tex::PixelLayout::RGB8) {
-            image->pixels.resize(size_t(image->width) * image->height * 4);
+            image->pixels.resize(static_cast<size_t>(image->width) * image->height * 4);
             for (size_t i=0, j=0; i+2 < decoded->pixels.size() && j+3 < image->pixels.size(); i+=3,j+=4) {
                 std::copy_n(decoded->pixels.data()+i,3,image->pixels.data()+j); image->pixels[j+3]=255;
             }
         } else image->pixels = std::move(decoded->pixels);
     } else {
         image->width = source.width; image->height = source.height;
-        if (source.bytes->size() != size_t(image->width) * image->height * 4) return {};
+        if (source.bytes->size() != static_cast<size_t>(image->width) * image->height * 4) return {};
         image->pixels = *source.bytes;
         for (size_t i=0; i < image->pixels.size(); i+=4) {
             std::swap(image->pixels[i],image->pixels[i+2]);
@@ -200,7 +201,7 @@ void startSources() {
     }));
 }
 
-DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
+DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
     ZoneScopedN("TextureSource.Load");
     if (!RenderCore::activeTextureService || !path || !*path) return kInvalidAsset;
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) {
@@ -226,6 +227,7 @@ DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD varian
             source->bytes=std::make_shared<const Bytes>(std::move(rgba));
             source->width=source->height=source->logicalWidth=source->logicalHeight=static_cast<DWORD>(w);
             source->uvScale=4; source->hints |= gosHint_Try32bpp;
+            source->cookedBc7=cooked.vkFormat==145 || cooked.vkFormat==146;
         }
     }
     if (!source->bytes && open!=NO_ERR) {
@@ -271,14 +273,15 @@ DWORD sourceId(DWORD asset) {
     if (source->cpuTexture) return source->cpuTexture;
     ZoneScopedN("TextureSource.CreateCpuTexture");
     const auto format=static_cast<gos_TextureFormat>(source->format);
-    if (source->file && source->variant==0 && !source->name.empty()) {
+    if ((source->file || source->cookedBc7) && source->variant==0 && !source->name.empty()) {
         RenderCore::KtxImage cooked;
         if (txmLoadCooked(source->name.c_str(),sidecarPath(source->name).c_str(),true,cooked) &&
             cooked.isCompressed && (cooked.vkFormat==145 || cooked.vkFormat==146)) {
             const size_t bytes=cooked.mipCount>1 && cooked.mipByteOffsets.size()>1
                 ? cooked.mipByteOffsets[1] : cooked.pixels.size();
             source->cpuTexture=gos_NewCompressedTexture2D(cooked.vkFormat,cooked.width,cooked.height,
-                                                          cooked.pixels.data(),bytes,source->name.c_str());
+                                                          cooked.pixels.data(),bytes,source->name.c_str(),
+                                                          source->cookedBc7 ? format : gos_Texture_Solid);
         }
     }
     if (!source->cpuTexture) {
@@ -290,7 +293,7 @@ DWORD sourceId(DWORD asset) {
             TEXTUREPTR lock{};
             gos_LockTexture(source->cpuTexture,0,0,&lock);
             if (lock.pTexture) {
-                const size_t bytes=size_t(lock.Width)*lock.Height*sizeof(DWORD);
+                const size_t bytes=static_cast<size_t>(lock.Width)*lock.Height*sizeof(DWORD);
                 memcpy(lock.pTexture,source->bytes->data(),(std::min)(bytes,source->bytes->size()));
                 gos_UnLockTexture(source->cpuTexture);
             }
@@ -302,10 +305,10 @@ DWORD sourceId(DWORD asset) {
 namespace {
 DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
     if (!RenderCore::activeTextureService || !data || !width ||
-        width>RenderCore::kKtxMaxEdge || bytesPerPixel!=4 || size_t(width)*width*4>kMaxSourceBytes) return kInvalidAsset;
+        width>RenderCore::kKtxMaxEdge || bytesPerPixel!=4 || static_cast<size_t>(width)*width*4>kMaxSourceBytes) return kInvalidAsset;
     auto source=std::make_shared<TextureSource>();
     const auto* begin=reinterpret_cast<const uint8_t*>(data);
-    source->bytes=std::make_shared<const Bytes>(begin,begin+size_t(width)*width*4);
+    source->bytes=std::make_shared<const Bytes>(begin,begin+static_cast<size_t>(width)*width*4);
     source->width=source->height=source->logicalWidth=source->logicalHeight=width;
     source->format=format; source->hints=hints;
     auto& store=sourceStore();
@@ -320,7 +323,7 @@ DWORD fromPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width
 DWORD fromRawPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
     return pixels(data,format,hints,width,bytesPerPixel);
 }
-long save(DWORD asset, const char* path) {
+long save(DWORD asset, mc2::czstring path) {
     auto source=liveSource(asset);
     if (!source || !source->bytes || source->bytes->empty()) return ~NO_ERR;
     File file; const auto error=file.create(path);
@@ -328,7 +331,7 @@ long save(DWORD asset, const char* path) {
     const auto size=static_cast<long>(source->bytes->size());
     return file.write(const_cast<uint8_t*>(source->bytes->data()),size)==size ? NO_ERR : ~NO_ERR;
 }
-long refresh(const char* match, long& missing) {
+long refresh(mc2::czstring match, long& missing) {
     missing=0; if (!match || !*match || !sourcesIfReady()) return 0;
     std::string needle=match;
     for (char& c:needle) c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));

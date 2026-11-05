@@ -8,6 +8,7 @@
 #ifndef MC2_VK_DEFERRED_DESTROY_H
 #define MC2_VK_DEFERRED_DESTROY_H
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -69,7 +70,7 @@ public:
         s.bytes = bytes_;
         for (const Entry& e : entries_) {
             const uint64_t age = ct.frameNo() - e.frame;
-            if (age > s.oldestAgeFrames) s.oldestAgeFrames = age;
+            s.oldestAgeFrames = (std::max)(s.oldestAgeFrames, age);
         }
         return s;
     }

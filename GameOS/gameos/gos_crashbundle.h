@@ -9,6 +9,7 @@
 //   crashbundle_append("[TAG] foo");    // every instrumentation site
 //   crashbundle_trigger_test_crash();   // dev hotkey: deliberate null deref
 #pragma once
+#include "mc2_czstring.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +22,7 @@ void crashbundle_init(void);
 // Appends a single instrumentation line to the in-memory ring buffer.
 // Called from normal program flow (not inside the crash handler).
 // Thread-safe via InterlockedExchange-style update; trailing newline added.
-void crashbundle_append(const char* line);
+void crashbundle_append(mc2::czstring line);
 
 // Deliberate null-deref crash for smoke-testing the bundle path.
 // Write-access-violation at 0x0; SEH filter will fire.

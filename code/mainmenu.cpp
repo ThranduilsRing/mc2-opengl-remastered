@@ -14,6 +14,7 @@ struct DDSURFACEDESC2 {
 #include<windows.h>
 #include<ddraw.h>
 #endif
+#include "mc2_czstring.h"
 #include"mainmenu.h"
 #include"mclib.h"
 #include"inifile.h"
@@ -935,7 +936,7 @@ void MainMenu::render()
 	
 }
 
-void MainMenu::setHostLeftDlg( const char* playerName )
+void MainMenu::setHostLeftDlg( mc2::czstring playerName )
 {
 	char leaveStr[256];
 	char formatStr[256];

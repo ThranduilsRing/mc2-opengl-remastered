@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cmath>
 #include "prefs.h"
+#include "mc2fmt.h"
 extern CPrefs prefs;
 
 inline void mc2MoverBudgetFixtureTick(unsigned turn)
@@ -23,7 +24,7 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
             if (!tmpl[0] && m->getObjectClass() == BATTLEMECH) tmpl[0] = m;
             if (!tmpl[1] && m->getObjectClass() == GROUNDVEHICLE) tmpl[1] = m;
         }
-        if (!tmpl[0]) { std::printf("[MOVER_FIXTURE v1] result=no_mech_template\n"); return; }
+        if (!tmpl[0]) { mc2::fmt::print_out("[MOVER_FIXTURE v1] result=no_mech_template\n"); return; }
         if (!tmpl[1]) tmpl[1] = tmpl[0];
         long enemyTeam = -1;
         for (long t = 0; t < MAX_TEAMS; t++)
@@ -56,8 +57,8 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
             if (h <= 0) break;
             ++added;
         }
-        std::printf("[MOVER_FIXTURE v1] result=spawned requested=%ld base=%ld added=%ld movers=%ld\n",
-            target, start, added, static_cast<long>(ObjectManager->getNumMovers()));
+        mc2::fmt::print_out("[MOVER_FIXTURE v1] result=spawned requested={:d} base={:d} added={:d} movers={:d}\n",
+            mc2::fmt::as_long(target), mc2::fmt::as_long(start), mc2::fmt::as_long(added), mc2::fmt::as_long(static_cast<long>(ObjectManager->getNumMovers())));
         std::fflush(stdout);
         nextOrders = turn + 1;
     }

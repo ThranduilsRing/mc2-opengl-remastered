@@ -239,8 +239,8 @@ RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence)
 
         // Count alive records for arena allocation.
         uint32_t aliveCount = 0;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(views.size()); ++i) {
-            if (views[i].alive) ++aliveCount;
+        for (auto & view : views) {
+            if (view.alive) ++aliveCount;
         }
 
         // Allocate from frame arena.
@@ -275,8 +275,7 @@ RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence)
             // Times the per-alive-prop registry-gather write loop (~9 registry calls
             // + shapeName snprintf per prop). Suspected dominant ExtractRenderSnapshot cost.
             ZoneScopedN("Extract.SP.WriteLoop");
-            for (uint32_t i = 0; i < static_cast<uint32_t>(views.size()); ++i) {
-                const RenderWorld::StaticPropRecordView& v = views[i];
+            for (auto v : views) {
                 if (!v.alive)           continue;
                 if (!v.generationValid) { ++validationFail; continue; }  // belt-and-suspenders
 

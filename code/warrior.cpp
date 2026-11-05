@@ -231,8 +231,8 @@ void MechWarrior::lobotomy (void) {
 	brain = nullptr;
 	
 	// Set up the pilot alarm callback table...
-	for (long i = 0; i < NUM_PILOT_ALARMS; i++)
-		brainAlarmCallback[i] = nullptr;
+	for (auto & i : brainAlarmCallback)
+		i = nullptr;
 }	
 
 void MechWarrior::init (bool create) {
@@ -290,16 +290,16 @@ void MechWarrior::init (bool create) {
 	numKilled = 0;
 	memset( killed, 0, sizeof( GameObject* ) * MAX_WARRIOR_KILLED );
 
-	for (int i = 0; i < NUM_VEHICLE_CLASSES; i++)
+	for (auto & numMechKill : numMechKills)
 		for (int j = 0; j < NUM_COMBAT_STATS; j++)
-			numMechKills[i][j] = 0;
+			numMechKill[j] = 0;
 
-	for (int i = 0; i < NUM_PHYSICAL_ATTACKS; i++)
+	for (auto & numPhysicalAttack : numPhysicalAttacks)
 		for (int j = 0; j < NUM_COMBAT_STATS; j++)
-			numPhysicalAttacks[i][j] = 0;
+			numPhysicalAttack[j] = 0;
 
-	for (int i = 0; i < NUM_SPECIALTY_SKILLS; i++)
-		specialtySkills[i] = false;
+	for (bool & specialtySkill : specialtySkills)
+		specialtySkill = false;
 
 	descID = 0;
 	nameIndex = 0;
@@ -311,22 +311,22 @@ void MechWarrior::init (bool create) {
 	attackRadius = DefaultAttackRadius;
 
 	// ABL Brain and Memory
-	for (int i = 0; i < NUM_MEMORY_CELLS; i++)
-		memory[i].integer = 0;
+	for (auto & i : memory)
+		i.integer = 0;
 	brain = nullptr;
 	brainTaskQueue = nullptr;  // created on first brain fire if gate enabled
 	brainRuntime = nullptr;    // MC2_BRAIN_RUNTIME: created on first brain cadence tick if gate enabled
-	for (int i = 0; i < NUM_PILOT_ALARMS; i++)
-		brainAlarmCallback[i] = nullptr;
+	for (auto & i : brainAlarmCallback)
+		i = nullptr;
 
-	for (int i = 0; i < NUM_PILOT_DEBUG_STRINGS; i++)
-		debugStrings[i][0] = '\0';
+	for (auto & debugString : debugStrings)
+		debugString[0] = '\0';
 
 	brainUpdate = static_cast<float>((numWarriors % 30)) * 0.2;
 	combatUpdate = static_cast<float>((numWarriors % 15)) * 0.1;
 	movementUpdate = static_cast<float>((numWarriors % 15)) * 0.2;
-	for (long w = 0; w < MAX_WEAPONS_PER_MOVER; w++)
-		weaponsStatus[w] = 0;
+	for (int & weaponsStatu : weaponsStatus)
+		weaponsStatu = 0;
 	weaponsStatusResult = WEAPONS_STATUS_NO_TARGET;
 
 	useGoalPlan = false;
@@ -388,10 +388,10 @@ void MechWarrior::init (bool create) {
 
 	if (create)
 	{
-		for (int i = 0; i < 2; i++) 
+		for (auto & i : moveOrders.path) 
 		{
-			moveOrders.path[i] = new MovePath;
-			if (!moveOrders.path[i])
+			i = new MovePath;
+			if (!i)
 				Fatal(0, " No RAM for warrior path ");
 		}
 	}
@@ -558,9 +558,9 @@ long MechWarrior::init (FitIniFile* warriorFile) {
 	result = warriorFile->seekBlock("SkillPoints");
 	if (result != NO_ERR)
 	{
-		for (long i = 0; i < NUM_SKILLS; i++)
+		for (float & skillPoint : skillPoints)
 		{
-			skillPoints[i] = 0.0;
+			skillPoint = 0.0;
 		}
 	}
 	else
@@ -666,7 +666,7 @@ void AttackOrders::init (void) {
 void SituationOrders::init (void) {
 
 	time = 0.0;
-	mode = SITUATION_NORMAL;
+	mode = static_cast<long>(SITUATION_NORMAL);
 	defFormation = 10.0;
 	curFormation = 10.0;
 	openFire = false;
@@ -790,16 +790,16 @@ void MechWarrior::clear (void) {
 	numKilled = 0;
 	memset( killed, 0, sizeof( GameObject* ) * MAX_WARRIOR_KILLED );
 
-	for (int i = 0; i < NUM_VEHICLE_CLASSES; i++)
+	for (auto & numMechKill : numMechKills)
 		for (int j = 0; j < NUM_COMBAT_STATS; j++)
-			numMechKills[i][j] = 0;
+			numMechKill[j] = 0;
 
-	for (int i = 0; i < NUM_PHYSICAL_ATTACKS; i++)
+	for (auto & numPhysicalAttack : numPhysicalAttacks)
 		for (int j = 0; j < NUM_COMBAT_STATS; j++)
-			numPhysicalAttacks[i][j] = 0;
+			numPhysicalAttack[j] = 0;
 
-	for (int i = 0; i < NUM_SPECIALTY_SKILLS; i++)
-		specialtySkills[i] = false;
+	for (bool & specialtySkill : specialtySkills)
+		specialtySkill = false;
 
 	descID = 0;
 	nameIndex = 0;
@@ -809,24 +809,24 @@ void MechWarrior::clear (void) {
 	attackRadius = DefaultAttackRadius;
 
 	// ABL Brain and Memory
-	for (int i = 0; i < NUM_MEMORY_CELLS; i++)
-		memory[i].integer = 0;
+	for (auto & i : memory)
+		i.integer = 0;
 
 	//OK if brain is NULL. Like for Infantry!!
 	if (brain)
 		brain->init(-1);
 
-	for (int i = 0; i < NUM_PILOT_ALARMS; i++)
-		brainAlarmCallback[i] = nullptr;
+	for (auto & i : brainAlarmCallback)
+		i = nullptr;
 
-	for (int i = 0; i < NUM_PILOT_DEBUG_STRINGS; i++)
-		debugStrings[i][0] = '\0';
+	for (auto & debugString : debugStrings)
+		debugString[0] = '\0';
 
 	//brainUpdate = (float)(numWarriors % 30) * 0.2;
 	//combatUpdate = (float)(numWarriors % 15) * 0.1;
 	//movementUpdate = (float)(numWarriors % 15) * 0.2;
-	for (long w = 0; w < MAX_WEAPONS_PER_MOVER; w++)
-		weaponsStatus[w] = 0;
+	for (int & weaponsStatu : weaponsStatus)
+		weaponsStatu = 0;
 	weaponsStatusResult = WEAPONS_STATUS_NO_TARGET;
 
 	newTacOrderReceived[ORDERSTATE_GENERAL] = false;

@@ -1,5 +1,6 @@
 #ifndef UI_PROFILE_REGISTRY_H
 #define UI_PROFILE_REGISTRY_H
+#include "mc2_czstring.h"
 // UI-PROFILE-1 (Phase-2 slice 6): optional additive-merge UIProfile data source.
 //
 // Mirrors the model_override_registry / anim_override_registry shape the recon
@@ -18,6 +19,6 @@ struct UIProfile;  // fwd (ui_profile.h defines it as a POD struct)
 // null if none is declared / the gate is OFF / the optional data source is
 // absent. Lazy: the optional registry file is read once on first call. The
 // returned pointer is owned by the registry and stays valid for the process.
-const UIProfile* uiProfileForChassis(const char* chassisFileName);
+const UIProfile* uiProfileForChassis(mc2::czstring chassisFileName);
 
 #endif // UI_PROFILE_REGISTRY_H

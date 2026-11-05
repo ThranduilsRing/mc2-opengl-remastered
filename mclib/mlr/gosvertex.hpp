@@ -120,17 +120,13 @@ namespace MidLevelRenderer {
 				const glm::vec3 &v,
 				const glm::mat4 &m,
 				Stuff::Scalar *uv
-#if FOG_HACK
 				, int foggy
-#endif
 			);
 
-#if FOG_HACK
 		static BYTE	fogTable[Limits::Max_Number_Of_FogStates][1024];
 
 		static void
 			SetFogTableEntry(int entry, Stuff::Scalar fogNearClip, Stuff::Scalar fogFarClip, Stuff::Scalar fogDensity);
-#endif
 
 	protected:
 	};
@@ -155,9 +151,7 @@ void
 		const glm::vec3& _v,
 		const glm::mat4 &m,
 		Stuff::Scalar *uv
-#if FOG_HACK
 				, int foggy
-#endif
 	)
 {
 	Check_Pointer(this);
@@ -303,7 +297,6 @@ void
 ;		fstp        st(0)
 	}
 #else
-#if FOG_HACK
 	if(foggy)
 	{
 		*(reinterpret_cast<BYTE *>(&frgb) + 3) =
@@ -313,7 +306,6 @@ void
 	{
 		*(reinterpret_cast<BYTE *>(&frgb) + 3) = 0xff;
 	}
-#endif
 
 	rhw = 1.0f/rhw;
 

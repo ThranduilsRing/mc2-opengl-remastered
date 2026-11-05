@@ -176,7 +176,7 @@ static void bcdec__color_block(const void* compressedBlock, void* decompressedBl
     colorIndices = ((unsigned int*)compressedBlock)[1];
 
     /* Fill out the decompressed color block */
-    dstColors = (unsigned char*)decompressedBlock;
+    dstColors = static_cast<unsigned char*>(decompressedBlock);
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
             idx = colorIndices & 0x03;
@@ -194,7 +194,7 @@ static void bcdec__sharp_alpha_block(const void* compressedBlock, void* decompre
     int i, j;
 
     alpha = (unsigned short*)compressedBlock;
-    decompressed = (unsigned char*)decompressedBlock;
+    decompressed = static_cast<unsigned char*>(decompressedBlock);
 
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
@@ -212,7 +212,7 @@ static void bcdec__smooth_alpha_block(const void* compressedBlock, void* decompr
     unsigned long long block, indices;
 
     block = *(unsigned long long*)compressedBlock;
-    decompressed = (unsigned char*)decompressedBlock;
+    decompressed = static_cast<unsigned char*>(decompressedBlock);
 
     alpha[0] = block & 0xFF;
     alpha[1] = (block >> 8) & 0xFF;
@@ -504,7 +504,7 @@ static unsigned short bcdec__finish_unquantize(int val, int isSigned) {
     int s;
 
     if (!isSigned) {
-        return (unsigned short)((val * 31) >> 6);                   /* scale the magnitude by 31 / 64 */
+        return static_cast<unsigned short>((val * 31) >> 6);                   /* scale the magnitude by 31 / 64 */
     } else {
         val = (val < 0) ? -(((-val) * 31) >> 5) : (val * 31) >> 5;  /* scale the magnitude by 31 / 32 */
         s = 0;
@@ -512,7 +512,7 @@ static unsigned short bcdec__finish_unquantize(int val, int isSigned) {
             s = 0x8000;
             val = -val;
         }
-        return (unsigned short)(s | val);
+        return static_cast<unsigned short>(s | val);
     }
 }
 

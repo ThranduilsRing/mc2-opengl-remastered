@@ -18,6 +18,7 @@
 #include <cstring>
 
 #include <cstdint>
+#include <string>
 #include <memory>   // VK-HUD-MIRRORCOPY-1: shared_ptr rgba mirror
 #include <vector>
 
@@ -313,8 +314,8 @@ class gosFont {
 
 
         DWORD getTextureId() const { return tex_id_; }
-        const char* getName() const { return font_name_; }
-        const char* getId() const { return font_id_; }
+        const char* getName() const { return font_name_.c_str(); }
+        const char* getId() const { return font_id_.c_str(); }
 
         uint32_t getRefCount() { return ref_count_; }
         uint32_t addRef() { return ++ref_count_; }
@@ -322,11 +323,11 @@ class gosFont {
 
     private:
         static uint32_t destroy(gosFont* font);
-        gosFont():font_name_(nullptr), font_id_(nullptr), tex_id_(0), ref_count_(1) {};
+        gosFont():tex_id_(0), ref_count_(1) {};
         ~gosFont();
 
-        char* font_name_;
-        char* font_id_;
+        std::string font_name_;
+        std::string font_id_;
         gosGlyphInfo gi_;
         DWORD tex_id_;
         uint32_t ref_count_;

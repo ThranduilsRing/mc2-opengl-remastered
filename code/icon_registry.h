@@ -32,7 +32,7 @@ public:
     std::vector<uint32_t> atlas;
 
     bool add(std::string key, int w, int h, std::span<const uint32_t> pixels) {
-        if (w <= 0 || h <= 0 || w > 16382 || h > 16382 || pixels.size() != size_t(w) * h)
+        if (w <= 0 || h <= 0 || w > 16382 || h > 16382 || pixels.size() != static_cast<size_t>(w) * h)
             return false;
         icons[canonical(std::move(key))] = {w, h, 0, 0, {pixels.begin(), pixels.end()}};
         return true;
@@ -42,24 +42,24 @@ public:
     // Floor division deliberately preserves MCO's 1024/40 = 25 columns.
     void sheet(std::string key, std::span<const uint32_t> pixels,
                int w, int h, int cellW, int cellH, bool strip = false) {
-        if (w <= 0 || h <= 0 || cellW <= 0 || cellH <= 0 || pixels.size() != size_t(w) * h) return;
+        if (w <= 0 || h <= 0 || cellW <= 0 || cellH <= 0 || pixels.size() != static_cast<size_t>(w) * h) return;
         const int cols = w / cellW, rows = strip ? std::min(2, h / cellH) : h / cellH;
         for (int row = 0; row < rows; ++row) {
             for (int col = 0; col < cols; ++col) {
-                std::vector<uint32_t> tile(size_t(cellW) * cellH);
+                std::vector<uint32_t> tile(static_cast<size_t>(cellW) * cellH);
                 for (int y = 0; y < cellH; ++y)
-                    std::copy_n(pixels.data() + size_t(row * cellH + y) * w + col * cellW,
-                                cellW, tile.data() + size_t(y) * cellW);
+                    std::copy_n(pixels.data() + static_cast<size_t>(row * cellH + y) * w + col * cellW,
+                                cellW, tile.data() + static_cast<size_t>(y) * cellW);
                 const auto iconKey = legacyKey(strip && row ? std::format("{}/back", key) : key,
                                                strip ? col : row * cols + col);
                 add(iconKey, cellW, cellH, tile);
                 if (!strip) {
                     auto& border = icons.at(iconKey).samplingBorder;
-                    border.resize(size_t(cellW + 2) * (cellH + 2));
+                    border.resize(static_cast<size_t>(cellW + 2) * (cellH + 2));
                     for (int y = -1; y <= cellH; ++y)
                         for (int x = -1; x <= cellW; ++x)
-                            border[size_t(y + 1) * (cellW + 2) + x + 1] =
-                                pixels[size_t(std::clamp(row * cellH + y, 0, h - 1)) * w +
+                            border[static_cast<size_t>(y + 1) * (cellW + 2) + x + 1] =
+                                pixels[static_cast<size_t>(std::clamp(row * cellH + y, 0, h - 1)) * w +
                                        std::clamp(col * cellW + x, 0, w - 1)];
                 }
             }
@@ -78,13 +78,13 @@ public:
         size_t area = 0;
         for (auto& [key, icon] : icons) {
             ordered.push_back(&icon);
-            area += size_t(icon.width + 2) * (icon.height + 2);
+            area += static_cast<size_t>(icon.width + 2) * (icon.height + 2);
         }
         std::stable_sort(ordered.begin(), ordered.end(), [](const Icon* a, const Icon* b) {
             return a->height > b->height;
         });
         for (edge = 16; edge <= 16384; edge *= 2) {
-            if (size_t(edge) * edge < area) continue;
+            if (static_cast<size_t>(edge) * edge < area) continue;
             int x = 0, y = 0, rowH = 0;
             bool fits = true;
             for (Icon* icon : ordered) {
@@ -95,15 +95,15 @@ public:
                 rowH = std::max(rowH, icon->height + 2);
             }
             if (!fits) continue;
-            atlas.assign(size_t(edge) * edge, 0);
+            atlas.assign(static_cast<size_t>(edge) * edge, 0);
             for (const Icon* icon : ordered) {
                 // Preserve legacy sheet filtering; loose images extrude their own edge.
                 for (int dy = -1; dy <= icon->height; ++dy)
                     for (int dx = -1; dx <= icon->width; ++dx)
-                        atlas[size_t(icon->y + dy) * edge + icon->x + dx] =
+                        atlas[static_cast<size_t>(icon->y + dy) * edge + icon->x + dx] =
                             !icon->samplingBorder.empty() ?
-                            icon->samplingBorder[size_t(dy + 1) * (icon->width + 2) + dx + 1] :
-                            icon->pixels[size_t(std::clamp(dy, 0, icon->height - 1)) * icon->width +
+                            icon->samplingBorder[static_cast<size_t>(dy + 1) * (icon->width + 2) + dx + 1] :
+                            icon->pixels[static_cast<size_t>(std::clamp(dy, 0, icon->height - 1)) * icon->width +
                                          std::clamp(dx, 0, icon->width - 1)];
             }
             return true;

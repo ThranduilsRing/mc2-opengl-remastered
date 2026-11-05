@@ -44,10 +44,9 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
 
+#include "platform_stdlib.h"   // _putenv_s on Linux
 #include <cassert>
 #include <cctype>
 #include <cstdarg>
@@ -117,6 +116,12 @@ bool g_debugNames = false;
 // pointer is sufficient (set in init()).
 VulkanContext* g_cbContext = nullptr;
 
+// AMD best-practices canary (preset best-practices): the engine always has a one-time vkCmdClearColorImage first-layout clear and a few
+// GPU-side vkCmdCopyImage, so BestPractices-AMD-ClearAttachment-ClearImage-color / vkImage-AvoidImageToImageCopy must show up when the AMD
+// checks are really on. If neither has been seen by teardown, the setting did not apply and the run's AMD table is empty by accident.
+std::atomic<bool> g_amdChecksExpected{false};
+std::atomic<bool> g_amdCanarySeen{false};
+
 // One validation-layer message in the engine log (vk_validation_line.h); the smoke parser grades an error red and counts the warnings. The layer limits
 // repeats of one message id itself, so the log stays small.
 void validationLog(std::string_view severity, std::string_view id, std::string_view text) {
@@ -132,6 +137,10 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     void* /*user*/) {
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
     const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
+    if (g_amdChecksExpected.load(std::memory_order_relaxed) &&
+        (std::strstr(id, "AvoidImageToImageCopy") || std::strstr(id, "ClearAttachment-ClearImage") ||   // layer 1.3.x names (no "AMD-" infix); 1.4.x adds -color/-depth-stencil
+         std::strstr(id, "CmdBuffer-highBarrierCount") || std::strstr(id, "CreatePipelinesLayout-KeepLayoutSmall")))
+        g_amdCanarySeen.store(true, std::memory_order_relaxed);
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         if (g_cbContext) g_cbContext->mutableHealth().validationErrors.fetch_add(1, std::memory_order_relaxed);
         validationLog("error", id, msg);
@@ -167,6 +176,18 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
     if (eq("best-practices")) {
         resolvedName = "best-practices";
         feats.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+        // The 18 BestPractices-AMD checks have no VkValidationFeatureEnableEXT value; the layer reads VK_LAYER_ENABLES at vkCreateInstance
+        // (the same switch as the layer setting validate_best_practices_amd, and it works on every layer version). Preset-only: no other
+        // preset and no release run touches the environment. The duplicate limit is raised so the per-check counts mean something.
+        const char* prior = std::getenv("VK_LAYER_ENABLES");
+        std::string enables = (prior && *prior) ? std::string(prior) : std::string();
+        if (enables.find("VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD") == std::string::npos) {
+            if (!enables.empty()) enables += ",";
+            enables += "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";
+        }
+        _putenv_s("VK_LAYER_ENABLES", enables.c_str());
+        if (!std::getenv("VK_LAYER_DUPLICATE_MESSAGE_LIMIT")) _putenv_s("VK_LAYER_DUPLICATE_MESSAGE_LIMIT", "200");
+        g_amdChecksExpected.store(true, std::memory_order_relaxed);
         return true;
     }
     if (eq("debug-printf")) {
@@ -469,6 +490,8 @@ bool VulkanContext::init(bool wantPresent) {
     VkPhysicalDeviceFeatures optionalWaterFeatures{};
     vkGetPhysicalDeviceFeatures(phys_, &optionalWaterFeatures);
     enableFeatures.features.depthClamp = optionalWaterFeatures.depthClamp;
+    VkPhysicalDeviceVulkan11Features en11{};
+    en11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     VkPhysicalDeviceVulkan12Features en12{};
     en12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     VkPhysicalDeviceVulkan13Features en13{};
@@ -481,6 +504,10 @@ bool VulkanContext::init(bool wantPresent) {
         enableFeatures.features.independentBlend = featureEnabled("independentBlend") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.samplerAnisotropy = featureEnabled("samplerAnisotropy") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.shaderSampledImageArrayDynamicIndexing = featureEnabled("shaderSampledImageArrayDynamicIndexing") ? VK_TRUE : VK_FALSE;
+        enableFeatures.features.multiDrawIndirect = featureEnabled("multiDrawIndirect") ? VK_TRUE : VK_FALSE;
+        enableFeatures.features.drawIndirectFirstInstance = featureEnabled("drawIndirectFirstInstance") ? VK_TRUE : VK_FALSE;
+        en11.shaderDrawParameters = featureEnabled("shaderDrawParameters") ? VK_TRUE : VK_FALSE;
+        en12.drawIndirectCount = featureEnabled("drawIndirectCount") ? VK_TRUE : VK_FALSE;
         en12.timelineSemaphore = featureEnabled("timelineSemaphore") ? VK_TRUE : VK_FALSE;
         en12.bufferDeviceAddress = featureEnabled("bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
         en12.descriptorIndexing = featureEnabled("descriptorIndexing") ? VK_TRUE : VK_FALSE;
@@ -493,6 +520,7 @@ bool VulkanContext::init(bool wantPresent) {
         if (featureEnabled("synchronization2")) (s2Core ? en13.synchronization2 : enS2.synchronization2) = VK_TRUE;
         void** tail = &enableFeatures.pNext;
         auto chain = [&](auto& s) { *tail = &s; tail = &s.pNext; };
+        chain(en11);
         chain(en12);
         if (drCore || s2Core) chain(en13);
         if (featureEnabled("dynamicRendering") && !drCore) chain(enDr);
@@ -795,6 +823,8 @@ void VulkanContext::destroy() {
 #ifdef MC2_VULKAN_ISLAND
     gpuprof::shutdown(*this);
 #endif
+    if (g_amdChecksExpected.load() && !g_amdCanarySeen.load())
+        validationLog("warning", "amd_canary_missing", "preset best-practices ran but none of AvoidImageToImageCopy / ClearAttachment-ClearImage / CmdBuffer-highBarrierCount / KeepLayoutSmall was reported: the AMD checks did not apply (layer too old, or VK_LAYER_ENABLES ignored)");
     g_debugNames = false;
     if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }   // parked owners go ahead of the allocator and the device
 #ifdef MC2_VULKAN_ISLAND

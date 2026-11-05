@@ -189,6 +189,8 @@ ISLANDS = {
         "native Vulkan vegetation cutout, coverage mips and depth-writing geometry; runtime day/night montage parity verifies the split from generic particles.",
     "shaders/vulkan/vfx_vegetation.vert":
         "Native Vulkan vegetation GPU cull (packet V2/V3 of the 2026-10-20 VK optimization design); no GL shader pair. Replaces the CPU per-instance walk; proof is the CPU/GPU survivor comparison, viewed A/B captures and the Tracy vegetationFlush before/after.",
+    "shaders/vulkan/color_prop_cull.comp":
+        "Native Vulkan static-prop instance compaction (vk-gpu-props): an ordered prefix-scan pass over the HZB visibility words that feeds vkCmdDrawIndexedIndirectCount; no GL shader pair. Proof is the viewed day and night A/B captures (night glows) against the per-packet draw loop it replaces.",
     "shaders/vulkan/hzb_cull.comp":
         "Native Vulkan render-only static-prop culling from same-frame depth; no GL shader pair. Required proof: on/off captures including a horizon pose, plus a frame-time pair.",
     "shaders/vulkan/hzb_reduce.vert":

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gpu_cull_parity.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <cstdio>
@@ -23,7 +24,7 @@ static uint64_t s_flushCount    = 0;
 
 static constexpr float kEpsilon = 0.1f;  // world units; center should match nearly exactly
 
-void parity_checkRecord(uint32_t actorId, const char* catName,
+void parity_checkRecord(uint32_t actorId, mc2::czstring catName,
                         const float recCenter[3],
                         float posX, float posY, float posZ) {
     if (!parity_isEnabled()) return;

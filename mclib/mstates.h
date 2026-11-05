@@ -53,7 +53,6 @@
 // 9 states which a mech can be in and 9 others it can get to,
 // this table is 9*9*MAX_TRANSITION_GESTURES in size.
 
-#define MAX_TRANSITION_GESTURES			10
 
 char hotSpotFinderArray[28] = 
 {
@@ -180,6 +179,5 @@ char transitionArray[1000] =
 //--------------------------------------------------------------------------------
 };
 
-#define GESTURE_OFFSET_SIZE		100
 //-----------------------------------------------------------------------------
 #endif

@@ -1,0 +1,62 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/mech_skin.comp",
+  "ssbos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "w",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "SrcVertices"
+    },
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 64,
+          "matrix_stride": null,
+          "name": "bones",
+          "offset": 0,
+          "type": "_230"
+        }
+      ],
+      "name": "BonePalette"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "jobs",
+          "offset": 0,
+          "type": "_122"
+        }
+      ],
+      "name": "Jobs"
+    },
+    {
+      "binding": 3,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "w",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "DstVertices"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [],
+  "variant": "default"
+}

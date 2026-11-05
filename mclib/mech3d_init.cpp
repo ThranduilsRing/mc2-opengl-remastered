@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <algorithm>
@@ -14,7 +15,7 @@
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.
 // Used to gate TGL texture loading so sensor shapes work when .tga is absent
 // in a slim deploy (route-2 in txmmgr.cpp will decode the .ktx2 instead).
-static bool textureOrKtxSidecarExists(const char* tgaPath)
+static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
@@ -31,7 +32,6 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 	return fileExists(ktx);
 }
 
-#define EXPAND_FACTOR 		(1.25f)
 
 constexpr int FX_POOF_ID = 32;
 constexpr int FX_JUMP_ID = 43;
@@ -343,9 +343,9 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (int i=0;i<8;i++)
+		for (const auto & boxCoord : boxCoords)
 		{
-			testRadius = glm::length(boxCoords[i]);
+			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}
@@ -525,10 +525,10 @@ void Mech3DAppearance::initFX (void)
 			
 			if (gosEffectSpec)
 			{
-				for (long i=0;i<MAX_DUST_POOFS;i++)
+				for (auto & i : rightDustPoofEffect)
 				{
-					rightDustPoofEffect[i] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-					gosASSERT(rightDustPoofEffect[i] != nullptr);
+					i = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+					gosASSERT(i != nullptr);
 				}
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
@@ -544,10 +544,10 @@ void Mech3DAppearance::initFX (void)
 			
 			if (gosEffectSpec)
 			{
-				for (long i=0;i<MAX_DUST_POOFS;i++)
+				for (auto & i : leftDustPoofEffect)
 				{
-					leftDustPoofEffect[i] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-					gosASSERT(leftDustPoofEffect[i] != nullptr);
+					i = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+					gosASSERT(i != nullptr);
 				}
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();

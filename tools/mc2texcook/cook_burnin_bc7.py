@@ -28,8 +28,9 @@ def cook(source, output, preset="burnin"):
     else:
         raise ValueError(f"unknown preset {preset}")
     vk, w, h, levels = texcook.read_ktx2(data)
-    expected_vk, expected_mips = (145, 1) if preset == "burnin" else (146, max(w, h).bit_length())
-    if vk != expected_vk or len(levels) != expected_mips:
+    # Both presets tag BC7 UNORM (145): base_color keeps sRGB-encoded bytes the shaders read raw.
+    expected_mips = 1 if preset == "burnin" else max(w, h).bit_length()
+    if vk != 145 or len(levels) != expected_mips:
         raise ValueError("invalid BC7 mip chain")
     for i, level in enumerate(levels):
         if len(level) != ((max(1, w >> i) + 3) // 4) * ((max(1, h >> i) + 3) // 4) * 16:

@@ -5,13 +5,14 @@
 // kMaxFramesPending frames is dropped. Header-only and engine-free so a doctest can exercise the expiry.
 #pragma once
 
+#include "mc2_czstring.h"
 #include <string>
 #include <utility>
 
 namespace gos { namespace screenshot {
 
 // Called once the file is written (ok) or the write failed (!ok); w/h are the presented frame size.
-using DoneFn = void (*)(const char* path, bool ok, int w, int h);
+using DoneFn = void (*)(mc2::czstring path, bool ok, int w, int h);
 
 class Slot {
 public:
@@ -30,14 +31,14 @@ public:
 
     // Why a request for `path` cannot be queued now, or nullptr when it can. WHY here: the predicate is engine-free, so a
     // doctest pins each refusal.
-    const char* refusal(const char* path) const {
+    const char* refusal(mc2::czstring path) const {
         if (!path || !path[0]) return "empty path";
         if (pending_) return "a request is still pending";
         return nullptr;
     }
 
     // False when a request is already waiting.
-    bool begin(const char* path, DoneFn done, unsigned long long frame = 0) {
+    bool begin(mc2::czstring path, DoneFn done, unsigned long long frame = 0) {
         if (pending_) return false;
         pending_ = true;
         requestFrame_ = frame;

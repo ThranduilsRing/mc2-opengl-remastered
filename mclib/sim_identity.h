@@ -285,10 +285,10 @@ inline uint64_t digestWorld(std::span<MoverRecord> recs, DigestKind kind) {
     sortRecords(recs);
     uint64_t h = foldHeader(kFnvOffset, recs.size());
     h = fnvI32(h, static_cast<int32_t>(kind));
-    for (size_t i = 0; i < recs.size(); ++i) {
-        uint64_t m = (kind == DIGEST_STRICT) ? digestMoverStrict(recs[i])
-                   : (kind == DIGEST_VISUAL) ? digestMoverVisual(recs[i])
-                                             : digestMoverGraded(recs[i]);
+    for (const auto & rec : recs) {
+        uint64_t m = (kind == DIGEST_STRICT) ? digestMoverStrict(rec)
+                   : (kind == DIGEST_VISUAL) ? digestMoverVisual(rec)
+                                             : digestMoverGraded(rec);
         for (int b = 0; b < 8; ++b)
             h = fnvByte(h, static_cast<uint8_t>(((m >> (b * 8)) & 0xFFu)));
     }
@@ -337,8 +337,7 @@ inline void sortObjects(std::span<ObjectRecord> recs) {
 inline uint64_t digestObjects(std::span<ObjectRecord> recs) {
     sortObjects(recs);
     uint64_t h = foldHeader(kFnvOffset, recs.size());
-    for (size_t i = 0; i < recs.size(); ++i) {
-        const ObjectRecord& r = recs[i];
+    for (const auto & r : recs) {
         h = fnvI32(h, r.id);
         h = fnvI32(h, r.kind);
         h = fnvI32(h, r.team);
@@ -365,8 +364,7 @@ struct AblRecord {
 
 inline uint64_t digestAbl(std::span<const AblRecord> recs) {
     uint64_t h = foldHeader(kFnvOffset, recs.size());
-    for (size_t i = 0; i < recs.size(); ++i) {
-        const AblRecord& r = recs[i];
+    for (const auto & r : recs) {
         h = fnvI32(h, r.id);
         h = fnvI32(h, r.handle);
         h = fnvI32(h, r.state);

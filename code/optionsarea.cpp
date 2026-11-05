@@ -107,8 +107,8 @@ OptionsXScreen::OptionsXScreen()
 
 OptionsXScreen::~OptionsXScreen()
 {
-	for ( int i = 0; i < 4; i++ )
-		tabAreas[i].reset();
+	for (auto & tabArea : tabAreas)
+		tabArea.reset();
 }
 
 int OptionsXScreen::indexOfButtonWithID(int id)
@@ -220,8 +220,8 @@ void OptionsXScreen::init(FitIniFile* file)
 	prefs.load();
 
 
-	for (int i = 0; i < 4; i++ )
-		tabAreas[i]->begin();
+	for (const auto & tabArea : tabAreas)
+		tabArea->begin();
 
 	if ( mission && strlen( mission->getMissionFileName() ) )
 	{
@@ -292,8 +292,8 @@ int	OptionsXScreen::handleMessage( unsigned long message, unsigned long who)
 				int oldResX = prefs.resolutionX;
 				int oldResY = prefs.resolutionY;
 				int oldDepth = prefs.bitDepth;
-				for ( int i = 0; i < 4; i++ )
-					tabAreas[i]->end();
+				for (const auto & tabArea : tabAreas)
+					tabArea->end();
 
 				prefs.save();
 				prefs.applyPrefs(0);
@@ -859,8 +859,8 @@ void OptionsAudio::render()
 
 	if ( !hasDefsUiPage() )
 	{
-		for ( int i = 0; i < 5; i++ )
-			scrollBars[i].render();
+		for (auto & scrollBar : scrollBars)
+			scrollBar.render();
 	}
 }
 
@@ -879,8 +879,8 @@ void OptionsAudio::update()
 	}
 	else
 	{
-		for ( int i = 0; i < 5; i++ )
-			scrollBars[i].update();
+		for (auto & scrollBar : scrollBars)
+			scrollBar.update();
 
 		prefs.DigitalMasterVolume = scrollBars[0].GetScrollPos();
 		prefs.MusicVolume = scrollBars[1].GetScrollPos();
@@ -1581,8 +1581,8 @@ long ScrollX::init(aButton* pLeft, aButton* pRight, aButton* pTab)
 	pLeft->setHighlightFX( -1 );
 	pLeft->setDisabledFX( -1 );
 
-	for ( int i = 0; i < 3; i++ )
-		buttons[i]->setHoldTime( .01f );
+	for (auto & button : buttons)
+		button->setHoldTime( .01f );
 
 	pLeft->moveTo( 0, 0 );
 	pRight->moveTo( width() - pRight->width(), 0 );
@@ -1786,10 +1786,10 @@ void HotKeyListItem::render()
 
 	aAnimGroup::STATE curState = (aAnimGroup::STATE)getState();
 
-	for ( int i = 0; i < 3; i++ )
+	for (auto & animation : animations)
 	{
-		animations[i].setState( curState );
-		animations[i].update();
+		animation.setState( curState );
+		animation.update();
 	}
 	text.setColor( animations[1].getCurrentColor( curState ) );
 	description.setColor( animations[0].getCurrentColor( curState ) );
@@ -1802,11 +1802,11 @@ void HotKeyListItem::update()
 
 }
 
-void HotKeyListItem::setDescription( const char* pText )
+void HotKeyListItem::setDescription( mc2::czstring pText )
 {
 	description.setText( pText );
 }
-void HotKeyListItem::setKey( const char* pText )
+void HotKeyListItem::setKey( mc2::czstring pText )
 {
 	text.setText( pText );
 }

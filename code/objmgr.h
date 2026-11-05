@@ -16,6 +16,7 @@
 #ifndef DOBJMGR_H
 #include"dobjmgr.h"
 #endif
+#include "mc2_czstring.h"
 #include "mover_los_epoch.h"
 #include <optional>
 #include <string_view>
@@ -322,7 +323,7 @@ class GameObjectManager {
 
 		~GameObjectManager (void);
 		
-		void init (const char* objTypeDataFile, long objTypeCacheSize, long objCacheSize);
+		void init (mc2::czstring objTypeDataFile, long objTypeCacheSize, long objCacheSize);
 
 		void setNumObjects (long nMechs,
 							long nVehicles,

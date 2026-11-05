@@ -293,22 +293,22 @@ WINBASEAPI PVOID WINAPI VirtualAlloc(PVOID lpAddress, DWORD dwSize, DWORD flAllo
     {       
         // to RESERVE memory in Linux, use mmap with a private, anonymous, non-accessible mapping.
         // The following line reserves 1gb of ram starting at 0x10000000.
-        void* result = mmap(0, dwSize, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        void* result = mmap(nullptr, dwSize, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
         if(result == MAP_FAILED)
             gGetLastError = errno;
 
-        return result == MAP_FAILED ? 0 : result;
+        return result == MAP_FAILED ? nullptr : result;
     }
     else if(flAllocationType == MEM_COMMIT)
     {
         void* memptr;
-        if(lpAddress == 0) {
-            memptr = mmap(0, dwSize, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if(lpAddress == nullptr) {
+            memptr = mmap(nullptr, dwSize, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
             if(memptr == MAP_FAILED)
                 gGetLastError = errno;
 
             if(memptr == MAP_FAILED)
-               return 0;
+               return nullptr;
 
             lpAddress = memptr;
         }

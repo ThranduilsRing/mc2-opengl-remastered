@@ -5,6 +5,7 @@
 // This TU is the ONLY place that bridges the engine-independent EffectDef
 // parse (fx_def_registry.h) to the live gosFX/MLR spec types, so the parse
 // layer above stays header-light like its siblings.
+#include "mc2_czstring.h"
 #include "fx_def_registry.h"
 
 #include "gosfx/gosfxheaders.hpp"
@@ -219,7 +220,7 @@ int EffectDefRegistry::mergeFromDir(std::string_view dir) {
     return merged;
 }
 
-const EffectDef* EffectDefRegistry::resolve(const char* effectName) const {
+const EffectDef* EffectDefRegistry::resolve(mc2::czstring effectName) const {
     if (!effectName || defs_.empty()) return nullptr;
     auto it = byKey_.find(fxdefLower(effectName));
     if (it == byKey_.end()) return nullptr;

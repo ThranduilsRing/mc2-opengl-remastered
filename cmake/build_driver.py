@@ -25,6 +25,12 @@ def tree_name(default, preset):
 
 
 def configure_args(root, src, tree, preset):
+    if preset is None and os.name != "nt":
+        # Linux box: Ninja rejects -A; same toolchain as tools/box_run.py's configure
+        return ["-S", str(src), "-B", str(tree), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+                "-DCMAKE_C_COMPILER=clang-20", "-DCMAKE_CXX_COMPILER=clang++-20", "-DCMAKE_CXX_FLAGS=-stdlib=libc++",
+                "-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld", "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+                "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"]
     if preset is None:
         return ["-S", str(src), "-B", str(tree), "-A", "x64"]
     args = ["-S", str(src), "-B", str(tree), "-G", "NMake Makefiles" if preset == "clang-cl-nmake" else "Ninja",

@@ -22,11 +22,11 @@ class CapabilitySet {
     uint32_t mask_ = 0;
   public:
     void set(Capability c, bool on) {
-        const uint32_t bit = (uint32_t(1) << uint32_t(c));
+        const uint32_t bit = (static_cast<uint32_t>(1) << static_cast<uint32_t>(c));
         if (on) mask_ |= bit; else mask_ &= ~bit;
     }
     bool has(Capability c) const {
-        return (mask_ & (uint32_t(1) << uint32_t(c))) != 0;
+        return (mask_ & (static_cast<uint32_t>(1) << static_cast<uint32_t>(c))) != 0;
     }
     void clear() { mask_ = 0; }
 };

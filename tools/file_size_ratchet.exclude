@@ -4,3 +4,5 @@
 # Built in already: 3rdparty/, shaders/spv/, *.gen.*, linguist-generated paths, build*/ dirs.
 # Add only machine-written sources that are not named *.gen.* (give a reason); do NOT add
 # a hand-written giant file to hide it -- splitting it is the point of the ratchet.
+# Vendored upstream (bc7enc_rdo, MIT, pinned commit in its VERSION.txt); not ours to split.
+tools/texcook/bc7enc_rdo/

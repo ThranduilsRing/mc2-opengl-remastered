@@ -22,8 +22,6 @@ using mc2hzb::ProjectedProp;
 
 #include <volk.h>
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
@@ -50,6 +48,8 @@ using mc2hzb::ProjectedProp;
 #include <tracy/Tracy.hpp>
 
 namespace {
+
+constexpr uint32_t kCullMaxLevels = 16;   // hzb_cull.comp levelDepth[] size
 
 void vlog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
@@ -145,15 +145,16 @@ struct gosPostProcess::VkPostHzbNative {
     std::vector<PropBounds> propBounds;
     uint32_t boundsGeneration = UINT32_MAX;
     uint32_t cullCapacity = 0, previousCount = 0;
+    uint64_t visibilityBytes = 0;   // size `visibility` was made with (cullCapacity is bumped, or zeroed by a bounds rebuild, before the old buffer retires)
     uint64_t visibilityGeneration = 0;
     uint64_t measuredFrames = 0, totalCulled = 0, totalTested = 0;
-    mc2vk::OwnedBuffer projected, visibility, instances, localBounds;
+    mc2vk::OwnedBuffer visibility, instances, localBounds;
     mc2vk::OwnedDescriptorSetLayout cullDsl;
     mc2vk::OwnedDescriptorPool cullPool;
     mc2vk::OwnedShaderModule cullShader;
     mc2vk::OwnedPipelineLayout cullLayout;
     mc2vk::OwnedPipeline cullPipe;
-    std::vector<VkDescriptorSet> cullSets;
+    VkDescriptorSet cullSet = VK_NULL_HANDLE;   // sampler[16] + visibility + instances + type bounds
     // [CULL_PARITY v1] counter-only check: a sampled subset of one frame's instances, with the matrix/bias/bounds that produced the GPU mask, compared
     // with the CPU reference once that frame's mask is readable (next run, after the ticket wait; never an extra wait). Mips are copied on check frames only.
     struct ParityPending {
@@ -227,8 +228,8 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
     if (vis && mips) {
         std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
         size_t at = 0;
-        for (int l = 0; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += size_t(s->levels[static_cast<size_t>(l)].w) * size_t(s->levels[static_cast<size_t>(l)].h); }
-        const auto fetch = [&](int l, int x, int y) { return mips[offset[static_cast<size_t>(l)] + size_t(y) * size_t(s->levels[static_cast<size_t>(l)].w) + size_t(x)]; };
+        for (int l = 0; l < s->mipCount; ++l) { offset[static_cast<size_t>(l)] = at; at += static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].h); }
+        const auto fetch = [&](int l, int x, int y) { return mips[offset[static_cast<size_t>(l)] + static_cast<size_t>(y) * static_cast<size_t>(s->levels[static_cast<size_t>(l)].w) + static_cast<size_t>(x)]; };
         ++g_parity.checks;
         for (size_t i = 0; i < pc.ids.size(); ++i) {
             const auto p = mc2hzb::project_prop(pc.inst[i], pc.worldToClip, pc.bias, pc.bounds, pc.w, pc.h, pc.mips);
@@ -267,12 +268,12 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
         PropBounds b{{FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX}, false};
         bool invalid = false;
         for (uint32_t p = 0; p < geom.typePacketCount[t]; ++p) {
-            const uint64_t pk = uint64_t(geom.typeFirstPacket[t]) + p;
+            const uint64_t pk = static_cast<uint64_t>(geom.typeFirstPacket[t]) + p;
             if (pk >= geom.packetCount) { invalid = true; break; }
             const auto& packet = geom.packets[pk];
-            if (uint64_t(packet.firstIndex) + packet.indexCount > ib / sizeof(uint32_t)) { invalid = true; break; }
+            if (static_cast<uint64_t>(packet.firstIndex) + packet.indexCount > ib / sizeof(uint32_t)) { invalid = true; break; }
             for (uint32_t k = 0; k < packet.indexCount; ++k) {
-                const uint64_t vi = uint64_t(packet.baseVertex) + ix[packet.firstIndex + k];
+                const uint64_t vi = static_cast<uint64_t>(packet.baseVertex) + ix[packet.firstIndex + k];
                 if (vi >= vb / geom.vertexStride) { invalid = true; break; }
                 float pos[3];
                 std::memcpy(pos, vx + vi * geom.vertexStride, sizeof(pos));
@@ -293,7 +294,7 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
                              b.hi[0], b.hi[1], b.hi[2], 0.0f});
     s->localBounds.reset();
     const size_t bytes = gpuBounds.size() * sizeof(gpuBounds[0]);
-    if (!make_buffer(s, (std::max)(bytes, size_t(32)), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+    if (!make_buffer(s, (std::max)(bytes, static_cast<size_t>(32)), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                      s->localBounds, "hzb.local_bounds") ||
         (bytes && !s->localBounds.upload(gpuBounds.data(), bytes))) return false;
     s->cullCapacity = 0; // descriptors must follow the new map's bounds buffer
@@ -305,26 +306,31 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
 bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     auto* s = &state;
     if (s->cullCapacity >= count) return true;
-    // The color pass can still be reading the old mask after the HZB ticket.
-    // Only capacity growth replaces its storage/descriptors; retire every reader.
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("hzb_capacity");
+    // The color pass can still be reading the old mask after the HZB ticket: park the old storage and pool until the frame that may use them has
+    // completed (deferred destroy) instead of idling the device.
+    auto& ectx = mc2vk::getOrCreateEngineVulkanContext();
     s->previousCount = 0; // the retired mask no longer supplies telemetry
     s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
-    s->cullPool.reset(); s->projected.reset(); s->visibility.reset(); s->instances.reset();
-    if (!make_buffer(s, uint64_t(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->projected, "hzb.projected") ||
-        !make_buffer(s, uint64_t(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
-        !make_buffer(s, uint64_t(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    if (s->cullPool) ectx.retire(std::move(s->cullPool));
+    if (s->visibility) ectx.retire(std::move(s->visibility), s->visibilityBytes);
+    if (s->instances) ectx.retire(std::move(s->instances));
+    s->cullSet = VK_NULL_HANDLE;
+    // The shader samples a fixed 16-slot level array; a deeper pyramid cannot be addressed.
+    if (s->mipCount < 1 || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
+    if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
+        !make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    s->visibilityBytes = static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t);
     // A recycled Vulkan handle must not leave consumers bound to the old mask.
     static uint64_t nextVisibilityGeneration = 0;
     s->visibilityGeneration = ++nextVisibilityGeneration;
     if (!s->cullDsl) {
-        VkDescriptorSetLayoutBinding bindings[5] = {};
-        for (uint32_t i = 0; i < 5; ++i) {
-            bindings[i].binding = i; bindings[i].descriptorCount = 1; bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        VkDescriptorSetLayoutBinding bindings[4] = {};
+        for (uint32_t i = 0; i < 4; ++i) {
+            bindings[i].binding = i; bindings[i].descriptorCount = i == 0 ? kCullMaxLevels : 1; bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
             bindings[i].descriptorType = i == 0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         }
         VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        di.bindingCount = 5; di.pBindings = bindings;
+        di.bindingCount = 4; di.pBindings = bindings;
         if (!mc2vk::create(s->cullDsl, s->device, [&](VkDescriptorSetLayout* p){return vkCreateDescriptorSetLayout(s->device,&di,nullptr,p);})) return false;
         VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, 96};
         const VkDescriptorSetLayout layout = s->cullDsl.get();
@@ -338,28 +344,27 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
         pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; pi.stage.module = s->cullShader.get(); pi.stage.pName = "main"; pi.layout = s->cullLayout.get();
         if (!mc2vk::create(s->cullPipe,s->device,[&](VkPipeline* p){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
     }
-    const uint32_t levels = uint32_t(s->mipCount);
-    VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, levels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, levels*4}};
+    VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kCullMaxLevels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pci.maxSets = levels; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!mc2vk::create(s->cullPool,s->device,[&](VkDescriptorPool* p){return vkCreateDescriptorPool(s->device,&pci,nullptr,p);})) return false;
-    s->cullSets.resize(levels);
-    for (uint32_t i = 0; i < levels; ++i) {
-        const VkDescriptorSetLayout layout = s->cullDsl.get();
-        VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
-        if (vkAllocateDescriptorSets(s->device,&ai,&s->cullSets[i]) != VK_SUCCESS) return false;
-        VkDescriptorImageInfo image{s->depthSampler.get(),s->levels[i].view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-        VkDescriptorBufferInfo buffers[] = {{s->projected.get(),0,VK_WHOLE_SIZE},{s->visibility.get(),0,VK_WHOLE_SIZE},
-                                            {s->instances.get(),0,VK_WHOLE_SIZE},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
-        VkWriteDescriptorSet writes[5] = {};
-        for (uint32_t j = 0; j < 5; ++j) {
-            writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = s->cullSets[i]; writes[j].dstBinding = j; writes[j].descriptorCount = 1;
-            writes[j].descriptorType = j==0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            if (j==0) writes[j].pImageInfo = &image; else writes[j].pBufferInfo = &buffers[j-1];
-        }
-        vkUpdateDescriptorSets(s->device,5,writes,0,nullptr);
+    const VkDescriptorSetLayout layout = s->cullDsl.get();
+    VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
+    if (vkAllocateDescriptorSets(s->device,&ai,&s->cullSet) != VK_SUCCESS) return false;
+    // Slots past the real mip count repeat the last level (the shader never selects them).
+    VkDescriptorImageInfo images[kCullMaxLevels];
+    for (uint32_t i = 0; i < kCullMaxLevels; ++i)
+        images[i] = {s->depthSampler.get(), s->levels[(std::min)(i, static_cast<uint32_t>(s->mipCount) - 1)].view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkDescriptorBufferInfo buffers[] = {{s->visibility.get(),0,VK_WHOLE_SIZE},{s->instances.get(),0,VK_WHOLE_SIZE},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
+    VkWriteDescriptorSet writes[4] = {};
+    for (uint32_t j = 0; j < 4; ++j) {
+        writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = s->cullSet; writes[j].dstBinding = j;
+        writes[j].descriptorCount = j == 0 ? kCullMaxLevels : 1;
+        writes[j].descriptorType = j==0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        if (j==0) writes[j].pImageInfo = images; else writes[j].pBufferInfo = &buffers[j-1];
     }
+    vkUpdateDescriptorSets(s->device,4,writes,0,nullptr);
     return true;
 }
 
@@ -378,6 +383,16 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         return false;
     }
     s->phys = ctx.physicalDevice();
+    {   // hzb_cull.comp uses subgroupElect + subgroupAdd in the compute stage
+        VkPhysicalDeviceSubgroupProperties sg{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES};
+        VkPhysicalDeviceProperties2 p2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &sg};
+        vkGetPhysicalDeviceProperties2(s->phys, &p2);
+        const VkSubgroupFeatureFlags need = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+        if (!(sg.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) || (sg.supportedOperations & need) != need) {
+            setFallback("subgroup_ops_unsupported");
+            return false;
+        }
+    }
     s->device = ctx.device();
     s->queue = ctx.graphicsQueue();
     s->gfxFamily = ctx.graphicsFamily();
@@ -449,21 +464,29 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1;
         sub.pColorAttachments = &ref;
-        VkSubpassDependency dep{};
-        dep.srcSubpass = 0;
-        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        dep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        VkSubpassDependency dep[2]{};
+        // Incoming: the previous frame's reads of these levels (cull compute, the next level's fragment read, the parity copy)
+        // must finish before this frame rewrites them; no other pass is allowed to fence this by accident.
+        dep[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        dep[0].dstSubpass = 0;
+        dep[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep[0].srcAccessMask = 0;   // read-after-write is already made visible; this is a write-after-read execution dependency
+        dep[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep[1].srcSubpass = 0;
+        dep[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        dep[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rpci.attachmentCount = 1;
         rpci.pAttachments = &att;
         rpci.subpassCount = 1;
         rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 1;
-        rpci.pDependencies = &dep;
+        rpci.dependencyCount = 2;
+        rpci.pDependencies = dep;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { r = vkCreateRenderPass(s->device, &rpci, nullptr, h); return r; })) {
             vlog("vkCreateRenderPass failed (%d).", static_cast<int>(r));
             return false;
@@ -816,7 +839,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         }
     }
     parity_check(s);   // the previous check frame's mask is readable now (ticket waited above)
-    if (!s->instances.upload(feed.instances112, uint64_t(feed.count)*sizeof(GpuStaticPropInstance))) {
+    if (!s->instances.upload(feed.instances112, static_cast<uint64_t>(feed.count)*sizeof(GpuStaticPropInstance))) {
         setFallback("instances_upload_failed"); s->disabled = true; return false;
     }
 
@@ -828,7 +851,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         VkDeviceSize bytes = 0;
         for (int l = 0; l < s->mipCount; ++l) {
             parityOffset[l] = bytes;
-            bytes += VkDeviceSize(s->levels[static_cast<size_t>(l)].w) * VkDeviceSize(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
+            bytes += static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].w) * static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
         }
         if (!s->parityMips || s->parityMipBytes < bytes) {
             s->parityMips.reset();
@@ -844,7 +867,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL HZB pass. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = s->cbuf[0u];
+    VkCommandBuffer cb = s->cbuf[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot % mc2vk::kMaxFramesInFlight];   // one command buffer per frame slot
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -911,22 +934,20 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                   VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuCull, cb, "VKIsl.Post.HzbCull");
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullPipe.get());
-    for (uint32_t level = 0; level < uint32_t(s->mipCount); ++level) {
+    {
         struct CullParams {
-            uint32_t count, level, typeCount, levels;
+            uint32_t count, reserved, typeCount, levels;
             float worldToClip[16];
             float viewportDepth[4];
-        } push{feed.count, level, static_cast<uint32_t>(s->propBounds.size()), static_cast<uint32_t>(s->mipCount)};
+        } push{feed.count, 0u, static_cast<uint32_t>(s->propBounds.size()), static_cast<uint32_t>(s->mipCount)};
         static_assert(sizeof(CullParams) == 96);
         std::memcpy(push.worldToClip, feed.worldToClipGL, sizeof(push.worldToClip));
         push.viewportDepth[0] = static_cast<float>(width_);
         push.viewportDepth[1] = static_cast<float>(height_);
         push.viewportDepth[2] = feed.objectDepthBias;
-        vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullLayout.get(),0,1,&s->cullSets[level],0,nullptr);
+        vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullLayout.get(),0,1,&s->cullSet,0,nullptr);
         vkCmdPushConstants(cb,s->cullLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(push),&push);
-        vkCmdDispatch(cb,(feed.count+63)/64,1,1);
-        memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                      VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+        vkCmdDispatch(cb,(feed.count+63)/64,1,1);   // the barrier below orders the mask for the color pass and the host
     }
     gpuCull.end();
     memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT,
@@ -982,7 +1003,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         auto& pc = s->parity;
         const uint32_t stride = (std::max)(1u, feed.count / kParitySamples);
         pc.ids.clear(); pc.inst.clear();
-        for (uint32_t i = uint32_t(g_parity.checks % stride); i < feed.count; i += stride) {
+        for (uint32_t i = static_cast<uint32_t>(g_parity.checks % stride); i < feed.count; i += stride) {
             pc.ids.push_back(i);
             pc.inst.push_back(static_cast<const GpuStaticPropInstance*>(feed.instances112)[i]);
         }

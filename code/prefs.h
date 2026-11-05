@@ -9,19 +9,20 @@
 #include"mclib.h"
 #endif
 
+#include "mc2_czstring.h"
 #include "Gates/preferences_types.h"
 
 
 class CPrefs : public mc2::options::Preferences {
 public:
 	CPrefs() = default;
-	int load( const char* pFileName = "options");
+	int load( mc2::czstring pFileName = "options");
 	int save();
 	int applyPrefs(bool bApplyResolution = 1);
 
-	void setNewName( const char* pNewName );
-	void setNewUnit( const char* pNewUnit );
-	void setNewIP( const char* pNewIP );
+	void setNewName( mc2::czstring pNewName );
+	void setNewUnit( mc2::czstring pNewUnit );
+	void setNewIP( mc2::czstring pNewIP );
 
 	// Player render options (the options.cfg keys listed in Gates/render_options.h). load() validates them, applyPrefs() publishes them.
 	mc2::options::RenderOptions render;

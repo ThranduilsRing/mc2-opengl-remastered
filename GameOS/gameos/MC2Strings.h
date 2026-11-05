@@ -20,6 +20,7 @@
 
 #ifndef MC2_STRINGS_H
 #define MC2_STRINGS_H
+#include "mc2_czstring.h"
 
 namespace MC2Strings
 {
@@ -46,7 +47,7 @@ namespace MC2Strings
     // mod index — MC2Strings::Load() may have fired first with an empty index.
     void LoadModFits();
 
-    const char* Get(const char* key);
+    const char* Get(mc2::czstring key);
 
     /*
         Legacy mc2res lookup. This is the primary replacement path for
@@ -60,27 +61,27 @@ namespace MC2Strings
         gos_GetResourceString receives numeric IDs.
     */
     const char* GetByResourceId(unsigned int resourceId);
-    const char* GetByResourceSymbol(const char* resourceSymbol);
+    const char* GetByResourceSymbol(mc2::czstring resourceSymbol);
 
     /*
         Menu binding lookup is included because game/viewer menus may need the
         same bridge, but MFC dialog/control localization stays outside the
         engine pass.
     */
-    const char* GetMenuText(const char* menuId, const char* commandId);
+    const char* GetMenuText(mc2::czstring menuId, mc2::czstring commandId);
     const char* GetMenuTextByIds(unsigned int menuId, unsigned int commandId);
 
-    bool HasKey(const char* key);
+    bool HasKey(mc2::czstring key);
     bool HasLegacyId(long legacyId);
     bool HasResourceId(unsigned int resourceId);
-    bool HasResourceSymbol(const char* resourceSymbol);
-    bool HasMenuBinding(const char* menuId, const char* commandId);
+    bool HasResourceSymbol(mc2::czstring resourceSymbol);
+    bool HasMenuBinding(mc2::czstring menuId, mc2::czstring commandId);
 
-    const char* MissingKey(const char* key);
+    const char* MissingKey(mc2::czstring key);
     const char* MissingLegacyId(long legacyId);
     const char* MissingResourceId(unsigned int resourceId);
-    const char* MissingResourceSymbol(const char* resourceSymbol);
-    const char* MissingMenuBinding(const char* menuId, const char* commandId);
+    const char* MissingResourceSymbol(mc2::czstring resourceSymbol);
+    const char* MissingMenuBinding(mc2::czstring menuId, mc2::czstring commandId);
 }
 
 #endif /* MC2_STRINGS_H */

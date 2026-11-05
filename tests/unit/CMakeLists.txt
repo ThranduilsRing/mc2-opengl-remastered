@@ -27,6 +27,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
     test_present_handoff.cpp
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
@@ -58,6 +59,7 @@ add_executable(mc2_tests
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
     test_hzb_cull_reference.cpp  # CPU reference of hzb_cull.comp (RenderCore/hzb_prop_bounds.h): keep-bit cases
     test_prop_light_contract.cpp
+    test_clip_sample.cpp  # glTF clip sampling: STEP / LINEAR / CUBICSPLINE (header-only, no Assimp)
     test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
@@ -199,6 +201,7 @@ add_executable(mc2_tests
     test_static_prop_selflit.cpp  # self-lit two-sided card predicate (stock coil yes, imported override no)
     test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)
     ${MC2_WORKTREE_ROOT}/RenderCore/KtxLoader.cpp
+    ${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
@@ -454,9 +457,16 @@ if(WIN32)
     list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
 endif()
 find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
+# KtxBasis.cpp needs the vendored transcoder; this standalone project must build it itself (a bare
+# "basisu_transcoder" is only a -l flag here: "ld.lld: unable to find library -lbasisu_transcoder" on the box).
+if(NOT TARGET basisu_transcoder)
+    enable_language(C)   # zstddeclib.c
+    add_subdirectory("${MC2_WORKTREE_ROOT}/3rdparty/basisu" "${CMAKE_BINARY_DIR}/basisu")
+endif()
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
     SDL2::SDL2
+    basisu_transcoder
 )
 if(WIN32)
     # The CPU surface tests use SDL2; no graphics context is created.

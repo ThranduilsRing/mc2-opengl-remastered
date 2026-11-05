@@ -149,8 +149,10 @@ void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
 
     // Linear-blend skinning (mech.vert:156-170). Stock weights=(1,0,0,0) => single-bone.
-    mat4 boneT = mat4(0.0);
-    for (int bi = 0; bi < 4; ++bi) {
+    // A PRESKINNED instance's stream was posed by mech_skin.comp: identity here, no bone fetch.
+    const bool preskinned = (inst.renderFlags & MECH_RENDER_FLAG_PRESKINNED) != 0u;
+    mat4 boneT = mat4(preskinned ? 1.0 : 0.0);
+    for (int bi = 0; bi < 4 && !preskinned; ++bi) {
         float w = a_boneWeights[bi];
         if (w > 0.0) {
             GpuMechBone bn = uBones.bones[a_boneIndices[bi] + inst.baseBoneOffset];

@@ -10,6 +10,7 @@
 
 //---------------------------------------------------------------------------
 // Include Files
+#include "mc2_czstring.h"
 #include"platform_windows.h" /*only for declaration of DeleteFile() */
 #include "texture_assets.h"
 
@@ -322,7 +323,7 @@ DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, Terrain
 	return resolveTextureHandle(vMin, vMax, uvData, nullptr, true);
 }
 
-long TerrainColorMap::saveDetailTexture(const char *fileName)
+long TerrainColorMap::saveDetailTexture(mc2::czstring fileName)
 {
 	char dName[1024];
 	mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
@@ -331,7 +332,7 @@ long TerrainColorMap::saveDetailTexture(const char *fileName)
 	return mc2::textures::save(detailTextureNodeIndex.get(), detailFile);
 }
 
-long TerrainColorMap::saveWaterTexture(const char *fileName)
+long TerrainColorMap::saveWaterTexture(mc2::czstring fileName)
 {
 	char dName[1024];
 	mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
@@ -340,7 +341,7 @@ long TerrainColorMap::saveWaterTexture(const char *fileName)
 	return mc2::textures::save(waterTextureNodeIndex.get(), waterFile);
 }
 
-long TerrainColorMap::saveWaterDetail(const char *fileName)
+long TerrainColorMap::saveWaterDetail(mc2::czstring fileName)
 {
 	long result = NO_ERR;
 	int i;

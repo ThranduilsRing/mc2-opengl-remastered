@@ -25,6 +25,7 @@
 //***************************************************************************
 #pragma once
 
+#include "mc2_czstring.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include <cstdio>
 #include "Gates/gate.h"
@@ -90,7 +91,7 @@ struct FireScope {
 	long   nStates;    // read from NumStateTransitions at dtor
 	std::chrono::steady_clock::time_point t0;
 
-	FireScope(const char* who_, int wid_)
+	FireScope(mc2::czstring who_, int wid_)
 		: active(gateActive()), who(who_), wid(wid_), retStmts(nullptr), nStates(0)
 	{
 		if (active) {

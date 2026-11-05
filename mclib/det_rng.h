@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 
 // DETERMINISTIC-RNG-1: GL-free, header-only LCG kernel.
@@ -24,7 +25,7 @@ inline uint32_t next15(uint32_t& state) {
 
 // Deterministic mission seed from a mission name (e.g. "mc2_01").
 // FNV-1a 32-bit over the NUL-terminated name; stable across processes/builds.
-inline uint32_t hashMissionName(const char* name) {
+inline uint32_t hashMissionName(mc2::czstring name) {
     uint32_t h = 2166136261u;
     if (name) {
         for (const char* p = name; *p; ++p) {

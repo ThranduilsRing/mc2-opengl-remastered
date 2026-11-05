@@ -15,7 +15,6 @@
 //---------------------------------------------------------------------
 // Set this, once we have the actual executor modules up and running...
 inline constexpr int USE_COMPOUND_STATEMENTS = 0;
-#define	ANALYZE_ON					0
 inline constexpr int ORDERS_ON = 1;
 
 inline constexpr char CHAR_FORMFEED = '\f';

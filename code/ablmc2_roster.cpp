@@ -1,5 +1,6 @@
 // ABL native bindings: text messages, teleport, roster/pilot operations, campaign globals, strike toggles, radius counts, omni stubs, trigger areas and off-map queries.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
+#include "mc2_czstring.h"
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
 #include <algorithm>
@@ -26,7 +27,7 @@ static bool  gAblArtilleryPieceEnabled  = true;
 static bool  gAblRepairTruckEnabled     = true;
 static bool  gAblSalvageCraftEnabled    = true;
 
-static inline void omniTrace (const char* tag) {
+static inline void omniTrace (mc2::czstring tag) {
 	char s[128];
 	mc2::fmt::to_buf(s, "[OMNI] {}", mc2::fmt::safe(tag));
 	DEBUGWINS_print(s, 0);

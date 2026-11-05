@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdio>
 #include <limits>
+#include "mc2fmt.h"
 
 namespace mc2vk {
 // Owned by terrain; all receivers borrow its current-frame descriptors. No
@@ -38,7 +39,7 @@ public:
                 retryAt_ = frame + retryDelay_;
                 retryDelay_ = (std::min)(retryDelay_ * 2, 256u);
                 if (logFailures)
-                    std::fprintf(stderr, "[VK_TERRAIN_ISLAND] light lists failed (%s); using linear lighting, count=1 (retries back off up to 256 frames).\n", failure);
+                    mc2::fmt::print_err("[VK_TERRAIN_ISLAND] light lists failed ({}); using linear lighting, count=1 (retries back off up to 256 frames).\n", mc2::fmt::safe(failure));
                 return false;
             };
             failure = "pipeline";
@@ -77,7 +78,7 @@ public:
             std::memcpy(static_cast<char*>(params_.ptr) + 16, info, 16);
             frame_ = frame;
             if (failures_)
-                std::fprintf(stderr, "[VK_TERRAIN_ISLAND] light lists recovered failed_attempts=%llu.\n", static_cast<unsigned long long>(failures_));
+                mc2::fmt::print_err("[VK_TERRAIN_ISLAND] light lists recovered failed_attempts={:d}.\n", mc2::fmt::as_u64(static_cast<unsigned long long>(failures_)));
             failures_ = 0; retryDelay_ = 1; failure_ = nullptr;
         }
         std::copy(spans_.begin(), spans_.end(), out);

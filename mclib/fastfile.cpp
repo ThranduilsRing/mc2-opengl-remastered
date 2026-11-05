@@ -6,6 +6,7 @@
 // Global Fast File Code.
 //
 
+#include "mc2_czstring.h"
 #include"heap.h"
 #include"fastfile.h"
 #include"fst_hash.h"   // fst_normalize_loose_key_inplace (canonical-key chokepoint)
@@ -22,9 +23,8 @@ long		maxFastFiles = 0;
 
 long ffLastError = 0;
 
-#define NO_ERR		0
 //-----------------------------------------------------------------------------------
-bool FastFileInit (const char *fname)
+bool FastFileInit (mc2::czstring fname)
 {
 	if (numFastFiles == maxFastFiles)
 	{
@@ -73,7 +73,7 @@ void FastFileFini (void)
 }
 
 //-----------------------------------------------------------------------------------
-FastFile *FastFileFind (const char *fname, long &fastFileHandle)
+FastFile *FastFileFind (mc2::czstring fname, long &fastFileHandle)
 {
 	if (fastFiles)
 	{

@@ -1,12 +1,13 @@
 // BldgAppearance / TreeAppearance: [Import] sidecar axis/yaw and override render-shape texture residency.
 // Declared in the class headers; shared names in bdactor_internal.h.
+#include "mc2_czstring.h"
 #include "bdactor_internal.h"
 #include "texture_assets.h"
 #include <optional>
 #include <string_view>
 #include "mc2fmt.h"
 
-static std::optional<std::string> readTextFile(const char* path)
+static std::optional<std::string> readTextFile(mc2::czstring path)
 {
 	std::ifstream f(path, std::ios::in | std::ios::binary);
 	if (!f)
@@ -54,7 +55,7 @@ static std::optional<float> extractJsonNumber(const std::string& text, std::stri
 	return value;
 }
 
-static std::optional<int> extractBuildingPbrAxis(const char* sidecarPath)
+static std::optional<int> extractBuildingPbrAxis(mc2::czstring sidecarPath)
 {
 	const auto text = readTextFile(sidecarPath);
 	if (!text)
@@ -79,7 +80,7 @@ static std::optional<int> extractBuildingPbrAxis(const char* sidecarPath)
 	return std::nullopt;
 }
 
-static std::optional<float> extractBuildingPbrYaw(const char* sidecarPath)
+static std::optional<float> extractBuildingPbrYaw(mc2::czstring sidecarPath)
 {
 	const auto text = readTextFile(sidecarPath);
 	if (!text)
@@ -91,7 +92,7 @@ static std::optional<float> extractBuildingPbrYaw(const char* sidecarPath)
 // baseShapeLoadFailed through to the required-slot verify at the tail
 // (the reviewed design's grep-verified import site the draft enumeration
 // missed). NULL failFlag = verify-and-placeholder only.
-void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase,
+void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, mc2::czstring importSourceBase,
                                                     bool* failFlag)
 {
 	if (!shape || !importSourceBase || !importSourceBase[0]) {

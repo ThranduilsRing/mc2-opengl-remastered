@@ -6,16 +6,20 @@
 #include <algorithm>
 #include <cstring>
 #include <limits>
+#include <mutex>
 #include <span>
+#include <unordered_map>
 
 namespace mc2::content {
 namespace {
 constexpr mc2cache::CacheKind kind{"model-", ".mci", 4096, 128ull << 20};
 constexpr std::string_view directory = "cache/content-model";
-uint64_t hash(std::span<const uint8_t> bytes, uint64_t h = 14695981039346656037ull) {
-    for (const auto b : bytes) { h ^= b; h *= 1099511628211ull; }
-    return h;
+std::mutex digestLock;
+std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>& digestMemo() {
+    static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> memo;  // path -> {size, hash}
+    return memo;
 }
+uint64_t hash(std::span<const uint8_t> bytes, uint64_t h = 14695981039346656037ull) { return fastHash(bytes, h); }
 template<class T> void append(std::vector<uint8_t>& bytes, const T& value) {
     const auto* p = reinterpret_cast<const uint8_t*>(&value);
     bytes.insert(bytes.end(), p, p + sizeof(T));
@@ -35,14 +39,29 @@ uint64_t sourceKey(const Asset& asset, std::string_view sourcePath) {
     append(params, cookerVersion); append(params, asset.legacyBounds); append(params, asset.ground);
     text(params, asset.parameters);
     uint64_t key = hash(params);
-    std::vector<uint8_t> chunk(64 * 1024);
-    unsigned long left = input.fileSize();
-    while (left) {
-        const auto count = std::min<unsigned long>(left, static_cast<unsigned long>(chunk.size()));
-        if (input.read(chunk.data(), count) != static_cast<long>(count)) return 0;
-        key = hash(std::span<const uint8_t>(chunk.data(), count), key);
-        left -= count;
+    const uint64_t size = input.fileSize();
+    uint64_t digest = 0;
+    bool known = false;
+    {
+        std::lock_guard lock(digestLock);
+        const auto it = digestMemo().find(sourceStorage);
+        if (it != digestMemo().end() && it->second.first == size) { digest = it->second.second; known = true; }
     }
+    if (!known) {
+        digest = 14695981039346656037ull;
+        std::vector<uint8_t> chunk(64 * 1024);
+        unsigned long left = input.fileSize();
+        while (left) {
+            const auto count = std::min<unsigned long>(left, static_cast<unsigned long>(chunk.size()));
+            if (input.read(chunk.data(), count) != static_cast<long>(count)) return 0;
+            digest = hash(std::span<const uint8_t>(chunk.data(), count), digest);
+            left -= count;
+        }
+        std::lock_guard lock(digestLock);
+        digestMemo()[sourceStorage] = {size, digest};
+    }
+    const uint64_t parts[2] = {size, digest};
+    key = hash(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(parts), sizeof(parts)), key);
     return key ? key : 1;
 }
 
@@ -62,6 +81,36 @@ struct Reader {
         std::string value(reinterpret_cast<const char*>(data.data() + pos), count); pos += count; return value;
     }
 };
+}
+
+uint64_t fastHash(std::span<const uint8_t> bytes, uint64_t h) {
+    // Word-at-a-time multiply/xorshift mix (about 8x the old byte-wise FNV-1a). Chunk splits at
+    // multiples of 8 bytes hash identically to one call, so streamed and in-memory digests agree.
+    const uint8_t* p = bytes.data();
+    size_t n = bytes.size();
+    for (; n >= 8; p += 8, n -= 8) {
+        uint64_t w;
+        std::memcpy(&w, p, 8);
+        h = (h ^ w) * 0x9E3779B97F4A7C15ull;
+        h ^= h >> 29;
+    }
+    for (; n; ++p, --n) { h ^= *p; h *= 1099511628211ull; }
+    return h;
+}
+
+uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t> bytes) {
+    const std::string key(sourcePath);
+    {
+        std::lock_guard lock(digestLock);
+        const auto it = digestMemo().find(key);
+        if (it != digestMemo().end() && it->second.first == bytes.size()) return it->second.second;
+    }
+    uint64_t digest = 14695981039346656037ull;
+    for (size_t at = 0; at < bytes.size(); at += 64 * 1024)
+        digest = fastHash(bytes.subspan(at, std::min<size_t>(64 * 1024, bytes.size() - at)), digest);
+    std::lock_guard lock(digestLock);
+    digestMemo()[key] = {bytes.size(), digest};
+    return digest;
 }
 
 bool loadCached(Asset& asset, std::string_view sourcePath) {
@@ -98,7 +147,7 @@ bool loadCached(Asset& asset, std::string_view sourcePath) {
         Node n; n.name = r.string(); n.parent = r.string();
         n.center = r.get<glm::vec3>(); n.relativeCenter = r.get<glm::vec3>(); n.helper = r.get<bool>();
         const auto nv = r.get<uint32_t>(), nt = r.get<uint32_t>();
-        if (nv > kMaxShapeVertices || nt > kMaxShapeTriangles || uint64_t(nv) * 28 + uint64_t(nt) * 56 > r.data.size() - r.pos)
+        if (nv > kMaxShapeVertices || nt > kMaxShapeTriangles || static_cast<uint64_t>(nv) * 28 + static_cast<uint64_t>(nt) * 56 > r.data.size() - r.pos)
             return false;
         n.vertices.resize(nv); n.triangles.resize(nt);
         for (auto& v : n.vertices) { v.position = r.get<glm::vec3>(); v.normal = r.get<glm::vec3>(); v.aRGBLight = r.get<DWORD>(); }

@@ -179,6 +179,12 @@ lifetime exceeds the call, store `std::string` (owning) instead. Never
 return `std::string_view` from a function that builds the string
 internally.
 
+**`mc2::czstring` (GameOS/include/mc2_czstring.h).** A read-only parameter that is
+forwarded to a C API (fopen, strcmp/_stricmp, strcpy, printf family, Win32, ABL
+tables) or kept as a C string is typed `mc2::czstring` (= `const char*`, contract:
+NUL-terminated), never `std::string_view` + `.data()`: a view is not NUL-terminated.
+The cxx17 ratchet (LG06) does not count the alias; it is a contract, not residue.
+
 ## 5. Use cautiously
 
 ### 5.1 `std::variant<...>`
@@ -297,6 +303,13 @@ error code instead).
 Default rule: do not introduce a throw site in a TU that is currently
 exception-free. Use the non-throwing overload (`get_if`, `value_or`,
 `*_ec` filesystem variants) or check beforehand.
+
+### 6.4 Allocator mixing
+
+`new`, `delete` and `gos_Malloc`/`gos_Free` share one engine allocator
+(mimalloc; CRT under `MC2_ASAN`). Never `free()` memory from `new` or
+`gos_Malloc`, and never `delete`/`gos_Free` memory from `malloc`. Debug and
+`MC2_ALLOC_STATS` builds abort with an "allocator mismatch" message on a foreign pointer.
 
 ## 7. First useful cleanups (advisory backlog)
 

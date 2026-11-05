@@ -1,5 +1,6 @@
 // MechBayScreen: mech selection, removal, setMech, drag handling and the deployment-team helpers.
 // Declared in the class headers; shared names in mechbayscreen_internal.h.
+#include "mc2_czstring.h"
 #include "mechbayscreen_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
@@ -13,7 +14,7 @@
 // occluded by its frame art.  (Local copy of the same helper in mechlopedia.cpp,
 // which lives in an anonymous namespace and so isn't linkable across TUs.)
 namespace {
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const char* listKey )
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
 {
 	std::vector<std::string>  items;
 	std::vector<unsigned int> colors;
@@ -222,9 +223,9 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", "" );
 		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", "" );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_range_text", "" );
-		for ( int i = 0; i < 3; i++ )
+		for (auto & attributeMeter : attributeMeters)
 		{
-			attributeMeters[i].setValue(0);
+			attributeMeter.setValue(0);
 		}
 
 	}
@@ -354,21 +355,21 @@ void MechBayScreen::reinitMechs()
 	auto mechList = LogisticsData::instance->getInventory();
 	
 	
-	for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
+	for (auto & mechElem : mechList)
 		{
-			if ( (*iter)->getForceGroup() )
+			if ( mechElem->getForceGroup() )
 			{
-				long FG = (*iter)->getForceGroup();
+				long FG = mechElem->getForceGroup();
 
 				if ( FG <= maxUnits )
 				{
 				
-					pIcons[FG-1].setMech( (*iter) );
-					pIcons[FG-1].setPilot( (*iter)->getPilot() );
+					pIcons[FG-1].setMech( mechElem );
+					pIcons[FG-1].setPilot( mechElem->getPilot() );
 					forceGroupCount++;
 				}
 				else 
-					(*iter)->setForceGroup( 0 );
+					mechElem->setForceGroup( 0 );
 				
 			}
 		}

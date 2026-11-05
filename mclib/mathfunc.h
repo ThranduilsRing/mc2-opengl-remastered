@@ -131,7 +131,7 @@ inline long float2long (float val)
 	// Doesn't work either.  Major bug in Intel's FPU.
 	// Will simply call long here now to insure working ok and address later.
 	
-	long result = long(val);
+	long result = static_cast<int32_t>(val);
 	return result;
 	
 }

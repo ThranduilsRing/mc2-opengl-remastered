@@ -22,6 +22,7 @@
 #include"prefs.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"mc2video.h"
 #include "../GameOS/gameos/gos_smoke.h"
 #include <cstdlib>
@@ -32,7 +33,7 @@
 #include "mc2fmt.h"
 #include "objective.h"
 
-void VideoObjectiveReceipt::capture(const char* resolvedPath)
+void VideoObjectiveReceipt::capture(mc2::czstring resolvedPath)
 {
     if (auto* observation = objectiveObservation(); observation && observation->dispatch) {
         cause = observation->dispatch;
@@ -76,7 +77,7 @@ MC2Movie::~MC2Movie (void)
 
 //-----------------------------------------------------------------------
 // Class MC2Movie
-void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
+void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
 {
     char shortName[1024];
     _splitpath(MC2Name, nullptr, nullptr, shortName, nullptr);

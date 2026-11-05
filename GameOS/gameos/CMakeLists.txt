@@ -192,7 +192,7 @@ if(MC2_VULKAN)
         # lighting up the vk2gl back-channel). Borrows the shared engine
         # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
         # -> GL shadow path byte-identical. extern "C" entry points only.
-        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_mech_skin.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
         # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
         # region rendering REAL static-prop triangle geometry in-place into the shared
         # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
@@ -311,7 +311,17 @@ include_directories("${CMAKE_SOURCE_DIR}")
 # gos_hdri.cpp needs tinyexr.h (defines TINYEXR_IMPLEMENTATION).
 include_directories("${CMAKE_SOURCE_DIR}/3rdparty/tinyexr")
 
+# meshoptimizer subset (vertex cache / overdraw / fetch ordering) for the static-prop batcher.
+add_library(mc2_meshopt STATIC
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/allocator.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vcacheoptimizer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vcacheanalyzer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/overdrawoptimizer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vfetchoptimizer.cpp")
+target_include_directories(mc2_meshopt PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src")
+
 add_library(gameos ${SOURCES})
+target_link_libraries(gameos PRIVATE mc2_meshopt)
 mc2_enable_pch(gameos)
 # KtxLoader.cpp lives in rendercore (STATIC) and is called from
 # gos_static_prop_batcher.cpp. Make the dependency explicit so CMake
@@ -325,6 +335,8 @@ if(MC2_VULKAN)
     # so we must NOT link the loader import lib (Vulkan::Vulkan).
     target_link_libraries(gameos PRIVATE Vulkan::Headers)
     target_compile_definitions(gameos PRIVATE MC2_VULKAN)
+    # VMA configuration for every TU that includes vk_mem_alloc.h (only VMA_IMPLEMENTATION reads it; vma_impl.cpp needs dynamic).
+    target_compile_definitions(gameos PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
     # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
@@ -397,11 +409,12 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
     list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)
+    list(APPEND MC2_VK_SHADER_BASENAMES mech_skin)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
@@ -412,6 +425,8 @@ if(MC2_VULKAN)
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
+    # hzb_cull.comp uses subgroup arithmetic (SPIR-V 1.3); glslang defaults to Vulkan 1.0 / SPIR-V 1.0. Engine floor is Vulkan 1.2.
+    set(MC2_VK_SHADER_DEFINES_hzb_cull_comp --target-env vulkan1.1)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
@@ -520,11 +535,13 @@ endif()
 set(GAMEOS_EDITOR_SOURCES ${SOURCES})
 list(REMOVE_ITEM GAMEOS_EDITOR_SOURCES gos_render.cpp)
 add_library(gameos_editor ${GAMEOS_EDITOR_SOURCES})
-target_link_libraries(gameos_editor PRIVATE rendercore)
+target_link_libraries(gameos_editor PRIVATE rendercore mc2_meshopt)
 if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: headers only -- volk owns runtime dispatch.
     target_link_libraries(gameos_editor PRIVATE Vulkan::Headers)
     target_compile_definitions(gameos_editor PRIVATE MC2_VULKAN)
+    # VMA configuration for every TU that includes vk_mem_alloc.h (only VMA_IMPLEMENTATION reads it; vma_impl.cpp needs dynamic).
+    target_compile_definitions(gameos_editor PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
     target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
     # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
@@ -561,6 +578,6 @@ if(TARGET gameos_main)
 endif()
 
 # A single generated object supplies identity to game, editor, and tool consumers.
-target_link_libraries(gameos PUBLIC mc2_build_identity)
-target_link_libraries(gameos_editor PUBLIC mc2_build_identity)
+target_link_libraries(gameos PUBLIC mc2_build_identity mimalloc_static)
+target_link_libraries(gameos_editor PUBLIC mc2_build_identity mimalloc_static)
 target_link_libraries(gameos_main PUBLIC mc2_build_identity)

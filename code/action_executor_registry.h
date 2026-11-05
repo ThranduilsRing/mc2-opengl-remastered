@@ -61,7 +61,9 @@ class ActionExecutorRegistry {
 
     int executorFor(UnitAction action) const {
         auto it = bindings_.find(action);
-        return it == bindings_.end() ? kNoExecutor : it->second.executorId;
+        if (it == bindings_.end()) return kNoExecutor;
+        const auto& [boundAction, binding] = *it;
+        return binding.executorId;
     }
 
     // True iff an executor is bound AND `locomotionModelId` is in its
@@ -69,7 +71,8 @@ class ActionExecutorRegistry {
     bool isCompatible(UnitAction action, int locomotionModelId) const {
         auto it = bindings_.find(action);
         if (it == bindings_.end()) return false;
-        const std::set<int>& s = it->second.compatibleLocomotion;
+        const auto& [boundAction, binding] = *it;
+        const std::set<int>& s = binding.compatibleLocomotion;
         return s.find(locomotionModelId) != s.end();
     }
 };

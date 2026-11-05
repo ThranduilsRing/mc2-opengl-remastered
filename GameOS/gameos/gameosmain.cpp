@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
 #include <atomic>
@@ -751,7 +752,7 @@ extern "C" void mission_phase_begin()
     g_loadPhaseCount = 0;
 }
 
-extern "C" void mission_phase_mark(const char* name)
+extern "C" void mission_phase_mark(mc2::czstring name)
 {
     const Uint64 now = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());

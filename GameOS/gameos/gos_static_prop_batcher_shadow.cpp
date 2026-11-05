@@ -102,7 +102,7 @@ static uint64_t propLodKey(const GpuStaticPropInstance& inst) {
     std::memcpy(&px, &o.x, 4);
     std::memcpy(&py, &o.y, 4);
     std::memcpy(&pz, &o.z, 4);
-    return (((uint64_t(px) * 0x9E3779B1ull) ^ (uint64_t(py) * 0x85EBCA77ull) ^ (uint64_t(pz) * 0xC2B2AE3Dull)) << 8) ^ inst.typeID;
+    return (((static_cast<uint64_t>(px) * 0x9E3779B1ull) ^ (static_cast<uint64_t>(py) * 0x85EBCA77ull) ^ (static_cast<uint64_t>(pz) * 0xC2B2AE3Dull)) << 8) ^ inst.typeID;
 }
 
 void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {

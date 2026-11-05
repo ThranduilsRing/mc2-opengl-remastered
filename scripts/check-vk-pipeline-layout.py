@@ -352,7 +352,7 @@ def reflect_shader(glslc, cross, src, outdir, incdir):
         t = d["types"].get(pc["type"])
         size, ok = 0, True
         for mem in (t or {}).get("members", []):
-            sz = type_size(d["types"], mem["type"], None)
+            sz = 8 if mem.get("physical_pointer") else type_size(d["types"], mem["type"], None)   # buffer_reference member = 64-bit device address
             if sz is None:
                 ok = False
                 break

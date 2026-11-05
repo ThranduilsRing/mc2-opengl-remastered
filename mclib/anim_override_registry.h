@@ -9,6 +9,7 @@
 // resolve() returns null and the loader uses the stock convention path.
 // See docs/modding-animations.md + docs/ppc-flight-and-fx-anim-moddability-recon.md.
 #pragma once
+#include "mc2_czstring.h"
 #include <string>
 #include <string_view>
 #include <vector>
@@ -33,7 +34,7 @@ public:
     int mergeFromFile(const std::string& manifestPath,
                       std::string_view manifestDir);
     // Returns the override clip for (mechName, gesture), or nullptr for none.
-    const AnimOverrideRecord* resolve(const char* mechName,
+    const AnimOverrideRecord* resolve(mc2::czstring mechName,
                                       const char* gesture) const;
     int count() const { return static_cast<int>(records_.size()); }
     // Lazy singleton: loads base data/anim_overrides/anims.json then merges the

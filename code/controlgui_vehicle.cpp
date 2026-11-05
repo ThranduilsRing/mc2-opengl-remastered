@@ -180,9 +180,9 @@ void ControlGui::renderVehicleTab()
 		{
 			// need to draw cost under the button
 			long left = float2long(vehicleButtons[i].location[0].x);
-			long top = float2long(vehicleButtons[i].location[2].y + TEXT_SKIP);
+			long top = float2long(vehicleButtons[i].location[2].y + textSkip());
 			long right = float2long(vehicleButtons[i].location[2].x);
-			long bottom = float2long(vehicleButtons[i].location[2].y + 30 + TEXT_SKIP);
+			long bottom = float2long(vehicleButtons[i].location[2].y + 30 + textSkip());
 
 			mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(vehicleCosts[i]));
 			vehicleFont.render( buffer, left, top, right - left, bottom - top, color, 0, 2 );

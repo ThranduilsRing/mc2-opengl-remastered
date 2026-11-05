@@ -1,5 +1,6 @@
 // Game main: command-line parsing and the GameOS environment setup.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
+#include "mc2_czstring.h"
 #include "mechcmd2_internal.h"
 
 
@@ -55,7 +56,7 @@ static long textToLong (char *num)
 #include "Gates/render_options.h"
 //----------------------------------------------------------------------------
 // Same command line Parser as MechCommander
-void ParseCommandLine(const char *command_line)
+void ParseCommandLine(mc2::czstring command_line)
 {
 	int i;
 	int n_args = 0;
@@ -265,7 +266,7 @@ bool notFirstTime = false;
 
 //
 //
-void __stdcall GetGameOSEnvironment(const char* CommandLine )
+void __stdcall GetGameOSEnvironment(mc2::czstring CommandLine )
 {
 	ParseCommandLine(CommandLine);
 

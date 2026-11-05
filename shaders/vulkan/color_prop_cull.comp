@@ -1,0 +1,59 @@
+// GPU-driven static-prop compaction. One workgroup per type run (a run of instances sharing a typeID in the
+// frame's instance feed). It keeps the instances the HZB pass left visible (all of them when HZB is off),
+// writes their slot numbers in order into compact[first + k] (the run's own slot range, so no cross-run
+// counter exists), and writes the surviving count into instanceCount of every indirect command of the run
+// (one command per packet per draw list: core, fringe, late fringe). The vertex shader reads
+// compact[gl_InstanceIndex]. Ordered: a prefix scan, not atomics, so the draw order and the depth-test
+// outcome are identical to the old uncompacted draw.
+#version 450
+layout(local_size_x = 64) in;
+
+layout(push_constant) uniform CullPC {
+    uint hzbEnabled;
+} pc;
+
+// The HZB pass's visibility words, indexed by instance slot; a placeholder buffer is bound when HZB is off.
+layout(set = 0, binding = 9, std430) readonly buffer HzbVisibility {
+    uint culled;
+    uint visible[];
+} uHzb;
+
+// a = {first, count, coreStart, coreN}, b = {fringeStart, fringeN, lateStart, lateN}; starts index the command array.
+struct PropRun { uvec4 a; uvec4 b; };
+layout(set = 0, binding = 16, std430) readonly buffer Runs { PropRun r[]; } uRuns;
+layout(set = 0, binding = 17, std430) buffer Compact { uint c[]; } uCompact;
+// Words 0..3 are the three list draw counts (CPU-written); VkDrawIndexedIndirectCommand i is words 4+5i..8+5i
+// {indexCount, instanceCount, firstIndex, baseVertex, firstInstance}.
+layout(set = 0, binding = 18, std430) buffer Cmds { uint w[]; } uCmds;
+
+shared uint sScan[64];
+
+void main() {
+    const PropRun run = uRuns.r[gl_WorkGroupID.x];
+    const uint first = run.a.x;
+    const uint count = run.a.y;
+    const uint lid = gl_LocalInvocationID.x;
+    uint base = 0u;
+    for (uint off = 0u; off < count; off += 64u) {
+        const uint k = off + lid;
+        uint flag = 0u;
+        if (k < count) flag = (pc.hzbEnabled == 0u || uHzb.visible[first + k] != 0u) ? 1u : 0u;
+        sScan[lid] = flag;
+        barrier();
+        for (uint d = 1u; d < 64u; d <<= 1u) {
+            const uint v = lid >= d ? sScan[lid - d] : 0u;
+            barrier();
+            sScan[lid] += v;
+            barrier();
+        }
+        if (flag != 0u) uCompact.c[first + base + sScan[lid] - 1u] = first + k;
+        const uint total = sScan[63];
+        barrier();
+        base += total;
+    }
+    for (uint list = 0u; list < 3u; ++list) {
+        const uint start = list == 0u ? run.a.z : (list == 1u ? run.b.x : run.b.z);
+        const uint n     = list == 0u ? run.a.w : (list == 1u ? run.b.y : run.b.w);
+        for (uint c = lid; c < n; c += 64u) uCmds.w[4u + (start + c) * 5u + 1u] = base;
+    }
+}

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "stream.h"
 #include <stdio.h>
 #include <assert.h>
@@ -36,7 +37,7 @@ public:
 	size_t write_word(short sh) override;
 	size_t write_dword(unsigned int i) override;
 	size_t write_float(float f) override;
-	size_t write_cstr(const char* str) override;
+	size_t write_cstr(mc2::czstring str) override;
 
 	size_t read(void* pbuf, size_t size) const override;
 	size_t read(void* pbuf, size_t size, size_t count) const override;
@@ -75,7 +76,7 @@ file_stream::~file_stream(void)
 }
 
 
-int file_stream::open(const char * fpath, const char * mode)
+int file_stream::open(mc2::czstring fpath, mc2::czstring mode)
 {
 	if(_file)
 		fclose(_file);
@@ -122,7 +123,7 @@ size_t file_stream::write_float(float f)
 	return fwrite(&f, 4, 1, _file)*4;
 }
 
-size_t file_stream::write_cstr(const char* str)
+size_t file_stream::write_cstr(mc2::czstring str)
 {
 	assert(_file);
 	if(!str) 

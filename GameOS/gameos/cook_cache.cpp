@@ -67,9 +67,12 @@ bool writeEntry(std::string_view dir, const CacheKind& kind, uint64_t key, std::
         // A successful write is newest by operation order, even when filesystem
         // timestamps tie or the wall clock moves backward.
         std::ranges::sort(entries, [&path](const auto& a, const auto& b) {
-            const bool aNew = a.second == path, bNew = b.second == path;
+            const auto& [aTime, aPath] = a;
+            const auto& [bTime, bPath] = b;
+            const bool aNew = aPath == path;
+            const bool bNew = bPath == path;
             if (aNew || bNew) return aNew && !bNew;
-            return a.first == b.first ? a.second > b.second : a.first > b.first;
+            return aTime == bTime ? aPath > bPath : aTime > bTime;
         });
         for (size_t i = kind.maxFiles; i < entries.size(); ++i)
             if (const auto& victim = std::get<1>(entries[i]); victim != path) fs::remove(victim, ec);

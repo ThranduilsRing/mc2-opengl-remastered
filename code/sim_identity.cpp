@@ -398,8 +398,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	MC2_SIM_TRACE_LINE("RNGF sim={:d} app={:d} wx={:d}", static_cast<uint32_t>(static_cast<uint32_t>(SimRandomDraws())), static_cast<uint32_t>(mc2_appearance_rng::drawCount()), static_cast<uint32_t>(weather ? weather->drawCount() : 0u));
 #endif
 	if (simIdentityTraceDetail()) {
-		for (size_t i = 0; i < recs.size(); ++i) {
-			const MoverRecord& r = recs[i];
+		for (const auto & r : recs) {
 			char hm[17];
 			mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
 			mc2::fmt::print_out("[SIMID v1 mover] simframe={:d} id={:d} vd={} pos={:.4f},{:.4f},{:.4f} rot={:.4f} hp={:.5f} gesture={:d} anim={:d} status={:d} target={:d} brain={:d} mstate={:d} pstep={:d}/{:d}\n", mc2::fmt::as_i32(simFrame), mc2::fmt::as_i32(r.id), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));

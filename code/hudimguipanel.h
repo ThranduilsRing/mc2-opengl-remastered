@@ -64,7 +64,7 @@ namespace HudImGui
 	// fontScaleOut (optional): suggested ImGui font scale so ~13px base text
 	// matches the panel's HUD pixel density.
 	bool beginPanel( const char* id, float hudLeft, float hudTop,
-					 float hudRight, float hudBottom, float* fontScaleOut = 0 );
+					 float hudRight, float hudBottom, float* fontScaleOut = nullptr );
 	void endPanel();
 
 

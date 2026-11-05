@@ -57,6 +57,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
@@ -86,7 +87,8 @@ layout(location = 14) in vec2 vTree;
 flat layout(location = 15) in uvec2 vWindow;
 flat layout(location = 16) in uvec3 vTeam;
 
-// The vertex stage's push block; the FS reads only packetAlphaTest.
+// This draw's PropPacket row (VS: packetBase + gl_DrawID); the packet table the include declares is read through it.
+flat layout(location = 17) in uint vPacketIdx;
 #include "include/prop_packet_vk.glsl"
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color

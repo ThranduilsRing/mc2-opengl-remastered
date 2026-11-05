@@ -224,19 +224,20 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // backends import them as they are (gos_GetTextureTexels).
 DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
                                             const uint8_t* blockData, size_t byteLen,
-                                            const char* name )
+                                            const char* name, gos_TextureFormat format )
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewCompressedTexture2D");
     const bool bc7 = vkFormat == mc2tex::kVkFormatBc7Unorm || vkFormat == mc2tex::kVkFormatBc7Srgb;
-    if(!blockData || !bc7 || w <= 0 || h <= 0 || w > (int)RenderCore::kKtxMaxEdge || h > (int)RenderCore::kKtxMaxEdge ||
+    if(!blockData || !bc7 || w <= 0 || h <= 0 || w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge) ||
        byteLen != mc2tex::bc7LevelBytes(static_cast<uint32_t>(w), static_cast<uint32_t>(h))) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected compressed texture {}: format 0x{:x}, {:d}x{:d}, {:d} bytes",
                 mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_i32(w),
                 mc2::fmt::as_i32(h), mc2::fmt::as_size(byteLen));
         return INVALID_TEXTURE_ID;
     }
-    const uint32_t blockVkFormat =
-        vkFormat;
+    // Legacy shaders treat texture bytes as display-space values (gamma 1.0): an _SRGB view would decode them to linear and
+    // darken the image, so the sidecar path always samples BC7 as UNORM.
+    const uint32_t blockVkFormat = mc2tex::kVkFormatBc7Unorm;
 
     CpuTextureDesc tex;
     tex.w = w;
@@ -245,14 +246,14 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
     tex.has_mipmaps = false;
 
     auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);
-    gosTexture* ptex = new gosTexture(tex, gos_Texture_Solid, name, blockVkFormat, std::move(blocks));
+    gosTexture* ptex = new gosTexture(tex, format, name, blockVkFormat, std::move(blocks));
     return g_gos_renderer->addTexture(ptex);
 }
 
 DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewTerrainNormalTexture");
-    if(!rgbaData || width <= 0 || width > (int)RenderCore::kKtxMaxEdge) {
+    if(!rgbaData || width <= 0 || width > static_cast<int>(RenderCore::kKtxMaxEdge)) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected terrain normal texture: width {:d}", mc2::fmt::as_i32(width));
         return INVALID_TEXTURE_ID;
     }

@@ -13,6 +13,7 @@
 #include"cident.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"heap.h"
 #include<ctype.h>
 
@@ -49,7 +50,7 @@ void FullPathFileName::destroy (void)
 }
 
 //---------------------------------------------------------------------------
-void FullPathFileName::init (const char * dir_path, const char * name, const char * ext, bool do_not_make_lower)
+void FullPathFileName::init (mc2::czstring dir_path, mc2::czstring name, mc2::czstring ext, bool do_not_make_lower)
 {
 	destroy();
 
@@ -75,7 +76,7 @@ void FullPathFileName::init (const char * dir_path, const char * name, const cha
 	    CharLower(fullName);
 }
 
-void FullPathFileName::changeExt (const char *from, const char *to)
+void FullPathFileName::changeExt (mc2::czstring from, mc2::czstring to)
 {
 	if (strlen(from) != strlen(to))
 		return;

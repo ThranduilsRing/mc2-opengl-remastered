@@ -227,9 +227,9 @@ void MPParameterScreen::begin()
 	bHostLeftDlg = 0;
 	bootPlayerID = -1;
 
-	for ( int i = 0; i < MAX_MC_PLAYERS; i++ )
+	for (auto & playerParameter : playerParameters)
 	{
-		playerParameters[i].insigniaName.clear();
+		playerParameter.insigniaName.clear();
 	}
 
 	bWaitingToStart = 0;
@@ -425,17 +425,17 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 						char str[256];
 						cLoadString( IDS_MP_PARAMTERS_BOOT_PROMPT, str, 255 );
 						char finalStr[256];
-						for ( int j = 0; j < MAX_MC_PLAYERS; j++ )
+						for (auto & j : MPlayer->playerList)
 						{
-							if ( MPlayer->playerList[j].commanderID 
+							if ( j.commanderID 
 								== playerParameters[i].getCommanderID() )
 							{
-								sprintf( finalStr, str, MPlayer->playerList[j].name );
+								sprintf( finalStr, str, j.name );
 								LogisticsOKDialog::instance()->setText( IDS_DIALOG_OK, IDS_DIALOG_NO, IDS_DIALOG_YES );
 								LogisticsOKDialog::instance()->setText( finalStr );
 								LogisticsOKDialog::instance()->begin();
 								bBootDlg = true;
-								bootPlayerID = MPlayer->playerList[j].commanderID;
+								bootPlayerID = j.commanderID;
 								return 0;
 							}
 						}
@@ -1553,7 +1553,7 @@ aPlayerParams& aPlayerParams::operator=( const aPlayerParams& src )
 
 	if ( staticCount )
 	{
-		statics = new aObject[staticCount];
+		statics = std::make_unique_for_overwrite<aObject[]>(staticCount);
 
 		for ( int i = 0; i < staticCount; i++ )
 		{
@@ -1565,7 +1565,7 @@ aPlayerParams& aPlayerParams::operator=( const aPlayerParams& src )
 	rectCount = src.rectCount;
 	if ( rectCount )
 	{
-		rects = new aRect[rectCount];
+		rects = std::make_unique_for_overwrite<aRect[]>(rectCount);
 
 		for ( int i = 0; i < rectCount; i++ )
 		{
@@ -1577,7 +1577,7 @@ aPlayerParams& aPlayerParams::operator=( const aPlayerParams& src )
 	textCount = src.textCount;
 	if ( textCount )
 	{
-		textObjects = new aText[textCount];
+		textObjects = std::make_unique_for_overwrite<aText[]>(textCount);
 
 		for ( int i = 0; i < textCount; i++ )
 		{
@@ -1663,7 +1663,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 
 			if ( staticCount )
 			{
-				statics = new aObject[staticCount];
+				statics = std::make_unique_for_overwrite<aObject[]>(staticCount);
 
 				char blockName[128];
 				for ( int i = 0; i < staticCount; i++ )
@@ -1686,7 +1686,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 			file.readIdLong( "rectCount", rectCount );
 			if ( rectCount )
 			{
-				rects = new aRect[rectCount];
+				rects = std::make_unique_for_overwrite<aRect[]>(rectCount);
 
 				char blockName[128];
 				for ( int i = 0; i < rectCount; i++ )
@@ -1710,7 +1710,7 @@ void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
 
 			if ( textCount )
 			{
-				textObjects = new aText[textCount];
+				textObjects = std::make_unique_for_overwrite<aText[]>(textCount);
 				char blockName[64];
 				for ( int i = 0; i < textCount; i++ )
 				{
@@ -1838,18 +1838,9 @@ void aPlayerParams::destroy()
 {
 	removeAllChildren();
 
-	if ( statics )
-		delete [] statics;
-
-	if ( rects )
-		delete [] rects;
-
-	if ( textObjects )
-		delete [] textObjects;
-
-	statics = nullptr;
-	rects = nullptr;
-	textObjects = nullptr;
+	statics.reset();
+	rects.reset();
+	textObjects.reset();
 
 	aObject::destroy();
 }
@@ -2275,7 +2266,7 @@ void aStyle2TextListItem::render()
 	if ( hasAnimation )
 	{
 		if ( animGroup.getState() != getState() )
-			animGroup.setState( (aAnimGroup::STATE)(long)getState() );
+			animGroup.setState( static_cast<aAnimGroup::STATE>((long)getState()) );
 		animGroup.update();
 		color = animGroup.getCurrentColor( animGroup.getState() );
 	}

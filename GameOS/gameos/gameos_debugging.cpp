@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gameos.hpp"
 
 #ifdef LINUX_BUILD
@@ -20,7 +21,7 @@ static int enter_debugger = 0;
 
 static const int MAX_LOG_LINE = 1024;
 
-static void output_debug_text(const char* text)
+static void output_debug_text(mc2::czstring text)
 {
 #ifdef LINUX_BUILD
     fprintf(stderr, "%s", text);
@@ -30,7 +31,7 @@ static void output_debug_text(const char* text)
 
 }
 
-static void logmsg(const char* header, const char* fmt, va_list ap) 
+static void logmsg(mc2::czstring header, const char* fmt, va_list ap) 
 {
 	assert(fmt);
 	if (!strlen(fmt)) return;
@@ -61,7 +62,7 @@ int __cdecl InternalFunctionStop( const char* fmt, ... )
     return enter_debugger;
 }
 
-int __cdecl InternalFunctionStop( const char* Message, const char* value)
+int __cdecl InternalFunctionStop( mc2::czstring Message, mc2::czstring value)
 {
     fprintf(stderr, Message, value);
     return enter_debugger;
@@ -92,7 +93,7 @@ void __cdecl InternalFunctionSpew( const char* Group, const char* fmt, ... )
     va_end(ap);
 }
 
-int __stdcall ErrorHandler( int Flags, const char* Text )
+int __stdcall ErrorHandler( int Flags, mc2::czstring Text )
 {
     // TODO: additionally check flags to decide if enter debugger or not
     fputs(Text, stderr);

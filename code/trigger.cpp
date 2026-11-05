@@ -4,6 +4,7 @@
 
 #ifndef TRIGGER_H
 #include"trigger.h"
+#include <array>
 #include <utility>
 #endif
 
@@ -46,7 +47,7 @@ long TriggerAreaManager::add (long ULrow, long ULcol, long LRrow, long LRcol, lo
 		triggerAreas[i].param = param;
 		triggerAreas[i].hit = false;
 
-		long tileDims[4];
+		std::array<long, 4> tileDims;
 		tileDims[0] = ULrow / 3;
 		tileDims[1] = ULcol / 3 + 1;
 		tileDims[2] = LRrow / 3;
@@ -68,7 +69,7 @@ void TriggerAreaManager::remove (long areaHandle) {
 	if (triggerAreas[areaHandle].param == std::to_underlying(TRIGGER_AREA_NONE))
 		return;
 
-	long tileDims[4];
+	std::array<long, 4> tileDims;
 	tileDims[0] = triggerAreas[areaHandle].dim[0] / 3;
 	tileDims[1] = triggerAreas[areaHandle].dim[1] / 3 + 1;
 	tileDims[2] = triggerAreas[areaHandle].dim[2] / 3;

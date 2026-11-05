@@ -81,10 +81,10 @@ static constexpr int kCallChainMaxDepth = 8;
 static bool s_brainAliasGate() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
 // Forward declaration — defined after aliasToCanonical (used by the dispatch loops above it).
-static const char* resolveVerbAliasToken(const char* verb, char out[256]);
+static const char* resolveVerbAliasToken(mc2::czstring verb, char out[256]);
 
 // ASCII case-insensitive full-string compare (leaf TU — no engine str helpers).
-static bool ciEquals(const char* a, const char* b) {
+static bool ciEquals(mc2::czstring a, mc2::czstring b) {
     while (*a && *b) {
         char ca = (*a >= 'A' && *a <= 'Z') ? static_cast<char>((*a + 32)) : *a;
         char cb = (*b >= 'A' && *b <= 'Z') ? static_cast<char>((*b + 32)) : *b;
@@ -200,7 +200,7 @@ static const char* const kRecognizedVerbs[] = {
     nullptr  // sentinel
 };
 
-static bool isRecognizedVerb(const char* verb) {
+static bool isRecognizedVerb(mc2::czstring verb) {
     // Verbs are stored as full "verb arg..." tokens; match only the verb part
     // (up to the first whitespace) so "Brain.CorePower false" recognizes as
     // "Brain.CorePower" rather than falling through to UNKNOWN.
@@ -219,7 +219,7 @@ static bool isRecognizedVerb(const char* verb) {
 //            TechSpecial.Call [key]   (bracket-quoted, FIT-safe)
 // outKey must be at least 128 chars.
 // Returns true on success, false on malformed input (missing delimiter, empty key).
-static bool parseCallVerbKey(const char* verbStr, char outKey[128]) {
+static bool parseCallVerbKey(mc2::czstring verbStr, char outKey[128]) {
     outKey[0] = '\0';
     // Skip "TechSpecial.Call" prefix.
     static const char kPrefix[] = "TechSpecial.Call";
@@ -462,7 +462,7 @@ void executeSpecialBody_TraceOnly(const BrainSpecialBody& body, int wid, VarStor
 //   "coreEject"  → "Unit.Eject"
 //   "corePower"  → "Brain.CorePower" (future; mapped here for completeness)
 // Returns the canonical form if the input is a known alias; otherwise returns input unchanged.
-static const char* aliasToCanonical(const char* verb) {
+static const char* aliasToCanonical(mc2::czstring verb) {
     if (std::strcmp(verb, "coreEject") == 0)
         return "Unit.Eject";
     // BRAIN-ALIAS-COREVERBS-1: carver_v_enhanced emits Brain.CoreEject (657 uses) — a
@@ -503,7 +503,7 @@ static AliasEntry g_aliasRegistry[kAliasRegistryCap];
 static int       g_aliasRegistryCount = 0;
 
 // Add (or overwrite by alias name). Returns false when the cap is hit.
-static bool aliasRegistryAdd(const char* alias, const char* canonical) {
+static bool aliasRegistryAdd(mc2::czstring alias, mc2::czstring canonical) {
     if (!alias || !canonical || alias[0] == '\0' || canonical[0] == '\0')
         return false;
     for (int i = 0; i < g_aliasRegistryCount; ++i) {
@@ -542,7 +542,7 @@ static void aliasRegistrySeed() {
 // canonical (case-insensitive), or (3) a kRecognizedVerbs entry (case-insensitive),
 // rewrite the token to the canonical spelling into `out` and return `out`.
 // Returns `verb` unchanged when no rewrite is needed.
-static const char* resolveVerbAliasToken(const char* verb, char out[256]) {
+static const char* resolveVerbAliasToken(mc2::czstring verb, char out[256]) {
     if (!s_brainAliasGate()) return verb;
     const char* te = verb;
     while (*te && *te != ' ' && *te != '\t') ++te;
@@ -684,7 +684,7 @@ bool bodyHasEffect(const BrainSpecialBody& body) {
 // wait/flow bookkeeping fields.
 
 // True if the verb token is a flow-control verb (WAIT / WAIT_UNTIL / STOP).
-static bool isFlowControlVerbToken(const char* v) {
+static bool isFlowControlVerbToken(mc2::czstring v) {
     if (std::strncmp(v, "WAIT_UNTIL", 10) == 0 && (v[10] == ' ' || v[10] == '\t' || v[10] == '\0'))
         return true;
     if (std::strncmp(v, "WAIT", 4) == 0 && (v[4] == ' ' || v[4] == '\t' || v[4] == '\0'))
@@ -713,7 +713,7 @@ bool brainFlowActiveForBody(const BrainSpecialBody& body) {
 // True if vpCanon is one of the GENERAL-slot effect verbs (the once-per-mission orders).
 // Used for the per-verb-index refire guard while flow gating is active.
 // OPORD.CorePatrol is intentionally excluded — patrolActive is its own re-emit guard.
-static bool isGeneralEffectVerbToken(const char* v) {
+static bool isGeneralEffectVerbToken(mc2::czstring v) {
     if (std::strcmp(v, "Brain.CorePower false") == 0) return true;
     if (std::strcmp(v, "Unit.Eject") == 0)            return true;
     if (std::strcmp(v, "OPORD.CoreGuard") == 0)       return true;
@@ -765,7 +765,7 @@ static void flowMarkFired(MechBrainRuntime* rt, uint16_t verbIdx) {
 // Parse the WAIT_UNTIL condition:  WAIT_UNTIL Var "<key>" == <value> [scope=Mission]
 // (key accepts "..." or [...] delimiters — same FIT-safe forms as Var.Set).
 // Returns false on malformed input.
-static bool parseWaitUntilCondition(const char* verbStr, char outKey[32], char outValue[32],
+static bool parseWaitUntilCondition(mc2::czstring verbStr, char outKey[32], char outValue[32],
                                      bool* outMissionScope) {
     outKey[0] = '\0'; outValue[0] = '\0'; *outMissionScope = false;
     const char* p = verbStr + 10;  // past "WAIT_UNTIL"
@@ -2023,7 +2023,7 @@ static const int kMaxBodies       = 256;
 //
 // Helper: parse a quoted string value from "key = \"...\""  or  "key = [...]".
 // Returns the value token or "" on failure.
-static std::string parseQuotedField(const char* p) {
+static std::string parseQuotedField(mc2::czstring p) {
     while (*p == ' ' || *p == '\t') ++p;
     char closeDelim = '\0';
     if (*p == '"')      closeDelim = '"';
@@ -2035,7 +2035,7 @@ static std::string parseQuotedField(const char* p) {
     return std::string(p, end);
 }
 
-static bool parseBrainSpecialBody_RawScan(const char* fitPath, BrainSpecialBody& outBody,
+static bool parseBrainSpecialBody_RawScan(mc2::czstring fitPath, BrainSpecialBody& outBody,
                                            SpecialIndex* outIndex,
                                            std::string* outChosenKey = nullptr) {
     std::ifstream inFile(fitPath);
@@ -2342,7 +2342,7 @@ static bool parseBrainSpecialBody_RawScan(const char* fitPath, BrainSpecialBody&
 // This is the original parseBrainSpecialBody implementation, renamed.
 //
 // FORBIDDEN-CALL CONTRACT: calls FitIniFile API only. No order functions.
-static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& outBody) {
+static bool parseBrainSpecialBody_FitIni(mc2::czstring fitPath, BrainSpecialBody& outBody) {
     FitIniFile fit;
 
     if (fit.open(fitPath) != NO_ERR) {
@@ -2399,7 +2399,7 @@ static bool s_brainScopeGlobalGate() { return mc2::brainpolicy::techBrain(); }  
 // Derive "<dir-of-missionFitPath>/global_specials.fit" and raw-scan it into gIndex.
 // Returns true if the file existed and contained at least one TechSpecial block.
 // No-op (false) when the gate is OFF.
-static bool parseGlobalSpecials(const char* missionFitPath, SpecialIndex& gIndex) {
+static bool parseGlobalSpecials(mc2::czstring missionFitPath, SpecialIndex& gIndex) {
     if (!s_brainScopeGlobalGate()) return false;
     char gpath[256];
     const char* lastSlash = nullptr;
@@ -2546,7 +2546,7 @@ static void appendGlobalSpecials(SpecialIndex* outIndex, SpecialIndex& gIndex) {
 //
 // Caller passes missionName like "mc2_01" (no path prefix, no extension).
 // Returns true if at least one verb was loaded.
-bool parseBrainSpecialBody(const char* missionName, BrainSpecialBody& outBody,
+bool parseBrainSpecialBody(mc2::czstring missionName, BrainSpecialBody& outBody,
                             SpecialIndex* outIndex) {
     outBody.verbs.clear();
     outBody.loaded = false;
@@ -2626,7 +2626,7 @@ void resetMissionSpecialCache() {
     g_missionSpecialCached = false;
 }
 
-void cacheMissionSpecialBody(const char* specialFitName) {
+void cacheMissionSpecialBody(mc2::czstring specialFitName) {
     resetMissionSpecialCache();
     if (parseBrainSpecialBody(specialFitName, g_missionSpecialBody, &g_missionSpecialIndex)) {
         g_missionSpecialCached = g_missionSpecialBody.loaded;
@@ -2650,7 +2650,7 @@ bool applyCachedSpecialBodyToRuntime(MechBrainRuntime* rt) {
 // Explicit-path variant of parseBrainSpecialBody for offline harness use.
 // Directly opens fitPath without the "data/missions/<name>_specials.fit" construction.
 // Same scanner logic (raw brace-block first, FitIni fallback).
-bool parseBrainSpecialBodyFromPath(const char* fitPath, BrainSpecialBody& outBody,
+bool parseBrainSpecialBodyFromPath(mc2::czstring fitPath, BrainSpecialBody& outBody,
                                     SpecialIndex* outIndex) {
     outBody.verbs.clear();
     outBody.loaded = false;

@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gameos.hpp"
 #include "gameos_music_cache.h"
 #include "gos_profiler.h"
@@ -170,8 +171,8 @@ bool SoundEngine::init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool
     gosASSERT(NUM_CHANNELS == num_allocated_chanels);
 
     memset(&channel_info_, 0, sizeof(channel_info_));
-    for(int i=0;i<NUM_CHANNELS;++i) {
-        channel_info_[i].ePlayMode = gosAudio_Stop;
+    for(auto & i : channel_info_) {
+        i.ePlayMode = gosAudio_Stop;
         //Mix_Volume(i, 127);
     }
 
@@ -226,7 +227,7 @@ void gos_DestroyAudio() {
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
 //
-void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, const char* file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
+void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, mc2::czstring file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
 {
     gosASSERT(hgosaudio);
     if(!g_sound_engine) { *hgosaudio = nullptr; return; }   // --headless: no audio engine

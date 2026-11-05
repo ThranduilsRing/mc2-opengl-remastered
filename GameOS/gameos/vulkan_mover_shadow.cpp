@@ -84,8 +84,8 @@ bool MoverShadowState::cacheGeometry(const Mc2ShadowGeomFeed& feed, const void* 
             const uint32_t pk = feed.typeFirstPacket[t]+k;
             if (pk >= feed.packetCount) break;
             const auto& packet = feed.packets[pk];
-            for (uint64_t index=packet.firstIndex; index<uint64_t(packet.firstIndex)+packet.indexCount && index<ni; ++index) {
-                const uint64_t vertex = uint64_t(ib[index])+packet.baseVertex;
+            for (uint64_t index=packet.firstIndex; index<static_cast<uint64_t>(packet.firstIndex)+packet.indexCount && index<ni; ++index) {
+                const uint64_t vertex = static_cast<uint64_t>(ib[index])+packet.baseVertex;
                 if (vertex >= nv) continue;
                 float p[3]; std::memcpy(p,vb+vertex*feed.vertexStride,sizeof(p));
                 bounds.lo.x=(std::min)(bounds.lo.x,p[0]); bounds.hi.x=(std::max)(bounds.hi.x,p[0]);
@@ -150,7 +150,7 @@ void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
         Vec3 lo{1e30f,1e30f,1e30f}, hi{-1e30f,-1e30f,-1e30f};
         float scale=0;
         for (uint32_t k=begin;k<end;++k) {
-            const float* b=bones+size_t(k)*16;
+            const float* b=bones+static_cast<size_t>(k)*16;
             const Vec3 p{-b[12],b[14],b[13]};
             lo.x=(std::min)(lo.x,p.x); hi.x=(std::max)(hi.x,p.x);
             lo.y=(std::min)(lo.y,p.y); hi.y=(std::max)(hi.y,p.y);
@@ -178,7 +178,7 @@ static bool maskMechRuns(const std::vector<Mc2MechDrawRun>& runs, const std::vec
     if (instActor.empty()) return false;   // unknown: draw everything
     for (size_t k=0;k<runs.size();++k) {
         const auto& r=runs[k];
-        if (uint64_t(r.instanceBase)+r.instanceCount > instActor.size()) { mask[k]=1; continue; }   // cannot map: keep
+        if (static_cast<uint64_t>(r.instanceBase)+r.instanceCount > instActor.size()) { mask[k]=1; continue; }   // cannot map: keep
         bool any=false;
         for (uint32_t i=0;i<r.instanceCount && !any;++i) {
             const int32_t a=instActor[r.instanceBase+i];

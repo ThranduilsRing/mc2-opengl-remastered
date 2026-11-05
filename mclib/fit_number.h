@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -21,13 +22,13 @@
 namespace mc2::fit
 {
 
-inline float textToFloat (const char *num)
+inline float textToFloat (mc2::czstring num)
 {
 	float result = atof(num);
 	return(result);
 }
 
-inline long textToLong (const char *num)
+inline long textToLong (mc2::czstring num)
 {
 	long result = 0;
 
@@ -78,7 +79,7 @@ inline long textToLong (const char *num)
 	return(result);
 }
 
-inline unsigned long textToULong (const char *num)
+inline unsigned long textToULong (mc2::czstring num)
 {
 	unsigned long result = 0;
 

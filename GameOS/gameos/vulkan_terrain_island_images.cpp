@@ -36,7 +36,7 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
     if (!feed.heightCpu || feed.heightBytes == 0) return false;
     const auto gradients = mc2terrain::cookSurfaceGradients(
-        {feed.heightCpu, size_t(feed.heightBytes) / sizeof(float)}, uint32_t(feed.mapSide));
+        {feed.heightCpu, static_cast<size_t>(feed.heightBytes) / sizeof(float)}, static_cast<uint32_t>(feed.mapSide));
     if (!gradients) return false;
     if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
     // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
@@ -105,7 +105,7 @@ bool create_colormap_sampler(TerrainIsland* s) {
 // back as GL_RGBA -> R8G8B8A8_UNORM; do NOT double-encode sRGB).
 bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture,
                           VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount) {
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,size_t(byteCount),false);
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,static_cast<size_t>(byteCount),false);
     if (!texture) return false;
     outTexture=std::move(texture); return true;
 }
@@ -135,7 +135,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.colormapBytes || feed.colormapVersion == 0) return;                          // atlas not built yet -> stay olive
     const std::array<float, 9> params = {feed.atlasTopLeftX, feed.atlasTopLeftY, feed.atlasOneOverWorldUnits,
         feed.shoreFieldBounds[0], feed.shoreFieldBounds[1], feed.shoreFieldBounds[2], feed.shoreFieldBounds[3],
-        feed.shorelineWaterElev, float(feed.shoreFieldIsSdf != 0 && feed.shoreFieldTexels != nullptr)};
+        feed.shorelineWaterElev, static_cast<float>(feed.shoreFieldIsSdf != 0 && feed.shoreFieldTexels != nullptr)};
     if (feed.colormapVersion == s->colormapVersionImported && s->colormapReady &&
         feed.shoreFieldVersion == s->colormapShoreVersionImported && params == s->colormapCookParams) return;
     s->colormapReady = false; // a failed mission replacement must never reuse the previous mission's color
@@ -148,20 +148,20 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         std::vector<uint8_t> decoded;
         std::span<const uint8_t> rgba = atlas.bytes;
         if (atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Unorm || atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb) {
-            decoded = mc2tex::decodeBc7(atlas.bytes, uint32_t(atlas.width), uint32_t(atlas.height));
+            decoded = mc2tex::decodeBc7(atlas.bytes, static_cast<uint32_t>(atlas.width), static_cast<uint32_t>(atlas.height));
             rgba = decoded;
         }
         mc2terrain::SurfaceCookInput input;
         input.rgba = rgba; input.srgb = atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb;
-        input.colorWidth = uint32_t(atlas.width); input.colorHeight = uint32_t(atlas.height);
+        input.colorWidth = static_cast<uint32_t>(atlas.width); input.colorHeight = static_cast<uint32_t>(atlas.height);
         input.topLeftX = feed.atlasTopLeftX; input.topLeftY = feed.atlasTopLeftY;
         input.worldSpan = feed.atlasOneOverWorldUnits > 0 ? 1.0f / feed.atlasOneOverWorldUnits : 0;
         input.outputWidth = std::min(input.colorWidth * 2, mc2terrain::SurfaceAsset::kMaxSide);
         input.outputHeight = std::min(input.colorHeight * 2, mc2terrain::SurfaceAsset::kMaxSide);
         input.followCoast = params[8] != 0 && feed.shoreFieldW > 1 && feed.shoreFieldH > 1;
         if (input.followCoast) {
-            input.shore = {feed.shoreFieldTexels, size_t(feed.shoreFieldW) * size_t(feed.shoreFieldH)};
-            input.shoreWidth = uint32_t(feed.shoreFieldW); input.shoreHeight = uint32_t(feed.shoreFieldH);
+            input.shore = {feed.shoreFieldTexels, static_cast<size_t>(feed.shoreFieldW) * static_cast<size_t>(feed.shoreFieldH)};
+            input.shoreWidth = static_cast<uint32_t>(feed.shoreFieldW); input.shoreHeight = static_cast<uint32_t>(feed.shoreFieldH);
             std::copy(feed.shoreFieldBounds, feed.shoreFieldBounds + 4, input.shoreBounds.begin());
         }
         input.waterElevation = feed.shorelineWaterElev;
@@ -186,7 +186,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 // computed, with sRGB's dark-end precision); alpha is the cooked breakup in [0,1]. Half the VRAM
                 // of the former R16G16B16A16_SFLOAT upload (64 MB vs 128 MB at 4096^2).
                 const auto packStart = std::chrono::steady_clock::now();
-                const auto toByte = [](float v) { return uint8_t(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); };
+                const auto toByte = [](float v) { return static_cast<uint8_t>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); };
                 const auto encode = [&](float v) {
                     v = std::clamp(v, 0.0f, 1.0f);
                     return toByte(input.srgb ? (v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f) : v);
@@ -194,8 +194,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 std::vector<uint32_t> packedColors(surface.macroColor.size());
                 for (size_t i = 0; i < packedColors.size(); ++i) {
                     const auto& c = surface.macroColor[i];
-                    packedColors[i] = uint32_t(encode(c[0])) | uint32_t(encode(c[1])) << 8 | uint32_t(encode(c[2])) << 16 |
-                                      uint32_t(toByte(c[3])) << 24;
+                    packedColors[i] = static_cast<uint32_t>(encode(c[0])) | static_cast<uint32_t>(encode(c[1])) << 8 | static_cast<uint32_t>(encode(c[2])) << 16 |
+                                      static_cast<uint32_t>(toByte(c[3])) << 24;
                 }
                 const double packMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-packStart).count();
                 const auto uploadStart = std::chrono::steady_clock::now();
@@ -209,7 +209,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     write_descriptors(s);
                     const double uploadMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-uploadStart).count();
                     vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f pack_ms=%.1f enqueue_ms=%.1f.", surface.width, surface.height,
-                         static_cast<unsigned long long>(source), int(input.followCoast), cookOrigin, resolveMs, packMs, uploadMs);
+                         static_cast<unsigned long long>(source), static_cast<int>(input.followCoast), cookOrigin, resolveMs, packMs, uploadMs);
                     return;
                 }
             }
@@ -330,8 +330,8 @@ void import_materials(TerrainIsland* s) {
     const uint32_t w = std::min(surface.width, 1024u);
     const uint32_t h = std::min(surface.height, 1024u);
     if (!baseSame || s->materialW != w || s->materialH != h) {
-        s->materialBase = mc2terrain::cookSurfaceMaterials(surface, types.texels, uint32_t(types.width),
-                              control.texels, uint32_t(control.width), w, h, g_terrainMaterialProfile == 1);
+        s->materialBase = mc2terrain::cookSurfaceMaterials(surface, types.texels, static_cast<uint32_t>(types.width),
+                              control.texels, static_cast<uint32_t>(control.width), w, h, g_terrainMaterialProfile == 1);
         s->materialW = w; s->materialH = h;
         s->materialProfile = g_terrainMaterialProfile;
     }
@@ -340,12 +340,12 @@ void import_materials(TerrainIsland* s) {
     // Composite the hard-surface coverage over texels [x0,x1) x [y0,y1) of the cached base weights.
     const auto composite = [&](uint32_t x0, uint32_t x1, uint32_t y0, uint32_t y1) {
         for (uint32_t y = y0; y < y1; ++y) for (uint32_t x = x0; x < x1; ++x) {
-            const float wx = s->colormapCookParams[0] + (float(x)+0.5f) / w * span;
-            const float wy = s->colormapCookParams[1] - (float(y)+0.5f) / h * span;
+            const float wx = s->colormapCookParams[0] + (static_cast<float>(x)+0.5f) / w * span;
+            const float wy = s->colormapCookParams[1] - (static_cast<float>(y)+0.5f) / h * span;
             const float coverage = gos_terrain_indirect_HardSurfaceCoverage(wx, wy);
-            const size_t i = (size_t(y)*w+x)*4;
-            for (size_t k=0;k<3;++k) s->materialFinal[i+k] = uint8_t(std::lround(base[i+k] * (1.0f-coverage)));
-            s->materialFinal[i+3] = std::max(base[i+3], uint8_t(std::lround(coverage*255)));
+            const size_t i = (static_cast<size_t>(y)*w+x)*4;
+            for (size_t k=0;k<3;++k) s->materialFinal[i+k] = static_cast<uint8_t>(std::lround(base[i+k] * (1.0f-coverage)));
+            s->materialFinal[i+3] = (std::max)(base[i+3], static_cast<uint8_t>(std::lround(coverage*255)));
         }
     };
     const auto dirty = gos_terrain_indirect::TakeHardSurfaceDirty();
@@ -358,7 +358,7 @@ void import_materials(TerrainIsland* s) {
             const auto& q = dirty.rects[r];   // world rect {x0, y0, x1, y1}; invert the texel -> world map above
             const auto tx = [&](float wx) { return (wx - s->colormapCookParams[0]) / span * w - 0.5f; };
             const auto ty = [&](float wy) { return (s->colormapCookParams[1] - wy) / span * h - 0.5f; };
-            const auto clampTo = [](float v, uint32_t hi) { return uint32_t(std::clamp(v, 0.0f, float(hi))); };
+            const auto clampTo = [](float v, uint32_t hi) { return static_cast<uint32_t>(std::clamp(v, 0.0f, static_cast<float>(hi))); };
             if (!(span > 0)) break;
             composite(clampTo(std::floor(tx(q[0])), w), clampTo(std::ceil(tx(q[2])) + 1.0f, w),
                       clampTo(std::floor(ty(q[3])), h), clampTo(std::ceil(ty(q[1])) + 1.0f, h));
@@ -422,7 +422,7 @@ void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 bool upload_sampled_image_array(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture,
                                 VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers,
                                 const void* bytes, VkDeviceSize byteCount) {
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,size_t(byteCount),false,layers,true);
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(width,height,fmt,bytes,static_cast<size_t>(byteCount),false,layers,true);
     if (!texture) return false;
     outTexture=std::move(texture); return true;
 }
@@ -468,7 +468,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         if (cooked.version == s->matNormalCookedVersion && cookedLive) return;
         const bool cookedTried = cooked.version == s->matNormalCookedVersion;
         s->matNormalCookedVersion = cooked.version;
-        const uint32_t side = uint32_t(cooked.image->width);
+        const uint32_t side = static_cast<uint32_t>(cooked.image->width);
         RenderCore::TextureKey key;
         key.source = RenderCore::makeTextureSourceId("terrain-detail-normals", "bc7-array", cooked.version);
         key.format = cooked.image->vkFormat; key.hints = gosHint_MipmapFilter0;
@@ -733,7 +733,7 @@ void import_concrete_detail(TerrainIsland* s) {
         vlog("CLIFF-ROCK: rock set absent, unusable or switched off; steep faces keep the base look.");
     }
     const uint32_t layers = rock ? 4u : 2u;
-    auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(uint32_t(w), uint32_t(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, layers, true);
+    auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(static_cast<uint32_t>(w), static_cast<uint32_t>(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, layers, true);
     if (tex) {
         s->concreteDetailPending = std::move(tex);
         s->cliffRockPresent = rock;

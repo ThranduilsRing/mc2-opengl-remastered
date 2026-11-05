@@ -168,6 +168,7 @@ set(ASSET_VIEWER_SOURCES
     LegacyImageDecoder.cpp
     Ktx2Decoder.cpp
     "${CMAKE_SOURCE_DIR}/RenderCore/KtxLoader.cpp"
+    "${CMAKE_SOURCE_DIR}/RenderCore/KtxBasis.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/gameos/utils/Image.cpp"
     # engine-independent override-manifest parser (validates/round-trips models.json)
     "${CMAKE_SOURCE_DIR}/mclib/model_override_registry.cpp"
@@ -261,7 +262,7 @@ target_include_directories(mc2_asset_viewer PRIVATE
     ${MC2R_AV_SDL_INCLUDE_DIRS}
 )
 
-target_link_libraries(mc2_asset_viewer PRIVATE imgui mc2_gate mc2_build_identity)
+target_link_libraries(mc2_asset_viewer PRIVATE imgui mc2_gate mc2_build_identity basisu_transcoder)
 
 # Assimp (glTF importer only, per root CMake ASSIMP_BUILD_GLTF_IMPORTER=ON).
 target_link_libraries(mc2_asset_viewer PRIVATE assimp::assimp)
