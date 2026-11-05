@@ -40,6 +40,7 @@
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
 #include "gos_postprocess.h"
 #include "vulkan_color_prop_island.h"
@@ -1323,11 +1324,9 @@ bool upload_geometry_once(ColorPropIsland* s) {
         const VkBufferCopy vertices{0, 0, vboBytes}, indices{0, 0, iboBytes};
         vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
         vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
-        VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-                             0, 1, &barrier, 0, nullptr, 0, nullptr);
+        mc2vk::sync::cmdMemoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                      VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
+                                      VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT);
     }, "colorprop_geometry_upload")) {
         vlog("geometry upload failed (copy submit); retrying next frame.");
         s->vbo.reset();

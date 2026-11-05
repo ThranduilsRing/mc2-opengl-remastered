@@ -5,6 +5,7 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "mc2_diag_verbose.h"
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -20,11 +21,12 @@ struct alignas(16) CullParams { float mvp[16]; uint32_t counts[4]; float options
 static_assert(sizeof(CullParams)==96);
 void bufferBarrier(VkCommandBuffer cb,VkBuffer buffer,VkPipelineStageFlags srcStage,VkAccessFlags srcAccess,
                    VkPipelineStageFlags dstStage,VkAccessFlags dstAccess,VkDeviceSize bytes=VK_WHOLE_SIZE) {
-    VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
-    barrier.srcAccessMask=srcAccess; barrier.dstAccessMask=dstAccess;
-    barrier.srcQueueFamilyIndex=barrier.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
-    barrier.buffer=buffer; barrier.offset=0; barrier.size=bytes;
-    vkCmdPipelineBarrier(cb,srcStage,dstStage,0,0,nullptr,1,&barrier,0,nullptr);
+    mc2vk::sync::BarrierBatch batch;
+    mc2vk::sync::BufferBarrierRec r;
+    r.buffer=reinterpret_cast<uint64_t>(buffer); r.offset=0; r.size=bytes;
+    r.srcStages=srcStage; r.srcAccess=srcAccess; r.dstStages=dstStage; r.dstAccess=dstAccess;
+    batch.buffer(r);
+    mc2vk::sync::flush(mc2vk::getOrCreateEngineVulkanContext(),cb,batch);
 }
 
 struct NativeCull final : mc2vk::IslandState {
