@@ -627,8 +627,8 @@ bool init_island(ShadowIsland* s, int size) {
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
-            if (!mc2vk::create(s->frameFence[par], s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
+        for (auto & frameFenceElem : s->frameFence) {
+            if (!mc2vk::create(frameFenceElem, s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
                 vlog("frame fence failed."); return false;
             }
         }

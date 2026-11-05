@@ -215,7 +215,7 @@ struct SpatialAA::Impl {
     }
     OwnedPipeline makeGraphics(VkShaderModule vs, VkShaderModule fs) {
         VkPipelineShaderStageCreateInfo stages[2]{};
-        for (int i = 0; i < 2; ++i) { stages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; stages[i].pName = "main"; }
+        for (auto & stage : stages) { stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; stage.pName = "main"; }
         stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vs;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = fs;
         VkPipelineVertexInputStateCreateInfo vi{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};

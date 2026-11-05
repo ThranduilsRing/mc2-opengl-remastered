@@ -677,9 +677,9 @@ bool init_island(TerrainIsland* s, int w, int h) {
         ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;    // reverse-Z GEQUAL
 
         VkPipelineColorBlendAttachmentState cba[2]{};
-        for (int k = 0; k < 2; ++k) {
-            cba[k].blendEnable = VK_FALSE;                      // opaque in-place overwrite
-            cba[k].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        for (auto & cbaElem : cba) {
+            cbaElem.blendEnable = VK_FALSE;                      // opaque in-place overwrite
+            cbaElem.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         }
         VkPipelineColorBlendStateCreateInfo cb{};

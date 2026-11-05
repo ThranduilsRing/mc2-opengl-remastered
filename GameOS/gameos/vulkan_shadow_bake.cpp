@@ -803,7 +803,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         const VkDescriptorBufferInfo win{instances_.get(), 0, VK_WHOLE_SIZE};
         const VkDescriptorBufferInfo obj{objectInstances_.get(), 0, VK_WHOLE_SIZE};
         VkWriteDescriptorSet w[4]{};
-        for (int i = 0; i < 4; ++i) { w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[i].descriptorCount = 1; }
+        for (auto & wElem : w) { wElem.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wElem.descriptorCount = 1; }
         w[0].dstSet = windowCasterSet_; w[0].dstBinding = 0; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &ubo;
         w[1].dstSet = windowCasterSet_; w[1].dstBinding = 1; w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &win;
         w[2].dstSet = objectCasterSet_; w[2].dstBinding = 0; w[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[2].pBufferInfo = &ubo;
@@ -835,7 +835,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         VkDescriptorImageInfo si[4];
         for (int i = 0; i < 4; ++i) si[i] = {VK_NULL_HANDLE, scratchView_[i].get(), VK_IMAGE_LAYOUT_GENERAL};
         VkWriteDescriptorSet w[10]{};
-        for (int i = 0; i < 10; ++i) { w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[i].dstSet = computeSet_; w[i].descriptorCount = 1; }
+        for (auto & wElem : w) { wElem.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wElem.dstSet = computeSet_; wElem.descriptorCount = 1; }
         w[0].dstBinding = 0; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &tile;
         w[1].dstBinding = 9; w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[1].pBufferInfo = &pass;
         w[2].dstBinding = 1; w[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[2].pImageInfo = &raw;
@@ -1266,7 +1266,7 @@ void ShadowBake::writeIncrementalSets(uint32_t par) {
     const VkDescriptorBufferInfo ubo{incCasterUbo_.get(), 0, sizeof(CasterUBO)};
     const VkDescriptorBufferInfo insts{incInstances_.get(), 0, VK_WHOLE_SIZE};
     VkWriteDescriptorSet w[12]{};
-    for (int i = 0; i < 12; ++i) { w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[i].dstSet = incComputeSet_[par]; w[i].descriptorCount = 1; }
+    for (auto & wElem : w) { wElem.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wElem.dstSet = incComputeSet_[par]; wElem.descriptorCount = 1; }
     w[0].dstBinding = 0; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &tile;
     w[1].dstBinding = 9; w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[1].pBufferInfo = &pass;
     w[2].dstBinding = 1; w[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[2].pImageInfo = &raw;

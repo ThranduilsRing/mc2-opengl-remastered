@@ -408,11 +408,11 @@ void Build() {
         // Dump several recipes spread across the map to spot uniformity bugs.
         const size_t n = g_recipes.size();
         const size_t dumps[] = { 0, n/8, n/4, n/2, n*3/4, n-1 };
-        for (size_t di = 0; di < sizeof(dumps)/sizeof(dumps[0]); ++di) {
-            if (dumps[di] >= n) continue;
-            const WaterRecipe& r = g_recipes[dumps[di]];
+        for (const auto dump : dumps) {
+            if (dump >= n) continue;
+            const WaterRecipe& r = g_recipes[dump];
             const bool uniform_elev = (r.v0e == r.v1e && r.v1e == r.v2e && r.v2e == r.v3e);
-            mc2::fmt::print_err("[WATER_STREAM v1] event=recipe[{:d}] elev=({:.1f},{:.1f},{:.1f},{:.1f}) {} v0=({:.0f},{:.0f}) v3=({:.0f},{:.0f}) quadIdx={:d}\n", mc2::fmt::as_size(dumps[di]), static_cast<double>(r.v0e), static_cast<double>(r.v1e), static_cast<double>(r.v2e), static_cast<double>(r.v3e), mc2::fmt::safe(uniform_elev ? "[UNIFORM]" : "[VARIED]"), static_cast<double>(r.v0x), static_cast<double>(r.v0y), static_cast<double>(r.v3x), static_cast<double>(r.v3y), mc2::fmt::as_u32(r.quadIdx));
+            mc2::fmt::print_err("[WATER_STREAM v1] event=recipe[{:d}] elev=({:.1f},{:.1f},{:.1f},{:.1f}) {} v0=({:.0f},{:.0f}) v3=({:.0f},{:.0f}) quadIdx={:d}\n", mc2::fmt::as_size(dump), static_cast<double>(r.v0e), static_cast<double>(r.v1e), static_cast<double>(r.v2e), static_cast<double>(r.v3e), mc2::fmt::safe(uniform_elev ? "[UNIFORM]" : "[VARIED]"), static_cast<double>(r.v0x), static_cast<double>(r.v0y), static_cast<double>(r.v3x), static_cast<double>(r.v3y), mc2::fmt::as_u32(r.quadIdx));
         }
         fflush(stderr);
     }

@@ -197,13 +197,13 @@ void gosRenderer::destroy() {
     gosMesh::destroy(text_);
 
     // delete fonts before textures, because they refer them
-    for(size_t i=0; i<fontList_.size(); i++) {
-        while(gosFont::destroy(fontList_[i])) {};
+    for(auto & fontElem : fontList_) {
+        while(gosFont::destroy(fontElem)) {};
     }
     fontList_.clear();
 
-    for(size_t i=0; i<textureList_.size(); i++) {
-        delete textureList_[i];
+    for(auto & textureElem : textureList_) {
+        delete textureElem;
     }
     textureList_.clear();
 
