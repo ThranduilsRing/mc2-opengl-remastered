@@ -754,7 +754,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
 
 // Upload the per-type albedo-layer table (int32 per type) into a layer SSBO
 // (alpha-OFF binding2, or alpha-ON binding5).
-bool cp_replace_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, std::string_view name) {
+static bool cp_replace_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, std::string_view name) {
     mc2vk::OwnedBuffer fresh;
     if (!make_buffer(s, fresh, size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, name)) return false;
     if (buf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(buf), size);
@@ -773,6 +773,8 @@ bool cp_upload_layer_table_into(ColorPropIsland* s, mc2vk::OwnedBuffer& buf,
     }
     void* p = buf.map();
     if (!p) return false;
+    // The binding is VK_WHOLE_SIZE and the shader bounds on .length(): zero the pow2 slack so stale entries never read as valid types.
+    std::memset(p, 0, static_cast<size_t>(*capBytes));
     if (count && layers) std::memcpy(p, layers, static_cast<size_t>(count) * sizeof(int32_t));
     else { int32_t neg = -1; std::memcpy(p, &neg, sizeof(neg)); }
     buf.unmap();
@@ -800,8 +802,9 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     }
     void* p = s->hotBuf.map();
     if (!p) return false;
+    // Zero the pow2 slack too: the binding is VK_WHOLE_SIZE and the shader bounds on .length().
+    std::memset(p, 0, static_cast<size_t>(s->hotCapBytes));
     if (!colours.empty()) std::memcpy(p, colours.data(), static_cast<size_t>(bytes));
-    else std::memset(p, 0, static_cast<size_t>(bytes));
     s->hotBuf.unmap();
     s->hotCpu = colours;
     if (rebound && s->inited) write_descriptors(s);
