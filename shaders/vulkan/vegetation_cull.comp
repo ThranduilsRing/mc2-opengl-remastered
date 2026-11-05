@@ -1,30 +1,62 @@
 // Vegetation GPU cull: one workgroup per region. Region sphere vs frustum planes and MC2_VEG_MAX_DIST, then the per-instance
-// planes, block visibility, distance fade and screen-size density thinning. Survivors are rank-compacted in population order
-// inside the region; cutout depth makes visibility independent of population order.
+// planes, block visibility, distance fade and screen-size density thinning. Survivors are counted per region (subgroupAdd, one
+// LDS atomic per wave). The last workgroup to finish (done counter in args[10]) runs the exclusive prefix over the counts and writes
+// the indirect draw arguments, so there is no separate one-workgroup scan pass. Cutout depth makes visibility independent of
+// population order.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_memory_scope_semantics : require
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
 shared uint s_count;
+shared uint s_last;
+shared uint s_sub[64];
 void main() {
-    uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
-    if (r >= P.counts.x) return;
+    // Indirect dispatch: one workgroup per VISIBLE region (vegetation_region), w indexes visList.
+    uint w = gl_WorkGroupID.x, visible = args[12];
     uint lid = gl_LocalInvocationIndex;
-    VegRegion R = region[r];
+    VegRegion R = region[visList[w]];
     bool force = P.flags.x != 0u;
-    if (!force) {
-        bool outside = false;
-        for (int k = 0; k < 4; ++k)
-            if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
-        float range = P.cam.w + R.sphere.w;
-        if (outside || distance(R.sphere.xyz, P.cam.xyz) > range) { if (lid == 0u) counts[r] = 0u; return; }
-    }
+    if (lid == 0u) s_count = 0u;
+    barrier();
     uint localCount = 0u;
     for (uint id = R.first + lid; id < R.last; id += 64u)
         if (survives(unpackVegetation(inst[id]), force)) ++localCount;
-    if (lid == 0u) s_count = 0u;
+    uint waveSum = subgroupAdd(localCount);
+    if (subgroupElect()) atomicAdd(s_count, waveSum);
     barrier();
-    atomicAdd(s_count, localCount);
+    if (lid == 0u) {
+        counts[w] = s_count;
+        memoryBarrierBuffer();
+        s_last = atomicAdd(args[10], 1u, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsAcquireRelease) == visible - 1u ? 1u : 0u;
+    }
     barrier();
-    if (lid == 0u) counts[r] = s_count;
+    if (s_last == 0u) return;
+    memoryBarrierBuffer();
+    // Last workgroup: exclusive prefix over the visible regions' survivor counts, then the indirect draw arguments.
+    uint regions = visible;
+    uint per = (regions + 63u) / 64u, start = min(lid * per, regions), stop = min(start + per, regions);
+    uint sum = 0u;
+    for (uint i = start; i < stop; ++i) sum += counts[i];
+    uint incl = subgroupInclusiveAdd(sum);
+    uint tot = subgroupAdd(sum);
+    if (subgroupElect()) s_sub[gl_SubgroupID] = tot;
+    barrier();
+    uint base = 0u, total = 0u;
+    for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) base += t; total += t; }
+    uint run = base + incl - sum, cap = P.flags.w, drawn = min(total, cap);
+    // Over the visible cap every region keeps the same fraction of its survivors (compact picks them evenly), so the cap thins
+    // the whole view instead of dropping the regions that come last in population order. offsets[] become scaled starts.
+    float ratio = total > cap ? float(cap) / float(total) : 1.0;
+    for (uint i = start; i < stop; ++i) { offsets[i] = total > cap ? min(uint(float(run) * ratio), cap) : run; run += counts[i]; }
+    if (lid == 0u) {
+        // The vegetation card is two instanced eight-vertex strips (first vertex 0 and 8).
+        args[0] = 8u; args[1] = drawn; args[2] = 0u; args[3] = 0u;
+        args[4] = 8u; args[5] = drawn; args[6] = 8u; args[7] = 0u;
+        args[8] = drawn;
+        args[9] = total;    // unclamped survivors, read back for the once-per-run cap log
+        args[10] = 0u;      // re-arm the done counter for the next frame
+    }
 }

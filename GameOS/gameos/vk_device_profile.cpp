@@ -30,10 +30,16 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     if (c.usableApi() >= makeApi(1, 1)) {             // physical-device properties2 is core from 1.1
         VkPhysicalDeviceIDProperties id{};
         id.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+        VkPhysicalDeviceSubgroupProperties sg{};
+        sg.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+        id.pNext = &sg;
         VkPhysicalDeviceProperties2 props2{};
         props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         props2.pNext = &id;
         vkGetPhysicalDeviceProperties2(pd, &props2);
+        c.subgroupSize = sg.subgroupSize;
+        c.subgroupStages = sg.supportedStages;
+        c.subgroupOps = sg.supportedOperations;
         c.deviceLuidValid = id.deviceLUIDValid == VK_TRUE;
         for (size_t i = 0; i < sizeof(c.deviceLuid); ++i) c.deviceLuid[i] = id.deviceLUID[i];
     }

@@ -86,6 +86,11 @@ struct DeviceCaps {
     uint32_t maxBoundDescriptorSets = 0;
     uint32_t maxPushConstantsSize = 0;
     uint64_t maxStorageBufferRange = 0;
+    // VkPhysicalDeviceSubgroupProperties (core 1.1): the wave width and which stages / operation classes may use subgroup ops. Bits are the Vulkan values
+    // (stage COMPUTE = 0x20; BASIC = 1, VOTE = 2, ARITHMETIC = 4, BALLOT = 8).
+    uint32_t subgroupSize = 0;
+    uint32_t subgroupStages = 0;
+    uint32_t subgroupOps = 0;
     // The Windows adapter identity of the device (VkPhysicalDeviceIDProperties::deviceLUID, the bytes of a LUID); valid only when the driver says so.
     uint8_t deviceLuid[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     bool deviceLuidValid = false;
@@ -117,7 +122,7 @@ struct Evaluation {
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget", "sampler_anisotropy", "depth_formats"};
+                                                "dynamic_rendering", "synchronization2", "independent_blend", "subgroup_compute", "memory_budget", "sampler_anisotropy", "depth_formats"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
@@ -189,6 +194,11 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     const bool independentBlend = c.independentBlend;
     add("independent_blend", Need::Required, independentBlend, Route::Core);
     if (independentBlend) e.enabledFeatures.push_back("independentBlend");
+
+    // Compute shaders use subgroup ballot / arithmetic (vegetation compaction, water append); every target GPU has them. Needs 1.1 SPIR-V: the shaders are built for vulkan1.2.
+    constexpr uint32_t kSubgroupComputeStage = 0x20u, kSubgroupNeeded = 1u | 4u | 8u;   // basic + arithmetic + ballot
+    const bool subgroup = (c.subgroupStages & kSubgroupComputeStage) != 0 && (c.subgroupOps & kSubgroupNeeded) == kSubgroupNeeded;
+    add("subgroup_compute", Need::Required, subgroup, Route::Limit);
 
     // Optional: the VRAM report is the driver's number when the device has it and VMA's own estimate when it does not.
     const bool budget = c.hasExtension(kExtMemoryBudget);

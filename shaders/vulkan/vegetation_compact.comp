@@ -6,9 +6,11 @@
 // spill into the next region's slots.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
-shared uint s_scan[64];
+shared uint s_sub[64];   // per-subgroup survivor totals for the current 64-instance chunk
 // floor(a*b/n) for a < n, b <= n without 32-bit overflow: exact long division of the 64-bit product.
 uint mulDiv(uint a, uint b, uint n) {
     uint hi, lo;
@@ -23,33 +25,30 @@ uint mulDiv(uint a, uint b, uint n) {
     return q;
 }
 void main() {
-    uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
-    if (r >= P.counts.x || counts[r] == 0u) return;
-    uint start = offsets[r];
-    uint end = r + 1u < P.counts.x ? offsets[r + 1u] : args[8];
+    // Indirect dispatch over the visible regions: w is the position in visList, which also indexes counts[] and offsets[].
+    uint w = gl_WorkGroupID.x;
+    if (counts[w] == 0u) return;
+    uint start = offsets[w];
+    uint end = w + 1u < args[12] ? offsets[w + 1u] : args[8];
     if (end <= start) return;
-    uint quota = end - start, n = counts[r];
-    VegRegion R = region[r];
+    uint quota = end - start, n = counts[w];
+    VegRegion R = region[visList[w]];
     uint lid = gl_LocalInvocationIndex, seen = 0u;
     for (uint c = R.first; c < R.last; c += 64u) {
         uint id = c + lid;
         bool keep = id < R.last && survives(unpackVegetation(inst[id]), P.flags.x != 0u);
-        uint v = keep ? 1u : 0u;
-        s_scan[lid] = v;
+        // Subgroup ballot rank; the per-subgroup totals combine through LDS.
+        uvec4 ballot = subgroupBallot(keep);
+        if (subgroupElect()) s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot);
         barrier();
-        for (uint off = 1u; off < 64u; off <<= 1u) {
-            uint t = lid >= off ? s_scan[lid - off] : 0u;
-            barrier();
-            v += t;
-            s_scan[lid] = v;
-            barrier();
-        }
-        uint j = seen + v - 1u;   // this survivor's rank in the region
+        uint before = 0u, chunk = 0u;
+        for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) before += t; chunk += t; }
+        uint j = seen + before + subgroupBallotExclusiveBitCount(ballot);   // this survivor's rank in the region
         if (keep && j < n) {
             uint slot = mulDiv(j, quota, n);
             if (mulDiv(j + 1u, quota, n) > slot) dense[start + slot] = id;
         }
-        seen += s_scan[63];
+        seen += chunk;
         barrier();
         if (seen >= n) break;
     }

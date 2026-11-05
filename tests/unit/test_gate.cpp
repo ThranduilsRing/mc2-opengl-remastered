@@ -1521,6 +1521,9 @@ vkp::DeviceCaps fullCaps() {
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
     c.maxStorageBufferRange = 0xFFFFFFFFull;
+    c.subgroupSize = 32;
+    c.subgroupStages = 0x20u;
+    c.subgroupOps = 1u | 2u | 4u | 8u;
     return c;
 }
 
@@ -1609,6 +1612,7 @@ TEST_CASE("vk profile: each of the five facilities of the owner ruling, and inde
         {"dynamic_rendering", [](vkp::DeviceCaps& c) { c.dynamicRendering = false; }},
         {"synchronization2", [](vkp::DeviceCaps& c) { c.synchronization2 = false; }},
         {"independent_blend", [](vkp::DeviceCaps& c) { c.independentBlend = false; }},
+        {"subgroup_compute", [](vkp::DeviceCaps& c) { c.subgroupOps = 1u; }},
     };
     for (const Row& r : rows) {
         vkp::DeviceCaps c = fullCaps();
@@ -1714,7 +1718,7 @@ TEST_CASE("vk profile: the line names the device, both versions, what is missing
     const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
     CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
                   "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext,sampler_anisotropy:core,depth_formats:core enabled=timelineSemaphore,bufferDeviceAddress,"
+                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,subgroup_compute:limit,memory_budget:ext,sampler_anisotropy:core,depth_formats:core enabled=timelineSemaphore,bufferDeviceAddress,"
                   "descriptorIndexing,runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,shaderSampledImageArrayDynamicIndexing,dynamicRendering,"
                   "synchronization2,independentBlend,samplerAnisotropy "
                   "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");

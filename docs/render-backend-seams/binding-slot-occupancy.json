@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 255,
+    "glsl_blocks_with_binding": 258,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -468,7 +468,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 3,
         "role": "VegParams",
         "std": "std140",
@@ -786,7 +786,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 4,
         "role": "VegVis",
         "std": "std430",
@@ -1414,7 +1414,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 5,
         "role": "VegInst",
         "std": "std430",
@@ -1800,7 +1800,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 6,
         "role": "VegReg",
         "std": "std430",
@@ -2032,7 +2032,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 7,
         "role": "VegCounts",
         "std": "std430",
@@ -2140,7 +2140,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 8,
         "role": "VegOffsets",
         "std": "std430",
@@ -2238,7 +2238,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 9,
         "role": "VegDense",
         "std": "std430",
@@ -2316,7 +2316,7 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
+        "file": "shaders/vulkan/vegetation_region.comp",
         "line": 10,
         "role": "VegArgs",
         "std": "std430",
@@ -2381,6 +2381,36 @@
         "branch": {
           "1": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_compact.comp",
+        "line": 11,
+        "role": "VegVisList",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_cull.comp",
+        "line": 11,
+        "role": "VegVisList",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_region.comp",
+        "line": 11,
+        "role": "VegVisList",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
       },
       {
         "side": "glsl",
@@ -2981,7 +3011,7 @@
     "shaders/vulkan/terrain_tier1_skirt.vert",
     "shaders/vulkan/vegetation_compact.comp",
     "shaders/vulkan/vegetation_cull.comp",
-    "shaders/vulkan/vegetation_scan.comp",
+    "shaders/vulkan/vegetation_region.comp",
     "shaders/vulkan/vfx_particle.frag",
     "shaders/vulkan/vfx_particle.vert",
     "shaders/vulkan/vfx_vegetation.frag",

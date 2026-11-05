@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "bounds",
           "offset": 0,
-          "type": "_432"
+          "type": "_414"
         }
       ],
       "name": "ProjectedBounds"
@@ -57,7 +57,7 @@
           "matrix_stride": null,
           "name": "types",
           "offset": 0,
-          "type": "_90"
+          "type": "_71"
         }
       ],
       "name": "TypeBounds"

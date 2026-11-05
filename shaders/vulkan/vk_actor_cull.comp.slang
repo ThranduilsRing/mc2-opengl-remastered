@@ -45,9 +45,13 @@ void main(uint3 tid:SV_DispatchThreadID) {
     if ((a.flags&1u)!=0u) { strict=true; dilated=true; }
     bool visible=strict || dilated;
     result[4+i]=visible ? 1u : 0u;
+    // One atomic per counter per wave instead of one per lane.
+    uint nVisible=WaveActiveCountBits(visible), nDilated=WaveActiveCountBits(dilated && !strict), nTotal=WaveActiveCountBits(true);
     uint unused;
-    if (visible) InterlockedAdd(result[0],1u,unused);
-    else InterlockedAdd(result[3],1u,unused);
-    if (dilated && !strict) InterlockedAdd(result[2],1u,unused);
+    if (WaveIsFirstLane()) {
+        if (nVisible>0u) InterlockedAdd(result[0],nVisible,unused);
+        if (nTotal>nVisible) InterlockedAdd(result[3],nTotal-nVisible,unused);
+        if (nDilated>0u) InterlockedAdd(result[2],nDilated,unused);
+    }
     if (i==0u) result[1]=P.counts.y;
 }

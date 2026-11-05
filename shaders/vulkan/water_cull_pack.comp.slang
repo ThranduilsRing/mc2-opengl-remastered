@@ -142,8 +142,10 @@ void main(uint3 tid : SV_DispatchThreadID)
     uint vn2 = r.quadIdx + ms + 1u;
     uint vn3 = r.quadIdx + ms;
 
-    uint outSlot;
-    InterlockedAdd(header[0], 1u, outSlot);
+    // One atomic per wave over the lanes that reach the append; a lane's slot is the wave base plus its rank among them.
+    uint waveBase = 0u;
+    if (WaveIsFirstLane()) InterlockedAdd(header[0], WaveActiveCountBits(true), waveBase);
+    uint outSlot = WaveReadLaneFirst(waveBase) + WavePrefixCountBits(true);
     if (outSlot >= uint(P.misc1.y)) return;
 
     uint mtl0 = terrainTypeToMaterial((r.terrainTypes      ) & 0xFFu);

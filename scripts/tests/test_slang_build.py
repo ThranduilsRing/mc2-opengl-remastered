@@ -78,7 +78,7 @@ def test_compiles_and_emits_package(work):
         with open(os.path.join(out, art), "rb") as f:
             assert f.read(4) == b"\x03\x02\x23\x07"  # SPIR-V magic
     with open(os.path.join(out, idx["slang_probe|frag|"]), "rb") as f:
-        assert f.read(8)[4:6] == b"\x00\x00"  # version word 1.0, same as glslang -V
+        assert f.read(8)[4:8] == b"\x00\x05\x01\x00"  # version word 1.5, same as glslang --target-env vulkan1.2
     assert run_build(work, "--check", "--quiet").returncode == 0
 
 

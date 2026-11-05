@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "recipes",
           "offset": 0,
-          "type": "_271"
+          "type": "_265"
         }
       ],
       "name": "WaterRecipeBuf"
