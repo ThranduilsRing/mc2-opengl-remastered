@@ -131,6 +131,9 @@ int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out);
 // and the caller runs mc2_vk_mech_island_run().
 int mc2_vk_mech_island_enabled();
 
+// Device-local mech VBO/IBO (VkBuffer handles as uint64) shared with the shadow casters; uploads on demand. 0 = not ready.
+int mc2_vk_mech_island_shared_geometry(uint64_t* vbo, uint64_t* ibo, uint32_t* geomGen);
+
 // Per-frame entry. Co-writes the mech instances IN-PLACE into the shared scene
 // GBuffer (LOAD-preserve MRT0+MRT1+depth, GEQUAL reverse-Z, no composite).
 //   w/h — the scene color target size.

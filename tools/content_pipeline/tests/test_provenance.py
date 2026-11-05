@@ -57,7 +57,7 @@ def test_bc7_independent_cooks_match_and_fit_loader(tmp_path, preset):
     assert a.read_bytes() == b.read_bytes()
     assert (a.parent / "cook.json").read_bytes() == (b.parent / "cook.json").read_bytes()
     vk, w, h, levels = texcook.read_ktx2(a.read_bytes())
-    assert (vk, w, h) == (145 if preset == "burnin" else 146, 16, 8)
+    assert (vk, w, h) == (145, 16, 8)   # base_color is UNORM: shaders read raw sRGB bytes at gamma 1.0
     assert [len(x) for x in levels] == ([128] if preset == "burnin" else [128, 32, 16, 16, 16])
     assert src.read_bytes() == original
     with pytest.raises(ValueError, match="overwrite"):

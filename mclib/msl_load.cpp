@@ -375,6 +375,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 // identically to a build that never had the importer compiled in.
 #ifdef ENABLE_ASSIMP_IMPORTER
 #include "assimp_importer.h"
+#include "mech_anim_runtime.h"
 #endif
 
 long TG_TypeMultiShape::LoadFromFile(mc2::czstring baseName)
@@ -387,12 +388,10 @@ long TG_TypeMultiShape::LoadFromFile(mc2::czstring baseName)
 
 
 #ifdef ENABLE_ASSIMP_IMPORTER
-	// Runtime killswitch: MC2_ASSIMP_IMPORT=0 forces legacy ASE for all asset
-	// classes without requiring a rebuild. Default is enabled (any value other
-	// than "0", or env var absent). Compile-time ENABLE_ASSIMP_IMPORTER is the
-	// master gate; this is the per-launch override.
+	// Compile-time ENABLE_ASSIMP_IMPORTER is the only gate (the MC2_ASSIMP_IMPORT
+	// runtime killswitch was retired).
 	{
-		if (true) {
+		{
 			// Probe order: .glb then .fbx. On any importer failure, fall
 			// through to ASE so a broken modder asset can't render the mech
 			// un-loadable. Stock-install playability is paramount.
@@ -458,6 +457,9 @@ void TG_TypeMultiShape::SaveBinaryCopy (mc2::czstring fileName)
 //-------------------------------------------------------------------------------
 void TG_TypeMultiShape::destroy (void)
 {
+#ifdef ENABLE_ASSIMP_IMPORTER
+	mc2mechanim::UnregisterImportedType(this);	// IMPORTED-TYPE-LIFETIME-1: no stale entry / leaked aiScene past the type
+#endif
     stableIdentity_.renew(this);
     contentSockets_.clear();
 	// The owners release the nodes (~TG_TypeNode is virtual, B7o.1: the derived destructor runs destroy() once); the view goes with them.

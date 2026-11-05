@@ -69,11 +69,12 @@ Recipes requesting `repair_inward_hull` report and flip inward outer-hull faces 
 (culled from outside = see-through wall). Collision, passability and LOS
 always come from the stock shapes, whatever renders.
 
-## Texture cook contract (`texcook.py`, `mc2-texcook/1`)
+## Texture cook contract (`texcook.py`, `mc2-texcook/2`)
 
 | Role | Colour space | Block | Mips |
 |---|---|---|---|
-| base_color, emissive | sRGB | BC7_SRGB | linear-light, alpha-premultiplied; MASK keeps level-0 coverage |
+| base_color | sRGB bytes, tagged UNORM (shaders read them raw at gamma 1.0) | BC7 (145) | linear-light, alpha-premultiplied; MASK keeps level-0 coverage |
+| emissive | sRGB | BC7_SRGB | as base_color, opaque |
 | normal | linear (OpenGL +Y) | BC5 (Z rebuilt at runtime) | averaged + renormalised |
 | orm (R AO, G rough, B metal, A coverage) | linear | BC7 | box |
 
@@ -96,7 +97,7 @@ same records for newly cooked outputs; skipping an existing file does not attest
 common CPU texconv encoder (`-nogpu`, one thread) and KTX2 writer, bypassing the cache.
 The default `burnin` preset preserves the shipped colormap's linear UNORM, mip-0-only
 contract (vkFormat 145); `--preset base_color` cooks baked kit/remade building images
-with sRGB and a complete mip chain (146). Building images must have power-of-two edges.
+with sRGB-encoded bytes tagged UNORM and a complete mip chain (145). Building images must have power-of-two edges.
 Neither preset resizes the source. Keep JPG/TGA fallbacks; this command does not deploy
 or change runtime probe order. Compare two independent output trees, including their
 `cook.json` files, before publishing. Stored BC7 remains lossy relative to its source;

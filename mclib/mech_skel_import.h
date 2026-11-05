@@ -14,6 +14,7 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -60,5 +61,28 @@ bool EvaluateClipGpuBones(const aiScene* scene,
 void EvaluateRestGpuBones(const aiScene* scene,
                           const std::vector<std::string>& boneNames,
                           std::vector<GpuBone>& out);
+
+// ---- Prebuilt plan (S3): node tree flattened once, bone->node and channel tables, so the
+// per-frame path does no std::map / std::string work. Build one per imported skeleton (the plan
+// borrows `scene` pointers: it must not outlive the scene). Output is identical to the
+// scene-based overloads above, which build a throwaway plan per call.
+struct SkelPlan;
+std::shared_ptr<const SkelPlan> BuildPlan(const aiScene* scene, const std::vector<std::string>& boneNames);
+
+// The MC2_MECH_IMPORT_FORCE_POSE diagnostic lives only in the scene-based overload.
+bool EvaluateClipGpuBones(const SkelPlan& plan, std::string_view clip, float frame,
+                          std::vector<GpuBone>& out,
+                          double* outTimeTicks = nullptr, double* outDurTicks = nullptr);
+
+// Clip cross-fade: the local TRS of both clips is blended (lerp pos/scale, slerp+normalise rot)
+// by weightB in [0,1] BEFORE the FK walk; joint globals do not interpolate, so this is the only
+// correct place to blend. weightB<=0 is exactly clipA, >=1 exactly clipB. False if either clip
+// is missing. A pure function of its arguments: the caller keeps the fade clock in its own state.
+bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
+                               std::string_view clipA, float frameA,
+                               std::string_view clipB, float frameB,
+                               float weightB, std::vector<GpuBone>& out);
+
+void EvaluateRestGpuBones(const SkelPlan& plan, std::vector<GpuBone>& out);
 
 }  // namespace mc2skel
