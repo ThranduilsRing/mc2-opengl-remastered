@@ -269,3 +269,9 @@ def test_presubmit_warns_when_the_tip_lacks_the_box_clang_fix(monkeypatch, capsy
 
 def test_copy_back_never_tars_the_home_dir_when_the_out_dir_is_missing():
     assert box_run.BACK.startswith("cd {out} || exit 0;")
+
+
+def test_deploy_never_requires_files_the_lane_tree_did_not_build():
+    # a lane without crashpad (e.g. shadow-redirty) has no build64-ninja/crashpad_handler: deploy copies it only when present
+    assert "[ -f build64-ninja/$opt ] &&" in box_run.REMOTE
+    assert "DEPLOY FAILED: crashpad_handler" not in box_run.REMOTE
