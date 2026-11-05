@@ -410,6 +410,7 @@ bool VulkanContext::init(bool wantPresent) {
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
         profileLog(health_.profileLine);
+        ctxlog("subgroup size=%u stages=0x%x ops=0x%x", caps.subgroupSize, caps.subgroupStages, caps.subgroupOps);
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         props.pNext = caps.usableApi() >= profile::kFloorApi ? &driver : nullptr;

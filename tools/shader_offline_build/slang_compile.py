@@ -1,7 +1,7 @@
 """slang_compile.py - Slang (.slang) -> Vulkan SPIR-V for build_variants.py.
 
-Targets the same SPIR-V as the GLSL Vulkan path (glslangValidator -V default =
-Vulkan 1.0 / SPIR-V 1.0): `-profile spirv_1_0`. Override per pilot with the
+Targets the same SPIR-V as the GLSL Vulkan path (glslangValidator --target-env
+vulkan1.2 = SPIR-V 1.5): `-profile spirv_1_5`. Override per pilot with the
 `spirv` key in the pilots manifest if a shader needs a newer profile.
 See docs/shaders-slang.md.
 """
@@ -18,8 +18,8 @@ import shader_common  # noqa: E402
 import console_child  # noqa: E402
 
 SLANG_STAGE = {"vert": "vertex", "frag": "fragment", "comp": "compute"}
-DEFAULT_PROFILE = "spirv_1_0"
-# 50011 = "SPIR-V version too old" (1.0 is deliberate: matches the GLSL path).
+DEFAULT_PROFILE = "spirv_1_5"
+# 50011 = "SPIR-V version too old" (1.5 matches glslang --target-env vulkan1.2).
 DISABLED_WARNINGS = "50011"
 
 

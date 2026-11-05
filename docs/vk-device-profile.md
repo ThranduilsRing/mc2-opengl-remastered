@@ -22,6 +22,7 @@ facility deletes the older arm instead of keeping it.
 | `dynamic_rendering` | required | core 1.3 when device and instance have it, else `VK_KHR_dynamic_rendering` | device refused |
 | `synchronization2` | required | core 1.3 when device and instance have it, else `VK_KHR_synchronization2` | device refused |
 | `independent_blend` | required | core 1.0 feature `independentBlend` | device refused |
+| `subgroup_compute` | required | core 1.1 `VkPhysicalDeviceSubgroupProperties`: compute stage plus basic, arithmetic and ballot ops (size and ops are logged in the `subgroup size=` context line); shaders build as SPIR-V 1.5 | device refused |
 | `sampler_anisotropy` | optional | core 1.0 `samplerAnisotropy` | vegetation keeps trilinear mips; no change to the hardware floor |
 | `memory_budget` | optional | `VK_EXT_memory_budget` | the VRAM line is VMA's own estimate, not the OS's number (reported in `wanted_missing`, never a refusal) |
 

@@ -440,14 +440,14 @@ if(MC2_VULKAN)
             if(MC2_GLSLANG_VALIDATOR)
                 add_custom_command(
                     OUTPUT "${_spv}"
-                    COMMAND "${MC2_GLSLANG_VALIDATOR}" -V ${_defs} "${_src}" -o "${_spv}"
+                    COMMAND "${MC2_GLSLANG_VALIDATOR}" -V --target-env vulkan1.2 ${_defs} "${_src}" -o "${_spv}"
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslang): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
             else()
                 add_custom_command(
                     OUTPUT "${_spv}"
-                    COMMAND "${MC2_GLSLC}" ${_defs} "${_src}" -o "${_spv}"
+                    COMMAND "${MC2_GLSLC}" --target-env=vulkan1.2 ${_defs} "${_src}" -o "${_spv}"
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslc): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)

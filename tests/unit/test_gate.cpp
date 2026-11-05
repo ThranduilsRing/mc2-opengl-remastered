@@ -1520,6 +1520,9 @@ vkp::DeviceCaps fullCaps() {
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
     c.maxStorageBufferRange = 0xFFFFFFFFull;
+    c.subgroupSize = 32;
+    c.subgroupStages = 0x20u;
+    c.subgroupOps = 1u | 2u | 4u | 8u;
     return c;
 }
 
@@ -1608,6 +1611,7 @@ TEST_CASE("vk profile: each of the five facilities of the owner ruling, and inde
         {"dynamic_rendering", [](vkp::DeviceCaps& c) { c.dynamicRendering = false; }},
         {"synchronization2", [](vkp::DeviceCaps& c) { c.synchronization2 = false; }},
         {"independent_blend", [](vkp::DeviceCaps& c) { c.independentBlend = false; }},
+        {"subgroup_compute", [](vkp::DeviceCaps& c) { c.subgroupOps = 1u; }},
     };
     for (const Row& r : rows) {
         vkp::DeviceCaps c = fullCaps();
