@@ -282,6 +282,9 @@ extern float g_pbrV1RoughnessOverrideValue;
 namespace gos_static_prop_batcher_detail {
 extern uint64_t s_sharedVboBytes;
 extern uint64_t s_sharedIboBytes;
+extern uint64_t s_meshoptTris;
+extern double   s_meshoptMissesBefore;
+extern double   s_meshoptMissesAfter;
 extern uint32_t s_frameSlot;
 extern size_t   s_instanceCapacity;
 extern size_t   s_colorCapacity;

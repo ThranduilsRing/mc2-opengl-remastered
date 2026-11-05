@@ -311,7 +311,17 @@ include_directories("${CMAKE_SOURCE_DIR}")
 # gos_hdri.cpp needs tinyexr.h (defines TINYEXR_IMPLEMENTATION).
 include_directories("${CMAKE_SOURCE_DIR}/3rdparty/tinyexr")
 
+# meshoptimizer subset (vertex cache / overdraw / fetch ordering) for the static-prop batcher.
+add_library(mc2_meshopt STATIC
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/allocator.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vcacheoptimizer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vcacheanalyzer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/overdrawoptimizer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vfetchoptimizer.cpp")
+target_include_directories(mc2_meshopt PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src")
+
 add_library(gameos ${SOURCES})
+target_link_libraries(gameos PRIVATE mc2_meshopt)
 mc2_enable_pch(gameos)
 # KtxLoader.cpp lives in rendercore (STATIC) and is called from
 # gos_static_prop_batcher.cpp. Make the dependency explicit so CMake
@@ -520,7 +530,7 @@ endif()
 set(GAMEOS_EDITOR_SOURCES ${SOURCES})
 list(REMOVE_ITEM GAMEOS_EDITOR_SOURCES gos_render.cpp)
 add_library(gameos_editor ${GAMEOS_EDITOR_SOURCES})
-target_link_libraries(gameos_editor PRIVATE rendercore)
+target_link_libraries(gameos_editor PRIVATE rendercore mc2_meshopt)
 if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: headers only -- volk owns runtime dispatch.
     target_link_libraries(gameos_editor PRIVATE Vulkan::Headers)
