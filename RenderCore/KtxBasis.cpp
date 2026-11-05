@@ -5,6 +5,10 @@
 // every consumer (residency upload, decode fallback) sees what it sees for a stored BC file.
 // WHY: Basis files are small on disk and transcode to the GPU's native block format in milliseconds; the transcoder is vendored
 // under 3rdparty/basisu (Apache-2.0). 2D single-layer single-face only: no current caller uses arrays or cubes.
+// The vendored headers carry debug asserts that do not compile under clang (ambiguous safe_shift_left); this TU only wraps them.
+#ifndef NDEBUG
+#define NDEBUG 1
+#endif
 #include "KtxLoader.h"
 
 #include <algorithm>
