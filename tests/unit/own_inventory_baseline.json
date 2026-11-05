@@ -3457,18 +3457,16 @@
    ]
   },
   "TG_AnimateShape": {
-   "delete": 3,
+   "delete": 1,
    "delete_array": 0,
    "files": {
     "mclib/bdactor_type.cpp": {
-     "delete": 1,
      "new": 1
     },
     "mclib/genactor.cpp": {
      "new": 1
     },
     "mclib/gvactor.cpp": {
-     "delete": 1,
      "new": 1
     },
     "mclib/mech3d_type.cpp": {
@@ -3479,8 +3477,6 @@
    "new": 4,
    "new_array": 0,
    "owners": [
-    "BldgAppearanceType",
-    "GVAppearanceType",
     "Mech3DAppearanceType"
    ]
   },
@@ -3500,11 +3496,11 @@
    "owners": []
   },
   "TG_TypeMultiShape": {
-   "delete": 24,
+   "delete": 21,
    "delete_array": 0,
    "files": {
     "mclib/bdactor_type.cpp": {
-     "delete": 7,
+     "delete": 5,
      "new": 7
     },
     "mclib/genactor.cpp": {
@@ -3512,7 +3508,7 @@
      "new": 2
     },
     "mclib/gvactor.cpp": {
-     "delete": 4,
+     "delete": 3,
      "new": 6
     },
     "mclib/mech3d_type.cpp": {
@@ -3827,19 +3823,16 @@
    "owners": []
   },
   "UserFile": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "mclib/ablenv.cpp": {
-     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    "UserFile"
-   ]
+   "owners": []
   },
   "UserInput": {
    "delete": 1,
@@ -4810,6 +4803,8 @@
   "code/job_system.cpp": 1,
   "code/logistics.cpp": 1,
   "code/logisticsdata_modify.cpp": 3,
+  "code/logisticsmissioninfo.cpp": 1,
+  "code/logisticspilot.cpp": 2,
   "code/logisticspilotlistbox.cpp": 1,
   "code/logisticsvariant.cpp": 2,
   "code/mainmenu.cpp": 2,
@@ -4837,13 +4832,13 @@
   "gui/UiDefs.cpp": 1,
   "gui/alistbox.cpp": 2,
   "gui/asystem.cpp": 1,
-  "mclib/ablenv.cpp": 1,
+  "mclib/ablenv.cpp": 2,
   "mclib/apprtype.cpp": 3,
   "mclib/bdactor_static.cpp": 2,
   "mclib/bdactor_terrain.cpp": 1,
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
-  "mclib/bdactor_type.cpp": 2,
+  "mclib/bdactor_type.cpp": 5,
   "mclib/effect_resources.cpp": 3,
   "mclib/fastfile.cpp": 1,
   "mclib/genactor.cpp": 1,
@@ -4863,7 +4858,7 @@
   "mclib/gosfx/singleton.cpp": 1,
   "mclib/gosfx/spinningcloud.cpp": 1,
   "mclib/gosfx/tube.cpp": 1,
-  "mclib/gvactor.cpp": 2,
+  "mclib/gvactor.cpp": 4,
   "mclib/gvactor_geometry.cpp": 2,
   "mclib/gvactor_update.cpp": 4,
   "mclib/mech3d.cpp": 6,
