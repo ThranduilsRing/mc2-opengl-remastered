@@ -1,0 +1,13 @@
+# Offline texture-cook encoder (tools only; never linked into the game). Upstream's CMakeLists minus the optional ispc BC7E path.
+cmake_minimum_required(VERSION 3.10)
+project(bc7enc CXX)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+find_package(OpenMP)
+add_executable(bc7enc bc7enc.cpp bc7decomp.cpp bc7decomp_ref.cpp lodepng.cpp test.cpp rgbcx.cpp utils.cpp ert.cpp rdo_bc_encoder.cpp)
+target_compile_options(bc7enc PRIVATE -fno-strict-aliasing)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(bc7enc PRIVATE OpenMP::OpenMP_CXX)
+endif()
+target_link_libraries(bc7enc PRIVATE m)
