@@ -2876,8 +2876,7 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // single level, GL_LINEAR filtering (no mips). Returns INVALID_TEXTURE_ID on
 // failure so callers can fall back to the uncompressed path.
 //
-DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, const uint8_t* BlockData, size_t ByteLen, const char* Name,
-                                            gos_TextureFormat Format = gos_Texture_Solid );
+DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, const uint8_t* BlockData, size_t ByteLen, const char* Name, gos_TextureFormat Format = gos_Texture_Solid );
 
 #define RECT_TEX(width,height) (((height)<<16)|(width))
 

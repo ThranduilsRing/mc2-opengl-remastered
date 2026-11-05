@@ -235,8 +235,9 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
                 mc2::fmt::as_i32(h), mc2::fmt::as_size(byteLen));
         return INVALID_TEXTURE_ID;
     }
-    const uint32_t blockVkFormat =
-        vkFormat;
+    // Legacy shaders treat texture bytes as display-space values (gamma 1.0): an _SRGB view would decode them to linear and
+    // darken the image, so the sidecar path always samples BC7 as UNORM.
+    const uint32_t blockVkFormat = mc2tex::kVkFormatBc7Unorm;
 
     CpuTextureDesc tex;
     tex.w = w;
