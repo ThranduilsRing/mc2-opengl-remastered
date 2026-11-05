@@ -3409,6 +3409,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/gfxr/capture_replay.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/handoff_append.py",
           "line": 42,
           "evidence": "import",
@@ -11535,6 +11542,13 @@
       ]
     },
     {
+      "path": "tools/gfxr/capture_replay.py",
+      "basename": "capture_replay.py",
+      "stem": "capture_replay",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/gpu_abi_gen.py",
       "basename": "gpu_abi_gen.py",
       "stem": "gpu_abi_gen",
@@ -17463,7 +17477,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 498,
+          "line": 517,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
