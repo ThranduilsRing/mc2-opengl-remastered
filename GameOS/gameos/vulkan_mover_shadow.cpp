@@ -178,7 +178,7 @@ static bool maskMechRuns(const std::vector<Mc2MechDrawRun>& runs, const std::vec
     if (instActor.empty()) return false;   // unknown: draw everything
     for (size_t k=0;k<runs.size();++k) {
         const auto& r=runs[k];
-        if (uint64_t(r.instanceBase)+r.instanceCount > instActor.size()) { mask[k]=1; continue; }   // cannot map: keep
+        if (static_cast<uint64_t>(r.instanceBase)+r.instanceCount > instActor.size()) { mask[k]=1; continue; }   // cannot map: keep
         bool any=false;
         for (uint32_t i=0;i<r.instanceCount && !any;++i) {
             const int32_t a=instActor[r.instanceBase+i];

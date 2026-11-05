@@ -25,7 +25,7 @@ void initTranscoder() {
 size_t levelBlockBytes(uint32_t w, uint32_t h, uint32_t level, uint32_t blockBytes) {
     const uint32_t lw = std::max(1u, w >> level);
     const uint32_t lh = std::max(1u, h >> level);
-    return size_t((lw + 3u) / 4u) * ((lh + 3u) / 4u) * blockBytes;
+    return static_cast<size_t>((lw + 3u) / 4u) *((lh + 3u) / 4u) * blockBytes;
 }
 
 }  // namespace
