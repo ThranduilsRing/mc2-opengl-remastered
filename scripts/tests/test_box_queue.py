@@ -275,3 +275,10 @@ def test_deploy_never_requires_files_the_lane_tree_did_not_build():
     # a lane without crashpad (e.g. shadow-redirty) has no build64-ninja/crashpad_handler: deploy copies it only when present
     assert "[ -f build64-ninja/$opt ] &&" in box_run.REMOTE
     assert "DEPLOY FAILED: crashpad_handler" not in box_run.REMOTE
+
+
+def test_unit_row_configures_the_doctest_tier_with_the_box_clang_toolchain():
+    # defect: a bare `cmake -S tests/unit` on the box found no compiler ("CMAKE_CXX_COMPILER not set")
+    i = box_run.REMOTE.index("    unit)")
+    row = box_run.REMOTE[i:box_run.REMOTE.index("    sh:*)", i)]
+    assert "-S tests/unit" in row and "-DCMAKE_CXX_COMPILER=clang++-20" in row and "-DCMAKE_C_COMPILER=clang-20" in row and "mc2_tests" in row and "-stdlib=libc++" in row
