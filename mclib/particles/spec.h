@@ -61,7 +61,7 @@ struct GpuParticle {
 // All producers emit GpuParticle p = {} so kind_flags defaults to 0.
 inline uint8_t  gpu_particle_kind(const GpuParticle& p)          { return (p.kind_flags >> 4) & 0xFu; }
 inline bool     gpu_particle_is_head(const GpuParticle& p)        { return (p.kind_flags & 1u) != 0; }
-inline void     gpu_particle_set_kind(GpuParticle& p, uint8_t k)  { p.kind_flags = (p.kind_flags & ~0xF0u) | ((uint32_t(k) & 0xFu) << 4); }
+inline void     gpu_particle_set_kind(GpuParticle& p, uint8_t k)  { p.kind_flags = (p.kind_flags & ~0xF0u) | ((static_cast<uint32_t>(k) & 0xFu) << 4); }
 inline void     gpu_particle_set_is_head(GpuParticle& p, bool v)  { p.kind_flags = v ? (p.kind_flags | 1u) : (p.kind_flags & ~1u); }
 
 // --- std430 lockstep asserts (plan §5.4 v2 MAJOR-4 fold-in) ---
