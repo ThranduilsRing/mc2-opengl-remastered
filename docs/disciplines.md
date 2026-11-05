@@ -243,9 +243,9 @@ Four tools subagents should NAME instead of rebuilding (AGENT-EFFICIENCY-TOOLS-1
 - **`tools/witness_smoke.py`** — deploy+smoke+log-grep verdict in one call:
   `py -3 tools/witness_smoke.py --install <dir> [--deploy] --mission mc2_01 --expect "<regex>" [--forbid "<regex>"]`
   → smoke table + per-expect FOUND/MISSING; exit 0 only if smoke passed + all expects + no forbids.
-- **`tools/build_quiet.py`** — VS CMake build with spew swallowed:
-  `py -3 tools/build_quiet.py [--target mc2] [--config RelWithDebInfo]`
-  → errors verbatim, warning COUNT, final `vcxproj ->` line, elapsed; exit = cmake exit.
+- **`scripts/ninja_build.py`** — Ninja build with spew swallowed (replaced tools/build_quiet.py):
+  `py -3 scripts/ninja_build.py [target]`
+  → one verdict line; errors verbatim; exit = ninja exit.
 - **`tools/list_free_ordinals.py`** — free (undefined) compbas ordinals for modding:
   `py -3 tools/list_free_ordinals.py --compbas <compbas.csv | install-dir>`
   (install dir → auto-extracts from misc.fst via `tools/mc2x_import/fst.py`, whose

@@ -38,8 +38,8 @@ after the source albedo** so MC2's importer derives the matching on-disk `.tga`.
 
 ## Helpers
 
-- `blender_runner.py` — locate Blender (`BLENDER_EXECUTABLE` env or standard paths)
-  and run a headless bpy script. Used by the inspect/render helpers.
+- Blender discovery and headless runs use `tools/blender_pipeline/blender_runner.py`
+  (`BLENDER_EXECUTABLE` env or standard paths).
 - `inspect_fbx.py` — dump objects/materials/UVs of an FBX/GLB (recon).
 - `render_glb.py` — headless WORKBENCH textured render to PNG for QA.
 

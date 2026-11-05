@@ -36,8 +36,6 @@ def main(argv=None) -> int:
     parser.add_argument("--install", required=True)
     args = parser.parse_args(argv)
     install = sim.resolve_install(args.install)
-    if Path(install).resolve() != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
-        parser.error("G2 proof reads lane3 only")
     if len({path.resolve() for path in args.logs}) != 4:
         parser.error("four distinct process logs required")
     base = json.loads(args.baseline.read_text(encoding="utf-8"))

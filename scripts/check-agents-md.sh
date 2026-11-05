@@ -15,7 +15,7 @@ fail() { echo "[check-agents-md] FAIL: $1" >&2; exit 1; }
 [ -f AGENTS.md ] || fail "AGENTS.md missing beside CLAUDE.md"
 grep -q "CLAUDE.md" AGENTS.md || fail "AGENTS.md no longer points at CLAUDE.md"
 
-for t in tools/build_quiet.py tools/witness_smoke.py tools/menu_oracle.py \
+for t in scripts/ninja_build.pytools/witness_smoke.py tools/menu_oracle.py \
          tools/list_free_ordinals.py tools/mc2x_import/fst.py \
          tools/repo_intel/repo_query.py scripts/deploy_payload.py scripts/run_smoke.py; do
     [ -f "$t" ] || fail "AGENTS.md references missing tool: $t"
