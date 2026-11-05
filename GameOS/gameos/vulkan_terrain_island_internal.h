@@ -302,6 +302,10 @@ struct TerrainIsland : mc2vk::IslandState {
     // fence like the UBO. Grow-only (device-idle on regrow, rare).
 
     std::unordered_map<uint32_t, PatchMesh> patchCache;
+    // Per engine slot: [patch records][skirt records][patch commands][skirt commands] for the indirect terrain draws. Grow-only; the slot's
+    // fence is waited before the slot is rewritten (same contract as the per-parity light buffers).
+    mc2vk::OwnedBuffer drawBuf[mc2vk::kMaxFramesInFlight];
+    VkDeviceSize       drawBufCap[mc2vk::kMaxFramesInFlight] = {};
     // TERRAIN-HIRES-NEAR-DIAG: per-chunk mode-1 meshes whose quad diagonals follow the bake (key: span + block origin),
     // valid for one bake version; cleared (device idle) when the bake changes.
     std::unordered_map<uint64_t, PatchMesh> diagPatchCache;
@@ -413,8 +417,10 @@ struct TerrainPatchConstants {
     int32_t quadCountX, quadCountY;
     int32_t edgeStitch, visualMode;
     float skirtDepth;
+    int32_t pad = 0;
 };
-static_assert(sizeof(TerrainPatchConstants) == 28);
+// One record per indirect draw, read by the vertex shader through buffer device address (LOCKSTEP with TerrainPatchRec in terrain_patch.glsl).
+static_assert(sizeof(TerrainPatchConstants) == 32);
 
 // Run-piece helpers the overlay piece also calls.
 bool ensure_island_ready(int w, int h);

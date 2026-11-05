@@ -371,25 +371,83 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     // Opaque patches write depth. Submit the nearest chunks first so the early
     // depth test rejects hidden terrain before running the material shader.
     drawnOut = 0; skirtDrawnOut = 0;
+    // One record (TerrainPatchConstants, read through buffer device address by gl_DrawID) and one VkDrawIndexedIndirectCommand per draw. Draws
+    // stay in distance order; a run of consecutive draws that share a mesh is one vkCmdDrawIndexedIndirect (the vertex/index buffers are bound
+    // per run, the push constant carries the run's first record). All patches draw first, then all skirt strips: they are opaque, depth-tested
+    // and write depth, so the order between the two kinds only moves early-Z efficiency.
+    struct Cmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
+    struct Run { const void* mesh; uint32_t first, count; };
+    std::vector<TerrainPatchConstants> recs;           // patches, then skirt edges
+    std::vector<Cmd> cmds;                             // same indexing as recs
+    std::vector<const SkirtMesh*> skirtMeshOf;         // per skirt record
+    recs.reserve(draws.size() * 2); cmds.reserve(draws.size() * 2);
+    for (const TerrainDraw& d : draws) { recs.push_back(d.patch); cmds.push_back({d.pm->indexCount, 1, 0, 0, 0}); }
+    const uint32_t patchN = static_cast<uint32_t>(recs.size());
     for (const TerrainDraw& d : draws) {
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(d.patch), &d.patch);
-        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-        VkDeviceSize vboOff = 0;
-        { const VkBuffer vb = d.pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
-        vkCmdBindIndexBuffer(cb, d.pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
-        mc2::battlebench::add(mc2::battlebench::DrawTerrain), vkCmdDrawIndexed(cb, d.pm->indexCount, 1, 0, 0, 0);
-        ++drawnOut;
-        if (d.sm) {
-            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
-            VkDeviceSize svboOff = 0;
-            { const VkBuffer vb = d.sm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &svboOff); }
-            vkCmdBindIndexBuffer(cb, d.sm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
-            for (int e = 0; e < 4; ++e) {
-                if (((d.skirtMask >> e) & 1u) == 0u) continue;
-                if (d.sm->edgeCount[e] == 0) continue;
-                mc2::battlebench::add(mc2::battlebench::DrawTerrain), vkCmdDrawIndexed(cb, d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0);
-                ++skirtDrawnOut;
+        if (!d.sm) continue;
+        for (int e = 0; e < 4; ++e) {
+            if (((d.skirtMask >> e) & 1u) == 0u || d.sm->edgeCount[e] == 0) continue;
+            recs.push_back(d.patch); cmds.push_back({d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0});
+            skirtMeshOf.push_back(d.sm);
+        }
+    }
+    const uint32_t totalN = static_cast<uint32_t>(recs.size());
+    if (totalN != 0) {
+        const VkDeviceSize recBytes = static_cast<VkDeviceSize>(totalN) * sizeof(TerrainPatchConstants);
+        const VkDeviceSize need = recBytes + static_cast<VkDeviceSize>(totalN) * sizeof(Cmd);
+        if (s->drawBufCap[par] < need || !s->drawBuf[par]) {
+            const VkDeviceSize cp = std::max<VkDeviceSize>(need + need / 2, 4096);
+            s->drawBuf[par].reset();
+            if (!make_buffer(s, s->drawBuf[par], cp, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, true, "terrain.drawRecs", static_cast<int>(par))) return false;
+            s->drawBufCap[par] = cp;
+        }
+        if (!s->drawBuf[par].upload(recs.data(), recBytes, 0) || !s->drawBuf[par].upload(cmds.data(), totalN * sizeof(Cmd), recBytes)) return false;
+    }
+    const VkBuffer drawBuf = s->drawBuf[par].get();
+    const VkDeviceAddress recBase = s->drawBuf[par].deviceAddress();
+    const VkDeviceSize cmdBase = static_cast<VkDeviceSize>(totalN) * sizeof(TerrainPatchConstants);
+    auto drawRuns = [&](const std::vector<Run>& runs, bool skirt) {
+        for (const Run& r : runs) {
+            const PatchMesh* pm = skirt ? nullptr : static_cast<const PatchMesh*>(r.mesh);
+            const SkirtMesh* sm = skirt ? static_cast<const SkirtMesh*>(r.mesh) : nullptr;
+            const VkBuffer vb = skirt ? sm->vbo.get() : pm->vbo.get();
+            const VkBuffer ib = skirt ? sm->ibo.get() : pm->ibo.get();
+            const VkDeviceSize vboOff = 0;
+            vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff);
+            vkCmdBindIndexBuffer(cb, ib, 0, VK_INDEX_TYPE_UINT16);
+            for (uint32_t done = 0; done < r.count;) {
+                const uint32_t n = std::min<uint32_t>(r.count - done, 65535u);   // multiDrawIndirect guarantees at least 65535 per call
+                const uint64_t addr = recBase + static_cast<uint64_t>(r.first + done) * sizeof(TerrainPatchConstants);
+                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(addr), &addr);
+                mc2::battlebench::add(mc2::battlebench::DrawTerrain);
+                vkCmdDrawIndexedIndirect(cb, drawBuf, cmdBase + static_cast<VkDeviceSize>(r.first + done) * sizeof(Cmd), n, sizeof(Cmd));
+                done += n;
             }
+        }
+    };
+    {
+        std::vector<Run> runs;
+        uint32_t i = 0;
+        for (const TerrainDraw& d : draws) {
+            if (!runs.empty() && runs.back().mesh == d.pm) ++runs.back().count; else runs.push_back({d.pm, i, 1});
+            ++i;
+        }
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        drawRuns(runs, false);
+        drawnOut = patchN;
+        const size_t patchRuns = runs.size();
+        runs.clear();
+        for (uint32_t k = 0; k < static_cast<uint32_t>(skirtMeshOf.size()); ++k) {
+            if (!runs.empty() && runs.back().mesh == skirtMeshOf[k]) ++runs.back().count; else runs.push_back({skirtMeshOf[k], patchN + k, 1});
+        }
+        if (!runs.empty()) mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
+        drawRuns(runs, true);
+        skirtDrawnOut = skirtMeshOf.size();
+        static bool s_logged = false;
+        if (!s_logged && patchN != 0) {
+            s_logged = true;
+            vlog("terrain indirect draws (first frame): patches=%u skirtEdges=%lu (was %lu vkCmdDrawIndexed) -> %zu patch runs + %zu skirt runs.",
+                 patchN, skirtDrawnOut, patchN + skirtDrawnOut, patchRuns, runs.size());
         }
     }
 

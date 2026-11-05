@@ -16,6 +16,8 @@
 //   attr1 = int  isSkirtFlag  (R16_SINT,    offset 4)
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_ARB_shader_draw_parameters : require
+#extension GL_EXT_buffer_reference : require
 
 layout(location = 0) in ivec2 localOffset;
 layout(location = 1) in int   isSkirtFlag;
