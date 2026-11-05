@@ -3,14 +3,17 @@
 #include "../../3rdparty/include/nlohmann/json.hpp"
 #include "../include/build_identity.h"
 #include "../../Gates/gate_cold.h"
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#endif
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <mutex>
 #include <thread>
 
+#ifdef _WIN32
 namespace mc2::bridge {
 using Json = nlohmann::json;
 namespace {
@@ -172,3 +175,20 @@ void publish(std::string snapshot, std::string movers) {
 }
 void shutdown() { if (configured()) transport().close(); }
 } // namespace mc2::bridge
+#else
+// The dev transport is Winsock-only. On other platforms it is compiled out: one log line when
+// the owner asked for it, and the game runs without a bridge.
+namespace mc2::bridge {
+bool configured() {
+    static const bool warned = [] {
+        if (mc2::gate::get<"MC2_BRIDGE">()) std::printf("[BRIDGE v0] ev=unsupported protocol=1\n");
+        return true;
+    }();
+    (void)warned;
+    return false;
+}
+bool sampleDue() { return false; }
+void publish(std::string, std::string) {}
+void shutdown() {}
+} // namespace mc2::bridge
+#endif // _WIN32
