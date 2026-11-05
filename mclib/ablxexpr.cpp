@@ -209,7 +209,7 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 		else if (typePtr == CharTypePtr)
 			tos->byte = *(reinterpret_cast<char*>(tos->address));
 		else
-			tos->real = *(reinterpret_cast<float*>(tos->address));
+			tos->real = ablLoadFloat(tos->address);
 	}
 
 	if (debugger) {

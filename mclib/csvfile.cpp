@@ -99,8 +99,7 @@ long CSVFile::countCols (void)
 		currentChk = strstr(currentChk,",");
 	}
 	
-	if (count > maxCols)
-		maxCols = count;
+	maxCols = (std::max)(maxCols, count);
 		
 	readLine(reinterpret_cast<MemoryPtr>(tmp),2047);
 	
