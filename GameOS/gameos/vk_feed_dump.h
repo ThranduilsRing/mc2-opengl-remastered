@@ -22,7 +22,7 @@
 //    "posX":..,"posY":..,"posZ":..}, ...]}
 //   {"island":"mech","instanceCount":N,"boneCount":N,"runCount":N,"instances":[...]}
 //
-// tools/vk_feed_diff.py consumes this format.
+// tools/terrain_feed_compare.py consumes this format.
 #ifndef MC2_VK_FEED_DUMP_H
 #define MC2_VK_FEED_DUMP_H
 
