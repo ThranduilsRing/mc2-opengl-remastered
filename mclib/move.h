@@ -1209,14 +1209,14 @@ struct _GlobalMapDoor {
 	void serialize(mc2::save::Archive& a) {
 		MC2_SAVE_PACKED(a, row); MC2_SAVE_PACKED(a, col);
 		a(length, open, teamID);
-		for (size_t i = 0; i < std::size(area); ++i) MC2_SAVE_PACKED(a, area[i]);
-		for (size_t i = 0; i < std::size(areaCost); ++i) MC2_SAVE_PACKED(a, areaCost[i]);
+		for (size_t i = 0; i < sizeof(area) / sizeof(area[0]);++i) MC2_SAVE_PACKED(a, area[i]);
+		for (size_t i = 0; i < sizeof(areaCost) / sizeof(areaCost[0]);++i) MC2_SAVE_PACKED(a, areaCost[i]);
 		for (auto& v : direction) a(v);
-		for (size_t i = 0; i < std::size(numLinks); ++i) MC2_SAVE_PACKED(a, numLinks[i]);
+		for (size_t i = 0; i < sizeof(numLinks) / sizeof(numLinks[0]);++i) MC2_SAVE_PACKED(a, numLinks[i]);
 		// Reserved pointer slots are not dereferenced; doors_links views are
 		// rebuilt over the loaded link pool. Search parent/fromAreaIndex/flags/
 		// g/hPrime/fPrime are cleared by write() and reinitialized per search.
-		for (size_t i = 0; i < std::size(links_Legacy32bitPtr); ++i) MC2_SAVE_PACKED(a, links_Legacy32bitPtr[i]);
+		for (size_t i = 0; i < sizeof(links_Legacy32bitPtr) / sizeof(links_Legacy32bitPtr[0]);++i) MC2_SAVE_PACKED(a, links_Legacy32bitPtr[i]);
 		MC2_SAVE_PACKED(a, cost); MC2_SAVE_PACKED(a, parent); MC2_SAVE_PACKED(a, fromAreaIndex);
 		MC2_SAVE_PACKED(a, flags); MC2_SAVE_PACKED(a, g); MC2_SAVE_PACKED(a, hPrime); MC2_SAVE_PACKED(a, fPrime);
 	}

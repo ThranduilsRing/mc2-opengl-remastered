@@ -147,8 +147,8 @@ void
 			ShardCloudClassID,
 			"gosFX::ShardCloud",
 			SpinningCloud::DefaultData,
-			(Effect::Factory)&Make,
-			(Specification::Factory)&Specification::Make
+			effectFactoryThunk<&Make>,
+			specificationFactoryThunk<&Specification::Make>
 		);
 	Register_Object(DefaultData);
 }

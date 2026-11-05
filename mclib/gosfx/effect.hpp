@@ -365,6 +365,19 @@ namespace gosFX
 			m_flags;
 	};
 
+	// Class-registry factories are stored as base-class function pointers. Registering a derived Make through a
+	// function-pointer cast calls it through the wrong type (undefined); these thunks convert the arguments and the
+	// result by value instead.
+	template<class Result, class Spec> Spec firstArgOf(Result (*)(Spec, unsigned));
+	template<auto Make> Effect* effectFactoryThunk(Effect::Specification *spec, unsigned flags)
+	{
+		return Make(static_cast<decltype(firstArgOf(Make))>(spec), flags);
+	}
+	template<auto Make> Effect::Specification* specificationFactoryThunk(Stuff::MemoryStream *stream, int gfx_version)
+	{
+		return Make(stream, gfx_version);
+	}
+
 
 	//##########################################################################
 	//########################    Effect__ClassData    #########################

@@ -81,8 +81,8 @@ void
 			PointCloudClassID,
 			"gosFX::PointCloud",
 			ParticleCloud::DefaultData,
-			(Effect::Factory)&Make,
-			(Specification::Factory)&Specification::Make
+			effectFactoryThunk<&Make>,
+			specificationFactoryThunk<&Specification::Make>
 		);
 	Register_Object(DefaultData);
 }
