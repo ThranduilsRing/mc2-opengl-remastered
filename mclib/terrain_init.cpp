@@ -1,6 +1,8 @@
 // Terrain: Terrain::init (mission terrain load), the block / mover list helpers it uses.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "mc2_czstring.h"
+#include <algorithm>
+#include <string>
 #include "terrain_internal.h"
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
@@ -109,19 +111,19 @@ void Terrain::initTerrainTextures(PacketFile* pakFile, volatile float& percent, 
 	if ( !terrainTextures )
 	{
 		ZoneScopedN("Terrain::init terrainTextures");
-		char baseName[256];
+		std::string baseName;
 		if (pakFile)
 		{
-			_splitpath(pakFile->getFilename(),nullptr,nullptr,baseName,nullptr);
+			baseName = std::filesystem::path(pakFile->getFilename()).stem().string();
 		}
 		else
 		{
-			strcpy(baseName,"newmap");
+			baseName = "newmap";
 		}
 
 		terrainTexturesOwner = std::make_unique<TerrainTextures>();
 		terrainTextures = terrainTexturesOwner.get();
-		terrainTextures->init("textures",baseName);
+		terrainTextures->init("textures",baseName.c_str());
 	}
 
 	percent += percentRange/5.f;
@@ -134,24 +136,23 @@ void Terrain::initColorMapTexture(PacketFile* pakFile, volatile float& percent, 
 	if ( !terrainTextures2 && pakFile)
 	{
 		ZoneScopedN("Terrain::init terrainColorMap");
-		char name[1024];
 
-		_splitpath(pakFile->getFilename(),nullptr,nullptr,name,nullptr);
-		terrainNameOwner = std::make_unique<char[]>(strlen(name)+1);
-		strcpy(terrainNameOwner.get(),name);
+		std::string name = std::filesystem::path(pakFile->getFilename()).stem().string();
+		terrainNameOwner = std::make_unique<char[]>(name.size()+1);
+		strcpy(terrainNameOwner.get(),name.c_str());
 		terrainName = terrainNameOwner.get();
 
 		if (colorMapName)
-			strcpy(name,colorMapName);
+			name = colorMapName;
 
 		FullPathFileName tgaColorMapName;
-		tgaColorMapName.init(texturePath,name,".tga");
+		tgaColorMapName.init(texturePath,name.c_str(),".tga");
 		
 		FullPathFileName tgaColorMapBurninName;
-		tgaColorMapBurninName.init(texturePath,name,".burnin.tga");
+		tgaColorMapBurninName.init(texturePath,name.c_str(),".burnin.tga");
 
 		FullPathFileName tgaColorMapJPGName;
-		tgaColorMapJPGName.init(texturePath,name,".burnin.jpg");
+		tgaColorMapJPGName.init(texturePath,name.c_str(),".burnin.jpg");
 				
 		if (fileExists(tgaColorMapName) || fileExists(tgaColorMapBurninName) || fileExists(tgaColorMapJPGName))
 		{
@@ -327,13 +328,8 @@ void Terrain::lodControlMap() {
 			else
 			{
 				const char* nm = terrainName ? terrainName : "";
-				const char* bs = strrchr(nm, '\\');
-				const char* fs = strrchr(nm, '/');
-				const char* slash = (fs > bs) ? fs : bs;
-				char stem[160];
-				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
-				stem[sizeof(stem) - 1] = '\0';
-				if (char* dot = strrchr(stem, '.')) *dot = '\0';
+				const std::string stemStr = std::filesystem::path(nm).stem().string();
+				const char* stem = stemStr.c_str();
 				mc2::fmt::to_buf(cmPath, "data/missions/{}.beauty/control_map.png", mc2::fmt::safe(stem));
 			}
 			FILE* cf = fopen(cmPath, "rb");
@@ -423,13 +419,8 @@ void Terrain::lodOverlayV2() {
 			else
 			{
 				const char* nm = terrainName ? terrainName : "";
-				const char* bs = strrchr(nm, '\\');
-				const char* fs = strrchr(nm, '/');
-				const char* slash = (fs > bs) ? fs : bs;
-				char stem[160];
-				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
-				stem[sizeof(stem) - 1] = '\0';
-				if (char* dot = strrchr(stem, '.')) *dot = '\0';
+				const std::string stemStr = std::filesystem::path(nm).stem().string();
+				const char* stem = stemStr.c_str();
 				mc2::fmt::to_buf(ovPath, "data/missions/{}.beauty/overlay_v2.png", mc2::fmt::safe(stem));
 			}
 			FILE* of = fopen(ovPath, "rb");
@@ -561,13 +552,8 @@ void Terrain::lodShorelineMask() {
 			else
 			{
 				const char* nm = terrainName ? terrainName : "";
-				const char* bs = strrchr(nm, '\\');
-				const char* fs = strrchr(nm, '/');
-				const char* slash = (fs > bs) ? fs : bs;
-				char stem[160];
-				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
-				stem[sizeof(stem) - 1] = '\0';
-				if (char* dot = strrchr(stem, '.')) *dot = '\0';
+				const std::string stemStr = std::filesystem::path(nm).stem().string();
+				const char* stem = stemStr.c_str();
 				mc2::fmt::to_buf(slPath, "data/missions/{}.beauty/shoreline_mask.png", mc2::fmt::safe(stem));
 			}
 			FILE* sf = fopen(slPath, "rb");
@@ -759,13 +745,8 @@ void Terrain::lodWaterShore() {
 			else
 			{
 				const char* nm = terrainName ? terrainName : "";
-				const char* bs = strrchr(nm, '\\');
-				const char* fs = strrchr(nm, '/');
-				const char* slash = (fs > bs) ? fs : bs;
-				char stem[160];
-				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
-				stem[sizeof(stem) - 1] = '\0';
-				if (char* dot = strrchr(stem, '.')) *dot = '\0';
+				const std::string stemStr = std::filesystem::path(nm).stem().string();
+				const char* stem = stemStr.c_str();
 				// SHORE-FIELD-1: the cooked smooth coastline field wins over the raw visual heights
 				// (same bounds contract, any corner-aligned density).
 				std::vector<float> sf;
@@ -855,13 +836,8 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 			else
 			{
 				const char* nm = terrainName ? terrainName : "";
-				const char* bs = strrchr(nm, '\\');
-				const char* fs = strrchr(nm, '/');
-				const char* slash = (fs > bs) ? fs : bs;
-				char stem[160];
-				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
-				stem[sizeof(stem) - 1] = '\0';
-				if (char* dot = strrchr(stem, '.')) *dot = '\0';
+				const std::string stemStr = std::filesystem::path(nm).stem().string();
+				const char* stem = stemStr.c_str();
 				mc2::fmt::to_buf(vhPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
 			if (s_beautySig.state == 2)   // one verdict gates the bake: no read, no damp, no mover stamp, no LOADED line
@@ -909,16 +885,11 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						// mips (legacy layout; coarse bands behave as S2).
 						std::vector<float> vmips;
 						{
-							char mipPath[600];
-							strncpy(mipPath, vhPath, sizeof(mipPath) - 1);
-							mipPath[sizeof(mipPath) - 1] = '\0';
-							char* mbs = strrchr(mipPath, '\\');
-							char* mfs = strrchr(mipPath, '/');
-							char* mSlash = (mfs > mbs) ? mfs : mbs;
-							if (mSlash)
+							const std::filesystem::path mipFsPath = std::filesystem::path(vhPath).replace_filename("visual_height_mips.r32");
+							const std::string mipPathStr = mipFsPath.string();
+							const char* mipPath = mipPathStr.c_str();
+							if (mipFsPath.has_parent_path())
 							{
-								size_t dirLen = static_cast<size_t>((mSlash + 1 - mipPath));
-								mc2::fmt::to_buf_n(mipPath + dirLen, sizeof(mipPath) - dirLen, "visual_height_mips.r32");
 								FILE* mf = fopen(mipPath, "rb");
 								if (mf)
 								{
@@ -1061,11 +1032,11 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						for (int fy = 0; fy < V; ++fy)
 							for (int fx = 0; fx < V; ++fx)
 							{
-								int cx = fx / 4; if (cx > mapSide - 1) cx = mapSide - 1;
-								int cy = fy / 4; if (cy > mapSide - 1) cy = mapSide - 1;
+								int cx = fx / 4; cx = std::min(cx, mapSide - 1);
+								int cy = fy / 4; cy = std::min(cy, mapSide - 1);
 								double d = fabs(static_cast<double>(vh[static_cast<size_t>(fx) + static_cast<size_t>(fy) * V])
 								                - static_cast<double>(elev[static_cast<size_t>(cx) + static_cast<size_t>(cy) * mapSide]));
-								if (d > maxAbs) maxAbs = d;
+								maxAbs = std::max(maxAbs, d);
 								sumAbs += d; ++cnt;
 								if (d > 5.0)  ++moved5;
 								if (d > 50.0) ++moved50;
@@ -1094,13 +1065,11 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							static const bool s_objfadeGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();
 							if (s_objfadeGate)
 							{
-								char dampPath[600];
-								mc2::fmt::to_buf(dampPath, "{}", mc2::fmt::safe(vhPath));
-								char* bs2 = strrchr(dampPath, '\\');
-								char* fs2 = strrchr(dampPath, '/');
-								char* slash2 = (fs2 > bs2) ? fs2 : bs2;
-								if (slash2)
-									mc2::fmt::to_buf_n(slash2 + 1, sizeof(dampPath) - static_cast<size_t>((slash2 + 1 - dampPath)), "visual_damp.r32");
+								std::filesystem::path dampFs(vhPath);
+								if (dampFs.has_parent_path())
+									dampFs.replace_filename("visual_damp.r32");
+								const std::string dampPathStr = dampFs.string();
+								const char* dampPath = dampPathStr.c_str();
 								std::vector<float> damp(static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide), 1.0f);
 								bool haveSidecar = false;
 								if (FILE* df = fopen(dampPath, "rb"))
@@ -1142,7 +1111,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 										if (d <= 0.0)
 										{
 											inner.push_back(eff);
-											if (eff > innerMax) innerMax = eff;
+											innerMax = std::max(innerMax, eff);
 										}
 										else if (d < 0.999)
 											annulus.push_back(eff);
@@ -1304,7 +1273,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 		File cache;
 		if (cache.open(path.c_str()) == NO_ERR) {
 			const auto length = cache.getLength();
-			if (length > 0 && uint64_t(length) <= mc2terrain::SurfaceAsset::kMaxBytes) {
+			if (length > 0 && static_cast<uint64_t>(length) <= mc2terrain::SurfaceAsset::kMaxBytes) {
 				std::vector<uint8_t> bytes(static_cast<size_t>(length));
 				if (cache.read(bytes.data(), length) == static_cast<long>(length))
 					mc2terrain::setSurfaceMissionCook(std::move(bytes));
