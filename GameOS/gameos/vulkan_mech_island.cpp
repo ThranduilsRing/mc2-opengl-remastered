@@ -897,7 +897,7 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
 // dynamic offsets are prepared by mc2_vk_mech_island_run on the main thread; this touches only the command buffer and the island timers.
 static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, int h, const Mc2MechFrameFeed& feed,
                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5],
-                        const Mc2GroundLightingFrame* ground, int poolN, unsigned long& runsOut) {
+                        const Mc2GroundLightingFrame* ground, int poolN, VkBuffer boneBuffer, VkDeviceSize boneRange, unsigned long& runsOut) {
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -908,7 +908,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     s->gpuTimer.reset(cb);
     s->gpuTimer.write(cb, 0);
-
+    if (s->skin.active()) s->skin.record(cb, s->vbo.get(), s->vboBytes, boneBuffer, boneRange, dynOffsets[2]);   // compute pre-skin, outside the render pass
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
@@ -1178,8 +1178,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     ZoneNamedN(zMechRec, "VK-mech-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Mechs);
     unsigned long runsRec = 0;
-    if (s->skin.active()) s->skin.record(cb, s->vbo.get(), s->vboBytes, mainSpan.buffer, mainSpan.range, dynOffsets[2]);   // compute pre-skin before the render pass
-    if (!record_mech(s, cb, par, w, h, feed, runSets, dynOffsets, &*ground, poolN, runsRec)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    if (!record_mech(s, cb, par, w, h, feed, runSets, dynOffsets, &*ground, poolN, mainSpan.buffer, mainSpan.range, runsRec)) { setFallback("record_failed"); s->disabled = true; return 0; }
     g_health.runs = runsRec;
 
     // Render-pass dependencies order shared attachments; the ticket protects
