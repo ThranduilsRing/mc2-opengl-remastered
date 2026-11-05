@@ -108,7 +108,7 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     assert not lm._inside(str(tree), str(repo))
     for _, cmd in seen:
         if "scripts/ninja_build.py" in cmd:
-            assert "-j" + lm.host_jobs() in cmd
+            assert "-j" + str(max(1, int(lm.host_jobs()) // 2)) in cmd   # precheck link stages take JOBS/2 beside the suites (precheck-speed)
     assert any("mc2fx" in cmd and "mc2fx_preview" in cmd for _, cmd in seen)
     assert (tree / ".git").exists()
     # second run reuses the existing tree (checkout, not worktree add)
