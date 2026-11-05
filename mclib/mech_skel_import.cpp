@@ -114,8 +114,8 @@ aiMatrix4x4 sampleChannel(const aiNodeAnim* ch, double t,
     return aiMatrix4x4(scl, rot, pos);
 }
 
-aiMatrix4x4 globalOrIdentity(const std::map<std::string, aiMatrix4x4>& globals, const std::string& bone) {
-    const auto g = globals.find(bone);
+aiMatrix4x4 globalOrIdentity(const std::map<std::string, aiMatrix4x4>& globals, std::string_view bone) {
+    const auto g = globals.find(std::string(bone));
     if (g == globals.end()) return aiMatrix4x4();
     const auto& [boneName, matrix] = *g;
     return matrix;
