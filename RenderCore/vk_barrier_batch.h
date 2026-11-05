@@ -109,8 +109,8 @@ public:
     }
 private:
     template <class F> void forEach(uint32_t baseMip, uint32_t mipCount, F&& f) {
-        const uint32_t n = uint32_t(cur_.size());
-        const uint32_t end = mipCount ? std::min(baseMip + mipCount, n) : n;
+        const uint32_t n = static_cast<uint32_t>(cur_.size());
+        const uint32_t end = mipCount ? (std::min)(baseMip + mipCount, n) : n;
         for (uint32_t m = baseMip; m < end; ++m) f(m);
     }
     uint64_t image_ = 0;
