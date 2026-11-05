@@ -218,3 +218,6 @@ tests/smoke/editor/playtest-*/
 .claude/vk-nointerop-*
 .scratch/
 *.bak-bilinear
+
+# tools/callers.py computes the caller inventory at check time (--output dumps it)
+/tests/callers.json

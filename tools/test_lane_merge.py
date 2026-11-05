@@ -78,12 +78,11 @@ def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monk
     before = git(repo, "rev-parse", "HEAD")
     seen = precheck_fixture(lm, repo, monkeypatch, red)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 10    # 4 ratchets + callers refresh + callers --check + 2 early rows + 2 suites
+    assert len(seen) == 9    # 4 ratchets + callers --check + 2 early rows + 2 suites
     assert not any(is_native(cmd) for _, cmd in seen)
     assert all(not lm._inside(root, str(repo)) for root, _ in seen)   # scratch is never inside the main worktree
     caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
-    assert caller_commands == [[sys.executable, "-B", "tools/callers.py"],
-                               [sys.executable, "-B", "tools/callers.py", "--check"]]
+    assert caller_commands == [[sys.executable, "-B", "tools/callers.py", "--check"]]
     assert all("--tighten" not in cmd for _, cmd in seen)
     assert {label for label, _ in lm.PYTHON_SUITES} == {"scripts_tests", "tools_tests"}
     assert git(repo, "rev-parse", "HEAD") == before
@@ -101,7 +100,7 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     tree = tmp_path / "warm" / "tree"
     seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
-    assert len(seen) == 13
+    assert len(seen) == 12
     # only configure + link run in the warm tree; the checks run in shared clones
     build = [r for r, cmd in seen if any(x in " ".join(cmd) for x in ("configure_ninja.py", "ninja_build.py"))]
     assert build and all(root == str(tree) for root in build)
@@ -656,13 +655,13 @@ def test_batch_artifacts_and_tightening_share_one_followup(env, monkeypatch):
     generated = []
     def regenerate(root):
         generated.append(root)
-        write(repo, 'tests/callers.json', '{"batch": true}\n')
-        return ['tests/callers.json']
+        write(repo, 'docs/split-map.md', '{"batch": true}\n')
+        return ['docs/split-map.md']
     monkeypatch.setattr(lm, 'regenerate_all', regenerate)
     monkeypatch.setattr(lm, 'verify_merged', lambda *a: ('OK', []))
     assert lm.main(['--batch', 'lane_a', 'lane_b', '--root', str(repo), '--tools-dir', str(tools)]) == 0
     assert len(generated) == 1
-    assert set(git(repo, 'show', '--format=', '--name-only', 'HEAD').splitlines()) == {FSIZE, 'tests/callers.json'}
+    assert set(git(repo, 'show', '--format=', '--name-only', 'HEAD').splitlines()) == {FSIZE, 'docs/split-map.md'}
     assert git(repo, 'log', '-1', '--format=%s') == lm.FOLLOWUP_SUBJECT
 
 
@@ -900,7 +899,7 @@ def test_batch_resolutions_belong_to_individual_tips(env, tmp_path):
     assert (repo / "b.txt").read_text() == "reviewed-b\n"
 
 
-GENERATED_FILES = ("Gates/gate_table.json", "docs/flags.auto.yaml", "tests/callers.json", "docs/split-map.md")
+GENERATED_FILES = ("Gates/gate_table.json", "docs/flags.auto.yaml", "docs/background-launch-inventory.md", "docs/split-map.md")
 
 
 def test_every_generated_file_has_a_regenerator():
@@ -917,7 +916,7 @@ def test_dup_check_has_no_baseline_and_is_not_a_lane_merge_ratchet():
 
 @pytest.mark.parametrize("path,script,args", [
     ("Gates/gate_table.json", "tools/gate_gen.py", ["--sync-verified"]),
-    ("tests/callers.json", "tools/callers.py", []),
+    ("docs/background-launch-inventory.md", "scripts/check-background-launch.py", ["--write", "--quiet"]),
     ("tests/unit/log_tag_baseline.json", "tools/log_tag_census.py", ["--write"]),
 ])
 def test_generated_conflict_regenerates_and_commits_all_outputs(env, monkeypatch, path, script, args):
@@ -981,9 +980,9 @@ def test_batch_auto_resolves_generated_conflicts_and_regenerates(env, monkeypatc
     _generated_repo(repo)
     base = git(repo, "rev-parse", "HEAD")
     _branch_from(repo, "lane_a", base, {"docs/flags.auto.yaml": "lane flags\n"}, "lane a")
-    _branch_from(repo, "lane_b", base, {"tests/callers.json": "lane callers\n"}, "lane b")
+    _branch_from(repo, "lane_b", base, {"docs/background-launch-inventory.md": "lane callers\n"}, "lane b")
     write(repo, "docs/flags.auto.yaml", "main flags\n")
-    write(repo, "tests/callers.json", "main callers\n")
+    write(repo, "docs/background-launch-inventory.md", "main callers\n")
     commit_all(repo, "main generated")
     lm = _load_module()
     ran = []
@@ -999,7 +998,7 @@ def test_batch_auto_resolves_generated_conflicts_and_regenerates(env, monkeypatc
     assert rc == 0, capsys.readouterr().err
     assert ran.count("regen.py") == 2
     assert verifies == ["build"]
-    for rel in ("docs/flags.auto.yaml", "tests/callers.json"):
+    for rel in ("docs/flags.auto.yaml", "docs/background-launch-inventory.md"):
         assert (repo / rel).read_text() == "regenerated " + rel + "\n"
     assert git(repo, "status", "--porcelain") == ""
     assert [s for s in git(repo, "log", "--format=%s", "-4").splitlines() if s.startswith("merge lane:")] == [
@@ -1011,7 +1010,7 @@ def test_batch_still_stops_on_a_non_generated_conflict(env, monkeypatch, capsys)
     _generated_repo(repo)
     base = git(repo, "rev-parse", "HEAD")
     _branch_from(repo, "lane_a", base, {"a.txt": "lane a\n", "docs/split-map.md": "lane map\n"}, "lane a")
-    _branch_from(repo, "lane_b", base, {"tests/callers.json": "lane callers\n"}, "lane b")
+    _branch_from(repo, "lane_b", base, {"docs/background-launch-inventory.md": "lane callers\n"}, "lane b")
     write(repo, "a.txt", "main a\n")
     write(repo, "docs/split-map.md", "main map\n")
     commit_all(repo, "main generated")

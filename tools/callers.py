@@ -419,9 +419,15 @@ def build_inventory(root: Path, paths: list[str] | None = None, *, excluded=(), 
     return {"schema_version": 2, "scripts": [items[p] for p in scripts]}
 
 
+#: A test module under scripts/tests is collected by the scripts pytest suite (scripts/run_scripts_tests.py), so
+#: pytest discovery is its caller by definition: a new test file needs no allowlist row and no folding.
+PYTEST_COLLECTED = re.compile(r"^scripts/tests/test_[^/]+\.py$")
+
+
 def uncalled_scripts(inventory, allowlist=None):
     return [item["path"] for item in inventory["scripts"]
-            if not item["callers_by_basename"] and not item["callers_by_stem"] and item["path"] not in (allowlist or {})]
+            if not item["callers_by_basename"] and not item["callers_by_stem"] and item["path"] not in (allowlist or {})
+            and not PYTEST_COLLECTED.match(item["path"])]
 
 
 def check_inventory(inventory, allowlist=None):
@@ -457,24 +463,25 @@ def main(argv=None):
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
     root = args.root.resolve()
-    output = args.output or root / "tests/callers.json"
+    # The inventory is computed at check time and not tracked (it churned on every lane and conflicted at merges);
+    # --output dumps it to a file for inspection only.
+    output = args.output
     allowlist_path = args.allowlist or root / "tests/callers_allowlist.json"
     try:
-        excluded = [p.resolve().relative_to(root).as_posix() for p in (output, allowlist_path) if p.resolve().is_relative_to(root)]
+        excluded = [p.resolve().relative_to(root).as_posix() for p in (output, allowlist_path) if p and p.resolve().is_relative_to(root)]
         inventory = build_inventory(root, excluded=excluded)
         allowlist = _read_allowlist(allowlist_path)
+        if output:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8", newline="\n")
         if args.check:
             errors = check_inventory(inventory, allowlist)
-            if not output.exists() or _relative_inventory(root, json.loads(output.read_text(encoding="utf-8"))) != inventory:
-                errors.insert(0, f"caller inventory is stale: {output}")
             if errors:
                 print("\n".join(errors), file=sys.stderr)
                 return 1
             print(f"caller inventory current: {len(inventory['scripts'])} scripts")
         else:
-            output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8", newline="\n")
-            print(f"wrote {output}: {len(inventory['scripts'])} scripts, {len(uncalled_scripts(inventory, allowlist))} unallowlisted without callers")
+            print(f"{len(inventory['scripts'])} scripts, {len(uncalled_scripts(inventory, allowlist))} unallowlisted without callers")
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
