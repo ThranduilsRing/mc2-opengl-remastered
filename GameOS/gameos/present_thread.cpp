@@ -8,6 +8,7 @@
 #include "../../mclib/sim_overlap.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "Gates/gate.h"
+#include "diagnostic_trace.h"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -144,7 +145,8 @@ void start() {
     mc2::overlap::setPresentWorkerRegistered(true);
     worker = std::thread(run);
     waitStarted(lock, [] { return ready; });
-    std::fprintf(stderr, "[PRESENT_THREAD] enabled mailbox_depth=1\n");
+    if (mc2_diag::tagRequested("PRESENT_THREAD"))   // the worker ships ON: the start line is opt-in (stall / failure lines stay fail-loud)
+        std::fprintf(stderr, "[PRESENT_THREAD] enabled mailbox_depth=1\n");
 }
 bool enabled() { return running; }
 void hungWait(std::string_view reason) {

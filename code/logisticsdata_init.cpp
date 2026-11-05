@@ -335,16 +335,9 @@ void LogisticsData::initVariants()
 
 
 
-	do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: artPath='{}' objectPath='{}'", mc2::fmt::safe(artPath), mc2::fmt::safe(objectPath)); } while (0);
-	do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv path='{}'", mc2::fmt::safe(variantPath)); } while (0);
 
 	CSVFile variantFile;
-	long csvOpenResult = variantFile.open( variantPath );
-	if ( false ) {
-		const char* modOwner = LookupModOwner(variantPath);
-		unsigned long fsz = (csvOpenResult == NO_ERR) ? variantFile.fileSize() : 0;
-		do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: buildings.csv open={} size={:d} tier={}", mc2::fmt::safe((csvOpenResult == NO_ERR) ? "OK" : "FAIL"), mc2::fmt::as_u32(static_cast<unsigned long>(fsz)), mc2::fmt::safe(modOwner ? modOwner : "base-or-fastfile")); } while (0);
-	}
+	variantFile.open( variantPath );
 
 	FullPathFileName pakPath;
 	pakPath.init( objectPath, "Object2", ".pak" );
@@ -517,24 +510,6 @@ void LogisticsData::initVariants()
 	}
 
 	// ---- post-load diagnostics ----
-	if ( false ) {
-		int totalVariants = 0;
-		bool shadowhawkFound = false;
-		for ( auto it = variants.begin(); it != variants.end(); ++it ) {
-			totalVariants++;
-			const std::string& fn = (*it)->getFileName();
-			char fnLow[1024];
-			strncpy(fnLow, fn.c_str(), sizeof(fnLow)-1);
-			fnLow[sizeof(fnLow)-1] = '\0';
-			S_strlwr(fnLow);
-			if ( strstr(fnLow, "shadowhawk") ) shadowhawkFound = true;
-		}
-		do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] initVariants: total variants loaded={:d}", mc2::fmt::as_i32(totalVariants)); } while (0);
-		if ( shadowhawkFound )
-			do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK VARIANT LOADED"); } while (0);
-		else
-			do { if (false) MC2_LOG(Ui, Info, "[LOGISTICS] SHADOWHAWK NOT IN VARIANTS"); } while (0);
-	}
 }
 
 void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID, std::string_view csvName )

@@ -98,16 +98,16 @@ inline void noteWait(WaitKind kind, std::string_view why, double ms, uint64_t pe
         while (ns > prev && !m->compare_exchange_weak(prev, ns, std::memory_order_relaxed)) {}
     }
     if (ms >= (kind == kOneShot ? 1.0 : 5.0) && s.missionReady.load(std::memory_order_relaxed) && w.logged.fetch_add(1, std::memory_order_relaxed) < 24 && mc2_diag::tagRequested("HITCH")) {
-        if (kind == kSlot) {
+        if (kind != kSlot) {
+            std::fprintf(stderr, "[HITCH v2] fenceWait why=%.*s ms=%.2f pending_upload_kb=%llu\n", static_cast<int>(why.size()), why.data(), ms,
+                         static_cast<unsigned long long>(pendingUpload / 1024));
+        } else {
             double span = -1.0, busy = -1.0;
             gpuMax4(span, busy);
             const int om = s.otherMc2.load(std::memory_order_relaxed);
             std::fprintf(stderr, "[HITCH v2] slotWait why=%.*s ms=%.2f pending_upload_kb=%llu gpu_span4_ms=%.2f gpu_busy4_ms=%.2f acquire_last_ms=%.2f other_mc2=%d class=%s\n",
                          static_cast<int>(why.size()), why.data(), ms, static_cast<unsigned long long>(pendingUpload / 1024), span, busy,
                          s.acquireLastNs.load(std::memory_order_relaxed) / 1e6, om, slotClass(ms, span, om));
-        } else {
-            std::fprintf(stderr, "[HITCH v2] fenceWait why=%.*s ms=%.2f pending_upload_kb=%llu\n", static_cast<int>(why.size()), why.data(), ms,
-                         static_cast<unsigned long long>(pendingUpload / 1024));
         }
     }
 }
