@@ -17,6 +17,7 @@
 #endif
 
 #include <span>
+#include <bit>
 #include "../../mclib/battle_bench_wait.h"
 #include <optional>
 #include <volk.h>
@@ -753,17 +754,22 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
 
 // Upload the per-type albedo-layer table (int32 per type) into a layer SSBO
 // (alpha-OFF binding2, or alpha-ON binding5).
+bool cp_replace_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, std::string_view name) {
+    mc2vk::OwnedBuffer fresh;
+    if (!make_buffer(s, fresh, size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, name)) return false;
+    if (buf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(buf), size);
+    buf = std::move(fresh);
+    return true;
+}
 bool cp_upload_layer_table_into(ColorPropIsland* s, mc2vk::OwnedBuffer& buf,
                                 VkDeviceSize* capBytes, const int32_t* layers, uint32_t count) {
     const VkDeviceSize bytes = static_cast<VkDeviceSize>((count ? count : 1)) * sizeof(int32_t);
-    if (buf && bytes > *capBytes) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_layer_grow");   // the old table may still be read by an in-flight submit
-        buf.reset();
-    }
-    if (!buf) {
-        if (!make_buffer(s, buf, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.layerTable"))
-            return false;
-        *capBytes = bytes;
+    if (!buf || bytes > *capBytes) {
+        // Growth retires the old table on the open-frame ticket (an in-flight submit may still read it); the descriptors repoint lazily per parity.
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes < 64 ? 64 : bytes));
+        if (!cp_replace_buffer(s, buf, cap, "colorprop.layerTable")) return false;
+        *capBytes = cap;
+        if (s->inited) write_descriptors(s);
     }
     void* p = buf.map();
     if (!p) return false;
@@ -785,15 +791,11 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     const size_t n = colours.empty() ? 12u : colours.size();   // one zeroed entry when there is no table
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(n * sizeof(float));
     bool rebound = false;
-    if (s->hotBuf && bytes > s->hotCapBytes) {
-        // The placeholder grows into the real table on the first upload (a one-time stall); the old table may still be read by an in-flight submit.
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");
-        s->hotBuf.reset();
-    }
-    if (!s->hotBuf) {
-        if (!make_buffer(s, s->hotBuf, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.hotColors"))
-            return false;
-        s->hotCapBytes = bytes;
+    if (!s->hotBuf || bytes > s->hotCapBytes) {
+        // The placeholder grows into the real table on the first upload; the old table retires on the open-frame ticket.
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes < 64 ? 64 : bytes));
+        if (!cp_replace_buffer(s, s->hotBuf, cap, "colorprop.hotColors")) return false;
+        s->hotCapBytes = cap;
         rebound = true;
     }
     void* p = s->hotBuf.map();
@@ -1364,9 +1366,9 @@ bool upload_geometry_once(ColorPropIsland* s) {
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     ColorPropIsland* s = parkedIsland();
     if (!s) return;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_invalidate_geometry");
-    s->vbo.reset();
-    s->ibo.reset();
+    // The map's geometry retires on the open-frame ticket: in-flight submits may still draw it.
+    if (s->vbo) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->vbo));
+    if (s->ibo) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->ibo));
     s->geomUploaded = false;
     s->packets.clear();
     s->lateDraws.clear();

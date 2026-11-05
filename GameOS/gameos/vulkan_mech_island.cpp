@@ -819,9 +819,9 @@ bool upload_geometry_once(MechIsland* s) {
         // A new map (or a normals rebuild) replaced the batcher's vertex and index sets: the draw runs index into the NEW
         // set, so a buffer kept from the previous map is read past its end (VUID-vkCmdDrawIndexed-robustBufferAccess2-08798).
         // Frames in flight may still read the old buffers.
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("mech_geometry_regen");
-        s->vbo.reset();
-        s->ibo.reset();
+        auto& rctx = mc2vk::getOrCreateEngineVulkanContext();
+        if (s->vbo) rctx.retire(std::move(s->vbo), feed.vboBytes);
+        if (s->ibo) rctx.retire(std::move(s->ibo), feed.iboBytes);
         s->geomUploaded = false;
     }
     // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from).
