@@ -1766,7 +1766,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 918,
+          "line": 937,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -17378,7 +17378,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 500,
+          "line": 502,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -17450,7 +17450,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 896,
+          "line": 915,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -18831,6 +18831,35 @@
       "path": "tools/test_vfx_rng_evidence.py",
       "basename": "test_vfx_rng_evidence.py",
       "stem": "test_vfx_rng_evidence",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/texcook/cook_bc7enc.py",
+      "basename": "cook_bc7enc.py",
+      "stem": "cook_bc7enc",
+      "callers_by_basename": [
+        {
+          "path": "tools/texcook/cook_selftest.sh",
+          "line": 13,
+          "evidence": "command",
+          "reference": "tools/texcook/cook_bc7enc.py",
+          "text": "python3 tools/texcook/cook_bc7enc.py --bc7enc \"$W/bc7enc\" --jobs 4 \"$W/t_albedo.png\""
+        },
+        {
+          "path": "tools/texcook/cook_selftest.sh",
+          "line": 14,
+          "evidence": "command",
+          "reference": "tools/texcook/cook_bc7enc.py",
+          "text": "python3 tools/texcook/cook_bc7enc.py --bc7enc \"$W/bc7enc\" --role normal \"$W/t_normal.png\""
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/texcook/cook_selftest.sh",
+      "basename": "cook_selftest.sh",
+      "stem": "cook_selftest",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
