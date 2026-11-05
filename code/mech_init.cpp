@@ -43,7 +43,7 @@ void BattleMech::init (bool create) {
 	playedCriticalHit = false;
 	
 	legStatus = LEG_STATUS_NORMAL;
-	torsoStatus = TORSO_STATUS_NORMAL;
+	torsoStatus = static_cast<char>(TORSO_STATUS_NORMAL);
 
 	sentCrippledMsg = false;
 

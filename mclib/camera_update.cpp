@@ -178,7 +178,7 @@ long Camera::update (void)
 			break;
 			
 		default:
-			return INVALID_CAMERA;
+			return static_cast<long>(INVALID_CAMERA);
 	}
 
 	float oldNightFactor = nightFactor;

@@ -166,11 +166,12 @@ enum LegStatusType {
 	NUM_LEG_STATUSES
 };
 
-enum TorsoStatusType {
+enum class TorsoStatusType : int32_t {
 	TORSO_STATUS_NORMAL,
 	TORSO_STATUS_IMPAIRED,
 	NUM_TORSO_STATUSES
 };
+using enum TorsoStatusType;
 
 enum class MechPilotCheckCondition : int32_t {
 	MECH_PILOT_CHECK_CONDITION_NO_LEG,

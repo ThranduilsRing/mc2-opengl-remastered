@@ -208,7 +208,7 @@ long i, roll, callsign, fragmentNum, dropOut = 0;
 
 	auto msgData = std::make_unique<RadioData>();
 
-	msgData->noiseId = SHORT_STATIC;
+	msgData->noiseId = static_cast<uint32_t>(SHORT_STATIC);
 	msgData->msgType = msgType;
 	msgData->msgId = messageInfo[msgType].messageMapping + i;
 	msgData->movieCode = messageInfo[msgType].movieCode;
