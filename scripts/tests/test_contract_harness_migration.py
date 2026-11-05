@@ -27,6 +27,9 @@ def record_runs(monkeypatch, codes):
         return SimpleNamespace(returncode=next(results), stdout="", stderr="failure detail")
 
     monkeypatch.setattr(builder.subprocess, "run", run)
+    # the doctest run goes through the tree-kill helper; route it to the same recorder
+    monkeypatch.setattr(builder, "run_with_tree_timeout",
+                        lambda command, cwd, env, timeout: run(command, cwd=cwd, env=env).returncode)
     return commands
 
 
