@@ -320,7 +320,7 @@ struct TerrainDraw { TerrainPatchConstants patch; const PatchMesh* pm; const Ski
 static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkCommandBuffer cb, uint32_t par, int w, int h,
                            const uint32_t (&dynOffs)[4], const std::vector<TerrainDraw>& draws,
                            unsigned long& drawnOut, unsigned long& skirtDrawnOut) {
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->slotPool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -687,7 +687,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     const uint32_t par = cctx.frameContext().slot;
     if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot"), "VK_TERRAIN_ISLAND")) { setFallback("clear_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: scene clear slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
     VkCommandBuffer cb = s->cbuf[mc2vk::kMaxFramesInFlight + par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->slotPool[mc2vk::kMaxFramesInFlight + par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

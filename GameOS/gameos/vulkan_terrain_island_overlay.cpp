@@ -201,10 +201,16 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
     }
 
     {   // command buffers (own pair, from the island's pool)
-        VkCommandBufferAllocateInfo cbi{};
-        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cbi, o->cbuf) != VK_SUCCESS) return false;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            VkCommandPoolCreateInfo pci{};
+            pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            pci.queueFamilyIndex = s->gfxFamily;
+            if (!mc2vk::create(o->cpool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) return false;
+            VkCommandBufferAllocateInfo cbi{};
+            cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cbi.commandPool = o->cpool[i].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cbi, &o->cbuf[i]) != VK_SUCCESS) return false;
+        }
     }
 
     {   // pipelines
@@ -452,7 +458,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     sync_ring_bindings(s, par, uboSpan, lpSpans);
 
     VkCommandBuffer cb = o->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, o->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
