@@ -21,15 +21,14 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized) return 0;
     // The CPU bytes the GL buffers are uploaded from: the normals-recomputed vertex blob and the staged indices.
-    const uint64_t vboBytes = static_cast<uint64_t>(s_stagingVbo.size());
-    const uint64_t iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
+    const uint64_t vboBytes = static_cast<uint64_t>(s_vkVboNativeCopy.size());
+    const uint64_t iboBytes = static_cast<uint64_t>(s_vkIboNativeCopy.size()) * sizeof(uint32_t);
     if (vboBytes == 0 || iboBytes == 0) return 0;
     out->vboBytes     = vboBytes;
     out->iboBytes     = iboBytes;
     out->vertexStride = static_cast<uint32_t>(sizeof(GpuMechVertex));   // 48
-    // A size mismatch means a normals rebuild is in flight: no vertex bytes this frame, the island retries.
-    out->vboCpu = static_cast<uint64_t>(s_vkVboNativeCopy.size()) == vboBytes ? s_vkVboNativeCopy.data() : nullptr;
-    out->iboCpu = s_stagingIbo.data();
+    out->vboCpu = s_vkVboNativeCopy.data();
+    out->iboCpu = s_vkIboNativeCopy.data();
     out->geomGen = s_vkMechGeomGen;
     return 1;
 }
@@ -42,13 +41,12 @@ extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty() || s_vkMechBoneSnapshot.empty()) return 0;
     // The snapshot's runs index the geometry of the generation it was built against; after a rebuild they name ranges of a different index set.
     if (s_vkMechSnapshotGeomGen != s_vkMechGeomGen) return 0;
-    const uint64_t vboBytes = static_cast<uint64_t>(s_stagingVbo.size());
-    if (s_vkVboNativeCopy.empty() || s_vkVboNativeCopy.size() != vboBytes || s_stagingIbo.empty()) return 0;
+    if (s_vkVboNativeCopy.empty() || s_vkIboNativeCopy.empty()) return 0;
     out->instances64 = s_vkMechInstSnapshot.data(); out->instanceCount = static_cast<uint32_t>(s_vkMechInstSnapshot.size());
     out->bones64     = s_vkMechBoneSnapshot.data(); out->boneCount     = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
     out->runs        = s_vkMechRunSnapshot.data();  out->runCount      = static_cast<uint32_t>(s_vkMechRunSnapshot.size());
     out->vboCpu = s_vkVboNativeCopy.data(); out->vboBytes = static_cast<uint64_t>(s_vkVboNativeCopy.size());
-    out->iboCpu = s_stagingIbo.data();      out->iboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
+    out->iboCpu = s_vkIboNativeCopy.data(); out->iboBytes = static_cast<uint64_t>(s_vkIboNativeCopy.size()) * sizeof(uint32_t);
     out->vertexStride = static_cast<uint32_t>(sizeof(GpuMechVertex));
     out->geomGen = s_vkMechGeomGen;
     return 1;
