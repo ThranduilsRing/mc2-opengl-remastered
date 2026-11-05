@@ -193,7 +193,7 @@ namespace Stuff {
 	private:
 		MStringRepresentation();
 		MStringRepresentation(const MStringRepresentation &str);
-		MStringRepresentation(const char *cstr);
+		MStringRepresentation(mc2::czstring cstr);
 
 	public:
 		~MStringRepresentation();
@@ -237,7 +237,7 @@ namespace Stuff {
 		MStringRepresentation
 			operator = (const MStringRepresentation &str);
 		MStringRepresentation
-			operator = (const char *cstr);
+			operator = (mc2::czstring cstr);
 
 		//
 		// concatenation methods
@@ -279,7 +279,7 @@ namespace Stuff {
 			operator != (const MStringRepresentation &str) const;
 
 		bool
-			operator == (const char *cstr) const;
+			operator == (mc2::czstring cstr) const;
 
 		//
 		// character retrieval method
@@ -470,7 +470,7 @@ namespace Stuff {
    }
 
 	inline bool
-		MStringRepresentation::operator == (const char *cstr) const
+		MStringRepresentation::operator == (mc2::czstring cstr) const
    {
       return (Compare(cstr) == 0);
    }
@@ -554,7 +554,7 @@ namespace Stuff {
 	public:
 		MString();
 		MString(const MString &str);
-		MString(const char *cstr);
+		MString(mc2::czstring cstr);
 
 		~MString();
 
@@ -599,7 +599,7 @@ namespace Stuff {
 		MString&
 			operator = (const MString &str);
 		MString&
-			operator = (const char *cstr);
+			operator = (mc2::czstring cstr);
 
 		//
 		// concatenation methods
@@ -648,7 +648,7 @@ namespace Stuff {
 			operator != (const MString &str) const;
 
 		bool
-			operator == (const char *cstr) const;
+			operator == (mc2::czstring cstr) const;
 		
 		//
 		// character retrieval method		
@@ -738,7 +738,7 @@ namespace Stuff {
 	}
 
 	inline
-		MString::MString(const char *cstr)
+		MString::MString(mc2::czstring cstr)
 	{
 		representation = new MStringRepresentation(cstr);
 		Register_Object(representation);
@@ -883,7 +883,7 @@ namespace Stuff {
    }
 
 	inline bool
-		MString::operator == (const char *cstr) const
+		MString::operator == (mc2::czstring cstr) const
    {
 		return (Compare(cstr) == 0);
 	}

@@ -205,7 +205,7 @@ bool
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 RegisteredClass__ClassData*
-	RegisteredClass__ClassData::FindClassData(const char* name)
+	RegisteredClass__ClassData::FindClassData(mc2::czstring name)
 {
 	Check_Object(this);
 	if (!S_stricmp(className, name))

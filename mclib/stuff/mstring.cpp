@@ -74,7 +74,7 @@ MStringRepresentation::MStringRepresentation(const MStringRepresentation &str)
 //#############################################################################
 //#############################################################################
 //
-MStringRepresentation::MStringRepresentation(const char *cstr)
+MStringRepresentation::MStringRepresentation(mc2::czstring cstr)
 {
 	if ((cstr == nullptr) || (cstr[0] == '\x00'))
 	{
@@ -204,7 +204,7 @@ MStringRepresentation
 //#############################################################################
 //
 MStringRepresentation
-	MStringRepresentation::operator = (const char *cstr)
+	MStringRepresentation::operator = (mc2::czstring cstr)
 {
 	Check_Object(this);
 
@@ -558,7 +558,7 @@ MString&
 //#############################################################################
 //
 MString&
-	MString::operator = (const char *cstr)
+	MString::operator = (mc2::czstring cstr)
 {
 	Check_Object(representation);
 	representation->DecrementReferenceCount();

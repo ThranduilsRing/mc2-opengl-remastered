@@ -141,7 +141,7 @@ namespace Stuff {
 				{Check_Object(this); return m_fileName;}
 
 		void
-			SaveAs(const char* file_name);
+			SaveAs(mc2::czstring file_name);
 		void
 			Save();
 
@@ -201,14 +201,14 @@ namespace Stuff {
 				{Check_Object(this); return m_pages.IsEmpty();}
 
 		bool
-			DoesPageExist(const char *pagename)
+			DoesPageExist(mc2::czstring pagename)
 				{Check_Object(this); return FindPage(pagename) != nullptr;}
 		Page*
-			FindPage(const char* pagename);
+			FindPage(mc2::czstring pagename);
 		Page*
 			GetPage(unsigned index);
 		Page*
-			GetPage(const char* pagename);
+			GetPage(mc2::czstring pagename);
 
 		using PageIterator = ChainIteratorOf<Page* >;
 		PageIterator*
@@ -216,12 +216,12 @@ namespace Stuff {
 				{Check_Object(this); return new PageIterator(&m_pages);}
 
 		Page*
-			AddPage(const char *pagename);
+			AddPage(mc2::czstring pagename);
 		Page*
-			SetPage(const char *pagename);
+			SetPage(mc2::czstring pagename);
 
 		void
-			DeletePage(const char *pagename);
+			DeletePage(mc2::czstring pagename);
 		void
 			DeleteAllPages();
 

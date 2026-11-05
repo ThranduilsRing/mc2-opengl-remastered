@@ -237,28 +237,32 @@ void Batcher::ResolveTextures()
     }
 
     static std::unordered_set<uint32_t> s_probed;
+    auto firstProbe = [](uint32_t h) {
+        const auto [it, inserted] = s_probed.insert(h);
+        return inserted;
+    };
     for (auto& grp : impl_->groups) {
         if (grp.handle == 0) continue;
         if (!MidLevelRenderer::MLRTexturePool::Instance) {
-            if (logEnabled && s_probed.insert(grp.handle).second)
+            if (logEnabled && firstProbe(grp.handle))
                 mc2::fmt::print_err("[RESOLVE_PROBE] handle={:d} POOL_NULL\n", mc2::fmt::as_u32(grp.handle));
             continue;
         }
         MidLevelRenderer::MLRTexture* mlrTex =
             (*MidLevelRenderer::MLRTexturePool::Instance)[static_cast<int>(grp.handle)];
         if (!mlrTex) {
-            if (logEnabled && s_probed.insert(grp.handle).second)
+            if (logEnabled && firstProbe(grp.handle))
                 mc2::fmt::print_err("[RESOLVE_PROBE] handle={:d} TEX_NULL\n", mc2::fmt::as_u32(grp.handle));
             continue;
         }
         MidLevelRenderer::GOSImage* img = mlrTex->GetImage();
         if (!img) {
-            if (logEnabled && s_probed.insert(grp.handle).second)
+            if (logEnabled && firstProbe(grp.handle))
                 mc2::fmt::print_err("[RESOLVE_PROBE] handle={:d} IMG_NULL\n", mc2::fmt::as_u32(grp.handle));
             continue;
         }
         DWORD gosHandle = img->GetHandle();
-        if (logEnabled && s_probed.insert(grp.handle).second)
+        if (logEnabled && firstProbe(grp.handle))
             mc2::fmt::print_err("[RESOLVE_PROBE] handle={:d} img={:016X} isLoaded={:d} gosHandle={:d}\n", mc2::fmt::as_u32(grp.handle), mc2::fmt::as_ptr(static_cast<void*>(img)), mc2::fmt::as_i32(static_cast<int>(img->IsLoaded())), mc2::fmt::as_u32(static_cast<unsigned>(gosHandle)));
         grp.handle = static_cast<uint32_t>(gosHandle);
     }

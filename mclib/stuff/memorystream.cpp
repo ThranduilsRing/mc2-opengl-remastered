@@ -856,8 +856,8 @@ bool
 		streamSize = new_stream_size;
 		currentPosition = streamStart + current_offset;
 	}
-	else if (new_stream_size > streamSize)
-		streamSize = new_stream_size;
+	else
+		streamSize = std::max<size_t>(streamSize, new_stream_size);
 	return true;
 }
 

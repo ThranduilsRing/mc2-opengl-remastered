@@ -58,7 +58,7 @@
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//
-	BitTrace::BitTrace(const char* name):
+	BitTrace::BitTrace(mc2::czstring name):
 		Trace(name, BitType)
 	{
 		activeLine = NextActiveLine++;
@@ -483,7 +483,7 @@
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		//
 		void
-			TraceManager::SaveTraceLog(const char* filename)
+			TraceManager::SaveTraceLog(mc2::czstring filename)
 		{
 			Check_Object(this);
 			if (allocatedTraceLog)

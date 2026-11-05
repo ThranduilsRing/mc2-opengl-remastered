@@ -193,5 +193,5 @@ namespace Stuff {
 		StripDirectory(MString *file_name);
 
 	bool
-		CreateDirectories(const char *directories);
+		CreateDirectories(mc2::czstring directories);
 }

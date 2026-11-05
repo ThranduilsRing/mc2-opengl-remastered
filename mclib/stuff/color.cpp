@@ -251,14 +251,14 @@ HSVColor&
 	// Set the color value
 	//--------------------
 	//
-	value = Max(color.red, Max(color.green, color.blue));
+	value = std::max({color.red, color.green, color.blue});
 
 	//
 	//-------------------------
 	// Set the saturation value
 	//-------------------------
 	//
-	Scalar delta = value - Min(color.red, Min(color.green, color.blue));
+	Scalar delta = value - std::min({color.red, color.green, color.blue});
 	if (value > SMALL)
 	{
 		saturation = delta / value;

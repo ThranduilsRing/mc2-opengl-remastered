@@ -280,7 +280,7 @@ void
 		writeEnabled = writable;
 		if (IgnoreReadOnlyFlag)
 		{
-			bool (__stdcall *old_hook)(const char*) = Environment.HookDoesFileExist;
+			auto old_hook = Environment.HookDoesFileExist;
 			Environment.HookDoesFileExist = nullptr;
 			if (gos_DoesFileExist(file_name))
 				gos_FileSetReadWrite(file_name);
@@ -416,7 +416,7 @@ bool
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 bool
-	Stuff::CreateDirectories(const char *directory_path)
+	Stuff::CreateDirectories(mc2::czstring directory_path)
 {
 
     PAUSE(("")); // sebi
