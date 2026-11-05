@@ -227,9 +227,9 @@ void MPParameterScreen::begin()
 	bHostLeftDlg = 0;
 	bootPlayerID = -1;
 
-	for ( int i = 0; i < MAX_MC_PLAYERS; i++ )
+	for (auto & playerParameter : playerParameters)
 	{
-		playerParameters[i].insigniaName.clear();
+		playerParameter.insigniaName.clear();
 	}
 
 	bWaitingToStart = 0;
