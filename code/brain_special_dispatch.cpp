@@ -1361,7 +1361,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
     auto* unit = warrior->getVehicle();
     warrior->setBrainRuntimeMode(BrainRuntimeMode::Enhanced);
     auto* runtime = warrior->getBrainRuntime();
-    mc2::player::UnitIntent intent{unit->getWatchID(), mc2::player::Goal::Move, objective};
+    mc2::player::UnitIntent intent{static_cast<long>(unit->getWatchID()), mc2::player::Goal::Move, objective};
     const auto position = unit->getPosition();
     if (!runtime->postSet) {
         runtime->postPos[0] = position.x;

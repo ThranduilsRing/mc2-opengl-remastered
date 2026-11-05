@@ -1,14 +1,14 @@
 {
  "mission": "mc2_10",
- "frames": 300,
+ "frames": 800,
  "chain_schema": 2,
- "chain": "0d33c72d6a3a0ade",
- "full": "3d3762eb1b6a71c7",
- "visible_chain": "b9c9d75df676e9a1",
- "sha": "b4fb4641a9c6",
+ "chain": "ddea3f53245582d9",
+ "full": "18b8275d30bd7d0f",
+ "visible_chain": "671676d6e7f06ddc",
+ "sha": "fb5b3705f56e",
  "seed": "0x157EB29B",
  "data_fingerprint": {
-  "digest": "0dfcd001ffde73d0",
+  "digest": "631bc626ca376941",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -24,16 +24,7 @@
   "stock_digest": "8703ccf15c7c117f",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
-   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4",
-   "data/missions/mc2_01_ai.fit": "05ac63a7d6e6a022",
-   "data/missions/mc2_01_eject_specials.fit": "fb1ae62005af323b",
-   "data/missions/mc2_01_ejectalias_specials.fit": "7dcea591e6e5a519",
-   "data/missions/mc2_01_moveto_nan_specials.fit": "7d179e0afeeeff60",
-   "data/missions/mc2_01_moveto_specials.fit": "ceed6688c9c9402a",
-   "data/missions/mc2_01_specials.fit": "1b484e1e9e1ffd9a",
-   "data/missions/mc2_01_specials_eject.fit": "176239689c456324",
-   "data/missions/mc2_01_specials_ejectalias.fit": "d5ae4996d3e5d3a9",
-   "data/missions/mc2_01_specials_raw_specials.fit": "a48b828b55f5097d"
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
   "problems": []
  },
@@ -41,11 +32,6 @@
   "MC2_SMOKE_FIXED_TIMESTEP": "1",
   "MC2_SIM_IDENTITY_TRACE": "1"
  },
- "env": {
-  "MC2_WIDTH": "320",
-  "MC2_HEIGHT": "180",
-  "MC2_OPTIONS_OVERRIDE": "ShadowQuality=0,SpatialAA=0",
-  "MC2_SIM_SPEED": "4"
- },
+ "env": {},
  "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"
 }
