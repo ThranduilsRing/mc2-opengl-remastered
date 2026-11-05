@@ -9,6 +9,7 @@
 
 #include "vulkan_shadow_mech_casters.h"
 
+#include "diagnostic_trace.h"
 #include "mc2fmt.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vk_island_util.h"
@@ -168,7 +169,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
             geomGen_ = gen;
             geomUploaded_ = true;
             iboIndexCount_ = feed.iboBytes / sizeof(uint32_t);
-            mc2::fmt::print_err("[VK_SHADOW_MECH] mech casters share the island geometry: {} vertices, {} indices (generation {}).\n", mc2::fmt::as_u64(feed.vboBytes / vertexStride_),
+            if (mc2_diag::tagRequested("VK_SHADOW_MECH")) mc2::fmt::print_err("[VK_SHADOW_MECH] mech casters share the island geometry: {} vertices, {} indices (generation {}).\n", mc2::fmt::as_u64(feed.vboBytes / vertexStride_),
                                 mc2::fmt::as_u64(iboIndexCount_), geomGen_);
         }
     }

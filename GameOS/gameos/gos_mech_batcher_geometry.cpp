@@ -465,11 +465,13 @@ void uploadMechGeometryVbo() {
             dibo[i] = remap[dibo[i]];
         }
         if (!ok) break;
+        std::vector<float> positions(nUniq * 3);
+        for (size_t i = 0; i < nUniq; ++i) std::memcpy(&positions[i * 3], uniq.data() + i * kStride, 3 * sizeof(float));
         for (size_t p = firstPk; p < pk; ++p) {
             uint32_t* idx = dibo.data() + s_packets[p].firstIndex;
             const size_t cnt = s_packets[p].indexCount;
             meshopt_optimizeVertexCache(idx, idx, cnt, nUniq);
-            meshopt_optimizeOverdraw(idx, idx, cnt, reinterpret_cast<const float*>(uniq.data()), nUniq, kStride, 1.05f);
+            meshopt_optimizeOverdraw(idx, idx, cnt, positions.data(), nUniq, 3 * sizeof(float), 1.05f);
         }
         std::vector<uint8_t> fetched(uniq.size());
         meshopt_optimizeVertexFetch(fetched.data(), dibo.data() + ibFirst, ibEnd - ibFirst, uniq.data(), nUniq, kStride);
