@@ -856,7 +856,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2104,
+          "line": 2113,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -1759,7 +1759,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 915,
+          "line": 936,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -3986,6 +3986,13 @@
       ]
     },
     {
+      "path": "scripts/crashpad_proof.py",
+      "basename": "crashpad_proof.py",
+      "stem": "crashpad_proof",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/deploy-editor.sh",
       "basename": "deploy-editor.sh",
       "stem": "deploy-editor",
@@ -4303,14 +4310,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1699,
+          "line": 1708,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees, build_current"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1924,
+          "line": 1933,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees, build_current"
@@ -4539,21 +4546,21 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1262,
+          "line": 1271,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1833,
+          "line": 1842,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2033,
+          "line": 2042,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -5634,6 +5641,13 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "result = subprocess.run(command, cwd=ROOT, env=env, **console_child.child_kwargs())"
+        },
+        {
+          "path": "scripts/crashpad_proof.py",
+          "line": 56,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "r = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors=\"replace\")"
         },
         {
           "path": "scripts/mcp/mc2_render_state_server.py",
@@ -17463,7 +17477,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 498,
+          "line": 499,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -17535,7 +17549,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 893,
+          "line": 914,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
