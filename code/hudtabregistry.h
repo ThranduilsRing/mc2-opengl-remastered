@@ -61,7 +61,7 @@ namespace HudTabs
 
 		const Tab* at( int i ) const
 		{
-			return ( i >= 0 && i < count_ ) ? &tabs_[i] : 0;
+			return ( i >= 0 && i < count_ ) ? &tabs_[i] : nullptr;
 		}
 
 		int activeIndex() const { return active_; }

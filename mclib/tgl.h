@@ -686,8 +686,8 @@ class TG_TypeShape : public TG_TypeNode
 			hotYellowRGB = 0x00FEfF91;
 			hotGreenRGB = 0x000081b6;
 
-			vb_ = ib_ = 0;
-			vdecl_ = 0;
+			vb_ = ib_ = nullptr;
+			vdecl_ = nullptr;
 		}
 		
 		TG_TypeShape (void)
