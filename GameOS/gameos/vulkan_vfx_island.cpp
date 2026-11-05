@@ -260,7 +260,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
             VkDescriptorSetLayout layouts[kVfxSlots]; for (auto& l : layouts) l=s->spriteDsl.get();
             VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
             alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=kVfxSlots;alloc.pSetLayouts=layouts;
-            if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
+            if (MC2_VK_ALLOC_SETS(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
         }
         it=s->pages.emplace(id,page).first;
         vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,static_cast<unsigned long long>(id),s->pages.size(),kMaxSpritePages);
@@ -467,7 +467,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         VkDescriptorSetLayout dslHandles2[kVfxSlots]; for (auto& l : dslHandles2) l = s->dsl.get();
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = kVfxSlots; dsai.pSetLayouts = dslHandles2;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
     }
 
     // Pipelines (alpha + additive).

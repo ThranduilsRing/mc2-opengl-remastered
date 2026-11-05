@@ -1,5 +1,6 @@
 // VK terrain island: island buffers, patch / skirt mesh caches, descriptor writes, capacity growth and init / destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
+#include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -616,7 +617,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         write_descriptors(s);

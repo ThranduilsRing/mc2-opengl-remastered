@@ -688,10 +688,10 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         ai.descriptorSetCount = 1;
         const VkDescriptorSetLayout compositeDslHandle = s.compositeDsl.get();
         ai.pSetLayouts = &compositeDslHandle;
-        if (vkAllocateDescriptorSets(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
-        if (vkAllocateDescriptorSets(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -852,7 +852,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         ai.descriptorSetCount = 1;
         const VkDescriptorSetLayout shadowDebugDslHandle = s.shadowDebugDsl.get();
         ai.pSetLayouts = &shadowDebugDslHandle;
-        if (vkAllocateDescriptorSets(s.dev, &ai, &s.shadowDebugSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.shadowDebugSet) != VK_SUCCESS) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
@@ -1262,7 +1262,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         ai.descriptorSetCount = 1;
         const VkDescriptorSetLayout hudTexDslHandle = s.hudTexDsl.get();
         ai.pSetLayouts = &hudTexDslHandle;
-        if (vkAllocateDescriptorSets(s.dev, &ai, &m.set) != VK_SUCCESS)
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &m.set) != VK_SUCCESS)
             return nullptr;
     }
     VkDescriptorBufferInfo bi{};

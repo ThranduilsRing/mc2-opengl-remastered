@@ -385,7 +385,7 @@ static bool init_local_shadow(ShadowIsland* s) {
     VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = s->dsl.get();
     VkDescriptorSetAllocateInfo dsai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     dsai.descriptorPool = L.pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-    if (vkAllocateDescriptorSets(s->device, &dsai, L.set) != VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device, &dsai, L.set) != VK_SUCCESS) return false;
     L.ok = true;
     vlog("local light shadow atlas %ux%u (%u tiles of %u^2, D16).", kAtlasW, kAtlasH, kTiles, kTileSide);
     return true;
@@ -549,7 +549,7 @@ bool init_island(ShadowIsland* s, int size) {
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
         VkDescriptorSetLayout setLayouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : setLayouts) layout = dslHandle;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = setLayouts;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
@@ -578,7 +578,7 @@ bool init_island(ShadowIsland* s, int size) {
         VkDescriptorSetAllocateInfo adsai{};
         adsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         adsai.descriptorPool = s->alphaPool.get(); adsai.descriptorSetCount = 1; adsai.pSetLayouts = &alphaLayout;
-        if (vkAllocateDescriptorSets(s->device, &adsai, &s->alphaSet) != VK_SUCCESS) { vlog("alpha descriptor set allocation failed."); return false; }
+        if (MC2_VK_ALLOC_SETS(s->device, &adsai, &s->alphaSet) != VK_SUCCESS) { vlog("alpha descriptor set allocation failed."); return false; }
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR; sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;

@@ -99,7 +99,7 @@ bool ComputeSets::create(VkDevice device, const ComputePipeline& pipe, uint32_t 
     dsai.descriptorPool = pool_.get();
     dsai.descriptorSetCount = count;
     dsai.pSetLayouts = layouts.data();
-    if (vkAllocateDescriptorSets(device, &dsai, sets_.data()) != VK_SUCCESS) {
+    if (MC2_VK_ALLOC_SETS(device, &dsai, sets_.data()) != VK_SUCCESS) {
         if (logFailures) clog("%.*s: vkAllocateDescriptorSets failed.", static_cast<int>(name.size()), name.data());
         sets_.clear();
         return false;

@@ -236,7 +236,7 @@ bool build(State* s, int w, int h) {
             const VkDescriptorSetLayout l = s->dsl.get();
             VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
             ai.descriptorPool = s->pool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &l;
-            if (vkAllocateDescriptorSets(dev, &ai, &s->set[i]) != VK_SUCCESS) return false;
+            if (MC2_VK_ALLOC_SETS(dev, &ai, &s->set[i]) != VK_SUCCESS) return false;
             VkDescriptorImageInfo img[4] = {
                 {s->pointSampler.get(), s->depthView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
                 {s->pointSampler.get(), s->normalRes->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},

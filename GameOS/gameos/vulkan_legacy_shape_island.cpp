@@ -162,7 +162,7 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = kSubmissionSlots; dsai.pSetLayouts = layouts;
-    if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device, &dsai, t.set) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < kSubmissionSlots; ++par) {
         VkDescriptorImageInfo ii{};
         ii.sampler = s->samp.get(); ii.imageView = mc2vk::getOrCreateEngineVulkanContext().textures().view(t.texture.get()); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

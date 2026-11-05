@@ -348,7 +348,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
         const VkDescriptorSetLayout layout = s->cullDsl.get();
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
-        if (vkAllocateDescriptorSets(s->device,&ai,&s->cullSets[i]) != VK_SUCCESS) return false;
+        if (MC2_VK_ALLOC_SETS(s->device,&ai,&s->cullSets[i]) != VK_SUCCESS) return false;
         VkDescriptorImageInfo image{s->depthSampler.get(),s->levels[i].view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkDescriptorBufferInfo buffers[] = {{s->projected.get(),0,VK_WHOLE_SIZE},{s->visibility.get(),0,VK_WHOLE_SIZE},
                                             {s->instances.get(),0,VK_WHOLE_SIZE},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
@@ -591,9 +591,9 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             dsai.descriptorPool = s->pool.get();
             dsai.descriptorSetCount = 1;
             dsai.pSetLayouts = &dslHandle;
-            r = vkAllocateDescriptorSets(s->device, &dsai, &lv.set);
+            r = MC2_VK_ALLOC_SETS(s->device, &dsai, &lv.set);
             if (r != VK_SUCCESS) {
-                vlog("vkAllocateDescriptorSets(level %d) failed (%d).", level, static_cast<int>(r));
+                vlog("MC2_VK_ALLOC_SETS(level %d) failed (%d).", level, static_cast<int>(r));
                 return false;
             }
 

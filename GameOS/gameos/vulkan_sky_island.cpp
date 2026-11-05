@@ -328,7 +328,7 @@ bool init_island(Island* s, int w, int h) {
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1; dsai.pSetLayouts = &dslHandle;
-        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) { setFallback("set_failed"); return false; }
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, &s->set) != VK_SUCCESS) { setFallback("set_failed"); return false; }
     }
     {   // pipeline
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "hdri_sky.vert.spv"));

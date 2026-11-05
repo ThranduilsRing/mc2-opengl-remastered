@@ -117,7 +117,7 @@ bool TextureResidency::init() {
     VkDescriptorSet sets[kMaxFramesInFlight]{};
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool=pool_.get(); ai.descriptorSetCount=kMaxFramesInFlight; ai.pSetLayouts=layouts;
-    if (vkAllocateDescriptorSets(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
     for (uint32_t i=0;i<kMaxFramesInFlight;++i) flights_[i].set=sets[i];
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
