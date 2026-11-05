@@ -59,12 +59,12 @@ import subprocess
 import sys
 import time
 import tempfile
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
+from lint_slots import LintSlots, pin_cpus, scratch_dir  # noqa: E402
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 
 #: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
@@ -953,7 +953,7 @@ def stale_inventories(root: str, commit: str, regen=None) -> list[str]:
     commits them anyway; failing here moves that cost from the merge window to the lane."""
     regen = regen or regenerate_all
     proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
-    with tempfile.TemporaryDirectory(prefix="stale-inv-", dir=proof_root) as scratch:
+    with scratch_dir("stale-inv-", proof_root) as scratch:
         snapshot = os.path.join(scratch, "tree")
         r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
         if r.returncode:
@@ -977,9 +977,7 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
 def lint(root: str, ref: str, runner=None, regen=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags, stale inventories)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
-    runner = runner or run
-    started = time.monotonic()
-    failed: list[str] = []
+    runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
@@ -989,24 +987,25 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
     rows = lint_rows([sys.executable, "-B"], base_ref, sha)
     # callers-refresh must precede callers in one tree; every other row gets its own tree so they run concurrently.
     chains = [[r for r in rows if r[0].startswith("callers")]] + [[r] for r in rows if not r[0].startswith("callers")]
-    with tempfile.TemporaryDirectory(prefix="lane-lint-", dir=precheck_scratch_base(root)) as scratch:
+    slots = LintSlots()   # host-wide JOBS cap across all `--lint` processes; lint never takes the precheck TreeLock (own shared clones)
+    with scratch_dir("lane-lint-", precheck_scratch_base(root)) as scratch:
         snap = os.path.join(scratch, "tree")   # one checkout shared by all rows: only callers-refresh writes (tests/callers.json), which no other row reads
-        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
+        r = slots.run(run, root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
             return 1
-        git_out(snap, "checkout", "--quiet", "--detach", sha)
+        slots.run(git_out, snap, "checkout", "--quiet", "--detach", sha)
 
         def chain(i):
             out = []
             for label, cmd, hint in chains[i]:
                 t0 = time.monotonic()
-                r = runner(snap, cmd)
+                r = slots.run(runner, snap, cmd)
                 out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=len(chains) + 1) as pool:
-            inv = pool.submit(lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
+            inv = pool.submit(slots.run, lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
             for f in [pool.submit(chain, i) for i in range(len(chains))]:
                 try:
                     results = f.result()
@@ -1349,6 +1348,7 @@ def main(argv: list[str] | None = None) -> int:
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
+    pin_cpus("lane" if args.lint or args.precheck else "gate")   # children inherit; the gate half never overlaps lane work
     if args.lint:
         return lint(args.root, args.lint)
     if args.precheck:
