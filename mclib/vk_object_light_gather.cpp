@@ -2,6 +2,7 @@
 #include "mc2_czstring.h"
 #include "render_scene_support.h"
 #include "mc2fmt.h"
+#include <algorithm>
 
 // T1.15 [SPOT_DIAG v1] pack-probe state (GatherLightsParameters).
 // First-shape always-on (one stderr line on the first call after process start).
@@ -263,7 +264,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 				rec.falloff[1] = lights->lightFalloff[num_lights][1];
 				for (const auto srcElem : rec.src) {
 					const float a = srcElem < 0.0f ? -srcElem : srcElem;
-					if (a > rec.maxSrcAbs) rec.maxSrcAbs = a;
+					rec.maxSrcAbs = std::max(rec.maxSrcAbs, a);
 				}
 				// One line the first time a POSITIONAL type ever appears — this
 				// is the event the whole lane is waiting on.

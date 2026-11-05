@@ -54,7 +54,8 @@ std::shared_ptr<TextureSource> TextureSources::find(mc2::czstring name, DWORD va
         std::lock_guard lock(indexMutex_);
         auto it=named_.find(key);
         if (it==named_.end()) return {};
-        id=it->second;
+        const auto& [namedKey, namedId] = *it;
+        id=namedId;
         source=id < assets_.size() ? assets_[id].lock() : nullptr;
     }
     // isLive takes TextureService::mu_: call it without indexMutex_ (lock order in texture_sources_internal.h).
@@ -112,7 +113,10 @@ void TextureSources::flush(bool all) {
     for (const auto& weak : assets()) if (auto source=weak.lock()) {
         if (!RenderCore::textureService().isLive(source->handle)) continue;
         ++live; owned+=source->ownedReferences; roots+=source->users-source->ownedReferences;
-        if (source->bytes && unique.insert(source->bytes).second) encoded+=source->bytes->size();
+        if (source->bytes) {
+            const auto [uniquePos, inserted] = unique.insert(source->bytes);
+            if (inserted) encoded+=source->bytes->size();
+        }
         if (!all && source->lifetime) continue;
         const DWORD drop=all ? source->users : source->users-source->ownedReferences;
         for (DWORD i=0;i<drop;++i) RenderCore::textureService().dropRef(source->asset);

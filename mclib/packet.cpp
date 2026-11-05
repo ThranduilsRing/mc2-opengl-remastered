@@ -21,6 +21,7 @@
 #endif
 
 #include "mc2_czstring.h"
+#include<algorithm>
 #include<zlib.h>
 
 //#ifndef _MBCS
@@ -617,8 +618,7 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 		// This USED to use LZ.  Use ZLib from now on.
 		// Game will ALWAYS be able to READ LZ Packets!!
 		unsigned int actualSize = nbytes << 1;
-		if (actualSize < 4096)
-			actualSize = 4096;
+		actualSize = std::max(actualSize, 4096u);
 
 		unsigned long workBufferSize = actualSize;
 		unsigned long oldBufferSize = nbytes;

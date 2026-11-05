@@ -14,6 +14,7 @@
 //   bit   17     kNeutral  (submitters with no terrain light: contract with I = 1)
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 
 namespace mc2::prop_light {
@@ -34,7 +35,7 @@ constexpr float unpackI(uint32_t word) { return static_cast<float>(word & kIMask
 constexpr int contractChannel(int S, int A, int F, float I) {
     if (I > 0.0f) {
         long r = static_cast<long>(static_cast<float>(S) * I + static_cast<float>(A));
-        if (r < F) r = F;
+        r = std::max<long>(r, F);
         return r < 0xff ? static_cast<int>(r) : 0xff;
     }
     return A < F ? F : A;
