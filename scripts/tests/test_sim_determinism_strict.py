@@ -186,6 +186,9 @@ _RENDER_ROW = "| mc2_03  | FAIL   | heartbeat_freeze_play,perf_counters_missing,
     # headless has no Vulkan device: the runner's GPU-routing validity reason is by design, any other reason stays red
     (1, _TICKS + "> **RUN INVALID — the missions' results do not count.**\n>\n> - GPU: mc2_03: GPU routing: the run asked for a device matching 'NVIDIA' but its log has no [VK_PROFILE] device line\n" + _RENDER_ROW, True),
     (1, _TICKS + "> **RUN INVALID — the missions' results do not count.**\n>\n> - GPU: mc2_03: GPU routing: the run asked for a device matching 'NVIDIA' but its log has no [VK_PROFILE] device line\n> - host: another mc2.exe was running\n" + _RENDER_ROW, False),
+    # headless has no play phase for the order-liveness fixture: its "summary line absent" verdict is by design, other liveness failures stay red
+    (1, _TICKS + _RENDER_ROW + "[runner] [ORDER-LIVENESS] HARD FAIL: 1 order-liveness check(s) failed\n[runner]   ORDER-LIVENESS FAIL mc2_16: ORDER_LIVENESS_SUMMARY line absent from log (fixture never reached its summary phase)\n", True),
+    (1, _TICKS + _RENDER_ROW + "[runner] [ORDER-LIVENESS] HARD FAIL: 1 order-liveness check(s) failed\n[runner]   ORDER-LIVENESS FAIL mc2_16: unit 3 never moved\n", False),
     (1, "[SMOKE v1] event=summary result=pass\n" + _RENDER_ROW, False),               # never reached the tick budget
     (0, _TICKS + "Crash Report\n", False),
     (2, _TICKS + _RENDER_ROW, False),
