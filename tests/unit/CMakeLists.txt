@@ -331,7 +331,8 @@ else()
 endif()
 
 if(MSVC)
-    target_compile_options(mc2_tests PRIVATE /W4 /WX-)
+    # /we4002: wrong macro argument count (2-arg CAPTURE misuse) is an error, as it is on clang.
+    target_compile_options(mc2_tests PRIVATE /W4 /WX- /we4002)
 endif()
 mc2_asan_runtime(mc2_tests)
 
