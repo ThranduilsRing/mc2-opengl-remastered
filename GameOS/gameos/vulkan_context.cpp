@@ -880,8 +880,7 @@ void VulkanContext::logHealth() const {
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
         vmaGetHeapBudgets(allocator_, budgets);
         for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
-            std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u
-",
+            std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u\n",
                          i, (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? 1 : 0,
                          (unsigned long long)(mp.memoryHeaps[i].size >> 20), (unsigned long long)(budgets[i].budget >> 20),
                          (unsigned long long)(budgets[i].usage >> 20), (unsigned long long)(budgets[i].statistics.allocationBytes >> 20),
