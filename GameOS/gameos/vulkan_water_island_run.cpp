@@ -4,6 +4,7 @@
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_one_shot.h"
+#include "vk_barrier_batch_vk.h"
 #include <cmath>
 #include "mc2fmt.h"
 #include "vulkan_shadow_island_live.h"   // the bake mask
@@ -20,11 +21,9 @@ int gos_GetWaterReflectionQuality();
 void vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled) {
     auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
                      VkPipelineStageFlags src,VkAccessFlags read,VkPipelineStageFlags dst,VkAccessFlags write) {
-        VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-        b.srcAccessMask=read; b.dstAccessMask=write; b.oldLayout=from; b.newLayout=to;
-        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
-        b.image=image; b.subresourceRange={aspect,0,1,0,1};
-        vkCmdPipelineBarrier(cb,src,dst,0,0,nullptr,0,nullptr,1,&b);
+        // Legacy stage/access bits equal the low 32 bits of the sync2 masks.
+        mc2vk::sync::cmdImageBarrier(mc2vk::getOrCreateEngineVulkanContext(),cb,image,VkImageSubresourceRange{aspect,0,1,0,1},
+            from,VkPipelineStageFlags2(src),VkAccessFlags2(read),to,VkPipelineStageFlags2(dst),VkAccessFlags2(write));
     };
     // Keep the statically used water sampler valid even in Off/Sky-only mode.
     if (!s->reflectionInitialized) {

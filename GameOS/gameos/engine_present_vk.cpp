@@ -2490,11 +2490,12 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         // shared image / framebuffers and must never be submitted.
         {
             VkFence fences[mc2vk::kMaxFramesInFlight]{};
+            s.ctx->poll();   // vk-sync-arch: flush the deferred submit batch before the image goes away
             for (uint32_t i = 0; i < s.slotCount; ++i) fences[i] = s.inFlights[i].get();
             VkResult done = vkWaitForFences(s.dev, s.slotCount, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000);
             // A timeout proves nothing: the in-flight frame may still read the image. Only an idle device proves it; a failed idle (device lost) leaves
             // the image alone and fails the present, so buildSharedImage never destroys an image the GPU may still use.
-            if (done != VK_SUCCESS) done = vkDeviceWaitIdle(s.dev);
+            if (done != VK_SUCCESS) { s.ctx->waitIdle("resize"); done = mc2vk::infra::deviceLostLatched() ? VK_ERROR_DEVICE_LOST : VK_SUCCESS; }
             if (done != VK_SUCCESS) { health_.fallback_reason = "resize: in-flight frame not proven complete"; return false; }
         }
         drainReadbackBeforeImageDestroy();   // a pending image->buffer copy reads the shared image buildSharedImage is about to destroy

@@ -6,6 +6,7 @@
 
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 
 #include <cstdarg>
 #include <cstdio>
@@ -121,11 +122,9 @@ void ComputeSets::write(VkDevice device, uint32_t i, uint32_t binding, VkDescrip
 }
 
 void cmdBarrier(VkCommandBuffer cb, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, VkPipelineStageFlags dstStage, VkAccessFlags dstAccess) {
-    VkMemoryBarrier mb{};
-    mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-    mb.srcAccessMask = srcAccess;
-    mb.dstAccessMask = dstAccess;
-    vkCmdPipelineBarrier(cb, srcStage, dstStage, 0, 1, &mb, 0, nullptr, 0, nullptr);
+    // Legacy stage/access bit values are identical in the low 32 bits of the sync2 masks; callers keep their legacy names.
+    sync::cmdMemoryBarrier(getOrCreateEngineVulkanContext(), cb, VkPipelineStageFlags2(srcStage), VkAccessFlags2(srcAccess),
+                           VkPipelineStageFlags2(dstStage), VkAccessFlags2(dstAccess));
 }
 
 }  // namespace mc2vk

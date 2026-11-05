@@ -21,6 +21,7 @@
 #include "vk_owned.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vulkan_color_prop_island.h"
@@ -175,7 +176,7 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   depthAttView;   // depth-attachment view of the shared image
     mc2vk::OwnedRenderPass  rpass;
     mc2vk::OwnedFramebuffer fb;
-    mc2vk::OwnedFence       frameFence[mc2vk::kMaxFramesInFlight];   // signalled when the submit of parity p has retired; created signalled
+    mc2vk::GpuTicket        frameTicket[mc2vk::kMaxFramesInFlight];  // timeline ticket of the parity-p submit; default ticket is already complete
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorSetLayout alphaDsl;   // set 1 of the caster layout: the colour island's alpha-ON albedo array
     mc2vk::OwnedDescriptorPool      pool;
@@ -624,14 +625,6 @@ bool init_island(ShadowIsland* s, int size) {
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
-            if (!mc2vk::create(s->frameFence[par], s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
-                vlog("frame fence failed."); return false;
-            }
-        }
     }
 
     s->inited = true;
@@ -732,9 +725,8 @@ static bool productReady(bool recorded) {
 static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     if (s->recording && s->recordEpoch == epoch) return true;
     const uint32_t par = static_cast<uint32_t>(epoch % mc2vk::kMaxFramesInFlight);
-    const VkFence fence = s->frameFence[par].get();
     { ZoneScopedN("VKIsl.Shadow.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs); mc2_hitch2::FenceWaitScope slotWait("shadow_island_live", mc2_hitch2::kSlot);
-      if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+      if (!mc2vk::getOrCreateEngineVulkanContext().wait(s->frameTicket[par], 5000000000ull, "shadow frame slot")) {
           setFallback("fence_timeout"); s->disabled = true; return false;
       } }
     VkCommandBuffer cb = s->cbuf[par];
@@ -1041,17 +1033,23 @@ static void record_local_shadows(ShadowIsland* s) {
     VkCommandBuffer cb = s->cbuf[s->parity];
     const VkImageSubresourceRange depthRange{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
     if (!L.layoutsReady) {
-        VkImageMemoryBarrier b[2]{};
-        for (auto& x : b) { x.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER; x.srcQueueFamilyIndex = x.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; x.subresourceRange = depthRange; x.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; }
-        b[0].image = L.staticAtlas.image.get(); b[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; b[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        b[1].image = L.liveAtlas.image.get();   b[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, b);
+        // Both atlases come out of UNDEFINED: the trackers derive the source state of every transition from the previous use.
+        mc2vk::VulkanContext& bctx = mc2vk::getOrCreateEngineVulkanContext();
+        mc2vk::sync::ImageTracker staticTrk(reinterpret_cast<uint64_t>(L.staticAtlas.image.get()), VK_IMAGE_ASPECT_DEPTH_BIT);
+        mc2vk::sync::ImageTracker liveTrk(reinterpret_cast<uint64_t>(L.liveAtlas.image.get()), VK_IMAGE_ASPECT_DEPTH_BIT);
+        {
+            mc2vk::sync::BarrierBatch batch;
+            staticTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false});
+            liveTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, true});
+            mc2vk::sync::flush(bctx, cb, batch);
+        }
         const VkClearDepthStencilValue one{1.0f, 0};
         vkCmdClearDepthStencilImage(cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &one, 1, &depthRange);
-        VkImageMemoryBarrier r = b[1];
-        r.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; r.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        r.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; r.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &r);
+        {
+            mc2vk::sync::BarrierBatch batch;
+            liveTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL), VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false});
+            mc2vk::sync::flush(bctx, cb, batch);
+        }
         L.layoutsReady = true;
         ++s->passCount;   // the frame must be submitted for the transitions
     }
@@ -1326,14 +1324,14 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     auto disableFrame=[&]() { s->disabled=true; g_dynShadowReadyThisFrame=false; };
     vk_render_pass_timer::End(cb,gos_render_pass_timer::Pass_ShadowDyn);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); disableFrame(); return; }
-    const VkFence fence = s->frameFence[s->parity].get();
-    vkResetFences(s->device, 1, &fence);
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
     ZoneScopedN("VKIsl.Shadow.Submit");
-    if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    mc2vk::VulkanContext& sctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (sctx.submit(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    s->frameTicket[s->parity] = sctx.tracker().now();
     timerGuard.submitted();
     s->bake.markSubmitted(s->recordEpoch);
 }
@@ -1361,7 +1359,7 @@ extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
         idle = busy ? 0 : idle + 1;
     }
     // Both parity fences signalled: the last submit retired and its products are final.
-    for (auto& f : s->frameFence) { const VkFence fence = f.get(); if (fence) vkWaitForFences(s->device, 1, &fence, VK_TRUE, 2ull * 1000 * 1000 * 1000); }
+    for (auto& t : s->frameTicket) mc2vk::getOrCreateEngineVulkanContext().wait(t, 2000000000ull, "shadow load bake retire");
     void* av = nullptr; uint32_t ag = 0; Mc2ColorPropMaterialFeed mf{};
     const int arr = mc2_color_prop_island_get_alpha_array(&av, &ag);
     const int feed = mc2_color_prop_island_get_material_feed(&mf);

@@ -2,6 +2,7 @@
 #include "vulkan_mover_shadow.h"
 #include "shadow_quality.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "vk_one_shot.h"
@@ -54,17 +55,14 @@ bool MoverShadowState::init(VulkanContext& ctx, bool unionPath) {
     v.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT,0,1,0,1};
     if (!create(dummyView_, device_, [&](auto* h) { return vkCreateImageView(device_, &v, nullptr, h); })) return false;
     return submitOneShot(ctx, [&](VkCommandBuffer cb) {
-        VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = dummy_.get(); b.subresourceRange = v.subresourceRange;
-        b.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        b.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&b);
+        sync::cmdImageBarrier(ctx, cb, dummy_.get(), v.subresourceRange,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
         const VkClearDepthStencilValue clear{1.0f,0};
         vkCmdClearDepthStencilImage(cb,dummy_.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&clear,1,&v.subresourceRange);
-        b.oldLayout = b.newLayout; b.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&b);
+        sync::cmdImageBarrier(ctx, cb, dummy_.get(), v.subresourceRange,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     }, "mover shadow placeholder");
 }
 

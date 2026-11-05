@@ -7,6 +7,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 
 #include "mc2fmt.h"
 #include "RenderCore/GpuResidencyPolicy.h"
@@ -101,11 +102,9 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         vkCmdCopyBuffer(cb, stageReg.get(), regions_.get(), 1, &cr);
         // Empty draw arguments until the first cull: an indirect draw with instanceCount 0.
         for (Slot& s : slot_) vkCmdFillBuffer(cb, s.args.get(), 0, 64, 0);
-        VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        mb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+        mc2vk::sync::cmdMemoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+            VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT);
     }, "veg_population_upload");
     if (!ok) {
         mc2::fmt::print_err("[VEG_GPU] population upload failed: copy submit\n");
