@@ -5,11 +5,12 @@
 #include "tgl.h"
 #include "content_socket.h"
 #include <string>
+#include <span>
 #include <string_view>
 #include <vector>
 
 namespace mc2::content {
-inline constexpr uint32_t cookerVersion = 4;
+inline constexpr uint32_t cookerVersion = 5;  // 5: fastHash replaces byte-wise FNV in keys and digests
 struct Material {
     std::string textureName;
     bool alpha = false;
@@ -36,4 +37,9 @@ struct Asset {
 // source bytes, the complete IR payload and the cooker version. No simulation state/RNG.
 bool cook(Asset& asset, std::string_view source);
 bool loadCached(Asset& asset, std::string_view source);
+// Fast 8-byte-word hash used for cache keys and source digests (replaces byte-wise FNV-1a).
+uint64_t fastHash(std::span<const uint8_t> bytes, uint64_t seed = 14695981039346656037ull);
+// Digest of a source file's bytes, memoised per path+size so cache lookup, cook and the
+// importer's IO layer hash each file once per session.
+uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t> bytes);
 }

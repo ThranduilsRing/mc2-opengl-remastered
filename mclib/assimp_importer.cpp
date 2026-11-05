@@ -84,8 +84,7 @@ public:
         stream->bytes.resize(source.fileSize());
         if (!stream->bytes.empty() && source.read(stream->bytes.data(), static_cast<long>(stream->bytes.size())) !=
             static_cast<long>(stream->bytes.size())) return nullptr;
-        uint64_t digest = 14695981039346656037ull;
-        for (const auto byte : stream->bytes) { digest ^= byte; digest *= 1099511628211ull; }
+        const uint64_t digest = mc2::content::sourceBytesDigest(path, stream->bytes);
         const std::pair<std::string, uint64_t> identity{path, digest};
         if (std::find(dependencies.begin(), dependencies.end(), identity) == dependencies.end()) dependencies.push_back(identity);
         return stream.release();  // Assimp takes ownership until Close.
@@ -1127,18 +1126,14 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
     mc2::fmt::print_err("[MECH_IMPORT] package '{}': {:d} nodes, ao='{}' normal='{}'\n", side.c_str(), mc2::fmt::as_size(out.size()), aoOut.c_str(), normalOut.c_str());
 }
 
-// Keep a dedicated parse alive for the runtime re-bake: the import's own Importer
-// is a stack local that frees its scene on return. Same flags → identical
-// post-processed mesh ordering/vertices as the merge that recorded `parts`.
+// Keep the import's own parse alive for the runtime re-bake (the GLB is parsed once; the caller
+// hands over its Importer). Ownership transfers only once the entry is stored.
 void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBake& bake,
-                          const std::vector<ImportPartRec>& parts, float groundDy) {
+                          const std::vector<ImportPartRec>& parts, float groundDy,
+                          std::unique_ptr<Assimp::Importer>& imp) {
     TG_TypeNodePtr slot = out->GetTypeNode(0);
     if (!slot || slot->GetNodeType() != SHAPE_NODE) return;
-    auto imp = std::make_unique<Assimp::Importer>();
-    imp->SetIOHandler(std::make_unique<ContentIO>().release());
-    const aiScene* scene = imp->ReadFile(path,
-        aiProcess_Triangulate | aiProcess_GenSmoothNormals |
-        aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_SortByPType);
+    const aiScene* scene = imp->GetScene();
     if (!scene) return;
     ImportedAnimEntry e;
     e.imp = std::move(imp); e.scene = scene;
@@ -1702,19 +1697,21 @@ static void CollectContentSockets(const aiNode* node, mc2::content::Asset& asset
 long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
                             bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
-	// The shipped cooker's GLBs contain their vertex/index buffers. Keep arbitrary
-	// mod GLBs on dependency tracking (they may reference external buffers).
-	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
-		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
+	// Every .glb checks the native cook cache before any parse (S1). Only unskinned, self-contained
+	// GLBs ever store under this key (see the staticParameters assignment after the parse), so a hit
+	// is always a valid unskinned IR; skinned GLBs and external-buffer GLBs never hit.
+	const bool staticGlb = std::string_view(path).ends_with(".glb");
 	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
-		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/5-pane-cells";
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) +
+		(bakeNodeTransforms ? ":static-glb/5-pane-cells" : ":flat-glb/1");
 	if (staticGlb) {
 		mc2::content::Asset cached;
 		cached.ground = autoGround ? 2 : 0;
 		cached.parameters = staticParameters;
 		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
 	}
-	Assimp::Importer imp;
+	auto impOwner = std::make_unique<Assimp::Importer>();
+	Assimp::Importer& imp = *impOwner;
 	auto io = std::make_unique<ContentIO>();
 	auto* sources = io.get();
 	imp.SetIOHandler(io.release());
@@ -1852,7 +1849,8 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
         asset.parameters += ":" + std::to_string(digest);
     // Skinned imports keep their skeleton/clip path; they never populate the
     // static cache namespace that can bypass scene decoding.
-    if (staticGlb && !bake.active) asset.parameters = staticParameters;
+    // Self-contained means the main file is the only dependency Assimp opened.
+    if (staticGlb && !bake.active && sources->dependencies.size() <= 1) asset.parameters = staticParameters;
     if (!bake.active && mc2::content::loadCached(asset, path))
         return out->BuildContentIR(std::move(asset), path);
     CollectContentSockets(scene->mRootNode, asset);
@@ -1955,7 +1953,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	// auto-ground so the stored offset matches the static pose. Reuses the forced
 	// clip as the loop. Keeps its own Assimp scene alive (session lifetime).
 	if (animateImport && bake.active && !animParts.empty())
-		RegisterImportedAnim(path, out, bake, animParts, groundDyApplied);
+		RegisterImportedAnim(path, out, bake, animParts, groundDyApplied, impOwner);
 
 	SPEW(("ASSIMP", "%s: %u meshes, %u materials imported",
 	      path, scene->mNumMeshes, scene->mNumMaterials));

@@ -387,12 +387,10 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 
 
 #ifdef ENABLE_ASSIMP_IMPORTER
-	// Runtime killswitch: MC2_ASSIMP_IMPORT=0 forces legacy ASE for all asset
-	// classes without requiring a rebuild. Default is enabled (any value other
-	// than "0", or env var absent). Compile-time ENABLE_ASSIMP_IMPORTER is the
-	// master gate; this is the per-launch override.
+	// Compile-time ENABLE_ASSIMP_IMPORTER is the only gate (the MC2_ASSIMP_IMPORT
+	// runtime killswitch was retired).
 	{
-		if (true) {
+		{
 			// Probe order: .glb then .fbx. On any importer failure, fall
 			// through to ASE so a broken modder asset can't render the mech
 			// un-loadable. Stock-install playability is paramount.
