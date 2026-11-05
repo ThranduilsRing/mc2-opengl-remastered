@@ -1,4 +1,5 @@
 // Native actor-visibility producer. Input layout matches GpuActorRecord (64 bytes).
+// slang-profile: spirv_1_3
 struct ActorRecord {
     float3 worldCenter; float boundingRadius;
     float3 worldAabbMin; uint category;
@@ -36,18 +37,25 @@ bool sphereAdmit(float4 c, float radius, float scale) {
 [numthreads(64,1,1)]
 void main(uint3 tid:SV_DispatchThreadID) {
     uint i=tid.x;
-    if (i>=P.counts.x) return;
-    ActorRecord a=actors[i];
+    // No early return: out-of-range lanes must still reach the wave ops below.
+    bool inRange=i<P.counts.x;
+    ActorRecord a=actors[inRange ? i : 0u];
     float4 clip=P.c0*a.worldCenter.x + P.c1*a.worldCenter.y + P.c2*a.worldCenter.z + P.c3;
     float scale=max(length(float3(P.c0.x,P.c1.x,P.c2.x)), length(float3(P.c0.y,P.c1.y,P.c2.y)));
     bool strict=a.boundingRadius>0.0 ? sphereAdmit(clip,a.boundingRadius,scale) : pointAdmit(clip,0.0);
     bool dilated=P.options.x>0.0 ? pointAdmit(clip,P.options.x) : strict;
     if ((a.flags&1u)!=0u) { strict=true; dilated=true; }
     bool visible=strict || dilated;
-    result[4+i]=visible ? 1u : 0u;
+    if (inRange) result[4+i]=visible ? 1u : 0u;
+    // Counters are order-independent: one add per wave instead of one per thread.
+    uint nVisible=WaveActiveCountBits(inRange && visible);
+    uint nCulled=WaveActiveCountBits(inRange && !visible);
+    uint nDilated=WaveActiveCountBits(inRange && dilated && !strict);
     uint unused;
-    if (visible) InterlockedAdd(result[0],1u,unused);
-    else InterlockedAdd(result[3],1u,unused);
-    if (dilated && !strict) InterlockedAdd(result[2],1u,unused);
-    if (i==0u) result[1]=P.counts.y;
+    if (WaveIsFirstLane()) {
+        if (nVisible!=0u) InterlockedAdd(result[0],nVisible,unused);
+        if (nDilated!=0u) InterlockedAdd(result[2],nDilated,unused);
+        if (nCulled!=0u) InterlockedAdd(result[3],nCulled,unused);
+    }
+    if (inRange && i==0u) result[1]=P.counts.y;
 }

@@ -259,6 +259,8 @@ def compile_to_spv(
             "-I" + str(shader.parent),
         ]
         cmd += ["-V", "-R"]
+        if "GL_KHR_shader_subgroup" in src:   # mirrors MC2_VK_SHADER_DEFINES_<shader> in GameOS/gameos/CMakeLists.txt
+            cmd += ["--target-env", "vulkan1.1"]
         cmd += [str(tmp), "-o", str(spv_path)]
 
         proc = subprocess.run(cmd, capture_output=True, **console_child.child_kwargs(redirected=True))
