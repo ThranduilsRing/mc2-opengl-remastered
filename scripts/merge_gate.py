@@ -242,6 +242,10 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
         expired = [e for e in entries if not e['first_window'] <= window < e['expires_window']]
         if expired:
             raise ValueError('expired/not-yet-active entries; renew tools/mod_known_failures.json with an owner note')
+        for e in entries:   # still valid now, but gone before the next window
+            if window + 1 >= e['expires_window']:
+                print(f"[merge_gate] preflight WARN: known-failure {e.get('mod')}/{e.get('mission')}/{e.get('error_class')} expires at window {e['expires_window']}, "
+                      f"last valid in window {e['expires_window'] - 1}; renew tools/mod_known_failures.json with an owner note", flush=True)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         errors.append(f"known-failure list: {exc}; fix: edit tools/mod_known_failures.json with owner-approved ceilings and three-window expiry")
     for error in errors:
