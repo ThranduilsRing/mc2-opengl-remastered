@@ -155,7 +155,7 @@ void autoBase() {
             std::string source(262144, '\0');
             input.read(source.data(), source.size());
             source.resize(static_cast<std::size_t>(input.gcount()));
-            std::transform(source.begin(), source.end(), source.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+            std::transform(source.begin(), source.end(), source.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
             magic |= source.find("magicattack") != std::string::npos;
             high |= hasHighObjectNumber(source);
         }
@@ -340,7 +340,7 @@ void drawMainMenu() {
                 restart = true;
                 gos_TerminateApplication();
             } else pendingStart = campaignFit;
-            std::printf("[CAMPAIGN_PICKER] start mod=%s campaign=%s deps=%s restart=%d\n", campaign.c_str(), campaignFit.c_str(), deps.c_str(), int(contentChanged));
+            std::printf("[CAMPAIGN_PICKER] start mod=%s campaign=%s deps=%s restart=%d\n", campaign.c_str(), campaignFit.c_str(), deps.c_str(), static_cast<int>(contentChanged));
             pickerOpen = false;
         }
     }
@@ -388,8 +388,8 @@ void drawOptions() {
             } else if (std::string_view(option.key) == "WaterReflections") {
                 const char* labels[] = {"Off", "Sky only", "Half-res"};
                 ImGui::Combo("Water reflections", &(draft.*option.l), labels, 3);
-            } else ImGui::SliderInt(label, &(draft.*option.l), int(option.lo), int(option.hi));
-        } else ImGui::SliderFloat(label, &(draft.*option.f), float(option.lo), float(option.hi));
+            } else ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
+        } else ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
     }
     if (ImGui::TreeNode("Engine and display options")) {
         for (const auto& row : k_envVars) {

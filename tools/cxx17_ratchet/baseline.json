@@ -32,7 +32,7 @@
    "LG06": 2,
    "LG07": 0,
    "LG08": 0,
-   "LG09": 13,
+   "LG09": 7,
    "LG10": 3,
    "LG11": 0,
    "LG12a": 0,
@@ -78,7 +78,7 @@
    "LG06": 7,
    "LG07": 2,
    "LG08": 1,
-   "LG09": 31,
+   "LG09": 5,
    "LG10": 4,
    "LG11": 3,
    "LG12a": 0,
@@ -101,7 +101,7 @@
    "LG06": 14,
    "LG07": 0,
    "LG08": 11,
-   "LG09": 52,
+   "LG09": 26,
    "LG10": 10,
    "LG11": 0,
    "LG12a": 2,
@@ -278,7 +278,7 @@
   "EditorBridge/EditorRenderBridge.h": {},
   "GameAdapters/MechRenderAdapter.cpp": {
    "LG05": 3,
-   "LG09": 8
+   "LG09": 7
   },
   "GameAdapters/MechRenderAdapter.h": {},
   "GameAdapters/MissionEnvironmentAdapter.cpp": {},
@@ -294,12 +294,10 @@
    "LG06": 1
   },
   "GameAdapters/VegetationAdapter.cpp": {
-   "LG09": 1,
    "LG10": 2
   },
   "GameAdapters/VegetationAdapter.h": {},
   "GameAdapters/vegetation_budget.h": {
-   "LG09": 4,
    "LG10": 1
   },
   "GameAdapters/vegetation_hardsurface.h": {},
@@ -1343,7 +1341,6 @@
   },
   "GuiRuntime/EditorInspector_sections.cpp": {
    "LG06": 1,
-   "LG09": 2,
    "LG20": 5
   },
   "GuiRuntime/GraphicsOptionsWindow.cpp": {},
@@ -1353,19 +1350,15 @@
    "LG06": 1
   },
   "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
-   "LG09": 1,
    "LG20": 11
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
-   "LG09": 8,
    "LG10": 1
   },
-  "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
-   "LG09": 4
-  },
+  "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {},
   "GuiRuntime/GuiRuntime.cpp": {
    "LG05": 1,
-   "LG09": 12,
+   "LG09": 5,
    "LG10": 1,
    "LG11": 1
   },
@@ -1385,7 +1378,6 @@
    "LG10": 1
   },
   "GuiRuntime/PlayerFrontEnd.cpp": {
-   "LG09": 4,
    "LG11": 2
   },
   "GuiRuntime/PlayerFrontEnd.h": {},
@@ -1442,9 +1434,7 @@
   "RenderCore/PropMaterialGpu.h": {},
   "RenderCore/PropMaterialRows.h": {},
   "RenderCore/RenderDebugView.cpp": {},
-  "RenderCore/RenderDebugView.h": {
-   "LG09": 15
-  },
+  "RenderCore/RenderDebugView.h": {},
   "RenderCore/RenderObjectDesc.h": {},
   "RenderCore/RenderPassContract.h": {
    "LG20": 2
@@ -1456,7 +1446,6 @@
    "LG05": 1
   },
   "RenderCore/RendererFeatureRegistry.h": {
-   "LG09": 4,
    "LG12a": 2
   },
   "RenderCore/ResolutionContract.h": {
@@ -1470,7 +1459,6 @@
   "RenderCore/SurfaceMaterial.h": {},
   "RenderCore/TextureService.h": {
    "LG08": 10,
-   "LG09": 2,
    "LG17": 1
   },
   "RenderCore/TextureStream.h": {},
@@ -1481,7 +1469,7 @@
   },
   "RenderCore/axis_convert.h": {},
   "RenderCore/bcdec.h": {
-   "LG09": 31,
+   "LG09": 26,
    "LG10": 4,
    "LG13": 7,
    "LG17": 2,
@@ -4508,7 +4496,7 @@
    "LG20": 3
   }
  },
- "head": "fba09bd6a",
+ "head": "67004e846",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

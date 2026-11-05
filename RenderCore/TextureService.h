@@ -91,7 +91,7 @@ inline constexpr uint64_t kUiTextureTag = 0x54584d3100000000ull;
 inline uint64_t uiTextureId(TextureHandle handle) { return handle.isValid() ? kUiTextureTag | handle.raw() : 0; }
 inline bool isUiTextureId(uint64_t id) { return (id & 0xffffffff00000000ull)==kUiTextureTag; }
 inline TextureHandle uiTextureHandle(uint64_t id) {
-    return isUiTextureId(id) ? TextureHandle::make(uint32_t(id) & 0xfffffu, uint32_t(id) >> 20) : TextureHandle::invalid();
+    return isUiTextureId(id) ? TextureHandle::make(static_cast<uint32_t>(id) & 0xfffffu, static_cast<uint32_t>(id) >> 20) : TextureHandle::invalid();
 }
 
 // Source ownership is pure standard C++; the engine supplies VFS payloads and
@@ -338,7 +338,7 @@ public:
         if (auto it = indices_.find(h.raw()); it != indices_.end()) return it->second;
         uint32_t slot;
         if (!free_.empty()) { slot = free_.back(); free_.pop_back(); }
-        else { if (slots_.size() >= capacity_) return 0; slot = uint32_t(slots_.size()); slots_.push_back({}); }
+        else { if (slots_.size() >= capacity_) return 0; slot = static_cast<uint32_t>(slots_.size()); slots_.push_back({}); }
         slots_[slot] = {h, std::move(owner)}; indices_[h.raw()] = slot; ++revision_; return slot;
     }
     bool erase(TextureHandle h) {

@@ -202,8 +202,8 @@ bool GuiRuntime::GetDisplaySize(float& w, float& h)
         int dw = 0, dh = 0;
         gos_GetEnvironmentDrawableSize(&dw, &dh);
         if (dw > 0 && dh > 0) {
-            w = (float)dw;
-            h = (float)dh;
+            w = static_cast<float>(dw);
+            h = static_cast<float>(dh);
             return true;
         }
     }
@@ -626,17 +626,17 @@ void GuiRuntime::Render() {
         int bx = 0, by = 0, bw = 0, bh = 0;
         float dw = 0.0f, dh = 0.0f;
         if (GetDisplaySize(dw, dh) &&
-            gos_ComputeUiCanvasBox((int)dw, (int)dh, &bx, &by, &bw, &bh))
+            gos_ComputeUiCanvasBox(static_cast<int>(dw), static_cast<int>(dh), &bx, &by, &bw, &bh))
         {
             ImDrawList* fg = ImGui::GetForegroundDrawList();
             const ImU32 black = IM_COL32(0, 0, 0, 255);
             if (bx > 0) {
-                fg->AddRectFilled(ImVec2(0, 0), ImVec2((float)bx, dh), black);
-                fg->AddRectFilled(ImVec2((float)(bx + bw), 0), ImVec2(dw, dh), black);
+                fg->AddRectFilled(ImVec2(0, 0), ImVec2(static_cast<float>(bx), dh), black);
+                fg->AddRectFilled(ImVec2(static_cast<float>(bx + bw), 0), ImVec2(dw, dh), black);
             }
             if (by > 0) {
-                fg->AddRectFilled(ImVec2(0, 0), ImVec2(dw, (float)by), black);
-                fg->AddRectFilled(ImVec2(0, (float)(by + bh)), ImVec2(dw, dh), black);
+                fg->AddRectFilled(ImVec2(0, 0), ImVec2(dw, static_cast<float>(by)), black);
+                fg->AddRectFilled(ImVec2(0, static_cast<float>(by + bh)), ImVec2(dw, dh), black);
             }
         }
     }

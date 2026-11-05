@@ -30,7 +30,7 @@ static const EnvGate kEnvGates[] = {
     { "MC2_RENDER_CONTRACT_ASSERT", "Render-contract GL state validation",        false, false },
     { "MC2_IMGUI",                  "Dear ImGui overlay (default-on)",           true,  false },
 };
-static const int kEnvGateCount = (int)(sizeof(kEnvGates) / sizeof(kEnvGates[0]));
+static const int kEnvGateCount = static_cast<int>(sizeof(kEnvGates) / sizeof(kEnvGates[0]));
 void drawEnvGatesSection() {
     ImGui::TextDisabled("Baked at startup — changes require restart.");
     ImGui::Spacing();
