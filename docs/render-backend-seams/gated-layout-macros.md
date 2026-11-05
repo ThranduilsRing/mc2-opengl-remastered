@@ -1592,7 +1592,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vk_vegetation_state.h:107`
 - Class: `Slot`  (data-member)
-- Member: `mc2vk::OwnedBuffer counts, offsets, dense, args, stats;`
+- Member: `mc2vk::OwnedBuffer counts, offsets, dense, args, stats, visList;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
