@@ -84,8 +84,8 @@ IDIOMS = {
     "LG06": ("const char* / const std::string& read-only param", "std::string_view"),
     "LG07": ("enable_if / tag-dispatch type switching", "concepts / requires (+ if constexpr)"),
     "LG08": (".first/.second pair access", "structured bindings"),
-    "LG09": ("C-style cast", "static_cast / reinterpret_cast / bit_cast"),
-    "LG10": ("manual min/max clamp chain", "std::clamp"),
+    "LG09": ("C-style or functional (int(x)) cast", "static_cast / reinterpret_cast / bit_cast"),
+    "LG10": ("manual min/max clamp chain / one-sided if-clamp", "std::clamp"),
     "LG11": ("Win32/CRT path API or '\\' path concat", "std::filesystem"),
     "LG12a": ("printf/fprintf/puts/OutputDebugString/SPEW logging", "logging facade (std::print/format + source_location)"),
     "LG12b": ("sprintf/snprintf/vsprintf buffer formatting", "std::format_to / std::format"),
@@ -148,6 +148,16 @@ R_CAST = re.compile(r"\(\s*(?:const\s+|unsigned\s+|signed\s+|volatile\s+)*"
                     r"(?:u?int(?:8|16|32|64)?(?:_t)?|char|short|long(?:\s+long)?|float|double|size_t|ptrdiff_t|bool|"
                     r"U?LONG|DWORD|BYTE|WORD|[A-Za-z_]\w*(?:::\w+)*\s*\*+|void\s*\*+|[A-Z]\w*)"
                     r"\s*\)\s*(?=[\w(&*~!\-+\"'])")
+# LG09 also counts functional casts of arithmetic types: int(x), float(x), uint32_t(x) ...
+# (clang-tidy google-readability-casting flags them; the fix is static_cast<T>(x)).  Not after
+# . -> :: < or an identifier (member / template argument / declarator), not int() / int(*...).
+R_FNCAST = re.compile(r"(?<![\w.>:<~])(?:unsigned\s+)?"
+                      r"(?:u?int(?:8|16|32|64)_t|size_t|ptrdiff_t|float|double|bool|char|short|int|long|unsigned)"
+                      r"\s*\((?!\s*[*&)])")
+# LG10 one-sided clamp: if (v > b) v = b;  (also v < b, and b < v), body on the same line or the next.
+R_ONESIDED = re.compile(r"\bif\s*\(\s*(?:([A-Za-z_][\w\.\->\[\]]*)\s*[<>]=?\s*([^;{}()<>]+?)"
+                        r"|([^;{}()<>]+?)\s*[<>]=?\s*([A-Za-z_][\w\.\->\[\]]*))"
+                        r"\s*\)\s*\{?\s*(?:\1|\4)\s*=\s*(?:\2|\3)\s*;")
 CAST_PRE_KW = {"return", "case", "else", "do", "throw", "and", "or", "not", "co_return", "new", "delete"}
 CAST_POST_KW = re.compile(r"\s*(?:const|override|noexcept|final|throw|volatile|mutable|try|asm)\b")
 R_CAST_TYPE_FALSE = re.compile(r"\(\s*(?:int|void|float|double|char|bool|long|short|unsigned)\s*\)\s*$")
@@ -197,6 +207,7 @@ def scan_text(text: str, path: str = "") -> dict:
     allocator_file = bool(ALLOC_FILE.search(os.path.basename(path)))
     last_fn = ""
     clamp_pending = []          # (line, var, op)
+    onesided = []
     union_lines = []
     n = len(bl)
     for i, (c, b) in enumerate(zip(nc, bl)):
@@ -287,12 +298,22 @@ def scan_text(text: str, path: str = "") -> dict:
                 if re.fullmatch(r"[A-Z0-9_]+", inner) and inner not in ("DWORD", "BYTE", "WORD", "ULONG", "LONG"):
                     continue
                 hits["LG09"].append(ln)
+            if not pp:
+                for m in R_FNCAST.finditer(b):
+                    if not re.search(r"\b(?:operator|sizeof|decltype|typename|new)\s*$", b[:m.start()]):
+                        hits["LG09"].append(ln)
+                        break
         # LG10
         if not pp and any(len(R_MINMAX.findall(statement)) >= 2 for statement in b.split(";")):
             hits["LG10"].append(ln)
         m = R_CLAMP_IF.search(b)
         if m:
             clamp_pending.append((ln, m.group(1), m.group(2)))
+        if not pp and "if" in b:
+            # one-sided clamp (clang-tidy readability-use-std-min-max); body may sit on the next line
+            joined = b + (" " + bl[i + 1].strip() if i + 1 < n and b.rstrip().endswith((")", "{")) else "")
+            if R_ONESIDED.search(joined):
+                onesided.append(ln)
         # LG11 (strings kept)
         if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and not pp and "#include" not in c):
             hits["LG11"].append(ln)
@@ -342,6 +363,7 @@ def scan_text(text: str, path: str = "") -> dict:
                 hits["LG18"].append(ln)
     # LG10 if-pair clamps: v<lo ... v>hi on the same var within 4 lines -> one hit
     used = set()
+    paired = set()
     for j, (l1, v1, o1) in enumerate(clamp_pending):
         if j in used:
             continue
@@ -352,7 +374,10 @@ def scan_text(text: str, path: str = "") -> dict:
             if v2 == v1 and o2 != o1:
                 hits["LG10"].append(l1)
                 used.update((j, k))
+                paired.update((l1, l2))
                 break
+    # one-sided clamps; the two halves of a counted pair are not counted again
+    hits["LG10"].extend(x for x in onesided if x not in paired)
     return {k: sorted(set(v)) for k, v in hits.items() if k not in PLATFORM_API_EXEMPT.get(path, ())}
 
 
