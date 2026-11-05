@@ -879,12 +879,13 @@ void VulkanContext::logHealth() const {
         vkGetPhysicalDeviceMemoryProperties(phys_, &mp);
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
         vmaGetHeapBudgets(allocator_, budgets);
-        for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
-            std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u\n",
-                         i, (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? 1 : 0,
-                         (unsigned long long)(mp.memoryHeaps[i].size >> 20), (unsigned long long)(budgets[i].budget >> 20),
-                         (unsigned long long)(budgets[i].usage >> 20), (unsigned long long)(budgets[i].statistics.allocationBytes >> 20),
-                         (unsigned long long)(budgets[i].statistics.blockBytes >> 20), budgets[i].statistics.allocationCount, budgets[i].statistics.blockCount);
+        const auto mb = [](VkDeviceSize b) { return static_cast<unsigned long long>(b >> 20); };
+        if (mc2_diag::tagRequested("VK_MEM"))
+            for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
+                std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u
+",
+                             i, (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? 1 : 0, mb(mp.memoryHeaps[i].size), mb(budgets[i].budget), mb(budgets[i].usage),
+                             mb(budgets[i].statistics.allocationBytes), mb(budgets[i].statistics.blockBytes), budgets[i].statistics.allocationCount, budgets[i].statistics.blockCount);
     }
     std::fflush(stderr);
 }

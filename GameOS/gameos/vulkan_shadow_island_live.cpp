@@ -613,12 +613,9 @@ bool init_island(ShadowIsland* s, int size) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
         for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
-            if (!mc2vk::create(s->cpool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
-                vlog("vkCreateCommandPool failed."); return false;
-            }
+            if (!mc2vk::create(s->cpool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) { vlog("vkCreateCommandPool failed."); return false; }
             VkCommandBufferAllocateInfo cai{};
             cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
