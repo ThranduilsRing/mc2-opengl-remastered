@@ -529,21 +529,29 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1;
         sub.pColorAttachments = &ref;
-        VkSubpassDependency dep{};
-        dep.srcSubpass = 0;
-        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        dep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        VkSubpassDependency dep[2]{};
+        // Incoming: the previous frame's reads of these levels (cull compute, the next level's fragment read, the parity copy)
+        // must finish before this frame rewrites them; no other pass is allowed to fence this by accident.
+        dep[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        dep[0].dstSubpass = 0;
+        dep[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dep[0].srcAccessMask = 0;   // read-after-write is already made visible; this is a write-after-read execution dependency
+        dep[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep[1].srcSubpass = 0;
+        dep[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        dep[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rpci.attachmentCount = 1;
         rpci.pAttachments = &att;
         rpci.subpassCount = 1;
         rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 1;
-        rpci.pDependencies = &dep;
+        rpci.dependencyCount = 2;
+        rpci.pDependencies = dep;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { r = vkCreateRenderPass(s->device, &rpci, nullptr, h); return r; })) {
             vlog("vkCreateRenderPass failed (%d).", static_cast<int>(r));
             return false;
