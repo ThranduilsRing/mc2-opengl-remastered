@@ -114,3 +114,25 @@ TEST_CASE("VkResourceGraph/mip levels merge into runs and state carries across f
     CHECK(frame2.barriers[0][0].mipCount == 4);
     CHECK(frame2.barriers[0][0].before.layout == rdState.layout);
 }
+
+TEST_CASE("VkResourceGraph/a replayed transient's first write sources the previous frame's last reads") {
+    // The plan is compiled once and replayed every frame: the first write of a transient re-enters the slot its previous frame's last readers
+    // used. A zero source would be emitted as TOP_OF_PIPE / NONE, i.e. no execution dependency on those reads (write-after-read).
+    auto p = compile({scratch()}, {{{{0, wrState}}}, {{{0, rdState}}}, {{{0, rdState}}}});
+    REQUIRE(p.valid);
+    REQUIRE(p.barriers[0].size() == 1);
+    CHECK(p.barriers[0][0].before.stages != 0);
+    CHECK((p.barriers[0][0].before.stages & rdState.stages) == rdState.stages);
+    CHECK((p.barriers[0][0].before.access & rdState.access) == rdState.access);
+    CHECK(p.barriers[0][0].after.layout == wrState.layout);
+    // Two transients sharing one slot: the first write of either sources the end-of-plan reads of both occupants.
+    const State rd2{2, 4, 8, false};
+    auto q = compile({scratch(), scratch()}, {{{{0, wrState}}}, {{{0, rdState}}}, {{{1, wrState}}}, {{{1, rd2}}}});
+    REQUIRE(q.valid);
+    REQUIRE(q.slots == 1);
+    CHECK(q.lifetimes[0].slot == q.lifetimes[1].slot);
+    REQUIRE(q.barriers[0].size() == 1);
+    CHECK(q.barriers[0][0].before.stages != 0);
+    CHECK((q.barriers[0][0].before.stages & (rdState.stages | rd2.stages)) == (rdState.stages | rd2.stages));
+    CHECK((q.barriers[0][0].before.access & (rdState.access | rd2.access)) == (rdState.access | rd2.access));
+}
