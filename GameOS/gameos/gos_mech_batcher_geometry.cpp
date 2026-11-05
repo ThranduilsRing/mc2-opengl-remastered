@@ -422,8 +422,8 @@ void uploadMechGeometryVbo() {
         // Each range is [start, end) in work; recomputeMechNodeNormals modifies
         // work in place over that range only (bounded by the endByte param added
         // in MECH-NORMALS-FIX-1 so normals from adjacent nodes are never blended).
-        for (const auto& rng : s_nodeVboRanges) {
-            recomputeMechNodeNormals(work, rng.first, rng.second,
+        for (const auto& [rngStart, rngEnd] : s_nodeVboRanges) {
+            recomputeMechNodeNormals(work, rngStart, rngEnd,
                                      s_mechNormalsMode, s_mechNormalsSmoothDeg);
         }
     }
@@ -439,8 +439,9 @@ void uploadMechGeometryVbo() {
     size_t pk = 0;
     dvbo.reserve(work.size());
     for (size_t n = 0; ok && n < s_nodeVboRanges.size(); ++n) {
-        const size_t soupBase = s_nodeVboRanges[n].first / kStride;
-        const size_t soupCount = (s_nodeVboRanges[n].second - s_nodeVboRanges[n].first) / kStride;
+        const auto& [nodeStart, nodeEnd] = s_nodeVboRanges[n];
+        const size_t soupBase = nodeStart / kStride;
+        const size_t soupCount = (nodeEnd - nodeStart) / kStride;
         const size_t firstPk = pk;
         while (pk < s_packets.size() && static_cast<size_t>(s_packets[pk].baseVertex) == soupBase) ++pk;
         if (pk == firstPk) { ok = false; break; }
@@ -455,9 +456,9 @@ void uploadMechGeometryVbo() {
         uniq.reserve(soupCount * kStride);
         for (size_t v = 0; v < soupCount; ++v) {
             const char* bytes = reinterpret_cast<const char*>(work.data() + (soupBase + v) * kStride);
-            auto ins = seen.emplace(std::string(bytes, kStride), static_cast<uint32_t>(seen.size()));
-            if (ins.second) uniq.insert(uniq.end(), bytes, bytes + kStride);
-            remap[v] = ins.first->second;
+            const auto [it, inserted] = seen.emplace(std::string(bytes, kStride), static_cast<uint32_t>(seen.size()));
+            if (inserted) uniq.insert(uniq.end(), bytes, bytes + kStride);
+            remap[v] = it->second;
         }
         const size_t nUniq = uniq.size() / kStride;
         for (uint32_t i = ibFirst; i < ibEnd; ++i) {
