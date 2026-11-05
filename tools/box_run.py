@@ -18,6 +18,9 @@ Windows-only behaviour (window focus, firewall, owner-test) is not covered: thos
 import argparse, os, subprocess, sys, tempfile, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import console_child  # noqa: E402
+
 KEY = os.environ.get("MC2_BOX_KEY", "C:/SPB_Data/.ssh/mc2farm_ed25519")
 HOST = os.environ.get("MC2_BOX_HOST", "root@14.227.95.149")
 PORT = os.environ.get("MC2_BOX_PORT", "30598")
@@ -132,12 +135,15 @@ exit $RES
 '''
 
 
+_STDIO_KW = {"input", "stdin", "stdout", "stderr", "capture_output"}
+
+
 def run(cmd, **kw):
-    return subprocess.run(cmd, **kw)
+    return subprocess.run(cmd, **console_child.child_kwargs(redirected=bool(_STDIO_KW & kw.keys()), **kw))
 
 
 def git(*a, repo):
-    return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True).stdout.strip()
+    return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
 def seed(repo):
@@ -180,10 +186,10 @@ def main():
     t = {}
     t0 = time.time()
     # bundle: exclude every commit the mirror already has
-    have = subprocess.run([*SSH, f"git -C {MIRROR} for-each-ref --format='%(objectname)'"], capture_output=True, text=True).stdout.split()
+    have = subprocess.run([*SSH, f"git -C {MIRROR} for-each-ref --format='%(objectname)'"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.split()
     excl = []
     for h in have:
-        if subprocess.run(["git", "-C", str(repo), "cat-file", "-e", h + "^{commit}"], capture_output=True).returncode == 0:
+        if subprocess.run(["git", "-C", str(repo), "cat-file", "-e", h + "^{commit}"], capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0:
             excl.append("^" + h)
     ref = f"refs/box-run/{branch}"
     git("update-ref", ref, sha, repo=repo)
