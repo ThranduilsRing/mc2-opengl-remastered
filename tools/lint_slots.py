@@ -22,7 +22,10 @@ class LintSlots:
         try:
             return max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
         except (OSError, ValueError):
-            return min(6, os.cpu_count() or 2)
+            if os.name == "nt":
+                return min(6, os.cpu_count() or 2)
+            cpus = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 2)
+            return max(2, min(16, cpus // 2))   # Linux (the box: 32 build cores): half the usable cores, capped
 
     @staticmethod
     def _lock(fh):
@@ -183,7 +186,7 @@ def cpu_masks():
 def pin_cpus(mode):
     """Pin this process to the `mode` half ("gate" or "lane"); children inherit the affinity. Returns the applied mask (0 = not applied)."""
     mask = cpu_masks()[mode]
-    if os.environ.get("MC2_NO_CPU_PIN"):   # pytest: never pin the test runner
+    if os.environ.get("MC2_NO_CPU_PIN") or (os.name != "nt" and not os.path.exists("A:/Games/mc2-ops/CPU_SPLIT")):   # the PC's 16-CPU split means nothing elsewhere; the box pins with taskset   # pytest: never pin the test runner
         return 0
     if os.name == "nt":
         import ctypes

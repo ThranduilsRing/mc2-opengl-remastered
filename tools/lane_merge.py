@@ -836,8 +836,10 @@ def regenerate_all(root, *, dry_run=False):
     def generate(g):
         label, script, args = g
         return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
-    with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(GENERATORS))) as pool:
-        results = list(pool.map(generate, GENERATORS))
+    # Compiled SPIR-V is toolchain-bound: the Linux box's output differs byte-wise from the committed Windows build, so it is skipped there.
+    gens = [g for g in GENERATORS if os.name == 'nt' or g[0] != 'SPIR-V pilots']
+    with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(gens))) as pool:
+        results = list(pool.map(generate, gens))
     for label, r in results:
         print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
     for label, r in results:
@@ -1272,6 +1274,20 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
 
+def box_cleanup_lane(root, ref) -> None:
+    """Best effort: a merged lane's dir, runner script and mirror ref on the box are dead weight (box_run --cleanup refuses a live lane).
+    Never fails the merge: no box, no tools/box_run.py under root, a bare SHA, or MC2_NO_BOX_CLEANUP all just skip."""
+    script = Path(root) / "tools" / "box_run.py"
+    if os.environ.get("MC2_NO_BOX_CLEANUP") or not script.is_file() or re.fullmatch(r"[0-9a-fA-F]{7,40}", str(ref)):
+        return
+    try:
+        r = subprocess.run([sys.executable, str(script), "--cleanup", str(ref).removeprefix("refs/heads/")], capture_output=True, text=True, timeout=90,
+                           **console_child.child_kwargs(redirected=True))
+        print(f"box cleanup {ref}: rc={r.returncode} {(r.stdout or r.stderr).strip()[-160:]}")
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"box cleanup {ref}: skipped ({exc})")
+
+
 def cpu_mode(args) -> str:
     """"gate" (CPUs 0-7) only for the merge itself (--batch or a single tip); --lint, --precheck, --pre-gate, --regenerate-all are lane work."""
     lane_only = args.lint or args.precheck or args.pre_gate or args.regenerate_all
@@ -1361,7 +1377,8 @@ def main(argv: list[str] | None = None) -> int:
             message = (render_message(args.message, subject, idx) if batch else args.message) if args.message else f"merge lane: {subject}"
             merge_sha, follow, failed = merge_tip(root, tools_dir, p, message, resolutions, **({'batch': True} if batch else {}))
             merged.append((merge_sha, follow, len(p["lane_files"])))
-            tag = f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={len(p['lane_files'])}"
+            box_cleanup_lane(root, ref)
+            tag =f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={len(p['lane_files'])}"
             if failed:
                 for label, rc, tail in failed:
                     print(f"lane_merge: tip {ref} ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
