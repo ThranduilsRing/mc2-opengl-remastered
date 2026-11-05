@@ -374,7 +374,7 @@ long TerrainColorMap::saveWaterDetail(mc2::czstring fileName)
 		textureFileOpenResult = textureFile.create(waterDetailFile);
 		textureFile.deleteFile(); /*what is this supposed to do?*/
 		textureFile.close();
-		{ std::error_code rmEc; std::filesystem::remove(waterDetailFile, rmEc); }
+		{ std::error_code rmEc; std::filesystem::remove(std::filesystem::path(static_cast<const char *>(waterDetailFile)), rmEc); }
 	}
 	return result;
 }
