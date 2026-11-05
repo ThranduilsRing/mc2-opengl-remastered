@@ -1175,7 +1175,9 @@ struct _DoorLink {
 	int					openCost;
 	// Both costs are continuation state. Loading a save must not call openArea
 	// on ordinary areas: that would overwrite the restored link costs.
-	void serialize(mc2::save::Archive& a) { a(doorIndex, doorSide, cost, openCost); }
+	void serialize(mc2::save::Archive& a) {
+		MC2_SAVE_PACKED(a, doorIndex); a(doorSide); MC2_SAVE_PACKED(a, cost); MC2_SAVE_PACKED(a, openCost);
+	}
 }; using DoorLink = _DoorLink;
 
 using DoorLinkPtr = DoorLink*;
@@ -1204,16 +1206,18 @@ struct _GlobalMapDoor {
 	int					hPrime;
 	int					fPrime;
 	void serialize(mc2::save::Archive& a) {
-		a(row, col, length, open, teamID);
-		for (auto& v : area) a(v);
-		for (auto& v : areaCost) a(v);
+		MC2_SAVE_PACKED(a, row); MC2_SAVE_PACKED(a, col);
+		a(length, open, teamID);
+		for (size_t i = 0; i < sizeof(area) / sizeof(area[0]);++i) MC2_SAVE_PACKED(a, area[i]);
+		for (size_t i = 0; i < sizeof(areaCost) / sizeof(areaCost[0]);++i) MC2_SAVE_PACKED(a, areaCost[i]);
 		for (auto& v : direction) a(v);
-		for (auto& v : numLinks) a(v);
+		for (size_t i = 0; i < sizeof(numLinks) / sizeof(numLinks[0]);++i) MC2_SAVE_PACKED(a, numLinks[i]);
 		// Reserved pointer slots are not dereferenced; doors_links views are
 		// rebuilt over the loaded link pool. Search parent/fromAreaIndex/flags/
 		// g/hPrime/fPrime are cleared by write() and reinitialized per search.
-		for (auto& v : links_Legacy32bitPtr) a(v);
-		a(cost, parent, fromAreaIndex, flags, g, hPrime, fPrime);
+		for (size_t i = 0; i < sizeof(links_Legacy32bitPtr) / sizeof(links_Legacy32bitPtr[0]);++i) MC2_SAVE_PACKED(a, links_Legacy32bitPtr[i]);
+		MC2_SAVE_PACKED(a, cost); MC2_SAVE_PACKED(a, parent); MC2_SAVE_PACKED(a, fromAreaIndex);
+		MC2_SAVE_PACKED(a, flags); MC2_SAVE_PACKED(a, g); MC2_SAVE_PACKED(a, hPrime); MC2_SAVE_PACKED(a, fPrime);
 	}
 }; using GlobalMapDoor = _GlobalMapDoor;
 
@@ -1265,9 +1269,12 @@ struct _GlobalMapArea {
 		// areas_doors is rebuilt from DoorInfo runs; cellsCovered starts empty.
 		// ownerWID/teamID/open are reset by write(), then object restoration
 		// re-establishes ownership and open/closed state (and its link costs).
-		a(sectorR, sectorC, doors_Legacy32bitPtr);
+		MC2_SAVE_PACKED(a, sectorR); MC2_SAVE_PACKED(a, sectorC); MC2_SAVE_PACKED(a, doors_Legacy32bitPtr);
 		auto typeValue = static_cast<std::int32_t>(type);
-		a(typeValue, numDoors, ownerWID, teamID, offMap, open, cellsCovered_Legacy32bitPtr);
+		a(typeValue);
+		MC2_SAVE_PACKED(a, numDoors); MC2_SAVE_PACKED(a, ownerWID);
+		a(teamID, offMap, open);
+		MC2_SAVE_PACKED(a, cellsCovered_Legacy32bitPtr);
 		if (a.reading() && a.good()) type = static_cast<AreaType>(typeValue);
 	}
 }; using GlobalMapArea = _GlobalMapArea;

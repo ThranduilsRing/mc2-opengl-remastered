@@ -292,6 +292,7 @@
   "tools/terrain_beautify/test_height_sig.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/mc2texcook/cook_cliff_rock.py": "Art cook script run by hand (--select riverbed) to produce data/terrain_layers/cliff_rock_*.ktx2; scripts/deploy_payload.py names it via the CLIFF_ROCK_COOK path constant, not a literal command.",
   "tools/texcook/cook_selftest.sh": "Manual proof for the offline texture cook: builds bc7enc_rdo and cooks two textures (W=<dir> bash tools/texcook/cook_selftest.sh).",
+  "tools/rga_census.py": "Operator-run RGA shader census (py -3 tools/rga_census.py --spv-dir ... --csv out.csv); documented in its own usage header, run by hand on a machine with rga.exe.",
   "tools/box/deploy.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/env.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/filler/repin.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",

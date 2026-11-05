@@ -80,7 +80,7 @@ TEST_CASE("player settings/named legacy values win and malformed types disappear
         mc2::options::RenderOptions options;
         mc2::options::cfg::loadFromText(options, cfg);
         const auto* option = mc2::options::find(key.option);
-        CHECK_FALSE(options.*option->b);
+        mc2::options::withValue(options, *option, [](auto& value) { CHECK(value == 0); });   // not option->b: some legacy keys are float options (ASan stack-buffer-overflow)
         CHECK(settings.empty());
         settings = {{key.envName, 42}};
         PlayerFrontEnd::migrateLegacySettings(settings, cfg);

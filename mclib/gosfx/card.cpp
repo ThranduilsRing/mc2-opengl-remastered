@@ -274,8 +274,8 @@ void
 			CardClassID,
 			"gosFX::Card",
 			Singleton::DefaultData,
-			(Effect::Factory)&Make,
-			(Specification::Factory)&Specification::Make
+			effectFactoryThunk<&Make>,
+			specificationFactoryThunk<&Specification::Make>
 		);
 	Register_Object(DefaultData);
 }
