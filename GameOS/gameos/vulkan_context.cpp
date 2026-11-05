@@ -874,6 +874,19 @@ void VulkanContext::logHealth() const {
                  health_.deviceName, health_.validationEnabled ? 1 : 0,
                  health_.validationErrors.load(),
                  health_.fallbackReason.empty() ? "" : health_.fallbackReason.c_str());
+    if (allocator_ && phys_ != VK_NULL_HANDLE) {
+        VkPhysicalDeviceMemoryProperties mp{};
+        vkGetPhysicalDeviceMemoryProperties(phys_, &mp);
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
+        vmaGetHeapBudgets(allocator_, budgets);
+        for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
+            std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u
+",
+                         i, (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? 1 : 0,
+                         (unsigned long long)(mp.memoryHeaps[i].size >> 20), (unsigned long long)(budgets[i].budget >> 20),
+                         (unsigned long long)(budgets[i].usage >> 20), (unsigned long long)(budgets[i].statistics.allocationBytes >> 20),
+                         (unsigned long long)(budgets[i].statistics.blockBytes >> 20), budgets[i].statistics.allocationCount, budgets[i].statistics.blockCount);
+    }
     std::fflush(stderr);
 }
 
