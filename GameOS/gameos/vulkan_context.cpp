@@ -397,8 +397,8 @@ bool VulkanContext::init(bool wantPresent) {
                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     mci.pfnUserCallback = engine_ctx_debug_cb;
-    // Engine-owned layer settings (not the vkconfig / environment): the duplicate-message cap for every preset, the sync preset's submit-time and extra-property
-    // options, the best-practices switch. They are chained next to the feature list, which stays as the fallback for the same preset.
+    // Engine-owned layer settings (not the vkconfig / environment): the duplicate-message cap for every preset, the sync preset's extra-property
+    // option, the best-practices switches. They are chained next to the feature list, which stays as the fallback for the same preset.
     const char* const kLayer = "VK_LAYER_KHRONOS_validation";
     const uint32_t dupLimit = 200, on = 1;
     const bool presetSync = std::strcmp(valPreset, "sync") == 0, presetBP = std::strcmp(valPreset, "best-practices") == 0;
@@ -407,10 +407,12 @@ bool VulkanContext::init(bool wantPresent) {
     addSetting("duplicate_message_limit", VK_LAYER_SETTING_TYPE_UINT32_EXT, &dupLimit);
     if (presetSync) {
         addSetting("validate_sync", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
-        addSetting("syncval_submit_time_validation", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
         addSetting("syncval_message_extra_properties", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
     }
-    if (presetBP) addSetting("validate_best_practices", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
+    if (presetBP) {
+        addSetting("validate_best_practices", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
+        addSetting("validate_best_practices_amd", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
+    }
     VkLayerSettingsCreateInfoEXT lsci{};
     lsci.sType = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
     lsci.settingCount = static_cast<uint32_t>(lset.size());

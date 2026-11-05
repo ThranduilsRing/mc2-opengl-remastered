@@ -135,11 +135,16 @@ def test_a_known_unexpired_entry_is_not_red_and_an_expired_or_unlisted_one_is(tm
     import json
     from datetime import date
     f = tmp_path / "known.json"
-    f.write_text(json.dumps({"known": [{"id": "SYNC-HAZARD-WRITE_AFTER_WRITE", "text_contains": "shadow.bake.mask", "reason": "t", "reviewed": "2026-11-05", "expires": "2026-12-05"}]}))
+    ent = {"id": "SYNC-HAZARD-WRITE-AFTER-WRITE", "props": {"hazard_type": "WRITE_AFTER_WRITE", "resource": "shadow.bake.mask"}, "reason": "t", "reviewed": "2026-11-05", "expires": "2026-12-05"}
+    f.write_text(json.dumps({"known": [ent, {"id": "SYNC-HAZARD-WRITE-AFTER-READ", "reason": "no props", "reviewed": "2026-11-05", "expires": "2026-12-05"}]}))
     entries = vk_validation.known_entries(today=date(2026, 11, 6), path=f)
-    assert vk_validation.is_known("SYNC-HAZARD-WRITE_AFTER_WRITE", "x shadow.bake.mask y", entries)
-    assert not vk_validation.is_known("SYNC-HAZARD-WRITE_AFTER_WRITE", "some other image", entries)
-    assert not vk_validation.is_known("VUID-vkCmdDraw-None-02699", "shadow.bake.mask", entries)
+    ok = "message_type = SynchronizationError; hazard_type = WRITE_AFTER_WRITE; command = vkCmdDraw; prior_command = vkCmdDraw; resource = shadow.bake.mask"
+    assert vk_validation.is_known("SYNC-HAZARD-WRITE-AFTER-WRITE", ok, entries)
+    assert not vk_validation.is_known("SYNC-HAZARD-WRITE-AFTER-WRITE", ok.replace("shadow.bake.mask", "other.image"), entries)
+    assert not vk_validation.is_known("SYNC-HAZARD-WRITE-AFTER-WRITE", ok.replace("WRITE_AFTER_WRITE", "WRITE_AFTER_READ"), entries)
+    assert not vk_validation.is_known("SYNC-HAZARD-WRITE-AFTER-WRITE", "mentions shadow.bake.mask and WRITE_AFTER_WRITE in free text only", entries)
+    assert not vk_validation.is_known("SYNC-HAZARD-WRITE-AFTER-READ", ok, entries)   # an entry with no props matches nothing
+    assert vk_validation.raw_is_known("Validation Error: [ SYNC-HAZARD-WRITE-AFTER-WRITE ] " + ok, entries)
     assert vk_validation.known_entries(today=date(2027, 1, 1), path=f) == []   # the review window ran out: red again
 
 

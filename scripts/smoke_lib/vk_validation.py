@@ -134,8 +134,21 @@ def known_entries(today: "date | None" = None, path: Path = KNOWN_FILE) -> "list
     return [e for e in entries if date.fromisoformat(e["expires"]) >= today]
 
 
+PROP_KEYS = ("hazard_type", "command", "prior_command", "resource")   # syncval_message_extra_properties keys a known entry may pin
+
+
+def _props_match(text: str, props: "dict[str, str]") -> bool:
+    """Every pinned extra property appears as `key = value` (or `key: value`) in the message; never free text."""
+    return all(re.search(r"\b" + re.escape(k) + r"\s*[:=]\s*" + re.escape(str(v)) + r"(?![\w])", text) for k, v in props.items())
+
+
+def _entry_match(e: dict, msg_id: str, text: str) -> bool:
+    props = {k: v for k, v in e.get("props", {}).items() if k in PROP_KEYS}
+    return e["id"] == msg_id and bool(props) and _props_match(text, props)   # an entry with no pinned property never matches
+
+
 def is_known(msg_id: str, text: str, entries: "list[dict]") -> bool:
-    return any(e["id"] == msg_id and e.get("text_contains", "") in text for e in entries)
+    return any(_entry_match(e, msg_id, text) for e in entries)
 
 
 def known_error_count(messages: "list[Message]", entries: "list[dict] | None" = None) -> int:
@@ -146,4 +159,4 @@ def known_error_count(messages: "list[Message]", entries: "list[dict] | None" = 
 
 def raw_is_known(line: str, entries: "list[dict] | None" = None) -> bool:
     entries = known_entries() if entries is None else entries
-    return any(e["id"] in line and e.get("text_contains", "") in line for e in entries)
+    return any(e["id"] in line and _props_match(line, {k: v for k, v in e.get("props", {}).items() if k in PROP_KEYS}) and bool(e.get("props")) for e in entries)
