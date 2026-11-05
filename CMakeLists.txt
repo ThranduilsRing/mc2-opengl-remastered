@@ -251,6 +251,8 @@ foreach(MC2_PREFIX_PATH_ENTRY IN LISTS CMAKE_PREFIX_PATH)
     endif()
 endforeach()
 list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/include")
+# ankerl::unordered_dense (header-only, MIT) resolves as <ankerl/unordered_dense.h>
+list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/unordered_dense/include")
 if(NOT WIN32)
     list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/glm")
 endif()

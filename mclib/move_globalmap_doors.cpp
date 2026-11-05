@@ -2,7 +2,7 @@
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
 #include <mdspan>
-#include <unordered_map>
+#include <ankerl/unordered_dense.h>
 #include <vector>
 
 
@@ -148,7 +148,7 @@ void GlobalMap::calcAreaDoors (void) {
 // distinct geometry once instead of once per door pair (3060-cell blank map: ~30 s -> under 1 s).
 namespace {
 std::vector<signed char> s_openSector;             // per sector: -1 unknown, 0 mixed, 1 uniformly open
-std::unordered_map<uint32_t, long> s_openLinkCost; // (hover, start r/c, goal r/c within the sector) -> link cost
+ankerl::unordered_dense::map<uint32_t, long> s_openLinkCost; // (hover, start r/c, goal r/c within the sector) -> link cost
 
 bool sectorUniformlyOpen (long mapULr, long mapULc) {
 	for (long r = 0; r < SECTOR_DIM; r++)
