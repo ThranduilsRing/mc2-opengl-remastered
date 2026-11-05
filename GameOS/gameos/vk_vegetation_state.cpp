@@ -68,13 +68,11 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         std::fprintf(stderr, "[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n", bytes, policy.vegetation);
         return true;
     }
-    if (instBytes > maxRange || regBytes > maxRange) {
-        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded\n");
+    if (instBytes > maxRange || regBytes > maxRange || regions.size() > 65535u) {   // 65535: guaranteed indirect dispatch groups in x, one per visible region
+        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage, residency budget or region count (65535 indirect groups) exceeded\n");
         return false;
     }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());
-    if (regionCount > 65535u)   // the indirect cull dispatch is one workgroup per visible region and Vulkan guarantees 65535 groups in x
-        mc2::fmt::print_err("[VEG_GPU] {:d} regions exceed the 65535 indirect dispatch limit; the visible set is clamped\n", mc2::fmt::as_u32(regionCount));
     const VkBufferUsageFlags kStore = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     mc2vk::OwnedBuffer stageInst, stageReg;
     if (!stageInst.createFilled(ctx.allocator(), ctx.device(), instances.data(), instBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.instances") ||
