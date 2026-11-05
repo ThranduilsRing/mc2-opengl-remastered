@@ -401,7 +401,7 @@ if(MC2_VULKAN)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
-    list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)
+    list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_compact vfx_vegetation)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.

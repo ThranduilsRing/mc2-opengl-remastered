@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 255,
+    "glsl_blocks_with_binding": 247,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -468,16 +468,6 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
-        "line": 3,
-        "role": "VegParams",
-        "std": "std140",
-        "type": "uniform",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
         "line": 35,
         "role": "VfxVsParams",
@@ -777,16 +767,6 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vegetation_cull.comp",
-        "line": 4,
-        "role": "VegVis",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 4,
         "role": "VegVis",
         "std": "std430",
@@ -1414,16 +1394,6 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
-        "line": 5,
-        "role": "VegInst",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
         "line": 54,
         "role": "u_hdri",
@@ -1800,16 +1770,6 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
-        "line": 6,
-        "role": "VegReg",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
         "line": 58,
         "role": "u_shoreHeightTex",
@@ -2032,16 +1992,6 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
-        "line": 7,
-        "role": "VegCounts",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
         "line": 34,
         "role": "WaterRecipeBuf",
@@ -2140,16 +2090,6 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
-        "line": 8,
-        "role": "VegOffsets",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
         "line": 44,
         "role": "WaterThinBuf",
@@ -2238,16 +2178,6 @@
       },
       {
         "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
-        "line": 9,
-        "role": "VegDense",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
         "line": 62,
         "role": "u_staticMask",
@@ -2307,16 +2237,6 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vegetation_cull.comp",
-        "line": 10,
-        "role": "VegArgs",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
-        "branch": {}
-      },
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/vegetation_scan.comp",
         "line": 10,
         "role": "VegArgs",
         "std": "std430",
@@ -2981,7 +2901,6 @@
     "shaders/vulkan/terrain_tier1_skirt.vert",
     "shaders/vulkan/vegetation_compact.comp",
     "shaders/vulkan/vegetation_cull.comp",
-    "shaders/vulkan/vegetation_scan.comp",
     "shaders/vulkan/vfx_particle.frag",
     "shaders/vulkan/vfx_particle.vert",
     "shaders/vulkan/vfx_vegetation.frag",

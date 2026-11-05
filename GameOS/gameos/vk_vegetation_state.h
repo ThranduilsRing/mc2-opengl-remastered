@@ -108,7 +108,7 @@ private:
         bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);
-    mc2vk::ComputePipeline cull_, scan_, compact_;
+    mc2vk::ComputePipeline cull_, compact_;
     mc2vk::ComputeSets sets_;
     bool pipelinesTried_ = false, pipelinesOk_ = false;
     uint64_t generation_ = 1, boundGeneration_ = 0;

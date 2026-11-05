@@ -41,7 +41,6 @@
     "terrain-skirt": {"stages": ["shaders/vulkan/terrain_tier1_skirt.vert", "shaders/vulkan/terrain_tier1.frag"], "includes": []},
     "vegetation_compact": {"stages": ["shaders/vulkan/vegetation_compact.comp"], "includes": []},
     "vegetation_cull": {"stages": ["shaders/vulkan/vegetation_cull.comp"], "includes": []},
-    "vegetation_scan": {"stages": ["shaders/vulkan/vegetation_scan.comp"], "includes": []},
     "vfx_particle": {"stages": ["shaders/vulkan/vfx_particle.frag", "shaders/vulkan/vfx_particle.vert"], "includes": []},
     "vfx_vegetation": {"stages": ["shaders/vulkan/vfx_vegetation.frag", "shaders/vulkan/vfx_vegetation.vert"], "includes": []},
     "water_geom": {"stages": ["shaders/vulkan/water_geom.frag", "shaders/vulkan/water_geom.vert"], "includes": []},

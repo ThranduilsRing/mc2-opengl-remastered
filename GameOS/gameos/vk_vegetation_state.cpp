@@ -121,7 +121,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     stats_.instances = instanceCount;
     stats_.regions = regionCount;
     mc2::fmt::print_err("[VEG_GPU] population upload #{:d}: instances={:d} regions={:d} avg_per_region={:d} uploaded_bytes={:d} resident_output_bytes={:d}\n",
-        mc2::fmt::as_u64(stats_.uploads), mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(regionCount), mc2::fmt::as_u32(instanceCount / regionCount),
+        mc2::fmt::as_u64(stats_.uploads), mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(regionCount), mc2::fmt::as_u32(regionCount ? instanceCount / regionCount : 0u),
         mc2::fmt::as_u64(instBytes + regBytes), mc2::fmt::as_u64(outBytes));
     return true;
 }
@@ -134,7 +134,6 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
         const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {5, S}, {6, S}, {7, S}, {8, S}};
         const std::string dir = vk_island_util::spvDir();
         pipelinesOk_ = cull_.create(ctx.device(), dir + "vegetation_cull.comp.spv", bindings, "veg.cull") &&
-                       scan_.create(ctx.device(), dir + "vegetation_scan.comp.spv", bindings, "veg.scan") &&
                        compact_.create(ctx.device(), dir + "vegetation_compact.comp.spv", bindings, "veg.compact") &&
                        sets_.create(ctx.device(), cull_, kSlots, "veg.sets");
         if (!pipelinesOk_) mc2::fmt::print_err("[VEG_GPU] compute pipelines unavailable: GPU vegetation declined\n");
@@ -169,7 +168,7 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
 
 bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, const mc2vk::FrameAlloc& span, VkDeviceSize paramsOff, VkDeviceSize visOff,
                    CullParams params, std::span<const uint32_t> visibility) {
-    if (par >= kSlots || !span || !ensurePipelines(ctx)) return false;
+    if (par >= kSlots || !span || regionCount_ == 0 || !ensurePipelines(ctx)) return false;
     const uint32_t gridX = std::min<uint32_t>(regionCount_, 32768u), gridY = (regionCount_ + gridX - 1) / gridX;
     params.counts[0] = regionCount_;
     params.counts[1] = instanceCount_;
@@ -210,9 +209,6 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
     const VkPipelineStageFlags cs = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     cull_.bind(cb, set, dyn);
     vkCmdDispatch(cb, gridX, gridY, 1);
-    mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    scan_.bind(cb, set, dyn);
-    vkCmdDispatch(cb, 1, 1, 1);
     mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT);
     compact_.bind(cb, set, dyn);
     vkCmdDispatch(cb, gridX, gridY, 1);
