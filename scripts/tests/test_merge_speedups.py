@@ -257,7 +257,8 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
         assert cmd[2] == "check"
         assert "--first-save-only" in cmd
         assert cmd[cmd.index("--mask") + 1] == "tools/save_noise_mask.json"
-    assert steps[-1][2] == {"MC2_VULKAN_VALIDATION": "1"}
+    assert steps[-2][2] == {"MC2_VULKAN_VALIDATION": "1"}
+    assert steps[-1][0] == "syncval" and steps[-1][2] == {"MC2_VULKAN_VALIDATION": "sync"}
 
 
 def test_gate_repeated_before_captures_measure_noise_before_deploy(tmp_path):

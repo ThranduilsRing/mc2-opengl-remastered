@@ -11,16 +11,19 @@ The layer limits repeats of one message id itself (ten by default), so the count
 """
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import date
+from pathlib import Path
 
 LINE_RE = re.compile(r'\[VK_VALIDATION v1\] severity=(?P<severity>\w+) id=(?P<id>\S+) text="(?P<text>.*)"\s*$')
 
 ERROR = "error"
 WARNING = "warning"
 INFO = "info"
-UNCONFIRMED = "Vulkan validation was requested (MC2_VULKAN_VALIDATION) and the run never confirmed the layer on: it was not validated"
+UNCONFIRMED = "Vulkan validation was requested (MC2_VULKAN_VALIDATION) and the run never confirmed the layer on (no layer_enabled line, or no canary_fired): it was not validated"
 LAYER_ENABLED_ID = "layer_enabled"       # the engine's info line when the messenger is up: the proof that a clean run was actually validated
 
 
@@ -88,7 +91,7 @@ def grade(messages: "list[Message]", asked: bool = False) -> "list[str]":
     """
     s = summarize(messages)
     reasons = [f"Vulkan validation error {i} x{n}" for i, n in sorted(s.error_ids.items())]
-    if asked and not layer_enabled(messages):
+    if asked and not confirmed(messages):
         reasons.append(UNCONFIRMED)
     return reasons
 
@@ -101,4 +104,59 @@ def describe(messages: "list[Message]") -> str:
         listed = ", ".join(f"{i} x{c}" for i, c in sorted(ids.items()))
         return f"{label}={n}" + (f" ({listed})" if listed else "")
 
-    return part("errors", s.errors, s.error_ids) + " " + part("warnings", s.warnings, s.warning_ids) + ("" if layer_enabled(messages) else " (layer not confirmed on)")
+    canary = "canary=fired" if canary_fired(messages) else "canary=MISSING"
+    return part("errors", s.errors, s.error_ids) + " " + part("warnings", s.warnings, s.warning_ids) + (f" {canary}" if layer_enabled(messages) else " (layer not confirmed on)")
+
+
+# ---- per-host canary, raw-VUID backstop and the reviewed known list (lane vk-validation-ci) ----
+CANARY_ID = "canary_fired"          # the engine's info line when its deliberate zero-size vkCreateBuffer drew a layer message: the layer is live on THIS host
+KNOWN_FILE = Path(__file__).resolve().parents[2] / "tests" / "syncval" / "known_vuids.json"
+# A raw layer line the engine callback did not format (loader/layer output on stderr before the messenger, a second instance, a tool process): the backstop.
+RAW_RE = re.compile(r"^(?!.*\[VK_VALIDATION v1\]).*Validation Error: \[ ")
+
+
+def canary_fired(messages: "list[Message]") -> bool:
+    return any(m.severity == INFO and m.id == CANARY_ID for m in messages)
+
+
+def confirmed(messages: "list[Message]") -> bool:
+    """Layer messenger up AND the canary reported: a clean run on a layer that is merely loaded but mute is not validated."""
+    return layer_enabled(messages) and canary_fired(messages)
+
+
+def known_entries(today: "date | None" = None, path: Path = KNOWN_FILE) -> "list[dict]":
+    """The reviewed known-hit entries that have not expired. A missing or unreadable file is an empty list: everything is red."""
+    today = today or date.today()
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8")).get("known", [])
+    except (OSError, ValueError):
+        return []
+    return [e for e in entries if date.fromisoformat(e["expires"]) >= today]
+
+
+PROP_KEYS = ("hazard_type", "command", "prior_command", "resource")   # syncval_message_extra_properties keys a known entry may pin
+
+
+def _props_match(text: str, props: "dict[str, str]") -> bool:
+    """Every pinned extra property appears as `key = value` (or `key: value`) in the message; never free text."""
+    return all(re.search(r"\b" + re.escape(k) + r"\s*[:=]\s*" + re.escape(str(v)) + r"(?![\w])", text) for k, v in props.items())
+
+
+def _entry_match(e: dict, msg_id: str, text: str) -> bool:
+    props = {k: v for k, v in e.get("props", {}).items() if k in PROP_KEYS}
+    return e["id"] == msg_id and bool(props) and _props_match(text, props)   # an entry with no pinned property never matches
+
+
+def is_known(msg_id: str, text: str, entries: "list[dict]") -> bool:
+    return any(_entry_match(e, msg_id, text) for e in entries)
+
+
+def known_error_count(messages: "list[Message]", entries: "list[dict] | None" = None) -> int:
+    """Error messages covered by an unexpired known entry (not red)."""
+    entries = known_entries() if entries is None else entries
+    return sum(1 for m in messages if m.severity == ERROR and is_known(m.id, m.text, entries))
+
+
+def raw_is_known(line: str, entries: "list[dict] | None" = None) -> bool:
+    entries = known_entries() if entries is None else entries
+    return any(e["id"] in line and _props_match(line, {k: v for k, v in e.get("props", {}).items() if k in PROP_KEYS}) and bool(e.get("props")) for e in entries)

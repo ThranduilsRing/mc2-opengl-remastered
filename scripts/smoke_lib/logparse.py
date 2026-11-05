@@ -190,6 +190,10 @@ MARKER_BUCKETS: tuple = (
     # never red. Emitter: GameOS/gameos/vulkan_context.cpp; the layer is on only when the run sets MC2_VULKAN_VALIDATION (smoke, never a player).
     MarkerBucket(re.compile(r"\[VK_VALIDATION v1\] severity=error\b"),
                  "vk_validation_error", "red", None),
+    # Backstop: a raw layer line ("Validation Error: [ VUID-...") that the engine callback did not format into a [VK_VALIDATION v1] line (stderr before the
+    # messenger, another instance, a tool process). Red unless an unexpired known entry covers it. Emitter: the layer itself.
+    MarkerBucket(re.compile(r"^(?!.*\[VK_VALIDATION v1\]).*Validation Error: \[ "),
+                 "vk_validation_raw", "red", None),
     # The G7b sim/render overlap audit caught a thread touching a domain it does not own (MC2_SIM_OVERLAP_AUDIT, on in tier1 and the
     # determinism run; audit mode aborts on the first one). Emitter: GameOS/gameos/sim_overlap.cpp violation(). Never downgraded.
     MarkerBucket(re.compile(r"\[SIM_OVERLAP v1\] VIOLATION\b"),
@@ -295,6 +299,7 @@ def parse_log(text: str,
     s = LogSummary()
     simid = hashlib.sha256()
     in_play_phase = False
+    raw_known = 0
 
     lines = text.splitlines()
     for idx, line in enumerate(lines):
@@ -347,6 +352,8 @@ def parse_log(text: str,
         if "[ASSET_SCALE v1] event=oob_blit" in line: s.asset_oob += 1
         if "[DESTROY v1]" in line and "event=destroy" in line: s.destroys += 1
 
+        if "Validation Error: [ " in line and vk_validation.RAW_RE.search(line) and vk_validation.raw_is_known(line):
+            raw_known += 1
         for mb in MARKER_BUCKETS:
             if mb.pattern.search(line):
                 s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1
@@ -396,4 +403,11 @@ def parse_log(text: str,
 
     if s.simid_frames:
         s.simid_chain = simid.hexdigest()[:16]
+    # Reviewed, unexpired known hits (tests/syncval/known_vuids.json) are not red; every other error or raw VUID line is.
+    exempt = {"vk_validation_error": vk_validation.known_error_count(s.vk_validation), "vk_validation_raw": raw_known}
+    for bucket, n in exempt.items():
+        if n and bucket in s.marker_counts:
+            s.marker_counts[bucket] -= n
+            if s.marker_counts[bucket] <= 0:
+                del s.marker_counts[bucket]
     return s

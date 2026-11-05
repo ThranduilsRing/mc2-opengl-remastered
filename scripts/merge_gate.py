@@ -556,6 +556,10 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     steps.append(("validation",
                   [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
                   {"MC2_VULKAN_VALIDATION": "1"}))
+    # Sync-val smoke-lite (mc2_01 day + mc2_10 night): synchronization hazards and the canary are graded by run_smoke; the box_run `syncval` row is the same run.
+    steps.append(("syncval",
+                  [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
+                  {"MC2_VULKAN_VALIDATION": "sync"}))
     # First, so the serial path has its verdict before the reused rows are graded; execute_parallel starts it in the background at gate start.
     steps.insert(0, ("box-gate", [py, *BOX_GATE_COMMAND], {}))
     return steps
@@ -736,7 +740,7 @@ def install_plan(steps, install):
         command = [arg.replace(old, str(install).replace("\\", "/")) for arg in command]
         if name == "deploy":
             command += [str(install), "--allow-new-target"]
-        if name in ("tier1", "validation"):
+        if name in ("tier1", "validation", "syncval"):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":

@@ -649,6 +649,8 @@ def main():
     ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
                     help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--grace-s", type=int, default=120, metavar="SECONDS",
+                    help="walltime grace beyond --duration, load included (default 120); only the GPU-assisted validation row raises it (its load is minutes long)")
     ap.add_argument("--runtime-bridge", action="store_true", help="dev-only loopback observation socket v1")
     ap.add_argument("--headless", action="store_true", help="no window, GPU device or audio (needs --ticks and the fixed clock; see docs/sim/headless-load.md)")
     ap.add_argument("--ticks", type=int, default=0,
@@ -1561,7 +1563,7 @@ def main():
             duration=duration,
             heartbeat_timeout_load_s=e.heartbeat_timeout_load or 60,
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
-            grace_s=120 + _cold_grace,  # cap = duration + grace and includes load; a cold mc2_03 load took 64 s beside other engines
+            grace_s=args.grace_s + _cold_grace,  # cap = duration + grace and includes load; a cold mc2_03 load took 64 s beside other engines
             allow_asset_oob=e.allow_asset_oob,
             content_error_budget=args.content_error_budget,
             # META-FIX INFRA-3: per-mission marker-bucket downgrades from the

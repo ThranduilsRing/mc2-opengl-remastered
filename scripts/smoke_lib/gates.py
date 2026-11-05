@@ -144,7 +144,7 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
 
     # A requested validation layer that never came up leaves nothing to grade: red, not clean. Errors the layer did report are already the
     # `vk_validation_error` marker bucket above.
-    if cfg.validation_requested and not vk_validation.layer_enabled(s.vk_validation):
+    if cfg.validation_requested and not vk_validation.confirmed(s.vk_validation):
         buckets.append("vk_validation_unconfirmed")
         details.append(vk_validation.UNCONFIRMED)
 
