@@ -2628,6 +2628,8 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     {   // Tail.Blit: barriers + blit + vkEndCommandBuffer
     ZoneScopedN("VKIsl.Present.Tail.Blit");
     mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
+    {   // RGP/Tracy label around the shared-image -> swapchain blit; closes before vkEndCommandBuffer
+    MC2_VK_GPU_SCOPE(blitScope, s.curCbuf(), "VKIsl.Present.Blit");
     // The composite's color writes precede the swapchain blit.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2665,6 +2667,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
     vkEndCommandBuffer(s.curCbuf());
     }
 
