@@ -241,7 +241,7 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe, depthPipe;
     mc2vk::OwnedBuffer vbo, ibo;
-    VkDeviceSize vboBytes = 0, iboBytes = 0;   // sizes of the buffers above, for retire accounting
+    VkDeviceSize iboBytes = 0;   // size of ibo, for retire accounting (vbo's size is vboBytes above)
     // Mech-lab panel pass: the same skinned material path, drawn into the UI preview target (RGBA8 color LOAD over the
     // legacy preview pass, own cleared depth). Fail-soft: a missing variant leaves previewReady false and the world path intact.
     mc2vk::OwnedShaderModule previewFrag;
