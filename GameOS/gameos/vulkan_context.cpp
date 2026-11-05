@@ -28,6 +28,7 @@
 #include "../../mclib/sim_overlap.h"
 #ifndef _WIN32
 #define NO_SDL_VULKAN_TYPEDEFS
+#include <span>
 #include <SDL2/SDL_vulkan.h>
 #endif
 #include <tracy/Tracy.hpp>
@@ -153,14 +154,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
             where += buf;
             where += o.pObjectName ? o.pObjectName : "-";
         }
-        auto labels = [&](const char* key, uint32_t n, const VkDebugUtilsLabelEXT* l) {
-            for (uint32_t i = 0; i < n && i < 6; ++i) {
+        auto labels = [&](const char* key, std::span<const VkDebugUtilsLabelEXT> l) {
+            for (size_t i = 0; i < l.size() && i < 6; ++i) {
                 where += (i == 0 ? std::string(where.empty() ? "" : " ") + key + "=" : std::string(">"));
                 where += l[i].pLabelName ? l[i].pLabelName : "-";
             }
         };
-        labels("cmdlabel", pData->cmdBufLabelCount, pData->pCmdBufLabels);
-        labels("queuelabel", pData->queueLabelCount, pData->pQueueLabels);
+        labels("cmdlabel", {pData->pCmdBufLabels, pData->cmdBufLabelCount});
+        labels("queuelabel", {pData->pQueueLabels, pData->queueLabelCount});
         if (!where.empty()) where += " | ";
     }
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
