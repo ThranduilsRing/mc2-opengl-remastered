@@ -348,14 +348,16 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
     vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, nullptr);
     std::vector<VkPresentModeKHR> pms(pmCount);
     if (pmCount) vkGetPhysicalDeviceSurfacePresentModesKHR(s.phys, s.surface.get(), &pmCount, pms.data());
-    bool haveMailbox = false, haveImmediate = false;
+    bool haveMailbox = false, haveImmediate = false, haveRelaxed = false;
     for (auto m : pms) {
+        if (m == VK_PRESENT_MODE_FIFO_RELAXED_KHR) haveRelaxed = true;
         if (m == VK_PRESENT_MODE_MAILBOX_KHR)   haveMailbox = true;
         if (m == VK_PRESENT_MODE_IMMEDIATE_KHR) haveImmediate = true;
     }
     const bool vsyncOn = mc2::gate::get<"MC2_VSYNC">();
     if (vsyncOn) {
-        s.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        // FIFO_RELAXED (AMD guide): a late frame presents at once instead of waiting a whole extra vblank; FIFO when the surface lacks it.
+        s.presentMode = haveRelaxed ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_FIFO_KHR;
     } else if (haveMailbox) {
         s.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     } else if (haveImmediate) {
