@@ -241,6 +241,7 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe, depthPipe;
     mc2vk::OwnedBuffer vbo, ibo;
+    VkDeviceSize vboBytes = 0, iboBytes = 0;   // sizes of the buffers above, for retire accounting
     // Mech-lab panel pass: the same skinned material path, drawn into the UI preview target (RGBA8 color LOAD over the
     // legacy preview pass, own cleared depth). Fail-soft: a missing variant leaves previewReady false and the world path intact.
     mc2vk::OwnedShaderModule previewFrag;
@@ -819,11 +820,12 @@ bool upload_geometry_once(MechIsland* s) {
         // A new map (or a normals rebuild) replaced the batcher's vertex and index sets: the draw runs index into the NEW
         // set, so a buffer kept from the previous map is read past its end (VUID-vkCmdDrawIndexed-robustBufferAccess2-08798).
         // Frames in flight may still read the old buffers.
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("mech_geometry_regen");
-        s->vbo.reset();
-        s->ibo.reset();
+        auto& rctx = mc2vk::getOrCreateEngineVulkanContext();
+        if (s->vbo) rctx.retire(std::move(s->vbo), s->vboBytes);
+        if (s->ibo) rctx.retire(std::move(s->ibo), s->iboBytes);
         s->geomUploaded = false;
     }
+    s->vboBytes = feed.vboBytes; s->iboBytes = feed.iboBytes;
     // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from).
     if (feed.vertexStride != mc2_mech_vertex_stride())
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());

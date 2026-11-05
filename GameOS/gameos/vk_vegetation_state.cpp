@@ -36,10 +36,18 @@ void State::release() {
 }
 
 void State::clear(mc2vk::VulkanContext& ctx) {
-    ctx.waitIdle("veg_clear");
-    instances_.reset();
-    regions_.reset();
-    for (Slot& s : slot_) s = Slot{};
+    // In-flight frames may still read these: retire on the open-frame ticket instead of idling the device.
+    if (instances_) ctx.retire(std::move(instances_));
+    if (regions_) ctx.retire(std::move(regions_));
+    // Each parity's outputs may still be read by a frame in flight: retire them with the population.
+    for (Slot& s : slot_) {
+        if (s.counts) ctx.retire(std::move(s.counts));
+        if (s.offsets) ctx.retire(std::move(s.offsets));
+        if (s.dense) ctx.retire(std::move(s.dense));
+        if (s.args) ctx.retire(std::move(s.args));
+        if (s.stats) ctx.retire(std::move(s.stats));
+        s = Slot{};
+    }
     instanceCount_ = regionCount_ = 0;
     for (VkBuffer& b : ringBound_) b = VK_NULL_HANDLE;
     for (VkBuffer& b : drawRingBound_) b = VK_NULL_HANDLE;
@@ -141,34 +149,38 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
     }
     if (!pipelinesOk_ || !ready()) return false;
     if (boundGeneration_ != generation_) {
-        // The population was replaced behind a device idle (upload); no submit names these sets now.
-        const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        for (uint32_t i = 0; i < kSlots; ++i) {
-            sets_.write(ctx.device(), i, 2, S, instances_.get());
-            sets_.write(ctx.device(), i, 3, S, regions_.get());
-            sets_.write(ctx.device(), i, 5, S, slot_[i].counts.get());
-            sets_.write(ctx.device(), i, 6, S, slot_[i].offsets.get());
-            sets_.write(ctx.device(), i, 7, S, slot_[i].dense.get());
-            sets_.write(ctx.device(), i, 8, S, slot_[i].args.get());
-            if (drawSets_[i]) {
-                const VkDescriptorBufferInfo infos[2] = {{instances_.get(), 0, VK_WHOLE_SIZE}, {slot_[i].dense.get(), 0, VK_WHOLE_SIZE}};
-                VkWriteDescriptorSet w[2]{};
-                for (uint32_t b = 0; b < 2; ++b) {
-                    w[b].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    w[b].dstSet = drawSets_[i]; w[b].dstBinding = b; w[b].descriptorCount = 1;
-                    w[b].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[b].pBufferInfo = &infos[b];
-                }
-                vkUpdateDescriptorSets(ctx.device(), 2, w, 0, nullptr);
-            }
-        }
+        // The population was replaced while earlier frames may still be pending on the old sets: only mark every parity dirty. Each parity's sets are
+        // rewritten in record() after that parity's ticket wait, never while a pending submit can read them.
+        for (bool& d : descDirty_) d = true;
         boundGeneration_ = generation_;
     }
     return true;
 }
 
+void State::writeSlotSets(mc2vk::VulkanContext& ctx, uint32_t i) {
+    const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    sets_.write(ctx.device(), i, 2, S, instances_.get());
+    sets_.write(ctx.device(), i, 3, S, regions_.get());
+    sets_.write(ctx.device(), i, 5, S, slot_[i].counts.get());
+    sets_.write(ctx.device(), i, 6, S, slot_[i].offsets.get());
+    sets_.write(ctx.device(), i, 7, S, slot_[i].dense.get());
+    sets_.write(ctx.device(), i, 8, S, slot_[i].args.get());
+    if (drawSets_[i]) {
+        const VkDescriptorBufferInfo infos[2] = {{instances_.get(), 0, VK_WHOLE_SIZE}, {slot_[i].dense.get(), 0, VK_WHOLE_SIZE}};
+        VkWriteDescriptorSet w[2]{};
+        for (uint32_t b = 0; b < 2; ++b) {
+            w[b].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w[b].dstSet = drawSets_[i]; w[b].dstBinding = b; w[b].descriptorCount = 1;
+            w[b].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[b].pBufferInfo = &infos[b];
+        }
+        vkUpdateDescriptorSets(ctx.device(), 2, w, 0, nullptr);
+    }
+}
+
 bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, const mc2vk::FrameAlloc& span, VkDeviceSize paramsOff, VkDeviceSize visOff,
                    CullParams params, std::span<const uint32_t> visibility) {
     if (par >= kSlots || !span || !ensurePipelines(ctx)) return false;
+    if (descDirty_[par]) { writeSlotSets(ctx, par); descDirty_[par] = false; }   // this parity's slot wait has completed: its sets are idle
     const uint32_t gridX = std::min<uint32_t>(regionCount_, 32768u), gridY = (regionCount_ + gridX - 1) / gridX;
     params.counts[0] = regionCount_;
     params.counts[1] = instanceCount_;

@@ -378,6 +378,8 @@ std::string spv_dir();
 mc2vk::OwnedShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
                  std::string_view name, int i0 = -1, int i1 = -1);
+// Makes a fresh host-visible buffer of `size` and retires the old one on the open-frame ticket (no device idle). A false return leaves `buf` untouched.
+bool replace_host_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name);
 const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep,
                                  const float* fine = nullptr, int fineSide = 0, int originX = 0, int originY = 0);
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep);

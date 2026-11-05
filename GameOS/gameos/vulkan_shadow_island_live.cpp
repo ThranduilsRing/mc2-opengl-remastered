@@ -635,9 +635,9 @@ bool init_island(ShadowIsland* s, int size) {
 }
 
 void release_geometry(ShadowIsland* s) {
-    if (s->vbo || s->ibo) mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_geometry_release");
-    s->vbo.reset();
-    s->ibo.reset();
+    // In-flight frames may still draw these: park them on the open-frame ticket instead of idling the device.
+    if (s->vbo) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->vbo));
+    if (s->ibo) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->ibo));
     s->geomUploaded = false;
     s->mover.clearGeometry();
     s->packets.clear();

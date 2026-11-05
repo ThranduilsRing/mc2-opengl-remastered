@@ -26,6 +26,7 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 // =============================================================================
 
+#include <bit>
 #include "vulkan_water_island_internal.h"
 #include "vk_one_shot.h"   // STEP 3.4P: recipe upload
 #include "hitch_stats.h"
@@ -201,11 +202,9 @@ void write_descriptors(WaterIsland* s, int only) {
 // Grow slot `par`'s thin SSBO to at least `bytes`; rewrite descriptors on realloc.
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
     if (s->thinBuf[par] && bytes <= s->thinCapBytes[par]) return true;
-    if (s->thinBuf[par]) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_thin_grow");   // simple + safe for a realloc (rare, grows once)
-        s->thinBuf[par].reset();
-    }
-    VkDeviceSize cap = bytes + bytes / 2 + 4096; // headroom
+    // Power-of-two capacity; the old buffer retires on the open-frame ticket (the slot's in-flight submit may still read it).
+    if (s->thinBuf[par]) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->thinBuf[par]), s->thinCapBytes[par]);
+    const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes + bytes / 2 + 4096));
     if (!make_buffer(s, s->thinBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.thinBuf", static_cast<int>(par)))
         return false;
     s->thinCapBytes[par] = cap;
@@ -218,12 +217,11 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount) {
     const VkDeviceSize need = static_cast<VkDeviceSize>(recipeCount) * 64;
     if (!recipes || need == 0) return false;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_recipe_upload");
     mc2vk::OwnedBuffer staging;
     if (!staging.createFilled(s->allocator, s->device, recipes, need, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.recipeStage")) {
         vlog("recipe staging failed."); return false;
     }
-    s->recipeBuf.reset();
+    if (s->recipeBuf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->recipeBuf), s->recipeBytes);   // in-flight frames may still read the old table
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = need; bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;

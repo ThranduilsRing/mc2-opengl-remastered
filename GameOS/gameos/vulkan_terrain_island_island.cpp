@@ -7,6 +7,7 @@
 
 #ifdef MC2_VULKAN_ISLAND
 
+#include <bit>
 
 namespace vk_terrain_detail {
 
@@ -21,6 +22,14 @@ bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, V
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    return true;
+}
+
+bool replace_host_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name) {
+    mc2vk::OwnedBuffer fresh;
+    if (!make_buffer(s, fresh, size, usage, true, name)) return false;
+    if (buf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(buf), size);
+    buf = std::move(fresh);
     return true;
 }
 
@@ -296,12 +305,9 @@ void write_descriptors(TerrainIsland* s, int parity) {
 
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
     if (s->heightBuf && bytes <= s->heightCapBytes) return true;
-    if (s->heightBuf) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_grow");
-        s->heightBuf.reset();
-    }
-    VkDeviceSize cap = bytes + bytes / 4 + 4096;
-    if (!make_buffer(s, s->heightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.heightBuf"))
+    // Power-of-two capacity so growth is rare; the old buffer retires on the open-frame ticket (in-flight submits may still read it).
+    const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes + bytes / 4 + 4096));
+    if (!replace_host_buffer(s, s->heightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.heightBuf"))
         return false;
     s->heightCapBytes = cap;
     s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
