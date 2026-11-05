@@ -1187,7 +1187,8 @@ def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
         f.write(ENGINE_NORMAL_COOK_VERSION + "\n")
 
 
-GOLDEN_MATERIAL_ROOT = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c")
+# MC2_GOLDEN_MATERIAL_ROOT: a copy of the golden install's 14 material files (the Linux box has no A: drive); hashes are still checked.
+GOLDEN_MATERIAL_ROOT = Path(os.environ.get("MC2_GOLDEN_MATERIAL_ROOT") or "A:/Games/mc2-opengl/mc2-win64-v0.4c")
 MATERIAL_MANIFEST = Path(__file__).with_name("terrain_materials.json")
 
 

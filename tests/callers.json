@@ -856,7 +856,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2103,
+          "line": 2104,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3262,6 +3262,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/box_run.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/bt2018_import/convert_all_bt2018.py",
           "line": 42,
           "evidence": "import",
@@ -4296,14 +4303,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1698,
+          "line": 1699,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees, build_current"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1923,
+          "line": 1924,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, sha_agrees, build_current"
@@ -4532,21 +4539,21 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1261,
+          "line": 1262,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "from kit_payload import contained_path"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1832,
+          "line": 1833,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 2032,
+          "line": 2033,
           "evidence": "import",
           "reference": "kit_payload",
           "text": "import kit_payload"
@@ -8801,6 +8808,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_saveload_linux_baselines.py",
+      "basename": "test_saveload_linux_baselines.py",
+      "stem": "test_saveload_linux_baselines",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_shadow_bake_init.py",
       "basename": "test_shadow_bake_init.py",
       "stem": "test_shadow_bake_init",
@@ -9785,6 +9799,13 @@
       "path": "tools/blender_pipeline/tests/test_unify.py",
       "basename": "test_unify.py",
       "stem": "test_unify",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/box_run.py",
+      "basename": "box_run.py",
+      "stem": "box_run",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -15073,6 +15094,13 @@
         {
           "path": "scripts/tests/test_saveload_baseline_defaults.py",
           "line": 13,
+          "evidence": "import",
+          "reference": "saveload_roundtrip",
+          "text": "import saveload_roundtrip as sl  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_saveload_linux_baselines.py",
+          "line": 11,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as sl  # noqa: E402"

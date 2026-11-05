@@ -1,0 +1,418 @@
+{
+ "mission": "mc2_01",
+ "save_at": 1000,
+ "load_at": 1100,
+ "gates": {
+  "MC2_SMOKE_FIXED_TIMESTEP": "1",
+  "MC2_SIM_IDENTITY_TRACE": "1",
+  "MC2_SMOKE_FREEZE_ANIM": "1",
+  "MC2_BOOT_QUICKSAVE_AT": "1000",
+  "MC2_BOOT_QUICKLOAD_AT": "1100"
+ },
+ "exe": {
+  "sha": "fb5b3705f56e",
+  "dirty": 0
+ },
+ "comparison": {
+  "mode": "zero-masked-bytes-v1",
+  "across_builds": true,
+  "classes": {
+   "MechWarriorData": {
+    "run": [],
+    "build": []
+   },
+   "MechData": {
+    "run": [],
+    "build": []
+   },
+   "GroundVehicleData": {
+    "run": [],
+    "build": []
+   },
+   "CommanderData": {
+    "run": [],
+    "build": []
+   },
+   "TerrainObjectData": {
+    "run": [],
+    "build": []
+   },
+   "GateData": {
+    "run": [],
+    "build": []
+   },
+   "WeaponBoltData": {
+    "run": [],
+    "build": []
+   }
+  }
+ },
+ "mask": "tools/save_noise_mask.json",
+ "judged": "first-save-only",
+ "resave_present": true,
+ "packets": 20000,
+ "overall": "55f11bb6f056ff32",
+ "resave_identical": true,
+ "resave_matches_policy": true,
+ "runs": [
+  [
+   "data",
+   0,
+   2,
+   38,
+   "0f41e3f48edcae68"
+  ],
+  [
+   "text",
+   2,
+   1,
+   34300,
+   "7d85c0803a0e543b"
+  ],
+  [
+   "data",
+   3,
+   256,
+   559809,
+   "b94369b6441e9f2d"
+  ],
+  [
+   "data",
+   259,
+   256,
+   208465,
+   "5a27eb5a263a19da"
+  ],
+  [
+   "data",
+   515,
+   256,
+   18098,
+   "35e9d2d7e8c77d8f"
+  ],
+  [
+   "data",
+   771,
+   256,
+   18054,
+   "eafe4750ace2cc83"
+  ],
+  [
+   "data",
+   1027,
+   256,
+   210184,
+   "4e6f725f95cd612a"
+  ],
+  [
+   "data",
+   1283,
+   256,
+   16877,
+   "72275b5e18daa32b"
+  ],
+  [
+   "data",
+   1539,
+   256,
+   16932,
+   "88a93fc9de4bf514"
+  ],
+  [
+   "data",
+   1795,
+   108,
+   7181,
+   "c56b48891753c5e4"
+  ],
+  [
+   "StaticCommanderData",
+   1903,
+   2,
+   16,
+   "0c773fe663d408b0"
+  ],
+  [
+   "data",
+   1905,
+   1,
+   39463,
+   "e90812a270a6fd56"
+  ],
+  [
+   "StaticMechWarriorData",
+   1906,
+   1,
+   48,
+   "6b9f9689ee18ef66"
+  ],
+  [
+   "MechWarriorData",
+   1907,
+   256,
+   4843520,
+   "fef9a7c26f44df55"
+  ],
+  [
+   "TeamStaticData",
+   2163,
+   1,
+   88,
+   "d66e902b9e0f9c67"
+  ],
+  [
+   "TeamData",
+   2164,
+   2,
+   992,
+   "9755bee0d3d3535d"
+  ],
+  [
+   "ObjectManagerData",
+   2166,
+   1,
+   68,
+   "60fefcba86e18bc5"
+  ],
+  [
+   "empty",
+   2167,
+   1,
+   0,
+   "df3f619804a92fdb"
+  ],
+  [
+   "MechData",
+   2168,
+   134,
+   476166,
+   "b87fd2da8f7bef8d"
+  ],
+  [
+   "GroundVehicleData",
+   2302,
+   151,
+   454583,
+   "3471f4c6d4629820"
+  ],
+  [
+   "TerrainObjectData",
+   2453,
+   79,
+   36103,
+   "d45918379b17670f"
+  ],
+  [
+   "BuildingData",
+   2532,
+   4,
+   1924,
+   "eddbe7d93b2b9da1"
+  ],
+  [
+   "TerrainObjectData",
+   2536,
+   256,
+   116992,
+   "c264a66acfbbbb77"
+  ],
+  [
+   "TerrainObjectData",
+   2792,
+   63,
+   28791,
+   "ef8cb9562ffb9a34"
+  ],
+  [
+   "BuildingData",
+   2855,
+   6,
+   2886,
+   "219c8cb83ab53e1c"
+  ],
+  [
+   "TerrainObjectData",
+   2861,
+   11,
+   5027,
+   "2b18baf325561b85"
+  ],
+  [
+   "BuildingData",
+   2872,
+   2,
+   962,
+   "b8b592184009e055"
+  ],
+  [
+   "TerrainObjectData",
+   2874,
+   43,
+   19651,
+   "229fc83948dea337"
+  ],
+  [
+   "BuildingData",
+   2917,
+   3,
+   1443,
+   "89c060a4be0313ba"
+  ],
+  [
+   "TerrainObjectData",
+   2920,
+   109,
+   49813,
+   "3f7ab4f83f25a1af"
+  ],
+  [
+   "BuildingData",
+   3029,
+   2,
+   962,
+   "eedf9bdf58650478"
+  ],
+  [
+   "TerrainObjectData",
+   3031,
+   94,
+   42958,
+   "fbd7bfb606de4721"
+  ],
+  [
+   "BuildingData",
+   3125,
+   2,
+   962,
+   "c2fc46c581dc0e87"
+  ],
+  [
+   "TerrainObjectData",
+   3127,
+   44,
+   20108,
+   "d93f20fd82278cb4"
+  ],
+  [
+   "BuildingData",
+   3171,
+   24,
+   11544,
+   "39d94d7995ccd37e"
+  ],
+  [
+   "TerrainObjectData",
+   3195,
+   165,
+   75405,
+   "5318655d35186692"
+  ],
+  [
+   "BuildingData",
+   3360,
+   1,
+   481,
+   "ee35fc88a3b8e3ed"
+  ],
+  [
+   "TerrainObjectData",
+   3361,
+   92,
+   42044,
+   "fd0009b26ca7e5f7"
+  ],
+  [
+   "WeaponBoltData",
+   3453,
+   100,
+   57700,
+   "a8432b253a390d3d"
+  ],
+  [
+   "CarnageData",
+   3553,
+   50,
+   19750,
+   "6e3698a6de6998f7"
+  ],
+  [
+   "ArtilleryData",
+   3603,
+   130,
+   54990,
+   "6cb30911d50a7887"
+  ],
+  [
+   "WatchList",
+   3733,
+   1,
+   6276,
+   "7fb135020b3b1ae7"
+  ],
+  [
+   "StaticCommanderData",
+   3734,
+   1,
+   16,
+   "56c6ea5f1af586ce"
+  ],
+  [
+   "CommanderData",
+   3735,
+   2,
+   2496,
+   "2b67de614af88258"
+  ],
+  [
+   "text",
+   3737,
+   1,
+   67828,
+   "52bb728f60e16f40"
+  ],
+  [
+   "data",
+   3738,
+   2,
+   8,
+   "e815bbb0774dd30f"
+  ],
+  [
+   "sections",
+   3740,
+   1,
+   253674,
+   "f3f808063ee43ea9"
+  ],
+  [
+   "empty",
+   3741,
+   16259,
+   0,
+   "62a0c70aa4bcc4cb"
+  ]
+ ],
+ "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
+ "sim_speed": 1,
+ "data_fingerprint": {
+  "digest": "631bc626ca376941",
+  "inputs": [
+   "mission.fst",
+   "tgl.fst",
+   "effect.fst",
+   "misc.fst",
+   "camera.fst",
+   "data/tgl/",
+   "data/objects/",
+   "data/effects/",
+   "data/missions/",
+   "data/warriors/"
+  ],
+  "stock_digest": "8703ccf15c7c117f",
+  "overlay": {
+   "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
+  },
+  "problems": []
+ }
+}
