@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 #include "../../GameOS/gameos/gos_terrain_lighting.h"
+#include "../../mclib/mc2fmt.h"   // the sliced stage() logs through mc2::fmt (LG12a)
 
 namespace {
 #include "../../GameOS/gameos/vk_frame_ring.h"
