@@ -1,12 +1,13 @@
-// GameOS formatting compatibility header and platform debugger sink.
+// Platform debugger sink for the mc2fmt facade. Kept out of mclib/mc2fmt.h so the sim translation units that include
+// mc2fmt.h do not see the OutputDebugStringA extern. Includes mc2fmt.h, so a file needing both takes this one include.
 #pragma once
 
-#include "mc2_czstring.h"
-#include "../../mclib/mc2format.h"
+#include <cstdio>
+
+#include "mc2fmt.h"
 
 namespace mc2::fmt {
 
-// Keep the platform debugger dependency outside the pure formatting interface.
 #ifdef _WIN32
 extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char*);
 #endif

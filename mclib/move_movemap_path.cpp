@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "move_internal.h"
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 
 
 // WHAT: re-keys the OPEN node of a map cell. WHY: the cell is flagged OPEN, so the list should hold it; if it does not (a corrupt flag), rekey() changes

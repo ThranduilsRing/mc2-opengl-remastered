@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "move_internal.h"
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 
 
 long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {

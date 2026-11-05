@@ -4,7 +4,7 @@
 
 #include "KtxLoader.h"
 #include "../GameOS/gameos/utils/mc2log.h"
-#include "../GameOS/include/mc2fmt.h"
+#include "../mclib/mc2fmt.h"
 
 #include <algorithm>
 #include <cstdint>

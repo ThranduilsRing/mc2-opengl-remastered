@@ -20,7 +20,7 @@
 #endif
 
 #include "gos_crashbundle.h" // crashbundle_append (extern "C", ring buffer)
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 
 // gameos.hpp declares this (game-specific STOP callback). Declared locally so
 // this TU stays independent of the monolithic gameos.hpp.
