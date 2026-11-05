@@ -25,6 +25,7 @@
 // depth written is gl_Position.z/w, matching GL calcShadow's stored convention.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_ARB_shader_draw_parameters : require
 
 // Shared static-prop VBO: position at location 0 (kVertexStride, offset 0). The
 // GL path also forwards a_uv at location 2 for the foliage alpha-test program;
@@ -33,6 +34,13 @@ layout(location = 0) in vec3 a_position;
 // The UV rides along for the alpha-tested pipeline (shadow_prop_alpha.frag cuts the leaf silhouette from it); the opaque pipeline ignores it.
 layout(location = 2) in vec2 a_uv;
 layout(location = 0) out vec2 v_uv;
+// Alpha multi-draw: this draw's row in the per-draw alpha rows (packetBase + draw id). The rows' device address is read by the fragment stage only.
+layout(location = 1) flat out uint v_row;
+layout(push_constant) uniform DrawPush {
+    uvec2 rowsAddr;
+    uint  packetBase;
+    uint  _pad;
+} pc;
 
 // Per-frame UBO: the dynamic light-space matrix (16 linear floats, GL_FALSE upload)
 // + the per-type instance-base offset (mirrors the GL u_instBase uniform, since the
@@ -64,4 +72,5 @@ void main() {
     vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
     v_uv = a_uv;
+    v_row = pc.packetBase + uint(gl_DrawIDARB);
 }
