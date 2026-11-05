@@ -936,16 +936,25 @@ def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
     if _inside(tree, root):
         raise Stop(5, f"warm precheck tree {tree} is inside {root}")
     if not os.path.exists(os.path.join(tree, ".git")):
+        if os.path.isdir(tree) and os.listdir(tree):
+            # Lost its .git (leftover build/deps only): drop the dead registration and the husk, then recreate below.
+            print(f"[lane_merge] warm precheck tree {tree} has no .git; recreating it", flush=True)
+            git(root, "worktree", "prune")
+            shutil.rmtree(tree, ignore_errors=True)
+            if os.path.isdir(tree) and os.listdir(tree):
+                raise Stop(5, f"warm precheck tree {tree} has no .git and cannot be removed; delete it by hand, then "
+                              f"`git -C {root} worktree prune` and rerun")
         os.makedirs(os.path.dirname(os.path.abspath(tree)), exist_ok=True)
         r = git(root, "worktree", "add", "--detach", "--force", os.path.abspath(tree), commit)
         if r.returncode:
-            raise Stop(5, "cannot create warm tree: " + failure_summary(r.stdout + r.stderr))
+            raise Stop(5, "cannot create warm tree: " + failure_summary(r.stdout))
         from bootstrap_worktree_build import ensure_deps
         ensure_deps(os.path.abspath(tree), os.path.abspath(root))
     else:
         r = git(tree, "checkout", "--quiet", "-f", "--detach", commit)
         if r.returncode:
-            raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout + r.stderr))
+            raise Stop(5, "warm tree checkout failed: " + failure_summary(r.stdout)
+                       + f" (recreate with: delete {tree}, `git -C {root} worktree prune`, rerun)")
 
 
 def stale_inventories(root: str, commit: str, regen=None) -> list[str]:

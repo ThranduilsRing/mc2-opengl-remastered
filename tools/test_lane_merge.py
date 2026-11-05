@@ -1366,3 +1366,17 @@ def test_receipt_path_refuses_a_non_40_hex_sha_and_tests_use_a_private_dir():
             lm.receipt_path(bad)
     assert lm.receipt_path("a" * 40).endswith("a" * 40 + ".json")
     assert not os.path.normpath(lm.PRECHECK_RECEIPTS).startswith(os.path.normpath("A:/Games/mc2-ops"))
+
+
+def test_ensure_precheck_tree_recreates_tree_that_lost_its_git(env, monkeypatch, tmp_path):
+    from tools import lane_merge as lm
+    import bootstrap_worktree_build as bwb
+    repo, _ = env
+    monkeypatch.setattr(bwb, "ensure_deps", lambda *a, **k: None)
+    tree = tmp_path / "warm" / "tree"
+    lm.ensure_precheck_tree(str(repo), str(tree), "HEAD")
+    assert (tree / ".git").exists()
+    (tree / ".git").unlink()                      # lose the link, keep leftover build files
+    (tree / "build64-ninja").mkdir()
+    lm.ensure_precheck_tree(str(repo), str(tree), "HEAD")
+    assert (tree / ".git").exists() and not (tree / "build64-ninja").exists()

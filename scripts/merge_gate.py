@@ -843,7 +843,9 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     job_id = ids[0]
     waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", str(FARM_CLAIM_SECONDS)], cwd=ROOT, env=os.environ.copy())
     if 'queue_timeout:' in waited.stdout:
-        print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
+        reason = [l for l in waited.stdout.splitlines() if l.startswith('queue_timeout:')][-1][:160]
+        print(f'[merge_gate] WARNING farm determinism did not run ({reason}); no worker claimed the job in '
+              f'{FARM_CLAIM_SECONDS}s or the farm was unreachable; RUNNING LOCALLY', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         with install_lock(command):  # never beside the mods battery or a stock row on the same exe
             return runner(command, cwd=ROOT, env=local_env)
