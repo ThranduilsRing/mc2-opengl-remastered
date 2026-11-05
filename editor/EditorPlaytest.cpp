@@ -33,6 +33,7 @@
 #include "stdafx.h"   // MFC / <windows.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "Gates/gate_name.h"
 
 #include "EditorPlaytest.h"
 #include "EditorPlaytestResults.h"
@@ -930,20 +931,20 @@ void Start()
 	// emission is throttled game-side (~2s) and read-only, so the cost is negligible;
 	// the editor consumes it for the Gameplay Debugger live table.
 	spec.envExtra.push_back(std::make_pair(
-		std::string("MC2_BRIDGE_MOVER_STATE"), std::string("1")));
+		std::string(mc2::gate::name<"MC2_BRIDGE_MOVER_STATE">()), std::string("1")));
 
 	// Mod-aware env: when the mission lives in a mod, mount it + ask for a state dump.
 	if (s_modActive)
 	{
-		spec.envExtra.push_back(std::make_pair(std::string("MC2_ACTIVE_MOD"), s_modId));
-		spec.envExtra.push_back(std::make_pair(std::string("MC2_DEBUG_STATE_DUMP"), std::string("1")));
+		spec.envExtra.push_back(std::make_pair(std::string(mc2::gate::name<"MC2_ACTIVE_MOD">()), s_modId));
+		spec.envExtra.push_back(std::make_pair(std::string(mc2::gate::name<"MC2_DEBUG_STATE_DUMP">()), std::string("1")));
 	}
 
 	// SMOKE-CHILD env: gos_smoke enables itself when MC2_SMOKE_MODE is present.
 	// Paired with the `--mission/--duration` argv appended above so the child
 	// auto-quits cleanly (exit 0) instead of running until the timeout.
 	if (s_smokeChild)
-		spec.envExtra.push_back(std::make_pair(std::string("MC2_SMOKE_MODE"), std::string("1")));
+		spec.envExtra.push_back(std::make_pair(std::string(mc2::gate::name<"MC2_SMOKE_MODE">()), std::string("1")));
 
 	s_task = EditorTaskRunner::StartTask(spec);
 	if (s_task == EditorTaskRunner::kInvalidTask)

@@ -439,15 +439,15 @@ void GuiRuntime::NewFrame() {
                     // hit-testing lines up with what is drawn. Without this the mouse
                     // and the highlighted widget are offset by the DPI factor.
                     // (No-op on 1x displays where client size == DisplaySize.)
-                    float mx = (float)cursorPt.x;
-                    float my = (float)cursorPt.y;
+                    float mx = static_cast<float>(cursorPt.x);
+                    float my = static_cast<float>(cursorPt.y);
                     RECT cr;
                     if (::GetClientRect(glHwnd, &cr)) {
                         const int cw = cr.right - cr.left;
                         const int ch = cr.bottom - cr.top;
                         if (cw > 0 && ch > 0 && io.DisplaySize.x > 0.f && io.DisplaySize.y > 0.f) {
-                            mx *= io.DisplaySize.x / (float)cw;
-                            my *= io.DisplaySize.y / (float)ch;
+                            mx *= io.DisplaySize.x / static_cast<float>(cw);
+                            my *= io.DisplaySize.y / static_cast<float>(ch);
                         }
                         static bool s_traceGuiMouse = false;
                         if (!s_traceGuiMouse) {

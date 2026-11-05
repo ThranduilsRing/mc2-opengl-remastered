@@ -3,6 +3,7 @@
 #include "EditorInspector_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
+#include "Gates/gate_name.h"
 #include <span>
 
 namespace EditorInspector {
@@ -346,8 +347,8 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
             // Key kill-switches / feature gates relevant to the static-prop path.
             struct FallbackRow { const char* label; const char* envVar; bool defaultOn; };
             static const FallbackRow kFallbacks[] = {
-                { "material sample",     "MC2_MATERIAL_GPU_SAMPLE",         true  },
-                { "object-ID buffer",    "MC2_OBJECT_ID_BUFFER",            true  },
+                { "material sample",     mc2::gate::name<"MC2_MATERIAL_GPU_SAMPLE">(),         true  },
+                { "object-ID buffer",    mc2::gate::name<"MC2_OBJECT_ID_BUFFER">(),            true  },
             };
             const auto showRow = [](std::string_view label, bool on) {
                 ImGui::Text("  %-22.*s", static_cast<int>(label.size()), label.data());
@@ -1083,9 +1084,9 @@ void drawEnvGates() {
     if (ImGui::CollapsingHeader("Env Gates")) {
         struct GateInfo { const char* name; bool defaultOn; };
         static const GateInfo kGates[] = {
-            { "MC2_IMGUI",            true  },
-            { "MC2_IMGUI_INSPECTOR",  true  },
-            { "MC2_OBJECT_ID_BUFFER", true  },
+            { mc2::gate::name<"MC2_IMGUI">(),            true  },
+            { mc2::gate::name<"MC2_IMGUI_INSPECTOR">(),  true  },
+            { mc2::gate::name<"MC2_OBJECT_ID_BUFFER">(), true  },
         };
         for (const auto& g : kGates) {
             const auto st = mc2::gate::boolState(g.name);

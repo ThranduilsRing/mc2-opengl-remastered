@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "Gates/gate_cold.h"
+#include "Gates/gate_name.h"
 #include "contract_test_support.h"
 #ifdef _WIN32
 #define NOMINMAX
@@ -417,7 +418,7 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/fatal_if_aborts_and_traces") 
         fs::path path;
         ~RemoveTrace() { std::error_code ec; fs::remove(path, ec); }
     } traceOwner{trace};
-    ContractEnvironment sink{"MC2_DIAGNOSTIC_TRACE_FILE", trace.string().c_str()};
+    ContractEnvironment sink{mc2::gate::name<"MC2_DIAGNOSTIC_TRACE_FILE">(),trace.string().c_str()};
     ContractEnvironment child{"DOCTEST_JOBS_FATAL_CHILD", "1"};
     mc2::gate::markMainEntered();
     const int code = runFatalChild();

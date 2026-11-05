@@ -27,6 +27,7 @@
 #include "file.h"
 #include "paths.h"
 #include "Gates/gate_cold.h"
+#include "Gates/gate_name.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -140,10 +141,9 @@ void removeLooseTree ()
 	// leave data/ itself alone -- it may be the repo's real data dir.
 }
 
-// Env names held once so the test does not grow the LG20 literal ratchet.
-static constexpr const char* kEnvActiveMod = "MC2_ACTIVE_MOD";
-static constexpr const char* kEnvRebuildCache = "MC2_REBUILD_MOD_CACHE";
-static constexpr const char* kEnvModDeps = "MC2_MOD_DEPS";
+static constexpr const char* kEnvActiveMod = mc2::gate::name<"MC2_ACTIVE_MOD">();
+static constexpr const char* kEnvRebuildCache = mc2::gate::name<"MC2_REBUILD_MOD_CACHE">();
+static constexpr const char* kEnvModDeps = mc2::gate::name<"MC2_MOD_DEPS">();
 
 void setActiveMod (const char *modId)
 {

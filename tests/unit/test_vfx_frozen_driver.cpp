@@ -16,15 +16,15 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors
 {
     const auto executable = contractExecutable("vfx_lifecycle_tests");
     REQUIRE(std::filesystem::is_regular_file(executable));
-    ContractEnvironment tube{"MC2_VFX_ORACLE_TUBE", "0"};
-    ContractEnvironment shape{"MC2_VFX_ORACLE_SHAPE", "0"};
+    ContractEnvironment tube{mc2::gate::name<"MC2_VFX_ORACLE_TUBE">(), "0"};
+    ContractEnvironment shape{mc2::gate::name<"MC2_VFX_ORACLE_SHAPE">(), "0"};
     ContractEnvironment sanitizer{"ASAN_OPTIONS", "detect_leaks=0:halt_on_error=1:print_stacktrace=1"};
     struct Arm { const char* gpu; const char* log; };
     for (const auto arm : {Arm{"0", "0"}, Arm{"1", "1"}}) {
         INFO("gpu=" << std::string(arm.gpu)
             << " log=" << std::string(arm.log));
-        ContractEnvironment gpu{"MC2_GPU_PARTICLES", arm.gpu};
-        ContractEnvironment log{"MC2_GPU_PARTICLES_LOG", arm.log};
+        ContractEnvironment gpu{mc2::gate::name<"MC2_GPU_PARTICLES">(), arm.gpu};
+        ContractEnvironment log{mc2::gate::name<"MC2_GPU_PARTICLES_LOG">(), arm.log};
         CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_frozen/*"}) == 0);
     }
     CHECK(runContractChild(executable, {"--no-breaks", "--test-case=vfx_mesh/*"}) == 0);

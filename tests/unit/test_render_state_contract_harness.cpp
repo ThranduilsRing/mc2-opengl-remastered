@@ -16,6 +16,7 @@
 #include "RenderCore/RenderPassContract.h"
 #include "RenderCore/RenderResourceRegistry.h"
 #include "Gates/gate_cold.h"
+#include "Gates/gate_name.h"
 #include "contract_test_support.h"
 
 namespace {
@@ -24,7 +25,7 @@ using PI  = render_contract::PassIdentity;
 using RPI = RenderCore::RenderPassId;
 
 struct RenderContractFixture {
-    ContractEnvironment scopeEnabled{"MC2_RENDER_PASS_CONTRACT_ASSERT", "1"};
+    ContractEnvironment scopeEnabled{mc2::gate::name<"MC2_RENDER_PASS_CONTRACT_ASSERT">(),"1"};
     RenderContractFixture() {
         mc2::gate::markMainEntered();
         rc::initRenderPassScope();

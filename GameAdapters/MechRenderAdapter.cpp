@@ -51,7 +51,7 @@ void beginMission() {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] WARN: event=mech_begin_without_end alive=%llu "
             "(endMission was skipped)\n",
-            (unsigned long long)s_mechs_alive);
+            static_cast<unsigned long long>(s_mechs_alive));
     }
     s_mechs_registered   = 0;
     s_mechs_alive        = 0;
@@ -64,16 +64,16 @@ void endMission() {
     MC2_DIAGFE(stderr,
         "[RENDER_WORLD v1] event=mech_end_mission registered=%llu destroyed=%llu "
         "alive=%llu fail=%llu\n",
-        (unsigned long long)s_mechs_registered,
-        (unsigned long long)s_mechs_destroyed,
-        (unsigned long long)s_mechs_alive,
-        (unsigned long long)s_mech_register_fail);
+        static_cast<unsigned long long>(s_mechs_registered),
+        static_cast<unsigned long long>(s_mechs_destroyed),
+        static_cast<unsigned long long>(s_mechs_alive),
+        static_cast<unsigned long long>(s_mech_register_fail));
 
     // Always-on warning if any handles were not retired normally.
     if (s_mechs_alive > 0) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] WARN: event=mech_leaked_handles count=%llu\n",
-            (unsigned long long)s_mechs_alive);
+            static_cast<unsigned long long>(s_mechs_alive));
     }
 
     // Force-clear any remaining mech records in the engine table after
@@ -110,7 +110,7 @@ RenderCore::RenderObjectHandle syncSpawn(Mech3DAppearance& mech,
         ++s_mech_register_fail;
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_register_fail mech=%p\n",
-            (void*)&mech);
+            static_cast<const void*>(&mech));
     }
 
     return h;

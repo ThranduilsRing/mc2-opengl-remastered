@@ -3,6 +3,7 @@
 #include "GraphicsOptionsWindow_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "Gates/gate_name.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -18,17 +19,17 @@ struct EnvGate {
 };
 
 static const EnvGate kEnvGates[] = {
-    { "MC2_GPU_DRIVEN",             "GPU-driven rendering master gate",          false, false },
-    { "MC2_GPU_CULL",               "GPU frustum cull",                          false, false },
-    { "MC2_GPU_CULL_SUBSTRATE",     "GPU substrate (default-on)",                true,  false },
-    { "MC2_GPU_PARTICLES",          "GPU particle system",                       false, false },
-    { "MC2_MATERIAL_GPU",           "MaterialGpu lookup path",                   false, false },
-    { "MC2_RENDER_WATER_FASTPATH",  "Fast water render path",                    false, false },
-    { "MC2_OBJECT_ID_BUFFER",       "Object-ID picking buffer",                  false, false },
-    { "MC2_HDRI_SKY",               "HDRI skybox",                               false, false },
-    { "MC2_DISABLE_GOSFX",          "FX/particles (var disables)",               false, true  },
-    { "MC2_RENDER_CONTRACT_ASSERT", "Render-contract GL state validation",        false, false },
-    { "MC2_IMGUI",                  "Dear ImGui overlay (default-on)",           true,  false },
+    { mc2::gate::name<"MC2_GPU_DRIVEN">(),             "GPU-driven rendering master gate",          false, false },
+    { mc2::gate::name<"MC2_GPU_CULL">(),               "GPU frustum cull",                          false, false },
+    { mc2::gate::name<"MC2_GPU_CULL_SUBSTRATE">(),     "GPU substrate (default-on)",                true,  false },
+    { mc2::gate::name<"MC2_GPU_PARTICLES">(),          "GPU particle system",                       false, false },
+    { mc2::gate::name<"MC2_MATERIAL_GPU">(),           "MaterialGpu lookup path",                   false, false },
+    { mc2::gate::name<"MC2_RENDER_WATER_FASTPATH">(),  "Fast water render path",                    false, false },
+    { mc2::gate::name<"MC2_OBJECT_ID_BUFFER">(),       "Object-ID picking buffer",                  false, false },
+    { mc2::gate::name<"MC2_HDRI_SKY">(),               "HDRI skybox",                               false, false },
+    { mc2::gate::name<"MC2_DISABLE_GOSFX">(),          "FX/particles (var disables)",               false, true  },
+    { mc2::gate::name<"MC2_RENDER_CONTRACT_ASSERT">(), "Render-contract GL state validation",        false, false },
+    { mc2::gate::name<"MC2_IMGUI">(),                  "Dear ImGui overlay (default-on)",           true,  false },
 };
 static const int kEnvGateCount = static_cast<int>(sizeof(kEnvGates) / sizeof(kEnvGates[0]));
 void drawEnvGatesSection() {

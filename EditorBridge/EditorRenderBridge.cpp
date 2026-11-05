@@ -53,7 +53,7 @@ static uint32_t rgbaToArgb(uint32_t rgba) {
     const uint8_t g = (rgba >> 16) & 0xFFu;
     const uint8_t b = (rgba >>  8) & 0xFFu;
     const uint8_t a = (rgba       ) & 0xFFu;
-    return (uint32_t(a) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
+    return (static_cast<uint32_t>(a) << 24) | (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(b);
 }
 
 static gos_VERTEX makeVertex(float sx, float sy, uint32_t argb) {
