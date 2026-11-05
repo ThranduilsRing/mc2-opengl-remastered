@@ -121,7 +121,7 @@ struct SpatialAA::Impl {
     bool allocateSet(VkDescriptorSetLayout sl, VkDescriptorSet& set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         ai.descriptorPool = pool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &sl;
-        return vkAllocateDescriptorSets(dev, &ai, &set) == VK_SUCCESS;
+        return MC2_VK_ALLOC_SETS(dev, &ai, &set) == VK_SUCCESS;
     }
     void sampled(VkDescriptorSet set, uint32_t binding, VkImageView view, bool separate = false) {
         VkDescriptorImageInfo ii{sampler.get(), view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};

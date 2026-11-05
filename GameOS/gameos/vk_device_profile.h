@@ -77,6 +77,10 @@ struct DeviceCaps {
     bool samplerAnisotropy = false;
     // A core 1.0 feature: the prop island indexes its uPropTex[] sampler array with a per-material value (SampledImageArrayDynamicIndexing).
     bool shaderSampledImageArrayDynamicIndexing = false;
+    // Optimal-tiling support for DEPTH_STENCIL_ATTACHMENT and SAMPLED_IMAGE (with linear-filter-free sampling) on the two depth formats the engine hardcodes:
+    // D32_SFLOAT (shadow windows) and D32_SFLOAT_S8_UINT (the shared scene depth). Filled by gather().
+    bool depthD32 = false;
+    bool depthD32S8 = false;
     // Limits.
     uint32_t maxImageDimension2D = 0;
     uint32_t maxBoundDescriptorSets = 0;
@@ -113,7 +117,7 @@ struct Evaluation {
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget", "sampler_anisotropy"};
+                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget", "sampler_anisotropy", "depth_formats"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
@@ -193,6 +197,10 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
 
     add("sampler_anisotropy", Need::Wanted, c.samplerAnisotropy, Route::Core);
     if (c.samplerAnisotropy) e.enabledFeatures.push_back("samplerAnisotropy");
+
+    // Required: the shared scene depth is D32_SFLOAT_S8_UINT and the shadow windows D32_SFLOAT, both attached and sampled; a device without them is refused here
+    // with a named item instead of failing later at image creation.
+    add("depth_formats", Need::Required, c.depthD32 && c.depthD32S8, Route::Core);
 
     e.accepted = e.missingRequired.empty();
     if (!e.accepted) {                               // a refused device gets nothing enabled

@@ -357,7 +357,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
-        r = vkAllocateDescriptorSets(s->device, &dsai, setsOut);
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, setsOut);
         if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed (%d).", static_cast<int>(r)); return false; }
         frame.edgeSet = setsOut[0]; frame.oobSet = setsOut[1];
 

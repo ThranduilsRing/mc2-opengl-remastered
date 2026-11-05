@@ -167,13 +167,15 @@ bool init(Shell& s, SDL_Window* window, const char* appName) {
     ici.pApplicationInfo = &ai;
     ici.enabledExtensionCount = (uint32_t)exts.size(); ici.ppEnabledExtensionNames = exts.data();
     ici.enabledLayerCount = (uint32_t)layers.size(); ici.ppEnabledLayerNames = layers.data();
+    // vk-present-instance 3: chain the messenger info into instance create so create-time messages are captured.
+    VkDebugUtilsMessengerCreateInfoEXT mi{VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    mi.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+    mi.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+    mi.pfnUserCallback = debugCb;
+    if (s.validation) ici.pNext = &mi;
     VKOK(vkCreateInstance(&ici, nullptr, &s.inst));
     volkLoadInstance(s.inst);
     if (s.validation) {
-        VkDebugUtilsMessengerCreateInfoEXT mi{VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-        mi.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-        mi.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
-        mi.pfnUserCallback = debugCb;
         vkCreateDebugUtilsMessengerEXT(s.inst, &mi, nullptr, &s.messenger);
     }
     if (!SDL_Vulkan_CreateSurface(window, s.inst, &s.surface)) { std::fprintf(stderr, "[TOOLVK] surface: %s\n", SDL_GetError()); return false; }

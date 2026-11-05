@@ -322,7 +322,20 @@ bool VulkanContext::init(bool wantPresent) {
     ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
     ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
     ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    // vk-present-instance 3: the messenger create info rides the instance create chain, so create-time messages are captured too
+    // (the persistent messenger below is created from the same info and destroyed before the instance).
+    VkDebugUtilsMessengerCreateInfoEXT mci{};
+    mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    mci.pfnUserCallback = engine_ctx_debug_cb;
     if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+    if (wantValidation && debugUtilsExt) {
+        if (ici.pNext) valFeaturesInfo.pNext = &mci; else ici.pNext = &mci;
+    }
 
     r = vkCreateInstance(&ici, nullptr, &instance_);
     if (r != VK_SUCCESS) return fail("vkCreateInstance failed");
@@ -334,14 +347,6 @@ bool VulkanContext::init(bool wantPresent) {
         auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
             vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT");
         if (pfnCreate) {
-            VkDebugUtilsMessengerCreateInfoEXT mci{};
-            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            mci.pfnUserCallback = engine_ctx_debug_cb;
             VkResult mr = pfnCreate(instance_, &mci, nullptr, &messenger_);
             if (mr == VK_SUCCESS) {
                 ctxlog("validation messenger engaged (preset=%s).", valPreset);
@@ -368,12 +373,17 @@ bool VulkanContext::init(bool wantPresent) {
     // refuses Vulkan (fatal, no GL fallback) and the refused device's line says which items it lacks ----
     profile::DeviceCaps caps;
     {
-        struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; };
+        struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; uint64_t vram; };
         std::vector<Candidate> cands;
         for (auto pd : devs) {
             VkPhysicalDeviceProperties p{};
             vkGetPhysicalDeviceProperties(pd, &p);
-            Candidate c{pd, profile::gather(pd, instanceApi), {}, p.deviceName, p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU};
+            VkPhysicalDeviceMemoryProperties mem{};
+            vkGetPhysicalDeviceMemoryProperties(pd, &mem);
+            uint64_t vram = 0;
+            for (uint32_t h = 0; h < mem.memoryHeapCount; ++h)
+                if (mem.memoryHeaps[h].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) vram += mem.memoryHeaps[h].size;
+            Candidate c{pd, profile::gather(pd, instanceApi), {}, p.deviceName, p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU, vram};
             c.ev = profile::evaluate(c.caps, wantPresent);
             cands.push_back(std::move(c));
         }
@@ -389,12 +399,12 @@ bool VulkanContext::init(bool wantPresent) {
                 ctxlog("MC2_VK_DEVICE=%s matches no accepted device; using the default pick", hint.c_str());
             }
         }
-        if (!pick)
+        // vk-present-instance 5: the most device-local VRAM among accepted discrete devices (not the first listed), then among any accepted device.
+        for (const bool discreteOnly : {true, false}) {
+            if (pick) break;
             for (const Candidate& c : cands)
-                if (c.ev.accepted && c.discrete) { pick = &c; break; }
-        if (!pick)
-            for (const Candidate& c : cands)
-                if (c.ev.accepted) { pick = &c; break; }
+                if (c.ev.accepted && (c.discrete || !discreteOnly) && (!pick || c.vram > pick->vram)) pick = &c;
+        }
         const bool accepted = pick != nullptr;
         if (!pick) {                                      // report the device the engine would have preferred
             pick = &cands[0];
@@ -438,7 +448,15 @@ bool VulkanContext::init(bool wantPresent) {
     for (uint32_t q = 0; q < qfCount; ++q) {
         if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily_ = q; break; }
     }
-    if (gfxFamily_ == UINT32_MAX) return fail("no graphics queue family");
+    if (gfxFamily_ == UINT32_MAX) {
+        std::string families;
+        for (uint32_t q = 0; q < qfCount; ++q) {
+            char b[64];
+            std::snprintf(b, sizeof b, " family%u=flags:0x%x,count:%u", q, static_cast<unsigned>(qfs[q].queueFlags), qfs[q].queueCount);
+            families += b;
+        }
+        return fail("no graphics queue family on " + std::string(health_.deviceName) + " (" + std::to_string(qfCount) + " families:" + families + ")");
+    }
 
     // ---- logical device ----
     float prio = 1.0f;

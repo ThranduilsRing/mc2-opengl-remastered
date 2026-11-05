@@ -87,7 +87,7 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     VkDescriptorSetAllocateInfo dsai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     dsai.descriptorPool = casterPool_.get(); dsai.descriptorSetCount = 2 + kMaxFramesInFlight; dsai.pSetLayouts = four;
     VkDescriptorSet sets[2 + kMaxFramesInFlight]{};
-    if (vkAllocateDescriptorSets(device_, &dsai, sets) != VK_SUCCESS) { blog("caster sets failed."); return false; }
+    if (MC2_VK_ALLOC_SETS(device_, &dsai, sets) != VK_SUCCESS) { blog("caster sets failed."); return false; }
     windowCasterSet_ = sets[0];
     objectCasterSet_ = sets[1];
     for (uint32_t slot = 0; slot < kMaxFramesInFlight; ++slot) incWindowSet_[slot] = sets[2 + slot];
@@ -145,7 +145,7 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     VkDescriptorSetAllocateInfo cai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     cai.descriptorPool = computePool_.get(); cai.descriptorSetCount = 1 + kMaxFramesInFlight; cai.pSetLayouts = cdsl;
     VkDescriptorSet csets[1 + kMaxFramesInFlight]{};
-    if (vkAllocateDescriptorSets(device_, &cai, csets) != VK_SUCCESS) { blog("compute set failed."); return false; }
+    if (MC2_VK_ALLOC_SETS(device_, &cai, csets) != VK_SUCCESS) { blog("compute set failed."); return false; }
     computeSet_ = csets[0];
     for (uint32_t slot = 0; slot < kMaxFramesInFlight; ++slot) incComputeSet_[slot] = csets[1 + slot];
 
@@ -190,7 +190,7 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     VkDescriptorSetAllocateInfo bai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     bai.descriptorPool = bc4Pool_.get(); bai.descriptorSetCount = 2; bai.pSetLayouts = bdsl;
     VkDescriptorSet bsets[2]{};
-    if (vkAllocateDescriptorSets(device_, &bai, bsets) != VK_SUCCESS) { blog("BC4 sets failed."); return false; }
+    if (MC2_VK_ALLOC_SETS(device_, &bai, bsets) != VK_SUCCESS) { blog("BC4 sets failed."); return false; }
     bc4TileSet_ = bsets[0];
     bc4TopSet_ = bsets[1];
     {

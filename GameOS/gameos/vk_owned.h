@@ -12,7 +12,12 @@
 #ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
+#include <cstdio>
+#include <filesystem>
+#include <string>
+#include <string_view>
 
+#include "diagnostic_trace.h"
 #include "owned_handle.h"
 #include "vk_render_infra.h"
 
@@ -111,6 +116,19 @@ VkResult createChecked(Owner& owner, VkDevice device, Call&& call) {
     create(owner, device, [&](typename Owner::HandleType* handle) { result = call(handle); return result; });
     return result;
 }
+
+// vk-present-instance 6: the one descriptor-set allocate. Logs the VkResult, the pool and the call site on failure (OUT_OF_POOL names the pool that ran dry)
+// instead of each site returning a bare false. Use through MC2_VK_ALLOC_SETS so the site is recorded.
+inline VkResult allocateDescriptorSets(VkDevice device, const VkDescriptorSetAllocateInfo* info, VkDescriptorSet* out, std::string_view file, int line) {
+    const VkResult r = vkAllocateDescriptorSets(device, info, out);
+    if (r != VK_SUCCESS && mc2_diag::tagRequested("VK_DESC_ALLOC")) {   // quiet-by-default rule: MC2_DIAG_TAGS=VK_DESC_ALLOC prints it
+        const std::string base = std::filesystem::path(file).filename().string();
+        std::fprintf(stderr, "[VK_DESC_ALLOC] vkAllocateDescriptorSets failed result=%d%s pool=%p sets=%u site=%s:%d\n", static_cast<int>(r),
+                     r == VK_ERROR_OUT_OF_POOL_MEMORY ? " (OUT_OF_POOL_MEMORY)" : "", static_cast<void*>(info->descriptorPool), info->descriptorSetCount, base.c_str(), line);
+    }
+    return r;
+}
+#define MC2_VK_ALLOC_SETS(dev, info, out) ::mc2vk::allocateDescriptorSets((dev), (info), (out), __FILE__, __LINE__)
 
 // A VMA buffer and its allocation. `create` names the buffer for the validation layer (name, optional slot indices; see vulkan_context.h).
 class OwnedBuffer {

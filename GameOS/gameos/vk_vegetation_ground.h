@@ -41,7 +41,7 @@ public:
         VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& entry : layouts) entry = layout();
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         alloc.descriptorPool = pool_.get(); alloc.descriptorSetCount = mc2vk::kMaxFramesInFlight; alloc.pSetLayouts = layouts;
-        return vkAllocateDescriptorSets(device, &alloc, sets_) == VK_SUCCESS;
+        return MC2_VK_ALLOC_SETS(device, &alloc, sets_) == VK_SUCCESS;
     }
     // Caller must retire this VFX parity before changing its descriptors.
     void copy(VkDevice device, uint32_t parity, const Mc2GroundLightingFrame& source) {

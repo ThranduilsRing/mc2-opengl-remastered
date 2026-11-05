@@ -448,14 +448,14 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         const VkDescriptorSetLayout shoreDslHandle = s->shoreDsl.get();
         const VkDescriptorSetLayout shadowDslHandle = s->shadowDsl.get();
         dsai.pSetLayouts = &cloudDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.cloudSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(cloud) failed (%d).", static_cast<int>(r)); return false; }
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, &frame.cloudSet);
+        if (r != VK_SUCCESS) { vlog("MC2_VK_ALLOC_SETS(cloud) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shoreDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.shoreSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shore) failed (%d).", static_cast<int>(r)); return false; }
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, &frame.shoreSet);
+        if (r != VK_SUCCESS) { vlog("MC2_VK_ALLOC_SETS(shore) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shadowDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.shadowSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shadow) failed (%d).", static_cast<int>(r)); return false; }
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, &frame.shadowSet);
+        if (r != VK_SUCCESS) { vlog("MC2_VK_ALLOC_SETS(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorImageInfo depthInfo{};
         depthInfo.sampler = s->gbufSampler.get();

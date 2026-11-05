@@ -1,5 +1,6 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
+#include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -48,7 +49,7 @@ bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
     VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = o->texDsl.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO}; ai.descriptorPool=o->texPool.get();
     ai.descriptorSetCount=mc2vk::kMaxFramesInFlight; ai.pSetLayouts=layouts;
-    if (vkAllocateDescriptorSets(s->device,&ai,t.set)!=VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device,&ai,t.set)!=VK_SUCCESS) return false;
     for (uint32_t par=0;par<mc2vk::kMaxFramesInFlight;++par) {
         VkDescriptorImageInfo info{o->samp.get(),t.texture.view(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; w.dstSet=t.set[par]; w.descriptorCount=1;

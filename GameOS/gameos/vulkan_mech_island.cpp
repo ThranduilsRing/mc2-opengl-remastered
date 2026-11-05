@@ -383,7 +383,7 @@ bool alloc_scheme_sets(MechIsland* s, VkImageView albedo, VkImageView ao, VkImag
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-    if (vkAllocateDescriptorSets(s->device, &dsai, out) != VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device, &dsai, out) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
         write_ring_bindings(s, out[par]);
         for (VkBuffer& b : s->ringBound[par]) b = VK_NULL_HANDLE;   // the next frame of this parity rewrites its sets at the buffers its spans live in

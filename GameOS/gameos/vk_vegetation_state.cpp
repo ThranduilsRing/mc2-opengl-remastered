@@ -246,7 +246,7 @@ bool State::ensureDrawLayout(mc2vk::VulkanContext& ctx) {
     for (auto& layout : layouts) layout = drawDsl_.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool = drawPool_.get(); ai.descriptorSetCount = kSlots; ai.pSetLayouts = layouts;
-    if (vkAllocateDescriptorSets(dev, &ai, drawSets_) != VK_SUCCESS) { drawSets_[0] = drawSets_[1] = VK_NULL_HANDLE; return false; }
+    if (MC2_VK_ALLOC_SETS(dev, &ai, drawSets_) != VK_SUCCESS) { drawSets_[0] = drawSets_[1] = VK_NULL_HANDLE; return false; }
     boundGeneration_ = 0;   // the static bindings of the new sets are written on the next ensurePipelines
     return true;
 }
