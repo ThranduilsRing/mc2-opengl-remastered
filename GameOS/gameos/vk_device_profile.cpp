@@ -44,6 +44,15 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     if (extCount) vkEnumerateDeviceExtensionProperties(pd, nullptr, &extCount, have.data());
     for (const VkExtensionProperties& e : have) c.extensions.emplace_back(e.extensionName);
 
+    {   // the depth formats the engine hardcodes must be attachable and sampleable (optimal tiling)
+        constexpr VkFormatFeatureFlags kNeed = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+        VkFormatProperties fp{};
+        vkGetPhysicalDeviceFormatProperties(pd, VK_FORMAT_D32_SFLOAT, &fp);
+        c.depthD32 = (fp.optimalTilingFeatures & kNeed) == kNeed;
+        vkGetPhysicalDeviceFormatProperties(pd, VK_FORMAT_D32_SFLOAT_S8_UINT, &fp);
+        c.depthD32S8 = (fp.optimalTilingFeatures & kNeed) == kNeed;
+    }
+
     // The feature structs are only valid to chain at the versions / with the extensions that define them.
     if (c.usableApi() < kFloorApi) return c;
 
