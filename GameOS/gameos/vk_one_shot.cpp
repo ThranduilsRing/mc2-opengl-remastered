@@ -7,6 +7,7 @@
 #include <string>
 
 #include "hitch_stats.h"
+#include "mc2_diag_verbose.h"
 #include "vk_owned.h"
 #include "vulkan_context.h"
 
@@ -95,7 +96,7 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
         // The GPU may still be executing the submit and the pool resets on the next call: wait for the device first. A hung device is turned
         // into a lost one by the driver, which ends the wait.
         const std::string w(why);
-        std::fprintf(stderr, "[VK_ONE_SHOT] %s: the timeline wait timed out; waiting for the device before releasing the pool\n", w.c_str());
+        if (mc2_diag::tagRequested("VK_ONE_SHOT")) std::fprintf(stderr, "[VK_ONE_SHOT] %s: the timeline wait timed out; waiting for the device before releasing the pool\n", w.c_str());
         ctx.waitIdle(why);
     }
     return ok;
