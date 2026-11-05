@@ -9,6 +9,7 @@
 
 #include "vulkan_mech_skin.h"
 
+#include "diagnostic_trace.h"
 #include "gos_mech_batcher.h"   // kMechRenderFlagPreskinned, mc2_mech_vertex_stride
 #include "mc2fmt.h"
 #include "vk_island_util.h"
@@ -52,7 +53,7 @@ bool MechSkinPass::ensure(uint32_t slot, uint64_t vertices, uint64_t jobs) {
         const uint64_t cap = std::min<uint64_t>(kMaxSkinVertices, std::max<uint64_t>(vertices + vertices / 4, 1ull << 14));
         OwnedBuffer fresh;
         if (!fresh.createDeviceLocal(allocator_, device_, cap * kVertexBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "mech.skinned", static_cast<int>(slot))) {
-            mc2::fmt::print_err("[VK_MECH_SKIN] skinned buffer ({} vertices) could not be created; mechs blend inline.\n", mc2::fmt::as_u64(cap));
+            if (mc2_diag::tagRequested("VK_MECH_SKIN")) mc2::fmt::print_err("[VK_MECH_SKIN] skinned buffer ({} vertices) could not be created; mechs blend inline.\n", mc2::fmt::as_u64(cap));
             return false;
         }
         skinned_[slot] = std::move(fresh);

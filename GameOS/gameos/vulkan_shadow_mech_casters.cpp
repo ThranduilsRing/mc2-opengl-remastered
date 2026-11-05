@@ -133,7 +133,7 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     }
     nameObject(device_, pipeline_.get(), "shadow.mechPipe");
     // A failed pipeline build leaves the pre-skin off: the casters then blend bones inline as before.
-    if (!skin_.init(device_, allocator_, spvDir)) mc2::fmt::print_err("[VK_SHADOW_MECH] GPU pre-skin unavailable; casters blend bones inline.\n");
+    if (!skin_.init(device_, allocator_, spvDir) && mc2_diag::tagRequested("VK_SHADOW_MECH")) mc2::fmt::print_err("[VK_SHADOW_MECH] GPU pre-skin unavailable; casters blend bones inline.\n");
     inited_ = true;
     return true;
 }

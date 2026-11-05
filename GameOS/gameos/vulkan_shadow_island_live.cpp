@@ -1272,8 +1272,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     ShadowIsland* s=parkedIsland();
     if (!s || s->disabled || !upload_geometry_once(s) || !begin_frame(s,g_shadowFrameEpoch)) return;
     refresh_alpha_casters(s);
-    s->mech.stage(g_shadowFrameEpoch);
-    s->mech.recordSkin(s->cbuf[s->parity]);   // compute pre-skin ahead of every caster pass of this epoch (no render pass is open here)
+    s->mech.stage(g_shadowFrameEpoch); s->mech.recordSkin(s->cbuf[s->parity]);   // compute pre-skin ahead of every caster pass (no render pass open)
     const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
     s->mover.refreshMechActors(cameraRows,light);   // mech spheres for the per-map run masks below and for prepare()
     record_bake(s);
