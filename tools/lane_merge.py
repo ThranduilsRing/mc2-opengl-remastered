@@ -931,6 +931,69 @@ class TreeLock:
         self.fh.close()   # closing drops the OS lock
 
 
+class LintSlots:
+    """Host-wide counting semaphore across processes: N slot files, each held by an exclusive OS byte lock (the OS drops
+    it when the holder dies). Caps concurrent lint workers on the machine at JOBS however many `--lint` processes run."""
+    def __init__(self, directory=None, n=None, sleep=time.sleep):
+        ops = "A:/Games/mc2-ops"
+        self.dir = directory or os.environ.get("MC2_LINT_SLOTS_DIR") or (
+            os.path.join(ops, "lint-slots") if os.path.isdir(ops) else os.path.join(tempfile.gettempdir(), "mc2-lint-slots"))
+        self.n, self.sleep = n or int(host_jobs()), sleep
+
+    @staticmethod
+    def _lock(fh):
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def try_acquire(self):
+        """The open handle of a free slot (keeping it open holds the slot), or None when all N are busy."""
+        os.makedirs(self.dir, exist_ok=True)
+        for i in range(self.n):
+            fh = open(os.path.join(self.dir, f"slot{i}.lock"), "a+")
+            try:
+                self._lock(fh)
+                return fh
+            except OSError:
+                fh.close()
+        return None
+
+    def acquire(self, wait_s=7200):
+        deadline = time.monotonic() + wait_s
+        announced = False
+        while True:
+            fh = self.try_acquire()
+            if fh:
+                return fh
+            if time.monotonic() >= deadline:
+                raise Stop(5, "no lint slot free in " + self.dir)
+            if not announced:
+                print(f"lint: waiting for lint slot ({self.n} busy)", flush=True)
+                announced = True
+            self.sleep(2)
+
+    def run(self, fn, *args):
+        fh = self.acquire()
+        try:
+            return fn(*args)
+        finally:
+            fh.close()   # closing drops the OS lock
+
+
+def rmtree_force(path):
+    """Remove a tree including read-only git objects (Windows); never raises."""
+    def _onerr(func, p, _exc):
+        try:
+            os.chmod(p, 0o700)
+            func(p)
+        except OSError:
+            pass
+    shutil.rmtree(path, onerror=_onerr)
+
+
 def ensure_precheck_tree(root: str, tree: str, commit: str) -> None:
     """Create the persistent warm worktree once (detached, outside the main worktree), then park it on `commit`."""
     if _inside(tree, root):
@@ -953,13 +1016,16 @@ def stale_inventories(root: str, commit: str, regen=None) -> list[str]:
     commits them anyway; failing here moves that cost from the merge window to the lane."""
     regen = regen or regenerate_all
     proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
-    with tempfile.TemporaryDirectory(prefix="stale-inv-", dir=proof_root) as scratch:
+    scratch = tempfile.mkdtemp(prefix="stale-inv-", dir=proof_root)
+    try:
         snapshot = os.path.join(scratch, "tree")
         r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
         if r.returncode:
             raise Stop(5, "clone failed: " + failure_summary(r.stdout))
         git_out(snapshot, "checkout", "--quiet", "--detach", commit)
         return list(regen(snapshot))
+    finally:
+        rmtree_force(scratch)
 
 
 def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[str], str]]:
@@ -989,9 +1055,12 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
     rows = lint_rows([sys.executable, "-B"], base_ref, sha)
     # callers-refresh must precede callers in one tree; every other row gets its own tree so they run concurrently.
     chains = [[r for r in rows if r[0].startswith("callers")]] + [[r] for r in rows if not r[0].startswith("callers")]
-    with tempfile.TemporaryDirectory(prefix="lane-lint-", dir=precheck_scratch_base(root)) as scratch:
+    # lint only reads the repo through its own shared clones: it never takes the precheck TreeLock (that guards the warm link tree).
+    slots = LintSlots()   # host-wide cap: all concurrent `--lint` processes together run at most JOBS workers
+    scratch = tempfile.mkdtemp(prefix="lane-lint-", dir=precheck_scratch_base(root))
+    try:
         snap = os.path.join(scratch, "tree")   # one checkout shared by all rows: only callers-refresh writes (tests/callers.json), which no other row reads
-        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
+        r = slots.run(run, root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
             return 1
@@ -1001,12 +1070,12 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
             out = []
             for label, cmd, hint in chains[i]:
                 t0 = time.monotonic()
-                r = runner(snap, cmd)
+                r = slots.run(runner, snap, cmd)
                 out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=len(chains) + 1) as pool:
-            inv = pool.submit(lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
+            inv = pool.submit(slots.run, lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
             for f in [pool.submit(chain, i) for i in range(len(chains))]:
                 try:
                     results = f.result()
@@ -1022,6 +1091,8 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
                         print("  " + tail.replace("\n", "\n  "), flush=True)
                         if hint:
                             print("  fix: " + hint, flush=True)
+    finally:
+        rmtree_force(scratch)
     try:
         changed = inv.result()
     except Stop as exc:
