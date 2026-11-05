@@ -1064,7 +1064,7 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
             return 1
-        git_out(snap, "checkout", "--quiet", "--detach", sha)
+        slots.run(git_out, snap, "checkout", "--quiet", "--detach", sha)   # the checkout is the heavy phase: slot-gated too
 
         def chain(i):
             out = []
