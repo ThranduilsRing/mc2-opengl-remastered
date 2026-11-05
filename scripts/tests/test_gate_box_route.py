@@ -195,6 +195,40 @@ def test_failing_box_side_fails_the_gate_even_with_a_green_pc(monkeypatch):
     assert {n for n, _ in gate.FAILED_STAGES} >= {'box-gate', 'contracts-linux', 'unit-linux'}
 
 
+def test_hung_box_times_out_to_the_pc_fallback(monkeypatch, capsys):
+    import threading
+    release = threading.Event()
+    ran = []
+
+    def child(command, **kw):
+        ran.append(command[0])
+        if command[0] == 'box':
+            release.wait(30)
+        return SimpleNamespace(returncode=0, stdout='')
+    monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
+    monkeypatch.setattr(gate, 'git', lambda *a: 'head')
+    monkeypatch.setattr(gate, 'log_lease_holders', lambda: None)
+    monkeypatch.setattr(gate, 'run_child', child)
+    monkeypatch.setattr(gate, 'ACTIVE_STATE', None)
+    monkeypatch.setattr(gate, 'BOX_GATE_TIMEOUT_S', 0.3)
+    gate.FAILED_STAGES.clear()
+    why = dict(MC2_GATE_SKIP_REASON='box', MC2_GATE_REUSE_STAGE='box-gate')
+    steps = [('box-gate', ['box'], {}), ('contracts-linux', ['linux-contracts'], dict(why)), ('deploy', ['deploy'], {})]
+    try:
+        assert gate.execute_parallel(steps, 'head') == 0
+    finally:
+        release.set()
+    assert 'linux-contracts' in ran
+    assert 'BOX_INFRA (timeout)' in capsys.readouterr().out
+
+
+def test_pc_keeps_an_msvc_doctest_compile_without_running_it(monkeypatch):
+    steps = split_steps(monkeypatch, ['x'])
+    build, env = steps['unit-msvc-build']
+    assert '--unit-only' in build and '--run' not in build and not env.get('MC2_GATE_SKIP_REASON')
+    assert 'unit-msvc-build' in gate.OFFLINE_STAGES
+
+
 def test_dead_box_runs_the_linux_rows_on_the_pc(monkeypatch, capsys):
     result, ran = run_split_window(monkeypatch, 3, 'BOX_INFRA: no verdict')
     assert result == 0

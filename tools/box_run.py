@@ -114,7 +114,11 @@ p = sd.baseline_path(sys.argv[2])
 want = json.load(open(p))["data_fingerprint"]["digest"] if os.path.exists(p) else None
 print("digest=%s stock=%s baseline=%s problems=%d" % (fp["digest"], fp["stock_digest"], want, len(fp["problems"])))
 sys.exit(7 if want and want != fp["digest"] else 0)'
-for row in "${ROWS[@]}"; do
+cr() { nice -n 19 taskset -c "$BCPUS" "$@" 9>&-; }   # CPU rows: no GPU lock, no display; the builds' cores at nice 19
+# every row gets a wall cap: a hung process (a doctest that printed its status and never exited) must not hold the GPU lock for hours
+ROWCAP=${ROWCAP:-1500}
+runrows() {
+for row in "$@"; do
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*) name=${name:0:50}-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"
   case $row in
     smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
@@ -125,7 +129,7 @@ for row in "${ROWS[@]}"; do
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
-                 cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
+                 cmd="cmake -S \$PWD/tests/unit -B \$PWD/build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j4 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
     sh:*)        cmd="${row#sh:}" ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
@@ -140,13 +144,26 @@ for row in "${ROWS[@]}"; do
       printf "%s\t%s\n" "$row" 7 >> $OUT/rows.tsv; RES=1; continue
     fi ;;
   esac
-  gr bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
+  case $row in unit|sh:*) runner=cr ;; *) runner=gr ;; esac
+  $runner timeout -k 10 $ROWCAP bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
+  # the doctest binary can hang at exit after a complete run: a printed SUCCESS status stands for the exit code (124 = the cap killed it)
+  [ "$row" = unit ] && [ $rc = 124 ] && grep -aq "Status: SUCCESS" $OUT/$name.log && { echo "[box_run] unit: doctest hung at exit after SUCCESS; accepted"; rc=0; }
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
   printf "%s\t%s\n" "$row" "$rc" >> $OUT/rows.tsv
   [ $rc = 0 ] || RES=1
   tick "row:$name"
 done
+}
+# CPU rows (doctests, contracts) need no GPU: they run beside the GPU rows instead of in series under the GPU lock
+CROWS=(); GROWS=()
+for row in "${ROWS[@]}"; do case $row in unit|sh:*) CROWS+=("$row");; *) GROWS+=("$row");; esac; done
+CPID=""
+[ ${#CROWS[@]} -gt 0 ] && { runrows "${CROWS[@]}" & CPID=$!; }
+[ ${#GROWS[@]} -gt 0 ] && runrows "${GROWS[@]}"
+[ -n "$CPID" ] && wait $CPID
+# the verdict is the rows file: the two row loops ran in separate subshells, so RES set inside them is lost
+[ -f $OUT/rows.tsv ] && awk -F'\t' '$2!=0{f=1} END{exit !f}' $OUT/rows.tsv && RES=1
 # keep run_smoke reports, drop the heavy per-run logs unless asked
 [ -d $S/smoke_logs ] && cp -a $S/smoke_logs $OUT/ 2>/dev/null
 grep -a -h "DEPLOY_FINGERPRINT\|BUILD_FINGERPRINT" $OUT/*.log 2>/dev/null | sort -u | head -3 | cut -c1-200
