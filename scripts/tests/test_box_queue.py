@@ -106,7 +106,7 @@ def test_queue_submits_one_ssh_to_the_group_and_returns_the_task_id(monkeypatch,
     pueue = [s for s in sent if "pueue add" in s[0]]
     assert len(pueue) == 1
     cmd, stdin = pueue[0]
-    assert "-g gpu1 --print-task-id" in cmd and stdin == box_run.REMOTE
+    assert "-g gpu1 --print-task-id" in cmd and stdin == box_run.REMOTE.encode()
     assert base64.b64encode(b"determinism").decode() in cmd
     assert "queued task=12 group=gpu1" in capsys.readouterr().out
 

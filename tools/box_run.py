@@ -366,12 +366,14 @@ def main():
         grp = "gate" if a.gate else f"gpu{gpu}"
         label = f"box_run:{branch}:{sha[:8]}:{grp}"
         r = run([*SSH_STDIN, f"cat > {script} && {PUEUE} add -g {grp} --print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
-                input=REMOTE, text=True, capture_output=True)
-        tid = r.stdout.strip().splitlines()[-1] if r.returncode == 0 and r.stdout.strip() else ""
-        print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {r.stderr.strip()[-200:]}")
+                input=REMOTE.encode(), capture_output=True)   # bytes: text mode would turn LF into CRLF on Windows and bash chokes on the CR
+        out = r.stdout.decode(errors="replace") if isinstance(r.stdout, bytes) else r.stdout
+        err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
+        tid = out.strip().splitlines()[-1] if r.returncode == 0 and out.strip() else ""
+        print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {err.strip()[-200:]}")
         return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH_STDIN, f"cat > {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE, text=True)
+    r = run([*SSH_STDIN, f"cat > {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode())
     t["remote (build+install+rows)"] = time.time() - t1
     t2 = time.time()
     fetch_back(out_remote, local_out)
