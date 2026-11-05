@@ -81,7 +81,7 @@ public:
 
     void flSetMovers( Mover* const* movers, int n );
     int  flMoverCount() const { return flMoverCount_; }
-    Mover* flMover( int i ) const { return ( i >= 0 && i < flMoverCount_ ) ? flMovers_[i] : 0; }
+    Mover* flMover( int i ) const { return ( i >= 0 && i < flMoverCount_ ) ? flMovers_[i] : nullptr; }
 
 private:
     // Engine-free snapshot of the gameplay camera, captured once on entry.

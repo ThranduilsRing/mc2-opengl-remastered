@@ -164,8 +164,8 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
             : 0.0;
 
         uint64_t total_submitted = 0;
-        for (int p = 0; p < kPopCount; ++p) {
-            total_submitted += s_counters.mono_submitted_instances_by_pop[p];
+        for (uint64_t p : s_counters.mono_submitted_instances_by_pop) {
+            total_submitted += p;
         }
 
         // COUNTER-HONESTY-1: authoritative registry census, so a reader can never

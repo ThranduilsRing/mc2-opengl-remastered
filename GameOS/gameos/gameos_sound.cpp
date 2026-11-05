@@ -170,8 +170,8 @@ bool SoundEngine::init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool
     gosASSERT(NUM_CHANNELS == num_allocated_chanels);
 
     memset(&channel_info_, 0, sizeof(channel_info_));
-    for(int i=0;i<NUM_CHANNELS;++i) {
-        channel_info_[i].ePlayMode = gosAudio_Stop;
+    for(auto & i : channel_info_) {
+        i.ePlayMode = gosAudio_Stop;
         //Mix_Volume(i, 127);
     }
 

@@ -537,8 +537,8 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				{ "midnight", 0.750f },
 			};
 			float f = -1.0f;
-			for (size_t p = 0; p < sizeof(kPhases) / sizeof(kPhases[0]); ++p)
-				if (arg == kPhases[p].name) { f = kPhases[p].f; break; }
+			for (auto kPhase : kPhases)
+				if (arg == kPhase.name) { f = kPhase.f; break; }
 			if (f < 0.0f) {
 				char* end = nullptr;
 				const float v = strtof(arg.c_str(), &end);

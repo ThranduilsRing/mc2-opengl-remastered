@@ -387,11 +387,11 @@ void MechPurchaseScreen::end()
 
 
 		unsigned long base, color1, color2;
-		for ( auto pIter = prevInventory.begin(); pIter != prevInventory.end(); ++pIter )
+		for (auto & pIter : prevInventory)
 		{
-			(*pIter).getColors(base, color1, color2);
-			LogisticsData::instance->addMechToInventory( (*pIter).getVariant(), (*pIter).getPilot(),
-				(*pIter).getForceGroup(), true );
+			pIter.getColors(base, color1, color2);
+			LogisticsData::instance->addMechToInventory( pIter.getVariant(), pIter.getPilot(),
+				pIter.getForceGroup(), true );
 		}
 
 	}

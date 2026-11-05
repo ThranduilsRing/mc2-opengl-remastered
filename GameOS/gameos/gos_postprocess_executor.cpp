@@ -157,8 +157,8 @@ extern "C" unsigned long mc2_framegraph_executor_validation_failures()
 extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl()
 {
     unsigned long total = 0;
-    for (int i = 0; i < static_cast<int>(RenderCore::framegraph::ApplyPassId::Count); ++i)
-        total += g_applyStateByPass[i];
+    for (unsigned long g_applyStateByPas : g_applyStateByPass)
+        total += g_applyStateByPas;
     return total;
 }
 

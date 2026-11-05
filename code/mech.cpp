@@ -539,9 +539,9 @@ long BattleMech::getResourcePointValue (void) {
 		{100, 7000}
 	};
 
-	for (long i = 0; i < 15; i++)
-		if (tonnage <= resourcePointsForMechs[i][0])
-			return(resourcePointsForMechs[i][1]);
+	for (auto & resourcePointsForMech : resourcePointsForMechs)
+		if (tonnage <= resourcePointsForMech[0])
+			return(resourcePointsForMech[1]);
 	return(resourcePointsForMechs[14][1]);
 };
 
@@ -1012,10 +1012,10 @@ void BattleMech::repairAll (void)
 		}
 	}
 
-	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
+	for (auto & curItem : inventory)
 	{
-		inventory[curItem].health = 255;
-		inventory[curItem].disabled = false;
+		curItem.health = 255;
+		curItem.disabled = false;
 	}
 
 	calcAmmoTotals();

@@ -73,7 +73,7 @@ struct _MC_VertexArrayNode
 	{
 		flags = 0;
 		numVertices = 0;
-		currentVertex = 0;
+		currentVertex = nullptr;
 		vertices = nullptr;
 		textureIndex = 0;
 	}

@@ -621,9 +621,9 @@ void LogisticsVehicle::init( FitIniFile& file )
 	baseArmor = 0;
 
 	unsigned char pts;
-	for ( int i = 0; i < 5; i++ )
+	for (auto & part : parts)
 	{
-		file.seekBlock( parts[i] );
+		file.seekBlock( part );
 		file.readIdUChar( "MaxArmorPoints", pts );
 		baseArmor += pts;
 		file.readIdUChar( "CurInternalStructure", pts );

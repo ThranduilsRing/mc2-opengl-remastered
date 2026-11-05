@@ -39,8 +39,8 @@ static constexpr int kPassFboTargetCount =
     sizeof(kPassFboTarget) / sizeof(kPassFboTarget[0]);
 
 inline RenderResourceId declaredFboTarget(RenderPassId id) {
-    for (int i = 0; i < kPassFboTargetCount; ++i)
-        if (kPassFboTarget[i].id == id) return kPassFboTarget[i].target;
+    for (auto i : kPassFboTarget)
+        if (i.id == id) return i.target;
     return RenderResourceId::Unknown;   // pass declares no FBO target -> guard skips it
 }
 

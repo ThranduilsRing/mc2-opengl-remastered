@@ -84,8 +84,8 @@ class GameSoundSystem : public SoundSystem
 			// Startup the Radio Message Queue.
 			messagesInQueue = 0;
 			wholeMsgDone = true;
-			for (long i=0;i<MAX_QUEUED_MESSAGES;i++)
-				queue[i] = nullptr;
+			for (auto & i : queue)
+				i = nullptr;
 
 			generalAlarmTimer = 0.0f;
 		}

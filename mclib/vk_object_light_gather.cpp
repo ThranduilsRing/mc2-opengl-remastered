@@ -260,8 +260,8 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 				rec.up[0]  = row[12]; rec.up[1]  = row[13]; rec.up[2]  = row[14];
 				rec.falloff[0] = lights->lightFalloff[num_lights][0];
 				rec.falloff[1] = lights->lightFalloff[num_lights][1];
-				for (int c = 0; c < 3; ++c) {
-					const float a = rec.src[c] < 0.0f ? -rec.src[c] : rec.src[c];
+				for (float c : rec.src) {
+					const float a = c < 0.0f ? -c : c;
 					if (a > rec.maxSrcAbs) rec.maxSrcAbs = a;
 				}
 				// One line the first time a POSITIONAL type ever appears — this

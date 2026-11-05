@@ -948,9 +948,9 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 //---------------------------------------------------------------------------
 bool SoundSystem::isPlayingSample (long sampleId)
 {
-	for (long i=0;i<MAX_DIGITAL_SAMPLES;i++)
+	for (long i : channelSampleId)
 	{
-		if (sampleId == channelSampleId[i])
+		if (sampleId == i)
 			return TRUE;
 	}
 

@@ -281,7 +281,7 @@ class SoundSystem
 				slot.id = -1;
 			}
 			
-			stream3Handle = 0;
+			stream3Handle = nullptr;
 			stream3Active = false;
 			
 			numBettySamples = 0;

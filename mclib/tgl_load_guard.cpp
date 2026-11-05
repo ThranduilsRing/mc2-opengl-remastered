@@ -136,8 +136,8 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 		if (s_magentaHandle == 0xffffffff)
 		{
 			DWORD texels[16];
-			for (int i = 0; i < 16; ++i)
-				texels[i] = 0xffff00ff;   // A=ff R=ff G=00 B=ff
+			for (unsigned int & texel : texels)
+				texel = 0xffff00ff;   // A=ff R=ff G=00 B=ff
 			s_magentaHandle = mc2::textures::fromPixels(
 				texels, gos_Texture_Solid,
 				gosHint_DisableMipmap | gosHint_DontShrink, 4);
@@ -165,7 +165,7 @@ void tglReadImportSource(FitIniFile& ini, std::span<char, 256> source)
 bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
                           const char* assetPath, bool* failFlag)
 {
-	const bool loaded = (shape != 0) && (rc == 0) && (shape->GetNumShapes() > 0);
+	const bool loaded = (shape != nullptr) && (rc == 0) && (shape->GetNumShapes() > 0);
 	if (loaded)
 		return true;
 	MC2_VERIFY(false, "required shape load failed ctx=%s path=%s",

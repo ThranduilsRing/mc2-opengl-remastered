@@ -170,8 +170,8 @@ void deflate_stored(const std::vector<unsigned char>& raw,
     }
     // Adler-32 of the raw stream.
     uint32_t a = 1, b = 0;
-    for (size_t i = 0; i < raw.size(); ++i) {
-        a = (a + raw[i]) % 65521;
+    for (unsigned char i : raw) {
+        a = (a + i) % 65521;
         b = (b + a) % 65521;
     }
     put_u32_be(z, (b << 16) | a);

@@ -20,7 +20,7 @@ Utilities.cpp			: Implementation of the Utilities component.
 
 // DEFS-METER-BRIDGE-1: see utilities.h. Installed by gui/asystem.cpp when the
 // aObject GUI bridge is in use; null in tools without the UI stack.
-bool (*g_uiBridgeRectHook)( const GUI_RECT& rect, unsigned long color, bool filled ) = 0;
+bool (*g_uiBridgeRectHook)( const GUI_RECT& rect, unsigned long color, bool filled ) = nullptr;
 
 void drawRect( const GUI_RECT& area, DWORD color )
 {

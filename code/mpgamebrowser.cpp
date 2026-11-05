@@ -110,9 +110,9 @@ void MPGameBrowser::init(FitIniFile* file)
 
 		templateItem.init(&PNfile, "GameListItem");
 
-		for ( int i = 0; i < 256; i++ )
+		for (auto & item : items)
 		{
-			items[i] = templateItem;
+			item = templateItem;
 		}
 
 	}

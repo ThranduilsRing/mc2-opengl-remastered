@@ -225,27 +225,27 @@ void PilotReadyScreen::begin()
 		}
 
 
-		for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
+		for (auto & iter : mechList)
 		{
-			if ( (*iter)->getForceGroup() )
+			if ( iter->getForceGroup() )
 			{
-				long FG = (*iter)->getForceGroup();
-				pIcons[FG-1].setMech( (*iter) );
-				if ( (*iter)->getPilot() )
+				long FG = iter->getForceGroup();
+				pIcons[FG-1].setMech( iter );
+				if ( iter->getPilot() )
 				{
-					(*iter)->getPilot()->setUsed( true );
-					pIcons[FG-1].setPilot( (*iter)->getPilot() );
+					iter->getPilot()->setUsed( true );
+					pIcons[FG-1].setPilot( iter->getPilot() );
 					bHasPilot = FG - 1;
 				}
 				else
 				{
 					// VEHICLE-AUTO-PILOT-1: vehicles/support units auto-get a standard
 					// vehicle pilot so they are launch-ready without a roster mech-pilot.
-					bool isVeh = LogisticsData::instance->isVehicleUnit( (*iter) );
+					bool isVeh = LogisticsData::instance->isVehicleUnit( iter );
 					LogisticsPilot* vp = isVeh ? LogisticsData::instance->getVehiclePilot() : nullptr;
 					if ( isVeh && vp )
 					{
-						(*iter)->setPilot( vp );
+						iter->setPilot( vp );
 						pIcons[FG-1].setPilot( vp );
 					}
 				}
@@ -324,9 +324,9 @@ void PilotReadyScreen::render(int xOffset, int yOffset )
 		}
 	}
 
-	for ( int i = 0; i < 2; i++ )
+	for (auto & attributeMeter : attributeMeters)
 	{
-		attributeMeters[i].render( xOffset, yOffset );
+		attributeMeter.render( xOffset, yOffset );
 	}
 
 	// MECH-ICON-BLANK-1: rank/skill/medal icons are textured quads too.
@@ -335,11 +335,11 @@ void PilotReadyScreen::render(int xOffset, int yOffset )
 		rankIcons[pCurPilot->getRank()].render(xOffset, yOffset);
 
 
-	for (int i = 0; i < 4; i++ )
-		skillIcons[i].render(xOffset, yOffset);
+	for (auto & skillIcon : skillIcons)
+		skillIcon.render(xOffset, yOffset);
 
-	for (int i = 0; i < MAX_MEDAL; i++ )
-		medalIcons[i].render(xOffset, yOffset);
+	for (auto & medalIcon : medalIcons)
+		medalIcon.render(xOffset, yOffset);
 	aObject::endGuiBridge();
 
 
@@ -404,8 +404,8 @@ void PilotReadyScreen::update()
 		textObjects[1].setText( str );
 		setDefsElementText( "game.mcl_pr_layout.text.cbills_text", str );
 
-		for ( int i = 0; i < 4; i++ )
-			skillIcons[i].update();
+		for (auto & skillIcon : skillIcons)
+			skillIcon.update();
 		
 
 		// desel icons if necessary
@@ -518,8 +518,8 @@ void PilotReadyScreen::update()
 			buttons[3].disable(0);
 
 
-		for (int i = 0; i < MAX_MEDAL; i++ ) // so we get rollovers
-			medalIcons[i].update();
+		for (auto & medalIcon : medalIcons) // so we get rollovers
+			medalIcon.update();
 
 		
 		// update drag and drop

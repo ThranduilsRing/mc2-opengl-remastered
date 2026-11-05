@@ -459,16 +459,16 @@ void Appearance::drawIcon( unsigned long bmpHandle, unsigned long bmpWidth,
 
 	gos_VERTEX v[4]; 
 
-	for ( int i = 0; i < 4; i ++ )
+	for (auto & i : v)
 	{
-		v[i].argb = color;
-		v[i].frgb = 0;
-		v[i].z = 0.f;
-		v[i].rhw = .5f;
-		v[i].x = X;
-		v[i].y = Y;
-		v[i].u = .25; // might want to pass these in too....
-		v[i].v = 0.f;
+		i.argb = color;
+		i.frgb = 0;
+		i.z = 0.f;
+		i.rhw = .5f;
+		i.x = X;
+		i.y = Y;
+		i.u = .25; // might want to pass these in too....
+		i.v = 0.f;
 	}
 
 	v[2].x = v[3].x = X + bmpWidth;

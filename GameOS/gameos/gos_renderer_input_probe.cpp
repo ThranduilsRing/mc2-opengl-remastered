@@ -66,15 +66,15 @@ void scanFeed(const std::vector<GpuStaticPropInstance>& feed,
     if (!haveRecipe)
         return;
     hit.typeID = recipeTypeId;
-    for (size_t i = 0; i < feed.size(); ++i) {
-        if (feed[i].typeID != recipeTypeId)
+    for (const auto & i : feed) {
+        if (i.typeID != recipeTypeId)
             continue;
         ++hit.leavesTotal;
-        if (sameTranslation(recipePos, feed[i].modelMatrix)) {
+        if (sameTranslation(recipePos, i.modelMatrix)) {
             if (hit.leavesExact == 0) {
-                hit.submittedPos[0] = feed[i].modelMatrix[3];
-                hit.submittedPos[1] = feed[i].modelMatrix[7];
-                hit.submittedPos[2] = feed[i].modelMatrix[11];
+                hit.submittedPos[0] = i.modelMatrix[3];
+                hit.submittedPos[1] = i.modelMatrix[7];
+                hit.submittedPos[2] = i.modelMatrix[11];
             }
             ++hit.leavesExact;
             hit.found = true;

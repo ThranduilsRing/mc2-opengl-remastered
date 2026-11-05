@@ -54,7 +54,7 @@ static void drawSensorRing( Camera* eye, const glm::vec3& center, float radius,
 	{
 		if ( !ok[i] || !ok[i + 1] ) continue;
 		gos_VERTEX ln[2];
-		for ( int v = 0; v < 2; ++v ) { ln[v].z = 0; ln[v].rhw = .5f; ln[v].argb = col; ln[v].frgb = 0; ln[v].u = ln[v].v = 0; }
+		for (auto & v : ln) { v.z = 0; v.rhw = .5f; v.argb = col; v.frgb = 0; v.u = v.v = 0; }
 		ln[0].x = px[i];     ln[0].y = py[i];
 		ln[1].x = px[i + 1]; ln[1].y = py[i + 1];
 		gos_DrawLines( ln, 2 );
@@ -85,7 +85,7 @@ static void drawTowerGlyph( Camera* eye, const glm::vec3& wp, unsigned long col 
 	float cx = vax + ( r.clip.x / r.clip.w * 0.5f + 0.5f ) * vmx;
 	float cy = vay + ( 1.0f - ( r.clip.y / r.clip.w * 0.5f + 0.5f ) ) * vmy;
 	gos_VERTEX ln[2];
-	for ( int v = 0; v < 2; ++v ) { ln[v].z = 0; ln[v].rhw = .5f; ln[v].argb = col; ln[v].frgb = 0; ln[v].u = ln[v].v = 0; }
+	for (auto & v : ln) { v.z = 0; v.rhw = .5f; v.argb = col; v.frgb = 0; v.u = v.v = 0; }
 	// left leg
 	ln[0].x = cx - 5.0f; ln[0].y = cy;        ln[1].x = cx; ln[1].y = cy - 12.0f; gos_DrawLines( ln, 2 );
 	// right leg
@@ -174,7 +174,7 @@ static void renderOverviewCoverageTint( Camera* eye, float alpha )
 
 			gos_VERTEX q[4];
 			float l = static_cast<float>(gx), r = static_cast<float>(( gx + cell )), t = static_cast<float>(gy), b = static_cast<float>(( gy + cell ));
-			for ( int v = 0; v < 4; ++v ) { q[v].z = 0; q[v].rhw = .5f; q[v].argb = col; q[v].frgb = 0; q[v].u = q[v].v = 0; }
+			for (auto & v : q) { v.z = 0; v.rhw = .5f; v.argb = col; v.frgb = 0; v.u = v.v = 0; }
 			q[0].x = l; q[0].y = t; q[1].x = l; q[1].y = b; q[2].x = r; q[2].y = b; q[3].x = r; q[3].y = t;
 			gos_DrawQuads( q, 4 );
 		}
@@ -221,7 +221,7 @@ static void renderOverviewEnemyMarkers( Camera* eye, float alpha )
 
 		// Downward chevron, apex on the unit.
 		gos_VERTEX tri[3];
-		for ( int k = 0; k < 3; ++k ) { tri[k].z = 0; tri[k].rhw = .5f; tri[k].argb = col; tri[k].frgb = 0; tri[k].u = tri[k].v = 0; }
+		for (auto & k : tri) { k.z = 0; k.rhw = .5f; k.argb = col; k.frgb = 0; k.u = k.v = 0; }
 		tri[0].x = cx;     tri[0].y = cy;
 		tri[1].x = cx - w; tri[1].y = cy - h;
 		tri[2].x = cx + w; tri[2].y = cy - h;
@@ -243,7 +243,7 @@ static void csgThickSeg( float x0, float y0, float x1, float y1, float hw, unsig
 	if ( len < 0.001f ) return;
 	float nx = -dy / len * hw, ny = dx / len * hw;
 	gos_VERTEX q[4];
-	for ( int v = 0; v < 4; ++v ) { q[v].z = 0; q[v].rhw = .5f; q[v].argb = c; q[v].frgb = 0; q[v].u = q[v].v = 0; }
+	for (auto & v : q) { v.z = 0; v.rhw = .5f; v.argb = c; v.frgb = 0; v.u = v.v = 0; }
 	q[0].x = x0 + nx; q[0].y = y0 + ny; q[1].x = x1 + nx; q[1].y = y1 + ny;
 	q[2].x = x1 - nx; q[2].y = y1 - ny; q[3].x = x0 - nx; q[3].y = y0 - ny;
 	gos_DrawQuads( q, 4 );
@@ -294,7 +294,7 @@ static void drawWeaponBandUnion( Camera* eye, const glm::vec3* centers,
 			if ( havePrev )
 			{
 				gos_VERTEX ln[2];
-				for ( int v = 0; v < 2; ++v ) { ln[v].z = 0; ln[v].rhw = .5f; ln[v].argb = arcCol; ln[v].frgb = 0; ln[v].u = ln[v].v = 0; }
+				for (auto & v : ln) { v.z = 0; v.rhw = .5f; v.argb = arcCol; v.frgb = 0; v.u = v.v = 0; }
 				ln[0].x = ppx; ln[0].y = ppy;
 				ln[1].x = sx;  ln[1].y = sy;
 				gos_DrawLines( ln, 2 );
@@ -444,7 +444,7 @@ static void updateAndRenderFormationLine( Camera* eye )
 			if ( !okArr[s] ) continue;
 			const float hp = 3.0f;
 			gos_VERTEX q[4];
-			for ( int v = 0; v < 4; ++v ) { q[v].z = 0; q[v].rhw = .5f; q[v].argb = aBits | kGreen; q[v].frgb = 0; q[v].u = q[v].v = 0; }
+			for (auto & v : q) { v.z = 0; v.rhw = .5f; v.argb = aBits | kGreen; v.frgb = 0; v.u = v.v = 0; }
 			q[0].x = sxArr[s] - hp; q[0].y = syArr[s] - hp; q[1].x = sxArr[s] - hp; q[1].y = syArr[s] + hp;
 			q[2].x = sxArr[s] + hp; q[2].y = syArr[s] + hp; q[3].x = sxArr[s] + hp; q[3].y = syArr[s] - hp;
 			gos_DrawQuads( q, 4 );

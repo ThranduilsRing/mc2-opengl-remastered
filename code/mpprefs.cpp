@@ -280,13 +280,13 @@ void MPPrefs::update()
 
 	int oldSel = comboBox[2].GetSelectedItem();
 	bool bExpanded = 0;
-	for (int i = 0; i < 3; i++ )
+	for (auto & i : comboBox)
 	{
-		if ( comboBox[i].ListBox().isShowing() )
+		if ( i.ListBox().isShowing() )
 		{
 			bExpanded = true;
 		}
-		comboBox[i].update();
+		i.update();
 
 		
 	}
@@ -499,12 +499,12 @@ void MPPrefs ::render(int OffsetX, int OffsetY )
 				(camera.bounds[3] - camera.bounds[1]) * sy );
 		}
 
-		for ( int i = 0; i < 3; i++ )
+		for (auto & i : comboBox)
 		{
-			if ( !comboBox[i].ListBox().isShowing() )			
-				comboBox[i].render();
+			if ( !i.ListBox().isShowing() )			
+				i.render();
 			else 
-				pObject = &comboBox[i];
+				pObject = &i;
 		}
 
 		// x out colors that are already taken

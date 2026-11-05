@@ -47,8 +47,8 @@ void BattleMech::init (bool create) {
 
 	sentCrippledMsg = false;
 
-	for (int i = 0; i < NUM_ACTUATORS; i++)
-		actuator[i] = 255;
+	for (unsigned char & i : actuator)
+		i = 255;
 	gyro = 255;
 
 	numJumpJets = 0;
@@ -92,8 +92,8 @@ void BattleMech::init (bool create) {
 	
 	damageAfterDisabled = 0.0f;
 	
-	for (long l = 0; l < 6; l++)
-		rotateValues[l] = 0;
+	for (float & rotateValue : rotateValues)
+		rotateValue = 0;
 
 #ifdef USE_MECHDEBUGFILE
 	if (!MechDebugFile) {

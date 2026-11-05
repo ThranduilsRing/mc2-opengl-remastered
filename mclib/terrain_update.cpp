@@ -165,10 +165,10 @@ long Terrain::update (void)
 		const int cells[][2] = { {3,3}, {30,30}, {90,90}, {150,150} };
 		int samples = 0, mismGame = 0, mismVis = 0, mismMat = 0, mismWater = 0;
 		const float legacyWater = getWaterElevation();
-		for (int i = 0; i < 4; ++i)
+		for (auto cell : cells)
 		{
 			glm::vec3 pos;
-			getCellPos(cells[i][0], cells[i][1], pos);   // fills xy + z=legacy elevation
+			getCellPos(cell[0], cell[1], pos);   // fills xy + z=legacy elevation
 			if (!Terrain::IsValidTerrainPosition(pos))
 				continue;
 			++samples;

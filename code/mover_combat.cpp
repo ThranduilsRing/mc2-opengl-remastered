@@ -727,9 +727,9 @@ bool Mover::getWeaponIndirectFire (long weaponIndex)
 	if (!isWeaponIndex(weaponIndex))
 		return(false);
 
-	for (long i=0;i<20;i++)
+	for (long IndirectFireWeapon : IndirectFireWeapons)
 	{
-		if (IndirectFireWeapons[i] == inventory[weaponIndex].masterID)
+		if (IndirectFireWeapon == inventory[weaponIndex].masterID)
 			return true;
 	}
 			
@@ -742,9 +742,9 @@ bool Mover::getWeaponAreaEffect (long weaponIndex)
 	if (!isWeaponIndex(weaponIndex))
 		return(false);
 
-	for (long i=0;i<20;i++)
+	for (long AreaEffectWeapon : AreaEffectWeapons)
 	{
-		if (AreaEffectWeapons[i] == inventory[weaponIndex].masterID)
+		if (AreaEffectWeapon == inventory[weaponIndex].masterID)
 			return true;
 	}
 			
@@ -921,9 +921,9 @@ long Mover::calcFireRanges (void) {
 	if (ranked[0].score == ranked[1].score) {
 		// A tie, so pick one based upon the pre-set range priorities. The tie set is read whole, so the order inside it does not matter.
 		unsigned char tieFlags = 0;
-		for (long i = 0; i < 5; i++)
-			if (ranked[i].score == ranked[0].score)
-				tieFlags |= (1 << ranked[i].id);
+		for (auto & i : ranked)
+			if (i.score == ranked[0].score)
+				tieFlags |= (1 << i.id);
 
 		optimalRangeType = OptimalRangeTieTable[tieFlags];
 		if (optimalRangeType == 255) {

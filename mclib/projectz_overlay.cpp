@@ -110,7 +110,7 @@ void projectz_overlay_advance() {
 void projectz_overlay_begin_frame() {
     s_triCount = 0;
     s_dropped  = 0;
-    for (int i = 0; i < 5; i++) s_bucketCount[i] = 0;
+    for (unsigned int & i : s_bucketCount) i = 0;
 }
 
 //--------------------------------------------------------------------
@@ -252,7 +252,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
         const float barX = 10.0f, barY = 10.0f, barH = 14.0f;
         const float barW = 300.0f;
         uint32_t total = 0;
-        for (int i = 0; i < 5; i++) total += s_bucketCount[i];
+        for (unsigned int i : s_bucketCount) total += i;
 
         // Semi-opaque black background so the color bar stands out on terrain.
         draw_quad_as_tris(barX - 2, barY - 2, barX + barW + 2, barY + barH + 2, 0x80000000u);

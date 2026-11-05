@@ -1005,9 +1005,9 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (int i=0;i<8;i++)
+		for (auto boxCoord : boxCoords)
 		{
-			testRadius = glm::length(boxCoords[i]);
+			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}
@@ -1084,19 +1084,19 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// Removing these lines is NOT the fix either: registration is still
 		// consumed elsewhere in the batcher. Fix the eligibility predicate
 		// (submitted-ness, not registered-ness) if this ever goes live.
-		for (int i = 0; i < MAX_LODS; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShape[i]);
+		for (auto & i : appearType->gvShape)
+			GpuStaticPropBatcher::instance().registerMultiShape(i);
 		// An override body with per-object maps is one shared shape per LOD (paint is shader-side), so it joins the
 		// batcher here, before finalize, and draws through submitMultiShape instead of the CPU fallback.
 		if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name); ov && ov->usesObjectMaps())
-			for (int i = 0; i < MAX_LODS; ++i)
-				if (appearType->renderLods[i])
-					GpuStaticPropBatcher::instance().registerMultiShape(appearType->renderLods[i].get(), true, ov);
+			for (const auto & renderLod : appearType->renderLods)
+				if (renderLod)
+					GpuStaticPropBatcher::instance().registerMultiShape(renderLod.get(), true, ov);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
 		// Stock bodies (and the destroyed shape) draw from per-node matrices through the mech batcher.
-		for (int i = 0; i < MAX_LODS; ++i)
-			GpuMechBatcher::instance().registerVehicleType(appearType->gvShape[i]);
+		for (auto & i : appearType->gvShape)
+			GpuMechBatcher::instance().registerVehicleType(i);
 		GpuMechBatcher::instance().registerVehicleType(appearType->gvDmgShape);
 	}
 }

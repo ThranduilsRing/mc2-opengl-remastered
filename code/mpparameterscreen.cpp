@@ -425,17 +425,17 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 						char str[256];
 						cLoadString( IDS_MP_PARAMTERS_BOOT_PROMPT, str, 255 );
 						char finalStr[256];
-						for ( int j = 0; j < MAX_MC_PLAYERS; j++ )
+						for (auto & j : MPlayer->playerList)
 						{
-							if ( MPlayer->playerList[j].commanderID 
+							if ( j.commanderID 
 								== playerParameters[i].getCommanderID() )
 							{
-								sprintf( finalStr, str, MPlayer->playerList[j].name );
+								sprintf( finalStr, str, j.name );
 								LogisticsOKDialog::instance()->setText( IDS_DIALOG_OK, IDS_DIALOG_NO, IDS_DIALOG_YES );
 								LogisticsOKDialog::instance()->setText( finalStr );
 								LogisticsOKDialog::instance()->begin();
 								bBootDlg = true;
-								bootPlayerID = MPlayer->playerList[j].commanderID;
+								bootPlayerID = j.commanderID;
 								return 0;
 							}
 						}

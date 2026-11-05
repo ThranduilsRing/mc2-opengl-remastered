@@ -182,11 +182,11 @@ void LogisticsData::initComponents()
 	}
 	
 	// fix up ammo
-	for ( auto iter = components.begin(); iter != components.end(); ++iter )
+	for (auto & component : components)
 	{
-		if ((*iter).getAmmo() )
+		if (component.getAmmo() )
 		{
-			(*iter).setAmmo( Ammo[(*iter).getAmmo()] );
+			component.setAmmo( Ammo[component.getAmmo()] );
 		}
 	}
 

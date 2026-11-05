@@ -525,8 +525,8 @@ void MechLabScreen::update()
 
 	int oldSel = componentListBox.GetSelectedItem(); // need to check this before we update the list box
 
-	for ( int i = 0; i < MECH_LAB_ATTRIBUTE_METER_COUNT; i++ )
-		attributeMeters[i].update();
+	for (auto & attributeMeter : attributeMeters)
+		attributeMeter.update();
 
 
 	if ( !MPlayer || !ChatWindow::instance()->pointInside(userInput->getMouseX(), userInput->getMouseY()) )
@@ -919,8 +919,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	// DEFS-METER-BRIDGE-1: stat bars on the ImGui layer (raw gos draws are
 	// buried under the defs page).
 	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
-	for ( int i = 0; i < MECH_LAB_ATTRIBUTE_METER_COUNT; i++ )
-		attributeMeters[i].render(xOffset, yOffset);
+	for (auto & attributeMeter : attributeMeters)
+		attributeMeter.render(xOffset, yOffset);
 	aObject::endGuiBridge();
 
 	if ( !xOffset && !yOffset )

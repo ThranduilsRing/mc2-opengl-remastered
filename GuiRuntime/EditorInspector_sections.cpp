@@ -30,8 +30,7 @@ void drawFeaturesWindow() {
                     ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableHeadersRow();
 
-                for (int i = 0; i < static_cast<int>(RenderCore::RendererFeature::COUNT); ++i) {
-                    const RenderCore::EnvVarDesc& d = RenderCore::kFeatureTable[i];
+                for (const auto & d : RenderCore::kFeatureTable) {
                     ImGui::TableNextRow();
 
                     // Feature column — hover for doc string.
@@ -939,8 +938,7 @@ void drawRenderPassContracts() {
             ImGui::TableSetupColumn("snapAuth");
             ImGui::TableSetupColumn("kill-switch");
             ImGui::TableHeadersRow();
-            for (int i = 0; i < RenderCore::kRenderPassContractCount; ++i) {
-                const RenderCore::RenderPassContract& c = RenderCore::kRenderPassContracts[i];
+            for (const auto & c : RenderCore::kRenderPassContracts) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn(); ImGui::Text("%u", (unsigned)c.id);
                 ImGui::TableNextColumn(); ImGui::TextUnformatted(c.name);

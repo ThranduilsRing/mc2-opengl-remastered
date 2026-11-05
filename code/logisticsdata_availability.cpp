@@ -38,12 +38,12 @@ long LogisticsData::updateAvailability()
 	int newMechAvailableCount = 0;
 	int oldPilotAvailableCount = 0;
 	int newPilotAvailableCount= 0;
-	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+	for (auto & pilot : pilots)
 	{
-		if ( (*pIter).bAvailable )
+		if ( pilot.bAvailable )
 			oldPilotAvailableCount++;
 
-		(*pIter).setAvailable( 0 );
+		pilot.setAvailable( 0 );
 	}
 
 
@@ -91,13 +91,13 @@ long LogisticsData::updateAvailability()
 
 	}
 
-	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
+	for (auto & component : components)
 	{
-		if ( available[(*cIter).getID()] || bAll )
+		if ( available[component.getID()] || bAll )
 		{
-			if ( !(*cIter).isAvailable() )
+			if ( !component.isAvailable() )
 				bNewWeapons = true;
-			(*cIter).setAvailable( 1 );
+			component.setAvailable( 1 );
 		}
 	}
 
@@ -106,11 +106,11 @@ long LogisticsData::updateAvailability()
  	missionInfo->getAdditionalPurachaseFiles( pFileNames, count );
 
 
-	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+	for (auto & variant : variants)
 	{
-		if ( (*vIter)->isAvailable()  && !((*vIter)->getID() >> 16 ))
+		if ( variant->isAvailable()  && !(variant->getID() >> 16 ))
 			oldMechAvailableCount++;
-		(*vIter)->setAvailable(0);
+		variant->setAvailable(0);
 	}
 
 	for (int i = 0; i < count; i++ )
@@ -134,22 +134,22 @@ long LogisticsData::updateAvailability()
 		size_t enableWireForced = applyEquipmentEnableWireIfEnabled( available, 255 );
 		if ( enableWireForced > 0 )
 		{
-			for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
+			for (auto & component : components)
 			{
-				if ( available[(*cIter).getID()] && !(*cIter).isAvailable() )
+				if ( available[component.getID()] && !component.isAvailable() )
 				{
 					bNewWeapons = true;
-					(*cIter).setAvailable( 1 );
+					component.setAvailable( 1 );
 				}
 			}
 		}
 	}
 
-	for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
+	for (auto & component : components)
 	{
-		if ( !available[(*cIter).getID()]  )
+		if ( !available[component.getID()]  )
 		{
-			(*cIter).setAvailable( 0 );
+			component.setAvailable( 0 );
 		}
 	}
 
@@ -240,20 +240,20 @@ long LogisticsData::updateAvailability()
 
 		// The purchase file names a pilot in its own case (PMWChopper) and the pilot FIT is lower case (pmwchopper): the match ignores ASCII case.
 		const std::string pilotKey = mc2::str::from_c( pilotName );
-		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+		for (auto & pilot : pilots)
 		{
-			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
+			if ( mc2::str::iequals( pilot.getFileName(), pilotKey ) )
 			{
-				(*pIter).setAvailable( true );
+				pilot.setAvailable( true );
 			}
 
 		}
 	}
 
-	for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+	for (auto & pilot : pilots)
 	{
 		
-		if ( (*pIter).bAvailable )
+		if ( pilot.bAvailable )
 			newPilotAvailableCount++;
 	}
 
@@ -467,11 +467,11 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 			break;
 
 		const std::string pilotKey = mc2::str::from_c( pilotName );
-		for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+		for (auto & pilot : pilots)
 		{
-			if ( mc2::str::iequals( (*pIter).getFileName(), pilotKey ) )
+			if ( mc2::str::iequals( pilot.getFileName(), pilotKey ) )
 			{
-				(*pIter).setAvailable( true );
+				pilot.setAvailable( true );
 				bNewPilots = true;
 				if (observation) { accepted("pilot", "available", objectiveObservationQuote(pilotKey)); }
 				

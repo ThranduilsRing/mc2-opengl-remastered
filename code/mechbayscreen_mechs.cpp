@@ -222,9 +222,9 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", "" );
 		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", "" );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_range_text", "" );
-		for ( int i = 0; i < 3; i++ )
+		for (auto & attributeMeter : attributeMeters)
 		{
-			attributeMeters[i].setValue(0);
+			attributeMeter.setValue(0);
 		}
 
 	}
@@ -354,21 +354,21 @@ void MechBayScreen::reinitMechs()
 	auto mechList = LogisticsData::instance->getInventory();
 	
 	
-	for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
+	for (auto & iter : mechList)
 		{
-			if ( (*iter)->getForceGroup() )
+			if ( iter->getForceGroup() )
 			{
-				long FG = (*iter)->getForceGroup();
+				long FG = iter->getForceGroup();
 
 				if ( FG <= maxUnits )
 				{
 				
-					pIcons[FG-1].setMech( (*iter) );
-					pIcons[FG-1].setPilot( (*iter)->getPilot() );
+					pIcons[FG-1].setMech( iter );
+					pIcons[FG-1].setPilot( iter->getPilot() );
 					forceGroupCount++;
 				}
 				else 
-					(*iter)->setForceGroup( 0 );
+					iter->setForceGroup( 0 );
 				
 			}
 		}

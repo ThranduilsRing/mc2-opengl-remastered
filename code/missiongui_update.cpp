@@ -756,10 +756,10 @@ void MissionInterfaceManager::update (void)
 			struct Cfg { const char* label; float ratio; };
 			const Cfg cfgs[2] = { {"4K@225%", 2.25f}, {"1080p@100%", 1.0f} };
 			bool allOK = true;
-			for (int ci = 0; ci < 2; ++ci)
+			for (auto cfg : cfgs)
 			{
-				Environment.drawableWidth  = static_cast<int>((logW * cfgs[ci].ratio + 0.5f));
-				Environment.drawableHeight = static_cast<int>((logH * cfgs[ci].ratio + 0.5f));
+				Environment.drawableWidth  = static_cast<int>((logW * cfg.ratio + 0.5f));
+				Environment.drawableHeight = static_cast<int>((logH * cfg.ratio + 0.5f));
 
 				// (A) identity: a cursor physically over on-canvas (cx,cy) arrives from
 				// SDL as window-points (cx,cy); getMouseX must return it unchanged.
@@ -769,8 +769,8 @@ void MissionInterfaceManager::update (void)
 				const long dyErr = (py > (long)cy) ? (py - static_cast<long>(cy)) : (static_cast<long>(cy) - py);
 				const bool idOK = (dxErr <= 2) && (dyErr <= 2);
 				// NEGATIVE CONTROL: what the OLD divide-by-drawable formula would give.
-				const long oldPx = static_cast<long>(((cx / (logW * cfgs[ci].ratio)) * logW));
-				mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} canvas={:.0f}x{:.0f} drawable={:d}x{:d} identity raw=({:.0f},{:.0f}) pick=({:d},{:d}) err=({:d},{:d}) oldBugWouldGive={:d} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), logW, logH, mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), cx, cy, mc2::fmt::as_i32(px), mc2::fmt::as_i32(py), mc2::fmt::as_i32(dxErr), mc2::fmt::as_i32(dyErr), mc2::fmt::as_i32(oldPx), mc2::fmt::safe(idOK ? "PASS" : "FAIL"));
+				const long oldPx = static_cast<long>(((cx / (logW * cfg.ratio)) * logW));
+				mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} canvas={:.0f}x{:.0f} drawable={:d}x{:d} identity raw=({:.0f},{:.0f}) pick=({:d},{:d}) err=({:d},{:d}) oldBugWouldGive={:d} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfg.label), logW, logH, mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), cx, cy, mc2::fmt::as_i32(px), mc2::fmt::as_i32(py), mc2::fmt::as_i32(dxErr), mc2::fmt::as_i32(dyErr), mc2::fmt::as_i32(oldPx), mc2::fmt::safe(idOK ? "PASS" : "FAIL"));
 
 				// (B) object: aim at the mover's screen-bbox centre; the full pick
 				// (findObjectByMouse) must resolve back to that same mover.
@@ -780,11 +780,11 @@ void MissionInterfaceManager::update (void)
 					long ox = 0, oy = 0; readPick(tcx, tcy, ox, oy);
 					GameObjectPtr picked = ObjectManager->findObjectByMouse(ox, oy);
 					objOK = (picked == targetMover);
-					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object aimCenter=({:.0f},{:.0f}) pick=({:d},{:d}) target={:016X} picked={:016X} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), tcx, tcy, mc2::fmt::as_i32(ox), mc2::fmt::as_i32(oy), mc2::fmt::as_ptr(static_cast<void*>(targetMover)), mc2::fmt::as_ptr(static_cast<void*>(picked)), mc2::fmt::safe(objOK ? "PASS" : "FAIL"));
+					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object aimCenter=({:.0f},{:.0f}) pick=({:d},{:d}) target={:016X} picked={:016X} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfg.label), tcx, tcy, mc2::fmt::as_i32(ox), mc2::fmt::as_i32(oy), mc2::fmt::as_ptr(static_cast<void*>(targetMover)), mc2::fmt::as_ptr(static_cast<void*>(picked)), mc2::fmt::safe(objOK ? "PASS" : "FAIL"));
 				}
 				else
 				{
-					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object SKIP (no visible home mover w/ bbox)\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label));
+					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object SKIP (no visible home mover w/ bbox)\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfg.label));
 				}
 				allOK = allOK && idOK && objOK;
 			}

@@ -616,7 +616,7 @@ inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
     line += (f.rangeOrdinal >= 0 && f.rangeOrdinal <= 2) ? kRangeNames[f.rangeOrdinal]
                                                          : "0";
     line += ",";
-    for (int i = 0; i < 8; ++i) { line += f.crit[i] ? "Yes" : "No"; line += ","; }
+    for (bool i : f.crit) { line += i ? "Yes" : "No"; line += ","; }
     // ammoType token: '1' = finite ammo when an ammo row is linked, else '0'.
     if (!f.ammoToken.empty())
         line += f.ammoToken;

@@ -121,7 +121,7 @@ namespace {
 			hpFrac = std::clamp(hpFrac, 0.0f, 1.0f);
 
 			char              pilotName[64];
-			bridgeSanitize(pilotName, sizeof(pilotName), 0);   // default "?"
+			bridgeSanitize(pilotName, sizeof(pilotName), nullptr);   // default "?"
 			long              orderVal  = -1;
 			const char*       orderName = "none";
 			long              targetId  = -1;

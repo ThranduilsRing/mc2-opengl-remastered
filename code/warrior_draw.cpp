@@ -41,7 +41,7 @@ void mc2::render_view::drawHudWaypoints(const HudMover& row)
         eye->projectForScreenXY(start, a);
         eye->projectForScreenXY(end, b);
         a.z = b.z = 0.1f; a.w = b.w = 0.9999f;
-        LineElement line(a, b, 0xffff0000, 0, -1);
+        LineElement line(a, b, 0xffff0000, nullptr, -1);
         line.draw();
         previous = row.waypoints[i];
     }

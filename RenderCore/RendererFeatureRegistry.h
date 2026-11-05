@@ -732,8 +732,7 @@ inline void debugDumpFeatureRegistry(const DeviceCaps& caps) {
             (int)caps.hasDSA,
             caps.maxColorAttachments, caps.maxSSBOBindings, caps.maxTessGenLevel);
 
-    for (int i = 0; i < static_cast<int>(RendererFeature::COUNT); ++i) {
-        const EnvVarDesc& d = kFeatureTable[i];
+    for (const auto & d : kFeatureTable) {
         const char* envStr = d.envVar ? d.envVar : "(none)";
         const char* curStr;
         if (d.kind == EnvVarKind::Retired) {

@@ -535,9 +535,9 @@ int LogisticsPilot::turnAverageIntoRank( float avg)
 int			LogisticsPilot::getSpecialtySkillCount() const
 {
 	int count = 0;
-	for ( int i = 0; i < NUM_SPECIALTY_SKILLS; i++ )
+	for (bool specialtySkill : specialtySkills)
 	{
-		if ( specialtySkills[i] )
+		if ( specialtySkill )
 		count++;
 	}
 

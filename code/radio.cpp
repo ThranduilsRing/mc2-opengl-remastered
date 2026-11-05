@@ -296,7 +296,7 @@ char*				field;
 
 	messageInfoFile.readLine(reinterpret_cast<MemoryPtr>(dataLine), 511);	// skip title line
 
-	for (long i=0; i<RADIO_MESSAGE_COUNT; i++)
+	for (auto & i : messageInfo)
 	{
 		result = messageInfoFile.readLine(reinterpret_cast<MemoryPtr>(dataLine), 511);
 		if (!result)
@@ -305,55 +305,55 @@ char*				field;
 		field = strtok(dataLine, ",");	// get past command name
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].priority = atoi(field);
+			i.priority = atoi(field);
 		else
-			messageInfo[i].priority = 4;
+			i.priority = 4;
 
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].shelfLife = atoi(field);
+			i.shelfLife = atoi(field);
 		else
-			messageInfo[i].shelfLife = 0;
+			i.shelfLife = 0;
 
 		field = strtok(nullptr, ",");
 		if (field && *field != 'x')
-			messageInfo[i].movieCode = *field;
+			i.movieCode = *field;
 		else
-			messageInfo[i].movieCode = '\0';
+			i.movieCode = '\0';
 
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].styleCount = atoi(field);
+			i.styleCount = atoi(field);
 		else
-			messageInfo[i].styleCount = 1;
+			i.styleCount = 1;
 
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].styleChance[0] = atoi(field);
+			i.styleChance[0] = atoi(field);
 		else
-			messageInfo[i].styleChance[0] = 0;
+			i.styleChance[0] = 0;
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].styleChance[1] = atoi(field);
+			i.styleChance[1] = atoi(field);
 		else
-			messageInfo[i].styleChance[1] = 0;
+			i.styleChance[1] = 0;
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].styleChance[2] = atoi(field);
+			i.styleChance[2] = atoi(field);
 		else
-			messageInfo[i].styleChance[2] = 0;
+			i.styleChance[2] = 0;
 
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].pilotIdentifiesSelf = (*field == 'y');
+			i.pilotIdentifiesSelf = (*field == 'y');
 		else
-			messageInfo[i].pilotIdentifiesSelf = FALSE;
+			i.pilotIdentifiesSelf = FALSE;
 
 		field = strtok(nullptr, ",");
 		if (field)
-			messageInfo[i].messageMapping = atoi(field);
+			i.messageMapping = atoi(field);
 		else
-			messageInfo[i].messageMapping = 0;
+			i.messageMapping = 0;
 		
 		field = strtok(nullptr, ",");
 		if (field)
@@ -361,11 +361,11 @@ char*				field;
 			field = strtok(nullptr, ",");
 			if (field)
 			{
-				messageInfo[i].kludgeStyle = (*field == 'x');
+				i.kludgeStyle = (*field == 'x');
 			}
 		}
 		if (!field)
-			messageInfo[i].kludgeStyle = FALSE;
+			i.kludgeStyle = FALSE;
 	}
 	messageInfoFile.close();
 	return NO_ERR;

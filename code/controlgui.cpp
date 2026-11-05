@@ -560,10 +560,10 @@ bool ControlButton::isEnabled()
 
 void ControlButton::move( float deltaX, float deltaY )
 {
-	for ( int i = 0; i < 4;i++ )
+	for (auto & i : location)
 	{
-		location[i].x += deltaX;
-		location[i].y += deltaY;
+		i.x += deltaX;
+		i.y += deltaY;
 	}
 }
 
@@ -646,6 +646,6 @@ void ControlButton::toggle()
 
 void ControlButton::setColor( unsigned long newColor )
 {
-	for ( int i = 0; i < 4; i++ )
-		location[i].argb = newColor;
+	for (auto & i : location)
+		i.argb = newColor;
 }

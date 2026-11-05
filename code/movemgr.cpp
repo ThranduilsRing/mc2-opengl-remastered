@@ -84,8 +84,8 @@ long MovePathManager::init (void) {
 
 	numPaths = 0;
 	peakPaths = 0;
-	for (int i =0; i < 50; i++)
-		sourceTally[i] = 0;
+	for (long & i : sourceTally)
+		i = 0;
 
 	return(NO_ERR);
 }

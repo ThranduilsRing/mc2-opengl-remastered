@@ -343,9 +343,9 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		float testRadius = 0.0;
 		
-		for (int i=0;i<8;i++)
+		for (auto boxCoord : boxCoords)
 		{
-			testRadius = glm::length(boxCoords[i]);
+			testRadius = glm::length(boxCoord);
 			if (OBBRadius < testRadius)
 				OBBRadius = testRadius;
 		}
@@ -525,9 +525,9 @@ void Mech3DAppearance::initFX (void)
 			
 			if (gosEffectSpec)
 			{
-				for (long i=0;i<MAX_DUST_POOFS;i++)
+				for (auto & i : rightDustPoofEffect)
 				{
-					rightDustPoofEffect[i] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+					i = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
 					gosASSERT(rightDustPoofEffect[i] != nullptr);
 				}
 				
@@ -544,9 +544,9 @@ void Mech3DAppearance::initFX (void)
 			
 			if (gosEffectSpec)
 			{
-				for (long i=0;i<MAX_DUST_POOFS;i++)
+				for (auto & i : leftDustPoofEffect)
 				{
-					leftDustPoofEffect[i] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+					i = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
 					gosASSERT(leftDustPoofEffect[i] != nullptr);
 				}
 				

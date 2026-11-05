@@ -2931,19 +2931,16 @@
    ]
   },
   "MovePath": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
     "code/warrior.cpp": {
-     "delete": 1,
      "new": 1
     }
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    "MechWarrior"
-   ]
+   "owners": []
   },
   "MovePathManager": {
    "delete": 1,
@@ -4074,7 +4071,7 @@
    "owners": []
   },
   "aObject": {
-   "delete": 3,
+   "delete": 2,
    "delete_array": 2,
    "files": {
     "code/mpparameterscreen.cpp": {
@@ -4082,7 +4079,7 @@
      "new_array": 2
     },
     "code/pilotreviewarea.cpp": {
-     "delete": 3,
+     "delete": 2,
      "new": 4
     },
     "code/salvagemecharea.cpp": {
@@ -4820,6 +4817,8 @@
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 3,
   "code/mpparameterscreen.cpp": 1,
+  "code/pilotreviewarea.cpp": 1,
+  "code/warrior.cpp": 1,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
   "editor/Editor.cpp": 4,

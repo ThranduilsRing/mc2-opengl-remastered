@@ -132,8 +132,8 @@ namespace
 
     std::string ToLower(std::string value)
     {
-        for (std::string::size_type i = 0; i < value.size(); ++i)
-            value[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(value[i])));
+        for (char & i : value)
+            i = static_cast<char>(std::tolower(static_cast<unsigned char>(i)));
 
         return value;
     }
@@ -488,8 +488,8 @@ namespace
         if (!dir)
             return;
 
-        struct dirent* entry = 0;
-        while ((entry = readdir(dir)) != 0)
+        struct dirent* entry = nullptr;
+        while ((entry = readdir(dir)) != nullptr)
         {
             const char* name = entry->d_name;
             const size_t len = std::strlen(name);

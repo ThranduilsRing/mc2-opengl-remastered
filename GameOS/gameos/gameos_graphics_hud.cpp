@@ -485,9 +485,9 @@ void gosRenderer::flushHUDBatch()
                     { static_cast<float>(width_) * 0.5f, static_cast<float>(height_) * 0.25f },
                     { static_cast<float>(width_) * 0.5f, static_cast<float>(height_) * 0.95f },
                 };
-                for (int rp = 0; rp < 2; ++rp) {
-                    float px = probePts[rp][0];
-                    float py = probePts[rp][1];
+                for (auto probePt : probePts) {
+                    float px = probePt[0];
+                    float py = probePt[1];
                     const float hudScale = gos_GetHudScale();
                     if (gos_GetHudScaleActive() && hudScale <= 0.999f) {
                         const float sw = static_cast<float>(width_);
@@ -502,9 +502,9 @@ void gosRenderer::flushHUDBatch()
                     px = px * rfx + rlx;
                     py = py * rfy + rly;
                     gos_HudInverseMousePoint(px, py);
-                    if (fabsf(px - probePts[rp][0]) > 0.5f ||
-                        fabsf(py - probePts[rp][1]) > 0.5f) {
-                        mc2::fmt::to_buf(resDetail, "probe=({:.1f},{:.1f}) roundtrip=({:.2f},{:.2f}) box={:d},{:d} {:d}x{:d} scale={:.3f}", static_cast<double>(probePts[rp][0]), static_cast<double>(probePts[rp][1]), static_cast<double>(px), static_cast<double>(py), mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), static_cast<double>(gos_GetHudScale()));
+                    if (fabsf(px - probePt[0]) > 0.5f ||
+                        fabsf(py - probePt[1]) > 0.5f) {
+                        mc2::fmt::to_buf(resDetail, "probe=({:.1f},{:.1f}) roundtrip=({:.2f},{:.2f}) box={:d},{:d} {:d}x{:d} scale={:.3f}", static_cast<double>(probePt[0]), static_cast<double>(probePt[1]), static_cast<double>(px), static_cast<double>(py), mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), static_cast<double>(gos_GetHudScale()));
                         mc2res::violation("hud_roundtrip", resDetail);
                     }
                 }

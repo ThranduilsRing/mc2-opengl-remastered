@@ -78,14 +78,14 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 		Buttons[i].location[2].x = Buttons[i].location[3].x = x + width;
 		Buttons[i].location[1].y = Buttons[i].location[2].y = y + height;
 
-		for ( int j = 0; j < 4; j++ )
+		for (auto & j : Buttons[i].location)
 		{
-			Buttons[i].location[j].argb = 0xffffffff;
-			Buttons[i].location[j].frgb = 0;
-			Buttons[i].location[j].rhw = .5;
-			Buttons[i].location[j].u = 0.f;
-			Buttons[i].location[j].v = 0.f;
-			Buttons[i].location[j].z = 0.f;
+			j.argb = 0xffffffff;
+			j.frgb = 0;
+			j.rhw = .5;
+			j.u = 0.f;
+			j.v = 0.f;
+			j.z = 0.f;
 		}
 		}
 			
