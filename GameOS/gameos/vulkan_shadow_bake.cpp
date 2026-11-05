@@ -394,8 +394,10 @@ bool ShadowBake::ensureTransients() {
             if (!makeImage(scratch[i], scratchView[i], allocator_, device_, fmts[i], mc2shadow::kRegionTexels, 1, VK_IMAGE_USAGE_STORAGE_BIT,
                            VK_IMAGE_ASPECT_COLOR_BIT, names[i])) { blog("scratch image creation failed."); return false; }
         VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-        bci.size = static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels;
-        bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        // The tile's R8 words, then (kPenumbraBase in shadow_bake_common.glsl) the PCSS penumbra list: a 16-byte header (indirect args, count) and 8 bytes per texel.
+        bci.size = static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels + 16 +
+                   8 * static_cast<VkDeviceSize>(mc2shadow::kRegionTexels) * mc2shadow::kRegionTexels;
+        bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO;
         if (!staging.create(allocator_, device_, bci, aci, "shadow.bake.staging")) { blog("staging buffer failed."); return false; }
@@ -960,7 +962,12 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
     stamp(0);
     // The previous region's reads of the scratch images and its staging copy finish before this region writes them.
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT,
-               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
+    {   // Empty the penumbra list: indirect args {0, 1, 1} and a zero count, just past the tile's words.
+        const uint32_t header[4] = {0, 1, 1, 0};
+        vkCmdUpdateBuffer(cb, staging_.get(), static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels, sizeof(header), header);
+        cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    }
     VkClearValue clear{};
     clear.depthStencil = {1.0f, 0};
     VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
@@ -987,16 +994,23 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
     const uint32_t offs0[2] = {paramOff, passBase};
     pcss_.bind(cb, computeSet, offs0);
     vkCmdDispatch(cb, groups, groups, 1);
+    {   // The penumbra filter runs over the listed texels only.
+        cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                   VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+        const uint32_t offs1[2] = {paramOff, passBase + static_cast<uint32_t>(kSlice)};
+        pcss_.bind(cb, computeSet, offs1);
+        vkCmdDispatchIndirect(cb, staging_.get(), static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels);
+    }
     stamp(2);
     march_.bind(cb, computeSet, offs0);
     vkCmdDispatch(cb, groups, groups, 1);
     stamp(3);
-    for (uint32_t mode = 0; mode < 3; ++mode) {
+    for (uint32_t mode = 0; mode < 2; ++mode) {
         cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
         const uint32_t offs[2] = {paramOff, passBase + mode * static_cast<uint32_t>(kSlice)};
         resolve_.bind(cb, computeSet, offs);
-        if (mode < 2) vkCmdDispatch(cb, groups, groups, 1);
-        else vkCmdDispatch(cb, job.tile / 4 / 8, job.tile / 8, 1);
+        if (mode == 0) vkCmdDispatch(cb, groups, groups, 1);
+        else vkCmdDispatch(cb, job.tile / 8, job.tile / 8, 1);   // fused combine + tent: one group per 8x8 of the tile
     }
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
     recordTileEncode(cb, job.originX, job.originY, job.tile, sliceBase);

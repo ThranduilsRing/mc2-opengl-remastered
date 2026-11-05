@@ -4,11 +4,48 @@
 // A blocker search over a square of half-width reach * tan(theta) keeps only blockers whose own penumbra reaches P, the mean of their distances sets the
 // filter width w = d * tan(theta) (contact hardening: sharp at a trunk, wide at a canopy's tail), and a Vogel disk of bilinear compares sized to w filters.
 // Writes (visibility, mean blocker distance along the ray, blocker weight) for the fade.
+// Two steps (uP.mode.x): 0 searches every texel and writes the fully lit / fully shadowed ones directly; the penumbra texels (the only ones that need the
+// Vogel filter) are appended to a list in the staging buffer, and step 1 is dispatched indirectly over that list to filter just those.
 #include "include/shadow_bake_common.glsl"
 
 layout(local_size_x = 8, local_size_y = 8) in;
 
+// Step 1: one invocation per listed penumbra texel (64 per group, any slot count).
+void filterPenumbra() {
+    const uint slot = gl_WorkGroupID.x * 64u + gl_LocalInvocationIndex;
+    if (slot >= uM.texels[kPenumbraBase + 3u]) return;
+    const uint packedTexel = uM.texels[kPenumbraBase + 4u + 2u * slot];
+    const float meanD = uintBitsToFloat(uM.texels[kPenumbraBase + 5u + 2u * slot]);
+    const ivec2 t = ivec2(int(packedTexel & 0xFFFFu), int(packedTexel >> 16));
+    const vec2 xy = bakeTexelWorld(t);
+    const float z = max(bakeTerrainHeight(xy), uB.region.w);
+    const vec4 c = uB.window * vec4(xy, z, 1.0);
+    const vec2 uv = c.xy * 0.5 + 0.5;
+    const float zr = c.z;
+    const float extent = uB.windowInfo.z * uB.windowInfo.w;
+    const float tanT = uB.sun.w;
+    const float bias = 0.25 / (uB.windowInfo.y - uB.windowInfo.x);
+    const float jitter = bakeHash(t);
+
+    // At least 0.75 mask texel wide, so the mask never holds an edge sharper than it can sample without stair-steps.
+    // A short blocker (a building's roof, ~100 wu up its ray) widens up to 3x so its shadow edge softens like a tree's long one; blockers past 200 wu are unchanged.
+    float shortLift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
+    float w = max(meanD * tanT * shortLift, 0.75 * uB.region.z);
+    float wt = w / uB.windowInfo.z;
+    int taps = clamp(int(ceil(wt * wt * 0.6)), uP.mode.y == 0 ? 6 : 12, uP.mode.y == 0 ? 32 : 64);
+    float rot = jitter * 6.2831853;
+    float vis = 0.0;
+    for (int i = 0; i < 64; ++i) {
+        if (i >= taps) break;
+        float r = sqrt((float(i) + 0.5) / float(taps)) * w;
+        float a = float(i) * 2.39996323 + rot;
+        vis += texture(u_windowCompare, vec3(uv + r * vec2(cos(a), sin(a)) / extent, zr - bias));
+    }
+    imageStore(u_props, t, vec4(vis / float(taps), meanD, 1.0, 0.0));
+}
+
 void main() {
+    if (uP.mode.x == 1) { filterPenumbra(); return; }
     ivec2 t = ivec2(gl_GlobalInvocationID.xy);
     int n = uB.regionInfo.x;
     if (t.x >= n || t.y >= n) return;
@@ -53,19 +90,10 @@ void main() {
     float meanD = sumD / found;
     if (found == total) { imageStore(u_props, t, vec4(0.0, meanD, 1.0, 0.0)); return; }
 
-    // At least 0.75 mask texel wide, so the mask never holds an edge sharper than it can sample without stair-steps.
-    // A short blocker (a building's roof, ~100 wu up its ray) widens up to 3x so its shadow edge softens like a tree's long one; blockers past 200 wu are unchanged.
-    float shortLift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
-    float w = max(meanD * tanT * shortLift, 0.75 * uB.region.z);
-    float wt = w / uB.windowInfo.z;
-    int taps = clamp(int(ceil(wt * wt * 0.6)), uP.mode.y == 0 ? 6 : 12, uP.mode.y == 0 ? 32 : 64);
-    float rot = jitter * 6.2831853;
-    float vis = 0.0;
-    for (int i = 0; i < 64; ++i) {
-        if (i >= taps) break;
-        float r = sqrt((float(i) + 0.5) / float(taps)) * w;
-        float a = float(i) * 2.39996323 + rot;
-        vis += texture(u_windowCompare, vec3(uv + r * vec2(cos(a), sin(a)) / extent, zr - bias));
-    }
-    imageStore(u_props, t, vec4(vis / float(taps), meanD, 1.0, 0.0));
+    // Penumbra: list it for the indirect filter (step 1); the mean distance goes through as exact bits.
+    imageStore(u_props, t, vec4(0.0, meanD, 1.0, 0.0));
+    const uint slot = atomicAdd(uM.texels[kPenumbraBase + 3u], 1u);
+    if ((slot & 63u) == 0u) atomicAdd(uM.texels[kPenumbraBase], 1u);   // indirect group count = ceil(count / 64)
+    uM.texels[kPenumbraBase + 4u + 2u * slot] = uint(t.x) | (uint(t.y) << 16);
+    uM.texels[kPenumbraBase + 5u + 2u * slot] = floatBitsToUint(meanD);
 }

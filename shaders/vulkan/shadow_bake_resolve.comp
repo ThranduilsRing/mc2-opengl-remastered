@@ -1,72 +1,85 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
-// Static shadow bake, resolve. Three steps over one tile, picked by uP.mode.x:
-//   0: blur the blocker distance horizontally (Gaussian, weighted by where blockers were found);
-//   1: blur it vertically, fade the prop shadow by it (opacity = 1 - strength * ((distance - start) / (end - start))^2: a long shadow fades as a whole, its
-//      interior never goes hollow), and take the min with the terrain self-shadow;
-//   2: a 3x3 tent over the tile's own texels, written as R8 into the staging words the tile copy reads.
+// Static shadow bake, resolve. Two steps over one tile, picked by uP.mode.x:
+//   0: blur the blocker distance horizontally (Gaussian, weighted by where blockers were found), one 40x8 LDS strip per 8x8 block;
+//   1: per 8x8 block of the mask (the region minus its apron): blur it vertically from an LDS strip, fade the prop shadow by it
+//      (opacity = 1 - strength * ramp: a long shadow fades as a whole, its interior never goes hollow), take the min with the terrain
+//      self-shadow, hold that in LDS with a one-texel halo, and write its 3x3 tent as R8 into the staging words the tile copy reads.
+//      (This one pass replaces the old combine and tent passes and the u_combined round trip.)
 #include "include/shadow_bake_common.glsl"
 
 layout(local_size_x = 8, local_size_y = 8) in;
 
 const int kBlurRadius = 16;
-const float kBlurSigma = 7.0;
+// exp(-k^2 / (2 * 7^2)) for k = 0..16
+const float kGauss[17] = float[17](1.0, 0.989847803, 0.960005441, 0.912254077, 0.849365817, 0.774837429, 0.692569324, 0.60653066, 0.520450121,
+                                   0.437564738, 0.360447789, 0.290923807, 0.230066299, 0.17826398, 0.135335283, 0.1006689, 0.0733696514);
 
-float gaussW(int k) { return exp(-float(k * k) / (2.0 * kBlurSigma * kBlurSigma)); }
+shared vec2 sStrip[8 * 40];    // mode 0: 8 rows x (8 + 2 * 16) columns of (distance x weight, weight)
+shared vec2 sBlur[42 * 10];    // mode 1: (8 + 2 halo + 32 blur) rows x 10 columns of the horizontally blurred pair
+shared float sComb[100];       // mode 1: the combined visibility over the 8x8 block plus a one-texel halo
+shared uint sByte[64];
 
-void blurH(ivec2 t, int n) {
-    vec2 acc = vec2(0.0);
-    for (int k = -kBlurRadius; k <= kBlurRadius; ++k) {
-        vec4 p = imageLoad(u_props, ivec2(clamp(t.x + k, 0, n - 1), t.y));
-        float g = gaussW(k);
-        acc += g * vec2(p.y * p.z, p.z);
+void blurH(int n) {
+    const ivec2 g0 = ivec2(gl_WorkGroupID.xy) * 8;
+    const uint id = gl_LocalInvocationIndex;
+    for (uint i = id; i < 320u; i += 64u) {
+        const int row = int(i) / 40, col = int(i) % 40;
+        const vec4 p = imageLoad(u_props, ivec2(clamp(g0.x + col - kBlurRadius, 0, n - 1), min(g0.y + row, n - 1)));
+        sStrip[i] = vec2(p.y * p.z, p.z);
     }
+    barrier();
+    const ivec2 t = g0 + ivec2(gl_LocalInvocationID.xy);
+    if (t.x >= n || t.y >= n) return;
+    const int base = int(gl_LocalInvocationID.y) * 40 + int(gl_LocalInvocationID.x) + kBlurRadius;
+    vec2 acc = vec2(0.0);
+    for (int k = -kBlurRadius; k <= kBlurRadius; ++k)
+        acc += kGauss[abs(k)] * sStrip[base + k];
     imageStore(u_blur, t, vec4(acc, 0.0, 0.0));
 }
 
-void combine(ivec2 t, int n) {
-    vec2 acc = vec2(0.0);
-    for (int k = -kBlurRadius; k <= kBlurRadius; ++k)
-        acc += gaussW(k) * imageLoad(u_blur, ivec2(t.x, clamp(t.y + k, 0, n - 1))).xy;
-    float dist = acc.y > 1e-4 ? acc.x / acc.y : 0.0;
-    // Linear in blocker distance, continuous from contact: a building's short shadow fades toward its tip like a tree's long one (squared left it at ~3%).
-    float ramp = clamp((dist - uB.fade.x) / max(uB.fade.y - uB.fade.x, 1.0), 0.0, 1.0);
-    float opacity = 1.0 - uB.fade.z * ramp;
-    float props = mix(1.0, imageLoad(u_props, t).x, opacity);
-    float terrain = imageLoad(u_terrain, t).x;
-    imageStore(u_combined, t, vec4(min(props, terrain)));
-}
-
-float tent(ivec2 t, int n) {
+void fused(int n) {
+    const int apron = uB.regionInfo.w;
+    const int tile = n - 2 * apron;
+    const ivec2 o = ivec2(apron) + ivec2(gl_WorkGroupID.xy) * 8;   // this group's first texel, in region coordinates
+    const uint id = gl_LocalInvocationIndex;
+    for (uint i = id; i < 420u; i += 64u) {
+        const int row = int(i) / 10, col = int(i) % 10;
+        sBlur[i] = imageLoad(u_blur, ivec2(clamp(o.x - 1 + col, 0, n - 1), clamp(o.y - 1 - kBlurRadius + row, 0, n - 1))).xy;
+    }
+    barrier();
+    for (uint i = id; i < 100u; i += 64u) {
+        const int dy = int(i) / 10, dx = int(i) % 10;
+        vec2 acc = vec2(0.0);
+        for (int k = -kBlurRadius; k <= kBlurRadius; ++k)
+            acc += kGauss[abs(k)] * sBlur[(dy + kBlurRadius + k) * 10 + dx];
+        const ivec2 t = clamp(o + ivec2(dx - 1, dy - 1), ivec2(0), ivec2(n - 1));
+        float dist = acc.y > 1e-4 ? acc.x / acc.y : 0.0;
+        // Linear in blocker distance, continuous from contact: a building's short shadow fades toward its tip like a tree's long one (squared left it at ~3%).
+        float ramp = clamp((dist - uB.fade.x) / max(uB.fade.y - uB.fade.x, 1.0), 0.0, 1.0);
+        float opacity = 1.0 - uB.fade.z * ramp;
+        float props = mix(1.0, imageLoad(u_props, t).x, opacity);
+        sComb[i] = min(props, imageLoad(u_terrain, t).x);
+    }
+    barrier();
+    const int lx = int(gl_LocalInvocationID.x), ly = int(gl_LocalInvocationID.y);
     float acc = 0.0;
     for (int y = -1; y <= 1; ++y)
-        for (int x = -1; x <= 1; ++x) {
-            float w = float((2 - abs(x)) * (2 - abs(y)));
-            acc += w * imageLoad(u_combined, clamp(t + ivec2(x, y), ivec2(0), ivec2(n - 1))).x;
-        }
-    return acc / 16.0;
+        for (int x = -1; x <= 1; ++x)
+            acc += float((2 - abs(x)) * (2 - abs(y))) * sComb[(ly + 1 + y) * 10 + (lx + 1 + x)];
+    sByte[id] = uint(clamp(acc / 16.0, 0.0, 1.0) * 255.0 + 0.5);
+    barrier();
+    if (lx < 2) {
+        // Four horizontally adjacent texels of the tile pack into one word.
+        uint word = 0u;
+        for (int i = 0; i < 4; ++i) word |= sByte[ly * 8 + lx * 4 + i] << (8u * uint(i));
+        const ivec2 q = ivec2(gl_WorkGroupID.xy) * 8 + ivec2(lx * 4, ly);
+        uM.texels[(q.y * tile + q.x) / 4] = word;
+    }
 }
 
 void main() {
-    int n = uB.regionInfo.x;
-    int mode = uP.mode.x;
-    if (mode == 2) {
-        // One invocation packs four horizontally adjacent texels of the tile (the region minus its apron).
-        ivec2 q = ivec2(gl_GlobalInvocationID.xy);
-        int apron = uB.regionInfo.w;
-        int tile = n - 2 * apron;
-        if (q.x * 4 >= tile || q.y >= tile) return;
-        uint word = 0u;
-        for (int i = 0; i < 4; ++i) {
-            ivec2 t = ivec2(apron + q.x * 4 + i, apron + q.y);
-            uint b = uint(clamp(tent(t, n), 0.0, 1.0) * 255.0 + 0.5);
-            word |= b << (8u * uint(i));
-        }
-        uM.texels[(q.y * tile + q.x * 4) / 4] = word;
-        return;
-    }
-    ivec2 t = ivec2(gl_GlobalInvocationID.xy);
-    if (t.x >= n || t.y >= n) return;
-    if (mode == 0) blurH(t, n);
-    else combine(t, n);
+    const int n = uB.regionInfo.x;
+    if (uP.mode.x == 0) blurH(n);
+    else fused(n);
 }
