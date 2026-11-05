@@ -429,8 +429,14 @@ def headless_exit_ok(returncode: int, text: str) -> bool:
         return True
     if returncode != 1 or "[SMOKE v1] event=summary result=pass" not in text:
         return False
-    if "HARD FAIL" in text or "[DEPLOY_FINGERPRINT] MISMATCH" in text or "DEPLOY_FINGERPRINT:** FAIL" in text or "RUN INVALID" in text:
+    if "HARD FAIL" in text or "[DEPLOY_FINGERPRINT] MISMATCH" in text or "DEPLOY_FINGERPRINT:** FAIL" in text:
         return False
+    if "RUN INVALID" in text:
+        # A headless run creates no Vulkan device, so the runner's "asked for a GPU but the log has no [VK_PROFILE] line" check
+        # always fires on it; that one reason is by design here. Any other invalid reason stays red.
+        reasons = re.findall(r"^> - (.+)$", text, re.M)
+        if not reasons or any("has no [VK_PROFILE] device line" not in r for r in reasons):
+            return False
     rows = _SMOKE_FAIL_ROW.findall(text)
     if not rows:
         return False  # rc=1 without a failed mission row: some other runner gate failed
