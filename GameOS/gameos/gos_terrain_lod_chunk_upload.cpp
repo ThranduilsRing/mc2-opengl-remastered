@@ -70,8 +70,8 @@ void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
         return;   // steady state: the static map is already current
     const int N = s_visualDampSide;
     s_visualDampCombined = s_visualDampStatic;
-    if (radiusCells < 0.25f) radiusCells = 0.25f;
-    if (innerCells < 0.0f) innerCells = 0.0f;
+    radiusCells = std::max(radiusCells, 0.25f);
+    innerCells = std::max(innerCells, 0.0f);
     const float reach = innerCells + radiusCells;
     for (int m = 0; m < count; ++m)
     {
@@ -79,18 +79,20 @@ void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
         const float cy = cellXY[m * 2 + 1];
         int x0 = static_cast<int>(floorf(cx - reach)), x1 = static_cast<int>(ceilf(cx + reach));
         int y0 = static_cast<int>(floorf(cy - reach)), y1 = static_cast<int>(ceilf(cy + reach));
-        if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
-        if (x1 > N - 1) x1 = N - 1; if (y1 > N - 1) y1 = N - 1;
+        x0 = std::max(x0, 0);
+        y0 = std::max(y0, 0);
+        x1 = std::min(x1, N - 1);
+        y1 = std::min(y1, N - 1);
         for (int iy = y0; iy <= y1; ++iy)
             for (int ix = x0; ix <= x1; ++ix)
             {
                 const float dx = static_cast<float>(ix) - cx;
                 const float dy = static_cast<float>(iy) - cy;
                 float t = (sqrtf(dx * dx + dy * dy) - innerCells) / radiusCells;
-                if (t < 0.0f) t = 0.0f; else if (t > 1.0f) t = 1.0f;
+                t = std::clamp(t, 0.0f, 1.0f);
                 const float s = t * t * (3.0f - 2.0f * t);
                 float& ref = s_visualDampCombined[static_cast<size_t>(ix) + static_cast<size_t>(iy) * N];
-                if (s < ref) ref = s;
+                ref = std::min(ref, s);
             }
     }
     s_visualDampHadMovers = (count > 0);

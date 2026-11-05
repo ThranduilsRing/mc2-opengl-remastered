@@ -394,9 +394,9 @@ void Build() {
                 floorMin = (r.v2e < floorMin) ? r.v2e : floorMin;
                 floorMin = (r.v3e < floorMin) ? r.v3e : floorMin;
                 float thick = static_cast<float>(Terrain::waterElevation) - floorMin;
-                if (thick < 0.0f) thick = 0.0f;
-                if (thick < tmin) tmin = thick;
-                if (thick > tmax) tmax = thick;
+                thick = std::max(thick, 0.0f);
+                tmin = std::min(tmin, thick);
+                tmax = std::max(tmax, thick);
             }
             mc2::fmt::print_err("[WATER_MAT v1] event=summary recipes={:d} thickness_min={:.3f} thickness_max={:.3f} waterElevation={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), static_cast<double>(tmin), static_cast<double>(tmax), static_cast<double>(Terrain::waterElevation));
             fflush(stderr);
@@ -434,8 +434,9 @@ const WaterRecipe* RecipeForVertexNum(int32_t vn) {
     if (vn < 0) return nullptr;
     auto it = g_vertexNumToRecipe.find(static_cast<uint32_t>(vn));
     if (it == g_vertexNumToRecipe.end()) return nullptr;
-    assert(it->second < static_cast<uint32_t>(g_recipes.size())); // invariant: Build populates both atomically
-    return &g_recipes[it->second];
+    const auto& [vertexKey, recipeIdx] = *it;
+    assert(recipeIdx < static_cast<uint32_t>(g_recipes.size())); // invariant: Build populates both atomically
+    return &g_recipes[recipeIdx];
 }
 
 bool NativeInputSourceReady() {
