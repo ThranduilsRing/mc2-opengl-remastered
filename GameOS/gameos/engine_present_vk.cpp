@@ -2814,6 +2814,12 @@ void EnginePresentVk::verifyReadbackContent() {
     bic.imageExtent = {rw, rh, 1};
     vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image.get(),
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst, 1, &bic);
+    // Make the copy visible to the host read after the fence wait (model: vk_scene_readback.cpp).
+    VkBufferMemoryBarrier toHost{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+    toHost.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; toHost.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+    toHost.srcQueueFamilyIndex = toHost.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toHost.buffer = dst; toHost.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(s.readbackCbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &toHost, 0, nullptr);
     barrier(s.readbackCbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
