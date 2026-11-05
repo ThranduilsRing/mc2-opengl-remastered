@@ -109,6 +109,13 @@ TEST_CASE("ktx2: more levels than a full chain, arrays, cubes and supercompressi
     putU32(basis, 44, 1);
     CHECK_FALSE(parse(basis.data(), basis.size()).image);
 
+    // A Basis payload (vkFormat 0) that is not a real Basis file goes to the transcoder and is rejected there, never trusted.
+    auto basisZstd = makeKtx2(0, 4, 4, 16);
+    putU32(basisZstd, 44, 2);
+    const auto basisResult = parse(basisZstd.data(), basisZstd.size());
+    CHECK_FALSE(basisResult.image);
+    CHECK(basisResult.error != nullptr);
+
     const auto unknown = makeKtx2(100, 4, 4, 16);
     CHECK_FALSE(parse(unknown.data(), unknown.size()).image);
 }

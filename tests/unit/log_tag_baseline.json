@@ -11246,6 +11246,16 @@
    "count": 1
   },
   {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "vkFormat",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_RESOURCE_GRAPH",
    "ver": -1,
    "stream": "stderr",

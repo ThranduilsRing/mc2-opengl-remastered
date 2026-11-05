@@ -1,0 +1,1 @@
+basis_universal transcoder (transcoder/ + zstd decompressor only), BinomialLLC/basis_universal tag v1_60, commit 323239a6a5ffa57d6570cfc403be99156e33a8b0. Apache-2.0 (LICENSE); zstd BSD (zstd/LICENSE).

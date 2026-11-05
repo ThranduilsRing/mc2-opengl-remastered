@@ -27,6 +27,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
     test_present_handoff.cpp
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
@@ -199,6 +200,7 @@ add_executable(mc2_tests
     test_static_prop_selflit.cpp  # self-lit two-sided card predicate (stock coil yes, imported override no)
     test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)
     ${MC2_WORKTREE_ROOT}/RenderCore/KtxLoader.cpp
+    ${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.
     # Replaces heap.cpp (won't compile standalone -- see
@@ -456,6 +458,7 @@ find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
     SDL2::SDL2
+    basisu_transcoder
 )
 if(WIN32)
     # The CPU surface tests use SDL2; no graphics context is created.
