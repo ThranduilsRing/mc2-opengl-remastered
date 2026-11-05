@@ -235,7 +235,7 @@ def compile_slang(exe, src: Path, stage: str, out: Path, entry="main",
 def optimize(spirv_opt, out: Path):
     """spirv-opt -O in place (CMake build only); same flags as the glslang rule in GameOS/gameos/CMakeLists.txt."""
     r = subprocess.run([spirv_opt, '-O', '--preserve-bindings', '--preserve-spec-constants',
-                        '--target-env=vulkan1.0', str(out), '-o', str(out)],
+                        '--target-env=vulkan1.2', str(out), '-o', str(out)],
                        capture_output=True, text=True, timeout=120,
                        **console_child.child_kwargs(redirected=True))
     return r.returncode == 0, (r.stderr or r.stdout).strip()

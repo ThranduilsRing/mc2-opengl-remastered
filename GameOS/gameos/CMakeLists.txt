@@ -371,7 +371,7 @@ if(MC2_VULKAN)
         NAMES spirv-opt
         HINTS ENV VULKAN_SDK
         PATH_SUFFIXES Bin bin)
-    set(MC2_VK_SPIRV_OPT_FLAGS -O --preserve-bindings --preserve-spec-constants --target-env=vulkan1.0)
+    set(MC2_VK_SPIRV_OPT_FLAGS -O --preserve-bindings --preserve-spec-constants --target-env=vulkan1.2)
 
     set(MC2_VK_SHADER_SRC_DIR "${CMAKE_SOURCE_DIR}/shaders/vulkan")
     set(MC2_VK_SPV_OUT_DIR "${CMAKE_BINARY_DIR}/shaders/vulkan")
