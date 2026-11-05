@@ -59,8 +59,8 @@ public:
         reset(image, aspect, mips, layers, initial);
     }
     void reset(uint64_t image, uint32_t aspect, uint32_t mips = 1, uint32_t layers = 1, State initial = {}) {
-        image_ = image; aspect_ = aspect; layers_ = std::max(layers, 1u);
-        cur_.assign(std::max(mips, 1u), initial);
+        image_ = image; aspect_ = aspect; layers_ = (std::max)(layers, 1u);
+        cur_.assign((std::max)(mips, 1u), initial);
         vis_.assign(cur_.size(), initial.write ? State{} : initial);
     }
     uint64_t image() const { return image_; }
