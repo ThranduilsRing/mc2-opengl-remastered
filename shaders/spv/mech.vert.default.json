@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "6853fa0c6f90121be976f9796108faeafbeeba3babe4c3459d08a94f069d6929",
-  "spirv_sha256": "178f1e77b49162c4f9a31a480556fc133f75dbf69488830f74228c676fe7bd22",
+  "source_sha256": "2812709b913f90d4ff9a465d9b25ef8c77c8f1db2b0f4c702dadba43efa73cbe",
+  "spirv_sha256": "16678d83a293a65817a2f4abb69dd539c14f3fdc1cf3d30aab8baa7b243ab388",
   "bindings": {
     "ubos": [
       {
@@ -36,7 +36,7 @@
         "binding": 1
       },
       {
-        "type": "_464",
+        "type": "_479",
         "name": "BoneBuffer",
         "readonly": true,
         "block_size": 0,
@@ -366,7 +366,7 @@
         }
       ]
     },
-    "_459": {
+    "_474": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -387,7 +387,7 @@
         }
       ]
     },
-    "_462": {
+    "_477": {
       "name": "GpuMechBone",
       "members": [
         {
@@ -412,12 +412,12 @@
         }
       ]
     },
-    "_464": {
+    "_479": {
       "name": "BoneBuffer",
       "members": [
         {
           "name": "bones",
-          "type": "_462",
+          "type": "_477",
           "array": [
             0
           ],
@@ -429,7 +429,7 @@
         }
       ]
     },
-    "_584": {
+    "_598": {
       "name": "gl_PerVertex",
       "members": [
         {
