@@ -35,7 +35,9 @@ RC_NO_BASELINE = 78     # determinism/saveload row refused: no Linux baseline fi
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 # `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
-GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
+# plus what needs no Windows: the doctests, the Linux-capable contract rows (scripts/box_contracts.sh) and smoke-lite
+GATE_ROWS = ([f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
+             + ["unit", "sh:bash scripts/box_contracts.sh", "smoke-lite"])
 
 # a retry must never reuse a row's --out dir (sim_determinism refuses an existing one and the row would be VOID): one fresh dir per attempt
 FRESH_FN = 'fresh() { local d=$1 n=0; while [ -e "$d.a$n" ]; do n=$((n+1)); done; printf %s "$d.a$n"; }'

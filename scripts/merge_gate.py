@@ -125,8 +125,38 @@ def apply_box_route(steps, full=False):
     if full or box is None or box[2].get("MC2_GATE_SKIP_REASON"):
         return steps
     why = "box gate (GPU 3, clang/libc++, Linux baselines) proves this row; the PC keeps determinism-mc2_10 and saveload-mc2_10 as the MSVC canary"
-    return [(n, c, dict(e, MC2_GATE_SKIP_REASON=why, MC2_GATE_REUSE_STAGE="box-gate")
-             if n in BOX_OFFLOADED and not e.get("MC2_GATE_SKIP_REASON") else e) for n, c, e in steps]
+    out = []
+    for n, c, e in steps:
+        if e.get("MC2_GATE_SKIP_REASON"):
+            out.append((n, c, e))
+        elif n in BOX_OFFLOADED:
+            out.append((n, c, dict(e, MC2_GATE_SKIP_REASON=why, MC2_GATE_REUSE_STAGE="box-gate")))
+        elif n == "contracts" and "--rows" not in c and "--skip-rows" not in c:
+            # The box runs every row but the PC-only ones (scripts/box_contracts_pc_only.txt); the PC runs exactly those. The
+            # Linux half is a reused step: green box = reused, red box = red, dead box = box_fallback runs it here.
+            pc = box_contracts_pc_only()
+            reuse = dict(e, MC2_GATE_SKIP_REASON="box gate runs the Linux-capable contract rows (scripts/box_contracts.sh)", MC2_GATE_REUSE_STAGE="box-gate")
+            if pc:
+                rx = "^(" + "|".join(pc) + ")$"
+                out += [(n, c + ["--rows", rx], e), ("contracts-linux", c + ["--skip-rows", rx], reuse)]
+            else:
+                out.append((n, c, reuse))
+        elif n == "harnesses" and "--unit" in c:
+            # doctests move to the box (clang/libc++); the PC keeps the Python contracts. Dead box: unit-linux runs the native tier here.
+            out += [(n, ["--python-only" if a == "--unit" else a for a in c], e),
+                    ("unit-linux", c, dict(e, MC2_GATE_SKIP_REASON="box gate runs the doctest tier (box_run unit row)", MC2_GATE_REUSE_STAGE="box-gate"))]
+        else:
+            out.append((n, c, e))
+    return out
+
+
+def box_contracts_pc_only():
+    """Contract row labels that need Windows (scripts/box_contracts_pc_only.txt, one per line, # comments)."""
+    try:
+        lines = (ROOT / "scripts" / "box_contracts_pc_only.txt").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return [ln.strip() for ln in lines if ln.strip() and not ln.lstrip().startswith("#")]
 
 
 def box_fallback(reused, completed):
@@ -1262,7 +1292,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             reused, fell_back = box_fallback(reused, completed)
             if fell_back:
                 print("[merge_gate] BOX UNAVAILABLE MID-RUN (BOX_INFRA): the box produced no verdicts; running the offloaded rows on the PC "
-                      "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED), flush=True)
+                      "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED or n in ("contracts", "contracts-linux", "unit-linux")), flush=True)
                 FAILED_STAGES[:] = [f for f in FAILED_STAGES if f[0] != "box-gate"]
                 box_result = 0
             result |= box_result
@@ -1501,6 +1531,7 @@ def main(argv=None):
     ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
     ap.add_argument("--box-gate", action=argparse.BooleanOptionalAction, default=True, help="start tools/box_run.py --gate on box GPU 3 at gate start (default ON); it proves determinism mc2_03/16/24 and saveload mc2_01, "
                     "and the PC keeps determinism mc2_10 + saveload mc2_10 as the MSVC canary. --no-box-gate, an unreachable box, or --full keeps every row on the PC")
+    ap.add_argument("--no-box", dest="box_gate", action="store_false", help="escape hatch, same as --no-box-gate: every row stays on the PC")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")

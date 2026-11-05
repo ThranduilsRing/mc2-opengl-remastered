@@ -123,3 +123,80 @@ def test_route_is_default_on_and_opt_out_exists():
     import inspect
     src = inspect.getsource(gate.main)
     assert '"--box-gate", action=argparse.BooleanOptionalAction, default=True' in src
+    assert '"--no-box", dest="box_gate", action="store_false"' in src
+
+
+def split_steps(monkeypatch, pc_rows):
+    monkeypatch.setattr(gate, 'box_contracts_pc_only', lambda: pc_rows)
+    return {n: (c, e) for n, c, e in gate.apply_box_route(gate.affected_plan(gate.plan(6), RUNTIME))}
+
+
+def test_contracts_split_pc_only_rows_stay_and_the_linux_half_is_reused(monkeypatch):
+    steps = split_steps(monkeypatch, ['win-row-a', 'win-row-b'])
+    pc, pc_env = steps['contracts']
+    linux, linux_env = steps['contracts-linux']
+    assert pc[pc.index('--rows') + 1] == '^(win-row-a|win-row-b)$' and not pc_env.get('MC2_GATE_SKIP_REASON')
+    assert linux[linux.index('--skip-rows') + 1] == '^(win-row-a|win-row-b)$'
+    assert linux_env['MC2_GATE_REUSE_STAGE'] == 'box-gate'
+
+
+def test_contracts_with_no_pc_only_rows_are_wholly_reused(monkeypatch):
+    steps = split_steps(monkeypatch, [])
+    assert 'contracts-linux' not in steps
+    assert steps['contracts'][1]['MC2_GATE_REUSE_STAGE'] == 'box-gate'
+
+
+def test_doctests_move_to_the_box_and_the_pc_keeps_python_contracts(monkeypatch):
+    steps = split_steps(monkeypatch, ['x'])
+    pc, _ = steps['harnesses']
+    assert '--python-only' in pc and '--unit' not in pc
+    unit, env = steps['unit-linux']
+    assert '--unit' in unit and env['MC2_GATE_REUSE_STAGE'] == 'box-gate'
+
+
+def test_full_gate_leaves_contracts_and_doctests_on_the_pc(monkeypatch):
+    monkeypatch.setattr(gate, 'box_contracts_pc_only', lambda: ['x'])
+    full = {n for n, _, _ in gate.apply_box_route(gate.plan(6), full=True)}
+    assert 'contracts-linux' not in full and 'unit-linux' not in full
+
+
+def test_box_gate_rows_include_unit_contracts_and_smoke_lite():
+    assert {'unit', 'sh:bash scripts/box_contracts.sh', 'smoke-lite'} <= set(box_run.GATE_ROWS)
+
+
+def run_split_window(monkeypatch, box_rc, box_out=''):
+    ran = []
+
+    def child(command, **kw):
+        ran.append(command[0])
+        return SimpleNamespace(returncode=box_rc if command[0] == 'box' else 0, stdout=box_out if command[0] == 'box' else '')
+    monkeypatch.delenv('MC2_HOST_LEASE_BATCH', raising=False)
+    monkeypatch.setattr(gate, 'git', lambda *a: 'head')
+    monkeypatch.setattr(gate, 'log_lease_holders', lambda: None)
+    monkeypatch.setattr(gate, 'run_child', child)
+    monkeypatch.setattr(gate, 'ACTIVE_STATE', None)
+    gate.FAILED_STAGES.clear()
+    why = dict(MC2_GATE_SKIP_REASON='box', MC2_GATE_REUSE_STAGE='box-gate')
+    steps = [('box-gate', ['box'], {}), ('contracts', ['pc-contracts'], {}), ('contracts-linux', ['linux-contracts'], dict(why)),
+             ('unit-linux', ['unit'], dict(why)), ('deploy', ['deploy'], {})]
+    return gate.execute_parallel(steps, 'head'), ran
+
+
+def test_fan_out_pc_rows_run_beside_the_box_and_a_green_box_replaces_the_linux_rows(monkeypatch):
+    result, ran = run_split_window(monkeypatch, 0)
+    assert result == 0
+    assert {'box', 'pc-contracts', 'deploy'} <= set(ran) and 'linux-contracts' not in ran and 'unit' not in ran
+
+
+def test_failing_box_side_fails_the_gate_even_with_a_green_pc(monkeypatch):
+    result, ran = run_split_window(monkeypatch, 1, 'gate row sh:bash scripts/box_contracts.sh: FAIL(rc=1)')
+    assert result == 1
+    assert 'pc-contracts' in ran and 'linux-contracts' not in ran
+    assert {n for n, _ in gate.FAILED_STAGES} >= {'box-gate', 'contracts-linux', 'unit-linux'}
+
+
+def test_dead_box_runs_the_linux_rows_on_the_pc(monkeypatch, capsys):
+    result, ran = run_split_window(monkeypatch, 3, 'BOX_INFRA: no verdict')
+    assert result == 0
+    assert 'linux-contracts' in ran and 'unit' in ran
+    assert 'Windows-full fallback' in capsys.readouterr().out
