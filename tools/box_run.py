@@ -25,6 +25,8 @@ MIRROR = "/workspace/toolchains/mirror.git"
 GOLDEN_WIN = "A:/Games/mc2-opengl/mc2-win64-v0.4c"
 SSH = ["ssh", "-i", KEY, "-p", PORT, "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30", HOST]
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
+# `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
+GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
 
 REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR ; rows on stdin (one per line)
@@ -85,16 +87,37 @@ mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/sha
 tick install
 export INSTALL=$I OUT
 RES=0
+FPPY='import sys, json, os
+sys.path.insert(0, "tools")
+import sim_determinism as sd
+fp = sd.data_fingerprint(sys.argv[1])
+p = sd.baseline_path(sys.argv[2])
+want = json.load(open(p))["data_fingerprint"]["digest"] if os.path.exists(p) else None
+print("digest=%s stock=%s baseline=%s problems=%d" % (fp["digest"], fp["stock_digest"], want, len(fp["problems"])))
+sys.exit(7 if want and want != fp["digest"] else 0)'
 for row in "${ROWS[@]}"; do
   name=${row//[:\/ ]/_}; echo "[box_run] row=$row"
   case $row in
     smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
     capture:*)   IFS=: read -r _ m b <<< "$row"; cmd="python3 scripts/run_visual_capture.py --mission $m --bookmarks tests/visual/bookmarks/$b.json --exe $I/mc2 --classic-assets --out-dir $OUT/$name" ;;
-    determinism:*) cmd="python3 tools/sim_determinism.py check ${row#*:} --install $I --sim-speed 4" ;;
-    saveload*)   m=${row#saveload}; m=${m#:}; cmd="python3 tools/saveload_roundtrip.py check --mission ${m:-mc2_01} --install $I" ;;
+    determinism:*) m=${row#*:}; extra=""; [ "$m" = mc2_24 ] && extra="--ticks 2600"   # mc2_24: the finale spawns infantry after tick 2404 (as the PC gate)
+                   cmd="python3 tools/sim_determinism.py check $m --install $I --headless-both $extra --out $OUT/$name" ;;
+    saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
+                 cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $OUT/$name --save-dir $OUT/$name.savegame" ;;
     sh:*)        cmd="${row#sh:}" ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
+  esac
+  case $row in determinism:*|saveload*)
+    # data-fingerprint precheck: refuse up front when the install's stock data is not the data the baseline pins (a full run would only reach that verdict at the end)
+    fpm=${row#*:}; [ "$row" = saveload ] && fpm=mc2_01
+    fpl=$(cd $S && python3 -c "$FPPY" "$I" "$fpm" 2>&1); fprc=$?
+    echo "[box_run] data_fp row=$row $fpl"
+    printf "%s\t%s\t%s\n" "$row" "$(sha256sum $I/mc2 | cut -c1-16)" "$fpl" >> $OUT/fingerprints.tsv
+    if [ $fprc != 0 ]; then
+      echo "[box_run] row=$row REFUSED: the install data fingerprint does not match the baseline's; fix the golden install, not the baseline" | tee $OUT/$name.log
+      printf "%s\t%s\n" "$row" 7 >> $OUT/rows.tsv; RES=1; continue
+    fi ;;
   esac
   gr bash -c "cd $S && $cmd" > $OUT/$name.log 2>&1; rc=$?
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
@@ -147,7 +170,7 @@ def main():
     if a.seed:
         return seed(repo)
     if a.gate and not a.rows:
-        a.rows = ["determinism:mc2_01", "saveload:mc2_01"]
+        a.rows = GATE_ROWS
     if not a.rows:
         ap.error("give at least one row, e.g. smoke-lite")
     if git("status", "--porcelain", "--untracked-files=no", repo=repo):
@@ -215,6 +238,14 @@ def write_receipt(local_out, sha, branch, rows, rc):
         for line in tsv.read_text().splitlines():
             row, _, code = line.rpartition("\t")
             verdicts[row] = "PASS" if code.strip() == "0" else f"FAIL(rc={code.strip()})"
+    # determinism/saveload rows print no build fingerprint: the remote half records the exe sha and the install data fingerprint per row
+    row_fp = {}
+    fps = local_out / "fingerprints.tsv"
+    if fps.exists():
+        for line in fps.read_text().splitlines():
+            row, _, rest = line.partition("\t")
+            exe, _, data = rest.partition("\t")
+            row_fp[row] = {"exe_sha256_16": exe, "data_fingerprint": data}
     fp = ""
     for lg in sorted(local_out.glob("*.log")):
         for ln in lg.read_text(errors="replace").splitlines():
@@ -224,7 +255,7 @@ def write_receipt(local_out, sha, branch, rows, rc):
         if fp:
             break
     rec = {"kind": "box-clang-gate-advisory", "sha": sha, "branch": branch, "gpu": 3, "toolchain": "clang-20 + libc++ + lld, RelWithDebInfo, ccache",
-           "rows": [{"row": r, "verdict": verdicts.get(r, "NOT RUN")} for r in rows], "fingerprint": fp, "script_rc": rc,
+           "rows": [{"row": r, "verdict": verdicts.get(r, "NOT RUN"), **row_fp.get(r, {})} for r in rows], "fingerprint": fp, "script_rc": rc,
            "note": "advisory; box ms are ratio-only; the PC gate keeps the MSVC tier1"}
     out = local_out / "gate_receipt.json"
     out.write_text(json.dumps(rec, indent=2))

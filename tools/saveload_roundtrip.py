@@ -510,8 +510,13 @@ def check_baseline_record(base: dict, cur: dict):
     return True, lines
 
 
+def baseline_dir() -> str:
+    """Linux pins live in baselines/linux/ (like tools/sim_determinism.py): a clang/libc++ build is not byte-identical to the MSVC one."""
+    return os.path.join(BASELINE_DIR, "linux") if sys.platform == "linux" else BASELINE_DIR
+
+
 def text_ref_path(mission: str) -> str:
-    return os.path.join(BASELINE_DIR, mission + ".text.txt")
+    return os.path.join(baseline_dir(), mission + ".text.txt")
 
 
 def decoded_text(first: str) -> str:
@@ -535,7 +540,7 @@ def text_diff(mission: str, first: str) -> list[str]:
 
 
 def baseline_path(mission: str) -> str:
-    return os.path.join(BASELINE_DIR, mission + ".json")
+    return os.path.join(baseline_dir(), mission + ".json")
 
 
 def masked_resave_verdict(first: str | None, second: str | None, mask_path: str, rc: int | None = None):
@@ -705,7 +710,7 @@ def cmd_fixture(args) -> int:
             print("saveload_roundtrip baseline: the install is not the declared stock-plus-overlay data set; nothing written:\n  "
                   + "\n  ".join(rec["data_fingerprint"]["problems"]))
             return 1
-        os.makedirs(BASELINE_DIR, exist_ok=True)
+        os.makedirs(baseline_dir(), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(rec, fh, indent=1)
             fh.write("\n")
