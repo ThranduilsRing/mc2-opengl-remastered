@@ -42,9 +42,13 @@ GOT=""
 for g in $cand; do exec 9>>/workspace/locks/gpu$g; flock -n 9 && { GOT=$g; break; }; done
 if [ -z "$GOT" ]; then
   g=${cand%% *}; WANTF=/workspace/locks/gpu$g.want; echo "[box_run] all of ($cand) busy; waiting on GPU $g (up to 30 min)"
-  exec 9>>/workspace/locks/gpu$g
-  until flock -w 60 9; do touch $WANTF; [ $SECONDS -gt 1800 ] && { echo "[box_run] gave up waiting for GPU $g"; exit 75; }; done
-  GOT=$g
+  while [ -z "$GOT" ]; do   # retry every candidate; flock is not FIFO and other lanes also wait
+    touch $WANTF
+    for c in $cand; do exec 9>>/workspace/locks/gpu$c; flock -n 9 && { GOT=$c; break; }; done
+    [ -n "$GOT" ] && break
+    [ $SECONDS -gt 1800 ] && { echo "[box_run] gave up waiting for a GPU"; exit 75; }
+    timeout 3 tail -f /dev/null
+  done
 fi
 [ -n "$WANTF" ] && rm -f "$WANTF"; WANTF=""
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
