@@ -1,9 +1,8 @@
 """
 blender_runner.py — locate Blender and run a headless bpy script.
 
-BLENDER-ASSET-PIPELINE-1. Same discovery/invocation pattern as
-tools/mech_import/blender_runner.py (BT2018-BLENDER-RUNNER-1), vendored here
-so the pipeline is self-contained in worktrees that lack tools/mech_import.
+BLENDER-ASSET-PIPELINE-1. The single Blender runner (the tools/mech_import
+copy was removed); mech_import/build_marauder.py and scifi_kit import this one.
 
 Probe order: BLENDER_EXECUTABLE env var wins, then known install locations
 (Blender 5.1 confirmed on this machine), then PATH.

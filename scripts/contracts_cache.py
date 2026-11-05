@@ -216,7 +216,23 @@ def compute_key(repo, uni, cmd, specs):
     return h.hexdigest()
 
 
+def _shared_dir():
+    """Cache shared by every worktree and throwaway clone (a per-gitdir file always missed in `clone --shared`
+    prechecks). Entries are content keyed, so sharing is safe."""
+    d = os.environ.get("MC2_CONTRACTS_CACHE_DIR")
+    if d:
+        return d
+    for cand in ("G:/mc2-tmp/precheck-cache", "/workspace/cache/precheck-cache"):
+        if os.path.isdir(os.path.dirname(cand)):
+            return cand
+    return None
+
+
 def cache_path(repo):
+    shared = _shared_dir()
+    if shared:
+        os.makedirs(shared, exist_ok=True)
+        return os.path.normpath(os.path.join(shared, "mc2_contracts_cache.json"))
     r = subprocess.run(["git", "-C", repo, "rev-parse", "--git-path", "mc2_contracts_cache.json"],
                        capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True))
     p = r.stdout.strip()

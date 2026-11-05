@@ -3,10 +3,9 @@
 
 Launches `Mission Editor.exe -mission=<pak> -capture=<tga>` through nofocus.spawn (host lease,
 minimized, no activation) and waits for the editor's `[EDITOR_CAPTURE v1] ... ok=1` line.
-`--backend gl|vulkan` sets MC2_RENDER_BACKEND for the run (the editor default is vulkan).
+`--backend vulkan` sets MC2_RENDER_BACKEND for the run (the editor default is vulkan).
 
-  py -3 scripts/run_editor_capture.py --exe "<install>/Mission Editor.exe" --mission stock:mc2_01 --out shot.tga [--backend gl]
-"""
+  py -3 scripts/run_editor_capture.py --exe "<install>/Mission Editor.exe" --mission stock:mc2_01 --out shot.tga"""
 import argparse, os, re, subprocess, sys, time
 from pathlib import Path
 
@@ -19,7 +18,7 @@ def main() -> int:
     ap.add_argument("--exe", required=True)
     ap.add_argument("--mission", required=True, help="pak path or stock:<name> (loose stock pak in the install)")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--backend", choices=("gl", "vulkan"), default=None)
+    ap.add_argument("--backend", choices=("vulkan",), default=None)
     ap.add_argument("--frame", type=int, default=150)
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--arg", action="append", default=[], help="extra editor CLI argument, e.g. -smoke-outliner (selects the first object)")

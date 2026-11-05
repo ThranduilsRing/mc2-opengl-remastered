@@ -15,11 +15,12 @@ Output under ./_out:
 import argparse
 import json
 import struct
+import sys
 from pathlib import Path
 
-from blender_runner import find_blender_exe, run_blender_script
-
 HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE.parent / "blender_pipeline"))
+from blender_runner import find_blender_exe, run_blender_script  # noqa: E402
 DEF_DUMP = Path(r"A:/Games/mc2-opengl/BattleTech_2018_Dump")
 
 

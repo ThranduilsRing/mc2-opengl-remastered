@@ -133,10 +133,7 @@ recorded in `golden.json` (`capture_env`). `verify.py` refuses a candidate whose
 them, and the report records both. The GL sets (`golden-e9e3f19d6-1080p`, `reset-50331d5`) are retired (`tests/visual/goldens/RETIRED.md`). To re-bless: capture three runs with `tools/visual_verify/capture.py` (`--env MC2_SMOKE_FREEZE_ANIM=1`), then `bless.py` below, then
 point `CURRENT_GOLDEN` at the new directory. The render options (`render_options` in `capture_run.json`) are an input of every
 capture too; `capture_ab.py compare` refuses sets whose options differ unless `--vary Key,Key` names them, and refuses a set that was not drawn by the backend
-its name says (a `-vk` set whose sidecars say GL is "VK arm UNPROVEN"). `.claude/l2cap/ledger.json` (`tools/visual_verify/capture_index.py`, rendered as `index.md`) is the committed
-one-entry-per-set record of the scratch capture sets: requested backend, backend that drew, readback source, exe commit, option differences from that exe's own defaults, frozen or not,
-VOID flag and reason. It keeps a set whose PNG directory was deleted, and a VOID flag never clears; run the tool after taking a set to add it.
-
+its name says (a `-vk` set whose sidecars say GL is "VK arm UNPROVEN").
 If you ever need **frame-level** goldens (full 4K), keep them in an external dir
 (they are ~5-10 MB each — do not commit) and record the path in `golden.json`'s
 `frames_dir`. For **regression goldens** the default path is crop-only. (This is
@@ -197,10 +194,7 @@ Inherited from `scripts/run_visual_capture.py` and enforced by `capture.py`:
 - `scripts/run_visual_capture.py` — the engine launcher this pipeline drives
   (Baseline-A byte-stability, golden-set materialization). `capture.py` reuses its
   `run_one` in-process.
-- `tools/visual/visual_diff.py` — whole-frame layered diff (identity/hash/pixel)
-  + triptych HTML. Complementary: use it for full-frame byte-regression; use
-  `verify.py` for **region-level, checklist-aligned** grading.
-- `tools/visual/png_io.py` — the shared stdlib PNG codec both use.
+- `tools/visual/png_io.py` — the shared stdlib PNG codec `regions.py` and `verify.py` use.
 
 ---
 

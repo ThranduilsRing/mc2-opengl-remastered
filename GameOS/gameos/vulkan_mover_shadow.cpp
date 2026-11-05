@@ -110,7 +110,22 @@ MoverSphere MoverShadowState::propSphere(const GpuStaticPropInstance& instance, 
     return {center,std::sqrt(dot(extent,extent))};
 }
 
+void MoverShadowState::updateGround() {
+    if (const auto* store=gos_TerrainFieldStore(); store && store->heightVersion()!=heightVersion_) {
+        heightVersion_=store->heightVersion();
+        ground_=store->height().empty()?0:*std::min_element(store->height().begin(),store->height().end());
+    }
+}
+
 void MoverShadowState::appendMechs(const float cameraRows[16], Vec3 sun, float ground) {
+    (void)cameraRows; (void)sun; (void)ground;
+    for (const MechActor& a : actors_) if (a.inView) spheres_.push_back(a.sphere);
+}
+
+void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
+    updateGround();
+    actors_.clear(); instActor_.clear(); actorsFresh_ = true; actorCount_ = 0;
+    const float ground = ground_;
     Mc2MechShadowFeed feed{};
     if (!mc2_mech_island_get_shadow_feed(&feed) || !feed.instances64 || !feed.bones64 || !feed.vboCpu || feed.vertexStride < 12) return;
     if (mechGeneration_ != feed.geomGen) {
@@ -146,17 +161,55 @@ void MoverShadowState::appendMechs(const float cameraRows[16], Vec3 sun, float g
         }
         const Vec3 extent{(hi.x-lo.x)*0.5f,(hi.y-lo.y)*0.5f,(hi.z-lo.z)*0.5f};
         const MoverSphere sphere{{(lo.x+hi.x)*0.5f,(lo.y+hi.y)*0.5f,(lo.z+hi.z)*0.5f},std::sqrt(dot(extent,extent))+mechRadius_*scale};
-        if (sweptShadowInView(sphere,sun,ground,cameraRows)) spheres_.push_back(sphere);
+        actors_.push_back({sphere, sweptShadowInView(sphere,sun,ground,cameraRows)});
     }
+    instActor_.resize(feed.instanceCount, -1);
+    for (uint32_t i=0;i<feed.instanceCount;++i) {
+        const uint32_t off=instances[i].baseBoneOffset;
+        if (off >= feed.boneCount) continue;
+        const auto it=std::lower_bound(boneOffsets_.begin(),boneOffsets_.end(),off);
+        if (it!=boneOffsets_.end() && *it==off) instActor_[i]=static_cast<int32_t>(it-boneOffsets_.begin());
+    }
+}
+
+template <class Pred>
+static bool maskMechRuns(const std::vector<Mc2MechDrawRun>& runs, const std::vector<int32_t>& instActor, Pred keep, std::vector<uint8_t>& mask) {
+    mask.assign(runs.size(), 1);
+    if (instActor.empty()) return false;   // unknown: draw everything
+    for (size_t k=0;k<runs.size();++k) {
+        const auto& r=runs[k];
+        if (uint64_t(r.instanceBase)+r.instanceCount > instActor.size()) { mask[k]=1; continue; }   // cannot map: keep
+        bool any=false;
+        for (uint32_t i=0;i<r.instanceCount && !any;++i) {
+            const int32_t a=instActor[r.instanceBase+i];
+            any = a < 0 || keep(a);   // an unmapped instance is kept
+        }
+        mask[k]=any?1:0;
+    }
+    return true;
+}
+
+bool MoverShadowState::runMaskView(const std::vector<Mc2MechDrawRun>& runs, std::vector<uint8_t>& mask) const {
+    if (!actorsFresh_) { mask.assign(runs.size(), 1); return false; }
+    return maskMechRuns(runs, instActor_, [&](int32_t a){ return actors_[a].inView; }, mask);
+}
+
+bool MoverShadowState::runMaskLight(const std::vector<Mc2MechDrawRun>& runs, const float pos[3], float farDistance, std::vector<uint8_t>& mask) const {
+    if (!actorsFresh_) { mask.assign(runs.size(), 1); return false; }
+    return maskMechRuns(runs, instActor_, [&](int32_t a){
+        const auto& sp=actors_[a].sphere;
+        const float dx=sp.center.x-pos[0], dy=sp.center.y-pos[1], dz=sp.center.z-pos[2];
+        const float reach=farDistance+sp.radius+2.0f;
+        return dx*dx+dy*dy+dz*dz <= reach*reach;
+    }, mask);
 }
 
 bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun,
                                std::span<const GpuStaticPropInstance> props, bool maskReady) {
-    if (const auto* store=gos_TerrainFieldStore(); store && store->heightVersion()!=heightVersion_) {
-        heightVersion_=store->heightVersion();
-        ground_=store->height().empty()?0:*std::min_element(store->height().begin(),store->height().end());
-    }
-    props_.clear(); spheres_.clear(); actorCount_=0;
+    updateGround();
+    if (!actorsFresh_) refreshMechActors(cameraRows, sun);
+    actorsFresh_ = false;   // the next frame refreshes again
+    props_.clear(); spheres_.clear();
     for (const auto& prop:props) {
         if (prop.typeID >= bounds_.size() || !bounds_[prop.typeID].valid) continue;
         const auto sphere=propSphere(prop,bounds_[prop.typeID]);

@@ -242,6 +242,10 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
         expired = [e for e in entries if not e['first_window'] <= window < e['expires_window']]
         if expired:
             raise ValueError('expired/not-yet-active entries; renew tools/mod_known_failures.json with an owner note')
+        for e in entries:   # still valid now, but gone before the next window
+            if window + 1 >= e['expires_window']:
+                print(f"[merge_gate] preflight WARN: known-failure {e.get('mod')}/{e.get('mission')}/{e.get('error_class')} expires at window {e['expires_window']}, "
+                      f"last valid in window {e['expires_window'] - 1}; renew tools/mod_known_failures.json with an owner note", flush=True)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         errors.append(f"known-failure list: {exc}; fix: edit tools/mod_known_failures.json with owner-approved ceilings and three-window expiry")
     for error in errors:
@@ -502,7 +506,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("capture-after", capture + ["--out", str(proof / "after")], {}),
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
-        ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
+        # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
+        ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
@@ -647,7 +652,7 @@ def change_domains(paths):
             domains.add("engine")
         elif ((suffix == ".py" and (p.startswith(("scripts/tests/", "tests/")) or "/tests/" in p or Path(p).name.startswith("test_")))
               or p.startswith(("tools/lane_merge.py", "tools/file_size_ratchet", "tools/cxx17_ratchet/",
-                               "tools/dup_lines_ratchet", "tools/axis_swizzle_ratchet", "tests/callers",
+                               "tools/dup_check", "tools/axis_swizzle_ratchet", "tests/callers",
                                "scripts/run_tools_tests.py", "scripts/run_scripts_tests.py", "scripts/module_test_cache.py",
                                "scripts/check-contracts.sh", "scripts/test_audit_site/"))):
             domains.add("tooling")
@@ -877,7 +882,9 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     job_id = ids[0]
     waited = runner(host + ["wait", job_id, "--timeout", "2160", "--queue-timeout", str(FARM_CLAIM_SECONDS)], cwd=ROOT, env=os.environ.copy())
     if 'queue_timeout:' in waited.stdout:
-        print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
+        reason = [l for l in waited.stdout.splitlines() if l.startswith('queue_timeout:')][-1][:160]
+        print(f'[merge_gate] WARNING farm determinism did not run ({reason}); no worker claimed the job in '
+              f'{FARM_CLAIM_SECONDS}s or the farm was unreachable; RUNNING LOCALLY', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
         with install_lock(command):  # never beside the mods battery or a stock row on the same exe
             return runner(command, cwd=ROOT, env=local_env)

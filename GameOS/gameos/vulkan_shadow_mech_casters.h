@@ -42,8 +42,10 @@ public:
     bool hasCasters() const { return !runs_.empty() && stagedEpoch_ != kNoEpoch; }
 
     // Binds the pipeline and draws every run into the open render pass of `cb`; `uboOffset` is this pass's slice of the frame UBO. The caller has set the
-    // viewport, the scissor and the depth bias.
-    void record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset) const;
+    // viewport, the scissor and the depth bias. `runMask` (one byte per runs() entry, null = all) drops the runs whose mechs cannot reach this map.
+    // Returns the draws recorded.
+    uint32_t record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask = nullptr) const;
+    const std::vector<Mc2MechDrawRun>& runs() const { return runs_; }
 
     // Mech instances drawn by the last staged epoch (for the health line).
     uint32_t stagedInstances() const { return stagedInstances_; }

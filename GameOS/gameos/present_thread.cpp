@@ -50,6 +50,27 @@ std::vector<ResidentTextureRef> retiredTextures;
 constexpr auto kStall = std::chrono::seconds(5);
 constexpr auto kHung = std::chrono::seconds(30);
 
+// Cap sleep. std::this_thread::sleep_until rounds to the 1 ms system tick: a 165 fps cap (6.06 ms) slept to 7.0 ms (143 fps), which main
+// saw as ~4 ms of Frame.WaitSealed per frame. A high-resolution waitable timer covers all but the last 300 us, a short spin the rest.
+void sleepUntilPrecise(detail::Clock::time_point due) {
+#ifdef _WIN32
+    static thread_local HANDLE timer = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    constexpr auto spin = std::chrono::microseconds(300);
+    const auto now = detail::Clock::now();
+    if (due - now <= spin) {
+    } else if (timer) {
+        LARGE_INTEGER t;
+        t.QuadPart = -std::chrono::duration_cast<std::chrono::nanoseconds>(due - spin - now).count() / 100;
+        if (SetWaitableTimerEx(timer, &t, 0, nullptr, nullptr, nullptr, 0)) WaitForSingleObject(timer, INFINITE);
+    } else {
+        std::this_thread::sleep_until(due - spin);
+    }
+    while (detail::Clock::now() < due) YieldProcessor();
+#else
+    std::this_thread::sleep_until(due);
+#endif
+}
+
 bool debuggerAttached() {
 #ifdef _WIN32
     return IsDebuggerPresent() != FALSE;
@@ -116,7 +137,7 @@ void run() {
         }
         // The cap spaces present STARTS, so a late frame cannot buy a short interval for the one behind it. Main records the next frame
         // during this sleep: the frame above is already sealed.
-        std::this_thread::sleep_until(detail::presentNotBefore(started, detail::Clock::now(), next.fps));
+        sleepUntilPrecise(detail::presentNotBefore(started, detail::Clock::now(), next.fps));
         {
             std::lock_guard lock(mutex);
             busy = false;

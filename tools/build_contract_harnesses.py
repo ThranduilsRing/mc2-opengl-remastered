@@ -116,6 +116,30 @@ def cached_configure(src, bdir, extra=()):
             f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", *flags, *extra], env
 
 
+UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 min
+
+
+def run_with_tree_timeout(command, cwd, env, timeout):
+    """Run command; return its rc, or None after killing its whole process tree on timeout."""
+    extra = {} if os.name == "nt" else {"start_new_session": True}
+    proc = subprocess.Popen(command, cwd=cwd, env=env, **console_child.child_kwargs(**extra))
+    try:
+        return proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           **console_child.child_kwargs(redirected=True, stdout=subprocess.DEVNULL,
+                                                        stderr=subprocess.DEVNULL))
+        else:
+            import signal
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        proc.wait()
+        return None
+
+
 def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
                              keep_going=False, log_dir=None, jobs=None, cache=False, build_root=None):
     started = time.monotonic()
@@ -170,10 +194,12 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     if asan:
         # The allocation probe owns leak checks; ASan supplies bounds and lifetime evidence.
         env.setdefault("ASAN_OPTIONS", "detect_leaks=0:halt_on_error=0:print_stacktrace=1")
-    result = subprocess.run(command, cwd=REPO_ROOT, env=env, **console_child.child_kwargs())
+    rc = run_with_tree_timeout(command, REPO_ROOT, env, UNIT_RUN_TIMEOUT_S)
     tag = "asan " if asan else ""
-    verdict = "passed" if result.returncode == 0 else f"failed (rc={result.returncode})"
-    return result.returncode == 0, f"{tag}doctest {verdict} in {time.monotonic() - started:.0f}s"
+    if rc is None:
+        return False, f"{tag}doctest TIMED OUT after {UNIT_RUN_TIMEOUT_S}s (process tree killed)"
+    verdict = "passed" if rc == 0 else f"failed (rc={rc})"
+    return rc == 0, f"{tag}doctest {verdict} in {time.monotonic() - started:.0f}s"
 
 
 def run_python_harnesses():

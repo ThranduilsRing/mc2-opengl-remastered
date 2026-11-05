@@ -171,7 +171,7 @@ def scan_text(path, text):
     """-> dict(sites, helper_defs, helper_calls, matrix_refs, waived) for one file."""
     raw_lines = text.split("\n")
     clean = strip_comments_strings(text)
-    nl = [i for i, c in enumerate(clean) if c == "\n"]
+    nl = [m.start() for m in re.finditer("\n", clean)]
     line_of = lambda off: bisect.bisect_left(nl, off) + 1
     found = {}
 

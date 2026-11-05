@@ -38,7 +38,7 @@ def test_committed_save_references_use_current_policy():
         assert json.dumps(json.loads(path.read_text())['comparison'], sort_keys=True) == json.dumps(policy, sort_keys=True)
 
 
-@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'expiry', 'seed_identity', 'candidate_identity'])
+@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'expiry', 'seed_identity', 'candidate_identity', 'expiring'])
 @pytest.mark.parametrize('scheduled_deploy', [False, True])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deploy):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
@@ -81,9 +81,14 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
              ('saveload-m', ['save', '--mission', 'm', '--mask', 'mask.json'], {})]
     if scheduled_deploy:
         steps.append(('deploy', ['deploy'], {}))
-    assert gate.preflight('a' * 40, tmp_path / 'candidate', 95 if broken == 'expiry' else 92,
-                          steps, seed=tmp_path / 'seed') == int(broken is not None)
+    window = {'expiry': 95, 'expiring': 94}.get(broken, 92)
+    assert gate.preflight('a' * 40, tmp_path / 'candidate', window,
+                          steps, seed=tmp_path / 'seed') == int(broken not in (None, 'expiring'))
     output = capsys.readouterr().out
+    assert ('preflight WARN: known-failure' in output) == (broken == 'expiring')
+    if broken == 'expiring':
+        assert 'preflight PASS' in output
+        return
     assert checked == ['candidate', 'seed']
     assert 'fix:' in output if broken else 'preflight PASS' in output
 
