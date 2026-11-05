@@ -17,6 +17,7 @@
 #endif
 
 #include <span>
+#include <string_view>
 #include "../../mclib/battle_bench_wait.h"
 #include <optional>
 #include <volk.h>
@@ -1662,11 +1663,11 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     {
         auto& g = s->gpu[par];
         bool rebound = false;
-        auto ensure = [&](mc2vk::OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, bool host, const char* name) {
+        auto ensure = [&](mc2vk::OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, bool host, std::string_view name) {
             if (buf && need <= cap) return true;
             const VkDeviceSize cp = std::max<VkDeviceSize>(need + need / 2, 4096);
             buf.reset();
-            if (!make_buffer(s, buf, cp, usage, host, name, static_cast<int>(par))) return false;
+            if (!make_buffer(s, buf, cp, usage, host, name.data(), static_cast<int>(par))) return false;
             cap = cp; rebound = true;
             return true;
         };
