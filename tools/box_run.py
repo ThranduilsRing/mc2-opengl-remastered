@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | sh:<command>
+Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -26,7 +26,7 @@ HOST = os.environ.get("MC2_BOX_HOST", "root@14.227.95.149")
 PORT = os.environ.get("MC2_BOX_PORT", "30598")
 MIRROR = "/workspace/toolchains/mirror.git"
 GOLDEN_WIN = "A:/Games/mc2-opengl/mc2-win64-v0.4c"
-_SSH_OPTS = ["-i", KEY, "-p", PORT, "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30", HOST]
+_SSH_OPTS = ["-i", KEY, "-p", PORT, "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "StrictHostKeyChecking=accept-new", HOST]
 SSH = ["ssh", "-n", *_SSH_OPTS]        # -n: ssh must not swallow our stdin (every call that does not pipe a script in)
 SSH_STDIN = ["ssh", *_SSH_OPTS]        # the two calls that pipe the remote script in
 # verdicts beyond PASS/FAIL; every one of them is NOT green (exit code != 0), and none is ever retried by this tool
@@ -49,6 +49,8 @@ L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; 
 #@@FRESH_FN@@
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
 mkdir -p /workspace/locks $L $OUT
+GOT=""; WANTF=""; trap '[ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner' EXIT   # a dead run must not leave a stale owner file
+exec 8>$L/.lane.lock; flock 8   # one run per lane at a time: src, install and out are shared (fd 8 is not passed on to rows)
 rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
 [ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
 BCPUS=32-63   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
@@ -57,7 +59,7 @@ export GIT_LFS_SKIP_SMUDGE=1
 if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
 tick source
 # build: shared ccache keyed without the directory so every lane hits the same objects
-export CCACHE_BASEDIR=/workspace/lanes CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
+export CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 cd $S
 [ -f build64-ninja/build.ninja ] || nice -n 19 taskset -c "$BCPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
@@ -79,14 +81,10 @@ for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-nin
 mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/
 tick install
 export INSTALL=$I OUT
-NEEDGPU=0; for r in "${ROWS[@]}"; do case $r in build|unit) ;; *) NEEDGPU=1;; esac; done
-if [ $NEEDGPU = 0 ]; then   # build-only / unit-only: never touches a GPU, so never takes the lock
-  gr() { "$@"; }; CPUS=$BCPUS; GPU=none; export TMPDIR=$L/tmp; mkdir -p $TMPDIR
-else
-# GPU lock = flock on /workspace/locks/gpuN (the idle filler's convention; released when this script exits, no stale locks).
-# While waiting, gpuN.want is touched so the filler starts no new job there.
-CAP0=${5:-0}; WANTF=""
-trap '[ -n "$WANTF" ] && rm -f "$WANTF"' EXIT
+export TMPDIR=$L/tmp; mkdir -p $TMPDIR
+grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): cores 32-63, no GPU lock
+take_lock() {   # taken lazily, just before the first row that runs the game
+CAP0=${5:-0}; LW0=$SECONDS   # the 30 min wait is measured from here (the build already ran)
 if [ "$GPU" = auto ]; then cand="0 1 2"; [ "$CAP0" = 1 ] && cand=0; else cand=$GPU; fi
 GOT=""
 for g in $cand; do exec 9>>/workspace/locks/gpu$g; flock -n 9 && { GOT=$g; break; }; done
@@ -96,19 +94,21 @@ if [ -z "$GOT" ]; then
     touch $WANTF
     for c in $cand; do exec 9>>/workspace/locks/gpu$c; flock -n 9 && { GOT=$c; break; }; done
     [ -n "$GOT" ] && break
-    [ $SECONDS -gt 1800 ] && { echo "[box_run] LOCK_TIMEOUT: gave up waiting for a GPU"; exit 76; }
+    [ $((SECONDS - LW0)) -gt 1800 ] && { echo "[box_run] LOCK_TIMEOUT: gave up waiting for a GPU"; exit 76; }
     timeout 3 tail -f /dev/null
   done
 fi
 [ -n "$WANTF" ] && rm -f "$WANTF"; WANTF=""
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
-echo "[box_run] gpu=$GPU locked lock_wait_secs=$SECONDS"
+echo "[box_run] gpu=$GPU locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
 mkdir -p $TMPDIR; CPUS="$((4*N))-$((4*N+3))"   # box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
-gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
-fi
+gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
+}
+# CPU rows first, then game rows: the GPU lock is only ever held around the game rows
+CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
 RES=0
 FPPY='import sys, json, os
 sys.path.insert(0, "tools")
@@ -119,7 +119,9 @@ want = json.load(open(p))["data_fingerprint"]["digest"] if os.path.exists(p) els
 print("digest=%s stock=%s baseline=%s problems=%d" % (fp["digest"], fp["stock_digest"], want, len(fp["problems"])))
 sys.exit(7 if want and want != fp["digest"] else 0)'
 for row in "${ROWS[@]}"; do
-  name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*) name=${name:0:50}-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"
+  name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=${name:0:50}-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"
+  case $row in build|unit|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
+  case $row in unit) TMO=1200;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
@@ -131,7 +133,8 @@ for row in "${ROWS[@]}"; do
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
                  cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
-    sh:*)        cmd="${row#sh:}" ;;
+    sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
+    gpu:*)       cmd="${row#gpu:}" ;;   # arbitrary command that runs the game: takes the lock
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
   case $row in determinism:*|saveload*)
@@ -145,7 +148,7 @@ for row in "${ROWS[@]}"; do
       printf "%s\t%s\n" "$row" 7 >> $OUT/rows.tsv; RES=1; continue
     fi ;;
   esac
-  gr bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
+  $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
   printf "%s\t%s\n" "$row" "$rc" >> $OUT/rows.tsv
@@ -172,9 +175,14 @@ def git(*a, repo):
     return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
+def has_vk_headless(repo):
+    """True when HEAD contains eac614635 (headless VK present): smoke and capture rows then run on any GPU, not only GPU 0"""
+    return subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", "eac614635", "HEAD"], capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0
+
+
 def probe():
     try:
-        r = run([*SSH[:-1], "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", HOST, "true"], capture_output=True, timeout=15)
+        r = run(["ssh", "-o", "ConnectTimeout=10", *SSH[1:], "true"], capture_output=True, timeout=15)
     except (OSError, subprocess.SubprocessError):
         return 1
     return r.returncode
@@ -356,7 +364,7 @@ def main():
     t["bundle+push"] = time.time() - t0
     # gpu choice
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
-    cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu) else 0
+    cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
     gpu = a.gpu
     if a.gate:
         gpu = "3"   # advisory clang gate evidence runs on the reserved gate GPU (lock /workspace/locks/gpu3)
@@ -380,12 +388,12 @@ def main():
         label = f"box_run:{branch}:{sha[:8]}:{grp}"
         after = ""
         if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
-            rb = run([*SSH_STDIN, f"cat > {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])}"],
+            rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])}"],
                      input=REMOTE.encode(), capture_output=True)
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()
             if rb.returncode == 0 and bt and bt[-1].isdigit():
                 after = f"-a {bt[-1]} "
-        r = run([*SSH_STDIN, f"cat > {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
+        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
                 input=REMOTE.encode(), capture_output=True)   # bytes: text mode would turn LF into CRLF on Windows and bash chokes on the CR
         out = r.stdout.decode(errors="replace") if isinstance(r.stdout, bytes) else r.stdout
         err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
@@ -393,7 +401,7 @@ def main():
         print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {err.strip()[-200:]}")
         return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH_STDIN, f"cat > {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode())
+    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode())
     t["remote (build+install+rows)"] = time.time() - t1
     t2 = time.time()
     fetch_back(out_remote, local_out)
