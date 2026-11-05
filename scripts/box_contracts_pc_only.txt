@@ -1,0 +1,1 @@
+# Contract rows that need Windows; the merge gate keeps them on the PC. One check-contracts.sh row label per line.
