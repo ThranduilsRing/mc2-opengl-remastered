@@ -29,6 +29,10 @@ stock_mission_data: .
 scripts_tests: .
 tools_tests: .
 sim_include_firewall: .
+# precheck-speed: whole-tree keys (reads unknown, so never wrong); they skip an identical-tree rerun
+kit_art: .
+gate_inputs: .
+mapgen_fof: tools tests/mapgen data
 
 # background_launch: rglob("*.py") under scripts/tools/.claude/tests (ignored files included) plus every launcher
 background_launch: glob:scripts/**.py glob:tools/**.py glob:.claude/**.py glob:tests/**.py glob:**.bat glob:**.cmd glob:**.ps1 +ignored

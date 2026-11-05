@@ -1541,7 +1541,7 @@ run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_ki
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
-run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art"
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3"
 run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
