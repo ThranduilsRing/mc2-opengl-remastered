@@ -22,6 +22,10 @@ template<class T> void pattern(T& value, unsigned char seed) {
     if constexpr (std::is_same_v<T, bool>) value = true;
     else if constexpr (std::is_floating_point_v<T>) std::memset(&value, seed, sizeof(value));
     else if constexpr (std::is_enum_v<T>) value = static_cast<T>(1);
+    // `long` is the 32-bit wire width the codecs write (in_range<int32_t>); on LP64 a full-width memset
+    // would be out of range, so pattern it with the 32-bit value the Windows 4-byte long gets.
+    else if constexpr (std::is_same_v<T, long>) value = static_cast<std::int32_t>(0x01010101u * seed);
+    else if constexpr (std::is_same_v<T, unsigned long>) value = static_cast<std::uint32_t>(0x01010101u * seed);
     else if constexpr (std::is_integral_v<T>) std::memset(&value, seed, sizeof(value));
     else if constexpr (std::is_same_v<T, std::string>) value.assign(3, char(seed));
     else if constexpr (requires { value.resize(2); }) {
