@@ -519,8 +519,9 @@ def test_window_never_publishes_to_v04(monkeypatch, tmp_path, failure):
     from contextlib import contextmanager
     import merge_gate as gate
     @contextmanager
-    def candidate(*args):
+    def candidate(*args, **kwargs):
         yield tmp_path
+    monkeypatch.setattr(gate.gate_reuse, "deployed_seed", lambda *a, **k: None)
     monkeypatch.setattr(gate, "stock_copy", candidate)
     staged = []
     monkeypatch.setattr(gate, "stage_published", lambda install: staged.append(install))
