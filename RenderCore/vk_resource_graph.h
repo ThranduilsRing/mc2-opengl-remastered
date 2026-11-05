@@ -39,8 +39,8 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
             if (use.image >= images.size() || seen[use.image] || !use.state.stages) return plan;
             seen[use.image] = true;
             auto& life = plan.lifetimes[use.image];
-            if (life.firstPass < 0) life.firstPass = int(p);
-            life.lastPass = int(p);
+            if (life.firstPass < 0) life.firstPass = static_cast<int>(p);
+            life.lastPass = static_cast<int>(p);
         }
     }
     // Allocate in first-use order, independent of resource declaration order.
@@ -56,14 +56,14 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
         for (unsigned s = 0; s < owners.size(); ++s) {
             unsigned previous = owners[s];
             if (images[previous].key == images[i].key && plan.lifetimes[previous].lastPass < life.firstPass) {
-                life.slot = int(s);
+                life.slot = static_cast<int>(s);
                 owners[s] = i;
                 break;
             }
         }
-        if (life.slot < 0) { life.slot = int(owners.size()); owners.push_back(i); }
+        if (life.slot < 0) { life.slot = static_cast<int>(owners.size()); owners.push_back(i); }
     }
-    plan.slots = unsigned(owners.size());
+    plan.slots = static_cast<unsigned>(owners.size());
     std::vector<State> states(images.size());
     std::vector<bool> initialized(images.size());
     std::vector<int> slotOwner(plan.slots, -1);
@@ -83,7 +83,7 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
                     before = states[slotOwner[slot]];
                     before.layout = 0; // Discard, but retire every access to the old slot occupant.
                 }
-                if (slot >= 0) slotOwner[slot] = int(use.image);
+                if (slot >= 0) slotOwner[slot] = static_cast<int>(use.image);
                 initialized[use.image] = true;
             }
             if (fresh || before.layout != use.state.layout || before.write || use.state.write) {

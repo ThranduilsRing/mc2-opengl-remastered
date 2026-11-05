@@ -181,12 +181,12 @@ bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level,
     const bool bc7 = img.vkFormat == 145 || img.vkFormat == 146;
     const uint32_t bs = bc1 ? 8u : 16u;
     if (!img.isCompressed || !(bc1 || bc3 || bc5 || bc7) || img.blockSizeBytes != bs ||
-        img.width <= 0 || img.height <= 0 || uint32_t(img.width) > kKtxMaxEdge || uint32_t(img.height) > kKtxMaxEdge ||
+        img.width <= 0 || img.height <= 0 || static_cast<uint32_t>(img.width) > kKtxMaxEdge || static_cast<uint32_t>(img.height) > kKtxMaxEdge ||
         level < 0 || level >= 32 || level >= img.mipCount || static_cast<size_t>(level) >= img.mipByteOffsets.size()) return false;
-    const uint32_t w = std::max(1u, uint32_t(img.width) >> level);
-    const uint32_t h = std::max(1u, uint32_t(img.height) >> level);
+    const uint32_t w = std::max(1u, static_cast<uint32_t>(img.width) >> level);
+    const uint32_t h = std::max(1u, static_cast<uint32_t>(img.height) >> level);
     const uint32_t blocksWide = (w + 3u) / 4u, blocksHigh = (h + 3u) / 4u;
-    const uint64_t levelBytes = uint64_t(blocksWide) * blocksHigh * bs;
+    const uint64_t levelBytes = static_cast<uint64_t>(blocksWide) * blocksHigh * bs;
     const uint64_t levelOffset = img.mipByteOffsets[level];
     if (levelOffset > img.pixels.size() || levelBytes > img.pixels.size() - levelOffset) return false;
     const uint8_t* src = img.pixels.data() + levelOffset;
@@ -221,7 +221,7 @@ bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level,
             if (img.vkFormat == 131 || img.vkFormat == 132)
                 for (int p = 0; p < 16; ++p) blockTmp[p*4+3] = 255;
             for (uint32_t r = 0; r < bh; ++r)
-                std::memcpy(outRgba.data() + size_t(py + r) * rowPitch + px * 4u,
+                std::memcpy(outRgba.data() + static_cast<size_t>(py + r) * rowPitch + px * 4u,
                             blockTmp + r * 16, bw * 4u);
         }
     }

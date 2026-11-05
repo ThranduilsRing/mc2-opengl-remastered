@@ -193,10 +193,10 @@ struct Layers {
 // cross-CRT differences in the transcendental functions are harmless).
 inline Layers generate() {
     Layers out;
-    const size_t layerBytes = size_t(kSize) * kSize * 4;
+    const size_t layerBytes = static_cast<size_t>(kSize) * kSize * 4;
     out.surface.resize(layerBytes * kTileCount);
     out.normal.resize(layerBytes * kTileCount);
-    std::vector<float> height(size_t(kSize) * kSize);
+    std::vector<float> height(static_cast<size_t>(kSize) * kSize);
     for (uint32_t layer = 0; layer < kTileCount; ++layer) {
         const Tile tile = static_cast<Tile>(layer);
         uint8_t* s = out.surface.data() + layer * layerBytes;
@@ -206,7 +206,7 @@ inline Layers generate() {
                 const float u = (static_cast<float>(x) + 0.5f) / kSize * 2.0f - 1.0f;
                 const float v = (static_cast<float>(y) + 0.5f) / kSize * 2.0f - 1.0f;
                 const detail::Texel t = detail::paint(tile, u, v);
-                const size_t i = (size_t(y) * kSize + x);
+                const size_t i = (static_cast<size_t>(y) * kSize + x);
                 height[i] = t.height * t.coverage;
                 s[i * 4 + 0] = detail::u8(t.albedo * 0.5f);
                 s[i * 4 + 1] = detail::u8(t.emissive * t.coverage);
@@ -219,16 +219,16 @@ inline Layers generate() {
         for (uint32_t y = 0; y < kSize; ++y) {
             for (uint32_t x = 0; x < kSize; ++x) {
                 auto H = [&](int xx, int yy) {
-                    xx = xx < 0 ? 0 : (xx >= int(kSize) ? int(kSize) - 1 : xx);
-                    yy = yy < 0 ? 0 : (yy >= int(kSize) ? int(kSize) - 1 : yy);
-                    return height[size_t(yy) * kSize + size_t(xx)];
+                    xx = xx < 0 ? 0 : (xx >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : xx);
+                    yy = yy < 0 ? 0 : (yy >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : yy);
+                    return height[static_cast<size_t>(yy) * kSize + static_cast<size_t>(xx)];
                 };
-                const float dhx = (H(int(x) + 1, int(y)) - H(int(x) - 1, int(y))) * 0.5f * gain;
-                const float dhy = (H(int(x), int(y) + 1) - H(int(x), int(y) - 1)) * 0.5f * gain;
+                const float dhx = (H(static_cast<int>(x) + 1, static_cast<int>(y)) - H(static_cast<int>(x) - 1, static_cast<int>(y))) * 0.5f * gain;
+                const float dhy = (H(static_cast<int>(x), static_cast<int>(y) + 1) - H(static_cast<int>(x), static_cast<int>(y) - 1)) * 0.5f * gain;
                 float nx = -dhx, ny = -dhy, nz = 1.0f;
                 const float l = std::sqrt(nx * nx + ny * ny + nz * nz);
                 nx /= l; ny /= l;
-                const size_t i = size_t(y) * kSize + x;
+                const size_t i = static_cast<size_t>(y) * kSize + x;
                 nm[i * 4 + 0] = detail::u8(nx * 0.5f + 0.5f);
                 nm[i * 4 + 1] = detail::u8(ny * 0.5f + 0.5f);
                 nm[i * 4 + 2] = detail::u8(height[i] * 0.5f + 0.5f);
