@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "inst",
           "offset": 0,
-          "type": "_418"
+          "type": "_475"
         }
       ],
       "name": "VegInst"
@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "region",
           "offset": 0,
-          "type": "_376"
+          "type": "_424"
         }
       ],
       "name": "VegReg"
