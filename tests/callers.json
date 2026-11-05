@@ -1766,7 +1766,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 916,
+          "line": 918,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -11128,7 +11128,7 @@
       "callers_by_stem": [
         {
           "path": "tools/cxx17_ratchet/cxx17_ratchet.py",
-          "line": 603,
+          "line": 631,
           "evidence": "import",
           "reference": "test_cxx17_ratchet",
           "text": "import test_cxx17_ratchet as t"
@@ -17378,7 +17378,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 498,
+          "line": 500,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -17450,7 +17450,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 894,
+          "line": 896,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
