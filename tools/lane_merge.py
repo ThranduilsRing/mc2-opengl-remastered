@@ -47,8 +47,7 @@ A --batch run prints one such line per merged tip (verify=DEFERRED) and a final 
 """
 from __future__ import annotations
 
-import argparse
-import json
+import argparse, json
 from pathlib import Path
 from collections import deque
 from contextlib import nullcontext
@@ -59,11 +58,12 @@ import subprocess
 import sys
 import time
 import tempfile
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
-import _git_util  # noqa: E402  (shared git helpers)
+import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
@@ -1300,6 +1300,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
     pin_cpus(cpu_mode(args))   # children inherit; only --batch / merge-gate stages take the gate half (CPU_SPLIT), lane modes stay off it
+    if (rc := lane_merge_trust.delegate(args, list(sys.argv[1:] if argv is None else argv))) is not None:
+        return rc
     if args.lint:
         return lint(args.root, args.lint)
     if args.precheck:

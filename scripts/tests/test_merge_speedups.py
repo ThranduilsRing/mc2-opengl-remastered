@@ -14,8 +14,45 @@ import console_child  # noqa: E402
 import ninja_build  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _in_process_lane_merge(monkeypatch):
+    """lm.main(--batch/--precheck) hands off to the trusted mc2-main copy unless already trusted; these tests drive this tree's code in-process."""
+    monkeypatch.setenv("MC2_LANE_MERGE_TRUSTED", "1")
+
+
 def _r(rc, out=""):
     return types.SimpleNamespace(returncode=rc, stdout=out)
+
+
+@pytest.mark.parametrize("flag", ["--precheck", "--batch"])
+def test_precheck_and_batch_run_the_trusted_copy(monkeypatch, tmp_path, flag):
+    trusted = tmp_path / "trusted"
+    (trusted / "tools").mkdir(parents=True)
+    (trusted / "tools" / "lane_merge.py").write_text("# trusted\n")
+    monkeypatch.delenv("MC2_LANE_MERGE_TRUSTED")
+    monkeypatch.setenv("MC2_TRUSTED_ROOT", str(trusted))
+    seen = {}
+
+    def fake_call(cmd, **kw):
+        seen["cmd"], seen["env"] = cmd, kw["env"]
+        return 7
+    monkeypatch.setattr(lm.lane_merge_trust.subprocess, "call", fake_call)
+    candidate = str(tmp_path / "candidate")
+    assert lm.main([flag, "tip", "--root", candidate]) == 7
+    assert seen["cmd"][1] == str(trusted / "tools" / "lane_merge.py")   # never the candidate's own script
+    assert seen["cmd"][2:] == [flag, "tip", "--root", candidate]
+    assert seen["env"]["MC2_LANE_MERGE_TRUSTED"] == "1"                # the child does not re-exec again
+    seen.clear()
+    assert lm.main([flag, "tip"]) == 7                                  # no --root given: the candidate tree is passed explicitly
+    assert seen["cmd"][-2] == "--root" and seen["cmd"][-1]
+
+
+def test_trusted_script_is_none_for_itself_or_when_missing(monkeypatch, tmp_path):
+    monkeypatch.delenv("MC2_LANE_MERGE_TRUSTED")
+    monkeypatch.setenv("MC2_TRUSTED_ROOT", str(tmp_path))                # no tools/lane_merge.py there
+    assert lm.lane_merge_trust.trusted_script() is None
+    monkeypatch.setenv("MC2_TRUSTED_ROOT", ROOT)                         # this very tree
+    assert lm.lane_merge_trust.trusted_script() is None
 
 
 def test_quick_rows_green_and_red():
