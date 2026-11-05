@@ -80,7 +80,7 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     const VkBufferUsageFlags dst = VK_BUFFER_USAGE_TRANSFER_DST_BIT, src = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     if (!makeDevice(lightOut_, static_cast<VkDeviceSize>(numVertices) * 8u, kStorage | dst | src, "producers.lightOut")) return false;
     for (uint32_t p = 0; p < kSlots; ++p) {
-        if (!argsUbo_[p].createHostWritable(allocator_, device_, sizeof(VkDrawArgsParams), kUniform, "producers.argsUbo", static_cast<int>(p))) return false;
+        if (!argsUbo_[p].createGpuRead(allocator_, device_, sizeof(VkDrawArgsParams), kUniform, "producers.argsUbo", static_cast<int>(p))) return false;
         VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6, 0, 0}};
         if (!argsUbo_[p].upload(&ap, sizeof(ap))) return false;
         if (!makeDevice(header_[p], 16, kStorage | dst | src, "producers.header", static_cast<int>(p)) ||

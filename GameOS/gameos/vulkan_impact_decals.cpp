@@ -183,8 +183,8 @@ bool build(State* s, int w, int h) {
         if (!s->surfaceAtlas || !s->normalAtlas) { decline("atlas_upload_failed"); return false; }
     }
     for (uint32_t i = 0; i < kSlots; ++i) {
-        if (!s->ubo[i].createHostWritable(s->allocator, s->device, sizeof(FrameUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "impact.ubo", int(i)) ||
-            !s->ssbo[i].createHostWritable(s->allocator, s->device, sizeof(impact::GpuDecal) * impact::kMaxDecals,
+        if (!s->ubo[i].createGpuRead(s->allocator, s->device, sizeof(FrameUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "impact.ubo", int(i)) ||
+            !s->ssbo[i].createGpuRead(s->allocator, s->device, sizeof(impact::GpuDecal) * impact::kMaxDecals,
                                            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "impact.ssbo", int(i))) {
             decline("buffer_create_failed"); return false;
         }
