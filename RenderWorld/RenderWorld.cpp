@@ -582,10 +582,10 @@ void destroy() {
     MC2_DIAGFE(stderr,
         "[RENDER_WORLD v1] event=destroy upsert_ok=%llu upsert_fail=%llu "
         "destroy_calls=%llu mark_visible=%llu\n",
-        (unsigned long long)s_upsertOk.load(),
-        (unsigned long long)s_upsertFail.load(),
-        (unsigned long long)s_destroyCalls.load(),
-        (unsigned long long)s_markVisibleCalls.load());
+        static_cast<unsigned long long>(s_upsertOk.load()),
+        static_cast<unsigned long long>(s_upsertFail.load()),
+        static_cast<unsigned long long>(s_destroyCalls.load()),
+        static_cast<unsigned long long>(s_markVisibleCalls.load()));
 }
 
 RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc) {
@@ -773,8 +773,8 @@ void frameBannerTick() {
     MC2_DIAGFE(stderr,
         "[RENDER_WORLD v1] frame=%llu objects=%llu static_props=%llu mechs=%llu "
         "visible=0 packets=0 views=1 objectid_buffer=%s\n",
-        (unsigned long long)f, (unsigned long long)total,
-        (unsigned long long)vis.static_props, (unsigned long long)vis.mechs, oidTok);
+        static_cast<unsigned long long>(f), static_cast<unsigned long long>(total),
+        static_cast<unsigned long long>(vis.static_props), static_cast<unsigned long long>(vis.mechs), oidTok);
     MC2_DIAGFE(stderr,
         "[VISIBILITY v1] frame=%llu static_props=%llu mechs=%llu "
         "sp_visible=%llu sp_valid=%d "
@@ -782,12 +782,12 @@ void frameBannerTick() {
         "gpu_visible=%llu gpu_valid=%d "
         "terrain=deferred vfx=prohibited "
         "view_id=%u view_valid=%d\n",
-        (unsigned long long)f,
-        (unsigned long long)vis.static_props,
-        (unsigned long long)vis.mechs,
-        (unsigned long long)vis.static_props_visible, vis.static_props_visible_valid ? 1 : 0,
-        (unsigned long long)vis.mechs_visible,        vis.mechs_visible_valid        ? 1 : 0,
-        (unsigned long long)vis.static_props_gpu_visible, vis.gpu_visible_valid      ? 1 : 0,
+        static_cast<unsigned long long>(f),
+        static_cast<unsigned long long>(vis.static_props),
+        static_cast<unsigned long long>(vis.mechs),
+        static_cast<unsigned long long>(vis.static_props_visible), vis.static_props_visible_valid ? 1 : 0,
+        static_cast<unsigned long long>(vis.mechs_visible),        vis.mechs_visible_valid        ? 1 : 0,
+        static_cast<unsigned long long>(vis.static_props_gpu_visible), vis.gpu_visible_valid      ? 1 : 0,
         (unsigned)visReq.viewId, viewValid);
 }
 

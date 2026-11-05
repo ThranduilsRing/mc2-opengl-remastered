@@ -18,6 +18,7 @@
 #include <mutex>
 #include <chrono>
 #include "../GameOS/gameos/gos_crashbundle.h"
+#include "Gates/gate_name.h"
 #include "Gates/gate_cold.h"  // gate reads below, and markMainEntered / invalidateAll / dumpConfig: EditRel has no gameosmain
 
 // ---------------------------------------------------------------------------
@@ -196,7 +197,7 @@ static void editor_set_default_env_vars()
     // Bake editor-preferred defaults so RenderDoc and other tools can launch
     // the exe directly without a .bat. Bat overrides still work because we
     // only set when unset.
-    if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s("MC2_EDITOR_TRACE",              "1");
+    if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s(mc2::gate::name<"MC2_EDITOR_TRACE">(),              "1");
     // The editor viewport renders on the same Vulkan path as the game (step 3.6); the backend has no selector to bake and
     // MC2_VK_SHARED_GBUFFER (the umbrella) is default ON.
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY

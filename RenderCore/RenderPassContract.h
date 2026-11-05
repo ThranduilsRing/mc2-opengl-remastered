@@ -29,6 +29,7 @@
 #pragma once
 
 #include <cstdint>
+#include "Gates/gate_name.h"
 #include "RenderResourceRegistry.h"
 
 namespace RenderCore {
@@ -199,7 +200,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         /*pipelineDescRegistered*/   true,
         /*snapshotRowAuthoritative*/ true,
         "Mech",
-        "MC2_SNAPSHOT_MECH_EXTRACT",
+        mc2::gate::name<"MC2_SNAPSHOT_MECH_EXTRACT">(),
         "Wired through PipelineId::MechOpaque (MECH-PIPELINEDESC-1, applyPipeline) "
         "+ ViewUniforms UBO consumer default-on (MECH-VIEWUNIFORMS). "
         "POSTPROCESS-SCENEOBJECTID-RESOURCE-1: SceneObjectId write is conditional on RenderWorld::IsObjectIdBufferEnabled() "
@@ -301,7 +302,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         /*pipelineDescRegistered*/   false,
         /*snapshotRowAuthoritative*/ false,
         "Vegetation##veg",
-        "MC2_VEGETATION_CARDS",
+        mc2::gate::name<"MC2_VEGETATION_CARDS">(),
         "Instanced crossed-quad billboards, alpha-discard; post-renderLists.",
         /* reads[4]    */ { RenderResourceId::MainDepth, },
         /* writes[4]   */ { RenderResourceId::MainColor, RenderResourceId::MainDepth },

@@ -2,6 +2,7 @@
 // GL-free unit tests for RenderCore substrate invariants.
 // No game startup, no GL context, no asset loading required.
 #include "doctest.h"
+#include "Gates/gate_name.h"
 #include "RenderResourceRegistry.h"
 #include "frame_graph_validate.h"       // kExternalResources drift guard
 #include "RenderDebugView.h"
@@ -343,7 +344,7 @@ TEST_CASE("RendererFeatureRegistry ViewUniforms is default-on with expected envV
     const EnvVarDesc& e = kFeatureTable[static_cast<int>(RendererFeature::ViewUniforms)];
     CHECK(e.defaultOn == true);
     REQUIRE(e.envVar != nullptr);
-    CHECK(std::strcmp(e.envVar, "MC2_VIEW_UNIFORMS") == 0);
+    CHECK(std::strcmp(e.envVar, mc2::gate::name<"MC2_VIEW_UNIFORMS">()) == 0);
 }
 
 TEST_CASE("RendererFeatureRegistry always-on features have null envVar") {
@@ -357,7 +358,7 @@ TEST_CASE("RendererFeatureRegistry TerrainTessellation is a default-ON killswitc
     const EnvVarDesc& e = kFeatureTable[static_cast<int>(RendererFeature::TerrainTessellation)];
     CHECK(e.defaultOn == true);
     REQUIRE(e.envVar != nullptr);
-    CHECK(std::strcmp(e.envVar, "MC2_TERRAIN_TESS") == 0);
+    CHECK(std::strcmp(e.envVar, mc2::gate::name<"MC2_TERRAIN_TESS">()) == 0);
 }
 
 TEST_CASE("RendererFeatureRegistry Retired entries have Retired kind") {

@@ -2,6 +2,7 @@
 #include "doctest.h"
 #include "gosfxheaders.hpp"
 #include "Gates/gate.h"
+#include "Gates/gate_name.h"
 #include "contract_test_support.h"
 #include "mclib/det_rng.h"
 #include "particles/batcher.h"
@@ -19,9 +20,9 @@ void vfx_test_bind_rng(std::uint32_t* state);
 namespace {
 constexpr size_t EFFECT_SIZE = 232;  // step 5 (2026-10-18): the 48-byte Stuff LinearMatrix4D members are 64-byte glm::mat4
 struct Platform {
-    ContractEnvironment deterministic{"MC2_DETERMINISTIC_RNG", "1"};
-    ContractEnvironment fixedStep{"MC2_SMOKE_FIXED_TIMESTEP", "1"};
-    ContractEnvironment identity{"MC2_SIM_IDENTITY_TRACE", "1"};
+    ContractEnvironment deterministic{mc2::gate::name<"MC2_DETERMINISTIC_RNG">(), "1"};
+    ContractEnvironment fixedStep{mc2::gate::name<"MC2_SMOKE_FIXED_TIMESTEP">(), "1"};
+    ContractEnvironment identity{mc2::gate::name<"MC2_SIM_IDENTITY_TRACE">(), "1"};
     std::uint32_t seed = mc2_det_rng::hashMissionName("mc2_03");
     Platform()
     {
