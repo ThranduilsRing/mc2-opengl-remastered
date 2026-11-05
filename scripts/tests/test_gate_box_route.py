@@ -175,7 +175,7 @@ def test_wait_blocks_fetches_reports_and_prints_one_verdict_line(monkeypatch, ca
         assert out_remote == "/workspace/lanes/br/out/abcd1234"
         (Path(local_out) / "rows.tsv").write_text("smoke-lite\t0\ncapture\t1\n")
     monkeypatch.setattr(box_run, "fetch_back", fake_fetch)
-    assert box_run.task_verdict(5, tmp_path, wait=True) == 0
+    assert box_run.task_verdict(5, tmp_path, wait=True) == 1   # capture rc=1 makes the run FAIL
     assert any("pueue wait 5" in c for c in calls)
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 1 and "state=Done rc=0 rows=1/2" in lines[0]
@@ -221,17 +221,17 @@ def queued_main(monkeypatch, tmp_path, argv, stdout="12\n"):
 def test_queue_submits_one_ssh_to_the_group_and_returns_the_task_id(monkeypatch, tmp_path, capsys):
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "determinism"])
     assert rc == 0
-    pueue = [s for s in sent if "pueue add" in s[0]]
+    pueue = [s for s in sent if "pueue add" in s[0] and "-g build" not in s[0]]   # the build-group task that precedes a GPU task is separate
     assert len(pueue) == 1
     cmd, stdin = pueue[0]
-    assert "-g gpu1 --print-task-id" in cmd and stdin == box_run.REMOTE
+    assert "-g gpu1" in cmd and "--print-task-id" in cmd and stdin == box_run.REMOTE.encode()
     assert base64.b64encode(b"determinism").decode() in cmd
     assert "queued task=12 group=gpu1" in capsys.readouterr().out
 
 
 def test_queue_gate_goes_to_the_gate_group(monkeypatch, tmp_path):
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gate"])
-    assert rc == 0 and any("-g gate --print-task-id" in s[0] for s in sent)
+    assert rc == 0 and any("-g gate" in s[0] and "--print-task-id" in s[0] for s in sent)
 
 
 def test_blocking_mode_stays_the_default_one_ssh_run(monkeypatch, tmp_path):

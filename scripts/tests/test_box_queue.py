@@ -317,8 +317,8 @@ def test_filler_push_is_noop_at_the_current_sha_and_otherwise_bundles_and_syncs(
 
 def test_only_game_rows_take_the_lock_cpu_rows_run_first_under_timeout():
     r = box_run.REMOTE
-    assert "case $r in build|unit|cpu:*|sh:*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
-    assert "build|unit|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
+    assert "case $r in build|unit|lint|cpu:*|sh:*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
+    assert "build|unit|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
     assert "$RUN timeout -k 30 $TMO bash -c" in r and "unit) TMO=1200" in r and "smoke*|capture:*) TMO=600" in r and "*) TMO=1800" in r
     assert "sh:*|cpu:*)  cmd=" in r and "gpu:*)" in r
     assert "(SECONDS - LW0)" in r   # the 30 min lock wait is not eaten by the build
@@ -343,3 +343,11 @@ def test_cap0_is_dropped_once_head_contains_the_headless_present_fix(monkeypatch
     rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "--gpu", "1", "smoke-lite"])
     cmd = [c for c, _ in sent if "pueue add" in c][-1]
     assert " 1 " + base64.b64encode(b"smoke-lite").decode() not in cmd and " 0 " + base64.b64encode(b"smoke-lite").decode() in cmd
+
+
+def test_lint_row_is_cpu_only_and_skips_the_build():
+    assert "lint" in box_run.NO_GPU_ROWS
+    assert "python3 tools/lane_merge.py --lint HEAD" in box_run.REMOTE
+    assert 'case $row in build|unit|lint|cpu:*|sh:*) RUN=grc' in box_run.REMOTE   # taskset 32-63, never the GPU lock
+    assert 'ONLY_LINT=1' in box_run.REMOTE and 'if [ -z "$ONLY_LINT" ]; then' in box_run.REMOTE
+    assert 'grep -a "LINT FAIL"' in box_run.REMOTE

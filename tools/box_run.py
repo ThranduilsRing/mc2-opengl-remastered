@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -54,7 +54,7 @@ RC_NO_BASELINE = 78    # determinism/saveload row refused: no Linux baseline fil
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
 # `--gate` with no rows: the headless determinism rows the PC gate runs plus the two saveload pins (tests/*/linux baselines)
-NO_GPU_ROWS = ("build", "unit")   # rows that never touch a GPU: no GPU lock, queue group "build"
+NO_GPU_ROWS = ("build", "unit", "lint")   # rows that never touch a GPU: no GPU lock, queue group "build"
 GATE_ROWS = [f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + ["saveload:mc2_01", "saveload:mc2_10"]
 
 # a retry must never reuse a row's --out dir (sim_determinism refuses an existing one and the row would be VOID): one fresh dir per attempt
@@ -93,6 +93,9 @@ export GIT_LFS_SKIP_SMUDGE=1
 # source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
 if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
 tick source
+ONLY_LINT=1; for r in "${ROWS[@]}"; do [ "$r" = lint ] || ONLY_LINT=""; done   # a lint-only run is pure Python + git: no configure, no build, no install
+cd $S
+if [ -z "$ONLY_LINT" ]; then
 # build: shared ccache keyed without the directory so every lane hits the same objects
 export CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 cd $S
@@ -114,6 +117,7 @@ cp -f build64-ninja/mc2 $I/mc2 && chmod +x $I/mc2 || { echo "[box_run] DEPLOY FA
 # optional payload: only what THIS tree built (a lane without crashpad has no crashpad_handler; deploy must never require it)
 for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-ninja/$opt $I/$opt && chmod +x $I/$opt || { echo "[box_run] DEPLOY FAILED: $opt"; exit 6; }; }; done
 mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/
+fi
 tick install
 export INSTALL=$I OUT
 export TMPDIR=$L/tmp; mkdir -p $TMPDIR
@@ -145,7 +149,7 @@ mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
-CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
+CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|lint|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
 RES=0
 FPPY='import sys, json, os
 sys.path.insert(0, "tools")
@@ -159,8 +163,8 @@ RIDX=0
 for row in "${ROWS[@]}"; do
   RIDX=$((RIDX+1))
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
-  case $row in build|unit|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
-  case $row in unit) TMO=1200;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
+  case $row in build|unit|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
+  case $row in unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
@@ -171,6 +175,7 @@ for row in "${ROWS[@]}"; do
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
                  cmd="cmake -S tests/unit -B build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && ./build64-tests/mc2_tests --no-breaks" ;;
+    lint)        cmd="python3 tools/lane_merge.py --lint HEAD" ;;   # CPU-only: lane_merge's own lint (exit code = verdict) against the mirror's claude/nifty-mendeleev
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
     gpu:*)       cmd="${row#gpu:}" ;;   # arbitrary command that runs the game: takes the lock
@@ -191,6 +196,7 @@ for row in "${ROWS[@]}"; do
   $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
+  [ "$row" = lint ] && grep -a "LINT FAIL" $OUT/$name.log | head -30 | cut -c1-300   # every red lint line comes back in the row summary
   printf "%s\t%s\n" "$row" "$rc" >> $OUT/rows.tsv
   [ $rc = 0 ] || RES=1
   tick "row:$name"
@@ -343,6 +349,30 @@ def box_has(sha):
     return run([*SSH, f"git -C {MIRROR} cat-file -e {sha}^{{commit}}"], capture_output=True).returncode == 0
 
 
+def sync_nifty(repo):
+    """The lint row diffs against the mirror's claude/nifty-mendeleev (ungated_tags, ratchets): point it at the local nifty tip, bundling only when the mirror lacks the commit."""
+    try:
+        nifty = git("rev-parse", "--verify", "-q", "claude/nifty-mendeleev^{commit}", repo=repo)
+    except subprocess.CalledProcessError:
+        nifty = ""
+    if not nifty:
+        print("[box_run] lint: no local claude/nifty-mendeleev; the mirror's copy is used as is", file=sys.stderr)
+        return
+    if not box_has(nifty):
+        ref, bundle = "refs/box-run/nifty", Path(tempfile.gettempdir()) / "box_nifty.bundle"
+        git("update-ref", ref, nifty, repo=repo)
+        try:
+            have = subprocess.run([*SSH, f"git -C {MIRROR} for-each-ref --format='%(objectname)'"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.split()
+            excl = ["^" + h for h in have if subprocess.run(["git", "-C", str(repo), "cat-file", "-e", h + "^{commit}"], capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0]
+            run(["git", "-C", str(repo), "bundle", "create", "-q", str(bundle), ref, *excl], check=True, capture_output=True)
+            run([*SCP, str(bundle), f"{HOST}:/workspace/lanes_nifty.bundle"], check=True)
+            run([*SSH, f"GIT_LFS_SKIP_SMUDGE=1 git -C {MIRROR} fetch -q -f /workspace/lanes_nifty.bundle +{ref}:refs/box-run/nifty && rm /workspace/lanes_nifty.bundle"], check=True)
+        finally:
+            bundle.unlink(missing_ok=True)
+            git("update-ref", "-d", ref, repo=repo)
+    run([*SSH, f"git -C {MIRROR} update-ref refs/heads/claude/nifty-mendeleev {nifty}"], check=True)
+
+
 def box_status():
     """print /workspace/STATUS.json (written every 60 s by the filler loop); exit 0 when it is readable"""
     r = run([*SSH, "cat /workspace/STATUS.json"], capture_output=True, text=True)
@@ -447,6 +477,8 @@ def main():
         run([*SSH, f"mkdir -p /workspace/lanes && git -C {MIRROR} update-ref -d refs/lanes/{branch}; GIT_LFS_SKIP_SMUDGE=1 git -C {MIRROR} fetch -q -f /workspace/lanes_{branch}.bundle "
                    f"+{ref}:refs/lanes/{branch} && rm /workspace/lanes_{branch}.bundle"], check=True)
     t["bundle+push"] = time.time() - t0
+    if "lint" in a.rows:
+        sync_nifty(repo)
     # gpu choice
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
     cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
