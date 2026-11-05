@@ -5382,9 +5382,9 @@ flags:
   - name: MC2_VK_GPU_TIMESTAMPS
     kind: Bool
     default: false
-    rule: Presence
+    rule: Std
     owner: vk
-    doc: ""
+    doc: "GPU segment timestamps (verification/perf only): =1 arms, =0 or unset is off."
     smoke_passthrough: true
     verified: true
   - name: MC2_VK_HUD_DRAW_DUMP

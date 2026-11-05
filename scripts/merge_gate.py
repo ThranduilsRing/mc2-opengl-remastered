@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from contextlib import contextmanager, nullcontext, redirect_stdout, redirect_stderr
 import os
 from pathlib import Path
 import subprocess
@@ -91,6 +91,17 @@ def balance_movable(movable, load_a, load_b, seconds=None):
     return [s for s in movable if s in to_a], [s for s in movable if s in to_b]
 
 
+# A red row whose child output names one of these failed on the host, not in the product: no suspect range.
+INFRA_RE = re.compile(r"WinError (?:32|5|112)\b|No space left on device|not enough space on the disk"
+                      r"|REFUSED: a merge gate is running|host[- ]lease[^\n]*(?:timed out|timeout)", re.I)
+
+
+def infra_status(returncode, output):
+    """'INFRA (rc): <marker>' for a red child whose output carries a host/infra marker, else None."""
+    match = INFRA_RE.search(output or "")
+    return f"INFRA ({returncode}): {match.group(0)}" if returncode and match else None
+
+
 def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
 
@@ -134,7 +145,7 @@ def clean_failed_outputs(state, proof):
 
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
-    from exe_fingerprint import extract, sha_agrees
+    from exe_fingerprint import extract, build_current
     from mod_smoke import load_known_failures
     from deploy_payload import verify_published_identity, staleness_report
     import saveload_roundtrip as saves
@@ -144,8 +155,9 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
     rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j" + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
-        if not fp.get('present') or fp.get('dirty') or not sha_agrees(fp.get('sha'), head):
-            errors.append(f"{name} fingerprint != clean HEAD {head}; fix: {rebuild}")
+        # A clean ancestor build stays current when no build input changed since (data/test-only commits).
+        if not fp.get('present') or not build_current(fp.get('sha'), head, ROOT, bool(fp.get('dirty'))):
+            errors.append(f"{name} fingerprint != clean HEAD {head} (or a build-input-identical ancestor); fix: {rebuild}")
     bookmarks = set()
     for name, command, env in steps:
         if name.startswith('capture-') and '--bookmarks' in command and not env.get('MC2_GATE_SKIP_REASON'):
@@ -346,19 +358,22 @@ class GateState:
         row = self.data["stages"].get(name, {})
         sha = self.exe_sha()
         offline = name in ('contracts', 'harnesses', 'pytest')
-        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head)))
+        if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
                 and (offline or sha is not None and row.get('exe_sha') == sha)
                 and stage_passed(row.get('status', ''))):
             return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
         evidence = row.get('evidence', {})
-        if name == 'mods':
-            if not row.get('signature') or not evidence:
+        if not offline and name != 'deploy':
+            # Every runtime row is reused only on the evidence it recorded: a missing or edited file refuses it.
+            if (name == 'mods' and not row.get('signature')) or not evidence:
+                print(f'[merge_gate] {name}: no recorded evidence hash; rerunning', flush=True)
                 return False
             try:
                 signature = self.signature(*specs)
                 if not all(Path(p).is_file() and hashlib.sha256(Path(p).read_bytes()).hexdigest() == sha
                            for p, sha in evidence.items()):
+                    print(f'[merge_gate] {name}: recorded evidence missing or changed; rerunning', flush=True)
                     return False
             except (OSError, ValueError, KeyError):
                 return False
@@ -399,6 +414,12 @@ class GateState:
                     evidence = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                                 for root in roots for p in root.rglob('*')
                                 if p.is_file() and p.suffix in ('.json', '.log')}
+            elif name not in ('contracts', 'harnesses', 'pytest', 'deploy', 'mods') and stage_passed(status) \
+                    and not status.startswith('REUSED'):
+                try:
+                    evidence = row_evidence(command, overrides)
+                except OSError:
+                    evidence = {}
             artefact = overrides.get("MC2_SMOKE_ARTIFACT_ROOT", self.data["artefact_dir"])
             for option in ("--out", "--out-root"):
                 if option in command:
@@ -503,9 +524,55 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
 
 # Unknown inputs deliberately retain every stage. Only proven independent domains
 # can waive game proofs; generators/build configuration retain full coverage.
-def head_delta_nonruntime(old, new):
+EVIDENCE_SUFFIXES = ('.json', '.log', '.png', '.md', '.csv', '.txt')
+
+
+def evidence_roots(command, overrides):
+    """Where a runtime row writes or reads its proof: --out/--out-root, both --compare-only inputs, MC2_SMOKE_ARTIFACT_ROOT."""
+    roots = []
+    for option, count in (('--out', 1), ('--out-root', 1), ('--compare-only', 2)):
+        if option in command:
+            i = command.index(option)
+            roots += [Path(arg) for arg in command[i + 1:i + 1 + count]]
+    if overrides.get('MC2_SMOKE_ARTIFACT_ROOT'):
+        roots.append(Path(overrides['MC2_SMOKE_ARTIFACT_ROOT']))
+    return [root if root.is_absolute() else ROOT / root for root in roots]
+
+
+def row_evidence(command, overrides):
+    """sha256 of every evidence file under the row's roots (empty = the row left nothing to reuse)."""
+    files = set()
+    for root in evidence_roots(command, overrides):
+        if root.is_file():
+            files.add(root)
+        elif root.is_dir():
+            files.update(p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in EVIDENCE_SUFFIXES)
+    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(files)}
+
+
+# Proof inputs read by one row family only (stage-name prefixes). A commit that touches just these (e.g. a re-frozen
+# quiet baseline) reruns those rows and keeps every other row's evidence for the same exe.
+ROW_PROOF_INPUTS = {
+    "tests/contract/default_build_quiet_baseline.json": ("quiet",),
+    "scripts/check-default-build-quiet.py": ("quiet",),
+    "tools/save_noise_mask.json": ("saveload-",),
+    "tools/saveload_roundtrip.py": ("saveload-",),
+    "tests/saveload/": ("saveload-",),
+    "tests/smoke/sim_determinism/": ("determinism-",),
+    "tools/mod_smoke.py": ("mods",),
+}
+
+
+def row_scoped_input(path):
+    """The row prefixes a row-scoped proof input belongs to, or None for an ordinary path."""
+    p = path.replace("\\", "/").lower()
+    return next((rows for prefix, rows in ROW_PROOF_INPUTS.items() if p.startswith(prefix)), None)
+
+
+def head_delta_nonruntime(old, new, row=None):
     """True when old..new touches only docs/tooling paths (change_domains; unknown paths count as engine). A runtime stage
-    that passed at `old` with the same exe sha and the same signature inputs is then still valid at `new`."""
+    that passed at `old` with the same exe sha and the same signature inputs is then still valid at `new`. With row (a
+    stage name), a row-scoped proof input (ROW_PROOF_INPUTS) of another row is ignored and one of this row's is a change."""
     if not old or not new:
         return False
     try:
@@ -513,6 +580,12 @@ def head_delta_nonruntime(old, new):
                              check=True, **console_child.child_kwargs(redirected=True)).stdout.split()
     except (OSError, subprocess.CalledProcessError):
         return False
+    if row is not None:
+        scoped = {p: row_scoped_input(p) for p in out}
+        if any(rows and row.startswith(rows) for rows in scoped.values()):
+            return False
+        rest = [p for p, rows in scoped.items() if not rows]
+        return bool(out) and change_domains(rest) <= {'docs', 'tooling'}
     return bool(out) and change_domains(out) <= {'docs', 'tooling'}
 
 
@@ -708,6 +781,22 @@ def install_stage_watchdog():
                 pass
 
 
+INSTALL_LOCKS = {}
+INSTALL_LOCKS_MUTEX = threading.Lock()
+
+
+def install_lock(command):
+    """One lock per game install a row launches from (--install, --base-install or --exe's folder). run_smoke refuses
+    a second mc2.exe on the same exe path, so local game rows on one install take turns; a clone has its own lock."""
+    for option in ("--install", "--base-install", "--exe"):
+        if option in command and command.index(option) + 1 < len(command):
+            path = Path(command[command.index(option) + 1])
+            key = os.path.normcase(str((path.parent if option == "--exe" else path).resolve()))
+            with INSTALL_LOCKS_MUTEX:
+                return INSTALL_LOCKS.setdefault(key, threading.RLock())
+    return nullcontext()
+
+
 def farm_stage(command, overrides, runner=None, local_env=None):
     """Submit one unchanged determinism check, wait, and fetch its evidence. local_env is the stage env execute()
     built (MC2_IN_GATE / lease batch included); a local fallback runs with it so GATE QUIET treats it as the gate's own."""
@@ -733,7 +822,8 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     def local(reason):
         print(f'[merge_gate] farm {reason}; repeating locally', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
-        return runner(command, cwd=ROOT, env=local_env)
+        with install_lock(command):  # never beside the mods battery or a stock row on the same exe
+            return runner(command, cwd=ROOT, env=local_env)
 
     try:
         alive = runner(host + ["alive", "--max-age", str(FARM_HEARTBEAT_MAX_AGE_S)], cwd=ROOT, env=os.environ.copy())
@@ -755,7 +845,8 @@ def farm_stage(command, overrides, runner=None, local_env=None):
     if 'queue_timeout:' in waited.stdout:
         print(f'[merge_gate] farm: no worker claimed the job in {FARM_CLAIM_SECONDS}s; repeating locally', flush=True)
         print(f'[merge_gate] determinism row host={os.environ.get("COMPUTERNAME", "local-pc")} (local PC, farm fallback)', flush=True)
-        return runner(command, cwd=ROOT, env=local_env)
+        with install_lock(command):  # never beside the mods battery or a stock row on the same exe
+            return runner(command, cwd=ROOT, env=local_env)
     if "job remains owned" in waited.stdout:
         return waited  # never delete the payload of a still-running farm job
     try:
@@ -834,14 +925,46 @@ def drop_candidate(candidate=None, root=None):
     print(f"[merge_gate] candidate dropped: {candidate}", flush=True)
 
 
+def candidate_identity(install, head, root=None):
+    """What the candidate actually runs: its mc2.exe must be the gate's build (same bytes as build64-ninja/mc2.exe) and that
+    build must be clean and current for head. Raises RuntimeError otherwise (e.g. the deploy failed and the copy still holds
+    the published exe). Returns the exe sha256 and the commit the exe was built from, which may be an ancestor of head."""
+    import exe_fingerprint
+    root = Path(root or ROOT)
+    exe, build = Path(install) / "mc2.exe", root / "build64-ninja" / "mc2.exe"
+    try:
+        digest, built = sha256_path(exe), sha256_path(build)
+    except OSError as exc:
+        raise RuntimeError(f"keep-candidate: cannot hash the candidate exe: {exc}") from exc
+    if digest != built:
+        raise RuntimeError(f"keep-candidate: {exe} is not the gate build {build} (deploy did not land); previous candidate kept")
+    fp = exe_fingerprint.extract(exe)
+    if not fp.get("present") or not exe_fingerprint.build_current(fp.get("sha"), head, root, bool(fp.get("dirty"))):
+        raise RuntimeError(f"keep-candidate: {exe} fingerprint sha={fp.get('sha', 'absent')} dirty={fp.get('dirty')} "
+                           f"is not a clean build of {head[:12]}; previous candidate kept")
+    return dict(exe_sha256=digest, exe_commit=fp["sha"])
+
+
+def sha256_path(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def keep_stock_copy(install, head, candidate=None, root=None):
-    """Stage campaign mods on the kept stock copy, move it to the fixed candidate path and record it."""
+    """Verify the deployed exe, stage campaign mods on the kept stock copy, move it to the fixed candidate path and record
+    it. The previous candidate and its record survive any verification or staging failure."""
     candidate = Path(candidate or CANDIDATE)
+    identity = candidate_identity(install, head, root)
     stage_candidate_mods(install)
     if candidate.exists():
         shutil.rmtree(candidate)
     os.replace(install, candidate)
-    (Path(root or ROOT) / CANDIDATE_MARK).write_text(json.dumps(dict(path=str(candidate), head=head, created=time.time())))
+    # head = the commit the gate proved; exe_commit = what the exe embeds (an ancestor after data-only commits).
+    (Path(root or ROOT) / CANDIDATE_MARK).write_text(json.dumps(dict(path=str(candidate), head=head, created=time.time(),
+                                                                     **identity)))
     return candidate
 
 
@@ -997,7 +1120,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                     dict(os.environ, **harness[2]))
             if harness_future and command == harness[1]:
                 return harness_future.result()
-            return run_child(command, cwd=cwd, env=env)
+            with install_lock(command):
+                return run_child(command, cwd=cwd, env=env)
         # The wrapper deliberately leaves leasing to each harness, rather than
         # execute's legacy exclusive reservation for a serial chain.
         stock = []
@@ -1250,14 +1374,17 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     verify_published_identity(target, ROOT, head)
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
-                status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else f"FAIL ({result.returncode})"
+                status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else (
+                    infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
                 if result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     if moved:
                         status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
-                status = "FAIL: " + str(exc).replace("|", "/").replace("\n", " ")
+                # The child could not be run or reaped (OS/subprocess error): the host failed, not the product.
+                kind = "INFRA: " if isinstance(exc, (OSError, subprocess.SubprocessError)) else "FAIL: "
+                status = kind + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
             failed |= not stage_passed(status)
         results.append((name, status, elapsed))
@@ -1441,8 +1568,11 @@ def main(argv=None):
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
-    for name, _, env in steps:
-        if name == "mods" or name.startswith(("determinism-", "saveload-")):
+    for name, command, env in steps:
+        # Rows with no output folder of their own write smoke artefacts here, so --resume has evidence to hash.
+        if (name == "mods" or name.startswith(("determinism-", "saveload-"))
+                or (name not in ("contracts", "harnesses", "pytest", "deploy", "publish-v0.4")
+                    and not any(o in command for o in ("--out", "--out-root", "--compare-only")))):
             env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
     for name, command, _ in steps:
         if name == 'mods' and window_number:
@@ -1481,9 +1611,11 @@ def main(argv=None):
                     scheduling["keep_candidate"] = True
                 result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started
-                # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows). The clock is information only.
+                # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows), 3 only infra reds. The clock is information only.
                 skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
-                verdict = "FAIL" if result else ("PARTIAL" if skipped else "PASS")
+                # INFRA: every red row failed on the host (INFRA status), so no product regression is claimed.
+                infra_only = bool(result and FAILED_STAGES and all(s.startswith("INFRA") for _, s in FAILED_STAGES))
+                verdict = "INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")
                 print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
                 print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (window box 120 min, cap 180; info only) verdict={verdict} REUSED={reused or 'none'}"
@@ -1500,7 +1632,7 @@ def main(argv=None):
                     (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time(),
                                                                         candidate=str(CANDIDATE) if args.keep_candidate and not CANDIDATE_ERRORS else None)))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
-                return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2}[verdict]
+                return result if args.dry_run else {"PASS": 0, "FAIL": 1, "PARTIAL": 2, "INFRA": 3}[verdict]
     finally:
         journal.__exit__(None, None, None)
         if not (args.dry_run or args.preflight):

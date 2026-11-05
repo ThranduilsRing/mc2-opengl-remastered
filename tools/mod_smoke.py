@@ -243,6 +243,27 @@ def remove_readonly(function, path, exc):
     function(path)
 
 
+def remove_disposable(path: Path, attempts: int = 5, delay: float = 2.0) -> bool:
+    """Delete a staged install after the battery's games ended. A file still held open (WinError 32) or denied (5),
+    e.g. a hardlinked payload a lingering child or the scanner holds, is retried, then left with a warning: cleanup is
+    housekeeping and never turns a passing mod row red. Returns True when the folder is gone."""
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path, onexc=remove_readonly)
+            return True
+        except FileNotFoundError:
+            return True
+        except OSError as exc:
+            if not (isinstance(exc, PermissionError) or getattr(exc, 'winerror', None) in (5, 32)):
+                raise
+            if attempt + 1 == attempts:
+                print(f'[mod_smoke] WARN: could not delete {path} after {attempts} tries ({exc}); left for the next run',
+                      flush=True)
+                return False
+            time.sleep(delay)
+    return False
+
+
 def place_file(source: Path, target: Path, link_ok: bool = True, incremental=False) -> str:
     """Put source at target, replacing whatever is there. Hardlink when the two
     share a volume; immutable assets may use a file symlink across volumes. The target is unlinked first so an existing
@@ -1129,11 +1150,10 @@ def battery(args) -> int:
             rows = [row for future in futures for row in future.result()]
     finally:
         if not args.keep_stages:
-            for disposable in [cache, *(run_root / entry[1] for entry in plan)]:
-                if disposable.exists():
-                    shutil.rmtree(disposable, onexc=remove_readonly)
+            # Every game has ended here (all futures joined), so a held file is retried, then warned about, not fatal.
+            left = [d for d in [cache, *(run_root / entry[1] for entry in plan)] if d.exists() and not remove_disposable(d)]
             for result in rows:
-                result['staged'] = 'deleted (logs retained)'
+                result['staged'] = 'deleted (logs retained)' if not left else f'cleanup left {len(left)} folder(s) (logs retained)'
         print(f'[mod_smoke] total={time.monotonic() - started:.1f}s workers={workers}', flush=True)
     run_root.mkdir(exist_ok=True)
     report = run_root / 'battery.json'

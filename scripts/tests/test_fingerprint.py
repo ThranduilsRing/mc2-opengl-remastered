@@ -340,3 +340,30 @@ def test_generated_identity_commit_dirty_and_noop(tmp_path):
     assert "const int MC2_BUILD_GIT_DIRTY = 1;" in dirty
     assert "#if 1" in dirty
     assert "|1|" in dirty
+
+
+def test_build_current_keys_on_last_build_input_commit(tmp_path):
+    """Item 1 (W116): a data/test-only commit keeps the exe; a build-input commit makes it stale."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from exe_fingerprint import build_current
+    src = tmp_path / "repo"
+    (src / "code").mkdir(parents=True)
+    (src / "tests").mkdir()
+    _identity_run("git", "init", str(src))
+    commit = ["git", "-c", "user.name=Fingerprint Test", "-c", "user.email=fingerprint@example.invalid", "commit", "-qm"]
+
+    def land(rel, text):
+        (src / rel).write_text(text)
+        _identity_run("git", "add", rel, cwd=src)
+        _identity_run(*commit, rel, cwd=src)
+        return _identity_run("git", "rev-parse", "HEAD", cwd=src)
+
+    built = land("code/a.cpp", "// engine\n")
+    data_only = land("tests/baseline.json", "{}\n")
+    assert build_current(built[:12], built, src) is True
+    assert build_current(built[:12], data_only, src) is True          # no relink for a test-baseline commit
+    assert build_current(built[:12], data_only, src, dirty=True) is False
+    engine = land("code/a.cpp", "// engine 2\n")
+    assert build_current(built[:12], engine, src) is False            # build input changed since the exe
+    assert build_current(engine[:12], built, src) is False            # a descendant is not the build of its parent
+    assert build_current(None, engine, src) is False

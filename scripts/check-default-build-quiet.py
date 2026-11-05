@@ -167,7 +167,8 @@ def fresh_smoke_logs(exe):
     The only game-launch path in this tool; reached only through --fresh-smoke with an explicit exe."""
     if not exe:
         raise RuntimeError("--fresh-smoke requires an explicit --exe")
-    proof = Path("E:/mc2-archive-2026-10/proofs/default-build-quiet")
+    # A gate row names its artefact root (its --resume evidence); standalone runs keep the archive folder.
+    proof = Path(os.environ.get("MC2_SMOKE_ARTIFACT_ROOT") or "E:/mc2-archive-2026-10/proofs/default-build-quiet")
     proof.mkdir(parents=True, exist_ok=True)
     run_root = Path(tempfile.mkdtemp(prefix="run-", dir=proof))
     env = {k: v for k, v in os.environ.items() if not k.startswith("MC2_")}

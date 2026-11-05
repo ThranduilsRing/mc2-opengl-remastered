@@ -126,7 +126,7 @@ G("MC2_VK_FEED_DUMP", String, "", "vk", "", "", verified),
 // history: docs/gate-history.md#MC2_VK_FORCE_FAIL
 L(Lead0, "MC2_VK_FORCE_FAIL", Bool, false, "vk", "", "VK-P13-SELECTOR-1: presence-gated =1, default OFF.", passthrough | registry(Trace, "MC2_FEATURE_VK_FORCE_FAIL", -1, false) | verified),
 P("MC2_VK_FRAMES_IN_FLIGHT", Int, 3, "vk", "", "Frames in flight of the Vulkan present path: 3 (default); =2 retains two frames, =1 is the kill switch back to one frame.", passthrough | verified),
-L(Presence, "MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "", passthrough | verified),
+G("MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "GPU segment timestamps (verification/perf only): =1 arms, =0 or unset is off.", passthrough | verified),
 L(Presence, "MC2_VK_HUD_DRAW_DUMP", Bool, false, "gameos", "", "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact.", verified),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", "", verified | passthrough),
 L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", "", verified | passthrough),

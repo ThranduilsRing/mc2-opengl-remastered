@@ -276,7 +276,8 @@ def test_runtime_red_records_stages_range_and_next_head_gets_next_window(repo, p
 
 
 @pytest.mark.parametrize("rc,out,kind", [(1, "[merge_gate] REFUSED: dirty", "infra"), (2, "usage: merge_gate", "infra"),
-                                         (2, "PARTIAL: 3 stages", "partial"), (1, "no stage line", "infra")])
+                                         (2, "PARTIAL: 3 stages", "partial"), (1, "no stage line", "infra"),
+                                         (3, "verdict=INFRA\n[merge_gate] failed stages: mods (INFRA (1): WinError 32)", "infra")])
 def test_non_runtime_reds_never_mark_a_suspect_range(repo, proofs, rc, out, kind):
     root, q = repo
     assert lq.gate(q, root, runner=_gate_runner(rc, out), proofs=proofs) == lq.EX_BUSY

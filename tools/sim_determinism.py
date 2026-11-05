@@ -411,9 +411,34 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
     return logs
 
 
+#: Verdict buckets a headless run fails by design (no frames, GPU or presence lines). Anything else stays red.
+HEADLESS_RENDER_BUCKETS = ("heartbeat_freeze_play", "heartbeat_freeze_load", "perf_counters_missing", "perf_counter",
+                           "video_floor_missing", "vegetation_floor_missing", "vegetation_visible_missing",
+                           "cull_parity_missing", "light_contract_unchecked")
+_SMOKE_FAIL_ROW = re.compile(r"^\|\s*(\S+)\s*\|\s*FAIL\s*\|\s*([^|]*)\|", re.M)
+
+
 def headless_exit_ok(returncode: int, text: str) -> bool:
-    """A headless run is clean only when it reached its tick budget without a crash (mirrors saveload_roundtrip)."""
-    return returncode in (0, 1) and "[SMOKE v1] event=tick_budget" in text and "Crash Report" not in text
+    """A headless run is clean only when it reached its tick budget without a crash (mirrors saveload_roundtrip).
+
+    rc=1 is accepted only as the runner's render-gate verdict: the engine summary passed, no hard failure was printed
+    (fingerprint, resolution, floors), the run is valid, and every FAIL row lists only HEADLESS_RENDER_BUCKETS."""
+    if "[SMOKE v1] event=tick_budget" not in text or "Crash Report" in text:
+        return False
+    if returncode == 0:
+        return True
+    if returncode != 1 or "[SMOKE v1] event=summary result=pass" not in text:
+        return False
+    if "HARD FAIL" in text or "[DEPLOY_FINGERPRINT] MISMATCH" in text or "DEPLOY_FINGERPRINT:** FAIL" in text or "RUN INVALID" in text:
+        return False
+    rows = _SMOKE_FAIL_ROW.findall(text)
+    if not rows:
+        return False  # rc=1 without a failed mission row: some other runner gate failed
+    for _stem, buckets in rows:
+        names = [b.strip() for b in buckets.split(",") if b.strip()]
+        if not names or any(not b.startswith(HEADLESS_RENDER_BUCKETS) for b in names):
+            return False
+    return True
 
 
 #: Processes whose presence beside a pair explains a timing-dependent result (builds and other game runs).

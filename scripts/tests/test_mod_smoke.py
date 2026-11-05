@@ -689,3 +689,43 @@ def test_known_rows_apply_on_a_mission_override_unless_mission_only():
     assert ms.content_verdict(counts, "mod", "default_m", 92, [dict(row, mission_only=True)]) == (counts, {})
     assert ms.content_verdict(counts, "other_mod", "other", 92, [row]) == ({}, counts)         # still keyed to the mod
 
+
+
+@pytest.mark.parametrize("winerror", [32, 5])
+def test_stage_cleanup_retries_held_files_then_warns_without_failing(tmp_path, monkeypatch, capsys, winerror):
+    """W116 item 6: a hardlinked payload still held open after the games end is retried, then left with a warning."""
+    staged = tmp_path / "staged"
+    staged.mkdir()
+    calls = []
+    def held(path, onexc=None):
+        calls.append(path)
+        error = OSError(13, "in use")
+        error.winerror = winerror
+        raise error
+    monkeypatch.setattr(ms.shutil, "rmtree", held)
+    monkeypatch.setattr(ms.time, "sleep", lambda s: None)
+    assert ms.remove_disposable(staged, attempts=3) is False
+    assert len(calls) == 3 and "WARN: could not delete" in capsys.readouterr().out
+
+
+def test_stage_cleanup_succeeds_after_a_transient_lock(tmp_path, monkeypatch):
+    staged = tmp_path / "staged"
+    (staged / "sub").mkdir(parents=True)
+    (staged / "sub" / "mc2.exe").write_bytes(b"x")
+    real, calls = ms.shutil.rmtree, []
+    def flaky(path, onexc=None):
+        calls.append(path)
+        if len(calls) == 1:
+            raise PermissionError(13, "WinError 32")
+        return real(path, onexc=onexc)
+    monkeypatch.setattr(ms.shutil, "rmtree", flaky)
+    monkeypatch.setattr(ms.time, "sleep", lambda s: None)
+    assert ms.remove_disposable(staged) is True and not staged.exists() and len(calls) == 2
+
+
+def test_stage_cleanup_keeps_other_errors_loud(tmp_path, monkeypatch):
+    def broken(path, onexc=None):
+        raise OSError(22, "invalid")
+    monkeypatch.setattr(ms.shutil, "rmtree", broken)
+    with pytest.raises(OSError):
+        ms.remove_disposable(tmp_path)

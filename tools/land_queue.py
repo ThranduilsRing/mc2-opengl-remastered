@@ -268,6 +268,8 @@ def classify_gate(rc, out):
     stages = [x.split(" (")[0].strip() for x in m.group(1).split(", ")] if m else []
     if re.search(r"^\[merge_gate\] (?:REFUSED:|preflight FAIL)", out, re.M) or (rc == 2 and re.search(r"^usage:", out, re.M)):
         return "infra", stages
+    if rc == 3 or re.search(r"verdict=INFRA\b", out):   # every red row failed on the host (merge_gate INFRA status)
+        return "infra", stages
     if rc == 2:   # merge_gate's verdict rc for a partial gate
         return "partial", stages
     return ("runtime", stages) if stages else ("infra", stages)
