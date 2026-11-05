@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 255,
+    "glsl_blocks_with_binding": 256,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -827,7 +827,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 9,
+        "line": 10,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -879,7 +879,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 13,
+        "line": 14,
         "role": "sceneDepth",
         "std": null,
         "type": "sampler2D",
@@ -937,7 +937,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 14,
+        "line": 15,
         "role": "reflectionOut",
         "std": null,
         "type": "image2D",
@@ -991,6 +991,16 @@
         "branch": {
           "3": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_reflection.comp",
+        "line": 17,
+        "role": "WaterTiles",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/water_reflection.comp",
+        "branch": {}
       }
     ],
     "set0:binding13": [
@@ -2385,7 +2395,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 12,
+        "line": 13,
         "role": "sceneColor",
         "std": null,
         "type": "sampler2D",
