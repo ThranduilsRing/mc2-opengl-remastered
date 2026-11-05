@@ -62,7 +62,8 @@ def main():
     for line in r.stdout.splitlines():
         if "[CRASH]" in line:
             print(line[:240])
-    print("install:", sorted(os.listdir(inst))[:40])
+    print("crashpad_handler in install:", os.path.exists(os.path.join(inst, "crashpad_handler")),
+          "in build:", glob.glob("build64-ninja/**/crashpad_handler", recursive=True))
     for p in glob.glob(os.path.join(inst, "crashes", "**", "*"), recursive=True):
         print("  crashes:", p, os.path.getsize(p) if os.path.isfile(p) else "dir")
     arts = sorted(glob.glob("tests/smoke/artifacts/*"), key=os.path.getmtime)
