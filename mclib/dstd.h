@@ -27,6 +27,7 @@ using byte = unsigned char;
 #define FALSE	0
 #endif
 
+inline constexpr int MAX_TEAMS = 8;  // shared team-count limit (was a macro in dteam.h and multplyr.h, constexpr in move_internal.h)
 inline constexpr int NO_ERR = 0;  // shared success code; every legacy header that used to define it includes this one
 inline constexpr float RADS_TO_DEGREES = 57.2957795132f;		// Used to convert results in Rad to Deg
 inline constexpr float DEGREES_TO_RADS = 0.0174532925199f; 	// Used to convert results in Deg to Rad

@@ -41,7 +41,6 @@ using Relation = enum {
 	RELATION_ENEMY,
 	NUM_RELATIONS
 };
-inline constexpr int MAX_TEAMS = 8;
 #endif
 
 
