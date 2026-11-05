@@ -68,6 +68,7 @@ layout(location = 7) flat in int  vMechSunFound;
 layout(location = 8) in vec3 vTangentGL;
 layout(location = 9) flat in uint vImportedMech;
 layout(location = 10) flat in uint vLegacyVehicle;
+layout(location = 11) flat in float vTangentW;
 
 #include "include/mech_material_vk.glsl"
 

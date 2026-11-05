@@ -6,26 +6,26 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "9d83ed06a95142d55fe17add355832efdf12ad81e992ec8523eade6b203f1097",
-  "spirv_sha256": "9f31d810c79d98875662e5be1d95cb93840b36101c2662a507350ef85ae92917",
+  "source_sha256": "3c1901603c2a2e697559c09c108b5a42cf16b5962cd6e50d35246a729f931d04",
+  "spirv_sha256": "a559e4d1f81cecae477d47ecd6039b270267e7b0c1dcdab75cf2d20ff7a65370",
   "bindings": {
     "ubos": [
       {
-        "type": "_770",
+        "type": "_771",
         "name": "TerrainFrameUBO",
         "block_size": 864,
         "set": 1,
         "binding": 0
       },
       {
-        "type": "_1112",
+        "type": "_1115",
         "name": "MechFrameUBO",
         "block_size": 224,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1441",
+        "type": "_1447",
         "name": "MoverShadowFrame",
         "block_size": 8336,
         "set": 0,
@@ -34,7 +34,7 @@
     ],
     "ssbos": [
       {
-        "type": "_624",
+        "type": "_625",
         "name": "TerrainLightPoolVK",
         "readonly": true,
         "block_size": 0,
@@ -42,7 +42,7 @@
         "binding": 11
       },
       {
-        "type": "_826",
+        "type": "_827",
         "name": "TerrainLightGridHeaderVK",
         "readonly": true,
         "block_size": 0,
@@ -50,7 +50,7 @@
         "binding": 12
       },
       {
-        "type": "_865",
+        "type": "_866",
         "name": "TerrainLightGridIndicesVK",
         "readonly": true,
         "block_size": 0,
@@ -58,7 +58,7 @@
         "binding": 13
       },
       {
-        "type": "_1447",
+        "type": "_1453",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -120,7 +120,7 @@
     "images": []
   },
   "types": {
-    "_120": {
+    "_121": {
       "name": "SurfaceMaterial",
       "members": [
         {
@@ -157,7 +157,7 @@
         }
       ]
     },
-    "_622": {
+    "_623": {
       "name": "PoolLight",
       "members": [
         {
@@ -202,12 +202,12 @@
         }
       ]
     },
-    "_624": {
+    "_625": {
       "name": "TerrainLightPoolVK",
       "members": [
         {
           "name": "poolLights",
-          "type": "_622",
+          "type": "_623",
           "array": [
             0
           ],
@@ -219,7 +219,7 @@
         }
       ]
     },
-    "_770": {
+    "_771": {
       "name": "TerrainFrameUBO",
       "members": [
         {
@@ -810,7 +810,7 @@
         }
       ]
     },
-    "_826": {
+    "_827": {
       "name": "TerrainLightGridHeaderVK",
       "members": [
         {
@@ -827,7 +827,7 @@
         }
       ]
     },
-    "_865": {
+    "_866": {
       "name": "TerrainLightGridIndicesVK",
       "members": [
         {
@@ -844,7 +844,7 @@
         }
       ]
     },
-    "_1112": {
+    "_1115": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -920,7 +920,7 @@
         }
       ]
     },
-    "_1170": {
+    "_1177": {
       "name": "MechRunPC",
       "members": [
         {
@@ -940,7 +940,7 @@
         }
       ]
     },
-    "_1441": {
+    "_1447": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -988,7 +988,7 @@
         }
       ]
     },
-    "_1447": {
+    "_1453": {
       "name": "TerrainCementBuf",
       "members": [
         {
@@ -1015,6 +1015,10 @@
       {
         "name": "vTangentGL",
         "location": 8
+      },
+      {
+        "name": "vTangentW",
+        "location": 11
       },
       {
         "name": "vNormalGL",

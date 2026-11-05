@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include <algorithm>
 #include "gos_mech_batcher_internal.h"
+#include "mech_tangent_sign.h"
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
 #include <chrono>
@@ -267,6 +268,7 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
                 // length tangent -> leave zero, which the frag treats as "no tangent" and
                 // falls back to v_normal. No NaN can escape (all divides are guarded).
                 int16_t faceTanOct[2] = { 0, 0 };
+                float faceTanW = 1.0f;   // handedness: -1 = mirrored UV island
                 if (importGpu) {
                     const TG_TypeVertex& p0 = typeShape->listOfTypeVertices[tri.Vertices[0]];
                     const TG_TypeVertex& p1 = typeShape->listOfTypeVertices[tri.Vertices[1]];
@@ -287,6 +289,16 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
                         float tx = r * (dv2 * e1x - dv1 * e2x);
                         float ty = r * (dv2 * e1y - dv1 * e2y);
                         float tz = r * (dv2 * e1z - dv1 * e2z);
+                        {
+                            const float tv[3] = { tx, ty, tz };
+                            const float bv[3] = { r * (du1 * e2x - du2 * e1x),
+                                                  r * (du1 * e2y - du2 * e1y),
+                                                  r * (du1 * e2z - du2 * e1z) };
+                            const TG_TypeVertex* pv[3] = { &p0, &p1, &p2 };
+                            float nv[3] = { 0.0f, 0.0f, 0.0f };
+                            for (const TG_TypeVertex* q : pv) { nv[0] += q->normal.x; nv[1] += q->normal.y; nv[2] += q->normal.z; }
+                            faceTanW = mechTangentSign(tv, bv, nv);
+                        }
                         const float tl = std::sqrt(tx*tx + ty*ty + tz*tz);
                         if (tl > 1e-8f) {
                             tx /= tl; ty /= tl; tz /= tl;
@@ -330,7 +342,9 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
                     vert.boneIndices[0] = boneSel;
                     vert.boneIndices[1] = 0;
                     vert.boneIndices[2] = 0;
-                    vert.boneIndices[3] = 0;
+                    // boneIndices[3] carries the tangent handedness (1 = mirrored, w=-1). Its weight
+                    // is 0, so no skinning path reads it as a bone; mech_skin.comp preserves it.
+                    vert.boneIndices[3] = (faceTanW < 0.0f) ? 1 : 0;
                     // boneWeights: .x = 255 (= 1.0 normalized), .yzw = 0
                     vert.boneWeights[0] = 255;
                     vert.boneWeights[1] = 0;

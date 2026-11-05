@@ -294,6 +294,7 @@
   "tools/texcook/cook_selftest.sh": "Manual proof for the offline texture cook: builds bc7enc_rdo and cooks two textures (W=<dir> bash tools/texcook/cook_selftest.sh).",
   "tools/rga_census.py": "Operator-run RGA shader census (py -3 tools/rga_census.py --spv-dir ... --csv out.csv); documented in its own usage header, run by hand on a machine with rga.exe.",
   "tools/mc2texcook/repack_ktx2.py": "Operator-run KTX2 repack tool (py -3 tools/mc2texcook/repack_ktx2.py <dir> [--dry-run]); run by hand over cooked texture dirs, not part of any automated pipeline.",
+  "tools/glb_uv_mirror_stats.py": "Operator-run diagnostic (py -3 tools/glb_uv_mirror_stats.py <glb>) reporting UV mirroring stats for mech GLBs; run by hand when diagnosing tangent sign.",
   "tools/box/deploy.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/env.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/filler/repin.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
