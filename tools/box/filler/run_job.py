@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Box idle filler: one perf job on GPU <gpu> (caller holds /workspace/locks/gpu<gpu>). usage: run_job.py <gpu>
 Picks the pose with the fewest runs for the current nifty sha, runs the game 20 s (GPU timestamps off), writes
-/workspace/filler/results/<sha>/<pose>-<gpu>-<n>.json (frame/MAIN_BUSY/wait_sim/tick stats + the last [PERF_COUNTERS v1] line)."""
+/workspace/filler/results/<sha>/<pose>-<gpu>-<n>.json (frame/MAIN_BUSY/wait_sim/tick stats + the last [PERF_COUNTERS v1] line).
+A run whose engine log shows no RTX 3060 device (missing line, llvmpipe/lavapipe/CPU fallback, another GPU) is a failure, never a result.
+Exits 2 at once while a quiet-slot perf row runs (/workspace/locks/quiet names a live pid)."""
 import fcntl, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
@@ -49,10 +51,42 @@ def pick(sha, gpu):
     return out, pose, n
 
 
+def quiet_slot_live(path="/workspace/locks/quiet"):
+    """a quiet-slot perf row (/workspace/bin/quiet-slot) is running: its pid is alive, so no filler job starts"""
+    try:
+        tok = Path(path).read_text().split()
+    except OSError:
+        return False
+    return bool(tok) and tok[0].isdigit() and os.path.isdir(f"/proc/{tok[0]}")
+
+
+BAD_DEVICE = ("llvmpipe", "lavapipe", "softpipe", "swiftshader")
+
+
+def device_verdict(log_text, want="RTX 3060"):
+    """(device name or None, reason or None) from the engine log: the result is only valid on the real GPU, never a CPU fallback"""
+    name = None
+    for ln in log_text.splitlines():
+        if "[VK_ENGINE_CONTEXT]" in ln and "device_name=" in ln:
+            rest = ln.split("device_name=", 1)[1]
+            name = rest[1:].split('"', 1)[0] if rest.startswith('"') else rest.split()[0]
+            break
+    if name is None:
+        return None, "device=missing (no [VK_ENGINE_CONTEXT] device_name line)"
+    low = name.lower()
+    if any(b in low for b in BAD_DEVICE) or low.startswith("cpu") or " cpu" in low:
+        return name, f"device=cpu-fallback ({name})"
+    if want not in name:
+        return name, f"device=wrong ({name}, want {want})"
+    return name, None
+
+
 def main():
     gpu = int(sys.argv[1])
     sha = (F / "current_sha").read_text().strip()
     if gpu == 0:   # GPU 0 is present-bound (68-72 ms/frame): its perf numbers are not comparable, so perf poses run on GPUs 1-2 only
+        sys.exit(2)
+    if quiet_slot_live():   # a perf row asked for a quiet box (worker.sh checks this too; this covers a worker that started first)
         sys.exit(2)
     picked = pick(sha, gpu)
     if picked is None:   # every pose already failed twice at this sha: wait for the next sync
@@ -85,19 +119,21 @@ def main():
     cpu = [r for r in rows if r.get("type") == "cpu" and "wait_sealed_ms" in r]
     ticks = [r["ms"] for r in rows if r.get("type") == "tick"]
     cpu = cpu[len(cpu) // 4:]   # warmup quarter dropped (as the survey)
-    if rc != 0 or len(cpu) < 100:
+    elog = (d / "engine.log").read_text(errors="replace")
+    device, bad = device_verdict(elog)
+    if rc != 0 or len(cpu) < 100 or bad:
         fail = out / "failed"
         fail.mkdir(exist_ok=True)
         shutil.copy(d / "engine.log", fail / f"{pose}-{gpu}-{n}.log")
         run_marker.unlink(missing_ok=True)
-        print(f"[filler] FAIL {sha[:9]} {pose} gpu{gpu} rc={rc} cpu_rows={len(cpu)}", flush=True)
+        print(f"[filler] FAIL {sha[:9]} {pose} gpu{gpu} rc={rc} cpu_rows={len(cpu)}" + (f" {bad}" if bad else ""), flush=True)
         return 1
-    perf = [l for l in (d / "engine.log").read_text(errors="replace").splitlines() if "[PERF_COUNTERS v1]" in l]
+    perf = [l for l in elog.splitlines() if "[PERF_COUNTERS v1]" in l]
     ms = [r["ms"] for r in cpu]
     res = {
         "sha": sha, "sha_time": int(subprocess.run(["git", "-C", str(F / "src"), "log", "-1", "--format=%ct", sha], capture_output=True, text=True).stdout.strip() or 0),
         "port": (F / "current_port").read_text().strip() if (F / "current_port").exists() else "none",
-        "pose": pose, "mission": mission, "bookmark": bkn, "gpu": gpu, "gpu_model": "RTX 3060", "run": n, "res": "1920x1080", "gpu_timestamps": 0,
+        "pose": pose, "mission": mission, "bookmark": bkn, "gpu": gpu, "gpu_model": device, "run": n, "res": "1920x1080", "gpu_timestamps": 0,
         "duration_s": DURATION, "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), "wall_s": round(wall, 1), "cores": env.get("GR_CPUS", f"{8*gpu}-{8*gpu+7}"),
         "frames": len(cpu), "frame_ms": stats(ms),
         "main_busy_ms": stats([r["ms"] - r.get("wait_gpu_main_ms", 0.0) for r in cpu]),

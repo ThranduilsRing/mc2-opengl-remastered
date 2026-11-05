@@ -35,7 +35,9 @@ def main(argv=None):
         print(f"[filler_push] bundle failed: {(p.stderr or p.stdout).strip()[-300:]}")
         return 1
     try:
-        r = run([*SSH_STDIN, f"cat > {F}/incoming/nifty.bundle"], input=bundle.read_bytes(), capture_output=True)
+        # staged upload + rename: a sync.sh that is running (or a cut connection) never sees a half-written bundle
+        r = run([*SSH_STDIN, f"mkdir -p {F}/incoming && cat > {F}/incoming/nifty.bundle.tmp && mv -f {F}/incoming/nifty.bundle.tmp {F}/incoming/nifty.bundle"],
+                input=bundle.read_bytes(), capture_output=True)
     finally:
         bundle.unlink(missing_ok=True)
     if r.returncode:

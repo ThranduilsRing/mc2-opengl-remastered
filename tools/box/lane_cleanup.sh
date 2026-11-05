@@ -49,8 +49,8 @@ hard_busy() {   # hard_busy <key>: prints why the lane must not be removed (RUNN
   if printf '%s\n' "$ACTIVE" | sed 's/$/ /' | grep -qF -e "/lanes/$k/" -e ".box_lane_$k.sh" -e "/lanes/$k "; then echo QUEUED; return; fi
   if [ -e "$LOCKS/$k.want" ] || grep -lxF "$k" "$LOCKS"/*.want >/dev/null 2>&1; then echo WANT; return; fi
 }
-activity_epoch() {   # newest mtime in the lane dir (2 levels) and its lock file
-  { find "$LANES/$1" -maxdepth 2 -printf '%T@\n' 2>/dev/null; } | cut -d. -f1 | sort -n | tail -1
+activity_epoch() {   # last use (evict is LRU on this): newest mtime in the lane dir (2 levels), its .lane.lock and its .box_lane script (box_run rewrites it every run)
+  { find "$LANES/$1" -maxdepth 2 -printf '%T@\n' 2>/dev/null; stat -c %Y "$LANES/.box_lane_$1.sh" "$LANES/$1/.lane.lock" 2>/dev/null; } | cut -d. -f1 | sort -n | tail -1
 }
 log_removal() { [ $DRY = 1 ] || printf '%s removed %s reason=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "${REASON:-cleanup}" >> "$EVLOG"; }
 

@@ -2,5 +2,7 @@
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.gen.hglsl text eol=lf
 *.gen.h text eol=lf
+# The vast box runs these as-is (bash, python3, cron, supervisord): LF only.
+tools/box/** text eol=lf
 # Frozen editor goldens are byte references: never normalize their line endings.
 editor/tests/goldens/** -text

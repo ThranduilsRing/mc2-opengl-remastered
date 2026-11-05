@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write /workspace/STATUS.json (atomically): per GPU the lock holder, whether its pid is alive, its age and its row; plus load and free disk.
 
-Run every 60 s by repin.sh (the filler's loop). Read it with `py -3 tools/box_run.py --status`.
+Written every 30 s by /workspace/bin/box-supervisor (tools/box/box_supervisor.py). Read it with `py -3 tools/box_run.py --status`.
 Holder = /workspace/locks/gpu<N>.owner ("pid branch sha iso-time", written by box_run's remote half at lock time); row =
 gpu<N>.row (the row box_run is running). `locked` comes from /proc/locks (no flock is taken, so a lane is never disturbed).
 """
@@ -12,12 +12,17 @@ FILLER = os.environ.get("MC2_BOX_FILLER", "/workspace/filler")
 OUT = os.environ.get("MC2_BOX_STATUS", "/workspace/STATUS.json")
 
 
-def locked_inodes():
+def lock_holders():
+    """{inode: pid} of every lock in /proc/locks ("N: FLOCK ADVISORY WRITE <pid> MAJ:MIN:INODE 0 EOF"); no lock is taken"""
     try:
         with open("/proc/locks") as f:
-            return {int(p[5].rsplit(":", 1)[1]) for p in (ln.split() for ln in f) if len(p) > 5 and ":" in p[5]}
+            return {int(p[5].rsplit(":", 1)[1]): int(p[4]) for p in (ln.split() for ln in f) if len(p) > 5 and ":" in p[5] and p[4].isdigit()}
     except (OSError, ValueError, IndexError):
-        return set()
+        return {}
+
+
+def locked_inodes():
+    return set(lock_holders())
 
 
 def gpu_entry(n, now, inodes):
