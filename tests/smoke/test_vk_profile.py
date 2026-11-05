@@ -9,13 +9,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 OK_LINE = ('[VK_PROFILE v1] verdict=ok device="AMD Radeon RX 7900 XTX" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- '
            "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-           "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext,sampler_anisotropy:core enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,"
+           "dynamic_rendering:core,synchronization2:core,independent_blend:core,subgroup_compute:limit,memory_budget:ext,sampler_anisotropy:core enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,"
            "runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2,independentBlend,samplerAnisotropy "
            "extensions=VK_KHR_swapchain,VK_EXT_memory_budget")
 OLD_GPU = ('[VK_PROFILE v1] verdict=refused device="old gpu" api=1.1.0 instance_api=1.3.0 floor=1.2 '
-           "required_missing=api_1_2,timeline_semaphore,buffer_device_address,descriptor_indexing,dynamic_rendering,synchronization2,independent_blend wanted_missing=- "
+           "required_missing=api_1_2,timeline_semaphore,buffer_device_address,descriptor_indexing,dynamic_rendering,synchronization2,independent_blend,subgroup_compute wanted_missing=- "
            "items=api_1_2:-,swapchain:ext,limits:limit,timeline_semaphore:-,buffer_device_address:-,descriptor_indexing:-,dynamic_rendering:-,"
-           "synchronization2:-,independent_blend:-,memory_budget:ext enabled=- extensions=-")
+           "synchronization2:-,independent_blend:-,subgroup_compute:-,memory_budget:ext enabled=- extensions=-")
 EXT_ROUTE = OK_LINE.replace("api=1.4.0 instance_api=1.3.0", "api=1.2.0 instance_api=1.2.0").replace("dynamic_rendering:core,synchronization2:core",
                                                                                                     "dynamic_rendering:ext,synchronization2:ext")
 
@@ -37,13 +37,13 @@ def test_an_extension_route_on_a_1_2_device_is_read_as_ext():
 
 def test_a_refused_line_names_what_is_missing():
     (p,) = vk_profile.parse(OLD_GPU)
-    assert not p.accepted and p.required_missing[0] == "api_1_2" and len(p.required_missing) == 7
+    assert not p.accepted and p.required_missing[0] == "api_1_2" and len(p.required_missing) == 8
     assert p.wanted_missing == [] and p.enabled == [] and p.extensions == []
 
 
 def test_a_missing_facility_of_the_ruling_refuses_the_device():
     """Dynamic rendering, synchronization2, timeline semaphores, descriptor indexing and buffer device address are required (owner ruling 2026-10-13)."""
-    for facility in ("timeline_semaphore", "buffer_device_address", "descriptor_indexing", "dynamic_rendering", "synchronization2", "independent_blend"):
+    for facility in ("timeline_semaphore", "buffer_device_address", "descriptor_indexing", "dynamic_rendering", "synchronization2", "independent_blend", "subgroup_compute"):
         line = (OK_LINE.replace("verdict=ok", "verdict=refused").replace("required_missing=-", f"required_missing={facility}")
                 .replace(f"{facility}:core", f"{facility}:-").replace("enabled=timelineSemaphore", "enabled=-").replace("extensions=VK_KHR_swapchain,VK_EXT_memory_budget", "extensions=-"))
         (p,) = vk_profile.parse(line)

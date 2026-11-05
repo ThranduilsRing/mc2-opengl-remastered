@@ -39,7 +39,8 @@ void main() {
         args[0] = 8u; args[1] = 0u; args[2] = 0u; args[3] = 0u;
         args[4] = 8u; args[5] = 0u; args[6] = 8u; args[7] = 0u;
         args[8] = 0u; args[9] = 0u; args[10] = 0u;
-        // VkDispatchIndirectCommand at byte 48; x is also the visible region count read by cull and compact.
+        // VkDispatchIndirectCommand at byte 48; x is also the visible region count read by cull and compact. 65535 is the guaranteed
+        // maxComputeWorkGroupCount[0]; the host logs when a population has more regions than that.
         args[12] = min(base, 65535u); args[13] = 1u; args[14] = 1u;
     }
 }

@@ -73,6 +73,8 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         return false;
     }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());
+    if (regionCount > 65535u)   // the indirect cull dispatch is one workgroup per visible region and Vulkan guarantees 65535 groups in x
+        mc2::fmt::print_err("[VEG_GPU] {:d} regions exceed the 65535 indirect dispatch limit; the visible set is clamped\n", mc2::fmt::as_u32(regionCount));
     const VkBufferUsageFlags kStore = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     mc2vk::OwnedBuffer stageInst, stageReg;
     if (!stageInst.createFilled(ctx.allocator(), ctx.device(), instances.data(), instBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.instances") ||

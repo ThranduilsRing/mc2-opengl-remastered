@@ -7,6 +7,7 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_memory_scope_semantics : require
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
 shared uint s_count;
@@ -29,7 +30,7 @@ void main() {
     if (lid == 0u) {
         counts[w] = s_count;
         memoryBarrierBuffer();
-        s_last = atomicAdd(args[10], 1u) == visible - 1u ? 1u : 0u;
+        s_last = atomicAdd(args[10], 1u, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsAcquireRelease) == visible - 1u ? 1u : 0u;
     }
     barrier();
     if (s_last == 0u) return;
@@ -40,7 +41,8 @@ void main() {
     uint sum = 0u;
     for (uint i = start; i < stop; ++i) sum += counts[i];
     uint incl = subgroupInclusiveAdd(sum);
-    if (gl_SubgroupInvocationID == gl_SubgroupSize - 1u) s_sub[gl_SubgroupID] = incl;
+    uint tot = subgroupAdd(sum);
+    if (subgroupElect()) s_sub[gl_SubgroupID] = tot;
     barrier();
     uint base = 0u, total = 0u;
     for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) base += t; total += t; }
