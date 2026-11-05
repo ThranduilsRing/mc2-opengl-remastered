@@ -86,6 +86,7 @@ if [ ! -d $I ]; then
 fi
 # deploy_payload.py is Windows-shaped (SDL2.dll, mc2.exe); on Linux the lane build is the binary plus its shaders
 cp -f build64-ninja/mc2 $I/mc2 && chmod +x $I/mc2 || { echo "[box_run] DEPLOY FAILED"; exit 6; }
+cp -f build64-ninja/crashpad_handler $I/crashpad_handler && chmod +x $I/crashpad_handler || { echo "[box_run] DEPLOY FAILED: crashpad_handler"; exit 6; }
 mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/
 tick install
 export INSTALL=$I OUT
