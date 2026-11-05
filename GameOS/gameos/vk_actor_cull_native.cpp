@@ -187,14 +187,6 @@ bool nativeCullPoll(uint32_t i, NativeCullHeader& header, uint32_t& count,
     slot.staging.unmap();
     if (!valid) return false;
     count=slot.count; std::copy_n(slot.ids.data(),count,ids.data());
-    {   // [S3 PARITY TEMP] wave-counter result must equal the per-record bits
-        uint32_t pop=0; for (uint32_t j=0;j<count;++j) pop+=visibility[j]!=0u;
-        static uint64_t ok=0, bad=0;
-        if (header.visible!=pop || header.visible+header.culled!=count) {
-            if (bad++<8) MC2_DIAGF("[S3_PARITY] ACTOR_MISMATCH frame=%u count=%u visible=%u popcount=%u culled=%u\n",header.frame,count,header.visible,pop,header.culled);
-        } else ++ok;
-        if (((ok+bad)&255u)==1u) MC2_DIAGF("[S3_PARITY] actor ok=%llu bad=%llu\n",static_cast<unsigned long long>(ok),static_cast<unsigned long long>(bad));
-    }
     if (s->timed) {
         uint64_t ticks[2]{};
         if (vkGetQueryPoolResults(ctx.device(),slot.queries.get(),0,2,sizeof(ticks),ticks,sizeof(uint64_t),VK_QUERY_RESULT_64_BIT)==VK_SUCCESS)
