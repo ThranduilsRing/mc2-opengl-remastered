@@ -13,6 +13,7 @@
 // mdi_submit::trace).
 #pragma once
 
+#include "mc2_czstring.h"
 #include <cstdio>
 #include <cstdlib>
 #include "Gates/gate.h"
@@ -28,7 +29,7 @@ inline bool traceEnabled() {
 // `producer` = "CPU" (command buffer filled host-side) or "GPU" (compute/atomicAdd).
 // `fallbackActive` = true when this call is the CPU/legacy fallback rather than the
 // preferred indirect path.
-inline void trace(const char* pass, const char* drawKind, int commands,
+inline void trace(mc2::czstring pass, mc2::czstring drawKind, int commands,
                   const char* producer, const char* indirectBuffer,
                   bool fallbackActive) {
     if (!traceEnabled()) return;

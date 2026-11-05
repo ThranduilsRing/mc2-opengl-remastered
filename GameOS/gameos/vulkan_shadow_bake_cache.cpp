@@ -1,6 +1,7 @@
 // Cooked BC4 shadow products: key, encoding, transfer and cache persistence.
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_shadow_bake_internal.h"
+#include <array>
 #include "vulkan_color_prop_island.h"
 #include <chrono>
 #include <thread>
@@ -76,7 +77,7 @@ bool ShadowBake::ensureEncoder() {
     const VkDescriptorImageInfo tileSrc{depthRawSampler_.get(), tileR8View_ ? tileR8View_.get() : topR8View_.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     const VkDescriptorImageInfo topSrc{depthRawSampler_.get(), topR8View_.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     VkWriteDescriptorSet w[6]{};
-    const VkDescriptorSet sets[2] = {bc4TileSet_, bc4TopSet_};
+    const std::array<VkDescriptorSet, 2> sets = {bc4TileSet_, bc4TopSet_};
     for (int k = 0; k < 2; ++k) {
         for (int j = 0; j < 3; ++j) { w[k * 3 + j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[k * 3 + j].dstSet = sets[k]; w[k * 3 + j].descriptorCount = 1; w[k * 3 + j].dstBinding = static_cast<uint32_t>(j); }
         w[k * 3 + 0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[k * 3 + 0].pBufferInfo = &par;

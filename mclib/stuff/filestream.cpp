@@ -46,8 +46,8 @@ Directory::Directory(
 		file_name = gos_FindFilesNext();
 	}
 	gos_FindFilesClose();
-	fileWalker = new SortedChainIteratorOf<DirectoryEntry*,MString>(&fileEntries);
-	Check_Object(fileWalker);
+	fileWalker = std::make_unique<SortedChainIteratorOf<DirectoryEntry*,MString>>(&fileEntries);
+	Check_Object(fileWalker.get());
 
 	//
 	//---------------------------------------------------
@@ -67,8 +67,8 @@ Directory::Directory(
 			file_name = gos_FindDirectoriesNext();
 		}
 		gos_FindDirectoriesClose();
-		folderWalker = new SortedChainIteratorOf<DirectoryFolder*,MString>(&folderEntries);
-		Check_Object(folderWalker);
+		folderWalker = std::make_unique<SortedChainIteratorOf<DirectoryFolder*,MString>>(&folderEntries);
+		Check_Object(folderWalker.get());
 	}
 }
 
@@ -77,16 +77,16 @@ Directory::Directory(
 Directory::~Directory(void)
 {
 	Check_Object(this);
-	Check_Object(fileWalker);
+	Check_Object(fileWalker.get());
 	fileWalker->DeletePlugs();
-	Check_Object(fileWalker);
-	delete fileWalker;
+	Check_Object(fileWalker.get());
+	fileWalker.reset();
 	if (folderWalker != nullptr)
 	{
-		Check_Object(folderWalker);
+		Check_Object(folderWalker.get());
 		folderWalker->DeletePlugs();
-		Check_Object(folderWalker);
-		delete folderWalker;
+		Check_Object(folderWalker.get());
+		folderWalker.reset();
 	}
 }
 
@@ -96,7 +96,7 @@ char*
 	Directory::GetCurrentFileName(void)
 {
 	Check_Object(this);
-	Check_Object(fileWalker);
+	Check_Object(fileWalker.get());
 
 	DirectoryEntry *entry;
 	
@@ -114,7 +114,7 @@ void
 	Directory::AdvanceCurrentFile(void)
 {
 	Check_Object(this);
-	Check_Object(fileWalker);
+	Check_Object(fileWalker.get());
 	fileWalker->Next();
 }
 
@@ -125,7 +125,7 @@ char * Directory::GetCurrentFolderName( void )
 	Check_Object(this);
 	if (folderWalker == nullptr)
 		STOP(("Directory class was instantiated without directory support:\n           Set the <directories> parameter to true to enable."));
-	Check_Object(folderWalker);
+	Check_Object(folderWalker.get());
 
 	DirectoryFolder *entry;
 	
@@ -144,7 +144,7 @@ void Directory::AdvanceCurrentFolder( void )
 	Check_Object(this);
 	if (folderWalker == nullptr)
 		STOP(("Directory class was instantiated without directory support:\n           Set the <directories> parameter to true to enable."));
-	Check_Object(folderWalker);
+	Check_Object(folderWalker.get());
 	folderWalker->Next();
 }
 

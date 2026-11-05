@@ -382,8 +382,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		long fireCellRange = 0;
 		if (fireRangeInMeters > 0.0) {
 			fireCellRange = static_cast<long>((pilot->getSituationFireRange() / metersPerCell));
-			if (fireCellRange < 1)
-				fireCellRange = 1;
+			fireCellRange = std::max<long>(fireCellRange, 1);
 			if (fireCellRange > (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/)
 				fireCellRange = (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/;
 			}
@@ -411,10 +410,8 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		startTime = GetCycles();
 		if (moveRadius > 0.0) {
 			long moveCellRange = moveRadius / metersPerCell;
-			if (moveCellRange < 1)
-				moveCellRange = 1;
-			if (moveCellRange > (MAX_ATTACK_CELLRANGE - 1))
-				moveCellRange = (MAX_ATTACK_CELLRANGE - 1);
+			moveCellRange = std::max<long>(moveCellRange, 1);
+			moveCellRange = std::min<long>(moveCellRange, MAX_ATTACK_CELLRANGE - 1);
 			long firstIndex = rangedCellsIndices[moveCellRange + 1][0];
 			long lastIndex = rangedCellsIndices[MAX_ATTACK_CELLRANGE - 1][1];
 			for (long i = firstIndex; i < lastIndex; i++) {
@@ -594,9 +591,9 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 
 	startTime = GetCycles();
 	long goalList[MAX_MOVE_GOALS][2];
-	for (int i = 0; i < MAX_MOVE_GOALS; i++) {
-		goalList[i][0] = -1;
-		goalList[i][1] = -99999;
+	for (auto & i : goalList) {
+		i[0] = -1;
+		i[1] = -99999;
 	}
 	for (int i = 0; i < MAX_MOVE_GOALS; i++) {
 		// This assumes that MAX_MOVE_GOALS >= 2...
@@ -813,11 +810,9 @@ int Mover::calcMovePath (MovePathPtr path,
 
 	if (pathType == MOVEPATH_SIMPLE) {
 		long mapULr = posCellR - SimpleMovePathRange;
-		if (mapULr < 0)
-			mapULr = 0;
+		mapULr = std::max<long>(mapULr, 0);
 		long mapULc = posCellC - SimpleMovePathRange;
-		if (mapULc < 0)
-			mapULc = 0;
+		mapULc = std::max<long>(mapULc, 0);
 
 		float cellLength = (Terrain::worldUnitsPerCell * metersPerWorldUnit);
 		long clearCost = 0;
@@ -988,11 +983,9 @@ int Mover::calcEscapePath (MovePathPtr path,
 	long result = 0;
 
 	long mapULr = posCellR - SimpleMovePathRange;
-	if (mapULr < 0)
-		mapULr = 0;
+	mapULr = std::max<long>(mapULr, 0);
 	long mapULc = posCellC - SimpleMovePathRange;
-	if (mapULc < 0)
-		mapULc = 0;
+	mapULc = std::max<long>(mapULc, 0);
 
 	float cellLength = (Terrain::worldUnitsPerCell * metersPerWorldUnit);
 	long clearCost = 0;
@@ -1089,8 +1082,7 @@ long Mover::setPathRangeLock (bool set, long range) {
 		if (path && (path->numSteps > 0)) {
 			long start = path->curStep;
 			long lastStep = start + range;
-			if (lastStep >= path->numStepsWhenNotPaused)
-				lastStep = path->numStepsWhenNotPaused;
+			lastStep = std::min(lastStep, path->numStepsWhenNotPaused);
 			pathLockLength = 0;
 			for (long i = start; i < lastStep; i++) {
 				if (GameMap->getPathlock(lockLevel, path->stepList[i].cell[0], path->stepList[i].cell[1]))

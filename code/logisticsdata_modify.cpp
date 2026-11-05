@@ -56,9 +56,9 @@ int	LogisticsData::getPilots( LogisticsPilot** pArray, long& count )
 
 	 count= 0;
 
-	 for ( auto iter = instance->pilots.begin(); iter != instance->pilots.end(); ++iter )
+	 for (auto & pilot : instance->pilots)
 	 {
-		 pArray[count++] = &(*iter);
+		 pArray[count++] = &pilot;
 	 }
 
 	 return 0;
@@ -72,11 +72,11 @@ int LogisticsData::getMaxDropWeight() const
 int LogisticsData::getCurrentDropWeight() const
 {
 	long retVal = 0;
-	for ( auto iter = instance->inventory.begin(); iter != instance->inventory.end(); ++iter )
+	for (auto & iter : instance->inventory)
 	{
-		if ( (*iter)->getForceGroup() )
+		if ( iter->getForceGroup() )
 		{
-			retVal += (*iter)->getMaxWeight();
+			retVal += iter->getMaxWeight();
 		}
 
 	}
@@ -99,16 +99,15 @@ bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
 		MPlayer->getPlayers( playerCount );
 		maxUnits = MAX_MULTIPLAYER_MECHS_IN_LOGISTICS/playerCount;
 
-		if ( maxUnits > 12 )
-			maxUnits = 12;
+		maxUnits = std::min(maxUnits, 12);
 	}
 #endif
 
 	int fgCount = 0;
 	
-	for ( auto iter = instance->inventory.begin(); iter != instance->inventory.end(); ++iter )
+	for (auto & iter : instance->inventory)
 	{
-		if ( (*iter)->getForceGroup() )
+		if ( iter->getForceGroup() )
 			{
 				fgCount ++;
 			}
@@ -127,11 +126,11 @@ bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
 int LogisticsData::getVariantsInInventory( LogisticsVariant* pVar, bool bIncludeForceGroup )
 {
 	long retVal = 0;
-	for ( auto iter = instance->inventory.begin(); iter != instance->inventory.end(); ++iter )
+	for (auto & iter : instance->inventory)
 	{
-		if ( (*iter)->getVariant() == pVar )
+		if ( iter->getVariant() == pVar )
 		{
-			if ( !(*iter)->getForceGroup() || bIncludeForceGroup )
+			if ( !iter->getForceGroup() || bIncludeForceGroup )
 			{
 				retVal ++;
 			}
@@ -150,12 +149,12 @@ int		LogisticsData::getChassisVariants( const LogisticsChassis* pChassis,
 	int retVal = 0;
 	
 	int i = 0;
-	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
+	for (auto & variant : variants)
 		{
-			if ( (*iter)->getChassis() == pChassis  )
+			if ( variant->getChassis() == pChassis  )
 			{
 				if ( i < maxCount )
-					pVar[i]	= (*iter);	
+					pVar[i]	= variant;	
 				else 
 					retVal = NEED_BIGGER_ARRAY;
 				++i;
@@ -286,9 +285,9 @@ int LogisticsData::acceptMechModifications( const char* name )
 	}
 	else
 	{
-		for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+		for (auto & iter : inventory)
 		{
-			if ( (*iter)->getVariant() == oldVariant && (*iter) != currentlyModifiedMech  )
+			if ( iter->getVariant() == oldVariant && iter != currentlyModifiedMech  )
 			{
 				bFound = 1;
 			}
@@ -328,9 +327,9 @@ int LogisticsData::acceptMechModifications( const char* name )
 
 
 	// temporary, looking for dangling pointers
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 	{
-		if ( (*iter)->getVariant()->getCost() )
+		if ( iter->getVariant()->getCost() )
 		{
 			bFound = 1;
 		}
@@ -341,16 +340,16 @@ int LogisticsData::acceptMechModifications( const char* name )
 	if ( MPlayer )
 	{
 		// save the player created variants
-		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+		for (auto & variant : variants)
 		{
-			if ( !(*vIter)->isDesignerMech() )
+			if ( !variant->isDesignerMech() )
 			{
 				FullPathFileName mechFile;
-				mechFile.init("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR ,(*vIter)->getName().c_str(),".var");
+				mechFile.init("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR ,variant->getName().c_str(),".var");
 
 				FitIniFile file;
 				file.create(mechFile);
-				(*vIter)->save( file, 0 );
+				variant->save( file, 0 );
 				file.close();
 
                 const char* filename = static_cast<const char*>(mechFile);
@@ -394,12 +393,12 @@ bool LogisticsData::canReplaceVariant( const char* name )
 {
 	int nameCount = 0;
 	const std::string wanted = mc2::str::from_c( name );
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 		{
-			if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
+			if ( mc2::str::iequals( iter->getName(), wanted ) )
 			{
 				nameCount++;
-				if ( (*iter)->getVariant() != oldVariant && (*iter) != currentlyModifiedMech )
+				if ( iter->getVariant() != oldVariant && iter != currentlyModifiedMech )
 				{
 					return 0;
 				}
@@ -409,9 +408,9 @@ bool LogisticsData::canReplaceVariant( const char* name )
 		if ( nameCount > 1 )
 			return 0;
 
-		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+		for (auto & variant : variants)
 		{
-			if ( (*vIter)->isDesignerMech() && mc2::str::iequals( (*vIter)->getName(), wanted ) )
+			if ( variant->isDesignerMech() && mc2::str::iequals( variant->getName(), wanted ) )
 				return 0;
 		}
 

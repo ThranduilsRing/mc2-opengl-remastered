@@ -1,6 +1,7 @@
 // MechWarrior: order* entry points and the event handlers.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include <array>
 
 
 long MechWarrior::orderWait (bool unitOrder, long origin, long seconds, bool clearLastTarget) {
@@ -830,7 +831,7 @@ long MechWarrior::handleOwnVehicleIncapacitation (unsigned long cause) {
 
 	clearCurTacOrder(false);
 	setOrderState(ORDERSTATE_GENERAL);
-	MovePathPtr tempPath[2];
+	std::array<MovePathPtr, 2> tempPath;
 	for (long i = 0; i < 2; i++) {
 		tempPath[i] = moveOrders.path[i];
 		tempPath[i]->numSteps = 0;

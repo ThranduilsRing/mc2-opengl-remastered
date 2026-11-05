@@ -95,7 +95,7 @@ void AttributeMeter::render( long xOffset, long yOffset )
 	float barCount = percent * numBars;
 	int  nBarCount = static_cast<int>(barCount);
 
-	float remainder = addedPercent * numBars + (barCount - float(nBarCount));
+	float remainder = addedPercent * numBars + (barCount - static_cast<float>(nBarCount));
 	int nAddedCount = static_cast<int>(remainder);
 
 	GUI_RECT tmpOutside = outsideRect;

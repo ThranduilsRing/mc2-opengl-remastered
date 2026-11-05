@@ -134,9 +134,9 @@ void MechBayScreen::init(FitIniFile* file)
 	textObjects[11].setText( "" );
 	textObjects[12].setText( "" );
 	textObjects[14].setText( "" );
-	for (int i = 0; i < 3; i++ )
+	for (auto & attributeMeter : attributeMeters)
 	{
-		attributeMeters[i].setValue(0);
+		attributeMeter.setValue(0);
 	}
 	setMech( nullptr, 0 );
 
@@ -160,25 +160,25 @@ void MechBayScreen::begin()
 	// initialize both the inventory and icon lists
 	auto mechList = LogisticsData::instance->getInventory();
 	
-	for ( auto iter = mechList.begin(); iter != mechList.end(); ++iter )
+	for (auto & mechElem : mechList)
 		{
-			if ( *iter == pCurMech )
+			if ( mechElem == pCurMech )
 				bCurMechIsValid = true;
 
-			if ( !(*iter)->getForceGroup() )
+			if ( !mechElem->getForceGroup() )
 			{
 				bool bFound = 0;
 
 				for ( int i = 0; i < mechListBox.GetItemCount(); i++ )
 				{
 					if ( (static_cast<MechListBoxItem*>(mechListBox.GetItem(i)))->getMech()->getVariant()
-						== (*iter)->getVariant() )
+						== mechElem->getVariant() )
 						bFound = true;
 				}
 
 				if ( !bFound )
 				{
-					MechListBoxItem* item = new MechListBoxItem( (*iter), 1 );
+					MechListBoxItem* item = new MechListBoxItem( mechElem, 1 );
 					mechListBox.AddItem( item );
 				}
 
@@ -286,9 +286,9 @@ void MechBayScreen::render(int xOffset, int yOffset)
 	// onto the ImGui layer — their raw gos draws were buried under the defs page
 	// (empty weight-limit box / empty bars).
 	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
-	for ( int i = 0; i < 3; i++ )
+	for (auto & attributeMeter : attributeMeters)
 	{
-		attributeMeters[i].render(xOffset, yOffset);
+		attributeMeter.render(xOffset, yOffset);
 	}
 
 

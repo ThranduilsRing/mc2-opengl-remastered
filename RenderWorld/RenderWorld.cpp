@@ -313,7 +313,7 @@ void runSubstrateSelfTest() {
         if (rec.generation != 1u) {
             std::fprintf(stderr,
                 "[RENDER_WORLD_SELFTEST v1] result=FAIL step=1 reason=wrong_generation_%u\n",
-                (unsigned)rec.generation);
+                static_cast<unsigned>(rec.generation));
             return;
         }
         if (rec.gameObjectId != 0xCAFEu) {
@@ -337,7 +337,7 @@ void runSubstrateSelfTest() {
         if (rec.generation != 2u) {
             std::fprintf(stderr,
                 "[RENDER_WORLD_SELFTEST v1] result=FAIL step=2 reason=generation_not_bumped_%u\n",
-                (unsigned)rec.generation);
+                static_cast<unsigned>(rec.generation));
             return;
         }
     }
@@ -356,7 +356,7 @@ void runSubstrateSelfTest() {
         if (rec.generation != 2u) {
             std::fprintf(stderr,
                 "[RENDER_WORLD_SELFTEST v1] result=FAIL step=3 reason=wrong_repopulate_generation_%u\n",
-                (unsigned)rec.generation);
+                static_cast<unsigned>(rec.generation));
             return;
         }
         if (rec.gameObjectId != 0xBEEFu) {

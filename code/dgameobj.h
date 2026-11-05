@@ -21,9 +21,7 @@
 
 #include<stdint.h>
 
-#ifndef NO_ERR
-#define NO_ERR		0
-#endif
+#include "dstd.h"  // NO_ERR
 
 //#define CANT_MAKE_BASE_FROM_TYPE				0xBEAD0001
 inline constexpr unsigned int CANT_MAKE_GAMEOBJECT_FROM_TYPE = 0xBEAD0002;

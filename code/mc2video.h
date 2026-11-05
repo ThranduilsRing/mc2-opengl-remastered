@@ -7,6 +7,7 @@
 #ifndef MC2VIDEO_H
 #define MC2VIDEO_H
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <string>
 
@@ -15,7 +16,7 @@ struct VideoObjectiveReceipt {
     unsigned long long cause = 0;
     std::string missionHash;
     std::string path;
-    void capture(const char* resolvedPath);
+    void capture(mc2::czstring resolvedPath);
     void decoded();
 };
 
@@ -36,7 +37,7 @@ void ffmpegProbeAvailability();
 
 // Resolves a movie short-name (e.g. "msft") against the override chain.
 // See Task 6 for the full contract; stub returns false for now.
-bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
+bool resolveVideoCandidate(mc2::czstring shortName, bool preferUpscaled,
                            int index, char* outPath, unsigned outPathSize);
 
 struct VideoOpenParams {

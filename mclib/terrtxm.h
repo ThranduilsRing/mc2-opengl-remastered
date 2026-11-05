@@ -21,13 +21,12 @@
 #ifndef MC2_RENDER_SUBMISSIONS_H
 #include"render_submissions.h"
 #endif
+#include "mc2_czstring.h"
 #include"tex_resolve_table.h"
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-#ifndef NO_ERR
-#define NO_ERR		0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int BLANK_TILE = -1;
 
@@ -165,10 +164,10 @@ class TerrainTextures
 		long initDetail (long typeNum, long detailNum);
 		long initOverlay (long overlayNum, long txmNum, char *txmName);
 
-		long loadTextureMemory (const char *textureName, long mipSize);
-		long loadOverlayMemory (const char *overlayName);
+		long loadTextureMemory (mc2::czstring textureName, long mipSize);
+		long loadOverlayMemory (mc2::czstring overlayName);
 		long textureFromMemory (MemoryPtr ourRam, long mipSize);
-		long loadDetailMemory  (const char *detailName, long mipSize);
+		long loadDetailMemory  (mc2::czstring detailName, long mipSize);
 		long textureFromMemoryAlpha (MemoryPtr ourRam, long mipSize);
 
 		long createTransition (DWORD typeInfo, DWORD overlayInfo = 0);
@@ -228,7 +227,7 @@ class TerrainTextures
 			destroy();
 		}
 
-		long init (const char *fileName, const char* baseName);
+		long init (mc2::czstring fileName, mc2::czstring baseName);
 		
 		long setTexture (DWORD typeInfo, DWORD overlayInfo);
 		

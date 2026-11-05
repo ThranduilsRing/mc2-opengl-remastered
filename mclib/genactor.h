@@ -29,12 +29,11 @@
 #include"objectappearance.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"memfunc.h"
 
 //**************************************************************************************
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int MAX_GEN_ANIMATIONS = 5;
 
@@ -140,7 +139,7 @@ class GenericAppearanceType : public AppearanceType
 			return false;
 		}
 		
-  		virtual void init (const char *fileName);
+  		virtual void init (mc2::czstring fileName);
 		
 		virtual void destroy (void);
 };

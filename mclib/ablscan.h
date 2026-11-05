@@ -18,6 +18,7 @@
 #include"ablerr.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<cstddef>
 #include<memory>
 #include<string>
@@ -172,8 +173,8 @@ class ABLFile {
 		std::string fileName;
 		void*		file;
 
-		static long (*createCB) (void** file, const char* fName);
-		static long (*openCB) (void** file, const char* fName);
+		static long (*createCB) (void** file, mc2::czstring fName);
+		static long (*openCB) (void** file, mc2::czstring fName);
 		static long (*closeCB) (void** file);
 		static bool (*eofCB) (void* file);
 		static long (*remainingCB) (void* file);
@@ -186,7 +187,7 @@ class ABLFile {
 		static long (*writeByteCB) (void* file, unsigned char byte);
 		static long (*writeIntCB) (void* file, int32_t value);
 		static long (*writeLongCB) (void* file, long value);
-		static long (*writeStringCB) (void* file, const char* buffer);
+		static long (*writeStringCB) (void* file, mc2::czstring buffer);
 
 	public:
 
@@ -217,9 +218,9 @@ class ABLFile {
 			return(file);
 		}
 
-		long create (const char* fileName);
+		long create (mc2::czstring fileName);
 
-		long open (const char* fileName);
+		long open (mc2::czstring fileName);
 
 		long close (void);
 
@@ -248,7 +249,7 @@ class ABLFile {
 
 		long writeLong (long val);
 
-		long writeString (const char* buffer);
+		long writeString (mc2::czstring buffer);
 };
 
 //***************************************************************************
@@ -303,11 +304,11 @@ void ABL_free (ABLPool pool, void* block);
 // Live blocks across all pools, and whether a block is one of them (tests and the compile rollback use these).
 size_t ABL_liveBlocks (void);
 bool ABL_ownsBlock (const void* block);
-extern void (*ABLDebugPrintCallback) (const char* s);
+extern void (*ABLDebugPrintCallback) (mc2::czstring s);
 extern long (*ABLRandomCallback) (long range);
 extern void (*ABLSeedRandomCallback) (unsigned long range);
 extern unsigned long (*ABLGetTimeCallback) (void);
-extern void (*ABLFatalCallback) (long code, const char* s);
+extern void (*ABLFatalCallback) (long code, mc2::czstring s);
 
 //***************************************************************************
 	

@@ -2,6 +2,7 @@
 //
 // initABL holds the single ordered ABLi_addFunction list. Registration order is state (each routine's key is
 // its position in a fixed table), so the list stays in this one file; the exec* bodies live in ablmc2_<domain>.cpp.
+#include "mc2_czstring.h"
 #include "ablmc2_internal.h"
 #include "mc2fmt.h"
 #include "abl_script_events.h"
@@ -22,7 +23,7 @@ long					CurMultiplayParam = 0;
 
 // The ABL environment holds a script file as an opaque handle (void*): ablFileCreateCB / ablFileOpenCB make it, ablFileCloseCB is the only place
 // that frees it. These three are the single owner pair; every other callback only borrows the handle for the call.
-long ablFileCreateCB (void** file, const char* fName) {
+long ablFileCreateCB (void** file, mc2::czstring fName) {
 
 	auto created = std::make_unique<File>();
 	*file = nullptr;
@@ -34,7 +35,7 @@ long ablFileCreateCB (void** file, const char* fName) {
 	return(NO_ERR);
 }
 
-long ablFileOpenCB (void** file, const char* fName) {
+long ablFileOpenCB (void** file, mc2::czstring fName) {
 
 	auto opened = std::make_unique<File>();
 
@@ -118,18 +119,18 @@ long ablFileWriteLongCB (void* file, long value) {
 	return((static_cast<FilePtr>(file))->writeLong(value));
 }
 
-long ablFileWriteStringCB (void* file, const char* buffer) {
+long ablFileWriteStringCB (void* file, mc2::czstring buffer) {
 
 	return((static_cast<FilePtr>(file))->writeString(buffer));
 }
 
-void ablDebuggerPrintCallback (const char* s) {
+void ablDebuggerPrintCallback (mc2::czstring s) {
 
 	//ABLDebuggerOut->print(s);
 	MC2_LOG(Core, Debug, "{}", mc2::fmt::safe(s));
 }
 
-void ablDebugPrintCallback (const char* s) {
+void ablDebugPrintCallback (mc2::czstring s) {
 
 	DEBUGWINS_print(s, 0);
 }
@@ -139,7 +140,7 @@ void ablSeedRandom (unsigned long seed) {
 	gos_srand(seed);
 }
 
-void ablFatalCallback (long code, const char* s) {
+void ablFatalCallback (long code, mc2::czstring s) {
 
 	// Rate-limit per-message spam (e.g. unimplemented ABL extensions firing
 	// on every script tick). Fixed C array -- no heap, no STL.

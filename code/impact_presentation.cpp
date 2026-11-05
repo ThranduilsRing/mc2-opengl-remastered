@@ -286,8 +286,8 @@ void extract() {
         if (s_logs < 16) {
             ++s_logs;
             std::fprintf(stderr, "[IMPACT_DECAL] spawn sample=%d/16 tick=%u weapon=%d material=%d anchor=%d id=%u pos=%.0f,%.0f,%.0f tile=%d/%d radius=%.1f slot=%d\n", s_logs,
-                         e.tick, int(e.weapon), int(e.material), int(e.anchorKind), e.anchorId, e.pos[0], e.pos[1], e.pos[2],
-                         int(recipe.tileHit), int(recipe.tileGround), recipe.radius, slot ? int(*slot) : -1);
+                         e.tick, static_cast<int>(e.weapon), static_cast<int>(e.material), static_cast<int>(e.anchorKind), e.anchorId, e.pos[0], e.pos[1], e.pos[2],
+                         static_cast<int>(recipe.tileHit), static_cast<int>(recipe.tileGround), recipe.radius, slot ? static_cast<int>(*slot) : -1);
         }
     });
     g_pool.update(scenarioTime, resolveAnchor);

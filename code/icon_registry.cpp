@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "icon_registry.h"
 #include "asystem.h"
 #include "file.h"
@@ -38,11 +39,11 @@ Pixels load(std::string path, bool hud = false) {
         auto image = mc2tex::decodeMemory(bytes.data(), bytes.size(), path.c_str(), gos_Texture_Alpha, 0);
         if (!image) return out;
         out.w = image->width; out.h = image->height;
-        out.data.resize(size_t(out.w) * out.h);
+        out.data.resize(static_cast<size_t>(out.w) * out.h);
         const int stride = image->layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
         for (size_t i = 0; i < out.data.size(); ++i) {
             const auto* p = image->pixels.data() + i * stride;
-            out.data[i] = (uint32_t(stride == 4 ? p[3] : 255) << 24) | (uint32_t(p[0]) << 16) | (uint32_t(p[1]) << 8) | p[2];
+            out.data[i] = (static_cast<uint32_t>(stride == 4 ? p[3] : 255) << 24) | (static_cast<uint32_t>(p[0]) << 16) | (static_cast<uint32_t>(p[1]) << 8) | p[2];
         }
         return out;
     }
@@ -50,12 +51,12 @@ Pixels load(std::string path, bool hud = false) {
     auto image = mc2::textures::image(handle);
     mc2::textures::logicalSize(handle, out.logicalW, out.logicalH);
     mc2::textures::release(handle);
-    if (!image || image->isCompressed || image->pixels.size() < size_t(image->width) * image->height * 4) return out;
+    if (!image || image->isCompressed || image->pixels.size() < static_cast<size_t>(image->width) * image->height * 4) return out;
     out.w = image->width; out.h = image->height;
-    out.data.resize(size_t(out.w) * out.h);
+    out.data.resize(static_cast<size_t>(out.w) * out.h);
     for (size_t i = 0; i < out.data.size(); ++i) {
         const auto* p = image->pixels.data() + i * 4;
-        out.data[i] = (uint32_t(p[3]) << 24) | (uint32_t(p[0]) << 16) | (uint32_t(p[1]) << 8) | p[2];
+        out.data[i] = (static_cast<uint32_t>(p[3]) << 24) | (static_cast<uint32_t>(p[0]) << 16) | (static_cast<uint32_t>(p[1]) << 8) | p[2];
     }
     return out;
 }
@@ -66,26 +67,26 @@ void addSheet(std::string path, int cw, int ch, int stripRows = 0) {
     if (src.data.empty()) return;
     if (stripRows) {
         // Height declares the authored scale; width may add or remove icon columns.
-        const float scale = float(src.h) / (ch * stripRows);
+        const float scale = static_cast<float>(src.h) / (ch * stripRows);
         const AssetScale::Vec2 f{scale, scale};
-        int cols = int(src.w / (cw * f.x) + .01f);
+        int cols = static_cast<int>(src.w / (cw * f.x) + .01f);
         int rows = stripRows;
-        while (cols > 0 && int((cols - 1) * cw * f.x) + int((cw - 1) * f.x) >= src.w) --cols;
-        while (rows > 0 && int((rows - 1) * ch * f.y) + int((ch - 1) * f.y) >= src.h) --rows;
+        while (cols > 0 && static_cast<int>((cols - 1) * cw * f.x) + static_cast<int>((cw - 1) * f.x) >= src.w) --cols;
+        while (rows > 0 && static_cast<int>((rows - 1) * ch * f.y) + static_cast<int>((ch - 1) * f.y) >= src.h) --rows;
         const int w = cols * cw, h = rows * ch;
-        std::vector<uint32_t> sampled(size_t(w) * h);
+        std::vector<uint32_t> sampled(static_cast<size_t>(w) * h);
         for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x) {
-                const int sx = int((x / cw) * cw * f.x) + int((x % cw) * f.x);
-                const int sy = int((y / ch) * ch * f.y) + int((y % ch) * f.y);
-                sampled[size_t(y) * w + x] = src.data[size_t(sy) * src.w + sx];
+                const int sx = static_cast<int>((x / cw) * cw * f.x) + static_cast<int>((x % cw) * f.x);
+                const int sy = static_cast<int>((y / ch) * ch * f.y) + static_cast<int>((y % ch) * f.y);
+                sampled[static_cast<size_t>(y) * w + x] = src.data[static_cast<size_t>(sy) * src.w + sx];
             }
         registry.sheet(path, sampled, w, h, cw, ch, true);
     } else {
-        const float sx = src.logicalW ? float(src.w) / src.logicalW : 1.f;
-        const float sy = src.logicalH ? float(src.h) / src.logicalH : 1.f;
+        const float sx = src.logicalW ? static_cast<float>(src.w) / src.logicalW : 1.f;
+        const float sy = src.logicalH ? static_cast<float>(src.h) / src.logicalH : 1.f;
         sourceScale[path] = {sx, sy};
-        registry.sheet(path, src.data, src.w, src.h, int(cw * sx), int(ch * sy));
+        registry.sheet(path, src.data, src.w, src.h, static_cast<int>(cw * sx), static_cast<int>(ch * sy));
     }
 }
 
@@ -98,10 +99,10 @@ void layoutSheet(std::string layout, std::string block) {
         file.readIdString("FileName", name, sizeof(name) - 1) != NO_ERR || w <= 0 || h <= 0) return;
     std::string path = "data/art/" + canonical(name);
     if (!path.ends_with(".tga") && !path.ends_with(".png")) path += ".tga";
-    addSheet(path, int(w), int(h));
+    addSheet(path, static_cast<int>(w), static_cast<int>(h));
 }
 
-void collect(const char* key, void* data) {
+void collect(mc2::czstring key, void* data) {
     auto path = canonical(key);
     if ((path.ends_with(".tga") || path.ends_with(".png")) && path.starts_with("data/art/mechicons/"))
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));
@@ -152,7 +153,7 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         const int cell = i % kDamagePerPage;
         damageIcons[i] = {40, 48, 1 + cell % kDamageCols * 42, 1 + cell / kDamageCols * 50, {}, {}};
     }
-    std::vector<uint32_t> blankPage(size_t(kDamageEdge) * kDamageEdge, 0);
+    std::vector<uint32_t> blankPage(static_cast<size_t>(kDamageEdge) * kDamageEdge, 0);
     for (DWORD& page : damagePages) {
         page = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(blankPage.data()), gos_Texture_Alpha, 0, kDamageEdge);
         mc2::textures::adoptOwned(page);
@@ -197,12 +198,12 @@ const Icon& resolve(std::string key) {
 void apply(aObject& widget, const aObject& source, long index, std::string chassis) {
     const char* name = mc2::textures::name(source.getTextureHandle());
     const std::string sheet = canonical(name ? name : "missing");
-    init(sheet, int(source.width()), int(source.height()));
+    init(sheet, static_cast<int>(source.width()), static_cast<int>(source.height()));
     const std::string named = "mech/" + canonical(std::filesystem::path(chassis).stem().string());
     const bool individual = registry.find(named) != nullptr;
     const auto& icon = resolve(individual ? named : legacyKey(sheet, index));
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
-    widget.setFileWidth(float(registry.edge)); widget.setFileHeight(float(registry.edge));
+    widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
     // aObject adds 0.1 texel; preserve its old logical-pixel bias on upscaled art.
     const auto scale = individual ? AssetScale::Vec2{1.f, 1.f} : sourceScale[sheet];
     widget.setUVs(icon.x + .1f * scale.x - .1f, icon.y + .1f * scale.y - .1f,
@@ -221,7 +222,7 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
     const auto& icon = found ? *found : resolve(key);
     for (int y = 0; y < height; ++y)
         for (int x = 0; x < width; ++x)
-            dest[size_t(y) * stride + x] = icon.pixels[size_t(y * icon.height / height) * icon.width + x * icon.width / width];
+            dest[static_cast<size_t>(y) * stride + x] = icon.pixels[static_cast<size_t>(y * icon.height / height) * icon.width + x * icon.width / width];
 }
 
 const Icon& damageRect(long slot) {

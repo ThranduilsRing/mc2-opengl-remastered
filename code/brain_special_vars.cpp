@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "mech_brain_runtime.h"
 #include "brain_execution_policy.h"
 #include <cstdio>
@@ -36,7 +37,7 @@ void resetMissionVarStore() {
 // Returns true on success; false on malformed input (empty key; missing value for Set).
 //
 // FORBIDDEN-CALL CONTRACT: calls ONLY std::strchr/strstr/strncpy/snprintf. No orders.
-bool parseVarVerb(const char* verbStr, char outKey[32], char outValue[32], uint8_t* outScope) {
+bool parseVarVerb(mc2::czstring verbStr, char outKey[32], char outValue[32], uint8_t* outScope) {
     outKey[0] = '\0';
     outValue[0] = '\0';
     *outScope = 0;  // default Unit
@@ -121,7 +122,7 @@ bool parseVarVerb(const char* verbStr, char outKey[32], char outValue[32], uint8
 //
 // FORBIDDEN-CALL CONTRACT: calls ONLY store->set + fprintf/fflush. No order functions.
 // Verified by inspection: no warrior pointer, no TacticalOrder, no slot writes.
-void handleVarSet(const char* key, const char* value, uint8_t scope, VarStore* store, int wid) {
+void handleVarSet(mc2::czstring key, mc2::czstring value, uint8_t scope, VarStore* store, int wid) {
     if (scope == 1 /* Mission */) {
         // TECHSCRIPT-DISPATCH-1D-M: MC2_BRAIN_VAR_MISSION gate ON → real write to g_missionVarStore.
         // Gate OFF → trace-only (1D deferred behavior preserved).
@@ -176,7 +177,7 @@ void handleVarSet(const char* key, const char* value, uint8_t scope, VarStore* s
 // TECHSCRIPT-DISPATCH-1D: handleVarGet
 //
 // FORBIDDEN-CALL CONTRACT: calls ONLY store->get + fprintf/fflush. No order functions.
-void handleVarGet(const char* key, uint8_t scope, VarStore* store, int wid) {
+void handleVarGet(mc2::czstring key, uint8_t scope, VarStore* store, int wid) {
     if (scope == 1 /* Mission */) {
         // TECHSCRIPT-DISPATCH-1D-M: MC2_BRAIN_VAR_MISSION gate ON → real read from g_missionVarStore.
         // Gate OFF → trace-only default-only (1D deferred behavior preserved).

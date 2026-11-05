@@ -9,6 +9,7 @@
 //===========================================================================//*
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <array>
 #include "team_internal.h"
 #include <algorithm>
 #include "save_archive.h"
@@ -338,7 +339,7 @@ bool Team::isCapturing (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 glm::vec3 Team::calcEscapeVector (MoverPtr mover, float threatRange) {
 
 	static float distance[100];
-	static glm::vec3 delta[100];
+	static std::array<glm::vec3, 100> delta;
 
 	glm::vec3 escapeVector;
 	escapeVector = glm::vec3(0.0f);

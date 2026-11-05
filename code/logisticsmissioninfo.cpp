@@ -58,18 +58,18 @@ void LogisticsMissionInfo::clear()
 	{
 		for ( int i = 0; i < groupCount; i++ )
 		{
-			for ( auto iter = groups[i].infos.begin(); iter != groups[i].infos.end(); ++iter )
+			for (auto & info : groups[i].infos)
 			{
-				delete (*iter);
+				delete info;
 			}
 		}
 
 		groups.reset();
 	}
 
-	for ( auto iter = additionalPurchaseFiles.begin(); iter != additionalPurchaseFiles.end(); ++iter )
+	for (auto & additionalPurchaseFile : additionalPurchaseFiles)
 	{
-		iter->reset();
+		additionalPurchaseFile.reset();
 	}
 
 	additionalPurchaseFiles.clear();
@@ -500,11 +500,11 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 
 	file.writeBlock( "AdditionalPurchaseFiles" );
 	int i = 0;
-	for ( auto fIter = additionalPurchaseFiles.begin(); fIter != additionalPurchaseFiles.end(); ++fIter )
+	for (auto & additionalPurchaseFile : additionalPurchaseFiles)
 	{
 		mc2::fmt::to_buf(header, "File{:d}", mc2::fmt::as_i32(i));
 
-		file.writeIdString( header, fIter->get() );
+		file.writeIdString( header, additionalPurchaseFile.get() );
 		i++;
 	}
 

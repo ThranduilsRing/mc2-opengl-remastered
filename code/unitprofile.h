@@ -2,6 +2,7 @@
 #define UNITPROFILE_H
 // UNIT-PROFILE-SEAM-1: static baseline facets (ObjectType) + current runtime
 // facets (Mover). Slice 1 facet = capability.
+#include "mc2_czstring.h"
 #include <cstddef>                      // size_t (EQUIPMENT-SOURCE-FLIP-SWITCH-1)
 #include "capability.h"
 #include "locomotion_facet.h"          // LocomotionModel enum + parseLocomotionModel
@@ -29,7 +30,7 @@ bool mc2UnitDefinitionSourceIsGenerated();                           // cached t
 // trailing '_'; an empty result becomes "v<index>". Deterministic, no I/O. Used
 // to build the per-variant generated-def path core/<chassis>/<slug>/unit.fit.
 // Writes at most cap-1 chars + NUL. Returns out.
-const char* mc2GeneratedVariantSlug(const char* variantName, int index,
+const char* mc2GeneratedVariantSlug(mc2::czstring variantName, int index,
                                     char* out, unsigned long cap);
 
 // UNIT-SOURCE-FLIP-SWITCH-1: pure token-apply helpers, shared by the engine-only
@@ -37,8 +38,8 @@ const char* mc2GeneratedVariantSlug(const char* variantName, int index,
 // already-parsed generated tokens; a null/empty token leaves the field unchanged
 // (so a partial generated def degrades to legacy per-field). Return true iff the
 // field was sourced from a non-empty generated token (for the match-legacy log).
-bool mc2ApplyGeneratedLocomotion(const char* token, class UnitProfile& p);
-bool mc2ApplyGeneratedDamageSchema(const char* token, class UnitProfile& p);
+bool mc2ApplyGeneratedLocomotion(mc2::czstring token, class UnitProfile& p);
+bool mc2ApplyGeneratedDamageSchema(mc2::czstring token, class UnitProfile& p);
 
 // EQUIPMENT-REGISTRY-FACADE-1 (equipment arc, engine slice E2). Gated build +
 // verification dump of the parallel equipment registry over masterList. Called
@@ -178,7 +179,7 @@ void populateProfileFromFit(FitIniFile& fit, UnitProfile& profile);
 // No-op (returns false) when the gate is legacy or the file is absent -> the
 // caller's legacy default stands. `typeName` labels the per-unit source-flip log.
 // Returns true iff at least one facet was sourced from generated data.
-bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& profile,
+bool sourceGeneratedChassisFacets(mc2::czstring chassisStem, UnitProfile& profile,
                                   const char* typeName);
 
 // sourceGeneratedVariantJump(): INSTANCE-level CAP_JUMP, keyed by (chassis stem,
@@ -186,7 +187,7 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& profile,
 // Writes *jumpOut and returns true iff a generated variant def was found and its
 // Jump token read; otherwise returns false and leaves *jumpOut untouched so the
 // caller keeps the legacy numJumpJets derivation. No-op when the gate is legacy.
-bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName,
+bool sourceGeneratedVariantJump(mc2::czstring chassisStem, mc2::czstring variantName,
                                 bool* jumpOut);
 
 // UNITPROFILE-VALIDATOR-1 (slice 6): run the pure construction-rules validator
@@ -196,7 +197,7 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
 // gate-OFF and a clean stock gate-ON run both log nothing (stock units are
 // coherent). `typeName` is a human/modder label (the .fit filename) prefixed
 // onto each logged line. Call at type-load AFTER facets + populateProfileFromFit.
-void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeName);
+void validateAndReportUnitProfile(const UnitProfile& profile, mc2::czstring typeName);
 
 // UNIT-PROFILE-SEAM-1: state-dump witness bridge. debug_state_dump.cpp keeps no
 // game headers, so the mover walk lives engine-side (unitprofile_fit.cpp) and is

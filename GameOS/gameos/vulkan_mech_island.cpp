@@ -44,8 +44,6 @@
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg SunAxisFix
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
@@ -677,9 +675,9 @@ bool init_island(MechIsland* s, int w, int h) {
         ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;   // reverse-Z, matches GL mech opaque
 
         VkPipelineColorBlendAttachmentState cba[2]{};
-        for (int k = 0; k < 2; ++k) {
-            cba[k].blendEnable = VK_FALSE;
-            cba[k].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        for (auto & cbaElem : cba) {
+            cbaElem.blendEnable = VK_FALSE;
+            cbaElem.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         }
         VkPipelineColorBlendStateCreateInfo cb{};

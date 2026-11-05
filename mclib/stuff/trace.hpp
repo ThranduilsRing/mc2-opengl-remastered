@@ -361,8 +361,8 @@ namespace Stuff {
 			TraceManager();
 			~TraceManager();
 
-			static TraceManager
-				*Instance;
+			static std::unique_ptr<TraceManager>
+				Instance;
 
 			BYTE
 				GetTraceCount()
@@ -418,14 +418,14 @@ namespace Stuff {
 		inline MemoryStream*
 			Trace::GetTraceLog()
 		{
-			Check_Object(this); Check_Object(TraceManager::Instance);
+			Check_Object(this); Check_Object(TraceManager::Instance.get());
 			return TraceManager::Instance->activeTraceLog;
 		}
 
 		inline void
 			Trace::IncrementSampleCount()
 		{
-			Check_Object(this); Check_Object(TraceManager::Instance);
+			Check_Object(this); Check_Object(TraceManager::Instance.get());
 			if (!TraceManager::Instance->activeTraceLog)
 			{
 				++TraceManager::Instance->ignoredSampleCount;

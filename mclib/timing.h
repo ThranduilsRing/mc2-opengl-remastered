@@ -114,17 +114,17 @@ class TimerManager
 		
 		void init (void)
 		{
-			for (long i=0;i<MAX_TIMERS;i++)
+			for (auto & timer : timers)
 			{
-				timers[i].init();
+				timer.init();
 			}
 		}
 		
 		void destroy (void)
 		{
-			for (long i=0;i<MAX_TIMERS;i++)
+			for (auto & timer : timers)
 			{
-				timers[i].init();
+				timer.init();
 			}
 		}
 		
@@ -138,9 +138,9 @@ class TimerManager
 		
 		void update (void)
 		{
-			for (long i=0;i<MAX_TIMERS;i++)
+			for (auto & timer : timers)
 			{
-				timers[i].update();
+				timer.update();
 			}
 		}
 };

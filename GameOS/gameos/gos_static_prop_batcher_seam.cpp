@@ -354,8 +354,7 @@ static void rebuildStaticBaseInstanceTableIfDirty() {
     if (s_staticBaseBuiltGen == s_persistentStaticGen) return;  // dirty-gated
     s_staticBaseInstanceForType.assign(s_types.size(), 0u);
     std::array<uint32_t, 2> groupCursor = {0u, 0u};
-    for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
-        const uint32_t typeID = s_sortedTypeOrder[i];
+    for (unsigned int typeID : s_sortedTypeOrder) {
         if (typeID >= s_types.size()) continue;
         auto it = s_persistentStaticStore.find(typeID);
         const uint32_t cnt = (it != s_persistentStaticStore.end())
@@ -693,8 +692,7 @@ void batcher_prepareBaseInstanceTable() {
     std::array<uint32_t, 2> groupCursor = {0u, 0u};
     static std::vector<uint32_t> baseInstanceForType;
     baseInstanceForType.assign(s_types.size(), 0u);
-    for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
-        const uint32_t typeID = s_sortedTypeOrder[i];
+    for (unsigned int typeID : s_sortedTypeOrder) {
         if (typeID >= s_types.size()) continue;
         auto kvIt = s_bucketsByType.find(typeID);
         if (kvIt == s_bucketsByType.end()) continue;

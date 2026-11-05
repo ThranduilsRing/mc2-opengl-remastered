@@ -16,6 +16,7 @@ OptionsArea.h			: Interface for the OptionsArea component.
 #include"simplecamera.h"
 #endif
 
+#include "mc2_czstring.h"
 #include <memory>
 #include"alistbox.h"
 #include"attributemeter.h"
@@ -196,8 +197,8 @@ public:
 	void render() override;
 	void update() override;
 	
-	void setDescription( const char* pText );
-	void setKey( const char* pText );
+	void setDescription( mc2::czstring pText );
+	void setKey( mc2::czstring pText );
 
 	HotKeyListItem( );
 	~HotKeyListItem() override;

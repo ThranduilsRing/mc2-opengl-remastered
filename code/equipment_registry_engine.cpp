@@ -93,9 +93,10 @@ size_t buildEquipmentRegistryFromMasterList() {
         std::string qid;
         // EQUIP-ADD-FILL-1: an ADD-filled row keeps its namespaced mod id.
         auto addIt = g_addFillQualifiedIds.find(legacyMasterId);
-        if (addIt != g_addFillQualifiedIds.end())
-            qid = addIt->second;
-        else
+        if (addIt != g_addFillQualifiedIds.end()) {
+            const auto& [addOrd, addQid] = *addIt;
+            qid = addQid;
+        } else
             qid = coreQualifiedIdFor(nm, legacyMasterId);
 
         g_equipmentRegistry.add(qid, legacyMasterId, kind, enabled);

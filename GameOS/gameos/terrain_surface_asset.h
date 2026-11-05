@@ -17,7 +17,7 @@ struct SurfaceAsset {
     static constexpr uint32_t kSchema = 1;
     static constexpr uint32_t kEvaluator = 2;
     static constexpr uint32_t kMaxSide = 4096;
-    static constexpr uint64_t kMaxBytes = 48ull + uint64_t(kMaxSide) * kMaxSide * 16;
+    static constexpr uint64_t kMaxBytes = 48ull + static_cast<uint64_t>(kMaxSide) * kMaxSide * 16;
     // Shader sample space: sRGB sources are decoded before filtering, UNORM sources are not.
     static constexpr uint32_t kLinear = 1;
     uint32_t width = 0, height = 0;

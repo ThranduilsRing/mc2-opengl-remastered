@@ -11,8 +11,6 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate_cold.h"   // str<>()
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
@@ -627,8 +625,8 @@ bool init_island(ShadowIsland* s, int size) {
         VkFenceCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
-            if (!mc2vk::create(s->frameFence[par], s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
+        for (auto & frameFenceElem : s->frameFence) {
+            if (!mc2vk::create(frameFenceElem, s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
                 vlog("frame fence failed."); return false;
             }
         }

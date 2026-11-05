@@ -1,5 +1,6 @@
 // Team: teamLineOfSight and the Team::lineOfSight overloads (the cell-walk and the world-position entry).
 // Declared in the class headers; shared names in team_internal.h.
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "team_internal.h"
 #include "los_kernel.h"
@@ -197,11 +198,9 @@ static bool inVisualRange(GameObjectPtr obj, const glm::vec3& tPos)
 	if (altitudeIntegerRange > Stuff::SMALL)
 		altLevel = altitude / altitudeIntegerRange;
 
-	if (altLevel < 0)
-		altLevel = 0;
+	altLevel = std::max<long>(altLevel, 0);
 
-	if (altLevel > 255)
-		altLevel = 255;
+	altLevel = std::min<long>(altLevel, 255);
 
 	float radius = visualRangeTable[altLevel];
 

@@ -90,7 +90,7 @@ std::array<uint8_t, 8> encodeBc4Block(const std::array<uint8_t, 16>& texels) {
     uint64_t bits = 0;
     for (int i = 0; i < 16; ++i) {
         // Sevenths of the way from endpoint 1 (min) to endpoint 0 (max), then the palette index of that step.
-        const int step = static_cast<int>(std::lround(7.0 * (texels[static_cast<size_t>(i)] - lo) / double(hi - lo)));
+        const int step = static_cast<int>(std::lround(7.0 * (texels[static_cast<size_t>(i)] - lo) / static_cast<double>(hi - lo)));
         const uint64_t idx = step == 7 ? 0u : step == 0 ? 1u : static_cast<uint64_t>(8 - step);
         bits |= idx << (3 * i);
     }
@@ -108,7 +108,7 @@ std::array<uint8_t, 16> decodeBc4Block(const std::array<uint8_t, 8>& block) {
         pal[6] = 0; pal[7] = 255;
     }
     uint64_t bits = 0;
-    for (int b = 0; b < 6; ++b) bits |= uint64_t(block[static_cast<size_t>(2 + b)]) << (8 * b);
+    for (int b = 0; b < 6; ++b) bits |= static_cast<uint64_t>(block[static_cast<size_t>(2 + b)]) << (8 * b);
     std::array<uint8_t, 16> out{};
     for (int i = 0; i < 16; ++i) out[static_cast<size_t>(i)] = static_cast<uint8_t>(pal[static_cast<size_t>((bits >> (3 * i)) & 7u)]);
     return out;

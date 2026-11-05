@@ -12,8 +12,8 @@ inline std::array<unsigned char, 4> frameHeader(uint32_t size) {
             static_cast<unsigned char>(size >> 8), static_cast<unsigned char>(size)};
 }
 inline uint32_t frameSize(const unsigned char* bytes) {
-    return (uint32_t(bytes[0]) << 24) | (uint32_t(bytes[1]) << 16) |
-           (uint32_t(bytes[2]) << 8) | uint32_t(bytes[3]);
+    return (static_cast<uint32_t>(bytes[0]) << 24) | (static_cast<uint32_t>(bytes[1]) << 16) |
+           (static_cast<uint32_t>(bytes[2]) << 8) | static_cast<uint32_t>(bytes[3]);
 }
 inline bool validSession(std::string_view text) {
     if (text.size() != 36) return false;

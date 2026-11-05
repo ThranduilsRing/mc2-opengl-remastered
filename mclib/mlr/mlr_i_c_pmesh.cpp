@@ -65,9 +65,6 @@ MLR_I_C_PMesh::MLR_I_C_PMesh(
 		break;
 		default:
 		{
-#if COLOR_AS_DWORD
-			MemoryStreamIO_Read(stream, &colors);
-#else
 			Stuff::DynamicArrayOf<DWORD> smallColors;
 
 			MemoryStreamIO_Read(stream, &smallColors);
@@ -96,7 +93,6 @@ MLR_I_C_PMesh::MLR_I_C_PMesh(
 
 				colors[i].alpha = (theColor & 0xff) * One_Over_256;
 			}
-#endif
 		}
 		break;
 	}
@@ -119,11 +115,7 @@ void
 	Check_Pointer(this);
 
 	int len;
-#if COLOR_AS_DWORD
-	DWORD *_colors;
-#else
 	RGBAColor *_colors;
-#endif
 
 	MLR_I_PMesh::Copy(polyMesh);
 
@@ -167,9 +159,6 @@ void
 
 	MLR_I_PMesh::Save(stream);
 
-#if COLOR_AS_DWORD
-	MemoryStreamIO_Write(stream, &colors);
-#else
 	Stuff::DynamicArrayOf<DWORD> smallColors;
 	int i, len = static_cast<int>(colors.GetLength());
 
@@ -183,7 +172,6 @@ void
 	}
 
 	MemoryStreamIO_Write(stream, &smallColors);
-#endif
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,11 +186,7 @@ void
 //
 void
 	MLR_I_C_PMesh::SetColorData(
-#if COLOR_AS_DWORD
-		const DWORD *data,
-#else
 		const RGBAColor *data,
-#endif
 		int dataSize
 	)
 {
@@ -219,11 +203,7 @@ void
 //
 void
 	MLR_I_C_PMesh::GetColorData(
-#if COLOR_AS_DWORD
-		DWORD **data,
-#else
 		RGBAColor **data,
-#endif
 		int *dataSize
 	)
 {
@@ -236,11 +216,7 @@ void
 //
 void
 	MLR_I_C_PMesh::PaintMe(
-#if COLOR_AS_DWORD
-		const DWORD *paintMe
-#else
 		const RGBAColor *paintMe
-#endif
 		
 	)
 {
@@ -249,19 +225,10 @@ void
 
 	int k, len = static_cast<int>(colors.GetLength());
 
-#if COLOR_AS_DWORD
-	DWORD argb = GOSCopyColor(paintMe);
-
-	for(k=0;k<len;k++)
-	{
-		colors[k] = argb;
-	}
-#else
 	for(k=0;k<len;k++)
 	{
 		colors[k] = *paintMe;
 	}
-#endif
 }
 
 
@@ -353,22 +320,7 @@ MLR_I_C_PMesh*
 
 	if(eightColors!=nullptr)
 	{
-#if COLOR_AS_DWORD
-		auto dwColorOwner = std::make_unique_for_overwrite<DWORD[]>(8);
-		DWORD* dwColor = dwColorOwner.get();
-		Register_Pointer(dwColor);
-
-		for(i=0;i<8;i++)
-		{
-			dwColor[i] = GOSCopyColor(eightColors+i);
-		}
-
-		ret->SetColorData(dwColor, 8);
-		Unregister_Pointer(dwColor);
-		dwColorOwner.reset();
-#else
 		ret->SetColorData(eightColors, 8);
-#endif
 	}
 
 	auto texCoordsOwner = std::make_unique_for_overwrite<Vector2DScalar[]>(8);
@@ -503,18 +455,6 @@ MLR_I_PMesh*
 
 	ret->FindFacePlanes();
 
-#if COLOR_AS_DWORD
-	auto colorsOwner = std::make_unique_for_overwrite<DWORD[]>(8);
-	DWORD* colors = colorsOwner.get();
-	Register_Pointer(colors);
-
-	colors[0] = GOSCopyColor(color);
-	for(i=1;i<8;i++)
-	{
-		colors[i] = colors[0];
-	}
-
-#else
 	auto colorsOwner = std::make_unique_for_overwrite<RGBAColor[]>(8);
 	RGBAColor* colors = colorsOwner.get();
 	Register_Pointer(colors);
@@ -536,7 +476,6 @@ MLR_I_PMesh*
 	}
 
 
-#endif
 	ret->SetColorData(colors, 8);
 
 	auto texCoordsOwner = std::make_unique_for_overwrite<Vector2DScalar[]>(8);

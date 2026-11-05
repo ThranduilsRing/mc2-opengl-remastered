@@ -11,7 +11,7 @@ namespace vk_water_detail {
 bool init_reflection(WaterIsland* s) {
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     image.imageType=VK_IMAGE_TYPE_2D; image.format=VK_FORMAT_R16G16B16A16_SFLOAT;
-    image.extent={uint32_t((s->w+1)/2),uint32_t((s->h+1)/2),1};
+    image.extent={static_cast<uint32_t>((s->w+1)/2),static_cast<uint32_t>((s->h+1)/2),1};
     image.mipLevels=1; image.arrayLayers=1; image.samples=VK_SAMPLE_COUNT_1_BIT;
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
     image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -100,13 +100,13 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
         levelDims.assign(1, {1, 1});
     }
 
-    RenderCore::KtxImage image; image.width=w; image.height=h; image.vkFormat=uint32_t(fmt); image.mipCount=int(mips);
+    RenderCore::KtxImage image; image.width=w; image.height=h; image.vkFormat=static_cast<uint32_t>(fmt); image.mipCount=static_cast<int>(mips);
     image.isCompressed=fmt==VK_FORMAT_BC6H_UFLOAT_BLOCK || fmt==VK_FORMAT_BC6H_SFLOAT_BLOCK;
     image.blockSizeBytes=image.isCompressed ? 16u : 0u;
     for (auto& level : levels) { image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),level.begin(),level.end()); }
     RenderCore::TextureKey key; key.source=RenderCore::makeTextureSourceId("hdri-cpu","water",RenderCore::textureContentHash(image.pixels.data(),image.pixels.size()));
-    key.format=uint32_t(fmt); key.hints=gosHint_MipmapFilter0;
-    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{uint32_t(w),uint32_t(h),uint32_t(w),uint32_t(h)});
+    key.format=static_cast<uint32_t>(fmt); key.hints=gosHint_MipmapFilter0;
+    auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{static_cast<uint32_t>(w),static_cast<uint32_t>(h),static_cast<uint32_t>(w),static_cast<uint32_t>(h)});
     if (!texture) return false;
     s->hdriTexture=std::move(texture); s->hdriSourceReal=haveReal;
     s->hdriRealImported=false;
@@ -124,9 +124,9 @@ bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texel
                       mc2vk::ResidentTextureRef& texture, bool* real) {
     const bool have=texels && texelsW>0 && texelsH>0;
     static const uint32_t zero=0;
-    const auto w=have ? uint32_t(texelsW) : 1u,h=have ? uint32_t(texelsH) : 1u;
+    const auto w=have ? static_cast<uint32_t>(texelsW) : 1u,h=have ? static_cast<uint32_t>(texelsH) : 1u;
     auto ref=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w,h,isFloat ? VK_FORMAT_R32_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM,
-        have ? texels : &zero,size_t(w)*h*4,false);
+        have ? texels : &zero,static_cast<size_t>(w)*h*4,false);
     if (!ref) return false;
     texture=std::move(ref); *real=have; return true;
 }

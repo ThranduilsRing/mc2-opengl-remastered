@@ -1,5 +1,7 @@
 // Pathfinding: MoveMap setup: start/goal/target marking and the two setUp variants.
 // Declared in the class headers; shared names in move_internal.h.
+#include <algorithm>
+
 #include "move_internal.h"
 
 void MoveMap::setCost (long row, long col, long newCost) {
@@ -12,7 +14,7 @@ void MoveMap::adjustCost (long row, long col, long costAdj) {
 	if (!inBounds(row, col)) return;
 	long index = row * width + col;
 	long cost = map[index].cost + costAdj;
-	if (cost < 1) cost = 1;
+	cost = std::max<long>(cost, 1);
 	map[index].cost = cost;
 }
 
@@ -137,8 +139,7 @@ void MoveMap::setGoal (glm::vec3 goalPos, long goalRow, long goalCol) {
 inline void adjustMoveMapCellCost (MoveMapNodePtr cell, long costAdj) {
 
 	long cost = cell->cost + costAdj;
-	if (cost < 1)
-		cost = 1;
+	cost = std::max<long>(cost, 1);
 	cell->cost = cost;
 }
 

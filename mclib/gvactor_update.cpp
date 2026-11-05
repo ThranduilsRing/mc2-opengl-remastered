@@ -1,6 +1,7 @@
 #include "unit_animation_tick.h"
 // GVAppearance: updateGeometry (reads the shadow-skip gate and the spot-light diagnostic counters), update, destroy, water wake and activity effects.
 // Declared in the class headers; shared names in gvactor_internal.h.
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
@@ -245,7 +246,7 @@ void GVAppearance::updateGeometry (void)
 						actorHandle_, nodeName, static_cast<long>(spotlightSlotIds_.back()));
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;
-				if (diagOverflow < 0) diagOverflow = 0;
+				diagOverflow = std::max(diagOverflow, 0);
 				s_spotDiagGvRegistered += static_cast<unsigned long>(diagRegistered);
 				s_spotDiagGvOverflows  += static_cast<unsigned long>(diagOverflow);
 				++s_spotDiagGvActors;
@@ -292,7 +293,7 @@ void GVAppearance::updateGeometry (void)
 					if (mc2_cone_glow::GetNodeAim(gvShape, spotlightNodeIds_[k], aimW, coneLen))
 					{
 						float spill = coneLen * mc2_cone_glow::spill_scale();
-						if (spill > 200.0f) spill = 200.0f;
+						spill = std::min(spill, 200.0f);
 						childPos.x += aimW.x * spill;
 						childPos.y += aimW.y * spill;
 						childPos.z += aimW.z * spill;
@@ -552,8 +553,7 @@ long GVAppearance::update (bool animate)
 			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
 				unitAnim().nodeRecycle[i] -= frameLength;
-				if (unitAnim().nodeRecycle[i] < 0.0f)
-					unitAnim().nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] = std::max(unitAnim().nodeRecycle[i], 0.0f);
 			}
 		}
 	}
@@ -635,17 +635,17 @@ long GVAppearance::update (bool animate)
 			lposP.x = lpos.x; lposP.y = lpos.y; lposP.z = lpos.z;
 			mc2::math::buildTranslation(l2w, lposP);
 			mc2::math::buildRotation(l2w, mc2::math::Euler(0.0f, 0.0f, 0.0f));
-			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+			for (auto & spotlightLight : spotlightLights_)
 			{
-				spotlightLights_[k]->ownerEnabled = 1;
-				spotlightLights_[k]->SetPosition(&lpos);
-				spotlightLights_[k]->SetLightToWorld(&l2w);
+				spotlightLight->ownerEnabled = 1;
+				spotlightLight->SetPosition(&lpos);
+				spotlightLight->SetLightToWorld(&l2w);
 			}
 		}
 		else
 		{
-			for (size_t k = 0; k < spotlightLights_.size(); ++k)
-				spotlightLights_[k]->ownerEnabled = 0;
+			for (auto & spotlightLight : spotlightLights_)
+				spotlightLight->ownerEnabled = 0;
 		}
 	}
 

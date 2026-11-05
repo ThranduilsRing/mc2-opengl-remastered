@@ -1,4 +1,5 @@
 #include"gosfxheaders.hpp"
+#include <algorithm>
 #include<mlr/mlrindexedtrianglecloud.hpp>
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -256,8 +257,7 @@ bool gosFX::Tube__Specification::IsDataValid(bool fix_data)
     Stuff::Scalar max_scale, min_scale;
     m_pUSize.ExpensiveComputeRange(&min_scale, &max_scale);
     Stuff::Scalar lower = min_scale;
-    if (lower > 0.0f)
-        lower = 0.0f;
+    lower = std::min(lower, 0.0f);
     Stuff::Scalar upper = max_scale;
 
     //
@@ -285,8 +285,7 @@ bool gosFX::Tube__Specification::IsDataValid(bool fix_data)
 
     m_pVSize.ExpensiveComputeRange(&min_scale, &max_scale);
     lower = min_scale;
-    if (lower > 0.0f)
-        lower = 0.0f;
+    lower = std::min(lower, 0.0f);
     upper = max_scale;
 
     //
@@ -486,8 +485,7 @@ bool
 Retry:
 	m_pUSize.ExpensiveComputeRange(&min_scale, &max_scale);
 	Stuff::Scalar lower = min_scale * max_index;
-	if (lower > 0.0f)
-		lower = 0.0f;
+	lower = std::min(lower, 0.0f);
 	Stuff::Scalar upper = max_scale * max_index;
 
 	//
@@ -1042,8 +1040,7 @@ void
 		spec->m_minimumDeviation.ComputeValue(m_age, seed);
 	Stuff::Scalar pitch_range =
 		spec->m_maximumDeviation.ComputeValue(m_age, seed) - pitch_min;
-	if (pitch_range < 0.0f)
-		pitch_range = 0.0f;
+	pitch_range = std::max(pitch_range, 0.0f);
 	const Stuff::Scalar angle = pitch_min + Stuff::Random::GetFraction() * pitch_range;
 	const Stuff::Scalar xySine = glm::sin(angle), xyCosine = glm::cos(angle);
 	profile->m_direction.x = (Stuff::Random::GetFraction() >= 0.5f) ? xySine : -xySine;

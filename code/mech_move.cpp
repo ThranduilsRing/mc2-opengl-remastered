@@ -268,9 +268,9 @@ bool BattleMech::pivotTo (void) {
 	return(false);
 }
 
-long BattleMech::getSpeedState (void) {
+SpeedState BattleMech::getSpeedState (void) {
 
-	return(mechSpeedStateArray[appearance->getCurrentGestureId()]);
+	return(static_cast<SpeedState>(mechSpeedStateArray[appearance->getCurrentGestureId()]));
 }
 
 void BattleMech::updateMoveStateGoal (void) {
@@ -342,7 +342,6 @@ void BattleMech::updateMoveStateGoal (void) {
 	}
 }
 
-#define	DEBUG_MECH_UPDATE	0
 float DistanceToWaypoint;
 
 bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, long& newGestureStateGoal, long& newMoveState, long& minThrottle, long& maxThrottle, float &facingRotate) {
@@ -357,14 +356,6 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 	newThrottleSetting = curThrottleSetting;
 	newRotate = 0.0;
 
-	#if DEBUG_MECH_UPDATE
-		if (selected) {
-			long area = GlobalMoveMap->calcArea(objPosition->tileRow, objPosition->tileCol);
-			char debugStr[256];
-			(*std::format_to_n(debugStr, sizeof(debugStr) - 1, "Area = {:d}\n", mc2::fmt::as_i32(area)).out = '\0');
-			mc2::fmt::debug_out(debugStr);
-		}
-	#endif
 
 	updateHustleTime();
 	bool hustle = (lastHustleTime + 2.0) > scenarioTime;

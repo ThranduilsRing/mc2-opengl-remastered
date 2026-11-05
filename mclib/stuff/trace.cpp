@@ -31,7 +31,7 @@
 		
 		lastActivity = 0.0;
 
-		Check_Object(TraceManager::Instance);
+		Check_Object(TraceManager::Instance.get());
 		TraceManager::Instance->Add(this);
 	}
 
@@ -254,23 +254,22 @@
 	//########################    TraceManager    ##############################
 	//##########################################################################
 
-	TraceManager
-		*TraceManager::Instance = nullptr;
+	std::unique_ptr<TraceManager>
+		TraceManager::Instance;
 
 	void
 		TraceManager::InitializeClass()
 	{
 		Verify(!TraceManager::Instance);
-		TraceManager::Instance = new TraceManager;
-		Register_Object(TraceManager::Instance);
+		TraceManager::Instance = std::make_unique<TraceManager>();
+		Register_Object(TraceManager::Instance.get());
 	}
 
 	void
 		TraceManager::TerminateClass()
 	{
-		Unregister_Object(TraceManager::Instance);
-		delete TraceManager::Instance;
-		TraceManager::Instance = nullptr;
+		Unregister_Object(TraceManager::Instance.get());
+		TraceManager::Instance.reset();
 	}
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

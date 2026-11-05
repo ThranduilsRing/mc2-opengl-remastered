@@ -29,6 +29,7 @@
 #ifndef MC2_RENDER_CONTRACT_H
 #define MC2_RENDER_CONTRACT_H
 
+#include "mc2_czstring.h"
 #include <cstdint>
 #include "RenderCore/RenderPassContract.h"
 
@@ -146,7 +147,7 @@ void _test_forceOrderAudit(bool enabled); // test-only override
 // draw-submission sites).
 void initRenderPassTelemetry();              // reads env; call once after GL init
 void renderPassTelemetryFrameTick();         // call once per presented frame
-void noteRenderPass(PassIdentity id, const char* callerHint = nullptr);
+void noteRenderPass(PassIdentity id, mc2::czstring callerHint = nullptr);
 
 // ---- RENDER-PASS-CONTRACT-ENFORCEMENT-1: pass-scope tracking ----------------
 //
@@ -176,8 +177,8 @@ void noteRenderPass(PassIdentity id, const char* callerHint = nullptr);
 // passes for the frame have ended, to flush missing-end violations and reset
 // the stack. Pass __func__ (or a static literal) as hint.
 void initRenderPassScope();
-void beginPassScope(PassIdentity id, const char* hint = nullptr);
-void endPassScope(PassIdentity id, const char* hint = nullptr);
+void beginPassScope(PassIdentity id, mc2::czstring hint = nullptr);
+void endPassScope(PassIdentity id, mc2::czstring hint = nullptr);
 void renderPassScopeFrameBoundary();
 uint32_t getPassScopeViolationCount();   // cumulative since process start (test/inspect)
 
@@ -193,8 +194,8 @@ uint32_t getPassScopeViolationCount();   // cumulative since process start (test
 // g_dispatchMvp16 snapshot timing, knownEarly terrain handling, body-owned state
 // setup, or existing pass call order. Wrapper calls are ADDITIVE around the
 // existing draw — no GL state change, no reorder.
-void executorOwnBeginTopLevel(PassIdentity id, const char* callerHint = nullptr);
-void executorOwnEndTopLevel(PassIdentity id, const char* callerHint = nullptr);
+void executorOwnBeginTopLevel(PassIdentity id, mc2::czstring callerHint = nullptr);
+void executorOwnEndTopLevel(PassIdentity id, mc2::czstring callerHint = nullptr);
 
 // APPLY-STATE-TERRAINDECAL-1: public accessor for the MC2_FRAMEGRAPH_EXECUTOR gate
 // used by executorOwnBeginTopLevel. Callers in other TUs (gameos_graphics.cpp) gate

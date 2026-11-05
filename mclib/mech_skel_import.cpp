@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 #include <assimp/anim.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -217,8 +218,8 @@ bool EvaluateClipGpuBones(const aiScene* scene,
 
     double tps = anim->mTicksPerSecond != 0.0 ? anim->mTicksPerSecond : 1000.0;
     double t = static_cast<double>(frame) / 30.0 * tps;
-    if (t > anim->mDuration) t = anim->mDuration;
-    if (t < 0) t = 0;
+    t = std::min(t, anim->mDuration);
+    t = std::max<double>(t, 0);
     if (clipDiag) {
         static int hit = 0;
         if (hit++ < 12)

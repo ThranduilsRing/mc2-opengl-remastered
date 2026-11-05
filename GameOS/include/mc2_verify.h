@@ -34,6 +34,7 @@
 //   * Each reclassified site carries the comment
 //     "MC2_VERIFY reclassified from gosASSERT (slice <NAME>)".
 #pragma once
+#include "mc2_czstring.h"
 
 namespace mc2verify {
 
@@ -45,7 +46,7 @@ bool Fail(const char* file, int line, const char* cond, const char* fmt, ...);
 
 // "[VERIFY] mission-end fires=<n> ..." counter line (stderr + crashbundle
 // ring). Silent in mode=off. Resets the per-mission fire counter.
-void MissionSummary(const char* label);
+void MissionSummary(mc2::czstring label);
 
 } // namespace mc2verify
 

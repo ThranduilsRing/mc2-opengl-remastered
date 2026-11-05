@@ -155,7 +155,7 @@ bool build(State* s, int w, int h) {
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->depthRes = mc2SharedSceneDepthGetResource();
     if (!s->colorRes || !s->normalRes || !s->depthRes) { decline("shared_gbuffer_not_ready"); return false; }
-    if (int(s->colorRes->w) != w || int(s->colorRes->h) != h || int(s->depthRes->w) != w || int(s->depthRes->h) != h) {
+    if (static_cast<int>(s->colorRes->w) != w || static_cast<int>(s->colorRes->h) != h || static_cast<int>(s->depthRes->w) != w || static_cast<int>(s->depthRes->h) != h) {
         decline("shared_gbuffer_size_mismatch"); return false;
     }
     VkDevice dev = s->device;
@@ -183,9 +183,9 @@ bool build(State* s, int w, int h) {
         if (!s->surfaceAtlas || !s->normalAtlas) { decline("atlas_upload_failed"); return false; }
     }
     for (uint32_t i = 0; i < kSlots; ++i) {
-        if (!s->ubo[i].createHostWritable(s->allocator, s->device, sizeof(FrameUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "impact.ubo", int(i)) ||
+        if (!s->ubo[i].createHostWritable(s->allocator, s->device, sizeof(FrameUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "impact.ubo", static_cast<int>(i)) ||
             !s->ssbo[i].createHostWritable(s->allocator, s->device, sizeof(impact::GpuDecal) * impact::kMaxDecals,
-                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "impact.ssbo", int(i))) {
+                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "impact.ssbo", static_cast<int>(i))) {
             decline("buffer_create_failed"); return false;
         }
     }
@@ -212,7 +212,7 @@ bool build(State* s, int w, int h) {
         const VkImageView view = s->colorRes->view.get();
         VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 1; fci.pAttachments = &view;
-        fci.width = uint32_t(w); fci.height = uint32_t(h); fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, dev, [&](auto* o) { return vkCreateFramebuffer(dev, &fci, nullptr, o); })) return false;
     }
     {   // set: 0 depth, 1 scene normal (class alpha), 2 surface atlas, 3 normal atlas, 4 frame UBO, 5 decal SSBO
@@ -270,8 +270,8 @@ bool build(State* s, int w, int h) {
             VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
             VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
             ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            VkViewport vp{0.0f, 0.0f, float(w), float(h), 0.0f, 1.0f};
-            VkRect2D sc{{0, 0}, {uint32_t(w), uint32_t(h)}};
+            VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+            VkRect2D sc{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
             VkPipelineViewportStateCreateInfo vps{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
             vps.viewportCount = 1; vps.pViewports = &vp; vps.scissorCount = 1; vps.pScissors = &sc;
             VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
@@ -329,7 +329,7 @@ void fillFrame(FrameUbo& u, const gosPostProcess& pp, int w, int h) {
     const float l = std::sqrt(lx * lx + ly * ly + lz * lz);
     if (l > 1e-6f) { lx /= l; ly /= l; lz /= l; }
     u.lightDir[0] = -lx; u.lightDir[1] = -ly; u.lightDir[2] = -lz; u.lightDir[3] = 0.55f;
-    u.screen[0] = float(w); u.screen[1] = float(h); u.screen[2] = 1.0f / float(w); u.screen[3] = 1.0f / float(h);
+    u.screen[0] = static_cast<float>(w); u.screen[1] = static_cast<float>(h); u.screen[2] = 1.0f / static_cast<float>(w); u.screen[3] = 1.0f / static_cast<float>(h);
 }
 
 }  // namespace

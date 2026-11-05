@@ -18,6 +18,7 @@ MPParameterScreen.h			: Interface for the MPParameterScreen component.
 #include"alistbox.h"
 #include"attributemeter.h"
 #include"simplecamera.h"
+#include <memory>
 #include <vector>
 #include"multplyr.h"
 #include"mploadmap.h"
@@ -78,12 +79,12 @@ protected:
 	aAnimButton		CBillsSpinnerDownButton;
 	aAnimButton		ReadyButton;
 
-	aObject*			statics;
-	aRect*				rects;
+	std::unique_ptr<aObject[]>	statics;
+	std::unique_ptr<aRect[]>	rects;
 	long				rectCount;
 	long				staticCount;
 
-	aText*				textObjects;
+	std::unique_ptr<aText[]>	textObjects;
 	long				textCount;
 
 	aDropList				teamNumberDropList;

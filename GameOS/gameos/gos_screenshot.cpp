@@ -1,4 +1,5 @@
 // gos_screenshot.cpp - see gos_screenshot.h.
+#include "mc2_czstring.h"
 #include "gos_screenshot.h"
 
 #include <cstdio>
@@ -19,7 +20,7 @@ Slot g_slot;
 
 }  // namespace
 
-bool request(const char* path, DoneFn done) {
+bool request(mc2::czstring path, DoneFn done) {
     if (const char* why = g_slot.refusal(path)) {
         mc2::fmt::print_err("[SCREENSHOT v1] request rejected: {}\n", mc2::fmt::safe(why));
         return false;

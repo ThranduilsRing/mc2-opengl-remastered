@@ -98,7 +98,7 @@ static void drawOverviewIconCell(ForceGroupIcon* icon,
 	gos_SetRenderState( gos_State_AlphaTest, false );
 
 	gos_VERTEX vv[5];
-	for ( int k = 0; k < 5; ++k ) { vv[k].argb = argb; vv[k].frgb = 0; vv[k].z = 0; vv[k].rhw = .5f; }
+	for (auto & vvElem : vv) { vvElem.argb = argb; vvElem.frgb = 0; vvElem.z = 0; vvElem.rhw = .5f; }
 	vv[0].u = vv[1].u = u;        vv[2].u = vv[3].u = u + uD;
 	vv[0].v = vv[3].v = v;        vv[1].v = vv[2].v = v + vD;
 	vv[0].x = vv[1].x = l;        vv[2].x = vv[3].x = r;
@@ -189,7 +189,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 		if ( ddx * ddx + ddy * ddy < 16.0f ) continue;	// not displaced
 		unsigned long lc = aBits | ( mc2::render_view::hud().mover(chip[i].ic->unit).selected ? 0x004bff4b : 0x0000aa00 );
 		gos_VERTEX ln[2];
-		for ( int k = 0; k < 2; ++k ) { ln[k].z = 0; ln[k].rhw = .5f; ln[k].argb = lc; ln[k].frgb = 0; ln[k].u = ln[k].v = 0; }
+		for (auto & lnElem : ln) { lnElem.z = 0; lnElem.rhw = .5f; lnElem.argb = lc; lnElem.frgb = 0; lnElem.u = lnElem.v = 0; }
 		ln[0].x = chip[i].tx; ln[0].y = chip[i].ty;
 		ln[1].x = chip[i].cx; ln[1].y = chip[i].cy + chipH * 0.5f;
 		gos_DrawLines( ln, 2 );
@@ -250,7 +250,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 
 	// Group buckets.
 	int gMem[MAXG][MAX_ICONS]; int gCnt[MAXG];
-	for ( int g = 0; g < MAXG; ++g ) gCnt[g] = 0;
+	for (auto & gCntElem : gCnt) gCntElem = 0;
 	int singles[MAX_ICONS]; int nS = 0;
 
 	for ( int i = 0; i < iconCount; i++ )
@@ -352,7 +352,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		gos_SetRenderState( gos_State_ZWrite, 0 );
 		unsigned long panel = ( static_cast<unsigned long>(( alpha * 0.70f * 255.0f )) << 24 ) | 0x000c2230;
 		gos_VERTEX q[4];
-		for ( int v = 0; v < 4; ++v ) { q[v].z = 0; q[v].rhw = .5f; q[v].argb = panel; q[v].frgb = 0; q[v].u = q[v].v = 0; }
+		for (auto & v : q) { v.z = 0; v.rhw = .5f; v.argb = panel; v.frgb = 0; v.u = v.v = 0; }
 		q[0].x = l; q[0].y = t; q[1].x = l; q[1].y = b; q[2].x = r; q[2].y = b; q[3].x = r; q[3].y = t;
 		gos_DrawQuads( q, 4 );
 
@@ -364,7 +364,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		{
 			ln[0].x = bx[e];   ln[0].y = by[e];
 			ln[1].x = bx[e+1]; ln[1].y = by[e+1];
-			for ( int v = 0; v < 2; ++v ) { ln[v].z = 0; ln[v].rhw = .5f; ln[v].argb = border; ln[v].frgb = 0; ln[v].u = ln[v].v = 0; }
+			for (auto & v : ln) { v.z = 0; v.rhw = .5f; v.argb = border; v.frgb = 0; v.u = v.v = 0; }
 			gos_DrawLines( ln, 2 );
 		}
 
@@ -425,19 +425,14 @@ void EnterWindowMode();
 void EnterFullScreenMode();
 void __stdcall ExitGameOS();
 
-#define BOTTOM_OFFSET	5 * Environment.screenHeight/640.f
-
-#define FORCEGROUP_LEFT		ForceGroupIcon::selectionRect[0].left
-#define FORCEGROUP_WIDTH	(ForceGroupIcon::selectionRect[7].right - ForceGroupIcon::selectionRect[0].left)
-#define FORCEGROUP_HEIGHT	(ForceGroupIcon::selectionRect[0].bottom - ForceGroupIcon::selectionRect[0].top)
 
 extern float frameRate;
  
 ForceGroupBar::ForceGroupBar()
 {
-	for ( int i = 0; i < MAX_ICONS; ++i )
+	for (auto & icon : icons)
 	{
-		icons[i] = nullptr;
+		icon = nullptr;
 	}
 
 	iconCount = 0;
@@ -543,7 +538,8 @@ void ForceGroupBar::update( )
 	screen.x = userInput->getMouseHudX();
 	screen.y = userInput->getMouseHudY();
 
-	 if ( screen.x > FORCEGROUP_LEFT && screen.x < FORCEGROUP_LEFT + FORCEGROUP_WIDTH
+	 const auto& fgRects = ForceGroupIcon::selectionRect;   // the bar spans icon 0's left to icon 7's right
+	 if ( screen.x > fgRects[0].left && screen.x < fgRects[0].left + (fgRects[7].right - fgRects[0].left)
 		  && screen.y > FORCEGROUP_TOP )
 	 {
 		 if ( ControlGui::instance->isSelectingInfoObject() )

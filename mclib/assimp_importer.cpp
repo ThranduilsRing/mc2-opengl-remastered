@@ -11,6 +11,7 @@
 // Spec: docs/superpowers/specs/2026-04-27-assimp-mech-importer-design.md
 // Plan: docs/superpowers/plans/2026-04-27-assimp-mech-importer.md
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
+#include "mc2_czstring.h"
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
 #include "content_ir.h"
@@ -73,9 +74,9 @@ public:
 class ContentIO final : public Assimp::IOSystem {
 public:
     std::vector<std::pair<std::string, uint64_t>> dependencies;
-    bool Exists(const char* path) const override { return fileExists(path) != 0; }
+    bool Exists(mc2::czstring path) const override { return fileExists(path) != 0; }
     char getOsSeparator() const override { return '/'; }
-    Assimp::IOStream* Open(const char* path, const char* mode) override {
+    Assimp::IOStream* Open(mc2::czstring path, mc2::czstring mode) override {
         if (!mode || mode[0] != 'r') return nullptr;
         File source;
         if (source.open(path) != NO_ERR || source.fileSize() > (256u << 20)) return nullptr;
@@ -244,7 +245,7 @@ inline glm::vec3 mechToMC2Vec(const aiVector3D& v) {
 
 // Damage/destruction/UI parts excluded from the intact bind-pose import (they
 // overlap the intact geometry; needed later for damage states — POC drops them).
-inline bool skelMeshDropped(const char* n) {
+inline bool skelMeshDropped(mc2::czstring n) {
     // GLB-TEXNAME-DERIVE-EXTRACT-1: shared with the game-free harness.
     return mech_texname::isDroppedMeshName(n);
 }
@@ -318,7 +319,7 @@ std::optional<const aiNode*> FindNodeForMesh(const aiNode* node, unsigned meshId
 // Strip leading directory components from a texture path. Assimp can return
 // absolute Windows paths, relative paths, or bare filenames depending on the
 // source authoring tool; legacy texture manager looks up by base name.
-const char* StripPath(const char* p) {
+const char* StripPath(mc2::czstring p) {
 	const char* slash1 = strrchr(p, '/');
 	const char* slash2 = strrchr(p, '\\');
 	const char* base = (slash1 > slash2) ? slash1 + 1 : (slash2 ? slash2 + 1 : p);
@@ -385,8 +386,8 @@ std::optional<std::string> DeriveMC2TextureName(const aiScene* scene, const aiMa
 		aiString matName;
 		if (mat->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
 			std::string mn = matName.C_Str();
-			for (size_t i = 0; i < mn.size(); ++i)
-				if (mn[i] >= 'A' && mn[i] <= 'Z') mn[i] = static_cast<char>((mn[i] - 'A' + 'a'));
+			for (auto & mnElem : mn)
+				if (mnElem >= 'A' && mnElem <= 'Z') mnElem = static_cast<char>((mnElem - 'A' + 'a'));
 			if (mn.find("leaf") != std::string::npos ||
 			    mn.find("leaves") != std::string::npos ||
 			    mn.find("foliage") != std::string::npos)
@@ -1010,10 +1011,10 @@ void measureClipStrides(ImportedAnimEntry& e) {
         // 2 * range / duration along the foot's dominant horizontal axis. (A per-frame
         // "lowest frames" test picked swing frames on in-place BT clips and over-read ~4x.)
         float sum = 0.0f; int n = 0;
-        for (int k = 0; k < 2; ++k) {
-            if (pos[k].size() < 3) continue;
-            const auto [xlo, xhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.x; }));
-            const auto [zlo, zhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.z; }));
+        for (auto & po : pos) {
+            if (po.size() < 3) continue;
+            const auto [xlo, xhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.x; }));
+            const auto [zlo, zhi] = std::ranges::minmax(po | std::views::transform([](const aiVector3D& p) { return p.z; }));
             sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
             ++n;
         }
@@ -1028,7 +1029,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
 // (MC2 semantic name -> source joint) from the GLB's sidecar
 // <stem>.package.json. Minimal flat-map scan (no JSON dependency; the generator
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
-void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& out,
+void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& out,
                      std::string& aoOut, std::string& normalOut,
                      std::map<std::string, aiVector3D>* socketOut = nullptr) {
     if (!glbPath) return;
@@ -1112,7 +1113,7 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
 // Keep a dedicated parse alive for the runtime re-bake: the import's own Importer
 // is a stack local that frees its scene on return. Same flags → identical
 // post-processed mesh ordering/vertices as the merge that recorded `parts`.
-void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBake& bake,
+void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const SkelBake& bake,
                           const std::vector<ImportPartRec>& parts, float groundDy) {
     TG_TypeNodePtr slot = out->GetTypeNode(0);
     if (!slot || slot->GetNodeType() != SHAPE_NODE) return;
@@ -1669,7 +1670,7 @@ static void CollectContentSockets(const aiNode* node, mc2::content::Asset& asset
     for (unsigned c = 0; c < node->mNumChildren; ++c) CollectContentSockets(node->mChildren[c], asset);
 }
 
-long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
+long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
                             bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
 	// The shipped cooker's GLBs contain their vertex/index buffers. Keep arbitrary
@@ -1795,7 +1796,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			const char* dumpPath = dumpPathStr.c_str();
 			if (FILE* bf = fopen(dumpPath, "w")) {
 				double sum = 0.0;
-				for (const auto& b : bake.rest) for (int k = 0; k < 16; ++k) sum += b.m[k];
+				for (const auto& b : bake.rest) for (const auto mElem : b.m) sum += mElem;
 				const char* clipLabel = bake.forcedClip.empty() ? "rest" : bake.forcedClip.c_str();
 				mc2::fmt::print(bf, "{{\n  \"clip\": \"{}\",\n  \"frame\": {:d},\n  \"boneCount\": {:d},\n  \"checksum\": {:.6f},\n  \"bones\": [\n", mc2::fmt::safe(clipLabel), mc2::fmt::as_i32(bake.forcedFrame), mc2::fmt::as_size(bake.names.size()), sum);
 				for (size_t i = 0; i < bake.names.size(); ++i) {
@@ -1839,7 +1840,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// both. A skin material name contains the variant token ("widow"/"bha"/"sldf");
 		// base is plain "<chassis>_base". First skinned mesh sets a fallback; the scan
 		// keeps going and upgrades to a variant if one shows up.
-		auto isVariantMat = [](const char* mn){
+		auto isVariantMat = [](mc2::czstring mn){
 			if (!mn) return false;
 			std::string s(mn); for (char& c : s) c = static_cast<char>(tolower(c));
 			return s.find("widow") != std::string::npos

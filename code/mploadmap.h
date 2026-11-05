@@ -1,6 +1,7 @@
 #include <string>
 #include <memory>
 #include <span>
+#include "mc2_czstring.h"
 #ifndef MPLOADMAP_H
 #define MPLOADMAP_H
 /*************************************************************************************************\
@@ -79,7 +80,7 @@ private:
 
 
 	void	updateMapInfo();
-	void	seedFromFile( const char* pFileName );
+	void	seedFromFile( mc2::czstring pFileName );
 	void	addFile( const char* pFileName, bool bSeedSingle );
 
 

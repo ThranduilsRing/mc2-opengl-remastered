@@ -12,6 +12,7 @@
 // substring-matched so faction variants (e.g. "Archetype.InnerSphere.Davion") fall back to the
 // faction Standard. Adding presets = one row.
 
+#include "mc2_czstring.h"
 #include <cstring>
 
 struct BrainArchetypeDefaults {
@@ -25,7 +26,7 @@ struct BrainArchetypeDefaults {
 
 // Fills `out` with the named archetype's defaults. Returns true if a preset matched (false →
 // out left at a neutral Inner-Sphere-ish default, still usable).
-inline bool brainArchetypeLookup(const char* name, BrainArchetypeDefaults& out) {
+inline bool brainArchetypeLookup(mc2::czstring name, BrainArchetypeDefaults& out) {
     // Neutral default (used when name is empty/unknown).
     out = BrainArchetypeDefaults{ 300.0f, 100.0f, 125.0f, 1, 1, 0 };
     if (!name || !name[0]) return false;
@@ -55,7 +56,7 @@ inline bool brainArchetypeLookup(const char* name, BrainArchetypeDefaults& out) 
 
 // Tactic name (from a Brain Tactics block) -> TacticType index (tacordr.h enum, NUM_TACTICS=12),
 // -1 = unknown. Maps the discussion #19 tactic aliases onto the engine's tactic enum.
-inline int brainTacticNameToIndex(const char* name) {
+inline int brainTacticNameToIndex(mc2::czstring name) {
     if (!name || !name[0]) return -1;
     if (!std::strcmp(name, "FlankLeft"))                                  return 1;  // TACTIC_FLANK_LEFT
     if (!std::strcmp(name, "FlankRight") || !std::strcmp(name, "Flank"))  return 2;  // TACTIC_FLANK_RIGHT
@@ -72,7 +73,7 @@ inline int brainTacticNameToIndex(const char* name) {
 }
 
 // OPORD type token -> id (0..9), 255 = unknown/none. Shared by parser-consumer + runtime.
-inline uint8_t brainOpordTypeId(const char* type) {
+inline uint8_t brainOpordTypeId(mc2::czstring type) {
     if (!type || !type[0]) return 255;
     if (!std::strcmp(type, "Patrol"))           return 0;
     if (!std::strcmp(type, "Guard"))            return 1;

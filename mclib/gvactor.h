@@ -25,6 +25,7 @@
 #include"msl.h"
 #endif
 
+#include "mc2_czstring.h"
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
 #include "sim_overlap.h"
 #include "math/mc2_xform.h"  // mc2::math::quatXYZW
@@ -36,9 +37,7 @@
 #include<gosfx/gosfxheaders.hpp>
 #include <vector>  // T1.10: GVAppearance::spotlight{Lights,SlotIds,NodeIds}_
 //**************************************************************************************
-#ifndef NO_ERR
-#define NO_ERR						0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr int GV_PART_BODY = 0;
 inline constexpr int GV_PART_TURRET = 1;
@@ -125,7 +124,7 @@ class GVAppearanceType : public AppearanceType
 			destroy();
 		}
 
-		virtual void init (const char *fileName);
+		virtual void init (mc2::czstring fileName);
 		
 		virtual void destroy (void);
 		
@@ -400,7 +399,7 @@ class GVAppearance : public ObjectAppearance
 		{
 			mc2_vis::MoverVis v;
 			v.sensorLevel   = sensorLevel;
-			v.meshAlpha     = gvShape ? (unsigned)gvShape->GetAlphaValue() : 255u;
+			v.meshAlpha     = gvShape ? static_cast<unsigned>(gvShape->GetAlphaValue()) : 255u;
 			v.status        = status;
 			v.relation      = homeTeamRelationship;
 			v.legacyVisible = visible;
@@ -439,7 +438,7 @@ class GVAppearance : public ObjectAppearance
 
 		virtual long getLowestWeaponNode (void);
 		
-		virtual glm::vec3 getNodeNamePosition (const char *nodeName);
+		virtual glm::vec3 getNodeNamePosition (mc2::czstring nodeName);
 		
  		virtual bool PerPolySelect (long mouseX, long mouseY);
 		// UI preview (SimpleCamera): sets the paint texture and highlight, returns the shape for TG_MultiShape::PreviewDraw.

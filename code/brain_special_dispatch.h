@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include "player_unit_intent.h"
 class MechWarrior;
 // Objective sequencing is supplied by Mission; the runtime owns unit decisions.
@@ -257,14 +258,14 @@ void commitBrainIntents(MechWarrior* warrior, struct MechBrainRuntime* runtime);
 // The entry-body selection rule (for outBody) is documented in brain_special_dispatch.h
 // under SpecialIndexEntry. The index is populated regardless of DISPATCH_CALL gate state
 // (build-time unconditional) — the gate controls runtime call resolution only.
-bool parseBrainSpecialBody(const char* missionName, BrainSpecialBody& outBody,
+bool parseBrainSpecialBody(mc2::czstring missionName, BrainSpecialBody& outBody,
                             SpecialIndex* outIndex = nullptr);
 
 // BRAIN-DISPATCH-HARNESS-1: explicit-path variant for offline harness use.
 // Directly opens fitPath (absolute or CWD-relative) without the "data/missions/" prefix logic.
 // Same parser logic as parseBrainSpecialBody; index populated if outIndex is non-null.
 // Intended for test/harness use only — game code uses parseBrainSpecialBody(missionName).
-bool parseBrainSpecialBodyFromPath(const char* fitPath, BrainSpecialBody& outBody,
+bool parseBrainSpecialBodyFromPath(mc2::czstring fitPath, BrainSpecialBody& outBody,
                                     SpecialIndex* outIndex = nullptr);
 
 // ---------------------------------------------------------------------------
@@ -289,21 +290,21 @@ bool parseBrainSpecialBodyFromPath(const char* fitPath, BrainSpecialBody& outBod
 // The free function prototypes use a forward-declared uint8_t scope parameter convention;
 // see brain_special_dispatch.cpp for the actual VarScope-aware implementation.
 
-bool parseVarVerb(const char* verbStr, char outKey[32], char outValue[32], uint8_t* outScope);
+bool parseVarVerb(mc2::czstring verbStr, char outKey[32], char outValue[32], uint8_t* outScope);
 
 // Handles "Var.Set" when DISPATCH_VAR=1.
 // store may be nullptr if gate-off or runtime unavailable — soft-fails gracefully.
-void handleVarSet(const char* key, const char* value, uint8_t scope, VarStore* store, int wid);
+void handleVarSet(mc2::czstring key, mc2::czstring value, uint8_t scope, VarStore* store, int wid);
 
 // Handles "Var.Get" when DISPATCH_VAR=1.
-void handleVarGet(const char* key, uint8_t scope, VarStore* store, int wid);
+void handleVarGet(mc2::czstring key, uint8_t scope, VarStore* store, int wid);
 
 // TECHSCRIPT-SPECIAL-DISPATCH-1C: Raw-text scan of the specials file for FSM TODO markers.
 // Gate: MC2_BRAIN_DISPATCH_FSM_TODO=1 (requires MC2_BRAIN_DISPATCH=1; callee warns if invoked without).
 // Populates outBody.fsmTodos (capped at BrainSpecialBody::kMaxFsmTodos).
 // Returns count of FSM TODO lines found (0 if file absent or no TODO lines).
 // FORBIDDEN-CALL CONTRACT: calls ONLY std::ifstream + classify + fprintf. No order functions.
-int scanFsmTodosFromFile(const char* missionName, BrainSpecialBody& outBody);
+int scanFsmTodosFromFile(mc2::czstring missionName, BrainSpecialBody& outBody);
 
 // ---------------------------------------------------------------------------
 // TECHSCRIPT-DISPATCH-1D-M: mission-scope Var store management.
@@ -326,7 +327,7 @@ void resetMissionVarStore();
 //   All defined in brain_special_dispatch.cpp. Mission-ephemeral; gate MC2_BRAIN_DISPATCH.
 struct MechBrainRuntime;
 void resetMissionSpecialCache();
-void cacheMissionSpecialBody(const char* specialFitName);
+void cacheMissionSpecialBody(mc2::czstring specialFitName);
 bool applyCachedSpecialBodyToRuntime(struct MechBrainRuntime* rt);
 
 // ---------------------------------------------------------------------------

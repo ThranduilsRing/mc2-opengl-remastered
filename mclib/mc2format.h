@@ -36,6 +36,9 @@ inline const char* safe(P s) noexcept {
 template <class T> concept PrintfInteger = std::integral<T> || std::is_enum_v<T>;
 template <PrintfInteger T> constexpr int32_t as_i32(T v) noexcept { return static_cast<int32_t>(v); }
 template <PrintfInteger T> constexpr uint32_t as_u32(T v) noexcept { return static_cast<uint32_t>(v); }
+// printf %ld / %lu: the platform long (32-bit on MSVC, 64-bit on LP64), so Linux values above 2^31 print unchanged.
+template <PrintfInteger T> constexpr long as_long(T v) noexcept { return static_cast<long>(v); }
+template <PrintfInteger T> constexpr unsigned long as_ulong(T v) noexcept { return static_cast<unsigned long>(v); }
 template <PrintfInteger T> constexpr int64_t as_i64(T v) noexcept { return static_cast<int64_t>(v); }
 template <PrintfInteger T> constexpr uint64_t as_u64(T v) noexcept { return static_cast<uint64_t>(v); }
 template <PrintfInteger T> constexpr size_t as_size(T v) noexcept { return static_cast<size_t>(v); }

@@ -630,19 +630,19 @@ void MissionBegin::begin()
 	singlePlayerScreens[2][2] = std::move(pMechLabScreen);
 	singlePlayerScreens[4][1] = std::move(pLoadScreen);
 
-	for ( int i = 0; i < DIM_SCREEN_X; i++ )
+	for (auto & singlePlayerScreen : singlePlayerScreens)
 	{
 		for ( int j = 0; j < DIM_SCREEN_Y; j++ )
 		{
-			if ( singlePlayerScreens[i][j] )
+			if ( singlePlayerScreen[j] )
 			{
 				/*if (  singlePlayerScreens[i][j]->getButton(MB_MSG_NEXT) )
 					singlePlayerScreens[i][j]->getButton(MB_MSG_NEXT)->setPressFX( -1 );
 
 				if ( singlePlayerScreens[i][j]->getButton(MB_MSG_PREV) )
 					singlePlayerScreens[i][j]->getButton(MB_MSG_PREV)->setPressFX( -1 );*/
-				if ( singlePlayerScreens[i][j]->getButton(MB_MSG_MAINMENU) )
-					singlePlayerScreens[i][j]->getButton(MB_MSG_MAINMENU)->setPressFX( LOG_MAINMENUBUTTON );
+				if ( singlePlayerScreen[j]->getButton(MB_MSG_MAINMENU) )
+					singlePlayerScreen[j]->getButton(MB_MSG_MAINMENU)->setPressFX( LOG_MAINMENUBUTTON );
 			}
 			
 		}
@@ -1254,9 +1254,9 @@ void MissionBegin::updateSoakAutoPurchase() {
 						{
 							LogisticsMech* bought = nullptr;
 							auto inv = ld->getInventory();
-							for ( auto it = inv.begin(); it != inv.end(); ++it )
-								if ( (*it) && (*it)->getVariant() == pick && !(*it)->getForceGroup() )
-									bought = (*it);
+							for (auto & it : inv)
+								if ( it && it->getVariant() == pick && !it->getForceGroup() )
+									bought = it;
 							if ( bought )
 							{
 								int slot = 1;
@@ -1778,8 +1778,8 @@ void MissionBegin::render()
 	long xOffset = 0;
 	long yOffset = 0;
 	
-	LogisticsScreen* pOtherScreen = 0;
-	LogisticsScreen* pCurScreen = 0;
+	LogisticsScreen* pOtherScreen = nullptr;
+	LogisticsScreen* pCurScreen = nullptr;
 	if ( curScreenX > -1 && curScreenY > -1 )
 	{
 		pCurScreen = screens[curScreenX][curScreenY];

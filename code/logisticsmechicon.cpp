@@ -214,9 +214,9 @@ void LogisticsMechIcon::update()
 	long x = userInput->getMouseX();
 	long y = userInput->getMouseY();
 
-	for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
+	for (auto & animation : animations)
 	{
-		animations[i].update();
+		animation.update();
 	}
 
 	if ( outline.pointInside( x, y ) )
@@ -225,9 +225,9 @@ void LogisticsMechIcon::update()
 			&& getMech() )
 		{
 		
-			for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
+			for (auto & animation : animations)
 			{
-				animations[i].setState( aAnimGroup::PRESSED );
+				animation.setState( aAnimGroup::PRESSED );
 			}
 
 			bJustSelected = true;
@@ -238,9 +238,9 @@ void LogisticsMechIcon::update()
 
 		else if ( state == aListItem::ENABLED || state == aListItem::HIGHLITE )
 		{
-			for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
+			for (auto & animation : animations)
 			{
-				animations[i].setState( aAnimGroup::HIGHLIGHT );
+				animation.setState( aAnimGroup::HIGHLIGHT );
 			}
 			if ( state != aListItem::HIGHLITE )
 			{
@@ -254,9 +254,9 @@ void LogisticsMechIcon::update()
 	}
 	else if ( state != aListItem::SELECTED )
 	{
-		for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
+		for (auto & animation : animations)
 		{
-			animations[i].setState( aAnimGroup::NORMAL );
+			animation.setState( aAnimGroup::NORMAL );
 		}
 
 		state = aListItem::ENABLED;
@@ -276,14 +276,14 @@ void LogisticsMechIcon::select( bool bSelect )
 	if ( !bSelect || bDisabled )
 	{
 		state = aListItem::ENABLED;
-		for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
-			animations[i].setState( aAnimGroup::NORMAL );
+		for (auto & animation : animations)
+			animation.setState( aAnimGroup::NORMAL );
 	}
 	else
 	{
 		state = aListItem::SELECTED;
-		for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
-			animations[i].setState( aAnimGroup::PRESSED );
+		for (auto & animation : animations)
+			animation.setState( aAnimGroup::PRESSED );
 
 		
 		bJustSelected = true;

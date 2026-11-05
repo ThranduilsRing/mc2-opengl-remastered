@@ -29,7 +29,7 @@ struct ShadowMaskAsset {
     static constexpr uint32_t kSchema = 2;   // 2: word-wise payload hash
     static constexpr uint32_t kEvaluator = 1;   // bump when the bake's output for the same inputs changes
     static constexpr uint32_t kMaxTexels = 16384;
-    static constexpr uint64_t kMaxBytes = 48ull + uint64_t(kMaxTexels) * kMaxTexels / 2 * 4 / 3 + 4096;
+    static constexpr uint64_t kMaxBytes = 48ull + static_cast<uint64_t>(kMaxTexels) * kMaxTexels / 2 * 4 / 3 + 4096;
     uint32_t texels = 0;   // mip 0 is texels x texels, a whole number of 4x4 blocks
     uint32_t mips = 0;
     uint64_t key = 0;

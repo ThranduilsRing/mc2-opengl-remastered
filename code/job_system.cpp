@@ -365,7 +365,7 @@ constexpr std::size_t kArenaBytes = 1u << 20;  // 1 MiB per participant
 // ---- pool lifecycle -------------------------------------------------------
 void startPool(int workerCount) {
     stopPool();
-    if (workerCount < 0) workerCount = 0;
+    workerCount = std::max(workerCount, 0);
     // Split the existing thread budget instead of doubling it for overlapping domains.
     for (int domain = 0; domain < 2; ++domain) {
         auto* p = g_np[domain] = new NewPool();
@@ -399,7 +399,7 @@ bool isPoolThread()   { return t_isPoolThread; }
 
 // ---- arena ----------------------------------------------------------------
 void* Arena::alloc(std::size_t bytes, std::size_t align) {
-    if (align < 1) align = 1;
+    align = std::max<std::size_t>(align, 1);
     if (!base_) {
         cap_  = kArenaBytes;
         used_ = 0;
@@ -452,7 +452,7 @@ void parallel_for_blocks(
     if (dom == Domain::Sim) mc2::overlap::assertSimQuiescent("jobs::parallel_for_blocks(Sim)");
     else mc2::overlap::assertMainThread("jobs::parallel_for_blocks(Render)");
     if (count <= 0) return;
-    if (batch < 1) batch = 1;
+    batch = std::max(batch, 1);
 
     // (a) Per-invocation adaptive fallback — small counts never pay the barrier.
     if (static_cast<int64_t>(count) * static_cast<int64_t>(estCostPerItemNs) < kDispatchFloorNs) {

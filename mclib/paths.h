@@ -48,11 +48,11 @@ extern char transcriptsPath[];
 
 #ifdef LINUX_BUILD
     #define PATH_SEPARATOR  "/"
-    #define PATH_SEPARATOR_AS_CHAR  '/'
 #else
     #define PATH_SEPARATOR  "\\"
-    #define PATH_SEPARATOR_AS_CHAR  '\\'
 #endif
+// Char form of PATH_SEPARATOR (the string form stays a macro: it is pasted into string literals).
+inline constexpr char PATH_SEPARATOR_AS_CHAR = PATH_SEPARATOR[0];
 
 #endif
 

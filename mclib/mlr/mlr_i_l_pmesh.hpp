@@ -67,29 +67,17 @@ namespace MidLevelRenderer {
 				int *point_count
 			);
 
-#if COLOR_AS_DWORD
-		virtual void
-			SetColorData(
-				const DWORD *array,
-				int point_count
-			);
-#else
 		virtual void
 			SetColorData(
 				const Stuff::RGBAColor *array,
 				int point_count
 			);
-#endif
 
 //		void Copy(MLRIndexedPolyMesh*);
 
 
 		virtual void
-#if COLOR_AS_DWORD
-			PaintMe(const DWORD *paintMe);
-#else
 			PaintMe(const Stuff::RGBAColor *paintMe);
-#endif
 
 
 
@@ -121,13 +109,8 @@ namespace MidLevelRenderer {
 	protected:
 		Stuff::DynamicArrayOf<glm::vec3> normals;		// Base address of normal list 
 
-#if COLOR_AS_DWORD
-		Stuff::DynamicArrayOf<DWORD> litColors;
-		Stuff::DynamicArrayOf<DWORD> *actualColors;
-#else
 		Stuff::DynamicArrayOf<Stuff::RGBAColor> litColors;
 		Stuff::DynamicArrayOf<Stuff::RGBAColor> *actualColors;
-#endif
 
 	};
 

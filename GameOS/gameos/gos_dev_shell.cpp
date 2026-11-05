@@ -3,6 +3,7 @@
 // any socket-layer failure logs once and the game continues; a malformed
 // request gets an error reply; an oversized request drops the connection.
 
+#include "mc2_czstring.h"
 #include <filesystem>
 #include "gos_dev_shell.h"
 
@@ -38,7 +39,7 @@ static std::map<std::string, CommandHandler>& extCommands()
     return s_map;
 }
 
-void registerCommand(const char* name, CommandHandler fn)
+void registerCommand(mc2::czstring name, CommandHandler fn)
 {
     if (name && fn) extCommands()[name] = fn;
 }
@@ -458,7 +459,7 @@ bool pollCommands(uint32_t frame)
     return quit;
 }
 
-void scheduleScreenshot(const char* name)
+void scheduleScreenshot(mc2::czstring name)
 {
     if (!shellEnabled() || !name || !name[0]) return;
     if (!s_pendingShotPath.empty()) return;
@@ -467,7 +468,7 @@ void scheduleScreenshot(const char* name)
 }
 
 // The present readback finished (or failed) the shell's request.
-static void onShotDone(const char* path, bool ok, int w, int h)
+static void onShotDone(mc2::czstring path, bool ok, int w, int h)
 {
     s_lastShotResult = ok
         ? std::string("wrote ") + path + " (" + std::to_string(w) + "x" + std::to_string(h) + ")"

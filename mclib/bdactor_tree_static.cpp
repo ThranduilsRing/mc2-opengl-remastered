@@ -425,10 +425,10 @@ void TreeAppearance::registerStatic() {
 				fallback.lightColor[0][3] = 1.0f;
 				// MERGE FIX (cook tree-LOD x gpucull G1): gpucull used a single regIdx; the cook
 				// branch rewrote this fn for per-LOD recipes (staticReg[lod]). Eager-bake all.
-				for (int _lod = 0; _lod < MAX_LODS; ++_lod) {
-					if (staticReg[_lod].registered && staticReg[_lod].recipeIndex >= 0) {
-						mc2SetBakedStaticLight(staticReg[_lod].recipeIndex, fallback);
-						mc2WriteStaticLightSlot(staticReg[_lod].recipeIndex, fallback);
+				for (auto & staticRegElem : staticReg) {
+					if (staticRegElem.registered && staticRegElem.recipeIndex >= 0) {
+						mc2SetBakedStaticLight(staticRegElem.recipeIndex, fallback);
+						mc2WriteStaticLightSlot(staticRegElem.recipeIndex, fallback);
 					}
 				}
 			}
@@ -482,8 +482,8 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 	mc2CacheOrBakeStaticGpuLight(treeShape, staticReg[lod].registered, staticReg[lod].recipeIndex);
 	const uint32_t lightIdx = treeShape->getCachedGpuLightIndex();
 	// Share light slot across all LODs (matches update() K×M fix).
-	for (int l = 0; l < MAX_LODS; ++l)
-		staticReg[l].lightDataIndex = lightIdx;
+	for (auto & staticRegElem : staticReg)
+		staticRegElem.lightDataIndex = lightIdx;
 
 	if (lightIdx != 0xFFFFFFFFu) {
 		needsFullBakeNextFrame = false;

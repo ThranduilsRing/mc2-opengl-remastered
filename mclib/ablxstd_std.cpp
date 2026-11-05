@@ -4,7 +4,7 @@
 #include "ablxstd_internal.h"
 #include "abl_script_events.h"
 #include "abl_string_append.h"
-#include "mc2fmt.h"
+#include "mc2_debug_out.h"
 #include "sim_trace.h"
 #include "Gates/gate.h"
 #include "det_rng.h"

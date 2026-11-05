@@ -105,7 +105,7 @@ void GpuTrailEmitter::Spawn(GpuTrailKind kind,
         static bool probed = false;
         if (!probed) {
             if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
-                mc2::fmt::print_err("[B2 TRAIL_PROBE] first spawn: kind={:d} prev=({:.2f},{:.2f},{:.2f}) cur=({:.2f},{:.2f},{:.2f}) deltaT={:.4f} len={:.3f}\n", mc2::fmt::as_u32((unsigned)kind), prev_world.x, prev_world.y, prev_world.z, cur_world.x, cur_world.y, cur_world.z, deltaT, std::sqrt(
+                mc2::fmt::print_err("[B2 TRAIL_PROBE] first spawn: kind={:d} prev=({:.2f},{:.2f},{:.2f}) cur=({:.2f},{:.2f},{:.2f}) deltaT={:.4f} len={:.3f}\n", mc2::fmt::as_u32(static_cast<unsigned>(kind)), prev_world.x, prev_world.y, prev_world.z, cur_world.x, cur_world.y, cur_world.z, deltaT, std::sqrt(
                         (cur_world.x - prev_world.x)*(cur_world.x - prev_world.x) +
                         (cur_world.y - prev_world.y)*(cur_world.y - prev_world.y) +
                         (cur_world.z - prev_world.z)*(cur_world.z - prev_world.z)));

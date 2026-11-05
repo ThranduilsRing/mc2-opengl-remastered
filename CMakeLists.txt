@@ -233,6 +233,8 @@ list(APPEND CMAKE_MODULE_PATH "${MC2_SOURCE_DIR_CMAKE}/cmake")
 find_package(FFmpegLGPL REQUIRED)
 # Exposes MC2_VIDEO_DLL_LIST (C string array) in ${CMAKE_BINARY_DIR}/generated/mc2video_dlls.h
 include_directories("${CMAKE_BINARY_DIR}/generated")
+# mclib/ holds the sim-safe header-only helpers (mc2fmt.h, mc2_czstring.h); outside GameOS/ so the sim include firewall allows them
+include_directories("${CMAKE_SOURCE_DIR}/mclib")
 
 message("Found SDL2 package ${SDL2_LIBRARIES}" )
 message("SDL2 prefix: ${SDL2_PREFIX}")

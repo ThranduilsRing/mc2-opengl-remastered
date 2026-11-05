@@ -3,6 +3,7 @@ hudtabregistry.cpp : HudTabs::Registry out-of-line bits (slice C, MC2_HUD_IMGUI_
 Pure logic -- no GameOS/GL/ImGui. Also linked into tests/unit (leaf TU).
 \*************************************************************************************************/
 
+#include "mc2_czstring.h"
 #include "hudtabregistry.h"
 
 #include <string.h>
@@ -10,7 +11,7 @@ Pure logic -- no GameOS/GL/ImGui. Also linked into tests/unit (leaf TU).
 namespace HudTabs
 {
 
-int Registry::indexOfId( const char* id ) const
+int Registry::indexOfId( mc2::czstring id ) const
 {
 	if ( !id )
 		return -1;

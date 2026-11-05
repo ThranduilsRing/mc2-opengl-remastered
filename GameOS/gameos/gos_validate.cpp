@@ -1,4 +1,5 @@
 // gos_validate.cpp - Validation mode: auto-run, telemetry, screenshot, JSON log
+#include "mc2_czstring.h"
 #include "gos_validate.h"
 #include "gos_crashbundle.h"
 #include "gos_screenshot.h"
@@ -52,7 +53,7 @@ void validateParseArgs(int argc, char** argv) {
     }
 }
 
-void validateRecordShaderError(const char* msg) {
+void validateRecordShaderError(mc2::czstring msg) {
     if (s_config.enabled) {
         s_telemetry.shaderErrors.push_back(msg);
         s_telemetry.exitCode = 1;
@@ -74,7 +75,7 @@ bool validateShouldExit() {
 }
 
 // Escape a string for JSON output (handles backslashes and quotes)
-static void writeJsonString(FILE* f, const char* s) {
+static void writeJsonString(FILE* f, mc2::czstring s) {
     fputc('"', f);
     for (; *s; s++) {
         if (*s == '"') mc2::fmt::print(f, "\\\"");

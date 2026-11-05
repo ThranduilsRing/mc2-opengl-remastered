@@ -147,8 +147,8 @@ void
 //#########################    FileStreamManager    ###########################
 //#############################################################################
 
-FileStreamManager*
-	FileStreamManager::Instance = nullptr;
+std::unique_ptr<FileStreamManager>
+	FileStreamManager::Instance;
 	
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //

@@ -4,6 +4,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include <atomic>
 #include "texture_assets.h"
 #ifndef BDACTOR_H
@@ -41,7 +42,7 @@ uint32_t s_animStateToStateGesture = 0;
 // MC2_TEXMGR_KTX_PRIMARY is enabled). bdactor-only by design: mech/vehicle paint
 // (CPU_RGBA_REQUIRED, gos_LockTexture rewrite) must stay .tga and is NOT routed
 // here. See docs/texture-residency-registry-recon.md.
-bool textureOrKtxSidecarExists(const char* tgaPath)
+bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
@@ -58,7 +59,7 @@ bool textureOrKtxSidecarExists(const char* tgaPath)
 	return fileExists(ktx);
 }
 
-bool staticRegIsNaturalBuildingName(const char* name)
+bool staticRegIsNaturalBuildingName(mc2::czstring name)
 {
     if (!name)
         return false;
@@ -75,7 +76,7 @@ bool staticRegIsNaturalBuildingName(const char* name)
 // the legacy full-bake fallback instead. Capped at 32 lines so it confirms the failure
 // mode without spamming a long session (AMD never hits it — its registry isn't stale).
 // reason values match GpuStaticPropRegistry::StaticSubmitResult.
-void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char* name) {
+void bdLogStaticRegInvalid(mc2::czstring kind, int reason, int regIdx, mc2::czstring name) {
 	static int s_logged = 0;
 	if (s_logged >= 32) return;
 	++s_logged;
@@ -548,7 +549,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
-glm::vec3 BldgAppearance::getNodeNamePosition (const char *nodeName)
+glm::vec3 BldgAppearance::getNodeNamePosition (mc2::czstring nodeName)
 {
     if (!simPresentationPass) {
         if (!simPose->ready) updateSimPose();
@@ -878,7 +879,7 @@ bool BldgAppearance::playDestruction (void)
 			mc2::math::buildRotation(shapeOrigin, rot);
 			mc2::math::buildTranslation(shapeOrigin, tPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+			gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,nullptr);
 			destructFX->Start(&info);
 			
 			return true;

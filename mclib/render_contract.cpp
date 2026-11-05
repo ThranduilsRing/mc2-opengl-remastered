@@ -1,5 +1,6 @@
 // Pass metadata, CPU ordering/draw telemetry and native target/context validation.
 
+#include "mc2_czstring.h"
 #include "render_contract.h"
 #include "../GameOS/gameos/native_render_state.h"
 
@@ -665,7 +666,7 @@ extern "C" unsigned long mc2_framegraph_dryrun_terrain_mutex()      { return g_d
 extern "C" unsigned long mc2_framegraph_dryrun_latch_miss()         { return g_dryrunLatchMissFrames; }
 extern "C" unsigned long mc2_framegraph_dryrun_known_early_suppressed() { return g_dryrunKnownEarlySuppressed; }
 
-void noteRenderPass(PassIdentity id, const char* callerHint) {
+void noteRenderPass(PassIdentity id, mc2::czstring callerHint) {
     validateTargetAtPassBegin(toRenderPassId(id));   // self-gated; before the telemetry gate
     if (dryrunEnabled()) dryrunRecordPass(toRenderPassId(id));  // FRAME-GRAPH-EXECUTOR-DRYRUN-1
     if (!s_telemetryEnabled) return;
@@ -911,9 +912,9 @@ void endPass(RenderCore::RenderPassId id) {
     for (int i = 0; i < readCount; ++i) {
         mc2::fmt::print_err(" read={}:{}", mc2::fmt::safe(resourceName(c->reads[i])), mc2::fmt::safe(readOk[i] ? "ok" : "MISSING"));
     }
-    for (int i = 0; i < 4; ++i) {
-        if (c->writes[i] == RenderCore::RenderResourceId::Unknown) break;
-        mc2::fmt::print_err(" write={}", mc2::fmt::safe(resourceName(c->writes[i])));
+    for (const auto & writeElem : c->writes) {
+        if (writeElem == RenderCore::RenderResourceId::Unknown) break;
+        mc2::fmt::print_err(" write={}", mc2::fmt::safe(resourceName(writeElem)));
     }
     mc2::fmt::print_err("\n");
 }
@@ -953,7 +954,7 @@ static inline bool passScopeActive() {
     return s_scope.traceEnabled || s_scope.assertEnabled;
 }
 
-static void passScopeViolation(const char* what, PassIdentity id, const char* hint) {
+static void passScopeViolation(mc2::czstring what, PassIdentity id, mc2::czstring hint) {
     ++s_scope.violationCount;
     if (!s_scope.assertEnabled) return;   // TRACE-only run: track silently, no verdict noise
     mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] VIOLATION({}) pass={} hint={} depth={:d}\n",
@@ -974,7 +975,7 @@ void initRenderPassScope() {
     }
 }
 
-void beginPassScope(PassIdentity id, const char* hint) {
+void beginPassScope(PassIdentity id, mc2::czstring hint) {
     if (!passScopeActive()) return;
     if (s_scope.depth >= kPassScopeMaxDepth) {
         if (!s_scope.overflowed) {
@@ -992,7 +993,7 @@ void beginPassScope(PassIdentity id, const char* hint) {
     ++s_scope.depth;
 }
 
-void endPassScope(PassIdentity id, const char* hint) {
+void endPassScope(PassIdentity id, mc2::czstring hint) {
     if (!passScopeActive()) return;
     if (s_scope.depth <= 0) {
         passScopeViolation("end-without-begin", id, hint);
@@ -1068,7 +1069,7 @@ bool isTopLevelExecutorEnabled() {
     return topLevelExecutorEnabled();
 }
 
-void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
+void executorOwnBeginTopLevel(PassIdentity passId, mc2::czstring callerHint) {
     if (!topLevelExecutorEnabled()) return;
     const auto id=toRenderPassId(passId);
     const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
@@ -1086,7 +1087,7 @@ void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
     }
 }
 
-void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
+void executorOwnEndTopLevel(PassIdentity passId, mc2::czstring callerHint) {
     if (!topLevelExecutorEnabled()) return;
     const auto id=toRenderPassId(passId);
     const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);

@@ -1,6 +1,7 @@
 // Native scene-target ownership. Islands, presentation and explicit readbacks
 // share these images; no parallel texture or framebuffer allocations exist.
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "mc2_czstring.h"
 #include "gos_postprocess_internal.h"
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
@@ -13,7 +14,7 @@
 
 namespace {
 int sceneSide(int pixels) {
-    return (std::max)(1, int(std::lround(pixels * mc2::gate::get<"MC2_RENDER_SCALE">())));
+    return (std::max)(1, static_cast<int>(std::lround(pixels * mc2::gate::get<"MC2_RENDER_SCALE">())));
 }
 }
 
@@ -46,7 +47,7 @@ void gosPostProcess::createSceneTargets(int w, int h) {
     height_ = sceneSide(outputHeight_);
 #ifdef MC2_VULKAN_ISLAND
     const char* reason = "unknown";
-    auto require = [&](bool ready, const char* slot) {
+    auto require = [&](bool ready, mc2::czstring slot) {
         if (ready) return;
         mc2::fmt::print_err("[SCENE_TARGETS] native allocation failed slot={} reason={}\n",slot,reason ? reason : "unknown");
         std::abort();
@@ -62,11 +63,11 @@ void gosPostProcess::createSceneTargets(int w, int h) {
         require(sharedSceneObjectId_ != nullptr,"objectId");
     }
     using namespace RenderCore;
-    auto describe = [&](RenderResourceId id,RenderResourceFormat format,const char* name,uint32_t bytes,bool ready) {
+    auto describe = [&](RenderResourceId id,RenderResourceFormat format,mc2::czstring name,uint32_t bytes,bool ready) {
         RenderResourceDesc d;
         d.id=id; d.kind=RenderResourceKind::Texture2D; d.lifetime=RenderResourceLifetime::External;
-        d.format=format; d.debugName=name; d.width=ready ? uint32_t(width_) : 0; d.height=ready ? uint32_t(height_) : 0;
-        d.sizeBytes=ready ? uint64_t(width_)*uint64_t(height_)*bytes : 0; d.valid=ready;
+        d.format=format; d.debugName=name; d.width=ready ? static_cast<uint32_t>(width_) : 0; d.height=ready ? static_cast<uint32_t>(height_) : 0;
+        d.sizeBytes=ready ? static_cast<uint64_t>(width_)*static_cast<uint64_t>(height_)*bytes : 0; d.valid=ready;
         registerOrUpdateRenderResource(d);
     };
     const bool packedColor = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0)->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32;

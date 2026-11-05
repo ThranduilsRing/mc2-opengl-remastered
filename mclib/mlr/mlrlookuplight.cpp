@@ -337,9 +337,6 @@ void
 
 
 
-#if COLOR_AS_DWORD
-	TO_DO;
-#else	// COLOR_AS_DWORD
 	RGBColor light_color(color);
 
 	if (cosine > SMALL)
@@ -352,5 +349,4 @@ void
 		vertexData.color->green += light_color.green;
 		vertexData.color->blue += light_color.blue;
 	}
-#endif	// COLOR_AS_DWORD
 }

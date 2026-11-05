@@ -14,8 +14,8 @@
 namespace mc2::save {
 
 constexpr std::uint32_t fourcc(char a, char b, char c, char d) {
-    return std::uint32_t(std::uint8_t(a)) | std::uint32_t(std::uint8_t(b)) << 8 |
-           std::uint32_t(std::uint8_t(c)) << 16 | std::uint32_t(std::uint8_t(d)) << 24;
+    return static_cast<std::uint32_t>(static_cast<std::uint8_t>(a)) | static_cast<std::uint32_t>(static_cast<std::uint8_t>(b)) << 8 |
+           static_cast<std::uint32_t>(static_cast<std::uint8_t>(c)) << 16 | static_cast<std::uint32_t>(static_cast<std::uint8_t>(d)) << 24;
 }
 
 // Tagged value packets stay in their legacy positions; a required section opts

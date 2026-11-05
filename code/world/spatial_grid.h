@@ -19,7 +19,7 @@ private:
     std::vector<Candidate> unbounded_;
     static constexpr float cellWidth = 512.0f;
     static std::optional<int> cell(float p) {
-        const double c = std::floor(double(p) / cellWidth);
+        const double c = std::floor(static_cast<double>(p) / cellWidth);
         if (!std::isfinite(c) || c <= std::numeric_limits<int>::min() ||
             c >= std::numeric_limits<int>::max()) return std::nullopt;
         return static_cast<int>(c);
@@ -44,13 +44,13 @@ public:
         const auto lowX = cell(x - radius), highX = cell(x + radius);
         const auto lowY = cell(y - radius), highY = cell(y + radius);
         const bool bounded = radius >= 0 && lowX && highX && lowY && highY;
-        if (!bounded || int64_t(*highY) - *lowY + 3 > int64_t(entries_.size())) {
+        if (!bounded || static_cast<int64_t>(*highY) - *lowY + 3 > static_cast<int64_t>(entries_.size())) {
             for (const auto& e : entries_) result.push_back({e.ordinal, e.id});
         } else {
             int x0 = *lowX, x1 = *highX, y0 = *lowY, y1 = *highY;
             --x0; ++x1; --y0; ++y1;
             for (int64_t row = y0; row <= y1; ++row) {
-                auto it = std::lower_bound(entries_.begin(), entries_.end(), std::pair{int(row), x0},
+                auto it = std::lower_bound(entries_.begin(), entries_.end(), std::pair{static_cast<int>(row), x0},
                     [](const Entry& e, const auto& key) {
                         const auto& [row, column] = key;
                         return e.y < row || (e.y == row && e.x < column);

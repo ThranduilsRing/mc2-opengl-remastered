@@ -116,8 +116,8 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	result = mechFile->readIdFloatArray("FireArc", FireArc, 3);
 	if (result != NO_ERR)
 		return(result);
-	for (long arc = 0; arc < 3; arc++)
-		FireArc[arc] /= 2.0;
+	for (auto & FireArcElem : FireArc)
+		FireArcElem /= 2.0;
 
 	result = mechFile->readIdLong("AimedFireAbort", AimedFireAbort);
 	if (result != NO_ERR)

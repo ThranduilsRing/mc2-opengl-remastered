@@ -11,6 +11,7 @@
 #ifndef DEBUGGING_H
 #define DEBUGGING_H
 
+#include "mc2_czstring.h"
 #include<stdio.h>
 #include<gameos.hpp>
 //#include<gameos/toolos.hpp>
@@ -43,8 +44,8 @@ class GameDebugWindow {
 			pos[1] = 0;
 			linePos = 0;
 			numLines = 0;
-			for (long i = 0; i < MAX_DEBUG_WINDOW_LINES; i++)
-				textBuffer[i][0] = '\0';
+			for (auto & textBufferElem : textBuffer)
+				textBufferElem[0] = '\0';
 		}
 		
 		GameDebugWindow (void) {
@@ -86,18 +87,18 @@ class GameDebugWindow {
 			}
 		}
 		
-		void print (const char* s);
+		void print (mc2::czstring s);
 
 		void render (void);
 
 		void clear (void) {
 			numLines = 0;
 			linePos = 0;
-			for (long i = 0; i < MAX_DEBUG_WINDOW_LINES; i++)
-				textBuffer[i][0] = '\0';
+			for (auto & textBufferElem : textBuffer)
+				textBufferElem[0] = '\0';
 		}
 
-		static void setFont (const char* fontFile);
+		static void setFont (mc2::czstring fontFile);
 };
 
 //***************************************************************************

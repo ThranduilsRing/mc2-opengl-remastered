@@ -1,3 +1,4 @@
+#include "mc2_czstring.h"
 #include "gameos.hpp"
 #include "toolos.hpp"
 #include "fileio.hpp"
@@ -106,7 +107,7 @@ void closeStream(FILE* file)
 
 } // namespace
 
-gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwstatus )
+gosFileStream::gosFileStream( mc2::czstring FileName, gosEnum_FileWriteStatus fwstatus )
 {
     gosASSERT(FileName);
     gosASSERT(strlen(FileName) < MAX_PATH);
@@ -140,12 +141,12 @@ gosFileStream::~gosFileStream()
 }
 
 // toolos.hpp
-void __stdcall gos_FileSetReadWrite(char const* FileName)
+void __stdcall gos_FileSetReadWrite(mc2::czstring FileName)
 {
     STOP(("gos function not implemented"));
 }
 
-DWORD __stdcall gos_FileSize(char const* FileName)
+DWORD __stdcall gos_FileSize(mc2::czstring FileName)
 {
 	int fd = _open(FileName, O_RDONLY);
     if(fd == -1) {
@@ -159,12 +160,12 @@ DWORD __stdcall gos_FileSize(char const* FileName)
     
     return buf.st_size;
 }
-__int64 __stdcall gos_FileTimeStamp(char const* FileName)
+__int64 __stdcall gos_FileTimeStamp(mc2::czstring FileName)
 {
     return 0;
 }
 // HGOSFILE = gosFileStream*
-void __stdcall gos_OpenFile(gosFileStream** out_fstream, char const* path, gosEnum_FileWriteStatus fwstatus)
+void __stdcall gos_OpenFile(gosFileStream** out_fstream, mc2::czstring path, gosEnum_FileWriteStatus fwstatus)
 {
     *out_fstream = new gosFileStream(path, fwstatus);
 }
@@ -187,17 +188,17 @@ void __stdcall gos_CloseFile(gosFileStream* hfile)
     delete fstream;
 }
 ////////////////////////////////////////////////////////////////////////////////
-bool __stdcall gos_DoesFileExist(char const* FileName)
+bool __stdcall gos_DoesFileExist(mc2::czstring FileName)
 {
     STOP(("gos function not implemented"));
     return false;
 }
-bool __stdcall gos_CreateDirectory(char const* FileName)
+bool __stdcall gos_CreateDirectory(mc2::czstring FileName)
 {
     STOP(("gos function not implemented"));
     return false;
 }
-char* __stdcall gos_FindDirectories(char const* DirectoryName)
+char* __stdcall gos_FindDirectories(mc2::czstring DirectoryName)
 {
     STOP(("gos function not implemented"));
     return nullptr;
@@ -211,7 +212,7 @@ char* __stdcall gos_FindDirectoriesNext()
     STOP(("gos function not implemented"));
     return nullptr;
 }
-char* __stdcall gos_FindFiles(char const* PathFileName)
+char* __stdcall gos_FindFiles(mc2::czstring PathFileName)
 {
     STOP(("gos function not implemented"));
     return nullptr;
@@ -235,13 +236,13 @@ void __stdcall gos_GetCurrentPath(char* Buffer, int buf_len)
     }
 }
 
-void __stdcall gos_GetFile(char const* FileName, BYTE** MemoryImage, SIZE_T* Size)
+void __stdcall gos_GetFile(mc2::czstring FileName, BYTE** MemoryImage, SIZE_T* Size)
 {
     STOP(("gos function not implemented"));
 }
 
 // sebi
-bool __stdcall gos_FileExists(char const* FileName)
+bool __stdcall gos_FileExists(mc2::czstring FileName)
 {
     if(0 == access(FileName, F_OK))
         return true;

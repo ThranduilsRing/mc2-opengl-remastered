@@ -66,8 +66,8 @@ namespace Stuff {
 		static void
 			TestClass();
 
-		static FileStreamManager
-			*Instance;
+		static std::unique_ptr<FileStreamManager>
+			Instance;
 			
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Utility functions

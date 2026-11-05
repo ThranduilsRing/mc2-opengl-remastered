@@ -112,7 +112,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     rgba = std::make_shared<const std::vector<uint8_t>>(mc2tex::decodeBc7(*rgba, texels.width, texels.height));
 
             int W = texels.status == GosTexels::Status::Ready && rgba &&
-                rgba->size() == size_t(texels.width) * texels.height * 4 ? static_cast<int>(texels.width) : 0;
+                rgba->size() == static_cast<size_t>(texels.width) * texels.height * 4 ? static_cast<int>(texels.width) : 0;
             int H = W > 0 ? static_cast<int>(texels.height) : 0;
             // If the retained source has no pixels, the texture is genuinely
             // unavailable at finalize-time (no MC node, never cached,

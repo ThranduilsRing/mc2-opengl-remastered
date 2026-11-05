@@ -15,12 +15,12 @@ int LogisticsData::getAvailableComponents( LogisticsComponent** pComps, int& max
 	int retVal = 0;
 
 	int i = 0;
-	for ( auto iter = components.begin(); iter != components.end(); ++iter )
+	for (auto & component : components)
 		{
-			if ( (*iter).isAvailable()  )
+			if ( component.isAvailable()  )
 			{
 				if ( i < maxCount )
-					pComps[i]	= &(*iter);	
+					pComps[i]	= &component;	
 				else 
 					retVal = NEED_BIGGER_ARRAY;
 				++i;
@@ -39,10 +39,10 @@ int	LogisticsData::getAllComponents( LogisticsComponent** pComps, int& maxCount 
 	int retVal = 0;
 	
 	int i = 0;
-	for ( auto iter = components.begin(); iter != components.end(); ++iter )
+	for (auto & component : components)
 		{
 			if ( i < maxCount )
-					pComps[i]	= &(*iter);	
+					pComps[i]	= &component;	
 				else 
 					retVal = NEED_BIGGER_ARRAY;
 				++i;
@@ -63,9 +63,9 @@ int LogisticsData::getPurchasableMechs( LogisticsVariant** array, int& count )
 	long arraySize = count;
 
 	count = 0;
-	for ( auto iter = instance->variants.begin(); iter != instance->variants.end(); ++iter )
+	for (auto & variant : instance->variants)
 	{
-		if ( (*iter)->isAvailable() )
+		if ( variant->isAvailable() )
 		{
 			if ( count >= arraySize )
 			{
@@ -73,7 +73,7 @@ int LogisticsData::getPurchasableMechs( LogisticsVariant** array, int& count )
 			}
 			else
 			{
-				array[count] = (*iter);
+				array[count] = variant;
 			}
 
 			(count)++;	
@@ -199,11 +199,11 @@ int LogisticsData::removeVariant( const char* varName )
 int LogisticsData::createInstanceID( LogisticsVariant* pVar )
 {
 	int count = -1;
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 	{
-		if ( pVar->getVariantID() == (*iter)->getVariantID() ) 
+		if ( pVar->getVariantID() == iter->getVariantID() ) 
 		{
-			int tmp = (*iter)->getInstanceID();
+			int tmp = iter->getInstanceID();
 			if ( tmp > count )
 				count = tmp;
 		}
@@ -213,11 +213,11 @@ int LogisticsData::createInstanceID( LogisticsVariant* pVar )
 
 LogisticsVariant* LogisticsData::getVariant( int ID )
 {
-	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
+	for (auto & variant : variants)
 	{
-		if ( (*iter)->getID() == (ID & 0x00ffffff) )
+		if ( variant->getID() == (ID & 0x00ffffff) )
 		{
-			return *iter;
+			return variant;
 		}
 	}
 
@@ -229,10 +229,10 @@ LogisticsVariant* LogisticsData::getVariant( int ID )
 
 LogisticsMech*	LogisticsData::getMech( int ID )
 {
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 	{
-		if ( (*iter)->getID() == ID )
-			return (*iter );
+		if ( iter->getID() == ID )
+			return iter;
 	}
 
 	return nullptr;
@@ -269,12 +269,12 @@ int LogisticsData::addMechToForceGroup( LogisticsMech* pMech, int slot )
 
 int		LogisticsData::removeMechFromForceGroup( int slot )
 {
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 	{
-		if ( (*iter)->getForceGroup() == slot )
+		if ( iter->getForceGroup() == slot )
 		{
-			(*iter)->setForceGroup( 0 );
-			(*iter)->setPilot( nullptr );
+			iter->setForceGroup( 0 );
+			iter->setPilot( nullptr );
 			return 0;
 		}
 	}
@@ -288,11 +288,11 @@ LogisticsMech*		LogisticsData::getMechWithoutForceGroup( LogisticsMech* pMech )
 	if ( !pMech->getForceGroup() )
 		return pMech;
 
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 		{
-			if ( (*iter)->getVariant() == pMech->getVariant() && !(*iter)->getForceGroup() )
+			if ( iter->getVariant() == pMech->getVariant() && !iter->getForceGroup() )
 			{
-				return (*iter);
+				return iter;
 				
 			}
 		}
@@ -314,11 +314,11 @@ int LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemoveP
 	}
 
 	// find similar one
-	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
+	for (auto & iter : inventory)
 	{
-		if ( (*iter)->getVariant() == pMech->getVariant() && (*iter)->getForceGroup() )
+		if ( iter->getVariant() == pMech->getVariant() && iter->getForceGroup() )
 		{
-			(*iter)->setForceGroup( 0 );
+			iter->setForceGroup( 0 );
 
 			if ( bRemovePilot )
 				pMech->setPilot( nullptr );
@@ -384,18 +384,17 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 	if ( !s_tried )
 	{
 		s_tried = true;
-		LogisticsPilot* p = new LogisticsPilot;
+		auto p = std::make_unique_for_overwrite<LogisticsPilot>();
 		char nm[] = "PMWScout";
 		if ( p->init( nm ) == -1 )
 		{
-			delete p;
-			p = nullptr;
+			p.reset();
 		}
 		else
 		{
 			p->setAvailable( false );
 		}
-		s_vehiclePilot = p;
+		s_vehiclePilot = p.release();
 	}
 	return s_vehiclePilot;
 }
@@ -472,12 +471,12 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 LogisticsVariant* LogisticsData::getVariant( const char* pCSVFileName, int VariantNum )
 {
 	const std::string lowerCase = mc2::str::ascii_lower( mc2::str::from_c( pCSVFileName ) );
-	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
+	for (auto & variant : variants)
 	{
-		if ( (*iter)->getFileName().find( lowerCase ) != std::string::npos
-			&& (((*iter)->getVariantID()>>16)&0xff) == VariantNum )
+		if ( variant->getFileName().find( lowerCase ) != std::string::npos
+			&& ((variant->getVariantID()>>16)&0xff) == VariantNum )
 		{
-			return *iter;
+			return variant;
 		}
 	}
 

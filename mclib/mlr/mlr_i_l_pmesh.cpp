@@ -183,11 +183,7 @@ void
 //
 void
 	MLR_I_L_PMesh::SetColorData(
-#if COLOR_AS_DWORD
-		const DWORD *data,
-#else
 		const RGBAColor *data,
-#endif
 		int dataSize
 	)
 {
@@ -206,11 +202,7 @@ void
 //
 void
 	MLR_I_L_PMesh::PaintMe(
-#if COLOR_AS_DWORD
-		const DWORD *paintMe
-#else
 		const RGBAColor *paintMe
-#endif
 		
 	)
 {
@@ -228,19 +220,10 @@ void
 
 	int k, len = static_cast<int>(litColors.GetLength());
 
-#if COLOR_AS_DWORD
-	DWORD argb = GOSCopyColor(paintMe);
-
-	for(k=0;k<len;k++)
-	{
-		litColors[k] = argb;
-	}
-#else
 	for(k=0;k<len;k++)
 	{
 		litColors[k] = *paintMe;
 	}
-#endif
 	// set the to use colors to the original colors ...
 	// only lighting could overwrite this;
 	actualColors = &litColors;
@@ -561,23 +544,7 @@ MLR_I_L_PMesh*
 
 	if(eightColors!=NULL)
 	{
-#if COLOR_AS_DWORD
-		auto dwColorOwner = std::make_unique_for_overwrite<DWORD[]>(8);
-		DWORD* dwColor = dwColorOwner.get();
-		Register_Pointer(dwColor);
-
-		for(i=0;i<8;i++)
-		{
-			dwColor[i] = GOSCopyColor(eightColors+i);
-		}
-
-		ret->SetColorData(dwColor, 8);
-
-		Unregister_Pointer(dwColor);
-		dwColorOwner.reset();
-#else
 		ret->SetColorData(eightColors, 8);
-#endif
 	}
 
 	if(eightNormals!=NULL)

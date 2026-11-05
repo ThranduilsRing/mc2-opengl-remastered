@@ -61,7 +61,7 @@ bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
 // Sampled image (copy-once import): RGBA8 gets a full blit-generated mip chain; BC7 blocks are copied as they are into a single
 // level (a compressed image cannot be a blit target, and the GL texture is single-level too).
 bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
-    auto ref=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w,h,fmt,bytes,size_t(byteCount),true);
+    auto ref=mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w,h,fmt,bytes,static_cast<size_t>(byteCount),true);
     if (!ref) return false;
     e.texture=std::move(ref); return true;
 }

@@ -4,6 +4,7 @@
 
 //								WARRIOR.CPP
 
+#include "mc2_czstring.h"
 #include <atomic>
 #include "warrior_internal.h"
 #include "sim_overlap.h"
@@ -136,7 +137,7 @@ static bool advanceBrainFixedTickAccumulator(float scenarioTime) {
 // Track which frame we last advanced the accumulator for, so each render frame advances once.
 static uint32_t s_brainAccumLastFrame = 0xFFFFFFFFu;
 
-void MechWarrior::setBrainName (const char *brainName)
+void MechWarrior::setBrainName (mc2::czstring brainName)
 {
 	strncpy(brainStr, brainName, MAXLEN_PILOT_BRAIN - 1);
 	brainStr[MAXLEN_PILOT_BRAIN - 1] = '\0';
@@ -149,8 +150,8 @@ long MechWarrior::setBrain (long brainHandle) {
 	if (brain) {
 		delete brain;
 		brain = nullptr;
-		for (long i = 0; i < NUM_PILOT_ALARMS; i++)
-			brainAlarmCallback[i] = nullptr;
+		for (auto & brainAlarmCallbackElem : brainAlarmCallback)
+			brainAlarmCallbackElem = nullptr;
 	}
 	warriorBrainHandle = brainHandle;
 	if (brainHandle > -1)

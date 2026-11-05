@@ -42,16 +42,16 @@ void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
 	}
 
 	gos_VERTEX v[3];
-	for ( int i = 0; i <3; i++ )
+	for (auto & i : v)
 	{
-		v[i].u = 0.f;
-		v[i].v = 0.f;
-		v[i].rhw = .5;
-		v[i].z = 0.f;
-		v[i].argb = 0;
-		v[i].frgb = 0;
-		v[i].x = weightCenterX + xOffset;
-		v[i].y = weightCenterY + yOffset;
+		i.u = 0.f;
+		i.v = 0.f;
+		i.rhw = .5;
+		i.z = 0.f;
+		i.argb = 0;
+		i.frgb = 0;
+		i.x = weightCenterX + xOffset;
+		i.y = weightCenterY + yOffset;
 	}
 
 	// DEFS-METER-BRIDGE-1: raw gos_DrawTriangles is buried under the ImGui defs

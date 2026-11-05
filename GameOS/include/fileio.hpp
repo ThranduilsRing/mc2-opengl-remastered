@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 //==========================================================================//
 // File:	 FileIO.hpp														//
 // Contents: file i/o routines												//
@@ -52,7 +53,7 @@ struct gosFileStream
 	char m_Filename[MAX_PATH];
 	gosFileStream* pNext;
 
-	gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwstatus );
+	gosFileStream( mc2::czstring FileName, gosEnum_FileWriteStatus fwstatus );
 
 	~gosFileStream();
 

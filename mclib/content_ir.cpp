@@ -98,7 +98,7 @@ bool loadCached(Asset& asset, std::string_view sourcePath) {
         Node n; n.name = r.string(); n.parent = r.string();
         n.center = r.get<glm::vec3>(); n.relativeCenter = r.get<glm::vec3>(); n.helper = r.get<bool>();
         const auto nv = r.get<uint32_t>(), nt = r.get<uint32_t>();
-        if (nv > kMaxShapeVertices || nt > kMaxShapeTriangles || uint64_t(nv) * 28 + uint64_t(nt) * 56 > r.data.size() - r.pos)
+        if (nv > kMaxShapeVertices || nt > kMaxShapeTriangles || static_cast<uint64_t>(nv) * 28 + static_cast<uint64_t>(nt) * 56 > r.data.size() - r.pos)
             return false;
         n.vertices.resize(nv); n.triangles.resize(nt);
         for (auto& v : n.vertices) { v.position = r.get<glm::vec3>(); v.normal = r.get<glm::vec3>(); v.aRGBLight = r.get<DWORD>(); }

@@ -22,6 +22,7 @@
 #include"floathelp.h"
 #endif
 
+#include "mc2_czstring.h"
 #include<stuff/stuff.hpp>
 #include "unit_anim_state.h"
 #include "presentation_phase.h"
@@ -31,13 +32,7 @@ unsigned currentAppearanceRegistryGeneration (void); // apprtype.cpp
 class Camera;
 //---------------------------------------------------------------------------
 // Macro definitions
-#ifndef MAX_ULONG
-#define MAX_ULONG		0x70000000		//Must be able to square this and still get big number!!
-#endif
-
-#ifndef NO_ERR
-#define NO_ERR			0
-#endif
+#include "dstd.h"  // NO_ERR
 
 inline constexpr float HUD_DEPTH = 0.9999f; // HUD Objects draw over everything else (reverse-Z: near=1, far=0).
 
@@ -554,7 +549,7 @@ public:
 			return position;
 		}
 		
-		virtual glm::vec3 getNodeNamePosition (const char *nodeName)
+		virtual glm::vec3 getNodeNamePosition (mc2::czstring nodeName)
 		{
 			glm::vec3 position;
 			position.x = position.y = position.z = 0.0f;
@@ -778,7 +773,7 @@ public:
 		{
 		}
 
-		virtual void setMechName( const char* pName ){}
+		virtual void setMechName( mc2::czstring pName ){}
 		
 		virtual void startSmoking (long smokeLvl)
 		{

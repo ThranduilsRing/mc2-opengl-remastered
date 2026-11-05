@@ -726,14 +726,13 @@ inline void debugDumpFeatureRegistry(const DeviceCaps& caps) {
             " bindless=%d clipctrl=%d dsa=%d"
             " max_color_attach=%d max_ssbo_bind=%d max_tess_level=%d\n",
             caps.glMajor, caps.glMinor,
-            (int)caps.hasSSBO, (int)caps.hasTessellation,
-            (int)caps.hasComputeShaders, (int)caps.hasIndirectDraw,
-            (int)caps.hasBindlessTextures, (int)caps.hasClipControl,
-            (int)caps.hasDSA,
+            static_cast<int>(caps.hasSSBO), static_cast<int>(caps.hasTessellation),
+            static_cast<int>(caps.hasComputeShaders), static_cast<int>(caps.hasIndirectDraw),
+            static_cast<int>(caps.hasBindlessTextures), static_cast<int>(caps.hasClipControl),
+            static_cast<int>(caps.hasDSA),
             caps.maxColorAttachments, caps.maxSSBOBindings, caps.maxTessGenLevel);
 
-    for (int i = 0; i < static_cast<int>(RendererFeature::COUNT); ++i) {
-        const EnvVarDesc& d = kFeatureTable[i];
+    for (const auto & d : kFeatureTable) {
         const char* envStr = d.envVar ? d.envVar : "(none)";
         const char* curStr;
         if (d.kind == EnvVarKind::Retired) {

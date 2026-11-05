@@ -51,7 +51,7 @@ using PSZ = char*;
 using PVOID = void*;
 using LPVOID = void*;
 
-typedef void *HANDLE;
+using HANDLE = void *;
 
 /* FIXME for __WIN64 */
 #ifndef  __ptr64
@@ -140,11 +140,11 @@ using PSHORT = SHORT*;
 using PLONG = LONG*;
 
 #ifdef STRICT
-typedef void *HANDLE;
+using HANDLE = void *;
 #define DECLARE_HANDLE(n) typedef struct n##__{int i;}*n
 #else
 
-typedef PVOID HANDLE;
+using HANDLE = PVOID;
 #define DECLARE_HANDLE(n) typedef HANDLE n
 #endif
 
@@ -188,47 +188,47 @@ using FLONG = DWORD;
 #define NTAPI __stdcall
 #include "platform_basetsd.h"
 
-#define FILE_ATTRIBUTE_READONLY			0x00000001
-#define FILE_ATTRIBUTE_HIDDEN			0x00000002
-#define FILE_ATTRIBUTE_SYSTEM			0x00000004
-#define FILE_ATTRIBUTE_DIRECTORY		0x00000010
-#define FILE_ATTRIBUTE_ARCHIVE			0x00000020
-#define FILE_ATTRIBUTE_DEVICE			0x00000040
-#define FILE_ATTRIBUTE_NORMAL			0x00000080
-#define FILE_ATTRIBUTE_TEMPORARY		0x00000100
-#define FILE_ATTRIBUTE_SPARSE_FILE		0x00000200
-#define FILE_ATTRIBUTE_REPARSE_POINT		0x00000400
-#define FILE_ATTRIBUTE_COMPRESSED		0x00000800
-#define FILE_ATTRIBUTE_OFFLINE			0x00001000
-#define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED	0x00002000
-#define FILE_ATTRIBUTE_ENCRYPTED		0x00004000
-#define FILE_ATTRIBUTE_VIRTUAL			0x00010000
-#define FILE_ATTRIBUTE_VALID_FLAGS		0x00017fb7
-#define FILE_ATTRIBUTE_VALID_SET_FLAGS		0x000031a7
+constexpr auto FILE_ATTRIBUTE_READONLY = 0x00000001;
+constexpr auto FILE_ATTRIBUTE_HIDDEN = 0x00000002;
+constexpr auto FILE_ATTRIBUTE_SYSTEM = 0x00000004;
+constexpr auto FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
+constexpr auto FILE_ATTRIBUTE_ARCHIVE = 0x00000020;
+constexpr auto FILE_ATTRIBUTE_DEVICE = 0x00000040;
+constexpr auto FILE_ATTRIBUTE_NORMAL = 0x00000080;
+constexpr auto FILE_ATTRIBUTE_TEMPORARY = 0x00000100;
+constexpr auto FILE_ATTRIBUTE_SPARSE_FILE = 0x00000200;
+constexpr auto FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400;
+constexpr auto FILE_ATTRIBUTE_COMPRESSED = 0x00000800;
+constexpr auto FILE_ATTRIBUTE_OFFLINE = 0x00001000;
+constexpr auto FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x00002000;
+constexpr auto FILE_ATTRIBUTE_ENCRYPTED = 0x00004000;
+constexpr auto FILE_ATTRIBUTE_VIRTUAL = 0x00010000;
+constexpr auto FILE_ATTRIBUTE_VALID_FLAGS = 0x00017fb7;
+constexpr auto FILE_ATTRIBUTE_VALID_SET_FLAGS = 0x000031a7;
 
-#define PAGE_NOACCESS	0x0001
-#define PAGE_READONLY	0x0002
-#define PAGE_READWRITE	0x0004
-#define PAGE_WRITECOPY	0x0008
-#define PAGE_EXECUTE	0x0010
-#define PAGE_EXECUTE_READ	0x0020
-#define PAGE_EXECUTE_READWRITE	0x0040
-#define PAGE_EXECUTE_WRITECOPY	0x0080
-#define PAGE_GUARD		0x0100
-#define PAGE_NOCACHE		0x0200
-#define PAGE_WRITECOMBINE 0x0400
-#define MEM_COMMIT           0x1000
-#define MEM_RESERVE          0x2000
-#define MEM_DECOMMIT         0x4000
-#define MEM_RELEASE          0x8000
-#define MEM_FREE            0x10000
-#define MEM_PRIVATE         0x20000
-#define MEM_MAPPED          0x40000
-#define MEM_RESET           0x80000
-#define MEM_TOP_DOWN       0x100000
-#define MEM_WRITE_WATCH	   0x200000 /* 98/Me */
-#define MEM_PHYSICAL	   0x400000
-#define MEM_4MB_PAGES    0x80000000
+constexpr auto PAGE_NOACCESS = 0x0001;
+constexpr auto PAGE_READONLY = 0x0002;
+constexpr auto PAGE_READWRITE = 0x0004;
+constexpr auto PAGE_WRITECOPY = 0x0008;
+constexpr auto PAGE_EXECUTE = 0x0010;
+constexpr auto PAGE_EXECUTE_READ = 0x0020;
+constexpr auto PAGE_EXECUTE_READWRITE = 0x0040;
+constexpr auto PAGE_EXECUTE_WRITECOPY = 0x0080;
+constexpr auto PAGE_GUARD = 0x0100;
+constexpr auto PAGE_NOCACHE = 0x0200;
+constexpr auto PAGE_WRITECOMBINE = 0x0400;
+constexpr auto MEM_COMMIT = 0x1000;
+constexpr auto MEM_RESERVE = 0x2000;
+constexpr auto MEM_DECOMMIT = 0x4000;
+constexpr auto MEM_RELEASE = 0x8000;
+constexpr auto MEM_FREE = 0x10000;
+constexpr auto MEM_PRIVATE = 0x20000;
+constexpr auto MEM_MAPPED = 0x40000;
+constexpr auto MEM_RESET = 0x80000;
+constexpr auto MEM_TOP_DOWN = 0x100000;
+constexpr auto MEM_WRITE_WATCH = 0x200000;  /* 98/Me */
+constexpr auto MEM_PHYSICAL = 0x400000;
+constexpr auto MEM_4MB_PAGES = 0x80000000;
 
 struct _SECURITY_ATTRIBUTES {
 	DWORD nLength;

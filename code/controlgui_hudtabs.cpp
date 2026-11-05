@@ -43,7 +43,7 @@ void ControlGui::initHudTabRegistry()
 	t.id = "vehicle";
 	t.buttonCommand = VEHICLE_TAB;
 	t.render = &ControlGui::hudTabRenderVehicle;
-	t.update = 0;   // updateVehicleTab runs unconditionally each frame (legacy shape)
+	t.update = nullptr;   // updateVehicleTab runs unconditionally each frame (legacy shape)
 	t.helpTextHeaderID = IDS_VEHICLE_TAB;
 	t.helpTextID = IDS_VEHICLE_TAB_DESC;
 	t.countsAsTacMap = false;
@@ -68,7 +68,7 @@ void ControlGui::initHudTabRegistry()
 		t.id = "speed";
 		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
 		t.render = &ControlGui::hudTabRenderSimSpeed;
-		t.update = 0;
+		t.update = nullptr;
 		t.helpTextHeaderID = 0;
 		t.helpTextID = 0;
 		t.countsAsTacMap = false;

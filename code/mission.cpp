@@ -802,7 +802,7 @@ float applyDifficultySkill (float chance, bool isPlayer)
 			case 1:			//Medium
 			case 2:			//Hard
 			case 3:			//Really Hard
-				chance *= (float(globalPlayerSkills[GameDifficulty]) / 100.0);
+				chance *= (static_cast<float>(globalPlayerSkills[GameDifficulty]) / 100.0);
 				return(chance);
 				break;
 
@@ -819,7 +819,7 @@ float applyDifficultySkill (float chance, bool isPlayer)
 			case 1:			//Medium
 			case 2:			//Hard
 			case 3:			//Really Hard
-				chance *= (float(globalEnemySkills[GameDifficulty]) / 100.0);
+				chance *= (static_cast<float>(globalEnemySkills[GameDifficulty]) / 100.0);
 				return(chance);
 				break;
 
@@ -841,7 +841,7 @@ float applyDifficultyWeapon (float dmg, bool isPlayer)
 			case 1:			//Medium -- NO CHANGE!
 			case 2:			//Hard
 			case 3:			//Very Hard
-				dmg *= (float(globalPlayerWeapons[GameDifficulty]) / 100.0);
+				dmg *= (static_cast<float>(globalPlayerWeapons[GameDifficulty]) / 100.0);
 				break;
 				
 			default:
@@ -856,7 +856,7 @@ float applyDifficultyWeapon (float dmg, bool isPlayer)
 			case 1:			//Medium -- NO CHANGE!
 			case 2:			//Hard
 			case 3:			//Very Hard
-				dmg *= (float(globalEnemyWeapons[GameDifficulty]) / 100.0);
+				dmg *= (static_cast<float>(globalEnemyWeapons[GameDifficulty]) / 100.0);
 				break;
 				
 			default:

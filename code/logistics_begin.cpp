@@ -32,9 +32,9 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 					memcpy(&MPlayer->playerInfo[curCommanderID], &MPlayer->playerInfo[CID], sizeof(MC2Player));
 					MPlayer->playerInfo[CID].player = nullptr;
 					MPlayer->playerInfo[CID].commanderID = -1;
-					for (long j = 0; j < MAX_MC_PLAYERS; j++)
-						if (MPlayer->playerList[j].player == MPlayer->playerInfo[curCommanderID].player)
-							MPlayer->playerList[j].commanderID = curCommanderID;
+					for (auto & j : MPlayer->playerList)
+						if (j.player == MPlayer->playerInfo[curCommanderID].player)
+							j.commanderID = curCommanderID;
 					if (oldCommanderID == MPlayer->commanderID)
 						MPlayer->commanderID = curCommanderID;
 				}
@@ -47,9 +47,9 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		long curTeamID = 0;
 		for (long teamID = 0; teamID < MAX_MC_PLAYERS; teamID++) {
 			bool teamFound = false;
-			for (long i = 0; i < MAX_MC_PLAYERS; i++)
-				if (MPlayer->playerInfo[i].player && (MPlayer->playerInfo[i].team == teamID)) {
-					MPlayer->playerInfo[i].team = curTeamID;
+			for (auto & i : MPlayer->playerInfo)
+				if (i.player && (i.team == teamID)) {
+					i.team = curTeamID;
 					teamFound = true;
 				}
 			if (teamFound)
@@ -313,29 +313,29 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		vector.y = 1.f;
 		vector.z = 0.f;
 		glm::vec3 scaled;
-		for ( auto iter = list.begin(); iter != list.end(); ++iter ) {
+		for (auto & iter : list) {
 			scaled = vector;
 			scaled *= 128.;
 			data.position = dropZoneList[0] + scaled;
 			//data.position = dropZoneList[dropZoneIndex++];
-			data.objNumber = (*iter)->getFitID();
-			strcpy( data.csvFileName, (*iter)->getFileName().c_str() );
-			if ( !(*iter)->getPilot() )
+			data.objNumber = iter->getFitID();
+			strcpy( data.csvFileName, iter->getFileName().c_str() );
+			if ( !iter->getPilot() )
 				continue;
-			strcpy( data.pilotFileName, (*iter)->getPilot()->getFileName().c_str() );
+			strcpy( data.pilotFileName, iter->getPilot()->getFileName().c_str() );
 			data.overrideLoadedPilot = true;
-			data.gunnerySkill = (*iter)->getPilot()->getGunnery();
-			data.pilotingSkill = (*iter)->getPilot()->getPiloting();
+			data.gunnerySkill = iter->getPilot()->getGunnery();
+			data.pilotingSkill = iter->getPilot()->getPiloting();
 
-			memcpy(data.specialtySkills,(*iter)->getPilot()->getSpecialtySkills(),sizeof(bool) * NUM_SPECIALTY_SKILLS);
-			if ( !(*iter)->getVariant()->isDesignerMech())
+			memcpy(data.specialtySkills,iter->getPilot()->getSpecialtySkills(),sizeof(bool) * NUM_SPECIALTY_SKILLS);
+			if ( !iter->getVariant()->isDesignerMech())
 			{		
 				data.variant = 0;
-				mission->addMover( &data, (*iter));
+				mission->addMover( &data, iter);
 			}
 			else
 			{
-				data.variant = (*iter)->getVariant()->getFileID();
+				data.variant = iter->getVariant()->getFileID();
 				mission->addMover( &data );
 			}
 			Rotate( vector, rotation );
@@ -480,7 +480,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	movieRect.right  = Environment.screenWidth;
 	movieRect.bottom = Environment.screenHeight;
 
-	bMovie = new MC2Movie;
+	bMovie = std::make_unique_for_overwrite<MC2Movie>();
 	bMovie->init(path,movieRect,true);
 	MC2_EVENT(Core, "VIDEO", 1, "event=play name={}", std::string_view( fileName ));
 

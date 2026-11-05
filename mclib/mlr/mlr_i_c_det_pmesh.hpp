@@ -66,18 +66,6 @@ namespace MidLevelRenderer {
 				Stuff::Scalar yFac
 			);
 
-#if COLOR_AS_DWORD
-		virtual void
-			SetColorData(
-				const DWORD *array,
-				int point_count
-			);
-		virtual void
-			GetColorData(
-				DWORD **array,
-				int *point_count
-			);
-#else
 		virtual void
 			SetColorData(
 				const Stuff::RGBAColor *array,
@@ -88,14 +76,9 @@ namespace MidLevelRenderer {
 				Stuff::RGBAColor **array,
 				int *point_count
 			);
-#endif
 
 		virtual void
-#if COLOR_AS_DWORD
-			PaintMe(const DWORD *paintMe);
-#else
 			PaintMe(const Stuff::RGBAColor *paintMe);
-#endif
 
 
 
@@ -124,11 +107,7 @@ namespace MidLevelRenderer {
 		}
 
 	protected:
-#if COLOR_AS_DWORD
-		Stuff::DynamicArrayOf<DWORD> colors;	// Base address of color list 
-#else
 		Stuff::DynamicArrayOf<Stuff::RGBAColor> colors;	// Base address of color list 
-#endif
 	};
 
 	MLR_I_C_DeT_PMesh*

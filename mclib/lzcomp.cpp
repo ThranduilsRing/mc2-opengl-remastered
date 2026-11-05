@@ -29,10 +29,6 @@ inline constexpr int CHUNK = 16384;
 //---------------------------------------------------------------------------
 // Static Globals
 
-#ifndef NULL
-#define NULL			0
-#endif
-
 using MemoryPtr = unsigned char*;
 
 

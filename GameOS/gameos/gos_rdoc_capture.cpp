@@ -1,5 +1,6 @@
 // gos_rdoc_capture.cpp - Tier 5 in-process RenderDoc capture hook.
 // See gos_rdoc_capture.h for the contract.
+#include "mc2_czstring.h"
 #include "gos_rdoc_capture.h"
 #include "gos_terrain_indirect.h"  // WasEverFrameSolidArmed()
 #include "gos_smoke.h"             // SmokeMode::state().mission
@@ -67,7 +68,7 @@ State s_state;
 //   lane exists to remove. Refusing to set the template is NOT an option
 //   either: RenderDoc would then fall back to its own default path, which is
 //   just a different flavour of "the file is not where you told it to be".
-std::string expandCaptureTemplate(const char* raw) {
+std::string expandCaptureTemplate(mc2::czstring raw) {
     std::string out(raw);
 
     auto replaceAll = [&out](std::string_view token, std::string_view value) {

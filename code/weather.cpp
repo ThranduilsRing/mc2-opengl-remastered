@@ -26,6 +26,7 @@
 #include"tgl.h"
 #endif
 
+#include <algorithm>
 #include <cstdlib>
 #include <vector>   // MC2_RAIN_BATCH staging buffer
 #include "sim_trace.h"
@@ -68,38 +69,31 @@ void Weather::load (FitIniFile *missionFile)
 		if (result != NO_ERR)
 			totalRainDrops = 500;
 			
-		if (totalRainDrops > 500)
-			totalRainDrops = 500;
+		totalRainDrops = std::min<DWORD>(totalRainDrops, 500);
 			
 		result = missionFile->readIdFloat("StartingRainLevel",rainLevel);
 		if (result != NO_ERR)
 			rainLevel = 0.0f;
 			
-		if (rainLevel < 0.0f)
-			rainLevel = 0.0f;
+		rainLevel = std::max(rainLevel, 0.0f);
 			
-		if (rainLevel > 4.0f)
-			rainLevel = 4.0f;
+		rainLevel = std::min(rainLevel, 4.0f);
 			
 		result = missionFile->readIdLong("ChanceOfRain",baseRainChance);
 		if (result != NO_ERR)
 			baseRainChance = 0;
 			
-		if (baseRainChance < 0)
-			baseRainChance = 0;
+		baseRainChance = std::max<long>(baseRainChance, 0);
 			
-		if (baseRainChance > 100)
-			baseRainChance = 100;
+		baseRainChance = std::min<long>(baseRainChance, 100);
 			
 		result = missionFile->readIdFloat("BaseLighteningChance",baseLighteningChance);
 		if (result != NO_ERR)
 			baseLighteningChance = BASE_LIGHTENING_CHANCE;
 			
-		if (baseLighteningChance < 0.0f)
-			baseLighteningChance = 0.0f;
+		baseLighteningChance = std::max(baseLighteningChance, 0.0f);
 			
-		if (baseLighteningChance > 0.1f)
-			baseLighteningChance = 0.1f;
+		baseLighteningChance = std::min(baseLighteningChance, 0.1f);
 			
 		init(totalRainDrops,rainLevel,baseRainChance,baseLighteningChance);
 	}
@@ -116,38 +110,31 @@ void Weather::init (FitIniFilePtr missionFile)
 		if (result != NO_ERR)
 			totalRainDrops = 500;
 			
-		if (totalRainDrops > 500)
-			totalRainDrops = 500;
+		totalRainDrops = std::min<DWORD>(totalRainDrops, 500);
 			
 		result = missionFile->readIdFloat("StartingRainLevel",rainLevel);
 		if (result != NO_ERR)
 			rainLevel = 0.0f;
 			
-		if (rainLevel < 0.0f)
-			rainLevel = 0.0f;
+		rainLevel = std::max(rainLevel, 0.0f);
 			
-		if (rainLevel > 4.0f)
-			rainLevel = 4.0f;
+		rainLevel = std::min(rainLevel, 4.0f);
 			
 		result = missionFile->readIdLong("ChanceOfRain",baseRainChance);
 		if (result != NO_ERR)
 			baseRainChance = 0;
 			
-		if (baseRainChance < 0)
-			baseRainChance = 0;
+		baseRainChance = std::max<long>(baseRainChance, 0);
 			
-		if (baseRainChance > 100)
-			baseRainChance = 100;
+		baseRainChance = std::min<long>(baseRainChance, 100);
 			
 		result = missionFile->readIdFloat("BaseLighteningChance",baseLighteningChance);
 		if (result != NO_ERR)
 			baseLighteningChance = BASE_LIGHTENING_CHANCE;
 			
-		if (baseLighteningChance < 0.0f)
-			baseLighteningChance = 0.0f;
+		baseLighteningChance = std::max(baseLighteningChance, 0.0f);
 			
-		if (baseLighteningChance > 0.1f)
-			baseLighteningChance = 0.1f;
+		baseLighteningChance = std::min(baseLighteningChance, 0.1f);
 			
 		init(totalRainDrops,rainLevel,baseRainChance,baseLighteningChance);
 	}
@@ -266,8 +253,7 @@ void Weather::update (void)
 					rainTrend = -1.0f;
 				}
 				
-				if (rainLevel > 4.0f)
-					rainLevel = 4.0f;
+				rainLevel = std::min(rainLevel, 4.0f);
 			}
 		}
 		
@@ -302,8 +288,7 @@ void Weather::update (void)
 		if (rainLightLevel > 1.0f)
 		{
 			float weatherNightFactor = rainLightLevel / 4.0f; 
-			if (weatherNightFactor > eye->nightFactor)
-				eye->nightFactor = weatherNightFactor;
+			eye->nightFactor = std::max(eye->nightFactor, weatherNightFactor);
 		
 			lighteningCheck -= frameLength;
 			if (lighteningCheck < 0.0f)
@@ -364,11 +349,9 @@ void Weather::update (void)
 
 				lighteningLevel += lighteningDropoff * frameLength;
 				
-				if (lighteningLevel < 0.0f)
-					lighteningLevel = 0.0f;
+				lighteningLevel = std::max(lighteningLevel, 0.0f);
 					
-				if (lighteningLevel > 255.0f)
-					lighteningLevel = 255.0f;
+				lighteningLevel = std::min(lighteningLevel, 255.0f);
 			}
 			
 			if (thunderTime > 0.0f)
@@ -419,8 +402,7 @@ void Weather::update (void)
 			//---------------------------------------------
 			// Calculate how many raindrops are in service
 			DWORD newRainDrops = (rainLevel - 1.0f) * totalRainDrops;
-			if (newRainDrops > totalRainDrops)
-				newRainDrops = totalRainDrops;
+			newRainDrops = std::min(newRainDrops, totalRainDrops);
 				
 			if (newRainDrops > currentRainDrops)
 			{
@@ -492,8 +474,7 @@ void Weather::render (void)
 		else
 			ambientFactor = 255.0f;
 			
-		if (ambientFactor < 96.0f)
-			ambientFactor = 96.0f;
+		ambientFactor = std::max(ambientFactor, 96.0f);
 		
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);

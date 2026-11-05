@@ -52,7 +52,7 @@ class MissionBegin
 		bool isDone(){ return bDone; }
 		bool readyToLoad() { return bReadyToLoad; }
 
-		void beginSplash( const char* playerName = 0 );
+		void beginSplash( const char* playerName = nullptr );
 
 		void beginMPlayer();
 		void beginSPlayer();

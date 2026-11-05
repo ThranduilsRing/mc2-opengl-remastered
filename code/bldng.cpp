@@ -305,9 +305,9 @@ long BuildingType::init (FilePtr objFile, unsigned long fileSize) {
 		cLoadString(objectNameID, s, 254);
 	}
 
-	for (long i=0;i<18;i++)
+	for (const auto WallTypeElem : WallType)
 	{
-		if (objTypeNum == WallType[i])
+		if (objTypeNum == WallTypeElem)
 		{
 			setSubType(BUILDING_SUBTYPE_WALL);
 			break;
@@ -1284,10 +1284,6 @@ void Building::init (bool create, ObjectTypePtr objType) {
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 		
 	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
-#if USE_FORESTS
-	if ((static_cast<BldgAppearance*>(appearance))->isForestClump())
-		getObjectType()->setSubType(BUILDING_SUBTYPE_FOREST);
-#endif
 
 	objectClass = BUILDING;
 	setFlag(OBJECT_FLAG_DAMAGED, true);

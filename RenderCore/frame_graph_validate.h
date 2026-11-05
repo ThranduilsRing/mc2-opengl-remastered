@@ -95,8 +95,8 @@ static constexpr int kExternalResourceCount =
 // REGISTRY-LIFETIME-CLASS-1: compile-time membership query so a doctest can
 // assert every lifetime==External resource is listed above (drift guard).
 inline bool isInExternalResourceList(RenderResourceId id) {
-    for (int i = 0; i < kExternalResourceCount; ++i)
-        if (kExternalResources[i] == id) return true;
+    for (const auto & externalResource : kExternalResources)
+        if (externalResource == id) return true;
     return false;
 }
 

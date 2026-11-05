@@ -1,6 +1,7 @@
 //=============================================================================
 // FFmpeg-backed video decoder — sole translation unit with FFmpeg symbols.
 //=============================================================================
+#include "mc2_czstring.h"
 #include <memory>
 #include "mc2video.h"
 #include "gos_crashbundle.h"
@@ -94,7 +95,7 @@ extern "C" const PfnDliHook __pfnDliFailureHook2 = Mc2VideoDelayLoadFailureHook;
 // functional for our real call set. If any symbol genuinely cannot be
 // resolved at first use, the delay-load failure hook above still
 // catches it and flips g_ffmpegAvailable then.
-static bool tryLoadOne(const char* dllName)
+static bool tryLoadOne(mc2::czstring dllName)
 {
     __try {
         HMODULE h = LoadLibraryA(dllName);
@@ -135,7 +136,7 @@ void ffmpegProbeAvailability() { /* non-Windows: link-loaded, always avail */ }
 //-----------------------------------------------------------------------------
 // Resolver — viable-index enumeration over the loose-file override chain
 //-----------------------------------------------------------------------------
-bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
+bool resolveVideoCandidate(mc2::czstring shortName, bool preferUpscaled,
                            int index, char* outPath, unsigned outPathSize)
 {
     if (!shortName || !outPath || outPathSize < 2 || index < 0) return false;
@@ -260,7 +261,7 @@ struct VideoSession {
 // embedded audio. Missing or unsupported WAVs fall back to embedded audio.
 extern char soundPath[80];   // mclib/paths.cpp
 static bool tryOpenAudio(VideoSession* s, std::string_view path);
-static bool tryStartSidecarWAV(VideoSession* s, const char* waveShortName)
+static bool tryStartSidecarWAV(VideoSession* s, mc2::czstring waveShortName)
 {
     if (!soundSystem || !waveShortName || !waveShortName[0]) return false;
     char wavPath[1024];
@@ -526,7 +527,7 @@ static double audioMasterClock(const VideoSession* s)
 
 // Anchor the wall-clock baseline at the current audio PTS so
 // wall-clock continues from there — NO backward correction.
-static void markAudioStalled(VideoSession* s, const char* reason)
+static void markAudioStalled(VideoSession* s, mc2::czstring reason)
 {
     if (!s->audioStallLogged) {
         double lastAudioSec = audioMasterClock(s);
@@ -557,7 +558,7 @@ static double videoMasterClock(VideoSession* s)
 //-----------------------------------------------------------------------------
 // Decode-one-frame helper — log-once error wrapper
 //-----------------------------------------------------------------------------
-static int logOnceDecodeError(VideoSession* s, const char* where, int ret)
+static int logOnceDecodeError(VideoSession* s, mc2::czstring where, int ret)
 {
     if (!s->loggedVideoDecodeError) {
         char errbuf[128] = {0};
@@ -790,8 +791,8 @@ void video_render(VideoSession* s)
 
     // Letterbox/pillarbox fill — draw a black background rect if the
     // video quad does not fully cover MC2Rect.
-    const bool needsLetterbox = (s->quadX0 > (float)s->rectX)
-                             || (s->quadY0 > (float)s->rectY)
+    const bool needsLetterbox = (s->quadX0 > static_cast<float>(s->rectX))
+                             || (s->quadY0 > static_cast<float>(s->rectY))
                              || (s->quadX1 < static_cast<float>((s->rectX + s->rectW)))
                              || (s->quadY1 < static_cast<float>((s->rectY + s->rectH)));
     if (needsLetterbox) {

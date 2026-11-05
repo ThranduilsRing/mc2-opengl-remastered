@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #pragma once
 // RENDER-VIEW-CURRENCY pure kernel (GL-free, host-testable).
 //
@@ -24,7 +26,7 @@ inline bool viewContentChanged(const float* prev16, const float* cur16,
     for (int i = 0; i < 16; ++i) {
         float d = cur16[i] - prev16[i];
         if (d < 0.0f) d = -d;
-        if (d > maxDelta) maxDelta = d;
+        maxDelta = std::max(maxDelta, d);
     }
     return maxDelta > eps;
 }

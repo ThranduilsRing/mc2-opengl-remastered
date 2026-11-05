@@ -58,7 +58,7 @@ long BattleMech::loadGameSystem (FitIniFilePtr mechFile) {
 	if (result == NO_ERR)
 		DefaultMechCrashYieldTime = crashYield;
 
-	result = mechFile->readIdLongArray("PilotCheckConditions", MechPilotCheckConditions, NUM_MECH_PILOT_CHECK_CONDITIONS);
+	result = mechFile->readIdLongArray("PilotCheckConditions", MechPilotCheckConditions, static_cast<unsigned long>(NUM_MECH_PILOT_CHECK_CONDITIONS));
 	if (result != NO_ERR)
 		return(result);
 

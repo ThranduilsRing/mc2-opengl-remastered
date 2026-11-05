@@ -166,8 +166,7 @@ bool
 	Stuff::Scalar max_scale, min_scale;
 	m_USize.ExpensiveComputeRange(&min_scale, &max_scale);
 	Stuff::Scalar lower = min_scale;
-	if (lower > 0.0f)
-		lower = 0.0f;
+	lower = std::min(lower, 0.0f);
 	Stuff::Scalar upper = max_scale;
 
 	//
@@ -193,8 +192,7 @@ bool
 	
 	m_VSize.ExpensiveComputeRange(&min_scale, &max_scale);
 	lower = min_scale;
-	if (lower > 0.0f)
-		lower = 0.0f;
+	lower = std::min(lower, 0.0f);
 	upper = max_scale;
 
 	//

@@ -157,11 +157,7 @@ namespace MidLevelRenderer
 	extern bool PerspectiveMode;
 }
 
-#define COLOR_AS_DWORD	0
 
-#define	EFECT_CLIPPED	0
-
-#define FOG_HACK		1
 
 #define	TO_DO	Abort_Program("Here has work to be done !");
 #undef	MLR_TRACE

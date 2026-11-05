@@ -3,6 +3,7 @@
 // See mc2_audit.h for the contract. Leaf TU: <c*> headers + STL only.
 //===========================================================================//
 
+#include "mc2_czstring.h"
 #include "mc2_audit.h"
 
 #include <cstdio>
@@ -31,7 +32,7 @@ onceSets()
 
 } // namespace
 
-void mc2AuditLine(const char* line)
+void mc2AuditLine(mc2::czstring line)
 {
     if (!line) return;
     mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
@@ -39,7 +40,7 @@ void mc2AuditLine(const char* line)
     if (g_sink) g_sink(line);
 }
 
-bool mc2AuditOnce(const char* tag, unsigned long long key)
+bool mc2AuditOnce(mc2::czstring tag, unsigned long long key)
 {
     if (!tag) tag = "";
     auto& set = onceSets()[tag];

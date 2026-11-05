@@ -325,6 +325,8 @@ if(MC2_VULKAN)
     # so we must NOT link the loader import lib (Vulkan::Vulkan).
     target_link_libraries(gameos PRIVATE Vulkan::Headers)
     target_compile_definitions(gameos PRIVATE MC2_VULKAN)
+    # VMA configuration for every TU that includes vk_mem_alloc.h (only VMA_IMPLEMENTATION reads it; vma_impl.cpp needs dynamic).
+    target_compile_definitions(gameos PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
     # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
@@ -525,6 +527,8 @@ if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: headers only -- volk owns runtime dispatch.
     target_link_libraries(gameos_editor PRIVATE Vulkan::Headers)
     target_compile_definitions(gameos_editor PRIVATE MC2_VULKAN)
+    # VMA configuration for every TU that includes vk_mem_alloc.h (only VMA_IMPLEMENTATION reads it; vma_impl.cpp needs dynamic).
+    target_compile_definitions(gameos_editor PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
     target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
     # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).

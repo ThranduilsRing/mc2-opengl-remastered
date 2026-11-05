@@ -58,8 +58,7 @@ LogisticsData::~LogisticsData()
 	variants.clear();
 	vehicles.clear();
 
-	delete missionInfo;
-	missionInfo = nullptr;
+	missionInfo.reset();
 
 #ifndef VIEWER
 	ChatWindow::static_destroy();
@@ -205,13 +204,13 @@ int					LogisticsData::getPlayerVariantNames( const char** array, int& count )
 	count = 0;
 
 	int retVal = 0;
-	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
+	for (auto & variant : variants)
 		{
-			if ( !(*iter)->isDesignerMech() )
+			if ( !variant->isDesignerMech() )
 			{
 				if ( count < maxCount )
 				{
-					array[count] = (*iter)->getName().c_str();   // points into the variant; the caller uses it before the variants change
+					array[count] = variant->getName().c_str();   // points into the variant; the caller uses it before the variants change
 				}
 				else
 				{
@@ -229,12 +228,12 @@ int		LogisticsData::getEncyclopediaMechs( const LogisticsVariant** pChassis, int
 	int retVal = 0;
 	int maxCount = count;
 	count = 0;
-	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+	for (auto & variant : variants)
 	{
-		if ( (*vIter)->getName().find( "Prime" ) != std::string::npos && (*vIter)->isDesignerMech() )
+		if ( variant->getName().find( "Prime" ) != std::string::npos && variant->isDesignerMech() )
 		{
 			if ( count < maxCount )
-				pChassis[count] = (*vIter);
+				pChassis[count] = variant;
 			else 
 				retVal = NEED_BIGGER_ARRAY;
 
@@ -252,13 +251,13 @@ int	LogisticsData::getHelicopters( const LogisticsVariant** pChassis, int& count
 	int retVal = 0;
 	int maxCount = count;
 	count = 0;
-	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+	for (auto & variant : variants)
 	{
-		if ( (((*vIter)->getVariantID() >> 16 & 0xff) == 0) && 
-			(*vIter)->getName().find( "Prime" ) == std::string::npos && (*vIter)->isDesignerMech() )
+		if ( ((variant->getVariantID() >> 16 & 0xff) == 0) && 
+			variant->getName().find( "Prime" ) == std::string::npos && variant->isDesignerMech() )
 		{
 			if ( count < maxCount )
-				pChassis[count] = (*vIter);
+				pChassis[count] = variant;
 			else 
 				retVal = NEED_BIGGER_ARRAY;
 
@@ -277,10 +276,10 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 	int retVal = 0;
 	int maxCount = count;
 	count = 0;
-	for ( auto vIter = vehicles.begin(); vIter != vehicles.end(); ++vIter )
+	for (auto & vehicle : vehicles)
 	{
 			if ( count < maxCount )
-				pChassis[count] = (*vIter);
+				pChassis[count] = vehicle;
 			else 
 				retVal = NEED_BIGGER_ARRAY;
 
@@ -297,12 +296,12 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 LogisticsVehicle*	LogisticsData::getVehicle( const char* pName )
 {
 	char tmpStr[256];
-	for ( auto vIter = vehicles.begin(); vIter != vehicles.end(); ++vIter )
+	for (auto & vehicle : vehicles)
 	{
-		cLoadString( (*vIter)->getNameID(), tmpStr, 255 );
+		cLoadString( vehicle->getNameID(), tmpStr, 255 );
 		if ( S_stricmp( tmpStr, pName ) == 0 )
 		{
-			return *vIter;
+			return vehicle;
 		}
 	}
 
@@ -366,9 +365,9 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale,
 		}
 		else
 		{
-			for ( int i = 0; i < 4; i++ )
+			for (long & componentID : bldg.componentIDs)
 			{
-				bldg.componentIDs[i] = 0;
+				componentID = 0;
 			}
 		}
 		
@@ -384,10 +383,10 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale,
 //*************************************************************************************************
 LogisticsComponent* LogisticsData::getComponent( int componentID )
 {
-	for ( auto iter = components.begin(); iter != components.end(); ++iter )
+	for (auto & component : components)
 	{
-			if ( ((*iter).getID() & 0x000000ff) == (componentID & 0x000000ff) )
-				return &(*iter);
+			if ( (component.getID() & 0x000000ff) == (componentID & 0x000000ff) )
+				return &component;
 	}
 
 	return nullptr;
@@ -396,10 +395,10 @@ LogisticsComponent* LogisticsData::getComponent( int componentID )
 //*************************************************************************************************
 LogisticsData::Building*			LogisticsData::getBuilding( int nameID )
 {
-	for ( auto iter = buildings.begin(); iter != buildings.end(); ++iter )
+	for (auto & building : buildings)
 		{
-			if ( (*iter).nameID == nameID )
-				return &(*iter);
+			if ( building.nameID == nameID )
+				return &building;
 		}
 
 	return nullptr;
@@ -413,11 +412,11 @@ int					LogisticsData::getBuildings( Building** bdgs, int& count )
 	count = 0;
 	int retVal = 0;
 
-	for ( auto iter = buildings.begin(); iter != buildings.end(); ++iter )
+	for (auto & building : buildings)
 	{
 		if ( count < maxCount )
 		{
-			bdgs[count] = &(*iter);
+			bdgs[count] = &building;
 		}
 		else
 			retVal = NEED_BIGGER_ARRAY;

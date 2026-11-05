@@ -664,8 +664,8 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket, mc2::save::Na
 
 	long maxDoors = 0;
 	for (long d = 0; d < numDoors; d++) {
-		for (long s = 0; s < 2; s++) {
-			long areaNumDoors = areas[doors[d].area[s]].numDoors;
+		for (const auto areaElem : doors[d].area) {
+			long areaNumDoors = areas[areaElem].numDoors;
 			if (areaNumDoors > maxDoors)
 				maxDoors = areaNumDoors;
 		}
@@ -823,9 +823,9 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 
 	long numStartDoors = 0;
-	for (long dir = 0; dir < 4; dir++) {
-		long adjR = tileR + adjTile[dir][0];
-		long adjC = tileC + adjTile[dir][1];
+	for (const auto & adjTileElem : adjTile) {
+		long adjR = tileR + adjTileElem[0];
+		long adjC = tileC + adjTileElem[1];
 		long adjArea = calcArea(adjR, adjC);
 		if (adjArea > -1) {
 		}
@@ -845,9 +845,9 @@ bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) 
 	areaView[row, col] = area;
 	GameMap->setBuildNotSet(row, col, false);
 
-	for (long dir = 0; dir < 4; dir ++) {
-		long adjR = row + adjTile[dir][0];
-		long adjC = col + adjTile[dir][1];
+	for (const auto & adjTileElem : adjTile) {
+		long adjR = row + adjTileElem[0];
+		long adjC = col + adjTileElem[1];
 		if ((adjR >= minRow) && (adjR < maxRow) && (adjC >= minCol) && (adjC < maxCol))
 			if (GameMap->getBuildNotSet(adjR, adjC) && (areaView[adjR, adjC] == specialID))
 				fillSpecialArea(adjR, adjC, area, specialID);
@@ -893,9 +893,9 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 	if (!mc2::globalmap::areaCountInRange(area + 1))
 		Fatal(area, "[MOVE-refuse] Too many Global Areas");
 	areaView[row, col] = area;
-	for (long dir = 0; dir < 4; dir ++) {
-		long adjR = row + adjTile[dir][0];
-		long adjC = col + adjTile[dir][1];
+	for (const auto & adjTileElem : adjTile) {
+		long adjR = row + adjTileElem[0];
+		long adjC = col + adjTileElem[1];
 		if ((adjR >= minRow) && (adjR < maxRow) && (adjC >= minCol) && (adjC < maxCol))
 			if (GameMap->getBuildNotSet(adjR, adjC))
 				fillArea(adjR, adjC, area, offMap);

@@ -82,7 +82,7 @@ bool FitBlockWriter::saveToFile(const char* path) const {
     if (!m_stack.empty()) return false;   // unbalanced — refuse to persist
     std::ofstream f(path, std::ios::binary);   // binary: deterministic \n endings
     if (!f.is_open()) return false;
-    f.write(m_out.data(), (std::streamsize)m_out.size());
+    f.write(m_out.data(), static_cast<std::streamsize>(m_out.size()));
     return f.good();
 }
 

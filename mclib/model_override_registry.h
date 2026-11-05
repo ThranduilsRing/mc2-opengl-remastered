@@ -8,6 +8,7 @@
 // mission via conditions.json) and per-slot authored material inputs (materials v1/v2).
 // Every mounted mod's models.json merges in VFS priority order (lowest first, later wins).
 #pragma once
+#include "mc2_czstring.h"
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -86,7 +87,7 @@ public:
     int mergeConditionsFromFile(std::string_view path);
     // The condition chosen for an appearance in a mission ("" = pristine, the default).
     std::string selectedCondition(std::string_view mission, std::string_view appearanceName) const;
-    const ModelOverrideRecord* resolve(const char* overrideClass, const char* appearanceName) const;
+    const ModelOverrideRecord* resolve(mc2::czstring overrideClass, mc2::czstring appearanceName) const;
     int count() const { return static_cast<int>(records_.size()); }
     const std::string& manifestDir() const { return manifestDir_; }
     static ModelOverrideRegistry& instance();

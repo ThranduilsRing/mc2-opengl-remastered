@@ -20,6 +20,7 @@
 #include"dident.h"
 #endif
 
+#include "mc2_czstring.h"
 #include "memfunc.h"
 #include <string.h>
 #include"platform_str.h"
@@ -45,7 +46,7 @@ class IDString
 			MemSet(id,0);
 		}
 
-		void init (const char *new_id)
+		void init (mc2::czstring new_id)
 		{
 			strncpy(id,new_id,ID_SIZE-1);   // pads unused ID with 0s!
 			id[ID_SIZE-1] = 0;
@@ -62,7 +63,7 @@ class IDString
 			init();
 		}
 
-		IDString (const char * new_id)
+		IDString (mc2::czstring new_id)
 		{
 			init(new_id);
 		}
@@ -77,7 +78,7 @@ class IDString
 			return id;
 		}
 
-		bool operator == (const char *other_id)
+		bool operator == (mc2::czstring other_id)
 		{
 			if( other_id[0]!=id[0] )
 				return FALSE;
@@ -159,7 +160,7 @@ class IDString
 //			return (strncmp(id,other_ids.id,ID_SIZE-1) == 0);
 		}
 
-		bool operator != (const char *other_id)
+		bool operator != (mc2::czstring other_id)
 		{
 			return !(*this == other_id);
 		}
@@ -169,7 +170,7 @@ class IDString
 			return !(*this == other_ids);
 		}
 
-		void operator = (const char *new_id)
+		void operator = (mc2::czstring new_id)
 		{
 			init(new_id);
 		}
@@ -218,14 +219,14 @@ class FullPathFileName
 			fullName = nullptr;
 		}
 
-		void init (const char *dir_path, const char *name, const char *ext, bool do_not_make_lower = false);
+		void init (mc2::czstring dir_path, mc2::czstring name, mc2::czstring ext, bool do_not_make_lower = false);
 
 		FullPathFileName (void)
 		{
 			init();
 		}
 
-		FullPathFileName (const char *dir_path, const char *name, const char *ext, bool do_not_make_lower = false)
+		FullPathFileName (mc2::czstring dir_path, mc2::czstring name, mc2::czstring ext, bool do_not_make_lower = false)
 		{
 			init();
 			init(dir_path, name, ext, do_not_make_lower);
@@ -238,7 +239,7 @@ class FullPathFileName
 
 		void destroy (void);
 
-		void changeExt (const char *from, const char *to);
+		void changeExt (mc2::czstring from, mc2::czstring to);
 
 		~FullPathFileName (void);
 };
