@@ -640,11 +640,9 @@ void Mission::loadDestroyAndRestore() {
 	{
 		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_destroy "
-				"mechFinalized=%d appearanceListNull=%d\n",
-				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == nullptr) ? 1 : 0);
+			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_destroy mechFinalized={:d} appearanceListNull={:d}\n",
+				mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0),
+				mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}
 
 	// Fresh type indices must precede restored actors, whose appearance addresses can be reused.
