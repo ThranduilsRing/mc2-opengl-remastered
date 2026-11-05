@@ -95,6 +95,16 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
     host.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     if (!staging.create(ctx.allocator(), ctx.device(), buffer, host, "scene.explicitReadback")) return false;
     if (!submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        {   // The staging range may have been a readback target an earlier submit wrote and the host read (the previous call's buffer, freed and
+            // re-allocated here): order this copy after that write and read on the queue, not only through the host wait that retired it.
+            sync::BarrierBatch reuse;
+            sync::BufferBarrierRec br;
+            br.buffer = reinterpret_cast<uint64_t>(staging.get());
+            br.srcStages = VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_HOST_BIT; br.srcAccess = VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_HOST_READ_BIT;
+            br.dstStages = VK_PIPELINE_STAGE_2_COPY_BIT; br.dstAccess = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            reuse.buffer(br);
+            sync::flush(getOrCreateEngineVulkanContext(), cb, reuse);
+        }
         for (unsigned i = 0; i < 3; ++i) if (channels & bits[i]) {
             imageBarrier(cb, *images[i], i, true);
             std::vector<VkBufferImageCopy> copies(points ? sampleCount : 1);

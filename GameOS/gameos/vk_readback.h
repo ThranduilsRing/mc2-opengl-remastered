@@ -11,6 +11,7 @@
 #define MC2_VK_READBACK_H
 
 #include <cstdint>
+#include <type_traits>
 
 #include "vk_completion_tracker.h"
 
@@ -29,16 +30,23 @@ struct ReadbackToken {
 
 enum class ReadbackState : uint8_t { Pending, Ready, Stale };
 
+// A completion predicate: whether the host may treat the ticket as done. The tracker overloads below answer from the polled counter (doctest,
+// non-Vulkan callers); ReadbackRing passes VulkanContext::hostSynced, a host sync point, because a slot is read or its buffer reused right after.
+template <class Complete>
+concept ReadbackComplete = std::is_invocable_r_v<bool, Complete&, const GpuTicket&>;
+
 class ReadbackCore {
 public:
     static constexpr uint32_t kSlots = 4;
 
     // A free slot, tagged; an empty token when every slot is in use. A discarded slot whose copy is still in flight is NOT free: it returns to
     // the pool only once its ticket completed, so its buffer is never replaced or reused under a pending GPU write.
-    ReadbackToken request(uint64_t tag, const CompletionTracker& ct) {
+    ReadbackToken request(uint64_t tag, const CompletionTracker& ct) { return request(tag, [&](const GpuTicket& t) { return ct.isComplete(t); }); }
+    template <ReadbackComplete Complete>
+    ReadbackToken request(uint64_t tag, Complete&& done) {
         for (uint32_t i = 0; i < kSlots; ++i) {
             Slot& s = slots_[i];
-            if (s.state == State::Discarded && ct.isComplete(s.ticket)) s.state = State::Free;
+            if (s.state == State::Discarded && done(s.ticket)) s.state = State::Free;
             if (s.state != State::Free) continue;
             s.state = State::Requested;
             s.tag = tag;
@@ -54,19 +62,23 @@ public:
         slots_[tok.slot].state = State::Sealed;
     }
     // Never blocks. Ready only for a sealed slot whose ticket completed and whose tag is the one expected.
-    ReadbackState poll(ReadbackToken tok, const CompletionTracker& ct, uint64_t expectedTag) const {
+    ReadbackState poll(ReadbackToken tok, const CompletionTracker& ct, uint64_t expectedTag) const { return poll(tok, [&](const GpuTicket& t) { return ct.isComplete(t); }, expectedTag); }
+    template <ReadbackComplete Complete>
+    ReadbackState poll(ReadbackToken tok, Complete&& done, uint64_t expectedTag) const {
         if (!valid(tok)) return ReadbackState::Stale;
         const Slot& s = slots_[tok.slot];
         if (s.tag != expectedTag) return ReadbackState::Stale;
-        if (s.state != State::Sealed || !ct.isComplete(s.ticket)) return ReadbackState::Pending;
+        if (s.state != State::Sealed || !done(s.ticket)) return ReadbackState::Pending;
         return ReadbackState::Ready;
     }
     // The consumer is done with the slot (read it or discarded it): every older token for it is stale. The slot is free again when its copy
     // completed (or was never submitted); a sealed copy still in flight parks the slot as Discarded until its ticket completes.
-    void release(ReadbackToken tok, const CompletionTracker& ct) {
+    void release(ReadbackToken tok, const CompletionTracker& ct) { release(tok, [&](const GpuTicket& t) { return ct.isComplete(t); }); }
+    template <ReadbackComplete Complete>
+    void release(ReadbackToken tok, Complete&& done) {
         if (!valid(tok)) return;
         Slot& s = slots_[tok.slot];
-        s.state = (s.state == State::Sealed && !ct.isComplete(s.ticket)) ? State::Discarded : State::Free;
+        s.state = (s.state == State::Sealed && !done(s.ticket)) ? State::Discarded : State::Free;
         ++s.gen;
     }
     uint64_t tagOf(ReadbackToken tok) const { return valid(tok) ? slots_[tok.slot].tag : 0; }

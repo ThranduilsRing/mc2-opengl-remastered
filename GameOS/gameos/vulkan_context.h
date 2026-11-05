@@ -185,6 +185,10 @@ public:
     bool isComplete(const GpuTicket& t) const;
     // Blocks until the ticket completes or the timeout passes. A timeout or a lost device is logged with `why`; returns whether the ticket is complete.
     bool wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const;
+    // Non-blocking host sync point for a completed ticket: vkWaitSemaphores with a zero timeout. True once the host observed the ticket through a
+    // wait, the only completion the validation layers and the readback contract recognise (a counter poll is not one). A readback slot is read or
+    // recycled only after this returned true; a ticket still in flight returns false at once.
+    bool hostSynced(const GpuTicket& t, std::string_view why) const;
     // Frame bracket: beginFrame polls the counter, opens a frame, collects the deferred-destroy entries that completed and restarts the frame-ring slot
     // (a call on an open frame does nothing); endFrame seals the frame with the graphics value submitted so far and emits the [VK_TIMELINE v1] summary at
     // its cadence. A host that presents calls frameBoundary() right after the present: endFrame, then beginFrame of the next frame.
@@ -249,6 +253,7 @@ private:
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
     VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
     mutable CompletionTracker tracker_;
+    mutable uint64_t hostSyncedGfx_ = 0;   // highest graphics value the host reached through vkWaitSemaphores / vkDeviceWaitIdle (see hostSynced)
 #ifdef MC2_VULKAN_ISLAND
     FrameRing        frameRing_;
     uint32_t         framesInFlight_ = 1;

@@ -2446,6 +2446,13 @@ void EnginePresentVk::verifyReadbackContent() {
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    // A recycled slot: its last copy (TRANSFER_WRITE) and the host read of it are ordered before this copy on the queue as well, so the reuse
+    // never relies on the host wait alone (the ring recycles only after a host sync point, see ReadbackRing).
+    VkBufferMemoryBarrier reuse{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+    reuse.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_READ_BIT; reuse.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    reuse.srcQueueFamilyIndex = reuse.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    reuse.buffer = dst; reuse.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(s.readbackCbuf, VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &reuse, 0, nullptr);
     VkBufferImageCopy bic{};
     bic.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     bic.imageExtent = {rw, rh, 1};
