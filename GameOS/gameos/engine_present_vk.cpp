@@ -1097,18 +1097,11 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
     const std::vector<uint8_t>& rgba = *d.textureRgba;
-    std::vector<uint32_t> packed(static_cast<size_t>(d.textureWidth) * static_cast<size_t>(d.textureHeight));
-    for (size_t i = 0; i < packed.size(); ++i) {
-        const size_t b = i * 4u;
-        packed[i] = static_cast<uint32_t>(rgba[b]) |
-                    (static_cast<uint32_t>(rgba[b + 1]) << 8) |
-                    (static_cast<uint32_t>(rgba[b + 2]) << 16) |
-                    (static_cast<uint32_t>(rgba[b + 3]) << 24);
-    }
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
-    std::memcpy(mapped, packed.data(), static_cast<size_t>(bytes));
+    // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
+    std::memcpy(mapped, rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
