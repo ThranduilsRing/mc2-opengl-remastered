@@ -64,7 +64,7 @@ sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
-from lint_slots import LintSlots, pin_cpus, scratch_dir  # noqa: E402
+from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 
@@ -838,7 +838,7 @@ def regenerate_all(root, *, dry_run=False):
     def generate(g):
         label, script, args = g
         return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
-    with ThreadPoolExecutor(max_workers=min(4, len(GENERATORS))) as pool:
+    with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(GENERATORS))) as pool:
         results = list(pool.map(generate, GENERATORS))
     for label, r in results:
         print(f"regenerate-all: {label}: {'OK' if r.returncode == 0 else 'FAIL'}", flush=True)
@@ -894,7 +894,20 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
     return rows
 
 
+REGEN_WORKERS = 4   # regenerate_all's inner pool; counted against a lint's CPU budget
+
+
 def lint(root: str, ref: str, runner=None, regen=None) -> int:
+    """One host slot per lint run (granted FIFO by LintSlots), after sweeping dead lints' scratch."""
+    sweep_stale_scratch([precheck_scratch_base(root), "E:/mc2-archive-2026-10/proofs"])
+    hold = LintSlots().acquire()   # host-wide JOBS cap across all `--lint` processes, released when this run ends
+    try:
+        return _lint_locked(root, ref, runner, regen)
+    finally:
+        hold.close()
+
+
+def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags, stale inventories)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
     runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
@@ -907,25 +920,27 @@ def lint(root: str, ref: str, runner=None, regen=None) -> int:
     rows = lint_rows([sys.executable, "-B"], base_ref, sha)
     # callers-refresh must precede callers in one tree; every other row gets its own tree so they run concurrently.
     chains = [[r for r in rows if r[0].startswith("callers")]] + [[r] for r in rows if not r[0].startswith("callers")]
-    slots = LintSlots()   # host-wide JOBS cap across all `--lint` processes; lint never takes the precheck TreeLock (own shared clones)
+    # lint never takes the precheck TreeLock (own shared clones)
     with scratch_dir("lane-lint-", precheck_scratch_base(root)) as scratch:
         snap = os.path.join(scratch, "tree")   # one checkout shared by all rows: only callers-refresh writes (tests/callers.json), which no other row reads
-        r = slots.run(run, root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
+        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
             return 1
-        slots.run(git_out, snap, "checkout", "--quiet", "--detach", sha)
+        git_out(snap, "checkout", "--quiet", "--detach", sha)
 
         def chain(i):
             out = []
             for label, cmd, hint in chains[i]:
                 t0 = time.monotonic()
-                r = slots.run(runner, snap, cmd)
+                r = runner(snap, cmd)
                 out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=len(chains) + 1) as pool:
-            inv = pool.submit(slots.run, lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
+        # Budget: the inventories worker fans out REGEN_WORKERS generators, the rows get the rest of the lane half's CPUs.
+        row_workers = max(1, min(len(chains), bin(cpu_masks()["lane"]).count("1") - REGEN_WORKERS))
+        with ThreadPoolExecutor(max_workers=row_workers + 1) as pool:
+            inv = pool.submit(lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
             for f in [pool.submit(chain, i) for i in range(len(chains))]:
                 try:
                     results = f.result()
@@ -1266,12 +1281,18 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
 
+def cpu_mode(args) -> str:
+    """"gate" (CPUs 0-7) only for the merge itself (--batch or a single tip); --lint, --precheck, --pre-gate, --regenerate-all are lane work."""
+    lane_only = args.lint or args.precheck or args.pre_gate or args.regenerate_all
+    return "gate" if (args.batch or args.ref) and not lane_only else "lane"
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="replace")
     ap = build_parser()
     args = ap.parse_args(argv)
-    pin_cpus("lane" if args.lint or args.precheck else "gate")   # children inherit; the gate half never overlaps lane work
+    pin_cpus(cpu_mode(args))   # children inherit; only --batch / merge-gate stages take the gate half (CPU_SPLIT), lane modes stay off it
     if args.lint:
         return lint(args.root, args.lint)
     if args.precheck:
