@@ -389,7 +389,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                     s_materialInventory.push_back(inv);
                 }
                 // Per-draw-slot usage counter accumulates on every reference (insert OR hit).
-                const auto& [matKey, matIdx] = *it;
+                const auto& [matKeyRef, matIdx] = *it;
                 if (matIdx < s_materialInventory.size())
                     s_materialInventory[matIdx].usageCount += 1u;
                 s_packetMaterialIdx.push_back(matIdx);

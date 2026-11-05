@@ -47,7 +47,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
     // Suppressing the draw means the offscreen actor doesn't render this
     // frame; the next frame after it returns to view will refresh the
     // cache and the static path resumes correctly.
-    const bool isFirstFlush = !rng.beginFlushSeen;
+    const bool isFirstFlush = !rng.firstFlushSeen;
     if (rng.multi()->getCachedFrame() != currentFrame) {
         if (isFirstFlush) {
             ++s_firstFrameSkipCount;
@@ -114,7 +114,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
         ++s_diag_ranges_stale_frame;
         return true;
     }
-    rng.beginFlushSeen = true;
+    rng.firstFlushSeen = true;
     // GUARD-2: a successful draw clears the consecutive-stale streak for this range
     // so only persistent (never-drawn-again) ranges accumulate toward kVanishFrames.
     if (s_guard2 && !s_staleStreak.empty()) s_staleStreak.erase(regIdx);

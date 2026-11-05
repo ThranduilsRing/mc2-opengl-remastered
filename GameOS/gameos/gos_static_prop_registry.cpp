@@ -341,7 +341,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     rng.multiId = multi->stableId();
     rng.pinsReleased      = false;
     rng.registeredOnFrame = g_mc2FrameCounter.load(std::memory_order_relaxed);
-    rng.beginFlushSeen    = false;
+    rng.firstFlushSeen    = false;
     rng.lightDataIndex    = 0xFFFFFFFFu;  // 2026-05-11 per-instance capture sentinel
     rng.extentRadius      = 0.0f;
     rng.shapeName[0]      = '\0';         // populated by late-spawn path if Appearance* available
