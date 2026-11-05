@@ -1,0 +1,12 @@
+{
+  "_doc": "Reviewed known Vulkan validation hits. A formatted [VK_VALIDATION v1] error, or a raw 'Validation Error: [ ...' line the engine callback did not format, is NOT red only when an entry here matches its id (and text_contains, when given) and the entry has not expired. Everything else is red. An expired entry is red again: fix the hazard or re-review it. Keep this list small.",
+  "known": [
+    {
+      "id": "SYNC-HAZARD-WRITE_AFTER_WRITE",
+      "text_contains": "shadow.bake.mask",
+      "reason": "cold shadow bake mask image written by two passes (box sync run 2026-11-05; 97795be99 fixed the producer path, kept until a cold_bake arm proves it gone)",
+      "reviewed": "2026-11-05",
+      "expires": "2026-12-05"
+    }
+  ]
+}

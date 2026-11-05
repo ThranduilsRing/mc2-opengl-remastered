@@ -55,6 +55,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <chrono>
 #include <memory>
@@ -117,6 +118,8 @@ bool g_debugNames = false;
 // counter. Because there is exactly one engine context, a file-static back
 // pointer is sufficient (set in init()).
 VulkanContext* g_cbContext = nullptr;
+std::atomic<bool> g_canaryArmed{false};   // true only inside runValidationCanary
+std::atomic<int> g_canaryHits{0};
 
 // One validation-layer message in the engine log (vk_validation_line.h); the smoke parser grades an error red and counts the warnings. The layer limits
 // repeats of one message id itself, so the log stays small.
@@ -133,13 +136,59 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
     void* /*user*/) {
     const char* msg = (pData && pData->pMessage) ? pData->pMessage : "(no message)";
     const char* id = (pData && pData->pMessageIdName) ? pData->pMessageIdName : "-";
+    // The known-bad canary (runValidationCanary) is a deliberate violation: it proves the layer is live on this host and is not an engine error.
+    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) && g_canaryArmed.load(std::memory_order_relaxed)) {
+        g_canaryHits.fetch_add(1, std::memory_order_relaxed);
+        validationLog("info", "canary_fired", std::string(id));
+        return VK_FALSE;
+    }
+    // Every involved object (type, handle, debug name) and the open command-buffer / queue labels lead the text, ahead of the layer's long message (the text is
+    // capped, the id stays first), so a hit names the pass that recorded it.
+    std::string where;
+    if (pData) {
+        char buf[96];
+        for (uint32_t i = 0; i < pData->objectCount && i < 8; ++i) {
+            const VkDebugUtilsObjectNameInfoEXT& o = pData->pObjects[i];
+            std::snprintf(buf, sizeof(buf), "%s%d:0x%llx:", where.empty() ? "obj=" : ";", static_cast<int>(o.objectType), static_cast<unsigned long long>(o.objectHandle));
+            where += buf;
+            where += o.pObjectName ? o.pObjectName : "-";
+        }
+        auto labels = [&](const char* key, uint32_t n, const VkDebugUtilsLabelEXT* l) {
+            for (uint32_t i = 0; i < n && i < 6; ++i) {
+                where += (i == 0 ? std::string(where.empty() ? "" : " ") + key + "=" : std::string(">"));
+                where += l[i].pLabelName ? l[i].pLabelName : "-";
+            }
+        };
+        labels("cmdlabel", pData->cmdBufLabelCount, pData->pCmdBufLabels);
+        labels("queuelabel", pData->queueLabelCount, pData->pQueueLabels);
+        if (!where.empty()) where += " | ";
+    }
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         if (g_cbContext) g_cbContext->mutableHealth().validationErrors.fetch_add(1, std::memory_order_relaxed);
-        validationLog("error", id, msg);
+        validationLog("error", id, where + msg);
     } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        validationLog("warning", id, msg);
+        validationLog("warning", id, where + msg);
     }
     return VK_FALSE;
+}
+
+// The per-host canary: one deliberately invalid call (a zero-size buffer, VUID-VkBufferCreateInfo-size-00912) right after the device exists. The layer must
+// report it; the engine logs `canary_fired` (info) on a hit and `canary_missed` (error) when the layer stayed silent, so a validated run that never proved
+// the layer live is red, never silently green.
+void runValidationCanary(VkDevice device) {
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = 0;
+    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    g_canaryHits.store(0);
+    g_canaryArmed.store(true);
+    VkBuffer b = VK_NULL_HANDLE;
+    const VkResult r = vkCreateBuffer(device, &bci, nullptr, &b);
+    g_canaryArmed.store(false);
+    if (r == VK_SUCCESS && b != VK_NULL_HANDLE) vkDestroyBuffer(device, b, nullptr);
+    if (g_canaryHits.load() == 0)
+        validationLog("error", "canary_missed", "the deliberate zero-size vkCreateBuffer drew no validation message: the layer is not live on this host");
 }
 
 // Validation preset resolver (same values the islands accept via
@@ -161,8 +210,7 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
     }
     if (eq("gpu-assisted")) {
         resolvedName = "gpu-assisted";
-        feats.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
-        feats.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT);
+        feats.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);   // RESERVE_BINDING_SLOT is obsolete: the layer no longer needs a reserved descriptor slot
         return true;
     }
     if (eq("best-practices")) {
@@ -262,6 +310,8 @@ bool VulkanContext::init(bool wantPresent) {
 #endif
     }
 
+    uint32_t layerSpec = 0, layerImpl = 0;
+    bool layerSettingsExt = false;
     if (wantValidation) {
         uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -270,13 +320,27 @@ bool VulkanContext::init(bool wantPresent) {
         const char* want = "VK_LAYER_KHRONOS_validation";
         bool found = false;
         for (const auto& lp : avail) {
-            if (std::strcmp(lp.layerName, want) == 0) { found = true; break; }
+            if (std::strcmp(lp.layerName, want) == 0) {
+                found = true;
+                layerSpec = lp.specVersion;
+                layerImpl = lp.implementationVersion;
+                break;
+            }
         }
         if (found) {
             layers.push_back(want);
             instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            ctxlog("validation ON: layer %s enabled (preset=%s, +%zu feature(s)).",
-                   want, valPreset, valFeatures.size());
+            ctxlog("validation ON: layer %s enabled (preset=%s, +%zu feature(s), layer spec %u.%u.%u impl %u).",
+                   want, valPreset, valFeatures.size(), VK_API_VERSION_MAJOR(layerSpec), VK_API_VERSION_MINOR(layerSpec), VK_API_VERSION_PATCH(layerSpec), layerImpl);
+            // VK_EXT_layer_settings (layer 1.3.268+) carries the engine-owned settings; an older layer runs on the feature list alone and the run is red.
+            uint32_t n = 0;
+            vkEnumerateInstanceExtensionProperties(want, &n, nullptr);
+            std::vector<VkExtensionProperties> lext(n);
+            if (n) vkEnumerateInstanceExtensionProperties(want, &n, lext.data());
+            for (const auto& ep : lext)
+                if (std::strcmp(ep.extensionName, VK_EXT_LAYER_SETTINGS_EXTENSION_NAME) == 0) { layerSettingsExt = true; break; }
+            if (layerSettingsExt) instExts.push_back(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME);
+            else validationLog("error", "layer_too_old", "VK_LAYER_KHRONOS_validation does not offer VK_EXT_layer_settings (spec " + std::to_string(layerSpec) + "): the engine's sync/best-practices settings and duplicate cap are not applied; update the Vulkan SDK");
         } else {
             wantValidation = false;
             health_.validationEnabled = false;
@@ -333,10 +397,28 @@ bool VulkanContext::init(bool wantPresent) {
                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     mci.pfnUserCallback = engine_ctx_debug_cb;
-    if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
-    if (wantValidation && debugUtilsExt) {
-        if (ici.pNext) valFeaturesInfo.pNext = &mci; else ici.pNext = &mci;
+    // Engine-owned layer settings (not the vkconfig / environment): the duplicate-message cap for every preset, the sync preset's submit-time and extra-property
+    // options, the best-practices switch. They are chained next to the feature list, which stays as the fallback for the same preset.
+    const char* const kLayer = "VK_LAYER_KHRONOS_validation";
+    const uint32_t dupLimit = 200, on = 1;
+    const bool presetSync = std::strcmp(valPreset, "sync") == 0, presetBP = std::strcmp(valPreset, "best-practices") == 0;
+    std::vector<VkLayerSettingEXT> lset;
+    auto addSetting = [&](const char* name, VkLayerSettingTypeEXT type, const uint32_t* v) { lset.push_back({kLayer, name, type, 1, v}); };
+    addSetting("duplicate_message_limit", VK_LAYER_SETTING_TYPE_UINT32_EXT, &dupLimit);
+    if (presetSync) {
+        addSetting("validate_sync", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
+        addSetting("syncval_submit_time_validation", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
+        addSetting("syncval_message_extra_properties", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
     }
+    if (presetBP) addSetting("validate_best_practices", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
+    VkLayerSettingsCreateInfoEXT lsci{};
+    lsci.sType = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
+    lsci.settingCount = static_cast<uint32_t>(lset.size());
+    lsci.pSettings = lset.data();
+    const void** tail = &ici.pNext;
+    if (wantValidation && !valFeatures.empty()) { *tail = &valFeaturesInfo; tail = &valFeaturesInfo.pNext; }
+    if (wantValidation && layerSettingsExt) { *tail = &lsci; tail = &lsci.pNext; }
+    if (wantValidation && debugUtilsExt) { *tail = &mci; }
 
     r = vkCreateInstance(&ici, nullptr, &instance_);
     if (r != VK_SUCCESS) return fail("vkCreateInstance failed");
@@ -352,7 +434,7 @@ bool VulkanContext::init(bool wantPresent) {
             if (mr == VK_SUCCESS) {
                 ctxlog("validation messenger engaged (preset=%s).", valPreset);
                 g_debugNames = true;
-                validationLog("info", "layer_enabled", std::string("VK_LAYER_KHRONOS_validation messenger engaged, preset=") + valPreset);
+                validationLog("info", "layer_enabled", std::string("VK_LAYER_KHRONOS_validation messenger engaged, preset=") + valPreset + " layer_spec=" + std::to_string(VK_API_VERSION_MAJOR(layerSpec)) + "." + std::to_string(VK_API_VERSION_MINOR(layerSpec)) + "." + std::to_string(VK_API_VERSION_PATCH(layerSpec)) + " layer_impl=" + std::to_string(layerImpl) + " settings=" + std::to_string(layerSettingsExt ? lset.size() : 0) + " dup_limit=" + std::to_string(layerSettingsExt ? dupLimit : 0));
             } else {
                 ctxlog("vkCreateDebugUtilsMessengerEXT failed (%d); no error capture.", static_cast<int>(mr));
                 validationLog("error", "messenger_unavailable", "vkCreateDebugUtilsMessengerEXT failed (" + std::to_string(static_cast<int>(mr)) + "); this run is NOT validated");
@@ -534,6 +616,7 @@ bool VulkanContext::init(bool wantPresent) {
     // island is active in the same session, so this device is the sole owner of
     // the global table -- no clobber.
     volkLoadDevice(device_);
+    if (messenger_ != VK_NULL_HANDLE) runValidationCanary(device_);
     vkGetDeviceQueue(device_, gfxFamily_, 0, &gfxQueue_);
     infra::init(device_, phys_);
 

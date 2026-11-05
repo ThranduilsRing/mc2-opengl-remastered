@@ -239,7 +239,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 22
+    assert len(steps) == 23
     video = next(cmd for name, cmd, _ in steps if name == "video-decode")
     assert video[1].endswith("video_decode_smoke.py") and "video-decode" in video[-1]
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
@@ -257,7 +257,8 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
         assert cmd[2] == "check"
         assert "--first-save-only" in cmd
         assert cmd[cmd.index("--mask") + 1] == "tools/save_noise_mask.json"
-    assert steps[-1][2] == {"MC2_VULKAN_VALIDATION": "1"}
+    assert steps[-2][2] == {"MC2_VULKAN_VALIDATION": "1"}
+    assert steps[-1][0] == "syncval" and steps[-1][2] == {"MC2_VULKAN_VALIDATION": "sync"}
 
 
 def test_gate_repeated_before_captures_measure_noise_before_deploy(tmp_path):

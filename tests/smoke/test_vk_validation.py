@@ -2,7 +2,9 @@
 from scripts.smoke_lib import logparse, report, vk_validation
 from scripts.smoke_lib.report import Row
 
-ENABLED = '[VK_VALIDATION v1] severity=info id=layer_enabled text="VK_LAYER_KHRONOS_validation messenger engaged, preset=core"'
+LAYER_ON = '[VK_VALIDATION v1] severity=info id=layer_enabled text="VK_LAYER_KHRONOS_validation messenger engaged, preset=core"'
+CANARY = '[VK_VALIDATION v1] severity=info id=canary_fired text="VUID-VkBufferCreateInfo-size-00912"'
+ENABLED = LAYER_ON + "\n" + CANARY         # a confirmed run: the layer is up AND its deliberate canary was reported
 ERROR = ('[VK_VALIDATION v1] severity=error id=VUID-vkCmdDraw-None-02699 text="vkCmdDraw(): descriptor set 0 binding 1 was not updated"')
 ERROR_AGAIN = ERROR.replace("binding 1", "binding 2")
 WARNING = '[VK_VALIDATION v1] severity=warning id=UNASSIGNED-CoreValidation-Shader-OutputNotConsumed text="fragment output 3 is never consumed"'
@@ -38,16 +40,16 @@ def test_only_errors_grade_red_and_each_distinct_id_is_one_reason():
 
 def test_describe_says_whether_the_layer_was_confirmed_on():
     clean = vk_validation.parse(ENABLED)
-    assert vk_validation.describe(clean) == "errors=0 warnings=0"
+    assert vk_validation.describe(clean) == "errors=0 warnings=0 canary=fired"
     dirty = vk_validation.parse("\n".join([ENABLED, ERROR, WARNING]))
     assert vk_validation.describe(dirty) == ("errors=1 (VUID-vkCmdDraw-None-02699 x1) "
-                                             "warnings=1 (UNASSIGNED-CoreValidation-Shader-OutputNotConsumed x1)")
+                                             "warnings=1 (UNASSIGNED-CoreValidation-Shader-OutputNotConsumed x1) canary=fired")
     assert "layer not confirmed on" in vk_validation.describe(vk_validation.parse(WARNING))
 
 
 def test_the_log_parser_collects_the_messages_and_counts_errors_as_a_red_marker():
     summary = logparse.parse_log("\n".join([ENABLED, WARNING, ERROR, ERROR_AGAIN]) + "\n")
-    assert [m.severity for m in summary.vk_validation] == ["info", "warning", "error", "error"]
+    assert [m.severity for m in summary.vk_validation] == ["info", "info", "warning", "error", "error"]
     assert summary.marker_counts.get("vk_validation_error") == 2           # the warning and the info line are not red
     row = next(mb for mb in logparse.MARKER_BUCKETS if mb.bucket == "vk_validation_error")
     assert row.severity == "red"
@@ -117,3 +119,30 @@ def test_the_gate_grades_an_unconfirmed_request_red_and_a_confirmed_one_clean():
     assert run(ENABLED + "\n").passed
     unconfirmed = run("\n")
     assert not unconfirmed.passed and "vk_validation_unconfirmed" in unconfirmed.buckets
+
+
+SYNC = ('[VK_VALIDATION v1] severity=error id=SYNC-HAZARD-WRITE_AFTER_WRITE text="obj=10:0x1:shadow.bake.mask | vkCmdCopyImage WRITE_AFTER_WRITE"')
+
+
+def test_a_layer_without_the_canary_is_not_confirmed():
+    assert vk_validation.layer_enabled(vk_validation.parse(LAYER_ON)) and not vk_validation.confirmed(vk_validation.parse(LAYER_ON))
+    assert vk_validation.grade(vk_validation.parse(LAYER_ON), asked=True) == [vk_validation.UNCONFIRMED]
+    assert "canary=MISSING" in vk_validation.describe(vk_validation.parse(LAYER_ON))
+    assert "canary=fired" in vk_validation.describe(vk_validation.parse(ENABLED))
+
+
+def test_a_known_unexpired_entry_is_not_red_and_an_expired_or_unlisted_one_is():
+    from datetime import date
+    entries = vk_validation.known_entries(today=date(2026, 11, 6))
+    assert vk_validation.is_known("SYNC-HAZARD-WRITE_AFTER_WRITE", "x shadow.bake.mask y", entries)
+    assert not vk_validation.is_known("SYNC-HAZARD-WRITE_AFTER_WRITE", "some other image", entries)
+    assert not vk_validation.is_known("VUID-vkCmdDraw-None-02699", "shadow.bake.mask", entries)
+    assert vk_validation.known_entries(today=date(2027, 1, 1)) == []           # the review window ran out: red again
+    s = logparse.parse_log("\n".join([ENABLED, SYNC, ERROR]) + "\n")
+    assert s.marker_counts.get("vk_validation_error") in (1, 2)                # the known hit leaves at most the unlisted VUID (the entry may have expired)
+
+
+def test_a_raw_layer_error_line_is_red_unless_known():
+    raw = "Validation Error: [ VUID-vkCmdDraw-None-02699 ] Object 0: handle = 0x1 | bad"
+    assert logparse.parse_log(raw + "\n").marker_counts.get("vk_validation_raw") == 1
+    assert "vk_validation_raw" not in logparse.parse_log(ERROR.replace('"vkCmd', '"Validation Error: [ VUID-x ] vkCmd') + "\n").marker_counts
