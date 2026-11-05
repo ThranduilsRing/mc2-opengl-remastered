@@ -840,7 +840,7 @@ struct ActorAnimState : mc2::sim::ImportedAnimState {
 };
 
 struct ImportedAnimEntry {
-    Assimp::Importer*   imp   = nullptr;   // owns scene; session-lifetime (never freed)
+    std::unique_ptr<Assimp::Importer> imp;   // owns scene; freed with the entry (UnregisterImportedType)
     const aiScene*      scene = nullptr;
     TG_TypeShape*       shape = nullptr;   // merged slot-0 shape (listOfTypeVertices)
     TG_TypeMultiShape*  multi = nullptr;   // for per-frame bbox refresh
@@ -1123,7 +1123,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
         aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_SortByPType);
     if (!scene) return;
     ImportedAnimEntry e;
-    e.imp = imp.release(); e.scene = scene;
+    e.imp = std::move(imp); e.scene = scene;
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;
@@ -1254,6 +1254,16 @@ bool mc2mechanim::AnyImportedAnim() { return !g_importedAnims.empty(); }
 
 // IMPORTED-ACTOR-STABLE-KEY-1: erase this actor's per-frame state from every imported
 // type so a freed-then-reused instance address can't inherit a stale pose. Idempotent.
+// IMPORTED-TYPE-LIFETIME-1: an entry holds raw shape/multi pointers into a type that the
+// type list frees; drop the entry (and its aiScene) when that type dies, else a reused
+// address resolves to a stale entry (wrong skeleton / use-after-free). Idempotent.
+void mc2mechanim::UnregisterImportedType(const void* multi) {
+    if (!multi) return;
+    std::erase_if(g_importedAnims, [multi](const ImportedAnimEntry& e) {
+        return static_cast<const void*>(e.multi) == multi;
+    });
+}
+
 void mc2mechanim::UnregisterImportedActor(const void* actorKey) {
     if (!actorKey) return;
     for (ImportedAnimEntry& e : g_importedAnims)
