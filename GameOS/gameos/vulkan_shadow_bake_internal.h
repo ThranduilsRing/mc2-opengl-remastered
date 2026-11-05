@@ -125,6 +125,12 @@ inline bool makeHostBuffer(OwnedBuffer& buf, VmaAllocator allocator, VkDevice de
     return buf.createHostWritable(allocator, device, (std::max<VkDeviceSize>)(bytes, 256), usage, name);
 }
 
+// Per-frame CPU-written, GPU-read feed (device-local host-visible where the device has it).
+inline bool makeGpuReadBuffer(OwnedBuffer& buf, VmaAllocator allocator, VkDevice device, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name) {
+    buf.reset();
+    return buf.createGpuRead(allocator, device, (std::max<VkDeviceSize>)(bytes, 256), usage, name);
+}
+
 // World-space corners of a type's local box under an instance's transform: Stuff = (pos, 1) * M (row vector, M column-major), MC2 = (-x, z, y).
 inline void instanceBox(const float m[16], const float mn[3], const float mx[3], mc2shadow::Vec3& lo, mc2shadow::Vec3& hi) {
     lo = {1e30f, 1e30f, 1e30f};

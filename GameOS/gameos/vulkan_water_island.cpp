@@ -26,6 +26,7 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 // =============================================================================
 
+#include <bit>
 #include "vulkan_water_island_internal.h"
 #include "vk_one_shot.h"   // STEP 3.4P: recipe upload
 #include "hitch_stats.h"
@@ -106,8 +107,8 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;   // per-frame GPU-read feed: ReBAR device-local where available
+    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -129,7 +130,7 @@ void write_descriptors(WaterIsland* s, int only) {
         if (s->set[i] == VK_NULL_HANDLE) continue;   // set not allocated yet (early init path)
         // Bindings 0 and 1 (the parameter UBOs) at the frame ring's current buffer; the slot re-points them at its next frame (ringBound cleared).
         if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer()) {
-            mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterVsParams));
+            mc2vk::writeDynamicBinding(s->device, s->set[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kWaterVsUboSize);
             mc2vk::writeDynamicBinding(s->device, s->set[i], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(WaterFsParams));
         }
         s->ringBound[i] = VK_NULL_HANDLE;
@@ -138,6 +139,13 @@ void write_descriptors(WaterIsland* s, int only) {
         // a frame that takes the readback feed (opt-out, null MVP) rebinds its slot to thinBuf first (vulkan_water_island_run.cpp).
         VkDescriptorBufferInfo thinInfo{ (s->thinNative[i] && s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet w[2]{};
+        if (s->native && s->native->ready()) {   // binding 12: the reflection compute's water tile list
+            VkDescriptorBufferInfo tileInfo{ s->native->tileList(static_cast<uint32_t>(i)), 0, VK_WHOLE_SIZE };
+            VkWriteDescriptorSet tw{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            tw.dstSet = s->set[i]; tw.dstBinding = 12; tw.descriptorCount = 1;
+            tw.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; tw.pBufferInfo = &tileInfo;
+            vkUpdateDescriptorSets(s->device, 1, &tw, 0, nullptr);
+        }
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
         w[0].dstBinding = 5; w[0].descriptorCount = 1;
         w[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[0].pBufferInfo = &recInfo;
@@ -201,11 +209,9 @@ void write_descriptors(WaterIsland* s, int only) {
 // Grow slot `par`'s thin SSBO to at least `bytes`; rewrite descriptors on realloc.
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
     if (s->thinBuf[par] && bytes <= s->thinCapBytes[par]) return true;
-    if (s->thinBuf[par]) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_thin_grow");   // simple + safe for a realloc (rare, grows once)
-        s->thinBuf[par].reset();
-    }
-    VkDeviceSize cap = bytes + bytes / 2 + 4096; // headroom
+    // Power-of-two capacity; the old buffer retires on the open-frame ticket (the slot's in-flight submit may still read it).
+    if (s->thinBuf[par]) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->thinBuf[par]), s->thinCapBytes[par]);
+    const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes + bytes / 2 + 4096));
     if (!make_buffer(s, s->thinBuf[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.thinBuf", static_cast<int>(par)))
         return false;
     s->thinCapBytes[par] = cap;
@@ -218,12 +224,11 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes) {
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount) {
     const VkDeviceSize need = static_cast<VkDeviceSize>(recipeCount) * 64;
     if (!recipes || need == 0) return false;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("water_recipe_upload");
     mc2vk::OwnedBuffer staging;
     if (!staging.createFilled(s->allocator, s->device, recipes, need, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.recipeStage")) {
         vlog("recipe staging failed."); return false;
     }
-    s->recipeBuf.reset();
+    if (s->recipeBuf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->recipeBuf), s->recipeBytes);   // in-flight frames may still read the old table
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = need; bci.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -246,7 +251,7 @@ bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeC
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record) {
     VkCommandBufferAllocateInfo cai{};
     cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    cai.commandPool = s->cpool[0].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return false;
     VkCommandBufferBeginInfo bi{};
@@ -269,7 +274,7 @@ bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& rec
             }
         }
     }
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool[0].get(), 1, &cb);
     return ok;
 }
 
@@ -329,14 +334,16 @@ extern "C" void mc2_vk_water_island_destroy() {
          "vk2gl_sem=%d validation_errors=%lu thin_records=%lu recipe_count=%lu fallback_reason=\"%s\" "
          "vk_draws=%lu forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_texSubImage=%lu depthin_getTexImage=%lu depthin_copyBufToImg=%lu "
-         "copy_color_in_us=%.1f copy_depth_in_us=%.1f draw_us=%.1f color_out_us=%.1f total_us=%.1f",
+         "copy_color_in_us=%.1f copy_depth_in_us=%.1f draw_us=%.1f color_out_us=%.1f total_us=%.1f "
+         "water_visible=%lu water_eligible_bound=%lu water_tiles=%lu water_tile_cap=%lu",
          g_health.vulkanAvailable, g_health.usedVulkan, g_health.usedInterop, g_health.interopActive,
          g_health.vk2glSemActive, g_health.validationErrors, g_health.thinRecords, g_health.recipeCount,
          g_health.fallbackReason, g_health.vkDraws,
          g_forbidden.vkCmdCopyBufferToImage, g_forbidden.vkCmdCopyImageToBuffer,
          g_forbidden.glGetTexImage, g_forbidden.glTexSubImage2D,
          g_depthInGetTexImage, g_depthInCopyBufferToImage,
-         g_health.copyColorInUs, g_health.copyDepthInUs, g_health.drawUs, g_health.colorOutUs, g_health.totalUs);
+         g_health.copyColorInUs, g_health.copyDepthInUs, g_health.drawUs, g_health.colorOutUs, g_health.totalUs,
+         g_health.waterVisible, g_health.waterEligibleBound, g_health.waterTiles, g_health.waterTileCap);
     mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Water);
 }
 

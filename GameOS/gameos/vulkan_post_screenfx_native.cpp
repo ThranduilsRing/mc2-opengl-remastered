@@ -203,6 +203,7 @@ struct gosPostProcess::VkPostScreenFx {
     struct Frame {
         VkDescriptorSet cloudSet = VK_NULL_HANDLE, shoreSet = VK_NULL_HANDLE, shadowSet = VK_NULL_HANDLE;
         VkCommandBuffer cbuf[2]{}; // shadow, then cloud/shoreline
+        mc2vk::OwnedCommandPool cpool[2];   // one pool per cb (the two are recorded and submitted at different points of the frame): vkResetCommandPool instead of per-cb reset
         mc2vk::OwnedBuffer cloudUbo, shoreUbo, shadowUbo;
         uint64_t ticket[2]{};
     } frames[mc2vk::kMaxFramesInFlight];
@@ -226,7 +227,6 @@ struct gosPostProcess::VkPostScreenFx {
     mc2vk::OwnedPipeline    cloudPipe;
     mc2vk::OwnedPipeline    shorePipe;
     mc2vk::OwnedPipeline    shadowPipe;
-    mc2vk::OwnedCommandPool cpool;
 };
 
 namespace {
@@ -237,8 +237,8 @@ bool make_buffer(gosPostProcess::VkPostScreenFx* s, mc2vk::OwnedBuffer& out, VkD
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;   // per-frame GPU-read feed: ReBAR device-local where available
+    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -446,14 +446,14 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         const VkDescriptorSetLayout shoreDslHandle = s->shoreDsl.get();
         const VkDescriptorSetLayout shadowDslHandle = s->shadowDsl.get();
         dsai.pSetLayouts = &cloudDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.cloudSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(cloud) failed (%d).", static_cast<int>(r)); return false; }
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, &frame.cloudSet);
+        if (r != VK_SUCCESS) { vlog("MC2_VK_ALLOC_SETS(cloud) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shoreDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.shoreSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shore) failed (%d).", static_cast<int>(r)); return false; }
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, &frame.shoreSet);
+        if (r != VK_SUCCESS) { vlog("MC2_VK_ALLOC_SETS(shore) failed (%d).", static_cast<int>(r)); return false; }
         dsai.pSetLayouts = &shadowDslHandle;
-        r = vkAllocateDescriptorSets(s->device, &dsai, &frame.shadowSet);
-        if (r != VK_SUCCESS) { vlog("vkAllocateDescriptorSets(shadow) failed (%d).", static_cast<int>(r)); return false; }
+        r = MC2_VK_ALLOC_SETS(s->device, &dsai, &frame.shadowSet);
+        if (r != VK_SUCCESS) { vlog("MC2_VK_ALLOC_SETS(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorImageInfo depthInfo{};
         depthInfo.sampler = s->gbufSampler.get();
@@ -606,18 +606,20 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        VkResult rr = mc2vk::createChecked(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); });
-        if (rr != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", static_cast<int>(rr)); return false; }
         VkCommandBufferAllocateInfo cai{};
         cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = 2;
+        cai.commandBufferCount = 1;
         for (auto& frame : s->frames) {
-            rr = vkAllocateCommandBuffers(s->device, &cai, frame.cbuf);
-            if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
+            for (uint32_t k = 0; k < 2; ++k) {
+                VkResult rr = mc2vk::createChecked(frame.cpool[k], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); });
+                if (rr != VK_SUCCESS) { vlog("vkCreateCommandPool failed (%d).", static_cast<int>(rr)); return false; }
+                cai.commandPool = frame.cpool[k].get();
+                rr = vkAllocateCommandBuffers(s->device, &cai, &frame.cbuf[k]);
+                if (rr != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(rr)); return false; }
+            }
         }
     }
 
@@ -752,7 +754,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
     VkCommandBuffer cb = frame.cbuf[0];
 
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, frame.cpool[0].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -805,12 +807,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
     barrier(s->sNormalRes->image.get(), VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
@@ -936,7 +938,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
     VkCommandBuffer cb = frame.cbuf[1];
 
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, frame.cpool[1].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1008,12 +1010,12 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     // Depth + normal back to the GL hand-off layouts (layout-stable).
     depthBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
     normalBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                  VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+                  VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {

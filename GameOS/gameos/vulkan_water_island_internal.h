@@ -73,6 +73,9 @@ struct WaterIslandHealth {
     unsigned long usedInterop = 0;
     unsigned long thinRecords = 0;   // records fed this frame
     unsigned long recipeCount = 0;   // recipe rows uploaded once
+    // GPU cull health (NativeProducers::lastVisible/lastTiles): the last completed frame's visible quads and reflection tiles against the CPU
+    // eligible bound and the tile dispatch cap. visible == 0 on a map with water, or visible > eligible, is a regression visible in the log.
+    unsigned long waterVisible = 0, waterEligibleBound = 0, waterTiles = 0, waterTileCap = 0;
     double copyColorInUs = 0.0, copyDepthInUs = 0.0, drawUs = 0.0, colorOutUs = 0.0, totalUs = 0.0;
 };
 
@@ -95,6 +98,8 @@ struct WaterVsParams {
     float p2[4];             // uvOffsetY, fudge, alphaEdgeByte, alphaMiddleByte      (off 96)
     float p3[4];             // alphaDeepByte, shoreFlat, shoreDepthK, pad            (off 112)
 };
+// The VS-params UBO the island stages: WaterVsParams (what water_geom.vert reads) then inverse(worldToClip) at offset 128 (water_reflection.comp).
+constexpr size_t kWaterVsUboSize = sizeof(WaterVsParams) + 16 * sizeof(float);
 static_assert(sizeof(WaterVsParams) == 128, "WaterVsParams std140 size (water_geom.vert)");
 static_assert(offsetof(WaterVsParams, p0) == 64 && offsetof(WaterVsParams, p1) == 80 &&
               offsetof(WaterVsParams, p2) == 96 && offsetof(WaterVsParams, p3) == 112, "WaterVsParams offsets");
@@ -218,8 +223,7 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
-    mc2vk::OwnedCommandPool cpool;
-    mc2vk::OwnedFence fence;
+    mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
 
     // STEP 3.4P: the native Vulkan lighting + cull/pack producers (declared last: released first). `nativeFailed` = init was tried and refused, so the
     // GL readback feed stays in use for the session.

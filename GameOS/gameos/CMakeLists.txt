@@ -285,7 +285,7 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp vulkan_spatial_aa.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp)
     endif()
 endif()
 
@@ -375,6 +375,15 @@ if(MC2_VULKAN)
         NAMES glslc
         HINTS ENV VULKAN_SDK
         PATH_SUFFIXES Bin bin)
+    # spirv-opt -O post-step for every glslang/glslc/slang output (SPIRV-Tools from the pinned Vulkan SDK;
+    # the box uses its apt spirv-tools). --preserve-bindings/--preserve-spec-constants keep the descriptor
+    # interface byte-stable; names/debug info are kept (no --strip-debug) so reflection tools see them.
+    # Absent tool = the unoptimised SPIR-V ships (still correct).
+    find_program(MC2_SPIRV_OPT
+        NAMES spirv-opt
+        HINTS ENV VULKAN_SDK
+        PATH_SUFFIXES Bin bin)
+    set(MC2_VK_SPIRV_OPT_FLAGS -O --preserve-bindings --preserve-spec-constants --target-env=vulkan1.2)
 
     set(MC2_VK_SHADER_SRC_DIR "${CMAKE_SOURCE_DIR}/shaders/vulkan")
     set(MC2_VK_SPV_OUT_DIR "${CMAKE_BINARY_DIR}/shaders/vulkan")
@@ -413,7 +422,7 @@ if(MC2_VULKAN)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
-    list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)
+    list(APPEND MC2_VK_SHADER_BASENAMES vegetation_region vegetation_cull vegetation_compact vfx_vegetation)
     list(APPEND MC2_VK_SHADER_BASENAMES mech_skin)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
@@ -452,17 +461,23 @@ if(MC2_VULKAN)
             if(DEFINED MC2_VK_SHADER_DEFINES_${_base}_${_stage})
                 set(_defs ${MC2_VK_SHADER_DEFINES_${_base}_${_stage}})
             endif()
+            set(_optcmd "")
+            if(MC2_SPIRV_OPT)
+                set(_optcmd COMMAND "${MC2_SPIRV_OPT}" ${MC2_VK_SPIRV_OPT_FLAGS} "${_spv}" -o "${_spv}")
+            endif()
             if(MC2_GLSLANG_VALIDATOR)
                 add_custom_command(
                     OUTPUT "${_spv}"
-                    COMMAND "${MC2_GLSLANG_VALIDATOR}" -V ${_defs} "${_src}" -o "${_spv}"
+                    COMMAND "${MC2_GLSLANG_VALIDATOR}" -V --target-env vulkan1.2 ${_defs} "${_src}" -o "${_spv}"
+                    ${_optcmd}
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslang): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
             else()
                 add_custom_command(
                     OUTPUT "${_spv}"
-                    COMMAND "${MC2_GLSLC}" ${_defs} "${_src}" -o "${_spv}"
+                    COMMAND "${MC2_GLSLC}" --target-env=vulkan1.2 ${_defs} "${_src}" -o "${_spv}"
+                    ${_optcmd}
                     DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslc): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
@@ -509,11 +524,15 @@ if(MC2_VULKAN)
             if(_spv IN_LIST MC2_VK_SPV_OUTPUTS)
                 message(FATAL_ERROR "Duplicate GLSL/Slang shader output: ${_spv}")
             endif()
+            set(_optargs "")
+            if(MC2_SPIRV_OPT)
+                set(_optargs --spirv-opt "${MC2_SPIRV_OPT}")
+            endif()
             add_custom_command(OUTPUT "${_spv}"
                 COMMAND "${Python3_EXECUTABLE}"
                     "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py"
                     "${_src}" -o "${_spv}"
-                    --slangc "${MC2_SLANGC}" --spirv-cross "${MC2_SPIRV_CROSS}"
+                    --slangc "${MC2_SLANGC}" --spirv-cross "${MC2_SPIRV_CROSS}" ${_optargs}
                 DEPENDS ${MC2_SLANG_DEPENDS}
                     "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py"
                     "${CMAKE_SOURCE_DIR}/tools/gpu_abi_gen.py"

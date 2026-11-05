@@ -5,6 +5,7 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "mc2_diag_verbose.h"
 #include <vk_mem_alloc.h>
 #include <array>
@@ -18,11 +19,12 @@ struct alignas(16) CullParams { float mvp[16]; uint32_t counts[4]; float options
 static_assert(sizeof(CullParams)==96);
 void bufferBarrier(VkCommandBuffer cb,VkBuffer buffer,VkPipelineStageFlags srcStage,VkAccessFlags srcAccess,
                    VkPipelineStageFlags dstStage,VkAccessFlags dstAccess,VkDeviceSize bytes=VK_WHOLE_SIZE) {
-    VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
-    barrier.srcAccessMask=srcAccess; barrier.dstAccessMask=dstAccess;
-    barrier.srcQueueFamilyIndex=barrier.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
-    barrier.buffer=buffer; barrier.offset=0; barrier.size=bytes;
-    vkCmdPipelineBarrier(cb,srcStage,dstStage,0,0,nullptr,1,&barrier,0,nullptr);
+    mc2vk::sync::BarrierBatch batch;
+    mc2vk::sync::BufferBarrierRec r;
+    r.buffer=reinterpret_cast<uint64_t>(buffer); r.offset=0; r.size=bytes;
+    r.srcStages=srcStage; r.srcAccess=srcAccess; r.dstStages=dstStage; r.dstAccess=dstAccess;
+    batch.buffer(r);
+    mc2vk::sync::flush(mc2vk::getOrCreateEngineVulkanContext(),cb,batch);
 }
 
 struct NativeCull final : mc2vk::IslandState {
@@ -62,10 +64,10 @@ struct NativeCull final : mc2vk::IslandState {
             !sets.create(ctx.device(),pipeline,3,"actorCull.sets")) return false;
         for (uint32_t i=0;i<3;++i) {
             auto& slot=slots[i];
-            if (!slot.records.createHostWritable(ctx.allocator(),ctx.device(),static_cast<VkDeviceSize>(cap)*sizeof(GpuActorRecord),
-                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"actorCull.records",static_cast<int>(i)) ||
-                !slot.params.createHostWritable(ctx.allocator(),ctx.device(),sizeof(CullParams),
-                                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,"actorCull.params",static_cast<int>(i))) return false;
+            if (!slot.records.createGpuRead(ctx.allocator(),ctx.device(),static_cast<VkDeviceSize>(cap)*sizeof(GpuActorRecord),
+                                            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,"actorCull.records",static_cast<int>(i)) ||
+                !slot.params.createGpuRead(ctx.allocator(),ctx.device(),sizeof(CullParams),
+                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,"actorCull.params",static_cast<int>(i))) return false;
             VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; info.size=bytes;
             info.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             VmaAllocationCreateInfo device{}; device.usage=VMA_MEMORY_USAGE_AUTO;
@@ -132,10 +134,7 @@ NativeCullSubmit nativeCullSubmit(uint32_t i, std::span<const GpuActorRecord> re
         vkResetCommandPool(ctx.device(),slot.pool.get(),0)!=VK_SUCCESS) return NativeCullSubmit::Failed;
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; begin.flags=VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(slot.cb,&begin)!=VK_SUCCESS) return NativeCullSubmit::Failed;
-    bufferBarrier(slot.cb,slot.records.get(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
-                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
-    bufferBarrier(slot.cb,slot.params.get(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
-                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_UNIFORM_READ_BIT);
+    // Host writes before vkQueueSubmit are visible to the submit: no HOST->COMPUTE barriers for records/params.
     // Only this slot is reused. A device-wide ALL_COMMANDS memory barrier also
     // joins every unrelated image and descriptor history under sync validation.
     bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_TRANSFER_BIT,

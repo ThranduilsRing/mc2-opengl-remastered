@@ -26,5 +26,7 @@ bool submitAndWait(const VulkanContext& ctx, const VkSubmitInfo& si, uint64_t ti
 // Records with `record` (between begin and end), submits, waits up to 5 s. False on any failure; `why` names the caller
 // in the device-wait log line a timed-out submit produces.
 bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandBuffer)>& record, std::string_view why);
+// Destroys the shared one-shot pool; the context calls it after the device idles at teardown, before the device goes.
+void releaseOneShotPool();
 }  // namespace mc2vk
 #endif

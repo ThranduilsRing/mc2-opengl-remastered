@@ -26,7 +26,7 @@ code and the proof of a finished conversion, not a leak detector.
 | terrain | 6 | 0 | 0 | +0 | 0 | - |
 | vfx | 2 | 0 | 0 | +0 | 0 | - |
 | water | 4 | 0 | 0 | +0 | 0 | - |
-| present | 2 | 1 | 0 | +1 | 1 | Memory 1/0 |
+| present | 3 | 1 | 0 | +1 | 1 | Memory 1/0 |
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
@@ -40,7 +40,7 @@ Total over all islands: created 12, released 11, imbalance +1.
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
-| `engine_present_vk.cpp` | 1 | 0 | +1 |
+| `engine_present_vk_imgui.cpp` | 1 | 0 | +1 |
 | `vulkan_context.cpp` | 1 | 1 | +0 |
 | `vk_render_infra.cpp` | 10 | 10 | +0 |
 
@@ -80,30 +80,18 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | Island | Kind | Created | Released |
 |---|---|---:|---:|
 | color_prop | CommandBuffers | 3 | 1 |
-| color_prop | DescriptorSets | 1 | 0 |
 | legacy_shape | CommandBuffers | 1 | 0 |
-| legacy_shape | DescriptorSets | 1 | 0 |
 | mech | CommandBuffers | 1 | 0 |
-| mech | DescriptorSets | 1 | 0 |
 | post_fog | CommandBuffers | 1 | 0 |
-| post_fog | DescriptorSets | 1 | 0 |
 | post_hzb | CommandBuffers | 1 | 0 |
-| post_hzb | DescriptorSets | 2 | 0 |
 | post_screenfx | CommandBuffers | 1 | 0 |
-| post_screenfx | DescriptorSets | 3 | 0 |
 | shadow | CommandBuffers | 1 | 0 |
-| shadow | DescriptorSets | 3 | 0 |
 | sky | CommandBuffers | 2 | 1 |
-| sky | DescriptorSets | 1 | 0 |
 | terrain | CommandBuffers | 3 | 1 |
-| terrain | DescriptorSets | 2 | 0 |
 | vfx | CommandBuffers | 1 | 0 |
-| vfx | DescriptorSets | 2 | 0 |
 | water | CommandBuffers | 2 | 1 |
-| water | DescriptorSets | 1 | 0 |
 | present | CommandBuffers | 3 | 0 |
-| present | DescriptorSets | 4 | 2 |
+| present | DescriptorSets | 0 | 2 |
 | context | Allocator | 1 | 1 |
 | context | Device | 1 | 1 |
 | context | Instance | 1 | 1 |
-| textures | DescriptorSets | 1 | 0 |

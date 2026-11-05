@@ -40,6 +40,7 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_image_resource.h"
 #include "vk_texture_residency.h"
+#include "vk_one_shot.h"
 #endif
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -343,7 +344,20 @@ bool VulkanContext::init(bool wantPresent) {
     ici.ppEnabledLayerNames     = layers.empty() ? nullptr : layers.data();
     ici.enabledExtensionCount   = static_cast<uint32_t>(instExts.size());
     ici.ppEnabledExtensionNames = instExts.empty() ? nullptr : instExts.data();
+    // vk-present-instance 3: the messenger create info rides the instance create chain, so create-time messages are captured too
+    // (the persistent messenger below is created from the same info and destroyed before the instance).
+    VkDebugUtilsMessengerCreateInfoEXT mci{};
+    mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    mci.pfnUserCallback = engine_ctx_debug_cb;
     if (wantValidation && !valFeatures.empty()) ici.pNext = &valFeaturesInfo;
+    if (wantValidation && debugUtilsExt) {
+        if (ici.pNext) valFeaturesInfo.pNext = &mci; else ici.pNext = &mci;
+    }
 
     r = vkCreateInstance(&ici, nullptr, &instance_);
     if (r != VK_SUCCESS) return fail("vkCreateInstance failed");
@@ -355,14 +369,6 @@ bool VulkanContext::init(bool wantPresent) {
         auto pfnCreate = (PFN_vkCreateDebugUtilsMessengerEXT)
             vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT");
         if (pfnCreate) {
-            VkDebugUtilsMessengerCreateInfoEXT mci{};
-            mci.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            mci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-            mci.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            mci.pfnUserCallback = engine_ctx_debug_cb;
             VkResult mr = pfnCreate(instance_, &mci, nullptr, &messenger_);
             if (mr == VK_SUCCESS) {
                 ctxlog("validation messenger engaged (preset=%s).", valPreset);
@@ -389,12 +395,17 @@ bool VulkanContext::init(bool wantPresent) {
     // refuses Vulkan (fatal, no GL fallback) and the refused device's line says which items it lacks ----
     profile::DeviceCaps caps;
     {
-        struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; };
+        struct Candidate { VkPhysicalDevice pd; profile::DeviceCaps caps; profile::Evaluation ev; std::string name; bool discrete; uint64_t vram; };
         std::vector<Candidate> cands;
         for (auto pd : devs) {
             VkPhysicalDeviceProperties p{};
             vkGetPhysicalDeviceProperties(pd, &p);
-            Candidate c{pd, profile::gather(pd, instanceApi), {}, p.deviceName, p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU};
+            VkPhysicalDeviceMemoryProperties mem{};
+            vkGetPhysicalDeviceMemoryProperties(pd, &mem);
+            uint64_t vram = 0;
+            for (uint32_t h = 0; h < mem.memoryHeapCount; ++h)
+                if (mem.memoryHeaps[h].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) vram += mem.memoryHeaps[h].size;
+            Candidate c{pd, profile::gather(pd, instanceApi), {}, p.deviceName, p.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU, vram};
             c.ev = profile::evaluate(c.caps, wantPresent);
             cands.push_back(std::move(c));
         }
@@ -410,12 +421,12 @@ bool VulkanContext::init(bool wantPresent) {
                 ctxlog("MC2_VK_DEVICE=%s matches no accepted device; using the default pick", hint.c_str());
             }
         }
-        if (!pick)
+        // vk-present-instance 5: the most device-local VRAM among accepted discrete devices (not the first listed), then among any accepted device.
+        for (const bool discreteOnly : {true, false}) {
+            if (pick) break;
             for (const Candidate& c : cands)
-                if (c.ev.accepted && c.discrete) { pick = &c; break; }
-        if (!pick)
-            for (const Candidate& c : cands)
-                if (c.ev.accepted) { pick = &c; break; }
+                if (c.ev.accepted && (c.discrete || !discreteOnly) && (!pick || c.vram > pick->vram)) pick = &c;
+        }
         const bool accepted = pick != nullptr;
         if (!pick) {                                      // report the device the engine would have preferred
             pick = &cands[0];
@@ -431,6 +442,7 @@ bool VulkanContext::init(bool wantPresent) {
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
         profileLog(health_.profileLine);
+        ctxlog("subgroup size=%u stages=0x%x ops=0x%x", caps.subgroupSize, caps.subgroupStages, caps.subgroupOps);
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         props.pNext = caps.usableApi() >= profile::kFloorApi ? &driver : nullptr;
@@ -459,7 +471,15 @@ bool VulkanContext::init(bool wantPresent) {
     for (uint32_t q = 0; q < qfCount; ++q) {
         if (qfs[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) { gfxFamily_ = q; break; }
     }
-    if (gfxFamily_ == UINT32_MAX) return fail("no graphics queue family");
+    if (gfxFamily_ == UINT32_MAX) {
+        std::string families;
+        for (uint32_t q = 0; q < qfCount; ++q) {
+            char b[64];
+            std::snprintf(b, sizeof b, " family%u=flags:0x%x,count:%u", q, static_cast<unsigned>(qfs[q].queueFlags), qfs[q].queueCount);
+            families += b;
+        }
+        return fail("no graphics queue family on " + std::string(health_.deviceName) + " (" + std::to_string(qfCount) + " families:" + families + ")");
+    }
 
     // ---- logical device ----
     float prio = 1.0f;
@@ -619,7 +639,9 @@ void VulkanContext::waitIdle(std::string_view why) const {
     ZoneScopedN("VK.WaitIdle");
     const auto idleT0 = std::chrono::steady_clock::now();
     const auto lock = lockSubmit(submitMutex_);
+    flushPendingLocked();
     const VkResult r = vkDeviceWaitIdle(device_);
+    if (r == VK_SUCCESS) hostSyncedGfx_ = std::max(hostSyncedGfx_, tracker_.lastSubmitted(QueueKind::Graphics));   // an idle device is a host sync point for everything submitted
     {
         auto& hs = mc2_hitch2::stats();
         const double idleMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - idleT0).count();
@@ -629,6 +651,17 @@ void VulkanContext::waitIdle(std::string_view why) const {
         // First 24 calls after mission_ready name their caller (the why tag) and the wait.
         if (hs.missionReady.load(std::memory_order_relaxed) && hs.waitIdleLogged.fetch_add(1, std::memory_order_relaxed) < 24 && mc2_diag::tagRequested("HITCH"))
             ctxlog("[HITCH v2] waitIdle why=%.*s ms=%.2f", static_cast<int>(why.size()), why.data(), idleMs);
+        // Mid-mission device idles are stalls the contract forbids (only drainDeferred waits): name each distinct caller once, tag or no tag. Render thread only.
+        if (hs.missionReady.load(std::memory_order_relaxed)) {
+            static std::mutex s_warnedMutex;
+            static std::vector<std::string> s_warned;
+            const std::string w(why);
+            std::lock_guard<std::mutex> warnLock(s_warnedMutex);
+            if (s_warned.size() < 32 && std::find(s_warned.begin(), s_warned.end(), w) == s_warned.end()) {
+                s_warned.push_back(w);
+                ctxlog("WARNING waitIdle after mission ready why=%s ms=%.2f (retire the resource on a ticket instead).", w.c_str(), idleMs);
+            }
+        }
     }
     // A lost device ends the wait with an error; the release that follows is still safe, but the log must say the GPU did not drain.
     if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %.*s: VkResult=%d.", static_cast<int>(why.size()), why.data(), static_cast<int>(r));
@@ -647,6 +680,7 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
 
 VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
     const auto lock = lockSubmit(submitMutex_);
+    flushPendingLocked();   // the frame's batched work goes ahead of the present on the queue
     present_thread::seal(); // Next-frame submits must stay behind this present, even when main wakes immediately.
     mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
     if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;   // no queue work on a lost device
@@ -678,26 +712,53 @@ GpuTicket VulkanContext::flushUploads() const {
 #endif
 
 VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
+    // A deferred batch that failed earlier already returned VK_SUCCESS to its callers: surface it here, once, so an island disables itself.
+    if (pendingFailed_) { pendingFailed_ = false; return VK_ERROR_UNKNOWN; }
     assert(si.pNext == nullptr && "submit(): the timeline info is appended here; pass a plain VkSubmitInfo");
     if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
+    if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
+        const uint64_t deferred = tracker_.noteSubmit(QueueKind::Graphics);
+        pendingCbs_.insert(pendingCbs_.end(), si.pCommandBuffers, si.pCommandBuffers + si.commandBufferCount);
+        pendingValue_ = deferred;
+        if (outValue) *outValue = deferred;
+        if (pendingCbs_.size() >= 64) flushPendingLocked();
+        return VK_SUCCESS;
+    }
+    flushPendingLocked();   // keep queue order: everything deferred so far goes before this submit
     const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
-    // The caller's binary signals first, the timeline last (binary entries ignore their value).
-    VkSemaphore signals[8];
-    uint64_t signalValues[8] = {};
-    uint64_t waitValues[8] = {};
-    for (uint32_t i = 0; i < si.signalSemaphoreCount; ++i) signals[i] = si.pSignalSemaphores[i];
-    signals[si.signalSemaphoreCount] = gfxTimeline_;
-    signalValues[si.signalSemaphoreCount] = value;
-    VkTimelineSemaphoreSubmitInfo tsi{VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
-    tsi.waitSemaphoreValueCount = si.waitSemaphoreCount;
-    tsi.pWaitSemaphoreValues = si.waitSemaphoreCount ? waitValues : nullptr;
-    tsi.signalSemaphoreValueCount = si.signalSemaphoreCount + 1;
-    tsi.pSignalSemaphoreValues = signalValues;
-    VkSubmitInfo out = si;
-    out.pNext = &tsi;
-    out.signalSemaphoreCount = si.signalSemaphoreCount + 1;
-    out.pSignalSemaphores = signals;
-    const VkResult r = vkQueueSubmit(gfxQueue_, 1, &out, fence);
+    // vkQueueSubmit2: the caller's VkSubmitInfo is translated (binary semaphores keep value 0; the stage masks are widened to the 64-bit
+    // sync2 type; a caller's wait stage of 0 means TOP_OF_PIPE as in the legacy call). The caller's binary signals go first, the
+    // timeline last, signalled at ALL_COMMANDS so it covers every stage of the batch.
+    VkSemaphoreSubmitInfo waits[8]{};
+    VkSemaphoreSubmitInfo signals[8]{};
+    VkCommandBufferSubmitInfo cbs[16]{};
+    if (si.commandBufferCount > 16) return VK_ERROR_INITIALIZATION_FAILED;
+    for (uint32_t i = 0; i < si.waitSemaphoreCount; ++i) {
+        waits[i] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+        waits[i].semaphore = si.pWaitSemaphores[i];
+        waits[i].stageMask = si.pWaitDstStageMask && si.pWaitDstStageMask[i] ? VkPipelineStageFlags2(si.pWaitDstStageMask[i]) : VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+    }
+    for (uint32_t i = 0; i < si.signalSemaphoreCount; ++i) {
+        signals[i] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+        signals[i].semaphore = si.pSignalSemaphores[i];
+        signals[i].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    }
+    signals[si.signalSemaphoreCount] = {VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+    signals[si.signalSemaphoreCount].semaphore = gfxTimeline_;
+    signals[si.signalSemaphoreCount].value = value;
+    signals[si.signalSemaphoreCount].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    for (uint32_t i = 0; i < si.commandBufferCount; ++i) {
+        cbs[i] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+        cbs[i].commandBuffer = si.pCommandBuffers[i];
+    }
+    VkSubmitInfo2 out{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
+    out.waitSemaphoreInfoCount = si.waitSemaphoreCount;
+    out.pWaitSemaphoreInfos = waits;
+    out.commandBufferInfoCount = si.commandBufferCount;
+    out.pCommandBufferInfos = cbs;
+    out.signalSemaphoreInfoCount = si.signalSemaphoreCount + 1;
+    out.pSignalSemaphoreInfos = signals;
+    const VkResult r = queueSubmit2(gfxQueue_, out, fence);
     if (r != VK_SUCCESS) {
         // A refused submit signals nothing: give the value back so the counter and the timeline stay in step.
         tracker_.unnoteSubmit(QueueKind::Graphics, value);
@@ -708,9 +769,48 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
     return r;
 }
 
+VkResult VulkanContext::queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const {
+    return route("synchronization2") == profile::Route::Core ? vkQueueSubmit2(q, 1, &si, fence) : vkQueueSubmit2KHR(q, 1, &si, fence);
+}
+
+void VulkanContext::flushPendingLocked() const {
+    if (pendingCbs_.empty()) return;
+    if (infra::deviceLostLatched()) { pendingCbs_.clear(); pendingValue_ = 0; return; }   // no queue work on a lost device
+    std::vector<VkCommandBufferSubmitInfo> cbs(pendingCbs_.size());
+    for (size_t i = 0; i < cbs.size(); ++i) {
+        cbs[i] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+        cbs[i].commandBuffer = pendingCbs_[i];
+    }
+    VkSemaphoreSubmitInfo sig{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+    sig.semaphore = gfxTimeline_;
+    sig.value = pendingValue_;
+    sig.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    VkSubmitInfo2 out{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
+    out.commandBufferInfoCount = uint32_t(cbs.size());
+    out.pCommandBufferInfos = cbs.data();
+    out.signalSemaphoreInfoCount = 1;
+    out.pSignalSemaphoreInfos = &sig;
+    const uint64_t value = pendingValue_;
+    pendingCbs_.clear();
+    pendingValue_ = 0;
+    VkResult r = queueSubmit2(gfxQueue_, out, VK_NULL_HANDLE);
+    if (r != VK_SUCCESS) {
+        ctxlog("the batched submit failed: VkResult=%d (the timeline value is signalled empty to stay in step).", static_cast<int>(r));
+        if (r == VK_ERROR_DEVICE_LOST) { infra::deviceLost(); return; }
+        pendingFailed_ = true;
+        out.commandBufferInfoCount = 0;
+        out.pCommandBufferInfos = nullptr;
+        r = queueSubmit2(gfxQueue_, out, VK_NULL_HANDLE);
+        // The timeline could not be kept in step: every later wait on this value would burn its full timeout. Treat the device as lost.
+        if (r != VK_SUCCESS) { ctxlog("the empty timeline signal failed too (VkResult=%d): marking the device lost.", static_cast<int>(r)); infra::deviceLost(); }
+    }
+    (void)value;
+}
+
 void VulkanContext::poll() const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::poll");
     if (gfxTimeline_ == VK_NULL_HANDLE) return;
+    { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // a poll means someone wants completion: the batch must be on the queue
     uint64_t v = 0;
     const VkResult result = vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v);
     if (result == VK_SUCCESS) {
@@ -728,8 +828,12 @@ bool VulkanContext::isComplete(const GpuTicket& t) const {
 
 bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::wait");
-    if (isComplete(t)) return true;
+    if (tracker_.isComplete(t)) return true;
     if (gfxTimeline_ == VK_NULL_HANDLE) return false;
+    // No counter poll before the wait: a value the GPU already passed still goes through vkWaitSemaphores, the only host sync point the
+    // validation layers (and the readback contract) recognise. A caller that waits then touches or reuses the memory right away (one-shot
+    // readbacks) would otherwise retire nothing. The deferred batch is flushed first so the value is on the queue.
+    { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }
     VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
     wi.semaphoreCount = 1;
     wi.pSemaphores = &gfxTimeline_;
@@ -739,8 +843,29 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
     // Only a wait that blocked is counted; a one-shot caller's open scope counts its own.
     if (!mc2_hitch2::inOneShotScope()) mc2_hitch2::noteWait(mc2_hitch2::kSlot, why, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - waitT0).count());
     if (r != VK_SUCCESS) ctxlog("timeline wait for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));
+    if (r == VK_SUCCESS && t.gfx > hostSyncedGfx_) hostSyncedGfx_ = t.gfx;
     poll();
     return tracker_.isComplete(t);
+}
+
+bool VulkanContext::hostSynced(const GpuTicket& t, std::string_view why) const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::hostSynced");
+    if (t.gfx <= hostSyncedGfx_) return true;
+    if (gfxTimeline_ == VK_NULL_HANDLE) return tracker_.isComplete(t);
+    if (!tracker_.isComplete(t)) {
+        poll();
+        if (!tracker_.isComplete(t)) return false;   // still in flight: no wait, the frame does not block on a readback
+    }
+    // The GPU passed the value already, so a zero-timeout wait returns at once; it is still the vkWaitSemaphores the layers retire accesses on.
+    VkSemaphoreWaitInfo wi{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
+    wi.semaphoreCount = 1;
+    wi.pSemaphores = &gfxTimeline_;
+    wi.pValues = &t.gfx;
+    const VkResult r = vkWaitSemaphores(device_, &wi, 0);
+    if (r == VK_SUCCESS) { hostSyncedGfx_ = t.gfx; return true; }
+    if (r != VK_TIMEOUT) ctxlog("timeline host sync for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));
+    if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();
+    return false;
 }
 
 void VulkanContext::beginFrame() {
@@ -789,6 +914,7 @@ void VulkanContext::endFrame() {
 #ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
 #endif
+    { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // the sealed frame ticket must be on the queue
 #ifdef MC2_VULKAN_ISLAND
     if (textures_) textures_->sealFrame();
 #endif
@@ -832,6 +958,7 @@ void VulkanContext::destroy() {
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     textures_.reset();
     deferred_.drainAll();
+    releaseOneShotPool();   // the shared one-shot command pool goes with the device, after every island that might submit one-shots
     if (textureServiceOwner_) { RenderCore::activeTextureService = nullptr; textureServiceOwner_.reset(); }
     lightFeed_.release();
     frameRing_.release();
@@ -904,6 +1031,18 @@ void VulkanContext::logHealth() const {
                  health_.deviceName, health_.validationEnabled ? 1 : 0,
                  health_.validationErrors.load(),
                  health_.fallbackReason.empty() ? "" : health_.fallbackReason.c_str());
+    if (allocator_ && phys_ != VK_NULL_HANDLE) {
+        VkPhysicalDeviceMemoryProperties mp{};
+        vkGetPhysicalDeviceMemoryProperties(phys_, &mp);
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
+        vmaGetHeapBudgets(allocator_, budgets);
+        const auto mb = [](VkDeviceSize b) { return static_cast<unsigned long long>(b >> 20); };
+        if (mc2_diag::tagRequested("VK_MEM"))
+            for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
+                std::fprintf(stderr, "[VK_MEM v1] heap=%u device_local=%d size_mb=%llu budget_mb=%llu usage_mb=%llu alloc_mb=%llu blocks_mb=%llu allocs=%u blocks=%u\n",
+                             i, (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? 1 : 0, mb(mp.memoryHeaps[i].size), mb(budgets[i].budget), mb(budgets[i].usage),
+                             mb(budgets[i].statistics.allocationBytes), mb(budgets[i].statistics.blockBytes), budgets[i].statistics.allocationCount, budgets[i].statistics.blockCount);
+    }
     std::fflush(stderr);
 }
 

@@ -1,5 +1,6 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
+#include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -48,7 +49,7 @@ bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
     VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = o->texDsl.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO}; ai.descriptorPool=o->texPool.get();
     ai.descriptorSetCount=mc2vk::kMaxFramesInFlight; ai.pSetLayouts=layouts;
-    if (vkAllocateDescriptorSets(s->device,&ai,t.set)!=VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device,&ai,t.set)!=VK_SUCCESS) return false;
     for (uint32_t par=0;par<mc2vk::kMaxFramesInFlight;++par) {
         VkDescriptorImageInfo info{o->samp.get(),t.texture.view(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; w.dstSet=t.set[par]; w.descriptorCount=1;
@@ -201,10 +202,16 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
     }
 
     {   // command buffers (own pair, from the island's pool)
-        VkCommandBufferAllocateInfo cbi{};
-        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cbi, o->cbuf) != VK_SUCCESS) return false;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            VkCommandPoolCreateInfo pci{};
+            pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            pci.queueFamilyIndex = s->gfxFamily;
+            if (!mc2vk::create(o->cpool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) return false;
+            VkCommandBufferAllocateInfo cbi{};
+            cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cbi.commandPool = o->cpool[i].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cbi, &o->cbuf[i]) != VK_SUCCESS) return false;
+        }
     }
 
     {   // pipelines
@@ -452,7 +459,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     sync_ring_bindings(s, par, uboSpan, lpSpans);
 
     VkCommandBuffer cb = o->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, o->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

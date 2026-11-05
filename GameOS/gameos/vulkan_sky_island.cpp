@@ -17,6 +17,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vulkan_sky_island.h"
 #include "vk_hdri_source.h"
@@ -82,7 +83,7 @@ struct Island : mc2vk::IslandState {
     mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];          // per engine frame slot: the last submit that used cbuf[slot]
     uint64_t hdriGeneration = 0; bool hdriAttempted = false, hdriReal = false;   // the CPU HDRI generation imported
 
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
@@ -119,7 +120,7 @@ void update_set(Island* s) {
 bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) {
     VkCommandBufferAllocateInfo cbi{};
     cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    cbi.commandPool = s->cpool[0].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return false;
     VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -130,7 +131,7 @@ bool submit_once(Island* s, const std::function<void(VkCommandBuffer)>& record) 
     VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     const bool ok = mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 30ull * 1000 * 1000 * 1000, "sky copy-once");
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
+    vkFreeCommandBuffers(s->device, s->cpool[0].get(), 1, &cb);
     return ok;
 }
 
@@ -211,13 +212,11 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         staging.unmap();
     }
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
-        VkImageMemoryBarrier bar{};
-        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bar.image = s->hdriImg.get(); bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        const auto& bctx = mc2vk::getOrCreateEngineVulkanContext();
+        const VkImageSubresourceRange hdriRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+        mc2vk::sync::cmdImageBarrier(bctx, cb, s->hdriImg.get(), hdriRange,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
         for (uint32_t i = 0; i < mips; ++i) {
             VkBufferImageCopy c{};
             c.bufferOffset = offs[i];
@@ -225,9 +224,9 @@ bool ensure_hdri(Island* s, uint64_t generation) {
             c.imageExtent = {static_cast<uint32_t>(dims[i].first), static_cast<uint32_t>(dims[i].second), 1};
             vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
         }
-        bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        mc2vk::sync::cmdImageBarrier(bctx, cb, s->hdriImg.get(), hdriRange,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     });
     if (!ok) { vlog("HDRI upload submit failed."); return false; }
     s->hdriReal = haveReal;
@@ -255,12 +254,14 @@ bool init_island(Island* s, int w, int h) {
     {
         VkCommandPoolCreateInfo cpi{};
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; cpi.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
-        VkCommandBufferAllocateInfo cbi{};
-        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+        cpi.flags = 0; cpi.queueFamilyIndex = s->gfxFamily;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &cpi, nullptr, h); })) { setFallback("cmdpool_failed"); return false; }
+            VkCommandBufferAllocateInfo cbi{};
+            cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cbi.commandPool = s->cpool[i].get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cbi, &s->cbuf[i]) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+        }
     }
     {   // sampler: same as the water island's HDRI sampler (linear, clamp, full mip range)
         VkSamplerCreateInfo sci{};
@@ -326,7 +327,7 @@ bool init_island(Island* s, int w, int h) {
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = 1; dsai.pSetLayouts = &dslHandle;
-        if (vkAllocateDescriptorSets(s->device, &dsai, &s->set) != VK_SUCCESS) { setFallback("set_failed"); return false; }
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, &s->set) != VK_SUCCESS) { setFallback("set_failed"); return false; }
     }
     {   // pipeline
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "hdri_sky.vert.spv"));
@@ -436,7 +437,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot"), "VK_SKY")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
 
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }

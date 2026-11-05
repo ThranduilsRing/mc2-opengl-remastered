@@ -5,6 +5,7 @@ layout(local_size_x=8, local_size_y=8) in;
 layout(set=0,binding=0,std140) uniform WaterVsParams {
     mat4 worldToClip;
     vec4 p0, p1, p2, p3;
+    mat4 invWorldToClip;   // inverse(worldToClip), computed once on the CPU
 } U;
 layout(set=0,binding=1,std140) uniform WaterFsParams {
     vec4 fogColor, f0;
@@ -12,17 +13,22 @@ layout(set=0,binding=1,std140) uniform WaterFsParams {
 layout(set=0,binding=9) uniform sampler2D sceneColor;
 layout(set=0,binding=10) uniform sampler2D sceneDepth;
 layout(set=0,binding=11,rgba16f) writeonly uniform image2D reflectionOut;
+// 8x8 half-res tiles that contain admitted water (water_cull_pack); one workgroup per entry (indirect dispatch).
+layout(set=0,binding=12,std430) readonly buffer WaterTiles { uint tiles[]; };
 
 vec3 unproject(mat4 inv, vec2 uv, float depth) {
     vec4 h = inv * vec4(uv*2.0-1.0,depth,1.0);
     return h.xyz/h.w;
 }
 void main() {
-    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy), size=imageSize(reflectionOut);
+    ivec2 size=imageSize(reflectionOut);
+    int tilesX=(size.x+7)/8;
+    uint tile=tiles[gl_WorkGroupID.x];
+    ivec2 pixel=ivec2(int(tile)%tilesX,int(tile)/tilesX)*8+ivec2(gl_LocalInvocationID.xy);
     if (any(greaterThanEqual(pixel,size))) return;
     imageStore(reflectionOut,pixel,vec4(0));
     vec2 uv=(vec2(pixel)+0.5)/vec2(size);
-    mat4 inv=inverse(U.worldToClip);
+    mat4 inv=U.invWorldToClip;
     // The legacy projection's signed far plane lies behind the eye. Both
     // depths below are on its visible branch, so the ray points into the scene.
     vec3 nearP=unproject(inv,uv,1.0), farP=unproject(inv,uv,0.5);

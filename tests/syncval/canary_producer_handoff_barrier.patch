@@ -1,0 +1,15 @@
+diff --git a/GameOS/gameos/vk_native_producers.cpp b/GameOS/gameos/vk_native_producers.cpp
+index de7042994..4e6552618 100644
+--- a/GameOS/gameos/vk_native_producers.cpp
++++ b/GameOS/gameos/vk_native_producers.cpp
+@@ -347,9 +347,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
+ 
+     // ---- record ----
+     // Hand-off from earlier frames' work on this queue (their cull read lightOut; the vertex stage read thin / recipes).
+-    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+-               VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+-               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
++    // CANARY: hand-off barrier removed on purpose; sync validation must report a hazard
+     MC2_VK_GPU_SCOPE(gpuCompute, cb, "VKIsl.Terrain.CullCompute");
+     vkCmdFillBuffer(cb, header_[par].get(), 0, 16, 0);
+     vkCmdFillBuffer(cb, tileMask_[par].get(), 0, VK_WHOLE_SIZE, 0);

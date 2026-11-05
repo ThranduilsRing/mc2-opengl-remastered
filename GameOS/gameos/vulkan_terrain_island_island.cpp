@@ -1,9 +1,13 @@
 // VK terrain island: island buffers, patch / skirt mesh caches, descriptor writes, capacity growth and init / destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
+#include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
+#include "Gates/gate_cold.h"
+#include <cstdlib>
 
 #ifdef MC2_VULKAN_ISLAND
 
+#include <bit>
 
 namespace vk_terrain_detail {
 
@@ -13,11 +17,20 @@ bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, V
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    aci.usage = hostVisible ? VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE : VMA_MEMORY_USAGE_AUTO;   // host-visible here = CPU-written, GPU-read: ReBAR device-local where available
+    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+    if (hostVisible) aci.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;   // callers write with map+memcpy and no flush
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("vmaCreateBuffer failed."); return false;
     }
+    return true;
+}
+
+bool replace_host_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name) {
+    mc2vk::OwnedBuffer fresh;
+    if (!make_buffer(s, fresh, size, usage, true, name)) return false;
+    if (buf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(buf), size);
+    buf = std::move(fresh);
     return true;
 }
 
@@ -293,12 +306,9 @@ void write_descriptors(TerrainIsland* s, int parity) {
 
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes) {
     if (s->heightBuf && bytes <= s->heightCapBytes) return true;
-    if (s->heightBuf) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_grow");
-        s->heightBuf.reset();
-    }
-    VkDeviceSize cap = bytes + bytes / 4 + 4096;
-    if (!make_buffer(s, s->heightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.heightBuf"))
+    // Power-of-two capacity so growth is rare; the old buffer retires on the open-frame ticket (in-flight submits may still read it).
+    const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes + bytes / 4 + 4096));
+    if (!replace_host_buffer(s, s->heightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.heightBuf"))
         return false;
     s->heightCapBytes = cap;
     s->heightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -462,16 +472,21 @@ bool init_island(TerrainIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
         if (!mc2vk::create(s->cpool, s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 2 * mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
+        for (uint32_t i = 0; i < 2 * mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->slotPool[i], s->device, [&](auto* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
+                vlog("vkCreateCommandPool failed."); return false;
+            }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->slotPool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) {
+                vlog("vkAllocateCommandBuffers failed."); return false;
+            }
         }
     }
 
@@ -616,7 +631,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         write_descriptors(s);
@@ -696,6 +711,11 @@ bool init_island(TerrainIsland* s, int w, int h) {
         stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
+        // vk-present-instance 8: constant_id 0 = csm debug viz mode (was a per-draw UBO branch).
+        const int32_t csmDebugSpec = std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());
+        const VkSpecializationMapEntry csmDebugEntry{0, 0, sizeof(int32_t)};
+        VkSpecializationInfo csmDebugInfo{1, &csmDebugEntry, sizeof(int32_t), &csmDebugSpec};
+        stages[1].pSpecializationInfo = &csmDebugInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;

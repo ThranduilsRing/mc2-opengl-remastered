@@ -104,11 +104,13 @@ public:
 
 private:
     struct Slot {
-        mc2vk::OwnedBuffer counts, offsets, dense, args, stats;
+        mc2vk::OwnedBuffer counts, offsets, dense, args, stats, visList;
         bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);
-    mc2vk::ComputePipeline cull_, scan_, compact_;
+    void writeSlotSets(mc2vk::VulkanContext& ctx, uint32_t par);   // rewrites one parity's sets; called only after that parity's ticket wait
+    bool descDirty_[kSlots] = {};
+    mc2vk::ComputePipeline region_, cull_, compact_;
     mc2vk::ComputeSets sets_;
     bool pipelinesTried_ = false, pipelinesOk_ = false;
     uint64_t generation_ = 1, boundGeneration_ = 0;

@@ -32,10 +32,16 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     if (c.usableApi() >= makeApi(1, 1)) {             // physical-device properties2 is core from 1.1
         VkPhysicalDeviceIDProperties id{};
         id.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+        VkPhysicalDeviceSubgroupProperties sg{};
+        sg.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+        id.pNext = &sg;
         VkPhysicalDeviceProperties2 props2{};
         props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         props2.pNext = &id;
         vkGetPhysicalDeviceProperties2(pd, &props2);
+        c.subgroupSize = sg.subgroupSize;
+        c.subgroupStages = sg.supportedStages;
+        c.subgroupOps = sg.supportedOperations;
         c.deviceLuidValid = id.deviceLUIDValid == VK_TRUE;
         for (size_t i = 0; i < sizeof(c.deviceLuid); ++i) c.deviceLuid[i] = id.deviceLUID[i];
     }
@@ -45,6 +51,15 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     std::vector<VkExtensionProperties> have(extCount);
     if (extCount) vkEnumerateDeviceExtensionProperties(pd, nullptr, &extCount, have.data());
     for (const VkExtensionProperties& e : have) c.extensions.emplace_back(e.extensionName);
+
+    {   // the depth formats the engine hardcodes must be attachable and sampleable (optimal tiling)
+        constexpr VkFormatFeatureFlags kNeed = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+        VkFormatProperties fp{};
+        vkGetPhysicalDeviceFormatProperties(pd, VK_FORMAT_D32_SFLOAT, &fp);
+        c.depthD32 = (fp.optimalTilingFeatures & kNeed) == kNeed;
+        vkGetPhysicalDeviceFormatProperties(pd, VK_FORMAT_D32_SFLOAT_S8_UINT, &fp);
+        c.depthD32S8 = (fp.optimalTilingFeatures & kNeed) == kNeed;
+    }
 
     // The feature structs are only valid to chain at the versions / with the extensions that define them.
     if (c.usableApi() < kFloorApi) return c;

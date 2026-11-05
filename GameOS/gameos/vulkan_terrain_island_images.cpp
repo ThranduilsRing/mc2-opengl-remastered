@@ -7,6 +7,7 @@
 #include "terrain_field_store.h"
 #include "gameos.hpp"
 #include <array>
+#include <bit>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -39,11 +40,10 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         {feed.heightCpu, static_cast<size_t>(feed.heightBytes) / sizeof(float)}, static_cast<uint32_t>(feed.mapSide));
     if (!gradients) return false;
     if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
-    // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
-    // rare rewrite: mission load / crater deform). Under the deferred retire a prior
-    // terrain submit may still be reading it — device-idle before rewriting in place.
-    // (The old inline post-submit fence wait used to provide this guarantee for free.)
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
+    // VK-TERRAIN-FENCE-DEFER-1: the height SSBO is version-gated (rare rewrite: mission load / crater deform) and a prior terrain submit may still read it.
+    // A rewrite (crater deform) replaces the buffer instead: the old one retires on the open-frame ticket and the descriptors repoint lazily per parity.
+    if (s->heightVersionCopied != UINT64_MAX &&
+        !replace_host_buffer(s, s->heightBuf, s->heightCapBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.heightBuf")) return false;
     if (!create_colormap_sampler(s) || !upload_sampled_image(s, s->macroGradientTexture,
             VK_FORMAT_R32G32_SFLOAT, gradients->side, gradients->side, gradients->texels.data(),
             gradients->texels.size() * sizeof(gradients->texels[0]))) return false;
@@ -544,12 +544,8 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.cementVersion == s->cementVersionCopied && s->cementWordsReady) return true;
     // Ensure capacity (grow-only, like the height buffer).
     if (!s->cementBuf || static_cast<VkDeviceSize>(feed.cementBytes) > s->cementCapBytes) {
-        if (s->cementBuf) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_grow");
-            s->cementBuf.reset();
-        }
-        VkDeviceSize cap = static_cast<VkDeviceSize>(feed.cementBytes) + feed.cementBytes / 4 + 4096;
-        if (!make_buffer(s, s->cementBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.cementBuf"))
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(feed.cementBytes) + feed.cementBytes / 4 + 4096);
+        if (!replace_host_buffer(s, s->cementBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.cementBuf"))
             return false;
         s->cementCapBytes = cap;
         s->cementVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -557,7 +553,9 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     }
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (map-load version bump)
     // — device-idle before writing in place (see snapshot_height).
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_cement_snapshot");
+    if (s->cementVersionCopied != UINT64_MAX &&
+        !replace_host_buffer(s, s->cementBuf, s->cementCapBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.cementBuf")) return false;
+    write_descriptors(s);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->cementBuf.allocation(), &p) != VK_SUCCESS) return false;
     // The descriptor spans the grow-only allocation. Clear the unused road plane
@@ -581,12 +579,8 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
     if (!s->visualHeightBuf || static_cast<VkDeviceSize>(feed.visualHeightBytes) > s->visualHeightCapBytes) {
-        if (s->visualHeightBuf) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_grow");
-            s->visualHeightBuf.reset();
-        }
-        VkDeviceSize cap = static_cast<VkDeviceSize>(feed.visualHeightBytes) + feed.visualHeightBytes / 4 + 4096;
-        if (!make_buffer(s, s->visualHeightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.visualHeightBuf"))
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(feed.visualHeightBytes) + feed.visualHeightBytes / 4 + 4096);
+        if (!replace_host_buffer(s, s->visualHeightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.visualHeightBuf"))
             return false;
         s->visualHeightCapBytes = cap;
         s->visualHeightVersionCopied = UINT64_MAX; // force re-snapshot into the new buffer
@@ -594,7 +588,9 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     }
     // VK-TERRAIN-FENCE-DEFER-1: single-instance rare rewrite (once-per-mission bake)
     // — device-idle before writing in place (see snapshot_height).
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_visual_height_snapshot");
+    if (s->visualHeightVersionCopied != UINT64_MAX &&
+        !replace_host_buffer(s, s->visualHeightBuf, s->visualHeightCapBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.visualHeightBuf")) return false;
+    write_descriptors(s);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->visualHeightBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, feed.visualHeightCpu, static_cast<size_t>(feed.visualHeightBytes));

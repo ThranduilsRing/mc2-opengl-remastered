@@ -1,6 +1,7 @@
 #include "vk_scene_readback.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vk_image_resource.h"
 #include "vk_one_shot.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -33,7 +34,7 @@ VkPipelineStageFlags stages(unsigned i) {
 }
 VkAccessFlags accesses(unsigned i) {
     return (i == 1 ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                   : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) | VK_ACCESS_SHADER_READ_BIT;
+                   : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);   // attachment layout: attachment access only
 }
 Images activeImages() {
     return {mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0), mc2SharedSceneDepthGetResource(),
@@ -53,15 +54,16 @@ bool extent(const Images& images, uint32_t channels, int& width, int& height) {
     return width > 0 && height > 0;
 }
 void imageBarrier(VkCommandBuffer cb, const VkImageResource& image, unsigned i, bool toTransfer) {
-    VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-    barrier.srcAccessMask = toTransfer ? accesses(i) : VK_ACCESS_TRANSFER_READ_BIT;
-    barrier.dstAccessMask = toTransfer ? VK_ACCESS_TRANSFER_READ_BIT : accesses(i);
-    barrier.oldLayout = toTransfer ? attachment(i) : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.newLayout = toTransfer ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : attachment(i);
-    barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = image.image.get(); barrier.subresourceRange = {aspects(i), 0, 1, 0, 1};
-    vkCmdPipelineBarrier(cb, toTransfer ? stages(i) : VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         toTransfer ? VK_PIPELINE_STAGE_TRANSFER_BIT : stages(i), 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    const VkImageSubresourceRange range{aspects(i), 0, 1, 0, 1};
+    const VkPipelineStageFlags2 attStages = stages(i);
+    const VkAccessFlags2 attAccess = accesses(i);
+    auto& ctx = getOrCreateEngineVulkanContext();
+    if (toTransfer)
+        sync::cmdImageBarrier(ctx, cb, image.image.get(), range, attachment(i), attStages, attAccess,
+                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+    else
+        sync::cmdImageBarrier(ctx, cb, image.image.get(), range, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, attachment(i), attStages, attAccess);
 }
 bool readImages(const Images& images, int x, int y, int w, int h, uint32_t channels, ScenePixel* out, size_t count,
                 const ScenePoint* points = nullptr, size_t sampleCount = 0) {
@@ -91,6 +93,16 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
     host.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     if (!staging.create(ctx.allocator(), ctx.device(), buffer, host, "scene.explicitReadback")) return false;
     if (!submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        {   // The staging range may have been a readback target an earlier submit wrote and the host read (the previous call's buffer, freed and
+            // re-allocated here): order this copy after that write and read on the queue, not only through the host wait that retired it.
+            sync::BarrierBatch reuse;
+            sync::BufferBarrierRec br;
+            br.buffer = reinterpret_cast<uint64_t>(staging.get());
+            br.srcStages = VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_HOST_BIT; br.srcAccess = VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_HOST_READ_BIT;
+            br.dstStages = VK_PIPELINE_STAGE_2_COPY_BIT; br.dstAccess = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            reuse.buffer(br);
+            sync::flush(getOrCreateEngineVulkanContext(), cb, reuse);
+        }
         for (unsigned i = 0; i < 3; ++i) if (channels & bits[i]) {
             imageBarrier(cb, *images[i], i, true);
             std::vector<VkBufferImageCopy> copies(points ? sampleCount : 1);
@@ -103,11 +115,13 @@ bool readImages(const Images& images, int x, int y, int w, int h, uint32_t chann
             vkCmdCopyImageToBuffer(cb, images[i]->image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging.get(), static_cast<uint32_t>(copies.size()), copies.data());
             imageBarrier(cb, *images[i], i, false);
         }
-        VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
-        barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.buffer = staging.get(); barrier.size = VK_WHOLE_SIZE;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+        sync::BarrierBatch batch;
+        sync::BufferBarrierRec br;
+        br.buffer = reinterpret_cast<uint64_t>(staging.get());
+        br.srcStages = VK_PIPELINE_STAGE_2_COPY_BIT; br.srcAccess = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        br.dstStages = VK_PIPELINE_STAGE_2_HOST_BIT; br.dstAccess = VK_ACCESS_2_HOST_READ_BIT;
+        batch.buffer(br);
+        sync::flush(getOrCreateEngineVulkanContext(), cb, batch);
     }, "scene explicit pick/probe readback")) return false;
     const auto* data = static_cast<const uint8_t*>(staging.map());
     if (!data) return false;
@@ -167,18 +181,15 @@ bool sceneReadbackSelfTest() {
     if (!submitOneShot(ctx, [&](VkCommandBuffer cb) {
         const size_t offsets[3] = {0,48,72};
         for (unsigned i = 0; i < 3; ++i) {
-            VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.image = images[i]->image.get(); barrier.subresourceRange = {aspects(i),0,1,0,1};
-            vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&barrier);
+            const VkImageSubresourceRange rng{aspects(i),0,1,0,1};
+            auto& bctx = getOrCreateEngineVulkanContext();
+            sync::cmdImageBarrier(bctx,cb,images[i]->image.get(),rng,VK_IMAGE_LAYOUT_UNDEFINED,VK_PIPELINE_STAGE_2_NONE,0,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT);
             VkBufferImageCopy copy{}; copy.bufferOffset=offsets[i];
             copy.imageSubresource={static_cast<VkImageAspectFlags>(i==1 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),0,0,1}; copy.imageExtent={2,3,1};
             vkCmdCopyBufferToImage(cb,upload.get(),images[i]->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
-            barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask=accesses(i);
-            barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; barrier.newLayout=attachment(i);
-            vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,stages(i),0,0,nullptr,0,nullptr,1,&barrier);
+            sync::cmdImageBarrier(bctx,cb,images[i]->image.get(),rng,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                attachment(i),VkPipelineStageFlags2(stages(i)),VkAccessFlags2(accesses(i)));
         }
     },"scene readback test upload")) return false;
     auto correct=[](const ScenePixel& pixel, unsigned p) {

@@ -62,6 +62,17 @@ bool OwnedBuffer::createHostWritable(VmaAllocator allocator, VkDevice device, Vk
     return create(allocator, device, bci, aci, name, i0, i1);
 }
 
+bool OwnedBuffer::createGpuRead(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1) {
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = size ? size : 16;
+    bci.usage = usage;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    return create(allocator, device, bci, aci, name, i0, i1);
+}
+
 bool OwnedBuffer::createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage,
                                std::string_view name) {
     if (!src || bytes == 0 || !createHostWritable(allocator, device, bytes, usage, name) || !upload(src, bytes)) {
@@ -87,7 +98,10 @@ void* OwnedBuffer::map() const {
 }
 
 void OwnedBuffer::unmap() const {
-    if (buffer_ != VK_NULL_HANDLE) vmaUnmapMemory(allocator_, allocation_);
+    if (buffer_ != VK_NULL_HANDLE) {
+        vmaFlushAllocation(allocator_, allocation_, 0, VK_WHOLE_SIZE);   // no-op on coherent memory; makes map()+memcpy writes visible on non-coherent ReBAR types
+        vmaUnmapMemory(allocator_, allocation_);
+    }
 }
 
 bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offset) const {

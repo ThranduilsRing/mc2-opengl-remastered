@@ -140,6 +140,9 @@ public:
         else vkCmdPipelineBarrier2KHR(cb, &dep);
     }
 
+    // vkQueueSubmit2 through the entry point of the device's route (core 1.3 or KHR); the submit funnel is its only caller.
+    VkResult queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const;   // defined in vulkan_context.cpp (the funnel's own file)
+
     const EngineContextHealth& health() const { return health_; }
     EngineContextHealth&       mutableHealth() { return health_; }
 
@@ -169,6 +172,10 @@ public:
     VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
 private:
     VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
+    // Plain submits (command buffers only: no fence, no binary semaphores) are collected and go out as ONE vkQueueSubmit2 with one timeline
+    // signal (the newest value) at the next flush point: a submit that carries a fence or a semaphore, present, poll (so isComplete/wait),
+    // waitIdle and endFrame. Queue order equals call order; the older tickets complete with the batch.
+    void flushPendingLocked() const;   // submitMutex_ held
     GpuTicket flushUploadsLocked() const;
 public:
     CompletionTracker&       tracker()       { return tracker_; }
@@ -178,6 +185,10 @@ public:
     bool isComplete(const GpuTicket& t) const;
     // Blocks until the ticket completes or the timeout passes. A timeout or a lost device is logged with `why`; returns whether the ticket is complete.
     bool wait(const GpuTicket& t, uint64_t timeoutNs, std::string_view why) const;
+    // Non-blocking host sync point for a completed ticket: vkWaitSemaphores with a zero timeout. True once the host observed the ticket through a
+    // wait, the only completion the validation layers and the readback contract recognise (a counter poll is not one). A readback slot is read or
+    // recycled only after this returned true; a ticket still in flight returns false at once.
+    bool hostSynced(const GpuTicket& t, std::string_view why) const;
     // Frame bracket: beginFrame polls the counter, opens a frame, collects the deferred-destroy entries that completed and restarts the frame-ring slot
     // (a call on an open frame does nothing); endFrame seals the frame with the graphics value submitted so far and emits the [VK_TIMELINE v1] summary at
     // its cadence. A host that presents calls frameBoundary() right after the present: endFrame, then beginFrame of the next frame.
@@ -242,6 +253,7 @@ private:
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
     VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
     mutable CompletionTracker tracker_;
+    mutable uint64_t hostSyncedGfx_ = 0;   // highest graphics value the host reached through vkWaitSemaphores / vkDeviceWaitIdle (see hostSynced)
 #ifdef MC2_VULKAN_ISLAND
     FrameRing        frameRing_;
     uint32_t         framesInFlight_ = 1;
@@ -252,6 +264,9 @@ private:
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
+    mutable std::vector<VkCommandBuffer> pendingCbs_;   // submitMutex_
+    mutable bool pendingFailed_ = false;                 // submitMutex_: a batched submit failed after its callers were told VK_SUCCESS; the next submit() reports it
+    mutable uint64_t pendingValue_ = 0;                  // submitMutex_: the timeline value the pending batch signals (0 = none)
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
 

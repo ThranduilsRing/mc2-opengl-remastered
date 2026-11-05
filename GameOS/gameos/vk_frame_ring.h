@@ -20,6 +20,10 @@
 
 namespace mc2vk {
 
+// Why 3 frames in flight (kept deliberately, vk-present-instance): the CPU records frame N+2 while the GPU runs N+1 and the display holds N. Two would let a
+// single late GPU frame stall CPU recording (the ring slot of frame N is still in use); more than three adds input-to-photon latency and per-slot memory
+// (buffer rings, descriptor sets, command pools are all x kSlots) for no throughput gain once the GPU is the bound. Every per-slot ring in the engine is
+// sized from this one constant, so changing it is a single-line edit but a full relink.
 inline constexpr uint32_t kMaxFramesInFlight = 3;
 
 class FrameRingCore {

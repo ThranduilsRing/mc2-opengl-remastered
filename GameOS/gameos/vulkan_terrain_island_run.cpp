@@ -232,7 +232,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // patch's skirt sub-gate was off at capture, or GL reported no skirt for
     // this block -- island draws no skirt strips for it, see the draw loop).
     u.skirtDepth = patch.skirtDepth;
-    u.csmDebugMode=std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());
+    static const int kCsmDebugMode = std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());   // vk-present-instance 8: parsed once, not per patch
+    u.csmDebugMode=kCsmDebugMode;
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
     // visualMode (0 or 2, from the GL capture site) is only honored when the
     // bake snapshot is live AND the side is sane -- else forced 0 (VS draws
@@ -320,7 +321,7 @@ struct TerrainDraw { TerrainPatchConstants patch; const PatchMesh* pm; const Ski
 static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkCommandBuffer cb, uint32_t par, int w, int h,
                            const uint32_t (&dynOffs)[4], const std::vector<TerrainDraw>& draws,
                            unsigned long& drawnOut, unsigned long& skirtDrawnOut) {
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->slotPool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -639,6 +640,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // VK_QUERY_RESULT_WAIT_BIT, so with MC2_VK_GPU_TIMESTAMPS armed it blocks until
     // this frame's pass completes (diagnostic-only stall; gate is default-OFF and
     // resolve() is a no-op without it).
+    if (s->gpuTimer.supported) rctx.poll();   // resolve() waits on the query results: the deferred batch holding this cb must be on the queue first
     s->gpuTimer.resolve();
 
     // HARD assert: no COLOR-side readback fired on the co-write path (the height
@@ -687,7 +689,7 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     const uint32_t par = cctx.frameContext().slot;
     if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, cctx.wait(s->clearSubmitted[par], 5000000000ull, "scene clear slot"), "VK_TERRAIN_ISLAND")) { setFallback("clear_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: scene clear slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; }
     VkCommandBuffer cb = s->cbuf[mc2vk::kMaxFramesInFlight + par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->slotPool[mc2vk::kMaxFramesInFlight + par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;

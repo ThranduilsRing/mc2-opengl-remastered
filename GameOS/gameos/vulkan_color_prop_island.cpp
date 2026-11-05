@@ -18,6 +18,7 @@
 
 #include <span>
 #include <string_view>
+#include <bit>
 #include "../../mclib/battle_bench_wait.h"
 #include <optional>
 #include <volk.h>
@@ -41,6 +42,7 @@
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
 #include "gos_postprocess.h"
 #include "vulkan_color_prop_island.h"
@@ -274,7 +276,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
     VkCommandBuffer lateCbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    mc2vk::OwnedFence lateFence[mc2vk::kMaxFramesInFlight];
+    mc2vk::GpuTicket lateSubmitted[mc2vk::kMaxFramesInFlight];   // timeline ticket of the slot's late-coverage submit (replaces the per-slot fence)
     mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
     // GPU-driven props: per parity slot, the packet rows (binding 15), the run table (16), the compacted instance slots (17) and the three indirect
     // draw lists with their counts (18). A slot's buffers are rewritten only after its submit and late-fringe fences were waited.
@@ -331,7 +333,9 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
     mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool;   // one-shot command buffers only (allocated and freed per use)
+    mc2vk::OwnedCommandPool slotPool[mc2vk::kMaxFramesInFlight];   // per-slot pools for cbuf: vkResetCommandPool instead of per-cb reset
+    mc2vk::OwnedCommandPool latePool[mc2vk::kMaxFramesInFlight];   // per-slot pools for lateCbuf
 };
 
 // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
@@ -349,10 +353,10 @@ bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16; bci.usage = usage;
     VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = !hostVisible ? 0
-              : gpuReadHeavy ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-                             : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    aci.usage = hostVisible ? VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE : VMA_MEMORY_USAGE_AUTO;   // every host-visible buffer here is CPU-written and GPU-read
+    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+    if (hostVisible) aci.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;   // callers write with map+memcpy and no flush
+    (void)gpuReadHeavy;
     if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
         vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
     }
@@ -778,20 +782,27 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
 
 // Upload the per-type albedo-layer table (int32 per type) into a layer SSBO
 // (alpha-OFF binding2, or alpha-ON binding5).
+static bool cp_replace_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, std::string_view name) {
+    mc2vk::OwnedBuffer fresh;
+    if (!make_buffer(s, fresh, size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, name)) return false;
+    if (buf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(buf), size);
+    buf = std::move(fresh);
+    return true;
+}
 bool cp_upload_layer_table_into(ColorPropIsland* s, mc2vk::OwnedBuffer& buf,
                                 VkDeviceSize* capBytes, const int32_t* layers, uint32_t count) {
     const VkDeviceSize bytes = static_cast<VkDeviceSize>((count ? count : 1)) * sizeof(int32_t);
-    if (buf && bytes > *capBytes) {
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_layer_grow");   // the old table may still be read by an in-flight submit
-        buf.reset();
-    }
-    if (!buf) {
-        if (!make_buffer(s, buf, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.layerTable"))
-            return false;
-        *capBytes = bytes;
+    if (!buf || bytes > *capBytes) {
+        // Growth retires the old table on the open-frame ticket (an in-flight submit may still read it); the descriptors repoint lazily per parity.
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes < 64 ? 64 : bytes));
+        if (!cp_replace_buffer(s, buf, cap, "colorprop.layerTable")) return false;
+        *capBytes = cap;
+        if (s->inited) write_descriptors(s);
     }
     void* p = buf.map();
     if (!p) return false;
+    // The binding is VK_WHOLE_SIZE and the shader bounds on .length(): zero the pow2 slack so stale entries never read as valid types.
+    std::memset(p, 0, static_cast<size_t>(*capBytes));
     if (count && layers) std::memcpy(p, layers, static_cast<size_t>(count) * sizeof(int32_t));
     else { int32_t neg = -1; std::memcpy(p, &neg, sizeof(neg)); }
     buf.unmap();
@@ -810,21 +821,18 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     const size_t n = colours.empty() ? 12u : colours.size();   // one zeroed entry when there is no table
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(n * sizeof(float));
     bool rebound = false;
-    if (s->hotBuf && bytes > s->hotCapBytes) {
-        // The placeholder grows into the real table on the first upload (a one-time stall); the old table may still be read by an in-flight submit.
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_hot_grow");
-        s->hotBuf.reset();
-    }
-    if (!s->hotBuf) {
-        if (!make_buffer(s, s->hotBuf, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.hotColors"))
-            return false;
-        s->hotCapBytes = bytes;
+    if (!s->hotBuf || bytes > s->hotCapBytes) {
+        // The placeholder grows into the real table on the first upload; the old table retires on the open-frame ticket.
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes < 64 ? 64 : bytes));
+        if (!cp_replace_buffer(s, s->hotBuf, cap, "colorprop.hotColors")) return false;
+        s->hotCapBytes = cap;
         rebound = true;
     }
     void* p = s->hotBuf.map();
     if (!p) return false;
+    // Zero the pow2 slack too: the binding is VK_WHOLE_SIZE and the shader bounds on .length().
+    std::memset(p, 0, static_cast<size_t>(s->hotCapBytes));
     if (!colours.empty()) std::memcpy(p, colours.data(), static_cast<size_t>(bytes));
-    else std::memset(p, 0, static_cast<size_t>(bytes));
     s->hotBuf.unmap();
     s->hotCpu = colours;
     if (rebound && s->inited) write_descriptors(s);
@@ -1108,7 +1116,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         if (s->tier1 && !cp_upload_hot_table(s, {})) { setFallback("hot_buf_failed"); return false; }
@@ -1302,22 +1310,26 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
         if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateCommandPool failed."); return false;
         }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (!mc2vk::create(s->slotPool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
+                vlog("vkCreateCommandPool failed."); return false;
+            }
+            cai.commandPool = s->slotPool[i].get();
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) {
+                vlog("vkAllocateCommandBuffers failed."); return false;
+            }
+            if (!mc2vk::create(s->latePool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) return false;
+            cai.commandPool = s->latePool[i].get();
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->lateCbuf[i]) != VK_SUCCESS) return false;
         }
-        if (vkAllocateCommandBuffers(s->device, &cai, s->lateCbuf) != VK_SUCCESS) return false;
-        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (auto& fence : s->lateFence)
-            if (!mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) return false;
     }
 
     // VK-P11 STATIC-PROP MATERIAL: bind a valid dummy albedo array + layer SSBO now
@@ -1375,11 +1387,9 @@ bool upload_geometry_once(ColorPropIsland* s) {
         const VkBufferCopy vertices{0, 0, vboBytes}, indices{0, 0, iboBytes};
         vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
         vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
-        VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-                             0, 1, &barrier, 0, nullptr, 0, nullptr);
+        mc2vk::sync::cmdMemoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                      VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
+                                      VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT);
     }, "colorprop_geometry_upload")) {
         vlog("geometry upload failed (copy submit); retrying next frame.");
         s->vbo.reset();
@@ -1416,9 +1426,9 @@ bool upload_geometry_once(ColorPropIsland* s) {
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     ColorPropIsland* s = parkedIsland();
     if (!s) return;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_invalidate_geometry");
-    s->vbo.reset();
-    s->ibo.reset();
+    // The map's geometry retires on the open-frame ticket: in-flight submits may still draw it.
+    if (s->vbo) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->vbo));
+    if (s->ibo) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->ibo));
     s->geomUploaded = false;
     s->packets.clear();
     s->lateCount = 0;
@@ -1707,7 +1717,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     }
     const VkBuffer cmdBuf = s->gpu[par].cmd.get();
 
-        vkResetCommandBuffer(cb, 0);
+        vkResetCommandPool(s->device, s->slotPool[par].get(), 0);   // cb is s->cbuf[par]
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1842,8 +1852,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
         // Late coverage also reads this slot's descriptors and frame inputs.
-        const VkFence lateFence = s->lateFence[par].get();
-        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, [&] { mc2_hitch2::FenceWaitScope lateWait("color_prop_late_fence", mc2_hitch2::kSlot); return vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS; }(), "VK_PROP")) {
+        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, [&] { mc2_hitch2::FenceWaitScope lateWait("color_prop_late_fence", mc2_hitch2::kSlot); return rctx.wait(s->lateSubmitted[par], 5000000000ull, "prop late submission slot"); }(), "VK_PROP")) {
             setFallback("late_fringe_fence_timeout"); vlog("LOUD: late fringe fence wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
     }
@@ -2141,7 +2150,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     s->lateCount = 0;
     const uint32_t par = s->lateParity;
     VkCommandBuffer cb = s->lateCbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->latePool[par].get(), 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { s->disabled = true; return; }
@@ -2170,11 +2179,11 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
                                   (std::min)(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
-    const VkFence fence = s->lateFence[par].get();
-    vkResetFences(s->device,1,&fence);
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::submitGraphics(si,fence) != VK_SUCCESS) s->disabled = true;
+    mc2vk::VulkanContext& lctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (lctx.submit(si, VK_NULL_HANDLE) != VK_SUCCESS) s->disabled = true;
+    else s->lateSubmitted[par] = lctx.tracker().now();
 }
 
 extern "C" void mc2_render_backend_color_prop_region_health(

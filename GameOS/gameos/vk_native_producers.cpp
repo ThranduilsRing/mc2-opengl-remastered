@@ -59,7 +59,7 @@ bool NativeProducers::prewarmPipelines(const VulkanContext& ctx) {
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     const VkDescriptorType SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;   // frame-ring bindings
     if (!lightP_.create(device_, dir + "terrain_lighting.comp.spv", {{0, SD}, {1, SD}, {2, S}, {3, UD}}, "producers.terrainLighting")) return false;
-    if (!cullP_.create(device_, dir + "water_cull_pack.comp.spv", {{0, S}, {1, S}, {2, S}, {3, UD}, {4, S}}, "producers.waterCull")) return false;
+    if (!cullP_.create(device_, dir + "water_cull_pack.comp.spv", {{0, S}, {1, S}, {2, S}, {3, UD}, {4, S}, {5, S}, {6, S}}, "producers.waterCull")) return false;
     if (!argsP_.create(device_, dir + "water_draw_args.comp.spv", {{0, S}, {1, S}, {2, U}}, "producers.waterArgs")) return false;
     if (!lightSets_.create(device_, lightP_, kSlots, "producers.lightSets") || !cullSets_.create(device_, cullP_, kSlots, "producers.cullSets") ||
         !argsSets_.create(device_, argsP_, kSlots, "producers.argsSets")) return false;
@@ -74,16 +74,27 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     // Capacity follows the map: the cull emits only water-eligible quads, so the bound (not the recipe total) is what must fit.
     maxThin_ = std::min<uint32_t>(recipeCount, std::clamp<uint32_t>(waterEligibleBound, kMaxThin, kMaxThinCeiling));
     if (numVertices == 0 || recipeCount == 0 || recipes == VK_NULL_HANDLE || !prewarmPipelines(ctx)) return false;
+    eligibleBound_ = waterEligibleBound;
+    {   // The reflection dispatch is 1-D (one workgroup per tile): a grid above maxComputeWorkGroupCount[0] is refused per frame, not clamped.
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &props);
+        maxTiles_ = std::min<uint32_t>(kMaxTiles, props.limits.maxComputeWorkGroupCount[0]);
+    }
+    for (uint32_t p = 0; p < kSlots; ++p) healthPending_[p] = false;
+    lastVisible_ = lastTiles_ = healthFrames_ = 0;
 
     const VkBufferUsageFlags dst = VK_BUFFER_USAGE_TRANSFER_DST_BIT, src = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     if (!makeDevice(lightOut_, static_cast<VkDeviceSize>(numVertices) * 8u, kStorage | dst | src, "producers.lightOut")) return false;
     for (uint32_t p = 0; p < kSlots; ++p) {
-        if (!argsUbo_[p].createHostWritable(allocator_, device_, sizeof(VkDrawArgsParams), kUniform, "producers.argsUbo", static_cast<int>(p))) return false;
+        if (!argsUbo_[p].createGpuRead(allocator_, device_, sizeof(VkDrawArgsParams), kUniform, "producers.argsUbo", static_cast<int>(p))) return false;
         VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6, 0, 0}};
         if (!argsUbo_[p].upload(&ap, sizeof(ap))) return false;
         if (!makeDevice(header_[p], 16, kStorage | dst | src, "producers.header", static_cast<int>(p)) ||
             !makeDevice(drawArgs_[p], 32, kStorage | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "producers.drawArgs", static_cast<int>(p)) ||
-            !makeDevice(thin_[p], static_cast<VkDeviceSize>(maxThin_) * 48u, kStorage | src, "producers.thin", static_cast<int>(p))) return false;
+            !makeDevice(thin_[p], static_cast<VkDeviceSize>(maxThin_) * 48u, kStorage | src, "producers.thin", static_cast<int>(p)) ||
+            !makeDevice(tileMask_[p], kMaxTiles / 8u, kStorage | dst, "producers.tileMask", static_cast<int>(p)) ||
+            !makeDevice(tileList_[p], static_cast<VkDeviceSize>(kMaxTiles) * 4u, kStorage, "producers.tileList", static_cast<int>(p))) return false;
+        if (!healthHdr_[p].createHostWritable(allocator_, device_, 16, dst, "producers.healthHdr", static_cast<int>(p))) return false;
     }
     writeAll();
     {   // the ring bindings need a valid buffer from the start; record() re-points them at the span of its frame
@@ -281,6 +292,8 @@ void NativeProducers::writeAll() {
         cullSets_.write(device_, p, 1, S, lightOut_.get());
         cullSets_.write(device_, p, 2, S, thin_[p].get());
         cullSets_.write(device_, p, 4, S, header_[p].get());
+        cullSets_.write(device_, p, 5, S, tileMask_[p].get());
+        cullSets_.write(device_, p, 6, S, tileList_[p].get());
         argsSets_.write(device_, p, 0, S, header_[p].get());
         argsSets_.write(device_, p, 1, S, drawArgs_[p].get());
         argsSets_.write(device_, p, 2, U, argsUbo_[p].get());
@@ -300,6 +313,18 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     if (!ready_) return false;
     par %= kSlots;
 
+    // ---- health: slot `par` completed its previous frame (the island host-waits the slot before re-recording it), so its header copy is readable ----
+    if (healthPending_[par]) {
+        healthPending_[par] = false;
+        uint32_t hdr[4] = {0, 0, 0, 0};
+        if (void* p = healthHdr_[par].map()) { std::memcpy(hdr, p, 16); healthHdr_[par].unmap(); }
+        lastVisible_ = hdr[0]; lastTiles_ = hdr[1];
+        // visible > eligible bound = the cull admitted quads the CPU bound says cannot exist; visible > capacity = records were dropped.
+        if ((healthFrames_++ % 64u) == 0 && mc2_diag::tagRequested("WATER"))
+            std::fprintf(stderr, "[WATER] health visible=%u eligible_bound=%u capacity=%u tiles=%u tile_cap=%u over_bound=%d dropped=%d\n", hdr[0], eligibleBound_, maxThin_,
+                         hdr[1], maxTiles_, eligibleBound_ != 0 && hdr[0] > eligibleBound_, hdr[0] > maxThin_);
+    }
+
     // ---- stage the frame's inputs: one frame-ring span holding both parameter blocks, the lighting window and the lights ----
     VkTerrainLightingParams lp{};
     lp.counts[0] = static_cast<int32_t>(L.numVertices); lp.counts[1] = static_cast<int32_t>(L.numLights);
@@ -315,8 +340,13 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     wp.misc0[0] = W.waterElevation; wp.misc0[1] = W.frameCos; wp.misc0[2] = W.shoreExt;
     wp.misc1[0] = static_cast<int32_t>(recipeCount_); wp.misc1[1] = static_cast<int32_t>(maxThin_);
     wp.misc1[2] = static_cast<int32_t>(W.mapSide); wp.misc1[3] = W.biasLegacy;
+    const bool tilesOk = W.reflectionGroupsX * W.reflectionGroupsY != 0 && W.reflectionGroupsX * W.reflectionGroupsY <= maxTiles_;
+    if (!tilesOk && W.reflectionGroupsX * W.reflectionGroupsY != 0 && mc2_diag::tagRequested("WATER"))
+        std::fprintf(stderr, "[WATER] reflection off this frame: %ux%u tiles exceed the dispatch cap %u (kMaxTiles %u, maxComputeWorkGroupCount[0])\n",
+                     W.reflectionGroupsX, W.reflectionGroupsY, maxTiles_, kMaxTiles);
+    wp.misc2[0] = tilesOk ? static_cast<int32_t>(W.reflectionHalfW) : 0; wp.misc2[1] = tilesOk ? static_cast<int32_t>(W.reflectionHalfH) : 0;
     const VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6,
-        static_cast<int32_t>(W.reflectionGroupsX), static_cast<int32_t>(W.reflectionGroupsY)}};
+        tilesOk ? static_cast<int32_t>(W.reflectionGroupsX) : 0, tilesOk ? static_cast<int32_t>(W.reflectionGroupsY) : 0}};
     if (!argsUbo_[par].upload(&ap, sizeof(ap))) return false;
 
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
@@ -339,10 +369,12 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
 
     // ---- record ----
     // Hand-off from earlier frames' work on this queue (their cull read lightOut; the vertex stage read thin / recipes).
-    cmdBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+               VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuCompute, cb, "VKIsl.Terrain.CullCompute");
     vkCmdFillBuffer(cb, header_[par].get(), 0, 16, 0);
+    vkCmdFillBuffer(cb, tileMask_[par].get(), 0, VK_WHOLE_SIZE, 0);
     if (!lightOutCleared_) {
         vkCmdFillBuffer(cb, lightOut_.get(), 0, VK_WHOLE_SIZE, 0xFFFFFFFFu);   // the engine no-tint white sentinel, like the GL output SSBO's clear
         lightOutCleared_ = true;
@@ -361,10 +393,23 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     argsP_.dispatch(cb, 1);
     gpuCompute.end();
 
-    VkPipelineStageFlags toStages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+    VkPipelineStageFlags toStages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;   // compute: the reflection reads the tile list
     VkAccessFlags toAccess = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-    if (parity) { toStages |= VK_PIPELINE_STAGE_TRANSFER_BIT; toAccess |= VK_ACCESS_TRANSFER_READ_BIT; }
+    toStages |= VK_PIPELINE_STAGE_TRANSFER_BIT; toAccess |= VK_ACCESS_TRANSFER_READ_BIT;   // the health copy below (and the parity copies) read the outputs
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, toStages, toAccess);
+
+    {   // header -> host-visible health copy; the island's slot wait orders the host read (the barrier below makes the write host-visible).
+        // Order after the previous host read of this slot's copy too, so the layer sees the host read retired before the next transfer write.
+        VkBufferMemoryBarrier reuse{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+        reuse.srcAccessMask = VK_ACCESS_HOST_READ_BIT; reuse.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        reuse.srcQueueFamilyIndex = reuse.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        reuse.buffer = healthHdr_[par].get(); reuse.size = VK_WHOLE_SIZE;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &reuse, 0, nullptr);
+        VkBufferCopy c{0, 0, 16};
+        vkCmdCopyBuffer(cb, header_[par].get(), healthHdr_[par].get(), 1, &c);
+        healthPending_[par] = true;
+        if (!parity) cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
+    }
 
     if (parity) {
         const VkDeviceSize thinBytes = static_cast<VkDeviceSize>(std::min(maxThin_, kParityCap)) * 48u;

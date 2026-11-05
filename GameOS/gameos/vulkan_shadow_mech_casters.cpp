@@ -39,7 +39,7 @@ bool runFits(const Mc2MechDrawRun& r, uint64_t indexCount, uint64_t vertexCount,
 
 bool ShadowMechCasters::ensureBuffer(OwnedBuffer& buffer, VkDeviceSize& capacity, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name) {
     if (buffer && bytes <= capacity) return true;
-    // The caller has retired every submit that read this buffer (the frame fence for a parity buffer, an idle device for the geometry).
+    // The caller has retired every submit that read this buffer (the frame fence for a parity buffer; the geometry buffers retire on the open-frame ticket).
     const VkDeviceSize cap = bytes + bytes / 2 + 4096;
     OwnedBuffer fresh;
     if (!fresh.createHostWritable(allocator_, device_, cap, usage, name)) {
@@ -111,7 +111,10 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     dsai.descriptorPool = pool_.get();
     dsai.descriptorSetCount = kMaxFramesInFlight;
     dsai.pSetLayouts = setLayouts;
-    if (vkAllocateDescriptorSets(device_, &dsai, set_) != VK_SUCCESS) { mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor set allocation failed.\n"); return false; }
+    if (MC2_VK_ALLOC_SETS(device_, &dsai, set_) != VK_SUCCESS) {
+        if (mc2_diag::tagRequested("VK_SHADOW_MECH")) mc2::fmt::print_err("[VK_SHADOW_MECH] descriptor set allocation failed.\n");
+        return false;
+    }
 
     VkPipelineLayoutCreateInfo plci{};
     plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

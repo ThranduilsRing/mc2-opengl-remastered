@@ -53,7 +53,7 @@ for rel in ("shaders/vulkan/include/vegetation_cull_common.glsl", "shaders/vulka
 
 # 3. baked
 cm = read("GameOS/gameos/CMakeLists.txt")
-for base in ("vegetation_cull", "vegetation_scan", "vegetation_compact", "vfx_vegetation"):
+for base in ("vegetation_region", "vegetation_cull", "vegetation_compact", "vfx_vegetation"):
     if base not in cm:
         errors.append(f"GameOS/gameos/CMakeLists.txt: shader {base} is not baked")
     if not any((ROOT / "shaders/vulkan").glob(base + ".*")):

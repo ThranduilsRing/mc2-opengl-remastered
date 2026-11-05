@@ -1,7 +1,7 @@
 """slang_compile.py - Slang (.slang) -> Vulkan SPIR-V for build_variants.py.
 
-Targets the same SPIR-V as the GLSL Vulkan path (glslangValidator -V default =
-Vulkan 1.0 / SPIR-V 1.0): `-profile spirv_1_0`. Override per pilot with the
+Targets the same SPIR-V as the GLSL Vulkan path (glslangValidator --target-env
+vulkan1.2 = SPIR-V 1.5): `-profile spirv_1_5`. Override per pilot with the
 `spirv` key in the pilots manifest if a shader needs a newer profile.
 See docs/shaders-slang.md.
 """
@@ -18,8 +18,8 @@ import shader_common  # noqa: E402
 import console_child  # noqa: E402
 
 SLANG_STAGE = {"vert": "vertex", "frag": "fragment", "comp": "compute"}
-DEFAULT_PROFILE = "spirv_1_0"
-# 50011 = "SPIR-V version too old" (1.0 is deliberate: matches the GLSL path).
+DEFAULT_PROFILE = "spirv_1_5"
+# 50011 = "SPIR-V version too old" (1.5 matches glslang --target-env vulkan1.2).
 DISABLED_WARNINGS = "50011"
 
 
@@ -232,7 +232,16 @@ def compile_slang(exe, src: Path, stage: str, out: Path, entry="main",
     return ok, (r.stdout + r.stderr).strip()
 
 
-def bake(src, out, entry='main', defines=(), exe=None, cross=None):
+def optimize(spirv_opt, out: Path):
+    """spirv-opt -O in place (CMake build only); same flags as the glslang rule in GameOS/gameos/CMakeLists.txt."""
+    r = subprocess.run([spirv_opt, '-O', '--preserve-bindings', '--preserve-spec-constants',
+                        '--target-env=vulkan1.2', str(out), '-o', str(out)],
+                       capture_output=True, text=True, timeout=120,
+                       **console_child.child_kwargs(redirected=True))
+    return r.returncode == 0, (r.stderr or r.stdout).strip()
+
+
+def bake(src, out, entry='main', defines=(), exe=None, cross=None, spirv_opt=None):
     out.unlink(missing_ok=True)
     exe = exe or find_slangc()
     cross = cross or shader_common.find_tool('spirv-cross')
@@ -256,6 +265,11 @@ def bake(src, out, entry='main', defines=(), exe=None, cross=None):
                          **console_child.child_kwargs(redirected=True)).stdout)
         errors = validate_reflection(raw, src)
         if not errors:
+            if spirv_opt:
+                ok, diag = optimize(spirv_opt, out)
+                if not ok:
+                    out.unlink(missing_ok=True)
+                    return False, diag
             return True, diag
         diag = '\n'.join(errors)
     except (ValueError, OSError, subprocess.SubprocessError) as e:
@@ -271,8 +285,9 @@ if __name__ == '__main__':
     ap.add_argument('-o', required=True, type=Path)
     ap.add_argument('--slangc')
     ap.add_argument('--spirv-cross')
+    ap.add_argument('--spirv-opt')
     args = ap.parse_args()
-    ok, diagnostic = bake(args.source, args.o, exe=args.slangc, cross=args.spirv_cross)
+    ok, diagnostic = bake(args.source, args.o, exe=args.slangc, cross=args.spirv_cross, spirv_opt=args.spirv_opt)
     if diagnostic:
         print(diagnostic)
     sys.exit(0 if ok else 1)

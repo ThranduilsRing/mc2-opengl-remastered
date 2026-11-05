@@ -175,7 +175,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe;
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[kVfxSlots];   // per-slot pools: vkResetCommandPool instead of per-cb reset
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
     uint64_t         vegTicket[mc2vk::kMaxFramesInFlight] = {};        // timeline value of the last vegetation submit per engine frame slot (its buffer set is per frame slot)
@@ -258,7 +258,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
             VkDescriptorSetLayout layouts[kVfxSlots]; for (auto& l : layouts) l=s->spriteDsl.get();
             VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
             alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=kVfxSlots;alloc.pSetLayouts=layouts;
-            if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
+            if (MC2_VK_ALLOC_SETS(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
         }
         it=s->pages.emplace(id,page).first;
         vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,static_cast<unsigned long long>(id),s->pages.size(),kMaxSpritePages);
@@ -465,7 +465,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         VkDescriptorSetLayout dslHandles2[kVfxSlots]; for (auto& l : dslHandles2) l = s->dsl.get();
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = kVfxSlots; dsai.pSetLayouts = dslHandles2;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) { vlog("vkAllocateDescriptorSets failed."); return false; }
     }
 
     // Pipelines (alpha + additive).
@@ -540,13 +540,15 @@ bool init_island(VfxIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* o) { return vkCreateCommandPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateCommandPool failed."); return false; }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = kVfxSlots;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
+        for (uint32_t i = 0; i < kVfxSlots; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* o) { return vkCreateCommandPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateCommandPool failed."); return false; }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) { vlog("vkAllocateCommandBuffers failed."); return false; }
+        }
     }
 
     s->inited = true;
@@ -680,19 +682,18 @@ extern "C" int mc2_vk_vfx_island_run(
 
     // Record: one renderpass, per-group pipeline + sub-range draw.
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
-    VkClearValue clears[3]{};   // all LOAD; ignored
-    VkRenderPassBeginInfo rbi{};
+    VkRenderPassBeginInfo rbi{};   // all attachments LOAD: no clear values
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
@@ -794,7 +795,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     if (!page || s->disabled) return false;
 
     VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -803,12 +804,11 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
     const bool culled = veg->record(slotCtx, cb, vegPar, span, cullOff, visOff, params, visibility);
     if (culled) {
-        VkClearValue clears[3]{};
-        VkRenderPassBeginInfo rbi{};
+        VkRenderPassBeginInfo rbi{};   // all attachments LOAD: no clear values
         rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-        rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vegetation");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());

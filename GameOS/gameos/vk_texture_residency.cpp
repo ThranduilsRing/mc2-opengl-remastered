@@ -8,6 +8,7 @@
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "engine_present_vk.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
@@ -108,7 +109,13 @@ bool TextureResidency::init() {
     VkDescriptorSetLayoutBinding binding{};
     binding.binding = 0; binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     binding.descriptorCount = capacity_; binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    VkDescriptorSetLayoutCreateInfo li{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO}; li.bindingCount=1; li.pBindings=&binding;
+    // vk-present-instance 9 (descriptor-layout code only): PARTIALLY_BOUND (descriptorBindingPartiallyBound is a Required, enabled profile feature), so slots
+    // no shader reads need not hold a valid descriptor. UPDATE_AFTER_BIND + the one-set collapse are NOT done: that feature is not in the device profile and a
+    // single shared set would be rewritten while an earlier frame still reads it (table entries change on residency revisions); see the lane report.
+    const VkDescriptorBindingFlags bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+    VkDescriptorSetLayoutBindingFlagsCreateInfo bfi{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
+    bfi.bindingCount=1; bfi.pBindingFlags=&bindingFlags;
+    VkDescriptorSetLayoutCreateInfo li{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO}; li.pNext=&bfi; li.bindingCount=1; li.pBindings=&binding;
     if (!mc2vk::create(layout_, ctx_.device(), [&](VkDescriptorSetLayout* s) { return vkCreateDescriptorSetLayout(ctx_.device(), &li, nullptr, s); })) return false;
     VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, capacity_ * kMaxFramesInFlight};
     VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO}; pi.maxSets=kMaxFramesInFlight; pi.poolSizeCount=1; pi.pPoolSizes=&size;
@@ -117,7 +124,7 @@ bool TextureResidency::init() {
     VkDescriptorSet sets[kMaxFramesInFlight]{};
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool=pool_.get(); ai.descriptorSetCount=kMaxFramesInFlight; ai.pSetLayouts=layouts;
-    if (vkAllocateDescriptorSets(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
     for (uint32_t i=0;i<kMaxFramesInFlight;++i) flights_[i].set=sets[i];
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
@@ -235,14 +242,15 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         VmaAllocationCreateInfo aci{}; aci.usage=VMA_MEMORY_USAGE_AUTO;
         if (!resource->image.create(ctx_.allocator(),ctx_.device(),ci,aci,vegetation ? "veg.atlas" : "texture.service.array")) return {};
     } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {}; }
-    const auto record=[buffer=staging.get(),target=resource->image.get(),levels=uint32_t(image.mipCount),layers,copies](VkCommandBuffer cb){
-        VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER}; b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=target; b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,levels,0,layers};
-        b.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&b);
+    const auto record=[this,buffer=staging.get(),target=resource->image.get(),levels=uint32_t(image.mipCount),layers,copies](VkCommandBuffer cb){
+        const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT,0,levels,0,layers};
+        mc2vk::sync::cmdImageBarrier(ctx_,cb,target,range,
+            VK_IMAGE_LAYOUT_UNDEFINED,VK_PIPELINE_STAGE_2_NONE,0,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT);
         vkCmdCopyBufferToImage(cb,buffer,target,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
-        b.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;b.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;b.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&b);
+        mc2vk::sync::cmdImageBarrier(ctx_,cb,target,range,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     };
     VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=resource->image.get();vi.viewType=arrayView ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;vi.format=VkFormat(image.vkFormat);
     vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,useMips ? uint32_t(image.mipCount) : 1u,0,layers};

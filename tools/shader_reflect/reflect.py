@@ -256,6 +256,7 @@ def compile_to_spv(
             "-S", stage,
             "--auto-map-locations",
             "--auto-map-bindings",
+            "--target-env", "vulkan1.2",   # SPIR-V 1.5, matches the GameOS bake (subgroup ops need >= 1.3)
             "-I" + str(shader.parent),
         ]
         cmd += ["-V", "-R"]

@@ -131,10 +131,11 @@ void ShadowBake::recordTileEncode(VkCommandBuffer cb, int originX, int originY, 
     ic.extent = {q, q, 1};
     vkCmdCopyImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, topR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &ic);
     VkImageMemoryBarrier toRead = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileLevels, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT);
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toRead);
     for (uint32_t m = 0; m < kTileLevels; ++m) encodeLevel(cb, bc4TileSet_, sliceBase + m, T >> m);
-    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+               VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     VkBufferImageCopy lv[kTileLevels]{};
     for (uint32_t m = 0; m < kTileLevels; ++m) {
         const uint32_t side = T >> m;
@@ -151,7 +152,8 @@ void ShadowBake::recordTopLevels(VkCommandBuffer cb) {
     recordTopLevelsMipsOnly(cb);
     if (topMips_ <= 1) return;
     for (uint32_t k = 1; k < topMips_; ++k) encodeLevel(cb, bc4TopSet_, 2 * kTileLevels + k, (std::max)(topSide_ >> k, 1u));
-    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+               VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     std::vector<VkBufferImageCopy> lv;
     for (uint32_t k = 1; k < topMips_; ++k) {
         const uint32_t side = (std::max)(topSide_ >> k, 1u);

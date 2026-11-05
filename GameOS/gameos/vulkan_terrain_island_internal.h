@@ -143,7 +143,8 @@ struct OvlState {
     mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
     bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
-    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {};   // allocated from the island's pool
+    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {};   // one per slot, each from its own pool
+    mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool instead of per-cb reset
     OvlTex dummy;
     std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
 };
@@ -306,7 +307,8 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t      diagPatchVersion = UINT64_MAX;
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
 
-    mc2vk::OwnedCommandPool     cpool;
+    mc2vk::OwnedCommandPool     cpool;   // one-shot command buffers only (allocated and freed per use)
+    mc2vk::OwnedCommandPool     slotPool[2 * mc2vk::kMaxFramesInFlight];   // one pool per cbuf slot
     VkCommandBuffer   cbuf[2 * mc2vk::kMaxFramesInFlight] = {};   // terrain run slots, then scene clear slots
     // GPU-FRONTIER-1: per engine frame slot, the last submit that used the slot's command buffer / descriptor set. The terrain run, the overlay
     // (which draws through the run's set[slot]) and the scene clear each wait on their own previous submit only.
@@ -376,6 +378,8 @@ std::string spv_dir();
 mc2vk::OwnedShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
                  std::string_view name, int i0 = -1, int i1 = -1);
+// Makes a fresh host-visible buffer of `size` and retires the old one on the open-frame ticket (no device idle). A false return leaves `buf` untouched.
+bool replace_host_buffer(TerrainIsland* s, mc2vk::OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name);
 const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep,
                                  const float* fine = nullptr, int fineSide = 0, int originX = 0, int originY = 0);
 const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lodStep);

@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 <worktree>/proofs/box/<sha8>/, print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -102,7 +102,7 @@ cd $S
 [ -f build64-ninja/build.ninja ] || nice -n 19 taskset -c "$BCPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
  -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
- -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
+ -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc -DMC2_SPIRV_OPT=/workspace/toolchains/gfxr-1.4.350.0/bin/spirv-opt > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
 nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j16 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
 [ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
 tick build
@@ -179,6 +179,26 @@ for row in "${ROWS[@]}"; do
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
     gpu:*)       cmd="${row#gpu:}" ;;   # arbitrary command that runs the game: takes the lock
+    syncval*)    # SYNCVAL row type: Khronos sync validation as a standing gate. syncval (= tier1) | syncval:aa_off | :aa_fxaa | :aa_cmaa | :cold_bake | :nowater | :canary
+                 # Every arm fails on any SYNC-HAZARD / severity=error line (run_smoke's vk_validation grade, MC2_VULKAN_VALIDATION=sync, layer_enabled required).
+                 # :canary is the deliberate-bug row: it applies tests/syncval/canary_producer_handoff_barrier.patch, rebuilds, and PASSES only if the hazard is reported.
+                 arm=${row#syncval}; arm=${arm#:}; arm=${arm:-tier1}; sv="MC2_VULKAN_VALIDATION=sync"
+                 case $arm in
+                   tier1)     cmd="$sv python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
+                   aa_off)    cmd="$sv MC2_OPTIONS_OVERRIDE=SpatialAA=0 python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
+                   aa_fxaa)   cmd="$sv MC2_OPTIONS_OVERRIDE=SpatialAA=2 python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
+                   aa_cmaa)   cmd="$sv MC2_OPTIONS_OVERRIDE=SpatialAA=3 python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
+                   cold_bake) rm -rf $OUT/coldhome; mkdir -p $OUT/coldhome   # a fresh $HOME is a fresh user dir, so no <userdir>/cache/shadow: the bake runs cold
+                              cmd="$sv HOME=$OUT/coldhome XDG_CONFIG_HOME=$OUT/coldhome python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
+                   imgui|resize) # direct launch (run_smoke does not pass MC2_IMGUI_* through and cannot resize); graded here: layer_enabled present, zero severity=error
+                              envx=""; wm=""
+                              [ $arm = imgui ] && envx="MC2_IMGUI_DEMO=1"
+                              [ $arm = resize ] && { command -v xdotool >/dev/null || apt-get install -y -qq xdotool >/dev/null 2>&1; wm='( sleep 7; w=\$(xdotool search --onlyvisible --name . 2>/dev/null | tail -1); xdotool windowsize \$w 1100 700; sleep 2; xdotool windowsize \$w 1500 900 ) &'; }
+                              cmd="cd $I && $wm env $sv $envx ./mc2 --profile stock --mission mc2_01 --duration 18 > $OUT/syncval_$arm.game.log 2>&1; g=\$?; grep -a 'VK_VALIDATION v1' $OUT/syncval_$arm.game.log | grep -c 'severity=error' | sed 's/^/[syncval] errors=/'; grep -aq 'id=layer_enabled' $OUT/syncval_$arm.game.log || { echo '[syncval] layer not live'; exit 1; }; ! grep -a 'VK_VALIDATION v1' $OUT/syncval_$arm.game.log | grep -aq 'severity=error' && [ \$g = 0 ]" ;;
+                   nowater)   cmd="$sv python3 scripts/run_smoke.py --mission gaea_peaks_01 --allow-any-mission --keep-logs --exe $I/mc2" ;;
+                   canary)    cmd="git apply tests/syncval/canary_producer_handoff_barrier.patch && { ninja -C build64-ninja -j16 mc2 > $OUT/canary_build.log 2>&1; b=\$?; git checkout -q -- GameOS/gameos/vk_native_producers.cpp; [ \$b = 0 ] || exit 9; cp -f build64-ninja/mc2 $I/mc2; $sv python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2 > $OUT/canary_smoke.log 2>&1; grep -qa 'SYNC-HAZARD' $OUT/canary_smoke.log && { echo '[syncval] canary: hazard reported, as required'; exit 0; }; echo '[syncval] canary: NO hazard reported (validation is not live or the canary is stale)'; exit 1; }" ;;
+                   *) echo "[box_run] unknown syncval arm $arm"; RES=2; continue ;;
+                 esac ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
   case $row in determinism:*|saveload*)

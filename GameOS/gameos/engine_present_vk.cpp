@@ -26,6 +26,7 @@
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
+#include "engine_present_vk_internal.h"   // EnginePresentVk::Impl, fillLoadPassDeps, the ImGui piece (engine_present_vk_imgui.cpp)
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
@@ -72,176 +73,8 @@ const char* presentModeName(VkPresentModeKHR m) {
 }
 
 }  // namespace
-struct EnginePresentVk::Impl {
-    VulkanContext*   ctx   = nullptr;
-    VkInstance       inst  = VK_NULL_HANDLE;
-    VkPhysicalDevice phys  = VK_NULL_HANDLE;
-    VkDevice         dev   = VK_NULL_HANDLE;
-    VkQueue          gfxQ  = VK_NULL_HANDLE;
-    uint32_t         gfxFamily = UINT32_MAX;
 
-    mc2vk::OwnedSurface surface;   // released with the instance it was made on (the engine context's), before the swapchain below
-    uint32_t         presentFamily = UINT32_MAX;
-    bool offscreen = false;   // Linux: the window surface is not presentable from this GPU; composite and capture readback run, nothing is presented
-    VkQueue          presentQ  = VK_NULL_HANDLE;
-
-    // swapchain
-    mc2vk::OwnedSwapchain    swapchain;
-    VkFormat                 scFormat  = VK_FORMAT_UNDEFINED;
-    VkExtent2D               scExtent  = {0, 0};
-    VkPresentModeKHR         presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    std::vector<VkImage>     scImages;
-    std::vector<mc2vk::OwnedSemaphore> renderSems;   // one per image (present-wait target)
-
-    // per-frame sync: one acquire semaphore, one in-flight fence and one pair of command buffers per frame slot. slot() = engine frame % slotCount;
-    // slotCount defaults to kMaxFramesInFlight; MC2_VK_FRAMES_IN_FLIGHT=1 pins every frame to slot 0.
-    mc2vk::OwnedCommandPool   cpool;
-    VkCommandBuffer cbufs[mc2vk::kMaxFramesInFlight] = {};   // present tail: overlay + HUD/ImGui + blit
-    mc2vk::OwnedSemaphore     acquireSems[mc2vk::kMaxFramesInFlight];
-    mc2vk::OwnedFence         inFlights[mc2vk::kMaxFramesInFlight];
-    uint32_t slotCount = 1;
-    uint32_t slot() const { return ctx->frameContext().slot; }
-    VkCommandBuffer&       curCbuf()          { return cbufs[slot()]; }
-    VkCommandBuffer&       curCompositeCbuf() { return compositeCbufs[slot()]; }
-    mc2vk::OwnedSemaphore& curAcquireSem()    { return acquireSems[slot()]; }
-    mc2vk::OwnedFence&     curInFlight()      { return inFlights[slot()]; }
-    // Composite and tail share one submission. Resize drops a pending recording;
-    // declined presents keep the fence signaled until a submit can signal it.
-    VkCommandBuffer compositeCbufs[mc2vk::kMaxFramesInFlight] = {};
-    bool            compositePending = false;
-    bool frameFinished = false;
-    uint32_t captureFrame = 0, captureFireFrame = 0;
-    VkResult lastWsiResult = VK_SUCCESS;
-    // Shadow debug joins the tail after the composite.
-    VkImageView     pendingShadowDebugView = VK_NULL_HANDLE;
-    int             pendingShadowDebugLayer = 0;
-
-    // Composite output, blitted into the swapchain after the UI.
-    VkImageResource sharedImg{};
-    VkImageResource scaledComposite{};
-    mc2vk::OwnedFramebuffer scaledCompositeFramebuffer;
-    VkDescriptorSet upscaleSet = VK_NULL_HANDLE;
-    SpatialAA spatialAA;
-    uint32_t        imgW = 0, imgH = 0;
-
-    // Asynchronous readback; the copy buffer is reused only after completion.
-    mc2vk::ReadbackToken readbackToken;
-    uint64_t        readbackTag = 0;
-    uint32_t        readbackW = 0, readbackH = 0;
-    VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;
-
-    // GuiRuntime draw data is recorded in the native present tail.
-    bool            imguiVkInited = false;
-    bool            imguiVkFailed = false;
-    mc2vk::OwnedRenderPass    imguiRenderPass;
-    mc2vk::OwnedFramebuffer   imguiFramebuffer;
-    ImDrawData*     pendingImguiDrawData = nullptr;
-    PresentImguiSnapshot ownedImgui;
-    void clearImgui() {
-        ownedImgui.clear();
-        pendingImguiDrawData = nullptr;
-    }
-    // GL texture name (the ImTextureID the game passes) -> a Vulkan image and the descriptor set ImGui_ImplVulkan binds for it.
-    // Members release in reverse order: view, image, memory. The upload's staging bytes live in the frame ring.
-    struct ImguiTexEntry {
-        RenderCore::TextureHandle serviceTexture; // descriptor cache borrows identity; GPU retirement retains its image
-        VkImageView serviceView=VK_NULL_HANDLE;
-        std::shared_ptr<const void> serviceImage; // owns this exact view until the retired set is freed
-        VkDescriptorSet set = VK_NULL_HANDLE;
-        uint64_t lastUsedFrame = 0;
-    };
-    std::unordered_map<uint64_t, ImguiTexEntry> imguiTex;
-    mc2vk::OwnedSampler imguiTexSampler;
-    uint64_t imguiTexFrame = 0;
-    // HUD vertices live in the frame ring; image versions retire by GPU ticket.
-    std::vector<VkHudDraw> pendingHudDraws;
-    // HUD coordinates use the authoring canvas, which can differ from drawable
-    // size under DPI scaling. Zero falls back to the present extent.
-    uint32_t        hudCanvasW = 0, hudCanvasH = 0;
-    bool            hudColorVkFailed = false;
-    mc2vk::OwnedRenderPass    hudColorRenderPass;
-    mc2vk::OwnedFramebuffer   hudColorFramebuffer;
-    mc2vk::OwnedPipelineLayout hudColorLayout;
-    mc2vk::OwnedPipeline      hudColorTriPipe;
-    mc2vk::OwnedPipeline      hudColorTriOneInvAlphaPipe; // VK-FIELD-VFX-3: additive untextured effect ribbons
-    mc2vk::OwnedPipeline      hudColorTriOneOnePipe;      // VK-FIELD-VFX-7: pure-additive (ONE,ONE) effect ribbons
-    mc2vk::OwnedPipeline      hudColorLinePipe;
-    mc2vk::OwnedPipeline      hudColorTriOpaquePipe;
-    mc2vk::OwnedPipeline      hudColorLineOpaquePipe;
-    mc2vk::OwnedShaderModule  hudColorVert;
-    mc2vk::OwnedShaderModule  hudColorFrag;
-    mc2vk::OwnedDescriptorSetLayout hudTexDsl;
-    mc2vk::OwnedDescriptorPool hudTexPool;
-    mc2vk::OwnedPipelineLayout hudTexLayout;
-    mc2vk::OwnedPipeline      hudTexPipe;
-    mc2vk::OwnedPipeline      hudTexOpaquePipe;
-    mc2vk::OwnedPipeline      hudTexOneInvAlphaPipe; // VK-FIELD-VFX-3: GL OneInvAlpha (ONE,1-srcA) effect glow
-    mc2vk::OwnedPipeline      hudTexOneOnePipe;      // VK-FIELD-VFX-7: GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
-    mc2vk::OwnedShaderModule  hudTexVert;
-    mc2vk::OwnedShaderModule  hudTexFrag;
-    struct HudTextureMirror {
-        uint32_t serial = 0;
-        uint32_t width = 0;
-        uint32_t height = 0;
-        mc2vk::OwnedDeviceMemory memory;   // declared first, released last: the buffer bound to it goes first
-        mc2vk::OwnedRawBuffer buffer;
-        VkDeviceSize bytes = 0;
-        VkDescriptorSet set = VK_NULL_HANDLE;
-        uint64_t lastFrame = 0;      // VK-HUD-GLYPH-CORRUPTION: eviction watermark
-    };
-    // VK-HUD-GLYPH-CORRUPTION FIX: keyed by (textureHandle<<32 | textureSerial), NOT
-    // handle alone. The game re-bakes many distinct runtime strings into ONE reused GL
-    // texture handle within a single HUD frame (e.g. handle 275 cycles serials 2..9),
-    // bumping the content serial each bake. The old handle-only mirror destroyed +
-    // re-uploaded its single buffer in place, so every draw referencing that handle
-    // ended up sampling the LAST bake -> earlier strings rendered the wrong glyphs
-    // (OBJECTIVES/QUICK SAVE/pilot names garbled while pre-baked serial==1 labels stayed
-    // clean). A per-(handle,serial) mirror gives each distinct bake its own persistent
-    // buffer+descriptor for the frame. Entries are evicted a few frames after last use.
-    std::unordered_map<uint64_t, HudTextureMirror> hudTextureMirrors;
-    uint64_t hudMirrorFrameCounter = 0;
-
-    bool            compositeVkFailed = false;
-    mc2vk::OwnedRenderPass    compositeRenderPass;
-    mc2vk::OwnedFramebuffer   compositeFramebuffer;
-    mc2vk::OwnedSampler       compositeSampler;
-    mc2vk::OwnedSampler       compositeNearestSampler;   // the R32_UINT object-id image cannot be filtered linearly
-    mc2vk::OwnedDescriptorSetLayout compositeDsl;
-    mc2vk::OwnedDescriptorPool compositePool;
-    VkDescriptorSet  compositeSet = VK_NULL_HANDLE;
-    mc2vk::OwnedPipelineLayout compositeLayout;
-    mc2vk::OwnedPipeline       compositePipe;
-    mc2vk::OwnedShaderModule   compositeVert;
-    mc2vk::OwnedShaderModule   compositeFrag;
-
-    bool             shadowDebugVkFailed = false;
-    mc2vk::OwnedRenderPass     shadowDebugRenderPass;
-    mc2vk::OwnedFramebuffer    shadowDebugFramebuffer;
-    mc2vk::OwnedSampler        shadowDebugSampler;
-    mc2vk::OwnedDescriptorSetLayout shadowDebugDsl;
-    mc2vk::OwnedDescriptorPool shadowDebugPool;
-    VkDescriptorSet  shadowDebugSet = VK_NULL_HANDLE;
-    mc2vk::OwnedPipelineLayout shadowDebugLayout;
-    mc2vk::OwnedPipeline       shadowDebugPipe;
-    mc2vk::OwnedShaderModule   shadowDebugVert;
-    mc2vk::OwnedShaderModule   shadowDebugFrag;
-
-    Impl() = default;
-    Impl(const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
-    // The shared present image holds raw allocations that vkImageResourceDestroy releases (and counts); the framebuffers over its view go first. Every
-    // other member is an owner and follows in reverse declaration order.
-    ~Impl() {
-        spatialAA.reset();
-        scaledCompositeFramebuffer.reset();
-        if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&scaledComposite, dev);
-        imguiFramebuffer.reset();
-        hudColorFramebuffer.reset();
-        compositeFramebuffer.reset();
-        shadowDebugFramebuffer.reset();
-        if (dev != VK_NULL_HANDLE) vkImageResourceDestroy(&sharedImg, dev);
-    }
-};
+// struct EnginePresentVk::Impl: engine_present_vk_internal.h (shared with engine_present_vk_imgui.cpp).
 
 namespace {
 
@@ -446,6 +279,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     admission.commit(reinterpret_cast<uint64_t>(s.swapchain.get()),"targets.swapchain",true);
     s.scFormat = chosen.format;
     s.scExtent = extent;
+    s.scTransform = caps.currentTransform;
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, nullptr);
@@ -702,10 +536,10 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         ai.descriptorSetCount = 1;
         const VkDescriptorSetLayout compositeDslHandle = s.compositeDsl.get();
         ai.pSetLayouts = &compositeDslHandle;
-        if (vkAllocateDescriptorSets(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.compositeSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
-        if (vkAllocateDescriptorSets(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
     }
@@ -825,9 +659,12 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1;
         sub.pColorAttachments = &ref;
-        VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+                // Color-attachment WAW/RAW against the previous pass on the shared present image (LOAD_OP_LOAD, no layout transition, so no implicit edge).
+        VkSubpassDependency deps[2]; fillLoadPassDeps(deps);
+VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rp.attachmentCount = 1; rp.pAttachments = &color;
         rp.subpassCount = 1; rp.pSubpasses = &sub;
+        rp.dependencyCount = 2; rp.pDependencies = deps;
         if (!mc2vk::create(s.shadowDebugRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); })) {
             s.shadowDebugVkFailed = true; return false;
         }
@@ -866,7 +703,7 @@ bool ensureShadowDebugOverlayObjects(EnginePresentVk::Impl& s, VkImageView csmAr
         ai.descriptorSetCount = 1;
         const VkDescriptorSetLayout shadowDebugDslHandle = s.shadowDebugDsl.get();
         ai.pSetLayouts = &shadowDebugDslHandle;
-        if (vkAllocateDescriptorSets(s.dev, &ai, &s.shadowDebugSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.shadowDebugSet) != VK_SUCCESS) {
             s.shadowDebugVkFailed = true; return false;
         }
     }
@@ -992,9 +829,12 @@ bool ensureHudColorObjects(EnginePresentVk::Impl& s) {
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1;
         sub.pColorAttachments = &ref;
-        VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+                // Color-attachment WAW/RAW against the previous pass on the shared present image (LOAD_OP_LOAD, no layout transition, so no implicit edge).
+        VkSubpassDependency deps[2]; fillLoadPassDeps(deps);
+VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rp.attachmentCount = 1; rp.pAttachments = &color;
         rp.subpassCount = 1; rp.pSubpasses = &sub;
+        rp.dependencyCount = 2; rp.pDependencies = deps;
         if (!mc2vk::create(s.hudColorRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
@@ -1276,7 +1116,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         ai.descriptorSetCount = 1;
         const VkDescriptorSetLayout hudTexDslHandle = s.hudTexDsl.get();
         ai.pSetLayouts = &hudTexDslHandle;
-        if (vkAllocateDescriptorSets(s.dev, &ai, &m.set) != VK_SUCCESS)
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &m.set) != VK_SUCCESS)
             return nullptr;
     }
     VkDescriptorBufferInfo bi{};
@@ -1298,270 +1138,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     return &m;
 }
 
-bool ensureImguiRenderPass(EnginePresentVk::Impl& s) {
-    if (s.imguiRenderPass.get()) return true;
-
-    VkAttachmentDescription color{};
-    color.format = VK_FORMAT_R8G8B8A8_UNORM;
-    color.samples = VK_SAMPLE_COUNT_1_BIT;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference colorRef{};
-    colorRef.attachment = 0;
-    colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription sub{};
-    sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    sub.colorAttachmentCount = 1;
-    sub.pColorAttachments = &colorRef;
-
-    VkRenderPassCreateInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-    rp.attachmentCount = 1;
-    rp.pAttachments = &color;
-    rp.subpassCount = 1;
-    rp.pSubpasses = &sub;
-    return mc2vk::create(s.imguiRenderPass, s.dev, [&](auto* h) { return vkCreateRenderPass(s.dev, &rp, nullptr, h); });
-}
-
-bool ensureImguiFramebuffer(EnginePresentVk::Impl& s) {
-    if (s.imguiFramebuffer.get()) return true;
-    if (!ensureImguiRenderPass(s) || !s.sharedImg.view || s.imgW == 0 || s.imgH == 0)
-        return false;
-
-    VkImageView attachments[] = { s.sharedImg.view.get() };
-    VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-    fb.renderPass = s.imguiRenderPass.get();
-    fb.attachmentCount = 1;
-    fb.pAttachments = attachments;
-    fb.width = s.imgW;
-    fb.height = s.imgH;
-    fb.layers = 1;
-    return mc2vk::create(s.imguiFramebuffer, s.dev, [&](auto* h) { return vkCreateFramebuffer(s.dev, &fb, nullptr, h); });
-}
-
-constexpr uint32_t kImguiTexCap = 256;
-
-bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
-    if (s.imguiVkInited) return ensureImguiFramebuffer(s);
-    if (s.imguiVkFailed || !s.dev || !s.phys || !s.gfxQ || !s.imgW || !s.imgH)
-        return false;
-    if (!ensureImguiFramebuffer(s)) {
-        s.imguiVkFailed = true;
-        return false;
-    }
-
-    ImGui_ImplVulkan_InitInfo info{};
-    info.Instance = s.inst;
-    info.PhysicalDevice = s.phys;
-    info.Device = s.dev;
-    info.PipelineCache = mc2vk::infra::cacheHandle();
-    info.AllocateMemory = [](VkDevice device, const VkMemoryAllocateInfo* ai, const VkAllocationCallbacks* allocator, VkDeviceMemory* memory, const char* name) {
-        mc2vk::infra::Admission admission(ai->allocationSize,name);
-        if(!admission) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-        const auto result=vkAllocateMemory(device,ai,allocator,memory);
-        if(result==VK_SUCCESS) {
-            admission.commit(reinterpret_cast<uint64_t>(*memory),name,true);
-            mc2vk::infra::breadcrumb("resource",name,reinterpret_cast<uint64_t>(*memory));
-        }
-        return result;
-    };
-    info.MemoryFreed = [](auto memory) { mc2vk::infra::release(reinterpret_cast<uint64_t>(memory)); };
-    info.QueueFamily = s.gfxFamily;
-    info.Queue = s.gfxQ;
-    info.RenderPass = s.imguiRenderPass.get();
-    info.MinImageCount = 2;
-    info.ImageCount = s.scImages.size() >= 2 ? static_cast<uint32_t>(s.scImages.size()) : 2;
-    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    info.DescriptorPoolSize = 16 + 2 * kImguiTexCap;   // font + live texture sets + retired sets awaiting their frame
-    if (!ImGui_ImplVulkan_Init(&info)) {
-        s.imguiVkFailed = true;
-        return false;
-    }
-    // The present image is stored with GL bottom-left origin (the composite renders it un-flipped and copy-2 flips it into the
-    // swapchain), and the HUD tail pass flips its own Y. The Vulkan ImGui backend draws top-down, so without this the whole ImGui
-    // layer (every defs/ImGui page: text, art, portraits) reaches the screen upside down.
-    ImGui_ImplVulkan_SetFlipY(true);
-    s.imguiVkInited = true;
-    return true;
-}
-
-// Per-texture ImGui bridge. The game draws ImGui images with GL texture names as the ImTextureID; the Vulkan backend binds the id as a
-// VkDescriptorSet, so each name is resolved to a set over a VK image uploaded from the texture CPU texels. A name with no texels
-// (render targets, not loaded) gets no set and its command is skipped at draw time.
-constexpr uint32_t kImguiLogCap = 3;
-
-// A retired ImGui texture entry waits in the context deferred-destroy queue; its destructor returns the descriptor set to the backend pool and
-// releases the image, view and memory once the frame that may sample them has completed. The counter feeds the descriptor budget below.
-size_t g_imguiTexRetiredPending = 0;
-struct ImguiTexRetired {
-    EnginePresentVk::Impl::ImguiTexEntry entry;
-    explicit ImguiTexRetired(EnginePresentVk::Impl::ImguiTexEntry&& e) : entry(std::move(e)) { ++g_imguiTexRetiredPending; }
-    ImguiTexRetired(const ImguiTexRetired&) = delete;
-    ~ImguiTexRetired();
-};
-
-void imguiTexDestroy(EnginePresentVk::Impl::ImguiTexEntry& e, bool backendLive) {
-    if (e.set && backendLive)
-        ImGui_ImplVulkan_RemoveTexture(e.set);
-    e.set = VK_NULL_HANDLE;
-}
-
-bool imguiBackendLive() {
-    return ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().BackendRendererUserData != nullptr;
-}
-
-ImguiTexRetired::~ImguiTexRetired() {
-    --g_imguiTexRetiredPending;
-    imguiTexDestroy(entry, imguiBackendLive());
-}
-
-void imguiTexReleaseAll(EnginePresentVk::Impl& s) {
-    const bool live = imguiBackendLive();
-    for (auto& kv : s.imguiTex) imguiTexDestroy(kv.second, live);
-    s.imguiTex.clear();
-    s.ctx->drainDeferred("present_imgui_release");   // the retired entries return their sets while the backend is still up
-}
-
-void imguiTexSweep(EnginePresentVk::Impl& s) {
-    const uint64_t now = ++s.imguiTexFrame;
-    for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
-        auto& e = it->second;
-        const bool staleService = RenderCore::isUiTextureId(it->first) &&
-            (!RenderCore::textureService().isLive(e.serviceTexture) || e.serviceView != s.ctx->textures().view(e.serviceTexture));
-        if (staleService) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
-            s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
-            it = s.imguiTex.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
-
-// Moves a live entry to the deferred-destroy queue (destroyed once the frame that may sample it has completed).
-void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint64_t, EnginePresentVk::Impl::ImguiTexEntry>::iterator it) {
-    s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(it->second)));
-    s.imguiTex.erase(it);
-}
-
-// Both legacy and service IDs share the same bounded descriptor pool.
-bool imguiTexMakeRoom(EnginePresentVk::Impl& s) {
-    // Descriptor budget: the pool holds kImguiTexCap live AND kImguiTexCap retired sets (a retired set is freed only once its frame completed).
-    // At the live cap, the least recently used entry not drawn this frame is retired to make room.
-    if (g_imguiTexRetiredPending >= kImguiTexCap)
-        return false;
-    if (s.imguiTex.size() >= kImguiTexCap) {
-        auto victim = s.imguiTex.end();
-        for (auto v = s.imguiTex.begin(); v != s.imguiTex.end(); ++v)
-            if (v->second.lastUsedFrame != s.imguiTexFrame &&
-                (victim == s.imguiTex.end() || v->second.lastUsedFrame < victim->second.lastUsedFrame))
-                victim = v;
-        if (victim == s.imguiTex.end())
-            return false;
-        imguiTexRetire(s, victim);
-    }
-    return true;
-}
-
-// Records the upload into `cb` (outside the render pass). Returns 0 when the name has no VK image. Everything that can fail
-// (buffers, image, view, the descriptor set) happens BEFORE the first command is recorded, so a failure never leaves a recorded
-// command naming a destroyed resource.
-ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64_t textureId) {
-    if (RenderCore::isUiTextureId(textureId)) {
-        const auto handle=RenderCore::uiTextureHandle(textureId);
-        auto& textures=s.ctx->textures();
-        if (!RenderCore::textureService().isLive(handle)) return 0;
-        const auto view=textures.view(handle);
-        auto it=s.imguiTex.find(textureId);
-        if (it!=s.imguiTex.end()) {
-            if (it->second.serviceView==view) { it->second.lastUsedFrame=s.imguiTexFrame; return reinterpret_cast<ImTextureID>(it->second.set); }
-            imguiTexRetire(s,it);
-        }
-        if (!imguiTexMakeRoom(s)) return 0;
-        if (!s.imguiTexSampler) {
-            VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; sci.magFilter=sci.minFilter=VK_FILTER_LINEAR;
-            sci.addressModeU=sci.addressModeV=sci.addressModeW=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            if (!mc2vk::create(s.imguiTexSampler,s.dev,[&](VkSampler* h){return vkCreateSampler(s.dev,&sci,nullptr,h);})) return 0;
-        }
-        EnginePresentVk::Impl::ImguiTexEntry e;
-        e.serviceTexture=handle; e.serviceView=view; e.serviceImage=textures.imageOwner(handle); e.lastUsedFrame=s.imguiTexFrame;
-        e.set=ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        if (!e.set) return 0;
-        const auto set=reinterpret_cast<ImTextureID>(e.set); s.imguiTex.emplace(textureId,std::move(e)); return set;
-    }
-    return 0;
-}
-
-bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
-    ImDrawData* drawData = s.pendingImguiDrawData;
-    s.pendingImguiDrawData = nullptr;
-    if (!drawData || !s.imguiVkInited || !ensureImguiFramebuffer(s))
-        return false;
-
-    // VK-IMGUI-LIFECYCLE-1: the draw data is only recorded while the Vulkan backend (and the main viewport's renderer data it installs) is alive.
-    {
-        const bool ctx = ImGui::GetCurrentContext() != nullptr;
-        const bool bd = ctx && ImGui::GetIO().BackendRendererUserData != nullptr;
-        const bool vp = drawData->OwnerViewport && drawData->OwnerViewport->RendererUserData;
-        if (!(ctx && bd && vp)) {
-            static uint32_t s_skipped = 0;
-            if (s_skipped++ < 3)
-                std::fprintf(stderr, "[VK_IMGUI] draw data skipped: ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
-                             static_cast<int>(ctx), static_cast<int>(bd), static_cast<int>(vp), static_cast<void*>(drawData->OwnerViewport));
-            return false;
-        }
-    }
-
-    // Every non-font command carries a GL texture name; swap in its descriptor set for the backend and restore afterwards, so the same
-    // ImDrawData still reads correctly elsewhere. A name with no VK image is skipped at bind time (empty clip rect).
-    struct CmdSave { ImDrawCmd* cmd; ImTextureID id; ImVec4 clip; };
-    std::vector<CmdSave> saved;
-    {
-        imguiTexSweep(s);
-        const ImTextureID fontTex = ImGui::GetIO().Fonts->TexID;
-        uint32_t skipped = 0;
-        for (int n = 0; n < drawData->CmdListsCount; ++n) {
-            for (ImDrawCmd& c : drawData->CmdLists[n]->CmdBuffer) {
-                if (c.UserCallback || c.ElemCount == 0 || c.GetTexID() == fontTex)
-                    continue;
-                saved.push_back({&c, c.TextureId, c.ClipRect});
-                const ImTextureID set = imguiTexResolve(s, cb, static_cast<uint64_t>(c.GetTexID()));
-                if (set) {
-                    c.TextureId = set;
-                } else {
-                    c.ClipRect = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-                    ++skipped;
-                }
-            }
-        }
-        static uint32_t s_logged = 0;
-        if (skipped != 0 && s_logged < kImguiLogCap) {
-            ++s_logged;
-            std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name)\n", skipped);
-        }
-    }
-
-    VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rp.renderPass = s.imguiRenderPass.get();
-    rp.framebuffer = s.imguiFramebuffer.get();
-    rp.renderArea.offset = {0, 0};
-    rp.renderArea.extent = {s.imgW, s.imgH};
-    // The ids and clip rects are put back on every exit from here.
-    struct RestoreGuard {
-        const std::vector<CmdSave>& v;
-        ~RestoreGuard() { for (const CmdSave& c : v) { c.cmd->TextureId = c.id; c.cmd->ClipRect = c.clip; } }
-    } restoreGuard{saved};
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Present.ImGui");
-    vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
-    ImGui_ImplVulkan_RenderDrawData(drawData, cb);
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-    return true;
-}
+// ImGui backend + per-texture descriptor bridge: engine_present_vk_imgui.cpp (ensureImguiVulkan, imguiTexReleaseAll, recordPendingImgui).
 
 uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb,
                                     uint32_t* nativeDraws,
@@ -1974,16 +1551,20 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
     // ---- command pool/buffer + acquire sem + in-flight fence --------------
     {
         VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s.gfxFamily;
         if (!mc2vk::create(s.cpool, s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
             return fail("vkCreateCommandPool failed");
         VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai.commandPool = s.cpool.get();
         cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s.dev, &cai, s.cbufs) != VK_SUCCESS)
-            return fail("vkAllocateCommandBuffers failed");
+        cai.commandBufferCount = 1;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s.tailPool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
+                return fail("vkCreateCommandPool(tail) failed");
+            cai.commandPool = s.tailPool[i].get();
+            if (vkAllocateCommandBuffers(s.dev, &cai, &s.cbufs[i]) != VK_SUCCESS)
+                return fail("vkAllocateCommandBuffers failed");
+        }
         VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -1999,11 +1580,15 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         // VK-PRESENT-SINGLESUBMIT-1: the composite's own command buffer (recorded at
         // composite time, submitted together with the tail cbuf in ONE submit).
         VkCommandBufferAllocateInfo cai2{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-        cai2.commandPool = s.cpool.get();
         cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai2.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s.dev, &cai2, s.compositeCbufs) != VK_SUCCESS)
-            return fail("vkAllocateCommandBuffers(composite) failed");
+        cai2.commandBufferCount = 1;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s.compositeCmdPool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
+                return fail("vkCreateCommandPool(composite) failed");
+            cai2.commandPool = s.compositeCmdPool[i].get();
+            if (vkAllocateCommandBuffers(s.dev, &cai2, &s.compositeCbufs[i]) != VK_SUCCESS)
+                return fail("vkAllocateCommandBuffers(composite) failed");
+        }
     }
 
     // ---- shared exportable interop image + GL view + copy-1 FBO -----------
@@ -2081,7 +1666,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
-    vkResetCommandBuffer(cc, 0);
+    vkResetCommandPool(s.dev, s.compositeCmdPool[s.slot()].get(), 0);   // cc is s.compositeCbufs[slot]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
@@ -2442,7 +2027,26 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     // WSI results are consumed only after main has transferred the next frame.
     if (s.lastWsiResult != VK_SUCCESS) {
         const VkResult previous = std::exchange(s.lastWsiResult, VK_SUCCESS);
-        if (previous == VK_ERROR_OUT_OF_DATE_KHR || previous == VK_SUBOPTIMAL_KHR) {
+        // vk-present-instance 2a: SUBOPTIMAL rebuilds only when the surface extent or transform differs from the chain's; otherwise the
+        // chain is still the best the surface offers and a rebuild would loop (a drain per frame). Logged once.
+        bool suboptimalOnly = false;
+        if (previous == VK_SUBOPTIMAL_KHR) {
+            VkSurfaceCapabilitiesKHR caps{};
+            if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s.phys, s.surface.get(), &caps) == VK_SUCCESS) {
+                VkExtent2D cur = caps.currentExtent;
+                if (cur.width == 0xFFFFFFFFu) cur = {drawableW, drawableH};
+                cur.width  = std::clamp(cur.width,  caps.minImageExtent.width,  caps.maxImageExtent.width);
+                cur.height = std::clamp(cur.height, caps.minImageExtent.height, caps.maxImageExtent.height);
+                suboptimalOnly = cur.width == s.scExtent.width && cur.height == s.scExtent.height && caps.currentTransform == s.scTransform;
+            }
+            if (suboptimalOnly) {
+                static bool logged = false;
+                if (!logged) { logged = true; plog("SUBOPTIMAL with unchanged extent/transform: keeping the swapchain (logged once)."); }
+            }
+        }
+        if (suboptimalOnly) {
+            // keep going
+        } else if (previous == VK_ERROR_OUT_OF_DATE_KHR || previous == VK_SUBOPTIMAL_KHR) {
             std::string reason;
             if (!rebuildSwapchain(s, drawableW, drawableH, health_, reason)) {
                 health_.fallback_reason = reason;
@@ -2467,11 +2071,12 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         // shared image / framebuffers and must never be submitted.
         {
             VkFence fences[mc2vk::kMaxFramesInFlight]{};
+            s.ctx->poll();   // vk-sync-arch: flush the deferred submit batch before the image goes away
             for (uint32_t i = 0; i < s.slotCount; ++i) fences[i] = s.inFlights[i].get();
             VkResult done = vkWaitForFences(s.dev, s.slotCount, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000);
             // A timeout proves nothing: the in-flight frame may still read the image. Only an idle device proves it; a failed idle (device lost) leaves
             // the image alone and fails the present, so buildSharedImage never destroys an image the GPU may still use.
-            if (done != VK_SUCCESS) done = vkDeviceWaitIdle(s.dev);
+            if (done != VK_SUCCESS) { s.ctx->waitIdle("resize"); done = mc2vk::infra::deviceLostLatched() ? VK_ERROR_DEVICE_LOST : VK_SUCCESS; }
             if (done != VK_SUCCESS) { health_.fallback_reason = "resize: in-flight frame not proven complete"; return false; }
         }
         drainReadbackBeforeImageDestroy();   // a pending image->buffer copy reads the shared image buildSharedImage is about to destroy
@@ -2548,7 +2153,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     VkImage scImg = s.scImages[imageIndex];
     ZoneNamedN(zTailRec, "VKIsl.Present.TailRecord", true);   // VK-ISLAND-TRACY-1: overlay/HUD/ImGui + blit record (to fn return)
     mc2::battlebench::NsScope benchTail(mc2::battlebench::PresTailNs);
-    vkResetCommandBuffer(s.curCbuf(), 0);
+    vkResetCommandPool(s.dev, s.tailPool[s.slot()].get(), 0);   // curCbuf() is s.cbufs[slot]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.curCbuf(), &bi);
@@ -2630,6 +2235,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     {   // Tail.Blit: barriers + blit + vkEndCommandBuffer
     ZoneScopedN("VKIsl.Present.Tail.Blit");
     mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
+    MC2_VK_GPU_SCOPE(blitScope, s.curCbuf(), "VKIsl.Present.Blit");   // vk-present-instance 2a: barriers + blit were charged to Present.ImGui
     // The composite's color writes precede the swapchain blit.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2667,6 +2273,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    blitScope.end();
     vkEndCommandBuffer(s.curCbuf());
     }
 
@@ -2693,6 +2300,11 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         // at the next frame top when this is the worker) can block on it; a refused submit holds no reference to the old fence.
         { VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
           mc2vk::create(s.curInFlight(), s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }); }
+        // vk-present-instance 2a: the acquire signalled this slot's acquire semaphore and the refused submit never waited on it, so the next
+        // acquire into the slot would re-signal a signalled semaphore (VUID-vkAcquireNextImageKHR-semaphore-01286). Quiesce, then replace it.
+        { s.ctx->waitIdle("present_submit_failed");
+          VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+          mc2vk::create(s.curAcquireSem(), s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); }); }
         health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string(static_cast<int>(r)) + ")";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
@@ -2827,7 +2439,7 @@ void EnginePresentVk::verifyReadbackContent() {
         cai.commandPool = s.cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
         if (vkAllocateCommandBuffers(s.dev, &cai, &s.readbackCbuf) != VK_SUCCESS) { ctx.readbacks().release(ctx, tok); return; }
     }
-    vkResetCommandBuffer(s.readbackCbuf, 0);
+    vkResetCommandPool(s.dev, s.cpool.get(), 0);   // cpool holds only readbackCbuf
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s.readbackCbuf, &bi);
@@ -2836,11 +2448,24 @@ void EnginePresentVk::verifyReadbackContent() {
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    // A recycled slot: its last copy (TRANSFER_WRITE) and the host read of it are ordered before this copy on the queue as well, so the reuse
+    // never relies on the host wait alone (the ring recycles only after a host sync point, see ReadbackRing).
+    VkBufferMemoryBarrier reuse{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+    reuse.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_READ_BIT; reuse.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    reuse.srcQueueFamilyIndex = reuse.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    reuse.buffer = dst; reuse.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(s.readbackCbuf, VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &reuse, 0, nullptr);
     VkBufferImageCopy bic{};
     bic.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     bic.imageExtent = {rw, rh, 1};
     vkCmdCopyImageToBuffer(s.readbackCbuf, s.sharedImg.image.get(),
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst, 1, &bic);
+    // Make the copy visible to the host read after the fence wait (model: vk_scene_readback.cpp).
+    VkBufferMemoryBarrier toHost{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+    toHost.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; toHost.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+    toHost.srcQueueFamilyIndex = toHost.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toHost.buffer = dst; toHost.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(s.readbackCbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &toHost, 0, nullptr);
     barrier(s.readbackCbuf, s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,

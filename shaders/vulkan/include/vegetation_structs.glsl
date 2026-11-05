@@ -16,7 +16,7 @@ struct VegParamsData {
     vec4 misc;        // fadeStart, pixelScale, max(lightDirZ,0), time
     vec4 grid;        // mapHalfWU, blockSideWU, 0, 0
     uvec4 counts;     // regionCount, instanceCount, blockVisibilityCount, chunkSide
-    uvec4 flags;      // force-visible, dispatch grid width, stock trim enabled, visible capacity
+    uvec4 flags;      // force-visible, unused, stock trim enabled, visible capacity
 };
 
 uint vegBlockIndex(VegInstance i, VegParamsData p) {

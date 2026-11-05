@@ -1,5 +1,6 @@
 // VK water island: init_island: the shared-device borrow, the GBuffer / depth images, buffers, render pass and pipeline.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
+#include "vk_owned.h"
 #include "vulkan_water_island_internal.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -153,7 +154,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
-        VkDescriptorSetLayoutBinding b[14]{};
+        VkDescriptorSetLayoutBinding b[15]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -184,16 +185,19 @@ bool init_island(WaterIsland* s, int w, int h) {
             b[10+k].descriptorCount=1;
             b[10+k].stageFlags=k==0 ? VK_SHADER_STAGE_FRAGMENT_BIT : VK_SHADER_STAGE_COMPUTE_BIT;
         }
+        // The reflection compute's list of 8x8 half-res tiles that contain water (water_cull_pack).
+        b[14].binding=12; b[14].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[14].descriptorCount=1; b[14].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 14; lci.pBindings = b;
+        lci.bindingCount = 15; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // One descriptor set per frame slot, including the reflection bindings.
         VkDescriptorPoolSize sizes[5]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 8 * mc2vk::kMaxFramesInFlight;
         sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 1 * mc2vk::kMaxFramesInFlight;
         sizes[4].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; sizes[4].descriptorCount = mc2vk::kMaxFramesInFlight;
@@ -207,7 +211,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-        if (vkAllocateDescriptorSets(s->device, &dsai, s->set) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s->device, &dsai, s->set) != VK_SUCCESS) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         write_descriptors(s);
@@ -304,20 +308,18 @@ bool init_island(WaterIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
-            vlog("vkCreateCommandPool failed."); return false;
-        }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed."); return false;
-        }
-        VkFenceCreateInfo fnci{}; fnci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if (!mc2vk::create(s->fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fnci, nullptr, h); })) {
-            vlog("vkCreateFence failed."); return false;
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) {
+                vlog("vkCreateCommandPool failed."); return false;
+            }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) {
+                vlog("vkAllocateCommandBuffers failed."); return false;
+            }
         }
     }
 

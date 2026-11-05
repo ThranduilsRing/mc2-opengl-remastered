@@ -7,6 +7,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 
 #include "mc2fmt.h"
 #include "RenderCore/GpuResidencyPolicy.h"
@@ -35,10 +36,19 @@ void State::release() {
 }
 
 void State::clear(mc2vk::VulkanContext& ctx) {
-    ctx.waitIdle("veg_clear");
-    instances_.reset();
-    regions_.reset();
-    for (Slot& s : slot_) s = Slot{};
+    // In-flight frames may still read these: retire on the open-frame ticket instead of idling the device.
+    if (instances_) ctx.retire(std::move(instances_));
+    if (regions_) ctx.retire(std::move(regions_));
+    // Each parity's outputs may still be read by a frame in flight: retire them with the population.
+    for (Slot& s : slot_) {
+        if (s.counts) ctx.retire(std::move(s.counts));
+        if (s.offsets) ctx.retire(std::move(s.offsets));
+        if (s.dense) ctx.retire(std::move(s.dense));
+        if (s.args) ctx.retire(std::move(s.args));
+        if (s.stats) ctx.retire(std::move(s.stats));
+        if (s.visList) ctx.retire(std::move(s.visList));
+        s = Slot{};
+    }
     instanceCount_ = regionCount_ = 0;
     for (VkBuffer& b : ringBound_) b = VK_NULL_HANDLE;
     for (VkBuffer& b : drawRingBound_) b = VK_NULL_HANDLE;
@@ -68,7 +78,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         mc2::fmt::print_err("[VK_RESIDENCY v1] refused=vegetation bytes={:d} policy={:d} fallback=off reason=preset_budget_or_device_limits\n", mc2::fmt::as_u64(bytes), mc2::fmt::as_u64(policy.vegetation));
         return true;
     }
-    if (instBytes > maxRange || regBytes > maxRange) {
+    if (instBytes > maxRange || regBytes > maxRange || regions.size() > 65535u) {   // 65535: guaranteed indirect dispatch groups in x, one per visible region
         mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded\n");
         return false;
     }
@@ -87,6 +97,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         Slot& s = slot_[i];
         if (!s.counts.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.counts", int(i)) ||
             !s.offsets.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.offsets", int(i)) ||
+            !s.visList.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.visList", int(i)) ||
             !s.dense.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(visibleCapacity) * 4, kStore, "veg.dense", int(i)) ||
             !s.stats.createHostWritable(ctx.allocator(), ctx.device(), 16, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.stats", int(i)) ||
             !s.args.createDeviceLocal(ctx.allocator(), ctx.device(), 64, kStore | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.args", int(i))) {
@@ -101,11 +112,9 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         vkCmdCopyBuffer(cb, stageReg.get(), regions_.get(), 1, &cr);
         // Empty draw arguments until the first cull: an indirect draw with instanceCount 0.
         for (Slot& s : slot_) vkCmdFillBuffer(cb, s.args.get(), 0, 64, 0);
-        VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        mb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+        mc2vk::sync::cmdMemoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+            VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT);
     }, "veg_population_upload");
     if (!ok) {
         mc2::fmt::print_err("[VEG_GPU] population upload failed: copy submit\n");
@@ -121,7 +130,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     stats_.instances = instanceCount;
     stats_.regions = regionCount;
     mc2::fmt::print_err("[VEG_GPU] population upload #{:d}: instances={:d} regions={:d} avg_per_region={:d} uploaded_bytes={:d} resident_output_bytes={:d}\n",
-        mc2::fmt::as_u64(stats_.uploads), mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(regionCount), mc2::fmt::as_u32(instanceCount / regionCount),
+        mc2::fmt::as_u64(stats_.uploads), mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(regionCount), mc2::fmt::as_u32(regionCount ? instanceCount / regionCount : 0u),
         mc2::fmt::as_u64(instBytes + regBytes), mc2::fmt::as_u64(outBytes));
     return true;
 }
@@ -131,10 +140,10 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
     if (!pipelinesTried_) {
         pipelinesTried_ = true;
         const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {5, S}, {6, S}, {7, S}, {8, S}};
+        const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {5, S}, {6, S}, {7, S}, {8, S}, {9, S}};
         const std::string dir = vk_island_util::spvDir();
-        pipelinesOk_ = cull_.create(ctx.device(), dir + "vegetation_cull.comp.spv", bindings, "veg.cull") &&
-                       scan_.create(ctx.device(), dir + "vegetation_scan.comp.spv", bindings, "veg.scan") &&
+        pipelinesOk_ = region_.create(ctx.device(), dir + "vegetation_region.comp.spv", bindings, "veg.region") &&
+                       cull_.create(ctx.device(), dir + "vegetation_cull.comp.spv", bindings, "veg.cull") &&
                        compact_.create(ctx.device(), dir + "vegetation_compact.comp.spv", bindings, "veg.compact") &&
                        sets_.create(ctx.device(), cull_, kSlots, "veg.sets");
         if (!pipelinesOk_) mc2::fmt::print_err("[VEG_GPU] compute pipelines unavailable: GPU vegetation declined\n");
@@ -142,39 +151,43 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
     }
     if (!pipelinesOk_ || !ready()) return false;
     if (boundGeneration_ != generation_) {
-        // The population was replaced behind a device idle (upload); no submit names these sets now.
-        const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        for (uint32_t i = 0; i < kSlots; ++i) {
-            sets_.write(ctx.device(), i, 2, S, instances_.get());
-            sets_.write(ctx.device(), i, 3, S, regions_.get());
-            sets_.write(ctx.device(), i, 5, S, slot_[i].counts.get());
-            sets_.write(ctx.device(), i, 6, S, slot_[i].offsets.get());
-            sets_.write(ctx.device(), i, 7, S, slot_[i].dense.get());
-            sets_.write(ctx.device(), i, 8, S, slot_[i].args.get());
-            if (drawSets_[i]) {
-                const VkDescriptorBufferInfo infos[2] = {{instances_.get(), 0, VK_WHOLE_SIZE}, {slot_[i].dense.get(), 0, VK_WHOLE_SIZE}};
-                VkWriteDescriptorSet w[2]{};
-                for (uint32_t b = 0; b < 2; ++b) {
-                    w[b].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    w[b].dstSet = drawSets_[i]; w[b].dstBinding = b; w[b].descriptorCount = 1;
-                    w[b].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[b].pBufferInfo = &infos[b];
-                }
-                vkUpdateDescriptorSets(ctx.device(), 2, w, 0, nullptr);
-            }
-        }
+        // The population was replaced while earlier frames may still be pending on the old sets: only mark every parity dirty. Each parity's sets are
+        // rewritten in record() after that parity's ticket wait, never while a pending submit can read them.
+        for (bool& d : descDirty_) d = true;
         boundGeneration_ = generation_;
     }
     return true;
 }
 
+void State::writeSlotSets(mc2vk::VulkanContext& ctx, uint32_t i) {
+    const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    sets_.write(ctx.device(), i, 2, S, instances_.get());
+    sets_.write(ctx.device(), i, 3, S, regions_.get());
+    sets_.write(ctx.device(), i, 5, S, slot_[i].counts.get());
+    sets_.write(ctx.device(), i, 6, S, slot_[i].offsets.get());
+    sets_.write(ctx.device(), i, 7, S, slot_[i].dense.get());
+    sets_.write(ctx.device(), i, 8, S, slot_[i].args.get());
+    sets_.write(ctx.device(), i, 9, S, slot_[i].visList.get());
+    if (drawSets_[i]) {
+        const VkDescriptorBufferInfo infos[2] = {{instances_.get(), 0, VK_WHOLE_SIZE}, {slot_[i].dense.get(), 0, VK_WHOLE_SIZE}};
+        VkWriteDescriptorSet w[2]{};
+        for (uint32_t b = 0; b < 2; ++b) {
+            w[b].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w[b].dstSet = drawSets_[i]; w[b].dstBinding = b; w[b].descriptorCount = 1;
+            w[b].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[b].pBufferInfo = &infos[b];
+        }
+        vkUpdateDescriptorSets(ctx.device(), 2, w, 0, nullptr);
+    }
+}
+
 bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, const mc2vk::FrameAlloc& span, VkDeviceSize paramsOff, VkDeviceSize visOff,
                    CullParams params, std::span<const uint32_t> visibility) {
-    if (par >= kSlots || !span || !ensurePipelines(ctx)) return false;
-    const uint32_t gridX = std::min<uint32_t>(regionCount_, 32768u), gridY = (regionCount_ + gridX - 1) / gridX;
+    if (par >= kSlots || !span || regionCount_ == 0 || !ensurePipelines(ctx)) return false;
+    if (descDirty_[par]) { writeSlotSets(ctx, par); descDirty_[par] = false; }   // this parity's slot wait has completed: its sets are idle
     params.counts[0] = regionCount_;
     params.counts[1] = instanceCount_;
     params.counts[2] = static_cast<uint32_t>(visibility.size());
-    params.flags[1] = gridX;
+    params.flags[1] = 0;   // the grid-stride slot is unused since the indirect two-level cull
     params.flags[3] = std::min(instanceCount_, mc2::vegetation::kVisibleCapacity);
     std::memcpy(static_cast<uint8_t*>(span.ptr) + paramsOff, &params, sizeof(params));
     if (!visibility.empty()) std::memcpy(static_cast<uint8_t*>(span.ptr) + visOff, visibility.data(), visibility.size_bytes());
@@ -208,14 +221,15 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
     const uint32_t dyn[2] = {static_cast<uint32_t>(span.offset + paramsOff), static_cast<uint32_t>(span.offset + visOff)};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.VegCull");
     const VkPipelineStageFlags cs = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    cull_.bind(cb, set, dyn);
-    vkCmdDispatch(cb, gridX, gridY, 1);
-    mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    scan_.bind(cb, set, dyn);
+    // Level 1: one workgroup picks the visible regions and writes the indirect dispatch (args byte 48); level 2 runs over them only.
+    region_.bind(cb, set, dyn);
     vkCmdDispatch(cb, 1, 1, 1);
+    mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+    cull_.bind(cb, set, dyn);
+    vkCmdDispatchIndirect(cb, slot_[par].args.get(), 48);
     mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT);
     compact_.bind(cb, set, dyn);
-    vkCmdDispatch(cb, gridX, gridY, 1);
+    vkCmdDispatchIndirect(cb, slot_[par].args.get(), 48);
     mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT,
                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | cs,
                       VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
@@ -247,7 +261,7 @@ bool State::ensureDrawLayout(mc2vk::VulkanContext& ctx) {
     for (auto& layout : layouts) layout = drawDsl_.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool = drawPool_.get(); ai.descriptorSetCount = kSlots; ai.pSetLayouts = layouts;
-    if (vkAllocateDescriptorSets(dev, &ai, drawSets_) != VK_SUCCESS) { drawSets_[0] = drawSets_[1] = VK_NULL_HANDLE; return false; }
+    if (MC2_VK_ALLOC_SETS(dev, &ai, drawSets_) != VK_SUCCESS) { drawSets_[0] = drawSets_[1] = VK_NULL_HANDLE; return false; }
     boundGeneration_ = 0;   // the static bindings of the new sets are written on the next ensurePipelines
     return true;
 }

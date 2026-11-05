@@ -232,7 +232,7 @@ struct MechIsland : mc2vk::IslandState {
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). The timer owns its query pool and is torn down first.
-    mc2vk::OwnedCommandPool cpool;
+    mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool instead of per-cb reset (game pass and lab preview share cbuf[par])
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -242,6 +242,7 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe, depthPipe;
     mc2vk::OwnedBuffer vbo, ibo;
+    VkDeviceSize vboBytes = 0, iboBytes = 0;   // sizes of the buffers above, for retire accounting
     // Mech-lab panel pass: the same skinned material path, drawn into the UI preview target (RGBA8 color LOAD over the
     // legacy preview pass, own cleared depth). Fail-soft: a missing variant leaves previewReady false and the world path intact.
     mc2vk::OwnedShaderModule previewFrag;
@@ -384,7 +385,7 @@ bool alloc_scheme_sets(MechIsland* s, VkImageView albedo, VkImageView ao, VkImag
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-    if (vkAllocateDescriptorSets(s->device, &dsai, out) != VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device, &dsai, out) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
         write_ring_bindings(s, out[par]);
         for (VkBuffer& b : s->ringBound[par]) b = VK_NULL_HANDLE;   // the next frame of this parity rewrites its sets at the buffers its spans live in
@@ -496,13 +497,15 @@ bool init_island(MechIsland* s, int w, int h) {
     {
         VkCommandPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pci.flags = 0;
         pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) { vlog("cmd pool failed."); return false; }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
+        for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
+            if (!mc2vk::create(s->cpool[i], s->device, [&](VkCommandPool* h) { return vkCreateCommandPool(s->device, &pci, nullptr, h); })) { vlog("cmd pool failed."); return false; }
+            VkCommandBufferAllocateInfo cai{};
+            cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            cai.commandPool = s->cpool[i].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+            if (vkAllocateCommandBuffers(s->device, &cai, &s->cbuf[i]) != VK_SUCCESS) { vlog("cmd bufs failed."); return false; }
+        }
     }
 
     // VK-DRAW-PERF-1: 3-stamp GPU timer (pass-start / draws-start / pass-end).
@@ -821,11 +824,12 @@ bool upload_geometry_once(MechIsland* s) {
         // A new map (or a normals rebuild) replaced the batcher's vertex and index sets: the draw runs index into the NEW
         // set, so a buffer kept from the previous map is read past its end (VUID-vkCmdDrawIndexed-robustBufferAccess2-08798).
         // Frames in flight may still read the old buffers.
-        mc2vk::getOrCreateEngineVulkanContext().waitIdle("mech_geometry_regen");
-        s->vbo.reset();
-        s->ibo.reset();
+        auto& rctx = mc2vk::getOrCreateEngineVulkanContext();
+        if (s->vbo) rctx.retire(std::move(s->vbo), s->vboBytes);
+        if (s->ibo) rctx.retire(std::move(s->ibo), s->iboBytes);
         s->geomUploaded = false;
     }
+    s->vboBytes = feed.vboBytes; s->iboBytes = feed.iboBytes;
     // The bytes come from the batcher's CPU copy (the exact bytes the GL buffers were created from).
     if (feed.vertexStride != mc2_mech_vertex_stride())
         vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
@@ -896,7 +900,7 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
 static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, int h, const Mc2MechFrameFeed& feed,
                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5],
                         const Mc2GroundLightingFrame* ground, int poolN, VkBuffer boneBuffer, VkDeviceSize boneRange, unsigned long& runsOut) {
-    vkResetCommandBuffer(cb, 0);
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1198,6 +1202,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         us_fence_wait = usSince(tInline0);
     }
     g_health.drawUs = usSince(tRender0);
+    if (s->gpuTimer.supported) rctx.poll();   // resolve() waits on the query results: the deferred batch holding this cb must be on the queue first
     s->gpuTimer.resolve();   // VK-DRAW-PERF-1: fence signalled -> fold GPU segment times
 
     const bool readbackFired = (g_forbidden.glGetTexImage != f0b) || (g_forbidden.glReadPixels != f0c);
@@ -1248,8 +1253,8 @@ int previewFail(std::string_view why) {
 
 // Depth prepass + material runs into the preview framebuffer, viewport/scissor = the panel rect.
 bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFeed& feed,
-                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h) {
-    vkResetCommandBuffer(cb, 0);
+                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par) {
+    vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
@@ -1426,7 +1431,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
     }
 
     VkCommandBuffer cb = s->cbuf[par];
-    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h)) return previewFail("record_failed");
+    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h, par)) return previewFail("record_failed");
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) return previewFail("submit_failed");

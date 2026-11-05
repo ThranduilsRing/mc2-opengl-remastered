@@ -351,7 +351,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     const VkDescriptorSetLayout layout = s->cullDsl.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
-    if (vkAllocateDescriptorSets(s->device,&ai,&s->cullSet) != VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS(s->device,&ai,&s->cullSet) != VK_SUCCESS) return false;
     // Slots past the real mip count repeat the last level (the shader never selects them).
     VkDescriptorImageInfo images[kCullMaxLevels];
     for (uint32_t i = 0; i < kCullMaxLevels; ++i)
@@ -614,9 +614,9 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
             dsai.descriptorPool = s->pool.get();
             dsai.descriptorSetCount = 1;
             dsai.pSetLayouts = &dslHandle;
-            r = vkAllocateDescriptorSets(s->device, &dsai, &lv.set);
+            r = MC2_VK_ALLOC_SETS(s->device, &dsai, &lv.set);
             if (r != VK_SUCCESS) {
-                vlog("vkAllocateDescriptorSets(level %d) failed (%d).", level, static_cast<int>(r));
+                vlog("MC2_VK_ALLOC_SETS(level %d) failed (%d).", level, static_cast<int>(r));
                 return false;
             }
 
@@ -977,8 +977,8 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     barrier(s->depthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
 
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
         setFallback("record_failed");

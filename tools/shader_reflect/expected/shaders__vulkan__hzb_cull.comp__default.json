@@ -7,6 +7,19 @@
       "binding": 1,
       "members": [
         {
+          "array_stride": 32,
+          "matrix_stride": null,
+          "name": "bounds",
+          "offset": 0,
+          "type": "_414"
+        }
+      ],
+      "name": "ProjectedBounds"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
           "array_stride": null,
           "matrix_stride": null,
           "name": "culled",
@@ -24,27 +37,27 @@
       "name": "Visibility"
     },
     {
-      "binding": 2,
+      "binding": 3,
       "members": [
         {
           "array_stride": 112,
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
-          "type": "_281"
+          "type": "_44"
         }
       ],
       "name": "Instances"
     },
     {
-      "binding": 3,
+      "binding": 4,
       "members": [
         {
           "array_stride": 32,
           "matrix_stride": null,
           "name": "types",
           "offset": 0,
-          "type": "_317"
+          "type": "_71"
         }
       ],
       "name": "TypeBounds"
