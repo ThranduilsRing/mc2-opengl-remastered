@@ -67,9 +67,7 @@ def ownership_problems(modules: list[str], data: dict) -> list[str]:
             issues.append(f"duplicate owner: {module}")
         if aggregate in owners and len(owners) > 1:
             issues.append(f"duplicate execution: {module} (aggregate and direct owners)")
-    for module in modules:
-        if module not in owners_by_module:
-            issues.append(f"zero owners: {module}")
+    # A discovered module with no entry is owned by the aggregate (scripts_tests): a new test file needs no row.
     for module in owners_by_module:
         if module not in modules:
             issues.append(f"stale ownership entry: {module}")
@@ -85,7 +83,7 @@ def select_modules(modules: list[str], data: dict, requested: list[str] | None =
         return [module for module in modules if module in set(requested)]
     aggregate = data["aggregate_owner"]
     owners = {entry["module"]: entry["owners"] for entry in data["tests"]}
-    return [module for module in modules if owners.get(module) == [aggregate]]
+    return [module for module in modules if owners.get(module, [aggregate]) == [aggregate]]
 
 
 def main() -> int:
