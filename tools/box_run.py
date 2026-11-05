@@ -137,7 +137,7 @@ def seed(repo):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--gpu", default="auto", help="0-2, or auto (first free of 0-2; captures need 0); 3 needs --gate")
-    ap.add_argument("--capture-any-gpu", action="store_true", help="allow capture rows on GPU 1-3 (needs a build with claude/vk-headless-present eac614635)")
+    ap.add_argument("--capture-any-gpu", action="store_true", help="allow capture and smoke rows on GPU 1-3 (they present; mc2_01 dies after the 60 s present-retry budget) (needs a build with claude/vk-headless-present eac614635)")
     ap.add_argument("--gate", action="store_true", help="merge gate: allow GPU 3")
     ap.add_argument("--seed", action="store_true", help="one-time golden install seeding")
     ap.add_argument("--repo", default=str(Path(__file__).resolve().parents[1]))
@@ -165,17 +165,21 @@ def main():
     ref = f"refs/box-run/{branch}"
     git("update-ref", ref, sha, repo=repo)
     bundle = Path(tempfile.gettempdir()) / f"box_{branch}.bundle"
-    try:
-        run(["git", "-C", str(repo), "bundle", "create", "-q", str(bundle), ref, *excl], check=True)
-        run([*SCP, str(bundle), f"{HOST}:/workspace/lanes_{branch}.bundle"], check=True)
-    finally:
+    if sha in have:   # mirror already has this commit: just point the lane ref at it
         git("update-ref", "-d", ref, repo=repo)
-        bundle.unlink(missing_ok=True)
-    run([*SSH, f"mkdir -p /workspace/lanes && GIT_LFS_SKIP_SMUDGE=1 git -C {MIRROR} fetch -q /workspace/lanes_{branch}.bundle "
-               f"{ref}:refs/lanes/{branch} && rm /workspace/lanes_{branch}.bundle"], check=True)
+        run([*SSH, f"git -C {MIRROR} update-ref refs/lanes/{branch} {sha}"], check=True)
+    else:
+        try:
+            run(["git", "-C", str(repo), "bundle", "create", "-q", str(bundle), ref, *excl], check=True)
+            run([*SCP, str(bundle), f"{HOST}:/workspace/lanes_{branch}.bundle"], check=True)
+        finally:
+            git("update-ref", "-d", ref, repo=repo)
+            bundle.unlink(missing_ok=True)
+        run([*SSH, f"mkdir -p /workspace/lanes && GIT_LFS_SKIP_SMUDGE=1 git -C {MIRROR} fetch -q /workspace/lanes_{branch}.bundle "
+                   f"{ref}:refs/lanes/{branch} && rm /workspace/lanes_{branch}.bundle"], check=True)
     t["bundle+push"] = time.time() - t0
     # gpu choice
-    cap0 = 1 if (any(r.startswith("capture") for r in a.rows) and not a.capture_any_gpu) else 0
+    cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu) else 0
     gpu = a.gpu
     if a.gate:
         gpu = "3"   # advisory clang gate evidence runs on the reserved gate GPU (lock /workspace/locks/gpu3)
