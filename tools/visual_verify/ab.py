@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VK before/after A/B: capture two builds on the Vulkan backend, then montage + crops + diff heatmap + MAD table.
+"""VK before/after A/B: capture two builds on the Vulkan backend, then montage (A|B with a FLIP error map below) + crops + diff heatmap + FLIP/MAD table.
 
 A is the left/"before" image, B the right/"after" one. Pick the two builds one way:
   --install-a DIR --install-b DIR     two installs (each has its own mc2.exe + data)
@@ -77,6 +77,26 @@ def heat(d: np.ndarray) -> Image.Image:
     return Image.fromarray(np.stack([r, g, b], -1))
 
 
+def flip_map(a: Image.Image, b: Image.Image):
+    """NVIDIA FLIP (LDR) error map, HxW float in [0,1]; None when flip-evaluator is not installed (pip install flip-evaluator==1.7)."""
+    try:
+        import flip_evaluator
+    except ImportError:
+        print("[ab] flip-evaluator not installed: FLIP columns are n/a", flush=True)
+        return None
+    f32 = lambda im: np.asarray(im, dtype=np.float32) / 255.0
+    return flip_evaluator.evaluate(f32(a), f32(b), "LDR", inputsRGB=True, applyMagma=False)[0][:, :, 0]
+
+
+def flip_image(fm: np.ndarray) -> Image.Image:
+    """Magma-like ramp (black, purple, orange, pale yellow) of the FLIP map; FLIP 1.0 = full scale, no gain."""
+    v = np.clip(fm, 0, 1)
+    r = np.clip(v * 3.0, 0, 1)
+    g = np.clip(v * 3.0 - 1.2, 0, 1)
+    bl = np.clip(np.where(v < 0.5, v * 2.0, 1.2 - v * 2.0), 0, 1) * 0.8 + np.clip(v * 3.0 - 2.2, 0, 1) * 0.6
+    return Image.fromarray((np.stack([r, g, np.clip(bl, 0, 1)], -1) * 255).astype(np.uint8))
+
+
 def crop_box(img, c):
     w, h = img.size
     return (int(c[0] * w), int(c[1] * h), max(int(c[2] * w), int(c[0] * w) + 1),
@@ -102,14 +122,26 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
             b = b.resize(a.size, Image.LANCZOS)
         A, B = np.asarray(a).astype(np.int16), np.asarray(b).astype(np.int16)
         D = np.abs(A - B)
+        fm = flip_map(a, b)
         row = {"bookmark": bm, "size": list(a.size),
+               "flip_mean": float(fm.mean()) if fm is not None else None,
+               "flip_p99": float(np.percentile(fm, 99)) if fm is not None else None,
                "mad": float(D.mean()),
                "pct_diff_gt24": float((D.max(axis=2) > THRESH).mean() * 100),
                "size_mismatch": size_mismatch,
                "crops": []}
         bd = out / bm
         bd.mkdir(exist_ok=True)
-        side(a, b, 1800).save(bd / "montage.jpg", quality=85)
+        m = side(a, b, 1800)
+        if fm is not None:  # FLIP error map under the A|B pair, scaled to the montage width
+            fi = flip_image(fm)
+            fi = fi.resize((m.width, max(1, int(fi.height * m.width / fi.width))), Image.BILINEAR)
+            mm = Image.new("RGB", (m.width, m.height + fi.height))
+            mm.paste(m, (0, 0))
+            mm.paste(fi, (0, m.height))
+            m = mm
+            flip_image(fm).save(bd / "flip.jpg", quality=85)
+        m.save(bd / "montage.jpg", quality=85)
         h = heat(D.astype(np.uint8))
         if h.width > 1200:
             h = h.resize((1200, int(h.height * 1200 / h.width)), Image.BILINEAR)
@@ -118,14 +150,18 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
             box = crop_box(a, c)
             ca, cb = a.crop(box), b.crop(box)
             m = float(D[box[1]:box[3], box[0]:box[2]].mean())
-            row["crops"].append({"crop": list(c), "mad": m})
+            row["crops"].append({"crop": list(c), "mad": m,
+                                 "flip_mean": float(fm[box[1]:box[3], box[0]:box[2]].mean()) if fm is not None else None})
             side(ca, cb, 1600).save(bd / f"crop{i}.jpg", quality=85)
         rows.append(row)
-    hdr = "bookmark | MAD | %>24" + "".join(f" | crop{i}" for i in range(len(crops)))
+    # FLIP leads (perceptual: 0 identical, 1 worst); MAD and %>24 stay for continuity. No pass threshold here.
+    hdr = "bookmark | FLIP mean | FLIP p99 | MAD | %>24" + "".join(f" | crop{i} (MAD/FLIP)" for i in range(len(crops)))
     print(hdr)
     for r in rows:
-        print(f"{r['bookmark']} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
-              + "".join(f" | {c['mad']:.2f}" for c in r["crops"]))
+        fmean = "n/a" if r["flip_mean"] is None else f"{r['flip_mean']:.4f}"
+        fp99 = "n/a" if r["flip_p99"] is None else f"{r['flip_p99']:.4f}"
+        print(f"{r['bookmark']} | {fmean} | {fp99} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
+              + "".join(f" | {c['mad']:.2f}/" + ("n/a" if c["flip_mean"] is None else f"{c['flip_mean']:.4f}") for c in r["crops"]))
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows}, indent=2))
     print(f"[ab] wrote {out}")
