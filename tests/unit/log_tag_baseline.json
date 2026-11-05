@@ -2111,6 +2111,13 @@
   },
   {
    "tag": "CONFIG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "CONFIG",
    "ver": 1,
    "stream": "buffer",
    "keys": [

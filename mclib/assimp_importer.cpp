@@ -255,13 +255,13 @@ inline bool skelMeshDropped(const char* n) {
 // stores the bone index in a byte. A skinned mesh with several influences loses its
 // weights; more than 256 bones wraps. Neither is supported: say so once (diag tag CONFIG,
 // default-on) instead of silently rendering a wrong pose. Stock BT2018 GLBs never trigger it.
-static void noteUnsupportedSkin(const char* what, const char* meshName) {
+static void noteUnsupportedSkin(std::string_view what, std::string_view meshName) {
 	static bool once = false;
 	if (once) return;
 	once = true;
 	if (mc2_diag::tagRequested("CONFIG"))
 		mc2::fmt::print_err("[CONFIG] glTF import: {} (mesh '{}'): imported rigidly on one bone, per-vertex skin weights dropped; further occurrences not logged\n",
-			what, mc2::fmt::safe(meshName));
+			std::string(what).c_str(), std::string(meshName).c_str());
 }
 
 //-----------------------------------------------------------------------------

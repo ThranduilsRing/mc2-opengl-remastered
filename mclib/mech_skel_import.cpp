@@ -11,6 +11,8 @@
 #include <cstring>
 #include <map>
 #include <memory>
+#include <optional>
+#include <span>
 #include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -54,15 +56,15 @@ struct LocalTRS { aiVector3D scl; aiQuaternion rot; aiVector3D pos; };
 LocalTRS sampleTRS(const aiNodeAnim* ch, double t,
                    const aiMatrix4x4& nodeDefault, bool rotationOnly, double secPerTick) {
     aiVector3D pos = ch->mNumPositionKeys
-        ? clip::sampleVec3<aiVectorKey, aiVector3D>(ch->mPositionKeys, ch->mNumPositionKeys, t, secPerTick)
+        ? clip::sampleVec3<aiVectorKey, aiVector3D>(std::span<const aiVectorKey>(ch->mPositionKeys, ch->mNumPositionKeys), t, secPerTick)
         : aiVector3D(0, 0, 0);
     aiVector3D scl = ch->mNumScalingKeys
-        ? clip::sampleVec3<aiVectorKey, aiVector3D>(ch->mScalingKeys, ch->mNumScalingKeys, t, secPerTick)
+        ? clip::sampleVec3<aiVectorKey, aiVector3D>(std::span<const aiVectorKey>(ch->mScalingKeys, ch->mNumScalingKeys), t, secPerTick)
         : aiVector3D(1, 1, 1);
     aiQuaternion rot;  // no rotation keys: identity unless rotation-only fallback fills it below
     if (ch->mNumRotationKeys)
         rot = clip::sampleQuat<aiQuatKey, aiQuaternion>(
-            ch->mRotationKeys, ch->mNumRotationKeys, t, secPerTick,
+            std::span<const aiQuatKey>(ch->mRotationKeys, ch->mNumRotationKeys), t, secPerTick,
             [](aiQuaternion& out, const aiQuaternion& a, const aiQuaternion& b, float f) {
                 aiQuaternion::Interpolate(out, a, b, f);
                 out.Normalize();
@@ -188,10 +190,10 @@ std::shared_ptr<const SkelPlan> BuildPlan(const aiScene* scene, const std::vecto
 }
 
 namespace {
-int findAnim(const aiScene* scene, std::string_view clip) {
+std::optional<int> findAnim(const aiScene* scene, std::string_view clip) {
     for (unsigned a = 0; a < scene->mNumAnimations; ++a)
         if (clip == scene->mAnimations[a]->mName.C_Str()) return static_cast<int>(a);
-    return -1;
+    return std::nullopt;
 }
 
 void emitBones(const SkelPlan& plan, const std::vector<aiMatrix4x4>& globals, std::vector<GpuBone>& out) {
@@ -240,8 +242,8 @@ bool EvaluateClipGpuBones(const SkelPlan& plan,
         return true;
     }
     const bool clipDiag = mc2::gate::get<"MC2_MECH_IMPORT_CLIP_DIAG">();
-    const int ai = findAnim(scene, clip);
-    if (ai < 0) {
+    const std::optional<int> aiOpt = findAnim(scene, clip);
+    if (!aiOpt) {
         if (clipDiag) {
             static int miss = 0;
             if (miss++ < 12) {
@@ -253,6 +255,7 @@ bool EvaluateClipGpuBones(const SkelPlan& plan,
         }
         return false;
     }
+    const int ai = *aiOpt;
     const aiAnimation* anim = scene->mAnimations[ai];
     const double t = clipTicks(anim, frame);
     if (clipDiag) {
@@ -292,8 +295,9 @@ bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
     if (weightB <= 0.0f) return EvaluateClipGpuBones(plan, clipA, frameA, out);
     if (weightB >= 1.0f) return EvaluateClipGpuBones(plan, clipB, frameB, out);
     const aiScene* scene = plan.scene;
-    const int ia = findAnim(scene, clipA), ib = findAnim(scene, clipB);
-    if (ia < 0 || ib < 0) return false;
+    const std::optional<int> iaOpt = findAnim(scene, clipA), ibOpt = findAnim(scene, clipB);
+    if (!iaOpt || !ibOpt) return false;
+    const int ia = *iaOpt, ib = *ibOpt;
     const aiAnimation* aa = scene->mAnimations[ia];
     const aiAnimation* ab = scene->mAnimations[ib];
     const double ta = clipTicks(aa, frameA), tb = clipTicks(ab, frameB);
