@@ -22,6 +22,7 @@ namespace mc2 { class VkSceneRenderer; }
 #include<mutex>  // std::recursive_mutex — FRAME-JOBS-2 precondition (vertex node allocators)
 #include<atomic> // TXMMGR-BOUNDS-HARDEN-1 exhaustion counters
 #include<cstdio> // TXMMGR-BOUNDS-HARDEN-1 trace emit
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // TXMMGR-BOUNDS-HARDEN-1 — pool/block exhaustion guards (defined in txmmgr.cpp).
@@ -145,8 +146,8 @@ class gos_VERTEXManager
 			{
 				g_txmmgr_vertex_block_exhausted.fetch_add(1, std::memory_order_relaxed);
 				if (g_txmmgrBoundsTrace)
-					fprintf(stderr, "[TXMMGR_BOUNDS v1] vertex_block_exhausted need=%ld cur=%ld total=%ld\n",
-							numVertices, currentVertex, totalVertices);
+					mc2::fmt::print_err("[TXMMGR_BOUNDS v1] vertex_block_exhausted need={:d} cur={:d} total={:d}\n",
+							mc2::fmt::as_i32(numVertices), mc2::fmt::as_i32(currentVertex), mc2::fmt::as_i32(totalVertices));
 				return nullptr;
 			}
 			gos_VERTEX *start = reinterpret_cast<gos_VERTEX *>(storage);

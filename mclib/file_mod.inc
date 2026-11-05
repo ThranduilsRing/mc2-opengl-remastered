@@ -20,6 +20,7 @@
 #include "Gates/gate_cold.h"
 #include "Gates/render_options.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 namespace
 {
@@ -142,13 +143,13 @@ static void EmitResolveRecord(
     const char* layerIndex = layer && std::string_view(layer).ends_with("#scratch")
         ? ",\"layer_index\":0" : "";
     if (shadowed) {
-        fprintf(g_traceFile,
-            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s,\"shadowed\":%s%s}\n",
-            t, keyJ, reqJ, layerJ, pathJ, shadowBuf, layerIndex);
+        mc2::fmt::print(g_traceFile,
+            "{{\"v\":1,\"t\":{:.3f},\"key\":{},\"req\":{},\"layer\":{},\"path\":{},\"shadowed\":{}{}}}\n",
+            t, mc2::fmt::safe(keyJ), mc2::fmt::safe(reqJ), mc2::fmt::safe(layerJ), mc2::fmt::safe(pathJ), mc2::fmt::safe(shadowBuf), mc2::fmt::safe(layerIndex));
     } else {
-        fprintf(g_traceFile,
-            "{\"v\":1,\"t\":%.3f,\"key\":%s,\"req\":%s,\"layer\":%s,\"path\":%s%s}\n",
-            t, keyJ, reqJ, layerJ, pathJ, layerIndex);
+        mc2::fmt::print(g_traceFile,
+            "{{\"v\":1,\"t\":{:.3f},\"key\":{},\"req\":{},\"layer\":{},\"path\":{}{}}}\n",
+            t, mc2::fmt::safe(keyJ), mc2::fmt::safe(reqJ), mc2::fmt::safe(layerJ), mc2::fmt::safe(pathJ), mc2::fmt::safe(layerIndex));
     }
 }
 
@@ -232,8 +233,8 @@ static void IndexModData(
                 idx[key] = { fullChild, modId };
             } else {
                 if (logFileResolve) {
-                    printf("[mod-dup] %s  winner=[%s]  loser=[%s]\n",
-                           key.c_str(), existing->second.modId.c_str(), modId);
+                    mc2::fmt::print_out("[mod-dup] {}  winner=[{}]  loser=[{}]\n",
+                           key.c_str(), existing->second.modId.c_str(), mc2::fmt::safe(modId));
                     fflush(stdout);
                 }
                 // Track for level-2 shadowed[] field (built regardless of log level so
@@ -323,12 +324,12 @@ static void WriteModIndexCache(
     if (!f) return;
     char sigLine[64];
     formatModCacheSigLine(sig, sigLine, sizeof(sigLine));
-    fprintf(f, "%s\n", kCacheHeader);
-    fprintf(f, "modid %s\n", modId.c_str());
-    fprintf(f, "%s\n", sigLine);
-    fprintf(f, "count %zu\n", entries.size());
+    mc2::fmt::print(f, "{}\n", mc2::fmt::safe(kCacheHeader));
+    mc2::fmt::print(f, "modid {}\n", modId.c_str());
+    mc2::fmt::print(f, "{}\n", mc2::fmt::safe(sigLine));
+    mc2::fmt::print(f, "count {:d}\n", mc2::fmt::as_size(entries.size()));
     for (auto& e : entries)
-        fprintf(f, "%s\t%s\t%s\n", e.first.c_str(), e.second.path.c_str(), e.second.modId.c_str());
+        mc2::fmt::print(f, "{}\t{}\t{}\n", e.first.c_str(), e.second.path.c_str(), e.second.modId.c_str());
     fclose(f);
 }
 
@@ -407,7 +408,7 @@ static std::optional<int> LoadModIndexCache(
             // Same loser bookkeeping as IndexModData, so the conflict report
             // does not depend on whether the layer came from cache or a walk.
             if (logFileResolve) {
-                printf("[mod-dup] %s  winner=[%s]  loser=[%s]\n",
+                mc2::fmt::print_out("[mod-dup] {}  winner=[{}]  loser=[{}]\n",
                        key.c_str(), existing->second.modId.c_str(), modid.c_str());
                 fflush(stdout);
             }
@@ -429,7 +430,7 @@ static bool TryLoadModCache(
     const char* dataDir       // e.g. "...mods/mc2x-pbr/data/"
 ) {
     if (mc2::gate::get<"MC2_REBUILD_MOD_CACHE">()) {
-        printf("[mod-cache] refresh modid='%s' reason=MC2_REBUILD_MOD_CACHE\n", modId);
+        mc2::fmt::print_out("[mod-cache] refresh modid='{}' reason=MC2_REBUILD_MOD_CACHE\n", mc2::fmt::safe(modId));
         fflush(stdout);
         return false;
     }
@@ -448,17 +449,17 @@ static bool TryLoadModCache(
     bool sigMismatch = false;
     auto loaded = LoadModIndexCache(idx, shadowed, cachePath, modId, diskSig, dataDir, &sigMismatch);
     if (!loaded) {
-        printf("[mod-cache] refresh modid='%s' reason=%s (files=%llu maxMtime=%llu)\n",
-               modId,
-               sigMismatch ? "signature-mismatch (mod files changed)"
-                           : "cache missing/stale-format",
-               diskSig.fileCount, diskSig.maxMtime);
+        mc2::fmt::print_out("[mod-cache] refresh modid='{}' reason={} (files={:d} maxMtime={:d})\n",
+               mc2::fmt::safe(modId),
+               mc2::fmt::safe(sigMismatch ? "signature-mismatch (mod files changed)"
+                           : "cache missing/stale-format"),
+               mc2::fmt::as_u64(diskSig.fileCount), mc2::fmt::as_u64(diskSig.maxMtime));
         fflush(stdout);
         return false;
     }
 
-    printf("[mod-cache] hit modid='%s' loaded=%d files (sig files=%llu maxMtime=%llu)\n",
-           modId, *loaded, diskSig.fileCount, diskSig.maxMtime);
+    mc2::fmt::print_out("[mod-cache] hit modid='{}' loaded={:d} files (sig files={:d} maxMtime={:d})\n",
+           mc2::fmt::safe(modId), mc2::fmt::as_i32(*loaded), mc2::fmt::as_u64(diskSig.fileCount), mc2::fmt::as_u64(diskSig.maxMtime));
     fflush(stdout);
     return true;
 }
@@ -492,8 +493,8 @@ static void IndexModDataCached(
             idx[key] = entry;
         } else {
             if (logFileResolve) {
-                printf("[mod-dup] %s  winner=[%s]  loser=[%s]\n",
-                       key.c_str(), existing->second.modId.c_str(), modId);
+                mc2::fmt::print_out("[mod-dup] {}  winner=[{}]  loser=[{}]\n",
+                       key.c_str(), existing->second.modId.c_str(), mc2::fmt::safe(modId));
                 fflush(stdout);
             }
             shadowed[key].push_back(modId);
@@ -512,11 +513,11 @@ static void IndexModDataCached(
     ModCacheSignature sig;
     ComputeModDataSignature(dataDir, &sig);
     WriteModIndexCache(cachePath, modId, sig, fresh);
-    printf("[mod-cache] miss modid='%s' indexed=%zu wrote cache (sig files=%llu maxMtime=%llu)\n",
-           modId, fresh.size(), sig.fileCount, sig.maxMtime);
+    mc2::fmt::print_out("[mod-cache] miss modid='{}' indexed={:d} wrote cache (sig files={:d} maxMtime={:d})\n",
+           mc2::fmt::safe(modId), mc2::fmt::as_size(fresh.size()), mc2::fmt::as_u64(sig.fileCount), mc2::fmt::as_u64(sig.maxMtime));
     if (logFileResolve >= 1 && skippedDot > 0)
-        printf("[mod] [%s] skipped %d dot-entr%s (ruling C4)\n",
-               modId, skippedDot, skippedDot == 1 ? "y" : "ies");
+        mc2::fmt::print_out("[mod] [{}] skipped {:d} dot-entr{} (ruling C4)\n",
+               mc2::fmt::safe(modId), mc2::fmt::as_i32(skippedDot), mc2::fmt::safe(skippedDot == 1 ? "y" : "ies"));
     fflush(stdout);
 }
 
@@ -593,7 +594,7 @@ static std::optional<int> TryModOpen(const char* fileName, const char* req = nul
     std::string key = NormalizeKey(fileName);
     auto it = g_modIndex.find(key);
     if (it == g_modIndex.end()) {
-        if (logFileResolve) { printf("[mod-miss] %s\n", key.c_str()); fflush(stdout); }
+        if (logFileResolve) { mc2::fmt::print_out("[mod-miss] {}\n", key.c_str()); fflush(stdout); }
         // MISS record emitted by the caller after the full ladder, not here.
         return std::nullopt;
     }
@@ -601,7 +602,7 @@ static std::optional<int> TryModOpen(const char* fileName, const char* req = nul
     if (h == -1) return std::nullopt;
     crashbundle_content_fd(h, fileName, it->second.modId.c_str());
     if (logFileResolve) {
-        printf("[mod-hit] [%s] %s -> %s\n",
+        mc2::fmt::print_out("[mod-hit] [{}] {} -> {}\n",
                it->second.modId.c_str(), key.c_str(), it->second.path.c_str());
         fflush(stdout);
     }
@@ -829,11 +830,11 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
         ++conflicts;
         if (printed < printCap) {
             ++printed;
-            printf("[CONTENT] mod-dup path=%s winner=%s losers=%s\n", key.c_str(), win.modId.c_str(), differing.c_str());
+            mc2::fmt::print_out("[CONTENT] mod-dup path={} winner={} losers={}\n", key.c_str(), win.modId.c_str(), differing.c_str());
         }
     }
-    printf("[CONTENT] mod-dup summary: active='%s' files_with_lower_layer=%zu differing=%zu identical=%zu printed=%zu partial=%d unscanned_keys=%zu scan_ms=%llu\n",
-           activeId.c_str(), scanned, conflicts, identical, printed, partial ? 1 : 0, unscanned, static_cast<unsigned long long>(GetTickCount64() - t0));
+    mc2::fmt::print_out("[CONTENT] mod-dup summary: active='{}' files_with_lower_layer={:d} differing={:d} identical={:d} printed={:d} partial={:d} unscanned_keys={:d} scan_ms={:d}\n",
+           activeId.c_str(), mc2::fmt::as_size(scanned), mc2::fmt::as_size(conflicts), mc2::fmt::as_size(identical), mc2::fmt::as_size(printed), mc2::fmt::as_i32(partial ? 1 : 0), mc2::fmt::as_size(unscanned), mc2::fmt::as_u64(static_cast<unsigned long long>(GetTickCount64() - t0)));
     fflush(stdout);
 }
 
@@ -872,7 +873,7 @@ void InitModSearchPaths(const char* modsRoot) {
         if (tracePath[0]) {
             g_traceFile = fopen(tracePath, "a");
             if (!g_traceFile)
-                printf("[mod] warning: MC2_RESOLVE_TRACE_FILE=%s could not be opened for append\n", tracePath);
+                mc2::fmt::print_out("[mod] warning: MC2_RESOLVE_TRACE_FILE={} could not be opened for append\n", mc2::fmt::safe(tracePath));
         }
         // If MC2_RESOLVE_TRACE_FILE unset at level 2: skip JSONL (per spec).
     }
@@ -885,8 +886,8 @@ void InitModSearchPaths(const char* modsRoot) {
         if (!s_summaryRegistered) {
             s_summaryRegistered = true;
             atexit([]() {
-                printf("[file-resolve] opens=%lu misses=%lu\n",
-                       g_resolveOpens, g_resolveMisses);
+                mc2::fmt::print_out("[file-resolve] opens={:d} misses={:d}\n",
+                       mc2::fmt::as_u32(g_resolveOpens), mc2::fmt::as_u32(g_resolveMisses));
                 fflush(stdout);
             });
         }
@@ -906,11 +907,11 @@ void InitModSearchPaths(const char* modsRoot) {
         // Stock campaign: no active mod. Add-on layers (MC2_MOD_DEPS) may still mount
         // (e.g. "stock + Omnitech mechs"). With NO deps either, this is pure base game.
         if (!industrialKit && !vehicleKit && mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
-            printf("[mod] base game mode (MC2_ACTIVE_MOD not set, MC2_MOD_DEPS not set)\n");
+            mc2::fmt::print_out("[mod] base game mode (MC2_ACTIVE_MOD not set, MC2_MOD_DEPS not set)\n");
             fflush(stdout);
             return;
         }
-        printf("[mod] stock campaign + add-ons mode (MC2_MOD_DEPS set, no MC2_ACTIVE_MOD)\n");
+        mc2::fmt::print_out("[mod] stock campaign + add-ons mode (MC2_MOD_DEPS set, no MC2_ACTIVE_MOD)\n");
         fflush(stdout);
         envMod = "";  // downstream treats the active mod as absent
     }
@@ -919,7 +920,7 @@ void InitModSearchPaths(const char* modsRoot) {
     // Resolve modsRoot to absolute path so index keys stay valid regardless of CWD changes.
     char absRoot[MAX_PATH];
     if (!GetFullPathNameA(modsRoot, sizeof(absRoot), absRoot, nullptr)) {
-        printf("[mod] failed to resolve mods root: %s\n", modsRoot); fflush(stdout);
+        mc2::fmt::print_out("[mod] failed to resolve mods root: {}\n", mc2::fmt::safe(modsRoot)); fflush(stdout);
         return;
     }
     size_t rootLen = strlen(absRoot);
@@ -950,7 +951,7 @@ void InitModSearchPaths(const char* modsRoot) {
         // third-party campaigns (e.g. MCO packs) need no authored mod.json.
         modId   = envMod;
         modName = envMod;
-        printf("[mod] no mod.json for '%s'; folder name as id, deps from MC2_MOD_DEPS\n", envMod);
+        mc2::fmt::print_out("[mod] no mod.json for '{}'; folder name as id, deps from MC2_MOD_DEPS\n", mc2::fmt::safe(envMod));
     }
 
     // MC2_MOD_DEPS: launcher-supplied compatibility layer(s), comma/semicolon
@@ -989,7 +990,7 @@ void InitModSearchPaths(const char* modsRoot) {
         std::string order = "base";
         for (int i = static_cast<int>(deps.size())-1; i >= 0; i--) order += " < " + deps[i];
         order += " < "; order += modId;
-        printf("[mod] load order (lowest to highest priority): %s\n", order.c_str());
+        mc2::fmt::print_out("[mod] load order (lowest to highest priority): {}\n", order.c_str());
         fflush(stdout);
     }
 
@@ -1007,7 +1008,7 @@ void InitModSearchPaths(const char* modsRoot) {
             IndexModData(g_modIndex, g_shadowedBy, scrDir.c_str(), "data/", scrId.c_str());
             if (g_modIndex.size() > before) {
                 g_modPriority[scrId] = 0;
-                printf("[mod] scratch layer ACTIVE: %zu files (%s)\n", g_modIndex.size() - before, scrDir.c_str());
+                mc2::fmt::print_out("[mod] scratch layer ACTIVE: {:d} files ({})\n", mc2::fmt::as_size(g_modIndex.size() - before), scrDir.c_str());
                 fflush(stdout);
             }
         }
@@ -1022,8 +1023,8 @@ void InitModSearchPaths(const char* modsRoot) {
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, g_shadowedBy, absRoot, modId.c_str(), activeDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, modId.c_str(), activeDataDir, "data/");
-        printf("[mod] [1/%zu] active '%s': %zu files\n",
-               deps.size()+1, envMod, g_modIndex.size() - before);
+        mc2::fmt::print_out("[mod] [1/{:d}] active '{}': {:d} files\n",
+               mc2::fmt::as_size(deps.size()+1), mc2::fmt::safe(envMod), mc2::fmt::as_size(g_modIndex.size() - before));
     }
 
     // Index dependencies in declared order (dep[0] > dep[1] > ...).
@@ -1033,7 +1034,7 @@ void InitModSearchPaths(const char* modsRoot) {
         _snprintf(depDataDir, sizeof(depDataDir), "%s%s/data/", absRoot, dep.c_str());
         depDataDir[sizeof(depDataDir)-1] = '\0';
         if (GetFileAttributesA(depDataDir) == INVALID_FILE_ATTRIBUTES) {
-            printf("[mod] dep '%s' not found at %s, skipping\n", dep.c_str(), depDataDir);
+            mc2::fmt::print_out("[mod] dep '{}' not found at {}, skipping\n", dep.c_str(), mc2::fmt::safe(depDataDir));
             fflush(stdout);
             continue;
         }
@@ -1046,8 +1047,8 @@ void InitModSearchPaths(const char* modsRoot) {
         if (!TryLoadModCache(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir, "data/");
         crashbundle_mod(dep.c_str(), int(i + 1));
-        printf("[mod] [%zu/%zu] dep '%s': %zu new files\n",
-               i+2, deps.size()+1, dep.c_str(), g_modIndex.size() - before);
+        mc2::fmt::print_out("[mod] [{:d}/{:d}] dep '{}': {:d} new files\n",
+               mc2::fmt::as_size(i+2), mc2::fmt::as_size(deps.size()+1), dep.c_str(), mc2::fmt::as_size(g_modIndex.size() - before));
     }
 
     // STOCK-AI GUARD (load-bearing invariant): with no active campaign, a dep add-on
@@ -1066,7 +1067,7 @@ void InitModSearchPaths(const char* modsRoot) {
             if (inMissions && isAbx) { it = g_modIndex.erase(it); ++erased; }
             else { ++it; }
         }
-        printf("[mod] stock-AI guard: dropped %zu dep ABL override(s) under data/missions/\n", erased);
+        mc2::fmt::print_out("[mod] stock-AI guard: dropped {:d} dep ABL override(s) under data/missions/\n", mc2::fmt::as_size(erased));
         fflush(stdout);
     }
 
@@ -1112,13 +1113,13 @@ void InitModSearchPaths(const char* modsRoot) {
                   [](const ModIndexedEntry& a, const ModIndexedEntry& b) { return a.key < b.key; });
         std::vector<ModConflictFinding> findings = classifyModConflicts(entries);
         for (const std::string& line : formatModConflictReport(findings))
-            printf("[mod] conflict: %s\n", line.c_str());
+            mc2::fmt::print_out("[mod] conflict: {}\n", line.c_str());
         fflush(stdout);
     }
 
     ScanModDuplicateContent(absRoot, modId);
 
-    printf("[mod] ready: active='%s' total=%zu files\n", envMod, g_modIndex.size());
+    mc2::fmt::print_out("[mod] ready: active='{}' total={:d} files\n", mc2::fmt::safe(envMod), mc2::fmt::as_size(g_modIndex.size()));
     fflush(stdout);
 }
 
