@@ -140,6 +140,11 @@ public:
         else vkCmdPipelineBarrier2KHR(cb, &dep);
     }
 
+    // vkQueueSubmit2 through the entry point of the device's route (core 1.3 or KHR); the submit funnel is its only caller.
+    VkResult queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const {
+        return route("synchronization2") == profile::Route::Core ? vkQueueSubmit2(q, 1, &si, fence) : vkQueueSubmit2KHR(q, 1, &si, fence);
+    }
+
     const EngineContextHealth& health() const { return health_; }
     EngineContextHealth&       mutableHealth() { return health_; }
 
