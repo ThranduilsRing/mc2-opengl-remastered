@@ -15,7 +15,7 @@
 #include <cstring>
 #include <memory>
 #include <memory_resource>
-#include <unordered_map>
+#include <ankerl/unordered_dense.h>
 #include <utility>
 #include"platform_str.h"
 #include "Gates/gate.h"
@@ -640,7 +640,7 @@ namespace {
 struct AblArena {
 	struct Pool {
 		std::pmr::unsynchronized_pool_resource memory;
-		std::unordered_map<void*, size_t> live;
+		ankerl::unordered_dense::map<void*, size_t> live; // find/erase/size/contains only, never iterated
 	};
 	Pool pools[3];
 };
