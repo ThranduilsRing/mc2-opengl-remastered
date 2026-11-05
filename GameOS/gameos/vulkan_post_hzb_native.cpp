@@ -156,6 +156,16 @@ struct gosPostProcess::VkPostHzbNative {
     mc2vk::OwnedPipelineLayout cullLayout;
     mc2vk::OwnedPipeline cullPipe;
     VkDescriptorSet cullSet = VK_NULL_HANDLE;   // sampler[16] + visibility + instances + type bounds
+    // [S3 PARITY TEMP] legacy per-level path, run on parity frames only; removed by the next commit.
+    mc2vk::OwnedBuffer lgProjected, lgVis;
+    mc2vk::OwnedDescriptorSetLayout lgDsl;
+    mc2vk::OwnedDescriptorPool lgPool;
+    mc2vk::OwnedShaderModule lgShader;
+    mc2vk::OwnedPipelineLayout lgLayout;
+    mc2vk::OwnedPipeline lgPipe;
+    std::vector<VkDescriptorSet> lgSets;
+    bool lgOk = false;
+    uint32_t parityCount = 0;
     // [CULL_PARITY v1] counter-only check: a sampled subset of one frame's instances, with the matrix/bias/bounds that produced the GPU mask, compared
     // with the CPU reference once that frame's mask is readable (next run, after the ticket wait; never an extra wait). Mips are copied on check frames only.
     struct ParityPending {
@@ -226,6 +236,21 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
     vmaInvalidateAllocation(s->allocator, s->parityMips.allocation(), 0, VK_WHOLE_SIZE);
     const uint32_t* vis = static_cast<const uint32_t*>(s->visibility.map());
     const float* mips = static_cast<const float*>(s->parityMips.map());
+    if (vis && s->parityCount && s->lgOk) {   // [S3 PARITY TEMP] full-mask compare against the legacy per-level path
+        vmaInvalidateAllocation(s->allocator, s->lgVis.allocation(), 0, VK_WHOLE_SIZE);
+        const uint32_t* lg = static_cast<const uint32_t*>(s->lgVis.map());
+        if (lg) {
+            uint64_t falseCull = 0, moreConservative = 0, same = 0;
+            for (uint32_t i = 0; i < s->parityCount; ++i) {
+                const bool a = vis[1u + i] == 0u, b = lg[1u + i] == 0u;   // true = hidden
+                if (a == b) ++same; else if (a) { if (falseCull++ < 8) vlog("[S3_PARITY] NEW_HIDES_LEGACY_KEEPS id=%u", i); } else ++moreConservative;
+            }
+            vlog("[S3_PARITY] count=%u same=%llu new_false_cull=%llu new_more_conservative=%llu culled_new=%u culled_legacy=%u %s",
+                 s->parityCount, static_cast<unsigned long long>(same), static_cast<unsigned long long>(falseCull),
+                 static_cast<unsigned long long>(moreConservative), vis[0], lg[0], vis[0] == lg[0] ? "COUNT_EQ" : "COUNT_NE");
+            s->lgVis.unmap();
+        }
+    }
     if (vis && mips) {
         std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
         size_t at = 0;
@@ -304,6 +329,57 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
 }
 
 
+// [S3 PARITY TEMP] legacy one-dispatch-per-level cull with its own sets, projected buffer and visibility buffer.
+bool build_legacy_cull(gosPostProcess::VkPostHzbNative* s) {
+    s->lgPool.reset(); s->lgProjected.reset(); s->lgVis.reset(); s->lgSets.clear();
+    if (!make_buffer(s, uint64_t(s->cullCapacity)*sizeof(ProjectedProp), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->lgProjected, "hzb.lg_projected") ||
+        !make_buffer(s, uint64_t(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->lgVis, "hzb.lg_vis")) return false;
+    if (!s->lgDsl) {
+        VkDescriptorSetLayoutBinding bindings[5] = {};
+        for (uint32_t i = 0; i < 5; ++i) {
+            bindings[i].binding = i; bindings[i].descriptorCount = 1; bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            bindings[i].descriptorType = i == 0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+        VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+        di.bindingCount = 5; di.pBindings = bindings;
+        if (!mc2vk::create(s->lgDsl, s->device, [&](VkDescriptorSetLayout* p){return vkCreateDescriptorSetLayout(s->device,&di,nullptr,p);})) return false;
+        VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, 96};
+        const VkDescriptorSetLayout layout = s->lgDsl.get();
+        VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        li.setLayoutCount = 1; li.pSetLayouts = &layout; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &push;
+        if (!mc2vk::create(s->lgLayout,s->device,[&](VkPipelineLayout* p){return vkCreatePipelineLayout(s->device,&li,nullptr,p);})) return false;
+        s->lgShader = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir()+"hzb_cull_legacy.comp.spv"));
+        if (!s->lgShader) return false;
+        VkComputePipelineCreateInfo pi{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+        pi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; pi.stage.module = s->lgShader.get(); pi.stage.pName = "main"; pi.layout = s->lgLayout.get();
+        if (!mc2vk::create(s->lgPipe,s->device,[&](VkPipeline* p){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
+    }
+    const uint32_t levels = uint32_t(s->mipCount);
+    VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, levels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, levels*4}};
+    VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pci.maxSets = levels; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    if (!mc2vk::create(s->lgPool,s->device,[&](VkDescriptorPool* p){return vkCreateDescriptorPool(s->device,&pci,nullptr,p);})) return false;
+    s->lgSets.resize(levels);
+    for (uint32_t i = 0; i < levels; ++i) {
+        const VkDescriptorSetLayout layout = s->lgDsl.get();
+        VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        ai.descriptorPool = s->lgPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
+        if (vkAllocateDescriptorSets(s->device,&ai,&s->lgSets[i]) != VK_SUCCESS) return false;
+        VkDescriptorImageInfo image{s->depthSampler.get(),s->levels[i].view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkDescriptorBufferInfo buffers[] = {{s->lgProjected.get(),0,VK_WHOLE_SIZE},{s->lgVis.get(),0,VK_WHOLE_SIZE},
+                                            {s->instances.get(),0,VK_WHOLE_SIZE},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
+        VkWriteDescriptorSet writes[5] = {};
+        for (uint32_t j = 0; j < 5; ++j) {
+            writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = s->lgSets[i]; writes[j].dstBinding = j; writes[j].descriptorCount = 1;
+            writes[j].descriptorType = j==0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            if (j==0) writes[j].pImageInfo = &image; else writes[j].pBufferInfo = &buffers[j-1];
+        }
+        vkUpdateDescriptorSets(s->device,5,writes,0,nullptr);
+    }
+    return true;
+}
+
 bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     auto* s = &state;
     if (s->cullCapacity >= count) return true;
@@ -363,6 +439,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
         if (j==0) writes[j].pImageInfo = images; else writes[j].pBufferInfo = &buffers[j-1];
     }
     vkUpdateDescriptorSets(s->device,4,writes,0,nullptr);
+    s->lgOk = build_legacy_cull(s);
     return true;
 }
 
@@ -933,6 +1010,24 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT,
                   VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_READ_BIT);
 
+    const bool legacyRan = parityRecord && s->lgOk;
+    if (legacyRan) {
+        memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+        vkCmdFillBuffer(cb,s->lgVis.get(),0,sizeof(uint32_t),0);
+        memoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+        mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->lgPipe.get());
+        for (uint32_t level = 0; level < uint32_t(s->mipCount); ++level) {
+            struct CullParams { uint32_t count, level, typeCount, levels; float worldToClip[16]; float viewportDepth[4]; } push{feed.count, level, static_cast<uint32_t>(s->propBounds.size()), static_cast<uint32_t>(s->mipCount)};
+            std::memcpy(push.worldToClip, feed.worldToClipGL, sizeof(push.worldToClip));
+            push.viewportDepth[0] = static_cast<float>(width_); push.viewportDepth[1] = static_cast<float>(height_); push.viewportDepth[2] = feed.objectDepthBias;
+            vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->lgLayout.get(),0,1,&s->lgSets[level],0,nullptr);
+            vkCmdPushConstants(cb,s->lgLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(push),&push);
+            vkCmdDispatch(cb,(feed.count+63)/64,1,1);
+            memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+        }
+        memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_HOST_READ_BIT);
+        s->parityCount = feed.count;
+    } else s->parityCount = 0;
     if (parityRecord) {
         // Pyramid levels to a host-readable buffer (check frames only), then back to the sampled layout.
         for (int l = 0; l < s->mipCount; ++l)
