@@ -74,7 +74,13 @@ std::unique_lock<std::timed_mutex> lockSubmit(std::timed_mutex& m) {
     std::unique_lock<std::timed_mutex> lock(m, std::try_to_lock);
     if (lock.owns_lock()) return lock;
     if (present_thread::onWorker()) { lock.lock(); return lock; }
-    while (!lock.try_lock_for(std::chrono::milliseconds(2))) present_thread::pumpWindowMessages();
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (!lock.try_lock_for(std::chrono::milliseconds(2))) {
+        present_thread::pumpWindowMessages();
+        if (std::chrono::steady_clock::now() < deadline) continue;
+        present_thread::hungWait("submitMutex_ held >30s by the present worker");
+        deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    }
     return lock;
 }
 

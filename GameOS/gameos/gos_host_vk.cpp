@@ -18,6 +18,7 @@
 #include "../../RenderWorld/RenderWorld.h"   // advanceFrame: the handle-slot clock
 #include <SDL2/SDL.h>
 #include <string>
+#include <string_view>
 #include <cstdio>
 #include <tracy/Tracy.hpp>
 #ifdef _WIN32
@@ -188,12 +189,12 @@ static void advanceHandleClock(unsigned long frameCounter) {
 namespace {
 // VK-FAILSOFT-DISARM-2 recovery, shared by the inline present and the worker's handed-back failure. A lost device never comes back, and a
 // not-VK-owned decline is structural: both are fatal. Anything else tears the present stack down and re-enters the deferred-init retry.
-void recoverPresentFailure(mc2vk::EnginePresentVk& vkpres, const std::string& fr) {
+void recoverPresentFailure(mc2vk::EnginePresentVk& vkpres, std::string_view fr) {
     vkpres.logHealth();
-    if (mc2vk::infra::deviceLostLatched()) mc2::fatalBackendFailure(("Vulkan device lost: " + fr).c_str());
-    if (fr.find("not VK-owned") != std::string::npos) mc2::fatalBackendFailure(fr.c_str());
+    if (mc2vk::infra::deviceLostLatched()) mc2::fatalBackendFailure(("Vulkan device lost: " + std::string(fr)).c_str());
+    if (fr.find("not VK-owned") != std::string_view::npos) mc2::fatalBackendFailure(std::string(fr).c_str());
     mc2::fmt::print_out("[VK_PRESENT] present failure treated as transient: {} -- tearing down and retrying init (session stays VK).\n",
-           fr.empty() ? "(unspecified)" : fr.c_str());
+           fr.empty() ? std::string_view("(unspecified)") : fr);
     fflush(stdout);
     vkpres.destroy();
     g_vkPresentInitDeferred = true;

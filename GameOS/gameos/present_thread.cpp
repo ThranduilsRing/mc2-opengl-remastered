@@ -59,14 +59,24 @@ bool debuggerAttached() {
 
 // Main-side wait on the worker, `lock` held. Pumps the window thread's sent messages throughout (see present_thread_wait.h).
 template <class Pred>
-void waitWorker(std::unique_lock<std::mutex>& lock, Pred pred, const char* hungReason) {
+void waitWorker(std::unique_lock<std::mutex>& lock, Pred pred, std::string_view hungReason) {
     if (detail::waitPumping(lock, changed, pred, pumpWindowMessages, kStall)) return;
     std::fprintf(stderr, "[PRESENT_THREAD] STALL >5s; inline rollback after owner quiescence\n");
     rollback = true;
     while (!detail::waitPumping(lock, changed, pred, pumpWindowMessages, kHung - kStall)) {
         if (debuggerAttached()) continue;
         lock.unlock();
-        mc2::fatalBackendFailure(hungReason);
+        mc2::fatalBackendFailure(std::string(hungReason).c_str());
+    }
+}
+
+// start(): the worker only flags itself ready, so no stall rollback; past kHung it never started.
+template <class Pred>
+void waitStarted(std::unique_lock<std::mutex>& lock, Pred pred) {
+    while (!detail::waitPumping(lock, changed, pred, pumpWindowMessages, kHung)) {
+        if (debuggerAttached()) continue;
+        lock.unlock();
+        mc2::fatalBackendFailure("present worker never started");
     }
 }
 
@@ -133,10 +143,13 @@ void start() {
     ready = false;
     mc2::overlap::setPresentWorkerRegistered(true);
     worker = std::thread(run);
-    changed.wait(lock, [] { return ready; });
+    waitStarted(lock, [] { return ready; });
     std::fprintf(stderr, "[PRESENT_THREAD] enabled mailbox_depth=1\n");
 }
 bool enabled() { return running; }
+void hungWait(std::string_view reason) {
+    if (!debuggerAttached()) mc2::fatalBackendFailure(std::string(reason).c_str());
+}
 bool onWorker() { return isWorker; }
 void waitSealed(std::source_location site) {
     if (!running || isWorker) return;
@@ -184,10 +197,10 @@ void forgetTexture(uint32_t handle) {
     auto retired = getOrCreateEngineVulkanContext().textures().detachLegacyUi(handle);
     for (auto& texture : retired) retiredTextures.push_back(std::move(texture));
 }
-void reportFailure(const std::string& reason) {
+void reportFailure(std::string_view reason) {
     if (!isWorker) return;   // the inline present returns false to its host, which recovers on the spot
     std::lock_guard lock(mutex);
-    if (!failed) failure = reason.empty() ? std::string("(unspecified)") : reason;
+    if (!failed) failure = reason.empty() ? std::string("(unspecified)") : std::string(reason);
     failed = true;
 }
 bool takeFailure(std::string& reason) {

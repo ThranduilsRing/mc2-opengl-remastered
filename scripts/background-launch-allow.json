@@ -27,6 +27,7 @@
     "tests/smoke/object_visual_diff.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "tests/smoke/scene_resize.py": "menu resize regression through nofocus.spawn and host lease; only its own offscreen HWND is resized and closed",
     "tools/campaign_save_roundtrip.py": "engine launcher through nofocus.spawn (vetted by exe_guard); campaign-start save fixture for the B1 logistics proof, 2026-10-13",
+    "tools/window_cycle.py": "engine launcher through nofocus.spawn (vetted by exe_guard, host lease, offscreen); minimize/restore/resize cycle for the present-worker recovery check, no activation (SW_SHOWMINNOACTIVE/SW_SHOWNOACTIVATE, SWP_NOACTIVATE), 2026-11-04",
     "tools/menu_oracle.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "tools/perf_snapshot.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "tools/renderdoc/capture.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
