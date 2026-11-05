@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cmath>
 #include <cstring>
 #include <cstdio>
 #include <limits>
@@ -25,7 +26,6 @@ class LightLists {
     uint32_t poolWords_ = 0;
 public:
     static constexpr uint32_t kDim = 64;
-    static constexpr uint32_t kPoolPerCell = 64;
     float minInv[4]{};
     bool stage(VulkanContext& ctx, const void* pool, uint32_t count, float moverScale, FrameAlloc (&out)[3], const char*& failure) {
         const auto frame = ctx.tracker().frameNo();
@@ -69,9 +69,21 @@ public:
             failure = "frame_ring_allocation";
             // The index buffer dominates. Refuse it before consuming any smaller
             // spans, and never repeat partial allocations in the same frame.
-            // Pooled: one shared index pool (word 0 is its allocation cursor) instead of a full count-entry slice per cell. A pool of kPoolPerCell entries
-            // per cell on average is exact for every map seen; a cell that would overrun it is cut short rather than overwrite a neighbour.
-            poolWords_ = 1 + (std::min)(kDim * kDim * count, kDim * kDim * kPoolPerCell);
+            // Pooled: one shared index pool (word 0 is its allocation cursor) instead of a full count-entry slice per cell. The pool is sized from the
+            // exact worst case: the cells each light's bounding box touches (a superset of the shader's circle test), so no cell is ever cut short.
+            uint32_t entries = 0;
+            for (uint32_t i = 0; i < count; ++i) {
+                const auto& l = lights[i];
+                if (!l.lightType || !(l.farDistance > 0)) continue;
+                const float r = l.farDistance * 1.001f + 0.01f;
+                uint32_t span[2];
+                for (unsigned a = 0; a < 2; ++a) {
+                    const float c0 = std::floor((l.position[a] - r - minInv[a]) * minInv[a + 2]), c1 = std::floor((l.position[a] + r - minInv[a]) * minInv[a + 2]);
+                    span[a] = c1 < 0.0f || c0 > float(kDim - 1) ? 0u : uint32_t((std::min)(c1, float(kDim - 1)) - (std::max)(c0, 0.0f)) + 1u;
+                }
+                entries += span[0] * span[1];
+            }
+            poolWords_ = 1 + (std::min)(entries, kDim * kDim * count);
             if (!(spans_[2] = ctx.frameAlloc(VkDeviceSize(poolWords_) * 4)) ||
                 !(spans_[0] = ctx.frameAlloc(VkDeviceSize(count) * 48)) ||
                 !(spans_[1] = ctx.frameAlloc(kDim * kDim * 8)) ||
