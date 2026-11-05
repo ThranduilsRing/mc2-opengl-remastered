@@ -8,6 +8,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 \*************************************************************************************************/
 
 #include"mechlabscreen.h"
+#include <array>
 #include "Gates/gate.h"
 #include"inifile.h"
 #include"logisticsdata.h"
@@ -323,11 +324,11 @@ void MechLabScreen::begin()
 			// 2-wide components (a 3-wide index reads past selRects into
 			// selJumpJetRect -> engine shows the JJ ghost). Cells: Light2 Med3
 			// Heavy4 Assault6 (base); 1/2/2/3 (clan).
-			static const int   baseW[4] = { 2, 1, 2, 2 };  // L  M  H  A
-			static const int   baseH[4] = { 1, 3, 2, 3 };  // 2  3  4  6 cells
-			static const int   clanW[4] = { 1, 2, 2, 1 };
-			static const int   clanH[4] = { 1, 1, 1, 3 };  // 1  2  2  3 cells
-			static const float heatByCls[4] = { 8.0f, 12.0f, 16.0f, 20.0f };
+			static const std::array<int, 4> baseW = { 2, 1, 2, 2 };  // L  M  H  A
+			static const std::array<int, 4> baseH = { 1, 3, 2, 3 };  // 2  3  4  6 cells
+			static const std::array<int, 4> clanW = { 1, 2, 2, 1 };
+			static const std::array<int, 4> clanH = { 1, 1, 1, 3 };  // 1  2  2  3 cells
+			static const std::array<float, 4> heatByCls = { 8.0f, 12.0f, 16.0f, 20.0f };
 			LogisticsComponent* xl  = LogisticsData::instance->getComponent( 2 );
 			LogisticsComponent* cxl = LogisticsData::instance->getComponent( 3 );
 			if ( xl )  xl->setEngineProfile( baseW[cls], baseH[cls], heatByCls[cls] );
@@ -1519,7 +1520,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 		}
 		else
 		{
-			uint32_t rangeColors[3] = {0xff6e7c00, 0xff005392,0xffa21600  };
+			std::array<uint32_t, 3> rangeColors = {0xff6e7c00, 0xff005392,0xffa21600  };
 
 			showJumpJetItems( 0 );
 			textObjects[7].setText( pCurComponent->getRangeType() + IDS_SHORT_RANGE );

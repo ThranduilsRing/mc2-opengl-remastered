@@ -1,6 +1,7 @@
 // GenericAppearance: render, renderShadows, update and the appearance teardown.
 // Declared in the class headers; shared names in genactor_internal.h.
 #include "genactor_internal.h"
+#include <array>
 #include "sim_overlap.h"
 
 
@@ -13,8 +14,8 @@ long GenericAppearance::render (long depthFixup)
 		uint32_t color = SD_BLUE;
 		unsigned long highLight = 0x007f7f7f;
 		if ((teamId > -1) && (teamId < 8)) {
-			static uint32_t highLightTable[3] = {0x00007f00, 0x0000007f, 0x007f0000};
-			static uint32_t colorTable[3] = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED | 0xff000000};
+			static std::array<uint32_t, 3> highLightTable = {0x00007f00, 0x0000007f, 0x007f0000};
+			static std::array<uint32_t, 3> colorTable = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED | 0xff000000};
 			color = colorTable[homeTeamRelationship];
 			highLight = highLightTable[homeTeamRelationship];
 		}

@@ -140,7 +140,7 @@ using PSHORT = SHORT*;
 using PLONG = LONG*;
 
 #ifdef STRICT
-typedef void *HANDLE;
+using HANDLE = void *;
 #define DECLARE_HANDLE(n) typedef struct n##__{int i;}*n
 #else
 

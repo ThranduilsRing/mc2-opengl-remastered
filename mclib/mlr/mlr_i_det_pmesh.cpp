@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include <array>
 #include <memory>
 
 extern DWORD gEnableDetailTexture;
@@ -351,7 +352,7 @@ MLRShape*
 
 	int i, j, k;
 	long    nrTri = static_cast<long>(ceil (icoInfo.all * pow (4.0f, icoInfo.depth)));
-	glm::vec3 v[3];
+	std::array<glm::vec3, 3> v;
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
 	{

@@ -1,6 +1,7 @@
 // GroundVehicle: vehicle pilot, AI/network/player control, dynamics, animations, status rating and rendering.
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <array>
 #include "gvehicl_internal.h"
 
 
@@ -47,7 +48,7 @@ float GroundVehicle::getStatusRating (void) {
 	float armorRear = armor[GROUNDVEHICLE_LOCATION_REAR].curArmor / armor[GROUNDVEHICLE_LOCATION_REAR].maxArmor * 0.6 + 0.4;
 	float armorEffect = armorFront * armorRear * armorLeft * armorRight;
 				
-	float pilotWoundTable[7] = {1.00f,0.95f,0.85f,0.75f,0.50f,0.30f,0.00f};
+	std::array<float, 7> pilotWoundTable = {1.00f,0.95f,0.85f,0.75f,0.50f,0.30f,0.00f};
 	float pilotEffect = pilotWoundTable[static_cast<long>(getPilot()->getWounds())];
 	if (isDestroyed() || isDisabled())
 		pilotEffect = 0.0;

@@ -1,6 +1,7 @@
 // MechWarrior: tactical-order switching, pilot alarms and event history.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include <array>
 #include "mission.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
@@ -67,7 +68,7 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 		}
 		if (newTacOrder.code != TACTICAL_ORDER_NONE) {
 			Assert((moveOrders.path[0] != nullptr) && (moveOrders.path[1] != nullptr), 0, " bad warrior path ");
-			MovePathPtr tempPath[2];
+			std::array<MovePathPtr, 2> tempPath;
 			for (long i = 0; i < 2; i++) {
 				tempPath[i] = moveOrders.path[i];
 				tempPath[i]->numSteps = 0;

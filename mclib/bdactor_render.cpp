@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance and TreeAppearance render and renderShadows.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include <array>
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
@@ -62,8 +63,8 @@ long BldgAppearance::render (long depthFixup)
 		uint32_t color = SD_BLUE;
 		uint32_t highLight = 0x007f7f7f;
 		if ((teamId > -1) && (teamId < 8)) {
-			static unsigned long highLightTable[3] = {0x00007f00, 0x0000007f, 0x007f0000};
-			static uint32_t colorTable[3] = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED| 0xff000000};
+			static std::array<unsigned long, 3> highLightTable = {0x00007f00, 0x0000007f, 0x007f0000};
+			static std::array<uint32_t, 3> colorTable = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED| 0xff000000};
 			color = colorTable[homeTeamRelationship];
 			highLight = highLightTable[homeTeamRelationship];
 		}
@@ -463,7 +464,7 @@ long TreeAppearance::render (long depthFixup)
 	{
 		long color = SD_BLUE;
 		if ((teamId > -1) && (teamId < 8)) {
-			static uint32_t colorTable[3] = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED | 0xff000000};
+			static std::array<uint32_t, 3> colorTable = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED | 0xff000000};
 			color = colorTable[homeTeamRelationship];
 		}
 		bool submittedToGpu = false;
