@@ -358,6 +358,9 @@ target_include_directories(mimalloc_static PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty
 target_compile_definitions(mimalloc_static PUBLIC MI_STATIC_LIB)
 if(MSVC)
     target_compile_options(mimalloc_static PRIVATE /W0)
+    # mimalloc's decl.h maps mi_likely(x) to "(x) [[likely]]" under MSVC C++20+, which src/prim/os.c then uses inside a ternary
+    # (error C2059 'attribute specifier'); C++17 takes its plain (x) branch. Vendored C sources compiled as C++ only.
+    set_target_properties(mimalloc_static PROPERTIES CXX_STANDARD 17)
 else()
     target_compile_options(mimalloc_static PRIVATE -w)
     target_link_libraries(mimalloc_static PUBLIC pthread)
