@@ -58,7 +58,7 @@ def check_diff(diff: str, allowed: set[str]) -> list[str]:
         if m:
             lineno, window = int(m.group(1)), []
             continue
-        if path is None or not SOURCE.search(path) or not raw or raw[0] not in " +":
+        if path is None or not SOURCE.search(path) or path.startswith("3rdparty/") or not raw or raw[0] not in " +":
             continue
         text = raw[1:]
         if raw[0] == "+" and PRINT.search(text):

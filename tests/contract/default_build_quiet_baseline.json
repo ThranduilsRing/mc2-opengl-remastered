@@ -5,6 +5,10 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py counts event=oob_blit occurrences."
     },
+    "CRASH": {
+      "status": "keep",
+      "reason": "GameOS/gameos/gos_crashpad.cpp: one stderr line at startup (crashpad handler started / NOT started) and, on Linux, a signal-safe line from the crash hook; scripts/smoke_lib crash evidence and scripts/crashpad_proof.py parse the [CRASH] lines to locate the minidump."
+    },
     "BUILD_FINGERPRINT v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/fingerprint.py parses this to prove the smoked exe matches the worktree HEAD. Silencing it disables DEPLOY_FINGERPRINT attribution -- the single strongest anti-'unverifiable work' control in the harness."

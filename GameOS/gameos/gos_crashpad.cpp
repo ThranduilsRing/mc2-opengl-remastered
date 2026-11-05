@@ -34,10 +34,8 @@ sentry_value_t on_crash(const sentry_ucontext_t*, sentry_value_t event, sentry_h
 std::filesystem::path exe_dir()
 {
 #ifdef _WIN32
-    wchar_t p[MAX_PATH];
-    const DWORD n = GetModuleFileNameW(nullptr, p, MAX_PATH);
-    if (n == 0 || n >= MAX_PATH) return {};
-    return std::filesystem::path(p).parent_path();
+    if (!_wpgmptr) return {};
+    return std::filesystem::path(_wpgmptr).parent_path();
 #else
     char p[PATH_MAX];
     const ssize_t n = readlink("/proc/self/exe", p, sizeof p - 1);
