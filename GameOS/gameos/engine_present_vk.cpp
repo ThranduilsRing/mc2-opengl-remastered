@@ -96,7 +96,7 @@ struct EnginePresentVk::Impl {
     // slotCount defaults to kMaxFramesInFlight; MC2_VK_FRAMES_IN_FLIGHT=1 pins every frame to slot 0.
     mc2vk::OwnedCommandPool   cpool;   // readback command buffer only
     mc2vk::OwnedCommandPool   tailPool[mc2vk::kMaxFramesInFlight];        // per-slot pools: vkResetCommandPool instead of per-cb reset
-    mc2vk::OwnedCommandPool   compositePool[mc2vk::kMaxFramesInFlight];   // (tail and composite are recorded at different points of a frame)
+    mc2vk::OwnedCommandPool   compositeCmdPool[mc2vk::kMaxFramesInFlight];   // (tail and composite are recorded at different points of a frame)
     VkCommandBuffer cbufs[mc2vk::kMaxFramesInFlight] = {};   // present tail: overlay + HUD/ImGui + blit
     mc2vk::OwnedSemaphore     acquireSems[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedFence         inFlights[mc2vk::kMaxFramesInFlight];
@@ -1983,9 +1983,9 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         cai2.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cai2.commandBufferCount = 1;
         for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
-            if (!mc2vk::create(s.compositePool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
+            if (!mc2vk::create(s.compositeCmdPool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
                 return fail("vkCreateCommandPool(composite) failed");
-            cai2.commandPool = s.compositePool[i].get();
+            cai2.commandPool = s.compositeCmdPool[i].get();
             if (vkAllocateCommandBuffers(s.dev, &cai2, &s.compositeCbufs[i]) != VK_SUCCESS)
                 return fail("vkAllocateCommandBuffers(composite) failed");
         }
@@ -2066,7 +2066,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
-    vkResetCommandPool(s.dev, s.compositePool[s.slot()].get(), 0);   // cc is s.compositeCbufs[slot]
+    vkResetCommandPool(s.dev, s.compositeCmdPool[s.slot()].get(), 0);   // cc is s.compositeCbufs[slot]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
