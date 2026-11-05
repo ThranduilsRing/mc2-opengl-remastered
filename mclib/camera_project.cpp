@@ -154,8 +154,8 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &o
 	if (w <= 0.0f || h <= 0.0f)
 		return false;
 
-	const float ndcX =  2.0f * (float(screenX) / w) - 1.0f;
-	const float ndcY =  1.0f - 2.0f * (float(screenY) / h);
+	const float ndcX =  2.0f * (static_cast<float>(screenX) / w) - 1.0f;
+	const float ndcY =  1.0f - 2.0f * (static_cast<float>(screenY) / h);
 
 	// clip_row * Minv (row-vector convention), perspective divide.
 	auto unprojectNDC = [&](float nz) -> glm::vec3 {
@@ -333,15 +333,14 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 			for (int dc = 0; dc < 2; ++dc)
 			{
 				int r = tileR + dr, c = tileC + dc;
-				if (r < 0) r = 0; else if (r >= side) r = side - 1;
-				if (c < 0) c = 0; else if (c >= side) c = side - 1;
+				r = std::clamp(r, 0, side - 1);
+				c = std::clamp(c, 0, side - 1);
 				glm::vec3 vw(Terrain::tileColToWorldCoord[c], Terrain::tileRowToWorldCoord[r], land->getTerrainElevation(r, c));
 				Stuff::Vector4D sc;
 				projectForSelectionPicking(vw, sc);
 				const float dx = sc.x - static_cast<float>(screenX), dy = sc.y - static_cast<float>(screenY);
 				const float d = dx*dx + dy*dy;
-				if (d < bestD) { bestD = d; outWorld = vw; }
-			}
+				if (d < bestD) { bestD = d; outWorld = vw; }			}
 		return true;
 	}
 
@@ -349,8 +348,8 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 	int cellR = 0, cellC = 0;
 	land->worldToCell(hp, cellR, cellC);
 	const int maxCell = static_cast<int>(Terrain::realVerticesMapSide) * MAPCELL_DIM - 1;
-	if (cellR < 0) cellR = 0; else if (cellR > maxCell) cellR = maxCell;
-	if (cellC < 0) cellC = 0; else if (cellC > maxCell) cellC = maxCell;
+	cellR = std::clamp(cellR, 0, maxCell);
+	cellC = std::clamp(cellC, 0, maxCell);
 	mapCellToWorldPos(cellR, cellC, outWorld);
 	outWorld.z = land->getTerrainElevation(outWorld);
 	return true;
@@ -372,8 +371,8 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWo
 	if (w <= 0.0f || h <= 0.0f)
 		return false;
 
-	const float ndcX =  2.0f * (float(screenX) / w) - 1.0f;
-	const float ndcY =  1.0f - 2.0f * (float(screenY) / h);
+	const float ndcX =  2.0f * (static_cast<float>(screenX) / w) - 1.0f;
+	const float ndcY =  1.0f - 2.0f * (static_cast<float>(screenY) / h);
 
 	auto unprojectNDC = [&](float nz) -> glm::vec3 {
 		float wx = ndcX*Minv[0][0] + ndcY*Minv[0][1] + nz*Minv[0][2] + Minv[0][3];
@@ -467,8 +466,8 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::v
 		// GL NDC: x in [-1,+1] left-to-right, y in [-1,+1] bottom-to-top.
 		const float w = screenResolution.x;
 		const float h = screenResolution.y;
-		const float ndcX =  2.0f * (float(screenPos.x) / w) - 1.0f;
-		const float ndcY =  1.0f - 2.0f * (float(screenPos.y) / h);
+		const float ndcX =  2.0f * (static_cast<float>(screenPos.x) / w) - 1.0f;
+		const float ndcY =  1.0f - 2.0f * (static_cast<float>(screenPos.y) / h);
 
 		// Unproject near and far NDC points to world space.
 		// Row-vector convention: world_row = clip_row * Minv.

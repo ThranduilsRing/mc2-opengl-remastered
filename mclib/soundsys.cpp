@@ -319,11 +319,11 @@ long SoundSystem::init (mc2::czstring soundFileName)
 		}
 	}
 	
-	digitalMasterVolume = float(DigitalMasterVolume) / 256.0f;
-	SFXVolume = float(sfxVolume) / 256.0f;
-	musicVolume = float(MusicVolume) / 256.0f;
-	radioVolume = float(RadioVolume) / 256.0f;
-	bettyVolume = float(BettyVolume) / 256.0f;
+	digitalMasterVolume = static_cast<float>(DigitalMasterVolume) / 256.0f;
+	SFXVolume = static_cast<float>(sfxVolume) / 256.0f;
+	musicVolume = static_cast<float>(MusicVolume) / 256.0f;
+	radioVolume = static_cast<float>(RadioVolume) / 256.0f;
+	bettyVolume = static_cast<float>(BettyVolume) / 256.0f;
 
 	musicSlots[0].id = musicSlots[1].id = 0;
 
@@ -663,8 +663,7 @@ void SoundSystem::update (void)
 				{
 					float vol;
 					gosAudio_GetChannelSlider(i, gosAudio_Volume, &vol);
-					if (vol <= 0.1f)
-						vol = 0.1f;
+					vol = std::max(vol, 0.1f);
 
 					gosAudio_SetChannelSlider(i, gosAudio_Volume, vol-0.1f);
 					gosAudio_GetChannelSlider(i, gosAudio_Volume, &vol);
@@ -1032,17 +1031,13 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool
 				OppRotate(distance,eye->getRotation().y);
 
 				panVolume = distance.x / (FALLOFF_DISTANCE * 0.5f);
-				if (panVolume > 1.0f)
-					panVolume = 1.0f;
-				else if (panVolume < -1.0f)
-					panVolume = -1.0f;
+				panVolume = std::clamp(panVolume, -1.0f, 1.0f);
 			}
 
 			float vol = sounds[sampleId].volume * distanceVolume;
-			if (vol > 1.0f)
-				vol = 1.0f;
-			else if (vol <= 0.0f)		//No VOlume.  DON't PLAY!
+			if (vol <= 0.0f)		//No VOlume.  DON't PLAY!
 				return -1;
+			vol = std::min(vol, 1.0f);
 
 			gosAudio_SetChannelSlider(ourChannel,gosAudio_Panning, panVolume);
 			gosAudio_SetChannelSlider(ourChannel,gosAudio_Volume, (digitalMasterVolume * vol * SFXVolume)) ;
@@ -1143,7 +1138,7 @@ void SoundSystem::setDigitalMasterVolume (byte volume)
 	if (useSound)
 	{
 		DigitalMasterVolume = volume;
-		digitalMasterVolume = float(DigitalMasterVolume) / 256.0f;
+		digitalMasterVolume = static_cast<float>(DigitalMasterVolume) / 256.0f;
 	}
 }
 
@@ -1164,7 +1159,7 @@ void SoundSystem::setSFXVolume(unsigned char volume)
 	if (useSound)
 	{
 		sfxVolume = volume;
-		SFXVolume = float(sfxVolume) / 256.0f;
+		SFXVolume = static_cast<float>(sfxVolume) / 256.0f;
 	}
 }
 
@@ -1185,7 +1180,7 @@ void SoundSystem::setRadioVolume(unsigned char volume)
 	if (useSound)
 	{
 		RadioVolume = volume;
-		radioVolume = float(RadioVolume) / 256.0f;
+		radioVolume = static_cast<float>(RadioVolume) / 256.0f;
 	}
 }
 
@@ -1206,7 +1201,7 @@ void SoundSystem::setMusicVolume(unsigned char volume)
 	if (useSound)
 	{
 		MusicVolume = volume;
-		musicVolume = float(MusicVolume) / 256.0f;
+		musicVolume = static_cast<float>(MusicVolume) / 256.0f;
 		if (useMusic)
 		{
 			for (int slot = 0; slot < 2; ++slot)
@@ -1235,7 +1230,7 @@ void SoundSystem::setBettyVolume(unsigned char volume)
 	if (useSound)
 	{
 		BettyVolume = volume;
-		bettyVolume = float(BettyVolume) / 256.0f;
+		bettyVolume = static_cast<float>(BettyVolume) / 256.0f;
 	}
 }
 
@@ -1292,8 +1287,7 @@ void SoundSystem::getScriptMusicState (long &id, double &remaining, bool &loops)
 	id = scriptMusic.currentId(scenarioTime);
 	loops = (id >= 0) && scriptMusic.loops;
 	remaining = ((id >= 0) && !loops) ? scriptMusic.endsAt - scenarioTime : 0.0;
-	if (remaining < 0.0)
-		remaining = 0.0;
+	remaining = std::max(remaining, 0.0);
 }
 
 //---------------------------------------------------------------------------

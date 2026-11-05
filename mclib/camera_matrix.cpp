@@ -1,5 +1,6 @@
 // Camera: the camera transform: activation, orthogonal setup, line of sight, origin, GL matrices and projection constants.
 // Declared in the class headers; shared names in camera_internal.h.
+#include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
 #include "camera_pick_hash.h"
@@ -127,8 +128,7 @@ void Camera::setOrthogonal(void)
 			if (mc2::gate::isNonEmpty<"MC2_EDITOR_FAR_CLIP">()) { float f = mc2::gate::get<"MC2_EDITOR_FAR_CLIP">(); editorFar = (f > 1000.0f) ? f : 400000.0f; }
 			else if (InEditor) editorFar = 400000.0f;
 		}
-		if (editorFar > far_clip)
-			far_clip = editorFar;
+		far_clip = std::max(far_clip, editorFar);
 
 		float horizontal_fov = camera_fov * DEGREES_TO_RADS;
 		// UI-ASPECT-ANCHOR-1 (camera): build the projection with the REAL
@@ -460,8 +460,7 @@ void Camera::setCameraOrigin (void)
 			if (land)
 			{
 				float terrainAtCam = land->getTerrainElevation(actualPosition);
-				if (terrainAtCam < Terrain::waterElevation)
-					terrainAtCam = Terrain::waterElevation;
+				terrainAtCam = std::max(terrainAtCam, Terrain::waterElevation);
 				if (translation.y < terrainAtCam + AltitudeMinimum)
 				{
 					translation.y = terrainAtCam + AltitudeMinimum;

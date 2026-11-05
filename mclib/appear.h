@@ -11,6 +11,7 @@
 //---------------------------------------------------------------------------
 // Include Files
 #ifndef DAPPEAR_H
+#include <algorithm>
 #include"dappear.h"
 #endif
 
@@ -420,8 +421,7 @@ public:
 		virtual void setBarStatus (float stat)
 		{
 			barStatus = stat;
-			if (barStatus > 1.0f)
-				barStatus = 1.0f;
+			barStatus = std::min(barStatus, 1.0f);
 		}
 
 		virtual void setBarColor (DWORD clr)
