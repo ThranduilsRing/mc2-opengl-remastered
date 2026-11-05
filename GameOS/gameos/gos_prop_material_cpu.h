@@ -140,7 +140,7 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                     RenderCore::KtxImage image;
                     if (dst.textures.size() >= kMaxTextures || !RenderCore::ktxLoadRgba8(path.c_str(), image) ||
                         (image.vkFormat != wants[i].format && image.vkFormat != wants[i].altFormat) ||
-                        image.width <= 0 || image.height <= 0 || image.width > int(kMaxDetailEdge) || image.height > int(kMaxDetailEdge) ||
+                        image.width <= 0 || image.height <= 0 || image.width > static_cast<int>(kMaxDetailEdge) || image.height > static_cast<int>(kMaxDetailEdge) ||
                         mc2tex::mipExtent(image.width, image.mipCount-1) != 1 ||
                         mc2tex::mipExtent(image.height, image.mipCount-1) != 1) {
                         accepted = false;   // not a cooked block texture (e.g. RGBA8 from an older mod): legacy route below

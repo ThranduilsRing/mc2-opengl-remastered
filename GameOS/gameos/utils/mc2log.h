@@ -37,7 +37,7 @@ enum class Cat : uint8_t { Core, Io, Render, Vk, Gl, Terrain, Water, Mech, Veg, 
 // keeps working).  Dbg = OutputDebugStringA (stderr off Windows).
 enum class Stream : uint8_t { Err, Out, Dbg };
 
-inline constexpr size_t kCatCount = size_t(Cat::Count);
+inline constexpr size_t kCatCount = static_cast<size_t>(Cat::Count);
 
 // CMake may define MC2_LOG_MIN_LEVEL (0..6) to turn sites below it into dead code.
 #ifdef MC2_LOG_MIN_LEVEL
@@ -66,13 +66,13 @@ static_assert(kCatCount == 19, "update the constinit initialiser lists");
 // Whole disabled-path cost: one relaxed load + compare.
 inline bool enabled(Cat c, Level l) noexcept {
     return detail::g_live.load(std::memory_order_relaxed) &&
-           l >= detail::g_threshold[size_t(c)].load(std::memory_order_relaxed);
+           l >= detail::g_threshold[static_cast<size_t>(c)].load(std::memory_order_relaxed);
 }
 // Legacy-gate equivalent for structured events: default on (always-on stays
 // always-on); only a spec "cat:off" turns a category's events off.
 inline bool eventEnabled(Cat c) noexcept {
     return detail::g_live.load(std::memory_order_relaxed) &&
-           detail::g_eventOn[size_t(c)].load(std::memory_order_relaxed);
+           detail::g_eventOn[static_cast<size_t>(c)].load(std::memory_order_relaxed);
 }
 bool topicEnabled(Cat c, std::string_view topic) noexcept;   // "terrain=indirect+surface"
 
@@ -115,8 +115,8 @@ bool allowRate(uint64_t siteKey, double perSecond) noexcept;
 bool allowRateAt(uint64_t siteKey, double perSecond, int64_t nowNs) noexcept;   // injectable clock
 bool allowOnce(uint64_t siteKey) noexcept;
 inline uint64_t siteKey(const std::source_location& l) noexcept {
-    return (uint64_t(reinterpret_cast<uintptr_t>(l.file_name())) * 1099511628211ull)
-         ^ (uint64_t(l.line()) << 20) ^ l.column();
+    return (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(l.file_name())) * 1099511628211ull)
+         ^ (static_cast<uint64_t>(l.line()) << 20) ^ l.column();
 }
 // Frame counter for MC2_LOG_EVERY_N_FRAMES (the engine may call tickFrame once per frame).
 void tickFrame() noexcept;
