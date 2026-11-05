@@ -169,9 +169,10 @@ def check_workers(state, now, start=start_worker):
             out[k] = "backoff"
         else:
             state["backoff"].pop(k, None)
+            old = read_pidfile(f"{FILLER}/worker{g}.pid")
             pid = start(g)
             hist.append(now)
-            log(f"worker{g} dead (pidfile {read_pidfile(f'{FILLER}/worker{g}.pid')}): restarted pid {pid} (restart {len(hist)} in {FLAP_WINDOW_S}s)")
+            log(f"worker{g} dead (was pid {old}): restarted pid {pid} (restart {len(hist)} in {FLAP_WINDOW_S}s)")
             out[k] = "restarted"
         state["restarts"][k] = hist
     return out
@@ -198,10 +199,16 @@ def _dead_pid_body(body):
     return bool(tok) and tok[0].isdigit() and not alive(int(tok[0]))
 
 
-def reap(now):
+def reap(now, holders=None):
     gone = []
+    holders = status.lock_holders() if holders is None else holders
     for g in range(4):
         base = f"{LOCKS}/gpu{g}"
+        try:
+            if os.stat(base).st_ino in holders:   # the GPU lock is held: its row still runs, so its owner/row files stay
+                continue
+        except OSError:
+            pass
         own = base + ".owner"
         try:
             age = now - os.stat(own).st_mtime
@@ -453,8 +460,8 @@ def tick(state, now=None):
     now = time.time() if now is None else now
     problems = []
     state["workers"] = check_workers(state, now)
-    state["reaped_last"] = reap(now)
     holders = status.lock_holders()
+    state["reaped_last"] = reap(now, holders)
     problems += guard_gpu3(state, now, holders=holders)
     for k, st in state["workers"].items():
         if st == "backoff":

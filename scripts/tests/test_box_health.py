@@ -114,7 +114,7 @@ def test_worker_restart_and_backoff(box):
     (box.filler / "worker1.pid").write_text("12345")    # dead
     out = sup.check_workers(state, 1000.0, start=start)
     assert out == {"0": "alive", "1": "restarted", "2": "restarted"} and started == [1, 2]
-    assert "worker1 dead (pidfile 12345): restarted pid 9001" in box.log.read_text()
+    assert "worker1 dead (was pid 12345): restarted pid 9001" in box.log.read_text()
     for i in range(sup.FLAP_N):   # 1 + FLAP_N restarts inside the window: backoff, no more starts
         sup.check_workers(state, 1001.0 + i, start=start)
     started.clear()
@@ -138,8 +138,10 @@ def test_reap_only_dead_and_stale(box):
     (L / "old.want").write_text(""); aged(L / "old.want", sup.STALE_WANT_S + 60)
     (L / "new.want").write_text("")
     (L / "quiet").write_text("99997 1 t\n")
-    gone = {Path(p).name for p in sup.reap(time.time())}
-    assert gone == {"gpu0.owner", "gpu0.row", "old.want", "quiet"}
+    (L / "gpu3").write_text("")
+    (L / "gpu3.owner").write_text("99996 queue t\n"); aged(L / "gpu3.owner", 300)              # dead writer, but the lock is held
+    gone = {Path(p).name for p in sup.reap(time.time(), holders={os.stat(L / "gpu3").st_ino: 1})}
+    assert gone == {"gpu0.owner", "gpu0.row", "old.want", "quiet"} and (L / "gpu3.owner").exists()
     assert (L / "gpu0").exists() and (L / "gpu1.owner").exists() and (L / "gpu1.row").exists() and (L / "gpu2.owner").exists()
     assert (L / "new.want").exists()
     assert "reaped " in box.log.read_text() and "owner pid dead" in box.log.read_text()
