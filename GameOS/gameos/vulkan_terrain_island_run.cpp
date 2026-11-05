@@ -639,6 +639,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // VK_QUERY_RESULT_WAIT_BIT, so with MC2_VK_GPU_TIMESTAMPS armed it blocks until
     // this frame's pass completes (diagnostic-only stall; gate is default-OFF and
     // resolve() is a no-op without it).
+    if (s->gpuTimer.supported) rctx.poll();   // resolve() waits on the query results: the deferred batch holding this cb must be on the queue first
     s->gpuTimer.resolve();
 
     // HARD assert: no COLOR-side readback fired on the co-write path (the height

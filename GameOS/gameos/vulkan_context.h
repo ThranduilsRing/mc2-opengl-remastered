@@ -260,6 +260,7 @@ private:
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
     mutable std::vector<VkCommandBuffer> pendingCbs_;   // submitMutex_
+    mutable bool pendingFailed_ = false;                 // submitMutex_: a batched submit failed after its callers were told VK_SUCCESS; the next submit() reports it
     mutable uint64_t pendingValue_ = 0;                  // submitMutex_: the timeline value the pending batch signals (0 = none)
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;

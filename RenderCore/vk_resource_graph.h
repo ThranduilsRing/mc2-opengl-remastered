@@ -121,7 +121,13 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
                 const int slot = plan.lifetimes[use.image].slot;
                 State discarded{};
                 if (slot >= 0 && slotOwner[slot] >= 0) {
-                    discarded = states[plan.mipOffset[slotOwner[slot]]];
+                    // Every mip of the old occupant counts: its accesses are all retired, not only mip 0's.
+                    const unsigned ob = plan.mipOffset[slotOwner[slot]], oe = plan.mipOffset[slotOwner[slot] + 1];
+                    for (unsigned om = ob; om < oe; ++om) {
+                        discarded.stages |= states[om].stages;
+                        discarded.access |= states[om].access;
+                        discarded.write = discarded.write || states[om].write;
+                    }
                     discarded.layout = 0; // Discard, but retire every access to the old slot occupant.
                 }
                 for (uint32_t m = 0; m < n; ++m) states[base + m] = discarded;

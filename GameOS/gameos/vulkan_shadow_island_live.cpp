@@ -21,6 +21,7 @@
 #include "vk_owned.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vulkan_color_prop_island.h"
@@ -1032,17 +1033,23 @@ static void record_local_shadows(ShadowIsland* s) {
     VkCommandBuffer cb = s->cbuf[s->parity];
     const VkImageSubresourceRange depthRange{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
     if (!L.layoutsReady) {
-        VkImageMemoryBarrier b[2]{};
-        for (auto& x : b) { x.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER; x.srcQueueFamilyIndex = x.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; x.subresourceRange = depthRange; x.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; }
-        b[0].image = L.staticAtlas.image.get(); b[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; b[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        b[1].image = L.liveAtlas.image.get();   b[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, b);
+        // Both atlases come out of UNDEFINED: the trackers derive the source state of every transition from the previous use.
+        mc2vk::VulkanContext& bctx = mc2vk::getOrCreateEngineVulkanContext();
+        mc2vk::sync::ImageTracker staticTrk(reinterpret_cast<uint64_t>(L.staticAtlas.image.get()), VK_IMAGE_ASPECT_DEPTH_BIT);
+        mc2vk::sync::ImageTracker liveTrk(reinterpret_cast<uint64_t>(L.liveAtlas.image.get()), VK_IMAGE_ASPECT_DEPTH_BIT);
+        {
+            mc2vk::sync::BarrierBatch batch;
+            staticTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false});
+            liveTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, true});
+            mc2vk::sync::flush(bctx, cb, batch);
+        }
         const VkClearDepthStencilValue one{1.0f, 0};
         vkCmdClearDepthStencilImage(cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &one, 1, &depthRange);
-        VkImageMemoryBarrier r = b[1];
-        r.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; r.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        r.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; r.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &r);
+        {
+            mc2vk::sync::BarrierBatch batch;
+            liveTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL), VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false});
+            mc2vk::sync::flush(bctx, cb, batch);
+        }
         L.layoutsReady = true;
         ++s->passCount;   // the frame must be submitted for the transitions
     }

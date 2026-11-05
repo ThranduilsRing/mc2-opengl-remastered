@@ -652,6 +652,8 @@ GpuTicket VulkanContext::flushUploads() const {
 #endif
 
 VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
+    // A deferred batch that failed earlier already returned VK_SUCCESS to its callers: surface it here, once, so an island disables itself.
+    if (pendingFailed_) { pendingFailed_ = false; return VK_ERROR_UNKNOWN; }
     assert(si.pNext == nullptr && "submit(): the timeline info is appended here; pass a plain VkSubmitInfo");
     if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
     if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
@@ -713,6 +715,7 @@ VkResult VulkanContext::queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence
 
 void VulkanContext::flushPendingLocked() const {
     if (pendingCbs_.empty()) return;
+    if (infra::deviceLostLatched()) { pendingCbs_.clear(); pendingValue_ = 0; return; }   // no queue work on a lost device
     std::vector<VkCommandBufferSubmitInfo> cbs(pendingCbs_.size());
     for (size_t i = 0; i < cbs.size(); ++i) {
         cbs[i] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
@@ -734,10 +737,12 @@ void VulkanContext::flushPendingLocked() const {
     if (r != VK_SUCCESS) {
         ctxlog("the batched submit failed: VkResult=%d (the timeline value is signalled empty to stay in step).", static_cast<int>(r));
         if (r == VK_ERROR_DEVICE_LOST) { infra::deviceLost(); return; }
+        pendingFailed_ = true;
         out.commandBufferInfoCount = 0;
         out.pCommandBufferInfos = nullptr;
         r = queueSubmit2(gfxQueue_, out, VK_NULL_HANDLE);
-        if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();
+        // The timeline could not be kept in step: every later wait on this value would burn its full timeout. Treat the device as lost.
+        if (r != VK_SUCCESS) { ctxlog("the empty timeline signal failed too (VkResult=%d): marking the device lost.", static_cast<int>(r)); infra::deviceLost(); }
     }
     (void)value;
 }
