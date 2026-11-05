@@ -8464,13 +8464,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "scripts/tests/test_lint_fixup.py",
-      "basename": "test_lint_fixup.py",
-      "stem": "test_lint_fixup",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "scripts/tests/test_lint_slots.py",
       "basename": "test_lint_slots.py",
       "stem": "test_lint_slots",
@@ -11617,8 +11610,8 @@
           "text": "from tools import lane_merge as lm  # noqa: E402"
         },
         {
-          "path": "scripts/tests/test_lint_fixup.py",
-          "line": 15,
+          "path": "scripts/tests/test_lint_slots.py",
+          "line": 91,
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools import lane_merge as lm  # noqa: E402"
@@ -11746,18 +11739,18 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "scripts/tests/test_lint_fixup.py",
-          "line": 16,
-          "evidence": "import",
-          "reference": "lint_slots",
-          "text": "import lint_slots as ls  # noqa: E402"
-        },
-        {
           "path": "scripts/tests/test_lint_slots.py",
           "line": 10,
           "evidence": "import",
           "reference": "lint_slots",
           "text": "import lint_slots as lane_merge  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_lint_slots.py",
+          "line": 92,
+          "evidence": "import",
+          "reference": "lint_slots",
+          "text": "import lint_slots as ls  # noqa: E402"
         },
         {
           "path": "tools/lane_merge.py",
