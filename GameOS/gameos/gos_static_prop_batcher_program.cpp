@@ -164,7 +164,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
             : 0.0;
 
         uint64_t total_submitted = 0;
-        for (unsigned long p : s_counters.mono_submitted_instances_by_pop) {
+        for (uint64_t p : s_counters.mono_submitted_instances_by_pop) {
             total_submitted += p;
         }
 
