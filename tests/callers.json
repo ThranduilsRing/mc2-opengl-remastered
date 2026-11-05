@@ -4029,28 +4029,28 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 150,
+          "line": 182,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity, staleness_report"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 385,
+          "line": 417,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 884,
+          "line": 918,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_engine_normal_cooks"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 1371,
+          "line": 1418,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import verify_published_identity"
@@ -4324,14 +4324,14 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 148,
+          "line": 180,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "from exe_fingerprint import extract, build_current"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 932,
+          "line": 966,
           "evidence": "import",
           "reference": "exe_fingerprint",
           "text": "import exe_fingerprint"
@@ -4609,7 +4609,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 733,
+          "line": 767,
           "evidence": "command",
           "reference": "scripts/make-isolated-deploy.py",
           "text": "subprocess.run([sys.executable, str(ROOT / \"scripts/make-isolated-deploy.py\"),"
@@ -4838,6 +4838,13 @@
           "evidence": "import",
           "reference": "merge_gate",
           "text": "import merge_gate as gate  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_gate_box_route.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "merge_gate",
+          "text": "import merge_gate as gate"
         },
         {
           "path": "scripts/tests/test_gate_farm.py",
@@ -8373,6 +8380,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_gate_box_route.py",
+      "basename": "test_gate_box_route.py",
+      "stem": "test_gate_box_route",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_gate_farm.py",
       "basename": "test_gate_farm.py",
       "stem": "test_gate_farm",
@@ -9807,7 +9821,15 @@
       "basename": "box_run.py",
       "stem": "box_run",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_gate_box_route.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "box_run",
+          "text": "import box_run"
+        }
+      ]
     },
     {
       "path": "tools/bt2018_import/build_bt2018_mod.py",
@@ -11668,7 +11690,7 @@
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 36,
+          "line": 40,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "from lane_merge import git_bash, run_logged  # noqa: E402"
@@ -13940,14 +13962,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 149,
+          "line": 181,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "from mod_smoke import load_known_failures"
         },
         {
           "path": "scripts/merge_gate.py",
-          "line": 300,
+          "line": 332,
           "evidence": "import",
           "reference": "mod_smoke",
           "text": "import mod_smoke as mods"
@@ -15058,7 +15080,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/merge_gate.py",
-          "line": 151,
+          "line": 183,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as saves"
