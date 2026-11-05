@@ -2,3 +2,7 @@
 // sun) and shadow_mech collapses it (the vehicle's shadow comes from the mover feed). C++ copy: kMechRenderFlagLegacyVehicle in
 // GameOS/gameos/gos_mech_batcher.h.
 #define MECH_RENDER_FLAG_LEGACY_VEHICLE 0x40u
+// Instance renderFlags bit 7: the instance's vertices were skinned by shaders/vulkan/mech_skin.comp this frame (the vertex stream already holds the
+// posed position, normal and tangent); every vertex stage skips its bone blend. Set on the VK copy of the instance record only; the GL batcher never sees it.
+// C++ copy: kMechRenderFlagPreskinned in GameOS/gameos/gos_mech_batcher.h.
+#define MECH_RENDER_FLAG_PRESKINNED 0x80u

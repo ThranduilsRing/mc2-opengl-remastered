@@ -435,6 +435,7 @@ void uploadMechGeometryVbo() {
     std::vector<uint8_t> dvbo;
     std::vector<uint32_t> dibo = s_stagingIbo;
     std::vector<int32_t> pktBase(s_packets.size(), 0);
+    std::vector<uint32_t> pktCount(s_packets.size(), 0);
     bool ok = !s_nodeVboRanges.empty() && !s_stagingIbo.empty();
     size_t pk = 0;
     dvbo.reserve(work.size());
@@ -477,7 +478,7 @@ void uploadMechGeometryVbo() {
         std::vector<uint8_t> fetched(uniq.size());
         meshopt_optimizeVertexFetch(fetched.data(), dibo.data() + ibFirst, ibEnd - ibFirst, uniq.data(), nUniq, kStride);
         const int32_t newBase = static_cast<int32_t>(dvbo.size() / kStride);
-        for (size_t p = firstPk; p < pk; ++p) pktBase[p] = newBase;
+        for (size_t p = firstPk; p < pk; ++p) { pktBase[p] = newBase; pktCount[p] = static_cast<uint32_t>(nUniq); }
         dvbo.insert(dvbo.end(), fetched.begin(), fetched.end());
     }
     if (ok && pk != s_packets.size()) ok = false;
@@ -487,12 +488,14 @@ void uploadMechGeometryVbo() {
         s_vkVboNativeCopy = std::move(dvbo);
         s_vkIboNativeCopy = std::move(dibo);
         s_vkPacketBaseVertex = std::move(pktBase);
+        s_vkPacketVertexCount = std::move(pktCount);
     } else {
         MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=dedupe_skipped reason=node_packet_mismatch\n");
         s_vkVboNativeCopy = std::move(work);
         s_vkIboNativeCopy = s_stagingIbo;
         s_vkPacketBaseVertex.resize(s_packets.size());
         for (size_t i = 0; i < s_packets.size(); ++i) s_vkPacketBaseVertex[i] = s_packets[i].baseVertex;
+        s_vkPacketVertexCount.assign(s_packets.size(), 0);
     }
     ++s_vkMechGeomGen;
 }

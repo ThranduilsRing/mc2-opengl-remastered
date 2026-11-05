@@ -1,0 +1,65 @@
+// VK mech pre-skin pass: skins every skinnable mech instance ONCE per frame so the depth, colour, shadow and preview vertex stages read finished
+// positions instead of blending bones in each pass. One workgroup row (gl_WorkGroupID.y) is one job: a (node vertex range, bone base) pair; the
+// x dimension chunks the range by 64 vertices. The output keeps the 48 B GpuMechVertex layout (pos 0, normal 12, uv 24, bone indices 32, weights 36,
+// tangentOct 40, colour 44) so the consumers keep their vertex input state; the consumers skip the bone blend for an instance flagged PRESKINNED.
+// mat4(row0..row3) is intentionally the transpose of the Stuff bone matrix (see mech_tier1.vert): do NOT "fix" it. Output stays in Stuff space; the
+// consumers apply the Stuff -> MC2 swizzle exactly as before.
+#version 450
+
+layout(local_size_x = 64) in;
+
+struct GpuMechBone { vec4 row0, row1, row2, row3; };
+struct SkinJob { uint srcFirst; uint count; uint dstFirst; uint boneBase; };
+
+layout(set = 0, binding = 0, std430) readonly buffer SrcVertices { uint w[]; } uSrc;     // 12 words per vertex
+layout(set = 0, binding = 1, std430) readonly buffer BonePalette { GpuMechBone bones[]; } uBones;
+layout(set = 0, binding = 2, std430) readonly buffer Jobs { SkinJob jobs[]; } uJobs;
+layout(set = 0, binding = 3, std430) writeonly buffer DstVertices { uint w[]; } uDst;
+
+const uint kWords = 12u;
+
+vec3 loadVec3(uint at) { return vec3(uintBitsToFloat(uSrc.w[at]), uintBitsToFloat(uSrc.w[at + 1u]), uintBitsToFloat(uSrc.w[at + 2u])); }
+void storeVec3(uint at, vec3 v) { uDst.w[at] = floatBitsToUint(v.x); uDst.w[at + 1u] = floatBitsToUint(v.y); uDst.w[at + 2u] = floatBitsToUint(v.z); }
+
+vec2 octEncode(vec3 n) {
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    vec2 e = n.xy;
+    if (n.z < 0.0) e = (1.0 - abs(e.yx)) * vec2(e.x >= 0.0 ? 1.0 : -1.0, e.y >= 0.0 ? 1.0 : -1.0);
+    return e;
+}
+
+void main() {
+    SkinJob job = uJobs.jobs[gl_WorkGroupID.y];
+    uint v = gl_WorkGroupID.x * 64u + gl_LocalInvocationID.x;
+    if (v >= job.count) return;
+    uint s = (job.srcFirst + v) * kWords;
+    uint d = (job.dstFirst + v) * kWords;
+
+    vec3 pos = loadVec3(s);
+    vec3 nrm = loadVec3(s + 3u);
+    uint bi = uSrc.w[s + 8u];
+    uint bw = uSrc.w[s + 9u];
+    mat4 boneT = mat4(0.0);
+    for (uint k = 0u; k < 4u; ++k) {
+        float w = float((bw >> (8u * k)) & 255u) * (1.0 / 255.0);   // R8G8B8A8_UNORM
+        if (w > 0.0) {
+            GpuMechBone bn = uBones.bones[((bi >> (8u * k)) & 255u) + job.boneBase];
+            boneT += w * mat4(bn.row0, bn.row1, bn.row2, bn.row3);
+        }
+    }
+    storeVec3(d, (boneT * vec4(pos, 1.0)).xyz);
+    storeVec3(d + 3u, mat3(boneT) * nrm);
+    uDst.w[d + 6u] = uSrc.w[s + 6u];
+    uDst.w[d + 7u] = uSrc.w[s + 7u];
+    uDst.w[d + 8u] = 0u;            // bone 0 ...
+    uDst.w[d + 9u] = 0xFFu;         // ... weight 1: a consumer that ignored the flag would blend bone 0, so the flag is load-bearing
+    // Tangent: the same octahedral decode the colour VS did, rotated by the blended bone, re-encoded.
+    uint tw = uSrc.w[s + 10u];
+    vec2 te = unpackSnorm2x16(tw);
+    vec3 t = vec3(te.xy, 1.0 - abs(te.x) - abs(te.y));
+    if (t.z < 0.0) t.xy = (1.0 - abs(t.yx)) * vec2(t.x >= 0.0 ? 1.0 : -1.0, t.y >= 0.0 ? 1.0 : -1.0);
+    t = mat3(boneT) * normalize(t);
+    float tl = length(t);
+    uDst.w[d + 10u] = (tl > 1e-6) ? packSnorm2x16(octEncode(t / tl)) : tw;
+    uDst.w[d + 11u] = uSrc.w[s + 11u];
+}

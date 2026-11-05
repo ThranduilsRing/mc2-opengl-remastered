@@ -192,7 +192,7 @@ if(MC2_VULKAN)
         # lighting up the vk2gl back-channel). Borrows the shared engine
         # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
         # -> GL shadow path byte-identical. extern "C" entry points only.
-        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_mech_skin.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
         # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
         # region rendering REAL static-prop triangle geometry in-place into the shared
         # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
@@ -414,6 +414,7 @@ if(MC2_VULKAN)
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
     list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)
+    list(APPEND MC2_VK_SHADER_BASENAMES mech_skin)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.

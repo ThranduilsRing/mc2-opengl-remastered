@@ -458,6 +458,7 @@ void MechFlushFrame::collectRuns() {
         run.firstIndex    = pkt.firstIndex;
         run.indexCount    = pkt.indexCount;
         run.baseVertex    = dc.globalPacketIdx < s_vkPacketBaseVertex.size() ? s_vkPacketBaseVertex[dc.globalPacketIdx] : pkt.baseVertex;
+        run.vertexCount   = dc.globalPacketIdx < s_vkPacketVertexCount.size() ? s_vkPacketVertexCount[dc.globalPacketIdx] : 0u;
         run.instanceBase  = dc.instanceBase;
         run.instanceCount = dc.instanceCount;
         run.materialFlags = dc.materialFlags;

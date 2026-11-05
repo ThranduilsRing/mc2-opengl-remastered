@@ -78,6 +78,9 @@ struct GpuMechPacket {
 // and (2) shadow_mech collapses the instance, because the vehicle's shadow comes from the mover feed. Keep the value in
 // step with shaders/include/mech_render_flags.hglsl.
 constexpr uint32_t kMechRenderFlagLegacyVehicle = 0x40u;
+// Instance renderFlags bit 7, set on the VK copy of the record only (never by the batcher, never seen by GL): this instance vertices were skinned by
+// mech_skin.comp, so the vertex stages skip their bone blend. Keep in step with shaders/include/mech_render_flags.hglsl.
+constexpr uint32_t kMechRenderFlagPreskinned = 0x80u;
 
 struct GpuMechSubmitDesc {
     TG_MultiShape*              mechShape;      // live per-instance shape (shapeToWorld only)
