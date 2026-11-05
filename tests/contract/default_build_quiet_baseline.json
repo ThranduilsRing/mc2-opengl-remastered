@@ -13,10 +13,6 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/fingerprint.py parses this to prove the smoked exe matches the worktree HEAD. Silencing it disables DEPLOY_FINGERPRINT attribution -- the single strongest anti-'unverifiable work' control in the harness."
     },
-    "CONTENT": {
-      "status": "keep",
-      "reason": "mclib/file_mod.inc ScanModDuplicateContent: printed only when a mod layer is mounted (never in base game mode), one line per file whose lower layers differ from the winner (capped at 200) plus one summary; tools/mod_smoke.py scrapes only 'kind=' content errors so these informational lines are not counted."
-    },
     "CONFIG v1": {
       "status": "keep",
       "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
@@ -32,10 +28,6 @@
     "PERF v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py parses avg_fps/p50_ms/p99_ms (oracle_report.py and smoke_with_screenshots.py, the other readers, were retired 2026-10-09 and 2026-10-12). This is the perf regression signal."
-    },
-    "PRESENT_THREAD": {
-      "status": "keep",
-      "reason": "FAIL-LOUD by design (GameOS/gameos/present_thread.cpp): the unconditional lines report a >5 s present-worker stall (inline rollback), a failed present and the inline-fallback switch; none prints in a healthy run, so a default smoke stays quiet. The start line is behind MC2_DIAG_TAGS=PRESENT_THREAD."
     },
     "QUADSETUP_SKIP v1": {
       "status": "keep",
