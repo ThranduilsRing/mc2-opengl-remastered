@@ -11,8 +11,6 @@
 #include "engine_present_vk.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include "utils/mc2log.h"
 #include "diagnostic_trace.h"

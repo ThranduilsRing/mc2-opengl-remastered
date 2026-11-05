@@ -11,8 +11,6 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate_cold.h"   // str<>()
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record

@@ -6,8 +6,6 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "mc2_diag_verbose.h"
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include <array>
 #include <algorithm>

@@ -7,8 +7,6 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #include "vulkan_shared_scene_depth.h"
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include <glm/gtc/packing.hpp>
 #include <array>
