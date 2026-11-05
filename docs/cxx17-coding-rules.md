@@ -303,7 +303,7 @@ exception-free. Use the non-throwing overload (`get_if`, `value_or`,
 `new`, `delete` and `gos_Malloc`/`gos_Free` share one engine allocator
 (mimalloc; CRT under `MC2_ASAN`). Never `free()` memory from `new` or
 `gos_Malloc`, and never `delete`/`gos_Free` memory from `malloc`. Debug and
-`MC2_ALLOC_STATS` builds abort with `[ALLOC_MISMATCH]` on a foreign pointer.
+`MC2_ALLOC_STATS` builds abort with an "allocator mismatch" message on a foreign pointer.
 
 ## 7. First useful cleanups (advisory backlog)
 

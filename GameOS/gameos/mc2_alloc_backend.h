@@ -11,15 +11,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <malloc.h>
+#include <string_view>
 
-#if defined(MC2_ASAN) || defined(__SANITIZE_ADDRESS__)
-#define MC2_ALLOC_CRT 1
-#else
-#define MC2_ALLOC_CRT 0
+#if !defined(MC2_ASAN) && !defined(__SANITIZE_ADDRESS__)
 #include <mimalloc.h>
 #endif
 
-#if MC2_ALLOC_CRT
+#if defined(MC2_ASAN) || defined(__SANITIZE_ADDRESS__)
 #if defined(_WIN32)
 inline void* mc2a_malloc(size_t n) { return std::malloc(n); }
 inline void* mc2a_aligned(size_t n, size_t al) { return _aligned_malloc(n, al); }
@@ -45,14 +43,14 @@ inline bool  mc2a_owns(const void* p) { return mi_is_in_heap_region(p); }
 
 #if defined(MC2_ALLOC_STATS) || !defined(NDEBUG)
 // Allocator-mismatch guard: a non-null pointer reaching gos_Free/delete must belong to the engine allocator.
-inline void mc2a_check_owned(const void* p, const char* who)
+inline void mc2a_check_owned(const void* p, std::string_view who)
 {
     if (p && !mc2a_owns(p)) {
-        std::fprintf(stderr, "[ALLOC_MISMATCH] %s: %p is not an engine-allocator block (free()'d/malloc'd memory crossed new/gos_Malloc)\n", who, p);
+        std::fprintf(stderr, "allocator mismatch in %.*s: %p is not an engine-allocator block (free()'d/malloc'd memory crossed new/gos_Malloc)\n", static_cast<int>(who.size()), who.data(), p);
         std::fflush(stderr);
         std::abort();
     }
 }
 #else
-inline void mc2a_check_owned(const void*, const char*) {}
+inline void mc2a_check_owned(const void*, std::string_view) {}
 #endif
