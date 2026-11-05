@@ -3134,17 +3134,9 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:71`
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:72`
 - Class: `ShadowMechCasters`  (data-member)
-- Member: `VkDeviceSize vboCap_ = 0, iboCap_ = 0, instCap_[kMaxFramesInFlight] = {}, boneCap_[kMaxFramesInFlight] = {};`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:76`
-- Class: `ShadowMechCasters`  (data-member)
-- Member: `OwnedDescriptorSetLayout dsl_;`
+- Member: `VkDeviceSize instCap_[kMaxFramesInFlight] = {}, boneCap_[kMaxFramesInFlight] = {};`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -3152,15 +3144,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:77`
 - Class: `ShadowMechCasters`  (data-member)
-- Member: `OwnedDescriptorPool pool_;`
+- Member: `OwnedDescriptorSetLayout dsl_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:79`
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:78`
 - Class: `ShadowMechCasters`  (data-member)
-- Member: `OwnedPipelineLayout layout_;`
+- Member: `OwnedDescriptorPool pool_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -3168,13 +3160,21 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:80`
 - Class: `ShadowMechCasters`  (data-member)
-- Member: `OwnedShaderModule vert_, frag_;`
+- Member: `OwnedPipelineLayout layout_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
 - Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:81`
+- Class: `ShadowMechCasters`  (data-member)
+- Member: `OwnedShaderModule vert_, frag_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:82`
 - Class: `ShadowMechCasters`  (data-member)
 - Member: `OwnedPipeline pipeline_;`
 - Consuming targets: gameos
