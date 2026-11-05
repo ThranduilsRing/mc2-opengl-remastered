@@ -440,5 +440,6 @@
   "scripts/smoke_lib/via_menu.py": "Library imported by scripts/run_smoke.py (--via-menu) and tools/tracy_capture_compare.py through the smoke_lib package.",
   "scripts/smoke_lib/cold_cache.py": "Library imported by scripts/run_smoke.py (--cold-cache) through the smoke_lib package.",
   "tools/terrain_beautify/test_height_sig.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/rga_census.py": "Operator-run RGA shader census (py -3 tools/rga_census.py --spv-dir ... --csv out.csv); documented in its own usage header, run by hand on a machine with rga.exe.",
   "tools/mc2texcook/cook_cliff_rock.py": "Art cook script run by hand (--select riverbed) to produce data/terrain_layers/cliff_rock_*.ktx2; scripts/deploy_payload.py names it via the CLIFF_ROCK_COOK path constant, not a literal command."
 }

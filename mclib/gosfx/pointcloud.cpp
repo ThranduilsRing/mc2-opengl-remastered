@@ -7,6 +7,7 @@
 
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 //==========================================================================//
 // File:	 gosFX_PointCloud.cpp											//
 // Contents: Base gosFX::PointCloud Component								//
@@ -440,7 +441,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 	{
 		Specification *spec = GetSpecification();
 		Check_Object(spec);
-        if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
+        if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">() && mc2_diag::tagRequested("VFX_PRIMITIVE")) {
             static bool reported = false;
             if (!reported) {
                 reported = true;
