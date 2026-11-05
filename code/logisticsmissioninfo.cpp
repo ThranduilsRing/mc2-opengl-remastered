@@ -69,7 +69,7 @@ void LogisticsMissionInfo::clear()
 
 	for (auto & additionalPurchaseFile : additionalPurchaseFiles)
 	{
-		additionalPurchaseFilereset();
+		additionalPurchaseFile.reset();
 	}
 
 	additionalPurchaseFiles.clear();
@@ -504,7 +504,7 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 	{
 		mc2::fmt::to_buf(header, "File{:d}", mc2::fmt::as_i32(i));
 
-		file.writeIdString( header, additionalPurchaseFileget() );
+		file.writeIdString( header, additionalPurchaseFile.get() );
 		i++;
 	}
 
