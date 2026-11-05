@@ -1,0 +1,128 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/vegetation_region.comp",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "blockVis",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegVis"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "inst",
+          "offset": 0,
+          "type": "_259"
+        }
+      ],
+      "name": "VegInst"
+    },
+    {
+      "binding": 3,
+      "members": [
+        {
+          "array_stride": 32,
+          "matrix_stride": null,
+          "name": "region",
+          "offset": 0,
+          "type": "_60"
+        }
+      ],
+      "name": "VegReg"
+    },
+    {
+      "binding": 5,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "counts",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegCounts"
+    },
+    {
+      "binding": 6,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "offsets",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegOffsets"
+    },
+    {
+      "binding": 7,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "dense",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegDense"
+    },
+    {
+      "binding": 8,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "args",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegArgs"
+    },
+    {
+      "binding": 9,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "visList",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegVisList"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "P",
+          "offset": 0,
+          "type": "_18"
+        }
+      ],
+      "name": "VegParams"
+    }
+  ],
+  "variant": "default"
+}

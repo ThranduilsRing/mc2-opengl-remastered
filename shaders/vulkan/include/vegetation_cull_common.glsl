@@ -7,7 +7,8 @@ layout(std430, set = 0, binding = 3) readonly buffer VegReg { VegRegion region[]
 layout(std430, set = 0, binding = 5) coherent buffer VegCounts { uint counts[]; }; // survivors per region
 layout(std430, set = 0, binding = 6) buffer VegOffsets { uint offsets[]; };   // exclusive prefix of counts
 layout(std430, set = 0, binding = 7) buffer VegDense { uint dense[]; };       // the compact survivor id list, population order
-layout(std430, set = 0, binding = 8) buffer VegArgs { uint args[]; };         // 2 x VkDrawIndirectCommand, drawn, survivor total, cull done counter
+layout(std430, set = 0, binding = 8) buffer VegArgs { uint args[]; };         // 2 x VkDrawIndirectCommand, drawn, survivor total, cull done counter, pad, VkDispatchIndirectCommand (x = visible region count)
+layout(std430, set = 0, binding = 9) buffer VegVisList { uint visList[]; };   // visible region ids (vegetation_region); counts[]/offsets[] are indexed by position in this list
 float vegSmooth(float a, float b, float x) {
     float t = clamp((x - a) / (b - a), 0.0, 1.0);
     return t * t * (3.0 - 2.0 * t);

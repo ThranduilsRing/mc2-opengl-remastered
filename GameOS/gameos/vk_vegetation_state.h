@@ -104,11 +104,11 @@ public:
 
 private:
     struct Slot {
-        mc2vk::OwnedBuffer counts, offsets, dense, args, stats;
+        mc2vk::OwnedBuffer counts, offsets, dense, args, stats, visList;
         bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);
-    mc2vk::ComputePipeline cull_, compact_;
+    mc2vk::ComputePipeline region_, cull_, compact_;
     mc2vk::ComputeSets sets_;
     bool pipelinesTried_ = false, pipelinesOk_ = false;
     uint64_t generation_ = 1, boundGeneration_ = 0;

@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "inst",
           "offset": 0,
-          "type": "_492"
+          "type": "_418"
         }
       ],
       "name": "VegInst"
@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "region",
           "offset": 0,
-          "type": "_381"
+          "type": "_376"
         }
       ],
       "name": "VegReg"
@@ -93,6 +93,19 @@
         }
       ],
       "name": "VegArgs"
+    },
+    {
+      "binding": 9,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "visList",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegVisList"
     }
   ],
   "stage": "comp",

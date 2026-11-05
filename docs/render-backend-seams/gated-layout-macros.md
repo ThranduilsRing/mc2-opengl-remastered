@@ -1608,7 +1608,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vk_vegetation_state.h:111`
 - Class: `State`  (data-member)
-- Member: `mc2vk::ComputePipeline cull_, compact_;`
+- Member: `mc2vk::ComputePipeline region_, cull_, compact_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 

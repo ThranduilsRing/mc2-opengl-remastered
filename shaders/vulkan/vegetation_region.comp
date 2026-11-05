@@ -1,0 +1,45 @@
+// Vegetation GPU cull, level 1: region sphere vs frustum planes and MC2_VEG_MAX_DIST in ONE workgroup. Visible regions are
+// ballot-compacted (region order preserved) into visList[]; args[12..14] become the indirect dispatch the per-region cull and
+// compact passes run over, so the 12k mostly-culled regions never launch a workgroup. The draw arguments are reset to an empty draw
+// here; the cull pass overwrites them when at least one region is visible.
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_ballot : require
+layout(local_size_x = 128) in;
+#include "include/vegetation_cull_common.glsl"
+shared uint s_sub[128];
+void main() {
+    uint lid = gl_LocalInvocationIndex, regions = P.counts.x;
+    bool force = P.flags.x != 0u;
+    uint base = 0u;
+    for (uint c = 0u; c < regions; c += 128u) {
+        uint r = c + lid;
+        bool vis = false;
+        if (r < regions) {
+            VegRegion R = region[r];
+            vis = true;
+            if (!force) {
+                bool outside = false;
+                for (int k = 0; k < 4; ++k)
+                    if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
+                vis = !outside && distance(R.sphere.xyz, P.cam.xyz) <= P.cam.w + R.sphere.w;
+            }
+        }
+        uvec4 ballot = subgroupBallot(vis);
+        if (subgroupElect()) s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot);
+        barrier();
+        uint before = 0u, chunk = 0u;
+        for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) before += t; chunk += t; }
+        if (vis) visList[base + before + subgroupBallotExclusiveBitCount(ballot)] = r;
+        base += chunk;
+        barrier();
+    }
+    if (lid == 0u) {
+        args[0] = 8u; args[1] = 0u; args[2] = 0u; args[3] = 0u;
+        args[4] = 8u; args[5] = 0u; args[6] = 8u; args[7] = 0u;
+        args[8] = 0u; args[9] = 0u; args[10] = 0u;
+        // VkDispatchIndirectCommand at byte 48; x is also the visible region count read by cull and compact.
+        args[12] = min(base, 65535u); args[13] = 1u; args[14] = 1u;
+    }
+}

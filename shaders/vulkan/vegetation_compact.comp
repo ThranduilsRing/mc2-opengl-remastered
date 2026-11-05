@@ -25,13 +25,14 @@ uint mulDiv(uint a, uint b, uint n) {
     return q;
 }
 void main() {
-    uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
-    if (r >= P.counts.x || counts[r] == 0u) return;
-    uint start = offsets[r];
-    uint end = r + 1u < P.counts.x ? offsets[r + 1u] : args[8];
+    // Indirect dispatch over the visible regions: w is the position in visList, which also indexes counts[] and offsets[].
+    uint w = gl_WorkGroupID.x;
+    if (counts[w] == 0u) return;
+    uint start = offsets[w];
+    uint end = w + 1u < args[12] ? offsets[w + 1u] : args[8];
     if (end <= start) return;
-    uint quota = end - start, n = counts[r];
-    VegRegion R = region[r];
+    uint quota = end - start, n = counts[w];
+    VegRegion R = region[visList[w]];
     uint lid = gl_LocalInvocationIndex, seen = 0u;
     for (uint c = R.first; c < R.last; c += 64u) {
         uint id = c + lid;

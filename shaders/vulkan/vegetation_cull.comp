@@ -13,39 +13,29 @@ shared uint s_count;
 shared uint s_last;
 shared uint s_sub[64];
 void main() {
-    uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
-    if (r >= P.counts.x) return;
+    // Indirect dispatch: one workgroup per VISIBLE region (vegetation_region), w indexes visList.
+    uint w = gl_WorkGroupID.x, visible = args[12];
     uint lid = gl_LocalInvocationIndex;
-    VegRegion R = region[r];
+    VegRegion R = region[visList[w]];
     bool force = P.flags.x != 0u;
-    bool skip = false;   // workgroup-uniform
-    if (!force) {
-        bool outside = false;
-        for (int k = 0; k < 4; ++k)
-            if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
-        float range = P.cam.w + R.sphere.w;
-        skip = outside || distance(R.sphere.xyz, P.cam.xyz) > range;
-    }
     if (lid == 0u) s_count = 0u;
     barrier();
-    if (!skip) {
-        uint localCount = 0u;
-        for (uint id = R.first + lid; id < R.last; id += 64u)
-            if (survives(unpackVegetation(inst[id]), force)) ++localCount;
-        uint waveSum = subgroupAdd(localCount);
-        if (subgroupElect()) atomicAdd(s_count, waveSum);
-    }
+    uint localCount = 0u;
+    for (uint id = R.first + lid; id < R.last; id += 64u)
+        if (survives(unpackVegetation(inst[id]), force)) ++localCount;
+    uint waveSum = subgroupAdd(localCount);
+    if (subgroupElect()) atomicAdd(s_count, waveSum);
     barrier();
     if (lid == 0u) {
-        counts[r] = skip ? 0u : s_count;
+        counts[w] = s_count;
         memoryBarrierBuffer();
-        s_last = atomicAdd(args[10], 1u) == P.counts.x - 1u ? 1u : 0u;
+        s_last = atomicAdd(args[10], 1u) == visible - 1u ? 1u : 0u;
     }
     barrier();
     if (s_last == 0u) return;
     memoryBarrierBuffer();
-    // Last workgroup: exclusive prefix over the per-region survivor counts, then the indirect draw arguments.
-    uint regions = P.counts.x;
+    // Last workgroup: exclusive prefix over the visible regions' survivor counts, then the indirect draw arguments.
+    uint regions = visible;
     uint per = (regions + 63u) / 64u, start = min(lid * per, regions), stop = min(start + per, regions);
     uint sum = 0u;
     for (uint i = start; i < stop; ++i) sum += counts[i];
