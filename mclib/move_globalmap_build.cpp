@@ -1,9 +1,11 @@
 // Pathfinding: GlobalMap construction: area flood fill, special areas, door collection and the packet read/write.
 // Declared in the class headers; shared names in move_internal.h.
+#include <algorithm>
 #include <array>
 #include <unordered_set>
 #include <vector>
 #include "move_internal.h"
+#include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <mdspan>
 #include "packet_exact.h"
@@ -552,16 +554,16 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSa
 	if (logEnabled && !blank) {
 		char s[256];
 		for (long i = 0; i < numDoors; i++) {
-			sprintf(s, "door %05d, %s(%d), areas %d & %d", i, doors[i].open ? "opened" : "CLOSED", doors[i].teamID, doors[i].area[0], doors[i].area[1]);
+			mc2::fmt::to_buf(s, "door {:05d}, {}({:d}), areas {:d} & {:d}", mc2::fmt::as_i32(i), mc2::fmt::safe(doors[i].open ? "opened" : "CLOSED"), mc2::fmt::as_i32(doors[i].teamID), mc2::fmt::as_i32(doors[i].area[0]), mc2::fmt::as_i32(doors[i].area[1]));
 			log->write(s);
 			for (long side = 0; side < 2; side++) {
-				sprintf(s, "     side %d", side);
+				mc2::fmt::to_buf(s, "     side {:d}", mc2::fmt::as_i32(side));
 				log->write(s); 
 				for (long j = 0; j < doors[i].numLinks[side]; j++) {
-					sprintf(s, "          link %03d, to door %05d, cost %d",
-						j,
-						doors_links[i][side][j].doorIndex,
-						doors_links[i][side][j].cost);
+					mc2::fmt::to_buf(s, "          link {:03d}, to door {:05d}, cost {:d}",
+						mc2::fmt::as_i32(j),
+						mc2::fmt::as_i32(doors_links[i][side][j].doorIndex),
+						mc2::fmt::as_i32(doors_links[i][side][j].cost));
 					log->write(s); 
 				}
 			}
@@ -569,19 +571,19 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket, bool restoreSa
 		log->write(" "); 
 
 		for (int i = 0; i < numAreas; i++) {
-			sprintf(s, "area %05d, %s(%d)", i, areas[i].open ? "opened" : "CLOSED", areas[i].teamID);
+			mc2::fmt::to_buf(s, "area {:05d}, {}({:d})", mc2::fmt::as_i32(i), mc2::fmt::safe(areas[i].open ? "opened" : "CLOSED"), mc2::fmt::as_i32(areas[i].teamID));
 			log->write(s); 
 			if (areas[i].ownerWID > 0) {
-				sprintf(s, "     ownerWID is %d", areas[i].ownerWID);
+				mc2::fmt::to_buf(s, "     ownerWID is {:d}", mc2::fmt::as_i32(areas[i].ownerWID));
 				log->write(s);
 			}
-			sprintf(s, "     %s", typeString[std::to_underlying(areas[i].type)]);
+			mc2::fmt::to_buf(s, "     {}", mc2::fmt::safe(typeString[std::to_underlying(areas[i].type)]));
 			log->write(s);
 			for (long d = 0; d < areas[i].numDoors; d++) {
                 const DoorInfo& door = areas_doors[i][d];
-				sprintf(s, "     door %03d is %d (%d:%d & %d) ",
-					d, door.doorIndex, door.doorSide,
-					doors[door.doorIndex].area[0], doors[door.doorIndex].area[1]);
+				mc2::fmt::to_buf(s, "     door {:03d} is {:d} ({:d}:{:d} & {:d}) ",
+					mc2::fmt::as_i32(d), mc2::fmt::as_i32(door.doorIndex), mc2::fmt::as_i32(door.doorSide),
+					mc2::fmt::as_i32(doors[door.doorIndex].area[0]), mc2::fmt::as_i32(doors[door.doorIndex].area[1]));
 				log->write(s);
 			}
 			
@@ -666,8 +668,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket, mc2::save::Na
 	for (long d = 0; d < numDoors; d++) {
 		for (const auto areaElem : doors[d].area) {
 			long areaNumDoors = areas[areaElem].numDoors;
-			if (areaNumDoors > maxDoors)
-				maxDoors = areaNumDoors;
+			maxDoors = std::max(maxDoors, areaNumDoors);
 		}
 	}
 	doors[numDoors + DOOR_OFFSET_START].numLinks[0] = maxDoors;
@@ -766,10 +767,8 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 		for (long c = 0; c < width; c++) {
 			if (mapDataView[r, c].specialType != SPECIAL_NONE) {
 				long ID = mapDataView[r, c].specialID;
-				if (ID > biggestID)
-					biggestID = ID;
-				if (ID < smallestID)
-					smallestID = ID;
+				biggestID = std::max(biggestID, ID);
+				smallestID = std::min(smallestID, ID);
 				switch (mapDataView[r, c].specialType) {
 					case SPECIAL_GATE:
 						if (!areaLogged[ID]) {
@@ -924,7 +923,7 @@ void GlobalMap::calcSectorAreas (long sectorR, long sectorC) {
 			for (long c = minCol; c < maxCol; c++)
 				if (GameMap->getBuildNotSet(r, c)) {
 					if (GameMap->getBuildSpecial(r, c)) {
-						long specialHere = areaMap[r * width + c];
+						long specialHere = std::mdspan<short, std::dextents<std::size_t, 2>>(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width))[r, c];
 						gosASSERT(specialHere > -1);
 						if (specialAreas[specialHere].numSubAreas == MAX_SPECIAL_SUB_AREAS)
 							Fatal(MAX_SPECIAL_SUB_AREAS, " GlobalMap.calcSectorAreas: too many special subareas ");

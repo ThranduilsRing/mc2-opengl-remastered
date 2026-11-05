@@ -4,6 +4,7 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <algorithm>
 #include <utility>
 #include <mdspan>
 #include "move_internal.h"
@@ -918,7 +919,7 @@ void MissionMap::setPassable (long row, long col, char* footPrint, bool passable
 	long c = col + *data++;
 	long len = *data++;
 	while (len != -1) {
-		MapCellPtr cell = &map[r * width + c];
+		MapCellPtr cell = &cellAt(r, c);
 		for (long i = 0; i < len; i++) {
 			cell->setPassable(passable);
 			cell++;
@@ -1037,8 +1038,9 @@ long MovePath::init (long numberOfSteps) {
 
 	numSteps = numStepsWhenNotPaused = numberOfSteps;
 	static long maxNumberOfSteps = 0;
-	if (numberOfSteps > maxNumberOfSteps) {
-		maxNumberOfSteps = numberOfSteps;
+	const long prevMaxNumberOfSteps = maxNumberOfSteps;
+	maxNumberOfSteps = std::max(maxNumberOfSteps, numberOfSteps);
+	if (maxNumberOfSteps != prevMaxNumberOfSteps) {
 		return(maxNumberOfSteps);
 	}
 	for (auto & stepElem : stepList) {
@@ -1085,8 +1087,7 @@ void MovePath::lock (long level, long start, long range, bool setting) {
 	if (start == -1)
 		start = curStep;
 	long lastStep = start + range;
-	if (lastStep >= numStepsWhenNotPaused)
-		lastStep = numStepsWhenNotPaused;
+	lastStep = std::min(lastStep, numStepsWhenNotPaused);
 	for (long i = start; i < lastStep; i++)
 		GameMap->setPathlock(level, stepList[i].cell[0], stepList[i].cell[1], setting);
 }
@@ -1137,8 +1138,7 @@ long MovePath::crossesBridge (long start, long range) {
 	if (start == -1)
 		start = curStep;
 	long lastStep = start + range;
-	if (lastStep >= numStepsWhenNotPaused)
-		lastStep = numStepsWhenNotPaused;
+	lastStep = std::min(lastStep, numStepsWhenNotPaused);
 	//We need to redo this code when bridges are in cause they are objects now!!
 	return(-1);
 }
@@ -1148,8 +1148,7 @@ long MovePath::crossesCell (long start, long range, long cellR, long cellC) {
 	if (start == -1)
 		start = curStep;
 	long lastStep = start + range;
-	if (lastStep >= numStepsWhenNotPaused)
-		lastStep = numStepsWhenNotPaused;
+	lastStep = std::min(lastStep, numStepsWhenNotPaused);
 	for (long i = start; i < lastStep; i++) {
 		if ((cellR == stepList[i].cell[0]) && (cellC == stepList[i].cell[1]))
 			return(i);
@@ -1172,8 +1171,7 @@ long MovePath::crossesClosedGate (long start, long range) {
 	if (start == -1)
 		start = curStep;
 	long lastStep = start + range;
-	if (lastStep >= numStepsWhenNotPaused)
-		lastStep = numStepsWhenNotPaused;
+	lastStep = std::min(lastStep, numStepsWhenNotPaused);
 	//Probably should have redone this code cause gates aren't overlays anymore?
 	return(-1);
 }

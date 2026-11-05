@@ -53,7 +53,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 	long curCol = startC;
 	long curRow = startR;
 
-	MoveMapNodePtr curMapNode = &map[curRow * maxWidth + curCol];
+	MoveMapNodePtr curMapNode = &nodeAt(curRow, curCol);
 	curMapNode->g = 0;
 	curMapNode->hPrime = 10; //calcHPrime(curRow, curCol);
 	curMapNode->fPrime = curMapNode->hPrime;
@@ -84,7 +84,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;
-		MoveMapNodePtr bestMapNode = &map[bestRow * maxWidth + bestCol];
+		MoveMapNodePtr bestMapNode = &nodeAt(bestRow, bestCol);
 		bestMapNode->clearFlag(MOVEFLAG_OPEN);
 
 		long bestNodeG = bestMapNode->g;
@@ -112,7 +112,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 			long succCol = bestCol + cellShift[cellOffsetIndex++];
 			if (succRow > 0 && succRow < height && succCol > 0 && succCol < width) {
 
-				MoveMapNodePtr succMapNode = &map[succRow * maxWidth + succCol];
+				MoveMapNodePtr succMapNode = &nodeAt(succRow, succCol);
 				if (succMapNode->cost < COST_BLOCKED) {
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = 10; //calcHPrime(succRow, succCol);
@@ -175,7 +175,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 		long numCells = 0;
 		while ((curRow != startR) || (curCol != startC)) {
 			numCells += 1;
-			long cellOffsetIndex = map[curRow * maxWidth + curCol].parent * 2;
+			long cellOffsetIndex = nodeAt(curRow, curCol).parent * 2;
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 		}
@@ -225,7 +225,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 			}
 #endif
 			path->target = target;
-			path->cost = map[bestRow * maxWidth + bestCol].g;
+			path->cost = nodeAt(bestRow, bestCol).g;
 			curRow = bestRow;
 			curCol = bestCol;
 			long curCell = numCells;
@@ -268,7 +268,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 			
 			while ((curRow != startR) || (curCol != startC)) {
 				curCell--;
-				long parent = reverseShift[map[curRow * maxWidth + curCol].parent];
+				long parent = reverseShift[nodeAt(curRow, curCol).parent];
 				if (parent > 7)
 					path->setDirection(curCell, parent);
 				else
@@ -288,8 +288,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 				path->setDestination(curCell, stepDest);
 				path->setCell(curCell, cell[0], cell[1]);
 
-				map[curRow * maxWidth + curCol].setFlag(MOVEFLAG_STEP);
-				long cellOffsetIndex = map[curRow * maxWidth + curCol].parent << 1;
+				nodeAt(curRow, curCol).setFlag(MOVEFLAG_STEP);
+				long cellOffsetIndex = nodeAt(curRow, curCol).parent << 1;
 				curRow += cellShift[cellOffsetIndex++];
 				curCol += cellShift[cellOffsetIndex];
 			}
@@ -353,12 +353,12 @@ void MoveMap::writeDebug (File* debugFile) {
 		for (long c = 0; c < width; c++) {
 			if ((startR == r) && (startC == c))
 				mc2::fmt::to_buf(numStr, "S");
-			else if (map[r * maxWidth + c].parent == -1)
+			else if (nodeAt(r, c).parent == -1)
 				mc2::fmt::to_buf(numStr, ".");
-			else if (map[r * maxWidth + c].flags & MOVEFLAG_STEP)
+			else if (nodeAt(r, c).flags & MOVEFLAG_STEP)
 				mc2::fmt::to_buf(numStr, "X");
 			else			
-				mc2::fmt::to_buf(numStr, "{:d}", mc2::fmt::as_i32(map[r * maxWidth + c].parent));
+				mc2::fmt::to_buf(numStr, "{:d}", mc2::fmt::as_i32(nodeAt(r, c).parent));
 			strcat(outString, numStr);
 		}
 		strcat(outString, "\n");
@@ -376,12 +376,12 @@ void MoveMap::writeDebug (File* debugFile) {
 				mc2::fmt::to_buf(numStr, "G");
 			else if ((startR == r) && (startC == c))
 				mc2::fmt::to_buf(numStr, "S");
-			else if (map[r * maxWidth + c].cost == clearCost)
+			else if (nodeAt(r, c).cost == clearCost)
 				mc2::fmt::to_buf(numStr, ".");
-			else if (map[r * maxWidth + c].cost >= COST_BLOCKED)
+			else if (nodeAt(r, c).cost >= COST_BLOCKED)
 				mc2::fmt::to_buf(numStr, " ");
-			else if (map[r * maxWidth + c].cost < 256)
-				mc2::fmt::to_buf(numStr, "{:x}", mc2::fmt::as_u32(map[r * maxWidth + c].cost));
+			else if (nodeAt(r, c).cost < 256)
+				mc2::fmt::to_buf(numStr, "{:x}", mc2::fmt::as_u32(nodeAt(r, c).cost));
 			strcat(outString, numStr);
 		}
 		strcat(outString, "\n");
@@ -399,14 +399,14 @@ void MoveMap::writeDebug (File* debugFile) {
 				mc2::fmt::to_buf(numStr, "G");
 			else if ((startR == r) && (startC == c))
 				mc2::fmt::to_buf(numStr, "S");
-			else if (map[r * maxWidth + c].flags & MOVEFLAG_STEP)
+			else if (nodeAt(r, c).flags & MOVEFLAG_STEP)
 				mc2::fmt::to_buf(numStr, "*");
-			else if (map[r * maxWidth + c].cost == clearCost)
+			else if (nodeAt(r, c).cost == clearCost)
 				mc2::fmt::to_buf(numStr, ".");
-			else if (map[r * maxWidth + c].cost >= COST_BLOCKED)
+			else if (nodeAt(r, c).cost >= COST_BLOCKED)
 				mc2::fmt::to_buf(numStr, " ");
 			else			
-				mc2::fmt::to_buf(numStr, "{:d}", mc2::fmt::as_i32(map[r * maxWidth + c].cost));
+				mc2::fmt::to_buf(numStr, "{:d}", mc2::fmt::as_i32(nodeAt(r, c).cost));
 			strcat(outString, numStr);
 		}
 		strcat(outString, "\n");
