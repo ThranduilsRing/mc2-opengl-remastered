@@ -345,7 +345,7 @@ void import_materials(TerrainIsland* s) {
             const float coverage = gos_terrain_indirect_HardSurfaceCoverage(wx, wy);
             const size_t i = (static_cast<size_t>(y)*w+x)*4;
             for (size_t k=0;k<3;++k) s->materialFinal[i+k] = static_cast<uint8_t>(std::lround(base[i+k] * (1.0f-coverage)));
-            s->materialFinal[i+3] = std::max(base[i+3], static_cast<uint8_t>(std::lround(coverage*255)));
+            s->materialFinal[i+3] = (std::max)(base[i+3], static_cast<uint8_t>(std::lround(coverage*255)));
         }
     };
     const auto dirty = gos_terrain_indirect::TakeHardSurfaceDirty();

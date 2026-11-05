@@ -125,7 +125,7 @@ void MechSkinPass::plan(uint32_t slot, std::span<const Mc2MechDrawRun> runSpan, 
             region_[key] = static_cast<uint32_t>(vertices);
             jobs_.push_back({static_cast<uint32_t>(run.baseVertex), run.vertexCount, static_cast<uint32_t>(vertices), boneBase});
             vertices += run.vertexCount;
-            maxCount = std::max(maxCount, run.vertexCount);
+            maxCount = (std::max)(maxCount, run.vertexCount);
         }
     }
     if (jobs_.empty() || !ensure(slot, vertices, jobs_.size())) { jobs_.clear(); return; }

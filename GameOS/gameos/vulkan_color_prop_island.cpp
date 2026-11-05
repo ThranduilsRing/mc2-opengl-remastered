@@ -1658,7 +1658,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     for (PropRunRow& rr : s->runScratch) { rr.fringeStart += coreTotal; rr.lateStart += coreTotal + fringeTotal; }
     const uint32_t cmdTotal = coreTotal + fringeTotal + lateTotal;
     s->lateStart = coreTotal + fringeTotal;
-    s->lateCount = std::min(lateTotal, s->drawIndirectLimit);
+    s->lateCount = (std::min)(lateTotal, s->drawIndirectLimit);
 
     // The per-parity buffers grow with headroom; a slot's previous submit and late fringe were waited before staging, so recreating is safe.
     {
@@ -1763,7 +1763,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
             vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
             mc2::battlebench::add(mc2::battlebench::DrawProps);
             vkCmdDrawIndexedIndirectCount(cb, cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(first) * sizeof(PropDrawCmd), cmdBuf,
-                                          static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), std::min(n, s->drawIndirectLimit), sizeof(PropDrawCmd));
+                                          static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), (std::min)(n, s->drawIndirectLimit), sizeof(PropDrawCmd));
         };
         drawList(s->t1_pipe.get(), 0, coreTotal, 0);
         drawList(s->t1_fringePipe.get(), coreTotal, fringeTotal, 1);
@@ -2167,7 +2167,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(latePush),&latePush);
     mc2::battlebench::add(mc2::battlebench::DrawProps);
     vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,2u * sizeof(uint32_t),
-                                  std::min(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
+                                  (std::min)(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
     const VkFence fence = s->lateFence[par].get();

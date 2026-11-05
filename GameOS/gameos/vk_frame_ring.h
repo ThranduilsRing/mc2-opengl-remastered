@@ -38,7 +38,7 @@ public:
         if (aligned + size > cap_) return false;
         *ringOffset = static_cast<uint64_t>(slot_) * cap_ + aligned;
         head_[slot_] = aligned + size;
-        peak_ = std::max(peak_, head_[slot_]);
+        peak_ = (std::max)(peak_, head_[slot_]);
         return true;
     }
     uint64_t peak() const { return peak_; }   // the most any one frame has used of its slot

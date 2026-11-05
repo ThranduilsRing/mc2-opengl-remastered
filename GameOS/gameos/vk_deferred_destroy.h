@@ -70,7 +70,7 @@ public:
         s.bytes = bytes_;
         for (const Entry& e : entries_) {
             const uint64_t age = ct.frameNo() - e.frame;
-            s.oldestAgeFrames = std::max(s.oldestAgeFrames, age);
+            s.oldestAgeFrames = (std::max)(s.oldestAgeFrames, age);
         }
         return s;
     }

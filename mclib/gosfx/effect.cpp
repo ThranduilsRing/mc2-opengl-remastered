@@ -68,7 +68,7 @@ namespace gosFX {
             pagefile   = static_cast<long long>(pmc.PagefileUsage);
         }
 #endif
-        g_diagHeapPeakBytes = std::max(g_diagHeapPeakBytes, workingSet);
+        g_diagHeapPeakBytes = (std::max)(g_diagHeapPeakBytes, workingSet);
 
         long long creates  = g_effectCreates.load();
         long long destroys = g_effectDestroys.load();

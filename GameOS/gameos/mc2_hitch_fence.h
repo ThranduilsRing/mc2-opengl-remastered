@@ -21,7 +21,7 @@ struct FenceWaitStats {
     bool record(double ms) {
         if (!std::isfinite(ms) || ms < 0.0) return false;
         totalMs += ms;
-        maxMs = std::max(maxMs, ms);
+        maxMs = (std::max)(maxMs, ms);
         ++count;
         return true;
     }

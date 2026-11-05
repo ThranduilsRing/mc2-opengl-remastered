@@ -109,8 +109,8 @@ constexpr bool vkSubgraphIsContiguous(const PostprocessSubPassId* fusedSet, int 
         // reject duplicates
         for (int j = 0; j < i; ++j)
             if (fusedSet[j] == fusedSet[i]) return false;
-        lo = std::min(lo, idx);
-        hi = std::max(hi, idx);
+        lo = (std::min)(lo, idx);
+        hi = (std::max)(hi, idx);
     }
     // Contiguous iff the span exactly equals the count (no gap swallowed an outside pass).
     return (hi - lo) == (n - 1);

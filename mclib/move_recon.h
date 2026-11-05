@@ -144,7 +144,7 @@ struct MoveReconNodeCounter {
     {
         if (g_moveReconEnabled) {
             g_moveRecon_al_nodesPopped += n;
-            g_moveRecon_al_maxNodes = std::max(g_moveRecon_al_maxNodes, n);
+            g_moveRecon_al_maxNodes = (std::max)(g_moveRecon_al_maxNodes, n);
             if (found) g_moveRecon_al_goalFound++;
             else       g_moveRecon_al_goalMissed++;
         }

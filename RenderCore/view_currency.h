@@ -26,7 +26,7 @@ inline bool viewContentChanged(const float* prev16, const float* cur16,
     for (int i = 0; i < 16; ++i) {
         float d = cur16[i] - prev16[i];
         if (d < 0.0f) d = -d;
-        maxDelta = std::max(maxDelta, d);
+        maxDelta = (std::max)(maxDelta, d);
     }
     return maxDelta > eps;
 }

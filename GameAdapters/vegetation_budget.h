@@ -30,7 +30,7 @@ inline uint32_t storagePopulationCapacity(uint32_t requested, uint64_t maxStorag
 // north-to-south scan at the cap can leave the camera's entire region empty.
 inline float placementStep(float mapSpan, float authoredStep, int density, int capacity) {
     const int maxClump = std::max(6, density / 2);
-    const int side = std::max(1, static_cast<int>(std::sqrt(static_cast<double>(std::max(capacity, 1)) / maxClump)));
-    return std::max(authoredStep, mapSpan / static_cast<float>(side + 1));
+    const int side = (std::max)(1, static_cast<int>(std::sqrt(static_cast<double>((std::max)(capacity, 1)) / maxClump)));
+    return (std::max)(authoredStep, mapSpan / static_cast<float>(side + 1));
 }
 }

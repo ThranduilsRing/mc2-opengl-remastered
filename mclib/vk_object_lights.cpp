@@ -652,7 +652,7 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
     // registry's markVisible() (range-aware). The earlier bake-time per-recipe
     // persist was wrong for multi-leaf ranges (compare-oracle caught it) and is
     // removed. The light-table SLOT content here is unchanged.
-    s_staticLightHighWater = std::max(s_staticLightHighWater, ri + 1);
+    s_staticLightHighWater = (std::max)(s_staticLightHighWater, ri + 1);
     // CRITICAL: the frame a recipe FIRST bakes, this-frame's count was
     // set to the OLD (smaller) S at frame-start resetLightData. Without
     // this bump, a later dynamic addLightDataStructure append THIS frame
@@ -661,7 +661,7 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
     // to S keeps same-frame dynamic appends strictly above [0..S). Only
     // skips some low dynamic slots that frame (harmless -- dynamic is
     // per-frame ephemeral, rebuilt from S next resetLightData).
-    packet.count = std::max(packet.count, s_staticLightHighWater);
+    packet.count = (std::max)(packet.count, s_staticLightHighWater);
 }
 
 mc2::vkLights::LightSlotPeek mc2::vkLights::peekLightSlot(uint32_t idx)

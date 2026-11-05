@@ -121,7 +121,7 @@ T parallel_reduce(Domain dom, int count, int batch, int estCostPerItemNs,
                   const std::function<void(int begin, int end, T& shard)>& body,
                   const std::function<void(T& acc, const T& shard)>& merge) {
     if (count <= 0) return identity;
-    batch = std::max(batch, 1);
+    batch = (std::max)(batch, 1);
     const int numBlocks = (count + batch - 1) / batch;
 
     // Pre-sized on the calling (main) thread — never allocated on a worker.

@@ -79,7 +79,7 @@ public:
         offset_  = aligned + bytes;
         ++stats_.allocCount;
         stats_.usedBytes = offset_;
-        stats_.highWaterBytes = std::max(stats_.highWaterBytes, offset_);
+        stats_.highWaterBytes = (std::max)(stats_.highWaterBytes, offset_);
         return p;
     }
 

@@ -42,7 +42,7 @@ public:
     uint64_t lastSubmitted(QueueKind q) const { return last_[idx(q)]; }
 
     // The semaphore's counter, read by the context. Monotonic: a smaller value is ignored.
-    void setCompleted(QueueKind q, uint64_t v) { done_[idx(q)] = std::max(done_[idx(q)], v); }
+    void setCompleted(QueueKind q, uint64_t v) { done_[idx(q)] = (std::max)(done_[idx(q)], v); }
     uint64_t completed(QueueKind q) const { return done_[idx(q)]; }
 
     bool isComplete(const GpuTicket& t) const { return t.gfx <= done_[0] && t.xfer <= done_[1]; }
