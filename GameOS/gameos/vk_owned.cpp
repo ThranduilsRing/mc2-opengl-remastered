@@ -28,6 +28,12 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     buffer_ = buffer;
     allocation_ = allocation;
     allocator_ = allocator;
+    address_ = 0;
+    if (info.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+        VkBufferDeviceAddressInfo dai{VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO};
+        dai.buffer = buffer_;
+        address_ = vkGetBufferDeviceAddress(device, &dai);
+    }
     admission.commit(reinterpret_cast<uint64_t>(allocation), name);
     nameObjectAt(device, buffer_, name, i0, i1);
     return true;
@@ -60,6 +66,7 @@ void OwnedBuffer::reset() noexcept {
     buffer_ = VK_NULL_HANDLE;
     allocation_ = nullptr;
     allocator_ = nullptr;
+    address_ = 0;
 }
 
 void* OwnedBuffer::map() const {
