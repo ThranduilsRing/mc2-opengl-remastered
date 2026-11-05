@@ -19,6 +19,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_barrier_batch_vk.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vulkan_sky_island.h"
 #include "vk_hdri_source.h"
@@ -213,13 +214,11 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         staging.unmap();
     }
     const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
-        VkImageMemoryBarrier bar{};
-        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        bar.image = s->hdriImg.get(); bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        const auto& bctx = mc2vk::getOrCreateEngineVulkanContext();
+        const VkImageSubresourceRange hdriRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+        mc2vk::sync::cmdImageBarrier(bctx, cb, s->hdriImg.get(), hdriRange,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
         for (uint32_t i = 0; i < mips; ++i) {
             VkBufferImageCopy c{};
             c.bufferOffset = offs[i];
@@ -227,9 +226,9 @@ bool ensure_hdri(Island* s, uint64_t generation) {
             c.imageExtent = {static_cast<uint32_t>(dims[i].first), static_cast<uint32_t>(dims[i].second), 1};
             vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
         }
-        bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        mc2vk::sync::cmdImageBarrier(bctx, cb, s->hdriImg.get(), hdriRange,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     });
     if (!ok) { vlog("HDRI upload submit failed."); return false; }
     s->hdriReal = haveReal;

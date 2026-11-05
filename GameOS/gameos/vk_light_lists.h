@@ -93,8 +93,7 @@ public:
             sets_.write(ctx.device(), parity, b, type, buffers[b].buffer, b == 0 ? 32 : buffers[b].range);
             offsets[b] = uint32_t(buffers[b].offset);
         }
-        cmdBarrier(cb, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT,
-                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+        // No HOST->COMPUTE barrier: host writes before vkQueueSubmit are made visible by the submit itself.
         pipeline_.bind(cb, sets_.set(parity), offsets);
         pipeline_.dispatch(cb, kDim * kDim / 64);
         cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,

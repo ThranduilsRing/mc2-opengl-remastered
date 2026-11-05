@@ -127,10 +127,7 @@ NativeCullSubmit nativeCullSubmit(uint32_t i, std::span<const GpuActorRecord> re
         vkResetCommandPool(ctx.device(),slot.pool.get(),0)!=VK_SUCCESS) return NativeCullSubmit::Failed;
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; begin.flags=VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(slot.cb,&begin)!=VK_SUCCESS) return NativeCullSubmit::Failed;
-    bufferBarrier(slot.cb,slot.records.get(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
-                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
-    bufferBarrier(slot.cb,slot.params.get(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT,
-                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_UNIFORM_READ_BIT);
+    // Host writes before vkQueueSubmit are visible to the submit: no HOST->COMPUTE barriers for records/params.
     // Only this slot is reused. A device-wide ALL_COMMANDS memory barrier also
     // joins every unrelated image and descriptor history under sync validation.
     bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_TRANSFER_BIT,
