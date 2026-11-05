@@ -232,7 +232,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // patch's skirt sub-gate was off at capture, or GL reported no skirt for
     // this block -- island draws no skirt strips for it, see the draw loop).
     u.skirtDepth = patch.skirtDepth;
-    u.csmDebugMode=std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());
+    static const int kCsmDebugMode = std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());   // vk-present-instance 8: parsed once, not per patch
+    u.csmDebugMode=kCsmDebugMode;
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
     // visualMode (0 or 2, from the GL capture site) is only honored when the
     // bake snapshot is live AND the side is sane -- else forced 0 (VS draws
