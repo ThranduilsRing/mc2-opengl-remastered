@@ -29,6 +29,7 @@
 #ifndef _WIN32
 #define NO_SDL_VULKAN_TYPEDEFS
 #include <span>
+#include <string_view>
 #include <SDL2/SDL_vulkan.h>
 #endif
 #include <tracy/Tracy.hpp>
@@ -154,9 +155,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL engine_ctx_debug_cb(
             where += buf;
             where += o.pObjectName ? o.pObjectName : "-";
         }
-        auto labels = [&](const char* key, std::span<const VkDebugUtilsLabelEXT> l) {
+        auto labels = [&](std::string_view key, std::span<const VkDebugUtilsLabelEXT> l) {
             for (size_t i = 0; i < l.size() && i < 6; ++i) {
-                where += (i == 0 ? std::string(where.empty() ? "" : " ") + key + "=" : std::string(">"));
+                if (i == 0) { if (!where.empty()) where += ' '; where += key; where += '='; } else where += '>';
                 where += l[i].pLabelName ? l[i].pLabelName : "-";
             }
         };
@@ -404,7 +405,7 @@ bool VulkanContext::init(bool wantPresent) {
     const uint32_t dupLimit = 200, on = 1;
     const bool presetSync = std::strcmp(valPreset, "sync") == 0, presetBP = std::strcmp(valPreset, "best-practices") == 0;
     std::vector<VkLayerSettingEXT> lset;
-    auto addSetting = [&](const char* name, VkLayerSettingTypeEXT type, const uint32_t* v) { lset.push_back({kLayer, name, type, 1, v}); };
+    auto addSetting = [&]<size_t N>(const char (&name)[N], VkLayerSettingTypeEXT type, const uint32_t* v) { lset.push_back({kLayer, name, type, 1, v}); };
     addSetting("duplicate_message_limit", VK_LAYER_SETTING_TYPE_UINT32_EXT, &dupLimit);
     if (presetSync) {
         addSetting("validate_sync", VK_LAYER_SETTING_TYPE_BOOL32_EXT, &on);
