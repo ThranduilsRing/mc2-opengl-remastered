@@ -448,7 +448,7 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 {
 	ZoneScopedN("GameObjectManager::prewarmStaticPropLightBakes");
-	static const bool s_enabled  = false;
+	static const bool s_enabled  = true;   // ships ON (presentation-terrain 2026-11-05): offscreen registered props otherwise never leave needsFullBakeNextFrame and take the full update() every frame
 	static const bool s_trace    = false;
 	if (!s_enabled) return;
 

@@ -29,6 +29,7 @@ struct TextureSource final : RenderCore::TextureSourcePayload {
     DWORD logicalWidth = 0, logicalHeight = 0;
     DWORD cpuTexture = 0;
     bool file = false;
+    bool cookedBc7 = false;  // bytes are the CPU RGBA8 copy of a BC7 sidecar; the GPU copy keeps the blocks
     std::shared_ptr<CpuTextureRetireQueue> retired;
 };
 

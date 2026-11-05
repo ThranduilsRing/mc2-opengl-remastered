@@ -88,6 +88,8 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
     const uint32_t faces = readU32(h + 24);
     const uint32_t levels = readU32(h + 28);
     const uint32_t supercompression = readU32(h + 32);
+    // A Basis payload (vkFormat 0, or BasisLZ / Zstd supercompression) is transcoded to BC blocks by the vendored transcoder.
+    if (vkFormat == 0 || supercompression != 0) return ktxParseBasis(file);
 
     const bool isRgba8 = vkFormat == kVkFormatR8G8B8A8Unorm || vkFormat == kVkFormatR8G8B8A8Srgb;
     const bool isBc6h = vkFormat == kVkFormatBc6hUfloat || vkFormat == kVkFormatBc6hSfloat;

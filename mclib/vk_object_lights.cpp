@@ -6,6 +6,7 @@
 #include "vk_object_lights.h"
 #include "sim_overlap.h"
 #include <optional>
+#include <ankerl/unordered_dense.h>
 #include "mc2fmt.h"
 
 namespace mc2::vkLights {
@@ -20,9 +21,10 @@ struct Packet {
     uint64_t revision = 0;
     uint64_t key = 0;
     uint32_t count = 0;
-    std::unordered_map<uint64_t, uint32_t> dedup;
-    std::unordered_map<uint64_t, CachedSceneLightTemplate> templates;
-    std::unordered_map<uint64_t, LightSlotEntry> actorSlots;
+    // Lookup/insert/clear only, never iterated (order cannot reach rows or output).
+    ankerl::unordered_dense::map<uint64_t, uint32_t> dedup;
+    ankerl::unordered_dense::map<uint64_t, CachedSceneLightTemplate> templates;
+    ankerl::unordered_dense::map<uint64_t, LightSlotEntry> actorSlots;
 };
 }
 

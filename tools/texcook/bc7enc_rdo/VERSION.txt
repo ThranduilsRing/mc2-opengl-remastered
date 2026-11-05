@@ -1,0 +1,2 @@
+richgel999/bc7enc_rdo (MIT) at b9438627eef73a1157e84201b6fa6eb2ffd6d9f0.
+Omitted: ispc.exe, bc7e.ispc (Apache-2.0 ispc path), build_msvc.bat, upstream CMakeLists (replaced; no ispc), example images.

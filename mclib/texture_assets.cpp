@@ -227,6 +227,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
             source->bytes=std::make_shared<const Bytes>(std::move(rgba));
             source->width=source->height=source->logicalWidth=source->logicalHeight=static_cast<DWORD>(w);
             source->uvScale=4; source->hints |= gosHint_Try32bpp;
+            source->cookedBc7=cooked.vkFormat==145 || cooked.vkFormat==146;
         }
     }
     if (!source->bytes && open!=NO_ERR) {
@@ -272,14 +273,15 @@ DWORD sourceId(DWORD asset) {
     if (source->cpuTexture) return source->cpuTexture;
     ZoneScopedN("TextureSource.CreateCpuTexture");
     const auto format=static_cast<gos_TextureFormat>(source->format);
-    if (source->file && source->variant==0 && !source->name.empty()) {
+    if ((source->file || source->cookedBc7) && source->variant==0 && !source->name.empty()) {
         RenderCore::KtxImage cooked;
         if (txmLoadCooked(source->name.c_str(),sidecarPath(source->name).c_str(),true,cooked) &&
             cooked.isCompressed && (cooked.vkFormat==145 || cooked.vkFormat==146)) {
             const size_t bytes=cooked.mipCount>1 && cooked.mipByteOffsets.size()>1
                 ? cooked.mipByteOffsets[1] : cooked.pixels.size();
             source->cpuTexture=gos_NewCompressedTexture2D(cooked.vkFormat,cooked.width,cooked.height,
-                                                          cooked.pixels.data(),bytes,source->name.c_str());
+                                                          cooked.pixels.data(),bytes,source->name.c_str(),
+                                                          source->cookedBc7 ? format : gos_Texture_Solid);
         }
     }
     if (!source->cpuTexture) {

@@ -399,7 +399,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
@@ -414,6 +414,8 @@ if(MC2_VULKAN)
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
+    # hzb_cull.comp uses subgroup arithmetic (SPIR-V 1.3); glslang defaults to Vulkan 1.0 / SPIR-V 1.0. Engine floor is Vulkan 1.2.
+    set(MC2_VK_SHADER_DEFINES_hzb_cull_comp --target-env vulkan1.1)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
@@ -565,6 +567,6 @@ if(TARGET gameos_main)
 endif()
 
 # A single generated object supplies identity to game, editor, and tool consumers.
-target_link_libraries(gameos PUBLIC mc2_build_identity)
-target_link_libraries(gameos_editor PUBLIC mc2_build_identity)
+target_link_libraries(gameos PUBLIC mc2_build_identity mimalloc_static)
+target_link_libraries(gameos_editor PUBLIC mc2_build_identity mimalloc_static)
 target_link_libraries(gameos_main PUBLIC mc2_build_identity)

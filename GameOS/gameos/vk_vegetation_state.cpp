@@ -253,8 +253,8 @@ bool State::ensureDrawLayout(mc2vk::VulkanContext& ctx) {
 }
 
 void State::drawIndirect(VkCommandBuffer cb, uint32_t par) const {
-    vkCmdDrawIndirect(cb, slot_[par].args.get(), 0, 1, 16);
-    vkCmdDrawIndirect(cb, slot_[par].args.get(), 16, 1, 16);
+    // Both strips are one multi-draw: the two 16 B commands sit back to back at the head of the args buffer (vegetation_scan.comp; multiDrawIndirect is required).
+    vkCmdDrawIndirect(cb, slot_[par].args.get(), 0, 2, 16);
 }
 
 }  // namespace mc2veg

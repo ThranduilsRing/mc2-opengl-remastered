@@ -127,8 +127,9 @@ endif()
 #   mc2.exe -mission mc2_01
 #
 # Notes:
-#   * gos_Malloc/gos_Free are already plain malloc/free (see GameOS/gameos/
-#     gameos.cpp:245). So ASan sees every new/delete with zero bypass work.
+#   * gos_Malloc/gos_Free and the global operator new/delete go to mimalloc in normal builds. Under
+#     MC2_ASAN, GameOS/gameos/mc2_alloc_backend.h routes them to the CRT malloc/free instead, so ASan
+#     sees every engine allocation (mimalloc would hide the whole heap from it).
 #   * No custom slab remains in mclib/tgl.cpp; GOSVertexPool is plain storage.
 #     If a custom slab returns, annotate it with __asan_poison_memory_region.
 # ---------------------------------------------------------------------------
@@ -254,6 +255,8 @@ foreach(MC2_PREFIX_PATH_ENTRY IN LISTS CMAKE_PREFIX_PATH)
     endif()
 endforeach()
 list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/include")
+# ankerl::unordered_dense (header-only, MIT) resolves as <ankerl/unordered_dense.h>
+list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/unordered_dense/include")
 if(NOT WIN32)
     list(APPEND THIRDPARTY_INCLUDE_DIRS "${MC2_SOURCE_DIR_CMAKE}/3rdparty/glm")
 endif()
@@ -330,6 +333,21 @@ if(MSVC)
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
 endif()
 
+# mimalloc v3.6.1 (MIT, 3rdparty/mimalloc): the engine allocator behind gos_Malloc/gos_Free and the global operator new/delete
+# (GameOS/gameos/gameos.cpp). Static, no CRT malloc override: a block from new/gos_Malloc must never reach free(), and malloc'd
+# memory must never reach delete/gos_Free. Built as C++ (MI_USE_CXX equivalent) so MSVC needs no C11-atomics switch.
+add_library(mimalloc_static STATIC "${CMAKE_SOURCE_DIR}/3rdparty/mimalloc/src/static.c")
+set_source_files_properties("${CMAKE_SOURCE_DIR}/3rdparty/mimalloc/src/static.c" PROPERTIES LANGUAGE CXX)
+target_include_directories(mimalloc_static PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/mimalloc/include")
+target_include_directories(mimalloc_static PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/mimalloc/src")
+target_compile_definitions(mimalloc_static PUBLIC MI_STATIC_LIB)
+if(MSVC)
+    target_compile_options(mimalloc_static PRIVATE /W0)
+else()
+    target_compile_options(mimalloc_static PRIVATE -w)
+    target_link_libraries(mimalloc_static PUBLIC pthread)
+endif()
+
 # STL hardening: out-of-range operator[] on vector/span/string/array and similar become a fast-fail
 # trap instead of silent memory corruption. Optimized config only (the dev tree builds no Debug). Vendored
 # subdirectories above are unaffected, and imgui is bracketed out where it is added.
@@ -342,6 +360,7 @@ include(cmake/Mc2SimFpContract.cmake)
 
 add_subdirectory("./Gates" "./out/Gates")
 add_subdirectory("./mclib/" "./out/mclib")
+add_subdirectory("./3rdparty/basisu" "./out/3rdparty/basisu")
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
 add_subdirectory("./GameAdapters" "./out/GameAdapters")

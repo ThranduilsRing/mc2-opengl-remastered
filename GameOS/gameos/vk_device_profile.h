@@ -77,6 +77,11 @@ struct DeviceCaps {
     bool samplerAnisotropy = false;
     // A core 1.0 feature: the prop island indexes its uPropTex[] sampler array with a per-material value (SampledImageArrayDynamicIndexing).
     bool shaderSampledImageArrayDynamicIndexing = false;
+    // GPU-driven props: core 1.0 multiDrawIndirect + drawIndirectFirstInstance and the 1.2 drawIndirectCount feature.
+    bool multiDrawIndirect = false;
+    bool drawIndirectFirstInstance = false;
+    bool drawIndirectCount = false;
+    bool shaderDrawParameters = false;   // gl_DrawID: the per-draw packet table index
     // Limits.
     uint32_t maxImageDimension2D = 0;
     uint32_t maxBoundDescriptorSets = 0;
@@ -113,7 +118,7 @@ struct Evaluation {
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget", "sampler_anisotropy"};
+                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget", "sampler_anisotropy", "indirect_draw"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
@@ -193,6 +198,16 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
 
     add("sampler_anisotropy", Need::Wanted, c.samplerAnisotropy, Route::Core);
     if (c.samplerAnisotropy) e.enabledFeatures.push_back("samplerAnisotropy");
+
+    // Required: the static-prop colour pass is GPU-driven (compute compaction into VkDrawIndexedIndirectCommand, vkCmdDrawIndexedIndirectCount).
+    const bool indirect = c.multiDrawIndirect && c.drawIndirectFirstInstance && c.drawIndirectCount && c.shaderDrawParameters;
+    add("indirect_draw", Need::Required, indirect, Route::Core);
+    if (indirect) {
+        e.enabledFeatures.push_back("multiDrawIndirect");
+        e.enabledFeatures.push_back("drawIndirectFirstInstance");
+        e.enabledFeatures.push_back("drawIndirectCount");
+        e.enabledFeatures.push_back("shaderDrawParameters");
+    }
 
     e.accepted = e.missingRequired.empty();
     if (!e.accepted) {                               // a refused device gets nothing enabled

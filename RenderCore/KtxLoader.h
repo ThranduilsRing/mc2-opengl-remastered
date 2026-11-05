@@ -67,6 +67,10 @@ struct KtxParseResult {
 inline constexpr uint32_t kKtxMaxEdge = 16384;
 KtxParseResult ktxParse(std::span<const uint8_t> file);
 
+// The Basis Universal path of ktxParse (KtxBasis.cpp): a 2D single-layer single-face UASTC / ETC1S KTX2, Zstd supercompressed
+// or not, transcoded to BC7 (UASTC) or BC3 / BC1 (ETC1S with / without alpha) blocks with the whole mip chain.
+KtxParseResult ktxParseBasis(std::span<const uint8_t> file);
+
 // Reads a .ktx2 file and parses it with ktxParse. Returns false for a missing file (silent: callers probe for optional
 // sidecars) or for anything ktxParse rejects (logged with the path and the reason).
 // Despite the historical name, this also accepts stored (non-supercompressed)

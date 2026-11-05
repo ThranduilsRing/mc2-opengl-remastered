@@ -159,7 +159,21 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     }
     VkFormatProperties properties{}; vkGetPhysicalDeviceFormatProperties(ctx_.physicalDevice(), VkFormat(image.vkFormat), &properties);
     constexpr auto need=VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-    if ((properties.optimalTilingFeatures & need)!=need) return {};
+    if ((properties.optimalTilingFeatures & need)!=need) {
+        // A device without this BC format (BC6H has no RGBA8 form): decode the chain on the CPU and upload RGBA8 instead.
+        if (!blocks || layers!=1 || (image.vkFormat>=143 && image.vkFormat<=144)) return {};
+        RenderCore::KtxImage decoded;
+        decoded.alpha=image.alpha; decoded.width=image.width; decoded.height=image.height; decoded.isSrgb=image.isSrgb;
+        decoded.mipCount=image.mipCount; decoded.vkFormat=image.isSrgb ? 43u : 37u;
+        for (int level=0;level<image.mipCount;++level) {
+            std::vector<uint8_t> rgba;
+            if (!RenderCore::ktxDecodeBlocksToRgba8(image,level,rgba)) return {};
+            decoded.mipByteOffsets.push_back(decoded.pixels.size());
+            decoded.pixels.insert(decoded.pixels.end(),rgba.begin(),rgba.end());
+        }
+        std::fprintf(stderr,"[VK_RESIDENCY v1] bc_unsupported vkFormat=%u fallback=rgba8 %ux%u\n",image.vkFormat,w,h);
+        return upload(decoded,useMips,async,layers,arrayView,vegetation);
+    }
     std::vector<VkBufferImageCopy> copies;
     size_t expected=0;
     for (int level=0;level<image.mipCount;++level) {

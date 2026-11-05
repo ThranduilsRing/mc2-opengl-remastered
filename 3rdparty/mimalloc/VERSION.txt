@@ -1,0 +1,1 @@
+mimalloc v3.6.1 (microsoft/mimalloc, MIT), commit 07d6126055867a3c6c8977eb0066be27c0671054; include/ + src/ only, unmodified.
