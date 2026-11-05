@@ -7,7 +7,7 @@
 #include <time.h>
 #include <stdlib.h> // rand
 #include <new>      // std::bad_alloc
-#include <mimalloc.h> // allocator behind gos_Malloc and the global operator new/delete
+#include "mc2_alloc_backend.h" // allocator behind gos_Malloc and the global operator new/delete (mimalloc; CRT under MC2_ASAN)
 #include "utils/timing.h"
 #include "utils/timing_math.h"
 
@@ -221,7 +221,8 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 #endif
 
 // ALLOCATOR: mimalloc (static, 3rdparty/mimalloc) backs gos_Malloc/gos_Free and every global operator new/delete below, aligned and
-// sized forms included. CRT malloc/free stay CRT: never free() a block from new/gos_Malloc, never delete/gos_Free a malloc'd block.
+// sized forms included (MC2_ASAN builds use the CRT malloc instead, see mc2_alloc_backend.h). CRT malloc/free stay CRT: never free()
+// a block from new/gos_Malloc, never delete/gos_Free a malloc'd block; the guard in gos_Free/aligned delete aborts on a mismatch.
 #ifdef PLATFORM_WINDOWS
 #define MC2_DELETE_NOEXCEPT
 #else
@@ -251,25 +252,25 @@ void operator delete(void* ptr, size_t) MC2_DELETE_NOEXCEPT { gos_Free(ptr); }
 void operator delete[](void* ptr, size_t) MC2_DELETE_NOEXCEPT { gos_Free(ptr); }
 
 void* operator new(size_t sz, std::align_val_t al) {
-    void* p = mi_malloc_aligned(sz ? sz : 1, static_cast<size_t>(al));
+    void* p = mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al));
     if (!p)
         throw std::bad_alloc();
     return p;
 }
 void* operator new[](size_t sz, std::align_val_t al) {
-    void* p = mi_malloc_aligned(sz ? sz : 1, static_cast<size_t>(al));
+    void* p = mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al));
     if (!p)
         throw std::bad_alloc();
     return p;
 }
-void* operator new(size_t sz, std::align_val_t al, const std::nothrow_t&) noexcept { return mi_malloc_aligned(sz ? sz : 1, static_cast<size_t>(al)); }
-void* operator new[](size_t sz, std::align_val_t al, const std::nothrow_t&) noexcept { return mi_malloc_aligned(sz ? sz : 1, static_cast<size_t>(al)); }
-void operator delete(void* ptr, std::align_val_t) MC2_DELETE_NOEXCEPT { mi_free(ptr); }
-void operator delete[](void* ptr, std::align_val_t) MC2_DELETE_NOEXCEPT { mi_free(ptr); }
-void operator delete(void* ptr, size_t, std::align_val_t) MC2_DELETE_NOEXCEPT { mi_free(ptr); }
-void operator delete[](void* ptr, size_t, std::align_val_t) MC2_DELETE_NOEXCEPT { mi_free(ptr); }
-void operator delete(void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { mi_free(ptr); }
-void operator delete[](void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { mi_free(ptr); }
+void* operator new(size_t sz, std::align_val_t al, const std::nothrow_t&) noexcept { return mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al)); }
+void* operator new[](size_t sz, std::align_val_t al, const std::nothrow_t&) noexcept { return mc2a_aligned(sz ? sz : 1, static_cast<size_t>(al)); }
+void operator delete(void* ptr, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete[](void* ptr, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete(void* ptr, size_t, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete[](void* ptr, size_t, std::align_val_t) MC2_DELETE_NOEXCEPT { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete(void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
+void operator delete[](void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { mc2a_check_owned(ptr, "delete"); mc2a_aligned_free(ptr); }
 
 void* __cdecl operator new[](size_t size, HGOSHEAP Heap)
 {
@@ -300,17 +301,17 @@ void* __stdcall gos_Malloc(size_t bytes, HGOSHEAP Heap/* = 0*/)
     }
     */
 #ifdef MC2_ALLOC_STATS
-    void* p = mi_malloc(bytes);
+    void* p = mc2a_malloc(bytes);
     if (p) {
         if (!tl_inTracker) {
             g_allocStatsLive.fetch_add(1, std::memory_order_relaxed);
-            g_allocStatsBytes.fetch_add(static_cast<long long>(mi_usable_size(p)), std::memory_order_relaxed);
+            g_allocStatsBytes.fetch_add(static_cast<long long>(mc2a_usable(p)), std::memory_order_relaxed);
             trackAlloc(p, bytes);
         }
     }
     return p;
 #else
-    return mi_malloc(bytes);
+    return mc2a_malloc(bytes);
 #endif
 }
 void __stdcall gos_Free(void* ptr)
@@ -325,11 +326,12 @@ void __stdcall gos_Free(void* ptr)
 #ifdef MC2_ALLOC_STATS
     if (ptr && !tl_inTracker) {
         g_allocStatsLive.fetch_sub(1, std::memory_order_relaxed);
-        g_allocStatsBytes.fetch_sub(static_cast<long long>(mi_usable_size(ptr)), std::memory_order_relaxed);
+        g_allocStatsBytes.fetch_sub(static_cast<long long>(mc2a_usable(ptr)), std::memory_order_relaxed);
         trackFree(ptr);
     }
 #endif
-    mi_free(ptr);
+    mc2a_check_owned(ptr, "gos_Free");
+    mc2a_free(ptr);
 }
 ////////////////////////////////////////////////////////////////////////////////
 
