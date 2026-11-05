@@ -831,21 +831,21 @@ void	ActivePilotListItem::render()
 	long color = s_skillAnim->getColor( currentTime );
 	
 
-	for ( int i = 0; i < 2; i++ )
+	for (auto & attributeMeter : attributeMeters)
 	{
-		attributeMeters[i].setAddedColorMax( color );
-		attributeMeters[i].setAddedColorMin( color );
-		attributeMeters[i].render(globalX(), globalY());
+		attributeMeter.setAddedColorMax( color );
+		attributeMeter.setAddedColorMin( color );
+		attributeMeter.render(globalX(), globalY());
 	}
 
-	for (int i = 0; i < 5; i++ )
+	for (auto & i : s_outline)
 	{
-		tmp = s_outline[i]->getGUI_RECT();
+		tmp = i->getGUI_RECT();
 		tmp.left += globalX();
 		tmp.top += globalY();
 		tmp.right += globalX();
 		tmp.bottom += globalY();
-		drawEmptyRect( tmp, s_outline[i]->getColor(), s_outline[i]->getColor() );
+		drawEmptyRect( tmp, i->getColor(), i->getColor() );
 	}
 
 	long x = globalX() + s_killIconRect->left();
@@ -1076,8 +1076,8 @@ void	ActivePilotListItem::init( FitIniFile* file )
 	s_killIconRect = new aRect;
 	
 	s_pilotPromotionArea = new PilotPromotionArea;
-	for ( int i = 0; i < MAX_MEDAL; i++ )
-		s_medals[i] = new aObject;
+	for (auto & s_medal : s_medals)
+		s_medal = new aObject;
 
 	s_promotionText = new aText;
 	s_medalText = new aText;
@@ -1386,8 +1386,8 @@ void PilotPromotionArea::render()
 	pilotIcon->render( areaLeft.rects[3].left() + xOffset + 1, areaLeft.rects[3].top() + yOffset + 1,
 		areaLeft.rects[3].right() + xOffset - 1, areaLeft.rects[3].bottom() + yOffset - 1);
 
-	for ( int i = 0; i < 2; i++ )
-		attributeMeters[i].render( xOffset, yOffset );
+	for (auto & attributeMeter : attributeMeters)
+		attributeMeter.render( xOffset, yOffset );
 
 	xOffset = rightInfo.getXDelta();
 	yOffset = rightInfo.getYDelta();

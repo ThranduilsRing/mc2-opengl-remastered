@@ -55,12 +55,12 @@ inline std::string deriveName(std::string_view src, bool wantAlpha) {
     const size_t dot = stem.find_last_of('.');
     if (dot != std::string::npos) stem.erase(dot);
 
-    for (size_t i = 0; i < stem.size(); ++i) {
-        char c = stem[i];
+    for (char & i : stem) {
+        char c = i;
         if (c >= 'A' && c <= 'Z') c = static_cast<char>((c - 'A' + 'a'));
         const bool ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
                       || c == '_' || c == '-';
-        stem[i] = ok ? c : '_';
+        i = ok ? c : '_';
     }
     if (stem.empty()) return std::string();
 

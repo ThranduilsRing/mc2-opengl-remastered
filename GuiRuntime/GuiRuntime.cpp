@@ -372,8 +372,8 @@ static void BuildEditorDockspace() {
                 "Debug Overlays", "Task Monitor", "Foliage Detail", "Renderer Features",
                 "Mission Save Readiness", "Graphics Options  [Ctrl+Shift+G]"
             };
-            for (int i = 0; i < (int)(sizeof(kPanels) / sizeof(kPanels[0])); ++i)
-                ImGui::DockBuilderDockWindow(kPanels[i], rightId);
+            for (auto & kPanel : kPanels)
+                ImGui::DockBuilderDockWindow(kPanel, rightId);
             ImGui::DockBuilderFinish(dockId);
 
             // All panels share the right-column node, so they render as a tab strip.

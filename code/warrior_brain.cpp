@@ -149,8 +149,8 @@ long MechWarrior::setBrain (long brainHandle) {
 	if (brain) {
 		delete brain;
 		brain = nullptr;
-		for (long i = 0; i < NUM_PILOT_ALARMS; i++)
-			brainAlarmCallback[i] = nullptr;
+		for (auto & i : brainAlarmCallback)
+			i = nullptr;
 	}
 	warriorBrainHandle = brainHandle;
 	if (brainHandle > -1)

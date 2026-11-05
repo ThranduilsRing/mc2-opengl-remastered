@@ -756,8 +756,8 @@ void aTcpipPanel::update()
 	{
 		// now look for 3 periods
 		int dotIndex[5];
-		for ( int i = 0; i < 5; i++ )
-			dotIndex[i] = -1;
+		for (int & i : dotIndex)
+			i = -1;
 
 		dotIndex[4] = static_cast<int>(str.size());
 

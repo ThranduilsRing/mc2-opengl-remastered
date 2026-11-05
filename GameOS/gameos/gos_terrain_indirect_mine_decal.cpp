@@ -573,9 +573,9 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
             // ROAD-PBR-ABANDON-1: the per-tile PBR material-id bake
             // (ROAD-PBR-ASPHALT-1/GRAVEL-1, d7c0ff2d) is retired — stock form
             // restored: every tile takes the legacy tgl road-tile path.
-            for (int k = 0; k < 4; ++k) {
-                c[k].fog  = 1.0f;          // frag discards FogValue (terrain_overlay.frag:48)
-                c[k].argb = 0xffffffffu;   // frag discards Color    (terrain_overlay.frag:48)
+            for (auto & k : c) {
+                k.fog  = 1.0f;          // frag discards FogValue (terrain_overlay.frag:48)
+                k.argb = 0xffffffffu;   // frag discards Color    (terrain_overlay.frag:48)
             }
 
             // uvMode: mirror worldQuadUVMode (mapdata.cpp:115-118). The cache's

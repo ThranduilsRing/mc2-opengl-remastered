@@ -900,9 +900,9 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 		{
 			if (!i)		//If we found the first one OK, erase the current ones!!
 			{
-				for (long j=0;j<MAX_WATER_DETAIL_TEXTURES;j++)
+				for (auto & j : waterDetailNodeIndex)
 				{
-					waterDetailNodeIndex[j].reset();
+					j.reset();
 				}
 
 				numWaterDetailFrames = 0;

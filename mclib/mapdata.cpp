@@ -1359,10 +1359,10 @@ void MapData::setTerrain( long indexY, long indexX, int Type )
 	// valid. After invalidateTerrainFaceCache() the Shape C cache is NULL, so
 	// buildRecipeSlot falls back to UV defaults — correct (same as legacy).
 	// V17: precise call here, whole-map call only at destroy/newInit sites.
-	for (int _iv = 0; _iv < 4; ++_iv) {
+	for (auto & Vertice : Vertices) {
 		if ((indexX > -1 && indexX < Terrain::realVerticesMapSide - 1) &&
 		    (indexY > -1 && indexY < Terrain::realVerticesMapSide - 1)) {
-			const int32_t vn = Vertices[_iv][x] + Vertices[_iv][y] * Terrain::realVerticesMapSide;
+			const int32_t vn = Vertice[x] + Vertice[y] * Terrain::realVerticesMapSide;
 			gos_terrain_indirect::InvalidateRecipeForVertexNum(vn);
 		}
 	}
@@ -1375,9 +1375,9 @@ void MapData::setTerrain( long indexY, long indexX, int Type )
 	if (terrainFaceCache && Terrain::terrainTextures && Terrain::terrainTextures2) {
 		const long cacheWidth = worldQuadCacheWidth();
 		Vertex wv[4];
-		for (int _iv = 0; _iv < 4; ++_iv) {
-			const long tr = Vertices[_iv][y];
-			const long tc = Vertices[_iv][x];
+		for (auto & Vertice : Vertices) {
+			const long tr = Vertice[y];
+			const long tc = Vertice[x];
 			if (tr < 0 || tr >= cacheWidth || tc < 0 || tc >= cacheWidth) continue;
 			const long idx = tc + tr * Terrain::realVerticesMapSide;
 			PostcompVertexPtr p1 = &blocks[idx];

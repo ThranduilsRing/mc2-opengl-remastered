@@ -635,17 +635,17 @@ long GVAppearance::update (bool animate)
 			lposP.x = lpos.x; lposP.y = lpos.y; lposP.z = lpos.z;
 			mc2::math::buildTranslation(l2w, lposP);
 			mc2::math::buildRotation(l2w, mc2::math::Euler(0.0f, 0.0f, 0.0f));
-			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+			for (auto & spotlightLight : spotlightLights_)
 			{
-				spotlightLights_[k]->ownerEnabled = 1;
-				spotlightLights_[k]->SetPosition(&lpos);
-				spotlightLights_[k]->SetLightToWorld(&l2w);
+				spotlightLight->ownerEnabled = 1;
+				spotlightLight->SetPosition(&lpos);
+				spotlightLight->SetLightToWorld(&l2w);
 			}
 		}
 		else
 		{
-			for (size_t k = 0; k < spotlightLights_.size(); ++k)
-				spotlightLights_[k]->ownerEnabled = 0;
+			for (auto & spotlightLight : spotlightLights_)
+				spotlightLight->ownerEnabled = 0;
 		}
 	}
 

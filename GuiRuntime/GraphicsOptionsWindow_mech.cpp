@@ -43,8 +43,7 @@ void drawEnvGatesSection() {
     ImGui::TableSetupColumn("##var",  ImGuiTableColumnFlags_WidthFixed, 220.0f);
     ImGui::TableSetupColumn("##desc", ImGuiTableColumnFlags_WidthStretch);
 
-    for (int i = 0; i < kEnvGateCount; ++i) {
-        const EnvGate& g = kEnvGates[i];
+    for (const auto & g : kEnvGates) {
         const auto st = mc2::gate::boolState(g.var);   // the name comes from the table above
         const bool present = st && st->set;
 

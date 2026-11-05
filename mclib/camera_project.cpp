@@ -272,7 +272,7 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 	double d[3] = { midPt[0]-ro[0], midPt[1]-ro[1], midPt[2]-ro[2] };
 	const double dl = sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
 	if (dl < 1e-9) return pickFail(7, screenX, screenY);
-	for (int i = 0; i < 3; ++i) d[i] /= dl;
+	for (double & i : d) i /= dl;
 	if (d[2] > -1e-6)            // a ray that never descends cannot hit the surface
 		return pickFail(8, screenX, screenY);
 

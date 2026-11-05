@@ -218,14 +218,14 @@ long BattleMech::init (DWORD variantNum)
 	// marked all inventory items as not valid, our memory allocation does not do this and so there was garbage (0xcd), leading to
 	// all items in inventory behind last loaded from file to contain garbage. I wonder how many are such things still present.
 	// Before similar issue led to some in-game characters be invisible (salvage aircraft for example)
-	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
+	for (auto & curItem : inventory)
 	{
-		inventory[curItem].masterID = 0xff;
+		curItem.masterID = 0xff;
 		inventory[realItemNum].disabled = true;
 		// LOADOUT-HARDPOINT-JOIN-1: default the optional logical-hardpoint join key
 		// to unset. Stock CSV loadouts carry no hardpoint column, so this stays 0
 		// (legacy positional-CSV mount unchanged). A data source may later set it.
-		inventory[curItem].hardpointId = 0;
+		curItem.hardpointId = 0;
 	}
 
 	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)

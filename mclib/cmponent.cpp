@@ -149,16 +149,16 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	}
 
 	field = strtok(nullptr, ",");
-	for (long location = 0; location < NUM_BODY_LOCATIONS; location++) 
+	for (char & location : criticalSpacesReq) 
 	{
 		if ( field )
 		{
 			if (strcmp(field, "No") == 0)
-				criticalSpacesReq[location] = -1;
+				location = -1;
 			else if (strcmp(field, "Yes") == 0)
-				criticalSpacesReq[location] = 0;
+				location = 0;
 			else
-				criticalSpacesReq[location] = atoi(field);
+				location = atoi(field);
 		}
 			field = strtok(nullptr, ",");
 
@@ -308,14 +308,14 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 	strcat(dataLine,piece);
 	strcat(dataLine,comma);
 
-	for (long location = 0; location < NUM_BODY_LOCATIONS; location++) 
+	for (char location : criticalSpacesReq) 
 	{
-		if (criticalSpacesReq[location] == -1)
+		if (location == -1)
 			mc2::fmt::to_buf(piece,"No");
-		else if (criticalSpacesReq[location] == 0)
+		else if (location == 0)
 			mc2::fmt::to_buf(piece,"Yes");
 		else
-			Fatal(criticalSpacesReq[location],"Bad Data");
+			Fatal(location,"Bad Data");
 
 		strcat(dataLine,piece);
 		strcat(dataLine,comma);

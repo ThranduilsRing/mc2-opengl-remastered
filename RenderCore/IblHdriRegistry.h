@@ -134,8 +134,8 @@ constexpr bool hdriNameEq(const char* a, const char* b) {
 // Find an HDRI set by mood name (case-insensitive). Returns nullptr if not found.
 inline const IblHdriSet* findHdriSetByName(const char* name) {
     if (!name || name[0] == '\0') return nullptr;
-    for (size_t i = 0; i < kIblHdriSetCount; ++i)
-        if (detail::hdriNameEq(kIblHdriSets[i].name, name)) return &kIblHdriSets[i];
+    for (const auto & kIblHdriSet : kIblHdriSets)
+        if (detail::hdriNameEq(kIblHdriSet.name, name)) return &kIblHdriSet;
     return nullptr;
 }
 

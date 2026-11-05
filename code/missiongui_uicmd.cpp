@@ -170,9 +170,7 @@ void MissionInterfaceManager::processUiCommandChannel()
 	const std::string ackPath = std::string(s_path) + ".ack";
 	FILE* ack = fopen(ackPath.c_str(), "ab");
 
-	for (size_t i = 0; i < lines.size(); ++i) {
-		const std::string& line = lines[i];
-
+	for (const auto & line : lines) {
 		UiCmdCtx c{line};
 		// Groups run in the original verb-chain order: prefix matches are order-sensitive
 		// ("order move " before "order ", "list buildings" before "list").
@@ -340,8 +338,8 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		else if (arg.compare(0, 6, "class ") == 0 || arg.compare(0, 5, "name ") == 0) {
 			const bool byClass = (arg.compare(0, 6, "class ") == 0);
 			std::string needle = arg.substr(byClass ? 6 : 5);
-			for (size_t c = 0; c < needle.size(); ++c)
-				needle[c] = static_cast<char>(toupper(static_cast<unsigned char>(needle[c])));
+			for (char & c : needle)
+				c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
 			long n = 0;
 			for (long i = 0; i < pTeam->getRosterSize(); i++) {
 				Mover* m = static_cast<Mover*>(pTeam->getMover(i));
@@ -352,8 +350,8 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 					std::string hay = byClass
 						? std::string(getObjectClassName(m->getObjectClass()))
 						: std::string(m->getName() ? m->getName() : "");
-					for (size_t c = 0; c < hay.size(); ++c)
-						hay[c] = static_cast<char>(toupper(static_cast<unsigned char>(hay[c])));
+					for (char & c : hay)
+						c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
 					hit = (hay.find(needle) != std::string::npos);
 				}
 				m->setSelected(hit);
@@ -675,8 +673,8 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 					if (!ba || !ba->appearType) continue;
 					const long pid = o->getPartId();
 					bool dup = false;
-					for (size_t s = 0; s < seen.size(); ++s)
-						if (seen[s] == pid) { dup = true; break; }
+					for (long s : seen)
+						if (s == pid) { dup = true; break; }
 					if (dup) continue;
 					seen.push_back(pid);
 					char mask[MAX_BD_ANIMATIONS + 1];
@@ -720,8 +718,8 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		}
 		else if (arg.compare(0, 6, "class ") == 0) {
 			wantClass = arg.substr(6);
-			for (size_t c = 0; c < wantClass.size(); ++c)
-				wantClass[c] = static_cast<char>(toupper(static_cast<unsigned char>(wantClass[c])));
+			for (char & wantClas : wantClass)
+				wantClas = static_cast<char>(toupper(static_cast<unsigned char>(wantClas)));
 		}
 		else bad = true;
 
@@ -740,8 +738,8 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				const char* cls = getObjectClassName(m->getObjectClass());
 				if (!wantClass.empty()) {
 					std::string hay(cls ? cls : "");
-					for (size_t c = 0; c < hay.size(); ++c)
-						hay[c] = static_cast<char>(toupper(static_cast<unsigned char>(hay[c])));
+					for (char & c : hay)
+						c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
 					if (hay.find(wantClass) == std::string::npos) continue;
 				}
 				glm::vec3 p = m->getPosition();

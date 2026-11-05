@@ -567,10 +567,10 @@ void BldgAppearanceType::init (const char * fileName)
  		}
 	}
 
-	for (int i=0;i<MAX_LODS;i++)
+	for (auto & i : bldgShape)
 	{
-		if (bldgShape[i])
-			bldgShape[i]->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
+		if (i)
+			i->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 	}
 
 	// An authored window color is the legacy signal for an occupied building.

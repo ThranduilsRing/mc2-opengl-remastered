@@ -2188,8 +2188,7 @@ long Turret::calcFireRanges (void) {
 	maxRange = 0;
 	minRange = 1000000.0;
 	numFunctionalWeapons = 0;
-	for (long curWeapon = 0; curWeapon < MAX_TURRET_WEAPONS; curWeapon++) {
-		long weaponMasterId = (static_cast<TurretTypePtr>(getObjectType()))->weaponMasterId[curWeapon];
+	for (long weaponMasterId : (static_cast<TurretTypePtr>(getObjectType()))->weaponMasterId) {
 		if (weaponMasterId != -1) {
 			long range = MasterComponent::masterList[weaponMasterId].getWeaponRange();
 			float minWeaponRange = WeaponRanges[range][0];

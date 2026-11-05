@@ -64,8 +64,8 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 #ifdef USE_ALTERNATES
 		long numSquads = 0;
 		long squadMap[MAX_SQUADS];
-		for (long i = 0; i < MAX_SQUADS; i++)
-			squadMap[i] = -1;
+		for (long & i : squadMap)
+			i = -1;
 		long maxAlternatives[MAX_SQUADS];
 		long randomAlternative[MAX_SQUADS];
 		for (long s = 0; s < MAX_SQUADS; s++) {

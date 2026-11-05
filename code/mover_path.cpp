@@ -594,9 +594,9 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 
 	startTime = GetCycles();
 	long goalList[MAX_MOVE_GOALS][2];
-	for (int i = 0; i < MAX_MOVE_GOALS; i++) {
-		goalList[i][0] = -1;
-		goalList[i][1] = -99999;
+	for (auto & i : goalList) {
+		i[0] = -1;
+		i[1] = -99999;
 	}
 	for (int i = 0; i < MAX_MOVE_GOALS; i++) {
 		// This assumes that MAX_MOVE_GOALS >= 2...

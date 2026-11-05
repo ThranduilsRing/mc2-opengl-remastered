@@ -46,9 +46,9 @@ Mechlopedia::Mechlopedia(  )
 {
 	helpTextArrayID = 1;
 
-	for ( int i = 0; i < 6; i++ )
+	for (auto & subScreen : subScreens)
 	{
-		subScreens[i] = nullptr;
+		subScreen = nullptr;
 	}
 
 	currentScreen = 0;
@@ -173,9 +173,9 @@ int			Mechlopedia::handleMessage( unsigned long, unsigned long who)
 
 	else 
 	{
-		for ( int i= 0;i < 6; i++ )
+		for (auto & subScreen : subScreens)
 		{
-			subScreens[i]->end();
+			subScreen->end();
 		}
 		beginFadeOut( .5f );
 		status = NEXT;
@@ -1576,10 +1576,9 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 
 		LogisticsComponent* pComps[4];
 		int count = 0;
-		for ( int i = 0; i < 4; i++ )
+		for (int ID : pBldg->componentIDs)
 		{
-			int ID = pBldg->componentIDs[i];
-			if ( ID )
+				if ( ID )
 			{
 				LogisticsComponent* pComp = LogisticsData::instance->getComponent( ID );
 				if ( pComp )

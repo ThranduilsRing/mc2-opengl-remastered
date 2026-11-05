@@ -505,7 +505,7 @@ bool MissionInterfaceManager::selectionIsHelicopters( )
 unsigned long long MissionInterfaceManager::hotKeysFingerprint() {
     unsigned long long hash = 14695981039346656037ull;
     auto add = [&](unsigned long long value) { hash ^= value; hash *= 1099511628211ull; };
-    for (int i = 0; i < MAX_COMMAND; ++i) add(commands[i].key);
+    for (auto & command : commands) add(command.key);
     add(WAYPOINT_KEY); add(useLeftRightMouseProfile);
     return hash;
 }
@@ -575,11 +575,11 @@ int MissionInterfaceManager::setHotKey( int whichCommand, gosEnum_KeyIndex newKe
 		key |= WAYPT;
 	else
 	{
-		for ( int i = 0; i < MAX_COMMAND; i++ )
+		for (auto & command : commands)
 		{
-			if ( ((commands[i].key & 0x0000ffff) == oldKey)  && (commands[i].key & WAYPT) )
+			if ( ((command.key & 0x0000ffff) == oldKey)  && (command.key & WAYPT) )
 			{
-				commands[i].key = key | WAYPT;
+				command.key = key | WAYPT;
 			}
 		}
 	}

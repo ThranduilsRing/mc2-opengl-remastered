@@ -252,10 +252,10 @@ long Commander::Load (PacketFilePtr file, long packetNum, bool values)
 		numCommanders--;
 
 		commanders[i]->setId(data.id);
-		for (long k=0;k<MAX_TEAMS;k++)
+		for (auto & team : Team::teams)
 		{
-			if (Team::teams[k] && (Team::teams[k]->getId() == data.teamId))
-				commanders[i]->team = Team::teams[k];
+			if (team && (team->getId() == data.teamId))
+				commanders[i]->team = team;
 		}
 
 		for (long j=0;j<MAX_MOVERGROUPS;j++)

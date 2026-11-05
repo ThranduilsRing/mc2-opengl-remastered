@@ -74,8 +74,8 @@ class ContactInfo {
 				teams[i] = 0;
 				teamSpotter[i] = 0;
 			}
-			for (int i = 0; i < MAX_SENSORS; i++)
-				sensors[i] = NO_SENSOR_CONTACT;
+			for (unsigned short & sensor : sensors)
+				sensor = NO_SENSOR_CONTACT;
 		}
 
 		ContactInfo (void) {

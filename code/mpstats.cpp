@@ -105,8 +105,8 @@ void MPStats::begin()
 	beginFadeIn( .5 );
 
 
-	for ( int i = 0; i < MAX_MC_PLAYERS; i++ )
-		entries[i].showGUIWindow( 0 );
+	for (auto & entrie : entries)
+		entrie.showGUIWindow( 0 );
 
 
 	statics[15].setColor( 0 );
@@ -167,9 +167,9 @@ void MPStats::render( int xOffset, int yOffset )
 
 	LogisticsScreen::render( xOffset, yOffset );
 
-	for ( int i = 0; i < MAX_MC_PLAYERS; i++ )
+	for (auto & entrie : entries)
 	{
-		entries[i].render( 0, 0 );
+		entrie.render( 0, 0 );
 	}
 
 	ChatWindow::instance()->render(xOffset, yOffset);

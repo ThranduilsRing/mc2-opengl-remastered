@@ -209,11 +209,11 @@ void PauseWindow::update()
 			}
 
 
-			for (int i = 0; i < 2; i++ )
+			for (auto & background : backgrounds)
 			{
-				float dif = backgrounds[i].right - backgrounds[i].left;
-				backgrounds[i].left = .5 + currentPos;
-				backgrounds[i].right = .5 + currentPos + dif;
+				float dif = background.right - background.left;
+				background.left = .5 + currentPos;
+				background.right = .5 + currentPos + dif;
 			}
 		}
 	}
@@ -272,26 +272,26 @@ void PauseWindow::update()
 
 		for ( int i = 0; i < buttonCount; i++ )
 		{
-			for ( int j = 0; j < 4; j++ )
+			for (auto & j : buttons[i].location)
 			{
-				buttons[i].location[j].x -= delta;
+				j.x -= delta;
 			}
 		}
 
 		for (int i = 0; i < staticCount; i++ )
 		{
-			for ( int j = 0; j < 4; j++ )
+			for (auto & j : statics[i].location)
 			{
-				statics[i].location[j].x -= delta;
+				j.x -= delta;
 			}
 		}
 
 	
-		for (int i = 0; i < 2; i++ )
+		for (auto & background : backgrounds)
 		{
-			float dif = backgrounds[i].right - backgrounds[i].left;
-			backgrounds[i].left = .5 + currentPos;
-			backgrounds[i].right = .5 + currentPos + dif;
+			float dif = background.right - background.left;
+			background.left = .5 + currentPos;
+			background.right = .5 + currentPos + dif;
 		}
 
 		

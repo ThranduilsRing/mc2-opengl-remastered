@@ -132,8 +132,8 @@ namespace
 
     std::string ToLower(std::string value)
     {
-        for (std::string::size_type i = 0; i < value.size(); ++i)
-            value[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(value[i])));
+        for (char & i : value)
+            i = static_cast<char>(std::tolower(static_cast<unsigned char>(i)));
 
         return value;
     }
