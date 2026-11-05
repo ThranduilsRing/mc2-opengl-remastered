@@ -412,6 +412,8 @@ if(MC2_VULKAN)
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
+    # hzb_cull.comp uses subgroup arithmetic (SPIR-V 1.3); glslang defaults to Vulkan 1.0 / SPIR-V 1.0. Engine floor is Vulkan 1.2.
+    set(MC2_VK_SHADER_DEFINES_hzb_cull_comp --target-env vulkan1.1)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).

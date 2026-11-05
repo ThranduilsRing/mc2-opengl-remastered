@@ -103,6 +103,13 @@ bool nativeCullInit(uint32_t capacity) {
     if (!mc2vk::engineVulkanContextValid()) return false;
     nativeCullShutdown();
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    {   // vk_actor_cull.comp.slang uses WaveActiveCountBits + WaveIsFirstLane in compute
+        VkPhysicalDeviceSubgroupProperties sg{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES};
+        VkPhysicalDeviceProperties2 p2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,&sg};
+        vkGetPhysicalDeviceProperties2(ctx.physicalDevice(),&p2);
+        const VkSubgroupFeatureFlags need=VK_SUBGROUP_FEATURE_BASIC_BIT|VK_SUBGROUP_FEATURE_BALLOT_BIT;
+        if (!(sg.supportedStages&VK_SHADER_STAGE_COMPUTE_BIT)||(sg.supportedOperations&need)!=need) return false;
+    }
     auto owner=std::make_unique<NativeCull>();
     if (!owner->init(ctx,capacity)) return false;
     ctx.islandSlot(mc2vk::IslandSlot::ActorCull)=std::move(owner);
