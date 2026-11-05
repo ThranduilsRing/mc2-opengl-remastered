@@ -20,8 +20,9 @@ static bool tgNameContainsCI(mc2::czstring hay, mc2::czstring needle)
 	if (!hay || !needle) return false;
 	const size_t nlen = strlen(needle);
 	if (nlen == 0) return false;
-	for (const char* p = hay; *p; ++p)
-		if (S_strnicmp(p, needle, static_cast<int>(nlen)) == 0)
+	const std::string_view haystack(hay);
+	for (size_t i = 0; i < haystack.size(); ++i)
+		if (S_strnicmp(hay + i, needle, static_cast<int>(nlen)) == 0)
 			return true;
 	return false;
 }

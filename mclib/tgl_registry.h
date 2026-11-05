@@ -36,7 +36,7 @@ public:
         }
         auto& entry = entries_[slot - 1];
         entry.pointer = pointer;
-        return {(uint64_t(entry.generation) << 32) | slot};
+        return {(static_cast<uint64_t>(entry.generation) << 32) | slot};
     }
 
     T* resolve(TglId<T> id) const {

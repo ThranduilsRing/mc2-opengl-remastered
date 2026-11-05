@@ -6,6 +6,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <algorithm>
 #include "camera_internal.h"
 #include "Gates/gate.h"
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
@@ -621,14 +622,9 @@ void Camera::getClosestVertex (Stuff::Vector2DOf<long>& screenPos,
 	// Clamp into the valid vertex grid. The editor guard
 	// (tileR < realVerticesMapSide && tileR > -1) treats out-of-range
 	// as "no paint", so clamping here keeps row/col well-formed.
-	if (tileR < 0)
-		tileR = 0;
-	else if (tileR >= Terrain::realVerticesMapSide)
-		tileR = Terrain::realVerticesMapSide - 1;
-	if (tileC < 0)
-		tileC = 0;
-	else if (tileC >= Terrain::realVerticesMapSide)
-		tileC = Terrain::realVerticesMapSide - 1;
+	const int maxVertex = static_cast<int>(Terrain::realVerticesMapSide) - 1;
+	tileR = std::clamp(tileR, 0, maxVertex);
+	tileC = std::clamp(tileC, 0, maxVertex);
 
 	row = static_cast<long>(tileR);
 	col = static_cast<long>(tileC);
@@ -782,8 +778,7 @@ unsigned char Camera::getLightRed (float intensity)
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightRed * intensity + ambientRed);
-		if (fResult < floorV)
-			fResult = floorV;
+		fResult = std::max(fResult, floorV);
 		if (fResult < 0xff)
 			return fResult;
 		else
@@ -801,8 +796,7 @@ unsigned char Camera::getLightGreen (float intensity)
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightGreen * intensity + ambientGreen);
-		if (fResult < floorV)
-			fResult = floorV;
+		fResult = std::max(fResult, floorV);
 		if (fResult < 0xff)
 			return fResult;
 		else
@@ -820,8 +814,7 @@ unsigned char Camera::getLightBlue (float intensity)
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightBlue * intensity + ambientBlue);
-		if (fResult < floorV)
-			fResult = floorV;
+		fResult = std::max(fResult, floorV);
 		if (fResult < 0xff)
 			return fResult;
 		else

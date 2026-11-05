@@ -24,6 +24,7 @@
 
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
+#include <algorithm>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
 #include <string_view>
 #include <cstring>  // strcmp (rebuildShapeRecParents)
@@ -222,11 +223,7 @@ struct _TG_Light
 
 	void SetIntensity (float intensity)
 	{
-		if (intensity > 1.0f)
-			intensity = 1.0f;
-		if (intensity < 0.0f)
-			intensity = 0.0f;
-		this->intensity = intensity;
+		this->intensity = std::clamp(intensity, 0.0f, 1.0f);
 
 		//Scale aRGB by intensity
 		DWORD r,g,b;
@@ -1089,55 +1086,55 @@ inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec, const TG_TinyTexture*
 
 
 //-------------------------------------------------------------------------------
-// ASE File Parse String Macros
-#define ASE_HEADER				"*3DSMAX_ASCIIEXPORT\t200"
-#define ASE_OBJECT				"*GEOMOBJECT {"
-#define ASE_HELP_OBJECT			"*HELPEROBJECT {"
-#define ASE_MESH				"*MESH {"
-#define ASE_NUM_VERTEX			"*MESH_NUMVERTEX"
-#define ASE_NUM_FACE			"*MESH_NUMFACES"
-#define ASE_VERTEX_LIST			"*MESH_VERTEX_LIST {"
-#define ASE_FACE_LIST			"*MESH_FACE_LIST {"
-#define ASE_NUM_TVERTEX			"*MESH_NUMTVERTEX"
-#define ASE_TVERTLIST			"*MESH_TVERTLIST {"
-#define ASE_NUM_TVFACES			"*MESH_NUMTVFACES"
-#define ASE_TFACELIST			"*MESH_TFACELIST {"
-#define ASE_NUM_CVERTEX			"*MESH_NUMCVERTEX"
-#define ASE_CVERTLIST			"*MESH_CVERTLIST {"
-#define ASE_NUM_CVFACES			"*MESH_NUMCVFACES"
-#define	ASE_CFACELIST			"*MESH_CFACELIST {"
-#define ASE_MESH_NORMALS		"*MESH_NORMALS {"
+// ASE File Parse Strings
+inline constexpr char ASE_HEADER[] = "*3DSMAX_ASCIIEXPORT\t200";
+inline constexpr char ASE_OBJECT[] = "*GEOMOBJECT {";
+inline constexpr char ASE_HELP_OBJECT[] = "*HELPEROBJECT {";
+inline constexpr char ASE_MESH[] = "*MESH {";
+inline constexpr char ASE_NUM_VERTEX[] = "*MESH_NUMVERTEX";
+inline constexpr char ASE_NUM_FACE[] = "*MESH_NUMFACES";
+inline constexpr char ASE_VERTEX_LIST[] = "*MESH_VERTEX_LIST {";
+inline constexpr char ASE_FACE_LIST[] = "*MESH_FACE_LIST {";
+inline constexpr char ASE_NUM_TVERTEX[] = "*MESH_NUMTVERTEX";
+inline constexpr char ASE_TVERTLIST[] = "*MESH_TVERTLIST {";
+inline constexpr char ASE_NUM_TVFACES[] = "*MESH_NUMTVFACES";
+inline constexpr char ASE_TFACELIST[] = "*MESH_TFACELIST {";
+inline constexpr char ASE_NUM_CVERTEX[] = "*MESH_NUMCVERTEX";
+inline constexpr char ASE_CVERTLIST[] = "*MESH_CVERTLIST {";
+inline constexpr char ASE_NUM_CVFACES[] = "*MESH_NUMCVFACES";
+inline constexpr char ASE_CFACELIST[] = "*MESH_CFACELIST {";
+inline constexpr char ASE_MESH_NORMALS[] = "*MESH_NORMALS {";
 
-#define ASE_NODE_NAME			"*NODE_NAME"
-#define ASE_NODE_PARENT			"*NODE_PARENT"
-#define ASE_NODE_POS			"*TM_POS"
+inline constexpr char ASE_NODE_NAME[] = "*NODE_NAME";
+inline constexpr char ASE_NODE_PARENT[] = "*NODE_PARENT";
+inline constexpr char ASE_NODE_POS[] = "*TM_POS";
 
-#define ASE_ANIMATION			"*TM_ANIMATION {"
-#define ASE_ANIM_ROT_HEADER		"*CONTROL_ROT_TRACK {"
-#define ASE_ANIM_ROT_SAMPLE		"*CONTROL_ROT_SAMPLE"
-#define ASE_ANIM_POS_HEADER		"*CONTROL_POS_TRACK {"
-#define ASE_ANIM_POS_SAMPLE		"*CONTROL_POS_SAMPLE"
-#define ASE_ANIM_FIRST_FRAME	"*SCENE_FIRSTFRAME"
-#define ASE_ANIM_LAST_FRAME		"*SCENE_LASTFRAME"
-#define ASE_ANIM_FRAME_SPEED	"*SCENE_FRAMESPEED"
-#define ASE_ANIM_TICKS_FRAME	"*SCENE_TICKSPERFRAME"
+inline constexpr char ASE_ANIMATION[] = "*TM_ANIMATION {";
+inline constexpr char ASE_ANIM_ROT_HEADER[] = "*CONTROL_ROT_TRACK {";
+inline constexpr char ASE_ANIM_ROT_SAMPLE[] = "*CONTROL_ROT_SAMPLE";
+inline constexpr char ASE_ANIM_POS_HEADER[] = "*CONTROL_POS_TRACK {";
+inline constexpr char ASE_ANIM_POS_SAMPLE[] = "*CONTROL_POS_SAMPLE";
+inline constexpr char ASE_ANIM_FIRST_FRAME[] = "*SCENE_FIRSTFRAME";
+inline constexpr char ASE_ANIM_LAST_FRAME[] = "*SCENE_LASTFRAME";
+inline constexpr char ASE_ANIM_FRAME_SPEED[] = "*SCENE_FRAMESPEED";
+inline constexpr char ASE_ANIM_TICKS_FRAME[] = "*SCENE_TICKSPERFRAME";
 
-#define ASE_FACE_NORMAL_ID		"*MESH_FACENORMAL"
-#define ASE_VERTEX_NORMAL_ID	"*MESH_VERTEXNORMAL"
-#define ASE_MESH_CFACE_ID		"*MESH_CFACE"
-#define ASE_MESH_VERTCOL_ID		"*MESH_VERTCOL"
-#define ASE_MESH_TFACE_ID		"*MESH_TFACE"
-#define ASE_MESH_TVERT_ID		"*MESH_TVERT"
-#define ASE_MESH_FACE_ID		"*MESH_FACE"
-#define ASE_MESH_VERTEX_ID		"*MESH_VERTEX"
+inline constexpr char ASE_FACE_NORMAL_ID[] = "*MESH_FACENORMAL";
+inline constexpr char ASE_VERTEX_NORMAL_ID[] = "*MESH_VERTEXNORMAL";
+inline constexpr char ASE_MESH_CFACE_ID[] = "*MESH_CFACE";
+inline constexpr char ASE_MESH_VERTCOL_ID[] = "*MESH_VERTCOL";
+inline constexpr char ASE_MESH_TFACE_ID[] = "*MESH_TFACE";
+inline constexpr char ASE_MESH_TVERT_ID[] = "*MESH_TVERT";
+inline constexpr char ASE_MESH_FACE_ID[] = "*MESH_FACE";
+inline constexpr char ASE_MESH_VERTEX_ID[] = "*MESH_VERTEX";
 
-#define ASE_MATERIAL_COUNT		"*MATERIAL_COUNT"
-#define ASE_SUBMATERIAL_COUNT	"*NUMSUBMTLS"
-#define ASE_MATERIAL_ID			"*MATERIAL"
-#define ASE_MATERIAL_BITMAP_ID	"*BITMAP "
-#define ASE_MATERIAL_CLASS		"*MATERIAL_CLASS"
-#define ASE_MATERIAL_TWOSIDED	"*MATERIAL_TWOSIDED"
-#define ASE_FACE_MATERIAL_ID	"*MESH_MTLID"
+inline constexpr char ASE_MATERIAL_COUNT[] = "*MATERIAL_COUNT";
+inline constexpr char ASE_SUBMATERIAL_COUNT[] = "*NUMSUBMTLS";
+inline constexpr char ASE_MATERIAL_ID[] = "*MATERIAL";
+inline constexpr char ASE_MATERIAL_BITMAP_ID[] = "*BITMAP ";
+inline constexpr char ASE_MATERIAL_CLASS[] = "*MATERIAL_CLASS";
+inline constexpr char ASE_MATERIAL_TWOSIDED[] = "*MATERIAL_TWOSIDED";
+inline constexpr char ASE_FACE_MATERIAL_ID[] = "*MESH_MTLID";
 
 //-------------------------------------------------------------------------------
 #endif
