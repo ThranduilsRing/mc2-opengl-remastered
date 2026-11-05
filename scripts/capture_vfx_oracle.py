@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from vfx_oracle.evidence import extract
 INSTALL_ROOT = Path("A:/Games/mc2-opengl")
-INSTALLS = ("lane2", "lane3")   # the lane installs the oracle may run against
+INSTALLS = ("v0.4", "v0.4c")   # named installs under INSTALL_ROOT; a lane install is passed as an absolute path
 
 
 def park_value(pose: dict) -> str:
@@ -27,7 +27,7 @@ def park_value(pose: dict) -> str:
 
 def command(bookmarks: Path, out: Path, frame: int, arm: str, fixture: str = "loop",
             camera_park: str | None = None, experiment: str = "master",
-            install: str = "lane3") -> list[str]:
+            install: str = "v0.4") -> list[str]:
     if arm not in {"mlr", "gpu"} or frame < 0 or fixture not in {"loop", "1", "9"}:
         raise ValueError("unknown arm/fixture or negative frame")
     install_dir = Path(install) if Path(install).is_absolute() else INSTALL_ROOT / f"mc2-win64-{install}"
@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--arm", choices=("mlr", "gpu", "both"), default="both")
     parser.add_argument("--fixture", choices=("loop", "1", "9"), default="loop")
     parser.add_argument("--experiment", choices=("master", "harvested"), default="master")
-    parser.add_argument("--install", default="lane3")
+    parser.add_argument("--install", default="v0.4")
     args = parser.parse_args(argv)
     if args.install not in INSTALLS and not Path(args.install).is_absolute():
         print(f"[capture_vfx_oracle] unknown --install {args.install!r}; known installs: {', '.join(INSTALLS)}",

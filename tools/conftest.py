@@ -9,6 +9,7 @@ import os
 import tempfile
 
 os.environ["MC2_CURSOR_GUARD_OFF"] = "1"
+os.environ["MC2_NO_CPU_PIN"] = "1"   # lane_merge children never re-pin the test runner's CPUs (same as scripts/tests/conftest.py)
 
 # Precheck receipts go to a private dir in tests, never to the real A:/Games/mc2-ops/precheck (a mocked git_out once left a forged abc.json there).
 os.environ["MC2_PRECHECK_RECEIPTS"] = os.path.join(tempfile.gettempdir(), f"mc2-precheck-receipts-test-{os.getpid()}")

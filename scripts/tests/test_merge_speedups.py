@@ -196,7 +196,7 @@ def test_oversize_pdb_that_cannot_be_deleted_is_reported(tmp_path, monkeypatch, 
 
 
 def test_merge_ratchets_scan_worktree_before_verify():
-    assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 4
+    assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 3   # file_size, cxx17, axis_swizzle (dup_lines -> dup_check, tidy-tools)
     assert lm.verify_env(ROOT)["MC2_NINJA_TREE"] == "build64-ninja" and lm.verify_env(ROOT)["MC2_UNIT_BUILD_DIR"] == os.path.join(ROOT, "build-cc-tests")
 
 
@@ -239,16 +239,16 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 22
+    assert len(steps) == 23
     video = next(cmd for name, cmd, _ in steps if name == "video-decode")
     assert video[1].endswith("video_decode_smoke.py") and "video-decode" in video[-1]
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
     assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
     by_name = {name: (cmd, env) for name, cmd, env in steps}
-    assert by_name["contracts"][0][-1] == "-j6"
+    assert by_name["contracts"][0][-2:] == ["-j6", "--no-cache"]   # the gate never takes a shared-cache PASS
     assert by_name["harnesses"][0][-2:] == ["-j", "6"]
     assert "--ninja" in by_name["deploy"][0] and "--require-clean" in by_name["deploy"][0]
-    assert [name for name, _, _ in steps[:5]] == ["capture-before", "deploy", "capture-after", "compare-captures", "contracts"]
+    assert [name for name, _, _ in steps[:6]] == ["box-gate", "capture-before", "deploy", "capture-after", "compare-captures", "contracts"]
     assert by_name["determinism-mc2_24"][0][2:4] == ["check", "mc2_24"]
     assert not any("ninja_build.py" in arg for _, cmd, _ in steps for arg in cmd)
     for name, cmd, _ in steps:
@@ -264,7 +264,7 @@ def test_gate_repeated_before_captures_measure_noise_before_deploy(tmp_path):
     import merge_gate as gate
     steps = gate.plan(6, tmp_path, 3)
     names = [s[0] for s in steps]
-    assert names[:6] == ["capture-before", "capture-before-2", "compare-noise-2",
+    assert names[:7] == ["box-gate", "capture-before", "capture-before-2", "compare-noise-2",
                          "capture-before-3", "compare-noise-3", "deploy"]
     commands = {name: cmd for name, cmd, _ in steps}
     assert commands["capture-before-3"][-1] == str(tmp_path / "before-3")
@@ -1087,6 +1087,7 @@ def test_game_batch_releases_and_reaps_its_holder(monkeypatch, fail):
 
 
 def test_only_capture_stages_take_the_exclusive_hold_one_at_a_time(monkeypatch):
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     from contextlib import contextmanager
     import merge_gate as gate
     calls = []

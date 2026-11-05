@@ -7,6 +7,13 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import console_child  # noqa: E402
 import module_test_cache as mtc  # noqa: E402
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _private_cache_dir(tmp_path, monkeypatch):
+    """The cache file is shared across worktrees by default; these tests must not read or write the real one."""
+    monkeypatch.setenv("MC2_TEST_CACHE_DIR", str(tmp_path / "cache-dir"))
 
 
 def _git(repo, *a):
