@@ -68,17 +68,18 @@ L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; 
 #@@FRESH_FN@@
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
 #@@LANE_FLOOR@@
-if [ ! -d $L ]; then   # a NEW lane dir needs room: below the floor, evict the oldest idle lane dirs (no process, no lock) first
+[ -f /workspace/lanes/EVICTIONS.log ] && grep -F " removed $BR " /workspace/lanes/EVICTIONS.log | tail -1 | sed 's/^/[box_run] this lane dir was removed earlier: /'   # a lane that was evicted sees why
+if [ ! -d $L ]; then   # a NEW lane dir needs room: below the floor, evict the oldest evictable lane dirs (never running, queued in pueue, wanted or recent) first
   LFLOOR=${MC2_BOX_LANE_FLOOR_GB:-30}; FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
   if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then
     bash /workspace/mc2-box/lane_cleanup.sh evict "$LFLOOR" "$BR"
     FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
-    if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then echo "[box_run] BOX_INFRA: ${FREE_GB:-0} GB free on /workspace, floor $LFLOOR GB, nothing idle to evict: not creating lane dir $BR"; exit 77; fi
+    if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then echo "[box_run] BOX_INFRA: ${FREE_GB:-0} GB free on /workspace, floor $LFLOOR GB, nothing evictable (holders listed above): not creating lane dir $BR"; exit 77; fi
   fi
 fi
 #@@END_LANE_FLOOR@@
 mkdir -p /workspace/locks $L $OUT
-GOT=""; WANTF=""; trap '[ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row' EXIT   # a dead run must not leave a stale owner file
+GOT=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap 'rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row' EXIT   # a dead run must not leave a stale owner file
 exec 8>$L/.lane.lock; flock 8   # one run per lane at a time: src, install and out are shared (fd 8 is not passed on to rows)
 #@@DISK_GUARD@@
 FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
@@ -127,14 +128,14 @@ for g in $cand; do exec 9>>/workspace/locks/gpu$g; flock -n 9 && { GOT=$g; break
 if [ -z "$GOT" ]; then
   g=${cand%% *}; WANTF=/workspace/locks/gpu$g.want; echo "[box_run] all of ($cand) busy; waiting on GPU $g (up to 30 min)"
   while [ -z "$GOT" ]; do   # retry every candidate; flock is not FIFO and other lanes also wait
-    touch $WANTF
+    touch $WANTF $LWANT   # $LWANT: lane_cleanup never evicts this lane while it waits
     for c in $cand; do exec 9>>/workspace/locks/gpu$c; flock -n 9 && { GOT=$c; break; }; done
     [ -n "$GOT" ] && break
     [ $((SECONDS - LW0)) -gt 1800 ] && { echo "[box_run] LOCK_TIMEOUT: gave up waiting for a GPU"; exit 76; }
     timeout 3 tail -f /dev/null
   done
 fi
-[ -n "$WANTF" ] && rm -f "$WANTF"; WANTF=""
+[ -n "$WANTF" ] && rm -f "$WANTF" "$LWANT"; WANTF=""
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
 echo "[box_run] gpu=$GPU locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
@@ -349,6 +350,8 @@ def box_status():
         print("[box_run] no STATUS.json on the box (filler loop not running?)", file=sys.stderr)
         return 1
     print(r.stdout.rstrip())
+    ev = run([*SSH, "tail -n 15 /workspace/lanes/EVICTIONS.log 2>/dev/null"], capture_output=True, text=True)
+    print("lane evictions (last 15, /workspace/lanes/EVICTIONS.log):\n" + ((ev.stdout or "").rstrip() or "  none"))
     return 0
 
 

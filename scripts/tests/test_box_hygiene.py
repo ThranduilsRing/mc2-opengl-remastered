@@ -107,7 +107,15 @@ def lanes(tmp_path):
     (w / "lanes" / ".box_lane_zz_t.sh").write_text("x")
     m = tmp_path / "m.git"
     subprocess.run(["git", "init", "-q", "--bare", str(m)], check=True)
-    env = {"W": w.as_posix(), "LANES": (w / "lanes").as_posix(), "MIRROR": m.as_posix(), "NO_PROC_SCAN": "1"}
+    (w / "locks").mkdir()
+    q = tmp_path / "queue.txt"      # stand-in for `pueue status --json`: one line of command/path/label per queued or running task
+    q.write_text("")
+    env = {"W": w.as_posix(), "LANES": (w / "lanes").as_posix(), "MIRROR": m.as_posix(), "NO_PROC_SCAN": "1",
+           "PUEUE_ACTIVE_FILE": q.as_posix(), "LOCKS": (w / "locks").as_posix(), "IDLE_MIN": "10"}
+    if os.name == "nt":      # MSYS has no `ps -eo` or flock: stand-ins that report an idle machine (real liveness is covered on the box)
+        shim = tmp_path / "shim.sh"
+        shim.write_text("ps() { :; }\nflock() { return 0; }\n")
+        env["BASH_ENV"] = shim.as_posix()
     return w, m, env
 
 
@@ -140,7 +148,7 @@ def test_cleanup_refuses_a_lane_with_a_live_process(lanes):
     p = subprocess.Popen(["sleep", "30"], cwd=w / "lanes" / "zz_t")
     try:
         r = cleanup({**env, "NO_PROC_SCAN": "0"}, "one", "zz_t")
-        assert r.returncode == 3 and "LIVE" in r.stdout
+        assert r.returncode == 3 and "RUNNING" in r.stdout
         assert (w / "lanes" / "zz_t").is_dir()
     finally:
         p.kill()
@@ -321,13 +329,10 @@ def _touch_lock(w, key, age_days):
     f = d / ".lane.lock"
     f.write_text("")
     t = time.time() - age_days * 86400
-    os.utime(f, (t, t))
+    for p in (f, d / "out", d):      # last activity = newest mtime in the dir, so age every level
+        os.utime(p, (t, t))
 
 
-needs_box = pytest.mark.skipif(os.name == "nt", reason="liveness needs flock and ps -eo (the box; verified there in the lane report)")
-
-
-@needs_box
 def test_evict_dry_run_lists_oldest_first_and_spares_the_keep_lane(lanes):
     w, m, env = lanes
     _touch_lock(w, "zz_new", 1)
@@ -340,20 +345,113 @@ def test_evict_dry_run_lists_oldest_first_and_spares_the_keep_lane(lanes):
     assert all((w / "lanes" / n).is_dir() for n in names)      # dry run removes nothing
 
 
-@needs_box
 def test_evict_removes_by_name_and_reports_when_nothing_is_left(lanes):
     w, m, env = lanes
     _touch_lock(w, "zz_old", 9)
     r = cleanup({**env, "FAKE_FREE_GB": "10"}, "evict", "30", "zz_t")      # the constant fake never reaches the floor
-    assert r.returncode == 1 and "no idle lane dir left" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 1 and "no evictable lane dir left" in r.stdout, r.stdout + r.stderr
     assert not (w / "lanes" / "zz_old").exists() and (w / "lanes" / "zz_t").is_dir()   # evicted the idle one, kept the keep lane
+    assert "zz_t" in r.stdout and "unique=" in r.stdout      # the holders table follows the failure
+    assert re.search(r" removed zz_old reason=evict floor=30GB", (w / "lanes" / "EVICTIONS.log").read_text())
 
 
-@needs_box
 def test_evict_is_a_no_op_above_the_floor(lanes):
     w, m, env = lanes
     r = cleanup({**env, "FAKE_FREE_GB": "99"}, "evict", "30")
     assert r.returncode == 0 and "0 lane dir(s) evicted" in r.stdout and (w / "lanes" / "zz_t").is_dir()
+
+
+def _evict_all(lanes_fixture):
+    w, m, env = lanes_fixture
+    r = cleanup({**env, "FAKE_FREE_GB": "10"}, "evict", "30")
+    return w, r
+
+
+def test_evict_never_removes_a_lane_with_a_queued_pueue_task(lanes):
+    """the w121-combo defect: the lane had no process and no lock between two queued tasks"""
+    w, m, env = lanes
+    for k in ("zz_combo", "zz_cmd", "zz_idle"):
+        _touch_lock(w, k, 9)
+    (w / "lanes" / ".box_lane_zz_combo.sh").write_text("x")
+    Path(env["PUEUE_ACTIVE_FILE"]).write_text(
+        "bash /workspace/lanes/.box_lane_zz_combo.sh /workspace\n/workspace/lanes/zz_cmd/box_tests.sh /workspace/lanes/zz_cmd\n")
+    w, r = _evict_all(lanes)
+    assert (w / "lanes" / "zz_combo").is_dir() and (w / "lanes" / ".box_lane_zz_combo.sh").exists(), r.stdout
+    assert (w / "lanes" / "zz_cmd").is_dir()
+    assert not (w / "lanes" / "zz_idle").exists()
+    assert "QUEUED" in r.stdout      # the holders table says why they stayed
+
+
+def test_evict_never_removes_a_lane_with_a_want_file(lanes):
+    w, m, env = lanes
+    _touch_lock(w, "zz_wait", 9)
+    (w / "locks" / "zz_wait.want").write_text("")
+    w, r = _evict_all(lanes)
+    assert (w / "lanes" / "zz_wait").is_dir() and "WANT" in r.stdout
+
+
+def test_evict_removes_nothing_when_the_queue_is_unreadable(lanes):
+    w, m, env = lanes
+    _touch_lock(w, "zz_old", 9)
+    env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
+    r = cleanup({**env, "PUEUE": (w / "no_such_pueue").as_posix(), "FAKE_FREE_GB": "10"}, "evict", "30")
+    assert (w / "lanes" / "zz_old").is_dir() and "QUEUE-UNKNOWN" in r.stdout, r.stdout
+
+
+def test_evict_spares_a_recently_active_lane(lanes):
+    w, m, env = lanes
+    _touch_lock(w, "zz_fresh", 0)
+    w, r = _evict_all(lanes)
+    assert (w / "lanes" / "zz_fresh").is_dir() and "RECENT" in r.stdout
+
+
+def test_one_refuses_a_queued_or_wanted_lane(lanes):
+    w, m, env = lanes
+    Path(env["PUEUE_ACTIVE_FILE"]).write_text("bash /workspace/lanes/.box_lane_zz_t.sh\n")
+    r = cleanup(env, "one", "zz_t")
+    assert r.returncode == 3 and "QUEUED" in r.stdout and (w / "lanes" / "zz_t").is_dir()
+    Path(env["PUEUE_ACTIVE_FILE"]).write_text("")
+    (w / "locks" / "zz_t.want").write_text("")
+    r = cleanup(env, "one", "zz_t")
+    assert r.returncode == 3 and "WANT" in r.stdout and (w / "lanes" / "zz_t").is_dir()
+
+
+def test_every_removal_is_logged_with_its_reason(lanes):
+    w, m, env = lanes
+    assert cleanup(env, "one", "zz_t").returncode == 0
+    log = (w / "lanes" / "EVICTIONS.log").read_text()
+    assert re.match(r"\d{4}-\d\d-\d\dT[\d:]+Z removed zz_t reason=cleanup", log)
+    _touch_lock(w, "zz_dry", 9)
+    cleanup(env, "one", "zz_dry", "--dry-run")
+    assert "zz_dry" not in (w / "lanes" / "EVICTIONS.log").read_text()      # a dry run logs nothing
+
+
+def test_holders_reports_unique_size_age_and_last_activity(lanes):
+    w, m, env = lanes
+    _touch_lock(w, "zz_big", 3)
+    (w / "lanes" / "zz_big" / "blob").write_bytes(b"x" * 3 * 1024 * 1024)
+    for p in ("blob", ""):      # writing the blob touched the dir: age both again
+        os.utime(w / "lanes" / "zz_big" / p, (time.time() - 3 * 86400,) * 2)
+    r = cleanup(env, "holders")
+    line = next(l for l in r.stdout.splitlines() if "zz_big" in l)
+    assert re.search(r"unique=\s*[3-9] MB\s+age=\s*\d+ h\s+last_activity=\s*4[0-9]{3} min ago", line), r.stdout
+
+
+def test_status_prints_the_eviction_log_and_the_remote_guards_against_eviction(monkeypatch, capsys):
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd[-1])
+        out = '{"gpus": []}' if "STATUS.json" in cmd[-1] else "2026-11-05T01:02:03Z removed claude_x reason=evict floor=30GB"
+        return subprocess.CompletedProcess(cmd, 0, out, "")
+    monkeypatch.setattr(box_run, "run", fake_run)
+    assert box_run.box_status() == 0
+    out = capsys.readouterr().out
+    assert any("EVICTIONS.log" in c for c in calls) and "removed claude_x reason=evict" in out
+    blk = between(box_run.REMOTE, "#@@LANE_FLOOR@@", "#@@END_LANE_FLOOR@@")
+    assert "EVICTIONS.log" in blk      # a lane that was evicted is told why when it next starts
+    assert "LWANT=/workspace/locks/$BR.want" in box_run.REMOTE and "touch $WANTF $LWANT" in box_run.REMOTE
+    assert 'rm -f "$LWANT"' in box_run.REMOTE      # the want file goes away with the run
 
 
 def test_remote_checks_the_lane_floor_before_creating_the_lane_dir():
