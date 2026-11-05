@@ -80,7 +80,7 @@ int CPrefs::applyPrefs(bool applyRes) {
 	int bitDepth = this->bitDepth;
 
 	//Play with the fog distance.
-	float fogPercent = float(fogPos) / 100.0f;
+	float fogPercent = static_cast<float>(fogPos) / 100.0f;
 	// Override: full visibility, no distance culling
 	Camera::MaxClipDistance = 50000.0f;
 	Camera::MinHazeDistance = 50000.0f;

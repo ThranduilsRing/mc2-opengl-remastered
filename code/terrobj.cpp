@@ -980,7 +980,7 @@ long TerrainObject::update (void) {
 				mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
 				mc2::math::Obb boundingBox;
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
 		
 				bool result = bldgDustPoofEffect->Execute(&info);
 				if (!result)
@@ -1366,7 +1366,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 							mc2::math::buildTranslation(shapeOrigin, actualPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)requestedTime,&shapeOrigin,nullptr);
+							gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(requestedTime),&shapeOrigin,nullptr);
 							bldgDustPoofEffect->Start(&info);
 						}
                         };

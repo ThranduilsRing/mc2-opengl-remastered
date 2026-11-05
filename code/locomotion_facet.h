@@ -23,8 +23,8 @@ inline bool locomotionTokenEquals(const char* a, const char* key) {
     if (!a || !key) return false;
     for (; *a && *key; ++a, ++key) {
         char ca = *a, ck = *key;
-        if (ca >= 'A' && ca <= 'Z') ca = char(ca - 'A' + 'a');
-        if (ck >= 'A' && ck <= 'Z') ck = char(ck - 'A' + 'a');
+        if (ca >= 'A' && ca <= 'Z') ca = static_cast<char>(ca - 'A' + 'a');
+        if (ck >= 'A' && ck <= 'Z') ck = static_cast<char>(ck - 'A' + 'a');
         if (ca != ck) return false;
     }
     return *a == '\0' && *key == '\0';

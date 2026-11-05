@@ -124,17 +124,17 @@ static bool captureSceneLighting(SceneLighting& s)
     s.sun_dir[1] = eye->lightDirection.y;
     s.sun_dir[2] = eye->lightDirection.z;
     DWORD sc = eye->getLightColor(0);
-    s.sun_color[0] = float((sc >> 16) & 0xFFu) / 255.0f;
-    s.sun_color[1] = float((sc >>  8) & 0xFFu) / 255.0f;
-    s.sun_color[2] = float( sc        & 0xFFu) / 255.0f;
+    s.sun_color[0] = static_cast<float>((sc >> 16) & 0xFFu) / 255.0f;
+    s.sun_color[1] = static_cast<float>((sc >>  8) & 0xFFu) / 255.0f;
+    s.sun_color[2] = static_cast<float>( sc        & 0xFFu) / 255.0f;
     // Intensity proxy: the aRGB returned by getLightColor already has the light
     // intensity folded in (tgl.h aRGB = intensity-scaled color), and Camera's raw
     // intensity field is protected. Report the sun color luminance as the proxy.
     s.sun_intensity = 0.299f*s.sun_color[0] + 0.587f*s.sun_color[1] + 0.114f*s.sun_color[2];
     DWORD ac = eye->getLightColor(1);
-    s.ambient_color[0] = float((ac >> 16) & 0xFFu) / 255.0f;
-    s.ambient_color[1] = float((ac >>  8) & 0xFFu) / 255.0f;
-    s.ambient_color[2] = float( ac        & 0xFFu) / 255.0f;
+    s.ambient_color[0] = static_cast<float>((ac >> 16) & 0xFFu) / 255.0f;
+    s.ambient_color[1] = static_cast<float>((ac >>  8) & 0xFFu) / 255.0f;
+    s.ambient_color[2] = static_cast<float>( ac        & 0xFFu) / 255.0f;
 
     float tx = 0.0f, ty = 0.0f, tz = 1.0f;
     gos_GetTerrainLightDir(&tx, &ty, &tz);
@@ -404,10 +404,10 @@ void GameCamera::renderTerrainSceneState() {
 	inputs.cameraDirection = {lightDirection.x, lightDirection.y, lightDirection.z};
 	gos_GetTerrainLightDir(&inputs.effectiveDirection[0], &inputs.effectiveDirection[1], &inputs.effectiveDirection[2]);
 	const DWORD directional = getLightColor(0), ambient = getLightColor(1);
-	inputs.directionalColor = {float((directional >> 16) & 255u)/255.0f,
-		float((directional >> 8) & 255u)/255.0f, float(directional & 255u)/255.0f};
-	inputs.ambientColor = {float((ambient >> 16) & 255u)/255.0f,
-		float((ambient >> 8) & 255u)/255.0f, float(ambient & 255u)/255.0f};
+	inputs.directionalColor = {static_cast<float>((directional >> 16) & 255u)/255.0f,
+		static_cast<float>((directional >> 8) & 255u)/255.0f, static_cast<float>(directional & 255u)/255.0f};
+	inputs.ambientColor = {static_cast<float>((ambient >> 16) & 255u)/255.0f,
+		static_cast<float>((ambient >> 8) & 255u)/255.0f, static_cast<float>(ambient & 255u)/255.0f};
 	float flatIntensity = lightDirection.z;
 	if (flatIntensity < 0.0f) flatIntensity = 0.0f;
 	if (flatIntensity > 1.0f) flatIntensity = 1.0f;
@@ -432,9 +432,9 @@ void GameCamera::renderTerrainSceneState() {
 	{
 		int S[3], A[3], F; float D[3];
 		getPropLightContract(S, A, F, D);
-		float Sf[3] = {float(S[0]), float(S[1]), float(S[2])}, Af[3] = {float(A[0]), float(A[1]), float(A[2])};
+		float Sf[3] = {static_cast<float>(S[0]), static_cast<float>(S[1]), static_cast<float>(S[2])}, Af[3] = {static_cast<float>(A[0]), static_cast<float>(A[1]), static_cast<float>(A[2])};
 		extern void gos_SetPropLightContract(const float*, const float*, float, const float*);
-		gos_SetPropLightContract(Sf, Af, float(F), D);
+		gos_SetPropLightContract(Sf, Af, static_cast<float>(F), D);
 		static int s_first[6]; static bool s_haveFirst = false; static unsigned s_frames = 0;
 		const int now[6] = {S[0], S[1], S[2], A[0], A[1], A[2]};
 		if (!s_haveFirst) { std::copy_n(now, 6, s_first); s_haveFirst = true; }

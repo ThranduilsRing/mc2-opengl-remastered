@@ -2275,7 +2275,7 @@ void aStyle2TextListItem::render()
 	if ( hasAnimation )
 	{
 		if ( animGroup.getState() != getState() )
-			animGroup.setState( (aAnimGroup::STATE)(long)getState() );
+			animGroup.setState( static_cast<aAnimGroup::STATE>((long)getState()) );
 		animGroup.update();
 		color = animGroup.getCurrentColor( animGroup.getState() );
 	}

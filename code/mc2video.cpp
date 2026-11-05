@@ -790,8 +790,8 @@ void video_render(VideoSession* s)
 
     // Letterbox/pillarbox fill — draw a black background rect if the
     // video quad does not fully cover MC2Rect.
-    const bool needsLetterbox = (s->quadX0 > (float)s->rectX)
-                             || (s->quadY0 > (float)s->rectY)
+    const bool needsLetterbox = (s->quadX0 > static_cast<float>(s->rectX))
+                             || (s->quadY0 > static_cast<float>(s->rectY))
                              || (s->quadX1 < static_cast<float>((s->rectX + s->rectW)))
                              || (s->quadY1 < static_cast<float>((s->rectY + s->rectH)));
     if (needsLetterbox) {

@@ -147,7 +147,7 @@
    "LG06": 437,
    "LG07": 2,
    "LG08": 13,
-   "LG09": 108,
+   "LG09": 56,
    "LG10": 217,
    "LG11": 102,
    "LG12a": 67,
@@ -1605,8 +1605,7 @@
    "LG04": 1
   },
   "code/attributemeter.cpp": {
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "code/attributemeter.h": {
    "LG06": 1
@@ -1769,7 +1768,6 @@
   "code/cursor_world_pick.h": {},
   "code/damage_schema.h": {
    "LG06": 3,
-   "LG09": 2,
    "LG14": 2
   },
   "code/dartlry.h": {
@@ -1861,7 +1859,6 @@
   },
   "code/frame_jobs.h": {},
   "code/gamecam.cpp": {
-   "LG09": 12,
    "LG10": 4,
    "LG11": 2,
    "LG12a": 19,
@@ -1968,12 +1965,10 @@
   },
   "code/icon_registry.cpp": {
    "LG06": 1,
-   "LG09": 22
+   "LG09": 1
   },
   "code/icon_registry.h": {},
-  "code/impact_presentation.cpp": {
-   "LG09": 2
-  },
+  "code/impact_presentation.cpp": {},
   "code/impact_presentation.h": {},
   "code/infowindow.cpp": {
    "LG03": 3,
@@ -2013,8 +2008,7 @@
   "code/loadscreen.cpp": {},
   "code/loadscreen.h": {},
   "code/locomotion_facet.h": {
-   "LG06": 3,
-   "LG09": 2
+   "LG06": 3
   },
   "code/logistics.cpp": {
    "LG03": 4,
@@ -2498,6 +2492,7 @@
    "LG03": 10,
    "LG05": 3,
    "LG06": 8,
+   "LG09": 0,
    "LG10": 8,
    "LG12b": 6
   },
@@ -2600,7 +2595,7 @@
    "LG03": 1
   },
   "code/objmgr_pick.cpp": {
-   "LG09": 14,
+   "LG09": 3,
    "LG10": 4
   },
   "code/objmgr_update.cpp": {
@@ -2652,8 +2647,7 @@
   "code/pilotreviewarea.h": {},
   "code/player_unit_intent.h": {},
   "code/prefs.cpp": {
-   "LG06": 4,
-   "LG09": 1
+   "LG06": 4
   },
   "code/prefs.h": {
    "LG06": 4
@@ -2663,7 +2657,6 @@
    "LG06": 1
   },
   "code/qualified_id.h": {
-   "LG09": 1,
    "LG10": 1,
    "LG17": 1
   },
@@ -4496,7 +4489,7 @@
    "LG20": 3
   }
  },
- "head": "67004e846",
+ "head": "38cf7717a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
