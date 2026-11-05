@@ -36,7 +36,7 @@ def test_precheck_and_batch_run_the_trusted_copy(monkeypatch, tmp_path, flag):
     def fake_call(cmd, **kw):
         seen["cmd"], seen["env"] = cmd, kw["env"]
         return 7
-    monkeypatch.setattr(lm.subprocess, "call", fake_call)
+    monkeypatch.setattr(lm.lane_merge_trust.subprocess, "call", fake_call)
     candidate = str(tmp_path / "candidate")
     assert lm.main([flag, "tip", "--root", candidate]) == 7
     assert seen["cmd"][1] == str(trusted / "tools" / "lane_merge.py")   # never the candidate's own script
@@ -50,9 +50,9 @@ def test_precheck_and_batch_run_the_trusted_copy(monkeypatch, tmp_path, flag):
 def test_trusted_script_is_none_for_itself_or_when_missing(monkeypatch, tmp_path):
     monkeypatch.delenv("MC2_LANE_MERGE_TRUSTED")
     monkeypatch.setenv("MC2_TRUSTED_ROOT", str(tmp_path))                # no tools/lane_merge.py there
-    assert lm.trusted_script() is None
+    assert lm.lane_merge_trust.trusted_script() is None
     monkeypatch.setenv("MC2_TRUSTED_ROOT", ROOT)                         # this very tree
-    assert lm.trusted_script() is None
+    assert lm.lane_merge_trust.trusted_script() is None
 
 
 def test_quick_rows_green_and_red():
