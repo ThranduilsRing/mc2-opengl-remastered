@@ -209,9 +209,13 @@ void main(uint3 tid : SV_DispatchThreadID)
     uint vn3 = r.quadIdx + ms;
 
     // One atomic per wave over the lanes that reach the append; a lane's slot is the wave base plus its rank among them.
+    // Count and rank BEFORE the elect branch: a wave op inside `if (WaveIsFirstLane())` sees one active lane, so the atomic
+    // added 1 per wave while every lane took base + rank (overlapping slots, header[0] far too small: no water drawn).
+    uint waveCount = WaveActiveCountBits(true);
+    uint waveRank = WavePrefixCountBits(true);
     uint waveBase = 0u;
-    if (WaveIsFirstLane()) InterlockedAdd(header[0], WaveActiveCountBits(true), waveBase);
-    uint outSlot = WaveReadLaneFirst(waveBase) + WavePrefixCountBits(true);
+    if (WaveIsFirstLane()) InterlockedAdd(header[0], waveCount, waveBase);
+    uint outSlot = WaveReadLaneFirst(waveBase) + waveRank;
     if (outSlot >= uint(P.misc1.y)) return;
 
     uint mtl0 = terrainTypeToMaterial((r.terrainTypes      ) & 0xFFu);
