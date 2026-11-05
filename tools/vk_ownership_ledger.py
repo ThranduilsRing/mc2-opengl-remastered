@@ -39,7 +39,7 @@ ISLANDS = {
                 "vulkan_terrain_island_run"],
     "vfx": ["vulkan_vfx_island"],
     "water": ["vulkan_water_island", "vulkan_water_island_images", "vulkan_water_island_init", "vulkan_water_island_run"],
-    "present": ["engine_present_vk"],
+    "present": ["engine_present_vk", "engine_present_vk_imgui"],
     "image_resource": ["vk_image_resource"],
     "shared_scene": ["vulkan_shared_scene_color", "vulkan_shared_scene_depth", "vk_first_layout"],
     "light_feed": ["vk_shared_light_feed"],
