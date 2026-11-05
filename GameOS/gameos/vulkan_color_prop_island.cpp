@@ -258,7 +258,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
     VkCommandBuffer lateCbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    mc2vk::OwnedFence lateFence[mc2vk::kMaxFramesInFlight];
+    mc2vk::GpuTicket lateSubmitted[mc2vk::kMaxFramesInFlight];   // timeline ticket of the slot's late-coverage submit (replaces the per-slot fence)
     mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last core submit that used cbuf[slot], set[slot] and the slot's inputs
     struct LateDraw {
         int32_t pc[8];
@@ -1263,10 +1263,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
         if (vkAllocateCommandBuffers(s->device, &cai, s->lateCbuf) != VK_SUCCESS) return false;
-        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (auto& fence : s->lateFence)
-            if (!mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) return false;
     }
 
     // VK-P11 STATIC-PROP MATERIAL: bind a valid dummy albedo array + layer SSBO now
@@ -1717,8 +1713,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
         // Late coverage also reads this slot's descriptors and frame inputs.
-        const VkFence lateFence = s->lateFence[par].get();
-        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, [&] { mc2_hitch2::FenceWaitScope lateWait("color_prop_late_fence", mc2_hitch2::kSlot); return vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS; }(), "VK_PROP")) {
+        if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, [&] { mc2_hitch2::FenceWaitScope lateWait("color_prop_late_fence", mc2_hitch2::kSlot); return rctx.wait(s->lateSubmitted[par], 5000000000ull, "prop late submission slot"); }(), "VK_PROP")) {
             setFallback("late_fringe_fence_timeout"); vlog("LOUD: late fringe fence wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
         }
     }
@@ -2047,11 +2042,11 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     }
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
-    const VkFence fence = s->lateFence[par].get();
-    vkResetFences(s->device,1,&fence);
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::submitGraphics(si,fence) != VK_SUCCESS) s->disabled = true;
+    mc2vk::VulkanContext& lctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (lctx.submit(si, VK_NULL_HANDLE) != VK_SUCCESS) s->disabled = true;
+    else s->lateSubmitted[par] = lctx.tracker().now();
 }
 
 extern "C" void mc2_render_backend_color_prop_region_health(

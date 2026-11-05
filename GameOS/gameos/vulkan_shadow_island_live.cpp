@@ -175,7 +175,7 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   depthAttView;   // depth-attachment view of the shared image
     mc2vk::OwnedRenderPass  rpass;
     mc2vk::OwnedFramebuffer fb;
-    mc2vk::OwnedFence       frameFence[mc2vk::kMaxFramesInFlight];   // signalled when the submit of parity p has retired; created signalled
+    mc2vk::GpuTicket        frameTicket[mc2vk::kMaxFramesInFlight];  // timeline ticket of the parity-p submit; default ticket is already complete
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorSetLayout alphaDsl;   // set 1 of the caster layout: the colour island's alpha-ON albedo array
     mc2vk::OwnedDescriptorPool      pool;
@@ -624,14 +624,6 @@ bool init_island(ShadowIsland* s, int size) {
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
-        VkFenceCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
-            if (!mc2vk::create(s->frameFence[par], s->device, [&](auto* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) {
-                vlog("frame fence failed."); return false;
-            }
-        }
     }
 
     s->inited = true;
@@ -732,9 +724,8 @@ static bool productReady(bool recorded) {
 static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     if (s->recording && s->recordEpoch == epoch) return true;
     const uint32_t par = static_cast<uint32_t>(epoch % mc2vk::kMaxFramesInFlight);
-    const VkFence fence = s->frameFence[par].get();
     { ZoneScopedN("VKIsl.Shadow.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs); mc2_hitch2::FenceWaitScope slotWait("shadow_island_live", mc2_hitch2::kSlot);
-      if (vkWaitForFences(s->device, 1, &fence, VK_TRUE, 5ull * 1000 * 1000 * 1000) != VK_SUCCESS) {
+      if (!mc2vk::getOrCreateEngineVulkanContext().wait(s->frameTicket[par], 5000000000ull, "shadow frame slot")) {
           setFallback("fence_timeout"); s->disabled = true; return false;
       } }
     VkCommandBuffer cb = s->cbuf[par];
@@ -1326,14 +1317,14 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     auto disableFrame=[&]() { s->disabled=true; g_dynShadowReadyThisFrame=false; };
     vk_render_pass_timer::End(cb,gos_render_pass_timer::Pass_ShadowDyn);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); disableFrame(); return; }
-    const VkFence fence = s->frameFence[s->parity].get();
-    vkResetFences(s->device, 1, &fence);
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
     ZoneScopedN("VKIsl.Shadow.Submit");
-    if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    mc2vk::VulkanContext& sctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (sctx.submit(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
+    s->frameTicket[s->parity] = sctx.tracker().now();
     timerGuard.submitted();
     s->bake.markSubmitted(s->recordEpoch);
 }
@@ -1361,7 +1352,7 @@ extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
         idle = busy ? 0 : idle + 1;
     }
     // Both parity fences signalled: the last submit retired and its products are final.
-    for (auto& f : s->frameFence) { const VkFence fence = f.get(); if (fence) vkWaitForFences(s->device, 1, &fence, VK_TRUE, 2ull * 1000 * 1000 * 1000); }
+    for (auto& t : s->frameTicket) mc2vk::getOrCreateEngineVulkanContext().wait(t, 2000000000ull, "shadow load bake retire");
     void* av = nullptr; uint32_t ag = 0; Mc2ColorPropMaterialFeed mf{};
     const int arr = mc2_color_prop_island_get_alpha_array(&av, &ag);
     const int feed = mc2_color_prop_island_get_material_feed(&mf);
