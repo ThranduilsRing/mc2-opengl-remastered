@@ -480,7 +480,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	movieRect.right  = Environment.screenWidth;
 	movieRect.bottom = Environment.screenHeight;
 
-	bMovie = new MC2Movie;
+	bMovie = std::make_unique_for_overwrite<MC2Movie>();
 	bMovie->init(path,movieRect,true);
 	MC2_EVENT(Core, "VIDEO", 1, "event=play name={}", std::string_view( fileName ));
 
