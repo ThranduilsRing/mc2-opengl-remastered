@@ -172,7 +172,7 @@ void LogisticsData::initComponents()
 
 		LogisticsComponent& tmp = components.back();
 
-		if ( -1 == tmp.init( pLine ) ) // failure
+		if ( !tmp.init( pLine ) ) // failure
 		{
 			Ammo[counter] = static_cast<long>(tmp.getRecycleTime());
 			components.pop_back();
@@ -230,7 +230,7 @@ void LogisticsData::appendEquipmentAddFillComponents()
 
 		components.emplace_back();
 		LogisticsComponent& tmp = components.back();
-		if ( -1 == tmp.init( lineBuf ) )
+		if ( !tmp.init( lineBuf ) )
 		{
 			// icon column is validated by the ADD pass, so this is unexpected --
 			// surface it rather than half-materializing the item.

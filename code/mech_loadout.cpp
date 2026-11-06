@@ -5,6 +5,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "package_chassis.h"
+#include <optional>
 
 
 constexpr float ARMOR_POINTS_PER_NEWARMOR = 32.0f;
@@ -38,18 +39,18 @@ inline constexpr int kEquipmentIdCsvColumn = 40;
 
 // If gate-ON and the row carries an optional EquipmentId string token that
 // resolves to a legacy ordinal in the existing 8-bit space, return that ordinal
-// (0..254). Otherwise return -1 (no override -> caller keeps legacy masterID).
-static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
+// (0..254). Otherwise no override: the caller keeps the legacy masterID.
+static std::optional<int> resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 {
 	if (!mc2UnitProfileDataEnabled())
-		return -1;                    // gate OFF -> legacy path only (parity)
+		return std::nullopt;           // gate OFF -> legacy path only (parity)
 
 	char refBuf[64] = {0};
 	// Out-of-band column: stock rows have no data here -> readString != NO_ERR.
 	if (mechFile->readString(row, kEquipmentIdCsvColumn, refBuf, sizeof(refBuf) - 1) != NO_ERR)
-		return -1;                    // no token -> legacy path
+		return std::nullopt;           // no token -> legacy path
 	if (refBuf[0] == '\0')
-		return -1;
+		return std::nullopt;
 
 	// MODDER-FIRST-ERROR-SURFACE-1: context for both warnings — WHICH csv file,
 	// WHICH row, WHICH field, and the fallback taken. getFilename() is the loadout
@@ -74,13 +75,13 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 		printf("[EQUIP-IDALIAS] WARNING: %s\n",
 		       idAliasContext("equipment ref resolves to an id >=255 (future-widen, E4) -- keeping legacy masterID",
 		                      "an equipment id resolving to a legacy ordinal 0..254").c_str());
-		return -1;
+		return std::nullopt;
 	}
 	if (resolved == kEquipmentRefNotFound) {
 		printf("[EQUIP-IDALIAS] WARNING: %s\n",
 		       idAliasContext("unknown equipment ref -- keeping legacy masterID",
 		                      "a qualified id present in the equipment registry (is the owning mod loaded?)").c_str());
-		return -1;
+		return std::nullopt;
 	}
 	return resolved;                  // 0..254: override the legacy masterID
 }
@@ -237,9 +238,8 @@ long BattleMech::init (DWORD variantNum)
 		// resolves to a legacy ordinal in 0..254, use it; else keep the numeric
 		// masterID just read. Stock rows have no token -> no override (parity).
 		{
-			int aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem);
-			if (aliasId >= 0)
-				inventory[realItemNum].masterID = static_cast<unsigned char>(aliasId);
+			if (const auto aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem))
+				inventory[realItemNum].masterID = static_cast<unsigned char>(*aliasId);
 		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
@@ -310,9 +310,8 @@ long BattleMech::init (DWORD variantNum)
 		// pass). Same rule as the non-weapon pass above -- gate-ON optional
 		// EquipmentId token resolves to a legacy ordinal; else legacy numeric id.
 		{
-			int aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem);
-			if (aliasId >= 0)
-				inventory[realItemNum].masterID = static_cast<unsigned char>(aliasId);
+			if (const auto aliasId = resolveOptionalEquipmentIdColumn(&mechFile, (26 + (97 * variantNum)) + curItem))
+				inventory[realItemNum].masterID = static_cast<unsigned char>(*aliasId);
 		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to

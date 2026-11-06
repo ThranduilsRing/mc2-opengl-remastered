@@ -229,8 +229,7 @@ long	LogisticsData::load( FitIniFile& file )
 	{
 		mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(i));
 		file.seekBlock( tmp );
-		result = loadVariant( file );
-		if ( result != NO_ERR )
+		if ( !loadVariant( file ) )
 		{
 			gosASSERT( 0 );
 			return -1;
@@ -283,7 +282,7 @@ long	LogisticsData::load( FitIniFile& file )
 	return 0;
 }
 
-long LogisticsData::loadVariant( FitIniFile& file )
+std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 {
 	char tmp[256] = {};
 
@@ -291,7 +290,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	if ( !chassisKey )
 	{
 		MC2_LOG(Core, Warn, "logistics: a saved variant has no Chassis and is rejected");
-		return INVALID_FILE_NAME;
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	const LogisticsChassis* pChassis  = nullptr;
@@ -307,7 +306,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	if ( !pChassis ) // we can always try and make it ourseleves, but it should have been loaded by now
 	{
 		gosASSERT( 0 );
-		return INVALID_FILE_NAME;
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	// A variant without a name would take the chassis file name, so it is rejected.
@@ -315,7 +314,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	if ( !variantName )
 	{
 		MC2_LOG(Core, Warn, "logistics: a saved variant of chassis '{}' has no VariantName and is rejected", *chassisKey);
-		return INVALID_FILE_NAME;
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	// create the variant, add to the list
@@ -357,10 +356,10 @@ long LogisticsData::loadVariant( FitIniFile& file )
 		pVariant->addComponent( id, x, y );
 	}
 
-	return 0;
+	return {};
 }
 
-long LogisticsData::loadMech( FitIniFile& file, int& count )
+std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count )
 {
 	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
 	for ( auto mIter = variants.begin(); mIter != variants.end(); ++mIter )
@@ -390,11 +389,11 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 			}
 
 			// it could have had no pilot
-			return 0;
+			return {};
 		}
 	}
 
-	return -1; // failed in finding the variant
+	return std::unexpected(-1L); // failed in finding the variant
 }
 
 

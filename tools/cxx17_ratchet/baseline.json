@@ -143,7 +143,7 @@
    "LG02": 0,
    "LG03": 283,
    "LG04": 15,
-   "LG05": 198,
+   "LG05": 181,
    "LG06": 170,
    "LG07": 2,
    "LG08": 3,
@@ -1760,7 +1760,6 @@
   "code/logistics_csv.h": {},
   "code/logistics_internal.h": {},
   "code/logisticscomponent.cpp": {
-   "LG05": 2,
    "LG17": 1
   },
   "code/logisticscomponent.h": {
@@ -1792,7 +1791,7 @@
    "LG05": 5
   },
   "code/logisticsdata_save.cpp": {
-   "LG05": 15,
+   "LG05": 11,
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
@@ -1822,7 +1821,7 @@
    "LG05": 5
   },
   "code/logisticsmissioninfo_query.cpp": {
-   "LG05": 5
+   "LG05": 2
   },
   "code/logisticspilot.cpp": {
    "LG05": 1
@@ -1881,7 +1880,6 @@
   "code/mech_init.cpp": {},
   "code/mech_internal.h": {},
   "code/mech_loadout.cpp": {
-   "LG05": 5,
    "LG12a": 2,
    "LG12b": 1
   },
@@ -2485,9 +2483,7 @@
    "LG06": 1
   },
   "code/weapon_presentation_proof.cpp": {},
-  "code/weapon_presentation_resolve.h": {
-   "LG05": 3
-  },
+  "code/weapon_presentation_resolve.h": {},
   "code/weaponbolt.cpp": {
    "LG03": 1
   },

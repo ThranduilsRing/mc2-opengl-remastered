@@ -9,6 +9,7 @@ LogisticsComponent.h			: Interface for the LogisticsComponent component.
 
 #include <memory>
 #include "mc2_czstring.h"
+#include <expected>
 
 // forward declarations
 class File;
@@ -28,7 +29,7 @@ class LogisticsComponent
 
 		LogisticsComponent( );
 		~LogisticsComponent();
-		int init( char* dataLine );
+		std::expected<int, int> init( char* dataLine );
 
 		inline int getID() const { return ID; }
 		inline int getType() const { return Type; }

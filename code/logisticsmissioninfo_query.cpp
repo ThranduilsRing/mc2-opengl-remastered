@@ -272,10 +272,10 @@ bool	LogisticsMissionInfo::skipPilotReview()
 {
 	// need to subtract a mission, since we already set this one complete if we
 	// got here
-	MissionInfo* pInfo = getPreviousMission();
+	const auto pInfo = getPreviousMission();
 	if ( !pInfo )
 		return 0;
-	return !pInfo->playPilotPromotion;
+	return !pInfo->get().playPilotPromotion;
 	
 
 }
@@ -283,11 +283,11 @@ bool	LogisticsMissionInfo::skipSalvageScreen()
 {
 	// need to subtract a mission, since we already set this one complete if we
 	// got here
-	MissionInfo* pInfo = getPreviousMission();
+	const auto pInfo = getPreviousMission();
 	if ( !pInfo )
 		return 0;
 	
-	return !pInfo->playSalvage;
+	return !pInfo->get().playSalvage;
 
 }
 bool	LogisticsMissionInfo::skipPurchasing()
@@ -299,33 +299,33 @@ bool	LogisticsMissionInfo::skipPurchasing()
 	return !pGroup->mission(currentMission)->playPurchasing;
 }
 
-LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::getPreviousMission()
+std::optional<std::reference_wrapper<LogisticsMissionInfo::MissionInfo>> LogisticsMissionInfo::getPreviousMission()
 {
 	if ( currentMission > 0 )
 	{
 		MissionGroup* pGroup = &groups[currentStage]; 
-		return pGroup->mission(currentMission-1);
+		return *pGroup->mission(currentMission-1);
 	}
 	else if ( currentStage > 0 )
 	{
 		MissionGroup* pGroup = &groups[currentStage]-1; 
 		int Count  = static_cast<int>(std::ssize(pGroup->infos));
 		if ( Count )
-			return pGroup->mission(Count-1);
+			return *pGroup->mission(Count-1);
 		else
-			return nullptr;
+			return std::nullopt;
 	}
 	else if ( currentStage == 0 )	//There may be only one stage.  I.e. Tutorials!
 	{
 		MissionGroup* pGroup = &groups[currentStage]; 
 		int Count  = static_cast<int>(std::ssize(pGroup->infos));
 		if ( Count )
-			return pGroup->mission(Count-1);
+			return *pGroup->mission(Count-1);
 		else
-			return nullptr;
+			return std::nullopt;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 bool LogisticsMissionInfo::isSingleMission() const

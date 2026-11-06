@@ -10,6 +10,7 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 
 #include <string_view>
 #include "mc2_czstring.h"
+#include <expected>
 #include"stuff/stuff.hpp"
 #include <string>
 #include <vector>
@@ -119,7 +120,7 @@ public:
 	int					getCurrentDropWeight() const;
 	int					getMaxDropWeight() const;
 
-	long				loadMech( FitIniFile& file, int& count );
+	std::expected<void, long> loadMech( FitIniFile& file, int& count );
 
 	void				setMissionCompleted();
 	long				updateAvailability();
@@ -291,7 +292,7 @@ private:
 	
 	int												resourcePoints; // C-Bills for buying mechs
 
-	long	loadVariant( FitIniFile& file );
+	std::expected<void, long> loadVariant( FitIniFile& file );
 
 
 	

@@ -12,6 +12,8 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 
 #include <string>
 #include "mc2_czstring.h"
+#include <optional>
+#include <functional>
 #include <vector>
 #include <memory>
 
@@ -225,7 +227,7 @@ class LogisticsMissionInfo
 
 		FILE_LIST				additionalPurchaseFiles;
 
-		LogisticsMissionInfo::MissionInfo* getPreviousMission();
+		std::optional<std::reference_wrapper<MissionInfo>> getPreviousMission();
 		void readMissionInfo( FitIniFile& file, LogisticsMissionInfo::MissionInfo* pInfo );
 
 
