@@ -2506,8 +2506,7 @@ static void resyncEntryBodyAfterVariants(BrainSpecialBody& outBody, const Specia
     if (ce && !ce->body.verbs.empty()) {
         outBody.verbs = ce->body.verbs;
         std::fprintf(stderr, "[BRAIN_VARIANTOF] entry body %.*s resolved to %d verb(s)\n",
-                     static_cast<int>(chosenKey.size()), chosenKey.data(),
-                     static_cast<int>(outBody.verbs.size()));
+                     static_cast<int>(chosenKey.size()), chosenKey.data(), static_cast<int>(outBody.verbs.size()));
         std::fflush(stderr);
     }
 }
