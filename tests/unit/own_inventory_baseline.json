@@ -2762,6 +2762,18 @@
    "new_array": 0,
    "owners": []
   },
+  "NewPool": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "code/job_system.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
   "Note": {
    "delete": 2,
    "delete_array": 0,
@@ -2866,6 +2878,21 @@
    "new": 1,
    "new_array": 0,
    "owners": []
+  },
+  "Pool": {
+   "delete": 1,
+   "delete_array": 0,
+   "files": {
+    "code/job_system.cpp": {
+     "delete": 1,
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": [
+    ""
+   ]
   },
   "Radio": {
    "delete": 2,
@@ -4318,6 +4345,7 @@
   "code/forcegroupbar.cpp": 3,
   "code/gamesound.cpp": 1,
   "code/infowindow.cpp": 1,
+  "code/job_system.cpp": 1,
   "code/logistics.cpp": 1,
   "code/logisticsvariant.cpp": 1,
   "code/mainmenu.cpp": 2,

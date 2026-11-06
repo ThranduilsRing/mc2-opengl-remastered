@@ -347,13 +347,14 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/measure_dispatch_floor") {
 }
 
 // A fresh process proves the release-build fatal path without aborting the rest of the corpus.
-static int runFatalChild() {
+static int runFatalChild(std::string testCase = "job_system_harness/fatal_if_aborts_and_traces") {
 #ifdef _WIN32
     std::wstring executable(32768, L'\0');
     const DWORD size = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
     REQUIRE((size > 0 && size < executable.size()));
     executable.resize(size);
-    std::wstring command = L"\"" + executable + L"\" --test-case=job_system_harness/fatal_if_aborts_and_traces --no-breaks";
+    std::wstring command = L"\"" + executable + L"\" --test-case=" +
+        std::wstring(testCase.begin(), testCase.end()) + L" --no-breaks";
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
     startup.dwFlags = STARTF_USESTDHANDLES;
@@ -388,14 +389,36 @@ static int runFatalChild() {
     const pid_t child = fork();
     REQUIRE(child >= 0);
     if (child == 0) {
-        execl(path.c_str(), path.c_str(),
-              "--test-case=job_system_harness/fatal_if_aborts_and_traces", "--no-breaks", nullptr);
+        const std::string selection = "--test-case=" + testCase;
+        execl(path.c_str(), path.c_str(), selection.c_str(), "--no-breaks", nullptr);
         _exit(125);
     }
     int status{};
     REQUIRE(waitpid(child, &status, 0) == child);
     return status;
 #endif
+}
+
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/direct_exit_with_live_workers") {
+    if (const char* mode = std::getenv("DOCTEST_JOBS_EXIT_CHILD")) {
+        if (std::strcmp(mode, "legacy") == 0) {
+            frameJobsInit();
+            if (std::thread::hardware_concurrency() > 1 && !frameJobsEnabled())
+                std::exit(124);
+        } else {
+            jobs::startPool(2);
+            if (jobs::workerCount() != 2) std::exit(124);
+        }
+        // Capture completion bypasses orderly shutdown, but runs static destructors.
+        std::exit(0);
+    }
+    ContractEnvironment enabled{mc2::gate::name<"MC2_FRAME_JOBS">(), "1"};
+    ContractEnvironment workers{mc2::gate::name<"MC2_FRAME_JOBS_WORKERS">(), "2"};
+    for (const auto* mode : {"legacy", "domains"}) {
+        CAPTURE(mode);
+        ContractEnvironment child{"DOCTEST_JOBS_EXIT_CHILD", mode};
+        CHECK(runFatalChild("job_system_harness/direct_exit_with_live_workers") == 0);
+    }
 }
 
 TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/fatal_if_aborts_and_traces") {
