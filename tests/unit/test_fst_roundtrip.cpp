@@ -301,4 +301,28 @@ TEST_CASE("multi-entry archive: reserve's span writes the whole table, writeFast
 
 	remove(fstPath.c_str());
 }
+TEST_CASE("explicit archive teardown follows borrower close and permits reinitialization")
+{
+	const std::string path = scratchPath("explicit_teardown.fst");
+	remove(kFstEntryName);
+	authorFst(path, kFstEntryName, kFstPayload, (int)strlen(kFstPayload));
+	for (int cycle = 0; cycle < 2; ++cycle)
+	{
+		FstRegistry registry(path.c_str());
+		REQUIRE(registry.ok);
+		REQUIRE(numFastFiles == 1);
+		{
+			File borrower;
+			REQUIRE(borrower.open(kFstEntryName) == NO_ERR);
+			CHECK(readAll(borrower) == kFstPayload);
+			borrower.close();
+		}
+		FastFileFini();
+		CHECK(fastFiles == nullptr);
+		CHECK(numFastFiles == 0);
+		// The registry's destructor calls Fini again, as repeated shutdown may.
+	}
+	remove(path.c_str());
+}
+
 } // TEST_SUITE("FstRoundtrip")
