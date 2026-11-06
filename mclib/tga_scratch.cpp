@@ -10,8 +10,11 @@ namespace mc2::tga
 {
 bool loadTga (File& file, std::vector<unsigned char>& bytes, TGAFileHeader& info, mc2::czstring what)
 {
-	if (readAllBytes(file, bytes) && readHeader(bytes, info))
+	bytes = readAllBytes(file, std::move(bytes)).value_or(std::vector<unsigned char>{});
+	if (const auto header = readHeader<TGAFileHeader>(bytes)) {
+		info = *header;
 		return true;
+	}
 	MC2_LOG(Io, Error, "terrain: {} is empty, unreadable or shorter than a TGA header; it is not loaded", what);
 	const char* path = file.getFilename();
 	content::error(content::Kind::Texture, path && path[0] ? path : what, "empty, unreadable or truncated TGA header");

@@ -31,7 +31,6 @@
 #include <assimp/IOStream.hpp>
 
 #include <memory>
-#include <optional>
 #include <tuple>
 #include <vector>
 #include <string>
@@ -1654,32 +1653,26 @@ static void CollectMeshInstances(const aiNode* node, const aiMatrix4x4& parent,
 		CollectMeshInstances(node->mChildren[c], world, out);
 }
 
-static std::optional<float> ContentNumber(const aiMetadata* metadata, unsigned index) {
-    if (!metadata || index >= metadata->mNumProperties) return std::nullopt;
-    float value;
+static bool ContentNumber(const aiMetadata* metadata, unsigned index, float& out) {
+    if (!metadata || index >= metadata->mNumProperties) return false;
     double d = 0; float f = 0; int32_t i = 0; uint64_t u = 0;
-    if (metadata->Get(index, d)) value = static_cast<float>(d);
-    else if (metadata->Get(index, f)) value = f;
-    else if (metadata->Get(index, i)) value = static_cast<float>(i);
-    else if (metadata->Get(index, u)) value = static_cast<float>(u);
-    else return std::nullopt;
-    return std::isfinite(value) ? std::optional{value} : std::nullopt;
+    if (metadata->Get(index, d)) out = static_cast<float>(d);
+    else if (metadata->Get(index, f)) out = f;
+    else if (metadata->Get(index, i)) out = static_cast<float>(i);
+    else if (metadata->Get(index, u)) out = static_cast<float>(u);
+    else return false;
+    return std::isfinite(out);
 }
 
 static bool ContentVector(const aiMetadata* metadata, std::string_view key, glm::vec3& out) {
     aiMetadata values;
-    if (!metadata || !metadata->Get(std::string(key), values) || values.mNumProperties != 3) return false;
-    for (unsigned index = 0; index < 3; ++index) {
-        const auto value = ContentNumber(&values, index);
-        if (!value) return false;
-        out[index] = *value;
-    }
-    return true;
+    return metadata && metadata->Get(std::string(key), values) && values.mNumProperties == 3 &&
+        ContentNumber(&values, 0, out.x) && ContentNumber(&values, 1, out.y) && ContentNumber(&values, 2, out.z);
 }
 
 static float ContentScalar(const aiMetadata* metadata, std::string_view key, float fallback) {
     for (unsigned i = 0; metadata && i < metadata->mNumProperties; ++i)
-        if (metadata->mKeys[i] == aiString(std::string(key))) return ContentNumber(metadata, i).value_or(fallback);
+        if (metadata->mKeys[i] == aiString(std::string(key))) { float value; return ContentNumber(metadata, i, value) ? value : fallback; }
     return fallback;
 }
 

@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <optional>
 #include <utility>
 #include <string_view>
 #include "Gates/gate.h"
@@ -49,37 +50,38 @@ std::string fxdefTrim(std::string_view s) {
     return std::string(s.substr(b, e - b));
 }
 
-// Parse ONE *.fxdef.json file. Returns false on hard parse failure (file
+// Parse ONE *.fxdef.json file. Returns no definition on hard parse failure (file
 // unreadable / not an object / missing "effect") — caller logs + skips.
 // Soft problems (unknown curve key, non-numeric value) are logged per-field
 // and just drop that field; the rest of the def still loads ("friendly
 // warning, not failure" per proposal §3.1).
-bool fxdefParseOne(std::string_view path, EffectDef& out) {
+std::optional<EffectDef> fxdefParseOne(std::string_view path) {
     std::ifstream in{std::string(path)};
-    if (!in.is_open()) return false;
+    if (!in.is_open()) return std::nullopt;
 
     json root;
     try {
         in >> root;
     } catch (const std::exception& e) {
         fxdefLog("parse error", std::string(path) + ": " + e.what());
-        return false;
+        return std::nullopt;
     }
     if (!root.is_object()) {
         fxdefLog("root is not a JSON object", path);
-        return false;
+        return std::nullopt;
     }
     if (!root.contains("effect") || !root["effect"].is_string()) {
         fxdefLog("missing string 'effect' key", path);
-        return false;
+        return std::nullopt;
     }
 
+    EffectDef out;
     out.effectNameRaw = root["effect"].get<std::string>();
     out.effectKey     = fxdefLower(fxdefTrim(out.effectNameRaw));
     out.sourcePath     = path;
     if (out.effectKey.empty()) {
         fxdefLog("empty 'effect' name", path);
-        return false;
+        return std::nullopt;
     }
 
     if (root.contains("disabled")) {
@@ -161,7 +163,7 @@ bool fxdefParseOne(std::string_view path, EffectDef& out) {
     // presence is fine, no structured parse yet (slices #4-#6). Anything else
     // unrecognized is likewise tolerated per proposal ("unknown keys = warning,
     // not failure") -- we deliberately do NOT enumerate/reject extra keys here.
-    return true;
+    return out;
 }
 
 std::vector<EffectDef> fxdefParseDir(std::string_view dir) {
@@ -178,9 +180,8 @@ std::vector<EffectDef> fxdefParseDir(std::string_view dir) {
         if (lower.size() <= suffix.size()) continue;
         if (lower.compare(lower.size() - suffix.size(), suffix.size(), suffix) != 0) continue;
 
-        EffectDef def;
-        if (fxdefParseOne(entry.path().string(), def)) {
-            out.push_back(std::move(def));
+        if (auto def = fxdefParseOne(entry.path().string())) {
+            out.push_back(std::move(*def));
         }
     }
     return out;

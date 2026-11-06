@@ -189,7 +189,7 @@
    "LG02": 0,
    "LG03": 324,
    "LG04": 12,
-   "LG05": 105,
+   "LG05": 100,
    "LG06": 104,
    "LG07": 0,
    "LG08": 9,
@@ -2685,7 +2685,7 @@
   },
   "mclib/camera_pick_hash.h": {},
   "mclib/camera_project.cpp": {
-   "LG05": 2,
+   "LG05": 1,
    "LG10": 1
   },
   "mclib/camera_update.cpp": {},
@@ -2817,7 +2817,7 @@
   },
   "mclib/fst_hash.h": {},
   "mclib/fx_def_registry.cpp": {
-   "LG05": 3,
+   "LG05": 2,
    "LG11": 1
   },
   "mclib/fx_def_registry.h": {},
@@ -3402,12 +3402,8 @@
   "mclib/soundsys.h": {
    "LG17": 1
   },
-  "mclib/spotlight_diag.cpp": {
-   "LG05": 1
-  },
-  "mclib/spotlight_diag.h": {
-   "LG05": 1
-  },
+  "mclib/spotlight_diag.cpp": {},
+  "mclib/spotlight_diag.h": {},
   "mclib/static_light_row_guard.h": {},
   "mclib/stock_lamp_definition.h": {},
   "mclib/stuff/angle.hpp": {},
@@ -3606,9 +3602,7 @@
   },
   "mclib/texture_sources_internal.h": {},
   "mclib/tga_scratch.cpp": {},
-  "mclib/tga_scratch.h": {
-   "LG05": 2
-  },
+  "mclib/tga_scratch.h": {},
   "mclib/tgainfo.cpp": {
    "LG04": 2
   },

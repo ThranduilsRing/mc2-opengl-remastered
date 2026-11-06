@@ -1455,8 +1455,9 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			if (fr == NO_ERR)
 			{
 				long mipSize = TERRAIN_TXM_SIZE;
-				std::vector<unsigned char> fileRAM;
-				const bool cacheRead = mc2::tga::readAllBytes(txmFile, fileRAM);
+				auto cachedBytes = mc2::tga::readAllBytes(txmFile);
+				const bool cacheRead = cachedBytes.has_value();
+				auto fileRAM = std::move(cachedBytes).value_or(std::vector<unsigned char>{});
 
 				std::vector<unsigned char> lzBuffer(mipSize * mipSize * sizeof(DWORD));
 				long bufferSize = cacheRead ? static_cast<long>(LZDecomp(lzBuffer.data(),fileRAM.data(),fileRAM.size(),mipSize * mipSize * sizeof(DWORD))) : -1;
