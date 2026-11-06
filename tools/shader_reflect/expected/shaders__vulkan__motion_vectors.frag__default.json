@@ -5,6 +5,11 @@
       "location": 0,
       "name": "Motion",
       "type": "vec2"
+    },
+    {
+      "location": 1,
+      "name": "Reactive",
+      "type": "float"
     }
   ],
   "shader": "shaders/vulkan/motion_vectors.frag",

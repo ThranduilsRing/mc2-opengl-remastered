@@ -1,0 +1,15 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "FragColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/vulkan/motion_vectors_debug.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [],
+  "variant": "default"
+}
