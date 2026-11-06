@@ -1295,7 +1295,9 @@ void __stdcall InitializeGameEngine()
 	//Make any directories we need which should be empty.
 	for (const auto directory : {savePath, transcriptsPath}) {
 		std::string nativePath(directory);
+#ifndef _WIN32
 		std::replace(nativePath.begin(), nativePath.end(), '\\', '/');
+#endif
 		std::error_code error;
 		std::filesystem::create_directory(nativePath, error);
 	}

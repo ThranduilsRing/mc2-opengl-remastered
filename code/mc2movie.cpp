@@ -83,7 +83,9 @@ MC2Movie::~MC2Movie (void)
 void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
 {
     std::string nativeName(MC2Name);
+#ifndef _WIN32
     std::replace(nativeName.begin(), nativeName.end(), '\\', '/');
+#endif
     std::string shortName = std::filesystem::path(nativeName).filename().string();
     if (const auto dot = shortName.rfind('.'); dot != std::string::npos)
         shortName.resize(dot);

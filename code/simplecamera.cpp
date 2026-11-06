@@ -665,7 +665,9 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string nativeName(fileName);
+#ifndef _WIN32
 	std::replace(nativeName.begin(), nativeName.end(), '\\', '/');
+#endif
 	std::string NoPathFileName = std::filesystem::path(nativeName).filename().string();
 	if (const auto dot = NoPathFileName.rfind('.'); dot != std::string::npos)
 		NoPathFileName.resize(dot);
@@ -739,7 +741,9 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 	}
 
 	std::string nativeName(fileName);
+#ifndef _WIN32
 	std::replace(nativeName.begin(), nativeName.end(), '\\', '/');
+#endif
 	std::string NoPathFileName = std::filesystem::path(nativeName).filename().string();
 	if (const auto dot = NoPathFileName.rfind('.'); dot != std::string::npos)
 		NoPathFileName.resize(dot);

@@ -82,7 +82,7 @@ class GlobalCollisionAlert
 		void purgeRecords (void);
 };
 
-extern std::unique_ptr<GlobalCollisionAlert> globalCollisionAlert;
+extern GlobalCollisionAlert *globalCollisionAlert;
 
 //------------------------------------------------------------------------------
 class CollisionGrid
