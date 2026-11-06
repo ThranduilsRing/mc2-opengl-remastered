@@ -1710,6 +1710,7 @@ def main(argv=None):
         if not asked:
             tier = 2 if args.weekly else 1 if args.nightly else 0
             planned = [s for s in planned if stage_tier(s[0]) <= tier]
+            planned = [(n, c + ["--nightly"] if n == "contracts" and tier else c, e) for n, c, e in planned]
         steps = select_stages(planned, args.stages, args.skip)
         omitted = [step for step in planned if step[0] not in {s[0] for s in steps}]
     except ValueError as exc:

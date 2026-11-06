@@ -74,6 +74,7 @@ SELFTEST_RENDER=0
 # byte-identical declared inputs is reported "PASS (cached)" and not run. --no-cache (or CONTRACTS_NO_CACHE=1) runs
 # everything. Only PASS is ever cached; undeclared rows always run. Parallel mode only (-j2 and up, the default).
 NO_CACHE="${CONTRACTS_NO_CACHE:-0}"
+NIGHTLY=0   # --nightly adds the rows that never failed in 90 gate logs (run_nightly); the per-merge set is the rows that did, plus the fast ones
 # --rows REGEX runs only the rows whose label matches (ERE, unanchored): the inner-loop filter for iterating on one check. It is a
 # PARTIAL board and says so; the full board stays mandatory per batch.
 ROWS_RE=""
@@ -103,6 +104,7 @@ for arg in "$@"; do
         --selftest) SELFTEST=1 ;;
         --serial) JOBS=1 ;;
         --no-cache) NO_CACHE=1 ;;
+        --nightly) NIGHTLY=1 ;;
         -j[0-9]*) JOBS="${arg#-j}" ;;
         --jobs=*) JOBS="${arg#--jobs=}" ;;
         --rows=*) ROWS_RE="${arg#--rows=}"
@@ -384,6 +386,8 @@ run_check() {
     _finish_check "$label" "$cmd" "$out" "$rc" "$((t1 - t0))" 1
     return 0
 }
+
+run_nightly() { [ "$NIGHTLY" -eq 1 ] || return 0; run_check "$@"; }
 
 _PAR_DIR=""
 _par_worker() {   # $1 idx
@@ -843,12 +847,12 @@ fi
 # fast hermetic half that used to be its own row (flag_registry_drift) was a strict subset and is retired.
 
 run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
-run_check "abl_writer_census"              "py -3 tools/abl_writer_census.py --check"
-run_check "analyze_dangling"              "py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
-run_check "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
-run_check "container_callsites"       "py -3 tests/analyze/container_callsites.py --check"   # step 4 B2: the compiler-derived EList/SortList/PriorityQueue call-site list; an edited file needs --remap BASE, a converted one --drop
+run_nightly "abl_writer_census"              "py -3 tools/abl_writer_census.py --check"
+run_nightly "analyze_dangling"              "py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
+run_nightly "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
+run_nightly "container_callsites"       "py -3 tests/analyze/container_callsites.py --check"   # step 4 B2: the compiler-derived EList/SortList/PriorityQueue call-site list; an edited file needs --remap BASE, a converted one --drop
 # (the vk_umbrella_readers rule was retired with the umbrella: the Vulkan scene path is unconditional)
-run_check "gate_echo_reads"                 "py -3 scripts/check-gate-echo-reads.py --quiet"
+run_nightly "gate_echo_reads"                 "py -3 scripts/check-gate-echo-reads.py --quiet"
 # GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
 # gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every
 # seed gate is still a row, registered gates agree with the feature registry, and the per-site
@@ -859,9 +863,9 @@ run_check "gate_gen_check"                  "py -3 tools/gate_gen.py --check --r
 # Class-type template parameters and consteval (Gates/gate.h) need C++20: a standalone CMake
 # project that compiles a source reading MC2_* gates must reach it, or it stops building the day
 # that source migrates. Self-maintaining: the list is derived from the sources, not enumerated.
-run_check "sim_fp_contract"                 "py -3 scripts/check-sim-fp-contract.py && py -3 -B -m pytest scripts/tests/test_check_sim_fp_contract.py -q -p no:cacheprovider"   # every sim TU /fp:precise, no contraction (MSVC + clang-cl); rejection probes
-run_check "glm_convention"                  "py -3 scripts/check-glm-convention.py && py -3 -B -m pytest scripts/tests/test_check_glm_convention.py -q -p no:cacheprovider"   # engine matrices keep the row-vector convention (no glm column helpers, no w-first quat); negative control
-run_check "cxx_standard_floor"              "py -3 scripts/check-cxx-standard-floor.py && py -3 -B -m pytest scripts/tests/test_check_cxx_standard_floor.py -q -p no:cacheprovider"
+run_nightly "sim_fp_contract"                 "py -3 scripts/check-sim-fp-contract.py && py -3 -B -m pytest scripts/tests/test_check_sim_fp_contract.py -q -p no:cacheprovider"   # every sim TU /fp:precise, no contraction (MSVC + clang-cl); rejection probes
+run_nightly "glm_convention"                  "py -3 scripts/check-glm-convention.py && py -3 -B -m pytest scripts/tests/test_check_glm_convention.py -q -p no:cacheprovider"   # engine matrices keep the row-vector convention (no glm column helpers, no w-first quat); negative control
+run_nightly "cxx_standard_floor"              "py -3 scripts/check-cxx-standard-floor.py && py -3 -B -m pytest scripts/tests/test_check_cxx_standard_floor.py -q -p no:cacheprovider"
 # CPU-GPU-COGATING-1: the check above keeps a gate honest about its OWN default.
 # This one keeps a MIRROR PAIR honest about EACH OTHER. When one quantity is
 # computed twice -- CPU for gameplay, GPU for the picture -- the two halves must
@@ -872,37 +876,37 @@ run_check "cxx_standard_floor"              "py -3 scripts/check-cxx-standard-fl
 # internally consistent and correctly registered, so no existing check could
 # see it -- what broke was the RELATIONSHIP. Fails RED (never silently green) if
 # an anchor stops matching, so it cannot go blind on the site it watches.
-run_check "cpu_gpu_cogating"          "py -3 scripts/check-cpu-gpu-cogating.py --quiet"
+run_nightly "cpu_gpu_cogating"          "py -3 scripts/check-cpu-gpu-cogating.py --quiet"
 # GATE-HYGIENE-CLOSE-1: the smoke harness must keep INHERITING the parent env
 # (os.environ.copy()). If that ever changes, run_smoke.py's vestigial
 # passthrough tuple becomes load-bearing and every registered gate missing
 # from it starts silently dropping -- gate-ON smoke runs would execute the
 # gate-OFF path and report "no difference" for the wrong reason. Also asserts
 # the genuinely-undriveable guard still fails CLOSED (non-zero sys.exit).
-run_check "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.py"
+run_nightly "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.py"
 # The smoke passthrough list is generated from the smokePassthrough rows of the gate
 # table (scripts/run_smoke.py reads Gates/gate_table.json), so a registered gate
 # cannot be missing from it; the old allowlist ratchet and its debt file are gone.
-run_check "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
-run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
-run_check "include_firewall"       "sh scripts/check-include-firewall.sh"
-run_check "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
+run_nightly "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
+run_nightly "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
+run_nightly "include_firewall"       "sh scripts/check-include-firewall.sh"
+run_nightly "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
 run_check "vk_pipeline_infra"      "sh scripts/check-vk-submit-funnel.sh --pipelines"
-run_check "sim_no_audio_reads"     "sh scripts/check-sim-no-audio-reads.sh"
-run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
-run_check "veg_gpu_cull"             "py -3 scripts/check-veg-gpu-cull.py"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep
-run_check "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
-run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
-run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
+run_nightly "sim_no_audio_reads"     "sh scripts/check-sim-no-audio-reads.sh"
+run_nightly "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
+run_nightly "veg_gpu_cull"             "py -3 scripts/check-veg-gpu-cull.py"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep
+run_nightly "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
+run_nightly "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
+run_nightly "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
 # light_abi_lockstep retired: the per-object light cap and record stride are derived from
 # RenderCore/gpu_abi/GpuObjectLights.h and verified by the gpu_abi row below.
-run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
+run_nightly "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
 # LIGHTROW-FRESHNESS-1. cachedGpuLightIndex_ names a light slot that is rebased
 # every frame; reading it without its cachedFrame_ stamp draws the actor against
 # another actor's row (pure black, since the shader indexes light[] unchecked).
 # Two of three consumers already guarded; the dynamic static-prop submit path
 # did not. This freezes "every consumer references the stamp".
-run_check "light_row_freshness"          "py -3 scripts/check-light-row-freshness.py --quiet"
+run_nightly "light_row_freshness"          "py -3 scripts/check-light-row-freshness.py --quiet"
 # LIGHTING-DIVERGENCE-PIN-1: MC2 has no single shading model -- FIVE scalar
 # ambient floors, FOUR hemisphere-fill colour pairs, two calc_light definitions
 # and two no-lights semantics. Every one of those is deliberate today and
@@ -911,24 +915,23 @@ run_check "light_row_freshness"          "py -3 scripts/check-light-row-freshnes
 # to be argued for in review instead of landing silently. Exit 2 (check blind)
 # is distinct from exit 1 (real drift); the comment-stripper witness is a live
 # shipping shader, not a fixture.
-run_check "lighting_divergence"    "py -3 scripts/check-lighting-divergence.py"
+run_nightly "lighting_divergence"    "py -3 scripts/check-lighting-divergence.py"
 # GOLDEN-COVERAGE-LEDGER-1 (VERIFY-DEBT-1): committed golden sets must account for
 # every region they could cover, and must contain no un-failable (flat) crops.
-run_check "golden_coverage"          "py -3 scripts/check-golden-coverage.py --quiet"
+run_nightly "golden_coverage"          "py -3 scripts/check-golden-coverage.py --quiet"
 # THREE-RUN-ALL-PAIRS-1 + DEGENERATE-CROP-REFUSAL-1 (VERIFY-DEBT-1): proves bless.py
 # refuses a two-run set, a duplicated run, a degenerate crop and an unstable region.
-run_check "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
+run_nightly "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
 # D8 (opus-consistency-review): copy-paste is the recurring GL<->VK drift source -- a fix
 # lands in one copy and the twin keeps the bug. Duplicated-line count (runs of >= 8 normalized
 # lines occurring twice) may only fall. PMD CPD (>= 60 tokens) on the COMMITTED tip vs the merge base, no
 # baseline file; runs on the box (or streams the trees there from the PC); no PMD/box = INFRA, never a pass.
 # Selftest lives in scripts/tests (scripts_tests row).
-run_check "dup_check"                "py -3 tools/dup_check.py --check"
 # D11 (opus-consistency-review): the MC2->render-space axis swap (x,y,z)->(-x,z,y) is re-typed at
 # ~180 sites (shaders + C++); dup_check cannot see one-line copies. Token-level count may
 # only fall until the typed helper replaces them. HEAD-scanned like the row above. Work queue:
 # docs/axis-conversion-sites.md. Selftest lives in scripts/tests (scripts_tests row).
-run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --check"
+run_nightly "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --check"
 # Comments say WHAT and WHY: batch / slice / arc tags, plan-doc and review-id references and agent names in C++ comments
 # go stale when the work closes. The committed-tree count may only fall; `--diff <base>` lists the new ones on a branch.
 # Pytest twin: tools/test_journal_comment_ratchet.py (tools_tests row).
@@ -937,14 +940,14 @@ run_check "journal_comment_ratchet"  "py -3 tools/journal_comment_ratchet.py --c
 # force whole-TU rebuilds. Per-dir count of files > 1500 / > 3000 lines and the max file length
 # may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
 # lives in scripts/tests (scripts_tests row).
-run_check "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
+run_nightly "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
 # docs/split-map.md (old file -> pieces -> what each holds) is generated from tools/split/allow/*.json and the pieces' header comments.
-run_check "split_map"                 "py -3 tools/split/split_map.py --check"
+run_nightly "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
 # exit codes still hold. Fixtures are in-memory; pytest twin is tools/test_comment_guard.py (tools_tests row).
 # Doc cite repair guard (docs/cite-guard.md): proves the cite grammar, SPLIT/DELETED/STALE-LINE classes and the diff-guard still
 # hold on a temp git repo. No repo-wide --check row: the docs are red by design until the triage pass lands. Pytest twin: tools/test_cite_guard.py.
-run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
+run_nightly "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py
 # made an unwired script in scripts/ structurally impossible and its docstring
@@ -959,31 +962,30 @@ run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet
 # (measured 0.2s). Test EXECUTION deliberately stays in the manual tier with
 # scripts/run-unit-tests.sh; see manual-checks.allowlist for why, and for the
 # measured numbers that would justify promoting it.
-run_check "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
-run_check "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
-run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider"
-run_check "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
-run_check "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
-run_check "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
-run_check "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
-run_check "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
-run_check "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
-run_check "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"
-run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider"
-run_check "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"
-run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
+run_nightly "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
+run_nightly "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
+run_nightly "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider"
+run_nightly "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
+run_nightly "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
+run_nightly "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
+run_nightly "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
+run_nightly "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
+run_nightly "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
+run_nightly "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"
+run_nightly "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider"
+run_nightly "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"
+run_nightly "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
 run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --strict --quiet && py -3 -B -m pytest scripts/tests/test_native_binding_contracts.py -q -p no:cacheprovider"
 # Reject reintroduced GL runtime, SDK and link dependencies.
-run_check "no_gl_compiler"         "py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider"
-run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet && py -3 -B -m pytest scripts/tests/test_spirv_fixups.py -q -p no:cacheprovider"
+run_nightly "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet && py -3 -B -m pytest scripts/tests/test_spirv_fixups.py -q -p no:cacheprovider"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
-run_check "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
-run_check "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider"
-run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
-run_check "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"
-run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
+run_nightly "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
+run_nightly "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider"
+run_nightly "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
+run_nightly "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"
+run_nightly "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
 # Vulkan UBO layout and offline shader compilation remain required.
-run_check "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
+run_nightly "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
 run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B -m pytest scripts/tests/test_window_emission.py -q -p no:cacheprovider"
 # CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
 # rc_* helpers. It says nothing about whether the helpers' own documentation is
@@ -996,7 +998,7 @@ run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B 
 # literals (GL helper bodies + the VK shader's inlined copy), cross-checks it
 # against the reader bands, and fails when prose in the contract file set names
 # a prop-band value that nothing emits.
-run_check "render_contract_alpha_classes"          "py -3 scripts/check-render-contract-alpha-classes.py"
+run_nightly "render_contract_alpha_classes"          "py -3 scripts/check-render-contract-alpha-classes.py"
 # RED-ROWS-CLOSE-2 (2026-07-31): the C++/GLSL struct ABI gate, wired at last --
 # see the header for why the comment that excluded it was wrong on both clauses.
 # It asserts that every field with an offsetof static_assert on the C++ side
@@ -1005,7 +1007,7 @@ run_check "render_contract_alpha_classes"          "py -3 scripts/check-render-c
 # material_gpu_mirror grades a different struct, and a layout skew inside a
 # matching-size struct is invisible to all of them while the shader silently
 # reads the wrong words.
-run_check "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
+run_nightly "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
 # VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
 # manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).
@@ -1013,9 +1015,7 @@ run_check "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
 # grab the user's cursor. Three bypasses are checked: a bare Popen of the
 # engine, an env policy that STRIPS the windowing vars before they reach the
 # child (how the capture path silently regressed), and raw focus/cursor Win32.
-run_check "background_launch"      "py -3 scripts/check-background-launch.py --quiet"
 # Committed branch changes keep this row meaningful after the index is clean.
-run_check "staged_hygiene"         "py -3 scripts/check-staged-hygiene.py --range --quiet"
 # CURSOR-GRAB-FIX-1: the ENGINE-side half of the same policy. background_launch
 # above guards the harness (Python) side, and it was fully green while the exe it
 # launched clipped the user's physical pointer to a rect at (-32000,-32000):
@@ -1024,7 +1024,7 @@ run_check "staged_hygiene"         "py -3 scripts/check-staged-hygiene.py --rang
 # clean harness delivered the right env to an engine that ignored it. This check
 # asserts, in C++, that no input-capturing call is reachable when the window is
 # not user-visible -- and its --selftest re-injects that exact regression.
-run_check "input_capture_visibility"          "py -3 scripts/check-input-capture-visibility.py --quiet"
+run_nightly "input_capture_visibility"          "py -3 scripts/check-input-capture-visibility.py --quiet"
 run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.py"
 # QUIET-DEFAULT-BUILD-1: a DEFAULT build must not grow new unconditional
 # diagnostic output -- that log is what a real user sees on a normal launch.
@@ -1032,17 +1032,16 @@ run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.
 # lexically (getenv-seeded statics, MC2_*_DIAG bitmasks, default-ON IsEnabled(),
 # #ifdefs, gated enclosing functions). This row is OFFLINE: it grades default-env smoke
 # logs already on disk or SKIPs; the fresh launch is the merge_gate "quiet" stage.
-run_check "default_build_quiet"    "py -3 scripts/check-default-build-quiet.py"
 # VK-OWNERSHIP-1: the ledger of hand-written Vulkan create/release code is the tool's rendering of the source; a converted island that grows manual code again, or a
 # ledger nobody regenerated, is stale.
-run_check "vk_ownership_ledger"    "py -3 tools/vk_ownership_ledger.py --check"
+run_nightly "vk_ownership_ledger"    "py -3 tools/vk_ownership_ledger.py --check"
 # CAPTURE-DETERMINISM-1: two captures of the SAME arm must be identical, or
 # every pixel A/B taken across two launches is measuring noise. Measured on
 # mc2_10 (2026-07-26): up to 27.3% of pixels differed between byte-identical
 # runs, while the sidecars agreed on frame, pose, seed AND deterministic:true.
 # Grades the newest multi-run capture set on disk; SKIPs (exit 0) when none
 # exists, so it never launches the game from the contract suite.
-run_check "capture_determinism"    "py -3 scripts/check-capture-determinism.py --quiet"
+run_nightly "capture_determinism"    "py -3 scripts/check-capture-determinism.py --quiet"
 # DETERMINISM-RATCHET-2: the ratchet above shipped BROKEN -- it globbed one flat
 # level, so it was blind to tools/visual_verify's nested crop layout (the
 # pipeline that produces the goldens which grade releases), reported EMPTY as a
@@ -1058,7 +1057,7 @@ run_check "capture_determinism"    "py -3 scripts/check-capture-determinism.py -
 # covers the three remaining ways to reopen the trap (flip the knob to opt-in,
 # print the failure without clearing the verdict, or break the import/check so
 # it is skipped silently). Offline, no game launch.
-run_check "smoke_fingerprint_honesty" "py -3 scripts/check-smoke-fingerprint-honesty.py --quiet"
+run_nightly "smoke_fingerprint_honesty" "py -3 scripts/check-smoke-fingerprint-honesty.py --quiet"
 # ...and prove those guards actually fire, by injecting each regression into a
 # copy of the source. A guard only ever seen passing on good input is not
 # evidence that it works.
@@ -1071,7 +1070,7 @@ run_check "smoke_fingerprint_honesty" "py -3 scripts/check-smoke-fingerprint-hon
 # both halves of the fix: capture harnesses pin their env through
 # scripts/mc2_env_pin.py, and every capture manifest records the MC2_* set it
 # actually ran under. Offline, no game launch.
-run_check "capture_env_declared"   "py -3 scripts/check-capture-env-declared.py"
+run_nightly "capture_env_declared"   "py -3 scripts/check-capture-env-declared.py"
 # ...and prove it fires, by injecting a contaminated manifest.
 # CAPTURE-RESOLUTION-ASSERT-1 (HARNESS-HYGIENE-3). Golden region rects are
 # normalized fractions and verify.py silently nearest-neighbour-upscales a
@@ -1087,7 +1086,7 @@ run_check "capture_env_declared"   "py -3 scripts/check-capture-env-declared.py"
 # hard-stopping legitimate A/B arms. It now refuses only the genuinely
 # UNDRIVEABLE set (FORCED_ENV / POPPED_ENV / conflicting env_extra) and RECORDS
 # deliberate ambient gates in the run manifest.
-run_check "env_drive_guard"        "py -3 scripts/check-env-drive-guard.py --quiet"
+run_nightly "env_drive_guard"        "py -3 scripts/check-env-drive-guard.py --quiet"
 # ...and prove it fires, by mutating the runner's env tables.
 # DEPLOY-LANE-PARITY-1 (HARNESS-HYGIENE-3). Two deploy-lane registries exist
 # (deploy_lease.DEPLOY_FOLDERS and check-deploy-target.GOOD_DIRS) and the MCP
@@ -1095,13 +1094,13 @@ run_check "env_drive_guard"        "py -3 scripts/check-env-drive-guard.py --qui
 # `run_smoke.py --deploy` cannot resolve, and tolerates one name mapping to two
 # different trees. --allow-unresolved keeps the known 0.4d-rc1 path conflict a
 # LOUD WARN (it needs a user ruling) while any NEW divergence hard-fails.
-run_check "deploy_lane_parity"     "py -3 scripts/check-deploy-lane-parity.py --allow-unresolved"
+run_nightly "deploy_lane_parity"     "py -3 scripts/check-deploy-lane-parity.py --allow-unresolved"
 # ...and prove it fires, on synthetic diverged registries.
-run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
-run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
-run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"
-run_check "brain_relaxed_guard"    "py -3 scripts/check_brain_relaxed_guard_doc.py --quiet"
-run_check "deploy_data_parity"     "py -3 scripts/check-deploy-data-parity.py --quiet"
+run_nightly "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
+run_nightly "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
+run_nightly "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"
+run_nightly "brain_relaxed_guard"    "py -3 scripts/check_brain_relaxed_guard_doc.py --quiet"
+run_nightly "deploy_data_parity"     "py -3 scripts/check-deploy-data-parity.py --quiet"
 # DELIVERY-GATE-1: every check above asks "is the fix CORRECT?". None of them
 # asks the only question the user ever experiences -- "is the fix in the binary
 # I run, ON by default, with its required data present?" -- because its four
@@ -1126,7 +1125,7 @@ run_check "deploy_data_parity"     "py -3 scripts/check-deploy-data-parity.py --
 # (check-env-registry.sh:803), so GATE-DEFAULT-TRUTH-1 iterates registry
 # entries and never sees it. An unregistered default-ON gate had nothing
 # checking its default at all.
-run_check "delivery_manifest"      "py -3 scripts/check-delivery.py --contract --quiet"
+run_nightly "delivery_manifest"      "py -3 scripts/check-delivery.py --contract --quiet"
 # DELIVERY-CLOSE-1: THE GRADING HALF, WIRED. Until now the two rows above were
 # the only wirings, and neither one ever looks at an install -- --contract is
 # repo integrity and --selftest is fixtures. The half of the script that answers
@@ -1171,14 +1170,14 @@ run_check "delivery_manifest"      "py -3 scripts/check-delivery.py --contract -
 # IRREPARABLE, and it fails closed on a ledger entry that pins a repairable one.
 # A missing deploy is the most repairable finding there is.
 run_check "delivery_installs"      "py -3 scripts/check-delivery.py --quiet"
-run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
-run_check "native_render_hosts"    "py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider"
-run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
-run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
+run_nightly "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
+run_nightly "native_render_hosts"    "py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider"
+run_nightly "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
+run_nightly "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
 # TERRAIN-AMBIENT-FLOOR-2: terrain_daylight.h duplicates camera.cpp's night-band
 # constants so the harness can build standalone. Pin them, and prove the pin
 # fires (the header's comment claimed they were pinned before anything was).
-run_check "terrain_daylight_consts"  "py -3 scripts/check-terrain-daylight-constants.py --quiet"
+run_nightly "terrain_daylight_consts"  "py -3 scripts/check-terrain-daylight-constants.py --quiet"
 run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
 # META-FIX-BATCH-1 (design C): split rendering-path contracts — color
 # convention table (#24 class), depth-fudge single-source/form, tess predicate
@@ -1187,34 +1186,34 @@ run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
 run_check "split_path_contracts"   "py -3 scripts/check-split-path-contracts.py --quiet"
 # META-FIX-BATCH-1 (design E): canonical-key chokepoint confinement
 # (FastFileFind/elfHash callers) + raw read-open count ratchet.
-run_check "path_normalization"     "sh scripts/check-path-normalization.sh"
+run_nightly "path_normalization"     "sh scripts/check-path-normalization.sh"
 # META-FIX-BATCH-2 (design D): resolution/aspect two-space contract — modern
 # dirs never read Environment.screenWidth/Height (RULE A), legacy-layer reads
 # only shrink (RULE B generated ratchet), and the four #45/#49/HUD-RES-CLAMP
 # fix sites survive (RULE C anchors). Runtime sibling: MC2_RES_ASSERT.
-run_check "res_aspect_contract"    "py -3 scripts/check-res-aspect-contract.py --quiet"
+run_nightly "res_aspect_contract"    "py -3 scripts/check-res-aspect-contract.py --quiet"
 # LAUNCHER-ENCODING-1: launcher-facing manifest strings (mods/ + examples/mods/
 # mod.json) are ASCII-only — the launcher UI is Win32 ANSI, so UTF-8 typography
 # (em-dash, curly quotes) renders as mojibake. Self-test proves a synthetic
 # em-dash manifest still fails.
-run_check "launcher_ascii"         "py -3 scripts/check-launcher-ascii.py --quiet"
+run_nightly "launcher_ascii"         "py -3 scripts/check-launcher-ascii.py --quiet"
 # META-FIX-BATCH-2 (design F): silent-order chokepoint — every fireWeapon
 # pre-delivery early-return is traced (fireGateTrace) or declared
 # (KNOWN_UNCOVERED); comment-stripped scan (four commented return(4)s in
 # mech_weapons.cpp are the trap); nofire emitter presence; both-ways-live ledger.
-run_check "order_gate_coverage"    "py -3 scripts/check-order-gate-coverage.py --quiet"
+run_nightly "order_gate_coverage"    "py -3 scripts/check-order-gate-coverage.py --quiet"
 # META-FIX-BATCH-3 (design A): mover-registry coherence — setOnGUI/isOnGui
 # write allowlists (S1), write-pairing windows (S2), trimmed read-gate pins
 # (S3, hard=3), #42b hover-guard shape (S4 — SOLE defense, never demote),
 # link-up gate shape (S5), off-map-staging carve-out: runtime audit region
 # stays position-free (S6, INVIS-VEHICLES-FIX-1). Runtime sibling:
 # MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
-run_check "mover_registry_coherence" "sh scripts/check-mover-registry-coherence.sh"
+run_nightly "mover_registry_coherence" "sh scripts/check-mover-registry-coherence.sh"
 # META-FIX-BATCH-3 (design B): fail-loud asset-load policy — raw loader-call
 # confinement (P1, TGL-LOAD-EXEMPT/VERIFIED tags), PART 0-4 presence pins
 # (P2), and the APPEAR-AUDIT off-map-staging carve-out (P3: scan region
 # stays position/visibility-free — INVIS-VEHICLES-FIX-1).
-run_check "tgl_load_callers"   "sh scripts/check-tgl-load-callers.sh"
+run_nightly "tgl_load_callers"   "sh scripts/check-tgl-load-callers.sh"
 # COUNTER-HONESTY-1: instruments must not be able to state a confident number
 # they cannot know. R1 = every syncStaticProp() recipe mint pairs with a
 # setRecipePopulation() (an untagged recipe silently corrupts the population
@@ -1289,7 +1288,7 @@ run_check "counter_honesty"          "py -3 scripts/check-counter-honesty.py --q
 # NOT counted as a loader). The live lane audit is run deliberately:
 #   py -3 scripts/check-beauty-sidecars.py [--all-lanes] [--install]
 # Read-only, no build, sub-second.
-run_check "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet"
+run_nightly "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet"
 
 # ---------------------------------------------------------------------------
 # STOCK-DATA-TRUTH-1 (2026-07-30 wrong-mission-data audit)
@@ -1315,17 +1314,17 @@ run_check "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --n
 run_check "stock_mission_data"          "py -3 scripts/check-stock-mission-data.py --no-data --quiet"
 # STEP-3.5 (2026-10-11): the comparator behind "SIMID unchanged" -- two runs of one mission under the determinism gates must agree frame by frame.
 # The selftest is offline; the live proof is `py -3 tools/sim_determinism.py run mc2_03 --baseline` (launches the game twice; run it at the program boundaries).
-run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider"
+run_nightly "sim_determinism"             "py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider"
 # Offline analyzer proof only. Live per-slice continuation gate: docs/plans/2026-10-29-cxx23-status.md (03/10/24, 60 ticks).
-run_check "saveload_roundtrip"          "py -3 tools/saveload_roundtrip.py selftest"
-run_check "save_inspect"                "py -3 tools/save_inspect.py selftest"
+run_nightly "saveload_roundtrip"          "py -3 tools/saveload_roundtrip.py selftest"
+run_nightly "save_inspect"                "py -3 tools/save_inspect.py selftest"
 # STEP-4 B0 (2026-10-11): the ownership ledger (type -> allocation sites, typed free sites, owner) and the pointer-order hazard list, both
 # ratchets over HEAD; a batch that migrates a type rewrites the baseline with its code (tests/unit/*_baseline.json).
-run_check "own_inventory"               "py -3 tools/own_inventory.py --check"
-run_check "pointer_order_scan"          "py -3 tools/pointer_order_scan.py --check"
-run_check "verified_ledger"             "py -3 tools/verified.py check"
+run_nightly "own_inventory"               "py -3 tools/own_inventory.py --check"
+run_nightly "pointer_order_scan"          "py -3 tools/pointer_order_scan.py --check"
+run_nightly "verified_ledger"             "py -3 tools/verified.py check"
 run_check "script_callers"              "py -3 tools/callers.py --check"
-run_check "savegame_backup"             "py -3 tools/savegame_backup.py selftest"
+run_nightly "savegame_backup"             "py -3 tools/savegame_backup.py selftest"
 
 # CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it
 # measured, not the worktree the tool happened to run from. `identity.git.commit`
@@ -1397,7 +1396,7 @@ run_check_tri "capture_provenance"      "py -3 scripts/check-capture-provenance.
 # the mutation still points at the same artifact. --self-test proves it FIRES:
 # it re-runs the whole battery under a deliberately positional (DOM-order) id
 # scheme and requires that mis-attachments are detected. Offline, read-only.
-run_check "review_anchor_stability"          "py -3 scripts/check-review-anchor-stability.py --quiet"
+run_nightly "review_anchor_stability"          "py -3 scripts/check-review-anchor-stability.py --quiet"
 
 # The same page's GATE INVENTORY is rebuilt from RenderCore/RendererFeatureRegistry.h
 # at render time. That parse used to warn on stderr and publish anyway: one
@@ -1430,18 +1429,17 @@ run_check "review_anchor_stability"          "py -3 scripts/check-review-anchor-
 # was the one guarded behaviour on this board with nothing guarding it. See the
 # block above _selftest_rows for what it pins and why it re-executes this script
 # rather than reimplementing run_check. Seconds, three short child runs.
-run_check "agents_md"                  "sh scripts/check-agents-md.sh"
-run_check "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fixtures.py"
-run_check "mod_packaging"             "py -3 -B -m pytest tests/mod_install/test_packaging.py tests/mc2mod -q -p no:cacheprovider"
-run_check "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
-run_check "claude_md_pointer"          "sh scripts/check-claude-md-pointer.sh"
-run_check "json_isolation"             "sh scripts/check-json-isolation.sh"
-run_check "memory_size"                "py -3 scripts/check-memory-size.py || echo 'WARN memory_size: advisory only (reads the agents memory dir on C:, not the candidate)'"
-run_check "mlr_leaves_gated"           "sh scripts/check-mlr-leaves-gated.sh"
-run_check "object_mvp_currency"        "py -3 scripts/check-object-mvp-currency.py"
-run_check "particles_no_cpu_projection" "sh scripts/check-particles-no-cpu-projection.sh"
-run_check "toolchain_bom"              "py -3 scripts/check-toolchain-bom.py"
-run_check "unified_projection_retirement" "sh scripts/check-unified-projection-retirement.sh"
+run_nightly "agents_md"                  "sh scripts/check-agents-md.sh"
+run_nightly "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fixtures.py"
+run_nightly "mod_packaging"             "py -3 -B -m pytest tests/mod_install/test_packaging.py tests/mc2mod -q -p no:cacheprovider"
+run_nightly "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
+run_nightly "claude_md_pointer"          "sh scripts/check-claude-md-pointer.sh"
+run_nightly "json_isolation"             "sh scripts/check-json-isolation.sh"
+run_nightly "mlr_leaves_gated"           "sh scripts/check-mlr-leaves-gated.sh"
+run_nightly "object_mvp_currency"        "py -3 scripts/check-object-mvp-currency.py"
+run_nightly "particles_no_cpu_projection" "sh scripts/check-particles-no-cpu-projection.sh"
+run_nightly "toolchain_bom"              "py -3 scripts/check-toolchain-bom.py"
+run_nightly "unified_projection_retirement" "sh scripts/check-unified-projection-retirement.sh"
 # --allow-missing-artifacts is DELIBERATE and must stay explicit: this check
 # grades the tag registry against BOTH a gate doc and a golden artifact log
 # dir. The log dir is a smoke output that is usually absent in a source
@@ -1449,7 +1447,7 @@ run_check "unified_projection_retirement" "sh scripts/check-unified-projection-r
 # printed "OK: all 8 required tags present" -- a full-credit PASS from a
 # half-run check. It now FAILS on a missing dir unless the reduced scope is
 # declared right here, at the call site, where a reader can see it.
-run_check "oracle_registry"            "py -3 scripts/check-oracle-registry.py --allow-missing-artifacts"
+run_nightly "oracle_registry"            "py -3 scripts/check-oracle-registry.py --allow-missing-artifacts"
 
 # ---------------------------------------------------------------------------
 # UNWIRED-CHECKS-CLOSE-1 (2026-07-30) -- the checks the CENSUS was blind to
@@ -1465,17 +1463,17 @@ run_check "oracle_registry"            "py -3 scripts/check-oracle-registry.py -
 # up by the words "Modeled on scripts/check-new-gates.py Mode A" in an unrelated
 # checker's docstring, and was exiting 1. Arm (b) is now invocation-shaped, and
 # these are the ones that turned out to be cheap, deterministic and source-only.
-run_check "asset_manifests"            "py -3 scripts/check-asset-manifests.py --quiet"
-run_check "asset_scale_callers"        "sh scripts/check-asset-scale-callers.sh"
-run_check "smoke_matrices"             "py -3 scripts/check-smoke-matrices.py --quiet"
+run_nightly "asset_manifests"            "py -3 scripts/check-asset-manifests.py --quiet"
+run_nightly "asset_scale_callers"        "sh scripts/check-asset-scale-callers.sh"
+run_nightly "smoke_matrices"             "py -3 scripts/check-smoke-matrices.py --quiet"
 # --strict is REQUIRED, not decoration: bare mode returns 0 unconditionally, so
 # wiring it without --strict would register a row that cannot ever go red. Its
 # two --strict failures were a classify() bug, not stale fixtures -- it keyed on
 # the basename alone, so an asset manifest and a brain-fixture corpus manifest
 # were both graded as run/release manifests and told to grow an identity block.
-run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py --strict"
-run_check "perf_budget_schema"         "py -3 tools/perf/budget_check.py --validate-schema"
-run_check "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-schema"
+run_nightly "manifest_schema"            "py -3 scripts/check-manifest-schema.py --strict"
+run_nightly "perf_budget_schema"         "py -3 tools/perf/budget_check.py --validate-schema"
+run_nightly "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-schema"
 # new_gates (scripts/check-new-gates.py --base HEAD~1) is retired: a new MC2_* gate in a diff must be a row of the gate
 # table or it does not compile, and a raw getenv is a ratchet failure. Last revision of the script: a0cf5620d.
 
@@ -1512,20 +1510,20 @@ run_check "visual_regression_schema"   "py -3 scripts/run_visual.py --validate-s
 # one.
 # One pytest process per module, 2 at a time, through the per-module result cache (scripts/module_test_cache.py):
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
-run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
-run_check "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
+run_nightly "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
+run_nightly "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
 run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py scripts/tests/test_gate_box_route.py scripts/tests/test_box_queue.py -q -p no:cacheprovider"
-run_check "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
-run_check "gate_receipts"              "py -3 -B -m pytest scripts/tests/test_gate_state.py -q -p no:cacheprovider"
+run_nightly "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
+run_nightly "gate_receipts"              "py -3 -B -m pytest scripts/tests/test_gate_state.py -q -p no:cacheprovider"
 # Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.
-run_check "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py -q -p no:cacheprovider"
-run_check "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py scripts/tests/test_paired_cpu.py scripts/tests/test_host_lease.py -q -p no:cacheprovider"
-run_check "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
+run_nightly "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py -q -p no:cacheprovider"
+run_nightly "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py scripts/tests/test_paired_cpu.py scripts/tests/test_host_lease.py -q -p no:cacheprovider"
+run_nightly "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
-run_check "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"
-run_check "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
-run_check "shadow_bake_init"           "py -3 -B -m pytest scripts/tests/test_shadow_bake_init.py -q -p no:cacheprovider"
-run_check "abl_static_alloc"           "py -3 -B -m pytest scripts/tests/test_abl_static_alloc.py -q -p no:cacheprovider"
+run_nightly "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"
+run_nightly "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
+run_nightly "shadow_bake_init"           "py -3 -B -m pytest scripts/tests/test_shadow_bake_init.py -q -p no:cacheprovider"
+run_nightly "abl_static_alloc"           "py -3 -B -m pytest scripts/tests/test_abl_static_alloc.py -q -p no:cacheprovider"
 
 # ---------------------------------------------------------------------------
 # TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools
@@ -1548,9 +1546,9 @@ run_check "abl_static_alloc"           "py -3 -B -m pytest scripts/tests/test_ab
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3"
-run_check "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
-run_check "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
-run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
+run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
+run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
+run_nightly "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
 fi   # end of the real board (skipped under --selftest-render, above)
 if [ "$PARALLEL" -eq 1 ]; then _drain_queue; fi
