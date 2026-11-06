@@ -49,9 +49,10 @@ def test_ceiling_bucket_fires_only_over_limit():
     s.presence_counts = {"perf_counters_missing": 1}
     s.perf_counters = {"draws.props": 12.5, "draws.terrain": 3.0}
     v = evaluate(s, cfg, exit_code=0, walltime_s=31)
-    assert not v.passed and v.buckets == ["perf_counter"]   # over ceiling FAILS (the 2026-11-01 warn-only rule let 119 > 31.94 pass)
+    # perf_counter-only is a recorded warning, not a red bucket (owner rule 2026-11-01)
+    assert v.passed and not v.buckets and any("draws.props" in w for w in v.warnings)
     s.perf_counters["draws.props"] = 9.0
-    assert evaluate(s, cfg, exit_code=0, walltime_s=31).passed
+    assert not evaluate(s, cfg, exit_code=0, walltime_s=31).warnings
 
 
 def test_shipped_ceilings_file_is_well_formed():
@@ -99,22 +100,24 @@ def test_window_over_ceiling_fails_per_pass():
     w = parse_perf_window(WIN_LINE)
     w["draws.mech_depth"] = 119.0
     v = _win(w)
-    assert not v.passed and v.buckets == ["perf_counter"] and "draws.mech_depth=119>50" in v.details[0]
-    assert "mech_color" not in v.details[0]
+    assert v.passed and not v.buckets and "draws.mech_depth=119>50" in v.warnings[0]
+    assert "mech_color" not in v.warnings[0]
 
 
-def test_window_missing_incomplete_or_other_range_is_red_not_silent():
-    assert "perf_window_missing" in _win({}).buckets
+def test_window_missing_incomplete_or_other_range_warns_not_silent():
+    assert _win({}).warnings and "not graded" in _win({}).warnings[0]
     w = parse_perf_window(WIN_LINE)
     w["complete"] = 0
-    assert "perf_window_missing" in _win(w).buckets
+    assert _win(w).warnings
     w = parse_perf_window(WIN_LINE)
     w["ticks"] = "60..300"
-    assert "perf_window_mismatch" in _win(w).buckets
+    v = _win(w)
+    assert v.passed and "window ticks 60..300" in v.warnings[0]
 
 
 def test_window_ceiling_only_applies_to_its_stem():
-    assert _win({}, wc={"ticks": "30..120", "stems": {"mc2_01": {"draws.mech_depth": 1.0}}}).passed
+    v = _win({}, wc={"ticks": "30..120", "stems": {"mc2_01": {"draws.mech_depth": 1.0}}})
+    assert v.passed and not v.warnings
 
 
 def test_shipped_window_ceilings_are_well_formed():

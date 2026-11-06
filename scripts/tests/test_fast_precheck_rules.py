@@ -134,10 +134,10 @@ def _verdict(perf_over, **mutate):
     return evaluate(s, cfg, exit_code=0, walltime_s=31)
 
 
-def test_perf_counter_over_ceiling_fails():
+def test_perf_counter_only_is_pass_with_warning():
     v = _verdict(True)
-    assert not v.passed and v.buckets == ["perf_counter"] and "draws.props=12.5>10" in v.details[0]
-    assert _verdict(False).passed
+    assert v.passed and v.buckets == [] and v.warnings and "draws.props=12.5>10" in v.warnings[0]
+    assert _verdict(False).warnings == []
 
 
 def test_perf_counter_with_another_bucket_stays_red():
