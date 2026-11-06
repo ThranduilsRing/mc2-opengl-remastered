@@ -1406,7 +1406,8 @@ def test_planted_semantic_violation_stays_red_and_is_never_regenerated(env, monk
 def _stage_fixture(env, monkeypatch):
     repo, _ = env
     lm = _load_module()
-    monkeypatch.setattr(lm, "NIFTY", "main")
+    import lane_merge_stage
+    monkeypatch.setattr(lane_merge_stage, "NIFTY", "main")
     write(repo, ".gitignore", "build64-ninja/\n")   # ignored in the real tree too
     commit_all(repo, "ignore build dir")
     _branch(repo, "lane_a", "a_lane.txt", "a\n", "lane a")

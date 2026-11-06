@@ -6,6 +6,9 @@ r7 fixes 1-3 (no swap/snapshot when no capture-before row, save_deployed no seco
 box determinism/saveload CPU-only via grh), semantic precheck before regeneration, ABL include-path doctest,
 land_queue.py and the pre-gate headless-smoke row deleted, per-stage timings.
 
-Not done: informational inventories as artifacts (see docs/merge-queue-v2.md); the real staging dry run with a
-Windows smoke-lite (lane ran out of tool budget). Next lane: build the stage candidate in a throwaway clone, run
-merge_gate --install E:/mc2-installs/merge-queue-v1 with the syncval prerequisite, check gate-verdict.json timings.
+2026-11-06 fix-up: rebased onto nifty a1f09109a without conflicts; extracted staging, promotion and bisection into
+tools/lane_merge_stage.py, preserving the CLI and queue behaviour; ABL filesystem inputs use mc2::czstring.
+Next: commit final tip; record its SHA in cxx17/file-size/pytest and box build+unit/lint receipts under
+E:/mc2-archive-2026-10/proofs/merge-queue-v1; clean up this branch's box lane. No merge gate in this run.
+The test paths in the brief do not exist: use tools/test_lane_merge.py and scripts/tests/test_gate*.py plus
+scripts/tests/test_merge_speedups.py. Informational inventories remain follow-up (docs/merge-queue-v2.md).

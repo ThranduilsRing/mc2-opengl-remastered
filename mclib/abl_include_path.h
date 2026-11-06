@@ -5,7 +5,8 @@
 // scan dropped the directory on Windows when the source path mixed separators, and OConst.abi failed to open).
 #include <filesystem>
 #include <string>
+#include "mc2_czstring.h"
 
-inline std::string ablIncludePath(const char* includingFile, const char* includeName) {
+inline std::string ablIncludePath(mc2::czstring includingFile, mc2::czstring includeName) {
 	return std::filesystem::path(includingFile).replace_filename(includeName).generic_string();
 }
