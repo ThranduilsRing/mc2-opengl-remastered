@@ -1502,15 +1502,7 @@ void MPParameterScreen::resetCheckBoxes()
 
 void MPParameterScreen::setHostLeftDlg( mc2::czstring playerName )
 {
-	char leaveStr[256];
-	char formatStr[256];
-
-	cLoadString( IDS_PLAYER_LEFT, leaveStr, 255 );
-	sprintf( formatStr, leaveStr, playerName );
-
-	LogisticsOneButtonDialog::instance()->setText( IDS_PLAYER_LEFT,
-					IDS_DIALOG_OK, IDS_DIALOG_OK );
-	LogisticsOneButtonDialog::instance()->setText( formatStr );
+	LogisticsOneButtonDialog::instance()->setPlayerLeftText( playerName );
 	LogisticsOneButtonDialog::instance()->begin();
 	bHostLeftDlg = true;
 
