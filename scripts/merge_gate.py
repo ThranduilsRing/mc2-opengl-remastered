@@ -249,19 +249,22 @@ def clean_failed_outputs(state, proof):
 
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
-    from exe_fingerprint import extract, build_current
+    from exe_fingerprint import extract, build_current, sha_agrees
     from mod_smoke import load_known_failures
     from deploy_payload import verify_published_identity, staleness_report
     import saveload_roundtrip as saves
 
     started = time.monotonic()
     errors = []
-    rebuild = "py -3 scripts/ninja_build.py mc2 mc2_asset_viewer -j" + Path("A:/Games/mc2-ops/JOBS").read_text().strip()
+    rebuild = f"cd {ROOT.as_posix()} && py -3 scripts/ninja_build.py"   # the gate never builds; deploy refuses a stale exe ~10 min in
     for name in ("mc2.exe", "out/tools/asset_viewer/mc2_asset_viewer.exe"):
         fp = extract(ROOT / "build64-ninja" / name)
-        # A clean ancestor build stays current when no build input changed since (data/test-only commits).
-        if not fp.get('present') or not build_current(fp.get('sha'), head, ROOT, bool(fp.get('dirty'))):
-            errors.append(f"{name} fingerprint != clean HEAD {head} (or a build-input-identical ancestor); fix: {rebuild}")
+        # mc2.exe: a clean ancestor build stays current when no build input changed since (data/test-only commits).
+        # The viewer is shipped by deploy_payload.viewer_payload, which demands the exact HEAD sha.
+        current = (build_current(fp.get('sha'), head, ROOT, bool(fp.get('dirty'))) if name == "mc2.exe"
+                   else bool(sha_agrees(fp.get('sha'), head)) and not fp.get('dirty'))
+        if not fp.get('present') or not current:
+            errors.append(f"{name} stale or dirty vs HEAD {head} (embedded sha={fp.get('sha', 'absent')}); fix: {rebuild}")
     bookmarks = set()
     for name, command, env in steps:
         if name.startswith('capture-') and '--bookmarks' in command and not env.get('MC2_GATE_SKIP_REASON'):
@@ -1792,6 +1795,8 @@ def main(argv=None):
         jobs = "2"
     ap.add_argument("-j", type=int, default=int(jobs))
     args = ap.parse_args(argv)
+    if not args.box_gate:
+        args.farm_determinism = False   # --no-box: the farm queue lives on the dead box; never wait out its ssh timeout
     STOP_REQUESTED.clear()
     if not (args.dry_run or args.preflight) and threading.current_thread() is threading.main_thread():
         install_stage_watchdog()

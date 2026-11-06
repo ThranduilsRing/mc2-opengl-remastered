@@ -1343,3 +1343,38 @@ def test_precheck_fails_on_stale_inventory():
     import inspect
     src = inspect.getsource(lm.precheck)
     assert "stale_inventories(root, commit)" in src and 'failed.append("inventories-stale:' in src
+
+
+def test_red_syncval_prerequisite_stops_the_gate_before_the_long_stages(monkeypatch, capsys):
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    calls = []
+    def runner(command, **kw):
+        calls.append(command[0])
+        return _r(int(command[0] == "syncval"))
+    monkeypatch.setattr(gate, "run_child", runner)
+    steps = [("deploy", ["deploy"], {}), ("tier1", ["tier1"], {}), ("mods", ["mods"], {}),
+             ("determinism-mc2_24", ["determinism"], {}), ("syncval", ["syncval"], {"MC2_VULKAN_VALIDATION": "sync"})]
+    gate.ROW_RESULTS.clear()
+    assert gate.execute_parallel(steps, "head") == 1
+    assert calls == ["deploy", "syncval"]                     # nothing long launched after the red prerequisite
+    held = {n: r["status"] for n, r in gate.ROW_RESULTS.items() if n in ("tier1", "mods", "determinism-mc2_24")}
+    assert held and all(s.startswith("SKIP") for s in held.values())
+    calls.clear()
+    assert gate.execute_parallel(steps, "head", keep_going=True) == 1
+    assert "tier1" in calls and "mods" in calls               # --keep-going keeps the exhaustive run
+
+
+def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monkeypatch, capsys):
+    from pathlib import Path
+    import exe_fingerprint, merge_gate as gate
+    fps = {"mc2.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0),
+           "mc2_asset_viewer.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0)}
+    monkeypatch.setattr(exe_fingerprint, "extract", lambda p: fps[Path(p).name])
+    monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)   # mc2.exe: a build-input-identical ancestor is fine
+    gate.preflight("bbbbbbbbbbbb", Path("E:/nonexistent-install"), 1, [])
+    out = capsys.readouterr().out
+    assert "mc2_asset_viewer.exe stale or dirty" in out and "mc2.exe stale" not in out   # the viewer needs the exact HEAD
+    assert "fix: cd " in out and out.split("fix: cd ")[1].splitlines()[0].endswith("&& py -3 scripts/ninja_build.py")

@@ -18,6 +18,7 @@ import argparse
 import csv
 import glob
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -119,11 +120,33 @@ def verdict(base: tuple, tip: tuple) -> tuple:
     return (1, msg + " -- RISE: copy-paste grew; factor the new duplicate out") if delta > 0 else (0, msg + " -- ok")
 
 
+def git_out(repo, *argv):
+    r = subprocess.run(["git", "-C", repo, *argv], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def last_full_gate_head(repo=ROOT):
+    """The head of the last complete-PASS full gate (build64-ninja/last-full-gate.json), or None."""
+    try:
+        with open(os.path.join(repo, "build64-ninja", "last-full-gate.json"), encoding="utf-8") as f:
+            return json.load(f).get("head") or None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
 def resolve_base(base, rev, repo=ROOT):
     ref = base or DEFAULT_BASE
-    r = subprocess.run(["git", "-C", repo, "merge-base", rev, ref], capture_output=True, text=True,
-                       **console_child.child_kwargs(redirected=True))
-    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+    found = git_out(repo, "merge-base", rev, ref)
+    if base or not found or found != git_out(repo, "rev-parse", rev + "^{commit}"):
+        return found
+    # No --base and the tip IS nifty (the merge gate): merge-base = tip, so the row would compare the tip with itself and
+    # could never fail. Compare with the last published full-gate head instead; the lane default (a branch) is unchanged.
+    mark = last_full_gate_head(repo)
+    mark = git_out(repo, "rev-parse", mark + "^{commit}") if mark else None
+    if mark and subprocess.run(["git", "-C", repo, "merge-base", "--is-ancestor", mark, found],
+                               **console_child.child_kwargs(redirected=True)).returncode == 0:
+        return mark
+    return found
 
 
 def main(argv=None) -> int:

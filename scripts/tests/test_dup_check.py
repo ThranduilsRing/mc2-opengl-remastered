@@ -72,3 +72,27 @@ def test_missing_pmd_everywhere_is_infra_not_a_pass(monkeypatch, capsys):
     monkeypatch.setattr(dc, "measure", boom)
     assert dc.main(["--check"]) == 3
     assert "INFRA" in capsys.readouterr().err
+
+
+def test_resolve_base_at_the_gate_uses_the_last_full_gate_head(tmp_path, monkeypatch):
+    # On nifty itself merge-base(tip, nifty) == tip, so the gate row compared the tip with itself (delta +0 forever).
+    _git(tmp_path, "init", "-q", "-b", "nifty")
+    _git(tmp_path, "config", "user.email", "t@t")
+    _git(tmp_path, "config", "user.name", "t")
+    monkeypatch.setattr(dc, "DEFAULT_BASE", "nifty")
+    shas = []
+    for i in range(3):
+        (tmp_path / "f.txt").write_text(str(i))
+        _git(tmp_path, "add", "-A")
+        _git(tmp_path, "commit", "-q", "-m", str(i))
+        shas.append(_git(tmp_path, "rev-parse", "HEAD"))
+    repo = str(tmp_path)
+    assert dc.resolve_base(None, "HEAD", repo) == shas[2]                  # no mark: unchanged
+    (tmp_path / "build64-ninja").mkdir()
+    (tmp_path / "build64-ninja" / "last-full-gate.json").write_text('{"head": "%s"}' % shas[0])
+    assert dc.resolve_base(None, "HEAD", repo) == shas[0]                  # gate on nifty: last published full gate
+    assert dc.resolve_base("HEAD~1", "HEAD", repo) == shas[1]              # explicit --base wins
+    _git(tmp_path, "checkout", "-q", "-b", "lane", shas[1])
+    (tmp_path / "f.txt").write_text("lane")
+    _git(tmp_path, "commit", "-qam", "lane")
+    assert dc.resolve_base(None, "lane", repo) == shas[1]                  # branch: merge-base default kept
