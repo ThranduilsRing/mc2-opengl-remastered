@@ -503,10 +503,12 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 
 }
 
-long MechListBox::AddItem(aListItem* itemString)
+long MechListBox::AddItem(std::unique_ptr<aListItem> itemString)
 {
+	if (itemCount >= MAX_LIST_ITEMS)
+		return TOO_MANY_ITEMS;
 	itemString->setID( ID );
-	MechListBoxItem* pItem = dynamic_cast<MechListBoxItem*>(itemString);
+	MechListBoxItem* pItem = dynamic_cast<MechListBoxItem*>(itemString.get());
 	char tmp[256];
 	cLoadString( pItem->getMech()->getChassisName(), tmp, 255 );
 	const std::string addedName = tmp;
@@ -532,19 +534,19 @@ long MechListBox::AddItem(aListItem* itemString)
 			const std::string chassisName = tmpChassisName;
 			if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() < pItem->pMech->getMaxWeight() )
 			{
-				return InsertItem( itemString, i );
+				return InsertItem( itemString.release(), i );
 				break;
 			}
 			else if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& mc2::str::icompare( chassisName, addedName ) > 0 )
 			{
-				return InsertItem( itemString, i );
+				return InsertItem( itemString.release(), i );
 			}
 			else if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& mc2::str::iequals( chassisName, addedName )
-				&& (static_cast<MechListBoxItem*>(itemString))->pMech->getName().find("Prime") != std::string::npos )
+				&& (static_cast<MechListBoxItem*>(itemString.get()))->pMech->getName().find("Prime") != std::string::npos )
 			{
-				return InsertItem( itemString, i );
+				return InsertItem( itemString.release(), i );
 			}
 			else if ( (static_cast<MechListBoxItem*>(items[i]))->pMech->getMaxWeight() == pItem->pMech->getMaxWeight()
 				&& mc2::str::iequals( chassisName, addedName )
@@ -552,14 +554,14 @@ long MechListBox::AddItem(aListItem* itemString)
 				// variants of one chassis sort by name, ignoring ASCII case, then by raw bytes
 				&& mc2::str::ci_total_less{}( pItem->pMech->getName(), (static_cast<MechListBoxItem*>(items[i]))->pMech->getName() ) )
 			{
-				return InsertItem( itemString, i );
+				return InsertItem( itemString.release(), i );
 			}
 		}
 
 	}
 
 	
-	return aListBox::AddItem( itemString );
+	return aListBox::AddItem( std::move(itemString) );
 }
 
 void	MechListBox::dimItem( LogisticsMech* pMech, bool bDim )

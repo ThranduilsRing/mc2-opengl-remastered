@@ -115,7 +115,8 @@ public:
 
 	static void initIcon( LogisticsMech* pMec, aObject& icon );
 
-	long		AddItem(aListItem* itemString) override;
+	long AddItem(std::unique_ptr<aListItem> itemString) override;
+	long AddItem(aListItem* itemString) override { return AddItem(std::unique_ptr<aListItem>(itemString)); }
 
 	void	dimItem( LogisticsMech* pMech, bool bDim );
 	void	undimAll();

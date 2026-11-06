@@ -68,7 +68,8 @@ class LogisticsPilotListBox: public aListBox
 
 	static void  makeUVs( LogisticsPilot* pPilot, aObject& pObject );
 
-	virtual long AddItem( aListItem* pItem );
+	long AddItem( std::unique_ptr<aListItem> pItem ) override;
+	long AddItem( aListItem* pItem ) override { return AddItem(std::unique_ptr<aListItem>(pItem)); }
 	virtual void update();
 
 	void removePilot(LogisticsPilot* pPilot);
