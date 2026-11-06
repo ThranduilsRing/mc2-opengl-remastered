@@ -34,6 +34,7 @@ import gate_scope
 ROOT = Path(__file__).resolve().parents[1]
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
+HEADLESS_SAVELOAD = ("mc2_16", "mc2_24")
 #: Rows the box gate (tools/box_run.py --gate: GPU 3, clang/libc++ build, Linux baselines) proves instead of the PC. The PC keeps
 #: determinism-mc2_10 and saveload-mc2_10 as the MSVC canary; the daily --full gate keeps every row on the PC. A red box row is a red gate row.
 BOX_GATE_TIMEOUT_S = 2400  # the box stage's wall cap as seen from the PC; past it the stage is BOX_INFRA and the PC rows run
@@ -636,7 +637,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         before = str(proof / "before")
         steps = [(name, [str(before_dir) if arg == before else arg for arg in cmd], env)
                  for name, cmd, env in steps if name != "capture-before"]
-    # mc2_03 runs headless; mc2_10 and mc2_24 retain the GPU path. The finale
+    # Only mc2_10 retains the GPU path (it also covers the windowed overlap audit). The mc2_24 finale
     # spawns infantry after tick 2404: --ticks is a required SIMID length (zero
     # tolerance), so the baseline prefix alone cannot satisfy this audit.
     for mission in ("mc2_03", "mc2_10", "mc2_16", "mc2_24"):
@@ -644,13 +645,15 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
                        *(["--sim-speed", "2"] if mission == WINDOWED_DETERMINISM else
-                         (["--sim-speed", "4", "--ticks", "2600"] if mission == "mc2_24" else ["--headless-both"]))], {}))
+                         (["--headless-both", "--ticks", "2600"] if mission == "mc2_24" else ["--headless-both"]))], {}))
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
                        "--install", install, "--mask", "tools/save_noise_mask.json", "--first-save-only", "--out", str(proof / ("saveload-" + mission)),
                        # private save dir (engine MC2_SAVE_DIR): saveload overlaps the mods battery with no shared quicksave names
-                       "--save-dir", str(proof / ("saveload-" + mission) / "savegame")], {}))
+                       "--save-dir", str(proof / ("saveload-" + mission) / "savegame"),
+                       # headless first save is byte-identical to the windowed baseline on these (mc2_01: no faster; mc2_03: camera-time bytes; mc2_10: MSVC canary)
+                       *(["--headless"] if mission in HEADLESS_SAVELOAD else [])], {}))
     # Staging has one cache writer; two isolated smoke children lease their own slots.
     steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
     steps.append(("validation",

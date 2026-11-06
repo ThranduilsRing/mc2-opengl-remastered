@@ -736,7 +736,7 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     command, env = by_name["determinism-mc2_10"]
     assert command[-2:] == ["--sim-speed", "2"] and "--headless-both" not in command
     assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
-    for mission in ("mc2_03",):   # only mc2_03 is headless; finale retains lazy infantry loading
+    for mission in ("mc2_03", "mc2_16"):   # headless pairs (mc2_24 too, with its own --ticks)
         command, env = by_name["determinism-" + mission]
         assert "--headless-both" in command and "--sim-speed" not in command
         assert "MC2_VULKAN_VALIDATION" not in env
@@ -745,7 +745,7 @@ def test_tier1_reuses_only_strict_validated_determinism_smokes():
     assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
     full = gate.affected_plan(gate.plan(6), ["code/game.cpp"], full=True)
     finale = next(c for n, c, _ in full if n == 'determinism-mc2_24')
-    assert finale[finale.index('--sim-speed') + 1] == '4'
+    assert "--headless-both" in finale and "--sim-speed" not in finale
     assert int(finale[finale.index('--ticks') + 1]) > 2404
 
 

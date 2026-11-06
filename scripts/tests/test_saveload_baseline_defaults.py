@@ -88,3 +88,17 @@ def test_baseline_command_refuses_with_one_line_and_writes_nothing(tmp_path, cap
     out = capsys.readouterr().out
     assert "--mask" in out and "--first-save-only" in out and "FAIL" in out
     assert path.read_text(encoding="utf-8") == original
+
+
+_TICKS = "[SMOKE v1] event=tick_budget ticks=900\n[SMOKE v1] event=summary result=pass\n"
+_RENDER_ROW = "| mc2_03  | FAIL   | heartbeat_freeze_play,perf_counters_missing | 0 | - |\n"
+
+
+@pytest.mark.parametrize("runner,log,rc", [
+    (_RENDER_ROW, _TICKS, 0),                                                                    # render-only verdict: clean
+    (_RENDER_ROW + "[runner] [DEPLOY_FINGERPRINT] HARD FAIL: wrong exe\n", _TICKS, 1),         # tick completion AND a fingerprint failure: red
+    ("| mc2_03  | FAIL   | content_error,heartbeat_freeze_play | 0 | - |\n", _TICKS, 1),     # tick completion AND a content failure: red
+    (_RENDER_ROW, _TICKS + "Crash Report\n", 1),
+])
+def test_headless_rc_keeps_runner_failures_red(runner, log, rc):
+    assert sl.headless_rc(1, runner, log) == rc

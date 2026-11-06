@@ -366,9 +366,14 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     rc = r.returncode
     # A headless run has no frames, so the runner's render gates (vegetation, heartbeat) fail it by design; it is clean when the engine hit the
     # tick budget and exited through its summary without a crash.
-    if headless and rc == 1 and "[SMOKE v1] event=tick_budget" in text and "[SMOKE v1] event=summary result=pass" in text and "Crash Report" not in text:
-        rc = 0
+    # The verdict is judged on the runner output AND the engine log (sim_determinism.headless_exit_ok): a fingerprint or content failure stays red.
+    rc = headless_rc(rc, r.stdout, text) if headless else rc
     return dest, first, second, ({"sha": m.group(1), "dirty": int(m.group(2))} if m else None), rc
+
+
+def headless_rc(rc: int, runner_out: str, engine_log: str) -> int:
+    """The child rc of a headless run: 1 becomes 0 only when sim_determinism.headless_exit_ok accepts the runner plus engine text."""
+    return 0 if rc == 1 and sd.headless_exit_ok(rc, runner_out + "\n" + engine_log) else rc
 
 
 def save_evidence(path: str | None, what: str) -> str | None:
