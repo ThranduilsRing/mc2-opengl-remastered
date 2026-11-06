@@ -145,7 +145,7 @@ bool FsrProvider::record(VkCommandBuffer cb, const VkImageResource& scene, const
     d.output = wrap(s.output.image.get(), VK_FORMAT_R16G16B16A16_SFLOAT, s.w, s.h,
                     VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, FFX_API_RESOURCE_STATE_UNORDERED_ACCESS);
     d.jitterOffset = {jitter[0], jitter[1]};
-    d.motionVectorScale = {float(s.w), float(s.h)};   // motion is in UV units
+    d.motionVectorScale = {static_cast<float>(s.w), static_cast<float>(s.h)};   // motion is in UV units
     d.renderSize = {s.w, s.h};
     d.upscaleSize = {s.w, s.h};
     d.frameTimeDelta = dtMs;
