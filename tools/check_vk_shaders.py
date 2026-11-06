@@ -60,13 +60,15 @@ def compile_one(kind, exe, src_path):
         if src_path.endswith('.slang'):
             return slang_compile.bake(Path(src_path), Path(spv))
         if kind == "glslang":
-            cmd = [exe, "-V", src_path, "-o", spv]
-            if os.path.basename(src_path) == "hzb_cull.comp":  # subgroup ops; mirrors MC2_VK_SHADER_DEFINES_hzb_cull_comp
-                cmd[1:1] = ["--target-env", "vulkan1.1"]
+            # same target env as the build (GameOS/gameos/CMakeLists.txt: -V --target-env vulkan1.2 ${_defs});
+            # subgroup ops (vegetation_*.comp, hzb_cull.comp) need SPIR-V 1.3+
+            cmd = [exe, "-V", "--target-env", "vulkan1.2", src_path, "-o", spv]
+            if os.path.basename(src_path) == "hzb_cull.comp":  # mirrors MC2_VK_SHADER_DEFINES_hzb_cull_comp
+                cmd[4:4] = ["--target-env", "vulkan1.1"]
         else:
-            cmd = [exe, src_path, "-o", spv]
+            cmd = [exe, "--target-env=vulkan1.2", src_path, "-o", spv]
             if os.path.basename(src_path) == "hzb_cull.comp":
-                cmd[1:1] = ["--target-env=vulkan1.1"]
+                cmd[2:2] = ["--target-env=vulkan1.1"]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
         except FileNotFoundError:
