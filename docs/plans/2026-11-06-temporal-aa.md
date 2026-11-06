@@ -1,140 +1,239 @@
 # Temporal reconstruction inputs and FSR native AA for the Vulkan renderer
 
 Owner-approved track, 2026-11-06 (Astra report sections 3-5, rank 1; memory
-`decision-fable-fsr-dlss-plan-2026-10-29.md`; Opus review
-`A:/Games/mc2-ops/studies/opus-review-coopmat-2026-11-06.md`). That study's default-OFF policy is
+`decision-fable-fsr-dlss-plan-2026-10-29.md`). Revised after two adversarial reviews:
+`A:/Games/mc2-ops/studies/opus-review-coopmat-2026-11-06.md` and
+`A:/Games/mc2-ops/studies/astra-review-p1-2026-11-06.md`. That study's default-OFF policy is
 discarded: every slice ships ON or ships no visible change.
 
-**No hand-rolled TAA resolve.** A hand-rolled TAA was already built and retired
-(`docs/temporal-ab-decision.md`, arm C): softer fine roof/fence detail, higher static-hold
-variance on all three maps, disocclusion unproven, no depth-history or reactive rejection. A
-custom resolve would be a small custom upscaler that needs its own clamps, thin-feature locks,
-reactive handling and sharpening. The first consumer of these inputs is therefore **FSR 3.1 in
-native-AA mode** (analytical, every vendor, Vulkan). FSR upscaling (render scale < 1, plus the
-4.x ML path on RX 7000 on Windows) and DLSS follow at the same slot. A custom resolve exists only
-as a fallback if the FSR integration is blocked, and it must then clear the arm-C bar above.
+## Decisions
 
-Licences, to check per vendored file before slice 2 lands: the FidelityFX licence lists the FSR3
-upscaler source and the signed loader / VK DLLs under MIT-style terms; files not listed are
-binary-only. DLSS SDK sec. 4e forbids use that makes it "subject to an open source software
-license", and supplements 1 and 7.1b add NVIDIA-only and splash-mark terms. An open-source engine
-port plus mod ZIPs needs a licence ruling before any DLSS work. XeSS: unmodified binary only.
+1. **No hand-rolled TAA resolve.** One was built and retired (`docs/temporal-ab-decision.md`,
+   arm C): softer roof/fence detail, higher static-hold variance on all three maps, disocclusion
+   unproven, no depth-history or reactive rejection. A custom resolve is a small custom upscaler
+   (clamps, thin-feature locks, reactive handling, sharpening). The first consumer is **FSR 3.1
+   in native-AA mode** (analytical, every vendor, Vulkan). FSR upscaling (render scale < 1, the
+   4.x ML path on RX 7000 on Windows) and DLSS follow at the same slot. A custom resolve is only a
+   fallback if FSR integration is blocked, and it must then clear the arm-C bar.
+2. **Merge boundary: nothing that accumulates history ships ON until the motion and rejection
+   inputs are complete for every geometry path** in the coverage table below. Input slices merge
+   first and change no pixel; the resolve slice is last and ships ON.
+3. **Mechs get a reactive mask before per-object MVs.** Per-object vectors are added only if a
+   measurement (below) shows that depth reprojection plus the mask ghosts or shimmers on tiny mechs.
+4. **Quality gates are image sequences across all six mods; RGP proves cost only.**
 
-## Motion-vector contract
+Licences, checked per vendored file before the resolve slice lands: the FidelityFX licence lists
+the FSR3 upscaler source and the signed loader / VK DLLs under MIT-style terms; files not listed
+are binary-only. DLSS SDK sec. 4e forbids use that makes it "subject to an open source software
+license", and supplements 1 and 7.1b add NVIDIA-only and splash-mark terms, so DLSS waits for a
+licence ruling for an open-source engine port plus mod ZIPs. XeSS: unmodified binary only.
+
+## Motion-vector contract (internal)
 
 | Property | Value |
 |---|---|
-| Target | `scene.motionVectors`, `VK_FORMAT_R16G16_SFLOAT`, render resolution (same extent as scene depth, i.e. display * `MC2_RENDER_SCALE`) |
-| Units | UV units of the render target (not pixels, not NDC) |
-| Direction | `previousUV - currentUV`: add it to the current UV to fetch the history sample |
-| Y | Same Y as the UV the post passes sample with (`uv = 0` is the first row; VK viewports are positive-height, no flip), so `ndc = uv * 2 - 1` both ways |
-| Depth | Reverse-Z, `[0,1]`, GEQUAL; depth `0` (sky / far clear) writes zero motion |
-| Jitter | Excluded. MVs are computed from unjittered current and previous view-proj; FSR takes the jitter offset separately (`jitterOffset`, render pixels) |
-| FSR mapping | FSR expects the current-to-previous offset, which is this contract's direction; it is in UV with first-row-0 like ours, so the dispatch passes `motionVectorScale = (renderW, renderH)` and no flip |
-| No history | Zero motion when there is no previous frame, the previous frame is not `frame - 1`, or the camera did not move (identity reprojection) |
-| Layout at consumers | `SHADER_READ_ONLY_OPTIMAL` after the motion pass, inside the composite command buffer |
+| Camera target | `VK_FORMAT_R16G16_SFLOAT`, render resolution (extent of scene depth, display * `MC2_RENDER_SCALE`) |
+| Units / direction | UV of the render target, `previousUV - currentUV` (add to the current UV to fetch history) |
+| Y | `uv = 0` is the first row, VK viewports are positive-height, `ndc = uv * 2 - 1` both ways. The final present blit flips Y (`engine_present_vk.cpp` ~2282); that flip stays outside every reprojection |
+| Depth | Reverse-Z `[0,1]`, GEQUAL; depth `0` (sky clear) is handled by the sky row below, not by "zero motion" |
+| Jitter | Excluded from the stored vectors (see jitter algebra) |
+| Validity | Not encoded as zero motion. Validity is the history epoch (below); zero motion means "static", never "no history" |
+| Sync | Written in a graphics pass; the provider barrier adds `COMPUTE_SHADER` readers (FSR is compute), not only fragment readers |
 
-## Motion source per pass
+Provider boundary (adapted there, internal vectors stay in UV): FSR takes the current-to-previous
+offset, which is this direction, with `motionVectorScale = (renderW, renderH)` and no flip; DLSS
+takes render-pixel vectors and render-pixel jitter. The provider descriptor carries: render extent
+and display extent per frame, jitter in render pixels and its phase count (provider-chosen, not a
+fixed 8), `reset`, exposure / pre-exposure (linear HDR before tonemap), the reactive mask and the
+transparency-and-composition mask as separate images, and the depth convention (reverse-Z, inverted
+infinite = no). Slice A adds a precision check: RG16F error in pixels for a 0.1 px/frame pan and a
+full-screen pan at 4K.
 
-| Content | Source | Slice |
-|---|---|---|
-| Terrain, static props, buildings, sky | Depth reprojection: `prevClip = prevViewProj * inverse(curViewProj) * (ndc.xy, depth, 1)` in a fullscreen pass | 1 |
-| Mechs (skinned) and rigid vehicles | **First:** camera MV plus a reactive / low-history mask written by the mech and vehicle passes, so mech pixels look like today while terrain and props (where the shimmer is) converge. **Only if that measurably ghosts on tiny mechs:** previous rigid world transform (translation dominates in an RTS), then the previous bone palette (`gos_mech_batcher_flush.cpp`, `mech_skin.comp`) last | 2 (mask), 4 (per-object, conditional) |
-| Vegetation sway | Previous sway time (`prevTime` next to `misc.w` in `vegetation_vk.glsl`, and next to `color_prop_tier1.vert` time) evaluated twice in the vertex shader | 3 |
-| Water | Geometry is static, the waves are in the fragment shader: camera MV plus the reactive mask | 2 |
-| VFX / particles / impact decals | Reactive mask (FSR transparency-and-composition mask for additive, short-lived content) | 2 |
+## Pass order and object vectors
 
-The mech mask cannot reuse `MC2_OBJECT_ID_BUFFER` as-is: no Vulkan fragment shader writes the
-object-ID attachment today (GL-path MRT, `RenderPassContract.h`). Slice 2 adds a dedicated R8
-reactive output to the mech / vehicle / water / VFX passes instead.
+The camera pass must never overwrite object vectors. Order inside the frame:
 
-Measurement before per-object MVs (slice 2 exit criterion): mc2_10 `wolfman` and mc2_03 `scout_*`
-with moving mechs, 1080p, FSR native AA vs SMAA, lossless six-frame crops around the smallest
-moving mech. Per-object MVs are scheduled only if mech trails or mask-induced shimmer are visible
-in those crops.
-| HUD, ImGui, cursor | Not in the scene: composited after the resolve | n/a |
+1. Scene passes write color and depth. Object passes that own motion write a separate **object MV
+   target** (RG16F) plus a **validity / reactive R8** target, both cleared to 0 at scene begin,
+   depth-tested with the same depth state as their color draw (hidden objects cannot write over
+   foreground vectors because they fail the same depth test; equal-depth decals do not write).
+2. The camera pass runs after all scene passes: it computes camera motion from depth and
+   **composes**: where object validity is set, it outputs the object vector, else the camera vector.
+3. The provider reads the composed MV, the reactive mask and depth.
+
+Slice 1's camera pass already runs after the scene (start of the composite cbuf, `DONT_CARE` load
+plus full write); slice B changes it to read the object targets. No per-object replay pass.
+
+### Geometry coverage (every path that draws into the scene)
+
+| Path | Real code path | Motion | Rejection |
+|---|---|---|---|
+| Terrain (indirect LOD chunks) | `gos_terrain_lod_chunk_draw.cpp`, cached dispatch MVP | Camera (static) | Fog-of-war reveal is a shading change: reactive pulse on vertices whose visibility changed this frame |
+| Static props, buildings | `GpuStaticPropBatcher` | Camera (static) | Destruction swap: reactive for the frame the shape changes |
+| Mechs, GPU-skinned | `mech_skin.comp` writes posed world positions and rewrites bone indices/weights; `mech_tier1.vert` then skips blending; palettes already contain world placement, root import placement and lift (`gos_mech_batcher_flush.cpp` ~38) | Phase 1: none (reactive). Phase 2 (only if measured): `mech_skin.comp` keeps the previous **posed position stream** (ping-pong buffer, swapped per flush), and the vertex shader projects both streams with current / previous unjittered view-proj. No extra world transform is applied (palettes already hold it), so nothing is double-transformed | Mask written by the mech pass |
+| Mechs, CPU fallback / detached arms | `TG_MultiShape::Render` (`mech3d_render.cpp` ~1032) | None | Mask (legacy pass writes R8 = 1) |
+| Vehicles | `GpuStaticPropBatcher`, the mech batcher, or CPU fallback (`gvactor_render.cpp` ~126) | Phase 2: rigid previous world matrix per instance for the prop-batcher path; the mech-batcher path inherits the posed-stream scheme; CPU fallback stays mask-only | Mask on all three |
+| Legacy pretransformed world geometry | `legacy_shape_tier1.vert` (CPU-projected) | None | Mask |
+| Vegetation sway | `vegetation_vk.glsl`, `color_prop_tier1.vert` | Previous sway time evaluated in the vertex shader (both times in the uniform) | - |
+| Water | `water_geom.vert`: time-dependent wave displacement attenuated by view angle (~158), shoreline mode rewrites depth independently (~222); water writes depth | The stored depth is not the visible surface, so depth reprojection is wrong on water. Water writes its own object MV from the previous wave time and the previous camera-dependent attenuation | Water is also reactive for reflections and animated shading (value fixed by the measurement, not assumed) |
+| VFX: additive and alpha-blended (`vulkan_legacy_shape_island.cpp` ~414), lasers, smoke | Not depth-writing | None | Transparency-and-composition mask, written with max blend, cleared each frame; disappearance is free because the mask is per-frame |
+| Decals (impact, scorch) | Surface-bound | Camera | Reactive on birth and during fade |
+| Emissive animation | Mech/prop emissive pulses | Camera | Reactive where emissive changed |
+| Sky (HDRI, `hdri_sky.frag` ~27) | Depends on view rotation only | **Rotation-only reprojection**: for depth 0, previous UV = project(previous view rotation, current view direction), translation ignored | - |
+| Moving shadows | Dynamic casters (`vk_scene_renderer_passes.cpp` ~18) change receiver shading | Receiver motion (camera) only; no object vectors on receivers | Provider luma/colour rejection; proven by the moving-shadow sequence, not assumed |
 
 ## Jitter
 
-- Halton(2,3), 8 phases, as a sub-pixel offset in render-resolution pixels, applied to the main
-  view projection only (clip-space `xy += jitter * 2 / renderSize * w`). Published next to
-  `previousWorldToClipGL` in `ViewUniforms` (slice 2).
-- Unjittered: simulation and every CPU visibility test, HZB build and cull
-  (`vulkan_post_hzb_native.cpp`), shadow cascades and the CSM fit, HUD / ImGui, the MV pass itself.
-- Picking stays unjittered because it never reads a GPU image: click and box selection project
-  candidates on the CPU with the camera's matrices (`code/objmgr_pick.cpp`
-  `pickGameplaySelection`, `code/missiongui_input.cpp`, `PerPolySelect` in mclib), and jitter is
-  added only to the GPU copy of the main view projection, never to the camera. The object-ID
-  target is a different matter: it is an MRT of the scene draw (GL path only today), so if a VK
-  writer is added it IS jittered by up to half a render pixel. Its consumers (the Object ID debug
-  view) accept that; nothing may pick from it without a +-1 px tolerance or an unjittered re-draw.
-- Jittered (they reconstruct world position from the jittered depth and must use the same matrix):
-  fog (`vulkan_post_fog_native.cpp`), screen effects, decals, SSAO-like reconstructors via
-  `inverseViewProj_` (`setTerrainMVP`).
-- Jitter is zero while the resolve is not running, so slice 1 changes no pixel.
-- Texture mip bias: today `log2(renderScale)` (`vk_render_infra.cpp` ~53). With FSR it becomes
-  `log2(render/display) - 1` and flips together with the resolve, never alone (SMAA-only frames
-  would shimmer more).
+### Render-only matrices
 
-### In-world overlays under jitter
+The shared camera (`Camera::worldToClipGL`, frustum extraction `camera.cpp` ~670, inverse
+projection `camera_project.cpp` ~460) is **never jittered**. Jitter is a render-only clip offset
+applied at the GPU-feed boundary:
 
-These are drawn into the scene before the HUD, so they would be jittered and enter history:
+- Published as `jitterClip = 2 * jitterPx / renderExtent` (x, y) in the frame packet next to
+  `previousWorldToClipGL`.
+- Applied to: the terrain dispatch MVP (`gos_terrain_lod_chunk_draw.cpp`), the mech MVP accessor
+  (`gos_mech_batcher_flush.cpp` ~479), the prop / vegetation / water feeds, and pretransformed legacy
+  world geometry as a vertex-shader offset `clip.xy += jitterClip * clip.w` in
+  `legacy_shape_tier1.vert`, keyed off the world-geometry tag so HUD draws in the same shader get 0.
+- Not applied to: simulation, CPU picking (`objmgr_pick.cpp`, `missiongui_input.cpp`,
+  `PerPolySelect`), CPU visibility, shadow fitting and caster projection, HUD / ImGui.
+- Every depth prepass uses the identical jittered matrix as its colour pass (bitwise; shared
+  helper), or GEQUAL equal-depth tests fail.
+- Determinism proof: the mc2_01 determinism and save-load baselines are run with jitter on and off
+  and must match (jitter never reaches simulation data).
 
-| Overlay | Behavior under jitter | Plan |
-|---|---|---|
-| Fog-of-war / shroud | Baked into terrain vertex colour (CPU visibility per vertex), so it moves with the terrain and camera MVs are correct. A reveal is a shading change, not motion: FSR's colour clamp follows it within a few frames | Keep in scene; verify a reveal edge in the slice 2 captures (no lag trail longer than about 4 frames) |
-| Sensor / visibility overlay, terrain overlay quads | Thin, high-contrast, screen-stable lines over moving terrain: will crawl or ghost | Write the reactive mask (full reactive), or move to a post-resolve overlay layer |
-| Selection circles, waypoint / path lines, tactical arcs, debug lines | Same: thin and UI-like; they must stay crisp | Draw after the resolve in a post-resolve, unjittered overlay pass at display resolution (depth-tested against the resolved depth is not needed: these already draw on top) |
-| Damage / impact decals | Part of the surface, move with it | Keep in scene, camera MVs |
+### Depth reconstruction algebra
 
-Slice 2 lists every pass that draws between the scene clear and the HUD and assigns it one of
-these three rows; an unassigned pass fails the slice.
+Let `J = jitterClip` for the current frame. A jittered draw produces
+`ndc_j = ndc_u + J`, where `ndc_u` is the position under the unjittered matrix `C`. A pixel at
+`uv` samples jittered depth `d`, so the unjittered reconstruction is
 
-## Resolve placement
+```
+ndc_u = (uv * 2 - 1) - J            // remove the current jitter: uv - jitterPx / renderExtent
+world = inverse(C) * (ndc_u, d, 1)
+prev  = P * world                   // P = previous UNJITTERED view-proj
+mv    = (prev.xy / prev.w * 0.5 + 0.5) - (uv - J / 2)
+```
 
-`scene (HDR, jittered, render res) -> motion pass + reactive mask -> FSR (native AA, or upscale
-to display res) -> post-resolve overlays -> tonemap / composite -> HUD / ImGui`. SMAA/FXAA/CMAA2
-are not applied on top of FSR output. FSR runs before tonemap on linear HDR (with its exposure
-input) and before the HUD so UI never enters history. The upscaling and DLSS providers take the
-same slot and output display resolution, so the composite reads their output instead of the
-scene. Payoff note: mission frames are often CPU-bound (wolfman, UpdateRenderers), so the value
-on the XTX is AA quality at native; render scale < 1 is a secondary benefit to be measured.
+`mv` is the motion of the surface point on the unjittered grid; history is stored on the
+**unjittered (stabilized) grid** by the provider, which takes `jitterPx` separately. Each frame's
+jitter is converted with that frame's own render extent. Required numerical cases (unit test of
+the shader math in the C++ harness): stationary camera with alternating jitter gives mv = 0;
+1 px horizontal and vertical pan; zoom; perspective and orthographic projections; odd extents.
 
-## History reset
+### HZB under jitter
 
-The motion pass and the resolve both treat "no valid previous" as a reset (zero motion, history
-weight 0). The previous matrix is published only when the previous view packet is from frame
-`N - 1`; a reset is forced by:
+HZB samples the shared, jittered scene depth (`vulkan_post_hzb_native.cpp` ~625) while culling
+uploads the prop-feed matrix (~944). With jitter on, culling tests against the jittered matrix of
+the frame whose depth built the HZB, and expands every projected bound by `|J|` plus one texel
+(conservative). CPU visibility stays unjittered. Proof: occlusion-on vs occlusion-off frames with
+jitter on, thin occluders and object edges, zero popped objects.
 
-| Event | Hook |
+### Picking and object ID
+
+Picking never reads a GPU image (CPU projection with the camera's matrices), so it stays unjittered
+by construction. The object-ID target, if a VK writer is ever added, is an MRT of the jittered draw
+and therefore jittered by up to half a render pixel; it may be used for debug views and masks, and
+nothing may pick from it without a 1 px tolerance or an unjittered redraw. No VK fragment shader
+writes it today, so it is not the mech mask source.
+
+### Texture mip bias
+
+Today `log2(renderScale)` (`vk_render_infra.cpp` ~53). With the provider it becomes
+`log2(render / display) - 1` and flips in the same commit as the resolve, never alone.
+
+### In-world overlays
+
+| Overlay | Plan |
 |---|---|
-| Resize / render-scale change | `gosPostProcess::resize -> createSceneTargets` and `buildSharedImage` (targets are rebuilt; the MV class `reset()`s) |
-| Mission load / unload | `Mission::destroy` (`code/mission.cpp`, next to `GpuMechBatcher::onMapUnload`) |
-| Save load | `saveload_load.cpp` restore path |
-| Camera cut | ABL script camera (`ablmc2_camera.cpp`); a world-space jump of the camera origin or a view-matrix delta above a threshold (robust fallback; `swoopy = false` is NOT a cut) |
-| Spawn / teleport | Covered by the reactive mask (mech pixels keep low history); per-object stamps only with slice 4 |
-| Any of the above | FSR `reset = true` for that frame |
-| Pause, view-mode change, frame skipped | Frame-counter gap (`frame != prevFrame + 1`) |
+| Fog-of-war / shroud | Baked into terrain vertex colour, moves with the terrain: camera MV, reactive pulse on reveal (coverage table) |
+| Sensor / visibility overlay, terrain overlay quads | Reactive (full) or post-resolve layer, decided per pass in the resolve slice |
+| Selection circles, waypoint / path lines, tactical arcs, debug lines | Post-resolve, unjittered overlay pass at display resolution |
+
+The resolve slice lists every pass between scene clear and HUD and assigns each a row in the
+coverage or overlay table; an unassigned pass blocks the merge.
+
+## Resolve placement and routing
+
+Existing routing: scene -> `scaledComposite` (render res) -> spatial AA -> separate upscale + CAS
+(`engine_present_vk.cpp` ~1673 / ~1760 / ~1778) -> HUD tail. With temporal reconstruction:
+
+| Mode | Route |
+|---|---|
+| Native (scale 1.0) | scene HDR -> provider (native AA, render = display) -> composite (tonemap / grade once) -> post-resolve overlays -> HUD |
+| Scaled, provider upscales | scene HDR (render res) -> provider (output display res) -> composite at display res; the spatial upscale pass is **bypassed** |
+| Any temporal mode | SMAA / FXAA / CMAA2 bypassed; sharpening is done by exactly one stage (provider sharpening, CAS off) |
+
+Tonemap and grading run once, after HDR reconstruction. The HUD / ImGui tail is unchanged. Payoff
+note: mission frames are often CPU-bound (wolfman, UpdateRenderers), so on the XTX the value is AA
+quality at native; scaled modes must be measured, not assumed.
+
+## History epochs and reset ownership
+
+A frame gap is not a lifecycle event. Each view owns a `HistoryEpoch { uint32 id; ResetReason why; }`
+in the frame packet. Any reset increments `id`; every history consumer (camera previous matrix,
+colour / depth history in the provider, object MV streams, water time) compares epochs and drops
+history on mismatch. The provider gets `reset = true` on that frame. History advances only when
+the frame's history image was actually produced (composite recorded and submitted), not when the
+camera publishes.
+
+| Event | Owner that bumps the epoch |
+|---|---|
+| Mission load / unload | `Mission::destroy` / mission init (camera history is per camera object, not function-static) |
+| Save load | `saveload_load.cpp` (~535 creates a new camera: new camera = new history) |
+| Camera cut, zoom snap | `GameCamera`: ABL script camera cuts (`ablmc2_camera.cpp`), zoom-preset jumps, and a view-matrix delta above a threshold measured from the cross_map_view pan (logged, set in the resolve slice) |
+| Pause | Not a reset: the camera is still, the history stays valid and converges; unpause is not a reset |
+| View-mode change (Visual / Thermal / ...) | `gos_SetSelectedViewMode` |
+| Resize, render-scale change, AA-mode change | `gosPostProcess::resize -> createSceneTargets`, `buildSharedImage`, the options apply path (scale is restart-only today; the hook still owns it) |
+| Editor | `EditorCamera` publishes its own previous projection and epoch (today it leaves previous zero, so editor pans have zero camera MV) |
+| Failed / skipped present | Present owner: no history produced, next frame resets |
+| Actor teleport / disappear / reappear / mesh or LOD change | Per-object key = actor generation + geometry/LOD identity (not compacted instance or bone offsets); a mismatch or a position jump above a threshold marks the object reactive and drops its previous stream |
 
 ## Slice plan
 
 | # | Slice | Visible change | Estimate |
 |---|---|---|---|
-| 1 | Previous view-proj in `ViewUniforms`, camera MV target by depth reprojection, ImGui debug view (Graphics Options, "Motion Vectors") | None (infra + debug view) | this lane |
-| 2 | Vendor FSR 3.1 upscaler source (MIT-listed files only, licence receipt per file) behind a provider interface; Halton jitter on the main view; reactive mask from mech / vehicle / water / VFX passes; post-resolve overlay pass; mip-bias flip; FSR native AA replaces SMAA, ships ON with a registered kill-switch and removal plan. Exit: arm-C bar (roof/fence detail vs SMAA, static-hold variance) plus the tiny-mech measurement | Yes, ON | 5-7 days |
-| 3 | Vegetation previous sway | Fixes foliage smear | 1-2 days |
-| 4 | Mech / vehicle per-object MVs (rigid transform first, bone palette last), only if the slice 2 measurement shows mech ghosting | Fixes mech ghosting | 2-3 days, conditional |
-| 5 | FSR upscaling presets (render scale < 1), FSR 4.x ML path on RX 7000 (Windows) | Yes, ON for the chosen preset | 3-4 days |
-| 6 | DLSS / DLAA provider, blocked on the SDK licence ruling (sec. 4e); XeSS only if FSR falls short | Opt-in provider | 3+ days after ruling |
-| - | Baseline the decision doc already preferred: AF16 + Toksvig-style specular AA (arm E) re-tested against FSR native AA in the slice 2 captures | Comparison only | in slice 2 |
+| A | (this lane) Previous view-proj in `ViewUniforms`, camera MV target by depth reprojection, ImGui debug inset (Graphics Options, "Motion Vectors"); pass runs only when the inset is on | None | done |
+| B | History epochs + reset owners; render-only jitter plumbing with jitter = 0; MV algebra with jitter term + harness math tests; object MV + validity/reactive targets and composition in the camera pass; sky rotation reprojection; water MV; reactive/transparency writers for every coverage row; vegetation previous sway; HZB jitter expansion | None (jitter 0, no consumer) | 5-7 days |
+| C | Vendor FSR 3.1 (MIT-listed files only, licence receipt per file), provider descriptor, routing table, mip-bias flip, post-resolve overlay pass; FSR native AA replaces spatial AA, ships ON with a registered kill-switch and removal plan | Yes, ON | 5-7 days |
+| D | Per-object mech / vehicle vectors (posed-stream ping-pong, rigid previous matrices), **only if** the slice C tiny-mech measurement fails | Fixes mech ghosting | 2-3 days, conditional |
+| E | FSR upscaling presets, FSR 4.x ML on RX 7000 (Windows) | Yes, per preset | 3-4 days |
+| F | DLSS / DLAA provider after the sec. 4e licence ruling; XeSS only if FSR falls short | Opt-in provider | 3+ days after ruling |
 
-## Slice 1 state (claude/temporal-aa)
+## Merge requirements for slice C (quality, not only cost)
+
+Matched SMAA vs temporal sequences, archived with frame identity, settings, build and shader hashes
+and full lossless sequences; detail retention and trails judged together (a lower frame difference
+alone rewards blur):
+
+- static holds across several complete jitter cycles (arm-C static-variance bar);
+- subpixel pan, rotation and zoom with crops on tiny mechs, fences and foliage;
+- walking, turning, firing, dismemberment, occlusion / reappearance, teleport;
+- water, smoke, lasers, moving shadows, decal fade, fog-of-war reveal;
+- day (mc2_01) and night (mc2_10), scale 1.0 and a reduced scale, odd resize, load / reset, pause;
+- the AF16 + specular-AA spatial baseline (decision doc arm E) as a third arm;
+- **all six mods** (MC2X-CVE-G, MC2X-REAP3, Exodus, MagicExpansion, MechCommanderOmnitech,
+  MCO-Carver5): one moving-scene sequence each on a mission using their own mech / VFX content.
+
+Tiny-mech measurement (decides slice D): mc2_10 `wolfman` and mc2_03 `scout_*` with moving mechs,
+1080p, lossless six-frame crops around the smallest moving mech; slice D is scheduled only if
+trails or mask-induced shimmer are visible.
+
+RGP before/after at the default pose and the worst-case poses covers GPU cost and synchronization;
+it is not a quality gate.
+
+## Slice A state (claude/temporal-aa)
 
 - `ViewUniforms` grows `previousWorldToClipGL` (offset 144, 208 B). `GameCamera::renderViewUniforms`
-  fills it from the previous frame's matrix, or with the current matrix on a frame gap (reset).
+  fills it from the previous frame's matrix, or with the current matrix on a frame gap. This is the
+  interim reset; slice B replaces it with epochs (it is function-static today, so it survives a
+  camera replacement on save load).
 - `vulkan_motion_vectors.{h,cpp}` + `motion_vectors.frag` record the camera MV pass at the start of
-  the composite command buffer, every frame (GPU scope `VKIsl.Post.MotionVectors`).
-- `motion_vectors_debug.frag` draws an inset of the MV target over the composite when the
-  Graphics Options "Motion Vectors" checkbox is on (red/green = +x/+y, 8 px = full scale).
-- `docs/render-contract.md`: the "no motion targets without a temporal consumer" rule now names
-  this track and the debug consumer.
+  the composite command buffer (GPU scope `VKIsl.Post.MotionVectors`), only while the debug inset
+  is on: until a resolve exists the pass and its RG16F image (about 32 MiB at 4K) cost nothing by
+  default. Once allocated, the image stays until the next target rebuild.
+- `motion_vectors_debug.frag` draws the inset (red/green = +x/+y, 8 px = full scale).
+- Sky (depth 0) writes zero motion in slice A; rotation-only sky reprojection is slice B.
+- `docs/render-contract.md`: the "no motion targets without a temporal consumer" rule names this
+  track and the debug consumer.

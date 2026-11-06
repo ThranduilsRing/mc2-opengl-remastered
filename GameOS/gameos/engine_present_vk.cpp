@@ -1683,9 +1683,11 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
 
-    // Camera motion vectors (temporal track, docs/plans/2026-11-06-temporal-aa.md): every frame,
-    // before the composite; the only consumer so far is the debug inset in the present tail.
-    if (VkImageResource* depth = mc2SharedSceneDepthGetResource(); depth && depth->image && depth->w && depth->h) {
+    // Camera motion vectors (temporal track, docs/plans/2026-11-06-temporal-aa.md), before the
+    // composite. Demand-driven: the only consumer so far is the debug inset in the present tail,
+    // so the pass (and its image) cost nothing until that inset or a resolve asks for it.
+    if (VkImageResource* depth = mc2SharedSceneDepthGetResource();
+        s.showMotionVectorsDebug && depth && depth->image && depth->w && depth->h) {
         if (s.motionVectors.prepare(*s.ctx, *depth)) s.motionVectors.record(cc, *depth);
     }
 
