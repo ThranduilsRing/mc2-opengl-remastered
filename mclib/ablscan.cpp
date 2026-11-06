@@ -14,6 +14,7 @@
 #include<string.h>
 #include"platform_str.h"
 #include<time.h>
+#include <filesystem>
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -457,21 +458,11 @@ void languageDirective (void) {
 			DumbGetCharOn = false;
 			long openErr = ABL_NO_ERR;
 
-			char fullPath[255];
-			long curChar = static_cast<long>(strlen(SourceFiles[0]));
-			// Mission paths come from system.cfg as "data/missions/" on every platform (and FST keys
-			// use '/'), so split on either separator; preferred_separator ('\\' on Windows) dropped the
-			// directory and every include_ (OConst.abi, misconst.abi) failed to open.
-			while ((curChar > -1) && (SourceFiles[0][curChar] != '/') && (SourceFiles[0][curChar] != '\\'))
-				curChar--;
-			if (curChar == -1)
-				strcpy(fullPath, fileName);
-			else {
-				strcpy(fullPath, SourceFiles[0]);
-				fullPath[curChar + 1] = '\0';
-				strcat(fullPath, fileName);
-			}
-			if ((openErr = openSourceFile(fullPath)) != ABL_NO_ERR) {
+			// The include sits next to the including file. Mission paths are "data/missions/..." on
+			// every platform and FST keys use '/', so take the directory with std::filesystem (either
+			// separator) and keep '/' (a preferred_separator scan dropped the directory on Windows).
+			const std::string fullPath = std::filesystem::path(SourceFiles[0]).replace_filename(fileName).generic_string();
+			if ((openErr = openSourceFile(fullPath.c_str())) != ABL_NO_ERR) {
 				syntaxError(ABL_ERR_SYNTAX_SOURCE_FILE_OPEN);
 				curToken = TKN_ERROR;
 			}
