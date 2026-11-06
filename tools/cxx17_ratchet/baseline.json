@@ -144,7 +144,7 @@
    "LG03": 314,
    "LG04": 15,
    "LG05": 198,
-   "LG06": 257,
+   "LG06": 215,
    "LG07": 2,
    "LG08": 3,
    "LG09": 51,
@@ -2162,81 +2162,55 @@
   "code/mpconnectiontype.h": {},
   "code/mpgamebrowser.cpp": {
    "LG05": 2,
-   "LG06": 2,
    "LG12b": 3
   },
-  "code/mpgamebrowser.h": {
-   "LG06": 2
-  },
+  "code/mpgamebrowser.h": {},
   "code/mphostgame.cpp": {
-   "LG05": 1,
-   "LG06": 1
+   "LG05": 1
   },
-  "code/mphostgame.h": {
-   "LG06": 1
-  },
+  "code/mphostgame.h": {},
   "code/mploadmap.cpp": {
    "LG03": 3,
    "LG05": 1,
-   "LG06": 2,
    "LG10": 1,
    "LG11": 4,
    "LG12b": 3
   },
-  "code/mploadmap.h": {
-   "LG06": 2
-  },
+  "code/mploadmap.h": {},
   "code/mpparameterscreen.cpp": {
    "LG03": 1,
    "LG05": 3,
-   "LG06": 8,
    "LG09": 1,
    "LG10": 8,
    "LG12b": 6
   },
-  "code/mpparameterscreen.h": {
-   "LG06": 8
-  },
+  "code/mpparameterscreen.h": {},
   "code/mpprefs.cpp": {
    "LG05": 1,
-   "LG06": 1,
    "LG11": 2
   },
-  "code/mpprefs.h": {
-   "LG06": 1
-  },
+  "code/mpprefs.h": {},
   "code/mpsetuparea.cpp": {
-   "LG05": 1,
-   "LG06": 3
+   "LG05": 1
   },
-  "code/mpsetuparea.h": {
-   "LG06": 3
-  },
+  "code/mpsetuparea.h": {},
   "code/mpstats.cpp": {
    "LG05": 1,
-   "LG06": 1,
    "LG11": 1,
    "LG12b": 4,
    "LG18": 1
   },
-  "code/mpstats.h": {
-   "LG06": 1
-  },
-  "code/multplyr.cpp": {
-   "LG06": 2
-  },
+  "code/mpstats.h": {},
+  "code/multplyr.cpp": {},
   "code/multplyr.h": {
-   "LG06": 3,
+   "LG06": 1,
    "LG14": 7,
    "LG17": 2
   },
-  "code/multplyr_handle.cpp": {
-   "LG06": 1
-  },
+  "code/multplyr_handle.cpp": {},
   "code/multplyr_internal.h": {},
   "code/multplyr_null.cpp": {
    "LG05": 2,
-   "LG06": 1,
    "LG17": 1
   },
   "code/multplyr_send.cpp": {

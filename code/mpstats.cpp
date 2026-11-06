@@ -276,7 +276,7 @@ void MPStats::update()
 
 }
 
-void MPStats::setHostLeftDlg( const char* hostName )
+void MPStats::setHostLeftDlg( mc2::czstring hostName )
 {
 	char leaveStr[256];
 	char formatStr[256];

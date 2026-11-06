@@ -51,7 +51,7 @@ MultiPlayer* MPlayer = nullptr;
 ///extern Scenario* scenario;
 ///extern Logistics* globalLogPtr;
 
-void DEBUGWINS_print (const char* s, long window = 0);
+void DEBUGWINS_print (mc2::czstring s, long window = 0);
 
 //***************************************************************************
 // MISC functions
@@ -337,7 +337,7 @@ bool MultiPlayer::playersReadyToLoad (void) {
 
 //-----------------------------------------------------------------------------
 
-bool MultiPlayer::launchBrowser (const char* link) {
+bool MultiPlayer::launchBrowser (mc2::czstring link) {
 
 	return(false);
 }

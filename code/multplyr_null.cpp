@@ -40,7 +40,7 @@ void MultiPlayer::initParametersScreen() {}
 void MultiPlayer::initSpecialBuildings(char commandersToLoad[8][3]) {}
 bool MultiPlayer::isServerMissing() { return false; }
 long MultiPlayer::joinSession(MC2Session* session, char* playerName) { return long(); }
-bool MultiPlayer::launchBrowser(const char* link) { return false; }
+bool MultiPlayer::launchBrowser(mc2::czstring link) { return false; }
 bool MultiPlayer::playersReadyToLoad() { return false; }
 void MultiPlayer::redistributeRP() {}
 void MultiPlayer::removeFromLocalMovers(MoverPtr mover) {}
