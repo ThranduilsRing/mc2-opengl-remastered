@@ -234,7 +234,8 @@ struct gosTextAttribs {
 
 
 
-enum HudDrawKind { kHudQuadBatch, kHudLineBatch, kHudTriBatch, kHudTextQuadBatch };
+enum class HudDrawKind : int { kHudQuadBatch, kHudLineBatch, kHudTriBatch, kHudTextQuadBatch };
+using enum HudDrawKind;
 
 
 struct HudDrawCall {

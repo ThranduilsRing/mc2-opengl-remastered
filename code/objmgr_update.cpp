@@ -931,13 +931,13 @@ GameObjectPtr GameObjectManager::get (GameObjectHandle handle) {
 void GameObjectManager::updatePresentationCull() {
     for (long i = 0; i < numMechs; ++i)
         if (mechs[i] && mechs[i]->getExists())
-            emitGpuCullRecord(mechs[i], gpu_cull::Cat_Mech, gpu_cull::Consumer_RenderGate);
+            emitGpuCullRecord(mechs[i], gpu_cull::Cat_Mech, std::to_underlying(gpu_cull::Consumer_RenderGate));
     for (long i = 0; i < numVehicles; ++i)
         if (vehicles[i] && vehicles[i]->getExists())
-            emitGpuCullRecord(vehicles[i], gpu_cull::Cat_GroundVeh, gpu_cull::Consumer_RenderGate);
+            emitGpuCullRecord(vehicles[i], gpu_cull::Cat_GroundVeh, std::to_underlying(gpu_cull::Consumer_RenderGate));
     for (long i = 0; i < numTurrets; ++i)
         if (turrets[i] && turrets[i]->getExists())
-            emitGpuCullRecord(turrets[i], gpu_cull::Cat_Turret, gpu_cull::Consumer_RenderGate);
+            emitGpuCullRecord(turrets[i], gpu_cull::Cat_Turret, std::to_underlying(gpu_cull::Consumer_RenderGate));
     gpu_cull::substrate_flushUpload();
     if (gpu_cull::compute_isEnabled()) gpu_cull::compute_emitParitySummary();
 }

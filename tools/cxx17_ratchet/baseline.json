@@ -61,7 +61,7 @@
    "LG12a": 58,
    "LG12b": 24,
    "LG13": 19,
-   "LG14": 53,
+   "LG14": 50,
    "LG15": 0,
    "LG16": 5,
    "LG17": 68,
@@ -199,7 +199,7 @@
    "LG12a": 76,
    "LG12b": 8,
    "LG13": 15,
-   "LG14": 47,
+   "LG14": 43,
    "LG15": 0,
    "LG16": 10,
    "LG17": 78,
@@ -409,7 +409,6 @@
   },
   "GameOS/gameos/gameos_graphics_material_internal.h": {
    "LG03": 8,
-   "LG14": 1,
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_overlay.cpp": {},
@@ -491,9 +490,7 @@
   "GameOS/gameos/gos_host_vk.cpp": {},
   "GameOS/gameos/gos_host_vk.h": {},
   "GameOS/gameos/gos_input.cpp": {},
-  "GameOS/gameos/gos_input.h": {
-   "LG14": 1
-  },
+  "GameOS/gameos/gos_input.h": {},
   "GameOS/gameos/gos_materials.cpp": {},
   "GameOS/gameos/gos_materials.h": {},
   "GameOS/gameos/gos_mech_batcher.cpp": {},
@@ -663,7 +660,7 @@
   "GameOS/gameos/gpu_cull_readback.h": {},
   "GameOS/gameos/gpu_cull_record.cpp": {},
   "GameOS/gameos/gpu_cull_record.h": {
-   "LG14": 3
+   "LG14": 2
   },
   "GameOS/gameos/gpu_cull_substrate.cpp": {
    "LG10": 1,
@@ -3379,9 +3376,7 @@
   },
   "mclib/resizeimage.h": {},
   "mclib/resource_strings.cpp": {},
-  "mclib/routines.cpp": {
-   "LG14": 1
-  },
+  "mclib/routines.cpp": {},
   "mclib/score_sort.h": {},
   "mclib/script_music.h": {},
   "mclib/searchlight_aim.h": {},
@@ -3424,9 +3419,7 @@
    "LG05": 1,
    "LG11": 4
   },
-  "mclib/stuff/filestream.hpp": {
-   "LG14": 1
-  },
+  "mclib/stuff/filestream.hpp": {},
   "mclib/stuff/filestreammanager.cpp": {
    "LG03": 1,
    "LG11": 2
@@ -3468,8 +3461,7 @@
    "LG11": 2
   },
   "mclib/stuff/notationfile.hpp": {
-   "LG03": 1,
-   "LG14": 1
+   "LG03": 1
   },
   "mclib/stuff/note.cpp": {},
   "mclib/stuff/note.hpp": {},
@@ -3521,8 +3513,7 @@
   "mclib/stuff/style.cpp": {},
   "mclib/stuff/style.hpp": {
    "LG10": 1,
-   "LG12a": 5,
-   "LG14": 1
+   "LG12a": 5
   },
   "mclib/stuff/trace.cpp": {
    "LG12a": 13
