@@ -14,6 +14,7 @@ def evidence(**overrides):
             'instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- items=- enabled=- extensions=-\n'
             '[VK_CAPABILITY v1] low_floor_mib=512 refused=-\n'
             '[VK_VALIDATION v1] severity=info id=layer_enabled text="enabled"\n'
+            '[VK_VALIDATION v1] severity=info id=canary_fired text="VUID-canary"\n'   # vk-validation-ci: a validated run proves the layer with the canary
             '[VK_RESIDENCY v1] phase=run_end ' + json.dumps(ledger) + '\n')
 
 

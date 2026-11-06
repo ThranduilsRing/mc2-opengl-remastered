@@ -305,13 +305,15 @@ def deployed_seed(root, head, cache_root=None):
 def save_deployed(install, root, head, cache_root=None):
     """Snapshot a freshly deployed, not yet mutated install as the pristine seed. Errors are logged, never raised."""
     import subprocess
+    sys.path.insert(0, str(Path(root) / "scripts"))
+    import console_child  # noqa: WPS433  (windowless console child)
     seed = Path(cache_root or CACHE_ROOT) / "deployed"
     try:
         if not install_current(install, root, head):
             raise ValueError("install is not the HEAD payload")
         shutil.rmtree(seed, ignore_errors=True)
         subprocess.run([sys.executable, str(Path(root) / "scripts/make-isolated-deploy.py"), "--from", str(install),
-                        "--to", str(seed), "--snapshot"], check=True)
+                        "--to", str(seed), "--snapshot"], check=True, **console_child.child_kwargs())
         (seed / ".payload-key").write_text(json.dumps(payload_key(root, head)), encoding="utf-8")
         log(f"deployed seed SAVED {seed}")
     except Exception as exc:  # noqa: BLE001  never fail the gate over a cache write

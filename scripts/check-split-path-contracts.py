@@ -191,6 +191,8 @@ ISLANDS = {
         "Native Vulkan vegetation GPU cull (packet V2/V3 of the 2026-10-20 VK optimization design); no GL shader pair. Replaces the CPU per-instance walk; proof is the CPU/GPU survivor comparison, viewed A/B captures and the Tracy vegetationFlush before/after.",
     "shaders/vulkan/color_prop_cull.comp":
         "Native Vulkan static-prop instance compaction (vk-gpu-props): an ordered prefix-scan pass over the HZB visibility words that feeds vkCmdDrawIndexedIndirectCount; no GL shader pair. Proof is the viewed day and night A/B captures (night glows) against the per-packet draw loop it replaces.",
+    "shaders/vulkan/mech_skin.comp":
+        "Native Vulkan mech pre-skin compute (perf-hotspot d81e20c81): skins each skinnable mech instance once per frame for the depth, colour, shadow and preview stages; no GL shader pair. Proof is the viewed tier1 captures with mechs on screen and the Tracy mech-skin before/after (RGP owed per the lane report).",
     "shaders/vulkan/hzb_cull.comp":
         "Native Vulkan render-only static-prop culling from same-frame depth; no GL shader pair. Required proof: on/off captures including a horizon pose, plus a frame-time pair.",
     "shaders/vulkan/hzb_reduce.vert":

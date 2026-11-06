@@ -276,7 +276,7 @@ def test_gate_plan_uses_verified_ninja_and_required_checks():
     mods = next(cmd for name, cmd, _ in steps if name == "mods")
     assert "--fail-fast" not in mods
     assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 23
+    assert len(steps) == 24   # box-gate (gate-on-box) + syncval (vk-validation-ci) on the window 120 22-step plan
     video = next(cmd for name, cmd, _ in steps if name == "video-decode")
     assert video[1].endswith("video_decode_smoke.py") and "video-decode" in video[-1]
     quiet = next(cmd for name, cmd, _ in steps if name == "quiet")

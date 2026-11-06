@@ -16,13 +16,15 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "box" / "filler"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import box_run
+import console_child
 
 BOX = ROOT / "tools" / "box"
 BASH = shutil.which("bash") or "bash"   # not a bare "bash": on Windows CreateProcess finds the WSL launcher, which mangles $ in -c text
 
 
 def bash(script, env=None, **kw):
-    return subprocess.run([BASH, "-c", script], capture_output=True, text=True, env={**os.environ, **(env or {})}, **kw)
+    return subprocess.run([BASH, "-c", script], capture_output=True, text=True, env={**os.environ, **(env or {})},
+                          **console_child.child_kwargs(redirected=True, **kw))
 
 
 def between(text, a, b):
@@ -106,7 +108,7 @@ def lanes(tmp_path):
     (w / "lanes" / "zz_t" / "out" / "a1b2c3d4").mkdir(parents=True)
     (w / "lanes" / ".box_lane_zz_t.sh").write_text("x")
     m = tmp_path / "m.git"
-    subprocess.run(["git", "init", "-q", "--bare", str(m)], check=True)
+    subprocess.run(["git", "init", "-q", "--bare", str(m)], check=True, **console_child.child_kwargs())
     (w / "locks").mkdir()
     q = tmp_path / "queue.txt"      # stand-in for `pueue status --json`: one line of command/path/label per queued or running task
     q.write_text("")
@@ -169,7 +171,7 @@ def test_outs_drops_only_old_out_dirs(lanes):
 
 def test_script_syntax():
     for s in ("lane_cleanup.sh", "deploy.sh", "mc2-diskwatch.sh", "env.sh", "filler/sync.sh", "filler/repin.sh"):
-        r = subprocess.run([BASH, "-n", (BOX / s).as_posix()], capture_output=True, text=True)
+        r = subprocess.run([BASH, "-n", (BOX / s).as_posix()], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         assert r.returncode == 0, f"{s}: {r.stderr}"
 
 

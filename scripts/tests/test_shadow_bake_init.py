@@ -58,6 +58,10 @@ struct VkQueryPoolCreateInfo { int type; int queryType = 0, queryCount = 0; };
 static bool makeHostBuffer(OwnedBuffer& b, int, int, size_t, int, const char*) {
     b.reset(); b.valid = succeed(); liveBuffers += b.valid; return b.valid;
 }
+// vk-memory-placement S2/F10: the GPU-read feeds allocate through makeGpuReadBuffer (same ownership contract).
+static bool makeGpuReadBuffer(OwnedBuffer& b, int a, int d, size_t n, int u, const char* name) {
+    return makeHostBuffer(b, a, d, n, u, name);
+}
 static int vkCreateQueryPool(int, const VkQueryPoolCreateInfo* info, void*, int* out) {
     assert(info->queryCount == 2 * kMaxFramesInFlight);
     *out = succeed(); return *out ? 0 : -1;
@@ -134,6 +138,7 @@ def test_products_and_transients_publish_atomically(tmp_path):
     methods.append(cache[start:cache.index('\n}', start) + 2])
     probe = r'''
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstring>

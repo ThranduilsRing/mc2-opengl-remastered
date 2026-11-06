@@ -1,5 +1,7 @@
 // Fixture: the post-c26b1eb2a fix (accessor-provided stride) -- must be clean.
+// shadow_prop.vert carries a DrawPush block since the BDA shadow caster (f057b598b): the layout names its range.
 static void build(S* s) {
+    VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT, 0, 16};
     s->vert = load_spv(s->device, spv_dir() + "shadow_prop.vert.spv");
     s->frag = load_spv(s->device, spv_dir() + "shadow_prop.frag.spv");
     VkVertexInputBindingDescription vib{};

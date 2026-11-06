@@ -12,6 +12,9 @@ import struct
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import console_child  # noqa: E402  (windowless console children; a no-op off Windows)
+
 
 def parse(path):
     d = open(path, "rb").read()
@@ -53,11 +56,13 @@ def main():
     env = dict(os.environ, MC2_TEST_CRASH_FRAME="200")
     strace = shutil.which("strace")
     cmd = [sys.executable, "scripts/run_smoke.py", "--mission", "mc2_01", "--duration", "15", "--keep-logs", "--exe", exe]
-    r = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+    r = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
     open(os.path.join(out, "crash_run.log"), "w").write(r.stdout)
     if strace:  # second run under strace for the network check only (a tracer would block the handler's own ptrace)
         subprocess.run([strace, "-f", "-e", "trace=connect,sendto,sendmsg", "-o", os.path.join(out, "net.txt")] + cmd,
-                       env=dict(env, MC2_TEST_CRASH_FRAME="0"), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                       env=dict(env, MC2_TEST_CRASH_FRAME="0"), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       **console_child.child_kwargs(redirected=True))
     print("strace:", strace, "smoke rc:", r.returncode)
     for line in r.stdout.splitlines():
         if "[CRASH]" in line:
@@ -94,7 +99,8 @@ def main():
             args = [x for x in args if x]
             if sym and sym.endswith("addr2line"):
                 args = [sym, "-f", "-C", "-i", "-e", exe, hex(a)]
-            q = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            q = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                               **console_child.child_kwargs(redirected=True))
             print("symbolize(%s) %s: %s" % (label, hex(a), q.stdout.strip().replace("\n", " | ")[:300]))
     return 0
 
