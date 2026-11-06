@@ -263,7 +263,8 @@ def cheap_row_errors(head):
             ("memory-size", ["py", "-3", "scripts/check-memory-size.py"]))
     errors = []
     for name, command in rows:
-        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
+                                **console_child.child_kwargs(redirected=True))
         if result.returncode:
             tail = " | ".join((result.stdout + result.stderr).strip().splitlines()[-3:])
             errors.append(f"{name} failed before the build (rc={result.returncode}): {tail}; fix: {' '.join(command[2:])}")

@@ -36,6 +36,7 @@
     "tools/box/box_supervisor.py": "Linux-box-only supervisor: starts the filler worker, pueue and git on the rented box; the game never launches on this desktop.",
     "tools/box/quiet_slot.py": "Linux-box-only quiet-slot wrapper: runs a caller-supplied command under the GPU lock on the rented box; never on this desktop.",
     "scripts/video_decode_smoke.py": "Launches only scripts/run_smoke.py under sys.executable with console_child; the smoke harness owns the offscreen engine launch.",
+    "scripts/merge_gate.py": "Preflight hygiene rows run only fixed py -3 checker scripts (check-staged-hygiene, dup_check, check-memory-size) with console_child; the game launches only through run_smoke/run_visual_capture.",
     "scripts/run_visual.py": "Starts only the Python run_visual_capture.py harness with --no-kill and console_child; that harness owns the offscreen game launch, host lease and own-PID cleanup.",
     "tools/perf/mission_cpu_profile.py": "Launches only Tracy capture/export console tools directly; the engine launches through smoke_lib.runner and nofocus.",
     "tools/perf/rgp_capture.py": "Launches only the Radeon Developer Service and a minimized non-activating Radeon Developer Panel (both terminated at exit); the engine launches through smoke_lib.runner and nofocus.",
