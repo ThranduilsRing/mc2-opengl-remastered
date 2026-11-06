@@ -541,7 +541,7 @@ void MechLabScreen::update()
 	bool vals[4];
 	if ( pVariant && status == RUNNING ) // sensor help texts
 	{
-		int sensorID = pVariant->getSensorID();
+		int sensorID = pVariant->getSensorID().value_or(-1);
 		for ( int i = 0; i < 3; i++ )
 		{
 			if ( sensorID == sensorHelpIDs[i] - IDS_HELP_COMP0 )
@@ -549,7 +549,7 @@ void MechLabScreen::update()
 			else
 				vals[i] = false;
 		}
-		vals[3] = pVariant->getECM() > 0;
+		vals[3] = pVariant->getECM().value_or(-1) > 0;
 
 		for (int i = 0; i < 4; i++ )
 		{
@@ -755,7 +755,7 @@ void MechLabScreen::updateDiagramInput()
 
 
 			// highlight text if appropriate
-			LogisticsComponent* pComp = pVariant->getCompAtLocation(x, y, tmpX, tmpY );
+			LogisticsComponent* pComp = pVariant->getCompAtLocation(x, y, tmpX, tmpY ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 			if ( pComp )
 			{
 				long compX, compY, compX2, compY2;
@@ -778,7 +778,7 @@ void MechLabScreen::updateDiagramInput()
 		if ( x == -2 && y == -2 )
 		{
 			long tmpX, tmpY;
-			LogisticsComponent* pComp = pVariant->getCompAtLocation(x, y, tmpX, tmpY );
+			LogisticsComponent* pComp = pVariant->getCompAtLocation(x, y, tmpX, tmpY ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 			if ( pComp )
 			{
 				long compX, compY, compX2, compY2;
@@ -811,7 +811,7 @@ void MechLabScreen::updateDiagramInput()
 
 			if ( i != -1 && j != -1 )
 			{
-				LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, selI, selJ );
+				LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, selI, selJ ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 				if ( pComp && pComp == pSelectedComponent )
 				{
 					if ( canRemoveComponent( pComp ) )
@@ -840,7 +840,7 @@ void MechLabScreen::updateDiagramInput()
 			{
 				selI = tmpI;
 				selJ = tmpJ;
-				LogisticsComponent* pComp = pVariant->getCompAtLocation(tmpI, tmpJ, selI, selJ );
+				LogisticsComponent* pComp = pVariant->getCompAtLocation(tmpI, tmpJ, selI, selJ ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 				if ( pComp )
 				{
 					if ( canRemoveComponent( pComp ) )
@@ -865,7 +865,7 @@ void MechLabScreen::updateDiagramInput()
 			{
 				selI = tmpI;
 				selJ = tmpJ;
-				LogisticsComponent* pComp = pVariant->getCompAtLocation(tmpI, tmpJ, selI, selJ );
+				LogisticsComponent* pComp = pVariant->getCompAtLocation(tmpI, tmpJ, selI, selJ ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 				if ( pComp )
 				{
 					pSelectedComponent = pComp;
@@ -1938,7 +1938,7 @@ int MechLabScreen::selectFirstDiagramComponent()
 	{
 		for ( int i = 0; i < pVariant->getComponentAreaWidth(); i++ )
 		{
-			LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, selI, selJ );
+			LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, selI, selJ ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 			if ( pComp )
 			{
 				count++;
@@ -1977,7 +1977,7 @@ void MechLabScreen::removeComponent( long i, long j )
 {
 
 	long tmpX, tmpY;
-	LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, tmpX, tmpY );
+	LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, tmpX, tmpY ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 	if ( pComp )
 	{
 		if ( !pComp->isAvailable() )

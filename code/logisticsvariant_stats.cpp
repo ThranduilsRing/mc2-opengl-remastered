@@ -130,7 +130,7 @@ int LogisticsVariant::getSpeed() const
 	return effectiveSpeed();
 }
 
-int LogisticsVariant::getDisplaySpeed() const
+std::optional<int> LogisticsVariant::getDisplaySpeed() const
 {
 	return chassis->getDisplaySpeedForSpeed( effectiveSpeed() );
 }
@@ -290,10 +290,10 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 
 }
 
-const LogisticsChassis::ComponentInfo* LogisticsVariant::getComponentAtLocation( long x, long y ) const
+std::optional<std::reference_wrapper<const LogisticsChassis::ComponentInfo>> LogisticsVariant::getComponentAtLocation( long x, long y ) const
 {
 	if ( x == -1 && y == -1 )
-		return nullptr;
+		return std::nullopt;
 
 	for ( int i = 0; i < componentCount; ++i )
 	{
@@ -306,13 +306,13 @@ const LogisticsChassis::ComponentInfo* LogisticsVariant::getComponentAtLocation(
 				if ( components[i].xCoord + k == x
 					 && components[i].yCoord + j == y )
 				{
-					return &components[i];
+					return std::cref(components[i]);
 				}
 			}
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 bool LogisticsVariant::hasJumpJets() const
@@ -380,22 +380,19 @@ int	LogisticsVariant::getComponents( long& count, long* array )
 
 }
 
-int		LogisticsVariant::removeComponent( long xCoord, long yCoord )
+std::expected<void, int> LogisticsVariant::removeComponent( long xCoord, long yCoord )
 {
-	LogisticsChassis::ComponentInfo* info = const_cast<LogisticsChassis::ComponentInfo*>(getComponentAtLocation( xCoord, yCoord ));
+	auto found = getComponentAtLocation( xCoord, yCoord );
 
-	if ( !info )
-		return -1;
+	if ( !found )
+		return std::unexpected(-1);
+	const auto* info = &found->get();
 
 	if ( info->component && info->component->getType() == COMPONENT_FORM_HEATSINK )
 	{
 		if ( getMaxHeat() - info->component->getDamage() < getHeat() )
-			return INSUFFICIENT_HEAT;
+			return std::unexpected(INSUFFICIENT_HEAT);
 	}
-
-	
-	if ( !info )
-		return INVALID_LOCATION;
 
 	for ( int i = 0; i < componentCount; i++ )
 	{
@@ -408,7 +405,7 @@ int		LogisticsVariant::removeComponent( long xCoord, long yCoord )
 
 	componentCount --;
 
-	return 0;
+	return {};
 }
 
 // if you pass in -1's for x and y, we'll figure out where it can go, and return where it went
@@ -480,30 +477,31 @@ int	LogisticsVariant::getComponents( long& count, LogisticsComponent** array )
 
 }
 
-LogisticsComponent*	LogisticsVariant::getCompAtLocation( int i, int j, long& realI, long& realJ )
+std::optional<std::reference_wrapper<LogisticsComponent>> LogisticsVariant::getCompAtLocation( int i, int j, long& realI, long& realJ )
 {
 	realI = realJ = -1;
-	const LogisticsChassis::ComponentInfo* pInfo = getComponentAtLocation( i, j );
+	auto pInfo = getComponentAtLocation( i, j );
 
 	if ( pInfo )
 	{
-		realI = pInfo->xCoord;
-		realJ = pInfo->yCoord;
-		return pInfo->component;
+		realI = pInfo->get().xCoord;
+		realJ = pInfo->get().yCoord;
+		if ( pInfo->get().component )
+			return *pInfo->get().component;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 int	LogisticsVariant::getComponentLocation( LogisticsComponent* pComp, long& x, long& y )
 {
-	const LogisticsChassis::ComponentInfo* pInfo = getComponentAtLocation( x, y );
+	auto pInfo = getComponentAtLocation( x, y );
 	x = y = -1;
 
 	if ( pInfo )
 	{
-		x = pInfo->xCoord;
-		y = pInfo->yCoord;
+		x = pInfo->get().xCoord;
+		y = pInfo->get().yCoord;
 	}
 	else
 	{

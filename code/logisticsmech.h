@@ -42,7 +42,7 @@ class LogisticsMech
 		int				getArmor() const { return pVariant->getArmor(); }
 		int				getJumpRange() const { return pVariant->getJumpRange(); }
 		int				getSpeed() const { return pVariant->getSpeed(); }
-		int				getDisplaySpeed() const { return pVariant->getDisplaySpeed(); }
+		std::optional<int> getDisplaySpeed() const { return pVariant->getDisplaySpeed(); }
 		int				getVariantID() const { return pVariant->ID; }
 		// UI-PROFILE-1: route through the variant's override-aware accessors.
 		const std::string&	getSmallIconFileName() const { return pVariant->getSmallIconFileName(); }

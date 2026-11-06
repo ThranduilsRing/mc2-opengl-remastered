@@ -297,7 +297,7 @@ void LogisticsData::initPilots()
 		LogisticsPilot& pilot = pilots.back();
 		pilot.id = id;
 
-		if ( -1 == pilot.init( reinterpret_cast<char*>(pilotFileName) ) )
+		if ( !pilot.init( reinterpret_cast<char*>(pilotFileName) ) )
 			pilots.pop_back();
 
 		id++;

@@ -8,6 +8,8 @@
 #include"asystem.h"
 #include"aanim.h"
 #include <memory>
+#include <optional>
+#include <functional>
 
 class LogisticsMech;
 class LogisticsPilot;
@@ -32,7 +34,7 @@ public:
 
 	void setMech( LogisticsMech* pMech );
 	LogisticsMech* getMech( ){ return pMech; }
-	LogisticsPilot* getPilot();
+	std::optional<std::reference_wrapper<LogisticsPilot>> getPilot();
 	void setPilot( LogisticsPilot* pPilot);
 
 	float width(){ return outline.width(); }

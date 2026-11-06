@@ -383,7 +383,7 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 		s_tried = true;
 		auto p = std::make_unique_for_overwrite<LogisticsPilot>();
 		char nm[] = "PMWScout";
-		if ( p->init( nm ) == -1 )
+		if ( !p->init( nm ) )
 		{
 			p.reset();
 		}

@@ -185,7 +185,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		attributeMeters[0].setValue( armor/MAX_ARMOR_RANGE );
 
 		// speed
-		int speed = pCurMech->getDisplaySpeed();
+		int speed = pCurMech->getDisplaySpeed().value_or(-1);
 		mc2::fmt::to_buf(str, "{:d}", mc2::fmt::as_i32(speed));
 		textObjects[9].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", str );
@@ -296,7 +296,7 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 					LogisticsData::instance->removeMechFromForceGroup( pIcons[i+1].getMech(), false );
 					LogisticsData::instance->addMechToForceGroup( pIcons[i+1].getMech(), i+1 );
 					pIcons[i].setMech( pIcons[i+1].getMech() );
-					pIcons[i].setPilot( pIcons[i+1].getPilot() );
+					pIcons[i].setPilot( pIcons[i+1].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
 				}
 
 				if ( i < ICON_COUNT )

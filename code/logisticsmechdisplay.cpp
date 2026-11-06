@@ -184,7 +184,7 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 				textObjects[4].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_armor", text );
 
-				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurMech->getDisplaySpeed()));
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurMech->getDisplaySpeed().value_or(-1)));
 				textObjects[5].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_speed", text );
 

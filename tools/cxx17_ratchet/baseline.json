@@ -143,7 +143,7 @@
    "LG02": 0,
    "LG03": 283,
    "LG04": 15,
-   "LG05": 137,
+   "LG05": 127,
    "LG06": 170,
    "LG07": 2,
    "LG08": 3,
@@ -1807,18 +1807,14 @@
    "LG12b": 1
   },
   "code/logisticsmechdisplay.h": {},
-  "code/logisticsmechicon.cpp": {
-   "LG05": 1
-  },
+  "code/logisticsmechicon.cpp": {},
   "code/logisticsmechicon.h": {},
   "code/logisticsmissioninfo.cpp": {},
   "code/logisticsmissioninfo.h": {},
   "code/logisticsmissioninfo_internal.h": {},
   "code/logisticsmissioninfo_progress.cpp": {},
   "code/logisticsmissioninfo_query.cpp": {},
-  "code/logisticspilot.cpp": {
-   "LG05": 1
-  },
+  "code/logisticspilot.cpp": {},
   "code/logisticspilot.h": {
    "LG14": 1
   },
@@ -1828,17 +1824,14 @@
   },
   "code/logisticspilotlistbox.h": {},
   "code/logisticsvariant.cpp": {
-   "LG03": 1,
-   "LG05": 4
+   "LG03": 1
   },
   "code/logisticsvariant.h": {
    "LG14": 1
   },
   "code/logisticsvariant_internal.h": {},
   "code/logisticsvariant_package.cpp": {},
-  "code/logisticsvariant_stats.cpp": {
-   "LG05": 4
-  },
+  "code/logisticsvariant_stats.cpp": {},
   "code/los_kernel.cpp": {
    "LG09": 3
   },

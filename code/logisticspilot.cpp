@@ -68,7 +68,7 @@ LogisticsPilot::~LogisticsPilot()
 LogisticsPilot::LogisticsPilot(LogisticsPilot&&) noexcept = default;
 LogisticsPilot& LogisticsPilot::operator=(LogisticsPilot&&) noexcept = default;
 
-int LogisticsPilot::init( char* pilotFileName )
+std::expected<void, int> LogisticsPilot::init( char* pilotFileName )
 {
 	fileName = mc2::str::from_c( pilotFileName );
 	
@@ -83,7 +83,7 @@ int LogisticsPilot::init( char* pilotFileName )
 		char errorString[256];
 		mc2::fmt::to_buf(errorString, "Couldn't open file {}", fileName);
 		Assert( 0, 0, errorString );
-		return -1;
+		return std::unexpected(-1);
 	}
 
 	// if we got this far we have a file, make a pilot
@@ -145,7 +145,7 @@ int LogisticsPilot::init( char* pilotFileName )
 
 	rank = turnAverageIntoRank( (gunnery + piloting)/2.f );
 
-	return 0;
+	return {};
 
 }
 

@@ -17,6 +17,7 @@ LogisticsPilot:
 #include <string>
 #include <vector>
 #include <memory>
+#include <expected>
 #include "warrior_types.h"
 
 inline constexpr int MAX_MISSIONS = 50;
@@ -49,7 +50,7 @@ class LogisticsPilot
 {
 	public:
 
-		int init( char* fileName );
+		std::expected<void, int> init( char* fileName );
 		LogisticsPilot();
 		~LogisticsPilot();
 		LogisticsPilot(LogisticsPilot&&) noexcept;
