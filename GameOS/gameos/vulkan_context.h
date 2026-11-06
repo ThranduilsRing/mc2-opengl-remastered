@@ -22,6 +22,7 @@
 
 #ifdef MC2_VULKAN
 
+#include <chrono>
 #include <volk.h>
 #include "vk_render_infra.h"
 
@@ -266,6 +267,7 @@ private:
     mutable std::timed_mutex submitMutex_;
     mutable std::vector<VkCommandBuffer> pendingCbs_;   // submitMutex_
     mutable bool pendingFailed_ = false;                 // submitMutex_: a batched submit failed after its callers were told VK_SUCCESS; the next submit() reports it
+    mutable std::chrono::steady_clock::time_point pendingSince_{};   // submitMutex_: when the pending batch got its first command buffer
     mutable uint64_t pendingValue_ = 0;                  // submitMutex_: the timeline value the pending batch signals (0 = none)
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;

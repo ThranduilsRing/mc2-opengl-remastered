@@ -805,10 +805,13 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
     if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
     if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
         const uint64_t deferred = tracker_.noteSubmit(QueueKind::Graphics);
+        const auto now = std::chrono::steady_clock::now();
+        if (pendingCbs_.empty()) pendingSince_ = now;
         pendingCbs_.insert(pendingCbs_.end(), si.pCommandBuffers, si.pCommandBuffers + si.commandBufferCount);
         pendingValue_ = deferred;
         if (outValue) *outValue = deferred;
-        if (pendingCbs_.size() >= 64) flushPendingLocked();
+        // A batch older than 0.4 ms goes to the queue now: held until a wait or the present, the GPU idled while the CPU recorded the rest of the frame.
+        if (pendingCbs_.size() >= 64 || now - pendingSince_ > std::chrono::microseconds(400)) flushPendingLocked();
         return VK_SUCCESS;
     }
     flushPendingLocked();   // keep queue order: everything deferred so far goes before this submit
