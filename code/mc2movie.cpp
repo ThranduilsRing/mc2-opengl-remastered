@@ -26,6 +26,9 @@
 #include"mc2video.h"
 #include "../GameOS/gameos/gos_smoke.h"
 #include <cstdlib>
+#include <algorithm>
+#include <filesystem>
+#include <string>
 
 #include "../resource.h"
 #include"gameos.hpp"
@@ -79,11 +82,14 @@ MC2Movie::~MC2Movie (void)
 // Class MC2Movie
 void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
 {
-    char shortName[1024];
-    _splitpath(MC2Name, nullptr, nullptr, shortName, nullptr);
+    std::string nativeName(MC2Name);
+    std::replace(nativeName.begin(), nativeName.end(), '\\', '/');
+    std::string shortName = std::filesystem::path(nativeName).filename().string();
+    if (const auto dot = shortName.rfind('.'); dot != std::string::npos)
+        shortName.resize(dot);
 
-    m_MC2Name = std::make_unique_for_overwrite<char[]>(strlen(shortName) + 1);
-    strcpy(m_MC2Name.get(), shortName);
+    m_MC2Name = std::make_unique_for_overwrite<char[]>(shortName.size() + 1);
+    strcpy(m_MC2Name.get(), shortName.c_str());
 
     MC2Rect       = mRect;
     forceStop     = false;
@@ -93,8 +99,8 @@ void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
 
     separateWAVE = useWaveFile && (prefs.DigitalMasterVolume != 0.0f);
     if (separateWAVE) {
-        waveName = std::make_unique_for_overwrite<char[]>(strlen(shortName) + 1);
-        strcpy(waveName.get(), shortName);
+        waveName = std::make_unique_for_overwrite<char[]>(shortName.size() + 1);
+        strcpy(waveName.get(), shortName.c_str());
     } else {
         waveName = nullptr;
     }
@@ -103,18 +109,18 @@ void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
         // Video capture can opt into decoding during a headless run.
         static const bool s_bootVideo = mc2::gate::get<"MC2_BOOT_VIDEO">();
         if (!s_bootVideo) {
-            mc2::fmt::print_out("[VIDEO] init: smoke mode active, skipping movie '{}'\n", mc2::fmt::safe(shortName));
+            mc2::fmt::print_out("[VIDEO] init: smoke mode active, skipping movie '{}'\n", mc2::fmt::safe(shortName.c_str()));
             stillPlaying  = false;
             m_sessionDone = true;
 			objectiveObservationSink("movie", "decoder", "smoke_skip", MC2Name);
             return;
         }
-        mc2::fmt::print_out("[BOOT_VIDEO] smoke-mode movie skip overridden for '{}'\n", mc2::fmt::safe(shortName));
+        mc2::fmt::print_out("[BOOT_VIDEO] smoke-mode movie skip overridden for '{}'\n", mc2::fmt::safe(shortName.c_str()));
         fflush(stdout);
     }
 
     if (!g_ffmpegAvailable) {
-        mc2::fmt::print_out("[VIDEO] init: FFmpeg unavailable, skipping movie '{}'\n", mc2::fmt::safe(shortName));
+        mc2::fmt::print_out("[VIDEO] init: FFmpeg unavailable, skipping movie '{}'\n", mc2::fmt::safe(shortName.c_str()));
         stillPlaying  = false;
         m_sessionDone = true;
 		objectiveObservationSink("movie", "decoder", "unavailable", MC2Name);
@@ -125,7 +131,7 @@ void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
     const bool preferUpscaled = prefs.UseUpscaledVideos;
     for (int candidateIndex = 0; ; ++candidateIndex) {
         char resolvedPath[1024];
-        if (!resolveVideoCandidate(shortName, preferUpscaled, candidateIndex,
+        if (!resolveVideoCandidate(shortName.c_str(), preferUpscaled, candidateIndex,
                                    resolvedPath, sizeof(resolvedPath))) {
             break;  // chain exhausted
         }
@@ -151,7 +157,7 @@ void MC2Movie::init (mc2::czstring MC2Name, RECT mRect, bool useWaveFile)
         mc2::fmt::print_out("[VIDEO] init: open failed for '{}' (idx={:d}), trying next candidate\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(candidateIndex));
     }
 
-    mc2::fmt::print_out("[VIDEO] init: no playable candidate for '{}'\n", mc2::fmt::safe(shortName));
+    mc2::fmt::print_out("[VIDEO] init: no playable candidate for '{}'\n", mc2::fmt::safe(shortName.c_str()));
     stillPlaying  = false;
     m_sessionDone = true;
 	objectiveObservationSink("movie", "decoder", "rejected", MC2Name);
