@@ -2499,14 +2499,15 @@ static void resolveVariantInheritance(SpecialIndex* index) {
 // empty-body variant. Fill outBody from the (now-resolved) chosen index entry.
 // Gate-guarded no-op; only fills an EMPTY outBody (override bodies are already correct).
 static void resyncEntryBodyAfterVariants(BrainSpecialBody& outBody, const SpecialIndex* index,
-                                          const std::string& chosenKey) {
+                                          std::string_view chosenKey) {
     if (!index || chosenKey.empty() || !s_brainVariantOfGate()) return;
     if (!outBody.verbs.empty()) return;
     const SpecialIndexEntry* ce = specialIndexFind(*index, chosenKey);
     if (ce && !ce->body.verbs.empty()) {
         outBody.verbs = ce->body.verbs;
-        std::fprintf(stderr, "[BRAIN_VARIANTOF] entry body %s resolved to %d verb(s)\n",
-                     chosenKey.c_str(), static_cast<int>(outBody.verbs.size()));
+        std::fprintf(stderr, "[BRAIN_VARIANTOF] entry body %.*s resolved to %d verb(s)\n",
+                     static_cast<int>(chosenKey.size()), chosenKey.data(),
+                     static_cast<int>(outBody.verbs.size()));
         std::fflush(stderr);
     }
 }

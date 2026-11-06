@@ -5,6 +5,7 @@
 // Mission is split by responsibility (see DOC in each piece).
 #ifndef MISSION_INTERNAL_H
 #define MISSION_INTERNAL_H
+#include "mc2_czstring.h"
 
 // Implemented by missiongui_update.cpp; called by the mission update fixture path.
 void updateSaveFixtures();
@@ -234,7 +235,7 @@ extern long DisableAtStart[MAX_DISABLE_AT_START];
 extern bool showFrameRate;
 extern float OneOverProcessorSpeed;
 extern "C" void mission_phase_begin();
-extern "C" void mission_phase_mark(const char* name);
+extern "C" void mission_phase_mark(mc2::czstring name);
 extern "C" void mission_phase_report();
 extern long GameVisibleVertices;
 extern float BaseHeadShotElevation;
