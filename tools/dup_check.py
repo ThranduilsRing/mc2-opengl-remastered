@@ -4,8 +4,8 @@
   py -3 tools/dup_check.py --check [--base REF] [--rev REV] [--min-tokens N] [--report]
 
 Both trees are the COMMITTED content of the owned C++ dirs (git archive, so a dirty working tree cannot flap it), generated *.gen.h
-files dropped. CPD (`pmd cpd --language cpp`) runs where PMD is: on the box (Linux, JRE + /workspace/tools/pmd), or from the PC by
-streaming the two trees to the box over ssh. Metric: total duplicated lines (sum of the `lines` column over CPD matches). Exit 0 = no
+files dropped. CPD (`pmd cpd --language cpp`) runs where PMD is: the PC install (E:/mc2-ref/tools/pmd-local, PMD + a JRE beside
+it, MC2_PMD_PC overrides), on the box (Linux, JRE + /workspace/tools/pmd), or from the PC by streaming the two trees to the box over ssh. Metric: total duplicated lines (sum of the `lines` column over CPD matches). Exit 0 = no
 rise, 1 = rose (the verdict prints the delta), 3 = INFRA (no PMD/JRE locally and the box is unreachable): never a silent pass.
 
 N = 60 tokens: the old tool counted runs of 8 normalized non-trivial lines (~7 tokens a line); on the same tree CPD at 60 reports
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import glob
 import io
 import os
 import shutil
@@ -35,6 +36,8 @@ GENERATED = (".gen.h", ".gen.hpp")
 MIN_TOKENS = 60
 DEFAULT_BASE = "claude/nifty-mendeleev"
 PMD_LOCAL = os.environ.get("MC2_PMD", "/workspace/tools/pmd/pmd-bin-7.28.0/bin/pmd")
+# PC install (the box is gone since 2026-11-06): PMD plus a Temurin 21 JRE side by side, found without any env setup
+PMD_PC = os.environ.get("MC2_PMD_PC", "E:/mc2-ref/tools/pmd-local")
 KEY = os.environ.get("MC2_BOX_KEY", "C:/SPB_Data/.ssh/mc2farm_ed25519")
 HOST = os.environ.get("MC2_BOX_HOST", "root@14.227.95.149")
 PORT = os.environ.get("MC2_BOX_PORT", "30598")
@@ -74,7 +77,13 @@ def parse_csv(text: str) -> tuple:
 
 
 def have_local_pmd():
-    pmd = shutil.which("pmd") or (PMD_LOCAL if os.path.exists(PMD_LOCAL) else None)
+    pc_pmd = os.path.join(PMD_PC, "pmd-bin-7.28.0", "bin", "pmd.bat")
+    pmd = shutil.which("pmd") or next((p for p in (PMD_LOCAL, pc_pmd) if os.path.exists(p)), None)
+    if pmd and not shutil.which("java"):
+        jre = sorted(glob.glob(os.path.join(PMD_PC, "jdk-21*-jre", "bin")))
+        if jre:
+            os.environ["PATH"] = jre[-1] + os.pathsep + os.environ.get("PATH", "")
+            os.environ.setdefault("JAVA_HOME", os.path.dirname(jre[-1]))
     return pmd if pmd and shutil.which("java") else None
 
 
