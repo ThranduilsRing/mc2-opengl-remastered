@@ -42,6 +42,7 @@ struct Row {
     double   ema = 0.0;        // overlay: running average over every frame the pass ran
     float    lastCalls = 0.f;
     bool     seeded = false;
+    uint64_t lastSeen = 0;     // value of State::reads when the pass last ran (overlay expiry)
 };
 
 struct State {
@@ -57,6 +58,7 @@ struct State {
     const char*     names[kRing][kMaxScopes] = {};
     uint64_t        benchFrames[kRing] = {};
     std::atomic<uint64_t> frame{0};
+    uint64_t        reads = 0;               // frames read back; rows idle for kStaleFrames reads drop out of the overlay snapshot
     // frameEnd's query-reset / Tracy-collect submit: one persistent pool, a command buffer per ring slot, each reused once its last submit completed
     // (a pool created and destroyed per frame cost ~3 ms while Tracy was connected).
     OwnedCommandPool endPool[kRing];   // one pool per ring slot: vkResetCommandPool instead of per-cb reset
@@ -169,8 +171,10 @@ void readSlot(uint32_t slot, uint32_t& used) {
             std::fputs(line, mc2::battlebench::output);
         }
     }
+    ++g.reads;
     for (uint32_t k = 0; k < nNames; ++k) {
         Row& row = rowFor(std::string_view(nameOf[k]));
+        row.lastSeen = g.reads;
         row.sumMs += perName[k];
         row.calls += callsOf[k];
         ++row.frames;
@@ -201,7 +205,7 @@ uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs) {
     if (spanMs) *spanMs = static_cast<float>(g.spanEma);
     uint32_t n = 0;
     for (uint32_t i = 0; i < g.rowCount && n < maxRows; ++i)
-        if (g.rows[i].seeded) out[n++] = {g.rows[i].name, static_cast<float>(g.rows[i].ema), g.rows[i].lastCalls};
+        if (g.rows[i].seeded && g.reads - g.rows[i].lastSeen <= 60) out[n++] = {g.rows[i].name, static_cast<float>(g.rows[i].ema), g.rows[i].lastCalls};
     return n;
 }
 

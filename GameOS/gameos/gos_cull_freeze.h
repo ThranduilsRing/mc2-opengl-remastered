@@ -4,8 +4,8 @@
 // false culls (things dropped that are on screen) become visible at the screen edges. Consumers:
 //   - CPU frustum planes: Camera::cacheFrustumPlanes (terrain block/superchunk cull, object block gate)
 //   - actor/mech/prop compute cull MVP: gpu_cull_compute.cpp
-//   - HZB prop cull push constant: vulkan_post_hzb_native.cpp (the pyramid itself is built from the LIVE depth, so occlusion is only
-//     approximate while frozen; frustum culling is exact)
+// FRUSTUM-ONLY: the HZB prop cull (vulkan_post_hzb_native.cpp) is deliberately NOT frozen. Its pyramid is built from the live
+// depth, so a frozen VP against it would mix two camera spaces and fabricate false culls.
 // Picking, projection, LOD choice and every draw MVP stay on the live camera.
 // Main thread only. Header-only so mclib and GameOS share one state.
 #pragma once
