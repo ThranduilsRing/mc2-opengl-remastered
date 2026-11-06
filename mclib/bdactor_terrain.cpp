@@ -111,7 +111,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	};
 	if (overridden)
 		useShape(status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
-			appearType->bldgDmgShape : appearType->getBldgCollisionShape(0));
+			appearType->bldgDmgShape.get() : appearType->getBldgCollisionShape(0));
 	else if (currentLOD) {
 		currentLOD = 0;
 		useShape(appearType->getBldgCollisionShape(0));
@@ -165,7 +165,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgShape[0])
 			{
-				useShape(appearType->bldgShape[0]);
+				useShape(appearType->bldgShape[0].get());
 			}
 		}
 
@@ -173,7 +173,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgDmgShape)
 			{
-				useShape(appearType->bldgDmgShape);
+				useShape(appearType->bldgDmgShape.get());
 			}
 		}
 
@@ -247,7 +247,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgDmgShape)
 			{
-				useShape(appearType->bldgDmgShape);
+				useShape(appearType->bldgDmgShape.get());
 			}
 		}
 
@@ -255,7 +255,7 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		{
 			if (appearType->bldgShape[0])
 			{
-				useShape(appearType->bldgShape[0]);
+				useShape(appearType->bldgShape[0].get());
 			}
 		}
 
@@ -302,9 +302,9 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	}
 	if (overridden) terrain->ClearAnimation();
 	else if (!appearType->isForestClump && status != OBJECT_STATUS_DESTROYED && appearType->bldgShape[0])
-		useShape(appearType->bldgShape[0]);
+		useShape(appearType->bldgShape[0].get());
 	else if (!appearType->isForestClump && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
-		useShape(appearType->bldgDmgShape);
+		useShape(appearType->bldgDmgShape.get());
 }
 
 long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool useHeight, short* cellList)

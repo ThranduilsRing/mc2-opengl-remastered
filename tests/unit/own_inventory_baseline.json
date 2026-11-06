@@ -3315,21 +3315,6 @@
    "new_array": 0,
    "owners": []
   },
-  "TG_TypeMultiShape": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/gvactor.cpp": {
-     "new": 2
-    },
-    "mclib/mech3d_type.cpp": {
-     "new": 3
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
-  },
   "TOMap": {
    "delete": 0,
    "delete_array": 0,
@@ -4595,7 +4580,6 @@
   "gui/alistbox.cpp": 2,
   "gui/asystem.cpp": 1,
   "mclib/ablenv.cpp": 2,
-  "mclib/apprtype.cpp": 3,
   "mclib/bdactor_static.cpp": 2,
   "mclib/bdactor_terrain.cpp": 1,
   "mclib/bdactor_tree.cpp": 5,

@@ -60,7 +60,7 @@ char MechStateByGesture[MAX_MECH_ANIMATIONS] = {
 	BODYSTATE_FALLEN_FORWARD,	// GestureFallenBackward		24 -- Fallen Backward (Single Frame, mech on ground)
 };																
 
-TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = nullptr;
+std::unique_ptr<TG_TypeMultiShape> Mech3DAppearanceType::SensorSquareShape;
 
 bool Mech3DAppearanceType::animationLoadingEnabled = true;
 

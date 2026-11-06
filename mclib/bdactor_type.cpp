@@ -488,7 +488,7 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 	if (bldgRenderShape)
 	{
 		const char* missing = nullptr;
-		for (auto* animation : bdAnimData)
+		for (const auto& animation : bdAnimData)
 		{
 			if (!animation) continue;
 			for (long lod = 0; lod < MAX_LODS && !missing; ++lod)

@@ -147,7 +147,7 @@ class Mech3DAppearanceType: public AppearanceType
 		char						presentationSocketName[MAX_PRESENTATION_SOCKETS][PRESENTATION_SOCKET_NAME_CAP];
 
 
-		static TG_TypeMultiShapePtr	SensorSquareShape;
+		static std::unique_ptr<TG_TypeMultiShape> SensorSquareShape;
 
 		static bool animationLoadingEnabled;
 		static void disableAnimationLoading(void)

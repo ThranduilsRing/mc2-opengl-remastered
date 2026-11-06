@@ -59,8 +59,8 @@ static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
 	return fileExists(ktx);
 }
-TG_TypeMultiShapePtr GVAppearanceType::SensorTriangleShape = nullptr;
-TG_TypeMultiShapePtr GVAppearanceType::SensorCircleShape = nullptr;
+std::unique_ptr<TG_TypeMultiShape> GVAppearanceType::SensorTriangleShape;
+std::unique_ptr<TG_TypeMultiShape> GVAppearanceType::SensorCircleShape;
 //-----------------------------------------------------------------------------
 // class GVAppearanceType
 void GVAppearanceType::init (mc2::czstring fileName)
@@ -385,11 +385,11 @@ void GVAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"circularcontact",".ase");
 	
-		SensorCircleShape = new TG_TypeMultiShape;
+		SensorCircleShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(SensorCircleShape != nullptr);
 
 		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
-		tglLoadShapeChecked(SensorCircleShape, sensorName,
+		tglLoadShapeChecked(SensorCircleShape.get(), sensorName,
 			"gvactor.sensor_circle", nullptr);
 	}
 
@@ -398,10 +398,10 @@ void GVAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"trianglecontact",".ase");
 	
-		SensorTriangleShape = new TG_TypeMultiShape;
+		SensorTriangleShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(SensorCircleShape != nullptr);
 
-		tglLoadShapeChecked(SensorTriangleShape, sensorName,
+		tglLoadShapeChecked(SensorTriangleShape.get(), sensorName,
 			"gvactor.sensor_triangle", nullptr);
 	}
 }

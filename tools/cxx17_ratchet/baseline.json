@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 373,
+   "LG03": 365,
    "LG04": 12,
    "LG05": 107,
    "LG06": 113,
@@ -2625,7 +2625,6 @@
   "mclib/appearance_rng.cpp": {},
   "mclib/appearance_rng.h": {},
   "mclib/apprtype.cpp": {
-   "LG03": 3,
    "LG05": 1,
    "LG06": 1
   },
@@ -2929,7 +2928,7 @@
   },
   "mclib/gosfx/tube.hpp": {},
   "mclib/gvactor.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG05": 2,
    "LG10": 1,
    "LG12a": 1
@@ -3017,7 +3016,6 @@
    "LG08": 1
   },
   "mclib/mech3d_type.cpp": {
-   "LG03": 3,
    "LG05": 4,
    "LG10": 1,
    "LG12a": 2

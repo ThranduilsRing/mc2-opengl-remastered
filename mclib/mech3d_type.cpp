@@ -471,11 +471,11 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"squarecontact",".ase");
 
-		SensorSquareShape = new TG_TypeMultiShape;
+		SensorSquareShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(SensorSquareShape != nullptr);
 
 		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
-		tglLoadShapeChecked(SensorSquareShape, sensorName,
+		tglLoadShapeChecked(SensorSquareShape.get(), sensorName,
 			"mech3d.sensor_square", nullptr);
 	}
 
@@ -484,10 +484,10 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"circularcontact",".ase");
 
-		GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
+		GVAppearanceType::SensorCircleShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(GVAppearanceType::SensorCircleShape != nullptr);
 
-		tglLoadShapeChecked(GVAppearanceType::SensorCircleShape, sensorName,
+		tglLoadShapeChecked(GVAppearanceType::SensorCircleShape.get(), sensorName,
 			"mech3d.sensor_circle", nullptr);
 	}
 
@@ -496,10 +496,10 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"trianglecontact",".ase");
 
-		GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
+		GVAppearanceType::SensorTriangleShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(GVAppearanceType::SensorTriangleShape != nullptr);
 
-		tglLoadShapeChecked(GVAppearanceType::SensorTriangleShape, sensorName,
+		tglLoadShapeChecked(GVAppearanceType::SensorTriangleShape.get(), sensorName,
 			"mech3d.sensor_triangle", nullptr);
 	}
 
