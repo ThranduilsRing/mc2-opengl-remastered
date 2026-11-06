@@ -95,6 +95,12 @@ def main():
         env["MC2_SOAK_SALVAGE_TRADEMOVER"] = "1"
     if "--shots" in flags:
         env.update({"MC2_SHOT_RESULTS": "1", "MC2_DEV_SHELL": "1", "MC2_NO_LAUNCHER": "1"})
+    # Private save dir (engine MC2_SAVE_DIR): the walk completes missions and writes after_mission_*.fit; it must never touch the player's
+    # savegame folder, which concurrent gate rows (player-path) watch.
+    save_dir = os.path.join(deploy, f"sweep_{tag}_savegame")
+    shutil.rmtree(save_dir, ignore_errors=True)
+    os.makedirs(save_dir, exist_ok=True)
+    env["MC2_SAVE_DIR"] = save_dir
     crash_before = newest_crash(deploy)
     shot_dir = os.path.join(deploy, "dev_shell_out")
     t0 = time.time()
