@@ -476,9 +476,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain.Overlay");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    float jpx[2];
-    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
-    VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w),   // overlay quads (selection, fog of war) stay unjittered
+ static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);

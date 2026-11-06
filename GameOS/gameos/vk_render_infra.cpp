@@ -51,8 +51,9 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
 void materialSampler(VkSamplerCreateInfo& info) {
-    // Hook for the temporal provider: flips to the provider bias together with its resolve (slice C).
-    info.mipLodBias = RenderCore::temporal::mipBias(float(mc2::gate::get<"MC2_RENDER_SCALE">()), true);
+    // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite); AA off keeps log2(renderScale).
+    const float scale = float(mc2::gate::get<"MC2_RENDER_SCALE">());
+    info.mipLodBias = RenderCore::temporal::mipBias(scale, scale == 1.0f && mc2::options::current().spatialAA != 0);
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {

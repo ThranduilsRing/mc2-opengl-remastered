@@ -588,6 +588,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     float jpx[2];
     RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
+    if (s->preview) jpx[0] = jpx[1] = 0.0f;   // UI-in-scene previews are not jittered
     VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
