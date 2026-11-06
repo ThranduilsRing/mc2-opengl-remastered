@@ -100,7 +100,7 @@ def discover(suite="all") -> list[str]:
         base = os.path.basename(p)
         if not (base.startswith("test_") or base.endswith("_test.py")):
             continue
-        if p.startswith("scripts/tests/") or p in EXCLUDE:
+        if p.startswith(("scripts/tests/", "3rdparty/")) or p in EXCLUDE:  # 3rdparty: vendored upstream tests (crashpad), not ours
             continue
         if not os.path.isfile(os.path.join(ROOT, p)):
             continue  # deleted in the working tree, not yet committed

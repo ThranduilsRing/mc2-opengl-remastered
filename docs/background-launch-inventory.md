@@ -41,7 +41,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_shadow_bake_init.py` | 288 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
-| `tools/box_run.py` | 311 | `subprocess.run` **raw, allowed:** ssh tar pull, the engine runs on the Linux box | offscreen |
+| `tools/box_run.py` | 312 | `subprocess.run` **raw, allowed:** ssh tar pull, the engine runs on the Linux box | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/mod_smoke.py` | 1011 | `nofocus.run` | offscreen |
