@@ -89,6 +89,7 @@ mc2::player::UnitIntent producePlayerIntent(MechWarrior* warrior,
 
 #include <vector>
 #include <string>
+#include <string_view>
 #include <cstring>   // strncmp/strncpy used in VarStore inline methods (pulled via mech_brain_runtime.h too)
 
 class MechWarrior;        // forward decl — executeSpecialBody_Apply needs the warrior pointer
@@ -157,7 +158,7 @@ using SpecialIndex = std::vector<SpecialIndexEntry>;
 // Looks up a key in the index (linear scan, case-sensitive).
 // Returns pointer to entry if found, nullptr if not found.
 // Does NOT take ownership; pointer is valid for index lifetime.
-const SpecialIndexEntry* specialIndexFind(const SpecialIndex& idx, const std::string& key);
+const SpecialIndexEntry* specialIndexFind(const SpecialIndex& idx, std::string_view key);
 
 // Returns true if body contains the Brain.CorePower false (POWERDOWN) verb.
 bool bodyHasPowerdown(const BrainSpecialBody& body);
@@ -202,7 +203,7 @@ bool brainFlowActiveForBody(const BrainSpecialBody& body);
 void executeSpecialBody_TraceOnly(const BrainSpecialBody& body, int wid,
                                    VarStore* varStore = nullptr,
                                    const SpecialIndex* index = nullptr,
-                                   const char* callerKey = nullptr);
+                                   mc2::czstring callerKey = nullptr); // null means root dispatch
 
 // Internal recursive call-chain dispatch (TECHSCRIPT-CALL-CHAIN-1A).
 // Called from executeSpecialBody_TraceOnly / executeSpecialBody_Apply when a
@@ -220,7 +221,7 @@ void executeSpecialBody_TraceOnlyChained(const BrainSpecialBody& body,
                                           const SpecialIndex& index,
                                           int depth,
                                           std::vector<std::string>& visited,
-                                          const char* fromKey,
+                                          mc2::czstring fromKey,
                                           VarStore* varStore = nullptr);
 
 // 1B EFFECT DISPATCHER.
@@ -236,7 +237,7 @@ void executeSpecialBody_TraceOnlyChained(const BrainSpecialBody& body,
 bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior, int wid,
                                VarStore* varStore = nullptr,
                                const SpecialIndex* index = nullptr,
-                               const char* callerKey = nullptr);
+                               mc2::czstring callerKey = nullptr); // null means root dispatch
 
 // BRAIN-DECISION-INTENT-QUEUE-1: commit all pending intents for this warrior.
 // Called right after executeSpecialBody_Apply returns, when MC2_BRAIN_INTENT_QUEUE=1.

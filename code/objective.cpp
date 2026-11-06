@@ -90,7 +90,7 @@ namespace {
 struct ObservationTraversal {
 	CObjectives::Observation* observation = objectiveObservation();
 	bool outer = observation && !observation->traversal;
-	ObservationTraversal(const char* source) {
+	ObservationTraversal(mc2::czstring source) {
 		if (outer) {
 			observation->traversal = observation->nextTraversal++;
 			observation->traversalSource = source;
@@ -157,7 +157,7 @@ unsigned long long CObjectives::Observation::Emit(std::string_view kind, unsigne
 	return id;
 }
 
-void CObjectives::Observation::SinkResult(const char* sink, const char* stage, const char* result,
+void CObjectives::Observation::SinkResult(std::string_view sink, std::string_view stage, std::string_view result,
                                           std::string_view payload, unsigned long long cause) {
 	if (!cause) { cause = dispatch; }
 	if (!cause || rejected) { return; }
@@ -167,13 +167,13 @@ void CObjectives::Observation::SinkResult(const char* sink, const char* stage, c
 	else { Emit("sink", cause, data); }
 }
 
-void objectiveObservationSink(const char* sink, const char* stage, const char* result, const char* payload) {
+void objectiveObservationSink(std::string_view sink, std::string_view stage, std::string_view result, mc2::czstring payload) {
 	if (auto* observation = objectiveObservation()) {
 		observation->SinkResult(sink, stage, result, objectiveObservationQuote(payload ? payload : ""));
 	}
 }
 
-void objectiveObservationWav(const char* requested, const char* resource, int channel, const char* result, bool accepted) {
+void objectiveObservationWav(mc2::czstring requested, mc2::czstring resource, int channel, mc2::czstring result, bool accepted) {
 	if (auto* observation = objectiveObservation()) {
 		observation->SinkResult("wav", "resource_channel", result,
 			std::format("{{\"requested\":{},\"resource\":{},\"channel\":{},\"resourceAccepted\":{},\"channelAssigned\":{}}}",
@@ -186,7 +186,7 @@ void CObjectives::Observation::Finish() {
 	if (Emit("complete", 0, std::format("{{\"count\":{},\"result\":{}}}", sequence, finalResult))) { completed = true; }
 }
 
-void CObjective::ObserveState(const char* kind, int oldState, int newState) {
+void CObjective::ObserveState(std::string_view kind, int oldState, int newState) {
 	if (m_fitOrdinal < 0) { return; }
 	if (auto* observation = objectiveObservation()) {
 		m_observationState = observation->Emit(kind, m_observationState,
@@ -211,7 +211,7 @@ void CObjective::ObserveCBills(int before, int after) {
 	}
 }
 
-void CObjective::Dispatch(CObjectiveAction& action, const char* list) {
+void CObjective::Dispatch(CObjectiveAction& action, std::string_view list) {
 	auto* observation = m_fitOrdinal >= 0 ? objectiveObservation() : nullptr;
 	if (!observation || !m_observationState || observation->rejected) {
 		action.Execute();
@@ -371,7 +371,7 @@ static bool MoverIsCaptured(const long pMoverWID, const long teamID)
 	return retval;
 }
 
-static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &value) {
+static long sReadIdFloat(FitIniFile* missionFile, mc2::czstring varName, float &value) {
 	long result = 0;
 	float tmpFloat;
 	result = missionFile->readIdFloat(const_cast<char *>(varName), tmpFloat);
@@ -383,7 +383,7 @@ static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &va
 	return result;
 }
 
-static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &value) {
+static long sReadIdBoolean(FitIniFile* missionFile, mc2::czstring varName, bool &value) {
 	long result = 0;
 	bool tmpBool;
 	result = missionFile->readIdBoolean(const_cast<char *>(varName), tmpBool);
@@ -395,7 +395,7 @@ static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &v
 	return result;
 }
 
-static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &value) {
+static long sReadIdWholeNum(FitIniFile* missionFile, mc2::czstring varName, int &value) {
 	long result = 0;
 	unsigned long tmpULong;
 	result = missionFile->readIdULong(const_cast<char *>(varName), tmpULong);
@@ -407,7 +407,7 @@ static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &v
 	return result;
 }
 
-static long sReadIdLongInt(FitIniFile* missionFile, const char *varName, int &value) {
+static long sReadIdLongInt(FitIniFile* missionFile, mc2::czstring varName, int &value) {
 	long result = 0;
 	long tmpLong;
 	result = missionFile->readIdLong(const_cast<char *>(varName), tmpLong);
@@ -1550,7 +1550,7 @@ void CObjective::Alignment(int alignment) {
 	}
 }
 
-static condition_species_type ConditionSpeciesMap(const char *speciesString) {
+static condition_species_type ConditionSpeciesMap(mc2::czstring speciesString) {
 	condition_species_type retval = DESTROY_ALL_ENEMY_UNITS;
 	int i;
 	for (i = 0; i < static_cast<int>(NUM_CONDITION_SPECIES); i += 1) {
@@ -1563,7 +1563,7 @@ static condition_species_type ConditionSpeciesMap(const char *speciesString) {
 	return retval;
 }
 
-static action_species_type ActionSpeciesMap(const char *speciesString) {
+static action_species_type ActionSpeciesMap(mc2::czstring speciesString) {
 	action_species_type retval = PLAY_BIK;
 	int i;
 	for (i = 0; i < static_cast<int>(NUM_ACTION_SPECIES); i += 1) {

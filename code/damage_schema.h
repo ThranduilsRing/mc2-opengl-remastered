@@ -1,5 +1,6 @@
 #ifndef DAMAGE_SCHEMA_H
 #define DAMAGE_SCHEMA_H
+#include "mc2_czstring.h"
 // DAMAGE-SCHEMA-FACET-1 (slice 5 of the UNIT-PROFILE arc).
 //
 // Data-owned DAMAGE SCHEMA: which hit-location model a unit uses. This is a pure
@@ -61,7 +62,8 @@ enum DamageLocationId {
 // Case-insensitive ASCII equality for a facet token vs a fixed key. (Same helper
 // shape as locomotion_facet.h::locomotionTokenEquals — kept local so this header
 // stands alone for the offline test target.)
-inline bool damageSchemaTokenEquals(const char* a, const char* key) {
+// Null tokens are absent and never compare equal, including to each other.
+inline bool damageSchemaTokenEquals(mc2::czstring a, mc2::czstring key) {
     if (!a || !key) return false;
     for (; *a && *key; ++a, ++key) {
         char ca = *a, ck = *key;
@@ -76,7 +78,8 @@ inline bool damageSchemaTokenEquals(const char* a, const char* key) {
 // Unknown / empty / null token -> `fallback` (the class-default the caller
 // supplies), so stock .fits that omit the key preserve parity. Recognized tokens
 // mirror the enum: Mech8Part, VehicleFacings, Squad, SingleActor.
-inline DamageSchemaId parseDamageSchema(const char* token,
+// A null token is absent and preserves fallback.
+inline DamageSchemaId parseDamageSchema(mc2::czstring token,
                                         DamageSchemaId fallback) {
     if (!token || token[0] == '\0') return fallback;
     if (damageSchemaTokenEquals(token, "Mech8Part"))      return DMG_MECH_8PART;
@@ -88,7 +91,8 @@ inline DamageSchemaId parseDamageSchema(const char* token,
 
 // MODDER-FIRST-ERROR-SURFACE-1: was the token RECOGNIZED (vs silent fallback)?
 // Same two-fallback probe as locomotionTokenKnown(). Pure.
-inline bool damageSchemaTokenKnown(const char* token) {
+// A null token is absent, hence unknown.
+inline bool damageSchemaTokenKnown(mc2::czstring token) {
     if (!token || token[0] == '\0') return false;
     return parseDamageSchema(token, DMG_MECH_8PART)
         == parseDamageSchema(token, DMG_VEHICLE_FACINGS);

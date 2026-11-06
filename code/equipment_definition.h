@@ -34,6 +34,7 @@
 #include "damage_schema.h"      // DamageLocationId
 
 #include <string>
+#include "mc2_czstring.h"
 
 // -------------------------------------------------------------------------
 // EquipmentKind -- which compbas component family this equipment is. Covers the
@@ -182,7 +183,8 @@ struct EquipmentDefinition {
 
 // Build an EquipmentDefinition from a raw id string (`modId:name`, bare name ->
 // core:). Kind defaults to Other; caller adds facets. Invalid id -> !valid().
-inline EquipmentDefinition makeEquipment(const char* rawId, EquipmentKind kind) {
+// A null id is absent and produces an invalid definition.
+inline EquipmentDefinition makeEquipment(mc2::czstring rawId, EquipmentKind kind) {
     EquipmentDefinition e;
     e.id = mc2id::parseQualifiedId(rawId ? std::string(rawId) : std::string());
     e.kind = kind;

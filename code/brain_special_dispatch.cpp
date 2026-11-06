@@ -84,14 +84,14 @@ static bool s_brainAliasGate() { return mc2::brainpolicy::techBrain(); }   // Br
 static const char* resolveVerbAliasToken(mc2::czstring verb, char out[256]);
 
 // ASCII case-insensitive full-string compare (leaf TU — no engine str helpers).
-static bool ciEquals(mc2::czstring a, mc2::czstring b) {
-    while (*a && *b) {
-        char ca = (*a >= 'A' && *a <= 'Z') ? static_cast<char>((*a + 32)) : *a;
-        char cb = (*b >= 'A' && *b <= 'Z') ? static_cast<char>((*b + 32)) : *b;
+static bool ciEquals(std::string_view a, std::string_view b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        char ca = (a[i] >= 'A' && a[i] <= 'Z') ? static_cast<char>((a[i] + 32)) : a[i];
+        char cb = (b[i] >= 'A' && b[i] <= 'Z') ? static_cast<char>((b[i] + 32)) : b[i];
         if (ca != cb) return false;
-        ++a; ++b;
     }
-    return *a == '\0' && *b == '\0';
+    return true;
 }
 
 // specialIndexFind — linear-scan lookup by key (case-sensitive exact first).
@@ -99,18 +99,18 @@ static bool ciEquals(mc2::czstring a, mc2::czstring b) {
 // `alias = "..."` field (carver authors these, e.g. alias="Scenario.Main")
 // and finally a case-insensitive key match (author shorthand).
 // Returns pointer into idx for the found entry, or nullptr.
-const SpecialIndexEntry* specialIndexFind(const SpecialIndex& idx, const std::string& key) {
+const SpecialIndexEntry* specialIndexFind(const SpecialIndex& idx, std::string_view key) {
     for (const SpecialIndexEntry& e : idx) {
         if (e.key == key)
             return &e;
     }
     if (s_brainAliasGate()) {
         for (const SpecialIndexEntry& e : idx) {
-            if (!e.alias.empty() && ciEquals(e.alias.c_str(), key.c_str()))
+            if (!e.alias.empty() && ciEquals(e.alias, key))
                 return &e;
         }
         for (const SpecialIndexEntry& e : idx) {
-            if (ciEquals(e.key.c_str(), key.c_str()))
+            if (ciEquals(e.key, key))
                 return &e;
         }
     }
@@ -263,7 +263,7 @@ void executeSpecialBody_TraceOnlyChained(const BrainSpecialBody& body,
                                           const SpecialIndex& index,
                                           int depth,
                                           std::vector<std::string>& visited,
-                                          const char* fromKey,
+                                          mc2::czstring fromKey,
                                           VarStore* varStore)
 {
     // Trace each verb in the called body with depth marker.
@@ -364,7 +364,7 @@ void executeSpecialBody_TraceOnlyChained(const BrainSpecialBody& body,
 // setGeneralTacOrder / setPlayerTacOrder / setAlarmTacOrder / requestHelp /
 // requestTarget / clearCurTacOrder / setMainGoal / calcTacOrder / coreMoveTo.
 void executeSpecialBody_TraceOnly(const BrainSpecialBody& body, int wid, VarStore* varStore,
-                                   const SpecialIndex* index, const char* callerKey) {
+                                   const SpecialIndex* index, mc2::czstring callerKey) {
     const bool varGate  = s_dispatchVarGate();
     const bool callGate = s_dispatchCallGate() && (index != nullptr);
 
@@ -946,7 +946,7 @@ namespace {
 // returns true and the orchestrator returns appliedEffect.
 bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior, int wid,
                                VarStore* varStore, const SpecialIndex* index,
-                               const char* callerKey) {
+                               mc2::czstring callerKey) {
     bool appliedEffect = false;
     // BRAIN-DECISION-INTENT-QUEUE-1: get runtime for intent emit (gate ON only).
     MechBrainRuntime* runtime = (warrior && s_intentQueueEnabled()) ? warrior->getBrainRuntime() : nullptr;

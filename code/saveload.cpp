@@ -77,7 +77,8 @@ void Part::Save (FitIniFilePtr file, long partNum)
 // mission than the one quicksaved). Always-on, tiny (fires only on explicit
 // save/load): append path + current mission to <savePath>/saveload_trace.log
 // so a bad slot/ordering is diagnosable after the fact.
-static void saveloadTrace(const char* op, const char* file, const char* missionFile)
+// file and missionFile may be null when no path/mission is available.
+static void saveloadTrace(mc2::czstring op, mc2::czstring file, mc2::czstring missionFile)
 {
     crashbundle_save_point(op, file ? file : "");
     MC2_LOG(Io, Info, "[SAVELOAD] op={} file={} mission={}",
@@ -114,7 +115,7 @@ static mc2::save::Bytes captureFixSection()
 	return mc2::save::encodeFixSection(std::move(fix));
 }
 
-void Mission::save (const char *saveFileName)
+void Mission::save (mc2::czstring saveFileName)
 {
 	struct SimulationPhase {
 		bool previous = simPresentationPass;
@@ -990,7 +991,7 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 // In-mission save restore. Each phase is a member helper declared in mission.h, run in the original order, so the
 // packets are read from the save file in the order Mission::save wrote them; the shared locals live in
 // MissionLoadFrame.
-void Mission::load (const char *loadFileName)
+void Mission::load (mc2::czstring loadFileName)
 {
 	struct SimulationPhase {
 		bool previous = simPresentationPass;

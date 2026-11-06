@@ -23,6 +23,7 @@
 // unit's DamageSchema iff its damageLocation is a member of that schema.
 
 #include "damage_schema.h"   // DamageLocationId, DamageSchemaId, schemaHasLocation
+#include "mc2_czstring.h"
 
 // -------------------------------------------------------------------------
 // WeaponTag -- the mount-type tags a hardpoint accepts.
@@ -70,7 +71,7 @@ inline constexpr int HARDPOINT_NAME_CAP = 48;   // includes the NUL terminator
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset"
 // id). Case-SENSITIVE by design: RightTorso and righttorso are different
 // hardpoints; presentation sockets are case-sensitive node-name strings.
-inline unsigned int hardpointHash(const char* name) {
+inline unsigned int hardpointHash(mc2::czstring name) {
     if (!name || name[0] == '\0') return 0u;
     unsigned int h = 2166136261u;   // FNV offset basis
     for (const char* p = name; *p; ++p) {
@@ -86,7 +87,8 @@ struct HardpointId {
 
     HardpointId() : id(0u) { name[0] = '\0'; }
 
-    explicit HardpointId(const char* n) : id(hardpointHash(n)) {
+    // A null name constructs the unset id, just like an empty name.
+    explicit HardpointId(mc2::czstring n) : id(hardpointHash(n)) {
         int i = 0;
         if (n) {
             for (; n[i] && i < HARDPOINT_NAME_CAP - 1; ++i) name[i] = n[i];
@@ -107,7 +109,8 @@ inline bool operator!=(const HardpointId& a, const HardpointId& b) {
 }
 
 // Convenience factory so callers read `makeHardpointId("RightTorso_Energy_1")`.
-inline HardpointId makeHardpointId(const char* name) { return HardpointId(name); }
+// A null name means the unset id.
+inline HardpointId makeHardpointId(mc2::czstring name) { return HardpointId(name); }
 
 // -------------------------------------------------------------------------
 // HardpointProfile -- the per-hardpoint schema row.
@@ -127,7 +130,8 @@ inline constexpr int HARDPOINT_SOCKET_CAP = 48;
 struct HardpointSocketName {
     char v[HARDPOINT_SOCKET_CAP];
     HardpointSocketName() { v[0] = '\0'; }
-    explicit HardpointSocketName(const char* s) {
+    // A null string constructs an unmapped socket.
+    explicit HardpointSocketName(mc2::czstring s) {
         int i = 0;
         if (s) { for (; s[i] && i < HARDPOINT_SOCKET_CAP - 1; ++i) v[i] = s[i]; }
         v[i] = '\0';

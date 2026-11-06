@@ -163,7 +163,7 @@ const char* getObjectClassName (ObjectClass kind) {
 	}
 }
 
-void GameObject::destroy_instr (const char* reason, const char* file, int line) {
+void GameObject::destroy_instr (mc2::czstring reason, mc2::czstring file, int line) {
 	// 1. Snapshot all log fields FIRST, before any other logic runs (spec §3.2).
 	const int         snap_exists_was      = getExists() ? 1 : 0;
 	const ObjectClass snap_kind            = objectClass;
@@ -1564,7 +1564,7 @@ void GameObject::releaseAppearance (void) {
     }
 }
 
-void GameObject::verifyAppearanceView (const char* where) {
+void GameObject::verifyAppearanceView (std::string_view where) {
 
 	if (mc2::ownedViewDiverged(appearanceOwner, appearance))
 		MC2_LOG(Sim, Warn, "{}: GameObject appearance view {} diverged from its owner {}", where, static_cast<const void*>(appearance), static_cast<const void*>(appearanceOwner.get()));

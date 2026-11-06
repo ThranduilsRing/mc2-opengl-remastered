@@ -9,6 +9,7 @@
 #pragma once
 
 #include <optional>
+#include "mc2_czstring.h"
 #include <string>
 #include <string_view>
 
@@ -25,22 +26,22 @@ enum class ReadStatus { Read, Absent, TooLong };
 
 // Reads the value of `key` in the current block into `value`, line breaks converted to "\r\n". For callers that must tell an absent key (a normal
 // end, or a default) from a malformed one (skip that entry and go on). `value` is left empty unless the status is Read.
-ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value);
+ReadStatus readChecked(FitIniFile& file, mc2::czstring key, std::string& value);
 
 // The value of `key`, or an empty optional when the key is absent or over-long.
-std::optional<std::string> read(FitIniFile& file, const char* key);
+std::optional<std::string> read(FitIniFile& file, mc2::czstring key);
 
 // The same reader for text that is not an objective's: the value exactly as stored (no line-break conversion), at most `maxLength` characters. The
 // campaign, mission-list and logistics readers use it so that a missing key is an empty optional and never the text of the key read before it. One
 // reader serves every FIT text value; there is no second copy.
-std::optional<std::string> readPlain(FitIniFile& file, const char* key, unsigned long maxLength = kMaxTextLength);
+std::optional<std::string> readPlain(FitIniFile& file, mc2::czstring key, unsigned long maxLength = kMaxTextLength);
 
 // A flag reference: the text of `idKey`, else the decimal number stored under `indexKey` (files from before flags had names).
 // Empty when neither key is present.
-std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey);
+std::optional<std::string> readFlagID(FitIniFile& file, mc2::czstring idKey, mc2::czstring indexKey);
 
 // Writes `key = "text"` with line breaks stored as "\n". Always writes the key. Returns the writer's result.
-long write(FitIniFile& file, const char* key, std::string_view text);
+long write(FitIniFile& file, mc2::czstring key, std::string_view text);
 
 // The text fields of one objective block (Title, Description, ActivateFlagID, ResetStatusFlagID, ObjectiveModel).
 struct Fields {

@@ -25,7 +25,7 @@ std::string replaceAll(std::string_view text, std::string_view from, std::string
 
 // The one FIT text read: the value of `key` up to its first NUL, at most `maxLength` characters, into `value` (empty unless the status is Read).
 // WHY one function: classifying the reader's result and logging a malformed value must read the same for every caller.
-ReadStatus readText(FitIniFile& file, const char* key, unsigned long maxLength, std::string& value)
+ReadStatus readText(FitIniFile& file, mc2::czstring key, unsigned long maxLength, std::string& value)
 {
 	value.clear();
 	std::string buffer(maxLength + 1, '\0');
@@ -47,7 +47,7 @@ std::string toMemoryBreaks(std::string_view fileText) { return replaceAll(fileTe
 
 std::string toFileBreaks(std::string_view memoryText) { return replaceAll(memoryText, "\r\n", "\n"); }
 
-ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value)
+ReadStatus readChecked(FitIniFile& file, mc2::czstring key, std::string& value)
 {
 	const ReadStatus status = readText(file, key, kMaxTextLength, value);
 	if (status == ReadStatus::Read) {
@@ -56,7 +56,7 @@ ReadStatus readChecked(FitIniFile& file, const char* key, std::string& value)
 	return status;
 }
 
-std::optional<std::string> read(FitIniFile& file, const char* key)
+std::optional<std::string> read(FitIniFile& file, mc2::czstring key)
 {
 	std::string value;
 	if (readChecked(file, key, value) != ReadStatus::Read) {
@@ -65,7 +65,7 @@ std::optional<std::string> read(FitIniFile& file, const char* key)
 	return value;
 }
 
-std::optional<std::string> readPlain(FitIniFile& file, const char* key, unsigned long maxLength)
+std::optional<std::string> readPlain(FitIniFile& file, mc2::czstring key, unsigned long maxLength)
 {
 	std::string value;
 	if (readText(file, key, maxLength, value) != ReadStatus::Read) {
@@ -74,7 +74,7 @@ std::optional<std::string> readPlain(FitIniFile& file, const char* key, unsigned
 	return value;
 }
 
-std::optional<std::string> readFlagID(FitIniFile& file, const char* idKey, const char* indexKey)
+std::optional<std::string> readFlagID(FitIniFile& file, mc2::czstring idKey, mc2::czstring indexKey)
 {
 	if (std::optional<std::string> id = read(file, idKey)) {
 		return id;
@@ -103,7 +103,7 @@ void readFields(FitIniFile& file, Fields& fields)
 	fields.modelName = read(file, "ObjectiveModel").value_or("");
 }
 
-long write(FitIniFile& file, const char* key, std::string_view text)
+long write(FitIniFile& file, mc2::czstring key, std::string_view text)
 {
 	const std::string fileText = toFileBreaks(text);
 	return file.writeIdString(key, fileText.c_str());

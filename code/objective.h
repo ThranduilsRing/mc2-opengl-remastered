@@ -514,8 +514,8 @@ class CObjective {
 private:
 	int m_fitOrdinal = -1;
 	unsigned long long m_observationState = 0;
-	void ObserveState(const char* kind, int oldState, int newState);
-	void Dispatch(CObjectiveAction& action, const char* list);
+	void ObserveState(std::string_view kind, int oldState, int newState);
+	void Dispatch(CObjectiveAction& action, std::string_view list);
 	int m_alignment;
 	objective_text::Fields m_text;
 	bool m_titleUseResourceString;
@@ -668,7 +668,7 @@ public:
 		void Begin(FitIniFile& file);
 		unsigned long long Emit(std::string_view kind, unsigned long long cause, std::string_view data,
 		                        unsigned long long id = 0);
-		void SinkResult(const char* sink, const char* stage, const char* result, std::string_view payload,
+		void SinkResult(std::string_view sink, std::string_view stage, std::string_view result, std::string_view payload,
 		                unsigned long long cause = 0);
 		void Finish();
 	} observation;
@@ -697,8 +697,9 @@ private:
 bool objectiveObservationEnabled();
 std::string objectiveObservationQuote(std::string_view text);
 CObjectives::Observation* objectiveObservation();
-void objectiveObservationSink(const char* sink, const char* stage, const char* result, const char* payload);
-void objectiveObservationWav(const char* requested, const char* resource, int channel, const char* result, bool accepted);
+// payload may be null (an empty payload); other text arguments are present.
+void objectiveObservationSink(std::string_view sink, std::string_view stage, std::string_view result, mc2::czstring payload);
+void objectiveObservationWav(mc2::czstring requested, mc2::czstring resource, int channel, mc2::czstring result, bool accepted);
 
 /* Reads Nav Marker info and adds appropriate "hidden trigger" objectives. */
 bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives );

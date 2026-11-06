@@ -50,7 +50,8 @@
 //   empty            -> "comp<masterId>"
 //   starts non-alpha -> "c_<s>"
 // (Exactly the Python `_slug(name, master_id)` branch order.)
-inline std::string slugifyComponentName(const char* name, long masterId) {
+// A null name uses the same stable fallback as an empty name.
+inline std::string slugifyComponentName(mc2::czstring name, long masterId) {
     std::string cleaned;
     if (name) {
         for (const char* p = name; *p; ++p) {
@@ -86,7 +87,8 @@ inline std::string slugifyComponentName(const char* name, long masterId) {
 }
 
 // Canonical `core:<slug>` qualified id string for a component name+ordinal.
-inline std::string coreQualifiedIdFor(const char* name, long masterId) {
+// A null name uses the component ordinal fallback.
+inline std::string coreQualifiedIdFor(mc2::czstring name, long masterId) {
     return std::string("core:") + slugifyComponentName(name, masterId);
 }
 
@@ -208,7 +210,8 @@ inline bool mc2EquipmentDefinitionSourceIsGenerated() {
 // the generated bucket string onto that ordinal. An unrecognized/empty bucket
 // yields the caller-supplied legacy fallback so a partial def degrades per-field.
 // Kept engine-enum-FREE (raw ints) so this header stays IO/engine-free.
-inline int mc2GeneratedRangeBucketToOrdinal(const char* bucket, int legacyFallback) {
+// A null bucket preserves legacyFallback.
+inline int mc2GeneratedRangeBucketToOrdinal(mc2::czstring bucket, int legacyFallback) {
     if (!bucket || !bucket[0]) return legacyFallback;
     // case-insensitive compare, no engine string table dependency
     char b[16] = {0};
@@ -362,12 +365,13 @@ inline constexpr int kEquipmentRefNeedsWiden = -2;  // resolves to an id that ne
 
 // True if `ref` is the qualified-id form (contains ':'), else the legacy
 // numeric-ordinal form. Pure.
-inline bool isQualifiedEquipmentRef(const char* ref) {
+// A null ref is absent, hence not qualified.
+inline bool isQualifiedEquipmentRef(mc2::czstring ref) {
     return ref && std::strchr(ref, ':') != nullptr;
 }
 
 inline int resolveLoadoutEquipmentRef(const EquipmentRegistry& reg,
-                                      const char* ref) {
+                                      mc2::czstring ref) {
     if (!ref || ref[0] == '\0')
         return kEquipmentRefNotFound;
 
@@ -479,8 +483,9 @@ equipmentAddFillDecide(bool hasOrdinal, long ord, long numComponents,
 // Def Kind (+ weapon Category) -> legacy ComponentFormType ordinal (the CFORM_*
 // values above; they index the on-disk ComponentFormString table). Mirrors the
 // converter's kind/category vocabulary. Unknown kind -> CFORM_SIMPLE.
-inline int equipmentAddKindToFormOrdinal(const char* kind, const char* category) {
-    auto ieq = [](const char* a, const char* b) {
+// Null kind/category tokens are absent and use the defaults below.
+inline int equipmentAddKindToFormOrdinal(mc2::czstring kind, mc2::czstring category) {
+    auto ieq = [](mc2::czstring a, mc2::czstring b) {
         if (!a || !b) return false;
         for (;; ++a, ++b) {
             char ca = static_cast<char>(std::tolower(static_cast<unsigned char>(*a)));
@@ -511,7 +516,7 @@ inline int equipmentAddKindToFormOrdinal(const char* kind, const char* category)
 // Yes/No columns in compbas column order: Head, CenterTorso, LeftTorso,
 // RightTorso, LeftArm, RightArm, LeftLeg, RightLeg. Empty/absent list -> the
 // permissive torso+arms default (matches most stock weapon rows). Pure.
-inline void equipmentAddAllowedLocationsToCrit(const char* list, bool out[8]) {
+inline void equipmentAddAllowedLocationsToCrit(mc2::czstring list, bool out[8]) {
     static const char* kNames[8] = {
         "Head", "CenterTorso", "LeftTorso", "RightTorso",
         "LeftArm", "RightArm", "LeftLeg", "RightLeg"
