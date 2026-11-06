@@ -38,8 +38,6 @@
 
 #include <volk.h>
 #include "../../mclib/battle_bench_wait.h"
-#include "../../RenderCore/TemporalInputs.h"
-extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -920,11 +918,8 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Mech");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    float jpx[2];
-    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
-    VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    vkCmdSetViewport(cb, 0, 1, &vp);
+    mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
     VkDeviceSize vboOff = 0;
