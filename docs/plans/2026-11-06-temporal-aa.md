@@ -254,3 +254,12 @@ Left (needs the consumer to be testable): applying the jitter at the feeds (terr
 prop/water, `legacy_shape_tier1.vert`), history epochs and reset owners, object MV composition,
 sky/water MV, coverage-row reactive writers, vegetation previous sway, HZB jitter expansion.
 Picking and the shared camera are untouched by construction (no jitter is applied anywhere yet).
+
+## Slice D state (claude/temporal-aa-c)
+
+- Sky rotation reprojection landed: `motion_vectors.frag` reprojects depth-0 pixels with the previous view
+  rotation only (translation-free x/y/w rows pushed by `vulkan_motion_vectors.cpp`; zero rows, hence zero
+  motion, if the published eye position fails the clip w = 0 sanity check).
+- HZB jitter expansion landed: `hzb_cull.comp` and its CPU mirror `hzb_prop_bounds.h` widen the projected
+  box by 0.5 px (the jitter bound) on top of the existing one-texel margin.
+- Per-object mech/vehicle vectors: see the screenshot verdict in the lane report; not built unless ghosting is visible.

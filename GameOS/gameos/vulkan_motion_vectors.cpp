@@ -11,6 +11,8 @@
 extern std::atomic<uint32_t> g_mc2FrameCounter;
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -113,7 +115,7 @@ struct MotionVectors::Impl {
             writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; writes[i].pImageInfo = &images[i];
         }
         vkUpdateDescriptorSets(dev, 2, writes, 0, nullptr);
-        VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 80};
+        VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 120};
         const auto sl = dsl.get();
         VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         li.setLayoutCount = 1; li.pSetLayouts = &sl; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &pc;
@@ -218,9 +220,23 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
     float jitterClip[2];
     RenderCore::temporal::frameJitterClip(renderFrame, depth.w, depth.h, depth.w, jitterClip);
     glm::mat4 reprojection{1.0f};
+    glm::vec4 skyRows[3] = {};   // x, y, w rows of the rotation-only (translation-free) reprojection for sky pixels
     if (std::memcmp(glm::value_ptr(previous), glm::value_ptr(current), sizeof(glm::mat4)) != 0 &&
-        glm::determinant(current) != 0.0f)
-        reprojection = previous * glm::inverse(current);
+        glm::determinant(current) != 0.0f) {
+        const glm::mat4 inverseCurrent = glm::inverse(current);
+        reprojection = previous * inverseCurrent;
+        // A depth-0 pixel is a direction at infinity: drop the camera translation, keep the previous view rotation.
+        glm::mat4 previousRotation = previous;
+        previousRotation[3] = glm::vec4(0.0f);
+        const glm::vec3 cameraPos(main.uniforms.cameraWorldPos[0], main.uniforms.cameraWorldPos[1], main.uniforms.cameraWorldPos[2]);
+        const glm::mat4 sky = previousRotation * glm::translate(glm::mat4(1.0f), -cameraPos) * inverseCurrent;
+        // The eye lies on the clip w = 0 plane; if the published position does not satisfy that (different world
+        // convention) the sky keeps zero motion rather than a wrong vector.
+        const float eyeW = std::abs((current * glm::vec4(cameraPos, 1.0f)).w);
+        const float eyeScale = (std::abs(current[0][3]) + std::abs(current[1][3]) + std::abs(current[2][3])) * (1.0f + glm::length(cameraPos));
+        if (eyeW <= 1e-4f * eyeScale + 1e-3f)
+        for (int r = 0; r < 3; ++r) skyRows[r] = glm::vec4(sky[0][r == 2 ? 3 : r], sky[1][r == 2 ? 3 : r], sky[2][r == 2 ? 3 : r], sky[3][r == 2 ? 3 : r]);
+    }
     VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     b.image = depth.image.get();
@@ -241,7 +257,8 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
         infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.pipeline.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.layout.get(), 0, 1, &s.set, 0, nullptr);
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 64, glm::value_ptr(reprojection));
-        vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 64, 8, jitterClip);
+        vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 64, 48, skyRows);
+        vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 112, 8, jitterClip);
         vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
     }
     b.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

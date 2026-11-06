@@ -1,6 +1,6 @@
 // Camera motion by depth reprojection (docs/plans/2026-11-06-temporal-aa.md).
-// Output 0: previousUV - currentUV in UV units on the unjittered grid; zero on sky (reverse-Z
-// depth 0) and on history reset (identity reprojection). The scene depth was drawn with the
+// Output 0: previousUV - currentUV in UV units on the unjittered grid; sky (reverse-Z
+// depth 0) reprojects by view rotation only; zero on history reset (identity reprojection). The scene depth was drawn with the
 // frame's render jitter jitterClip, so it is removed before reprojecting (plan: depth algebra).
 // Output 1: reactive/transparency mask for the temporal consumer; cleared to 0 here, writers per
 // coverage row land with the resolve slices.
@@ -14,6 +14,9 @@ layout(set = 0, binding = 0) uniform sampler2D depthTex;
 
 layout(push_constant) uniform Params {
     mat4 previousFromCurrentClip;
+    vec4 skyRowX;   // rotation-only reprojection rows (x, y, w) for depth-0 pixels
+    vec4 skyRowY;
+    vec4 skyRowW;
     vec2 jitterClip;
 } u;
 
@@ -22,6 +25,13 @@ void main() {
     vec2 ndcU = TexCoord * 2.0 - 1.0 - u.jitterClip;
     vec4 oldClip = u.previousFromCurrentClip * vec4(ndcU, depth, 1.0);
     Motion = oldClip.w > 0.0 ? 0.5 * oldClip.xy / oldClip.w + 0.5 - (TexCoord - 0.5 * u.jitterClip) : vec2(0.0);
-    if (depth == 0.0 || u.previousFromCurrentClip == mat4(1.0)) Motion = vec2(0.0);
+    if (depth == 0.0) {
+        // Sky: a direction at infinity; only the view rotation moves it. skyRow* map (ndc, 0.5, 1) to
+        // previous clip of the world direction through this pixel (translation dropped on the CPU).
+        vec4 v = vec4(ndcU, 0.5, 1.0);
+        float w = dot(u.skyRowW, v);
+        Motion = w > 0.0 ? 0.5 * vec2(dot(u.skyRowX, v), dot(u.skyRowY, v)) / w + 0.5 - (TexCoord - 0.5 * u.jitterClip) : vec2(0.0);
+    }
+    if (u.previousFromCurrentClip == mat4(1.0)) Motion = vec2(0.0);
     Reactive = 0.0;
 }

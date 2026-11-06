@@ -41,8 +41,9 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         y0 = (std::min)(y0, (y+1)*0.5f*h); y1 = (std::max)(y1, (y+1)*0.5f*h);
         nearest = (std::max)(nearest, z);
     }
-    out.pixels[0] = (std::max)(0.0f, std::floor(x0)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0)-1);
-    out.pixels[2] = (std::min)(static_cast<float>(w-1), std::ceil(x1)+1); out.pixels[3] = (std::min)(static_cast<float>(h-1), std::ceil(y1)+1);
+    // +-0.5 px: the pyramid depth was drawn with sub-pixel TAA jitter (mirrors hzb_cull.comp).
+    out.pixels[0] = (std::max)(0.0f, std::floor(x0-0.5f)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0-0.5f)-1);
+    out.pixels[2] = (std::min)(static_cast<float>(w-1), std::ceil(x1+0.5f)+1); out.pixels[3] = (std::min)(static_cast<float>(h-1), std::ceil(y1+0.5f)+1);
     const float extent = (std::max)(out.pixels[2]-out.pixels[0], out.pixels[3]-out.pixels[1]);
     while (out.lod+1 < static_cast<uint32_t>(levels) && static_cast<float>(1u << out.lod) < extent) ++out.lod;
     out.nearest = nearest;
