@@ -46,3 +46,19 @@ Assignment: A:/Games/mc2-cxxt1, claude/w122-cxx-t1, base ef86f849e0b2.
 - Next: commit this checkpoint; at that exact SHA run box build, unit, unit-san,
   smoke-lite, determinism:mc2_03 and saveload, then lint. Retry lease-blocked rows
   once, archive final receipts with SHA, and run box cleanup before hand-back.
+
+### Checkpoint and infrastructure block
+
+- 29a4f8371: C++ ratchet PASS, ownership inventory PASS (296 types, zero rises
+  or falls), file-size PASS (38 oversized, max 3363), diff whitespace PASS.
+- Both the required combined proof submission and separate lint attempt failed
+  before uploading this commit: scp closed the connection to the configured box
+  (14.227.95.149:30598), exit 255. No build, tests or runtime rows ran; this is
+  an infrastructure block, not a pass or a lease timeout.
+- This documentation checkpoint is the final candidate. Retry the prescribed
+  combined rows and lint at its exact SHA and retain their receipts under
+  E:/mc2-archive-2026-10/proofs/w122-cxx-t1/<sha>/. If the connection still fails,
+  next owner action is restore box access, then run those same rows unchanged.
+- Request box cleanup even if unreachable. No local install, game process,
+  scratch script or copied executable was created. Keep this worktree and the
+  archived proof history; delete only this run's transient bundle/ref artifacts.
