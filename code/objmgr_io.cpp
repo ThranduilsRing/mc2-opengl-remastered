@@ -334,7 +334,7 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 		return;
 
 	long warmedAppearances = 0;
-	const float increment = progressRange / float(numTerrainObjects);
+	const float increment = progressRange / static_cast<float>(numTerrainObjects);
 	for (long i = 0; i < numTerrainObjects; ++i)
 	{
 		TerrainObjectPtr obj = terrainObjects[i];
@@ -347,7 +347,7 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 		progress += increment;
 	}
 
-	TracyPlot("Terrain object appearances warmed during mission load", int64_t(warmedAppearances));
+	TracyPlot("Terrain object appearances warmed during mission load", static_cast<int64_t>(warmedAppearances));
 }
 
 // Register static props before geometry finalization so they are visible on the first frame.

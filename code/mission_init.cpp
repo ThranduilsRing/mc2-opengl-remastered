@@ -581,10 +581,8 @@ void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, cha
 					commanderID = MAX_COMMANDERS - 1;
 
 				mission_commander_team::notePartTeam(f.commanderPartTeam, commanderID, teamID);
-				if (commanderID > maxCommanderID)
-					maxCommanderID = commanderID;
-				if (teamID > maxTeamID)
-					maxTeamID = teamID;
+				maxCommanderID = std::max(maxCommanderID, commanderID);
+				maxTeamID = std::max(maxTeamID, teamID);
 			}
 	}
 

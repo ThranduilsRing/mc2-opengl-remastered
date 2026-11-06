@@ -310,9 +310,9 @@ void MechIcon::setDrawBack(bool bSet)
     TEXTUREPTR page = lockIconPage(handle);
     if (!page.pTexture) return;
     DWORD* dest = page.pTexture + rect.y * page.Width + rect.x;
-    if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, true, dest, page.Width, int(unitIconX), int(unitIconY)))
+    if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, true, dest, page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY)))
         unit_icons::blit(hudSheet(false), unit->getIconPictureIndex(), true,
-                         reinterpret_cast<uint32_t*>(dest), page.Width, int(unitIconX), int(unitIconY));
+                         reinterpret_cast<uint32_t*>(dest), page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY));
     std::mdspan<DWORD, std::dextents<size_t, 2>> pixels(page.pTexture, page.Height, page.Width);
     // Only the rear torso colours belong in the back paperdoll.
     for (int y = 0; y < unitIconY; ++y)
@@ -321,7 +321,7 @@ void MechIcon::setDrawBack(bool bSet)
             bool draw = pixel == 0xff505050 || pixel == 0xffff00ff || pixel == 0xff202020;
             for (int ci = 0; ci < 3; ++ci) {
                 const long first = (damageColors[0][ci] >> 16) + 4;
-                if (long(pixel >> 16) >= first && long(pixel >> 16) <= first + 3) draw = true;
+                if (static_cast<long>(pixel >> 16) >= first && static_cast<long>(pixel >> 16) <= first + 3) draw = true;
             }
             if (!draw) pixel = 0;
         }
@@ -386,9 +386,9 @@ bool MechIcon::init( long whichIndex )
     TEXTUREPTR page = lockIconPage(handle);
     if (!page.pTexture) return false;
     DWORD* const dest = page.pTexture + rect.y * page.Width + rect.x;
-    if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, false, dest, page.Width, int(unitIconX), int(unitIconY)))
+    if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, false, dest, page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY)))
         unit_icons::blit(hudSheet(false), whichIndex, false, reinterpret_cast<uint32_t*>(dest),
-                         page.Width, int(unitIconX), int(unitIconY), (unit && unit->getObjectType()) ? unit->getObjectType()->getAppearanceTypeName() : "");
+                         page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY), (unit && unit->getObjectType()) ? unit->getObjectType()->getAppearanceTypeName() : "");
     gos_UnLockTexture(handle);
 
 	for ( int i = 0; i < 5; ++i )
@@ -1011,7 +1011,7 @@ bool VehicleIcon::init( Mover* pMover )
     if (!textureData.pTexture) return false;
     unit_icons::blit(hudSheet(true), pMover->getIconPictureIndex(), false,
                      reinterpret_cast<uint32_t*>(textureData.pTexture + rect.y * textureData.Width + rect.x),
-                     textureData.Width, int(unitIconX), int(unitIconY), pMover->getObjectType()->getAppearanceTypeName());
+                     textureData.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY), pMover->getObjectType()->getAppearanceTypeName());
     gos_UnLockTexture(textureHandle);
 	unit = pMover;
 

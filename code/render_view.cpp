@@ -33,17 +33,17 @@ void extractRenderFrame(float tickAlpha)
 		impact_presentation::extract();
 	}
 	if (auto* ui = MissionInterfaceManager::instance()) ui->extractHudSnapshot();
-	TracyPlot("RenderList.terrain", int64_t(lists.terrain.size()));
-	TracyPlot("RenderList.movers", int64_t(lists.movers.size()));
-	TracyPlot("RenderList.other", int64_t(lists.other.size()));
+	TracyPlot("RenderList.terrain", static_cast<int64_t>(lists.terrain.size()));
+	TracyPlot("RenderList.movers", static_cast<int64_t>(lists.movers.size()));
+	TracyPlot("RenderList.other", static_cast<int64_t>(lists.other.size()));
 	const auto& hud = mc2::render_view::hud();
-	TracyPlot("HudSnapshot.movers", int64_t(hud.movers.size()));
-	TracyPlot("HudSnapshot.roster", int64_t(hud.roster.size()));
-	TracyPlot("HudSnapshot.sensors", int64_t(hud.sensors.size()));
-	TracyPlot("HudSnapshot.coverage", int64_t(hud.coverage.size()));
-	TracyPlot("HudSnapshot.objectives", int64_t(hud.objectives.size()));
-	TracyPlot("HudSnapshot.blips", int64_t(hud.blips.size()));
-	TracyPlot("HudSnapshot.vtols", int64_t(hud.vtols.size()));
+	TracyPlot("HudSnapshot.movers", static_cast<int64_t>(hud.movers.size()));
+	TracyPlot("HudSnapshot.roster", static_cast<int64_t>(hud.roster.size()));
+	TracyPlot("HudSnapshot.sensors", static_cast<int64_t>(hud.sensors.size()));
+	TracyPlot("HudSnapshot.coverage", static_cast<int64_t>(hud.coverage.size()));
+	TracyPlot("HudSnapshot.objectives", static_cast<int64_t>(hud.objectives.size()));
+	TracyPlot("HudSnapshot.blips", static_cast<int64_t>(hud.blips.size()));
+	TracyPlot("HudSnapshot.vtols", static_cast<int64_t>(hud.vtols.size()));
 }
 
 void GameObject::extractRenderView(mc2::render_view::RenderView& view)

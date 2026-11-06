@@ -182,13 +182,13 @@ float terrainElevation(const Snapshot& s, const glm::vec3& position)
 	upperLeft.x *= s.worldUnitsPerVertex;
 
 	upperLeft.y = floor(position.y * s.oneOverWorldUnitsPerVertex);
-	if (float(position.y * s.oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
+	if (static_cast<float>(position.y * s.oneOverWorldUnitsPerVertex) != static_cast<float>(upperLeft.y))
 		upperLeft.y += 1.0;
 	upperLeft.y *= s.worldUnitsPerVertex;
 
 	glm::vec2 _upperLeft;
-	_upperLeft.x = upperLeft.x * float(s.oneOverWorldUnitsPerVertex);
-	_upperLeft.y = upperLeft.y * float(s.oneOverWorldUnitsPerVertex);
+	_upperLeft.x = upperLeft.x * static_cast<float>(s.oneOverWorldUnitsPerVertex);
+	_upperLeft.y = upperLeft.y * static_cast<float>(s.oneOverWorldUnitsPerVertex);
 
 	long meshOffsetX = static_cast<long>(floor(_upperLeft.x));
 	long meshOffsetY = static_cast<long>(floor(_upperLeft.y));

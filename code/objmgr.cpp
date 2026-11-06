@@ -1024,7 +1024,7 @@ bool viewIsCurrent (const mc2::render_view::RenderView& v)
 		return true;
 	if (++g_staleViewSkips <= 8)
 		MC2_LOG_OUT(Sim, Warn, "[SIM_OVERLAP v1] stale_view_skip sample=first8 class={} watch={} total={}",
-			unsigned(v.objClass), v.watchId, g_staleViewSkips);
+			static_cast<unsigned>(v.objClass), v.watchId, g_staleViewSkips);
 	return false;
 }
 }

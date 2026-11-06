@@ -229,8 +229,7 @@ long BattleMech::update (void)
 				velFactor = cos(velAngle);
 	
 			float velMult = velMag * velFactor * frameLength;
-			if (velMult > DistanceToWaypoint)
-				velMult = DistanceToWaypoint;
+			velMult = std::min(velMult, DistanceToWaypoint);
 			vel *= velMult * worldUnitsPerMeter;
 			setVelocity(vel);
 	

@@ -133,7 +133,7 @@ bool BattleMech::pivotTo (void) {
 				float relFacingToWayPt = relFacingTo(wayPt);
 				if ((relFacingToWayPt < -5.0) || (relFacingToWayPt > 5.0)) {
 					float turnRate = -relFacingToWayPt;
-					float maxRate = tonnageTurnRate[long(tonnage)] * frameLength;
+					float maxRate = tonnageTurnRate[static_cast<long>(tonnage)] * frameLength;
 					if (turnRate < 0.0f)
 						maxRate = -maxRate;
 					if (fabs(turnRate) > maxRate) {
@@ -193,7 +193,7 @@ bool BattleMech::pivotTo (void) {
 							turnRate = 180.0 - relFacingToWayPt;
 					}
 					
-					float maxRate = tonnageTurnRate[long(tonnage)] * frameLength;
+					float maxRate = tonnageTurnRate[static_cast<long>(tonnage)] * frameLength;
 					if (fabs(turnRate) > maxRate) {
 						if (turnRate > 0)
 							turnRate = maxRate;
@@ -237,7 +237,7 @@ bool BattleMech::pivotTo (void) {
 			float fireArc = getFireArc();
 			if ((relFacingToTarget < -fireArc) || (relFacingToTarget > fireArc)) {
 				float turnRate = -relFacingToTarget;
-				float maxRate = tonnageTurnRate[long(tonnage)] * frameLength;
+				float maxRate = tonnageTurnRate[static_cast<long>(tonnage)] * frameLength;
 				if (fabs(turnRate) > maxRate) {
 					if (turnRate > 0)
 						turnRate = maxRate;
@@ -482,7 +482,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 								// -fs
 								
 								newRotate = -relFacingToWayPt; 								
-								float maxRate = tonnageTurnRate[long(tonnage)] * frameLength;
+								float maxRate = tonnageTurnRate[static_cast<long>(tonnage)] * frameLength;
 								if (fabs(newRotate) > maxRate) 
 								{
 									if (fabs(newRotate) < 50.0f)
@@ -540,7 +540,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 							// Don't know that we need to force walk to turn!!
 							// -fs
 								
-							float maxRate = tonnageTurnRate[long(tonnage)] * frameLength;
+							float maxRate = tonnageTurnRate[static_cast<long>(tonnage)] * frameLength;
 							if (fabs(newRotate) > maxRate) 
 							{
 								if (fabs(newRotate) < 50.0f)
@@ -734,10 +734,7 @@ void BattleMech::setControlSettings (float& newRotate, char& newThrottleSetting,
 				break;
 			case MECH_STATE_WALKING:
 				if (newThrottleSetting != -1) {
-					if (newThrottleSetting < minThrottle)
-						newThrottleSetting = minThrottle;
-					else if (newThrottleSetting > maxThrottle)
-						newThrottleSetting = maxThrottle;
+					newThrottleSetting = static_cast<char>(std::clamp<long>(newThrottleSetting, minThrottle, maxThrottle));
 					control.settings.mech.throttle = newThrottleSetting;
 				}
 				break;

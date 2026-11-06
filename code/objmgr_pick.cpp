@@ -24,7 +24,7 @@ static void ensureMoverGrid(GameObjectManager& om, mc2::world::SpatialGrid& grid
 	grid.finish();
 	s_moverOrdinalByHandle.assign(static_cast<size_t>(maxHandle + 1), -1);
 	for (int i = 0; i < static_cast<int>(movers.size()); ++i)
-		s_moverOrdinalByHandle[movers[i]->getHandle()] = int(i);
+		s_moverOrdinalByHandle[movers[i]->getHandle()] = static_cast<int>(i);
 	dirty = false;
 }
 
@@ -302,17 +302,10 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 
 		if (i)
 		{
-			if (bcsp[i].x > maxX)
-				maxX = bcsp[i].x;
-
-			if (bcsp[i].x < minX)
-				minX = bcsp[i].x;
-
-			if (bcsp[i].y > maxY)
-				maxY = bcsp[i].y;
-
-			if (bcsp[i].y < minY)
-				minY = bcsp[i].y;
+			maxX = std::max(maxX, bcsp[i].x);
+			minX = std::min(minX, bcsp[i].x);
+			maxY = std::max(maxY, bcsp[i].y);
+			minY = std::min(minY, bcsp[i].y);
 		}
 	}
 
@@ -580,7 +573,7 @@ void gameplayPickBattery(GameObjectManager& manager) {
             wreckPickRect(obj,l,t,r,b);
             int hits=0;
             for(int y=0;y<7;++y) for(int x=0;x<7;++x)
-                hits += pickGameplayObjects(long(l+(r-l)*(x+.5f)/7),long(t+(b-t)*(y+.5f)/7),movers,false)==obj;
+                hits += pickGameplayObjects(static_cast<long>(l+(r-l)*(x+.5f)/7),static_cast<long>(t+(b-t)*(y+.5f)/7),movers,false)==obj;
             mc2::fmt::print_out("[WRECK_PICK_PROBE] id={} rect={:.0f},{:.0f},{:.0f},{:.0f} hits={}/49\n",obj->getPartId(),l,t,r,b,hits);
         }
     }
@@ -739,7 +732,7 @@ std::string mc2PickGridReport(int cols, int rows) {
         std::snprintf(line, sizeof line, "  (%ld,%ld) -> id=%d cls=%d type=%s pos=(%.0f,%.0f) screen=(%.0f,%.0f w=%.2f) rect=%s(%.0f,%.0f,%.0f,%.0f) winVis=%d turn=%d nameId=%ld\n",
             x, y, static_cast<int>(obj->getPartId()), static_cast<int>(obj->getObjectClass()), (app && app->getAppearanceType()) ? app->getAppearanceType()->name : "?",
             pos.x, pos.y, sp.x, sp.y, sp.w, ok ? "" : "BAD", rect.left, rect.top, rect.right, rect.bottom,
-            static_cast<int>(obj->getWindowsVisible()), static_cast<int>(::turn), app ? long(app->getObjectNameId()) : -1L);
+            static_cast<int>(obj->getWindowsVisible()), static_cast<int>(::turn), app ? static_cast<long>(app->getObjectNameId()) : -1L);
         out += line;
     }
     return out;

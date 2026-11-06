@@ -1040,8 +1040,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 				long left, right;
 				diagramToScreen( i, j, left, right );
 				{
-					int sw = pSelectedComponent->getComponentWidth();  if (sw<1) sw=1; if (sw>2) sw=2;
-					int sh = pSelectedComponent->getComponentHeight(); if (sh<1) sh=1; if (sh>5) sh=5;
+					int sw = std::clamp(pSelectedComponent->getComponentWidth(), 1, 2);
+					int sh = std::clamp(pSelectedComponent->getComponentHeight(), 1, 5);
 					tmpRect = &selRects[sw-1][sh-1];   // clamp: selRects is [2][5]
 				}
 				tmpRect->moveTo( left + xOffset, right + yOffset );
@@ -1706,8 +1706,8 @@ void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 			dragIcon.setColor( 0xffffffff );
 
 			{
-				int cw = sizeX; if (cw<1) cw=1; if (cw>2) cw=2;
-				int ch = sizeY; if (ch<1) ch=1; if (ch>5) ch=5;
+				int cw = std::clamp(sizeX, 1, 2);
+				int ch = std::clamp(sizeY, 1, 5);
 				selRect = &selRects[cw-1][ch-1];   // clamp: selRects is [2][5]
 			}
 
