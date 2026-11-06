@@ -29,6 +29,7 @@ from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as Futur
 
 import console_child
 import gate_reuse
+import gate_scope
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
@@ -1163,8 +1164,9 @@ FULL_MARK = "build64-ninja/last-full-gate.json"
 def verdict_of(result, steps, failed=None):
     """(verdict, skipped): PASS only when every row ran green; a skipped required row is PARTIAL, host-only reds are INFRA."""
     failed = FAILED_STAGES if failed is None else failed
-    skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
-    skipped += [n for n, row in ROW_RESULTS.items() if row["status"].startswith("SKIP") and n not in skipped]
+    scoped = {n for n, _, e in steps if e.get("MC2_GATE_SCOPE_SKIP")}   # diff-scoped skips (gate_scope) are not PARTIAL
+    skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE") and n not in scoped]
+    skipped += [n for n, row in ROW_RESULTS.items() if row["status"].startswith("SKIP") and n not in skipped and n not in scoped]
     infra_only = bool(result and failed and all(s.startswith("INFRA") for _, s in failed))
     return ("INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")), skipped
 
@@ -1177,6 +1179,7 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
+                scope_skipped={n: "SKIP(" + e["MC2_GATE_SKIP_REASON"] + ")" for n, _, e in steps if e.get("MC2_GATE_SCOPE_SKIP")},
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
                 artifacts=artifacts, timings={k: round(v, 1) for k, v in timings.items()},
@@ -1191,10 +1194,11 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
     return data
 
 
-def mark_full_gate(root, head, verdict, full, dry_run):
-    """last-full-gate.json records a COMPLETE PASS only: a partial or red full gate leaves the previous mark (and removes a same-HEAD one)."""
+def mark_full_gate(root, head, verdict, full, dry_run, scope_skipped=False):
+    """last-full-gate.json records a COMPLETE PASS only: a partial or red full gate leaves the previous mark (and removes a same-HEAD one).
+    A scope-skipped gate (gate_scope) may publish but never moves the mark: it must keep pointing at the last gate where every stage ran."""
     mark = Path(root) / FULL_MARK
-    if not full or dry_run:
+    if not full or dry_run or scope_skipped:
         return False
     if verdict != "PASS":
         try:
@@ -1380,8 +1384,12 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             (mods if step[0] == "mods" else stock).append(step)
         # Save fixtures share Windows' user save directory, so stay on one worker.
         # Determinism has no writes there and consumes its own named artifacts.
-        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
-            determinism = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
+        # With mods scope-skipped (or absent) worker B is idle: 2 or more live determinism rows still go 2-wide on the
+        # clone (each row takes its own FIFO host slot, so the lease and MC2_HOST_GAME_SLOTS stay in charge). Saveload
+        # rows stay on A: unproven on a clone, and they hold the install's save fixtures.
+        live_det = [s for s in stock if s[0].startswith("determinism-") and not s[2].get("MC2_GATE_SKIP_REASON")]
+        if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods) or len(live_det) >= 2:
+            determinism = live_det
         if determinism:
             # These checks have no user-save writes and can use the same clone.
             determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
@@ -1414,7 +1422,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             result |= execute(mods, head, runner=runner, completed=completed)
             mods = []
         copy_context, copy_future = None, None
-        if mods:
+        if mods or determinism:
             command = next((c for _, c, _ in determinism + stock if "--install" in c), None)
             if command:
                 install = Path(command[command.index("--install") + 1]).resolve()
@@ -1447,7 +1455,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             def farm_runner(command, cwd, env):
                 return farm_stage(command, remote_envs[farm_key(command)], local_env=env)
             pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
-        if mods:
+        if mods or determinism:
             # Without a private stock snapshot, keep mod staging away from
             # stock harness writes to the live install's configs.
             if not copy_future:
@@ -1467,7 +1475,8 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                             remapped.append((n, command, e))
                         # The clone chain runs beside the stock chain: route it to the auxiliary GPU (r7 finding 3).
                         mod_rows = [s for s in remapped if s[0] == 'mods']
-                        result |= execute(mod_rows, head, runner=runner, completed=completed, device=aux_device())
+                        if mod_rows:
+                            result |= execute(mod_rows, head, runner=runner, completed=completed, device=aux_device())
                         others = [s for s in remapped if s[0] != 'mods']
                         if others:
                             result |= execute(others, head, runner=runner, completed=completed, device=aux_device())
@@ -1620,7 +1629,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
             reused = overrides.get("MC2_GATE_REUSE_STAGE")
-            status = "SKIP: " + reason
+            status = f"SKIP({reason})" if overrides.get("MC2_GATE_SCOPE_SKIP") else "SKIP: " + reason
             if reused:
                 passed = all(stage_passed(completed.get(source, "")) for source in reused.split(","))
                 status = ("REUSED: " if passed or dry_run else "FAIL reuse: source checks failed; ") + reason
@@ -1766,6 +1775,8 @@ def main(argv=None):
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
+    ap.add_argument("--nightly", action="store_true", help="implies --full and forces EVERY stage (mods, video-decode included); the orchestrator schedules it. A --full without it skips mods/video-decode "
+                    "when the diff since last-full-gate.json touches none of their inputs (docs/merge-queue-v2.md), unless that mark is older than 30 h")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
     ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
@@ -1795,6 +1806,7 @@ def main(argv=None):
         jobs = "2"
     ap.add_argument("-j", type=int, default=int(jobs))
     args = ap.parse_args(argv)
+    args.full = args.full or args.nightly
     if not args.box_gate:
         args.farm_determinism = False   # --no-box: the farm queue lives on the dead box; never wait out its ssh timeout
     STOP_REQUESTED.clear()
@@ -1876,6 +1888,13 @@ def main(argv=None):
     else:
         steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
     steps = apply_box_route(steps, full=args.full or not base)
+    if args.full:
+        mark_head, mark_age = gate_scope.read_mark(ROOT)
+        decisions = gate_scope.decide(gate_scope.scoped_diff(git, mark_head, head) if mark_head else None, change_domains,
+                                      nightly=args.nightly, mark_age_s=mark_age)
+        steps, scoped_out = gate_scope.apply_scope(steps, decisions)
+        print(f"[merge_gate] scope: {'nightly, every stage' if args.nightly else 'scope-skipped ' + ','.join(scoped_out) if scoped_out else 'every stage runs'}"
+              f" (last all-stage gate {str(mark_head)[:12]}, age {'n/a' if mark_age is None else f'{mark_age / 3600:.1f} h'})", flush=True)
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
         # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
         classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")
@@ -1974,7 +1993,7 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
-                mark_full_gate(ROOT, head, verdict, args.full, args.dry_run)
+                mark_full_gate(ROOT, head, verdict, args.full, args.dry_run, any(e.get("MC2_GATE_SCOPE_SKIP") for _, _, e in steps))
                 if verdict != "PASS" and not args.dry_run and not args.install:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and not args.install:
