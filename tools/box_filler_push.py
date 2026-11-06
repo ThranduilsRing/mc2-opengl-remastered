@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import box_run
+from box_run import console_child
 from box_run import SSH, SSH_STDIN, run
 
 F = "/workspace/filler"

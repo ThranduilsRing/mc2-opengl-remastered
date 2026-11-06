@@ -167,6 +167,20 @@ def box_contracts_pc_only():
     return [ln.strip() for ln in lines if ln.strip() and not ln.lstrip().startswith("#")]
 
 
+def box_infra_repeated(head, cause, state=None):
+    """Record this BOX_INFRA (head + cause) and say whether the previous gate run also died of BOX_INFRA at the same head."""
+    path = Path(state or os.environ.get("MC2_BOX_INFRA_STATE", "A:/Games/mc2-ops/box_infra_last.json"))
+    try:
+        prev = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        prev = {}
+    try:
+        path.write_text(json.dumps({"head": str(head), "cause": cause}), encoding="utf-8")
+    except OSError:
+        pass
+    return prev.get("head") == str(head)
+
+
 def box_fallback(reused, completed):
     """Windows-full fallback: when the box stage died of BOX_INFRA (box failed, no product verdict) the offloaded rows run on the PC."""
     if not str(completed.get("box-gate", "")).startswith("INFRA"):
@@ -1353,6 +1367,10 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             if fell_back:
                 print("[merge_gate] BOX UNAVAILABLE MID-RUN (BOX_INFRA): the box produced no verdicts; running the offloaded rows on the PC "
                       "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED or n in ("contracts", "contracts-linux", "unit-linux")), flush=True)
+                cause = str(completed.get("box-gate", ""))
+                if box_infra_repeated(head, cause):
+                    print(f"[merge_gate] WARN: BOX_INFRA TWICE IN A ROW AT HEAD {str(head)[:12]}: the box is broken, not flaky. Cause: {cause}. "
+                          "This window's offloaded rows ran on the PC; fix the box before trusting any later box-green.", flush=True)
                 FAILED_STAGES[:] = [f for f in FAILED_STAGES if f[0] != "box-gate"]
                 box_result = 0
             result |= box_result

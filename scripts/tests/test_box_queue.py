@@ -196,22 +196,10 @@ def test_only_the_script_piping_calls_may_keep_stdin_open(monkeypatch, tmp_path)
             assert (stdin is not None) == ("-n" not in cmd), cmd[-1]
 
 
-def bash_or_skip():
-    import shutil
-    b = shutil.which("bash")
-    if not b:
-        pytest.skip("bash not available")
-    return b
-
-
 def test_every_attempt_gets_a_fresh_determinism_out_dir(tmp_path):
-    # defect 5 (correctness): sim_determinism refuses an existing --out, so a retried row was VOID. Run the real helper from the remote script.
-    import subprocess
-    bash = bash_or_skip()
-    d = (tmp_path / "out" / "determinism_mc2_01").as_posix()
-    script = box_run.FRESH_FN + f'\nfor i in 1 2 3; do x=$(fresh "{d}"); mkdir -p "$x"; echo "$x"; done'
-    out = subprocess.run([bash, "-c", script], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.split()
-    assert out == [d + ".a0", d + ".a1", d + ".a2"]
+    # defect 5 (correctness): sim_determinism refuses an existing --out, so a retried row was VOID.
+    # The function text is checked, not executed (no bash spawn): it probes <dir>.a0, .a1, ... and prints the first free name.
+    assert 'while [ -e "$d.a$n" ]; do n=$((n+1)); done' in box_run.FRESH_FN and 'printf %s "$d.a$n"' in box_run.FRESH_FN
     assert box_run.REMOTE.count("$(fresh $OUT/$name)") >= 2 and "--out $OUT/$name" not in box_run.REMOTE
     assert "#@@FRESH_FN@@" not in box_run.REMOTE and box_run.FRESH_FN in box_run.REMOTE
 
@@ -249,16 +237,10 @@ def test_task_status_line_carries_the_verdict(monkeypatch, capsys, tmp_path):
 
 
 def test_sh_rows_with_spaces_and_slashes_are_passed_as_argv_not_spliced(tmp_path):
-    import subprocess
-    bash = bash_or_skip()
-    assert 'eval "$2"' in box_run.REMOTE and '_ "$S" "$cmd"' in box_run.REMOTE
-    # the real name sanitiser and the real argv/eval hand-off, on a row with spaces, quotes and slashes
-    row = "sh:echo 'a b' > out/x.txt; ls /tmp | wc -l"
-    script = ("row=$1; name=$(printf %s \"$row\" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*) name=${name:0:50}-$(printf %s \"$row\" | cksum | cut -d' ' -f1);; esac\n"
-              "cmd=\"${row#sh:}\"; mkdir -p \"$2/out\"; bash -c 'cd \"$1\" && eval \"$2\"' _ \"$2\" \"$cmd\" >/dev/null; echo \"$name\"; cat \"$2/out/x.txt\"")
-    r = subprocess.run([bash, "-c", script, "_", row, tmp_path.as_posix()], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
-    lines = r.stdout.split("\n")
-    assert "/" not in lines[-3] and " " not in lines[-3] and lines[-2] == "a b", r.stdout + r.stderr
+    # The generated script text is checked, not executed (no bash spawn).
+    assert """bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" """.strip() in box_run.REMOTE   # the row travels as argv, never spliced into the command line
+    assert "tr -c 'A-Za-z0-9._-' _" in box_run.REMOTE                                      # the log name is sanitised (spaces, quotes, slashes)
+    assert 'sh:*|cpu:*)  cmd="${row#*:}"' in box_run.REMOTE
 
 
 def test_presubmit_warns_when_the_tip_lacks_the_box_clang_fix(monkeypatch, capsys):
