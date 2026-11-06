@@ -1258,6 +1258,7 @@ def test_stage_merges_without_precheck_receipts_but_batch_still_refuses(env, tmp
     git(repo, "branch", "claude/nifty-mendeleev", "main")
     lm = _load_module()
     monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
+    monkeypatch.setattr(lm, "stage_preflight", lambda root, window: [])   # the fixture repo has no merge_gate.py
     assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5    # plain --batch: unchanged
     assert "PRECHECK MISSING" in capsys.readouterr().out
     rc = lm.main(["--stage", "W1", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
@@ -1489,3 +1490,51 @@ def test_stage_help_documents_the_queue_commands(capsys):
         _load_module().main(["--help"])
     out = capsys.readouterr().out
     assert all(k in out for k in ("--stage W --batch", "--promote W", "--bisect W --red", "nifty untouched"))
+
+
+# ---- only --promote moves nifty ----
+
+def test_batch_on_nifty_is_refused_and_hotfix_is_logged(env, monkeypatch, capsys):
+    repo, tools = env
+    _branch(repo, "lane_a", "a_lane.txt", "a\n", "lane a")
+    lm = _load_module()
+    import lane_merge_stage
+    monkeypatch.setattr(lane_merge_stage, "NIFTY", "main")      # the fixture's checked-out branch plays nifty
+    old = git(repo, "rev-parse", "main")
+    rc = lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
+    err = capsys.readouterr().err
+    assert rc == 5 and "DIRECT MERGE REFUSED" in err and "--stage W --batch" in err
+    assert git(repo, "rev-parse", "main") == old
+    lm.main(["--hotfix", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
+    assert "HOTFIX direct merge" in capsys.readouterr().out
+
+
+def test_promote_tags_the_green_candidate(env, monkeypatch):
+    lm, repo, old, cand = _stage_fixture(env, monkeypatch)
+    _verdict(repo, head=cand)
+    assert lm.promote(str(repo), "t1") == 0
+    tag = f"nifty-green-t1-{cand[:9]}"
+    assert git(repo, "cat-file", "-t", tag) == "tag" and git(repo, "rev-parse", tag + "^{commit}") == cand
+
+
+def test_stage_refused_by_a_red_preflight_blocks_promote(env, monkeypatch):
+    lm, repo, old, cand = _stage_fixture(env, monkeypatch)
+    import lane_merge_stage
+    real = subprocess.run
+    mode = {"rc": 1}
+
+    def fake(cmd, *a, **k):
+        if "merge_gate.py" not in " ".join(map(str, cmd)):
+            return real(cmd, *a, **k)
+        out = "[merge_gate] cheap row FAIL: dup_check failed before the build (rc=1): x" if mode["rc"] else ""
+        return subprocess.CompletedProcess(cmd, mode["rc"], out, "")
+    monkeypatch.setattr(lane_merge_stage.subprocess, "run", fake)
+    reds = lm.stage_preflight(str(repo), "t1")
+    assert reds and "dup_check" in reds[0]
+    _verdict(repo, head=cand)
+    with pytest.raises(lm.Stop) as e:
+        lm.promote(str(repo), "t1")
+    assert e.value.code == 6 and "dup_check" in str(e.value)
+    assert git(repo, "rev-parse", "main") == old
+    mode["rc"] = 0
+    assert lm.stage_preflight(str(repo), "t1") == []

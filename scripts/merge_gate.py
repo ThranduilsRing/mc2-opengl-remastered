@@ -250,7 +250,7 @@ def clean_failed_outputs(state, proof):
 
 def cheap_row_errors(head):
     """Rows that cost about a minute but used to fail a window only after the build (W122c): hygiene over the candidate
-    range, duplicate-code count against the gate base, memory-file size. A failure stops --preflight."""
+    range, duplicate-code count against the gate base, a launch hygiene row; memory size is a WARN only. A failure stops --preflight."""
     try:
         base = git("merge-base", head, "claude/nifty-mendeleev")
         if base == head:   # candidate is nifty itself: range starts at the last all-stage gate head
@@ -260,7 +260,7 @@ def cheap_row_errors(head):
         base = head
     rows = (("staged-hygiene", ["py", "-3", "scripts/check-staged-hygiene.py", "--range", f"{base}..{head}"]),
             ("dup_check", ["py", "-3", "tools/dup_check.py", "--check", "--rev", head]),
-            ("memory-size", ["py", "-3", "scripts/check-memory-size.py"]))
+            ("background_launch", ["py", "-3", "scripts/check-background-launch.py", "--quiet"]))
     errors = []
     for name, command in rows:
         result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
@@ -268,7 +268,17 @@ def cheap_row_errors(head):
         if result.returncode:
             tail = " | ".join((result.stdout + result.stderr).strip().splitlines()[-3:])
             errors.append(f"{name} failed before the build (rc={result.returncode}): {tail}; fix: {' '.join(command[2:])}")
+    memory_size_warning()
     return errors
+
+
+def memory_size_warning():
+    """check-memory-size reads the agents' memory directory on C:, not the candidate: advisory only, never a gate or preflight failure."""
+    result = subprocess.run(["py", "-3", "scripts/check-memory-size.py"], cwd=ROOT, capture_output=True, text=True,
+                            **console_child.child_kwargs(redirected=True))
+    if result.returncode:
+        tail = " | ".join((result.stdout + result.stderr).strip().splitlines()[-3:])
+        print(f"[merge_gate] WARN memory-size (advisory, not a gate failure; rc={result.returncode}): {tail}", flush=True)
 
 
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
@@ -1208,6 +1218,12 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
                 artifacts=artifacts, timings={k: round(v, 1) for k, v in timings.items()},
                 cleanup_errors=list(cleanup_errors), written=time.time())
+    try:   # a --hotfix direct nifty merge is named in the verdict
+        window = json.loads((ROOT / "build64-ninja/merge-window.json").read_text())
+        if window.get("hotfix") and window.get("head") == head:
+            data["hotfix"] = True
+    except (OSError, ValueError):
+        pass
     text = json.dumps(data, indent=2)
     for path in paths:
         path = Path(path)
@@ -1796,6 +1812,7 @@ def main(argv=None):
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     ap.add_argument("--base", help="pre-window commit; absent/stale window record means full coverage")
+    ap.add_argument("--cheap-rows", action="store_true", help="run only the cheap preflight rows on HEAD (used by lane_merge --stage); rc 1 names the red row")
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
@@ -1864,6 +1881,11 @@ def main(argv=None):
             ap.error('--clean-output requires an existing gate journal')
         with GateState(state_path, git('rev-parse', 'HEAD'), ROOT / 'build64-ninja/mc2.exe', args.proofs_dir, [], True, read_only=True) as state:
             clean_failed_outputs(state, args.proofs_dir)
+    if args.cheap_rows:
+        errors = cheap_row_errors(git('rev-parse', 'HEAD'))
+        for error in errors:
+            print('[merge_gate] cheap row FAIL: ' + error, flush=True)
+        return int(bool(errors))
     if args.preflight:
         return preflight(git('rev-parse', 'HEAD'), args.install or Path('E:/mc2-installs/_lean-seed'),
                          args.window, plan(args.j))

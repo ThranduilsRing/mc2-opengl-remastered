@@ -67,7 +67,7 @@ import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trust
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
-from lane_merge_stage import STAGE_HELP, bisect, bisect_step, promote, stage  # noqa: E402,F401
+from lane_merge_stage import STAGE_HELP, bisect, bisect_step, promote, refuse_direct_nifty, stage, stage_preflight  # noqa: E402,F401
 
 #: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
 TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
@@ -1193,6 +1193,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, epilog=STAGE_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--stage", metavar="W", help="with --batch: build candidate claude/stage-W from nifty with the frozen tips (see the merge queue below)")
     ap.add_argument("--promote", metavar="W", help="fast-forward nifty to the claude/stage-W candidate; only on a complete PASS verdict for its HEAD")
+    ap.add_argument("--hotfix", action="store_true", help="logged escape: merge directly into nifty without stage/gate/promote (recorded in the next gate verdict)")
     ap.add_argument("--verdict", help="with --promote: gate verdict JSON (default <root>/build64-ninja/gate-verdict.json)")
     ap.add_argument("--bisect", metavar="W", help="after a candidate verdict (--red / --green): halve a red batch, reject a red single tip")
     ap.add_argument("--red", action="store_true", help="with --bisect: the candidate failed")
@@ -1396,6 +1397,7 @@ def main(argv: list[str] | None = None) -> int:
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
             return 5 if would_abort else 0
+        refuse_direct_nifty(root, args.hotfix)
         if batch and not (args.stage or args.no_receipt_check or os.environ.get("MC2_NO_RECEIPT_CHECK")):
             missing = missing_receipts(root, refs)
             if missing:
@@ -1456,9 +1458,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {ref}: " + ", ".join(f"{label}(rc={rc})" for label, rc, _ in failed))
         if not merged and not batch:
             return 0
+        if args.stage and merged and not stopped:
+            if reds := stage_preflight(root, args.stage):
+                print(f"STAGE REFUSED {args.stage}: cheap preflight red before any build: " + " || ".join(reds))
+                return 6
         mode = "none" if args.no_verify else args.verify
         record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started,
-                      tree=git_out(root, "rev-parse", "HEAD^{tree}"))
+                      tree=git_out(root, "rev-parse", "HEAD^{tree}"), **({"hotfix": True} if args.hotfix else {}))
         record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
             qfailed = quick_rows(root)

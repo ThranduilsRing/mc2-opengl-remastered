@@ -169,7 +169,7 @@ def test_determinism_rows_run_two_wide_when_mods_is_scope_skipped(monkeypatch, t
 import pytest
 
 
-@pytest.mark.parametrize("failing", ["check-staged-hygiene.py", "dup_check.py", "check-memory-size.py"])
+@pytest.mark.parametrize("failing", ["check-staged-hygiene.py", "dup_check.py", "check-background-launch.py"])
 def test_each_cheap_row_stops_preflight_before_the_build(monkeypatch, failing):
     ran = []
     def fake_run(command, **kw):
@@ -179,7 +179,7 @@ def test_each_cheap_row_stops_preflight_before_the_build(monkeypatch, failing):
     monkeypatch.setattr(gate, "git", lambda *a: "base")
     monkeypatch.setattr(gate.subprocess, "run", fake_run)
     errors = gate.cheap_row_errors("a" * 40)
-    assert len(ran) == 3 and len(errors) == 1 and "before the build" in errors[0] and "boom" in errors[0]
+    assert len(ran) == 4 and len(errors) == 1 and "before the build" in errors[0] and "boom" in errors[0]
     monkeypatch.setattr(gate.subprocess, "run", lambda c, **kw: SimpleNamespace(returncode=0, stdout="", stderr=""))
     assert gate.cheap_row_errors("a" * 40) == []
 
@@ -191,3 +191,13 @@ def test_preflight_fails_when_a_cheap_row_fails(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(gate, "cheap_row_errors", lambda head: ["dup_check failed before the build (rc=1): x"])
     assert gate.preflight("a" * 40, tmp_path / "none", 1, []) == 1
     assert "dup_check failed before the build" in capsys.readouterr().out
+
+
+def test_memory_size_is_a_warn_only_line(monkeypatch, capsys):
+    def fake_run(command, **kw):
+        bad = "check-memory-size.py" in command[2]
+        return SimpleNamespace(returncode=1 if bad else 0, stdout="too big" if bad else "", stderr="")
+    monkeypatch.setattr(gate, "git", lambda *a: "base")
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
+    assert gate.cheap_row_errors("a" * 40) == []
+    assert "WARN memory-size" in capsys.readouterr().out
