@@ -8,7 +8,6 @@
 #include"dgoal.h"
 #include"dgameobj.h"
 #include"move.h"
-#include <variant>
 
 inline constexpr int MAX_GATES = 30;
 inline constexpr int MAX_MOVEGATES_CONTROLLED = 10;
@@ -33,18 +32,17 @@ enum class GoalLinkType {
 };
 using enum GoalLinkType;
 
-struct GoalObjectInfo {
-	unsigned long WID = 0;
+union GoalInfo {
+	struct {
+		unsigned long		WID;
+	} object;
+	struct {
+		short				minRow;
+		short				minCol;
+		short				maxRow;
+		short				maxCol;
+	} region;
 };
-
-struct GoalRegionInfo {
-	short minRow = 0;
-	short minCol = 0;
-	short maxRow = 0;
-	short maxCol = 0;
-};
-
-using GoalInfo = std::variant<GoalObjectInfo, GoalRegionInfo>;
 
 struct _GoalLink {
 	GoalObjectPtr			goalObject;
