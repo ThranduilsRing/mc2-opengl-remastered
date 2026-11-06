@@ -1396,7 +1396,7 @@ def main(argv: list[str] | None = None) -> int:
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
             return 5 if would_abort else 0
-        if batch and not (args.no_receipt_check or os.environ.get("MC2_NO_RECEIPT_CHECK")):
+        if batch and not (args.stage or args.no_receipt_check or os.environ.get("MC2_NO_RECEIPT_CHECK")):
             missing = missing_receipts(root, refs)
             if missing:
                 for sha in missing:

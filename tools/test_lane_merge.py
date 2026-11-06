@@ -1250,6 +1250,23 @@ def test_batch_refuses_tip_without_precheck_receipt_and_accepts_after_pass(env, 
     assert lm.missing_receipts(str(repo), ["lane_a"]) == [sha]       # corrupt receipt counts as missing
 
 
+def test_stage_merges_without_precheck_receipts_but_batch_still_refuses(env, tmp_path, monkeypatch, capsys):
+    # the staged candidate's gate is the proof (--promote needs a complete PASS verdict), so --stage must not demand per-tip receipts
+    repo, tools = env
+    monkeypatch.delenv("MC2_NO_RECEIPT_CHECK")
+    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
+    git(repo, "branch", "claude/nifty-mendeleev", "main")
+    lm = _load_module()
+    monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
+    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5    # plain --batch: unchanged
+    assert "PRECHECK MISSING" in capsys.readouterr().out
+    rc = lm.main(["--stage", "W1", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
+    out = capsys.readouterr().out
+    assert rc == 0 and "STAGE claude/stage-W1" in out and "PRECHECK MISSING" not in out
+    assert git(repo, "branch", "--show-current") == "claude/stage-W1"
+    assert git(repo, "show", "HEAD:a.txt") == "from a"
+
+
 # ---- G3: sim/save-sensitive paths make --precheck require and run saveload + determinism rows ----
 
 def test_sim_path_classification():
