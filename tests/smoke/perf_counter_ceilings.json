@@ -20,5 +20,20 @@
   "draws.water": 2.8,
   "extract.bytes": 1500963.264,
   "heap_allocs": 16.944
+ },
+ "_window": {
+  "ticks": "30..120",
+  "stems": {
+   "mc2_10": {
+    "draws.mech_depth": 0.05,
+    "draws.mech_color": 0.05,
+    "draws.props": 4.0,
+    "draws.terrain": 46.0,
+    "draws.water": 2.0,
+    "draws.legacy": 2.0,
+    "draws.sky": 2.0,
+    "draws.shadow": 7.2552
+   }
+  }
  }
 }

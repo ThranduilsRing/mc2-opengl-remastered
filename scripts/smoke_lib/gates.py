@@ -23,7 +23,7 @@ def load_perf_ceilings(path: Path = PERF_CEILINGS_PATH) -> dict:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return {k: v for k, v in data.items() if isinstance(v, dict)}
+    return {k: v for k, v in data.items() if isinstance(v, dict) and not k.startswith("_")}
 
 
 def load_window_ceilings(path: Path = PERF_CEILINGS_PATH) -> dict:
