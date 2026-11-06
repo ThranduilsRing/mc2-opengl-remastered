@@ -4,6 +4,12 @@ from test_lane_merge import _branch, _load_module, _stage_fixture, _verdict, env
 import pytest, subprocess  # noqa: E401
 
 
+@pytest.fixture(autouse=True)
+def _trusted_copy(monkeypatch):
+    monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")
+    monkeypatch.setenv("MC2_LANE_MERGE_TRUSTED", "1")
+
+
 # ---- only --promote moves nifty ----
 
 def test_batch_on_nifty_is_refused_and_hotfix_is_logged(env, monkeypatch, capsys):
