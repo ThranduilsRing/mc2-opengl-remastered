@@ -75,8 +75,7 @@ static bool userBuildingTextures(TG_TypeMultiShape* shape)
 
 static void discardBldgRenderOverrides(BldgAppearanceType& type)
 {
-	delete type.bldgRenderShape;
-	type.bldgRenderShape = nullptr;
+	type.bldgRenderShape.reset();
 	for (auto& lod : type.bldgRenderLods) lod.reset();
 	type.bldgDmgRenderShape.reset();
 	type.propMaterialSource = nullptr;
@@ -128,8 +127,8 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
 	{
-		bldgShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-		tglVerifyShapeLoaded(bldgShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		bldgShape[0] = std::make_unique<TG_TypeMultiShape>();
+		tglVerifyShapeLoaded(bldgShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 		return;
 	}
 	bool userArt = userBuildingAsset(static_cast<const char*>(iniName));
@@ -148,8 +147,8 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 	result = iniFile.seekBlock("TGLData");
 	if (result != NO_ERR)
 	{
-		bldgShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-		tglVerifyShapeLoaded(bldgShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		bldgShape[0] = std::make_unique<TG_TypeMultiShape>();
+		tglVerifyShapeLoaded(bldgShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 		return;
 	}
 
@@ -226,16 +225,16 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				bldgShape[i] = new TG_TypeMultiShape;
+				bldgShape[i] = std::make_unique<TG_TypeMultiShape>();
 				gosASSERT(bldgShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
-					loadBuildingImportSourceWithSidecarAxis(bldgShape[i], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
+					loadBuildingImportSourceWithSidecarAxis(bldgShape[i].get(), importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
 				} else if (i == 0) {
 					FullPathFileName bldgName;
 					bldgName.init(tglPath,aseFileName,".ase");
 					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
-					tglLoadShapeChecked(bldgShape[i], bldgName,
+					tglLoadShapeChecked(bldgShape[i].get(), bldgName,
 						"bdactor.bldg_base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName bldgName;
@@ -252,24 +251,24 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 			}
 			else if (!i)
 			{
-				bldgShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-				tglVerifyShapeLoaded(bldgShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+				bldgShape[0] = std::make_unique<TG_TypeMultiShape>();
+				tglVerifyShapeLoaded(bldgShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 			}
 		}
 	}
 	else
 	{
 		userArt |= userBuildingShape(aseFileName);
-		bldgShape[0] = new TG_TypeMultiShape;
+		bldgShape[0] = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(bldgShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
-			loadBuildingImportSourceWithSidecarAxis(bldgShape[0], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
+			loadBuildingImportSourceWithSidecarAxis(bldgShape[0].get(), importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
 		} else {
 			FullPathFileName bldgName;
 			bldgName.init(tglPath,aseFileName,".ase");
 			// META-FIX design B PART 1: REQUIRED slot — checked load.
-			tglLoadShapeChecked(bldgShape[0], bldgName,
+			tglLoadShapeChecked(bldgShape[0].get(), bldgName,
 				"bdactor.bldg_base", &baseShapeLoadFailed);
 		}
 
@@ -291,14 +290,13 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
 	
-		bldgDmgShape = new TG_TypeMultiShape;
+		bldgDmgShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(bldgDmgShape != nullptr);
 		bldgDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!bldgDmgShape->GetNumShapes())
 		{
-			delete bldgDmgShape;
-			bldgDmgShape = nullptr;
+			bldgDmgShape.reset();
 		}
 		else
 		{
@@ -408,12 +406,12 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
-				bdAnimData[i] = new TG_AnimateShape;
+				bdAnimData[i] = std::make_unique<TG_AnimateShape>();
 				gosASSERT(bdAnimData[i] != nullptr);
 	
 				// If this animation does not exist, it is not a problem!
 				// Building will simply freeze until animation is "over"
-				bdAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,bldgShape[0]);
+				bdAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,bldgShape[0].get());
 			}
 			else
 				bdAnimData[i] = nullptr;
@@ -425,8 +423,8 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 	}
 	
 	if (importSourceBase[0]) userArt |= userBuildingShape(importSourceBase);
-	for (auto* shape : bldgShape) userArt |= userBuildingTextures(shape);
-	userArt |= userBuildingTextures(bldgDmgShape);
+	for (const auto& shape : bldgShape) userArt |= userBuildingTextures(shape.get());
+	userArt |= userBuildingTextures(bldgDmgShape.get());
 
 	// MODEL-OVERRIDE dual-shape: render-only overrides for static props. The stock
 	// bldgShape[] / bldgDmgShape loads stay UNCHANGED (collision, passability and LOS
@@ -450,11 +448,10 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 			const ModelOverrideCondition* cond = ov->condition(condName);
 			const std::string& intactSrc = cond ? cond->intact.sourceRelPath : ov->sourceRelPath;
 			const ModelOverrideChain& destroyed = (cond && cond->destroyed.present()) ? cond->destroyed : ov->destroyed;
-			bldgRenderShape = new TG_TypeMultiShape;
-			if (!importOverrideRenderShape(*ov, intactSrc, bldgBaseName, "intact", bldgRenderShape))
+			bldgRenderShape = std::make_unique<TG_TypeMultiShape>();
+			if (!importOverrideRenderShape(*ov, intactSrc, bldgBaseName, "intact", bldgRenderShape.get()))
 			{
-				delete bldgRenderShape;
-				bldgRenderShape = nullptr;   // stock fallback
+				bldgRenderShape.reset();   // stock fallback
 			}
 			if (bldgRenderShape)
 			{
@@ -587,7 +584,7 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 
 	// Stock-derived override GLBs carry the stock lighting tags (COLOR_0), so the
 	// hot colours apply to them exactly as to the stock shapes.
-	for (TG_TypeMultiShape* rs : {bldgRenderShape, bldgDmgRenderShape.get()})
+	for (TG_TypeMultiShape* rs : {bldgRenderShape.get(), bldgDmgRenderShape.get()})
 		if (rs && propMaterialSource && !propMaterialSource->materials.empty())
 			rs->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 }
@@ -632,29 +629,17 @@ void BldgAppearanceType::destroy (void)
 
 	for (auto & bldgShapeElem : bldgShape)
 	{
-		if (bldgShapeElem)
-		{
-			delete bldgShapeElem;
-			bldgShapeElem = nullptr;
-		}
+		bldgShapeElem.reset();
 	}
 
 	// MODEL-OVERRIDE dual-shape: free the render override shape if loaded.
 	discardBldgRenderOverrides(*this);
 
- 	if (bldgDmgShape)
-	{
-		delete bldgDmgShape;
-		bldgDmgShape = nullptr;
-	}
+	bldgDmgShape.reset();
 	
  	for (auto & bdAnimDataElem : bdAnimData)
 	{
-		if (bdAnimDataElem)
-		{
-			delete bdAnimDataElem;
-			bdAnimDataElem = nullptr;
-		}
+		bdAnimDataElem.reset();
 	}
 }
 
@@ -682,8 +667,8 @@ void TreeAppearanceType::init (mc2::czstring fileName)
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
 	{
-		treeShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-		tglVerifyShapeLoaded(treeShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		treeShape[0] = std::make_unique<TG_TypeMultiShape>();
+		tglVerifyShapeLoaded(treeShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 		return;
 	}
 
@@ -695,8 +680,8 @@ void TreeAppearanceType::init (mc2::czstring fileName)
 	result = iniFile.seekBlock("TGLData");
 	if (result != NO_ERR)
 	{
-		treeShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-		tglVerifyShapeLoaded(treeShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		treeShape[0] = std::make_unique<TG_TypeMultiShape>();
+		tglVerifyShapeLoaded(treeShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 		return;
 	}
 
@@ -729,19 +714,19 @@ void TreeAppearanceType::init (mc2::czstring fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				treeShape[i] = new TG_TypeMultiShape;
+				treeShape[i] = std::make_unique<TG_TypeMultiShape>();
 				gosASSERT(treeShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					// META-FIX design B PART 1: REQUIRED slot — checked import.
 					long rc = treeShape[i]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
-					tglVerifyShapeLoaded(treeShape[i], rc, "bdactor.tree_import",
+					tglVerifyShapeLoaded(treeShape[i].get(), rc, "bdactor.tree_import",
 						importSourceBase, &baseShapeLoadFailed);
 				} else if (i == 0) {
 					FullPathFileName treeName;
 					treeName.init(tglPath,aseFileName,".ase");
 					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
-					tglLoadShapeChecked(treeShape[i], treeName,
+					tglLoadShapeChecked(treeShape[i].get(), treeName,
 						"bdactor.tree_base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName treeName;
@@ -759,26 +744,26 @@ void TreeAppearanceType::init (mc2::czstring fileName)
 			}
 			else if (!i)
 			{
-				treeShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-				tglVerifyShapeLoaded(treeShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+				treeShape[0] = std::make_unique<TG_TypeMultiShape>();
+				tglVerifyShapeLoaded(treeShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 			}
 		}
 	}
 	else
 	{
-		treeShape[0] = new TG_TypeMultiShape;
+		treeShape[0] = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(treeShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			// META-FIX design B PART 1: REQUIRED slot — checked import.
 			long rc = treeShape[0]->LoadFromFile(importSourceBase); // ASSIMP-TREE-IMPORT-1: opt-in GLB probe
-			tglVerifyShapeLoaded(treeShape[0], rc, "bdactor.tree_import",
+			tglVerifyShapeLoaded(treeShape[0].get(), rc, "bdactor.tree_import",
 				importSourceBase, &baseShapeLoadFailed);
 		} else {
 			FullPathFileName treeName;
 			treeName.init(tglPath,aseFileName,".ase");
 			// META-FIX design B PART 1: REQUIRED slot — checked load.
-			tglLoadShapeChecked(treeShape[0], treeName,
+			tglLoadShapeChecked(treeShape[0].get(), treeName,
 				"bdactor.tree_base", &baseShapeLoadFailed);
 		}
 
@@ -816,14 +801,14 @@ void TreeAppearanceType::init (mc2::czstring fileName)
             };
             auto intact = import(source, "intact");
             if (intact) {
-                treeRenderShape[0] = intact.release();
+                treeRenderShape[0] = std::move(intact);
                 treeRenderShapeLodCount = 1;
                 propMaterialSource = ov;
                 for (const auto& lod : lods) {
                     if (lod.lod <= 0 || lod.lod >= MAX_LODS || treeRenderShape[lod.lod]) continue;
                     auto shape = import(lod.sourceRelPath, "lod");
                     if (shape) {
-                        treeRenderShape[lod.lod] = shape.release();
+                        treeRenderShape[lod.lod] = std::move(shape);
                         lodDistance[lod.lod] = lod.distance;
                         treeRenderShapeLodCount = std::max(treeRenderShapeLodCount, static_cast<long>(lod.lod + 1));
                     }
@@ -849,14 +834,13 @@ void TreeAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
 	
-		treeDmgShape = new TG_TypeMultiShape;
+		treeDmgShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(treeDmgShape != nullptr);
 		treeDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!treeDmgShape->GetNumShapes())
 		{
-			delete treeDmgShape;
-			treeDmgShape = nullptr;
+			treeDmgShape.reset();
 		}
 		
 	}
@@ -885,27 +869,15 @@ void TreeAppearanceType::destroy (void)
 
 	for (auto & treeShapeElem : treeShape)
 	{
-		if (treeShapeElem)
-		{
-			delete treeShapeElem;
-			treeShapeElem = nullptr;
-		}
+		treeShapeElem.reset();
 	}
 
 	for (auto & treeRenderShapeElem : treeRenderShape)
 	{
-		if (treeRenderShapeElem)
-		{
-			delete treeRenderShapeElem;
-			treeRenderShapeElem = nullptr;
-		}
+		treeRenderShapeElem.reset();
 	}
 	treeRenderShapeLodCount = 0;
 
-	if (treeDmgShape)
-	{
-		delete treeDmgShape;
-		treeDmgShape = nullptr;
-	}
+	treeDmgShape.reset();
 	
 }

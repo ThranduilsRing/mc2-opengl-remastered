@@ -3300,30 +3300,6 @@
     ""
    ]
   },
-  "TG_AnimateShape": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/bdactor_type.cpp": {
-     "new": 1
-    },
-    "mclib/genactor.cpp": {
-     "new": 1
-    },
-    "mclib/gvactor.cpp": {
-     "new": 1
-    },
-    "mclib/mech3d_type.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": [
-    "Mech3DAppearanceType"
-   ]
-  },
   "TG_MultiShape": {
    "delete": 0,
    "delete_array": 0,
@@ -3340,35 +3316,19 @@
    "owners": []
   },
   "TG_TypeMultiShape": {
-   "delete": 21,
+   "delete": 0,
    "delete_array": 0,
    "files": {
-    "mclib/bdactor_type.cpp": {
-     "delete": 5,
-     "new": 7
-    },
-    "mclib/genactor.cpp": {
-     "delete": 3,
+    "mclib/gvactor.cpp": {
      "new": 2
     },
-    "mclib/gvactor.cpp": {
-     "delete": 3,
-     "new": 6
-    },
     "mclib/mech3d_type.cpp": {
-     "delete": 10,
-     "new": 10
+     "new": 3
     }
    },
-   "new": 25,
+   "new": 5,
    "new_array": 0,
-   "owners": [
-    "BldgAppearanceType",
-    "GVAppearanceType",
-    "GenericAppearanceType",
-    "Mech3DAppearanceType",
-    "TreeAppearanceType"
-   ]
+   "owners": []
   },
   "TOMap": {
    "delete": 0,
@@ -4640,11 +4600,8 @@
   "mclib/bdactor_terrain.cpp": 1,
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
-  "mclib/bdactor_type.cpp": 5,
   "mclib/effect_resources.cpp": 3,
   "mclib/fastfile.cpp": 1,
-  "mclib/genactor.cpp": 1,
-  "mclib/genactor_frame.cpp": 1,
   "mclib/gosfx/card.cpp": 1,
   "mclib/gosfx/cardcloud.cpp": 1,
   "mclib/gosfx/debriscloud.cpp": 1,
@@ -4660,7 +4617,7 @@
   "mclib/gosfx/singleton.cpp": 1,
   "mclib/gosfx/spinningcloud.cpp": 1,
   "mclib/gosfx/tube.cpp": 1,
-  "mclib/gvactor.cpp": 4,
+  "mclib/gvactor.cpp": 2,
   "mclib/gvactor_geometry.cpp": 2,
   "mclib/gvactor_update.cpp": 4,
   "mclib/mech3d.cpp": 6,

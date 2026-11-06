@@ -25,7 +25,7 @@ void GenericAppearanceType::init (mc2::czstring fileName)
 
 	//----------------------------------------------
 	// Base shape.  In stand Pose by default.
-	genShape = new TG_TypeMultiShape;
+	genShape = std::make_unique<TG_TypeMultiShape>();
 	gosASSERT(genShape != nullptr);
 
 	FullPathFileName iniName;
@@ -59,13 +59,13 @@ void GenericAppearanceType::init (mc2::czstring fileName)
 	if (importSourceBase[0]) {
 		// META-FIX design B PART 1: REQUIRED slot — checked import.
 		long rc = genShape->LoadFromFile(importSourceBase); // ASSIMP-GEN-IMPORT-1: opt-in GLB probe
-		tglVerifyShapeLoaded(genShape, rc, "genactor.base_import",
+		tglVerifyShapeLoaded(genShape.get(), rc, "genactor.base_import",
 			importSourceBase, &baseShapeLoadFailed);
 	} else {
 		FullPathFileName genName;
 		genName.init(tglPath,aseFileName,".ase");
 		// META-FIX design B PART 1: REQUIRED slot — checked load.
-		tglLoadShapeChecked(genShape, genName,
+		tglLoadShapeChecked(genShape.get(), genName,
 			"genactor.base", &baseShapeLoadFailed);
 	}
 
@@ -87,14 +87,13 @@ void GenericAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
 	
-		genDmgShape = new TG_TypeMultiShape;
+		genDmgShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(genDmgShape != nullptr);
 		genDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!genDmgShape->GetNumShapes())
 		{
-			delete genDmgShape;
-			genDmgShape = nullptr;
+			genDmgShape.reset();
 		}
 	}
 	else
@@ -142,13 +141,13 @@ void GenericAppearanceType::init (mc2::czstring fileName)
 
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
-				genAnimData[i] = new TG_AnimateShape;
+				genAnimData[i] = std::make_unique<TG_AnimateShape>();
 				gosASSERT(genAnimData[i] != nullptr);
 	
 				//--------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
 				// Building will simply freeze until animation is "over"
-				genAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,genShape);
+				genAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,genShape.get());
 			}
 			else
 				genAnimData[i] = nullptr;
@@ -179,17 +178,10 @@ void GenericAppearanceType::destroy (void)
 {
 	AppearanceType::destroy();
 
-	if (genShape)
-	{
-		delete genShape;
-		genShape = nullptr;
-	}
-
-	if (genDmgShape)
-	{
-		delete genDmgShape;
-		genDmgShape = nullptr;
-	}
+	for (auto& animation : genAnimData)
+		animation.reset();
+	genShape.reset();
+	genDmgShape.reset();
 }
 
 //-----------------------------------------------------------------------------
@@ -246,7 +238,7 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	
 	if (appearType)
 	{
-		genShape = appearType->genShape->CreateFrom();
+		genShape.reset(appearType->genShape->CreateFrom());
 
 		//-------------------------------------------------
 		// Load the texture and store its handle.
@@ -342,8 +334,8 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		}
 
 		// GPU static-prop batcher: register this generic prop's type shape.
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->genShape);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->genDmgShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->genShape.get());
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->genDmgShape.get());
 	}
 }
 
@@ -357,10 +349,9 @@ void GenericAppearance::setObjStatus (long oStatus)
 			if (appearType->genDmgShape)
 			{
 				genShape->ClearAnimation();
-				delete genShape;
-				genShape = nullptr;
+				genShape.reset();
 				
-				genShape = appearType->genDmgShape->CreateFrom();
+				genShape.reset(appearType->genDmgShape->CreateFrom());
 				
 				//-------------------------------------------------
 				// Load the texture and store its handle.
@@ -409,7 +400,7 @@ void GenericAppearance::setGesture (unsigned long gestureId)
 	//----------------------------------------------------------------------
 	// If state is OK, set animation data, set first frame, set loop and 
 	// reverse flag, and start it going until you hear otherwise.
-	appearType->setAnimation(genShape,gestureId);
+	appearType->setAnimation(genShape.get(),gestureId);
 	genAnimationState = gestureId;
 	currentFrame = 0.0f;
 	if (appearType->genStartF[gestureId])

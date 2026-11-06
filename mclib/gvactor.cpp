@@ -75,8 +75,8 @@ void GVAppearanceType::init (mc2::czstring fileName)
 	long result = iniFile.open(iniName);
 	if (result != NO_ERR)
 	{
-		gvShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-		tglVerifyShapeLoaded(gvShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		gvShape[0] = std::make_unique<TG_TypeMultiShape>();
+		tglVerifyShapeLoaded(gvShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 		return;
 	}
 
@@ -88,8 +88,8 @@ void GVAppearanceType::init (mc2::czstring fileName)
 	result = iniFile.seekBlock("TGLData");
 	if (result != NO_ERR)
 	{
-		gvShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-		tglVerifyShapeLoaded(gvShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+		gvShape[0] = std::make_unique<TG_TypeMultiShape>();
+		tglVerifyShapeLoaded(gvShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 		return;
 	}
 
@@ -117,19 +117,19 @@ void GVAppearanceType::init (mc2::czstring fileName)
 
 				//----------------------------------------------
 				// Base LOD shape.  In stand Pose by default.
-				gvShape[i] = new TG_TypeMultiShape;
+				gvShape[i] = std::make_unique<TG_TypeMultiShape>();
 				gosASSERT(gvShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					// META-FIX design B PART 1: REQUIRED slot — checked import.
 					long rc = gvShape[i]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
-					tglVerifyShapeLoaded(gvShape[i], rc, "gvactor.base_import",
+					tglVerifyShapeLoaded(gvShape[i].get(), rc, "gvactor.base_import",
 						importSourceBase, &baseShapeLoadFailed);
 				} else if (i == 0) {
 					FullPathFileName gvName;
 					gvName.init(tglPath,aseFileName,".ase");
 					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
-					tglLoadShapeChecked(gvShape[i], gvName,
+					tglLoadShapeChecked(gvShape[i].get(), gvName,
 						"gvactor.base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName gvName;
@@ -140,8 +140,8 @@ void GVAppearanceType::init (mc2::czstring fileName)
 			}
 			else if (!i)
 			{
-				gvShape[0] = std::make_unique<TG_TypeMultiShape>().release();
-				tglVerifyShapeLoaded(gvShape[0], -1, "appearance definition", iniName, &baseShapeLoadFailed);
+				gvShape[0] = std::make_unique<TG_TypeMultiShape>();
+				tglVerifyShapeLoaded(gvShape[0].get(), -1, "appearance definition", iniName, &baseShapeLoadFailed);
 			}
 		}
 	}
@@ -149,19 +149,19 @@ void GVAppearanceType::init (mc2::czstring fileName)
 	{
 		//----------------------------------------------
 		// Base shape.  In stand Pose by default.
-		gvShape[0] = new TG_TypeMultiShape;
+		gvShape[0] = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(gvShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			// META-FIX design B PART 1: REQUIRED slot — checked import.
 			long rc = gvShape[0]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
-			tglVerifyShapeLoaded(gvShape[0], rc, "gvactor.base_import",
+			tglVerifyShapeLoaded(gvShape[0].get(), rc, "gvactor.base_import",
 				importSourceBase, &baseShapeLoadFailed);
 		} else {
 			FullPathFileName gvName;
 			gvName.init(tglPath,aseFileName,".ase");
 			// META-FIX design B PART 1: REQUIRED slot — checked load.
-			tglLoadShapeChecked(gvShape[0], gvName,
+			tglLoadShapeChecked(gvShape[0].get(), gvName,
 				"gvactor.base", &baseShapeLoadFailed);
 		}
 	}
@@ -200,7 +200,7 @@ void GVAppearanceType::init (mc2::czstring fileName)
 	{
 		//----------------------------------------------
 		// Base Shadow shape.
-		gvShadowShape = new TG_TypeMultiShape;
+		gvShadowShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(gvShadowShape != nullptr);
 	
 		FullPathFileName gvName;
@@ -222,14 +222,13 @@ void GVAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,aseFileName,".ase");
 	
-		gvDmgShape = new TG_TypeMultiShape;
+		gvDmgShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(gvDmgShape != nullptr);
 		gvDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!gvDmgShape->GetNumShapes())
 		{
-			delete gvDmgShape;
-			gvDmgShape = nullptr;
+			gvDmgShape.reset();
 		}
 	}
 	else
@@ -288,13 +287,13 @@ void GVAppearanceType::init (mc2::czstring fileName)
 
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
-				gvAnimData[i] = new TG_AnimateShape;
+				gvAnimData[i] = std::make_unique<TG_AnimateShape>();
 				gosASSERT(gvAnimData[i] != nullptr);
 	
 				//--------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
 				// Building will simply freeze until animation is "over"
-				gvAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,gvShape[0]);
+				gvAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,gvShape[0].get());
 			}
 			else
 				gvAnimData[i] = nullptr;
@@ -421,29 +420,16 @@ void GVAppearanceType::destroy (void)
 
 	for (auto & gvShapeElem : gvShape)
 	{
-		if (gvShapeElem)
-		{
-			delete gvShapeElem;
-			gvShapeElem = nullptr;
-		}
+		gvShapeElem.reset();
 	}
 
-	if (gvShadowShape)
-	{
-		delete gvShadowShape;
-		gvShadowShape = nullptr;
-	}
+	gvShadowShape.reset();
 
-	if (gvDmgShape)
-	{
-		delete gvDmgShape;
-		gvDmgShape = nullptr;
-	}
+	gvDmgShape.reset();
 
 	for (auto & gvAnimDataElem : gvAnimData)
 	{
-		delete gvAnimDataElem;
-		gvAnimDataElem = nullptr;
+		gvAnimDataElem.reset();
 	}
 
 	nodeDataStore.reset();
@@ -1085,19 +1071,19 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// consumed elsewhere in the batcher. Fix the eligibility predicate
 		// (submitted-ness, not registered-ness) if this ever goes live.
 		for (auto & gvShapeElem : appearType->gvShape)
-			GpuStaticPropBatcher::instance().registerMultiShape(gvShapeElem);
+			GpuStaticPropBatcher::instance().registerMultiShape(gvShapeElem.get());
 		// An override body with per-object maps is one shared shape per LOD (paint is shader-side), so it joins the
 		// batcher here, before finalize, and draws through submitMultiShape instead of the CPU fallback.
 		if (const auto* ov = ModelOverrideRegistry::instance().resolve("vehicle", appearType->name); ov && ov->usesObjectMaps())
 			for (const auto & renderLod : appearType->renderLods)
 				if (renderLod)
 					GpuStaticPropBatcher::instance().registerMultiShape(renderLod.get(), true, ov);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape.get());
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvDmgShape.get());
 		// Stock bodies (and the destroyed shape) draw from per-node matrices through the mech batcher.
 		for (auto & gvShapeElem : appearType->gvShape)
-			GpuMechBatcher::instance().registerVehicleType(gvShapeElem);
-		GpuMechBatcher::instance().registerVehicleType(appearType->gvDmgShape);
+			GpuMechBatcher::instance().registerVehicleType(gvShapeElem.get());
+		GpuMechBatcher::instance().registerVehicleType(appearType->gvDmgShape.get());
 	}
 }
 

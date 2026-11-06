@@ -53,7 +53,7 @@ class GVAppearanceType : public AppearanceType
 {
 	public:
 	
-		TG_TypeMultiShapePtr		gvShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> gvShape[MAX_LODS];
 		std::unique_ptr<TG_TypeMultiShape> renderLods[MAX_LODS];
 		float renderLodDistance[MAX_LODS]{};
 		struct RenderVariant {
@@ -64,13 +64,13 @@ class GVAppearanceType : public AppearanceType
 		std::vector<RenderVariant> renderVariants;
 		float						lodDistance[MAX_LODS];
 		
-		TG_TypeMultiShapePtr		gvShadowShape;
+		std::unique_ptr<TG_TypeMultiShape> gvShadowShape;
 		
- 		TG_TypeMultiShapePtr		gvDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> gvDmgShape;
 		
 		char						destructEffect[60];
 		
-		TG_AnimateShapePtr			gvAnimData[MAX_GV_ANIMATIONS];
+		std::unique_ptr<TG_AnimateShape> gvAnimData[MAX_GV_ANIMATIONS];
 		bool						gvAnimLoop[MAX_GV_ANIMATIONS];
 		bool						gvReverse[MAX_GV_ANIMATIONS];
 		bool						gvRandom[MAX_GV_ANIMATIONS];

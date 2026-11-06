@@ -414,7 +414,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					g_loadRaceMechDegrade,
 					(mechType && mechType->name) ? mechType->name : "<null>",
 					mechType ? mechType->appearanceNum : 0UL, static_cast<void*>(mechType),
-					mechType ? static_cast<void*>(mechType->mechShape[0]) : nullptr,
+					mechType ? static_cast<void*>(mechType->mechShape[0].get()) : nullptr,
 					static_cast<void*>(obj), actorHandle_);
 				std::fflush(stdout);
 			}
@@ -875,7 +875,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	// returns) so it runs on every path. HAS_AO is asserted at submit ONLY if aoValid,
 	// so a missing/failed AO never darkens the mech (white/no-op fallback).
 	if (!aoValid && mechShape->GetNumShapes() > 0) {
-		const void* aoTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+		const void* aoTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		const char* aoName = mc2mechanim::ImportedMechAoTexName(aoTypeKey);
 		if (aoName && aoName[0]) {
 			char aoPath[1024];
@@ -897,7 +897,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	// BC7, base-chassis, skin-independent). HAS_NORMAL is asserted at submit ONLY if
 	// normalValid, so a missing/failed normal never corrupts shading (v_normal fallback).
 	if (!normalValid && mechShape->GetNumShapes() > 0) {
-		const void* nrmTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+		const void* nrmTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		const char* nrmName = mc2mechanim::ImportedMechNormalTexName(nrmTypeKey);
 		if (nrmName && nrmName[0]) {
 			char nrmPath[1024];

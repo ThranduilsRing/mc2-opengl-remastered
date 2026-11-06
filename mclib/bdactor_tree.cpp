@@ -648,7 +648,7 @@ void TreeAppearance::markLOS (bool clearIt)
 	if (simulationOwned())
 	{
 		const bool wrecked = simStatus_ == OBJECT_STATUS_DESTROYED || simStatus_ == OBJECT_STATUS_DISABLED;
-		TG_TypeMultiShape* source = (wrecked && appearType->treeDmgShape) ? appearType->treeDmgShape : appearType->treeShape[0];
+		TG_TypeMultiShape* source = (wrecked && appearType->treeDmgShape) ? appearType->treeDmgShape.get() : appearType->treeShape[0].get();
 		stockLos.reset(source->CreateFrom());
 		los = stockLos.get();
 	}

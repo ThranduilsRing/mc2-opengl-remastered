@@ -51,21 +51,21 @@ class BldgAppearanceType : public AppearanceType
 {
 	public:
 	
-		TG_TypeMultiShapePtr		bldgShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> bldgShape[MAX_LODS];
 		float						lodDistance[MAX_LODS];
 
 		// MODEL-OVERRIDE dual-shape (Slice 2): nullable type-level render shape.
 		// NULL = no override → render falls back to stock bldgShape[lod].
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
-		TG_TypeMultiShapePtr		bldgRenderShape;
+		std::unique_ptr<TG_TypeMultiShape> bldgRenderShape;
 		std::unique_ptr<TG_TypeMultiShape> bldgRenderLods[MAX_LODS];
 		// Destroyed-state render override (the cooked "destroyed" chain); NULL = stock bldgDmgShape.
 		std::unique_ptr<TG_TypeMultiShape>	bldgDmgRenderShape;
         const ModelOverrideRecord* propMaterialSource = nullptr; // transient; registry owns it
 
-		TG_TypeMultiShapePtr		bldgDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> bldgDmgShape;
 		
-		TG_AnimateShapePtr			bdAnimData[MAX_BD_ANIMATIONS];
+		std::unique_ptr<TG_AnimateShape> bdAnimData[MAX_BD_ANIMATIONS];
 		bool						bdAnimLoop[MAX_BD_ANIMATIONS];
 		bool						bdReverse[MAX_BD_ANIMATIONS];
 		bool						bdRandom[MAX_BD_ANIMATIONS];
@@ -194,14 +194,14 @@ class BldgAppearanceType : public AppearanceType
 		// Render authority: cooked LOD when available, else override LOD0 or stock.
 		TG_TypeMultiShape* getBldgRenderShape (long lod)
 		{
-			if (!bldgRenderShape) return bldgShape[lod];
-			return bldgRenderLods[lod] ? bldgRenderLods[lod].get() : bldgRenderShape;
+			if (!bldgRenderShape) return bldgShape[lod].get();
+			return bldgRenderLods[lod] ? bldgRenderLods[lod].get() : bldgRenderShape.get();
 		}
 		// Collision authority: ALWAYS stock. Collision must never call the
 		// render accessor (it already reads bldgShape[lod] directly).
-		TG_TypeMultiShape* getBldgCollisionShape (long lod) { return bldgShape[lod]; }
+		TG_TypeMultiShape* getBldgCollisionShape (long lod) { return bldgShape[lod].get(); }
 		// Destroyed render authority: the override's destroyed chain if cooked, else stock damage.
-		TG_TypeMultiShape* getBldgDmgRenderShape (void) { return bldgDmgRenderShape ? bldgDmgRenderShape.get() : bldgDmgShape; }
+		TG_TypeMultiShape* getBldgDmgRenderShape (void) { return bldgDmgRenderShape ? bldgDmgRenderShape.get() : bldgDmgShape.get(); }
 		// Registers every render shape (LODs + destroyed) with the GPU static-prop batcher, tagging
 		// override shapes with their material source. Idempotent; the per-instance init and the
 		// mission-load pre-pass both go through here.
@@ -475,7 +475,7 @@ class BldgAppearance : public ObjectAppearance
 			}
 			auto* source = appearType->getBldgCollisionShape(0);
 			if (source && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
-				source = appearType->bldgDmgShape;
+				source = appearType->bldgDmgShape.get();
 			float ext = source ? source->extentRadius : 0.0f;
 			return OBBRadius > ext ? OBBRadius : ext;
 		}
@@ -559,7 +559,7 @@ class TreeAppearanceType : public AppearanceType
 {
 	public:
 	
-		TG_TypeMultiShapePtr		treeShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> treeShape[MAX_LODS];
 		float						lodDistance[MAX_LODS];
 
 		// MODEL-OVERRIDE dual-shape (Slice 2): nullable type-level render shape.
@@ -569,10 +569,10 @@ class TreeAppearanceType : public AppearanceType
 		// is the override LOD0 (was the single member); higher indices hold
 		// auto/offline-generated lower LODs (populated in Task 3+). All NULL =
 		// no override. treeRenderShapeLodCount = number of populated LODs.
-		TG_TypeMultiShapePtr		treeRenderShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> treeRenderShape[MAX_LODS];
 		long						treeRenderShapeLodCount;
 
-		TG_TypeMultiShapePtr		treeDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> treeDmgShape;
         std::unique_ptr<TG_TypeMultiShape> treeDmgRenderShape;
         const ModelOverrideRecord* propMaterialSource = nullptr;
 		
@@ -629,17 +629,17 @@ class TreeAppearanceType : public AppearanceType
 		{
 			lod = std::clamp(lod, 0L, static_cast<long>(MAX_LODS) - 1);
 			if (treeRenderShape[lod])
-				return treeRenderShape[lod];
+				return treeRenderShape[lod].get();
 			// clamp to the highest populated override LOD <= lod
 			for (long i = lod - 1; i >= 0; --i)
 				if (treeRenderShape[i])
-					return treeRenderShape[i];
+					return treeRenderShape[i].get();
 			// no override populated for this or any lower index → stock
-			return treeShape[lod];
+			return treeShape[lod].get();
 		}
-        TG_TypeMultiShape* getTreeDamageRenderShape() { return treeDmgRenderShape ? treeDmgRenderShape.get() : treeDmgShape; }
+        TG_TypeMultiShape* getTreeDamageRenderShape() { return treeDmgRenderShape ? treeDmgRenderShape.get() : treeDmgShape.get(); }
         void registerRenderShapes();
-		TG_TypeMultiShape* getTreeCollisionShape (long lod) { return treeShape[lod]; }
+		TG_TypeMultiShape* getTreeCollisionShape (long lod) { return treeShape[lod].get(); }
 };
 
 //***********************************************************************

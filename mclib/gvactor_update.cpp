@@ -909,7 +909,7 @@ void GVAppearance::updateSimPose() {
     if (!appearType || !appearType->gvShape[0]) return;
     const bool wrecked = simStatus_ == OBJECT_STATUS_DESTROYED || simStatus_ == OBJECT_STATUS_DISABLED;
     const bool useDamageShape = wrecked && appearType->gvDmgShape;
-    TG_TypeMultiShapePtr const source = useDamageShape ? appearType->gvDmgShape : appearType->gvShape[0];
+    TG_TypeMultiShapePtr const source = useDamageShape ? appearType->gvDmgShape.get() : appearType->gvShape[0].get();
     if (!simulationShape_ || simulationSource_ != source) {
         simulationShape_.reset(source->CreateFrom());
         simulationSource_ = source;

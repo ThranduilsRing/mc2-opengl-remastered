@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 428,
+   "LG03": 373,
    "LG04": 12,
    "LG05": 107,
    "LG06": 113,
@@ -2672,9 +2672,7 @@
   "mclib/bdactor_tree_static.cpp": {
    "LG03": 1
   },
-  "mclib/bdactor_type.cpp": {
-   "LG03": 18
-  },
+  "mclib/bdactor_type.cpp": {},
   "mclib/bdactor_update.cpp": {},
   "mclib/bldg_anim_gate_counters.h": {},
   "mclib/building_gameplay_observation.h": {
@@ -2845,13 +2843,9 @@
    "LG05": 1
   },
   "mclib/gamelog.h": {},
-  "mclib/genactor.cpp": {
-   "LG03": 7
-  },
+  "mclib/genactor.cpp": {},
   "mclib/genactor.h": {},
-  "mclib/genactor_frame.cpp": {
-   "LG03": 1
-  },
+  "mclib/genactor_frame.cpp": {},
   "mclib/genactor_internal.h": {},
   "mclib/globalmap_limits.h": {},
   "mclib/gosfx/card.cpp": {
@@ -2935,7 +2929,7 @@
   },
   "mclib/gosfx/tube.hpp": {},
   "mclib/gvactor.cpp": {
-   "LG03": 14,
+   "LG03": 4,
    "LG05": 2,
    "LG10": 1,
    "LG12a": 1
@@ -3023,7 +3017,7 @@
    "LG08": 1
   },
   "mclib/mech3d_type.cpp": {
-   "LG03": 22,
+   "LG03": 3,
    "LG05": 4,
    "LG10": 1,
    "LG12a": 2
