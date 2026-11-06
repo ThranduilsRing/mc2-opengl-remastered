@@ -196,6 +196,11 @@ class GVAppearance : public ObjectAppearance
 
 		GVAppearanceType*							appearType;
 		
+		// gvShape is also rebound temporarily to renderShape during paint setup.
+		std::unique_ptr<TG_MultiShape> gvShapeOwner_;
+		std::unique_ptr<TG_MultiShape> gvShadowShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorCircleShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorTriangleShapeOwner_;
 		TG_MultiShapePtr							gvShape;
 		std::unique_ptr<TG_MultiShape> renderShape;
 		std::vector<DWORD> renderTextures;

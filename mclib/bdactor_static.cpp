@@ -729,7 +729,7 @@ void BldgAppearance::destroy (void)
 
 	if ( bldgShape )
 	{
-		delete bldgShape;
+		bldgShapeOwner_.reset();
 		bldgShape = nullptr;
 	}
 
@@ -792,6 +792,6 @@ void BldgAppearance::releaseBldgShape()
 {
     clearSpotlights();
     bldgShape->ClearAnimation();
-    delete bldgShape;
+    bldgShapeOwner_.reset();
     bldgShape = nullptr;
 }

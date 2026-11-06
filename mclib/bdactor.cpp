@@ -283,7 +283,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision rebuilds
 		// this same member from stock bldgShape[lod] when it needs passability.
-		bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
+		bldgShapeOwner_.reset(appearType->getBldgRenderShape(0)->CreateFrom());
+		bldgShape = bldgShapeOwner_.get();
 
 		// Load the texture and store its handle.
 		for (int i=0;i<bldgShape->GetNumTextures();i++)
@@ -474,7 +475,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 					releaseBldgShape();
 				}
 				
-				bldgShape = dmgRender->CreateFrom();
+				bldgShapeOwner_.reset(dmgRender->CreateFrom());
+				bldgShape = bldgShapeOwner_.get();
 				if (unitAnim().bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 				
@@ -496,7 +498,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 				// MODEL-OVERRIDE dual-shape: restore the per-instance RENDER
 				// shape via the render accessor (override if present, else stock).
-				bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
+				bldgShapeOwner_.reset(appearType->getBldgRenderShape(0)->CreateFrom());
+				bldgShape = bldgShapeOwner_.get();
 				if (unitAnim().bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 

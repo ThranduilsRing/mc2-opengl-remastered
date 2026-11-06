@@ -333,6 +333,13 @@ class Mech3DAppearance: public ObjectAppearance
 
 		Mech3DAppearanceTypePtr		mechType;
 		
+		// Raw pose views borrow these owners; teardown unregisters before reset.
+		std::unique_ptr<TG_MultiShape> mechShapeOwner_;
+		std::unique_ptr<TG_MultiShape> mechShadowShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorSquareShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorTriangleShapeOwner_;
+		std::unique_ptr<TG_MultiShape> leftArmOwner_;
+		std::unique_ptr<TG_MultiShape> rightArmOwner_;
 		TG_MultiShapePtr			mechShape;
         std::unique_ptr<TG_MultiShape> simulationShape_;
 		TG_MultiShapePtr			mechShadowShape;

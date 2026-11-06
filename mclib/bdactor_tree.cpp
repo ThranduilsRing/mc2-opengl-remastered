@@ -53,7 +53,8 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision (markTerrain/
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
-		treeShape = appearType->getTreeRenderShape(0)->CreateFrom();
+		treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
+		treeShape = treeShapeOwner_.get();
 
 		for (long i=0;i<treeShape->GetNumTextures();i++)
 		{
@@ -181,11 +182,12 @@ void TreeAppearance::setObjStatus (long oStatus)
 				if (treeShape)
 				{
 					treeShape->ClearAnimation();
-					delete treeShape;
+					treeShapeOwner_.reset();
 					treeShape = nullptr;
 				}
 				
-				treeShape = appearType->getTreeDamageRenderShape()->CreateFrom();
+				treeShapeOwner_.reset(appearType->getTreeDamageRenderShape()->CreateFrom());
+				treeShape = treeShapeOwner_.get();
 				beenInView = false; 
 			}
 			
@@ -198,13 +200,14 @@ void TreeAppearance::setObjStatus (long oStatus)
 				if (treeShape)
 				{
 					treeShape->ClearAnimation();
-					delete treeShape;
+					treeShapeOwner_.reset();
 					treeShape = nullptr;
 				}
 
 				// MODEL-OVERRIDE dual-shape: restore per-instance RENDER shape
 				// via the render accessor (override if present, else stock).
-				treeShape = appearType->getTreeRenderShape(0)->CreateFrom();
+				treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
+				treeShape = treeShapeOwner_.get();
 				beenInView = false;
 			}
 
@@ -598,10 +601,11 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		currentLOD = 0;
 	
 		treeShape->ClearAnimation();
-		delete treeShape;
+		treeShapeOwner_.reset();
 		treeShape = nullptr;
 	
-		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
+		treeShapeOwner_.reset(appearType->treeShape[currentLOD]->CreateFrom());
+		treeShape = treeShapeOwner_.get();
 	}
 
 	for (int i=0;i<treeShape->GetNumShapes();i++)
@@ -657,10 +661,11 @@ void TreeAppearance::markLOS (bool clearIt)
 		currentLOD = 0;
 	
 		treeShape->ClearAnimation();
-		delete treeShape;
+		treeShapeOwner_.reset();
 		treeShape = nullptr;
 	
-		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
+		treeShapeOwner_.reset(appearType->treeShape[currentLOD]->CreateFrom());
+		treeShape = treeShapeOwner_.get();
 		los = treeShape;
 	}
 
@@ -769,7 +774,7 @@ void TreeAppearance::destroy (void)
 
 	if ( treeShape )
 	{
-		delete treeShape;
+		treeShapeOwner_.reset();
 		treeShape = nullptr;
 	}
 

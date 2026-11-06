@@ -171,15 +171,23 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				GpuMechBatcher::instance().registerTypeLod(mechType, _lod);
 		}
 
-		mechShape = mechType->mechShape[0]->CreateFrom();
+		mechShapeOwner_.reset(mechType->mechShape[0]->CreateFrom());
+		mechShape = mechShapeOwner_.get();
 		
-		sensorTriangleShape = GVAppearanceType::SensorTriangleShape->CreateFrom();
+		sensorTriangleShapeOwner_.reset(GVAppearanceType::SensorTriangleShape->CreateFrom());
+		sensorTriangleShape = sensorTriangleShapeOwner_.get();
 		
 		if (mechType->leftArm)
-			leftArm = mechType->leftArm->CreateFrom();
+		{
+			leftArmOwner_.reset(mechType->leftArm->CreateFrom());
+			leftArm = leftArmOwner_.get();
+		}
 		
 		if (mechType->rightArm)
-			rightArm = mechType->rightArm->CreateFrom();
+		{
+			rightArmOwner_.reset(mechType->rightArm->CreateFrom());
+			rightArm = rightArmOwner_.get();
+		}
 		
 		for (long i=0;i<sensorTriangleShape->GetNumTextures();i++)
 		{
@@ -216,7 +224,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  
 		if (mechType->numJumpNodes)
 		{
-			sensorSquareShape = Mech3DAppearanceType::SensorSquareShape->CreateFrom();
+			sensorSquareShapeOwner_.reset(Mech3DAppearanceType::SensorSquareShape->CreateFrom());
+			sensorSquareShape = sensorSquareShapeOwner_.get();
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
 				char txmName[1024];
@@ -252,7 +261,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		}
 		else
 		{
-			sensorSquareShape = GVAppearanceType::SensorCircleShape->CreateFrom();
+			sensorSquareShapeOwner_.reset(GVAppearanceType::SensorCircleShape->CreateFrom());
+			sensorSquareShape = sensorSquareShapeOwner_.get();
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
 				char txmName[1024];
@@ -468,7 +478,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	
 	if (mechType && mechType->mechShadowShape)
 	{
-		mechShadowShape = mechType->mechShadowShape->CreateFrom();
+		mechShadowShapeOwner_.reset(mechType->mechShadowShape->CreateFrom());
+		mechShadowShape = mechShadowShapeOwner_.get();
 
 		for (long i=0;i<mechShadowShape->GetNumTextures();i++)
 		{

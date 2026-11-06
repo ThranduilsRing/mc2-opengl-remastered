@@ -213,9 +213,9 @@ void TreeAppearance::registerStatic() {
 	const int lodCount = !damaged && _treeRegIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : 1;
 	for (int lod = 0; lod < lodCount && lod < MAX_LODS; ++lod) {
 		// Render-instance for THIS LOD: reuse treeShape for LOD0; temp for >0.
-		TG_MultiShape* lodShape = (lod == 0)
-			? treeShape
-			: appearType->getTreeRenderShape(lod)->CreateFrom();
+		std::unique_ptr<TG_MultiShape> temporaryLod;
+		if (lod != 0) temporaryLod.reset(appearType->getTreeRenderShape(lod)->CreateFrom());
+		TG_MultiShape* lodShape = lod == 0 ? treeShape : temporaryLod.get();
 		if (!lodShape) { staticReg[lod].registered = false; continue; }
 
 		lodShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
@@ -395,7 +395,6 @@ void TreeAppearance::registerStatic() {
 		// Free the throwaway higher-LOD render-instance (LOD0 == treeShape, kept).
 		if (lod != 0 && lodShape) {
 			lodShape->ClearAnimation();
-			delete lodShape;
 		}
 	}
 

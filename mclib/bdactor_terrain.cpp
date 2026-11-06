@@ -20,7 +20,8 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 	
 		releaseBldgShape();
 	
-		bldgShape = appearType->getBldgRenderShape(currentLOD)->CreateFrom();   // render shape stays the override
+		bldgShapeOwner_.reset(appearType->getBldgRenderShape(currentLOD)->CreateFrom()); // render shape stays the override
+		bldgShape = bldgShapeOwner_.get();
 		if (unitAnim().bdAnimationState != -1)
 			appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 	}
@@ -104,7 +105,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			terrain = terrainShape.get();
 		} else {
 			releaseBldgShape();
-			terrain = bldgShape = source->CreateFrom();
+			bldgShapeOwner_.reset(source->CreateFrom());
+			terrain = bldgShape = bldgShapeOwner_.get();
 		}
 		if (unitAnim().bdAnimationState != -1)
 			appearType->setAnimation(terrain, unitAnim().bdAnimationState);
@@ -418,6 +420,7 @@ void BldgAppearance::markLOS (bool clearIt)
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
 	// Line of sight comes from the stock shape, never a render override (see markMoveMap).
+	std::unique_ptr<TG_MultiShape> losShape;
 	TG_MultiShapePtr tempBldgShape = bldgShape;
 	const bool renderOverridden = simulationOwned() || appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
 	if (currentLOD || renderOverridden)
@@ -425,7 +428,8 @@ void BldgAppearance::markLOS (bool clearIt)
 		TG_TypeMultiShape* source = appearType->bldgShape[0].get();
 		if (renderOverridden && simStatusView() == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape.get();
-		tempBldgShape = source->CreateFrom();
+		losShape.reset(source->CreateFrom());
+		tempBldgShape = losShape.get();
 		if (unitAnim().bdAnimationState != -1)
 			appearType->setAnimation(tempBldgShape,unitAnim().bdAnimationState);
 	}
@@ -475,8 +479,6 @@ void BldgAppearance::markLOS (bool clearIt)
 	if (tempBldgShape != bldgShape)
 	{
 		tempBldgShape->ClearAnimation();
-		delete tempBldgShape;
-		tempBldgShape = nullptr;
 	}
 }
 
@@ -490,7 +492,8 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 	
 		releaseBldgShape();
 	
-		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
+		bldgShapeOwner_.reset(appearType->bldgShape[currentLOD]->CreateFrom());
+		bldgShape = bldgShapeOwner_.get();
 		if (unitAnim().bdAnimationState != -1)
 			appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 	}

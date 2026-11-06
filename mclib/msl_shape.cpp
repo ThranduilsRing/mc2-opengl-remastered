@@ -368,7 +368,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (mc2::czstring nodeName)
 		//STOP(("Unable to detach %s from shape",nodeName));
 		
 	//Then, create a new TG_MultiShape and stuff it with the shapes found.
-	TG_MultiShapePtr resultShape = new TG_MultiShape;
+	auto resultShape = std::make_unique<TG_MultiShape>();
 	resultShape->myMultiType = myMultiType;
     resultShape->instanceTextures_=instanceTextures_;
     resultShape->instanceMaterials_=instanceMaterials_;
@@ -428,7 +428,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (mc2::czstring nodeName)
 	//Rebuild parent node pointers!
 	rebuildShapeRecParents(listOfShapes, numTG_Shapes, nodeIdOf, parentIdOf);
 
-	return resultShape;
+	return resultShape.release(); // detached hierarchy transfers ownership to the caller
 }
 
 //-------------------------------------------------------------------------------

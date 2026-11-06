@@ -219,7 +219,8 @@ class BldgAppearance : public ObjectAppearance
 	public:
 
 		BldgAppearanceType*							appearType;
-		TG_MultiShapePtr							bldgShape;
+		std::unique_ptr<TG_MultiShape> bldgShapeOwner_;
+		TG_MultiShapePtr							bldgShape; // borrowed render view
 		std::unique_ptr<TG_MultiShape> simulationShape_;
 		TG_TypeMultiShape* simulationType_ = nullptr;
 		long simulationAnimationState_ = -1;
@@ -652,7 +653,8 @@ class TreeAppearance : public ObjectAppearance
 	public:
 
 		TreeAppearanceType*							appearType;
-		TG_MultiShapePtr							treeShape;
+		std::unique_ptr<TG_MultiShape> treeShapeOwner_;
+		TG_MultiShapePtr							treeShape; // borrowed render view
 		long										simStatus_ = 0;   // tick copy of the status; the draw swap is deferred to presentation
 
 		// Slice 2 (object-offload): see BldgAppearance::needsFullBakeNextFrame.

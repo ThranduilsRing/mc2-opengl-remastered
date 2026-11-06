@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 365,
+   "LG03": 334,
    "LG04": 12,
    "LG05": 107,
    "LG06": 113,
@@ -2659,18 +2659,10 @@
    "LG20": 8
   },
   "mclib/bdactor_spotlight.cpp": {},
-  "mclib/bdactor_static.cpp": {
-   "LG03": 2
-  },
-  "mclib/bdactor_terrain.cpp": {
-   "LG03": 1
-  },
-  "mclib/bdactor_tree.cpp": {
-   "LG03": 5
-  },
-  "mclib/bdactor_tree_static.cpp": {
-   "LG03": 1
-  },
+  "mclib/bdactor_static.cpp": {},
+  "mclib/bdactor_terrain.cpp": {},
+  "mclib/bdactor_tree.cpp": {},
+  "mclib/bdactor_tree_static.cpp": {},
   "mclib/bdactor_type.cpp": {},
   "mclib/bdactor_update.cpp": {},
   "mclib/bldg_anim_gate_counters.h": {},
@@ -2791,7 +2783,6 @@
   "mclib/err.cpp": {},
   "mclib/err.h": {},
   "mclib/fastfile.cpp": {
-   "LG03": 2,
    "LG05": 2,
    "LG11": 1
   },
@@ -2928,21 +2919,17 @@
   },
   "mclib/gosfx/tube.hpp": {},
   "mclib/gvactor.cpp": {
-   "LG03": 2,
    "LG05": 2,
    "LG10": 1,
    "LG12a": 1
   },
   "mclib/gvactor.h": {},
   "mclib/gvactor_geometry.cpp": {
-   "LG03": 2,
    "LG10": 4
   },
   "mclib/gvactor_internal.h": {},
   "mclib/gvactor_render.cpp": {},
-  "mclib/gvactor_update.cpp": {
-   "LG03": 4
-  },
+  "mclib/gvactor_update.cpp": {},
   "mclib/heap.cpp": {},
   "mclib/heap.h": {},
   "mclib/inifile.cpp": {
@@ -2992,15 +2979,12 @@
   "mclib/mclibresource.h": {
    "LG13": 5
   },
-  "mclib/mech3d.cpp": {
-   "LG03": 6
-  },
+  "mclib/mech3d.cpp": {},
   "mclib/mech3d.h": {
    "LG05": 1
   },
   "mclib/mech3d_diag.cpp": {},
   "mclib/mech3d_geometry.cpp": {
-   "LG03": 2,
    "LG10": 2,
    "LG12a": 1
   },
@@ -3012,7 +2996,6 @@
    "LG12a": 1
   },
   "mclib/mech3d_render.cpp": {
-   "LG03": 2,
    "LG08": 1
   },
   "mclib/mech3d_type.cpp": {
@@ -3306,9 +3289,7 @@
   "mclib/move_recon_stats.h": {},
   "mclib/move_solvectx.h": {},
   "mclib/mover_lamps.h": {},
-  "mclib/msl.cpp": {
-   "LG03": 1
-  },
+  "mclib/msl.cpp": {},
   "mclib/msl.h": {
    "LG05": 1,
    "LG06": 13,
@@ -3328,7 +3309,6 @@
    "LG12b": 2
   },
   "mclib/msl_shape.cpp": {
-   "LG03": 1,
    "LG05": 3,
    "LG11": 1,
    "LG17": 2

@@ -213,22 +213,22 @@ void Mech3DAppearance::destroy (void)
 	if ( mechShape )
 	{
 		mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1: final teardown
-		delete mechShape;
+		mechShapeOwner_.reset();
 	}
 	mechShape = nullptr;
 
 	if (mechShadowShape)
 	{
-		delete mechShadowShape;
+		mechShadowShapeOwner_.reset();
 		mechShadowShape = nullptr;
 	}
 
 	if ( leftArm )
-		delete leftArm;
+		leftArmOwner_.reset();
 	leftArm = nullptr;
 
 	if ( rightArm )
-		delete rightArm;
+		rightArmOwner_.reset();
 	rightArm = nullptr;
 
 
@@ -273,13 +273,13 @@ void Mech3DAppearance::destroy (void)
 
 	if (sensorSquareShape)
 	{
-		delete sensorSquareShape;
+		sensorSquareShapeOwner_.reset();
 		sensorSquareShape = nullptr;	
 	}
 		
 	if (sensorTriangleShape)
 	{
-		delete sensorTriangleShape;
+		sensorTriangleShapeOwner_.reset();
 		sensorTriangleShape = nullptr;	
 	}
 	

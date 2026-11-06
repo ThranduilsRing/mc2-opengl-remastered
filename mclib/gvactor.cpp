@@ -777,7 +777,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	if (appearType)
 	{
-		gvShape = appearType->gvShape[0]->CreateFrom();
+		gvShapeOwner_.reset(appearType->gvShape[0]->CreateFrom());
+		gvShape = gvShapeOwner_.get();
 	
 		//-------------------------------------------------
 		// Load the texture and store its handle.
@@ -839,7 +840,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (appearType->gvShadowShape)
 		{
-			gvShadowShape = appearType->gvShadowShape->CreateFrom();
+			gvShadowShapeOwner_.reset(appearType->gvShadowShape->CreateFrom());
+			gvShadowShape = gvShadowShapeOwner_.get();
 	
 			//-------------------------------------------------
 			// Load the texture and store its handle.
@@ -882,7 +884,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			gvShadowShape = nullptr;
 		}
  		
-		sensorTriangleShape = GVAppearanceType::SensorTriangleShape->CreateFrom();
+		sensorTriangleShapeOwner_.reset(GVAppearanceType::SensorTriangleShape->CreateFrom());
+		sensorTriangleShape = sensorTriangleShapeOwner_.get();
 		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (int i=0;i<sensorTriangleShape->GetNumTextures();i++)
@@ -918,7 +921,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
  		
-		sensorCircleShape = GVAppearanceType::SensorCircleShape->CreateFrom();
+		sensorCircleShapeOwner_.reset(GVAppearanceType::SensorCircleShape->CreateFrom());
+		sensorCircleShape = sensorCircleShapeOwner_.get();
  		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (int i=0;i<sensorCircleShape->GetNumTextures();i++)
@@ -1105,10 +1109,11 @@ void GVAppearance::setObjStatus (long oStatus)
 			if (appearType->gvDmgShape)
 			{
 				gvShape->ClearAnimation();
-				delete gvShape;
+				gvShapeOwner_.reset();
 				gvShape = nullptr;
 				
-				gvShape = appearType->gvDmgShape->CreateFrom();
+				gvShapeOwner_.reset(appearType->gvDmgShape->CreateFrom());
+				gvShape = gvShapeOwner_.get();
 			}
 
 			currentLOD = 0;
@@ -1118,10 +1123,11 @@ void GVAppearance::setObjStatus (long oStatus)
 		{
 			if (appearType->gvShape[0])
 			{
-				delete gvShape;
+				gvShapeOwner_.reset();
 				gvShape = nullptr;
 				
-				gvShape = appearType->gvShape[0]->CreateFrom();
+				gvShapeOwner_.reset(appearType->gvShape[0]->CreateFrom());
+				gvShape = gvShapeOwner_.get();
 			}
 
 			currentLOD = 0;

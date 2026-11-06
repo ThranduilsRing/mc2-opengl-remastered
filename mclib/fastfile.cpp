@@ -13,11 +13,14 @@
 #include<ctype.h>
 #include<string.h>
 #include"platform_str.h"
+#include <memory>
+#include <vector>
 
 // NS3 boundary: the FastFile registry storage belongs to the FastFile
 // subsystem (this TU), not to whatever game/tool main happens to link it.
 // extern'd for all consumers in ffile.h. Previously redefined in every main.
 FastFile	**fastFiles = nullptr;
+static std::vector<std::unique_ptr<FastFile>> fastFileOwners;
 long		numFastFiles = 0;
 long		maxFastFiles = 0;
 
@@ -34,14 +37,16 @@ bool FastFileInit (mc2::czstring fname)
 
 	//-----------------------------------------------------------------------------
 	//-- Open this fast file, add it to the list O pointers and return TRUE if OK!
-	fastFiles[numFastFiles] = new FastFile;
-	long result = fastFiles[numFastFiles]->open(fname);
+	auto file = std::make_unique<FastFile>();
+	long result = file->open(fname);
 	if (result == FASTFILE_VERSION)
 	{
 		ffLastError = result;
 		return FALSE;
 	}
 
+	fastFileOwners.push_back(std::move(file));
+	fastFiles[numFastFiles] = fastFileOwners.back().get();
 	numFastFiles++;
 
 	return TRUE;
@@ -59,7 +64,6 @@ void FastFileFini (void)
 			{
 				fastFiles[currentFastFile]->close();
 	
-				delete fastFiles[currentFastFile];
 				fastFiles[currentFastFile] = nullptr;
 			}
 	
@@ -67,6 +71,7 @@ void FastFileFini (void)
 		}
 	}
 
+	fastFileOwners.clear();
 	free(fastFiles);
 	fastFiles = nullptr;
 	numFastFiles= 0;

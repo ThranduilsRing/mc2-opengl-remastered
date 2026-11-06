@@ -34,10 +34,11 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				{
 					mechShape->ClearAnimation();
 					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
-					delete mechShape;
+					mechShapeOwner_.reset();
 					mechShape = nullptr;
 
-					mechShape = mechType->mechForwardDmgShape->CreateFrom();
+					mechShapeOwner_.reset(mechType->mechForwardDmgShape->CreateFrom());
+					mechShape = mechShapeOwner_.get();
 				}
 			}
 			else if (unitAnim().currentGestureId == 24)
@@ -46,10 +47,11 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				{
 					mechShape->ClearAnimation();
 					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
-					delete mechShape;
+					mechShapeOwner_.reset();
 					mechShape = nullptr;
 
-					mechShape = mechType->mechBackwardDmgShape->CreateFrom();
+					mechShapeOwner_.reset(mechType->mechBackwardDmgShape->CreateFrom());
+					mechShape = mechShapeOwner_.get();
 				}
 			}
 

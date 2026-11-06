@@ -695,25 +695,25 @@ void GVAppearance::destroy (void)
 
 	if (gvShape)
 	{
-		delete gvShape;
+		gvShapeOwner_.reset();
 		gvShape = nullptr;
 	}
 	
 	if (gvShadowShape)
 	{
-		delete gvShadowShape;
+		gvShadowShapeOwner_.reset();
 		gvShadowShape = nullptr;
 	}
 	
 	if (sensorCircleShape)
 	{
-		delete sensorCircleShape;
+		sensorCircleShapeOwner_.reset();
 		sensorCircleShape = nullptr;	
 	}
 	   
 	if (sensorTriangleShape)
 	{
-		delete sensorTriangleShape;
+		sensorTriangleShapeOwner_.reset();
 		sensorTriangleShape = nullptr;	
 	}
 
