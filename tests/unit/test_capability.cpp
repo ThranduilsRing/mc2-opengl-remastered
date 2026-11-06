@@ -6,7 +6,7 @@
 
 TEST_CASE("CapabilitySet: default empty") {
     CapabilitySet c;
-    for (int i = 0; i < CAP__COUNT; ++i)
+    for (int i = 0; i < std::to_underlying(CAP__COUNT); ++i)
         CHECK_FALSE(c.has(static_cast<Capability>(i)));
 }
 TEST_CASE("CapabilitySet: set then has") {
@@ -22,9 +22,9 @@ TEST_CASE("CapabilitySet: clear empties all") {
     CHECK_FALSE(c.has(CAP_JUMP));
 }
 TEST_CASE("CapabilitySet: per-bit isolation") {
-    for (int i = 0; i < CAP__COUNT; ++i) {
+    for (int i = 0; i < std::to_underlying(CAP__COUNT); ++i) {
         CapabilitySet c; c.set(static_cast<Capability>(i), true);
-        for (int j = 0; j < CAP__COUNT; ++j)
+        for (int j = 0; j < std::to_underlying(CAP__COUNT); ++j)
             CHECK(c.has(static_cast<Capability>(j)) == (i == j));
     }
 }

@@ -35,7 +35,7 @@
 // REASON-CODE VOCABULARY. `EQV_` = Equipment-Validator. Stable, modder-facing.
 // APPEND-ONLY (never renumber): logs / mod tooling key on the value.
 // -------------------------------------------------------------------------
-enum EquipmentReasonCode {
+enum class EquipmentReasonCode : int {
     // --- LIVE (WEAPON-VALIDATOR-1, equipment arc slice 6) ---
     // A weapon-kind equipment carries a WeaponFacet with NO fireExecutor bound
     // (fireExecutor.id == 0). A weapon needs an executor to fire; without one it
@@ -117,6 +117,7 @@ enum EquipmentReasonCode {
 
     EQV__COUNT
 };
+using enum EquipmentReasonCode;
 
 // A single coherence finding. `code` = stable machine key; `message` = a short
 // modder-facing literal (the future glue/CLI prefixes it with the equipment id).

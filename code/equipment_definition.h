@@ -41,7 +41,7 @@
 // families a compbas row can belong to. `Other` is the catch-all for rows that do
 // not (yet) map to a modeled kind.
 // -------------------------------------------------------------------------
-enum EquipmentKind {
+enum class EquipmentKind : int {
     EQ_WEAPON = 0,   // an entry carrying a WeaponFacet
     EQ_AMMO,         // ammunition (linked by named ammo category, not offset math)
     EQ_SENSOR,       // sensor / active probe
@@ -55,6 +55,7 @@ enum EquipmentKind {
     EQ_OTHER,        // catch-all (unmapped compbas family)
     NUM_EQUIPMENT_KINDS   // keep last; must stay <= 32 (used as a tag bit range too)
 };
+using enum EquipmentKind;
 
 // -------------------------------------------------------------------------
 // EquipmentTag -- small OR-able tag set for cross-cutting equipment properties
