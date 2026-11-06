@@ -23,7 +23,7 @@
 // unit's DamageSchema iff its damageLocation is a member of that schema.
 
 #include "damage_schema.h"   // DamageLocationId, DamageSchemaId, schemaHasLocation
-#include "mc2_czstring.h"
+#include "facet_token.h"
 
 // -------------------------------------------------------------------------
 // WeaponTag -- the mount-type tags a hardpoint accepts.
@@ -73,13 +73,7 @@ inline constexpr int HARDPOINT_NAME_CAP = 48;   // includes the NUL terminator
 // id). Case-SENSITIVE by design: RightTorso and righttorso are different
 // hardpoints; presentation sockets are case-sensitive node-name strings.
 inline unsigned int hardpointHash(mc2::czstring name) {
-    if (!name || name[0] == '\0') return 0u;
-    unsigned int h = 2166136261u;   // FNV offset basis
-    for (const char* p = name; *p; ++p) {
-        h ^= static_cast<unsigned char>(*p);
-        h *= 16777619u;             // FNV prime
-    }
-    return h;
+    return mc2::fnv1aName(name);
 }
 
 struct HardpointId {

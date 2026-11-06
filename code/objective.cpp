@@ -364,52 +364,29 @@ static bool MoverIsCaptured(const long pMoverWID, const long teamID)
 	return retval;
 }
 
-static long sReadIdFloat(FitIniFile* missionFile, mc2::czstring varName, float &value) {
-	long result = 0;
-	float tmpFloat;
-	result = missionFile->readIdFloat(const_cast<char *>(varName), tmpFloat);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpFloat;
-	}
+// Read a typed FIT id into a Raw temporary and assign it to value only on success.
+template <class Raw, class Out, class Read>
+static long sReadIdAs(Out &value, Read read) {
+	Raw tmp;
+	const long result = read(tmp);
+	if (NO_ERR == result) { value = tmp; }
 	return result;
+}
+
+static long sReadIdFloat(FitIniFile* missionFile, mc2::czstring varName, float &value) {
+	return sReadIdAs<float>(value, [&](float &t) { return missionFile->readIdFloat(const_cast<char *>(varName), t); });
 }
 
 static long sReadIdBoolean(FitIniFile* missionFile, mc2::czstring varName, bool &value) {
-	long result = 0;
-	bool tmpBool;
-	result = missionFile->readIdBoolean(const_cast<char *>(varName), tmpBool);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpBool;
-	}
-	return result;
+	return sReadIdAs<bool>(value, [&](bool &t) { return missionFile->readIdBoolean(const_cast<char *>(varName), t); });
 }
 
 static long sReadIdWholeNum(FitIniFile* missionFile, mc2::czstring varName, int &value) {
-	long result = 0;
-	unsigned long tmpULong;
-	result = missionFile->readIdULong(const_cast<char *>(varName), tmpULong);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpULong;
-	}
-	return result;
+	return sReadIdAs<unsigned long>(value, [&](unsigned long &t) { return missionFile->readIdULong(const_cast<char *>(varName), t); });
 }
 
 static long sReadIdLongInt(FitIniFile* missionFile, mc2::czstring varName, int &value) {
-	long result = 0;
-	long tmpLong;
-	result = missionFile->readIdLong(const_cast<char *>(varName), tmpLong);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpLong;
-	}
-	return result;
+	return sReadIdAs<long>(value, [&](long &t) { return missionFile->readIdLong(const_cast<char *>(varName), t); });
 }
 
 static bool areCloseEnough(float f1, float f2)

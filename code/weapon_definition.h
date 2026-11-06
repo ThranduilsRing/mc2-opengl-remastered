@@ -52,7 +52,7 @@
 // ordinal space. This header is the shared CONTRACT those later slices implement
 // against; it introduces no runtime read, no gate, no mc2srcdata change.
 
-#include "mc2_czstring.h"
+#include "facet_token.h"
 #include "hardpoint.h"       // WeaponTag, HardpointProfile, hardpointAcceptsWeapon
 #include "damage_schema.h"   // DamageLocationId
 #include <utility>
@@ -77,13 +77,7 @@ inline constexpr int WEAPON_NAME_CAP = 64;   // includes the NUL terminator
 
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset" id).
 inline unsigned int weaponIdHash(mc2::czstring name) {
-    if (!name || name[0] == '\0') return 0u;
-    unsigned int h = 2166136261u;   // FNV offset basis
-    for (const char* p = name; *p; ++p) {
-        h ^= static_cast<unsigned char>(*p);
-        h *= 16777619u;             // FNV prime
-    }
-    return h;
+    return mc2::fnv1aName(name);
 }
 
 struct WeaponId {

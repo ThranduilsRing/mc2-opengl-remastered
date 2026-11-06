@@ -16,19 +16,13 @@
 // enum defined in action_executor_registry.h (LOCO_MECH_WALKER, LOCO_TRACKED,
 // LOCO_WHEELED, LOCO_HOVER, LOCO_INFANTRY) so the registry's compatibility sets
 // and the facet speak the same id language.
+#include "facet_token.h"
 #include "mc2_czstring.h"
 #include "action_executor_registry.h"   // LocomotionModel enum
 
 // Case-insensitive ASCII equality for a facet token vs a fixed key.
 inline bool locomotionTokenEquals(mc2::czstring a, mc2::czstring key) {
-    if (!a || !key) return false;
-    for (; *a && *key; ++a, ++key) {
-        char ca = *a, ck = *key;
-        if (ca >= 'A' && ca <= 'Z') ca = static_cast<char>(ca - 'A' + 'a');
-        if (ck >= 'A' && ck <= 'Z') ck = static_cast<char>(ck - 'A' + 'a');
-        if (ca != ck) return false;
-    }
-    return *a == '\0' && *key == '\0';
+    return mc2::facetTokenEquals(a, key);
 }
 
 // Map an optional `.fit [UnitProfile] Locomotion=` token to a LocomotionModel.

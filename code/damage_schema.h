@@ -1,6 +1,6 @@
 #ifndef DAMAGE_SCHEMA_H
 #define DAMAGE_SCHEMA_H
-#include "mc2_czstring.h"
+#include "facet_token.h"
 // DAMAGE-SCHEMA-FACET-1 (slice 5 of the UNIT-PROFILE arc).
 //
 // Data-owned DAMAGE SCHEMA: which hit-location model a unit uses. This is a pure
@@ -66,14 +66,7 @@ using enum DamageLocationId;
 // stands alone for the offline test target.)
 // Null tokens are absent and never compare equal, including to each other.
 inline bool damageSchemaTokenEquals(mc2::czstring a, mc2::czstring key) {
-    if (!a || !key) return false;
-    for (; *a && *key; ++a, ++key) {
-        char ca = *a, ck = *key;
-        if (ca >= 'A' && ca <= 'Z') ca = static_cast<char>(ca - 'A' + 'a');
-        if (ck >= 'A' && ck <= 'Z') ck = static_cast<char>(ck - 'A' + 'a');
-        if (ca != ck) return false;
-    }
-    return *a == '\0' && *key == '\0';
+    return mc2::facetTokenEquals(a, key);
 }
 
 // Map an optional `.fit [UnitProfile] DamageSchema=` token to a DamageSchemaId.
