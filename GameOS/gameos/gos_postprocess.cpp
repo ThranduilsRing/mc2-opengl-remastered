@@ -277,7 +277,6 @@ void gosPostProcess::init(int w, int h)
             if (sdEnv[0] == 'm') {
                 // Harness toggle for the motion-vector debug inset (temporal track).
                 showMotionVectors_ = true;
-                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=m: motion-vector inset on\n");
             } else if (sdEnv[0] == '1' || sdEnv[0] == '2' || sdEnv[0] == 's' || sdEnv[0] == 'd') {
                 showShadowDebug_ = true;
                 mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE on (CSM view)\n");
