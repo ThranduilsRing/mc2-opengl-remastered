@@ -138,3 +138,18 @@ def test_fix_gate_folder_wait_on_a_blocked_holder_fails_fast_and_names_it(tmp_pa
     tier1, det, det_pid = _pair(tmp_path, "old", 0.5)
     assert tier1.startswith("DEADLOCK") and float(tier1.split()[1]) < 10.0, tier1
     assert f"holder pid {det_pid}" in tier1 and "holds a host slot" in tier1, tier1
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="pid reuse check reads the Windows process start time")
+def test_a_dead_holders_lease_under_a_reused_pid_is_not_ours(leases):
+    """W122a determinism-mc2_24: a dead mod_smoke left a lease naming pid 40736; a later run_smoke got that pid and
+    its slot request tripped LockOrderError on the stale folder."""
+    entry = deploy_lease._owner_record(leases, "2020-01-01T00:00:00Z", "missions:a_0_1")   # written before we started
+    reg = {deploy_lease._folder_key(leases): entry}
+    deploy_lease._write_registry(reg)
+    assert deploy_lease.held_by_pid(os.getpid()) == []
+    host_lease.acquire("run_smoke reused pid", scan=lambda: [], log=QUIET)
+    assert host_lease.holds()
+    deploy_lease.release_lease(leases)
+    deploy_lease.acquire_lease(leases, "missions:real")                 # a genuine lease is still seen
+    assert deploy_lease.held_by_pid(os.getpid())

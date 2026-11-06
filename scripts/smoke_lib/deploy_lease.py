@@ -123,13 +123,29 @@ def _is_stale(entry: dict) -> bool:
     return age > _ttl() or _owner_dead(entry)
 
 
+def _pid_reused(entry: dict) -> bool:
+    """True when the entry's pid now names a process that started after the lease was written (Windows reuses pids: a
+    dead mod_smoke's unreleased lease, pid 40736, made a later run_smoke with the same pid look like its holder, W122a)."""
+    if _sys.platform != "win32":
+        return False
+    try:
+        from . import child_registry
+        started = child_registry.process_create_time(int(entry.get("pid") or 0))
+    except (TypeError, ValueError, ImportError):
+        return False
+    acquired = _parse_utc(entry.get("acquired_utc", ""))
+    if not started or acquired is None:
+        return False
+    return (started - 116444736000000000) / 1e7 > acquired + 2.0     # FILETIME (100 ns since 1601) to epoch seconds
+
+
 def _owner_dead(entry: dict) -> bool:
     """True when a lease written by THIS host names a pid that no longer exists: take over now, do not wait out the TTL."""
     try:
         pid = int(entry.get("pid") or 0)
     except (TypeError, ValueError):
         return False
-    return pid > 0 and entry.get("hostname") == socket.gethostname() and not _pid_alive(pid)
+    return pid > 0 and entry.get("hostname") == socket.gethostname() and (not _pid_alive(pid) or _pid_reused(entry))
 
 
 def _folder_has_exe(folder: str) -> bool:
@@ -356,7 +372,8 @@ def held_by_pid(pid: int) -> list:
     """Folders whose lease `pid` on this host holds (no lock: the registry is replaced atomically)."""
     host = socket.gethostname()
     return [e.get("folder") or k for k, e in _read_registry().items()
-            if isinstance(e, dict) and e.get("pid") == pid and e.get("hostname") == host]
+            if isinstance(e, dict) and e.get("pid") == pid and e.get("hostname") == host
+            and not _pid_reused(e)]
 
 
 def _holder_slot_wait(folder: str) -> str:
