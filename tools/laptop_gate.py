@@ -146,7 +146,7 @@ def r_run(window, extra):
             sm["error"] = "build failed"
     if "error" not in sm:
         proof = G + "/drv/E/mc2-archive-2026-10/proofs/merge-gate/" + window
-        cmd = [sys.executable, "scripts/merge_gate.py", "--full", "--no-box", "--no-farm-determinism",
+        cmd = [sys.executable, "scripts/merge_gate.py", "--full",
                "--proofs-dir", proof, "--expect-head", head]
         if window.isdigit():
             cmd += ["--window", window]
