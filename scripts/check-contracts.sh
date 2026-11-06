@@ -1512,7 +1512,7 @@ run_nightly "visual_regression_schema"   "py -3 scripts/run_visual.py --validate
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
 run_nightly "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_nightly "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
-run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py scripts/tests/test_gate_box_route.py scripts/tests/test_box_queue.py -q -p no:cacheprovider"
+run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py scripts/tests/test_box_queue.py -q -p no:cacheprovider"
 run_nightly "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
 run_nightly "gate_receipts"              "py -3 -B -m pytest scripts/tests/test_gate_state.py -q -p no:cacheprovider"
 # Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.

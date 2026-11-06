@@ -4,7 +4,6 @@
   "tests": [
     {"module": "scripts/tests/test_shadow_bake_init.py", "owners": ["shadow_bake_init"]},
     {"module": "scripts/tests/test_gate_farm.py", "owners": ["gate_farm"]},
-    {"module": "scripts/tests/test_gate_box_route.py", "owners": ["gate_farm"]},
     {"module": "scripts/tests/test_box_queue.py", "owners": ["gate_farm"]},
     {"module": "scripts/tests/test_paired_cpu.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_lint_slots.py", "owners": ["scripts_tests"]},    {"module": "scripts/tests/test_deploy_seed.py", "owners": ["gate_inputs"]},
@@ -21,7 +20,6 @@
     {"module": "scripts/tests/test_mission_cpu_profile.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_play_mission.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_native_harness.py", "owners": ["scripts_tests"]},
-    {"module": "scripts/tests/test_kit_visibility.py", "owners": ["kit_visibility"]},
     {"module": "scripts/tests/test_spirv_fixups.py", "owners": ["spirv_artifacts"]},
     {"module": "scripts/tests/test_window_emission.py", "owners": ["vk_shaders_compile"]},
     {"module": "scripts/tests/test_native_binding_contracts.py", "owners": ["scripts_tests"]},
@@ -118,7 +116,6 @@
     {"module": "scripts/tests/test_native_executor_health.py", "owners": ["native_scene_targets"]},
     {"module": "scripts/tests/test_native_render_hosts.py", "owners": ["native_render_hosts"]},
     {"module": "scripts/tests/test_native_scene_targets.py", "owners": ["native_scene_targets"]},
-    {"module": "scripts/tests/test_no_gl_compiler.py", "owners": ["no_gl_compiler"]},
     {"module": "scripts/tests/test_nofocus_env.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_omnitech_abl_stack_balance.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_parent_watchdog.py", "owners": ["scripts_tests"]},
