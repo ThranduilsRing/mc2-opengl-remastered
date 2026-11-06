@@ -84,6 +84,9 @@ public:
         uint32_t calls = 0;
         if (nOpaque) {
             infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
+            // shadow_prop.vert reads pc.packetBase in both pipelines (VUID-vkCmdDrawIndexedIndirect-None-08601 without a push); the opaque frag ignores v_row.
+            const ShadowDrawPush push{rows_[parity_].deviceAddress(), base, 0};
+            vkCmdPushConstants(cb, layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
             mc2::battlebench::add(mc2::battlebench::DrawShadow);
             vkCmdDrawIndexedIndirect(cb, buf, static_cast<VkDeviceSize>(base) * sizeof(VkDrawIndexedIndirectCommand), nOpaque, sizeof(VkDrawIndexedIndirectCommand));
             ++calls;
