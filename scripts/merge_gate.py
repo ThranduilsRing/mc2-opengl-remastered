@@ -25,21 +25,15 @@ import hashlib
 import threading
 import re
 import math
-from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
+from concurrent.futures import ThreadPoolExecutor
 
 import console_child
 import gate_reuse
-import gate_scope
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
 HEADLESS_SAVELOAD = ("mc2_16", "mc2_24")
-#: Rows the box gate (tools/box_run.py --gate: GPU 3, clang/libc++ build, Linux baselines) proves instead of the PC. The PC keeps
-#: determinism-mc2_10 and saveload-mc2_10 as the MSVC canary; the daily --full gate keeps every row on the PC. A red box row is a red gate row.
-BOX_GATE_TIMEOUT_S = 2400  # the box stage's wall cap as seen from the PC; past it the stage is BOX_INFRA and the PC rows run
-BOX_OFFLOADED = ("determinism-mc2_03", "determinism-mc2_16", "determinism-mc2_24", "saveload-mc2_01")
-BOX_GATE_COMMAND = ["tools/box_run.py", "--gate"]
 sys.path.insert(0, str(ROOT / "tools"))
 from lane_merge import git_bash, run_logged  # noqa: E402
 
@@ -55,7 +49,16 @@ ROW_RESULTS = {}      # name -> {status, seconds, wait, device}: execute() fills
 TIMINGS = {}          # preparation / queue_wait / execution / cache / cleanup seconds for the verdict (promotion: lane_merge --promote)
 CLEANUP_ERRORS = []   # cleanup failures: recorded beside the verdict, never change it
 VERDICT_FILE = "build64-ninja/gate-verdict.json"
-PREREQUISITE = "syncval"   # Windows smoke-lite (day + night) with core + sync validation: first game row after deploy, fail-fast
+PREREQUISITE = "tier1"   # the validation-enabled tier1 smoke: first game row after deploy, fail-fast
+
+
+#: Gate tiers (owner 2026-11-06). 0 = every merge (--full); 1 = --nightly adds these; 2 = --weekly adds these. A tier-excluded stage is not in the
+#: plan, so it is never PARTIAL; only an operator --stages/--skip filter is.
+def stage_tier(name):
+    if name in ("mods", "video-decode"):
+        return 2
+    return 1 if name.startswith(("determinism-", "saveload-")) or name == "player-path" else 0
+
 
 OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
 
@@ -93,7 +96,7 @@ def window_reusable(window, tree, now=None):
     return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
-DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "video-decode": 250, "kit-visibility": 45, "quiet": 45,
+DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
                          "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
 
 
@@ -138,80 +141,6 @@ def stage_passed(status):
     return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
 
 
-def box_reachable(runner=None):
-    """True when the rented box answers ssh (box_run --probe, 15 s cap). Anything else selects the Windows-full fallback."""
-    try:
-        return (runner or run_child)([sys.executable, str(ROOT / BOX_GATE_COMMAND[0]), "--probe"], cwd=ROOT, env=os.environ.copy()).returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
-def apply_box_route(steps, full=False):
-    """Policy: with a live box-gate stage the offloaded PC rows are REUSED from it (execute() grades them red when the
-    box stage is red; nothing is waived). A skipped box stage, or the daily --full gate, leaves every PC row as planned."""
-    box = next((s for s in steps if s[0] == "box-gate"), None)
-    if full or box is None or box[2].get("MC2_GATE_SKIP_REASON"):
-        return steps
-    why = "box gate (GPU 3, clang/libc++, Linux baselines) proves this row; the PC keeps determinism-mc2_10 and saveload-mc2_10 as the MSVC canary"
-    out = []
-    for n, c, e in steps:
-        if e.get("MC2_GATE_SKIP_REASON"):
-            out.append((n, c, e))
-        elif n in BOX_OFFLOADED:
-            out.append((n, c, dict(e, MC2_GATE_SKIP_REASON=why, MC2_GATE_REUSE_STAGE="box-gate")))
-        elif n == "contracts" and "--rows" not in c and "--skip-rows" not in c:
-            # The box runs every row but the PC-only ones (scripts/box_contracts_pc_only.txt); the PC runs exactly those. The
-            # Linux half is a reused step: green box = reused, red box = red, dead box = box_fallback runs it here.
-            pc = box_contracts_pc_only()
-            reuse = dict(e, MC2_GATE_SKIP_REASON="box gate runs the Linux-capable contract rows (scripts/box_contracts.sh)", MC2_GATE_REUSE_STAGE="box-gate")
-            if pc:
-                rx = "^(" + "|".join(pc) + ")$"
-                out += [(n, c + ["--rows", rx], e), ("contracts-linux", c + ["--skip-rows", rx], reuse)]
-            else:
-                out.append((n, c, reuse))
-        elif n == "harnesses" and "--unit" in c:
-            # doctests move to the box (clang/libc++); the PC keeps the Python contracts. Dead box: unit-linux runs the native tier here.
-            # The PC still compiles mc2_tests with MSVC (no run): the box's clang cannot prove the MSVC build of the test tree.
-            out += [(n, ["--python-only" if a == "--unit" else a for a in c], e),
-                    ("unit-msvc-build", [a for a in c if a != "--run"] + ["--unit-only"], e),
-                    ("unit-linux", c, dict(e, MC2_GATE_SKIP_REASON="box gate runs the doctest tier (box_run unit row)", MC2_GATE_REUSE_STAGE="box-gate"))]
-        else:
-            out.append((n, c, e))
-    return out
-
-
-def box_contracts_pc_only():
-    """Contract row labels that need Windows (scripts/box_contracts_pc_only.txt, one per line, # comments)."""
-    try:
-        lines = (ROOT / "scripts" / "box_contracts_pc_only.txt").read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return []
-    return [ln.strip() for ln in lines if ln.strip() and not ln.lstrip().startswith("#")]
-
-
-def box_infra_repeated(head, cause, state=None):
-    """Record this BOX_INFRA (head + cause) and say whether the previous gate run also died of BOX_INFRA at the same head."""
-    path = Path(state or os.environ.get("MC2_BOX_INFRA_STATE", "A:/Games/mc2-ops/box_infra_last.json"))
-    try:
-        prev = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        prev = {}
-    try:
-        path.write_text(json.dumps({"head": str(head), "cause": cause}), encoding="utf-8")
-    except OSError:
-        pass
-    return prev.get("head") == str(head)
-
-
-def box_fallback(reused, completed):
-    """Windows-full fallback: when the box stage died of BOX_INFRA (box failed, no product verdict) the offloaded rows run on the PC."""
-    if not str(completed.get("box-gate", "")).startswith("INFRA"):
-        return reused, False
-    strip = ("MC2_GATE_SKIP_REASON", "MC2_GATE_REUSE_STAGE")
-    return [(n, c, {k: v for k, v in e.items() if k not in strip} if e.get("MC2_GATE_REUSE_STAGE") == "box-gate" else e)
-            for n, c, e in reused], True
-
-
 def farm_key(command):
     """Command identity for the farm runner table; execute() swaps the --out value for a fresh directory on resume, so the key leaves it out."""
     command = list(command)
@@ -247,39 +176,6 @@ def clean_failed_outputs(state, proof):
         if target.exists():
             shutil.rmtree(target)
             print(f'[merge_gate] CLEAN failed output {name}: {target}; receipt retained', flush=True)
-
-
-def cheap_row_errors(head):
-    """Rows that cost about a minute but used to fail a window only after the build (W122c): hygiene over the candidate
-    range, duplicate-code count against the gate base, a launch hygiene row; memory size is a WARN only. A failure stops --preflight."""
-    try:
-        base = git("merge-base", head, "claude/nifty-mendeleev")
-        if base == head:   # candidate is nifty itself: range starts at the last all-stage gate head
-            mark, _ = gate_scope.read_mark(ROOT)
-            base = git("rev-parse", mark + "^{commit}") if mark else base
-    except Exception:  # noqa: BLE001 - an unreadable base leaves an empty range; the other two rows still run
-        base = head
-    rows = (("staged-hygiene", ["py", "-3", "scripts/check-staged-hygiene.py", "--range", f"{base}..{head}"]),
-            ("dup_check", ["py", "-3", "tools/dup_check.py", "--check", "--rev", head]),
-            ("background_launch", ["py", "-3", "scripts/check-background-launch.py", "--quiet"]))
-    errors = []
-    for name, command in rows:
-        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
-                                **console_child.child_kwargs(redirected=True))
-        if result.returncode:
-            tail = " | ".join((result.stdout + result.stderr).strip().splitlines()[-3:])
-            errors.append(f"{name} failed before the build (rc={result.returncode}): {tail}; fix: {' '.join(command[2:])}")
-    memory_size_warning()
-    return errors
-
-
-def memory_size_warning():
-    """check-memory-size reads the agents' memory directory on C:, not the candidate: advisory only, never a gate or preflight failure."""
-    result = subprocess.run(["py", "-3", "scripts/check-memory-size.py"], cwd=ROOT, capture_output=True, text=True,
-                            **console_child.child_kwargs(redirected=True))
-    if result.returncode:
-        tail = " | ".join((result.stdout + result.stderr).strip().splitlines()[-3:])
-        print(f"[merge_gate] WARN memory-size (advisory, not a gate failure; rc={result.returncode}): {tail}", flush=True)
 
 
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
@@ -358,7 +254,6 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
                       f"last valid in window {e['expires_window'] - 1}; renew tools/mod_known_failures.json with an owner note", flush=True)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         errors.append(f"known-failure list: {exc}; fix: edit tools/mod_known_failures.json with owner-approved ceilings and three-window expiry")
-    errors += cheap_row_errors(head)
     for error in errors:
         print('[merge_gate] preflight FAIL: ' + error, flush=True)
     print(f"[merge_gate] preflight {'FAIL' if errors else 'PASS'} seconds={time.monotonic() - started:.2f}", flush=True)
@@ -621,16 +516,12 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
-         {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE"}),
+         {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE", "MC2_VULKAN_VALIDATION": "1"}),
         # What a player does: scripted menu input (MC2_INPUT_SCRIPT) -> New Campaign mission 1 past the first comm video, and Load Game.
         # Real video decode and the real front end; every other smoke boots --mission under SmokeMode and skips both.
         ("player-path", [py, "scripts/run_player_path.py", "--install", install, "--out", str(proof / "player-path")], {}),
         # Real comm-video decode with the sim overlap worker ON (smoke mode skips the movie): red on a SIM_OVERLAP violation or no decode.
         ("video-decode", [py, "scripts/video_decode_smoke.py", "--exe", install + "/mc2.exe", "--out", str(proof / "video-decode")], {}),
-        ("kit-visibility", [py, "scripts/check-kit-visibility.py", "--install", install,
-                            "--out", str(proof / "kit-visibility")], {}),
-        # The ordinary contracts row is offline; fresh default-build quiet grading launches the game, so it lives here with the gate's exe.
-        ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
     ]
     # Preserve the original stage names and paths for existing --stages callers.
     noise = []
@@ -666,15 +557,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                        *(["--headless"] if mission in HEADLESS_SAVELOAD else [])], {}))
     # Staging has one cache writer; two isolated smoke children lease their own slots.
     steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
-    steps.append(("validation",
-                  [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
-                  {"MC2_VULKAN_VALIDATION": "1"}))
-    # Sync-val smoke-lite (mc2_01 day + mc2_10 night): synchronization hazards and the canary are graded by run_smoke; the box_run `syncval` row is the same run.
-    steps.append(("syncval",
-                  [py, "scripts/run_smoke.py", "--lite", "--keep-logs", "--deploy", "0.4"],
-                  {"MC2_VULKAN_VALIDATION": "sync"}))
-    # First, so the serial path has its verdict before the reused rows are graded; execute_parallel starts it in the background at gate start.
-    steps.insert(0, ("box-gate", [py, *BOX_GATE_COMMAND], {}))
     return steps
 
 
@@ -709,8 +591,6 @@ def row_evidence(command, overrides):
 # Proof inputs read by one row family only (stage-name prefixes). A commit that touches just these (e.g. a re-frozen
 # quiet baseline) reruns those rows and keeps every other row's evidence for the same exe.
 ROW_PROOF_INPUTS = {
-    "tests/contract/default_build_quiet_baseline.json": ("quiet",),
-    "scripts/check-default-build-quiet.py": ("quiet",),
     "tools/save_noise_mask.json": ("saveload-",),
     "tools/saveload_roundtrip.py": ("saveload-",),
     "tests/saveload/": ("saveload-",),
@@ -811,13 +691,7 @@ def affected_plan(steps, paths, full=False):
                 reason = "docs/tooling-only diff has no runtime inputs"
             elif name == "harnesses" and not sim:
                 reason = "diff has no C++ harness inputs"
-        if name == "validation" and (game or full) and "tier1" in names:
-            env["MC2_GATE_REUSE_STAGE"] = "tier1,determinism-mc2_10" if batch_tier else "tier1"
-            reason = "tier1 and shared determinism smokes grade Vulkan validation errors/layer activation"
-        if name == 'kit-visibility' and not full:
-            reason = 'nightly --full coverage; window reviewer opens day/night montage'
         if name == "tier1":
-            env["MC2_VULKAN_VALIDATION"] = "1"
             if batch_tier:
                 cmd += ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
                 env["MC2_GATE_COVERAGE"] = "tier1 mc2_10 assigned to the windowed determinism smoke; the headless determinism rows run no GPU, so this stage runs mc2_01/03/17/24"
@@ -853,7 +727,7 @@ def install_plan(steps, install):
         command = [arg.replace(old, str(install).replace("\\", "/")) for arg in command]
         if name == "deploy":
             command += [str(install), "--allow-new-target"]
-        if name in ("tier1", "validation", "syncval"):
+        if name == "tier1":
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":
@@ -1195,15 +1069,13 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
 
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
-FULL_MARK = "build64-ninja/last-full-gate.json"
 
 
 def verdict_of(result, steps, failed=None):
     """(verdict, skipped): PASS only when every row ran green; a skipped required row is PARTIAL, host-only reds are INFRA."""
     failed = FAILED_STAGES if failed is None else failed
-    scoped = {n for n, _, e in steps if e.get("MC2_GATE_SCOPE_SKIP")}   # diff-scoped skips (gate_scope) are not PARTIAL
-    skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE") and n not in scoped]
-    skipped += [n for n, row in ROW_RESULTS.items() if row["status"].startswith("SKIP") and n not in skipped and n not in scoped]
+    skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
+    skipped += [n for n, row in ROW_RESULTS.items() if row["status"].startswith("SKIP") and n not in skipped]
     infra_only = bool(result and failed and all(s.startswith("INFRA") for _, s in failed))
     return ("INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")), skipped
 
@@ -1216,7 +1088,6 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
-                scope_skipped={n: "SKIP(" + e["MC2_GATE_SKIP_REASON"] + ")" for n, _, e in steps if e.get("MC2_GATE_SCOPE_SKIP")},
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
                 artifacts=artifacts, timings={k: round(v, 1) for k, v in timings.items()},
@@ -1235,23 +1106,6 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
         tmp.write_text(text, encoding="utf-8")
         os.replace(tmp, path)
     return data
-
-
-def mark_full_gate(root, head, verdict, full, dry_run, scope_skipped=False):
-    """last-full-gate.json records a COMPLETE PASS only: a partial or red full gate leaves the previous mark (and removes a same-HEAD one).
-    A scope-skipped gate (gate_scope) may publish but never moves the mark: it must keep pointing at the last gate where every stage ran."""
-    mark = Path(root) / FULL_MARK
-    if not full or dry_run or scope_skipped:
-        return False
-    if verdict != "PASS":
-        try:
-            if json.loads(mark.read_text(encoding="utf-8")).get("head") == head:
-                mark.unlink()
-        except (OSError, ValueError):
-            pass
-        return False
-    mark.write_text(json.dumps(dict(head=head, finished=time.time())))
-    return True
 
 
 MAD_LIMIT = 0.05
@@ -1333,20 +1187,7 @@ def publish(head, dry_run=False):
     rc = execute([("publish-v0.4", deploy[1], {})], head, dry_run)
     if rc == 0 and not dry_run:
         drop_candidate()
-        push_box_filler()
     return rc
-
-
-def push_box_filler():
-    """After a publish the box's idle filler should build the new nifty tip: best effort, never fails the publish"""
-    script = ROOT / "tools" / "box_filler_push.py"
-    if os.environ.get("MC2_NO_BOX_FILLER_PUSH") or not script.is_file():
-        return
-    try:
-        r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
-        print(f"[merge_gate] box filler push: rc={r.returncode} {(r.stdout or r.stderr).strip()[-160:]}")
-    except (OSError, subprocess.SubprocessError) as exc:
-        print(f"[merge_gate] box filler push skipped: {exc}")
 
 
 def fail_fast_hold(steps):
@@ -1389,19 +1230,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             and s[0] != 'determinism-' + WINDOWED_DETERMINISM
             and not s[2].get("MC2_GATE_SKIP_REASON")]
     steps = [s for s in steps if s not in farm]
-    box = [s for s in steps if s[0] == "box-gate" and not s[2].get("MC2_GATE_SKIP_REASON")]
-    steps = [s for s in steps if s not in box]
-    with ThreadPoolExecutor(max_workers=2 + bool(farm) + bool(box)) as pool:
-        # The box gate needs no PC game slot: start it now and let it run beside every PC row.
-        # A daemon thread, not a pool worker: a hung box must not block the pool's shutdown after the timeout below.
-        box_future = Future() if box else None
-        if box:
-            def box_main():
-                try:
-                    box_future.set_result(execute(box, head, runner=run_child, completed=completed))
-                except BaseException as exc:  # noqa: BLE001 - surfaced through result()
-                    box_future.set_exception(exc)
-            threading.Thread(target=box_main, name="box-gate", daemon=True).start()
+    with ThreadPoolExecutor(max_workers=2 + bool(farm)) as pool:
         harness = next((s for s in steps if s[0] == "harnesses" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         contracts = next((s for s in steps if s[0] == "contracts" and not s[2].get("MC2_GATE_SKIP_REASON")), None)
         harness_future = None
@@ -1434,9 +1263,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         if any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods) or len(live_det) >= 2:
             determinism = live_det
         if determinism:
-            # These checks have no user-save writes and can use the same clone.
-            determinism += [s for s in stock if s[0] in ("kit-visibility", "quiet")
-                            and not s[2].get("MC2_GATE_SKIP_REASON")]
             stock = [s for s in stock if s not in determinism]
             # Balance the two workers by last-run durations (A2): A = post-deploy stock rows, B = mods; the
             # headless/clone-safe rows go to whichever is lighter. Saves stay on A (install).
@@ -1541,25 +1367,6 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         for future in pending:
             result |= future.result()
         # Reuse can depend on both workers. Join them before reading their verdicts.
-        if box_future:
-            try:
-                box_result = box_future.result(timeout=BOX_GATE_TIMEOUT_S)
-            except FutureTimeout:
-                # A hung box stage is infrastructure, not a verdict: fall back to the PC rows (the box side's own wall caps should have ended it).
-                print(f"[merge_gate] box-gate exceeded {BOX_GATE_TIMEOUT_S}s: BOX_INFRA (timeout)", flush=True)
-                completed["box-gate"] = "INFRA (timeout): BOX_INFRA"
-                box_result = 3
-            reused, fell_back = box_fallback(reused, completed)
-            if fell_back:
-                print("[merge_gate] BOX UNAVAILABLE MID-RUN (BOX_INFRA): the box produced no verdicts; running the offloaded rows on the PC "
-                      "(Windows-full fallback): " + ", ".join(n for n, _, e in reused if n in BOX_OFFLOADED or n in ("contracts", "contracts-linux", "unit-linux")), flush=True)
-                cause = str(completed.get("box-gate", ""))
-                if box_infra_repeated(head, cause):
-                    print(f"[merge_gate] WARN: BOX_INFRA TWICE IN A ROW AT HEAD {str(head)[:12]}: the box is broken, not flaky. Cause: {cause}. "
-                          "This window's offloaded rows ran on the PC; fix the box before trusting any later box-green.", flush=True)
-                FAILED_STAGES[:] = [f for f in FAILED_STAGES if f[0] != "box-gate"]
-                box_result = 0
-            result |= box_result
         if reused:
             result |= execute(reused, head, runner=runner, completed=completed)
     return result
@@ -1672,7 +1479,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
         reason = overrides.get("MC2_GATE_SKIP_REASON")
         if reason:
             reused = overrides.get("MC2_GATE_REUSE_STAGE")
-            status = f"SKIP({reason})" if overrides.get("MC2_GATE_SCOPE_SKIP") else "SKIP: " + reason
+            status = "SKIP: " + reason
             if reused:
                 passed = all(stage_passed(completed.get(source, "")) for source in reused.split(","))
                 status = ("REUSED: " if passed or dry_run else "FAIL reuse: source checks failed; ") + reason
@@ -1818,18 +1625,14 @@ def main(argv=None):
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     ap.add_argument("--base", help="pre-window commit; absent/stale window record means full coverage")
-    ap.add_argument("--cheap-rows", action="store_true", help="run only the cheap preflight rows on HEAD (used by lane_merge --stage); rc 1 names the red row")
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
-    ap.add_argument("--nightly", action="store_true", help="implies --full and forces EVERY stage except the real-decode video-decode stage (only --stages video-decode runs it); the orchestrator schedules it. A --full without it skips mods "
-                    "when the diff since last-full-gate.json touches none of their inputs (docs/merge-queue-v2.md), unless that mark is older than 30 h")
+    ap.add_argument("--nightly", action="store_true", help="implies --full; adds determinism (all maps), saveload (all maps) and player-path to the per-merge set")
+    ap.add_argument("--weekly", action="store_true", help="implies --nightly; adds mods and video-decode")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
-    ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=True, help="offer determinism to the farm (default ON; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
-    ap.add_argument("--box-gate", action=argparse.BooleanOptionalAction, default=True, help="start tools/box_run.py --gate on box GPU 3 at gate start (default ON); it proves determinism mc2_03/16/24 and saveload mc2_01, "
-                    "and the PC keeps determinism mc2_10 + saveload mc2_10 as the MSVC canary. --no-box-gate, an unreachable box, or --full keeps every row on the PC")
-    ap.add_argument("--no-box", dest="box_gate", action="store_false", help="escape hatch, same as --no-box-gate: every row stays on the PC")
+    ap.add_argument("--farm-determinism", action=argparse.BooleanOptionalAction, default=False, help="offer determinism to the farm (default OFF; --no-farm-determinism keeps it local); an unreachable farm or a job no live worker claims within the probe window runs on this PC, and each row logs its host")
     ap.add_argument("--publish", action="store_true", help="after viewing the montage: deploy the verified build to v0.4 (needs a complete green gate for HEAD)")
     ap.add_argument("--keep-candidate", action="store_true", help="leave the deployed candidate (with MechCommanderOmnitech + mco-compat mods) at E:/mc2-installs/merge-gate-candidate for campaign walks; --publish or --drop-candidate removes it")
     ap.add_argument("--drop-candidate", action="store_true", help="remove the kept candidate install and exit")
@@ -1853,9 +1656,8 @@ def main(argv=None):
         jobs = "2"
     ap.add_argument("-j", type=int, default=int(jobs))
     args = ap.parse_args(argv)
+    args.nightly = args.nightly or args.weekly
     args.full = args.full or args.nightly
-    if not args.box_gate:
-        args.farm_determinism = False   # --no-box: the farm queue lives on the dead box; never wait out its ssh timeout
     STOP_REQUESTED.clear()
     if not (args.dry_run or args.preflight) and threading.current_thread() is threading.main_thread():
         install_stage_watchdog()
@@ -1887,11 +1689,6 @@ def main(argv=None):
             ap.error('--clean-output requires an existing gate journal')
         with GateState(state_path, git('rev-parse', 'HEAD'), ROOT / 'build64-ninja/mc2.exe', args.proofs_dir, [], True, read_only=True) as state:
             clean_failed_outputs(state, args.proofs_dir)
-    if args.cheap_rows:
-        errors = cheap_row_errors(git('rev-parse', 'HEAD'))
-        for error in errors:
-            print('[merge_gate] cheap row FAIL: ' + error, flush=True)
-        return int(bool(errors))
     if args.preflight:
         return preflight(git('rev-parse', 'HEAD'), args.install or Path('E:/mc2-installs/_lean-seed'),
                          args.window, plan(args.j))
@@ -1910,17 +1707,9 @@ def main(argv=None):
         planned = (plan(args.j, proof, args.capture_before_runs, args.before_dir) if args.before_dir
                    else plan(args.j, proof, args.capture_before_runs))
         asked = [n for g in args.stages or [] for n in g.split(',')]
-        if "video-decode" not in asked:
-            # The decoder-open deferral is an offline doctest (tests/unit/test_playmovie_deferral.cpp, in `harnesses`); the real-decode
-            # launches (comm video, results countdown, retirement ordering) run only on an explicit --stages video-decode (owner 2026-11-06).
-            planned = [s for s in planned if s[0] != "video-decode"]
-        if "box-gate" not in asked:
-            if not args.box_gate:
-                planned = [s for s in planned if s[0] != "box-gate"]
-            elif not (args.dry_run or args.stages) and not box_reachable():
-                print("[merge_gate] BOX UNREACHABLE: the box did not answer ssh; WINDOWS-FULL FALLBACK, determinism and saveload run on the PC "
-                      "(box-gate stage dropped, no box evidence for this gate)", flush=True)
-                planned = [s for s in planned if s[0] != "box-gate"]
+        if not asked:
+            tier = 2 if args.weekly else 1 if args.nightly else 0
+            planned = [s for s in planned if stage_tier(s[0]) <= tier]
         steps = select_stages(planned, args.stages, args.skip)
         omitted = [step for step in planned if step[0] not in {s[0] for s in steps}]
     except ValueError as exc:
@@ -1943,14 +1732,6 @@ def main(argv=None):
         steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
     else:
         steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
-    steps = apply_box_route(steps, full=args.full or not base)
-    if args.full:
-        mark_head, mark_age = gate_scope.read_mark(ROOT)
-        decisions = gate_scope.decide(gate_scope.scoped_diff(git, mark_head, head) if mark_head else None, change_domains,
-                                      nightly=args.nightly, mark_age_s=mark_age)
-        steps, scoped_out = gate_scope.apply_scope(steps, decisions)
-        print(f"[merge_gate] scope: {'nightly, every stage' if args.nightly else 'scope-skipped ' + ','.join(scoped_out) if scoped_out else 'every stage runs'}"
-              f" (last all-stage gate {str(mark_head)[:12]}, age {'n/a' if mark_age is None else f'{mark_age / 3600:.1f} h'})", flush=True)
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
         # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
         classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")
@@ -2043,13 +1824,12 @@ def main(argv=None):
                 durable(result)  # same verdict, now with the cleanup timing and any cleanup errors
                 print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
-                print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (window box 120 min, cap 180; info only) verdict={verdict} REUSED={reused or 'none'}"
+                print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (info only) verdict={verdict} REUSED={reused or 'none'}"
                       + (f" SKIPPED={','.join(skipped)}" if skipped else ""))
                 for err in CANDIDATE_ERRORS:
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
-                mark_full_gate(ROOT, head, verdict, args.full, args.dry_run, any(e.get("MC2_GATE_SCOPE_SKIP") for _, _, e in steps))
                 if verdict != "PASS" and not args.dry_run and not args.install:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and not args.install:

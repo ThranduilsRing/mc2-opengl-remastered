@@ -61,16 +61,6 @@ def test_mod_payload_cache_survives_random_candidate_names(tmp_path, monkeypatch
     assert command[command.index('--stage-root') + 1] != roots[0]
 
 
-def test_kit_visibility_is_nightly_but_catching_stages_remain():
-    for full in (False, True):
-        steps = gate.affected_plan(gate.plan(6), ['code/mission_update.cpp'], full=full)
-        env = next(e for n, _, e in steps if n == 'kit-visibility')
-        assert bool(env.get('MC2_GATE_SKIP_REASON')) == (not full)
-        for name in ('tier1', 'mods', 'determinism-mc2_03', 'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'):
-            assert not next(e for n, _, e in steps if n == name).get('MC2_GATE_SKIP_REASON')
-        assert next(e for n, _, e in steps if n == 'tier1')['MC2_VULKAN_VALIDATION'] == '1'
-
-
 @pytest.mark.parametrize('failure', [None, 'submit', 'wait', 'fetch', 'bad-id'])
 def test_farm_stage_preserves_checks_and_fetches_failures(tmp_path, failure):
     out = tmp_path / 'determinism-mc2_10'
@@ -290,15 +280,6 @@ def test_mad_flags_declared_view_needs_a_numeric_row_under_its_bound():
     assert gate.mad_flags('a | 0.60 | 0\n', {'a': 0.5}) == ['a=0.60 (declared bound 0.5)']   # declared-over-bound
     assert gate.mad_flags('a | 0.40 | 0\n', {'a'}) == []   # a bare set gets the default 0.5
     assert gate.parse_declared_views(['a', 'b=1.5']) == {'a': 0.5, 'b': 1.5}
-
-
-def test_farm_determinism_defaults_on_and_rows_log_their_host():
-    import inspect
-    import merge_gate as gate
-    src = inspect.getsource(gate)
-    assert '"--farm-determinism", action=argparse.BooleanOptionalAction, default=True' in src
-    assert "determinism row host=farm" in inspect.getsource(gate.farm_stage)
-    assert "local PC, farm fallback" in inspect.getsource(gate.farm_stage)
 
 
 def test_declared_view_bad_bound_is_an_argparse_error(capsys, monkeypatch):

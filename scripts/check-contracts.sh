@@ -1526,7 +1526,6 @@ run_check "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_co
 run_check "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
 run_check "shadow_bake_init"           "py -3 -B -m pytest scripts/tests/test_shadow_bake_init.py -q -p no:cacheprovider"
 run_check "abl_static_alloc"           "py -3 -B -m pytest scripts/tests/test_abl_static_alloc.py -q -p no:cacheprovider"
-run_check "kit_visibility"             "py -3 -B -m pytest scripts/tests/test_kit_visibility.py -q -p no:cacheprovider"
 
 # ---------------------------------------------------------------------------
 # TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools

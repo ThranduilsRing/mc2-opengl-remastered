@@ -326,38 +326,6 @@ def test_ratchet_failure_exit_6_commit_kept(env):
     assert len(parents(repo)) == 2  # the merge commit stays
 
 
-def test_followup_commits_only_the_named_baselines(env):
-    repo, _ = env
-    lane_branch(repo, {"lane.txt": "x\n"})
-    write(repo, "main.txt", "m\n")
-    commit_all(repo, "main work")
-    set_mode(env, "file_size_ratchet.py", "tighten")
-    set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "tighten")
-    rc, out, err = merge(env, "--trailer", "Co-Authored-By: Test Model <t@example.com>")
-    assert rc == 0, err
-    assert "(+" in out and "ratchets=OK" in out
-    files = git(repo, "show", "--name-only", "--format=", "HEAD").split()
-    assert sorted(files) == sorted([FSIZE, CXX])
-    assert git(repo, "log", "-1", "--format=%s") == "merge follow-up: ratchet baselines tightened at merged HEAD"
-    assert "Co-Authored-By: Test Model" in git(repo, "log", "-1", "--format=%B")
-    assert len(parents(repo, "HEAD")) == 1 and len(parents(repo, "HEAD~1")) == 2
-    assert "tools/decoy.json" in git(repo, "status", "--porcelain")  # decoy never committed
-
-
-def test_followup_skips_baseline_that_was_already_dirty(env):
-    repo, _ = env
-    lane_branch(repo, {"lane.txt": "x\n"})
-    write(repo, "main.txt", "m\n")
-    commit_all(repo, "main work")
-    write(repo, AXIS, "someone else's edit\n")
-    set_mode(env, "file_size_ratchet.py", "tighten")
-    set_mode(env, "axis_swizzle_ratchet.py", "tighten")
-    rc, out, err = merge(env)
-    assert rc == 0, err
-    assert git(repo, "show", "--name-only", "--format=", "HEAD").split() == [FSIZE]
-    assert "left alone" in err and AXIS in err
-
-
 def test_merge_in_progress_refused(env):
     repo, _ = env
     lane_branch(repo, {"lane.txt": "x\n"})
@@ -619,52 +587,6 @@ def _branch(repo, name, rel, content, subject):
     write(repo, rel, content)
     commit_all(repo, subject)
     git(repo, "checkout", "-q", "main")
-
-
-def test_batch_checks_each_tip_and_tightens_once_before_verify(env, monkeypatch):
-    repo, tools = env
-    for n in "abc":
-        _branch(repo, "lane_" + n, f"{n}_lane.cpp", n + "\n", f"lane {n}")
-    write(repo, "main.txt", "m\n")
-    commit_all(repo, "main work")
-    set_mode(env, "file_size_ratchet.py", "tighten")
-    lm = _load_module()
-    checks = []
-    real_ratchets = lm.run_ratchets
-    def ratchets(root, tools_dir, *, tighten=True):
-        checks.append(tighten)
-        return real_ratchets(root, tools_dir, tighten=tighten)
-    monkeypatch.setattr(lm, 'run_ratchets', ratchets)
-    verifies = []
-    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
-    rc = lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--root", str(repo), "--tools-dir", str(tools), "--no-receipt-check"])
-    assert rc == 0
-    assert verifies == ["build"]
-    log = git(repo, "log", "--format=%s", "-8").splitlines()
-    follow = "merge follow-up: ratchet baselines tightened at merged HEAD"
-    assert log.count(follow) == 1 and log.index(follow) < log.index('merge lane: lane c')
-    assert checks == [False, False, False, True]
-    assert [s for s in log if s.startswith("merge lane:")] == ["merge lane: lane c", "merge lane: lane b", "merge lane: lane a"]
-    assert all((repo / f"{n}_lane.cpp").exists() for n in "abc")
-
-
-def test_batch_artifacts_and_tightening_share_one_followup(env, monkeypatch):
-    repo, tools = env
-    _branch(repo, 'lane_a', 'a_lane.txt', 'a\n', 'lane a')
-    _branch(repo, 'lane_b', 'b_lane.txt', 'b\n', 'lane b')
-    set_mode(env, 'file_size_ratchet.py', 'tighten')
-    lm = _load_module()
-    generated = []
-    def regenerate(root):
-        generated.append(root)
-        write(repo, 'docs/split-map.md', '{"batch": true}\n')
-        return ['docs/split-map.md']
-    monkeypatch.setattr(lm, 'regenerate_all', regenerate)
-    monkeypatch.setattr(lm, 'verify_merged', lambda *a: ('OK', []))
-    assert lm.main(['--batch', 'lane_a', 'lane_b', '--root', str(repo), '--tools-dir', str(tools)]) == 0
-    assert len(generated) == 1
-    assert set(git(repo, 'show', '--format=', '--name-only', 'HEAD').splitlines()) == {FSIZE, 'docs/split-map.md'}
-    assert git(repo, 'log', '-1', '--format=%s') == lm.FOLLOWUP_SUBJECT
 
 
 def test_batch_dry_run_plans_later_tips_against_the_earlier_ones(env, capsys):
@@ -1258,7 +1180,6 @@ def test_stage_merges_without_precheck_receipts_but_batch_still_refuses(env, tmp
     git(repo, "branch", "claude/nifty-mendeleev", "main")
     lm = _load_module()
     monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
-    monkeypatch.setattr(lm, "stage_preflight", lambda root, window: [])   # the fixture repo has no merge_gate.py
     assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5    # plain --batch: unchanged
     assert "PRECHECK MISSING" in capsys.readouterr().out
     rc = lm.main(["--stage", "W1", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])

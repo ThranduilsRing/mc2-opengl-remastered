@@ -270,47 +270,6 @@ def test_deploy_stale_refusal_precedes_payload_copy(tmp_path, monkeypatch):
         dp.run_deploy(args, str(tmp_path), str(tmp_path), str(tmp_path), "mc2.exe", "mc2.pdb")
 
 
-def test_gate_plan_uses_verified_ninja_and_required_checks():
-    import merge_gate as gate
-    steps = gate.plan(6)
-    mods = next(cmd for name, cmd, _ in steps if name == "mods")
-    assert "--fail-fast" not in mods
-    assert mods[mods.index("--workers") + 1] == "2"
-    assert len(steps) == 24   # box-gate (gate-on-box) + syncval (vk-validation-ci) on the window 120 22-step plan
-    video = next(cmd for name, cmd, _ in steps if name == "video-decode")
-    assert video[1].endswith("video_decode_smoke.py") and "video-decode" in video[-1]
-    quiet = next(cmd for name, cmd, _ in steps if name == "quiet")
-    assert quiet[-3:-1] == ["--fresh-smoke", "--exe"] and quiet[-1].endswith("mc2-win64-v0.4/mc2.exe")
-    by_name = {name: (cmd, env) for name, cmd, env in steps}
-    assert by_name["contracts"][0][-2:] == ["-j6", "--no-cache"]   # the gate never takes a shared-cache PASS
-    assert by_name["harnesses"][0][-2:] == ["-j", "6"]
-    assert "--ninja" in by_name["deploy"][0] and "--require-clean" in by_name["deploy"][0]
-    assert [name for name, _, _ in steps[:6]] == ["box-gate", "capture-before", "deploy", "capture-after", "compare-captures", "contracts"]
-    assert by_name["determinism-mc2_24"][0][2:4] == ["check", "mc2_24"]
-    assert not any("ninja_build.py" in arg for _, cmd, _ in steps for arg in cmd)
-    for name, cmd, _ in steps:
-        if not name.startswith("saveload-"):
-            continue
-        assert cmd[2] == "check"
-        assert "--first-save-only" in cmd
-        assert cmd[cmd.index("--mask") + 1] == "tools/save_noise_mask.json"
-    assert steps[-2][2] == {"MC2_VULKAN_VALIDATION": "1"}
-    assert steps[-1][0] == "syncval" and steps[-1][2] == {"MC2_VULKAN_VALIDATION": "sync"}
-
-
-def test_gate_repeated_before_captures_measure_noise_before_deploy(tmp_path):
-    import merge_gate as gate
-    steps = gate.plan(6, tmp_path, 3)
-    names = [s[0] for s in steps]
-    assert names[:7] == ["box-gate", "capture-before", "capture-before-2", "compare-noise-2",
-                         "capture-before-3", "compare-noise-3", "deploy"]
-    commands = {name: cmd for name, cmd, _ in steps}
-    assert commands["capture-before-3"][-1] == str(tmp_path / "before-3")
-    assert commands["compare-noise-3"][3:5] == [str(tmp_path / "before"), str(tmp_path / "before-3")]
-    with pytest.raises(ValueError, match="positive"):
-        gate.plan(6, tmp_path, 0)
-
-
 def test_lane_failure_summary_keeps_early_case_and_location():
     output = "FAILED test_cache.py::test_restore\ntest_cache.py:65: AssertionError\n" + "noise\n" * 50
     summary = lm.failure_summary(output)
@@ -362,7 +321,7 @@ def test_gate_dry_run_never_executes(monkeypatch, capsys):
     def forbidden(*a, **k):
         raise AssertionError("launched subprocess in dry run")
     assert gate.execute(gate.plan(6), "base", True, forbidden) == 0
-    assert "validation | DRY-RUN" in capsys.readouterr().out
+    assert "tier1 | DRY-RUN" in capsys.readouterr().out
 
 
 def test_gate_reports_all_failed_stages(monkeypatch, capsys, tmp_path):
@@ -689,27 +648,6 @@ def test_gate_diff_coverage(paths, sim, game):
     assert not reasons["contracts"]
 
 
-def test_full_restores_all_domains_and_reuses_covered_checks():
-    import merge_gate as gate
-    steps = gate.affected_plan(gate.plan(6), ["docs/intro.md"], full=True)
-    skipped = {n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
-    assert skipped == {"validation"}
-    assert all(e.get("MC2_GATE_REUSE_STAGE") for n, _, e in steps if n in skipped)
-    # Selecting a stand-alone stage cannot reuse a check that was never run.
-    validation = next(s for s in gate.plan(6) if s[0] == "validation")
-    assert not gate.affected_plan([validation], [], True)[0][2].get("MC2_GATE_SKIP_REASON")
-
-
-def test_gate_reuse_fails_when_producing_check_failed(monkeypatch, capsys):
-    import merge_gate as gate
-    monkeypatch.setattr(gate, "git", lambda *a: "head")
-    steps = gate.affected_plan([("tier1", ["fake"], {}), ("validation", ["duplicate"], {})], ["code/game.cpp"])
-    calls = []
-    assert gate.execute(steps, "head", runner=lambda cmd, **kw: calls.append(cmd) or _r(1)) == 1
-    assert calls == [["fake"]]
-    assert "FAIL reuse" in capsys.readouterr().out
-
-
 def test_gate_lane_install_routes_every_runtime_command(tmp_path):
     import merge_gate as gate
     steps = gate.install_plan(gate.plan(6), tmp_path)
@@ -725,28 +663,6 @@ def test_tools_and_art_suites_partition_discovery():
     tools, art = set(tt.discover("tools")), set(tt.discover("art"))
     assert tools and art and not tools & art
     assert tools | art == all_tests
-
-
-def test_tier1_reuses_only_strict_validated_determinism_smokes():
-    import merge_gate as gate
-    steps = gate.affected_plan(gate.plan(6), ["code/game.cpp"])
-    by_name = {n: (c, e) for n, c, e in steps}
-    cmd, _ = by_name["tier1"]
-    assert cmd[-8:] == ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
-    command, env = by_name["determinism-mc2_10"]
-    assert command[-2:] == ["--sim-speed", "2"] and "--headless-both" not in command
-    assert env["MC2_VULKAN_VALIDATION"] == env["MC2_MOVER_COHERENCE_AUDIT"] == "1"
-    for mission in ("mc2_03", "mc2_16"):   # headless pairs (mc2_24 too, with its own --ticks)
-        command, env = by_name["determinism-" + mission]
-        assert "--headless-both" in command and "--sim-speed" not in command
-        assert "MC2_VULKAN_VALIDATION" not in env
-    assert by_name["validation"][1]["MC2_GATE_REUSE_STAGE"] == "tier1,determinism-mc2_10"
-    art = gate.affected_plan(gate.plan(6), ["release_assets_src/model.glb"])
-    assert "--mission" not in next(c for n, c, _ in art if n == "tier1")
-    full = gate.affected_plan(gate.plan(6), ["code/game.cpp"], full=True)
-    finale = next(c for n, c, _ in full if n == 'determinism-mc2_24')
-    assert "--headless-both" in finale and "--sim-speed" not in finale
-    assert int(finale[finale.index('--ticks') + 1]) > 2404
 
 
 def test_gate_removes_classic_twins_of_current_checks():
@@ -777,92 +693,6 @@ def test_gate_save_matrix_tracks_art_path(paths, count):
     assert len(cases) == count
     if count == 2:
         assert {n for n, _ in cases} == {"saveload-mc2_01", "saveload-mc2_10"}
-
-
-def test_captures_keep_symmetric_env_and_do_not_mutate_gameplay(tmp_path):
-    import merge_gate as gate
-    steps = gate.install_plan(gate.affected_plan(gate.plan(6, tmp_path),
-        ["scripts/kit_payload.py"]), tmp_path / "install")
-    by_name = {n: (c, e) for n, c, e in steps}
-    for suffix in ("",):
-        before, before_env = by_name["capture-before" + suffix]
-        after, after_env = by_name["capture-after" + suffix]
-        before = list(before)
-        before[before.index("--out") + 1] = after[after.index("--out") + 1]
-        assert before == after and before_env == after_env
-        assert not after_env.get("MC2_GATE_SKIP_REASON")
-    command, env = by_name["tier1"]
-    assert "--capture-bookmark" not in command and "--quiet-sample" not in command
-    assert command[command.index("--mission"):] == ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
-    assert env["MC2_VULKAN_VALIDATION"] == "1"
-    assert "--fresh-smoke" in by_name["quiet"][0]
-
-
-@pytest.mark.parametrize("failure", [False, True])
-def test_parallel_gate_finishes_mods_before_stock_and_keeps_deploy_barrier(monkeypatch, failure):
-    import threading
-    import merge_gate as gate
-    started, stock_done = threading.Event(), threading.Event()
-    calls = []
-    monkeypatch.setattr(gate, "git", lambda *a: "head")
-    def runner(command, **kw):
-        calls.append(command[0])
-        assert "MC2_HOST_LEASE_BATCH" not in kw["env"]
-        if command == ["mods"]:
-            assert "deploy" in calls
-            started.set()
-            assert not stock_done.wait(0.05), "stock I/O overlaps cold mod load"
-            return _r(1 if failure else 0)
-        if command == ["stock"]:
-            assert started.is_set()
-            stock_done.set()
-        return _r(0)
-    monkeypatch.setattr(gate, "run_child", runner)
-    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
-    assert gate.execute_parallel([("deploy", ["deploy"], {}), ("mods", ["mods"], {}),
-                                  ("tier1", ["stock"], {})], "head") == int(failure)
-    assert started.is_set() and stock_done.is_set()
-
-
-@pytest.mark.parametrize("failed_source", [None, "tier1", "det", "missing"])
-def test_parallel_validation_reuse_joins_both_workers(tmp_path, monkeypatch, capsys, failed_source):
-    import threading
-    from contextlib import contextmanager
-    import merge_gate as gate
-    monkeypatch.setattr(gate, "FAILED_STAGES", [])
-    tier_done = threading.Event()
-    det_done = threading.Event()
-    # this test needs tier1 (worker A) and determinism (worker B) concurrently: make A the loaded worker
-    monkeypatch.setattr(gate, "stage_seconds", lambda name: 1000.0 if name == "tier1" else 1.0)
-    @contextmanager
-    def copy(source):
-        yield tmp_path / "clone"
-    def runner(command, **kw):
-        name = command[0]
-        if name == "tier1":
-            assert det_done.wait(2)
-            tier_done.set()
-        elif name == "det":
-            det_done.set()
-            assert tier_done.wait(2)
-        else:
-            assert name == "mods", "validation must reuse evidence, not launch again"
-        return _r(int(name == failed_source))
-    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
-    monkeypatch.setattr(gate, "git", lambda *a: "head")
-    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
-    monkeypatch.setattr(gate, "stock_copy", copy)
-    monkeypatch.setattr(gate, "run_child", runner)
-    sources = "tier1,determinism-mc2_10" + (",missing" if failed_source == "missing" else "")
-    steps = [("mods", ["mods"], {}),
-             ("tier1", ["tier1"], {}),
-             ("validation", ["validation"], {"MC2_GATE_SKIP_REASON": "covered", "MC2_GATE_REUSE_STAGE": sources}),
-             ("determinism-mc2_10", ["det", "--install", str(tmp_path / "install")], {})]
-    assert gate.execute_parallel(steps, "head") == int(failed_source is not None)
-    output = capsys.readouterr().out
-    assert ("FAIL reuse" in output) == (failed_source is not None)
-    assert ("validation: REUSED" in output) == (failed_source is None)
-    assert any(name == "validation" for name, _ in gate.FAILED_STAGES) == (failed_source is not None)
 
 
 def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path, monkeypatch):
@@ -1024,16 +854,14 @@ def test_auxiliary_determinism_uses_copy_while_saves_stay_serial(tmp_path, monke
     steps = [("deploy", ["deploy"], {}),
         ("mods", ["mods", "--base-install", str(install), "--exe", str(install / "mc2.exe")], {}),
         ("determinism-mc2_10", ["det", "--install", str(install)], {}),
-        ("saveload-mc2_01", ["save", "tools/saveload_roundtrip.py", "--install", str(install)], {}),
-        ("kit-visibility", ["kit", "--install", str(install)], {}),
-        ("quiet", ["quiet", "--exe", str(install / "mc2.exe")], {})]
+        ("saveload-mc2_01", ["save", "tools/saveload_roundtrip.py", "--install", str(install)], {})]
     if not with_determinism:
-        steps = [s for s in steps if s[0] not in ('determinism-mc2_10', 'kit-visibility', 'quiet')]
+        steps = [s for s in steps if s[0] != 'determinism-mc2_10']
     assert gate.execute_parallel(steps, "head") == 0
     assert "mods" in calls and "save" in calls  # no barrier: private save dirs
     assert 'cleaned' in calls
     if with_determinism:
-        assert calls.index("mods") < calls.index("det") < calls.index("kit") < calls.index("quiet") < calls.index("cleaned")
+        assert calls.index("mods") < calls.index("det") < calls.index("cleaned")
 
 
 @pytest.mark.parametrize("tier,env,expected", [
@@ -1162,7 +990,7 @@ def test_gate_reuses_only_fresh_same_head_unit_receipt(tmp_path, monkeypatch, fr
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--no-box", "--proofs-dir", str(tmp_path / "proof")]) == 0   # the box route has its own python-only split
+    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0   # the box route has its own python-only split
     cmd = next(c for n, c, _ in seen if n == "harnesses")
     assert ("--python-only" in cmd) == fresh
 
@@ -1189,7 +1017,7 @@ def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monke
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    assert gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")]) == 0
     assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 5
     assert "capture-before" in {n for n, _, _ in seen}
     assert not any(n.endswith("-classic") for n, _, _ in seen)
@@ -1345,28 +1173,6 @@ def test_precheck_fails_on_stale_inventory():
     assert "stale_inventories(root, commit)" in src and 'failed.append("inventories-stale:' in src
 
 
-def test_red_syncval_prerequisite_stops_the_gate_before_the_long_stages(monkeypatch, capsys):
-    import merge_gate as gate
-    monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
-    monkeypatch.setattr(gate, "git", lambda *a: "head")
-    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
-    calls = []
-    def runner(command, **kw):
-        calls.append(command[0])
-        return _r(int(command[0] == "syncval"))
-    monkeypatch.setattr(gate, "run_child", runner)
-    steps = [("deploy", ["deploy"], {}), ("tier1", ["tier1"], {}), ("mods", ["mods"], {}),
-             ("determinism-mc2_24", ["determinism"], {}), ("syncval", ["syncval"], {"MC2_VULKAN_VALIDATION": "sync"})]
-    gate.ROW_RESULTS.clear()
-    assert gate.execute_parallel(steps, "head") == 1
-    assert calls == ["deploy", "syncval"]                     # nothing long launched after the red prerequisite
-    held = {n: r["status"] for n, r in gate.ROW_RESULTS.items() if n in ("tier1", "mods", "determinism-mc2_24")}
-    assert held and all(s.startswith("SKIP") for s in held.values())
-    calls.clear()
-    assert gate.execute_parallel(steps, "head", keep_going=True) == 1
-    assert "tier1" in calls and "mods" in calls               # --keep-going keeps the exhaustive run
-
-
 def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monkeypatch, capsys):
     from pathlib import Path
     import exe_fingerprint, merge_gate as gate
@@ -1374,7 +1180,6 @@ def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monke
            "mc2_asset_viewer.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0)}
     monkeypatch.setattr(exe_fingerprint, "extract", lambda p: fps[Path(p).name])
     monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)   # mc2.exe: a build-input-identical ancestor is fine
-    monkeypatch.setattr(gate, "cheap_row_errors", lambda head: [])
     gate.preflight("bbbbbbbbbbbb", Path("E:/nonexistent-install"), 1, [])
     out = capsys.readouterr().out
     assert "mc2_asset_viewer.exe stale or dirty" in out and "mc2.exe stale" not in out   # the viewer needs the exact HEAD

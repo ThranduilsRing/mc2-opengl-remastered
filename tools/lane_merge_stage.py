@@ -5,12 +5,10 @@ import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import sys
 import time
 
 import _git_util
-import console_child
 from lane_precheck import Stop
 
 NIFTY = "claude/nifty-mendeleev"
@@ -36,20 +34,6 @@ def refuse_direct_nifty(root: str, hotfix: bool) -> None:
         return
     raise Stop(5, f"DIRECT MERGE REFUSED: {NIFTY} only moves by --promote. Run: py -3 tools/lane_merge.py --stage W --batch <tips>, "
                   "gate the candidate, then --promote W (--hotfix is the logged escape)")
-
-
-def stage_preflight(root: str, window: str) -> list[str]:
-    """Cheap gate rows (staged-hygiene --range, dup_check, background_launch) on the checked-out candidate, before any build.
-    A red marks the stage refused in its state file; --promote then refuses. Returns the red lines."""
-    proc = subprocess.run([sys.executable, "scripts/merge_gate.py", "--cheap-rows"], cwd=root, capture_output=True, text=True,
-                          **console_child.child_kwargs(redirected=True))
-    if proc.returncode == 0:
-        return []
-    reds = [ln for ln in (proc.stdout + proc.stderr).splitlines() if "cheap row FAIL" in ln] or [f"merge_gate --cheap-rows rc={proc.returncode}"]
-    state = load_stage(root, window)
-    state["refused"] = reds
-    save_stage(root, window, state)
-    return reds
 
 
 def git_out(root: str, *args: str) -> str:

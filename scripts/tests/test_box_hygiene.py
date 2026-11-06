@@ -299,24 +299,6 @@ def test_lane_merge_calls_the_hook_per_merged_tip():
     assert "box_cleanup_lane(root, ref)" in (ROOT / "tools" / "lane_merge.py").read_text()
 
 
-def test_publish_pushes_the_filler(monkeypatch):
-    import merge_gate as gate
-    calls = []
-    monkeypatch.setattr(gate.subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "ok", ""))
-    monkeypatch.delenv("MC2_NO_BOX_FILLER_PUSH", raising=False)
-    gate.push_box_filler()
-    assert calls and calls[0][-1].endswith("box_filler_push.py")
-    calls.clear()
-    monkeypatch.setenv("MC2_NO_BOX_FILLER_PUSH", "1")
-    gate.push_box_filler()
-    assert not calls
-
-
-def test_publish_calls_push_after_success():
-    src = (ROOT / "scripts" / "merge_gate.py").read_text()
-    assert re.search(r"drop_candidate\(\)\n\s+push_box_filler\(\)", src)
-
-
 def test_deploy_box_tars_tools_box_and_runs_apply(monkeypatch):
     seen = {}
     monkeypatch.setattr(box_run, "run", lambda cmd, **kw: seen.update(cmd=cmd, input=kw.get("input")) or subprocess.CompletedProcess(cmd, 0))

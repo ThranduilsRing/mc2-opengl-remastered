@@ -35,24 +35,3 @@ def test_promote_tags_the_green_candidate(env, monkeypatch):
     assert git(repo, "cat-file", "-t", tag) == "tag" and git(repo, "rev-parse", tag + "^{commit}") == cand
 
 
-def test_stage_refused_by_a_red_preflight_blocks_promote(env, monkeypatch):
-    lm, repo, old, cand = _stage_fixture(env, monkeypatch)
-    import lane_merge_stage
-    real = subprocess.run
-    mode = {"rc": 1}
-
-    def fake(cmd, *a, **k):
-        if "merge_gate.py" not in " ".join(map(str, cmd)):
-            return real(cmd, *a, **k)
-        out = "[merge_gate] cheap row FAIL: dup_check failed before the build (rc=1): x" if mode["rc"] else ""
-        return subprocess.CompletedProcess(cmd, mode["rc"], out, "")
-    monkeypatch.setattr(lane_merge_stage.subprocess, "run", fake)
-    reds = lm.stage_preflight(str(repo), "t1")
-    assert reds and "dup_check" in reds[0]
-    _verdict(repo, head=cand)
-    with pytest.raises(lm.Stop) as e:
-        lm.promote(str(repo), "t1")
-    assert e.value.code == 6 and "dup_check" in str(e.value)
-    assert git(repo, "rev-parse", "main") == old
-    mode["rc"] = 0
-    assert lm.stage_preflight(str(repo), "t1") == []
