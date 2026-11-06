@@ -353,6 +353,7 @@ void gosPostProcess::endScene()
     if (mode==1 && !sceneObjectIdReady()) mode=0;
 #ifdef MC2_VULKAN
     auto& present=mc2vk::getOrCreateEnginePresentVk();
+    present.setMotionVectorsDebug(showMotionVectors_);
     if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
         exposure_,mode,
         sceneObjectIdReady() ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,

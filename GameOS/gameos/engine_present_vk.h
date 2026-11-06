@@ -178,6 +178,8 @@ public:
     // Diagnostic-only native overlay for the CSM dynamic shadow debug view.
     // `csmArrayView` is the same-frame VK image view from the shadow island.
     bool renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer);
+    // Debug inset of the camera motion-vector target (docs/plans/2026-11-06-temporal-aa.md).
+    void setMotionVectorsDebug(bool on);
 
     // P13b: the visible GL game window we present onto (borrowed, not owned).
     SDL_Window* window() const { return window_; }

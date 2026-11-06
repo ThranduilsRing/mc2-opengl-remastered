@@ -92,6 +92,7 @@ void draw() {
 
             ImGui::Checkbox("Shadows##pp",      &pp->shadowsEnabled_);
             ImGui::Checkbox("Shadow Debug##pp", &pp->showShadowDebug_);
+            ImGui::Checkbox("Motion Vectors##pp", &pp->showMotionVectors_);
             if (pp->showShadowDebug_) {
                 ImGui::Indent();
                 if (ImGui::TreeNodeEx("Registries##sd")) {

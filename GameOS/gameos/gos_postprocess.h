@@ -66,6 +66,7 @@ public:
     // Static bake plus one current-frame mover map.
     bool shadowsEnabled_;
     bool showShadowDebug_;
+    bool showMotionVectors_ = false;   // Graphics Options "Motion Vectors" debug inset (VK)
     void drawShadowDebugOverlay();
     void setMapHalfExtent(float extent) { mapHalfExtent_=extent; }
     float getMapHalfExtent() const { return mapHalfExtent_; }

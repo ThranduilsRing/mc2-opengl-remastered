@@ -1,0 +1,29 @@
+#pragma once
+#ifdef MC2_VULKAN_ISLAND
+#include <memory>
+#include <volk.h>
+struct VkImageResource;
+namespace mc2vk {
+class VulkanContext;
+// Main-view camera motion by depth reprojection (docs/plans/2026-11-06-temporal-aa.md):
+// RG16F at render resolution, UV units, previousUV - currentUV, unjittered, zero on sky
+// and on history reset. The present owner retires users before prepare/reset.
+class MotionVectors {
+public:
+    MotionVectors();
+    ~MotionVectors();
+    bool prepare(VulkanContext& ctx, const VkImageResource& depth);
+    // Records the motion pass. Depth must be in DEPTH_STENCIL_ATTACHMENT_OPTIMAL and is
+    // returned there. The output ends in SHADER_READ_ONLY_OPTIMAL.
+    void record(VkCommandBuffer cb, const VkImageResource& depth);
+    // Debug inset (ImGui Graphics Options "Motion Vectors") over an RGBA8 target that is in
+    // COLOR_ATTACHMENT_OPTIMAL. Draws only when record() ran since the last call.
+    bool recordDebug(VkCommandBuffer cb, VkImageView target, uint32_t w, uint32_t h);
+    void reset();
+    VkImageView view() const;
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+}
+#endif

@@ -30,6 +30,8 @@
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "imgui.h"
 #include "present_imgui_snapshot.h"
@@ -1411,6 +1413,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     s.spatialAA.reset();
+    s.motionVectors.reset();
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
     destroyCompositeFramebuffer(s);
@@ -1680,6 +1683,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
 
+    // Camera motion vectors (temporal track, docs/plans/2026-11-06-temporal-aa.md): every frame,
+    // before the composite; the only consumer so far is the debug inset in the present tail.
+    if (VkImageResource* depth = mc2SharedSceneDepthGetResource(); depth && depth->image && depth->w && depth->h) {
+        if (s.motionVectors.prepare(*s.ctx, *depth)) s.motionVectors.record(cc, *depth);
+    }
+
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
@@ -1798,6 +1807,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     ++health_.composite_vk_frames;
     presentImageVkOwned_ = true;
     return true;
+}
+
+void EnginePresentVk::setMotionVectorsDebug(bool on) {
+    if (impl_) impl_->showMotionVectorsDebug = on;
 }
 
 bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer) {
@@ -2210,6 +2223,9 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         ++health_.shadow_debug_vk_frames;
     }
     s.pendingShadowDebugView = VK_NULL_HANDLE;
+    // Motion-vector debug inset (Graphics Options): after the composite, before HUD/ImGui.
+    if (s.showMotionVectorsDebug)
+        (void)s.motionVectors.recordDebug(s.curCbuf(), s.sharedImg.view.get(), s.imgW, s.imgH);
 
     // VK-TAIL-HOOK-1: final native-tail seam. The composite left the shared image
     // in COLOR_ATTACHMENT layout; native HUD/ImGui commands attach here before the
