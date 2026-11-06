@@ -53,11 +53,7 @@ from collections import deque
 from contextlib import nullcontext
 import os
 import re
-import shutil
-import subprocess
-import sys
-import time
-import tempfile
+import shutil, subprocess, sys, time, tempfile  # noqa: E401
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
@@ -1460,8 +1456,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.stage and merged and not stopped:
             if reds := stage_preflight(root, args.stage):
-                print(f"STAGE REFUSED {args.stage}: cheap preflight red before any build: " + " || ".join(reds))
-                return 6
+                return print(f"STAGE REFUSED {args.stage}: cheap preflight red before any build: " + " || ".join(reds)) or 6
         mode = "none" if args.no_verify else args.verify
         record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started,
                       tree=git_out(root, "rev-parse", "HEAD^{tree}"), **({"hotfix": True} if args.hotfix else {}))
