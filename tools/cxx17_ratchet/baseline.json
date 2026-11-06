@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 283,
+   "LG03": 282,
    "LG04": 15,
    "LG05": 127,
    "LG06": 170,
@@ -1500,7 +1500,6 @@
   },
   "code/comndr.h": {},
   "code/componentlistbox.cpp": {
-   "LG03": 1,
    "LG05": 2
   },
   "code/componentlistbox.h": {},

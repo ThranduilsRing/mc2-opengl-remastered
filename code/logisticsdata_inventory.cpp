@@ -376,7 +376,7 @@ bool LogisticsData::isVehicleUnit( LogisticsMech* pMech )
 // -> the vehicle stays unpiloted, no worse than before.
 LogisticsPilot* LogisticsData::getVehiclePilot()
 {
-	static LogisticsPilot* s_vehiclePilot = nullptr;
+	static std::unique_ptr<LogisticsPilot> s_vehiclePilot;
 	static bool s_tried = false;
 	if ( !s_tried )
 	{
@@ -391,9 +391,9 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 		{
 			p->setAvailable( false );
 		}
-		s_vehiclePilot = p.release();
+		s_vehiclePilot = std::move(p);
 	}
-	return s_vehiclePilot;
+	return s_vehiclePilot.get();
 }
 
 
