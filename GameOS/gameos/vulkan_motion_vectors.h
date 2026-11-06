@@ -15,7 +15,7 @@ public:
     bool prepare(VulkanContext& ctx, const VkImageResource& depth);
     // Records the motion pass. Depth must be in DEPTH_STENCIL_ATTACHMENT_OPTIMAL and is
     // returned there. The output ends in SHADER_READ_ONLY_OPTIMAL.
-    void record(VkCommandBuffer cb, const VkImageResource& depth);
+    void record(VkCommandBuffer cb, const VkImageResource& depth, uint32_t renderFrame);
     // Debug inset (ImGui Graphics Options "Motion Vectors") over an RGBA8 target that is in
     // COLOR_ATTACHMENT_OPTIMAL. Draws only when record() ran since the last call.
     bool recordDebug(VkCommandBuffer cb, VkImageView target, uint32_t w, uint32_t h);
@@ -24,6 +24,8 @@ public:
     // R8 reactive/transparency mask, render resolution, same lifetime and layout as view(). The
     // FSR consumer binds it with view() and the shared scene depth; the pass clears it to 0.
     VkImageView reactiveView() const;
+    VkImage image() const;
+    VkImage reactiveImage() const;
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

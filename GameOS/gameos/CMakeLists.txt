@@ -286,7 +286,7 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp vulkan_fsr_provider.cpp)
     endif()
 endif()
 
@@ -344,6 +344,8 @@ if(MC2_VULKAN)
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
+    # TAA slice C: vendored FidelityFX ffx-api headers (runtime-loaded amd_fidelityfx_vk.dll).
+    target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/fidelityfx")
     # VK-IMGUI-NATIVE-1: engine_present_vk.cpp owns the Vulkan renderer backend.
     target_include_directories(gameos PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"

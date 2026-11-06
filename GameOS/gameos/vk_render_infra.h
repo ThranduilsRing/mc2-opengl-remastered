@@ -43,6 +43,8 @@ VkResult compute(VkDevice, VkPipelineCache, uint32_t, const VkComputePipelineCre
 void shader(VkShaderModule, std::string_view path, std::span<const uint32_t> code);
 void forgetShader(VkShaderModule);
 void bind(VkCommandBuffer, VkPipelineBindPoint, VkPipeline);
+// Dynamic full-target viewport carrying this frame's temporal-AA jitter (zero with no consumer); scissor stays baked.
+void setSceneViewport(VkCommandBuffer, uint32_t w, uint32_t h);
 uint64_t adoptPipeline(VkDevice, VkPipeline);
 VkPipeline currentPipeline(uint64_t token);
 void destroyOwnedPipeline(uint64_t token);

@@ -192,6 +192,8 @@ MotionVectors::MotionVectors() = default;
 MotionVectors::~MotionVectors() = default;
 void MotionVectors::reset() { impl_.reset(); }
 VkImageView MotionVectors::view() const { return impl_ ? impl_->output.view.get() : VK_NULL_HANDLE; }
+VkImage MotionVectors::image() const { return impl_ ? impl_->output.image.get() : VK_NULL_HANDLE; }
+VkImage MotionVectors::reactiveImage() const { return impl_ ? impl_->reactive.image.get() : VK_NULL_HANDLE; }
 VkImageView MotionVectors::reactiveView() const { return impl_ ? impl_->reactive.view.get() : VK_NULL_HANDLE; }
 bool MotionVectors::prepare(VulkanContext& ctx, const VkImageResource& depth) {
     if (impl_ && impl_->sourceDepth == depth.image.get() && impl_->output.w == depth.w && impl_->output.h == depth.h) return true;
@@ -201,7 +203,7 @@ bool MotionVectors::prepare(VulkanContext& ctx, const VkImageResource& depth) {
     impl_ = std::move(state);
     return true;
 }
-void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth) {
+void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uint32_t renderFrame) {
     if (!impl_) return;
     auto& s = *impl_;
     const auto main = RenderCore::framePackets().copyMainView();
@@ -214,7 +216,7 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth) {
     // Render jitter of this frame (zero unless a temporal consumer is registered). The depth was
     // drawn with it; the shader removes it before reprojecting.
     float jitterClip[2];
-    RenderCore::temporal::frameJitterClip(g_mc2FrameCounter.load(std::memory_order_relaxed), depth.w, depth.h, depth.w, jitterClip);
+    RenderCore::temporal::frameJitterClip(renderFrame, depth.w, depth.h, depth.w, jitterClip);
     glm::mat4 reprojection{1.0f};
     if (std::memcmp(glm::value_ptr(previous), glm::value_ptr(current), sizeof(glm::mat4)) != 0 &&
         glm::determinant(current) != 0.0f)

@@ -13,6 +13,7 @@
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
 #include "vulkan_motion_vectors.h"
+#include "vulkan_fsr_provider.h"
 #include "present_imgui_snapshot.h"
 #include "imgui.h"
 
@@ -79,6 +80,10 @@ struct EnginePresentVk::Impl {
     // Camera motion vectors, recorded at the start of every composite (temporal track).
     mc2vk::MotionVectors motionVectors;
     bool showMotionVectorsDebug = false;
+    // FSR 3.1 native AA (temporal track slice C); fsrSet is the composite set with the FSR output as the scene.
+    mc2vk::FsrProvider fsr;
+    VkDescriptorSet fsrSet = VK_NULL_HANDLE;
+    VkImageView fsrSetView = VK_NULL_HANDLE;
     uint32_t        imgW = 0, imgH = 0;
 
     // Asynchronous readback; the copy buffer is reused only after completion.

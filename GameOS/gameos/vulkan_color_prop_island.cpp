@@ -20,6 +20,8 @@
 #include <string_view>
 #include <bit>
 #include "../../mclib/battle_bench_wait.h"
+#include "../../RenderCore/TemporalInputs.h"
+extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include <optional>
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
@@ -1752,7 +1754,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        float jpx[2];
+        RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
+        VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
         VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &scissor);
@@ -2158,7 +2162,9 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
     rbi.renderArea = {{0,0},{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h)}};
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0,0,static_cast<float>(s->w),static_cast<float>(s->h),0,1};
+    float jpx[2];
+    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
+    VkViewport vp{jpx[0],jpx[1],static_cast<float>(s->w),static_cast<float>(s->h),0,1};
     VkRect2D scissor = rbi.renderArea;
     vkCmdSetViewport(cb,0,1,&vp); vkCmdSetScissor(cb,0,1,&scissor);
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());

@@ -295,6 +295,10 @@ bool init_island(WaterIsland* s, int w, int h) {
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         gp.stageCount = 2; gp.pStages = stages;
         gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+        const VkDynamicState dynViewport = VK_DYNAMIC_STATE_VIEWPORT;   // temporal AA jitters the viewport per frame
+        VkPipelineDynamicStateCreateInfo dyns{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        dyns.dynamicStateCount = 1; dyns.pDynamicStates = &dynViewport;
+        gp.pDynamicState = &dyns;
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;

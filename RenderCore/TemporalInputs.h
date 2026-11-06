@@ -41,6 +41,13 @@ inline void jitterPixels(uint32_t frame, uint32_t phases, float out[2]) {
     out[1] = halton(i, 3) - 0.5f;
 }
 
+// Viewport offset (pixels, +x right, +y down) the scene feeds apply for a render frame at 1:1 render/display.
+// Zero unless a consumer is active, so every feed is unchanged with the provider off.
+inline void sceneJitterPixels(uint32_t frame, float out[2]) {
+    out[0] = out[1] = 0.0f;
+    if (consumerActive()) jitterPixels(frame, phaseCount(1, 1), out);
+}
+
 // Clip-space offset for a render extent: 2 * jitterPx / extent (y follows the GL clip convention).
 inline void jitterClip(const float px[2], uint32_t renderW, uint32_t renderH, float out[2]) {
     out[0] = renderW ? 2.0f * px[0] / static_cast<float>(renderW) : 0.0f;

@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
+#include "../../RenderCore/TemporalInputs.h"
 #include "hitch_stats.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -358,7 +359,9 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    float jpx[2];
+    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);   // temporal AA: sub-pixel viewport offset, zero with no consumer
+    VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
