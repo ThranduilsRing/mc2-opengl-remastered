@@ -186,11 +186,15 @@ def seed():
         print("laptop install already seeded"); return
     print("seeding laptop install from", PC_SEED, flush=True)
     t = time.time()
-    tar = subprocess.Popen(["tar", "-cf", "-", "-C", str(PC_SEED), "."], stdout=subprocess.PIPE)
-    r = subprocess.run(["ssh", *SSH_OPTS, HOST, f"tar -xf - -C {INSTALL}"], stdin=tar.stdout, env=env())
-    tar.stdout.close()
-    if r.returncode or tar.wait():
-        sys.exit("seed stream failed")
+    # A piped ssh stdin on Windows OpenSSH crawls (~0.5 MB/s); one tar file through scp, extracted on the laptop, is ~20x faster.
+    local = Path(os.environ.get("TEMP", ".")) / "mc2gate-seed.tar"
+    try:
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_SEED), "."]).returncode:
+            sys.exit("seed tar failed")
+        scp(local, f"{HOST}:{G}/tmp/seed.tar")
+        ssh(f"tar -xf {G}/tmp/seed.tar -C {INSTALL} && del {G.replace('/', chr(92))}\\tmp\\seed.tar")
+    finally:
+        local.unlink(missing_ok=True)
     want = sha256(PC_SEED / "mc2.exe")
     got = ssh(f'certutil -hashfile "{INSTALL}/mc2.exe" SHA256')[1].splitlines()[1].strip()
     if got.lower() != want.lower():
