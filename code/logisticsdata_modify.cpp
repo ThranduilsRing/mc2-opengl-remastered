@@ -172,6 +172,13 @@ std::expected<void, int> LogisticsData::setMechToModify( LogisticsMech* pMech )
 {
 	if ( !pMech )
 		return std::unexpected(-1);
+	if ( currentlyModifiedMech == pMech )
+		return {};
+	if ( currentlyModifiedMech )
+	{
+		if ( auto result = cancelMechModfications(); !result )
+			return result;
+	}
 	ensureMechBayDataLoaded("setMechToModify");
 	currentlyModifiedMech = pMech;
 	oldVariant = pMech->getVariant();
