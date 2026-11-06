@@ -18,6 +18,9 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <string>
+#include <system_error>
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef VERSION_H
@@ -1290,8 +1293,12 @@ void __stdcall InitializeGameEngine()
 	}
 
 	//Make any directories we need which should be empty.
-	CreateDirectory(savePath,nullptr);
-	CreateDirectory(transcriptsPath,nullptr);
+	for (const auto directory : {savePath, transcriptsPath}) {
+		std::string nativePath(directory);
+		std::replace(nativePath.begin(), nativePath.end(), '\\', '/');
+		std::error_code error;
+		std::filesystem::create_directory(nativePath, error);
+	}
 
 	//Startup the Office Watson Handler.
 	InitDW();
