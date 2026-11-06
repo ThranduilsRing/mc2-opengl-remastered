@@ -53,19 +53,19 @@ static bool animSafeSource(std::string_view s, std::string& baseOut) {
 }
 
 static std::vector<AnimOverrideRecord> animParseManifest(
-        const std::string& manifestPath, std::string_view dir) {
+        std::string_view manifestPath, std::string_view dir) {
     std::vector<AnimOverrideRecord> out;
 
-    std::ifstream in(manifestPath.c_str());
+    std::ifstream in{std::string(manifestPath)};
     if (!in.is_open()) return out;
     json root;
     try { in >> root; }
     catch (const std::exception& e) {
-        mc2::fmt::print_err("[ANIMOVERRIDE] parse error in {}: {}\n", manifestPath.c_str(), mc2::fmt::safe(e.what()));
+        mc2::fmt::print_err("[ANIMOVERRIDE] parse error in {}: {}\n", manifestPath, mc2::fmt::safe(e.what()));
         return out;
     }
     if (!root.is_object() || !root.contains("overrides") || !root["overrides"].is_array()) {
-        mc2::fmt::print_err("[ANIMOVERRIDE] {}: missing 'overrides' array\n", manifestPath.c_str());
+        mc2::fmt::print_err("[ANIMOVERRIDE] {}: missing 'overrides' array\n", manifestPath);
         return out;
     }
 
@@ -108,7 +108,7 @@ static std::vector<AnimOverrideRecord> animParseManifest(
     return out;
 }
 
-int AnimOverrideRegistry::loadFromFile(const std::string& manifestPath,
+int AnimOverrideRegistry::loadFromFile(std::string_view manifestPath,
                                        std::string_view manifestDir) {
     records_.clear();
     manifestDir_ = manifestDir;
@@ -124,7 +124,7 @@ int AnimOverrideRegistry::loadFromFile(const std::string& manifestPath,
     return static_cast<int>(records_.size());
 }
 
-int AnimOverrideRegistry::mergeFromFile(const std::string& manifestPath,
+int AnimOverrideRegistry::mergeFromFile(std::string_view manifestPath,
                                         std::string_view manifestDir) {
     auto parsed = animParseManifest(manifestPath, manifestDir);
     int merged = 0;
@@ -141,7 +141,7 @@ int AnimOverrideRegistry::mergeFromFile(const std::string& manifestPath,
 }
 
 const AnimOverrideRecord* AnimOverrideRegistry::resolve(
-        const char* mechName, const char* gesture) const {
+        mc2::czstring mechName, mc2::czstring gesture) const {
     if (!mechName || !gesture) return nullptr;
     if (records_.empty()) return nullptr;  // fast no-op for the common (no-mod) case
     const std::string m = animNormalizeKey(mechName);

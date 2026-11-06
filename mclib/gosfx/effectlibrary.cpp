@@ -82,7 +82,7 @@ void
 //------------------------------------------------------------------------------
 //
 gosFX::Effect::Specification*
-	gosFX::EffectLibrary::Find(const char* name)
+	gosFX::EffectLibrary::Find(mc2::czstring name)
 {
 	return mc2::particles::SpecLibrary::Instance()->Find(name);
 }

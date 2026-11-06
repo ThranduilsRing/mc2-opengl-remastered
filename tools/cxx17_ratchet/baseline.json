@@ -190,7 +190,7 @@
    "LG03": 334,
    "LG04": 12,
    "LG05": 107,
-   "LG06": 113,
+   "LG06": 104,
    "LG07": 0,
    "LG08": 9,
    "LG09": 21,
@@ -2612,12 +2612,9 @@
   "mclib/anim_freeze.h": {},
   "mclib/anim_override_registry.cpp": {
    "LG05": 3,
-   "LG06": 2,
    "LG11": 4
   },
-  "mclib/anim_override_registry.h": {
-   "LG06": 2
-  },
+  "mclib/anim_override_registry.h": {},
   "mclib/appear.cpp": {},
   "mclib/appear.h": {
    "LG05": 4
@@ -2821,7 +2818,6 @@
   "mclib/fst_hash.h": {},
   "mclib/fx_def_registry.cpp": {
    "LG05": 3,
-   "LG06": 2,
    "LG11": 1
   },
   "mclib/fx_def_registry.h": {},
@@ -2851,8 +2847,7 @@
   },
   "mclib/gosfx/debriscloud.hpp": {},
   "mclib/gosfx/effect.cpp": {
-   "LG03": 6,
-   "LG06": 1
+   "LG03": 6
   },
   "mclib/gosfx/effect.hpp": {},
   "mclib/gosfx/effectcloud.cpp": {
@@ -2860,12 +2855,9 @@
   },
   "mclib/gosfx/effectcloud.hpp": {},
   "mclib/gosfx/effectlibrary.cpp": {
-   "LG03": 1,
-   "LG06": 1
+   "LG03": 1
   },
-  "mclib/gosfx/effectlibrary.hpp": {
-   "LG06": 1
-  },
+  "mclib/gosfx/effectlibrary.hpp": {},
   "mclib/gosfx/fcurve.cpp": {
    "LG05": 3
   },

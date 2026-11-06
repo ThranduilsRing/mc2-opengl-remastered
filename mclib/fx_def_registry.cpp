@@ -54,15 +54,15 @@ std::string fxdefTrim(std::string_view s) {
 // Soft problems (unknown curve key, non-numeric value) are logged per-field
 // and just drop that field; the rest of the def still loads ("friendly
 // warning, not failure" per proposal §3.1).
-bool fxdefParseOne(const std::string& path, EffectDef& out) {
-    std::ifstream in(path.c_str());
+bool fxdefParseOne(std::string_view path, EffectDef& out) {
+    std::ifstream in{std::string(path)};
     if (!in.is_open()) return false;
 
     json root;
     try {
         in >> root;
     } catch (const std::exception& e) {
-        fxdefLog("parse error", path + ": " + e.what());
+        fxdefLog("parse error", std::string(path) + ": " + e.what());
         return false;
     }
     if (!root.is_object()) {
@@ -273,16 +273,17 @@ bool fxdefSetCurveByName(gosFX::Effect__Specification* spec, unsigned classID,
 // (mlrstate.cpp:178-199): look up-or-add in the live MLRTexturePool, then
 // SetTextureHandle to the pool's handle. Safe to call post-Load (pool is
 // long-lived and this is the same call the stock loader itself makes).
-bool fxdefRebindTexture(gosFX::Effect__Specification* spec, const std::string& textureName) {
+// The MLR pool lookup and Add require a NUL-terminated texture name.
+bool fxdefRebindTexture(gosFX::Effect__Specification* spec, mc2::czstring textureName) {
     if (!MidLevelRenderer::MLRTexturePool::Instance) {
         fxdefLog("no MLRTexturePool::Instance (too early?) — texture override skipped",
                  textureName);
         return false;
     }
     MidLevelRenderer::MLRTexture* texture =
-        (*MidLevelRenderer::MLRTexturePool::Instance)(textureName.c_str(), 0);
+        (*MidLevelRenderer::MLRTexturePool::Instance)(textureName, 0);
     if (!texture) {
-        texture = MidLevelRenderer::MLRTexturePool::Instance->Add(textureName.c_str(), 0);
+        texture = MidLevelRenderer::MLRTexturePool::Instance->Add(textureName, 0);
     }
     if (!texture) {
         fxdefLog("texture add/lookup failed (bad path?) — override skipped", textureName);
@@ -318,7 +319,7 @@ int EffectDefRegistry::applyAll(mc2::particles::SpecLibrary* lib) const {
         }
 
         if (def.hasTexture) {
-            if (fxdefRebindTexture(spec, def.texture)) touchedThis = true;
+            if (fxdefRebindTexture(spec, def.texture.c_str())) touchedThis = true;
         }
 
         if (def.hasBlend) {
