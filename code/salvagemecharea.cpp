@@ -694,7 +694,7 @@ void SalvageMechArea::setMech( LogisticsVariant* pMech, long red, long green, lo
 		textObjects[WEIGHT_TEXTID].setText( text );
 		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getArmor()) );
 		textObjects[ARMOR_TEXTID].setText( text );
-		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getDisplaySpeed()) );
+		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getDisplaySpeed().value_or(-1)) );
 		textObjects[SPEED_TEXTID].setText( text );
 		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getJumpRange() * 25) );
 		textObjects[JUMP_TEXTID].setText( text );

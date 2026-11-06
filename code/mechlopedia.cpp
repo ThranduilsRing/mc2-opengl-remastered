@@ -746,7 +746,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed()));
+	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed().value_or(-1)));
 
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -884,7 +884,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed()));
+	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed().value_or(-1)));
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );

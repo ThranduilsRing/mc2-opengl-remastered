@@ -45,8 +45,8 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 
 		setComponents( componentCount, components );
 		
-		int sensor = pMech->getSensorID();
-		int ECM = pMech->getECM();
+		int sensor = pMech->getSensorID().value_or(-1);
+		int ECM = pMech->getECM().value_or(-1);
 
 		if ( sensor > 0 )
 		{
