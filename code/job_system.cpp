@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+#include <memory>
 #include <thread>
 #include <vector>
 #include "Gates/gate.h"
@@ -62,7 +63,7 @@ struct Pool {
     std::vector<std::thread>      threads;
 };
 
-Pool* g_pool      = nullptr;
+std::unique_ptr<Pool> g_pool;
 bool  g_enabled   = false;
 bool  g_touchEnabled = false;
 int   g_batch     = 64;
@@ -135,12 +136,12 @@ void frameJobsInit() {
 
     if (nw <= 1) { g_enabled = false; return; } // serial fallback
 
-    g_pool = new Pool();
+    g_pool = std::make_unique<Pool>();
     g_pool->numWorkers = nw;
     // Startup must not count as a completed dispatch.
     g_pool->workerEpoch.assign(nw, g_pool->epoch);
     for (int i = 0; i < nw; ++i)
-        g_pool->threads.emplace_back(workerFn, g_pool, i);
+        g_pool->threads.emplace_back(workerFn, g_pool.get(), i);
 
     g_workersCount.store(nw, std::memory_order_relaxed);
 
@@ -158,8 +159,7 @@ void frameJobsShutdown() {
     }
     g_pool->cvWork.notify_all();
     for (auto& t : g_pool->threads) t.join();
-    delete g_pool;
-    g_pool = nullptr;
+    g_pool.reset();
     g_enabled = false;
 }
 
@@ -197,7 +197,7 @@ void parallelForRange(int count, int batchSize,
 
     {
         std::unique_lock<std::mutex> lk(g_pool->mu);
-        g_pool->cvDone.wait(lk, [pool = g_pool] {
+        g_pool->cvDone.wait(lk, [pool = g_pool.get()] {
             return pool->workersDone.load(std::memory_order_acquire)
                    >= pool->numWorkers;
         });
@@ -266,7 +266,7 @@ struct NewPool {
     std::vector<std::thread> threads;
 };
 
-NewPool* g_np[2]{}; // independent dispatch state for overlapping render and sim work
+std::unique_ptr<NewPool> g_np[2]; // independent dispatch state for overlapping render and sim work
 
 inline void runBlock(NewPool* p, int idx) {
     const int begin = idx * p->batch;
@@ -368,7 +368,8 @@ void startPool(int workerCount) {
     workerCount = std::max(workerCount, 0);
     // Split the existing thread budget instead of doubling it for overlapping domains.
     for (int domain = 0; domain < 2; ++domain) {
-        auto* p = g_np[domain] = new NewPool();
+        g_np[domain] = std::make_unique<NewPool>();
+        auto* p = g_np[domain].get();
         p->numWorkers = domain == static_cast<int>(Domain::Render) ? workerCount / 2 : (workerCount + 1) / 2;
         // Startup must not count as a completed dispatch.
         p->workerEpoch.assign(p->numWorkers, p->epoch);
@@ -378,7 +379,7 @@ void startPool(int workerCount) {
 }
 
 void stopPool() {
-    for (auto*& p : g_np) {
+    for (auto& p : g_np) {
         if (!p) continue;
         {
             std::lock_guard<std::mutex> lk(p->mu);
@@ -386,8 +387,7 @@ void stopPool() {
         }
         p->cvWork.notify_all();
         for (auto& t : p->threads) t.join();
-        delete p;
-        p = nullptr;
+        p.reset();
     }
 }
 
@@ -467,7 +467,7 @@ void parallel_for_blocks(
         return;
     }
     // (c) No pool / no workers -> serial inline.
-    auto* p = g_np[static_cast<int>(dom)];
+    auto* p = g_np[static_cast<int>(dom)].get();
     if (!p || p->numWorkers == 0) {
         runBlocksSerial(count, batch, blockBody);
         return;
@@ -488,7 +488,7 @@ int64_t measureDispatchFloorNs(int iters) {
     if (!enabled() || iters < 1) return 0;
     using clk = std::chrono::steady_clock;
     // count = participants, batch = 1, empty body -> pure wake + join cost.
-    auto* p = g_np[static_cast<int>(Domain::Render)];
+    auto* p = g_np[static_cast<int>(Domain::Render)].get();
     const int participants = p->numWorkers + 1;
     auto noop = [](int, int, int) {};
     std::vector<int64_t> samples;
