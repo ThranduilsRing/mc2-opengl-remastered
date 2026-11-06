@@ -42,6 +42,7 @@ def test_committed_save_references_use_current_policy():
 @pytest.mark.parametrize('scheduled_deploy', [False, True])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deploy):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
+    monkeypatch.setattr(gate, 'cheap_row_errors', lambda head: [])   # covered by test_gate_scope.py
     monkeypatch.setattr(mods, 'load_known_failures', lambda: [dict(first_window=92, expires_window=95)])
     def fingerprint(path):
         assert path in (tmp_path / 'build64-ninja/mc2.exe',

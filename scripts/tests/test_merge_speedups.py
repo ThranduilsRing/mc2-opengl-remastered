@@ -1374,6 +1374,7 @@ def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monke
            "mc2_asset_viewer.exe": dict(present=True, sha="aaaaaaaaaaaa", dirty=0)}
     monkeypatch.setattr(exe_fingerprint, "extract", lambda p: fps[Path(p).name])
     monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)   # mc2.exe: a build-input-identical ancestor is fine
+    monkeypatch.setattr(gate, "cheap_row_errors", lambda head: [])
     gate.preflight("bbbbbbbbbbbb", Path("E:/nonexistent-install"), 1, [])
     out = capsys.readouterr().out
     assert "mc2_asset_viewer.exe stale or dirty" in out and "mc2.exe stale" not in out   # the viewer needs the exact HEAD

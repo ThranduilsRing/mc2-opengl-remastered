@@ -248,6 +248,28 @@ def clean_failed_outputs(state, proof):
             print(f'[merge_gate] CLEAN failed output {name}: {target}; receipt retained', flush=True)
 
 
+def cheap_row_errors(head):
+    """Rows that cost about a minute but used to fail a window only after the build (W122c): hygiene over the candidate
+    range, duplicate-code count against the gate base, memory-file size. A failure stops --preflight."""
+    try:
+        base = git("merge-base", head, "claude/nifty-mendeleev")
+        if base == head:   # candidate is nifty itself: range starts at the last all-stage gate head
+            mark, _ = gate_scope.read_mark(ROOT)
+            base = git("rev-parse", mark + "^{commit}") if mark else base
+    except Exception:  # noqa: BLE001 - an unreadable base leaves an empty range; the other two rows still run
+        base = head
+    rows = (("staged-hygiene", ["py", "-3", "scripts/check-staged-hygiene.py", "--range", f"{base}..{head}"]),
+            ("dup_check", ["py", "-3", "tools/dup_check.py", "--check", "--rev", head]),
+            ("memory-size", ["py", "-3", "scripts/check-memory-size.py"]))
+    errors = []
+    for name, command in rows:
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+        if result.returncode:
+            tail = " | ".join((result.stdout + result.stderr).strip().splitlines()[-3:])
+            errors.append(f"{name} failed before the build (rc={result.returncode}): {tail}; fix: {' '.join(command[2:])}")
+    return errors
+
+
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, build_current, sha_agrees
@@ -324,6 +346,7 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
                       f"last valid in window {e['expires_window'] - 1}; renew tools/mod_known_failures.json with an owner note", flush=True)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         errors.append(f"known-failure list: {exc}; fix: edit tools/mod_known_failures.json with owner-approved ceilings and three-window expiry")
+    errors += cheap_row_errors(head)
     for error in errors:
         print('[merge_gate] preflight FAIL: ' + error, flush=True)
     print(f"[merge_gate] preflight {'FAIL' if errors else 'PASS'} seconds={time.monotonic() - started:.2f}", flush=True)

@@ -164,3 +164,30 @@ def test_determinism_rows_run_two_wide_when_mods_is_scope_skipped(monkeypatch, t
     assert any(i.endswith("clone") for i in state["installs"]) and any(i.endswith("install") for i in state["installs"])
     assert gate.ROW_RESULTS["mods"]["status"].startswith("SKIP(scope: ")
     gate.ROW_RESULTS.clear()
+
+
+import pytest
+
+
+@pytest.mark.parametrize("failing", ["check-staged-hygiene.py", "dup_check.py", "check-memory-size.py"])
+def test_each_cheap_row_stops_preflight_before_the_build(monkeypatch, failing):
+    ran = []
+    def fake_run(command, **kw):
+        ran.append(command[2])
+        bad = failing in command[2]
+        return SimpleNamespace(returncode=1 if bad else 0, stdout="boom" if bad else "", stderr="")
+    monkeypatch.setattr(gate, "git", lambda *a: "base")
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
+    errors = gate.cheap_row_errors("a" * 40)
+    assert len(ran) == 3 and len(errors) == 1 and "before the build" in errors[0] and "boom" in errors[0]
+    monkeypatch.setattr(gate.subprocess, "run", lambda c, **kw: SimpleNamespace(returncode=0, stdout="", stderr=""))
+    assert gate.cheap_row_errors("a" * 40) == []
+
+
+def test_preflight_fails_when_a_cheap_row_fails(monkeypatch, tmp_path, capsys):
+    import exe_fingerprint
+    monkeypatch.setattr(exe_fingerprint, "extract", lambda p: dict(present=True, sha="a" * 40, dirty=0))
+    monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)
+    monkeypatch.setattr(gate, "cheap_row_errors", lambda head: ["dup_check failed before the build (rc=1): x"])
+    assert gate.preflight("a" * 40, tmp_path / "none", 1, []) == 1
+    assert "dup_check failed before the build" in capsys.readouterr().out
