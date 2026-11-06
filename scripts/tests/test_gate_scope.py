@@ -43,14 +43,27 @@ def test_mod_relevant_paths_run_mods():
 
 
 def test_video_relevant_paths_run_video():
-    for p in ("scripts/video_decode_smoke.py", "code/mc2video.cpp", "code/mc2movie.h", "GameOS/gameos/sim_overlap.cpp", "data/movies/a.bik"):
+    for p in ("scripts/video_decode_smoke.py", "code/mc2video.cpp", "code/mc2movie.h", "GameOS/gameos/sim_overlap.cpp", "data/movies/a.bik",
+              "code/controlgui_chat.cpp", "code/tick_commit.cpp", "code/tick_commit.h", "tests/unit/test_playmovie_deferral.cpp"):
         assert decide([p])["video-decode"] is None, p
 
 
 def test_unknown_path_runs_everything():
-    for p in ("CMakeLists.txt", "weird/thing.bin", "scripts/merge_gate.py", "scripts/deploy_payload.py"):
+    for p in ("CMakeLists.txt", "weird/thing.bin"):
         d = decide(["docs/a.md", p])
         assert d == {"mods": None, "video-decode": None}, p
+    for p in ("scripts/merge_gate.py", "scripts/deploy_payload.py"):   # unknown for mods, never video (tests/scripts/tools)
+        d = decide(["docs/a.md", p])
+        assert d["mods"] is None and d["video-decode"], p
+
+
+def test_tests_scripts_tools_do_not_force_video():
+    # W123's 16 false hits (diff 01580cf53..HEAD): none of these exercise video.
+    paths = ["tests/unit/test_foo.cpp", "tests/unit/baseline.json", "tests/saveload/baselines/x.json",
+             "tests/smoke/sim_determinism/a.txt", "scripts/merge_gate.py", "scripts/gate_scope.py",
+             "scripts/background-launch-allow.json", "tools/visual_verify/ab.py", "tools/lane_merge.py"]
+    for p in paths:
+        assert decide([p])["video-decode"], p
 
 
 def test_nightly_runs_everything_even_for_docs_only():

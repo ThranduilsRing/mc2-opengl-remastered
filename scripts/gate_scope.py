@@ -29,11 +29,13 @@ _MODS_PREFIX = ("data/", "mods/", "examples/mods/", "tools/mod_smoke.py", "tools
 _MODS_NAME = re.compile(r"(vfs|fst|fastfile|fileio|file_mod|loader|mission|save|asset_?load|manifest|campaign|(^|[/_.])mod([_./]|s/|$))")
 _GUI_ASSET = re.compile(r"(asset|load|texture|atlas|manifest|resource)")
 _VIDEO_PREFIX = ("scripts/video_decode_smoke.py", "code/mc2video", "code/mc2movie", "gameos/gameos/sim_overlap",
+                 "code/controlgui_chat", "code/tick_commit", "tests/unit/test_playmovie_deferral", "tests/unit/test_tick_commit",
                  "gates/gate_rows_0.inc")
 _VIDEO_NAME = re.compile(r"(video|movie|decode|mve|bink|ffmpeg|avsync|av_sync|sim_overlap|audio)")
 _VIDEO_EXT = (".bik", ".avi", ".mp4", ".mve", ".webm", ".ogv", ".mkv")
 # Known to be unrelated to the stage even though change_domains calls them engine/art.
 _NEVER = {"video-decode": ("data/",)}
+_VIDEO_NEVER = ("tests/", "scripts/", "tools/")
 
 
 def _norm(path):
@@ -57,6 +59,8 @@ def touches(stage, path, change_domains):
     p = _norm(path)
     if _matches(stage, p):
         return True
+    if stage == "video-decode" and p.startswith(_VIDEO_NEVER):
+        return False   # tests/, scripts/ and tools/ never force video unless named above (W123 over-triggered on 16 of them)
     if p.startswith(_NEVER.get(stage, ())):
         return False
     if p.startswith(_CPP_ROOTS) and p.endswith(_CPP):
