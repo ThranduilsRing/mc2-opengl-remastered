@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 namespace {
 
@@ -61,16 +62,16 @@ bool copyTrimmed(mc2::czstring s, size_t len, char* buf, size_t bufsz) {
     return true;
 }
 
-bool resolveTrimmed(mc2::czstring tok, long* out) {
+std::optional<long> resolveTrimmed(mc2::czstring tok) {
     // Try a bare decimal integer (full-consume required).
     char* endp = nullptr;
     long v = std::strtol(tok, &endp, 10);
-    if (endp != tok && *endp == '\0') { *out = v; return true; }
+    if (endp != tok && *endp == '\0') return v;
     // Fall back to a symbol-table lookup (exact match).
     for (const SymEntry& e : kSymbols) {
-        if (std::strcmp(tok, e.name) == 0) { *out = e.value; return true; }
+        if (std::strcmp(tok, e.name) == 0) return e.value;
     }
-    return false;
+    return std::nullopt;
 }
 
 } // namespace
@@ -79,7 +80,10 @@ bool brainResolveSymbolToken(mc2::czstring token, long* out) {
     if (!token || !out) return false;
     char buf[64];
     if (!copyTrimmed(token, std::strlen(token), buf, sizeof(buf))) return false;
-    return resolveTrimmed(buf, out);
+    const auto value = resolveTrimmed(buf);
+    if (!value) return false;
+    *out = *value;
+    return true;
 }
 
 bool brainResolveIntExpr(mc2::czstring expr, long* out) {
@@ -93,9 +97,9 @@ bool brainResolveIntExpr(mc2::czstring expr, long* out) {
         if (*p == '+' || *p == '\0') {
             if (!copyTrimmed(termStart, static_cast<size_t>((p - termStart)), buf, sizeof(buf)))
                 return false;   // empty term (leading/trailing/double '+') or overflow
-            long v = 0;
-            if (!resolveTrimmed(buf, &v)) return false;
-            sum += v;
+            const auto value = resolveTrimmed(buf);
+            if (!value) return false;
+            sum += *value;
             ++terms;
             if (*p == '\0') break;
             termStart = p + 1;
