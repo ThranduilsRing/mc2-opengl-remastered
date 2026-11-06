@@ -99,7 +99,7 @@ int LogisticsData::comparePilots( LogisticsPilot* p1, LogisticsPilot* p2, long w
 	if ( p1->getRank() > p2->getRank() )
 		return 1;
 	
-	else if ( p2->getRank() < p1->getRank() )
+	else if ( p1->getRank() < p2->getRank() )
 		return -1;
 
 	// need to check specialty skill text for weight, not really done yet
