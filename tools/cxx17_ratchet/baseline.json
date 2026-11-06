@@ -1326,9 +1326,7 @@
    "LG05": 2
   },
   "RenderCore/view_currency.h": {},
-  "RenderCore/vk_barrier_batch.h": {
-   "LG09": 0
-  },
+  "RenderCore/vk_barrier_batch.h": {},
   "RenderCore/vk_resource_graph.h": {},
   "RenderCore/vulkan_contract.h": {
    "LG05": 1
