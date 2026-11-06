@@ -1157,7 +1157,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 							}
 
 							// Pilot check BEFORE force-group assignment
-							LogisticsPilot* pilot = ld->getFirstAvailablePilot().transform(std::addressof<LogisticsPilot>).value_or(nullptr);
+							LogisticsPilot* pilot = ld->getFirstAvailablePilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 							if ( !pilot )
 							{
 								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} STOPPED no-pilot mech={}",
@@ -1263,7 +1263,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 									return mech && mech->getForceGroup() == slot;
 								}) ) ++slot;
 								ld->addMechToForceGroup( bought, slot );
-								LogisticsPilot* pilot = ld->getFirstAvailablePilot().transform(std::addressof<LogisticsPilot>).value_or(nullptr);
+								LogisticsPilot* pilot = ld->getFirstAvailablePilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 								if ( pilot )
 									bought->setPilot( pilot );
 								ld->setMechToModify( bought );

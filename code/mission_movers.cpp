@@ -582,7 +582,7 @@ void Mission::tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, c
 	{
 		char realPilotName[256];
 		strcpy(realPilotName,&(pilotFileName[MPlayer ? 4 : 3]));
-		LogisticsPilot *lPilot = LogisticsData::instance->getPilot(realPilotName).transform(std::addressof<LogisticsPilot>).value_or(nullptr);
+		LogisticsPilot *lPilot = LogisticsData::instance->getPilot(realPilotName).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 		mover->loadPilot(pilotFileName, brainFileName, lPilot);
 	}
 	ObjectManager->tradeMover(mover, newTeamID, newCommanderID);

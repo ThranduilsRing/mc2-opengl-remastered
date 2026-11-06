@@ -117,8 +117,8 @@ int __cdecl sortMechs( const void* pW1, const void* pW2 )
 	BattleMech* p1 = *static_cast<BattleMech**>(const_cast<void*>(pW1));
 	BattleMech* p2 = *static_cast<BattleMech**>(const_cast<void*>(pW2));
 
-	LogisticsVariant* pV1 = LogisticsData::instance->getVariant(p1->variantName).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
-	LogisticsVariant* pV2 = LogisticsData::instance->getVariant(p2->variantName).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
+	LogisticsVariant* pV1 = LogisticsData::instance->getVariant(p1->variantName).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
+	LogisticsVariant* pV2 = LogisticsData::instance->getVariant(p2->variantName).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( pV1 && pV2 )
 	{
@@ -414,7 +414,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 	pressedAnim = *s_pressedAnim;
 	highlightAnim = *s_highlightAnim;
 
-	pVariant = LogisticsData::instance->getVariant( pMech->variantName ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
+	pVariant = LogisticsData::instance->getVariant( pMech->variantName ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( !pVariant )
 		return;
