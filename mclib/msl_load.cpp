@@ -458,7 +458,7 @@ void TG_TypeMultiShape::SaveBinaryCopy (mc2::czstring fileName)
 void TG_TypeMultiShape::destroy (void)
 {
 #ifdef ENABLE_ASSIMP_IMPORTER
-	mc2mechanim::UnregisterImportedType(this);	// IMPORTED-TYPE-LIFETIME-1: no stale entry / leaked aiScene past the type
+	mc2mechanim::UnregisterImportedType(this);	// no stale entry / leaked aiScene past the type
 #endif
     stableIdentity_.renew(this);
     contentSockets_.clear();

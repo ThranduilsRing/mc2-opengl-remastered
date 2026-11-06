@@ -251,7 +251,7 @@ inline bool skelMeshDropped(mc2::czstring n) {
 }
 
 //-----------------------------------------------------------------------------
-// MULTI-BONE-1: the importer binds every mesh part rigidly to ONE bone (mBones[0]) and
+// The importer binds every mesh part rigidly to ONE bone (mBones[0]) and
 // stores the bone index in a byte. A skinned mesh with several influences loses its
 // weights; more than 256 bones wraps. Neither is supported: say so once (diag tag CONFIG,
 // default-on) instead of silently rendering a wrong pose. Stock BT2018 GLBs never trigger it.

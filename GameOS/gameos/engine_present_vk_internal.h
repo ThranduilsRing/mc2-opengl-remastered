@@ -129,7 +129,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedPipeline      hudTexPipe;
     mc2vk::OwnedPipeline      hudTexOpaquePipe;
     mc2vk::OwnedPipeline      hudTexOneInvAlphaPipe; // VK-FIELD-VFX-3: GL OneInvAlpha (ONE,1-srcA) effect glow
-    mc2vk::OwnedPipeline      hudTexOneOnePipe;      // VK-FIELD-VFX-7: GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
+    mc2vk::OwnedPipeline      hudTexOneOnePipe;      // GL OneOne (ONE,ONE) muzzle-flash/tracer sprites
     mc2vk::OwnedShaderModule  hudTexVert;
     mc2vk::OwnedShaderModule  hudTexFrag;
     struct HudTextureMirror {

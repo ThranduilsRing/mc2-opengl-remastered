@@ -112,7 +112,7 @@ void TerrainColorMap::releaseColorMapScratch (void)
 
 void TerrainColorMap::destroy (void)
 {
-	// [TXMMGR-TEXTURE-LEAK-FIX-1] Release the master texture-node slots this
+	// Release the master texture-node slots this
 	// per-mission colormap allocated. The colormap tile + normal-map nodes are
 	// pinned neverFLUSH (setTextureNeverFlush, see init()), so the per-mission
 	// flush() skips them; without an explicit release here their

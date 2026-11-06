@@ -82,7 +82,7 @@ int ImportedGpuLiftAxis();
 // death-shape swap, final teardown) so a later allocation reusing the same address
 // cannot inherit a stale pose for a few frames. Safe/no-op if the key isn't present.
 void UnregisterImportedActor(const void* actorKey);
-// IMPORTED-TYPE-LIFETIME-1: drop the imported-anim entry (and its scene) of a type being freed.
+// Drop the imported-anim entry (and its scene) of a type being freed.
 void UnregisterImportedType(const void* multi);
 void CopyImportedActorPose(const void* source, const void* destination);
 

@@ -1621,7 +1621,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                     if (pk >= s->packets.size()) break;
                     const Mc2ShadowPacket& pkt = s->packets[pk];
                     // BLACK-FENCE FIX: this packet's own group-relative albedo layer (off/on), not the type's shared first-valid-wins layer.
-                    // FENCE-UVSCALE-1: its own uvScaleX/Y, default 1.0 (no crop) for any packet the feed did not cover.
+                    // Its own uvScaleX/Y, default 1.0 (no crop) for any packet the feed did not cover.
                     PropPacketRow row{
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
