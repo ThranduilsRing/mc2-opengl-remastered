@@ -1731,7 +1731,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
             VkMemoryBarrier pre{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
             pre.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; pre.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
             vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &pre, 0, nullptr, 0, nullptr);
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, s->cullPipe.get());
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, s->cullPipe.get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, s->cullLayout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
             const uint32_t hzbFlag = hzbCulled ? 1u : 0u;
             vkCmdPushConstants(cb, s->cullLayout.get(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(hzbFlag), &hzbFlag);

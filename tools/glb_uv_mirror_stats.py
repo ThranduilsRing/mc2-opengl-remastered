@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Count triangles with mirrored UV winding (and GLBs carrying TANGENT) in mech GLBs.
 
-usage: glb_uv_mirror_stats.py [dir-with-glbs]
+usage: glb_uv_mirror_stats.py <dir-with-glbs>
 A triangle is mirrored when sign(uv-area) disagrees with sign(pos-space handedness
 reference), approximated per mesh by the majority sign of uv-area (glTF V is flipped
 relative to tangent space, but the majority sign is the unmirrored convention).
@@ -42,7 +42,9 @@ def acc(js, bin_, i):
 
 
 def main():
-    root = sys.argv[1] if len(sys.argv) > 1 else "A:/Games/mc2-opengl/mc2-win64-v0.4/data/tgl"
+    if len(sys.argv) < 2:
+        sys.exit("usage: glb_uv_mirror_stats.py <dir-with-glbs>  (e.g. <install>/data/tgl)")
+    root = sys.argv[1]
     tot = mir = withtan = n = 0
     rows = []
     for p in sorted(glob.glob(os.path.join(root, "*.glb"))):

@@ -43,7 +43,8 @@ with the census held in temporary commit `0dfb6d512` and no stash used. That
 untracked test was never changed, staged, deleted or committed.
 
 The new census's caller-registration failure is owned by L0 and is repaired by
-the manual-tool registration and regenerated `tests/callers.json`.
+the manual-tool registration and the regenerated callers census (`tools/callers.py`; the
+generated callers.json is no longer tracked since 848b99307).
 
 The original deploy refusal was resolved only by the owner's explicit approval
 of `--allow-new-target` for exactly `E:/mc2-lane4`; see `deploy-baseline.txt`.
