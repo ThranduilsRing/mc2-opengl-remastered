@@ -85,6 +85,9 @@ def r_init():
     Path(G, "tmp").mkdir(parents=True, exist_ok=True)
     Path(INSTALL).mkdir(parents=True, exist_ok=True)
     r_subst()
+    # cmd.exe keeps git's single quotes around the repo path; this wrapper ignores its argument
+    Path(G, "bin").mkdir(parents=True, exist_ok=True)
+    Path(G, "bin/rp.cmd").write_text(f"@git receive-pack {REPO}\r\n")
     repo = Path(REPO)
     if not (repo / ".git").exists():
         repo.parent.mkdir(parents=True, exist_ok=True)
@@ -182,7 +185,7 @@ def r_pack(window):
 
 def seed():
     """One-time: stream the PC's lean seed (published v0.4 payload + game data) into C:/mc2gate/install."""
-    if ssh(f"if exist {INSTALL.replace('/', chr(92))}\\mc2.exe echo yes")[1].strip() == "yes":
+    if ssh(f"if exist {INSTALL.replace('/', chr(92))}\\.seeded echo yes")[1].strip() == "yes":
         print("laptop install already seeded"); return
     print("seeding laptop install from", PC_SEED, flush=True)
     t = time.time()
@@ -199,6 +202,7 @@ def seed():
     got = ssh(f'certutil -hashfile "{INSTALL}/mc2.exe" SHA256')[1].splitlines()[1].strip()
     if got.lower() != want.lower():
         sys.exit(f"seed mc2.exe sha mismatch {got} != {want}")
+    ssh(f"cmd /c echo ok> {INSTALL.replace('/', chr(92))}\\.seeded")
     print(f"seeded in {time.time() - t:.0f}s, mc2.exe sha256 {want}")
 
 
@@ -214,7 +218,7 @@ def pc_main(args):
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
     url = f"ssh://{HOST}/{REPO}"
-    r = subprocess.run(["git", "push", "-q", "-f", "--receive-pack=git receive-pack", url,
+    r = subprocess.run(["git", "push", "-q", "-f", f"--receive-pack={G}/bin/rp.cmd", url,
                         f"{branch}:refs/heads/{branch}", "claude/nifty-mendeleev:refs/heads/claude/nifty-mendeleev"], env=genv)
     if r.returncode:
         sys.exit("push to laptop clone failed")
