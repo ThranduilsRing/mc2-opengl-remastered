@@ -598,35 +598,36 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
 				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
 				{
-					if (objList[objIndex] &&
-						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
-						objList[objIndex]->getExists())
+					GameObjectPtr walkObj = objList[objIndex];   // hoisted: virtual calls force a reload of objList each use
+					if (walkObj &&
+						Terrain::objVertexActive[walkObj->getVertexNum()] &&
+						walkObj->getExists())
 					{
-						if (objList[objIndex]->getObjectClass() == TERRAINOBJECT)
-							static_cast<TerrainObject*>(objList[objIndex])->applyAppearancePush();
-						objList[objIndex]->getAppearance()->flushSimEvents();
+						if (walkObj->getObjectClass() == TERRAINOBJECT)
+							static_cast<TerrainObject*>(walkObj)->applyAppearancePush();
+						auto* appearance = walkObj->getAppearance();
+						appearance->flushSimEvents();
 						++walkVisited;
-						if (objList[objIndex]->getAppearance()->recalcBounds())
+						if (appearance->recalcBounds())
 						{
 							++walkRecalc; ++walkGround;
 							// Must force here as well.
-							glm::vec3 pos = objList[objIndex]->getPosition();
-							float rot = objList[objIndex]->getRotation();
+							glm::vec3 pos = walkObj->getPosition();
+							float rot = walkObj->getRotation();
 							pos.z = TerrainRuntime::groundElevation(pos);
-							long drawFlags = objList[objIndex]->drawFlags;
-							int teamID = objList[objIndex]->getTeamId();
-							objList[objIndex]->getAppearance()->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
+							long drawFlags = walkObj->drawFlags;
+							int teamID = walkObj->getTeamId();
+							appearance->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
 
-							MC2_WORLD_UPDATE("appearance_terrain", objList[objIndex]);
+							MC2_WORLD_UPDATE("appearance_terrain", walkObj);
 
-							auto* appearance = objList[objIndex]->getAppearance();
                             appearance->presentAnimation(*appearance->simulationAnimation());
                             appearance->presentEffects();
-                            if (appearance->IsStaticNow() && !objList[objIndex]->getFlag(OBJECT_FLAG_FALLING))
+                            if (appearance->IsStaticNow() && !walkObj->getFlag(OBJECT_FLAG_FALLING))
                                 { appearance->touch(); ++walkTouch; }
                             else
                                 { appearance->update(false); ++walkUpdate; }
-							objList[objIndex]->getAppearance()->setVisibility(true, true);	
+							appearance->setVisibility(true, true);
 						}
 					}
 				}
