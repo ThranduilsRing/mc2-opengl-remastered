@@ -4102,7 +4102,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:101`
+- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:104`
 - Class: `ShadowDrawRing`  (data-member)
 - Member: `return calls;`
 - Consuming targets: (none found)
@@ -4110,7 +4110,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:106`
+- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:109`
 - Class: `ShadowDrawRing`  (data-member)
 - Member: `std::vector<VkDrawIndexedIndirectCommand> cmds_;`
 - Consuming targets: (none found)
@@ -4118,7 +4118,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:107`
+- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:110`
 - Class: `ShadowDrawRing`  (data-member)
 - Member: `std::vector<ShadowAlphaRow> rows_s_;`
 - Consuming targets: (none found)
@@ -4126,7 +4126,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:108`
+- Header: `GameOS/gameos/vulkan_shadow_draw_ring.h:111`
 - Class: `ShadowDrawRing`  (data-member)
 - Member: `uint32_t cap_ = 0, cursor_ = 0, parity_ = 0;`
 - Consuming targets: (none found)
