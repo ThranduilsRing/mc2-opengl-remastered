@@ -17,21 +17,21 @@
 
 #include "mc2_czstring.h"
 #include <cstdint>
+#include <optional>
 
 // Resolve a single token to its integer value.
 //   - bare decimal integer (incl. leading '-'):  "2" -> 2, "-1" -> -1, "0" -> 0
 //   - TARGET_PRIORITY_* symbol:                   "TARGET_PRIORITY_MOVER"  -> 2
 //   - CONTACT_CRITERIA_* symbol:                  "CONTACT_CRITERIA_ENEMY" -> 1
 // Leading/trailing ASCII whitespace is ignored.
-// Returns true and writes *out on success; false (leaving *out untouched) on an
-// unknown symbol or a malformed integer.
-bool brainResolveSymbolToken(mc2::czstring token, long* out);
+// Returns the value on success, or nullopt for an unknown/malformed token.
+std::optional<long> brainResolveSymbolToken(mc2::czstring token);
 
 // Resolve a '+'-joined expression to the sum of its terms. Each term is resolved
 // by brainResolveSymbolToken (symbol or bare int). Whitespace around '+' and at
 // the ends is ignored.
 //   "CONTACT_CRITERIA_ENEMY + CONTACT_CRITERIA_VISUAL_OR_SENSOR + CONTACT_CRITERIA_NOT_DISABLED" -> 97
 //   "-1" -> -1     "2" -> 2     "A+B" (no spaces) -> A summed with B
-// Returns false if the expression is empty, has an empty term (e.g. a trailing
+// Returns nullopt if the expression is empty, has an empty term (e.g. a trailing
 // '+'), or any term fails to resolve.
-bool brainResolveIntExpr(mc2::czstring expr, long* out);
+std::optional<long> brainResolveIntExpr(mc2::czstring expr);

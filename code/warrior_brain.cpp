@@ -494,8 +494,7 @@ long MechWarrior::runBrain (void) {
 			}  // BRAINSPECIAL-FLOW-WAIT-1: end of non-flow (pre-slice) path
 			if (dispatcherAppliedEffect) {
 				if (brainTaskQueue) {
-					BrainTaskEntry task;
-					while (brainTaskQueue->drainWithTask(task)) {
+					while (brainTaskQueue->drainWithTask()) {
 						// Discard queued tasks — dispatcher owns GENERAL slot this body.
 						// 1B-supersede: HOLD_TASK silenced (no setGeneralTacOrder STOP write).
 					}
@@ -527,9 +526,8 @@ long MechWarrior::runBrain (void) {
 		if (!dispatcherAppliedEffect) {
 			// Synthetic HOLD path (1B-runtime default) — fires when dispatcher did NOT take slot.
 			if (brainTaskQueue) {
-				BrainTaskEntry task;
-				while (brainTaskQueue->drainWithTask(task)) {
-					if (task.type == BrainTaskType::BRAIN_TASK_HOLD) {
+				while (const auto task = brainTaskQueue->drainWithTask()) {
+					if (task->type == BrainTaskType::BRAIN_TASK_HOLD) {
 						TacticalOrder holdOrder;
 						holdOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_STOP);
 						setGeneralTacOrder(holdOrder);

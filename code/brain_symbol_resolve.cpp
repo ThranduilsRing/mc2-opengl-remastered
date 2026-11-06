@@ -76,18 +76,15 @@ std::optional<long> resolveTrimmed(mc2::czstring tok) {
 
 } // namespace
 
-bool brainResolveSymbolToken(mc2::czstring token, long* out) {
-    if (!token || !out) return false;
+std::optional<long> brainResolveSymbolToken(mc2::czstring token) {
+    if (!token) return std::nullopt;
     char buf[64];
-    if (!copyTrimmed(token, std::strlen(token), buf, sizeof(buf))) return false;
-    const auto value = resolveTrimmed(buf);
-    if (!value) return false;
-    *out = *value;
-    return true;
+    if (!copyTrimmed(token, std::strlen(token), buf, sizeof(buf))) return std::nullopt;
+    return resolveTrimmed(buf);
 }
 
-bool brainResolveIntExpr(mc2::czstring expr, long* out) {
-    if (!expr || !out) return false;
+std::optional<long> brainResolveIntExpr(mc2::czstring expr) {
+    if (!expr) return std::nullopt;
     long sum = 0;
     int terms = 0;
     const char* p = expr;
@@ -96,16 +93,15 @@ bool brainResolveIntExpr(mc2::czstring expr, long* out) {
     for (;; ++p) {
         if (*p == '+' || *p == '\0') {
             if (!copyTrimmed(termStart, static_cast<size_t>((p - termStart)), buf, sizeof(buf)))
-                return false;   // empty term (leading/trailing/double '+') or overflow
+                return std::nullopt;   // empty term (leading/trailing/double '+') or overflow
             const auto value = resolveTrimmed(buf);
-            if (!value) return false;
+            if (!value) return std::nullopt;
             sum += *value;
             ++terms;
             if (*p == '\0') break;
             termStart = p + 1;
         }
     }
-    if (terms == 0) return false;
-    *out = sum;
-    return true;
+    if (terms == 0) return std::nullopt;
+    return sum;
 }

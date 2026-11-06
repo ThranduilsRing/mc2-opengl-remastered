@@ -10,40 +10,38 @@ static int g_pass = 0;
 
 // Expect resolve SUCCESS with a specific value.
 static void okExpr(const char* expr, long want) {
-    long got = 0xDEAD;
-    bool ok = brainResolveIntExpr(expr, &got);
+    const auto result = brainResolveIntExpr(expr);
+    const long got = result.value_or(0xDEAD);
+    const bool ok = result.has_value();
     if (!ok || got != want) {
         std::fprintf(stderr, "FAIL expr \"%s\": ok=%d got=%ld want=%ld\n", expr, (int)ok, got, want);
         ++g_fail;
     } else { ++g_pass; }
 }
 
-// Expect resolve FAILURE (out must be untouched).
+// Expect resolve FAILURE (no value).
 static void badExpr(const char* expr) {
-    long sentinel = 0x5151;
-    long got = sentinel;
-    bool ok = brainResolveIntExpr(expr, &got);
-    if (ok || got != sentinel) {
-        std::fprintf(stderr, "FAIL expr \"%s\": expected failure+untouched, ok=%d got=%ld\n", expr, (int)ok, got);
+    const auto got = brainResolveIntExpr(expr);
+    if (got) {
+        std::fprintf(stderr, "FAIL expr \"%s\": expected failure, got=%ld\n", expr, *got);
         ++g_fail;
     } else { ++g_pass; }
 }
 
 // Single-token resolver (subset of expr resolver).
 static void okTok(const char* tok, long want) {
-    long got = 0xDEAD;
-    bool ok = brainResolveSymbolToken(tok, &got);
+    const auto result = brainResolveSymbolToken(tok);
+    const long got = result.value_or(0xDEAD);
+    const bool ok = result.has_value();
     if (!ok || got != want) {
         std::fprintf(stderr, "FAIL token \"%s\": ok=%d got=%ld want=%ld\n", tok, (int)ok, got, want);
         ++g_fail;
     } else { ++g_pass; }
 }
 static void badTok(const char* tok) {
-    long sentinel = 0x5151;
-    long got = sentinel;
-    bool ok = brainResolveSymbolToken(tok, &got);
-    if (ok || got != sentinel) {
-        std::fprintf(stderr, "FAIL token \"%s\": expected failure+untouched, ok=%d got=%ld\n", tok, (int)ok, got);
+    const auto got = brainResolveSymbolToken(tok);
+    if (got) {
+        std::fprintf(stderr, "FAIL token \"%s\": expected failure, got=%ld\n", tok, *got);
         ++g_fail;
     } else { ++g_pass; }
 }

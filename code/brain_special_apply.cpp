@@ -261,15 +261,15 @@ void applySetTargetPriority(int wid, MechBrainRuntime* runtime, BrainVerbFrame& 
         char tok[64];
         if (tl == 0 || tl >= sizeof(tok)) { parsed = false; break; }
         std::memcpy(tok, ts, tl); tok[tl] = '\0';
-        long v = 0;
-        if (!brainResolveSymbolToken(tok, &v)) { parsed = false; break; }
-        args5[fi] = v;
+        const auto v = brainResolveSymbolToken(tok);
+        if (!v) { parsed = false; break; }
+        args5[fi] = *v;
     }
     if (parsed) {
         while (*a == ' ' || *a == '\t') ++a;   // 5th field = rest-of-line expression
-        long crit = 0;
-        if (*a == '\0' || !brainResolveIntExpr(a, &crit)) parsed = false;
-        else args5[4] = crit;
+        const auto crit = brainResolveIntExpr(a);
+        if (!crit) parsed = false;
+        else args5[4] = *crit;
     }
     if (!parsed) {
         mc2::fmt::print_err("[BRAIN_DISPATCH_TARGETPRIORITY_PARSE_FAIL] verb={} wid={:d}\n", mc2::fmt::safe(vp), mc2::fmt::as_i32(wid));
