@@ -176,18 +176,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ArtilleryType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "AttributeMeter": {
    "delete": 0,
    "delete_array": 0,
@@ -227,18 +215,6 @@
     }
    },
    "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "BattleMechType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -349,18 +325,6 @@
     }
    },
    "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "BuildingType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -1321,18 +1285,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ExplosionType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "FileStatPlug": {
    "delete": 0,
    "delete_array": 0,
@@ -1359,18 +1311,6 @@
    "owners": [
     ""
    ]
-  },
-  "FireType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "FlattenBrush": {
    "delete": 0,
@@ -1518,18 +1458,6 @@
    "new_array": 0,
    "owners": []
   },
-  "GateType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "GenericAppearance": {
    "delete": 1,
    "delete_array": 0,
@@ -1587,18 +1515,6 @@
     }
    },
    "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "GroundVehicleType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -3265,18 +3181,6 @@
    "new_array": 0,
    "owners": []
   },
-  "TerrainObjectType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
   "TimerManager": {
    "delete": 1,
    "delete_array": 0,
@@ -3370,18 +3274,6 @@
     }
    },
    "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "TurretType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -3520,18 +3412,6 @@
     }
    },
    "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "WeaponBoltType": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
