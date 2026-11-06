@@ -592,12 +592,12 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 
 }
 
-void MPParameterScreen::initializeMap ( const char* fileName )
+void MPParameterScreen::initializeMap ( mc2::czstring fileName )
 {
 	s_instance->setMission(fileName, true);
 }
 
-void MPParameterScreen::setMission( const char* fileName, bool resetData )
+void MPParameterScreen::setMission( mc2::czstring fileName, bool resetData )
 {
 	FullPathFileName path;
 	path.init( missionPath, fileName, ".fit" );
@@ -1379,7 +1379,7 @@ void MPParameterScreen::update()
 	*/
 }
 
-GUID			MPParameterScreen::getGUIDFromFile( const char* pNewMapName)
+GUID			MPParameterScreen::getGUIDFromFile( mc2::czstring pNewMapName)
 {
 	GUID retVal;
 	memset( &retVal, 0xff, sizeof( GUID ) );
@@ -1407,7 +1407,7 @@ GUID			MPParameterScreen::getGUIDFromFile( const char* pNewMapName)
 
 }
 
-void MPParameterScreen::setMissionClientOnly( const char* pNewMapName )
+void MPParameterScreen::setMissionClientOnly( mc2::czstring pNewMapName )
 {
 	FullPathFileName path;
 	path.init( missionPath, pNewMapName, ".fit" );
@@ -1447,7 +1447,7 @@ void MPParameterScreen::setMissionClientOnly( const char* pNewMapName )
  	mapName = MPlayer->missionSettings.map;
 }
 
-void MPParameterScreen::checkVersionClientOnly( const char* pNewMapName )
+void MPParameterScreen::checkVersionClientOnly( mc2::czstring pNewMapName )
 {
 	GUID version = getGUIDFromFile( pNewMapName );
 	if ( MPlayer->missionSettings.mapGuid != NO_VERSION_GUID &&
@@ -1500,17 +1500,9 @@ void MPParameterScreen::resetCheckBoxes()
 
 }
 
-void MPParameterScreen::setHostLeftDlg( const char* playerName )
+void MPParameterScreen::setHostLeftDlg( mc2::czstring playerName )
 {
-	char leaveStr[256];
-	char formatStr[256];
-
-	cLoadString( IDS_PLAYER_LEFT, leaveStr, 255 );
-	sprintf( formatStr, leaveStr, playerName );
-
-	LogisticsOneButtonDialog::instance()->setText( IDS_PLAYER_LEFT,
-					IDS_DIALOG_OK, IDS_DIALOG_OK );
-	LogisticsOneButtonDialog::instance()->setText( formatStr );
+	LogisticsOneButtonDialog::instance()->setPlayerLeftText( playerName );
 	LogisticsOneButtonDialog::instance()->begin();
 	bHostLeftDlg = true;
 
@@ -1614,7 +1606,7 @@ long aPlayerParams::init(long xPos, long yPos,long w, long h )
 	return (NO_ERR);
 }
 
-void aPlayerParams::init( FitIniFile* pFile, const char* blockNameParam )
+void aPlayerParams::init( FitIniFile* pFile, mc2::czstring blockNameParam )
 {
 
 	FitIniFile &file = (*pFile);
@@ -2229,7 +2221,7 @@ void aPlayerParams::move( float offsetX, float offsetY )
 
 
 
-long aStyle2TextListItem::init( FitIniFile* file, const char* blockName )
+long aStyle2TextListItem::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock( blockName );
 

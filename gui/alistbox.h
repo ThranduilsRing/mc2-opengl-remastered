@@ -25,6 +25,8 @@ inline constexpr unsigned int ITEM_OUT_OF_RANGE = 0xEEEE0002;
 #include <string_view>
 
 #include <string>
+#include <memory>
+#include <utility>
 
 class aListItem : public aObject
 {
@@ -155,6 +157,14 @@ public:
 	virtual int			handleMessage( unsigned long message, unsigned long who );
 	virtual void	resize(long w, long h);
 
+	// Transfers ownership, including when insertion is rejected.
+	virtual long AddItem(std::unique_ptr<aListItem> itemString)
+	{
+		if (itemCount >= MAX_LIST_ITEMS)
+			return TOO_MANY_ITEMS;
+		return aListBox::AddItem(itemString.release());
+	}
+	// Legacy callers also add borrowed rows and detach them without deletion.
 	virtual long		AddItem(aListItem* itemString);
 	virtual long		InsertItem(aListItem* itemString, long where);
 	virtual long		RemoveItem( aListItem* itemString, bool bDelete );
@@ -231,7 +241,8 @@ public:
 	virtual bool		pointInside(long xPos, long yPos) const;
 	//virtual void	resize(long w, long h);
 
-	virtual long		AddItem(aListItem* itemString);
+	virtual long		AddItem(std::unique_ptr<aListItem> itemString);
+	virtual long AddItem(aListItem* itemString) { return AddItem(std::unique_ptr<aListItem>(itemString)); }
 	long				SelectItem(long item);
 
 	aListBox &ListBox() { return listBox; }
@@ -282,7 +293,8 @@ public:
 	virtual bool		pointInside(long xPos, long yPos) const;
 	//virtual void	resize(long w, long h);
 
-	virtual long		AddItem(aListItem* itemString);
+	virtual long		AddItem(std::unique_ptr<aListItem> itemString);
+	virtual long AddItem(aListItem* itemString) { return AddItem(std::unique_ptr<aListItem>(itemString)); }
 	long				SelectItem(long item);
 
 	void				setReadOnly( bool bReadOnly ){ entry.setReadOnly( bReadOnly ); }

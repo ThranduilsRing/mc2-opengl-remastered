@@ -80,7 +80,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 		}
 
 		PQNode bestPQNode;
-		openHeap.popMin(bestPQNode);
+		bestPQNode = openHeap.popMin().value();
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;

@@ -1,5 +1,6 @@
 #ifndef MPSTATS_H
 #define MPSTATS_H
+#include "mc2_czstring.h"
 /*************************************************************************************************\
 MPStats.h			: Interface for the MPStats component.
 //---------------------------------------------------------------------------//
@@ -75,7 +76,7 @@ class MPStats: public LogisticsScreen
 
 		int init();
 
-		void		setHostLeftDlg( const char* hostName );
+		void		setHostLeftDlg( mc2::czstring hostName );
 
 	private:
 

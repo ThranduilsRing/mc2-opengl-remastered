@@ -17,6 +17,24 @@ SimpleComponentListBox.cpp			: Implementation of the SimpleComponentListBox comp
 #include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include "mc2fmt.h"
 #include "memfunc.h"
+#include "logisticsscreen.h"
+
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
+{
+	std::vector<std::string> items;
+	std::vector<unsigned int> colors;
+	for ( int i = 0; i < box.GetItemCount(); i++ )
+	{
+		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
+		if ( pItem )
+		{
+			items.push_back( pItem->getText() );
+			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
+		}
+	}
+	screen->setDefsListItems( listKey, items );
+	screen->setDefsListItemColors( listKey, colors );
+}
 
 //-------------------------------------------------------------------------------------------------
 ComponentListBox::ComponentListBox()
@@ -45,8 +63,8 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 
 		setComponents( componentCount, components );
 		
-		int sensor = pMech->getSensorID();
-		int ECM = pMech->getECM();
+		int sensor = pMech->getSensorID().value_or(-1);
+		int ECM = pMech->getECM().value_or(-1);
 
 		if ( sensor > 0 )
 		{

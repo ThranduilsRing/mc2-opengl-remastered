@@ -283,7 +283,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision rebuilds
 		// this same member from stock bldgShape[lod] when it needs passability.
-		bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
+		bldgShapeOwner_.reset(appearType->getBldgRenderShape(0)->CreateFrom());
+		bldgShape = bldgShapeOwner_.get();
 
 		// Load the texture and store its handle.
 		for (int i=0;i<bldgShape->GetNumTextures();i++)
@@ -474,7 +475,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 					releaseBldgShape();
 				}
 				
-				bldgShape = dmgRender->CreateFrom();
+				bldgShapeOwner_.reset(dmgRender->CreateFrom());
+				bldgShape = bldgShapeOwner_.get();
 				if (unitAnim().bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 				
@@ -496,7 +498,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 				// MODEL-OVERRIDE dual-shape: restore the per-instance RENDER
 				// shape via the render accessor (override if present, else stock).
-				bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
+				bldgShapeOwner_.reset(appearType->getBldgRenderShape(0)->CreateFrom());
+				bldgShape = bldgShapeOwner_.get();
 				if (unitAnim().bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 
@@ -905,7 +908,7 @@ void BldgAppearance::updateSimPose()
     const long status = simStatus_;
     if (!appearType) { simulationShape_.reset(); simPose->ready = false; return; }
     auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
-        appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
+        appearType->bldgDmgShape.get() : appearType->getBldgCollisionShape(0);
     if (!source) { simulationShape_.reset(); simPose->ready = false; return; }
     const long animationState = status == OBJECT_STATUS_DESTROYED ? -2 : unitAnim().bdAnimationState;
     if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&

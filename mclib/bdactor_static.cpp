@@ -109,7 +109,7 @@ void BldgAppearance::registerStatic() {
 		mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ENTER name={} registered={:d} hasShape={:d} eligible={:d} renderShape={:016X}\n",
 			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(static_cast<int>(staticReg.registered)), mc2::fmt::as_i32(static_cast<int>((bldgShape!=nullptr))),
 			mc2::fmt::as_i32(static_cast<int>(isStaticEligible())),
-			mc2::fmt::as_ptr(static_cast<void*>(appearType->bldgRenderShape))), fflush(stderr);
+			mc2::fmt::as_ptr(static_cast<void*>(appearType->bldgRenderShape.get()))), fflush(stderr);
 	if (staticReg.registered) {
 		return;
 	}
@@ -142,7 +142,7 @@ void BldgAppearance::registerStatic() {
 	}
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->bldgRenderShape) {
-		TG_TypeMultiShape* rs = appearType->bldgRenderShape;
+		TG_TypeMultiShape* rs = appearType->bldgRenderShape.get();
 		mc2::fmt::print_err("[MODOVERRIDE_TRACE] bldg registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} finalized_guess(typeNodes_above)\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr(static_cast<void*>(rs)), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? static_cast<void*>(rs->GetTypeNode(0)) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? static_cast<void*>(rs->GetTypeNode(1)) : nullptr));
 		fflush(stderr);
 	}
@@ -729,7 +729,7 @@ void BldgAppearance::destroy (void)
 
 	if ( bldgShape )
 	{
-		delete bldgShape;
+		bldgShapeOwner_.reset();
 		bldgShape = nullptr;
 	}
 
@@ -792,6 +792,6 @@ void BldgAppearance::releaseBldgShape()
 {
     clearSpotlights();
     bldgShape->ClearAnimation();
-    delete bldgShape;
+    bldgShapeOwner_.reset();
     bldgShape = nullptr;
 }

@@ -6,6 +6,7 @@
 
 #include"stuff.hpp"
 #include<toolos.hpp>
+#include <memory>
 
 namespace Stuff {
 
@@ -347,9 +348,9 @@ namespace Stuff {
 			int
 				actualSampleCount,
 				ignoredSampleCount;
-			MemoryStream
-				*allocatedTraceLog,
-				*activeTraceLog;
+			std::unique_ptr<TraceSample[]> traceSamples_;
+			std::unique_ptr<MemoryStream> allocatedTraceLog;
+			MemoryStream* activeTraceLog;
 			BYTE traceCount;
 			DWORD
 				activeBits;

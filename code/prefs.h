@@ -11,13 +11,14 @@
 
 #include "mc2_czstring.h"
 #include "Gates/preferences_types.h"
+#include <expected>
 
 
 class CPrefs : public mc2::options::Preferences {
 public:
 	CPrefs() = default;
 	int load( mc2::czstring pFileName = "options");
-	int save();
+	std::expected<void, int> save();
 	int applyPrefs(bool bApplyResolution = 1);
 
 	void setNewName( mc2::czstring pNewName );

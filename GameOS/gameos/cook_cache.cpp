@@ -1,5 +1,6 @@
 // cook_cache.cpp -- see the header.
 #include "cook_cache.h"
+#include "mc2fmt.h"
 
 #include <algorithm>
 #include <atomic>
@@ -14,7 +15,7 @@ namespace mc2cache {
 
 std::filesystem::path entryPath(std::string_view dir, const CacheKind& kind, uint64_t key) {
     char hex[20];
-    std::snprintf(hex, sizeof hex, "%016llx", static_cast<unsigned long long>(key));
+    mc2::fmt::to_buf(hex, "{:016x}", key);
     std::string name(kind.prefix);
     name += hex;
     name += kind.ext;

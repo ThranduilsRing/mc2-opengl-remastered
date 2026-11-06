@@ -86,6 +86,7 @@ class ComponentIconListBox : public aListBox
 public:
 	ComponentIconListBox();
 	virtual ~ComponentIconListBox();
+	void destroy() override;
 	void setType( int Type, int orThisType, int orThis, int orThis2 = -1 );
 	virtual void update();
 
@@ -101,7 +102,7 @@ public:
 		ComponentIconListBox( const ComponentIconListBox& src );
 		ComponentIconListBox& operator=( const ComponentIconListBox& src );
 
-		std::vector<ComponentListItem*>	masterComponentList;
+		std::vector<std::unique_ptr<ComponentListItem>> masterComponentList;
 
 		int type;
 

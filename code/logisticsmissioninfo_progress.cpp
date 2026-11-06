@@ -71,10 +71,10 @@ long LogisticsMissionInfo::getCurrentMissions( const char** missions, int& numbe
 
 	return 0;
 }
-long LogisticsMissionInfo::setNextMission( const char* missionName )
+std::expected<void, long> LogisticsMissionInfo::setNextMission( mc2::czstring missionName )
 {
 	if ( !missionName || !strlen( missionName ) )
-		return -1;
+		return std::unexpected(-1L);
 	if ( bMultiplayer )
 	{
 			const std::string path = std::string( missionPath ) + missionName + ".fit";
@@ -97,7 +97,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 				char errorStr[256];
 				mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(missionName));
 				Assert( 0, 0, errorStr );
-				return -1;
+				return std::unexpected(-1L);
 			}
 
 			readMissionInfo( missionFile, pInfo );
@@ -143,7 +143,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 			
 				if ( (*iter)->completed )
 				{
-					return MISSION_ALREADY_DONE;
+					return std::unexpected(MISSION_ALREADY_DONE);
 				}
 				else
 				{
@@ -166,23 +166,23 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 		}
 
 		if ( !bFound )
-			return INVALID_MISSION;
+			return std::unexpected(INVALID_MISSION);
 	}
 
 	
 
-	return 0;
+	return {};
 
 }
 
-long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
+std::expected<void, long> LogisticsMissionInfo::setMissionAnyStage( mc2::czstring missionName )
 {
 	// Cross-stage variant of setNextMission for the headless boot driver: find the
 	// mission by FileName across ALL groups (not just the current stage) and set
 	// currentStage + currentMission so its logistics/purchase screen loads, with no
 	// campaign-progression requirement. Ignores the completed gate on purpose.
 	if ( !missionName || !strlen( missionName ) )
-		return -1;
+		return std::unexpected(-1L);
 	for ( long s = 0; s < groupCount; s++ )
 	{
 		MissionGroup* pGroup = &groups[s];
@@ -194,15 +194,15 @@ long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
 				currentStage = s;
 				currentMission = count;
 				currentMissionName = mc2::str::erase_first( info->fileName, ".fit" );
-				return 0;
+				return {};
 			}
 			count++;
 		}
 	}
-	return INVALID_MISSION;
+	return std::unexpected(INVALID_MISSION);
 }
 
-void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
+void LogisticsMissionInfo::setSingleMission( mc2::czstring missionFileName )
 {
 	clear();
 	bMultiplayer = true;
@@ -210,8 +210,9 @@ void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
 
 	currentStage = 0;
 
-	MissionInfo* pInfo = new MissionInfo;
-	groups[0].infos.push_back( pInfo );
+	auto info = std::make_unique<MissionInfo>();
+	MissionInfo* pInfo = info.get();
+	groups[0].infos.push_back( std::move(info) );
 
 	groups[0].operationFileName = "MCL_CM_Op1_1.fit";
 	groups[0].ablBrainName = "";

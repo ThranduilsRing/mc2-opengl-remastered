@@ -21,7 +21,7 @@ std::string LogisticsData::getCurrentABLScript() const
 	return missionInfo ? missionInfo->getCurrentABLScriptName() : std::string();
 }
 
-long LogisticsData::getCurrentMissionTune()
+std::optional<long> LogisticsData::getCurrentMissionTune()
 {
 	return missionInfo->getCurrentLogisticsTuneId();
 }
@@ -36,7 +36,6 @@ void LogisticsData::clearInventory()
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		(*iter)->setPilot( nullptr );
-		delete *iter;
 	}
 
 	inventory.clear();
@@ -154,7 +153,7 @@ int		LogisticsData::getChassisVariants( const LogisticsChassis* pChassis,
 			if ( variant->getChassis() == pChassis  )
 			{
 				if ( i < maxCount )
-					pVar[i]	= variant;	
+					pVar[i]	= variant.get();
 				else 
 					retVal = NEED_BIGGER_ARRAY;
 				++i;
@@ -169,21 +168,28 @@ int		LogisticsData::getChassisVariants( const LogisticsChassis* pChassis,
 }
 
 
-int LogisticsData::setMechToModify( LogisticsMech* pMech )
+std::expected<void, int> LogisticsData::setMechToModify( LogisticsMech* pMech )
 {
 	if ( !pMech )
-		return -1;
+		return std::unexpected(-1);
+	if ( currentlyModifiedMech == pMech )
+		return {};
+	if ( currentlyModifiedMech )
+	{
+		if ( auto result = cancelMechModfications(); !result )
+			return result;
+	}
 	ensureMechBayDataLoaded("setMechToModify");
 	currentlyModifiedMech = pMech;
 	oldVariant = pMech->getVariant();
 
-	LogisticsVariant* pVar = new LogisticsVariant( *oldVariant );
-	pMech->setVariant( pVar );
+	modifiedVariant = std::make_unique<LogisticsVariant>( *oldVariant );
+	pMech->setVariant( modifiedVariant.get() );
 
-	return 0;
+	return {};
 }
 
-void encryptFile (const char *inputFile, const char* outputFile)
+void encryptFile (mc2::czstring inputFile, mc2::czstring outputFile)
 {
     PAUSE((""));
 
@@ -269,10 +275,10 @@ void decryptFile (char *inputFile, char *outputFile)
 	}
 }
 
-int LogisticsData::acceptMechModifications( const char* name )
+std::expected<void, int> LogisticsData::acceptMechModifications( mc2::czstring name )
 {
 	if ( !currentlyModifiedMech )
-		return -1;
+		return std::unexpected(-1);
 
 	bool bFound = 0;
 	if ( oldVariant )
@@ -287,7 +293,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 	{
 		for (auto & iter : inventory)
 		{
-			if ( iter->getVariant() == oldVariant && iter != currentlyModifiedMech  )
+			if ( iter->getVariant() == oldVariant && iter.get() != currentlyModifiedMech  )
 			{
 				bFound = 1;
 			}
@@ -296,12 +302,12 @@ int LogisticsData::acceptMechModifications( const char* name )
 
 	if ( !bFound )
 	{
-		const auto vIter = std::find( variants.begin(), variants.end(), oldVariant );
+		const auto vIter = std::find_if( variants.begin(), variants.end(),
+			[this](const auto& variant) { return variant.get() == oldVariant; } );
 		if ( vIter != variants.end()
 			&& mc2::str::iequals( oldVariant->getName(), mc2::str::from_c( name ) ) )
 		{
 			variants.erase( vIter );
-			delete oldVariant;
 		}
 	}
 
@@ -311,7 +317,6 @@ int LogisticsData::acceptMechModifications( const char* name )
 	{
 		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
-			delete (*vIter);
 			vIter = variants.erase( vIter );
 		}
 		else
@@ -319,7 +324,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 	}
 
 	currentlyModifiedMech->getVariant()->setName( wanted );
-	variants.push_back( currentlyModifiedMech->getVariant() );
+	variants.push_back( std::move(modifiedVariant) );
 	missionInfo->decrementCBills( currentlyModifiedMech->getVariant()->getCost() );
 
 	currentlyModifiedMech = nullptr;
@@ -360,25 +365,24 @@ int LogisticsData::acceptMechModifications( const char* name )
 
 #endif
 
-	return 0;
+	return {};
 }
-int LogisticsData::acceptMechModificationsUseOldVariant( const char* name )
+std::expected<void, int> LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
 {
 	if ( !currentlyModifiedMech )
-		return -1;
+		return std::unexpected(-1);
 
 	if ( oldVariant )
 	{
 		missionInfo->incrementCBills( oldVariant->getCost() );
 	}
 
-	LogisticsVariant* pVar = getVariant( name );
+	LogisticsVariant* pVar = getVariant( name ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( !pVar )
 		Assert( 0, 0, "couldn't find the old variant\n" );
 
-	LogisticsVariant* pOldVar = currentlyModifiedMech->getVariant();
-	delete pOldVar;
+	modifiedVariant.reset();
 
 	currentlyModifiedMech->setVariant( pVar );
 	missionInfo->decrementCBills( pVar->getCost() );
@@ -386,10 +390,10 @@ int LogisticsData::acceptMechModificationsUseOldVariant( const char* name )
 	currentlyModifiedMech = nullptr;
 	oldVariant = nullptr;	
 
-	return 0;
+	return {};
 }
 
-bool LogisticsData::canReplaceVariant( const char* name )
+bool LogisticsData::canReplaceVariant( mc2::czstring name )
 {
 	int nameCount = 0;
 	const std::string wanted = mc2::str::from_c( name );
@@ -398,7 +402,7 @@ bool LogisticsData::canReplaceVariant( const char* name )
 			if ( mc2::str::iequals( iter->getName(), wanted ) )
 			{
 				nameCount++;
-				if ( iter->getVariant() != oldVariant && iter != currentlyModifiedMech )
+				if ( iter->getVariant() != oldVariant && iter.get() != currentlyModifiedMech )
 				{
 					return 0;
 				}
@@ -417,9 +421,9 @@ bool LogisticsData::canReplaceVariant( const char* name )
 		return true;
 }
 
-bool	LogisticsData::canDeleteVariant( const char* name )
+bool	LogisticsData::canDeleteVariant( mc2::czstring name )
 {
-	LogisticsVariant* pVariant = getVariant( name );
+	auto pVariant = getVariant( name );
 	if ( !pVariant )
 		return 0;
 		
@@ -434,21 +438,19 @@ bool	LogisticsData::canDeleteVariant( const char* name )
 
 }
 
-int LogisticsData::cancelMechModfications()
+std::expected<void, int> LogisticsData::cancelMechModfications()
 {
 	if ( !currentlyModifiedMech )
-		return -1;
+		return std::unexpected(-1);
 
-	LogisticsVariant* pCancel = currentlyModifiedMech->getVariant();
-
-	delete pCancel;
+	modifiedVariant.reset();
 
 	currentlyModifiedMech->setVariant( oldVariant );
 
 	oldVariant = nullptr;
 	currentlyModifiedMech = nullptr;
 
-	return 0;
+	return {};
 }
 
 std::string			LogisticsData::getCurrentOperationFileName()
@@ -471,7 +473,7 @@ std::string				LogisticsData::getCurrentMissionFriendlyName( )
 	return missionInfo->getCurrentMissionFriendlyName();
 }
 
-std::string				LogisticsData::getMissionFriendlyName( const char* missionName )
+std::string				LogisticsData::getMissionFriendlyName( mc2::czstring missionName )
 {
 	return missionInfo->getMissionFriendlyName( missionName );
 }

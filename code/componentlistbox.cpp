@@ -372,20 +372,10 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 		//{
 			for ( int i = 0; i < count; i++ )
 			{
-				ComponentListItem* pItem = new ComponentListItem( pComp[i] );
-				masterComponentList.push_back( pItem );	
+				masterComponentList.push_back( std::make_unique<ComponentListItem>( pComp[i] ) );
 			}			
 	
 
-	//	for ( EList< ComponentListItem*, ComponentListItem* >::EIterator iter = masterComponentList.Begin();
-	//	!iter.IsDone(); iter++ )
-	//	{
-	///		delete *iter;
-	//		turn++;
-	//	}
-
-	//	masterComponentList.clear();
-	//	}
 	}
 
 	for (auto & masterComponentElem : masterComponentList)
@@ -401,7 +391,7 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 					{
 						masterComponentElem->move( -globalX(), 0 );
 					}
-					addSortedItem( masterComponentElem );
+					addSortedItem( masterComponentElem.get() );
 				}
 			}
 		}
@@ -457,12 +447,20 @@ ComponentIconListBox::ComponentIconListBox()
 
 ComponentIconListBox::~ComponentIconListBox()
 {
-	masterComponentList.clear();
+	destroy();
 
 	s_instance = nullptr;
 
 	ComponentListItem::s_templateItem.reset();
 	ComponentListItem::s_templateItem = nullptr;
+}
+
+void ComponentIconListBox::destroy()
+{
+	// The listbox only borrows the visible subset; release its views before the owners.
+	removeAllItems( false );
+	masterComponentList.clear();
+	aListBox::destroy();
 }
 
 LogisticsComponent* ComponentIconListBox::getComponent()

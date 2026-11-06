@@ -34,10 +34,11 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				{
 					mechShape->ClearAnimation();
 					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
-					delete mechShape;
+					mechShapeOwner_.reset();
 					mechShape = nullptr;
 
-					mechShape = mechType->mechForwardDmgShape->CreateFrom();
+					mechShapeOwner_.reset(mechType->mechForwardDmgShape->CreateFrom());
+					mechShape = mechShapeOwner_.get();
 				}
 			}
 			else if (unitAnim().currentGestureId == 24)
@@ -46,10 +47,11 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				{
 					mechShape->ClearAnimation();
 					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
-					delete mechShape;
+					mechShapeOwner_.reset();
 					mechShape = nullptr;
 
-					mechShape = mechType->mechBackwardDmgShape->CreateFrom();
+					mechShapeOwner_.reset(mechType->mechBackwardDmgShape->CreateFrom());
+					mechShape = mechShapeOwner_.get();
 				}
 			}
 
@@ -1055,7 +1057,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 		_mm.destroyed = (status == OBJECT_STATUS_DESTROYED);
 		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
 		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
-		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr);
+		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr);
 		mc2mechanim::TickImportedMechs(frameLength, static_cast<unsigned>(turn), _mm,
 		                               static_cast<const void*>(mechShape), _typeKey, advanceClock, &unitAnim().imported);
 		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and

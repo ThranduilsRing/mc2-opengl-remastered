@@ -1,5 +1,6 @@
 #ifndef MPHOSTGAME_H
 #define MPHOSTGAME_H
+#include "mc2_czstring.h"
 /*************************************************************************************************\
 MPHostGame.h			: Interface for the MPHostGame component.
 //---------------------------------------------------------------------------//
@@ -27,7 +28,7 @@ class aStyle5TextListItem : public aTextListItem
 {
 public:
 	aStyle5TextListItem() { hasAnimation = false; normalColor = 0xff808080; }
-	virtual long	init( FitIniFile* file, const char* blockName );
+	virtual long	init( FitIniFile* file, mc2::czstring blockName );
 	virtual void		render();
 
 protected:

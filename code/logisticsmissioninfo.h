@@ -11,6 +11,10 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 #endif
 
 #include <string>
+#include "mc2_czstring.h"
+#include <optional>
+#include <expected>
+#include <functional>
 #include <vector>
 #include <memory>
 
@@ -30,28 +34,29 @@ class LogisticsMissionInfo
 		~LogisticsMissionInfo();
 		
 		
-		long init( FitIniFile& file ); // init campaign
+		std::expected<void, long> init( FitIniFile& file ); // init campaign
 		void save( FitIniFile& file );
-		long load( FitIniFile& file );// init previously saved stuff
+		std::expected<void, long> load( FitIniFile& file );// init previously saved stuff
 
 
 		long getAvailableMissions( const char** missions, int& numberOfEm );
 		long getCurrentMissions( const char** missions, int& numberOfEm );
 
-		bool getMissionAvailable( const char* missionName );
+		// Null lookup names mean empty; selection rejects null/empty names.
+		bool getMissionAvailable( mc2::czstring missionName );
 
-		bool isMissionComplete( const char* missionName );
+		bool isMissionComplete( mc2::czstring missionName );
 		bool isSingleMission() const;
 
-		long setNextMission( const char* missionName );
+		std::expected<void, long> setNextMission( mc2::czstring missionName );
 		// Like setNextMission but searches ALL groups/stages (setNextMission only
 		// searches the current stage). Used by the headless boot driver
 		// (MC2_BOOT_TO_MISSION) to jump to any mission for logistics/icon capture
 		// without campaign progression. Sets currentStage + currentMission.
-		long setMissionAnyStage( const char* missionName );
+		std::expected<void, long> setMissionAnyStage( mc2::czstring missionName );
 		void setMissionComplete( );
 
-		long getCurrentLogisticsTuneId();
+		std::optional<long> getCurrentLogisticsTuneId();
 
 		long getCurrentMissionId();
 		
@@ -66,7 +71,7 @@ class LogisticsMissionInfo
 		std::string			getCurrentOperationFile() const;
 		std::string			getCurrentMissionDescription() const;
 		std::string			getCurrentMissionFriendlyName() const;
-		std::string			getMissionFriendlyName( const char* missionName ) const;
+		std::string			getMissionFriendlyName( mc2::czstring missionName ) const;
 		std::string			getCurrentABLScriptName() const;
 
 		int					getCurrentRP() const;
@@ -84,7 +89,7 @@ class LogisticsMissionInfo
 		std::string			getFinalVideo() const;
 
 		void				setMultiplayer();
-		void				setPurchaseFile( const char* fileName );
+		void				setPurchaseFile( mc2::czstring fileName );
 
 //		long				getMaxTeams() const { return maxTeams; }
 //		long				getMaxPlayers() const { return maxPlayers; }
@@ -94,7 +99,8 @@ class LogisticsMissionInfo
 		// (campaign-wide, deduped). Used by MC2_PURCHASE_ALL to unlock the union
 		// of all mechs the campaign ever offers, not just the current mission's.
 		long				getAllPurchaseFiles( const char** list, long& maxCount );
-		void				addBonusPurchaseFile( const char* fileName ); // extra bonus
+		// A null filename is ignored.
+		void				addBonusPurchaseFile( mc2::czstring fileName ); // extra bonus
 
 		bool				skipLogistics();
 		void				setSkipLogistics(bool skip);
@@ -104,7 +110,7 @@ class LogisticsMissionInfo
 		bool				skipSalvageScreen();
 		bool				skipPurchasing();
 
-		void				setSingleMission( const char* pName );
+		void				setSingleMission( mc2::czstring pName );
 
 		bool				canHaveSalavageCraft();
 		bool				canHaveRepairTruck();
@@ -164,7 +170,7 @@ class LogisticsMissionInfo
 
 		// Both lists are filled while a campaign loads (and additionalPurchaseFiles when a purchase file is added) and never erased from; the pointees are
 		// owned by the destructor path (clear()). Order is load order.
-		using MISSION_LIST = std::vector<MissionInfo*>;
+		using MISSION_LIST = std::vector<std::unique_ptr<MissionInfo>>;
 		using FILE_LIST = std::vector<std::unique_ptr<char[]>>;
 
 
@@ -184,7 +190,7 @@ class LogisticsMissionInfo
 			// The record at `index`, or nullptr when the index is not one of this group's missions: the way to read an index a campaign save supplies.
 			MissionInfo* at( long index ) const
 			{
-				return ( index >= 0 && index < std::ssize( infos ) ) ? infos[static_cast<size_t>( index )] : nullptr;
+				return ( index >= 0 && index < std::ssize( infos ) ) ? infos[static_cast<size_t>( index )].get() : nullptr;
 			}
 
 			// The record at an index the campaign state itself holds (currentMission). currentMission is -1 before a mission is chosen, so the index is
@@ -222,7 +228,7 @@ class LogisticsMissionInfo
 
 		FILE_LIST				additionalPurchaseFiles;
 
-		LogisticsMissionInfo::MissionInfo* getPreviousMission();
+		std::optional<std::reference_wrapper<MissionInfo>> getPreviousMission();
 		void readMissionInfo( FitIniFile& file, LogisticsMissionInfo::MissionInfo* pInfo );
 
 

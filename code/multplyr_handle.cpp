@@ -263,7 +263,7 @@ extern char* GetTime();
 
 extern const char *SpecialtySkillsTable[NUM_SPECIALTY_SKILLS];
 
-long MultiPlayer::saveTranscript (const char* fileName, bool debugging) {
+long MultiPlayer::saveTranscript (mc2::czstring fileName, bool debugging) {
 
 	return(MPLAYER_NO_ERR);
 }

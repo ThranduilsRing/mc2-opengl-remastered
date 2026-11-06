@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <string_view>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #if defined(_WIN32)
@@ -31,11 +32,11 @@ namespace {
     bool      g_diagAtexitRegistered = false;
     long long g_diagHeapPeakBytes = 0;
 
-    void emit_diag_summary(const char* reason) {
+    void emit_diag_summary(std::string_view reason) {
         long long creates  = g_effectCreates.load();
         long long destroys = g_effectDestroys.load();
         long long peak     = g_effectAlivePeak.load();
-        mc2::fmt::print_err("[GOSFX_CHILD v1] event=summary reason={} frames={:d} creates={:d} destroys={:d} delta={:d} max_alive={:d} peak_rss={:d}KB\n", mc2::fmt::safe(reason), mc2::fmt::as_i64(g_diagFrameCount), mc2::fmt::as_i64(creates), mc2::fmt::as_i64(destroys), mc2::fmt::as_i64(creates - destroys), mc2::fmt::as_i64(peak), mc2::fmt::as_i64(g_diagHeapPeakBytes / 1024));
+        mc2::fmt::print_err("[GOSFX_CHILD v1] event=summary reason={} frames={:d} creates={:d} destroys={:d} delta={:d} max_alive={:d} peak_rss={:d}KB\n", reason, mc2::fmt::as_i64(g_diagFrameCount), mc2::fmt::as_i64(creates), mc2::fmt::as_i64(destroys), mc2::fmt::as_i64(creates - destroys), mc2::fmt::as_i64(peak), mc2::fmt::as_i64(g_diagHeapPeakBytes / 1024));
     }
 
     void diag_init_if_needed() {

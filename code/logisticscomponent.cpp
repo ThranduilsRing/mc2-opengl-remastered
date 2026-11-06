@@ -77,7 +77,7 @@ LogisticsComponent::~LogisticsComponent()
 		pictureFileName.reset();
 }
 
-int LogisticsComponent::init( char* dataLine )
+std::expected<int, int> LogisticsComponent::init( char* dataLine )
 {
 	char* line = dataLine;
 
@@ -100,7 +100,7 @@ int LogisticsComponent::init( char* dataLine )
 	}
 
 	if ( i == NUM_COMPONENT_FORMS )
-		return -1;
+		return std::unexpected(-1);
 
 	// name, probably aren't going to use this, they should be in the RC.
 	extractString( pLine, pBuffer, 1024 );
@@ -157,7 +157,7 @@ int LogisticsComponent::init( char* dataLine )
 		strcpy( iconFileName.get(), pBuffer );
 	}
 	else
-		return -1; // fail if no picture
+		return std::unexpected(-1); // fail if no picture
 
 	extractString( pLine, pBuffer, 1024 );
 	if ( *pBuffer )
@@ -178,6 +178,8 @@ int LogisticsComponent::init( char* dataLine )
 	flavorText = name.get();		//Lets not forget the NULL!!!
 	strcpy( name.get(), nameBuffer );
 
+	if ( ID == -1 )
+		return std::unexpected(-1);
 	return ID;
 }
 
@@ -204,7 +206,7 @@ float LogisticsComponent::extractFloat( char*& pFileLine )
 // EQUIP-ADD-FILL-1: overwrite the string-table-sourced name with the def's
 // DisplayName. name/flavorText alias ONE allocation (init() invariant) -- both
 // are re-pointed here and the dtor frees `name` only, exactly as after init().
-void LogisticsComponent::setDisplayName( const char* n )
+void LogisticsComponent::setDisplayName( mc2::czstring n )
 {
 	if ( !n )
 		n = "";

@@ -152,7 +152,7 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				mechShape[i] = new TG_TypeMultiShape;
+				mechShape[i] = std::make_unique<TG_TypeMultiShape>();
 				gosASSERT(mechShape[i] != nullptr);
 			
 				// ASSIMP-MECH-IMPORT-1 — strict opt-in: only LOD0 of a mech with
@@ -163,13 +163,13 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 				// cold on stock, where the load always succeeds).
 				if (i == 0 && importSourceBase[0]) {
 					long rc = mechShape[i]->LoadFromFile(importSourceBase);   // opt-in: modern import
-					tglVerifyShapeLoaded(mechShape[i], rc, "mech3d.base_lod_import",
+					tglVerifyShapeLoaded(mechShape[i].get(), rc, "mech3d.base_lod_import",
 						importSourceBase, &baseShapeLoadFailed);
 				} else if (i == 0) {
 					FullPathFileName mechName;
 					mechName.init(tglPath,aseFileName,".ase");
 
-					tglLoadShapeChecked(mechShape[i], mechName,               // stock ASE call, wrapped
+					tglLoadShapeChecked(mechShape[i].get(), mechName,               // stock ASE call, wrapped
 						"mech3d.base_lod", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName mechName;
@@ -189,20 +189,20 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 	}
 	else
 	{
-		mechShape[0] = new TG_TypeMultiShape;
+		mechShape[0] = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(mechShape[0] != nullptr);
 
 		// ASSIMP-MECH-IMPORT-1 — strict opt-in single-LOD case.
 		// META-FIX design B PART 1: REQUIRED slot — checked load.
 		if (importSourceBase[0]) {
 			long rc = mechShape[0]->LoadFromFile(importSourceBase);   // opt-in: modern import
-			tglVerifyShapeLoaded(mechShape[0], rc, "mech3d.base_import",
+			tglVerifyShapeLoaded(mechShape[0].get(), rc, "mech3d.base_import",
 				importSourceBase, &baseShapeLoadFailed);
 		} else {
 			FullPathFileName mechName;
 			mechName.init(tglPath,aseFileName,".ase");
 
-			tglLoadShapeChecked(mechShape[0], mechName,               // stock ASE call, wrapped
+			tglLoadShapeChecked(mechShape[0].get(), mechName,               // stock ASE call, wrapped
 				"mech3d.base", &baseShapeLoadFailed);
 		}
 	}
@@ -218,7 +218,7 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 	result = mechFile.readIdString("ShadowName",aseFileName,511);
 	if (result == NO_ERR)
 	{
-		mechShadowShape = new TG_TypeMultiShape;
+		mechShadowShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(mechShadowShape != nullptr);
 	
 		FullPathFileName gvName;
@@ -241,24 +241,22 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 	FullPathFileName mechRightArmName;
 	mechRightArmName.init(tglPath,rightArmName,".ase");
 
-	rightArm = new TG_TypeMultiShape;
+	rightArm = std::make_unique<TG_TypeMultiShape>();
 	gosASSERT(rightArm != nullptr);
 	
 	result = rightArm->LoadTGMultiShapeFromASE(mechRightArmName); // TGL-LOAD-EXEMPT(optional arm; delete-on-fail is normal stock degradation)
 	if (result)
 	{
-		delete rightArm;
-		rightArm = nullptr;
+		rightArm.reset();
 	}
 	
-	leftArm = new TG_TypeMultiShape;
+	leftArm = std::make_unique<TG_TypeMultiShape>();
 	gosASSERT(leftArm != nullptr);
 	
 	result = leftArm->LoadTGMultiShapeFromASE(mechLeftArmName); // TGL-LOAD-EXEMPT(optional arm; delete-on-fail is normal stock degradation)
 	if (result)
 	{
-		delete leftArm;
-		leftArm = nullptr;
+		leftArm.reset();
 	}
 	
 	// Load Damaged States
@@ -275,14 +273,13 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,forwardName,".ase");
 
-		mechForwardDmgShape = new TG_TypeMultiShape;
+		mechForwardDmgShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(mechForwardDmgShape != nullptr);
 		mechForwardDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional fall-damage shape; GetNumShapes-checked)
 
 		if (!mechForwardDmgShape->GetNumShapes())
 		{
-			delete mechForwardDmgShape;
-			mechForwardDmgShape = nullptr;
+			mechForwardDmgShape.reset();
 		}
 	}
 
@@ -290,14 +287,13 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		FullPathFileName dmgName;
 		dmgName.init(tglPath,backwardName,".ase");
 
-		mechBackwardDmgShape = new TG_TypeMultiShape;
+		mechBackwardDmgShape = std::make_unique<TG_TypeMultiShape>();
 		gosASSERT(mechBackwardDmgShape != nullptr);
 		mechBackwardDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional fall-damage shape; GetNumShapes-checked)
 
 		if (!mechBackwardDmgShape->GetNumShapes())
 		{
-			delete mechBackwardDmgShape;
-			mechBackwardDmgShape = nullptr;
+			mechBackwardDmgShape.reset();
 		}
 	}
 
@@ -332,12 +328,12 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
-				mechAnim[i] = new TG_AnimateShape;
+				mechAnim[i] = std::make_unique<TG_AnimateShape>();
 				gosASSERT(mechAnim[i] != nullptr);
 
 				// If this animation does not exist, it is not a problem!
 				// Mech will simply freeze until animation is "over" and then move to next animation in chain.
-				mechAnim[i]->LoadTGMultiShapeAnimationFromASE(animPath,mechShape[0]);
+				mechAnim[i]->LoadTGMultiShapeAnimationFromASE(animPath,mechShape[0].get());
 
 				if (gestures[i].reverse)
 					mechAnim[i]->ReverseFrameRate();
@@ -609,47 +605,22 @@ void Mech3DAppearanceType::destroy (void)
 	long i=0;
 	for (i=0;i<MAX_LODS;i++)
 	{
-		if (mechShape[i])
-		{
-			delete mechShape[i];
-			mechShape[i] = nullptr;
-		}
+		mechShape[i].reset();
 	}
 
-	if (mechShadowShape)
-	{
-		delete mechShadowShape;
-		mechShadowShape = nullptr;
-	}
+	mechShadowShape.reset();
 
-	if (rightArm)
-	{
-		delete rightArm;
-		rightArm = nullptr;
-	}
+	rightArm.reset();
 
-	if (leftArm)
-	{
-		delete leftArm;
-		leftArm = nullptr;
-	}
+	leftArm.reset();
 
-	if (mechForwardDmgShape)
-	{
-		delete mechForwardDmgShape;
-		mechForwardDmgShape = nullptr;
-	}
+	mechForwardDmgShape.reset();
 
-	if (mechBackwardDmgShape)
-	{
-		delete mechBackwardDmgShape;
-		mechBackwardDmgShape = nullptr;
-	}
+	mechBackwardDmgShape.reset();
 
 	for (i=0;i<MAX_ANIMATION_FILES;i++)
 	{
-		delete mechAnim[i];
-		mechAnim[i] = nullptr;
+		mechAnim[i].reset();
 	}
 	
 	nodeDataStore.reset();
@@ -713,7 +684,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	// no named TG nodes, so the legacy lookup below returns origin. Resolve the
 	// firepoint from the package node manifest + live clip globals instead.
 	if (mechShape && mechShape->GetNumShapes() > 0) {
-		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey,
 				mechType->nodeData[nodeId].nodeId,
@@ -770,7 +741,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (mc2::czstring nodeName)
 	POSE_VIEW_LOCALS
 	glm::vec3 result = position;
     if (mechShape && mechShape->GetNumShapes() > 0) {
-        const void* type = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+        const void* type = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
         float world[3];
         if (mc2mechanim::GetImportedNodeWorld(mechShape, type, nodeName,
                 glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), world))

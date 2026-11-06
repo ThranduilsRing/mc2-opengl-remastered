@@ -344,7 +344,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 					vPos[commanderID] = vtolPos;
 					if (!salvageTarget)
 						STOP(("MissionGUI.beginvtol: null target PASSED IN."));
-					char* newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( salvageTarget->tonnage ));
+					char* newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( salvageTarget->tonnage ).transform([](auto name) { return name.get().c_str(); }).value_or(nullptr));
 					if (!newPilotName)
 					{
 						// No pilot available: unwind the queued recovery (refund the RP, release the buttons).

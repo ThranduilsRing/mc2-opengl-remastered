@@ -10,12 +10,12 @@
 #include "weapon_presentation_resolve.h"
 
 // ---- weaponPresentationAssetToEffectId: string -> effect id parse ----
-TEST_CASE("asset->effectId: empty and non-numeric -> -1; numeric -> value") {
-    CHECK(weaponPresentationAssetToEffectId(WeaponStringId()) == -1);        // empty
-    CHECK(weaponPresentationAssetToEffectId(WeaponStringId("")) == -1);      // empty
-    CHECK(weaponPresentationAssetToEffectId(WeaponStringId("laser")) == -1); // non-numeric
-    CHECK(weaponPresentationAssetToEffectId(WeaponStringId("4x")) == -1);    // trailing junk
-    CHECK(weaponPresentationAssetToEffectId(WeaponStringId("-1")) == -1);    // negative rejected
+TEST_CASE("asset->effectId: empty and non-numeric -> absent; numeric -> value") {
+    CHECK_FALSE(weaponPresentationAssetToEffectId(WeaponStringId()));        // empty
+    CHECK_FALSE(weaponPresentationAssetToEffectId(WeaponStringId("")));      // empty
+    CHECK_FALSE(weaponPresentationAssetToEffectId(WeaponStringId("laser"))); // non-numeric
+    CHECK_FALSE(weaponPresentationAssetToEffectId(WeaponStringId("4x")));    // trailing junk
+    CHECK_FALSE(weaponPresentationAssetToEffectId(WeaponStringId("-1")));    // negative rejected
     CHECK(weaponPresentationAssetToEffectId(WeaponStringId("0")) == 0);
     CHECK(weaponPresentationAssetToEffectId(WeaponStringId("4")) == 4);
     CHECK(weaponPresentationAssetToEffectId(WeaponStringId("255")) == 255);
@@ -67,4 +67,17 @@ TEST_CASE("resolve: non-numeric data asset -> legacy fallback (unresolvable)") {
     int id = resolveWeaponFireEffectType(p, /*legacy=*/4, fromData);
     CHECK(id == 4);              // can't parse -> keep legacy
     CHECK_FALSE(fromData);
+}
+
+TEST_CASE("resolve: zero effect id is present and invalid muzzle falls back to OnFire") {
+    WeaponPresentationProfile p;
+    p.setEventAsset(WeaponEvent::OnMuzzleFlash, WeaponAssetKind::Vfx, "0");
+    bool fromData = false;
+    CHECK(resolveWeaponFireEffectType(p, 4, fromData) == 0);
+    CHECK(fromData);
+
+    p.setEventAsset(WeaponEvent::OnMuzzleFlash, WeaponAssetKind::Vfx, "-1");
+    p.setEventAsset(WeaponEvent::OnFire, WeaponAssetKind::Vfx, "7");
+    CHECK(resolveWeaponFireEffectType(p, 4, fromData) == 7);
+    CHECK(fromData);
 }

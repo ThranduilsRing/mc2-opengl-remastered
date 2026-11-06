@@ -40,7 +40,8 @@ void BldgAppearance::updateRenderLOD()
 	invalidateStaticRegistration();
 	releaseBldgShape();
 	currentLOD = lod;
-	bldgShape = appearType->getBldgRenderShape(lod)->CreateFrom();
+	bldgShapeOwner_.reset(appearType->getBldgRenderShape(lod)->CreateFrom());
+	bldgShape = bldgShapeOwner_.get();
 	rotationalNodeId = -1;
 	beenInView = false;
 	needsFullBakeNextFrame = true;

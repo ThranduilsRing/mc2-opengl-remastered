@@ -1,4 +1,5 @@
 {
+  "tools/dup_check.py": "Run by tools/lane_merge.py --lint (python import, not a shell row); manual: py -3 tools/dup_check.py.",
   "scripts/crashpad_proof.py": "Run on the Linux box through a box_run sh: row (sh:python3 scripts/crashpad_proof.py): deliberate crash plus symbolized minidump proof.",
   "tools/box_run.py":"Manual orchestrator entry point: runs the Linux box gate (py -3 tools/box_run.py --gate); documented in A:/Games/mc2-ops/box-game-runs.md.",
   "tools/test_tree_hash.py": "Pytest-discovered by the tools_tests precheck stage; guards tools/tree_hash_baseline.json (TreeIsland S0).",
@@ -267,6 +268,7 @@
   "tools/visual_verify/quickload_cement_check.py": "Manual quickload cement-atlas regression check (BUGS-FOUND-FIXED row 60), run by hand: py -3 tools/visual_verify/quickload_cement_check.py.",
   "tools/visual_verify/test_bless_backend.py": "Pytest-discovered module through the scripts_tests board row.",
   "tools/visual_verify/test_capture_ab.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/visual_verify/test_pixel_hist.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/visual_verify/test_verify_backend.py": "Pytest-discovered module through the scripts_tests board row.",
   "tools/visual_verify/test_vk_replay.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/witness_smoke.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
@@ -283,6 +285,7 @@
   "tools/scifi_kit/art/wear_metrics.py": "Owner-run grime metrics tool (py -3 tools/scifi_kit/art/wear_metrics.py <pass_dir>) for the wear ladder, no in-repo caller by design.",
   "tools/farm/install-task.cmd": "Operator-run scheduled-task installer documented in tools/farm/README.md; run on the farm laptop as Kaitlyn.",
   "scripts/run_scripts_tests.py": "Executed by tools/lane_merge.py --precheck through PYTHON_SUITES; the caller scanner does not resolve the dispatch table.",
+  "tools/test_lane_merge_nifty.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests).",
   "tools/test_mkmerge.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests).",
   "tools/perf/_census_run.py": "Manual census driver: runs the installed exe over mc2_01/03/10/17/24 and the bench_walk modes, writes proofs/census2; run by hand for a perf census (see docs/perf/2026-11-02-census-v2.md).",
   "tools/perf/_census_analyze.py": "Manual census analyzer: prints MAIN_BUSY, exclusive-cost columns and PERF_COUNTERS means from proofs/census2; run by hand after _census_run.py.",

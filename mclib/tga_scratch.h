@@ -7,6 +7,8 @@
 #include "mc2_czstring.h"
 #include <cstddef>
 #include <cstring>
+#include <optional>
+#include <utility>
 #include <vector>
 
 class File;
@@ -27,31 +29,29 @@ inline bool bodyFits (std::size_t fileBytes, std::size_t headerBytes, long width
 	return fileBytes - headerBytes >= static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * bytesPerPixel;
 }
 
-// Copies the leading header out of `bytes`; false when the file is shorter than the header.
+// The leading header, absent when the file is shorter than the header.
 template <class HeaderT>
-bool readHeader (const std::vector<unsigned char>& bytes, HeaderT& out)
+std::optional<HeaderT> readHeader (const std::vector<unsigned char>& bytes)
 {
 	if (bytes.size() < sizeof(HeaderT))
-		return false;
+		return std::nullopt;
+	HeaderT out;
 	std::memcpy(&out, bytes.data(), sizeof(HeaderT));
-	return true;
+	return out;
 }
 
-// Replaces `out` with the whole contents of an open file. False (and `out` empty) for an empty or oversized file or a short read.
+// Whole contents of an open file; absent for an empty/oversized file or a short read.
+// A caller can move its scratch buffer in to reuse its capacity.
 template <class FileT>
-bool readAllBytes (FileT& file, std::vector<unsigned char>& out)
+std::optional<std::vector<unsigned char>> readAllBytes (FileT& file, std::vector<unsigned char> bytes = {})
 {
-	out.clear();
 	const std::size_t size = file.fileSize();
 	if (size == 0 || size > kMaxFileBytes)
-		return false;
-	out.assign(size, 0);
-	if (static_cast<std::size_t>(file.read(out.data(), static_cast<long>(size))) != size)
-	{
-		out.clear();
-		return false;
-	}
-	return true;
+		return std::nullopt;
+	bytes.assign(size, 0);
+	if (static_cast<std::size_t>(file.read(bytes.data(), static_cast<long>(size))) != size)
+		return std::nullopt;
+	return bytes;
 }
 
 // Reads a whole TGA file and its header. Terrain textures are mod content, so an empty, unreadable or header-less file is

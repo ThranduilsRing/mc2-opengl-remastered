@@ -803,10 +803,11 @@ bool GVAppearance::recalcBounds (void)
 
 							BYTE alphaValue = gvShape->GetAlphaValue();
 							gvShape->ClearAnimation();
-							delete gvShape;
+							gvShapeOwner_.reset();
 							gvShape = nullptr;
 
-							gvShape = appearType->gvShape[currentLOD]->CreateFrom();
+							gvShapeOwner_.reset(appearType->gvShape[currentLOD]->CreateFrom());
+							gvShape = gvShapeOwner_.get();
 							if (unitAnim().gvAnimationState != -1)
 								appearType->setAnimation(gvShape,unitAnim().gvAnimationState);
 
@@ -856,10 +857,11 @@ bool GVAppearance::recalcBounds (void)
 							
 							BYTE alphaValue = gvShape->GetAlphaValue();
 							gvShape->ClearAnimation();
-							delete gvShape;
+							gvShapeOwner_.reset();
 							gvShape = nullptr;
 							
-							gvShape = appearType->gvShape[currentLOD]->CreateFrom();
+							gvShapeOwner_.reset(appearType->gvShape[currentLOD]->CreateFrom());
+							gvShape = gvShapeOwner_.get();
 							gvShape->SetAlphaValue(alphaValue);
 							
 							for (long i=0;i<gvShape->GetNumTextures();i++)

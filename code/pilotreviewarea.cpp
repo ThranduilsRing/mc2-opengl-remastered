@@ -162,33 +162,33 @@ void PilotReviewScreen::init(FitIniFile* file)
 		{
 			if ( !bDeadTextAdded )
 			{
-				aTextListItem* pItem = new aTextListItem( font );
+				auto pItem = std::make_unique<aTextListItem>( font );
 				pItem->setText( IDS_KILLED_IN_ACTION );
 				pItem->setColor( color ) ;
 
-				pilotListBox.AddItem( pItem );
+				pilotListBox.AddItem( std::move(pItem) );
 				bDeadTextAdded = true;
 			}
 
 
-			DeadPilotListItem* pItem = new DeadPilotListItem( pPilots[i] );
+			auto pItem = std::make_unique<DeadPilotListItem>( pPilots[i] );
 			if ( !bFirst )
 			{
 				pItem->begin();
 				pItem->showGUIWindow(0);
 			}
 			bFirst = 1;
-			pilotListBox.AddItem( pItem );
+			pilotListBox.AddItem( std::move(pItem) );
 		}
 	}
 
 	if ( bDeadTextAdded )
 	{
 
-		aTextListItem* pItem = new aTextListItem( font );
+		auto pItem = std::make_unique<aTextListItem>( font );
 		pItem->setText( "" );
 		pItem->setColor( color ) ;
-		pilotListBox.AddItem( pItem );
+		pilotListBox.AddItem( std::move(pItem) );
 	}
 
 
@@ -202,19 +202,19 @@ void PilotReviewScreen::init(FitIniFile* file)
 		{
 			if ( !bLiveTextAdded )
 			{
-				aTextListItem* pItem = new aTextListItem( font );
+				auto pItem = std::make_unique<aTextListItem>( font );
 				pItem->setText( IDS_ACTIVE_DUTY );
 				pItem->setColor( color ) ;
 				long oldHeight = pItem->height();
 				pItem->resize( pItem->width(), oldHeight + 20 );
 				if ( bDeadTextAdded )
 					pItem->showGUIWindow( 0 );
-				pilotListBox.AddItem( pItem );
+				pilotListBox.AddItem( std::move(pItem) );
 				bLiveTextAdded = true;
 			}
 
-			ActivePilotListItem* pItem = new ActivePilotListItem( pPilots[i] );
-			pilotListBox.AddItem( pItem );
+			auto pItem = std::make_unique<ActivePilotListItem>( pPilots[i] );
+			pilotListBox.AddItem( std::move(pItem) );
 			if ( pPilots[i]->promotePilot() )
 				bJustPromoted = true;
 		}
@@ -550,8 +550,9 @@ void DeadPilotListItem::render()
 }
 
 
-long PilotListBox::AddItem( aListItem* add )
+long PilotListBox::AddItem( std::unique_ptr<aListItem> ownedItem )
 {
+	aListItem* add = ownedItem.get();
 	bDone= 0;
 	DeadPilotListItem* pItem = dynamic_cast< DeadPilotListItem* >(  add );
 	if ( pItem )
@@ -582,7 +583,7 @@ long PilotListBox::AddItem( aListItem* add )
 	
 		
 
-		items[itemCount++] = add;
+		items[itemCount++] = ownedItem.release();
 		add->moveTo( lastX, lastY );
 
 		if ( add->right() > right() ) // can't have it hanging over the edge
@@ -611,7 +612,7 @@ long PilotListBox::AddItem( aListItem* add )
 	}
 	else
 	{
-		aListBox::AddItem( add );
+		return aListBox::AddItem( std::move(ownedItem) );
 	}
 
 	return NO_ERR;
@@ -1583,36 +1584,36 @@ void PilotPromotionArea::setPilot( LogisticsPilot* pPilot, PilotIcon* pIcon )
 
 	for (int i = 0; i < maxSkill; i++ )
 	{
-		SpecialtyListItem* pItem = new SpecialtyListItem( i );
-		aTextListItem* tmpItem = nullptr;
+		auto pItem = std::make_unique<SpecialtyListItem>( i );
+		std::unique_ptr<aTextListItem> tmpItem;
 		if ( i == FIRST_REGULAR_SPECIALTY )
 		{
-			tmpItem = new aTextListItem( IDS_PROMOTION_LISTBOX_FONT );
+			tmpItem = std::make_unique<aTextListItem>( IDS_PROMOTION_LISTBOX_FONT );
 			tmpItem->setText( IDS_REGULAR_SKILLS );
 			tmpItem->setColor( 0xffffffff );
 		}
 		else if ( i == FIRST_VETERAN_SPECIALTY )
 		{
-			tmpItem = new aTextListItem( IDS_PROMOTION_LISTBOX_FONT );
+			tmpItem = std::make_unique<aTextListItem>( IDS_PROMOTION_LISTBOX_FONT );
 			tmpItem->setText( IDS_VETERAN_SKILLS );
 			tmpItem->setColor( 0xffffffff );
 		}
 		else if ( i == FIRST_ELITE_SPECIALTY )
 		{
-			tmpItem = new aTextListItem( IDS_PROMOTION_LISTBOX_FONT );
+			tmpItem = std::make_unique<aTextListItem>( IDS_PROMOTION_LISTBOX_FONT );
 			tmpItem->setText( IDS_ELITE_SKILLS3 );
 			tmpItem->setColor( 0xffffffff );
 		}
 		else if ( i == FIRST_ACE_SPECIALTY )
 		{
-			tmpItem = new aTextListItem( IDS_PROMOTION_LISTBOX_FONT );
+			tmpItem = std::make_unique<aTextListItem>( IDS_PROMOTION_LISTBOX_FONT );
 			tmpItem->setText( IDS_ACE_SKILLS );
 			tmpItem->setColor( 0xffffffff );
 		}
 		if ( tmpItem )
 		{
 			tmpItem->resize( tmpItem->width(), pItem->height()/2 );
-			skillListBox.AddItem( tmpItem );
+			skillListBox.AddItem( std::move(tmpItem) );
 		}
 
 		bool bAdd = 1;
@@ -1620,14 +1621,13 @@ void PilotPromotionArea::setPilot( LogisticsPilot* pPilot, PilotIcon* pIcon )
 		{
 			if ( skillArray[j] == i )
 			{
-				delete pItem;
 				bAdd = 0;
 				break;
 			}
 		}
 
 		if ( bAdd )
-			skillListBox.AddItem( pItem );
+			skillListBox.AddItem( std::move(pItem) );
 	}
 
 	pilotIcon = pIcon;

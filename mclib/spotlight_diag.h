@@ -10,6 +10,7 @@
 
 #pragma once
 #include <cstdint>
+#include <optional>
 
 namespace mc2_spotlight_diag {
 
@@ -30,9 +31,8 @@ const void* slot_owner(const void* camera, long slot);
 // Camera slot ownership clears this on removal and before reuse.
 void untag_slot(const void* camera, long slot);
 
-// Membership probe — used by Camera::updateLights.
-// outSrc may be nullptr.
-bool is_e_slot(const void* camera, long slot, SourceClass* outSrc);
+// Source of a tagged slot — absent when the camera or slot is unregistered.
+std::optional<SourceClass> is_e_slot(const void* camera, long slot);
 
 // Clear every tag for tests, or only the destroyed camera's tags in production.
 void reset();

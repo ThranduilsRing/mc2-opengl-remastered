@@ -30,7 +30,12 @@ struct Heap
 		q.insert(PQNode{key, id, int32_t(id & 7), key});
 		return 0;
 	}
-	bool pop(PQNode& out) { return q.popMin(out); }
+	bool pop(PQNode& out) {
+		const auto result = q.popMin();
+		if (!result) return false;
+		out = *result;
+		return true;
+	}
 	void change(int index, int key) { q.changeAt(index, key); }
 	int find(uint32_t id) { return q.find(id); }
 	int count() { return q.size(); }
@@ -353,13 +358,14 @@ TEST_CASE("OH4 rekey finds the node by id and a miss changes nothing")
 	for (uint32_t i = 1; i <= 5; ++i)
 		heap.insert(PQNode{int32_t(10 * i), i, 0, 0});
 	CHECK(heap.rekey(5, 1));
-	PQNode n;
-	REQUIRE(heap.popMin(n));
-	CHECK(n.id == 5);
-	CHECK(n.key == 1);
+	auto n = heap.popMin();
+	REQUIRE(n);
+	CHECK(n->id == 5);
+	CHECK(n->key == 1);
 	CHECK_FALSE(heap.rekey(99, 0));          // the id is not in the heap: no sift from a wrong slot (the old H18 failure)
-	REQUIRE(heap.popMin(n));
-	CHECK(n.id == 1);
+	n = heap.popMin();
+	REQUIRE(n);
+	CHECK(n->id == 1);
 	CHECK_FALSE(heap.rekey(0xFFFFFFFFu, 0)); // the filler slot is not a node
 	CHECK(heap.size() == 3);
 }
@@ -369,12 +375,13 @@ TEST_CASE("OH5 a key below every other key rises to the root and cannot run off 
 	mc2::OpenHeap heap(10);
 	heap.insert(PQNode{5, 1, 0, 0});
 	heap.insert(PQNode{-5000000, 2, 0, 0});
-	PQNode n;
-	REQUIRE(heap.popMin(n));
-	CHECK(n.id == 2);
-	REQUIRE(heap.popMin(n));
-	CHECK(n.id == 1);
-	CHECK_FALSE(heap.popMin(n));
+	auto n = heap.popMin();
+	REQUIRE(n);
+	CHECK(n->id == 2);
+	n = heap.popMin();
+	REQUIRE(n);
+	CHECK(n->id == 1);
+	CHECK_FALSE(heap.popMin());
 }
 
 TEST_CASE("OH6 an insert past the first reservation is counted once per reallocation and a sized heap never counts")

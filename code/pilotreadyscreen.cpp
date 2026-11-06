@@ -269,7 +269,7 @@ void PilotReadyScreen::begin()
 		if ( bHasPilot != -1 )
 		{
 			pIcons[bHasPilot].select( true );
-			setPilot( pIcons[bHasPilot].getPilot() );
+			setPilot( pIcons[bHasPilot].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
 		}
 		else
 		{
@@ -460,7 +460,7 @@ void PilotReadyScreen::update()
 
 			if ( pIcons[newSel].getPilot() )
 			{
-				setPilot( pIcons[newSel].getPilot() );
+				setPilot( pIcons[newSel].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
 			}
 			else
 				setMech( pIcons[newSel].getMech() );
@@ -686,7 +686,7 @@ void PilotReadyScreen::removeSelectedPilot()
 			{
 				// add the pilot back into the list
 				int oldSel = pilotListBox.GetSelectedItem();
-				auto pNewItem = std::make_unique<LogisticsPilotListBoxItem>( pIcons[i].getPilot() );
+				auto pNewItem = std::make_unique<LogisticsPilotListBoxItem>( pIcons[i].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
 				int newIndex = pilotListBox.AddItem( pNewItem.release() );
 				pIcons[i].setPilot( nullptr );
 				pIcons[i].select( 0 );
@@ -701,7 +701,7 @@ void PilotReadyScreen::removeSelectedPilot()
 					{
 						pilotListBox.SelectItem( oldSel+1 );
 					}
-					setPilot( pIcons[i].getPilot() );
+					setPilot( pIcons[i].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
 				}
 				else
 				{
@@ -748,7 +748,7 @@ void PilotReadyScreen::endDrag( LogisticsMechIcon* pIcon  )
 {
 	if ( pIcon )
 	{
-		LogisticsPilot* pOldPilot = pIcon->getPilot();
+		LogisticsPilot* pOldPilot = pIcon->getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 		if ( pOldPilot )
 			putBackPilot( pOldPilot );
 		pIcon->setPilot( pDragPilot );
@@ -770,7 +770,7 @@ void PilotReadyScreen::putBackPilot( LogisticsPilot* pPilot )
 {
 	for ( int i = 0; i < ICON_COUNT; i++ )
 	{
-		if ( pIcons[i].getPilot() == pPilot )
+		if ( pIcons[i].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) == pPilot )
 		{
 			pIcons[i].setPilot( nullptr );
 			pIcons[i].dimPilot( false );

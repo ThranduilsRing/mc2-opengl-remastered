@@ -189,7 +189,7 @@ void MPLoadMap::seedDialog( bool bSeedSingle )
 	updateMapInfo();
 }
 
-void MPLoadMap::addFile( const char* pFileName, bool bSeedSingle )
+void MPLoadMap::addFile( mc2::czstring pFileName, bool bSeedSingle )
 {
 
 	FitIniFile tmp;
@@ -698,7 +698,7 @@ void MPLoadMap::syncMapListPage()
 	mapListPage->setListSelection( "game.mcl_mp_loadmap_list0.list.map", static_cast<int>(mapList.GetSelectedItem()) );
 }
 
-void MPLoadMap::getMapNameFromFile( const char* pFileName, std::span<char> missionName )
+void MPLoadMap::getMapNameFromFile( mc2::czstring pFileName, std::span<char> missionName )
 {
 	FullPathFileName path;
 	path.init( missionPath, pFileName, ".fit" );

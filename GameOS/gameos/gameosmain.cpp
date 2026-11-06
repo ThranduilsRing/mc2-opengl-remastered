@@ -3,6 +3,7 @@
 #include <memory>
 #include <atomic>
 #include <print>
+#include "mc2fmt.h"
 #include "gameos.hpp"
 #include "hitch_stats.h"
 #include "../../RenderCore/TextureService.h"
@@ -232,7 +233,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->showShadowDebug_ = !pp->showShadowDebug_;
-                    fprintf(stderr, "Shadow Debug: %s\n", pp->showShadowDebug_ ? "CSM view" : "OFF");
+                    mc2::fmt::print_err("Shadow Debug: {}\n", pp->showShadowDebug_ ? "CSM view" : "OFF");
                 }
             }
             break;
@@ -241,7 +242,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->shadowsEnabled_ = !pp->shadowsEnabled_;
-                    fprintf(stderr, "Shadows: %s\n", pp->shadowsEnabled_ ? "ON" : "OFF");
+                    mc2::fmt::print_err("Shadows: {}\n", pp->shadowsEnabled_ ? "ON" : "OFF");
                 }
             }
             break;
@@ -249,7 +250,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             if (alt_debug) {
                 bool cur = gos_GetTerrainDrawEnabled();
                 gos_SetTerrainDrawEnabled(!cur);
-                fprintf(stderr, "Terrain Draw: %s\n", !cur ? "ON" : "OFF");
+                mc2::fmt::print_err("Terrain Draw: {}\n", !cur ? "ON" : "OFF");
             }
             break;
         case SDLK_1:
@@ -260,7 +261,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 float cur = gos_GetTerrainDebugMode();
                 float next = (cur > 7.5f) ? 0.0f : 8.0f;
                 gos_SetTerrainDebugMode(next);
-                fprintf(stderr, "Surface Debug: %s\n",
+                mc2::fmt::print_err("Surface Debug: {}\n",
                     (next > 7.5f)
                         ? "CEMENT-WORD VIZ (R=valid, G=layer&0xFF, B=!useCementAtlas)"
                         : "OFF");
@@ -273,14 +274,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                     if (!pp->screenShadowEnabled_) {
                         pp->screenShadowEnabled_ = true;
                         pp->screenShadowDebug_ = 0;
-                        fprintf(stderr, "Screen Shadows: ON\n");
+                        mc2::fmt::print_err("Screen Shadows: ON\n");
                     } else if (pp->screenShadowDebug_ == 0) {
                         pp->screenShadowDebug_ = 1;
-                        fprintf(stderr, "Screen Shadows: DEBUG (red=terrain, green=lit, blue=shadowed, black=sky)\n");
+                        mc2::fmt::print_err("Screen Shadows: DEBUG (red=terrain, green=lit, blue=shadowed, black=sky)\n");
                     } else {
                         pp->screenShadowEnabled_ = false;
                         pp->screenShadowDebug_ = 0;
-                        fprintf(stderr, "Screen Shadows: OFF\n");
+                        mc2::fmt::print_err("Screen Shadows: OFF\n");
                     }
                 }
             }
@@ -290,14 +291,14 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 int mode = (static_cast<int>(gos_GetTerrainDebugMode()) + 1) % 8;
                 gos_SetTerrainDebugMode(static_cast<float>(mode));
                 switch (mode) {
-                    case 0: fprintf(stderr, "Surface Debug: OFF\n"); break;
-                    case 1: fprintf(stderr, "Surface Debug: DEPTH (R=actual G=undisplaced)\n"); break;
-                    case 2: fprintf(stderr, "Surface Debug: RAW colormap (all terrain)\n"); break;
-                    case 3: fprintf(stderr, "Surface Debug: BLURRED colormap\n"); break;
-                    case 4: fprintf(stderr, "Surface Debug: MATERIAL weights (RGB=rock/grass/dirt)\n"); break;
-                    case 5: fprintf(stderr, "Surface Debug: NORMAL lighting\n"); break;
-                    case 6: fprintf(stderr, "Surface Debug: TERRAIN shadow factor\n"); break;
-                    case 7: fprintf(stderr, "Surface Debug: CLOUD factor\n"); break;
+                    case 0: mc2::fmt::print_err("Surface Debug: OFF\n"); break;
+                    case 1: mc2::fmt::print_err("Surface Debug: DEPTH (R=actual G=undisplaced)\n"); break;
+                    case 2: mc2::fmt::print_err("Surface Debug: RAW colormap (all terrain)\n"); break;
+                    case 3: mc2::fmt::print_err("Surface Debug: BLURRED colormap\n"); break;
+                    case 4: mc2::fmt::print_err("Surface Debug: MATERIAL weights (RGB=rock/grass/dirt)\n"); break;
+                    case 5: mc2::fmt::print_err("Surface Debug: NORMAL lighting\n"); break;
+                    case 6: mc2::fmt::print_err("Surface Debug: TERRAIN shadow factor\n"); break;
+                    case 7: mc2::fmt::print_err("Surface Debug: CLOUD factor\n"); break;
                 }
             }
             break;
@@ -319,7 +320,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                     case 6: name = "HIGHLIGHT-only"; break;
                     case 7: name = "TEX+HIGHLIGHT"; break;
                 }
-                fprintf(stderr, "GPU Props Debug: %d (%s)\n", m, name);
+                mc2::fmt::print_err("GPU Props Debug: {} ({})\n", m, name);
             }
             break;
         case SDLK_5:
@@ -331,7 +332,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 else if (s > 0.83f) s = 0.80f;
                 else                s = 1.00f;
                 gos_SetHudScale(s);
-                fprintf(stderr, "HUD Scale: %.2f\n", s);
+                mc2::fmt::print_err("HUD Scale: {:.2f}\n", s);
             }
             break;
         case SDLK_7:
@@ -339,7 +340,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                 gosPostProcess* pp = getGosPostProcess();
                 if (pp) {
                     pp->shorelineEnabled_ = !pp->shorelineEnabled_;
-                    fprintf(stderr, "Shorelines: %s\n", pp->shorelineEnabled_ ? "ON" : "OFF");
+                    mc2::fmt::print_err("Shorelines: {}\n", pp->shorelineEnabled_ ? "ON" : "OFF");
                 }
             }
             break;
@@ -711,7 +712,7 @@ extern float frameRate;
     }
     void startup_phase(std::string_view name) {
         const std::string nameZ(name);   // printf / emitTiming take a NUL-terminated string
-        printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), nameZ.c_str());
+        mc2::fmt::print_out("[TIME] t={:6.2f}s  phase={}\n", startup_elapsed(), nameZ.c_str());
         if (SmokeMode::state().enabled) {
             // Emit canonical smoke-line for the same milestone.
             SmokeMode::emitTiming(nameZ.c_str());
@@ -748,7 +749,7 @@ extern "C" void mission_phase_begin()
     g_mission_t0 = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     (void)freq; // suppress unused-var if compiler gets clever
-    printf("[MISSION] t=  0.00s  phase=mission_load_start\n");
+    mc2::fmt::print_out("[MISSION] t=  0.00s  phase=mission_load_start\n");
     g_loadPhaseCount = 0;
 }
 
@@ -757,7 +758,7 @@ extern "C" void mission_phase_mark(mc2::czstring name)
     const Uint64 now = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     const double elapsed = static_cast<double>((now - g_mission_t0)) / freq;
-    printf("[MISSION] t=%6.2fs  phase=%s\n", elapsed, name);
+    mc2::fmt::print_out("[MISSION] t={:6.2f}s  phase={}\n", elapsed, mc2::fmt::safe(name));
 
     if (g_loadPhaseCount < kMaxLoadPhaseSamples) {
         g_loadPhaseSamples[g_loadPhaseCount].name = name;
@@ -1011,8 +1012,8 @@ int main(int argc, char** argv)
     const auto& nativePresent = mc2vk::getOrCreateEnginePresentVk();
     s_vsync_active = nativePresent.valid() && nativePresent.health().present_mode == VK_PRESENT_MODE_FIFO_KHR;
 #endif
-    printf("[FRAMECAP] MC2_FPS_CAP=%s vsync=%s -- menu=%d FPS mission=%d FPS%s\n",
-           fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)",   // echoed as typed
+    mc2::fmt::print_out("[FRAMECAP] MC2_FPS_CAP={} vsync={} -- menu={} FPS mission={} FPS{}\n",
+           mc2::fmt::safe(fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)"),   // echoed as typed
            s_vsync_active ? "ON" : "OFF",
            s_fps_cap_menu, s_fps_cap_mission,
            s_vsync_active ? " (cap inactive, vsync owns pacing)" : "");
@@ -1219,25 +1220,25 @@ int main(int argc, char** argv)
 
     mc2_object_recon::drainOnShutdown();
     projectz_shutdown();
-    std::fprintf(stderr, "[SHUTDOWN] engine begin\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] engine begin\n"); std::fflush(stderr);
     Environment.TerminateGameEngine();
-    std::fprintf(stderr, "[SHUTDOWN] engine end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] engine end\n"); std::fflush(stderr);
     AssetScale::shutdown();
 
 #ifdef MC2_IMGUI
     if (!headless) GuiRuntime::Shutdown();
 #endif
     if (!headless) gos_DestroyRenderer();   // headless: process exit frees the state-only renderer
-    std::fprintf(stderr, "[SHUTDOWN] renderer end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] renderer end\n"); std::fflush(stderr);
 
     // Islands, then the present path, then the shared VulkanContext: one order, shared with the editor (gos_host_vk.cpp).
     if (!headless) gos::host::shutdownVulkanBackend();
-    std::fprintf(stderr, "[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] vulkan end\n"); std::fflush(stderr);
 
     if (!headless) graphics::destroy_window(win);
 
     gos_DestroyAudio();
-    std::fprintf(stderr, "[SHUTDOWN] audio end\n"); std::fflush(stderr);
+    mc2::fmt::print_err("[SHUTDOWN] audio end\n"); std::fflush(stderr);
 
     // Return validation exit code if in validate mode
     if (getValidateConfig().enabled)

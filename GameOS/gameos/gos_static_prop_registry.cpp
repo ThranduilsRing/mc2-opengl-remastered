@@ -1,5 +1,6 @@
 #include "static_prop_visible_set.h"
 #include "gos_static_prop_registry_internal.h"
+#include "mc2fmt.h"
 #include <functional>
 #include <atomic>
 #include "../../mclib/texture_assets.h"
@@ -267,7 +268,7 @@ void init() {
     s_recipes.reserve(20000);
     s_recipeRanges.reserve(15000);
     s_liveRangeIndices.reserve(15000);
-    printf("[STATIC_PROP] registry init: memory reserved\n");
+    mc2::fmt::print_out("[STATIC_PROP] registry init: memory reserved\n");
     fflush(stdout);
 }
 
@@ -299,8 +300,8 @@ void destroy() {
     // Texture-pin spec: pin-call accounting summary.  leakedPins != 0 is a
     // bug signal (refcount imbalance between registerRecipe and invalidate).
     if (s_texPinTrace) {
-        printf("[TEX_LIFECYCLE v1] event=pin_summary mission_end "
-               "totalPinCalls=%llu totalUnpinCalls=%llu leakedPins=%lld\n",
+        mc2::fmt::print_out("[TEX_LIFECYCLE v1] event=pin_summary mission_end "
+               "totalPinCalls={} totalUnpinCalls={} leakedPins={}\n",
                static_cast<unsigned long long>(s_totalPinCalls),
                static_cast<unsigned long long>(s_totalUnpinCalls),
                static_cast<long long>((static_cast<int64_t>(s_totalPinCalls) - static_cast<int64_t>(s_totalUnpinCalls))));

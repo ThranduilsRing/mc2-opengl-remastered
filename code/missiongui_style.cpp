@@ -214,7 +214,7 @@ void MissionInterfaceManager::updateVTol()
 							if (MPlayer)
 								newPilotName = MPlayer->reinforcementPilot[vtolNum];
 							else
-								newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( mechToRecover[vtolNum]->tonnage ));
+								newPilotName = const_cast<char*>(LogisticsData::instance->getBestPilot( mechToRecover[vtolNum]->tonnage ).transform([](auto name) { return name.get().c_str(); }).value_or(nullptr));
 
 							if (newPilotName)
 							{

@@ -31,7 +31,7 @@ class PilotListBox : public aListBox
 public:
 
 	PilotListBox();
-	virtual long AddItem( aListItem* item );
+	long AddItem( std::unique_ptr<aListItem> item ) override;
 	virtual void update();
 
 	bool isDone( ){ return bDone; }

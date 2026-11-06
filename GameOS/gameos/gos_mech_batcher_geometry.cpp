@@ -114,7 +114,7 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
 
 void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int lod) {
     if (!mechType) return;
-    registerTypeLodImpl(mechType, mechType->mechShape[lod], lod);
+    registerTypeLodImpl(mechType, mechType->mechShape[lod].get(), lod);
 }
 
 // A ground vehicle body: the type is keyed by its TG_TypeMultiShape (one record per LOD shape, lod 0).

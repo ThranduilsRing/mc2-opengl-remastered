@@ -38,7 +38,6 @@ void LogisticsData::removeMechsInForceGroup()
 		--iter;
 		if ( (*iter)->getForceGroup() )
 		{
-			delete *iter;
 			iter = inventory.erase( iter );
 		}
 	}
@@ -55,7 +54,7 @@ static bool pilotInLiveMech(LogisticsPilot& p)
 #endif
 }
 
-const char*	LogisticsData::getBestPilot( long mechWeight )
+std::optional<std::reference_wrapper<const std::string>> LogisticsData::getBestPilot( long mechWeight )
 {
 	ensureMechBayDataLoaded("getBestPilot");
 
@@ -65,9 +64,9 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 	if (!chosen)
 	{
 		mc2::content::error(mc2::content::Kind::MissionData, "pilots", "getBestPilot: no available pilot not already in a mech");
-		return nullptr;
+		return std::nullopt;
 	}
-	return chosen->getFileName().c_str();   // the pilots list outlives the caller's use
+	return std::cref(chosen->getFileName());   // the pilots list outlives the caller's use
 }
 
 bool		LogisticsData::gotPilotsLeft()
@@ -100,7 +99,7 @@ int LogisticsData::comparePilots( LogisticsPilot* p1, LogisticsPilot* p2, long w
 	if ( p1->getRank() > p2->getRank() )
 		return 1;
 	
-	else if ( p2->getRank() < p1->getRank() )
+	else if ( p1->getRank() < p2->getRank() )
 		return -1;
 
 	// need to check specialty skill text for weight, not really done yet
@@ -174,13 +173,12 @@ void LogisticsData::clearVariants()
 		--iter;
 		if ( !(*iter)->isDesignerMech() )
 		{
-			delete *iter;
 			iter = variants.erase( iter );
 		}
 	}
 }
 
-long	LogisticsData::load( FitIniFile& file )
+std::expected<void, long> LogisticsData::load( FitIniFile& file )
 {
 	clearInventory();
 	resourcePoints = 0;
@@ -197,7 +195,7 @@ long	LogisticsData::load( FitIniFile& file )
 	if (result != NO_ERR)
 	{
 		PAUSE(("SaveGame has no version number.  Not Loading"));
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	long testVersionNum = 0;
@@ -205,13 +203,13 @@ long	LogisticsData::load( FitIniFile& file )
 	if (result != NO_ERR)
 	{
 		PAUSE(("SaveGame has no version number.  Not Loading"));
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	if (testVersionNum != SaveGameVersionNumber)
 	{
 		PAUSE(("SaveGame is not Version %d.  It was Version %d which is not valid!",SaveGameVersionNumber,testVersionNum));
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	file.seekBlock( "General" );	
@@ -231,11 +229,10 @@ long	LogisticsData::load( FitIniFile& file )
 	{
 		mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(i));
 		file.seekBlock( tmp );
-		result = loadVariant( file );
-		if ( result != NO_ERR )
+		if ( !loadVariant( file ) )
 		{
 			gosASSERT( 0 );
-			return -1;
+			return std::unexpected(-1L);
 		}
 	}
 
@@ -282,10 +279,10 @@ long	LogisticsData::load( FitIniFile& file )
 	//Start finding the Leaks
 	//systemHeap->dumpRecordLog();
 
-	return 0;
+	return {};
 }
 
-long LogisticsData::loadVariant( FitIniFile& file )
+std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 {
 	char tmp[256] = {};
 
@@ -293,7 +290,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	if ( !chassisKey )
 	{
 		MC2_LOG(Core, Warn, "logistics: a saved variant has no Chassis and is rejected");
-		return INVALID_FILE_NAME;
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	const LogisticsChassis* pChassis  = nullptr;
@@ -309,7 +306,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	if ( !pChassis ) // we can always try and make it ourseleves, but it should have been loaded by now
 	{
 		gosASSERT( 0 );
-		return INVALID_FILE_NAME;
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	// A variant without a name would take the chassis file name, so it is rejected.
@@ -317,13 +314,13 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	if ( !variantName )
 	{
 		MC2_LOG(Core, Warn, "logistics: a saved variant of chassis '{}' has no VariantName and is rejected", *chassisKey);
-		return INVALID_FILE_NAME;
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	// create the variant, add to the list
-	LogisticsVariant* pVariant = new LogisticsVariant( pChassis, 0 );	
-
-	variants.push_back( pVariant );
+	auto variant = std::make_unique<LogisticsVariant>( pChassis, 0 );
+	LogisticsVariant* pVariant = variant.get();
+	variants.push_back( std::move(variant) );
 	
 	pVariant->setName( *variantName );
 
@@ -359,10 +356,10 @@ long LogisticsData::loadVariant( FitIniFile& file )
 		pVariant->addComponent( id, x, y );
 	}
 
-	return 0;
+	return {};
 }
 
-long LogisticsData::loadMech( FitIniFile& file, int& count )
+std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count )
 {
 	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
 	for ( auto mIter = variants.begin(); mIter != variants.end(); ++mIter )
@@ -370,10 +367,11 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 		if ( mc2::str::iequals( (*mIter)->getName(), variantKey ) )
 		{
 			
-			LogisticsMech* pMech = new LogisticsMech( (*mIter), count );
+			auto mech = std::make_unique<LogisticsMech>( mIter->get(), count );
+			LogisticsMech* pMech = mech.get();
 			// A mech without a Pilot key has no pilot: the key is never read as the variant text.
 			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
-			inventory.push_back( pMech );
+			inventory.push_back( std::move(mech) );
 
 			if ( pilotKey )
 			{
@@ -391,11 +389,11 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 			}
 
 			// it could have had no pilot
-			return 0;
+			return {};
 		}
 	}
 
-	return -1; // failed in finding the variant
+	return std::unexpected(-1L); // failed in finding the variant
 }
 
 
@@ -470,11 +468,11 @@ void	LogisticsData::setMissionCompleted( )
 				 (pMover->getCommanderId() == Commander::home->getId()) &&
 				 (pMover->getMoveType() != MOVETYPE_AIR))
 			{
-				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() );
+				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 				DWORD base, highlight1, highlight2;
 				(static_cast<Mech3DAppearance*>(pMover->getAppearance()))->getPaintScheme( base, highlight1, highlight2 );
-				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() );
+				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 				{
 					static const bool s_lfResolve = false;
@@ -500,7 +498,7 @@ void	LogisticsData::setMissionCompleted( )
 					else
 					{
 						removeMechFromInventory( pMech->getName().c_str(), pMover->getPilot()->getName() );
-						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName );
+						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 						addMechToInventory( pVar, ForceGroupCount++, pPilot, base, highlight1, highlight2 );
 						if ( pPilot )
 							pPilot->setUsed( true );
@@ -512,7 +510,7 @@ void	LogisticsData::setMissionCompleted( )
 					if ( !pMover->isDestroyed() && !pMover->isDisabled() )
 					{
 						const char* vname = (static_cast<BattleMech*>(pMover))->variantName;
-						LogisticsVariant* pVariant = getVariant( vname );
+						LogisticsVariant* pVariant = getVariant( vname ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 						if ( !pVariant )
 						{
 							// Runtime variants can be absent from the base CSVs. Deployed snapshots
@@ -563,7 +561,7 @@ void	LogisticsData::setMissionCompleted( )
 #endif
 }
 
-LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotName )
+std::optional<std::reference_wrapper<LogisticsMech>> LogisticsData::getMech( mc2::czstring MechName, mc2::czstring pilotName )
 {
 	const std::string wanted = mc2::str::from_c( MechName );
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
@@ -573,34 +571,33 @@ LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotN
 			if ( !pilotName )
 			{
 				if ( !(*iter)->getPilot() )
-					return (*iter);
+					return **iter;
 			}
 
 			else
 			{
 				if ( (*iter)->getPilot() && mc2::str::iequals( (*iter)->getPilot()->getName(), mc2::str::from_c( pilotName ) ) )
-					return (*iter);
+					return **iter;
 			}
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
-void LogisticsData::removeMechFromInventory( const char* mechName, const char* pilotName )
+void LogisticsData::removeMechFromInventory( mc2::czstring mechName, mc2::czstring pilotName )
 {
-	LogisticsMech* pMech = getMech( mechName, pilotName );
+	auto pMech = getMech( mechName, pilotName );
 
 	gosASSERT( pMech );
 
 	if ( pMech )
 	{
-		std::erase( inventory, pMech );
-		delete pMech;
+		std::erase_if( inventory, [pMech](const auto& mech) { return mech.get() == &pMech->get(); } );
 	}
 }
 
-LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
+std::optional<std::reference_wrapper<LogisticsPilot>> LogisticsData::getPilot( mc2::czstring pilotName )
 {
 	const std::string wanted = mc2::str::from_c( pilotName );
 	// look for available ones first
@@ -610,7 +607,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 		{
 			if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 			{
-				return &(*iter);
+				return *iter;
 			}
 		}
 	}
@@ -619,21 +616,21 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 	{
 		if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 		{
-			return &(*iter);
+			return *iter;
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
-LogisticsVariant* LogisticsData::getVariant( const char* mechName )
+std::optional<std::reference_wrapper<LogisticsVariant>> LogisticsData::getVariant( mc2::czstring mechName )
 {
 	const std::string wanted = mc2::str::from_c( mechName );
 	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
-			return (*iter);
+			return **iter;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }

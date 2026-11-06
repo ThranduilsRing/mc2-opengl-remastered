@@ -401,7 +401,7 @@ def build_inventory(root: Path, paths: list[str] | None = None, *, excluded=(), 
                     if match := re.search(r"\binclude\s*\(([^)]+)", line, re.I):
                         refs.append((n, "path", match.group(1).strip(), "cmake include"))
                     continue
-                if re.match(r"\s*(?:run_check\w*|add_check)\s+", line):
+                if re.match(r"\s*(?:run_check\w*|run_nightly|add_check)\s+", line):
                     quoted = re.findall(r'"([^"\n]*)"', line)
                     line = quoted[-1] if quoted else ""
                 refs.extend((n, kind, ref, "command") for kind, ref in _shell_refs(line))

@@ -38,30 +38,30 @@ int CPrefs::load(mc2::czstring name) {
     return 0;
 }
 
-int CPrefs::save() {
+std::expected<void, int> CPrefs::save() {
     const auto values = mc2::options::preferenceSnapshot(*this, render);
     std::string text = mc2::options::rewritePreferences(sourceText_, loadedValues_, values);
 #ifndef VIEWER
     if (sourceText_.empty() || loadedKeyboard_ != preferenceHotKeysFingerprint())
         savePreferenceHotKeys(text);
 #endif
-    if (loadedDefault_ && text == sourceText_ && !sourceText_.empty()) return 0;
+    if (loadedDefault_ && text == sourceText_ && !sourceText_.empty()) return {};
     // Keep the existing recoverable backup, and never expose a partially written file to the next startup.
     if (std::FILE* output = std::fopen("options.cfg.tmp", "wb")) {
         const bool written = std::fwrite(text.data(), 1, text.size(), output) == text.size();
         const bool closed = std::fclose(output) == 0;
-        if (!written || !closed) { std::remove("options.cfg.tmp"); return -1; }
-    } else return -1;
+        if (!written || !closed) { std::remove("options.cfg.tmp"); return std::unexpected(-1); }
+    } else return std::unexpected(-1);
     _chmod("options.cfg", _S_IWRITE); _chmod("options.cfg.old", _S_IWRITE);
     std::remove("options.cfg.old");
     std::rename("options.cfg", "options.cfg.old");
     if (std::rename("options.cfg.tmp", "options.cfg") != 0) {
         std::rename("options.cfg.old", "options.cfg");
-        return -1;
+        return std::unexpected(-1);
     }
     sourceText_ = std::move(text); loadedValues_ = values; loadedDefault_ = true;
 #ifndef VIEWER
     loadedKeyboard_ = preferenceHotKeysFingerprint();
 #endif
-    return 0;
+    return {};
 }

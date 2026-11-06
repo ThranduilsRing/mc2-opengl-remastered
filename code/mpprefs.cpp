@@ -658,7 +658,7 @@ void MPPrefs::initColors()
 
 }
 
-int aBmpListItem::setBmp( const char* pFileName )
+int aBmpListItem::setBmp( mc2::czstring pFileName )
 {
 	if ( strlen( pFileName ) >= MAXLEN_INSIGNIA_FILE )
 		return 0;

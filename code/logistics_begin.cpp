@@ -263,7 +263,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 					Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 					if ( pMover && commanderIsHome(pMover->getCommander()) )
 					{
-						LogisticsPilot* pPilot = LogisticsData::instance->getPilot( pMover->getPilot()->getName() );
+						LogisticsPilot* pPilot = LogisticsData::instance->getPilot( pMover->getPilot()->getName() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 						if ( pPilot )
 							pPilot->setUsed( true );
 					}
@@ -431,7 +431,7 @@ void Logistics::initializeLogData()
 		for ( int i = pTeam->getRosterSize() - 1; i > -1; i-- )
 		{
 			Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-			LogisticsPilot* pPilot = LogisticsData::instance->getPilot(pMover->getPilot()->getName());
+			LogisticsPilot* pPilot = LogisticsData::instance->getPilot(pMover->getPilot()->getName()).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 			DWORD base, highlight1, highlight2;
 			(static_cast<Mech3DAppearance*>(pMover->getAppearance()))->getPaintScheme( highlight1,
@@ -440,7 +440,7 @@ void Logistics::initializeLogData()
 			
 			if ( pMover->getObjectType()->getObjectTypeClass() == BATTLEMECH_TYPE )
 			{
-				LogisticsVariant* pVar = LogisticsData::instance->getVariant( (static_cast<BattleMech*>(pMover))->variantName );
+				LogisticsVariant* pVar = LogisticsData::instance->getVariant( (static_cast<BattleMech*>(pMover))->variantName ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 				LogisticsData::instance->addMechToInventory( 
 					pVar, 1, pPilot,
 					base, highlight1, highlight2 );
@@ -449,7 +449,7 @@ void Logistics::initializeLogData()
 	}
 }
 
-void Logistics::playFullScreenVideo( const char* fileName )
+void Logistics::playFullScreenVideo( mc2::czstring fileName )
 {
 	if ( !fileName || !fileName[0])
 		return;
@@ -487,7 +487,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	soundSystem->stopDigitalMusic();
 }
 
-void Logistics::setResultsHostLeftDlg( const char* pName )
+void Logistics::setResultsHostLeftDlg( mc2::czstring pName )
 {
 	if ( missionResults && logisticsState == log_RESULTS )
 	{

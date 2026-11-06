@@ -21,7 +21,7 @@ def entries(text, separator):
 def coverage_problems(checks, inventory, manual, board, harnesses, registered, debt, tracked=None):
     issues = []
     items = {item["path"]: item for item in inventory["scripts"]}
-    rows = re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
+    rows = re.findall(r'^run_(?:check(?:_tri)?|nightly)\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
     if tracked is None:
         tracked = items
     for label, command in rows:
@@ -57,7 +57,7 @@ def coverage_problems(checks, inventory, manual, board, harnesses, registered, d
 def ownership_problems(modules, ownership, board, external_owners=None):
     """Each discovered Python test module has one contract-row owner, or scripts_tests."""
     issues = []
-    rows = re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
+    rows = re.findall(r'^run_(?:check(?:_tri)?|nightly)\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
     commands = {label: command for label, command in rows}
     commands.update(external_owners or {})
     tests = {}

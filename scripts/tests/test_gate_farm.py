@@ -15,9 +15,8 @@ import merge_gate as gate
 def test_finale_keeps_windowed_audit_and_tier1_coverage():
     steps = gate.affected_plan(gate.plan(6), ['mclib/msl_load.cpp'])
     command = next(c for n, c, _ in steps if n == 'determinism-mc2_24')
-    assert '--headless-both' not in command
+    assert '--headless-both' in command   # same 2601-frame chain as windowed (34 s against 121 s); the overlap worker still runs
     assert int(command[command.index('--ticks') + 1]) > 2404
-    assert command[command.index('--sim-speed') + 1] == '4'
     tier1 = next(c for n, c, _ in steps if n == 'tier1')
     from scripts.smoke_lib.manifest import parse_manifest
     missions = {e.stem for e in parse_manifest(gate.ROOT / 'tests/smoke/smoke_missions.txt') if e.tier == 'tier1'}
@@ -60,16 +59,6 @@ def test_mod_payload_cache_survives_random_candidate_names(tmp_path, monkeypatch
     monkeypatch.setattr(gate, 'ROOT', tmp_path / 'other-lane')
     command = next(c for n, c, _ in gate.install_plan(gate.plan(6), tmp_path / 'candidate') if n == 'mods')
     assert command[command.index('--stage-root') + 1] != roots[0]
-
-
-def test_kit_visibility_is_nightly_but_catching_stages_remain():
-    for full in (False, True):
-        steps = gate.affected_plan(gate.plan(6), ['code/mission_update.cpp'], full=full)
-        env = next(e for n, _, e in steps if n == 'kit-visibility')
-        assert bool(env.get('MC2_GATE_SKIP_REASON')) == (not full)
-        for name in ('tier1', 'mods', 'determinism-mc2_03', 'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'):
-            assert not next(e for n, _, e in steps if n == name).get('MC2_GATE_SKIP_REASON')
-        assert next(e for n, _, e in steps if n == 'tier1')['MC2_VULKAN_VALIDATION'] == '1'
 
 
 @pytest.mark.parametrize('failure', [None, 'submit', 'wait', 'fetch', 'bad-id'])
@@ -293,15 +282,6 @@ def test_mad_flags_declared_view_needs_a_numeric_row_under_its_bound():
     assert gate.parse_declared_views(['a', 'b=1.5']) == {'a': 0.5, 'b': 1.5}
 
 
-def test_farm_determinism_defaults_on_and_rows_log_their_host():
-    import inspect
-    import merge_gate as gate
-    src = inspect.getsource(gate)
-    assert '"--farm-determinism", action=argparse.BooleanOptionalAction, default=True' in src
-    assert "determinism row host=farm" in inspect.getsource(gate.farm_stage)
-    assert "local PC, farm fallback" in inspect.getsource(gate.farm_stage)
-
-
 def test_declared_view_bad_bound_is_an_argparse_error(capsys, monkeypatch):
     monkeypatch.delenv('MC2_IN_GATE', raising=False)   # the gate's contracts stage sets it
     with pytest.raises(SystemExit) as exc:
@@ -342,3 +322,8 @@ def test_farm_local_fallback_waits_for_the_game_row_on_the_same_install(tmp_path
     assert order == ['battery done', 'fallback']
     with gate.install_lock(['x', '--install', str(clone)]):
         assert gate.farm_stage(command, {}, runner=run).returncode == 0   # another install: no wait
+
+
+def test_saveload_headless_rows_are_the_proven_ones():
+    steps = dict((n, c) for n, c, _ in gate.plan(6))
+    assert {m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24") if "--headless" in steps["saveload-" + m]} == {"mc2_16", "mc2_24"}

@@ -95,10 +95,11 @@ namespace Stuff {
 	// Constructors
 	//
 	public:
-		enum WriteStatus {
+		enum class WriteStatus : int {
 			ReadOnly,
 			WriteOnly
 		};
+		using enum WriteStatus;
 
 		FileStream();
 		explicit FileStream(

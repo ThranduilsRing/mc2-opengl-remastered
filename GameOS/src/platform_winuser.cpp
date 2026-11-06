@@ -6,6 +6,7 @@
 
 #include"platform_windows.h"
 #include"platform_str.h"
+#include"mc2fmt.h"
 
 #define _Inout_
 
@@ -33,7 +34,7 @@ LPTSTR WINAPI CharLower(
 
 int MessageBoxA(HWND,LPCSTR header, LPCSTR message, UINT )
 {
-    printf("MSGBOX: %s : %s\n", header, message);
+    mc2::fmt::print_out("MSGBOX: {} : {}\n", mc2::fmt::safe(header), mc2::fmt::safe(message));
     return 0;
 }
 

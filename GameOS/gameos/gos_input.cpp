@@ -1,4 +1,5 @@
 #include <optional>
+#include <utility>
 #include <SDL2/SDL.h>
 #include <string.h> // memset
 #include <cstdio>
@@ -19,10 +20,10 @@
 
 // I3: the pure edge kernel in input_capture_policy.h stores its result in the
 // same byte slots as input::KeyState; the two enums must stay value-identical.
-static_assert(static_cast<int>(input::capture::Edge::Free)     == input::KS_FREE,     "capture::Edge must mirror input::KeyState");
-static_assert(static_cast<int>(input::capture::Edge::Pressed)  == input::KS_PRESSED,  "capture::Edge must mirror input::KeyState");
-static_assert(static_cast<int>(input::capture::Edge::Held)     == input::KS_HELD,     "capture::Edge must mirror input::KeyState");
-static_assert(static_cast<int>(input::capture::Edge::Released) == input::KS_RELEASED, "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Free)     == std::to_underlying(input::KS_FREE),     "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Pressed)  == std::to_underlying(input::KS_PRESSED),  "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Held)     == std::to_underlying(input::KS_HELD),     "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Released) == std::to_underlying(input::KS_RELEASED), "capture::Edge must mirror input::KeyState");
 
 static input::MouseInfo g_mouse_info;
 static input::KeyboardInfo g_keyboard_info;

@@ -1136,7 +1136,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 							if ( !mech )
 							{
 								// (b) buy path: purchase then locate fresh instance
-								if ( ld->purchaseMech( variant ) != 0 )
+								if ( !ld->purchaseMech( variant ) )
 								{
 									mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} FAILED purchase variant={}",
 									    mc2::fmt::as_i32(slot), variant->getName().c_str());
@@ -1158,7 +1158,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 							}
 
 							// Pilot check BEFORE force-group assignment
-							LogisticsPilot* pilot = ld->getFirstAvailablePilot();
+							LogisticsPilot* pilot = ld->getFirstAvailablePilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 							if ( !pilot )
 							{
 								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} STOPPED no-pilot mech={}",
@@ -1166,7 +1166,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 								break;
 							}
 
-							if ( ld->addMechToForceGroup( mech, slot ) != 0 )
+							if ( !ld->addMechToForceGroup( mech, slot ) )
 							{
 								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"lance-add slot={:d} REJECTED addMechToForceGroup mech={}",
 								    mc2::fmt::as_i32(slot), variant->getName().c_str());
@@ -1250,7 +1250,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						if ( !pick && n > 0 )
 							pick = pool[n - 1];
 
-						if ( pick && ld->purchaseMech( pick ) == 0 )
+						if ( pick && ld->purchaseMech( pick ) )
 						{
 							LogisticsMech* bought = nullptr;
 							auto inv = ld->getInventory();
@@ -1264,7 +1264,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 									return mech && mech->getForceGroup() == slot;
 								}) ) ++slot;
 								ld->addMechToForceGroup( bought, slot );
-								LogisticsPilot* pilot = ld->getFirstAvailablePilot();
+								LogisticsPilot* pilot = ld->getFirstAvailablePilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 								if ( pilot )
 									bought->setPilot( pilot );
 								ld->setMechToModify( bought );

@@ -81,31 +81,31 @@ class FitIniFile : public File
 		
 		long getNextWord (char *&line, char *buffer, unsigned long bufLen);
 
-		float textToFloat (const char *num);
-		double textToDouble (const char *num);
+		float textToFloat (mc2::czstring num);
+		double textToDouble (mc2::czstring num);
 		
-		long textToLong (const char *num);
-		int textToInt(const char *num);
-		unsigned long textToULong (const char *num);
+		long textToLong (mc2::czstring num);
+		int textToInt(mc2::czstring num);
+		unsigned long textToULong (mc2::czstring num);
 		
-		short textToShort (const char *num);
-		unsigned short textToUShort (const char *num);
+		short textToShort (mc2::czstring num);
+		unsigned short textToUShort (mc2::czstring num);
 		
-		char textToChar (const char *num);
-		unsigned char textToUChar (const char *num);
+		char textToChar (mc2::czstring num);
+		unsigned char textToUChar (mc2::czstring num);
 
-		bool booleanToLong (const char *num);
+		bool booleanToLong (mc2::czstring num);
 
-		float mathToFloat (const char *num);
+		float mathToFloat (mc2::czstring num);
 		
-		long mathToLong (const char *num);
-		unsigned long mathToULong (const char *num);
+		long mathToLong (mc2::czstring num);
+		unsigned long mathToULong (mc2::czstring num);
 		
-		short mathToShort (const char *num);
-		unsigned short mathToUShort (const char *num);
+		short mathToShort (mc2::czstring num);
+		unsigned short mathToUShort (mc2::czstring num);
 		
-		char mathToChar (const char *num);
-		unsigned char mathToUChar (const char *num);
+		char mathToChar (mc2::czstring num);
+		unsigned char mathToUChar (mc2::czstring num);
 
 		long floatToText (char *result, float num, unsigned long bufLen);
 		
@@ -124,7 +124,7 @@ class FitIniFile : public File
 		FitIniFile (void);
 		~FitIniFile (void);
 
-		virtual long open (const char* fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
+		virtual long open (mc2::czstring fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
 		virtual long open (FilePtr _parent, unsigned long fileSize, long numChildren = 50);
 		// FITINI-INMEM-OPEN-1: parse a .fit directly from an in-memory buffer
 		// (caller-owned, not copied) -- reuses the base in-RAM File::open(buffer,len)
@@ -133,8 +133,8 @@ class FitIniFile : public File
 		// name-hide the base File::open(const char*, int) buffer overload.
 		virtual long open (const char* buffer, int bufferLength);
 
-		virtual long create (const char* fName);
-		virtual long createWithCase(const char* fName );
+		virtual long create (mc2::czstring fName);
+		virtual long createWithCase(mc2::czstring fName );
 
 
 		virtual void close (void);
@@ -144,7 +144,7 @@ class FitIniFile : public File
 			return INIFILE;
 		}
 
-		long seekBlock (const char *blockId);
+		long seekBlock (mc2::czstring blockId);
 
 		long readIdFloat (std::string_view varName, float &value);
 		long readIdDouble (std::string_view varName, double &value);
@@ -204,7 +204,7 @@ class FitIniFile : public File
 		long writeIdChar (std::string_view varName, char value);
 		long writeIdUChar (std::string_view varName, unsigned char value);
 		
-		long writeIdString (const char *varName, const char *result);
+		long writeIdString (mc2::czstring varName, mc2::czstring result);
 
 		long writeIdFloatArray (std::string_view varName, float *array, unsigned long numElements);
 		long writeIdLongArray (std::string_view varName, long *array, unsigned long numElements);

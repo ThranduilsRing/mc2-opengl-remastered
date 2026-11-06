@@ -498,7 +498,7 @@ int	MechPurchaseScreen::handleMessage( unsigned long what, unsigned long who )
 						{
 							LogisticsMech* pMech = (static_cast<MechListBoxItem*>(pItem))->getMech();
 							int oldCount = LogisticsData::instance->getVariantsInInventory( pMech->getVariant(), true );
-							if ( NO_ERR == LogisticsData::instance->sellMech( pMech ) && ( oldCount < 2 ) )
+							if ( LogisticsData::instance->sellMech( pMech ) && ( oldCount < 2 ) )
 								(static_cast<MechListBoxItem*>(pItem))->resetMech( );
 							soundSystem->playDigitalSample( LOG_SELECT );		
 						}                                    
@@ -583,7 +583,7 @@ void MechPurchaseScreen::removeMech( LogisticsMech* pMech )
 	aListItem* pItem = inventoryListBox.GetItem( index );
 
 	int oldCount = LogisticsData::instance->getVariantsInInventory( pMech->getVariant(), true );
-	if ( NO_ERR == LogisticsData::instance->sellMech( pMech ) && ( oldCount < 2 ) )
+	if ( LogisticsData::instance->sellMech( pMech ) && ( oldCount < 2 ) )
 	{
 		inventoryListBox.RemoveItem( pItem, true );
 	}
@@ -601,7 +601,7 @@ bool MechPurchaseScreen::selectFirstBuyableMech()
 {
 	for ( int i = 0; i < variantListBox.GetItemCount(); i++ )
 	{
-		if ( NO_ERR == LogisticsData::instance->canPurchaseMech( 
+		if ( LogisticsData::instance->canPurchaseMech(
 			(static_cast<MechListBoxItem*>(variantListBox.GetItem(i)))->getMech()->getVariant() ) )
 		{
 			variantListBox.SelectItem( i );

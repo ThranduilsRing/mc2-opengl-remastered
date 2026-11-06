@@ -1,8 +1,10 @@
 #ifndef LOGISTICSDIALOG_H
 #define LOGISTICSDIALOG_H
 #include <memory>
+#include "mc2_czstring.h"
 #include <span>
 #include <string_view>
+#include "mc2_czstring.h"
 
 // The menu's read-only campaign version preflight, also exercised by legacy fixtures.
 bool isCorrectVersionCampaignSave(std::string_view path);
@@ -85,7 +87,7 @@ class LogisticsOKDialog : public LogisticsDialog
 		static int init( FitIniFile& file );
 
 		void				setText( int textID, int CancelButton, int OKButton );
-		void				setText( const char* mainText );
+		void				setText( mc2::czstring mainText );
 
 
 
@@ -110,6 +112,7 @@ class LogisticsOneButtonDialog : public LogisticsDialog
 
 
 		LogisticsOneButtonDialog();
+		void setPlayerLeftText( mc2::czstring playerName );
 		
 
 		virtual int			handleMessage( unsigned long, unsigned long );
@@ -117,7 +120,7 @@ class LogisticsOneButtonDialog : public LogisticsDialog
 		static int init( FitIniFile& file );
 
 		void				setText( int textID, int CancelButton, int OKButton );
-		void				setText( const char* mainText );
+		void				setText( mc2::czstring mainText );
 
 
 
@@ -195,10 +198,10 @@ class LogisticsSaveDialog : public LogisticsDialog
 
 		std::string	selectedName;
 
-		void	initDialog(const char* path, bool bCampaign);
+		void	initDialog(mc2::czstring path, bool bCampaign);
 		void	updateCampaignMissionInfo();
-		void	setMission( const char* path );
-		void	readCampaignNameFromFile(const char* fileName, std::span<char> resultName );
+		void	setMission( mc2::czstring path );
+		void	readCampaignNameFromFile(mc2::czstring fileName, std::span<char> resultName );
 		bool	isCorrectVersionSaveGame( char *fileName );
 
 
@@ -286,7 +289,7 @@ public:
 		~LogisticsMapInfoDialog();
 		virtual void end();
 
-		void setMap( const char* pFileName );
+		void setMap( mc2::czstring pFileName );
 		
 		int init( );
 		virtual int			handleMessage( unsigned long, unsigned long );

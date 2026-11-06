@@ -95,7 +95,7 @@ std::string LookupArchivePath(std::string_view dataPath)
 	return {};
 }
 
-long fileExists (const char* fName, long destination_mask)
+long fileExists (mc2::czstring fName, long destination_mask)
 {
 	// META-FIX design E (confirmed issue-#8-class bug): this probe passed the
 	// RAW caller string to FastFileFind while File::open normalized first, so
@@ -137,7 +137,7 @@ long fileExists (const char* fName, long destination_mask)
 }
 
 //---------------------------------------------------------------------------
-long fileExistsOnCD (const char* fName)
+long fileExistsOnCD (mc2::czstring fName)
 {
 	//Just add the CD path here and see if its there.
 	char bigPath[2048];
@@ -154,7 +154,7 @@ long fileExistsOnCD (const char* fName)
 }
 
 //---------------------------------------------------------------------------
-bool file1OlderThan2 (const char* file1, const char* file2)
+bool file1OlderThan2 (mc2::czstring file1, mc2::czstring file2)
 {
 	if ((fileExists(file1) == 1) && (fileExists(file2) == 1))
 	{
@@ -229,7 +229,7 @@ bool File::eof (void)
 }
 
 //---------------------------------------------------------------------------
-long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLower)
+long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotLower)
 {
 	gosASSERT( !isOpen() );
 	//-------------------------------------------------------------
@@ -594,12 +594,12 @@ long File::open(const char* buffer, int bufferLength )
 }
 
 //---------------------------------------------------------------------------
-long File::create (const char* fName)
+long File::create (mc2::czstring fName)
 {
 	return (open(fName,CREATE));
 }
 
-long File::createWithCase(const char* fName )
+long File::createWithCase(mc2::czstring fName )
 {
 	gosASSERT( !isOpen() );
 	//-------------------------------------------------------------
@@ -1554,7 +1554,7 @@ long File::writeFloat (float value)
 
 //---------------------------------------------------------------------------
 
-long File::writeString (const char *buffer)
+long File::writeString (mc2::czstring buffer)
 {
 	long result = -1;
 	

@@ -653,7 +653,10 @@ void PackAndDispatch() {
             for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s) {
                 if (!wl[s]) continue;
                 mc2_spotlight_diag::SourceClass src;
-                if (mc2_spotlight_diag::is_e_slot(eye, s, &src)
+                if (mc2_spotlight_diag::is_e_slot(eye, s).transform([&src](auto value) {
+                        src = value;
+                        return true;
+                    }).value_or(false)
                     && (src == mc2_spotlight_diag::Mech
                         || src == mc2_spotlight_diag::Gv))
                     s_moverLightPtrs.push_back(wl[s]);
@@ -714,7 +717,10 @@ void PackAndDispatch() {
             if (dumpThisFrame) {
                 const long slot = slotOf(tl);
                 mc2_spotlight_diag::SourceClass src;
-                const bool eOwned = mc2_spotlight_diag::is_e_slot(eye, slot, &src);
+                const bool eOwned = mc2_spotlight_diag::is_e_slot(eye, slot).transform([&src](auto value) {
+                    src = value;
+                    return true;
+                }).value_or(false);
                 // owner prints like printf %p on MSVC x64: 16 upper-case hex digits, no 0x.
                 MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
                     "idx={} slot={} type={} active={} ownerEnabled={} "

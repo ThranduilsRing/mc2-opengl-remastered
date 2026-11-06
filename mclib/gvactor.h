@@ -53,7 +53,7 @@ class GVAppearanceType : public AppearanceType
 {
 	public:
 	
-		TG_TypeMultiShapePtr		gvShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> gvShape[MAX_LODS];
 		std::unique_ptr<TG_TypeMultiShape> renderLods[MAX_LODS];
 		float renderLodDistance[MAX_LODS]{};
 		struct RenderVariant {
@@ -64,13 +64,13 @@ class GVAppearanceType : public AppearanceType
 		std::vector<RenderVariant> renderVariants;
 		float						lodDistance[MAX_LODS];
 		
-		TG_TypeMultiShapePtr		gvShadowShape;
+		std::unique_ptr<TG_TypeMultiShape> gvShadowShape;
 		
- 		TG_TypeMultiShapePtr		gvDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> gvDmgShape;
 		
 		char						destructEffect[60];
 		
-		TG_AnimateShapePtr			gvAnimData[MAX_GV_ANIMATIONS];
+		std::unique_ptr<TG_AnimateShape> gvAnimData[MAX_GV_ANIMATIONS];
 		bool						gvAnimLoop[MAX_GV_ANIMATIONS];
 		bool						gvReverse[MAX_GV_ANIMATIONS];
 		bool						gvRandom[MAX_GV_ANIMATIONS];
@@ -84,8 +84,8 @@ class GVAppearanceType : public AppearanceType
 		NodeData					*nodeData;			//View of nodeDataStore
 		std::unique_ptr<NodeData[]>	nodeDataStore;		//Owns the node table, built once by init(file)
 		
-		static TG_TypeMultiShapePtr	SensorTriangleShape;
-		static TG_TypeMultiShapePtr	SensorCircleShape;
+		static TG_TypeMultiShapePtr SensorTriangleShape;
+		static TG_TypeMultiShapePtr SensorCircleShape;
 		
 	public:
 	
@@ -196,6 +196,11 @@ class GVAppearance : public ObjectAppearance
 
 		GVAppearanceType*							appearType;
 		
+		// gvShape is also rebound temporarily to renderShape during paint setup.
+		std::unique_ptr<TG_MultiShape> gvShapeOwner_;
+		std::unique_ptr<TG_MultiShape> gvShadowShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorCircleShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorTriangleShapeOwner_;
 		TG_MultiShapePtr							gvShape;
 		std::unique_ptr<TG_MultiShape> renderShape;
 		std::vector<DWORD> renderTextures;

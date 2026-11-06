@@ -44,20 +44,19 @@ TEST_CASE("bodyFits accepts exactly the pixels the header claims")
 TEST_CASE("readAllBytes returns the file, and refuses an empty, oversized or short-read file")
 {
 	namespace tga = mc2::tga;
-	std::vector<unsigned char> out{9, 9};
+	std::vector<unsigned char> scratch{9, 9};
 
 	FakeFile ok;
 	ok.bytes = {1, 2, 3, 4};
-	CHECK(tga::readAllBytes(ok, out));
-	CHECK(out == ok.bytes);
+	const auto out = tga::readAllBytes(ok, std::move(scratch));
+	REQUIRE(out);
+	CHECK(*out == ok.bytes);
 
 	FakeFile empty;
-	CHECK_FALSE(tga::readAllBytes(empty, out));
-	CHECK(out.empty());
+	CHECK_FALSE(tga::readAllBytes(empty));
 
 	FakeFile shortRead;
 	shortRead.bytes = {1, 2, 3, 4};
 	shortRead.shortBy = 1;
-	CHECK_FALSE(tga::readAllBytes(shortRead, out));
-	CHECK(out.empty());
+	CHECK_FALSE(tga::readAllBytes(shortRead));
 }

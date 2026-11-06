@@ -4,6 +4,7 @@
 
 #include"stuffheaders.hpp"
 #include"platform_str.h"
+#include <memory>
 
 inline constexpr int MAX_LINE_SIZE = 512;
 
@@ -300,9 +301,11 @@ void
 	//------------------------------------------------
 	//
 	MacroTree *orig_tree = macro_tree;
+	std::unique_ptr<MacroTree> ownedTree;
 	if (!macro_tree)
 	{
-		macro_tree = new MacroTree(nullptr, true);
+		ownedTree = std::make_unique<MacroTree>(nullptr, true);
+		macro_tree = ownedTree.get();
 		Check_Object(macro_tree);
 	}
 
@@ -486,7 +489,7 @@ Parse:
 			macros.DeletePlugs();
 		}
 		Check_Object(macro_tree);
-		delete macro_tree;		
+		ownedTree.reset();
 	}
 
 	//

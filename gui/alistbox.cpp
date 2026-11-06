@@ -378,7 +378,6 @@ long aListBox::AddItem(aListItem* add)
 	if (itemCount >= MAX_LIST_ITEMS)
 		return TOO_MANY_ITEMS;
 
-	
 	float lastX = globalX() + add->globalX();
 	float lastY = globalY() + topSkip;
 	
@@ -939,10 +938,11 @@ bool aDropList::pointInside(long xPos, long yPos) const
 	return retval;
 }
 
-long aDropList::AddItem(aListItem* itemString)
+long aDropList::AddItem(std::unique_ptr<aListItem> itemString)
 {
-	long retval = ListBox().AddItem(itemString);
-	float newHeight = (itemString->height() + ListBox().getSpaceBetweenItems()) * ListBox().GetItemCount()+4;
+	const float itemHeight = itemString->height();
+	long retval = ListBox().AddItem(std::move(itemString));
+	float newHeight = (itemHeight + ListBox().getSpaceBetweenItems()) * ListBox().GetItemCount()+4;
 	if (newHeight > listBoxMaxHeight)
 	{
 		newHeight = listBoxMaxHeight;
@@ -954,20 +954,20 @@ long aDropList::AddItem(aListItem* itemString)
 
 long				aDropList::AddItem( const char* text, unsigned long color )
 {
-	aAnimTextListItem* pItem = new aAnimTextListItem( 27333 );
+	auto pItem = std::make_unique<aAnimTextListItem>( 27333 );
 	*pItem = templateItem;
 	pItem->setText( text );
 	pItem->setColor( color );
-	return AddItem( pItem );
+	return AddItem( std::move(pItem) );
 }
 
 long aDropList::AddItem( unsigned long textID, unsigned long color )
 {
-		aAnimTextListItem* pItem = new aAnimTextListItem( 27333 );
+		auto pItem = std::make_unique<aAnimTextListItem>( 27333 );
 		*pItem = templateItem;
 		pItem->setText( textID );
 		pItem->setColor( color );
-		return AddItem( pItem );
+		return AddItem( std::move(pItem) );
 }
 
 long	aDropList::SelectItem(long item)
@@ -1244,7 +1244,7 @@ bool aComboBox::pointInside(long xPos, long yPos) const
 	return retval;
 }
 
-long aComboBox::AddItem(aListItem* itemString)
+long aComboBox::AddItem(std::unique_ptr<aListItem> itemString)
 {
 	float newHeight = (itemString->height() + (float)ListBox().getSpaceBetweenItems()) * ((float)ListBox().GetItemCount()+1)+4;
 	if (newHeight > listBoxMaxHeight)
@@ -1253,26 +1253,26 @@ long aComboBox::AddItem(aListItem* itemString)
 	}
 	ListBox().resize(ListBox().width(), newHeight);
 	rects[2].resize(rects[2].width(), newHeight);
-	long retval = ListBox().AddItem(itemString);
+	long retval = ListBox().AddItem(std::move(itemString));
 	return retval;
 }
 
 long aComboBox::AddItem( unsigned long textID, unsigned long color )
 {
-		aAnimTextListItem* pItem = new aAnimTextListItem( 27333 );
+		auto pItem = std::make_unique<aAnimTextListItem>( 27333 );
 		*pItem = templateItem;
 		pItem->setText( textID );
 		pItem->setColor( color );
-		return AddItem( pItem );
+		return AddItem( std::move(pItem) );
 }
 
 long				aComboBox::AddItem( const char* text, unsigned long color )
 {
-	aAnimTextListItem* pItem = new aAnimTextListItem( 27333 );
+	auto pItem = std::make_unique<aAnimTextListItem>( 27333 );
 	*pItem = templateItem;
 	pItem->setText( text );
 	pItem->setColor( color );
-	return AddItem( pItem );
+	return AddItem( std::move(pItem) );
 }
 
 

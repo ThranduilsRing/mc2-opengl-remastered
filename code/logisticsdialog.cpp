@@ -310,7 +310,7 @@ void	LogisticsOKDialog::setText( int textID, int CancelButton, int OKButton )
 
 }
 
-void				LogisticsOKDialog::setText( const char* mainText )
+void				LogisticsOKDialog::setText( mc2::czstring mainText )
 {
 	textObjects[0].setText( mainText );
 }
@@ -401,7 +401,7 @@ void	LogisticsOneButtonDialog::setText( int textID, int CancelButton, int OKButt
 
 }
 
-void				LogisticsOneButtonDialog::setText( const char* mainText )
+void				LogisticsOneButtonDialog::setText( mc2::czstring mainText )
 {
 	textObjects[0].setText( mainText );
 }
@@ -410,6 +410,16 @@ void				LogisticsOneButtonDialog::setText( const char* mainText )
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
+
+void LogisticsOneButtonDialog::setPlayerLeftText( mc2::czstring playerName )
+{
+	char leaveStr[256];
+	char formatStr[256];
+	cLoadString( IDS_PLAYER_LEFT, leaveStr, 255 );
+	sprintf( formatStr, leaveStr, playerName );
+	setText( IDS_PLAYER_LEFT, IDS_DIALOG_OK, IDS_DIALOG_OK );
+	setText( formatStr );
+}
 
 LogisticsSaveDialog::LogisticsSaveDialog(  ) 
 {
@@ -603,7 +613,7 @@ void LogisticsSaveDialog::beginCampaign()
 }
 
 
-void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
+void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 {
 	gameListBox.removeAllItems( true );
 	// need to add items to the save game list
@@ -667,7 +677,7 @@ void LogisticsSaveDialog::initDialog( const char* path, bool bCampaign )
 			unsigned long itemColor;
 		};
 		ModCampaignCtx ctx = { this, static_cast<unsigned long>( edits[0].getColor() ) };
-		EnumerateModCampaignFiles([](const char* fitFileName, const char* fullPath, void* ud) {
+		EnumerateModCampaignFiles([](mc2::czstring fitFileName, mc2::czstring fullPath, void* ud) {
 			ModCampaignCtx* c = static_cast<ModCampaignCtx*>(ud);
 
 			// Open by absolute path — bypasses mod overlay (g_activeMod empty on menu).
@@ -839,7 +849,7 @@ bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )
 	return isCorrectVersionCampaignSave(static_cast<const char*>(path));
 }
 
-void LogisticsSaveDialog::readCampaignNameFromFile( const char* fileName, std::span<char> resultName )
+void LogisticsSaveDialog::readCampaignNameFromFile( mc2::czstring fileName, std::span<char> resultName )
 {
 	FullPathFileName path;
 	path.init( campaignPath, fileName, ".fit" );
@@ -1235,7 +1245,7 @@ void LogisticsSaveDialog::updateMissionInfo()
 
 }
 
-void LogisticsSaveDialog::setMission( const char* fileName)
+void LogisticsSaveDialog::setMission( mc2::czstring fileName)
 {
 	if ( strlen( fileName ) )
 	{
@@ -1659,11 +1669,12 @@ void LogisticsVariantDialog::initVariantList()
 
 		for ( int i = 0; i < count; i++ )
 		{
-			aAnimTextListItem* pEntry = new aAnimTextListItem(IDS_DIALOG_LIST_FONT);
+			auto entry = std::make_unique<aAnimTextListItem>(IDS_DIALOG_LIST_FONT);
+			aAnimTextListItem* pEntry = entry.get();
 			*pEntry = s_instance->templateItem;
 			pEntry->setText( pNames[i] );
 			pEntry->setColor( edits[0].getColor() );
-			gameListBox.AddItem( pEntry );
+			gameListBox.AddItem( entry.release() );
 			if ( !LogisticsData::instance->canReplaceVariant( pNames[i] ) )
 			{
 				pEntry->setState( aListItem::DISABLED );
@@ -2169,7 +2180,7 @@ void LogisticsMapInfoDialog::end()
 	statics[10].setTexture( static_cast<unsigned long>(0) );
 	statics[10].setColor( static_cast<long>(0) );
 }
-void LogisticsMapInfoDialog::setMap( const char* pFileName )
+void LogisticsMapInfoDialog::setMap( mc2::czstring pFileName )
 {
 	long textureHandle = MissionBriefingScreen::getMissionTGA( pFileName );
 	statics[10].setTexture( textureHandle );

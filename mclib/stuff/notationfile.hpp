@@ -99,11 +99,12 @@ namespace Stuff {
 	// Constructor/Destructors
 	//
 	public:
-		enum Type {
+		enum class Type : int {
 			Standard,
 			NonEmpty,
 			Raw
 		};
+		using enum Type;
 
 		NotationFile(
 			const char *file_name,

@@ -295,11 +295,13 @@ void LogisticsPilotListBox::makeUVs( LogisticsPilot* pPilot, aObject& icon )
 
 }
 
-long LogisticsPilotListBox::AddItem( aListItem* pNewItem )
+long LogisticsPilotListBox::AddItem( std::unique_ptr<aListItem> pNewItem )
 {
+	if (itemCount >= MAX_LIST_ITEMS)
+		return TOO_MANY_ITEMS;
 
 	scrollBar->setOrange();
-	LogisticsPilotListBoxItem* pItem = dynamic_cast<LogisticsPilotListBoxItem*>(pNewItem);
+	LogisticsPilotListBoxItem* pItem = dynamic_cast<LogisticsPilotListBoxItem*>(pNewItem.get());
 
 	if ( pItem )
 	{
@@ -314,25 +316,24 @@ long LogisticsPilotListBox::AddItem( aListItem* pNewItem )
 				// do not put in twice.
 				if ( mc2::str::iequals( pPilot->getName(), pTmpItem->getPilot()->getName() ) )
 				{
-					delete pItem;
 					return -1;
 				}
 
 				if ( pPilot->getRank() > pTmpItem->getPilot()->getRank() )
 				{
-					return InsertItem( pItem, i );
+					return InsertItem( pNewItem.release(), i );
 				}
 				else if ( pPilot->getRank() == pTmpItem->getPilot()->getRank() )
 				{
 					if ( pPilot->getGunnery() > pTmpItem->getPilot()->getGunnery() )
 					{
-						return InsertItem( pItem, i );
+						return InsertItem( pNewItem.release(), i );
 					}
 					else if ( pPilot->getGunnery() == pTmpItem->getPilot()->getGunnery() &&
 						// the order of pilots equal in rank and gunnery: name, ignoring ASCII case, then raw bytes
 						mc2::str::ci_total_less{}( pPilot->getName(), pTmpItem->getPilot()->getName() ) )
 					{
-						return InsertItem( pItem, i );
+						return InsertItem( pNewItem.release(), i );
 					}
 				}
 			}
@@ -341,7 +342,7 @@ long LogisticsPilotListBox::AddItem( aListItem* pNewItem )
 	}
 
 	// if we got here
-	return aListBox::AddItem( pNewItem );
+	return aListBox::AddItem( std::move(pNewItem) );
 
 }
 

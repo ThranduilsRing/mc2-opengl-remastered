@@ -7,7 +7,6 @@
     "tools/mod_smoke.py": "Offline mod asset-load fixture runs through nofocus.run with hidden console and offscreen environment; mission launches remain inside run_smoke.",
     "scripts/test_release_zip_install.py": "Release first-launch sniffer proof through nofocus.run with smoke mode unset, offscreen and a bounded timeout; subsequent mission uses run_smoke.",
     "scripts/tests/test_gpu_routing.py": "unit test of the MC2_VK_DEVICE routing helpers; exercises nofocus.spawn argument building, no visible engine window.",
-    "scripts/tests/test_kit_visibility.py": "Runs the compiled stock-priority fixture through nofocus.run; compiler launches remain hidden console tools.",
     "scripts/camera_sweep_smoke.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "scripts/game_auto.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",
     "scripts/mech_shot.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10",

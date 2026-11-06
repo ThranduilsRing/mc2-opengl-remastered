@@ -8,6 +8,7 @@
 #include <utility>
 #include <mdspan>
 #include "move_internal.h"
+#include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "packet_exact.h"
 #include <memory>
@@ -474,7 +475,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 
 	s_gameMapOwner = std::make_unique<MissionMap>();
 	GameMap = s_gameMapOwner.get();
-	printf("[MOVE_BD] MissionMap allocated OK, calling init(%ld,%ld)\n", height, width); fflush(stdout);
+	mc2::fmt::print_out("[MOVE_BD] MissionMap allocated OK, calling init({},{})\n", height, width); fflush(stdout);
 
 	// The four-argument initializer also populates passability for a blank map.
 	// The allocation-only overload leaves every interior cell blocked.
@@ -494,7 +495,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 				numOffMap++;
 		}
 
-	printf("[MOVE_BD] offMap loop done numOffMap=%ld\n", numOffMap); fflush(stdout);
+	mc2::fmt::print_out("[MOVE_BD] offMap loop done numOffMap={}\n", numOffMap); fflush(stdout);
 
 	if (tempSpecialAreaFootPrints) {
 		std::free(tempSpecialAreaFootPrints);
@@ -508,18 +509,18 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	if (!PathFindMap[SECTOR_PATHMAP])
 		Fatal(0, " MOVE_BuildData: Must call MOVE_Init()! ");
 
-	printf("[MOVE_BD] building GlobalMoveMap[0] (ground)\n"); fflush(stdout);
+	mc2::fmt::print_out("[MOVE_BD] building GlobalMoveMap[0] (ground)\n"); fflush(stdout);
 	s_globalMoveMapOwner[0] = std::make_unique<GlobalMap>();
 	GlobalMoveMap[0] = s_globalMoveMapOwner[0].get();
 	GlobalMoveMap[0]->build(mapData);
 
-	printf("[MOVE_BD] building GlobalMoveMap[1] (hover)\n"); fflush(stdout);
+	mc2::fmt::print_out("[MOVE_BD] building GlobalMoveMap[1] (hover)\n"); fflush(stdout);
 	s_globalMoveMapOwner[1] = std::make_unique<GlobalMap>();
 	GlobalMoveMap[1] = s_globalMoveMapOwner[1].get();
 	GlobalMoveMap[1]->hover = true;
 	GlobalMoveMap[1]->build(mapData);
 
-	printf("[MOVE_BD] building GlobalMoveMap[2] (blank/heli)\n"); fflush(stdout);
+	mc2::fmt::print_out("[MOVE_BD] building GlobalMoveMap[2] (blank/heli)\n"); fflush(stdout);
 	s_globalMoveMapOwner[2] = std::make_unique<GlobalMap>();
 	GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 	GlobalMoveMap[2]->blank = true;
@@ -527,7 +528,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	for (auto* globalMap : GlobalMoveMap)
 		globalMap->openHeap.reserve(globalMap->numDoors + NUM_DOOR_OFFSETS);
 
-	printf("[MOVE_BD] all GlobalMaps built OK\n"); fflush(stdout);
+	mc2::fmt::print_out("[MOVE_BD] all GlobalMaps built OK\n"); fflush(stdout);
 
 	// Just some debugging...
 	//for (r = 0; r < height; r++)

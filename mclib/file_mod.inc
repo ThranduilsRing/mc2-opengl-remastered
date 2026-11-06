@@ -623,7 +623,7 @@ static std::optional<int> TryModOpen(const char* fileName, const char* req = nul
 
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
 // Used for diagnostic logging only — O(1) lookup.
-std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxBytes) {
+std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBytes) {
     if (!dataPath) return {};
     long handle = -1;
     auto* archive = FastFileFind(dataPath, handle);
@@ -640,7 +640,7 @@ std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxByte
     return bytes;
 }
 
-int LookupModPriority(const char* dataPath) {
+int LookupModPriority(mc2::czstring dataPath) {
     const char* owner = LookupModOwner(dataPath);
     // Source and cooked-sidecar keys can differ. A legacy loose TGA must also
     // outrank the kit's KTX, while the kit still outranks packed stock assets.
@@ -650,7 +650,7 @@ int LookupModPriority(const char* dataPath) {
     return _access(dataPath, 4) == 0 ? 999998 : 1000000;
 }
 
-const char* LookupModOwner(const char* dataPath) {
+const char* LookupModOwner(mc2::czstring dataPath) {
     if (g_modIndex.empty()) return nullptr;
     std::string key = NormalizeKey(dataPath);
     auto it = g_modIndex.find(key);
@@ -703,8 +703,8 @@ bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capabilit
 
 // No-ops — mod is selected at launcher time, not at campaign-select time.
 // Kept for call-site compatibility in logisticsdata.cpp / logisticsdialog.cpp / mission.cpp.
-void ActivateCampaignMod(const char* /*campaignFitName*/) {}
-void ActivateModForMission(const char* /*missionFitKey*/) {}
+void ActivateCampaignMod(mc2::czstring /*campaignFitName*/) {}
+void ActivateModForMission(mc2::czstring /*missionFitKey*/) {}
 void DeactivateMod() {}
 
 // Enumerate campaign .fit files from the active mod index.
@@ -735,7 +735,7 @@ void EnumerateModFiles(std::string_view keyPrefix, ModFitCallback cb, void* user
     for (const auto& key : keys) cb(key.c_str(), userData);
 }
 
-void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userData) {
+void EnumerateModFitFiles(mc2::czstring keyPrefix, ModFitCallback cb, void* userData) {
     if (g_modIndex.empty() || !keyPrefix || !cb) return;
     std::string prefix = NormalizeKey(keyPrefix);
     static const std::string ext = ".fit";
@@ -838,7 +838,7 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
     fflush(stdout);
 }
 
-void InitModSearchPaths(const char* modsRoot) {
+void InitModSearchPaths(mc2::czstring modsRoot) {
     g_modIndex.clear();
     g_modPriority.clear();
     g_shadowedBy.clear();

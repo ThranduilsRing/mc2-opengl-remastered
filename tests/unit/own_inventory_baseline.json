@@ -123,18 +123,6 @@
     "StampBrush"
    ]
   },
-  "ActivePilotListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "AppearanceInfo": {
    "delete": 3,
    "delete_array": 0,
@@ -1031,18 +1019,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ComponentListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/componentlistbox.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "ContactInfo": {
    "delete": 1,
    "delete_array": 0,
@@ -1134,18 +1110,6 @@
    "delete_array": 0,
    "files": {
     "editor/EditorInterface_terrain.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "DeadPilotListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
      "new": 1
     }
    },
@@ -1362,18 +1326,6 @@
    "delete_array": 0,
    "files": {
     "code/objtype.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "FastFile": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/fastfile.cpp": {
      "new": 1
     }
    },
@@ -1780,31 +1732,10 @@
    "owners": []
   },
   "LogisticsMech": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_inventory.cpp": {
-     "new": 3
-    },
-    "code/logisticsdata_save.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/mechpurchasescreen.cpp": {
-     "new": 1
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": [
-    "LogisticsData"
-   ]
-  },
-  "LogisticsMechIcon": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsmechicon.cpp": {
+    "code/mechpurchasescreen.cpp": {
      "new": 1
     }
    },
@@ -1812,31 +1743,11 @@
    "new_array": 0,
    "owners": []
   },
-  "LogisticsVariant": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_inventory.cpp": {
-     "delete": 1
-    },
-    "code/logisticsdata_modify.cpp": {
-     "new": 1
-    },
-    "code/logisticsdata_save.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "LogisticsData"
-   ]
-  },
-  "LogisticsVehicle": {
+  "LogisticsMechIcon": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsdata_init.cpp": {
+    "code/logisticsmechicon.cpp": {
      "new": 1
     }
    },
@@ -2400,21 +2311,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MacroTree": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/notationfile.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "NotationFile"
-   ]
-  },
   "MainFrame": {
    "delete": 1,
    "delete_array": 0,
@@ -2499,14 +2395,11 @@
     "code/infowindow.cpp": {
      "new": 1
     },
-    "code/logisticspilot.cpp": {
-     "new": 1
-    },
     "code/salvagemecharea.cpp": {
      "new": 1
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -2618,18 +2511,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MemoryStream": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/trace.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "MidLevelRenderer::MLRClipper": {
    "delete": 3,
    "delete_array": 0,
@@ -2734,21 +2615,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "MissionInfo": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsmissioninfo_progress.cpp": {
-     "new": 1
-    },
-    "code/logisticsmissioninfo_query.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -3258,21 +3124,6 @@
     "SpecLibrary"
    ]
   },
-  "SpecialtyListItem": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "PilotPromotionArea"
-   ]
-  },
   "StampBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -3300,75 +3151,20 @@
     ""
    ]
   },
-  "TG_AnimateShape": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/bdactor_type.cpp": {
-     "new": 1
-    },
-    "mclib/genactor.cpp": {
-     "new": 1
-    },
-    "mclib/gvactor.cpp": {
-     "new": 1
-    },
-    "mclib/mech3d_type.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": [
-    "Mech3DAppearanceType"
-   ]
-  },
-  "TG_MultiShape": {
+  "TG_TypeMultiShape": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "mclib/msl.cpp": {
-     "new": 1
-    },
-    "mclib/msl_shape.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "TG_TypeMultiShape": {
-   "delete": 21,
-   "delete_array": 0,
-   "files": {
-    "mclib/bdactor_type.cpp": {
-     "delete": 5,
-     "new": 7
-    },
-    "mclib/genactor.cpp": {
-     "delete": 3,
+    "mclib/gvactor.cpp": {
      "new": 2
     },
-    "mclib/gvactor.cpp": {
-     "delete": 3,
-     "new": 6
-    },
     "mclib/mech3d_type.cpp": {
-     "delete": 10,
-     "new": 10
+     "new": 3
     }
    },
-   "new": 25,
+   "new": 5,
    "new_array": 0,
-   "owners": [
-    "BldgAppearanceType",
-    "GVAppearanceType",
-    "GenericAppearanceType",
-    "Mech3DAppearanceType",
-    "TreeAppearanceType"
-   ]
+   "owners": []
   },
   "TOMap": {
    "delete": 0,
@@ -3507,21 +3303,6 @@
    },
    "new": 1,
    "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
-  "TraceSample": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "mclib/stuff/trace.cpp": {
-     "delete_array": 2,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
    "owners": [
     ""
    ]
@@ -3697,12 +3478,9 @@
     },
     "code/infowindow.cpp": {
      "new": 1
-    },
-    "code/logisticspilot.cpp": {
-     "new": 1
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -3819,21 +3597,6 @@
    "owners": [
     "LogisticsScreen"
    ]
-  },
-  "aAnimTextListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
-     "new": 1
-    },
-    "gui/alistbox.cpp": {
-     "new": 4
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": []
   },
   "aAnimation": {
    "delete": 6,
@@ -3985,12 +3748,9 @@
     },
     "code/missionbriefingscreen.cpp": {
      "new": 2
-    },
-    "code/pilotreviewarea.cpp": {
-     "new": 7
     }
    },
-   "new": 18,
+   "new": 11,
    "new_array": 0,
    "owners": []
   },
@@ -4602,11 +4362,7 @@
   "code/infowindow.cpp": 1,
   "code/job_system.cpp": 1,
   "code/logistics.cpp": 1,
-  "code/logisticsdata_modify.cpp": 3,
-  "code/logisticsmissioninfo.cpp": 1,
-  "code/logisticspilot.cpp": 2,
-  "code/logisticspilotlistbox.cpp": 1,
-  "code/logisticsvariant.cpp": 2,
+  "code/logisticsvariant.cpp": 1,
   "code/mainmenu.cpp": 2,
   "code/mech_move.cpp": 2,
   "code/mechcmd2_debugwins.cpp": 1,
@@ -4636,15 +4392,8 @@
   "gui/asystem.cpp": 1,
   "mclib/ablenv.cpp": 2,
   "mclib/apprtype.cpp": 3,
-  "mclib/bdactor_static.cpp": 2,
-  "mclib/bdactor_terrain.cpp": 1,
-  "mclib/bdactor_tree.cpp": 5,
-  "mclib/bdactor_tree_static.cpp": 1,
-  "mclib/bdactor_type.cpp": 5,
   "mclib/effect_resources.cpp": 3,
   "mclib/fastfile.cpp": 1,
-  "mclib/genactor.cpp": 1,
-  "mclib/genactor_frame.cpp": 1,
   "mclib/gosfx/card.cpp": 1,
   "mclib/gosfx/cardcloud.cpp": 1,
   "mclib/gosfx/debriscloud.cpp": 1,
@@ -4660,12 +4409,6 @@
   "mclib/gosfx/singleton.cpp": 1,
   "mclib/gosfx/spinningcloud.cpp": 1,
   "mclib/gosfx/tube.cpp": 1,
-  "mclib/gvactor.cpp": 4,
-  "mclib/gvactor_geometry.cpp": 2,
-  "mclib/gvactor_update.cpp": 4,
-  "mclib/mech3d.cpp": 6,
-  "mclib/mech3d_geometry.cpp": 2,
-  "mclib/mech3d_render.cpp": 2,
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": 1,
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": 1,
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": 1,
@@ -4706,7 +4449,6 @@
   "mclib/mlr/mlrtexture.cpp": 1,
   "mclib/mlr/mlrtexturepool.cpp": 7,
   "mclib/mlr/mlrtrianglecloud.cpp": 1,
-  "mclib/particles/spec_library.cpp": 1,
   "mclib/stuff/chain.cpp": 2,
   "mclib/stuff/filestream.cpp": 1,
   "mclib/stuff/hash.cpp": 1,
@@ -4717,7 +4459,6 @@
   "mclib/stuff/registeredclass.cpp": 1,
   "mclib/stuff/socket.cpp": 1,
   "mclib/stuff/sortedchain.cpp": 2,
-  "mclib/stuff/trace.cpp": 2,
   "mclib/stuff/tree.cpp": 2
  }
 }

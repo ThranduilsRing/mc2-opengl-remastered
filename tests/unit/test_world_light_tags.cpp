@@ -47,14 +47,14 @@ TEST_CASE("WorldLightTags/slot reuse discards the previous appearance's mover ta
     Light oldMover, building;
     tag_slot(&camera, 0, Mech, &oldMover);
     REQUIRE(camera.addWorldLight(&building) == 0);
-    CHECK_FALSE(is_e_slot(&camera, 0, nullptr));
+    CHECK_FALSE(is_e_slot(&camera, 0));
     CHECK(slot_owner(&camera, 0) == nullptr);
     tag_slot(&camera, 0, Bldg, &building);
-    SourceClass src = Mech;
-    REQUIRE(is_e_slot(&camera, 0, &src));
+    const auto src = is_e_slot(&camera, 0);
+    REQUIRE(src);
     CHECK(src == Bldg);
     camera.removeWorldLight(0, &building);
-    CHECK_FALSE(is_e_slot(&camera, 0, nullptr));
+    CHECK_FALSE(is_e_slot(&camera, 0));
     CHECK(camera.updates == 1);
 }
 
@@ -70,7 +70,7 @@ TEST_CASE("WorldLightTags/removal follows the light when the saved slot is stale
     CHECK(camera.worldLights[0] == &building);
     CHECK(camera.worldLights[1] == nullptr);
     CHECK(slot_owner(&camera, 0) == &building);
-    CHECK_FALSE(is_e_slot(&camera, 1, nullptr));
+    CHECK_FALSE(is_e_slot(&camera, 1));
     CHECK(camera.updates == 1);
 }
 
@@ -87,7 +87,7 @@ TEST_CASE("WorldLightTags/full pool and absent removal preserve live owners") {
     for (int i = 0; i < MAX_LIGHTS_IN_WORLD; ++i)
         CHECK(slot_owner(&camera, i) == &lights[i]);
     camera.removeWorldLight(UINT32_MAX, &lights[2]);
-    CHECK_FALSE(is_e_slot(&camera, 2, nullptr));
+    CHECK_FALSE(is_e_slot(&camera, 2));
     CHECK(slot_owner(&camera, 1) == &lights[1]);
 }
 
@@ -111,16 +111,16 @@ TEST_CASE("WorldLightTags/preview teardown uses its owner camera and restores th
     CHECK(observed == &preview);
     CHECK(eye == &mainCamera);
     CHECK(preview.worldLights[slot] == nullptr);
-    CHECK_FALSE(is_e_slot(&preview, slot, nullptr));
+    CHECK_FALSE(is_e_slot(&preview, slot));
     CHECK(mainCamera.worldLights[0] == &missionLamp);
     CHECK(slot_owner(&mainCamera, 0) == &missionLamp);
-    SourceClass src = Bldg;
-    REQUIRE(is_e_slot(&mainCamera, 0, &src));
+    const auto src = is_e_slot(&mainCamera, 0);
+    REQUIRE(src);
     CHECK(src == Gv);
     REQUIRE(preview.addWorldLight(&lamp) == 0);
     tag_slot(&preview, 0, Mech, &lamp);
     reset(&preview);
-    CHECK_FALSE(is_e_slot(&preview, 0, nullptr));
+    CHECK_FALSE(is_e_slot(&preview, 0));
     CHECK(slot_owner(&mainCamera, 0) == &missionLamp);
     tag_slot(&preview, 0, Mech, &lamp);
     preview.removeWorldLight(0, &lamp);

@@ -9,12 +9,13 @@
 
 namespace input {
 
-enum KeyState {
+enum class KeyState : int {
     KS_FREE = 0, // in not pressed state
     KS_PRESSED, // just pressed
     KS_HELD,    // in pressed state 
     KS_RELEASED // just released
 };
+using enum KeyState;
 
 struct MouseInfo {
     MouseInfo();

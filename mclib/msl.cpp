@@ -57,8 +57,7 @@ bool useSlerping = false;
 //That must be destroyed or memory will leak!
 TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 {
-	TG_MultiShapePtr newShape = nullptr;
-	newShape = new TG_MultiShape;
+	auto newShape = std::make_unique<TG_MultiShape>();
 	gosASSERT(newShape != nullptr);
 	
 #ifdef _DEBUG
@@ -113,5 +112,5 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 	
 	newShape->isHudElement = false;
 	
-	return newShape;
+	return newShape.release(); // factory transfers ownership to the caller
 }	

@@ -403,7 +403,7 @@ void MPGameBrowser::update()
 
 
 
-long aStyle3TextListItem::init( FitIniFile* file, const char* blockName )
+long aStyle3TextListItem::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock( blockName );
 
@@ -508,7 +508,7 @@ aGameListItem::aGameListItem() : latency( IDS_MP_LANBROW_PING_FONT )
 
 
 }
-long aGameListItem::init( FitIniFile* file, const char* blockName )
+long aGameListItem::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock( blockName );
 

@@ -92,6 +92,9 @@ add_executable(mc2_tests
     test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer
     test_tick_commit.cpp
     ${MC2_WORKTREE_ROOT}/code/tick_commit.cpp
+    test_playmovie_deferral.cpp  # VIDEO-DECODE-OFFLINE-1: real ControlGui::playMovie + MC2Movie::init on the real overlap worker, decoder seam only
+    ${MC2_WORKTREE_ROOT}/code/controlgui_chat.cpp
+    ${MC2_WORKTREE_ROOT}/code/mc2movie.cpp
     ${MC2_WORKTREE_ROOT}/code/render_view_store.cpp
     ${MC2_WORKTREE_ROOT}/mclib/texture_sources.cpp
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
@@ -268,6 +271,8 @@ add_executable(mc2_tests
 mc2_link_gate(mc2_tests)
 
 # The ABL native-binding headers (ablmc2_internal.h) pull the gui/ and netlib/ headers; only the TUs that include them get those directories.
+set_source_files_properties(test_playmovie_deferral.cpp ${MC2_WORKTREE_ROOT}/code/controlgui_chat.cpp ${MC2_WORKTREE_ROOT}/code/mc2movie.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 set_source_files_properties(test_abl_position.cpp test_cast_census.cpp test_gui_bridge.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 
