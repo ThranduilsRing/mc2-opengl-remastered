@@ -16,9 +16,23 @@ removes automatic destruction, and the final engine smoke covers normal exit.
 No existing tests removed. Local proofs copied to the E: topic archive under
 local-pre-rebase; automatic approval review rejected deletion (blocked by policy),
 so local proofs remain and deletion will not be retried or bypassed.
-Next: three ratchets, commit, exact-tip box build/unit/unit-san/smoke-lite/
-mc2_03 determinism/saveload, then lint; retry any lease-blocked row once;
-archive receipts/crash evidence, clean the remote lane, keep this worktree.
+Checkpoint: source/test candidate 2d9ca738d1470f288c268c00dfcb4ca23b4f2a4f.
+Cxx17 ratchet PASS; own_inventory PASS (294 types, zero rises/falls);
+file_size PASS (inherited terrtxm.cpp +1 warning); diff whitespace PASS.
+Box proof submission attempted twice, both failed before queue submission:
+SCP connection closed, rc=255. Separate lint submission failed identically.
+Cleanup attempted: SSH connection refused at 14.227.95.149:30598. No box task,
+build, game, install or scratch directory was created by this run. The bundle
+was removed by box_run's finally block; removed this lane's stale local box-run
+ref. Other lanes' refs left alone. Remote state cannot be inspected/cleaned
+while the endpoint refuses SSH; preserve any existing crash evidence before
+cleanup when it returns. Logs retained in the E: topic archive /2d9ca738/.
+Do not treat earlier proof receipts as proof of this rebased candidate.
+Next after box recovery: run against the final HEAD (including this note)
+`py -3 A:/Games/mc2-main/tools/box_run.py --repo A:/Games/mc2-cxxt6 --gpu auto -- build unit unit-san smoke-lite determinism:mc2_03 saveload`,
+then the same command with `-- lint`. Retry a lease-blocked row once later;
+retain exact final-SHA receipts, archive crash evidence, then run
+`box_run.py --cleanup claude/w122-cxx-t6`. Keep the assigned worktree.
 
 Assignment: A:/Games/mc2-cxxt6, claude/w122-cxx-t6, base ef86f849e0b269ee239537487a97453385c339b8.
 
