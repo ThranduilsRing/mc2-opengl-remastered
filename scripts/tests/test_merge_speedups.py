@@ -912,7 +912,7 @@ def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
 def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
     import merge_gate as gate
     import tempfile
-    with tempfile.TemporaryDirectory(prefix="stock-copy-test-", dir=gate.ROOT / "scratch") as work:
+    with tempfile.TemporaryDirectory(prefix="stock-copy-test-", dir=tmp_path) as work:
         tmp_path = gate.Path(work)
         install = tmp_path / "install"
         (install / "data").mkdir(parents=True)

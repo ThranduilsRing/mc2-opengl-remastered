@@ -1244,7 +1244,7 @@ class FileGateTests(unittest.TestCase):
                      directory / ("mission with spaces Ω " + "p" * 100 + " retained tail.fit")):
             original = path.read_bytes()
             path.write_bytes(original + b"corruption")
-            with self.subTest(path=path), self.assertRaises(ValueError):
+            with self.subTest(path=path.name), self.assertRaises(ValueError):  # str: xdist cannot serialize a Path subtest param
                 smoke.grade_file("file_save_as", directory, 0)
             path.write_bytes(original)
         path = directory / "edited.fit"
