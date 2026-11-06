@@ -407,7 +407,7 @@ static void FillFindData(const char* dir, const char* name, LPWIN32_FIND_DATAA o
     out->ftLastWriteTime = attributes.ftLastWriteTime;
     out->nFileSizeLow = attributes.nFileSizeLow;
     out->nFileSizeHigh = attributes.nFileSizeHigh;
-    std::snprintf(out->cFileName, sizeof(out->cFileName), "%s", name);
+    mc2::fmt::to_buf(out->cFileName, "{}", mc2::fmt::safe(name));
 }
 
 HANDLE WINAPI FindFirstFileA( LPCTSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)

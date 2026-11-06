@@ -8,6 +8,7 @@
 //---------------------------------------------------------------------------
 
 #include "mc2_czstring.h"
+#include "mc2fmt.h"
 #include "projectz_trace.h"
 #include "object_admission_predicate.h"
 
@@ -189,20 +190,20 @@ void projectz_trace_init() {
             // At ~3300 perspective vertices/frame the frame budget increases by ~10 ms,
             // reducing normal 150+ FPS to roughly 35 FPS. This is expected and by design;
             // use MC2_PROJECTZ_SUMMARY=1 alone for full-speed statistical capture.
-            puts("[PROJECTZ v1] trace file: mc2_projectz.log"
+            mc2::fmt::print_out("[PROJECTZ v1] trace file: mc2_projectz.log"
                  " -- NOTE: MC2_PROJECTZ_TRACE=1 costs ~3us/vertex (float formatting);"
-                 " expect ~35 FPS vs normal 150+ FPS. Use SUMMARY=1 alone for full-speed stats.");
+                 " expect ~35 FPS vs normal 150+ FPS. Use SUMMARY=1 alone for full-speed stats.\n");
         else
-            puts("[PROJECTZ v1] WARNING: failed to open mc2_projectz.log -- vertex/tri records suppressed");
+            mc2::fmt::print_out("[PROJECTZ v1] WARNING: failed to open mc2_projectz.log -- vertex/tri records suppressed\n");
     }
 }
 
 static void emit_summary(uint32_t frames) {
-    printf("[PROJECTZ v1] summary frames=%u\n", frames);
+    mc2::fmt::print_out("[PROJECTZ v1] summary frames={}\n", frames);
     // Per-category
     for (int i = 0; i < CAT_COUNT; i++) {
         if (s_catStat[i].calls == 0) continue;
-        printf("  category=%-22s calls=%u parallel=%u rejected=%u\n",
+        mc2::fmt::print_out("  category={:<22} calls={} parallel={} rejected={}\n",
                s_catNames[i],
                s_catStat[i].calls,
                s_catStat[i].parallel,
@@ -210,11 +211,11 @@ static void emit_summary(uint32_t frames) {
     }
     // Per-predicate disagreement vs legacyRect (perspective calls only)
     if (s_perspCalls > 0) {
-        printf("  perspective_calls=%u\n", s_perspCalls);
+        mc2::fmt::print_out("  perspective_calls={}\n", s_perspCalls);
         for (int p = 0; p < PRED_COUNT; p++) {
             uint32_t total_dis = s_predStat[p].disagree_perm + s_predStat[p].disagree_restr;
             float pct = (s_perspCalls > 0) ? 100.0f * static_cast<float>(total_dis) / static_cast<float>(s_perspCalls) : 0.0f;
-            printf("  predicate=%-18s agree=%u disagree_perm=%u disagree_restr=%u finite_viol=%u (%.2f%% of persp)\n",
+            mc2::fmt::print_out("  predicate={:<18} agree={} disagree_perm={} disagree_restr={} finite_viol={} ({:.2f}% of persp)\n",
                    s_predNames[p],
                    s_predStat[p].agree,
                    s_predStat[p].disagree_perm,
@@ -241,7 +242,7 @@ static void emit_summary(uint32_t frames) {
             int tmp = order[i]; order[i] = order[bestIdx]; order[bestIdx] = tmp;
             int idx = order[i];
             if (best == 0) break;
-            printf("  outlier callsiteId=%-30s homogClip_dis=%u rectSignedW_dis=%u contains_rej_tri=%u\n",
+            mc2::fmt::print_out("  outlier callsiteId={:<30} homogClip_dis={} rectSignedW_dis={} contains_rej_tri={}\n",
                    s_hm[idx].id ? s_hm[idx].id : "<unknown>",
                    s_hm[idx].pred_dperm[1] + s_hm[idx].pred_drestr[1],
                    s_hm[idx].pred_dperm[2] + s_hm[idx].pred_drestr[2],
@@ -249,7 +250,7 @@ static void emit_summary(uint32_t frames) {
         }
     }
     // Triangle outcomes
-    printf("  triangles total=%u red(contains_rejected)=%u purple(area_exceeded)=%u\n",
+    mc2::fmt::print_out("  triangles total={} red(contains_rejected)={} purple(area_exceeded)={}\n",
            s_triTotal, s_triContainsRejected, s_triAreaExceeded);
     fflush(stdout);
 }
@@ -277,16 +278,16 @@ void projectz_trace_dispatch(
     // ── per-vertex trace record ──────────────────────────────────────────────
     if (g_pzDoTrace && s_traceFile) {
         float trueRhw = (rawClip.w != 0.0f) ? (1.0f / rawClip.w) : FLT_MAX;  // ±Inf-ish when 0
-        fprintf(s_traceFile,
-            "[PROJECTZ v1] vertex callsiteId=%s\n"
-            "  file=<inline> line=0 cat=%s branch=%s\n"
-            "  point=(%.4f,%.4f,%.4f)\n"
-            "  signedW=%.6f legacyRhw=%.6f trueSignedRhw=%.6f"
-            " rawClip=(%.4f,%.4f,%.4f,%.4f)\n"
-            "  screen=(%.2f,%.2f,%.4f,%.6f) legacyAccepted=%s\n"
-            "  predicates: legacyRect=%s legacyRectFinite=%s"
-            " homogClip=%s rectSignedW=%s rectNearFar=%s rectGuard=%s homogClipFull=%s\n"
-            "  consumes_z=%s\n",
+        mc2::fmt::print(s_traceFile,
+            "[PROJECTZ v1] vertex callsiteId={}\n"
+            "  file=<inline> line=0 cat={} branch={}\n"
+            "  point=({:.4f},{:.4f},{:.4f})\n"
+            "  signedW={:.6f} legacyRhw={:.6f} trueSignedRhw={:.6f}"
+            " rawClip=({:.4f},{:.4f},{:.4f},{:.4f})\n"
+            "  screen=({:.2f},{:.2f},{:.4f},{:.6f}) legacyAccepted={}\n"
+            "  predicates: legacyRect={} legacyRectFinite={}"
+            " homogClip={} rectSignedW={} rectNearFar={} rectGuard={} homogClipFull={}\n"
+            "  consumes_z={}\n",
             siteId  ? siteId  : "unknown",
             siteCat ? siteCat : "unknown",
             usePerspective ? "perspective" : "parallel",
@@ -378,12 +379,12 @@ void projectz_emit_tri(
     bool pol_maj = (accepted_count >= 2);
 
     if (g_pzDoTrace && s_traceFile) {
-        fprintf(s_traceFile,
-            "[PROJECTZ v1] tri callsiteId=%s\n"
-            "  quad=(%d,%d) cluster=%d,%d,%d file=%s line=%d\n"
-            "  v0.legacy=%s v1.legacy=%s v2.legacy=%s\n"
-            "  trianglePolicy_any=%s trianglePolicy_all=%s trianglePolicy_majority=%s\n"
-            "  currentSubmitted=%s containsLegacyRejectedVertex=%s screenAreaPixels=%.1f\n",
+        mc2::fmt::print(s_traceFile,
+            "[PROJECTZ v1] tri callsiteId={}\n"
+            "  quad=({},{}) cluster={},{},{} file={} line={}\n"
+            "  v0.legacy={} v1.legacy={} v2.legacy={}\n"
+            "  trianglePolicy_any={} trianglePolicy_all={} trianglePolicy_majority={}\n"
+            "  currentSubmitted={} containsLegacyRejectedVertex={} screenAreaPixels={:.1f}\n",
             callsiteId ? callsiteId : "unknown",
             tileR, tileC,
             clusterIdx[0], clusterIdx[1], clusterIdx[2],
