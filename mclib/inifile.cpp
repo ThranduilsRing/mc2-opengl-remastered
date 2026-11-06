@@ -242,14 +242,14 @@ void FitIniFile::atClose (void)
 }
 
 //---------------------------------------------------------------------------
-float FitIniFile::textToFloat (const char *num)
+float FitIniFile::textToFloat (mc2::czstring num)
 {
 	float result = atof(num);
 	return(result);
 }
 
 //---------------------------------------------------------------------------
-double FitIniFile::textToDouble (const char *num)
+double FitIniFile::textToDouble (mc2::czstring num)
 {
 	double result = atof(num);
 	return(result);
@@ -257,7 +257,7 @@ double FitIniFile::textToDouble (const char *num)
 
 // sebi: this is baaaad I know just dumb copy paste, maybe later do template version
 //---------------------------------------------------------------------------
-int FitIniFile::textToInt (const char *num)
+int FitIniFile::textToInt (mc2::czstring num)
 {
 	int result = 0;
 	
@@ -308,7 +308,7 @@ int FitIniFile::textToInt (const char *num)
 	return(result);
 }
 //---------------------------------------------------------------------------
-long FitIniFile::textToLong (const char *num)
+long FitIniFile::textToLong (mc2::czstring num)
 {
 	long result = 0;
 	
@@ -361,7 +361,7 @@ long FitIniFile::textToLong (const char *num)
 
 
 //---------------------------------------------------------------------------
-short FitIniFile::textToShort (const char *num)
+short FitIniFile::textToShort (mc2::czstring num)
 {
 	short result = 0;
 	
@@ -413,7 +413,7 @@ short FitIniFile::textToShort (const char *num)
 
 
 //---------------------------------------------------------------------------
-char FitIniFile::textToChar (const char *num)
+char FitIniFile::textToChar (mc2::czstring num)
 {
 	char result = 0;
 	
@@ -464,7 +464,7 @@ char FitIniFile::textToChar (const char *num)
 }
 
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::textToULong (const char *num)
+unsigned long FitIniFile::textToULong (mc2::czstring num)
 {
 	unsigned long result = 0;
 	
@@ -516,7 +516,7 @@ unsigned long FitIniFile::textToULong (const char *num)
 
 
 //---------------------------------------------------------------------------
-unsigned short FitIniFile::textToUShort (const char *num)
+unsigned short FitIniFile::textToUShort (mc2::czstring num)
 {
 	unsigned short result = 0;
 	
@@ -568,7 +568,7 @@ unsigned short FitIniFile::textToUShort (const char *num)
 
 
 //---------------------------------------------------------------------------
-unsigned char FitIniFile::textToUChar (const char *num)
+unsigned char FitIniFile::textToUChar (mc2::czstring num)
 {
 	unsigned char result = 0;
 	
@@ -619,7 +619,7 @@ unsigned char FitIniFile::textToUChar (const char *num)
 }
 
 //---------------------------------------------------------------------------
-bool FitIniFile::booleanToLong (const char *num)
+bool FitIniFile::booleanToLong (mc2::czstring num)
 {
 char testChar = 0;
 	while (num[testChar] && isspace(num[testChar]))
@@ -744,7 +744,7 @@ long FitIniFile::byteToTextHex (char *result, byte num, unsigned long bufLen)
 }	
 
 //---------------------------------------------------------------------------
-long FitIniFile::open (const char* fName, FileMode _mode, long numChild, bool doNotLower)
+long FitIniFile::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotLower)
 {
 	long result = File::open(fName,_mode,numChild, doNotLower);
 	if (result != NO_ERR)
@@ -789,14 +789,14 @@ long FitIniFile::open (const char* buffer, int bufferLength)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::create (const char* fName)
+long FitIniFile::create (mc2::czstring fName)
 {
 	long result = File::create(fName);
 	afterOpen();
 	return(result);
 }
 
-long FitIniFile::createWithCase(const char* fName )
+long FitIniFile::createWithCase(mc2::czstring fName )
 {
 	long result = File::createWithCase( fName );
 	afterOpen();
@@ -907,7 +907,7 @@ long FitIniFile::writeIdUChar (std::string_view varName, unsigned char value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::writeIdString (const char *varName, const char *result)
+long FitIniFile::writeIdString (mc2::czstring varName, mc2::czstring result)
 {
 	char thisLine[4096];
 	char tmpString[4000];

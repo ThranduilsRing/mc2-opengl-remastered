@@ -190,7 +190,7 @@
    "LG03": 428,
    "LG04": 12,
    "LG05": 107,
-   "LG06": 113,
+   "LG06": 41,
    "LG07": 0,
    "LG08": 9,
    "LG09": 21,
@@ -2809,7 +2809,7 @@
   },
   "mclib/file.cpp": {
    "LG05": 1,
-   "LG06": 9,
+   "LG06": 2,
    "LG10": 4,
    "LG12a": 3,
    "LG12b": 1,
@@ -2817,7 +2817,7 @@
    "LG17": 1
   },
   "mclib/file.h": {
-   "LG06": 17,
+   "LG06": 1,
    "LG17": 1
   },
   "mclib/fit_number.h": {},
@@ -2953,11 +2953,11 @@
   "mclib/heap.cpp": {},
   "mclib/heap.h": {},
   "mclib/inifile.cpp": {
-   "LG06": 15,
+   "LG06": 1,
    "LG17": 3
   },
   "mclib/inifile.h": {
-   "LG06": 23,
+   "LG06": 1,
    "LG17": 4
   },
   "mclib/inifile_arrays.cpp": {
@@ -3319,7 +3319,6 @@
   },
   "mclib/msl.h": {
    "LG05": 1,
-   "LG06": 13,
    "LG17": 3
   },
   "mclib/msl_anim.cpp": {

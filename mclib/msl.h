@@ -17,6 +17,7 @@
 #define MSL_H
 #include "../RenderCore/MaterialRegistry.h"
 #include "content_socket.h"
+#include "mc2_czstring.h"
 //-------------------------------------------------------------------------------
 // Include Files
 
@@ -164,7 +165,7 @@ class TG_TypeMultiShape
 		//Function runs through each piece of ASE file and creates a separate
 		//TG_Shape for each one.  First pass is count number of GEOMOBJECTS.
 		//Second pass is load each one.
-		long LoadTGMultiShapeFromASE (const char *fileName, bool forceMakeBinary = false, Microsoft::Xna::Arm::IProviderEngine * armProvider = nullptr);
+		long LoadTGMultiShapeFromASE (mc2::czstring fileName, bool forceMakeBinary = false, Microsoft::Xna::Arm::IProviderEngine * armProvider = nullptr);
 
 		//Function returns 0 if OK.  -1 if textureName is longer then nameLength-1.
 		//This function digs the texture name(s) out of the ASE file so that the
@@ -262,10 +263,10 @@ class TG_TypeMultiShape
 				listOfTypeShapes[i]->SetLightRGBs(hPink,hGreen,hYellow);
 		}
 
-		long LoadBinaryCopy (const char *fileName);
+		long LoadBinaryCopy (mc2::czstring fileName);
 		long BuildContentIR(mc2::content::Asset&& asset, std::string_view source, float* groundDy = nullptr);
         const std::vector<mc2::content::Socket>& ContentSockets() const { return contentSockets_; }
-		void SaveBinaryCopy (const char *fileName);
+		void SaveBinaryCopy (mc2::czstring fileName);
 
 		// Track D — narrow construction API for format-agnostic importers
 		// (FBX/GLB via Assimp). Each method is the import-side analog of a
@@ -300,7 +301,7 @@ class TG_TypeMultiShape
 		// `baseName` is the asset name without extension (e.g. "madcat").
 		// MVP scope: .glb probe only. .fbx supported by Assimp but
 		// scope-restricted to M2 per advisor verdict D3.
-		long LoadFromFile(const char* baseName);
+		long LoadFromFile(mc2::czstring baseName);
 };
 
 using TG_TypeMultiShapePtr = TG_TypeMultiShape*;
@@ -492,7 +493,7 @@ class TG_MultiShape
 		//This function rotates the heirarchy from this node down.  Used for torso twists, arms, etc.
 		// SHould only be called once this way.  This way is DAMNED SLOW!!!  STRICMP!  IT returns the node num
 		// Call that from then on!
-		long SetNodeRotation (const char *nodeName, glm::quat *rot);
+		long SetNodeRotation (mc2::czstring nodeName, glm::quat *rot);
 
 		void SetNodeRotation (long nodeNum, glm::quat *rot)
 		{
@@ -663,7 +664,7 @@ class TG_MultiShape
 				listOfShapes[i].node->SetLightsOut(lightFlag);
 		}
 		
- 		glm::vec3 GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, const char *nodeId);
+		glm::vec3 GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, mc2::czstring nodeId);
  		glm::vec3 GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, long nodeId);
 
 		TG_TypeMultiShapePtr GetMultiType (void)
@@ -674,14 +675,14 @@ class TG_MultiShape
 		// This function takes the shape named nodeName and all of its children, detaches them
 		// from the current heirarchy and stuffs them into a new MultiShape which it passes back
 		// Uses are endless but for now limited to blowing the arms off of the mechs!
-		TG_MultiShape* Detach (const char *nodeName);
+		TG_MultiShape* Detach (mc2::czstring nodeName);
 		
 		// This function takes the shape named nodeName and all of its children and stops processing
 		// them forever.  Since we can never re-attach a mech arm in the field, this is OK!
-		void StopUsing (const char *nodeName);
+		void StopUsing (mc2::czstring nodeName);
 		
  		// Tells me if the passed in nodeName is a child of the parentName.
-		bool isChildOf (const char *nodeName, const char* parentName);
+		bool isChildOf (mc2::czstring nodeName, mc2::czstring parentName);
 		
 		char *GetNodeId (long shapeNum)
 		{
@@ -691,7 +692,7 @@ class TG_MultiShape
 			return nullptr;
 		}
 		
-		long GetNodeNameId (const char * nodeId)
+		long GetNodeNameId (mc2::czstring nodeId)
 		{
 			for (int  i=0;i<numTG_Shapes;i++)
 			{
@@ -767,8 +768,8 @@ class TG_AnimateShape
 			destroy();
 		}
 
-		long LoadBinaryCopy (const char *fileName);
-		void SaveBinaryCopy (const char *fileName);
+		long LoadBinaryCopy (mc2::czstring fileName);
+		void SaveBinaryCopy (mc2::czstring fileName);
 
 		//This function frees all of the RAM allocated by this class and resets vars to initial state.
 		void destroy (void);
@@ -777,7 +778,7 @@ class TG_AnimateShape
 		//It sets up a pointer to the multi-shape so that animation data for each
 		//Node in the Multi-Shape can be loaded.
 		//It mallocs memory.
-		long LoadTGMultiShapeAnimationFromASE (const char *filename, TG_TypeMultiShapePtr shape, bool skipIfBinary = false, bool forceMakeBinary = false);
+		long LoadTGMultiShapeAnimationFromASE (mc2::czstring filename, TG_TypeMultiShapePtr shape, bool skipIfBinary = false, bool forceMakeBinary = false);
 
 		//This function copies the pointers to the animation data in this class to the
 		//TG_MultiShape being drawn.  Nothing else happens.
