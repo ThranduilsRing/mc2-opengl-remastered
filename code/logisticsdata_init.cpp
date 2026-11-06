@@ -109,7 +109,7 @@ void LogisticsData::initPhaseA()
 
 // Phase B: loads components/pilots/variants and runs the first availability pass.
 // No-op if gate OFF or already done. Only marks success at the end (retry-safe).
-void LogisticsData::ensureMechBayDataLoaded( const char* trigger )
+void LogisticsData::ensureMechBayDataLoaded( mc2::czstring trigger )
 {
 	if ( !s_smartLoad || m_phaseBComplete ) return;
 	initPhaseA(); // must be done before Phase B
@@ -603,14 +603,14 @@ int LogisticsData::getCurrentMissions( const char** missionNames, long& count )
 
 }
 
-bool LogisticsData::getMissionAvailable( const char* missionName )
+bool LogisticsData::getMissionAvailable( mc2::czstring missionName )
 {
 	return missionInfo->getMissionAvailable( missionName );
 }
 
 
 // SetCurrentMission( char* missionName )
-int LogisticsData::setCurrentMissionAnyStage( const char* missionName )
+int LogisticsData::setCurrentMissionAnyStage( mc2::czstring missionName )
 {
 	long result = missionInfo->setMissionAnyStage( missionName );
 	if ( result == NO_ERR )
@@ -624,7 +624,7 @@ int LogisticsData::setCurrentMissionAnyStage( const char* missionName )
 	return result;
 }
 
-int LogisticsData::setCurrentMission( const char* missionName )
+int LogisticsData::setCurrentMission( mc2::czstring missionName )
 {
 	long result = missionInfo->setNextMission( missionName );
 

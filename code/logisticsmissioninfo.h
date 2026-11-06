@@ -11,6 +11,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 #endif
 
 #include <string>
+#include "mc2_czstring.h"
 #include <vector>
 #include <memory>
 
@@ -38,17 +39,18 @@ class LogisticsMissionInfo
 		long getAvailableMissions( const char** missions, int& numberOfEm );
 		long getCurrentMissions( const char** missions, int& numberOfEm );
 
-		bool getMissionAvailable( const char* missionName );
+		// Null lookup names mean empty; selection rejects null/empty names.
+		bool getMissionAvailable( mc2::czstring missionName );
 
-		bool isMissionComplete( const char* missionName );
+		bool isMissionComplete( mc2::czstring missionName );
 		bool isSingleMission() const;
 
-		long setNextMission( const char* missionName );
+		long setNextMission( mc2::czstring missionName );
 		// Like setNextMission but searches ALL groups/stages (setNextMission only
 		// searches the current stage). Used by the headless boot driver
 		// (MC2_BOOT_TO_MISSION) to jump to any mission for logistics/icon capture
 		// without campaign progression. Sets currentStage + currentMission.
-		long setMissionAnyStage( const char* missionName );
+		long setMissionAnyStage( mc2::czstring missionName );
 		void setMissionComplete( );
 
 		long getCurrentLogisticsTuneId();
@@ -66,7 +68,7 @@ class LogisticsMissionInfo
 		std::string			getCurrentOperationFile() const;
 		std::string			getCurrentMissionDescription() const;
 		std::string			getCurrentMissionFriendlyName() const;
-		std::string			getMissionFriendlyName( const char* missionName ) const;
+		std::string			getMissionFriendlyName( mc2::czstring missionName ) const;
 		std::string			getCurrentABLScriptName() const;
 
 		int					getCurrentRP() const;
@@ -84,7 +86,7 @@ class LogisticsMissionInfo
 		std::string			getFinalVideo() const;
 
 		void				setMultiplayer();
-		void				setPurchaseFile( const char* fileName );
+		void				setPurchaseFile( mc2::czstring fileName );
 
 //		long				getMaxTeams() const { return maxTeams; }
 //		long				getMaxPlayers() const { return maxPlayers; }
@@ -94,7 +96,8 @@ class LogisticsMissionInfo
 		// (campaign-wide, deduped). Used by MC2_PURCHASE_ALL to unlock the union
 		// of all mechs the campaign ever offers, not just the current mission's.
 		long				getAllPurchaseFiles( const char** list, long& maxCount );
-		void				addBonusPurchaseFile( const char* fileName ); // extra bonus
+		// A null filename is ignored.
+		void				addBonusPurchaseFile( mc2::czstring fileName ); // extra bonus
 
 		bool				skipLogistics();
 		void				setSkipLogistics(bool skip);
@@ -104,7 +107,7 @@ class LogisticsMissionInfo
 		bool				skipSalvageScreen();
 		bool				skipPurchasing();
 
-		void				setSingleMission( const char* pName );
+		void				setSingleMission( mc2::czstring pName );
 
 		bool				canHaveSalavageCraft();
 		bool				canHaveRepairTruck();

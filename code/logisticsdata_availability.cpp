@@ -276,7 +276,7 @@ long LogisticsData::updateAvailability()
 // loadout (mech lab), and the pilot/launch screen. Self-gates on the LOGISTICS
 // diag tag so it costs nothing unless explicitly enabled (MC2_DIAG_TAGS).
 //*****************************************************************************
-void LogisticsData::dumpFrontEndState( const char* screenName )
+void LogisticsData::dumpFrontEndState( mc2::czstring screenName )
 {
 	if ( !mc2_diag::tagEnabled( "LOGISTICS" ) )
 		return;
@@ -284,7 +284,8 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 	static uint64_t s_dumpSeq = 0;
 	++s_dumpSeq;
 
-	auto esc = []( const char* s ) -> std::string {
+	// Null inputs are empty; non-null inputs must be NUL-terminated.
+	auto esc = []( mc2::czstring s ) -> std::string {
 		std::string o;
 		if ( !s ) return o;
 		for ( const char* p = s; *p; ++p ) {
@@ -401,10 +402,10 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 	mc2_diag::writeEvent( "LOGISTICS", 1, s_dumpSeq, j.c_str() );
 }
 
-void LogisticsData::appendAvailability(const char* pFileName, bool* availableArray )
+void LogisticsData::appendAvailability(mc2::czstring pFileName, bool* availableArray )
 {
 	auto* observation = objectiveObservation();
-	auto accepted = [&](const char* stage, const char* result, std::string_view payload) {
+	auto accepted = [&](mc2::czstring stage, mc2::czstring result, std::string_view payload) {
 		if (!observation) { return; }
 		for (const auto& technology : observation->technologies) {
 			if (technology.path == pFileName) {

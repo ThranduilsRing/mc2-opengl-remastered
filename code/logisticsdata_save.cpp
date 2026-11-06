@@ -563,7 +563,7 @@ void	LogisticsData::setMissionCompleted( )
 #endif
 }
 
-LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotName )
+LogisticsMech*  LogisticsData::getMech( mc2::czstring MechName, mc2::czstring pilotName )
 {
 	const std::string wanted = mc2::str::from_c( MechName );
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
@@ -587,7 +587,7 @@ LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotN
 	return nullptr;
 }
 
-void LogisticsData::removeMechFromInventory( const char* mechName, const char* pilotName )
+void LogisticsData::removeMechFromInventory( mc2::czstring mechName, mc2::czstring pilotName )
 {
 	LogisticsMech* pMech = getMech( mechName, pilotName );
 
@@ -600,7 +600,7 @@ void LogisticsData::removeMechFromInventory( const char* mechName, const char* p
 	}
 }
 
-LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
+LogisticsPilot*	LogisticsData::getPilot( mc2::czstring pilotName )
 {
 	const std::string wanted = mc2::str::from_c( pilotName );
 	// look for available ones first
@@ -626,7 +626,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 	return nullptr;
 }
 
-LogisticsVariant* LogisticsData::getVariant( const char* mechName )
+LogisticsVariant* LogisticsData::getVariant( mc2::czstring mechName )
 {
 	const std::string wanted = mc2::str::from_c( mechName );
 	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )

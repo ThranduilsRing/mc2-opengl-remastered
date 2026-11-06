@@ -71,7 +71,7 @@ LogisticsData::~LogisticsData()
 }*/
 
 
-void				LogisticsData::startNewCampaign( const char* fileName )
+void				LogisticsData::startNewCampaign( mc2::czstring fileName )
 {
 #ifndef VIEWER
 	if ( MPlayer )
@@ -175,7 +175,7 @@ void LogisticsData::startMultiPlayer()
 #endif
 
 }
-void				LogisticsData::setPurchaseFile( const char* fileName )
+void				LogisticsData::setPurchaseFile( mc2::czstring fileName )
 {
 	missionInfo->setPurchaseFile( fileName );
 	if ( MPlayer )
@@ -293,7 +293,7 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 }
 
 
-LogisticsVehicle*	LogisticsData::getVehicle( const char* pName )
+LogisticsVehicle*	LogisticsData::getVehicle( mc2::czstring pName )
 {
 	char tmpStr[256];
 	for (auto & vehicle : vehicles)
@@ -449,7 +449,7 @@ std::string			LogisticsData::getFinalVideo() const
 	return missionInfo->getFinalVideo();
 }
 
-void				LogisticsData::addNewBonusPurchaseFile( const char* pFileName )
+void				LogisticsData::addNewBonusPurchaseFile( mc2::czstring pFileName )
 {
 	missionInfo->addBonusPurchaseFile( pFileName );
 }
@@ -476,7 +476,7 @@ bool				LogisticsData::showChooseMission()
 	return missionInfo->showChooseMission();
 }
 
-void	LogisticsData::setSingleMission( const char* pName )
+void	LogisticsData::setSingleMission( mc2::czstring pName )
 {
 	missionInfo->setSingleMission( pName );
 	clearVariants();
@@ -551,7 +551,7 @@ void				LogisticsData::setVideoShown()
 		missionInfo->setVideoShown();
 
 }
-void	LogisticsData::setPilotUnused( const char* pName )
+void	LogisticsData::setPilotUnused( mc2::czstring pName )
 {
 	const std::string wanted = mc2::str::from_c( pName );
 	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )

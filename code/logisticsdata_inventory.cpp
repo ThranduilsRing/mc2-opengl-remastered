@@ -153,7 +153,7 @@ int LogisticsData::sellMech( LogisticsMech* pVar )
 	return -1;
 }
 
-int LogisticsData::removeVariant( const char* varName )
+int LogisticsData::removeVariant( mc2::czstring varName )
 {
 	if ( !varName )
 		return -1;
@@ -468,7 +468,7 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 	}
 }
 
-LogisticsVariant* LogisticsData::getVariant( const char* pCSVFileName, int VariantNum )
+LogisticsVariant* LogisticsData::getVariant( mc2::czstring pCSVFileName, int VariantNum )
 {
 	const std::string lowerCase = mc2::str::ascii_lower( mc2::str::from_c( pCSVFileName ) );
 	for (auto & variant : variants)

@@ -8,6 +8,7 @@ LogisticsComponent.h			: Interface for the LogisticsComponent component.
 \*************************************************************************************************/
 
 #include <memory>
+#include "mc2_czstring.h"
 
 // forward declarations
 class File;
@@ -55,7 +56,8 @@ class LogisticsComponent
 		// CSV stringID column; a NEW modded id has no string, so the gated ADD
 		// append overwrites it with the def's DisplayName. `name` and
 		// `flavorText` alias ONE allocation in init() -- keep that invariant.
-		void			setDisplayName( const char* n );
+		// Null names are copied as empty text.
+		void			setDisplayName( mc2::czstring n );
 		bool			compare( LogisticsComponent* second, int type );
 		bool			isAvailable(){ return bAvailable; }
 		void			setAvailable(bool avail){ bAvailable = avail; }

@@ -103,7 +103,7 @@ std::string LogisticsMissionInfo::getCurrentMissionDescription() const
 	return groups[currentStage].mission(currentMission)->description;
 }
 
-bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
+bool LogisticsMissionInfo::getMissionAvailable( mc2::czstring missionName )
 {
 	MissionGroup* pGroup = &groups[currentStage];
 
@@ -133,7 +133,7 @@ std::string LogisticsMissionInfo::getCurrentABLScriptName() const
 	return groups[currentStage].ablBrainName;
 }
 
-std::string LogisticsMissionInfo::getMissionFriendlyName( const char* missionName ) const
+std::string LogisticsMissionInfo::getMissionFriendlyName( mc2::czstring missionName ) const
 {
 	if ( currentStage >= groupCount )
 		return std::string();
@@ -204,7 +204,7 @@ void		LogisticsMissionInfo::setMultiplayer()
 			
 
 }
-void		LogisticsMissionInfo::setPurchaseFile( const char* fileName )
+void		LogisticsMissionInfo::setPurchaseFile( mc2::czstring fileName )
 {
 	gosASSERT( bMultiplayer) ;
 
@@ -229,7 +229,7 @@ int			LogisticsMissionInfo::getAdditionalPurachaseFiles( const char** list, long
 
 	return static_cast<long>(std::ssize(additionalPurchaseFiles));
 }
-void				LogisticsMissionInfo::addBonusPurchaseFile( const char* fileName )
+void				LogisticsMissionInfo::addBonusPurchaseFile( mc2::czstring fileName )
 {
 	if ( !fileName )
 		return;

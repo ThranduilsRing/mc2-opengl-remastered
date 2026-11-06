@@ -71,7 +71,7 @@ long LogisticsMissionInfo::getCurrentMissions( const char** missions, int& numbe
 
 	return 0;
 }
-long LogisticsMissionInfo::setNextMission( const char* missionName )
+long LogisticsMissionInfo::setNextMission( mc2::czstring missionName )
 {
 	if ( !missionName || !strlen( missionName ) )
 		return -1;
@@ -175,7 +175,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 
 }
 
-long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
+long LogisticsMissionInfo::setMissionAnyStage( mc2::czstring missionName )
 {
 	// Cross-stage variant of setNextMission for the headless boot driver: find the
 	// mission by FileName across ALL groups (not just the current stage) and set
@@ -202,7 +202,7 @@ long LogisticsMissionInfo::setMissionAnyStage( const char* missionName )
 	return INVALID_MISSION;
 }
 
-void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
+void LogisticsMissionInfo::setSingleMission( mc2::czstring missionFileName )
 {
 	clear();
 	bMultiplayer = true;

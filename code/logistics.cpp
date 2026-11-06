@@ -18,7 +18,7 @@
 #include <string>
 #include <string_view>
 
-void DEBUGWINS_print (const char* s, long window = 0);
+void DEBUGWINS_print (mc2::czstring s, long window = 0);
 
 
 //----------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ void Logistics::releaseAblModules (void)
 }
 
 //----------------------------------------------------------------------------------
-bool Logistics::initObjectiveFixture(const char* missionName)
+bool Logistics::initObjectiveFixture(mc2::czstring missionName)
 {
 	if (!SmokeMode::state().enabled ||
 	    mc2::gate::str<"MC2_ACTIVE_MOD">() != "objectives_e6e" ||

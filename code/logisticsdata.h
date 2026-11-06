@@ -9,6 +9,7 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 \*************************************************************************************************/
 
 #include <string_view>
+#include "mc2_czstring.h"
 #include"stuff/stuff.hpp"
 #include <string>
 #include <vector>
@@ -34,7 +35,8 @@ public:
 	~LogisticsData();
 	void			init();
 	void			initFast();
-	void			ensureMechBayDataLoaded(const char* trigger = nullptr);
+	// Null trigger means an unspecified diagnostic source.
+	void			ensureMechBayDataLoaded(mc2::czstring trigger = nullptr);
 
 	bool			rpJustAdded;
 
@@ -42,26 +44,28 @@ public:
 
 	LogisticsComponent* getComponent( int componentID );
 	LogisticsPilot*		getPilot( int pilotID );
-	LogisticsPilot*		getPilot( const char* pilotName );
+	// Nullable lookup names retain their historical null-as-empty contract.
+	LogisticsPilot*		getPilot( mc2::czstring pilotName );
 	int					getPilotCount();
 	int					getPilots( LogisticsPilot**, long& count );
 	const char*			getBestPilot( long mechWeight );
 	bool				gotPilotsLeft();
 
-	void				setPilotUnused( const char* pPilot );
+	void				setPilotUnused( mc2::czstring pPilot );
 
 	int					getVariantsInInventory( LogisticsVariant* pVar, bool bIncludeForceGroup );
 	int					getPlayerVariantNames( const char**, int& count );
 	int					getChassisVariants( const LogisticsChassis* pChassis, LogisticsVariant** pVar, int& count );
 	
 	LogisticsVariant*	getVariant( int ID );
-	LogisticsVariant*	getVariant( const char* mechName );
-	LogisticsVariant*	getVariant( const char* pCSVFileNaem, int VariantNum );
-	int					removeVariant( const char* varName );
+	LogisticsVariant*	getVariant( mc2::czstring mechName );
+	LogisticsVariant*	getVariant( mc2::czstring pCSVFileNaem, int VariantNum );
+	int					removeVariant( mc2::czstring varName );
 
 
 	LogisticsMech*		getMech( int ID );
-	LogisticsMech*		getMech( const char* MechName, const char* pilotName );
+	// Null pilotName selects an unpiloted mech; MechName null means empty.
+	LogisticsMech*		getMech( mc2::czstring MechName, mc2::czstring pilotName );
 	LogisticsMech*		getMechWithoutForceGroup( LogisticsMech* clone );
 
 	void				addMechToInventory( LogisticsVariant* pVar, LogisticsPilot* pPilot, int ForceGrup,
@@ -90,7 +94,7 @@ public:
 											unsigned long color1 = 0xffffffff, 
 											unsigned long color2 = 0xffffffff,
 											unsigned long color3 = 0xffffffff);
-	void				removeMechFromInventory( const char* mechName, const char* pilotName );
+	void				removeMechFromInventory( mc2::czstring mechName, mc2::czstring pilotName );
 
 	int					addMechToForceGroup( LogisticsMech* pMech, int slot );
 	int					removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot );
@@ -124,11 +128,12 @@ public:
 	// (MCP-readable) with the current screen + bay/purchase/loadout/launch state
 	// (purchasable mechs, inventory, force group, pilots, CB/RP, drop weight,
 	// mission info). Self-gates on the LOGISTICS diag tag being enabled.
-	void				dumpFrontEndState( const char* screenName );
+	// Null screenName is emitted as an empty diagnostic label.
+	void				dumpFrontEndState( mc2::czstring screenName );
 
 	const std::string&	getCurrentMission() const;
 	const std::string&	getLastMission() const;
-	void				setSingleMission( const char* pName );
+	void				setSingleMission( mc2::czstring pName );
 	bool				isSingleMission();
 	long				getCurrentMissionTune();
 	// The text getters below return a copy; an empty string means "there is none" (logisticsmissioninfo.h).
@@ -145,15 +150,15 @@ public:
 	int					getHelicopters( const LogisticsVariant**, int& count );
 	
 	int					getVehicles( const LogisticsVehicle**, int& count );
-	LogisticsVehicle*	getVehicle( const char* pName );
+	LogisticsVehicle*	getVehicle( mc2::czstring pName );
 
 
 	int					setMechToModify( LogisticsMech* pVariant );
 	LogisticsMech*		getMechToModify( ){ return currentlyModifiedMech; }
-	int					acceptMechModifications( const char* pNewVariantName );
+	int					acceptMechModifications( mc2::czstring pNewVariantName );
 	int					cancelMechModfications();
-	bool				canReplaceVariant( const char* name );
-	bool				canDeleteVariant( const char* name );
+	bool				canReplaceVariant( mc2::czstring name );
+	bool				canDeleteVariant( mc2::czstring name );
 
 	void				setCurrentMissionNum (long cMission);
 	long				getCurrentMissionNum (void);
@@ -165,27 +170,28 @@ public:
 	std::string			getCurrentMissionDescription();
 	int					getAvailableMissions( const char** missionNames, long& count );
 	int					getCurrentMissions( const char** missionNames, long& count );
-	bool				getMissionAvailable( const char* missionName );
+	bool				getMissionAvailable( mc2::czstring missionName );
 	std::string			getCurrentMissionFriendlyName( );
-	std::string			getMissionFriendlyName( const char* missionName );
+	std::string			getMissionFriendlyName( mc2::czstring missionName );
 	long				getMaxTeams() const;
 	long				getMaxPlayers() const;
 
-	int					acceptMechModificationsUseOldVariant( const char* name );
+	int					acceptMechModificationsUseOldVariant( mc2::czstring name );
 
 	const std::string&	getCampaignName() const;
 
 
 
 
-	int					setCurrentMission( const char* missionName );
+	// Null or empty mission names are rejected by the mission-info boundary.
+	int					setCurrentMission( mc2::czstring missionName );
 	// Cross-stage mission set for the headless boot driver (MC2_BOOT_TO_MISSION):
 	// jump to any mission regardless of stage/progression, then updateAvailability.
-	int					setCurrentMissionAnyStage( const char* missionName );
+	int					setCurrentMissionAnyStage( mc2::czstring missionName );
 
-	void				startNewCampaign( const char* fileName = "campaign");
+	void				startNewCampaign( mc2::czstring fileName = "campaign");
 	void				startMultiPlayer();
-	void				setPurchaseFile( const char* fileName );
+	void				setPurchaseFile( mc2::czstring fileName );
 
 	Building*			getBuilding( int nameID );
 	int					getBuildings( Building** bdgs, int& count );
@@ -202,8 +208,9 @@ public:
 	void				setNewWeaponsAcknowledged(){ bNewWeapons = 0; }
 	void				setNewMechsAcknowledged(){ bNewMechs = 0; }
 
-	void				addNewBonusPurchaseFile( const char* pFileName ); 
-	void				appendAvailability(const char* pFileName, bool* availableArray );
+	// A null bonus filename is ignored.
+	void				addNewBonusPurchaseFile( mc2::czstring pFileName );
+	void				appendAvailability(mc2::czstring pFileName, bool* availableArray );
 
 	bool				skipLogistics();
 	void				setSkipLogistics(bool skip);

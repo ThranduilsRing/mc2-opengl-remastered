@@ -449,7 +449,7 @@ void Logistics::initializeLogData()
 	}
 }
 
-void Logistics::playFullScreenVideo( const char* fileName )
+void Logistics::playFullScreenVideo( mc2::czstring fileName )
 {
 	if ( !fileName || !fileName[0])
 		return;
@@ -487,7 +487,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	soundSystem->stopDigitalMusic();
 }
 
-void Logistics::setResultsHostLeftDlg( const char* pName )
+void Logistics::setResultsHostLeftDlg( mc2::czstring pName )
 {
 	if ( missionResults && logisticsState == log_RESULTS )
 	{

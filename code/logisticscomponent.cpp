@@ -204,7 +204,7 @@ float LogisticsComponent::extractFloat( char*& pFileLine )
 // EQUIP-ADD-FILL-1: overwrite the string-table-sourced name with the def's
 // DisplayName. name/flavorText alias ONE allocation (init() invariant) -- both
 // are re-pointed here and the dtor frees `name` only, exactly as after init().
-void LogisticsComponent::setDisplayName( const char* n )
+void LogisticsComponent::setDisplayName( mc2::czstring n )
 {
 	if ( !n )
 		n = "";

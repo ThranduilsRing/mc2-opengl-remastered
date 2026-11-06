@@ -67,14 +67,14 @@ class Logistics
 		void destroySplashScreen (void);
 		
 		void start (long logState);		//Actually Starts execution of logistics in state Specified
-		bool initObjectiveFixture(const char* missionName);
+		bool initObjectiveFixture(mc2::czstring missionName);
 		void stop (void);				//Guess what this does!
 				
 		long update (void);
 		
 		void render (void);
 
-		void setResultsHostLeftDlg( const char* pName );
+		void setResultsHostLeftDlg( mc2::czstring pName );
 		
 		void setLogisticsState (long state)
 		{
@@ -90,7 +90,7 @@ class Logistics
 		static int _stdcall beginMission( void*, int, void*[] );
 
 		int DoBeginMission();
-		void playFullScreenVideo( const char* fileName );
+		void playFullScreenVideo( mc2::czstring fileName );
 
 		std::unique_ptr<MC2Movie>	bMovie;
 

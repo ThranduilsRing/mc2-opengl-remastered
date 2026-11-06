@@ -183,7 +183,7 @@ int LogisticsData::setMechToModify( LogisticsMech* pMech )
 	return 0;
 }
 
-void encryptFile (const char *inputFile, const char* outputFile)
+void encryptFile (mc2::czstring inputFile, mc2::czstring outputFile)
 {
     PAUSE((""));
 
@@ -269,7 +269,7 @@ void decryptFile (char *inputFile, char *outputFile)
 	}
 }
 
-int LogisticsData::acceptMechModifications( const char* name )
+int LogisticsData::acceptMechModifications( mc2::czstring name )
 {
 	if ( !currentlyModifiedMech )
 		return -1;
@@ -362,7 +362,7 @@ int LogisticsData::acceptMechModifications( const char* name )
 
 	return 0;
 }
-int LogisticsData::acceptMechModificationsUseOldVariant( const char* name )
+int LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
 {
 	if ( !currentlyModifiedMech )
 		return -1;
@@ -389,7 +389,7 @@ int LogisticsData::acceptMechModificationsUseOldVariant( const char* name )
 	return 0;
 }
 
-bool LogisticsData::canReplaceVariant( const char* name )
+bool LogisticsData::canReplaceVariant( mc2::czstring name )
 {
 	int nameCount = 0;
 	const std::string wanted = mc2::str::from_c( name );
@@ -417,7 +417,7 @@ bool LogisticsData::canReplaceVariant( const char* name )
 		return true;
 }
 
-bool	LogisticsData::canDeleteVariant( const char* name )
+bool	LogisticsData::canDeleteVariant( mc2::czstring name )
 {
 	LogisticsVariant* pVariant = getVariant( name );
 	if ( !pVariant )
@@ -471,7 +471,7 @@ std::string				LogisticsData::getCurrentMissionFriendlyName( )
 	return missionInfo->getCurrentMissionFriendlyName();
 }
 
-std::string				LogisticsData::getMissionFriendlyName( const char* missionName )
+std::string				LogisticsData::getMissionFriendlyName( mc2::czstring missionName )
 {
 	return missionInfo->getMissionFriendlyName( missionName );
 }
