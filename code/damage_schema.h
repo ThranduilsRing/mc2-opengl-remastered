@@ -24,12 +24,13 @@
 // DamageSchema=` token override via parseDamageSchema().
 
 // Which hit-location model a unit uses.
-enum DamageSchemaId {
+enum class DamageSchemaId : int {
     DMG_MECH_8PART,        // Head/CTorso/L+RTorso/L+RArm/L+RLeg  (8 body parts)
     DMG_VEHICLE_FACINGS,   // Front/Left/Right/Rear/Turret        (facings)
     DMG_SQUAD,             // N discrete squad members            (per-member)
     DMG_SINGLE_ACTOR       // one indivisible hit box             (turret/gun-emplacement/etc.)
 };
+using enum DamageSchemaId;
 
 // Logical damage locations, spanning every schema. Phase 2's HardpointId join
 // binds a loadout mount + model socket to one of these ids by NAME; a validator
@@ -38,7 +39,7 @@ enum DamageSchemaId {
 // facings mirror the GroundVehicle bodyLocationString[] order (gvehicl.cpp). This
 // is a pure vocabulary — it deliberately does NOT include the numeric values of
 // the engine defines, so this header stays engine/IO-free and offline-testable.
-enum DamageLocationId {
+enum class DamageLocationId : int {
     // --- DMG_MECH_8PART ---
     DLOC_MECH_HEAD,
     DLOC_MECH_CTORSO,
@@ -58,6 +59,7 @@ enum DamageLocationId {
     DLOC_BODY,             // the single/whole-actor location (squad member or single actor)
     NUM_DAMAGE_LOCATION_IDS
 };
+using enum DamageLocationId;
 
 // Case-insensitive ASCII equality for a facet token vs a fixed key. (Same helper
 // shape as locomotion_facet.h::locomotionTokenEquals — kept local so this header

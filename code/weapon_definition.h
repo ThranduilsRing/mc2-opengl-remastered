@@ -55,6 +55,7 @@
 #include "mc2_czstring.h"
 #include "hardpoint.h"       // WeaponTag, HardpointProfile, hardpointAcceptsWeapon
 #include "damage_schema.h"   // DamageLocationId
+#include <utility>
 
 // -------------------------------------------------------------------------
 // WeaponId -- string-id identity (the 255-cap kill).
@@ -173,7 +174,7 @@ struct WeaponCombatStats {
 // (the EXISTING vocabulary from damage_schema.h -- do NOT invent a parallel one);
 // a later validator checks a chosen mount location is a member. allowedCount == 0
 // is read as "unconstrained" (BT2018 AllowedLocations:"All").
-inline constexpr int WEAPON_MAX_ALLOWED_LOCATIONS = NUM_DAMAGE_LOCATION_IDS;
+inline constexpr int WEAPON_MAX_ALLOWED_LOCATIONS = std::to_underlying(NUM_DAMAGE_LOCATION_IDS);
 
 struct WeaponFitFacet {
     int              critSlots;    // InventorySize -- crit spaces required

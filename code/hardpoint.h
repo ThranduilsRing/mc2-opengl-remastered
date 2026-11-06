@@ -34,7 +34,7 @@
 // typed, name-addressable accept-set. Values are explicit bit positions so a
 // WeaponTagMask can OR several together; keep NUM_WEAPON_TAGS <= 32 so the mask
 // fits a uint32.
-enum WeaponTag {
+enum class WeaponTag : int {
     WTAG_ENERGY        = 0,   // lasers, PPC, flamer
     WTAG_BALLISTIC     = 1,   // autocannon, gauss, MG
     WTAG_MISSILE       = 2,   // LRM / SRM racks
@@ -42,6 +42,7 @@ enum WeaponTag {
     WTAG_AMS           = 4,   // anti-missile system point-defense
     NUM_WEAPON_TAGS           // keep last; must stay <= 32
 };
+using enum WeaponTag;
 
 // Bitset of accepted WeaponTags. std-layout unsigned; OR tags to build an
 // accept-set, test with hardpointAcceptsWeapon().
