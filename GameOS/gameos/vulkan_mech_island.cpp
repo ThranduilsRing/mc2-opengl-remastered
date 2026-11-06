@@ -927,7 +927,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
     VkBuffer boundVertex = vertexBuffer;   // tracks the vertex buffer a pre-skinned draw swapped in
-    const auto emit = [cb](const Mc2MechDrawRun& r) { return [cb, &r](uint32_t n, uint32_t first, int32_t bv) { mc2::battlebench::add(mc2::battlebench::DrawMech), vkCmdDrawIndexed(cb, r.indexCount, n, r.firstIndex, bv, first); }; };
+    const auto emit = [cb](const Mc2MechDrawRun& r, mc2::battlebench::Field pass) { return [cb, &r, pass](uint32_t n, uint32_t first, int32_t bv) { mc2::battlebench::add(pass), vkCmdDrawIndexed(cb, r.indexCount, n, r.firstIndex, bv, first); }; };
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
@@ -947,7 +947,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         }
         const MechRunPC pc{run.materialFlags,0,0};
         vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
-        s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run));
+        s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run, mc2::battlebench::DrawMechDepth));
     }
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
     const auto groundSet = s->groundLighting.set(par);
@@ -970,7 +970,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
         const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-        s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run));
+        s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run, mc2::battlebench::DrawMechColor));
         ++runs;
     }
     // The retained feed counts actor/node pairs once, across material packets and idle-frame reuse.

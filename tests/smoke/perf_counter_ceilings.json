@@ -1,7 +1,6 @@
 {
  "mc2_01": {
   "draws.legacy": 0.8,
-  "draws.mech": 76.624,
   "draws.props": 201.7656,
   "draws.shadow": 70.512,
   "draws.sky": 2.8,
@@ -13,7 +12,6 @@
  },
  "mc2_10": {
   "draws.legacy": 2.048,
-  "draws.mech": 31.936,
   "draws.props": 334.4328,
   "draws.shadow": 229.968,
   "draws.sky": 2.8,

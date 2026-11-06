@@ -273,12 +273,28 @@ class LogSummary:
     presence_counts: dict = field(default_factory=dict)
     # The LAST `[PERF_COUNTERS v1]` line of the run as {field: mean per frame} (run-so-far means; wait_* in ms), plus `frames`. Empty when none printed.
     perf_counters: dict = field(default_factory=dict)
+    # The `[PERF_WINDOW v1]` line: {field: mean per frame over the fixed sim-tick window} plus "frames", "complete" (0/1), "ticks" ("30..120"). Empty when none printed.
+    perf_window: dict = field(default_factory=dict)
 
 
 def parse_perf_counters(line: str) -> dict:
     """`[PERF_COUNTERS v1] frames=N draws.props=.. wait_sealed_ms=.. first_vk_wait_site=<label> ...` -> {name: float}; non-numeric values are skipped."""
     out: dict = {}
     for key, value in re.findall(r"([A-Za-z_][\w.]*)=(\S+)", line.split("[PERF_COUNTERS v1]", 1)[-1]):
+        try:
+            out[key] = float(value)
+        except ValueError:
+            pass
+    return out
+
+
+def parse_perf_window(line: str) -> dict:
+    """`[PERF_WINDOW v1] ticks=30..120 complete=1 frames=N draws.mech_depth=.. ...` -> {name: float}, with "ticks" kept as the string."""
+    out: dict = {}
+    for key, value in re.findall(r"([A-Za-z_][\w.]*)=(\S+)", line.split("[PERF_WINDOW v1]", 1)[-1]):
+        if key == "ticks":
+            out[key] = value
+            continue
         try:
             out[key] = float(value)
         except ValueError:
@@ -311,6 +327,8 @@ def parse_log(text: str,
             s.simid_frames += 1
         if "[PERF_COUNTERS v1]" in line:
             s.perf_counters = parse_perf_counters(line)
+        if "[PERF_WINDOW v1]" in line:
+            s.perf_window = parse_perf_window(line)
         if "[VRAM v1]" in line:
             s.vram.extend(vram.parse(line))
         if "[VK_PROFILE v1]" in line:

@@ -26,6 +26,16 @@ def load_perf_ceilings(path: Path = PERF_CEILINGS_PATH) -> dict:
     return {k: v for k, v in data.items() if isinstance(v, dict)}
 
 
+def load_window_ceilings(path: Path = PERF_CEILINGS_PATH) -> dict:
+    """{"ticks": "30..120", "stems": {stem: {counter: ceiling}}} from the `_window` key: ceilings for the fixed sim-tick window of
+    `[PERF_WINDOW v1]` (per-pass draws). Pinned to the tick range, so a ceiling can only be compared against the same window."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8")).get("_window")
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return data if isinstance(data, dict) and isinstance(data.get("stems"), dict) else {}
+
+
 @dataclass
 class GateConfig:
     heartbeat_timeout_load_s: int = 60
@@ -46,6 +56,7 @@ class GateConfig:
     content_error_budget: Optional[int] = 0
     # {stem: {counter: ceiling}} for the perf_counter bucket; None loads tests/smoke/perf_counter_ceilings.json.
     perf_ceilings: Optional[dict] = None
+    window_ceilings: Optional[dict] = None   # load_window_ceilings() shape; None loads the shipped file
 
 
 @dataclass
@@ -142,6 +153,24 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
             buckets.append("perf_counter")
             details.append("perf counters over ceiling: " + ", ".join(over))
 
+    # Windowed per-pass counters: the same fixed sim-tick window every run. A ceiling exists for this stem but the window line is absent,
+    # incomplete (run ended before the window closed) or measured over a different tick range => red, never a silent pass.
+    wc = cfg.window_ceilings if cfg.window_ceilings is not None else load_window_ceilings()
+    wlimits = wc.get("stems", {}).get(cfg.stem, {})
+    if wlimits and s.mission_ready_ms is not None:
+        w = s.perf_window
+        if not w or not w.get("complete"):
+            buckets.append("perf_window_missing")
+            details.append("[PERF_WINDOW v1] absent or incomplete: the run ended before the fixed window closed")
+        elif w.get("ticks") != wc.get("ticks"):
+            buckets.append("perf_window_mismatch")
+            details.append(f"window ticks {w.get('ticks')} != ceiling window {wc.get('ticks')}")
+        else:
+            wover = [f"{n}={w[n]:.4g}>{lim:.4g}" for n, lim in sorted(wlimits.items()) if w.get(n, 0.0) > lim]
+            if wover:
+                buckets.append("perf_counter")
+                details.append("windowed perf counters over ceiling: " + ", ".join(wover))
+
     # A requested validation layer that never came up leaves nothing to grade: red, not clean. Errors the layer did report are already the
     # `vk_validation_error` marker bucket above.
     if cfg.validation_requested and not vk_validation.confirmed(s.vk_validation):
@@ -171,11 +200,8 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
             buckets.append("heartbeat_freeze_play")
             details.append(f"last play heartbeat at {last:.1f}s wallclock")
 
-    # A run whose ONLY red is perf_counter (no pixel/SIMID/save/validation/content bucket) is a PASS with a recorded warning (owner rule
-    # 2026-11-01: perf_counter-only reds are not gate failures). Every other bucket stays strict.
+    # perf_counter is a red bucket (it was a PASS-with-warning from 2026-11-01 to 2026-11-06, which let draws.mech=119 pass a 31.94 ceiling
+    # for weeks). `warnings` stays on Verdict for callers but nothing fills it.
     warnings: List[str] = []
-    if buckets == ["perf_counter"]:
-        warnings = [d for d in details if d.startswith("perf counters over ceiling")]
-        buckets, details = [], [d for d in details if d not in warnings]
     passed = not buckets and s.smoke_summary_result == "pass" and exit_code == 0
     return Verdict(passed=passed, buckets=buckets, details=details, warnings=warnings)
