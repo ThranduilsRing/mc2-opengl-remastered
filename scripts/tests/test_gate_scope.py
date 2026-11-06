@@ -36,10 +36,17 @@ def test_data_diff_runs_mods_but_not_video():
     assert d["mods"] is None and d["video-decode"]
 
 
-def test_mod_relevant_paths_run_mods():
-    for p in ("mclib/fastfile.cpp", "mclib/file.cpp", "GameOS/gameos/gameos_fileio.cpp", "tools/mod_smoke.py", "code/mission2.cpp",
-              "code/logisticsdata_save.cpp", "mclib/mod_conflict.h", "GuiRuntime/GuiRuntime_assets.cpp", "mods/x/y.fit"):
+def test_only_direct_mod_content_paths_run_mods():
+    for p in ("data/missions/mc2_01.fit", "mods/x/y.fit", "examples/mods/a/b.txt", "tests/mods/t.py", "tools/mod_smoke.py",
+              "tools/mod_install.py", "tools/validate_mod_package.py"):
         assert decide([p])["mods"] is None, p
+
+
+def test_engine_shader_loader_and_unknown_paths_skip_mods():
+    for p in ("shaders/a.slang", "RenderCore/foo.cpp", "mclib/fastfile.cpp", "mclib/file.cpp", "mclib/inifile.cpp",
+              "GameOS/gameos/gameos_fileio.cpp", "code/mission2.cpp", "code/logisticsdata_save.cpp", "GuiRuntime/GuiRuntime_assets.cpp",
+              "CMakeLists.txt", "weird/thing.bin"):
+        assert decide([p])["mods"], p
 
 
 def test_video_relevant_paths_run_video():
@@ -50,7 +57,7 @@ def test_video_relevant_paths_run_video():
 def test_unknown_path_runs_everything():
     for p in ("CMakeLists.txt", "weird/thing.bin", "scripts/merge_gate.py", "scripts/deploy_payload.py"):
         d = decide(["docs/a.md", p])
-        assert d == {"mods": None, "video-decode": None}, p
+        assert d["mods"] and d["video-decode"] is None, p   # unknown paths still force video-decode, never mods
 
 
 def test_nightly_runs_everything_even_for_docs_only():

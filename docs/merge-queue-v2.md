@@ -22,7 +22,7 @@ count as touching everything.
 
 | Stage | Runs when the diff touches |
 |---|---|
-| `mods` | `data/`, `mods/`, `examples/mods/`; VFS / file / FST / fastfile / loader code (`mclib/file*`, `mclib/fastfile*`, `gameos_fileio`, any C++ in a code root whose name says vfs, fst, loader, mission, save, asset load, manifest, campaign, mod); mod tooling (`tools/mod_smoke.py`, `tools/mod_*`, `scripts/mod_*`, `tools/validate_mod_package.py`); GuiRuntime asset/load/texture/atlas/manifest code |
+| `mods` | `data/`, `mods/`, `examples/mods/`, `tests/mods/`, `tools/mod_smoke.py`, `tools/mod_*`, `tools/validate_mod_package.py` ONLY (direct mod content; engine C++ incl. VFS/loader/mission code, shaders and unknown paths never trigger mods; `--nightly` still runs it) |
 | `video-decode` | `scripts/video_decode_smoke.py`, `code/mc2video*`, `code/mc2movie*`, `gameos/sim_overlap*`, C++ whose name says video, movie, decode, mve, bink, ffmpeg, avsync, audio; any movie file (`.bik .avi .mp4 .mve .webm .ogv .mkv`) |
 
 Other stages (tier1, player-path, determinism, saveload) always run.
