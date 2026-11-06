@@ -13,6 +13,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 #include <string>
 #include "mc2_czstring.h"
 #include <optional>
+#include <expected>
 #include <functional>
 #include <vector>
 #include <memory>
@@ -33,9 +34,9 @@ class LogisticsMissionInfo
 		~LogisticsMissionInfo();
 		
 		
-		long init( FitIniFile& file ); // init campaign
+		std::expected<void, long> init( FitIniFile& file ); // init campaign
 		void save( FitIniFile& file );
-		long load( FitIniFile& file );// init previously saved stuff
+		std::expected<void, long> load( FitIniFile& file );// init previously saved stuff
 
 
 		long getAvailableMissions( const char** missions, int& numberOfEm );
@@ -47,15 +48,15 @@ class LogisticsMissionInfo
 		bool isMissionComplete( mc2::czstring missionName );
 		bool isSingleMission() const;
 
-		long setNextMission( mc2::czstring missionName );
+		std::expected<void, long> setNextMission( mc2::czstring missionName );
 		// Like setNextMission but searches ALL groups/stages (setNextMission only
 		// searches the current stage). Used by the headless boot driver
 		// (MC2_BOOT_TO_MISSION) to jump to any mission for logistics/icon capture
 		// without campaign progression. Sets currentStage + currentMission.
-		long setMissionAnyStage( mc2::czstring missionName );
+		std::expected<void, long> setMissionAnyStage( mc2::czstring missionName );
 		void setMissionComplete( );
 
-		long getCurrentLogisticsTuneId();
+		std::optional<long> getCurrentLogisticsTuneId();
 
 		long getCurrentMissionId();
 		

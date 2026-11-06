@@ -80,18 +80,18 @@ std::string LogisticsMissionInfo::getCurrentVideo() const
 	return pGroup->videoFileName;
 }
 
-long LogisticsMissionInfo::getCurrentLogisticsTuneId()
+std::optional<long> LogisticsMissionInfo::getCurrentLogisticsTuneId()
 {
 	//sebi: ORIG BUG FIX: when campaign is finished currentStage is increased and finally reaches groupCount
 	if (currentStage >= groupCount)
-		return -1;
+		return std::nullopt;
 
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup )
-		return pGroup->logisticsTuneId;	
+		return pGroup->logisticsTuneId == -1 ? std::nullopt : std::optional<long>{pGroup->logisticsTuneId};
 
-	return -1;
+	return std::nullopt;
 }
 
 std::string LogisticsMissionInfo::getCurrentMissionDescription() const

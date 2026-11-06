@@ -178,7 +178,7 @@ void LogisticsData::clearVariants()
 	}
 }
 
-long	LogisticsData::load( FitIniFile& file )
+std::expected<void, long> LogisticsData::load( FitIniFile& file )
 {
 	clearInventory();
 	resourcePoints = 0;
@@ -195,7 +195,7 @@ long	LogisticsData::load( FitIniFile& file )
 	if (result != NO_ERR)
 	{
 		PAUSE(("SaveGame has no version number.  Not Loading"));
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	long testVersionNum = 0;
@@ -203,13 +203,13 @@ long	LogisticsData::load( FitIniFile& file )
 	if (result != NO_ERR)
 	{
 		PAUSE(("SaveGame has no version number.  Not Loading"));
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	if (testVersionNum != SaveGameVersionNumber)
 	{
 		PAUSE(("SaveGame is not Version %d.  It was Version %d which is not valid!",SaveGameVersionNumber,testVersionNum));
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	file.seekBlock( "General" );	
@@ -232,7 +232,7 @@ long	LogisticsData::load( FitIniFile& file )
 		if ( !loadVariant( file ) )
 		{
 			gosASSERT( 0 );
-			return -1;
+			return std::unexpected(-1L);
 		}
 	}
 
@@ -279,7 +279,7 @@ long	LogisticsData::load( FitIniFile& file )
 	//Start finding the Leaks
 	//systemHeap->dumpRecordLog();
 
-	return 0;
+	return {};
 }
 
 std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
@@ -468,11 +468,11 @@ void	LogisticsData::setMissionCompleted( )
 				 (pMover->getCommanderId() == Commander::home->getId()) &&
 				 (pMover->getMoveType() != MOVETYPE_AIR))
 			{
-				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() ).transform(std::addressof<LogisticsMech>).value_or(nullptr);
+				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 				DWORD base, highlight1, highlight2;
 				(static_cast<Mech3DAppearance*>(pMover->getAppearance()))->getPaintScheme( base, highlight1, highlight2 );
-				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() ).transform(std::addressof<LogisticsPilot>).value_or(nullptr);
+				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 				{
 					static const bool s_lfResolve = false;
@@ -498,7 +498,7 @@ void	LogisticsData::setMissionCompleted( )
 					else
 					{
 						removeMechFromInventory( pMech->getName().c_str(), pMover->getPilot()->getName() );
-						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
+						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 						addMechToInventory( pVar, ForceGroupCount++, pPilot, base, highlight1, highlight2 );
 						if ( pPilot )
 							pPilot->setUsed( true );
@@ -510,7 +510,7 @@ void	LogisticsData::setMissionCompleted( )
 					if ( !pMover->isDestroyed() && !pMover->isDisabled() )
 					{
 						const char* vname = (static_cast<BattleMech*>(pMover))->variantName;
-						LogisticsVariant* pVariant = getVariant( vname ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
+						LogisticsVariant* pVariant = getVariant( vname ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 						if ( !pVariant )
 						{
 							// Runtime variants can be absent from the base CSVs. Deployed snapshots

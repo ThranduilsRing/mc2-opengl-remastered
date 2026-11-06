@@ -610,10 +610,10 @@ bool LogisticsData::getMissionAvailable( mc2::czstring missionName )
 
 
 // SetCurrentMission( char* missionName )
-int LogisticsData::setCurrentMissionAnyStage( mc2::czstring missionName )
+std::expected<void, long> LogisticsData::setCurrentMissionAnyStage( mc2::czstring missionName )
 {
-	long result = missionInfo->setMissionAnyStage( missionName );
-	if ( result == NO_ERR )
+	auto result = missionInfo->setMissionAnyStage( missionName );
+	if ( result )
 	{
 		if ( !s_smartLoad || m_phaseBComplete ) {
 			updateAvailability();
@@ -624,11 +624,11 @@ int LogisticsData::setCurrentMissionAnyStage( mc2::czstring missionName )
 	return result;
 }
 
-int LogisticsData::setCurrentMission( mc2::czstring missionName )
+std::expected<void, long> LogisticsData::setCurrentMission( mc2::czstring missionName )
 {
-	long result = missionInfo->setNextMission( missionName );
+	auto result = missionInfo->setNextMission( missionName );
 
-	if ( result == NO_ERR )
+	if ( result )
 	{
 		if ( !s_smartLoad || m_phaseBComplete ) {
 			updateAvailability();

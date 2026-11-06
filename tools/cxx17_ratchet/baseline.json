@@ -143,7 +143,7 @@
    "LG02": 0,
    "LG03": 283,
    "LG04": 15,
-   "LG05": 160,
+   "LG05": 137,
    "LG06": 170,
    "LG07": 2,
    "LG08": 3,
@@ -1768,7 +1768,6 @@
   },
   "code/logisticsdata.cpp": {
    "LG03": 2,
-   "LG05": 1,
    "LG11": 3
   },
   "code/logisticsdata.h": {
@@ -1788,10 +1787,10 @@
    "LG10": 1
   },
   "code/logisticsdata_modify.cpp": {
-   "LG05": 5
+   "LG05": 1
   },
   "code/logisticsdata_save.cpp": {
-   "LG05": 9,
+   "LG05": 5,
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
@@ -1812,17 +1811,11 @@
    "LG05": 1
   },
   "code/logisticsmechicon.h": {},
-  "code/logisticsmissioninfo.cpp": {
-   "LG05": 4
-  },
+  "code/logisticsmissioninfo.cpp": {},
   "code/logisticsmissioninfo.h": {},
   "code/logisticsmissioninfo_internal.h": {},
-  "code/logisticsmissioninfo_progress.cpp": {
-   "LG05": 5
-  },
-  "code/logisticsmissioninfo_query.cpp": {
-   "LG05": 2
-  },
+  "code/logisticsmissioninfo_progress.cpp": {},
+  "code/logisticsmissioninfo_query.cpp": {},
   "code/logisticspilot.cpp": {
    "LG05": 1
   },
@@ -2296,9 +2289,7 @@
   "code/player_unit_intent.h": {},
   "code/prefs.cpp": {},
   "code/prefs.h": {},
-  "code/prefs_io.cpp": {
-   "LG05": 3
-  },
+  "code/prefs_io.cpp": {},
   "code/qualified_id.h": {
    "LG10": 1,
    "LG17": 1

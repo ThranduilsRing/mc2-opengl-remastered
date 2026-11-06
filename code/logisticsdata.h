@@ -107,7 +107,7 @@ public:
 
 
 	long				save( FitIniFile& file );
-	long				load( FitIniFile& file );
+	std::expected<void, long> load( FitIniFile& file );
 
 	void				setResourcePoints(long rp) {resourcePoints = rp; rpJustAdded = 0;}
 	int					getResourcePoints() { return resourcePoints; }
@@ -138,7 +138,7 @@ public:
 	const std::string&	getLastMission() const;
 	void				setSingleMission( mc2::czstring pName );
 	bool				isSingleMission();
-	long				getCurrentMissionTune();
+	std::optional<long> getCurrentMissionTune();
 	// The text getters below return a copy; an empty string means "there is none" (logisticsmissioninfo.h).
 	std::string			getCurrentABLScript() const;
 	long 				getCurrentMissionId();
@@ -156,10 +156,10 @@ public:
 	std::optional<std::reference_wrapper<LogisticsVehicle>> getVehicle( mc2::czstring pName );
 
 
-	int					setMechToModify( LogisticsMech* pVariant );
+	std::expected<void, int> setMechToModify( LogisticsMech* pVariant );
 	LogisticsMech*		getMechToModify( ){ return currentlyModifiedMech; }
-	int					acceptMechModifications( mc2::czstring pNewVariantName );
-	int					cancelMechModfications();
+	std::expected<void, int> acceptMechModifications( mc2::czstring pNewVariantName );
+	std::expected<void, int> cancelMechModfications();
 	bool				canReplaceVariant( mc2::czstring name );
 	bool				canDeleteVariant( mc2::czstring name );
 
@@ -179,7 +179,7 @@ public:
 	long				getMaxTeams() const;
 	long				getMaxPlayers() const;
 
-	int					acceptMechModificationsUseOldVariant( mc2::czstring name );
+	std::expected<void, int> acceptMechModificationsUseOldVariant( mc2::czstring name );
 
 	const std::string&	getCampaignName() const;
 
@@ -187,10 +187,10 @@ public:
 
 
 	// Null or empty mission names are rejected by the mission-info boundary.
-	int					setCurrentMission( mc2::czstring missionName );
+	std::expected<void, long> setCurrentMission( mc2::czstring missionName );
 	// Cross-stage mission set for the headless boot driver (MC2_BOOT_TO_MISSION):
 	// jump to any mission regardless of stage/progression, then updateAvailability.
-	int					setCurrentMissionAnyStage( mc2::czstring missionName );
+	std::expected<void, long> setCurrentMissionAnyStage( mc2::czstring missionName );
 
 	void				startNewCampaign( mc2::czstring fileName = "campaign");
 	void				startMultiPlayer();
@@ -316,7 +316,7 @@ private:
 
 	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0, std::string_view csvName = {} );
 	bool openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const;
-	int  addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
+	std::expected<void, int> addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
 	void removeDeadWeight();
 	void clearVariants();
 

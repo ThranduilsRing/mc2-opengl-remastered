@@ -92,7 +92,7 @@ void				LogisticsData::startNewCampaign( mc2::czstring fileName )
 	setCurrentMission( missionNames[0] );
 
 	soundSystem->setMusicVolume( prefs.MusicVolume );
-	soundSystem->playDigitalMusic(missionInfo->getCurrentLogisticsTuneId());
+	soundSystem->playDigitalMusic(missionInfo->getCurrentLogisticsTuneId().value_or(-1));
 }
 
 void LogisticsData::startMultiPlayer()
@@ -294,7 +294,7 @@ std::optional<std::reference_wrapper<LogisticsVehicle>> LogisticsData::getVehicl
 	return std::nullopt;
 }
 
-int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName )
+std::expected<void, int> LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName )
 {
 	// Mod buildings.csv rows (MCO) carry FitIDs past a mod-sized object2.pak; take their definition from the loose
 	// data/objects/<File Name>.fit instead (same CSV-chassis path as ObjectTypeManager and addVehicle).
@@ -302,7 +302,7 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale,
 	const bool inPak = fitID >= 0 && fitID < objectFile.getNumPackets();
 	if ( inPak ? ( NO_ERR != objectFile.seekPacket(fitID) || !objectFile.getPacketSize() || NO_ERR != file.open(&objectFile, objectFile.getPacketSize()) )
 	           : !openLooseChassisFit( file, csvName ) )
-		return -1;
+		return std::unexpected(-1);
 
 	{
 		Building bldg;
@@ -363,7 +363,7 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale,
 		
 	}
 
-	return 0;
+	return {};
 }
 
 //*************************************************************************************************

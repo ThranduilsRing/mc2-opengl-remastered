@@ -21,7 +21,7 @@ std::string LogisticsData::getCurrentABLScript() const
 	return missionInfo ? missionInfo->getCurrentABLScriptName() : std::string();
 }
 
-long LogisticsData::getCurrentMissionTune()
+std::optional<long> LogisticsData::getCurrentMissionTune()
 {
 	return missionInfo->getCurrentLogisticsTuneId();
 }
@@ -168,10 +168,10 @@ int		LogisticsData::getChassisVariants( const LogisticsChassis* pChassis,
 }
 
 
-int LogisticsData::setMechToModify( LogisticsMech* pMech )
+std::expected<void, int> LogisticsData::setMechToModify( LogisticsMech* pMech )
 {
 	if ( !pMech )
-		return -1;
+		return std::unexpected(-1);
 	ensureMechBayDataLoaded("setMechToModify");
 	currentlyModifiedMech = pMech;
 	oldVariant = pMech->getVariant();
@@ -179,7 +179,7 @@ int LogisticsData::setMechToModify( LogisticsMech* pMech )
 	modifiedVariant = std::make_unique<LogisticsVariant>( *oldVariant );
 	pMech->setVariant( modifiedVariant.get() );
 
-	return 0;
+	return {};
 }
 
 void encryptFile (mc2::czstring inputFile, mc2::czstring outputFile)
@@ -268,10 +268,10 @@ void decryptFile (char *inputFile, char *outputFile)
 	}
 }
 
-int LogisticsData::acceptMechModifications( mc2::czstring name )
+std::expected<void, int> LogisticsData::acceptMechModifications( mc2::czstring name )
 {
 	if ( !currentlyModifiedMech )
-		return -1;
+		return std::unexpected(-1);
 
 	bool bFound = 0;
 	if ( oldVariant )
@@ -358,19 +358,19 @@ int LogisticsData::acceptMechModifications( mc2::czstring name )
 
 #endif
 
-	return 0;
+	return {};
 }
-int LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
+std::expected<void, int> LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
 {
 	if ( !currentlyModifiedMech )
-		return -1;
+		return std::unexpected(-1);
 
 	if ( oldVariant )
 	{
 		missionInfo->incrementCBills( oldVariant->getCost() );
 	}
 
-	LogisticsVariant* pVar = getVariant( name ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
+	LogisticsVariant* pVar = getVariant( name ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( !pVar )
 		Assert( 0, 0, "couldn't find the old variant\n" );
@@ -383,7 +383,7 @@ int LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
 	currentlyModifiedMech = nullptr;
 	oldVariant = nullptr;	
 
-	return 0;
+	return {};
 }
 
 bool LogisticsData::canReplaceVariant( mc2::czstring name )
@@ -431,10 +431,10 @@ bool	LogisticsData::canDeleteVariant( mc2::czstring name )
 
 }
 
-int LogisticsData::cancelMechModfications()
+std::expected<void, int> LogisticsData::cancelMechModfications()
 {
 	if ( !currentlyModifiedMech )
-		return -1;
+		return std::unexpected(-1);
 
 	modifiedVariant.reset();
 
@@ -443,7 +443,7 @@ int LogisticsData::cancelMechModfications()
 	oldVariant = nullptr;
 	currentlyModifiedMech = nullptr;
 
-	return 0;
+	return {};
 }
 
 std::string			LogisticsData::getCurrentOperationFileName()

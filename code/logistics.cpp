@@ -77,7 +77,7 @@ bool Logistics::initObjectiveFixture(mc2::czstring missionName)
 	}
 
 	logisticsData.init();
-	if (logisticsData.setCurrentMission(missionName) != NO_ERR) {
+	if (!logisticsData.setCurrentMission(missionName)) {
 		mc2::fmt::print_err("[OBJECTIVE_FIXTURE] mission missing from fixture campaign\n");
 		return false;
 	}
@@ -322,7 +322,7 @@ long Logistics::update (void)
 				//Whack it.
 				bMovie.reset();
 
-				soundSystem->playDigitalMusic(LogisticsData::instance->getCurrentMissionTune());
+				soundSystem->playDigitalMusic(LogisticsData::instance->getCurrentMissionTune().value_or(-1));
 				userInput->mouseOn();	
 			}
 		}
