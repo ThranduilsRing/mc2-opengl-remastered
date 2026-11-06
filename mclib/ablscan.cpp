@@ -14,7 +14,7 @@
 #include<string.h>
 #include"platform_str.h"
 #include<time.h>
-#include <filesystem>
+#include "abl_include_path.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -458,10 +458,8 @@ void languageDirective (void) {
 			DumbGetCharOn = false;
 			long openErr = ABL_NO_ERR;
 
-			// The include sits next to the including file. Mission paths are "data/missions/..." on
-			// every platform and FST keys use '/', so take the directory with std::filesystem (either
-			// separator) and keep '/' (a preferred_separator scan dropped the directory on Windows).
-			const std::string fullPath = std::filesystem::path(SourceFiles[0]).replace_filename(fileName).generic_string();
+			// The include sits next to the including file (abl_include_path.h; doctest test_abl_include_path.cpp).
+			const std::string fullPath = ablIncludePath(SourceFiles[0], fileName);
 			if ((openErr = openSourceFile(fullPath.c_str())) != ABL_NO_ERR) {
 				syntaxError(ABL_ERR_SYNTAX_SOURCE_FILE_OPEN);
 				curToken = TKN_ERROR;
