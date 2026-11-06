@@ -10,6 +10,7 @@ import sys
 import time
 
 import _git_util
+import console_child
 from lane_precheck import Stop
 
 NIFTY = "claude/nifty-mendeleev"
@@ -40,7 +41,8 @@ def refuse_direct_nifty(root: str, hotfix: bool) -> None:
 def stage_preflight(root: str, window: str) -> list[str]:
     """Cheap gate rows (staged-hygiene --range, dup_check, background_launch) on the checked-out candidate, before any build.
     A red marks the stage refused in its state file; --promote then refuses. Returns the red lines."""
-    proc = subprocess.run([sys.executable, "scripts/merge_gate.py", "--cheap-rows"], cwd=root, capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, "scripts/merge_gate.py", "--cheap-rows"], cwd=root, capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True))
     if proc.returncode == 0:
         return []
     reds = [ln for ln in (proc.stdout + proc.stderr).splitlines() if "cheap row FAIL" in ln] or [f"merge_gate --cheap-rows rc={proc.returncode}"]
