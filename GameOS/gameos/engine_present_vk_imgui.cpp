@@ -242,7 +242,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         if (!(ctx && bd && vp)) {
             static uint32_t s_skipped = 0;
             if (s_skipped++ < 3 && mc2_diag::tagRequested("VK_IMGUI"))
-                std::fprintf(stderr, "[VK_IMGUI] draw data skipped: sample=%u/3 ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
+                std::fprintf(stderr, "[VK_IMGUI] draw data skipped (sampled: line %u of at most 3): ctx=%d backend=%d viewport_renderer_data=%d owner=%p\n",
                              s_skipped, static_cast<int>(ctx), static_cast<int>(bd), static_cast<int>(vp), static_cast<void*>(drawData->OwnerViewport));
             return false;
         }
@@ -273,7 +273,7 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         static uint32_t s_logged = 0;
         if (skipped != 0 && s_logged < kImguiLogCap && mc2_diag::tagRequested("VK_IMGUI")) {
             ++s_logged;
-            std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u sample=%u/%u (no VK image for the GL texture name)\n", skipped, s_logged, kImguiLogCap);
+            std::fprintf(stderr, "[VK_IMGUI] texture_cmds_skipped=%u (no VK image for the GL texture name; sampled: line %u of at most %u)\n", skipped, s_logged, kImguiLogCap);
         }
     }
 
