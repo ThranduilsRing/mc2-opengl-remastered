@@ -32,6 +32,9 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "tools/box/box_health_remote.py": "Linux-box-only health probe (nvidia-smi, pueue); runs on the rented box, never launches the game on this desktop.",
+    "tools/box/box_supervisor.py": "Linux-box-only supervisor: starts the filler worker, pueue and git on the rented box; the game never launches on this desktop.",
+    "tools/box/quiet_slot.py": "Linux-box-only quiet-slot wrapper: runs a caller-supplied command under the GPU lock on the rented box; never on this desktop.",
     "scripts/video_decode_smoke.py": "Launches only scripts/run_smoke.py under sys.executable with console_child; the smoke harness owns the offscreen engine launch.",
     "scripts/run_visual.py": "Starts only the Python run_visual_capture.py harness with --no-kill and console_child; that harness owns the offscreen game launch, host lease and own-PID cleanup.",
     "tools/perf/mission_cpu_profile.py": "Launches only Tracy capture/export console tools directly; the engine launches through smoke_lib.runner and nofocus.",
@@ -151,7 +154,6 @@
     "tools/witness_smoke.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn",
     "scripts/crashpad_proof.py": "Box-only proof: starts scripts/run_smoke.py under sys.executable (the harness owns the engine launch) plus strace and llvm-symbolizer/addr2line console tools; never launches the engine itself.",
     "scripts/tests/test_box_hygiene.py": "Test: runs bash, git and sleep fixtures for the box hygiene scripts with console_child; never launches the engine.",
-    "scripts/tests/test_box_queue.py": "Test: runs bash on box_run's remote shell snippets with console_child; never launches the engine.",
     "tools/content_pipeline/validate.py": "Runs only the optional Khronos gltf_validator console tool (captured, console_child); never launches the engine.",
     "tools/gfxr/capture_replay.py": "Runs only gfxrecon capture/replay console tools on the Linux box through console_child; never launches the engine on the PC.",
     "tools/lane_merge_trust.py": "Re-runs a trusted copy of lane_merge.py under sys.executable as a console child; never launches the engine.",

@@ -145,7 +145,7 @@ def worker_alive(g):
 def start_worker(g):
     os.makedirs(f"{FILLER}/logs", exist_ok=True)
     with open(f"{FILLER}/logs/worker{g}.log", "ab") as lg:
-        p = subprocess.Popen(["bash", f"{FILLER}/worker.sh", str(g)], stdin=subprocess.DEVNULL, stdout=lg, stderr=subprocess.STDOUT,
+        p = subprocess.Popen(["bash", f"{FILLER}/worker.sh", str(g)], stdin=subprocess.DEVNULL, stdout=lg, stderr=subprocess.STDOUT,  # background-launch: allow runs on the Linux box only (supervisor child: filler worker/pueue/git); never this desktop
                              cwd=FILLER, start_new_session=True, close_fds=True)
     with open(f"{FILLER}/worker{g}.pid", "w") as f:
         f.write(str(p.pid))
@@ -401,7 +401,7 @@ def repin():
 
 
 def git_mirror(*a):
-    r = subprocess.run(["git", "--git-dir", MIRROR, *a], capture_output=True, text=True, timeout=30)
+    r = subprocess.run(["git", "--git-dir", MIRROR, *a], capture_output=True, text=True, timeout=30)  # background-launch: allow runs on the Linux box only (supervisor child: filler worker/pueue/git); never this desktop
     return r.returncode, r.stdout.strip()
 
 
@@ -426,7 +426,7 @@ def autosync(state, now, holders=None):
             return "sync running"
     except OSError:
         pass
-    r = subprocess.run([PUEUE, "add", "-g", "build", "-l", f"filler_sync:auto:{tip[:8]}", "--", "bash", f"{FILLER}/sync.sh", "--mirror"],
+    r = subprocess.run([PUEUE, "add", "-g", "build", "-l", f"filler_sync:auto:{tip[:8]}", "--", "bash", f"{FILLER}/sync.sh", "--mirror"],  # background-launch: allow runs on the Linux box only (supervisor child: filler worker/pueue/git); never this desktop
                        capture_output=True, text=True, timeout=30)
     state["synced_tried"] = (state["synced_tried"] + [tip])[-20:]
     a["last_try"] = now

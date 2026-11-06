@@ -231,10 +231,10 @@ def test_quiet_slot_live_and_device_verdict(tmp_path):
 
 def test_box_scripts_parse_and_are_strict():
     # literal argv (the callers index counts these as the scripts' callers); executable= is Git bash, not the WSL launcher
-    r = [subprocess.run(["bash", "-n", "tools/box/filler/worker.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True),
-         subprocess.run(["bash", "-n", "tools/box/filler/run.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True),
-         subprocess.run(["bash", "-n", "tools/box/filler/stop.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True),
-         subprocess.run(["bash", "-n", "tools/box/deploy.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True)]
+    r = [subprocess.run(["bash", "-n", "tools/box/filler/worker.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True),  # background-launch: allow bash -n syntax check of a repo script; no engine, captured stdio
+         subprocess.run(["bash", "-n", "tools/box/filler/run.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True),  # background-launch: allow bash -n syntax check of a repo script; no engine, captured stdio
+         subprocess.run(["bash", "-n", "tools/box/filler/stop.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True),  # background-launch: allow bash -n syntax check of a repo script; no engine, captured stdio
+         subprocess.run(["bash", "-n", "tools/box/deploy.sh"], cwd=ROOT, executable=BASH, capture_output=True, text=True)]  # background-launch: allow bash -n syntax check of a repo script; no engine, captured stdio
     assert [x.returncode for x in r] == [0, 0, 0, 0], [x.stderr for x in r]
     for f in ("filler/run.sh", "filler/stop.sh", "deploy.sh", "filler/sync.sh"):
         assert "set -euo pipefail" in (BOX / f).read_text(), f

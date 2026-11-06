@@ -25,7 +25,7 @@ WARN_FREE_GB = 30
 
 def sh(cmd, timeout=10):
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)  # background-launch: allow runs on the Linux box only (nvidia-smi/pueue probes); never this desktop
         return r.returncode, r.stdout.strip()
     except (OSError, subprocess.TimeoutExpired):
         return -1, ""
