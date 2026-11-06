@@ -5,6 +5,7 @@
 #include "vulkan_context.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
+#include "../../RenderCore/TemporalInputs.h"
 #include "vk_texture_residency.h"
 #include "imgui.h"
 #include "gos_crashbundle.h"
@@ -49,7 +50,8 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
 void materialSampler(VkSamplerCreateInfo& info) {
-    info.mipLodBias = float(std::log2(mc2::gate::get<"MC2_RENDER_SCALE">()));
+    // Hook for the temporal provider: flips to the provider bias together with its resolve (slice C).
+    info.mipLodBias = RenderCore::temporal::mipBias(float(mc2::gate::get<"MC2_RENDER_SCALE">()), false);
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {

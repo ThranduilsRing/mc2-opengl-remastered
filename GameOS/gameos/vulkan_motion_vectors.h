@@ -21,6 +21,9 @@ public:
     bool recordDebug(VkCommandBuffer cb, VkImageView target, uint32_t w, uint32_t h);
     void reset();
     VkImageView view() const;
+    // R8 reactive/transparency mask, render resolution, same lifetime and layout as view(). The
+    // FSR consumer binds it with view() and the shared scene depth; the pass clears it to 0.
+    VkImageView reactiveView() const;
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

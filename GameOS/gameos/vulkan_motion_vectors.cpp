@@ -6,6 +6,9 @@
 #include "vk_render_infra.h"
 #include "vk_gpu_profile.h"
 #include "../../RenderCore/FramePackets.h"
+#include "../../RenderCore/TemporalInputs.h"
+#include <atomic>
+extern std::atomic<uint32_t> g_mc2FrameCounter;
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cstring>
@@ -15,7 +18,7 @@
 namespace mc2vk {
 namespace {
 bool makeFullscreenPipeline(VkDevice dev, VkPipelineLayout layout, VkRenderPass rp, std::string_view frag,
-                            VkColorComponentFlags writeMask, OwnedPipeline& out) {
+                            VkColorComponentFlags writeMask, OwnedPipeline& out, uint32_t attachments = 1) {
     OwnedShaderModule vs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "postprocess.vert.spv", nullptr));
     OwnedShaderModule fs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + std::string(frag), nullptr));
     if (!vs || !fs) return false;
@@ -29,8 +32,8 @@ bool makeFullscreenPipeline(VkDevice dev, VkPipelineLayout layout, VkRenderPass 
     VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE; rs.lineWidth = 1.0f;
     VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO}; ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkPipelineColorBlendAttachmentState ba{}; ba.colorWriteMask = writeMask;
-    VkPipelineColorBlendStateCreateInfo blend{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO}; blend.attachmentCount = 1; blend.pAttachments = &ba;
+    VkPipelineColorBlendAttachmentState ba[2]{}; ba[0].colorWriteMask = writeMask; ba[1].colorWriteMask = VK_COLOR_COMPONENT_R_BIT;
+    VkPipelineColorBlendStateCreateInfo blend{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO}; blend.attachmentCount = attachments; blend.pAttachments = ba;
     VkDynamicState states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
     VkPipelineDynamicStateCreateInfo dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO}; dyn.dynamicStateCount = 2; dyn.pDynamicStates = states;
     VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
@@ -44,6 +47,7 @@ bool makeFullscreenPipeline(VkDevice dev, VkPipelineLayout layout, VkRenderPass 
 struct MotionVectors::Impl {
     VulkanContext* ctx = nullptr;
     VkImageResource output{};
+    VkImageResource reactive{};   // R8, 0 = opaque static; coverage-row writers land with the resolve slices
     OwnedImageView depthView;
     OwnedSampler sampler;
     OwnedDescriptorSetLayout dsl;
@@ -65,7 +69,7 @@ struct MotionVectors::Impl {
     ~Impl() {
         debugFramebuffer.reset();
         framebuffer.reset();
-        if (ctx) vkImageResourceDestroy(&output, ctx->device());
+        if (ctx) { vkImageResourceDestroy(&reactive, ctx->device()); vkImageResourceDestroy(&output, ctx->device()); }
     }
     bool init(VulkanContext& context, const VkImageResource& depth) {
         ctx = &context;
@@ -73,6 +77,9 @@ struct MotionVectors::Impl {
         if (!vkImageResourceCreate(&output, dev, ctx->physicalDevice(), depth.w, depth.h,
                 VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT, "scene.motionVectors")) return false;
+        if (!vkImageResourceCreate(&reactive, dev, ctx->physicalDevice(), depth.w, depth.h,
+                VK_FORMAT_R8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                "scene.reactiveMask")) return false;
         sourceDepth = depth.image.get();
         VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
         vi.image = depth.image.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = depth.format;
@@ -106,19 +113,22 @@ struct MotionVectors::Impl {
             writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; writes[i].pImageInfo = &images[i];
         }
         vkUpdateDescriptorSets(dev, 2, writes, 0, nullptr);
-        VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 64};
+        VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 80};
         const auto sl = dsl.get();
         VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         li.setLayoutCount = 1; li.pSetLayouts = &sl; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &pc;
         if (!mc2vk::create(layout, dev, [&](auto* h) { return vkCreatePipelineLayout(dev, &li, nullptr, h); })) return false;
-        VkAttachmentDescription ad{};
-        ad.format = output.format; ad.samples = VK_SAMPLE_COUNT_1_BIT;
-        ad.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        ad.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; ad.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        ad.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; ad.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkAttachmentDescription ad[2]{};
+        ad[0].format = output.format; ad[1].format = reactive.format;
+        for (auto& a : ad) {
+            a.samples = VK_SAMPLE_COUNT_1_BIT;
+            a.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; a.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            a.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; a.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            a.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; a.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+        VkAttachmentReference ref[2] = {{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
         VkSubpassDescription sub{}; sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 1; sub.pColorAttachments = &ref;
+        sub.colorAttachmentCount = 2; sub.pColorAttachments = ref;
         // In: the previous frame's readers of the output (debug inset, later the resolve) are done.
         // Out: fragment-shader reads later in this submit.
         VkSubpassDependency deps[] = {
@@ -127,16 +137,16 @@ struct MotionVectors::Impl {
             {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, 0}};
         VkRenderPassCreateInfo ri{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-        ri.attachmentCount = 1; ri.pAttachments = &ad; ri.subpassCount = 1; ri.pSubpasses = &sub;
+        ri.attachmentCount = 2; ri.pAttachments = ad; ri.subpassCount = 1; ri.pSubpasses = &sub;
         ri.dependencyCount = 2; ri.pDependencies = deps;
         if (!mc2vk::create(renderPass, dev, [&](auto* h) { return vkCreateRenderPass(dev, &ri, nullptr, h); })) return false;
-        const VkImageView target = output.view.get();
+        const VkImageView targets[2] = {output.view.get(), reactive.view.get()};
         VkFramebufferCreateInfo fi{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fi.renderPass = renderPass.get(); fi.attachmentCount = 1; fi.pAttachments = &target;
+        fi.renderPass = renderPass.get(); fi.attachmentCount = 2; fi.pAttachments = targets;
         fi.width = output.w; fi.height = output.h; fi.layers = 1;
         if (!mc2vk::create(framebuffer, dev, [&](auto* h) { return vkCreateFramebuffer(dev, &fi, nullptr, h); })) return false;
         return makeFullscreenPipeline(dev, layout.get(), renderPass.get(), "motion_vectors.frag.spv",
-                                      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT, pipeline);
+                                      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT, pipeline, 2);
     }
     bool initDebug(VkImageView target, uint32_t w, uint32_t h) {
         const auto dev = ctx->device();
@@ -182,6 +192,7 @@ MotionVectors::MotionVectors() = default;
 MotionVectors::~MotionVectors() = default;
 void MotionVectors::reset() { impl_.reset(); }
 VkImageView MotionVectors::view() const { return impl_ ? impl_->output.view.get() : VK_NULL_HANDLE; }
+VkImageView MotionVectors::reactiveView() const { return impl_ ? impl_->reactive.view.get() : VK_NULL_HANDLE; }
 bool MotionVectors::prepare(VulkanContext& ctx, const VkImageResource& depth) {
     if (impl_ && impl_->sourceDepth == depth.image.get() && impl_->output.w == depth.w && impl_->output.h == depth.h) return true;
     reset();
@@ -200,6 +211,10 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth) {
     const glm::mat4 previous = glm::make_mat4(main.uniforms.previousWorldToClipGL);
     // Exact identity avoids inversion roundoff on still cameras and on reset; an all-zero
     // previous (producers without history) gives w == 0 and therefore zero motion.
+    // Render jitter of this frame (zero unless a temporal consumer is registered). The depth was
+    // drawn with it; the shader removes it before reprojecting.
+    float jitterClip[2];
+    RenderCore::temporal::frameJitterClip(g_mc2FrameCounter.load(std::memory_order_relaxed), depth.w, depth.h, depth.w, jitterClip);
     glm::mat4 reprojection{1.0f};
     if (std::memcmp(glm::value_ptr(previous), glm::value_ptr(current), sizeof(glm::mat4)) != 0 &&
         glm::determinant(current) != 0.0f)
@@ -224,6 +239,7 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth) {
         infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.pipeline.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.layout.get(), 0, 1, &s.set, 0, nullptr);
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 64, glm::value_ptr(reprojection));
+        vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 64, 8, jitterClip);
         vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
     }
     b.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

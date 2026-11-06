@@ -237,3 +237,20 @@ it is not a quality gate.
 - Sky (depth 0) writes zero motion in slice A; rotation-only sky reprojection is slice B.
 - `docs/render-contract.md`: the "no motion targets without a temporal consumer" rule names this
   track and the debug consumer.
+
+## Slice B state (inputs subset, claude/temporal-aa)
+
+Landed: `RenderCore/TemporalInputs.h` (consumer counter, Halton(2,3) jitter with FSR phase count,
+`frameJitterClip` = zero unless a consumer is registered, `applyJitterRowMajor`, `mipBias` hook,
+CPU mirror of the MV algebra, unit-tested in `tests/unit/test_temporal_inputs.cpp`).
+`motion_vectors.frag` removes the frame's jitter before reprojecting (push constant `jitterClip`)
+and writes a cleared R8 reactive mask (second attachment). `MotionVectors::reactiveView()` and the
+shared scene depth are the FSR inputs; all allocated only when the pass is demanded.
+`vk_render_infra.cpp` samples through `mipBias(scale, false)` (flip with the resolve in slice C).
+Harness toggle for the inset: `MC2_SHADOW_DEBUG_MODE=m` (no new gate).
+Previous-frame matrices were already in slice A.
+
+Left (needs the consumer to be testable): applying the jitter at the feeds (terrain MVP, mech MVP,
+prop/water, `legacy_shape_tier1.vert`), history epochs and reset owners, object MV composition,
+sky/water MV, coverage-row reactive writers, vegetation previous sway, HZB jitter expansion.
+Picking and the shared camera are untouched by construction (no jitter is applied anywhere yet).
