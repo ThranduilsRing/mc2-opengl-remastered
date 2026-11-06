@@ -1799,7 +1799,7 @@ def main(argv=None):
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
-    ap.add_argument("--nightly", action="store_true", help="implies --full and forces EVERY stage (mods and the real-decode video-decode stage, which only --nightly or --stages video-decode runs); the orchestrator schedules it. A --full without it skips mods "
+    ap.add_argument("--nightly", action="store_true", help="implies --full and forces EVERY stage (mods, video-decode included); the orchestrator schedules it. A --full without it skips mods/video-decode "
                     "when the diff since last-full-gate.json touches none of their inputs (docs/merge-queue-v2.md), unless that mark is older than 30 h")
     ap.add_argument("--resume", action="store_true", help="reuse successful stages with matching HEAD and executable SHA")
     ap.add_argument("--clean-output", action="store_true", help="with --preflight --resume, remove only failed determinism output; preserve receipts and passing evidence")
@@ -1882,10 +1882,6 @@ def main(argv=None):
         planned = (plan(args.j, proof, args.capture_before_runs, args.before_dir) if args.before_dir
                    else plan(args.j, proof, args.capture_before_runs))
         asked = [n for g in args.stages or [] for n in g.split(',')]
-        if "video-decode" not in asked and not args.nightly:
-            # The decoder-open deferral is an offline doctest (tests/unit/test_playmovie_deferral.cpp, in `harnesses`); the real-decode
-            # launches (comm video, results countdown, retirement ordering) run in --nightly only.
-            planned = [s for s in planned if s[0] != "video-decode"]
         if "box-gate" not in asked:
             if not args.box_gate:
                 planned = [s for s in planned if s[0] != "box-gate"]

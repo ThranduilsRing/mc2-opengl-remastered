@@ -25,7 +25,7 @@ count as touching everything.
 | `mods` | `data/`, `mods/`, `examples/mods/`; VFS / file / FST / fastfile / loader code (`mclib/file*`, `mclib/fastfile*`, `gameos_fileio`, any C++ in a code root whose name says vfs, fst, loader, mission, save, asset load, manifest, campaign, mod); mod tooling (`tools/mod_smoke.py`, `tools/mod_*`, `scripts/mod_*`, `tools/validate_mod_package.py`); GuiRuntime asset/load/texture/atlas/manifest code |
 | `video-decode` | `scripts/video_decode_smoke.py`, `code/mc2video*`, `code/mc2movie*`, `code/controlgui_chat*`, `code/tick_commit*`, `gameos/sim_overlap*`, C++ whose name says video, movie, decode, mve, bink, ffmpeg, avsync, audio; any movie file (`.bik .avi .mp4 .mve .webm .ogv .mkv`) |
 
-The real-decode `video-decode` launches run in `--nightly` only (or `--stages video-decode`); the daytime gate covers the decoder-open deferral offline (`tests/unit/test_playmovie_deferral.cpp`). Under `tests/`, `scripts/` and `tools/` only the video files above force it; other paths there never do.
+The daytime gate also covers the decoder-open deferral offline (`tests/unit/test_playmovie_deferral.cpp`). Under `tests/`, `scripts/` and `tools/` only the video files above force `video-decode`; other paths there never do.
 
 Other stages (tier1, player-path, determinism, saveload) always run.
 
