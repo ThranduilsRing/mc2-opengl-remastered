@@ -16,23 +16,25 @@ namespace mc2 {
 namespace particles {
 
 namespace {
-std::unique_ptr<SpecLibrary> g_instance;
+// Shutdown must run before the gosFX heap/registries, never during static teardown.
+SpecLibrary* g_instance = nullptr;
 }
 
 SpecLibrary* SpecLibrary::Instance()
 {
     if (!g_instance) {
         gos_PushCurrentHeap(gosFX::Heap);
-        g_instance.reset(new SpecLibrary()); // constructor is private
+        g_instance = new SpecLibrary();
         gos_PopCurrentHeap();
     }
-    return g_instance.get();
+    return g_instance;
 }
 
 void SpecLibrary::Shutdown()
 {
     if (g_instance) {
-        g_instance.reset();
+        delete g_instance;
+        g_instance = nullptr;
     }
 }
 

@@ -39,7 +39,6 @@ public:
     unsigned Count() const;
 
 private:
-    friend struct std::default_delete<SpecLibrary>;
     SpecLibrary();
     ~SpecLibrary();
 

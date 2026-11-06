@@ -84,8 +84,8 @@ class GVAppearanceType : public AppearanceType
 		NodeData					*nodeData;			//View of nodeDataStore
 		std::unique_ptr<NodeData[]>	nodeDataStore;		//Owns the node table, built once by init(file)
 		
-		static std::unique_ptr<TG_TypeMultiShape> SensorTriangleShape;
-		static std::unique_ptr<TG_TypeMultiShape> SensorCircleShape;
+		static TG_TypeMultiShapePtr SensorTriangleShape;
+		static TG_TypeMultiShapePtr SensorCircleShape;
 		
 	public:
 	

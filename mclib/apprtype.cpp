@@ -374,9 +374,12 @@ void AppearanceTypeList::destroy (void)
 //---------------------------------------------------------------------------
 void AppearanceTypeList::destroySensorShapes (void)
 {
-	GVAppearanceType::SensorCircleShape.reset();
-	GVAppearanceType::SensorTriangleShape.reset();
-	Mech3DAppearanceType::SensorSquareShape.reset();
+	delete GVAppearanceType::SensorCircleShape;
+	GVAppearanceType::SensorCircleShape = nullptr;
+	delete GVAppearanceType::SensorTriangleShape;
+	GVAppearanceType::SensorTriangleShape = nullptr;
+	delete Mech3DAppearanceType::SensorSquareShape;
+	Mech3DAppearanceType::SensorSquareShape = nullptr;
 }
 
 //---------------------------------------------------------------------------
