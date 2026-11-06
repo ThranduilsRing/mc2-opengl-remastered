@@ -909,7 +909,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     s->gpuTimer.reset(cb);
     s->gpuTimer.write(cb, 0);
-    if (s->skin.active()) s->skin.record(cb, s->vbo.get(), s->vboBytes, boneBuffer, boneRange, dynOffsets[2]);   // compute pre-skin, outside the render pass
+    if (s->skin.active()) { MC2_VK_GPU_SCOPE(skinScope, cb, "VKIsl.Mech.Skin"); s->skin.record(cb, s->vbo.get(), s->vboBytes, boneBuffer, boneRange, dynOffsets[2]); }   // compute pre-skin, outside the render pass
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();

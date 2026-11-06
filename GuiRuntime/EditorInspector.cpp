@@ -1,4 +1,5 @@
 #include "EditorInspector_internal.h"
+#include <cstring>
 #include "../GameOS/gameos/vk_gpu_profile.h"
 #include "../GameOS/gameos/gos_cull_freeze.h"
 
@@ -52,8 +53,9 @@ static void drawGpuPassesWindow() {
         float span = 0.f;
         const uint32_t n = mc2vk::gpuprof::snapshot(rows, 64, &span);
         float sum = 0.f;
-        for (uint32_t i = 0; i < n; ++i) sum += rows[i].emaMs;
-        ImGui::Text("GPU span %.2f ms   passes %.2f ms   (rolling avg)", span, sum);
+        float gaps = 0.f;   // "gap:<pass>" rows are idle GPU time before <pass>, not pass work
+        for (uint32_t i = 0; i < n; ++i) (std::strncmp(rows[i].name, "gap:", 4) == 0 ? gaps : sum) += rows[i].emaMs;
+        ImGui::Text("GPU span %.2f ms   passes %.2f ms   gaps %.2f ms   (rolling avg)", span, sum, gaps);
         if (ImGui::BeginTable("##gpupasses", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
             ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("ms", ImGuiTableColumnFlags_WidthFixed, 56.f);

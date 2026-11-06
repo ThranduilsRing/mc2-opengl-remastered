@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <mutex>
@@ -32,7 +33,7 @@ constexpr uint32_t kRing = 4;          // frames of timestamp slots; a slot is r
 constexpr uint32_t kMaxScopes = 96;    // scopes one frame may time; more are drawn untimed and counted
 constexpr uint32_t kQueriesPerSlot = kMaxScopes * 2;
 constexpr uint32_t kLogEvery = 120;    // frames per [VK_GPU_PASSES v1] line
-constexpr uint32_t kMaxNames = 64;
+constexpr uint32_t kMaxNames = 128;   // pass names plus one "gap:" row per pass that follows idle GPU time
 
 struct Row {
     const char* name = nullptr;
@@ -95,6 +96,18 @@ static_assert(alignof(tracy::VkCtxScope) <= 16, "Scope::tracyZone_ alignment");
 tracy::VkCtxScope* zone(unsigned char* p) { return std::launder(reinterpret_cast<tracy::VkCtxScope*>(p)); }
 #endif
 
+// "gap:<pass>" rows: GPU time between the end of everything recorded so far and the start of <pass> (barrier waits, queue idle, submit
+// boundaries). Stable storage because rows keep the pointer.
+const char* gapName(const char* src) {
+    static const char* srcOf[kMaxNames] = {};
+    static char buf[kMaxNames][72] = {};
+    for (uint32_t i = 0; i < kMaxNames; ++i) {
+        if (srcOf[i] == src) return buf[i];
+        if (!srcOf[i]) { srcOf[i] = src; std::snprintf(buf[i], sizeof buf[i], "gap:%s", src); return buf[i]; }
+    }
+    return "gap:other";
+}
+
 Row& rowFor(std::string_view nameSv) {
     const char* name = nameSv.data();
     for (uint32_t i = 0; i < g.rowCount; ++i)
@@ -135,6 +148,8 @@ void readSlot(uint32_t slot, uint32_t& used) {
     bool haveBase = false;
     double sumMs = 0.0;
     bool any = false;
+    struct Iv { uint64_t b, e; uint32_t name; } iv[kMaxScopes];
+    uint32_t ivN = 0;
     for (uint32_t i = 0; i < used; ++i) {
         uint64_t r[4] = {};   // (begin, avail, end, avail)
         const uint32_t q = (slot * kMaxScopes + i) * 2;
@@ -153,9 +168,25 @@ void readSlot(uint32_t slot, uint32_t& used) {
         uint32_t k = 0;
         while (k < nNames && nameOf[k] != nm) ++k;
         if (k == nNames && nNames < kMaxNames) { nameOf[nNames] = nm; ++nNames; }
-        if (k < nNames) { perName[k] += ms; ++callsOf[k]; }
+        if (k < nNames) { perName[k] += ms; ++callsOf[k]; iv[ivN++] = {rb, re, k}; }
     }
     if (!any) return;
+    {   // Union coverage (nested scopes count once) and the idle gaps, charged to the pass that starts after each gap.
+        std::sort(iv, iv + ivN, [](const Iv& a, const Iv& b) { return a.b < b.b; });
+        double gapOf[kMaxNames] = {};
+        uint64_t cursor = iv[0].b;
+        uint64_t covered = 0;
+        for (uint32_t i = 0; i < ivN; ++i) {
+            if (iv[i].b > cursor) gapOf[iv[i].name] += static_cast<double>(iv[i].b - cursor) * g.nsPerTick / 1.0e6;
+            const uint64_t from = std::max(cursor, iv[i].b);
+            if (iv[i].e > from) covered += iv[i].e - from;
+            cursor = std::max(cursor, iv[i].e);
+        }
+        sumMs = static_cast<double>(covered) * g.nsPerTick / 1.0e6;
+        const uint32_t passNames = nNames;
+        for (uint32_t k = 0; k < passNames && nNames < kMaxNames; ++k)
+            if (gapOf[k] > 0.0) { nameOf[nNames] = gapName(nameOf[k]); perName[nNames] = gapOf[k]; callsOf[nNames] = 1; ++nNames; }
+    }
     mc2_hitch2::noteGpuFrame(static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6, sumMs);
     if (mc2::battlebench::output) {
         // One record, one fputs: the sim worker writes tick records to the same stream, so a record built in pieces would interleave.
@@ -163,7 +194,7 @@ void readSlot(uint32_t slot, uint32_t& used) {
         int len = std::snprintf(line, sizeof line, "{\"type\":\"gpu\",\"frame\":%llu,\"ms\":%.6f,\"recorded\":%u,\"valid\":%u,\"passes\":{",
             static_cast<unsigned long long>(g.benchFrames[slot]),
             static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6, recorded,
-            [&] { uint32_t n = 0; for (uint32_t k = 0; k < nNames; ++k) n += callsOf[k]; return n; }());
+            [&] { uint32_t n = 0; for (uint32_t k = 0; k < nNames; ++k) if (std::strncmp(nameOf[k], "gap:", 4) != 0) n += callsOf[k]; return n; }());
         for (uint32_t k = 0; k < nNames && len > 0 && len < static_cast<int>(sizeof line) - 96; ++k)
             len += std::snprintf(line + len, sizeof line - len, "%s\"%s\":%.6f", k ? "," : "", nameOf[k], perName[k]);
         if (len > 0 && len < static_cast<int>(sizeof line) - 4) {
@@ -224,7 +255,11 @@ void init(VulkanContext& ctx) {
     const uint32_t fam = ctx.graphicsFamily();
     const bool tsOk = props.limits.timestampPeriod > 0.0f && fam < qfc && qfs[fam].timestampValidBits != 0;
 
-    if (tsOk) {   // always armed: two vkCmdWriteTimestamp per scope, read back two frames later without waiting
+    // Always armed (two vkCmdWriteTimestamp per scope, read back two frames later without waiting) unless the harness says
+    // MC2_VK_GPU_TIMESTAMPS=0 explicitly (rgp_capture.py: the profiler must see an unperturbed queue). Unset keeps them on.
+    const char* tsEnv = std::getenv("MC2_VK_GPU_TIMESTAMPS");
+    const bool tsOptOut = tsEnv && tsEnv[0] == '0';
+    if (tsOk && !tsOptOut) {
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 identity{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &driver};
         vkGetPhysicalDeviceProperties2(ctx.physicalDevice(), &identity);
