@@ -1,4 +1,4 @@
-// VIDEO-DECODE-OFFLINE-1: the production ControlGui::playMovie() deferral, on the real registered overlap worker.
+// The production ControlGui::playMovie() deferral, on the real registered overlap worker.
 // Real: ControlGui::playMovie (code/controlgui_chat.cpp), MC2Movie::init (code/mc2movie.cpp), tick_commit, sim_overlap.
 // Seam: only the decoder/device end (video_open, which creates the Render-owner-only gos texture) and its resolver.
 // Regression guarded: the worker (ABL playVideo, objective CPlayBIK) opened the movie -> gos_NewEmptyTexture requireOwner abort.

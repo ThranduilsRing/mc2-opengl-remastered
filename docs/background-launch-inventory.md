@@ -36,7 +36,6 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_harness_desktop_safety.py` | 442 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 446 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 497 | `nofocus.run` | offscreen |
-| `scripts/tests/test_kit_visibility.py` | 45 | `nofocus.run` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 125 | `nofocus.run` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 288 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
