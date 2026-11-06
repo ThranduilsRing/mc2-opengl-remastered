@@ -474,7 +474,7 @@ long aColorPicker::init(long xPos, long yPos,long w, long h )
 	return (NO_ERR);
 }
 
-void aColorPicker::init( FitIniFile* file, const char* blockName )
+void aColorPicker::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock(blockName);
 
@@ -740,7 +740,7 @@ void aColorPicker::setColor1(int color)
 }
 
 
-long aStyle1TextListItem::init( FitIniFile* file, const char* blockName )
+long aStyle1TextListItem::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock( blockName );
 
@@ -792,7 +792,7 @@ void aStyle1TextListItem::render()
 }
 
 
-long aInsigniaListItem::init( FitIniFile* file, const char* blockName )
+long aInsigniaListItem::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock( blockName );
 

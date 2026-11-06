@@ -51,7 +51,7 @@ public:
 
 	const char* getMapFileName(){ return selMapName.empty() ? nullptr : selMapName.c_str(); }
 
-	static void			getMapNameFromFile( const char* pFileName, std::span<char> buffer );
+	static void			getMapNameFromFile( mc2::czstring pFileName, std::span<char> buffer );
 
 
 
@@ -81,7 +81,7 @@ private:
 
 	void	updateMapInfo();
 	void	seedFromFile( mc2::czstring pFileName );
-	void	addFile( const char* pFileName, bool bSeedSingle );
+	void	addFile( mc2::czstring pFileName, bool bSeedSingle );
 
 
 

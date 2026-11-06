@@ -3,6 +3,7 @@
 #include <memory>
 #include <span>
 #include <string_view>
+#include "mc2_czstring.h"
 
 // The menu's read-only campaign version preflight, also exercised by legacy fixtures.
 bool isCorrectVersionCampaignSave(std::string_view path);
@@ -110,6 +111,7 @@ class LogisticsOneButtonDialog : public LogisticsDialog
 
 
 		LogisticsOneButtonDialog();
+		void setPlayerLeftText( mc2::czstring playerName );
 		
 
 		virtual int			handleMessage( unsigned long, unsigned long );

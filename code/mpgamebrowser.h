@@ -1,5 +1,6 @@
 #ifndef MPGAMEBROWSER_H
 #define MPGAMEBROWSER_H
+#include "mc2_czstring.h"
 /*************************************************************************************************\
 MPGameBrowser.h			: Interface for the MPGameBrowser component.
 //---------------------------------------------------------------------------//
@@ -36,7 +37,7 @@ class aStyle3TextListItem : public aTextListItem
 {
 public:
 	aStyle3TextListItem() { hasAnimation = false; normalColor = 0xff808080; }
-	virtual long	init( FitIniFile* file, const char* blockName );
+	virtual long	init( FitIniFile* file, mc2::czstring blockName );
 	virtual void		render();
 
 protected:
@@ -49,7 +50,7 @@ class aGameListItem : public aListItem
 {
 public:
 	aGameListItem();
-	virtual long	init( FitIniFile* file, const char* blockName );
+	virtual long	init( FitIniFile* file, mc2::czstring blockName );
 	virtual void update();
 	void setSessionInfo( _MC2Session* pSessions );
 

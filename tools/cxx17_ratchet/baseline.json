@@ -144,7 +144,7 @@
    "LG03": 314,
    "LG04": 15,
    "LG05": 198,
-   "LG06": 257,
+   "LG06": 215,
    "LG07": 2,
    "LG08": 3,
    "LG09": 51,
@@ -190,7 +190,7 @@
    "LG03": 428,
    "LG04": 12,
    "LG05": 107,
-   "LG06": 113,
+   "LG06": 41,
    "LG07": 0,
    "LG08": 9,
    "LG09": 21,
@@ -2162,81 +2162,55 @@
   "code/mpconnectiontype.h": {},
   "code/mpgamebrowser.cpp": {
    "LG05": 2,
-   "LG06": 2,
    "LG12b": 3
   },
-  "code/mpgamebrowser.h": {
-   "LG06": 2
-  },
+  "code/mpgamebrowser.h": {},
   "code/mphostgame.cpp": {
-   "LG05": 1,
-   "LG06": 1
+   "LG05": 1
   },
-  "code/mphostgame.h": {
-   "LG06": 1
-  },
+  "code/mphostgame.h": {},
   "code/mploadmap.cpp": {
    "LG03": 3,
    "LG05": 1,
-   "LG06": 2,
    "LG10": 1,
    "LG11": 4,
    "LG12b": 3
   },
-  "code/mploadmap.h": {
-   "LG06": 2
-  },
+  "code/mploadmap.h": {},
   "code/mpparameterscreen.cpp": {
    "LG03": 1,
    "LG05": 3,
-   "LG06": 8,
    "LG09": 1,
    "LG10": 8,
    "LG12b": 6
   },
-  "code/mpparameterscreen.h": {
-   "LG06": 8
-  },
+  "code/mpparameterscreen.h": {},
   "code/mpprefs.cpp": {
    "LG05": 1,
-   "LG06": 1,
    "LG11": 2
   },
-  "code/mpprefs.h": {
-   "LG06": 1
-  },
+  "code/mpprefs.h": {},
   "code/mpsetuparea.cpp": {
-   "LG05": 1,
-   "LG06": 3
+   "LG05": 1
   },
-  "code/mpsetuparea.h": {
-   "LG06": 3
-  },
+  "code/mpsetuparea.h": {},
   "code/mpstats.cpp": {
    "LG05": 1,
-   "LG06": 1,
    "LG11": 1,
    "LG12b": 4,
    "LG18": 1
   },
-  "code/mpstats.h": {
-   "LG06": 1
-  },
-  "code/multplyr.cpp": {
-   "LG06": 2
-  },
+  "code/mpstats.h": {},
+  "code/multplyr.cpp": {},
   "code/multplyr.h": {
-   "LG06": 3,
+   "LG06": 1,
    "LG14": 7,
    "LG17": 2
   },
-  "code/multplyr_handle.cpp": {
-   "LG06": 1
-  },
+  "code/multplyr_handle.cpp": {},
   "code/multplyr_internal.h": {},
   "code/multplyr_null.cpp": {
    "LG05": 2,
-   "LG06": 1,
    "LG17": 1
   },
   "code/multplyr_send.cpp": {
@@ -2809,7 +2783,7 @@
   },
   "mclib/file.cpp": {
    "LG05": 1,
-   "LG06": 9,
+   "LG06": 2,
    "LG10": 4,
    "LG12a": 3,
    "LG12b": 1,
@@ -2817,7 +2791,7 @@
    "LG17": 1
   },
   "mclib/file.h": {
-   "LG06": 17,
+   "LG06": 1,
    "LG17": 1
   },
   "mclib/fit_number.h": {},
@@ -2953,11 +2927,11 @@
   "mclib/heap.cpp": {},
   "mclib/heap.h": {},
   "mclib/inifile.cpp": {
-   "LG06": 15,
+   "LG06": 1,
    "LG17": 3
   },
   "mclib/inifile.h": {
-   "LG06": 23,
+   "LG06": 1,
    "LG17": 4
   },
   "mclib/inifile_arrays.cpp": {
@@ -3319,7 +3293,6 @@
   },
   "mclib/msl.h": {
    "LG05": 1,
-   "LG06": 13,
    "LG17": 3
   },
   "mclib/msl_anim.cpp": {

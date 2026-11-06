@@ -411,6 +411,16 @@ void				LogisticsOneButtonDialog::setText( const char* mainText )
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
 
+void LogisticsOneButtonDialog::setPlayerLeftText( mc2::czstring playerName )
+{
+	char leaveStr[256];
+	char formatStr[256];
+	cLoadString( IDS_PLAYER_LEFT, leaveStr, 255 );
+	sprintf( formatStr, leaveStr, playerName );
+	setText( IDS_PLAYER_LEFT, IDS_DIALOG_OK, IDS_DIALOG_OK );
+	setText( formatStr );
+}
+
 LogisticsSaveDialog::LogisticsSaveDialog(  ) 
 {
 }

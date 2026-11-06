@@ -8,6 +8,7 @@
 
 #ifndef MULTPLYR_H
 #define MULTPLYR_H
+#include "mc2_czstring.h"
 
 //***************************************************************************
 
@@ -1571,7 +1572,7 @@ class MultiPlayer {
 
 		void handleTerminateSession (void);
 
-		bool launchBrowser (const char* link);
+		bool launchBrowser (mc2::czstring link);
 
 		void initParametersScreen (void);
 
@@ -1820,7 +1821,7 @@ class MultiPlayer {
 
 		void calcDropZones (char dropZonesCID[8], char hqs[MAX_TEAMS]);
 
-		long saveTranscript (const char* fileName, bool debugging = false);
+		long saveTranscript (mc2::czstring fileName, bool debugging = false);
 
 		void playerLeftGame (DWORD playerId);
 

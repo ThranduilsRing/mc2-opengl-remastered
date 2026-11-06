@@ -2,6 +2,7 @@
 #include <span>
 #ifndef MPPREFS_H
 #define MPPREFS_H
+#include "mc2_czstring.h"
 /*************************************************************************************************\
 MPPrefs.h			: Interface for the MPPrefs component.
 //---------------------------------------------------------------------------//
@@ -75,7 +76,7 @@ class aBmpListItem : public aListItem
 {
 public:
 
-	int setBmp( const char* pFileName );
+	int setBmp( mc2::czstring pFileName );
 	const char* getBmp(){ return fileName.c_str(); }
 	
 private:

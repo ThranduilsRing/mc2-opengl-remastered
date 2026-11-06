@@ -40,6 +40,7 @@
 #include <string>
 #include <optional>
 #include <string_view>
+#include "mc2_czstring.h"
 #include <vector>
 
 //---------------------------------------------------------------------------
@@ -71,16 +72,16 @@ inline constexpr int FILE_ON_DISK = 1;
 inline constexpr int FILE_ON_FST = 2;
 
 // Function Declarations
-long fileExists(const char *fName, long destination_mask = FILE_ON_DISK|FILE_ON_FST);
-long fileExistsOnCD(const char *fName);
-bool file1OlderThan2(const char *file1, const char* file2);
-void InitModSearchPaths(const char* modsRoot);
+long fileExists(mc2::czstring fName, long destination_mask = FILE_ON_DISK|FILE_ON_FST);
+long fileExistsOnCD(mc2::czstring fName);
+bool file1OlderThan2(mc2::czstring file1, mc2::czstring file2);
+void InitModSearchPaths(mc2::czstring modsRoot);
 // No-ops — mod is selected at launcher time. Kept for call-site compat.
-void ActivateCampaignMod(const char* campaignFitName);
-void ActivateModForMission(const char* missionFitKey);
+void ActivateCampaignMod(mc2::czstring campaignFitName);
+void ActivateModForMission(mc2::czstring missionFitKey);
 void DeactivateMod();
 // Diagnostic: returns owning mod id for a data path, or nullptr if not in mod index.
-const char* LookupModOwner(const char* dataPath);
+const char* LookupModOwner(mc2::czstring dataPath);
 // Root archive supplying this normalized member; empty when absent.
 std::string LookupArchivePath(std::string_view dataPath);
 // Winning loose provider for metadata/editing. Base fallback is not editable
@@ -91,7 +92,7 @@ struct ModFileSource {
 };
 ModFileSource ResolveModFileSource(std::string_view dataPath);
 // Lower values win; follows the same active/dependency order as File::open.
-int LookupModPriority(const char* dataPath);
+int LookupModPriority(mc2::czstring dataPath);
 // Absolute disk path of the mounted mod file that serves dataPath, or nullptr when no mod owns it.
 // For readers that bypass File::open (Assimp, sidecar fopen); see the P2 boundary note in mclib/msl_load.cpp.
 const char* LookupModAbsolutePath(std::string_view dataPath);
@@ -100,14 +101,14 @@ bool ModHasCapability(std::string_view modId, std::string_view capability);
 bool ModCapabilityMounted(std::string_view capability);
 bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capability);
 // Archive metadata for a loose override; the normal File::open precedence stays authoritative.
-std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxBytes);
+std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBytes);
 // Enumerate data/campaign/*.fit files from the active mod (for campaign list UI).
-using ModCampaignCallback = void(*)(const char* fitFileName, const char* fullPath, void* userData);
+using ModCampaignCallback = void(*)(mc2::czstring fitFileName, mc2::czstring fullPath, void* userData);
 void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData);
 // Enumerate mod-indexed .fit files whose key starts with keyPrefix (e.g. "data/defs/text/en_us/").
 // Appends absolute paths to out, sorted by filename. Used by MC2Strings to pick up mod text FITs.
-using ModFitCallback = void(*)(const char* absPath, void* userData);
-void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userData);
+using ModFitCallback = void(*)(mc2::czstring absPath, void* userData);
+void EnumerateModFitFiles(mc2::czstring keyPrefix, ModFitCallback cb, void* userData);
 // Winning VFS keys, including non-FIT icon images; File::open remains authoritative.
 void EnumerateModFiles(std::string_view keyPrefix, ModFitCallback cb, void* userData);
 
@@ -197,11 +198,11 @@ class File
 
 			bool eof (void);
 
-			virtual long open ( const char* fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
+			virtual long open ( mc2::czstring fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
 			virtual long open( const char* buffer, int bufferLength ); // for streaming from memory
 
-			virtual long create (const char* fName);
-			virtual long createWithCase(const char* fName ); // don't strlwr for me please!
+			virtual long create (mc2::czstring fName);
+			virtual long createWithCase(mc2::czstring fName ); // don't strlwr for me please!
 
 			virtual void close (void);
 
@@ -244,7 +245,7 @@ class File
 			long writeLong (long value);
 			long writeFloat (float value);
 
-			long writeString (const char *buffer);
+			long writeString (mc2::czstring buffer);
 			long writeLine (char *buffer);
 
 			bool isOpen (void);

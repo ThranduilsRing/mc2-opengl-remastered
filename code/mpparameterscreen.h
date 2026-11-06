@@ -1,6 +1,7 @@
 #include <string>
 #ifndef MPPARAMETERSCREEN_H
 #define MPPARAMETERSCREEN_H
+#include "mc2_czstring.h"
 /*************************************************************************************************\
 MPParameterScreen.h			: Interface for the MPParameterScreen component.
 //---------------------------------------------------------------------------//
@@ -35,7 +36,7 @@ class aStyle2TextListItem : public aTextListItem
 {
 public:
 	aStyle2TextListItem() { hasAnimation = false; normalColor = 0xff808080; }
-	virtual long	init( FitIniFile* file, const char* blockName );
+	virtual long	init( FitIniFile* file, mc2::czstring blockName );
 	virtual void		render();
 
 protected:
@@ -54,7 +55,7 @@ public:
 	aPlayerParams& operator=( const aPlayerParams& src );
 
 	virtual long		init(long xPos, long yPos, long w, long h);
-	void				init( FitIniFile* file, const char* blockName );
+	void				init( FitIniFile* file, mc2::czstring blockName );
 
 	virtual void		destroy();
 	virtual void		render();
@@ -144,11 +145,11 @@ public:
 	
 	static void			resetCheckBoxes();
 
-	void				setHostLeftDlg( const char* playerName);
+	void				setHostLeftDlg( mc2::czstring playerName);
 
-	static GUID			getGUIDFromFile( const char* fileName );
+	static GUID			getGUIDFromFile( mc2::czstring fileName );
 
-	static void			initializeMap( const char* fileName );
+	static void			initializeMap( mc2::czstring fileName );
 
 	static MPParameterScreen* s_instance;
 
@@ -158,9 +159,9 @@ private:
 	
 	int					chatToSend;
 
-	void				setMission( const char* fileName, bool resetData = 1 );
-	void				setMissionClientOnly( const char* pNewMapName );
-	void				checkVersionClientOnly( const char* pNewMapName );
+	void				setMission( mc2::czstring fileName, bool resetData = 1 );
+	void				setMissionClientOnly( mc2::czstring pNewMapName );
+	void				checkVersionClientOnly( mc2::czstring pNewMapName );
 
 
 

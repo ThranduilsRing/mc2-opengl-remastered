@@ -250,7 +250,7 @@ void MPHostGame::update()
 
 
 
-long aStyle5TextListItem::init( FitIniFile* file, const char* blockName )
+long aStyle5TextListItem::init( FitIniFile* file, mc2::czstring blockName )
 {
 	file->seekBlock( blockName );
 
