@@ -26,6 +26,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
 from smoke_lib import nofocus  # noqa: E402
 import mc2_env_pin as env_pin  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pixel_hist  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -122,6 +124,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
                            if p.is_dir() and (vk_dir / p.name).is_dir())
     out.mkdir(parents=True, exist_ok=True)
     rows = []
+    gpu_a, gpu_b = capture_gpus(gl_dir), capture_gpus(vk_dir)
+    ph_cfg = pixel_hist.load_thresholds()
     for bm in bookmarks:
         pg, pv = find_png(gl_dir, bm), find_png(vk_dir, bm)
         if not pg or not pv:
@@ -136,7 +140,9 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
         A, B = np.asarray(a).astype(np.int16), np.asarray(b).astype(np.int16)
         D = np.abs(A - B)
         fm = flip_map(a, b)
-        row = {"bookmark": bm, "size": list(a.size),
+        # pixel-count verdict next to MAD (reported only, never a gate input yet)
+        ph_res = pixel_hist.evaluate(np.asarray(a), np.asarray(b), pixel_hist.resolve_thresholds(ph_cfg, bm, gpu_b))
+        row = {"bookmark": bm, "size": list(a.size), "pixel_hist": ph_res,
                "flip_mean": float(fm.mean()) if fm is not None else None,
                "flip_p99": float(np.percentile(fm, 99)) if fm is not None else None,
                "mad": float(D.mean()),
@@ -175,7 +181,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
         fp99 = "n/a" if r["flip_p99"] is None else f"{r['flip_p99']:.4f}"
         print(f"{r['bookmark']} | {fmean} | {fp99} | {r['mad']:.4f} | {r['pct_diff_gt24']:.2f}"
               + "".join(f" | {c['mad']:.2f}/" + ("n/a" if c["flip_mean"] is None else f"{c['flip_mean']:.4f}") for c in r["crops"]))
-    gpu_a, gpu_b = capture_gpus(gl_dir), capture_gpus(vk_dir)
+    for r in rows:  # separate lines (no '|'): the gate parses the table above by columns
+        print(f"[pixel_hist] {r['bookmark']}: {pixel_hist.summary_line(r['pixel_hist'])}")
     if gpu_a and gpu_b and gpu_a != gpu_b:
         print(f"[ab] WARNING: the two sides ran on different GPUs ({gpu_a} vs {gpu_b}); the diff is not a clean A/B")
     (out / "summary.json").write_text(json.dumps(

@@ -1685,6 +1685,9 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
                 if result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
+                    for line in (getattr(result, "stdout", "") or "").splitlines():
+                        if line.startswith("[pixel_hist] "):  # reported next to MAD; not a pass/fail input yet
+                            print(f"[merge_gate] {name} {line}")
                     if moved:
                         status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
