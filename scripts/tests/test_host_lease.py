@@ -735,6 +735,8 @@ def test_gpu_split_parse_and_per_device_lease_paths(lease, monkeypatch):
 
 def test_game_cores_follow_the_device_half(monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    # off the PC there is no core_plan.json and the fallback derives game cores from cpu_count: pin a 16-CPU host so they sit in the lane mask
+    monkeypatch.setattr(host_lease.os, "cpu_count", lambda: 16)
     monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
     lane = set(host_lease.game_cores())
     monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")

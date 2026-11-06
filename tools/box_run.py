@@ -168,7 +168,8 @@ for row in "${ROWS[@]}"; do
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
   case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
-    smoke-lite)  cmd="python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
+    smoke-lite)  QS=""; [ "$GOT" = 3 ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu 3 --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
+                 cmd="$QS python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
     capture:*)   IFS=: read -r _ m b <<< "$row"; cmd="python3 scripts/run_visual_capture.py --mission $m --bookmarks tests/visual/bookmarks/$b.json --exe $I/mc2 --classic-assets --out-dir $(fresh $OUT/$name)" ;;
     determinism:*) m=${row#*:}; extra=""; [ "$m" = mc2_24 ] && extra="--ticks 2600"   # mc2_24: the finale spawns infantry after tick 2404 (as the PC gate)
