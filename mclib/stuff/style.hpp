@@ -92,11 +92,13 @@ namespace Stuff {
 			friend class MemoryRegister;
 
 		private:
-			enum Mark
+			enum class Mark : int
 			{
 				Valid=0x7B135795L,
 				Destroyed=0x4FED1231L
-			} mark;
+			};
+			using enum Mark;
+			Mark mark;
 
 		protected:
 			Signature();

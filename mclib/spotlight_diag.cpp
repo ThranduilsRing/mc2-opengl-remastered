@@ -55,16 +55,15 @@ void untag_slot(const void* camera, long slot)
     if (tags.empty()) cameras.erase(cam);
 }
 
-bool is_e_slot(const void* camera, long slot, SourceClass* outSrc)
+std::optional<SourceClass> is_e_slot(const void* camera, long slot)
 {
     const auto cam = slot_map().find(camera);
-    if (cam == slot_map().end()) return false;
+    if (cam == slot_map().end()) return std::nullopt;
     const auto& [identity, m] = *cam;
     auto it = m.find(slot);
-    if (it == m.end()) return false;
+    if (it == m.end()) return std::nullopt;
     const auto& [index, tag] = *it;
-    if (outSrc) *outSrc = static_cast<SourceClass>(tag.src);
-    return true;
+    return static_cast<SourceClass>(tag.src);
 }
 
 void reset()

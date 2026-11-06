@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #pragma once
+#include "mc2_czstring.h"
 
 #include"gosfx.hpp"
 #include"effect.hpp"
@@ -66,7 +67,7 @@ namespace gosFX
 	// during the migration window.
 	public:
 		Effect::Specification*
-			Find(const char* name);
+			Find(mc2::czstring name); // NUL-terminated key passed to SpecLibrary
 		// The caller owns the new effect.
 		EffectPtr
 			MakeEffect(

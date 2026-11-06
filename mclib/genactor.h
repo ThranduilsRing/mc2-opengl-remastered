@@ -30,6 +30,7 @@
 #endif
 
 #include "mc2_czstring.h"
+#include <memory>
 #include"memfunc.h"
 
 //**************************************************************************************
@@ -46,10 +47,10 @@ class GenericAppearanceType : public AppearanceType
 {
 	public:
 	
-		TG_TypeMultiShapePtr		genShape;
-		TG_TypeMultiShapePtr		genDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> genShape;
+		std::unique_ptr<TG_TypeMultiShape> genDmgShape;
 		
-		TG_AnimateShapePtr			genAnimData[MAX_GEN_ANIMATIONS];
+		std::unique_ptr<TG_AnimateShape> genAnimData[MAX_GEN_ANIMATIONS];
 		bool						genAnimLoop[MAX_GEN_ANIMATIONS];
 		bool						genReverse[MAX_GEN_ANIMATIONS];
 		bool						genRandom[MAX_GEN_ANIMATIONS];
@@ -154,7 +155,7 @@ class GenericAppearance : public ObjectAppearance
 	public:
 
 		GenericAppearanceType*						appearType;
-		TG_MultiShapePtr							genShape;
+		std::unique_ptr<TG_MultiShape> genShape;
 
 		// Slice 2 (object-offload): see BldgAppearance::needsFullBakeNextFrame.
 		bool										needsFullBakeNextFrame;

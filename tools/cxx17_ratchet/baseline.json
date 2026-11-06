@@ -61,7 +61,7 @@
    "LG12a": 58,
    "LG12b": 24,
    "LG13": 19,
-   "LG14": 53,
+   "LG14": 50,
    "LG15": 0,
    "LG16": 5,
    "LG17": 68,
@@ -187,10 +187,10 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 428,
+   "LG03": 334,
    "LG04": 12,
-   "LG05": 107,
-   "LG06": 113,
+   "LG05": 100,
+   "LG06": 104,
    "LG07": 0,
    "LG08": 9,
    "LG09": 21,
@@ -199,7 +199,7 @@
    "LG12a": 76,
    "LG12b": 8,
    "LG13": 15,
-   "LG14": 47,
+   "LG14": 43,
    "LG15": 0,
    "LG16": 10,
    "LG17": 78,
@@ -409,7 +409,6 @@
   },
   "GameOS/gameos/gameos_graphics_material_internal.h": {
    "LG03": 8,
-   "LG14": 1,
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_overlay.cpp": {},
@@ -491,9 +490,7 @@
   "GameOS/gameos/gos_host_vk.cpp": {},
   "GameOS/gameos/gos_host_vk.h": {},
   "GameOS/gameos/gos_input.cpp": {},
-  "GameOS/gameos/gos_input.h": {
-   "LG14": 1
-  },
+  "GameOS/gameos/gos_input.h": {},
   "GameOS/gameos/gos_materials.cpp": {},
   "GameOS/gameos/gos_materials.h": {},
   "GameOS/gameos/gos_mech_batcher.cpp": {},
@@ -663,7 +660,7 @@
   "GameOS/gameos/gpu_cull_readback.h": {},
   "GameOS/gameos/gpu_cull_record.cpp": {},
   "GameOS/gameos/gpu_cull_record.h": {
-   "LG14": 3
+   "LG14": 2
   },
   "GameOS/gameos/gpu_cull_substrate.cpp": {
    "LG10": 1,
@@ -2563,12 +2560,9 @@
   "mclib/anim_freeze.h": {},
   "mclib/anim_override_registry.cpp": {
    "LG05": 3,
-   "LG06": 2,
    "LG11": 4
   },
-  "mclib/anim_override_registry.h": {
-   "LG06": 2
-  },
+  "mclib/anim_override_registry.h": {},
   "mclib/appear.cpp": {},
   "mclib/appear.h": {
    "LG05": 4
@@ -2576,7 +2570,6 @@
   "mclib/appearance_rng.cpp": {},
   "mclib/appearance_rng.h": {},
   "mclib/apprtype.cpp": {
-   "LG03": 3,
    "LG05": 1,
    "LG06": 1
   },
@@ -2585,7 +2578,7 @@
    "LG10": 1
   },
   "mclib/assimp_importer.cpp": {
-   "LG05": 9,
+   "LG05": 8,
    "LG08": 3,
    "LG11": 1,
    "LG12a": 2
@@ -2611,21 +2604,11 @@
    "LG20": 8
   },
   "mclib/bdactor_spotlight.cpp": {},
-  "mclib/bdactor_static.cpp": {
-   "LG03": 2
-  },
-  "mclib/bdactor_terrain.cpp": {
-   "LG03": 1
-  },
-  "mclib/bdactor_tree.cpp": {
-   "LG03": 5
-  },
-  "mclib/bdactor_tree_static.cpp": {
-   "LG03": 1
-  },
-  "mclib/bdactor_type.cpp": {
-   "LG03": 18
-  },
+  "mclib/bdactor_static.cpp": {},
+  "mclib/bdactor_terrain.cpp": {},
+  "mclib/bdactor_tree.cpp": {},
+  "mclib/bdactor_tree_static.cpp": {},
+  "mclib/bdactor_type.cpp": {},
   "mclib/bdactor_update.cpp": {},
   "mclib/bldg_anim_gate_counters.h": {},
   "mclib/building_gameplay_observation.h": {
@@ -2650,7 +2633,7 @@
   },
   "mclib/camera_pick_hash.h": {},
   "mclib/camera_project.cpp": {
-   "LG05": 2,
+   "LG05": 1,
    "LG10": 1
   },
   "mclib/camera_update.cpp": {},
@@ -2745,7 +2728,6 @@
   "mclib/err.cpp": {},
   "mclib/err.h": {},
   "mclib/fastfile.cpp": {
-   "LG03": 2,
    "LG05": 2,
    "LG11": 1
   },
@@ -2783,8 +2765,7 @@
   },
   "mclib/fst_hash.h": {},
   "mclib/fx_def_registry.cpp": {
-   "LG05": 3,
-   "LG06": 2,
+   "LG05": 2,
    "LG11": 1
   },
   "mclib/fx_def_registry.h": {},
@@ -2796,13 +2777,9 @@
    "LG05": 1
   },
   "mclib/gamelog.h": {},
-  "mclib/genactor.cpp": {
-   "LG03": 7
-  },
+  "mclib/genactor.cpp": {},
   "mclib/genactor.h": {},
-  "mclib/genactor_frame.cpp": {
-   "LG03": 1
-  },
+  "mclib/genactor_frame.cpp": {},
   "mclib/genactor_internal.h": {},
   "mclib/globalmap_limits.h": {},
   "mclib/gosfx/card.cpp": {
@@ -2818,8 +2795,7 @@
   },
   "mclib/gosfx/debriscloud.hpp": {},
   "mclib/gosfx/effect.cpp": {
-   "LG03": 6,
-   "LG06": 1
+   "LG03": 6
   },
   "mclib/gosfx/effect.hpp": {},
   "mclib/gosfx/effectcloud.cpp": {
@@ -2827,12 +2803,9 @@
   },
   "mclib/gosfx/effectcloud.hpp": {},
   "mclib/gosfx/effectlibrary.cpp": {
-   "LG03": 1,
-   "LG06": 1
+   "LG03": 1
   },
-  "mclib/gosfx/effectlibrary.hpp": {
-   "LG06": 1
-  },
+  "mclib/gosfx/effectlibrary.hpp": {},
   "mclib/gosfx/fcurve.cpp": {
    "LG05": 3
   },
@@ -2886,21 +2859,17 @@
   },
   "mclib/gosfx/tube.hpp": {},
   "mclib/gvactor.cpp": {
-   "LG03": 14,
    "LG05": 2,
    "LG10": 1,
    "LG12a": 1
   },
   "mclib/gvactor.h": {},
   "mclib/gvactor_geometry.cpp": {
-   "LG03": 2,
    "LG10": 4
   },
   "mclib/gvactor_internal.h": {},
   "mclib/gvactor_render.cpp": {},
-  "mclib/gvactor_update.cpp": {
-   "LG03": 4
-  },
+  "mclib/gvactor_update.cpp": {},
   "mclib/heap.cpp": {},
   "mclib/heap.h": {},
   "mclib/inifile.cpp": {
@@ -2950,15 +2919,12 @@
   "mclib/mclibresource.h": {
    "LG13": 5
   },
-  "mclib/mech3d.cpp": {
-   "LG03": 6
-  },
+  "mclib/mech3d.cpp": {},
   "mclib/mech3d.h": {
    "LG05": 1
   },
   "mclib/mech3d_diag.cpp": {},
   "mclib/mech3d_geometry.cpp": {
-   "LG03": 2,
    "LG10": 2,
    "LG12a": 1
   },
@@ -2970,11 +2936,9 @@
    "LG12a": 1
   },
   "mclib/mech3d_render.cpp": {
-   "LG03": 2,
    "LG08": 1
   },
   "mclib/mech3d_type.cpp": {
-   "LG03": 22,
    "LG05": 4,
    "LG10": 1,
    "LG12a": 2
@@ -3265,9 +3229,7 @@
   "mclib/move_recon_stats.h": {},
   "mclib/move_solvectx.h": {},
   "mclib/mover_lamps.h": {},
-  "mclib/msl.cpp": {
-   "LG03": 1
-  },
+  "mclib/msl.cpp": {},
   "mclib/msl.h": {
    "LG05": 1,
    "LG06": 13,
@@ -3287,7 +3249,6 @@
    "LG12b": 2
   },
   "mclib/msl_shape.cpp": {
-   "LG03": 1,
    "LG05": 3,
    "LG11": 1,
    "LG17": 2
@@ -3303,9 +3264,7 @@
   "mclib/objstatus.h": {
    "LG14": 1
   },
-  "mclib/open_heap.h": {
-   "LG05": 1
-  },
+  "mclib/open_heap.h": {},
   "mclib/packet.cpp": {
    "LG12a": 1
   },
@@ -3321,7 +3280,7 @@
   "mclib/particles/light_manager.h": {},
   "mclib/particles/spec.h": {},
   "mclib/particles/spec_library.cpp": {
-   "LG03": 3,
+   "LG03": 1,
    "LG05": 1
   },
   "mclib/particles/spec_library.h": {},
@@ -3368,9 +3327,7 @@
   },
   "mclib/resizeimage.h": {},
   "mclib/resource_strings.cpp": {},
-  "mclib/routines.cpp": {
-   "LG14": 1
-  },
+  "mclib/routines.cpp": {},
   "mclib/score_sort.h": {},
   "mclib/script_music.h": {},
   "mclib/searchlight_aim.h": {},
@@ -3391,12 +3348,8 @@
   "mclib/soundsys.h": {
    "LG17": 1
   },
-  "mclib/spotlight_diag.cpp": {
-   "LG05": 1
-  },
-  "mclib/spotlight_diag.h": {
-   "LG05": 1
-  },
+  "mclib/spotlight_diag.cpp": {},
+  "mclib/spotlight_diag.h": {},
   "mclib/static_light_row_guard.h": {},
   "mclib/stock_lamp_definition.h": {},
   "mclib/stuff/angle.hpp": {},
@@ -3417,9 +3370,7 @@
    "LG05": 1,
    "LG11": 4
   },
-  "mclib/stuff/filestream.hpp": {
-   "LG14": 1
-  },
+  "mclib/stuff/filestream.hpp": {},
   "mclib/stuff/filestreammanager.cpp": {
    "LG03": 1,
    "LG11": 2
@@ -3457,12 +3408,11 @@
   },
   "mclib/stuff/node.hpp": {},
   "mclib/stuff/notationfile.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG11": 2
   },
   "mclib/stuff/notationfile.hpp": {
-   "LG03": 1,
-   "LG14": 1
+   "LG03": 1
   },
   "mclib/stuff/note.cpp": {},
   "mclib/stuff/note.hpp": {},
@@ -3514,11 +3464,9 @@
   "mclib/stuff/style.cpp": {},
   "mclib/stuff/style.hpp": {
    "LG10": 1,
-   "LG12a": 5,
-   "LG14": 1
+   "LG12a": 5
   },
   "mclib/stuff/trace.cpp": {
-   "LG03": 6,
    "LG12a": 13
   },
   "mclib/stuff/trace.hpp": {
@@ -3596,9 +3544,7 @@
   },
   "mclib/texture_sources_internal.h": {},
   "mclib/tga_scratch.cpp": {},
-  "mclib/tga_scratch.h": {
-   "LG05": 2
-  },
+  "mclib/tga_scratch.h": {},
   "mclib/tgainfo.cpp": {
    "LG04": 2
   },

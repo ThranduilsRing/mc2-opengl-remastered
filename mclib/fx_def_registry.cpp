@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <optional>
 #include <utility>
 #include <string_view>
 #include "Gates/gate.h"
@@ -49,37 +50,38 @@ std::string fxdefTrim(std::string_view s) {
     return std::string(s.substr(b, e - b));
 }
 
-// Parse ONE *.fxdef.json file. Returns false on hard parse failure (file
+// Parse ONE *.fxdef.json file. Returns no definition on hard parse failure (file
 // unreadable / not an object / missing "effect") — caller logs + skips.
 // Soft problems (unknown curve key, non-numeric value) are logged per-field
 // and just drop that field; the rest of the def still loads ("friendly
 // warning, not failure" per proposal §3.1).
-bool fxdefParseOne(const std::string& path, EffectDef& out) {
-    std::ifstream in(path.c_str());
-    if (!in.is_open()) return false;
+std::optional<EffectDef> fxdefParseOne(std::string_view path) {
+    std::ifstream in{std::string(path)};
+    if (!in.is_open()) return std::nullopt;
 
     json root;
     try {
         in >> root;
     } catch (const std::exception& e) {
-        fxdefLog("parse error", path + ": " + e.what());
-        return false;
+        fxdefLog("parse error", std::string(path) + ": " + e.what());
+        return std::nullopt;
     }
     if (!root.is_object()) {
         fxdefLog("root is not a JSON object", path);
-        return false;
+        return std::nullopt;
     }
     if (!root.contains("effect") || !root["effect"].is_string()) {
         fxdefLog("missing string 'effect' key", path);
-        return false;
+        return std::nullopt;
     }
 
+    EffectDef out;
     out.effectNameRaw = root["effect"].get<std::string>();
     out.effectKey     = fxdefLower(fxdefTrim(out.effectNameRaw));
     out.sourcePath     = path;
     if (out.effectKey.empty()) {
         fxdefLog("empty 'effect' name", path);
-        return false;
+        return std::nullopt;
     }
 
     if (root.contains("disabled")) {
@@ -161,7 +163,7 @@ bool fxdefParseOne(const std::string& path, EffectDef& out) {
     // presence is fine, no structured parse yet (slices #4-#6). Anything else
     // unrecognized is likewise tolerated per proposal ("unknown keys = warning,
     // not failure") -- we deliberately do NOT enumerate/reject extra keys here.
-    return true;
+    return out;
 }
 
 std::vector<EffectDef> fxdefParseDir(std::string_view dir) {
@@ -178,9 +180,8 @@ std::vector<EffectDef> fxdefParseDir(std::string_view dir) {
         if (lower.size() <= suffix.size()) continue;
         if (lower.compare(lower.size() - suffix.size(), suffix.size(), suffix) != 0) continue;
 
-        EffectDef def;
-        if (fxdefParseOne(entry.path().string(), def)) {
-            out.push_back(std::move(def));
+        if (auto def = fxdefParseOne(entry.path().string())) {
+            out.push_back(std::move(*def));
         }
     }
     return out;
@@ -273,16 +274,17 @@ bool fxdefSetCurveByName(gosFX::Effect__Specification* spec, unsigned classID,
 // (mlrstate.cpp:178-199): look up-or-add in the live MLRTexturePool, then
 // SetTextureHandle to the pool's handle. Safe to call post-Load (pool is
 // long-lived and this is the same call the stock loader itself makes).
-bool fxdefRebindTexture(gosFX::Effect__Specification* spec, const std::string& textureName) {
+// The MLR pool lookup and Add require a NUL-terminated texture name.
+bool fxdefRebindTexture(gosFX::Effect__Specification* spec, mc2::czstring textureName) {
     if (!MidLevelRenderer::MLRTexturePool::Instance) {
         fxdefLog("no MLRTexturePool::Instance (too early?) — texture override skipped",
                  textureName);
         return false;
     }
     MidLevelRenderer::MLRTexture* texture =
-        (*MidLevelRenderer::MLRTexturePool::Instance)(textureName.c_str(), 0);
+        (*MidLevelRenderer::MLRTexturePool::Instance)(textureName, 0);
     if (!texture) {
-        texture = MidLevelRenderer::MLRTexturePool::Instance->Add(textureName.c_str(), 0);
+        texture = MidLevelRenderer::MLRTexturePool::Instance->Add(textureName, 0);
     }
     if (!texture) {
         fxdefLog("texture add/lookup failed (bad path?) — override skipped", textureName);
@@ -318,7 +320,7 @@ int EffectDefRegistry::applyAll(mc2::particles::SpecLibrary* lib) const {
         }
 
         if (def.hasTexture) {
-            if (fxdefRebindTexture(spec, def.texture)) touchedThis = true;
+            if (fxdefRebindTexture(spec, def.texture.c_str())) touchedThis = true;
         }
 
         if (def.hasBlend) {

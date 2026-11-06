@@ -42,7 +42,7 @@ long GenericAppearance::render (long depthFixup)
 					// Stage 2.C+: see BldgAppearance::render for callerName intent.
 					const char* callerName = (appearType ? appearType->name : nullptr);
 					submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-						genShape, GpuStaticPropPopulation::Generic, callerName);
+						genShape.get(), GpuStaticPropPopulation::Generic, callerName);
 					// Slice 2 (object-offload) — Stage 2.B: see BldgAppearance::render
 					// for full rationale on the late-reg recovery flag.
 					if (!submittedToGpu &&
@@ -368,7 +368,7 @@ long GenericAppearance::update (bool animate)
 		// reverts) and night check all live inside
 		// QueueBeaconGlow, so this is a no-op for every non-beacon prop.
 		if (eye && eye->isNight)
-			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), genShape, eye->getNightFactor());
+			mc2_cone_glow::QueueBeaconGlow(eye->getViewUniforms(), genShape.get(), eye->getNightFactor());
 	}
 
 	if ((!simPresentationPass || !simulationOwned()) && animate && genFrameRate != 0.0f)
@@ -435,7 +435,7 @@ long GenericAppearance::update (bool animate)
 		// Branch lives INSIDE the existing inView cull
 		// gate to preserve slice 1's R1 invariant.
 		if (!needsFullBakeNextFrame &&
-		    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape))
+		    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape.get()))
 		{
 			// Stage 2.D.2.1 (M1): cache GPU light data now, while
 			// worldLights[0]->aRGB is the per-actor terrain-scaled value.
@@ -452,7 +452,7 @@ long GenericAppearance::update (bool animate)
 		else
 		{
 			genShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
-			if (!GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape))
+			if (!GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(genShape.get()))
 				genShape->ReserveCpuDraw();	// no batcher takes it: the CPU fallback draws it
 			needsFullBakeNextFrame = false;
 		}
@@ -464,11 +464,7 @@ long GenericAppearance::update (bool animate)
 //-----------------------------------------------------------------------------
 void GenericAppearance::destroy (void)
 {
-	if ( genShape )
-	{
-		delete genShape;
-		genShape = nullptr;
-	}
+	genShape.reset();
 
 	releaseAppearanceType(registryGeneration, appearType); // skipped when the registry that issued appearType is gone
 }

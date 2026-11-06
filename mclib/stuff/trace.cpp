@@ -294,16 +294,16 @@
 
 		if (allocatedTraceLog)
 		{
-			Check_Object(allocatedTraceLog);
+			Check_Object(allocatedTraceLog.get());
 			allocatedTraceLog->Rewind();
 			TraceSample *samples =
 				Cast_Pointer(TraceSample*, allocatedTraceLog->GetPointer());
-			Unregister_Object(allocatedTraceLog);
-			delete allocatedTraceLog;
-			activeTraceLog = allocatedTraceLog = nullptr;
+			Unregister_Object(allocatedTraceLog.get());
+			allocatedTraceLog.reset();
+			activeTraceLog = nullptr;
 
 			Unregister_Pointer(samples);
-			delete[] samples;
+			traceSamples_.reset();
 		}
 	}
 
@@ -469,14 +469,14 @@
 		{
 			Check_Object(this);
 			Verify(!allocatedTraceLog);
-			TraceSample *samples = new TraceSample[max_trace_count];
+			traceSamples_ = std::make_unique_for_overwrite<TraceSample[]>(max_trace_count);
+			TraceSample *samples = traceSamples_.get();
 			Register_Pointer(samples);
-			allocatedTraceLog =
-				new MemoryStream(samples, max_trace_count*sizeof(TraceSample));
-			Register_Object(allocatedTraceLog);
+			allocatedTraceLog = std::make_unique<MemoryStream>(samples, max_trace_count*sizeof(TraceSample));
+			Register_Object(allocatedTraceLog.get());
 			if (start_logging)
 			{
-				activeTraceLog = allocatedTraceLog;
+				activeTraceLog = allocatedTraceLog.get();
 			}
 		}
 
@@ -488,7 +488,7 @@
 			Check_Object(this);
 			if (allocatedTraceLog)
 			{
-				Check_Object(allocatedTraceLog);
+				Check_Object(allocatedTraceLog.get());
 
 				//
 				//--------------------------------------------------------
@@ -557,12 +557,12 @@
 
 				TraceSample *samples =
 					Cast_Pointer(TraceSample*, allocatedTraceLog->GetPointer());
-				Unregister_Object(allocatedTraceLog);
-				delete allocatedTraceLog;
-				activeTraceLog = allocatedTraceLog = nullptr;
+				Unregister_Object(allocatedTraceLog.get());
+				allocatedTraceLog.reset();
+				activeTraceLog = nullptr;
 
 				Unregister_Pointer(samples);
-				delete[] samples;
+				traceSamples_.reset();
 			}
 		}
 
@@ -622,8 +622,8 @@
 
 			if (allocatedTraceLog && !activeTraceLog)
 			{
-				Check_Object(allocatedTraceLog);
-				activeTraceLog = allocatedTraceLog;
+				Check_Object(allocatedTraceLog.get());
+				activeTraceLog = allocatedTraceLog.get();
 
 				Time now = gos_GetHiResTime();
 

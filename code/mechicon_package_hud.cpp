@@ -41,7 +41,15 @@ const Strip* load(std::string_view base, float iconX, float iconY)
 		File file;
 		std::vector<unsigned char> bytes;
 		TGAFileHeader hdr{};
-		if (NO_ERR == file.open(path) && mc2::tga::readAllBytes(file, bytes) && mc2::tga::readHeader(bytes, hdr))
+		if (NO_ERR == file.open(path) &&
+			mc2::tga::readAllBytes(file, std::move(bytes)).transform([&bytes](auto&& value) {
+				bytes = std::move(value);
+				return true;
+			}).value_or(false) &&
+			mc2::tga::readHeader<TGAFileHeader>(bytes).transform([&hdr](const auto& value) {
+				hdr = value;
+				return true;
+			}).value_or(false))
 		{
 			if (hdr.pixel_depth != 32 || hdr.width < iconX || hdr.height < 2 * iconY ||
 				!mc2::tga::bodyFits(bytes.size(), sizeof(hdr), hdr.width, hdr.height, hdr.pixel_depth))

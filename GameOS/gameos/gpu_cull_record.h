@@ -58,13 +58,14 @@ enum GpuActorFlags : uint32_t {
     Flag_NeverShadow   = 1u << 2,
 };
 
-enum GpuConsumerFlags : uint32_t {
+enum class GpuConsumerFlags : uint32_t {
     Consumer_None             = 0u,
     Consumer_AIGate           = 1u << 0,
     Consumer_WeaponSpawnNode  = 1u << 1,
     Consumer_LifecycleGate    = 1u << 2,
     Consumer_RenderGate       = 1u << 3,
 };
+using enum GpuConsumerFlags;
 
 // Selftest: call once at startup. Returns number of failures (0 = pass).
 int gpu_cull_record_selftest();

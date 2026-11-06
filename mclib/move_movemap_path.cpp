@@ -138,7 +138,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 		}
 
 		PQNode bestPQNode;
-		openHeap.popMin(bestPQNode);
+		bestPQNode = openHeap.popMin().value();
 		_aln.n++;
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
@@ -554,7 +554,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 		}
 
 		PQNode bestPQNode;
-		openHeap.popMin(bestPQNode);
+		bestPQNode = openHeap.popMin().value();
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;

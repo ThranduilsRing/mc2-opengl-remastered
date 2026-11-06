@@ -27,15 +27,16 @@ struct AnimOverrideRecord {
 class AnimOverrideRegistry {
 public:
     // Clears registry then loads from manifestPath. Returns count.
-    int loadFromFile(const std::string& manifestPath,
+    int loadFromFile(std::string_view manifestPath,
                      std::string_view manifestDir);
     // Additive: loads manifestPath without clearing. Mod entries WIN on dup key.
     // Returns count merged in (not total).
-    int mergeFromFile(const std::string& manifestPath,
+    int mergeFromFile(std::string_view manifestPath,
                       std::string_view manifestDir);
     // Returns the override clip for (mechName, gesture), or nullptr for none.
+    // Both keys are NUL-terminated; nullptr means no override.
     const AnimOverrideRecord* resolve(mc2::czstring mechName,
-                                      const char* gesture) const;
+                                      mc2::czstring gesture) const;
     int count() const { return static_cast<int>(records_.size()); }
     // Lazy singleton: loads base data/anim_overrides/anims.json then merges the
     // active mod's manifest (MC2_ACTIVE_MOD) on first use. Cheap no-op when

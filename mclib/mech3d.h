@@ -108,16 +108,16 @@ class Mech3DAppearanceType: public AppearanceType
 	//--------------------------------------------
 	// Stores Multi-Shapes, Animation Data, etc.
 	public:
-		TG_TypeMultiShapePtr		mechShape[MAX_LODS];
-		TG_TypeMultiShapePtr		mechShadowShape;
+		std::unique_ptr<TG_TypeMultiShape> mechShape[MAX_LODS];
+		std::unique_ptr<TG_TypeMultiShape> mechShadowShape;
 		float						lodDistance[MAX_LODS];
-		TG_AnimateShapePtr			mechAnim[MAX_MECH_ANIMATIONS];
+		std::unique_ptr<TG_AnimateShape> mechAnim[MAX_MECH_ANIMATIONS];
 		
-		TG_TypeMultiShapePtr		leftArm;
-		TG_TypeMultiShapePtr		rightArm;
+		std::unique_ptr<TG_TypeMultiShape> leftArm;
+		std::unique_ptr<TG_TypeMultiShape> rightArm;
 
- 		TG_TypeMultiShapePtr		mechForwardDmgShape;
- 		TG_TypeMultiShapePtr		mechBackwardDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> mechForwardDmgShape;
+		std::unique_ptr<TG_TypeMultiShape> mechBackwardDmgShape;
 
 		long						rightFootprintType;					//Footprint type for this mech.
 		long						leftFootprintType;				//Footprint type for this mech.
@@ -147,7 +147,7 @@ class Mech3DAppearanceType: public AppearanceType
 		char						presentationSocketName[MAX_PRESENTATION_SOCKETS][PRESENTATION_SOCKET_NAME_CAP];
 
 
-		static TG_TypeMultiShapePtr	SensorSquareShape;
+		static TG_TypeMultiShapePtr SensorSquareShape;
 
 		static bool animationLoadingEnabled;
 		static void disableAnimationLoading(void)
@@ -188,8 +188,10 @@ class Mech3DAppearanceType: public AppearanceType
 			mechShadowShape = nullptr;
     
             //sebi: init to not contain garbage
-		    mechForwardDmgShape = mechBackwardDmgShape = nullptr;
-            leftArm = rightArm = nullptr;
+		    mechForwardDmgShape = nullptr;
+		    mechBackwardDmgShape = nullptr;
+            leftArm = nullptr;
+            rightArm = nullptr;
             numFootNodes = 0;
             MemSet(gestures, 0);
 		}
@@ -331,6 +333,13 @@ class Mech3DAppearance: public ObjectAppearance
 
 		Mech3DAppearanceTypePtr		mechType;
 		
+		// Raw pose views borrow these owners; teardown unregisters before reset.
+		std::unique_ptr<TG_MultiShape> mechShapeOwner_;
+		std::unique_ptr<TG_MultiShape> mechShadowShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorSquareShapeOwner_;
+		std::unique_ptr<TG_MultiShape> sensorTriangleShapeOwner_;
+		std::unique_ptr<TG_MultiShape> leftArmOwner_;
+		std::unique_ptr<TG_MultiShape> rightArmOwner_;
 		TG_MultiShapePtr			mechShape;
         std::unique_ptr<TG_MultiShape> simulationShape_;
 		TG_MultiShapePtr			mechShadowShape;

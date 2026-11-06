@@ -349,10 +349,11 @@ bool Mech3DAppearance::recalcBounds (void)
 							BYTE alphaValue = mechShape->GetAlphaValue();
 							//mechShape->ClearAnimation();	//DO NOT do this with animating things!!
 							mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
-							delete mechShape;
+							mechShapeOwner_.reset();
 							mechShape = nullptr;
 
-							mechShape = mechType->mechShape[currentLOD]->CreateFrom();
+							mechShapeOwner_.reset(mechType->mechShape[currentLOD]->CreateFrom());
+							mechShape = mechShapeOwner_.get();
 							mechShape->SetAlphaValue(alphaValue);
 
 							DWORD r, g, b;
@@ -372,10 +373,11 @@ bool Mech3DAppearance::recalcBounds (void)
 
 							BYTE alphaValue = mechShape->GetAlphaValue();
 							mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
-							delete mechShape;
+							mechShapeOwner_.reset();
 							mechShape = nullptr;
 
-							mechShape = mechType->mechShape[currentLOD]->CreateFrom();
+							mechShapeOwner_.reset(mechType->mechShape[currentLOD]->CreateFrom());
+							mechShape = mechShapeOwner_.get();
 							mechShape->SetAlphaValue(alphaValue);
 
 							DWORD r, g, b;

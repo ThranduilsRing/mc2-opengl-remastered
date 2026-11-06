@@ -1,6 +1,7 @@
 // gameos_graphics: text breaking and drawing, the HUD batch flush and the text C API.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include <utility>
 #include "mc2fmt.h"
 #include "mc2_diag_verbose.h"
 #include "utils/mc2log.h"
@@ -259,20 +260,20 @@ static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
         if (draw.textureWidth == 0 || draw.textureHeight == 0 ||
             draw.textureSerial == 0 || !draw.textureRgba || draw.textureRgba->empty())
             return false;
-        if (draw.kind == kHudQuadBatch)
+        if (draw.kind == std::to_underlying(kHudQuadBatch))
             return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
-        if (draw.kind == kHudTextQuadBatch)
+        if (draw.kind == std::to_underlying(kHudTextQuadBatch))
             return draw.vertices.size() >= 4 &&
                    (((draw.vertices.size() % 4) == 0) || ((draw.vertices.size() % 3) == 0));
-        if (draw.kind == kHudTriBatch)
+        if (draw.kind == std::to_underlying(kHudTriBatch))
             return !draw.vertices.empty() && (draw.vertices.size() % 3) == 0;
         return false;
     }
-    if (draw.kind == kHudQuadBatch)
+    if (draw.kind == std::to_underlying(kHudQuadBatch))
         return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
-    if (draw.kind == kHudLineBatch)
+    if (draw.kind == std::to_underlying(kHudLineBatch))
         return !draw.vertices.empty() && (draw.vertices.size() % 2) == 0;
-    if (draw.kind == kHudTriBatch)
+    if (draw.kind == std::to_underlying(kHudTriBatch))
         return !draw.vertices.empty() && (draw.vertices.size() % 3) == 0;
     return false;
 }

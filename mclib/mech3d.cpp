@@ -60,6 +60,7 @@ char MechStateByGesture[MAX_MECH_ANIMATIONS] = {
 	BODYSTATE_FALLEN_FORWARD,	// GestureFallenBackward		24 -- Fallen Backward (Single Frame, mech on ground)
 };																
 
+// Explicit teardown precedes TglRegistry/heap destruction; never own this at exit.
 TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = nullptr;
 
 bool Mech3DAppearanceType::animationLoadingEnabled = true;
@@ -213,22 +214,22 @@ void Mech3DAppearance::destroy (void)
 	if ( mechShape )
 	{
 		mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1: final teardown
-		delete mechShape;
+		mechShapeOwner_.reset();
 	}
 	mechShape = nullptr;
 
 	if (mechShadowShape)
 	{
-		delete mechShadowShape;
+		mechShadowShapeOwner_.reset();
 		mechShadowShape = nullptr;
 	}
 
 	if ( leftArm )
-		delete leftArm;
+		leftArmOwner_.reset();
 	leftArm = nullptr;
 
 	if ( rightArm )
-		delete rightArm;
+		rightArmOwner_.reset();
 	rightArm = nullptr;
 
 
@@ -273,13 +274,13 @@ void Mech3DAppearance::destroy (void)
 
 	if (sensorSquareShape)
 	{
-		delete sensorSquareShape;
+		sensorSquareShapeOwner_.reset();
 		sensorSquareShape = nullptr;	
 	}
 		
 	if (sensorTriangleShape)
 	{
-		delete sensorTriangleShape;
+		sensorTriangleShapeOwner_.reset();
 		sensorTriangleShape = nullptr;	
 	}
 	
@@ -470,7 +471,7 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 
 	// 1A: imported mech -> manifest-resolved hit node ("hit_left").
 	if (mechShape && mechShape->GetNumShapes() > 0) {
-		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_left",
 				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {
@@ -517,7 +518,7 @@ glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 
 	// 1A: imported mech -> manifest-resolved hit node ("hit_right").
 	if (mechShape && mechShape->GetNumShapes() > 0) {
-		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+		const void* tKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
 		float wp[3];
 		if (mc2mechanim::GetImportedNodeWorld(static_cast<const void*>(mechShape), tKey, "hit_right",
 				static_cast<const float*>(glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld)), wp)) {

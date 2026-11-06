@@ -1,6 +1,7 @@
 // Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject.
 // Declared in the class headers; shared names in camera_internal.h.
 #include <algorithm>
+#include <optional>
 
 #include "camera_internal.h"
 #include "mc2fmt.h"
@@ -111,7 +112,7 @@ static unsigned long parityReport (Stuff::Vector2DOf<long> &screenPos,
 // inverse-VP cursor->world helpers below (preview + mouse-anchored zoom); the
 // global Matrix4D::Invert is left byte-identical, and terrain PICKING uses the
 // forward-projection path, not this — so no working path is affected.
-static bool lowCamInvert4x4 (const glm::mat4& M, glm::mat4& out)
+static std::optional<glm::mat4> lowCamInvert4x4 (const glm::mat4& M)
 {
 	double a[4][8];
 	for (int r = 0; r < 4; ++r)
@@ -122,17 +123,18 @@ static bool lowCamInvert4x4 (const glm::mat4& M, glm::mat4& out)
 		int piv = col; double best = fabs(a[col][col]);
 		for (int r = col+1; r < 4; ++r)
 			if (fabs(a[r][col]) > best) { best = fabs(a[r][col]); piv = r; }
-		if (best < 1e-20) return false;
+		if (best < 1e-20) return std::nullopt;
 		if (piv != col) for (int k = 0; k < 8; ++k) { double t=a[col][k]; a[col][k]=a[piv][k]; a[piv][k]=t; }
 		double inv = 1.0 / a[col][col];
 		for (int k = 0; k < 8; ++k) a[col][k] *= inv;
 		for (int r = 0; r < 4; ++r) if (r != col)
 		{ double f=a[r][col]; for (int k=0;k<8;++k) a[r][k]-=f*a[col][k]; }
 	}
+	glm::mat4 out;
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
 			out[c][r] = static_cast<float>(a[r][c+4]);
-	return true;
+	return out;
 }
 
 //---------------------------------------------------------------------------
@@ -146,8 +148,9 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &o
 		return false;
 
 	glm::mat4 M = worldToClipGL();
-	glm::mat4 Minv;
-	if (!lowCamInvert4x4(M, Minv)) return false;
+	const auto inverse = lowCamInvert4x4(M);
+	if (!inverse) return false;
+	const auto& Minv = *inverse;
 
 	const float w = screenResolution.x;
 	const float h = screenResolution.y;
@@ -363,8 +366,9 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWo
 		return false;
 
 	glm::mat4 M = worldToClipGL();
-	glm::mat4 Minv;
-	if (!lowCamInvert4x4(M, Minv)) return false;
+	const auto inverse = lowCamInvert4x4(M);
+	if (!inverse) return false;
+	const auto& Minv = *inverse;
 
 	const float w = screenResolution.x;
 	const float h = screenResolution.y;
