@@ -143,7 +143,7 @@
    "LG02": 0,
    "LG03": 283,
    "LG04": 15,
-   "LG05": 181,
+   "LG05": 168,
    "LG06": 170,
    "LG07": 2,
    "LG08": 3,
@@ -1784,7 +1784,7 @@
   },
   "code/logisticsdata_internal.h": {},
   "code/logisticsdata_inventory.cpp": {
-   "LG05": 18,
+   "LG05": 5,
    "LG10": 1
   },
   "code/logisticsdata_modify.cpp": {

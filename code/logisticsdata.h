@@ -61,7 +61,7 @@ public:
 	LogisticsVariant*	getVariant( int ID );
 	LogisticsVariant*	getVariant( mc2::czstring mechName );
 	LogisticsVariant*	getVariant( mc2::czstring pCSVFileNaem, int VariantNum );
-	int					removeVariant( mc2::czstring varName );
+	std::expected<void, int> removeVariant( mc2::czstring varName );
 
 
 	LogisticsMech*		getMech( int ID );
@@ -97,9 +97,9 @@ public:
 											unsigned long color3 = 0xffffffff);
 	void				removeMechFromInventory( mc2::czstring mechName, mc2::czstring pilotName );
 
-	int					addMechToForceGroup( LogisticsMech* pMech, int slot );
-	int					removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot );
-	int					removeMechFromForceGroup( int slot );
+	std::expected<void, int> addMechToForceGroup( LogisticsMech* pMech, int slot );
+	std::expected<void, int> removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot );
+	std::expected<void, int> removeMechFromForceGroup( int slot );
 
 	bool				canAddMechToForceGroup( LogisticsMech* pMech );
 
@@ -144,9 +144,9 @@ public:
 	void				clearInventory();
 
 	int					getPurchasableMechs( LogisticsVariant**, int& count );
-	int					canPurchaseMech( LogisticsVariant* pVar );
-	int					purchaseMech( LogisticsVariant* pVar );
-	int					sellMech( LogisticsMech* pVar );
+	std::expected<void, int> canPurchaseMech( LogisticsVariant* pVar );
+	std::expected<void, int> purchaseMech( LogisticsVariant* pVar );
+	std::expected<void, int> sellMech( LogisticsMech* pVar );
 	int					getEncyclopediaMechs( const LogisticsVariant**, int& count );
 	int					getHelicopters( const LogisticsVariant**, int& count );
 	

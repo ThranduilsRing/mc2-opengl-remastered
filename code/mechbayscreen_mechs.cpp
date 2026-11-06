@@ -39,7 +39,7 @@ void MechBayScreen::addSelectedMech()
 		if ( !LogisticsData::instance->canAddMechToForceGroup( mechListBox.getCurrentMech() ) )
 			return;
 
-		if ( NO_ERR != LogisticsData::instance->addMechToForceGroup( mechListBox.getCurrentMech(),
+		if ( !LogisticsData::instance->addMechToForceGroup( mechListBox.getCurrentMech(),
 			forceGroupCount + 1 ) )
 		{
 			// its already in the force group, add probably called 2x'2
