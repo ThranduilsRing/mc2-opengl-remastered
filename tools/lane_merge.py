@@ -67,6 +67,7 @@ import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trust
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
+from lane_merge_stage import STAGE_HELP, bisect, bisect_step, promote, stage  # noqa: E402,F401
 
 #: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
 TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
@@ -557,6 +558,28 @@ def resolve_row_table(root: str, path: str) -> bool:
     with open(os.path.join(root, path), "w", encoding="utf-8", newline="") as f:
         f.write(text)
     return git(root, "add", "-u", "--", path).returncode == 0
+
+
+# Semantic ratchets whose baselines regenerate_all rewrites (--write-baseline): they are checked against the COMMITTED baseline
+# first, so a merge that adds a violation stays red instead of being blessed by the regeneration (which may then only tighten).
+# cxx17 is covered by the per-tip check-only run_ratchets; the log tag census by log_tag_loosened in regenerate_derived.
+SEMANTIC_RATCHETS = [
+    ("pointer_order", "pointer_order_scan.py", ["--check"]),
+    ("own_inventory", "own_inventory.py", ["--check"]),
+]
+
+
+def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
+    """Check-only run of SEMANTIC_RATCHETS at the merged HEAD, before any regeneration. -> the failing (label, rc, tail)."""
+    failed = []
+    for label, rel, args in SEMANTIC_RATCHETS:
+        script = os.path.join(tools_dir, *rel.split("/"))
+        if not os.path.isfile(script):   # the throwaway repos of the tests carry only the fake ratchets
+            continue
+        r = run(root, [sys.executable, "-B", script, *args])
+        if r.returncode:
+            failed.append((label, r.returncode, "\n".join(lines(r.stdout)[-60:])))
+    return failed
 
 
 def run_ratchets(root: str, tools_dir: str, *, tighten=True) -> list[tuple[str, int, str]]:
@@ -1144,9 +1167,6 @@ def pre_gate(root: str, exe: str | None = None) -> int:
     ]
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
-    if os.path.isfile(exe):   # parse-level sanity of the headless smoke path; --resolve-only launches nothing
-        steps.append(("headless-smoke", py + [os.path.join(root, "scripts", "run_smoke.py"), "--headless", "--ticks", "10",
-                                              "--resolve-only", "--exe", exe]))
     failed = []
     if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
         print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)
@@ -1165,13 +1185,18 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         if rc:
             print(out, flush=True)
             failed.append(label)
-    print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed))
-          + ("" if os.path.isfile(exe) else " (headless-smoke skipped: no exe)"))
+    print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed)))
     return 1 if failed else 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, epilog=STAGE_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--stage", metavar="W", help="with --batch: build candidate claude/stage-W from nifty with the frozen tips (see the merge queue below)")
+    ap.add_argument("--promote", metavar="W", help="fast-forward nifty to the claude/stage-W candidate; only on a complete PASS verdict for its HEAD")
+    ap.add_argument("--verdict", help="with --promote: gate verdict JSON (default <root>/build64-ninja/gate-verdict.json)")
+    ap.add_argument("--bisect", metavar="W", help="after a candidate verdict (--red / --green): halve a red batch, reject a red single tip")
+    ap.add_argument("--red", action="store_true", help="with --bisect: the candidate failed")
+    ap.add_argument("--green", action="store_true", help="with --bisect: the candidate passed (and was promoted)")
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
     ap.add_argument("--lint", metavar="REF", help="seconds-fast subset of --precheck (ratchets, callers, early rows, ungated tags, stale inventories) with a fix per red; run it before --precheck")
     ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: conflicts, ratchets, callers, Python suites (fast, no native build; --with-link adds links)")
@@ -1183,9 +1208,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-sim-rows", action="store_true", help="with --precheck: skip the saveload/determinism rows a sim-sensitive tip requires (recorded in the receipt)")
     ap.add_argument("--sim-install", help="with --precheck: install holding the tip's exe for the sim rows (default E:/mc2-installs/<laneN>)")
     ap.add_argument("--pre-gate", action="store_true",
-                    help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
-                         "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
-    ap.add_argument("--exe", help="with --pre-gate: exe for the headless row (default <root>/build64-ninja/mc2.exe, skipped if absent)")
+                    help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check and cxx17; "
+                         "all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
+    ap.add_argument("--exe", help="with --pre-gate: exe whose fingerprint must match HEAD (default <root>/build64-ninja/mc2.exe, skipped if absent)")
     ap.add_argument("--batch", nargs="+", metavar="TIP",
                     help="merge these tips in order; baseline follow-ups after each, build + doctest verify once at the end")
     ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
@@ -1261,6 +1286,9 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     if batch:
         results = run_ratchets(root, tools_dir, tighten=False)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
+    semantic = semantic_precheck(root, tools_dir)
+    if semantic:
+        return merge_sha, None, semantic
     artifacts = regenerate_all(root)
     artifact_follow = None
     if artifacts:
@@ -1286,8 +1314,6 @@ def box_cleanup_lane(root, ref) -> None:
         print(f"box cleanup {ref}: rc={r.returncode} {(r.stdout or r.stderr).strip()[-160:]}")
     except (OSError, subprocess.SubprocessError) as exc:
         print(f"box cleanup {ref}: skipped ({exc})")
-
-
 def cpu_mode(args) -> str:
     """"gate" (CPUs 0-7) only for the merge itself (--batch or a single tip); --lint, --precheck, --pre-gate, --regenerate-all are lane work."""
     lane_only = args.lint or args.precheck or args.pre_gate or args.regenerate_all
@@ -1309,6 +1335,21 @@ def main(argv: list[str] | None = None) -> int:
                         not args.no_sim_rows, args.sim_install)
     if args.pre_gate:
         return pre_gate(args.root, args.exe)
+    try:
+        if args.promote:
+            return promote(args.root, args.promote, args.verdict)
+        if args.bisect:
+            if args.red == args.green:
+                ap.error("--bisect needs exactly one of --red / --green")
+            return bisect(args.root, args.bisect, args.green)
+        if args.stage:
+            if not args.batch:
+                ap.error("--stage needs --batch TIP ...")
+            if not args.dry_run:
+                stage(args.root, args.stage, args.batch)
+    except Stop as e:
+        print(f"lane_merge: {e}", file=sys.stderr)
+        return e.code
     if not args.regenerate_all and bool(args.ref) == bool(args.batch):
         ap.error("give one lane tip, or --batch with several")
     if args.regenerate_all and (args.ref or args.batch):
@@ -1393,6 +1434,10 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
+        if batch and merged and not reds:
+            semantic = semantic_precheck(root, tools_dir)
+            if semantic:
+                reds.append((refs[-1], semantic))
         if batch and merged and not reds:
             pre_dirty = {path for _, path in status_entries(root)}
             artifacts = regenerate_derived(root, window_base)

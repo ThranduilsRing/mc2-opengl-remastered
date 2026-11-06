@@ -1380,3 +1380,95 @@ def test_ensure_precheck_tree_recreates_tree_that_lost_its_git(env, monkeypatch,
     (tree / "build64-ninja").mkdir()
     lm.ensure_precheck_tree(str(repo), str(tree), "HEAD")
     assert (tree / ".git").exists() and not (tree / "build64-ninja").exists()
+
+
+# --- merge queue v1: planted semantic violation, staging promotion/refusal, bisect -------------------------------------------
+
+PLANTED = 'import os, sys\nsys.exit(1 if os.path.exists("violation.cpp") else 0)\n'
+
+
+@pytest.mark.parametrize("batch", [True, False])
+def test_planted_semantic_violation_stays_red_and_is_never_regenerated(env, monkeypatch, batch):
+    """A merge that adds a pointer-order site fails against the COMMITTED baseline; regenerate_all (which would rewrite the
+    baseline with --write-baseline and bless it) never runs."""
+    repo, tools = env
+    write(tools, "pointer_order_scan.py", PLANTED)
+    _branch(repo, "lane_a", "violation.cpp", "std::map<T*, int> m;\n", "lane a")
+    lm = _load_module()
+    regenerated = []
+    monkeypatch.setattr(lm, "regenerate_all", lambda *a, **k: regenerated.append(a) or [])
+    monkeypatch.setattr(lm, "verify_merged", lambda *a, **k: ("OK", []))
+    argv = (["--batch", "lane_a"] if batch else ["lane_a"]) + ["--root", str(repo), "--tools-dir", str(tools)]
+    assert lm.main(argv) == 6
+    assert regenerated == []
+
+
+def _stage_fixture(env, monkeypatch):
+    repo, _ = env
+    lm = _load_module()
+    import lane_merge_stage
+    monkeypatch.setattr(lane_merge_stage, "NIFTY", "main")
+    write(repo, ".gitignore", "build64-ninja/\n")   # ignored in the real tree too
+    commit_all(repo, "ignore build dir")
+    _branch(repo, "lane_a", "a_lane.txt", "a\n", "lane a")
+    old = git(repo, "rev-parse", "main")
+    lm.stage(str(repo), "t1", ["lane_a"])
+    assert git(repo, "branch", "--show-current") == "claude/stage-t1"
+    git(repo, "merge", "-q", "--no-ff", "-m", "merge lane: lane a", "lane_a")
+    cand = git(repo, "rev-parse", "HEAD")
+    state = json.loads((repo / "build64-ninja" / "stage-t1.json").read_text(encoding="utf-8"))
+    assert state["base"] == old and state["testing"] == [git(repo, "rev-parse", "lane_a")]
+    return lm, repo, old, cand
+
+
+def _verdict(repo, **kw):
+    data = dict(schema=1, head=None, verdict="PASS", complete=True, skipped={}) | kw
+    path = repo / "build64-ninja" / "gate-verdict.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("bad", [dict(verdict="FAIL", complete=False), dict(verdict="PARTIAL", complete=False),
+                                 dict(skipped={"mods": "mods off"}), dict(head="0" * 40)])
+def test_promote_refuses_and_leaves_nifty_untouched(env, monkeypatch, bad):
+    lm, repo, old, cand = _stage_fixture(env, monkeypatch)
+    _verdict(repo, **({"head": cand} | bad))
+    with pytest.raises(lm.Stop) as e:
+        lm.promote(str(repo), "t1")
+    assert e.value.code == 6 and "nifty untouched" in str(e.value)
+    assert git(repo, "rev-parse", "main") == old
+
+
+def test_promote_refuses_without_a_verdict(env, monkeypatch):
+    lm, repo, old, _ = _stage_fixture(env, monkeypatch)
+    assert lm.main(["--promote", "t1", "--root", str(repo)]) == 6
+    assert git(repo, "rev-parse", "main") == old
+
+
+def test_promote_fast_forwards_on_a_complete_pass(env, monkeypatch):
+    lm, repo, old, cand = _stage_fixture(env, monkeypatch)
+    path = _verdict(repo, head=cand)
+    assert lm.promote(str(repo), "t1") == 0
+    assert git(repo, "rev-parse", "main") == cand and git(repo, "branch", "--show-current") == "main"
+    assert "promotion" in json.loads(path.read_text(encoding="utf-8"))["timings"]
+
+
+def test_bisect_halves_a_red_batch_and_rejects_the_guilty_tip():
+    bisect_step = _load_module().bisect_step
+    s = dict(testing=["a", "b", "c"], queue=["d"])
+    s, act = bisect_step(s, passed=False)
+    assert act == "retest" and s["testing"] == ["a", "b"] and s["queue"] == ["c", "d"]
+    s, act = bisect_step(s, passed=True)
+    assert act == "promote" and s["landed"] == ["a", "b"] and s["testing"] == ["c", "d"] and s["queue"] == []
+    s, act = bisect_step(s, passed=False)
+    assert act == "retest" and s["testing"] == ["c"] and s["queue"] == ["d"]
+    s, act = bisect_step(s, passed=False)
+    assert act == "guilty" and s["rejected"] == ["c"] and s["testing"] == ["d"]
+    assert len(s["history"]) == 4
+
+
+def test_stage_help_documents_the_queue_commands(capsys):
+    with pytest.raises(SystemExit):
+        _load_module().main(["--help"])
+    out = capsys.readouterr().out
+    assert all(k in out for k in ("--stage W --batch", "--promote W", "--bisect W --red", "nifty untouched"))

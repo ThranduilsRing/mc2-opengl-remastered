@@ -300,9 +300,11 @@ def test_filler_push_is_noop_at_the_current_sha_and_otherwise_bundles_and_syncs(
 
 def test_only_game_rows_take_the_lock_cpu_rows_run_first_under_timeout():
     r = box_run.REMOTE
-    assert "case $r in build|unit|unit-san|lint|cpu:*|sh:*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
+    assert "case $r in build|unit|unit-san|lint|cpu:*|sh:*|determinism:*|saveload*) CR+=" in r and 'ROWS=("${CR[@]}" "${GR[@]}")' in r   # cpu rows first
     assert "unit-san)" in r and "build64-tests-san" in r and "-fsanitize=address,undefined" in r   # sanitizer row: own tree
-    assert "build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
+    assert "build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
+    # r7 finding 3: the headless determinism/saveload rows (no window, no device) run on the build cores and never take the GPU lock
+    assert 'grh() { nice -n 19 taskset -c "$BCPUS" xvfb-run' in r
     assert "$RUN timeout -k 30 $TMO bash -c" in r and "unit) TMO=1200" in r and "smoke*|capture:*) TMO=600" in r and "*) TMO=1800" in r
     assert "sh:*|cpu:*)  cmd=" in r and "gpu:*)" in r
     assert "(SECONDS - LW0)" in r   # the 30 min lock wait is not eaten by the build

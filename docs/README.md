@@ -94,7 +94,7 @@ Core references:
 - [docs/dev-shell.md](dev-shell.md) — live-edit loop (shader/UI hot-reload, one-shot commands, screenshots) without relaunching
 - [docs/tier1_env_vars.md](tier1_env_vars.md) — every `MC2_*` gate: defaults, polarity, the add-a-gate checklist
 - [docs/modding-guide.md §8](modding-guide.md#8-autonomous-development) — `--validate` headless validation mode + Tracy profiling
-- [docs/land-as-ready.md](land-as-ready.md) — the merge train: continuous landing, periodic gate, `nifty-green-<n>` tags
+- [docs/merge-queue-v2.md](merge-queue-v2.md) — merge queue: staged candidates (`lane_merge.py --stage/--promote/--bisect`) and the v2 design note
 - [docs/release-checklist.md](release-checklist.md) — the zips-only release gate
 - [docs/RELEASE-PROCESS.md](RELEASE-PROCESS.md) — end-to-end release runbook (version bump → package → gate → publish)
 - [docs/tracy-harness.md](tracy-harness.md) — canonical Tracy capture/compare/baseline/regress harness (perf measurement + per-release baselines)
