@@ -16,24 +16,23 @@ namespace mc2 {
 namespace particles {
 
 namespace {
-SpecLibrary* g_instance = nullptr;
+std::unique_ptr<SpecLibrary> g_instance;
 }
 
 SpecLibrary* SpecLibrary::Instance()
 {
     if (!g_instance) {
         gos_PushCurrentHeap(gosFX::Heap);
-        g_instance = new SpecLibrary();
+        g_instance.reset(new SpecLibrary()); // constructor is private
         gos_PopCurrentHeap();
     }
-    return g_instance;
+    return g_instance.get();
 }
 
 void SpecLibrary::Shutdown()
 {
     if (g_instance) {
-        delete g_instance;
-        g_instance = nullptr;
+        g_instance.reset();
     }
 }
 
@@ -43,10 +42,10 @@ SpecLibrary::SpecLibrary()
 
 SpecLibrary::~SpecLibrary()
 {
-    for (unsigned i = 0; i < m_effects.GetLength(); ++i) {
+    for (unsigned i = 0; i < m_effects.size(); ++i) {
         if (m_effects[i]) {
-            Unregister_Object(m_effects[i]);
-            delete m_effects[i];
+            Unregister_Object(m_effects[i].get());
+            m_effects[i].reset();
         }
     }
 }
@@ -54,16 +53,16 @@ SpecLibrary::~SpecLibrary()
 void SpecLibrary::Load(Stuff::MemoryStream* stream)
 {
     Verify(gos_GetCurrentHeap() == gosFX::Heap);
-    Verify(!m_effects.GetLength());
+    Verify(m_effects.empty());
     int version = gosFX::ReadGFXVersion(stream);
     unsigned len;
     *stream >> len;
-    m_effects.SetLength(len);
+    m_effects.resize(len);
     for (unsigned i = 0; i < len; ++i) {
         gosFX::Effect::Specification* pspec =
             gosFX::Effect::Specification::Create(stream, version);
-        m_effects[i] = pspec;
-        Check_Object(m_effects[i]);
+        m_effects[i].reset(pspec);
+        Check_Object(m_effects[i].get());
         m_effects[i]->m_effectID = i;
     }
 }
@@ -77,9 +76,9 @@ void SpecLibrary::Save(Stuff::MemoryStream* stream)
     // x64 the unchecked 8-byte write injected a stray high-dword of zeros after
     // the count, desyncing every following spec and producing an unloadable
     // blob. Cast to the same 32-bit width the loader reads.
-    *stream << static_cast<unsigned>(m_effects.GetLength());
-    for (unsigned i = 0; i < m_effects.GetLength(); ++i) {
-        Check_Object(m_effects[i]);
+    *stream << static_cast<unsigned>(m_effects.size());
+    for (unsigned i = 0; i < m_effects.size(); ++i) {
+        Check_Object(m_effects[i].get());
         m_effects[i]->Save(stream);
     }
 }
@@ -90,8 +89,8 @@ gosFX::Effect::Specification* SpecLibrary::Find(mc2::czstring name)
     // Preserved verbatim from gosFX::EffectLibrary::Find at B1 Stage 2' C1.
     FX_TRACE_SPAWN(name);
 
-    for (unsigned i = 0; i < m_effects.GetLength(); ++i) {
-        gosFX::Effect::Specification* spec = m_effects[i];
+    for (unsigned i = 0; i < m_effects.size(); ++i) {
+        gosFX::Effect::Specification* spec = m_effects[i].get();
         if (spec) {
             Check_Object(spec);
             if (!S_stricmp(spec->m_name, name)) {
@@ -105,12 +104,12 @@ gosFX::Effect::Specification* SpecLibrary::Find(mc2::czstring name)
 
 gosFX::Effect::Specification* SpecLibrary::At(unsigned index)
 {
-    return m_effects[index];
+    return m_effects[index].get();
 }
 
 unsigned SpecLibrary::Count() const
 {
-    return static_cast<unsigned int>(m_effects.GetLength());
+    return static_cast<unsigned int>(m_effects.size());
 }
 
 }  // namespace particles

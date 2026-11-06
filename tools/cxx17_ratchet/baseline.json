@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 334,
+   "LG03": 324,
    "LG04": 12,
    "LG05": 107,
    "LG06": 104,
@@ -3334,7 +3334,7 @@
   "mclib/particles/light_manager.h": {},
   "mclib/particles/spec.h": {},
   "mclib/particles/spec_library.cpp": {
-   "LG03": 3,
+   "LG03": 1,
    "LG05": 1
   },
   "mclib/particles/spec_library.h": {},
@@ -3470,7 +3470,7 @@
   },
   "mclib/stuff/node.hpp": {},
   "mclib/stuff/notationfile.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG11": 2
   },
   "mclib/stuff/notationfile.hpp": {
@@ -3531,7 +3531,6 @@
    "LG14": 1
   },
   "mclib/stuff/trace.cpp": {
-   "LG03": 6,
    "LG12a": 13
   },
   "mclib/stuff/trace.hpp": {

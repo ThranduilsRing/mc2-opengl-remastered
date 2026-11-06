@@ -17,6 +17,8 @@
 #include "mc2_czstring.h"
 #include "gosfx/effect.hpp"
 #include <stuff/stuff.hpp>
+#include <memory>
+#include <vector>
 
 namespace mc2 {
 namespace particles {
@@ -37,13 +39,14 @@ public:
     unsigned Count() const;
 
 private:
+    friend struct std::default_delete<SpecLibrary>;
     SpecLibrary();
     ~SpecLibrary();
 
     SpecLibrary(const SpecLibrary&) = delete;
     SpecLibrary& operator=(const SpecLibrary&) = delete;
 
-    Stuff::DynamicArrayOf<gosFX::Effect::Specification*> m_effects;
+    std::vector<std::unique_ptr<gosFX::Effect::Specification>> m_effects;
 };
 
 }  // namespace particles
