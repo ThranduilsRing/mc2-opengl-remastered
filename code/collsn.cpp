@@ -42,7 +42,7 @@ namespace mc2_collision_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 //------------------------------------------------------------------------------
 // Static globals
 //CollisionSystem *collisionSystem = NULL;
-GlobalCollisionAlert *globalCollisionAlert = nullptr;
+std::unique_ptr<GlobalCollisionAlert> globalCollisionAlert;
 unsigned long CollisionSystem::maxObjects = 0;
 unsigned long CollisionSystem::gridRadius = 0;
 unsigned long CollisionSystem::xGridSize = 0;
@@ -390,7 +390,7 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	collisionGrid = std::make_unique<CollisionGrid>();
 	gosASSERT(collisionGrid != nullptr);
 
-	globalCollisionAlert = new GlobalCollisionAlert;
+	globalCollisionAlert = std::make_unique<GlobalCollisionAlert>();
 	gosASSERT(globalCollisionAlert);
 	
 	result = globalCollisionAlert->init(20);
@@ -766,8 +766,7 @@ void CollisionSystem::destroy (void)
 	collisionGrid.reset();
 
 	
-	delete globalCollisionAlert;
-	globalCollisionAlert = nullptr;
+	globalCollisionAlert.reset();
 }
 
 //------------------------------------------------------------------------------
