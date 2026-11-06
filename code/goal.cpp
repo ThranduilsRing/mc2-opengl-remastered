@@ -60,7 +60,7 @@ void GoalObject::init (void) {
 	name[0] = '\0';
 	links = nullptr;
 	controller = nullptr;
-	info.object.WID = 0;
+	info = GoalObjectInfo{};
 	next = nullptr;
 	prev = nullptr;
 }
@@ -78,7 +78,7 @@ void GoalObject::initRegion (char* name, long minRow, long minCol, long maxRow, 
 	used = true;
 	type = GOAL_REGION;
 	strcpy(name, "MAP");
-	info.region.minRow = minRow;
+	info.emplace<GoalRegionInfo>().minRow = static_cast<short>(minRow);
 }
 
 //---------------------------------------------------------------------------
