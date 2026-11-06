@@ -11,3 +11,26 @@ claude/stage-W, gates the candidate, and fast-forwards nifty only on a complete 
   coverage never drops.
 - Automatic bisect: v1 prints the next --stage command; v2 can drive stage -> gate -> bisect without the orchestrator.
 - Speculative pipelining: gate the second half of a red batch on a parallel candidate while the first half retests.
+
+## Diff-scoped gate (built, scripts/gate_scope.py)
+
+`merge_gate.py --full` decides the `mods` and `video-decode` stages from the candidate diff: merge-base of the head in
+`build64-ninja/last-full-gate.json` to HEAD. A stage whose inputs the diff does not touch is recorded in
+gate-verdict.json under `scope_skipped` as `SKIP(scope: <reason>)` and in the row status; it is never PASS, but it does not
+make the verdict PARTIAL, so `--promote` still works. Unknown paths (not docs, tooling, shaders, art, or known C++ roots)
+count as touching everything.
+
+| Stage | Runs when the diff touches |
+|---|---|
+| `mods` | `data/`, `mods/`, `examples/mods/`; VFS / file / FST / fastfile / loader code (`mclib/file*`, `mclib/fastfile*`, `gameos_fileio`, any C++ in a code root whose name says vfs, fst, loader, mission, save, asset load, manifest, campaign, mod); mod tooling (`tools/mod_smoke.py`, `tools/mod_*`, `scripts/mod_*`, `tools/validate_mod_package.py`); GuiRuntime asset/load/texture/atlas/manifest code |
+| `video-decode` | `scripts/video_decode_smoke.py`, `code/mc2video*`, `code/mc2movie*`, `gameos/sim_overlap*`, C++ whose name says video, movie, decode, mve, bink, ffmpeg, avsync, audio; any movie file (`.bik .avi .mp4 .mve .webm .ogv .mkv`) |
+
+Other stages (tier1, player-path, determinism, saveload) always run.
+
+- `--nightly` forces every stage, mods included (implies `--full`). Run it overnight.
+- The mark: a scope-skipped gate may publish, but `last-full-gate.json` only moves when every stage ran, so it always
+  names the last all-stage gate (and the scoped diff and `dup_check` base stay honest).
+- 30 h rule: if the mark is older than 30 h (or missing, or the diff cannot be computed), the next gate runs every stage.
+- Determinism rows run 2 at a time (worker A on the stock install, worker B on a stock copy, `MC2_HOST_GAME_SLOTS=2`,
+  each row takes its own FIFO host slot) whenever mods is active or at least two determinism rows are live. Saveload rows
+  stay on worker A (private `--save-dir`; not proven safe on the clone).
