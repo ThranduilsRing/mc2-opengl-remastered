@@ -276,7 +276,7 @@ long LogisticsData::updateAvailability()
 // loadout (mech lab), and the pilot/launch screen. Self-gates on the LOGISTICS
 // diag tag so it costs nothing unless explicitly enabled (MC2_DIAG_TAGS).
 //*****************************************************************************
-void LogisticsData::dumpFrontEndState( const char* screenName )
+void LogisticsData::dumpFrontEndState( mc2::czstring screenName )
 {
 	if ( !mc2_diag::tagEnabled( "LOGISTICS" ) )
 		return;
@@ -284,7 +284,8 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 	static uint64_t s_dumpSeq = 0;
 	++s_dumpSeq;
 
-	auto esc = []( const char* s ) -> std::string {
+	// Null inputs are empty; non-null inputs must be NUL-terminated.
+	auto esc = []( mc2::czstring s ) -> std::string {
 		std::string o;
 		if ( !s ) return o;
 		for ( const char* p = s; *p; ++p ) {
@@ -401,10 +402,10 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 	mc2_diag::writeEvent( "LOGISTICS", 1, s_dumpSeq, j.c_str() );
 }
 
-void LogisticsData::appendAvailability(const char* pFileName, bool* availableArray )
+void LogisticsData::appendAvailability(mc2::czstring pFileName, bool* availableArray )
 {
 	auto* observation = objectiveObservation();
-	auto accepted = [&](const char* stage, const char* result, std::string_view payload) {
+	auto accepted = [&](mc2::czstring stage, mc2::czstring result, std::string_view payload) {
 		if (!observation) { return; }
 		for (const auto& technology : observation->technologies) {
 			if (technology.path == pFileName) {
@@ -441,7 +442,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 					break;
 
 				// Unknown / out-of-range ids (mod or stale purchase data) are skipped, not fatal.
-				LogisticsComponent* pComp = (component >= 0 && component < 255) ? getComponent( component ) : nullptr;
+				LogisticsComponent* pComp = (component >= 0 && component < 255) ? getComponent( component ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr) : nullptr;
 				if ( !pComp )
 				{
 					MC2_LOG(Ui, Warn, "[LOGISTICS] appendAvailability: unknown component id {:d} in '{}' -- skipped", mc2::fmt::as_i32(component), mc2::fmt::safe(pFileName ? pFileName : "(null)"));
@@ -502,7 +503,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 				variant->getComponents( componentCount, componentArray );
 				for ( int i = 0; i < componentCount; i++ )
 				{
-					LogisticsComponent* pComp = getComponent(componentArray[i]);
+					LogisticsComponent* pComp = getComponent(componentArray[i]).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 					if ( !pComp || !pComp->isAvailable() ) // unavailable componets
 					{
 						bRight= false;

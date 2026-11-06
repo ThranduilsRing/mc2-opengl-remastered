@@ -56,14 +56,6 @@ void LogisticsMissionInfo::clear()
 {
 	if ( groups )
 	{
-		for ( int i = 0; i < groupCount; i++ )
-		{
-			for (auto & info : groups[i].infos)
-			{
-				delete info;
-			}
-		}
-
 		groups.reset();
 	}
 
@@ -86,7 +78,7 @@ void LogisticsMissionInfo::clear()
 }
 
 
-long LogisticsMissionInfo::init( FitIniFile& file )
+std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 {
 
 	clear();
@@ -118,7 +110,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 	if ( result != NO_ERR )
 	{
 		Assert( 0, 0, "No group count in campaign file" );
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	result = file.readIdLong( "CBills", CBills );
@@ -189,8 +181,8 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 					continue;
 				}
 
-				MissionInfo* pInfo = info.release();
-				groups[i].infos.push_back( pInfo );
+				MissionInfo* pInfo = info.get();
+				groups[i].infos.push_back( std::move(info) );
 
 				const std::string path = std::string( missionPath ) + *fileName + ".fit";
 
@@ -251,7 +243,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 
 	}
 
-	return 0;
+	return {};
 }
 
 void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionInfo::MissionInfo* pInfo )
@@ -331,7 +323,7 @@ void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionIn
 		pInfo->enableArtilleryPiece = 0;
 }
 
-long LogisticsMissionInfo::load( FitIniFile& file )
+std::expected<void, long> LogisticsMissionInfo::load( FitIniFile& file )
 {
 	// read the campaign file name
 	long result = file.seekBlock( "General" );
@@ -341,7 +333,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 	if ( !campaignFileName )
 	{
 		MC2_LOG(Io, Warn, "campaign save: the General block has no usable CampaignFile, the save is not loaded");
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	FitIniFile campaignFile;
@@ -349,16 +341,16 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 	{
 		char errorStr[256];
 		mc2::fmt::to_buf(errorStr, "couldn't find file {}", *campaignFileName);
-		return -1;
+		return std::unexpected(-1L);
 	}
 
 	campaignName = *campaignFileName;
 
 	// initialize this with campaign info
-	if ( NO_ERR != init( campaignFile ) )
+	if ( !init( campaignFile ) )
 	{
 		Assert( 0, 0, "couldn't initialize the campaign" );
-		return -1;
+		return std::unexpected(-1L);
 	}
 	currentMission = 0;
 
@@ -450,7 +442,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 
 	}
 
-	return 0;
+	return {};
 
 }
 void LogisticsMissionInfo::save( FitIniFile& file )

@@ -1031,18 +1031,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ComponentListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/componentlistbox.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "ContactInfo": {
    "delete": 1,
    "delete_array": 0,
@@ -1780,31 +1768,10 @@
    "owners": []
   },
   "LogisticsMech": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_inventory.cpp": {
-     "new": 3
-    },
-    "code/logisticsdata_save.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "code/mechpurchasescreen.cpp": {
-     "new": 1
-    }
-   },
-   "new": 5,
-   "new_array": 0,
-   "owners": [
-    "LogisticsData"
-   ]
-  },
-  "LogisticsMechIcon": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsmechicon.cpp": {
+    "code/mechpurchasescreen.cpp": {
      "new": 1
     }
    },
@@ -1812,31 +1779,11 @@
    "new_array": 0,
    "owners": []
   },
-  "LogisticsVariant": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdata_inventory.cpp": {
-     "delete": 1
-    },
-    "code/logisticsdata_modify.cpp": {
-     "new": 1
-    },
-    "code/logisticsdata_save.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "LogisticsData"
-   ]
-  },
-  "LogisticsVehicle": {
+  "LogisticsMechIcon": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsdata_init.cpp": {
+    "code/logisticsmechicon.cpp": {
      "new": 1
     }
    },
@@ -2499,14 +2446,11 @@
     "code/infowindow.cpp": {
      "new": 1
     },
-    "code/logisticspilot.cpp": {
-     "new": 1
-    },
     "code/salvagemecharea.cpp": {
      "new": 1
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -2734,21 +2678,6 @@
     }
    },
    "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "MissionInfo": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsmissioninfo_progress.cpp": {
-     "new": 1
-    },
-    "code/logisticsmissioninfo_query.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -3697,12 +3626,9 @@
     },
     "code/infowindow.cpp": {
      "new": 1
-    },
-    "code/logisticspilot.cpp": {
-     "new": 1
     }
    },
-   "new": 3,
+   "new": 2,
    "new_array": 0,
    "owners": []
   },
@@ -3824,14 +3750,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsdialog.cpp": {
-     "new": 1
-    },
     "gui/alistbox.cpp": {
      "new": 4
     }
    },
-   "new": 5,
+   "new": 4,
    "new_array": 0,
    "owners": []
   },
@@ -4602,11 +4525,8 @@
   "code/infowindow.cpp": 1,
   "code/job_system.cpp": 1,
   "code/logistics.cpp": 1,
-  "code/logisticsdata_modify.cpp": 3,
-  "code/logisticsmissioninfo.cpp": 1,
-  "code/logisticspilot.cpp": 2,
   "code/logisticspilotlistbox.cpp": 1,
-  "code/logisticsvariant.cpp": 2,
+  "code/logisticsvariant.cpp": 1,
   "code/mainmenu.cpp": 2,
   "code/mech_move.cpp": 2,
   "code/mechcmd2_debugwins.cpp": 1,

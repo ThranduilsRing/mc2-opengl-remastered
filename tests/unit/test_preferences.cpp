@@ -156,16 +156,16 @@ TEST_CASE("Preferences/real CPrefs load-save is byte identical and publishes sta
     { std::ofstream file("options.cfg", std::ios::binary); file << text; REQUIRE(file.good()); }
     REQUIRE(prefs.load() == 0);
     CHECK(mc2::options::runtimePreferences().MusicVolume == prefs.MusicVolume);
-    REQUIRE(prefs.save() == 0);
+    REQUIRE(prefs.save().has_value());
     CHECK(mc2::options::cfg::readTextFile("options.cfg") == text);
     CHECK_FALSE(fs::exists("options.cfg.old"));
     prefs.MusicVolume = prefs.MusicVolume == 101 ? 102 : 101;
-    REQUIRE(prefs.save() == 0);
+    REQUIRE(prefs.save().has_value());
     CHECK(mc2::options::cfg::readTextFile("options.cfg.old") == text);
     CPrefs reloaded; REQUIRE(reloaded.load() == 0);
     CHECK(reloaded.MusicVolume == prefs.MusicVolume);
     const auto updated = mc2::options::cfg::readTextFile("options.cfg");
-    REQUIRE(reloaded.save() == 0);
+    REQUIRE(reloaded.save().has_value());
     CHECK(mc2::options::cfg::readTextFile("options.cfg") == updated);
     std::printf("CPrefs round-trip: %zu bytes identical; edited value reloaded; backup identical\n", text.size());
 }

@@ -31,20 +31,22 @@
 
 #include "weapon_definition.h"   // WeaponPresentationProfile, WeaponEvent, assetForEvent
 #include <cstdlib>               // strtol
+#include <optional>
 
-// Parse a WeaponStringId to a non-negative int effect id, or return -1 when the
+// Parse a WeaponStringId to a non-negative int effect id, or no value when the
 // string is empty / not a clean non-negative integer. Pure.
-inline int weaponPresentationAssetToEffectId(const WeaponStringId& asset) {
+inline std::optional<int> weaponPresentationAssetToEffectId(const WeaponStringId& asset) {
     if (asset.empty())
-        return -1;
+        return std::nullopt;
     const char* s = asset.c_str();
     char* end = nullptr;
     long v = std::strtol(s, &end, 10);
     if (end == s || (end && *end != '\0'))
-        return -1;                 // not a clean number
+        return std::nullopt;       // not a clean number
     if (v < 0)
-        return -1;
-    return static_cast<int>(v);
+        return std::nullopt;
+    const int id = static_cast<int>(v);
+    return id >= 0 ? std::optional<int>{id} : std::nullopt;
 }
 
 // THE E8 resolution rule. Returns the effect id to use for the weapon's
@@ -60,15 +62,15 @@ inline int resolveWeaponFireEffectType(const WeaponPresentationProfile& profile,
                                        bool& fromData) {
     // Prefer the muzzle-flash cue (the visual that fires from the weapon node),
     // then the generic OnFire cue.
-    int id = weaponPresentationAssetToEffectId(
+    auto id = weaponPresentationAssetToEffectId(
                  assetForEvent(profile, WeaponEvent::OnMuzzleFlash, WeaponAssetKind::Vfx));
-    if (id < 0)
+    if (!id)
         id = weaponPresentationAssetToEffectId(
                  assetForEvent(profile, WeaponEvent::OnFire, WeaponAssetKind::Vfx));
 
-    if (id >= 0) {
+    if (id) {
         fromData = true;
-        return id;
+        return *id;
     }
     fromData = false;
     return legacyEffectType;

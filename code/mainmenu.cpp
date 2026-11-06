@@ -332,7 +332,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 				beginAnim.end();
 				endResult = NEXT;
 				soundSystem->playDigitalSample( LOG_MAINMENUBUTTON );
-				soundSystem->playDigitalMusic(LogisticsData::instance->getCurrentMissionTune());
+				soundSystem->playDigitalMusic(LogisticsData::instance->getCurrentMissionTune().value_or(-1));
 			}
 			}
 			break;

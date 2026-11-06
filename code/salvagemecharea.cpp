@@ -117,8 +117,8 @@ int __cdecl sortMechs( const void* pW1, const void* pW2 )
 	BattleMech* p1 = *static_cast<BattleMech**>(const_cast<void*>(pW1));
 	BattleMech* p2 = *static_cast<BattleMech**>(const_cast<void*>(pW2));
 
-	LogisticsVariant* pV1 = LogisticsData::instance->getVariant(p1->variantName);
-	LogisticsVariant* pV2 = LogisticsData::instance->getVariant(p2->variantName);
+	LogisticsVariant* pV1 = LogisticsData::instance->getVariant(p1->variantName).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
+	LogisticsVariant* pV2 = LogisticsData::instance->getVariant(p2->variantName).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( pV1 && pV2 )
 	{
@@ -414,7 +414,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 	pressedAnim = *s_pressedAnim;
 	highlightAnim = *s_highlightAnim;
 
-	pVariant = LogisticsData::instance->getVariant( pMech->variantName );
+	pVariant = LogisticsData::instance->getVariant( pMech->variantName ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( !pVariant )
 		return;
@@ -694,7 +694,7 @@ void SalvageMechArea::setMech( LogisticsVariant* pMech, long red, long green, lo
 		textObjects[WEIGHT_TEXTID].setText( text );
 		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getArmor()) );
 		textObjects[ARMOR_TEXTID].setText( text );
-		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getDisplaySpeed()) );
+		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getDisplaySpeed().value_or(-1)) );
 		textObjects[SPEED_TEXTID].setText( text );
 		mc2::fmt::to_buf( text, "{:d}", mc2::fmt::as_i32(pMech->getJumpRange() * 25) );
 		textObjects[JUMP_TEXTID].setText( text );

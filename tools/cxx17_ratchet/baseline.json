@@ -141,10 +141,10 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 314,
+   "LG03": 284,
    "LG04": 15,
-   "LG05": 198,
-   "LG06": 215,
+   "LG05": 127,
+   "LG06": 170,
    "LG07": 2,
    "LG08": 3,
    "LG09": 51,
@@ -190,7 +190,7 @@
    "LG03": 428,
    "LG04": 12,
    "LG05": 107,
-   "LG06": 41,
+   "LG06": 113,
    "LG07": 0,
    "LG08": 9,
    "LG09": 21,
@@ -1500,7 +1500,6 @@
   },
   "code/comndr.h": {},
   "code/componentlistbox.cpp": {
-   "LG03": 1,
    "LG05": 2
   },
   "code/componentlistbox.h": {},
@@ -1753,110 +1752,70 @@
   "code/loadscreen.h": {},
   "code/locomotion_facet.h": {},
   "code/logistics.cpp": {
-   "LG03": 1,
-   "LG06": 2
+   "LG03": 1
   },
-  "code/logistics.h": {
-   "LG06": 3
-  },
-  "code/logistics_begin.cpp": {
-   "LG06": 2
-  },
+  "code/logistics.h": {},
+  "code/logistics_begin.cpp": {},
   "code/logistics_csv.h": {},
   "code/logistics_internal.h": {},
   "code/logisticscomponent.cpp": {
-   "LG05": 2,
-   "LG06": 1,
    "LG17": 1
   },
   "code/logisticscomponent.h": {
-   "LG06": 1,
    "LG14": 2,
    "LG17": 1
   },
   "code/logisticsdata.cpp": {
-   "LG03": 5,
-   "LG05": 3,
-   "LG06": 6,
+   "LG03": 2,
    "LG11": 3
   },
   "code/logisticsdata.h": {
-   "LG05": 2,
-   "LG06": 23
+   "LG05": 2
   },
   "code/logisticsdata_availability.cpp": {
-   "LG06": 5,
+   "LG06": 1,
    "LG11": 12
   },
   "code/logisticsdata_init.cpp": {
-   "LG03": 2,
-   "LG06": 4,
+   "LG03": 1,
    "LG12a": 2
   },
   "code/logisticsdata_internal.h": {},
   "code/logisticsdata_inventory.cpp": {
-   "LG03": 5,
-   "LG05": 18,
-   "LG06": 2,
+   "LG05": 1,
    "LG10": 1
   },
   "code/logisticsdata_modify.cpp": {
-   "LG03": 6,
-   "LG05": 5,
-   "LG06": 6
+   "LG05": 1
   },
   "code/logisticsdata_save.cpp": {
-   "LG03": 5,
-   "LG05": 15,
-   "LG06": 4,
+   "LG05": 5,
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
-   "LG03": 1,
-   "LG06": 7,
    "LG11": 13,
    "LG12b": 10
   },
-  "code/logisticsdialog.h": {
-   "LG06": 6
-  },
+  "code/logisticsdialog.h": {},
   "code/logisticserrors.h": {},
   "code/logisticsmech.cpp": {
    "LG17": 1
   },
   "code/logisticsmech.h": {},
   "code/logisticsmechdisplay.cpp": {
-   "LG06": 1,
    "LG12b": 1
   },
   "code/logisticsmechdisplay.h": {},
   "code/logisticsmechicon.cpp": {
-   "LG03": 1,
-   "LG05": 1
+   "LG03": 1
   },
   "code/logisticsmechicon.h": {},
-  "code/logisticsmissioninfo.cpp": {
-   "LG03": 1,
-   "LG05": 4
-  },
-  "code/logisticsmissioninfo.h": {
-   "LG06": 8
-  },
+  "code/logisticsmissioninfo.cpp": {},
+  "code/logisticsmissioninfo.h": {},
   "code/logisticsmissioninfo_internal.h": {},
-  "code/logisticsmissioninfo_progress.cpp": {
-   "LG03": 1,
-   "LG05": 5,
-   "LG06": 3
-  },
-  "code/logisticsmissioninfo_query.cpp": {
-   "LG03": 1,
-   "LG05": 5,
-   "LG06": 4
-  },
-  "code/logisticspilot.cpp": {
-   "LG03": 4,
-   "LG05": 1
-  },
+  "code/logisticsmissioninfo_progress.cpp": {},
+  "code/logisticsmissioninfo_query.cpp": {},
+  "code/logisticspilot.cpp": {},
   "code/logisticspilot.h": {
    "LG14": 1
   },
@@ -1866,17 +1825,14 @@
   },
   "code/logisticspilotlistbox.h": {},
   "code/logisticsvariant.cpp": {
-   "LG03": 2,
-   "LG05": 4
+   "LG03": 1
   },
   "code/logisticsvariant.h": {
    "LG14": 1
   },
   "code/logisticsvariant_internal.h": {},
   "code/logisticsvariant_package.cpp": {},
-  "code/logisticsvariant_stats.cpp": {
-   "LG05": 4
-  },
+  "code/logisticsvariant_stats.cpp": {},
   "code/los_kernel.cpp": {
    "LG09": 3
   },
@@ -1911,7 +1867,6 @@
   "code/mech_init.cpp": {},
   "code/mech_internal.h": {},
   "code/mech_loadout.cpp": {
-   "LG05": 5,
    "LG12a": 2,
    "LG12b": 1
   },
@@ -2162,55 +2117,81 @@
   "code/mpconnectiontype.h": {},
   "code/mpgamebrowser.cpp": {
    "LG05": 2,
+   "LG06": 2,
    "LG12b": 3
   },
-  "code/mpgamebrowser.h": {},
-  "code/mphostgame.cpp": {
-   "LG05": 1
+  "code/mpgamebrowser.h": {
+   "LG06": 2
   },
-  "code/mphostgame.h": {},
+  "code/mphostgame.cpp": {
+   "LG05": 1,
+   "LG06": 1
+  },
+  "code/mphostgame.h": {
+   "LG06": 1
+  },
   "code/mploadmap.cpp": {
    "LG03": 3,
    "LG05": 1,
+   "LG06": 2,
    "LG10": 1,
    "LG11": 4,
    "LG12b": 3
   },
-  "code/mploadmap.h": {},
+  "code/mploadmap.h": {
+   "LG06": 2
+  },
   "code/mpparameterscreen.cpp": {
    "LG03": 1,
    "LG05": 3,
+   "LG06": 8,
    "LG09": 1,
    "LG10": 8,
    "LG12b": 6
   },
-  "code/mpparameterscreen.h": {},
+  "code/mpparameterscreen.h": {
+   "LG06": 8
+  },
   "code/mpprefs.cpp": {
    "LG05": 1,
+   "LG06": 1,
    "LG11": 2
   },
-  "code/mpprefs.h": {},
-  "code/mpsetuparea.cpp": {
-   "LG05": 1
+  "code/mpprefs.h": {
+   "LG06": 1
   },
-  "code/mpsetuparea.h": {},
+  "code/mpsetuparea.cpp": {
+   "LG05": 1,
+   "LG06": 3
+  },
+  "code/mpsetuparea.h": {
+   "LG06": 3
+  },
   "code/mpstats.cpp": {
    "LG05": 1,
+   "LG06": 1,
    "LG11": 1,
    "LG12b": 4,
    "LG18": 1
   },
-  "code/mpstats.h": {},
-  "code/multplyr.cpp": {},
+  "code/mpstats.h": {
+   "LG06": 1
+  },
+  "code/multplyr.cpp": {
+   "LG06": 2
+  },
   "code/multplyr.h": {
-   "LG06": 1,
+   "LG06": 3,
    "LG14": 7,
    "LG17": 2
   },
-  "code/multplyr_handle.cpp": {},
+  "code/multplyr_handle.cpp": {
+   "LG06": 1
+  },
   "code/multplyr_internal.h": {},
   "code/multplyr_null.cpp": {
    "LG05": 2,
+   "LG06": 1,
    "LG17": 1
   },
   "code/multplyr_send.cpp": {
@@ -2302,9 +2283,7 @@
   "code/player_unit_intent.h": {},
   "code/prefs.cpp": {},
   "code/prefs.h": {},
-  "code/prefs_io.cpp": {
-   "LG05": 3
-  },
+  "code/prefs_io.cpp": {},
   "code/qualified_id.h": {
    "LG10": 1,
    "LG17": 1
@@ -2489,9 +2468,7 @@
    "LG06": 1
   },
   "code/weapon_presentation_proof.cpp": {},
-  "code/weapon_presentation_resolve.h": {
-   "LG05": 3
-  },
+  "code/weapon_presentation_resolve.h": {},
   "code/weaponbolt.cpp": {
    "LG03": 1
   },
@@ -2783,7 +2760,7 @@
   },
   "mclib/file.cpp": {
    "LG05": 1,
-   "LG06": 2,
+   "LG06": 9,
    "LG10": 4,
    "LG12a": 3,
    "LG12b": 1,
@@ -2791,7 +2768,7 @@
    "LG17": 1
   },
   "mclib/file.h": {
-   "LG06": 1,
+   "LG06": 17,
    "LG17": 1
   },
   "mclib/fit_number.h": {},
@@ -2927,11 +2904,11 @@
   "mclib/heap.cpp": {},
   "mclib/heap.h": {},
   "mclib/inifile.cpp": {
-   "LG06": 1,
+   "LG06": 15,
    "LG17": 3
   },
   "mclib/inifile.h": {
-   "LG06": 1,
+   "LG06": 23,
    "LG17": 4
   },
   "mclib/inifile_arrays.cpp": {
@@ -3293,6 +3270,7 @@
   },
   "mclib/msl.h": {
    "LG05": 1,
+   "LG06": 13,
    "LG17": 3
   },
   "mclib/msl_anim.cpp": {
@@ -3703,7 +3681,7 @@
    "LG20": 1
   }
  },
- "head": "56aac3bd9",
+ "head": "16f2a3860",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

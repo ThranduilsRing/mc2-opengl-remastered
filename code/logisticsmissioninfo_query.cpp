@@ -80,18 +80,18 @@ std::string LogisticsMissionInfo::getCurrentVideo() const
 	return pGroup->videoFileName;
 }
 
-long LogisticsMissionInfo::getCurrentLogisticsTuneId()
+std::optional<long> LogisticsMissionInfo::getCurrentLogisticsTuneId()
 {
 	//sebi: ORIG BUG FIX: when campaign is finished currentStage is increased and finally reaches groupCount
 	if (currentStage >= groupCount)
-		return -1;
+		return std::nullopt;
 
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup )
-		return pGroup->logisticsTuneId;	
+		return pGroup->logisticsTuneId == -1 ? std::nullopt : std::optional<long>{pGroup->logisticsTuneId};
 
-	return -1;
+	return std::nullopt;
 }
 
 std::string LogisticsMissionInfo::getCurrentMissionDescription() const
@@ -103,7 +103,7 @@ std::string LogisticsMissionInfo::getCurrentMissionDescription() const
 	return groups[currentStage].mission(currentMission)->description;
 }
 
-bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
+bool LogisticsMissionInfo::getMissionAvailable( mc2::czstring missionName )
 {
 	MissionGroup* pGroup = &groups[currentStage];
 
@@ -133,7 +133,7 @@ std::string LogisticsMissionInfo::getCurrentABLScriptName() const
 	return groups[currentStage].ablBrainName;
 }
 
-std::string LogisticsMissionInfo::getMissionFriendlyName( const char* missionName ) const
+std::string LogisticsMissionInfo::getMissionFriendlyName( mc2::czstring missionName ) const
 {
 	if ( currentStage >= groupCount )
 		return std::string();
@@ -194,8 +194,7 @@ void		LogisticsMissionInfo::setMultiplayer()
 
 	currentStage = 0;
 
-	MissionInfo* pInfo = new MissionInfo;
-	groups[0].infos.push_back( pInfo );
+	groups[0].infos.push_back( std::make_unique<MissionInfo>() );
 
 	currentMission = 0;
 	groupCount = 1;
@@ -204,7 +203,7 @@ void		LogisticsMissionInfo::setMultiplayer()
 			
 
 }
-void		LogisticsMissionInfo::setPurchaseFile( const char* fileName )
+void		LogisticsMissionInfo::setPurchaseFile( mc2::czstring fileName )
 {
 	gosASSERT( bMultiplayer) ;
 
@@ -229,7 +228,7 @@ int			LogisticsMissionInfo::getAdditionalPurachaseFiles( const char** list, long
 
 	return static_cast<long>(std::ssize(additionalPurchaseFiles));
 }
-void				LogisticsMissionInfo::addBonusPurchaseFile( const char* fileName )
+void				LogisticsMissionInfo::addBonusPurchaseFile( mc2::czstring fileName )
 {
 	if ( !fileName )
 		return;
@@ -273,10 +272,10 @@ bool	LogisticsMissionInfo::skipPilotReview()
 {
 	// need to subtract a mission, since we already set this one complete if we
 	// got here
-	MissionInfo* pInfo = getPreviousMission();
+	const auto pInfo = getPreviousMission();
 	if ( !pInfo )
 		return 0;
-	return !pInfo->playPilotPromotion;
+	return !pInfo->get().playPilotPromotion;
 	
 
 }
@@ -284,11 +283,11 @@ bool	LogisticsMissionInfo::skipSalvageScreen()
 {
 	// need to subtract a mission, since we already set this one complete if we
 	// got here
-	MissionInfo* pInfo = getPreviousMission();
+	const auto pInfo = getPreviousMission();
 	if ( !pInfo )
 		return 0;
 	
-	return !pInfo->playSalvage;
+	return !pInfo->get().playSalvage;
 
 }
 bool	LogisticsMissionInfo::skipPurchasing()
@@ -300,33 +299,33 @@ bool	LogisticsMissionInfo::skipPurchasing()
 	return !pGroup->mission(currentMission)->playPurchasing;
 }
 
-LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::getPreviousMission()
+std::optional<std::reference_wrapper<LogisticsMissionInfo::MissionInfo>> LogisticsMissionInfo::getPreviousMission()
 {
 	if ( currentMission > 0 )
 	{
 		MissionGroup* pGroup = &groups[currentStage]; 
-		return pGroup->mission(currentMission-1);
+		return *pGroup->mission(currentMission-1);
 	}
 	else if ( currentStage > 0 )
 	{
 		MissionGroup* pGroup = &groups[currentStage]-1; 
 		int Count  = static_cast<int>(std::ssize(pGroup->infos));
 		if ( Count )
-			return pGroup->mission(Count-1);
+			return *pGroup->mission(Count-1);
 		else
-			return nullptr;
+			return std::nullopt;
 	}
 	else if ( currentStage == 0 )	//There may be only one stage.  I.e. Tutorials!
 	{
 		MissionGroup* pGroup = &groups[currentStage]; 
 		int Count  = static_cast<int>(std::ssize(pGroup->infos));
 		if ( Count )
-			return pGroup->mission(Count-1);
+			return *pGroup->mission(Count-1);
 		else
-			return nullptr;
+			return std::nullopt;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 bool LogisticsMissionInfo::isSingleMission() const

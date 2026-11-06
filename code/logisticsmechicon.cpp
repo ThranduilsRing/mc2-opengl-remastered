@@ -18,7 +18,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
-LogisticsMechIcon*	LogisticsMechIcon::s_pTemplateIcon = nullptr;
+LogisticsMechIcon* LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
 
 LogisticsMechIcon::LogisticsMechIcon( )
@@ -295,12 +295,12 @@ bool LogisticsMechIcon::isSelected()
 	return state == aListItem::SELECTED;
 }
 
-LogisticsPilot* LogisticsMechIcon::getPilot()
+std::optional<std::reference_wrapper<LogisticsPilot>> LogisticsMechIcon::getPilot()
 {
-	if ( pMech )
-		return pMech->getPilot();
+	if ( pMech && pMech->getPilot() )
+		return *pMech->getPilot();
 
-	return nullptr;
+	return std::nullopt;
 }
 
 void LogisticsMechIcon::setPilot( LogisticsPilot* pPilot )

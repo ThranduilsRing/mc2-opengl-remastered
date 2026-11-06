@@ -562,7 +562,7 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 	{
 		const std::string name = mc2::str::from_c( pText ) + " Prime";
 
-		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name.c_str() );
+		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name.c_str() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 		// ENCYCLO-3D-1 diagnostic: is the select→variant→camera chain intact?
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
@@ -576,12 +576,12 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 	}
 	else
 	{
-		LogisticsVehicle* pVehicle = LogisticsData::instance->getVehicle( pText );
+		LogisticsVehicle* pVehicle = LogisticsData::instance->getVehicle( pText ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 		if ( pVehicle )
 			setVehicle( pVehicle );
 		else // copter
 		{
-			LogisticsVariant* pMech = LogisticsData::instance->getVariant( pText );
+			LogisticsVariant* pMech = LogisticsData::instance->getVariant( pText ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 			if ( pMech )
 				setMech( pMech, 0 );
 		}
@@ -640,26 +640,6 @@ void cleanLegacyDescription( std::string& text )
 {
 	std::erase( text, '\\' );
 	std::replace( text.begin(), text.end(), '/', '\n' );
-}
-
-// Mirror a populated weapon-loadout ComponentListBox into the ImGui defs-page
-// list, preserving the per-weapon-range item colors the box assigned (short =
-// olive, medium = blue, long = red, components = gold).
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
-{
-	std::vector<std::string>  items;
-	std::vector<unsigned int> colors;
-	for ( int i = 0; i < box.GetItemCount(); i++ )
-	{
-		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
-		if ( pItem )
-		{
-			items.push_back( pItem->getText() );
-			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
-		}
-	}
-	screen->setDefsListItems( listKey, items );
-	screen->setDefsListItemColors( listKey, colors );
 }
 
 } // namespace
@@ -746,7 +726,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed()));
+	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed().value_or(-1)));
 
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -884,7 +864,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed()));
+	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed().value_or(-1)));
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -1001,7 +981,7 @@ void Mechlopedia::WeaponScreen::render()
 
 void Mechlopedia::WeaponScreen::select( aTextListItem* pEntry )
 {
-	LogisticsComponent* pComponent = LogisticsData::instance->getComponent( pEntry->getID() );
+	LogisticsComponent* pComponent = LogisticsData::instance->getComponent( pEntry->getID() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 	setWeapon( pComponent );
 
 	
@@ -1543,7 +1523,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 	if ( !pEntry )
 		return;
 
-	LogisticsData::Building* pBldg = LogisticsData::instance->getBuilding( pEntry->getID() );
+	LogisticsData::Building* pBldg = LogisticsData::instance->getBuilding( pEntry->getID() ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 	if ( pBldg )
 	{
@@ -1580,7 +1560,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 		{
 				if ( ID )
 			{
-				LogisticsComponent* pComp = LogisticsData::instance->getComponent( ID );
+				LogisticsComponent* pComp = LogisticsData::instance->getComponent( ID ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 				if ( pComp )
 				{
 					pComps[count++] = pComp;

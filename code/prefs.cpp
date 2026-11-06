@@ -60,13 +60,13 @@ int CPrefs::applyPrefs(bool applyRes) {
         PlayerFrontEnd::saveRenderOptions = [](const mc2::options::RenderOptions& options) {
             const auto previous = prefs.render;
             prefs.render = options;
-            if (prefs.save() != 0) { prefs.render = previous; return false; }
+            if (!prefs.save()) { prefs.render = previous; return false; }
             return true;
         };
 		mc2::options::saveSpatialAA = [](int mode) {
 			const int previous = prefs.render.spatialAA;
 			prefs.render.spatialAA = mode;
-			if (prefs.save() != 0) { prefs.render.spatialAA = previous; return false; }
+			if (!prefs.save()) { prefs.render.spatialAA = previous; return false; }
 			auto options = mc2::options::current();
 			options.spatialAA = mode;
 			mc2::options::publish(options);

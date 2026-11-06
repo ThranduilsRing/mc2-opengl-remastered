@@ -9,6 +9,10 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 \*************************************************************************************************/
 
 #include <string_view>
+#include "mc2_czstring.h"
+#include <expected>
+#include <optional>
+#include <functional>
 #include"stuff/stuff.hpp"
 #include <string>
 #include <vector>
@@ -34,35 +38,38 @@ public:
 	~LogisticsData();
 	void			init();
 	void			initFast();
-	void			ensureMechBayDataLoaded(const char* trigger = nullptr);
+	// Null trigger means an unspecified diagnostic source.
+	void			ensureMechBayDataLoaded(mc2::czstring trigger = nullptr);
 
 	bool			rpJustAdded;
 
 	static LogisticsData*		instance;
 
-	LogisticsComponent* getComponent( int componentID );
+	std::optional<std::reference_wrapper<LogisticsComponent>> getComponent( int componentID );
 	LogisticsPilot*		getPilot( int pilotID );
-	LogisticsPilot*		getPilot( const char* pilotName );
+	// Nullable lookup names retain their historical null-as-empty contract.
+	std::optional<std::reference_wrapper<LogisticsPilot>> getPilot( mc2::czstring pilotName );
 	int					getPilotCount();
 	int					getPilots( LogisticsPilot**, long& count );
-	const char*			getBestPilot( long mechWeight );
+	std::optional<std::reference_wrapper<const std::string>> getBestPilot( long mechWeight );
 	bool				gotPilotsLeft();
 
-	void				setPilotUnused( const char* pPilot );
+	void				setPilotUnused( mc2::czstring pPilot );
 
 	int					getVariantsInInventory( LogisticsVariant* pVar, bool bIncludeForceGroup );
 	int					getPlayerVariantNames( const char**, int& count );
 	int					getChassisVariants( const LogisticsChassis* pChassis, LogisticsVariant** pVar, int& count );
 	
-	LogisticsVariant*	getVariant( int ID );
-	LogisticsVariant*	getVariant( const char* mechName );
-	LogisticsVariant*	getVariant( const char* pCSVFileNaem, int VariantNum );
-	int					removeVariant( const char* varName );
+	std::optional<std::reference_wrapper<LogisticsVariant>> getVariant( int ID );
+	std::optional<std::reference_wrapper<LogisticsVariant>> getVariant( mc2::czstring mechName );
+	std::optional<std::reference_wrapper<LogisticsVariant>> getVariant( mc2::czstring pCSVFileNaem, int VariantNum );
+	std::expected<void, int> removeVariant( mc2::czstring varName );
 
 
-	LogisticsMech*		getMech( int ID );
-	LogisticsMech*		getMech( const char* MechName, const char* pilotName );
-	LogisticsMech*		getMechWithoutForceGroup( LogisticsMech* clone );
+	std::optional<std::reference_wrapper<LogisticsMech>> getMech( int ID );
+	// Null pilotName selects an unpiloted mech; MechName null means empty.
+	std::optional<std::reference_wrapper<LogisticsMech>> getMech( mc2::czstring MechName, mc2::czstring pilotName );
+	std::optional<std::reference_wrapper<LogisticsMech>> getMechWithoutForceGroup( LogisticsMech* clone );
 
 	void				addMechToInventory( LogisticsVariant* pVar, LogisticsPilot* pPilot, int ForceGrup,
 											bool bSubtractPts = 0);
@@ -71,7 +78,7 @@ public:
 
 
 	int createInstanceID( LogisticsVariant* pVar );
-	LogisticsPilot*		getFirstAvailablePilot();
+	std::optional<std::reference_wrapper<LogisticsPilot>> getFirstAvailablePilot();
 	// VEHICLE-AUTO-PILOT-1: a deployed vehicle/support unit auto-gets a standard
 	// vehicle pilot so it satisfies the launch pilot-requirement without consuming a
 	// roster mech-pilot. isVehicleUnit() = object class != BATTLEMECH; getVehiclePilot()
@@ -90,17 +97,17 @@ public:
 											unsigned long color1 = 0xffffffff, 
 											unsigned long color2 = 0xffffffff,
 											unsigned long color3 = 0xffffffff);
-	void				removeMechFromInventory( const char* mechName, const char* pilotName );
+	void				removeMechFromInventory( mc2::czstring mechName, mc2::czstring pilotName );
 
-	int					addMechToForceGroup( LogisticsMech* pMech, int slot );
-	int					removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot );
-	int					removeMechFromForceGroup( int slot );
+	std::expected<void, int> addMechToForceGroup( LogisticsMech* pMech, int slot );
+	std::expected<void, int> removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot );
+	std::expected<void, int> removeMechFromForceGroup( int slot );
 
 	bool				canAddMechToForceGroup( LogisticsMech* pMech );
 
 
 	long				save( FitIniFile& file );
-	long				load( FitIniFile& file );
+	std::expected<void, long> load( FitIniFile& file );
 
 	void				setResourcePoints(long rp) {resourcePoints = rp; rpJustAdded = 0;}
 	int					getResourcePoints() { return resourcePoints; }
@@ -115,7 +122,7 @@ public:
 	int					getCurrentDropWeight() const;
 	int					getMaxDropWeight() const;
 
-	long				loadMech( FitIniFile& file, int& count );
+	std::expected<void, long> loadMech( FitIniFile& file, int& count );
 
 	void				setMissionCompleted();
 	long				updateAvailability();
@@ -124,13 +131,14 @@ public:
 	// (MCP-readable) with the current screen + bay/purchase/loadout/launch state
 	// (purchasable mechs, inventory, force group, pilots, CB/RP, drop weight,
 	// mission info). Self-gates on the LOGISTICS diag tag being enabled.
-	void				dumpFrontEndState( const char* screenName );
+	// Null screenName is emitted as an empty diagnostic label.
+	void				dumpFrontEndState( mc2::czstring screenName );
 
 	const std::string&	getCurrentMission() const;
 	const std::string&	getLastMission() const;
-	void				setSingleMission( const char* pName );
+	void				setSingleMission( mc2::czstring pName );
 	bool				isSingleMission();
-	long				getCurrentMissionTune();
+	std::optional<long> getCurrentMissionTune();
 	// The text getters below return a copy; an empty string means "there is none" (logisticsmissioninfo.h).
 	std::string			getCurrentABLScript() const;
 	long 				getCurrentMissionId();
@@ -138,22 +146,22 @@ public:
 	void				clearInventory();
 
 	int					getPurchasableMechs( LogisticsVariant**, int& count );
-	int					canPurchaseMech( LogisticsVariant* pVar );
-	int					purchaseMech( LogisticsVariant* pVar );
-	int					sellMech( LogisticsMech* pVar );
+	std::expected<void, int> canPurchaseMech( LogisticsVariant* pVar );
+	std::expected<void, int> purchaseMech( LogisticsVariant* pVar );
+	std::expected<void, int> sellMech( LogisticsMech* pVar );
 	int					getEncyclopediaMechs( const LogisticsVariant**, int& count );
 	int					getHelicopters( const LogisticsVariant**, int& count );
 	
 	int					getVehicles( const LogisticsVehicle**, int& count );
-	LogisticsVehicle*	getVehicle( const char* pName );
+	std::optional<std::reference_wrapper<LogisticsVehicle>> getVehicle( mc2::czstring pName );
 
 
-	int					setMechToModify( LogisticsMech* pVariant );
+	std::expected<void, int> setMechToModify( LogisticsMech* pVariant );
 	LogisticsMech*		getMechToModify( ){ return currentlyModifiedMech; }
-	int					acceptMechModifications( const char* pNewVariantName );
-	int					cancelMechModfications();
-	bool				canReplaceVariant( const char* name );
-	bool				canDeleteVariant( const char* name );
+	std::expected<void, int> acceptMechModifications( mc2::czstring pNewVariantName );
+	std::expected<void, int> cancelMechModfications();
+	bool				canReplaceVariant( mc2::czstring name );
+	bool				canDeleteVariant( mc2::czstring name );
 
 	void				setCurrentMissionNum (long cMission);
 	long				getCurrentMissionNum (void);
@@ -165,29 +173,30 @@ public:
 	std::string			getCurrentMissionDescription();
 	int					getAvailableMissions( const char** missionNames, long& count );
 	int					getCurrentMissions( const char** missionNames, long& count );
-	bool				getMissionAvailable( const char* missionName );
+	bool				getMissionAvailable( mc2::czstring missionName );
 	std::string			getCurrentMissionFriendlyName( );
-	std::string			getMissionFriendlyName( const char* missionName );
+	std::string			getMissionFriendlyName( mc2::czstring missionName );
 	long				getMaxTeams() const;
 	long				getMaxPlayers() const;
 
-	int					acceptMechModificationsUseOldVariant( const char* name );
+	std::expected<void, int> acceptMechModificationsUseOldVariant( mc2::czstring name );
 
 	const std::string&	getCampaignName() const;
 
 
 
 
-	int					setCurrentMission( const char* missionName );
+	// Null or empty mission names are rejected by the mission-info boundary.
+	std::expected<void, long> setCurrentMission( mc2::czstring missionName );
 	// Cross-stage mission set for the headless boot driver (MC2_BOOT_TO_MISSION):
 	// jump to any mission regardless of stage/progression, then updateAvailability.
-	int					setCurrentMissionAnyStage( const char* missionName );
+	std::expected<void, long> setCurrentMissionAnyStage( mc2::czstring missionName );
 
-	void				startNewCampaign( const char* fileName = "campaign");
+	void				startNewCampaign( mc2::czstring fileName = "campaign");
 	void				startMultiPlayer();
-	void				setPurchaseFile( const char* fileName );
+	void				setPurchaseFile( mc2::czstring fileName );
 
-	Building*			getBuilding( int nameID );
+	std::optional<std::reference_wrapper<Building>> getBuilding( int nameID );
 	int					getBuildings( Building** bdgs, int& count );
 
 	bool				campaignOver();
@@ -202,8 +211,9 @@ public:
 	void				setNewWeaponsAcknowledged(){ bNewWeapons = 0; }
 	void				setNewMechsAcknowledged(){ bNewMechs = 0; }
 
-	void				addNewBonusPurchaseFile( const char* pFileName ); 
-	void				appendAvailability(const char* pFileName, bool* availableArray );
+	// A null bonus filename is ignored.
+	void				addNewBonusPurchaseFile( mc2::czstring pFileName );
+	void				appendAvailability(mc2::czstring pFileName, bool* availableArray );
 
 	bool				skipLogistics();
 	void				setSkipLogistics(bool skip);
@@ -251,11 +261,10 @@ private:
 	// holds a LogisticsPilot* into it.
 	using COMPONENT_LIST = std::deque<LogisticsComponent>;
 	using PILOT_LIST = std::deque<LogisticsPilot>;
-	// Order is insertion order. variants and inventory lose elements through removeVariant / sellMech / the mech-list rewrites, which erase the pointer and delete the
-	// pointee themselves; vehicles are filled once at init.
-	using VARIANT_LIST = std::vector<LogisticsVariant*>;
-	using MECH_LIST = MechList;
-	using VEHICLE_LIST = std::vector<LogisticsVehicle*>;
+	// Owners preserve insertion order and stable pointee addresses; public lists are borrowed snapshots.
+	using VARIANT_LIST = std::vector<std::unique_ptr<LogisticsVariant>>;
+	using MECH_LIST = std::vector<std::unique_ptr<LogisticsMech>>;
+	using VEHICLE_LIST = std::vector<std::unique_ptr<LogisticsVehicle>>;
 	using BUILDING_LIST = std::deque<Building>;
 	
 	VARIANT_LIST									variants;
@@ -265,6 +274,9 @@ private:
 	VEHICLE_LIST									vehicles;
 	BUILDING_LIST									buildings;
 	
+	// Explicitly destroyed with LogisticsData, before engine heaps shut down.
+	std::unique_ptr<LogisticsPilot> vehiclePilot;
+	bool vehiclePilotTried = false;
 	std::unique_ptr<LogisticsMissionInfo>			missionInfo;
 
 	// The mechs that were deployed in a mission, captured before they leave the inventory, so a mech that survives the mission can be put back by
@@ -280,11 +292,12 @@ private:
 
 	LogisticsMech*									currentlyModifiedMech;
 	LogisticsVariant*								oldVariant;
+	std::unique_ptr<LogisticsVariant> modifiedVariant;
 	
 	
 	int												resourcePoints; // C-Bills for buying mechs
 
-	long	loadVariant( FitIniFile& file );
+	std::expected<void, long> loadVariant( FitIniFile& file );
 
 
 	
@@ -306,7 +319,7 @@ private:
 
 	void addVehicle( long fitID, PacketFile& objectFile, float scale, long nameID = 0, std::string_view csvName = {} );
 	bool openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const;
-	int  addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
+	std::expected<void, int> addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName = {} );
 	void removeDeadWeight();
 	void clearVariants();
 

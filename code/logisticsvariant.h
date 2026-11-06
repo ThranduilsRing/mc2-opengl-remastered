@@ -15,6 +15,9 @@ class CSVFile;
 class FitIniFile;
 
 #include <string>
+#include <optional>
+#include <functional>
+#include <expected>
 
 #pragma warning (disable:4514)
 
@@ -47,13 +50,13 @@ public:
 	long			getArmor() const { return baseArmor; }
 	int				getArmorClass() const;
 	float			getSpeed() const { return speed; }
-	int				getDisplaySpeed() const;
-	int				getDisplaySpeedForSpeed( long s ) const;
+	std::optional<int> getDisplaySpeed() const;
+	std::optional<int> getDisplaySpeedForSpeed( long s ) const;
 	void			setScale( float newScale ) { scale = newScale; }
 	float			getScale() const { return scale; }
 	long			getMaxArmor() const { return maxArmor; }
-	int				getSensorID() const;
-	int				getECM() const;
+	std::optional<int> getSensorID() const;
+	std::optional<int> getECM() const;
 	bool			jumpJetsAllowed() const;   // honors MC2_JUMPJETS_ALL gate
 	// VEHICLE-AUTO-PILOT-1: true for a LogisticsVehicle chassis (set in
 	// LogisticsVehicle::init). Logistics-safe vehicle discriminator — does NOT need the
@@ -169,7 +172,7 @@ protected:
 		int				getJumpRange() const;
 		int				getMaxJumpRange() const;
 		int				getSpeed() const;
-		int				getDisplaySpeed() const;
+		std::optional<int> getDisplaySpeed() const;
 		bool			hasXLEngine() const;
 		long			effectiveSpeed() const;
 
@@ -179,7 +182,7 @@ protected:
 		const std::string&	getMediumIconFileName() const { return chassis->uiIconOverride[1].empty() ? chassis->iconFileNames[1] : chassis->uiIconOverride[1]; }
 		const std::string&	getLargeIconFileName() const { return chassis->uiIconOverride[2].empty() ? chassis->iconFileNames[2] : chassis->uiIconOverride[2]; }
 		int				getComponentsWithLocation( long& count, long* IDArray, long* xLocationArray, long* yLocationArray );
-		int				removeComponent( long xCoord, long yCoord );
+		std::expected<void, int> removeComponent( long xCoord, long yCoord );
 		int				addComponent( LogisticsComponent*, long& xCoord, long& yCoord );
 		inline			bool canDelete( ) const { return !isDesignerMech(); }
 		inline			bool isDesignerMech() const { return bDesignerMech; }
@@ -206,14 +209,14 @@ protected:
 		int			getComponentAreaWidth() const{ return chassis->componentAreaWidth; } 
 		int			getComponentAreaHeight() const { return chassis->componentAreaHeight; } 
 
-		LogisticsComponent*	getCompAtLocation( int i, int j, long& realI, long& realJ );
+		std::optional<std::reference_wrapper<LogisticsComponent>> getCompAtLocation( int i, int j, long& realI, long& realJ );
 		int			getComponentLocation( LogisticsComponent* pComp, long& i, long& j );
 
 		int			getOptimalRangeString( uint32_t& color ) const;
 		long		getHouseID(){ return chassis->houseID; }
 		long		getMaxArmor() const { return chassis->maxArmor; }
-		int			getSensorID() const { return chassis->getSensorID(); }
-		int			getECM() const { return chassis->getECM(); }
+		std::optional<int> getSensorID() const { return chassis->getSensorID(); }
+		std::optional<int> getECM() const { return chassis->getECM(); }
 
 		bool		allComponentsAvailable() const;
 
@@ -229,7 +232,7 @@ protected:
 	protected:
 
 	
-		const LogisticsChassis::ComponentInfo* getComponentAtLocation(long x, long y) const;
+		std::optional<std::reference_wrapper<const LogisticsChassis::ComponentInfo>> getComponentAtLocation(long x, long y) const;
 
 		
 		unsigned long		ID; // bottom 8 bits = mech chassis, next 8 = number within

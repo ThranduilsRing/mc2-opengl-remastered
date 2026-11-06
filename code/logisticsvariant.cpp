@@ -209,12 +209,12 @@ int LogisticsChassis::getArmorClass() const
 }
 
 
-int LogisticsChassis::getDisplaySpeed() const
+std::optional<int> LogisticsChassis::getDisplaySpeed() const
 {
 	return getDisplaySpeedForSpeed( static_cast<long>(speed) );
 }
 
-int LogisticsChassis::getDisplaySpeedForSpeed( long speed ) const
+std::optional<int> LogisticsChassis::getDisplaySpeedForSpeed( long speed ) const
 {
 	switch( speed )
 	{
@@ -243,10 +243,10 @@ int LogisticsChassis::getDisplaySpeedForSpeed( long speed ) const
 		return 130;
 		break;
 	}
-	return -1;
+	return std::nullopt;
 }
 
-int	LogisticsChassis::getSensorID() const
+std::optional<int> LogisticsChassis::getSensorID() const
 {
 	if ( canHaveAdvSensor )
 		return 15;
@@ -255,17 +255,15 @@ int	LogisticsChassis::getSensorID() const
 	else if ( canHaveGlobalSensor )
 		return 17;
 	else 
-		return -1;
-
-	return -1;
+		return std::nullopt;
 }
 
-int LogisticsChassis::getECM() const
+std::optional<int> LogisticsChassis::getECM() const
 {
 	if ( canHaveECM )
 		return 38;
 
-	return -1;
+	return std::nullopt;
 }
 
 
@@ -413,7 +411,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 		long componentID;
 		if ( NO_ERR == file->readLong( offset + i, 5, componentID ) && componentID != 0xff )
 		{
-			LogisticsComponent* pComp = LogisticsData::instance->getComponent(componentID );
+			LogisticsComponent* pComp = LogisticsData::instance->getComponent(componentID ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 			if ( pComp )
 			{
 				file->readLong( offset + i, 4, yLocs[componentCount] );
@@ -455,13 +453,12 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 {
 	LogisticsComponent*
-		pComponent = LogisticsData::instance->getComponent( idFromFitFile );
+		pComponent = LogisticsData::instance->getComponent( idFromFitFile ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
 
 	if ( !pComponent )
 	{
 	//	Assert( 0, idFromFitFile, "couldn't find the component in the fit file\n" );
-		delete pComponent;
 		return false;
 	}
 

@@ -7,6 +7,8 @@
 //===========================================================================//
 #include"asystem.h"
 #include"aanim.h"
+#include <optional>
+#include <functional>
 
 class LogisticsMech;
 class LogisticsPilot;
@@ -23,7 +25,7 @@ public:
 
 	LogisticsMechIcon();
 	~LogisticsMechIcon();
-	
+
 	static int init( FitIniFile& file );
 
 	void update();
@@ -31,7 +33,7 @@ public:
 
 	void setMech( LogisticsMech* pMech );
 	LogisticsMech* getMech( ){ return pMech; }
-	LogisticsPilot* getPilot();
+	std::optional<std::reference_wrapper<LogisticsPilot>> getPilot();
 	void setPilot( LogisticsPilot* pPilot);
 
 	float width(){ return outline.width(); }
@@ -54,10 +56,10 @@ public:
 
 	void disable( bool bdo) { bDisabled = bdo; }
 
-	static LogisticsMechIcon*	s_pTemplateIcon;
+	static LogisticsMechIcon* s_pTemplateIcon;
 
 private:
-	
+
 	LogisticsMechIcon& operator=( const LogisticsMechIcon& src );
 	LogisticsMechIcon( const LogisticsMechIcon& src );
 
@@ -89,8 +91,8 @@ private:
 
 
 
-	
-	
+
+
 };
 
 

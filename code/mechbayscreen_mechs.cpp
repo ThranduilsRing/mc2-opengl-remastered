@@ -7,31 +7,6 @@
 #include <tracy/Tracy.hpp>
 
 
-// Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
-// preserving the per-item range colours (short=olive, medium=blue, long=red,
-// components=gold).  So the Mech Loadout box renders through the ImGui defs layer
-// instead of the legacy gos list, which composites UNDER the defs page and is
-// occluded by its frame art.  (Local copy of the same helper in mechlopedia.cpp,
-// which lives in an anonymous namespace and so isn't linkable across TUs.)
-namespace {
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
-{
-	std::vector<std::string>  items;
-	std::vector<unsigned int> colors;
-	for ( int i = 0; i < box.GetItemCount(); i++ )
-	{
-		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
-		if ( pItem )
-		{
-			items.push_back( pItem->getText() );
-			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
-		}
-	}
-	screen->setDefsListItems( listKey, items );
-	screen->setDefsListItemColors( listKey, colors );
-}
-} // namespace
-
 void MechBayScreen::addSelectedMech()
 {
 	if ( mechListBox.getCurrentMech() )
@@ -39,7 +14,7 @@ void MechBayScreen::addSelectedMech()
 		if ( !LogisticsData::instance->canAddMechToForceGroup( mechListBox.getCurrentMech() ) )
 			return;
 
-		if ( NO_ERR != LogisticsData::instance->addMechToForceGroup( mechListBox.getCurrentMech(),
+		if ( !LogisticsData::instance->addMechToForceGroup( mechListBox.getCurrentMech(),
 			forceGroupCount + 1 ) )
 		{
 			// its already in the force group, add probably called 2x'2
@@ -185,7 +160,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		attributeMeters[0].setValue( armor/MAX_ARMOR_RANGE );
 
 		// speed
-		int speed = pCurMech->getDisplaySpeed();
+		int speed = pCurMech->getDisplaySpeed().value_or(-1);
 		mc2::fmt::to_buf(str, "{:d}", mc2::fmt::as_i32(speed));
 		textObjects[9].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", str );
@@ -259,7 +234,7 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 	{
 		if ( pMech->getForceGroup() )
 		{
-			pMech = LogisticsData::instance->getMechWithoutForceGroup( pMech );
+			pMech = LogisticsData::instance->getMechWithoutForceGroup( pMech ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 		}
 		pDragMech = pMech;
 
@@ -296,7 +271,7 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 					LogisticsData::instance->removeMechFromForceGroup( pIcons[i+1].getMech(), false );
 					LogisticsData::instance->addMechToForceGroup( pIcons[i+1].getMech(), i+1 );
 					pIcons[i].setMech( pIcons[i+1].getMech() );
-					pIcons[i].setPilot( pIcons[i+1].getPilot() );
+					pIcons[i].setPilot( pIcons[i+1].getPilot().transform([](auto ref) { return &ref.get(); }).value_or(nullptr) );
 				}
 
 				if ( i < ICON_COUNT )

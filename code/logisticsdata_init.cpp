@@ -109,7 +109,7 @@ void LogisticsData::initPhaseA()
 
 // Phase B: loads components/pilots/variants and runs the first availability pass.
 // No-op if gate OFF or already done. Only marks success at the end (retry-safe).
-void LogisticsData::ensureMechBayDataLoaded( const char* trigger )
+void LogisticsData::ensureMechBayDataLoaded( mc2::czstring trigger )
 {
 	if ( !s_smartLoad || m_phaseBComplete ) return;
 	initPhaseA(); // must be done before Phase B
@@ -172,7 +172,7 @@ void LogisticsData::initComponents()
 
 		LogisticsComponent& tmp = components.back();
 
-		if ( -1 == tmp.init( pLine ) ) // failure
+		if ( !tmp.init( pLine ) ) // failure
 		{
 			Ammo[counter] = static_cast<long>(tmp.getRecycleTime());
 			components.pop_back();
@@ -230,7 +230,7 @@ void LogisticsData::appendEquipmentAddFillComponents()
 
 		components.emplace_back();
 		LogisticsComponent& tmp = components.back();
-		if ( -1 == tmp.init( lineBuf ) )
+		if ( !tmp.init( lineBuf ) )
 		{
 			// icon column is validated by the ADD pass, so this is unexpected --
 			// surface it rather than half-materializing the item.
@@ -261,7 +261,7 @@ void LogisticsData::clearPilots()
 	if ( !inventory.empty() )
 	{
 		MC2_LOG(Io, Warn, "logistics: the pilot roster is cleared while the inventory holds {} mechs; their pilots are unassigned", std::ssize( inventory ));
-		for ( LogisticsMech* pMech : inventory )
+		for ( const auto& pMech : inventory )
 			pMech->setPilot( nullptr );
 	}
 	pilots.clear();
@@ -293,11 +293,11 @@ void LogisticsData::initPilots()
 			break;
 
 		LogisticsPilot tmpPilot;
-		pilots.push_back( tmpPilot );
+		pilots.push_back( std::move(tmpPilot) );
 		LogisticsPilot& pilot = pilots.back();
 		pilot.id = id;
 
-		if ( -1 == pilot.init( reinterpret_cast<char*>(pilotFileName) ) )
+		if ( !pilot.init( reinterpret_cast<char*>(pilotFileName) ) )
 			pilots.pop_back();
 
 		id++;
@@ -365,7 +365,7 @@ void LogisticsData::initVariants()
 		float scale;
 		int chassisId;
 		LogisticsChassis* chassis = nullptr;
-		std::vector<LogisticsVariant*> varList;
+		std::vector<std::unique_ptr<LogisticsVariant>> varList;
 	};
 	std::vector<MechJob> mechJobs;
 
@@ -487,7 +487,7 @@ void LogisticsData::initVariants()
 		while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
 			auto pVariant = std::make_unique_for_overwrite<LogisticsVariant>();
 			if (0 == pVariant->init(&mechFile, job.chassis, varCount))
-				job.varList.push_back(pVariant.release());
+				job.varList.push_back(std::move(pVariant));
 			else
 			{
 				MC2_LOG(Io, Warn, "logistics: mech file {} variant {} (CSV row {}) is malformed and is skipped", job.path, varCount, row);
@@ -503,8 +503,8 @@ void LogisticsData::initVariants()
 	// Serial merge in original buildings.csv order.
 	for (auto& job : mechJobs) {
 		if (job.chassis) {
-			for (auto* v : job.varList)
-				variants.push_back(v);
+			for (auto& v : job.varList)
+				variants.push_back(std::move(v));
 		}
 	}
 
@@ -527,11 +527,11 @@ void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale,
 	else if ( !openLooseChassisFit( file, csvName ) )
 		return;
 
-	LogisticsVehicle* pVehicle = new LogisticsVehicle;
+	auto pVehicle = std::make_unique<LogisticsVehicle>();
 	pVehicle->init( file );
 	pVehicle->setScale( scale );
 	if ( nameID ) pVehicle->setNameID( nameID );
-	vehicles.push_back( pVehicle );
+	vehicles.push_back( std::move(pVehicle) );
 }
 
 bool LogisticsData::openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const
@@ -603,17 +603,17 @@ int LogisticsData::getCurrentMissions( const char** missionNames, long& count )
 
 }
 
-bool LogisticsData::getMissionAvailable( const char* missionName )
+bool LogisticsData::getMissionAvailable( mc2::czstring missionName )
 {
 	return missionInfo->getMissionAvailable( missionName );
 }
 
 
 // SetCurrentMission( char* missionName )
-int LogisticsData::setCurrentMissionAnyStage( const char* missionName )
+std::expected<void, long> LogisticsData::setCurrentMissionAnyStage( mc2::czstring missionName )
 {
-	long result = missionInfo->setMissionAnyStage( missionName );
-	if ( result == NO_ERR )
+	auto result = missionInfo->setMissionAnyStage( missionName );
+	if ( result )
 	{
 		if ( !s_smartLoad || m_phaseBComplete ) {
 			updateAvailability();
@@ -624,11 +624,11 @@ int LogisticsData::setCurrentMissionAnyStage( const char* missionName )
 	return result;
 }
 
-int LogisticsData::setCurrentMission( const char* missionName )
+std::expected<void, long> LogisticsData::setCurrentMission( mc2::czstring missionName )
 {
-	long result = missionInfo->setNextMission( missionName );
+	auto result = missionInfo->setNextMission( missionName );
 
-	if ( result == NO_ERR )
+	if ( result )
 	{
 		if ( !s_smartLoad || m_phaseBComplete ) {
 			updateAvailability();
