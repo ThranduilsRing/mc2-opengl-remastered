@@ -6794,6 +6794,17 @@
    "count": 1
   },
   {
+   "tag": "PERF_WINDOW",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "ticks",
+    "complete",
+    "frames"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PHOTO",
    "ver": -1,
    "stream": "stdout",
@@ -12041,6 +12052,7 @@
   "PERF",
   "PERF_COUNTERS",
   "PERF_COUNTER_WARN",
+  "PERF_WINDOW",
   "PRESENT_THREAD",
   "RENDER_BACKEND",
   "REPLAY_DIVERGED",
