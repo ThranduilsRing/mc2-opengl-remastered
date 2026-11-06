@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <mutex>
@@ -98,7 +97,8 @@ tracy::VkCtxScope* zone(unsigned char* p) { return std::launder(reinterpret_cast
 
 // "gap:<pass>" rows: GPU time between the end of everything recorded so far and the start of <pass> (barrier waits, queue idle, submit
 // boundaries). Stable storage because rows keep the pointer.
-const char* gapName(const char* src) {
+const char* gapName(std::string_view srcSv) {
+    const char* src = srcSv.data();
     static const char* srcOf[kMaxNames] = {};
     static char buf[kMaxNames][72] = {};
     for (uint32_t i = 0; i < kMaxNames; ++i) {
@@ -257,8 +257,7 @@ void init(VulkanContext& ctx) {
 
     // Always armed (two vkCmdWriteTimestamp per scope, read back two frames later without waiting) unless the harness says
     // MC2_VK_GPU_TIMESTAMPS=0 explicitly (rgp_capture.py: the profiler must see an unperturbed queue). Unset keeps them on.
-    const char* tsEnv = std::getenv("MC2_VK_GPU_TIMESTAMPS");
-    const bool tsOptOut = tsEnv && tsEnv[0] == '0';
+    const bool tsOptOut = mc2::gate::isSet<"MC2_VK_GPU_TIMESTAMPS">() && !mc2::gate::get<"MC2_VK_GPU_TIMESTAMPS">();
     if (tsOk && !tsOptOut) {
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 identity{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &driver};

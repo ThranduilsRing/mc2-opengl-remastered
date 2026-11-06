@@ -20,4 +20,4 @@ def test_rgp_capture_disables_gpu_pass_timers_and_engine_honors_it():
     root = Path(__file__).resolve().parents[2]
     assert 'env["MC2_VK_GPU_TIMESTAMPS"] = "0"' in (root / "tools" / "perf" / "rgp_capture.py").read_text(encoding="utf-8")
     src = (root / "GameOS" / "gameos" / "vk_gpu_profile.cpp").read_text(encoding="utf-8")
-    assert 'getenv("MC2_VK_GPU_TIMESTAMPS")' in src and "if (tsOk && !tsOptOut)" in src
+    assert 'isSet<"MC2_VK_GPU_TIMESTAMPS">()' in src and "if (tsOk && !tsOptOut)" in src
