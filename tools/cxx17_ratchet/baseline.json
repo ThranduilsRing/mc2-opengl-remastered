@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 282,
+   "LG03": 284,
    "LG04": 15,
    "LG05": 127,
    "LG06": 170,
@@ -1806,7 +1806,9 @@
    "LG12b": 1
   },
   "code/logisticsmechdisplay.h": {},
-  "code/logisticsmechicon.cpp": {},
+  "code/logisticsmechicon.cpp": {
+   "LG03": 1
+  },
   "code/logisticsmechicon.h": {},
   "code/logisticsmissioninfo.cpp": {},
   "code/logisticsmissioninfo.h": {},
@@ -1998,7 +2000,7 @@
    "LG10": 1
   },
   "code/missionbegin.cpp": {
-   "LG03": 9,
+   "LG03": 10,
    "LG06": 2,
    "LG10": 1,
    "LG11": 1

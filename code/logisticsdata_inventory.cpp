@@ -389,9 +389,9 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 		{
 			p->setAvailable( false );
 		}
-		vehiclePilot = p.release();
+		vehiclePilot = std::move(p);
 	}
-	return vehiclePilot;
+	return vehiclePilot.get();
 }
 
 

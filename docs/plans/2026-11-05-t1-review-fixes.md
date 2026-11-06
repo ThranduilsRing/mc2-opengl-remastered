@@ -28,3 +28,21 @@ Assignment: A:/Games/mc2-cxxt1, claude/w122-cxx-t1, base ef86f849e0b2.
   It needs a portable executable selection plus a populated baseline campaign save,
   the add-variant fixture, and both base/tip binaries for reciprocal load/re-save.
 - Finish by archiving receipts and cleaning the box lane and own scratch.
+
+## 2026-11-06 continuation
+
+- Archived untracked proofs to E:/mc2-archive-2026-10/proofs/w122-cxx-t1/pre-rebase-b429a7cca.
+- Rebased all 18 commits onto 560feb6a8. Only baseline head metadata conflicted;
+  nifty's ABL replace_filename/generic_string and shadow fixes are unchanged.
+- Vehicle pilot ownership is now an instance unique_ptr, explicitly reset after
+  inventory teardown. This avoids both static destruction and a raw delete above
+  nifty's ownership row. The icon retains its existing explicit runtime teardown.
+- Restored only the two icon allocation/deletion ratchet sites: code LG03 284
+  (nifty 314), icon LG03 1 (nifty 1), missionbegin LG03 10 (nifty 10).
+  Ownership icon new=1 and missionbegin untyped frees=3 equal nifty.
+- No lifetime doctest added: the edit, vehicle-pilot and icon destruction paths
+  require engine-linked LogisticsData/GUI/asset initialization; the Linux seam
+  portability and fixture blockers above still apply. Existing tests are retained.
+- Next: commit this checkpoint; at that exact SHA run box build, unit, unit-san,
+  smoke-lite, determinism:mc2_03 and saveload, then lint. Retry lease-blocked rows
+  once, archive final receipts with SHA, and run box cleanup before hand-back.

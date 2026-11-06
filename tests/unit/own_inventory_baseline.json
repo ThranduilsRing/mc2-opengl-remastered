@@ -1767,6 +1767,18 @@
    "new_array": 0,
    "owners": []
   },
+  "LogisticsMechIcon": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "code/logisticsmechicon.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
   "LogisticsMech": {
    "delete": 0,
    "delete_array": 0,
@@ -4521,7 +4533,7 @@
   "code/mechcmd2_frame.cpp": 1,
   "code/mission.cpp": 3,
   "code/mission_init.cpp": 1,
-  "code/missionbegin.cpp": 2,
+  "code/missionbegin.cpp": 3,
   "code/mpparameterscreen.cpp": 1,
   "code/pilotreviewarea.cpp": 1,
   "code/warrior.cpp": 1,

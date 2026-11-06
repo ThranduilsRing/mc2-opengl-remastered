@@ -275,7 +275,7 @@ private:
 	BUILDING_LIST									buildings;
 	
 	// Explicitly destroyed with LogisticsData, before engine heaps shut down.
-	LogisticsPilot* vehiclePilot = nullptr;
+	std::unique_ptr<LogisticsPilot> vehiclePilot;
 	bool vehiclePilotTried = false;
 	std::unique_ptr<LogisticsMissionInfo>			missionInfo;
 
