@@ -28,7 +28,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 426 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 317 | `nofocus.spawn` | offscreen |
-| `scripts/sweep_campaign.py` | 102 | `nofocus.spawn` | offscreen |
+| `scripts/sweep_campaign.py` | 108 | `nofocus.spawn` | offscreen |
 | `scripts/test_release_zip_install.py` | 262 | `nofocus.run` | offscreen |
 | `scripts/tests/test_abl_static_alloc.py` | 87 | `nofocus.run` | offscreen |
 | `scripts/tests/test_gpu_routing.py` | 63 | `nofocus.spawn` | offscreen |
@@ -43,7 +43,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
-| `tools/mod_smoke.py` | 1011 | `nofocus.run` | offscreen |
+| `tools/mod_smoke.py` | 1015 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 223 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 259 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
 | `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
