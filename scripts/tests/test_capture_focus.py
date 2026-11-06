@@ -8,6 +8,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import mc2_env_pin as env_pin  # noqa: E402
+import console_child  # noqa: E402
 
 
 def test_unset_declares_nothing():
@@ -67,5 +68,5 @@ def test_cli_exposes_flags(tool):
 def test_gfxr_capture_replay_cli_help():
     # The GFXR capture/replay wrapper is driven by hand from the box; --help is its offline caller (no gfxrecon, no engine).
     out = subprocess.run([sys.executable, "-B", str(ROOT / "tools/gfxr/capture_replay.py"), "--help"],
-                         capture_output=True, text=True, timeout=60)
+                         capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
     assert out.returncode == 0 and "usage" in out.stdout.lower()

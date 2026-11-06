@@ -12,6 +12,9 @@ import argparse, csv, glob, os, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
+
 DEFAULT_ROOT = "C:/Users/Joe/Downloads/RadeonDeveloperToolSuite-2026-02-02-1757"
 STAGES = {"frag": "--frag", "vert": "--vert", "comp": "--comp"}
 VGPR_FILE, VGPR_GRANULE, MAX_WAVES = 1536, 8, 16
@@ -36,7 +39,7 @@ def analyze(rga, spv, workdir):
         return name, None, f"unknown stage '{stage}'"
     tag = name.replace(".", "_")
     r = subprocess.run([rga, "-s", "vk-spv-offline", "-c", "gfx1100", "-a", f"{tag}.csv", STAGES[stage], str(spv)],
-                       cwd=workdir, capture_output=True, text=True)
+                       cwd=workdir, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     out = Path(workdir) / f"gfx1100_{tag}_{stage}.csv"
     if not out.exists():
         return name, None, ((r.stdout + r.stderr).strip().splitlines() or ["no csv"])[-1][:100]

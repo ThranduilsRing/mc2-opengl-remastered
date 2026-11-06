@@ -6,6 +6,8 @@ import fcntl, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 F = Path("/workspace/filler")
+sys.path[:0] = [str(F / "src" / "scripts"), str(Path(__file__).resolve().parents[3] / "scripts")]
+import console_child  # noqa: E402  (windowless console children; a no-op on Linux)
 # key -> (mission, bookmark file, bookmark name); the survey poses (A:/Games/mc2-ops/studies/perf-survey-2026-11-04.md)
 POSES = {
     "mc2_01-cross_map_view": ("mc2_01", "mc2_01", "cross_map_view"),
@@ -75,7 +77,7 @@ def main():
     load0 = os.getloadavg()[0]
     t0 = time.time()
     with open(d / "engine.log", "wb") as lg:
-        rc = subprocess.run(["bash", "-c", script], env=env, stdout=lg, stderr=subprocess.STDOUT).returncode
+        rc = subprocess.run(["bash", "-c", script], env=env, stdout=lg, stderr=subprocess.STDOUT, **console_child.child_kwargs(redirected=True)).returncode
     wall = time.time() - t0
     overlap = subprocess.run(["flock", "-n", str(F / "sync.lock"), "true"]).returncode != 0   # a sync/build was running during the job
     rows = []
@@ -95,7 +97,7 @@ def main():
     perf = [l for l in (d / "engine.log").read_text(errors="replace").splitlines() if "[PERF_COUNTERS v1]" in l]
     ms = [r["ms"] for r in cpu]
     res = {
-        "sha": sha, "sha_time": int(subprocess.run(["git", "-C", str(F / "src"), "log", "-1", "--format=%ct", sha], capture_output=True, text=True).stdout.strip() or 0),
+        "sha": sha, "sha_time": int(subprocess.run(["git", "-C", str(F / "src"), "log", "-1", "--format=%ct", sha], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.strip() or 0),
         "port": (F / "current_port").read_text().strip() if (F / "current_port").exists() else "none",
         "pose": pose, "mission": mission, "bookmark": bkn, "gpu": gpu, "gpu_model": "RTX 3060", "run": n, "res": "1920x1080", "gpu_timestamps": 0,
         "duration_s": DURATION, "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), "wall_s": round(wall, 1), "cores": env.get("GR_CPUS", f"{8*gpu}-{8*gpu+7}"),

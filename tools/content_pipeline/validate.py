@@ -287,7 +287,10 @@ def run_khronos_validator(path):
     exe = shutil.which("gltf_validator")
     if not exe:
         return []
-    r = subprocess.run([exe, "-o", str(path)], capture_output=True, text=True, timeout=120)
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    import console_child  # windowless console children; scripts/console_child.py
+    r = subprocess.run([exe, "-o", str(path)], capture_output=True, text=True, timeout=120, **console_child.child_kwargs(redirected=True))
     try:
         report = json.loads(r.stdout)
     except json.JSONDecodeError:

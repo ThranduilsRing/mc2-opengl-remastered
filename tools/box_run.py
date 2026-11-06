@@ -307,6 +307,7 @@ def pick_gpu():
 
 
 def fetch_back(out_remote, local_out):
+    # background-launch: allow ssh tar pull, the engine runs on the Linux box
     r = subprocess.run([*SSH, BACK.format(out=out_remote)], capture_output=True, **console_child.child_kwargs(redirected=True))
     if r.stdout:
         with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:

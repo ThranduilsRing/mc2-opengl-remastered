@@ -11,6 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import box_run
+import console_child  # noqa: E402  (box_run put scripts/ on sys.path)
 
 
 def tasks(**by_id):
@@ -209,7 +210,7 @@ def test_every_attempt_gets_a_fresh_determinism_out_dir(tmp_path):
     bash = bash_or_skip()
     d = (tmp_path / "out" / "determinism_mc2_01").as_posix()
     script = box_run.FRESH_FN + f'\nfor i in 1 2 3; do x=$(fresh "{d}"); mkdir -p "$x"; echo "$x"; done'
-    out = subprocess.run([bash, "-c", script], capture_output=True, text=True).stdout.split()
+    out = subprocess.run([bash, "-c", script], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.split()
     assert out == [d + ".a0", d + ".a1", d + ".a2"]
     assert box_run.REMOTE.count("$(fresh $OUT/$name)") >= 2 and "--out $OUT/$name" not in box_run.REMOTE
     assert "#@@FRESH_FN@@" not in box_run.REMOTE and box_run.FRESH_FN in box_run.REMOTE
@@ -255,7 +256,7 @@ def test_sh_rows_with_spaces_and_slashes_are_passed_as_argv_not_spliced(tmp_path
     row = "sh:echo 'a b' > out/x.txt; ls /tmp | wc -l"
     script = ("row=$1; name=$(printf %s \"$row\" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*) name=${name:0:50}-$(printf %s \"$row\" | cksum | cut -d' ' -f1);; esac\n"
               "cmd=\"${row#sh:}\"; mkdir -p \"$2/out\"; bash -c 'cd \"$1\" && eval \"$2\"' _ \"$2\" \"$cmd\" >/dev/null; echo \"$name\"; cat \"$2/out/x.txt\"")
-    r = subprocess.run([bash, "-c", script, "_", row, tmp_path.as_posix()], capture_output=True, text=True)
+    r = subprocess.run([bash, "-c", script, "_", row, tmp_path.as_posix()], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     lines = r.stdout.split("\n")
     assert "/" not in lines[-3] and " " not in lines[-3] and lines[-2] == "a b", r.stdout + r.stderr
 

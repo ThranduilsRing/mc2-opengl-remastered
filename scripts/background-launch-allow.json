@@ -149,7 +149,17 @@
     "tools/visual_verify/quickload_cement_check.py": "runs scripts/run_visual_capture.py under the current interpreter (the harness owns the game launch, lease and window policy; this file never starts the exe) through console_child.child_kwargs; merged from the cement quickload fix 2026-10-17",
     "tools/visual_verify/vk_replay.py": "runs tools/visual_verify/capture.py (the engine goes through nofocus.spawn and the host lease there) with the GFXReconstruct layer in the environment, and gfxrecon-replay.exe --wsi headless (no window, no game) under the host lease; children use console_child.child_kwargs",
     "tools/witness_smoke.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn",
-    "tools/terrain_export/render_matched.py": "Starts only headless Blender (-b, CREATE_NO_WINDOW, stdout to DEVNULL) for offline proof renders; never launches the game."
+    "scripts/crashpad_proof.py": "Box-only proof: starts scripts/run_smoke.py under sys.executable (the harness owns the engine launch) plus strace and llvm-symbolizer/addr2line console tools; never launches the engine itself.",
+    "scripts/tests/test_box_hygiene.py": "Test: runs bash, git and sleep fixtures for the box hygiene scripts with console_child; never launches the engine.",
+    "scripts/tests/test_box_queue.py": "Test: runs bash on box_run's remote shell snippets with console_child; never launches the engine.",
+    "tools/content_pipeline/validate.py": "Runs only the optional Khronos gltf_validator console tool (captured, console_child); never launches the engine.",
+    "tools/gfxr/capture_replay.py": "Runs only gfxrecon capture/replay console tools on the Linux box through console_child; never launches the engine on the PC.",
+    "tools/lane_merge_trust.py": "Re-runs a trusted copy of lane_merge.py under sys.executable as a console child; never launches the engine.",
+    "tools/mc2texcook/check_ktx2_valid.py": "Runs only the KTX-Software ktx validate console tool (captured); never launches the engine.",
+    "tools/mc2texcook/repack_ktx2.py": "Runs only the KTX-Software ktx console tool (captured) to repack and validate textures; never launches the engine.",
+    "tools/rga_census.py": "Runs only the Radeon GPU Analyzer offline compiler (rga, captured, console_child) on SPIR-V; never launches the engine.",
+    "tools/texcook/cook_bc7enc.py": "Runs only the bc7enc console encoder (captured) on source textures; never launches the engine.",
+    "tools/terrain_export/render_matched.py": "Starts only headless Blender (-b, CREATE_NO_WINDOW, stdout to DEVNULL) for offline proof renders; never launchesthe game."
   },
   "input_injection": {
     "scripts/game_auto.py": "synthetic-input driver; keys, chords and clicks gated by keys_allowed()/allow_foreground()",

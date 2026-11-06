@@ -28,9 +28,9 @@ def main(argv=None):
         print(f"[filler_push] already at {sha[:12]}")
         return 0
     have = run([*SSH, f"git -C {F}/src for-each-ref --format='%(objectname)'"], capture_output=True, text=True).stdout.split()
-    excl = ["^" + h for h in have if subprocess.run(["git", "-C", str(repo), "cat-file", "-e", h + "^{commit}"], capture_output=True).returncode == 0]
+    excl = ["^" + h for h in have if subprocess.run(["git", "-C", str(repo), "cat-file", "-e", h + "^{commit}"], capture_output=True, **box_run.console_child.child_kwargs(redirected=True)).returncode == 0]
     bundle = Path(tempfile.gettempdir()) / "box_filler_nifty.bundle"
-    p = subprocess.run(["git", "-C", str(repo), "bundle", "create", "-q", str(bundle), a.ref, *excl], capture_output=True, text=True)
+    p = subprocess.run(["git", "-C", str(repo), "bundle", "create", "-q", str(bundle), a.ref, *excl], capture_output=True, text=True, **box_run.console_child.child_kwargs(redirected=True))
     if p.returncode:
         print(f"[filler_push] bundle failed: {(p.stderr or p.stdout).strip()[-300:]}")
         return 1
