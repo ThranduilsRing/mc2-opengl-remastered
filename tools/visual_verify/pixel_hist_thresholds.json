@@ -1,0 +1,23 @@
+{
+  "_doc": "Fractions of pixels (resolution independent). See pixel_hist.py docstring. Layers: default < gpu < bookmarks[name] < bookmarks[name].gpu. gpu keys are substrings of the device name.",
+  "default": {
+    "buckets": [
+      {"over": 8, "max_frac": 0.010},
+      {"over": 24, "max_frac": 0.002},
+      {"over": 64, "max_frac": 0.00005}
+    ],
+    "region_delta": 24,
+    "max_region_frac": 0.0003
+  },
+  "gpu": {},
+  "bookmarks": {
+    "mc2_10_night_runway_threshold": {
+      "buckets": [
+        {"over": 8, "max_frac": 0.0015},
+        {"over": 24, "max_frac": 0.0004},
+        {"over": 64, "max_frac": 0.00002}
+      ],
+      "max_region_frac": 0.0001
+    }
+  }
+}
