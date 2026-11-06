@@ -165,6 +165,8 @@ def commit_all(repo, msg):
 @pytest.fixture(autouse=True)
 def _no_receipts_by_default(monkeypatch):
     monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")   # the receipt tests below unset it
+    # these tests grade THIS tree's lane_merge.py: without it, a copy outside mc2-main (a precheck clone) hands off to the trusted mc2-main copy
+    monkeypatch.setenv("MC2_LANE_MERGE_TRUSTED", "1")
 
 
 @pytest.fixture

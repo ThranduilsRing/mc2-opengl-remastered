@@ -10,6 +10,7 @@ gate_inputs
 gate_receipts
 kit_art
 kit_visibility
+ktx2_valid
 mapgen_fof
 material_gpu_mirror
 mission_codec_golden
@@ -28,3 +29,4 @@ vk_shaders_compile
 # material_gpu_mirror: check script uses `set -o pipefail` under dash (a box shell issue, not a product failure)
 # vk_pipeline_layout, vk_shaders_compile: need glslc/spirv-cross/slangc (no Vulkan SDK on the box)
 # staged_hygiene: the box mirror has no claude/nifty-mendeleev ref
+# ktx2_valid: needs the KTX-Software 4.4.2 `ktx` tool (A:/Games/mc2-tools/ktx on the PC); the box has none
