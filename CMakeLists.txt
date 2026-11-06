@@ -1005,7 +1005,8 @@ if(MC2_BUILD_TESTS)
         tests/unit/test_combat_retirement_seam.cpp tests/unit/test_movepath_save_padding.cpp
         tests/unit/test_brain_save_policy_seam.cpp
         tests/unit/test_warrior_pilot_codec.cpp
-        tests/unit/test_objtype_init_failure.cpp)
+        tests/unit/test_objtype_init_failure.cpp
+        tests/unit/test_logistics_edit_seam.cpp)
     target_compile_definitions(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)
     target_include_directories(mc2_authored_order_seam PRIVATE
         $<TARGET_PROPERTY:mc2,INCLUDE_DIRECTORIES> "${CMAKE_SOURCE_DIR}/tests/unit")

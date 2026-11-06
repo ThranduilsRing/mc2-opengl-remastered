@@ -7,7 +7,6 @@
 //===========================================================================//
 #include"asystem.h"
 #include"aanim.h"
-#include <memory>
 #include <optional>
 #include <functional>
 
@@ -26,7 +25,7 @@ public:
 
 	LogisticsMechIcon();
 	~LogisticsMechIcon();
-	
+
 	static int init( FitIniFile& file );
 
 	void update();
@@ -57,10 +56,10 @@ public:
 
 	void disable( bool bdo) { bDisabled = bdo; }
 
-	static std::unique_ptr<LogisticsMechIcon> s_pTemplateIcon;
+	static LogisticsMechIcon* s_pTemplateIcon;
 
 private:
-	
+
 	LogisticsMechIcon& operator=( const LogisticsMechIcon& src );
 	LogisticsMechIcon( const LogisticsMechIcon& src );
 
@@ -92,8 +91,8 @@ private:
 
 
 
-	
-	
+
+
 };
 
 

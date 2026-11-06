@@ -376,11 +376,9 @@ bool LogisticsData::isVehicleUnit( LogisticsMech* pMech )
 // -> the vehicle stays unpiloted, no worse than before.
 LogisticsPilot* LogisticsData::getVehiclePilot()
 {
-	static std::unique_ptr<LogisticsPilot> s_vehiclePilot;
-	static bool s_tried = false;
-	if ( !s_tried )
+	if ( !vehiclePilotTried )
 	{
-		s_tried = true;
+		vehiclePilotTried = true;
 		auto p = std::make_unique_for_overwrite<LogisticsPilot>();
 		char nm[] = "PMWScout";
 		if ( !p->init( nm ) )
@@ -391,9 +389,9 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 		{
 			p->setAvailable( false );
 		}
-		s_vehiclePilot = std::move(p);
+		vehiclePilot = p.release();
 	}
-	return s_vehiclePilot.get();
+	return vehiclePilot;
 }
 
 

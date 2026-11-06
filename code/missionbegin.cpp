@@ -101,7 +101,8 @@ MissionBegin::~MissionBegin()
 		}
 	}
 
-	LogisticsMechIcon::s_pTemplateIcon.reset();
+	delete LogisticsMechIcon::s_pTemplateIcon;
+	LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
 	delete placeHolderScreen;
 	placeHolderScreen = nullptr;

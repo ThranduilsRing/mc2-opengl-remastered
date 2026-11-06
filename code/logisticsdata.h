@@ -274,6 +274,9 @@ private:
 	VEHICLE_LIST									vehicles;
 	BUILDING_LIST									buildings;
 	
+	// Explicitly destroyed with LogisticsData, before engine heaps shut down.
+	LogisticsPilot* vehiclePilot = nullptr;
+	bool vehiclePilotTried = false;
 	std::unique_ptr<LogisticsMissionInfo>			missionInfo;
 
 	// The mechs that were deployed in a mission, captured before they leave the inventory, so a mech that survives the mission can be put back by

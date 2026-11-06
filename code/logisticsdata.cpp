@@ -43,6 +43,8 @@ LogisticsData::~LogisticsData()
 	variants.clear();
 	vehicles.clear();
 	inventory.clear();
+	delete vehiclePilot;
+	vehiclePilot = nullptr;
 
 	missionInfo.reset();
 

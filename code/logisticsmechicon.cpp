@@ -18,7 +18,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
-std::unique_ptr<LogisticsMechIcon> LogisticsMechIcon::s_pTemplateIcon;
+LogisticsMechIcon* LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
 
 LogisticsMechIcon::LogisticsMechIcon( )
@@ -73,7 +73,7 @@ int LogisticsMechIcon::init( FitIniFile& file )
 {
 	if ( !s_pTemplateIcon )
 	{
-		s_pTemplateIcon = std::make_unique<LogisticsMechIcon>();
+		s_pTemplateIcon = new LogisticsMechIcon;
 		s_pTemplateIcon->pilotName.init( &file, "PilotNameText" );
 		assignAnimation( file, s_pTemplateIcon->pilotID );
 
