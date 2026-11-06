@@ -14,7 +14,6 @@
 #include<string.h>
 #include"platform_str.h"
 #include<time.h>
-#include <filesystem>
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -460,8 +459,10 @@ void languageDirective (void) {
 
 			char fullPath[255];
 			long curChar = static_cast<long>(strlen(SourceFiles[0]));
-			const char path_separator = static_cast<char>(std::filesystem::path::preferred_separator);
-			while ((curChar > -1) && (SourceFiles[0][curChar] != path_separator))
+			// Mission paths come from system.cfg as "data/missions/" on every platform (and FST keys
+			// use '/'), so split on either separator; preferred_separator ('\\' on Windows) dropped the
+			// directory and every include_ (OConst.abi, misconst.abi) failed to open.
+			while ((curChar > -1) && (SourceFiles[0][curChar] != '/') && (SourceFiles[0][curChar] != '\\'))
 				curChar--;
 			if (curChar == -1)
 				strcpy(fullPath, fileName);
