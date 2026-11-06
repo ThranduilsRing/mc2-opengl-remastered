@@ -21,3 +21,17 @@ Assignment: A:/Games/mc2-cxxt3, claude/w122-cxx-t3, base ef86f849e0b269ee2395374
   smoke-lite/D03/saveload, then one lint. Preserve runtime rows before lint overwrites rows.tsv.
 - Archive receipts and crash evidence before box cleanup; remove only scratch made by this run.
 - Prior base save/load mismatch is documented in 2026-11-05-cxx23-t3.md; do not alter references.
+
+## W122d exact-tip PC proof (2026-11-06)
+
+- Rebased cleanly onto 446d52859; current code tip 6a9dc0492046769e89492b723f5a6543cea75ae9.
+- No untracked proofs/ directory existed. Receipts: E:/mc2-archive-2026-10/proofs/cxx23-t3/.
+- PC configure and full default Ninja build PASS (1321 steps); no compile fixes needed.
+  BelowNormal, CPUs 8-15, six workers maximum; pc-configure.log and pc-build.log.
+- C++ ratchet PASS (no increased idiom totals); file-size PASS (38 oversized, max 3363).
+  No baseline changes; pc-cxx-ratchet.log and pc-file-size.log.
+- Unit contracts running; next: commit state, then one final-tip lane_merge --lint HEAD.
+  No deploy or game run.
+- Completion requires green build/unit/ratchet/lint receipts; retain raw global owners.
+- Exact final tip, all four verdicts, cleanup and TRACK COMPLETE are recorded after
+  lint in the proof root's track-state.md, avoiding another tip change after proof.
