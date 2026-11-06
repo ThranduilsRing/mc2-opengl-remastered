@@ -905,7 +905,7 @@ void BldgAppearance::updateSimPose()
     const long status = simStatus_;
     if (!appearType) { simulationShape_.reset(); simPose->ready = false; return; }
     auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
-        appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
+        appearType->bldgDmgShape.get() : appearType->getBldgCollisionShape(0);
     if (!source) { simulationShape_.reset(); simPose->ready = false; return; }
     const long animationState = status == OBJECT_STATUS_DESTROYED ? -2 : unitAnim().bdAnimationState;
     if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&

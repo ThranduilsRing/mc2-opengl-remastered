@@ -36,7 +36,7 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 	{
 		TG_TypeMultiShape* source = appearType->getBldgCollisionShape(0);
 		if (simStatusView() == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
-			source = appearType->bldgDmgShape;
+			source = appearType->bldgDmgShape.get();
 		stockCover.reset(source->CreateFrom());
 		coverShape = clearOnExit.s = stockCover.get();
 		if (unitAnim().bdAnimationState != -1)
@@ -422,9 +422,9 @@ void BldgAppearance::markLOS (bool clearIt)
 	const bool renderOverridden = simulationOwned() || appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
 	if (currentLOD || renderOverridden)
 	{
-		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		TG_TypeMultiShape* source = appearType->bldgShape[0].get();
 		if (renderOverridden && simStatusView() == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
-			source = appearType->bldgDmgShape;
+			source = appearType->bldgDmgShape.get();
 		tempBldgShape = source->CreateFrom();
 		if (unitAnim().bdAnimationState != -1)
 			appearType->setAnimation(tempBldgShape,unitAnim().bdAnimationState);

@@ -156,7 +156,7 @@ void TreeAppearance::registerStatic() {
 	if (seamProbe)
 		mc2::fmt::print_err("[SEAMPROBE] tree registerStatic ENTER name={} registered={:d} hasShape={:d} renderShape={:016X}\n",
 			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(static_cast<int>(staticReg[0].registered)), mc2::fmt::as_i32(static_cast<int>((treeShape!=nullptr))),
-			mc2::fmt::as_ptr(static_cast<void*>(appearType->treeRenderShape[0]))), fflush(stderr);
+			mc2::fmt::as_ptr(static_cast<void*>(appearType->treeRenderShape[0].get()))), fflush(stderr);
 	// TREE-OVERRIDE-LOD-MVP Task 2: registered-state is now per-LOD. LOD0 is
 	// the canonical "already done" gate (it always exists — override or stock).
 	if (staticReg[0].registered) return;
@@ -171,7 +171,7 @@ void TreeAppearance::registerStatic() {
 	appearType->registerRenderShapes();
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->treeRenderShape[0]) {
-		TG_TypeMultiShape* rs = appearType->treeRenderShape[0];
+		TG_TypeMultiShape* rs = appearType->treeRenderShape[0].get();
 		mc2::fmt::print_err("[MODOVERRIDE_TRACE] tree registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} lodCount={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr(static_cast<void*>(rs)), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? static_cast<void*>(rs->GetTypeNode(0)) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? static_cast<void*>(rs->GetTypeNode(1)) : nullptr), mc2::fmt::as_i32(appearType->treeRenderShapeLodCount));
 		fflush(stderr);
 	}
