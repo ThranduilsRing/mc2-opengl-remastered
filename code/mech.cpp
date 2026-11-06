@@ -423,8 +423,7 @@ void BattleMech::updateHeat (void)
 	heatChange -= (heatDissipation * frameLength * heatSinkEfficiency);
 
 	heat += heatChange;
-	if (heat < 0.0)
-		heat = 0.0;
+	heat = std::max(heat, 0.0);
 
 	long heatIndex = static_cast<long>(heat);
 

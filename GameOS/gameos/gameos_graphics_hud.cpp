@@ -872,8 +872,8 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
     // ignores the line offset.
     for(const char* p = text; ; ++p) {
         unsigned char c = static_cast<unsigned char>(*p);
-        max_width = std::max(max_width, cur_width);
-            if(cur_width > max_width) max_width = cur_width;
+        if(c == '\n' || c == '\0') {
+            max_width = std::max(max_width, cur_width);
             if(c == '\0') break;
             line_index++;
             cur_width = 0;

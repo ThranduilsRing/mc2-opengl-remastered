@@ -1189,8 +1189,7 @@ public:
 		virtual void pilotingCheck (unsigned long situation = 0, float modifier = 0.0);
 
 		virtual void forcePilotingCheck (void) {
-			if (pilotCheckModifier < 0)
-				pilotCheckModifier = 0;
+			pilotCheckModifier = std::max(pilotCheckModifier, 0);
 		}
 
 		virtual bool canFireWeapons (void) {

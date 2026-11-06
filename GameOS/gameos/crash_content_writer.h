@@ -19,9 +19,9 @@ inline uint64_t hash(const void* data, size_t size, uint64_t h = 146959810393466
 inline std::string quote(std::string_view s) {
     std::string out = "\"";
     for (unsigned char c : s) {
-        if (c == '"' || c == '\\') { out += '\\'; out += char(c); }
+        if (c == '"' || c == '\\') { out += '\\'; out += static_cast<char>(c); }
         else if (c < 32) { char esc[7]; std::snprintf(esc, sizeof(esc), "\\u%04x", c); out += esc; }
-        else out += char(c);
+        else out += static_cast<char>(c);
     }
     return out + '"';
 }
@@ -37,7 +37,7 @@ class ContentWriter {
         // The prefix must end on a path separator boundary: a profile of ...\Joe must not rewrite ...\Joel.
         if (!profile_.empty() && p.size() >= profile_.size() &&
             _strnicmp(p.data(), profile_.data(), profile_.size()) == 0 &&
-            (p.size() == profile_.size() || p[profile_.size()] == char(92) || p[profile_.size()] == '/'))
+            (p.size() == profile_.size() || p[profile_.size()] == static_cast<char>(92) || p[profile_.size()] == '/'))
             return "%USERPROFILE%" + std::string(p.substr(profile_.size()));
         return std::string(p);
     }

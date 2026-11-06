@@ -355,7 +355,7 @@ static void BuildEditorDockspace() {
             float vpW = vp->Size.x > 1.0f ? vp->Size.x : 1.0f;
             float panelPx = vpW * 0.26f;
             panelPx = std::max(panelPx, 64.0f);
-            if (panelPx > vpW - 256.0f) panelPx = vpW - 256.0f;
+            panelPx = std::min(panelPx, vpW - 256.0f);
             float ratio = panelPx / vpW;
 
             ImGui::DockBuilderRemoveNode(dockId);

@@ -3036,7 +3036,7 @@ enum
 //
 //
 //
-void __stdcall AddDebuggerMenuItem( const char* Name, bool(__stdcall *CheckMark)(), void(__stdcall *Activated)(), bool(__stdcall *Greyed)()=nullptr, static_cast<DWORD>(__stdcall *Callback)( const char* Name, DWORD MenuFunction)=nullptr );
+void __stdcall AddDebuggerMenuItem( const char* Name, bool(__stdcall *CheckMark)(), void(__stdcall *Activated)(), bool(__stdcall *Greyed)()=nullptr, DWORD(__stdcall *Callback)( const char* Name, DWORD MenuFunction)=nullptr );
 
 //
 // Deletes a debugger menu item

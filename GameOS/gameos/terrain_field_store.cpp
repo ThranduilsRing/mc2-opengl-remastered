@@ -211,8 +211,8 @@ bool TerrainFieldStore::setMaterialNormals(std::span<const RenderCore::KtxImage>
         array->mipByteOffsets.push_back(array->pixels.size());
         const size_t bytes = levelBytes(first.width, level);
         for (const auto& l : layers) {
-            const auto begin = l.pixels.begin() + ptrdiff_t(l.mipByteOffsets[level]);
-            array->pixels.insert(array->pixels.end(), begin, begin + ptrdiff_t(bytes));
+            const auto begin = l.pixels.begin() + static_cast<ptrdiff_t>(l.mipByteOffsets[level]);
+            array->pixels.insert(array->pixels.end(), begin, begin + static_cast<ptrdiff_t>(bytes));
         }
     }
     materialNormals_ = {std::move(array), static_cast<uint32_t>(layers.size()), nextVersion()};

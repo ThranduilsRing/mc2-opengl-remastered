@@ -353,8 +353,7 @@ void execSetPilotWounds (void) {
 	long objectNum = ABLi_popInteger();
 	long wounds = ABLi_popInteger();
 
-	if (wounds > 6)
-		wounds = 6;
+	wounds = std::min<decltype(wounds)>(wounds, 6);
 		
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj) {
@@ -452,8 +451,7 @@ void execSetObjectDamage (void) {
 
 	long objectNum = ABLi_popInteger();
 	long dmgPercentage = ABLi_popInteger();
-	if (dmgPercentage > 100)
-		dmgPercentage = 100;
+	dmgPercentage = std::min<decltype(dmgPercentage)>(dmgPercentage, 100);
 
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj && (dmgPercentage > 0)) {
@@ -941,8 +939,7 @@ void execCallStrikeEx (void) {
 	bool clanStrike = ABLi_popBoolean();
 	float timeToImpact = ABLi_popReal();
 
-	if (timeToImpact < 0.0)
-		timeToImpact = 0.0;
+	timeToImpact = std::max<decltype(timeToImpact)>(timeToImpact, 0.0);
 
 	GameObjectPtr target = getObject(targetId);
 

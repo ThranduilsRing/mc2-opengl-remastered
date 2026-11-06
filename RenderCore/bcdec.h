@@ -47,6 +47,7 @@
 
 #ifndef BCDEC_HEADER_INCLUDED
 #define BCDEC_HEADER_INCLUDED
+#include <algorithm>
 
 inline constexpr int BCDEC_VERSION_MAJOR = 0;
 inline constexpr int BCDEC_VERSION_MINOR = 98;
@@ -83,13 +84,13 @@ inline constexpr int BCDEC_VERSION_MINOR = 98;
     https://gist.github.com/rygorous/2144712
 */
 
-#define BCDEC_BC1_BLOCK_SIZE    8
-#define BCDEC_BC2_BLOCK_SIZE    16
-#define BCDEC_BC3_BLOCK_SIZE    16
-#define BCDEC_BC4_BLOCK_SIZE    8
-#define BCDEC_BC5_BLOCK_SIZE    16
-#define BCDEC_BC6H_BLOCK_SIZE   16
-#define BCDEC_BC7_BLOCK_SIZE    16
+inline constexpr int BCDEC_BC1_BLOCK_SIZE = 8;
+inline constexpr int BCDEC_BC2_BLOCK_SIZE = 16;
+inline constexpr int BCDEC_BC3_BLOCK_SIZE = 16;
+inline constexpr int BCDEC_BC4_BLOCK_SIZE = 8;
+inline constexpr int BCDEC_BC5_BLOCK_SIZE = 16;
+inline constexpr int BCDEC_BC6H_BLOCK_SIZE = 16;
+inline constexpr int BCDEC_BC7_BLOCK_SIZE = 16;
 
 #define BCDEC_BC1_COMPRESSED_SIZE(w, h)     ((((w)>>2)*((h)>>2))*BCDEC_BC1_BLOCK_SIZE)
 #define BCDEC_BC2_COMPRESSED_SIZE(w, h)     ((((w)>>2)*((h)>>2))*BCDEC_BC2_BLOCK_SIZE)
@@ -127,8 +128,8 @@ static void bcdec__color_block(const void* compressedBlock, void* decompressedBl
     int i, j, idx;
     unsigned int r0, g0, b0, r1, g1, b1, r, g, b;
 
-    c0 = ((unsigned short*)compressedBlock)[0];
-    c1 = ((unsigned short*)compressedBlock)[1];
+    c0 = (static_cast<const unsigned short*>(compressedBlock))[0];
+    c1 = (static_cast<const unsigned short*>(compressedBlock))[1];
 
     /* Unpack 565 ref colors */
     r0 = (c0 >> 11) & 0x1F;
@@ -173,14 +174,14 @@ static void bcdec__color_block(const void* compressedBlock, void* decompressedBl
         refColors[3] = 0x00000000;
     }
 
-    colorIndices = ((unsigned int*)compressedBlock)[1];
+    colorIndices = (static_cast<const unsigned int*>(compressedBlock))[1];
 
     /* Fill out the decompressed color block */
     dstColors = static_cast<unsigned char*>(decompressedBlock);
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
             idx = colorIndices & 0x03;
-            ((unsigned int*)dstColors)[j] = refColors[idx];
+            (static_cast<unsigned int*>(static_cast<void*>(dstColors)))[j] = refColors[idx];
             colorIndices >>= 2;
         }
 
@@ -189,11 +190,11 @@ static void bcdec__color_block(const void* compressedBlock, void* decompressedBl
 }
 
 static void bcdec__sharp_alpha_block(const void* compressedBlock, void* decompressedBlock, int destinationPitch) {
-    unsigned short* alpha;
+    const unsigned short* alpha;
     unsigned char* decompressed;
     int i, j;
 
-    alpha = (unsigned short*)compressedBlock;
+    alpha = static_cast<const unsigned short*>(compressedBlock);
     decompressed = static_cast<unsigned char*>(decompressedBlock);
 
     for (i = 0; i < 4; ++i) {
@@ -211,7 +212,7 @@ static void bcdec__smooth_alpha_block(const void* compressedBlock, void* decompr
     int i, j;
     unsigned long long block, indices;
 
-    block = *(unsigned long long*)compressedBlock;
+    block = *static_cast<const unsigned long long*>(compressedBlock);
     decompressed = static_cast<unsigned char*>(decompressedBlock);
 
     alpha[0] = block & 0xFF;
@@ -258,13 +259,13 @@ static void bcdec__bc4_block(const void* compressedBlock, void* decompressedBloc
     static int aWeights4[4] = { 13107, 26215, 39321, 52429 };
     static int aWeights6[6] = { 9363, 18724, 28086, 37450, 46812, 56173 };
 
-    block = *(unsigned long long*)compressedBlock;
+    block = *static_cast<const unsigned long long*>(compressedBlock);
 
     if (isSigned) {
-        alpha[0] = (char)(block & 0xFF);
-        alpha[1] = (char)((block >> 8) & 0xFF);
-        if (alpha[0] < -127) alpha[0] = -127;     /* -128 clamps to -127 */
-        if (alpha[1] < -127) alpha[1] = -127;     /* -128 clamps to -127 */
+        alpha[0] = static_cast<char>(block & 0xFF);
+        alpha[1] = static_cast<char>((block >> 8) & 0xFF);
+        alpha[0] = std::max(alpha[0], -127);     /* -128 clamps to -127 */
+        alpha[1] = std::max(alpha[1], -127);     /* -128 clamps to -127 */
     } else {
         alpha[0] = block & 0xFF;
         alpha[1] = (block >> 8) & 0xFF;
@@ -290,19 +291,19 @@ static void bcdec__bc4_block(const void* compressedBlock, void* decompressedBloc
 
     indices = block >> 16;
     if (isSigned) {
-        sblock = (signed char*)decompressedBlock;
+        sblock = static_cast<signed char*>(decompressedBlock);
         for (i = 0; i < 4; ++i) {
             for (j = 0; j < 4; ++j) {
-                sblock[j * pixelSize] = (signed char)alpha[indices & 0x07];
+                sblock[j * pixelSize] = static_cast<signed char>(alpha[indices & 0x07]);
                 indices >>= 3;
             }
             sblock += destinationPitch;
         }
     } else {
-        ublock = (unsigned char*)decompressedBlock;
+        ublock = static_cast<unsigned char*>(decompressedBlock);
         for (i = 0; i < 4; ++i) {
             for (j = 0; j < 4; ++j) {
-                ublock[j * pixelSize] = (unsigned char)alpha[indices & 0x07];
+                ublock[j * pixelSize] = static_cast<unsigned char>(alpha[indices & 0x07]);
                 indices >>= 3;
             }
             ublock += destinationPitch;
@@ -316,17 +317,17 @@ static void bcdec__bc4_block_float(const void* compressedBlock, void* decompress
     int i, j;
     unsigned long long block, indices;
 
-    block = *(unsigned long long*)compressedBlock;
-    decompressed = (float*)decompressedBlock;
+    block = *static_cast<const unsigned long long*>(compressedBlock);
+    decompressed = static_cast<float*>(decompressedBlock);
 
     if (isSigned) {
-        alpha[0] = (float)((char)(block & 0xFF)) / 127.0f;
-        alpha[1] = (float)((char)((block >> 8) & 0xFF)) / 127.0f;
-        if (alpha[0] < -1.0f) alpha[0] = -1.0f;     /* -128 clamps to -127 */
-        if (alpha[1] < -1.0f) alpha[1] = -1.0f;     /* -128 clamps to -127 */
+        alpha[0] = static_cast<float>(static_cast<char>(block & 0xFF)) / 127.0f;
+        alpha[1] = static_cast<float>(static_cast<char>((block >> 8) & 0xFF)) / 127.0f;
+        alpha[0] = std::max(alpha[0], -1.0f);     /* -128 clamps to -127 */
+        alpha[1] = std::max(alpha[1], -1.0f);     /* -128 clamps to -127 */
     } else {
-        alpha[0] = (float)(block & 0xFF) / 255.0f;
-        alpha[1] = (float)((block >> 8) & 0xFF) / 255.0f;
+        alpha[0] = static_cast<float>((block & 0xFF)) / 255.0f;
+        alpha[1] = static_cast<float>(((block >> 8) & 0xFF)) / 255.0f;
     }
 
     if (alpha[0] > alpha[1]) {
@@ -402,13 +403,13 @@ BCDECDEF void bcdec_bc1(const void* compressedBlock, void* decompressedBlock, in
 }
 
 BCDECDEF void bcdec_bc2(const void* compressedBlock, void* decompressedBlock, int destinationPitch) {
-    bcdec__color_block(((char*)compressedBlock) + 8, decompressedBlock, destinationPitch, 1);
-    bcdec__sharp_alpha_block(compressedBlock, ((char*)decompressedBlock) + 3, destinationPitch);
+    bcdec__color_block(static_cast<const char*>(compressedBlock) + 8, decompressedBlock, destinationPitch, 1);
+    bcdec__sharp_alpha_block(compressedBlock, static_cast<char*>(decompressedBlock) + 3, destinationPitch);
 }
 
 BCDECDEF void bcdec_bc3(const void* compressedBlock, void* decompressedBlock, int destinationPitch) {
-    bcdec__color_block(((char*)compressedBlock) + 8, decompressedBlock, destinationPitch, 1);
-    bcdec__smooth_alpha_block(compressedBlock, ((char*)decompressedBlock) + 3, destinationPitch, 4);
+    bcdec__color_block(static_cast<const char*>(compressedBlock) + 8, decompressedBlock, destinationPitch, 1);
+    bcdec__smooth_alpha_block(compressedBlock, static_cast<char*>(decompressedBlock) + 3, destinationPitch, 4);
 }
 
 #ifndef BCDEC_BC4BC5_PRECISE
@@ -423,11 +424,11 @@ BCDECDEF void bcdec_bc4(const void* compressedBlock, void* decompressedBlock, in
 #ifndef BCDEC_BC4BC5_PRECISE
 BCDECDEF void bcdec_bc5(const void* compressedBlock, void* decompressedBlock, int destinationPitch) {
     bcdec__smooth_alpha_block(compressedBlock, decompressedBlock, destinationPitch, 2);
-    bcdec__smooth_alpha_block(((char*)compressedBlock) + 8, ((char*)decompressedBlock) + 1, destinationPitch, 2);
+    bcdec__smooth_alpha_block(static_cast<const char*>(compressedBlock) + 8, static_cast<char*>(decompressedBlock) + 1, destinationPitch, 2);
 #else
 BCDECDEF void bcdec_bc5(const void* compressedBlock, void* decompressedBlock, int destinationPitch, int isSigned) {
     bcdec__bc4_block(compressedBlock, decompressedBlock, destinationPitch, 2, isSigned);
-    bcdec__bc4_block(((char*)compressedBlock) + 8, ((char*)decompressedBlock) + 1, destinationPitch, 2, isSigned);
+    bcdec__bc4_block(static_cast<const char*>(compressedBlock) + 8, static_cast<char*>(decompressedBlock) + 1, destinationPitch, 2, isSigned);
 #endif
 }
 
@@ -438,7 +439,7 @@ BCDECDEF void bcdec_bc4_float(const void* compressedBlock, void* decompressedBlo
 
 BCDECDEF void bcdec_bc5_float(const void* compressedBlock, void* decompressedBlock, int destinationPitch, int isSigned) {
     bcdec__bc4_block_float(compressedBlock, decompressedBlock, destinationPitch, 2, isSigned);
-    bcdec__bc4_block_float(((char*)compressedBlock) + 8, ((float*)decompressedBlock) + 1, destinationPitch, 2, isSigned);
+    bcdec__bc4_block_float(static_cast<const char*>(compressedBlock) + 8, static_cast<float*>(decompressedBlock) + 1, destinationPitch, 2, isSigned);
 }
 #endif /* BCDEC_BC4BC5_PRECISE */
 
@@ -599,10 +600,10 @@ BCDECDEF void bcdec_bc6h_half(const void* compressedBlock, void* decompressedBlo
     unsigned short* decompressed;
     int* weights;
 
-    decompressed = (unsigned short*)decompressedBlock;
+    decompressed = static_cast<unsigned short*>(decompressedBlock);
 
-    bstream.low = ((unsigned long long*)compressedBlock)[0];
-    bstream.high = ((unsigned long long*)compressedBlock)[1];
+    bstream.low = (static_cast<const unsigned long long*>(compressedBlock))[0];
+    bstream.high = (static_cast<const unsigned long long*>(compressedBlock))[1];
 
     r[0] = r[1] = r[2] = r[3] = 0;
     g[0] = g[1] = g[2] = g[3] = 0;
@@ -1062,7 +1063,7 @@ BCDECDEF void bcdec_bc6h_float(const void* compressedBlock, void* decompressedBl
 
     bcdec_bc6h_half(compressedBlock, block, 4*3, isSigned);
     b = block;
-    decompressed = (float*)decompressedBlock;
+    decompressed = static_cast<float*>(decompressedBlock);
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
             decompressed[j * 3 + 0] = bcdec__half_to_float_quick(*b++);
@@ -1236,10 +1237,10 @@ BCDECDEF void bcdec_bc7(const void* compressedBlock, void* decompressedBlock, in
     int* weights, * weights2;
     unsigned char* decompressed;
 
-    decompressed = (unsigned char*)decompressedBlock;
+    decompressed = static_cast<unsigned char*>(decompressedBlock);
 
-    bstream.low = ((unsigned long long*)compressedBlock)[0];
-    bstream.high = ((unsigned long long*)compressedBlock)[1];
+    bstream.low = (static_cast<const unsigned long long*>(compressedBlock))[0];
+    bstream.high = (static_cast<const unsigned long long*>(compressedBlock))[1];
 
     for (mode = 0; mode < 8 && (0 == bcdec__bitstream_read_bit(&bstream)); ++mode);
 

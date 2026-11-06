@@ -709,14 +709,12 @@ void MechLabScreen::updateDiagramInput()
 				}	
 			}
 
-			if ( x < 0 )
-				x = 0;
+			x = std::max<decltype(x)>(x, 0);
 
 			if ( x >= pVariant->getComponentAreaWidth() - 1 ) 
 				x = pVariant->getComponentAreaWidth() - 1;
 
-			if ( y < 0 )
-				y = 0;
+			y = std::max<decltype(y)>(y, 0);
 
 			if ( y >= pVariant->getComponentAreaHeight() - 1 )
 				y = pVariant->getComponentAreaHeight() - 1;
