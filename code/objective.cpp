@@ -131,26 +131,19 @@ void CObjectives::Observation::Begin(FitIniFile& file) {
 unsigned long long CObjectives::Observation::Emit(std::string_view kind, unsigned long long cause,
                                                  std::string_view data, unsigned long long id) {
 	if (!objectiveObservationEnabled() || completed || rejected || missionHash.empty()) { return 0; }
-	const double time = mission ? mission->actualTime : 0;
-	if (!std::isfinite(time) || time < 0 || turn < 0) {
+	const auto reject = [this](std::string_view why) {
 		rejected = true;
-		mc2::fmt::print_err("[OBJECTIVES] rejected: invalid simulation clock\n");
-		return 0;
-	}
+		mc2::fmt::print_err("[OBJECTIVES] rejected: {}\n", why);
+		return 0ULL;
+	};
+	const double time = mission ? mission->actualTime : 0;
+	if (!std::isfinite(time) || time < 0 || turn < 0) { return reject("invalid simulation clock"); }
 	if (!id) { id = nextId++; }
 	const std::string record = std::format("{{\"mission\":\"{}\",\"seq\":{},\"id\":\"o{}\",\"frame\":{},\"time\":{},\"kind\":\"{}\",\"cause\":{},\"data\":{}}}",
 		missionHash, sequence + 1, id, turn, time, kind,
 		cause ? std::format("\"o{}\"", cause) : "null", data);
-	if (record.size() + sizeof("OBJECTIVES/1 ") - 1 > 16384) {
-		rejected = true;
-		mc2::fmt::print_err("[OBJECTIVES] rejected: oversized observation\n");
-		return 0;
-	}
-	if (!mc2_diag::writeEvent("OBJECTIVES", 1, turn, record.c_str())) {
-		rejected = true;
-		mc2::fmt::print_err("[OBJECTIVES] rejected: diagnostic write failed\n");
-		return 0;
-	}
+	if (record.size() + sizeof("OBJECTIVES/1 ") - 1 > 16384) { return reject("oversized observation"); }
+	if (!mc2_diag::writeEvent("OBJECTIVES", 1, turn, record.c_str())) { return reject("diagnostic write failed"); }
 	++sequence;
 	mc2::fmt::print_out("OBJECTIVES/1 {}\n", record);
 	fflush(stdout);
