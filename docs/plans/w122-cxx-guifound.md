@@ -42,10 +42,15 @@ String/resource AddItem overloads and commented-out calls are not raw item calls
 
 ## State and next steps
 
-Implemented; worktree idiom ratchet green (12 fewer legacy sites).
-Run own_inventory --check --worktree and commit by explicit paths.
-Then run the requested box build/unit/unit-san/smoke-lite and final lint on the
-committed SHA; record exact SHA and receipt directory here after execution.
-Finally box_run --cleanup claude/w122-cxx-guifound; retain this worktree and proofs.
+Initial implementation e812aa3ee4b29d8368b58b2ef1b225ec1a89301b:
+ratchet and own_inventory green; box build/unit/smoke-lite PASS.
+unit-san: one IBL pointer-identity test fails, zero ASan/UBSan findings; neither
+tests/unit nor RenderCore changed. Lint: file-size growth and stale ownership
+inventory. Moved short ownership forwarding wrappers inline to fix file size;
+derived inventory regeneration stays with the cluster per owner instruction.
+Next: final-SHA box build/unit/unit-san/smoke-lite and lint, then box cleanup.
+Exact receipts and final run-state live under
+E:/mc2-archive-2026-10/proofs/box/mc2-cxxgui/<sha8>/.
+Retain this worktree and proofs. No PC builds or installs created.
 PC GUI captures owed: mech bay/purchase/salvage sorted lists, pilot ready sorted
 list, pilot review dead/active rows, pilot promotion skills, dropdown/combo lists.

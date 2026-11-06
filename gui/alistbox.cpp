@@ -373,19 +373,11 @@ void aListBox::move( float offsetX, float offsetY )
 	}
 }
 
-long aListBox::AddItem(std::unique_ptr<aListItem> add)
-{
-	if (itemCount >= MAX_LIST_ITEMS)
-		return TOO_MANY_ITEMS;
-	return aListBox::AddItem(add.release());
-}
-
 long aListBox::AddItem(aListItem* add)
 {
 	if (itemCount >= MAX_LIST_ITEMS)
 		return TOO_MANY_ITEMS;
 
-	
 	float lastX = globalX() + add->globalX();
 	float lastY = globalY() + topSkip;
 	
@@ -946,11 +938,6 @@ bool aDropList::pointInside(long xPos, long yPos) const
 	return retval;
 }
 
-long aDropList::AddItem(aListItem* itemString)
-{
-	return AddItem(std::unique_ptr<aListItem>(itemString));
-}
-
 long aDropList::AddItem(std::unique_ptr<aListItem> itemString)
 {
 	const float itemHeight = itemString->height();
@@ -1255,11 +1242,6 @@ bool aComboBox::pointInside(long xPos, long yPos) const
 		retval = retval || listBox.pointInside(xPos, yPos);
 	}
 	return retval;
-}
-
-long aComboBox::AddItem(aListItem* itemString)
-{
-	return AddItem(std::unique_ptr<aListItem>(itemString));
 }
 
 long aComboBox::AddItem(std::unique_ptr<aListItem> itemString)

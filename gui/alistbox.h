@@ -158,7 +158,12 @@ public:
 	virtual void	resize(long w, long h);
 
 	// Transfers ownership, including when insertion is rejected.
-	virtual long		AddItem(std::unique_ptr<aListItem> itemString);
+	virtual long AddItem(std::unique_ptr<aListItem> itemString)
+	{
+		if (itemCount >= MAX_LIST_ITEMS)
+			return TOO_MANY_ITEMS;
+		return aListBox::AddItem(itemString.release());
+	}
 	// Legacy callers also add borrowed rows and detach them without deletion.
 	virtual long		AddItem(aListItem* itemString);
 	virtual long		InsertItem(aListItem* itemString, long where);
@@ -237,7 +242,7 @@ public:
 	//virtual void	resize(long w, long h);
 
 	virtual long		AddItem(std::unique_ptr<aListItem> itemString);
-	virtual long		AddItem(aListItem* itemString);
+	virtual long AddItem(aListItem* itemString) { return AddItem(std::unique_ptr<aListItem>(itemString)); }
 	long				SelectItem(long item);
 
 	aListBox &ListBox() { return listBox; }
@@ -289,7 +294,7 @@ public:
 	//virtual void	resize(long w, long h);
 
 	virtual long		AddItem(std::unique_ptr<aListItem> itemString);
-	virtual long		AddItem(aListItem* itemString);
+	virtual long AddItem(aListItem* itemString) { return AddItem(std::unique_ptr<aListItem>(itemString)); }
 	long				SelectItem(long item);
 
 	void				setReadOnly( bool bReadOnly ){ entry.setReadOnly( bReadOnly ); }
