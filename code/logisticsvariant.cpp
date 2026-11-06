@@ -413,7 +413,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 		long componentID;
 		if ( NO_ERR == file->readLong( offset + i, 5, componentID ) && componentID != 0xff )
 		{
-			LogisticsComponent* pComp = LogisticsData::instance->getComponent(componentID );
+			LogisticsComponent* pComp = LogisticsData::instance->getComponent(componentID ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 			if ( pComp )
 			{
 				file->readLong( offset + i, 4, yLocs[componentCount] );
@@ -455,7 +455,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 {
 	LogisticsComponent*
-		pComponent = LogisticsData::instance->getComponent( idFromFitFile );
+		pComponent = LogisticsData::instance->getComponent( idFromFitFile ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 
 
 	if ( !pComponent )

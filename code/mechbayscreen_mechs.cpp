@@ -259,7 +259,7 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 	{
 		if ( pMech->getForceGroup() )
 		{
-			pMech = LogisticsData::instance->getMechWithoutForceGroup( pMech );
+			pMech = LogisticsData::instance->getMechWithoutForceGroup( pMech ).transform(std::addressof<LogisticsMech>).value_or(nullptr);
 		}
 		pDragMech = pMech;
 

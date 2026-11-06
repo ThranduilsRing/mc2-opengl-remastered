@@ -11,6 +11,8 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 #include <string_view>
 #include "mc2_czstring.h"
 #include <expected>
+#include <optional>
+#include <functional>
 #include"stuff/stuff.hpp"
 #include <string>
 #include <vector>
@@ -43,13 +45,13 @@ public:
 
 	static LogisticsData*		instance;
 
-	LogisticsComponent* getComponent( int componentID );
+	std::optional<std::reference_wrapper<LogisticsComponent>> getComponent( int componentID );
 	LogisticsPilot*		getPilot( int pilotID );
 	// Nullable lookup names retain their historical null-as-empty contract.
-	LogisticsPilot*		getPilot( mc2::czstring pilotName );
+	std::optional<std::reference_wrapper<LogisticsPilot>> getPilot( mc2::czstring pilotName );
 	int					getPilotCount();
 	int					getPilots( LogisticsPilot**, long& count );
-	const char*			getBestPilot( long mechWeight );
+	std::optional<std::reference_wrapper<const std::string>> getBestPilot( long mechWeight );
 	bool				gotPilotsLeft();
 
 	void				setPilotUnused( mc2::czstring pPilot );
@@ -58,16 +60,16 @@ public:
 	int					getPlayerVariantNames( const char**, int& count );
 	int					getChassisVariants( const LogisticsChassis* pChassis, LogisticsVariant** pVar, int& count );
 	
-	LogisticsVariant*	getVariant( int ID );
-	LogisticsVariant*	getVariant( mc2::czstring mechName );
-	LogisticsVariant*	getVariant( mc2::czstring pCSVFileNaem, int VariantNum );
+	std::optional<std::reference_wrapper<LogisticsVariant>> getVariant( int ID );
+	std::optional<std::reference_wrapper<LogisticsVariant>> getVariant( mc2::czstring mechName );
+	std::optional<std::reference_wrapper<LogisticsVariant>> getVariant( mc2::czstring pCSVFileNaem, int VariantNum );
 	std::expected<void, int> removeVariant( mc2::czstring varName );
 
 
-	LogisticsMech*		getMech( int ID );
+	std::optional<std::reference_wrapper<LogisticsMech>> getMech( int ID );
 	// Null pilotName selects an unpiloted mech; MechName null means empty.
-	LogisticsMech*		getMech( mc2::czstring MechName, mc2::czstring pilotName );
-	LogisticsMech*		getMechWithoutForceGroup( LogisticsMech* clone );
+	std::optional<std::reference_wrapper<LogisticsMech>> getMech( mc2::czstring MechName, mc2::czstring pilotName );
+	std::optional<std::reference_wrapper<LogisticsMech>> getMechWithoutForceGroup( LogisticsMech* clone );
 
 	void				addMechToInventory( LogisticsVariant* pVar, LogisticsPilot* pPilot, int ForceGrup,
 											bool bSubtractPts = 0);
@@ -76,7 +78,7 @@ public:
 
 
 	int createInstanceID( LogisticsVariant* pVar );
-	LogisticsPilot*		getFirstAvailablePilot();
+	std::optional<std::reference_wrapper<LogisticsPilot>> getFirstAvailablePilot();
 	// VEHICLE-AUTO-PILOT-1: a deployed vehicle/support unit auto-gets a standard
 	// vehicle pilot so it satisfies the launch pilot-requirement without consuming a
 	// roster mech-pilot. isVehicleUnit() = object class != BATTLEMECH; getVehiclePilot()
@@ -151,7 +153,7 @@ public:
 	int					getHelicopters( const LogisticsVariant**, int& count );
 	
 	int					getVehicles( const LogisticsVehicle**, int& count );
-	LogisticsVehicle*	getVehicle( mc2::czstring pName );
+	std::optional<std::reference_wrapper<LogisticsVehicle>> getVehicle( mc2::czstring pName );
 
 
 	int					setMechToModify( LogisticsMech* pVariant );
@@ -194,7 +196,7 @@ public:
 	void				startMultiPlayer();
 	void				setPurchaseFile( mc2::czstring fileName );
 
-	Building*			getBuilding( int nameID );
+	std::optional<std::reference_wrapper<Building>> getBuilding( int nameID );
 	int					getBuildings( Building** bdgs, int& count );
 
 	bool				campaignOver();

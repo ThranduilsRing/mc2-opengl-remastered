@@ -645,7 +645,7 @@ void LogisticsVehicle::init( FitIniFile& file )
 			unsigned char fitID;
 			file.readIdUChar( "MasterID", fitID );
 
-			LogisticsComponent* pComponent = LogisticsData::instance->getComponent( fitID );
+			LogisticsComponent* pComponent = LogisticsData::instance->getComponent( fitID ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 			if ( pComponent )
 			{
 			

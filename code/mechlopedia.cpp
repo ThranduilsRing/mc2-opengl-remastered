@@ -562,7 +562,7 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 	{
 		const std::string name = mc2::str::from_c( pText ) + " Prime";
 
-		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name.c_str() );
+		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name.c_str() ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 		// ENCYCLO-3D-1 diagnostic: is the select→variant→camera chain intact?
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
@@ -576,12 +576,12 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 	}
 	else
 	{
-		LogisticsVehicle* pVehicle = LogisticsData::instance->getVehicle( pText );
+		LogisticsVehicle* pVehicle = LogisticsData::instance->getVehicle( pText ).transform(std::addressof<LogisticsVehicle>).value_or(nullptr);
 		if ( pVehicle )
 			setVehicle( pVehicle );
 		else // copter
 		{
-			LogisticsVariant* pMech = LogisticsData::instance->getVariant( pText );
+			LogisticsVariant* pMech = LogisticsData::instance->getVariant( pText ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 			if ( pMech )
 				setMech( pMech, 0 );
 		}
@@ -1001,7 +1001,7 @@ void Mechlopedia::WeaponScreen::render()
 
 void Mechlopedia::WeaponScreen::select( aTextListItem* pEntry )
 {
-	LogisticsComponent* pComponent = LogisticsData::instance->getComponent( pEntry->getID() );
+	LogisticsComponent* pComponent = LogisticsData::instance->getComponent( pEntry->getID() ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 	setWeapon( pComponent );
 
 	
@@ -1543,7 +1543,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 	if ( !pEntry )
 		return;
 
-	LogisticsData::Building* pBldg = LogisticsData::instance->getBuilding( pEntry->getID() );
+	LogisticsData::Building* pBldg = LogisticsData::instance->getBuilding( pEntry->getID() ).transform(std::addressof<LogisticsData::Building>).value_or(nullptr);
 
 	if ( pBldg )
 	{
@@ -1580,7 +1580,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 		{
 				if ( ID )
 			{
-				LogisticsComponent* pComp = LogisticsData::instance->getComponent( ID );
+				LogisticsComponent* pComp = LogisticsData::instance->getComponent( ID ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 				if ( pComp )
 				{
 					pComps[count++] = pComp;

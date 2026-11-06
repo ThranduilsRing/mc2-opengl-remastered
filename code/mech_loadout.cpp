@@ -708,7 +708,7 @@ long BattleMech::init (DWORD variantNum)
 	LogisticsData::instance->init();
 
 	cBills = 10;
-	LogisticsVariant* mechVariant = LogisticsData::instance->getVariant(variantName);
+	LogisticsVariant* mechVariant = LogisticsData::instance->getVariant(variantName).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 	if (mechVariant)
 		cBills = mechVariant->getCost();
 

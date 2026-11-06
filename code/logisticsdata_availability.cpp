@@ -442,7 +442,7 @@ void LogisticsData::appendAvailability(mc2::czstring pFileName, bool* availableA
 					break;
 
 				// Unknown / out-of-range ids (mod or stale purchase data) are skipped, not fatal.
-				LogisticsComponent* pComp = (component >= 0 && component < 255) ? getComponent( component ) : nullptr;
+				LogisticsComponent* pComp = (component >= 0 && component < 255) ? getComponent( component ).transform(std::addressof<LogisticsComponent>).value_or(nullptr) : nullptr;
 				if ( !pComp )
 				{
 					MC2_LOG(Ui, Warn, "[LOGISTICS] appendAvailability: unknown component id {:d} in '{}' -- skipped", mc2::fmt::as_i32(component), mc2::fmt::safe(pFileName ? pFileName : "(null)"));
@@ -503,7 +503,7 @@ void LogisticsData::appendAvailability(mc2::czstring pFileName, bool* availableA
 				variant->getComponents( componentCount, componentArray );
 				for ( int i = 0; i < componentCount; i++ )
 				{
-					LogisticsComponent* pComp = getComponent(componentArray[i]);
+					LogisticsComponent* pComp = getComponent(componentArray[i]).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 					if ( !pComp || !pComp->isAvailable() ) // unavailable componets
 					{
 						bRight= false;

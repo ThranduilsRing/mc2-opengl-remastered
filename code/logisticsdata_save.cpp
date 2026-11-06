@@ -54,7 +54,7 @@ static bool pilotInLiveMech(LogisticsPilot& p)
 #endif
 }
 
-const char*	LogisticsData::getBestPilot( long mechWeight )
+std::optional<std::reference_wrapper<const std::string>> LogisticsData::getBestPilot( long mechWeight )
 {
 	ensureMechBayDataLoaded("getBestPilot");
 
@@ -64,9 +64,9 @@ const char*	LogisticsData::getBestPilot( long mechWeight )
 	if (!chosen)
 	{
 		mc2::content::error(mc2::content::Kind::MissionData, "pilots", "getBestPilot: no available pilot not already in a mech");
-		return nullptr;
+		return std::nullopt;
 	}
-	return chosen->getFileName().c_str();   // the pilots list outlives the caller's use
+	return std::cref(chosen->getFileName());   // the pilots list outlives the caller's use
 }
 
 bool		LogisticsData::gotPilotsLeft()
@@ -468,11 +468,11 @@ void	LogisticsData::setMissionCompleted( )
 				 (pMover->getCommanderId() == Commander::home->getId()) &&
 				 (pMover->getMoveType() != MOVETYPE_AIR))
 			{
-				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() );
+				LogisticsMech* pMech = getMech( pMover->getName(), pMover->getPilot()->getName() ).transform(std::addressof<LogisticsMech>).value_or(nullptr);
 
 				DWORD base, highlight1, highlight2;
 				(static_cast<Mech3DAppearance*>(pMover->getAppearance()))->getPaintScheme( base, highlight1, highlight2 );
-				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() );
+				LogisticsPilot* pPilot = getPilot( pMover->getPilot()->getName() ).transform(std::addressof<LogisticsPilot>).value_or(nullptr);
 
 				{
 					static const bool s_lfResolve = false;
@@ -498,7 +498,7 @@ void	LogisticsData::setMissionCompleted( )
 					else
 					{
 						removeMechFromInventory( pMech->getName().c_str(), pMover->getPilot()->getName() );
-						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName );
+						LogisticsVariant* pVar = getVariant( (static_cast<BattleMech*>(pMover))->variantName ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 						addMechToInventory( pVar, ForceGroupCount++, pPilot, base, highlight1, highlight2 );
 						if ( pPilot )
 							pPilot->setUsed( true );
@@ -510,7 +510,7 @@ void	LogisticsData::setMissionCompleted( )
 					if ( !pMover->isDestroyed() && !pMover->isDisabled() )
 					{
 						const char* vname = (static_cast<BattleMech*>(pMover))->variantName;
-						LogisticsVariant* pVariant = getVariant( vname );
+						LogisticsVariant* pVariant = getVariant( vname ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 						if ( !pVariant )
 						{
 							// Runtime variants can be absent from the base CSVs. Deployed snapshots
@@ -561,7 +561,7 @@ void	LogisticsData::setMissionCompleted( )
 #endif
 }
 
-LogisticsMech*  LogisticsData::getMech( mc2::czstring MechName, mc2::czstring pilotName )
+std::optional<std::reference_wrapper<LogisticsMech>> LogisticsData::getMech( mc2::czstring MechName, mc2::czstring pilotName )
 {
 	const std::string wanted = mc2::str::from_c( MechName );
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
@@ -571,33 +571,33 @@ LogisticsMech*  LogisticsData::getMech( mc2::czstring MechName, mc2::czstring pi
 			if ( !pilotName )
 			{
 				if ( !(*iter)->getPilot() )
-					return iter->get();
+					return **iter;
 			}
 
 			else
 			{
 				if ( (*iter)->getPilot() && mc2::str::iequals( (*iter)->getPilot()->getName(), mc2::str::from_c( pilotName ) ) )
-					return iter->get();
+					return **iter;
 			}
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 void LogisticsData::removeMechFromInventory( mc2::czstring mechName, mc2::czstring pilotName )
 {
-	LogisticsMech* pMech = getMech( mechName, pilotName );
+	auto pMech = getMech( mechName, pilotName );
 
 	gosASSERT( pMech );
 
 	if ( pMech )
 	{
-		std::erase_if( inventory, [pMech](const auto& mech) { return mech.get() == pMech; } );
+		std::erase_if( inventory, [pMech](const auto& mech) { return mech.get() == &pMech->get(); } );
 	}
 }
 
-LogisticsPilot*	LogisticsData::getPilot( mc2::czstring pilotName )
+std::optional<std::reference_wrapper<LogisticsPilot>> LogisticsData::getPilot( mc2::czstring pilotName )
 {
 	const std::string wanted = mc2::str::from_c( pilotName );
 	// look for available ones first
@@ -607,7 +607,7 @@ LogisticsPilot*	LogisticsData::getPilot( mc2::czstring pilotName )
 		{
 			if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 			{
-				return &(*iter);
+				return *iter;
 			}
 		}
 	}
@@ -616,21 +616,21 @@ LogisticsPilot*	LogisticsData::getPilot( mc2::czstring pilotName )
 	{
 		if ( mc2::str::iequals( (*iter).getName(), wanted ) )
 		{
-			return &(*iter);
+			return *iter;
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
-LogisticsVariant* LogisticsData::getVariant( mc2::czstring mechName )
+std::optional<std::reference_wrapper<LogisticsVariant>> LogisticsData::getVariant( mc2::czstring mechName )
 {
 	const std::string wanted = mc2::str::from_c( mechName );
 	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
-			return iter->get();
+			return **iter;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }

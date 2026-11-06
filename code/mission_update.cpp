@@ -733,7 +733,7 @@ void Mission::updateSoakKillEnemy() {
 		{
 			LogisticsVariant* pChkVar =
 				LogisticsData::instance
-					? LogisticsData::instance->getVariant(s_soakKilledVariant)
+					? LogisticsData::instance->getVariant(s_soakKilledVariant).transform(std::addressof<LogisticsVariant>).value_or(nullptr)
 					: nullptr;
 			int present = 0;
 			if (pChkVar && LogisticsData::instance)
@@ -825,7 +825,7 @@ void Mission::updateSoakKillEnemy() {
 					pTrade = pM;
 			}
 			char* newPilotName = (pTrade && LogisticsData::instance)
-				? const_cast<char*>(LogisticsData::instance->getBestPilot(pTrade->tonnage))
+				? const_cast<char*>(LogisticsData::instance->getBestPilot(pTrade->tonnage).transform([](auto name) { return name.get().c_str(); }).value_or(nullptr))
 				: nullptr;
 			if (pTrade && newPilotName && Team::home && Commander::home)
 			{
@@ -874,7 +874,7 @@ void Mission::updateSoakKillEnemy() {
 					if (!pM->isDisabled() || pM->isDestroyed()) continue;
 					if (Team::home && pM->getTeamId() == Team::home->id) continue;
 					LogisticsVariant* pVar =
-						LogisticsData::instance->getVariant(pM->variantName);
+						LogisticsData::instance->getVariant(pM->variantName).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 					if (!pVar) continue;
 					LogisticsData::instance->addMechToInventory(
 						pVar, static_cast<LogisticsPilot*>(nullptr), 0, /*bSubtractPts=*/false);
@@ -1116,7 +1116,7 @@ void Mission::updateSoakPilotPromote() {
 				if (!mw) continue;  // getPilot() below gates to real deployed pilots
 				LogisticsPilot* lp =
 					LogisticsData::instance
-						? LogisticsData::instance->getPilot(mw->getName())
+						? LogisticsData::instance->getPilot(mw->getName()).transform(std::addressof<LogisticsPilot>).value_or(nullptr)
 						: nullptr;
 				if (!lp) continue;
 				lPilot = lp;

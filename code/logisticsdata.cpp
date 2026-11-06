@@ -279,7 +279,7 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 }
 
 
-LogisticsVehicle*	LogisticsData::getVehicle( mc2::czstring pName )
+std::optional<std::reference_wrapper<LogisticsVehicle>> LogisticsData::getVehicle( mc2::czstring pName )
 {
 	char tmpStr[256];
 	for (auto & vehicle : vehicles)
@@ -287,11 +287,11 @@ LogisticsVehicle*	LogisticsData::getVehicle( mc2::czstring pName )
 		cLoadString( vehicle->getNameID(), tmpStr, 255 );
 		if ( S_stricmp( tmpStr, pName ) == 0 )
 		{
-			return vehicle.get();
+			return *vehicle;
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale, std::string_view csvName )
@@ -367,27 +367,27 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale,
 }
 
 //*************************************************************************************************
-LogisticsComponent* LogisticsData::getComponent( int componentID )
+std::optional<std::reference_wrapper<LogisticsComponent>> LogisticsData::getComponent( int componentID )
 {
 	for (auto & component : components)
 	{
 			if ( (component.getID() & 0x000000ff) == (componentID & 0x000000ff) )
-				return &component;
+				return component;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 //*************************************************************************************************
-LogisticsData::Building*			LogisticsData::getBuilding( int nameID )
+std::optional<std::reference_wrapper<LogisticsData::Building>> LogisticsData::getBuilding( int nameID )
 {
 	for (auto & building : buildings)
 		{
 			if ( building.nameID == nameID )
-				return &building;
+				return building;
 		}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 

@@ -208,31 +208,31 @@ int LogisticsData::createInstanceID( LogisticsVariant* pVar )
 	return count + 1;
 }
 
-LogisticsVariant* LogisticsData::getVariant( int ID )
+std::optional<std::reference_wrapper<LogisticsVariant>> LogisticsData::getVariant( int ID )
 {
 	for (auto & variant : variants)
 	{
 		if ( variant->getID() == (ID & 0x00ffffff) )
 		{
-			return variant.get();
+			return *variant;
 		}
 	}
 
 	if ( instance->currentlyModifiedMech && ID == instance->currentlyModifiedMech->getID() )
-		return instance->currentlyModifiedMech->getVariant();
+		return *instance->currentlyModifiedMech->getVariant();
 
-	return nullptr;
+	return std::nullopt;
 }
 
-LogisticsMech*	LogisticsData::getMech( int ID )
+std::optional<std::reference_wrapper<LogisticsMech>> LogisticsData::getMech( int ID )
 {
 	for (auto & iter : inventory)
 	{
 		if ( iter->getID() == ID )
-			return iter.get();
+			return *iter;
 	}
 
-	return nullptr;
+	return std::nullopt;
 }
 
 
@@ -254,10 +254,10 @@ std::expected<void, int> LogisticsData::addMechToForceGroup( LogisticsMech* pMec
 	else // find another of the same variant
 	{
 
-		LogisticsMech* pNewMech = getMechWithoutForceGroup( pMech );
+		auto pNewMech = getMechWithoutForceGroup( pMech );
 		if ( pNewMech )
 		{
-			pNewMech->setForceGroup( slot );
+			pNewMech->get().setForceGroup( slot );
 			return {};
 		}
 	}
@@ -280,21 +280,21 @@ std::expected<void, int> LogisticsData::removeMechFromForceGroup( int slot )
 
 }
 
-LogisticsMech*		LogisticsData::getMechWithoutForceGroup( LogisticsMech* pMech )
+std::optional<std::reference_wrapper<LogisticsMech>> LogisticsData::getMechWithoutForceGroup( LogisticsMech* pMech )
 {
 	if ( !pMech->getForceGroup() )
-		return pMech;
+		return *pMech;
 
 	for (auto & iter : inventory)
 		{
 			if ( iter->getVariant() == pMech->getVariant() && !iter->getForceGroup() )
 			{
-				return iter.get();
+				return *iter;
 				
 			}
 		}
 	
-	return nullptr;
+	return std::nullopt;
 }
 std::expected<void, int> LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot )
 {
@@ -326,7 +326,7 @@ std::expected<void, int> LogisticsData::removeMechFromForceGroup( LogisticsMech*
 	return std::unexpected(-1);
 }
 
-LogisticsPilot* LogisticsData::getFirstAvailablePilot()
+std::optional<std::reference_wrapper<LogisticsPilot>> LogisticsData::getFirstAvailablePilot()
 {
 	ensureMechBayDataLoaded("getFirstAvailablePilot");
 	for ( auto iter = pilots.begin(); iter != pilots.end(); ++iter )
@@ -343,11 +343,11 @@ LogisticsPilot* LogisticsData::getFirstAvailablePilot()
 		 }
 		 if ( !bIsUsed )
 		 {
-			 return &(*iter);
+			 return *iter;
 		 }
 	}
 
-	return nullptr;
+	return std::nullopt;
 
 }
 
@@ -471,7 +471,7 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 	}
 }
 
-LogisticsVariant* LogisticsData::getVariant( mc2::czstring pCSVFileName, int VariantNum )
+std::optional<std::reference_wrapper<LogisticsVariant>> LogisticsData::getVariant( mc2::czstring pCSVFileName, int VariantNum )
 {
 	const std::string lowerCase = mc2::str::ascii_lower( mc2::str::from_c( pCSVFileName ) );
 	for (auto & variant : variants)
@@ -479,9 +479,9 @@ LogisticsVariant* LogisticsData::getVariant( mc2::czstring pCSVFileName, int Var
 		if ( variant->getFileName().find( lowerCase ) != std::string::npos
 			&& ((variant->getVariantID()>>16)&0xff) == VariantNum )
 		{
-			return variant.get();
+			return *variant;
 		}
 	}
 
-	return nullptr;
+	return std::nullopt;
 }

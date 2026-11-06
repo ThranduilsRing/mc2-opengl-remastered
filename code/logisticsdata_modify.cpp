@@ -370,7 +370,7 @@ int LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
 		missionInfo->incrementCBills( oldVariant->getCost() );
 	}
 
-	LogisticsVariant* pVar = getVariant( name );
+	LogisticsVariant* pVar = getVariant( name ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 
 	if ( !pVar )
 		Assert( 0, 0, "couldn't find the old variant\n" );
@@ -416,7 +416,7 @@ bool LogisticsData::canReplaceVariant( mc2::czstring name )
 
 bool	LogisticsData::canDeleteVariant( mc2::czstring name )
 {
-	LogisticsVariant* pVariant = getVariant( name );
+	auto pVariant = getVariant( name );
 	if ( !pVariant )
 		return 0;
 		

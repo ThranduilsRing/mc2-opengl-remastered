@@ -329,8 +329,8 @@ void MechLabScreen::begin()
 			static const std::array<int, 4> clanW = { 1, 2, 2, 1 };
 			static const std::array<int, 4> clanH = { 1, 1, 1, 3 };  // 1  2  2  3 cells
 			static const std::array<float, 4> heatByCls = { 8.0f, 12.0f, 16.0f, 20.0f };
-			LogisticsComponent* xl  = LogisticsData::instance->getComponent( 2 );
-			LogisticsComponent* cxl = LogisticsData::instance->getComponent( 3 );
+			LogisticsComponent* xl  = LogisticsData::instance->getComponent( 2 ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
+			LogisticsComponent* cxl = LogisticsData::instance->getComponent( 3 ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 			if ( xl )  xl->setEngineProfile( baseW[cls], baseH[cls], heatByCls[cls] );
 			if ( cxl ) cxl->setEngineProfile( clanW[cls], clanH[cls], heatByCls[cls] );
 		}
@@ -1219,7 +1219,7 @@ void MechLabScreen::swapVariant()
 	// variant changed
 	varName = variantList.EditBox().entry();
 
-	LogisticsVariant* pNewVariant = LogisticsData::instance->getVariant( varName.c_str() );
+	LogisticsVariant* pNewVariant = LogisticsData::instance->getVariant( varName.c_str() ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 	if ( pVariant && pNewVariant)
 	{
 		std::string oldName = pVariant->getName();
@@ -1258,7 +1258,7 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 				else
 				{				
 					// see if it's the same as the current variant...
-					LogisticsVariant* pCurVar = LogisticsData::instance->getVariant( varName.c_str() );
+					LogisticsVariant* pCurVar = LogisticsData::instance->getVariant( varName.c_str() ).transform(std::addressof<LogisticsVariant>).value_or(nullptr);
 					if ( pCurVar && *pCurVar == *pVariant )
 					{
 						LogisticsData::instance->acceptMechModificationsUseOldVariant( pCurVar->getName().c_str() );
@@ -1873,7 +1873,7 @@ void MechLabScreen::updateDiagram()
 	pVariant->getComponentsWithLocation(  componentCount, IDArray, xLocs, yLocs );
 	for ( int i = 0; i < componentCount; i++ )
 	{
-		LogisticsComponent* pComponent = LogisticsData::instance->getComponent( IDArray[i] );
+		LogisticsComponent* pComponent = LogisticsData::instance->getComponent( IDArray[i] ).transform(std::addressof<LogisticsComponent>).value_or(nullptr);
 
 		long xLoc = minX + xLocs[i] * LogisticsComponent::XICON_FACTOR;
 		long yLoc = minY + yLocs[i] * LogisticsComponent::YICON_FACTOR;
