@@ -12,3 +12,4 @@ msvcp140_1.dll
 msvcp140_atomic_wait.dll
 vcruntime140.dll
 vcruntime140_1.dll
+amd_fidelityfx_vk.dll

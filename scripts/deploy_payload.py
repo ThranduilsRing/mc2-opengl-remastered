@@ -1988,7 +1988,8 @@ def dll_source_dirs(src_root):
     """Real homes of the runtime DLLs a fresh Ninja tree lacks: the repo's 3rdparty/lib/x64 (glew32, SDL2, zlib1), the ffmpeg
     bin dir, and the Visual Studio redist CRT (msvcp140*, vcruntime140*). No other worktree is consulted."""
     dirs = [os.path.join(src_root, "3rdparty", "lib", "x64"),
-            os.path.join(src_root, "3rdparty", "ffmpeg-lgpl-win64", "bin")]
+            os.path.join(src_root, "3rdparty", "ffmpeg-lgpl-win64", "bin"),
+            os.path.join(src_root, "3rdparty", "fidelityfx", "bin")]
     pf = os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")
     for edition in ("BuildTools", "Community", "Professional", "Enterprise"):
         base = os.path.join(pf, "Microsoft Visual Studio", "2022", edition, "VC", "Redist", "MSVC")
