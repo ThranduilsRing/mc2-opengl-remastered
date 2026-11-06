@@ -49,18 +49,38 @@ EXCLUSIVE_TTL_S = 1200
 EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
+ROW_RESULTS = {}      # name -> {status, seconds, wait, device}: execute() fills it; the durable verdict reads it
+TIMINGS = {}          # preparation / queue_wait / execution / cache / cleanup seconds for the verdict (promotion: lane_merge --promote)
+CLEANUP_ERRORS = []   # cleanup failures: recorded beside the verdict, never change it
+VERDICT_FILE = "build64-ninja/gate-verdict.json"
+PREREQUISITE = "syncval"   # Windows smoke-lite (day + night) with core + sync validation: first game row after deploy, fail-fast
 
 OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
 
 
-def gate_env(name):
+def gate_env(name, device=None):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
     stages run test suites that must see the same environment a lane sees. Game stages are also pinned to the gate's side
-    of the GPU split (A:/Games/mc2-ops/GPU_SPLIT) so lane game runs on the other GPU proceed during the window."""
+    of the GPU split (A:/Games/mc2-ops/GPU_SPLIT) so lane game runs on the other GPU proceed during the window.
+    device: the worker's own MC2_VK_DEVICE name substring (the auxiliary chain runs on aux_device(), not the stock chain's GPU)."""
     if name in OFFLINE_STAGES:
         return {}
     from smoke_lib import host_lease
-    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.gpu_split()["gate"]}
+    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": device or host_lease.gpu_split()["gate"]}
+
+
+def aux_device():
+    """r7 finding 3: the auxiliary chain (mods + clone-safe rows) gets the PC's other GPU, by device name: GPU_SPLIT `gate_aux=`
+    when set, else the lane device. The host lease still bounds the game count, so lanes on that GPU share it, never oversubscribe."""
+    from smoke_lib import host_lease
+    try:
+        for line in host_lease.GPU_SPLIT_PATH.read_text(encoding="utf-8").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "gate_aux" and value.strip():
+                return value.strip()
+    except OSError:
+        pass
+    return host_lease.gpu_split()["lane"]
 
 
 def window_reusable(window, tree, now=None):
@@ -974,15 +994,18 @@ def farm_stage(command, overrides, runner=None, local_env=None):
 PUBLISHED = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
 
 
-def stage_published(install, published=PUBLISHED):
+def stage_published(install, published=PUBLISHED, swap_payload=True):
     """Make the private candidate the pixel row's single install.
 
     The lean seed has no data/textures/*.burnin.* (W99: before ran on v0.4 with the 6144 burn-in colormap, after on the seed with 1536,
     a constant false MAD of 1.4/0.9). Give the candidate the burn-in files so every row exercises the path the owner plays, and put the
-    published exe and shaders on it so capture-before runs the OLD build on the SAME data; the deploy row then replaces them."""
+    published exe and shaders on it so capture-before runs the OLD build on the SAME data; the deploy row then replaces them.
+    swap_payload=False (no capture-before will run): the frozen candidate payload stays intact, so a cached deployment is not downgraded
+    and the deploy row's reuse check still hits (r7 finding 2)."""
     install, published = Path(install), Path(published)
-    shutil.copy2(published / "mc2.exe", install / "mc2.exe")
-    for name in ("shaders", "shaders_vk"):
+    if swap_payload:
+        shutil.copy2(published / "mc2.exe", install / "mc2.exe")
+    for name in ("shaders", "shaders_vk") if swap_payload else ():
         if (published / name).is_dir():
             shutil.rmtree(install / name, ignore_errors=True)
             shutil.copytree(published / name, install / name)
@@ -1080,37 +1103,107 @@ def keep_stock_copy(install, head, candidate=None, root=None):
     return candidate
 
 
-def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False):
-    """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed."""
+def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False, on_result=None):
+    """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed.
+    on_result(rc) runs before the candidate cleanup, so the durable verdict exists even if cleanup fails or hangs."""
     deploy = next((s for s in steps if s[0] == "deploy"), None)
     scheduling = dict(farm_determinism=True) if farm_determinism else {}
     if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
-        return execute_parallel(steps, head, dry_run, keep_going, **scheduling)
+        rc = execute_parallel(steps, head, dry_run, keep_going, **scheduling)
+        if on_result:
+            on_result(rc)
+        return rc
     candidate = CANDIDATE
+    # Only an active capture-before needs the published exe on the candidate; otherwise keep the frozen payload (r7 finding 2).
+    swap = any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps)
     def prove(install):
         # capture-before and capture-after both run on the candidate: before with the published exe, after with the new one.
         if not dry_run:
-            stage_published(install)
+            stage_published(install, swap_payload=swap)
         return execute_parallel(install_plan(steps, install), head, dry_run, keep_going, **scheduling)
     if dry_run:
         return prove(candidate)
+    cache_started = time.monotonic()
     seed = gate_reuse.deployed_seed(ROOT, head) or CANDIDATE_SEED
-    with stock_copy(seed, parent=CANDIDATE_SEED.parent, **(dict(keep=True) if keep_candidate else {})) as install:
+    TIMINGS["cache"] = TIMINGS.get("cache", 0.0) + time.monotonic() - cache_started
+    context = stock_copy(seed, parent=CANDIDATE_SEED.parent, **(dict(keep=True) if keep_candidate else {}))
+    install = context.__enter__()
+    rc = 1
+    try:
+        rc = prove(install)
+        return rc
+    finally:
+        if on_result:
+            on_result(rc)
+        cleanup_started = time.monotonic()
         try:
-            return prove(install)
-        finally:
-            if keep_candidate:
-                try:
-                    kept = keep_stock_copy(install, head)
-                except Exception as exc:  # never mask the gate verdict; main() reports this after it
-                    shutil.rmtree(install, ignore_errors=True)  # keep=True skipped stock_copy's cleanup
-                    CANDIDATE_ERRORS.append(f"{type(exc).__name__}: {exc}")
-                else:
-                    print(f"[merge_gate] CANDIDATE_KEPT path={kept} head={head[:12]} (walks: sweep_campaign stock|MechCommanderOmnitech <secs> {kept}; "
-                          "remove with --drop-candidate)", flush=True)
+            context.__exit__(None, None, None)
+        except Exception as exc:  # noqa: BLE001 - recorded beside the verdict, never alters it
+            CLEANUP_ERRORS.append(f"candidate {install}: {exc}")
+            print(f"[merge_gate] cleanup error (verdict unchanged): {exc}", flush=True)
+        TIMINGS["cleanup"] = TIMINGS.get("cleanup", 0.0) + time.monotonic() - cleanup_started
+        if keep_candidate:
+            try:
+                kept = keep_stock_copy(install, head)
+            except Exception as exc:  # never mask the gate verdict; main() reports this after it
+                shutil.rmtree(install, ignore_errors=True)  # keep=True skipped stock_copy's cleanup
+                CANDIDATE_ERRORS.append(f"{type(exc).__name__}: {exc}")
+            else:
+                print(f"[merge_gate] CANDIDATE_KEPT path={kept} head={head[:12]} (walks: sweep_campaign stock|MechCommanderOmnitech <secs> {kept}; "
+                      "remove with --drop-candidate)", flush=True)
 
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
+FULL_MARK = "build64-ninja/last-full-gate.json"
+
+
+def verdict_of(result, steps, failed=None):
+    """(verdict, skipped): PASS only when every row ran green; a skipped required row is PARTIAL, host-only reds are INFRA."""
+    failed = FAILED_STAGES if failed is None else failed
+    skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
+    skipped += [n for n, row in ROW_RESULTS.items() if row["status"].startswith("SKIP") and n not in skipped]
+    infra_only = bool(result and failed and all(s.startswith("INFRA") for _, s in failed))
+    return ("INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")), skipped
+
+
+def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, timings, cleanup_errors):
+    """The durable structured verdict (schema 1). Written atomically; written BEFORE cleanup and again after it with the same verdict."""
+    reasons = {n: e["MC2_GATE_SKIP_REASON"] for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
+    reasons.update({n: r["status"][len("SKIP: "):] for n, r in ROW_RESULTS.items() if r["status"].startswith("SKIP: ")})
+    data = dict(schema=1, head=head, branch=branch, verdict=verdict, complete=verdict == "PASS",
+                required=[n for n, _, _ in steps],
+                executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
+                skipped={n: reasons.get(n, "not run") for n in skipped},
+                not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
+                failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
+                artifacts=artifacts, timings={k: round(v, 1) for k, v in timings.items()},
+                cleanup_errors=list(cleanup_errors), written=time.time())
+    text = json.dumps(data, indent=2)
+    for path in paths:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    return data
+
+
+def mark_full_gate(root, head, verdict, full, dry_run):
+    """last-full-gate.json records a COMPLETE PASS only: a partial or red full gate leaves the previous mark (and removes a same-HEAD one)."""
+    mark = Path(root) / FULL_MARK
+    if not full or dry_run:
+        return False
+    if verdict != "PASS":
+        try:
+            if json.loads(mark.read_text(encoding="utf-8")).get("head") == head:
+                mark.unlink()
+        except (OSError, ValueError):
+            pass
+        return False
+    mark.write_text(json.dumps(dict(head=head, finished=time.time())))
+    return True
+
+
 MAD_LIMIT = 0.05
 DECLARED_VIEWS = {}
 DECLARED_MAD_BOUND = 0.5
@@ -1206,6 +1299,22 @@ def push_box_filler():
         print(f"[merge_gate] box filler push skipped: {exc}")
 
 
+def fail_fast_hold(steps):
+    """The rows a red prerequisite holds back: every active non-offline row becomes a recorded SKIP that never launches."""
+    why = f"prerequisite {PREREQUISITE} failed (fail-fast; --keep-going runs them)"
+    return [(n, c, e if e.get("MC2_GATE_SKIP_REASON") else dict(e, MC2_GATE_SKIP_REASON=why))
+            for n, c, e in steps if not e.get("MC2_GATE_REUSE_STAGE") and n not in OFFLINE_STAGES]
+
+
+def close_clone(context):
+    """Remove a stock-copy clone. A cleanup failure is recorded for the verdict and never changes it."""
+    try:
+        context.__exit__(None, None, None)
+    except Exception as exc:  # noqa: BLE001 - cleanup must not alter the verdict
+        CLEANUP_ERRORS.append(f"stock-copy clone: {exc}")
+        print(f"[merge_gate] cleanup error (verdict unchanged): {exc}", flush=True)
+
+
 def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determinism=False):
     """Overlap isolated mods/determinism with the stock install chain.
 
@@ -1297,13 +1406,12 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
             if not keep_going:
                 return result  # do not launch runtime proofs after a failed deploy/offline check
             print("[merge_gate] --keep-going: deploy/pre-stage failure recorded; later stages still run", flush=True)
-        if farm:
-            remote_envs = {farm_key(c): e for _, c, e in farm}
-            def farm_runner(command, cwd, env):
-                return farm_stage(command, remote_envs[farm_key(command)], local_env=env)
-            pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
+        if mods and not any(not s[2].get("MC2_GATE_SKIP_REASON") for s in mods):
+            # Every mods row is skipped or inactive: record the SKIP, take no clone snapshot (r7 finding 1).
+            result |= execute(mods, head, runner=runner, completed=completed)
+            mods = []
+        copy_context, copy_future = None, None
         if mods:
-            copy_context, copy_future = None, None
             command = next((c for _, c, _ in determinism + stock if "--install" in c), None)
             if command:
                 install = Path(command[command.index("--install") + 1]).resolve()
@@ -1315,6 +1423,28 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                 except (OSError, RuntimeError) as exc:
                     print(f"[merge_gate] stock-copy FAIL (not waived): {exc}", flush=True)
                     return 1
+        # Fail-fast Windows prerequisite: the real smoke-lite (day + night, core + sync validation) runs right after
+        # deploy and before every long game row; red schedules none of them (--keep-going keeps the exhaustive run).
+        rest = stock[boundary:]
+        prereq = next((s for s in rest if s[0] == PREREQUISITE and not s[2].get("MC2_GATE_SKIP_REASON")), None)
+        if prereq and not result:
+            rest = [s for s in rest if s is not prereq]
+            stock = stock[:boundary] + rest
+            prereq_result = execute([prereq], head, runner=runner, completed=completed)
+            if prereq_result and not keep_going:
+                held = fail_fast_hold(rest + mods + determinism + farm)
+                if held:
+                    execute(held, head, runner=runner, completed=completed)
+                if copy_future:
+                    close_clone(copy_context)
+                return 1
+            result |= prereq_result
+        if farm:
+            remote_envs = {farm_key(c): e for _, c, e in farm}
+            def farm_runner(command, cwd, env):
+                return farm_stage(command, remote_envs[farm_key(command)], local_env=env)
+            pending.append(pool.submit(execute, farm, head, runner=farm_runner, completed=completed))
+        if mods:
             # Without a private stock snapshot, keep mod staging away from
             # stock harness writes to the live install's configs.
             if not copy_future:
@@ -1332,11 +1462,12 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                                     i = command.index(option) + 1
                                     command[i] = command[i].replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
                             remapped.append((n, command, e))
+                        # The clone chain runs beside the stock chain: route it to the auxiliary GPU (r7 finding 3).
                         mod_rows = [s for s in remapped if s[0] == 'mods']
-                        result |= execute(mod_rows, head, runner=runner, completed=completed)
-                        rest = [s for s in remapped if s[0] != 'mods']
-                        if rest:
-                            result |= execute(rest, head, runner=runner, completed=completed)
+                        result |= execute(mod_rows, head, runner=runner, completed=completed, device=aux_device())
+                        others = [s for s in remapped if s[0] != 'mods']
+                        if others:
+                            result |= execute(others, head, runner=runner, completed=completed, device=aux_device())
                     return result
                 except (OSError, RuntimeError) as exc:
                     print(f"[merge_gate] stock-copy/determinism FAIL (not waived): {exc}", flush=True)
@@ -1348,7 +1479,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                         except (OSError, RuntimeError):
                             pass  # stock_copy already cleaned an incomplete copy
                         else:
-                            copy_context.__exit__(None, None, None)
+                            close_clone(copy_context)
             pending.append(pool.submit(auxiliary))
         result |= execute(stock[boundary:], head, runner=runner, completed=completed) if stock[boundary:] else 0
         result |= offline_result
@@ -1442,8 +1573,8 @@ def game_batch():
             pass
 
 
-def execute(steps, head, dry_run=False, runner=run_child, completed=None):
-    """Run every stage and return nonzero if any stage failed."""
+def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None):
+    """Run every stage and return nonzero if any stage failed. device: MC2_VK_DEVICE for this chain's game rows (None = gate GPU)."""
     if not steps:
         raise ValueError("no stages selected; gate requires at least one stage")
     results = []
@@ -1499,7 +1630,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     ACTIVE_STATE.reused.append(name)
                 ACTIVE_STATE.record(name, command, overrides, status, 0.0)
             continue
-        status, elapsed, scheduler_wait = "SKIPPED", 0.0, 0.0
+        status, elapsed, scheduler_wait, waited = "SKIPPED", 0.0, 0.0, 0.0
         if dry_run:
             print("PLAN " + " ".join(f"{k}={v}" for k, v in overrides.items()) + " " + subprocess.list2cmdline(command))
             status = "DRY-RUN"
@@ -1534,12 +1665,12 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
                     with game_batch() as batch_env:
                         waited = time.monotonic() - lease_started
                         held_started = time.monotonic()
-                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name)))
+                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name, device)))
                     held = time.monotonic() - held_started
                     EXCLUSIVE_SECONDS.append(held)
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
                 else:
-                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name)))
+                    result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
                 if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])
@@ -1563,8 +1694,12 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
             if name == 'mods':
                 gate_reuse.mods_end(status == "PASS")
             elif name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
+                cache_started = time.monotonic()
                 gate_reuse.save_deployed(command[command.index('--allow-new-target') - 1], ROOT, head)
+                TIMINGS["cache"] = TIMINGS.get("cache", 0.0) + time.monotonic() - cache_started
         results.append((name, status, elapsed))
+        ROW_RESULTS[name] = dict(status=status, seconds=round(elapsed, 1), wait=round(scheduler_wait + waited, 1),
+                                 device=(gate_env(name, device) or {}).get("MC2_VK_DEVICE"))
         completed[name] = status
         if not dry_run and ACTIVE_STATE:
             ACTIVE_STATE.record(name, command, overrides, status, elapsed, scheduler_wait)
@@ -1572,6 +1707,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None):
     print("| Step | Result | Seconds |\n|---|---|---:|")
     for name, status, elapsed in results:
         print(f"| {name} | {status} | {elapsed:.1f} |")
+        ROW_RESULTS.setdefault(name, dict(status=status, seconds=round(elapsed, 1), wait=0.0, device=None))
     for name, status, _ in results:
         if not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")):
             FAILED_STAGES.append((name, status))
@@ -1616,6 +1752,9 @@ class Tee:
 
 def main(argv=None):
     FAILED_STAGES.clear()
+    ROW_RESULTS.clear()
+    TIMINGS.clear()
+    CLEANUP_ERRORS.clear()
     CANDIDATE_ERRORS.clear()
     ap = argparse.ArgumentParser(description=__doc__)
     if "MC2_IN_GATE" in os.environ:
@@ -1769,9 +1908,10 @@ def main(argv=None):
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:
+        branch = git("branch", "--show-current")
         if not args.install and (ROOT.resolve() != Path("A:/Games/mc2-main").resolve()
-                or git("branch", "--show-current") != "claude/nifty-mendeleev"):
-            ap.error("real merge gates are orchestrator-only in mc2-main on claude/nifty-mendeleev; use --dry-run in lanes")
+                or not (branch == "claude/nifty-mendeleev" or branch.startswith("claude/stage-"))):
+            ap.error("real merge gates are orchestrator-only in mc2-main on claude/nifty-mendeleev or a claude/stage-<window> candidate; use --dry-run in lanes")
         if git("status", "--porcelain", "--untracked-files=no"):
             ap.error("commit tracked changes before running the merge gate")
         if preflight(head, args.install or Path('E:/mc2-installs/_lean-seed'), window_number, steps):
@@ -1798,13 +1938,29 @@ def main(argv=None):
                 execute_gate = execute_parallel if args.install else execute_window
                 if args.keep_candidate and not args.install:
                     scheduling["keep_candidate"] = True
+                exe = ROOT / "build64-ninja/mc2.exe"
+                artifacts = dict(exe=str(exe), exe_sha256=gate_reuse._file_sha(exe) if exe.is_file() else None,
+                                 proof=str(proof), log=str(log_path), install=str(args.install or CANDIDATE))
+                verdict_paths = [proof / "gate-verdict.json", ROOT / VERDICT_FILE]
+                exec_started = time.time()
+                TIMINGS["preparation"] = exec_started - started
+                def durable(rc):
+                    TIMINGS.setdefault("execution", time.time() - exec_started)
+                    TIMINGS["queue_wait"] = sum(r.get("wait", 0.0) for r in ROW_RESULTS.values())
+                    v, s = verdict_of(rc, steps)
+                    if not args.dry_run:
+                        write_verdict(verdict_paths, head=head, branch=git("branch", "--show-current"), verdict=v, steps=steps,
+                                      skipped=s, artifacts=artifacts, timings=TIMINGS, cleanup_errors=CLEANUP_ERRORS)
+                        print(f"[merge_gate] verdict {v} written before cleanup: {ROOT / VERDICT_FILE}", flush=True)
+                    return v
+                if execute_gate is execute_window:
+                    scheduling["on_result"] = durable
                 result = execute_gate(steps, head, args.dry_run, keep_going=args.keep_going, **scheduling)
                 elapsed = time.time() - started
                 # Verdict rc: 0 every row green, 1 a red row, 2 partial gate (skipped rows), 3 only infra reds. The clock is information only.
-                skipped = [n for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON") and not e.get("MC2_GATE_REUSE_STAGE")]
                 # INFRA: every red row failed on the host (INFRA status), so no product regression is claimed.
-                infra_only = bool(result and FAILED_STAGES and all(s.startswith("INFRA") for _, s in FAILED_STAGES))
-                verdict = "INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")
+                verdict, skipped = verdict_of(result, steps)
+                durable(result)  # same verdict, now with the cleanup timing and any cleanup errors
                 print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
                 print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (window box 120 min, cap 180; info only) verdict={verdict} REUSED={reused or 'none'}"
@@ -1813,8 +1969,7 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
-                if args.full and result == 0 and not args.dry_run:
-                    (ROOT / "build64-ninja/last-full-gate.json").write_text(json.dumps(dict(head=head, finished=time.time())))
+                mark_full_gate(ROOT, head, verdict, args.full, args.dry_run)
                 if verdict != "PASS" and not args.dry_run and not args.install:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and not args.install:

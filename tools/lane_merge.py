@@ -559,6 +559,28 @@ def resolve_row_table(root: str, path: str) -> bool:
     return git(root, "add", "-u", "--", path).returncode == 0
 
 
+# Semantic ratchets whose baselines regenerate_all rewrites (--write-baseline): they are checked against the COMMITTED baseline
+# first, so a merge that adds a violation stays red instead of being blessed by the regeneration (which may then only tighten).
+# cxx17 is covered by the per-tip check-only run_ratchets; the log tag census by log_tag_loosened in regenerate_derived.
+SEMANTIC_RATCHETS = [
+    ("pointer_order", "pointer_order_scan.py", ["--check"]),
+    ("own_inventory", "own_inventory.py", ["--check"]),
+]
+
+
+def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
+    """Check-only run of SEMANTIC_RATCHETS at the merged HEAD, before any regeneration. -> the failing (label, rc, tail)."""
+    failed = []
+    for label, rel, args in SEMANTIC_RATCHETS:
+        script = os.path.join(tools_dir, *rel.split("/"))
+        if not os.path.isfile(script):   # the throwaway repos of the tests carry only the fake ratchets
+            continue
+        r = run(root, [sys.executable, "-B", script, *args])
+        if r.returncode:
+            failed.append((label, r.returncode, "\n".join(lines(r.stdout)[-60:])))
+    return failed
+
+
 def run_ratchets(root: str, tools_dir: str, *, tighten=True) -> list[tuple[str, int, str]]:
     results = []
     for label, rel, args in RATCHETS:
@@ -1144,9 +1166,6 @@ def pre_gate(root: str, exe: str | None = None) -> int:
     ]
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
-    if os.path.isfile(exe):   # parse-level sanity of the headless smoke path; --resolve-only launches nothing
-        steps.append(("headless-smoke", py + [os.path.join(root, "scripts", "run_smoke.py"), "--headless", "--ticks", "10",
-                                              "--resolve-only", "--exe", exe]))
     failed = []
     if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
         print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)
@@ -1165,13 +1184,18 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         if rc:
             print(out, flush=True)
             failed.append(label)
-    print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed))
-          + ("" if os.path.isfile(exe) else " (headless-smoke skipped: no exe)"))
+    print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed)))
     return 1 if failed else 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, epilog=STAGE_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--stage", metavar="W", help="with --batch: build candidate claude/stage-W from nifty with the frozen tips (see the merge queue below)")
+    ap.add_argument("--promote", metavar="W", help="fast-forward nifty to the claude/stage-W candidate; only on a complete PASS verdict for its HEAD")
+    ap.add_argument("--verdict", help="with --promote: gate verdict JSON (default <root>/build64-ninja/gate-verdict.json)")
+    ap.add_argument("--bisect", metavar="W", help="after a candidate verdict (--red / --green): halve a red batch, reject a red single tip")
+    ap.add_argument("--red", action="store_true", help="with --bisect: the candidate failed")
+    ap.add_argument("--green", action="store_true", help="with --bisect: the candidate passed (and was promoted)")
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
     ap.add_argument("--lint", metavar="REF", help="seconds-fast subset of --precheck (ratchets, callers, early rows, ungated tags, stale inventories) with a fix per red; run it before --precheck")
     ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: conflicts, ratchets, callers, Python suites (fast, no native build; --with-link adds links)")
@@ -1183,9 +1207,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-sim-rows", action="store_true", help="with --precheck: skip the saveload/determinism rows a sim-sensitive tip requires (recorded in the receipt)")
     ap.add_argument("--sim-install", help="with --precheck: install holding the tip's exe for the sim rows (default E:/mc2-installs/<laneN>)")
     ap.add_argument("--pre-gate", action="store_true",
-                    help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check, cxx17 and a no-game headless "
-                         "run_smoke row; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
-    ap.add_argument("--exe", help="with --pre-gate: exe for the headless row (default <root>/build64-ninja/mc2.exe, skipped if absent)")
+                    help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check and cxx17; "
+                         "all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
+    ap.add_argument("--exe", help="with --pre-gate: exe whose fingerprint must match HEAD (default <root>/build64-ninja/mc2.exe, skipped if absent)")
     ap.add_argument("--batch", nargs="+", metavar="TIP",
                     help="merge these tips in order; baseline follow-ups after each, build + doctest verify once at the end")
     ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
@@ -1261,6 +1285,9 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     if batch:
         results = run_ratchets(root, tools_dir, tighten=False)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
+    semantic = semantic_precheck(root, tools_dir)
+    if semantic:
+        return merge_sha, None, semantic
     artifacts = regenerate_all(root)
     artifact_follow = None
     if artifacts:
@@ -1288,6 +1315,145 @@ def box_cleanup_lane(root, ref) -> None:
         print(f"box cleanup {ref}: skipped ({exc})")
 
 
+NIFTY = "claude/nifty-mendeleev"
+STAGE_PREFIX = "claude/stage-"
+STAGE_HELP = """merge queue (bors-style staging; nifty only ever fast-forwards to a proven candidate):
+  1. py -3 tools/lane_merge.py --stage W --batch A B C     freeze tips A B C, build claude/stage-W from nifty and merge them there
+  2. py -3 scripts/merge_gate.py --full ...                gate the checked-out candidate; writes build64-ninja/gate-verdict.json
+  3. py -3 tools/lane_merge.py --promote W                 fast-forward nifty to the candidate: refused unless the verdict is a
+                                                           complete PASS for the candidate HEAD (no skipped row) and nifty is its
+                                                           ancestor and not checked out elsewhere; a red leaves nifty untouched
+  4. on a red: py -3 tools/lane_merge.py --bisect W --red  halve the frozen tips (first half retested, rest queued) and print the
+                                                           next --stage command; a red single tip is GUILTY and goes back to its lane
+     after a green half: --promote W, then --bisect W --green queues the rest on the new nifty
+  state: build64-ninja/stage-W.json (base, frozen tips, testing, queue, rejected, history)"""
+
+
+def stage_state_path(root: str, window: str) -> Path:
+    return Path(root) / "build64-ninja" / f"stage-{window}.json"
+
+
+def load_stage(root: str, window: str) -> dict:
+    try:
+        return json.loads(stage_state_path(root, window).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise Stop(2, f"no staging state for window {window} ({stage_state_path(root, window)}); run --stage {window} --batch ... first")
+
+
+def save_stage(root: str, window: str, state: dict) -> None:
+    path = stage_state_path(root, window)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def bisect_step(state: dict, passed: bool) -> tuple[dict, str]:
+    """Pure queue step after a candidate's verdict. -> (new state, action): "promote" (green: the tested tips may land; any queued
+    rest is tested next on the new nifty), "guilty" (a red single tip is rejected; the queue is tested next), "retest" (a red batch
+    is halved: the first half is tested, the second goes to the front of the queue), "done" (nothing left)."""
+    s = dict(state, testing=list(state.get("testing", [])), queue=list(state.get("queue", [])),
+             rejected=list(state.get("rejected", [])), history=list(state.get("history", [])))
+    tested = s["testing"]
+    s["history"].append(dict(tested=tested, passed=passed))
+    if passed:
+        s["landed"] = list(state.get("landed", [])) + tested
+        s["testing"], s["queue"] = s["queue"], []
+        return s, "promote"
+    if len(tested) <= 1:
+        s["rejected"] += tested
+        s["testing"], s["queue"] = s["queue"], []
+        return s, "guilty" if tested else "done"
+    half = (len(tested) + 1) // 2
+    s["testing"], s["queue"] = tested[:half], tested[half:] + s["queue"]
+    return s, "retest"
+
+
+def checked_out_elsewhere(root: str, branch: str) -> list[str]:
+    """Worktrees that have `branch` checked out (update-ref under a checkout would leave it with a moved branch and a stale tree)."""
+    out, path = [], None
+    for line in git_out(root, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            path = line[len("worktree "):]
+        elif line == f"branch refs/heads/{branch}":
+            out.append(path)
+    return out
+
+
+def stage(root: str, window: str, tips: list[str]) -> dict:
+    """Freeze the tips and check out claude/stage-<window> at the current nifty; the --batch merge then runs on that branch."""
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", window):
+        raise Stop(2, f"bad window name {window!r}")
+    if status_entries(root):
+        raise Stop(4, "staging needs a clean worktree (git status is not empty)")
+    base = git_out(root, "rev-parse", f"{NIFTY}^{{commit}}")
+    frozen = [git_out(root, "rev-parse", f"{t}^{{commit}}") for t in tips]
+    branch = STAGE_PREFIX + window
+    git_out(root, "checkout", "-q", "-B", branch, base)
+    try:
+        prev = load_stage(root, window)
+    except Stop:
+        prev = {}
+    state = dict(prev, window=window, branch=branch, base=base, tips=dict(zip(frozen, tips)), testing=frozen,
+                 queue=[q for q in prev.get("queue", []) if q not in frozen], staged=time.time())
+    save_stage(root, window, state)
+    print(f"STAGE {branch} base={base[:9]} tips={len(frozen)} (" + " ".join(f[:9] for f in frozen) + ")")
+    return state
+
+
+def promote(root: str, window: str, verdict_path: str | None = None) -> int:
+    """Fast-forward nifty to the staged candidate, fail-closed. Every refusal leaves nifty exactly where it was."""
+    state = load_stage(root, window)
+    branch = state.get("branch", STAGE_PREFIX + window)
+    started = time.monotonic()
+    vpath = Path(verdict_path or Path(root) / "build64-ninja" / "gate-verdict.json")
+    try:
+        verdict = json.loads(vpath.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise Stop(6, f"PROMOTE REFUSED: no readable gate verdict at {vpath} ({exc})")
+    cand = git_out(root, "rev-parse", f"{branch}^{{commit}}")
+    old = git_out(root, "rev-parse", f"{NIFTY}^{{commit}}")
+    why = []
+    if verdict.get("verdict") != "PASS" or not verdict.get("complete"):
+        why.append(f"verdict {verdict.get('verdict')} complete={verdict.get('complete')}")
+    if verdict.get("skipped"):
+        why.append("skipped rows: " + ", ".join(sorted(verdict["skipped"])))
+    if verdict.get("head") != cand:
+        why.append(f"verdict head {str(verdict.get('head'))[:9]} is not the candidate {cand[:9]}")
+    if git(root, "merge-base", "--is-ancestor", old, cand).returncode != 0:
+        why.append(f"nifty {old[:9]} is not an ancestor of the candidate (not a fast-forward)")
+    elsewhere = checked_out_elsewhere(root, NIFTY)
+    if elsewhere:
+        why.append("nifty is checked out in " + ", ".join(elsewhere))
+    if why:
+        raise Stop(6, "PROMOTE REFUSED (nifty untouched): " + "; ".join(why))
+    git_out(root, "update-ref", "-m", f"merge queue: promote {branch}", f"refs/heads/{NIFTY}", cand, old)
+    if git_out(root, "branch", "--show-current") == branch and not status_entries(root):
+        git_out(root, "checkout", "-q", NIFTY)   # same commit: the tree does not change
+    seconds = round(time.monotonic() - started, 1)
+    verdict.setdefault("timings", {})["promotion"] = seconds
+    tmp = vpath.with_name(vpath.name + ".tmp")
+    tmp.write_text(json.dumps(verdict, indent=2), encoding="utf-8")
+    os.replace(tmp, vpath)
+    state["promoted"] = dict(sha=cand, old=old, seconds=seconds, at=time.time())
+    save_stage(root, window, state)
+    print(f"PROMOTED {NIFTY} {old[:9]} -> {cand[:9]} ({seconds}s)")
+    return 0
+
+
+def bisect(root: str, window: str, passed: bool) -> int:
+    state, action = bisect_step(load_stage(root, window), passed)
+    save_stage(root, window, state)
+    names = state.get("tips", {})
+    if action == "guilty":
+        print(f"GUILTY {names.get(state['rejected'][-1], state['rejected'][-1])} ({state['rejected'][-1][:9]}): back to its lane")
+    if state["testing"]:
+        print(f"NEXT py -3 tools/lane_merge.py --stage {window} --batch " + " ".join(state["testing"]))
+    else:
+        print(f"QUEUE EMPTY window={window} landed={len(state.get('landed', []))} rejected={len(state['rejected'])}")
+    return 0
+
+
 def cpu_mode(args) -> str:
     """"gate" (CPUs 0-7) only for the merge itself (--batch or a single tip); --lint, --precheck, --pre-gate, --regenerate-all are lane work."""
     lane_only = args.lint or args.precheck or args.pre_gate or args.regenerate_all
@@ -1309,6 +1475,21 @@ def main(argv: list[str] | None = None) -> int:
                         not args.no_sim_rows, args.sim_install)
     if args.pre_gate:
         return pre_gate(args.root, args.exe)
+    try:
+        if args.promote:
+            return promote(args.root, args.promote, args.verdict)
+        if args.bisect:
+            if args.red == args.green:
+                ap.error("--bisect needs exactly one of --red / --green")
+            return bisect(args.root, args.bisect, args.green)
+        if args.stage:
+            if not args.batch:
+                ap.error("--stage needs --batch TIP ...")
+            if not args.dry_run:
+                stage(args.root, args.stage, args.batch)
+    except Stop as e:
+        print(f"lane_merge: {e}", file=sys.stderr)
+        return e.code
     if not args.regenerate_all and bool(args.ref) == bool(args.batch):
         ap.error("give one lane tip, or --batch with several")
     if args.regenerate_all and (args.ref or args.batch):
@@ -1393,6 +1574,10 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
+        if batch and merged and not reds:
+            semantic = semantic_precheck(root, tools_dir)
+            if semantic:
+                reds.append((refs[-1], semantic))
         if batch and merged and not reds:
             pre_dirty = {path for _, path in status_entries(root)}
             artifacts = regenerate_derived(root, window_base)

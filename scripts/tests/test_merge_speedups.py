@@ -561,7 +561,7 @@ def test_window_never_publishes_to_v04(monkeypatch, tmp_path, failure):
     monkeypatch.setattr(gate.gate_reuse, "deployed_seed", lambda *a, **k: None)
     monkeypatch.setattr(gate, "stock_copy", candidate)
     staged = []
-    monkeypatch.setattr(gate, "stage_published", lambda install: staged.append(install))
+    monkeypatch.setattr(gate, "stage_published", lambda install, **k: staged.append(install))
     checked, published = [], []
     monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a, **k: checked.extend(steps) or int(failure))
     monkeypatch.setattr(gate, "execute", lambda steps, *a, **k: published.extend(steps) or 0)
@@ -1232,11 +1232,11 @@ def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tm
     monkeypatch.setattr(lm, "run", fake_run)
     assert lm.pre_gate(str(tmp_path), str(exe)) == 1
     out = capsys.readouterr().out
-    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "check_sim_include_firewall.py", "log_tag_census.py", "run_smoke.py"]  # a red step does not stop the rest
+    assert ran == ["check-background-launch.py", "gate_gen.py", "cxx17_ratchet.py", "check_sim_include_firewall.py", "log_tag_census.py"]  # a red step does not stop the rest
     assert out.strip().splitlines()[-1] == "PRE-GATE FAIL: gate_gen"
     monkeypatch.setattr(lm, "run", lambda root, cmd, env=None: _r(0))
     assert lm.pre_gate(str(tmp_path), str(tmp_path / "none.exe")) == 0
-    assert "PRE-GATE PASS (headless-smoke skipped: no exe)" in capsys.readouterr().out
+    assert "PRE-GATE PASS\n" in capsys.readouterr().out
 
 
 def test_ninja_build_warns_on_dirty_tree_and_stale_exe(monkeypatch, tmp_path):

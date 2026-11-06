@@ -46,7 +46,7 @@ def _window(monkeypatch, tmp_path, mods_source):
     monkeypatch.setattr(gate, "CANDIDATE", tmp_path / "cand")
     monkeypatch.setattr(gate, "CANDIDATE_MODS_SOURCE", mods_source)
     monkeypatch.setattr(gate, "stock_copy", fake_stock_copy)
-    monkeypatch.setattr(gate, "stage_published", lambda install: None)
+    monkeypatch.setattr(gate, "stage_published", lambda install, **k: None)
     monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a, **k: 1)  # a red verdict must survive
     monkeypatch.setattr(gate, "candidate_identity", lambda install, head, root=None: dict(exe_sha256="e" * 64, exe_commit=head[:12]))
     gate.CANDIDATE_ERRORS.clear()

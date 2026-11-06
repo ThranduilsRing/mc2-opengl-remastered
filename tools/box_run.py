@@ -152,7 +152,9 @@ mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
-CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|unit-san|lint|cpu:*|sh:*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
+# determinism:* and saveload* run the engine with --headless (no window, no device: gameos_graphics.cpp), so they are CPU rows too (r7 finding 3)
+CR=(); GR=(); for r in "${ROWS[@]}"; do case $r in build|unit|unit-san|lint|cpu:*|sh:*|determinism:*|saveload*) CR+=("$r");; *) GR+=("$r");; esac; done; ROWS=("${CR[@]}" "${GR[@]}"); LOCKED=""
+grh() { nice -n 19 taskset -c "$BCPUS" xvfb-run -a -s "-screen 0 640x480x24" "$@" 9>&- 8>&-; }   # headless engine rows: build cores, no GPU lock, private xvfb (SDL init only)
 RES=0
 FPPY='import sys, json, os
 sys.path.insert(0, "tools")
@@ -166,7 +168,7 @@ RIDX=0
 for row in "${ROWS[@]}"; do
   RIDX=$((RIDX+1))
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
-  case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
+  case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
   case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  QS=""; [ "$GOT" = 3 ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu 3 --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)

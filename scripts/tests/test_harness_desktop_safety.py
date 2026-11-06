@@ -204,6 +204,16 @@ def test_run_smoke_refuses_an_unfingerprinted_exe_and_names_the_install(tmp_path
     assert "mc2-win64-stale" in r.stderr and "fingerprint" in r.stderr
 
 
+def test_headless_smoke_arguments_resolve_without_a_launch(tmp_path):
+    # Was lane_merge --pre-gate's "headless-smoke" row (deleted with the merge queue): argument resolution is an ordinary tool test.
+    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True)).stdout.strip()   # a real commit: the guard proves ancestry
+    exe = _install(tmp_path, "mc2-win64-lane", head)
+    r = _smoke(["--headless", "--ticks", "10", "--no-lease", "--exe", str(exe), "--resolve-only"], {"MC2_OWNER_NO_LEASE": "1"})
+    # The headless arguments parse and resolve to the named install (argparse would exit 2); the fake exe then stops at the guard.
+    assert r.returncode != 2 and f"[SMOKE] exe={exe.resolve()}" in r.stderr, r.stderr
+
+
 def test_run_smoke_no_lease_is_owner_only(tmp_path):
     exe = _install(tmp_path, "mc2-win64-ok", FRESH_SHA)
     r = _smoke(["--no-lease", "--exe", str(exe), "--mission", "mc2_01", "--resolve-only"])

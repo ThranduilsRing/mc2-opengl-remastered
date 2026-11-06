@@ -311,6 +311,9 @@ def save_deployed(install, root, head, cache_root=None):
     try:
         if not install_current(install, root, head):
             raise ValueError("install is not the HEAD payload")
+        if Path(install).resolve() != seed.resolve() and deployed_seed(root, head, cache_root):
+            log(f"deployed seed already current {seed} (no second snapshot)")
+            return
         shutil.rmtree(seed, ignore_errors=True)
         subprocess.run([sys.executable, str(Path(root) / "scripts/make-isolated-deploy.py"), "--from", str(install),
                         "--to", str(seed), "--snapshot"], check=True, **console_child.child_kwargs())
