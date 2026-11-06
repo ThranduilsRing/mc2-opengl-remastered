@@ -92,7 +92,7 @@ public:
         // Size and mtime come from the loader's own handle, so a repeat open costs no second handle and no mutex-held I/O.
         BY_HANDLE_FILE_INFORMATION info{};
         if (!GetFileInformationByHandle(native, &info)) return;
-        const uint64_t fileSize = (uint64_t(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
+        const uint64_t fileSize = (static_cast<uint64_t>(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
         const auto key = std::string(physical) + ':' + std::to_string(fileSize) + ':' +
                          std::to_string(info.ftLastWriteTime.dwHighDateTime) + ':' + std::to_string(info.ftLastWriteTime.dwLowDateTime);
         { std::lock_guard lock(mutex_); if (seen_.contains(key)) return; }
@@ -108,7 +108,7 @@ public:
         std::lock_guard lock(mutex_);
         // Recorded only after a successful open and read, so a failed attempt is retried on the next open.
         if (auto [it, fresh] = seen_.insert(key); !fresh) return;
-        identity(logical, owner, h, fileSize, (uint64_t(info.ftLastWriteTime.dwHighDateTime) << 32) | info.ftLastWriteTime.dwLowDateTime);
+        identity(logical, owner, h, fileSize, (static_cast<uint64_t>(info.ftLastWriteTime.dwHighDateTime) << 32) | info.ftLastWriteTime.dwLowDateTime);
         append("{\"kind\":\"physical\",\"logical\":" + quote(logical) + ",\"path\":" + quote(scrub(physical)) + "}");
     }
     // Exception path: no mutex, allocation, CRT streams or traversal. A concurrent final

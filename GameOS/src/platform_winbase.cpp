@@ -31,7 +31,7 @@ BOOL QueryPerformanceCounter(LARGE_INTEGER* value)
 {
     timespec ts{};
     if (clock_gettime(CLOCK_MONOTONIC, &ts)) return FALSE;
-    value->QuadPart = int64_t(ts.tv_sec) * 1000000000 + ts.tv_nsec;
+    value->QuadPart = static_cast<int64_t>(ts.tv_sec) * 1000000000 + ts.tv_nsec;
     return TRUE;
 }
 BOOL QueryPerformanceFrequency(LARGE_INTEGER* value) { value->QuadPart = 1000000000; return TRUE; }
@@ -43,7 +43,7 @@ ULONGLONG GetTickCount64()
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ULONGLONG(ts.tv_sec) * 1000 + ts.tv_nsec / 1000000;
 }
-void Sleep(DWORD ms) { timespec ts{ms / 1000, long(ms % 1000) * 1000000}; while (nanosleep(&ts, &ts) && errno == EINTR) {} }
+void Sleep(DWORD ms) { timespec ts{ms / 1000, static_cast<long>(ms % 1000) * 1000000}; while (nanosleep(&ts, &ts) && errno == EINTR) {} }
 
 HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD, LPSECURITY_ATTRIBUTES, DWORD disposition, DWORD, HANDLE)
 {
@@ -66,7 +66,7 @@ HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD, LPSECURITY_ATTRIBUTES, DWOR
 BOOL ReadFile(HANDLE file, LPVOID data, DWORD size, DWORD* count, LPVOID)
 {
     ssize_t result;
-    do { result = read(int(intptr_t(file) - 1), data, size); } while (result < 0 && errno == EINTR);
+    do { result = read(static_cast<int>(reinterpret_cast<intptr_t>(file) - 1), data, size); } while (result < 0 && errno == EINTR);
     if (count) *count = result < 0 ? 0 : static_cast<DWORD>(result);
     if (result < 0) gGetLastError = errno;
     return result >= 0;
@@ -76,7 +76,7 @@ BOOL WriteFile(HANDLE file, LPCVOID data, DWORD size, DWORD* count, LPVOID)
     const char* bytes = static_cast<const char*>(data);
     DWORD written = 0;
     while (written < size) {
-        const auto n = write(int(intptr_t(file) - 1), bytes + written, size - written);
+        const auto n = write(static_cast<int>(reinterpret_cast<intptr_t>(file) - 1), bytes + written, size - written);
         if (n < 0 && errno == EINTR) continue;
         if (n <= 0) { gGetLastError = n < 0 ? errno : EIO; if (count) *count = written; return FALSE; }
         written += static_cast<DWORD>(n);
@@ -84,7 +84,7 @@ BOOL WriteFile(HANDLE file, LPCVOID data, DWORD size, DWORD* count, LPVOID)
     if (count) *count = written;
     return TRUE;
 }
-BOOL CloseHandle(HANDLE file) { return close(int(intptr_t(file) - 1)) == 0; }
+BOOL CloseHandle(HANDLE file) { return close(static_cast<int>(reinterpret_cast<intptr_t>(file) - 1)) == 0; }
 BOOL MoveFileExW(LPCWSTR from, LPCWSTR to, DWORD flags)
 {
     std::error_code error;
@@ -118,12 +118,12 @@ BOOL GetFileAttributesExA(LPCSTR path, GET_FILEEX_INFO_LEVELS, LPVOID output)
     auto& out = *static_cast<WIN32_FILE_ATTRIBUTE_DATA*>(output);
     out = {};
     out.dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-    auto time = [](timespec ts) { const uint64_t t = (uint64_t(ts.tv_sec) + 11644473600ull) * 10000000 + ts.tv_nsec / 100; return FILETIME{DWORD(t), DWORD(t >> 32)}; };
+    auto time = [](timespec ts) { const uint64_t t = (static_cast<uint64_t>(ts.tv_sec) + 11644473600ull) * 10000000 + ts.tv_nsec / 100; return FILETIME{static_cast<DWORD>(t), static_cast<DWORD>(t >> 32)}; };
     out.ftCreationTime = time(st.st_ctim);
     out.ftLastAccessTime = time(st.st_atim);
     out.ftLastWriteTime = time(st.st_mtim);
     out.nFileSizeLow = DWORD(st.st_size);
-    out.nFileSizeHigh = DWORD(uint64_t(st.st_size) >> 32);
+    out.nFileSizeHigh = static_cast<DWORD>(static_cast<uint64_t>(st.st_size) >> 32);
     return TRUE;
 }
 DWORD GetFullPathNameA(LPCSTR path, DWORD capacity, LPSTR out, LPSTR* filePart)
@@ -149,7 +149,7 @@ DWORD GetModuleFileNameW(HANDLE module, LPWSTR out, DWORD capacity)
     char path[4096];
     if (!capacity || !GetModuleFileNameA(module, path, sizeof(path))) return 0;
     const auto count = mbstowcs(out, path, capacity - 1);
-    if (count == size_t(-1)) return 0;
+    if (count == static_cast<size_t>(-1)) return 0;
     out[count] = 0;
     return DWORD(count);
 }

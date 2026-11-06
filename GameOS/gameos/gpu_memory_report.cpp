@@ -158,7 +158,7 @@ void log(std::string_view phase) {
     if (phase == "run_end" && mc2vk::engineVulkanContextValid())
         std::fprintf(stderr, "[VK_RESIDENCY v1] phase=run_end %s\n", mc2vk::infra::ledgerJson().c_str());
     if (mc2vk::engineVulkanContextValid())
-        std::fprintf(stderr,"[TEXTURE_RESIDENT] phase=%.*s bytes=%llu\n",int(phase.size()),phase.data(),
+        std::fprintf(stderr,"[TEXTURE_RESIDENT] phase=%.*s bytes=%llu\n",static_cast<int>(phase.size()),phase.data(),
             static_cast<unsigned long long>(mc2vk::getOrCreateEngineVulkanContext().textures().residentBytes()));
 #endif
 #ifdef _WIN32

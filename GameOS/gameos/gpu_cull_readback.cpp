@@ -26,7 +26,7 @@ bool readback_init(uint32_t maxActors) {
     history=RenderCore::VisibilityHistory(maxActors); pending.fill(false);
     forceNotReady=false;
     initialized=true; snapshots=consumes=0; dilatedTotal=orTotal=0;
-    MC2_DIAGF("[GPU_CULL v1] event=readback_init producer=vulkan maxActors=%u ring=3 forceNotReady=%d\n",maxActors,int(forceNotReady));
+    MC2_DIAGF("[GPU_CULL v1] event=readback_init producer=vulkan maxActors=%u ring=3 forceNotReady=%d\n",maxActors,static_cast<int>(forceNotReady));
     readback_selftest();
     return true;
 }
@@ -65,11 +65,11 @@ ReadbackTier readback_tryConsume() {
         return true;
     });
     if (tier!=ReadbackTier::Tier3_Conservative) {
-        TracyPlot("GPU.VisibleCount.GPU",int64_t(history.visibleCount()));
-        TracyPlot("GPU.VisibleCount.CPU",int64_t(substrate_getCpuVisibleCount()));
+        TracyPlot("GPU.VisibleCount.GPU",static_cast<int64_t>(history.visibleCount()));
+        TracyPlot("GPU.VisibleCount.CPU",static_cast<int64_t>(substrate_getCpuVisibleCount()));
         ++consumes;
         if (trace() && (consumes==1 || consumes%600==0))
-            MC2_DIAGF("[GPU_CULL v1] event=readback_ok slot=%u visibleCount=%u tier=%d producer=vulkan\n",history.lastGoodSlot(),history.visibleCount(),int(tier));
+            MC2_DIAGF("[GPU_CULL v1] event=readback_ok slot=%u visibleCount=%u tier=%d producer=vulkan\n",history.lastGoodSlot(),history.visibleCount(),static_cast<int>(tier));
     } else if (previous!=RenderCore::VisibilityHistory::kNone && history.lastGoodSlot()==RenderCore::VisibilityHistory::kNone) {
         MC2_DIAGF("[GPU_CULL v1] event=readback_stale_reset stale_frames=%u producer=vulkan\n",history.staleFrames());
     }
@@ -84,10 +84,10 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
     dilatedTotal+=history.dilatedAdmits(); orTotal+=stats.orAdmits;
     if (log) {
         MC2_DIAGF("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=%u invisible=%u conservative=%d or_admits=%u producer=vulkan\n",
-                  history.lastGoodSlot(),stats.visible,stats.invisible,int(history.lastGoodSlot()==RenderCore::VisibilityHistory::kNone),stats.orAdmits);
+                  history.lastGoodSlot(),stats.visible,stats.invisible,static_cast<int>(history.lastGoodSlot()==RenderCore::VisibilityHistory::kNone),stats.orAdmits);
         if (snapshots%600==0) {
             MC2_DIAGF("[GPU_CULL v1] event=motion_tolerance frames=600 dilated_admits=%llu conservative_or_admits=%llu or_enabled=%d producer=vulkan\n",
-                      static_cast<unsigned long long>(dilatedTotal),static_cast<unsigned long long>(orTotal),int(conservativeOr()));
+                      static_cast<unsigned long long>(dilatedTotal),static_cast<unsigned long long>(orTotal),static_cast<int>(conservativeOr()));
             dilatedTotal=orTotal=0;
         }
     }

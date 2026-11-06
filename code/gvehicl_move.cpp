@@ -73,7 +73,7 @@ bool GroundVehicle::pivotTo (void) {
 								turnRate = -relFacingToWayPt;
 						}
 					}
-					float maxRate = vehicleTurnRate[long(tonnage)] * frameLength;
+					float maxRate = vehicleTurnRate[static_cast<long>(tonnage)] * frameLength;
 					if (fabs(turnRate) > maxRate) 
 					{
 						if (turnRate > 0.0)
@@ -133,7 +133,7 @@ bool GroundVehicle::pivotTo (void) {
 						else
 							turnRate = 180.0 - relFacingToWayPt;
 					}
-					float maxRate = vehicleTurnRate[long(tonnage)] * frameLength;
+					float maxRate = vehicleTurnRate[static_cast<long>(tonnage)] * frameLength;
 					if (fabs(turnRate) > maxRate) 
 					{
 						if (turnRate > 0.0)
@@ -183,7 +183,7 @@ bool GroundVehicle::pivotTo (void) {
 			if ((relFacingToTarget < -fireArc) || (relFacingToTarget > fireArc)) 
 			{
 				float turnRate = -relFacingToTarget;
-				float maxRate = vehicleTurnRate[long(tonnage)] * frameLength;
+				float maxRate = vehicleTurnRate[static_cast<long>(tonnage)] * frameLength;
 				if (fabs(turnRate) > maxRate) 
 				{
 					if (turnRate > 0.0)
@@ -431,7 +431,7 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 						if ((relFacingToWayPt < -5.0) || (relFacingToWayPt > 5.0)) 
 						{
 							newRotate = -relFacingToWayPt;
-							float maxRate = vehicleTurnRate[long(tonnage)] * frameLength;
+							float maxRate = vehicleTurnRate[static_cast<long>(tonnage)] * frameLength;
 							if (fabs(newRotate) > maxRate)
 							{
 								if (fabs(newRotate) < 50.0f)
@@ -482,7 +482,7 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 						else
 							newRotate = -(relFacingToWayPt - 180.0);
 							
-						float maxRate = vehicleTurnRate[long(tonnage)] * frameLength;
+						float maxRate = vehicleTurnRate[static_cast<long>(tonnage)] * frameLength;
 						if (fabs(newRotate) > maxRate) 
 						{
 							newThrottleSetting = -50.0f;
@@ -598,10 +598,7 @@ void GroundVehicle::setControlSettings (float& newRotate, char& newThrottleSetti
 
 	result = NO_ERR;
 	if (newThrottleSetting != -1) {
-		if (newThrottleSetting < minThrottle)
-			newThrottleSetting = minThrottle;
-		else if (newThrottleSetting > maxThrottle)
-			newThrottleSetting = maxThrottle;
+		newThrottleSetting = static_cast<char>(std::clamp<long>(newThrottleSetting, minThrottle, maxThrottle));
 		control.settings.groundVehicle.throttle = newThrottleSetting;
 	}
 	

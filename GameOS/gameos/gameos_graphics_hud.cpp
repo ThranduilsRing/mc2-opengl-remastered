@@ -360,9 +360,9 @@ void gosRenderer::flushHUDBatch()
             size_t nv = 0;
             for (const HudDrawCall& c : hudBatch_)
                 for (const gos_VERTEX& v : c.vertices) {
-                    if (v.y < ymin) ymin = v.y;
-                    if (v.y > ymax) ymax = v.y;
-                    if (v.x > xmax) xmax = v.x;
+                    ymin = std::min(ymin, v.y);
+                    ymax = std::max(ymax, v.y);
+                    xmax = std::max(xmax, v.x);
                     ++nv;
                 }
             if (bool hf = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info)) {
@@ -872,7 +872,7 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
     // ignores the line offset.
     for(const char* p = text; ; ++p) {
         unsigned char c = static_cast<unsigned char>(*p);
-        if(c == '\n' || c == '\0') {
+        max_width = std::max(max_width, cur_width);
             if(cur_width > max_width) max_width = cur_width;
             if(c == '\0') break;
             line_index++;
@@ -884,8 +884,8 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
             int base = line_index * line_skip;
             int t = base + static_cast<int>(gi.ink_top_[c]);
             int b = base + static_cast<int>(gi.ink_bot_[c]);
-            if(t < min_top) min_top = t;
-            if(b > max_bot) max_bot = b;
+            min_top = std::min(min_top, t);
+            max_bot = std::max(max_bot, b);
             any_ink = true;
         }
     }
