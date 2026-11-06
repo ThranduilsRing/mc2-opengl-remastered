@@ -1163,8 +1163,7 @@ long File::readLine (MemoryPtr buffer, long maxLength)
 		long bytesread;
 		bytesread = fastFile->readFast(fastFileHandle,buffer,maxLength);
 
-		if (maxLength > bytesread)
-			maxLength = bytesread;
+		maxLength = std::min(maxLength, bytesread);
 
         //sebi support linux created files
 		while ((i<maxLength) && (buffer[i]!='\r') && (buffer[i]!='\n'))
@@ -1190,8 +1189,7 @@ long File::readLine (MemoryPtr buffer, long maxLength)
 		{
 			long bytesread;
 			bytesread = _read(handle,buffer,maxLength);
-			if( maxLength > bytesread )
-				maxLength=bytesread;
+			maxLength = std::min(maxLength, bytesread);
 
             //sebi support linux created files
 			while( i<maxLength && buffer[i]!='\r' && buffer[i]!='\n')
@@ -1256,8 +1254,7 @@ long File::readLineEx (MemoryPtr buffer, long maxLength)
 		long bytesread;
 		bytesread = fastFile->readFast(fastFileHandle,buffer,maxLength);
 
-		if (maxLength > bytesread)
-			maxLength = bytesread;
+		maxLength = std::min(maxLength, bytesread);
 
 		while ((i<maxLength) && (buffer[i]!='\n'))
 			i++;
@@ -1273,8 +1270,7 @@ long File::readLineEx (MemoryPtr buffer, long maxLength)
 		if (isOpen())
 		{
 			long bytesread = _read(handle,buffer,maxLength);
-			if( maxLength > bytesread )
-				maxLength=bytesread;
+			maxLength = std::min(maxLength, bytesread);
 
 			while( i<maxLength && buffer[i]!='\n' )
 				i++;

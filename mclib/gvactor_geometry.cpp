@@ -747,17 +747,10 @@ bool GVAppearance::recalcBounds (void)
 					
 					if (i)
 					{
-						if (bcsp[i].x > maxX)
-							maxX = bcsp[i].x;
-						
-						if (bcsp[i].x < minX)
-							minX = bcsp[i].x;
-							
-						if (bcsp[i].y > maxY)
-							maxY = bcsp[i].y;
-						
-						if (bcsp[i].y < minY)
-							minY = bcsp[i].y;
+						maxX = std::max(maxX, bcsp[i].x);
+						minX = std::min(minX, bcsp[i].x);
+						maxY = std::max(maxY, bcsp[i].y);
+						minY = std::min(minY, bcsp[i].y);
 					}
 				}
 		

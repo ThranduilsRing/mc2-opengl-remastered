@@ -10,7 +10,7 @@ void writeBuildingGameplayState(std::ostream& out, const TerrainCells& terrain,
         const auto& cell = terrain[i];
         if (!cell.passable || cell.gate || cell.specialType || cell.specialID || cell.lineOfSight)
             out << i / width << ',' << i % width << ',' << cell.passable << ',' << cell.gate
-                << ',' << int(cell.specialType) << ',' << cell.specialID << ',' << cell.lineOfSight << ';';
+                << ',' << static_cast<int>(cell.specialType) << ',' << cell.specialID << ',' << cell.lineOfSight << ';';
     }
     out << "/los=";
     for (size_t i = 0; i < runtime.size(); ++i)

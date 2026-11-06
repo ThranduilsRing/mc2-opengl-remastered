@@ -367,8 +367,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		for (int i=0;i<8;i++)
 		{
 			testRadius = glm::length(boxCoords[i]);
-			if (OBBRadius < testRadius)
-				OBBRadius = testRadius;
+			OBBRadius = std::max(OBBRadius, testRadius);
 
 			if (boxCoords[i].z > highZ)
 				highZ = boxCoords[i].z;

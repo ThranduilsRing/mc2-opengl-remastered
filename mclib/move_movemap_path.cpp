@@ -447,7 +447,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 
 		#ifdef TIME_PATH
 			QueryPerformanceCounter(calcStop);
-			calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
+			calcTime = static_cast<float>(calcStop.LowPart - calcStart.LowPart) / static_cast<float>(countsPerSecond.LowPart);
 			if (debugger && (scenarioTime > 0.0)) {
 				char s[50];
 				mc2::fmt::to_buf(s, "path calc: {:.4f}\n", calcTime);
@@ -466,7 +466,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 
 	#ifdef TIME_PATH
 		QueryPerformanceCounter(calcStop);
-		calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
+		calcTime = static_cast<float>(calcStop.LowPart - calcStart.LowPart) / static_cast<float>(countsPerSecond.LowPart);
 		if (debugger && (scenarioTime > 0.0)) {
 			char s[50];
 			mc2::fmt::to_buf(s, "path calc: {:.4f}", calcTime);
@@ -788,7 +788,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 		#ifdef TIME_PATH
 			QueryPerformanceCounter(calcStop);
-			calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
+			calcTime = static_cast<float>(calcStop.LowPart - calcStart.LowPart) / static_cast<float>(countsPerSecond.LowPart);
 			if (debugger && (scenarioTime > 0.0)) {
 				char s[50];
 				mc2::fmt::to_buf(s, "path calc: {:.4f}\n", calcTime);
@@ -802,7 +802,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 	#ifdef TIME_PATH
 		QueryPerformanceCounter(calcStop);
-		calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
+		calcTime = static_cast<float>(calcStop.LowPart - calcStart.LowPart) / static_cast<float>(countsPerSecond.LowPart);
 		if (debugger && (scenarioTime > 0.0)) {
 			char s[50];
 			mc2::fmt::to_buf(s, "path calc: {:.4f}", calcTime);

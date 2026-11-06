@@ -1051,9 +1051,9 @@ void QueueBeaconGlow(mc2::tgl::ViewUniforms view, TG_MultiShape* shape, float ni
         if (s_tris.size() + 2 > kMaxFrameTris) { ++dEmitted; return; }
         const float zBias = c.z * 1.002f; // reverse-Z: move toward the camera
         const float aScale = clampf(peak / 255.0f, 0.0f, 1.0f);
-        const DWORD R = static_cast<DWORD>(float((rgb >> 16) & 0xFFu) * aScale);
-        const DWORD G = static_cast<DWORD>(float((rgb >> 8) & 0xFFu) * aScale);
-        const DWORD B = static_cast<DWORD>(float(rgb & 0xFFu) * aScale);
+        const DWORD R = static_cast<DWORD>(static_cast<float>((rgb >> 16) & 0xFFu) * aScale);
+        const DWORD G = static_cast<DWORD>(static_cast<float>((rgb >> 8) & 0xFFu) * aScale);
+        const DWORD B = static_cast<DWORD>(static_cast<float>(rgb & 0xFFu) * aScale);
         const DWORD A = static_cast<DWORD>(255.0f * aScale);
         auto mkVert = [&](float x, float y, gos_VERTEX& gv) {
             gv.x = c.x + x * radPx; gv.y = c.y + y * radPx;

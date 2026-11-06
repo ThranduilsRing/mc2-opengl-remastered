@@ -160,7 +160,7 @@ namespace Stuff {
 	extern float SMALL;
 
 	#define Abs(value) ((value>0) ? value : -value)
-	#define Clamp(v,f,c) if (v<f) v=f; else if (v>c) v=c; else (void)0
+	#define Clamp(v,f,c) v = std::max(v, f); else v = std::min(v, c); else (void)0
 	#define Max_Clamp(v,c) if (v>c) v=c; else (void)0
 	#define Is_Many_Bits(value) (Lowbit(value)^value)
 	#define Low_Bit(value) (value & (-value))

@@ -1083,7 +1083,7 @@ void executorOwnBeginTopLevel(PassIdentity passId, mc2::czstring callerHint) {
     if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
         ++g_topLevelFailures;
         if (g_topLevelFailures<=kMaxTopLevelFailureLog)
-            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(unsigned(target)));
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(static_cast<unsigned>(target)));
     }
 }
 
@@ -1101,7 +1101,7 @@ void executorOwnEndTopLevel(PassIdentity passId, mc2::czstring callerHint) {
     if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
         ++g_topLevelFailures;
         if (g_topLevelFailures<=kMaxTopLevelFailureLog)
-            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(unsigned(target)));
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(static_cast<unsigned>(target)));
     }
     ++g_validatedTopLevel;
 }

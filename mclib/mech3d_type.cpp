@@ -519,8 +519,7 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 		long numSockets = 0;
 		if (mechFile.readIdLong("NumSockets", numSockets) != NO_ERR)
 			numSockets = 0;
-		if (numSockets > MAX_PRESENTATION_SOCKETS)
-			numSockets = MAX_PRESENTATION_SOCKETS;
+		numSockets = std::min(numSockets, MAX_PRESENTATION_SOCKETS);
 		for (long si = 0; si < numSockets; si++)
 		{
 			char blockId[64];
