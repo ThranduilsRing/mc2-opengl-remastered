@@ -828,9 +828,25 @@ def stock_copy(install, parent=None, keep=False):
             if mod_stage.exists():
                 if mod_stage.resolve().parent != parent:
                     raise RuntimeError(f"refusing cleanup outside lane install: {mod_stage}")
-                shutil.rmtree(mod_stage)
-            shutil.rmtree(target)
+                _rmtree_retry(mod_stage)
+            _rmtree_retry(target)
             print(f"[merge_gate] removed {target}", flush=True)
+
+
+def _rmtree_retry(path: Path, attempts: int = 20) -> None:
+    """rmtree that waits out a game process still releasing a hardlinked asset (W121: WinError 5 on data/hdr/*.exr
+    right after the last row killed the gate before its verdict). A tree that stays locked is reported, not raised."""
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError as exc:
+            if attempt + 1 == attempts:
+                print(f"[merge_gate] WARN: could not remove {path} ({exc}); delete it by hand", flush=True)
+                return
+            time.sleep(0.5)
 
 
 # Queue depth does not prove a live worker (W98/W99 lost 20 min per row to an unclaimed job): the farm is opt-in
