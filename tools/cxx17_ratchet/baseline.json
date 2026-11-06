@@ -1326,9 +1326,7 @@
    "LG05": 2
   },
   "RenderCore/view_currency.h": {},
-  "RenderCore/vk_barrier_batch.h": {
-   "LG09": 0
-  },
+  "RenderCore/vk_barrier_batch.h": {},
   "RenderCore/vk_resource_graph.h": {},
   "RenderCore/vulkan_contract.h": {
    "LG05": 1
@@ -3731,7 +3729,7 @@
    "LG20": 1
   }
  },
- "head": "7b57e10af",
+ "head": "50490ff00",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
