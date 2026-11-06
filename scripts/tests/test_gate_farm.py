@@ -15,9 +15,8 @@ import merge_gate as gate
 def test_finale_keeps_windowed_audit_and_tier1_coverage():
     steps = gate.affected_plan(gate.plan(6), ['mclib/msl_load.cpp'])
     command = next(c for n, c, _ in steps if n == 'determinism-mc2_24')
-    assert '--headless-both' not in command
+    assert '--headless-both' in command   # same 2601-frame chain as windowed (34 s against 121 s); the overlap worker still runs
     assert int(command[command.index('--ticks') + 1]) > 2404
-    assert command[command.index('--sim-speed') + 1] == '4'
     tier1 = next(c for n, c, _ in steps if n == 'tier1')
     from scripts.smoke_lib.manifest import parse_manifest
     missions = {e.stem for e in parse_manifest(gate.ROOT / 'tests/smoke/smoke_missions.txt') if e.tier == 'tier1'}
@@ -342,3 +341,8 @@ def test_farm_local_fallback_waits_for_the_game_row_on_the_same_install(tmp_path
     assert order == ['battery done', 'fallback']
     with gate.install_lock(['x', '--install', str(clone)]):
         assert gate.farm_stage(command, {}, runner=run).returncode == 0   # another install: no wait
+
+
+def test_saveload_headless_rows_are_the_proven_ones():
+    steps = dict((n, c) for n, c, _ in gate.plan(6))
+    assert {m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24") if "--headless" in steps["saveload-" + m]} == {"mc2_16", "mc2_24"}

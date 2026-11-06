@@ -36,21 +36,41 @@ def test_data_diff_runs_mods_but_not_video():
     assert d["mods"] is None and d["video-decode"]
 
 
-def test_mod_relevant_paths_run_mods():
-    for p in ("mclib/fastfile.cpp", "mclib/file.cpp", "GameOS/gameos/gameos_fileio.cpp", "tools/mod_smoke.py", "code/mission2.cpp",
-              "code/logisticsdata_save.cpp", "mclib/mod_conflict.h", "GuiRuntime/GuiRuntime_assets.cpp", "mods/x/y.fit"):
+def test_only_direct_mod_content_paths_run_mods():
+    for p in ("data/missions/mc2_01.fit", "mods/x/y.fit", "examples/mods/a/b.txt", "tests/mods/t.py", "tools/mod_smoke.py",
+              "tools/mod_install.py", "tools/validate_mod_package.py"):
         assert decide([p])["mods"] is None, p
 
 
+def test_engine_shader_loader_and_unknown_paths_skip_mods():
+    for p in ("shaders/a.slang", "RenderCore/foo.cpp", "mclib/fastfile.cpp", "mclib/file.cpp", "mclib/inifile.cpp",
+              "GameOS/gameos/gameos_fileio.cpp", "code/mission2.cpp", "code/logisticsdata_save.cpp", "GuiRuntime/GuiRuntime_assets.cpp",
+              "CMakeLists.txt", "weird/thing.bin"):
+        assert decide([p])["mods"], p
+
+
 def test_video_relevant_paths_run_video():
-    for p in ("scripts/video_decode_smoke.py", "code/mc2video.cpp", "code/mc2movie.h", "GameOS/gameos/sim_overlap.cpp", "data/movies/a.bik"):
+    for p in ("scripts/video_decode_smoke.py", "code/mc2video.cpp", "code/mc2movie.h", "GameOS/gameos/sim_overlap.cpp", "data/movies/a.bik",
+              "code/controlgui_chat.cpp", "code/tick_commit.cpp", "code/tick_commit.h", "tests/unit/test_playmovie_deferral.cpp"):
         assert decide([p])["video-decode"] is None, p
 
 
 def test_unknown_path_runs_everything():
-    for p in ("CMakeLists.txt", "weird/thing.bin", "scripts/merge_gate.py", "scripts/deploy_payload.py"):
+    for p in ("CMakeLists.txt", "weird/thing.bin"):
         d = decide(["docs/a.md", p])
-        assert d == {"mods": None, "video-decode": None}, p
+        assert d["mods"] and d["video-decode"] is None, p   # unknown paths still force video-decode, never mods
+    for p in ("scripts/merge_gate.py", "scripts/deploy_payload.py"):   # never mods, never video (tests/scripts/tools)
+        d = decide(["docs/a.md", p])
+        assert d["mods"] and d["video-decode"], p
+
+
+def test_tests_scripts_tools_do_not_force_video():
+    # W123's 16 false hits (diff 01580cf53..HEAD): none of these exercise video.
+    paths = ["tests/unit/test_foo.cpp", "tests/unit/baseline.json", "tests/saveload/baselines/x.json",
+             "tests/smoke/sim_determinism/a.txt", "scripts/merge_gate.py", "scripts/gate_scope.py",
+             "scripts/background-launch-allow.json", "tools/visual_verify/ab.py", "tools/lane_merge.py"]
+    for p in paths:
+        assert decide([p])["video-decode"], p
 
 
 def test_nightly_runs_everything_even_for_docs_only():
@@ -169,7 +189,7 @@ def test_determinism_rows_run_two_wide_when_mods_is_scope_skipped(monkeypatch, t
 import pytest
 
 
-@pytest.mark.parametrize("failing", ["check-staged-hygiene.py", "dup_check.py", "check-memory-size.py"])
+@pytest.mark.parametrize("failing", ["check-staged-hygiene.py", "dup_check.py", "check-background-launch.py"])
 def test_each_cheap_row_stops_preflight_before_the_build(monkeypatch, failing):
     ran = []
     def fake_run(command, **kw):
@@ -179,7 +199,7 @@ def test_each_cheap_row_stops_preflight_before_the_build(monkeypatch, failing):
     monkeypatch.setattr(gate, "git", lambda *a: "base")
     monkeypatch.setattr(gate.subprocess, "run", fake_run)
     errors = gate.cheap_row_errors("a" * 40)
-    assert len(ran) == 3 and len(errors) == 1 and "before the build" in errors[0] and "boom" in errors[0]
+    assert len(ran) == 4 and len(errors) == 1 and "before the build" in errors[0] and "boom" in errors[0]
     monkeypatch.setattr(gate.subprocess, "run", lambda c, **kw: SimpleNamespace(returncode=0, stdout="", stderr=""))
     assert gate.cheap_row_errors("a" * 40) == []
 
@@ -191,3 +211,13 @@ def test_preflight_fails_when_a_cheap_row_fails(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(gate, "cheap_row_errors", lambda head: ["dup_check failed before the build (rc=1): x"])
     assert gate.preflight("a" * 40, tmp_path / "none", 1, []) == 1
     assert "dup_check failed before the build" in capsys.readouterr().out
+
+
+def test_memory_size_is_a_warn_only_line(monkeypatch, capsys):
+    def fake_run(command, **kw):
+        bad = "check-memory-size.py" in command[2]
+        return SimpleNamespace(returncode=1 if bad else 0, stdout="too big" if bad else "", stderr="")
+    monkeypatch.setattr(gate, "git", lambda *a: "base")
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
+    assert gate.cheap_row_errors("a" * 40) == []
+    assert "WARN memory-size" in capsys.readouterr().out

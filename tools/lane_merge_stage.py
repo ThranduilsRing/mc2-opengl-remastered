@@ -5,9 +5,12 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
+import sys
 import time
 
 import _git_util
+import console_child
 from lane_precheck import Stop
 
 NIFTY = "claude/nifty-mendeleev"
@@ -22,6 +25,31 @@ STAGE_HELP = """merge queue (bors-style staging; nifty only ever fast-forwards t
                                                            next --stage command; a red single tip is GUILTY and goes back to its lane
      after a green half: --promote W, then --bisect W --green queues the rest on the new nifty
   state: build64-ninja/stage-W.json (base, frozen tips, testing, queue, rejected, history)"""
+
+
+def refuse_direct_nifty(root: str, hotfix: bool) -> None:
+    """Only --promote moves nifty. A merge run with nifty checked out is refused (stage instead) unless --hotfix, which is logged."""
+    if git_out(root, "branch", "--show-current") != NIFTY:
+        return
+    if hotfix:
+        print(f"HOTFIX direct merge into {NIFTY} (bypasses stage/gate/promote; recorded in merge-window.json and the next gate verdict)")
+        return
+    raise Stop(5, f"DIRECT MERGE REFUSED: {NIFTY} only moves by --promote. Run: py -3 tools/lane_merge.py --stage W --batch <tips>, "
+                  "gate the candidate, then --promote W (--hotfix is the logged escape)")
+
+
+def stage_preflight(root: str, window: str) -> list[str]:
+    """Cheap gate rows (staged-hygiene --range, dup_check, background_launch) on the checked-out candidate, before any build.
+    A red marks the stage refused in its state file; --promote then refuses. Returns the red lines."""
+    proc = subprocess.run([sys.executable, "scripts/merge_gate.py", "--cheap-rows"], cwd=root, capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True))
+    if proc.returncode == 0:
+        return []
+    reds = [ln for ln in (proc.stdout + proc.stderr).splitlines() if "cheap row FAIL" in ln] or [f"merge_gate --cheap-rows rc={proc.returncode}"]
+    state = load_stage(root, window)
+    state["refused"] = reds
+    save_stage(root, window, state)
+    return reds
 
 
 def git_out(root: str, *args: str) -> str:
@@ -116,6 +144,8 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     cand = git_out(root, "rev-parse", f"{branch}^{{commit}}")
     old = git_out(root, "rev-parse", f"{NIFTY}^{{commit}}")
     why = []
+    if state.get("refused"):
+        why.append("stage refused by its preflight: " + "; ".join(state["refused"]))
     if verdict.get("verdict") != "PASS" or not verdict.get("complete"):
         why.append(f"verdict {verdict.get('verdict')} complete={verdict.get('complete')}")
     if verdict.get("skipped"):
@@ -130,6 +160,8 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     if why:
         raise Stop(6, "PROMOTE REFUSED (nifty untouched): " + "; ".join(why))
     git_out(root, "update-ref", "-m", f"merge queue: promote {branch}", f"refs/heads/{NIFTY}", cand, old)
+    tag = f"nifty-green-{window}-{cand[:9]}"
+    git_out(root, "tag", "-a", "-f", "-m", f"gate PASS (complete) for {cand}", tag, cand)   # local only, never pushed
     if git_out(root, "branch", "--show-current") == branch and not _git_util.status_entries(root):
         git_out(root, "checkout", "-q", NIFTY)   # same commit: the tree does not change
     seconds = round(time.monotonic() - started, 1)
@@ -137,9 +169,9 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     tmp = vpath.with_name(vpath.name + ".tmp")
     tmp.write_text(json.dumps(verdict, indent=2), encoding="utf-8")
     os.replace(tmp, vpath)
-    state["promoted"] = dict(sha=cand, old=old, seconds=seconds, at=time.time())
+    state["promoted"] = dict(sha=cand, old=old, seconds=seconds, at=time.time(), tag=tag)
     save_stage(root, window, state)
-    print(f"PROMOTED {NIFTY} {old[:9]} -> {cand[:9]} ({seconds}s)")
+    print(f"PROMOTED {NIFTY} {old[:9]} -> {cand[:9]} ({seconds}s) tag={tag}")
     return 0
 
 

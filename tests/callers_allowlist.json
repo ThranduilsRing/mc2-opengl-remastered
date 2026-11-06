@@ -284,6 +284,7 @@
   "tools/scifi_kit/art/wear_metrics.py": "Owner-run grime metrics tool (py -3 tools/scifi_kit/art/wear_metrics.py <pass_dir>) for the wear ladder, no in-repo caller by design.",
   "tools/farm/install-task.cmd": "Operator-run scheduled-task installer documented in tools/farm/README.md; run on the farm laptop as Kaitlyn.",
   "scripts/run_scripts_tests.py": "Executed by tools/lane_merge.py --precheck through PYTHON_SUITES; the caller scanner does not resolve the dispatch table.",
+  "tools/test_lane_merge_nifty.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests).",
   "tools/test_mkmerge.py": "Pytest-discovered module through scripts/run_tools_tests.py (tools_tests).",
   "tools/perf/_census_run.py": "Manual census driver: runs the installed exe over mc2_01/03/10/17/24 and the bench_walk modes, writes proofs/census2; run by hand for a perf census (see docs/perf/2026-11-02-census-v2.md).",
   "tools/perf/_census_analyze.py": "Manual census analyzer: prints MAIN_BUSY, exclusive-cost columns and PERF_COUNTERS means from proofs/census2; run by hand after _census_run.py.",

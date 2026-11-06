@@ -1258,6 +1258,7 @@ def test_stage_merges_without_precheck_receipts_but_batch_still_refuses(env, tmp
     git(repo, "branch", "claude/nifty-mendeleev", "main")
     lm = _load_module()
     monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
+    monkeypatch.setattr(lm, "stage_preflight", lambda root, window: [])   # the fixture repo has no merge_gate.py
     assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5    # plain --batch: unchanged
     assert "PRECHECK MISSING" in capsys.readouterr().out
     rc = lm.main(["--stage", "W1", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
@@ -1489,3 +1490,4 @@ def test_stage_help_documents_the_queue_commands(capsys):
         _load_module().main(["--help"])
     out = capsys.readouterr().out
     assert all(k in out for k in ("--stage W --batch", "--promote W", "--bisect W --red", "nifty untouched"))
+
