@@ -73,7 +73,7 @@ int LogisticsData::getPurchasableMechs( LogisticsVariant** array, int& count )
 			}
 			else
 			{
-				array[count] = variant;
+				array[count] = variant.get();
 			}
 
 			(count)++;	
@@ -97,8 +97,7 @@ int LogisticsData::purchaseMech( LogisticsVariant* pVariant )
 	if ( cheatInfiniteMoney() || missionInfo->getCBills() - RP >= 0 )
 	{
 		int count = instance->createInstanceID( pVariant );
-		LogisticsMech* pMech = new LogisticsMech( pVariant, count );
-		instance->inventory.push_back( pMech );
+		instance->inventory.push_back( std::make_unique<LogisticsMech>( pVariant, count ) );
 		if ( !cheatInfiniteMoney() )
 			missionInfo->decrementCBills( pVariant->getCost() );
 		return 0;
@@ -142,7 +141,6 @@ int LogisticsData::sellMech( LogisticsMech* pVar )
 		{
 			int cost = ((*iter))->getCost();
 			(*iter)->setPilot( nullptr );
-			delete *iter;
 			instance->inventory.erase( std::next( iter ).base() );
 
 			missionInfo->incrementCBills( cost );
@@ -169,7 +167,7 @@ int LogisticsData::removeVariant( mc2::czstring varName )
 	{
 		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
-			pVar = (*vIter );
+			pVar = vIter->get();
 			break;
 		}
 	}
@@ -188,7 +186,6 @@ int LogisticsData::removeVariant( mc2::czstring varName )
 		}
 	}
 
-	delete pVar;
 	variants.erase( vIter );
 
 	return 0;
@@ -217,7 +214,7 @@ LogisticsVariant* LogisticsData::getVariant( int ID )
 	{
 		if ( variant->getID() == (ID & 0x00ffffff) )
 		{
-			return variant;
+			return variant.get();
 		}
 	}
 
@@ -232,7 +229,7 @@ LogisticsMech*	LogisticsData::getMech( int ID )
 	for (auto & iter : inventory)
 	{
 		if ( iter->getID() == ID )
-			return iter;
+			return iter.get();
 	}
 
 	return nullptr;
@@ -292,7 +289,7 @@ LogisticsMech*		LogisticsData::getMechWithoutForceGroup( LogisticsMech* pMech )
 		{
 			if ( iter->getVariant() == pMech->getVariant() && !iter->getForceGroup() )
 			{
-				return iter;
+				return iter.get();
 				
 			}
 		}
@@ -413,7 +410,7 @@ LogisticsData::MechList	LogisticsData::getForceGroup()
 
 		if ( (*iter)->getForceGroup() )
 		{
-			newList.push_back( (*iter) );
+			newList.push_back( iter->get() );
 			count++;
 		}
 	}
@@ -423,7 +420,11 @@ LogisticsData::MechList	LogisticsData::getForceGroup()
 LogisticsData::MechList	LogisticsData::getInventory()
 {
 	ensureMechBayDataLoaded("getInventory");
-	return inventory;
+	MechList snapshot;
+	snapshot.reserve( inventory.size() );
+	for ( const auto& mech : inventory )
+		snapshot.push_back( mech.get() );
+	return snapshot;
 }
 
 
@@ -433,8 +434,9 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, LogisticsPilot* 
 	if ( pVar )
 	{
 		int count = instance->createInstanceID( pVar );
-		LogisticsMech* pMech = new LogisticsMech( pVar, count );
-		inventory.push_back( pMech );
+		auto mech = std::make_unique<LogisticsMech>( pVar, count );
+		LogisticsMech* pMech = mech.get();
+		inventory.push_back( std::move(mech) );
 		pMech->setForceGroup( ForceGroup );
 		if ( pPilot && !pPilot->isDead() )
 			pMech->setPilot( pPilot );
@@ -453,8 +455,9 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 	if ( pVar )
 	{
 		int count = instance->createInstanceID( pVar );
-		LogisticsMech* pMech = new LogisticsMech( pVar, count );
-		inventory.push_back( pMech );
+		auto mech = std::make_unique<LogisticsMech>( pVar, count );
+		LogisticsMech* pMech = mech.get();
+		inventory.push_back( std::move(mech) );
 		if ( addToForceGroup > -1 && addToForceGroup < 13 )
 			pMech->setForceGroup( addToForceGroup );
 		if ( pPilot && !pPilot->isDead() )
@@ -476,7 +479,7 @@ LogisticsVariant* LogisticsData::getVariant( mc2::czstring pCSVFileName, int Var
 		if ( variant->getFileName().find( lowerCase ) != std::string::npos
 			&& ((variant->getVariantID()>>16)&0xff) == VariantNum )
 		{
-			return variant;
+			return variant.get();
 		}
 	}
 

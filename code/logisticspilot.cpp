@@ -65,6 +65,9 @@ LogisticsPilot::~LogisticsPilot()
 	
 }
 
+LogisticsPilot::LogisticsPilot(LogisticsPilot&&) noexcept = default;
+LogisticsPilot& LogisticsPilot::operator=(LogisticsPilot&&) noexcept = default;
+
 int LogisticsPilot::init( char* pilotFileName )
 {
 	fileName = mc2::str::from_c( pilotFileName );
@@ -249,11 +252,6 @@ long LogisticsPilot::load( FitIniFile& file )
 void LogisticsPilot::clearIcons()
 {
 	// clear out the old ones
-	for (auto & killedIcon : killedIcons)
-	{
-		delete killedIcon;
-	}
-
 	killedIcons.clear();
 }
 
@@ -262,11 +260,6 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 #ifndef VIEWER
 	
 	// clear out the old ones
-	for (auto & killedIcon : killedIcons)
-	{
-		delete killedIcon;
-	}
-
 	killedIcons.clear();
 
 	missionsCompleted++;
@@ -326,9 +319,10 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 
 		if ( pDead->getObjectClass() == BATTLEMECH )
 		{
-			MechIcon* pIcon = new MechIcon();
+			auto icon = std::make_unique<MechIcon>();
+			MechIcon* pIcon = icon.get();
 			pIcon->swapResolutions(0);
-			killedIcons.push_back( pIcon );
+			killedIcons.push_back( std::move(icon) );
 			pIcon->init( static_cast<Mover*>(pDead) );
 			pIcon->update();
 			if ((static_cast<MoverPtr>(pDead))->getMoveType() != MOVETYPE_AIR)
@@ -336,9 +330,10 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 		}
 		else if ( pDead->getObjectClass() == GROUNDVEHICLE )
 		{
-			VehicleIcon* pIcon = new VehicleIcon();
+			auto icon = std::make_unique<VehicleIcon>();
+			VehicleIcon* pIcon = icon.get();
 			pIcon->swapResolutions(0);
-			killedIcons.push_back( pIcon );
+			killedIcons.push_back( std::move(icon) );
 			pIcon->init( static_cast<Mover*>(pDead) );
 			pIcon->update();
 		}

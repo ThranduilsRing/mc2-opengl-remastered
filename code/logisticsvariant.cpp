@@ -461,7 +461,6 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 	if ( !pComponent )
 	{
 	//	Assert( 0, idFromFitFile, "couldn't find the component in the fit file\n" );
-		delete pComponent;
 		return false;
 	}
 

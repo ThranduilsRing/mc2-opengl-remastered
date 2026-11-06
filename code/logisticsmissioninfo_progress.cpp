@@ -210,8 +210,9 @@ void LogisticsMissionInfo::setSingleMission( mc2::czstring missionFileName )
 
 	currentStage = 0;
 
-	MissionInfo* pInfo = new MissionInfo;
-	groups[0].infos.push_back( pInfo );
+	auto info = std::make_unique<MissionInfo>();
+	MissionInfo* pInfo = info.get();
+	groups[0].infos.push_back( std::move(info) );
 
 	groups[0].operationFileName = "MCL_CM_Op1_1.fit";
 	groups[0].ablBrainName = "";

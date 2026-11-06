@@ -1659,11 +1659,12 @@ void LogisticsVariantDialog::initVariantList()
 
 		for ( int i = 0; i < count; i++ )
 		{
-			aAnimTextListItem* pEntry = new aAnimTextListItem(IDS_DIALOG_LIST_FONT);
+			auto entry = std::make_unique<aAnimTextListItem>(IDS_DIALOG_LIST_FONT);
+			aAnimTextListItem* pEntry = entry.get();
 			*pEntry = s_instance->templateItem;
 			pEntry->setText( pNames[i] );
 			pEntry->setColor( edits[0].getColor() );
-			gameListBox.AddItem( pEntry );
+			gameListBox.AddItem( entry.release() );
 			if ( !LogisticsData::instance->canReplaceVariant( pNames[i] ) )
 			{
 				pEntry->setState( aListItem::DISABLED );

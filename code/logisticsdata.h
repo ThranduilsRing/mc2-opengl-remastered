@@ -258,11 +258,10 @@ private:
 	// holds a LogisticsPilot* into it.
 	using COMPONENT_LIST = std::deque<LogisticsComponent>;
 	using PILOT_LIST = std::deque<LogisticsPilot>;
-	// Order is insertion order. variants and inventory lose elements through removeVariant / sellMech / the mech-list rewrites, which erase the pointer and delete the
-	// pointee themselves; vehicles are filled once at init.
-	using VARIANT_LIST = std::vector<LogisticsVariant*>;
-	using MECH_LIST = MechList;
-	using VEHICLE_LIST = std::vector<LogisticsVehicle*>;
+	// Owners preserve insertion order and stable pointee addresses; public lists are borrowed snapshots.
+	using VARIANT_LIST = std::vector<std::unique_ptr<LogisticsVariant>>;
+	using MECH_LIST = std::vector<std::unique_ptr<LogisticsMech>>;
+	using VEHICLE_LIST = std::vector<std::unique_ptr<LogisticsVehicle>>;
 	using BUILDING_LIST = std::deque<Building>;
 	
 	VARIANT_LIST									variants;
@@ -287,6 +286,7 @@ private:
 
 	LogisticsMech*									currentlyModifiedMech;
 	LogisticsVariant*								oldVariant;
+	std::unique_ptr<LogisticsVariant> modifiedVariant;
 	
 	
 	int												resourcePoints; // C-Bills for buying mechs

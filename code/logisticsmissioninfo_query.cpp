@@ -194,8 +194,7 @@ void		LogisticsMissionInfo::setMultiplayer()
 
 	currentStage = 0;
 
-	MissionInfo* pInfo = new MissionInfo;
-	groups[0].infos.push_back( pInfo );
+	groups[0].infos.push_back( std::make_unique<MissionInfo>() );
 
 	currentMission = 0;
 	groupCount = 1;

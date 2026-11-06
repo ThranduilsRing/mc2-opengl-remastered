@@ -56,14 +56,6 @@ void LogisticsMissionInfo::clear()
 {
 	if ( groups )
 	{
-		for ( int i = 0; i < groupCount; i++ )
-		{
-			for (auto & info : groups[i].infos)
-			{
-				delete info;
-			}
-		}
-
 		groups.reset();
 	}
 
@@ -189,8 +181,8 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 					continue;
 				}
 
-				MissionInfo* pInfo = info.release();
-				groups[i].infos.push_back( pInfo );
+				MissionInfo* pInfo = info.get();
+				groups[i].infos.push_back( std::move(info) );
 
 				const std::string path = std::string( missionPath ) + *fileName + ".fit";
 

@@ -36,7 +36,6 @@ void LogisticsData::clearInventory()
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		(*iter)->setPilot( nullptr );
-		delete *iter;
 	}
 
 	inventory.clear();
@@ -154,7 +153,7 @@ int		LogisticsData::getChassisVariants( const LogisticsChassis* pChassis,
 			if ( variant->getChassis() == pChassis  )
 			{
 				if ( i < maxCount )
-					pVar[i]	= variant;	
+					pVar[i]	= variant.get();
 				else 
 					retVal = NEED_BIGGER_ARRAY;
 				++i;
@@ -177,8 +176,8 @@ int LogisticsData::setMechToModify( LogisticsMech* pMech )
 	currentlyModifiedMech = pMech;
 	oldVariant = pMech->getVariant();
 
-	LogisticsVariant* pVar = new LogisticsVariant( *oldVariant );
-	pMech->setVariant( pVar );
+	modifiedVariant = std::make_unique<LogisticsVariant>( *oldVariant );
+	pMech->setVariant( modifiedVariant.get() );
 
 	return 0;
 }
@@ -287,7 +286,7 @@ int LogisticsData::acceptMechModifications( mc2::czstring name )
 	{
 		for (auto & iter : inventory)
 		{
-			if ( iter->getVariant() == oldVariant && iter != currentlyModifiedMech  )
+			if ( iter->getVariant() == oldVariant && iter.get() != currentlyModifiedMech  )
 			{
 				bFound = 1;
 			}
@@ -296,12 +295,12 @@ int LogisticsData::acceptMechModifications( mc2::czstring name )
 
 	if ( !bFound )
 	{
-		const auto vIter = std::find( variants.begin(), variants.end(), oldVariant );
+		const auto vIter = std::find_if( variants.begin(), variants.end(),
+			[this](const auto& variant) { return variant.get() == oldVariant; } );
 		if ( vIter != variants.end()
 			&& mc2::str::iequals( oldVariant->getName(), mc2::str::from_c( name ) ) )
 		{
 			variants.erase( vIter );
-			delete oldVariant;
 		}
 	}
 
@@ -311,7 +310,6 @@ int LogisticsData::acceptMechModifications( mc2::czstring name )
 	{
 		if ( mc2::str::iequals( (*vIter)->getName(), wanted ) )
 		{
-			delete (*vIter);
 			vIter = variants.erase( vIter );
 		}
 		else
@@ -319,7 +317,7 @@ int LogisticsData::acceptMechModifications( mc2::czstring name )
 	}
 
 	currentlyModifiedMech->getVariant()->setName( wanted );
-	variants.push_back( currentlyModifiedMech->getVariant() );
+	variants.push_back( std::move(modifiedVariant) );
 	missionInfo->decrementCBills( currentlyModifiedMech->getVariant()->getCost() );
 
 	currentlyModifiedMech = nullptr;
@@ -377,8 +375,7 @@ int LogisticsData::acceptMechModificationsUseOldVariant( mc2::czstring name )
 	if ( !pVar )
 		Assert( 0, 0, "couldn't find the old variant\n" );
 
-	LogisticsVariant* pOldVar = currentlyModifiedMech->getVariant();
-	delete pOldVar;
+	modifiedVariant.reset();
 
 	currentlyModifiedMech->setVariant( pVar );
 	missionInfo->decrementCBills( pVar->getCost() );
@@ -398,7 +395,7 @@ bool LogisticsData::canReplaceVariant( mc2::czstring name )
 			if ( mc2::str::iequals( iter->getName(), wanted ) )
 			{
 				nameCount++;
-				if ( iter->getVariant() != oldVariant && iter != currentlyModifiedMech )
+				if ( iter->getVariant() != oldVariant && iter.get() != currentlyModifiedMech )
 				{
 					return 0;
 				}
@@ -439,9 +436,7 @@ int LogisticsData::cancelMechModfications()
 	if ( !currentlyModifiedMech )
 		return -1;
 
-	LogisticsVariant* pCancel = currentlyModifiedMech->getVariant();
-
-	delete pCancel;
+	modifiedVariant.reset();
 
 	currentlyModifiedMech->setVariant( oldVariant );
 

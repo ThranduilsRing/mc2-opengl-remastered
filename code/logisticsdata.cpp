@@ -40,23 +40,9 @@ LogisticsData::LogisticsData()
 
 LogisticsData::~LogisticsData()
 {
-	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
-	{
-		delete( *iter );
-	}
-
-	for ( auto vIter = vehicles.begin(); vIter != vehicles.end(); ++vIter )
-	{
-		delete (*vIter );
-	}
-
-	for ( auto mIter = inventory.begin(); mIter != inventory.end(); ++mIter )
-	{
-		delete (*mIter);
-	}
-
 	variants.clear();
 	vehicles.clear();
+	inventory.clear();
 
 	missionInfo.reset();
 
@@ -233,7 +219,7 @@ int		LogisticsData::getEncyclopediaMechs( const LogisticsVariant** pChassis, int
 		if ( variant->getName().find( "Prime" ) != std::string::npos && variant->isDesignerMech() )
 		{
 			if ( count < maxCount )
-				pChassis[count] = variant;
+				pChassis[count] = variant.get();
 			else 
 				retVal = NEED_BIGGER_ARRAY;
 
@@ -257,7 +243,7 @@ int	LogisticsData::getHelicopters( const LogisticsVariant** pChassis, int& count
 			variant->getName().find( "Prime" ) == std::string::npos && variant->isDesignerMech() )
 		{
 			if ( count < maxCount )
-				pChassis[count] = variant;
+				pChassis[count] = variant.get();
 			else 
 				retVal = NEED_BIGGER_ARRAY;
 
@@ -279,7 +265,7 @@ int		LogisticsData::getVehicles( const LogisticsVehicle** pChassis, int& count )
 	for (auto & vehicle : vehicles)
 	{
 			if ( count < maxCount )
-				pChassis[count] = vehicle;
+				pChassis[count] = vehicle.get();
 			else 
 				retVal = NEED_BIGGER_ARRAY;
 
@@ -301,7 +287,7 @@ LogisticsVehicle*	LogisticsData::getVehicle( mc2::czstring pName )
 		cLoadString( vehicle->getNameID(), tmpStr, 255 );
 		if ( S_stricmp( tmpStr, pName ) == 0 )
 		{
-			return vehicle;
+			return vehicle.get();
 		}
 	}
 

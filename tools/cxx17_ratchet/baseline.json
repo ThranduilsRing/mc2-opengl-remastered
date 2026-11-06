@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 314,
+   "LG03": 283,
    "LG04": 15,
    "LG05": 198,
    "LG06": 170,
@@ -1768,7 +1768,7 @@
    "LG17": 1
   },
   "code/logisticsdata.cpp": {
-   "LG03": 5,
+   "LG03": 2,
    "LG05": 3,
    "LG11": 3
   },
@@ -1780,26 +1780,22 @@
    "LG11": 12
   },
   "code/logisticsdata_init.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG12a": 2
   },
   "code/logisticsdata_internal.h": {},
   "code/logisticsdata_inventory.cpp": {
-   "LG03": 5,
    "LG05": 18,
    "LG10": 1
   },
   "code/logisticsdata_modify.cpp": {
-   "LG03": 6,
    "LG05": 5
   },
   "code/logisticsdata_save.cpp": {
-   "LG03": 5,
    "LG05": 15,
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
-   "LG03": 1,
    "LG11": 13,
    "LG12b": 10
   },
@@ -1814,26 +1810,21 @@
   },
   "code/logisticsmechdisplay.h": {},
   "code/logisticsmechicon.cpp": {
-   "LG03": 1,
    "LG05": 1
   },
   "code/logisticsmechicon.h": {},
   "code/logisticsmissioninfo.cpp": {
-   "LG03": 1,
    "LG05": 4
   },
   "code/logisticsmissioninfo.h": {},
   "code/logisticsmissioninfo_internal.h": {},
   "code/logisticsmissioninfo_progress.cpp": {
-   "LG03": 1,
    "LG05": 5
   },
   "code/logisticsmissioninfo_query.cpp": {
-   "LG03": 1,
    "LG05": 5
   },
   "code/logisticspilot.cpp": {
-   "LG03": 4,
    "LG05": 1
   },
   "code/logisticspilot.h": {
@@ -1845,7 +1836,7 @@
   },
   "code/logisticspilotlistbox.h": {},
   "code/logisticsvariant.cpp": {
-   "LG03": 2,
+   "LG03": 1,
    "LG05": 4
   },
   "code/logisticsvariant.h": {
@@ -2024,7 +2015,7 @@
    "LG10": 1
   },
   "code/missionbegin.cpp": {
-   "LG03": 10,
+   "LG03": 9,
    "LG06": 2,
    "LG10": 1,
    "LG11": 1

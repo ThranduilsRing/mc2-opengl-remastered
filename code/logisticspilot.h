@@ -16,6 +16,7 @@ LogisticsPilot:
 **************************************************************************************************/
 #include <string>
 #include <vector>
+#include <memory>
 #include "warrior_types.h"
 
 inline constexpr int MAX_MISSIONS = 50;
@@ -51,6 +52,8 @@ class LogisticsPilot
 		int init( char* fileName );
 		LogisticsPilot();
 		~LogisticsPilot();
+		LogisticsPilot(LogisticsPilot&&) noexcept;
+		LogisticsPilot& operator=(LogisticsPilot&&) noexcept;
 
 
 		const std::string&	getName() const { return name; }
@@ -119,7 +122,7 @@ class LogisticsPilot
 
 		
 		unsigned long	id;
-		std::vector< ForceGroupIcon* >	killedIcons;
+		std::vector<std::unique_ptr<ForceGroupIcon>> killedIcons;
 
 
 

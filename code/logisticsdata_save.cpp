@@ -38,7 +38,6 @@ void LogisticsData::removeMechsInForceGroup()
 		--iter;
 		if ( (*iter)->getForceGroup() )
 		{
-			delete *iter;
 			iter = inventory.erase( iter );
 		}
 	}
@@ -174,7 +173,6 @@ void LogisticsData::clearVariants()
 		--iter;
 		if ( !(*iter)->isDesignerMech() )
 		{
-			delete *iter;
 			iter = variants.erase( iter );
 		}
 	}
@@ -321,9 +319,9 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	}
 
 	// create the variant, add to the list
-	LogisticsVariant* pVariant = new LogisticsVariant( pChassis, 0 );	
-
-	variants.push_back( pVariant );
+	auto variant = std::make_unique<LogisticsVariant>( pChassis, 0 );
+	LogisticsVariant* pVariant = variant.get();
+	variants.push_back( std::move(variant) );
 	
 	pVariant->setName( *variantName );
 
@@ -370,10 +368,11 @@ long LogisticsData::loadMech( FitIniFile& file, int& count )
 		if ( mc2::str::iequals( (*mIter)->getName(), variantKey ) )
 		{
 			
-			LogisticsMech* pMech = new LogisticsMech( (*mIter), count );
+			auto mech = std::make_unique<LogisticsMech>( mIter->get(), count );
+			LogisticsMech* pMech = mech.get();
 			// A mech without a Pilot key has no pilot: the key is never read as the variant text.
 			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
-			inventory.push_back( pMech );
+			inventory.push_back( std::move(mech) );
 
 			if ( pilotKey )
 			{
@@ -573,13 +572,13 @@ LogisticsMech*  LogisticsData::getMech( mc2::czstring MechName, mc2::czstring pi
 			if ( !pilotName )
 			{
 				if ( !(*iter)->getPilot() )
-					return (*iter);
+					return iter->get();
 			}
 
 			else
 			{
 				if ( (*iter)->getPilot() && mc2::str::iequals( (*iter)->getPilot()->getName(), mc2::str::from_c( pilotName ) ) )
-					return (*iter);
+					return iter->get();
 			}
 		}
 	}
@@ -595,8 +594,7 @@ void LogisticsData::removeMechFromInventory( mc2::czstring mechName, mc2::czstri
 
 	if ( pMech )
 	{
-		std::erase( inventory, pMech );
-		delete pMech;
+		std::erase_if( inventory, [pMech](const auto& mech) { return mech.get() == pMech; } );
 	}
 }
 
@@ -632,7 +630,7 @@ LogisticsVariant* LogisticsData::getVariant( mc2::czstring mechName )
 	for ( auto iter = variants.begin(); iter != variants.end(); ++iter )
 	{
 		if ( mc2::str::iequals( (*iter)->getName(), wanted ) )
-			return (*iter);
+			return iter->get();
 	}
 
 	return nullptr;

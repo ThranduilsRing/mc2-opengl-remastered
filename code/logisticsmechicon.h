@@ -7,6 +7,7 @@
 //===========================================================================//
 #include"asystem.h"
 #include"aanim.h"
+#include <memory>
 
 class LogisticsMech;
 class LogisticsPilot;
@@ -54,7 +55,7 @@ public:
 
 	void disable( bool bdo) { bDisabled = bdo; }
 
-	static LogisticsMechIcon*	s_pTemplateIcon;
+	static std::unique_ptr<LogisticsMechIcon> s_pTemplateIcon;
 
 private:
 	

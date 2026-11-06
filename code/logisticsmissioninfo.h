@@ -167,7 +167,7 @@ class LogisticsMissionInfo
 
 		// Both lists are filled while a campaign loads (and additionalPurchaseFiles when a purchase file is added) and never erased from; the pointees are
 		// owned by the destructor path (clear()). Order is load order.
-		using MISSION_LIST = std::vector<MissionInfo*>;
+		using MISSION_LIST = std::vector<std::unique_ptr<MissionInfo>>;
 		using FILE_LIST = std::vector<std::unique_ptr<char[]>>;
 
 
@@ -187,7 +187,7 @@ class LogisticsMissionInfo
 			// The record at `index`, or nullptr when the index is not one of this group's missions: the way to read an index a campaign save supplies.
 			MissionInfo* at( long index ) const
 			{
-				return ( index >= 0 && index < std::ssize( infos ) ) ? infos[static_cast<size_t>( index )] : nullptr;
+				return ( index >= 0 && index < std::ssize( infos ) ) ? infos[static_cast<size_t>( index )].get() : nullptr;
 			}
 
 			// The record at an index the campaign state itself holds (currentMission). currentMission is -1 before a mission is chosen, so the index is

@@ -261,7 +261,7 @@ void LogisticsData::clearPilots()
 	if ( !inventory.empty() )
 	{
 		MC2_LOG(Io, Warn, "logistics: the pilot roster is cleared while the inventory holds {} mechs; their pilots are unassigned", std::ssize( inventory ));
-		for ( LogisticsMech* pMech : inventory )
+		for ( const auto& pMech : inventory )
 			pMech->setPilot( nullptr );
 	}
 	pilots.clear();
@@ -293,7 +293,7 @@ void LogisticsData::initPilots()
 			break;
 
 		LogisticsPilot tmpPilot;
-		pilots.push_back( tmpPilot );
+		pilots.push_back( std::move(tmpPilot) );
 		LogisticsPilot& pilot = pilots.back();
 		pilot.id = id;
 
@@ -365,7 +365,7 @@ void LogisticsData::initVariants()
 		float scale;
 		int chassisId;
 		LogisticsChassis* chassis = nullptr;
-		std::vector<LogisticsVariant*> varList;
+		std::vector<std::unique_ptr<LogisticsVariant>> varList;
 	};
 	std::vector<MechJob> mechJobs;
 
@@ -487,7 +487,7 @@ void LogisticsData::initVariants()
 		while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
 			auto pVariant = std::make_unique_for_overwrite<LogisticsVariant>();
 			if (0 == pVariant->init(&mechFile, job.chassis, varCount))
-				job.varList.push_back(pVariant.release());
+				job.varList.push_back(std::move(pVariant));
 			else
 			{
 				MC2_LOG(Io, Warn, "logistics: mech file {} variant {} (CSV row {}) is malformed and is skipped", job.path, varCount, row);
@@ -503,8 +503,8 @@ void LogisticsData::initVariants()
 	// Serial merge in original buildings.csv order.
 	for (auto& job : mechJobs) {
 		if (job.chassis) {
-			for (auto* v : job.varList)
-				variants.push_back(v);
+			for (auto& v : job.varList)
+				variants.push_back(std::move(v));
 		}
 	}
 
@@ -527,11 +527,11 @@ void LogisticsData::addVehicle( long fitID, PacketFile& objectFile, float scale,
 	else if ( !openLooseChassisFit( file, csvName ) )
 		return;
 
-	LogisticsVehicle* pVehicle = new LogisticsVehicle;
+	auto pVehicle = std::make_unique<LogisticsVehicle>();
 	pVehicle->init( file );
 	pVehicle->setScale( scale );
 	if ( nameID ) pVehicle->setNameID( nameID );
-	vehicles.push_back( pVehicle );
+	vehicles.push_back( std::move(pVehicle) );
 }
 
 bool LogisticsData::openLooseChassisFit( FitIniFile& file, std::string_view csvName ) const
