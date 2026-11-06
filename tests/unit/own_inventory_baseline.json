@@ -123,18 +123,6 @@
     "StampBrush"
    ]
   },
-  "ActivePilotListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "AppearanceInfo": {
    "delete": 3,
    "delete_array": 0,
@@ -1122,18 +1110,6 @@
    "delete_array": 0,
    "files": {
     "editor/EditorInterface_terrain.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "DeadPilotListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
      "new": 1
     }
    },
@@ -3148,21 +3124,6 @@
     "SpecLibrary"
    ]
   },
-  "SpecialtyListItem": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "PilotPromotionArea"
-   ]
-  },
   "StampBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -3190,18 +3151,6 @@
     ""
    ]
   },
-  "TOMap": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "editor/OverlayBrush.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "TG_TypeMultiShape": {
    "delete": 0,
    "delete_array": 0,
@@ -3215,10 +3164,19 @@
    },
    "new": 5,
    "new_array": 0,
-   "owners": [
-    "GVAppearanceType",
-    "Mech3DAppearanceType"
-   ]
+   "owners": []
+  },
+  "TOMap": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "editor/OverlayBrush.cpp": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
   },
   "Team": {
    "delete": 0,
@@ -3640,18 +3598,6 @@
     "LogisticsScreen"
    ]
   },
-  "aAnimTextListItem": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "gui/alistbox.cpp": {
-     "new": 4
-    }
-   },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
   "aAnimation": {
    "delete": 6,
    "delete_array": 0,
@@ -3802,12 +3748,9 @@
     },
     "code/missionbriefingscreen.cpp": {
      "new": 2
-    },
-    "code/pilotreviewarea.cpp": {
-     "new": 7
     }
    },
-   "new": 18,
+   "new": 11,
    "new_array": 0,
    "owners": []
   },
@@ -4419,7 +4362,6 @@
   "code/infowindow.cpp": 1,
   "code/job_system.cpp": 1,
   "code/logistics.cpp": 1,
-  "code/logisticspilotlistbox.cpp": 1,
   "code/logisticsvariant.cpp": 1,
   "code/mainmenu.cpp": 2,
   "code/mech_move.cpp": 2,

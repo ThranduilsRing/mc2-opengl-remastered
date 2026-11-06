@@ -23,13 +23,13 @@
   "code/gamecam.cpp": 1592,
   "code/gameobj.cpp": 2260,
   "code/infowindow.cpp": 1751,
-  "code/logisticsdialog.cpp": 2294,
+  "code/logisticsdialog.cpp": 2305,
   "code/mechlabscreen.cpp": 2020,
-  "code/mechlopedia.cpp": 1623,
+  "code/mechlopedia.cpp": 1603,
   "code/missionbegin.cpp": 2228,
   "code/mover.h": 1928,
-  "code/mpparameterscreen.cpp": 2398,
-  "code/multplyr.h": 1844,
+  "code/mpparameterscreen.cpp": 2390,
+  "code/multplyr.h": 1845,
   "code/objective.cpp": 2449,
   "code/optionsarea.cpp": 1839,
   "code/pilotreviewarea.cpp": 1845,
@@ -47,13 +47,13 @@
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2508,
   "mclib/move.h": 1967,
-  "mclib/terrtxm.cpp": 1920,
+  "mclib/terrtxm.cpp": 1921,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "7b57e10af",
+ "head": "bd3bffb75",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -104,7 +104,7 @@
    "max_lines": 1510
   },
   "mclib": {
-   "files": 572,
+   "files": 573,
    "files_over_1500": 9,
    "files_over_3000": 0,
    "max_lines": 2508
@@ -116,7 +116,7 @@
    "max_lines": 542
   },
   "tools": {
-   "files": 657,
+   "files": 664,
    "files_over_1500": 4,
    "files_over_3000": 1,
    "max_lines": 3363
@@ -153,7 +153,7 @@
   },
   {
    "file": "code/mpparameterscreen.cpp",
-   "lines": 2398
+   "lines": 2390
   },
   {
    "file": "code/turret.cpp",
@@ -161,7 +161,7 @@
   },
   {
    "file": "code/logisticsdialog.cpp",
-   "lines": 2294
+   "lines": 2305
   },
   {
    "file": "code/gameobj.cpp",
@@ -209,19 +209,19 @@
   },
   {
    "file": "mclib/terrtxm.cpp",
-   "lines": 1920
+   "lines": 1921
   },
   {
    "file": "mclib/camera.h",
    "lines": 1858
   },
   {
-   "file": "code/pilotreviewarea.cpp",
+   "file": "code/multplyr.h",
    "lines": 1845
   },
   {
-   "file": "code/multplyr.h",
-   "lines": 1844
+   "file": "code/pilotreviewarea.cpp",
+   "lines": 1845
   },
   {
    "file": "code/optionsarea.cpp",
@@ -249,7 +249,7 @@
   }
  ],
  "total": {
-  "files": 2660,
+  "files": 2668,
   "files_over_1500": 38,
   "files_over_3000": 2,
   "max_lines": 3363
