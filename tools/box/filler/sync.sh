@@ -1,5 +1,6 @@
 #!/bin/bash
-# Box idle filler: sync.sh [bundle]  (runs on the box as /workspace/filler/sync.sh; PC side: py -3 tools/box_filler_push.py)
+# Box idle filler: sync.sh [bundle | --mirror]  (runs on the box as /workspace/filler/sync.sh; PC side: py -3 tools/box_filler_push.py;
+# --mirror = queued by box-supervisor when the mirror's nifty tip is ahead of current_sha)
 # Fetches the nifty tip from the incremental git bundle, builds it (clang-20 + ccache, -j16 on cores 32-47, nice 19) and swaps
 # exe + shaders into /workspace/filler/install (a cp -al clone of /workspace/gamerun/install). Writes /workspace/filler/current_sha last.
 set -euo pipefail
@@ -12,7 +13,10 @@ flock -n 7 || { echo "sync already running"; exit 3; }
 
 [ -e $F/src/.git ] || git clone -q /workspace/gamerun/src $F/src
 cd $F/src
-if [ -f "$B" ]; then
+if [ "${1:-}" = --mirror ]; then   # box-supervisor autosync: the nifty tip that box_run already pushed into the mirror (no bundle needed)
+  git fetch -q /workspace/toolchains/mirror.git "+refs/heads/claude/nifty-mendeleev:refs/filler/nifty"
+  SHA=$(git rev-parse refs/filler/nifty)
+elif [ -f "$B" ]; then
   git fetch -q "$B" "+claude/nifty-mendeleev:refs/filler/nifty" "+claude/box-clang-green:refs/filler/green" 2>/dev/null || git fetch -q "$B" "+claude/nifty-mendeleev:refs/filler/nifty"
   SHA=$(git rev-parse refs/filler/nifty)
 else SHA=$(cat $F/current_sha); fi

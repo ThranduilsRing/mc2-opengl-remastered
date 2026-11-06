@@ -96,8 +96,9 @@ def test_box_infra_verdict_is_not_green():
 
 def test_ccache_and_diskwatch_paths():
     dw = (BOX / "mc2-diskwatch.sh").read_text()
-    assert "ccache -M 8G" in dw and "/workspace/lanes/*" in dw and "lane_cleanup.sh" in dw
-    assert "ccache -M 8G" in (BOX / "deploy.sh").read_text()
+    assert "/workspace/lanes/*" in dw and "lane_cleanup.sh" in dw and "evict 25" in dw
+    assert "ccache -M" not in dw and "ccache -c" in dw   # diskwatch trims to max_size, never shrinks or wipes the cache
+    assert "ccache -M 12G" in (BOX / "deploy.sh").read_text()
 
 
 # --- lane_cleanup.sh ----------------------------------------------------------------------------------------------
@@ -170,7 +171,7 @@ def test_outs_drops_only_old_out_dirs(lanes):
 
 
 def test_script_syntax():
-    for s in ("lane_cleanup.sh", "deploy.sh", "mc2-diskwatch.sh", "env.sh", "filler/sync.sh", "filler/repin.sh"):
+    for s in ("lane_cleanup.sh", "deploy.sh", "mc2-diskwatch.sh", "env.sh", "filler/sync.sh", "filler/worker.sh", "filler/run.sh", "filler/stop.sh"):
         r = subprocess.run([BASH, "-n", (BOX / s).as_posix()], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         assert r.returncode == 0, f"{s}: {r.stderr}"
 
@@ -234,7 +235,8 @@ def test_status_no_id_prints_json(monkeypatch, capsys):
 
 
 def test_status_loop_and_row_file_wiring():
-    assert "status.py" in (BOX / "filler" / "repin.sh").read_text()
+    sup = (BOX / "box_supervisor.py").read_text()
+    assert "import status" in sup and "status.build(" in sup
     assert "gpu$GOT.row" in box_run.REMOTE
 
 

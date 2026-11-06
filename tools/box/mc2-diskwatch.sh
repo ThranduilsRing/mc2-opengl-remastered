@@ -19,13 +19,14 @@ pct() { df --output=pcent / | tail -1 | tr -dc '0-9'; }
 avail_gb() { df --output=avail -BG / | tail -1 | tr -dc '0-9'; }
 
 trim_caches() {
-  command -v ccache  >/dev/null && ccache -M 8G >/dev/null 2>&1 && ccache -c >/dev/null 2>&1
+  command -v ccache  >/dev/null && ccache -c >/dev/null 2>&1   # trim to max_size (deploy.sh sets it); the cache itself is kept
   command -v sccache >/dev/null && sccache --stop-server >/dev/null 2>&1
   find /workspace/lanes/*/tmp /tmp -mindepth 1 -mmin +120 -delete 2>/dev/null
 }
 
 pressure_cleanup() {
   [ -f "$CLEAN" ] && bash "$CLEAN" outs 360 >> "$LOG" 2>&1 && bash "$CLEAN" daily >> "$LOG" 2>&1
+  [ -f "$CLEAN" ] && bash "$CLEAN" evict 25 >> "$LOG" 2>&1   # LRU: oldest idle lane dirs until 25 GB free (live/locked/queued/wanted lanes are never evicted)
   find /workspace/lanes -maxdepth 4 \( -name 'core' -o -name 'core.[0-9]*' \) -type f -delete -print 2>/dev/null | while read -r f; do log "deleted core $f"; done
   apt-get clean >/dev/null 2>&1
 }
