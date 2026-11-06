@@ -13,8 +13,7 @@ import mod_smoke as mods
 
 @pytest.mark.parametrize('window,counts,new', [
     (92, {'ammo': 7}, {}), (92, {'shape': 1}, {'shape': 1}),
-    (92, {'ammo': 8}, {'ammo': 8}), (95, {'ammo': 7}, {'ammo': 7}),
-    (91, {'ammo': 7}, {'ammo': 7}),
+    (92, {'ammo': 8}, {'ammo': 8}), (200, {'ammo': 7}, {}),
 ])
 def test_known_failure_boundaries(window, counts, new):
     entries = [dict(mod='MC2X-CVE-G', mission='metropolitan', error_class='ammo',
@@ -38,11 +37,10 @@ def test_committed_save_references_use_current_policy():
         assert json.dumps(json.loads(path.read_text())['comparison'], sort_keys=True) == json.dumps(policy, sort_keys=True)
 
 
-@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'expiry', 'seed_identity', 'candidate_identity', 'expiring'])
+@pytest.mark.parametrize('broken', [None, 'game', 'viewer', 'camera', 'duplicate', 'equivalent', 'policy', 'seed_identity', 'candidate_identity'])
 @pytest.mark.parametrize('scheduled_deploy', [False, True])
 def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deploy):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
-    monkeypatch.setattr(mods, 'load_known_failures', lambda: [dict(first_window=92, expires_window=95)])
     def fingerprint(path):
         assert path in (tmp_path / 'build64-ninja/mc2.exe',
                         tmp_path / 'build64-ninja/out/tools/asset_viewer/mc2_asset_viewer.exe')
@@ -81,14 +79,9 @@ def test_preflight_inputs(tmp_path, monkeypatch, capsys, broken, scheduled_deplo
              ('saveload-m', ['save', '--mission', 'm', '--mask', 'mask.json'], {})]
     if scheduled_deploy:
         steps.append(('deploy', ['deploy'], {}))
-    window = {'expiry': 95, 'expiring': 94}.get(broken, 92)
-    assert gate.preflight('a' * 40, tmp_path / 'candidate', window,
-                          steps, seed=tmp_path / 'seed') == int(broken not in (None, 'expiring'))
+    assert gate.preflight('a' * 40, tmp_path / 'candidate', 92,
+                          steps, seed=tmp_path / 'seed') == int(broken is not None)
     output = capsys.readouterr().out
-    assert ('preflight WARN: known-failure' in output) == (broken == 'expiring')
-    if broken == 'expiring':
-        assert 'preflight PASS' in output
-        return
     assert checked == ['candidate', 'seed']
     assert 'fix:' in output if broken else 'preflight PASS' in output
 

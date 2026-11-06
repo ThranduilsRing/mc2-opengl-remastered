@@ -113,16 +113,14 @@ def load_known_failures(path=KNOWN_FAILURES):
         if (not all(entry.get(k) for k in ('mod', 'mission', 'error_class', 'owner_note'))
                 or not isinstance(entry.get('owner_note'), str) or not entry['owner_note'].strip()
                 or not re.fullmatch(r'[0-9a-f]{64}', entry.get('message_sha256', ''))
-                or not isinstance(entry.get('count_ceiling'), int) or entry['count_ceiling'] < 0
-                or not isinstance(entry.get('first_window'), int)
-                or entry.get('expires_window') != entry['first_window'] + 3):
+                or not isinstance(entry.get('count_ceiling'), int) or entry['count_ceiling'] < 0):
             raise ValueError(f'invalid known content failure: {entry}')
     return entries
 
 
 def content_verdict(counts, mod, mission, window, entries):
-    """Expiry is exclusive: an owner acceptance covers exactly three windows. A row applies to its mod on any mission
-    (a --mission override must not turn a known error into a NEW one) unless it sets "mission_only": true."""
+    """An owner-accepted row holds until the error stops firing (no window expiry, owner 2026-11-06). A row applies to its mod on
+    any mission (a --mission override must not turn a known error into a NEW one) unless it sets "mission_only": true."""
     known, new = {}, {}
     for signature, count in counts.items():
         if not count:
@@ -131,8 +129,7 @@ def content_verdict(counts, mod, mission, window, entries):
         ceiling = max((e['count_ceiling'] for e in entries
                        if (e['mod'], e['error_class']) == (mod, kind)
                        and (e['mission'] == mission or not e.get('mission_only'))
-                       and e.get('message_sha256') == message_sha
-                       and e['first_window'] <= window < e['expires_window']), default=0)
+                       and e.get('message_sha256') == message_sha), default=0)
         print(f'[mod_smoke] {mod} {mission} {signature} observed={count} ceiling={ceiling}', flush=True)
         (known if count <= ceiling else new)[signature] = count
     return known, new
@@ -856,8 +853,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
         '--keep-logs',
         '--wait-timeout', str(lease_wait),
         '--content-error-budget', str(sum(e['count_ceiling'] for e in known_failures
-            if e['mod'] == staged.name and e['mission'] == stem
-            and e['first_window'] <= window < e['expires_window'])),
+            if e['mod'] == staged.name and e['mission'] == stem)),
     ]
     if ref_exe is not None:
         cmd += ['--ref-exe', str(ref_exe)]

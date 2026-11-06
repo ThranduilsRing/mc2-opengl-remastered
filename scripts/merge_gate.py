@@ -181,7 +181,6 @@ def clean_failed_outputs(state, proof):
 def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, build_current, sha_agrees
-    from mod_smoke import load_known_failures
     from deploy_payload import verify_published_identity, staleness_report
     import saveload_roundtrip as saves
 
@@ -241,19 +240,6 @@ def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-see
                 raise ValueError('reference is missing evidence or has stale comparison policy')
         except (OSError, ValueError, TypeError) as exc:
             errors.append(f"{mission} first-save reference: {exc}; fix: py -3 tools/saveload_roundtrip.py --baseline --mission {mission} --install {install} --mask tools/save_noise_mask.json --first-save-only")
-    try:
-        entries = load_known_failures()
-        if window is None or window < 1:
-            raise ValueError('current window required; pass --window N to merge_gate.py')
-        expired = [e for e in entries if not e['first_window'] <= window < e['expires_window']]
-        if expired:
-            raise ValueError('expired/not-yet-active entries; renew tools/mod_known_failures.json with an owner note')
-        for e in entries:   # still valid now, but gone before the next window
-            if window + 1 >= e['expires_window']:
-                print(f"[merge_gate] preflight WARN: known-failure {e.get('mod')}/{e.get('mission')}/{e.get('error_class')} expires at window {e['expires_window']}, "
-                      f"last valid in window {e['expires_window'] - 1}; renew tools/mod_known_failures.json with an owner note", flush=True)
-    except (OSError, ValueError, TypeError, KeyError) as exc:
-        errors.append(f"known-failure list: {exc}; fix: edit tools/mod_known_failures.json with owner-approved ceilings and three-window expiry")
     for error in errors:
         print('[merge_gate] preflight FAIL: ' + error, flush=True)
     print(f"[merge_gate] preflight {'FAIL' if errors else 'PASS'} seconds={time.monotonic() - started:.2f}", flush=True)

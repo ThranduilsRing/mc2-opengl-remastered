@@ -74,16 +74,15 @@ def test_split_ammo_budget_enforces_each_hash(capsys):
 
 
 @pytest.mark.parametrize('note', [None, '', '   '])
-def test_renewal_requires_owner_note(tmp_path, note):
+def test_known_failure_requires_owner_note(tmp_path, note):
     import json
     entry = dict(ms.load_known_failures()[0])
-    entry.update(first_window=entry['expires_window'], expires_window=entry['expires_window'] + 3)
     entry['owner_note'] = note
     ledger = tmp_path / 'renewal.json'
     ledger.write_text(json.dumps([entry]))
     with pytest.raises(ValueError, match='invalid known content failure'):
         ms.load_known_failures(ledger)
-    entry['owner_note'] = 'Owner approves this renewal for three windows'
+    entry['owner_note'] = 'Owner accepts this known error'
     ledger.write_text(json.dumps([entry]))
     assert ms.load_known_failures(ledger) == [entry]
 
