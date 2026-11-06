@@ -189,7 +189,7 @@
    "LG02": 0,
    "LG03": 324,
    "LG04": 12,
-   "LG05": 107,
+   "LG05": 105,
    "LG06": 104,
    "LG07": 0,
    "LG08": 9,
@@ -2630,7 +2630,7 @@
    "LG10": 1
   },
   "mclib/assimp_importer.cpp": {
-   "LG05": 9,
+   "LG05": 8,
    "LG08": 3,
    "LG11": 1,
    "LG12a": 2
@@ -3316,9 +3316,7 @@
   "mclib/objstatus.h": {
    "LG14": 1
   },
-  "mclib/open_heap.h": {
-   "LG05": 1
-  },
+  "mclib/open_heap.h": {},
   "mclib/packet.cpp": {
    "LG12a": 1
   },

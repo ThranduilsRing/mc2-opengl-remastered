@@ -167,7 +167,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 		//----------------------
 		// Grab the best node...
 		PQNode bestPQNode;
-		openHeap.popMin(bestPQNode);
+		bestPQNode = openHeap.popMin().value();
 		curRow = bestPQNode.row;
 		curCol = bestPQNode.col;
 		GoalMapNode* bestMapNode = &goalView[curRow, curCol];

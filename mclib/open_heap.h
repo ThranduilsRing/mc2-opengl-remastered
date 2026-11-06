@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "mc2fmt.h"
@@ -69,17 +70,17 @@ public:
 		upHeap(size());
 	}
 
-	// Removes the node with the smallest key into `out`; false (and `out` untouched) when the heap is empty.
-	bool popMin(PQNode& out)
+	// Removes the node with the smallest key; an empty heap has no result.
+	std::optional<PQNode> popMin()
 	{
 		if (isEmpty())
-			return false;
-		out = nodes_[1];
+			return std::nullopt;
+		const PQNode result = nodes_[1];
 		nodes_[1] = nodes_.back();
 		nodes_.pop_back();
 		if (size() > 0)
 			downHeap(1);
-		return true;
+		return result;
 	}
 
 	// Position of the first node with this id, or 0 when the heap does not hold it.

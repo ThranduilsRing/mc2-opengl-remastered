@@ -368,7 +368,7 @@ long GlobalMap::calcPath (long startArea,
 
 	while (!openHeap.isEmpty()) {
 		PQNode bestPQNode;
-		openHeap.popMin(bestPQNode);
+		bestPQNode = openHeap.popMin().value();
 		if (g_moveReconEnabled) g_moveRecon_ag_nodesPopped++;
 		long bestDoor = bestPQNode.id;
 		GlobalMapDoorPtr bestMapDoor = &doors[bestDoor];
