@@ -7,31 +7,6 @@
 #include <tracy/Tracy.hpp>
 
 
-// Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
-// preserving the per-item range colours (short=olive, medium=blue, long=red,
-// components=gold).  So the Mech Loadout box renders through the ImGui defs layer
-// instead of the legacy gos list, which composites UNDER the defs page and is
-// occluded by its frame art.  (Local copy of the same helper in mechlopedia.cpp,
-// which lives in an anonymous namespace and so isn't linkable across TUs.)
-namespace {
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
-{
-	std::vector<std::string>  items;
-	std::vector<unsigned int> colors;
-	for ( int i = 0; i < box.GetItemCount(); i++ )
-	{
-		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
-		if ( pItem )
-		{
-			items.push_back( pItem->getText() );
-			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
-		}
-	}
-	screen->setDefsListItems( listKey, items );
-	screen->setDefsListItemColors( listKey, colors );
-}
-} // namespace
-
 void MechBayScreen::addSelectedMech()
 {
 	if ( mechListBox.getCurrentMech() )

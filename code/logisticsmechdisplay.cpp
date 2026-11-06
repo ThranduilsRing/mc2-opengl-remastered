@@ -15,29 +15,6 @@ LogisticsMechDisplay.cpp			: Implementation of the LogisticsMechDisplay componen
 #include "mc2str.h"
 #include "mc2_czstring.h"
 
-// Mirror a populated component list into the defs GuiList, preserving the per-item
-// range colours -- so the Mech Loadout matches the Mech Bay screen 100% (defs-page
-// GuiList, TTF) instead of the legacy gos list.  (Same helper as mechbayscreen.cpp;
-// mechlopedia's copy lives in an anon namespace and isn't linkable across TUs.)
-namespace {
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
-{
-	std::vector<std::string>  items;
-	std::vector<unsigned int> colors;
-	for ( int i = 0; i < box.GetItemCount(); i++ )
-	{
-		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
-		if ( pItem )
-		{
-			items.push_back( pItem->getText() );
-			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
-		}
-	}
-	screen->setDefsListItems( listKey, items );
-	screen->setDefsListItemColors( listKey, colors );
-}
-} // namespace
-
 LogisticsMechDisplay::LogisticsMechDisplay(  )
 {
 	pCurMech = nullptr;

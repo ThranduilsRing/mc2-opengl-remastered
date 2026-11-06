@@ -17,6 +17,24 @@ SimpleComponentListBox.cpp			: Implementation of the SimpleComponentListBox comp
 #include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include "mc2fmt.h"
 #include "memfunc.h"
+#include "logisticsscreen.h"
+
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
+{
+	std::vector<std::string> items;
+	std::vector<unsigned int> colors;
+	for ( int i = 0; i < box.GetItemCount(); i++ )
+	{
+		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
+		if ( pItem )
+		{
+			items.push_back( pItem->getText() );
+			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
+		}
+	}
+	screen->setDefsListItems( listKey, items );
+	screen->setDefsListItemColors( listKey, colors );
+}
 
 //-------------------------------------------------------------------------------------------------
 ComponentListBox::ComponentListBox()

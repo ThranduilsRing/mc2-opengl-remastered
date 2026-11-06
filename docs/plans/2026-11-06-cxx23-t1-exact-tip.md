@@ -15,3 +15,18 @@ Next: run unit contracts, C++ ratchet, file-size check and exactly one final-tip
 lint. Exact final SHA and verdicts will be recorded in the proof root's
 exact-tip-state.md so receipt updates do not change the proven commit.
 No game or deploy is authorized or needed in this run.
+
+## W122c cheap-row repair, 2026-11-06
+
+Factored the three identical syncWeaponLoadout implementations into the existing
+simplecomponentlistbox.cpp, with a declaration in its header. Calls, list order,
+null-item handling and range colors are unchanged. Restored logisticsmechicon.h
+to the base's CRLF bytes. Refreshed only the ownership inventory's stale key
+ordering; allocation/free/owner counts are unchanged.
+
+Next: commit, then run one final Ninja build (RelWithDebInfo, BelowNormal,
+CPUs 8-15, -j6), unit contracts, C++ ratchet, the three requested contract rows,
+and one lane lint. Record the exact tip and receipts in the proof root's
+exact-tip-state.md; write TRACK COMPLETE there only when every receipt is green.
+No game, deploy, install or box submission is needed. Scratch analysis script
+G:/mc2-tmp/t1-dup-inspect.py must be removed before hand-back.

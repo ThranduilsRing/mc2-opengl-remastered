@@ -1767,11 +1767,11 @@
    "new_array": 0,
    "owners": []
   },
-  "LogisticsMechIcon": {
+  "LogisticsMech": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticsmechicon.cpp": {
+    "code/mechpurchasescreen.cpp": {
      "new": 1
     }
    },
@@ -1779,11 +1779,11 @@
    "new_array": 0,
    "owners": []
   },
-  "LogisticsMech": {
+  "LogisticsMechIcon": {
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/mechpurchasescreen.cpp": {
+    "code/logisticsmechicon.cpp": {
      "new": 1
     }
    },

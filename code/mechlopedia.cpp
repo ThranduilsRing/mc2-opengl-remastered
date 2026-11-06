@@ -642,26 +642,6 @@ void cleanLegacyDescription( std::string& text )
 	std::replace( text.begin(), text.end(), '/', '\n' );
 }
 
-// Mirror a populated weapon-loadout ComponentListBox into the ImGui defs-page
-// list, preserving the per-weapon-range item colors the box assigned (short =
-// olive, medium = blue, long = red, components = gold).
-void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, mc2::czstring listKey )
-{
-	std::vector<std::string>  items;
-	std::vector<unsigned int> colors;
-	for ( int i = 0; i < box.GetItemCount(); i++ )
-	{
-		aTextListItem* pItem = static_cast<aTextListItem*>(box.GetItem( i ));
-		if ( pItem )
-		{
-			items.push_back( pItem->getText() );
-			colors.push_back( static_cast<unsigned int>(pItem->getColor()) );
-		}
-	}
-	screen->setDefsListItems( listKey, items );
-	screen->setDefsListItemColors( listKey, colors );
-}
-
 } // namespace
 
 void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
