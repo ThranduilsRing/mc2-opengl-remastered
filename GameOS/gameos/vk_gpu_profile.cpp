@@ -39,6 +39,9 @@ struct Row {
     double   sumMs = 0.0;      // over the window
     uint32_t calls = 0;
     uint32_t frames = 0;       // frames in the window in which the pass ran
+    double   ema = 0.0;        // overlay: running average over every frame the pass ran
+    float    lastCalls = 0.f;
+    bool     seeded = false;
 };
 
 struct State {
@@ -63,7 +66,7 @@ struct State {
     // window aggregation
     Row             rows[kMaxNames];
     uint32_t        rowCount = 0;
-    double          spanSumMs = 0.0, sumSumMs = 0.0;
+    double          spanSumMs = 0.0, sumSumMs = 0.0, spanEma = 0.0;
     uint32_t        windowFrames = 0, windowDropped = 0, windowOverflow = 0;
 #ifdef TRACY_ENABLE
     TracyVkCtx      tracy = nullptr;
@@ -171,6 +174,13 @@ void readSlot(uint32_t slot, uint32_t& used) {
         row.sumMs += perName[k];
         row.calls += callsOf[k];
         ++row.frames;
+        row.ema = row.seeded ? row.ema + (perName[k] - row.ema) * 0.05 : perName[k];
+        row.seeded = true;
+        row.lastCalls = static_cast<float>(callsOf[k]);
+    }
+    {
+        const double spanMs = static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6;
+        g.spanEma = g.spanEma > 0.0 ? g.spanEma + (spanMs - g.spanEma) * 0.05 : spanMs;
     }
     g.spanSumMs += static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6;
     g.sumSumMs += sumMs;
@@ -185,6 +195,14 @@ bool active() {
            || g.tracy
 #endif
         ;
+}
+
+uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs) {
+    if (spanMs) *spanMs = static_cast<float>(g.spanEma);
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < g.rowCount && n < maxRows; ++i)
+        if (g.rows[i].seeded) out[n++] = {g.rows[i].name, static_cast<float>(g.rows[i].ema), g.rows[i].lastCalls};
+    return n;
 }
 
 void init(VulkanContext& ctx) {
@@ -202,7 +220,7 @@ void init(VulkanContext& ctx) {
     const uint32_t fam = ctx.graphicsFamily();
     const bool tsOk = props.limits.timestampPeriod > 0.0f && fam < qfc && qfs[fam].timestampValidBits != 0;
 
-    if (mc2vkts::timestampsEnabled() && tsOk) {
+    if (tsOk) {   // always armed: two vkCmdWriteTimestamp per scope, read back two frames later without waiting
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 identity{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &driver};
         vkGetPhysicalDeviceProperties2(ctx.physicalDevice(), &identity);

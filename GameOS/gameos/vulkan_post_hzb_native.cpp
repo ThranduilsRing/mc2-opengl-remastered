@@ -1,5 +1,6 @@
 // Same-frame Vulkan depth pyramid and render-only static-prop occlusion.
 #include "gos_postprocess.h"
+#include "gos_cull_freeze.h"
 #include "vulkan_shadow_island_live.h"
 #include "vulkan_color_prop_island.h"
 #include "../../RenderCore/hzb_prop_bounds.h"
@@ -941,7 +942,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
             float viewportDepth[4];
         } push{feed.count, 0u, static_cast<uint32_t>(s->propBounds.size()), static_cast<uint32_t>(s->mipCount)};
         static_assert(sizeof(CullParams) == 96);
-        std::memcpy(push.worldToClip, feed.worldToClipGL, sizeof(push.worldToClip));
+        std::memcpy(push.worldToClip, mc2cullfreeze::cullMvp(feed.worldToClipGL), sizeof(push.worldToClip));
         push.viewportDepth[0] = static_cast<float>(width_);
         push.viewportDepth[1] = static_cast<float>(height_);
         push.viewportDepth[2] = feed.objectDepthBias;
@@ -1007,7 +1008,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
             pc.ids.push_back(i);
             pc.inst.push_back(static_cast<const GpuStaticPropInstance*>(feed.instances112)[i]);
         }
-        std::memcpy(pc.worldToClip, feed.worldToClipGL, sizeof(pc.worldToClip));
+        std::memcpy(pc.worldToClip, mc2cullfreeze::cullMvp(feed.worldToClipGL), sizeof(pc.worldToClip));
         pc.bias = feed.objectDepthBias;
         pc.bounds = s->propBounds;
         pc.generation = s->visibilityGeneration;
