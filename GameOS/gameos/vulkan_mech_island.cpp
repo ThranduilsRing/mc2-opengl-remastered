@@ -126,36 +126,12 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-bool mechFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_MECH_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
+bool mechFenceDeferEnabled() { static const bool on = mc2::gate::get<"MC2_VK_MECH_FENCE_DEFER">(); return on; }
+bool mechPerfGateRequested() { return false; }
 
-bool mechPerfGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = false;
-    }
-    return state == 1;
-}
-
-// The mech island always renders direct-chain (terrain leaves the shared GBuffer
-// Vulkan-owned); there is no GL<->VK semaphore-handoff co-write path.
-
-// VK-RUNG8 item-9: the native
-// CPU geometry + LightsData feed is unconditional under the VK mech island.
-// The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
-
+// Direct-chain only (no GL<->VK handoff); the native geometry + LightsData feed is unconditional.
 std::string spv_dir() { return vk_island_util::spvDir(); }
-
-VkShaderModule load_spv(VkDevice device, std::string_view path) {
-    return vk_island_util::loadSpv(device, path, vlog);
-}
-
-// The per-frame std140 UBO (MechFrameUBO) is single-sourced in
-// RenderCore/gpu_abi/GpuMechFrameUBO.h; its generated block feeds both mech shaders.
+VkShaderModule load_spv(VkDevice device, std::string_view path) { return vk_island_util::loadSpv(device, path, vlog); }
 
 // VK-PARITY-MECH-1: object light-pool SSBO cap (GpuTerrainLight 48B; GL caps 256).
 const uint32_t kMaxPoolLights = 256;
@@ -1034,17 +1010,13 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     {
         static const bool s_cullWitness = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();
         if (s_cullWitness) {
-            // Ordinal = per-drawn-frame (usedVulkan+1); the GL batcher builds one feed
-            // per frame the island draws, so the ordered sequence of vk_instances must
-            // equal the batcher's instances= sequence (equal every frame by construction).
             std::fprintf(stderr, "[VK_MECH_ISLAND] event=cull_witness seq=%lu vk_instances=%u runs=%u\n",
                          g_health.usedVulkan + 1, feed.instanceCount, feed.runCount);
         }
     }
 
-    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
-    // island for the whole session -> GL owns mechs, no per-frame re-init churn.
-    if (g_mechSessionDeclined) return 0;
+    if (g_mechSessionDeclined)   // a permanent init failure declined this island: GL owns mechs
+ return 0;
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     if (const MechIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Mech);
     if (!islandSlot()) {
@@ -1053,15 +1025,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
             const bool permanent = (g_mechInitReachedBuild != 0);
             slotCtx.waitIdle("mech_init_failure");   // objects made before the failure may have been submitted
             if (permanent) {
-                // Build-phase failure won't recover this session: latch decline + ONE
-                // receipt line (vs. re-init'ing every frame). GL renders mechs from frame 0.
                 g_mechSessionDeclined = true;
                 vlog("[VK_MECH_ISLAND] boot-level decline: permanent init failure (%s) -- "
                      "GL owns mechs for this session (no per-frame retry).",
                      g_health.fallbackReason);
             } else {
-                // Transient readiness gate (VK context / shared GBuffer not born yet):
-                // keep item-9 fail-hard-with-retry -- GL draws this frame, retry next.
                 static bool s_transientLogged = false;
                 if (!s_transientLogged) {
                     vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
