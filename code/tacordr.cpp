@@ -80,6 +80,17 @@
 #include <algorithm>
 #include "mc2fmt.h"
 #include "tacorder_wire.h"
+#include "tactic_table.h"
+
+// The table's legacy flag bits are the move.h flags (bit 22 is FLANK_RIGHT, bit 23 FLANK_LEFT) and its mask is the legacy mask.
+static_assert(tactic_table::to_params(TACTIC_FLANK_RIGHT) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_FLANK_RIGHT));
+static_assert(tactic_table::to_params(TACTIC_FLANK_LEFT) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_FLANK_LEFT));
+static_assert(tactic_table::to_params(TACTIC_FLANK_REAR) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_FLANK_REAR));
+static_assert(tactic_table::to_params(TACTIC_STOP_AND_FIRE) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_STOP_AND_FIRE));
+static_assert(tactic_table::to_params(TACTIC_TURRET) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_TURRET));
+static_assert(tactic_table::to_params(TACTIC_JOUST) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_JOUST));
+static_assert(tactic_table::kLegacyParamMask == static_cast<unsigned long>(TACORDER_TACTIC_MASK));
+static_assert((tactic_table::kExtMask & static_cast<unsigned long>(TACORDER_TACTIC_MASK)) == 0);
 
 //***************************************************************************
 
@@ -951,7 +962,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					if (attackParams.pursue)
 						params |= TACORDER_PARAM_PURSUE;
 					if (attackParams.tactic != TACTIC_NONE)
-						params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
+						params |= tactic_table::to_params(attackParams.tactic);
 
 					// 07-05-00 need to keep run info -- HKG
 					if (moveParams.wayPath.mode[0] == TRAVEL_MODE_FAST)
@@ -984,7 +995,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					if (attackParams.pursue)
 						params |= TACORDER_PARAM_PURSUE;
 					if (attackParams.tactic != TACTIC_NONE)
-						params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
+						params |= tactic_table::to_params(attackParams.tactic);
 					result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, params);
 					switch (result)
 					{
@@ -1016,7 +1027,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 				if (attackParams.pursue)
 					params |= TACORDER_PARAM_PURSUE;
 				if (attackParams.tactic != TACTIC_NONE)
-					params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
+					params |= tactic_table::to_params(attackParams.tactic);
 				result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, params);
 				switch (result)
 				{

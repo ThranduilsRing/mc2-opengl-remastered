@@ -1,6 +1,7 @@
 // MechWarrior: debug orders, brain-state accessors and the core* orders.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "tactic_table.h"
 #include "mc2fmt.h"
 
 
@@ -417,29 +418,18 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 			break;
 	}
 
-	long tactic = TACTIC_NONE;
-	switch (params & TACORDER_TACTIC_MASK) {
-		case TACORDER_PARAM_TACTIC_FLANK_RIGHT:
-			tactic = TACTIC_FLANK_RIGHT;
-			break;
-		case TACORDER_PARAM_TACTIC_FLANK_LEFT:
-			tactic = TACTIC_FLANK_LEFT;
-			break;
-		case TACORDER_PARAM_TACTIC_FLANK_REAR:
-			tactic = TACTIC_FLANK_REAR;
-			break;
-		case TACORDER_PARAM_TACTIC_STOP_AND_FIRE:
-			tactic = TACTIC_STOP_AND_FIRE;
+	// Explicit table decode (legacy flag bits or the extended-tactic field); only SF and TURRET change the order flags.
+	long tactic = tactic_table::from_params(params);
+	switch (tactic) {
+		case TACTIC_STOP_AND_FIRE:
 			pursue = true;
 			break;
-		case TACORDER_PARAM_TACTIC_TURRET:
-			tactic = TACTIC_TURRET;
+		case TACTIC_TURRET:
 			pursue = false;
 			jump = false;
 			keepMoving = false;
 			break;
-		case TACORDER_PARAM_TACTIC_JOUST:
-			tactic = TACTIC_JOUST;
+		default:
 			break;
 	}
 
