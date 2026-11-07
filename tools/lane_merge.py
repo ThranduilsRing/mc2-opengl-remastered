@@ -976,9 +976,9 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
     except Stop as exc:
         changed = []
         failed.append("inventories:" + str(exc).replace(chr(10), " "))
-    print("lint: inventories: " + ("FAIL (stale: " + ", ".join(changed) + "; fix: tools/lane_merge.py --regenerate-all and commit)" if changed else "PASS"), flush=True)
-    if changed:
-        failed.append("inventories-stale")
+    # Stale derived files are a WARN: lane_merge --batch regenerates them once on the merged candidate; lanes must NOT commit them.
+    # A generator that cannot run at all raised Stop above and still FAILs.
+    print("lint: inventories: " + ("WARN (stale: " + ", ".join(changed) + "; do not commit regenerated output, lane_merge --batch regenerates it)" if changed else "PASS"), flush=True)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
     return int(bool(failed))
 
