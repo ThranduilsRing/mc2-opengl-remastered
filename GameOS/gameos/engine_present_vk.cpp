@@ -1681,6 +1681,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     const bool fsrActive = fsrDepth && !scaled && mc2::options::current().spatialAA != 0 &&
                            s.fsr.prepare(*s.ctx, *scene, *fsrDepth, true);
     if (!fsrActive) s.fsr.prepare(*s.ctx, *scene, fsrDepth ? *fsrDepth : *scene, false);
+    mc2vk::infra::materialBiasTick();   // provider failure / AA toggle: log the effective bias; material owners rebuild stale samplers
     const int aaMode = fsrActive ? 0 : mc2::options::current().spatialAA;
     if (fsrActive) casEnabled = false;
     const auto& aaOutput = scaled ? s.scaledComposite : s.sharedImg;

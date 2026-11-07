@@ -139,6 +139,7 @@ struct OvlState {
     mc2vk::OwnedDescriptorSetLayout texDsl;
     mc2vk::OwnedDescriptorPool texPool;
     mc2vk::OwnedSampler samp;
+    float sampBias = 0.0f; uint32_t sampGen = 0, sampBoundGen[mc2vk::kMaxFramesInFlight] = {};   // bias the sampler was built with; per-slot rewrite generation
     mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
     bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
@@ -220,6 +221,7 @@ struct TerrainIsland : mc2vk::IslandState {
     std::array<VkImageView,7> boundTextures[mc2vk::kMaxFramesInFlight]{};
     mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
+    float                   sampBias = 0.0f;   // mip bias the colormap / cement / matNormal / concreteDetail samplers were built with
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
     uint64_t      colormapShoreVersionImported = 0;
     std::array<float, 9> colormapCookParams{};
@@ -401,6 +403,8 @@ bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint3
 bool create_cement_sampler(TerrainIsland* s);
 bool upload_sampled_image_array(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);
 bool create_matnormal_sampler(TerrainIsland* s);
+bool create_concrete_detail_sampler(TerrainIsland* s);
+void refresh_biased_samplers(TerrainIsland* s);   // rebuild the mip-biased samplers when the effective resolve state changed
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 

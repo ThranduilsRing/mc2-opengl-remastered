@@ -162,6 +162,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule vert, frag, vegFrag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedSampler vegetationSampler;
+    float vegBias = 0.0f; uint32_t vegGen = 0, vegBoundGen[kVfxSlots] = {};   // bias the vegetation sampler was built with; per-slot rewrite generation
     mc2vk::ResidentTextureRef vegetationTexture;
     std::shared_ptr<const mc2tex::TextureArrayCpu> loadedVegetation;
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
@@ -216,6 +217,27 @@ uint64_t white_texture_id(mc2vk::VulkanContext& ctx) {
 
 // Resolve after this parity's ticket retires. New/changed pages keep the other flight untouched.
 std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
+    if (handle==kVfxVegetationAtlas && s->vegetationSampler && mc2vk::infra::materialBiasStale(s->vegBias)) {   // FSR/AA resolve state changed
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        mc2vk::infra::materialSampler(sci);
+        VkPhysicalDeviceProperties vegetationProps{};
+        vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
+        sci.anisotropyEnable = mc2vk::profile::featureEnabled(mc2vk::getOrCreateEngineVulkanContext().profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
+        sci.maxAnisotropy = std::min(8.0f, vegetationProps.limits.maxSamplerAnisotropy);
+        mc2vk::OwnedSampler fresh;
+        if (mc2vk::create(fresh, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) {
+            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->vegetationSampler));
+            s->vegetationSampler = std::move(fresh);
+            s->vegBias = sci.mipLodBias;
+            ++s->vegGen;
+            mc2vk::bumpDescEpoch();
+        }
+    }
     if (handle==0xffffffffu) return std::nullopt;
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     uint64_t id=0;
@@ -267,7 +289,9 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
     auto& page=it->second;
     // Invalid/missing pages get the visible placeholder; eventual uploads change this view.
     const VkImageView view=ctx.textures().view(RenderCore::uiTextureHandle(id));
-    if (page.bound[par]!=view) {
+    const bool vegStale = handle==kVfxVegetationAtlas && s->vegBoundGen[par]!=s->vegGen;
+    if (page.bound[par]!=view || vegStale) {
+        if (handle==kVfxVegetationAtlas) s->vegBoundGen[par]=s->vegGen;
         const VkDescriptorImageInfo image{handle==kVfxVegetationAtlas ? s->vegetationSampler.get() : s->samp.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet=page.set[par];write.dstBinding=0;write.descriptorCount=1;
@@ -491,6 +515,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sci.maxLod = VK_LOD_CLAMP_NONE;
         mc2vk::infra::materialSampler(sci);
+        s->vegBias = sci.mipLodBias;
         VkPhysicalDeviceProperties vegetationProps{};
         vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
         sci.anisotropyEnable = mc2vk::profile::featureEnabled(ctx.profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;

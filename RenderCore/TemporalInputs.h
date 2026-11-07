@@ -80,6 +80,18 @@ inline float mipBias(float renderScale, bool providerResolve) {
     return providerResolve ? base - 1.0f : base;
 }
 
+// Effective material bias as the resolve state changes (FSR active / AA toggled / provider failure). `observe` is true
+// when the bias differs from the last one seen (the first observation counts), so a sampler built at `last` is stale.
+struct MipBiasState {
+    float last = 0.0f;
+    bool seen = false;
+    bool observe(float now) {
+        const bool changed = !seen || now != last;
+        last = now; seen = true;
+        return changed;
+    }
+};
+
 // Unjittered motion of a pixel, mirrors motion_vectors.frag (unit-tested against the shader math).
 // uv in [0,1]; depth reverse-Z; reproj = previousClip * inverse(currentClip), column-major.
 inline void motionVector(const float reproj[16], const float uv[2], float depth,

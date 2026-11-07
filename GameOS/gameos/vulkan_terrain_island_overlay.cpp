@@ -186,6 +186,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.minLod = 0.0f; sci.maxLod = 16.0f;
         mc2vk::infra::materialSampler(sci);
+        o->sampBias = sci.mipLodBias;
         if (!mc2vk::create(o->samp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
         VkDescriptorSetLayoutBinding b{};
         b.binding = 0; b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -441,6 +442,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
       if (!vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(slotTicket, 5000000000ull, "overlay submission slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     if (s->setBoundFrame[par] != frameNo) {
         if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) return 0;
+        refresh_biased_samplers(s);
         // Overlays can be the first terrain consumer of this parity (including load warmup).
         // Initialize the shared set after its wait even when the terrain draw was skipped.
         const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
@@ -448,6 +450,28 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
             write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
         }
         s->setBoundFrame[par] = frameNo;
+    }
+    if (mc2vk::infra::materialBiasStale(o->sampBias)) {   // FSR/AA resolve state changed: rebuild the sampler, rewrite this slot's texture sets
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.minLod = 0.0f; sci.maxLod = 16.0f;
+        mc2vk::infra::materialSampler(sci);
+        mc2vk::OwnedSampler fresh;
+        if (mc2vk::create(fresh, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) {
+            rctx.retire(std::move(o->samp));
+            o->samp = std::move(fresh);
+            o->sampBias = sci.mipLodBias;
+            ++o->sampGen;
+            mc2vk::bumpDescEpoch();
+        }
+    }
+    if (o->sampBoundGen[par] != o->sampGen) {
+        for (auto& [key, tex] : o->texs) { (void)key; tex.bound[par] = VK_NULL_HANDLE; }
+        o->dummy.bound[par] = VK_NULL_HANDLE;
+        o->sampBoundGen[par] = o->sampGen;
     }
     for (const auto& item : items) {
         auto& t=*item.tex; const auto view=t.texture.view();

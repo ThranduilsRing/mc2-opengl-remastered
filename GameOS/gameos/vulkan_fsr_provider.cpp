@@ -12,6 +12,7 @@
 #include <chrono>
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
+#include "Gates/gate_cold.h"
 
 namespace mc2vk {
 namespace {
@@ -49,7 +50,7 @@ struct FsrProvider::Impl {
     uint32_t w = 0, h = 0;
     VkImage sceneImage = VK_NULL_HANDLE, depthImage = VK_NULL_HANDLE;
     bool failed = false, registered = false, outputReady = false;
-    int resetFrames = 2;
+    int resetFrames = 2, wantedFrames = 0;
     std::chrono::steady_clock::time_point last{};
 
     void setRegistered(bool on) {
@@ -102,6 +103,11 @@ bool FsrProvider::prepare(VulkanContext& ctx, const VkImageResource& scene, cons
     if (!impl_) impl_ = std::make_unique<Impl>();
     Impl& s = *impl_;
     if (s.failed) return false;
+    // Test-only failure injection (not a feature gate): fails the provider as a real context/dispatch failure does, at the Nth wanted frame.
+    if (static const int failFrame = mc2::gate::get<"MC2_TEST_FSR_FAIL_FRAME">(); failFrame > 0 && ++s.wantedFrames >= failFrame) {
+        s.failed = true; s.setRegistered(false); g_providerFailed.store(true, std::memory_order_relaxed);
+        return false;
+    }
     if (s.context && (s.w != scene.w || s.h != scene.h)) s.destroyContext();    // resize
     if (!s.context && !s.create(ctx, scene.w, scene.h)) {
         s.failed = true; s.setRegistered(false); g_providerFailed.store(true, std::memory_order_relaxed);

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 438
+gate_count: 439
 registry_entry_count: 124
-verified_count: 415
+verified_count: 416
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2791,6 +2791,14 @@ flags:
     rule: Std
     owner: gameos
     doc: "Diagnostic: deliberately crash at this mission frame to prove bundle collection; zero disables injection."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_TEST_FSR_FAIL_FRAME
+    kind: Int
+    default: 0
+    rule: Std
+    owner: gameos
+    doc: "Diagnostic: fail the FSR provider at this frame to prove the material samplers drop the FSR mip bias; zero disables."
     smoke_passthrough: true
     verified: true
   - name: MC2_TEST_SPAWN

@@ -176,6 +176,9 @@ struct MechIsland : mc2vk::IslandState {
     VkBuffer ringBound[mc2vk::kMaxFramesInFlight][8] = {};
     // LOCAL-LIGHTS-2: the local-light shadow atlas binding 8 of every scheme set of a parity (null = sets hold the dummy).
     VkImageView localShadowBound[mc2vk::kMaxFramesInFlight] = {};
+    // FSR-SAMPLER-REFRESH: the bias albedoSamp was built at, and the sampler generation each parity's scheme sets were last written at.
+    float albedoBias = 0.0f;
+    uint32_t sampGen = 0, sampBoundGen[mc2vk::kMaxFramesInFlight] = {};
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData span (binding 4) for calc_light.
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
@@ -280,7 +283,9 @@ void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
 // Point the ring bindings of EVERY cached scheme set's [par] slot at the buffers this frame's spans live in. Safe after beginFrame (the parity fence
 // retired every [par] consumer); the [1-par] sets, possibly in flight, are untouched and follow at their own frame. A binding already pointing at its
 // buffer is skipped.
+void refresh_albedo_sampler(MechIsland* s, uint32_t par);
 void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& mainSpan, const mc2vk::FrameAlloc& lightSpan) {
+    refresh_albedo_sampler(s, par);
     struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; };
     const VkBuffer mainBuf = mainSpan.buffer;
     const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
@@ -344,8 +349,31 @@ bool make_albedo_sampler(MechIsland* s) {
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=VK_LOD_CLAMP_NONE;
     mc2vk::infra::materialSampler(sci);
+    s->albedoBias = sci.mipLodBias;
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     return mc2vk::create(s->albedoSamp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
+}
+
+// FSR-SAMPLER-REFRESH: the effective resolve state changed (FSR provider failed, AA toggled): retire the sampler built at the old bias
+// (destroyed after the GPU finishes the frames that may use it), build a new one, and rewrite each parity's scheme sets once, after
+// that parity's fence (the other parity keeps its submitted descriptors until its own turn).
+void refresh_albedo_sampler(MechIsland* s, uint32_t par) {
+    if (s->albedoSamp && mc2vk::infra::materialBiasStale(s->albedoBias)) {
+        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->albedoSamp));
+        if (!make_albedo_sampler(s)) return;   // device-level create failure: the island's own failure handling owns it
+        ++s->sampGen;
+        mc2vk::bumpDescEpoch();
+    }
+    if (!s->albedoSamp || s->sampBoundGen[par] == s->sampGen) return;
+    for (auto& e : s->schemes) {
+        if (e.set[par] == VK_NULL_HANDLE) continue;
+        const bool real = e.bound[par][0] != VK_NULL_HANDLE;
+        const VkImageView white = s->whiteTexture.view();
+        if (real) bind_scheme_images(s, e.set[par], e.bound[par][0], e.bound[par][1], e.bound[par][2]);
+        else bind_scheme_images(s, e.set[par], white, white, white);
+    }
+    s->localShadowBound[par] = reinterpret_cast<VkImageView>(~uint64_t(0));   // never an atlas: sync_ring_bindings rewrites binding 8 below
+    s->sampBoundGen[par] = s->sampGen;
 }
 
 // Allocate a descriptor set pair for a scheme (all 8 bindings), write buffer bindings
