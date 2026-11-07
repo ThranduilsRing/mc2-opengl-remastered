@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include "camera_internal.h"
+#include "../GameOS/gameos/gos_cull_freeze.h"
 #include "Gates/gate.h"
 #include "../GameOS/gameos/utils/mc2log.h"   // LOCAL-LIGHTS-4: [MISSION_LIGHT v1]
 #include "mission_light_profile.h"
@@ -734,6 +735,7 @@ bool Camera::quadAabbInFrustumSkipNear (const float planes[6][4],
 void Camera::cacheFrustumPlanes()
 {
 	extractFrustumPlanes(cachedFrustumPlanes_);
+	mc2cullfreeze::cullPlanes(cachedFrustumPlanes_);   // debug: frozen culling camera
 }
 
 const float (*Camera::getCachedFrustumPlanes() const)[4]

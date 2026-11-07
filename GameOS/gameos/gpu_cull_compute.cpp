@@ -7,6 +7,7 @@
 #include "gos_profiler.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
+#include "gos_cull_freeze.h"
 #include <gameos.hpp>
 #include <cstdio>
 
@@ -30,7 +31,7 @@ void compute_dispatch() {
     ZoneScopedN("Cull.Native.Submit");
     readback_tryConsume();
     const auto records=substrate_currentRecords();
-    const float* matrix=gos_GetTerrainMVPMat4();
+    const float* matrix=mc2cullfreeze::cullMvp(gos_GetTerrainMVPMat4());
     if (!matrix || records.empty()) return;
     const float dilation=0.08f;
     if (readback_submit(records,matrix,dilation,frame)) readback_frameEnd(frame++);

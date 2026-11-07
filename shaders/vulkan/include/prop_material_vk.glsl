@@ -48,7 +48,10 @@ vec3 propDetailNormal(vec3 geometric, vec2 uv, vec3 sampled, float strength) {
     return normalize(mat3(t,b,geometric) * normalize(n));
 }
 
-SurfaceMaterial propSurface(int id, vec3 albedo) {
+// coverage = the ORM map's alpha: authored coverage, separate from the stock albedo's cutout alpha
+// (zero keeps the legacy material response, including zero new specular); 1 without an ORM map.
+// It comes from the same fetch as orm.rgb, so the material path samples the ORM texture once.
+SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage) {
     PropMaterialGpu row = uPropMaterials.materials[id];
     vec2 uv = vUv * row.uvScale;
     SurfaceMaterial s;
@@ -65,10 +68,11 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
         s.normal = propDetailNormal(s.normal, uv, sampleN, row.normalStrength);
     }
     // No ORM map: the class scalars (row factors) with neutral AO and full coverage.
-    vec3 orm = vec3(1);
+    vec4 orm = vec4(1);
     if (row.material.metallicRoughnessTex != 0xffffffffu)
-        orm = perTex ? texture(uPropTex[nonuniformEXT(row.material.metallicRoughnessTex)], uv).rgb
-                     : texture(uPropOrm, vec3(uv, float(row.material.metallicRoughnessTex))).rgb;
+        orm = perTex ? texture(uPropTex[nonuniformEXT(row.material.metallicRoughnessTex)], uv)
+                     : texture(uPropOrm, vec3(uv, float(row.material.metallicRoughnessTex)));
+    coverage = orm.a;
     s.ao = mix(1.0, orm.r, row.aoStrength);
     s.roughness = clamp(orm.g * row.material.roughnessFactor, 0.3, 1.0);
     s.metallic = clamp(orm.b * row.material.metallicFactor, 0.0, 1.0);
@@ -90,14 +94,9 @@ bool propHasAuthoredOrm(int id) {
         && row.material.metallicRoughnessTex != 0xffffffffu;
 }
 
-// ORM alpha is authored coverage, separate from the stock albedo's cutout alpha.
-// Zero coverage keeps the legacy material response, including zero new specular.
-float propMaterialCoverage(int id) {
-    PropMaterialGpu row = uPropMaterials.materials[id];
-    if (row.material.metallicRoughnessTex == 0xffffffffu) return 1.0;
-    if (kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u)
-        return texture(uPropTex[nonuniformEXT(row.material.metallicRoughnessTex)], vUv * row.uvScale).a;
-    return texture(uPropOrm, vec3(vUv * row.uvScale, float(row.material.metallicRoughnessTex))).a;
+SurfaceMaterial propSurface(int id, vec3 albedo) {
+    float coverage;
+    return propSurface(id, albedo, coverage);
 }
 
 bool propHasObjectAlbedo(int id) {

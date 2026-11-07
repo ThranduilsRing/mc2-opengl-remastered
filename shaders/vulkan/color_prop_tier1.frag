@@ -59,6 +59,9 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
+// 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
+// fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
+layout(constant_id = 2) const int kOpaqueOnly = 0;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
@@ -172,7 +175,7 @@ void main() {
     // of main() for why the distinction exists and what its granularity is.
     bool alphaTestClass = false;
     float cover = 1.0;   // PROP-COVERAGE-1 blend alpha (1 in the core pass)
-    if (uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
+    if (kOpaqueOnly == 0 && uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
         alphaTestClass = true;
         // ALPHA-ON group (alpha-MIXED buildings): sample the alpha-ON array and apply the
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
@@ -200,8 +203,6 @@ void main() {
         materialAlbedo = texc.rgb; haveAlbedo = true;
         rgb = texc.rgb * max(vArgb, vec3(0.5));
         rgb += vHighlight.rgb * vHighlight.a;
-        poolLight = propPoolLight(vec3(1));
-        rgb += texc.rgb * poolLight;
     } else if (uFrame.materialReady != 0 && (vLayer >= 0 || propHasObjectAlbedo(uPacket.materialId))) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
         // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
@@ -221,27 +222,31 @@ void main() {
         rgb = albedo * vArgb;
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
-        if (uPacket.packetAlphaTest != 0) {
+        if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) {
             cover = propCoverage(texOff.a, vLayer >= 0 ? textureQueryLod(uAlbedo, uvContinuous).y : 0.0);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
         rgb += vHighlight.rgb * vHighlight.a;
-        poolLight = propPoolLight(vec3(1));
-        rgb += albedo * poolLight;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
     }
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
-    if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    if (kOpaqueOnly == 0 && uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    // One pool walk for both albedo groups (was inlined once per branch), after the fringe discard:
+    // halves the shader's code and skips the walk for fragments the fringe pass drops.
+    if (haveAlbedo) {
+        poolLight = propPoolLight(vec3(1));
+        rgb += materialAlbedo * poolLight;
+    }
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
     // Low/Potato reuse the VS's existing SH + sun + authored-light result.
     // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
     if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         if (kBaseQuality == 2) {
-            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
-            float materialCoverage = propMaterialCoverage(uPacket.materialId);
+            float materialCoverage;
+            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
             if (materialCoverage > 0.0) {
                 materialAO = mix(1.0, surface.ao, materialCoverage);
                 if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,

@@ -34,6 +34,11 @@ void frameEnd();
 // True when any sink would record (cheap; lets a caller skip building a name).
 bool active();
 
+// Rolling per-pass mean for the ImGui overlay (main thread). emaMs is an exponential average over frames the pass ran; calls is the
+// per-frame call count of the last frame it ran. Returns the number of rows written; spanMs is the EMA of the frame's GPU span.
+struct PassStat { const char* name; float emaMs; float calls; };
+uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs);
+
 class Scope {
 public:
     // `name` and `file` must be string literals (their data pointers are kept).

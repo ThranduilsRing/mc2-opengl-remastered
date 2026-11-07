@@ -1,4 +1,7 @@
 #include "EditorInspector_internal.h"
+#include <cstring>
+#include "../GameOS/gameos/vk_gpu_profile.h"
+#include "../GameOS/gameos/gos_cull_freeze.h"
 
 namespace EditorInspector {
 EditorInspector::InspectorSelection     s_selection;
@@ -34,6 +37,41 @@ static bool isEnabled() {
 
 static bool s_frameInspectorOpen = false;
 static bool s_framePrevCollect   = false;   // last SetCollect we issued
+static bool s_gpuPassesOpen      = false;
+static bool s_freezeCull         = false;
+
+// "GPU Passes" window (Ctrl+Shift+G): rolling per-pass GPU ms from the always-on timestamp scopes
+// (vk_gpu_profile) plus the "Freeze culling camera" debug toggle (gos_cull_freeze.h).
+static void drawGpuPassesWindow() {
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_G))
+        s_gpuPassesOpen = !s_gpuPassesOpen;
+    if (!s_gpuPassesOpen) return;
+    ImGui::SetNextWindowSize(ImVec2(420, 460), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("GPU Passes", &s_gpuPassesOpen)) {
+        if (ImGui::Checkbox("Freeze culling camera", &s_freezeCull)) mc2cullfreeze::set(s_freezeCull);
+        mc2vk::gpuprof::PassStat rows[64];
+        float span = 0.f;
+        const uint32_t n = mc2vk::gpuprof::snapshot(rows, 64, &span);
+        float sum = 0.f;
+        float gaps = 0.f;   // "gap:<pass>" rows are idle GPU time before <pass>, not pass work
+        for (uint32_t i = 0; i < n; ++i) (std::strncmp(rows[i].name, "gap:", 4) == 0 ? gaps : sum) += rows[i].emaMs;
+        ImGui::Text("GPU span %.2f ms   passes %.2f ms   gaps %.2f ms   (rolling avg)", span, sum, gaps);
+        if (ImGui::BeginTable("##gpupasses", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
+            ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("ms", ImGuiTableColumnFlags_WidthFixed, 56.f);
+            ImGui::TableSetupColumn("calls", ImGuiTableColumnFlags_WidthFixed, 44.f);
+            ImGui::TableHeadersRow();
+            for (uint32_t i = 0; i < n; ++i) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(rows[i].name);
+                ImGui::TableSetColumnIndex(1); ImGui::Text("%.3f", rows[i].emaMs);
+                ImGui::TableSetColumnIndex(2); ImGui::Text("%.0f", rows[i].calls);
+            }
+            ImGui::EndTable();
+        }
+    }
+    ImGui::End();
+}
 
 // standalone "Frame Inspector" window. Live per-pass render
 // stats (draws/instances/GL state) from gos_frame_pass_stats. Editor-only: the
@@ -226,6 +264,7 @@ void EditorInspector::drawImGui() {
     // live per-pass render stats window (Ctrl+Shift+P).
     // Independent of the Object Inspector; runs before the s_open early-return.
     drawFrameInspectorWindow();
+    drawGpuPassesWindow();
 
     if (!s_open) return;
 
