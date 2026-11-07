@@ -7,12 +7,7 @@
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-GOSImagePool::GOSImagePool() :
-	imageHash(
-		4099,
-		nullptr,
-		true
-	)
+GOSImagePool::GOSImagePool()
 {
 	Verify(gos_GetCurrentHeap() == Heap);
 	texturePath = "";
@@ -22,20 +17,27 @@ GOSImagePool::GOSImagePool() :
 //
 GOSImagePool::~GOSImagePool()
 {
-	HashIteratorOf<GOSImage*, MString> images(&imageHash);
-	images.DeletePlugs();
+	// Was HashIterator::DeletePlugs: delete every image (no Unregister_Object).
+	for (auto &[name, image] : imageHash)
+	{
+		delete image;
+	}
+	imageHash.clear();
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void GOSImagePool::UnLoadImages (void)
 {
-	HashIteratorOf<GOSImage*, MString> images(&imageHash);
-	GOSImage *image = images.ReadAndNext();
-	while (image)
+	// Same as RemoveImage on every image: erase the entry first (advancing
+	// through erase's return), then destroy the image.
+	for (auto it = imageHash.begin(); it != imageHash.end(); )
 	{
-		RemoveImage(image);
-		image = images.ReadAndNext();
+		const auto &[name, pooled] = *it;
+		GOSImage *image = pooled;
+		it = imageHash.erase(it);
+		Unregister_Object(image);
+		delete image;
 	}
 }
 
@@ -54,15 +56,14 @@ GOSImage*
 	// Get the image for the name
 	//---------------------------
 	//
-	GOSImage *image;
+	GOSImage *&image = imageHash[std::string(image_name)];
 
-	if ((image = imageHash.Find(imageName)) == nullptr)
+	if (image == nullptr)
 	{
 		gos_PushCurrentHeap(Heap);
 		image = new GOSImage(image_name);
 		Register_Object(image);
 		gos_PopCurrentHeap();
-		imageHash.AddValue(image, image->imageName);
 	}
 	Check_Object(image);
 
@@ -84,15 +85,14 @@ GOSImage*
 	// Get the image for the name
 	//---------------------------
 	//
-	GOSImage *image;
+	GOSImage *&image = imageHash[std::string(image_name)];
 
-	if ((image = imageHash.Find(imageName)) == nullptr)
+	if (image == nullptr)
 	{
 		gos_PushCurrentHeap(Heap);
 		image = new GOSImage(image_name, hints);
 		Register_Object(image);
 		gos_PopCurrentHeap();
-		imageHash.AddValue(image, image->imageName);
 	}
 #ifdef _ARMOR
 	else
@@ -111,6 +111,18 @@ void
 	GOSImagePool::RemoveImage(GOSImage *image)
 {
 	Check_Object(this);
+	// Erase BEFORE destroying (the name lives in the image). Only the entry
+	// that points at this image goes; ~Plug used to unlink exactly that one.
+	if (image != nullptr)
+	{
+		auto it = imageHash.find(std::string(static_cast<const char*>(image->imageName)));
+		if (it != imageHash.end())
+		{
+			const auto &[name, pooled] = *it;
+			if (pooled == image)
+				imageHash.erase(it);
+		}
+	}
 	Unregister_Object(image);
 	delete image;
 }

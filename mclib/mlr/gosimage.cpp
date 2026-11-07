@@ -12,7 +12,7 @@
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-GOSImage::GOSImage( const char* iName ) : Plug (DefaultData)
+GOSImage::GOSImage( const char* iName ) : RegisteredClass (DefaultData)
 {
 	imageName = iName;
 
@@ -27,7 +27,7 @@ GOSImage::GOSImage( const char* iName ) : Plug (DefaultData)
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-GOSImage::GOSImage( DWORD iHandle ) : Plug (DefaultData)
+GOSImage::GOSImage( DWORD iHandle ) : RegisteredClass (DefaultData)
 {
 	char str[20];
 
@@ -46,7 +46,7 @@ GOSImage::GOSImage( DWORD iHandle ) : Plug (DefaultData)
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-GOSImage::GOSImage(const char *name, gos_TextureHints hints) : Plug (DefaultData)
+GOSImage::GOSImage(const char *name, gos_TextureHints hints) : RegisteredClass (DefaultData)
 {
 	imageName = name;
 

@@ -12,58 +12,7 @@
 
 namespace Stuff {
 
-	class FileStreamManager;
 	class FileStream;
-
-	//##########################################################################
-	//##########################    Directory    ###############################
-	//##########################################################################
-
-	class Directory
-		#if defined(_ARMOR)
-			: public Stuff::Signature
-		#endif
-	{
-	public:
-		Directory(
-			char *find_files,
-			bool find_directories=false
-		);
-		~Directory();
-		
-		void
-			TestInstance() const
-				{}
-
-		char*
-			GetCurrentFileName();
-		void
-			AdvanceCurrentFile();
-		char*
-			GetCurrentFolderName();
-		void
-			AdvanceCurrentFolder();
-
-	public:
-		int 
-			fileOk;
-
-		Stuff::MString
-			currentDirectoryString;
-
-		using DirectoryEntry = Stuff::PlugOf<Stuff::MString>;
-		using DirectoryFolder = Stuff::PlugOf<Stuff::MString>;
-
-
-		Stuff::SortedChainOf<DirectoryFolder*, Stuff::MString>
-			folderEntries;
-		Stuff::SortedChainOf<DirectoryEntry*, Stuff::MString>
-			fileEntries;
-		std::unique_ptr<Stuff::SortedChainIteratorOf<DirectoryFolder*, Stuff::MString>>
-			folderWalker;
-		std::unique_ptr<Stuff::SortedChainIteratorOf<DirectoryEntry*, Stuff::MString>>
-			fileWalker;
-	};
 
 	//##########################################################################
 	//########################    FileStream    ################################
@@ -72,8 +21,6 @@ namespace Stuff {
 	class FileStream:
 		public MemoryStream
 	{
-		friend class FileStreamManager;
-
 	public:
 		static void
 			InitializeClass();

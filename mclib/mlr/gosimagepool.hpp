@@ -9,6 +9,9 @@
 #include<mlr/mlr.hpp>
 #endif
 
+#include <string>
+#include <unordered_map>
+
 namespace MidLevelRenderer {
 
 	class GOSImagePool
@@ -51,7 +54,9 @@ namespace MidLevelRenderer {
 				{}
 
 	protected:
-		Stuff::HashOf<GOSImage*, Stuff::MString>
+		// Name -> image; the pool owns the values (raw pointers, deleted in
+		// RemoveImage / UnLoadImages / the destructor, always after the erase).
+		std::unordered_map<std::string, GOSImage*>
 			imageHash;
 		Stuff::MString
 			texturePath;

@@ -175,8 +175,8 @@ namespace Stuff {
 		MemoryStreamClassID,
 		FileStreamClassID,
 
-		PlugClassID,
-		NodeClassID,
+		ReservedPlugClassID,	// Stuff::Plug/Node deleted; kept so the IDs below do not renumber
+		ReservedNodeClassID,
 
 		CharClassID,
 
@@ -192,28 +192,17 @@ namespace Stuff {
 inline constexpr mc2::czstring GROUP_STUFF = "Stuff::";
 inline constexpr mc2::czstring GROUP_STUFF_TEST = "Stuff::Test";
 inline constexpr mc2::czstring GROUP_STUFF_MEMORY = "Stuff::Memory";
-inline constexpr mc2::czstring GROUP_STUFF_TRACE = "Stuff::Trace";
 
 #include"style.hpp"
 #include"mstring.hpp"
-#include"socket.hpp"
-#include"chain.hpp"
-#include"safesocket.hpp"
-#include"sortedchain.hpp"
-#include"sortedsocket.hpp"
-#include"tree.hpp"
-#include"hash.hpp"
+#include"registeredclass.hpp"	// was reached through plug.hpp
 #include"angle.hpp"
 #include"color.hpp"
 #include"marray.hpp"
 #include"glmstream.hpp"	// step 5: the engine math is glm (mclib/math/mc2_xform.h); the byte formats
 #include"filestream.hpp"
-#include"filestreammanager.hpp"
 #include"marray.hpp"
-#include"notationfile.hpp"
-#include"page.hpp"
-#include"note.hpp"
 #include"random.hpp"
 #include"vector2d.hpp"
 #include"vector4d.hpp"
-#include"trace.hpp"
+#include<toolos.hpp>	// gos_* file/path API; formerly reached through the deleted trace.hpp

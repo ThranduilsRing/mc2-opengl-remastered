@@ -9,14 +9,15 @@
 #include <memory>
 
 #include"stuff.hpp"
-#include"hash.hpp"
-#include"scalar.hpp"
 
 namespace Stuff
 {
+	using IteratorPosition = int;	// 32-bit hash value (was declared in iterator.hpp)
 	class MString;
 	class MStringRepresentation;
 }
+
+#include"scalar.hpp"	// pulls memorystream.hpp, which needs the forward declarations above
 
 #if !defined(Spew)
 	void

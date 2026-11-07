@@ -22,7 +22,7 @@ void
 		new ClassData(
 			MLRShapeClassID,
 			"MidLevelRenderer::MLRShape",
-			Plug::DefaultData
+			RegisteredClass::DefaultData
 		);
 	Register_Object(DefaultData);
 }
@@ -43,8 +43,8 @@ MLRShape::MLRShape(
 	MemoryStream *stream,
 	int version
 ):
-	Plug(DefaultData)
-{ 
+	RegisteredClass(DefaultData)
+{
 	Check_Pointer(this);
 	Check_Object(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
@@ -244,7 +244,7 @@ MLRShape::MLRShape(
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 MLRShape::MLRShape(int nr):
-	Plug(DefaultData), allPrimitives(nr ? nr : 4)
+	RegisteredClass(DefaultData), allPrimitives(nr ? nr : 4)
 { 
 	Verify(gos_GetCurrentHeap() == Heap);
 	numPrimitives = 0;

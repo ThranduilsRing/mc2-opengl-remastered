@@ -77,11 +77,7 @@ void
 	//-------------------------------------------------
 	//
 	Verify(FirstFreeStuffClassID <= LastStuffClassID);
-	Verify(!FileStreamManager::Instance);
-	FileStreamManager::Instance = std::make_unique<FileStreamManager>();
 	RegisteredClass::InitializeClass();
-	Plug::InitializeClass();
-	Node::InitializeClass();
 
 
 	Random::InitializeClass();
@@ -93,9 +89,6 @@ void
 	//
 	MemoryStream::InitializeClass();
 	FileStream::InitializeClass();
-	#if defined(TRACE_ENABLED)
-		TraceManager::InitializeClass();
-	#endif
 
 
 
@@ -129,9 +122,6 @@ void
 		return;
 
 
-	#if defined(TRACE_ENABLED)
-		TraceManager::TerminateClass();
-	#endif
 	FileStream::TerminateClass();
 	MemoryStream::TerminateClass();
 
@@ -143,9 +133,5 @@ void
 	Random::TerminateClass();
 
 
-	Node::TerminateClass();
-	Plug::TerminateClass();
 	RegisteredClass::TerminateClass();
-	Check_Pointer(FileStreamManager::Instance.get());
-	FileStreamManager::Instance.reset();
 }

@@ -80,37 +80,6 @@ MLRLight::MLRLight(
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRLight::MLRLight(
-	ClassData *class_data,
-	Stuff::Page *page
-) :
-	RegisteredClass(class_data)
-{
-	Check_Object(page);
-	Verify(gos_GetCurrentHeap() == Heap);
-
-	lightName = page->GetName();
-
-	intensity = 1.0f;
-	page->GetEntry("Intensity", &intensity);
-
-	color = RGBColor(0.0f, 0.0f, 0.0f);
-	page->GetEntry("Color", &color);
-
-	glm::mat4 matrix = glm::mat4(1.0f);
-	glm::vec3 position = glm::vec3(0.0f);
-	page->GetEntry("Position", &position);
-	mc2::math::buildTranslation(matrix, position);
-
-	glm::vec3 direction(0.0f, 0.0f, 1.0f);
-	page->GetEntry("Direction", &direction);
-	mc2::math::alignLocalAxisToWorldVector(matrix, direction, Z_Axis, Y_Axis, X_Axis);
-
-	SetLightToWorldMatrix(matrix);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRLight::~MLRLight()
 {
 }
@@ -153,32 +122,6 @@ MLRLight*
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRLight*
-	MLRLight::Make(Stuff::Page *page)
-{
-	gos_PushCurrentHeap(Heap);
-	const char* type;
-	
-	page->GetEntry("LightType", &type, true);
-	MLRLight *light = nullptr;
-	if (!S_stricmp(type, "Ambient"))
-		light = new MLRAmbientLight(page);
-	else if (!S_stricmp(type, "Infinite"))
-		light = new MLRInfiniteLight(MLRInfiniteLight::DefaultData, page);
-	else if (!S_stricmp(type, "Point"))
-		light = new MLRPointLight(page);
-	else if (!S_stricmp(type, "Spot"))
-		light = new MLRSpotLight(page);
-	else if (!S_stricmp(type, "LookUp"))
-		light = new MLRLookUpLight(page);
-	else
-		STOP(("Bad light type"));
-	gos_PopCurrentHeap();
-	return light;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 void
 	MLRLight::Save(Stuff::MemoryStream *stream)
 {
@@ -188,50 +131,6 @@ void
 	*stream << static_cast<int>(GetLightType());
 	*stream << intensity << color << lightToWorld;
 	*stream << lightName;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	MLRLight::Write(Stuff::Page *page)
-{
-	Check_Object(this);
-	Check_Object(page);
-
-	switch (GetLightType())
-	{
-		case AmbientLight:
-			page->SetEntry("LightType", "Ambient");
-		break;
-
-		case InfiniteLight:
-			page->SetEntry("LightType", "Infinite");
-		break;
-
-		case PointLight:
-			page->SetEntry("LightType", "Point");
-		break;
-
-		case SpotLight:
-			page->SetEntry("LightType", "Spot");
-		break;
-
-		case LookUpLight:
-			page->SetEntry("LightType", "LookUp");
-		break;
-        default:
-            gosASSERT(0 && "Unsupported light type");
-	}
-
-	page->SetEntry("Intensity", intensity);
-	page->SetEntry("Color", color);
-
-	glm::vec3 position = mc2::math::getTranslation(lightToWorld);
-	page->SetEntry("Position", position);
-
-	glm::vec3 direction;
-	direction = mc2::math::localForwardInWorld(lightToWorld);
-	page->SetEntry("Direction", direction);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

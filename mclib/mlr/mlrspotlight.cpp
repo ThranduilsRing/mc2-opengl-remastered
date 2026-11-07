@@ -80,33 +80,6 @@ MLRSpotLight::MLRSpotLight(
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRSpotLight::MLRSpotLight(Stuff::Page *page):
-	MLRInfiniteLightWithFalloff(DefaultData, page)
-{
-	Check_Object(page);
-	Verify(gos_GetCurrentHeap() == Heap);
-	lightMap = nullptr;
-	const char* lightmap;
-	if (page->GetEntry("LightMap", &lightmap))
-	{
-		Check_Pointer(lightmap);
-		Check_Object(MLRTexturePool::Instance);
-		MLRTexture *texture = (*MLRTexturePool::Instance)(lightmap, 0);
-		if (!texture)
-			texture = MLRTexturePool::Instance->Add(lightmap, 0);
-		Check_Object(texture);
-		lightMap = new MLRLightMap(texture);
-		Check_Object(lightMap);
-		lightMask |= MLRState::LightMapLightingMode;
-	}
-	// The spread is authored in degrees.
-	Scalar degrees = 45.0f;
-	page->GetEntry("Spread", &degrees);
-	SetSpreadAngle(degrees * Radians_Per_Degree);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRSpotLight::~MLRSpotLight()
 {
 	if (lightMap)
@@ -137,26 +110,6 @@ void
 	else
 		*stream << MString("");
 	*stream << spreadAngle;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	MLRSpotLight::Write(Stuff::Page *page)
-{
-	Check_Object(this);
-	Check_Object(page);
-
-	MLRInfiniteLightWithFalloff::Write(page);
-	if (lightMap)
-	{
-		Check_Object(lightMap);
-		unsigned handle = lightMap->GetState().GetTextureHandle();
-		MLRTexture *texture = (*MLRTexturePool::Instance)[handle];
-		Check_Object(texture);
-		page->SetEntry("LightMap", texture->GetTextureName());
-	}
-	page->SetEntry("Spread", spreadAngle * Degrees_Per_Radian);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

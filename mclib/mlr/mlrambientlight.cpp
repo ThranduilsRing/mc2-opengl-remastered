@@ -61,16 +61,6 @@ MLRAmbientLight::MLRAmbientLight(
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRAmbientLight::MLRAmbientLight(Stuff::Page *page) :
-	MLRLight(DefaultData, page)
-{
-	Check_Object(page);
-	Verify(gos_GetCurrentHeap() == Heap);
-	lightMask = MLRState::FaceLightingMode|MLRState::VertexLightingMode;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRAmbientLight::~MLRAmbientLight()
 {
 }

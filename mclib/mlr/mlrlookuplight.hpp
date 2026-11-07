@@ -28,13 +28,10 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRLookUpLight(Stuff::Page *page);
 		~MLRLookUpLight();
 
 		void
 			Save(Stuff::MemoryStream *stream);
-		void
-			Write(Stuff::Page *page);
 
 		virtual LightType
 			GetLightType() 

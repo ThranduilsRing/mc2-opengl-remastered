@@ -38,15 +38,6 @@ namespace Stuff {
 	#define Register_Object(p) Check_Object(p)
 	#define Unregister_Object(p) Check_Object(p)
 
-	#if defined(USE_TIME_ANALYSIS) || defined(USE_ACTIVE_PROFILE)\
-	 || defined(USE_TRACE_LOG)
-		#define TRACE_ENABLED
-	#endif
-
-	#if defined(TRACE_ENABLED) && !defined(LAB_ONLY)
-		#undef TRACE_ENABLED
-	#endif
-
 	#define DECLARE_TIMER(scope, t)\
 		scope __int64 t##FrameTime
 	#define DEFINE_TIMER(c, t)\

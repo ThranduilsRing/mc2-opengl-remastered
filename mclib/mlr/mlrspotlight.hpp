@@ -28,13 +28,10 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRSpotLight(Stuff::Page *page);
 		~MLRSpotLight();
 
 		void
 			Save(Stuff::MemoryStream *stream);
-		void
-			Write(Stuff::Page *page);
 
 		virtual LightType
 			GetLightType() 

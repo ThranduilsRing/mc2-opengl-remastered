@@ -29,13 +29,10 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRPointLight(Stuff::Page *page);
 		~MLRPointLight();
 
 		void
 			Save(Stuff::MemoryStream *stream);
-		void
-			Write(Stuff::Page *page);
 
 		virtual void
 			LightVertex(const MLRVertexData&);

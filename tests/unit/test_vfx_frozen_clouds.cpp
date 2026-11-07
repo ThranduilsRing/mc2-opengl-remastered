@@ -622,6 +622,41 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preser
     CHECK(slots.retire(1));
 }
 
+namespace {
+struct ProbeImagePool : MidLevelRenderer::TGAFilePool {
+    ProbeImagePool() : TGAFilePool("") {}
+    std::size_t entries() const { return imageHash.size(); }
+};
+}
+
+TEST_CASE_FIXTURE(FrozenPlatform, "gos_image_pool/remove, unload and reload keep the name map consistent")
+{
+    gos_PushCurrentHeap(MidLevelRenderer::Heap);
+    {
+        ProbeImagePool pool;
+        auto* a = pool.GetImage("tex_a");
+        CHECK(pool.GetImage("tex_a") == a);
+        auto* b = pool.GetImage("tex_b");
+        CHECK(b != a);
+        CHECK(pool.entries() == 2);
+        // Removing an image erases only its own entry; a later lookup makes a fresh one.
+        pool.RemoveImage(a);
+        CHECK(pool.entries() == 1);
+        CHECK(pool.GetImage("tex_b") == b);
+        CHECK(pool.GetImage("tex_a") != nullptr);
+        CHECK(pool.entries() == 2);
+        // An unpooled image with a pooled name leaves the pooled entry alone.
+        pool.RemoveImage(new MidLevelRenderer::GOSImage("tex_b"));
+        CHECK(pool.GetImage("tex_b") == b);
+        CHECK(pool.entries() == 2);
+        pool.UnLoadImages();
+        CHECK(pool.entries() == 0);
+        CHECK(pool.GetImage("tex_b") != nullptr);
+        CHECK(pool.entries() == 1);
+    } // the destructor deletes what is left
+    gos_PopCurrentHeap();
+}
+
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/CardCloud draw flush and clip leave RNG unchanged")
 {
     checkFrozenCloud<gosFX::CardCloud>();
@@ -853,4 +888,21 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/B6 holder: debris cloud specificat
     loaded->Save(&resaved);
     CHECK(streamBytes(resaved) == savedBytes);
     delete loaded;
+}
+
+TEST_CASE("vfx_frozen/Event copy constructor copies m_localToParent")
+{
+    gosFX::Event source;
+    source.m_time = 1.5f;
+    source.m_flags = 3u;
+    source.m_effectID = 7u;
+    source.m_localToParent = glm::mat4(1.0f);
+    source.m_localToParent[3] = glm::vec4(1.0f, 2.0f, 3.0f, 1.0f);
+    gosFX::Event copy(source);
+    CHECK(copy.m_time == 1.5f);
+    CHECK(copy.m_flags == 3u);
+    CHECK(copy.m_effectID == 7u);
+    CHECK(copy.m_localToParent == source.m_localToParent);
+    CHECK(copy.m_localToParent[3][0] == 1.0f);
+    CHECK(copy.m_localToParent[3][2] == 3.0f);
 }

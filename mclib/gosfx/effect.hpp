@@ -27,14 +27,16 @@ namespace gosFX
 	//####################################  Event  ###############################
 	//############################################################################
 
-	class Event:
-		public Stuff::Plug
+	// One child spawn of an effect spec. The spec owns its events (Effect__Specification::m_events); an Event is no longer a
+	// Stuff::Plug.
+	class Event
 	{
 	public:
-		Event():
-			Plug(DefaultData)
-				{}
+		Event() = default;
 		Event(const Event& event);
+
+		// Check_Object/Register_Object hook (armor builds); an Event has no class data to verify.
+		void TestInstance() const {}
 
 		static Event*
 			Make(
@@ -126,9 +128,11 @@ namespace gosFX
 	// Events
 	//
 	public:
-		Stuff::ChainOf<Event*>
+		// In file order after a load (a file is not guaranteed to be sorted); AdoptEvent keeps the time order it is given.
+		std::vector<std::unique_ptr<Event>>
 			m_events;
 
+		// Takes ownership: inserts before the first event later than `event` (linear, so equal times keep adoption order).
 		void
 			AdoptEvent(Event *event);
 
@@ -166,8 +170,9 @@ namespace gosFX
 	// The owner of a live effect: a parent effect for its children, the game object or appearance for a top-level one.
 	using EffectPtr = std::unique_ptr<Effect>;
 
+	// A live effect is owned by its parent (m_children) or its game object; it is not a Stuff::Node in any chain.
 	class Effect:
-		public Stuff::Node
+		public Stuff::RegisteredClass
 	{
 		friend class EffectCloud;
 
@@ -271,8 +276,9 @@ namespace gosFX
 		// The parent owns every child it spawned, in spawn order (Execute, Draw and Kill visit them in that order).
 		std::vector<EffectPtr>
 			m_children;
-		Stuff::ChainIteratorOf<Event*>
-			m_event;
+		// Index of the next event of m_specification->m_events to fire; at or past the end, none are left.
+		size_t
+			m_event = 0;
 
 	//----------------------------------------------------------------------------
 	// Testing
@@ -384,7 +390,7 @@ namespace gosFX
 	//##########################################################################
 
 	class Effect__ClassData:
-		public Stuff::Plug::ClassData
+		public Stuff::RegisteredClass::ClassData
 	{
 	//----------------------------------------------------------------------------
 	//
@@ -392,7 +398,7 @@ namespace gosFX
 		Effect__ClassData(
 			Stuff::RegisteredClass::ClassID class_id,
 			const char* class_name,
-			Stuff::Plug::ClassData *parent_class,
+			Stuff::RegisteredClass::ClassData *parent_class,
 			Effect::Factory effect_factory,
 			Effect::Specification::Factory spec_factory
 		):
