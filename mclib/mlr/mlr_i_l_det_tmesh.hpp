@@ -108,7 +108,7 @@ namespace MidLevelRenderer {
 			Check_Object(this);
 			size_t ret = MLR_I_C_DeT_TMesh::GetSize();
 			ret += normals.size() * sizeof(normals[0]);
-			ret += litColors.GetSize();
+			ret += litColors.size() * sizeof(litColors[0]);
 
 			return ret;
 		}
@@ -116,7 +116,7 @@ namespace MidLevelRenderer {
 	protected:
 		std::vector<glm::vec3> normals;		// Base address of normal list 
 
-		Stuff::DynamicArrayOf<Stuff::RGBAColor> litColors;
+		std::vector<Stuff::RGBAColor> litColors;
 	};
 
 //	MLR_I_L_DeT_TMesh*

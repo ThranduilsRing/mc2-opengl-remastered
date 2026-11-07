@@ -52,10 +52,10 @@ MLRSortByOrder::MLRSortByOrder(MLRTexturePool *tp) :
 	for(i=0;i<MLRState::PriorityCount;i++)
 	{
 		lastUsedInBucket[i] = 0;
-		priorityBuckets[i].SetLength(Limits::Max_Number_Primitives_Per_Frame + Limits::Max_Number_ScreenQuads_Per_Frame);
+		priorityBuckets[i].resize(Limits::Max_Number_Primitives_Per_Frame + Limits::Max_Number_ScreenQuads_Per_Frame);
 	}
-	alphaSort.SetLength(2*Limits::Max_Number_Vertices_Per_Frame);
-	for(i=0;i<alphaSort.GetLength();i++)
+	alphaSort.resize(2*Limits::Max_Number_Vertices_Per_Frame);
+	for(i=0;i<alphaSort.size();i++)
 	{
 		alphaSort[i] = new SortAlpha;
 	}
@@ -69,11 +69,11 @@ MLRSortByOrder::~MLRSortByOrder()
 	int i;
 
 	gos_PushCurrentHeap(StaticHeap);
-	for(i=0;i<alphaSort.GetLength();i++)
+	for(i=0;i<alphaSort.size();i++)
 	{
 		delete alphaSort[i];
 	}
-	alphaSort.SetLength(0);
+	std::vector<SortAlpha*>().swap(alphaSort);
 	gos_PopCurrentHeap();
 }
 
@@ -166,7 +166,7 @@ void
 // So GameOS knows how long the transform and clip and lighting took of update renderers
 //
 
-	Stuff::DynamicArrayOf<SortData*>
+	std::vector<SortData*>
 		*priorityBucket;
 
 	GOSVertex::farClipReciprocal = farClipReciprocal;
@@ -243,7 +243,7 @@ void
 						SortData::LoadSortAlphaFunc alphaFunc = sd->LoadSortAlpha[sd->type];
 
 						Verify(alphaToSort+sd->numVertices/3 < 2*Limits::Max_Number_Vertices_Per_Frame);
-						alphaToSort += (sd->*alphaFunc)(alphaSort.GetData() + alphaToSort);
+						alphaToSort += (sd->*alphaFunc)(alphaSort.data() + alphaToSort);
 					}
 					else
 					{
@@ -268,7 +268,7 @@ void
 			int ii, jj, hh;
 
 			SortAlpha *tempSortAlpha;
-			Stuff::DynamicArrayOf<SortAlpha*>
+			std::vector<SortAlpha*>
 				*alphaArray;
 
 			alphaArray = &alphaSort;

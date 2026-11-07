@@ -137,8 +137,8 @@ void
 	pMesh->GetIndexData(&index_array, &num);
 	SetIndexData(index_array, num);
 
-	facePlanes.SetLength(GetNumPrimitives());
-	testList.SetLength(GetNumPrimitives());
+	facePlanes.resize(GetNumPrimitives());
+	testList.resize(GetNumPrimitives());
 
 	FindFacePlanes();
 

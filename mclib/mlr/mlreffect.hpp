@@ -135,7 +135,7 @@ namespace MidLevelRenderer {
 
 		static std::vector<Stuff::Vector4D> transformedCoords;
 
-		Stuff::DynamicArrayOf<int>	testList;
+		std::vector<int>	testList;
 
 		int drawMode;
 

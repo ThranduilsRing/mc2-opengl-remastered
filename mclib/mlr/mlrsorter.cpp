@@ -190,7 +190,7 @@ MLRSorter::MLRSorter(ClassData *class_data, MLRTexturePool *tp):
 	texturePool = tp;
 
 	gos_PushCurrentHeap(StaticHeap);
-	rawDrawData.SetLength(Limits::Max_Number_Primitives_Per_Frame);
+	rawDrawData.resize(Limits::Max_Number_Primitives_Per_Frame);
 
 	gos_PopCurrentHeap();
 }
@@ -237,7 +237,7 @@ SortData *
 {
 	Check_Object(this);
 
-	SortData *sd = rawDrawData.GetData();
+	SortData *sd = rawDrawData.data();
 
 	Verify (lastUsedRaw < Limits::Max_Number_Primitives_Per_Frame);
 	Verify (vertices != nullptr);
@@ -275,7 +275,7 @@ SortData *
 {
 	Check_Object(this);
 
-	SortData *sd = rawDrawData.GetData();
+	SortData *sd = rawDrawData.data();
 
 	Verify (lastUsedRaw < Limits::Max_Number_Primitives_Per_Frame);
 	Verify (vertices != nullptr);

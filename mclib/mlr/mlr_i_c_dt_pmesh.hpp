@@ -91,13 +91,13 @@ namespace MidLevelRenderer {
 		{ 
 			Check_Object(this);
 			size_t ret = MLR_I_DT_PMesh::GetSize();
-			ret += colors.GetSize();
+			ret += colors.size() * sizeof(colors[0]);
 
 			return ret;
 		}
 
 	protected:
-		Stuff::DynamicArrayOf<Stuff::RGBAColor> colors;	// Base address of color list 
+		std::vector<Stuff::RGBAColor> colors;	// Base address of color list 
 	};
 
 	MLR_I_C_DT_PMesh*

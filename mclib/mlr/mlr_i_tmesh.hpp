@@ -66,8 +66,8 @@ namespace MidLevelRenderer {
 					Check_Object(this);
 					Verify(gos_GetCurrentHeap() == Heap);
 					numOfTriangles = subprimitive_count;
-					testList.SetLength(numOfTriangles);
-					facePlanes.SetLength(numOfTriangles);
+					testList.resize(numOfTriangles);
+					facePlanes.resize(numOfTriangles);
 				}
 
 		void	FindFacePlanes();
@@ -77,7 +77,7 @@ namespace MidLevelRenderer {
 		const mc2::math::Plane *GetTrianglePlane(int i)
 			{
 				Check_Object(this);
-				Verify(i<facePlanes.GetLength());
+				Verify(i<facePlanes.size());
 
 				return &facePlanes[i];
 			}
@@ -123,8 +123,8 @@ namespace MidLevelRenderer {
 		{ 
 			Check_Object(this);
 			size_t ret = MLRIndexedPrimitiveBase::GetSize();
-			ret += testList.GetSize();
-			ret += facePlanes.GetSize();
+			ret += testList.size() * sizeof(testList[0]);
+			ret += facePlanes.size() * sizeof(facePlanes[0]);
 
 			return ret;
 		}
@@ -132,9 +132,9 @@ namespace MidLevelRenderer {
 	protected:
 		int numOfTriangles;
 
-		Stuff::DynamicArrayOf<unsigned char>	testList;
+		std::vector<unsigned char>	testList;
 		
-		Stuff::DynamicArrayOf<mc2::math::Plane> facePlanes;
+		std::vector<mc2::math::Plane> facePlanes;
 		
 	};
 

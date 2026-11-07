@@ -52,7 +52,7 @@ MLRShape::MLRShape(
 	*stream >> numPrimitives;
 	int i;
 
-	allPrimitives.SetLength(numPrimitives);
+	allPrimitives.resize(numPrimitives);
 
 	for(i=0;i<numPrimitives;i++)
 	{
@@ -310,10 +310,10 @@ void
 {
 	Check_Object(this); 
 
-	if(numPrimitives >= allPrimitives.GetLength() || allPrimitives.GetLength() == 0)
+	if(numPrimitives >= allPrimitives.size() || allPrimitives.size() == 0)
 	{
 		gos_PushCurrentHeap(Heap);
-		allPrimitives.SetLength(numPrimitives + 4);
+		allPrimitives.resize(numPrimitives + 4);
 		gos_PopCurrentHeap();
 	}
 
@@ -496,10 +496,10 @@ int
 		return numPrimitives;
 	}
 
-	if(numPrimitives >= allPrimitives.GetLength() || allPrimitives.GetLength() == 0)
+	if(numPrimitives >= allPrimitives.size() || allPrimitives.size() == 0)
 	{
 		gos_PushCurrentHeap(Heap);
-		allPrimitives.SetLength(numPrimitives + 4);
+		allPrimitives.resize(numPrimitives + 4);
 		gos_PopCurrentHeap();
 	}
 
