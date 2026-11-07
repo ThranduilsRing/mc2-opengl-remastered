@@ -18,13 +18,6 @@ def test_refuses_off_nifty_or_dirty(monkeypatch):
     assert nightly_gate.refusal() is None
 
 
-def test_skips_while_quiet_marker_live(monkeypatch, capsys):
-    monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
-    monkeypatch.setattr(nightly_gate, "quiet_held", lambda path=None: True)
-    assert nightly_gate.main([]) == 0
-    assert "SKIP" in capsys.readouterr().out
-
-
 def test_stage_selection_is_tier1_plus_deploy():
     names = nightly_gate.stage_names(False)
     assert "deploy" in names and "player-path" in names and "mods" not in names

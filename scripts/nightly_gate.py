@@ -4,8 +4,8 @@
 
 Runs `gate_wait.py --timeout 7200 -- merge_gate.py --nightly` (Sundays: --weekly), restricted to the tier-1/2 stages plus
 deploy, at BELOW_NORMAL, never --kill-existing. Proof dir: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/
-(gate-verdict.json inside). Refuses (rc 2) when mc2-main is not on claude/nifty-mendeleev or is dirty; skips (rc 0) while
-another gate holds A:/Games/mc2-ops/GATE_QUIET.json. tools/lane_merge_stage.py --promote refuses on a newest FAIL verdict
+(gate-verdict.json inside). Refuses (rc 2) when mc2-main is not on claude/nifty-mendeleev or is dirty. While another gate holds
+A:/Games/mc2-ops/GATE_QUIET.json, gate_wait waits for it (up to --timeout) instead of skipping the night. tools/lane_merge_stage.py --promote refuses on a newest FAIL verdict
 here until a triage* file sits next to it.
 """
 import argparse
@@ -19,23 +19,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 PROOF_ROOT = "E:/mc2-archive-2026-10/proofs/merge-gate"
-QUIET = "A:/Games/mc2-ops/GATE_QUIET.json"
 NIFTY = "claude/nifty-mendeleev"
 BELOW_NORMAL = 0x4000
 
 
 def git(*a):
     return subprocess.run(["git", "-C", ROOT, *a], capture_output=True, text=True).stdout.strip()
-
-
-def quiet_held(path=QUIET):
-    try:
-        with open(path) as fh:
-            rec = json.load(fh)
-    except (OSError, ValueError):
-        return False
-    from smoke_lib import host_lease
-    return bool(host_lease._holder_alive(rec))
 
 
 def refusal():
@@ -62,9 +51,6 @@ def main(argv=None):
     if why:
         print(f"[nightly_gate] REFUSED: {why}")
         return 2
-    if quiet_held():
-        print("[nightly_gate] SKIP: another gate holds GATE_QUIET.json")
-        return 0
     today = datetime.date.today()
     weekly = args.weekly or today.weekday() == 6
     proof = f"{PROOF_ROOT}/nightly-{today.isoformat()}"
