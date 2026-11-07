@@ -585,7 +585,7 @@ bool VulkanContext::init(bool wantPresent) {
     // The FidelityFX VK backend fetches the KHR-suffixed memory-requirements entry points through vkGetDeviceProcAddr; the loader returns null for a
     // KHR name unless the extension is enabled (core 1.1 promotion does not alias it), and the backend calls the pointer unchecked.
     for (const char* e : {VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME})
-        if (caps.hasExtension(e) && std::ranges::find_if(devExts, [e](const char* x) { return std::strcmp(x, e) == 0; }) == devExts.end()) devExts.push_back(e);
+        if (caps.hasExtension(e) && std::ranges::find_if(devExts, [e](std::string_view x) { return x == e; }) == devExts.end()) devExts.push_back(e);
 
     // The feature bits the profile selected. Eight bits are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
     // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2) and enabled although no island consumes them
