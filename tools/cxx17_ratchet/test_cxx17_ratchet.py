@@ -129,6 +129,8 @@ class Idioms(unittest.TestCase):
                     r'''std::string p = dir + "/" + name;''',
                     r'''std::string p = dir + "\\data\\" + name;''',
                     r'''strcat(buf, "\\");''',
+                    r'''path += '\\';''',
+                    r'''dir.push_back('\\');''',
                     r'''sprintf(b, "%s\\%s", d, n);''',
                     r'''if (a.back() == '/' || a.back() == '\\') a += '/';'''):
             self.assertEqual(n(src + "\n", "LG11"), 1, src)

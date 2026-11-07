@@ -135,6 +135,10 @@ R_OPERATOR = re.compile(r"\boperator\s+(new|delete)\b")
 # LG03 allocator-implementation allowlist: raw new/delete is the job of these files. Explicit paths only,
 # one reason each; a file NAME containing "pool"/"memory" etc. exempts nothing (pools and streams that own
 # resources with raw new/delete are real LG03 sites).
+# Files own_inventory.py and pointer_order_scan.py skip (they scan every cxx17_ratchet file, .inc included).
+INVENTORY_EXEMPT = {
+    "GameOS/gameos/alloc_stats_proof.inc": "allocator statistics proof: allocates and keys on pointers on purpose",
+}
 ALLOC_ALLOWLIST = {
     "mclib/heap.cpp": "engine heap implementation: obtains and releases blocks",
     "mclib/heap.h": "engine heap declarations and inline block helpers",
@@ -190,6 +194,8 @@ R_PATH_CAT = re.compile(r"""'\\\\'|"\\\\"|%s\\\\|\\\\%s|"SEP"\s*\+|\+\s*"SEP|\bs
 # '\\' or "\\" inside an escape routine (JSON/C escaping, unescape loop) is not a path separator.
 R_ESC_ROUTINE = re.compile(r"""'\\?"'|case\s*'\\\\'|(?:\+=|push_back\s*\(|\bout\s*\+=)\s*(?:'\\\\'|"\\\\\\\\")"""
                            r"""|'\\\\'\s*&&\s*\w+\s*\+\s*1\b|(?:\+\+\w+|\w+\+\+)\]\s*=\s*'\\\\'""")
+# ...but an append of a separator to a path-like variable (path/dir/file/name/folder) is a path build even there.
+R_PATH_APPEND = re.compile(r"""\b\w*(?:path|dir|file|name|folder)\w*\s*(?:\+=|\.push_back\s*\(|\.append\s*\()\s*(?:'\\\\'|"\\\\")""", re.I)
 R_LOG = re.compile(r"(?<![\w:.>])_?(?:[fv]|vf)?printf(?:_s|_l)?\s*\(|(?<![\w:.>])_?f?puts\s*\(|"
                    r"\bOutputDebugString\w*\s*\(|\bSPEW\w*\s*\(")
 R_FMTBUF = re.compile(r"(?<![\w:.>])_?(?:s|sn|vs|vsn|sw|vsw|snw|vsnw|st)printf(?:_s|_l)?\s*\(|\bwsprintf\w*\s*\(")
@@ -337,7 +343,7 @@ def scan_text(text: str, path: str = "") -> dict:
             if R_ONESIDED.search(joined):
                 onesided.append(ln)
         # LG11 (strings kept)
-        if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and not R_ESC_ROUTINE.search(c) and not pp and "#include" not in c):
+        if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and (not R_ESC_ROUTINE.search(c) or R_PATH_APPEND.search(c)) and not pp and "#include" not in c):
             hits["LG11"].append(ln)
         # LG19 (strings kept; Gates/ is the one place allowed to read the environment)
         if not pp and R_ENVREAD.search(c) and not path.startswith(LG19_EXEMPT_PREFIXES):
