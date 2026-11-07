@@ -259,7 +259,7 @@ void reportDescWrites() {
     if (++frames<600) return;
     if (mc2_diag::tagRequested("VK_DESC_WRITES"))   // MC2_DIAG_TAGS=VK_DESC_WRITES; uncached = issued+skipped
         mc2::fmt::print_err("[VK_DESC_WRITES v1] frames={} issued_per_frame={:.1f} skipped_per_frame={:.1f}\n",
-            frames,double(sumIssued)/frames,double(sumSkipped)/frames);
+            frames, static_cast<double>(sumIssued) / frames, static_cast<double>(sumSkipped) / frames);
     sumIssued=sumSkipped=0; frames=0;
 }
 
