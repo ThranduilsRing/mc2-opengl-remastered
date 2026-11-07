@@ -317,6 +317,8 @@ struct ColorPropIsland : mc2vk::IslandState {
         uint32_t mapGeneration = 0;
     };
     MaskBinding boundMask[mc2vk::kMaxFramesInFlight]{};
+    VkImageView boundObjectView[mc2vk::kMaxFramesInFlight]{};   // binding 14 last written with this view (null: copied from 24 or never written)
+    uint32_t boundObjectViewMap[mc2vk::kMaxFramesInFlight]{};
     mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
     mc2vk::ResidentTextureRef albedoOnTexture;
@@ -405,6 +407,7 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
     for (int i=parity;i<=parity;++i) {
     s->descriptorsDirty[i]=false;
     s->boundMask[i] = {};
+    s->boundObjectView[i] = VK_NULL_HANDLE;
     if (s->set[i] == VK_NULL_HANDLE) continue;
     // The ring bindings (0 UBO, 1 instances, 4 LightsData) at the frame ring's current buffer; the next frame of this parity re-points them at
     // the buffer its spans live in (ringBound is cleared).
@@ -1903,12 +1906,17 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const Mc2GroundLightingFrame* ground = &*s->lastGround;
     const auto objectView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
     if (objectView) {
+        // Binding 14 only changes with the bake's view (or after a map change / descriptor rewrite, which clear this): skip the identical write.
+        if (s->descriptorsDirty[par] || s->boundObjectView[par] != objectView ||s->boundObjectViewMap[par] != s->mapGeneration) {
+        s->boundObjectView[par] = objectView; s->boundObjectViewMap[par] = s->mapGeneration;
         VkDescriptorImageInfo image{s->treeShadowSampler.get(), objectView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet=s->set[par]; write.dstBinding=14; write.descriptorCount=1;
         write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
         vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+        }
     } else {
+        s->boundObjectView[par] = VK_NULL_HANDLE;
         VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
         copy.srcSet=copy.dstSet=s->set[par]; copy.srcBinding=24; copy.dstBinding=14; copy.descriptorCount=1;
         vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
