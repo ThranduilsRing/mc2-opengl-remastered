@@ -164,6 +164,8 @@ def main(argv=None) -> int:
                 blobs[rel] = fh.read()
     else:
         blobs = cr.git_blobs(dirs, "head")
+    for rel in cr.INVENTORY_EXEMPT:
+        blobs.pop(rel, None)
     res = scan(blobs)
     if args.write_baseline:
         with open(BASELINE, "w", encoding="utf-8", newline="\n") as fh:
