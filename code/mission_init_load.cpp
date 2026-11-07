@@ -11,6 +11,8 @@
 
 #include "content_error.h"
 
+using enum MissionLoadType;
+
 // Read the warrior count and set up the brain-load counters.
 void Mission::initWarriorsHeader(MissionInitFrame& f) {
 	auto& missionName = f.missionName; auto& result = f.result; auto& numWarriors = f.numWarriors;
@@ -593,7 +595,7 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 }
 
 // Count the mechs, vehicles and terrain objects and size the object manager.
-void Mission::initObjectCounts(long loadType, MissionInitFrame& f) {
+void Mission::initObjectCounts(MissionLoadType loadType, MissionInitFrame& f) {
 	auto& pakFile = f.pakFile;
 	loadProgress = 48.5f;
 	long numMechs = 0;
@@ -678,7 +680,7 @@ void Mission::initGpuAndLighting() {
 }
 
 // Spawn the movers and vehicles for each commander.
-void Mission::initSpawnActors(long loadType) {
+void Mission::initSpawnActors(MissionLoadType loadType) {
 	long curMech = 0;
 	long curVehicle = 0;
 	for (long t = 0; t < 8; t++)

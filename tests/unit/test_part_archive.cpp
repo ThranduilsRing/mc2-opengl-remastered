@@ -77,7 +77,7 @@ struct MissionPartArchiveTest {
         MissionInitFrame frame{};
         mission.initPartsHeader(frame);
         REQUIRE(mission.numParts == count);
-        mission.initPartsLoad(MISSION_LOAD_SP_QUICKSTART, -1, nullptr, nullptr, 0, frame);
+        mission.initPartsLoad(MissionLoadType::MISSION_LOAD_SP_QUICKSTART, -1, nullptr, nullptr, 0, frame);
     }
     static void release(Mission& mission) {
         if (mission.parts) std::free(mission.parts);

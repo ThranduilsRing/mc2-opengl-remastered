@@ -1282,7 +1282,7 @@ class MCMSG_PassValue {
 
 //***************************************************************************
 
-enum VersionStatus {
+enum class VersionStatus {
 	VERSION_STATUS_UNKNOWN,
 	VERSION_STATUS_GOOD,
 	VERSION_STATUS_BAD,
@@ -1484,7 +1484,7 @@ class MultiPlayer {
 		}
 
 		VersionStatus getVersionStatus (void) {
-			return(VERSION_STATUS_GOOD);
+			return(VersionStatus::VERSION_STATUS_GOOD);
 		}
 
 		long update (void);

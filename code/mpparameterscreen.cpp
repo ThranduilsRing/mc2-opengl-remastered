@@ -257,7 +257,7 @@ void MPParameterScreen::end()
 
 void MPParameterScreen::render(int xOffset, int yOffset )
 {
-	if ( VERSION_STATUS_UNKNOWN == MPlayer->getVersionStatus() )
+	if ( VersionStatus::VERSION_STATUS_UNKNOWN == MPlayer->getVersionStatus() )
 	{
 		if ( bErrorDlg )
 		{
@@ -718,11 +718,11 @@ void MPParameterScreen::update()
 	if ( MPlayer->commanderID < 0 )  // don't do anything until we've been initalized
 		return;
 
-	if ( VERSION_STATUS_UNKNOWN == MPlayer->getVersionStatus() )
+	if ( VersionStatus::VERSION_STATUS_UNKNOWN == MPlayer->getVersionStatus() )
 	{
 		return;
 	}
-	else if ( VERSION_STATUS_BAD == MPlayer->getVersionStatus() )
+	else if ( VersionStatus::VERSION_STATUS_BAD == MPlayer->getVersionStatus() )
 	{
 		if ( bErrorDlg )
 		{

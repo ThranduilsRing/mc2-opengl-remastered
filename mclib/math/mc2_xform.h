@@ -12,11 +12,17 @@
 
 #include <cmath>
 #include <cstddef>
+#include <utility>
 
 namespace mc2::math {
 
 // Stuff::Axes: the row / column numbers of the engine matrices.
-enum Axes : int { X_Axis = 0, Y_Axis = 1, Z_Axis = 2, W_Axis = 3 };
+enum class Axes : int { X_Axis = 0, Y_Axis = 1, Z_Axis = 2, W_Axis = 3 };
+// Matrix row / column indices: the engine uses these as plain integers (array subscripts, -1 sentinels).
+inline constexpr int X_Axis = std::to_underlying(Axes::X_Axis);
+inline constexpr int Y_Axis = std::to_underlying(Axes::Y_Axis);
+inline constexpr int Z_Axis = std::to_underlying(Axes::Z_Axis);
+inline constexpr int W_Axis = std::to_underlying(Axes::W_Axis);
 
 // The engine's base coordinate system (Stuff vector3d.hpp macros): forward +Z, right -X, up +Y.
 inline constexpr glm::vec3 Forward{0.0f, 0.0f, 1.0f};
