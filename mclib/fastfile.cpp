@@ -14,6 +14,7 @@
 #include<string.h>
 #include"platform_str.h"
 #include <memory>
+#include"vfs.h"        // mc2::vfs::invalidate (the merged index folds in the FST mounts)
 
 // NS3 boundary: the FastFile registry storage belongs to the FastFile
 // subsystem (this TU), not to whatever game/tool main happens to link it.
@@ -46,6 +47,7 @@ bool FastFileInit (mc2::czstring fname)
 
 	fastFiles[numFastFiles] = file.release();
 	numFastFiles++;
+	mc2::vfs::invalidate();
 
 	return TRUE;
 }
@@ -73,6 +75,7 @@ void FastFileFini (void)
 	free(fastFiles);
 	fastFiles = nullptr;
 	numFastFiles= 0;
+	mc2::vfs::invalidate();
 }
 
 //-----------------------------------------------------------------------------------
@@ -109,33 +112,6 @@ FastFile *FastFileFind (mc2::czstring fname, long &fastFileHandle)
 
 			currentFastFile++;
 		}
-
-// sebi: our .fst files now all have forward slashes
-#if 0
-        // sebi NB!
-        // if we are here file was not found, try with backslashes
-        char* fname2 = _strdup(fname);
-        int len = static_cast<int>(strlen(fname2));
-        for(int i=0;i<len;++i) {
-            if(fname2[i]=='/')
-                fname2[i] = '\\';
-        }
-
-		thisHash = elfHash(fname2);
-		currentFastFile = 0;
-		tempHandle = -1;
-		while (currentFastFile < numFastFiles)
-		{
-			tempHandle = fastFiles[currentFastFile]->openFast(thisHash,fname2);
-			if (tempHandle != -1)
-			{
-				fastFileHandle = tempHandle;
-				return fastFiles[currentFastFile];
-			}
-
-			currentFastFile++;
-		}
-#endif
 
 	}
 

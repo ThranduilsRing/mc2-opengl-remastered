@@ -17,6 +17,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 \*************************************************************************************************/
 
 #include"logisticsdialog.h"
+#include "vfs.h"
 #include "mc2str.h"
 #include"abutton.h"
 #include"inifile.h"
@@ -616,94 +617,84 @@ void LogisticsSaveDialog::beginCampaign()
 void LogisticsSaveDialog::initDialog( mc2::czstring path, bool bCampaign )
 {
 	gameListBox.removeAllItems( true );
-	// need to add items to the save game list
-	char findString[512];
-	(*std::format_to_n(findString,sizeof(findString) - 1,"{}*.fit",mc2::fmt::safe(path)).out = '\0');
 
-	WIN32_FIND_DATA	findResult;
-	HANDLE searchHandle = FindFirstFile(findString,&findResult); 
-	if (searchHandle != INVALID_HANDLE_VALUE)
+	if ( !bCampaign )
 	{
-		do
+		// Saves are WRITABLE user files: they stay physical (not in the VFS index).
+		char findString[512];
+		(*std::format_to_n(findString,sizeof(findString) - 1,"{}*.fit",mc2::fmt::safe(path)).out = '\0');
+
+		WIN32_FIND_DATA	findResult;
+		HANDLE searchHandle = FindFirstFile(findString,&findResult);
+		if (searchHandle != INVALID_HANDLE_VALUE)
 		{
-			if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+			do
 			{
-				auto pEntry = std::make_unique<aLocalizedListItem>();
-				*pEntry = s_instance->templateItem;
-				char* pExt = strstr( findResult.cFileName, ".fit" );
-				if ( !pExt  )
+				if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 				{
-					pExt = (strstr( findResult.cFileName, ".FIT" ) );
-				}
-				if ( pExt )
-					*pExt = '\0';
+					auto pEntry = std::make_unique<aLocalizedListItem>();
+					*pEntry = s_instance->templateItem;
+					char* pExt = strstr( findResult.cFileName, ".fit" );
+					if ( !pExt  )
+					{
+						pExt = (strstr( findResult.cFileName, ".FIT" ) );
+					}
+					if ( pExt )
+						*pExt = '\0';
 
-				bool addItem;
-				if (bCampaign)
-				{
-					char campaignName[1024];
-					readCampaignNameFromFile( findResult.cFileName, std::span(campaignName).first(1023) );
-					pEntry->setText( campaignName );
-					addItem = true;
-				}
-				else
-				{
-					addItem = isCorrectVersionSaveGame(findResult.cFileName);
-					if (addItem)
+					if (isCorrectVersionSaveGame(findResult.cFileName))
+					{
 						pEntry->setText( findResult.cFileName );
+						pEntry->setHiddenText( findResult.cFileName );
+						pEntry->setColor( edits[0].getColor() );
+						gameListBox.AddItem( pEntry.release() );
+					}
 				}
+			} while (FindNextFile(searchHandle,&findResult) != 0);
 
-				if (addItem)
-				{
-					pEntry->setHiddenText( findResult.cFileName );
-					pEntry->setColor( edits[0].getColor() );
-					gameListBox.AddItem( pEntry.release() );
-				}
-				else
-				{
-					pEntry.reset();
-				}
-			}
-		} while (FindNextFile(searchHandle,&findResult) != 0);
-
-		FindClose(searchHandle);
+			FindClose(searchHandle);
+		}
 	}
-
-	// Also enumerate campaign .fit files from mod folders (invisible to FindFirstFile).
-	if (bCampaign)
+	else
 	{
-		struct ModCampaignCtx {
-			LogisticsSaveDialog* self;
-			unsigned long itemColor;
-		};
-		ModCampaignCtx ctx = { this, static_cast<unsigned long>( edits[0].getColor() ) };
-		EnumerateModCampaignFiles([](mc2::czstring fitFileName, mc2::czstring fullPath, void* ud) {
-			ModCampaignCtx* c = static_cast<ModCampaignCtx*>(ud);
+		// Campaigns come from the merged VFS index (mods + loose + FST); "campaign" and "tutorial"
+		// are added below in their fixed positions. Enumerated at menu time only.
+		for ( const auto& campEntry : mc2::vfs::enumerate( "data/campaign/", ".fit" ) )
+		{
+			std::string fname = campEntry.name;
+			if ( fname.size() > 4 )
+				fname.resize( fname.size() - 4 );	// strip ".fit"
+			if ( _stricmp( fname.c_str(), "campaign" ) == 0 || _stricmp( fname.c_str(), "tutorial" ) == 0 )
+				continue;
 
-			// Open by absolute path — bypasses mod overlay (g_activeMod empty on menu).
-			FitIniFile file;
+			// Tolerant name read: a malformed mod campaign falls back to its file name, never asserts.
 			char campaignName[1024];
 			campaignName[0] = '\0';
-			if (NO_ERR == file.open(const_cast<char*>(fullPath))) {
-				if (NO_ERR == file.seekBlock("Campaign")) {
+			FullPathFileName fullPath;
+			fullPath.init( campaignPath, fname.c_str(), ".fit" );
+			FitIniFile file;
+			if ( NO_ERR == file.open( const_cast<char*>(static_cast<const char*>(fullPath)) ) )
+			{
+				if ( NO_ERR == file.seekBlock( "Campaign" ) )
+				{
 					long lName = 0;
-					if (NO_ERR == file.readIdLong("NameID", lName))
-						cLoadString(lName, campaignName, 1023);
+					if ( NO_ERR == file.readIdLong( "NameID", lName ) )
+						cLoadString( lName, campaignName, 1023 );
 					else
-						file.readIdString("CampaignName", campaignName, 1023);
+						file.readIdString( "CampaignName", campaignName, 1023 );
 				}
 				file.close();
 			}
-			if (campaignName[0] == '\0')
-				strncpy(campaignName, fitFileName, 1023);
+			if ( campaignName[0] == '\0' )
+				strncpy( campaignName, fname.c_str(), 1023 );
 
 			auto pEntry = std::make_unique<aLocalizedListItem>();
 			*pEntry = s_instance->templateItem;
-			pEntry->setText(campaignName);
-			pEntry->setHiddenText(fitFileName);
-			pEntry->setColor(c->itemColor);
-			c->self->gameListBox.AddItem(pEntry.release());
-		}, &ctx);
+			pEntry->setText( campaignName );
+			pEntry->setHiddenText( fname.c_str() );
+			pEntry->setColor( edits[0].getColor() );
+			gameListBox.AddItem( pEntry.release() );
+		}
 	}
 
 	//Check for the two we KNOW are there but may be in fast files.

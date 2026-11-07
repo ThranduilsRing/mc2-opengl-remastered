@@ -102,9 +102,6 @@ bool ModCapabilityMounted(std::string_view capability);
 bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capability);
 // Archive metadata for a loose override; the normal File::open precedence stays authoritative.
 std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBytes);
-// Enumerate data/campaign/*.fit files from the active mod (for campaign list UI).
-using ModCampaignCallback = void(*)(mc2::czstring fitFileName, mc2::czstring fullPath, void* userData);
-void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData);
 // Enumerate mod-indexed .fit files whose key starts with keyPrefix (e.g. "data/defs/text/en_us/").
 // Appends absolute paths to out, sorted by filename. Used by MC2Strings to pick up mod text FITs.
 using ModFitCallback = void(*)(mc2::czstring absPath, void* userData);

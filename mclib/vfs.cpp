@@ -9,6 +9,20 @@
 // File lookup: O(1) hash, no per-file disk probing.
 // Diagnostics: MC2_LOG_FILE_RESOLVE=1 (level-1 tags) or =2 (level-1 + JSONL trace)
 
+#include "vfs.h"
+#include "file.h"
+#include "ffile.h"
+#include "fastfile.h"
+#include <string.h>
+#include "platform_io.h"
+#include <ctype.h>
+#include <errno.h>
+#include "platform_windows.h"
+#include <gameos.hpp>
+#include "platform_str.h"
+#include "fst_hash.h"
+#include "mod_conflict.h"
+#include "../GameOS/gameos/crash_content.h"
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -22,17 +36,6 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 
-namespace
-{
-// Largest in-RAM file image a FastFile entry may claim. The biggest stock member is tens of megabytes; this only has to stop a corrupt
-// size (a mod archive with a damaged entry reads back as up to 4 GB) from reaching the allocator.
-constexpr unsigned long kMaxInRamImage = 1ul << 30;
-
-bool imageSizePlausible (unsigned long size)
-{
-	return size <= kMaxInRamImage;
-}
-} // namespace
 
 struct ModFileEntry {
     std::string path;   // absolute path to real file
@@ -44,19 +47,20 @@ static std::unordered_map<std::string, ModFileEntry> g_modIndex;
 // Built alongside g_modIndex in IndexModData; queried at level-2 emit.
 static std::unordered_map<std::string, std::vector<std::string>> g_shadowedBy;
 static std::string g_activeModId;
+static std::string g_modsAbsRoot;   // absolute mods root with trailing '/', set by InitModSearchPaths
 static std::unordered_map<std::string, int> g_modPriority;
 // mod.json "capabilities" per mounted mod id (active + deps). A package capability switches on the
 // engine paths that package needs (imported mechs, package chassis, equipment ADD) for that package only.
 static std::unordered_map<std::string, std::vector<std::string>> g_modCapabilities;
 // logFileResolve: 0=off, 1=level-1 stdout tags, 2=level-1+JSONL trace
-static int logFileResolve = 0;
+int logFileResolve = 0;
 
 // META-FIX design E: resolve counters for the level>=1 shutdown summary
 // ("[file-resolve] opens=N misses=M"). Unconditional integer bumps (no
 // output unless the gate is on); opens = successful File::open resolutions,
 // misses = full-ladder misses from File::open AND fileExists probes.
-static unsigned long g_resolveOpens = 0;
-static unsigned long g_resolveMisses = 0;
+unsigned long g_resolveOpens = 0;
+unsigned long g_resolveMisses = 0;
 
 // Level-2 JSONL trace state (all guarded by logFileResolve >= 2).
 static FILE* g_traceFile = nullptr;
@@ -102,7 +106,7 @@ static void JsonEscape(const char* src, char* buf, size_t bufSize) {
 // key:   NormalizeKey(fileName)
 // req:   original fileName as received by the caller
 // shadowed: may be nullptr (omit field) or a vector of strings
-static void EmitResolveRecord(
+void EmitResolveRecord(
     const char* key,
     const char* req,
     const char* layer,
@@ -173,7 +177,7 @@ static bool ShouldSearchMods(const char* fileName) {
     return true;
 }
 
-static std::string NormalizeKey(const char* p) {
+std::string NormalizeKey(const char* p) {
     // Delegates to the leaf-TU normalizer (mclib/fst_hash.cpp) so the loose-file
     // index key contract is unit-testable game-free (GAMEOS-PATHSEP-HARNESS-1).
     return fst_normalize_loose_key(p);
@@ -588,7 +592,7 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
 // O(1) lookup. Returns false immediately when no mod active (g_modIndex empty).
 // req: original filename as requested by caller (before lowercasing), used for level-2 trace.
 //      May be nullptr — falls back to fileName.
-static std::optional<int> TryModOpen(const char* fileName, const char* req = nullptr) {
+std::optional<int> TryModOpen(const char* fileName, const char* req) {
     if (g_modIndex.empty()) return std::nullopt;
     if (!ShouldSearchMods(fileName)) return std::nullopt;
     std::string key = NormalizeKey(fileName);
@@ -707,24 +711,6 @@ void ActivateCampaignMod(mc2::czstring /*campaignFitName*/) {}
 void ActivateModForMission(mc2::czstring /*missionFitKey*/) {}
 void DeactivateMod() {}
 
-// Enumerate campaign .fit files from the active mod index.
-// Called by logisticsdialog.cpp to inject mod campaigns into the campaign list UI.
-// Skips "data/campaign/campaign.fit" (base game manifest) — only individual campaigns.
-void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData) {
-    if (g_modIndex.empty()) return;
-    static const std::string prefix  = "data/campaign/";
-    static const std::string ext     = ".fit";
-    static const std::string exclude = "data/campaign/campaign.fit";
-    for (auto& [key, entry] : g_modIndex) {
-        if (key == exclude) continue;
-        if (key.compare(0, prefix.size(), prefix) != 0) continue;
-        if (key.size() <= prefix.size() + ext.size()) continue;
-        if (key.compare(key.size() - ext.size(), ext.size(), ext) != 0) continue;
-        std::string fname = key.substr(prefix.size(), key.size() - prefix.size() - ext.size());
-        cb(fname.c_str(), entry.path.c_str(), userData);
-    }
-}
-
 void EnumerateModFiles(std::string_view keyPrefix, ModFitCallback cb, void* userData) {
     if (keyPrefix.empty() || !cb) return;
     const std::string prefix = NormalizeKey(std::string(keyPrefix).c_str());
@@ -839,6 +825,7 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
 }
 
 void InitModSearchPaths(mc2::czstring modsRoot) {
+    mc2::vfs::invalidate();
     g_modIndex.clear();
     g_modPriority.clear();
     g_shadowedBy.clear();
@@ -928,6 +915,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
         absRoot[rootLen]   = '/';
         absRoot[rootLen+1] = '\0';
     }
+    g_modsAbsRoot = absRoot;   // the VFS index derives shadowed-mod physical paths from it
 
     // Read active mod's mod.json for dependencies.
     char jsonPath[MAX_PATH];
@@ -1121,5 +1109,287 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
 
     mc2::fmt::print_out("[mod] ready: active='{}' total={:d} files\n", mc2::fmt::safe(envMod), mc2::fmt::as_size(g_modIndex.size()));
     fflush(stdout);
+    mc2::vfs::invalidate();
 }
 
+// ===========================================================================
+// mc2::vfs -- mount table + ONE merged index (see vfs.h).
+// Mount order (later overwrites earlier): base FST archives, loose data/, mods.
+// The mod layer is already merged by InitModSearchPaths (g_modIndex = priority-resolved
+// winners, g_shadowedBy = losers); the index folds it in as the last mounts.
+// ===========================================================================
+#include <map>
+#include <mutex>
+#include <chrono>
+#include <set>
+
+namespace mc2::vfs {
+namespace {
+
+struct Index {
+	// key -> ORDERED candidate chain, winner first: mods (priority order), loose, FST archives (registration
+	// order). Ordered map: prefix ranges and stable sort for free.
+	std::map<std::string, std::vector<Entry>> entries;
+	Stats st;
+	bool built = false;
+};
+Index g_index;
+std::mutex g_indexMutex;
+
+void put(Index& ix, const std::string& k, Provider p, const std::string& mount,
+         const std::string& phys, const std::string& name)
+{
+	Entry e;
+	e.key = k; e.provider = p; e.mountName = mount; e.physicalPath = phys; e.name = name;
+	ix.entries[k].push_back(std::move(e));   // appended in precedence order within a provider class
+}
+
+// Numeric size-subdir strip, same rule as File::open: data/tgl/128/foo.tga -> data/tgl/foo.tga. Empty if none.
+std::string stripSizeDir(const std::string& k)
+{
+	for (size_t p = 0; p < k.size(); ++p) {
+		if (k[p] != '/') continue;
+		size_t q = p + 1;
+		while (q < k.size() && k[q] >= '0' && k[q] <= '9') ++q;
+		if (q > p + 1 && q < k.size() && k[q] == '/') return k.substr(0, p + 1) + k.substr(q + 1);
+	}
+	return std::string();
+}
+
+// Recursive loose scan under dir (physical, trailing '/'); rel is the logical prefix ("data/").
+void scanLoose(Index& ix, const std::string& dir, const std::string& rel, size_t& count)
+{
+	WIN32_FIND_DATAA fd;
+	HANDLE h = FindFirstFileA((dir + "*").c_str(), &fd);
+	if (h == INVALID_HANDLE_VALUE) return;
+	do {
+		if (fd.cFileName[0] == '.') continue;   // same dot rule as the mod scan (ruling C4)
+		const std::string leaf = fd.cFileName;
+		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			scanLoose(ix, dir + leaf + "/", rel + leaf + "/", count);
+		} else {
+			put(ix, key(rel + leaf), Provider::Loose, "loose", dir + leaf, leaf);
+			++count;
+		}
+	} while (FindNextFileA(h, &fd));
+	FindClose(h);
+}
+
+size_t estimateBytes(const Index& ix)
+{
+	size_t b = 0;
+	for (const auto& [k, chain] : ix.entries) {
+		b += 48 /*map node*/ + k.capacity() + sizeof(chain) + chain.capacity() * sizeof(Entry);
+		for (const Entry& e : chain)
+			b += e.key.capacity() + e.mountName.capacity() + e.physicalPath.capacity() + e.name.capacity();
+	}
+	return b;
+}
+
+void buildLocked()
+{
+	const auto t0 = std::chrono::steady_clock::now();
+	Index ix;
+	size_t mounts = 0;
+
+	// 1. base FST archives, in registration order; the earlier archive wins (FastFileFind order),
+	//    so the chain keeps registration order (earliest first).
+	for (long a = 0; fastFiles && a < numFastFiles; ++a) {
+		FastFile* ff = fastFiles[a];
+		if (!ff) continue;
+		const FILE_HANDLE* fh = ff->getFilesInfo();
+		const long n = ff->getNumFiles();
+		const char* an = ff->getFileName();
+		const std::string mount = std::string("fst:") + (an ? an : "?");
+		size_t cnt = 0;
+		for (long i = 0; fh && i < n; ++i) {
+			if (!fh[i].pfe) continue;
+			const std::string k = key(fh[i].pfe->name);
+			const size_t slash = k.rfind('/');
+			put(ix, k, Provider::Fst, mount, std::string(), slash == std::string::npos ? k : k.substr(slash + 1));
+			++cnt;
+		}
+		++mounts;
+		mc2::fmt::print_out("[VFS] mount fst name={} files={:d} priority=0\n", mc2::fmt::safe(mount.c_str()), mc2::fmt::as_size(cnt));
+	}
+
+	// 2. loose data/
+	{
+		size_t cnt = 0;
+		scanLoose(ix, "data/", "data/", cnt);
+		++mounts;
+		mc2::fmt::print_out("[VFS] mount loose name=loose files={:d} priority=1\n", mc2::fmt::as_size(cnt));
+	}
+
+	// 3. mods in load order (g_modIndex already holds the priority-resolved winner per key).
+	{
+		std::map<std::string, size_t> perMod;
+		for (const auto& [k, me] : g_modIndex) {
+			const size_t slash = me.path.find_last_of("/\\");
+			put(ix, k, Provider::Mod, me.modId, me.path,
+			    slash == std::string::npos ? me.path : me.path.substr(slash + 1));
+			++perMod[me.modId];
+			// Shadowed mods stay in the chain behind the winner, in priority order (lower value wins), so a
+			// corrupt winner can fall back to the next mod without breaking precedence.
+			auto sh = g_shadowedBy.find(k);
+			if (sh != g_shadowedBy.end()) {
+				std::vector<std::string> ids = sh->second;
+				auto prio = [](const std::string& id) {
+					auto pr = g_modPriority.find(id.substr(0, id.rfind("#scratch")));
+					return pr != g_modPriority.end() ? pr->second : 0;
+				};
+				std::stable_sort(ids.begin(), ids.end(), [&](const std::string& a, const std::string& b) { return prio(a) < prio(b); });
+				for (const std::string& id : ids) {
+					const size_t h = id.rfind("#scratch");
+					const std::string phys = g_modsAbsRoot.empty() ? std::string()
+						: (h != std::string::npos ? g_modsAbsRoot + id.substr(0, h) + "/.scratch/" + k
+						                          : g_modsAbsRoot + id + "/" + k);
+					const size_t ks = k.rfind('/');
+					put(ix, k, Provider::Mod, id, phys, ks == std::string::npos ? k : k.substr(ks + 1));
+				}
+			}
+		}
+		for (const auto& [id, cnt] : perMod) {
+			++mounts;
+			auto pr = g_modPriority.find(id);
+			mc2::fmt::print_out("[VFS] mount mod name={} files={:d} priority={:d}\n", mc2::fmt::safe(id.c_str()),
+			                    mc2::fmt::as_size(cnt), pr != g_modPriority.end() ? pr->second : 0);
+		}
+	}
+
+	// Precedence: mod, then loose, then FST. Stable: within a class the insertion order (mod priority,
+	// FST registration order) is kept. Then record how many candidates sit behind each one.
+	for (auto& [k, chain] : ix.entries) {
+		std::stable_sort(chain.begin(), chain.end(),
+		                 [](const Entry& a, const Entry& b) { return static_cast<int>(a.provider) < static_cast<int>(b.provider); });
+		chain.shrink_to_fit();
+		for (size_t i = 0; i < chain.size(); ++i) chain[i].shadowed = static_cast<unsigned>(chain.size() - 1 - i);
+	}
+	ix.st.entries = ix.entries.size();
+	ix.st.mounts = mounts;
+	ix.st.bytes = estimateBytes(ix);
+	ix.st.buildMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+	ix.built = true;
+	mc2::fmt::print_out("[VFS] index entries={:d} mounts={:d} bytes={:d} build_ms={:.1f}\n",
+	                    mc2::fmt::as_size(ix.st.entries), mc2::fmt::as_size(ix.st.mounts),
+	                    mc2::fmt::as_size(ix.st.bytes), ix.st.buildMs);
+	fflush(stdout);
+	g_index = std::move(ix);
+}
+
+void ensureBuilt()
+{
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	if (!g_index.built) buildLocked();
+}
+
+} // namespace
+
+const char* providerName(Provider p)
+{
+	switch (p) { case Provider::Mod: return "mod"; case Provider::Loose: return "loose"; default: return "fst"; }
+}
+
+std::string key(std::string_view path)
+{
+	return fst_normalize_loose_key(std::string(path).c_str());
+}
+
+std::string join(std::string_view dir, std::string_view leaf)
+{
+	std::string d(dir);
+	while (!d.empty() && (d.back() == '/' || d.back() == '\\')) d.pop_back();
+	size_t b = 0;
+	while (b < leaf.size() && (leaf[b] == '/' || leaf[b] == '\\')) ++b;
+	return key(d.empty() ? std::string(leaf.substr(b)) : d + "/" + std::string(leaf.substr(b)));
+}
+
+void rebuild()
+{
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	buildLocked();
+}
+
+void invalidate()
+{
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	g_index.built = false;
+}
+
+Stats stats()
+{
+	ensureBuilt();
+	return g_index.st;
+}
+
+std::vector<Entry> candidates(std::string_view logicalKey)
+{
+	// Same guard as the mod layer: absolute paths and '..' never resolve.
+	const std::string raw(logicalKey);
+	std::vector<Entry> out;
+	if (IsAbsolutePath(raw.c_str()) || raw.find("..") != std::string::npos) return out;
+	ensureBuilt();
+	const std::string k = key(raw);
+	const auto it = g_index.entries.find(k);
+	if (it != g_index.entries.end()) out = it->second;
+
+	// Alias rung, File::open order: mod -> loose -> size-stripped loose -> FST. Only a loose file can serve the strip.
+	const std::string stripped = stripSizeDir(k);
+	if (!stripped.empty()) {
+		const auto sit = g_index.entries.find(stripped);
+		if (sit != g_index.entries.end())
+			for (const Entry& c : sit->second)
+				if (c.provider == Provider::Loose) {
+					Entry a = c;
+					a.key = k;
+					a.viaStripAlias = true;
+					size_t pos = 0;
+					while (pos < out.size() && out[pos].provider != Provider::Fst) ++pos;
+					out.insert(out.begin() + static_cast<std::ptrdiff_t>(pos), std::move(a));
+					break;
+				}
+	}
+	for (size_t i = 0; i < out.size(); ++i) out[i].shadowed = static_cast<unsigned>(out.size() - 1 - i);
+	return out;
+}
+
+std::optional<Entry> lookup(std::string_view logicalKey)
+{
+	std::vector<Entry> c = candidates(logicalKey);
+	if (c.empty()) return std::nullopt;
+	return std::move(c.front());
+}
+
+std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const Entry&))
+{
+	for (Entry& e : candidates(logicalKey)) {
+		bool ok = true;
+		if (readable) ok = readable(e);
+		else if (e.provider != Provider::Fst) {
+			FILE* fp = e.physicalPath.empty() ? nullptr : fopen(e.physicalPath.c_str(), "rb");
+			ok = fp != nullptr;
+			if (fp) fclose(fp);
+		}
+		if (ok) return std::move(e);
+	}
+	return std::nullopt;
+}
+
+std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
+{
+	ensureBuilt();
+	std::string dir = key(dirKey);
+	if (!dir.empty() && dir.back() != '/') dir += '/';
+	const std::string e = key(ext);
+	std::vector<Entry> out;
+	for (auto it = g_index.entries.lower_bound(dir); it != g_index.entries.end(); ++it) {
+		const std::string& k = it->first;
+		if (k.compare(0, dir.size(), dir) != 0) break;
+		if (k.find('/', dir.size()) != std::string::npos) continue;   // direct children only
+		if (!e.empty() && (k.size() < dir.size() + e.size() || k.compare(k.size() - e.size(), e.size(), e) != 0)) continue;
+		out.push_back(it->second.front());   // the winner; one entry per key
+	}
+	return out;   // std::map order == sorted by key
+}
+
+} // namespace mc2::vfs

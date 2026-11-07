@@ -61,6 +61,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/mathfunc.cpp
     ${MC2_ROOT}/GameOS/src/platform_str.cpp
     ${MC2_ROOT}/mclib/file.cpp
+    ${MC2_ROOT}/mclib/vfs.cpp
     ${MC2_ROOT}/mclib/fastfile.cpp
     ${MC2_ROOT}/mclib/ffile.cpp
     ${MC2_ROOT}/mclib/packet.cpp

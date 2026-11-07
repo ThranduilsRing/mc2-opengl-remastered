@@ -63,7 +63,8 @@
 #include <algorithm>
 
 #include "../GameOS/gameos/crash_content.h"
-#include "file_mod.inc"
+#include "vfs.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 //-----------------
 // Static Variables

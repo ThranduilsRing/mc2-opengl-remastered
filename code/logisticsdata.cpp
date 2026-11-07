@@ -8,6 +8,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "vfs.h"
 
 
 #ifdef VIEWER
@@ -107,40 +108,24 @@ void LogisticsData::startMultiPlayer()
 	clearVariants();
 
 	// need to initialize multiplayer variants here...
-	char findString[512];
-	mc2::fmt::to_buf(findString, "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "*.var");
-
-
-#ifdef LINUX_BUILD
-    // sebi !NB
-    ENTER_DEBUGGER
-#else
-	WIN32_FIND_DATA	findResult;
-	HANDLE searchHandle = FindFirstFile(findString,&findResult); 
-	if (searchHandle != INVALID_HANDLE_VALUE)
+	// Variants come from the merged VFS index (mods + loose + FST), on every platform (the old
+	// Linux branch entered the debugger). decryptFile opens through File::open, so the logical
+	// path resolves to whichever provider wins.
+	for ( const auto& varEntry : mc2::vfs::enumerate( "data/multiplayer/", ".var" ) )
 	{
-		do
-		{
-			if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-			{
-				FullPathFileName path;
-				path.init("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR, findResult.cFileName,"");
-				decryptFile(path,"tmp.fit");
+		FullPathFileName path;
+		path.init("data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR, varEntry.name.c_str(),"");
+		decryptFile(path,"tmp.fit");
 
-				FitIniFile file;
-				file.open("tmp.fit");
-				file.seekBlock( "Variant0" );
+		FitIniFile file;
+		file.open("tmp.fit");
+		file.seekBlock( "Variant0" );
 
-				loadVariant(file);
-				file.close();
+		loadVariant(file);
+		file.close();
 
-				DeleteFile("tmp.fit");
-			}
-		} while (FindNextFile(searchHandle,&findResult) != 0);
-
-		FindClose(searchHandle);
+		DeleteFile("tmp.fit");
 	}
-#endif
 
 	missionInfo->setMultiplayer();
 

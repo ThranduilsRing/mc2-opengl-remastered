@@ -59,6 +59,7 @@ set(SOURCES ${SOURCES}
 
     ffile.cpp
     file.cpp
+    vfs.cpp
     gamelog.cpp
     inifile.cpp
     inifile_read.cpp
