@@ -1,4 +1,3 @@
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
 #include "hitch_stats.h"
 #include "present_thread.h"
@@ -473,4 +472,3 @@ void TextureResidency::sealFrame() {
     if (f.frame==ctx_.tracker().frameNo()) f.ticket=ctx_.tracker().now();
 }
 } // namespace mc2vk
-#endif

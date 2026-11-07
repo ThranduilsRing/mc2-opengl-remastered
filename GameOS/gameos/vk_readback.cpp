@@ -1,5 +1,4 @@
 // vk_readback.cpp -- see vk_readback.h.
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_readback.h"
 
 #include <vk_mem_alloc.h>
@@ -71,4 +70,3 @@ const void* ReadbackRing::wait(VulkanContext& ctx, ReadbackToken tok, uint64_t e
 }
 
 }  // namespace mc2vk
-#endif  // MC2_VULKAN_ISLAND

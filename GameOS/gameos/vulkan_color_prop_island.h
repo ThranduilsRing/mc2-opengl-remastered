@@ -15,7 +15,6 @@
 #ifndef MC2_VULKAN_COLOR_PROP_ISLAND_H
 #define MC2_VULKAN_COLOR_PROP_ISLAND_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
 
@@ -70,5 +69,4 @@ void mc2_vk_color_prop_island_destroy();
 }
 #endif
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_COLOR_PROP_ISLAND_H

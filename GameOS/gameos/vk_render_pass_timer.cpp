@@ -3,7 +3,6 @@
 
 #include "render_backend_select.h"
 
-#ifdef MC2_VULKAN_ISLAND
 #include <memory>
 #include <vector>
 
@@ -12,11 +11,9 @@
 #include "vk_owned.h"
 #include "vk_render_pass_timer_ring.h"
 #include "vulkan_context.h"
-#endif
 
 namespace vk_render_pass_timer {
 
-#ifdef MC2_VULKAN_ISLAND
 namespace {
 
 using gos_render_pass_timer::Pass_Count;
@@ -145,14 +142,5 @@ void FrameEnd() {
     }
 }
 
-#else   // no Vulkan islands in this build: nothing is timed
-
-bool Active() { return false; }
-void Begin(VkCommandBuffer, gos_render_pass_timer::Pass) {}
-void End(VkCommandBuffer, gos_render_pass_timer::Pass) {}
-void Cancel(gos_render_pass_timer::Pass) {}
-void FrameEnd() {}
-
-#endif
 
 }  // namespace vk_render_pass_timer

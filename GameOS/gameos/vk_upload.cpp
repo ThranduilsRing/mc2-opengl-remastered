@@ -1,5 +1,4 @@
 // vk_upload.cpp -- see vk_upload.h.
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_upload.h"
 
 #include <cstdio>
@@ -65,4 +64,3 @@ bool UploadBatch::build(const VulkanContext& ctx, OwnedCommandPool& pool, VkComm
 }
 
 }  // namespace mc2vk
-#endif  // MC2_VULKAN_ISLAND

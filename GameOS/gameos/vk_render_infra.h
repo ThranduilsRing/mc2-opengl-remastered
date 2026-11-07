@@ -16,10 +16,8 @@ private:
     uint64_t bytes_ = 0;
 };
 }
-#ifdef MC2_VULKAN_ISLAND
 // Game-side load hook; no Vulkan types cross into the simulation target.
 void mc2PrewarmMissionPipelines();
-#endif
 #ifdef MC2_VULKAN
 #include <volk.h>
 #include <cstdint>

@@ -1,5 +1,4 @@
 // vk_one_shot.cpp -- see vk_one_shot.h.
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_one_shot.h"
 
 #include <cstdio>
@@ -104,4 +103,3 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
 }
 
 }  // namespace mc2vk
-#endif  // MC2_VULKAN_ISLAND

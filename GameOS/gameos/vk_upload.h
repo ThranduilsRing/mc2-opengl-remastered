@@ -12,7 +12,6 @@
 #ifndef MC2_VK_UPLOAD_H
 #define MC2_VK_UPLOAD_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 #include <cstdint>
@@ -63,5 +62,4 @@ private:
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_UPLOAD_H

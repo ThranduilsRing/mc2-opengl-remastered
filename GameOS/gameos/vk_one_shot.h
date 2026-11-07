@@ -4,7 +4,6 @@
 // WHY: setup work that must have finished before the next frame (an image's first layout, a query pool's first reset)
 // needs a transient pool, a fence and a bounded wait whose failure path waits for the device before the pool and fence
 // are released; one implementation keeps that failure path right everywhere.
-#ifdef MC2_VULKAN_ISLAND
 #include <volk.h>
 
 #include <functional>
@@ -29,4 +28,3 @@ bool submitOneShot(const VulkanContext& ctx, const std::function<void(VkCommandB
 // Destroys the shared one-shot pool; the context calls it after the device idles at teardown, before the device goes.
 void releaseOneShotPool();
 }  // namespace mc2vk
-#endif

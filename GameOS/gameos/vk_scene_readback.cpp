@@ -1,5 +1,4 @@
 #include "vk_scene_readback.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_barrier_batch_vk.h"
 #include "vk_image_resource.h"
@@ -211,11 +210,3 @@ bool sceneReadbackSelfTest() {
     return true;
 }
 }
-#else
-namespace mc2vk {
-bool sceneReadbackExtent(int& w,int& h,uint32_t) { w=h=0; return false; }
-bool readScenePixels(int,int,int,int,uint32_t,ScenePixel*,size_t) { return false; }
-bool readSceneSamples(const ScenePoint*,size_t,uint32_t,ScenePixel*) { return false; }
-bool sceneReadbackSelfTest() { return false; }
-}
-#endif

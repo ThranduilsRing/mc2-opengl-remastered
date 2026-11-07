@@ -1,5 +1,4 @@
 // vk_vegetation_state.cpp -- see vk_vegetation_state.h.
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vk_vegetation_state.h"
 
@@ -273,4 +272,3 @@ void State::drawIndirect(VkCommandBuffer cb, uint32_t par) const {
 
 }  // namespace mc2veg
 
-#endif  // MC2_VULKAN_ISLAND

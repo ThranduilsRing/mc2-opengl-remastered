@@ -8,7 +8,6 @@
 #ifndef MC2_VK_VEGETATION_STATE_H
 #define MC2_VK_VEGETATION_STATE_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -133,5 +132,4 @@ private:
 
 }  // namespace mc2veg
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_VEGETATION_STATE_H

@@ -1,6 +1,5 @@
 // vk_shared_light_feed.cpp -- VK-LIGHTFEED-DEDUP-1. See the header for the design. #ifdef MC2_VULKAN_ISLAND (whole TU).
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -123,4 +122,3 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const mc2::vkLights::Fee
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

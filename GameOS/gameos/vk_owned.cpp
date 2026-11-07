@@ -1,6 +1,5 @@
 // vk_owned.cpp -- the VMA-backed owners of vk_owned.h.
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vk_owned.h"
 
@@ -181,4 +180,3 @@ void OwnedImage::reset() noexcept {
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
