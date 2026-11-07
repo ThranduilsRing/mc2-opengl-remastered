@@ -29,5 +29,8 @@ private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
+// Confirmed availability for the material sampler bias: device features plus a loadable DLL with its
+// entry points, checked once; false for good after any provider create or dispatch failure.
+bool fsrProviderAvailable(const VulkanContext& ctx);
 }
 #endif

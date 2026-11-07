@@ -1716,8 +1716,11 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // FSR native AA between the scene and the composite; the composite then tonemaps the resolved image once.
     VkDescriptorSet sceneSet = s.compositeSet;
     if (fsrActive && mvOk && s.fsr.record(cc, *scene, *fsrDepth, s.motionVectors, s.captureFrame)) {
-        if (s.fsrSetView != s.fsr.outputView()) {
+        // Rewrite when either bound view may have moved: the FSR output, or the shared targets (binding 1) were recreated.
+        const unsigned long long targetsGen = mc2SharedSceneColorGeneration();
+        if (s.fsrSetView != s.fsr.outputView() || s.fsrSetTargetsGen != targetsGen) {
             s.fsrSetView = s.fsr.outputView();
+            s.fsrSetTargetsGen = targetsGen;
             VkDescriptorImageInfo fi[2]{};
             fi[0].sampler = s.compositeSampler.get();
             fi[0].imageView = s.fsrSetView;

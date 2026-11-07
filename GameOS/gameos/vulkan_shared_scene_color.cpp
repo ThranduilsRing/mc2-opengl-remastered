@@ -38,6 +38,7 @@
 #include "Gates/render_options.h"
 
 #include <cstdio>
+#include <atomic>
 #include <cstdarg>
 #include <cstdint>
 #include <new>
@@ -57,6 +58,8 @@ namespace {
 // Active owners by slot (for the island to fetch the SAME shared image). Only one
 // gosPostProcess FBO exists, so a flat by-slot registry is sufficient.
 Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {nullptr, nullptr, nullptr, nullptr};
+// Bumped on every create and destroy: a cached descriptor that names a shared view rewrites when it moves.
+std::atomic<uint64_t> g_generation{0};
 
 void slog(const char* fmt, ...) {
     char buf[512];
@@ -166,6 +169,7 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
 
     if (outReason) *outReason = "active_vk_only";
     g_activeBySlot[slot] = c;
+    g_generation.fetch_add(1, std::memory_order_release);
     slog("%s active: VK-only %s %dx%d (no GL import)", slotName(slot),
          formatNameForSlot(slot), w, h);
     return c;
@@ -177,6 +181,7 @@ void mc2SharedSceneColorDestroy(Mc2SharedSceneColor* c) {
         g_activeBySlot[c->slot] == c) {
         g_activeBySlot[c->slot] = nullptr;
     }
+    g_generation.fetch_add(1, std::memory_order_release);
     if (c->resValid && c->device != VK_NULL_HANDLE)
         vkImageResourceDestroy(&c->res, c->device);
     delete c;
@@ -188,5 +193,7 @@ VkImageResource* mc2SharedSceneColorGetResource(Mc2SharedSceneColorSlot slot) {
     Mc2SharedSceneColor* c = g_activeBySlot[slot];
     return (c && c->resValid) ? &c->res : nullptr;
 }
+
+unsigned long long mc2SharedSceneColorGeneration() { return g_generation.load(std::memory_order_acquire); }
 
 #endif // MC2_VULKAN_ISLAND
