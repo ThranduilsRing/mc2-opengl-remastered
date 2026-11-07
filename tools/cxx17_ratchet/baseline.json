@@ -141,7 +141,7 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 173,
+   "LG03": 245,
    "LG04": 15,
    "LG05": 120,
    "LG06": 64,
@@ -2080,6 +2080,7 @@
   "code/pilotreadyscreen.cpp": {},
   "code/pilotreadyscreen.h": {},
   "code/pilotreviewarea.cpp": {
+   "LG03": 72,
    "LG12b": 9
   },
   "code/pilotreviewarea.h": {},
@@ -3322,7 +3323,7 @@
    "LG20": 1
   }
  },
- "head": "3f537442b",
+ "head": "94173e77f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

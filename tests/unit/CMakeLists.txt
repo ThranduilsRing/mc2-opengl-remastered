@@ -153,6 +153,7 @@ add_executable(mc2_tests
     test_globalmap_limits.cpp   # step 4 B4.1c: the range checks of every count a global move map reads from a pak, plus the zeroed owner helper
     test_terrain_part_chunk.cpp
     test_texture_ref.cpp        # step 4 B5.1: mc2::BasicTextureRef, one release per adopted texture node reference
+    test_prefs_init.cpp         # deterministic preference init: options.cfg x orgprefs.cfg presence matrix and resulting bytes
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)

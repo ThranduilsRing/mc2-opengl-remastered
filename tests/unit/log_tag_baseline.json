@@ -8786,13 +8786,6 @@
   {
    "tag": "SMOKE",
    "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "SMOKE",
-   "ver": 1,
    "stream": "stdout",
    "keys": [
     "event",

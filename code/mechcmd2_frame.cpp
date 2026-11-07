@@ -27,7 +27,6 @@
 void __stdcall UpdateRenderers()
 {
 	ZoneScopedN("UpdateRenderers");
-	if (!SnifferMode)
 	{
 		hasGuardBand = true;
 		canMultiTextureDetail = (gos_GetMachineInformation(gos_Info_CanMultitextureDetail) != 0);
@@ -168,63 +167,6 @@ void __stdcall UpdateRenderers()
 		}
 
 	}
-	else
-	{
-		if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) >= 6291456)
-		{
-			startTime=timeGetTime();
-
-			gos_SetupViewport(1,1.0,1,0, 0.0, 0.0, 1.0, 1.0 );		//ALWAYS FULL SCREEN for now
-
-			if (Environment.Renderer == 3)
-			{
-				gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
-				gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
-				gos_SetRenderState( gos_State_MonoEnable, 1);
-				gos_SetRenderState( gos_State_Perspective, 0);
-				gos_SetRenderState( gos_State_Clipping, 2);
-				gos_SetRenderState( gos_State_AlphaTest, 0);
-				gos_SetRenderState( gos_State_Specular, 0);
-				gos_SetRenderState( gos_State_Dither, 0);
-				gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulate);
-				gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear);
-				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap);
-				gos_SetRenderState( gos_State_ZCompare, 1);
-				gos_SetRenderState(	gos_State_ZWrite, 1);
-			}
-			else
-			{
-				gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-				gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
-				gos_SetRenderState( gos_State_MonoEnable, 1);
-				gos_SetRenderState( gos_State_Perspective, 1);
-				gos_SetRenderState( gos_State_Clipping, 2);
-				gos_SetRenderState( gos_State_AlphaTest, 1);
-				gos_SetRenderState( gos_State_Specular, 1);
-				gos_SetRenderState( gos_State_Dither, 1);
-				gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulateAlpha);
-				gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear);
-				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap);
-				gos_SetRenderState( gos_State_ZCompare, 1);
-				gos_SetRenderState(	gos_State_ZWrite, 1);
-				int fogColor = 0x009f9f9f;
-				gos_SetRenderState( gos_State_Fog, fogColor);
-			}
-
-			long nIterations = 5;
-			for (long i=0;i<nIterations;i++)
-			{
-
-				DWORD totalVertices = 3000;
-				gos_SetRenderState( gos_State_Texture, testTextureHandle);
-				gos_RenderIndexedArray( testVertex, totalVertices, indexArray, totalVertices );
-			}
-
-			endTime=timeGetTime()-startTime;
-
-			totalTime += endTime;
-		}
-	}
 }
 
 
@@ -234,7 +176,6 @@ void __stdcall TerminateGameEngine()
 	if (!gameStarted)
 		return;
 
-	if (!SnifferMode)
 	{
 		if (userInput)
 		{
@@ -359,13 +300,6 @@ void __stdcall TerminateGameEngine()
         unit_icons::shutdown();
 
 	}
-	else
-	{
-		free(testVertex);
-		testVertex = nullptr;
-		free(indexArray);
-		indexArray = nullptr;
-	}
 }
 
 bool extracted = false;
@@ -383,11 +317,9 @@ long enoughCount = 0;
 
 //
 //
-bool DoneSniffing = false;
 void __stdcall DoGameLogic()
 {
 	ZoneScopedN("GameLogic");
-	if (!SnifferMode)
 	{
 	
 		if (MPlayer) {
@@ -744,118 +676,6 @@ void __stdcall DoGameLogic()
 				g_resaveAfterQuickload = false;
 				S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame_resave.ims", savePath);
 				mission->save(savegame_path);
-			}
-		}
-	}
-	else
-	{
-		if (!DoneSniffing)
-		{
-			for (long i=0;i<3000;i++)
-			{
-				testVertex[i].x = RandomNumber(1000) - 100;
-				testVertex[i].y = RandomNumber(800) - 100;
-				testVertex[i].z = (static_cast<float>(RandomNumber(150)) / 100.0f) - 0.25f;
-				testVertex[i].rhw = 0.5f;
-				testVertex[i].u = static_cast<float>(RandomNumber(100)) / 100.0f;
-				testVertex[i].v = static_cast<float>(RandomNumber(100)) / 100.0f;
-				testVertex[i].argb = 0x3fffffff;
-				testVertex[i].frgb = 0x3f1f2f3f;
-				indexArray[i] = i;
-			}
-
-			curIteration++;
-			if (curIteration > numIterations)
-			{
-				if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) >= 6291456)
-					trisPerSecond[curDevice] = 5000.0f * numIterations / (totalTime / 1000);
-				else
-					trisPerSecond[curDevice] = 0.0f;
-
-				curDevice++;
-				if ((curDevice >= NumDevices) || (curDevice > MAX_HARDWARE_CARDS))
-				{
-					FILE *sniffData = fopen("sniff.dat","wt");
-					if (sniffData)
-					{
-						char sniff[2048];
-						mc2::fmt::to_buf(sniff, "{:f},{:f},{:f},{:f},{:f},{:f}\n", trisPerSecond[0], ProcessorSpeed, trisPerSecond[1], trisPerSecond[2], trisPerSecond[3], trisPerSecond[4]);
-
-						fputs(sniff,sniffData);
-						fclose(sniffData);
-					}
-
-					if ((trisPerSecond[0] > 1000000.0f) && (ProcessorSpeed > 595.0f))
-					{
-						CopyFile("hiPrefs.cfg","orgprefs.cfg",false);
-						CopyFile("hiPrefs.cfg","options.cfg",false);
-					}
-					else if ((trisPerSecond[0] > 1000000.0f) && (ProcessorSpeed <= 595.0f))
-					{
-						CopyFile("h2Prefs.cfg","orgprefs.cfg",false);
-						CopyFile("h2Prefs.cfg","options.cfg",false);
-					}
-					else if ((trisPerSecond[0] > 10000.0f) && (ProcessorSpeed > 595.0f))
-					{
-						CopyFile("midPrefs.cfg","orgprefs.cfg",false);
-						CopyFile("midPrefs.cfg","options.cfg",false);
-					}
-					else if ((trisPerSecond[1] > 1000000.0f) && (ProcessorSpeed > 595.0f))
-					{
-						CopyFile("hiPrefs1.cfg","orgprefs.cfg",false);
-						CopyFile("hiPrefs1.cfg","options.cfg",false);
-					}
-					else if ((trisPerSecond[1] > 1000000.0f) && (ProcessorSpeed <= 595.0f))
-					{
-						CopyFile("h2Prefs1.cfg","orgprefs.cfg",false);
-						CopyFile("h2Prefs1.cfg","options.cfg",false);
-					}
-					else if ((trisPerSecond[1] > 10000.0f) && (ProcessorSpeed > 595.0f))
-					{
-						CopyFile("midPrefs1.cfg","orgprefs.cfg",false);
-						CopyFile("midPrefs1.cfg","options.cfg",false);
-					}
-					else if (trisPerSecond[1] > 0.0f)
-					{
-						CopyFile("minPrefs1.cfg","orgprefs.cfg",false);
-						CopyFile("minPrefs1.cfg","options.cfg",false);
-					}
-					else
-					{
-						CopyFile("minPrefs.cfg","orgprefs.cfg",false);
-						CopyFile("minPrefs.cfg","options.cfg",false);
-					}
-
-					DoneSniffing = true;
-				}
-				else
-				{
-					//Don't sniff a below minspec card.  Crash O Roni!
-					if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) >= 6291456)
-						gos_SetScreenMode(800,600,16,curDevice,0,0,0,true,0,0,0,0);
-					else
-						curDevice++;
-
-					curIteration = 0;
-				}
-			}
-		}
-		else
-		{
-			gos_SetScreenMode(800,600,16,0,0,0,0,false,0,true,0,0);
-			DoneSniffing = true;
-
-			if (Environment.fullScreen == 0)
-			{
-				char msgBuffer[4096];
-				char msgTitle[1024];
-
-				cLoadString(IDS_SNIFFER_DONE_MSG,msgBuffer,4095);
-				cLoadString(IDS_SNIFFER_INIT_TITLE,msgTitle,1023);
-
-				mc2MessageBox(msgBuffer,msgTitle,MB_OK,IDOK);
-
-				gos_TerminateApplication();
 			}
 		}
 	}
