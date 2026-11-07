@@ -135,7 +135,7 @@ namespace gosFX
 		Stuff::Scalar		
 			m_birthAccumulator;
 
-		Stuff::DynamicArrayOf<char>
+		std::vector<char>
 			m_data;
 
 		ParticleCloud(
