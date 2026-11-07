@@ -275,18 +275,9 @@ namespace gosFX
 		// The parent owns every child it spawned, in spawn order (Execute, Draw and Kill visit them in that order).
 		std::vector<EffectPtr>
 			m_children;
-		// B3 interim: the old chain-iterator calls over the spec's event vector, so this commit leaves firing untouched.
-		struct EventCursor
-		{
-			const std::vector<std::unique_ptr<Event>>* events;
-			size_t index = 0;
-			void First() { index = 0; }
-			void Last() { index = events->size() - 1; }
-			void Next() { ++index; }
-			Event* GetCurrent() const { return index < events->size() ? (*events)[index].get() : nullptr; }
-		};
-		EventCursor
-			m_event;
+		// Index of the next event of m_specification->m_events to fire; at or past the end, none are left.
+		size_t
+			m_event = 0;
 
 	//----------------------------------------------------------------------------
 	// Testing

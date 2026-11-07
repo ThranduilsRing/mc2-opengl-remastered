@@ -432,7 +432,7 @@ gosFX::Effect::Effect(
 	unsigned flags
 ):
 	Node(class_data),
-	m_event{&spec->m_events}
+	m_event(0)
 {
 	Check_Pointer(this);
 	Check_Object(spec);
@@ -566,7 +566,7 @@ void
 	// Set up the event pointer
 	//-------------------------
 	//
-	m_event.First();
+	m_event = 0;
 	if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">())
 	{
 		mc2::fmt::print_err("[VFX_BIRTH v1] spec={} time={:.9f} age={:.9f} seed={:.9f} stream={} algorithm={} version={} initial={} state={} draws={} legacy_draws={}\n",
@@ -626,9 +626,10 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 	//--------------------------------------------------
 	//
 	Check_Object(m_specification);
-	Event *event;
-	while ((event = m_event.GetCurrent()) != nullptr)
+	const std::vector<std::unique_ptr<Event>>& events = m_specification->m_events;
+	while (m_event < events.size())
 	{
+		const Event* event = events[m_event].get();
 		Check_Object(event);
 		if (event->m_time > m_age)
 			break;
@@ -655,7 +656,7 @@ bool gosFX::Effect::Execute(ExecuteInfo *info)
 		Effect* effect = owned.get();
 		Register_Object(effect);
 		m_children.push_back(std::move(owned));
-		m_event.Next();
+		++m_event;
 
 		//
 		//---------------------------------------------
@@ -757,8 +758,8 @@ void gosFX::Effect::Stop()
 	//------------------------------------
 	//
 	m_age = 1.0f;
-	m_event.Last();
-	m_event.Next();
+	Check_Object(m_specification);
+	m_event = m_specification->m_events.size();
 }
 
 //------------------------------------------------------------------------------

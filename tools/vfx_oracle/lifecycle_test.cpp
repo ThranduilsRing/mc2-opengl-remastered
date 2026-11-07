@@ -25,7 +25,8 @@ void vfx_test_bind_rng(std::uint32_t* state);
 namespace {
 // step 5 (2026-10-18): the 48-byte Stuff LinearMatrix4D members are 64-byte glm::mat4 (232).
 // Stuff B3a: the 24-byte ChainIteratorOf<Event*> cursor is a 16-byte {events, index} cursor (-8).
-constexpr size_t EFFECT_SIZE = 224;
+// Stuff B3b: the cursor is a plain size_t index (-8).
+constexpr size_t EFFECT_SIZE = 216;
 struct Platform {
     ContractEnvironment deterministic{mc2::gate::name<"MC2_DETERMINISTIC_RNG">(), "1"};
     ContractEnvironment fixedStep{mc2::gate::name<"MC2_SMOKE_FIXED_TIMESTEP">(), "1"};
@@ -568,6 +569,13 @@ TEST_CASE_FIXTURE(Platform, "Event chain: Stop skips the remaining events; a res
     run.parent.Start(&run.info);
     CHECK(run.at(1.8125) == Tags{1, 1, 2, 3, 4});
     CHECK(run.at(1.875) == Tags{1, 1, 2, 3, 4, 1});
+    // Stop on a spec without events leaves nothing to fire (the chain cursor dereferenced a null tail here before B3b).
+    gosFX::Effect::Specification empty;
+    buildParent(empty);
+    EventRun idle(empty);
+    idle.parent.Stop();
+    idle.parent.Start(&idle.info);
+    CHECK(idle.at(0.5) == Tags{});
 }
 
 TEST_CASE_FIXTURE(Platform, "Event chain: Copy of a loaded spec with transformed events re-adopts them in time order with their matrices")
