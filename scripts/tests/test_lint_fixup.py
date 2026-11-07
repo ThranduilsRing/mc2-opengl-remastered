@@ -106,9 +106,6 @@ def test_sweep_stale_scratch_exact_names_age_and_liveness(tmp_path):
         assert held.exists() and str(held) not in removed
 
 
-def test_lint_inner_workers_fit_lane_half():
-    lane_cpus = bin(ls.cpu_masks()["lane"]).count("1")
-    assert lm.REGEN_WORKERS + max(1, lane_cpus - lm.REGEN_WORKERS) <= max(lane_cpus, lm.REGEN_WORKERS + 1)
 
 
 @pytest.mark.skipif(os.name == "nt", reason="the Linux scaling branch")

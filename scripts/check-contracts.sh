@@ -95,8 +95,8 @@ done
 set -- ${_ARGS[@]+"${_ARGS[@]}"}
 # Named presets for --rows (the regex form still works for anything else).
 case "$ROWS_RE" in
-    split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
-    tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
+    split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|split_path|split_map|background_launch|scripts_tests" ;;
+    tidy)  ROWS_RE="cxx17_ratchet|background_launch|tools_tests" ;;
 esac
 for arg in "$@"; do
     case "$arg" in
@@ -109,8 +109,8 @@ for arg in "$@"; do
         --jobs=*) JOBS="${arg#--jobs=}" ;;
         --rows=*) ROWS_RE="${arg#--rows=}"
                   case "$ROWS_RE" in
-                      split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
-                      tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
+                      split) ROWS_RE="cxx17_ratchet|dup_check|gate_gen|split_path|split_map|background_launch|scripts_tests" ;;
+                      tidy)  ROWS_RE="cxx17_ratchet|background_launch|tools_tests" ;;
                   esac ;;
         # Internal. Registers synthetic rows instead of the real board so the
         # selftest can grade what the REAL runners render. Not for humans.
@@ -120,8 +120,8 @@ for arg in "$@"; do
             echo "  --no-cache    run every row (default: rows that PASSED on identical declared inputs are 'PASS (cached)')"
             echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_check'."
             echo "                A PARTIAL board: it is for iterating mid-batch, never a substitute for the full board."
-            echo "  --rows split  the file-split rows (cxx17_ratchet dup_check gate_gen file_size split_path split_map background_launch scripts_tests)"
-            echo "  --rows tidy   the tidy-batch rows (cxx17_ratchet file_size background_launch tools_tests)"
+            echo "  --rows split  the file-split rows (cxx17_ratchet dup_check gate_gen split_path split_map background_launch scripts_tests)"
+            echo "  --rows tidy   the tidy-batch rows (cxx17_ratchet background_launch tools_tests)"
             echo "  Rows run in parallel by default (CONTRACTS_JOBS / -jN size the pool,"
             echo "  --serial = old behaviour). Rows that build, launch or write shared"
             echo "  files are detected (_is_serial_row) and run alone after the pool."
@@ -927,20 +927,9 @@ run_nightly "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.
 # lines occurring twice) may only fall. PMD CPD (>= 60 tokens) on the COMMITTED tip vs the merge base, no
 # baseline file; runs on the box (or streams the trees there from the PC); no PMD/box = INFRA, never a pass.
 # Selftest lives in scripts/tests (scripts_tests row).
-# D11 (opus-consistency-review): the MC2->render-space axis swap (x,y,z)->(-x,z,y) is re-typed at
-# ~180 sites (shaders + C++); dup_check cannot see one-line copies. Token-level count may
-# only fall until the typed helper replaces them. HEAD-scanned like the row above. Work queue:
-# docs/axis-conversion-sites.md. Selftest lives in scripts/tests (scripts_tests row).
-run_nightly "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --check"
-# Comments say WHAT and WHY: batch / slice / arc tags, plan-doc and review-id references and agent names in C++ comments
-# go stale when the work closes. The committed-tree count may only fall; `--diff <base>` lists the new ones on a branch.
-# Pytest twin: tools/test_journal_comment_ratchet.py (tools_tests row).
-run_check "journal_comment_ratchet"  "py -3 tools/journal_comment_ratchet.py --check"
-# File-size program (ORCHESTRATOR-HANDOFF item 8): oversized files cost agents read context and
-# force whole-TU rebuilds. Per-dir count of files > 1500 / > 3000 lines and the max file length
-# may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
-# lives in scripts/tests (scripts_tests row).
-run_nightly "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
+# proof-diet (owner 2026-11-07): the axis_swizzle count gate, the journal_comment ratchet and the file_size gate are cut as
+# gates (a count that only falls is not a defect, and transform coverage lives in tests/unit/test_xform_convention.cpp and
+# test_static_prop_origin.cpp). tools/axis_swizzle_ratchet.py and tools/file_size_ratchet.py stay as on-demand advisory reports.
 # docs/split-map.md (old file -> pieces -> what each holds) is generated from tools/split/allow/*.json and the pieces' header comments.
 run_nightly "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
@@ -1546,7 +1535,7 @@ run_nightly "abl_static_alloc"           "py -3 -B -m pytest scripts/tests/test_
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
-run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3"
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3 --base \"${MC2_GATE_BASE-claude/nifty-mendeleev}\""
 run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
 run_nightly "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"

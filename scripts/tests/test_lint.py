@@ -29,35 +29,19 @@ def test_lint_reports_red_with_fix_and_exit_code(tmp_path, capsys, monkeypatch):
     def runner(root, cmd):
         bad = "callers.py" in " ".join(cmd) and "--check" in cmd
         return subprocess.CompletedProcess(cmd, 1 if bad else 0, stdout="boom" if bad else "", stderr="")
-    rc = lm.lint(ROOT, "HEAD", runner=runner, regen=lambda r, c: ["tests/callers.json"])
+    rc = lm.lint(ROOT, "HEAD", runner=runner)
     out = capsys.readouterr().out
     assert rc == 1
     assert "lint: callers: FAIL" in out and "fix:" in out
-    assert "inventories: WARN" in out and "do not commit" in out
-    assert "lint: file_size: PASS" in out
+    assert "lint: cxx17: PASS" in out
+    assert "inventories" not in out   # proof-diet: lint never regenerates inventories
 
 
 def test_lint_green(capsys, monkeypatch):
     _no_branch_needed(monkeypatch)
     ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-    assert lm.lint(ROOT, "HEAD", runner=ok, regen=lambda r, c: []) == 0
+    assert lm.lint(ROOT, "HEAD", runner=ok) == 0
     assert "LINT PASS" in capsys.readouterr().out
-
-
-def test_stale_inventories_alone_is_warn_not_fail(capsys, monkeypatch):
-    _no_branch_needed(monkeypatch)
-    ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-    assert lm.lint(ROOT, "HEAD", runner=ok, regen=lambda r, c: ["tests/callers.json"]) == 0
-    assert "LINT PASS" in capsys.readouterr().out
-
-
-def test_unregenerable_inventories_still_fail(capsys, monkeypatch):
-    _no_branch_needed(monkeypatch)
-    ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-    def boom(r, c):
-        raise lm.Stop(1, "generator crashed")
-    assert lm.lint(ROOT, "HEAD", runner=ok, regen=boom) == 1
-    assert "inventories:" in capsys.readouterr().out
 
 
 def test_batch_lint_ok_follows_lint_rc(monkeypatch):

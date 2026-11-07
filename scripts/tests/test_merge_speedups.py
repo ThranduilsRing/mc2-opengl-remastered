@@ -233,7 +233,7 @@ def test_oversize_pdb_that_cannot_be_deleted_is_reported(tmp_path, monkeypatch, 
 
 
 def test_merge_ratchets_scan_worktree_before_verify():
-    assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 3   # file_size, cxx17, axis_swizzle (dup_lines -> dup_check, tidy-tools)
+    assert len([r for r in lm.RATCHETS if "--worktree" in r[2]]) == 1   # cxx17 only (proof-diet cut file_size and axis_swizzle; dup_lines -> dup_check, tidy-tools)
     assert lm.verify_env(ROOT)["MC2_NINJA_TREE"] == "build64-ninja" and lm.verify_env(ROOT)["MC2_UNIT_BUILD_DIR"] == os.path.join(ROOT, "build-cc-tests")
 
 
@@ -1103,7 +1103,6 @@ def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, ca
 def test_pre_gate_runs_every_step_and_prints_one_verdict(monkeypatch, capsys, tmp_path):
     exe = tmp_path / "mc2.exe"
     exe.write_text("x")
-    monkeypatch.setattr(lm, "regenerate_all", lambda root, dry_run=False: [])
     ran = []
 
     def fake_run(root, cmd, env=None):
@@ -1210,19 +1209,11 @@ def test_conftest_clears_inherited_gate_flag():
     assert "MC2_IN_GATE" not in os.environ
 
 
-def test_stale_inventories_reports_what_regeneration_would_change(tmp_path):
-    repo = tmp_path / "r"
-    subprocess.run(["git", "init", "-q", str(repo)], check=True)  # background-launch: allow git on a temp repo, no window
-    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)  # background-launch: allow git on a temp repo, no window
-    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()  # background-launch: allow git on a temp repo, no window
-    assert lm.stale_inventories(str(repo), sha, regen=lambda tree: ["docs/a.json"]) == ["docs/a.json"]
-    assert lm.stale_inventories(str(repo), sha, regen=lambda tree: []) == []
-
-
-def test_precheck_fails_on_stale_inventory():
+def test_precheck_and_lint_no_longer_gate_on_generated_inventories():
     import inspect
-    src = inspect.getsource(lm.precheck)
-    assert "stale_inventories(root, commit)" in src and 'failed.append("inventories-stale:' in src
+    assert not hasattr(lm, "stale_inventories")
+    assert "inventories" not in inspect.getsource(lm.precheck).replace("generated inventories are no precheck proof", "")
+    assert "regenerate" not in inspect.getsource(lm.pre_gate)
 
 
 def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monkeypatch, capsys):

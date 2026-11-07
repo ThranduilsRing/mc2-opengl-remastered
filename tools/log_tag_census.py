@@ -212,10 +212,14 @@ def to_json(counter, consumed):
             "consumed_tags": consumed, "plain_tags": list(PLAIN_TAGS)}
 
 
-def diff(counter, baseline):
+def diff(counter, baseline, consumed=None):
+    """Differences from the frozen census. With `consumed` (tags a Python parser reads) only those tags fail, and only
+    when an emitter shape (tag, version, stream, key order) appears or vanishes; count changes and unconsumed tags are documentary."""
     base = collections.Counter({(r["tag"], r["ver"], r["stream"], tuple(r["keys"])): r["count"] for r in baseline["emitters"]})
     lines = []
     for k in sorted(set(base) | set(counter)):
+        if consumed is not None and (k[0] not in consumed or (base[k] > 0) == (counter[k] > 0)):
+            continue
         if base[k] != counter[k]:
             lines.append(f"  {'[%s v%s]' % (k[0], k[1]) if k[1] >= 0 else '[%s]' % k[0]} stream={k[2]} keys={','.join(k[3])}: baseline {base[k]}, now {counter[k]}")
     return lines
@@ -242,9 +246,9 @@ def main(argv=None) -> int:
         return 0
     with open(BASELINE, encoding="utf-8") as fh:
         baseline = json.load(fh)
-    d = diff(now, baseline)
+    d = diff(now, baseline, set(baseline.get("consumed_tags", [])) | set(consumed_tags()) | set(baseline.get("plain_tags", [])))
     if d:
-        print("log_tag_census: the structured log lines changed (tag, version, stream or key order):")
+        print("log_tag_census: a log line a parser consumes changed (tag, version, stream or key order):")
         print("\n".join(d))
         print("If this is intended, re-freeze with `py -3 tools/log_tag_census.py --write` in the same commit as the parser change.")
         return 1
