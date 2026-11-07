@@ -1082,6 +1082,24 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
 
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
+#: --isolated-verdict runs (nightly) leave GREEN_MARK alone but record their verdict here; a newer non-PASS verdict at the
+#: marked HEAD revokes publication (Sol P1: a red nightly at the same HEAD must not leave publish authorised).
+ISOLATED_MARK = "build64-ninja/last-isolated-verdict.json"
+
+
+def record_isolated_verdict(head, verdict):
+    (ROOT / ISOLATED_MARK).write_text(json.dumps(dict(head=head, verdict=verdict, finished=time.time())))
+
+
+def publish_revoked(head, mark):
+    """The reason a green marker no longer authorises publishing HEAD (a newer isolated non-PASS verdict at that HEAD), or ''."""
+    try:
+        iso = json.loads((ROOT / ISOLATED_MARK).read_text())
+    except (OSError, ValueError):
+        return ""
+    if iso.get("head") == head and iso.get("verdict") != "PASS" and iso.get("finished", 0) >= mark.get("finished", 0):
+        return f"a newer isolated gate run at this HEAD ended {iso.get('verdict')} ({ISOLATED_MARK})"
+    return ""
 
 
 def verdict_of(result, steps, failed=None):
@@ -1244,6 +1262,10 @@ def publish(head, dry_run=False):
         mark = {}
     if mark.get("head") != head and not dry_run:
         print(f"[merge_gate] publish-v0.4: refused; no complete green gate recorded for HEAD {head[:12]} ({GREEN_MARK})")
+        return 1
+    revoked = publish_revoked(head, mark)
+    if revoked and not dry_run:
+        print(f"[merge_gate] publish-v0.4: refused; {revoked}")
         return 1
     deploy = next(s for s in plan(1) if s[0] == "deploy")
     rc = execute([("publish-v0.4", deploy[1], {})], head, dry_run)
@@ -1907,6 +1929,8 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
+                if args.isolated_verdict and not args.install and not args.dry_run:
+                    record_isolated_verdict(head, verdict)
                 if verdict != "PASS" and not args.dry_run and own_marks:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and own_marks:
