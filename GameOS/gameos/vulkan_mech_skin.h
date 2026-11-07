@@ -18,6 +18,7 @@
 #include <volk.h>
 
 #include "vk_compute_pipeline.h"
+#include "vk_desc_write_cache.h"
 #include "vk_frame_ring.h"
 #include "vk_owned.h"
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
@@ -97,6 +98,7 @@ private:
     OwnedBuffer skinned_[kMaxFramesInFlight], jobBuf_[kMaxFramesInFlight];
     ComputePipeline pipe_;
     ComputeSets sets_;
+    DescWriteStamp stamps_[kMaxFramesInFlight][4];  // per slot, per binding 0..3: skip a write whose buffer/range the set already holds
 };
 
 }  // namespace mc2vk

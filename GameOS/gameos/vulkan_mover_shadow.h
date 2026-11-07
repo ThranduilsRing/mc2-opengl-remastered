@@ -3,6 +3,7 @@
 #include "shadow_mover_fit.h"
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
+#include "vk_desc_write_cache.h"
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
 #include "vulkan_shadow_island_live.h"
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
@@ -23,7 +24,9 @@ public:
                  std::span<const GpuStaticPropInstance> props, bool maskReady);
     const std::vector<GpuStaticPropInstance>& props() const { return props_; }
     const mc2shadow::MoverShadowFrame& frame() const { return frame_; }
-    bool bind(VkDevice device, VkDescriptorSet set, VkImageView depth, bool ready) const;
+    // stamp (optional, one per destination set): skips the binding-24 write when its sampler/view/layout did not change.
+    // Binding 25 (a fresh frame-ring slice) is written every call.
+    bool bind(VkDevice device, VkDescriptorSet set, VkImageView depth, bool ready, DescWriteStamp* stamp = nullptr) const;
     uint32_t actorCount() const { return actorCount_; }
     uint32_t visibleActorCount() const { return static_cast<uint32_t>(spheres_.size()-props_.size()); }
 
@@ -62,6 +65,6 @@ private:
 
 // Fixed set-0 bindings 24 (raw depth) and 25 (frame UBO), shared by every
 // receiver. Call after retiring the receiver's descriptor set for this frame.
-bool bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set);
+bool bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set, DescWriteStamp* stamp24 = nullptr);
 }
 #endif

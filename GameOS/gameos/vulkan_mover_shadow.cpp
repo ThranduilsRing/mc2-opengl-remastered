@@ -8,6 +8,8 @@
 #include "vk_one_shot.h"
 #include "vulkan_mech_island.h"
 #include "terrain_field_store.h"
+#include "diagnostic_trace.h"
+#include <tracy/Tracy.hpp>
 #include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include <vk_mem_alloc.h>
 #include <algorithm>
@@ -248,7 +250,21 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     return true;
 }
 
-bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView depth, bool ready) const {
+void reportDescWrites() {
+    auto& c=descWriteCounts();
+    const uint64_t issued=c.issued.exchange(0,std::memory_order_relaxed), skipped=c.skipped.exchange(0,std::memory_order_relaxed);
+    TracyPlot("VK.DescWrites.Issued",static_cast<int64_t>(issued));
+    TracyPlot("VK.DescWrites.Skipped",static_cast<int64_t>(skipped));
+    static uint64_t sumIssued=0, sumSkipped=0; static uint32_t frames=0;
+    sumIssued+=issued; sumSkipped+=skipped;
+    if (++frames<600) return;
+    if (mc2_diag::tagRequested("VK_DESC_WRITES"))   // MC2_DIAG_TAGS=VK_DESC_WRITES; uncached = issued+skipped
+        mc2::fmt::print_err("[VK_DESC_WRITES v1] frames={} issued_per_frame={:.1f} skipped_per_frame={:.1f}\n",
+            frames,double(sumIssued)/frames,double(sumSkipped)/frames);
+    sumIssued=sumSkipped=0; frames=0;
+}
+
+bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView depth, bool ready, DescWriteStamp* stamp) const {
     if (!inactive_ || !dummyView_ || !sampler_) return false;
     ready=ready && active_ && activeFrame_==getOrCreateEngineVulkanContext().frameContext().frame;
     if (false && getOrCreateEngineVulkanContext().frameContext().frame%600==0)
@@ -272,7 +288,10 @@ bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView de
     writes[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; writes[0].descriptorCount=1; writes[0].pImageInfo=&image;
     writes[1].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[1].dstSet=set; writes[1].dstBinding=25;
     writes[1].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; writes[1].descriptorCount=1; writes[1].pBufferInfo=&buffer;
-    vkUpdateDescriptorSets(device,2,writes,0,nullptr);
+    // Binding 24 is keyed per destination set on what it would hold (live depth vs dummy is the view+layout pair).
+    const bool write24=!stamp || stamp->needsWrite({descKeyWord(set),descKeyWord(image.imageView),descKeyWord(image.sampler),descKeyWord(image.imageLayout)});
+    vkUpdateDescriptorSets(device,write24?2u:1u,write24?writes:writes+1,0,nullptr);
+    noteDescWrites(write24?2u:1u,write24?0u:1u);
     return true;
 }
 }

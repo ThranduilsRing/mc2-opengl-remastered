@@ -18,6 +18,7 @@
 #include <string_view>
 
 #include "diagnostic_trace.h"
+#include "vk_desc_write_cache.h"
 #include "owned_handle.h"
 #include "vk_render_infra.h"
 
@@ -121,7 +122,8 @@ VkResult createChecked(Owner& owner, VkDevice device, Call&& call) {
 // instead of each site returning a bare false. Use through MC2_VK_ALLOC_SETS so the site is recorded.
 inline VkResult allocateDescriptorSets(VkDevice device, const VkDescriptorSetAllocateInfo* info, VkDescriptorSet* out, std::string_view file, int line) {
     const VkResult r = vkAllocateDescriptorSets(device, info, out);
-    if (r != VK_SUCCESS && mc2_diag::tagRequested("VK_DESC_ALLOC")) {   // quiet-by-default rule: MC2_DIAG_TAGS=VK_DESC_ALLOC prints it
+    bumpDescEpoch();   // a new set may reuse a freed set's handle: every descriptor write-cache key goes stale
+    if (r != VK_SUCCESS &&mc2_diag::tagRequested("VK_DESC_ALLOC")) {   // quiet-by-default rule: MC2_DIAG_TAGS=VK_DESC_ALLOC prints it
         const std::string base = std::filesystem::path(file).filename().string();
         std::fprintf(stderr, "[VK_DESC_ALLOC] vkAllocateDescriptorSets failed result=%d%s pool=%p sets=%u site=%s:%d\n", static_cast<int>(r),
                      r == VK_ERROR_OUT_OF_POOL_MEMORY ? " (OUT_OF_POOL_MEMORY)" : "", static_cast<void*>(info->descriptorPool), info->descriptorSetCount, base.c_str(), line);

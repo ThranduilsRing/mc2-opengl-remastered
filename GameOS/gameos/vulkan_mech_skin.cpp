@@ -58,6 +58,7 @@ bool MechSkinPass::ensure(uint32_t slot, uint64_t vertices, uint64_t jobs) {
         }
         skinned_[slot] = std::move(fresh);
         vertexCap_[slot] = cap;
+        stamps_[slot][3].invalidate();  // a recycled VkBuffer handle value must not match the cached key
     }
     if (!jobBuf_[slot] || jobs > jobCap_[slot]) {
         const uint64_t cap = std::max<uint64_t>(jobs + jobs / 2, 256);
@@ -65,6 +66,7 @@ bool MechSkinPass::ensure(uint32_t slot, uint64_t vertices, uint64_t jobs) {
         if (!fresh.createHostWritable(allocator_, device_, cap * sizeof(Job), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "mech.skin.jobs", static_cast<int>(slot))) return false;
         jobBuf_[slot] = std::move(fresh);
         jobCap_[slot] = cap;
+        stamps_[slot][2].invalidate();
     }
     return true;
 }
@@ -177,10 +179,17 @@ void MechSkinPass::plan(uint32_t slot, std::span<const Mc2MechDrawRun> runSpan, 
 
 void MechSkinPass::record(VkCommandBuffer cb, VkBuffer srcVbo, VkDeviceSize srcBytes, VkBuffer bones, VkDeviceSize boneRange, uint32_t boneOffset) {
     if (!active_ || srcVbo == VK_NULL_HANDLE || bones == VK_NULL_HANDLE) return;
-    sets_.write(device_, slot_, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, srcVbo, srcBytes);
-    sets_.write(device_, slot_, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, bones, boneRange);
-    sets_.write(device_, slot_, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, jobBuf_[slot_].get(), VK_WHOLE_SIZE);
-    sets_.write(device_, slot_, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, skinned_[slot_].get(), VK_WHOLE_SIZE);
+    // Each binding is rewritten only when its buffer or range changed since this slot's set last saw it (the slot's prior submit has retired).
+    const VkDescriptorType types[4] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+    const VkBuffer bufs[4] = {srcVbo, bones, jobBuf_[slot_].get(), skinned_[slot_].get()};
+    const VkDeviceSize ranges[4] = {srcBytes, boneRange, VK_WHOLE_SIZE, VK_WHOLE_SIZE};
+    uint32_t issued = 0;
+    for (uint32_t b = 0; b < 4; ++b) {
+        if (!stamps_[slot_][b].needsWrite({descKeyWord(bufs[b]), ranges[b], b, descKeyWord(sets_.set(slot_))})) continue;
+        sets_.write(device_, slot_, b, types[b], bufs[b], ranges[b]);
+        ++issued;
+    }
+    noteDescWrites(issued, 4 - issued);
     pipe_.bind(cb, sets_.set(slot_), std::span<const uint32_t>(&boneOffset, 1));
     vkCmdDispatch(cb, (maxCount_ + 63u) / 64u, jobCount_, 1);
     // The skinned region feeds the vertex-input stage of the depth, colour and shadow passes recorded after this.

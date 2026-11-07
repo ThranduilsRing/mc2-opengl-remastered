@@ -574,7 +574,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     us_fence_wait = usSince(tFence0);
     s->setBoundFrame[par] = rctx.frameContext().frame;
     bool moverBound;
-    { ZoneScopedN("VKIsl.Terrain.BindMoverShadow"); mc2_hitch2::Scope hs("terrain.bind_mover_shadow"); moverBound = mc2vk::bindMoverShadowDescriptors(s->device,s->set[par]); }
+    { ZoneScopedN("VKIsl.Terrain.BindMoverShadow"); mc2_hitch2::Scope hs("terrain.bind_mover_shadow"); moverBound = mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par]); }
     if (!moverBound) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {

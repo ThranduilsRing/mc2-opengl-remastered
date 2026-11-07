@@ -845,6 +845,7 @@ bool upload_geometry_once(MechIsland* s) {
     }
     s->geomGen = feed.geomGen; s->vboBytes = feed.vboBytes;
     g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1))); s->geomUploaded = true;
+    mc2vk::bumpDescEpoch();   // the skin pass caches its binding-0 write on the vbo handle
     vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",
          static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes), feed.vertexStride);
     return true;

@@ -182,6 +182,8 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool  pool;
     VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-TERRAIN-FENCE-DEFER-1); set[i] binds ubo[i]
     mc2vk::LightLists lightLists;
+    uint64_t setRev[mc2vk::kMaxFramesInFlight] = {};            // new value on every write to set[i]'s ground-copied bindings
+    mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]; // binding 24 of set[i]; terrain run and overlay share the set and the stamp
     Mc2GroundLightingFrame groundFrame{};
     uint64_t groundFrameNo = ~static_cast<uint64_t>(0);
     mc2vk::OwnedPipelineLayout  playout;

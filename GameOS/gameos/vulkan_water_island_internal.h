@@ -187,6 +187,7 @@ struct WaterIsland : mc2vk::IslandState {
     uint64_t      shoreHeightVersion = 0, shoreMaskVersion = 0;
 
     VkDescriptorSet   set[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-WATER-FENCE-DEFER-1); allocated from `pool`, freed with it
+    mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]{};   // binding 24 of set[i]
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
     mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
 
