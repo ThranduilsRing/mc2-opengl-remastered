@@ -1082,6 +1082,24 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
 
 
 GREEN_MARK = "build64-ninja/last-green-gate.json"
+#: --isolated-verdict runs (nightly) leave GREEN_MARK alone but record their verdict here; a newer non-PASS verdict at the
+#: marked HEAD revokes publication (Sol P1: a red nightly at the same HEAD must not leave publish authorised).
+ISOLATED_MARK = "build64-ninja/last-isolated-verdict.json"
+
+
+def record_isolated_verdict(head, verdict):
+    (ROOT / ISOLATED_MARK).write_text(json.dumps(dict(head=head, verdict=verdict, finished=time.time())))
+
+
+def publish_revoked(head, mark):
+    """The reason a green marker no longer authorises publishing HEAD (a newer isolated non-PASS verdict at that HEAD), or ''."""
+    try:
+        iso = json.loads((ROOT / ISOLATED_MARK).read_text())
+    except (OSError, ValueError):
+        return ""
+    if iso.get("head") == head and iso.get("verdict") != "PASS" and iso.get("finished", 0) >= mark.get("finished", 0):
+        return f"a newer isolated gate run at this HEAD ended {iso.get('verdict')} ({ISOLATED_MARK})"
+    return ""
 
 
 def verdict_of(result, steps, failed=None):
@@ -1181,8 +1199,12 @@ def capture_post_scopes(capture_dir):
 
 
 def capture_pipeline_mismatch(before_dir, after_dir):
-    """One-line reason when before/after captures ran different post pipelines (W126: before had no FSR AA because the seed
-    lacked amd_fidelityfx_vk.dll), else None. Not a pixel result, so the caller marks the row INFRA instead of judging MAD."""
+    """None when the before/after captures ran the same post pipeline (or a side has no log evidence), else (infra, reason).
+
+    infra is True ONLY for a proven environment mismatch: the before capture install (capture_run.log install=) lacks
+    amd_fidelityfx_vk.dll and the before side is merely missing scopes the after side has (W126: no FSR AA from a bad seed).
+    Any other scope difference (after lost FsrAA, fog, shadow resolve, or the DLL is present) is an unexplained pipeline change:
+    the caller reports FAIL and still evaluates MAD, because a product regression can look exactly like this."""
     before, after = capture_post_scopes(before_dir), capture_post_scopes(after_dir)
     if not before or not after or before == after:
         return None  # no log evidence on a side: stay with the pixel verdict
@@ -1193,10 +1215,12 @@ def capture_pipeline_mismatch(before_dir, after_dir):
     except OSError:
         pass
     miss = bool(install) and not (Path(install) / "amd_fidelityfx_vk.dll").is_file()
-    return ("capture pipelines differ, not a pixel result: only before has %s, only after has %s; seed %s%s"
-            % (sorted(before - after) or "-", sorted(after - before) or "-",
-               "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
-               f" ({install})" if install else ""))
+    infra = miss and not (before - after)
+    return infra, ("capture pipelines differ%s: only before has %s, only after has %s; seed %s%s"
+                   % (", not a pixel result" if infra else " without a proven environment cause",
+                      sorted(before - after) or "-", sorted(after - before) or "-",
+                      "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
+                      f" ({install})" if install else ""))
 
 
 def mad_flags(output, declared=(), expected=()):
@@ -1244,6 +1268,10 @@ def publish(head, dry_run=False):
         mark = {}
     if mark.get("head") != head and not dry_run:
         print(f"[merge_gate] publish-v0.4: refused; no complete green gate recorded for HEAD {head[:12]} ({GREEN_MARK})")
+        return 1
+    revoked = publish_revoked(head, mark)
+    if revoked and not dry_run:
+        print(f"[merge_gate] publish-v0.4: refused; {revoked}")
         return 1
     deploy = next(s for s in plan(1) if s[0] == "deploy")
     rc = execute([("publish-v0.4", deploy[1], {})], head, dry_run)
@@ -1609,10 +1637,10 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     cmp_i = command.index("--compare-only")
                     mismatch = capture_pipeline_mismatch(command[cmp_i + 1], command[cmp_i + 2])
                     if mismatch:
-                        status = "INFRA: " + mismatch.replace("|", "/")
+                        status = ("INFRA: " if mismatch[0] else "FAIL: ") + mismatch[1].replace("|", "/")
                         print(f"[merge_gate] {name}: {status}", flush=True)
-                if mismatch:
-                    pass
+                if mismatch and mismatch[0]:
+                    pass  # proven environment mismatch: not a pixel result
                 elif result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     for line in (getattr(result, "stdout", "") or "").splitlines():
@@ -1620,6 +1648,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                             print(f"[merge_gate] {name} {line}")
                     if moved:
                         status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
+                    elif mismatch:
+                        print(f"[merge_gate] {name}: MAD within bounds, but the pipeline change above is unexplained: stays FAIL")
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 # The child could not be run or reaped (OS/subprocess error): the host failed, not the product.
@@ -1907,6 +1937,8 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
+                if args.isolated_verdict and not args.install and not args.dry_run:
+                    record_isolated_verdict(head, verdict)
                 if verdict != "PASS" and not args.dry_run and own_marks:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
                 if verdict == "PASS" and not args.dry_run and own_marks:

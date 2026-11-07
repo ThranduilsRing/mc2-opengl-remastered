@@ -221,3 +221,54 @@ def test_compare_aligns_by_simframe_and_reports_dropped():
     b.dropped = 1
     ok, msg = sim.compare(a, b, 5)
     assert ok and "dropped a=0 b=1" in msg
+
+
+def _mk(frames, override=None):
+    override = override or {}
+    return sim.SimidLines(f"[SIMID v1] simframe={i} t=0.0 n=1 graded={override.get(i, 'a')} visual=b strict=c nobj=1 objects=d nabl=1 abl=e rng=1/2/3 animrng=1"
+                          for i in frames)
+
+
+def test_garbled_line_does_not_launder_a_conflicting_duplicate_tick():
+    a, b = _mk(range(400)), _mk(range(400))
+    a.append(_mk([50], {50: "zz"})[0])   # conflicting second observation of tick 50
+    b.dropped = 1
+    ok, msg = sim.compare(a, b, 300)
+    assert not ok and msg.startswith("INCONCLUSIVE") and "simframe 50" in msg
+
+
+def test_garbled_line_does_not_hide_599_common_ticks_of_600_required():
+    a, b = _mk([i for i in range(601) if i != 10]), _mk([i for i in range(601) if i != 20])
+    a.dropped = b.dropped = 1
+    ok, msg = sim.compare(a, b, 300, required_length=600)
+    assert not ok and msg.startswith("INCONCLUSIVE") and "599" in msg
+
+
+def test_unexplained_gap_with_a_garbled_line_is_inconclusive():
+    a, b = _mk([i for i in range(400) if i not in (10, 11)]), _mk([i for i in range(400) if i != 11])
+    a.dropped = 1   # one garble cannot explain two holes, and tick 11 is in neither run
+    ok, msg = sim.compare(a, b, 300)
+    assert not ok and msg.startswith("INCONCLUSIVE")
+
+
+def test_gap_in_run_b_is_validated_too():
+    a, b = _mk(range(400)), _mk([i for i in range(400) if i != 30])
+    a.dropped = 1   # the garble belongs to run a; run b's hole is unexplained
+    ok, msg = sim.compare(a, b, 300)
+    assert not ok and msg.startswith("INCONCLUSIVE") and "run b" in msg
+
+
+def test_w127_garbled_tick_present_in_the_other_run_still_passes():
+    a, b = _mk([i for i in range(400) if i != 77]), _mk(range(400))
+    a.dropped = 1
+    ok, msg = sim.compare(a, b, 300, required_length=399)
+    assert ok, msg
+
+
+def test_inconclusive_exits_nonzero_and_is_not_pass(tmp_path, capsys):
+    la, lb = tmp_path / "a.log", tmp_path / "b.log"
+    la.write_text("\n".join(_mk(range(400))) + "\n")
+    lb.write_text("\n".join(_mk([i for i in range(400) if i not in (5, 6)])) + "\n[SIMID v1] simframe=9 garbled\n")
+    rc = sim.main(["compare", str(la), str(lb)]) if "main" in dir(sim) else None
+    out = capsys.readouterr().out
+    assert rc != 0 and "PASS" not in out
