@@ -115,6 +115,23 @@ def stage(root: str, window: str, tips: list[str]) -> dict:
     return state
 
 
+NIGHTLY_PROOFS = "E:/mc2-archive-2026-10/proofs/merge-gate"
+
+
+def untriaged_nightly_fail(proofs: str) -> list[str]:
+    """Refusal reason when the newest nightly-<date>/gate-verdict.json is FAIL and has no triage* file beside it."""
+    dirs = sorted(Path(proofs).glob("nightly-*/gate-verdict.json"), key=lambda p: p.parent.name)
+    if not dirs:
+        return []
+    try:
+        v = json.loads(dirs[-1].read_text(encoding="utf-8")).get("verdict")
+    except (OSError, ValueError):
+        return []
+    if v == "FAIL" and not list(dirs[-1].parent.glob("triage*")):
+        return [f"newest nightly verdict is FAIL and untriaged ({dirs[-1].parent}); add a triage file there"]
+    return []
+
+
 def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     """Fast-forward nifty to the staged candidate, fail-closed. Every refusal leaves nifty exactly where it was."""
     state = load_stage(root, window)
@@ -132,6 +149,7 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
         why.append("stage refused by its preflight: " + "; ".join(state["refused"]))
     if verdict.get("verdict") != "PASS" or not verdict.get("complete"):
         why.append(f"verdict {verdict.get('verdict')} complete={verdict.get('complete')}")
+    why.extend(untriaged_nightly_fail(NIGHTLY_PROOFS))
     if verdict.get("skipped"):
         why.append("skipped rows: " + ", ".join(sorted(verdict["skipped"])))
     if verdict.get("head") != cand:

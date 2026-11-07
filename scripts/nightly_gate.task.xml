@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Register (orchestrator only): schtasks /Create /TN "\mc2-nightly-gate" /XML A:\Games\mc2-main\scripts\nightly_gate.task.xml /F
+     Remove the dead one:          schtasks /Delete /TN "\mc2-smoke-overnight" /F -->
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2026-11-07T02:00:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <ExecutionTimeLimit>PT3H</ExecutionTimeLimit>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>py</Command>
+      <Arguments>-3 scripts\nightly_gate.py</Arguments>
+      <WorkingDirectory>A:\Games\mc2-main</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
