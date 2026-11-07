@@ -66,8 +66,9 @@ TEST_CASE_FIXTURE(Platform, "CardCloud layout after retiring its MLR owner")
     // Step 5: the two matrix members are glm::mat4 (64 bytes, was the 48-byte affine block): Effect grew by 32.
     CHECK(sizeof(gosFX::Effect) == EFFECT_SIZE);
     CHECK(sizeof(gosFX::Effect::ExecuteInfo) == 40);
-    CHECK(sizeof(gosFX::ParticleCloud) == EFFECT_SIZE + 24);
-    CHECK(sizeof(gosFX::CardCloud) == EFFECT_SIZE + 48);
+    // B4: m_data became std::vector<char> (24 bytes, was the 16-byte DAO); ParticleCloud = vector + int + Scalar.
+    CHECK(sizeof(gosFX::ParticleCloud) == EFFECT_SIZE + sizeof(std::vector<char>) + 8);
+    CHECK(sizeof(gosFX::CardCloud) == EFFECT_SIZE + sizeof(std::vector<char>) + 32);
 }
 
 TEST_CASE_FIXTURE(Platform, "CardCloud births and retirement through Effect Execute")
