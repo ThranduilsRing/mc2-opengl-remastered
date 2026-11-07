@@ -28,6 +28,21 @@ EARLY_EXIT = re.compile(r"\[SMOKE v1\] event=summary result=fail reason=early_ex
 RESULTS_DONE =re.compile(r"\[RESULTS v1\] resultsDone complete ")
 
 
+SUMMARY_FAIL = re.compile(r"\[SMOKE v1\] event=summary result=fail reason=(\S+)")
+FAIL_ROW = re.compile(r"^\|\s*(\S+)\s*\|\s*FAIL\s*\|\s*([^|]*)\|", re.M)
+HARD_MARKERS = ("HARD FAIL", "RUN INVALID", "[DEPLOY_FINGERPRINT] MISMATCH", "DEPLOY_FINGERPRINT:** FAIL", "Crash Report")
+
+
+def early_exit_only(text: str) -> bool:
+    """True only when the run's single failure is the countdown's deliberate early_exit. A nonzero exit that also carries a
+    fingerprint mismatch, shader error, crash, invalid run, another summary reason or another verdict bucket is a real failure."""
+    reasons = {m.group(1) for m in SUMMARY_FAIL.finditer(text)}
+    if reasons != {"early_exit"} or any(h in text for h in HARD_MARKERS) or re.search(r"shader_error|SHADER_ERROR|shader compile", text):
+        return False
+    return all({b.strip().split(":")[0] for b in buckets.split(",") if b.strip()} <= {"engine_reported_fail"}
+               for _stem, buckets in FAIL_ROW.findall(text))
+
+
 GRAVEYARD = re.compile(r"\[GRAVEYARD v1\] retire_calls=(\d+) nonempty=(\d+)")
 MIN_RETIRES = 200
 
@@ -69,7 +84,7 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, 
         log_to.write_text(text, encoding="utf-8")
     ok, why = judge(text, require_results=countdown, min_retires=MIN_RETIRES if ordering else 0)
     # The end row ends the mission on purpose: run_smoke reports that as early_exit (rc=1), which is the pass shape.
-    if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text):
+    if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text) and early_exit_only(text):
         return True, why + " (mission ended by the countdown: early_exit)"
     if proc.returncode != 0:
         ok, why = False, f"run_smoke rc={proc.returncode}; {why}"

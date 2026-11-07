@@ -110,10 +110,10 @@ def test_merge_gate_refuses_red_smoke_even_with_a_sim_stream(tmp_path, monkeypat
     source = tmp_path / "artifacts"
     source.mkdir()
     (source / "mc2_03.log").write_text("\n".join(observations()))
-    monkeypatch.setenv("MC2_IN_GATE", "1")
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)   # standalone runs are held to the same rule as the gate
     monkeypatch.setattr(sim.subprocess, "run", lambda *a, **k: SimpleNamespace(
         returncode=1, stdout=f"[runner] artifacts: {source}\nFAILED vk_validation_error\n"))
-    with pytest.raises(SystemExit, match="gate smoke a failed"):
+    with pytest.raises(SystemExit, match="smoke run a failed"):
         sim.run_mission("mc2_03", "20", str(tmp_path / "out"))
     assert not (tmp_path / "out/a").exists()
 
@@ -272,3 +272,19 @@ def test_inconclusive_exits_nonzero_and_is_not_pass(tmp_path, capsys):
     rc = sim.main(["compare", str(la), str(lb)]) if "main" in dir(sim) else None
     out = capsys.readouterr().out
     assert rc != 0 and "PASS" not in out
+
+
+_WIN_PASS = "[SMOKE v1] event=summary result=pass\n"
+
+
+@pytest.mark.parametrize("rc,text,ok", [
+    (0, "", True),
+    (1, _WIN_PASS + "| mc2_03 | FAIL | perf_counter |\n", True),
+    (1, _WIN_PASS + "| mc2_03 | FAIL | perf_counter, shader_error |\n", False),
+    (1, _WIN_PASS + "| mc2_03 | FAIL | vk_validation_error |\n", False),
+    (1, _WIN_PASS + "[runner] [DEPLOY_FINGERPRINT] MISMATCH\n| mc2_03 | FAIL | perf_counter |\n", False),
+    (1, _WIN_PASS, False),
+    (2, _WIN_PASS + "| mc2_03 | FAIL | perf_counter |\n", False),
+])
+def test_windowed_exit_ok_requires_a_successful_smoke(rc, text, ok):
+    assert sim.windowed_exit_ok(rc, text) is ok
