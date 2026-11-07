@@ -1062,9 +1062,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const void* poolUpload = feed.poolLights48;
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
-    // Object-motion tail: one vec4 per instance (xyz = render-space root translation since the previous frame), packed four per
-    // 64-byte bone slot right after the bone palette; the VS reads it at index boneCount + (instance >> 2).
-    const VkDeviceSize deltaTailBytes = static_cast<VkDeviceSize>((feed.instanceCount + 3u) / 4u) * 64ull;
+    // Object-motion tail: last frame's bone palette (same indexing), right after the current palette; the VS skins with it at boneCount + bone.
+    const VkDeviceSize deltaTailBytes = static_cast<VkDeviceSize>(feed.boneCount) * 64ull;
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + static_cast<VkDeviceSize>(feed.boneCount) * 64ull + deltaTailBytes, ringAlign);
     const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
@@ -1151,7 +1150,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
       u.miscI[1] = mechFill;
-      u.miscI[2] = static_cast<int>(feed.boneCount);   // start of the object-motion tail in the bone array
+      u.miscI[2] = static_cast<int>(feed.boneCount);   // start of the previous-frame palette in the bone array
       mc2_mech_prev_from_cur_clip(u.prevFromCurClip);
       const auto& ambient = visualTuning_environment().sky.hemisphereSky;
       for (size_t c=0; c<3; ++c)

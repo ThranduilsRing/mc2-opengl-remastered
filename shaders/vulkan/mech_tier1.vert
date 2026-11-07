@@ -173,12 +173,19 @@ void main() {
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);
     vCurClip = clip;
     vPrevClip = clip;
-    if (uFrame.miscI.z > 0) {
-        // Render-space translation since last frame: one vec4 per instance, packed after the bone palette (miscI.z = bone count).
-        const GpuMechBone tail = uBones.bones[uFrame.miscI.z + (gl_InstanceIndex >> 2)];
-        const int lane = gl_InstanceIndex & 3;
-        const vec3 delta = (lane == 0 ? tail.row0 : lane == 1 ? tail.row1 : lane == 2 ? tail.row2 : tail.row3).xyz;
-        vPrevClip = uFrame.prevFromCurClip * (clip - uFrame.worldToClipGL * vec4(delta, 0.0));
+    if (uFrame.miscI.z > 0 && !preskinned) {
+        // The same vertex skinned with last frame's bone palette (stored after the current one; miscI.z = bone count): pose motion
+        // (root rotation and translation, limbs) in one step. Unkeyed actors carry the current pose there, so they get the camera vector.
+        mat4 prevBoneT = mat4(0.0);
+        for (int bi = 0; bi < 4; ++bi) {
+            float w = a_boneWeights[bi];
+            if (w > 0.0) {
+                GpuMechBone bn = uBones.bones[uFrame.miscI.z + a_boneIndices[bi] + inst.baseBoneOffset];
+                prevBoneT += w * mat4(bn.row0, bn.row1, bn.row2, bn.row3);
+            }
+        }
+        const vec3 prevWorldMC2 = mc2ToRender((prevBoneT * vec4(a_position, 1.0)).xyz);
+        vPrevClip = uFrame.prevFromCurClip * (uFrame.worldToClipGL * vec4(prevWorldMC2, 1.0));
     }
     clip.z += uFrame.objectDepthBias * clip.w;   // mech.vert:187
     gl_Position = clip;

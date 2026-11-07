@@ -63,6 +63,7 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     out->instanceCount = static_cast<uint32_t>(s_vkMechInstSnapshot.size());
     out->bones64       = s_vkMechBoneSnapshot.data();
     out->boneCount     = static_cast<uint32_t>(s_vkMechBoneSnapshot.size());
+    out->motionKeys    = s_vkMechMotionKeys.size() == s_vkMechInstSnapshot.size() ? s_vkMechMotionKeys.data() : nullptr;
     out->runs          = s_vkMechRunSnapshot.data();
     out->runCount      = static_cast<uint32_t>(s_vkMechRunSnapshot.size());
     out->leafCount     = s_vkMechLeafCount;

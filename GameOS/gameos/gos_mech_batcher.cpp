@@ -71,6 +71,7 @@ void noteDeprecatedMechFeedNative() {
 // Populated at flush() end.
 std::vector<GpuMechInstance> s_vkMechInstSnapshot;
 std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
+std::vector<uint32_t>        s_vkMechMotionKeys;   // parallel to s_vkMechInstSnapshot
 std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
 uint32_t                     s_vkMechLeafCount = 0;
 float                        s_vkMechWorldToClipGL[16] = {0};
@@ -81,6 +82,7 @@ namespace {
 void resetFrameSnapshots() {
     s_vkMechInstSnapshot.clear();
     s_vkMechBoneSnapshot.clear();
+    s_vkMechMotionKeys.clear();
     s_vkMechRunSnapshot.clear();
     s_vkMechLeafCount = 0;
     s_vkMechFrameReady = false;

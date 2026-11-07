@@ -281,3 +281,15 @@ Picking and the shared camera are untouched by construction (no jitter is applie
     mech_tier1.vert/frag, mech_preview.frag, motion_vectors.frag; shader_reflect goldens regenerated for the three
     changed shaders and re-checked (0 drifted); gpu_abi_gen check clean. No capture or smoke was run (lane rule), so
     the visual ghosting fix is unverified in-game.
+
+## Slice D state (claude/temporal-aa-f)
+
+- Per-object vectors now come from the previous-frame BONE PALETTE, not the root translation: `mc2_mech_stage_object_motion`
+  (`vulkan_mech_object_motion.cpp`) stores each actor's palette per motion key and writes last frame's palette right after the
+  current one in the bone ring (`boneCount` bones); `mech_tier1.vert` skins the vertex with both and sets the previous clip from
+  the previous pose. This covers root rotation, root translation and limb animation for mechs, and ground vehicles (key = handle,
+  else a hash of the live shape pointer, via the new `s_vkMechMotionKeys` / `feed.motionKeys`). Nothing moved = previous pose equals current = unchanged output.
+- Still camera-only: first-seen actors, bone-count changes, >64-unit jumps, preskinned (compute-skinned) instances, props, legacy shapes.
+- Receipts: Ninja build exit 0; unit doctest 3813 cases 0 failed; spirv-val/shader rows pass; reflect goldens re-checked 0 drifted
+  (also refreshed three mech_* goldens that were already stale at the base); gpu_abi_gen clean. No capture or smoke run.
+- Base break (not from this diff): cxx17 ratchet LG08 +8 in `engine_present_vk_imgui.cpp`.
