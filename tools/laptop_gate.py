@@ -17,6 +17,9 @@ Remote half: this same file, uploaded to C:/mc2gate/bin, run as `--remote <step>
 import argparse, csv, hashlib, json, os, shutil, subprocess, sys, tarfile, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
+
 HOST = "Kaitlyn@192.168.68.107"
 KEY = "C:/SPB_Data/.ssh/mc2farm_ed25519"
 G = "C:/mc2gate"
@@ -45,10 +48,10 @@ def env():
 def ssh(cmd, check=True, stream=False):
     argv = ["ssh", *SSH_OPTS, HOST, cmd]
     if stream:
-        r = subprocess.run(argv, env=env())
+        r = subprocess.run(argv, env=env(), **console_child.child_kwargs())
         out = ""
     else:
-        r = subprocess.run(argv, env=env(), capture_output=True, text=True)
+        r = subprocess.run(argv, env=env(), capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         out = r.stdout
     if check and r.returncode:
         sys.exit(f"laptop_gate: ssh failed rc={r.returncode}: {cmd[:120]}\n{getattr(r, 'stderr', '') or ''}")
@@ -57,7 +60,7 @@ def ssh(cmd, check=True, stream=False):
 
 def scp(src, dst, recursive=False):
     argv = ["scp", "-q", *(["-r"] if recursive else []), *SSH_OPTS, str(src), str(dst)]
-    r = subprocess.run(argv, env=env())
+    r = subprocess.run(argv, env=env(), **console_child.child_kwargs())
     if r.returncode:
         sys.exit(f"laptop_gate: scp failed: {src} -> {dst}")
 
@@ -78,10 +81,10 @@ def r_subst():
     G: holds the PC's G:/mc2-assets stock mirror that the kit_art contract row reads at hard-coded paths. Never I:."""
     for letter, target in (("A:", G + "/drv/A"), ("G:", G + "/drv/G")):
         os.makedirs(target, exist_ok=True)
-        cur = subprocess.run(["subst"], capture_output=True, text=True).stdout
+        cur = subprocess.run(["subst"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout
         if any(line.upper().startswith(letter) for line in cur.splitlines()):
             continue
-        subprocess.run(["subst", letter, target.replace("/", "\\")], check=True)
+        subprocess.run(["subst", letter, target.replace("/", "\\")], check=True, **console_child.child_kwargs())
 
 
 def junction(link, target):
@@ -89,7 +92,8 @@ def junction(link, target):
     if link.exists():
         return
     link.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["cmd", "/c", "mklink", "/J", str(link).replace("/", "\\"), str(target).replace("/", "\\")], check=True, capture_output=True)
+    subprocess.run(["cmd", "/c", "mklink", "/J", str(link).replace("/", "\\"), str(target).replace("/", "\\")], check=True, capture_output=True,
+                   **console_child.child_kwargs(redirected=True))
 
 
 def r_init():
@@ -102,8 +106,9 @@ def r_init():
     repo = Path(REPO)
     if not (repo / ".git").exists():
         repo.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["git", "clone", "-q", "C:/mc2lint/repo", str(repo)], check=True)
-        subprocess.run(["git", "-C", str(repo), "config", "receive.denyCurrentBranch", "ignore"], check=True)
+        subprocess.run(["git", "clone", "-q", "C:/mc2lint/repo", str(repo)], check=True, **console_child.child_kwargs())
+        subprocess.run(["git", "-C", str(repo), "config", "receive.denyCurrentBranch", "ignore"], check=True,
+                       **console_child.child_kwargs())
     import shutil
     for sub in ("cmake", "lib"):   # untracked build deps, same recipe as C:/mc2lint/msvc.cmd
         dst = repo / "3rdparty" / sub
@@ -121,7 +126,7 @@ def r_init():
 def run(cmd, log, **kw):
     t = time.time()
     with open(log, "a", encoding="utf-8", errors="replace") as lf:
-        r = subprocess.run(cmd, cwd=REPO, stdout=lf, stderr=subprocess.STDOUT, **kw)
+        r = subprocess.run(cmd, cwd=REPO, stdout=lf, stderr=subprocess.STDOUT, **console_child.child_kwargs(redirected=True, **kw))
     return r.returncode, round(time.time() - t, 1)
 
 
@@ -144,7 +149,8 @@ def r_run(window, extra):
     branch = "claude/stage-" + window
     e = gate_env()
     sm = {"window": window, "host": "laptop"}
-    git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e)
+    git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e,
+                                    **console_child.child_kwargs(redirected=True))
     for step in (["checkout", "-q", "-f", branch], ["clean", "-fdq"]):   # no -x: build tree and deps survive
         r = git(*step)
         if r.returncode:
@@ -347,7 +353,8 @@ def r_preflight(window="-", published=""):
     fp = exe_fingerprint.parse_literal(Path(INSTALL, "mc2.exe").read_bytes()) if Path(INSTALL, "mc2.exe").is_file() else None
     tip = None if window in (None, "-") else "claude/stage-" + window
     bad += published_problems((fp or {}).get("sha"), published, tip,
-                              lambda a, b: subprocess.run(["git", "-C", REPO, "merge-base", "--is-ancestor", a, b]).returncode == 0)
+                              lambda a, b: subprocess.run(["git", "-C", REPO, "merge-base", "--is-ancestor", a, b],
+                                                                       **console_child.child_kwargs()).returncode == 0)
     bad += r_refcheck(REF + "/SHA256SUMS")
     pc_tree = Path(G, "in/pc.tree.txt")   # the PC v0.4's rows, uploaded by sync_tree
     bad += tree_problems(pc_tree.read_text(encoding="utf-8").splitlines(), tree_rows(INSTALL)) if pc_tree.is_file() \
@@ -393,7 +400,7 @@ def seed_ref():
         sums.write_text(text, encoding="utf-8", newline="\n")
         lst.write_text("\n".join(line.split("  ", 1)[1] for line in text.splitlines()) + "\n", encoding="utf-8", newline="\n")
         # the PC's tar is Windows bsdtar: it reads C:\ paths as files and rejects --force-local
-        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_REF), "-T", str(lst)]).returncode:
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_REF), "-T", str(lst)], **console_child.child_kwargs()).returncode:
             sys.exit("ref tar failed")
         scp(local, f"{HOST}:{G}/tmp/ref.tar")
         ssh(f'powershell -c "New-Item -ItemType Directory -Force {REF} | Out-Null" && tar -xf {G}/tmp/ref.tar -C {REF} '
@@ -414,7 +421,7 @@ def seed_stock():
         return
     local = Path(os.environ.get("TEMP", ".")) / "mc2gate-stock.tar"
     try:
-        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_STOCK.parent), PC_STOCK.name]).returncode:
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_STOCK.parent), PC_STOCK.name], **console_child.child_kwargs()).returncode:
             sys.exit("stock tar failed")
         scp(local, f"{HOST}:{G}/tmp/stock.tar")
         ssh(f'powershell -c "New-Item -ItemType Directory -Force {dst} | Out-Null" && tar -xf {G}/tmp/stock.tar -C {dst} '
@@ -434,7 +441,7 @@ def seed():
     # A piped ssh stdin on Windows OpenSSH crawls (~0.5 MB/s); one tar file through scp, extracted on the laptop, is ~20x faster.
     local = Path(os.environ.get("TEMP", ".")) / "mc2gate-seed.tar"
     try:
-        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_SEED), "."]).returncode:
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_SEED), "."], **console_child.child_kwargs()).returncode:
             sys.exit("seed tar failed")
         scp(local, f"{HOST}:{G}/tmp/seed.tar")
         ssh(f"tar -xf {G}/tmp/seed.tar -C {INSTALL} && del {G.replace('/', chr(92))}\\tmp\\seed.tar")
@@ -495,7 +502,7 @@ def sync_tree():
     try:
         for i, group in enumerate(chunks(copy, sizes), 1):
             lst.write_text("\n".join(group) + "\n", encoding="utf-8", newline="\n")
-            if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_V04), "-T", str(lst)]).returncode:
+            if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_V04), "-T", str(lst)], **console_child.child_kwargs()).returncode:
                 sys.exit("sync tar failed")
             scp(local, f"{HOST}:{G}/tmp/sync.tar")
             ssh(f"tar -xf {G}/tmp/sync.tar -C {INSTALL} && del {G.replace('/', chr(92))}\\tmp\\sync.tar")
@@ -519,7 +526,7 @@ def sync_tree():
 def pc_main(args):
     w = args.window
     branch = "claude/stage-" + w
-    head = subprocess.check_output(["git", "rev-parse", branch], text=True).strip()
+    head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
     ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
     scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
@@ -533,7 +540,8 @@ def pc_main(args):
     # The LFS pre-push hook runs; the laptop clone has no LFS locking API (a stage adding new LFS objects fails here, loudly).
     nolock = f"lfs.https://{HOST.split('@')[1]}/{REPO}.git/info/lfs.locksverify=false"
     r = subprocess.run(["git", "-c", nolock, "push", "-q", "-f", f"--receive-pack={G}/bin/rp.cmd", url,
-                        f"{branch}:refs/heads/{branch}", "claude/nifty-mendeleev:refs/heads/claude/nifty-mendeleev"], env=genv)
+                        f"{branch}:refs/heads/{branch}", "claude/nifty-mendeleev:refs/heads/claude/nifty-mendeleev"], env=genv,
+                       **console_child.child_kwargs())
     if r.returncode:
         sys.exit("push to laptop clone failed")
     ssh(f"cmd /c mkdir C:\\mc2gate\\in\\{w} 2>nul & exit /b 0", check=False)
@@ -547,7 +555,8 @@ def pc_main(args):
     dest = PROOFS / w
     dest.mkdir(parents=True, exist_ok=True)
     for name in ("summary.json", "gate-verdict.json", "gate.log", "gate.console.log", "build.log", "payload.tar", "payload.sha256"):
-        r = subprocess.run(["scp", "-q", *SSH_OPTS, f"{HOST}:{G}/out/{w}/{name}", str(dest / name)], env=env())
+        r = subprocess.run(["scp", "-q", *SSH_OPTS, f"{HOST}:{G}/out/{w}/{name}", str(dest / name)], env=env(),
+                           **console_child.child_kwargs())
         if r.returncode:
             print(f"laptop_gate: {name} not available", flush=True)
     extract_payload(dest)

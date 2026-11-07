@@ -37,6 +37,7 @@
     "scripts/video_decode_smoke.py": "Launches only scripts/run_smoke.py under sys.executable with console_child; the smoke harness owns the offscreen engine launch.",
     "scripts/nightly_gate.py": "Runs only py -3 scripts/gate_wait.py -- scripts/merge_gate.py (fixed script paths, argv built from merge_gate's stage list) with console_child; the gate launches the game only through run_smoke/run_visual_capture.",
     "scripts/run_visual.py": "Starts only the Python run_visual_capture.py harness with --no-kill and console_child; that harness owns the offscreen game launch, host lease and own-PID cleanup.",
+    "tools/laptop_gate.py": "Launches only ssh/scp/git/tar/subst/mklink and the laptop-side build and gate scripts (run() takes argv lists built in this file) with console_child; the game runs only on the farm laptop through the gate's own harness.",
     "tools/perf/mission_cpu_profile.py": "Launches only Tracy capture/export console tools directly; the engine launches through smoke_lib.runner and nofocus.",
     "tools/perf/rgp_capture.py": "Launches only the Radeon Developer Service and a minimized non-activating Radeon Developer Panel (both terminated at exit); the engine launches through smoke_lib.runner and nofocus.",
     "tools/play_mission.py": "Launches scripts/run_smoke.py under sys.executable with console_child; the smoke harness owns the offscreen engine launch.",
