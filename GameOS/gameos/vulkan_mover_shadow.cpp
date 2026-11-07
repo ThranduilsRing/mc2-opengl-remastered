@@ -124,6 +124,7 @@ void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
     updateGround();
     actors_.clear(); instActor_.clear(); actorsFresh_ = true; actorCount_ = 0;
     const float ground = ground_;
+    const ViewPlanes view=makeViewPlanes(cameraRows);
     Mc2MechShadowFeed feed{};
     if (!mc2_mech_island_get_shadow_feed(&feed) || !feed.instances64 || !feed.bones64 || !feed.vboCpu || feed.vertexStride < 12) return;
     if (mechGeneration_ != feed.geomGen) {
@@ -159,7 +160,7 @@ void MoverShadowState::refreshMechActors(const float cameraRows[16], Vec3 sun) {
         }
         const Vec3 extent{(hi.x-lo.x)*0.5f,(hi.y-lo.y)*0.5f,(hi.z-lo.z)*0.5f};
         const MoverSphere sphere{{(lo.x+hi.x)*0.5f,(lo.y+hi.y)*0.5f,(lo.z+hi.z)*0.5f},std::sqrt(dot(extent,extent))+mechRadius_*scale};
-        actors_.push_back({sphere, sweptShadowInView(sphere,sun,ground,cameraRows)});
+        actors_.push_back({sphere, sweptShadowInView(sphere,sun,ground,view)});
     }
     instActor_.resize(feed.instanceCount, -1);
     for (uint32_t i=0;i<feed.instanceCount;++i) {
@@ -208,10 +209,11 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     if (!actorsFresh_) refreshMechActors(cameraRows, sun);
     actorsFresh_ = false;   // the next frame refreshes again
     props_.clear(); spheres_.clear();
+    const ViewPlanes view=makeViewPlanes(cameraRows);
     for (const auto& prop:props) {
         if (prop.typeID >= bounds_.size() || !bounds_[prop.typeID].valid) continue;
         const auto sphere=propSphere(prop,bounds_[prop.typeID]);
-        if (!sweptShadowInView(sphere,sun,ground_,cameraRows)) continue;
+        if (!sweptShadowInView(sphere,sun,ground_,view)) continue;
         props_.push_back(prop); spheres_.push_back(sphere);
     }
     appendMechs(cameraRows,sun,ground_);
