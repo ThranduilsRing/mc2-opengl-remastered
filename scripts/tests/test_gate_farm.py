@@ -213,6 +213,12 @@ def test_mad_flags_nan_and_non_numeric_rows_are_flagged():
     assert gate.mad_flags('b | 0.00 | 0\n', expected=('a', 'b')) == ['a=no compare row']
 
 
+def test_mad_flags_ignores_pixel_hist_lines():
+    out = ('a | 0.03 | 0\n'
+           '[pixel_hist] a: FAIL >8:2.248% region bbox=[0, 95, 601, 183] 0.1127% | 2.2477% of pixels over delta 8 (limit 1.0000%)\n')
+    assert gate.mad_flags(out, expected=('a',)) == []
+
+
 def test_mad_flags_fail_closed_on_missing_capture():
     ok = 'a | 0.00 | 0\nb | 0.00 | 0\n'
     assert gate.mad_flags(ok, expected=('a', 'b')) == []

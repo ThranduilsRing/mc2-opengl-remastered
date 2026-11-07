@@ -1142,6 +1142,8 @@ def mad_flags(output, declared=(), expected=()):
         if "missing png" in line or "size mismatch" in line:
             bad.append(line.strip().replace("[ab] ", "")[:80])
             continue
+        if line.startswith("[pixel_hist] "):
+            continue  # informational, not a MAD row (its own text contains '|')
         cells = [c.strip() for c in line.split("|")]
         if len(cells) < 2:
             continue
