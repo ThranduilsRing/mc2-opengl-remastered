@@ -2504,10 +2504,10 @@
    "delete_array": 0,
    "files": {
     "code/mechlopedia.cpp": {
-     "new": 6
+     "new": 1
     }
    },
-   "new": 6,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -3743,14 +3743,11 @@
     "code/keyboardref.cpp": {
      "new": 2
     },
-    "code/mechlopedia.cpp": {
-     "new": 7
-    },
     "code/missionbriefingscreen.cpp": {
      "new": 2
     }
    },
-   "new": 11,
+   "new": 4,
    "new_array": 0,
    "owners": []
   },
