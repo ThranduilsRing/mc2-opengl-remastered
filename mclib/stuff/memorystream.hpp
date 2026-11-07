@@ -9,6 +9,7 @@
 
 #include <memory>
 #include"stuff.hpp"
+#include"registeredclass.hpp"
 
 namespace Stuff {
     class MemoryStream;

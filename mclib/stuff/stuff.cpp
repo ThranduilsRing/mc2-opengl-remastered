@@ -78,8 +78,6 @@ void
 	//
 	Verify(FirstFreeStuffClassID <= LastStuffClassID);
 	RegisteredClass::InitializeClass();
-	Plug::InitializeClass();
-	Node::InitializeClass();
 
 
 	Random::InitializeClass();
@@ -135,7 +133,5 @@ void
 	Random::TerminateClass();
 
 
-	Node::TerminateClass();
-	Plug::TerminateClass();
 	RegisteredClass::TerminateClass();
 }

@@ -175,8 +175,8 @@ namespace Stuff {
 		MemoryStreamClassID,
 		FileStreamClassID,
 
-		PlugClassID,
-		NodeClassID,
+		ReservedPlugClassID,	// Stuff::Plug/Node deleted; kept so the IDs below do not renumber
+		ReservedNodeClassID,
 
 		CharClassID,
 
@@ -195,13 +195,7 @@ inline constexpr mc2::czstring GROUP_STUFF_MEMORY = "Stuff::Memory";
 
 #include"style.hpp"
 #include"mstring.hpp"
-#include"socket.hpp"
-#include"chain.hpp"
-#include"safesocket.hpp"
-#include"sortedchain.hpp"
-#include"sortedsocket.hpp"
-#include"tree.hpp"
-#include"hash.hpp"
+#include"registeredclass.hpp"	// was reached through plug.hpp
 #include"angle.hpp"
 #include"color.hpp"
 #include"marray.hpp"
