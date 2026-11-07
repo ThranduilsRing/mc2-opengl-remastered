@@ -266,7 +266,7 @@ extern "C" int mc2_vk_water_island_run(
 
     const std::array<VkImageView,4> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view(),s->maskView};
     if (s->imageDescriptorsDirty[par] || s->boundTextures[par]!=views) {
-        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+        write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
     }
     // ---- 3) Stage the parameter UBOs into the frame-ring span and point slot `par` at its buffer. ----
     {
@@ -350,7 +350,7 @@ extern "C" int mc2_vk_water_island_run(
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
             if (reflectThisFrame) {
-                wf.reflectionHalfW=uint32_t((w+1)/2); wf.reflectionHalfH=uint32_t((h+1)/2);
+                wf.reflectionHalfW=static_cast<uint32_t>((w+1)/2); wf.reflectionHalfH=static_cast<uint32_t>((h+1)/2);
                 wf.reflectionGroupsX=(wf.reflectionHalfW+7)/8;
                 wf.reflectionGroupsY=(wf.reflectionHalfH+7)/8;
             }

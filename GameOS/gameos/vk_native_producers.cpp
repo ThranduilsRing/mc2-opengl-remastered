@@ -201,7 +201,7 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
     if (haze != 0.0f) {
         const float fogFactor = 1.0f - haze;
         const uint32_t distFog = static_cast<uint32_t>(static_cast<int>(fogFactor * 255.0f));
-        if (distFog < fogResult) fogResult = distFog;
+        fogResult = std::min(fogResult, distFog);
         outFog = (fogResult << 24) | (sr << 16) | (sg << 8) | sb;
     }
 }

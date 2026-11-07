@@ -568,8 +568,8 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
 
             lw = (lw + 1) / 2;
             lh = (lh + 1) / 2;
-            if (lw < 1) lw = 1;
-            if (lh < 1) lh = 1;
+            lw = (std::max)(lw, 1);
+            lh = (std::max)(lh, 1);
         }
     }
 

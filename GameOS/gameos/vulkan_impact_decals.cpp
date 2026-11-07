@@ -35,7 +35,7 @@ Mc2ImpactDecalHealth g_health;
 extern "C" void gos_SetImpactDecalFrame(const void* records, uint32_t count, uint32_t hotCount) {
     count = count > impact::kMaxDecals ? impact::kMaxDecals : count;
     g_frame.resize(count);
-    if (count) std::memcpy(g_frame.data(), records, size_t(count) * sizeof(impact::GpuDecal));
+    if (count) std::memcpy(g_frame.data(), records, static_cast<size_t>(count) * sizeof(impact::GpuDecal));
     g_frameHot = hotCount > count ? count : hotCount;
 }
 
@@ -79,7 +79,7 @@ void decline(std::string_view reason) {
     ++g_health.declined;
     if (reason != g_health.reason) {
         static int s_logs = 0;   // each new reason is logged, capped because a pose can alternate between two
-        if (s_logs++ < 8) std::fprintf(stderr, "[VK_IMPACT_DECALS] declined: reason=%.*s sample=%d/8\n", int(reason.size()), reason.data(), s_logs);
+        if (s_logs++ < 8) std::fprintf(stderr, "[VK_IMPACT_DECALS] declined: reason=%.*s sample=%d/8\n", static_cast<int>(reason.size()), reason.data(), s_logs);
         const size_t n = std::min(reason.size(), sizeof(g_health.reason) - 1);
         std::memcpy(g_health.reason, reason.data(), n);
         g_health.reason[n] = '\0';
@@ -394,7 +394,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
             s->boundAtlas[slot][0] = views[0]; s->boundAtlas[slot][1] = views[1];
         }
         if (void* m = s->ubo[slot].map()) { std::memcpy(m, &u, sizeof(u)); s->ubo[slot].unmap(); } else { decline("ubo_map"); return 0; }
-        if (void* m = s->ssbo[slot].map()) { std::memcpy(m, g_frame.data(), size_t(count) * sizeof(impact::GpuDecal)); s->ssbo[slot].unmap(); }
+        if (void* m = s->ssbo[slot].map()) { std::memcpy(m, g_frame.data(), static_cast<size_t>(count) * sizeof(impact::GpuDecal)); s->ssbo[slot].unmap(); }
         else { decline("ssbo_map"); return 0; }
     }
 
@@ -423,7 +423,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.ImpactDecals");
         VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-        rbi.renderArea = {{0, 0}, {uint32_t(w), uint32_t(h)}};
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[slot], 0, nullptr);
         PushMode pm{};

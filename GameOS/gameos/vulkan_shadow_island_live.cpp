@@ -1028,15 +1028,15 @@ static void record_local_shadows(ShadowIsland* s) {
         mc2vk::sync::ImageTracker liveTrk(reinterpret_cast<uint64_t>(L.liveAtlas.image.get()), VK_IMAGE_ASPECT_DEPTH_BIT);
         {
             mc2vk::sync::BarrierBatch batch;
-            staticTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false});
-            liveTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, true});
+            staticTrk.use(batch, {static_cast<uint32_t>(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false});
+            liveTrk.use(batch, {static_cast<uint32_t>(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, true});
             mc2vk::sync::flush(bctx, cb, batch);
         }
         const VkClearDepthStencilValue one{1.0f, 0};
         vkCmdClearDepthStencilImage(cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &one, 1, &depthRange);
         {
             mc2vk::sync::BarrierBatch batch;
-            liveTrk.use(batch, {uint32_t(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL), VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false});
+            liveTrk.use(batch, {static_cast<uint32_t>(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL), VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false});
             mc2vk::sync::flush(bctx, cb, batch);
         }
         L.layoutsReady = true;
@@ -1276,7 +1276,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     if (++frames%600==1) {
         const double us=std::chrono::duration<double,std::micro>(std::chrono::steady_clock::now()-start).count();
         vlog("movers actors_feed=%u actors_visible=%u rigid_leaves=%zu map=%d format=D16 texel_wu=%.3f depth_span=%.1f cpu_fit_and_record_us=%.1f resident_mb=%.1f coverage_kb=8",
-             s->mover.actorCount(),s->mover.visibleActorCount(),selected.size(),s->size,frame.params[0],frame.params[1]>0?1.0f/frame.params[1]:0.0f,us,double(s->size)*s->size*2/1048576.0);
+             s->mover.actorCount(),s->mover.visibleActorCount(),selected.size(),s->size,frame.params[0],frame.params[1]>0?1.0f/frame.params[1]:0.0f,us,static_cast<double>(s->size)*s->size*2/1048576.0);
     }
 }
 

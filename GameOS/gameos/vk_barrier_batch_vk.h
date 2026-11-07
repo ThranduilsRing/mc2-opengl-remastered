@@ -48,9 +48,9 @@ inline void flush(const VulkanContext& ctx, VkCommandBuffer cb, BarrierBatch& ba
         dep.memoryBarrierCount = 1;
         dep.pMemoryBarriers = &mem;
     }
-    dep.bufferMemoryBarrierCount = uint32_t(buffers.size());
+    dep.bufferMemoryBarrierCount = static_cast<uint32_t>(buffers.size());
     dep.pBufferMemoryBarriers = buffers.data();
-    dep.imageMemoryBarrierCount = uint32_t(images.size());
+    dep.imageMemoryBarrierCount = static_cast<uint32_t>(images.size());
     dep.pImageMemoryBarriers = images.data();
     ctx.cmdPipelineBarrier2(cb, dep);
     batch.clear();
@@ -65,8 +65,8 @@ inline void cmdImageBarrier(const VulkanContext& ctx, VkCommandBuffer cb, VkImag
     r.image = reinterpret_cast<uint64_t>(image);
     r.aspect = range.aspectMask; r.baseMip = range.baseMipLevel; r.mipCount = range.levelCount;
     r.baseLayer = range.baseArrayLayer; r.layerCount = range.layerCount;
-    r.before = {uint32_t(from), srcStages, srcAccess, srcAccess != 0};
-    r.after = {uint32_t(to), dstStages, dstAccess, false};
+    r.before = {static_cast<uint32_t>(from), srcStages, srcAccess, srcAccess != 0};
+    r.after = {static_cast<uint32_t>(to), dstStages, dstAccess, false};
     batch.image(r);
     flush(ctx, cb, batch);
 }
