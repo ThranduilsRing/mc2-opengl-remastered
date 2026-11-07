@@ -262,4 +262,22 @@ Picking and the shared camera are untouched by construction (no jitter is applie
   motion, if the published eye position fails the clip w = 0 sanity check).
 - HZB jitter expansion landed: `hzb_cull.comp` and its CPU mirror `hzb_prop_bounds.h` widen the projected
   box by 0.5 px (the jitter bound) on top of the existing one-texel margin.
-- Per-object mech/vehicle vectors: see the screenshot verdict in the lane report; not built unless ghosting is visible.
+- Per-object mech/vehicle vectors landed (claude/temporal-aa-e), no new gate:
+  - Design: the mech island's scene pass writes a third colour attachment, the shared `MC2_SHARED_SCENE_OBJECT_MV`
+    (slot 3, R16G16_SFLOAT, cleared to the sentinel 1e4). `mech_tier1.vert` passes the current clip and a previous clip
+    (`prevFromCurClip * (clip - worldToClipGL * (delta, 0))`) to the FS, which writes `0.5 * (prevNdc - curNdc)`, so the
+    value is the true per-pixel previousUV - currentUV on the unjittered grid. `motion_vectors.frag` samples that image
+    (push `objectValid` at byte 120, range 124) and replaces the camera vector wherever it is not the sentinel.
+    Mechs co-write under the same depth test, so occluded pixels never take an object vector.
+  - Delta source: per instance, the actor's root bone translation (first bone, row3.xyz, Stuff space) minus its value last
+    frame, keyed by `objectIdRaw`, converted with `mc2ToRender` and staged as one vec4 per instance in a tail after the
+    bone palette (index `boneCount + (instance >> 2)`; UBO `miscI[2]` = boneCount). `prevFromCurClip` comes from
+    `copyMainView()` (identity if the camera did not move).
+  - Limitations: whole-body root translation only (limb animation and root rotation are not in the vector); an actor first
+    seen this frame, or jumping more than 64 units (teleport), gets delta 0 and keeps the camera vector; the mech-lab
+    preview variant is untouched; props, legacy shapes and every other draw class keep the camera vector; if the island
+    falls back or does not submit, `objectValid` is 0 and the pass is the camera-only result.
+  - Receipts: Ninja build exit 0; `build_contract_harnesses --unit` exit 0; spirv-val (vulkan1.2) clean on
+    mech_tier1.vert/frag, mech_preview.frag, motion_vectors.frag; shader_reflect goldens regenerated for the three
+    changed shaders and re-checked (0 drifted); gpu_abi_gen check clean. No capture or smoke was run (lane rule), so
+    the visual ghosting fix is unverified in-game.

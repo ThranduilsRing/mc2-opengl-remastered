@@ -33,7 +33,8 @@ enum Mc2SharedSceneColorSlot {
     MC2_SHARED_SCENE_COLOR0 = 0,   // sceneColorTex_  (MRT0 lit color)
     MC2_SHARED_SCENE_NORMAL = 1,   // sceneNormalTex_ (MRT1 GBuffer1 normal)
     MC2_SHARED_SCENE_OBJECT_ID = 2, // sceneObjectIdTex_ (MRT2 R32UI object id)
-    MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 3
+    MC2_SHARED_SCENE_OBJECT_MV = 3, // per-object motion vectors (RG16F), written by the mech island, composed by the MV pass
+    MC2_SHARED_SCENE_COLOR_SLOT_COUNT = 4
 };
 
 // Opaque owner of one VK-only image the islands share. Body lives in the .cpp so no

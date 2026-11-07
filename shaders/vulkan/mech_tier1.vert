@@ -145,6 +145,10 @@ layout(location = 8) out vec3 vTangentGL;           // NORMALS-1 world tangent
 layout(location = 9) flat out uint vImportedMech;   // renderFlags >> 3 & 7
 layout(location = 10) flat out uint vLegacyVehicle; // renderFlags bit 6: ground vehicle, legacy shading
 layout(location = 11) flat out float vTangentW;     // tangent handedness (a_boneIndices.w: 1 = mirrored UV island)
+// Per-object motion: unjittered clip of this vertex now and one frame ago (camera reprojection of the
+// position minus the object's world translation since last frame). The fragment shader writes the difference.
+layout(location = 12) out vec4 vCurClip;
+layout(location = 13) out vec4 vPrevClip;
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
@@ -167,6 +171,15 @@ void main() {
     vec3 worldNormal = normalize(mc2ToRender(normalStuff));
 
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);
+    vCurClip = clip;
+    vPrevClip = clip;
+    if (uFrame.miscI.z > 0) {
+        // Render-space translation since last frame: one vec4 per instance, packed after the bone palette (miscI.z = bone count).
+        const GpuMechBone tail = uBones.bones[uFrame.miscI.z + (gl_InstanceIndex >> 2)];
+        const int lane = gl_InstanceIndex & 3;
+        const vec3 delta = (lane == 0 ? tail.row0 : lane == 1 ? tail.row1 : lane == 2 ? tail.row2 : tail.row3).xyz;
+        vPrevClip = uFrame.prevFromCurClip * (clip - uFrame.worldToClipGL * vec4(delta, 0.0));
+    }
     clip.z += uFrame.objectDepthBias * clip.w;   // mech.vert:187
     gl_Position = clip;
 

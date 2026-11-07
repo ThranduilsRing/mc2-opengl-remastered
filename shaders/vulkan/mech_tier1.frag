@@ -74,6 +74,11 @@ layout(location = 11) flat in float vTangentW;
 
 layout(location = 0) out vec4 oColor;     // MRT0
 layout(location = 1) out vec4 oGBuffer1;  // MRT1
+#ifndef MECH_PREVIEW
+layout(location = 12) in vec4 vCurClip;
+layout(location = 13) in vec4 vPrevClip;
+layout(location = 2) out vec2 oMotion;    // per-object motion vector (previousUV - currentUV, unjittered)
+#endif
 
 void main() {
     vec3 Nshade = normalize(vNormalGL);
@@ -176,4 +181,7 @@ void main() {
 
     // GBuffer1: MC2/GL-world shading normal, a=0.0 (screen-shadow-eligible).
     oGBuffer1 = vec4(Nshade * 0.5 + 0.5, 0.0);
+#ifndef MECH_PREVIEW
+    oMotion = (vPrevClip.w > 0.0 && vCurClip.w > 0.0) ? 0.5 * (vPrevClip.xy / vPrevClip.w - vCurClip.xy / vCurClip.w) : vec2(0.0);
+#endif
 }

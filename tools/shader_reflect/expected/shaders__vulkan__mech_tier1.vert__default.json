@@ -145,6 +145,13 @@
           "name": "environmentAmbient",
           "offset": 208,
           "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": 16,
+          "name": "prevFromCurClip",
+          "offset": 224,
+          "type": "mat4"
         }
       ],
       "name": "MechFrameUBO"

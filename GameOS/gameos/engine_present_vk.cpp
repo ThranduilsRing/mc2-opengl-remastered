@@ -30,6 +30,7 @@
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
+#include "vulkan_mech_island.h"   // mc2_vk_mech_island_object_motion_written
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
@@ -1699,7 +1700,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // so the pass (and its image) cost nothing until that inset or a resolve asks for it.
     const bool mvOk = (s.showMotionVectorsDebug || fsrActive) && fsrDepth && fsrDepth->image && fsrDepth->w && fsrDepth->h &&
                       s.motionVectors.prepare(*s.ctx, *fsrDepth);
-    if (mvOk) s.motionVectors.record(cc, *fsrDepth, s.captureFrame);   // present-side copy of the scene's g_mc2RenderFrame
+    if (mvOk) s.motionVectors.record(cc, *fsrDepth, s.captureFrame, mc2_vk_mech_island_object_motion_written() != 0);   // present-side copy of the scene's g_mc2RenderFrame
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

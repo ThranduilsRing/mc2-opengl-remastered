@@ -5,6 +5,8 @@
 #include "vk_island_util.h"
 #include "vk_render_infra.h"
 #include "vk_gpu_profile.h"
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "vulkan_shared_scene_color.h"
 #include "../../RenderCore/FramePackets.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include <atomic>
@@ -91,11 +93,13 @@ struct MotionVectors::Impl {
         si.minFilter = si.magFilter = VK_FILTER_NEAREST; si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         si.addressModeU = si.addressModeV = si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         if (!mc2vk::create(sampler, dev, [&](auto* h) { return vkCreateSampler(dev, &si, nullptr, h); })) return false;
-        VkDescriptorSetLayoutBinding binding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        // 0 = scene depth (debug set: motion output), 1 = per-object motion from the mech island (debug set: unused dummy).
+        VkDescriptorSetLayoutBinding binding[2] = {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+                                                   {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
         VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        di.bindingCount = 1; di.pBindings = &binding;
+        di.bindingCount = 2; di.pBindings = binding;
         if (!mc2vk::create(dsl, dev, [&](auto* h) { return vkCreateDescriptorSetLayout(dev, &di, nullptr, h); })) return false;
-        VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2}};
+        VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4}};
         VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pi.maxSets = 2; pi.poolSizeCount = 1; pi.pPoolSizes = sizes;
         if (!mc2vk::create(pool, dev, [&](auto* h) { return vkCreateDescriptorPool(dev, &pi, nullptr, h); })) return false;
@@ -108,14 +112,20 @@ struct MotionVectors::Impl {
         VkDescriptorImageInfo images[] = {
             {sampler.get(), depthView.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
             {sampler.get(), output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
-        VkWriteDescriptorSet writes[2]{};
-        for (uint32_t i = 0; i < 2; ++i) {
-            writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[i].dstSet = sets[i];
-            writes[i].dstBinding = 0; writes[i].descriptorCount = 1;
-            writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; writes[i].pImageInfo = &images[i];
+        // The mech island's object-motion image is a shared scene target: it lives as long as the depth this was built for.
+        const VkImageResource* objectMv = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_MV);
+        VkDescriptorImageInfo objectImages[2] = {
+            {sampler.get(), objectMv ? objectMv->view.get() : output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+            {sampler.get(), output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+        VkWriteDescriptorSet writes[4]{};
+        for (uint32_t i = 0; i < 4; ++i) {
+            writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[i].dstSet = sets[i & 1];
+            writes[i].dstBinding = i >> 1; writes[i].descriptorCount = 1;
+            writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[i].pImageInfo = (i >> 1) ? &objectImages[i & 1] : &images[i & 1];
         }
-        vkUpdateDescriptorSets(dev, 2, writes, 0, nullptr);
-        VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 120};
+        vkUpdateDescriptorSets(dev, 4, writes, 0, nullptr);
+        VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 124};
         const auto sl = dsl.get();
         VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         li.setLayoutCount = 1; li.pSetLayouts = &sl; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &pc;
@@ -205,7 +215,7 @@ bool MotionVectors::prepare(VulkanContext& ctx, const VkImageResource& depth) {
     impl_ = std::move(state);
     return true;
 }
-void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uint32_t renderFrame) {
+void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uint32_t renderFrame, bool objectMotionWritten) {
     if (!impl_) return;
     auto& s = *impl_;
     const auto main = RenderCore::framePackets().copyMainView();
@@ -259,6 +269,8 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 64, glm::value_ptr(reprojection));
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 64, 48, skyRows);
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 112, 8, jitterClip);
+        const uint32_t objectValid = objectMotionWritten ? 1u : 0u;
+        vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 120, 4, &objectValid);
         vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
     }
     b.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

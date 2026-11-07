@@ -11,6 +11,7 @@ layout(location = 0) out vec2 Motion;
 layout(location = 1) out float Reactive;
 
 layout(set = 0, binding = 0) uniform sampler2D depthTex;
+layout(set = 0, binding = 1) uniform sampler2D objectMv;   // per-object vectors (mech island); (1e4, 1e4) = none
 
 layout(push_constant) uniform Params {
     mat4 previousFromCurrentClip;
@@ -18,6 +19,7 @@ layout(push_constant) uniform Params {
     vec4 skyRowY;
     vec4 skyRowW;
     vec2 jitterClip;
+    uint objectValid;   // 1 = objectMv was written this frame
 } u;
 
 void main() {
@@ -33,5 +35,10 @@ void main() {
         Motion = w > 0.0 ? 0.5 * vec2(dot(u.skyRowX, v), dot(u.skyRowY, v)) / w + 0.5 - (TexCoord - 0.5 * u.jitterClip) : vec2(0.0);
     }
     if (u.previousFromCurrentClip == mat4(1.0)) Motion = vec2(0.0);
+    if (u.objectValid != 0u) {
+        // Mechs and vehicles co-wrote their own vector under the same depth test; the sentinel marks every other pixel.
+        vec2 objectMotion = texelFetch(objectMv, ivec2(gl_FragCoord.xy), 0).xy;
+        if (objectMotion.x < 1000.0) Motion = objectMotion;
+    }
     Reactive = 0.0;
 }

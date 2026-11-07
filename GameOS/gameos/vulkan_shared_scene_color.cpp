@@ -56,7 +56,7 @@ namespace {
 
 // Active owners by slot (for the island to fetch the SAME shared image). Only one
 // gosPostProcess FBO exists, so a flat by-slot registry is sufficient.
-Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {nullptr, nullptr, nullptr};
+Mc2SharedSceneColor* g_activeBySlot[MC2_SHARED_SCENE_COLOR_SLOT_COUNT] = {nullptr, nullptr, nullptr, nullptr};
 
 void slog(const char* fmt, ...) {
     char buf[512];
@@ -70,6 +70,7 @@ void slog(const char* fmt, ...) {
 const char* slotName(Mc2SharedSceneColorSlot slot) {
     if (slot == MC2_SHARED_SCENE_NORMAL) return "normal(MRT1)";
     if (slot == MC2_SHARED_SCENE_OBJECT_ID) return "objectId(MRT2)";
+    if (slot == MC2_SHARED_SCENE_OBJECT_MV) return "objectMotion";
     return "color(MRT0)";
 }
 
@@ -84,6 +85,7 @@ VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
     }
     // Normals/classes are bounded [0,1]: halve MRT1 traffic on shared DDR4.
     if (slot == MC2_SHARED_SCENE_NORMAL && mc2::options::lowCost()) return VK_FORMAT_R8G8B8A8_UNORM;
+    if (slot == MC2_SHARED_SCENE_OBJECT_MV) return VK_FORMAT_R16G16_SFLOAT;
     return slot == MC2_SHARED_SCENE_OBJECT_ID
         ? VK_FORMAT_R32_UINT
         : VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -92,12 +94,14 @@ VkFormat vkFormatForSlot(Mc2SharedSceneColorSlot slot) {
 const char* debugNameForSlot(Mc2SharedSceneColorSlot slot) {
     if (slot == MC2_SHARED_SCENE_NORMAL) return "shared.scene.normal";
     if (slot == MC2_SHARED_SCENE_OBJECT_ID) return "shared.scene.objectId";
+    if (slot == MC2_SHARED_SCENE_OBJECT_MV) return "shared.scene.objectMotion";
     return "shared.scene.color";
 }
 
 const char* formatNameForSlot(Mc2SharedSceneColorSlot slot) {
     if (vkFormatForSlot(slot) == VK_FORMAT_B10G11R11_UFLOAT_PACK32) return "R11G11B10F";
     if (slot == MC2_SHARED_SCENE_NORMAL && mc2::options::lowCost()) return "RGBA8";
+    if (slot == MC2_SHARED_SCENE_OBJECT_MV) return "RG16F";
     return slot == MC2_SHARED_SCENE_OBJECT_ID ? "R32UI" : "RGBA16F";
 }
 

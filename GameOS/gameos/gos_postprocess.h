@@ -155,6 +155,7 @@ public:
     Mc2SharedSceneColor* sharedSceneColor_ = nullptr;
     Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;
     Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr;
+    Mc2SharedSceneColor* sharedSceneObjectMv_ = nullptr;
 
     // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
     // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling
