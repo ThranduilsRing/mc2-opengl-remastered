@@ -99,7 +99,7 @@ mc2::sim::ApplicationOutcome MissionOrderAccess::applyPlayer(
         legacy.attackParams.type = static_cast<::AttackType>(a.type);
         legacy.attackParams.method = static_cast<::AttackMethod>(a.method);
         legacy.attackParams.range = static_cast<::FireRangeType>(a.range);
-        legacy.attackParams.tactic = static_cast<::TacticType>(a.tactic);
+        legacy.attackParams.tactic = tactic_table::sim_to_legacy<::TacticType>(a.tactic);
         legacy.attackParams.aimLocation = a.aimLocation;
         legacy.attackParams.pursue = a.pursue; legacy.attackParams.obliterate = a.obliterate;
         legacy.attackParams.targetPoint = glm::vec3(a.targetPoint.x, a.targetPoint.y, a.targetPoint.z);
@@ -427,7 +427,7 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         const auto& old = legacy.attackParams;
         auto& a = p.attack.emplace();
         a.type = static_cast<mc2::sim::AttackType>(old.type); a.method = static_cast<mc2::sim::AttackMethod>(old.method);
-        a.range = static_cast<FireRange>(old.range); a.tactic = static_cast<Tactic>(old.tactic);
+        a.range = static_cast<FireRange>(old.range); a.tactic = tactic_table::legacy_to_sim<Tactic>(old.tactic);
         a.aimLocation = old.aimLocation; a.pursue = old.pursue; a.obliterate = old.obliterate;
         a.targetPoint = {old.targetPoint.x, old.targetPoint.y, old.targetPoint.z};
     }

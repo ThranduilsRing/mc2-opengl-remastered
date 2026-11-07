@@ -236,7 +236,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 					// Load weighted Tactics (MC2_TACTIC_WEIGHTS selects per tick; _WEIGHTS_B applies to attacks).
 					for (int ti = 0; ti < b.tacticCount; ++ti) {
 						int tidx = brainTacticNameToIndex(b.tacticName[ti]);
-						if (tidx >= 0 && tidx < 12) rt->tacticWeights[tidx] = b.tacticWeight[ti];
+						if (tidx >= 0 && tidx < tactic_table::kCount) rt->tacticWeights[tidx] = b.tacticWeight[ti];
 					}
 					if (w->getVehicle()) {
 						glm::vec3 vp = w->getVehicle()->getPosition();
@@ -418,18 +418,9 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 		if (tacFit.open(tacFitName) == NO_ERR) {
 			if (tacFit.seekBlock("Tactics") == NO_ERR) {
 				struct { const char* name; int idx; } kTacticKeys[] = {
-					{ "None",             TACTIC_NONE             },
-					{ "FlankLeft",        TACTIC_FLANK_LEFT       },
-					{ "FlankRight",       TACTIC_FLANK_RIGHT      },
-					{ "FlankRear",        TACTIC_FLANK_REAR       },
-					{ "StopAndFire",      TACTIC_STOP_AND_FIRE    },
-					{ "Turret",           TACTIC_TURRET           },
-					{ "Joust",            TACTIC_JOUST            },
-					{ "IndirectFire",     TACTIC_INDIRECT_FIRE    },
-					{ "HullDown",         TACTIC_HULL_DOWN        },
-					{ "FightingWithdraw", TACTIC_FIGHTING_WITHDRAW},
-					{ "Pursue",           TACTIC_PURSUE           },
-					{ "HitAndRun",        TACTIC_HIT_AND_RUN      },
+#define MC2_TACTIC_KEY(L, S, V, N, C, B, E) { N, L },
+					MC2_TACTIC_TABLE(MC2_TACTIC_KEY)
+#undef MC2_TACTIC_KEY
 				};
 				float loadedWeights[NUM_TACTICS] = {};
 				for (auto& kv : kTacticKeys) {

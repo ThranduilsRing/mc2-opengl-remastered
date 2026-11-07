@@ -1,6 +1,7 @@
 #pragma once
 
 #include "save_archive.h"
+#include "tactic_table.h"
 #include "../mclib/dmovemgr.h"
 
 #include <expected>
@@ -60,11 +61,7 @@ enum class AttackMethod : std::uint32_t { Ranged = 0, DFA = 1, Ramming = 2 };
 enum class FireRange : std::int32_t {
     Default = -4, Ramming = -3, Longest = -2, Optimal = -1, Short = 0, Medium = 1, Long = 2, Current = 3
 };
-enum class Tactic : std::uint32_t {
-    None = 0, FlankLeft = 1, FlankRight = 2, FlankRear = 3, StopAndFire = 4,
-    Turret = 5, Joust = 6, IndirectFire = 7, HullDown = 8, FightingWithdraw = 9,
-    Pursue = 10, HitAndRun = 11
-};
+enum class Tactic : std::uint32_t { MC2_TACTIC_TABLE(MC2_TACTIC_SIM_ENUMERATOR) };
 
 struct WayPath {
     std::vector<save::Vec3> points;
@@ -174,7 +171,7 @@ struct TacAttackParams {
     save::Vec3 targetPoint;
     void serialize(Archive& a) {
         orderCodec::tag(a, type, 0u, 3u); orderCodec::tag(a, method, 0u, 2u);
-        orderCodec::tag(a, range, -4, 3); orderCodec::tag(a, tactic, 0u, 11u);
+        orderCodec::tag(a, range, -4, 3); orderCodec::tag(a, tactic, static_cast<std::uint32_t>(tactic_table::kMinValue), static_cast<std::uint32_t>(tactic_table::kMaxValue));
         a(aimLocation, pursue, obliterate, targetPoint);
     }
     bool operator==(const TacAttackParams&) const = default;

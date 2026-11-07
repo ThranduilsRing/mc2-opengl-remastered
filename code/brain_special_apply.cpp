@@ -179,16 +179,6 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
             attackOrder.attackParams.method = ATTACKMETHOD_RANGED;
             attackOrder.attackParams.range  = FIRERANGE_OPTIMAL;
             attackOrder.attackParams.pursue = true;
-            // TACTIC-WEIGHTS-B: wire selected tactic. Local `runtime` is null on this
-            // gate-OFF path, so read selectedTactic via warrior->getBrainRuntime().
-            if (s_tacticWeightsBEnabled()) {
-                MechBrainRuntime* rtB = warrior->getBrainRuntime();
-                if (rtB) {
-                    attackOrder.attackParams.tactic = static_cast<TacticType>(rtB->selectedTactic);
-                    mc2::fmt::print_err("[BRAIN_TACTIC_B] applied tactic={:d} wid={:d}\n", mc2::fmt::as_i32(rtB->selectedTactic), mc2::fmt::as_i32(wid));
-                    std::fflush(stderr);
-                }
-            }
             attackOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
             warrior->setGeneralTacOrder(attackOrder);
             mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreAttack effect=ATTACK_OBJECT targetWID={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));

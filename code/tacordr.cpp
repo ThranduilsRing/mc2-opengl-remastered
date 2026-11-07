@@ -2041,16 +2041,14 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			strcpy(s, "eject");
 			break;
 		case TACTICAL_ORDER_ATTACK_OBJECT: {
-			const char* tacticCode[] = {"  ", "RT", "LT", "RR", "SF", "TT", "JS"};
-			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack obj ({:d}) {}", mc2::fmt::as_i32(target ? target->getPartId() : 0), tacticCode[attackParams.tactic]);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack obj ({:d}) {}", mc2::fmt::as_i32(target ? target->getPartId() : 0), tactic_table::code2(attackParams.tactic));
 			}
 			break;
 		case TACTICAL_ORDER_ATTACK_POINT: {
-			const char* tacticCode[] = {"  ", "RT", "LT", "RR", "SF", "TT", "JS"};
 			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack pt ({:.0f}, {:.0f}) {}",
 				attackParams.targetPoint.x,
 				attackParams.targetPoint.y,
-				tacticCode[attackParams.tactic]);
+				tactic_table::code2(attackParams.tactic));
 			}
 			break;
 		case TACTICAL_ORDER_HOLD_FIRE:

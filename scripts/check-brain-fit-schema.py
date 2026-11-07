@@ -58,6 +58,8 @@ OPORD_SLOTS = {"Primary", "Secondary", "Tertiary"}
 TACTIC_NAMES = {
     "IndirectFire", "HullDown", "FightingWithdraw", "Pursue", "HitAndRun",
     "StopAndFire", "Flank", "Joust", "Turret",
+    # runtime-supported canonical names and aliases (tactic_table.h; parity pinned by test_tactic_table_parity.py)
+    "FlankLeft", "FlankRight", "FlankRear", "Rear", "Rearguard",
     # carver_v_enhanced tactic-weight names —
     # were W3 (unknown-tactic) warnings before.
     "Standard", "Suppress",

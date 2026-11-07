@@ -159,16 +159,6 @@ static bool s_brainEngageGate() { return mc2::brainpolicy::techBrain(); }   // B
 // WID-ordered drain (objmgr.cpp) instead of being self-committed inline here.
 static bool s_brainCommitPhaseEnabled() { return mc2::brainpolicy::techBrain(); }   // BrainExecutionPolicy (was a gate)
 
-// TACTIC-WEIGHTS-B: MC2_TACTIC_WEIGHTS_B gate (default OFF). When ON, the brain's
-// already-selected tactic (runtime->selectedTactic, populated by selectTacticForWarrior
-// under MC2_TACTIC_WEIGHTS) is written into the attack order's attackParams.tactic.
-// Needs BOTH gates: WEIGHTS to populate selectedTactic, WEIGHTS_B to wire it. With B
-// OFF the field is left at its init default (TACTIC_NONE) → byte-identical to pre-B.
-bool s_tacticWeightsBEnabled() {
-    static const bool kGate = false;
-    return kGate;
-}
-
 // ---------------------------------------------------------------------------
 // Recognized verb table for DISPATCH-1A.
 // All other verbs produce [BRAIN_DISPATCH_UNKNOWN] trace.
@@ -1322,12 +1312,6 @@ void commitBrainIntents(MechWarrior* warrior, MechBrainRuntime* runtime) {
                 o.attackParams.method = ATTACKMETHOD_RANGED;
                 o.attackParams.range  = FIRERANGE_OPTIMAL;
                 o.attackParams.pursue = true;
-                // TACTIC-WEIGHTS-B: wire selected tactic (runtime non-null per caller guard).
-                if (s_tacticWeightsBEnabled()) {
-                    o.attackParams.tactic = static_cast<TacticType>(runtime->selectedTactic);
-                    std::fprintf(stderr, "[BRAIN_TACTIC_B] applied tactic=%d wid=%d\n", runtime->selectedTactic, intent.warriorId);
-                    std::fflush(stderr);
-                }
                 o.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
                 warrior->setGeneralTacOrder(o);
                 std::fprintf(stderr, "[BRAIN_INTENT_COMMIT] verb=OPORD.CoreAttack order=ATTACK_OBJECT targetWID=%d tick=%u wid=%d\n",

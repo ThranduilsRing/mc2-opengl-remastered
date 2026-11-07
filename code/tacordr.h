@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <utility>
+#include "tactic_table.h"
 
 //--------------
 // Include Files
@@ -126,23 +127,12 @@ enum class FireOddsType : int {
 };
 inline constexpr int NUM_FIREODDS = std::to_underlying(FireOddsType::NUM_FIREODDS);
 
+// Generated from the explicit-value table (tactic_table.h); values are saved and read by ABL, never renumbered.
 enum TacticType {
-	TACTIC_NONE = 0,
-	TACTIC_FLANK_LEFT = 1,
-	TACTIC_FLANK_RIGHT = 2,
-	TACTIC_FLANK_REAR = 3,
-	TACTIC_STOP_AND_FIRE = 4,
-	TACTIC_TURRET = 5,
-	TACTIC_JOUST = 6,
-	// TACTIC-WEIGHTS-A: GDD tactic additions (append; existing numeric values unchanged).
-	TACTIC_INDIRECT_FIRE = 7,     // stand-off indirect suppression
-	TACTIC_HULL_DOWN = 8,         // cover-crest discipline
-	TACTIC_FIGHTING_WITHDRAW = 9, // deliberate fighting withdrawal
-	TACTIC_PURSUE = 10,           // aggressive pursuit of fleeing targets
-	TACTIC_HIT_AND_RUN = 11,      // harass-then-disengage
-	NUM_TACTICS = 12
+	MC2_TACTIC_TABLE(MC2_TACTIC_LEGACY_ENUMERATOR)
+	NUM_TACTICS = tactic_table::kCount
 };
-constexpr bool enum_in_domain(TacticType, int32_t v) { return v >= 0 && v < 12; }
+constexpr bool enum_in_domain(TacticType, int32_t v) { return tactic_table::in_domain(v); }
 
 enum OrderOriginType {
 	ORDER_ORIGIN_PLAYER = 0,

@@ -117,4 +117,30 @@ constexpr int from_params(unsigned long params) {
 	return 0;
 }
 
+// Legacy <-> sim adapters. Explicit per-row mapping (no numeric casts); an unknown enumerator maps to None.
+// Sim and Legacy are the generated enums (Sim = mc2::sim::Tactic, Legacy = ::TacticType).
+template <class Legacy, class Sim>
+constexpr Legacy sim_to_legacy(Sim s) {
+	switch (s) {
+#define MC2_TACTIC_S2L(L, S, V, N, C, B, E) case Sim::S: return Legacy::L;
+		MC2_TACTIC_TABLE(MC2_TACTIC_S2L)
+#undef MC2_TACTIC_S2L
+	}
+	return Legacy::TACTIC_NONE;
+}
+
+template <class Sim, class Legacy>
+constexpr Sim legacy_to_sim(Legacy l) {
+	switch (l) {
+#define MC2_TACTIC_L2S(L, S, V, N, C, B, E) case Legacy::L: return Sim::S;
+		MC2_TACTIC_TABLE(MC2_TACTIC_L2S)
+#undef MC2_TACTIC_L2S
+	}
+	return Sim::None;
+}
+
 } // namespace tactic_table
+
+// Enum generators. Use inside the one header that declares each enum.
+#define MC2_TACTIC_LEGACY_ENUMERATOR(L, S, V, N, C, B, E) L = V,
+#define MC2_TACTIC_SIM_ENUMERATOR(L, S, V, N, C, B, E) S = V,
