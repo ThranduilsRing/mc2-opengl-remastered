@@ -170,8 +170,9 @@ namespace gosFX
 	// The owner of a live effect: a parent effect for its children, the game object or appearance for a top-level one.
 	using EffectPtr = std::unique_ptr<Effect>;
 
+	// A live effect is owned by its parent (m_children) or its game object; it is not a Stuff::Node in any chain.
 	class Effect:
-		public Stuff::Node
+		public Stuff::RegisteredClass
 	{
 		friend class EffectCloud;
 
@@ -389,7 +390,7 @@ namespace gosFX
 	//##########################################################################
 
 	class Effect__ClassData:
-		public Stuff::Plug::ClassData
+		public Stuff::RegisteredClass::ClassData
 	{
 	//----------------------------------------------------------------------------
 	//
@@ -397,7 +398,7 @@ namespace gosFX
 		Effect__ClassData(
 			Stuff::RegisteredClass::ClassID class_id,
 			const char* class_name,
-			Stuff::Plug::ClassData *parent_class,
+			Stuff::RegisteredClass::ClassData *parent_class,
 			Effect::Factory effect_factory,
 			Effect::Specification::Factory spec_factory
 		):

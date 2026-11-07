@@ -407,7 +407,7 @@ void
 		new ClassData(
 			EffectClassID,
 			"gosFX::Effect",
-			Node::DefaultData,
+			RegisteredClass::DefaultData,
 			&Make,
 			&Specification::Make
 		);
@@ -431,7 +431,7 @@ gosFX::Effect::Effect(
 	Specification *spec,
 	unsigned flags
 ):
-	Node(class_data),
+	RegisteredClass(class_data),
 	m_event(0)
 {
 	Check_Pointer(this);

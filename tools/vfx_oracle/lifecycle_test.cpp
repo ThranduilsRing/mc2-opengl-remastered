@@ -26,7 +26,8 @@ namespace {
 // step 5 (2026-10-18): the 48-byte Stuff LinearMatrix4D members are 64-byte glm::mat4 (232).
 // Stuff B3a: the 24-byte ChainIteratorOf<Event*> cursor is a 16-byte {events, index} cursor (-8).
 // Stuff B3b: the cursor is a plain size_t index (-8).
-constexpr size_t EFFECT_SIZE = 216;
+// Stuff B3c: Effect derives from RegisteredClass, not Stuff::Node/Plug (-8, Plug's socket-link head).
+constexpr size_t EFFECT_SIZE = 208;
 struct Platform {
     ContractEnvironment deterministic{mc2::gate::name<"MC2_DETERMINISTIC_RNG">(), "1"};
     ContractEnvironment fixedStep{mc2::gate::name<"MC2_SMOKE_FIXED_TIMESTEP">(), "1"};
