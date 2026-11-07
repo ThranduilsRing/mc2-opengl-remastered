@@ -508,10 +508,11 @@ def check_baseline_record(base: dict, cur: dict):
         lines.append(f"runs match but the overall digest differs ({base['overall']} vs {cur['overall']})")
         return False, lines
     lines.append(f"save matches the {cur.get('comparison', {'mode': 'exact'})['mode']} baseline: {cur['packets']} packets, digest {cur['overall']}")
-    if not base.get("judged") or base.get("judged") == "first-save-and-resave":
-        if base.get("resave_matches_policy", base.get("resave_identical")) and not cur.get("resave_matches_policy", cur.get("resave_identical")):
-            lines.append("the re-save no longer matches the save's comparison policy")
-            return False, lines
+    # WHY not gated on `judged`: the Linux pins are first-save-only yet recorded a re-save that MATCHED the policy; skipping the
+    # check for them let an outside-mask re-save difference pass. Whenever the baseline's re-save matched, this run's must too.
+    if base.get("resave_matches_policy", base.get("resave_identical")) and not cur.get("resave_matches_policy", cur.get("resave_identical")):
+        lines.append("the re-save no longer matches the save's comparison policy")
+        return False, lines
     return True, lines
 
 
