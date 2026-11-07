@@ -122,7 +122,10 @@ def r_run(window, extra):
         old.unlink() if old.is_file() else None
     branch = "claude/stage-" + window
     e = dict(os.environ, TEMP=G + "/tmp", TMP=G + "/tmp", TMPDIR=G + "/tmp", PYTHONUTF8="1",
-             MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E")
+             MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E",
+             # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
+             MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
+             MC2_ISO_ALLOW_SYSTEM_DRIVE="1")
     sm = {"window": window, "host": "laptop"}
     git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e)
     for step in (["checkout", "-q", "-f", branch], ["clean", "-fdq"]):   # no -x: build tree and deps survive
@@ -218,7 +221,7 @@ def pc_main(args):
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
     url = f"ssh://{HOST}/{REPO}"
-    r = subprocess.run(["git", "push", "-q", "-f", "--no-verify", f"--receive-pack={G}/bin/rp.cmd", url,
+    r = subprocess.run(["git", "push", "-q", "-f", f"--receive-pack={G}/bin/rp.cmd", url,
                         f"{branch}:refs/heads/{branch}", "claude/nifty-mendeleev:refs/heads/claude/nifty-mendeleev"], env=genv)
     if r.returncode:
         sys.exit("push to laptop clone failed")
