@@ -89,7 +89,7 @@ namespace MidLevelRenderer {
 			TheIndexer(int num)
 				{
 					Check_Object(this);
-					index.SetLength(num);
+					index.resize(num);
 					for(unsigned short i=0;i<num;i++)
 					{
 						index[i] = i;
@@ -109,7 +109,7 @@ namespace MidLevelRenderer {
 			Check_Object(this);
 			size_t ret = MLRPrimitiveBase::GetSize();
 			ret += visibleIndexedVertices.GetSize();
-			ret += index.GetSize();
+			ret += index.size() * sizeof(index[0]);
 
 			return ret;
 		}
@@ -122,7 +122,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<unsigned char>	visibleIndexedVertices;
 
-		Stuff::DynamicArrayOf<unsigned short>	index;	// List of color indexes 
+		std::vector<unsigned short>	index;	// List of color indexes 
 
 		static std::vector<unsigned short> clipExtraIndex; // , Max_Number_Vertices_Per_Mesh
 

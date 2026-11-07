@@ -9,6 +9,7 @@
 #include <stuff/stuff.hpp>
 
 #include <cstring>
+#include <vector>
 
 TEST_SUITE("MemoryStream")
 {
@@ -131,6 +132,69 @@ TEST_CASE("WriteSwappedBytes / ReadSwappedBytes round-trip through the scratch b
 		unsigned char out[4] = {0};
 		ms.ReadSwappedBytes(out, 4);
 		CHECK(std::memcmp(out, in, 4) == 0);
+	}
+	Stuff::MemoryStream::TerminateClass();
+	Stuff::RegisteredClass::TerminateClass();
+}
+
+// B6: the serialized MLR/gosFX holders moved from DynamicArrayOf to std::vector. The vector stream overloads must
+// write the same bytes as the DynamicArrayOf ones (uint32 count, then count*sizeof(T) raw bytes) and read them back.
+template <class T>
+static void CheckVectorPayloadMatchesDynamicArray(const std::vector<T> &values)
+{
+	unsigned char daoBuf[512] = {0};
+	unsigned char vecBuf[512] = {0};
+	{
+		Stuff::DynamicArrayOf<T> dao(values.size());
+		for (size_t i = 0; i < values.size(); i++)
+			dao[i] = values[i];
+		Stuff::MemoryStream ms(daoBuf, sizeof(daoBuf));
+		MemoryStreamIO_Write(&ms, &dao);
+		CHECK(ms.GetBytesUsed() == sizeof(uint32_t) + values.size() * sizeof(T));
+	}
+	size_t used = 0;
+	{
+		Stuff::MemoryStream ms(vecBuf, sizeof(vecBuf));
+		MemoryStreamIO_Write(&ms, &values);
+		used = ms.GetBytesUsed();
+	}
+	CHECK(used == sizeof(uint32_t) + values.size() * sizeof(T));
+	CHECK(std::memcmp(daoBuf, vecBuf, sizeof(daoBuf)) == 0);
+
+	// Read the payload back into both holders: same length, same element bytes.
+	std::vector<T> back(3);	// non-empty first: Read must resize, not append
+	{
+		Stuff::MemoryStream ms(daoBuf, sizeof(daoBuf));
+		MemoryStreamIO_Read(&ms, &back);
+		CHECK(ms.GetBytesUsed() == used);
+	}
+	Stuff::DynamicArrayOf<T> daoBack;
+	{
+		Stuff::MemoryStream ms(vecBuf, sizeof(vecBuf));
+		MemoryStreamIO_Read(&ms, &daoBack);
+	}
+	REQUIRE(back.size() == values.size());
+	REQUIRE(daoBack.GetLength() == values.size());
+	if (!values.empty())
+	{
+		CHECK(std::memcmp(back.data(), values.data(), values.size() * sizeof(T)) == 0);
+		CHECK(std::memcmp(daoBack.GetData(), values.data(), values.size() * sizeof(T)) == 0);
+	}
+}
+
+TEST_CASE("std::vector stream payload is byte-identical to DynamicArrayOf for every B6 element type")
+{
+	Stuff::RegisteredClass::InitializeClass();
+	Stuff::MemoryStream::InitializeClass();
+	{
+		CheckVectorPayloadMatchesDynamicArray(std::vector<glm::vec3>{{1.0f, -2.5f, 3.25f}, {0.0f, 7.0f, -0.125f}});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<glm::vec4>{{1.0f, 2.0f, 3.0f, 4.0f}});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<Stuff::Vector2DOf<Stuff::Scalar>>{
+			Stuff::Vector2DOf<Stuff::Scalar>(0.5f, 0.75f), Stuff::Vector2DOf<Stuff::Scalar>(-1.0f, 2.0f)});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<unsigned char>{3, 4, 255});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<unsigned short>{0, 1, 2, 65535, 7});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<uint32_t>{0xFF00FF00u, 0x12345678u});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<unsigned short>{});
 	}
 	Stuff::MemoryStream::TerminateClass();
 	Stuff::RegisteredClass::TerminateClass();

@@ -98,7 +98,7 @@ namespace MidLevelRenderer {
 	// ARE IN THIS ORDER
 		virtual int
 			GetNumPrimitives()
-				{ Check_Object(this); return static_cast<int>(lengths.GetLength()); }
+				{ Check_Object(this); return static_cast<int>(lengths.size()); }
 
 		virtual void
 			SetSubprimitiveLengths(
@@ -130,7 +130,7 @@ namespace MidLevelRenderer {
 
 		int
 			GetNumVertices()
-				{ Check_Object(this); return static_cast<int>(coords.GetLength()); }
+				{ Check_Object(this); return static_cast<int>(coords.size()); }
 
 		virtual void
 			SetCoordData(
@@ -209,7 +209,7 @@ namespace MidLevelRenderer {
 			FlashClipCoords(int num)
 				{
 					Check_Object(this); Verify(clipExtraCoords.size() > num);
-					coords.SetLength(num);
+					coords.resize(num);
 					for(int i=0;i<num;i++)
 					{
 						coords[i].x = clipExtraCoords[i].x;
@@ -230,8 +230,8 @@ namespace MidLevelRenderer {
 			FlashClipTexCoords(int num)
 				{
 					Check_Object(this); Verify(clipExtraTexCoords.size() > num);
-					texCoords.SetLength(num);
-					Mem_Copy(texCoords.GetData(), clipExtraTexCoords.data(), sizeof(Vector2DScalar)*num, sizeof(Vector2DScalar)*num);
+					texCoords.resize(num);
+					Mem_Copy(texCoords.data(), clipExtraTexCoords.data(), sizeof(Vector2DScalar)*num, sizeof(Vector2DScalar)*num);
 				}
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,9 +272,9 @@ namespace MidLevelRenderer {
 		{ 
 			Check_Object(this);
 			size_t ret = 0;
-			ret += coords.GetSize();
-			ret += texCoords.GetSize();
-			ret += lengths.GetSize();
+			ret += coords.size() * sizeof(coords[0]);
+			ret += texCoords.size() * sizeof(texCoords[0]);
+			ret += lengths.size() * sizeof(lengths[0]);
 
 			return ret;
 		}
@@ -295,12 +295,12 @@ namespace MidLevelRenderer {
 //		int		numVertices;	// number of verts for stats and vert arrays
 //		Replaced by GetNumVertices
 
-		Stuff::DynamicArrayOf<glm::vec3> coords;	// Base address of coordinate list 
-		Stuff::DynamicArrayOf<Vector2DScalar> texCoords;	// Base address of texture coordinate list 
+		std::vector<glm::vec3> coords;	// Base address of coordinate list 
+		std::vector<Vector2DScalar> texCoords;	// Base address of texture coordinate list 
 
 		static std::vector<Stuff::Vector4D> transformedCoords;
 
-		Stuff::DynamicArrayOf<unsigned char>	lengths;	// List of strip lengths
+		std::vector<unsigned char>	lengths;	// List of strip lengths
 
 		static std::vector<Stuff::RGBAColor> clipExtraColors;  // , Max_Number_Vertices_Per_Mesh
 

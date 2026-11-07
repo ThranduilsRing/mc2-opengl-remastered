@@ -151,7 +151,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<MLRState> multiState, multiReferenceState;
 
-		Stuff::DynamicArrayOf<Stuff::DynamicArrayOf<Vector2DScalar>* > multiTexCoords;	// Max_Number_Vertices_Per_Mesh
+		Stuff::DynamicArrayOf<std::vector<Vector2DScalar>* > multiTexCoords;	// Max_Number_Vertices_Per_Mesh
 
 		Stuff::DynamicArrayOf<const Vector2DScalar*> multiTexCoordsPointers;
 	};

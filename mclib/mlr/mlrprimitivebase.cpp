@@ -237,7 +237,7 @@ void
 	MLRPrimitiveBase::SetSubprimitiveLengths(unsigned char *data, int l)
 {
 	Check_Object(this); 
-	lengths.AssignData(data, l);
+	lengths.assign(data, data + l);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -246,8 +246,8 @@ void
 	MLRPrimitiveBase::GetSubprimitiveLengths(unsigned char **data, int *len)
 {
 	Check_Object(this); 
-	*data = lengths.GetData();
-	*len = static_cast<int>(lengths.GetLength());
+	*data = lengths.data();
+	*len = static_cast<int>(lengths.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,8 +257,8 @@ int
 { 
 	Check_Object(this); 
     // sebi: WTF? and btw length is array of UNSIGNED chars
-	//return (lengths.GetLength() > 0 ? abs(lengths[i]) : 1);
-	return (lengths.GetLength() > i ? lengths[i] : 1);
+	//return (lengths.size() > 0 ? abs(lengths[i]) : 1);
+	return (lengths.size() > i ? lengths[i] : 1);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,12 +272,12 @@ void
 	Check_Object(this); 
 	Check_Pointer(data);
 
-	Verify(texCoords.GetLength() == 0 || dataSize == texCoords.GetLength());
+	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
 #if defined (MAX_NUMBER_VERTICES)
 	Verify(dataSize <= MAX_NUMBER_VERTICES);
 #endif
-	coords.AssignData(data, dataSize);
+	coords.assign(data, data + dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -290,8 +290,8 @@ void
 {
 	Check_Object(this);
 
-	*data = coords.GetData();
-	*dataSize = static_cast<int>(coords.GetLength());
+	*data = coords.data();
+	*dataSize = static_cast<int>(coords.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -305,9 +305,9 @@ void
 	Check_Object(this); 
 	Check_Pointer(data);
 
-	Verify(coords.GetLength() == 0 || dataSize == coords.GetLength());
+	Verify(coords.size() == 0 || dataSize == coords.size());
 
-	texCoords.AssignData(const_cast<Vector2DScalar *>(data), dataSize);
+	texCoords.assign(data, data + dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -319,8 +319,8 @@ void
 	)
 {
 	Check_Object(this); 
-	*data = texCoords.GetData();
-	*dataSize = static_cast<int>(texCoords.GetLength());
+	*data = texCoords.data();
+	*dataSize = static_cast<int>(texCoords.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -330,7 +330,7 @@ void
 {
 	Check_Object(this);
 
-	int i, len = static_cast<int>(coords.GetLength());
+	int i, len = static_cast<int>(coords.size());
 
 	for(i=0;i<len;i++)
 	{

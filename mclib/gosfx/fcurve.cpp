@@ -1695,7 +1695,7 @@ gosFX::ComplexCurve::Load(
 	// zero
 	//--------------------------------------------------------------------------
 	//
-	CurveKey *key = &m_keys[m_keys.GetLength()-1];
+	CurveKey *key = &m_keys[m_keys.size()-1];
 	Stuff::Scalar dt = 1.0f - key->m_time;
 	Min_Clamp(dt, 0.0f);
 	Stuff::Scalar low, hi;
@@ -1726,8 +1726,8 @@ gosFX::ComplexCurve::InsertKey(Stuff::Scalar m_time)
 	//-----------------------------------------------------------------------
 	//
 	int before = GetKeyIndex(m_time);
-	int key_count = static_cast<int>(m_keys.GetLength());
-	m_keys.SetLength(key_count+1);
+	int key_count = static_cast<int>(m_keys.size());
+	m_keys.resize(key_count+1);
 	for (int i=key_count-1; i>=before; --i)
 		m_keys[i+1] = m_keys[i];
 	CurveKey* key;
@@ -1792,7 +1792,7 @@ void
 gosFX::ComplexCurve::DeleteKey(int index)
 {
 	Check_Object(this);
-	Verify(index>0 && index<m_keys.GetLength());
+	Verify(index>0 && index<m_keys.size());
 	gos_PushCurrentHeap(Heap);
 	
 	//
@@ -1800,10 +1800,10 @@ gosFX::ComplexCurve::DeleteKey(int index)
 	// If this is the last key, we just resize and return
 	//---------------------------------------------------
 	//
-	int key_count = static_cast<int>(m_keys.GetLength());
+	int key_count = static_cast<int>(m_keys.size());
 	if (index == key_count-1)
 	{
-		m_keys.SetLength(index);
+		m_keys.resize(index);
 		gos_PopCurrentHeap();
 		return;
 	}
@@ -1833,7 +1833,7 @@ gosFX::ComplexCurve::DeleteKey(int index)
 		key[1].m_time - key->m_time
 		);
 	
-	m_keys.SetLength(key_count-1);
+	m_keys.resize(key_count-1);
 	gos_PopCurrentHeap();
 }
 
@@ -1844,7 +1844,7 @@ gosFX::ComplexCurve::SetCurve(Stuff::Scalar m_value)
 {
 	Check_Object(this);
 	gos_PushCurrentHeap(Heap);
-	m_keys.SetLength(1);
+	m_keys.resize(1);
 	m_keys[0].SetConstantKey(0.0f, m_value);
 	gos_PopCurrentHeap();
 }
@@ -1865,7 +1865,7 @@ gosFX::ComplexCurve::SetCurve(
 	//-----------------------------------------------------------------------
 	//
 	gos_PushCurrentHeap(Heap);
-	m_keys.SetLength(1);
+	m_keys.resize(1);
 	m_keys[0].SetLinearKey(0.0f, starting_value, ending_value, 1.0f);
 	gos_PopCurrentHeap();
 }
@@ -1887,7 +1887,7 @@ gosFX::ComplexCurve::ComputeRange(
 	// If the key is empty, set everything to zero
 	//--------------------------------------------
 	//
-	int key_count = static_cast<int>(m_keys.GetLength());
+	int key_count = static_cast<int>(m_keys.size());
 	if (!key_count)
 	{
 		*low = *hi = 0.0f;

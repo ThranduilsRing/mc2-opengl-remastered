@@ -140,9 +140,9 @@ void
 	Check_Object(this); 
 	Check_Pointer(data);
 
-	Verify(coords.GetLength() == 0 || dataSize == 2*coords.GetLength());
+	Verify(coords.size() == 0 || dataSize == 2*coords.size());
 
-	texCoords.AssignData(const_cast<Vector2DScalar *>(data), dataSize);
+	texCoords.assign(data, data + dataSize);
 }
 
 
