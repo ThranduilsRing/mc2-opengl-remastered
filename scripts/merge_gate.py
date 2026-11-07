@@ -1619,7 +1619,15 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 if overrides.get("MC2_GATE_COVERAGE"):
                     print("[merge_gate] " + overrides["MC2_GATE_COVERAGE"], flush=True)
                 log_lease_holders()
-                if name.startswith(EXCLUSIVE_PREFIXES):
+                reused_capture = None
+                if name == "capture-before":
+                    import capture_reuse
+                    reused_capture = capture_reuse.restore(command, ROOT)
+                if reused_capture:
+                    print(f"[merge_gate] {name}: REUSED: {reused_capture}", flush=True)
+                    from types import SimpleNamespace
+                    result = SimpleNamespace(returncode=0, stdout=reused_capture)
+                elif name.startswith(EXCLUSIVE_PREFIXES):
                     # Only stages that need a quiet host hold every slot, and only for that stage.
                     lease_started = time.monotonic()
                     from smoke_lib import host_lease
@@ -1632,6 +1640,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
                 else:
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
+                if name == "capture-before" and result.returncode == 0 and not reused_capture:
+                    capture_reuse.store(command, ROOT)
                 if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])

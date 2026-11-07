@@ -1070,7 +1070,7 @@ def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monke
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")]) == 0
-    assert len([n for n, _, _ in seen if n.startswith("saveload-")]) == 5
+    assert [n for n, _, _ in seen if n.startswith("saveload-")] == ["saveload-mc2_01", "saveload-mc2_10"]   # p29 cut 6: 03/16/24 are weekly
     assert "capture-before" in {n for n, _, _ in seen}
     assert not any(n.endswith("-classic") for n, _, _ in seen)
     assert all("MC2_GATE_SKIP_REASON" not in env for name, _, env in seen
