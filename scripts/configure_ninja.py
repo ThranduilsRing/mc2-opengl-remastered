@@ -40,32 +40,51 @@ SCCACHE_DIR = os.environ.get("SCCACHE_DIR", "G:/mc2-build/compile-cache")
 LAUNCHER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cc_launcher.py").replace("\\", "/")
 
 
+# The ONLY list of checkout roots that share compile-cache entries. FIXED: the sccache server reads it once at start, so it must
+# never change (lanes get a slot from tools/lane_slot.py instead of a new worktree). Import it; do not copy it.
+SLOT_COUNT = 12
+SCCACHE_FIXED_ROOTS = (["A:/Games/mc2-main"] + [f"A:/Games/mc2-slot{n:02d}" for n in range(1, SLOT_COUNT + 1)]
+                       + ["E:/mc2-installs/_precheck/tree"])
+
+
+def _norm_root(p):
+    return p.replace("\\", "/").rstrip("/").lower()
+
+
+def root_in_fixed_list(root):
+    r = _norm_root(root)
+    return any(r == _norm_root(f) or r.startswith(_norm_root(f) + "/") for f in SCCACHE_FIXED_ROOTS)
+
+
 def compile_cache_env(root):
-    """Environment for a cached build. One cache dir for every worktree; SCCACHE_BASEDIRS lists every worktree root so the
-    absolute path of the checkout is stripped from the preprocessed text and A:/Games/mc2-main and A:/Games/mc2-lane2 share
-    entries (a server started earlier keeps its old list: run `sccache --stop-server` after adding a worktree)."""
-    roots = {root.replace("\\", "/")}
-    try:
-        out = subprocess.run(["git", "-C", root, "worktree", "list", "--porcelain"], capture_output=True, text=True,
-                             **console_child.child_kwargs(redirected=True)).stdout
-        roots |= {ln[9:].strip().replace("\\", "/") for ln in out.splitlines() if ln.startswith("worktree ")}
-    except OSError:
-        pass
+    """Environment for a cached build. One cache dir for every checkout; SCCACHE_BASEDIRS is the constant SCCACHE_FIXED_ROOTS so the
+    absolute path of the checkout is stripped from the preprocessed text and every slot shares entries. The list never changes, so
+    the server never needs a restart after a new lane (a root outside the list builds cold: see ensure_cache_server)."""
     legacy = SCCACHE_DIR.replace("\\", "/").rstrip("/").lower() == "e:/mc2-compile-cache"
     return {"SCCACHE_DIR": "G:/mc2-build/compile-cache" if legacy else SCCACHE_DIR,
             "SCCACHE_CACHE_SIZE": "50G" if legacy else os.environ.get("SCCACHE_CACHE_SIZE", "50G"),
-            "SCCACHE_BASEDIRS": ";".join(sorted(roots))}
+            "SCCACHE_BASEDIRS": ";".join(SCCACHE_FIXED_ROOTS)}
+
+
+def server_base_dirs(shown):
+    """Parse the 'Base directories' line of `sccache -s` (already lower-cased) into a set of normalised roots."""
+    for ln in shown.splitlines():
+        if ln.startswith("base directories"):
+            return {_norm_root(x) for x in ln[len("base directories"):].split(",") if x.strip()}
+    return set()
 
 
 def ensure_cache_server(root, env_extra):
-    """The sccache server reads SCCACHE_BASEDIRS once, at start. A worktree created after the server started is not on its list
-    and would never share entries, so restart the server when this root is missing (only ever when a new worktree first builds)."""
+    """The sccache server reads SCCACHE_BASEDIRS once, at start. Restart it only when its list differs from the constant
+    (one-time migration), and never while a ninja/cl/link process is running."""
+    if not root_in_fixed_list(root):
+        print(f"[sccache] WARNING: {root} is NOT in the fixed base-dir list; it will not share the compile cache "
+              "(cold build). Use tools/lane_slot.py acquire to get a slot worktree.", flush=True)
     env = dict(os.environ, **env_extra)
-    want = root.replace("\\", "/").lower().rstrip("/") + "/"
     shown = subprocess.run([SCCACHE_EXE, "-s"], env=env, capture_output=True, text=True,
                            **console_child.child_kwargs(redirected=True)).stdout.lower()
     wanted_dir = env_extra["SCCACHE_DIR"].replace("\\", "/").lower()
-    if want not in shown or wanted_dir not in shown.replace("\\", "/"):
+    if server_base_dirs(shown) != {_norm_root(r) for r in SCCACHE_FIXED_ROOTS} or wanted_dir not in shown.replace("\\", "/"):
         if os.name == "nt":
             inventory = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
                                        **console_child.child_kwargs(redirected=True))
