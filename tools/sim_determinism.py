@@ -172,9 +172,10 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
 def load_simid(path: str) -> list:
     """The SIMID lines of a log, newline stripped, in order.
     The SIMID's trailing newline is a separate console write, so a render-thread line (a stderr [VK_VALIDATION v1] record) can land
-    between the last digit and it: W125 read 'animrng=27smatc'. Drop letters glued to animrng's number (as stress_overlap.simid_lines)."""
+    between the last digit and it: W125 read 'animrng=27smatc', W127 'animrng=27 to VK_FORMAT_R8'. animrng is the line's last field
+    (code/sim_identity.cpp), so everything after its number is dropped."""
     with open(path, encoding="utf-8", errors="replace") as fh:
-        return [re.sub(r"(\banimrng=\d+)[a-zA-Z]+(?=\s|$)", r"\1", m.group().rstrip()) for ln in fh
+        return [re.sub(r"(\banimrng=\d+)\D.*$", r"\1", m.group().rstrip()) for ln in fh
                 for m in re.finditer(re.escape(PREFIX) + r"[^\r\n\[]*", ln)]
 
 

@@ -204,3 +204,10 @@ def test_load_simid_drops_a_console_line_glued_to_animrng(tmp_path):
     log.write_text("[VK_VALIDATION v1] severity=warning id=Format-Mi[SIMID v1] simframe=126 rng=1/2/3 animrng=27smatc\n"
                    "h-ImageView text=\"x\"\n[SIMID v1] simframe=127 rng=1/2/3 animrng=28\n", encoding="utf-8")
     assert sim.load_simid(str(log)) == ["[SIMID v1] simframe=126 rng=1/2/3 animrng=27", "[SIMID v1] simframe=127 rng=1/2/3 animrng=28"]
+
+
+def test_load_simid_drops_a_spaced_console_chunk_after_animrng(tmp_path):
+    """W127: the glued chunk began with a space ('animrng=27 to VK_FORMAT_R8'), every digest equal."""
+    log = tmp_path / "x.log"
+    log.write_text("[SIMID v1] simframe=300 rng=1/2/3 animrng=27 to VK_FORMAT_R8\n", encoding="utf-8")
+    assert sim.load_simid(str(log)) == ["[SIMID v1] simframe=300 rng=1/2/3 animrng=27"]
