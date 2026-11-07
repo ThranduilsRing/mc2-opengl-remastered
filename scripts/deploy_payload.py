@@ -1744,6 +1744,38 @@ def verify_published_identity(target, source_root, head):
         raise ValueError(f'{target}: published shader inventory != HEAD build')
 
 
+def deploy_from_payload(payload, target, src_root, head):
+    """Publish a payload built and gated elsewhere (tools/laptop_gate.py): payload/files/<rel> holds every file
+    that differs from this install, payload/.deployed_manifest.csv is the full manifest. Every copied byte is
+    sha256-checked against its manifest row, untouched files are size-checked, the exe fingerprint must be a clean HEAD build."""
+    from exe_fingerprint import extract, build_current
+    payload, target = Path(payload), Path(target)
+    manifest = payload / '.deployed_manifest.csv'
+    with manifest.open(encoding='utf-8-sig', newline='') as stream:
+        if next(csv.reader(stream), [])[:2] != ['manifest_version', 'v1']:
+            fail('unsupported payload manifest')
+        rows = {row['relpath']: row for row in csv.DictReader(stream)}
+    staged = payload / 'files'
+    for rel, row in rows.items():
+        src, dst = staged / rel, target / rel
+        if src.is_file():
+            if sha256_file(str(src)) != row['sha256']:
+                fail(f'payload file {rel}: sha256 != manifest')
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dst.with_name(dst.name + '.payload-tmp')
+            shutil.copy2(src, tmp)
+            os.replace(tmp, dst)
+        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']):
+            fail(f'{rel}: not in the payload and the target copy does not match the manifest (size); the PC v0.4 drifted since the delta was taken')
+    exe = target / 'mc2.exe'
+    fp = extract(exe)
+    if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \
+            or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
+        fail(f'{exe}: fingerprint != clean HEAD {head}')
+    shutil.copy2(manifest, target / '.deployed_manifest.csv')
+    log(f'payload published: {len(rows)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
+
+
 def _target_preset(value):
     if value not in TARGET_PRESETS:
         hint = (f" '{value}' looks like a directory: pass it as the positional target_dir "
@@ -1833,6 +1865,11 @@ def main():
                          "is kept instead of overwritten (e.g. a hand-edited "
                          "run-with-log.bat). Only skips if the target copy "
                          "exists; fresh targets still get the source file.")
+    ap.add_argument("--from-payload", metavar="DIR", default=None,
+                    help="publish a payload gated elsewhere (tools/laptop_gate.py pull-back: DIR/files + DIR/.deployed_manifest.csv) "
+                         "instead of enumerating a local build; sha256-verified, no build needed. Pair with --payload-head.")
+    ap.add_argument("--payload-head", metavar="SHA", default=None,
+                    help="with --from-payload: the candidate head the exe must fingerprint as (default: --source-root HEAD)")
     args = ap.parse_args()
 
     if args.seed_owner_test:
@@ -1922,7 +1959,12 @@ def main():
     check_locks(target, exe_name, wait_s)
     lease_held = take_folder_lease(target, wait_s)
     try:
-        run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
+        if args.from_payload:
+            head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
+                                                                text=True, **console_child.child_kwargs(redirected=True)).strip()
+            deploy_from_payload(args.from_payload, target, src_root, head)
+        else:
+            run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
     finally:
         if lease_held:
             release_folder_lease(target)

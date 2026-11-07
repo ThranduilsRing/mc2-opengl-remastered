@@ -31,6 +31,8 @@ import console_child
 import gate_reuse
 
 ROOT = Path(__file__).resolve().parents[1]
+#: Drive holding installs/proofs/mod sources. E: on the PC; tools/laptop_gate.py points it at a folder on the farm laptop, whose E: is a card reader.
+EROOT = os.environ.get("MC2_GATE_EROOT", "E:").rstrip("/\\")
 #: The one determinism row that keeps a window and a GPU (a guard for the windowed path); the others run headless.
 WINDOWED_DETERMINISM = "mc2_10"
 HEADLESS_SAVELOAD = ("mc2_16", "mc2_24")
@@ -178,7 +180,7 @@ def clean_failed_outputs(state, proof):
             print(f'[merge_gate] CLEAN failed output {name}: {target}; receipt retained', flush=True)
 
 
-def preflight(head, install, window, steps, seed=Path("E:/mc2-installs/_lean-seed")):
+def preflight(head, install, window, steps, seed=Path(EROOT + "/mc2-installs/_lean-seed")):
     """Offline, fail before any lease, copy, build or deployment."""
     from exe_fingerprint import extract, build_current, sha_agrees
     from deploy_payload import verify_published_identity, staleness_report
@@ -489,7 +491,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         raise ValueError("--capture-before-runs must be positive")
     py = sys.executable
     install = "A:/Games/mc2-opengl/mc2-win64-v0.4"
-    proof = Path(proof_dir or "E:/mc2-archive-2026-10/proofs/merge-gate")
+    proof = Path(proof_dir or EROOT + "/mc2-archive-2026-10/proofs/merge-gate")
     capture = [py, "tools/visual_verify/capture.py", "--install", install,
                "--bookmarks", "mc2_01_saved_205644,mc2_10_saved_204523", "--clean"]
     steps = [
@@ -723,7 +725,7 @@ def install_plan(steps, install):
             # Candidate names are random and their siblings are deleted at exit.
             # Keep the existing incremental payload cache across windows, scoped
             # to this worktree; battery() still removes every disposable install.
-            stage_root = Path('E:/mc2-installs') / (ROOT.name + '-mods-stage')  # persistent; gate_reuse seals/verifies _cache
+            stage_root = Path(EROOT + '/mc2-installs') / (ROOT.name + '-mods-stage')  # persistent; gate_reuse seals/verifies _cache
             command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
@@ -944,14 +946,14 @@ def _forget_swapped_rows(install):
         csv.writer(stream).writerows(keep)
 
 
-CANDIDATE = Path("E:/mc2-installs/merge-gate-candidate")
+CANDIDATE = Path(EROOT + "/mc2-installs/merge-gate-candidate")
 CANDIDATE_MARK = "build64-ninja/kept-candidate.json"
 # Campaign mods the kept candidate carries so sweep_campaign resolves MCO (hardlinked, same volume; never from an owner install).
 CANDIDATE_MODS = ("MechCommanderOmnitech", "mco-compat")
 # Persistent source that lane cleanup never touches (E:/mc2-ref is reference storage, not a lane folder). Must hold one folder per name
 # in CANDIDATE_MODS, each with data/. Missing source fails the keep step loudly (CANDIDATE_ERROR); the gate verdict is unaffected.
-CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", "E:/mc2-ref/campaign-mods"))
-CANDIDATE_SEED = Path("E:/mc2-installs/_lean-seed")
+CANDIDATE_MODS_SOURCE = Path(os.environ.get("MC2_GATE_MODS_SOURCE", EROOT + "/mc2-ref/campaign-mods"))
+CANDIDATE_SEED = Path(EROOT + "/mc2-installs/_lean-seed")
 CANDIDATE_ERRORS = []
 
 
@@ -1715,13 +1717,13 @@ def main(argv=None):
         with GateState(state_path, git('rev-parse', 'HEAD'), ROOT / 'build64-ninja/mc2.exe', args.proofs_dir, [], True, read_only=True) as state:
             clean_failed_outputs(state, args.proofs_dir)
     if args.preflight:
-        return preflight(git('rev-parse', 'HEAD'), args.install or Path('E:/mc2-installs/_lean-seed'),
+        return preflight(git('rev-parse', 'HEAD'), args.install or Path(EROOT + '/mc2-installs/_lean-seed'),
                          args.window, plan(args.j))
     state_path = ROOT / "build64-ninja/gate-state.json"
     resumed_proof = None
     if args.resume and state_path.exists():
         resumed_proof = Path(json.loads(state_path.read_text(encoding="utf-8"))["artefact_dir"])
-    proof = args.proofs_dir or resumed_proof or Path("E:/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
+    proof = args.proofs_dir or resumed_proof or Path(EROOT + "/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
     if not args.dry_run and not args.install:
         (ROOT / GREEN_MARK).unlink(missing_ok=True)  # cleared at start too, so a crashed run cannot publish an older green
     try:
@@ -1779,7 +1781,7 @@ def main(argv=None):
         steps = reused
     if args.install:
         install = args.install.resolve()
-        allowed = Path("E:/mc2-installs").resolve()
+        allowed = Path(EROOT + "/mc2-installs").resolve()
         if install.parent != allowed or install.name.lower() in ("v0.4", "mc2-win64-v0.4", "lane2", "lane3"):
             ap.error("--install must be a dedicated lane directory directly under E:/mc2-installs")
         steps = install_plan(steps, install)
@@ -1801,7 +1803,7 @@ def main(argv=None):
             ap.error("real merge gates are orchestrator-only in mc2-main on claude/nifty-mendeleev or a claude/stage-<window> candidate; use --dry-run in lanes")
         if git("status", "--porcelain", "--untracked-files=no"):
             ap.error("commit tracked changes before running the merge gate")
-        if preflight(head, args.install or Path('E:/mc2-installs/_lean-seed'), window_number, steps):
+        if preflight(head, args.install or Path(EROOT + '/mc2-installs/_lean-seed'), window_number, steps):
             return 1
     else:
         print('PLAN preflight (offline inputs, clean game/viewer HEAD, fresh save policy, known failures)')

@@ -16,6 +16,16 @@ import console_child
 KIT_REL = Path("mods/mc2-industrial-kit")
 MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
+REF_DEFAULT = "E:/mc2-ref"
+
+
+def ref_path(path):
+    """A manifest path under E:/mc2-ref, re-rooted at MC2_REF_ROOT when set (the laptop gate keeps its reference copy elsewhere)."""
+    s = str(path).replace("\\", "/")
+    root = os.environ.get("MC2_REF_ROOT")
+    if root and s.casefold().startswith(REF_DEFAULT.casefold() + "/"):
+        s = root.rstrip("/\\").replace("\\", "/") + s[len(REF_DEFAULT):]
+    return s
 
 
 def seed_install(source, target, hash_cache=None):
@@ -205,7 +215,8 @@ def payload(src_root, manifest_path=MANIFEST, kit_rel=KIT_REL):
     manifest = json.loads((Path(src_root) / manifest_path).read_text(encoding="utf-8"))
     if manifest["schema"] != 1 or not manifest["assets"] or not manifest["files"]:
         raise ValueError("invalid pinned kit manifest")
-    store = Path(os.environ.get("MC2_KIT_STORE", manifest["store"]) if manifest_path == MANIFEST else manifest["store"])
+    store = Path(os.environ.get("MC2_KIT_STORE", ref_path(manifest["store"])) if manifest_path == MANIFEST
+                 else ref_path(manifest["store"]))
     checked_files(store, manifest["files"])
     models = {p["path"] for p in manifest["files"] if p["path"].endswith(".glb")}
     expected = {f"data/model_overrides/{a['id']}/pristine_intact_lod{i}.glb"
@@ -226,7 +237,8 @@ def build_importer(src_root):
     jobs = Path("A:/Games/mc2-ops/JOBS").read_text().strip()
     commands = []
     if not (tree / "build.ninja").is_file():
-        flags, env = cn.cache_cmake_args(str(root))
+        # MC2_COMPILE_CACHE=0 is configure_ninja's opt-out (a host without the shared sccache: the laptop gate)
+        flags, env = cn.cache_cmake_args(str(root)) if os.environ.get("MC2_COMPILE_CACHE") != "0" else ([], None)
         commands.append(([cmake, "-S", str(root / "tools/tg_import_dump"), "-B", str(tree),
                           "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}",
                           "-DCMAKE_BUILD_TYPE=RelWithDebInfo", *flags], env))

@@ -1472,7 +1472,7 @@ def main(argv: list[str] | None = None) -> int:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
             verdict, vresults = verify_merged(root, mode)
-            if batch and verdict == "OK":
+            if batch and verdict == "OK" and mode != "none":   # --no-verify staging builds nothing on the PC (laptop_gate builds)
                 fresh, why = rebuild_if_head_moved(root)
                 if not fresh:
                     print("lane_merge: " + why, file=sys.stderr)

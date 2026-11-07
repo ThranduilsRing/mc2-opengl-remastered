@@ -220,7 +220,7 @@ def _dp(pts, tol):
     a, b = np.array(pts[0]), np.array(pts[-1])
     ab = b - a
     L = np.linalg.norm(ab) or 1e-9
-    dist = [abs(np.cross(ab, np.array(p) - a)) / L for p in pts[1:-1]]
+    dist = [abs(ab[0] * (p[1] - a[1]) - ab[1] * (p[0] - a[0])) / L for p in pts[1:-1]]   # 2-D cross (numpy 2.5 dropped 2-D np.cross)
     i = int(np.argmax(dist)) + 1
     if dist[i - 1] <= tol:
         return [pts[0], pts[-1]]

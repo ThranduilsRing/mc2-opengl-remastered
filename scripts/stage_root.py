@@ -20,7 +20,8 @@ def default_root(tool):
 def preflight(root, min_gb=MIN_FREE_GB):
     """Raise OSError when the drive holding root has less than min_gb free (the stage need not exist yet)."""
     probe = Path(root).resolve()
-    if probe.drive.upper() == G_TEMP_ROOT.drive.upper() and not probe.is_relative_to(G_TEMP_ROOT):
+    named = Path(os.path.abspath(root))  # the drive as named: resolve() follows a subst'd G: (laptop gate) to its backing drive
+    if named.drive.upper() == G_TEMP_ROOT.drive.upper() and not named.is_relative_to(G_TEMP_ROOT):
         raise OSError(f"refusing to stage under {root}: G: staging is allowed only under {G_TEMP_ROOT.as_posix()}")
     while not probe.exists() and probe.parent != probe:
         probe = probe.parent
