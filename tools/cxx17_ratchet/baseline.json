@@ -892,7 +892,7 @@
   },
   "GameOS/gameos/vulkan_context.h": {},
   "GameOS/gameos/vulkan_fsr_provider.cpp": {},
-  "GameOS/gameos/vulkan_fsr_provider.h": {},
+  "GameOS/gameos/vk_upscalers.h": {},
   "GameOS/gameos/vulkan_ground_lighting.h": {},
   "GameOS/gameos/vulkan_impact_decals.cpp": {},
   "GameOS/gameos/vulkan_impact_decals.h": {},

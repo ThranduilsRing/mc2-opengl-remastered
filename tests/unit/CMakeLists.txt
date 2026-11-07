@@ -79,6 +79,7 @@ add_executable(mc2_tests
     test_unit_profile_validator.cpp  # UNITPROFILE-VALIDATOR-1: load-time construction-rules validator (offline)
     test_view_currency.cpp  # VIEW-EPOCH-DEDUPE-1: object MVP currency kernel (offline)
     test_temporal_inputs.cpp  # temporal track slice B: jitter sequence, neutral path, MV algebra (offline)
+    test_upscaler_provider.cpp  # upscaler provider registry, fallback order, quality-mode math (offline)
     test_frame_graph.cpp    # FRAME-GRAPH-SKELETON-1: resource-DAG validation (offline)
     test_vk_resource_graph.cpp
     test_vk_barrier_batch.cpp  # sync2 barrier batch + per-image tracker: previous use is the source (offline, no Vulkan)

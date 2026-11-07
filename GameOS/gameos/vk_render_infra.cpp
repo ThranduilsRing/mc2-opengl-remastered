@@ -2,7 +2,7 @@
 #include "vk_render_infra.h"
 #include "hitch_stats.h"
 #include "vulkan_context.h"
-#include "vulkan_fsr_provider.h"
+#include "vk_upscalers.h"
 #include "diagnostic_trace.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"

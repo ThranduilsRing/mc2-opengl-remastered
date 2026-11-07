@@ -544,10 +544,10 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
-        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.fsrSet) != VK_SUCCESS) {
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.upscalerSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
-        s.fsrSetView = VK_NULL_HANDLE;
+        s.upscalerSetView = VK_NULL_HANDLE;
     }
     VkImageResource* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
     VkDescriptorImageInfo ii[2]{};
@@ -1417,7 +1417,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     s.spatialAA.reset();
-    s.fsr.resetHistory();
+    if (s.upscaler) s.upscaler->resetHistory();
     s.motionVectors.reset();
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
@@ -1675,15 +1675,42 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
-    // FSR 3.1 native AA replaces the spatial AA and CAS while it is active (SpatialAA=0 is the off switch).
-    VkImageResource* fsrDepth = mc2SharedSceneDepthGetResource();
+    // The upscaler provider (FSR 3.1 native AA today; RenderCore/UpscalerProvider.h) replaces the spatial AA and CAS while
+    // it is active (SpatialAA=0 is the off switch). Present talks to the provider only through the interface.
+    VkImageResource* upDepth = mc2SharedSceneDepthGetResource();
     const bool scaled = static_cast<bool>(s.scaledComposite.image);
-    const bool fsrActive = fsrDepth && !scaled && mc2::options::current().spatialAA != 0 &&
-                           s.fsr.prepare(*s.ctx, *scene, *fsrDepth, true);
-    if (!fsrActive) s.fsr.prepare(*s.ctx, *scene, fsrDepth ? *fsrDepth : *scene, false);
+    mc2vk::registerBuiltinUpscalers();
+    RenderCore::IUpscalerProvider* up = (upDepth && !scaled && mc2::options::current().spatialAA != 0)
+                                            ? RenderCore::effectiveUpscaler() : nullptr;
+    RenderCore::UpscalerFrame upFrame{};
+    if (up) {
+        const auto img = [](const VkImageResource& r) {
+            return RenderCore::UpscalerImage{reinterpret_cast<uint64_t>(r.image.get()), reinterpret_cast<uint64_t>(r.view.get()),
+                                             static_cast<uint32_t>(r.format), static_cast<uint32_t>(r.usage), r.w, r.h};
+        };
+        upFrame.color = img(*scene);
+        upFrame.depth = img(*upDepth);
+        upFrame.renderWidth = upFrame.displayWidth = scene->w;   // native AA: render == display
+        upFrame.renderHeight = upFrame.displayHeight = scene->h;
+        RenderCore::temporal::jitterPixels(s.captureFrame, up->jitterPhaseCount(upFrame.renderWidth, upFrame.displayWidth), upFrame.jitterPx);
+        RenderCore::motionVectorScaleFor(up->caps(), upFrame.renderWidth, upFrame.renderHeight, upFrame.motionVectorScale);
+        static std::chrono::steady_clock::time_point lastUpscale{};
+        const auto now = std::chrono::steady_clock::now();
+        if (lastUpscale.time_since_epoch().count()) upFrame.frameDeltaMs = std::chrono::duration<float, std::milli>(now - lastUpscale).count();
+        lastUpscale = now;
+        upFrame.frameIndex = s.captureFrame;
+        if (!up->prepare(upFrame)) up = nullptr;   // failed or unusable this frame: native path, bias back to 0
+    }
+    if (up != s.upscaler) {   // present owns the temporal-consumer registration that turns on the scene-feed jitter
+        if (s.upscaler) { s.upscaler->deactivate(); RenderCore::temporal::consumerCount().fetch_sub(1); }
+        if (up) RenderCore::temporal::consumerCount().fetch_add(1);
+        s.upscaler = up;
+    }
+    RenderCore::temporal::providerPhases().store(up ? up->jitterPhaseCount(upFrame.renderWidth, upFrame.displayWidth) : 0);
+    const bool upActive = up != nullptr;
     mc2vk::infra::materialBiasTick();   // provider failure / AA toggle: log the effective bias; material owners rebuild stale samplers
-    const int aaMode = fsrActive ? 0 : mc2::options::current().spatialAA;
-    if (fsrActive) casEnabled = false;
+    const int aaMode = upActive ? 0 : mc2::options::current().spatialAA;
+    if (upActive) casEnabled = false;
     const auto& aaOutput = scaled ? s.scaledComposite : s.sharedImg;
     const bool aaReady = s.spatialAA.prepare(*s.ctx, aaOutput, aaMode);
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
@@ -1698,9 +1725,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // Camera motion vectors (temporal track, docs/plans/2026-11-06-temporal-aa.md), before the
     // composite. Demand-driven: the only consumer so far is the debug inset in the present tail,
     // so the pass (and its image) cost nothing until that inset or a resolve asks for it.
-    const bool mvOk = (s.showMotionVectorsDebug || fsrActive) && fsrDepth && fsrDepth->image && fsrDepth->w && fsrDepth->h &&
-                      s.motionVectors.prepare(*s.ctx, *fsrDepth);
-    if (mvOk) s.motionVectors.record(cc, *fsrDepth, s.captureFrame, mc2_vk_mech_island_object_motion_written() != 0);   // present-side copy of the scene's g_mc2RenderFrame
+    const bool mvOk = (s.showMotionVectorsDebug || upActive) && upDepth && upDepth->image && upDepth->w && upDepth->h &&
+                      s.motionVectors.prepare(*s.ctx, *upDepth);
+    if (mvOk) s.motionVectors.record(cc, *upDepth, s.captureFrame, mc2_vk_mech_island_object_motion_written() != 0);   // present-side copy of the scene's g_mc2RenderFrame
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -1713,17 +1740,24 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
 
-    // FSR native AA between the scene and the composite; the composite then tonemaps the resolved image once.
+    // Upscaler resolve between the scene and the composite; the composite then tonemaps the resolved image once.
     VkDescriptorSet sceneSet = s.compositeSet;
-    if (fsrActive && mvOk && s.fsr.record(cc, *scene, *fsrDepth, s.motionVectors, s.captureFrame)) {
-        // Rewrite when either bound view may have moved: the FSR output, or the shared targets (binding 1) were recreated.
+    if (upActive && mvOk) {
+        const uint32_t sampled = VK_IMAGE_USAGE_SAMPLED_BIT;
+        upFrame.commandList = cc;
+        upFrame.motionVectors = {reinterpret_cast<uint64_t>(s.motionVectors.image()), 0, VK_FORMAT_R16G16_SFLOAT, sampled, upFrame.renderWidth, upFrame.renderHeight};
+        upFrame.reactive = {reinterpret_cast<uint64_t>(s.motionVectors.reactiveImage()), 0, VK_FORMAT_R8_UNORM, sampled, upFrame.renderWidth, upFrame.renderHeight};
+    }
+    if (upActive && mvOk && up->dispatch(upFrame)) {
+        const VkImageView upView = reinterpret_cast<VkImageView>(up->output().view);
+        // Rewrite when either bound view may have moved: the provider output, or the shared targets (binding 1) were recreated.
         const unsigned long long targetsGen = mc2SharedSceneColorGeneration();
-        if (s.fsrSetView != s.fsr.outputView() || s.fsrSetTargetsGen != targetsGen) {
-            s.fsrSetView = s.fsr.outputView();
-            s.fsrSetTargetsGen = targetsGen;
+        if (s.upscalerSetView != upView || s.upscalerSetTargetsGen != targetsGen) {
+            s.upscalerSetView = upView;
+            s.upscalerSetTargetsGen = targetsGen;
             VkDescriptorImageInfo fi[2]{};
             fi[0].sampler = s.compositeSampler.get();
-            fi[0].imageView = s.fsrSetView;
+            fi[0].imageView = s.upscalerSetView;
             fi[0].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
             fi[1].sampler = s.compositeNearestSampler.get();
             fi[1].imageView = boundObjectId ? boundObjectId->view.get() : scene->view.get();
@@ -1731,13 +1765,13 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
             VkWriteDescriptorSet fw[2]{};
             for (uint32_t i = 0; i < 2; ++i) {
                 fw[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                fw[i].dstSet = s.fsrSet; fw[i].dstBinding = i; fw[i].descriptorCount = 1;
+                fw[i].dstSet = s.upscalerSet; fw[i].dstBinding = i; fw[i].descriptorCount = 1;
                 fw[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 fw[i].pImageInfo = &fi[i];
             }
             vkUpdateDescriptorSets(s.dev, 2, fw, 0, nullptr);
         }
-        sceneSet = s.fsrSet;
+        sceneSet = s.upscalerSet;
     }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
