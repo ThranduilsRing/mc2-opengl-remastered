@@ -1250,8 +1250,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     `cache` is read_manifest()'s relpath -> (sha256, bytes, mtime_ns). A file
     other than an executable whose source size and mtime_ns still match the recorded row, and whose
-    deployed copy is still the recorded size, is skipped: not copied, not
-    re-hashed. `full_verify` (--full-verify) ignores the cache and does what
+    deployed copy still hashes to the recorded sha256 (destination bytes are
+    read, never trusted by size), is skipped: not copied. `full_verify` (--full-verify) ignores the cache and does what
     every deploy did before: copy every file and hash source + target.
     `.mcasset.json` is always copied: its deployed bytes are line-ending
     normalized, so the deployed size is not a source size.
@@ -1331,7 +1331,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     if skipped:
         log(f"skipped {skipped} unchanged file(s) "
-            f"(size+mtime_ns match the manifest; --full-verify to re-copy)")
+            f"(source size+mtime_ns and destination sha256 match the manifest; --full-verify to re-copy)")
 
     if shader_mismatches:
         fail("post-copy diff MISMATCH (stale files in target):\n  "
