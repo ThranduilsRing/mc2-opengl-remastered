@@ -37,9 +37,6 @@ namespace RenderCore {
 // Nothing in this header queries a graphics API.
 
 struct DeviceCaps {
-    int  glMajor              = 0;   // GL_MAJOR_VERSION
-    int  glMinor              = 0;   // GL_MINOR_VERSION
-
     // Extension / promotion points
     bool hasSSBO              = false;  // GL 4.3 / ARB_shader_storage_buffer_object
     bool hasTessellation      = false;  // GL 4.0 / ARB_tessellation_shader
@@ -721,11 +718,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
 
 inline void debugDumpFeatureRegistry(const DeviceCaps& caps) {
     fprintf(stderr,
-            "[RENDERER_FEATURES v1] gl=%d.%d"
+            "[RENDERER_FEATURES v1]"
             " ssbo=%d tess=%d compute=%d indirect=%d"
             " bindless=%d clipctrl=%d dsa=%d"
             " max_color_attach=%d max_ssbo_bind=%d max_tess_level=%d\n",
-            caps.glMajor, caps.glMinor,
             static_cast<int>(caps.hasSSBO), static_cast<int>(caps.hasTessellation),
             static_cast<int>(caps.hasComputeShaders), static_cast<int>(caps.hasIndirectDraw),
             static_cast<int>(caps.hasBindlessTextures), static_cast<int>(caps.hasClipControl),

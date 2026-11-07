@@ -11,8 +11,6 @@
 #include "RenderCore/terrain_subpass_contract.h"
 #include "RenderCore/frame_pass_trace.h"   // pure dry-run kernel
 #include "RenderCore/frame_executor.h"     // IslandContract
-#include "RenderCore/postprocess_subgraph.h" // PostProcessSubpass table
-#include "RenderCore/render_state_desc.h"  // RenderStateDesc
 #include "RenderCore/top_level_pass_executor.h" // TopLevelPassContract
 #include "RenderCore/scheduler_legal_reorder.h" // scheduler legality
 #include <string>   // apply counters
@@ -557,198 +555,6 @@ TEST_CASE("executor island (h): findIslandContract(Count) returns nullptr (out-o
 // Pure constexpr declaration checks — no GL, no engine, no smoke.
 // ---------------------------------------------------------------------------
 
-TEST_CASE("postprocess subgraph (a): kPostProcessSubpassCount == 10") {
-    using namespace RenderCore::framegraph;
-    // 14 total rows (6 original + 8 added).
-    CHECK(kPostProcessSubpassCount == 10u);
-}
-
-TEST_CASE("postprocess subgraph (b): findPostProcessSubpass non-null for Composite and ShadowDebugOverlay") {
-    using namespace RenderCore::framegraph;
-    const PostProcessSubpass* composite = findPostProcessSubpass(ExecutorIslandId::Composite);
-    CHECK(composite != nullptr);
-    const PostProcessSubpass* dbgOverlay = findPostProcessSubpass(ExecutorIslandId::ShadowDebugOverlay);
-    CHECK(dbgOverlay != nullptr);
-    // Composite writes Backbuffer.
-    if (composite) {
-        CHECK(static_cast<unsigned>(composite->writes[0]) ==
-              static_cast<unsigned>(RenderResourceId::Backbuffer));
-    }
-    // ShadowDebugOverlay writes Backbuffer.
-    if (dbgOverlay) {
-        CHECK(static_cast<unsigned>(dbgOverlay->writes[0]) ==
-              static_cast<unsigned>(RenderResourceId::Backbuffer));
-    }
-}
-
-TEST_CASE("postprocess subgraph (c): validateShippedPostProcessSubgraph().ok == true") {
-    using namespace RenderCore::framegraph;
-    const PostProcessValidationResult r = validateShippedPostProcessSubgraph();
-    CHECK(r.ok == true);
-    // On failure these report the offending subpass / missing resource.
-    CHECK(static_cast<unsigned>(r.offendingSubpass)  == static_cast<unsigned>(ExecutorIslandId::Count));
-    CHECK(static_cast<unsigned>(r.missingResource)   == static_cast<unsigned>(RenderResourceId::Unknown));
-}
-
-TEST_CASE("postprocess subgraph (d): owned flags match spec (only Composite is executor-owned)") {
-    using namespace RenderCore::framegraph;
-    const PostProcessSubpass* composite = findPostProcessSubpass(ExecutorIslandId::Composite);
-    REQUIRE(composite != nullptr);
-    CHECK(composite->ownedByExecutor == true);
-    // The five Vulkan native passes keep their model rows but no GL executor wraps them any more.
-    const ExecutorIslandId notOwnedIds[] = {
-        ExecutorIslandId::CloudShadow,
-        ExecutorIslandId::Shoreline,
-        ExecutorIslandId::EdgeFog,
-        ExecutorIslandId::FogOob,
-        ExecutorIslandId::ScreenShadow,
-        ExecutorIslandId::ShadowDebugOverlay,
-        ExecutorIslandId::ClusterDepthPyramid,
-        ExecutorIslandId::LightgridBuild,
-        ExecutorIslandId::PostprocessComputeBlur,
-    };
-    for (int i = 0; i < 9; ++i) {
-        const PostProcessSubpass* sp = findPostProcessSubpass(notOwnedIds[i]);
-        REQUIRE(sp != nullptr);
-        CHECK(sp->ownedByExecutor == false);
-    }
-}
-
-TEST_CASE("postprocess subgraph (e): Composite is unconditional; all 13 others are conditional") {
-    using namespace RenderCore::framegraph;
-    const PostProcessSubpass* composite = findPostProcessSubpass(ExecutorIslandId::Composite);
-    REQUIRE(composite != nullptr);
-    CHECK(composite->conditional == false);
-
-    // All 13 non-Composite rows must be conditional (gated by env-var, member, or terrain latch).
-    const ExecutorIslandId conditionalIds[] = {
-        ExecutorIslandId::CloudShadow,
-        ExecutorIslandId::Shoreline,
-        ExecutorIslandId::EdgeFog,
-        ExecutorIslandId::FogOob,
-        ExecutorIslandId::ShadowDebugOverlay,
-        // Added sub-stage rows:
-        ExecutorIslandId::ClusterDepthPyramid,
-        ExecutorIslandId::LightgridBuild,
-        ExecutorIslandId::PostprocessComputeBlur,
-        ExecutorIslandId::ScreenShadow,
-    };
-    for (int i = 0; i < 9; ++i) {
-        const PostProcessSubpass* sp = findPostProcessSubpass(conditionalIds[i]);
-        REQUIRE(sp != nullptr);
-        CHECK(sp->conditional == true);
-    }
-}
-
-TEST_CASE("postprocess subgraph (f): order regression — Composite before a MainColor writer is flagged") {
-    // If Composite (which reads MainColor) is moved BEFORE e.g. CloudShadow (which
-    // writes MainColor), and CloudShadow is moved after Composite, the sub-stage
-    // order validation must catch the unsatisfied read for the pass that now reads
-    // something that hasn't been written yet.
-    //
-    // We simulate this by calling validatePostProcessSubgraph with an external set
-    // that does NOT include MainColor — forcing Composite's read to be unsatisfied
-    // unless an earlier subpass in kPostProcessSubpasses produces it.
-    // In the CORRECT table order (CloudShadow/Shoreline/EdgeFog/FogOob all write
-    // MainColor BEFORE Composite), the validator passes because MainColor is produced
-    // by them. Here we strip MainColor from external AND from what would be produced
-    // if Composite were first — achieved by using an external set that only has
-    // MainDepth, ShadowStaticMap, ShadowDynamicMap, MainNormal (no MainColor).
-    // The validator must flag Composite's read[0]=MainColor as unsatisfied IF
-    // Composite appears first in the table.
-    //
-    // We can't reorder the constexpr table at runtime, so we test the validator
-    // logic directly: prove that MainColor absent from external AND prior writes =>
-    // validation fails with offendingSubpass != Count.
-    using namespace RenderCore::framegraph;
-
-    // External set WITHOUT MainColor. ScreenShadow and subsequent draws produce
-    // MainColor before Composite reads it, so the shipped table must still pass.
-    // SceneObjectId is produced by the upstream geometry passes.
-    const RenderResourceId noMainColor[] = {
-        RenderResourceId::MainDepth,
-        RenderResourceId::MainNormal,
-        RenderResourceId::SceneObjectId,    // object-id RT
-        RenderResourceId::SceneDepthCopy,   // VFX depth copy
-    };
-    // In the shipped order, ScreenShadow (row 3, first non-isCompute writer) writes MainColor.
-    // Subsequent rows (CloudShadow, Shoreline, etc.) also write it before Composite reads it.
-    // So the table must still pass even without MainColor in external.
-    const PostProcessValidationResult r = validatePostProcessSubgraph(noMainColor, sizeof(noMainColor) / sizeof(noMainColor[0]));
-    // ScreenShadow/CloudShadow/etc. write MainColor before Composite reads it -> ok.
-    CHECK(r.ok == true);
-
-    // Now prove the validator bites when the ONLY write of MainColor is removed from
-    // external and also not produced by any prior subpass — we do this by providing
-    // an empty external set. In the shipped table ScreenShadow (row 3, not isCompute) reads
-    // MainDepth which is no longer in external, so ScreenShadow is flagged unsatisfied.
-    const PostProcessValidationResult r2 = validatePostProcessSubgraph(nullptr, 0);
-    CHECK(r2.ok == false);
-    // ScreenShadow is the first non-isCompute row (row 3) and reads MainDepth not in empty external.
-    CHECK(static_cast<unsigned>(r2.offendingSubpass) ==
-          static_cast<unsigned>(ExecutorIslandId::ScreenShadow));
-    CHECK(static_cast<unsigned>(r2.missingResource) ==
-          static_cast<unsigned>(RenderResourceId::MainDepth));
-}
-
-// ---------------------------------------------------------------------------
-// Offline tests for the surviving sub-stage rows.
-// ---------------------------------------------------------------------------
-
-TEST_CASE("postprocess subgraph (g): SUBGRAPH-2 rows are all findable by id") {
-    using namespace RenderCore::framegraph;
-    const ExecutorIslandId slice2Ids[] = {
-        ExecutorIslandId::ClusterDepthPyramid,
-        ExecutorIslandId::LightgridBuild,
-        ExecutorIslandId::PostprocessComputeBlur,
-        ExecutorIslandId::ScreenShadow,
-    };
-    for (int i = 0; i < 4; ++i) {
-        const PostProcessSubpass* sp = findPostProcessSubpass(slice2Ids[i]);
-        CHECK(sp != nullptr);
-    }
-}
-
-TEST_CASE("postprocess subgraph (h): isCompute flagged correctly (3 compute, rest false)") {
-    using namespace RenderCore::framegraph;
-    // Only ClusterDepthPyramid, LightgridBuild, PostprocessComputeBlur are compute dispatches.
-    const ExecutorIslandId computeIds[] = {
-        ExecutorIslandId::ClusterDepthPyramid,
-        ExecutorIslandId::LightgridBuild,
-        ExecutorIslandId::PostprocessComputeBlur,
-    };
-    for (int i = 0; i < 3; ++i) {
-        const PostProcessSubpass* sp = findPostProcessSubpass(computeIds[i]);
-        REQUIRE(sp != nullptr);
-        CHECK(sp->isCompute == true);
-    }
-    // All draw-pass rows must have isCompute=false.
-    const ExecutorIslandId drawIds[] = {
-        ExecutorIslandId::ScreenShadow,
-        ExecutorIslandId::CloudShadow,
-        ExecutorIslandId::Shoreline,
-        ExecutorIslandId::EdgeFog,
-        ExecutorIslandId::FogOob,
-        ExecutorIslandId::Composite,
-        ExecutorIslandId::ShadowDebugOverlay,
-    };
-    for (int i = 0; i < 7; ++i) {
-        const PostProcessSubpass* sp = findPostProcessSubpass(drawIds[i]);
-        REQUIRE(sp != nullptr);
-        CHECK(sp->isCompute == false);
-    }
-}
-
-
-TEST_CASE("postprocess subgraph (j): validateShippedPostProcessSubgraph still ok with 14 rows") {
-    // The complete 14-row table + updated external set must still validate.
-    using namespace RenderCore::framegraph;
-    const PostProcessValidationResult r = validateShippedPostProcessSubgraph();
-    CHECK(r.ok == true);
-    CHECK(static_cast<unsigned>(r.offendingSubpass) == static_cast<unsigned>(ExecutorIslandId::Count));
-    CHECK(static_cast<unsigned>(r.missingResource)  == static_cast<unsigned>(RenderResourceId::Unknown));
-}
-
 TEST_CASE("MainNormal: PostProcess reads it; Terrain writes it") {
     // PostProcess reads[] must include MainNormal.
     bool ppReads = false;
@@ -869,15 +675,6 @@ TEST_CASE("SceneColorCopy: validateShippedFrameGraph still ok with VFX producer 
     CHECK(static_cast<unsigned>(r.missingResource)  == 0u);
 }
 
-TEST_CASE("SceneDepthCopy: present in PP subgraph external set (validateShippedPostProcessSubgraph ok)") {
-    // SceneDepthCopy is supplied by the upstream VFX depth-copy boundary.
-    using namespace RenderCore::framegraph;
-    const PostProcessValidationResult r = validateShippedPostProcessSubgraph();
-    CHECK(r.ok == true);
-    CHECK(static_cast<unsigned>(r.offendingSubpass) == static_cast<unsigned>(ExecutorIslandId::Count));
-    CHECK(static_cast<unsigned>(r.missingResource)  == static_cast<unsigned>(RenderResourceId::Unknown));
-}
-
 
 TEST_CASE("SceneObjectId: MechOpaque and StaticPropOpaque declare it in writes[]") {
     // Ground-truth: mech.frag and static_prop.frag emit layout(location=2) out uint v_objectId
@@ -899,20 +696,6 @@ TEST_CASE("SceneObjectId: MechOpaque and StaticPropOpaque declare it in writes[]
     CHECK(staticWrites == true);
 }
 
-TEST_CASE("SceneObjectId: Composite subpass reads it (closes the SUBGRAPH-1 gap)") {
-    // sceneObjectIdTex_ (unit 2) previously had no logical id. The Composite row's
-    // reads[] must include SceneObjectId so the subgraph validator sees the read declared.
-    using namespace RenderCore::framegraph;
-    const PostProcessSubpass* composite = findPostProcessSubpass(ExecutorIslandId::Composite);
-    REQUIRE(composite != nullptr);
-    bool compositeReads = false;
-    for (int i = 0; i < 5; ++i) {
-        if (composite->reads[i] == RenderResourceId::SceneObjectId)
-            compositeReads = true;
-    }
-    CHECK(compositeReads == true);
-}
-
 TEST_CASE("SceneObjectId: validateShippedFrameGraph still ok (geometry pass writes don't strand anything)") {
     // Adding SceneObjectId to MechOpaque+StaticPropOpaque writes[] must not break the
     // shipped frame-graph DAG validation — SceneObjectId is consumed by PostProcess
@@ -921,158 +704,6 @@ TEST_CASE("SceneObjectId: validateShippedFrameGraph still ok (geometry pass writ
     CHECK(r.ok == true);
     CHECK(static_cast<unsigned>(r.offendingPass)    == 0u);
     CHECK(static_cast<unsigned>(r.missingResource)  == 0u);
-}
-
-TEST_CASE("SceneObjectId: validateShippedPostProcessSubgraph ok (Composite read satisfied as external)") {
-    // SceneObjectId is produced externally (geometry passes, upstream of the PP subgraph).
-    // It must appear in the external set so the subgraph validator accepts Composite's read.
-    using namespace RenderCore::framegraph;
-    const PostProcessValidationResult r = validateShippedPostProcessSubgraph();
-    CHECK(r.ok == true);
-    CHECK(static_cast<unsigned>(r.offendingSubpass) == static_cast<unsigned>(ExecutorIslandId::Count));
-    CHECK(static_cast<unsigned>(r.missingResource)  == static_cast<unsigned>(RenderResourceId::Unknown));
-}
-
-TEST_CASE("SceneObjectId: external entry is load-bearing for Composite read") {
-    // Prove that SceneObjectId in the external set is the ONLY thing satisfying Composite's
-    // read. Strip SceneObjectId from the external set and the subgraph validator must flag
-    // Composite as having an unsatisfied read.
-    using namespace RenderCore::framegraph;
-
-    // External set without SceneObjectId — Composite's reads[SceneObjectId] is unsatisfied.
-    const RenderResourceId extWithout[] = {
-        RenderResourceId::MainColor,
-        RenderResourceId::MainDepth,
-        RenderResourceId::MainNormal,
-        RenderResourceId::SceneDepthCopy,
-        // SceneObjectId intentionally omitted
-    };
-    const PostProcessValidationResult r = validatePostProcessSubgraph(extWithout, sizeof(extWithout) / sizeof(extWithout[0]));
-    CHECK(r.ok == false);
-    CHECK(static_cast<unsigned>(r.offendingSubpass) == static_cast<unsigned>(ExecutorIslandId::Composite));
-    CHECK(static_cast<unsigned>(r.missingResource)  == static_cast<unsigned>(RenderResourceId::SceneObjectId));
-}
-
-// ---------------------------------------------------------------------------
-// Offline tests for the GL-free RenderStateDesc
-// vocabulary. Pure / no GL / no engine. Validates that the unified StatePack agrees
-// with the per-axis ledgers it was derived from.
-// ---------------------------------------------------------------------------
-
-TEST_CASE("statepack (a): kPassRenderState has one row per RenderPassId (11 rows)") {
-    using namespace RenderCore::framegraph;
-    // kRenderPassIdCount == 11 (Shadow/MechOpaque/StaticPropOpaque/Terrain/TerrainOverlay/
-    // TerrainDecal/Water/VegetationCards/VFX/UI/PostProcess — None excluded).
-    CHECK(kPassRenderStateCount == static_cast<int>(kRenderPassIdCount));
-    CHECK(kPassRenderStateCount == 11);
-}
-
-TEST_CASE("statepack (b): validatePassRenderStateConsistency() ok — union agrees with ambient_contract + fbo_ledger") {
-    using namespace RenderCore::framegraph;
-    // This is the primary gate for the StatePack: every RenderStateDesc row must agree with
-    // the per-axis ledger it was derived from. A failure here is a real finding (drift).
-    const StatePackConsistencyResult r = validatePassRenderStateConsistency();
-    CHECK(r.ok == true);
-    // On failure, report the offending pass and axis.
-    CHECK(static_cast<unsigned>(r.offendingPass) == static_cast<unsigned>(RenderPassId::None));
-    CHECK(static_cast<unsigned>(r.axis) == static_cast<unsigned>(StatePackAxis::None));
-}
-
-TEST_CASE("statepack (c): UI row pipelineId==Invalid + passHasStaticPipeline(UI)==false") {
-    using namespace RenderCore::framegraph;
-    const RenderStateDesc* ui = findPassRenderState(RenderPassId::UI);
-    REQUIRE(ui != nullptr);
-    CHECK(static_cast<unsigned>(ui->pipelineId) == static_cast<unsigned>(RenderCore::PipelineId::Invalid));
-    CHECK(passHasStaticPipeline(RenderPassId::UI) == false);
-}
-
-TEST_CASE("statepack (d): Shadow row pipelineId==Invalid + passHasStaticPipeline(Shadow)==false") {
-    using namespace RenderCore::framegraph;
-    // Shadow uses three descriptive-only sub-caster PipelineIds; no single pipeline for the pass.
-    const RenderStateDesc* shadow = findPassRenderState(RenderPassId::Shadow);
-    REQUIRE(shadow != nullptr);
-    CHECK(static_cast<unsigned>(shadow->pipelineId) == static_cast<unsigned>(RenderCore::PipelineId::Invalid));
-    CHECK(passHasStaticPipeline(RenderPassId::Shadow) == false);
-}
-
-TEST_CASE("statepack (e): spot rows — Shadow depthFunc==ShadowLess, Terrain colorMask==AllOn match ambient") {
-    using namespace RenderCore::framegraph;
-    // Shadow: ambient_contract declares depthFunc=ShadowLess.
-    const RenderStateDesc* shadow = findPassRenderState(RenderPassId::Shadow);
-    REQUIRE(shadow != nullptr);
-    CHECK(static_cast<unsigned>(shadow->depthFunc) == static_cast<unsigned>(DepthFuncState::ShadowLess));
-
-    // Terrain: ambient_contract declares colorMask=AllOn (re-assert after shadow).
-    const RenderStateDesc* terrain = findPassRenderState(RenderPassId::Terrain);
-    REQUIRE(terrain != nullptr);
-    CHECK(static_cast<unsigned>(terrain->colorMask) == static_cast<unsigned>(ColorMaskState::AllOn));
-
-    // StaticPropOpaque: fboTarget==MainColor (from kPassFboTarget).
-    const RenderStateDesc* spo = findPassRenderState(RenderPassId::StaticPropOpaque);
-    REQUIRE(spo != nullptr);
-    CHECK(static_cast<unsigned>(spo->fboTarget) == static_cast<unsigned>(RenderResourceId::MainColor));
-}
-
-TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed have Invalid") {
-    using namespace RenderCore::framegraph;
-    // Passes confirmed routed via applyPipeline with a single PipelineId:
-    const RenderPassId routed[] = {
-        RenderPassId::MechOpaque,
-    };
-    for (RenderPassId id : routed) {
-        const RenderStateDesc* r = findPassRenderState(id);
-        REQUIRE(r != nullptr);
-        CHECK(static_cast<unsigned>(r->pipelineId) != static_cast<unsigned>(RenderCore::PipelineId::Invalid));
-        CHECK(passHasStaticPipeline(id) == true);
-    }
-    // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
-    const RenderPassId invalid[] = {
-        RenderPassId::StaticPropOpaque,
-        RenderPassId::TerrainOverlay,
-        RenderPassId::TerrainDecal,
-        RenderPassId::Terrain,
-        RenderPassId::Water,
-        RenderPassId::Shadow,
-        RenderPassId::VegetationCards,
-        RenderPassId::VFX,
-        RenderPassId::UI,
-        RenderPassId::PostProcess,
-    };
-    for (RenderPassId id : invalid) {
-        CHECK(passHasStaticPipeline(id) == false);
-    }
-}
-
-TEST_CASE("statepack (g): consistency validator catches a deliberately-wrong RenderStateDesc field") {
-    using namespace RenderCore::framegraph;
-    // Regression case: if kPassRenderState were to declare Shadow with colorMask=AllOn instead
-    // of Inherit, the validator must catch it (ambient_contract shadow row has colorMask=Inherit;
-    // both sides need non-Inherit to generate a violation — use Terrain which has AllOn on both).
-    // Build a synthetic row that disagrees with ambient: Terrain colorMask=AllOff (should be AllOn).
-    // We can't mutate kPassRenderState, so we call compareAmbient directly on the synthetic value.
-    const AmbientContract* terrain = findAmbient(RenderPassId::Terrain);
-    REQUIRE(terrain != nullptr);
-    // terrain->colorMaskOnEntry == AllOn (ambient_contract ground truth)
-    CHECK(static_cast<unsigned>(terrain->colorMaskOnEntry) == static_cast<unsigned>(ColorMaskState::AllOn));
-    // A synthetic RenderStateDesc row with colorMask=AllOff would disagree.
-    // compareAmbient covers the cross-check logic (already tested in "compareAmbient" test above).
-    // Here we exercise the validator's specific path: create a wrong RenderStateDesc inline
-    // and verify the validator (reimplementing its inner loop for the synthetic case).
-    RenderStateDesc synthetic;
-    synthetic.id        = RenderPassId::Terrain;
-    synthetic.pipelineId = RenderCore::PipelineId::Invalid;
-    synthetic.colorMask = ColorMaskState::AllOff;   // WRONG (ambient says AllOn)
-    synthetic.depthWrite = DepthWriteState::On;
-    synthetic.depthFunc  = DepthFuncState::SceneGEqual;
-    synthetic.viewport   = ViewportKind::MainScene;
-    synthetic.fboTarget  = RenderResourceId::MainColor;
-
-    // Cross-check synthetic.colorMask vs terrain->colorMaskOnEntry — must differ.
-    const ColorMaskState rowVal = synthetic.colorMask;
-    const ColorMaskState ambVal = terrain->colorMaskOnEntry;
-    bool bothConcrete = (rowVal != ColorMaskState::Inherit && ambVal != ColorMaskState::Inherit);
-    CHECK(bothConcrete == true);
-    CHECK(rowVal != ambVal);   // AllOff != AllOn — validator would return ok=false for this row
 }
 
 // ---------------------------------------------------------------------------
@@ -1262,27 +893,8 @@ TEST_CASE("top-level apply-state (a): only MechOpaque retains a GL state descrip
     CHECK(kTopLevelStateDescCount == 1u);  // native decal/overlay/shadow/water have no GL apply
 }
 
-TEST_CASE("top-level apply-state (i): findTopLevelStateDesc(MechOpaque) = MechOpaque pipeline, FBO/viewport inherit (not applied)") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-    const TopLevelStateDesc* d = findTopLevelStateDesc(RenderPassId::MechOpaque);
-    REQUIRE(d != nullptr);
-    CHECK(static_cast<unsigned>(d->id)         == static_cast<unsigned>(RenderPassId::MechOpaque));
-    CHECK(static_cast<unsigned>(d->pipelineId) == static_cast<unsigned>(PipelineId::MechOpaque));
-    // Only the pipeline is lifted; FBO/viewport honestly NOT applied (body inherits).
-    CHECK(static_cast<unsigned>(d->fboTarget)  == static_cast<unsigned>(RenderResourceId::Unknown));
-    CHECK(static_cast<unsigned>(d->viewport)   == static_cast<unsigned>(ViewportKind::Inherit));
-    // MechOpaque runs every tier1 frame -> the ON-path body-skip is runtime-exercised.
-    REQUIRE(passHasStaticPipeline(RenderPassId::MechOpaque));
-}
-
 TEST_CASE("retired GL Water has no top-level apply-state descriptor") {
     CHECK(findTopLevelStateDesc(RenderPassId::Water) == nullptr);
-}
-
-TEST_CASE("native TerrainDecal has no GL apply-state descriptor (b)") {
-    CHECK(findTopLevelStateDesc(RenderPassId::TerrainDecal) == nullptr);
-    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainDecal));
 }
 
 TEST_CASE("top-level apply-state (c): findTopLevelStateDesc returns nullptr for a non-apply pass (Terrain)") {
@@ -1304,33 +916,6 @@ TEST_CASE("top-level apply-state (c): findTopLevelStateDesc returns nullptr for 
 // is NOT in the registration row table below. This test asserts ShadowMech directly.
 TEST_CASE("retired GL Shadow has no top-level apply-state descriptor") {
     CHECK(findTopLevelStateDesc(RenderPassId::Shadow) == nullptr);
-}
-
-TEST_CASE("native TerrainDecal has no GL apply-state descriptor (d)") {
-    CHECK(findTopLevelStateDesc(RenderPassId::TerrainDecal) == nullptr);
-    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainDecal));
-}
-
-// Second top-level apply-state consumer.
-TEST_CASE("native TerrainOverlay has no GL apply-state descriptor (e)") {
-    CHECK(findTopLevelStateDesc(RenderPassId::TerrainOverlay) == nullptr);
-    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainOverlay));
-}
-
-TEST_CASE("native TerrainOverlay has no GL apply-state descriptor (f)") {
-    CHECK(findTopLevelStateDesc(RenderPassId::TerrainOverlay) == nullptr);
-    CHECK_FALSE(passHasStaticPipeline(RenderPassId::TerrainOverlay));
-}
-
-// Third top-level apply-state consumer — first one whose
-// ON-path body-skip is actually exercised at runtime (StaticPropOpaque runs every
-// tier1 frame).
-// SELF-PROOF: StaticPropOpaque is re-expressed to EXPLICITLY
-// apply MainColor/MainScene (the axes it already inherits + runs every tier1 frame) -> proves
-// the richer apply path is byte-identical to inheritance. clear stays None.
-TEST_CASE("native static props have no GL apply-state descriptor (g)") {
-    CHECK(findTopLevelStateDesc(RenderPassId::StaticPropOpaque) == nullptr);
-    CHECK_FALSE(passHasStaticPipeline(RenderPassId::StaticPropOpaque));
 }
 
 // The 4 non-self-proof consumers stay byte-identical —
@@ -1356,11 +941,6 @@ TEST_CASE("top-level apply-state (k): EXTEND — 3 consumers unchanged (Unknown/
     CHECK(sp == nullptr);
 }
 
-TEST_CASE("native static props have no GL apply-state descriptor (h)") {
-    CHECK(findTopLevelStateDesc(RenderPassId::StaticPropOpaque) == nullptr);
-    CHECK_FALSE(passHasStaticPipeline(RenderPassId::StaticPropOpaque));
-}
-
 TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names unique/non-Unknown") {
     using namespace RenderCore::framegraph;
     // Two surviving top-level GL applies; native decal/overlay counters are retired.
@@ -1378,41 +958,6 @@ TEST_CASE("per-pass-apply-counters-1: ApplyPassId table is complete + names uniq
     }
     // Out-of-range id is "Unknown".
     CHECK(std::string(applyPassName(ApplyPassId::Count)) == "Unknown");
-}
-
-// Each of the 4 TOP-LEVEL apply
-// passes (TerrainDecal / TerrainOverlay / StaticPropOpaque / MechOpaque) maps to a RenderPassId
-// whose kPassRenderState[] row declares a CONCRETE (non-Invalid) pipelineId. You
-// must not declare a top-level apply on a multi-pipeline / Invalid pass — the
-// executor cannot pre-apply a pipeline that doesn't statically exist.
-TEST_CASE("apply-state-registration (top-level): each top-level ApplyPassId maps to a pass with a concrete pipeline") {
-    using namespace RenderCore;
-    using namespace RenderCore::framegraph;
-
-    // name -> RenderPassId mapping for the top-level apply ids whose pipeline is the
-    // authoritative single pipeline (small local switch).
-    // ★ApplyPassId::Shadow is DELIBERATELY EXCLUDED from this invariant.
-    // Shadow's authoritative kPassRenderState row is PipelineId::Invalid (3 descriptive
-    // sub-caster pipelines ShadowTerrain/ShadowMech/ShadowStaticProp), so passHasStaticPipeline
-    // (Shadow) is false and there is no single representative pipeline to match. Shadow's
-    // TopLevelStateDesc lifts the ShadowMech BASE pipeline (per-caster ShadowStaticProp re-applies
-    // in the body); it is asserted directly in test (l), not cross-checked here.
-    struct Row { ApplyPassId apply; RenderPassId pass; };
-    const Row topLevel[] = {
-        { ApplyPassId::MechOpaque,       RenderPassId::MechOpaque       },
-    };
-    for (const Row& r : topLevel) {
-        // The ApplyPassId name and the RenderPassId name must agree (no silent skew).
-        const RenderStateDesc* desc = findPassRenderState(r.pass);
-        REQUIRE(desc != nullptr);
-        // INVARIANT: a top-level apply pass has a concrete pipeline.
-        CHECK(passHasStaticPipeline(r.pass));
-        CHECK(static_cast<unsigned>(desc->pipelineId) != static_cast<unsigned>(PipelineId::Invalid));
-        // The executor's top-level apply table must agree on the same pipeline.
-        const TopLevelStateDesc* tl = findTopLevelStateDesc(r.pass);
-        REQUIRE(tl != nullptr);
-        CHECK(static_cast<unsigned>(tl->pipelineId) == static_cast<unsigned>(desc->pipelineId));
-    }
 }
 
 // ---------------------------------------------------------------------------

@@ -2035,7 +2035,7 @@ def viewer_payload(build_dir, build64_root, head):
 
 
 def dll_source_dirs(src_root):
-    """Real homes of the runtime DLLs a fresh Ninja tree lacks: the repo's 3rdparty/lib/x64 (glew32, SDL2, zlib1), the ffmpeg
+    """Real homes of the runtime DLLs a fresh Ninja tree lacks: the repo's 3rdparty/lib/x64 (SDL2, zlib1), the ffmpeg
     bin dir, and the Visual Studio redist CRT (msvcp140*, vcruntime140*). No other worktree is consulted."""
     dirs = [os.path.join(src_root, "3rdparty", "lib", "x64"),
             os.path.join(src_root, "3rdparty", "ffmpeg-lgpl-win64", "bin"),
@@ -2053,7 +2053,7 @@ def seed_build_dlls(build_dir, src_root, names=None):
     if sys.platform != "win32":
         return []
     copied = []
-    for name in (list(RUNTIME_DLLS) + ["glew32.dll"] if names is None else names):
+    for name in (RUNTIME_DLLS if names is None else names):
         dst = os.path.join(build_dir, name)
         if os.path.isfile(dst):
             continue

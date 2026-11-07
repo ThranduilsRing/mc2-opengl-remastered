@@ -32,13 +32,11 @@ struct HitchFrameAccum {
     uint32_t staticDrawCmds     = 0;   // caller fills after flush
     uint64_t staticBufferBytes  = 0;   // legacy cumulative upload bytes
     uint32_t staticRealloc      = 0;   // caller sets on buffer orphan/realloc
-    uint32_t staticMap          = 0;   // legacy buffer-map count
 
     // Water sub-counters (filled by gos_terrain_water_stream.cpp)
     uint8_t  waterCalled        = 0;
     uint8_t  waterPresent       = 0;
     uint8_t  waterEarlyOut      = 0;
-    uint32_t waterGlCalls       = 0;   // legacy water API-call count
 
     // H1b water CPU sub-spans (ms). Only populated when waterMs is significant.
     double waterGuardsMs      = 0.0;  // early-out checks + lazy init
@@ -57,19 +55,6 @@ struct HitchFrameAccum {
     double phaseRenderMs     = 0.0;  // DrawScreen (draw_screen)
     double phasePresentMs    = 0.0;  // frame presentation
     double phaseCapMs        = 0.0;  // Frame cap sleep
-
-    // Legacy GL call-count fields retained for the hitch log schema.
-    uint32_t glBufferDataCalls        = 0;
-    uint64_t glBufferDataBytes        = 0;
-    uint32_t glBufferSubDataCalls     = 0;
-    uint64_t glBufferSubDataBytes     = 0;
-    uint32_t glMapBufferCalls         = 0;
-    uint32_t glTexImageCalls          = 0;
-    uint64_t glTexImageBytes          = 0;
-    uint32_t glTexSubImageCalls       = 0;
-    uint64_t glTexSubImageBytes       = 0;
-    uint32_t glBindTextureCalls       = 0;
-    uint32_t glUseProgramCalls        = 0;
 
     // Vulkan frame-fence waits (the present path's retire of the previous submit).
     FenceWaitStats vkFence;
