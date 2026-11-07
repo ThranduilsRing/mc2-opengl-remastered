@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "3c1901603c2a2e697559c09c108b5a42cf16b5962cd6e50d35246a729f931d04",
-  "spirv_sha256": "a559e4d1f81cecae477d47ecd6039b270267e7b0c1dcdab75cf2d20ff7a65370",
+  "source_sha256": "1aeb2d54d7540731c99356cc4ae2d0f478cd7d02bb5f8a1b6ce37f1203e7ae15",
+  "spirv_sha256": "8d043f62fb77a174a0d64fa1d042bf262426ac03037c8e37cd47575822aed8eb",
   "bindings": {
     "ubos": [
       {
@@ -20,12 +20,12 @@
       {
         "type": "_1115",
         "name": "MechFrameUBO",
-        "block_size": 224,
+        "block_size": 288,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1447",
+        "type": "_1480",
         "name": "MoverShadowFrame",
         "block_size": 8336,
         "set": 0,
@@ -58,7 +58,7 @@
         "binding": 13
       },
       {
-        "type": "_1453",
+        "type": "_1486",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -917,6 +917,12 @@
           "name": "environmentAmbient",
           "type": "vec4",
           "offset": 208
+        },
+        {
+          "name": "prevFromCurClip",
+          "type": "mat4",
+          "offset": 224,
+          "matrix_stride": 16
         }
       ]
     },
@@ -940,7 +946,7 @@
         }
       ]
     },
-    "_1447": {
+    "_1480": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -988,7 +994,7 @@
         }
       ]
     },
-    "_1453": {
+    "_1486": {
       "name": "TerrainCementBuf",
       "members": [
         {
@@ -1055,6 +1061,14 @@
       {
         "name": "vFog",
         "location": 4
+      },
+      {
+        "name": "vPrevClip",
+        "location": 13
+      },
+      {
+        "name": "vCurClip",
+        "location": 12
       }
     ],
     "outputs": [
@@ -1065,6 +1079,10 @@
       {
         "name": "oGBuffer1",
         "location": 1
+      },
+      {
+        "name": "oMotion",
+        "location": 2
       }
     ]
   },

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 268,
+    "glsl_blocks_with_binding": 269,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -680,6 +680,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/motion_vectors.frag",
+        "line": 14,
+        "role": "objectMv",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/motion_vectors.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/postprocess.frag",
         "line": 10,
         "role": "u_objectIdTex",
@@ -1095,7 +1105,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 131,
+        "line": 134,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1129,7 +1139,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_cull.comp",
-        "line": 23,
+        "line": 24,
         "role": "Runs",
         "std": "std430",
         "type": "buffer",
@@ -1151,7 +1161,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_cull.comp",
-        "line": 24,
+        "line": 25,
         "role": "Compact",
         "std": "std430",
         "type": "buffer",
@@ -1229,7 +1239,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_cull.comp",
-        "line": 27,
+        "line": 28,
         "role": "Cmds",
         "std": "std430",
         "type": "buffer",
@@ -1749,7 +1759,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 67,
+        "line": 70,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2155,7 +2165,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 70,
+        "line": 73,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",

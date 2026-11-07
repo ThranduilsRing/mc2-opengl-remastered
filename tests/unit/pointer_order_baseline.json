@@ -16,6 +16,9 @@
   "GameOS/gameos/gos_mech_batcher.cpp": {
    "pointer_key": 1
   },
+  "GameOS/gameos/gos_mech_batcher_flush.cpp": {
+   "pointer_to_int": 1
+  },
   "GameOS/gameos/gos_mech_batcher_internal.h": {
    "pointer_key": 2
   },

@@ -6,14 +6,14 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "458c869a9ac4d193308fcb727115e5f3a84f0d17eeaaedd3bff0f0e62b90297b",
-  "spirv_sha256": "d36fa859bcf7ef3e3c33696a30a052dcd7065e36f3bc8aea33f54fba7b4978d0",
+  "source_sha256": "38a6eb925ea027012b2ec5d865c912bb993130de49b8da1cd6ec0c6e75d6833b",
+  "spirv_sha256": "2cc35bb3eb1545328f655f6db46b698e352b1fb9c95aa4f0351530a8de64086e",
   "bindings": {
     "ubos": [
       {
         "type": "_84",
         "name": "MechFrameUBO",
-        "block_size": 224,
+        "block_size": 288,
         "set": 0,
         "binding": 0
       }
@@ -121,6 +121,12 @@
           "name": "environmentAmbient",
           "type": "vec4",
           "offset": 208
+        },
+        {
+          "name": "prevFromCurClip",
+          "type": "mat4",
+          "offset": 224,
+          "matrix_stride": 16
         }
       ]
     },
@@ -429,7 +435,7 @@
         }
       ]
     },
-    "_598": {
+    "_714": {
       "name": "gl_PerVertex",
       "members": [
         {
@@ -495,6 +501,14 @@
       }
     ],
     "outputs": [
+      {
+        "name": "vCurClip",
+        "location": 12
+      },
+      {
+        "name": "vPrevClip",
+        "location": 13
+      },
       {
         "name": "vUv",
         "location": 0
