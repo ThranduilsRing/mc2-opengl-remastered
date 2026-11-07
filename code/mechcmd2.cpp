@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
+#include "prefs_init.h"
 #include "startup_preload.h"
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
@@ -162,19 +163,7 @@ std::unique_ptr<Mission> ownedMission;
 std::unique_ptr<Logistics> ownedLogistics;
 bool bInvokeOptionsScreenFlag = false;
 
-bool SnifferMode = false;
-gos_VERTEX *testVertex = nullptr;
-WORD *indexArray = nullptr;
-DWORD testTextureHandle = 0xffffffff;
-float totalTime = 0;
-DWORD numIterations = 4;
-DWORD curIteration = 0;
-DWORD curDevice = 0;
 bool isUsingSoftware = false;
-float trisPerSecond[MAX_HARDWARE_CARDS] = 
-{
-	0.0f, 0.0f, 0.0f, 0.0f, 0.0f
-};
 
 bool checkedBomb = false;
 char DebugStatusBarString[256];
@@ -196,7 +185,6 @@ char* __stdcall GetGameInformation()
 
 //long cLoadString (HINSTANCE hInstance,  UINT uID, LPTSTR lpBuffer, int nBufferMax );
 
-#define SnifferTime(x,y)	
 DWORD startTime;
 DWORD endTime;
 
@@ -324,43 +312,9 @@ void __stdcall InitializeGameEngine()
 	}
 #endif
 
-	//Then, we should check to see if the options.cfg exists.  if NOT, 
-	// Bring up a sniffer warning dialog, sniff, bring up sniffer end dialog and end.
-	if (!fileExists("options.cfg"))
-	{
-		// Smoke-mode guard: the sniffer branch would pop a blocking MessageBox
-		// ("will now check your computer's hardware") that deadlocks any
-		// unattended subprocess. If MC2_SMOKE_MODE is set, the caller almost
-		// certainly spawned us from the wrong CWD — fail fast with a useful
-		// summary line so the runner can bucket it rather than hang.
-		if (SmokeMode::state().enabled) {
-			SmokeMode::emitFailSummary("sniffer_would_run",
-				"init_pre_sniffer");
-			mc2::fmt::print_err("[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. Is the runner spawning from the install directory?\n");
-			fflush(stderr);
-			std::exit(5);
-		}
-
-		//Must also check for a RIVA TNT card with driver 4.10.1.0131
-		// If this card is in the machine with this driver, do NOT allow sniffer to run.
-		// Just copy minprefs.cfg to options.cfg and move on.
-		if ((gos_GetMachineInformation(gos_Info_GetDeviceVendorID,0) == 0x10de) &&
-			(gos_GetMachineInformation(gos_Info_GetDeviceDeviceID,0) == 0x0020) &&
-			(gos_GetMachineInformation(gos_Info_GetDeviceDriverVersionHi,0) == 0x0004000a) &&
-			(gos_GetMachineInformation(gos_Info_GetDeviceDriverVersionLo,0) == 0x00010083))
-		{
-			CopyFile("minprefs.cfg","orgprefs.cfg",true);
-			CopyFile("minprefs.cfg","options.cfg",true);
-		}
-		else
-		{
-			//NEW Plan.  Regardless, copy the minprefs to options.  That way, sniffer can only screw up once!!
-			// After the first run, it will no longer run and the game will continue with minprefs.
-			SnifferMode = true;
-			CopyFile("minprefs.cfg","orgprefs.cfg",true);
-			CopyFile("minprefs.cfg","options.cfg",true);
-		}
-	}
+	// Deterministic preference init (replaces the hardware sniffer): a missing options.cfg gets the fixed
+	// default set, an existing options.cfg is never touched, a missing orgprefs.cfg is re-seeded.
+	mc2::prefs::initPreferences(".");
 
 	//Seed the random Number generator.
 	// DETERMINISTIC-RNG-1: under MC2_DETERMINISTIC_RNG the startup seed must be
@@ -381,7 +335,6 @@ void __stdcall InitializeGameEngine()
 		}
 	}
 
-	if (!SnifferMode)
 	{
 		ZoneScopedN("InitializeGameEngine normalStartup");
 		//---------------------------------------------------------------------
@@ -422,19 +375,6 @@ void __stdcall InitializeGameEngine()
 		//Start finding the Leaks
 //		systemHeap->startHeapMallocLog();
 
-		//Check for OrgPrefs.cfg.  If this file is not present,
-		// We need to create it because sniffer didn't run.
-		// Create a new prefs.cfg, too.  This way, we can easily restore
-		// them to a running state if they screw up their prefs.
-		// All they have to do is delete the orgprefs.cfg file.
-		// OR re-install!!
-		//
-		// ALWAYS use minPrefs.cfg here!
-		if (!fileExists("orgprefs.cfg"))
-		{
-			CopyFile("minprefs.cfg","orgprefs.cfg",true);
-			CopyFile("minprefs.cfg","options.cfg",true);
-		}
 
 		//--------------------------------------------------------------
 		// Read in System.CFG
@@ -1233,63 +1173,6 @@ void __stdcall InitializeGameEngine()
 		}
 
 		gameStarted = true;
-	}
-	else
-	{
-		char msgBuffer[4096];
-		char msgTitle[1024];
-
-		cLoadString(IDS_SNIFFER_INIT_MSG,msgBuffer,4095);
-		cLoadString(IDS_SNIFFER_INIT_TITLE,msgTitle,1023);
-
-		mc2MessageBox(msgBuffer,msgTitle,MB_OK,IDOK);
-
-		//-------------------------------------------------------------
-		// Find the CDPath in the registry and save it off so I can
-		// look in CD Install Path for files.
-		
-		//Changed for the shared source release, just set to current directory
-
-		//DWORD maxPathLength = 1023;
-		//gos_LoadDataFromRegistry("CDPath", CDInstallPath, &maxPathLength);
-		//if (!maxPathLength)
-		//	memset(CDInstallPath,0,1024);
-		memset(CDInstallPath,0,1024);
-
-		//Set ScreenMode to 800x600x16 FULLSCREEN!!!!
-		// A window will return BAD DATA!!
-		//
-		// If this fails, GAME CANNOT RUN on their machine!!!!!
-		//
-		// Check which rasterizer comes up.  If software, tell prefs we cannot run in hardware!!
-		//
-
-		while (((gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) +
-				gos_GetMachineInformation(gos_Info_GetDeviceAGPMemory, curDevice)) < 6291456) && 
-				(curDevice < gos_GetMachineInformation( gos_Info_NumberDevices )))
-			curDevice++;
-
-		if (curDevice < gos_GetMachineInformation( gos_Info_NumberDevices ))
-			gos_SetScreenMode(Environment.screenWidth, Environment.screenHeight, 16, curDevice, 0, 0, 0,
-			                  Environment.fullScreen ? 1 : 0, 0, Environment.fullScreen ? 0 : 1, 0, 0);
-
-		//Create about a thousand textured random triangles.
-		testVertex = static_cast<gos_VERTEX *>(malloc(sizeof(gos_VERTEX) * 3000));
-		indexArray = static_cast<WORD *>(malloc(sizeof(WORD) * 3000));
-		for (long i=0;i<3000;i++)
-		{
-			testVertex[i].x = RandomNumber(1000) - 100;
-			testVertex[i].y = RandomNumber(800) - 100;
-			testVertex[i].z = (static_cast<float>(RandomNumber(150)) / 100.0f) - 0.25f;
-			testVertex[i].rhw = 0.5f;
-			testVertex[i].u = static_cast<float>(RandomNumber(100)) / 100.0f;
-			testVertex[i].v = static_cast<float>(RandomNumber(100)) / 100.0f;
-			testVertex[i].argb = 0x3fffffff;
-			testVertex[i].frgb = 0x3f1f2f3f;
-			indexArray[i] = i;
-		}
-
-		testTextureHandle = gos_NewTextureFromFile(gos_Texture_Solid,"testtxm.tga");
 	}
 
 	//Make any directories we need which should be empty.

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mc2_czstring.h"
 #include "mechcmd2_internal.h"
+#include "mc2fmt.h"
 
 
 static long textToLong (char *num)
@@ -140,7 +141,8 @@ void ParseCommandLine(mc2::czstring command_line)
 		}
 		else if (S_stricmp(argv[i],"-sniffer") == 0)
 		{
-			SnifferMode = true;
+			// Retired: preferences are initialized deterministically (prefs_init.h); the flag is accepted and ignored.
+			mc2::fmt::print_out("-sniffer is retired and ignored (deterministic preference init)\n");
 		}
 		else if (S_stricmp(argv[i], "-braindead") == 0) {
 			i++;
@@ -368,7 +370,7 @@ void __stdcall GetGameOSEnvironment(mc2::czstring CommandLine )
 		result=RegQueryValueEx(hKey,"FIRSTRUN",nullptr,nullptr,(PBYTE)pData,&szData);
 		if ((result == ERROR_SUCCESS) && pData[0])
 		{
-			if (fileExists("options.cfg") && !SnifferMode)
+			if (fileExists("options.cfg"))
 				Environment.fullScreen				= 1;
 			EULAShown = true;
 		}
