@@ -368,7 +368,6 @@ extern InteropForbidden g_forbidden;
 extern float g_prefixClearColor[4];
 std::unique_ptr<mc2vk::IslandState>& islandSlot();   // the engine context's slot the island is parked in
 TerrainIsland* parkedIsland();                       // null until the island is born
-extern bool g_terrainSessionDeclined;
 extern int  g_terrainInitReachedBuild;
 extern bool g_ovlDeclined;
 extern std::vector<OvlPending> g_ovlPending;

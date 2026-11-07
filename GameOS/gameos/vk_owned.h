@@ -100,11 +100,22 @@ using OwnedSurface = mc2::OwnedHandle<VkSurfaceKHR, VkInstance, release::Surface
 
 // Creates through `call(Handle*) -> VkResult` (the `vkCreate*` expression) and hands the new handle to `owner`, releasing what it held. False, with `owner`
 // empty, when the call fails: the handle a failed call leaves behind is never adopted.
+// The VkResult of the last failed create on this thread (VK_SUCCESS when none since the last take): an island init failure names it
+// (vk_island_fail_policy.h).
+inline thread_local VkResult t_lastCreateFailure = VK_SUCCESS;
+inline VkResult takeLastCreateFailure() {
+    const VkResult result = t_lastCreateFailure;
+    t_lastCreateFailure = VK_SUCCESS;
+    return result;
+}
+
 template <class Owner, class Call>
 bool create(Owner& owner, VkDevice device, Call&& call) {
     owner.reset();
     typename Owner::HandleType handle{};
-    if (call(&handle) != VK_SUCCESS || handle == typename Owner::HandleType{}) return false;
+    const VkResult result = call(&handle);
+    if (result != VK_SUCCESS) t_lastCreateFailure = result;
+    if (result != VK_SUCCESS || handle == typename Owner::HandleType{}) return false;
     owner = Owner(device, handle);
     return true;
 }

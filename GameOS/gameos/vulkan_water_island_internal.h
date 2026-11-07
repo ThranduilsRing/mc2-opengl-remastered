@@ -241,6 +241,7 @@ using namespace vk_water_detail;
 // State and functions of the water island, shared by the pieces (defined in the piece that owns them).
 namespace vk_water_detail {
 extern WaterIslandHealth g_health;
+extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
 void record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled);
 extern InteropForbidden g_forbidden;

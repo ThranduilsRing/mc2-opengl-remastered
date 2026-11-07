@@ -140,15 +140,8 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot() {
 }
 TerrainIsland* parkedIsland() { return static_cast<TerrainIsland*>(islandSlot().get()); }
 
-// VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 item-2 (boot-level native-or-decline):
-// distinguish a PERMANENT init failure (spv/pipeline/renderpass/resource creation --
-// won't recover this session) from a TRANSIENT one (engine VK context / shared GBuffer
-// not born YET at boot -- recovers a few frames later, keep the item-9 fail-hard-with-
-// retry). g_terrainInitReachedBuild flips to 1 once init passes the context/GBuffer
-// readiness gates and starts creating permanent VK objects; if init then fails, the
-// island is declined for the SESSION (one receipt line, GL owns terrain from frame 0)
-// instead of re-newing + re-init'ing the island every frame.
-bool g_terrainSessionDeclined  = false;
+// g_terrainInitReachedBuild flips to 1 once init passes the context/GBuffer readiness gates and starts creating VK objects: a failure
+// before that retries next frame, a failure after it is fatal (vk_island_fail_policy.h).
 int  g_terrainInitReachedBuild = 0;
 
 } // namespace

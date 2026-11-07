@@ -72,6 +72,7 @@
 #include <string>
 #include <vector>
 #include "../../mclib/battle_bench_wait.h"
+#include "vk_island_fail_policy.h"
 
 namespace {
 
@@ -145,7 +146,7 @@ static_assert(sizeof(FogOobParams) == 96, "FogOobParams std140 offsets drifted")
 // Persistent state. Lazy init at the fog site; torn down by destroyFBOs (resize)
 // and destroy() via destroyVkPostFogNative().
 struct gosPostProcess::VkPostFogNative {
-    bool disabled = false;   // init failed once -> never retry, GL path forever
+    bool disabled = false;   // init failed (Degrade, vk_island_fail_policy.h) -> no native fog for this process
     bool inited   = false;
     int  width = 0, height = 0;
 
@@ -545,12 +546,14 @@ bool gosPostProcess::runVkPostFogNative()
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
+        (void)mc2vk::takeLastCreateFailure();
         if (!build_state(s, width_, height_)) {
-            // Keep the native pass disabled after an initialization failure.
-            vlog("init FAILED (reason=%s) — disabling native fog for this process.",
-                 g_pf.fallbackReason[0] ? g_pf.fallbackReason : "unknown");
+            // Fog is optional: a build failure degrades to no fog for this process (one transient-VkResult retry).
+            static mc2vk::IslandInitFailures s_failures;
+            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::Fog, true,
+                mc2vk::takeLastCreateFailure(), g_pf.fallbackReason[0] ? g_pf.fallbackReason : "unknown", s_failures);
             destroy_state(s);
-            s->disabled = true;
+            s->disabled = action != mc2vk::IslandInitAction::Retry;
             return false;
         }
     }

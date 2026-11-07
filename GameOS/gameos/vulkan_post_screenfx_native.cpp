@@ -83,6 +83,10 @@
 #include <string_view>
 #include <vector>
 #include "../../mclib/battle_bench_wait.h"
+#include "vk_island_fail_policy.h"
+
+// Both screenfx entry points share one VkPostScreenFx, so they share one failure count.
+static mc2vk::IslandInitFailures s_screenFxInitFailures;
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
@@ -180,7 +184,7 @@ static_assert(sizeof(ScreenFxShadowParams)==144,"ScreenShadowParams std140");
 // Persistent state. Lazy init at the screenfx pass sites; torn down by
 // destroyFBOs (resize) and destroy() via destroyVkPostScreenFxNative().
 struct gosPostProcess::VkPostScreenFx {
-    bool disabled = false;   // init failed once -> never retry, GL path forever
+    bool disabled = false;   // init failed (Degrade, vk_island_fail_policy.h) -> no native screenfx for this process
     bool inited   = false;
     int  width = 0, height = 0;
 
@@ -701,11 +705,12 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
+        (void)mc2vk::takeLastCreateFailure();
         if (!build_state(s, width_, height_)) {
-            vlog("static screen-shadow init FAILED (reason=%s) -- GL pass runs.",
-                 g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown");
+            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::ScreenFx, true,
+                mc2vk::takeLastCreateFailure(), g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown", s_screenFxInitFailures);
             destroy_state(s);
-            s->disabled = true;
+            s->disabled = action != mc2vk::IslandInitAction::Retry;
             return false;
         }
     }
@@ -884,11 +889,12 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
+        (void)mc2vk::takeLastCreateFailure();
         if (!build_state(s, width_, height_)) {
-            vlog("init FAILED (reason=%s) — disabling for this process, GL passes run.",
-                 g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown");
+            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::ScreenFx, true,
+                mc2vk::takeLastCreateFailure(), g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown", s_screenFxInitFailures);
             destroy_state(s);
-            s->disabled = true;
+            s->disabled = action != mc2vk::IslandInitAction::Retry;
             return 0;
         }
     }

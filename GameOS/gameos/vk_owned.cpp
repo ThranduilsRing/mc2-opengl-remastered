@@ -29,7 +29,7 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     infra::Admission admission(requirements.size,name);
     if(!admission) return false;
     VmaAllocationInfo placed{};
-    if (vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, &placed) != VK_SUCCESS) return false;
+    if (const VkResult r = vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, &placed); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {   // where the buffer landed (audit S2): DL = DEVICE_LOCAL, HV = HOST_VISIBLE, HC = HOST_CACHED
         VkMemoryPropertyFlags pf = 0;
         vmaGetMemoryTypeProperties(allocator, placed.memoryType, &pf);
@@ -162,7 +162,7 @@ bool OwnedImage::create(VmaAllocator allocator, VkDevice device, const VkImageCr
     vkDestroyImage(device,probe,nullptr);
     infra::Admission admission(requirements.size,name);
     if(!admission) return false;
-    if (vmaCreateImage(allocator, &info, &alloc, &image, &allocation, nullptr) != VK_SUCCESS) return false;
+    if (const VkResult r = vmaCreateImage(allocator, &info, &alloc, &image, &allocation, nullptr); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     image_ = image;
     allocation_ = allocation;
     allocator_ = allocator;

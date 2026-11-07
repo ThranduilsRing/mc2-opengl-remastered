@@ -14,6 +14,7 @@
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 #include "../../mclib/battle_bench_wait.h"
+#include "vk_island_fail_policy.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -80,9 +81,13 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     }
     ctx.waitIdle("water_native_init");
     auto np = s->native ? std::move(s->native) : std::make_unique<mc2vk::NativeProducers>();
+    (void)mc2vk::takeLastCreateFailure();
     if (!np->init(ctx, capacity->vertices, WaterStream::GetRecipeCount(), s->recipeBuf.get(), capacity->eligibleBound)) {
-        s->nativeFailed = true;
-        vlog("native producers unavailable - no water (the GL cull/pack readback feed is gone).");
+        // The native cull/pack producers are the only water feed: a build failure here is a water init failure.
+        static mc2vk::IslandInitFailures s_failures;
+        const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::Water, true,
+            mc2vk::takeLastCreateFailure(), "native_producers_init_failed", s_failures);
+        s->nativeFailed = action != mc2vk::IslandInitAction::Retry;
         return false;
     }
     s->native = std::move(np);
@@ -165,9 +170,12 @@ extern "C" int mc2_vk_water_island_run(
     if (const WaterIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Water);
     if (!islandSlot()) {
         auto fresh = std::make_unique<WaterIsland>();
+        (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
-            vlog("init failed (%s) — no water this frame.", g_health.fallbackReason);
             slotCtx.waitIdle("water_init_failure");   // objects made before the failure may have been submitted
+            static mc2vk::IslandInitFailures s_failures;
+            mc2vk::onIslandInitFailure(mc2vk::IslandKind::Water, g_waterInitReachedBuild != 0,
+                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason, s_failures);
             return 0;
         }
         islandSlot() = std::move(fresh);

@@ -55,6 +55,7 @@
 float mc2ShadowMinSunAltDeg();
 
 #include "vulkan_shadow_island_state.h"
+#include "vk_island_fail_policy.h"
 
 namespace {
 
@@ -235,14 +236,9 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot() {
 }
 ShadowIsland* parkedIsland() { return static_cast<ShadowIsland*>(islandSlot().get()); }
 
-// VK-RUNG8 item-2 (boot-level native-or-decline), mirrors the mech/terrain islands: a
-// PERMANENT init failure (spv/pipeline/renderpass/buffer creation past the context +
-// gate readiness gates) declines the shadow island for the SESSION with ONE receipt line
-// (GL owns the dynamic shadow pass) instead of re-newing + re-init'ing every frame. A
-// TRANSIENT readiness gate (VK context not born / gate-off / geometry not finalized) keeps
-// the per-frame fail-soft-retry. g_shadowInitReachedBuild flips to 1 once init passes the
-// context + gate readiness gates (i.e. any later failure is a permanent build failure).
-bool g_shadowSessionDeclined  = false;
+// Init failure policy (vk_island_fail_policy.h), as the mech/terrain islands: before the readiness gates (VK context not born /
+// geometry not finalized) init retries next frame; past them a failure is fatal (one transient-VkResult retry).
+// g_shadowInitReachedBuild flips to 1 once init passes the context + gate readiness gates.
 int  g_shadowInitReachedBuild = 0;
 
 bool make_buffer(ShadowIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
@@ -1195,31 +1191,18 @@ static bool ensure_island(int size) {
     if (const ShadowIsland* parked=parkedIsland(); parked && parked->size<=size) return true;
     size=static_cast<int>(mc2vk::infra::shadowTier(static_cast<uint32_t>(size),2));
     if(!size) { setFallback("shadow_residency_budget"); return false; }
-    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this island for the whole session -> GL owns the dynamic shadow pass.
-    if (g_shadowSessionDeclined) return false;
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     if (const ShadowIsland* parked = parkedIsland(); parked && parked->size != size) slotCtx.retireIsland(mc2vk::IslandSlot::Shadow);
     if (!islandSlot()) {
         auto fresh = std::make_unique<ShadowIsland>();
+        (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), size)) {
-            const bool permanent = (g_shadowInitReachedBuild != 0);
             slotCtx.waitIdle("shadow_init_failure");   // objects made before the failure may have been submitted
             fresh.reset();
-            if (permanent) {
-                // Build-phase failure won't recover this session: latch decline + ONE receipt line (vs. re-init'ing every frame). GL renders the shadow pass.
-                g_shadowSessionDeclined = true;
-                vlog("[VK_SHADOW_ISLAND] boot-level decline: permanent init failure (%s) -- "
-                     "GL owns the dynamic shadow pass for this session (no per-frame retry).",
-                     g_health.fallbackReason);
-            } else {
-                // Transient readiness gate (VK context / gate not ready): fail-soft-retry.
-                static bool s_transientLogged = false;
-                if (!s_transientLogged) {
-                    vlog("init not ready (%s) -- GL fallback (will retry).", g_health.fallbackReason);
-                    s_transientLogged = true;
-                }
-            }
+            static mc2vk::IslandInitFailures s_failures;
+            mc2vk::onIslandInitFailure(mc2vk::IslandKind::Shadow, g_shadowInitReachedBuild != 0,
+                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason, s_failures);
             return false;
         }
         islandSlot() = std::move(fresh);

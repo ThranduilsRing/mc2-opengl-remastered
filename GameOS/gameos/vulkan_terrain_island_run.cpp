@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <numeric>
 #include "../../mclib/battle_bench_wait.h"
+#include "vk_island_fail_policy.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -37,64 +38,34 @@ extern "C" int mc2_vk_terrain_skirts_enabled() {
 }
 
 
-// FAIL-SOFT ISLAND-READY predicate. True only when the gate is on AND the island is in a
-// state where run() is expected to co-write this frame's LOD0 patches. The GL LOD-chunk
-// loop gates its SPECULATIVE LOD0-skip on this: if the island can NOT render (SPV/pipeline
-// load failed, init failed, device/allocator missing, or a prior transient error latched
-// s->disabled), the GL path keeps drawing LOD0 so there is NEVER a terrain hole.
-//
-// This does NOT birth the island (that happens in run() on the render thread with GL
-// context current); if the island is not yet inited it is NOT ready this frame (GL draws
-// LOD0), and the first successful run() flips it ready for subsequent frames — a one-frame
-// GL-draw-then-VK-takeover with no hole.
+// ISLAND-READY predicate: true only when the island is in a state where run() is expected to write this frame's LOD0 patches
+// (born, inited, not latched off by a per-frame error, SPIR-V and pipeline present). It does NOT birth the island (prepare does).
 extern "C" int mc2_vk_terrain_island_ready() {
     const TerrainIsland* island = parkedIsland();
-    if (!island) return 0;                   // not born yet -> GL owns LOD0 this frame
-    if (island->disabled) return 0;          // latched off by a prior fatal (spv/pipeline/device)
+    if (!island) return 0;                   // not born yet
+    if (island->disabled) return 0;          // latched off by a per-frame error
     if (!island->inited) return 0;
     if (!island->vert || !island->frag) return 0; // spv missing
     if (!island->pipe) return 0;                  // pipeline missing
     return 1;
 }
 
-// Birth/(re)init the island for the given scene target size, independent of any
-// per-frame feed. Returns true when the parked island is live (inited, not disabled). Must run
-// on the GL/render thread (init touches the shared VK context / GL interop). This is
-// FACTORED OUT of run() so the GL loop can PREPARE the island BEFORE deciding to skip
-// LOD0 — without this the skip would gate on ready, ready would gate on a born island,
-// and the island would only be born from a non-empty feed produced by the skip
-// (chicken-egg deadlock -> island never births -> LOD0 always GL-drawn).
+// Birth/(re)init the island for the given scene target size, independent of any per-frame feed. Returns true when the parked island
+// is live (inited, not disabled). Factored out of run() so the LOD loop can prepare the island before deciding to skip LOD0.
+// Init failure follows vk_island_fail_policy.h: not ready yet -> retry next frame; a build failure -> fatal (one transient retry).
 bool ensure_island_ready(int w, int h) {
     if (w <= 0 || h <= 0) return false;
-    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
-    // island for the whole session -> GL owns terrain, no per-frame re-init churn.
-    if (g_terrainSessionDeclined) return false;
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     if (const TerrainIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Terrain);
     if (!islandSlot()) {
         auto fresh = std::make_unique<TerrainIsland>();
+        (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
-            const bool permanent = (g_terrainInitReachedBuild != 0);
             slotCtx.waitIdle("terrain_init_failure");   // objects made before the failure may have been submitted
             fresh.reset();
-            if (permanent) {
-                // Build-phase failure won't recover this session: latch decline + ONE
-                // receipt line (vs. logging + re-init'ing every frame). GL renders
-                // terrain from frame 0.
-                g_terrainSessionDeclined = true;
-                vlog("[VK_TERRAIN_ISLAND] boot-level decline: permanent init failure "
-                     "(%s) -- GL owns terrain for this session (no per-frame retry).",
-                     g_health.fallbackReason);
-            } else {
-                // Transient readiness gate (VK context / shared GBuffer not born yet):
-                // keep item-9 fail-hard-with-retry -- GL draws this frame, retry next.
-                // Log once (boot warmup spans a few frames) to avoid per-frame spam.
-                static bool s_transientLogged = false;
-                if (!s_transientLogged) {
-                    vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
-                    s_transientLogged = true;
-                }
-            }
+            static mc2vk::IslandInitFailures s_failures;
+            mc2vk::onIslandInitFailure(mc2vk::IslandKind::Terrain, g_terrainInitReachedBuild != 0, mc2vk::takeLastCreateFailure(),
+                                       g_health.fallbackReason, s_failures);   // fatal does not return
             return false;
         }
         islandSlot() = std::move(fresh);
@@ -103,9 +74,8 @@ bool ensure_island_ready(int w, int h) {
     return island && island->inited && !island->disabled;
 }
 
-// FAIL-SOFT prepare: the GL loop calls this at loop-top (GL context current) so the
-// island is born BEFORE the skip decision. Returns 1 iff the island is ready to co-write
-// this frame -> the GL loop then commits the LOD0 skip. 0 -> GL draws LOD0 (no hole).
+// Prepare: the LOD loop calls this at loop-top so the island is born BEFORE the skip decision. Returns 1 iff the island is ready
+// to write this frame.
 extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
     return ensure_island_ready(w, h) ? 1 : 0;
 }
