@@ -526,6 +526,8 @@ long TacticalOrder::unpack (void) {
 	const int32_t rawOrigin = static_cast<int32_t>(tempData & TACORDERCHUNK_ORIGIN_MASK);
 	tempData >>= TACORDERCHUNK_ORIGIN_BITS;
 	if (!enum_in_domain(TacticalOrderCode{}, wireCode.code) || !enum_in_domain(OrderOriginType{}, rawOrigin)) {
+		mc2::fmt::print_out("[SAVE v1] event=packed_order_dropped code={} origin={} WARNING out-of-domain packed order reset to no-order\n",
+			wireCode.code, rawOrigin);
 		init();	// out-of-domain word: leave an empty (NONE) order, never an unnamed enumerator
 		return(-1);
 	}
@@ -955,7 +957,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					if (moveParams.wayPath.mode[0] == TRAVEL_MODE_FAST)
 						params |= TACORDER_PARAM_RUN;
 
-					result = warrior->orderAttackObject(unitOrder, origin, target, attackParams.type, attackParams.method, attackParams.range, attackParams.aimLocation, moveParams.fromArea, params);
+					result = warrior->orderAttackObject(unitOrder, origin, target, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, attackParams.aimLocation, moveParams.fromArea, params);
 					switch (result)
 					{
 						case TACORDER_SUCCESS:
@@ -983,7 +985,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 						params |= TACORDER_PARAM_PURSUE;
 					if (attackParams.tactic != TACTIC_NONE)
 						params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
-					result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, attackParams.method, attackParams.range, params);
+					result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, params);
 					switch (result)
 					{
 						case TACORDER_SUCCESS:
@@ -1015,7 +1017,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					params |= TACORDER_PARAM_PURSUE;
 				if (attackParams.tactic != TACTIC_NONE)
 					params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
-				result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, attackParams.method, attackParams.range, params);
+				result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, params);
 				switch (result)
 				{
 					case TACORDER_SUCCESS:

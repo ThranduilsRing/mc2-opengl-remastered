@@ -33,7 +33,7 @@ inline void mc2BattleBenchObserve() {
             }
             if (target) {
                 m->getPilot()->orderAttackObject(false, ORDER_ORIGIN_COMMANDER, target,
-                    ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED, FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
+                    ATTACK_TO_DESTROY, std::to_underlying(ATTACKMETHOD_RANGED), FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
                 ++issued;
             }
         }

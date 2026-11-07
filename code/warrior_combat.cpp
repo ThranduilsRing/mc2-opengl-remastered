@@ -514,7 +514,7 @@ void MechWarrior::updateActions (void) {
 			}
 			if (enemy) {
 				long res = orderAttackObject(false, ORDER_ORIGIN_COMMANDER, enemy,
-					ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED, FIRERANGE_OPTIMAL,
+					ATTACK_TO_DESTROY, std::to_underlying(ATTACKMETHOD_RANGED), FIRERANGE_OPTIMAL,
 					MECH_BODY_LOCATION_HEAD, -1, TACORDER_PARAM_PURSUE);
 				mc2::fmt::print_out("[AIMED_FIRE v1] event=order wid={:d} tgt_wid={:d} dist={:.0f} res={:d}\n", mc2::fmt::as_i32(static_cast<long>(vehicleWID)), mc2::fmt::as_i32(static_cast<long>(enemy->getWatchID())), static_cast<double>(bestDist), mc2::fmt::as_i32(res));
 				fflush(stdout);

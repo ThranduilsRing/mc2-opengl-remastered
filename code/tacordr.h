@@ -84,6 +84,7 @@ using enum AttitudeType;
 // cannot slip in unchecked; FireRangeType, AttackType, TacticType, OrderOriginType and _TravelModeType stay unscoped for now
 // (20+ int-mixing files each; next LG14 commit). Inbound ints for all of them go through enum_in_domain(E{}, v) below
 // (per-enum domain: fire range starts at -4), then static_cast. The save codec finds these by ADL.
+// The header-scope `using enum` lines keep the old unqualified names; they pollute no more than the unscoped enums did.
 enum FireRangeType {
 	FIRERANGE_DEFAULT = -4,
 	FIRERANGE_RAMMING = -3,

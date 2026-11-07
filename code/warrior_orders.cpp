@@ -458,7 +458,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	tacOrder.attackParams.method = static_cast<AttackMethod>(method);
 	tacOrder.attackParams.aimLocation = aimLocation;
 	tacOrder.attackParams.tactic = static_cast<TacticType>(tactic);
-	if (method == ATTACKMETHOD_RAMMING)
+	if (method == std::to_underlying(ATTACKMETHOD_RAMMING))
 		range = FIRERANGE_RAMMING;
 	tacOrder.attackParams.range = static_cast<FireRangeType>(range);
 	tacOrder.attackParams.pursue = pursue;
