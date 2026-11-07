@@ -154,16 +154,16 @@ namespace MidLevelRenderer {
 
 		unsigned char currentNrOfPasses;
 
-		Stuff::DynamicArrayOf<MLRState> multiState, multiReferenceState;
+		std::vector<MLRState> multiState, multiReferenceState;
 
-		Stuff::DynamicArrayOf<std::vector<Vector2DScalar>* > multiTexCoords;	// Max_Number_Vertices_Per_Mesh
+		std::vector<std::vector<Vector2DScalar>*> multiTexCoords;	// Max_Number_Vertices_Per_Mesh
 
-		Stuff::DynamicArrayOf<const Vector2DScalar*> multiTexCoordsPointers;
+		std::vector<const Vector2DScalar*> multiTexCoordsPointers;
 	};
 
 	MLRShape*
 		CreateIndexedIcosahedron_NoColor_NoLit_MultiTexture(
 			IcoInfo&,
-			Stuff::DynamicArrayOf<MLRState>*
+			std::vector<MLRState>*
 		);
 }

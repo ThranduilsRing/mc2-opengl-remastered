@@ -89,7 +89,7 @@ namespace MidLevelRenderer {
 				{
 					Check_Object(this); Verify(clipExtraTexCoords.size() > num);
 					colors.resize(num);
-					visibleIndexedVertices.SetLength(num);
+					visibleIndexedVertices.assign(num, 0);
 					Mem_Copy(colors.data(), clipExtraColors.data(), sizeof(Stuff::RGBAColor)*num, sizeof(Stuff::RGBAColor)*num);
 				}
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

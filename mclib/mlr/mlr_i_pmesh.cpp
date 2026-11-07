@@ -113,7 +113,7 @@ void
 	referenceState = polyMesh->GetReferenceState();
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.size());
+	visibleIndexedVertices.assign(coords.size(), 0);
 }
 */
 
@@ -345,7 +345,7 @@ void
 	Stuff::Vector4D *v4d = transformedCoords.data();
 	glm::vec3 *p3d = coords.data();
 	MLRClippingState *cs = clipPerVertex.data();
-	unsigned char *viv = visibleIndexedVertices.GetData();
+	unsigned char *viv = visibleIndexedVertices.data();
 
 	for(i=0;i<len;i++,p3d++,v4d++,cs++,viv++)
 	{

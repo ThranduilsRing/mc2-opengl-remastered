@@ -22,10 +22,10 @@ namespace MidLevelRenderer {
 		void Init(int);
 		void Destroy();
 
-		Stuff::DynamicArrayOf<Stuff::Vector4D> coords; // [Max_Number_Vertices_Per_Polygon]
-		Stuff::DynamicArrayOf<Stuff::RGBAColor>  colors; //[Max_Number_Vertices_Per_Polygon];
-		Stuff::DynamicArrayOf<Vector2DScalar> texCoords; //[2*Max_Number_Vertices_Per_Polygon];
-		Stuff::DynamicArrayOf<MLRClippingState> clipPerVertex; //[Max_Number_Vertices_Per_Polygon];
+		std::vector<Stuff::Vector4D> coords; // [Max_Number_Vertices_Per_Polygon]
+		std::vector<Stuff::RGBAColor>  colors; //[Max_Number_Vertices_Per_Polygon];
+		std::vector<Vector2DScalar> texCoords; //[2*Max_Number_Vertices_Per_Polygon];
+		std::vector<MLRClippingState> clipPerVertex; //[Max_Number_Vertices_Per_Polygon];
 	};
 
 
@@ -332,7 +332,7 @@ namespace MidLevelRenderer {
     MLRShape*
 		CreateIndexedIcosahedron(
 			IcoInfo&,
-			Stuff::DynamicArrayOf<MLRState>*
+			std::vector<MLRState>*
 	);
 
 	//##########################################################################

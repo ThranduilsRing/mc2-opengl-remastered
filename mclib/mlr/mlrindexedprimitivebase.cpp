@@ -83,7 +83,7 @@ MLRIndexedPrimitiveBase::MLRIndexedPrimitiveBase(
 	}
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.size());
+	visibleIndexedVertices.assign(coords.size(), 0);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,7 +132,7 @@ void
 	numGOSIndices = -1;
 
 	visibleIndexedVerticesKey = false;
-	int i, len = static_cast<int>(visibleIndexedVertices.GetLength());
+	int i, len = static_cast<int>(visibleIndexedVertices.size());
 
 	for(i=0;i<len;i++)
 	{
@@ -159,9 +159,9 @@ void
 #endif
 	coords.assign(data, data + dataSize);
 
-	if(index.size() > 0 && visibleIndexedVertices.GetLength() != dataSize)
+	if(index.size() > 0 && visibleIndexedVertices.size() != static_cast<size_t>(dataSize))
 	{
-		visibleIndexedVertices.SetLength(dataSize);
+		visibleIndexedVertices.assign(dataSize, 0);
 	}
 
 
@@ -181,7 +181,7 @@ void
 
 	if(coords.size() > 0)
 	{
-		visibleIndexedVertices.SetLength(coords.size());
+		visibleIndexedVertices.assign(coords.size(), 0);
 	}
 
 #ifdef _ARMOR
