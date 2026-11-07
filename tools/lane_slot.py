@@ -20,6 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
 sys.path.insert(0, os.path.join(HERE, "repo_intel"))
 import configure_ninja  # noqa: E402
+import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
 
 NIFTY = "claude/nifty-mendeleev"
 MAX_SLOTS = configure_ninja.SLOT_COUNT
@@ -31,7 +32,8 @@ PROTECTED = ("owner-test-", "v0.4", "_")  # install names never deleted
 
 
 def git(root, *args):
-    r = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    r = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True, stdin=subprocess.DEVNULL,
+                       **console_child.child_kwargs(redirected=True))
     return r.returncode, r.stdout.strip(), r.stderr.strip()
 
 
@@ -98,7 +100,8 @@ def acquire(branch, base):
     except Exception as e:  # noqa: BLE001
         print(f"[lane_slot] WARNING: lane registration failed: {e}", file=sys.stderr)
     # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created).
-    subprocess.run([sys.executable, f"{path}/scripts/ninja_build.py", "--warm"], cwd=path, stdin=subprocess.DEVNULL)
+    subprocess.run([sys.executable, f"{path}/scripts/ninja_build.py", "--warm"], cwd=path, stdin=subprocess.DEVNULL,
+                   **console_child.child_kwargs(redirected=True))
     print(path)
     return path
 
