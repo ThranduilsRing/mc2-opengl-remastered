@@ -72,7 +72,7 @@ def test_glued_simid_records_are_not_dropped(monkeypatch):
 
 @pytest.mark.parametrize("command", ["check", "run", "pairs-until-fail"])
 @pytest.mark.parametrize("install", [None, "lane3", "A:/Games/mc2-opengl/mc2-win64-lane3", "custom-install"])
-def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, command, install):
+def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, tmp_path, command, install):
     expected = sd.resolve_install(install) if install else sd.INSTALL_DIR
     launched, fingerprints, baselines, deployed = [], [], [], []
     monkeypatch.setattr(sd, "run_mission", lambda *args, **kwargs: launched.append(kwargs["install"]) or ["a", "b"])
@@ -84,7 +84,7 @@ def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, command, in
     monkeypatch.setattr(sd, "_seed", lambda log: "seed")
     monkeypatch.setattr(sd, "data_fingerprint", lambda path: fingerprints.append(path) or {"digest": path})
     monkeypatch.setattr(sd, "check_baseline", lambda a, base, seed, fp: baselines.append(fp) or (True, "match"))
-    argv = [command, "--out", "unused", "--min-frames", "1"]
+    argv = [command, "--out", str(tmp_path / "out"), "--min-frames", "1"]  # not the cwd: it left unused/result.json in the repo
     if command == "pairs-until-fail":
         argv += ["--mission", "mc2_03", "--max", "1"]
     else:

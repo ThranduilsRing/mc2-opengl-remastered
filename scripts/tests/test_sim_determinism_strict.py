@@ -196,3 +196,11 @@ _RENDER_ROW = "| mc2_03  | FAIL   | heartbeat_freeze_play,perf_counters_missing,
 def test_headless_exit_ok_keeps_failed_verdicts_red(rc, text, ok):
     """W116 item 3: rc=1 is only the render-gate verdict of a headless run, never a fingerprint or content failure."""
     assert sim.headless_exit_ok(rc, text) is ok
+
+
+def test_load_simid_drops_a_console_line_glued_to_animrng(tmp_path):
+    """W125: a stderr [VK_VALIDATION v1] chunk landed between the SIMID's last digit and its newline ('animrng=27smatc')."""
+    log = tmp_path / "x.log"
+    log.write_text("[VK_VALIDATION v1] severity=warning id=Format-Mi[SIMID v1] simframe=126 rng=1/2/3 animrng=27smatc\n"
+                   "h-ImageView text=\"x\"\n[SIMID v1] simframe=127 rng=1/2/3 animrng=28\n", encoding="utf-8")
+    assert sim.load_simid(str(log)) == ["[SIMID v1] simframe=126 rng=1/2/3 animrng=27", "[SIMID v1] simframe=127 rng=1/2/3 animrng=28"]
