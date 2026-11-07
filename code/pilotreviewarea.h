@@ -118,13 +118,8 @@ private:
 
 	LogisticsPilot*		pPilot;
 	
-	static aText*		s_nameText;
-	static aText*		s_rankText;
-	static aText*		s_missionText;
-	static aText*		s_killsText;
-	static aRect*		s_area;
-	static aRect*		s_liveIconRect;
-	static aRect*		s_deadIconRect;
+	struct Templates;
+	static std::unique_ptr<Templates>	s_tpl;
 	static long			s_itemCount;
 	
 	aText				nameText;
@@ -160,30 +155,10 @@ public:
 protected:
 
 	AttributeMeter		attributeMeters[2];
-	static AttributeMeter*		s_attributeMeters[2];
-
-	static aObject*		s_icons[8];
-	static aText*		s_nameText;
-	static aText*		s_missionText;
-	static aText*		s_killsText;
+	struct Templates;
+	static std::unique_ptr<Templates>	s_tpl;
 	static long			s_itemCount;
-	static aRect*		s_outline[5];
 
-	static aText*		s_rankText;
-	static aText*		s_gunneryText;
-	static aText*		s_pilotingText;
-	static aRect*		s_area;
-	static aRect*		s_iconRect;
-	static aRect*		s_killIconRect;
-	static PilotPromotionArea* s_pilotPromotionArea;
-	static aObject*		s_medals[MAX_MEDAL];
-	static aText*		s_promotionText;
-	static aText*		s_medalText;
-	static aText*		s_medalAwardedText;
-	static aAnimation*		s_skillAnim;
-	static aAnimation*		s_medalAwardedAnim;
-	static aAnimation*		s_pilotPromotedAnim;
-	
 	aObject		icons[4];
 	aText		nameText;
 	aText		missionText;
@@ -265,15 +240,8 @@ public:
 	SpecialtyListItem( int ID );
 
 private:
-	static aButton*	s_radioButton;
-	static aObject*		s_skillIcons[4];
-	static aAnimation*	s_highlightAnim;
-	static aAnimation*	s_normalAnim;
-	static aAnimation*	s_pressedAnim;
-	static aText*		s_description;
-	static aRect*		s_area;
-	static aRect*		s_outline;
-	static long			s_itemCount;
+	struct Templates;
+	static std::unique_ptr<Templates>	s_tpl;
 
 	static void			deleteStatics();
 
