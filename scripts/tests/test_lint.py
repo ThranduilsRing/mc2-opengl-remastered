@@ -58,3 +58,12 @@ def test_unregenerable_inventories_still_fail(capsys, monkeypatch):
         raise lm.Stop(1, "generator crashed")
     assert lm.lint(ROOT, "HEAD", runner=ok, regen=boom) == 1
     assert "inventories:" in capsys.readouterr().out
+
+
+def test_batch_lint_ok_follows_lint_rc(monkeypatch):
+    seen = []
+    assert lm.batch_lint_ok("r", lambda root, ref: seen.append((root, ref)) or 0)
+    assert not lm.batch_lint_ok("r", lambda root, ref: 1)
+    assert seen == [("r", "HEAD")]
+    text = open(lm.__file__, encoding="utf-8").read()
+    assert "args.stage and not batch_lint_ok(root)" in text

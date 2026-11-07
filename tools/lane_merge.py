@@ -983,6 +983,12 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
     return int(bool(failed))
 
 
+def batch_lint_ok(root: str, run=None) -> bool:
+    """A staged window lints its merged candidate once (about 1 min): a merge-fix commit made a gate-red 215014/225416 that lint
+    catches before a 35 min gate run (meta-0220 P1#4a). Stale inventories only WARN, so this never blocks on regeneration."""
+    return (run or lint)(root, "HEAD") == 0
+
+
 PRECHECK_RECEIPTS = os.environ.get("MC2_PRECHECK_RECEIPTS", "A:/Games/mc2-ops/precheck")
 
 
@@ -1465,6 +1471,9 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
                 print(f"BATCH STOPPED at quick rows ({', '.join(q[0] for q in qfailed)}) merged={len(merged)} remaining=(none)")
                 return 6
+        if batch and merged and not stopped and args.stage and not batch_lint_ok(root):
+            print(f"BATCH STOPPED at lint (merged={len(merged)}); fix the candidate, commit, and re-run --lint HEAD before the gate")
+            return 6
         if stopped:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:
