@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include <memory>
 #include <volk.h>
 struct VkImageResource;
@@ -34,4 +33,3 @@ private:
 // [VK_PRESENT] fsr_probe line); false for good after any provider create or dispatch failure.
 bool fsrProviderAvailable(VulkanContext& ctx);
 }
-#endif

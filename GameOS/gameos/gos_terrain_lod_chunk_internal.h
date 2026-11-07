@@ -23,12 +23,10 @@
 #include <map>
 #include "Gates/gate.h"
 
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
 #include "vulkan_sky_island.h"       // VK-PARITY-F3: HDRI sky behind the terrain prefix
 #include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_feed_dump.h"            // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
-#endif
 
 // Terrain MVP matrix — exposed by gameos_graphics.cpp for all terrain draw paths.
 extern const float* gos_GetTerrainMVPMat4();
@@ -47,9 +45,7 @@ extern float gos_GetShaderClockSeconds();
 // 1-frame offset -> shore-water dropout + decal tearing under camera motion.
 extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 
-#ifdef MC2_VULKAN_ISLAND
 
-#endif
 
 extern uint64_t gos_GetTerrainMaterialNormalVersion();
 // The gos texture handle of detail-normal slot `slot` (0-8), one layer source of that array; INVALID_TEXTURE_ID when absent.
@@ -182,20 +178,10 @@ extern float  s_overlayBounds[4];
 extern float  s_shorelineBounds[4];
 extern float  s_waterShoreHeightBounds[4];
 const float* mc2_chunkDetailAntiTileYZW();
-#ifdef MC2_VULKAN_ISLAND
 bool terrainVisualDisplaceGateOn();
-#endif
-#ifdef MC2_VULKAN_ISLAND
 float terrainVisualDisplaceFarParam();
-#endif
-#ifdef MC2_VULKAN_ISLAND
 extern std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;
-#endif
-#ifdef MC2_VULKAN_ISLAND
 extern float    s_vkTerrainMvp[16];
-#endif
-#ifdef MC2_VULKAN_ISLAND
 extern bool     s_vkTerrainFeedValid;
-#endif
 
 #endif // GOS_TERRAIN_LOD_CHUNK_INTERNAL_H

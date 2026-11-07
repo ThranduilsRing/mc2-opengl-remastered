@@ -74,11 +74,9 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_sharedIboBytes = 0;
     s_meshoptTris = 0;
     s_meshoptMissesBefore = s_meshoptMissesAfter = 0.0;
-#ifdef MC2_VULKAN_ISLAND
     mc2_vk_shadow_island_invalidate_geometry();
     mc2shadow::staticCasterSet().clear();   // the next mission rebuilds it once its geometry is final
     mc2_vk_color_prop_island_invalidate_geometry();   // map change: drop map-1 VBO/IBO
-#endif
     s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
     s_typeAlphaClass.clear();
     s_typeHotColors.clear();

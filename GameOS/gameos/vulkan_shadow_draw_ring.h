@@ -10,7 +10,6 @@
 #ifndef MC2_VK_SHADOW_DRAW_RING_H
 #define MC2_VK_SHADOW_DRAW_RING_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 #include <vk_mem_alloc.h>
@@ -113,5 +112,4 @@ private:
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_SHADOW_DRAW_RING_H

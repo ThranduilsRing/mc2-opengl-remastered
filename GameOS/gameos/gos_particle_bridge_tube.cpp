@@ -52,13 +52,11 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
     draws.push_back(draw);
 }
 void submit(const std::vector<VfxGeometryVertex>& vertices, const std::vector<VfxParticleDraw>& draws) {
-#ifdef MC2_VULKAN_ISLAND
     auto* pp = getGosPostProcess();
     const auto* mvp = gos_GetTerrainMVPMat4();
     if (mc2_vk_vfx_island_enabled() && pp && mvp && !vertices.empty())
         mc2_vk_vfx_island_run(vertices.data(), static_cast<uint32_t>(vertices.size()), draws.data(),
             static_cast<uint32_t>(draws.size()), mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
-#endif
 }
 }
 extern "C" void gos_tube_ribbon_enqueue(const float* positions, const float* colors, const float* uvs,

@@ -932,9 +932,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		// MECHLAB-3D-1: both cameras share ONE preview texture that clears per pass;
 		// hold the pass so the mech and the component render into the same batch.
 		const bool mech3d = mechCamera.hasObject();
-#ifdef MC2_VULKAN_ISLAND
 		mc2_vk_preview_hold( 1 );
-#endif
 		if ( mech3d )
 		{
 			mechCamera.setPreviewOffscreen( true );
@@ -942,9 +940,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		}
 		camera.setPreviewOffscreen( true );
 		camera.render();
-#ifdef MC2_VULKAN_ISLAND
 		mc2_vk_preview_hold( -1 );
-#endif
 		// Backdrop hook (later phase): a mech bay backdrop would be drawn here, before the mech.
 		if ( mech3d )
 			mechCamera.drawPreviewToPanel(

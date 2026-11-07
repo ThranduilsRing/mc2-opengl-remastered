@@ -1,6 +1,5 @@
 // vk_first_layout.cpp -- see vk_first_layout.h.
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vk_first_layout.h"
 
@@ -78,4 +77,3 @@ bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkIm
     return ok;
 }
 
-#endif  // MC2_VULKAN_ISLAND

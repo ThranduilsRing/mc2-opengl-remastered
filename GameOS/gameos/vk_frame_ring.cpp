@@ -1,5 +1,4 @@
 // vk_frame_ring.cpp -- see vk_frame_ring.h.
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_frame_ring.h"
 
 #include <cstdio>
@@ -80,4 +79,3 @@ FrameAlloc FrameRing::alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize 
 }
 
 }  // namespace mc2vk
-#endif  // MC2_VULKAN_ISLAND

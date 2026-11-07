@@ -12,7 +12,6 @@
 #ifndef MC2_VULKAN_SHADOW_ISLAND_LIVE_H
 #define MC2_VULKAN_SHADOW_ISLAND_LIVE_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
 #include "../../mclib/vk_object_lights.h"
@@ -234,5 +233,4 @@ void mc2_vk_shadow_island_invalidate_geometry();
 }
 #endif
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_SHADOW_ISLAND_LIVE_H

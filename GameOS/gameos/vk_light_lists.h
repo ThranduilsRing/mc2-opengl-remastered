@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_compute_pipeline.h"
 #include "vulkan_context.h"
 #include "gos_terrain_lighting.h"
@@ -121,4 +120,3 @@ public:
     }
 };
 }
-#endif

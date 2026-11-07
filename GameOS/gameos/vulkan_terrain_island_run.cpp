@@ -14,7 +14,6 @@
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 // ===========================================================================
@@ -774,4 +773,3 @@ extern "C" void mc2_render_backend_terrain_region_health(
     if (totalUs)          *totalUs          = g_health.totalUs;
 }
 
-#endif // MC2_VULKAN_ISLAND

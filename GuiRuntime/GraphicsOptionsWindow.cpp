@@ -228,9 +228,7 @@ void draw() {
         }
     }
 
-#ifdef MC2_VULKAN_ISLAND
     mc2vk::infra::panel();
-#endif
     ImGui::Separator();
     ImGui::TextDisabled("RAlt hotkeys still active.  Ctrl+Shift+G to close.");
 

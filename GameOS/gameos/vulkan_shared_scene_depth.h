@@ -16,7 +16,6 @@
 #ifndef MC2_VULKAN_SHARED_SCENE_DEPTH_H
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 // Opaque owner of the VK-only D32S8 image the islands share. The struct body lives
@@ -48,5 +47,4 @@ struct VkImageResource;
 VkImageResource* mc2SharedSceneDepthGetResource();
 #endif
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_SHARED_SCENE_DEPTH_H

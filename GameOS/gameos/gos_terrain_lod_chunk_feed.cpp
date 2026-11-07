@@ -4,7 +4,6 @@
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
 
-#ifdef MC2_VULKAN_ISLAND
 // ---------------------------------------------------------------------------
 // VK-P10 TERRAIN TIER-1 feed. When MC2_VK_TERRAIN_TIER1 (+ shared depth) is armed,
 // SubmitDrawCommands captures the LOD0 (lodStep==1) patch list + shared params into
@@ -13,8 +12,6 @@
 // none of this runs -> the GL path draws every band exactly as before.
 // The height / cement / visual-height bytes and their versions come from the terrain field store.
 // ---------------------------------------------------------------------------
-#endif
-#ifdef MC2_VULKAN_ISLAND
 // VK-TERRAIN-VISUALDISPLACE-FAR-1: file-scope reads of the SAME env knobs the draw
 // path caches locally (MC2_TERRAIN_VISUAL_DISPLACE / _FAR at gos_terrain_lod_chunk.cpp
 // draw site) so the feed getter can report them without touching the draw statics.
@@ -28,13 +25,9 @@ float terrainVisualDisplaceFarParam()
     static const float s_far = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_FAR">();
     return s_far;
 }
-#endif
-#ifdef MC2_VULKAN_ISLAND
 std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
 float    s_vkTerrainMvp[16] = {0};
 bool     s_vkTerrainFeedValid = false;
-#endif
-#ifdef MC2_VULKAN_ISLAND
 
 namespace {
 std::string activitySnapshot;
@@ -378,4 +371,3 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
     return mc2_terrain_tier1_get_load_feed(out);
 }
-#endif

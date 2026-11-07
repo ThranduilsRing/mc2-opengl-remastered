@@ -19,7 +19,6 @@
 #ifndef MC2_VULKAN_TERRAIN_ISLAND_H
 #define MC2_VULKAN_TERRAIN_ISLAND_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
 #include <span>
@@ -345,5 +344,4 @@ void mc2_vk_terrain_island_destroy();
 }
 #endif
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_TERRAIN_ISLAND_H

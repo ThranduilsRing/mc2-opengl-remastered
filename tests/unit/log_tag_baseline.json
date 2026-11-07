@@ -8056,13 +8056,6 @@
    "tag": "SCENE_TARGETS",
    "ver": -1,
    "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "SCENE_TARGETS",
-   "ver": -1,
-   "stream": "stderr",
    "keys": [
     "backend",
     "extent",

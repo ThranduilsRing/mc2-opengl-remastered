@@ -17,7 +17,6 @@
 // island TUs are compiled with BOTH defined (see CMakeLists island block).
 // =============================================================================
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -130,4 +129,3 @@ VkImageResource* mc2SharedSceneDepthGetResource() {
     return (d && d->resValid) ? &d->res : nullptr;
 }
 
-#endif // MC2_VULKAN_ISLAND

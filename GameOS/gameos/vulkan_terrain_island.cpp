@@ -35,7 +35,6 @@
 
 #include "vulkan_terrain_island_internal.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 
@@ -146,4 +145,3 @@ int  g_terrainInitReachedBuild = 0;
 
 } // namespace
 
-#endif // MC2_VULKAN_ISLAND

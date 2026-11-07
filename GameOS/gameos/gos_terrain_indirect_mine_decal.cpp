@@ -128,7 +128,6 @@ bool DrawMineStatic() {
     }
     RebuildMineStaticVBOIfDirty();
     if (g_mineVerts.empty()) return true;
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2_vk_overlay_enabled() || !g_mineTextureArrayReady) return false;
     struct Vertex { float pos[3]; float uv[2]; float fog; uint32_t argb; };
     static_assert(sizeof(Vertex) == 28);
@@ -148,9 +147,6 @@ bool DrawMineStatic() {
                           draws.data(), static_cast<uint32_t>(draws.size()), 0);
     Counters_AddIndirectMineDrawnCells(g_mineVertCount / 6);
     return true;
-#else
-    return false;
-#endif
 }
 }
 void gos_terrain_indirect_MarkMineDirty() { gos_terrain_indirect::MarkMineDirty(); }
@@ -202,13 +198,11 @@ struct DecalDrawRange {
 int                          g_decalVertCount     = 0;
 bool                         g_decalVBODirty      = true;  // first build triggers via Rebuild on first armed draw
 std::vector<DecalDrawRange>  g_decalDrawRanges;
-#ifdef MC2_VULKAN_ISLAND
 // VK-PARITY-OVERLAY-1: CPU copy of the static bake (the GL VBO is write-only here) so the
 // VK overlay owner can draw it into the shared GBuffer. Version bumps per rebuild.
 std::vector<DecalVert>       g_decalVertsCpu;
 uint64_t                     g_decalBakeVersion   = 0;
 bool                         g_decalLoadPending   = false;
-#endif
 
 // Mirrors quad.cpp's OVERLAY_ELEV_OFFSET (0.15f) + the fixed overlay UV
 // constants (oldminU/oldmaxU/oldminV/oldmaxV at quad.cpp:2054-2057). The M2d
@@ -267,10 +261,8 @@ void ResetDecalStaticVBO() {
     g_decalVertCount = 0;
     g_decalVBODirty  = true;
     g_decalDrawRanges.clear();
-#ifdef MC2_VULKAN_ISLAND
     g_decalLoadPending = false;
     g_decalVertsCpu.clear();
-#endif
     if (IsTraceEnabled()) {
         mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_cpu_reset\n");
         fflush(stdout);
@@ -645,7 +637,6 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
     MC2_DIAGF("[TERRAIN_ROAD_COOK] tiles=%d fallback_vertices=%d unresolved=%d\n",
         cookedRoads, g_decalVertCount, unresolved);
     g_decalVBODirty = unresolved != 0;
-#ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_overlay_enabled()) {
         const bool identical = g_decalVertsCpu.size() == verts.size() &&
             (verts.empty() || std::memcmp(g_decalVertsCpu.data(), verts.data(), verts.size() * sizeof(DecalVert)) == 0);
@@ -656,7 +647,6 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
         }
         if (!identical) { g_decalVertsCpu = verts; ++g_decalBakeVersion; }
     }
-#endif
 
 }
 
@@ -895,7 +885,6 @@ bool DrawDecalStatic() {
     }
     static_assert(sizeof(DecalDrawRange) == sizeof(GosDecalStaticDraw),
                   "DecalDrawRange must layout-match GosDecalStaticDraw");
-#ifdef MC2_VULKAN_ISLAND
     // VK-PARITY-OVERLAY-1: under the VK umbrella the GL scene FBO is discarded, so hand the
     // static bake to the VK overlay owner (drawn by mc2_vk_overlay_run after Render.Decals)
     // INSTEAD of the GL draw. Gate off => falls through to the unchanged GL bridge call.
@@ -910,14 +899,12 @@ bool DrawDecalStatic() {
         Counters_AddDecalStaticTrisDrawn(static_cast<long long>((g_decalVertCount / 3)));
         return true;
     }
-#endif
     return false;
 
 }
 
 }  // namespace gos_terrain_indirect
 
-#ifdef MC2_VULKAN_ISLAND
 extern "C" int mc2_terrain_overlay_get_load_stream(const void** verts, uint32_t* vertCount,
     const Mc2VkOverlayDraw** draws, uint32_t* drawCount, uint64_t* version) {
     using namespace gos_terrain_indirect;
@@ -938,7 +925,6 @@ extern "C" int mc2_terrain_overlay_get_load_stream(const void** verts, uint32_t*
         *vertCount, *drawCount, g_cementLayerMapReady, gos_TerrainLodChunk_OverlaySidecarLoaded());
     return 1;
 }
-#endif
 
 // C-linkage forwarder for the cement-mutation invalidation sites (code/
 // bldng.cpp bridge-destroy + mclib/terrain.cpp Terrain::setOverlay). Mirrors

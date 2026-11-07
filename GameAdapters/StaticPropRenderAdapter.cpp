@@ -52,9 +52,7 @@ inline RenderCore::StaticPropInstanceDesc toMirror(
 namespace GameAdapters {
 namespace StaticProp {
 void flushLateCoverage() {
-#ifdef MC2_VULKAN_ISLAND
     mc2_vk_color_prop_island_late_fringe();
-#endif
 }
 
 // Pre-mech-batcher static-prop reset. Called BEFORE GpuMechBatcher::onMapLoad().

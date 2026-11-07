@@ -3,7 +3,6 @@
 #include "vulkan_water_island_internal.h"
 #include "gameos.hpp"
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 namespace vk_water_detail {
@@ -172,4 +171,3 @@ bool ensure_shore(WaterIsland* s) {
 
 }  // namespace vk_water_detail
 
-#endif // MC2_VULKAN_ISLAND

@@ -1,5 +1,4 @@
 #include "vulkan_motion_vectors.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
@@ -311,4 +310,3 @@ bool MotionVectors::recordDebug(VkCommandBuffer cb, VkImageView target, uint32_t
     return true;
 }
 }
-#endif

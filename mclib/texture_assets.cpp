@@ -11,9 +11,7 @@
 #include "fastfile.h"
 #include "../GameOS/gameos/texture_decode.h"
 #include "../GameOS/gameos/gos_profiler.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "../GameOS/gameos/ui_texture.h"
-#endif
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include <algorithm>
@@ -350,9 +348,7 @@ long refresh(mc2::czstring match, long& missing) {
         source->bytes=sourceStore().internBytes(identity,std::move(bytes)); source->file=true;
         queueCpuTexture(*source);
         RenderCore::textureService().rebind(source->handle,source->asset);
-#ifdef MC2_VULKAN_ISLAND
         mc2vk::invalidateUiImage(source->handle);
-#endif
         ++count;
     }
     if (count) invalidateTexResolveTable();
@@ -365,15 +361,11 @@ std::shared_ptr<const RenderCore::KtxImage> image(DWORD asset) {
 uint64_t uiId(DWORD asset) {
     auto source=liveSource(asset);
     if (!source) return 0;
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2vk::uiTextureServiceReady()) return 0;
     if (!mc2vk::hasUiImage(source->handle)) {
         auto copy=snapshot(*source);
         mc2vk::requestUiImage(source->handle,[copy=std::move(copy)]() mutable { return decodeUi(std::move(copy)); });
     }
     return RenderCore::uiTextureId(source->handle);
-#else
-    return 0;
-#endif
 }
 } // namespace mc2::textures

@@ -8,7 +8,6 @@
 #include "diagnostic_trace.h"
 #include "mc2fmt.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <atomic>
 #include <cstdarg>
@@ -134,4 +133,3 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice) {
 
 int vkImageResourceLiveCount() { return g_liveImages.load(std::memory_order_relaxed); }
 
-#endif // MC2_VULKAN_ISLAND

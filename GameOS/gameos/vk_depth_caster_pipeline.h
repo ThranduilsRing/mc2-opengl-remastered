@@ -6,7 +6,6 @@
 #ifndef MC2_VK_DEPTH_CASTER_PIPELINE_H
 #define MC2_VK_DEPTH_CASTER_PIPELINE_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -24,5 +23,4 @@ bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_DEPTH_CASTER_PIPELINE_H

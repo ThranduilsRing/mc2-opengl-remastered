@@ -1,5 +1,4 @@
 #include "vulkan_fsr_provider.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vulkan_motion_vectors.h"
 #include "vk_image_resource.h"
@@ -215,4 +214,3 @@ bool fsrProviderAvailable(VulkanContext& ctx) {
 VkImageView FsrProvider::outputView() const { return impl_ ? impl_->output.view.get() : VK_NULL_HANDLE; }
 void FsrProvider::resetHistory() { if (impl_) impl_->resetFrames = 2; }
 }
-#endif

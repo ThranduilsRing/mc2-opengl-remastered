@@ -43,7 +43,6 @@ extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_pr
 extern std::atomic<uint32_t> g_mc2FrameCounter;
 void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWLightsData* out);
 
-#ifdef MC2_VULKAN_ISLAND
 // Mech lab: the in-game GPU mech material path into the panel (vulkan_mech_island.cpp, preview pass). One GPU
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
@@ -90,7 +89,6 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	mc2_vk_mech_preview_request( &q );
 	return true;
 }
-#endif
 
 extern bool drawOldWay;
 extern bool useFog;
@@ -397,7 +395,6 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					g_previewBoundsMaxX = g_previewBoundsMaxY = -1e9f;
 				}
 				bool gpuDraws = false;
-#ifdef MC2_VULKAN_ISLAND
 				// Contact-shadow anchor: the mech's smoothed feet centre and height from the last frame's projected bounds.
 				if ( framed_ && drawn_[3] - drawn_[1] > 8.f )
 				{
@@ -409,7 +406,6 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
 				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f ) )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
-#endif
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
 				g_previewBoundsOnly = gpuDraws;
 				previewShape->PreviewDraw(view);
@@ -493,11 +489,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const
 {
 #ifdef MC2_IMGUI
-	#ifdef MC2_VULKAN_ISLAND
     const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
-#else
-    const uint64_t tex=0;
-#endif
 	const float u1 = bounds[0] / 800.f;
 	const float u2 = bounds[2] / 800.f;
 	const float v1 = 1.f - bounds[1] / 600.f;   // top    -> flipped

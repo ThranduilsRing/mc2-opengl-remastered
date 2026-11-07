@@ -58,14 +58,12 @@
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "../GameOS/gameos/vulkan_shadow_island_live.h"  // VK-P8a SHADOW-INTEROP: producer call
 #include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
 #include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"  // VK-PARITY-F1: legacy MLR solid loop VK owner
 #include "../GameOS/gameos/vulkan_impact_decals.h"         // weapon impact box decals
 #include "../GameOS/gameos/vulkan_terrain_island.h"        // VK-PARITY-OVERLAY-1: overlay/decal VK owner
-#endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
 #include "../GameOS/gameos/gos_static_prop_registry.h"  // Stage 3.C: flush()

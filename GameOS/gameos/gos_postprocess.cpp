@@ -342,13 +342,11 @@ void gosPostProcess::endScene()
 {
     ZoneScopedN("Render.PostProcess");
     if (!initialized_) return;
-#ifdef MC2_VULKAN_ISLAND
     if (vkPostScreenFxNativeEnabled()) {
         runVkPostScreenShadowStaticNative();
         runVkPostScreenFxNative();
     }
     runVkPostFogNative();
-#endif
     int x=0,y=0,w=outputWidth_,h=outputHeight_;
     int bx=0,by=0,bw=0,bh=0;
     if (gos_Compute43Box(outputWidth_,outputHeight_,&bx,&by,&bw,&bh)) { x=bx; y=by; w=bw; h=bh; }
@@ -374,9 +372,7 @@ float mc2ShadowMinSunAltDeg()
 
 void gosPostProcess::drawShadowDebugOverlay() {
     if (!showShadowDebug_ || !initialized_) return;
-#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
     if (mc2_vk_shadow_island_movers_ready())
         if (void* view=mc2_vk_shadow_island_get_mover_debug_view())
             mc2vk::getOrCreateEnginePresentVk().renderNativeCsmShadowDebugOverlay(view,0);
-#endif
 }

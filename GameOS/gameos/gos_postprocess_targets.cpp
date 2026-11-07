@@ -6,10 +6,8 @@
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
 #include "vulkan_impact_decals.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_image_resource.h"
-#endif
 #include <cstdlib>
 
 namespace {
@@ -19,25 +17,13 @@ int sceneSide(int pixels) {
 }
 
 bool gosPostProcess::sceneColorReady() const {
-#ifdef MC2_VULKAN_ISLAND
     return sharedSceneColor_ != nullptr;
-#else
-    return false;
-#endif
 }
 bool gosPostProcess::sceneNormalReady() const {
-#ifdef MC2_VULKAN_ISLAND
     return sharedSceneNormal_ != nullptr;
-#else
-    return false;
-#endif
 }
 bool gosPostProcess::sceneObjectIdReady() const {
-#ifdef MC2_VULKAN_ISLAND
     return sharedSceneObjectId_ != nullptr;
-#else
-    return false;
-#endif
 }
 
 void gosPostProcess::createSceneTargets(int w, int h) {
@@ -45,7 +31,6 @@ void gosPostProcess::createSceneTargets(int w, int h) {
     outputHeight_ = h > 0 ? h : 1;
     width_ = sceneSide(outputWidth_);
     height_ = sceneSide(outputHeight_);
-#ifdef MC2_VULKAN_ISLAND
     const char* reason = "unknown";
     auto require = [&](bool ready, mc2::czstring slot) {
         if (ready) return;
@@ -82,14 +67,9 @@ void gosPostProcess::createSceneTargets(int w, int h) {
     mc2::fmt::print_err("[SCENE_TARGETS] backend=Vulkan extent={:d}x{:d} object_id={:d} output={:d}x{:d}\n",
         mc2::fmt::as_i32(width_),mc2::fmt::as_i32(height_),mc2::fmt::as_i32(sceneObjectIdReady() ? 1 : 0),
         mc2::fmt::as_i32(outputWidth_),mc2::fmt::as_i32(outputHeight_));
-#else
-    mc2::fmt::print_err("[SCENE_TARGETS] Vulkan support is required\n");
-    std::abort();
-#endif
 }
 
 void gosPostProcess::destroySceneTargets() {
-#ifdef MC2_VULKAN_ISLAND
     // Menu frames also sample these images, before any lazy post-effect exists.
     if (mc2vk::engineVulkanContextValid())
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("scene_targets");
@@ -103,7 +83,6 @@ void gosPostProcess::destroySceneTargets() {
     mc2SharedSceneColorDestroy(sharedSceneNormal_); sharedSceneNormal_=nullptr;
     mc2SharedSceneColorDestroy(sharedSceneColor_); sharedSceneColor_=nullptr;
     mc2SharedSceneDepthDestroy(sharedSceneDepth_); sharedSceneDepth_=nullptr;
-#endif
     using RenderCore::RenderResourceId;
     for (const auto id : {RenderResourceId::MainColor,RenderResourceId::MainDepth,RenderResourceId::MainNormal,RenderResourceId::SceneObjectId}) {
         RenderCore::RenderResourceDesc d; d.id=id;

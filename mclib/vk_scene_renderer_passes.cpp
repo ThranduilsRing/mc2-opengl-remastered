@@ -17,7 +17,6 @@ extern long     g_loadRaceAtlasFirstFrame;
 extern long     g_loadRaceArmFirstFrame;
 void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& submissions)
 {
-#ifdef MC2_VULKAN_ISLAND
 
 		// Publish this frame's poses before fitting or drawing the mover map.
 		// The colour island consumes this same snapshot after terrain.
@@ -58,7 +57,6 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 		g_numShadowShapes.store(0,std::memory_order_relaxed);
 		return;
 
-#endif
 }
 
 void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissions)
@@ -212,15 +210,11 @@ void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissio
 					gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
 					gos_SetRenderState( gos_State_Terrain, 0 );
 
-#ifdef MC2_VULKAN_ISLAND
                     vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_SOLID, 0);
-#endif
 					submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 				}
 			}
-#ifdef MC2_VULKAN_ISLAND
 		vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
-#endif
 		// Emit one [BUCKET_CENSUS v1] line per frame (env-gated). Runs
 		// after flush() has populated the modern-side stats and after
 		// either branch has reset the legacy ring; legacy_eligible was
@@ -298,14 +292,12 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 			// then co-writes the skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0)
 			// = mechs dropped this frame, no corruption.
 
-#ifdef MC2_VULKAN_ISLAND
 			if (mc2_vk_mech_island_enabled()) {
 				ZoneScopedN("Render.GpuMechs.VkTier1");
 				if (gosPostProcess* ppVkMech = getGosPostProcess()) {
 					(void)mc2_vk_mech_island_run(ppVkMech->getWidth(), ppVkMech->getHeight());
 				}
 			}
-#endif
 		};
 
 		if (s_reorderSpMech) {
@@ -363,7 +355,6 @@ void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submiss
 		ZoneScopedN("Render.Decals");
 		gos_DrawDecals();
 	}
-#ifdef MC2_VULKAN_ISLAND
 	// VK-PARITY-OVERLAY-1: the static cement/road overlay bake and the decal batch were queued
 	// (not GL-drawn) when the terrain island is armed; draw them into the shared GBuffer now,
 	// in the same slot (after terrain/objects, before the old overlays).
@@ -378,6 +369,5 @@ void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submiss
 		if (gosPostProcess* ppImpact = getGosPostProcess())
 			(void)mc2_vk_impact_decals_run(ppImpact->getWidth(), ppImpact->getHeight());
 	}
-#endif
 	// ── End new world-space overlay batches ───────────────────────────────────
 }

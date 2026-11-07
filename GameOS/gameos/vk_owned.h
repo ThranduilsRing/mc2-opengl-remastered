@@ -9,7 +9,6 @@
 #ifndef MC2_VK_OWNED_H
 #define MC2_VK_OWNED_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 #include <cstdio>
@@ -255,5 +254,4 @@ inline VkFormat texelFormat(uint32_t vkFormat) {
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_OWNED_H

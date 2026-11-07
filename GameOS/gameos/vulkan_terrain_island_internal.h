@@ -5,7 +5,6 @@
 #ifndef VULKAN_TERRAIN_ISLAND_INTERNAL_H
 #define VULKAN_TERRAIN_ISLAND_INTERNAL_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -432,6 +431,5 @@ bool ensure_island_ready(int w, int h);
 bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed, int32_t& vkPoolLights, int32_t& vkGridDim, mc2vk::FrameAlloc (&lp)[3]);
 void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed, const Mc2TerrainTier1Patch& patch, int32_t vkPoolLights, int32_t vkGridDim, TerrainFrameUBO& u);
 
-#endif // MC2_VULKAN_ISLAND
 
 #endif // VULKAN_TERRAIN_ISLAND_INTERNAL_H

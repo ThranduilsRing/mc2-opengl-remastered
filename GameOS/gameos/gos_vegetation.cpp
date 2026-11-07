@@ -3,10 +3,8 @@
 #include "mc2_czstring.h"
 #include "gos_vegetation.h"
 #include "vulkan_vfx_geometry.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_vegetation_state.h"
 #include "vulkan_context.h"
-#endif
 #include "texture_decode.h"
 #include "vegetation_cutout.h"
 #include "../../GameAdapters/vegetation_budget.h"
@@ -167,12 +165,9 @@ void GosVegetation::shutdown() {
     frameDraws = sessionDraws = 0;
     reason = "no_call";
     mc2_vk_vfx_vegetation_atlas(mc2tex::TextureArrayCpu{});
-#ifdef MC2_VULKAN_ISLAND
     if (mc2veg::State::exists()) mc2veg::State::instance().clear(mc2vk::getOrCreateEngineVulkanContext());
-#endif
 }
 uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2vk::engineVulkanContextValid()) return 0;
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), &properties);
@@ -188,15 +183,11 @@ uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
     }
     if (lo < cap) mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation capacity sized to fit the largest whole population (no thinning): requested_max={:d} capacity={:d}\n", mc2::fmt::as_u32(cap), mc2::fmt::as_u32(lo));
     return lo;
-#else
-    return 0;
-#endif
 }
 
 void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     if (!initialized) return;
     populationCount = 0;
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2vk::engineVulkanContextValid()) return;
     mc2veg::State& gpu = mc2veg::State::instance();
     if (!data || !count) { gpu.clear(mc2vk::getOrCreateEngineVulkanContext()); return; }
@@ -240,9 +231,6 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
         populationCount = static_cast<uint32_t>(sorted.size());
         peak = std::max(peak, populationCount);
     }
-#else
-    (void)data; (void)count;
-#endif
 }
 void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
     if (data && count) visibility.assign(data, data+count);
@@ -257,7 +245,6 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     const auto* mvp = gos_GetTerrainMVPMat4();
     auto* pp = getGosPostProcess();
     if (!mvp || !pp) { reason="missing_buffers"; return; }
-#ifdef MC2_VULKAN_ISLAND
     const bool force = false;
     const float maxDist = mc2::gate::get<"MC2_VEG_MAX_DIST">();
     const float fadeStart = maxDist*0.5f;
@@ -283,10 +270,6 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     if (mc2_vk_vfx_vegetation_run(cp,mvp,visibility,pp->getWidth(),pp->getHeight())) {
         frameDraws=1; ++sessionDraws; reason="submitted";
     } else reason="gpu_declined";
-#else
-    (void)lz; (void)time; (void)cx; (void)cy; (void)cz; (void)halfMap; (void)blockSide; (void)chunkSide;
-    reason="native_unavailable";
-#endif
 }
 GosVegetation::VegFrameStats GosVegetation::getFrameStats() {
     return {static_cast<int>(populationCount),frameDraws,reason};
@@ -295,7 +278,6 @@ void GosVegetation::emitSummary() {
     if (!isEnabled() || summaryEmitted) return;
     mc2::fmt::print_err("VEG_SUMMARY instance_count={:d} draw_calls={:d} flush_reason={}\n",
         mc2::fmt::as_u32(peak),mc2::fmt::as_i32(sessionDraws),reason);
-#ifdef MC2_VULKAN_ISLAND
     // Upload volume follows population changes, not frames: these two numbers must not grow with the frame count.
     if (mc2veg::State::exists()) {
         const mc2veg::State& gpu = mc2veg::State::instance();
@@ -303,6 +285,5 @@ void GosVegetation::emitSummary() {
             mc2::fmt::as_u64(gpu.stats().uploads),mc2::fmt::as_u64(gpu.stats().uploadBytes),
             mc2::fmt::as_u64(gpu.frameUploadBytes()),mc2::fmt::as_u32(gpu.lastSurvivors()));
     }
-#endif
     std::fflush(stderr); summaryEmitted=true;
 }

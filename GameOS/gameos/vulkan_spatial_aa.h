@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include <memory>
 #include <volk.h>
 struct VkImageResource;
@@ -21,4 +20,3 @@ private:
     uint32_t failedW_ = 0, failedH_ = 0;
 };
 }
-#endif

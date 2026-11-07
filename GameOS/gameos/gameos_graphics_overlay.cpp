@@ -46,7 +46,6 @@ void gosRenderer::pushDecalTri(const WorldOverlayVert* verts3, unsigned int texH
     pushToOverlayBatch_(decalBatch_, verts3, texHandle);
 }
 
-#ifdef MC2_VULKAN_ISLAND
 // VK-PARITY-OVERLAY-1: GL-side per-frame inputs of the overlay/decal shaders that the VK
 // owner (vulkan_terrain_island.cpp) cannot read itself. Same values uploadOverlayUniforms_ gives GL.
 extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
@@ -66,7 +65,6 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
     out->cementAdopt = s_cementAdopt;
     out->seamFix = s_seamFix;
 }
-#endif
 
 // Draw the terrain overlay batch (alpha cement perimeter tiles).
 // Render state: opaque, depth-write ON, depth-test LEQUAL (same as solid terrain).
@@ -75,14 +73,12 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
 // [RENDER_CONTRACT:Pass=TerrainOverlay id=gosRenderer_drawTerrainOverlays]
 void gosRenderer::drawTerrainOverlays()
 {
-#ifdef MC2_VULKAN_ISLAND
     if (!terrainOverlayBatch_.draws.empty() && mc2_vk_overlay_enabled()) {
         static_assert(sizeof(OverlayBatchEntry_) == sizeof(Mc2VkOverlayDraw));
         mc2_vk_overlay_submit(0u, terrainOverlayBatch_.verts.data(), static_cast<uint32_t>(terrainOverlayBatch_.verts.size()),
             reinterpret_cast<const Mc2VkOverlayDraw*>(terrainOverlayBatch_.draws.data()),
             static_cast<uint32_t>(terrainOverlayBatch_.draws.size()), 0);
     }
-#endif
     terrainOverlayBatch_.verts.clear();
     terrainOverlayBatch_.draws.clear();
 }
@@ -102,14 +98,12 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
 // [RENDER_CONTRACT:Pass=TerrainDecal id=gosRenderer_drawDecals]
 void gosRenderer::drawDecals()
 {
-#ifdef MC2_VULKAN_ISLAND
     if (!decalBatch_.draws.empty() && mc2_vk_overlay_enabled()) {
         static_assert(sizeof(OverlayBatchEntry_) == sizeof(Mc2VkOverlayDraw));
         mc2_vk_overlay_submit(1u, decalBatch_.verts.data(), static_cast<uint32_t>(decalBatch_.verts.size()),
             reinterpret_cast<const Mc2VkOverlayDraw*>(decalBatch_.draws.data()),
             static_cast<uint32_t>(decalBatch_.draws.size()), 0);
     }
-#endif
     decalBatch_.verts.clear();
     decalBatch_.draws.clear();
 }

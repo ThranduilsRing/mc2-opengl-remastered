@@ -44,7 +44,6 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
     const auto instances = std::move(pending);
     pending.clear();
     if (instances.empty()) return;
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2_vk_vfx_island_enabled()) return;
     const float* mvp = gos_GetTerrainMVPMat4();
     auto* pp = getGosPostProcess();
@@ -82,7 +81,6 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
     }
     if (!vertices.empty()) mc2_vk_vfx_island_run(vertices.data(), static_cast<uint32_t>(vertices.size()),
         draws.data(), static_cast<uint32_t>(draws.size()), mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
-#endif
 }
 
 extern "C" void gos_vfx_mesh_fixture(const float origin[3]) {

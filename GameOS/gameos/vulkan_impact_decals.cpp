@@ -43,7 +43,6 @@ extern "C" void mc2_vk_impact_decals_health(Mc2ImpactDecalHealth* out) {
     if (out) *out = g_health;
 }
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -460,10 +459,3 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     return 1;
 }
 
-#else   // !MC2_VULKAN_ISLAND
-
-extern "C" int mc2_vk_impact_decals_run(int, int) { return 0; }
-extern "C" int mc2_vk_impact_decals_prewarm(int, int) { return 0; }
-extern "C" void mc2_vk_impact_decals_destroy() {}
-
-#endif

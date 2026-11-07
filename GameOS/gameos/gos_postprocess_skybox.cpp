@@ -27,7 +27,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         viewMat[2], viewMat[6], viewMat[10]
     };
 
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2_vk_sky_island_enabled()) return;
     float yaw = hdriAzOffsetRadians();
     if (hdriBakedSunValid_) {
@@ -37,5 +36,4 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     }
     skyYaw_ = yaw;
     mc2_vk_sky_submit(invProjArray, invViewRot, yaw, getHdriGeneration());
-#endif
 }

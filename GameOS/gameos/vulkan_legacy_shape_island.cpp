@@ -10,7 +10,6 @@
 //   * no lights / no instancing: vertex colour is already CPU-lit.
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -732,4 +731,3 @@ extern "C" void mc2_vk_legacy_shape_island_destroy() {
     mc2vk::getOrCreateEngineVulkanContext().retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
 }
 
-#endif // MC2_VULKAN_ISLAND

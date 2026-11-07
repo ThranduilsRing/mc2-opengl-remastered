@@ -63,12 +63,10 @@ void mc2::VkSceneRenderer::renderListsPreamble (RenderSubmissions& submissions)
 
 void mc2::VkSceneRenderer::renderListsSceneDataUpload (RenderSubmissions& submissions)
 {
-#ifdef MC2_VULKAN_ISLAND
     // Vulkan reads this CPU fog snapshot; the legacy GL SceneData UBO is gone.
     const vec4 fc = uint32_to_vec4(eye->fogColor);
 
     mc2SetSceneFogColorRGB(fc.z, fc.y, fc.x);
-#endif
 }
 
 void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (RenderSubmissions& submissions)

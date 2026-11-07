@@ -332,13 +332,11 @@ uint32_t mc2StaticLightHighWater()
     return s_staticLightHighWater;
 }
 
-#ifdef MC2_VULKAN_ISLAND
 // VK-MECH-MATERIAL-LIGHTING-1: global fog-color snapshot (RGB, GL scene-UBO order),
 // set once per frame at the scene-UBO upload site. Read by the VK mech island feed.
 static float s_vkSceneFogRGB[3] = {0.0f, 0.0f, 0.0f};
 void mc2SetSceneFogColorRGB(float r, float g, float b) { s_vkSceneFogRGB[0]=r; s_vkSceneFogRGB[1]=g; s_vkSceneFogRGB[2]=b; }
 extern "C" void mc2GetSceneFogColorRGB(float out[3]) { out[0]=s_vkSceneFogRGB[0]; out[1]=s_vkSceneFogRGB[1]; out[2]=s_vkSceneFogRGB[2]; }
-#endif
 
 bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
 {

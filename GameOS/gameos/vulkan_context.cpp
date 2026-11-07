@@ -39,11 +39,9 @@
 #include "vk_device_profile.h"
 #include "vk_gpu_profile.h"
 #include "vk_validation_line.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_image_resource.h"
 #include "vk_texture_residency.h"
 #include "vk_one_shot.h"
-#endif
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -683,14 +681,12 @@ bool VulkanContext::init(bool wantPresent) {
         if (vkCreateSemaphore(device_, &sci, nullptr, &gfxTimeline_) != VK_SUCCESS) { gfxTimeline_ = VK_NULL_HANDLE; return fail("graphics timeline semaphore"); }
         tracker_ = CompletionTracker{};
     }
-#ifdef MC2_VULKAN_ISLAND
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(phys_, &props);
         const VkDeviceSize a = std::max<VkDeviceSize>({props.limits.minUniformBufferOffsetAlignment, props.limits.minStorageBufferOffsetAlignment, 16});
         frameAlign_ = a;
     }
-#endif
 
     // ---- VMA allocator (volk-imported functions) ----
     {
@@ -709,25 +705,20 @@ bool VulkanContext::init(bool wantPresent) {
         if (r != VK_SUCCESS) { allocator_ = nullptr; return fail("vmaCreateAllocator failed"); }
     }
 
-#ifdef MC2_VULKAN_ISLAND
     if (!RenderCore::activeTextureService) {
         textureServiceOwner_ = std::make_unique<RenderCore::TextureService>();
         RenderCore::activeTextureService = textureServiceOwner_.get();
     }
     textures_ = std::make_unique<TextureResidency>(*this, RenderCore::textureService());
     if (!textures_->init()) return fail("texture service initialization");
-#endif
     health_.created = true;
     health_.fallbackReason.clear();
-#ifdef MC2_VULKAN_ISLAND
     gpuprof::init(*this);   // Tracy GPU context + debug labels + MC2_VK_GPU_TIMESTAMPS ring, on the one graphics queue
-#endif
     ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
            health_.deviceName, wantPresent ? 1 : 0, valPreset);
     return true;
 }
 
-#ifdef MC2_VULKAN_ISLAND
 void VulkanContext::retireIsland(IslandSlot slot) {
     std::unique_ptr<IslandState>& parked = islandSlot(slot);
     if (!parked) return;
@@ -739,7 +730,6 @@ void VulkanContext::retireIsland(IslandSlot slot) {
     deferred_.drainAll();   // parked owners may name this island's pools (a retired sprite page frees its set): they go while the island is still alive
     parked.reset();
 }
-#endif
 
 void VulkanContext::waitIdle(std::string_view why) const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::waitIdle");
@@ -780,9 +770,7 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::submit");
     if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE || infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;
     const auto lock = lockSubmit(submitMutex_);   // the value and the queue order must agree
-#ifdef MC2_VULKAN_ISLAND
     flushUploadsLocked();   // queued uploads run ahead of every submit that may sample them
-#endif
     return submitLocked(si, fence, outValue);
 }
 
@@ -795,7 +783,6 @@ VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) con
     return vkQueuePresentKHR(queue, &info);
 }
 
-#ifdef MC2_VULKAN_ISLAND
 GpuTicket VulkanContext::flushUploadsLocked() const {
     if (!uploads_.pending()) return {};
     OwnedCommandPool pool;
@@ -817,7 +804,6 @@ GpuTicket VulkanContext::flushUploads() const {
     const auto lock = lockSubmit(submitMutex_);
     return flushUploadsLocked();
 }
-#endif
 
 VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
     // A deferred batch that failed earlier already returned VK_SUCCESS to its callers: surface it here, once, so an island disables itself.
@@ -986,7 +972,6 @@ void VulkanContext::beginFrame() {
     tracker_.beginFrame();
     { ZoneScopedN("VKContext.Collect"); deferred_.collect(tracker_); }
     { ZoneScopedN("VKContext.InfraFrame"); infra::frame(); }
-#ifdef MC2_VULKAN_ISLAND
     // Retire the active descriptor/buffer slot before any per-frame writes. framesInFlight_ <= kSlots, so its ticket also covers the older transient
     // ring slot F-kSlots. This keeps the N=1/2 overrides safe while the transient ring always has kSlots regions.
     const uint64_t f = tracker_.frameNo();
@@ -1005,7 +990,6 @@ void VulkanContext::beginFrame() {
     }
     frameRing_.beginFrame(f, slotFree);
     if (textures_) { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
-#endif
 }
 
 void VulkanContext::drainDeferred(std::string_view why) {
@@ -1019,27 +1003,21 @@ void VulkanContext::drainDeferred(std::string_view why) {
 void VulkanContext::endFrame() {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::endFrame");
     ZoneScopedN("VKContext.EndFrame");
-#ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
-#endif
     { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // the sealed frame ticket must be on the queue
     tracker_.endFrame();
     deferred_.sealFrame(tracker_.frameTicket(tracker_.frameNo()));
     if (tracker_.frameNo() % 600 == 0 && mc2DiagVerbose()) {   // the periodic summaries are MC2_DIAG_VERBOSE lines (a default build stays quiet)
         poll();
-#ifdef MC2_VULKAN_ISLAND
         if (uploads_.queued() != 0)
             std::fprintf(stderr, "[VK_UPLOAD v1] flushes=%llu queued=%llu dedicated_stages=%llu dropped=%llu frame_ring_growths=%u\n",
                          static_cast<unsigned long long>(uploads_.flushes()), static_cast<unsigned long long>(uploads_.queued()),
                          static_cast<unsigned long long>(uploads_.dedicatedStages()), static_cast<unsigned long long>(uploads_.dropped()), frameRing_.growths());
-#endif
         const DeferredDestroy::Stats ds = deferred_.stats(tracker_);
         std::fprintf(stderr, "[VK_TIMELINE v1] deferred_entries=%u deferred_bytes=%llu oldest_age_frames=%llu\n", ds.entries,
                      static_cast<unsigned long long>(ds.bytes), static_cast<unsigned long long>(ds.oldestAgeFrames));
-#ifdef MC2_VULKAN_ISLAND
         std::fprintf(stderr, "[VK_FRAMERING v1] capacity=%llu peak_used=%llu\n", static_cast<unsigned long long>(frameRing_.capacityPerSlot()),
                      static_cast<unsigned long long>(frameRing_.peakPerSlot()));
-#endif
         std::fprintf(stderr, "[VK_TIMELINE v1] frame=%llu last_submitted=%llu completed=%llu in_flight=%llu\n",
                      static_cast<unsigned long long>(tracker_.frameNo()),
                      static_cast<unsigned long long>(tracker_.lastSubmitted(QueueKind::Graphics)),
@@ -1051,14 +1029,11 @@ void VulkanContext::endFrame() {
 
 void VulkanContext::destroy() {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::destroy");
-#ifdef MC2_VULKAN_ISLAND
     gpuprof::shutdown(*this);
-#endif
     if (g_amdChecksExpected.load() && !g_amdCanarySeen.load())
         validationLog("warning", "amd_canary_missing", "preset best-practices ran but none of AvoidImageToImageCopy / ClearAttachment-ClearImage / CmdBuffer-highBarrierCount / KeepLayoutSmall was reported: the AMD checks did not apply (layer too old, or VK_LAYER_ENABLES ignored)");
     g_debugNames = false;
     if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }   // parked owners go ahead of the allocator and the device
-#ifdef MC2_VULKAN_ISLAND
     // The islands consume the light feed, so they go first; both go before the allocator and the device their objects were made on.
     for (size_t i = 0; i < islands_.size(); ++i) retireIsland(static_cast<IslandSlot>(i));
     textures_.reset();
@@ -1075,7 +1050,6 @@ void VulkanContext::destroy() {
         ctxlog("destroy() with %d image resource(s) still alive: shutdown order violated.", live);
         assert(live == 0 && "image resources must be destroyed before the engine Vulkan context");
     }
-#endif
     if (allocator_) { vmaDestroyAllocator(allocator_); allocator_ = nullptr; }
     infra::shutdown();
     if (device_ != VK_NULL_HANDLE) {

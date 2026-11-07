@@ -19,7 +19,6 @@
 // needs the shared engine context (MC2_VULKAN) — island TUs are compiled with BOTH.
 // =============================================================================
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -196,4 +195,3 @@ VkImageResource* mc2SharedSceneColorGetResource(Mc2SharedSceneColorSlot slot) {
 
 unsigned long long mc2SharedSceneColorGeneration() { return g_generation.load(std::memory_order_acquire); }
 
-#endif // MC2_VULKAN_ISLAND

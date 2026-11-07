@@ -13,7 +13,6 @@
 #ifndef MC2_VK_IMAGE_RESOURCE_H
 #define MC2_VK_IMAGE_RESOURCE_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 #include <cstdint>
@@ -51,5 +50,4 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice device);
 // would release its image on a destroyed device.
 int vkImageResourceLiveCount();
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VK_IMAGE_RESOURCE_H

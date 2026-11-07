@@ -16,7 +16,6 @@
 #include "vk_texture_residency.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"   // gos_GetTextureTexelsByGlName
-#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 // Define Win32 surface entrypoints before volk.h (vulkan_context.cpp).
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -2628,4 +2627,3 @@ EnginePresentVk& getOrCreateEnginePresentVk() {
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN && MC2_VULKAN_ISLAND

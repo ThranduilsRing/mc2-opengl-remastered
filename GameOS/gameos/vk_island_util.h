@@ -5,7 +5,6 @@
 #ifndef MC2_VK_ISLAND_UTIL_H
 #define MC2_VK_ISLAND_UTIL_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 #include "vk_render_infra.h"
@@ -112,5 +111,4 @@ inline bool waitStrike(int& strikes, bool& disabled, bool ok, std::string_view i
 
 }  // namespace vk_island_util
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_ISLAND_UTIL_H

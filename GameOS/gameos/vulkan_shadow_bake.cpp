@@ -1,5 +1,4 @@
 // vulkan_shadow_bake.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vulkan_shadow_bake.h"
 #include "vulkan_shadow_bake_internal.h"
@@ -1492,4 +1491,3 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

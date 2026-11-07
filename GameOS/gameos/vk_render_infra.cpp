@@ -1,4 +1,3 @@
-#ifdef MC2_VULKAN_ISLAND
 #define NOMINMAX
 #include "vk_render_infra.h"
 #include "hitch_stats.h"
@@ -674,4 +673,3 @@ bool deviceLostLatched() { return state().lossReported.load(); }
 void mc2PrewarmMissionPipelines() {
     if(auto* post=getGosPostProcess()) mc2vk::infra::prewarm(post->getWidth(),post->getHeight());
 }
-#endif

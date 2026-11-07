@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include "shadow_mover_fit.h"
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
@@ -67,4 +66,3 @@ private:
 // receiver. Call after retiring the receiver's descriptor set for this frame.
 bool bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set, DescWriteStamp* stamp24 = nullptr);
 }
-#endif

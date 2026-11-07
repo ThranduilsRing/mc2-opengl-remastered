@@ -13,7 +13,6 @@
 #ifndef MC2_VK_SHARED_LIGHT_FEED_H
 #define MC2_VK_SHARED_LIGHT_FEED_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 #include <cstdint>
@@ -66,5 +65,4 @@ bool mc2vkSharedLightFeedEnabled();
 // Acquire this frame's immutable light version, or fall back to a private copy.
 mc2vk::FrameAlloc mc2vkSharedLightFeedAcquire(const mc2::vkLights::Feed& feed);
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_SHARED_LIGHT_FEED_H

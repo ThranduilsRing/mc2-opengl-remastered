@@ -170,7 +170,6 @@ option(MC2_MULTIPLAYER "Compile the multiplayer session layer (code/multplyr*.cp
 # Vulkan and its native render regions are required. Keep the compile definitions
 # shared by the root and standalone targets; these are no longer cache options.
 set(MC2_VULKAN ON)
-set(MC2_VULKAN_ISLAND ON)
 find_package(Vulkan REQUIRED)
 
 if(MC2_ASAN)
@@ -730,12 +729,6 @@ if(TARGET mc2_vulkan_shaders)
 endif()
 # These consumers include Vulkan-dependent class layouts without inheriting
 # gameos's public definitions. Keep their layouts consistent across the link.
-target_compile_definitions(gameos_main PRIVATE MC2_VULKAN_ISLAND)
-target_compile_definitions(mc2 PRIVATE MC2_VULKAN_ISLAND)
-target_compile_definitions(mclib PRIVATE MC2_VULKAN_ISLAND)
-target_compile_definitions(renderworld PRIVATE MC2_VULKAN_ISLAND)
-target_compile_definitions(gameadapters PRIVATE MC2_VULKAN_ISLAND)
-target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN_ISLAND)
 
 # Startup and GUI runtime access the engine device and need these headers directly.
 target_compile_definitions(gameos_main PRIVATE MC2_VULKAN)

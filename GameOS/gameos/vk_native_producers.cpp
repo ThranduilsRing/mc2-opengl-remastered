@@ -1,6 +1,5 @@
 // vk_native_producers.cpp -- see vk_native_producers.h.
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vk_native_producers.h"
 
@@ -492,4 +491,3 @@ ProducerParity NativeProducers::compare(uint32_t, const void* glThin, uint32_t g
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

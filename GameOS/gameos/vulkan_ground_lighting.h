@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include <volk.h>
 #include <array>
 #include <optional>
@@ -10,4 +9,3 @@ struct Mc2GroundLightingFrame {
     uint64_t revision = 0;             // changes whenever the terrain rewrites a binding of `set` (keys the consumers' copies)
 };
 std::optional<Mc2GroundLightingFrame> mc2_vk_ground_lighting_frame();
-#endif

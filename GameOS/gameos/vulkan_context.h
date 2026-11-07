@@ -30,11 +30,9 @@
 #include "vk_deferred_destroy.h"
 #include "vk_device_profile.h"
 #include "vk_frame_ring.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_readback.h"
 #include "vk_shared_light_feed.h"
 #include "vk_upload.h"
-#endif
 
 #include <array>
 #include <cstddef>
@@ -67,7 +65,6 @@ struct EngineContextHealth {
     std::string  profileLine;                // the [VK_PROFILE v1] line of the device the profile chose (or refused); empty before device selection
 };
 
-#ifdef MC2_VULKAN_ISLAND
 // The state an island keeps while its device objects exist. The context owns it (see VulkanContext::islandSlot), so an island's objects are released
 // by the context ahead of the allocator and the device they were made on, whatever path ends the process: no island needs a static owner or a teardown
 // call of its own for that.
@@ -76,7 +73,6 @@ struct IslandState {
 };
 // One slot per island that has been moved under the context; the next converted island adds its name here.
 enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Preview, Mech, ColorProp, Water, Shadow, Terrain, PassTimer, ActorCull, Vegetation, Count };
-#endif
 
 // The standalone shared engine Vulkan context. Owns instance + physical device
 // + logical device + graphics queue + VMA allocator + volk device dispatch.
@@ -154,7 +150,6 @@ public:
     // it they are VMA's own estimate. False when no allocator is live.
     bool deviceLocalMemory(uint64_t& budgetBytes, uint64_t& usageBytes, uint64_t& allocatedBytes) const;
 
-#ifdef MC2_VULKAN_ISLAND
     // The ring of per-frame LightsData buffers the mech and color-prop islands share. It lives here because it belongs to no island: destroy() frees it
     // ahead of the allocator and the device it was made on.
     TextureResidency& textures() { return *textures_; }
@@ -164,7 +159,6 @@ public:
     std::unique_ptr<IslandState>& islandSlot(IslandSlot slot) { return islands_[static_cast<size_t>(slot)]; }
     // Idles the GPU, then releases one parked island (for an island that rebuilds itself, e.g. on a resize). Safe on an empty slot.
     void retireIsland(IslandSlot slot);
-#endif
 
     // THE submit path of the engine device. Every graphics-queue submit goes through here and none through a raw vkQueueSubmit (a contract row
     // greps for it): the submit gets the next value of the graphics timeline semaphore as one more signal, so a GpuTicket proves "everything submitted
@@ -207,7 +201,6 @@ public:
         return 0;
     }
 
-#ifdef MC2_VULKAN_ISLAND
     // Per-frame transient memory (vertex data, dynamic-offset uniform and storage rows, copy sources): host-visible, written through the returned pointer,
     // valid until the frame that asked for it has completed. `align` 0 = the device uniform / storage offset alignment. An empty result means the
     // allocation failed; the caller declines its draw. Main thread only.
@@ -227,7 +220,6 @@ public:
     VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
     VkDeviceSize frameAlignment() const { return frameAlign_; }
     VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
-#endif
 
     // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement
     // for "waitIdle, then reset". Main thread only. Owners must be move-only types or movable values.
@@ -257,13 +249,11 @@ private:
     VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
     mutable CompletionTracker tracker_;
     mutable uint64_t hostSyncedGfx_ = 0;   // highest graphics value the host reached through vkWaitSemaphores / vkDeviceWaitIdle (see hostSynced)
-#ifdef MC2_VULKAN_ISLAND
     FrameRing        frameRing_;
     uint32_t         framesInFlight_ = 1;
     mutable UploadBatch uploads_;
     ReadbackRing     readbacks_;
     VkDeviceSize     frameAlign_ = 256;   // max(uniform, storage offset alignment, 16): set at device birth
-#endif
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
@@ -276,12 +266,10 @@ private:
     bool             temporalFeatures_  = false;   // see temporalFeaturesEnabled()
 
     EngineContextHealth health_;
-#ifdef MC2_VULKAN_ISLAND
     std::unique_ptr<RenderCore::TextureService> textureServiceOwner_;
     std::unique_ptr<TextureResidency> textures_;
     SharedLightFeed lightFeed_;
     std::array<std::unique_ptr<IslandState>, static_cast<size_t>(IslandSlot::Count)> islands_;
-#endif
 };
 
 // Object names are retained in crash breadcrumbs in every build; debug-utils publication additionally requires a validation run.

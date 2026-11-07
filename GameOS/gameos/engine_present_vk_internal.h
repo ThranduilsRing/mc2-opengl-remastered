@@ -4,7 +4,6 @@
 // GuiRuntime (ImGui) draw data into the present tail. Both see the same Impl; nothing outside the pair includes this header.
 #ifndef ENGINE_PRESENT_VK_INTERNAL_H
 #define ENGINE_PRESENT_VK_INTERNAL_H
-#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
 #include "../../RenderCore/TextureService.h"
 #include "engine_present_vk.h"
@@ -232,5 +231,4 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb);
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN && MC2_VULKAN_ISLAND
 #endif  // ENGINE_PRESENT_VK_INTERNAL_H

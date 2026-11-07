@@ -31,7 +31,6 @@
 #include "vk_one_shot.h"   // STEP 3.4P: recipe upload
 #include "hitch_stats.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 
@@ -347,4 +346,3 @@ extern "C" void mc2_vk_water_island_destroy() {
     mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Water);
 }
 
-#endif // MC2_VULKAN_ISLAND

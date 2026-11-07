@@ -440,11 +440,7 @@ const WaterRecipe* RecipeForVertexNum(int32_t vn) {
 }
 
 bool NativeInputSourceReady() {
-#ifdef MC2_VULKAN_ISLAND
     return gpu_driven::IsWaterEnabled() && g_ready && !g_recipes.empty() && IsFullRecipeAuthoritative();
-#else
-    return false;
-#endif
 }
 
 std::optional<NativeCapacity> GetNativeCapacity() {
@@ -534,7 +530,6 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
 // producers read. False = no water this frame (MC2_GPU_DRIVEN_WATER=0 or MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0 kill it, no recipes, no MVP).
 bool CaptureVkNativeInputs(float frameCos) {
     g_vkNativeValid = false;
-#ifdef MC2_VULKAN_ISLAND
     if (!NativeInputSourceReady()) return false;
     const float* nmvp = gos_terrain_indirect::IsFrameSolidArmed() ? gos_terrain_indirect_getDispatchMvp16() : gos_GetTerrainMVPMat4();
     if (!nmvp) nmvp = gos_GetTerrainMVPMat4();
@@ -548,10 +543,6 @@ bool CaptureVkNativeInputs(float frameCos) {
     g_vkNative.recipeCount = static_cast<uint32_t>(g_recipes.size());
     g_vkNativeValid = true;
     return true;
-#else
-    (void)frameCos;
-    return false;
-#endif
 }
 
 bool GetVkNativeInputs(VkNativeInputs& out) {

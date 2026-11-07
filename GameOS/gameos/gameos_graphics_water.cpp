@@ -161,7 +161,6 @@ void gos_terrain_bridge_renderWaterFast(
         maxMinUV);
 }
 
-#ifdef MC2_VULKAN_ISLAND
 // VK-P9a WATER-INTEROP: the water island entry points (defined in
 // GameOS/gameos/vulkan_water_island.cpp under the same #ifdef). File-scope
 // declarations so renderWaterFastPath can call them (extern "C" must be at
@@ -173,7 +172,6 @@ extern "C" int mc2_vk_water_island_run(
     const void* vsParams, const void* fsParams,
     uint64_t hdriGeneration,
     const void* nativeInputs);
-#endif
 
 // WATER-SHORE-EDGE-1 feather half-width K (world units), shared by the GL MDI
 // bind block and the VK water island fsParams pack (VK-PARITY-WATER-SHORE-1) so
@@ -229,7 +227,6 @@ void gosRenderer::renderWaterFastPath(
     // and pack the thin records and the water island draws them. The handles and the detail / spray tuning went with the GL program.
     (void)waterGosHandle; (void)waterDetailGosHandle; (void)frameCosAlpha; (void)oneOverWaterTF; (void)sprayOffsetX; (void)sprayOffsetY;
     if (recordCount == 0) return;
-#ifdef MC2_VULKAN_ISLAND
     // WATER-SAME-ORDER-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
     render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::Water,
                                               "gosRenderer_renderWaterFastPath");
@@ -338,8 +335,4 @@ void gosRenderer::renderWaterFastPath(
         vkRecipes, vkRecipeN, &vsP, &fsP,
         ppVk->isHdriReady() ? ppVk->getHdriGeneration() : 0,
         &vkNat);
-#else
-    (void)waterElevation; (void)alphaDepth; (void)alphaEdgeByte; (void)alphaMiddleByte; (void)alphaDeepByte;
-    (void)mapTopLeftX; (void)mapTopLeftY; (void)frameCos; (void)oneOverTF; (void)cloudOffsetX; (void)cloudOffsetY; (void)maxMinUV;
-#endif
 }

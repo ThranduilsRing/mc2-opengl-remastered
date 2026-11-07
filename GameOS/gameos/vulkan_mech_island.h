@@ -23,7 +23,6 @@
 #ifndef MC2_VULKAN_MECH_ISLAND_H
 #define MC2_VULKAN_MECH_ISLAND_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
 #include "../../mclib/vk_object_lights.h"
@@ -190,5 +189,4 @@ void mc2_vk_mech_island_destroy();
 }
 #endif
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_MECH_ISLAND_H

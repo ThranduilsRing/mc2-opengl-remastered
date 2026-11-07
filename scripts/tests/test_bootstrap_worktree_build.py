@@ -57,21 +57,18 @@ def test_native_render_hosts_require_vulkan_without_cache_options():
     """Vulkan and native regions cannot be disabled by stale cache entries."""
     root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
     assert "option(MC2_VULKAN " not in root
-    assert "option(MC2_VULKAN_ISLAND " not in root
+    assert "MC2_VULKAN_ISLAND" not in root
     assert "set(MC2_VULKAN ON)" in root
-    assert "set(MC2_VULKAN_ISLAND ON)" in root
     assert "find_package(Vulkan REQUIRED)" in root
 
 
-def test_gated_layout_macros_stay_public_on_gameos():
-    """G2: MC2_VULKAN_ISLAND changes the gosPostProcess layout, so gameos keeps exporting it."""
+def test_gameos_requires_vulkan_and_has_no_island_define():
+    """G2: Vulkan is required; the island guard macro is gone (always-VK)."""
     gameos = (ROOT / "GameOS" / "gameos" / "CMakeLists.txt").read_text(encoding="utf-8")
     assert "gameos requires MC2_VULKAN=ON" in gameos
-    assert "target_compile_definitions(gameos PUBLIC MC2_VULKAN_ISLAND)" in gameos
     assert "target_compile_definitions(gameos PRIVATE MC2_VULKAN)" in gameos
-    root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
-    for target in ("gameos_main", "mc2", "mclib", "renderworld", "gameadapters", "gui_runtime"):
-        assert f"target_compile_definitions({target} PRIVATE MC2_VULKAN_ISLAND)" in root
+    assert "if(MC2_VULKAN_ISLAND)" not in gameos
+    assert "target_compile_definitions(gameos PUBLIC MC2_VULKAN_ISLAND)" not in gameos
 
 
 def test_populated_native_sdk_does_not_need_a_glew_sentinel(tmp_path, monkeypatch):

@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_owned.h"
 #include "vk_completion_tracker.h"
 #include "../../RenderCore/TextureService.h"
@@ -108,4 +107,3 @@ private:
 
 };
 } // namespace mc2vk
-#endif

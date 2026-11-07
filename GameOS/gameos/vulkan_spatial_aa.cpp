@@ -1,6 +1,5 @@
 // Spatial post-AA on display-encoded scene color, before either HUD path.
 #include "vulkan_spatial_aa.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
@@ -409,4 +408,3 @@ void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
     }
 }
 }
-#endif

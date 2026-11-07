@@ -34,7 +34,6 @@ void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }
 // can copy them ONCE per map into VK-owned buffers (STEP 0 feed decision, fallback
 // (B): VK owns a copy). Read-only; buffers persist until onMapUnload() clears the
 // staging vectors. Returns false if geometry is not yet finalized.
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_shadow_island_live.h"
 extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
     if (!out) return 0;
@@ -339,4 +338,3 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     out->poolObjScale   = pp.objScale;
     return 1;
 }
-#endif // MC2_VULKAN_ISLAND

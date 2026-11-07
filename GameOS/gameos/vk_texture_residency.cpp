@@ -1,4 +1,3 @@
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
 #include "hitch_stats.h"
 #include "present_thread.h"
@@ -425,4 +424,3 @@ std::shared_ptr<const void> TextureResidency::imageOwner(RenderCore::TextureHand
     return resident.image && service_.isLive(handle) ? resident.image : placeholder_;
 }
 } // namespace mc2vk
-#endif

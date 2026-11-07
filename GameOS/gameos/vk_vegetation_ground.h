@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
 #include "vulkan_ground_lighting.h"
@@ -66,4 +65,3 @@ public:
     }
 };
 }
-#endif

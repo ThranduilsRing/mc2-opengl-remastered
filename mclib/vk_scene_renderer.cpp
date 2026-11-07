@@ -61,7 +61,6 @@ void clearShadowShapes() {
 
 // Draws all textures with isTerrain set that are solid first,
 // then draws all alpha with isTerrain set.
-#ifdef MC2_VULKAN_ISLAND
 void mc2::VkSceneRenderer::vkLegacySubmitNode (RenderSubmissions& submissions, long i, uint32_t pass, uint32_t alphaTest)
 {
 		DWORD totalVertices = submissions.masterVertexNodes[i].numVertices;
@@ -93,7 +92,6 @@ void mc2::VkSceneRenderer::vkLegacyRun (RenderSubmissions& submissions)
 		if (gosPostProcess* ppVkLeg = getGosPostProcess())
 			(void)mc2_vk_legacy_shape_island_run(ppVkLeg->getWidth(), ppVkLeg->getHeight(), &ff);
 }
-#endif
 
 void mc2::VkSceneRenderer::renderLists (RenderSubmissions& submissions)
 {
@@ -143,8 +141,6 @@ void mc2::VkSceneRenderer::reset()
 {
     renderSubmissions().clearTextureBins();
     invalidateTexResolveTable();
-#ifdef MC2_VULKAN_ISLAND
     mc2_vk_legacy_shape_island_reset();
     mc2_vk_overlay_reset();
-#endif
 }

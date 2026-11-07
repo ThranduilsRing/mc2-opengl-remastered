@@ -13,10 +13,8 @@
 #include <algorithm>
 #include <cstdint>
 
-#ifdef MC2_VULKAN_ISLAND
 #include <volk.h>
 #include "vk_owned.h"
-#endif
 
 namespace mc2vk {
 
@@ -63,7 +61,6 @@ private:
     uint32_t slot_ = 0;
 };
 
-#ifdef MC2_VULKAN_ISLAND
 class VulkanContext;
 
 constexpr VkDeviceSize alignUp(VkDeviceSize v, VkDeviceSize a) { return (v + a - 1) / a * a; }
@@ -116,7 +113,6 @@ private:
     uint64_t policyRefusals_ = 0;
     VkDeviceSize refusedCapacity_ = 0;
 };
-#endif
 
 }  // namespace mc2vk
 

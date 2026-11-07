@@ -10,7 +10,6 @@
 #ifndef MC2_VK_NATIVE_PRODUCERS_H
 #define MC2_VK_NATIVE_PRODUCERS_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -149,5 +148,4 @@ private:
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_NATIVE_PRODUCERS_H
