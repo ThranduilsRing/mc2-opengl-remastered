@@ -17,7 +17,10 @@
 #include <fstream>
 #include "GameOS/gameos/gos_vfx_mesh_bridge.h"
 #include "mlr/mlr_i_pmesh.hpp"
+#include "mlr/mlr_i_mt_pmesh.hpp"
 #include "mlr/mlrshape.hpp"
+#include "mlr/mlrtexture.hpp"
+#include "mlr/mlrtexturepool.hpp"
 #include "RenderCore/FramePackets.h"
 #include "code/render_view.h"
 
@@ -683,4 +686,171 @@ TEST_CASE("vfx_frozen/card budget counts quads and resets after flush")
     CHECK(batcher.inspect_overflowReported());
     batcher.Flush();
     CHECK(capture.records.size() == 31);
+}
+
+// B6 holder round-trips: the converted std::vector holders must Save and Load back to the same bytes.
+namespace {
+// Textured states serialize the texture name through MLRTexturePool::Instance, which
+// MLRTexturePool::TerminateClass deletes; borrow it for the test and hand it back empty.
+struct BorrowTexturePool {
+    MidLevelRenderer::MLRTexturePool pool{new MidLevelRenderer::TGAFilePool("")};
+    BorrowTexturePool() { MidLevelRenderer::MLRTexturePool::Instance = &pool; }
+    ~BorrowTexturePool() { MidLevelRenderer::MLRTexturePool::Instance = nullptr; }
+};
+
+const MidLevelRenderer::Vector2DScalar kPassUvs[3][4] = {
+    {{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}},
+    {{0.5f, 0.25f}, {0.75f, 0.25f}, {0.75f, 0.5f}, {0.5f, 0.5f}},
+    {{-2.0f, 3.0f}, {4.0f, -5.0f}, {6.5f, 7.25f}, {-8.0f, 9.0f}},
+};
+const char* const kPassTextures[3] = {"b6_base", "b6_detail", "b6_glow"};
+
+// Quad subprimitive: MLRShape's triangle-mesh conversion leaves it as the saved class.
+MidLevelRenderer::MLR_I_MT_PMesh* makeTexturedMultipassQuad(MidLevelRenderer::MLRTexturePool& pool, float offset)
+{
+    using namespace MidLevelRenderer;
+    gos_PushCurrentHeap(MidLevelRenderer::Heap);
+    auto* mesh = new MLR_I_MT_PMesh;
+    const glm::vec3 positions[] = {{offset,0,0}, {offset+1,0,0}, {offset+1,1,0}, {offset,1,0}};
+    unsigned short indices[] = {0,1,2,3};
+    unsigned char lengths[] = {4};
+    mesh->SetCoordData(positions, 4);
+    mesh->SetSubprimitiveLengths(lengths, 1);
+    mesh->SetIndexData(indices, 4);
+    for (int pass = 0; pass < 3; ++pass) {
+        mesh->SetTexCoordData(kPassUvs[pass], 4, pass);
+        MLRState state;
+        state.SetTextureHandle(pool.Add(kPassTextures[pass], 0)->GetTextureHandle());
+        state.SetAlphaMode(pass == 0 ? MLRState::OneZeroMode : MLRState::OneOneMode);
+        mesh->SetReferenceState(state, pass);
+    }
+    gos_PopCurrentHeap();
+    return mesh;
+}
+
+// Everything written so far (GetPointer is the current position, so rewind first).
+std::vector<unsigned char> streamBytes(Stuff::DynamicMemoryStream& stream)
+{
+    const auto used = stream.GetBytesUsed();
+    stream.Rewind();
+    const auto* begin = static_cast<const unsigned char*>(stream.GetPointer());
+    return {begin, begin + used};
+}
+}
+
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/B6 holder: textured multipass MLR_I_MT_PMesh saves and loads back identically")
+{
+    using namespace MidLevelRenderer;
+    BorrowTexturePool textures;
+    auto* mesh = makeTexturedMultipassQuad(textures.pool, 0.0f);
+    REQUIRE(mesh->GetNumPasses() == 3);
+
+    Stuff::DynamicMemoryStream saved(16);
+    WriteMLRVersion(&saved);
+    mesh->Save(&saved);
+    const auto savedBytes = streamBytes(saved);
+
+    Stuff::MemoryStream reader(const_cast<unsigned char*>(savedBytes.data()), savedBytes.size());
+    const int version = ReadMLRVersion(&reader);
+    Stuff::RegisteredClass::ClassID classId;
+    reader >> classId;
+    REQUIRE(classId == MLR_I_MT_PMeshClassID);
+    auto* loaded = MLR_I_MT_PMesh::Make(&reader, version);
+    CHECK(reader.GetBytesRemaining() == 0);    // every pass's state and UVs consumed, nothing written
+
+    REQUIRE(loaded->GetNumPasses() == 3);
+    for (int pass = 0; pass < 3; ++pass) {
+        CAPTURE(pass);
+        const MidLevelRenderer::Vector2DScalar* uvs = nullptr;
+        int count = 0;
+        loaded->GetTexCoordData(&uvs, &count, pass);
+        REQUIRE(count == 4);
+        CHECK(std::memcmp(uvs, kPassUvs[pass], sizeof(kPassUvs[pass])) == 0);
+        const MLRState& state = loaded->GetReferenceState(pass);
+        CHECK(state.GetTextureHandle() == mesh->GetReferenceState(pass).GetTextureHandle());
+        CHECK(state.GetAlphaMode() == mesh->GetReferenceState(pass).GetAlphaMode());
+    }
+
+    Stuff::DynamicMemoryStream resaved(16);
+    WriteMLRVersion(&resaved);
+    loaded->Save(&resaved);
+    CHECK(streamBytes(resaved) == savedBytes);
+
+    // Copy() collapses to one pass and releases the owned pass slots.
+    gos_PushCurrentHeap(MidLevelRenderer::Heap);
+    loaded->Copy(mesh);
+    gos_PopCurrentHeap();
+    CHECK(loaded->GetNumPasses() == 1);
+
+    loaded->DetachReference();
+    mesh->DetachReference();
+}
+
+TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/B6 holder: debris cloud specification saves and loads back identically")
+{
+    using namespace MidLevelRenderer;
+    BorrowTexturePool textures;
+    std::vector<unsigned char> savedBytes;
+    {
+        gosFX::DebrisCloud__Specification spec;
+        spec.BuildDefaults();
+        // Multi-key ComplexCurves exercise the CurveKey holders.
+        auto& speed = spec.m_startingSpeed.m_ageCurve;
+        const int mid = speed.InsertKey(0.5f);
+        speed[mid].m_value = 4.0f;
+        speed[mid].m_slope = -1.5f;
+        spec.m_pDrag.m_seedCurve.InsertKey(0.25f);
+        spec.m_pDrag.m_seedCurve.InsertKey(0.75f);
+        REQUIRE(spec.m_pDrag.m_seedCurve.GetKeyCount() >= 3);
+        spec.centerOfForce = glm::vec3(1.0f, 2.0f, 3.0f);
+        const float radii[] = {0.5f, 2.0f, 1.25f};
+        for (int i = 0; i < 3; ++i) {
+            gos_PushCurrentHeap(MidLevelRenderer::Heap);
+            auto* shape = new MLRShape(1);
+            gos_PopCurrentHeap();
+            auto* prim = makeTexturedMultipassQuad(textures.pool, static_cast<float>(i));
+            shape->Add(prim);
+            prim->DetachReference();
+            spec.debrisPieces.push_back(shape);    // the spec destructor detaches it
+            spec.debrisPositions.push_back(glm::vec3(static_cast<float>(i), -1.0f, 0.5f));
+            mc2::math::Sphere sphere;
+            sphere.center = glm::vec3(0.5f + i, 0.5f, 0.0f);
+            sphere.radius = radii[i];
+            spec.debrisSpheres.push_back(sphere);
+            spec.debrisSeed.push_back(0.0f);
+        }
+        Stuff::DynamicMemoryStream saved(16);
+        gosFX::WriteGFXVersion(&saved);
+        spec.Save(&saved);
+        savedBytes = streamBytes(saved);
+    }
+
+    Stuff::MemoryStream reader(savedBytes.data(), savedBytes.size());
+    const int gfxVersion = gosFX::ReadGFXVersion(&reader);
+    Stuff::RegisteredClass::ClassID classId;
+    reader >> classId;
+    REQUIRE(classId == gosFX::DebrisCloudClassID);
+    auto* loaded = gosFX::DebrisCloud__Specification::Make(&reader, gfxVersion);
+    CHECK(reader.GetBytesRemaining() == 0);
+
+    REQUIRE(loaded->debrisPieces.size() == 3);
+    REQUIRE(loaded->debrisSpheres.size() == 3);
+    CHECK(loaded->debrisSpheres[1].radius == 2.0f);
+    CHECK(loaded->debrisPositions[2] == glm::vec3(2.0f, -1.0f, 0.5f));
+    CHECK(loaded->debrisSeed[0] == 0.0f);    // smallest radius
+    CHECK(loaded->debrisSeed[1] == 1.0f);    // largest radius
+    CHECK(loaded->debrisSeed[2] == doctest::Approx(0.5f));
+    CHECK(loaded->m_startingSpeed.m_ageCurve.GetKeyCount() == 2);
+    CHECK(loaded->m_startingSpeed.m_ageCurve[1].m_value == 4.0f);
+    for (auto* shape : loaded->debrisPieces) {
+        REQUIRE(shape->GetNum() == 1);
+        const auto* prim = shape->Find(0);
+        REQUIRE(prim->GetClassData() == MLR_I_MT_PMesh::DefaultData);
+    }
+
+    Stuff::DynamicMemoryStream resaved(16);
+    gosFX::WriteGFXVersion(&resaved);
+    loaded->Save(&resaved);
+    CHECK(streamBytes(resaved) == savedBytes);
+    delete loaded;
 }

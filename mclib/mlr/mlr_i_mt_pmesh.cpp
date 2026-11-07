@@ -68,7 +68,7 @@ MLR_I_MT_PMesh::MLR_I_MT_PMesh(
 
 	for(int i=1;i<passes;i++)
 	{
-		multiReferenceState[i].Save(stream);
+		multiReferenceState[i].Load(stream, version);
 
 		multiTexCoords[i] = new std::vector<Vector2DScalar>;
 		Register_Pointer(multiTexCoords[i]);
@@ -141,6 +141,16 @@ void
 	testList.SetLength(GetNumPrimitives());
 
 	FindFacePlanes();
+
+	// Release the owned pass slots [1,passes) before collapsing to one pass;
+	// slot 0 borrows texCoords and is not owned.
+	for(int i=1;i<passes;i++)
+	{
+		Unregister_Pointer(multiTexCoords[i]);
+		std::unique_ptr<std::vector<Vector2DScalar>> owned(multiTexCoords[i]);
+		multiTexCoords[i] = nullptr;
+		multiTexCoordsPointers[i] = nullptr;
+	}
 
 	passes = 1;
 

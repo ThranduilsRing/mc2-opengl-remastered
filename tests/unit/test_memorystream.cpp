@@ -7,6 +7,7 @@
 #include "doctest.h"
 
 #include <stuff/stuff.hpp>
+#include <gosfx/fcurve.hpp>
 
 #include <cstring>
 #include <vector>
@@ -195,6 +196,51 @@ TEST_CASE("std::vector stream payload is byte-identical to DynamicArrayOf for ev
 		CheckVectorPayloadMatchesDynamicArray(std::vector<unsigned short>{0, 1, 2, 65535, 7});
 		CheckVectorPayloadMatchesDynamicArray(std::vector<uint32_t>{0xFF00FF00u, 0x12345678u});
 		CheckVectorPayloadMatchesDynamicArray(std::vector<unsigned short>{});
+	}
+	Stuff::MemoryStream::TerminateClass();
+	Stuff::RegisteredClass::TerminateClass();
+}
+
+static gosFX::CurveKey MakeKey(float t, float s, float v)
+{
+	gosFX::CurveKey k;
+	k.m_time = t;
+	k.m_slope = s;
+	k.m_value = v;
+	return k;
+}
+
+// The element types the converted holders really carry: ComplexCurve::m_keys (CurveKey), MLREffect's
+// transformedCoords (Stuff::Vector4D) and DWORD. Each runs once shrinking (2 elements into the 3-element
+// destination) and once growing (more than 3 elements), so Read must both shrink and grow the vector.
+TEST_CASE("std::vector stream payload matches DynamicArrayOf for CurveKey, Vector4D and DWORD, shrinking and growing")
+{
+	Stuff::RegisteredClass::InitializeClass();
+	Stuff::MemoryStream::InitializeClass();
+	{
+		CheckVectorPayloadMatchesDynamicArray(std::vector<gosFX::CurveKey>{
+			MakeKey(0.0f, 1.0f, 2.0f), MakeKey(1.0f, -0.5f, 3.0f)});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<gosFX::CurveKey>{
+			MakeKey(0.0f, 1.0f, 2.0f), MakeKey(0.25f, 0.0f, 2.5f), MakeKey(0.5f, -1.0f, 2.25f),
+			MakeKey(0.75f, 2.0f, 1.0f), MakeKey(1.0f, 0.0f, 0.0f), MakeKey(1.5f, 4.0f, -3.0f)});
+
+		CheckVectorPayloadMatchesDynamicArray(std::vector<Stuff::Vector4D>{
+			Stuff::Vector4D(1.0f, 2.0f, 3.0f, 1.0f), Stuff::Vector4D(-1.0f, 0.5f, 0.0f, 2.0f)});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<Stuff::Vector4D>{
+			Stuff::Vector4D(1.0f, 2.0f, 3.0f, 1.0f), Stuff::Vector4D(-1.0f, 0.5f, 0.0f, 2.0f),
+			Stuff::Vector4D(9.0f, 8.0f, 7.0f, 6.0f), Stuff::Vector4D(0.0f, 0.0f, 0.0f, 0.0f),
+			Stuff::Vector4D(-3.5f, 4.25f, 100.0f, 0.125f)});
+
+		CheckVectorPayloadMatchesDynamicArray(std::vector<DWORD>{0xDEADBEEFu, 1u});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<DWORD>{0xDEADBEEFu, 1u, 2u, 0xFFFFFFFFu, 0u, 42u, 7u});
+
+		// Growth for the original B6 types too.
+		CheckVectorPayloadMatchesDynamicArray(std::vector<glm::vec3>{
+			{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}, {-1.0f, -2.0f, -3.0f}});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<Stuff::Vector2DOf<Stuff::Scalar>>{
+			Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f), Stuff::Vector2DOf<Stuff::Scalar>(1.0f, 0.0f),
+			Stuff::Vector2DOf<Stuff::Scalar>(1.0f, 1.0f), Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f)});
+		CheckVectorPayloadMatchesDynamicArray(std::vector<unsigned char>{4, 4, 3, 4, 4});
 	}
 	Stuff::MemoryStream::TerminateClass();
 	Stuff::RegisteredClass::TerminateClass();

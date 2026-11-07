@@ -46,6 +46,11 @@ namespace MidLevelRenderer {
 	public:
 		MLR_I_MT_PMesh(ClassData *class_data=MLR_I_MT_PMesh::DefaultData);
 
+		// Pass slots [1,passes) own heap vectors; the implicit copy would
+		// shallow-copy the pointer tables and double-delete.
+		MLR_I_MT_PMesh(const MLR_I_MT_PMesh&) = delete;
+		MLR_I_MT_PMesh& operator=(const MLR_I_MT_PMesh&) = delete;
+
 		static MLR_I_MT_PMesh*
 			Make(
 				Stuff::MemoryStream *stream,
