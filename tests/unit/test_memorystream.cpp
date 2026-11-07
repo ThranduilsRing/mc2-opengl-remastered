@@ -138,49 +138,38 @@ TEST_CASE("WriteSwappedBytes / ReadSwappedBytes round-trip through the scratch b
 	Stuff::RegisteredClass::TerminateClass();
 }
 
-// B6: the serialized MLR/gosFX holders moved from DynamicArrayOf to std::vector. The vector stream overloads must
-// write the same bytes as the DynamicArrayOf ones (uint32 count, then count*sizeof(T) raw bytes) and read them back.
+// B6/B8: the serialized MLR/gosFX holders are std::vector. The vector stream overloads must write the legacy
+// payload (uint32 count, then count*sizeof(T) raw native-endian element bytes), spelled out here byte by byte,
+// and read it back.
 template <class T>
 static void CheckVectorPayloadMatchesDynamicArray(const std::vector<T> &values)
 {
-	unsigned char daoBuf[512] = {0};
+	std::vector<unsigned char> expected(sizeof(uint32_t) + values.size() * sizeof(T));
+	const uint32_t count = static_cast<uint32_t>(values.size());
+	std::memcpy(expected.data(), &count, sizeof(count));
+	if (!values.empty())
+		std::memcpy(expected.data() + sizeof(count), values.data(), values.size() * sizeof(T));
+
 	unsigned char vecBuf[512] = {0};
-	{
-		Stuff::DynamicArrayOf<T> dao(values.size());
-		for (size_t i = 0; i < values.size(); i++)
-			dao[i] = values[i];
-		Stuff::MemoryStream ms(daoBuf, sizeof(daoBuf));
-		MemoryStreamIO_Write(&ms, &dao);
-		CHECK(ms.GetBytesUsed() == sizeof(uint32_t) + values.size() * sizeof(T));
-	}
 	size_t used = 0;
 	{
 		Stuff::MemoryStream ms(vecBuf, sizeof(vecBuf));
 		MemoryStreamIO_Write(&ms, &values);
 		used = ms.GetBytesUsed();
 	}
-	CHECK(used == sizeof(uint32_t) + values.size() * sizeof(T));
-	CHECK(std::memcmp(daoBuf, vecBuf, sizeof(daoBuf)) == 0);
+	CHECK(used == expected.size());
+	CHECK(std::memcmp(vecBuf, expected.data(), expected.size()) == 0);
 
-	// Read the payload back into both holders: same length, same element bytes.
+	// Read the legacy payload back: same length, same element bytes.
 	std::vector<T> back(3);	// non-empty first: Read must resize, not append
 	{
-		Stuff::MemoryStream ms(daoBuf, sizeof(daoBuf));
+		Stuff::MemoryStream ms(expected.data(), expected.size());
 		MemoryStreamIO_Read(&ms, &back);
 		CHECK(ms.GetBytesUsed() == used);
 	}
-	Stuff::DynamicArrayOf<T> daoBack;
-	{
-		Stuff::MemoryStream ms(vecBuf, sizeof(vecBuf));
-		MemoryStreamIO_Read(&ms, &daoBack);
-	}
 	REQUIRE(back.size() == values.size());
-	REQUIRE(daoBack.GetLength() == values.size());
 	if (!values.empty())
-	{
 		CHECK(std::memcmp(back.data(), values.data(), values.size() * sizeof(T)) == 0);
-		CHECK(std::memcmp(daoBack.GetData(), values.data(), values.size() * sizeof(T)) == 0);
-	}
 }
 
 TEST_CASE("std::vector stream payload is byte-identical to DynamicArrayOf for every B6 element type")

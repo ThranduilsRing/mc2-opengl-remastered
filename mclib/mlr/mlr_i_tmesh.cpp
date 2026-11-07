@@ -152,7 +152,7 @@ bool
 	referenceState = pMesh->GetReferenceState();
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.size());
+	visibleIndexedVertices.assign(coords.size(), 0);
 
 	return true;
 }
@@ -321,7 +321,7 @@ void
 	Stuff::Vector4D *v4d = transformedCoords.GetData();
 	glm::vec3 *p3d = coords.data();
 	MLRClippingState *cs = clipPerVertex.GetData();
-	unsigned char *viv = visibleIndexedVertices.GetData();
+	unsigned char *viv = visibleIndexedVertices.data();
 
 	for(i=0;i<len;i++,p3d++,v4d++,cs++,viv++)
 	{

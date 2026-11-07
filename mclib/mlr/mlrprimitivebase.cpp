@@ -22,18 +22,18 @@ int clipTrick[6][2] =
 void ClipPolygon2::Init(int passes)
 {
 	Verify(gos_GetCurrentHeap() == StaticHeap);
-	coords.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
-	colors.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
-	texCoords.SetLength(passes*Limits::Max_Number_Vertices_Per_Polygon);
-	clipPerVertex.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
+	coords.resize(Limits::Max_Number_Vertices_Per_Polygon);
+	colors.resize(Limits::Max_Number_Vertices_Per_Polygon);
+	texCoords.resize(passes*Limits::Max_Number_Vertices_Per_Polygon);
+	clipPerVertex.resize(Limits::Max_Number_Vertices_Per_Polygon);
 }
 
 void ClipPolygon2::Destroy()
 {
-	coords.SetLength(0);
-	colors.SetLength(0);
-	texCoords.SetLength(0);
-	clipPerVertex.SetLength(0);
+	decltype(coords)().swap(coords);
+	decltype(colors)().swap(colors);
+	decltype(texCoords)().swap(texCoords);
+	decltype(clipPerVertex)().swap(clipPerVertex);
 }
 
 //#############################################################################
@@ -345,7 +345,7 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 MLRShape*
-	MidLevelRenderer::CreateIndexedIcosahedron(IcoInfo& icoInfo, Stuff::DynamicArrayOf<MLRState> *states)
+	MidLevelRenderer::CreateIndexedIcosahedron(IcoInfo& icoInfo, std::vector<MLRState> *states)
 {
 	switch(icoInfo.type)
 	{

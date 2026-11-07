@@ -108,7 +108,7 @@ namespace MidLevelRenderer {
 		{ 
 			Check_Object(this);
 			size_t ret = MLRPrimitiveBase::GetSize();
-			ret += visibleIndexedVertices.GetSize();
+			ret += visibleIndexedVertices.size() * sizeof(unsigned char);
 			ret += index.size() * sizeof(index[0]);
 
 			return ret;
@@ -120,7 +120,7 @@ namespace MidLevelRenderer {
 	protected:
 		bool visibleIndexedVerticesKey;
 
-		Stuff::DynamicArrayOf<unsigned char>	visibleIndexedVertices;
+		std::vector<unsigned char>	visibleIndexedVertices;
 
 		std::vector<unsigned short>	index;	// List of color indexes 
 

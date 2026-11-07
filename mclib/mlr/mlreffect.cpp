@@ -12,18 +12,18 @@
 void EffectClipPolygon::Init()
 {
 	Verify(gos_GetCurrentHeap() == StaticHeap);
-	coords.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
-	colors.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
-	texCoords.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
-	clipPerVertex.SetLength(Limits::Max_Number_Vertices_Per_Polygon);
+	coords.resize(Limits::Max_Number_Vertices_Per_Polygon);
+	colors.resize(Limits::Max_Number_Vertices_Per_Polygon);
+	texCoords.resize(Limits::Max_Number_Vertices_Per_Polygon);
+	clipPerVertex.resize(Limits::Max_Number_Vertices_Per_Polygon);
 }
 
 void EffectClipPolygon::Destroy()
 {
-	coords.SetLength(0);
-	colors.SetLength(0);
-	texCoords.SetLength(0);
-	clipPerVertex.SetLength(0);
+	decltype(coords)().swap(coords);
+	decltype(colors)().swap(colors);
+	decltype(texCoords)().swap(texCoords);
+	decltype(clipPerVertex)().swap(clipPerVertex);
 }
 
 //#############################################################################

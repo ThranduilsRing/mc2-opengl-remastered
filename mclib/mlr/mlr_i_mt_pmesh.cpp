@@ -54,10 +54,10 @@ MLR_I_MT_PMesh::MLR_I_MT_PMesh(
 	Check_Pointer(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	multiTexCoords.SetLength(Limits::Max_Number_Of_Multitextures);
-	multiTexCoordsPointers.SetLength(Limits::Max_Number_Of_Multitextures);
-	multiState.SetLength(Limits::Max_Number_Of_Multitextures);
-	multiReferenceState.SetLength(Limits::Max_Number_Of_Multitextures);
+	multiTexCoords.resize(Limits::Max_Number_Of_Multitextures);
+	multiTexCoordsPointers.resize(Limits::Max_Number_Of_Multitextures);
+	multiState.resize(Limits::Max_Number_Of_Multitextures);
+	multiReferenceState.resize(Limits::Max_Number_Of_Multitextures);
 
 	multiTexCoords[0] = &texCoords;
 	multiTexCoordsPointers[0] = texCoords.data();
@@ -89,14 +89,14 @@ MLR_I_MT_PMesh::MLR_I_MT_PMesh(ClassData *class_data):
 	Check_Pointer(this);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	multiTexCoords.SetLength(Limits::Max_Number_Of_Multitextures);
-	multiTexCoordsPointers.SetLength(Limits::Max_Number_Of_Multitextures);
+	multiTexCoords.resize(Limits::Max_Number_Of_Multitextures);
+	multiTexCoordsPointers.resize(Limits::Max_Number_Of_Multitextures);
 
 	multiTexCoords[0] = &texCoords;
 	multiTexCoordsPointers[0] = texCoords.data();
 
-	multiState.SetLength(Limits::Max_Number_Of_Multitextures);
-	multiReferenceState.SetLength(Limits::Max_Number_Of_Multitextures);
+	multiState.resize(Limits::Max_Number_Of_Multitextures);
+	multiReferenceState.resize(Limits::Max_Number_Of_Multitextures);
 
 	passes = 1;
 
@@ -308,7 +308,7 @@ void
 MLRShape*
 	MidLevelRenderer::CreateIndexedIcosahedron_NoColor_NoLit_MultiTexture(
 		IcoInfo& icoInfo,
-		DynamicArrayOf<MLRState> *states
+		std::vector<MLRState> *states
 	)
 {
 	gos_PushCurrentHeap(Heap);
@@ -316,7 +316,7 @@ MLRShape*
 	Register_Object(ret);
 
 	int i, j, k;
-	int nrOfPasses = static_cast<int>(states->GetLength());
+	int nrOfPasses = static_cast<int>(states->size());
 	long    nrTri = static_cast<long>(ceil (icoInfo.all * pow (4.0f, icoInfo.depth)));
 	glm::vec3 v[3];
 
