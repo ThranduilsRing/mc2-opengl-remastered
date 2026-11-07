@@ -36,3 +36,32 @@ def test_promote_refuses_untriaged_nightly_fail(tmp_path):
     (e / "gate-verdict.json").write_text(json.dumps({"verdict": "PASS"}))
     (d / "triage.md").unlink()
     assert lane_merge_stage.untriaged_nightly_fail(str(tmp_path)) == []
+
+
+def _verdict(tmp_path, name, **kw):
+    d = tmp_path / name
+    d.mkdir()
+    (d / "gate-verdict.json").write_text(json.dumps(kw))
+    return d
+
+
+def test_promote_nightly_fail_closed(tmp_path):
+    import time
+    now = time.time()
+    f = lane_merge_stage.untriaged_nightly_fail
+    assert f(str(tmp_path))  # no nightly at all
+    _verdict(tmp_path, "nightly-2026-11-07", verdict="PASS", failed=[], written=now - 3600)
+    assert f(str(tmp_path)) == []
+    assert f(str(tmp_path), now=now + 40 * 3600)  # stale
+    partial = _verdict(tmp_path, "nightly-2026-11-08", verdict="PARTIAL", failed=[], written=now)
+    assert f(str(tmp_path)) == []  # stage-filter partial, every executed row passed
+    (partial / "gate-verdict.json").write_text(json.dumps(dict(verdict="INFRA", failed=[], written=now)))
+    assert f(str(tmp_path))
+    (partial / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[dict(name="x", status="FAIL")], written=now)))
+    assert f(str(tmp_path))
+
+
+def test_nightly_child_uses_g_tmp_and_0430():
+    assert nightly_gate.TMP_DIR == "G:/mc2-tmp"
+    xml = open(os.path.join(ROOT, "scripts", "nightly_gate.task.xml"), encoding="utf-8").read()
+    assert "T04:30:00" in xml

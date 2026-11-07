@@ -5,8 +5,9 @@
 Runs `gate_wait.py --timeout 7200 -- merge_gate.py --nightly` (Sundays: --weekly), restricted to the tier-1/2 stages plus
 deploy, at BELOW_NORMAL, never --kill-existing. Proof dir: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/
 (gate-verdict.json inside). Refuses (rc 2) when mc2-main is not on claude/nifty-mendeleev or is dirty. While another gate holds
-A:/Games/mc2-ops/GATE_QUIET.json, gate_wait waits for it (up to --timeout) instead of skipping the night. tools/lane_merge_stage.py --promote refuses on a newest FAIL verdict
-here until a triage* file sits next to it.
+A:/Games/mc2-ops/GATE_QUIET.json, gate_wait waits for it (up to --timeout) instead of skipping the night. tools/lane_merge_stage.py --promote refuses unless the newest
+verdict here is under 36 h old, failed == [] and not INFRA (FAIL needs a triage* file). The gate must run in mc2-main, so a stage
+branch checkout still refuses the night (the gate itself is orchestrator-only in mc2-main).
 """
 import argparse
 import datetime
@@ -21,6 +22,7 @@ import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every c
 
 PROOF_ROOT = "E:/mc2-archive-2026-10/proofs/merge-gate"
 NIFTY = "claude/nifty-mendeleev"
+TMP_DIR = "G:/mc2-tmp"
 
 
 def git(*a):
@@ -63,7 +65,9 @@ def main(argv=None):
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0
-    return subprocess.run(cmd, cwd=ROOT, **console_child.child_kwargs()).returncode
+    env = dict(os.environ, TMP=TMP_DIR, TEMP=TMP_DIR, TMPDIR=TMP_DIR)  # never write to C: (lane rules)
+    os.makedirs(TMP_DIR, exist_ok=True)
+    return subprocess.run(cmd, cwd=ROOT, env=env, **console_child.child_kwargs()).returncode
 
 
 if __name__ == "__main__":
