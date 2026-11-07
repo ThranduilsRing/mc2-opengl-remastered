@@ -21,7 +21,7 @@
 #pragma warning(push)
 #pragma warning(disable: 4244)  // vendored decoder: bit-math int->uint8 stores, not ours to rewrite
 #endif
-#include "bcdec.h"
+#include "../3rdparty/bcdec/bcdec.h"
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif

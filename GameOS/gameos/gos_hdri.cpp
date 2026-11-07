@@ -19,7 +19,7 @@
 
 // HDRI-BC6H-1: BC6H sidecar upload via KtxLoader (GL-free loader, BC6H blocks).
 #include "../../RenderCore/KtxLoader.h"
-#include "../../RenderCore/bcdec.h"
+#include "../../3rdparty/bcdec/bcdec.h"
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
