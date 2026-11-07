@@ -59,7 +59,7 @@ def test_glued_simid_records_are_not_dropped(monkeypatch):
     from scripts.smoke_lib.logparse import parse_log
     import saveload_roundtrip as rt
 
-    frames = [f"{sd.PREFIX}{i} t=0.0 n=1 graded=a visual=b strict=c" for i in range(2)]
+    frames = [f"{sd.PREFIX}{i} t=0.0 n=1 graded=a visual=b strict=c animrng=1" for i in range(2)]
     detail = "[SIMID v1 mover] simframe=1 id=7 gesture=1 pstep=0/3"
     clean = frames + [detail]
     glued = "PAUSEtxmmgr: Bad texture handle!" + "".join(clean) + "\n"

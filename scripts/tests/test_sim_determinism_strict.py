@@ -12,7 +12,7 @@ import sim_determinism as sim
 
 def observations():
     return [f"{sim.PREFIX}{i} t=0.000 n=2 graded=aa visual=bb strict=cc "
-            "nobj=3 objects=dd nabl=1 abl=ee rng=1/2/3" for i in range(5)]
+            "nobj=3 objects=dd nabl=1 abl=ee rng=1/2/3 animrng=4" for i in range(5)]
 
 
 def baseline(tmp_path, lines, legacy=False):
@@ -203,4 +203,21 @@ def test_load_simid_drops_a_console_line_glued_to_animrng(tmp_path):
     log = tmp_path / "x.log"
     log.write_text("[VK_VALIDATION v1] severity=warning id=Format-Mi[SIMID v1] simframe=126 rng=1/2/3 animrng=27smatc\n"
                    "h-ImageView text=\"x\"\n[SIMID v1] simframe=127 rng=1/2/3 animrng=28\n", encoding="utf-8")
-    assert sim.load_simid(str(log)) == ["[SIMID v1] simframe=126 rng=1/2/3 animrng=27", "[SIMID v1] simframe=127 rng=1/2/3 animrng=28"]
+    got = sim.load_simid(str(log))
+    assert got == ["[SIMID v1] simframe=127 rng=1/2/3 animrng=28"] and got.dropped == 1   # the garbled frame is dropped and counted
+
+
+def test_load_simid_cuts_a_splice_after_a_clean_token_and_drops_a_digit_splice(tmp_path):
+    log = tmp_path / "x.log"
+    log.write_text("[SIMID v1] simframe=1 rng=1/2/3 animrng=27 to VK_FORMAT_R8\n[SIMID v1] simframe=2 rng=1/2/3 animrng=2700061d\n", encoding="utf-8")
+    got = sim.load_simid(str(log))
+    assert got == ["[SIMID v1] simframe=1 rng=1/2/3 animrng=27"] and got.dropped == 1
+
+
+def test_compare_aligns_by_simframe_and_reports_dropped():
+    def mk(frames):
+        return [f"[SIMID v1] simframe={i} t=0.0 n=1 graded=a visual=b strict=c nobj=1 objects=d nabl=1 abl=e rng=1/2/3 animrng=1" for i in frames]
+    a, b = sim.SimidLines(mk(range(10))), sim.SimidLines(mk([0, 1, 2, 4, 5, 6, 7, 8, 9]))
+    b.dropped = 1
+    ok, msg = sim.compare(a, b, 5)
+    assert ok and "dropped a=0 b=1" in msg

@@ -50,7 +50,7 @@ _RNG_NONSIM = r" rng=\1"
 _COUNTS = ("n", "nobj", "nabl")
 
 
-def observation_error(lines) -> str:
+def observation_error(lines, gaps: bool = False) -> str:
     """Reject incomplete observations, including a dropped tick in both runs."""
     previous = None
     for i, line in enumerate(lines):
@@ -64,7 +64,7 @@ def observation_error(lines) -> str:
             if not re.fullmatch(r"[0-9a-fA-F]+", fields.get(key, "")):
                 return f"missing or invalid {key} digest at index {i}"
         tick = int(fields["simframe"])
-        if previous is not None and tick != previous + 1:
+        if previous is not None and (tick <= previous if gaps else tick != previous + 1):
             return f"missing or repeated observation at index {i}: simframe {previous} -> {tick}"
         previous = tick
     return ""
@@ -169,13 +169,29 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
     return {"digest": h.hexdigest()[:16], "inputs": inputs, "stock_digest": stock_digest, "overlay": overlay, "problems": problems}
 
 
+class SimidLines(list):
+    """The SIMID lines of a log; .dropped counts the garbled ones left out."""
+    dropped = 0
+
+
+_ANIMRNG = re.compile(r"\banimrng=\d+(?=\s|$)")
+
+
 def load_simid(path: str) -> list:
-    """The SIMID lines of a log, newline stripped, in order.
-    The SIMID's trailing newline is a separate console write, so a render-thread line (a stderr [VK_VALIDATION v1] record) can land
-    between the last digit and it: W125 read 'animrng=27smatc'. Drop letters glued to animrng's number (as stress_overlap.simid_lines)."""
+    """The SIMID lines of a log, newline stripped, in order. The engine writes each line in one call, but another thread's stderr
+    record (a [VK_VALIDATION v1] message) can still land inside it. A line whose animrng token is not a number followed by
+    end-of-line or a space is dropped as garbled and counted (.dropped), never compared; text after a good token is cut."""
+    out = SimidLines()
     with open(path, encoding="utf-8", errors="replace") as fh:
-        return [re.sub(r"(\banimrng=\d+)[a-zA-Z]+(?=\s|$)", r"\1", m.group().rstrip()) for ln in fh
-                for m in re.finditer(re.escape(PREFIX) + r"[^\r\n\[]*", ln)]
+        for ln in fh:
+            for m in re.finditer(re.escape(PREFIX) + r"[^\r\n\[]*", ln):
+                t = m.group().rstrip()
+                a = _ANIMRNG.search(t)
+                if a:
+                    out.append(t[:a.end()])
+                else:
+                    out.dropped += 1
+    return out
 
 
 def simulation_fields(line: str) -> str:
@@ -240,11 +256,17 @@ def compare(a, b, min_frames: int = MIN_FRAMES, required_length: int = 0):
     """-> (ok, message). Only the frames both runs reached are compared; required_length additionally rejects a truncated run."""
     if required_length and (len(a) < required_length or len(b) < required_length):
         return False, (f"runs reached {len(a)} and {len(b)} sim frames, need {required_length}: a run stopped before the baseline")
+    dropped = (getattr(a, "dropped", 0), getattr(b, "dropped", 0))
+    if any(dropped):  # a garbled line leaves a hole: compare only the sim frames both runs read cleanly
+        frame = lambda ln: ln.split(" ", 3)[2]
+        da, db = {frame(x): x for x in a}, {frame(x): x for x in b}
+        keys = [k for k in da if k in db]
+        a, b = [da[k] for k in keys], [db[k] for k in keys]
     common = min(len(a), len(b))
     if common < min_frames:
         return False, f"only {common} common sim frame(s) (need {min_frames}): the mission did not run long enough to prove anything"
     for lines in (a, b):
-        error = observation_error(lines)
+        error = observation_error(lines, gaps=any(dropped))  # dropped garbled frames leave known holes
         if error:
             return False, error
     for i in range(common):
@@ -255,7 +277,7 @@ def compare(a, b, min_frames: int = MIN_FRAMES, required_length: int = 0):
     return True, (f"identical over {common} sim frames (chain {chain(a, common)}; "
                   f"full a={full_chain(a, common)} b={full_chain(b, common)}; "
                   f"rng a={a[common-1].split(' rng=')[-1]} b={b[common-1].split(' rng=')[-1]}; "
-                  f"runs had {len(a)} and {len(b)})")
+                  f"runs had {len(a)} and {len(b)}; garbled frames dropped a={dropped[0]} b={dropped[1]})")
 
 
 def check_baseline(lines, baseline_path: str, seed: str = "", fingerprint: dict | None = None):
@@ -556,8 +578,12 @@ def selftest() -> int:
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "x.log")
         with open(p, "w") as fh:
-            fh.write("noise\n" + "\n".join(mk(5)) + "\n[HEARTBEAT] frames=1\n")
+            fh.write("noise\n" + "\n".join(ln + " animrng=0" for ln in mk(5)) + "\n[HEARTBEAT] frames=1\n")
         expect(len(load_simid(p)) == 5, "load_simid keeps only the SIMID lines")
+        with open(p, "w") as fh:
+            fh.write(mk(1)[0] + " animrng=27 to VK_FORMAT_R8\n" + mk(1)[0] + " animrng=2700061d\n" + mk(1)[0] + "\n")
+        got = load_simid(p)
+        expect(len(got) == 1 and got[0].endswith("animrng=27") and got.dropped == 2, "a garbled animrng token is dropped and counted, a trailing splice is cut")
         b = os.path.join(td, "b.json")
         with open(b, "w") as fh:
             json.dump({"frames": 5, "chain": full_chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s"}, fh)
