@@ -200,8 +200,6 @@ void main() {
         materialAlbedo = texc.rgb; haveAlbedo = true;
         rgb = texc.rgb * max(vArgb, vec3(0.5));
         rgb += vHighlight.rgb * vHighlight.a;
-        poolLight = propPoolLight(vec3(1));
-        rgb += texc.rgb * poolLight;
     } else if (uFrame.materialReady != 0 && (vLayer >= 0 || propHasObjectAlbedo(uPacket.materialId))) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
         // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
@@ -227,21 +225,25 @@ void main() {
             alphaTestClass = true;
         }
         rgb += vHighlight.rgb * vHighlight.a;
-        poolLight = propPoolLight(vec3(1));
-        rgb += albedo * poolLight;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
     }
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
     if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    // One pool walk for both albedo groups (was inlined once per branch), after the fringe discard:
+    // halves the shader's code and skips the walk for fragments the fringe pass drops.
+    if (haveAlbedo) {
+        poolLight = propPoolLight(vec3(1));
+        rgb += materialAlbedo * poolLight;
+    }
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
     // Low/Potato reuse the VS's existing SH + sun + authored-light result.
     // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
     if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         if (kBaseQuality == 2) {
-            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
-            float materialCoverage = propMaterialCoverage(uPacket.materialId);
+            float materialCoverage;
+            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
             if (materialCoverage > 0.0) {
                 materialAO = mix(1.0, surface.ao, materialCoverage);
                 if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,

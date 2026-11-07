@@ -31,7 +31,7 @@ Per-object textures, one image per file with its own extent, format and complete
   (descriptor indexing is already a required device feature). Written once per map load next to the material table; no
   per-draw descriptor churn, the per-draw datum stays the existing `materialId` push constant. Sampling uses
   `nonuniformEXT`. `static_prop`/colour-prop is the only consumer; mech/terrain sets are untouched.
-- **Shader:** `propSurface` / `propMaterialCoverage` pick the table when `kPerTexture`; `propAlbedoOverride` replaces the tier
+- **Shader:** `propSurface` (which also returns the ORM coverage) picks the table when `kPerTexture`; `propAlbedoOverride` replaces the tier
   albedo in the alpha-OFF branch. Lighting composition is unchanged.
 - **Cooker:** `_detail` keeps each map's own power-of-two extent (cap 2048, resample only when it must) instead of 512;
   authored opaque albedo is emitted as `albedo.ktx2`; the validator accepts any pow2 <= 2048. The old shared-extent array
