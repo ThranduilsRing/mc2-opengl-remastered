@@ -2220,7 +2220,7 @@ void LogisticsMapInfoDialog::setMap( mc2::czstring pFileName )
 			cLoadString( IDS_MP_LM_MAP_LIST_MAP_NAME, text, 255 );
 			sprintf( text2, text, missionName );
 
-			sprintf( totalText, text2 );
+			strcpy( totalText, text2 );	// already formatted; never a format string again (a mission name may hold %s)
 			strcat( totalText, "\n" );
 
 				unsigned long type = 0;
