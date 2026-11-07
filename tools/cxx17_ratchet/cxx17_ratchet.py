@@ -170,7 +170,12 @@ R_WIN_PATH = re.compile(r"\b(?:PathCombine\w*|PathAppend\w*|PathFileExists\w*|Pa
                         r"GetCurrentDirectory\w*|SetCurrentDirectory\w*|CreateDirectory[AW]?|FindFirstFile\w*|FindNextFile\w*|"
                         r"GetFileAttributes\w*|GetModuleFileName\w*|GetFullPathName\w*|_splitpath\w*|_makepath\w*|_fullpath|"
                         r"_mkdir|_chdir|_getcwd|_rmdir|DeleteFile[AW]?|CopyFile[AW]?|MoveFile\w*|RemoveDirectory[AW]?|_access|_stat\w*)\s*\(")
-R_PATH_CAT = re.compile(r"""'\\\\'|"\\\\"|%s\\\\|\\\\%s|"[\\/]"\s*\+|\+\s*"[\\/]|\bstrcat\s*\([^;]*"[\\/]""")
+# A separator is "/" or an ESCAPED backslash ("\\" in the C source); "\n" "\t" "\"" are escape sequences, not paths.
+_SEP = r"(?:\\\\|/)"
+R_PATH_CAT = re.compile(r"""'\\\\'|"\\\\"|%s\\\\|\\\\%s|"SEP"\s*\+|\+\s*"SEP|\bstrcat\s*\([^;]*"SEP""".replace("SEP", _SEP))
+# '\\' or "\\" inside an escape routine (JSON/C escaping, unescape loop) is not a path separator.
+R_ESC_ROUTINE = re.compile(r"""'\\?"'|case\s*'\\\\'|(?:\+=|push_back\s*\(|\bout\s*\+=)\s*(?:'\\\\'|"\\\\\\\\")"""
+                           r"""|'\\\\'\s*&&\s*\w+\s*\+\s*1\b|(?:\+\+\w+|\w+\+\+)\]\s*=\s*'\\\\'""")
 R_LOG = re.compile(r"(?<![\w:.>])_?(?:[fv]|vf)?printf(?:_s|_l)?\s*\(|(?<![\w:.>])_?f?puts\s*\(|"
                    r"\bOutputDebugString\w*\s*\(|\bSPEW\w*\s*\(")
 R_FMTBUF = re.compile(r"(?<![\w:.>])_?(?:s|sn|vs|vsn|sw|vsw|snw|vsnw|st)printf(?:_s|_l)?\s*\(|\bwsprintf\w*\s*\(")
@@ -318,7 +323,7 @@ def scan_text(text: str, path: str = "") -> dict:
             if R_ONESIDED.search(joined):
                 onesided.append(ln)
         # LG11 (strings kept)
-        if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and not pp and "#include" not in c):
+        if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and not R_ESC_ROUTINE.search(c) and not pp and "#include" not in c):
             hits["LG11"].append(ln)
         # LG19 (strings kept; Gates/ is the one place allowed to read the environment)
         if not pp and R_ENVREAD.search(c) and not path.startswith(LG19_EXEMPT_PREFIXES):

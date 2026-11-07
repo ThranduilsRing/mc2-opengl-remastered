@@ -95,6 +95,29 @@ class Idioms(unittest.TestCase):
         self.assertEqual(n('std::string p = dir + "\\\\" + name;\n', "LG11"), 1)
         self.assertEqual(n("auto p = std::filesystem::path(a) / b;\n", "LG11"), 0)
 
+    def test_lg11_escape_sequences_are_not_paths(self):
+        for src in (r'''strcat(ChunkDebugMsg, "\nCHUNK1\n");''',
+                    r'''strcat( real, "\n" );''',
+                    r'''seen += "\n" + k + "\n";''',
+                    r'''j += "\"screen\":\"" + esc( screenName ) + "\"";''',
+                    r'''if ( c == '"' || c == '\\' ) { o.push_back( '\\' ); o.push_back( c ); }''',
+                    r'''case '\\': out += "\\\\"; break;''',
+                    r'''if (c == '\\' && i + 1 < value.size()) { c = value[++i]; }''',
+                    r'''if (src[i] == '\\' && i + 1 < src.size()) { out += src[++i]; continue; }'''):
+            self.assertEqual(n(src + "\n", "LG11"), 0, src)
+
+    def test_lg11_real_path_concatenations_still_hit(self):
+        for src in (r'''std::replace(p.begin(), p.end(), '\\', '/');''',
+                    r'''char* q = strrchr(p, '\\');''',
+                    r'''path[i] = '\\';''',
+                    r'''const char sep = '\\';''',
+                    r'''std::string p = dir + "/" + name;''',
+                    r'''std::string p = dir + "\\data\\" + name;''',
+                    r'''strcat(buf, "\\");''',
+                    r'''sprintf(b, "%s\\%s", d, n);''',
+                    r'''if (a.back() == '/' || a.back() == '\\') a += '/';'''):
+            self.assertEqual(n(src + "\n", "LG11"), 1, src)
+
     def test_lg12a_logging(self):
         self.assertEqual(n('printf("x");\nfprintf(f, "x");\nputs("x");\nOutputDebugStringA("x");\nSPEW(("a", "b"));\n', "LG12a"), 5)
         self.assertEqual(n('sprintf(buf, "%d", 1);\n', "LG12a"), 0)
