@@ -125,7 +125,9 @@ def r_run(window, extra):
              MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E",
              # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
              MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
-             MC2_ISO_ALLOW_SYSTEM_DRIVE="1")
+             MC2_ISO_ALLOW_SYSTEM_DRIVE="1",
+             # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
+             MC2_BASH="C:/Program Files/Git/bin/bash.exe")
     sm = {"window": window, "host": "laptop"}
     git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e)
     for step in (["checkout", "-q", "-f", branch], ["clean", "-fdq"]):   # no -x: build tree and deps survive
