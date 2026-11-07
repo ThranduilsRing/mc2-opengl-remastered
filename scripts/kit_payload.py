@@ -237,7 +237,8 @@ def build_importer(src_root):
     jobs = Path("A:/Games/mc2-ops/JOBS").read_text().strip()
     commands = []
     if not (tree / "build.ninja").is_file():
-        flags, env = cn.cache_cmake_args(str(root))
+        # MC2_COMPILE_CACHE=0 is configure_ninja's opt-out (a host without the shared sccache: the laptop gate)
+        flags, env = cn.cache_cmake_args(str(root)) if os.environ.get("MC2_COMPILE_CACHE") != "0" else ([], None)
         commands.append(([cmake, "-S", str(root / "tools/tg_import_dump"), "-B", str(tree),
                           "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={cn.NINJA}",
                           "-DCMAKE_BUILD_TYPE=RelWithDebInfo", *flags], env))
