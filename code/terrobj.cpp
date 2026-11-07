@@ -1072,21 +1072,21 @@ void TerrainObject::renderView (const mc2::render_view::RenderView& view) {
 		appearance->render();
 		
 		//------------------------------------------------
-		// Render GOSFX
-		gosFX::Effect::DrawInfo drawInfo;
-		drawInfo.m_clipper = theClipper;
-		
-		MidLevelRenderer::MLRState mlrState;
-		mlrState.SetDitherOn();
-		mlrState.SetTextureCorrectionOn();
-		mlrState.SetZBufferCompareOn();
-		mlrState.SetZBufferWriteOn();
-
-		drawInfo.m_state = mlrState;
-		drawInfo.m_clippingFlags = 0x0;
-		
+		// Render GOSFX (draw info is built only when a dust effect is live: most terrain objects have none)
 		if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
 		{
+			gosFX::Effect::DrawInfo drawInfo;
+			drawInfo.m_clipper = theClipper;
+
+			MidLevelRenderer::MLRState mlrState;
+			mlrState.SetDitherOn();
+			mlrState.SetTextureCorrectionOn();
+			mlrState.SetZBufferCompareOn();
+			mlrState.SetZBufferWriteOn();
+
+			drawInfo.m_state = mlrState;
+			drawInfo.m_clippingFlags = 0x0;
+
 			glm::vec3			actualPosition;
 			glm::mat4 	shapeOrigin;
 			glm::mat4	localToWorld;
