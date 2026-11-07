@@ -2,9 +2,7 @@
 #include "gos_terrain_lighting.h"
 #include "light_pool_culling.h"
 #include "local_light_shadow.h"   // LOCAL-LIGHTS-2: shadow tile selection
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_shadow_island_live.h"   // mc2_vk_local_shadows_capable
-#endif
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
 #include "Gates/gate.h"          // typed gate registry: gate::get<"MC2_X">()
@@ -867,11 +865,7 @@ void PackAndDispatch() {
     // lightType); the VK shadow island renders exactly these tiles this frame. Potato / shadows
     // off / no island: no tiles, unshadowed lights.
     {
-#ifdef MC2_VULKAN_ISLAND
         const bool shadowTiles = eye && mc2_vk_local_shadows_capable() != 0;
-#else
-        const bool shadowTiles = false;
-#endif
         const float camX = eye ? eye->getPosition().x : 0.0f, camY = eye ? eye->getPosition().y : 0.0f;
         s_poolCamXY[0] = camX; s_poolCamXY[1] = camY;
         mc2localshadow::selectTiles(std::span(s_lightBuf.data(), numLights), camX, camY, shadowTiles);

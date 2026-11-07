@@ -143,9 +143,7 @@ struct CementCellStats {
 // #ifndef guard defended against a quad.cpp MACRO collision that the
 // constexpr header eliminates). Consumer below uses it unqualified.
 #include "../../mclib/terrain_depth_bias.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"   // VK-PARITY-OVERLAY-1: overlay owner queue
-#endif
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 
 static inline bool InMissionTransition() { return false; }

@@ -10,17 +10,14 @@ bool terrainLodCheckerDiagEnabled()
 }
 
 void gos_TerrainLodChunk_EnsureSceneClear() {
-#ifdef MC2_VULKAN_ISLAND
     if (gosPostProcess* pp = getGosPostProcess())
         (void)mc2_vk_scene_clear(pp->getWidth(), pp->getHeight());
-#endif
 }
 
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds, const float* skirtDepths,
     const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, int count)
 {
-#ifdef MC2_VULKAN_ISLAND
     if (!cmds || count <= 0 || s_mapSide <= 0) return;
     s_vkTerrainPatches.clear();
     s_vkTerrainFeedValid = false;
@@ -65,5 +62,4 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LODChunk);
     const int ran = mc2_vk_terrain_island_run(pp->getWidth(), pp->getHeight());
     if (ran) (void)mc2_vk_sky_island_run(pp->getWidth(), pp->getHeight());
-#endif
 }

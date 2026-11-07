@@ -8,7 +8,6 @@
 #ifndef MC2_VK_COMPUTE_PIPELINE_H
 #define MC2_VK_COMPUTE_PIPELINE_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -68,5 +67,4 @@ void cmdBarrier(VkCommandBuffer cb, VkPipelineStageFlags srcStage, VkAccessFlags
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_COMPUTE_PIPELINE_H

@@ -6,7 +6,6 @@
 
 namespace mc2vk {
 bool nativeRenderTargetAvailable(RenderCore::RenderResourceId target) {
-#ifdef MC2_VULKAN_ISLAND
     using RenderCore::RenderResourceId;
     const auto* pp=getGosPostProcess();
     switch(target) {
@@ -20,15 +19,8 @@ bool nativeRenderTargetAvailable(RenderCore::RenderResourceId target) {
         case RenderResourceId::Unknown: return false;
         default: return RenderCore::getRenderResource(target) != nullptr;
     }
-#else
-    return false;
-#endif
 }
 bool nativeRenderHealthy() {
-#ifdef MC2_VULKAN_ISLAND
     return engineVulkanContextValid() && getOrCreateEngineVulkanContext().health().validationErrors.load()==0;
-#else
-    return false;
-#endif
 }
 }

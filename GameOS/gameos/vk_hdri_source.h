@@ -5,7 +5,6 @@
 // without GL, and one reader keeps the two islands' checks the same.
 #pragma once
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -67,4 +66,3 @@ inline uint64_t hdriCpuGeneration() {
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

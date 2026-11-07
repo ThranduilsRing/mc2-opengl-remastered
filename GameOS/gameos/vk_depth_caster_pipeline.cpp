@@ -1,5 +1,4 @@
 // vk_depth_caster_pipeline.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vk_depth_caster_pipeline.h"
 
@@ -81,4 +80,3 @@ bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

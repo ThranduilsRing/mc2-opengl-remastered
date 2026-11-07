@@ -1,6 +1,5 @@
 // vk_compute_pipeline.cpp -- see vk_compute_pipeline.h.
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include "vk_compute_pipeline.h"
 
@@ -129,4 +128,3 @@ void cmdBarrier(VkCommandBuffer cb, VkPipelineStageFlags srcStage, VkAccessFlags
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

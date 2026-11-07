@@ -9,7 +9,6 @@
 #ifndef MC2_VK_FIRST_LAYOUT_H
 #define MC2_VK_FIRST_LAYOUT_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -27,5 +26,4 @@ enum class SharedImageStart {
 // submit that is complete before this returns. False on any Vulkan failure, with everything the call created released.
 bool mc2vkGiveSharedImageFirstLayout(const mc2vk::VulkanContext& ctx, const VkImageResource& img, SharedImageStart start);
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_FIRST_LAYOUT_H

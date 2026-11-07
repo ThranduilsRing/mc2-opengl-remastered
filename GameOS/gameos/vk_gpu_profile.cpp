@@ -3,7 +3,6 @@
 #include "battle_bench.h"
 #include "mc2_diag_verbose.h"
 
-#ifdef MC2_VULKAN_ISLAND
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -436,4 +435,3 @@ void Scope::end() {
 }
 
 }  // namespace mc2vk::gpuprof
-#endif  // MC2_VULKAN_ISLAND
