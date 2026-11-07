@@ -1,5 +1,5 @@
 #pragma once
-// vk_desc_pool_chain.h -- an island's chained descriptor pools (VK descriptor plan lane 2, Astra review p13).
+// vk_desc_pool_chain.h -- an island's chained descriptor pools.
 // WHAT: DescPoolChainCore keeps one island's pools in a chain. allocate() tries the current pool; on OUT_OF_POOL_MEMORY or FRAGMENTED_POOL
 // it moves to the next pool of the chain (one kept from an earlier mission, already reset) or creates a fresh pool of the same size, and
 // retries ONCE. Any other result, or a failed retry, goes back to the caller with the actual VkResult: the island keeps its own failure path.
