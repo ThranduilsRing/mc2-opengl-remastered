@@ -23,18 +23,22 @@ def _manifest(path, files):
             w.writerow([rel, hashlib.sha256(data).hexdigest(), len(data), "abc", "t", 0])
 
 
-def test_pack_ships_only_files_that_differ(tmp_path, monkeypatch):
-    install, gate = tmp_path / "install", tmp_path / "gate"
+def test_pack_ships_only_candidate_files_that_differ(tmp_path, monkeypatch):
+    gate = tmp_path / "gate"
+    install = gate / "drv/E/mc2-installs/install-stock-abc"   # the candidate, not INSTALL (the published v0.4)
     (install / "shaders").mkdir(parents=True)
     files = {"mc2.exe": b"new", "shaders/a.glsl": b"same", "shaders/b.glsl": b"changed"}
     for rel, data in files.items():
         (install / rel).write_bytes(data)
     _manifest(install / ".deployed_manifest.csv", files)
+    published = tmp_path / "published"
+    published.mkdir()
+    _manifest(published / ".deployed_manifest.csv", {"mc2.exe": b"old"})
     (gate / "in" / "7").mkdir(parents=True)
     (gate / "out" / "7").mkdir(parents=True)
     _manifest(gate / "in" / "7" / "pc.manifest.csv", {"mc2.exe": b"old", "shaders/a.glsl": b"same", "shaders/b.glsl": b"old"})
     monkeypatch.setattr(laptop_gate, "G", gate.as_posix())
-    monkeypatch.setattr(laptop_gate, "INSTALL", install.as_posix())
+    monkeypatch.setattr(laptop_gate, "INSTALL", published.as_posix())
     laptop_gate.r_pack("7")
     import tarfile
     names = sorted(tarfile.open(gate / "out" / "7" / "payload.tar").getnames())
@@ -110,12 +114,51 @@ def test_published_problems_fails_a_stale_or_unrelated_before_install():
     assert laptop_gate.manifest_delta({"a": {"sha256": "1"}, "b": {"sha256": "2"}}, {"a": {"sha256": "1"}}) == ["b"]
 
 
-def test_prune_drops_shaders_the_published_manifest_lacks(tmp_path, monkeypatch):
-    monkeypatch.setattr(laptop_gate, "INSTALL", str(tmp_path))
-    for rel in ("shaders/keep.frag", "shaders/old.frag", "shaders_vk/x/old.spv", "data/old.bin"):
-        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
-        (tmp_path / rel).write_bytes(b"x")
-    _manifest(tmp_path / "m.csv", {"shaders/keep.frag": b"x"})
-    laptop_gate.r_prune(tmp_path / "m.csv")
-    assert sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()) == [
-        "data/old.bin", "m.csv", "shaders/keep.frag"]
+def test_pack_falls_back_to_the_deployed_seed_once_the_stock_copy_is_gone(tmp_path, monkeypatch):
+    monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
+    seed = tmp_path / "drv/E/mc2-installs/_gate-reuse/deployed"
+    seed.mkdir(parents=True)
+    _manifest(seed / ".deployed_manifest.csv", {})
+    assert laptop_gate.candidate_install() == seed
+    monkeypatch.setattr(laptop_gate, "G", (tmp_path / "none").as_posix())
+    with pytest.raises(SystemExit):
+        laptop_gate.candidate_install()
+
+
+def _tree(root, files):
+    import os
+    for rel, (data, mtime) in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(data)
+        os.utime(p, (mtime, mtime))
+
+
+def test_tree_diff_both_ways_and_sha_mode_touches_equal_content(tmp_path):
+    pc, lap = tmp_path / "pc", tmp_path / "lap"
+    _tree(pc, {"same.bin": (b"a", 100), "data/textures/missing.tga": (b"t", 100), "moved.bin": (b"m", 200),
+               "edit.bin": (b"new", 300)})
+    _tree(lap, {"same.bin": (b"a", 100), "moved.bin": (b"m", 999), "edit.bin": (b"old", 300),
+                "data/terrain_layers/stale.ktx2": (b"s", 1), ".seeded": (b"ok", 1)})
+    rows = laptop_gate.tree_rows
+    assert laptop_gate.tree_diff(rows(pc, sha=True), rows(lap, sha=True)) == (
+        ["data/textures/missing.tga", "edit.bin"], ["moved.bin"], ["data/terrain_layers/stale.ktx2"])
+    # size+mtime: edit.bin (same size and mtime) is invisible; that is what the first sha-mode sync is for
+    assert laptop_gate.tree_diff(rows(pc), rows(lap)) == (
+        ["data/textures/missing.tga", "moved.bin"], [], ["data/terrain_layers/stale.ktx2"])
+    bad = laptop_gate.tree_problems(rows(pc), rows(lap))
+    assert bad[0].startswith("install tree 4:") and len(bad) == 5 and "pc-only data/textures/missing.tga|1|100" in bad
+    assert laptop_gate.tree_problems(rows(pc, sha=True), rows(pc)) == []
+    assert laptop_gate.chunks(["a", "b", "c"], {"a": 3, "b": 3, "c": 9}, limit=6) == [["a", "b"], ["c"]]
+
+
+def test_extract_payload_clears_the_previous_payload(tmp_path):
+    import tarfile
+    (tmp_path / "payload/files").mkdir(parents=True)
+    (tmp_path / "payload/files/stale.bin").write_bytes(b"old run")
+    (tmp_path / "new.bin").write_bytes(b"x")
+    with tarfile.open(tmp_path / "payload.tar", "w") as tar:
+        tar.add(tmp_path / "new.bin", arcname="files/new.bin")
+    (tmp_path / "payload.sha256").write_text(f"{laptop_gate.sha256(tmp_path / 'payload.tar')}  payload.tar\n")
+    laptop_gate.extract_payload(tmp_path)
+    assert [p.name for p in (tmp_path / "payload/files").iterdir()] == ["new.bin"]

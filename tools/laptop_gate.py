@@ -14,7 +14,7 @@ The laptop has no A:/E: drive, so the remote half substs A: and E: onto C:/mc2ga
 unchanged with its hard-coded paths. The laptop's v0.4 and _lean-seed are junctions to C:/mc2gate/install.
 Remote half: this same file, uploaded to C:/mc2gate/bin, run as `--remote <step>`.
 """
-import argparse, csv, hashlib, json, os, subprocess, sys, tarfile, time
+import argparse, csv, hashlib, json, os, shutil, subprocess, sys, tarfile, time
 from pathlib import Path
 
 HOST = "Kaitlyn@192.168.68.107"
@@ -193,29 +193,94 @@ def manifest_delta(mine, theirs):
     return sorted(rel for rel, r in mine.items() if theirs.get(rel, {}).get("sha256") != r["sha256"])
 
 
+def candidate_install():
+    """The gate's deployed candidate: a kept stock copy (<seed>-stock-*), --keep-candidate's merge-gate-candidate, else the
+    pristine deployed seed gate_reuse snapshots right after the candidate deploy (the stock copy is removed at cleanup).
+    Never INSTALL: that is the published v0.4 the candidate is diffed against."""
+    base = Path(G, "drv/E/mc2-installs")
+    stock = sorted(base.glob("*-stock-*"), key=lambda p: p.stat().st_mtime, reverse=True) if base.is_dir() else []
+    for p in (*stock, base / "merge-gate-candidate", base / "_gate-reuse/deployed"):
+        if (p / ".deployed_manifest.csv").is_file():
+            return p
+    sys.exit(f"laptop_gate pack: no candidate install with a .deployed_manifest.csv under {base}")
+
+
 def r_pack(window):
-    """tar of every file in the laptop install's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
+    """tar of every file in the candidate's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
     out = Path(G, "out", window)
-    delta = manifest_delta(manifest_rows(Path(INSTALL, ".deployed_manifest.csv")), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
+    cand = candidate_install()
+    delta = manifest_delta(manifest_rows(cand / ".deployed_manifest.csv"), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
     tarp = out / "payload.tar"
     with tarfile.open(tarp, "w") as tar:
         for rel in delta:
-            tar.add(Path(INSTALL, rel), arcname="files/" + rel, recursive=False)
-        tar.add(Path(INSTALL, ".deployed_manifest.csv"), arcname=".deployed_manifest.csv")
+            tar.add(cand / rel, arcname="files/" + rel, recursive=False)
+        tar.add(cand / ".deployed_manifest.csv", arcname=".deployed_manifest.csv")
     (out / "payload.sha256").write_text(f"{sha256(tarp)}  payload.tar\n{len(delta)} files\n")
-    print(f"payload: {len(delta)} files, {tarp.stat().st_size} bytes")
+    print(f"payload from {cand}: {len(delta)} files, {tarp.stat().st_size} bytes")
 
 
-def r_prune(manifest):
-    """Delete INSTALL shaders/ and shaders_vk/ files the published manifest lacks: deploy_payload requires the published
-    shader inventory to equal the HEAD build exactly, and an overlay refresh leaves the old seed's retired shaders behind."""
-    keep = set(manifest_rows(manifest))
-    for d in ("shaders", "shaders_vk"):
-        for p in sorted(Path(INSTALL, d).rglob("*")):
-            rel = p.relative_to(INSTALL).as_posix()
-            if p.is_file() and rel not in keep:
-                p.unlink()
-                print("pruned", rel)
+SYNC_SKIP = {".seeded", ".tree-synced"}   # laptop-only markers (seed() and the first sha-mode sync)
+
+
+def tree_rows(root, sha=False):
+    """Sorted "rel|size|mtime" rows for every file under root (links not followed); sha=True appends "|sha256"."""
+    root, rows = Path(root), []
+    for d, _, files in os.walk(root):
+        for f in files:
+            p = Path(d, f)
+            rel = p.relative_to(root).as_posix()
+            if rel in SYNC_SKIP:
+                continue
+            st = p.stat()
+            rows.append(f"{rel}|{st.st_size}|{int(st.st_mtime)}" + (f"|{sha256(p)}" if sha else ""))
+    return sorted(rows)
+
+
+def tree_diff(src, dst):
+    """(copy, touch, delete) relpaths making dst equal src. copy: missing in dst or different size/mtime (sha rows: different
+    content); touch: sha rows with equal content and another mtime; delete: only in dst."""
+    s = {r.split("|", 1)[0]: r.split("|")[1:] for r in src}
+    d = {r.split("|", 1)[0]: r.split("|")[1:] for r in dst}
+    copy, touch = [], []
+    for rel, (size, mt, *sh) in sorted(s.items()):
+        o = d.get(rel)
+        if o is None or o[0] != size or (sh and o[2:] != sh) or (not sh and o[1] != mt):
+            copy.append(rel)
+        elif o[1] != mt:
+            touch.append(rel)
+    return copy, touch, sorted(set(d) - set(s))
+
+
+def tree_digest(rows):
+    """"<count>:<sha256>" of the sorted size+mtime rows (sha columns dropped)."""
+    rows = sorted("|".join(r.split("|")[:3]) for r in rows)
+    return f"{len(rows)}:{hashlib.sha256(chr(10).join(rows).encode()).hexdigest()}"
+
+
+def tree_problems(pc_rows, mine):
+    """[] when the size+mtime listings match, else the digest mismatch plus the first 10 differing rows."""
+    a, b = (sorted("|".join(r.split("|")[:3]) for r in x) for x in (pc_rows, mine))
+    if tree_digest(a) == tree_digest(b):
+        return []
+    diffs = sorted([f"pc-only {r}" for r in set(a) - set(b)] + [f"laptop-only {r}" for r in set(b) - set(a)],
+                   key=lambda s: s.split(" ", 1)[1])
+    return [f"install tree {tree_digest(b)} != PC v0.4 {tree_digest(a)}", *diffs[:10]]
+
+
+def r_tree(sha="0"):
+    """Write INSTALL's tree rows to tmp/tree.txt for the PC to fetch."""
+    Path(G, "tmp/tree.txt").write_text("\n".join(tree_rows(INSTALL, sha == "1")) + "\n", encoding="utf-8")
+
+
+def r_apply(listfile):
+    """Apply "D|rel" (delete) and "T|rel|mtime" (set mtime) lines to INSTALL."""
+    for line in Path(listfile).read_text(encoding="utf-8").splitlines():
+        op, rel, *mt = line.split("|")
+        p = Path(INSTALL, rel)
+        if op == "D":
+            p.unlink(missing_ok=True)
+        elif op == "T":
+            os.utime(p, (int(mt[0]), int(mt[0])))
 
 
 def r_refcheck(sums):
@@ -284,6 +349,9 @@ def r_preflight(window="-", published=""):
     bad += published_problems((fp or {}).get("sha"), published, tip,
                               lambda a, b: subprocess.run(["git", "-C", REPO, "merge-base", "--is-ancestor", a, b]).returncode == 0)
     bad += r_refcheck(REF + "/SHA256SUMS")
+    pc_tree = Path(G, "in/pc.tree.txt")   # the PC v0.4's rows, uploaded by sync_tree
+    bad += tree_problems(pc_tree.read_text(encoding="utf-8").splitlines(), tree_rows(INSTALL)) if pc_tree.is_file() \
+        else [f"missing {pc_tree} (the PC v0.4 tree listing sync_tree uploads)"]
     print("\n".join(bad) if bad else "preflight OK")
     return 1 if bad else 0
 
@@ -387,31 +455,65 @@ def published_sha():
     return (exe_fingerprint.parse_literal((PC_V04 / "mc2.exe").read_bytes()) or {}).get("sha", "")
 
 
-def sync_published():
-    """Make the laptop's published install (v0.4 junction = INSTALL) match the PC's published v0.4, file by manifest row,
-    the way merge_gate's capture-before and stage_published read A:/Games/mc2-opengl/mc2-win64-v0.4 on the PC (r_pack in reverse)."""
-    PC_TMP.mkdir(parents=True, exist_ok=True)
-    lm, lst, local = PC_TMP / "laptop.manifest.csv", PC_TMP / "published.lst", PC_TMP / "published.tar"
+CHUNK = 2 << 30   # bytes per tar chunk
+
+
+def remote_rows(sha):
+    ssh(remote_py("tree", "-", "1" if sha else "0"))
+    local = PC_TMP / "laptop.tree.txt"
+    scp(f"{HOST}:{G}/tmp/tree.txt", local)
     try:
-        scp(f"{HOST}:{INSTALL}/.deployed_manifest.csv", lm)
-        delta = manifest_delta(manifest_rows(PC_V04 / ".deployed_manifest.csv"), manifest_rows(lm))
-        scp(PC_V04 / ".deployed_manifest.csv", f"{HOST}:{G}/tmp/published.manifest.csv")
-        ssh(remote_py("prune", f"{G}/tmp/published.manifest.csv"), stream=True)
-        if not delta:
-            return
-        print(f"refreshing the laptop's published install from {PC_V04}: {len(delta)} files", flush=True)
-        lst.write_text("\n".join([*delta, ".deployed_manifest.csv"]) + "\n", encoding="utf-8", newline="\n")
-        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_V04), "-T", str(lst)]).returncode:
-            sys.exit("published tar failed")
-        scp(local, f"{HOST}:{G}/tmp/published.tar")
-        ssh(f"tar -xf {G}/tmp/published.tar -C {INSTALL} && del {G.replace('/', chr(92))}\\tmp\\published.tar")
+        return local.read_text(encoding="utf-8").splitlines()
     finally:
-        for p in (lm, lst, local):
+        local.unlink(missing_ok=True)
+
+
+def chunks(rels, sizes, limit=CHUNK):
+    """rels split into consecutive groups of at most `limit` bytes (a larger file gets a group of its own)."""
+    out, cur, n = [], [], 0
+    for rel in rels:
+        if cur and n + sizes[rel] > limit:
+            out.append(cur); cur, n = [], 0
+        cur.append(rel); n += sizes[rel]
+    return out + ([cur] if cur else [])
+
+
+def sync_tree():
+    """Make the laptop's published install (v0.4 junction = INSTALL) equal the PC's v0.4 file for file, the tree merge_gate's
+    capture-before and stage_published read. Both ways: copy missing/different files in ~2 GB tar chunks (tar keeps mtimes),
+    then delete laptop-only files. The first sync compares sha256 (only real differences cross the wire, mtimes are fixed in
+    place); later syncs size+mtime. Re-running resumes: every call re-diffs. Uploads the PC rows for the preflight."""
+    PC_TMP.mkdir(parents=True, exist_ok=True)
+    first = ssh(f"if exist {INSTALL.replace('/', chr(92))}\\.tree-synced (echo yes) else (echo no)")[1].strip() != "yes"
+    t = time.time()
+    pc = tree_rows(PC_V04, sha=first)
+    copy, touch, delete = tree_diff(pc, remote_rows(first))
+    sizes = {r.split("|", 1)[0]: int(r.split("|")[1]) for r in pc}
+    print(f"sync_tree ({'sha256' if first else 'size+mtime'}, {time.time() - t:.0f}s): copy {len(copy)} files "
+          f"({sum(sizes[r] for r in copy) >> 20} MB), touch {len(touch)}, delete {len(delete)}", flush=True)
+    lst, local, ops = PC_TMP / "sync.lst", PC_TMP / "sync.tar", PC_TMP / "sync.ops"
+    try:
+        for i, group in enumerate(chunks(copy, sizes), 1):
+            lst.write_text("\n".join(group) + "\n", encoding="utf-8", newline="\n")
+            if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_V04), "-T", str(lst)]).returncode:
+                sys.exit("sync tar failed")
+            scp(local, f"{HOST}:{G}/tmp/sync.tar")
+            ssh(f"tar -xf {G}/tmp/sync.tar -C {INSTALL} && del {G.replace('/', chr(92))}\\tmp\\sync.tar")
+            print(f"  chunk {i}: {len(group)} files, {local.stat().st_size >> 20} MB, {time.time() - t:.0f}s", flush=True)
+        if touch or delete:
+            mt = {r.split("|", 1)[0]: r.split("|")[2] for r in pc}
+            ops.write_text("".join([*(f"T|{r}|{mt[r]}\n" for r in touch), *(f"D|{r}\n" for r in delete)]), encoding="utf-8")
+            scp(ops, f"{HOST}:{G}/tmp/sync.ops")
+            ssh(remote_py("apply", "-", f"{G}/tmp/sync.ops"))
+        lst.write_text("\n".join("|".join(r.split("|")[:3]) for r in pc) + "\n", encoding="utf-8", newline="\n")
+        ssh("cmd /c if not exist C:\\mc2gate\\in mkdir C:\\mc2gate\\in")
+        scp(lst, f"{HOST}:{G}/in/pc.tree.txt")
+        if first:
+            ssh(f"cmd /c echo ok> {INSTALL.replace('/', chr(92))}\\.tree-synced")
+    finally:
+        for p in (lst, local, ops):
             p.unlink(missing_ok=True)
-    want = sha256(PC_V04 / "mc2.exe")
-    got = ssh(f'certutil -hashfile "{INSTALL}/mc2.exe" SHA256')[1].splitlines()[1].strip()
-    if got.lower() != want.lower():
-        sys.exit(f"published mc2.exe sha mismatch {got} != {want}")
+    print(f"sync_tree done in {time.time() - t:.0f}s", flush=True)
 
 
 def pc_main(args):
@@ -424,7 +526,7 @@ def pc_main(args):
     ssh(remote_py("init"), stream=True)
     seed()
     seed_ref()
-    sync_published()
+    sync_tree()
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
     url = f"ssh://{HOST}/{REPO}"
@@ -448,20 +550,27 @@ def pc_main(args):
         r = subprocess.run(["scp", "-q", *SSH_OPTS, f"{HOST}:{G}/out/{w}/{name}", str(dest / name)], env=env())
         if r.returncode:
             print(f"laptop_gate: {name} not available", flush=True)
-    tarp = dest / "payload.tar"
-    if tarp.is_file():
-        want = (dest / "payload.sha256").read_text().split()[0]
-        got = sha256(tarp)
-        print(f"payload.tar sha256 {got} {'OK' if got == want else 'MISMATCH expected ' + want}")
-        if got == want:
-            with tarfile.open(tarp) as tar:
-                tar.extractall(dest / "payload", filter="data")
-            print(f"payload extracted: {dest / 'payload'} (deploy with --from-payload)")
+    extract_payload(dest)
     if (dest / "gate-verdict.json").is_file():
         print("verdict file sha256", sha256(dest / "gate-verdict.json"), dest / "gate-verdict.json")
     sm = json.loads((dest / "summary.json").read_text()) if (dest / "summary.json").is_file() else {}
     print("SUMMARY", json.dumps(sm), f"total_wall_s={time.time() - t0:.0f}")
     return exit_code(sm)
+
+
+def extract_payload(dest):
+    """sha-check dest/payload.tar and extract it into a cleared dest/payload (no files left from an earlier run)."""
+    tarp = dest / "payload.tar"
+    if not tarp.is_file():
+        return
+    want = (dest / "payload.sha256").read_text().split()[0]
+    got = sha256(tarp)
+    print(f"payload.tar sha256 {got} {'OK' if got == want else 'MISMATCH expected ' + want}")
+    if got == want:
+        shutil.rmtree(dest / "payload", ignore_errors=True)
+        with tarfile.open(tarp) as tar:
+            tar.extractall(dest / "payload", filter="data")
+        print(f"payload extracted: {dest / 'payload'} (deploy with --from-payload)")
 
 
 def exit_code(sm):
@@ -479,7 +588,7 @@ def main():
     if a.remote:
         step = a.remote
         return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
-                "prune": lambda: r_prune(a.window), "preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
+                "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
         scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
         return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
