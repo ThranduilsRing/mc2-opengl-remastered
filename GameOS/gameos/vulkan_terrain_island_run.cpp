@@ -63,11 +63,11 @@ bool ensure_island_ready(int w, int h) {
         if (!init_island(fresh.get(), w, h)) {
             slotCtx.waitIdle("terrain_init_failure");   // objects made before the failure may have been submitted
             fresh.reset();
-            static mc2vk::IslandInitFailures s_failures;
             mc2vk::onIslandInitFailure(mc2vk::IslandKind::Terrain, g_terrainInitReachedBuild != 0, mc2vk::takeLastCreateFailure(),
-                                       g_health.fallbackReason, s_failures);   // fatal does not return
+                                       g_health.fallbackReason);   // fatal does not return
             return false;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::Terrain).reset();
         islandSlot() = std::move(fresh);
     }
     const TerrainIsland* island = parkedIsland();

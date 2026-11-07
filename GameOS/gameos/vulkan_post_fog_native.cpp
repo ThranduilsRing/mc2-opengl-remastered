@@ -211,8 +211,12 @@ void destroy_state(gosPostProcess::VkPostFogNative* s) {
     s->disabled = disabled;
 }
 
+// Set once build_state is past its readiness checks (device, shared GBuffer at this size): a failure before that waits, not degrades.
+static bool s_fogReachedBuild = false;
+
 bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
     s->width = w; s->height = h;
+    s_fogReachedBuild = false;
 
     // Shared engine device, on-demand (SSAO/water model; fail-soft -> GL fog).
     if (!mc2vk::ensureEngineVulkanContext()) {
@@ -242,6 +246,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
         setFallback("shared_gbuffer_size_mismatch"); return false;
     }
     g_pf.substrateLive = 1;
+    s_fogReachedBuild = true;
 
     VkResult r;
 
@@ -549,13 +554,13 @@ bool gosPostProcess::runVkPostFogNative()
         (void)mc2vk::takeLastCreateFailure();
         if (!build_state(s, width_, height_)) {
             // Fog is optional: a build failure degrades to no fog for this process (one transient-VkResult retry).
-            static mc2vk::IslandInitFailures s_failures;
-            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::Fog, true,
-                mc2vk::takeLastCreateFailure(), g_pf.fallbackReason[0] ? g_pf.fallbackReason : "unknown", s_failures);
+            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::Fog, s_fogReachedBuild,
+                mc2vk::takeLastCreateFailure(), g_pf.fallbackReason[0] ? g_pf.fallbackReason : "unknown");
             destroy_state(s);
-            s->disabled = action != mc2vk::IslandInitAction::Retry;
+            s->disabled = action == mc2vk::IslandInitAction::Degrade;   // Wait / Retry: try again next frame
             return false;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::Fog).reset();
     }
 
     ++g_pf.attempted;

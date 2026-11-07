@@ -13,6 +13,7 @@
 #include "Gates/gate_cold.h"
 
 #include "hitch_stats.h"
+#include "vk_island_fail_policy.h"   // kVkAdmissionDenied
 #include "vulkan_context.h"
 
 namespace mc2vk {
@@ -23,11 +24,11 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     VkBuffer buffer = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
     VkBuffer probe=VK_NULL_HANDLE;
-    if(vkCreateBuffer(device,&info,nullptr,&probe)!=VK_SUCCESS) return false;
+    if (const VkResult r = vkCreateBuffer(device, &info, nullptr, &probe); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     VkMemoryRequirements requirements{}; vkGetBufferMemoryRequirements(device,probe,&requirements);
     vkDestroyBuffer(device,probe,nullptr);
     infra::Admission admission(requirements.size,name);
-    if(!admission) return false;
+    if (!admission) { t_lastCreateFailure = static_cast<VkResult>(kVkAdmissionDenied); return false; }
     VmaAllocationInfo placed{};
     if (const VkResult r = vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, &placed); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {   // where the buffer landed (audit S2): DL = DEVICE_LOCAL, HV = HOST_VISIBLE, HC = HOST_CACHED
@@ -157,11 +158,11 @@ bool OwnedImage::create(VmaAllocator allocator, VkDevice device, const VkImageCr
     VmaAllocation allocation = nullptr;
     if(!infra::imageSupported(info,name)) return false;
     VkImage probe=VK_NULL_HANDLE;
-    if(vkCreateImage(device,&info,nullptr,&probe)!=VK_SUCCESS) return false;
+    if (const VkResult r = vkCreateImage(device, &info, nullptr, &probe); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     VkMemoryRequirements requirements{}; vkGetImageMemoryRequirements(device,probe,&requirements);
     vkDestroyImage(device,probe,nullptr);
     infra::Admission admission(requirements.size,name);
-    if(!admission) return false;
+    if (!admission) { t_lastCreateFailure = static_cast<VkResult>(kVkAdmissionDenied); return false; }
     if (const VkResult r = vmaCreateImage(allocator, &info, &alloc, &image, &allocation, nullptr); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     image_ = image;
     allocation_ = allocation;

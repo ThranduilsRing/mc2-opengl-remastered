@@ -244,7 +244,6 @@ MechIsland* parkedIsland() { return static_cast<MechIsland*>(islandSlot().get())
 // Init failure policy (vk_island_fail_policy.h): before the readiness gates (VK context / shared GBuffer not born yet) init retries next
 // frame; past them a failure is fatal (one transient-VkResult retry). g_mechInitReachedBuild flips to 1 once init passes the readiness gates.
 static int  g_mechInitReachedBuild = 0;
-static mc2vk::IslandInitFailures g_mechInitFailures;
 
 // gpuReadHeavy: a host-written buffer the GPU reads many times per frame (the night pool, walked by every mech fragment) is written
 // sequentially so VMA can place it in device-local, host-visible memory instead of system memory read across the bus.
@@ -439,7 +438,10 @@ bool init_island(MechIsland* s, int w, int h) {
     s->allocator = ctx.allocator();
     if (s->device == VK_NULL_HANDLE || s->allocator == VK_NULL_HANDLE) { setFallback("engine_vk_device_or_allocator_null"); return false; }
     g_health.vulkanAvailable = 1;
-    if (!s->skin.init(s->device, s->allocator, spv_dir())) vlog("mech GPU skin unavailable (pipeline build failed); passes blend bones inline.");
+    if (!s->skin.init(s->device, s->allocator, spv_dir())) {
+        vlog("mech GPU skin unavailable (pipeline build failed); passes blend bones inline.");
+        (void)mc2vk::takeLastCreateFailure();   // optional: its VkResult must not be blamed for a later init failure
+    }
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -1019,9 +1021,10 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         if (!init_island(fresh.get(), w, h)) {
             slotCtx.waitIdle("mech_init_failure");   // objects made before the failure may have been submitted
             mc2vk::onIslandInitFailure(mc2vk::IslandKind::Mech, g_mechInitReachedBuild != 0, mc2vk::takeLastCreateFailure(),
-                                       g_health.fallbackReason, g_mechInitFailures);   // fatal does not return; otherwise retry next frame
+                                       g_health.fallbackReason);   // fatal does not return; otherwise retry next frame
             return 0;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::Mech).reset();
         islandSlot() = std::move(fresh);
     }
     MechIsland* s = parkedIsland();

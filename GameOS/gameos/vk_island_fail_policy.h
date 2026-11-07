@@ -55,9 +55,13 @@ constexpr bool islandRequired(IslandKind kind) { return kind != IslandKind::Fog 
 inline constexpr int32_t kVkNotReady = 1, kVkTimeout = 2, kVkErrorOutOfHostMemory = -1, kVkErrorOutOfDeviceMemory = -2,
                          kVkErrorInitializationFailed = -3, kVkErrorDeviceLost = -4, kVkErrorUnknown = -13,
                          kVkErrorOutOfDateKhr = -1000001004, kVkPipelineCompileRequired = 1000297000;
+// Not a Vulkan value: the residency budget (infra::Admission, vk_owned.cpp) refused the allocation. Transient: memory retired by a
+// resize or mission load can free the budget by the next frame.
+inline constexpr int32_t kVkAdmissionDenied = 1999000001;
 
 constexpr bool vkResultTransient(int32_t result) {
-    return result == kVkNotReady || result == kVkTimeout || result == kVkErrorOutOfDateKhr || result == kVkPipelineCompileRequired;
+    return result == kVkNotReady || result == kVkTimeout || result == kVkErrorOutOfDateKhr || result == kVkPipelineCompileRequired ||
+           result == kVkAdmissionDenied;
 }
 
 constexpr const char* vkResultName(int32_t result) {
@@ -72,6 +76,7 @@ constexpr const char* vkResultName(int32_t result) {
     case kVkErrorUnknown: return "VK_ERROR_UNKNOWN";
     case kVkErrorOutOfDateKhr: return "VK_ERROR_OUT_OF_DATE_KHR";
     case kVkPipelineCompileRequired: return "VK_PIPELINE_COMPILE_REQUIRED";
+    case kVkAdmissionDenied: return "RESIDENCY_ADMISSION_DENIED";
     }
     return "VK_RESULT_OTHER";
 }
@@ -83,10 +88,22 @@ constexpr IslandInitAction islandInitAction(IslandKind kind, bool reachedBuild, 
     return islandRequired(kind) ? IslandInitAction::Fatal : IslandInitAction::Degrade;
 }
 
+// One island's failure count. Reset after a successful init and at the mission boundary (resetAllIslandInitFailures), so a transient
+// recovered once does not make the next mission's or resize's first transient fatal.
 struct IslandInitFailures {
     int build = 0;
     bool waitLogged = false;
+    void reset() { *this = IslandInitFailures{}; }
 };
+
+// The per-island counts (render thread only).
+inline IslandInitFailures& islandInitFailures(IslandKind kind) {
+    static IslandInitFailures failures[static_cast<int>(IslandKind::ScreenFx) + 1];
+    return failures[static_cast<int>(kind)];
+}
+inline void resetAllIslandInitFailures() {
+    for (int k = 0; k <= static_cast<int>(IslandKind::ScreenFx); ++k) islandInitFailures(static_cast<IslandKind>(k)).reset();
+}
 
 // Applies the policy to one init failure. Fatal does not return; Wait and Retry mean "try init again next frame"; Degrade means "leave the
 // effect off for the process".
@@ -106,6 +123,11 @@ inline IslandInitAction onIslandInitFailure(IslandKind kind, bool reachedBuild, 
         mc2::fatalBackendFailure(message.c_str());
     }
     return action;
+}
+
+// The same against the island's own count.
+inline IslandInitAction onIslandInitFailure(IslandKind kind, bool reachedBuild, int32_t vkResult, std::string_view reason) {
+    return onIslandInitFailure(kind, reachedBuild, vkResult, reason, islandInitFailures(kind));
 }
 
 }  // namespace mc2vk

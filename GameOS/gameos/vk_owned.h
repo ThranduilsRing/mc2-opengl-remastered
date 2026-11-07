@@ -132,6 +132,7 @@ VkResult createChecked(Owner& owner, VkDevice device, Call&& call) {
 // instead of each site returning a bare false. Use through MC2_VK_ALLOC_SETS so the site is recorded.
 inline VkResult allocateDescriptorSets(VkDevice device, const VkDescriptorSetAllocateInfo* info, VkDescriptorSet* out, std::string_view file, int line) {
     const VkResult r = vkAllocateDescriptorSets(device, info, out);
+    if (r != VK_SUCCESS) t_lastCreateFailure = r;   // an island init failure names it (vk_island_fail_policy.h)
     if (r != VK_SUCCESS && mc2_diag::tagRequested("VK_DESC_ALLOC")) {   // quiet-by-default rule: MC2_DIAG_TAGS=VK_DESC_ALLOC prints it
         const std::string base = std::filesystem::path(file).filename().string();
         std::fprintf(stderr, "[VK_DESC_ALLOC] vkAllocateDescriptorSets failed result=%d%s pool=%p sets=%u site=%s:%d\n", static_cast<int>(r),

@@ -85,8 +85,11 @@
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
 
-// Both screenfx entry points share one VkPostScreenFx, so they share one failure count.
-static mc2vk::IslandInitFailures s_screenFxInitFailures;
+// Both screenfx entry points share one VkPostScreenFx, so they share one failure count, and both run in one frame
+// (gos_postprocess.cpp endScene): a Retry waits for the next frame instead of the second entry point spending it at once.
+static uint64_t s_screenFxRetryFrame = ~0ull;
+// Set once build_state is past its readiness checks (device, shared GBuffer at this size): a failure before that waits, not degrades.
+static bool s_screenFxReachedBuild = false;
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
@@ -262,6 +265,7 @@ void destroy_state(gosPostProcess::VkPostScreenFx* s) {
 
 bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     s->width = w; s->height = h;
+    s_screenFxReachedBuild = false;
 
     // Shared engine device, on-demand (rung-8.1 model; fail-soft -> GL passes).
     if (!mc2vk::ensureEngineVulkanContext()) {
@@ -293,6 +297,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         setFallback("shared_gbuffer_size_mismatch"); return false;
     }
     g_fx.substrateLive = 1;
+    s_screenFxReachedBuild = true;
 
     VkResult r;
 
@@ -704,15 +709,19 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
                  g_fx.waitUsAccum / static_cast<double>(g_fx.waitSamples), g_fx.waitSamples);
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
+        const uint64_t frameNo = mc2vk::getOrCreateEngineVulkanContext().frameContext().frame;
+        if (frameNo == s_screenFxRetryFrame) return false;
         if (s->inited) destroy_state(s);
         (void)mc2vk::takeLastCreateFailure();
         if (!build_state(s, width_, height_)) {
-            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::ScreenFx, true,
-                mc2vk::takeLastCreateFailure(), g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown", s_screenFxInitFailures);
+            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::ScreenFx, s_screenFxReachedBuild,
+                mc2vk::takeLastCreateFailure(), g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown");
             destroy_state(s);
-            s->disabled = action != mc2vk::IslandInitAction::Retry;
+            s->disabled = action == mc2vk::IslandInitAction::Degrade;   // Wait / Retry: try again next frame
+            if (action == mc2vk::IslandInitAction::Retry) s_screenFxRetryFrame = frameNo;
             return false;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::ScreenFx).reset();
     }
     if (!mc2vk::bindMoverShadowDescriptors(s->device,frame.shadowSet)) { setFallback("mover_receiver_unavailable"); return false; }
     // The static sun map is the shadow island's, used only when its build is of the engine's current generation, so it pairs with
@@ -888,15 +897,19 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
                  g_fx.waitUsAccum / static_cast<double>(g_fx.waitSamples), g_fx.waitSamples);
     }
     if (!s->inited || s->width != width_ || s->height != height_) {
+        const uint64_t frameNo = mc2vk::getOrCreateEngineVulkanContext().frameContext().frame;
+        if (frameNo == s_screenFxRetryFrame) return 0;
         if (s->inited) destroy_state(s);
         (void)mc2vk::takeLastCreateFailure();
         if (!build_state(s, width_, height_)) {
-            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::ScreenFx, true,
-                mc2vk::takeLastCreateFailure(), g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown", s_screenFxInitFailures);
+            const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::ScreenFx, s_screenFxReachedBuild,
+                mc2vk::takeLastCreateFailure(), g_fx.fallbackReason[0] ? g_fx.fallbackReason : "unknown");
             destroy_state(s);
-            s->disabled = action != mc2vk::IslandInitAction::Retry;
+            s->disabled = action == mc2vk::IslandInitAction::Degrade;   // Wait / Retry: try again next frame
+            if (action == mc2vk::IslandInitAction::Retry) s_screenFxRetryFrame = frameNo;
             return 0;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::ScreenFx).reset();
     }
 
     ++g_fx.attempted;

@@ -84,11 +84,8 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     (void)mc2vk::takeLastCreateFailure();
     if (!np->init(ctx, capacity->vertices, WaterStream::GetRecipeCount(), s->recipeBuf.get(), capacity->eligibleBound)) {
         // The native cull/pack producers are the only water feed: a build failure here is a water init failure.
-        static mc2vk::IslandInitFailures s_failures;
-        const mc2vk::IslandInitAction action = mc2vk::onIslandInitFailure(mc2vk::IslandKind::Water, true,
-            mc2vk::takeLastCreateFailure(), "native_producers_init_failed", s_failures);
-        s->nativeFailed = action != mc2vk::IslandInitAction::Retry;
-        return false;
+        mc2vk::onIslandInitFailure(mc2vk::IslandKind::Water, true, mc2vk::takeLastCreateFailure(), "native_producers_init_failed");
+        return false;   // fatal does not return; Retry tries again next frame
     }
     s->native = std::move(np);
     // The first drawn slot still waits for a lighting snapshot, so prewarm
@@ -173,11 +170,11 @@ extern "C" int mc2_vk_water_island_run(
         (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
             slotCtx.waitIdle("water_init_failure");   // objects made before the failure may have been submitted
-            static mc2vk::IslandInitFailures s_failures;
             mc2vk::onIslandInitFailure(mc2vk::IslandKind::Water, g_waterInitReachedBuild != 0,
-                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason, s_failures);
+                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason);
             return 0;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::Water).reset();
         islandSlot() = std::move(fresh);
     }
     WaterIsland* s = parkedIsland();

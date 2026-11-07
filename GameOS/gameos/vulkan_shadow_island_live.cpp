@@ -1200,11 +1200,11 @@ static bool ensure_island(int size) {
         if (!init_island(fresh.get(), size)) {
             slotCtx.waitIdle("shadow_init_failure");   // objects made before the failure may have been submitted
             fresh.reset();
-            static mc2vk::IslandInitFailures s_failures;
             mc2vk::onIslandInitFailure(mc2vk::IslandKind::Shadow, g_shadowInitReachedBuild != 0,
-                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason, s_failures);
+                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason);
             return false;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::Shadow).reset();
         islandSlot() = std::move(fresh);
     }
     return true;

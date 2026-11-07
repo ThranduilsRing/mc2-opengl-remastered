@@ -1848,11 +1848,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
             slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
-            static mc2vk::IslandInitFailures s_failures;
             mc2vk::onIslandInitFailure(mc2vk::IslandKind::ColorProp, g_propInitReachedBuild != 0,
-                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason, s_failures);
+                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason);
             return 0;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::ColorProp).reset();
         islandSlot() = std::move(fresh);
     }
     ColorPropIsland* s = parkedIsland();

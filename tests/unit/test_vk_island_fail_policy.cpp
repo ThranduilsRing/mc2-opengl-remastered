@@ -58,4 +58,16 @@ TEST_CASE("island init: onIslandInitFailure counts build failures and logs a wai
     CHECK(mc2vk::onIslandInitFailure(IslandKind::Fog, true, mc2vk::kVkTimeout, "pipeline", state) == IslandInitAction::Retry);
     CHECK(mc2vk::onIslandInitFailure(IslandKind::Fog, true, mc2vk::kVkTimeout, "pipeline", state) == IslandInitAction::Degrade);
     CHECK(state.build == 2);
+    state.reset();   // a successful init restores the retry allowance
+    CHECK(mc2vk::onIslandInitFailure(IslandKind::Fog, true, mc2vk::kVkTimeout, "pipeline", state) == IslandInitAction::Retry);
+}
+
+TEST_CASE("island init: residency admission denial retries once and the registry resets") {
+    CHECK(mc2vk::vkResultTransient(mc2vk::kVkAdmissionDenied));
+    CHECK(islandInitAction(IslandKind::ColorProp, true, mc2vk::kVkAdmissionDenied, 1) == IslandInitAction::Retry);
+    CHECK(islandInitAction(IslandKind::Water, true, mc2vk::kVkAdmissionDenied, 2) == IslandInitAction::Fatal);
+    CHECK(mc2vk::onIslandInitFailure(IslandKind::ScreenFx, true, mc2vk::kVkAdmissionDenied, "admission") == IslandInitAction::Retry);
+    CHECK(mc2vk::islandInitFailures(IslandKind::ScreenFx).build == 1);
+    mc2vk::resetAllIslandInitFailures();
+    CHECK(mc2vk::islandInitFailures(IslandKind::ScreenFx).build == 0);
 }
