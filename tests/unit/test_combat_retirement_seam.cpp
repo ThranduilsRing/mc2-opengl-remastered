@@ -39,7 +39,7 @@ struct CombatRetirementSeam {
     }
     static void update(Mission& owner) { owner.updateObjectManager(); }
     static void complete(Mission& owner) { owner.completeOrderSimulationTick(); }
-    static void reinit(Mission& owner) { owner.initTeamRelations(MISSION_LOAD_SP_QUICKSTART); }
+    static void reinit(Mission& owner) { owner.initTeamRelations(MissionLoadType::MISSION_LOAD_SP_QUICKSTART); }
     // Mission teardown also shuts down ABL and the renderer, absent in this fixture.
     union Storage {
         Mission owner;
