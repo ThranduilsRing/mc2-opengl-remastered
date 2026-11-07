@@ -48,7 +48,7 @@ TEST_CASE("tactic_table: brain aliases") {
 	CHECK(tt::find_name("Rearguard") == 9);
 	CHECK(tt::find_name("flank") == -1);
 	CHECK(tt::find_name("") == -1);
-	CHECK(tt::find_name(nullptr) == -1);
+	CHECK(tt::find_name(std::string_view{}) == -1);
 }
 
 TEST_CASE("tactic_table: LEFT is value 1 with the LEFT flag, RIGHT is value 2 with the RIGHT flag") {

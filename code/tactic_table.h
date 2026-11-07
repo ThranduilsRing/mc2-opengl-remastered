@@ -5,6 +5,7 @@
 // Values are saved (TacticalOrder queue, brain section weights[12], selectedTactic) and read by ABL: they never change.
 // save_layout_guard.h pins the same values INDEPENDENTLY; do not generate those pins from this table.
 #pragma once
+#include <string_view>
 
 #include <cstdint>
 
@@ -46,10 +47,7 @@ inline constexpr unsigned long kExtMask = 0x7ul << kExtShift;
 
 constexpr bool in_domain(int v) { return v >= kMinValue && v <= kMaxValue; }
 
-constexpr bool str_eq(const char* a, const char* b) {
-	while (*a && *a == *b) { ++a; ++b; }
-	return *a == *b;
-}
+constexpr bool str_eq(std::string_view a, std::string_view b) { return a == b; }
 
 // Bounded: out-of-domain values get a placeholder, never an out-of-bounds read.
 constexpr const char* name(int v) {
@@ -71,8 +69,8 @@ constexpr const char* code2(int v) {
 }
 
 // Canonical name or brain alias -> value, -1 if unknown. Case sensitive, exact.
-constexpr int find_name(const char* n) {
-	if (!n || !n[0]) return -1;
+constexpr int find_name(std::string_view n) {
+	if (n.empty()) return -1;
 #define MC2_TACTIC_FIND(L, S, V, N, C, B, E) if (str_eq(n, N)) return V;
 	MC2_TACTIC_TABLE(MC2_TACTIC_FIND)
 #undef MC2_TACTIC_FIND

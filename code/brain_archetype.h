@@ -59,7 +59,7 @@ inline bool brainArchetypeLookup(mc2::czstring name, BrainArchetypeDefaults& out
 // -1 = unknown. Maps the discussion #19 tactic aliases onto the engine's tactic enum.
 inline int brainTacticNameToIndex(mc2::czstring name) {
     // Canonical names and the brain aliases come from tactic_table.h; "None" is not a selectable tactic (-1, as before).
-    const int v = tactic_table::find_name(name);
+    const int v = tactic_table::find_name(name ? std::string_view{name} : std::string_view{});
     return v > 0 ? v : -1;
 }
 
