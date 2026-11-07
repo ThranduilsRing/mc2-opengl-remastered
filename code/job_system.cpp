@@ -62,6 +62,7 @@ struct Pool {
     std::vector<std::thread>      threads;
 };
 
+// Explicit shutdown joins workers; direct process exits must not destroy live threads.
 Pool* g_pool      = nullptr;
 bool  g_enabled   = false;
 bool  g_touchEnabled = false;

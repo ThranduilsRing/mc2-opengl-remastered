@@ -32,7 +32,7 @@ TEST_CASE("modlint event tokens respect view bounds and report unknown values") 
 // -------------------------------------------------------------------------
 
 TEST_CASE("equipment modlint: every EQV code maps to a distinct token and a message") {
-    for (int c = 0; c < EQV__COUNT; ++c) {
+    for (int c = 0; c < std::to_underlying(EQV__COUNT); ++c) {
         EquipmentReasonCode code = (EquipmentReasonCode)c;
         const char* tok = equipmentReasonToken(code);
         const char* msg = equipmentReasonMessage(code);
@@ -42,8 +42,8 @@ TEST_CASE("equipment modlint: every EQV code maps to a distinct token and a mess
         CHECK(std::string(msg) != "unknown finding");
         CHECK(std::string(tok).rfind("EQV_", 0) == 0);
     }
-    for (int a = 0; a < EQV__COUNT; ++a)
-        for (int b = a + 1; b < EQV__COUNT; ++b)
+    for (int a = 0; a < std::to_underlying(EQV__COUNT); ++a)
+        for (int b = a + 1; b < std::to_underlying(EQV__COUNT); ++b)
             CHECK(std::string(equipmentReasonToken((EquipmentReasonCode)a))
                   != equipmentReasonToken((EquipmentReasonCode)b));
 }

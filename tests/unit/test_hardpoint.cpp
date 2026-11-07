@@ -8,6 +8,7 @@
 #include "doctest.h"
 #include "hardpoint.h"
 #include <string>
+#include <utility>
 
 // The logical names the schema must be able to represent (roadmap examples).
 static const char* kRightTorsoEnergy1   = "RightTorso_Energy_1";
@@ -100,15 +101,15 @@ TEST_CASE("hardpoint accepts multiple tags via the mask") {
 
 TEST_CASE("hardpoint with no tags accepts nothing") {
     HardpointProfile hp;
-    for (int t = 0; t < NUM_WEAPON_TAGS; ++t) {
+    for (int t = 0; t < std::to_underlying(NUM_WEAPON_TAGS); ++t) {
         CHECK_FALSE(hardpointAcceptsWeapon(hp, (WeaponTag)t));
     }
 }
 
 TEST_CASE("weapon tag bits are distinct and fit in the mask") {
-    CHECK(NUM_WEAPON_TAGS <= 32);
+    CHECK(std::to_underlying(NUM_WEAPON_TAGS) <= 32);
     WeaponTagMask seen = 0u;
-    for (int t = 0; t < NUM_WEAPON_TAGS; ++t) {
+    for (int t = 0; t < std::to_underlying(NUM_WEAPON_TAGS); ++t) {
         WeaponTagMask bit = weaponTagBit((WeaponTag)t);
         CHECK(bit != 0u);
         CHECK((seen & bit) == 0u);   // no two tags share a bit

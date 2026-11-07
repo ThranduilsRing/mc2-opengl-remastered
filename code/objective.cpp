@@ -90,7 +90,7 @@ namespace {
 struct ObservationTraversal {
 	CObjectives::Observation* observation = objectiveObservation();
 	bool outer = observation && !observation->traversal;
-	ObservationTraversal(const char* source) {
+	ObservationTraversal(mc2::czstring source) {
 		if (outer) {
 			observation->traversal = observation->nextTraversal++;
 			observation->traversalSource = source;
@@ -131,33 +131,26 @@ void CObjectives::Observation::Begin(FitIniFile& file) {
 unsigned long long CObjectives::Observation::Emit(std::string_view kind, unsigned long long cause,
                                                  std::string_view data, unsigned long long id) {
 	if (!objectiveObservationEnabled() || completed || rejected || missionHash.empty()) { return 0; }
-	const double time = mission ? mission->actualTime : 0;
-	if (!std::isfinite(time) || time < 0 || turn < 0) {
+	const auto reject = [this](std::string_view why) {
 		rejected = true;
-		mc2::fmt::print_err("[OBJECTIVES] rejected: invalid simulation clock\n");
-		return 0;
-	}
+		mc2::fmt::print_err("[OBJECTIVES] rejected: {}\n", why);
+		return 0ULL;
+	};
+	const double time = mission ? mission->actualTime : 0;
+	if (!std::isfinite(time) || time < 0 || turn < 0) { return reject("invalid simulation clock"); }
 	if (!id) { id = nextId++; }
 	const std::string record = std::format("{{\"mission\":\"{}\",\"seq\":{},\"id\":\"o{}\",\"frame\":{},\"time\":{},\"kind\":\"{}\",\"cause\":{},\"data\":{}}}",
 		missionHash, sequence + 1, id, turn, time, kind,
 		cause ? std::format("\"o{}\"", cause) : "null", data);
-	if (record.size() + sizeof("OBJECTIVES/1 ") - 1 > 16384) {
-		rejected = true;
-		mc2::fmt::print_err("[OBJECTIVES] rejected: oversized observation\n");
-		return 0;
-	}
-	if (!mc2_diag::writeEvent("OBJECTIVES", 1, turn, record.c_str())) {
-		rejected = true;
-		mc2::fmt::print_err("[OBJECTIVES] rejected: diagnostic write failed\n");
-		return 0;
-	}
+	if (record.size() + sizeof("OBJECTIVES/1 ") - 1 > 16384) { return reject("oversized observation"); }
+	if (!mc2_diag::writeEvent("OBJECTIVES", 1, turn, record.c_str())) { return reject("diagnostic write failed"); }
 	++sequence;
 	mc2::fmt::print_out("OBJECTIVES/1 {}\n", record);
 	fflush(stdout);
 	return id;
 }
 
-void CObjectives::Observation::SinkResult(const char* sink, const char* stage, const char* result,
+void CObjectives::Observation::SinkResult(std::string_view sink, std::string_view stage, std::string_view result,
                                           std::string_view payload, unsigned long long cause) {
 	if (!cause) { cause = dispatch; }
 	if (!cause || rejected) { return; }
@@ -167,13 +160,13 @@ void CObjectives::Observation::SinkResult(const char* sink, const char* stage, c
 	else { Emit("sink", cause, data); }
 }
 
-void objectiveObservationSink(const char* sink, const char* stage, const char* result, const char* payload) {
+void objectiveObservationSink(std::string_view sink, std::string_view stage, std::string_view result, mc2::czstring payload) {
 	if (auto* observation = objectiveObservation()) {
 		observation->SinkResult(sink, stage, result, objectiveObservationQuote(payload ? payload : ""));
 	}
 }
 
-void objectiveObservationWav(const char* requested, const char* resource, int channel, const char* result, bool accepted) {
+void objectiveObservationWav(mc2::czstring requested, mc2::czstring resource, int channel, mc2::czstring result, bool accepted) {
 	if (auto* observation = objectiveObservation()) {
 		observation->SinkResult("wav", "resource_channel", result,
 			std::format("{{\"requested\":{},\"resource\":{},\"channel\":{},\"resourceAccepted\":{},\"channelAssigned\":{}}}",
@@ -186,7 +179,7 @@ void CObjectives::Observation::Finish() {
 	if (Emit("complete", 0, std::format("{{\"count\":{},\"result\":{}}}", sequence, finalResult))) { completed = true; }
 }
 
-void CObjective::ObserveState(const char* kind, int oldState, int newState) {
+void CObjective::ObserveState(std::string_view kind, int oldState, int newState) {
 	if (m_fitOrdinal < 0) { return; }
 	if (auto* observation = objectiveObservation()) {
 		m_observationState = observation->Emit(kind, m_observationState,
@@ -211,7 +204,7 @@ void CObjective::ObserveCBills(int before, int after) {
 	}
 }
 
-void CObjective::Dispatch(CObjectiveAction& action, const char* list) {
+void CObjective::Dispatch(CObjectiveAction& action, std::string_view list) {
 	auto* observation = m_fitOrdinal >= 0 ? objectiveObservation() : nullptr;
 	if (!observation || !m_observationState || observation->rejected) {
 		action.Execute();
@@ -371,52 +364,29 @@ static bool MoverIsCaptured(const long pMoverWID, const long teamID)
 	return retval;
 }
 
-static long sReadIdFloat(FitIniFile* missionFile, const char *varName, float &value) {
-	long result = 0;
-	float tmpFloat;
-	result = missionFile->readIdFloat(const_cast<char *>(varName), tmpFloat);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpFloat;
-	}
+// Read a typed FIT id into a Raw temporary and assign it to value only on success.
+template <class Raw, class Out, class Read>
+static long sReadIdAs(Out &value, Read read) {
+	Raw tmp;
+	const long result = read(tmp);
+	if (NO_ERR == result) { value = tmp; }
 	return result;
 }
 
-static long sReadIdBoolean(FitIniFile* missionFile, const char *varName, bool &value) {
-	long result = 0;
-	bool tmpBool;
-	result = missionFile->readIdBoolean(const_cast<char *>(varName), tmpBool);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpBool;
-	}
-	return result;
+static long sReadIdFloat(FitIniFile* missionFile, mc2::czstring varName, float &value) {
+	return sReadIdAs<float>(value, [&](float &t) { return missionFile->readIdFloat(const_cast<char *>(varName), t); });
 }
 
-static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &value) {
-	long result = 0;
-	unsigned long tmpULong;
-	result = missionFile->readIdULong(const_cast<char *>(varName), tmpULong);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpULong;
-	}
-	return result;
+static long sReadIdBoolean(FitIniFile* missionFile, mc2::czstring varName, bool &value) {
+	return sReadIdAs<bool>(value, [&](bool &t) { return missionFile->readIdBoolean(const_cast<char *>(varName), t); });
 }
 
-static long sReadIdLongInt(FitIniFile* missionFile, const char *varName, int &value) {
-	long result = 0;
-	long tmpLong;
-	result = missionFile->readIdLong(const_cast<char *>(varName), tmpLong);
-	if (NO_ERR != result) {
-		//assert(false);
-	} else {
-		value = tmpLong;
-	}
-	return result;
+static long sReadIdWholeNum(FitIniFile* missionFile, mc2::czstring varName, int &value) {
+	return sReadIdAs<unsigned long>(value, [&](unsigned long &t) { return missionFile->readIdULong(const_cast<char *>(varName), t); });
+}
+
+static long sReadIdLongInt(FitIniFile* missionFile, mc2::czstring varName, int &value) {
+	return sReadIdAs<long>(value, [&](long &t) { return missionFile->readIdLong(const_cast<char *>(varName), t); });
 }
 
 static bool areCloseEnough(float f1, float f2)
@@ -1550,7 +1520,7 @@ void CObjective::Alignment(int alignment) {
 	}
 }
 
-static condition_species_type ConditionSpeciesMap(const char *speciesString) {
+static condition_species_type ConditionSpeciesMap(mc2::czstring speciesString) {
 	condition_species_type retval = DESTROY_ALL_ENEMY_UNITS;
 	int i;
 	for (i = 0; i < static_cast<int>(NUM_CONDITION_SPECIES); i += 1) {
@@ -1563,7 +1533,7 @@ static condition_species_type ConditionSpeciesMap(const char *speciesString) {
 	return retval;
 }
 
-static action_species_type ActionSpeciesMap(const char *speciesString) {
+static action_species_type ActionSpeciesMap(mc2::czstring speciesString) {
 	action_species_type retval = PLAY_BIK;
 	int i;
 	for (i = 0; i < static_cast<int>(NUM_ACTION_SPECIES); i += 1) {

@@ -36,7 +36,7 @@ bool ObjectType::handleDestruction(GameObjectPtr, GameObjectPtr) { return false;
 // Object-table fixtures provide session services; archive validation remains production code.
 void GameObject::init(bool) {}
 void GameObject::destroy() {}
-void GameObject::verifyAppearanceView(const char*) {}
+void GameObject::verifyAppearanceView(std::string_view) {}
 void GameObject::operator delete(void*) {}
 void GameObject::getBlockAndVertexNumber(int&, int&) {}
 ObjectTypePtr GameObject::getObjectType() { return nullptr; }

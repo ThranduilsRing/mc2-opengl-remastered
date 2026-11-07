@@ -18,7 +18,7 @@
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include "mc2fmt.h"
 #include "appearance_rng.h"
-static bool devShellSimSpeed(const char* paramsJson,
+static bool devShellSimSpeed(mc2::czstring paramsJson,
                              std::string& dataJsonOut, std::string& errorOut)
 {
 	// flat params object from our own client: {"value":"2"} or {}
@@ -993,7 +993,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 extern void preloadMissionSupportAtLoad();
 // Mission load sequence. Each phase is a member helper declared in mission.h, run in the original order; the
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
-void Mission::init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
+void Mission::init (mc2::czstring missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
 	struct SimulationPhase {
 		bool previous = simPresentationPass;

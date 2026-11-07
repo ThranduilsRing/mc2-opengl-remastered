@@ -1603,7 +1603,7 @@
       ],
       "rule": "extern-shim",
       "subject": "extern callable",
-      "evidence": "extern void mission_phase_mark(const char* name);",
+      "evidence": "extern void mission_phase_mark(mc2::czstring name);",
       "occurrence": 1
     },
     {

@@ -20,6 +20,8 @@
 #endif
 
 #include <memory>
+#include <string_view>
+#include "mc2_czstring.h"
 #include "sim_overlap.h"
 #include "sim_world_trace.h"
 #include "render_view.h"
@@ -364,7 +366,7 @@ class GameObject {
 		// B7o.2/B7o.3: sole writers of `appearance`; adopt takes ownership (a previous appearance is freed), release frees now.
 		void adoptAppearance (std::unique_ptr<Appearance> newAppearance);
 		void releaseAppearance (void);
-		void verifyAppearanceView (const char* where);	// logs one line if the view and the owner diverged (no assert, G12)
+		void verifyAppearanceView (std::string_view where);	// logs one line if the view and the owner diverged (no assert, G12)
 
 		virtual void init (bool create);
 	
@@ -969,7 +971,7 @@ class GameObject {
 		// many subclasses. Adding a new overload would trigger C++ name-hiding in
 		// every derived class, breaking MC2_DESTROY at most call sites. Use the
 		// `_instr` suffix to keep this surface fully distinct.
-		void destroy_instr (const char* reason, const char* file, int line);
+		void destroy_instr (mc2::czstring reason, mc2::czstring file, int line);
 
 		virtual bool getExists(void) {
 			return ((flags & OBJECT_FLAG_EXISTS) != 0);

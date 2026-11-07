@@ -1235,32 +1235,31 @@ long SensorSystemManager::init (bool debug) {
 	if (MAX_SENSORS < 2)
 		Fatal(0, " Way too few sensors in Sensor System Manager! ");
 
-	sensorPool = static_cast<SensorSystemPtr*>(std::malloc(MAX_SENSORS * sizeof(SensorSystemPtr)));
-	gosASSERT(sensorPool!=nullptr);
+	sensorPool = std::make_unique<std::unique_ptr<SensorSystem>[]>(MAX_SENSORS);
 
 	for (long i = 0; i < MAX_SENSORS; i++)
-		sensorPool[i] = new SensorSystem;
+		sensorPool[i] = std::make_unique<SensorSystem>();
 
 	//-----------------------------------------------------
 	// This assumes we have at least 2 sensors in the pool
 	// when initializing the pool...
 	sensorPool[0]->id = 0;
 	sensorPool[0]->prev = nullptr;
-	sensorPool[0]->next = sensorPool[1];
+	sensorPool[0]->next = sensorPool[1].get();
 
 	for (int i = 1; i < (MAX_SENSORS - 1); i++) {
 		sensorPool[i]->id = i;
-		sensorPool[i]->prev = sensorPool[i - 1];
-		sensorPool[i]->next = sensorPool[i + 1];
+		sensorPool[i]->prev = sensorPool[i - 1].get();
+		sensorPool[i]->next = sensorPool[i + 1].get();
 	}
 
 	sensorPool[MAX_SENSORS - 1]->id = MAX_SENSORS - 1;
-	sensorPool[MAX_SENSORS - 1]->prev = sensorPool[MAX_SENSORS - 2];
+	sensorPool[MAX_SENSORS - 1]->prev = sensorPool[MAX_SENSORS - 2].get();
 	sensorPool[MAX_SENSORS - 1]->next = nullptr;
 
 	//------------------------------
 	// All start on the free list...
-	freeList = sensorPool[0];
+	freeList = sensorPool[0].get();
 	freeSensors = MAX_SENSORS;
 
 	Assert (!debug || (Team::numTeams > 0), 0, " SensorSystemManager.init: 0 teams ");
@@ -1345,13 +1344,10 @@ void SensorSystemManager::destroy (void) {
 	{
 		for (long i = 0; i < MAX_SENSORS; i++) 
 		{
-			delete sensorPool[i];
-			sensorPool[i] = nullptr;
+			sensorPool[i].reset();
 		}
 		
-		// Exit-path containment: normal teardown destroys the sensors while the heap is alive; a null heap means the process is ending.
-		std::free(sensorPool);
-		sensorPool = nullptr;
+		sensorPool.reset();
 	}
 
 	freeSensors = 0;

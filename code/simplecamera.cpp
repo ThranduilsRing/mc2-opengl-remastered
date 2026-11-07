@@ -30,6 +30,9 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
 #include <chrono>
+#include <algorithm>
+#include <filesystem>
+#include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -629,6 +632,19 @@ long SimpleCamera::update()
 	return 0;
 }
 
+// File name without directory or extension (the _splitpath fname part).
+static std::string stemOfPath(mc2::czstring fileName)
+{
+	std::string nativeName(fileName);
+#ifndef _WIN32
+	std::replace(nativeName.begin(), nativeName.end(), '\\', '/');
+#endif
+	std::string stem = std::filesystem::path(nativeName).filename().string();
+	if (const auto dot = stem.rfind('.'); dot != std::string::npos)
+		stem.resize(dot);
+	return stem;
+}
+
 void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highlight1, long highlight2 )
 {
 	ZoneScopedN("SimpleCamera::setMech");
@@ -661,11 +677,10 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 		return;
 	}
 
-	char NoPathFileName[256];
-	_splitpath( fileName, nullptr, nullptr, NoPathFileName, nullptr );
+	std::string NoPathFileName = stemOfPath(fileName);
 
 	char testName[256];
-	strcpy( testName, NoPathFileName );
+	strcpy( testName, NoPathFileName.c_str() );
 	strcat( testName, "enc" );
 
 	FullPathFileName path;
@@ -677,7 +692,7 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	if ( fileExists( path ) )
 		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(testName) ));
 	else
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(NoPathFileName) ));
+		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, NoPathFileName.data() ));
 
 	// A mod chassis with no tgl ini (or an empty base shape) leaves no object, so
 	// hasObject() stays false and the mech lab keeps its silhouette statics.
@@ -732,8 +747,7 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 		return;
 	}
 
-	char NoPathFileName[256];
-	_splitpath( fileName, nullptr, nullptr, NoPathFileName, nullptr );
+	std::string NoPathFileName = stemOfPath(fileName);
 
 	char testName[256];
 	strcpy( testName, fileName );
@@ -748,7 +762,7 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 	if ( fileExists( path ) )
 		appearanceType = static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(testName) ));
 	else
-		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(NoPathFileName) ));
+		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, NoPathFileName.data() ));
 
 	pObject = std::make_unique<GVAppearance>();	
 	pObject->init( appearanceType );

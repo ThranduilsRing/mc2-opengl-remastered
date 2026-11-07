@@ -6,6 +6,7 @@
 
 #include "mc2_czstring.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <optional>
 #include "mover_internal.h"
 
 #include "object_shared_constants.h"
@@ -771,14 +772,14 @@ DamageSchemaId Mover::damageSchema (void) const {
 
 // LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3). Map a weapon's coarse component
 // FORM (the legacy Energy/Ballistic/Missile bucket getWeaponNode round-robins
-// over) to the typed WeaponTag the hardpoint accept-set speaks. Returns false for
+// over) to the typed WeaponTag the hardpoint accept-set speaks. Returns nullopt for
 // non-weapon / unmapped forms so a bad slot is skipped rather than mis-tagged.
-static bool weaponFormToTag (ComponentFormType form, WeaponTag& out) {
+static std::optional<WeaponTag> weaponFormToTag (ComponentFormType form) {
 	switch (form) {
-		case COMPONENT_FORM_WEAPON_ENERGY:    out = WTAG_ENERGY;    return true;
-		case COMPONENT_FORM_WEAPON_BALLISTIC: out = WTAG_BALLISTIC; return true;
-		case COMPONENT_FORM_WEAPON_MISSILE:   out = WTAG_MISSILE;   return true;
-		default: return false;
+		case COMPONENT_FORM_WEAPON_ENERGY:    return WTAG_ENERGY;
+		case COMPONENT_FORM_WEAPON_BALLISTIC: return WTAG_BALLISTIC;
+		case COMPONENT_FORM_WEAPON_MISSILE:   return WTAG_MISSILE;
+		default: return std::nullopt;
 	}
 }
 
@@ -801,12 +802,12 @@ void Mover::validateLoadoutHardpointJoins (mc2::czstring unitLabel) const {
 		HardpointProfile hp;
 		if (!resolveHardpoint(it.hardpointId, hp))
 			continue;                       // declared id has no profile (base: none)
-		WeaponTag tag;
-		if (!weaponFormToTag(MasterComponent::masterList[it.masterID].getForm(), tag))
+		const auto tag = weaponFormToTag(MasterComponent::masterList[it.masterID].getForm());
+		if (!tag)
 			continue;                       // non-weapon slot carrying a hardpoint: skip
 		LoadoutHardpointJoin j;
 		j.hardpoint     = hp;
-		j.weaponTag     = tag;
+		j.weaponTag     = *tag;
 		j.unitSchema    = schema;
 		// Socket presence is a model-node lookup this slice does not perform (that is
 		// the getWeaponNode adapter's territory, slice 4). Report the OTHER two joins

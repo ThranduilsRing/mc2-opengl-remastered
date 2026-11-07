@@ -34,13 +34,14 @@
 #include "damage_schema.h"      // DamageLocationId
 
 #include <string>
+#include "mc2_czstring.h"
 
 // -------------------------------------------------------------------------
 // EquipmentKind -- which compbas component family this equipment is. Covers the
 // families a compbas row can belong to. `Other` is the catch-all for rows that do
 // not (yet) map to a modeled kind.
 // -------------------------------------------------------------------------
-enum EquipmentKind {
+enum class EquipmentKind : int {
     EQ_WEAPON = 0,   // an entry carrying a WeaponFacet
     EQ_AMMO,         // ammunition (linked by named ammo category, not offset math)
     EQ_SENSOR,       // sensor / active probe
@@ -54,6 +55,7 @@ enum EquipmentKind {
     EQ_OTHER,        // catch-all (unmapped compbas family)
     NUM_EQUIPMENT_KINDS   // keep last; must stay <= 32 (used as a tag bit range too)
 };
+using enum EquipmentKind;
 
 // -------------------------------------------------------------------------
 // EquipmentTag -- small OR-able tag set for cross-cutting equipment properties
@@ -182,7 +184,8 @@ struct EquipmentDefinition {
 
 // Build an EquipmentDefinition from a raw id string (`modId:name`, bare name ->
 // core:). Kind defaults to Other; caller adds facets. Invalid id -> !valid().
-inline EquipmentDefinition makeEquipment(const char* rawId, EquipmentKind kind) {
+// A null id is absent and produces an invalid definition.
+inline EquipmentDefinition makeEquipment(mc2::czstring rawId, EquipmentKind kind) {
     EquipmentDefinition e;
     e.id = mc2id::parseQualifiedId(rawId ? std::string(rawId) : std::string());
     e.kind = kind;

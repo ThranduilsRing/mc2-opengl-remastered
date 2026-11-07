@@ -76,7 +76,7 @@ namespace {
 	// Copy src into dst (cap chars) replacing spaces/'='/control with '_' so the
 	// key=value [MOVER v2] line stays parseable even for names with spaces. Always
 	// NUL-terminates; emits "?" for null/empty input.
-	static void bridgeSanitize(char* dst, size_t cap, const char* src) {
+	static void bridgeSanitize(char* dst, size_t cap, mc2::czstring src) {
 		if (cap == 0) return;
 		if (!src || !src[0]) { strncpy(dst, "?", cap - 1); dst[cap - 1] = 0; return; }
 		size_t j = 0;
@@ -237,8 +237,8 @@ namespace {
 	               COH_I2B_ORDER, COH_I3, COH_I4, COH_I5 };
 	using enum CohRule;
 
-	static void cohEmit(bool violation, const char* rule, long partId,
-	                    const char* name, CohRule ruleId, const char* detail) {
+	static void cohEmit(bool violation, mc2::czstring rule, long partId,
+	                    mc2::czstring name, CohRule ruleId, mc2::czstring detail) {
 		unsigned long long key =
 			((static_cast<unsigned long long>(static_cast<unsigned long>(partId))) << 8) |
 			static_cast<unsigned long long>(ruleId);

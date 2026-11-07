@@ -52,9 +52,10 @@
 // ordinal space. This header is the shared CONTRACT those later slices implement
 // against; it introduces no runtime read, no gate, no mc2srcdata change.
 
-#include "mc2_czstring.h"
+#include "facet_token.h"
 #include "hardpoint.h"       // WeaponTag, HardpointProfile, hardpointAcceptsWeapon
 #include "damage_schema.h"   // DamageLocationId
+#include <utility>
 
 // -------------------------------------------------------------------------
 // WeaponId -- string-id identity (the 255-cap kill).
@@ -76,13 +77,7 @@ inline constexpr int WEAPON_NAME_CAP = 64;   // includes the NUL terminator
 
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset" id).
 inline unsigned int weaponIdHash(mc2::czstring name) {
-    if (!name || name[0] == '\0') return 0u;
-    unsigned int h = 2166136261u;   // FNV offset basis
-    for (const char* p = name; *p; ++p) {
-        h ^= static_cast<unsigned char>(*p);
-        h *= 16777619u;             // FNV prime
-    }
-    return h;
+    return mc2::fnv1aName(name);
 }
 
 struct WeaponId {
@@ -173,7 +168,7 @@ struct WeaponCombatStats {
 // (the EXISTING vocabulary from damage_schema.h -- do NOT invent a parallel one);
 // a later validator checks a chosen mount location is a member. allowedCount == 0
 // is read as "unconstrained" (BT2018 AllowedLocations:"All").
-inline constexpr int WEAPON_MAX_ALLOWED_LOCATIONS = NUM_DAMAGE_LOCATION_IDS;
+inline constexpr int WEAPON_MAX_ALLOWED_LOCATIONS = std::to_underlying(NUM_DAMAGE_LOCATION_IDS);
 
 struct WeaponFitFacet {
     int              critSlots;    // InventorySize -- crit spaces required

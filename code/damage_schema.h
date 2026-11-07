@@ -1,5 +1,6 @@
 #ifndef DAMAGE_SCHEMA_H
 #define DAMAGE_SCHEMA_H
+#include "facet_token.h"
 // DAMAGE-SCHEMA-FACET-1 (slice 5 of the UNIT-PROFILE arc).
 //
 // Data-owned DAMAGE SCHEMA: which hit-location model a unit uses. This is a pure
@@ -23,12 +24,13 @@
 // DamageSchema=` token override via parseDamageSchema().
 
 // Which hit-location model a unit uses.
-enum DamageSchemaId {
+enum class DamageSchemaId : int {
     DMG_MECH_8PART,        // Head/CTorso/L+RTorso/L+RArm/L+RLeg  (8 body parts)
     DMG_VEHICLE_FACINGS,   // Front/Left/Right/Rear/Turret        (facings)
     DMG_SQUAD,             // N discrete squad members            (per-member)
     DMG_SINGLE_ACTOR       // one indivisible hit box             (turret/gun-emplacement/etc.)
 };
+using enum DamageSchemaId;
 
 // Logical damage locations, spanning every schema. Phase 2's HardpointId join
 // binds a loadout mount + model socket to one of these ids by NAME; a validator
@@ -37,7 +39,7 @@ enum DamageSchemaId {
 // facings mirror the GroundVehicle bodyLocationString[] order (gvehicl.cpp). This
 // is a pure vocabulary — it deliberately does NOT include the numeric values of
 // the engine defines, so this header stays engine/IO-free and offline-testable.
-enum DamageLocationId {
+enum class DamageLocationId : int {
     // --- DMG_MECH_8PART ---
     DLOC_MECH_HEAD,
     DLOC_MECH_CTORSO,
@@ -57,26 +59,22 @@ enum DamageLocationId {
     DLOC_BODY,             // the single/whole-actor location (squad member or single actor)
     NUM_DAMAGE_LOCATION_IDS
 };
+using enum DamageLocationId;
 
 // Case-insensitive ASCII equality for a facet token vs a fixed key. (Same helper
 // shape as locomotion_facet.h::locomotionTokenEquals — kept local so this header
 // stands alone for the offline test target.)
-inline bool damageSchemaTokenEquals(const char* a, const char* key) {
-    if (!a || !key) return false;
-    for (; *a && *key; ++a, ++key) {
-        char ca = *a, ck = *key;
-        if (ca >= 'A' && ca <= 'Z') ca = static_cast<char>(ca - 'A' + 'a');
-        if (ck >= 'A' && ck <= 'Z') ck = static_cast<char>(ck - 'A' + 'a');
-        if (ca != ck) return false;
-    }
-    return *a == '\0' && *key == '\0';
+// Null tokens are absent and never compare equal, including to each other.
+inline bool damageSchemaTokenEquals(mc2::czstring a, mc2::czstring key) {
+    return mc2::facetTokenEquals(a, key);
 }
 
 // Map an optional `.fit [UnitProfile] DamageSchema=` token to a DamageSchemaId.
 // Unknown / empty / null token -> `fallback` (the class-default the caller
 // supplies), so stock .fits that omit the key preserve parity. Recognized tokens
 // mirror the enum: Mech8Part, VehicleFacings, Squad, SingleActor.
-inline DamageSchemaId parseDamageSchema(const char* token,
+// A null token is absent and preserves fallback.
+inline DamageSchemaId parseDamageSchema(mc2::czstring token,
                                         DamageSchemaId fallback) {
     if (!token || token[0] == '\0') return fallback;
     if (damageSchemaTokenEquals(token, "Mech8Part"))      return DMG_MECH_8PART;
@@ -88,7 +86,8 @@ inline DamageSchemaId parseDamageSchema(const char* token,
 
 // MODDER-FIRST-ERROR-SURFACE-1: was the token RECOGNIZED (vs silent fallback)?
 // Same two-fallback probe as locomotionTokenKnown(). Pure.
-inline bool damageSchemaTokenKnown(const char* token) {
+// A null token is absent, hence unknown.
+inline bool damageSchemaTokenKnown(mc2::czstring token) {
     if (!token || token[0] == '\0') return false;
     return parseDamageSchema(token, DMG_MECH_8PART)
         == parseDamageSchema(token, DMG_VEHICLE_FACINGS);

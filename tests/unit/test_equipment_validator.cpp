@@ -199,12 +199,12 @@ TEST_CASE("equip: multiply-broken weapon accumulates the expected findings") {
     in.categoryAuthored = false;                               // NO_CATEGORY
 
     std::vector<EquipmentFinding> f = validateEquipmentDefinition(in);
-    bool seen[EQV__COUNT] = {false};
-    for (const EquipmentFinding& x : f) seen[x.code] = true;
-    CHECK(seen[EQV_WEAPON_NO_FIRE_EXECUTOR]);
-    CHECK(seen[EQV_WEAPON_NO_CATEGORY]);
-    CHECK(seen[EQV_AMMO_CATEGORY_MISSING]);
-    CHECK(seen[EQV_WEAPON_RANGE_INVALID]);
+    bool seen[std::to_underlying(EQV__COUNT)] = {false};
+    for (const EquipmentFinding& x : f) seen[std::to_underlying(x.code)] = true;
+    CHECK(seen[std::to_underlying(EQV_WEAPON_NO_FIRE_EXECUTOR)]);
+    CHECK(seen[std::to_underlying(EQV_WEAPON_NO_CATEGORY)]);
+    CHECK(seen[std::to_underlying(EQV_AMMO_CATEGORY_MISSING)]);
+    CHECK(seen[std::to_underlying(EQV_WEAPON_RANGE_INVALID)]);
     CHECK(f.size() == 4);
 }
 
@@ -221,7 +221,7 @@ TEST_CASE("equip: every LIVE reason code is reachable + vocabulary-size lock") {
     // ENABLE_UNRESOLVED,
     // ADD_ORDINAL_UNAVAILABLE / ADD_FIELDS_INCOMPLETE / ADD_AMMO_UNRESOLVED
     // (the ADD codes).
-    CHECK(EQV__COUNT == 12);
+    CHECK(std::to_underlying(EQV__COUNT) == 12);
 }
 
 // -------------------------------------------------------------------------

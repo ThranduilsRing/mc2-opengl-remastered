@@ -350,7 +350,7 @@ class SensorSystemManager {
 	protected:
 		
 		long					freeSensors;			//How many sensors are currently free
-		SensorSystemPtr*		sensorPool;				//Pool of ALL sensors
+		std::unique_ptr<std::unique_ptr<SensorSystem>[]>	sensorPool;	//Pool of ALL sensors
 		SensorSystemPtr			freeList;				//List of available sensors
 		std::unique_ptr<TeamSensorSystem>	teamSensors[MAX_TEAMS];
 		ECMInfo					ecms[MAX_ECMS];
@@ -404,7 +404,7 @@ class SensorSystemManager {
 			if ((id < 0) || (id >= MAX_SENSORS))
 				STOP(("Tried to access Sensor outside of range.  Tried to access: %d",id));
 				
-			return(sensorPool[id]);
+			return(sensorPool[id].get());
 		}
 
 		long checkIntegrity (void);

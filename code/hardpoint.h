@@ -23,6 +23,7 @@
 // unit's DamageSchema iff its damageLocation is a member of that schema.
 
 #include "damage_schema.h"   // DamageLocationId, DamageSchemaId, schemaHasLocation
+#include "facet_token.h"
 
 // -------------------------------------------------------------------------
 // WeaponTag -- the mount-type tags a hardpoint accepts.
@@ -33,7 +34,7 @@
 // typed, name-addressable accept-set. Values are explicit bit positions so a
 // WeaponTagMask can OR several together; keep NUM_WEAPON_TAGS <= 32 so the mask
 // fits a uint32.
-enum WeaponTag {
+enum class WeaponTag : int {
     WTAG_ENERGY        = 0,   // lasers, PPC, flamer
     WTAG_BALLISTIC     = 1,   // autocannon, gauss, MG
     WTAG_MISSILE       = 2,   // LRM / SRM racks
@@ -41,6 +42,7 @@ enum WeaponTag {
     WTAG_AMS           = 4,   // anti-missile system point-defense
     NUM_WEAPON_TAGS           // keep last; must stay <= 32
 };
+using enum WeaponTag;
 
 // Bitset of accepted WeaponTags. std-layout unsigned; OR tags to build an
 // accept-set, test with hardpointAcceptsWeapon().
@@ -70,14 +72,8 @@ inline constexpr int HARDPOINT_NAME_CAP = 48;   // includes the NUL terminator
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset"
 // id). Case-SENSITIVE by design: RightTorso and righttorso are different
 // hardpoints; presentation sockets are case-sensitive node-name strings.
-inline unsigned int hardpointHash(const char* name) {
-    if (!name || name[0] == '\0') return 0u;
-    unsigned int h = 2166136261u;   // FNV offset basis
-    for (const char* p = name; *p; ++p) {
-        h ^= static_cast<unsigned char>(*p);
-        h *= 16777619u;             // FNV prime
-    }
-    return h;
+inline unsigned int hardpointHash(mc2::czstring name) {
+    return mc2::fnv1aName(name);
 }
 
 struct HardpointId {
@@ -86,7 +82,8 @@ struct HardpointId {
 
     HardpointId() : id(0u) { name[0] = '\0'; }
 
-    explicit HardpointId(const char* n) : id(hardpointHash(n)) {
+    // A null name constructs the unset id, just like an empty name.
+    explicit HardpointId(mc2::czstring n) : id(hardpointHash(n)) {
         int i = 0;
         if (n) {
             for (; n[i] && i < HARDPOINT_NAME_CAP - 1; ++i) name[i] = n[i];
@@ -107,7 +104,8 @@ inline bool operator!=(const HardpointId& a, const HardpointId& b) {
 }
 
 // Convenience factory so callers read `makeHardpointId("RightTorso_Energy_1")`.
-inline HardpointId makeHardpointId(const char* name) { return HardpointId(name); }
+// A null name means the unset id.
+inline HardpointId makeHardpointId(mc2::czstring name) { return HardpointId(name); }
 
 // -------------------------------------------------------------------------
 // HardpointProfile -- the per-hardpoint schema row.
@@ -127,7 +125,8 @@ inline constexpr int HARDPOINT_SOCKET_CAP = 48;
 struct HardpointSocketName {
     char v[HARDPOINT_SOCKET_CAP];
     HardpointSocketName() { v[0] = '\0'; }
-    explicit HardpointSocketName(const char* s) {
+    // A null string constructs an unmapped socket.
+    explicit HardpointSocketName(mc2::czstring s) {
         int i = 0;
         if (s) { for (; s[i] && i < HARDPOINT_SOCKET_CAP - 1; ++i) v[i] = s[i]; }
         v[i] = '\0';

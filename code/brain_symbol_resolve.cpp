@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 namespace {
 
@@ -61,29 +62,29 @@ bool copyTrimmed(mc2::czstring s, size_t len, char* buf, size_t bufsz) {
     return true;
 }
 
-bool resolveTrimmed(mc2::czstring tok, long* out) {
+std::optional<long> resolveTrimmed(mc2::czstring tok) {
     // Try a bare decimal integer (full-consume required).
     char* endp = nullptr;
     long v = std::strtol(tok, &endp, 10);
-    if (endp != tok && *endp == '\0') { *out = v; return true; }
+    if (endp != tok && *endp == '\0') return v;
     // Fall back to a symbol-table lookup (exact match).
     for (const SymEntry& e : kSymbols) {
-        if (std::strcmp(tok, e.name) == 0) { *out = e.value; return true; }
+        if (std::strcmp(tok, e.name) == 0) return e.value;
     }
-    return false;
+    return std::nullopt;
 }
 
 } // namespace
 
-bool brainResolveSymbolToken(mc2::czstring token, long* out) {
-    if (!token || !out) return false;
+std::optional<long> brainResolveSymbolToken(mc2::czstring token) {
+    if (!token) return std::nullopt;
     char buf[64];
-    if (!copyTrimmed(token, std::strlen(token), buf, sizeof(buf))) return false;
-    return resolveTrimmed(buf, out);
+    if (!copyTrimmed(token, std::strlen(token), buf, sizeof(buf))) return std::nullopt;
+    return resolveTrimmed(buf);
 }
 
-bool brainResolveIntExpr(mc2::czstring expr, long* out) {
-    if (!expr || !out) return false;
+std::optional<long> brainResolveIntExpr(mc2::czstring expr) {
+    if (!expr) return std::nullopt;
     long sum = 0;
     int terms = 0;
     const char* p = expr;
@@ -92,16 +93,15 @@ bool brainResolveIntExpr(mc2::czstring expr, long* out) {
     for (;; ++p) {
         if (*p == '+' || *p == '\0') {
             if (!copyTrimmed(termStart, static_cast<size_t>((p - termStart)), buf, sizeof(buf)))
-                return false;   // empty term (leading/trailing/double '+') or overflow
-            long v = 0;
-            if (!resolveTrimmed(buf, &v)) return false;
-            sum += v;
+                return std::nullopt;   // empty term (leading/trailing/double '+') or overflow
+            const auto value = resolveTrimmed(buf);
+            if (!value) return std::nullopt;
+            sum += *value;
             ++terms;
             if (*p == '\0') break;
             termStart = p + 1;
         }
     }
-    if (terms == 0) return false;
-    *out = sum;
-    return true;
+    if (terms == 0) return std::nullopt;
+    return sum;
 }

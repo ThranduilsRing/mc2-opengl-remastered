@@ -11,6 +11,7 @@
 #ifndef MISSION_H
 #define MISSION_H
 #include "save_archive.h"
+#include "mc2_czstring.h"
 #include "combat_retirement.h"
 #include "tactical_order_queue.h"
 #include <algorithm>
@@ -517,7 +518,7 @@ class Mission
 		std::expected<void, mc2::sim::OrderError> acknowledgeMissionOrder(
 			mc2::sim::MissionReceipt receipt) { return orderIngress.acknowledge(receipt); }
 
-		void init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
+		void init (mc2::czstring missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
 
 		// Explicit developer import of a Part fragment; the runtime save/load format remains legacy.
 		bool loadParts(const mc2::save::Section& section, std::uint32_t schemaVersion,
@@ -668,7 +669,7 @@ class Mission
 		
 		long removeMover (MoverPtr mover);
 
-		void tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, char* pilotFileName, const char* brainFileName);
+		void tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, char* pilotFileName, mc2::czstring brainFileName);
 
 		void createPartObject (long objectId, MoverPtr mover);
 		
@@ -727,8 +728,8 @@ class Mission
 		
 		static void initializeStatistics();
 
-		void load (const char *filename);
-		void save (const char *filename);
+		void load (mc2::czstring filename);
+		void save (mc2::czstring filename);
 
 		bool isActive (void)
 		{

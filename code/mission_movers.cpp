@@ -570,7 +570,7 @@ long Mission::removeMover (MoverPtr mover) {
 }
 
 
-void Mission::tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, char* pilotFileName, const char* brainFileName) {
+void Mission::tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, char* pilotFileName, mc2::czstring brainFileName) {
 	MC2_WORLD_EVENT("trade_mover", mover, newTeamID);
 
 	missionInterface->removeMover(mover);

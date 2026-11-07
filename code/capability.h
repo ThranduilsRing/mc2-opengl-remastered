@@ -6,11 +6,13 @@
 // Slice 1 enumerates ONLY the capability it wires. Do not add speculative
 // bits — the audit (Task 0) decides each concept's facet before it is added.
 #include <cstdint>
+#include <utility>
 
-enum Capability {
+enum class Capability : int {
     CAP_JUMP = 0,
     CAP__COUNT
 };
+using enum Capability;
 
 // Public gameplay intents. canPerform(UnitAction) requires the capability
 // fact AND a working executor (see Mover).

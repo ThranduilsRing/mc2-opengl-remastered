@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdio>
 #include <span>
+#include <optional>
 #include "mc2fmt.h"
 
 // Task types - added in BRAIN-RUNTIME-1B.
@@ -81,16 +82,16 @@ public:
         return true;
     }
 
-    // drainWithTask: pops one task and returns it via out param. Returns false if empty.
-    bool drainWithTask(BrainTaskEntry& out) {
+    // drainWithTask: pops one task, or returns nullopt if empty.
+    std::optional<BrainTaskEntry> drainWithTask() {
         if (count_ == 0)
-            return false;
+            return std::nullopt;
         sortEntries();
-        out = entries_[0];
+        const BrainTaskEntry out = entries_[0];
         for (int i = 1; i < count_; ++i)
             entries_[i - 1] = entries_[i];
         --count_;
-        return true;
+        return out;
     }
 
     // Save v2 BRN1 (B2): raw image access; restore() replaces the queue and keeps the monotone seq.

@@ -417,7 +417,7 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
 // Gate: MC2_EQUIPMENT_ADD + MC2_UNIT_PROFILE_DATA, both default OFF; gate-OFF
 // (or no active mod) -> zero I/O, byte-identical. Returns rows filled.
 namespace {
-void collectEquipDefPath(const char* absPath, void* userData) {
+void collectEquipDefPath(mc2::czstring absPath, void* userData) {
     // Only the def leaf files; the mod index prefix walk may also see other
     // .fit files under data/defs/equipment/ in the future.
     const char* base = absPath;

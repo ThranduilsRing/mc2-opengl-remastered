@@ -326,8 +326,8 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	bool isMiscTerrObj = false;
 	long objectTypeNum = -1;
 	const std::string contentPath = "Object2.pak/" + std::to_string(objTypeNum);
-	ObjectTypePtr objType = nullptr;
-	auto rejectType = [&] { std::unique_ptr<ObjectType> rejected(objType); objType = nullptr; };
+	std::unique_ptr<ObjectType> objType;
+	auto rejectType = [&] { objType.reset(); };
 	// BT2018-FIRST-CLASS P3: package chassis own object-type numbers after the last
 	// Object2.pak packet; their type definition is the package's chassisdef.fit.
 	packageChassisEnsureRegistry(objectFile->getNumPackets(), bridgeTypeHandle);
@@ -338,7 +338,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		auto packageMechType = std::make_unique<BattleMechType>();
 		packageMechType->setObjTypeNum(objTypeNum);
 		if (opened && packageMechType->init(&fitFile, fitFile.fileSize()) == NO_ERR) {
-			objType = packageMechType.release(); // typeStore below takes ownership.
+			objType = std::move(packageMechType);
 			objectTypeNum = BATTLEMECH_TYPE;
 		} else
 			mc2::content::error(mc2::content::Kind::ObjectType, packageType->fitPath, "invalid package chassis; terrain placeholder");
@@ -361,7 +361,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		++s_skippedFitIds;
 		auto csvMechType = std::make_unique<BattleMechType>();
 		csvMechType->setObjTypeNum(objTypeNum);
-		objType = csvMechType.release(); // typeStore below takes ownership
+		objType = std::move(csvMechType);
 		objectTypeNum = BATTLEMECH_TYPE;
 		}
 	else if (objectFile->seekPacket(objTypeNum) == NO_ERR) {
@@ -403,14 +403,14 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		case BATTLEMECH_TYPE: {
 			if (objType)
 				break;               // built from the CSV stub or package definition above
-			objType = new BattleMechType;
+			objType = std::make_unique<BattleMechType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
 			}
 			break;
 		case VEHICLE_TYPE: {
-			objType = new GroundVehicleType;
+			objType = std::make_unique<GroundVehicleType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -418,31 +418,31 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;			
 		case TREEBUILDING_TYPE:
 		case BUILDING_TYPE: {
-			objType = new BuildingType;
+			objType = std::make_unique<BuildingType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
 			}
 			break;
 		case TREE_TYPE: {
-			objType = new TerrainObjectType;
+			objType = std::make_unique<TerrainObjectType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
 			}
 			break;
 		case TERRAINOBJECT_TYPE: {
-			objType = new TerrainObjectType;
+			objType = std::make_unique<TerrainObjectType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (isMiscTerrObj)
-				(static_cast<TerrainObjectTypePtr>(objType))->initMiscTerrObj(objTypeNum);
+				(static_cast<TerrainObjectTypePtr>(objType.get()))->initMiscTerrObj(objTypeNum);
 			else if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
 			}
 			break;
 		case WEAPONBOLT_TYPE:
 		{
-			objType = new WeaponBoltType;
+			objType = std::make_unique<WeaponBoltType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -450,7 +450,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		break;
 
 		case TURRET_TYPE: {
-			objType = new TurretType;
+			objType = std::make_unique<TurretType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -458,7 +458,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;
 
 		case EXPLOSION_TYPE: {
-			objType = new ExplosionType;
+			objType = std::make_unique<ExplosionType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -466,7 +466,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;
 
 		case FIRE_TYPE: {
-			objType = new FireType;
+			objType = std::make_unique<FireType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -474,7 +474,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;
 
 		case GATE_TYPE: {
-			objType = new GateType;
+			objType = std::make_unique<GateType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -482,7 +482,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			break;
 
 		case ARTILLERY_TYPE: {
-			objType = new ArtilleryType;
+			objType = std::make_unique<ArtilleryType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -492,7 +492,7 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		case KLIEG_LIGHT_TYPE: {
 			// Klieg lights are placed terrain objects; load as BuildingType so
 			// countObject and setNumObjects can allocate space for them.
-			objType = new BuildingType;
+			objType = std::make_unique<BuildingType>();
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)
 				rejectType();
@@ -510,10 +510,10 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	if (!objType) {
 		// Only a declared CSV-backed mover can replace a missing pak definition with a mech.
 		if (csvMover && !packageType)
-			objType = new BattleMechType;
+			objType = std::make_unique<BattleMechType>();
 		else {
 			mc2::content::error(mc2::content::Kind::ObjectType, contentPath.c_str(), "unusable object type; invisible terrain placeholder");
-			objType = std::make_unique<TerrainObjectType>().release();
+			objType = std::make_unique<TerrainObjectType>();
 			objType->setExtentRadius(0.0f);
 		}
 		objType->setObjTypeNum(objTypeNum);
@@ -532,10 +532,10 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	// It moves to retiredTypes so destroy() deletes it with the rest, instead of leaking.
 	if (typeStore[objTypeNum])
 		retiredTypes.push_back(std::move(typeStore[objTypeNum]));
-	typeStore[objTypeNum].reset(objType);
-	table[objTypeNum] = objType;
+	typeStore[objTypeNum] = std::move(objType);
+	table[objTypeNum] = typeStore[objTypeNum].get();
 
-	return(objType);
+	return(table[objTypeNum]);
 }
 
 //---------------------------------------------------------------------------
