@@ -49,6 +49,9 @@ int mc2_vk_vfx_island_run(
     const float* worldToClipGL, const float* camRight, const float* camUp,
     int w, int h);
 
+// Mission unload: idles the GPU, drops the sprite-page cache and resets its descriptor pool chain (capacity kept).
+void mc2_vk_vfx_island_reset();
+
 // Teardown (renderer shutdown). Also emits the one-line health summary.
 void mc2_vk_vfx_island_destroy();
 

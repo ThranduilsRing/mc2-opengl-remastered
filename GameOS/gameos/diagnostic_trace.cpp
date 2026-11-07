@@ -60,6 +60,7 @@ const std::unordered_set<std::string>& knownTags() {
         "COMBAT",   // COMBAT-TRACE-1: weapon-fire events (attacker/target wid+team). Opt-in.
         "VISUAL_HEIGHT", // [VISUAL_HEIGHT v1] / [VISUAL_DAMP v1] success summaries of the terrain visual-height bake loader (mclib/terrain_init.cpp); fail-loud lines print always. Opt-in.
         "PRESENT_THREAD", // [PRESENT_THREAD] enabled: the present worker's start line (the worker ships ON). Stall / failed-present / inline-fallback lines are fail-loud and print always. Opt-in.
+        "VK_DESC_POOL", // [VK_DESC_POOL v1]: descriptor pool chain length per island at mission unload (vk_owned.h DescPoolChain). Opt-in.
         "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
         "COMMANDER_TEAM", // [COMMANDER_TEAM v1]: a commander the logistics table cannot place takes the team its parts declare (code/mission_init.cpp). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.

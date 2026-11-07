@@ -49,9 +49,9 @@ void ovl_destroy(TerrainIsland* s) {
 
 bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
     VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = o->texDsl.get();
-    VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO}; ai.descriptorPool=o->texPool.get();
+    VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorSetCount=mc2vk::kMaxFramesInFlight; ai.pSetLayouts=layouts;
-    if (MC2_VK_ALLOC_SETS(s->device,&ai,t.set)!=VK_SUCCESS) return false;
+    if (MC2_VK_ALLOC_SETS_CHAIN(o->texPool,ai,t.set)!=VK_SUCCESS) return false;
     for (uint32_t par=0;par<mc2vk::kMaxFramesInFlight;++par) {
         VkDescriptorImageInfo info{o->samp.get(),t.texture.view(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; w.dstSet=t.set[par]; w.descriptorCount=1;
@@ -84,7 +84,6 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
         if (!ovl_upload_tex(s,it->second,w,h,mc2vk::texelFormat(texels.vkFormat),texels.bytes->data(),texels.bytes->size())) return nullptr;
         it->second.source=texels.bytes; return &it->second;
     }
-    if (o->texs.size() >= kOvlMaxTex) return nullptr;
     ZoneScopedN("VKIsl.Overlay.TextureFirstUse");
 
     if (w == 0 || h == 0 || w > 8192 || h > 8192) return nullptr;
@@ -98,8 +97,8 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
         return nullptr;
     }
     t.source = std::move(texels.bytes);
-    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u format=%u (%zu/%u).",
-         gosHandle, w, h, texels.vkFormat, o->texs.size() + 1, kOvlMaxTex);
+    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u format=%u (%zu, pools=%zu).",
+         gosHandle, w, h, texels.vkFormat, o->texs.size() + 1, o->texPool.length());
     return &o->texs.emplace(gosHandle, std::move(t)).first->second;
 }
 
@@ -194,11 +193,11 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 1; lci.pBindings = &b;
         if (!mc2vk::create(o->texDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) return false;
-        VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight*(kOvlMaxTex + 2)};
+        VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight*(kOvlTexPerPool + 2)};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = mc2vk::kMaxFramesInFlight*(kOvlMaxTex + 2); pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
-        if (!mc2vk::create(o->texPool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) return false;
+        pci.maxSets = mc2vk::kMaxFramesInFlight*(kOvlTexPerPool + 2); pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
+        if (o->texPool.init(s->device, pci) != VK_SUCCESS) return false;
         const uint8_t px[4] = {255, 255, 255, 255};
         if (!ovl_upload_tex(s, o->dummy, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px)) || !ovl_alloc_tex_set(s, o, o->dummy)) return false;
     }
@@ -574,7 +573,8 @@ extern "C" void mc2_vk_overlay_reset() {
     o->stat.reset();
     o->statCap = 0; o->statVersion = UINT64_MAX;
     o->statUsed = false;
-    if (o->texPool) vkResetDescriptorPool(s->device, o->texPool.get(), 0);
+    o->texPool.logChain("overlay");
+    if (o->texPool) o->texPool.reset();
     o->dummy.set[0]=o->dummy.set[1]=VK_NULL_HANDLE;
     if (!ovl_alloc_tex_set(s, o, o->dummy)) { o->disabled = true; vlog("[VK_TERRAIN_OVERLAY] reset: dummy set failed -- disabled."); }
     vlog("[VK_TERRAIN_OVERLAY] texture cache + static bake reset on mission unload.");

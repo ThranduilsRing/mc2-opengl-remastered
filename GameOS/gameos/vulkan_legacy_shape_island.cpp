@@ -84,7 +84,7 @@ VkShaderModule load_spv(VkDevice device, std::string_view path) {
 // RenderCore/gpu_abi/GpuLegacyFrameUBO.h; its generated block feeds both legacy shaders.
 
 const uint32_t kVertexStride = 32;       // gos_VERTEX: x,y,z,rhw, argb, frgb, u, v
-const uint32_t kMaxTextures  = 192;
+const uint32_t kTexturesPerPool = 192;   // one pool of the island's descriptor chain; a mission that needs more grows the chain
 // Solid, blob-shadow and alpha draws can each submit in both in-flight frames.
 const uint32_t kSubmissionSlots = 6;
 
@@ -92,7 +92,7 @@ const uint32_t kSubmissionSlots = 6;
 struct TexEntry {
     mc2vk::ResidentTextureRef texture;
     VkImageView bound[kSubmissionSlots] = {};
-    VkDescriptorSet set[kSubmissionSlots] = {};   // allocated from the island's pool, freed with it
+    VkDescriptorSet set[kSubmissionSlots] = {};   // allocated from the island's pool chain, freed with it
 };
 
 // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
@@ -125,8 +125,8 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
-    mc2vk::OwnedDescriptorPool pool;
-    TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
+    mc2vk::DescPoolChain pool;
+    TexEntry dummyTex;                                 // 1x1 white (untextured / failed import)
     std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mc2::textures::ready() node
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
@@ -161,8 +161,8 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     for (auto& layout : layouts) layout = s->dsl.get();
     VkDescriptorSetAllocateInfo dsai{};
     dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = kSubmissionSlots; dsai.pSetLayouts = layouts;
-    if (MC2_VK_ALLOC_SETS(s->device, &dsai, t.set) != VK_SUCCESS) return false;
+    dsai.descriptorSetCount = kSubmissionSlots; dsai.pSetLayouts = layouts;
+    if (MC2_VK_ALLOC_SETS_CHAIN(s->pool, dsai, t.set) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < kSubmissionSlots; ++par) {
         VkDescriptorImageInfo ii{};
         ii.sampler = s->samp.get(); ii.imageView = mc2vk::getOrCreateEngineVulkanContext().textures().view(t.texture.get()); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -193,7 +193,6 @@ TexEntry* get_tex(Island* s,uint32_t texNode,uint32_t gosHandle) {
         }
         return &it->second;
     }
-    if (s->texs.size()>=kMaxTextures) return &s->dummyTex;
     TexEntry entry;entry.texture=textures.retain(handle);
     if (!entry.texture || !alloc_tex_sets(s,entry)) return &s->dummyTex;
     ++g_health.texUploads;
@@ -330,14 +329,14 @@ bool init_island(Island* s, int w, int h) {
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = 2; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { setFallback("dsl_failed"); return false; }
-        const uint32_t N = kMaxTextures + 1;   // + dummy
+        const uint32_t N = kTexturesPerPool + 1;   // + dummy
         VkDescriptorPoolSize sizes[2]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = kSubmissionSlots * N;
         sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[1].descriptorCount = kSubmissionSlots * N;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = kSubmissionSlots * N; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
-        if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { setFallback("pool_failed"); return false; }
+        if (s->pool.init(s->device, pci) != VK_SUCCESS) { setFallback("pool_failed"); return false; }
 
         const uint8_t px[4] = {255, 255, 255, 255};
         if (!upload_image(s, s->dummyTex, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
@@ -715,8 +714,9 @@ extern "C" void mc2_vk_legacy_shape_island_reset() {
         if (!s || !s->inited) continue;
         const auto before=s->texs.size();
         s->texs.clear();
-        // Neither pool frees individual sets: reset it and restore its dummy pair.
-        if (s->pool) vkResetDescriptorPool(s->device,s->pool.get(),0);
+        // Neither chain frees individual sets: reset every pool of it (capacity is kept) and restore the dummy sets.
+        s->pool.logChain(s->preview ? "preview" : "legacy");
+        if (s->pool) s->pool.reset();
         s->dummyTex.set[0]=s->dummyTex.set[1]=VK_NULL_HANDLE;
         s->ringBound[0]=s->ringBound[1]=VK_NULL_HANDLE;
         s->previewPublished=false;
