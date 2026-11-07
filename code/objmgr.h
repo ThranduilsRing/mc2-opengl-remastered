@@ -21,11 +21,12 @@
 #include <optional>
 #include <string_view>
 #include "world/entity_registry.h"
-#include "world/actor_pool.h"
 #include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
 // Forward declaration for prewarmStaticPropLightBakes parameter.
 class Camera;
+// Pooled actor ownership (turrets); see spawnTurret.
+#include "world/actor_pool.h"
 
 #ifndef GAMEOBJ_H
 #include"gameobj.h"
