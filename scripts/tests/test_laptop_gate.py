@@ -67,3 +67,17 @@ def test_from_payload_rejects_drifted_unchanged_file(tmp_path):
 @pytest.mark.parametrize("sm,rc", [({"verdict": "PASS"}, 0), ({"verdict": "FAIL"}, 1), ({}, 1), ({"gate_rc": 1}, 1)])
 def test_driver_exits_zero_only_on_pass(sm, rc):
     assert laptop_gate.exit_code(sm) == rc
+
+
+def test_ref_sums_cover_both_pinned_kits_and_refcheck_flags_a_bad_file(tmp_path, monkeypatch):
+    text = laptop_gate.ref_sums(ROOT)
+    rels = [line.split("  ", 1)[1] for line in text.splitlines()]
+    assert any(r.startswith("packages/mc2-industrial-kit/") for r in rels)
+    assert any(r.startswith("packages/mc2-vehicle-kit/") for r in rels)
+    assert "scifi-kit/mapping/inventory.csv" in rels
+    monkeypatch.setattr(laptop_gate, "REF", str(tmp_path))
+    (tmp_path / "a.txt").write_bytes(b"x")
+    good = hashlib.sha256(b"x").hexdigest()
+    (tmp_path / "S").write_text(f"{good}  a.txt\n{good}  b.txt\n", encoding="utf-8")
+    assert laptop_gate.r_refcheck(tmp_path / "S") == ["ref mismatch: b.txt"]
+    assert laptop_gate.r_refcheck(tmp_path / "none") == [f"missing {tmp_path / 'none'}"]

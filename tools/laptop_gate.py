@@ -26,6 +26,12 @@ PC_V04 = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
 PC_SEED = Path("E:/mc2-installs/_lean-seed")
 PC_STOCK = Path("G:/mc2-assets/out/scifi-kit/round2/stock")
 PROOFS = Path("E:/mc2-archive-2026-10/proofs/laptop-gate")
+PC_REF = Path("E:/mc2-ref")
+REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
+REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
+REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
+PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest")
+GIT_BASH = "C:/Program Files/Git/bin/bash.exe"
 SSH_OPTS = ["-i", KEY, "-o", "BatchMode=yes", "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30"]
 
 
@@ -127,9 +133,9 @@ def r_run(window, extra):
              MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E",
              # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
              MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
-             MC2_ISO_ALLOW_SYSTEM_DRIVE="1",
+             MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
              # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
-             MC2_BASH="C:/Program Files/Git/bin/bash.exe")
+             MC2_BASH=GIT_BASH)
     sm = {"window": window, "host": "laptop"}
     git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e)
     for step in (["checkout", "-q", "-f", branch], ["clean", "-fdq"]):   # no -x: build tree and deps survive
@@ -188,7 +194,84 @@ def r_pack(window):
     print(f"payload: {len(delta)} files, {tarp.stat().st_size} bytes")
 
 
+def r_refcheck(sums):
+    """Problems with the laptop reference copy against a SHA256SUMS file ("<sha>  <rel>" lines); [] when every file matches."""
+    if not Path(sums).is_file():
+        return [f"missing {sums}"]
+    bad = []
+    for line in Path(sums).read_text(encoding="utf-8").splitlines():
+        want, rel = line.split("  ", 1)
+        p = Path(REF, rel)
+        if not p.is_file() or sha256(p) != want:
+            bad.append(f"ref mismatch: {rel}")
+    return bad
+
+
+def r_preflight():
+    """Everything the stages need before a full run: Python packages, data roots, tools. Prints one line per problem."""
+    import importlib.util
+    import shutil
+    bad = [f"python package missing: {m}" for m in PACKAGES if not importlib.util.find_spec(m)]
+    for path, why in ((REPO + "/.git", "laptop clone"), (INSTALL + "/.seeded", "seeded install"),
+                      (G + "/drv/G/mc2-assets/out/scifi-kit/round2/stock/.seeded", "G: stock mirror (kit_art)"),
+                      (GIT_BASH, "MC2_BASH")):
+        if not Path(path).exists():
+            bad.append(f"missing {why}: {path}")
+    bad += [f"tool not on PATH: {t}" for t in ("git", "tar") if not shutil.which(t)]
+    bad += r_refcheck(REF + "/SHA256SUMS")
+    print("\n".join(bad) if bad else "preflight OK")
+    return 1 if bad else 0
+
+
+def r_ref_commit():
+    """Verify a freshly extracted reference copy against SHA256SUMS.new, then make it the accepted SHA256SUMS."""
+    bad = r_refcheck(REF + "/SHA256SUMS.new")
+    if bad:
+        print("\n".join(bad[:20]))
+        return 1
+    os.replace(REF + "/SHA256SUMS.new", REF + "/SHA256SUMS")
+    return 0
+
+
 # ------------------------------------------------------------------- PC half
+
+def ref_sums(src_root):
+    """SHA256SUMS text for the E:/mc2-ref subset the gate reads: the pinned kit files (shas from the manifests) and REF_EXTRA."""
+    lines = []
+    for m in REF_MANIFESTS:
+        manifest = json.loads(Path(src_root, m).read_text(encoding="utf-8"))
+        store = Path(manifest["store"]).relative_to(PC_REF).as_posix()
+        lines += [f"{r['sha256']}  {store}/{r['path']}" for r in manifest["files"]]
+    lines += [f"{sha256(PC_REF / rel)}  {rel}" for rel in REF_EXTRA]
+    return "\n".join(lines) + "\n"
+
+
+def seed_ref():
+    """Copy the E:/mc2-ref subset to the laptop's REF when its accepted SHA256SUMS differs, sha-verified on the laptop."""
+    text = ref_sums(Path(__file__).resolve().parents[1])
+    want = hashlib.sha256(text.encode()).hexdigest()
+    rc, out = ssh(f'certutil -hashfile "{REF}/SHA256SUMS" SHA256', check=False)
+    if rc == 0 and want in out.replace(" ", "").lower():
+        return
+    print("copying the E:/mc2-ref subset to the laptop", flush=True)
+    tmp = Path(os.environ.get("TEMP", "."))
+    local, lst, sums = tmp / "mc2gate-ref.tar", tmp / "mc2gate-ref.lst", tmp / "SHA256SUMS.new"
+    try:
+        sums.write_text(text, encoding="utf-8", newline="\n")
+        lst.write_text("\n".join(line.split("  ", 1)[1] for line in text.splitlines()) + "\n", encoding="utf-8", newline="\n")
+        if subprocess.run(["tar", "--force-local", "-cf", str(local), "-C", str(PC_REF), "-T", str(lst)]).returncode:
+            sys.exit("ref tar failed")
+        scp(local, f"{HOST}:{G}/tmp/ref.tar")
+        ssh(f'powershell -c "New-Item -ItemType Directory -Force {REF} | Out-Null" && tar -xf {G}/tmp/ref.tar -C {REF} '
+            f"&& del {G.replace('/', chr(92))}\\tmp\\ref.tar")
+        scp(sums, f"{HOST}:{REF}/SHA256SUMS.new")
+    finally:
+        for p in (local, lst, sums):
+            p.unlink(missing_ok=True)
+    if ssh(remote_py("ref-commit"), check=False, stream=True)[0]:
+        sys.exit("laptop reference copy failed sha verification")
+    print("reference copy verified")
+
 
 def seed_stock():
     """One-time: mirror G:/mc2-assets/out/scifi-kit/round2/stock (kit_art row input, ~135 MB) to the laptop's drv/G."""
@@ -240,6 +323,9 @@ def pc_main(args):
     scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
     ssh(remote_py("init"), stream=True)
     seed()
+    seed_ref()
+    if ssh(remote_py("preflight"), check=False, stream=True)[0]:
+        sys.exit("laptop preflight failed (above); fix it before a full run")
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
     url = f"ssh://{HOST}/{REPO}"
@@ -286,12 +372,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("window", nargs="?")
     ap.add_argument("--remote", help=argparse.SUPPRESS)
+    ap.add_argument("--preflight", action="store_true", help="check the laptop's packages, data roots and tools; no build or gate")
     ap.add_argument("gate_args", nargs="*", help="extra merge_gate.py args (after --)")
     a, rest = ap.parse_known_args()
     if a.remote:
         step = a.remote
-        {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window)}[step]()
-        return 0
+        return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
+                "preflight": r_preflight, "ref-commit": r_ref_commit}[step]() or 0
+    if a.preflight:
+        scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
+        return ssh(remote_py("preflight"), check=False, stream=True)[0]
     if not a.window:
         ap.error("window required")
     return pc_main(a)
