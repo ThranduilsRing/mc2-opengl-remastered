@@ -10,7 +10,6 @@ here until a triage* file sits next to it.
 """
 import argparse
 import datetime
-import json
 import os
 import subprocess
 import sys
