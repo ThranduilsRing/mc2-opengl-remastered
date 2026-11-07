@@ -20,6 +20,7 @@ enum class SharedImageStart {
     ColorAttachment,          // contents are written by the first owner before anything reads them
     ColorAttachmentCleared,   // a UINT image no island writes: cleared to 0 ("no object") so a reader sees defined data
     DepthStencilAttachment,   // depth and stencil aspects
+    ShaderReadCleared,        // a sampled image whose writer (the mech island) may not run before its first reader: cleared to 0, SHADER_READ_ONLY
 };
 
 // Transitions `img` from UNDEFINED to the steady layout of `start` (and clears it where `start` says so) with synchronization2 barriers in one

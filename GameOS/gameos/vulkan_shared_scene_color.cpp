@@ -154,9 +154,12 @@ Mc2SharedSceneColor* mc2SharedSceneColorCreate(Mc2SharedSceneColorSlot slot,
     mc2vk::nameObject(device, c->res.image.get(), debugNameForSlot(slot));
 
     // Every island declares the attachment layout from its first frame, so the image must already be in it; the object-id image, which no island
-    // writes, also starts at "no object".
-    if (!mc2vkGiveSharedImageFirstLayout(ctx, c->res, slot == MC2_SHARED_SCENE_OBJECT_ID ? SharedImageStart::ColorAttachmentCleared
-                                                                                         : SharedImageStart::ColorAttachment)) {
+    // writes, also starts at "no object". The object-motion image rests in SHADER_READ_ONLY between frames (the mech island's render pass discards
+    // and leaves it there; the motion-vector pass samples it on every frame, also before the first mech pass ran), so it starts there, zeroed.
+    const SharedImageStart start = slot == MC2_SHARED_SCENE_OBJECT_ID   ? SharedImageStart::ColorAttachmentCleared
+                                   : slot == MC2_SHARED_SCENE_OBJECT_MV ? SharedImageStart::ShaderReadCleared
+                                                                        : SharedImageStart::ColorAttachment;
+    if (!mc2vkGiveSharedImageFirstLayout(ctx, c->res, start)) {
         mc2SharedSceneColorDestroy(c);
         return bail("first_layout_failed");
     }
