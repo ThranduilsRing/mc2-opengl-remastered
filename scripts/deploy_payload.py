@@ -1731,6 +1731,14 @@ def verify_published_identity(target, source_root, head):
                 or int(row.get('bytes', -1)) != dst.stat().st_size
                 or sha256_file(str(src)) != row.get('sha256') or sha256_file(str(dst)) != row.get('sha256')):
             raise ValueError(f'{dst}: published bytes/manifest != HEAD build')
+    # Every other manifest row (DLLs, data/, 3rdparty) is byte-checked on the deployed file too: the deploy's fast path and the
+    # seed/reuse paths trust size+mtime, so a swapped DLL or data file was invisible here (meta-0220 P1#5). ~15 s for 5.6 GB warm.
+    for rel, row in rows.items():
+        if rel in expected:
+            continue
+        dst = target / rel
+        if not dst.is_file() or int(row.get('bytes', -1)) != dst.stat().st_size or sha256_file(str(dst)) != row.get('sha256'):
+            raise ValueError(f'{dst}: published bytes != manifest row')
     deployed_shaders = {p.relative_to(target).as_posix() for p in (target / 'shaders').rglob('*') if p.is_file()}
     if deployed_shaders != {rel for rel in expected if rel.startswith('shaders/')}:
         raise ValueError(f'{target}: published shader inventory != HEAD build')
