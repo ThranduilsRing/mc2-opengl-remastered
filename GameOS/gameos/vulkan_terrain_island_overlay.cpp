@@ -3,6 +3,8 @@
 #include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
+#include "../../RenderCore/TemporalInputs.h"
+extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "texture_decode.h"   // gos_GetTextureTexels
 #include "../../mclib/battle_bench_wait.h"
@@ -474,7 +476,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain.Overlay");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    VkViewport vp{0.0f, 0.0f, static_cast<float>(w),   // overlay quads (selection, fog of war) stay unjittered
+ static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);

@@ -32,8 +32,9 @@ struct MechFrameUBO {
     float   shadeC[4];          // @vec4 aoStrength, normalStrength, -, -
     float   poolF[4];           // @vec4 moverDim, moverScale, objScale, -
     int32_t poolI[4];           // @ivec4 numPoolLights, soft, moverMax, compress
-    int32_t miscI[4];           // @ivec4 specDebugMask, -, -, -
+    int32_t miscI[4];           // @ivec4 specDebugMask, mechFill, boneCount (object-motion tail start; 0 = none), -
     float   environmentAmbient[4]; // @vec4 mission sky RGB; ground is half the sky
+    float   prevFromCurClip[16];   // @mat4 previous-frame clip from current clip (camera reprojection), object motion vectors
 };
 
 #include "GpuMechFrameUBO.layout.gen.h"

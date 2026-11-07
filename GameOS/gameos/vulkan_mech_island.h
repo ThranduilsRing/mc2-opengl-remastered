@@ -74,9 +74,10 @@ struct Mc2MechFrameFeed {
     uint32_t     instanceCount;
     const void*  bones64;      // GpuMechBone[boneCount] (64B each) — this frame's palette
     uint32_t     boneCount;
+    const uint32_t* motionKeys; // per instance: stable actor key for previous-frame bone history (null = none)
     const Mc2MechDrawRun* runs;
     uint32_t     runCount;
-    uint32_t     leafCount;   // actor/node pairs, retained with the feed when an idle frame reuses it
+    uint32_t     leafCount;  // actor/node pairs, retained with the feed when an idle frame reuses it
     float        worldToClipGL[16]; // kAxisSwapMC2toGL * worldToClip (row-major, GL_FALSE)
     float        objectDepthBias;    // OBJECT_DEPTH_BIAS
     float        fogColorRGB[3];     // g_scene.fogColor.rgb (mech.frag fog mix source)
@@ -141,6 +142,12 @@ int mc2_vk_mech_island_shared_geometry(uint64_t* vbo, uint64_t* ibo, uint32_t* g
 // Returns 1 if the VK mech pass co-wrote this frame; 0 = fell back (the caller
 // must then run the GL mech color flush so mechs still draw).
 int mc2_vk_mech_island_run(int w, int h);
+// 1 when the last mc2_vk_mech_island_run() submitted and wrote the shared object-motion image
+// (MC2_SHARED_SCENE_OBJECT_MV, left in SHADER_READ_ONLY_OPTIMAL); 0 = the image holds stale data.
+int mc2_vk_mech_island_object_motion_written(void);
+// vulkan_mech_object_motion.cpp: per-frame inputs of the object-motion vectors.
+void mc2_mech_prev_from_cur_clip(float out[16]);
+void mc2_mech_stage_object_motion(const Mc2MechFrameFeed& feed, void* tailMem);
 
 // Mech-lab panel: the in-game mech material path drawn into the UI preview target.
 // The lab stages its actor through the batcher (submitActor + flush builds the feed),

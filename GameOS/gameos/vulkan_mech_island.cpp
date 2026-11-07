@@ -82,6 +82,8 @@
 #include <tuple>
 #include <limits>
 #include <cmath>
+#include <unordered_map>
+#include "../../RenderCore/FramePackets.h"
 #include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include "../../RenderCore/axis_convert.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
@@ -124,36 +126,12 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-bool mechFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_MECH_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
+bool mechFenceDeferEnabled() { static const bool on = mc2::gate::get<"MC2_VK_MECH_FENCE_DEFER">(); return on; }
+bool mechPerfGateRequested() { return false; }
 
-bool mechPerfGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = false;
-    }
-    return state == 1;
-}
-
-// The mech island always renders direct-chain (terrain leaves the shared GBuffer
-// Vulkan-owned); there is no GL<->VK semaphore-handoff co-write path.
-
-// VK-RUNG8 item-9: the native
-// CPU geometry + LightsData feed is unconditional under the VK mech island.
-// The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
-
+// Direct-chain only (no GL<->VK handoff); the native geometry + LightsData feed is unconditional.
 std::string spv_dir() { return vk_island_util::spvDir(); }
-
-VkShaderModule load_spv(VkDevice device, std::string_view path) {
-    return vk_island_util::loadSpv(device, path, vlog);
-}
-
-// The per-frame std140 UBO (MechFrameUBO) is single-sourced in
-// RenderCore/gpu_abi/GpuMechFrameUBO.h; its generated block feeds both mech shaders.
+VkShaderModule load_spv(VkDevice device, std::string_view path) { return vk_island_util::loadSpv(device, path, vlog); }
 
 // VK-PARITY-MECH-1: object light-pool SSBO cap (GpuTerrainLight 48B; GL caps 256).
 const uint32_t kMaxPoolLights = 256;
@@ -526,7 +504,14 @@ bool init_island(MechIsland* s, int w, int h) {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->colorRes);
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
         VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
-        VkAttachmentDescription att[3]{};
+        VkImageResource* mvRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_MV);
+        if (!mvRes) { setFallback("object_mv_missing"); return false; }
+        VkAttachmentDescription att[4]{};
+        // att[3]: per-object motion vectors, cleared to a sentinel each run, read by the MV pass.
+        att[3].format = mvRes->format;     att[3].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[3].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[3].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[3].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[3].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[3].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; att[3].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -540,17 +525,19 @@ bool init_island(MechIsland* s, int w, int h) {
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        VkAttachmentReference colorRefs[2] = {
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
+        VkAttachmentReference colorRefs[3] = {
+            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+            {3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.colorAttachmentCount = 3; sub.pColorAttachments = colorRefs;
         sub.pDepthStencilAttachment = &depthRef;
 
         VkSubpassDependency deps[2]{};
         deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        // FRAGMENT_SHADER: last frame's MV pass sampled the object-motion image this pass now clears.
+        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
@@ -558,18 +545,19 @@ bool init_island(MechIsland* s, int w, int h) {
         deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
         deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;   // object MV sampled by the MV pass
 
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.attachmentCount = 4; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
+        VkImageView fbViews[4] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get(), mvRes->view.get() };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->rpass.get(); fci.attachmentCount = 4; fci.pAttachments = fbViews;
         fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
     }
@@ -680,7 +668,7 @@ bool init_island(MechIsland* s, int w, int h) {
         ds.depthTestEnable = VK_TRUE; ds.depthWriteEnable = VK_TRUE;
         ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;   // reverse-Z, matches GL mech opaque
 
-        VkPipelineColorBlendAttachmentState cba[2]{};
+        VkPipelineColorBlendAttachmentState cba[3]{};
         for (auto & cbaElem : cba) {
             cbaElem.blendEnable = VK_FALSE;
             cbaElem.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -688,7 +676,7 @@ bool init_island(MechIsland* s, int w, int h) {
         }
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        cb.attachmentCount = 2; cb.pAttachments = cba;
+        cb.attachmentCount = 3; cb.pAttachments = cba;
 
         VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
         VkPipelineDynamicStateCreateInfo dsci{};
@@ -726,6 +714,7 @@ bool init_island(MechIsland* s, int w, int h) {
             setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "mech.pipe");
+        cb.attachmentCount = 2;   // preview render pass has colour + normal only
 
         // Mech-lab panel variants: same layout/state against the preview render pass (RGBA8 color + normal, D32 depth).
         s->previewReady = false;
@@ -914,13 +903,15 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 0; rbi.pClearValues = nullptr;   // all LOAD
+    // Only attachment 3 (object motion) clears: far-out sentinel = "no object motion here".
+    VkClearValue clears[4]{};
+    clears[3].color.float32[0] = 10000.0f; clears[3].color.float32[1] = 10000.0f;
+    rbi.clearValueCount = 4; rbi.pClearValues = clears;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Mech");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    vkCmdSetViewport(cb, 0, 1, &vp);
+    mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
     VkDeviceSize vboOff = 0;
@@ -986,8 +977,17 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     return true;
 }
 
+// ---- Per-object motion (docs/plans/2026-11-06-temporal-aa.md, Slice D) ----------------------------------------------------
+namespace {
+bool g_objectMotionWritten = false;
+
+}  // namespace
+
+extern "C" int mc2_vk_mech_island_object_motion_written(void) { return g_objectMotionWritten ? 1 : 0; }
+
 extern "C" int mc2_vk_mech_island_run(int w, int h) {
     ZoneScopedN("VK-mech-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
+    g_objectMotionWritten = false;
     if (w <= 0 || h <= 0) return 0;
 
     using clk = std::chrono::steady_clock;
@@ -1010,17 +1010,13 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     {
         static const bool s_cullWitness = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();
         if (s_cullWitness) {
-            // Ordinal = per-drawn-frame (usedVulkan+1); the GL batcher builds one feed
-            // per frame the island draws, so the ordered sequence of vk_instances must
-            // equal the batcher's instances= sequence (equal every frame by construction).
             std::fprintf(stderr, "[VK_MECH_ISLAND] event=cull_witness seq=%lu vk_instances=%u runs=%u\n",
                          g_health.usedVulkan + 1, feed.instanceCount, feed.runCount);
         }
     }
 
-    // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
-    // island for the whole session -> GL owns mechs, no per-frame re-init churn.
-    if (g_mechSessionDeclined) return 0;
+    if (g_mechSessionDeclined)   // a permanent init failure declined this island: GL owns mechs
+ return 0;
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     if (const MechIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Mech);
     if (!islandSlot()) {
@@ -1029,15 +1025,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
             const bool permanent = (g_mechInitReachedBuild != 0);
             slotCtx.waitIdle("mech_init_failure");   // objects made before the failure may have been submitted
             if (permanent) {
-                // Build-phase failure won't recover this session: latch decline + ONE
-                // receipt line (vs. re-init'ing every frame). GL renders mechs from frame 0.
                 g_mechSessionDeclined = true;
                 vlog("[VK_MECH_ISLAND] boot-level decline: permanent init failure (%s) -- "
                      "GL owns mechs for this session (no per-frame retry).",
                      g_health.fallbackReason);
             } else {
-                // Transient readiness gate (VK context / shared GBuffer not born yet):
-                // keep item-9 fail-hard-with-retry -- GL draws this frame, retry next.
                 static bool s_transientLogged = false;
                 if (!s_transientLogged) {
                     vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
@@ -1070,7 +1062,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const void* poolUpload = feed.poolLights48;
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
-    const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
+    // Object-motion tail: last frame's bone palette (same indexing), right after the current palette; the VS skins with it at boneCount + bone.
+    const VkDeviceSize deltaTailBytes = static_cast<VkDeviceSize>(feed.boneCount) * 64ull;
+    const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + static_cast<VkDeviceSize>(feed.boneCount) * 64ull + deltaTailBytes, ringAlign);
     const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
@@ -1093,7 +1087,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // Upload instance + bone snapshots into the frame span.
     { ZoneScopedN("VK-mech-instance-bone-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame skinning feed staging
       if (instBytes) std::memcpy(mainPtr + instOff, feed.instances64, static_cast<size_t>(instBytes));
-      if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, static_cast<size_t>((feed.boneCount * 64ull))); }
+      if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, static_cast<size_t>((feed.boneCount * 64ull)));
+      mc2_mech_stage_object_motion(feed, mainPtr + boneOff + static_cast<VkDeviceSize>(feed.boneCount) * 64ull); }
     g_health.instRecords = feed.instanceCount;
     g_health.boneRecords = feed.boneCount;
     const size_t instBytes64 = static_cast<size_t>(feed.instanceCount) * 64;   // pre-skin plan: flags skinnable instances in the ring copy only
@@ -1155,6 +1150,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
       u.miscI[1] = mechFill;
+      u.miscI[2] = static_cast<int>(feed.boneCount);   // start of the previous-frame palette in the bone array
+      mc2_mech_prev_from_cur_clip(u.prevFromCurClip);
       const auto& ambient = visualTuning_environment().sky.hemisphereSky;
       for (size_t c=0; c<3; ++c)
           u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
@@ -1191,6 +1188,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     s->submitted[par] = rctx.tracker().now();
     timerGuard.submitted();
+    g_objectMotionWritten = true;
 
     if (!mechFenceDeferEnabled()) {
         ZoneScopedN("VKIsl.Mech.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire

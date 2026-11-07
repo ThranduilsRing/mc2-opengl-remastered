@@ -30,6 +30,9 @@
 #include "Gates/render_options.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
+#include "vulkan_mech_island.h"   // mc2_vk_mech_island_object_motion_written
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "imgui.h"
 #include "present_imgui_snapshot.h"
@@ -525,9 +528,9 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         }
     }
     if (!s.compositePool) {
-        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4};
+        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-        pci.maxSets = 2; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        pci.maxSets = 3; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
         if (!mc2vk::create(s.compositePool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.compositeVkFailed = true; return false;
         }
@@ -542,6 +545,10 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
         if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.upscaleSet) != VK_SUCCESS) {
             s.compositeVkFailed = true; return false;
         }
+        if (MC2_VK_ALLOC_SETS(s.dev, &ai, &s.fsrSet) != VK_SUCCESS) {
+            s.compositeVkFailed = true; return false;
+        }
+        s.fsrSetView = VK_NULL_HANDLE;
     }
     VkImageResource* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
     VkDescriptorImageInfo ii[2]{};
@@ -1411,6 +1418,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
     s.spatialAA.reset();
+    s.fsr.resetHistory();
+    s.motionVectors.reset();
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
     destroyCompositeFramebuffer(s);
@@ -1667,8 +1676,14 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
-    const int aaMode = mc2::options::current().spatialAA;
+    // FSR 3.1 native AA replaces the spatial AA and CAS while it is active (SpatialAA=0 is the off switch).
+    VkImageResource* fsrDepth = mc2SharedSceneDepthGetResource();
     const bool scaled = bool(s.scaledComposite.image);
+    const bool fsrActive = fsrDepth && !scaled && mc2::options::current().spatialAA != 0 &&
+                           s.fsr.prepare(*s.ctx, *scene, *fsrDepth, true);
+    if (!fsrActive) s.fsr.prepare(*s.ctx, *scene, fsrDepth ? *fsrDepth : *scene, false);
+    const int aaMode = fsrActive ? 0 : mc2::options::current().spatialAA;
+    if (fsrActive) casEnabled = false;
     const auto& aaOutput = scaled ? s.scaledComposite : s.sharedImg;
     const bool aaReady = s.spatialAA.prepare(*s.ctx, aaOutput, aaMode);
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
@@ -1680,6 +1695,13 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     if (vkBeginCommandBuffer(cc, &bi) != VK_SUCCESS)
         return false;
 
+    // Camera motion vectors (temporal track, docs/plans/2026-11-06-temporal-aa.md), before the
+    // composite. Demand-driven: the only consumer so far is the debug inset in the present tail,
+    // so the pass (and its image) cost nothing until that inset or a resolve asks for it.
+    const bool mvOk = (s.showMotionVectorsDebug || fsrActive) && fsrDepth && fsrDepth->image && fsrDepth->w && fsrDepth->h &&
+                      s.motionVectors.prepare(*s.ctx, *fsrDepth);
+    if (mvOk) s.motionVectors.record(cc, *fsrDepth, s.captureFrame, mc2_vk_mech_island_object_motion_written() != 0);   // present-side copy of the scene's g_mc2RenderFrame
+
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
@@ -1689,6 +1711,30 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
+
+    // FSR native AA between the scene and the composite; the composite then tonemaps the resolved image once.
+    VkDescriptorSet sceneSet = s.compositeSet;
+    if (fsrActive && mvOk && s.fsr.record(cc, *scene, *fsrDepth, s.motionVectors, s.captureFrame)) {
+        if (s.fsrSetView != s.fsr.outputView()) {
+            s.fsrSetView = s.fsr.outputView();
+            VkDescriptorImageInfo fi[2]{};
+            fi[0].sampler = s.compositeSampler.get();
+            fi[0].imageView = s.fsrSetView;
+            fi[0].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            fi[1].sampler = s.compositeNearestSampler.get();
+            fi[1].imageView = boundObjectId ? boundObjectId->view.get() : scene->view.get();
+            fi[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkWriteDescriptorSet fw[2]{};
+            for (uint32_t i = 0; i < 2; ++i) {
+                fw[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                fw[i].dstSet = s.fsrSet; fw[i].dstBinding = i; fw[i].descriptorCount = 1;
+                fw[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                fw[i].pImageInfo = &fi[i];
+            }
+            vkUpdateDescriptorSets(s.dev, 2, fw, 0, nullptr);
+        }
+        sceneSet = s.fsrSet;
     }
 
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
@@ -1714,7 +1760,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdSetScissor(cc, 0, 1, &sc);
     mc2vk::infra::bind(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
     vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
-                            0, 1, &s.compositeSet, 0, nullptr);
+                            0, 1, &sceneSet, 0, nullptr);
     const auto& output = visualTuning_environment().output;
     const bool upscale = mc2::gate::get<"MC2_RENDER_SCALE">() < 1.0 &&
                          (scene->w < s.imgW || scene->h < s.imgH);
@@ -1798,6 +1844,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     ++health_.composite_vk_frames;
     presentImageVkOwned_ = true;
     return true;
+}
+
+void EnginePresentVk::setMotionVectorsDebug(bool on) {
+    if (impl_) impl_->showMotionVectorsDebug = on;
 }
 
 bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer) {
@@ -2210,6 +2260,9 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         ++health_.shadow_debug_vk_frames;
     }
     s.pendingShadowDebugView = VK_NULL_HANDLE;
+    // Motion-vector debug inset (Graphics Options): after the composite, before HUD/ImGui.
+    if (s.showMotionVectorsDebug)
+        (void)s.motionVectors.recordDebug(s.curCbuf(), s.sharedImg.view.get(), s.imgW, s.imgH);
 
     // VK-TAIL-HOOK-1: final native-tail seam. The composite left the shared image
     // in COLOR_ATTACHMENT layout; native HUD/ImGui commands attach here before the

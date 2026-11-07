@@ -227,6 +227,10 @@ ISLANDS = {
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/postprocess_visual.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
+    "shaders/vulkan/motion_vectors.frag":
+        "Vulkan-only camera motion vectors by depth reprojection (temporal track, docs/plans/2026-11-06-temporal-aa.md); no GL counterpart. Graded by the Graphics Options motion-vector debug view and pan captures.",
+    "shaders/vulkan/motion_vectors_debug.frag":
+        "Vulkan-only debug inset of the motion-vector target (Graphics Options checkbox); no GL counterpart.",
     "shaders/vulkan/aa_fxaa.frag":
         "Vulkan-only spatial AA after output and before HUD. Matched off/SMAA/FXAA/CMAA2 day/night captures and GPU timestamps grade this pass.",
     "shaders/vulkan/aa_smaa_edges.frag":

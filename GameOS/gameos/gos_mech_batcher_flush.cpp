@@ -346,6 +346,8 @@ void MechFlushFrame::writeInstances() {
     drawCalls.reserve(buckets.size());
     s_vkMechInstSnapshot.clear();
     s_vkMechInstSnapshot.reserve(totalInstances);
+    s_vkMechMotionKeys.clear();
+    s_vkMechMotionKeys.reserve(totalInstances);
 
     auto unpack = [](uint32_t argb, float out[4]) {
         out[0] = ((argb >> 16) & 0xFF) / 255.f;  // r
@@ -408,6 +410,9 @@ void MechFlushFrame::writeInstances() {
             inst.visualDamage01     = d.damage01;
             inst.visualFlags        = d.visualFlags;
             s_vkMechInstSnapshot.push_back(inst);
+            // Motion-history key: the actor handle, else (ground vehicles carry none) a hash of the live shape pointer.
+            s_vkMechMotionKeys.push_back(d.objectIdRaw ? d.objectIdRaw
+                : static_cast<uint32_t>(reinterpret_cast<uintptr_t>(d.mechShape) >> 4) | 0x80000000u);
         }
         drawCalls.push_back(dc);
         ++dcIdx;

@@ -24,6 +24,7 @@
     "mech_depth": {"stages": ["shaders/vulkan/mech_depth.frag", "shaders/vulkan/mech_depth.vert"], "includes": []},
     "mech_tier1": {"stages": ["shaders/vulkan/mech_tier1.frag", "shaders/vulkan/mech_tier1.vert"], "includes": []},
     "motion_vectors": {"stages": ["shaders/vulkan/motion_vectors.frag"], "includes": []},
+    "motion_vectors_debug": {"stages": ["shaders/vulkan/motion_vectors_debug.frag"], "includes": []},
     "postprocess": {"stages": ["shaders/vulkan/postprocess.frag", "shaders/vulkan/postprocess.vert"], "includes": []},
     "postprocess_visual": {"stages": ["shaders/vulkan/postprocess_visual.frag", "shaders/vulkan/postprocess_visual.vert"], "includes": []},
     "screen_shadow_csm": {"stages": ["shaders/vulkan/screen_shadow_csm.frag", "shaders/vulkan/screen_shadow_csm.vert"], "includes": []},

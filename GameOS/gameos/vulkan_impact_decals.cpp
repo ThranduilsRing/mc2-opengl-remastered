@@ -291,6 +291,10 @@ bool build(State* s, int w, int h) {
             cb.attachmentCount = 1; cb.pAttachments = &cba;
             VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
             gp.stageCount = 2; gp.pStages = st; gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+            const VkDynamicState dynViewport = VK_DYNAMIC_STATE_VIEWPORT;   // temporal AA jitters the viewport per frame
+            VkPipelineDynamicStateCreateInfo dyns{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+            dyns.dynamicStateCount = 1; dyns.pDynamicStates = &dynViewport;
+            gp.pDynamicState = &dyns;
             gp.pViewportState = &vps; gp.pRasterizationState = &rs; gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
             gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
             if (!mc2vk::create(out, dev, [&](VkPipeline* o) { return mc2vk::infra::graphics(dev, VK_NULL_HANDLE, 1, &gp, nullptr, o); })) return false;
@@ -425,6 +429,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {uint32_t(w), uint32_t(h)}};
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[slot], 0, nullptr);
         PushMode pm{};
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->mulPipe.get());

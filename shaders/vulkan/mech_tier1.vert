@@ -145,6 +145,10 @@ layout(location = 8) out vec3 vTangentGL;           // NORMALS-1 world tangent
 layout(location = 9) flat out uint vImportedMech;   // renderFlags >> 3 & 7
 layout(location = 10) flat out uint vLegacyVehicle; // renderFlags bit 6: ground vehicle, legacy shading
 layout(location = 11) flat out float vTangentW;     // tangent handedness (a_boneIndices.w: 1 = mirrored UV island)
+// Per-object motion: unjittered clip of this vertex now and one frame ago (camera reprojection of the
+// position minus the object's world translation since last frame). The fragment shader writes the difference.
+layout(location = 12) out vec4 vCurClip;
+layout(location = 13) out vec4 vPrevClip;
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
@@ -167,6 +171,22 @@ void main() {
     vec3 worldNormal = normalize(mc2ToRender(normalStuff));
 
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);
+    vCurClip = clip;
+    vPrevClip = clip;
+    if (uFrame.miscI.z > 0 && !preskinned) {
+        // The same vertex skinned with last frame's bone palette (stored after the current one; miscI.z = bone count): pose motion
+        // (root rotation and translation, limbs) in one step. Unkeyed actors carry the current pose there, so they get the camera vector.
+        mat4 prevBoneT = mat4(0.0);
+        for (int bi = 0; bi < 4; ++bi) {
+            float w = a_boneWeights[bi];
+            if (w > 0.0) {
+                GpuMechBone bn = uBones.bones[uFrame.miscI.z + a_boneIndices[bi] + inst.baseBoneOffset];
+                prevBoneT += w * mat4(bn.row0, bn.row1, bn.row2, bn.row3);
+            }
+        }
+        const vec3 prevWorldMC2 = mc2ToRender((prevBoneT * vec4(a_position, 1.0)).xyz);
+        vPrevClip = uFrame.prevFromCurClip * (uFrame.worldToClipGL * vec4(prevWorldMC2, 1.0));
+    }
     clip.z += uFrame.objectDepthBias * clip.w;   // mech.vert:187
     gl_Position = clip;
 

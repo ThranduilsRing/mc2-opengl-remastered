@@ -193,7 +193,7 @@ if(MC2_VULKAN)
         # lighting up the vk2gl back-channel). Borrows the shared engine
         # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
         # -> GL shadow path byte-identical. extern "C" entry points only.
-        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_mech_skin.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_mech_skin.cpp vulkan_mech_object_motion.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
         # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
         # region rendering REAL static-prop triangle geometry in-place into the shared
         # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
@@ -286,7 +286,7 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp vulkan_fsr_provider.cpp)
     endif()
 endif()
 
@@ -344,6 +344,8 @@ if(MC2_VULKAN)
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
+    # TAA slice C: vendored FidelityFX ffx-api headers (runtime-loaded amd_fidelityfx_vk.dll).
+    target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/fidelityfx")
     # VK-IMGUI-NATIVE-1: engine_present_vk.cpp owns the Vulkan renderer backend.
     target_include_directories(gameos PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
@@ -422,6 +424,7 @@ if(MC2_VULKAN)
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
+    list(APPEND MC2_VK_SHADER_BASENAMES motion_vectors motion_vectors_debug)
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection)
     list(APPEND MC2_VK_SHADER_BASENAMES vegetation_region vegetation_cull vegetation_compact vfx_vegetation)
     list(APPEND MC2_VK_SHADER_BASENAMES mech_skin)

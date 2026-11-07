@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 266,
+    "glsl_blocks_with_binding": 268,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -246,6 +246,26 @@
         "branch": {
           "1": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/motion_vectors.frag",
+        "line": 13,
+        "role": "depthTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/motion_vectors.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/motion_vectors_debug.frag",
+        "line": 8,
+        "role": "motionTex",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/motion_vectors_debug.frag",
+        "branch": {}
       },
       {
         "side": "glsl",
@@ -3064,6 +3084,8 @@
     "shaders/vulkan/mech_skin.comp",
     "shaders/vulkan/mech_tier1.frag",
     "shaders/vulkan/mech_tier1.vert",
+    "shaders/vulkan/motion_vectors.frag",
+    "shaders/vulkan/motion_vectors_debug.frag",
     "shaders/vulkan/postprocess.frag",
     "shaders/vulkan/postprocess.vert",
     "shaders/vulkan/postprocess_visual.frag",

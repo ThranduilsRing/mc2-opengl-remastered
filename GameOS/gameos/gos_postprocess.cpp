@@ -274,7 +274,10 @@ void gosPostProcess::init(int w, int h)
         const std::string sdText = mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">();   // "" when unset or empty
         const char* sdEnv = sdText.c_str();
         if (sdEnv[0]) {
-            if (sdEnv[0] == '1' || sdEnv[0] == '2' || sdEnv[0] == 's' || sdEnv[0] == 'd') {
+            if (sdEnv[0] == 'm') {
+                // Harness toggle for the motion-vector debug inset (temporal track).
+                showMotionVectors_ = true;
+            } else if (sdEnv[0] == '1' || sdEnv[0] == '2' || sdEnv[0] == 's' || sdEnv[0] == 'd') {
                 showShadowDebug_ = true;
                 mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE on (CSM view)\n");
             } else {
@@ -353,6 +356,7 @@ void gosPostProcess::endScene()
     if (mode==1 && !sceneObjectIdReady()) mode=0;
 #ifdef MC2_VULKAN
     auto& present=mc2vk::getOrCreateEnginePresentVk();
+    present.setMotionVectorsDebug(showMotionVectors_);
     if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
         exposure_,mode,
         sceneObjectIdReady() ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,

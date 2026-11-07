@@ -1,6 +1,7 @@
 #include "footprints.h"
 #include "vk_scene_renderer.h"
 #include <atomic>
+#include <cstring>
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
@@ -248,6 +249,25 @@ void GameCamera::renderViewUniforms() {
 		};
 		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
 		stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
+		{
+			// Previous-frame clip matrix for motion vectors (docs/plans/2026-11-06-temporal-aa.md).
+			// This runs more than once per frame; "previous" is the last matrix of frame N-1.
+			// Any other gap (first frame, load, skipped frame) is a history reset:
+			// previous = current, so the reprojection is identity and motion is zero.
+			extern std::atomic<uint32_t> g_mc2FrameCounter;
+			static float s_lastClip[16]{}, s_prevClip[16]{};
+			static uint32_t s_lastFrame = 0;
+			static bool s_have = false;
+			const uint32_t frame = g_mc2FrameCounter.load(std::memory_order_relaxed);
+			if (!s_have || (frame != s_lastFrame && frame != s_lastFrame + 1u))
+				std::memcpy(s_prevClip, vu.worldToClipGL, sizeof(s_prevClip));
+			else if (frame == s_lastFrame + 1u)
+				std::memcpy(s_prevClip, s_lastClip, sizeof(s_prevClip));
+			std::memcpy(s_lastClip, vu.worldToClipGL, sizeof(s_lastClip));
+			s_lastFrame = frame;
+			s_have = true;
+			std::memcpy(vu.previousWorldToClipGL, s_prevClip, sizeof(s_prevClip));
+		}
 		const glm::vec3 orig = eye->cameraOriginGL();
 		vu.cameraWorldPos[0] = orig.x;
 		vu.cameraWorldPos[1] = orig.y;

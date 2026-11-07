@@ -5,6 +5,8 @@
 #include "vulkan_context.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
+#include "../../RenderCore/TemporalInputs.h"
+extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vk_texture_residency.h"
 #include "imgui.h"
 #include "gos_crashbundle.h"
@@ -49,7 +51,9 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
 void materialSampler(VkSamplerCreateInfo& info) {
-    info.mipLodBias = float(std::log2(mc2::gate::get<"MC2_RENDER_SCALE">()));
+    // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite); AA off keeps log2(renderScale).
+    const float scale = float(mc2::gate::get<"MC2_RENDER_SCALE">());
+    info.mipLodBias = RenderCore::temporal::mipBias(scale, scale == 1.0f && mc2::options::current().spatialAA != 0);
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {
@@ -555,6 +559,12 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=compute count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(getOrCreateEngineVulkanContext().tracker().frameNo())); return result;
+}
+void setSceneViewport(VkCommandBuffer cb, uint32_t w, uint32_t h) {
+    float jpx[2];
+    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
+    const VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+    vkCmdSetViewport(cb, 0, 1, &vp);
 }
 void bind(VkCommandBuffer cb,VkPipelineBindPoint point,VkPipeline pipeline) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=pipelineTokens().find(pipeline);

@@ -57,8 +57,13 @@ Expected extents below are allocation rules, not captured validation evidence.
 | 3840 x 2160 | 1.0 | 3840 x 2160 | 3840 x 2160 |
 | 3840 x 2160 | 0.67 | 2573 x 1447 | 3840 x 2160 |
 
-The completed temporal experiment has been removed. No motion/reactive targets,
-history generation or jitter run without a temporal consumer. Fixed mission
+The 2026-10 temporal experiment was removed; the owner approved a new temporal
+track on 2026-11-06 (`docs/plans/2026-11-06-temporal-aa.md`). Its camera
+motion-vector target (`scene.motionVectors`, RG16F, render resolution, UV units,
+previous minus current, unjittered) is recorded every frame at the start of the
+composite; until the TAA resolve lands its only consumer is the Graphics Options
+"Motion Vectors" debug inset. No reactive targets, history or jitter run until
+the resolve consumes them. Fixed mission
 exposure remains `gos_GetExposure()`; there is no automatic pre-exposure.
 
 Material sampler creation uses `mc2vk::infra::materialSampler` to apply

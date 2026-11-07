@@ -66,6 +66,7 @@ public:
     // Static bake plus one current-frame mover map.
     bool shadowsEnabled_;
     bool showShadowDebug_;
+    bool showMotionVectors_ = false;   // Graphics Options "Motion Vectors" debug inset (VK)
     void drawShadowDebugOverlay();
     void setMapHalfExtent(float extent) { mapHalfExtent_=extent; }
     float getMapHalfExtent() const { return mapHalfExtent_; }
@@ -154,6 +155,7 @@ public:
     Mc2SharedSceneColor* sharedSceneColor_ = nullptr;
     Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;
     Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr;
+    Mc2SharedSceneColor* sharedSceneObjectMv_ = nullptr;
 
     // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
     // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling
