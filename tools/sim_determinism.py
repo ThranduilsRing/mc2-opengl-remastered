@@ -252,15 +252,61 @@ def detail_diff(path_a: str, path_b: str) -> tuple[dict, dict]:
     return res["motion"], res["anim"]
 
 
+_TICK = re.compile(r"simframe=(\d+)")
+
+
+def _tick(line: str) -> int:
+    m = _TICK.search(line)
+    return int(m.group(1)) if m else -1
+
+
+def _alignment_problem(a, b, dropped) -> str:
+    """Why two SIMID sequences with garbled (dropped) lines cannot be aligned on ticks, or "". Both ORIGINAL sequences must be
+    well-formed (no duplicate or conflicting tick, valid fields, increasing ticks), and each hole inside a run must be explained by
+    one of its garbled lines AND the tick must be present in the other run (otherwise it is a real gap, not a skipped garble)."""
+    for name, lines, drops, other in (("a", a, dropped[0], b), ("b", b, dropped[1], a)):
+        seen = {}
+        for x in lines:
+            t = _tick(x)
+            if t in seen:
+                return f"run {name} has {'a conflicting' if seen[t] != x else 'a repeated'} observation for simframe {t}"
+            seen[t] = x
+        error = observation_error(lines, gaps=True)
+        if error:
+            return f"run {name}: {error}"
+        if lines:
+            other_ticks = {_tick(x) for x in other}
+            holes = [t for t in range(_tick(lines[0]), _tick(lines[-1]) + 1) if t not in seen]
+            if len(holes) > drops:
+                return f"run {name} is missing {len(holes)} ticks inside its range (first {holes[0]}) but only {drops} garbled line(s) explain a hole"
+            lost = [t for t in holes if t not in other_ticks]
+            if lost:
+                return f"run {name} lacks simframe {lost[0]} and the other run does not have it either: a gap, not a skipped garbled line"
+    return ""
+
+
+def _inconclusive(msg: str) -> bool:
+    return msg.startswith("INCONCLUSIVE")
+
+
+def _verdict(ok: bool, msg: str) -> str:
+    return "sim_determinism: PASS " if ok else ("sim_determinism: " if _inconclusive(msg) else "sim_determinism: FAIL ")
+
+
 def compare(a, b, min_frames: int = MIN_FRAMES, required_length: int = 0):
     """-> (ok, message). Only the frames both runs reached are compared; required_length additionally rejects a truncated run."""
     if required_length and (len(a) < required_length or len(b) < required_length):
-        return False, (f"runs reached {len(a)} and {len(b)} sim frames, need {required_length}: a run stopped before the baseline")
+        return False, (f"INCONCLUSIVE: runs reached {len(a)} and {len(b)} sim frames, need {required_length}: a run stopped before the baseline")
     dropped = (getattr(a, "dropped", 0), getattr(b, "dropped", 0))
-    if any(dropped):  # a garbled line leaves a hole: compare only the sim frames both runs read cleanly
-        frame = lambda ln: ln.split(" ", 3)[2]
-        da, db = {frame(x): x for x in a}, {frame(x): x for x in b}
+    if any(dropped):  # a garbled line leaves a hole: align on ticks, but only after both ORIGINAL sequences validate
+        problem = _alignment_problem(a, b, dropped)
+        if problem:
+            return False, "INCONCLUSIVE: " + problem
+        da, db = {_tick(x): x for x in a}, {_tick(x): x for x in b}
         keys = [k for k in da if k in db]
+        if required_length and len(keys) < required_length:
+            return False, (f"INCONCLUSIVE: only {len(keys)} common sim ticks after dropping garbled lines "
+                           f"(a={dropped[0]} b={dropped[1]}), need {required_length}")
         a, b = [da[k] for k in keys], [db[k] for k in keys]
     common = min(len(a), len(b))
     if common < min_frames:
@@ -794,8 +840,8 @@ def main(argv=None) -> int:
         return 0
     if args.cmd == "compare":
         ok, msg = compare(load_simid(args.log_a), load_simid(args.log_b), args.min_frames)
-        print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
-        return 0 if ok else 1
+        print(_verdict(ok, msg) + msg)
+        return 0 if ok else (3 if _inconclusive(msg) else 1)
     out = args.out or tempfile.mkdtemp(prefix="simdet_")
     base = None
     if args.cmd == "check":
@@ -830,7 +876,9 @@ def main(argv=None) -> int:
         print(f"sim_determinism: INCONCLUSIVE (too few frames): {reached} of {needed} sim frames within the requested {args.duration} s budget")
         return 3
     ok, msg = compare(a, b, args.min_frames, required_length=required)
-    print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
+    print(_verdict(ok, msg) + msg)
+    if not ok and _inconclusive(msg):
+        return 3  # incomplete evidence is neither PASS nor a divergence; the gate row still fails on a nonzero rc
     if ok and base:
         if not os.path.exists(base):
             print(f"sim_determinism: baseline FAIL no baseline at {os.path.relpath(base, ROOT)} (record one with write-baseline)")
