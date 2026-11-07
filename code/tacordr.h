@@ -80,7 +80,7 @@ using enum AttitudeType;
 
 //#define	FIRERANGE_OPTIMUM	-1
 
-// LG14 lane 3: the order enums below are saved (TacticalOrder), packed into order words (TacticalOrder::pack) and read from ABL by number.
+// The order enums below are saved (TacticalOrder), packed into order words (TacticalOrder::pack) and read from ABL by number.
 // Every value explicit and pinned in save_layout_guard.h. AttackMethod, TacticalOrderCode and SpecialMoveMode are scoped so an int
 // cannot slip in unchecked; FireRangeType, AttackType, TacticType, OrderOriginType and _TravelModeType stay unscoped for now
 // (20+ int-mixing files each; next LG14 commit). Inbound ints for all of them go through enum_in_domain(E{}, v) below

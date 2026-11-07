@@ -38,6 +38,19 @@
    "count": 1
   },
   {
+   "tag": "ABL",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "fn",
+    "type",
+    "method",
+    "range"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ABL_ARG_GUARD",
    "ver": -1,
    "stream": "stdout",
@@ -1683,16 +1696,6 @@
     "wid"
    ],
    "count": 1
-  },
-  {
-   "tag": "BRAIN_TACTIC_B",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tactic",
-    "wid"
-   ],
-   "count": 2
   },
   {
    "tag": "BRAIN_TACTIC_SELECT",
@@ -8014,6 +8017,28 @@
     "type"
    ],
    "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "code",
+    "origin"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "packet",
+    "orders"
+   ],
+   "count": 2
   },
   {
    "tag": "SAVE",

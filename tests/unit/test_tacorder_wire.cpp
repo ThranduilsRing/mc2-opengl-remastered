@@ -1,4 +1,4 @@
-// LG14 lane 3: packed tactical order words must stay bit-identical after the order enums became enum class.
+// Packed tactical order words must stay bit-identical after the order enums became enum class.
 // Expected words were computed from the pre-LG14 TacticalOrder::pack shift sequence (32-bit long), not from tacorder_wire.h.
 #include "doctest.h"
 #include "tacorder_wire.h"
