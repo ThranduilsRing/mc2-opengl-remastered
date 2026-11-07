@@ -71,6 +71,8 @@ class Appearance
     // True while renderAnim_ and appliedEffects_ already hold what presentAnimation(sim) + presentEffects() would leave.
     // Every mutable path to either animation copy clears it (sim worker and presentation may both write: relaxed atomic).
     mutable std::atomic<bool> animSettled_{false};
+    // Set once a mover caches simAnim_ (pinnedSimulationAnimation): its writes bypass the clears, so it never settles.
+    mutable std::atomic<bool> animPinned_{false};
 public:
     // Generation of the type registry that issued this holder's appearance type (stamped by init(tree)); 0 = none.
     unsigned registryGeneration = 0;
@@ -78,13 +80,14 @@ public:
     mc2::sim::UnitAnimState& unitAnim() { animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
     auto simulationAnimation() const { animSettled_.store(false, std::memory_order_relaxed); return simAnim_; }
+    auto pinnedSimulationAnimation() const { animPinned_.store(true, std::memory_order_relaxed); return simulationAnimation(); }
     void presentAnimation(const mc2::sim::UnitAnimState& value) { animSettled_.store(false, std::memory_order_relaxed); renderAnim_ = value; flushSimEvents(); }
     // Terrain walk: presentAnimation(sim) + presentEffects(), skipped when neither copy was touched since the last
     // settled visit (a repeat would copy the same state and compare equal effects: a no-op). Clears again if the
     // effects pass mutated renderAnim_ (blown arms) so the next visit re-presents exactly as before.
     void presentSettledAnimation() {
         if (animSettled_.load(std::memory_order_relaxed)) return;
-        animSettled_.store(true, std::memory_order_relaxed);
+        animSettled_.store(!animPinned_.load(std::memory_order_relaxed), std::memory_order_relaxed);
         renderAnim_ = *simAnim_;
         flushSimEvents();
         presentEffects();
