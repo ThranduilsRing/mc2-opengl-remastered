@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in group_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "group_internal.h"
+#include "mc2fmt.h"
 #include <mdspan>
 
 
@@ -338,7 +339,7 @@ long MoverGroup::calcJumpGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 #ifdef _DEBUG
 #if DEBUGJUMPGOALS
 	char debugStr[256];
-	sprintf(debugStr, "GROUP JUMP(%.2f,%.2f,%.2f)--UL = %d,%d: ", goal.x, goal.y, goal.z,mapCellUL[0], mapCellUL[1]);
+	mc2::fmt::to_buf(debugStr, "GROUP JUMP({:.2f},{:.2f},{:.2f})--UL = {},{}: ", goal.x, goal.y, goal.z, mc2::fmt::as_i32(mapCellUL[0]), mc2::fmt::as_i32(mapCellUL[1]));
 #endif
 #endif
 
@@ -365,7 +366,7 @@ long MoverGroup::calcJumpGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 #ifdef _DEBUG
 #if DEBUGJUMPGOALS
 				char s[30];
-				sprintf(s, "[%d,%d] ", curCellRow, curCellCol);
+				mc2::fmt::to_buf(s, "[{},{}] ", curCellRow, curCellCol);
 				strcat(debugStr, s);
 #endif
 #endif

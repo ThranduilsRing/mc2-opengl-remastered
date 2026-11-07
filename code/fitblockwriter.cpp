@@ -57,7 +57,7 @@ void FitBlockWriter::writeLong(std::string_view key, long v) {
 void FitBlockWriter::writeFloat(std::string_view key, float v, int precision) {
     precision = std::clamp(precision, 0, 9);
     char buf[48];
-    std::snprintf(buf, sizeof(buf), "%.*f", precision, v);
+    mc2::fmt::to_buf(buf, "{:.{}f}", v, precision);
     writeToken(key, buf);
 }
 

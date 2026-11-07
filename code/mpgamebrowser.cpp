@@ -13,6 +13,7 @@ MPGameBrowser.cpp			: Implementation of the MPGameBrowser component.
 #include"userinput.h"
 #include "../resource.h"
 #include"multplyr.h"
+#include "mc2fmt.h"
 #include"mechbayscreen.h"
 
 #ifndef GAMESOUND_H
@@ -96,7 +97,7 @@ void MPGameBrowser::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) );
 			Assert( 0, 0, error );
 			return;
 		}
@@ -656,9 +657,9 @@ void aGameListItem::setSessionInfo( MC2Session* pSession )
 	mapName.setText( pSession->map );
 	
 	char tmp[256];
-	sprintf( tmp, "%ld/%ld", pSession->numPlayers, pSession->maxPlayers );
+	mc2::fmt::to_buf( tmp, "{}/{}", mc2::fmt::as_long(pSession->numPlayers), mc2::fmt::as_long(pSession->maxPlayers) );
 	numPlayers.setText( tmp );
-	sprintf( tmp, "%ld", pSession->ping );
+	mc2::fmt::to_buf( tmp, "{}", mc2::fmt::as_long(pSession->ping) );
 	latency.setText( tmp );
 
 	if ( state == DISABLED )

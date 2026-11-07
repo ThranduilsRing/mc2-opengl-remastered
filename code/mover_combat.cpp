@@ -859,7 +859,7 @@ void Mover::calcAmmoTotals (void)
 
 			if (!foundAmmoWeapon) {
 				char message[128];
-				std::snprintf(message, sizeof(message), "orphan ammo %ld; zeroing amount", ammoMasterId);
+				mc2::fmt::to_buf(message, "orphan ammo {}; zeroing amount", mc2::fmt::as_long(ammoMasterId));
 				mc2::content::error(mc2::content::Kind::WeaponAmmo, name, message);
 				inventory[i].amount = 0;
 			}
