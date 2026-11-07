@@ -359,7 +359,7 @@ void Mech3DAppearance::updateGeometry (void)
 					++diagRegistered;
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;
-				if (diagOverflow < 0) diagOverflow = 0;
+				diagOverflow = std::max(diagOverflow, 0);
 				s_spotDiagMechRegistered += static_cast<unsigned long>(diagRegistered);
 				s_spotDiagMechOverflows  += static_cast<unsigned long>(diagOverflow);
 				++s_spotDiagMechActors;
@@ -408,7 +408,7 @@ void Mech3DAppearance::updateGeometry (void)
 					if (mc2_cone_glow::GetNodeAim(mechShape, spotlightNodeIds_[k], aimW, coneLen))
 					{
 						float spill = coneLen * mc2_cone_glow::spill_scale();
-						if (spill > 200.0f) spill = 200.0f;
+						spill = std::min(spill, 200.0f);
 						childPos.x += aimW.x * spill;
 						childPos.y += aimW.y * spill;
 						childPos.z += aimW.z * spill;

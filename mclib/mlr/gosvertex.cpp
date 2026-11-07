@@ -63,10 +63,8 @@ void
 			}
 		}
 		
-		if( Fog<0.0f )
-			Fog=0.0f;
-		if( Fog>1.0f )
-			Fog=1.0f;
+		Fog = std::max(Fog, 0.0f);
+		Fog = std::min(Fog, 1.0f);
 
 		GOSVertex::fogTable[entry][t1]=static_cast<BYTE>((255.9f*Fog));
 	}

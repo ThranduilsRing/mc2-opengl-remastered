@@ -54,7 +54,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, mc2::czstring name, DWORD& 
 	// PNG signature bytes as a TGA header yields garbage width/height.
 	// PNG IHDR stores big-endian width/height at offsets 16 and 20.
 	unsigned char sniff[24] = {0};
-	if (textureFile.read((MemoryPtr)sniff, sizeof(sniff)) == sizeof(sniff) &&
+	if (textureFile.read(reinterpret_cast<MemoryPtr>(sniff),sizeof(sniff)) == sizeof(sniff) &&
 		sniff[0] == 0x89 && sniff[1] == 'P' && sniff[2] == 'N' && sniff[3] == 'G')
 	{
 		textureFile.seek(0);

@@ -321,9 +321,9 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 			{
 				const DWORD c = view.lights[i].color;
 				const float k = fabs(cosine);
-				r += float2long(float((c >> 16) & 0xff) * k);
-				g += float2long(float((c >> 8) & 0xff) * k);
-				b += float2long(float(c & 0xff) * k);
+				r += float2long(static_cast<float>((c >> 16) & 0xff) * k);
+				g += float2long(static_cast<float>((c >> 8) & 0xff) * k);
+				b += float2long(static_cast<float>(c & 0xff) * k);
 			}
 		}
 		r = std::min<DWORD>(r + redAmb, 255); g = std::min<DWORD>(g + greenAmb, 255); b = std::min<DWORD>(b + blueAmb, 255);

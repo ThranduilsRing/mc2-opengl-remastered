@@ -999,8 +999,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		for (const auto & boxCoord : boxCoords)
 		{
 			testRadius = glm::length(boxCoord);
-			if (OBBRadius < testRadius)
-				OBBRadius = testRadius;
+			OBBRadius = std::max(OBBRadius, testRadius);
 		}
 		
 		appearType->boundsUpperLeftX = (-OBBRadius * 2.0);

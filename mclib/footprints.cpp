@@ -101,7 +101,7 @@ void render()
                 factor /= (eye->fogStart - eye->fogFull);
                 factor = factor <= 1.0f ? (1.0f - factor * factor) * 256.0f : 256.0f;
                 // Stock fog packs this through an unsigned byte before distance haze.
-                fog = float(static_cast<unsigned char>(static_cast<unsigned long>(factor))) / 255.0f;
+                fog = static_cast<float>(static_cast<unsigned char>(static_cast<unsigned long>(factor))) / 255.0f;
                 fogValue = static_cast<DWORD>(factor);
             }
             if (haze != 0.0f) {
@@ -111,8 +111,8 @@ void render()
             }
         }
         const DWORD color = 0xff000000u | (DWORD(r) << 16) | (DWORD(g) << 8) | b;
-        const float u = float(print.shape % 8) * 0.125f;
-        const float v = float(print.shape / 8) * 0.125f;
+        const float u = static_cast<float>(print.shape % 8) * 0.125f;
+        const float v = static_cast<float>(print.shape / 8) * 0.125f;
         WorldOverlayVert quad[4];
         for (int c = 0; c < 4; ++c) {
             const auto& p = print.corners[c];
