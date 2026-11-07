@@ -10789,6 +10789,18 @@
    "keys": [
     "island",
     "action",
+    "terminal",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_ISLAND_INIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "action",
     "vkresult",
     "reason"
    ],
@@ -11032,6 +11044,16 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "available",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "created",
     "attempted",
     "present_frames",
@@ -11079,6 +11101,16 @@
    "keys": [
     "fsr",
     "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "material_mip_bias",
+    "fsr_provider"
    ],
    "count": 1
   },
