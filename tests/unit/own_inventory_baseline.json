@@ -720,42 +720,6 @@
    "new_array": 0,
    "owners": []
   },
-  "ChainIteratorOf<T>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/chain.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "ChainLink": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/chain.cpp": {
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": []
-  },
-  "ChainOf<Note*>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/page.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "ChatWindow": {
    "delete": 1,
    "delete_array": 0,
@@ -937,17 +901,11 @@
     "mclib/stuff/memorystream.cpp": {
      "new": 1
     },
-    "mclib/stuff/node.cpp": {
-     "new": 1
-    },
-    "mclib/stuff/plug.cpp": {
-     "new": 1
-    },
     "mclib/stuff/registeredclass.cpp": {
      "new": 1
     }
    },
-   "new": 57,
+   "new": 55,
    "new_array": 0,
    "owners": []
   },
@@ -1096,30 +1054,6 @@
     ""
    ]
   },
-  "DirectoryEntry": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestream.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "DirectoryFolder": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestream.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "DragTool": {
    "delete": 0,
    "delete_array": 0,
@@ -1158,21 +1092,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "DynamicArrayOf<Vector2DScalar>": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete": 1,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "MLR_I_MT_PMesh"
-   ]
   },
   "Editor": {
    "delete": 1,
@@ -1285,18 +1204,6 @@
    "new_array": 0,
    "owners": []
   },
-  "FileStatPlug": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/filestreammanager.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "FindFileData": {
    "delete": 1,
    "delete_array": 0,
@@ -1370,11 +1277,11 @@
    "owners": []
   },
   "GOSImage": {
-   "delete": 1,
+   "delete": 3,
    "delete_array": 0,
    "files": {
     "mclib/mlr/gosimagepool.cpp": {
-     "delete": 1,
+     "delete": 3,
      "new": 2
     }
    },
@@ -1515,30 +1422,6 @@
     }
    },
    "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "HashIterator": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/hash.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "HashIteratorOf<T,V>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/hash.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -1691,10 +1574,10 @@
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlight.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -1703,10 +1586,10 @@
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlight.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -1716,14 +1599,14 @@
    "files": {
     "mclib/mlr/mlrpointlight.cpp": {
      "delete": 2,
-     "new": 2
+     "new": 1
     },
     "mclib/mlr/mlrspotlight.cpp": {
      "delete": 2,
-     "new": 2
+     "new": 1
     }
    },
-   "new": 4,
+   "new": 2,
    "new_array": 0,
    "owners": [
     "MLRPointLight",
@@ -1735,10 +1618,10 @@
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlight.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -1747,10 +1630,10 @@
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlight.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -1828,10 +1711,10 @@
    "delete_array": 0,
    "files": {
     "mclib/mlr/mlrlight.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -2212,18 +2095,6 @@
     }
    },
    "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "Macro": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/notationfile.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -2690,33 +2561,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Note": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/page.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "Page"
-   ]
-  },
-  "NoteIterator": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/page.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "OTMap": {
    "delete": 0,
    "delete_array": 0,
@@ -2741,33 +2585,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Page": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/notationfile.cpp": {
-     "delete": 2,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "NotationFile"
-   ]
-  },
-  "PageIterator": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/notationfile.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "PilotPromotionArea": {
    "delete": 1,
    "delete_array": 0,
@@ -2782,18 +2599,6 @@
    "owners": [
     "ActivePilotListItem"
    ]
-  },
-  "PlugIteratorOf<T>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/plug.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "Pool": {
    "delete": 1,
@@ -2931,69 +2736,6 @@
    "owners": [
     "MLRSortByOrder"
    ]
-  },
-  "SortedChain": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "mclib/stuff/hash.cpp": {
-     "delete_array": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "Hash"
-   ]
-  },
-  "SortedChainIterator": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/sortedchain.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "SortedChainIteratorOf<T,V>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/sortedchain.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "SortedChainLinkOf<V>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/sortedchain.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "SortedChainOf<T,V>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/hash.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "SoundEngine": {
    "delete": 1,
@@ -3201,42 +2943,6 @@
    "delete_array": 0,
    "files": {
     "editor/EditorObjectMgr_render.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "TreeIterator": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/tree.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "TreeIteratorOf<T,V>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/tree.hpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "TreeNodeOf<V>": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "mclib/stuff/tree.hpp": {
      "new": 1
     }
    },
@@ -4191,6 +3897,21 @@
     "aListBox"
    ]
   },
+  "std::vector<Vector2DScalar>": {
+   "delete": 1,
+   "delete_array": 0,
+   "files": {
+    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
+     "delete": 1,
+     "new": 2
+    }
+   },
+   "new": 2,
+   "new_array": 0,
+   "owners": [
+    "MLR_I_MT_PMesh"
+   ]
+  },
   "unit_ptr_type": {
    "delete": 2,
    "delete_array": 0,
@@ -4311,16 +4032,9 @@
   "mclib/mlr/mlrtexture.cpp": 1,
   "mclib/mlr/mlrtexturepool.cpp": 7,
   "mclib/mlr/mlrtrianglecloud.cpp": 1,
-  "mclib/stuff/chain.cpp": 2,
   "mclib/stuff/filestream.cpp": 1,
-  "mclib/stuff/hash.cpp": 1,
   "mclib/stuff/memorystream.cpp": 1,
   "mclib/stuff/mstring.hpp": 1,
-  "mclib/stuff/node.cpp": 1,
-  "mclib/stuff/plug.cpp": 4,
-  "mclib/stuff/registeredclass.cpp": 1,
-  "mclib/stuff/socket.cpp": 1,
-  "mclib/stuff/sortedchain.cpp": 2,
-  "mclib/stuff/tree.cpp": 2
+  "mclib/stuff/registeredclass.cpp": 1
  }
 }
