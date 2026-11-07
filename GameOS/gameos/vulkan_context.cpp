@@ -203,7 +203,7 @@ void runValidationCanary(VkDevice device) {
 
 // Validation preset resolver (same values the islands accept via
 // MC2_VULKAN_VALIDATION). Kept local so the context has no link dependency on
-// the island TU (which is #ifdef MC2_VULKAN_ISLAND and may not be compiled).
+// the island TU (which is #if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree) and may not be compiled).
 bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
                              const char*& resolvedName) {
     feats.clear();
@@ -737,7 +737,7 @@ bool VulkanContext::init(bool wantPresent) {
     gpuprof::init(*this);   // Tracy GPU context + debug labels + MC2_VK_GPU_TIMESTAMPS ring, on the one graphics queue
     ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
            health_.deviceName, wantPresent ? 1 : 0, valPreset);
-#ifdef MC2_VULKAN_ISLAND
+#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
     if (mc2::gate::get<"MC2_VK_RT_SELFTEST">()) rt::runSelfTest(*this);   // test hook: GPU proof of the RT infrastructure, renders nothing
 #endif
     return true;

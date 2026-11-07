@@ -82,7 +82,7 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
 
 }  // namespace mc2vk::rt
 
-#ifdef MC2_VULKAN_ISLAND
+#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include <volk.h>
 

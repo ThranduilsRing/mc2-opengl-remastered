@@ -1,6 +1,6 @@
 // vk_rt_descriptors.cpp -- see vk_rt_descriptors.h.
 
-#ifdef MC2_VULKAN_ISLAND
+#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include "vk_rt_descriptors.h"
 

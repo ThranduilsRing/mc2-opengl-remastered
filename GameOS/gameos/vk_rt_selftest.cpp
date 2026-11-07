@@ -4,7 +4,7 @@
 // instance custom index. Then refits both structures (update) and re-traces, and compact-copies the BLAS into a fresh TLAS and re-traces. Logs one
 // [VK_RT_SELFTEST v1] line. Every submit waits (vk_one_shot), so the scratch and the structures are released at scope exit with no GPU use in flight.
 
-#ifdef MC2_VULKAN_ISLAND
+#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include "vk_rt_selftest.h"
 
@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <string>
 
-#include "gate.h"
+#include "Gates/gate.h"
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vk_rt_acceleration.h"
