@@ -147,7 +147,7 @@ if (queuePlayerOrder)
 		default: {
 			char s[256];
 			mc2::fmt::to_buf(s, "Mover::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(tacOrder.code));
-			Assert(false, tacOrder.code, s);
+			Assert(false, std::to_underlying(tacOrder.code), s);
 			return(1);
 			}
 	}

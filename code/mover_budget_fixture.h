@@ -78,7 +78,7 @@ inline void mc2MoverBudgetFixtureTick(unsigned turn)
         if (!best) continue;
         if (i & 1) {
             m->getPilot()->orderAttackObject(false, ORDER_ORIGIN_COMMANDER, best, ATTACK_TO_DESTROY,
-                ATTACKMETHOD_RANGED, FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
+                std::to_underlying(ATTACKMETHOD_RANGED), FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
         } else {
             m->getPilot()->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER, best->getPosition());
         }

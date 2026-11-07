@@ -134,7 +134,7 @@ TEST_CASE("production adapter installs routes and rejects unsupported modes and 
         auto e = live.order(); e.payload.kind = kind;
         live.submit(e); live.frame();
         CHECK(live.actor.calls == 1);
-        CHECK(live.actor.pilot.getTacOrder(ORDERSTATE_GENERAL)->code == static_cast<int>(kind));
+        CHECK(live.actor.pilot.getTacOrder(ORDERSTATE_GENERAL)->code == static_cast<TacticalOrderCode>(kind));
         CHECK(live.ingress.queue().receipts().front().applicationStatus == ApplicationStatus::Installed);
     }
     LiveIngress wrongMode;

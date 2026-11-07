@@ -79,17 +79,17 @@ TEST_CASE("compact terrain orders are dropped on load even for stale valid indic
 		TACTICAL_ORDER_MOVETO_OBJECT, TACTICAL_ORDER_JUMPTO_OBJECT,
 		TACTICAL_ORDER_CAPTURE, TACTICAL_ORDER_REFIT, TACTICAL_ORDER_RECOVER, TACTICAL_ORDER_GETFIXED}) {
 		Queued queue[] = {{static_cast<unsigned long>(code), 1UL << 9},
-			{TACTICAL_ORDER_MOVETO_POINT, 1UL << 9}, {31, 1UL << 9},
-			{TACTICAL_ORDER_ATTACK_OBJECT, 0}};
+			{std::to_underlying(TACTICAL_ORDER_MOVETO_POINT), 1UL << 9}, {31, 1UL << 9},
+			{std::to_underlying(TACTICAL_ORDER_ATTACK_OBJECT), 0}};
 		char count = 4;
 		int32_t index = 2;
 		dropCompactTerrainOrdersOnLoad(queue, count, index);
 		CHECK(count == 3);
 		CHECK(index == 1);
-		CHECK(queue[0].packedData[0] == TACTICAL_ORDER_MOVETO_POINT);
+		CHECK(queue[0].packedData[0] == std::to_underlying(TACTICAL_ORDER_MOVETO_POINT));
 		CHECK(queue[1].packedData[0] == 31);
 	}
-	Queued queue[] = {{TACTICAL_ORDER_ATTACK_OBJECT, 1UL << 9}};
+	Queued queue[] = {{std::to_underlying(TACTICAL_ORDER_ATTACK_OBJECT), 1UL << 9}};
 	char count = 1;
 	int32_t index = 0;
 	gTerrainPartIdStride = 720;

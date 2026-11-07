@@ -25,6 +25,8 @@
 
 #ifndef VERSION_H
 #include"version.h"
+
+using enum MissionLoadType;
 #endif
 
 

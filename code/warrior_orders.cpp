@@ -1,6 +1,7 @@
 // MechWarrior: order* entry points and the event handlers.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "tactic_table.h"
 #include <array>
 
 
@@ -409,29 +410,18 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	bool conserve = (type == ATTACK_CONSERVING_AMMO);
 	bool keepMoving = ((params & TACORDER_PARAM_DONT_KEEP_MOVING) == 0);
 
-	long tactic = TACTIC_NONE;
-	switch (params & TACORDER_TACTIC_MASK) {
-		case TACORDER_PARAM_TACTIC_FLANK_RIGHT:
-			tactic = TACTIC_FLANK_RIGHT;
-			break;
-		case TACORDER_PARAM_TACTIC_FLANK_LEFT:
-			tactic = TACTIC_FLANK_LEFT;
-			break;
-		case TACORDER_PARAM_TACTIC_FLANK_REAR:
-			tactic = TACTIC_FLANK_REAR;
-			break;
-		case TACORDER_PARAM_TACTIC_STOP_AND_FIRE:
-			tactic = TACTIC_STOP_AND_FIRE;
+	// Explicit table decode (legacy flag bits or the extended-tactic field); only SF and TURRET change the order flags.
+	long tactic = tactic_table::from_params(params);
+	switch (tactic) {
+		case TACTIC_STOP_AND_FIRE:
 			pursue = true;
 			break;
-		case TACORDER_PARAM_TACTIC_TURRET:
-			tactic = TACTIC_TURRET;
+		case TACTIC_TURRET:
 			jump = false;
 			pursue = false;
 			keepMoving = false;
 			break;
-		case TACORDER_PARAM_TACTIC_JOUST:
-			tactic = TACTIC_JOUST;
+		default:
 			break;
 	}
 
@@ -446,7 +436,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 		return(TACORDER_SUCCESS);
 	}
 
-	if ((getVehicle()->numWeapons == 0) && (method != ATTACKMETHOD_RAMMING)) {
+	if ((getVehicle()->numWeapons == 0) && (method != std::to_underlying(ATTACKMETHOD_RAMMING))) {
 		clearAttackOrders();
 		return(TACORDER_SUCCESS);
 	}
@@ -458,7 +448,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	tacOrder.attackParams.method = static_cast<AttackMethod>(method);
 	tacOrder.attackParams.aimLocation = aimLocation;
 	tacOrder.attackParams.tactic = static_cast<TacticType>(tactic);
-	if (method == ATTACKMETHOD_RAMMING)
+	if (method == std::to_underlying(ATTACKMETHOD_RAMMING))
 		range = FIRERANGE_RAMMING;
 	tacOrder.attackParams.range = static_cast<FireRangeType>(range);
 	tacOrder.attackParams.pursue = pursue;

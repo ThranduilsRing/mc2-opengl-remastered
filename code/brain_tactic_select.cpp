@@ -29,21 +29,7 @@ uint32_t tacticWang(int wid, uint32_t tick, uint32_t missionSeed)
 // tacticName — short name for trace output
 const char* tacticName(int idx)
 {
-    switch (idx) {
-        case TACTIC_NONE:             return "None";
-        case TACTIC_FLANK_LEFT:       return "FlankLeft";
-        case TACTIC_FLANK_RIGHT:      return "FlankRight";
-        case TACTIC_FLANK_REAR:       return "FlankRear";
-        case TACTIC_STOP_AND_FIRE:    return "StopAndFire";
-        case TACTIC_TURRET:           return "Turret";
-        case TACTIC_JOUST:            return "Joust";
-        case TACTIC_INDIRECT_FIRE:    return "IndirectFire";
-        case TACTIC_HULL_DOWN:        return "HullDown";
-        case TACTIC_FIGHTING_WITHDRAW:return "FightingWithdraw";
-        case TACTIC_PURSUE:           return "Pursue";
-        case TACTIC_HIT_AND_RUN:      return "HitAndRun";
-        default:                      return "Unknown";
-    }
+    return tactic_table::name(idx);
 }
 
 // ---------------------------------------------------------------------------

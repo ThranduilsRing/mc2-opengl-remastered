@@ -519,7 +519,7 @@ set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_pla
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_sources(mc2_tests PRIVATE
     test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
-    test_command_replay.cpp
+    test_command_replay.cpp test_tacorder_wire.cpp test_tactic_table.cpp
     ${MC2_WORKTREE_ROOT}/code/command_replay.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp

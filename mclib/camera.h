@@ -88,12 +88,17 @@ extern float point1;
 
 //---------------------------------------------------------------------------
 // Also defined in Stuff but not getting into here somehow.
-enum Axes {
+enum class Axes {
 	X_Axis,
 	Y_Axis,
 	Z_Axis,
 	W_Axis
 };
+// Matrix row / column indices: used as plain integers (array subscripts).
+inline constexpr int X_Axis = static_cast<int>(::Axes::X_Axis);
+inline constexpr int Y_Axis = static_cast<int>(::Axes::Y_Axis);
+inline constexpr int Z_Axis = static_cast<int>(::Axes::Z_Axis);
+inline constexpr int W_Axis = static_cast<int>(::Axes::W_Axis);
 
 #include "daprtype.h"  // MAX_LODS
 

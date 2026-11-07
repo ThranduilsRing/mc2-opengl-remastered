@@ -18,6 +18,8 @@
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include "mc2fmt.h"
 #include "appearance_rng.h"
+
+using enum MissionLoadType;
 static bool devShellSimSpeed(mc2::czstring paramsJson,
                              std::string& dataJsonOut, std::string& errorOut)
 {
@@ -107,7 +109,7 @@ void Mission::initPrologue(MissionInitFrame& f) {
 }
 
 // Load the SP or MP team relation matrix and reset the turn counters.
-void Mission::initTeamRelations(long loadType) {
+void Mission::initTeamRelations(MissionLoadType loadType) {
 	if ((loadType == MISSION_LOAD_SP_QUICKSTART) || (loadType == MISSION_LOAD_SP_LOGISTICS)) {
 		char teamRelationsForSP[MAX_TEAMS][MAX_TEAMS] = {
 			{0, 2, 1, 2, 2, 2, 2, 2},
@@ -503,7 +505,7 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 }
 
 // Create the teams and commanders from the mission file or the multiplayer setup.
-void Mission::initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f) {
+void Mission::initTeamsAndCommanders(MissionLoadType loadType, glm::vec3* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f) {
 	auto& missionName = f.missionName; auto& result = f.result; auto& maxTeamID = f.maxTeamID;
 	auto& maxCommanderID = f.maxCommanderID;
 	maxTeamID = -1;
@@ -991,7 +993,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 extern void preloadMissionSupportAtLoad();
 // Mission load sequence. Each phase is a member helper declared in mission.h, run in the original order; the
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
-void Mission::init (mc2::czstring missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
+void Mission::init (mc2::czstring missionName, MissionLoadType loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
 	struct SimulationPhase {
 		bool previous = simPresentationPass;

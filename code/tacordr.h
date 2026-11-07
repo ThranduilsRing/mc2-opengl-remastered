@@ -11,7 +11,9 @@
 #ifndef TACORDR_H
 #define TACORDR_H
 
+#include <cstdint>
 #include <utility>
+#include "tactic_table.h"
 
 //--------------
 // Include Files
@@ -78,32 +80,42 @@ using enum AttitudeType;
 
 //#define	FIRERANGE_OPTIMUM	-1
 
+// The order enums below are saved (TacticalOrder), packed into order words (TacticalOrder::pack) and read from ABL by number.
+// Every value explicit and pinned in save_layout_guard.h. AttackMethod, TacticalOrderCode and SpecialMoveMode are scoped so an int
+// cannot slip in unchecked; FireRangeType, AttackType, TacticType, OrderOriginType and _TravelModeType stay unscoped for now
+// (20+ int-mixing files each; next LG14 commit). Inbound ints for all of them go through enum_in_domain(E{}, v) below
+// (per-enum domain: fire range starts at -4), then static_cast. The save codec finds these by ADL.
+// The header-scope `using enum` lines keep the old unqualified names; they pollute no more than the unscoped enums did.
 enum FireRangeType {
 	FIRERANGE_DEFAULT = -4,
-	FIRERANGE_RAMMING,
-	FIRERANGE_LONGEST,
-	FIRERANGE_OPTIMAL,
-	FIRERANGE_SHORT,
-	FIRERANGE_MEDIUM,
-	FIRERANGE_LONG,
-	FIRERANGE_CURRENT,
-	NUM_FIRERANGES
+	FIRERANGE_RAMMING = -3,
+	FIRERANGE_LONGEST = -2,
+	FIRERANGE_OPTIMAL = -1,
+	FIRERANGE_SHORT = 0,
+	FIRERANGE_MEDIUM = 1,
+	FIRERANGE_LONG = 2,
+	FIRERANGE_CURRENT = 3,
+	NUM_FIRERANGES = 4
 };
+constexpr bool enum_in_domain(FireRangeType, int32_t v) { return v >= -4 && v <= 3; }
 
 enum AttackType {
-	ATTACK_NONE,
-	ATTACK_TO_DESTROY,
-	ATTACK_TO_DISABLE,
-	ATTACK_CONSERVING_AMMO,
-	NUM_ATTACK_TYPES
+	ATTACK_NONE = 0,
+	ATTACK_TO_DESTROY = 1,
+	ATTACK_TO_DISABLE = 2,
+	ATTACK_CONSERVING_AMMO = 3,
+	NUM_ATTACK_TYPES = 4
 };
+constexpr bool enum_in_domain(AttackType, int32_t v) { return v >= 0 && v < 4; }
 
-enum AttackMethod {
-	ATTACKMETHOD_RANGED,
-	ATTACKMETHOD_DFA,
-	ATTACKMETHOD_RAMMING,
-	NUM_ATTACKMETHODS
+enum class AttackMethod : int32_t {
+	ATTACKMETHOD_RANGED = 0,
+	ATTACKMETHOD_DFA = 1,
+	ATTACKMETHOD_RAMMING = 2,
+	NUM_ATTACKMETHODS = 3
 };
+using enum AttackMethod;
+constexpr bool enum_in_domain(AttackMethod, int32_t v) { return v >= 0 && v < 3; }
 
 enum class FireOddsType : int {
 	FIREODDS_LUCKY,
@@ -115,59 +127,52 @@ enum class FireOddsType : int {
 };
 inline constexpr int NUM_FIREODDS = std::to_underlying(FireOddsType::NUM_FIREODDS);
 
+// Generated from the explicit-value table (tactic_table.h); values are saved and read by ABL, never renumbered.
 enum TacticType {
-	TACTIC_NONE,
-	TACTIC_FLANK_LEFT,
-	TACTIC_FLANK_RIGHT,
-	TACTIC_FLANK_REAR,
-	TACTIC_STOP_AND_FIRE,
-	TACTIC_TURRET,
-	TACTIC_JOUST,
-	// TACTIC-WEIGHTS-A: GDD tactic additions (append; existing numeric values unchanged).
-	TACTIC_INDIRECT_FIRE,     // 7  — stand-off indirect suppression
-	TACTIC_HULL_DOWN,         // 8  — cover-crest discipline
-	TACTIC_FIGHTING_WITHDRAW, // 9  — deliberate fighting withdrawal
-	TACTIC_PURSUE,            // 10 — aggressive pursuit of fleeing targets
-	TACTIC_HIT_AND_RUN,       // 11 — harass-then-disengage
-	NUM_TACTICS               // 12
+	MC2_TACTIC_TABLE(MC2_TACTIC_LEGACY_ENUMERATOR)
+	NUM_TACTICS = tactic_table::kCount
 };
+constexpr bool enum_in_domain(TacticType, int32_t v) { return tactic_table::in_domain(v); }
 
 enum OrderOriginType {
-	ORDER_ORIGIN_PLAYER,
-	ORDER_ORIGIN_COMMANDER,
-	ORDER_ORIGIN_SELF
+	ORDER_ORIGIN_PLAYER = 0,
+	ORDER_ORIGIN_COMMANDER = 1,
+	ORDER_ORIGIN_SELF = 2
 };
+constexpr bool enum_in_domain(OrderOriginType, int32_t v) { return v >= 0 && v <= 2; }
 
-enum TacticalOrderCode {
-	TACTICAL_ORDER_NONE,
-	TACTICAL_ORDER_WAIT,
-	TACTICAL_ORDER_MOVETO_POINT,
-	TACTICAL_ORDER_MOVETO_OBJECT,
-	TACTICAL_ORDER_JUMPTO_POINT,
-	TACTICAL_ORDER_JUMPTO_OBJECT,
-	TACTICAL_ORDER_TRAVERSE_PATH,
-	TACTICAL_ORDER_PATROL_PATH,
-	TACTICAL_ORDER_ESCORT,
-	TACTICAL_ORDER_FOLLOW,
-	TACTICAL_ORDER_GUARD,
-	TACTICAL_ORDER_STOP,
-	TACTICAL_ORDER_POWERUP,
-	TACTICAL_ORDER_POWERDOWN,
-	TACTICAL_ORDER_WAYPOINTS_DONE,
-	TACTICAL_ORDER_EJECT,
-	TACTICAL_ORDER_ATTACK_OBJECT,
-	TACTICAL_ORDER_ATTACK_POINT,
-	TACTICAL_ORDER_HOLD_FIRE,
-	TACTICAL_ORDER_WITHDRAW,
-	TACTICAL_ORDER_SCRAMBLE,
-	TACTICAL_ORDER_CAPTURE,
-	TACTICAL_ORDER_REFIT,
-	TACTICAL_ORDER_GETFIXED,
-	TACTICAL_ORDER_LOAD_INTO_CARRIER,
-	TACTICAL_ORDER_DEPLOY_ELEMENTALS,
-	TACTICAL_ORDER_RECOVER,
-	NUM_TACTICAL_ORDERS	// IF THIS CHANGES, ADD GUARD_POINT AS SEP. ORDER (see pack/unpack hack)
+enum class TacticalOrderCode : int32_t {
+	TACTICAL_ORDER_NONE = 0,
+	TACTICAL_ORDER_WAIT = 1,
+	TACTICAL_ORDER_MOVETO_POINT = 2,
+	TACTICAL_ORDER_MOVETO_OBJECT = 3,
+	TACTICAL_ORDER_JUMPTO_POINT = 4,
+	TACTICAL_ORDER_JUMPTO_OBJECT = 5,
+	TACTICAL_ORDER_TRAVERSE_PATH = 6,
+	TACTICAL_ORDER_PATROL_PATH = 7,
+	TACTICAL_ORDER_ESCORT = 8,
+	TACTICAL_ORDER_FOLLOW = 9,
+	TACTICAL_ORDER_GUARD = 10,
+	TACTICAL_ORDER_STOP = 11,
+	TACTICAL_ORDER_POWERUP = 12,
+	TACTICAL_ORDER_POWERDOWN = 13,
+	TACTICAL_ORDER_WAYPOINTS_DONE = 14,
+	TACTICAL_ORDER_EJECT = 15,
+	TACTICAL_ORDER_ATTACK_OBJECT = 16,
+	TACTICAL_ORDER_ATTACK_POINT = 17,
+	TACTICAL_ORDER_HOLD_FIRE = 18,
+	TACTICAL_ORDER_WITHDRAW = 19,
+	TACTICAL_ORDER_SCRAMBLE = 20,
+	TACTICAL_ORDER_CAPTURE = 21,
+	TACTICAL_ORDER_REFIT = 22,
+	TACTICAL_ORDER_GETFIXED = 23,
+	TACTICAL_ORDER_LOAD_INTO_CARRIER = 24,
+	TACTICAL_ORDER_DEPLOY_ELEMENTALS = 25,
+	TACTICAL_ORDER_RECOVER = 26,
+	NUM_TACTICAL_ORDERS = 27	// IF THIS CHANGES, ADD GUARD_POINT AS SEP. ORDER (see pack/unpack hack)
 };
+using enum TacticalOrderCode;
+constexpr bool enum_in_domain(TacticalOrderCode, int32_t v) { return v >= 0 && v < 27; }
 
 //***************************************************************************
 
@@ -179,10 +184,10 @@ struct LocationNode {
 
 enum _TravelModeType {
 	TRAVEL_MODE_INVALID = -1,
-	TRAVEL_MODE_SLOW,
-	TRAVEL_MODE_FAST,
-	TRAVEL_MODE_JUMP,
-	NUM_TRAVEL_MODES
+	TRAVEL_MODE_SLOW = 0,
+	TRAVEL_MODE_FAST = 1,
+	TRAVEL_MODE_JUMP = 2,
+	NUM_TRAVEL_MODES = 3
 }; using TravelModeType = _TravelModeType;
 
 struct _WayPath {
@@ -194,10 +199,12 @@ struct _WayPath {
 
 using WayPathPtr = WayPath*;
 
-enum SpecialMoveMode {
-	MOVE_MODE_NORMAL,
-	MOVE_MODE_MINELAYING
+enum class SpecialMoveMode : int32_t {
+	MOVE_MODE_NORMAL = 0,
+	MOVE_MODE_MINELAYING = 1
 };
+using enum SpecialMoveMode;
+constexpr bool enum_in_domain(SpecialMoveMode, int32_t v) { return v >= 0 && v <= 1; }
 
 struct _TacOrderMoveParams {
 	WayPath			wayPath;

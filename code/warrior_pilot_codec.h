@@ -1,5 +1,7 @@
 // Packet D: explicit pilot values, independent of the native legacy image.
 #pragma once
+#include <concepts>
+#include <utility>
 #include "warrior_value_codec.h"
 #include "tacorder_terrain_queue.h"
 
@@ -8,7 +10,10 @@ inline constexpr auto warriorDataTag = fourcc('W', 'A', 'R', 'R');
 
 class WarriorCodec {
     Archive& a;
+    bool inOrder_ = false;
+    int badOrderEnums_ = 0;
 public:
+    int droppedOrders = 0;
     explicit WarriorCodec(Archive& archive) : a(archive) {}
     template<class... T> void operator()(T&... values) { (field(values), ...); }
     template<class T> requires std::is_arithmetic_v<T>
@@ -25,12 +30,23 @@ public:
         a(wire);
         if (a.reading() && a.good()) v = wire;
     }
+    // LG14: an enum that declares enum_in_domain(E, int32_t) (tacordr.h order enums) is range-checked on read;
+    // an out-of-domain value never becomes an unnamed enumerator. Inside a TacticalOrder it drops that order (reset to
+    // no-order, counted in droppedOrders for the caller to log); anywhere else it rejects the record.
     template<class T> requires std::is_enum_v<T>
     void field(T& v) {
         static_assert(sizeof(T) == 4);
-        auto bits = static_cast<std::int32_t>(v);
+        auto bits = static_cast<std::int32_t>(std::to_underlying(v));
         a(bits);
-        if (a.reading() && a.good()) v = static_cast<T>(bits);
+        if (!a.reading() || !a.good()) return;
+        if constexpr (requires { { enum_in_domain(T{}, bits) } -> std::same_as<bool>; }) {
+            if (!enum_in_domain(T{}, bits)) {
+                if (inOrder_) ++badOrderEnums_;
+                else a.reject("warrior_enum_domain");
+                return;
+            }
+        }
+        v = static_cast<T>(bits);
     }
     template<class T, size_t N> void field(T (&values)[N]) {
         for (auto& v : values) field(v);
@@ -60,10 +76,14 @@ public:
             v.obliterate, v.targetPoint);
     }
     void field(TacticalOrder& v) {
+        inOrder_ = true;
+        badOrderEnums_ = 0;
         (*this)(v.id, v.time, v.delayedTime, v.lastTime, v.unitOrder, v.subOrder,
             v.origin, v.code, v.moveParams, v.attackParams, v.targetWID,
             v.targetObjectClass, v.selectionIndex, v.stage, v.statusCode,
             v.lastMoveGoal, v.pointLocalMoverId, v.groupFlags, v.data);
+        inOrder_ = false;
+        if (a.reading() && a.good() && badOrderEnums_) { v.init(); ++droppedOrders; }
     }
     void field(QueuedTacOrder& v) {
         (*this)(v.id, v.point, v.packedData, v.tactic, v.moveMode);
@@ -175,6 +195,7 @@ inline bool canonicalizeWarrior(MechWarriorData& v) {
 struct WarriorRecord {
     MechWarriorData& value;
     SavedQueueTargets& targets;
+    int droppedOrders = 0;
     void serialize(Archive& a) {
         WarriorCodec fields(a);
         fields.identity(value);
@@ -182,14 +203,17 @@ struct WarriorRecord {
         fields.combat(value);
         fields.brain(value);
         a(targets);
+        droppedOrders = fields.droppedOrders;
     }
 };
+// droppedOrders (optional): orders reset to no-order because a saved order enum was out of domain; the caller logs it.
 inline bool decodeWarriorRecord(std::span<const std::uint8_t> bytes,
-                                MechWarriorData& value, SavedQueueTargets& targets) {
+                                MechWarriorData& value, SavedQueueTargets& targets, int* droppedOrders = nullptr) {
     Archive a(bytes);
     std::uint32_t tag = 0, version = 0;
     WarriorRecord record{value, targets};
     a(tag, version, record);
+    if (droppedOrders) *droppedOrders = record.droppedOrders;
     return a.finish() && tag == warriorDataTag && version == 1 && canonicalizeWarrior(value) &&
         targets.targets.size() == static_cast<size_t>(value.numTacOrdersQueued);
 }

@@ -2,6 +2,7 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
 #include "abl_script_events.h"
+#include "mc2fmt.h"
 #include <algorithm>
 #include <iterator>
 #include <span>
@@ -276,7 +277,15 @@ void execOrderAttackObject (void) {
 	long pursue = ABLi_popInteger();
 
 	long result = 1;
-	if (!ABLi_getSkipOrder()) {
+	// LG14: script ints are checked against each order enum's own domain (fire range starts at -4) before they reach the order.
+	const bool paramsInDomain = enum_in_domain(AttackType{}, attackType) && enum_in_domain(AttackMethod{}, attackMethod) &&
+		enum_in_domain(FireRangeType{}, attackRange);
+	if (!paramsInDomain) {
+		mc2::fmt::print_out("[ABL v1] event=order_rejected fn=orderAttackObject type={} method={} range={} WARNING out-of-domain param, order dropped\n",
+			attackType, attackMethod, attackRange);
+		result = TACORDER_FAILURE;
+	}
+	else if (!ABLi_getSkipOrder()) {
 		unsigned long params = TACORDER_PARAM_NONE;
 		if (pursue)
 			params |= TACORDER_PARAM_PURSUE;
@@ -289,7 +298,7 @@ void execOrderAttackObject (void) {
 		else {
 			if (objectId > 0)
 				object = ObjectManager->findByPartId(objectId);
-			result = CurWarrior->orderAttackObject(false, ORDER_ORIGIN_COMMANDER, object, attackType, attackMethod, attackRange, -1, -1, params);
+			result = CurWarrior->orderAttackObject(false, std::to_underlying(ORDER_ORIGIN_COMMANDER), object, attackType, attackMethod, attackRange, -1, -1, params);
 		}
 	}
 

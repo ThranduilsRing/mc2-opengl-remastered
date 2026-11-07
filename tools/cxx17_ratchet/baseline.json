@@ -61,7 +61,7 @@
    "LG12a": 29,
    "LG12b": 24,
    "LG13": 19,
-   "LG14": 43,
+   "LG14": 42,
    "LG15": 0,
    "LG16": 5,
    "LG17": 60,
@@ -153,7 +153,7 @@
    "LG12a": 26,
    "LG12b": 83,
    "LG13": 0,
-   "LG14": 71,
+   "LG14": 65,
    "LG15": 0,
    "LG16": 2,
    "LG17": 36,
@@ -199,7 +199,7 @@
    "LG12a": 40,
    "LG12b": 8,
    "LG13": 15,
-   "LG14": 37,
+   "LG14": 39,
    "LG15": 0,
    "LG16": 9,
    "LG17": 74,
@@ -450,7 +450,6 @@
    "LG06": 1,
    "LG11": 4,
    "LG12b": 2,
-   "LG14": 1,
    "LG18": 1
   },
   "GameOS/gameos/gos_crashbundle.h": {},
@@ -863,6 +862,7 @@
   },
   "GameOS/gameos/vk_scene_readback.h": {
    "LG05": 1,
+   "LG14": 1,
    "LG17": 2
   },
   "GameOS/gameos/vk_shared_gbuffer_gate.h": {},
@@ -978,8 +978,7 @@
   "GameOS/gameos/vulkan_vfx_geometry.h": {},
   "GameOS/gameos/vulkan_vfx_island.cpp": {
    "LG06": 2,
-   "LG08": 5,
-   "LG14": 1
+   "LG08": 5
   },
   "GameOS/gameos/vulkan_vfx_island.h": {},
   "GameOS/gameos/vulkan_water_island.cpp": {
@@ -1292,8 +1291,7 @@
    "LG03": 1
   },
   "code/action_anim_tag.h": {
-   "LG05": 1,
-   "LG14": 1
+   "LG05": 1
   },
   "code/action_executor_registry.cpp": {},
   "code/action_executor_registry.h": {
@@ -1324,7 +1322,7 @@
    "LG14": 1
   },
   "code/brain_archetype.h": {
-   "LG05": 3
+   "LG05": 1
   },
   "code/brain_execution_policy.cpp": {},
   "code/brain_execution_policy.h": {},
@@ -1347,8 +1345,7 @@
    "LG05": 4,
    "LG06": 1,
    "LG10": 3,
-   "LG11": 1,
-   "LG14": 1
+   "LG11": 1
   },
   "code/brain_special_dispatch.h": {
    "LG05": 1
@@ -1528,7 +1525,8 @@
    "LG12b": 2
   },
   "code/gameobj.h": {
-   "LG05": 1
+   "LG05": 1,
+   "LG14": 1
   },
   "code/gameplay_pick.cpp": {},
   "code/gameplay_pick.h": {},
@@ -1642,7 +1640,7 @@
    "LG17": 1
   },
   "code/logisticscomponent.h": {
-   "LG14": 2,
+   "LG14": 1,
    "LG17": 1
   },
   "code/logisticsdata.cpp": {
@@ -1827,9 +1825,7 @@
    "LG03": 9,
    "LG05": 3
   },
-  "code/mission.h": {
-   "LG14": 1
-  },
+  "code/mission.h": {},
   "code/mission2.cpp": {},
   "code/mission_commander_team.h": {},
   "code/mission_globals.h": {},
@@ -1896,7 +1892,8 @@
    "LG09": 1
   },
   "code/missiongui_shared_internal.h": {
-   "LG06": 1
+   "LG06": 1,
+   "LG14": 1
   },
   "code/missiongui_style.cpp": {},
   "code/missiongui_support.cpp": {
@@ -2004,7 +2001,7 @@
   "code/multplyr.cpp": {},
   "code/multplyr.h": {
    "LG06": 1,
-   "LG14": 7,
+   "LG14": 6,
    "LG17": 2
   },
   "code/multplyr_handle.cpp": {},
@@ -2150,9 +2147,13 @@
   "code/static_natural_skip_policy.h": {},
   "code/static_update_counters.h": {},
   "code/tacorder_terrain_queue.h": {},
+  "code/tacorder_wire.h": {},
   "code/tacordr.cpp": {},
   "code/tacordr.h": {
-   "LG14": 8
+   "LG14": 5
+  },
+  "code/tactic_table.h": {
+   "LG05": 0
   },
   "code/tactical_order_queue.cpp": {},
   "code/tactical_order_queue.h": {
@@ -2410,8 +2411,7 @@
   },
   "mclib/camera.cpp": {},
   "mclib/camera.h": {
-   "LG05": 2,
-   "LG14": 1
+   "LG05": 2
   },
   "mclib/camera_daylight.cpp": {},
   "mclib/camera_frustum_math.h": {
@@ -2468,7 +2468,9 @@
    "LG17": 1
   },
   "mclib/cpu_proj_cost_split.cpp": {},
-  "mclib/cpu_proj_cost_split.h": {},
+  "mclib/cpu_proj_cost_split.h": {
+   "LG14": 2
+  },
   "mclib/csvfile.cpp": {
    "LG05": 3,
    "LG17": 2
@@ -2688,9 +2690,7 @@
   },
   "mclib/math/glm_config.h": {},
   "mclib/math/mc2_math.h": {},
-  "mclib/math/mc2_xform.h": {
-   "LG14": 1
-  },
+  "mclib/math/mc2_xform.h": {},
   "mclib/mathfunc.cpp": {},
   "mclib/mathfunc.h": {},
   "mclib/mc2_audit.cpp": {},
@@ -2980,6 +2980,7 @@
   },
   "mclib/move.h": {
    "LG05": 1,
+   "LG14": 1,
    "LG17": 1
   },
   "mclib/move_globalmap_build.cpp": {
@@ -3188,7 +3189,9 @@
   "mclib/terrain.cpp": {
    "LG05": 1
   },
-  "mclib/terrain.h": {},
+  "mclib/terrain.h": {
+   "LG14": 1
+  },
   "mclib/terrain_admission_mode.h": {},
   "mclib/terrain_depth_bias.h": {},
   "mclib/terrain_geometry.cpp": {},
@@ -3320,7 +3323,7 @@
    "LG20": 1
   }
  },
- "head": "7158f679b",
+ "head": "fea924530",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

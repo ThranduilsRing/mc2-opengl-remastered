@@ -79,6 +79,18 @@
 
 #include <algorithm>
 #include "mc2fmt.h"
+#include "tacorder_wire.h"
+#include "tactic_table.h"
+
+// The table's legacy flag bits are the move.h flags (bit 22 is FLANK_RIGHT, bit 23 FLANK_LEFT) and its mask is the legacy mask.
+static_assert(tactic_table::to_params(TACTIC_FLANK_RIGHT) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_FLANK_RIGHT));
+static_assert(tactic_table::to_params(TACTIC_FLANK_LEFT) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_FLANK_LEFT));
+static_assert(tactic_table::to_params(TACTIC_FLANK_REAR) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_FLANK_REAR));
+static_assert(tactic_table::to_params(TACTIC_STOP_AND_FIRE) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_STOP_AND_FIRE));
+static_assert(tactic_table::to_params(TACTIC_TURRET) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_TURRET));
+static_assert(tactic_table::to_params(TACTIC_JOUST) == static_cast<unsigned long>(TACORDER_PARAM_TACTIC_JOUST));
+static_assert(tactic_table::kLegacyParamMask == static_cast<unsigned long>(TACORDER_TACTIC_MASK));
+static_assert((tactic_table::kExtMask & static_cast<unsigned long>(TACORDER_TACTIC_MASK)) == 0);
 
 //***************************************************************************
 
@@ -115,6 +127,14 @@ constexpr int TACORDERCHUNK_GUARD_POINT_SENTINEL = 31;
 static_assert(TACORDERCHUNK_GUARD_POINT_SENTINEL == TACORDERCHUNK_CODE_MASK);
 static_assert(TACORDERCHUNK_CODE_MASK == (1 << TACORDERCHUNK_CODE_BITS) - 1, "packed code field is 5 bits wide");
 static_assert(static_cast<int>(NUM_TACTICAL_ORDERS) <= TACORDERCHUNK_GUARD_POINT_SENTINEL, "sentinel must not collide with a real order code");
+static_assert(tacorder_wire::kGuardPointSentinel == TACORDERCHUNK_GUARD_POINT_SENTINEL && tacorder_wire::kCodeMask == TACORDERCHUNK_CODE_MASK);
+static_assert(tacorder_wire::kGuardCode == std::to_underlying(TACTICAL_ORDER_GUARD));
+static_assert(tacorder_wire::kCodeBits == TACORDERCHUNK_CODE_BITS && tacorder_wire::kOriginBits == TACORDERCHUNK_ORIGIN_BITS &&
+	tacorder_wire::kUnitOrderBits == TACORDERCHUNK_UNITORDER_BITS && tacorder_wire::kGroupBits == TACORDERCHUNK_GROUP_BITS &&
+	tacorder_wire::kAttackTypeBits == TACORDERCHUNK_ATTACKTYPE_BITS && tacorder_wire::kAttackMethodBits == TACORDERCHUNK_ATTACKMETHOD_BITS &&
+	tacorder_wire::kAttackRangeBits == TACORDERCHUNK_ATTACKRANGE_BITS);
+static_assert(tacorder_wire::kWord1TailBits == TACORDERCHUNK_RUN_BITS + TACORDERCHUNK_MODE_BITS + TACORDERCHUNK_WAIT_BITS +
+	TACORDERCHUNK_FACEOBJECT_BITS + TACORDERCHUNK_OBLITERATE_BITS + TACORDERCHUNK_PURSUE_BITS + TACORDERCHUNK_ATTACKRANGE_BITS);
 constexpr int TACORDERCHUNK_GROUP_MASK = 0x0000FFFF;
 constexpr int TACORDERCHUNK_ATTACKTYPE_MASK = 0x00000003;
 constexpr int TACORDERCHUNK_ATTACKMETHOD_MASK = 0x00000003;
@@ -353,7 +373,7 @@ long TacticalOrder::getParamData (float* timeOfOrder, int* paramList) {
 		*timeOfOrder = time;
 
 	GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
-	paramList[0] = code;
+	paramList[0] = std::to_underlying(code);
 	paramList[1] = origin;
 	paramList[2] = unitOrder ? 1 : 0;
 	paramList[3] = target ? target->getPartId() : 0;
@@ -381,7 +401,7 @@ long TacticalOrder::getParamData (float* timeOfOrder, int* paramList) {
 		case TACTICAL_ORDER_ATTACK_OBJECT:
 			paramList[7] = (moveParams.wayPath.mode[0] == TRAVEL_MODE_FAST) ? 1 : 0;
 			paramList[8] = attackParams.type;
-			paramList[9] = attackParams.method;
+			paramList[9] = std::to_underlying(attackParams.method);
 			paramList[10] = attackParams.range;
 			paramList[11] = attackParams.aimLocation;
 			paramList[12] = attackParams.pursue ? 1 : 0;
@@ -391,52 +411,22 @@ long TacticalOrder::getParamData (float* timeOfOrder, int* paramList) {
 			break;
 	}
 
-	return(code);
+	return(std::to_underlying(code));
 }
 
 //---------------------------------------------------------------------------
 
 long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 
-	long tempData = 0;
-
 	//--------------------
-	// First data DWORD...
-	tempData |= (attackParams.aimLocation + 2);
-	tempData <<= TACORDERCHUNK_ATTACKMETHOD_BITS;
-
-	tempData |= static_cast<long>(attackParams.method);
-	tempData <<= TACORDERCHUNK_ATTACKTYPE_BITS;
-
-	tempData |= static_cast<long>(attackParams.type);
-	tempData <<= TACORDERCHUNK_GROUP_BITS;
-
-	tempData |= groupFlags;
-	tempData <<= TACORDERCHUNK_UNITORDER_BITS;
-
-	tempData |= (unitOrder ? 1 : 0);
-	tempData <<= TACORDERCHUNK_ORIGIN_BITS;
-
-	tempData |= static_cast<long>(origin);
-	tempData <<= TACORDERCHUNK_CODE_BITS;
-
-	//------------------------
-	// MAJOR HACK FOR GUARD...
-	if (code == TACTICAL_ORDER_GUARD) {
-		//GameObjectPtr curTarget = ObjectManager->getByWatchID(targetWID);
-		if (targetWID)
-			tempData |= static_cast<unsigned long>(TACTICAL_ORDER_GUARD);
-		else
-			tempData |= static_cast<unsigned long>(TACORDERCHUNK_GUARD_POINT_SENTINEL);
-		}
-	else
-		tempData |= static_cast<long>(code);
-
-	data[0] = tempData;
+	// First data DWORD (bit layout in tacorder_wire.h; GUARD without a target packs the sentinel)...
+	data[0] = tacorder_wire::pack_word0(attackParams.aimLocation, std::to_underlying(attackParams.method),
+		std::to_underlying(attackParams.type), static_cast<uint32_t>(groupFlags), unitOrder, std::to_underlying(origin),
+		tacorder_wire::encode_code(std::to_underlying(code), targetWID != 0));
 
 	//---------------------
 	// Second data DWORD...
-	tempData = 0;
+	long tempData = 0;
 
 	bool saveTarget = false;
 	long targetType = 0;
@@ -524,27 +514,11 @@ long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 
 	}
 
-	tempData |= ((moveParams.wayPath.mode[0] == TRAVEL_MODE_FAST) ? 1 : 0);
-	tempData <<= TACORDERCHUNK_MODE_BITS;
-
-	tempData |= static_cast<long>(moveParams.mode);
-	tempData <<= TACORDERCHUNK_WAIT_BITS;
-
-	tempData |= (moveParams.wait ? 1 : 0);
-	tempData <<= TACORDERCHUNK_FACEOBJECT_BITS;
-
-	tempData |= (moveParams.faceObject ? 1 : 0);
-	tempData <<= TACORDERCHUNK_OBLITERATE_BITS;
-
-	tempData |= (attackParams.obliterate ? 1 : 0);
-	tempData <<= TACORDERCHUNK_PURSUE_BITS;
-
-	tempData |= (attackParams.pursue ? 1 : 0);
-	tempData <<= TACORDERCHUNK_ATTACKRANGE_BITS;
-
-	tempData |= static_cast<long>((attackParams.range + 4));
-
-	data[1] = tempData;
+	// The prefix above is already shifted past the run bit; pack_word1_tail starts with run in the low bit of its 9.
+	data[1] = (static_cast<uint32_t>(tempData) << (tacorder_wire::kWord1TailBits - TACORDERCHUNK_RUN_BITS)) |
+		tacorder_wire::pack_word1_tail(moveParams.wayPath.mode[0] == std::to_underlying(TRAVEL_MODE_FAST),
+			std::to_underlying(moveParams.mode), moveParams.wait, moveParams.faceObject, attackParams.obliterate,
+			attackParams.pursue, std::to_underlying(attackParams.range));
 
 	return(NO_ERR);
 }
@@ -555,19 +529,21 @@ long TacticalOrder::unpack (void) {
 
 	long tempData = data[0];
 
-	code = static_cast<TacticalOrderCode>((tempData & TACORDERCHUNK_CODE_MASK));
-	tempData >>= TACORDERCHUNK_CODE_BITS;
-
 	//------------------------
-	// MAJOR HACK FOR GUARD...
-	bool guardLocation = false;
-	if (code == TACORDERCHUNK_GUARD_POINT_SENTINEL) {
-		code = TACTICAL_ORDER_GUARD;
-		guardLocation = true;
-	}
-
-	origin = static_cast<OrderOriginType>((tempData & TACORDERCHUNK_ORIGIN_MASK));
+	// MAJOR HACK FOR GUARD: the sentinel is normalized to GUARD before the domain check.
+	const tacorder_wire::DecodedCode wireCode = tacorder_wire::decode_code(static_cast<uint32_t>(tempData));
+	const bool guardLocation = wireCode.guardLocation;
+	tempData >>= TACORDERCHUNK_CODE_BITS;
+	const int32_t rawOrigin = static_cast<int32_t>(tempData & TACORDERCHUNK_ORIGIN_MASK);
 	tempData >>= TACORDERCHUNK_ORIGIN_BITS;
+	if (!enum_in_domain(TacticalOrderCode{}, wireCode.code) || !enum_in_domain(OrderOriginType{}, rawOrigin)) {
+		mc2::fmt::print_out("[SAVE v1] event=packed_order_dropped code={} origin={} WARNING out-of-domain packed order reset to no-order\n",
+			wireCode.code, rawOrigin);
+		init();	// out-of-domain word: leave an empty (NONE) order, never an unnamed enumerator
+		return(-1);
+	}
+	code = static_cast<TacticalOrderCode>(wireCode.code);
+	origin = static_cast<OrderOriginType>(rawOrigin);
 
 	unitOrder = ((tempData & TACORDERCHUNK_UNITORDER_MASK) ? true : false);
 	tempData >>= TACORDERCHUNK_UNITORDER_BITS;
@@ -582,17 +558,20 @@ long TacticalOrder::unpack (void) {
 	groupFlags = (tempData & TACORDERCHUNK_GROUP_MASK);
 	tempData >>= TACORDERCHUNK_GROUP_BITS;
 
+	// 2-bit type covers exactly ATTACK_NONE..ATTACK_CONSERVING_AMMO; 2-bit method can hold 3, which is out of domain.
 	attackParams.type = static_cast<AttackType>((tempData & TACORDERCHUNK_ATTACKTYPE_MASK));
 	tempData >>= TACORDERCHUNK_ATTACKTYPE_BITS;
 
-	attackParams.method = static_cast<AttackMethod>((tempData & TACORDERCHUNK_ATTACKMETHOD_MASK));
+	const int32_t rawMethod = static_cast<int32_t>(tempData & TACORDERCHUNK_ATTACKMETHOD_MASK);
+	attackParams.method = enum_in_domain(AttackMethod{}, rawMethod) ? static_cast<AttackMethod>(rawMethod) : ATTACKMETHOD_RANGED;
 	tempData >>= TACORDERCHUNK_ATTACKMETHOD_BITS;
 
 	attackParams.aimLocation = (tempData & TACORDERCHUNK_AIMLOCATION_MASK) - 2;
 
 	tempData = data[1];
 
-	attackParams.range = static_cast<FireRangeType>(((tempData & TACORDERCHUNK_ATTACKRANGE_MASK) - 4));
+	// 3 bits minus the bias spans exactly FIRERANGE_DEFAULT(-4)..FIRERANGE_CURRENT(3).
+	attackParams.range = static_cast<FireRangeType>(tacorder_wire::decode_fire_range(static_cast<uint32_t>(tempData)));
 	tempData >>= TACORDERCHUNK_ATTACKRANGE_BITS;
 
 	attackParams.pursue = ((tempData & TACORDERCHUNK_PURSUE_MASK) ? true : false);
@@ -780,7 +759,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 	message = -1;
 
     if (mission) if (auto* r = mission->ownedRoute(warrior)) {
-        if (warrior->getOrderState() == ORDERSTATE_GENERAL && code == static_cast<int>(r->kind)) {
+        if (warrior->getOrderState() == ORDERSTATE_GENERAL && std::to_underlying(code) == static_cast<int>(r->kind)) {
             const bool ready = mission->routeMapsReady(warrior);
             if (r->state == mc2::sim::RouteState::Pending) {
                 if (ready) mission->signalRoute(*r, mc2::sim::RouteAction::Ready, true);
@@ -983,13 +962,13 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					if (attackParams.pursue)
 						params |= TACORDER_PARAM_PURSUE;
 					if (attackParams.tactic != TACTIC_NONE)
-						params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
+						params |= tactic_table::to_params(attackParams.tactic);
 
 					// 07-05-00 need to keep run info -- HKG
 					if (moveParams.wayPath.mode[0] == TRAVEL_MODE_FAST)
 						params |= TACORDER_PARAM_RUN;
 
-					result = warrior->orderAttackObject(unitOrder, origin, target, attackParams.type, attackParams.method, attackParams.range, attackParams.aimLocation, moveParams.fromArea, params);
+					result = warrior->orderAttackObject(unitOrder, origin, target, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, attackParams.aimLocation, moveParams.fromArea, params);
 					switch (result)
 					{
 						case TACORDER_SUCCESS:
@@ -1016,8 +995,8 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 					if (attackParams.pursue)
 						params |= TACORDER_PARAM_PURSUE;
 					if (attackParams.tactic != TACTIC_NONE)
-						params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
-					result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, attackParams.method, attackParams.range, params);
+						params |= tactic_table::to_params(attackParams.tactic);
+					result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, params);
 					switch (result)
 					{
 						case TACORDER_SUCCESS:
@@ -1048,8 +1027,8 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 				if (attackParams.pursue)
 					params |= TACORDER_PARAM_PURSUE;
 				if (attackParams.tactic != TACTIC_NONE)
-					params |= (TACORDER_PARAM_TACTIC_FLANK_RIGHT << (attackParams.tactic - 1));
-				result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, attackParams.method, attackParams.range, params);
+					params |= tactic_table::to_params(attackParams.tactic);
+				result = warrior->orderAttackPoint(unitOrder, origin, attackParams.targetPoint, attackParams.type, std::to_underlying(attackParams.method), attackParams.range, params);
 				switch (result)
 				{
 					case TACORDER_SUCCESS:
@@ -1280,7 +1259,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 	}
 
 	if (origin == ORDER_ORIGIN_PLAYER)
-		warrior->triggerAlarm(PILOT_ALARM_PLAYER_ORDER, code);
+		warrior->triggerAlarm(PILOT_ALARM_PLAYER_ORDER, std::to_underlying(code));
 	else
 		message = -1;
 
@@ -1302,7 +1281,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 
     if (mission) if (auto* r = mission->ownedRoute(warrior)) {
         if (this == warrior->getCurTacOrder() && warrior->getOrderState() == ORDERSTATE_GENERAL &&
-            code == static_cast<int>(r->kind)) return TACORDER_FAILURE;
+            std::to_underlying(code) == static_cast<int>(r->kind)) return TACORDER_FAILURE;
     }
 	long result = TACORDER_SUCCESS;
 
@@ -2062,16 +2041,14 @@ void TacticalOrder::debugString (MechWarriorPtr pilot, char* s) {
 			strcpy(s, "eject");
 			break;
 		case TACTICAL_ORDER_ATTACK_OBJECT: {
-			const char* tacticCode[] = {"  ", "RT", "LT", "RR", "SF", "TT", "JS"};
-			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack obj ({:d}) {}", mc2::fmt::as_i32(target ? target->getPartId() : 0), tacticCode[attackParams.tactic]);
+			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack obj ({:d}) {}", mc2::fmt::as_i32(target ? target->getPartId() : 0), tactic_table::code2(attackParams.tactic));
 			}
 			break;
 		case TACTICAL_ORDER_ATTACK_POINT: {
-			const char* tacticCode[] = {"  ", "RT", "LT", "RR", "SF", "TT", "JS"};
 			mc2::fmt::to_buf_n(s, MAXLEN_PILOT_DEBUG_STRING, "attack pt ({:.0f}, {:.0f}) {}",
 				attackParams.targetPoint.x,
 				attackParams.targetPoint.y,
-				tacticCode[attackParams.tactic]);
+				tactic_table::code2(attackParams.tactic));
 			}
 			break;
 		case TACTICAL_ORDER_HOLD_FIRE:

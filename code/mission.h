@@ -269,7 +269,7 @@ inline constexpr auto OBJECTIVE_8_TIMER = (OBJECTIVE_1_TIMER + 7);
 
 inline constexpr int MAX_OBJECTIVES = 50;
 
-enum MissionLoadType {
+enum class MissionLoadType {
 	MISSION_LOAD_SP_QUICKSTART,
 	MISSION_LOAD_SP_LOGISTICS,
 	MISSION_LOAD_MP_QUICKSTART,
@@ -518,7 +518,7 @@ class Mission
 		std::expected<void, mc2::sim::OrderError> acknowledgeMissionOrder(
 			mc2::sim::MissionReceipt receipt) { return orderIngress.acknowledge(receipt); }
 
-		void init (mc2::czstring missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
+		void init (mc2::czstring missionName, MissionLoadType loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
 
 		// Explicit developer import of a Part fragment; the runtime save/load format remains legacy.
 		bool loadParts(const mc2::save::Section& section, std::uint32_t schemaVersion,
@@ -527,14 +527,14 @@ class Mission
 	// Mission::init phases (mission_init.cpp, mission_init_load.cpp); callers use init().
 	private:
 		void initPrologue(MissionInitFrame& f);
-		void initTeamRelations(long loadType);
+		void initTeamRelations(MissionLoadType loadType);
 		void initCoreSystems();
 		void initGameSystemRanges(MissionInitFrame& f);
 		void initGameSystemGeneral(MissionInitFrame& f);
 		void initGameSystemHazards(MissionInitFrame& f);
 		void initMissionFile(glm::vec3* dropZoneList, MissionInitFrame& f);
 		void initSkyAndTeamReset(MissionInitFrame& f);
-		void initTeamsAndCommanders(long loadType, glm::vec3* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f);
+		void initTeamsAndCommanders(MissionLoadType loadType, glm::vec3* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f);
 		void initTriggerAndDropZone(MissionInitFrame& f);
 		void initMissionSettings(MissionInitFrame& f);
 		void initTerrain(MissionInitFrame& f);
@@ -551,10 +551,10 @@ class Mission
 		void loadTacticWeights(MissionInitFrame& f);
 		void loadBrainDispatch(MissionInitFrame& f);
 		void initPartsHeader(MissionInitFrame& f);
-		void initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f);
-		void initObjectCounts(long loadType, MissionInitFrame& f);
+		void initPartsLoad(MissionLoadType loadType, long dropZoneID, glm::vec3* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f);
+		void initObjectCounts(MissionLoadType loadType, MissionInitFrame& f);
 		void initGpuAndLighting();
-		void initSpawnActors(long loadType);
+		void initSpawnActors(MissionLoadType loadType);
 		void initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFrame& f);
 		void initDisableAndObjectives(MissionInitFrame& f);
 		void initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f);

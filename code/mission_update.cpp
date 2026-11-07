@@ -934,7 +934,7 @@ void Mission::updateOrderLiveness() {
 				}
 				if (!olEnemy) continue;
 				olPilot->orderAttackObject(false, ORDER_ORIGIN_COMMANDER,
-					olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
+					olEnemy, ATTACK_TO_DESTROY, std::to_underlying(ATTACKMETHOD_RANGED),
 					FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
 				mc2::fmt::print_out("[ORDER_FIXTURE] kind=attack wid={:d} tgt={:d} t={:.1f}\n",
 					mc2::fmt::as_ulong(static_cast<unsigned long>(pM->getWatchID())),

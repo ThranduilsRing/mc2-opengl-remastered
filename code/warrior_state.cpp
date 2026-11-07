@@ -898,6 +898,20 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 	return packetNum;
 }
 
+// LG14: a legacy packet is a raw memcpy image, so the scoped order enums inside it are checked against their domains
+// before anything reads them. A save that loaded before LG14 must keep loading: an out-of-domain order is reset to the
+// default (no-order) state via TacticalOrder::init(), and the load logs one warning line instead of failing.
+static bool legacyOrderEnumsInDomain (const TacticalOrder& o)
+{
+	return enum_in_domain(OrderOriginType{}, std::to_underlying(o.origin)) &&
+		enum_in_domain(TacticalOrderCode{}, std::to_underlying(o.code)) &&
+		enum_in_domain(SpecialMoveMode{}, std::to_underlying(o.moveParams.mode)) &&
+		enum_in_domain(AttackType{}, std::to_underlying(o.attackParams.type)) &&
+		enum_in_domain(AttackMethod{}, std::to_underlying(o.attackParams.method)) &&
+		enum_in_domain(FireRangeType{}, std::to_underlying(o.attackParams.range)) &&
+		enum_in_domain(TacticType{}, std::to_underlying(o.attackParams.tactic));
+}
+
 void MechWarrior::load (PacketFilePtr file, long packetNum, bool values)
 {
 	MechWarriorData warriorData{};
@@ -909,10 +923,24 @@ void MechWarrior::load (PacketFilePtr file, long packetNum, bool values)
 	SavedQueueTargets targets;
 	const bool wide = values || size > sizeof(warriorData);
 	if (values) {
-		if (!mc2::save::decodeWarriorRecord(bytes, warriorData, targets)) Fatal(0, "Invalid warrior value record");
+		int dropped = 0;
+		if (!mc2::save::decodeWarriorRecord(bytes, warriorData, targets, &dropped)) Fatal(0, "Invalid warrior value record");
+		if (dropped)
+			mc2::fmt::print_out("[SAVE v1] event=value_order_dropped packet={} orders={} WARNING out-of-domain order enum reset to no-order\n",
+				packetNum, dropped);
 	} else {
 		if (size < sizeof(warriorData)) Fatal(0, "Invalid legacy warrior packet size");
 		memcpy(&warriorData, bytes.data(), sizeof(warriorData));
+		int normalized = 0;
+		auto normalize = [&normalized](TacticalOrder& o) {
+			if (!legacyOrderEnumsInDomain(o)) { o.init(); ++normalized; }
+		};
+		normalize(warriorData.lastTacOrder);
+		normalize(warriorData.curTacOrder);
+		for (TacticalOrder& o : warriorData.tacOrder) normalize(o);
+		if (normalized)
+			mc2::fmt::print_out("[SAVE v1] event=legacy_order_normalized packet={} orders={} WARNING out-of-domain order enum reset to no-order\n",
+				packetNum, normalized);
 		if (wide && (!mc2::save::decodeRecord(std::span(bytes).subspan(sizeof(warriorData)), targets) ||
 			targets.targets.size() != warriorData.numTacOrdersQueued)) Fatal(0, "Invalid saved queue targets");
 	}

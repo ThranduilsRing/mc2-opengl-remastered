@@ -149,6 +149,37 @@ TEST_CASE("mission content source codec bounds and permission rules") {
     invalid(source);
     CHECK_FALSE(invalid.good());
 }
+TEST_CASE("tactic table: sim enum values and TacAttackParams tactic bytes are the shipped ones") {
+    // Literals from the pre-table enum; TacAttackParams wire = type(4) method(4) range(4) tactic(4) ...
+    CHECK(static_cast<std::uint32_t>(Tactic::None) == 0);
+    CHECK(static_cast<std::uint32_t>(Tactic::FlankLeft) == 1);
+    CHECK(static_cast<std::uint32_t>(Tactic::FlankRight) == 2);
+    CHECK(static_cast<std::uint32_t>(Tactic::FlankRear) == 3);
+    CHECK(static_cast<std::uint32_t>(Tactic::StopAndFire) == 4);
+    CHECK(static_cast<std::uint32_t>(Tactic::Turret) == 5);
+    CHECK(static_cast<std::uint32_t>(Tactic::Joust) == 6);
+    CHECK(static_cast<std::uint32_t>(Tactic::IndirectFire) == 7);
+    CHECK(static_cast<std::uint32_t>(Tactic::HullDown) == 8);
+    CHECK(static_cast<std::uint32_t>(Tactic::FightingWithdraw) == 9);
+    CHECK(static_cast<std::uint32_t>(Tactic::Pursue) == 10);
+    CHECK(static_cast<std::uint32_t>(Tactic::HitAndRun) == 11);
+    for (std::uint32_t v = 0; v <= 11; ++v) {
+        TacAttackParams p;
+        p.tactic = static_cast<Tactic>(v);
+        mc2::save::Archive a;
+        p.serialize(a);
+        REQUIRE(a.finish());
+        const Bytes b = a.bytes();
+        REQUIRE(b.size() >= 16);
+        CHECK(b[12] == v);
+        CHECK(b[13] == 0); CHECK(b[14] == 0); CHECK(b[15] == 0);
+    }
+    TacAttackParams bad;
+    bad.tactic = static_cast<Tactic>(12);
+    mc2::save::Archive a;
+    bad.serialize(a);
+    CHECK_FALSE(a.finish());
+}
 TEST_CASE("fixed enum IDs issuer envelope and TacticalOrder wire field order") {
     CHECK(static_cast<std::uint32_t>(OrderKind::AttackObject) == 16);
     CHECK(static_cast<std::uint32_t>(OrderKind::Recover) == 26);

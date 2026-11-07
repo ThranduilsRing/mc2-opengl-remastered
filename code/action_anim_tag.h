@@ -44,19 +44,17 @@
 
 // Mirror of the legacy gesture ids (mech3d.h). Named here so the mapping table
 // reads intelligibly; the test file static_asserts each against mech3d.h.
-enum LegacyGestureId {
-    kGesturePark            = 0,
-    kGestureStand           = 2,
-    kGestureWalk            = 4,
-    kGestureRun             = 7,
-    kGestureReverse         = 9,
-    kGestureIdle            = 13,
-    kGestureFallBackward    = 14,
-    kGestureFallForward     = 15,
-    kGestureHitFront        = 16,
-    kGestureJump            = 20,
-    kGestureGetUp           = 22
-};
+inline constexpr int kGesturePark            = 0;
+inline constexpr int kGestureStand           = 2;
+inline constexpr int kGestureWalk            = 4;
+inline constexpr int kGestureRun             = 7;
+inline constexpr int kGestureReverse         = 9;
+inline constexpr int kGestureIdle            = 13;
+inline constexpr int kGestureFallBackward    = 14;
+inline constexpr int kGestureFallForward     = 15;
+inline constexpr int kGestureHitFront        = 16;
+inline constexpr int kGestureJump            = 20;
+inline constexpr int kGestureGetUp           = 22;
 
 // Sentinel: the resolver returns this when a tag's fallback chain dead-ends (no
 // link in the chain is available). Negative so it can never collide with a real

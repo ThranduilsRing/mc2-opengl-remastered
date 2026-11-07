@@ -4,6 +4,8 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <string_view>
 
+using enum MissionLoadType;
+
 
 //-----------------------------------------------------------------------------
 
@@ -17,7 +19,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		MPlayer->setMode(MULTIPLAYER_MODE_LOADING);
 
 	char commandersToLoad[MAX_MC_PLAYERS][3] = {{0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7}};
-	long missionLoadType = LogisticsData::instance->skipLogistics() ? 
+	MissionLoadType missionLoadType = LogisticsData::instance->skipLogistics() ? 
 							MISSION_LOAD_SP_QUICKSTART : MISSION_LOAD_SP_LOGISTICS;
 	if (MPlayer) {
 		//---------------------------
