@@ -38,6 +38,13 @@ def refusal():
     return None
 
 
+def current_window():
+    """The newest merge window number named in nifty's recent subjects ('merge ... w128'), or None."""
+    import re
+    nums = [int(m) for m in re.findall(r"\bw(\d{2,4})\b", git("log", "-40", "--format=%s"))]
+    return max(nums) if nums else None
+
+
 def stage_names(weekly):
     import merge_gate
     keep = [n for n, _c, _e in merge_gate.plan(1)
@@ -56,12 +63,16 @@ def main(argv=None):
         return 2
     today = datetime.date.today()
     weekly = args.weekly or today.weekday() == 6
+    window = current_window()
+    if weekly and window is None:   # the mods battery refuses without --window; say so up front instead of failing hours in
+        print("[nightly_gate] REFUSED: the weekly run needs the merge-window number and nifty's log names none")
+        return 2
     proof = f"{PROOF_ROOT}/nightly-{today.isoformat()}"
     os.makedirs(proof, exist_ok=True)
     py = [sys.executable] if os.name != "nt" else ["py", "-3"]
     cmd = py + [f"{ROOT}/scripts/gate_wait.py", "--timeout", "7200", "--log", f"{proof}/gate_wait.log", "--"] + py + [
         f"{ROOT}/scripts/merge_gate.py", "--weekly" if weekly else "--nightly", "--proofs-dir", proof, "--isolated-verdict",
-        "--stages"] + stage_names(weekly)
+        *(["--window", str(window)] if window else []), "--stages"] + stage_names(weekly)
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0

@@ -53,8 +53,9 @@ def test_promote_nightly_fail_closed(tmp_path):
     _verdict(tmp_path, "nightly-2026-11-07", verdict="PASS", failed=[], written=now - 3600)
     assert f(str(tmp_path)) == []
     assert f(str(tmp_path), now=now + 40 * 3600)  # stale
-    partial = _verdict(tmp_path, "nightly-2026-11-08", verdict="PARTIAL", failed=[], written=now)
-    assert f(str(tmp_path)) == []  # stage-filter partial, every executed row passed
+    partial = _verdict(tmp_path, "nightly-2026-11-08", verdict="PARTIAL", failed=[], written=now, tier=1,
+                       executed={n: {"status": "PASS"} for n in nightly_gate.stage_names(False)})
+    assert f(str(tmp_path)) == []  # stage-filter partial, every required row of its tier passed
     (partial / "gate-verdict.json").write_text(json.dumps(dict(verdict="INFRA", failed=[], written=now)))
     assert f(str(tmp_path))
     (partial / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[dict(name="x", status="FAIL")], written=now)))
@@ -89,3 +90,26 @@ def test_publish_refuses_exe_the_gate_did_not_test(tmp_path):
     assert "rebuilt" in f(str(tmp_path), str(exe), "abc")
     vf.write_text(json.dumps(dict(verdict="FAIL", head="abc", artifacts=dict(exe_sha256=sha))))
     assert f(str(tmp_path), str(exe), "abc")
+
+
+def test_promote_refuses_a_partial_that_skipped_a_required_nightly_stage(tmp_path):
+    import time
+    f = lane_merge_stage.untriaged_nightly_fail
+    ran = {n: {"status": "PASS"} for n in nightly_gate.stage_names(False)}
+    d = _verdict(tmp_path, "nightly-2026-11-09", verdict="PARTIAL", failed=[], written=time.time(), tier=1, executed=ran)
+    assert f(str(tmp_path)) == []
+    del ran["player-path"]
+    (d / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[], written=time.time(), tier=1, executed=ran)))
+    assert any("player-path" in w for w in f(str(tmp_path)))
+    (d / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[], written=time.time())))
+    assert f(str(tmp_path))   # no recorded tier
+
+
+def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, capsys):
+    monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge w128: x\nmerge follow-up w127: y\nunrelated")
+    assert nightly_gate.current_window() == 128
+    assert nightly_gate.main(["--dry-run", "--weekly"]) == 0
+    assert "--window 128" in capsys.readouterr().out
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
+    assert nightly_gate.main(["--dry-run", "--weekly"]) == 2
