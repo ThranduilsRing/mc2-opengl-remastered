@@ -68,6 +68,18 @@
     "VRAM_ADAPTER v1": {
       "status": "keep",
       "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
+    },
+    "PERF_WINDOW v1": {
+      "status": "keep",
+      "reason": "GameOS/gameos/battle_bench.h emitPerfWindow(): printed once when the fixed sim-tick window closes (or at exit); scripts/smoke_lib/logparse.py parses it and scripts/smoke_lib/gates.py grades the per-pass draw ceilings against it (W125, temporal/perf lanes)."
+    },
+    "VK_GPU_PASSES v1": {
+      "status": "keep",
+      "reason": "GameOS/gameos/vk_gpu_profile.cpp: the always-armed GPU timestamp ring prints one arm line and one per-pass mean line every 120 frames; tools/terrain_perf_report.py and tools/perf/mission_cpu_profile.py parse the frame= lines. Gating it is a harness-contract change for its own slice (W125)."
+    },
+    "BENCH_DEVICE v1": {
+      "status": "keep",
+      "reason": "GameOS/gameos/vk_gpu_profile.cpp: one line at device creation naming the GPU, driver and API version the [VK_GPU_PASSES v1] numbers were measured on, so a perf receipt carries its device. No parser consumes it yet (W125)."
     }
   }
 }
