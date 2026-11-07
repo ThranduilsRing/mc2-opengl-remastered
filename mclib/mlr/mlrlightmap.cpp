@@ -20,13 +20,13 @@ static std::unique_ptr<unsigned char[]> s_streamBuffer;
 GOSVertexPool*
 	MLRLightMap::vertexPool;
 
-std::unique_ptr<DynamicArrayOf<Stuff::Vector4D>>
+std::vector<Stuff::Vector4D>
 	transformedCoords, clipExtraCoords;
-std::unique_ptr<DynamicArrayOf<RGBAColor>>
+std::vector<RGBAColor>
 	clipExtraColors;
-std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
+std::vector<Vector2DScalar>
 	clipExtraTexCoords;
-std::unique_ptr<DynamicArrayOf<MLRClippingState>>
+std::vector<MLRClippingState>
 	clippingStates;
 std::unique_ptr<ClipPolygon2[]>
 	MLRLightMap::clipBuffer;
@@ -52,16 +52,11 @@ void
 	stream = std::make_unique<MemoryStream>(s_streamBuffer.get(), Limits::Max_Size_Of_LightMap_MemoryStream);
 	Register_Object(stream.get());
 
-	transformedCoords = std::make_unique<DynamicArrayOf<Stuff::Vector4D>>(Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(transformedCoords.get());
-	clipExtraCoords = std::make_unique<DynamicArrayOf<Stuff::Vector4D>>(2*Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clipExtraCoords.get());
-	clipExtraColors = std::make_unique<DynamicArrayOf<RGBAColor>>(2*Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clipExtraColors.get());
-	clipExtraTexCoords = std::make_unique<DynamicArrayOf<Vector2DScalar>>(2*Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clipExtraTexCoords.get());
-	clippingStates = std::make_unique<DynamicArrayOf<MLRClippingState>>(Limits::Max_Number_Vertices_Per_Polygon);
-	Register_Object(clippingStates.get());
+	transformedCoords.resize(Limits::Max_Number_Vertices_Per_Polygon);
+	clipExtraCoords.resize(2*Limits::Max_Number_Vertices_Per_Polygon);
+	clipExtraColors.resize(2*Limits::Max_Number_Vertices_Per_Polygon);
+	clipExtraTexCoords.resize(2*Limits::Max_Number_Vertices_Per_Polygon);
+	clippingStates.resize(Limits::Max_Number_Vertices_Per_Polygon);
 
 	clipBuffer = std::make_unique<ClipPolygon2[]>(2);
 	Register_Pointer(clipBuffer.get());
@@ -80,16 +75,11 @@ void
 	Unregister_Pointer(clipBuffer.get());
 	clipBuffer.reset();
 
-	Unregister_Object(transformedCoords.get());
-	transformedCoords.reset();
-	Unregister_Object(clipExtraCoords.get());
-	clipExtraCoords.reset();
-	Unregister_Object(clipExtraColors.get());
-	clipExtraColors.reset();
-	Unregister_Object(clipExtraTexCoords.get());
-	clipExtraTexCoords.reset();
-	Unregister_Object(clippingStates.get());
-	clippingStates.reset();
+	std::vector<Stuff::Vector4D>().swap(transformedCoords);
+	std::vector<Stuff::Vector4D>().swap(clipExtraCoords);
+	std::vector<RGBAColor>().swap(clipExtraColors);
+	std::vector<Vector2DScalar>().swap(clipExtraTexCoords);
+	std::vector<MLRClippingState>().swap(clippingStates);
 
 	Unregister_Object(stream.get());
 	stream.reset();

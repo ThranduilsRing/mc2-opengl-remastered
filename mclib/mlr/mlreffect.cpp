@@ -36,7 +36,7 @@ MLREffect::ClassData*
 std::unique_ptr<EffectClipPolygon[]>
 	MLREffect::clipBuffer;
 
-std::unique_ptr<DynamicArrayOf<Vector4D>>
+std::vector<Vector4D>
 	MLREffect::transformedCoords;
 
 
@@ -55,8 +55,7 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	transformedCoords = std::make_unique<DynamicArrayOf<Vector4D>>(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(transformedCoords.get());
+	transformedCoords.resize(Limits::Max_Number_Vertices_Per_Mesh);
 
 	clipBuffer = std::make_unique<EffectClipPolygon[]>(2);
 	Register_Pointer(clipBuffer.get());
@@ -75,8 +74,7 @@ void
 	Unregister_Pointer(clipBuffer.get());
 	clipBuffer.reset();
 
-	Unregister_Object(transformedCoords.get());
-	transformedCoords.reset();
+	std::vector<Vector4D>().swap(transformedCoords);
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
@@ -132,7 +130,7 @@ void
 
 		for(k=j;k<j+nrOfVertices;k++)
 		{
-			(*transformedCoords)[k].MultiplyPoint(points[k], effectToClipMatrix);
+			transformedCoords[k].MultiplyPoint(points[k], effectToClipMatrix);
 		}
 	}
 	Stop_Timer(Transform_Time);

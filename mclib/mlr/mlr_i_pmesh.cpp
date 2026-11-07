@@ -342,9 +342,9 @@ void
 		FindVisibleVertices();
 	}
 
-	Stuff::Vector4D *v4d = transformedCoords->GetData();
+	Stuff::Vector4D *v4d = transformedCoords.data();
 	glm::vec3 *p3d = coords.GetData();
-	MLRClippingState *cs = clipPerVertex->GetData();
+	MLRClippingState *cs = clipPerVertex.data();
 	unsigned char *viv = visibleIndexedVertices.GetData();
 
 	for(i=0;i<len;i++,p3d++,v4d++,cs++,viv++)

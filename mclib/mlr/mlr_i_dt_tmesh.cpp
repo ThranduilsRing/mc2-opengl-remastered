@@ -14,11 +14,6 @@
 MLR_I_DT_TMesh::ClassData*
 	MLR_I_DT_TMesh::DefaultData = nullptr;
 
-std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
-	MLR_I_DT_TMesh::clipExtraTexCoords2;
-std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
-	MLR_I_DT_TMesh::texCoords2;
-
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
@@ -34,16 +29,6 @@ void
 			(MLRPrimitiveBase::Factory)&Make
 		);
 	Register_Object(DefaultData);
-	
-	clipExtraTexCoords2 = std::make_unique<DynamicArrayOf<Vector2DScalar>>();
-	Register_Object(clipExtraTexCoords2.get());
-	clipExtraTexCoords2->SetLength(Limits::Max_Number_Vertices_Per_Mesh);
-
-
-	texCoords2 = std::make_unique<DynamicArrayOf<Vector2DScalar>>();
-	Register_Object(texCoords2.get());
-	texCoords2->SetLength(Limits::Max_Number_Vertices_Per_Mesh);
-
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,11 +36,6 @@ void
 void
 	MLR_I_DT_TMesh::TerminateClass()
 {
-	Unregister_Object(clipExtraTexCoords2.get());
-	clipExtraTexCoords2.reset();
-	Unregister_Object(texCoords2.get());
-	texCoords2.reset();
-
 	Unregister_Object(DefaultData);
 	delete DefaultData;
 	DefaultData = nullptr;

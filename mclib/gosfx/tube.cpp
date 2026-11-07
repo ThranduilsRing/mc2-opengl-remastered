@@ -370,30 +370,30 @@ void
 	{
 	case e_Ribbon:
 	case e_AlignedRibbon:
-		m_vertices.SetLength(2);
+		m_vertices.resize(2);
 		m_vertices[0] = glm::vec3(1.0f, 0.0f, 0.0f);
 		m_vertices[1] = glm::vec3(-1.0f, 0.0f, 0.0f);
-		m_uvs.SetLength(2);
+		m_uvs.resize(2);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
 		break;
 
 	case e_VerticalRibbon:
-		m_vertices.SetLength(2);
+		m_vertices.resize(2);
 		m_vertices[0] = glm::vec3(0.0f, 0.0f, -1.0f);
 		m_vertices[1] = glm::vec3(0.0f, 0.0f, 1.0f);
-		m_uvs.SetLength(2);
+		m_uvs.resize(2);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
 		break;
 
 	case e_Triangle:
-		m_vertices.SetLength(4);
+		m_vertices.resize(4);
 		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_vertices[1] = glm::vec3(-0.8660254f, 0.0f, -0.5f);
 		m_vertices[2] = glm::vec3(0.8660254f, 0.0f, -0.5f);
 		m_vertices[3] = glm::vec3(0.0f, 0.0f, 1.0f);
-		m_uvs.SetLength(4);
+		m_uvs.resize(4);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f/3.0f);
 		m_uvs[2] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 2.0f/3.0f);
@@ -401,13 +401,13 @@ void
 		break;
 
 	case e_Square:
-		m_vertices.SetLength(5);
+		m_vertices.resize(5);
 		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_vertices[1] = glm::vec3(-1.0f, 0.0f, 0.0f);
 		m_vertices[2] = glm::vec3(0.0f, 0.0f, -1.0f);
 		m_vertices[3] = glm::vec3(1.0f, 0.0f, 0.0f);
 		m_vertices[4] = glm::vec3(0.0f, 0.0f, 1.0f);
-		m_uvs.SetLength(5);
+		m_uvs.resize(5);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.25f);
 		m_uvs[2] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.5f);
@@ -416,13 +416,13 @@ void
 		break;
 
 	case e_Cross:
-		m_vertices.SetLength(5);
+		m_vertices.resize(5);
 		m_vertices[0] = glm::vec3(0.0f, 0.0f, 0.0f);
 		m_vertices[1] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_vertices[2] = glm::vec3(-1.0f, 0.0f, 0.0f);
 		m_vertices[3] = glm::vec3(0.0f, 0.0f, -1.0f);
 		m_vertices[4] = glm::vec3(1.0f, 0.0f, 0.0f);
-		m_uvs.SetLength(5);
+		m_uvs.resize(5);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
 		m_uvs[2] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f);
@@ -431,14 +431,14 @@ void
 		break;
 
 	case e_Pentagon:
-		m_vertices.SetLength(6);
+		m_vertices.resize(6);
 		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_vertices[1] = glm::vec3(-0.9510565f, 0.0f, 0.309017f);
 		m_vertices[2] = glm::vec3(-0.58778525f, 0.0f, -0.8090167f);
 		m_vertices[3] = glm::vec3(0.58778525f, 0.0f, -0.8090167f);
 		m_vertices[4] = glm::vec3(0.9510565f, 0.0f, 0.309017f);
 		m_vertices[5] = glm::vec3(0.0f, 0.0f, 1.0f);
-		m_uvs.SetLength(6);
+		m_uvs.resize(6);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.2f);
 		m_uvs[2] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.4f);
@@ -448,7 +448,7 @@ void
 		break;
 
 	case e_Hexagon:
-		m_vertices.SetLength(7);
+		m_vertices.resize(7);
 		m_vertices[0] = glm::vec3(0.0f, 0.0f, 1.0f);
 		m_vertices[1] = glm::vec3(-0.8660254f, 0.0f, 0.5f);
 		m_vertices[2] = glm::vec3(-0.8660254f, 0.0f, -0.5f);
@@ -456,7 +456,7 @@ void
 		m_vertices[4] = glm::vec3(0.8660254f, 0.0f, -0.5f);
 		m_vertices[5] = glm::vec3(0.8660254f, 0.0f, 0.5f);
 		m_vertices[6] = glm::vec3(0.0f, 0.0f, 1.0f);
-		m_uvs.SetLength(7);
+		m_uvs.resize(7);
 		m_uvs[0] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 0.0f);
 		m_uvs[1] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 1.0f/6.0f);
 		m_uvs[2] = Stuff::Vector2DOf<Stuff::Scalar>(0.0f, 2.0f/6.0f);
@@ -572,8 +572,8 @@ gosFX::Tube::Tube(
 
 	//
 	//
-	m_profiles.SetLength(spec->m_maxProfileCount);
-	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
+	m_profiles.resize(spec->m_maxProfileCount);
+	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.size());
 	Verify(vertex_count < 8);
 	unsigned index_count = (vertex_count - 1)*6;
 	unsigned size =
@@ -603,14 +603,14 @@ gosFX::Tube::Tube(
 	//
 	m_triangleCount = 0;
 	m_vertexCount = 0;
-	m_data.SetLength(size);
-	m_P_vertices = Cast_Pointer(glm::vec3*, &m_data[0]);
+	m_data.resize(size);
+	m_P_vertices = Cast_Pointer(glm::vec3*, m_data.data());
 	size = spec->m_maxProfileCount*vertex_count*sizeof(glm::vec3);
-	m_P_colors = Cast_Pointer(Stuff::RGBAColor*, &m_data[size]);
+	m_P_colors = Cast_Pointer(Stuff::RGBAColor*, m_data.data() + size);
 	size += spec->m_maxProfileCount*vertex_count*sizeof(Stuff::RGBAColor);
-	m_P_uvs = Cast_Pointer(Stuff::Vector2DOf<Stuff::Scalar>*, &m_data[size]);
+	m_P_uvs = Cast_Pointer(Stuff::Vector2DOf<Stuff::Scalar>*, m_data.data() + size);
 	size += spec->m_maxProfileCount*vertex_count*sizeof(Stuff::Vector2DOf<Stuff::Scalar>);
-	unsigned short *mesh_indices = Cast_Pointer(unsigned short*, &m_data[size]);
+	unsigned short *mesh_indices = Cast_Pointer(unsigned short*, m_data.data() + size);
 	// MC2_VFX_ORACLE_TUBE: remember the index stencil for the ribbon bridge.
 	m_P_indices = mesh_indices;
 	m_mesh->SetData(
@@ -646,7 +646,7 @@ void
 	//
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
-	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
+	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.size());
 	Verify(vertex_count < 8);
 
 	//
@@ -1118,7 +1118,7 @@ bool
 	//------------------------------------------------------------------------
 	//
 	unsigned i;
-	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
+	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.size());
 	Verify(vertex_count < 8);
 	unsigned vertex_index = profile_index * vertex_count;
 	if (spec->m_profileType != Specification::e_AlignedRibbon)
@@ -1223,7 +1223,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		glm::mat4 local_to_world;
 		local_to_world = m_localToParent * *info->m_parentToWorld;
 		dInfo.effectToWorld = &local_to_world;
-		unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
+		unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.size());
 		m_vertexCount = m_activeProfileCount * vertex_count;
 		m_triangleCount = 2 * (m_activeProfileCount-1) * (vertex_count-1);
 
@@ -1237,7 +1237,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		{
 			int i = m_headProfile;
 			int vertex = 0;
-			unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
+			unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.size());
 			Verify(vertex_count < 8);
 			glm::vec3
 				camera_in_world = mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix());
@@ -1404,9 +1404,9 @@ void gosFX::Tube::Draw(DrawInfo *info)
 					// Transform local-space verts to MC2/Stuff world space.
 					// (m_P_vertices are effect-local; the ribbon VS applies the GL
 					// axis swap, so we hand it MC2 world unswapped.)
-					static Stuff::DynamicArrayOf<float> s_worldPos;
-					if (static_cast<unsigned>(s_worldPos.GetLength()) < numVerts*3u)
-						s_worldPos.SetLength(numVerts*3u);
+					static std::vector<float> s_worldPos;
+					if (static_cast<unsigned>(s_worldPos.size()) < numVerts*3u)
+						s_worldPos.resize(numVerts*3u);
 					for (unsigned vi = 0; vi < numVerts; ++vi)
 					{
 						glm::vec3 wp;
@@ -1417,7 +1417,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 					}
 
 					gos_tube_ribbon_enqueue(
-						&s_worldPos[0],
+						s_worldPos.data(),
 						reinterpret_cast<const float*>(m_P_colors),
 						reinterpret_cast<const float*>(m_P_uvs),
 						numVerts,

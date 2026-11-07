@@ -8,7 +8,7 @@
 //#####################    MLRIndexedPrimitiveBase    #########################
 //#############################################################################
 
-std::unique_ptr<DynamicArrayOf<unsigned short> >
+std::vector<unsigned short>
 	MLRIndexedPrimitiveBase::clipExtraIndex;
 
 MLRIndexedPrimitiveBase::ClassData*
@@ -33,8 +33,7 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	clipExtraIndex = std::make_unique<DynamicArrayOf<unsigned short> >(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Pointer(clipExtraIndex.get());
+	clipExtraIndex.resize(Limits::Max_Number_Vertices_Per_Mesh);
 
 	indexOffset = new unsigned short [Limits::Max_Number_Vertices_Per_Mesh+1];
 	Register_Pointer(indexOffset);
@@ -45,8 +44,7 @@ void
 void
 	MLRIndexedPrimitiveBase::TerminateClass()
 {
-	Unregister_Pointer(clipExtraIndex.get());
-	clipExtraIndex.reset();
+	std::vector<unsigned short>().swap(clipExtraIndex);
 
 	Unregister_Pointer(indexOffset);
 	delete [] indexOffset;
@@ -222,7 +220,7 @@ void
 
 	for(i=0;i<len;i++)
 	{
-		(*transformedCoords)[i].MultiplyPoint(coords[i], *mat);
+		transformedCoords[i].MultiplyPoint(coords[i], *mat);
 	}
 	
 	#ifdef LAB_ONLY

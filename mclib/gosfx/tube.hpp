@@ -108,9 +108,9 @@ namespace gosFX
 		bool
 			m_insideOut;
 
-		Stuff::DynamicArrayOf<glm::vec3>
+		std::vector<glm::vec3>
 			m_vertices;
-		Stuff::DynamicArrayOf<Stuff::Vector2DOf<Stuff::Scalar> >
+		std::vector<Stuff::Vector2DOf<Stuff::Scalar> >
 			m_uvs;
 
 		Stuff::Scalar
@@ -170,9 +170,9 @@ namespace gosFX
 		Stuff::Scalar
 			m_birthAccumulator;
 
-		Stuff::DynamicArrayOf<Profile>
+		std::vector<Profile>
 			m_profiles;
-		Stuff::DynamicArrayOf<char>
+		std::vector<char>
 			m_data;
 		std::unique_ptr<MidLevelRenderer::MLRIndexedTriangleCloud>
 			m_mesh;

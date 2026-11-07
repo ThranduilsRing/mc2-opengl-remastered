@@ -80,7 +80,7 @@ namespace gosFX
 		using Specification = Singleton__Specification;
 
 	protected:
-		Stuff::DynamicArrayOf<char>
+		std::vector<char>
 			m_data;
 
 		Singleton(

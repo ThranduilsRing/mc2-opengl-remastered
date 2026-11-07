@@ -321,7 +321,7 @@ gosFX::ParticleCloud::ParticleCloud(
 	// Set up the data pointers into the channel block
 	//------------------------------------------------
 	//
-	m_data.SetLength(spec->m_maxParticleCount*spec->m_totalParticleSize);
+	m_data.resize(spec->m_maxParticleCount*spec->m_totalParticleSize);
 
 	// Zero the raw channel block so every particle slot starts cleared — in
 	// particular each slot's m_effect pointer is NULL until CreateNewParticle
@@ -330,8 +330,8 @@ gosFX::ParticleCloud::ParticleCloud(
 	// during Kill() -> crash in Stuff::Plug::~Plug (READ at 0xF0..). Surfaced by
 	// cheat-mode mass-kill, which churns effect-cloud slots fast enough to hit
 	// the uninitialized window.
-	if (m_data.GetData() && m_data.GetSize() > 0)
-		memset(m_data.GetData(), 0, m_data.GetSize());
+	if (!m_data.empty())
+		memset(m_data.data(), 0, m_data.size());
 
 	//
 	//-------------------------------

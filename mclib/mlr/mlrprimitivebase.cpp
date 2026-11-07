@@ -43,23 +43,21 @@ void ClipPolygon2::Destroy()
 MLRPrimitiveBase::ClassData*
 	MLRPrimitiveBase::DefaultData = nullptr;
 
-std::unique_ptr<DynamicArrayOf<Vector4D>>
+std::vector<Vector4D>
 	MLRPrimitiveBase::transformedCoords;
 
-std::unique_ptr<DynamicArrayOf<MLRClippingState>>
+std::vector<MLRClippingState>
 	MLRPrimitiveBase::clipPerVertex;
-std::unique_ptr<DynamicArrayOf<Vector4D>>
+std::vector<Vector4D>
 	MLRPrimitiveBase::clipExtraCoords;
 
-std::unique_ptr<DynamicArrayOf<Vector2DScalar>>
+std::vector<Vector2DScalar>
 	MLRPrimitiveBase::clipExtraTexCoords;
 
-std::unique_ptr<DynamicArrayOf<RGBAColor>>
-    // sebi baseuse it is defined in base class!
-	//*MLR_I_C_PMesh::clipExtraColors;
+std::vector<RGBAColor>
 	MLRPrimitiveBase::clipExtraColors;
 
-std::unique_ptr<DynamicArrayOf<unsigned short>>
+std::vector<unsigned short>
 	MLRPrimitiveBase::clipExtraLength;
 
 std::unique_ptr<ClipPolygon2[]>
@@ -81,21 +79,15 @@ void
 		);
 	Register_Object(DefaultData);
 
-	transformedCoords = std::make_unique<DynamicArrayOf<Vector4D>>(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(transformedCoords.get());
+	transformedCoords.resize(Limits::Max_Number_Vertices_Per_Mesh);
 
-	clipPerVertex = std::make_unique<DynamicArrayOf<MLRClippingState>>(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(clipPerVertex.get());
-	clipExtraCoords = std::make_unique<DynamicArrayOf<Vector4D>>(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(clipExtraCoords.get());
-	clipExtraTexCoords = std::make_unique<DynamicArrayOf<Vector2DScalar>>(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Object(clipExtraTexCoords.get());
+	clipPerVertex.resize(Limits::Max_Number_Vertices_Per_Mesh);
+	clipExtraCoords.resize(Limits::Max_Number_Vertices_Per_Mesh);
+	clipExtraTexCoords.resize(Limits::Max_Number_Vertices_Per_Mesh);
 
-	clipExtraColors = std::make_unique<std::remove_reference_t<decltype(*clipExtraColors)>>(Limits::Max_Number_Primitives_Per_Frame);
-	Register_Object(clipExtraColors.get());
+	clipExtraColors.resize(Limits::Max_Number_Primitives_Per_Frame);
 
-	clipExtraLength = std::make_unique<DynamicArrayOf<unsigned short>>(Limits::Max_Number_Primitives_Per_Frame);
-	Register_Object(clipExtraLength.get());
+	clipExtraLength.resize(Limits::Max_Number_Primitives_Per_Frame);
 
 	clipBuffer = std::make_unique<ClipPolygon2[]>(2);
 	Register_Pointer(clipBuffer.get());
@@ -114,19 +106,14 @@ void
 	Unregister_Pointer(clipBuffer.get());
 	clipBuffer.reset();
 
-	Unregister_Object(transformedCoords.get());
-	transformedCoords.reset();
+	// swap with an empty vector: release the storage, not just clear()
+	std::vector<Vector4D>().swap(transformedCoords);
 
-	Unregister_Object(clipPerVertex.get());
-	clipPerVertex.reset();
-	Unregister_Object(clipExtraCoords.get());
-	clipExtraCoords.reset();
-	Unregister_Object(clipExtraTexCoords.get());
-	clipExtraTexCoords.reset();
-	Unregister_Object(clipExtraColors.get());
-	clipExtraColors.reset();
-	Unregister_Object(clipExtraLength.get());
-	clipExtraLength.reset();
+	std::vector<MLRClippingState>().swap(clipPerVertex);
+	std::vector<Vector4D>().swap(clipExtraCoords);
+	std::vector<Vector2DScalar>().swap(clipExtraTexCoords);
+	std::vector<RGBAColor>().swap(clipExtraColors);
+	std::vector<unsigned short>().swap(clipExtraLength);
 
 
 	Unregister_Object(DefaultData);
@@ -347,7 +334,7 @@ void
 
 	for(i=0;i<len;i++)
 	{
-		(*transformedCoords)[i].MultiplyPoint(coords[i], *mat);
+		transformedCoords[i].MultiplyPoint(coords[i], *mat);
 	}
 
 	#ifdef LAB_ONLY

@@ -13,11 +13,6 @@
 MLR_I_MT_PMesh::ClassData*
 	MLR_I_MT_PMesh::DefaultData = nullptr;
 
-std::unique_ptr<DynamicArrayOf<DynamicArrayOf<Vector2DScalar> > >
-	MLR_I_MT_PMesh::clipExtraMultiTexCoords;
-std::unique_ptr<DynamicArrayOf<DynamicArrayOf<Vector2DScalar> > >
-	MLR_I_MT_PMesh::extraMultiTexCoords;
-
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 void
@@ -33,21 +28,6 @@ void
 			(MLRPrimitiveBase::Factory)&Make
 		);
 	Register_Object(DefaultData);
-	
-	clipExtraMultiTexCoords = std::make_unique<DynamicArrayOf<DynamicArrayOf<Vector2DScalar> > >();
-	Register_Object(clipExtraMultiTexCoords.get());
-	clipExtraMultiTexCoords->SetLength(Limits::Max_Number_Of_Multitextures);
-	
-	extraMultiTexCoords = std::make_unique<DynamicArrayOf<DynamicArrayOf<Vector2DScalar> > >();
-	Register_Object(extraMultiTexCoords.get());
-	extraMultiTexCoords->SetLength(Limits::Max_Number_Of_Multitextures);
-
-	for(int i=0;i<clipExtraMultiTexCoords->GetLength();i++)
-	{
-		(*clipExtraMultiTexCoords)[i].SetLength(Limits::Max_Number_Vertices_Per_Mesh);
-		(*extraMultiTexCoords)[i].SetLength(Limits::Max_Number_Vertices_Per_Mesh);
-	}
-
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,17 +35,6 @@ void
 void
 	MLR_I_MT_PMesh::TerminateClass()
 {
-	for(int i=0;i<clipExtraMultiTexCoords->GetLength();i++)
-	{
-		(*clipExtraMultiTexCoords)[i].SetLength(0);
-		(*extraMultiTexCoords)[i].SetLength(0);
-	}
-	Unregister_Object(clipExtraMultiTexCoords.get());
-	clipExtraMultiTexCoords.reset();
-
-	Unregister_Object(extraMultiTexCoords.get());
-	extraMultiTexCoords.reset();
-
 	Unregister_Object(DefaultData);
 	delete DefaultData;
 	DefaultData = nullptr;

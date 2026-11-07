@@ -13,6 +13,8 @@
 #include<mlr/gosvertexpool.hpp>
 #endif
 
+#include <vector>
+
 namespace MidLevelRenderer {
 
 	struct ClipPolygon2
@@ -198,38 +200,38 @@ namespace MidLevelRenderer {
 		void
 			SetClipCoord(glm::vec3 &point, int index)
 				{
-					Check_Object(this); Verify(clipExtraCoords->GetLength() > index);
-					(*clipExtraCoords)[index].x = point.x;
-					(*clipExtraCoords)[index].y = point.y;
-					(*clipExtraCoords)[index].z = point.z;
+					Check_Object(this); Verify(clipExtraCoords.size() > index);
+					clipExtraCoords[index].x = point.x;
+					clipExtraCoords[index].y = point.y;
+					clipExtraCoords[index].z = point.z;
 				}
 		void
 			FlashClipCoords(int num)
 				{
-					Check_Object(this); Verify(clipExtraCoords->GetLength() > num);
+					Check_Object(this); Verify(clipExtraCoords.size() > num);
 					coords.SetLength(num);
 					for(int i=0;i<num;i++)
 					{
-						coords[i].x = (*clipExtraCoords)[i].x;
-						coords[i].y = (*clipExtraCoords)[i].y;
-						coords[i].z = (*clipExtraCoords)[i].z;
+						coords[i].x = clipExtraCoords[i].x;
+						coords[i].y = clipExtraCoords[i].y;
+						coords[i].z = clipExtraCoords[i].z;
 					}
 				}
 		void
 			SetClipTexCoord(Vector2DScalar &uvs, int index)
 				{
-					Check_Object(this); Verify(clipExtraTexCoords->GetLength() > index);
+					Check_Object(this); Verify(clipExtraTexCoords.size() > index);
 					Verify(	MLRState::GetHasMaxUVs() ? (uvs[0]>=-100.0 && uvs[0]<=100.0) : 1);
 					Verify( MLRState::GetHasMaxUVs() ? (uvs[1]>=-100.0 && uvs[1]<=100.0) : 1);
 
-					(*clipExtraTexCoords)[index] = uvs;
+					clipExtraTexCoords[index] = uvs;
 				}
 		void
 			FlashClipTexCoords(int num)
 				{
-					Check_Object(this); Verify(clipExtraTexCoords->GetLength() > num);
+					Check_Object(this); Verify(clipExtraTexCoords.size() > num);
 					texCoords.SetLength(num);
-					Mem_Copy(texCoords.GetData(), clipExtraTexCoords->GetData(), sizeof(Vector2DScalar)*num, sizeof(Vector2DScalar)*num);
+					Mem_Copy(texCoords.GetData(), clipExtraTexCoords.data(), sizeof(Vector2DScalar)*num, sizeof(Vector2DScalar)*num);
 				}
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -296,18 +298,18 @@ namespace MidLevelRenderer {
 		Stuff::DynamicArrayOf<glm::vec3> coords;	// Base address of coordinate list 
 		Stuff::DynamicArrayOf<Vector2DScalar> texCoords;	// Base address of texture coordinate list 
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::Vector4D>> transformedCoords;
+		static std::vector<Stuff::Vector4D> transformedCoords;
 
-		Stuff::DynamicArrayOf<unsigned char>	lengths;	// List of strip lengths 
+		Stuff::DynamicArrayOf<unsigned char>	lengths;	// List of strip lengths
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::RGBAColor>> clipExtraColors;  // , Max_Number_Vertices_Per_Mesh
+		static std::vector<Stuff::RGBAColor> clipExtraColors;  // , Max_Number_Vertices_Per_Mesh
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<MLRClippingState>> clipPerVertex;  // , Max_Number_Vertices_Per_Mesh
+		static std::vector<MLRClippingState> clipPerVertex;  // , Max_Number_Vertices_Per_Mesh
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::Vector4D>> clipExtraCoords;  // , Max_Number_Vertices_Per_Mesh
-		static std::unique_ptr<Stuff::DynamicArrayOf<Vector2DScalar>> clipExtraTexCoords;  // , Max_Number_Vertices_Per_Mesh
+		static std::vector<Stuff::Vector4D> clipExtraCoords;  // , Max_Number_Vertices_Per_Mesh
+		static std::vector<Vector2DScalar> clipExtraTexCoords;  // , Max_Number_Vertices_Per_Mesh
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<unsigned short>> clipExtraLength;  // , Max_Number_Primitives_Per_Frame
+		static std::vector<unsigned short> clipExtraLength;  // , Max_Number_Primitives_Per_Frame
 
 		MLRState	state, referenceState;
 
