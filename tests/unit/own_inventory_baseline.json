@@ -176,18 +176,6 @@
    "new_array": 0,
    "owners": []
   },
-  "AttributeMeter": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "Batcher": {
    "delete": 0,
    "delete_array": 0,
@@ -2585,21 +2573,6 @@
    "new_array": 0,
    "owners": []
   },
-  "PilotPromotionArea": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "ActivePilotListItem"
-   ]
-  },
   "Pool": {
    "delete": 1,
    "delete_array": 0,
@@ -3169,37 +3142,6 @@
     "LogisticsScreen"
    ]
   },
-  "aAnimation": {
-   "delete": 6,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 6,
-     "new": 6
-    }
-   },
-   "new": 6,
-   "new_array": 0,
-   "owners": [
-    "ActivePilotListItem",
-    "SpecialtyListItem"
-   ]
-  },
-  "aButton": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "SpecialtyListItem"
-   ]
-  },
   "aEdit": {
    "delete": 0,
    "delete_array": 1,
@@ -3228,13 +3170,9 @@
    "owners": []
   },
   "aObject": {
-   "delete": 2,
+   "delete": 0,
    "delete_array": 1,
    "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 2,
-     "new": 4
-    },
     "code/salvagemecharea.cpp": {
      "new": 2
     },
@@ -3246,22 +3184,16 @@
      "new_array": 2
     }
    },
-   "new": 7,
+   "new": 3,
    "new_array": 2,
    "owners": [
-    "ActivePilotListItem",
-    "LogisticsScreen",
-    "SpecialtyListItem"
+    "LogisticsScreen"
    ]
   },
   "aRect": {
-   "delete": 9,
+   "delete": 0,
    "delete_array": 6,
    "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 9,
-     "new": 10
-    },
     "gui/alistbox.cpp": {
      "delete_array": 5,
      "new_array": 4
@@ -3271,25 +3203,18 @@
      "new_array": 2
     }
    },
-   "new": 10,
+   "new": 0,
    "new_array": 6,
    "owners": [
-    "ActivePilotListItem",
-    "DeadPilotListItem",
     "LogisticsScreen",
-    "SpecialtyListItem",
     "aComboBox",
     "aDropList"
    ]
   },
   "aText": {
-   "delete": 14,
+   "delete": 0,
    "delete_array": 1,
    "files": {
-    "code/pilotreviewarea.cpp": {
-     "delete": 14,
-     "new": 15
-    },
     "code/salvagemecharea.cpp": {
      "new": 4
     },
@@ -3298,13 +3223,10 @@
      "new_array": 2
     }
    },
-   "new": 19,
+   "new": 4,
    "new_array": 2,
    "owners": [
-    "ActivePilotListItem",
-    "DeadPilotListItem",
-    "LogisticsScreen",
-    "SpecialtyListItem"
+    "LogisticsScreen"
    ]
   },
   "aTextListItem": {
@@ -3954,7 +3876,6 @@
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 3,
   "code/mpparameterscreen.cpp": 1,
-  "code/pilotreviewarea.cpp": 1,
   "code/warrior.cpp": 1,
   "editor/Action.cpp": 5,
   "editor/BuildingBrush.cpp": 2,
