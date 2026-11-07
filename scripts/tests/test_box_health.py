@@ -239,7 +239,7 @@ def test_box_scripts_parse_and_are_strict():
     for f in ("filler/run.sh", "filler/stop.sh", "deploy.sh", "filler/sync.sh"):
         assert "set -euo pipefail" in (BOX / f).read_text(), f
     for f in BOX.rglob("*"):
-        if f.is_file():
+        if f.is_file() and f.suffix != ".pyc" and "__pycache__" not in f.parts:  # bytecode caches are binary, not scripts
             assert b"\r" not in f.read_bytes(), f"CRLF in {f}"
     assert "tools/box/** text eol=lf" in (ROOT / ".gitattributes").read_text()
 
