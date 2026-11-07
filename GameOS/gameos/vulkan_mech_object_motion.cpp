@@ -1,6 +1,7 @@
 // Per-object motion inputs for the mech island (docs/plans/2026-11-06-temporal-aa.md, Slice D state).
 #include <algorithm>
 #include <cmath>
+#include <compare>
 #include <cstdint>
 #include <cstring>
 #include <iterator>
@@ -41,31 +42,34 @@ void mc2_mech_stage_object_motion(const Mc2MechFrameFeed& feed, void* tailMem) {
     float* const tail = static_cast<float*>(tailMem);
     std::memcpy(tail, bones, static_cast<size_t>(feed.boneCount) * 64u);   // default: previous pose == current pose
     // Actor spans: sorted distinct base offsets, each running to the next base (the last to the end of the palette).
-    std::vector<std::pair<uint32_t, uint32_t>> actors;   // (baseBone, key)
+    struct ActorSpan { uint32_t base, key; auto operator<=>(const ActorSpan&) const = default; };
+    std::vector<ActorSpan> actors;
     if (feed.motionKeys) {
         for (uint32_t i = 0; i < feed.instanceCount; ++i) {
             uint32_t baseBone = 0;
             std::memcpy(&baseBone, inst + i * 64u + 4u, 4);
-            if (feed.motionKeys[i] && baseBone < feed.boneCount) actors.emplace_back(baseBone, feed.motionKeys[i]);
+            if (feed.motionKeys[i] && baseBone < feed.boneCount) actors.push_back({baseBone, feed.motionKeys[i]});
         }
     }
     std::sort(actors.begin(), actors.end());
-    actors.erase(std::unique(actors.begin(), actors.end(), [](const auto& a, const auto& b) { return a.first == b.first; }), actors.end());
+    actors.erase(std::unique(actors.begin(), actors.end(), [](const ActorSpan& a, const ActorSpan& b) { return a.base == b.base; }), actors.end());
     std::vector<std::pair<uint32_t, PrevPalette>> updates;
     for (size_t a = 0; a < actors.size(); ++a) {
-        const uint32_t base = actors[a].first;
-        const uint32_t end = (a + 1 < actors.size()) ? actors[a + 1].first : feed.boneCount;
+        const uint32_t base = actors[a].base;
+        const uint32_t end = (a + 1 < actors.size()) ? actors[a + 1].base : feed.boneCount;
         const float* cur = bones + static_cast<size_t>(base) * 16u;
         const size_t floats = static_cast<size_t>(end - base) * 16u;
-        const auto it = prevPalettes.find(actors[a].second);
-        if (it != prevPalettes.end() && it->second.frame + 1u == frame && it->second.bones.size() == floats) {
-            const float* p = it->second.bones.data();
-            const float dx = cur[12] - p[12], dy = cur[13] - p[13], dz = cur[14] - p[14];   // root translation (row3, Stuff space)
-            if (dx * dx + dy * dy + dz * dz < 64.0f * 64.0f) std::memcpy(tail + static_cast<size_t>(base) * 16u, p, floats * sizeof(float));
+        if (const auto it = prevPalettes.find(actors[a].key); it != prevPalettes.end()) {
+            const auto& [prevKey, prev] = *it;
+            if (prev.frame + 1u == frame && prev.bones.size() == floats) {
+                const float* p = prev.bones.data();
+                const float dx = cur[12] - p[12], dy = cur[13] - p[13], dz = cur[14] - p[14];   // root translation (row3, Stuff space)
+                if (dx * dx + dy * dy + dz * dz < 64.0f * 64.0f) std::memcpy(tail + static_cast<size_t>(base) * 16u, p, floats * sizeof(float));
+            }
         }
-        updates.emplace_back(actors[a].second, PrevPalette{std::vector<float>(cur, cur + floats), frame});
+        updates.emplace_back(actors[a].key, PrevPalette{std::vector<float>(cur, cur + floats), frame});
     }
     for (auto& [key, pal] : updates) prevPalettes[key] = std::move(pal);
     if ((frame & 63u) == 0u)
-        for (auto it = prevPalettes.begin(); it != prevPalettes.end();) it = (it->second.frame + 4u < frame) ? prevPalettes.erase(it) : std::next(it);
+        std::erase_if(prevPalettes, [frame](const auto& kv) { const auto& [key, pal] = kv; return pal.frame + 4u < frame; });
 }
