@@ -167,11 +167,12 @@ def sweep_stale_scratch(parents, max_age_s=7200, now=None):
     return removed
 
 
-CPU_SPLIT_DEFAULT ={"gate": 0x00FF, "lane": 0xFF00}   # Ryzen 7 5800X3D, 16 logical CPUs: merge gate on 0-7, lane_merge lane work on 8-15
+CPU_SPLIT_DEFAULT = {"game0": 0x0003, "game1": 0x000C, "compile": 0xFFF0}   # 5800X3D, 16 logical CPUs, SMT siblings adjacent: one core per lane game, the other 6 cores (12 CPUs) for compiles
 
 
 def cpu_masks():
-    """{"gate": mask, "lane": mask} from A:/Games/mc2-ops/CPU_SPLIT (lines `gate=0x00FF`, `lane=0xFF00`), else the defaults."""
+    """Masks from A:/Games/mc2-ops/CPU_SPLIT (lines game0=, game1=, compile=; the file is the one source of truth, scripts/smoke_lib/host_lease.py reads the same).
+    Derived modes: "lane" = compile (lane lint/build work never touches a game core); "gate" = every CPU (the rare PC gate fallback holds both game slots)."""
     masks = dict(CPU_SPLIT_DEFAULT)
     try:
         for line in Path("A:/Games/mc2-ops/CPU_SPLIT").read_text().splitlines():
@@ -180,11 +181,13 @@ def cpu_masks():
                 masks[k.strip()] = int(v.strip(), 0)
     except (OSError, ValueError):
         pass
+    masks["lane"] = masks["compile"]
+    masks["gate"] = masks["game0"] | masks["game1"] | masks["compile"]
     return masks
 
 
 def pin_cpus(mode):
-    """Pin this process to the `mode` half ("gate" or "lane"); children inherit the affinity. Returns the applied mask (0 = not applied)."""
+    """Pin this process to the `mode` mask ("lane"/"compile" = the 6 compile cores, "gate" = all); children inherit the affinity. Returns the applied mask (0 = not applied)."""
     mask = cpu_masks()[mode]
     if os.environ.get("MC2_NO_CPU_PIN") or (os.name != "nt" and not os.path.exists("A:/Games/mc2-ops/CPU_SPLIT")):   # the PC's 16-CPU split means nothing elsewhere; the box pins with taskset   # pytest: never pin the test runner
         return 0

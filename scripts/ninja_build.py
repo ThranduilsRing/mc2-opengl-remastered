@@ -117,10 +117,22 @@ def build_warning(root, tree):
         return ""
 
 
+def pin_compile_cores(root):
+    """Pin this process (and every compiler it spawns) to the CPU_SPLIT compile mask; no-op off the PC or under MC2_NO_CPU_PIN."""
+    sys.path.insert(0, os.path.join(root, "tools"))
+    try:
+        from lint_slots import pin_cpus
+        return pin_cpus("compile")
+    except Exception as exc:   # a pin failure must never fail a build
+        print(f"[ninja_build] compile-core pin skipped: {exc}", flush=True)
+        return 0
+
+
 def main():
     root =os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
     argv = sys.argv[1:]
     tree = os.environ.get("MC2_NINJA_TREE") or DEFAULT_TREE
+    pin_compile_cores(root)   # cl/link children inherit the affinity: a build never steals a game core (A:/Games/mc2-ops/CPU_SPLIT)
     if "--warm" in argv:
         argv.remove("--warm")
         return warm(root, argv, tree)

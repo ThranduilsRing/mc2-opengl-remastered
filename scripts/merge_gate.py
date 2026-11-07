@@ -78,7 +78,7 @@ def gate_env(name, device=None):
     if name in OFFLINE_STAGES:
         return {}
     from smoke_lib import host_lease
-    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": device or host_lease.gpu_split()["gate"]}
+    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": device or host_lease.lane_devices()[0]}
 
 
 def aux_device():
@@ -92,7 +92,7 @@ def aux_device():
                 return value.strip()
     except OSError:
         pass
-    return host_lease.gpu_split()["lane"]
+    return host_lease.lane_devices()[1]
 
 
 def window_reusable(window, tree, now=None):
@@ -1514,13 +1514,11 @@ def game_batch():
         yield {}
         return
     tag = f"merge-gate-{os.getpid()}"
-    with host_lease.gate_device_env():   # the exclusive hold covers the gate's GPU only
-        pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)
+    pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)   # the PC fallback takes both lane GPUs
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
-        with host_lease.gate_device_env():
-            host_lease.release_batch(tag)
+        host_lease.release_batch(tag)
         import psutil
         try:
             holder = psutil.Process(pid)

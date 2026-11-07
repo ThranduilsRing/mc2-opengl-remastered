@@ -20,10 +20,23 @@ def pool_size(pool_file: str | None = None) -> int:
         with open(path, encoding="utf-8") as fh:
             n = int(fh.read().split()[0])
         if n > 0:
-            return n
+            return min(n, compile_cpu_count())
     except (OSError, ValueError, IndexError):
         pass
-    return max(1, (os.cpu_count() or 8) - 4)
+    return min(max(1, (os.cpu_count() or 8) - 4), compile_cpu_count())
+
+
+def compile_cpu_count() -> int:
+    """Logical CPUs of the CPU_SPLIT compile mask (default 0xFFF0 = 12): the host-wide -j total never exceeds the cores compiles may use."""
+    try:
+        with open(os.path.join(OPS, "CPU_SPLIT"), encoding="utf-8") as fh:
+            for line in fh:
+                k, _, v = line.partition("=")
+                if k.strip() == "compile" and v.strip():
+                    return max(1, bin(int(v.strip(), 0)).count("1"))
+    except (OSError, ValueError):
+        pass
+    return 12
 
 
 def token_dir() -> str:
