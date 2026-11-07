@@ -2085,7 +2085,7 @@ def verdict_exe_refusal(src_root, exe_src, head):
 
 
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
-    if args.target == "game" and not args.allow_new_target and not args.allow_unverified_exe:
+    if getattr(args, "target", None) == "game" and not args.allow_new_target and not getattr(args, "allow_unverified_exe", False):
         why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root))
         if why:
             fail(f"v0.4 publish refused: {why}. Publish the exe the gate tested, or pass --allow-unverified-exe.")
