@@ -153,7 +153,7 @@
    "LG12a": 26,
    "LG12b": 83,
    "LG13": 0,
-   "LG14": 68,
+   "LG14": 65,
    "LG15": 0,
    "LG16": 2,
    "LG17": 36,
@@ -1322,7 +1322,7 @@
    "LG14": 1
   },
   "code/brain_archetype.h": {
-   "LG05": 3
+   "LG05": 1
   },
   "code/brain_execution_policy.cpp": {},
   "code/brain_execution_policy.h": {},
@@ -2147,9 +2147,13 @@
   "code/static_natural_skip_policy.h": {},
   "code/static_update_counters.h": {},
   "code/tacorder_terrain_queue.h": {},
+  "code/tacorder_wire.h": {},
   "code/tacordr.cpp": {},
   "code/tacordr.h": {
-   "LG14": 8
+   "LG14": 5
+  },
+  "code/tactic_table.h": {
+   "LG05": 0
   },
   "code/tactical_order_queue.cpp": {},
   "code/tactical_order_queue.h": {
@@ -3319,7 +3323,7 @@
    "LG20": 1
   }
  },
- "head": "9a5d5f731",
+ "head": "fea924530",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
