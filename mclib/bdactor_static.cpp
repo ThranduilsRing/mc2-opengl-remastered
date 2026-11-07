@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance static registry: eligibility, registerStatic, touch*, rebake gates, invalidate, destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include <atomic>
+#include <utility>
 extern uint32_t mc2LightSlotBakedHighWater();
 #include "bdactor_internal.h"
 #include "gos_static_prop_registry.h"
@@ -520,7 +521,8 @@ void BldgAppearance::touch()
 	// BLDG-TYPE-ANIM-GATE-FIX-1: count touch() calls for newly-eligible pop:
 	// type has animation data, instance is idle (bdAnimationState==-1), and
 	// currently registered (staticReg.registered). Nonzero delta proves fix works.
-	if (bldgTypeHasAnimations(appearType) && unitAnim().bdAnimationState == -1 && staticReg.registered)
+	// Const read: the non-const accessor would clear animSettled_ every frame.
+	if (bldgTypeHasAnimations(appearType) && std::as_const(*this).unitAnim().bdAnimationState == -1 && staticReg.registered)
 		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
 	// MC2_STATIC_UPDATE_SKIP defaults TRUE (terrobj.cpp); touch() is the
 	// DEFAULT path. update() runs only when the env var is explicitly cleared.
@@ -612,7 +614,7 @@ void BldgAppearance::touch()
 // s_animTypeIdleNowStatic.fetch_add is atomic — worker-safe.
 void BldgAppearance::touchWorkerPrepass()
 {
-	if (bldgTypeHasAnimations(appearType) && unitAnim().bdAnimationState == -1 && staticReg.registered)
+	if (bldgTypeHasAnimations(appearType) && std::as_const(*this).unitAnim().bdAnimationState == -1 && staticReg.registered)
 		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
 	if (bldgShape)
 		bldgShape->Touch();

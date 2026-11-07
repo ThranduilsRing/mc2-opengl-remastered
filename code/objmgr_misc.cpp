@@ -630,8 +630,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 							MC2_WORLD_UPDATE("appearance_terrain", walkObj);
 
-                            appearance->presentAnimation(*appearance->simulationAnimation());
-                            appearance->presentEffects();
+                            // Skips the copy and effects when the sim state is unchanged since the last present.
+                            appearance->presentSettledAnimation();
                             if (appearance->IsStaticNow() && !walkObj->getFlag(OBJECT_FLAG_FALLING))
                                 { appearance->touch(); ++walkTouch; }
                             else

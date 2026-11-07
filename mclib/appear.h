@@ -12,6 +12,7 @@
 // Include Files
 #ifndef DAPPEAR_H
 #include <algorithm>
+#include <atomic>
 #include"dappear.h"
 #endif
 
@@ -67,14 +68,29 @@ class Appearance
     float pendingFlash_[2] = {0.0f, 0.0f};
     DWORD pendingFlashColor_ = 0;
     bool hasPendingStatus_ = false, hasPendingFlash_ = false;
+    // True while renderAnim_ and appliedEffects_ already hold what presentAnimation(sim) + presentEffects() would leave.
+    // Every mutable path to either animation copy clears it (sim worker and presentation may both write: relaxed atomic).
+    mutable std::atomic<bool> animSettled_{false};
 public:
     // Generation of the type registry that issued this holder's appearance type (stamped by init(tree)); 0 = none.
     unsigned registryGeneration = 0;
     bool simulationOwned() const { return simulationOwned_; }
-    mc2::sim::UnitAnimState& unitAnim() { return simPresentationPass ? renderAnim_ : *simAnim_; }
+    mc2::sim::UnitAnimState& unitAnim() { animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
-    auto simulationAnimation() const { return simAnim_; }
-    void presentAnimation(const mc2::sim::UnitAnimState& value) { renderAnim_ = value; flushSimEvents(); }
+    auto simulationAnimation() const { animSettled_.store(false, std::memory_order_relaxed); return simAnim_; }
+    void presentAnimation(const mc2::sim::UnitAnimState& value) { animSettled_.store(false, std::memory_order_relaxed); renderAnim_ = value; flushSimEvents(); }
+    // Terrain walk: presentAnimation(sim) + presentEffects(), skipped when neither copy was touched since the last
+    // settled visit (a repeat would copy the same state and compare equal effects: a no-op). Clears again if the
+    // effects pass mutated renderAnim_ (blown arms) so the next visit re-presents exactly as before.
+    void presentSettledAnimation() {
+        if (animSettled_.load(std::memory_order_relaxed)) return;
+        animSettled_.store(true, std::memory_order_relaxed);
+        renderAnim_ = *simAnim_;
+        flushSimEvents();
+        presentEffects();
+        if (renderAnim_.leftArmOff != simAnim_->leftArmOff || renderAnim_.rightArmOff != simAnim_->rightArmOff)
+            animSettled_.store(false, std::memory_order_relaxed);
+    }
     // Kill and flash events the tick recorded (it must not touch draw state): consumed here, once per presentation visit.
     // Last status wins; the draw implementations are idempotent.
     void recordSimStatus(long oStatus) { pendingStatus_ = oStatus; hasPendingStatus_ = true; }
