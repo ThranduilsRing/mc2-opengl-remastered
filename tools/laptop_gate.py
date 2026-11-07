@@ -30,7 +30,8 @@ PC_REF = Path("E:/mc2-ref")
 REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
-PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest")
+# flip_evaluator: compare-captures' FLIP columns (no cp315 wheel: build the sdist under vcvars64 with CC=CXX=cl, not MinGW)
+PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest", "flip_evaluator")
 GIT_BASH = "C:/Program Files/Git/bin/bash.exe"
 JOBS = "A:/Games/mc2-ops/JOBS"   # kit_payload.build_importer reads it at this path (A: is subst'd on the laptop)
 SSH_OPTS = ["-i", KEY, "-o", "BatchMode=yes", "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30"]
@@ -228,9 +229,14 @@ def toolchain_problems(cn, e):
 
 def r_preflight():
     """Everything the stages need before a full run: Python packages, data roots, tools. Prints one line per problem."""
-    import importlib.util
+    import importlib
     import shutil
-    bad = [f"python package missing: {m}" for m in PACKAGES if not importlib.util.find_spec(m)]
+    bad = []
+    for m in PACKAGES:   # import, not find_spec: a source-built extension can be present and still fail to load its DLLs
+        try:
+            importlib.import_module(m)
+        except Exception as exc:  # noqa: BLE001
+            bad.append(f"python package missing or broken: {m} ({exc})")
     for path, why in ((REPO + "/.git", "laptop clone"), (INSTALL + "/.seeded", "seeded install"),
                       (G + "/drv/G/mc2-assets/out/scifi-kit/round2/stock/.seeded", "G: stock mirror (kit_art)"),
                       (GIT_BASH, "MC2_BASH")):
