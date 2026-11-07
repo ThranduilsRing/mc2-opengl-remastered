@@ -66,10 +66,12 @@ def test_offline_default_invocation_never_reaches_game_launch(monkeypatch, capsy
 
 
 def test_contracts_row_is_offline_and_launch_needs_explicit_exe():
+    # gate-slim (4a3747ded) deleted the contracts row; the check runs only at the merge gate with --fresh-smoke --exe.
+    # If a contracts row comes back it must stay offline.
     root = Path(__file__).resolve().parents[2]
-    row = next(l for l in (root / "scripts/check-contracts.sh").read_text(encoding="utf-8").splitlines()
-               if 'run_check "default_build_quiet"' in l)
-    assert "--fresh-smoke" not in row and "--exe" not in row
+    for row in (root / "scripts/check-contracts.sh").read_text(encoding="utf-8").splitlines():
+        if 'run_check "default_build_quiet"' in row:
+            assert "--fresh-smoke" not in row and "--exe" not in row
     with pytest.raises(RuntimeError):
         quiet.fresh_smoke_logs(None)
     body = Path(quiet.__file__).read_text(encoding="utf-8").split("def fresh_smoke_logs", 1)[1].split("def main", 1)[0]
