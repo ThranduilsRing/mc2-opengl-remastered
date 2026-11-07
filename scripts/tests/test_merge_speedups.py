@@ -580,6 +580,29 @@ def test_stage_published_forgets_manifest_rows_of_swapped_files(monkeypatch, tmp
     assert set(deploy_payload.read_manifest(str(inst))) == {"data/x.fit"}
 
 
+def test_stage_published_gives_capture_before_the_published_dlls(monkeypatch, tmp_path):
+    # W126: the lean seed lacked amd_fidelityfx_vk.dll, so capture-before ran without FSR AA.
+    import merge_gate as gate
+    import deploy_payload
+    from pathlib import Path
+    pub, inst = tmp_path / "pub", tmp_path / "inst"
+    (pub / "data" / "textures").mkdir(parents=True)
+    inst.mkdir()
+    (pub / "mc2.exe").write_bytes(b"x")
+    (pub / "amd_fidelityfx_vk.dll").write_bytes(b"fsr")
+    (pub / "SDL2.dll").write_bytes(b"pub")
+    (inst / "SDL2.dll").write_bytes(b"seed")
+
+    def fake_cook(target):
+        tex = Path(target) / "data" / "textures"
+        for n in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"]:
+            (tex / n).write_bytes(b"k")
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", fake_cook)
+    gate.stage_published(inst, pub)
+    assert (inst / "amd_fidelityfx_vk.dll").read_bytes() == b"fsr"
+    assert (inst / "SDL2.dll").read_bytes() == b"seed"
+
+
 def test_stage_published_fails_when_the_cook_leaves_sidecars_missing(monkeypatch, tmp_path):
     import merge_gate as gate
     import deploy_payload

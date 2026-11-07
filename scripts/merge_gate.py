@@ -917,6 +917,11 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
             shutil.copytree(published / name, install / name)
     if swap_payload:
         _forget_swapped_rows(install)
+        # The lean seed has no amd_fidelityfx_vk.dll (W126: capture-before ran without FSR AA, a false MAD of 1.2/0.6); give
+        # the old exe the runtime DLLs it shipped with. Only missing ones: the deploy row still owns every DLL it lists.
+        for src in published.glob("*.dll"):
+            if not (install / src.name).exists():
+                shutil.copy2(src, install / src.name)
     textures = install / "data" / "textures"
     textures.mkdir(parents=True, exist_ok=True)
     for src in (published / "data" / "textures").glob("*.burnin.*"):
