@@ -395,6 +395,9 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32(static_cast<int>(recs.size())), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
 	       mc2::fmt::as_i32(static_cast<int>(objs.size())), mc2::fmt::safe(ho), mc2::fmt::as_i32(static_cast<int>(abl.size())), mc2::fmt::safe(ha),
 	       mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u), mc2::fmt::as_u32(mc2_anim_rng::drawCount()));
+	// Flush the whole line out at once (the buffer was empty, so this is one write): left buffered it was written later in chunks cut at
+	// the stdio buffer size, where a stderr Vulkan/driver message landed inside it (W127: 'animrng=27' + ' to VK_FORMAT_R8').
+	fflush(stdout);
 
 #if MC2_SIM_TRACE
 	mc2_sim_trace::setTime(scenarioTimeNow);
