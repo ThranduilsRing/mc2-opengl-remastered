@@ -234,7 +234,7 @@ void RunMechPickSelfTest() {
     // and the slot leaked (would compound across init-time invocations).
     const uint64_t mechsAliveAfter = RenderWorld::getMechsAliveCount();
     if (mechsAliveAfter != mechsAliveBefore) {
-        mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=5 reason=live_count_drift before={:d} after={:d}\n", mc2::fmt::as_u64((unsigned long long)mechsAliveBefore), mc2::fmt::as_u64((unsigned long long)mechsAliveAfter));
+        mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=5 reason=live_count_drift before={:d} after={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(mechsAliveBefore)), mc2::fmt::as_u64(static_cast<unsigned long long>(mechsAliveAfter)));
         return; // do not emit PASS
     }
 

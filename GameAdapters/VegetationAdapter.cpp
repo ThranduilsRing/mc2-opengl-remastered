@@ -380,8 +380,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 const float sy = originY - stepY * (sj + 0.5f);
                 const glm::vec3 sp(sx, sy, 0.0f);
                 const float e = land->getTerrainElevation(sp);
-                if (e < elevMin) elevMin = e;
-                if (e > elevMax) elevMax = e;
+                elevMin = std::min(elevMin, e);
+                elevMax = std::max(elevMax, e);
             }
         }
     }
