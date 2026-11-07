@@ -122,14 +122,14 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     plci.pSetLayouts = &dslHandle;
     if (!create(layout_, device_, [&](auto* h) { return vkCreatePipelineLayout(device_, &plci, nullptr, h); })) { mc2::fmt::print_err("[VK_SHADOW_MECH] pipeline layout failed.\n"); return false; }
 
-    // The mech vertex: position at 0, the four bone indices at 32, their weights at 36 (the rest of the stride is not read here).
+    // The mech vertex: position at 0, the four bone indices at 24, their weights at 28 (the rest of the stride is not read here).
     VkVertexInputBindingDescription vib{};
     vib.binding = 0; vib.stride = mc2_mech_vertex_stride();   // the batcher owns the vertex layout
     vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription via[3]{};
     via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
-    via[1].location = 3; via[1].binding = 0; via[1].format = VK_FORMAT_R8G8B8A8_UINT;    via[1].offset = 32;
-    via[2].location = 4; via[2].binding = 0; via[2].format = VK_FORMAT_R8G8B8A8_UNORM;   via[2].offset = 36;
+    via[1].location = 3; via[1].binding = 0; via[1].format = VK_FORMAT_R8G8B8A8_UINT;    via[1].offset = 24;
+    via[2].location = 4; via[2].binding = 0; via[2].format = VK_FORMAT_R8G8B8A8_UNORM;   via[2].offset = 28;
     if (!createDepthCasterPipeline(pipeline_, device_, pass, layout_.get(), vert_.get(), frag_.get(), vib, via)) {
         mc2::fmt::print_err("[VK_SHADOW_MECH] pipeline creation failed.\n");
         return false;

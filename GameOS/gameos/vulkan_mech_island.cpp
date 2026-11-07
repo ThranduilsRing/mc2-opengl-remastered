@@ -164,7 +164,7 @@ struct MechIsland : mc2vk::IslandState {
     // direct-chain-native only; the former colorView/normalView/depthView are gone.
 
     // Copy-once mech geometry (VK-owned copies of the shared mech VBO/IBO).
-    uint32_t vertexStride = 48;
+    uint32_t vertexStride = 40;
     bool     geomUploaded = false;
     uint64_t vboBytes = 0;   // size of the bind-pose VBO copy (the skin pass reads it as a storage buffer)
     mc2vk::MechSkinPass skin;   // once-per-frame compute pre-skin; unusable => every pass blends bones inline as before
@@ -605,7 +605,7 @@ bool init_island(MechIsland* s, int w, int h) {
         if (!ensure_dummy_scheme(s)) { setFallback("dummy_scheme_failed"); return false; }
     }
 
-    // Pipeline: mech 48B vertex stream, instanced, GEQUAL reverse-Z test+write, cull NONE,
+    // Pipeline: mech 40B vertex stream, instanced, GEQUAL reverse-Z test+write, cull NONE,
     // 2 GBuffer outputs, no blend (opaque in-place overwrite).
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_tier1.vert.spv"));
@@ -625,20 +625,20 @@ bool init_island(MechIsland* s, int w, int h) {
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) { vlog("playout failed."); return false; }
 
-        // Mirror GpuMechVertex (48B): loc0 pos vec3@0, loc1 normal vec3@12, loc2 uv vec2@24,
-        // loc3 boneIndices uvec4 (u8x4)@32, loc4 boneWeights vec4 (u8x4 normalized)@36,
-        // loc5 tangentOct (s16x2 norm)@40, loc6 aRGBLight uint@44.
+        // Mirror GpuMechVertex (40B): loc0 pos vec3@0, loc1 normalOct (s16x2 norm, octahedral)@12, loc2 uv vec2@16,
+        // loc3 boneIndices uvec4 (u8x4)@24, loc4 boneWeights vec4 (u8x4 normalized)@28,
+        // loc5 tangentOct (s16x2 norm)@32, loc6 aRGBLight uint@36.
         VkVertexInputBindingDescription vib{};
         vib.binding = 0; vib.stride = mc2_mech_vertex_stride();  // pipeline is baked before geometry upload (s->vertexStride may be 0)
         vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription via[7]{};
         via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
-        via[1].location = 1; via[1].binding = 0; via[1].format = VK_FORMAT_R32G32B32_SFLOAT; via[1].offset = 12;
-        via[2].location = 2; via[2].binding = 0; via[2].format = VK_FORMAT_R32G32_SFLOAT;    via[2].offset = 24;
-        via[3].location = 3; via[3].binding = 0; via[3].format = VK_FORMAT_R8G8B8A8_UINT;    via[3].offset = 32; // uvec4
-        via[4].location = 4; via[4].binding = 0; via[4].format = VK_FORMAT_R8G8B8A8_UNORM;   via[4].offset = 36; // vec4 [0,1]
-        via[5].location = 5; via[5].binding = 0; via[5].format = VK_FORMAT_R16G16_SNORM;     via[5].offset = 40; // vec2 [-1,1]
-        via[6].location = 6; via[6].binding = 0; via[6].format = VK_FORMAT_R32_UINT;         via[6].offset = 44;
+        via[1].location = 1; via[1].binding = 0; via[1].format = VK_FORMAT_R16G16_SNORM;     via[1].offset = 12;
+        via[2].location = 2; via[2].binding = 0; via[2].format = VK_FORMAT_R32G32_SFLOAT;    via[2].offset = 16;
+        via[3].location = 3; via[3].binding = 0; via[3].format = VK_FORMAT_R8G8B8A8_UINT;    via[3].offset = 24; // uvec4
+        via[4].location = 4; via[4].binding = 0; via[4].format = VK_FORMAT_R8G8B8A8_UNORM;   via[4].offset = 28; // vec4 [0,1]
+        via[5].location = 5; via[5].binding = 0; via[5].format = VK_FORMAT_R16G16_SNORM;     via[5].offset = 32; // vec2 [-1,1]
+        via[6].location = 6; via[6].binding = 0; via[6].format = VK_FORMAT_R32_UINT;         via[6].offset = 36;
         VkPipelineVertexInputStateCreateInfo vin{};
         vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstddef>    // offsetof
+#include <cmath>
 #include <vector>
 #include <unordered_map>
 #include "stuff/stuff.hpp"
@@ -10,25 +11,51 @@
 #include "msl.h"
 #include "mech3d.h"
 
-// CPU-side vertex layout — packed 48 bytes for VBO storage.
+// CPU-side vertex layout — packed 40 bytes for VBO storage.
 // CHANGING THIS STRUCT REQUIRES CHANGING mech.vert ATTRIBUTE LAYOUT IN LOCKSTEP.
 struct GpuMechVertex {
     float    position[3];    // 12B — a_position  (loc 0, GL_FLOAT)
-    float    normal[3];      // 12B — a_normal     (loc 1, GL_FLOAT)
+    int16_t  normalOct[2];   //  4B: a_normalOct (loc 1, R16G16_SNORM octahedral unit normal; was 12B float x3)
     float    uv[2];          //  8B — a_uv         (loc 2, GL_FLOAT)
     uint8_t  boneIndices[4]; //  4B — a_boneIndices (loc 3, GL_UNSIGNED_BYTE, IPointer -> uvec4)
     uint8_t  boneWeights[4]; //  4B — a_boneWeights (loc 4, GL_UNSIGNED_BYTE, GL_TRUE -> vec4 [0,1])
     int16_t  tangentOct[2];  //  4B — a_tangentOct  (loc 5, GL_SHORT, GL_TRUE -> vec2 [-1,1])
     uint32_t aRGBLight;      //  4B — a_aRGBLight   (loc 6, GL_UNSIGNED_INT, IPointer -> uint)
-};                           // 48B total
-static_assert(sizeof(GpuMechVertex) == 48, "GpuMechVertex must be 48 bytes");
+};                           // 40B total (positions stay 32-bit float: mech-local seams need full precision)
+static_assert(sizeof(GpuMechVertex) == 40, "GpuMechVertex must be 40 bytes");
 static_assert(offsetof(GpuMechVertex, position)    ==  0, "position offset");
-static_assert(offsetof(GpuMechVertex, normal)      == 12, "normal offset");
-static_assert(offsetof(GpuMechVertex, uv)          == 24, "uv offset");
-static_assert(offsetof(GpuMechVertex, boneIndices) == 32, "boneIndices offset");
-static_assert(offsetof(GpuMechVertex, boneWeights) == 36, "boneWeights offset");
-static_assert(offsetof(GpuMechVertex, tangentOct)  == 40, "tangentOct offset");
-static_assert(offsetof(GpuMechVertex, aRGBLight)   == 44, "aRGBLight offset");
+static_assert(offsetof(GpuMechVertex, normalOct)   == 12, "normalOct offset");
+static_assert(offsetof(GpuMechVertex, uv)          == 16, "uv offset");
+static_assert(offsetof(GpuMechVertex, boneIndices) == 24, "boneIndices offset");
+static_assert(offsetof(GpuMechVertex, boneWeights) == 28, "boneWeights offset");
+static_assert(offsetof(GpuMechVertex, tangentOct)  == 32, "tangentOct offset");
+static_assert(offsetof(GpuMechVertex, aRGBLight)   == 36, "aRGBLight offset");
+
+// Octahedral snorm16 normal pack/unpack: the same fold mech_skin.comp and mech_tier1.vert use.
+inline void mechPackNormal(const float n[3], int16_t out[2]) {
+    const float l1 = std::fabs(n[0]) + std::fabs(n[1]) + std::fabs(n[2]);
+    const float inv = (l1 > 1e-20f) ? 1.0f / l1 : 0.0f;
+    float x = n[0] * inv, y = n[1] * inv;
+    if (n[2] < 0.0f) {
+        const float ox = (1.0f - std::fabs(y)) * (x >= 0.0f ? 1.0f : -1.0f);
+        const float oy = (1.0f - std::fabs(x)) * (y >= 0.0f ? 1.0f : -1.0f);
+        x = ox; y = oy;
+    }
+    auto q = [](float v) { v = v < -1.0f ? -1.0f : (v > 1.0f ? 1.0f : v); return static_cast<int16_t>(std::lround(v * 32767.0f)); };
+    out[0] = q(x); out[1] = q(y);
+}
+inline void mechUnpackNormal(const int16_t in[2], float n[3]) {
+    float x = std::fmax(in[0] / 32767.0f, -1.0f), y = std::fmax(in[1] / 32767.0f, -1.0f);
+    const float z = 1.0f - std::fabs(x) - std::fabs(y);
+    if (z < 0.0f) {
+        const float ox = (1.0f - std::fabs(y)) * (x >= 0.0f ? 1.0f : -1.0f);
+        const float oy = (1.0f - std::fabs(x)) * (y >= 0.0f ? 1.0f : -1.0f);
+        x = ox; y = oy;
+    }
+    const float l = std::sqrt(x * x + y * y + z * z);
+    const float inv = (l > 1e-20f) ? 1.0f / l : 0.0f;
+    n[0] = x * inv; n[1] = y * inv; n[2] = z * inv;
+}
 
 // Per-instance GPU record (64 B, std430). SINGLE SOURCE OF TRUTH is
 // RenderCore/gpu_abi/GpuMechInstance.h; its generated asserts and the shaders

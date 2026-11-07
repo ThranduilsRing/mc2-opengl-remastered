@@ -73,7 +73,7 @@ def test_current_tree_has_no_errors():
 def test_resolver_accessor_and_sizeof(env):
     _, sym = env
     assert sym.eval("mc2_static_prop_vertex_stride()", "x") == 40
-    assert sym.eval("mc2_mech_vertex_stride()", "x") == 48
+    assert sym.eval("mc2_mech_vertex_stride()", "x") == 40
     assert sym.eval("sizeof(float) * 3", "x") == 12
 
 
