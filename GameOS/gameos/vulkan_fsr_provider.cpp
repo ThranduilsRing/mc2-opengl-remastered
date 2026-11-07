@@ -4,6 +4,7 @@
 #include "vk_image_resource.h"
 #include "vk_gpu_profile.h"
 #include "../../RenderCore/TemporalInputs.h"
+#include "../../RenderCore/UpscalerProvider.h"
 #include <ffx_api/ffx_api.h>
 #include <ffx_api/ffx_upscale.h>
 #include <ffx_api/vk/ffx_api_vk.h>
@@ -215,6 +216,23 @@ bool fsrProviderAvailable(VulkanContext& ctx) {
         return ok;
     }();
     return available;
+}
+
+namespace {
+class FsrUpscaler final : public RenderCore::IUpscalerProvider {
+public:
+    std::string_view name() const override { return "fsr"; }
+    bool available() const override { return fsrProviderAvailable(getOrCreateEngineVulkanContext()); }
+    float mipLodBias(float renderScale) const override { return RenderCore::temporal::mipBias(renderScale, true); }
+};
+}  // namespace
+
+void registerBuiltinUpscalers() {
+    static bool done = false;
+    if (done) return;
+    done = true;
+    static const FsrUpscaler fsr;
+    RenderCore::registerUpscaler(&fsr);
 }
 
 VkImageView FsrProvider::outputView() const { return impl_ ? impl_->output.view.get() : VK_NULL_HANDLE; }

@@ -32,4 +32,7 @@ private:
 // a loadable DLL with its entry points and a probe context the SDK creates, checked once (logs one
 // [VK_PRESENT] fsr_probe line); false for good after any provider create or dispatch failure.
 bool fsrProviderAvailable(VulkanContext& ctx);
+// Registers the built-in upscaler providers (FSR first) with RenderCore::registerUpscaler; idempotent. A new vendor adds one
+// provider file and one line here.
+void registerBuiltinUpscalers();
 }

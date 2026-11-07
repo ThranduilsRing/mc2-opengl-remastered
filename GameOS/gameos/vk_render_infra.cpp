@@ -7,6 +7,7 @@
 #include "engine_present_vk.h"
 #include "vk_owned.h"
 #include "../../RenderCore/TemporalInputs.h"
+#include "../../RenderCore/UpscalerProvider.h"
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vk_texture_residency.h"
 #include "imgui.h"
@@ -53,13 +54,16 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 namespace mc2vk::infra {
 namespace {
 float effectiveMipBias(bool& provider) {
-    // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite, and
-    // the provider available: fsrProviderAvailable probes the SDK itself, so it holds before present first prepares FSR, and
-    // goes false once a real context or dispatch fails); the spatial-AA fallback keeps log2(renderScale).
+    // Provider bias only when a temporal resolve will run (present's condition: AA on, no render-scale composite, and an
+    // available provider; each provider probes its own SDK, so this holds before present first prepares it and goes
+    // false once a real context or dispatch fails). The provider reports its own bias for the ratio; native keeps
+    // log2(renderScale). Vendor-neutral: only the IUpscalerProvider seam is named here.
+    mc2vk::registerBuiltinUpscalers();
     const float scale = static_cast<float>(mc2::gate::get<"MC2_RENDER_SCALE">());
-    provider = scale == 1.0f && mc2::options::current().spatialAA != 0 &&
-               mc2vk::fsrProviderAvailable(mc2vk::getOrCreateEngineVulkanContext());
-    return RenderCore::temporal::mipBias(scale, provider);
+    const RenderCore::IUpscalerProvider* up =
+        (scale == 1.0f && mc2::options::current().spatialAA != 0) ? RenderCore::effectiveUpscaler() : nullptr;
+    provider = up != nullptr;
+    return up ? up->mipLodBias(scale) : RenderCore::temporal::mipBias(scale, false);
 }
 }  // namespace
 void materialSampler(VkSamplerCreateInfo& info) { bool provider; info.mipLodBias = effectiveMipBias(provider); }
@@ -71,7 +75,8 @@ void materialBiasTick() {
     bool provider;
     const float bias = effectiveMipBias(provider);
     if (state.observe(bias) && mc2_diag::tagRequested("VK_PRESENT"))
-        mc2::fmt::print_err("[VK_PRESENT] material_mip_bias={:.2f} fsr_provider={}\n", bias, provider ? 1 : 0);
+        mc2::fmt::print_err("[VK_PRESENT] material_mip_bias={:.2f} upscaler={}\n", bias,
+                             provider ? RenderCore::effectiveUpscaler()->name() : std::string_view("native"));
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {
