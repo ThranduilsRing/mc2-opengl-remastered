@@ -681,13 +681,13 @@ long MechWarrior::calcWeaponsStatus (GameObjectPtr target, int* weaponList, glm:
 void MechWarrior::printWeaponsStatus (char* s) {
 
 	if (weaponsStatusResult == WEAPONS_STATUS_OUT_OF_RANGE)
-		sprintf(s, "Out of Range");
+		*std::format_to(s, "Out of Range") = '\0';
 	else if (getCurrentTarget() && !getVehicle()->lineOfSight(getCurrentTarget()))
-		sprintf(s, "No Line-of-sight");
+		*std::format_to(s, "No Line-of-sight") = '\0';
 	else if (weaponsStatusResult == WEAPONS_STATUS_CANNOT_FIRE)
-		sprintf(s, "Cannot Fire");
+		*std::format_to(s, "Cannot Fire") = '\0';
 	else if (weaponsStatusResult == WEAPONS_STATUS_NO_TARGET)
-		sprintf(s, "No Target");
+		*std::format_to(s, "No Target") = '\0';
 	else {
 		long tally[6] = {0, 0, 0, 0, 0, 0};
 		long numWithChance = 0;
@@ -697,13 +697,13 @@ void MechWarrior::printWeaponsStatus (char* s) {
 			else if (weaponsStatus[curWeapon] > 0)
 				numWithChance++;
 		}
-		sprintf(s, "#=%02d(%02d),RD=%02d,RN=%02d,LK=%02d,CH=%02d,AM=%02d",
-			getVehicle()->numWeapons,
-			numWithChance,
-			tally[5],
-			tally[3],
-			tally[2],
-			tally[1],
-			tally[4]);
+		*std::format_to(s, "#={:02}({:02}),RD={:02},RN={:02},LK={:02},CH={:02},AM={:02}",
+			mc2::fmt::as_i32(getVehicle()->numWeapons),
+			mc2::fmt::as_i32(numWithChance),
+			mc2::fmt::as_i32(tally[5]),
+			mc2::fmt::as_i32(tally[3]),
+			mc2::fmt::as_i32(tally[2]),
+			mc2::fmt::as_i32(tally[1]),
+			mc2::fmt::as_i32(tally[4])) = '\0';
 	}
 }

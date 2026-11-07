@@ -177,10 +177,10 @@ void GameObject::destroy_instr (mc2::czstring reason, mc2::czstring file, int li
 	if (snap_exists_was == 0) {
 		if (s_destroyTrace) {
 			char _cbbuf[512];
-			snprintf(_cbbuf, sizeof(_cbbuf),
-				"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=0 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
-				g_mc2FrameCounter.load(std::memory_order_relaxed), static_cast<void*>(this), getObjectClassName(snap_kind), reason,
-				file, line, snap_in_view, snap_can_be_seen, snap_block_active,
+			mc2::fmt::to_buf(_cbbuf,
+				"[DESTROY v1] frame={} obj={:016X} kind={} reason={} file={} line={} exists_was=0 in_view={} can_be_seen={} block_active={} frames_since_active={} last_update_ret={}",
+				mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)), mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::safe(getObjectClassName(snap_kind)), mc2::fmt::safe(reason),
+				mc2::fmt::safe(file), mc2::fmt::as_i32(line), snap_in_view, snap_can_be_seen, snap_block_active,
 				snap_frames_inactive, static_cast<int>(snap_last_update_ret));
 			puts(_cbbuf);
 			crashbundle_append(_cbbuf);
@@ -195,10 +195,10 @@ void GameObject::destroy_instr (mc2::czstring reason, mc2::czstring file, int li
 	// 4. Env-gated log line.
 	if (s_destroyTrace) {
 		char _cbbuf[512];
-		snprintf(_cbbuf, sizeof(_cbbuf),
-			"[DESTROY v1] frame=%u obj=%p kind=%s reason=%s file=%s line=%d exists_was=1 in_view=%d can_be_seen=%d block_active=%d frames_since_active=%d last_update_ret=%d",
-			g_mc2FrameCounter.load(std::memory_order_relaxed), static_cast<void*>(this), getObjectClassName(snap_kind), reason,
-			file, line, snap_in_view, snap_can_be_seen, snap_block_active,
+		mc2::fmt::to_buf(_cbbuf,
+			"[DESTROY v1] frame={} obj={:016X} kind={} reason={} file={} line={} exists_was=1 in_view={} can_be_seen={} block_active={} frames_since_active={} last_update_ret={}",
+			mc2::fmt::as_u32(g_mc2FrameCounter.load(std::memory_order_relaxed)), mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::safe(getObjectClassName(snap_kind)), mc2::fmt::safe(reason),
+			mc2::fmt::safe(file), mc2::fmt::as_i32(line), snap_in_view, snap_can_be_seen, snap_block_active,
 			snap_frames_inactive, static_cast<int>(snap_last_update_ret));
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);

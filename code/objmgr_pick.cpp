@@ -725,12 +725,12 @@ std::string mc2PickGridReport(int cols, int rows) {
         const long x = Environment.screenWidth * (2 * c + 1) / (2 * cols);
         const long y = Environment.screenHeight * (2 * r + 1) / (2 * rows);
         auto* obj = ObjectManager->findObjectByMouse(x, y);
-        if (!obj) { std::snprintf(line, sizeof line, "  (%ld,%ld) -> none\n", x, y); out += line; continue; }
+        if (!obj) { mc2::fmt::to_buf(line, "  ({},{}) -> none\n", mc2::fmt::as_long(x), mc2::fmt::as_long(y)); out += line; continue; }
         PickRect rect; const bool ok = gameplayPickRect(obj, rect);
         Stuff::Vector4D sp; glm::vec3 pos = obj->getPosition(); eye->projectForScreenXY(pos, sp);
         auto* app = obj->getAppearance();
-        std::snprintf(line, sizeof line, "  (%ld,%ld) -> id=%d cls=%d type=%s pos=(%.0f,%.0f) screen=(%.0f,%.0f w=%.2f) rect=%s(%.0f,%.0f,%.0f,%.0f) winVis=%d turn=%d nameId=%ld\n",
-            x, y, static_cast<int>(obj->getPartId()), static_cast<int>(obj->getObjectClass()), (app && app->getAppearanceType()) ? app->getAppearanceType()->name : "?",
+        mc2::fmt::to_buf(line, "  ({},{}) -> id={} cls={} type={} pos=({:.0f},{:.0f}) screen=({:.0f},{:.0f} w={:.2f}) rect={}({:.0f},{:.0f},{:.0f},{:.0f}) winVis={} turn={} nameId={}\n",
+            mc2::fmt::as_long(x), mc2::fmt::as_long(y), static_cast<int>(obj->getPartId()), static_cast<int>(obj->getObjectClass()), mc2::fmt::safe((app && app->getAppearanceType()) ? static_cast<const char*>(app->getAppearanceType()->name) : "?"),
             pos.x, pos.y, sp.x, sp.y, sp.w, ok ? "" : "BAD", rect.left, rect.top, rect.right, rect.bottom,
             static_cast<int>(obj->getWindowsVisible()), static_cast<int>(::turn), app ? static_cast<long>(app->getObjectNameId()) : -1L);
         out += line;

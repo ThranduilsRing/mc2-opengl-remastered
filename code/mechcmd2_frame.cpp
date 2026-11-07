@@ -147,7 +147,7 @@ void __stdcall UpdateRenderers()
 						const float expX = ( bx + userInput->normMouseX() * bw ) * kx;
 						const float expY = ( by + userInput->normMouseY() * bh ) * ky;
 						char js[384];
-						std::snprintf( js, sizeof js, "{\"logical\":\"%dx%d\",\"logicalPos\":[%.1f,%.1f],\"quad0\":[%.1f,%.1f],\"mapped\":[%.1f,%.1f],\"expect\":[%.1f,%.1f],\"display\":\"%.0fx%.0f\",\"scale\":%.3f,\"ok\":%d}",
+						mc2::fmt::to_buf( js, "{{\"logical\":\"{}x{}\",\"logicalPos\":[{:.1f},{:.1f}],\"quad0\":[{:.1f},{:.1f}],\"mapped\":[{:.1f},{:.1f}],\"expect\":[{:.1f},{:.1f}],\"display\":\"{:.0f}x{:.0f}\",\"scale\":{:.3f},\"ok\":{}}}",
 							static_cast<int>( userInput->logicalW() ), static_cast<int>( userInput->logicalH() ),
 							userInput->realMouseX(), userInput->realMouseY(), p0.x, p0.y, mapX, mapY, expX, expY,
 							disp.x, disp.y, m.sx,

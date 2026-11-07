@@ -109,7 +109,7 @@ void MPHostGame::init()
 		if ( NO_ERR != PNfile.open( tmpPath ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (char*)tmpPath );
+			mc2::fmt::to_buf( error, "couldn't open file {}", mc2::fmt::safe((char*)tmpPath) );
 			Assert( 0, 0, error );
 			return;
 		}
@@ -122,7 +122,7 @@ void MPHostGame::init()
 			pTmp2 = new aStyle5TextListItem;
 			pTmp2->init(&PNfile, "Text0");
 			char txt[32];
-			sprintf( txt, "%ld", i );
+			mc2::fmt::to_buf( txt, "{}", mc2::fmt::as_long(i) );
 			pTmp2->setText( txt );
 			pTmp2->sizeToText();
 			pTmp2->resize( numPlayersDropList.width() - numPlayersDropList.ListBox().getScrollBarWidth() + 5, 

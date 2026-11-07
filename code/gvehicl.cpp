@@ -7,6 +7,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
+#include "mc2fmt.h"
 #include "world/visibility_input.h"
 
 
@@ -403,7 +404,7 @@ bool GroundVehicleType::handleDestruction (GameObjectPtr collidee, GameObjectPtr
 		// What heroic music should be played?
 		if (CombatLog) {
 			char s[1024];
-			sprintf(s, "[%.2f] vehicle.destroyed: (%05d)%s", scenarioTime, vehicle->getPartId(), vehicle->getName());
+			mc2::fmt::to_buf(s, "[{:.2f}] vehicle.destroyed: ({:05}){}", scenarioTime, mc2::fmt::as_i32(vehicle->getPartId()), mc2::fmt::safe(vehicle->getName()));
 			CombatLog->write(s);
 			CombatLog->write(" ");
 		}
@@ -804,7 +805,7 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 	while (curItem < numOther) 
 	{
 		char itemString[128];
-		sprintf(itemString, "Item:%d", curItem);
+		mc2::fmt::to_buf(itemString, "Item:{}", mc2::fmt::as_i32(curItem));
 		result = vehicleFile->seekBlock(itemString);
 		if (result != NO_ERR)
 			return(result);
@@ -856,7 +857,7 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 	while (curItem < (numOther + numWeapons)) 
 	{
 		char itemString[128];
-		sprintf(itemString, "Item:%d", curItem);
+		mc2::fmt::to_buf(itemString, "Item:{}", mc2::fmt::as_i32(curItem));
 		result = vehicleFile->seekBlock(itemString);
 		if (result != NO_ERR)
 			return(result);
@@ -884,7 +885,7 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 	while (curItem < (numOther + numWeapons + numAmmos)) 
 	{
 		char itemString[128];
-		sprintf(itemString, "Item:%d", curItem);
+		mc2::fmt::to_buf(itemString, "Item:{}", mc2::fmt::as_i32(curItem));
 		result = vehicleFile->seekBlock(itemString);
 		if (result != NO_ERR)
 			return(result);
