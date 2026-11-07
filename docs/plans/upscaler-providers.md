@@ -17,9 +17,10 @@ Background: `docs/plans/2026-11-06-temporal-aa.md` and memory `process/decision-
 - The registry (`upscalerRegistry()`) holds up to `kMaxUpscalers` providers in fallback order.
   `effectiveUpscaler(preferred)` returns the preferred provider when it is available, else the first available
   one, else nullptr (native path, mip bias 0).
-- Present (`engine_present_vk.cpp`) only calls the interface. It fills the frame, calls `prepare` then
-  `dispatch`, samples `output()`, and owns the temporal-consumer registration (scene jitter) and
-  `providerPhases()`. `mipLodBias` feeds the material sampler bias (`vk_render_infra.cpp`).
+- Present (`engine_present_vk.cpp`) only calls the interface, through the glue in `vk_upscalers.cpp`:
+  `selectUpscaler` fills the frame from engine images, calls `prepare`, and moves the temporal-consumer
+  registration (scene jitter) and `providerPhases()` with the active provider; `dispatchUpscaler` adds the
+  command buffer and motion-vector inputs and calls `dispatch`; present then samples `output()`. `mipLodBias` feeds the material sampler bias (`vk_render_infra.cpp`).
 
 ## Adding DLSS or XeSS: one file plus one registration line
 

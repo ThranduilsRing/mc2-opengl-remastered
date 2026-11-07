@@ -11110,7 +11110,7 @@
    "stream": "stderr",
    "keys": [
     "material_mip_bias",
-    "fsr_provider"
+    "upscaler"
    ],
    "count": 1
   },
