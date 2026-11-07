@@ -34,7 +34,7 @@ namespace MidLevelRenderer {
 	// attached to the hierarchy
 
 	class MLRShape :
-		public Stuff::Plug
+		public Stuff::RegisteredClass
 	{
 		friend class MLRClipper;
 
