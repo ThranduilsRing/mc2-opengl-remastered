@@ -101,31 +101,10 @@ bool TextureResidency::init() {
     capacity_ = std::min({4096u, l.maxPerStageDescriptorSamplers, l.maxPerStageDescriptorSampledImages,
                          l.maxDescriptorSetSamplers, l.maxDescriptorSetSampledImages, l.maxPerStageResources});
     if (capacity_ < 2) return false;
+    // The slot table is residency admission accounting only. No pipeline binds a bindless texture set (every island writes its own
+    // per-draw descriptors from view()), so no VkDescriptorSet mirrors the table: the per-flight 4096-entry rewrite it used to get on
+    // every residency revision is gone. A future bindless consumer creates one set with UPDATE_AFTER_BIND | PARTIALLY_BOUND.
     table_ = std::make_unique<RenderCore::TextureDescriptorTable>(capacity_);
-    VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    sci.magFilter = sci.minFilter = VK_FILTER_LINEAR; sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT; sci.maxLod = VK_LOD_CLAMP_NONE;
-    if (!mc2vk::create(sampler_, ctx_.device(), [&](VkSampler* s) { return vkCreateSampler(ctx_.device(), &sci, nullptr, s); })) return false;
-    VkDescriptorSetLayoutBinding binding{};
-    binding.binding = 0; binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    binding.descriptorCount = capacity_; binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    // vk-present-instance 9 (descriptor-layout code only): PARTIALLY_BOUND (descriptorBindingPartiallyBound is a Required, enabled profile feature), so slots
-    // no shader reads need not hold a valid descriptor. UPDATE_AFTER_BIND + the one-set collapse are NOT done: that feature is not in the device profile and a
-    // single shared set would be rewritten while an earlier frame still reads it (table entries change on residency revisions); see the lane report.
-    const VkDescriptorBindingFlags bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-    VkDescriptorSetLayoutBindingFlagsCreateInfo bfi{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
-    bfi.bindingCount=1; bfi.pBindingFlags=&bindingFlags;
-    VkDescriptorSetLayoutCreateInfo li{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO}; li.pNext=&bfi; li.bindingCount=1; li.pBindings=&binding;
-    if (!mc2vk::create(layout_, ctx_.device(), [&](VkDescriptorSetLayout* s) { return vkCreateDescriptorSetLayout(ctx_.device(), &li, nullptr, s); })) return false;
-    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, capacity_ * kMaxFramesInFlight};
-    VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO}; pi.maxSets=kMaxFramesInFlight; pi.poolSizeCount=1; pi.pPoolSizes=&size;
-    if (!mc2vk::create(pool_, ctx_.device(), [&](VkDescriptorPool* p) { return vkCreateDescriptorPool(ctx_.device(), &pi, nullptr, p); })) return false;
-    VkDescriptorSetLayout layouts[kMaxFramesInFlight]; for (auto& layout : layouts) layout = layout_.get();
-    VkDescriptorSet sets[kMaxFramesInFlight]{};
-    VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    ai.descriptorPool=pool_.get(); ai.descriptorSetCount=kMaxFramesInFlight; ai.pSetLayouts=layouts;
-    if (MC2_VK_ALLOC_SETS(ctx_.device(),&ai,sets)!=VK_SUCCESS) return false;
-    for (uint32_t i=0;i<kMaxFramesInFlight;++i) flights_[i].set=sets[i];
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
     // diagnostic opt-in; players see a blank image until the upload publishes.
@@ -139,7 +118,7 @@ bool TextureResidency::init() {
     if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
     if (mc2_diag::tagRequested("VK_TEXTURE_SERVICE"))
-        MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} flights={} placeholder=0 legacy_boundary=P9", capacity_, flights_.size());
+        MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} placeholder=0 legacy_boundary=P9", capacity_);
     return true;
 }
 
@@ -375,8 +354,6 @@ void TextureResidency::finishLoading() {
         if (!ctx_.wait(uploading_.back().ticket,5000000000ull,"mission_texture_uploads")) break;
         ++batches;
     }
-    // Keep the progress UI's descriptor snapshot intact. Normal frame-boundary
-    // publication picks up the new table revision after its consumers retire.
     const auto readyCount=std::count_if(residents_.begin(),residents_.end(),[](const auto& entry) { const auto& [handle,resident]=entry; return static_cast<bool>(resident.image); });
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_TEXTURES v1] ready=%zu batches=%u blocked=%zu ms=%.3f\n",
         static_cast<size_t>(readyCount),batches,pending_.size()+uploading_.size(),
@@ -446,31 +423,6 @@ std::shared_ptr<const void> TextureResidency::imageOwner(RenderCore::TextureHand
     if (it==residents_.end()) return placeholder_;
     const auto& [raw,resident]=*it;
     return resident.image && service_.isLive(handle) ? resident.image : placeholder_;
-}
-VkDescriptorSet TextureResidency::descriptors() {
-    auto& flight=flights_[ctx_.frameContext().slot];
-    if (!ctx_.tracker().frameOpen()) return VK_NULL_HANDLE;
-    if (flight.frame==ctx_.tracker().frameNo()) return flight.set;
-    if (flight.revision == table_->revision()) { flight.frame=ctx_.tracker().frameNo(); return flight.set; }
-    if (!ctx_.wait(flight.ticket,5000000000ull,"texture descriptor flight")) return VK_NULL_HANDLE;
-    flight.snapshot=table_->snapshot();
-    std::vector<VkDescriptorImageInfo> infos(capacity_,{sampler_.get(),placeholder_->view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
-    for (size_t i=1;i<flight.snapshot.size();++i)
-        if (flight.snapshot[i].owner) infos[i].imageView=std::static_pointer_cast<Image>(flight.snapshot[i].owner)->view.get();
-    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};write.dstSet=flight.set;write.dstBinding=0;write.descriptorCount=capacity_;
-    write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=infos.data();
-    vkUpdateDescriptorSets(ctx_.device(),1,&write,0,nullptr);
-    flight.revision=table_->revision();flight.frame=ctx_.tracker().frameNo();return flight.set;
-}
-uint32_t TextureResidency::descriptorIndex(RenderCore::TextureHandle handle) const {
-    const auto& f=flights_[ctx_.frameContext().slot];
-    if (f.frame!=ctx_.tracker().frameNo() || !service_.isLive(handle)) return 0;
-    const uint32_t idx=table_->index(handle);
-    return idx<f.snapshot.size() && f.snapshot[idx].handle==handle ? idx : 0;
-}
-void TextureResidency::sealFrame() {
-    auto& f=flights_[ctx_.frameContext().slot];
-    if (f.frame==ctx_.tracker().frameNo()) f.ticket=ctx_.tracker().now();
 }
 } // namespace mc2vk
 #endif

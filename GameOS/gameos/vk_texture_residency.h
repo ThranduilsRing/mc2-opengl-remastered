@@ -76,12 +76,7 @@ public:
     void release(RenderCore::TextureHandle handle);
     VkImageView view(RenderCore::TextureHandle handle, bool arrayView = false) const;
     std::shared_ptr<const void> imageOwner(RenderCore::TextureHandle handle) const;
-    // Call only in the open engine frame. An immutable per-flight table is written after its previous ticket completes.
-    VkDescriptorSet descriptors();
-    uint32_t descriptorIndex(RenderCore::TextureHandle handle) const;
-    VkDescriptorSetLayout layout() const { return layout_.get(); }
     uint32_t capacity() const { return capacity_; }
-    void sealFrame();
 private:
     struct Image { OwnedImage image; OwnedImageView view; void markDeferred() { image.markDeferred(); } };
     struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; uint32_t contentVersion=0; bool vegetation=false; };
@@ -94,24 +89,13 @@ private:
         size_t bytes = 0;
         uint32_t contentVersion=0;
     };
-    struct Flight {
-        VkDescriptorSet set = VK_NULL_HANDLE;
-        GpuTicket ticket;
-        uint64_t frame = ~static_cast<uint64_t>(0);
-        uint64_t revision = ~static_cast<uint64_t>(0);
-        std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;
-    };
     std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr, uint32_t layers = 1, bool arrayView = false, bool vegetation = false);
     VulkanContext& ctx_;
     RenderCore::TextureService& service_;
     uint32_t capacity_ = 0;
-    OwnedSampler sampler_;
-    OwnedDescriptorSetLayout layout_;
-    OwnedDescriptorPool pool_;
     std::unique_ptr<RenderCore::TextureDescriptorTable> table_;
     std::shared_ptr<Image> placeholder_, arrayPlaceholder_;
     std::unordered_map<uint32_t, Resident> residents_;
-    std::array<Flight, kMaxFramesInFlight> flights_;
     struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture, pending; };
     std::unordered_map<uint64_t, LegacyUi> legacyUi_;
     uint64_t targetSerial_ = 0;

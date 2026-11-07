@@ -11457,7 +11457,6 @@
    "stream": "log",
    "keys": [
     "capacity",
-    "flights",
     "placeholder",
     "legacy_boundary"
    ],
