@@ -34,7 +34,7 @@ def _child_kwargs():
     return child_kwargs(redirected=True)
 OUT = Path('E:/mc2-ref/scifi-kit/art')
 STOCK_VIEWS = Path('E:/mc2-ref/scifi-kit/studies/stock-views')
-INVENTORY = Path('E:/mc2-ref/scifi-kit/mapping/inventory.csv')
+INVENTORY = Path(os.environ.get('MC2_REF_ROOT', 'E:/mc2-ref')) / 'scifi-kit/mapping/inventory.csv'
 JOBS_FILE = Path('A:/Games/mc2-ops/JOBS')
 PIPELINE = Path('A:/Games/mc2-flash4')
 CONDS = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']

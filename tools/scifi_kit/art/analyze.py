@@ -6,6 +6,7 @@ never imported by Blender.
 """
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -14,7 +15,7 @@ from PIL import Image, ImageDraw
 HERE = Path(__file__).resolve().parent
 STOCK = Path('G:/mc2-assets/out/scifi-kit/round2/stock')
 ASSETS = HERE / 'assets'
-INVENTORY = Path('E:/mc2-ref/scifi-kit/mapping/inventory.csv')
+INVENTORY = Path(os.environ.get('MC2_REF_ROOT', 'E:/mc2-ref')) / 'scifi-kit/mapping/inventory.csv'
 SCHEMA = 'mc2-kit-analysis/1'
 
 

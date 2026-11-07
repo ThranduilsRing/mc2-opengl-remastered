@@ -269,3 +269,12 @@ def test_input_mutation_during_cook_prevents_receipt(cook_install):
     with pytest.raises(ValueError, match="missing/mismatched"):
         kit.finish(target, manifest, tool, mutate)
     assert not (target / "cache/content-model/industrial-cook.json").exists()
+
+
+def test_ref_root_reroots_only_the_reference_store(monkeypatch):
+    monkeypatch.delenv("MC2_REF_ROOT", raising=False)
+    assert kit.ref_path("E:/mc2-ref/packages/k") == "E:/mc2-ref/packages/k"
+    monkeypatch.setenv("MC2_REF_ROOT", r"C:\mc2gate\ref")
+    assert kit.ref_path(r"E:\mc2-ref\packages\k") == "C:/mc2gate/ref/packages/k"
+    assert kit.ref_path("E:/mc2-refx/k") == "E:/mc2-refx/k"
+    assert kit.ref_path("D:/store/k") == "D:/store/k"

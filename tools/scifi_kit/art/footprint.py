@@ -17,6 +17,7 @@ building:
 prop: reported only.
 """
 import csv
+import os
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +25,7 @@ from PIL import Image, ImageDraw
 
 import topdown
 
-INV = Path('E:/mc2-ref/scifi-kit/mapping/inventory.csv')
+INV = Path(os.environ.get('MC2_REF_ROOT', 'E:/mc2-ref')) / 'scifi-kit/mapping/inventory.csv'
 PX = 10.0
 _CAT = None
 
