@@ -2047,7 +2047,9 @@ static bool parseBrainSpecialBody_RawScan(mc2::czstring fitPath, BrainSpecialBod
     //   IN_SPECIAL — inside TechSpecial block, scanning for "Body {" or key=/type=/alias= fields
     //   IN_BODY    — inside Body block, collecting DO lines
     //   IN_ALIASES — inside Aliases block (BRAINSPECIAL-ALIAS-1), collecting <alias> = "<canonical>"
-    enum { OUTER, IN_SPECIAL, IN_BODY, IN_ALIASES } state = OUTER;
+    enum class ParseState { OUTER, IN_SPECIAL, IN_BODY, IN_ALIASES };
+    using enum ParseState;
+    ParseState state = OUTER;
 
     int bodiesFound = 0;
     int verbsThisBody = 0;

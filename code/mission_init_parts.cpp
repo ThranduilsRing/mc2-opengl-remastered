@@ -4,6 +4,8 @@
 #include "mission_init_frame.h"
 #include "mc2fmt.h"
 
+using enum MissionLoadType;
+
 void Mission::diagnoseAuthoredRoute(std::uint32_t original, std::uint32_t selected, std::uint32_t pilot,
     std::string_view status, std::string_view reason) {
     auto diagnostic = std::format("{{\"status\":\"{}\",\"original\":{},\"selected\":{},\"pilot\":{},\"reason\":\"{}\"}}",
@@ -50,7 +52,7 @@ void Mission::initPartsHeader(MissionInitFrame& f) {
 }
 
 // Create every mover and part named by the mission file.
-void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f) {
+void Mission::initPartsLoad(MissionLoadType loadType, long dropZoneID, glm::vec3* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f) {
 	auto& result = f.result;
 	long numMoversLoaded[MAX_MC_PLAYERS] = {0, 0, 0, 0, 0, 0, 0, 0};
 	long numDropZonePositions = 0;

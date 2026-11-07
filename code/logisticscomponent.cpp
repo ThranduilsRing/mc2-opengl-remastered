@@ -15,6 +15,8 @@ LogisticsComponent.cpp			: Implementation of the LogisticsComponent component.
 
 #include "platform_str.h"
 
+#include <utility>
+
 
 extern const char* ComponentFormString[];
 
@@ -221,19 +223,19 @@ bool LogisticsComponent::compare( LogisticsComponent* second, int type )
 {
 	switch( type )
 	{
-		case DAMAGE:
+		case std::to_underlying(SORT_ORDERS::DAMAGE):
 			return second->damage > damage;
 			break;
-		case WEIGHT:
+		case std::to_underlying(SORT_ORDERS::WEIGHT):
 			return second->weight > damage;
 			break;
-		case HEAT:
+		case std::to_underlying(SORT_ORDERS::HEAT):
 			return second->heat > heat;
 			break;
-		case NAME:
+		case std::to_underlying(SORT_ORDERS::NAME):
 			return S_stricmp( name.get(), second->name.get() ) > 0;
 			break;
-		case RANGE:
+		case std::to_underlying(SORT_ORDERS::RANGE):
 			return second->damage > damage;
 			break;
 

@@ -64,7 +64,7 @@ class LogisticsComponent
 		void			setAvailable(bool avail){ bAvailable = avail; }
 		bool			isWeapon();
 
-		 enum SORT_ORDERS
+		 enum class SORT_ORDERS
 		 {
 			 DAMAGE = 0,
 			 HEAT = 1,

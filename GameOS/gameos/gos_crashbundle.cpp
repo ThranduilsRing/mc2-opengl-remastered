@@ -430,12 +430,10 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
 // Dialog (modal, in-memory template)
 // ---------------------------------------------------------------------------
 
-enum {
-    IDC_COPY_BTN   = 1001,
-    IDC_OPEN_BTN   = 1002,
-    IDC_CLOSE_BTN  = IDCANCEL, // let ESC dismiss
-    IDC_BODY_TEXT  = 1004,
-};
+inline constexpr int IDC_COPY_BTN   = 1001;
+inline constexpr int IDC_OPEN_BTN   = 1002;
+inline constexpr int IDC_CLOSE_BTN  = IDCANCEL; // let ESC dismiss
+inline constexpr int IDC_BODY_TEXT  = 1004;
 
 // The crash.txt path for clipboard-copy from the dialog callback
 static const char* dialog_crash_txt_path = nullptr;
