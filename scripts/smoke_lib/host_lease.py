@@ -419,6 +419,17 @@ def close_gate_window() -> None:
             pass
 
 
+@contextmanager
+def gate_capture_lease(head: str = "", window: str = ""):
+    """Per-stage exclusive capture lease (p29 cut 1): the quiet marker exists only while a capture stage runs, never for the whole window.
+    Lane game runs on the gate GPU queue on the normal lease the rest of the time; lanes on the other GPU were never affected."""
+    open_gate_window(head, window)
+    try:
+        yield
+    finally:
+        close_gate_window()
+
+
 def check_gate_quiet(log: Callable[[str], None] = _log_default) -> None:
     """Raise GateQuiet when a live gate (not this process, not one of its children) holds the quiet marker. A stale one is logged and ignored."""
     rec = _read(gate_window_path())

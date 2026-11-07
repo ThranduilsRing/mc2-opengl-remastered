@@ -1614,7 +1614,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 if name.startswith(EXCLUSIVE_PREFIXES):
                     # Only stages that need a quiet host hold every slot, and only for that stage.
                     lease_started = time.monotonic()
-                    with game_batch() as batch_env:
+                    from smoke_lib import host_lease
+                    with game_batch() as batch_env, host_lease.gate_capture_lease(head, name):
                         waited = time.monotonic() - lease_started
                         held_started = time.monotonic()
                         result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name, device)))
@@ -1765,7 +1766,7 @@ def main(argv=None):
         install_stage_watchdog()
         from smoke_lib import host_lease
         import atexit
-        host_lease.open_gate_window(git('rev-parse', 'HEAD'), str(args.window or ""))   # lane game launchers refuse (GATE QUIET) while this marker is live
+        # No window-long quiet marker (p29 cut 1): a capture stage takes the quiet marker for itself, see the EXCLUSIVE_PREFIXES branch below.
         atexit.register(host_lease.close_gate_window)   # backstop; the main() finally below is the normal removal
     if args.j < 1:
         ap.error("-j must be positive")

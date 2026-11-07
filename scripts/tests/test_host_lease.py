@@ -790,3 +790,21 @@ def test_a_second_gate_process_does_not_take_over_or_remove_the_live_gate_marker
     finally:
         holder.kill()
         holder.wait()
+
+
+def test_capture_lease_holds_the_marker_only_while_the_stage_runs(lease):
+    assert not host_lease.gate_window_path().exists()
+    with host_lease.gate_capture_lease("abc", "capture-after"):
+        assert host_lease.gate_window_path().exists()
+    assert not host_lease.gate_window_path().exists()
+    with pytest.raises(RuntimeError):
+        with host_lease.gate_capture_lease("abc", "capture-before"):
+            raise RuntimeError("stage crashed")
+    assert not host_lease.gate_window_path().exists()    # a crashed stage never leaves the window shut
+
+
+def test_merge_gate_opens_no_window_long_quiet_marker():
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[1] / "merge_gate.py").read_text(encoding="utf-8")
+    assert "host_lease.open_gate_window(" not in src
+    assert "gate_capture_lease(" in src
