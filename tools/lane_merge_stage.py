@@ -118,18 +118,30 @@ def stage(root: str, window: str, tips: list[str]) -> dict:
 NIGHTLY_PROOFS = "E:/mc2-archive-2026-10/proofs/merge-gate"
 
 
-def untriaged_nightly_fail(proofs: str) -> list[str]:
-    """Refusal reason when the newest nightly-<date>/gate-verdict.json is FAIL and has no triage* file beside it."""
+def untriaged_nightly_fail(proofs: str, now: float | None = None, max_age_h: float = 36.0) -> list[str]:
+    """Fail-closed: refusal reasons unless the newest nightly-<date>/gate-verdict.json is fresh (< max_age_h), has failed == [] and
+    is PASS or PARTIAL (an operator stage filter is fine when every row it ran passed). INFRA, FAIL (unless a triage* file sits
+    beside it), unreadable and missing verdicts all refuse."""
     dirs = sorted(Path(proofs).glob("nightly-*/gate-verdict.json"), key=lambda p: p.parent.name)
     if not dirs:
-        return []
+        return [f"no nightly verdict under {proofs} (the nightly has not run); run scripts/nightly_gate.py"]
+    newest = dirs[-1]
     try:
-        v = json.loads(dirs[-1].read_text(encoding="utf-8")).get("verdict")
-    except (OSError, ValueError):
-        return []
-    if v == "FAIL" and not list(dirs[-1].parent.glob("triage*")):
-        return [f"newest nightly verdict is FAIL and untriaged ({dirs[-1].parent}); add a triage file there"]
-    return []
+        v = json.loads(newest.read_text(encoding="utf-8"))
+        written = float(v.get("written") or newest.stat().st_mtime)
+    except (OSError, ValueError, AttributeError):
+        return [f"newest nightly verdict is unreadable ({newest.parent})"]
+    why = []
+    age_h = ((time.time() if now is None else now) - written) / 3600
+    if age_h > max_age_h:
+        why.append(f"newest nightly verdict is {age_h:.0f} h old (limit {max_age_h:.0f} h; {newest.parent})")
+    verdict = v.get("verdict")
+    if verdict == "INFRA":
+        why.append(f"newest nightly verdict is INFRA, not a result ({newest.parent}); rerun the nightly")
+    elif verdict not in ("PASS", "PARTIAL") or v.get("failed"):
+        if not list(newest.parent.glob("triage*")):
+            why.append(f"newest nightly verdict is {verdict} with failed rows and untriaged ({newest.parent}); add a triage file there")
+    return why
 
 
 def promote(root: str, window: str, verdict_path: str | None = None) -> int:

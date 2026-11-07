@@ -33,7 +33,7 @@ def test_lint_reports_red_with_fix_and_exit_code(tmp_path, capsys, monkeypatch):
     out = capsys.readouterr().out
     assert rc == 1
     assert "lint: callers: FAIL" in out and "fix:" in out
-    assert "inventories: FAIL" in out and "--regenerate-all" in out
+    assert "inventories: WARN" in out and "do not commit" in out
     assert "lint: file_size: PASS" in out
 
 
@@ -42,3 +42,28 @@ def test_lint_green(capsys, monkeypatch):
     ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
     assert lm.lint(ROOT, "HEAD", runner=ok, regen=lambda r, c: []) == 0
     assert "LINT PASS" in capsys.readouterr().out
+
+
+def test_stale_inventories_alone_is_warn_not_fail(capsys, monkeypatch):
+    _no_branch_needed(monkeypatch)
+    ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+    assert lm.lint(ROOT, "HEAD", runner=ok, regen=lambda r, c: ["tests/callers.json"]) == 0
+    assert "LINT PASS" in capsys.readouterr().out
+
+
+def test_unregenerable_inventories_still_fail(capsys, monkeypatch):
+    _no_branch_needed(monkeypatch)
+    ok = lambda root, cmd: subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+    def boom(r, c):
+        raise lm.Stop(1, "generator crashed")
+    assert lm.lint(ROOT, "HEAD", runner=ok, regen=boom) == 1
+    assert "inventories:" in capsys.readouterr().out
+
+
+def test_batch_lint_ok_follows_lint_rc(monkeypatch):
+    seen = []
+    assert lm.batch_lint_ok("r", lambda root, ref: seen.append((root, ref)) or 0)
+    assert not lm.batch_lint_ok("r", lambda root, ref: 1)
+    assert seen == [("r", "HEAD")]
+    text = open(lm.__file__, encoding="utf-8").read()
+    assert "args.stage and not batch_lint_ok(root)" in text

@@ -976,11 +976,12 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
     except Stop as exc:
         changed = []
         failed.append("inventories:" + str(exc).replace(chr(10), " "))
-    print("lint: inventories: " + ("FAIL (stale: " + ", ".join(changed) + "; fix: tools/lane_merge.py --regenerate-all and commit)" if changed else "PASS"), flush=True)
-    if changed:
-        failed.append("inventories-stale")
+    print("lint: inventories: " + ("WARN (stale: " + ", ".join(changed) + "; do not commit regenerated output, lane_merge --batch regenerates it)" if changed else "PASS"), flush=True)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
     return int(bool(failed))
+
+
+def batch_lint_ok(root: str, run=None) -> bool: return (run or lint)(root, "HEAD") == 0  # meta-0220 P1#4a
 
 
 PRECHECK_RECEIPTS = os.environ.get("MC2_PRECHECK_RECEIPTS", "A:/Games/mc2-ops/precheck")
@@ -1465,6 +1466,8 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
                 print(f"BATCH STOPPED at quick rows ({', '.join(q[0] for q in qfailed)}) merged={len(merged)} remaining=(none)")
                 return 6
+        if batch and merged and not stopped and args.stage and not batch_lint_ok(root):
+            print(f"BATCH STOPPED at lint (merged={len(merged)}); fix, commit, re-run --lint HEAD"); return 6
         if stopped:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:

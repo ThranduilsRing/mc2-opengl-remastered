@@ -494,7 +494,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                "--bookmarks", "mc2_01_saved_205644,mc2_10_saved_204523", "--clean"]
     steps = [
         ("capture-before", capture + ["--out", str(proof / "before")], {}),
-        ("deploy", [py, "scripts/deploy_payload.py", "--target", "game", "--ninja", "--require-clean"], {}),
+        ("deploy", [py, "scripts/deploy_payload.py", "--target", "game", "--ninja", "--require-clean", "--full-verify"], {}),
         ("capture-after", capture + ["--out", str(proof / "after")], {}),
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
                               str(proof / "after"), "--out-root", str(proof / "ab")], {}),
@@ -1084,6 +1084,21 @@ def verdict_of(result, steps, failed=None):
     skipped += [n for n, row in ROW_RESULTS.items() if row["status"].startswith("SKIP") and n not in skipped]
     infra_only = bool(result and failed and all(s.startswith("INFRA") for _, s in failed))
     return ("INFRA" if infra_only else "FAIL" if result else ("PARTIAL" if skipped else "PASS")), skipped
+
+
+def archive_prior_verdict(proof):
+    """A resumed gate reuses its proof dir: keep the earlier run's verdict as gate-verdict-<n>.json (first free n) before the
+    new run writes gate-verdict.json, so a 3-run window keeps all three (meta-0220 P1#5)."""
+    proof = Path(proof)
+    prior = proof / "gate-verdict.json"
+    if not prior.is_file():
+        return None
+    n = 1
+    while (proof / f"gate-verdict-{n}.json").exists():
+        n += 1
+    target = proof / f"gate-verdict-{n}.json"
+    os.replace(prior, target)
+    return target
 
 
 def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, timings, cleanup_errors):
@@ -1814,6 +1829,8 @@ def main(argv=None):
                 artifacts = dict(exe=str(exe), exe_sha256=gate_reuse._file_sha(exe) if exe.is_file() else None,
                                  proof=str(proof), log=str(log_path), install=str(args.install or CANDIDATE))
                 verdict_paths = [proof / "gate-verdict.json", ROOT / VERDICT_FILE]
+                if args.resume and not args.dry_run:
+                    archive_prior_verdict(proof)
                 exec_started = time.time()
                 TIMINGS["preparation"] = exec_started - started
                 def durable(rc):

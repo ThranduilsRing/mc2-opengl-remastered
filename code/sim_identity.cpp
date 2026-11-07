@@ -388,6 +388,9 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
+	// The line and its newline go out in ONE fwrite (print_out); flushing first keeps it from straddling a stdio buffer boundary, where
+	// another thread's stderr write could land mid-line (meta-0220 P2#7).
+	fflush(stdout);
 	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d} animrng={:d}\n",
 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32(static_cast<int>(recs.size())), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
 	       mc2::fmt::as_i32(static_cast<int>(objs.size())), mc2::fmt::safe(ho), mc2::fmt::as_i32(static_cast<int>(abl.size())), mc2::fmt::safe(ha),

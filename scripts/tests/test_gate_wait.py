@@ -28,3 +28,13 @@ def test_bare_bash_resolves_to_git_bash_not_wsl():
     cmd = gate_wait.resolve_cmd(["bash", "-c", "true"])
     assert cmd[1:] == ["-c", "true"] and "system32" not in cmd[0].lower().replace("\\", "/")
     assert gate_wait.resolve_cmd(["py", "-3"]) == ["py", "-3"]
+
+
+def test_default_log_dir_is_g_not_tmp(monkeypatch, capsys):
+    import gate_wait
+    monkeypatch.setenv("TMP", "C:/Users/x/AppData/Local/Temp")
+    seen = {}
+    monkeypatch.setattr(gate_wait.os, "makedirs", lambda *a, **k: None)
+    monkeypatch.setattr(gate_wait, "wait", lambda cmd, log, timeout: seen.setdefault("log", log) and (0, 0.0))
+    gate_wait.main(["--", "x"])
+    assert seen["log"].replace("\\", "/").startswith("G:/mc2-tmp/gate_wait-")

@@ -95,7 +95,7 @@ def test_seed_refresh_retires_only_unmodified_owned_members(tmp_path):
     assert not (target / name).exists()
 
 
-@pytest.mark.parametrize('broken', [None, 'exe', 'shader', 'manifest', 'extra', 'fingerprint'])
+@pytest.mark.parametrize('broken', [None, 'exe', 'shader', 'manifest', 'extra', 'fingerprint', 'swapped_nonexe'])
 def test_published_identity_checks_head_and_actual_bytes(tmp_path, monkeypatch, broken):
     import exe_fingerprint
     source = source_tree(tmp_path)
@@ -111,6 +111,8 @@ def test_published_identity_checks_head_and_actual_bytes(tmp_path, monkeypatch, 
         sha='b' * 40 if broken == 'fingerprint' and p == source / 'mc2.exe' else 'a' * 40))
     if broken in ('exe', 'shader'):
         (source / ('mc2.exe' if broken == 'exe' else 'shaders/test.frag')).write_bytes(b'BAD')
+    if broken == 'swapped_nonexe':  # same size, so the size+mtime fast path would never notice
+        (source / 'mods/mc2-industrial-kit/model.glb').write_bytes(b'kiX')
     if broken == 'manifest':
         manifest.write_text(manifest.read_text().replace('a' * 40, 'b' * 40))
     if broken == 'extra':
