@@ -4104,15 +4104,6 @@
     "staticFlush",
     "staticSnapshot",
     "water",
-    "glBufData",
-    "glBufBytes",
-    "glBufSubData",
-    "glBufSubBytes",
-    "glMapBuf",
-    "glTexImage",
-    "glTexImageBytes",
-    "glBindTex",
-    "glUseProgram",
     "fenceWaitMs",
     "fenceWaits"
    ],
@@ -4176,25 +4167,6 @@
    "count": 1
   },
   {
-   "tag": "HITCH_GL",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "glBufferData",
-    "glBufferDataBytes",
-    "glBufferSubData",
-    "glBufferSubDataBytes",
-    "glMapBuffer",
-    "glTexImage",
-    "glTexImageBytes",
-    "glTexSubImage",
-    "glTexSubImageBytes",
-    "glBindTexture",
-    "glUseProgram"
-   ],
-   "count": 1
-  },
-  {
    "tag": "HITCH_INIT",
    "ver": -1,
    "stream": "stderr",
@@ -4228,9 +4200,7 @@
     "records",
     "draws",
     "bufferBytes",
-    "realloc",
-    "map",
-    "subData"
+    "realloc"
    ],
    "count": 1
   },
@@ -4272,8 +4242,7 @@
    "keys": [
     "called",
     "waterPresent",
-    "earlyOut",
-    "glCalls"
+    "earlyOut"
    ],
    "count": 1
   },
@@ -7546,7 +7515,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "gl",
     "ssbo",
     "tess",
     "compute",
@@ -10807,6 +10775,18 @@
    "keys": [
     "reason",
     "sample"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_ISLAND_INIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "action",
+    "vkresult",
+    "reason"
    ],
    "count": 1
   },
