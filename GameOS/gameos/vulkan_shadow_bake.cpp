@@ -908,12 +908,13 @@ void ShadowBake::planRegion(mc2shadow::Rect r, int originX, int originY, int reg
         }
     tw.window = mc2shadow::casterWindow(basis_, r, hMin, hMax, casterTop, tanT, mc2shadow::shadowQuality().windowSide);
     tw.casterTop = hMax;
-    std::vector<uint32_t> picked;
+    // Scratch reused across regions (one planner thread): no per-region allocation once warm.
+    thread_local std::vector<uint32_t> picked, types;
+    picked.clear(); types.clear();
     for (size_t c = 0; c < cv.boxes->size(); ++c)
         if (mc2shadow::casterInWindow((*cv.boxes)[c], tw.window)) { picked.push_back((*cv.live)[c]); tw.casterTop = (std::max)(tw.casterTop, (*cv.tops)[c]); }
     const auto& leaves = *cv.leaves;
     std::sort(picked.begin(), picked.end(), [&leaves](uint32_t a, uint32_t b) { return leaves[a].typeID < leaves[b].typeID; });
-    std::vector<uint32_t> types;
     for (uint32_t i : picked) types.push_back(leaves[i].typeID);
     tw.firstRun = static_cast<uint32_t>(runs.size());
     appendRuns(runs, types, static_cast<uint32_t>(inst.size()));
@@ -1140,7 +1141,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     std::vector<InstRun> runs;
     std::vector<GpuStaticPropInstance> inst;
     std::vector<TileWork> works(batch.size());
-    std::vector<uint8_t> tp(kSubTilesPerFrame * kSlice, 0), ubo(kSubTilesPerFrame * kSlice, 0);
+    std::vector<uint8_t> tp(batch.size() * kSlice, 0), ubo(batch.size() * kSlice, 0);
     {
     ZoneScopedN("ShadowBake.Dirty.Plan");
     for (size_t i = 0; i < batch.size(); ++i) {
