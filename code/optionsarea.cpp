@@ -1620,8 +1620,7 @@ void ScrollX::SetScroll( long newScrollPos )
 {
 	newScrollPos = std::max(newScrollPos, 0L);
 
-	if (newScrollPos > scrollMax)
-		newScrollPos = scrollMax;
+	newScrollPos = static_cast<long>(std::min(static_cast<float>(newScrollPos), scrollMax));
 
 	if ( getParent() )
 		getParent()->handleMessage( aMSG_SCROLLTO, newScrollPos );
@@ -1644,8 +1643,7 @@ void ScrollX::update()
 				physicalRange = RealRange;
 			float newScrollPos = .5 + (delta)*RealRange/physicalRange;
 			newScrollPos = std::max(newScrollPos, 0.0f);
-			if (newScrollPos > scrollMax)
-		newScrollPos = scrollMax;
+			newScrollPos = std::min(newScrollPos, scrollMax);
 			getParent()->handleMessage( aMSG_SCROLLTO, newScrollPos );
 
 
