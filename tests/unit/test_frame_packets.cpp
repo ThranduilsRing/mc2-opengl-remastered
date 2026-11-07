@@ -2,6 +2,7 @@
 // P1 frame packets (RenderCore/FramePackets.h): what a consumer reads is the frame's PUBLISHED view and lighting, it changes only at publish(), and
 // the three slot arenas preserve the previous two extractions. No GL, no engine.
 #include "doctest.h"
+#include <memory>
 #include "FramePackets.h"
 #include "../../code/render_view.h"
 
@@ -19,7 +20,11 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
     stagingList().terrain[0].watchId = 12;
     stagingList().terrain[1].watchId = 34;
     stagingList().movers.emplace_back().watchId = 56;
-    stagingList().other.emplace_back().bolt.middleRGB = 0x123456;
+    int effectToken = 0;  // address token only; never dereferenced
+    auto* const effect = reinterpret_cast<gosFX::Effect*>(&effectToken);
+    auto& fx = stagingList().fx.emplace_back();
+    fx.bolt.middleRGB = 0x123456;
+    fx.effects[0] = stagingList().retain(effect);
     auto& row = stagingHud().movers.emplace_back();
     row.name = "retained mover";
     row.pilotName = "retained pilot";
@@ -51,8 +56,9 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
         CHECK(list().terrain[1].watchId == 34);
         REQUIRE(list().movers.size() == 1);
         CHECK(list().movers[0].watchId == 56);
-        REQUIRE(list().other.size() == 1);
-        CHECK(list().other[0].bolt.middleRGB == 0x123456);
+        REQUIRE(list().fx.size() == 1);
+        CHECK(list().fx[0].bolt.middleRGB == 0x123456);
+        CHECK(list().effect(list().fx[0].effects[0]) == effect);  // retained table travels with the frozen frame
         REQUIRE(hud().movers.size() == 1);
         CHECK(hud().movers[0].name == "retained mover");
         CHECK(hud().movers[0].pilotName == "retained pilot");
@@ -82,54 +88,75 @@ TEST_CASE("frame draws own ordered streams and HUD values across staging reuse")
     stagingClock() = {};
 }
 
-TEST_CASE("bolt draw packet survives staging mutation and a later extraction") {
+TEST_CASE("fx packets are self-contained values that survive source destruction and a delayed record") {
     using namespace mc2::render_view;
-    alignas(16) unsigned char memory[3][2048]{};
-    FrameSlotArenas slots;
-    slots.init(memory[0], memory[1], memory[2], sizeof(memory[0]));
-    REQUIRE(slots.retain(1));
+    static_assert(std::is_trivially_copyable_v<FxPacket>);
+    // Stand-in sim object: what a bolt extract reads. The effect is only an address token; record never dereferences it here.
+    struct FakeBolt { glm::vec3 position; BoltDraw bolt; gosFX::Effect* hit; bool hitExecuted; uint32_t watch; };
+    alignas(16) unsigned char effectStorage[2][16]{};
+    auto* hitFx = reinterpret_cast<gosFX::Effect*>(effectStorage[0]);
+    auto* missFx = reinterpret_cast<gosFX::Effect*>(effectStorage[1]);
+    auto extract = [](RenderList& list, const FakeBolt& src) {
+        FxPacket& p = list.fx.emplace_back();
+        p.position = src.position;
+        p.bolt = src.bolt;
+        p.watchId = src.watch;
+        p.effects[2] = list.retain(src.hit);
+        if (src.hit && src.hitExecuted) p.flags |= EffectLive0 << 2;
+    };
     RenderList list;
-    list.freezeBoltDraws(slots.begin(1));
-    CHECK(slots.begin(1).stats().usedBytes == 0);
-    list.other.resize(2);
-    auto& source = list.other[1];
-    source.flags = Visible | BoltGeometry;
-    source.bolt.laserVertices[2] = glm::vec3(1, 2, 3);
-    source.bolt.laserSide[3] = glm::vec3(4, 5, 6);
-    source.bolt.startUV = 0.25f;
-    source.bolt.uvRepeat = 2;
-    source.bolt.unitLength = 3;
-    source.bolt.middleRGB = 0x123456;
-    source.bolt.boltAlpha = 127;
-    source.bolt.gosTextureHandle = 91;
-    source.bolt.mcTextureHandle = 92;
-    source.bolt.isBeam = true;
-    list.freezeBoltDraws(slots.begin(1));
-    CHECK(list.other[0].frozenBolt == nullptr);
-    const auto* first = source.frozenBolt;
-    REQUIRE(first);
-    CHECK(first != &source.bolt);
-    source.bolt = {};
+    CHECK(list.retain(nullptr) == 0);
+    CHECK(list.effect(0) == nullptr);
+    {
+        auto source = std::make_unique<FakeBolt>();
+        source->position = glm::vec3(7, 8, 9);
+        source->bolt.laserVertices[2] = glm::vec3(1, 2, 3);
+        source->bolt.middleRGB = 0x123456;
+        source->bolt.gosTextureHandle = 91;
+        source->bolt.isBeam = true;
+        source->hit = hitFx;
+        source->hitExecuted = true;
+        source->watch = 42;
+        extract(list, *source);
+        // Sim advances: the pooled slot is re-inited for a different bolt, then the object is destroyed.
+        *source = FakeBolt{glm::vec3(-1), BoltDraw{}, missFx, false, 99};
+        source.reset();
+    }
+    const FxPacket frozen = list.fx[0];   // FrameDraws keeps a copy like this until the frame retires
     list.clear();
-    REQUIRE(slots.retain(2));
-    list.other.emplace_back().flags = BoltGeometry;
-    list.freezeBoltDraws(slots.begin(2));
-    CHECK(list.other[0].frozenBolt != first);
-    CHECK(first->laserVertices[2] == glm::vec3(1, 2, 3));
-    CHECK(first->laserSide[3] == glm::vec3(4, 5, 6));
-    CHECK(first->startUV == 0.25f);
-    CHECK(first->uvRepeat == 2);
-    CHECK(first->unitLength == 3);
-    CHECK(first->middleRGB == 0x123456);
-    CHECK(first->boltAlpha == 127);
-    CHECK(first->gosTextureHandle == 91);
-    CHECK(first->mcTextureHandle == 92);
-    CHECK(first->isBeam);
-    CHECK_FALSE(slots.retain(4));
-    CHECK(slots.retire(2));
-    CHECK(slots.retire(1));
-    CHECK(slots.retain(4));
-    CHECK(slots.retire(4));
+    FakeBolt next{glm::vec3(5), BoltDraw{}, missFx, false, 7};
+    extract(list, next);                  // next frame's extraction reuses the staging list
+    REQUIRE(list.fx.size() == 1);
+    CHECK(list.effect(list.fx[0].effects[2]) == missFx);
+    CHECK_FALSE(list.fx[0].executed(2));
+    // The delayed record of the old packet sees only extract-time values.
+    CHECK(frozen.position == glm::vec3(7, 8, 9));
+    CHECK(frozen.bolt.laserVertices[2] == glm::vec3(1, 2, 3));
+    CHECK(frozen.bolt.middleRGB == 0x123456);
+    CHECK(frozen.bolt.gosTextureHandle == 91);
+    CHECK(frozen.bolt.isBeam);
+    CHECK(frozen.watchId == 42);
+    CHECK(frozen.executed(2));
+    CHECK_FALSE(frozen.executed(3));
+    CHECK(frozen.effects[2] == 1);
+}
+
+TEST_CASE("fx packet effect ids resolve only against their own list") {
+    using namespace mc2::render_view;
+    alignas(16) unsigned char storage[3][16]{};
+    RenderList list;
+    const EffectId a = list.retain(reinterpret_cast<gosFX::Effect*>(storage[0]));
+    const EffectId b = list.retain(reinterpret_cast<gosFX::Effect*>(storage[1]));
+    CHECK(a == 1);
+    CHECK(b == 2);
+    CHECK(list.effect(a) == reinterpret_cast<gosFX::Effect*>(storage[0]));
+    CHECK(list.effect(b) == reinterpret_cast<gosFX::Effect*>(storage[1]));
+    CHECK(list.effect(3) == nullptr);
+    RenderList copy = list;               // the frozen frame copy keeps its own table
+    list.clear();
+    list.retain(reinterpret_cast<gosFX::Effect*>(storage[2]));
+    CHECK(copy.effect(a) == reinterpret_cast<gosFX::Effect*>(storage[0]));
+    CHECK(list.effect(b) == nullptr);
 }
 
 namespace {

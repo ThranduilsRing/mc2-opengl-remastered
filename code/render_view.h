@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <type_traits>
+#include <type_traits>
 #include "math/glm_config.h"
 
 class GameObject;
@@ -56,30 +58,57 @@ struct BoltDraw {
 struct RenderView {
     GameObject* obj = nullptr;
     // The tick can clear/reuse owner slots; releaseEffect retains these payloads until the join.
-    // Bolts: body, muzzle, hit, miss, water miss; carnage: body; artillery: hit, left contrail, right contrail.
+    // Artillery: hit, left contrail, right contrail (bolts and carnage record from FxPacket).
     gosFX::Effect* effects[5]{};
     // Artillery: strike appearance, bomber. A pool reuse on the tick retires both at the join, never mid-draw.
     Appearance* appearances[2]{};
-    BoltDraw bolt;
-    const BoltDraw* frozenBolt = nullptr; // packet arena copy; inline tools may use bolt directly
     glm::vec3 position{0.0f};  // sim position
-    glm::vec3 aux[3]{};        // bolts: laser tip, resolved hit point, raw target point
+    glm::vec3 aux[3]{};
     uint32_t watchId = 0;
     uint32_t generation = 0;   // obj->generation at extract; the draw skips the view when the slot was re-inited
     uint32_t flags = 0;
     uint32_t barColor = 0;
     float barStatus = 0.0f;
-    float value[2]{};          // bolts: effect heading, owner rotation; artillery: time to impact
+    float value[2]{};          // artillery: time to impact
     int32_t nameId = 0;        // appearance object-name id, or the sensor text id (Mode::SensorText)
     uint8_t objClass = 0;
     Mode mode = Mode::None;
     bool has(uint32_t f) const { return (flags & f) != 0; }
 };
 
+// Weapon bolts and carnage explosions record from FxPacket values: no GameObject or gosFX pointer, so the source
+// object can be destroyed or its pooled slot re-inited between extract and record without a stale-view skip.
+// Effects are retained ids into RenderList::effects; every release of a family effect goes through
+// mc2::tick::releaseEffect, which holds it until the frame's packet retires. IsExecuted is sampled at extract.
+// Remaining: Effect::Draw still reads particle state that the overlapped worker's Execute writes.
+using EffectId = uint32_t;                        // 0 = none, else RenderList::effects[id - 1]
+inline constexpr uint32_t EffectLive0 = 1u << 16; // bit 16+i: effects[i] was executed at extract
+struct FxPacket {
+    enum class Kind : uint8_t { Bolt, Carnage };
+    BoltDraw bolt;             // Bolt: copied beam/laser geometry and resource handles
+    glm::vec3 position{0.0f};  // sim position
+    glm::vec3 aux[3]{};        // Bolt: laser tip, resolved hit point, raw target point
+    float value[2]{};          // Bolt: effect heading, owner rotation
+    EffectId effects[5]{};     // Bolt: gos, muzzle, hit, miss, water miss; Carnage: [0]
+    uint32_t flags = 0;
+    uint32_t watchId = 0;
+    Kind kind = Kind::Bolt;
+    bool has(uint32_t f) const { return (flags & f) != 0; }
+    bool executed(int i) const { return effects[i] && has(EffectLive0 << i); }
+};
+static_assert(std::is_trivially_copyable_v<FxPacket>, "FxPacket must stay a self-contained value");
+
 struct RenderList {
     std::vector<RenderView> terrain, movers, other;
-    void clear() { terrain.clear(); movers.clear(); other.clear(); }
-    void freezeBoltDraws(RenderCore::FrameArena& arena);
+    std::vector<FxPacket> fx;            // bolts then carnage; recorded before `other`
+    std::vector<gosFX::Effect*> effects; // retained effect table for fx
+    void clear() { terrain.clear(); movers.clear(); other.clear(); fx.clear(); effects.clear(); }
+    EffectId retain(gosFX::Effect* effect) {
+        if (!effect) return 0;
+        effects.push_back(effect);
+        return static_cast<EffectId>(effects.size());
+    }
+    gosFX::Effect* effect(EffectId id) const { return id && id <= effects.size() ? effects[id - 1] : nullptr; }
 };
 
 // G7b K4: copied at the render extract; pointers are identity keys only.

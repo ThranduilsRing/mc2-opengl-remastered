@@ -1074,7 +1074,6 @@ int main(int argc, char** argv)
             mc2::overlap::assertSimQuiescent("ExtractRenderSnapshot");
             snap = ExtractRenderSnapshot(packetSequence);
             mc2::overlap::extractRender();   // G7b K3: game render list + clock (zone ExtractRenderList)
-            mc2::render_view::stagingList().freezeBoltDraws(snap.frameArena);
             snap.draws = mc2::render_view::freezeDrawFrame(packetSequence);
         }
         mc2_debug_state::maybeWriteRenderState(snap);
