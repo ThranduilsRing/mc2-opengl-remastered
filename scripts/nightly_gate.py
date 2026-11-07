@@ -45,6 +45,64 @@ def current_window():
     return max(nums) if nums else None
 
 
+RECEIPT_MAX_AGE_H = 8 * 24
+
+
+def receipt_key(weekly, stages):
+    """Hash of everything a nightly's result depends on: the published tree, the mode and the stage list."""
+    import hashlib
+    blob = "\n".join([git("rev-parse", "HEAD^{tree}"), "weekly" if weekly else "nightly", *stages])
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def _load(path):
+    import json
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def _clean_pass(v):
+    return v.get("verdict") == "PASS" and v.get("complete") and not v.get("failed")
+
+
+def find_receipt(proof_root, key, now=None):
+    """The newest earlier PASS verdict dir whose receipt has this key and is recent enough, else None."""
+    import glob
+    import time
+    now = time.time() if now is None else now
+    for d in sorted(glob.glob(os.path.join(proof_root, "nightly-*")), reverse=True):
+        r = _load(os.path.join(d, "receipt.json"))
+        v = _load(os.path.join(d, "gate-verdict.json"))
+        if r and v and r.get("key") == key and _clean_pass(v) \
+                and (now - float(r.get("written") or 0)) / 3600 <= RECEIPT_MAX_AGE_H:
+            return d
+    return None
+
+
+def reuse_receipt(src_dir, proof, key, now=None):
+    """Carry an unchanged-input PASS forward: same verdict, fresh timestamp, honest reused_from marker."""
+    import json
+    import time
+    now = time.time() if now is None else now
+    v = _load(os.path.join(src_dir, "gate-verdict.json"))
+    v.update(written=now, reused_from=src_dir)
+    for name, body in (("gate-verdict.json", v), ("receipt.json", {"key": key, "written": now, "reused_from": src_dir})):
+        with open(os.path.join(proof, name), "w", encoding="utf-8") as f:
+            json.dump(body, f, indent=1)
+
+
+def write_receipt(proof, key):
+    import json
+    import time
+    v = _load(os.path.join(proof, "gate-verdict.json")) or {}
+    if _clean_pass(v):
+        with open(os.path.join(proof, "receipt.json"), "w", encoding="utf-8") as f:
+            json.dump({"key": key, "written": time.time()}, f, indent=1)
+
+
 def stage_names(weekly):
     import merge_gate
     keep = [n for n, _c, _e in merge_gate.plan(1)
@@ -56,6 +114,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--weekly", action="store_true", help="default: only on Sundays")
+    ap.add_argument("--force", action="store_true", help="rerun even when an identical-input PASS receipt exists")
     args = ap.parse_args(argv)
     why = refusal()
     if why:
@@ -76,9 +135,18 @@ def main(argv=None):
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0
+    key = receipt_key(weekly, stage_names(weekly))
+    prior = None if args.force else find_receipt(PROOF_ROOT, key)
+    if prior:   # p29 cut 5: same tree, mode and stages already passed; do not burn another hour of the box
+        reuse_receipt(prior, proof, key)
+        print(f"[nightly_gate] inputs unchanged since {prior}; reused its PASS (--force reruns)")
+        return 0
     env = dict(os.environ, TMP=TMP_DIR, TEMP=TMP_DIR, TMPDIR=TMP_DIR)  # never write to C: (lane rules)
     os.makedirs(TMP_DIR, exist_ok=True)
-    return subprocess.run(cmd, cwd=ROOT, env=env, **console_child.child_kwargs()).returncode
+    rc = subprocess.run(cmd, cwd=ROOT, env=env, **console_child.child_kwargs()).returncode
+    if rc == 0:
+        write_receipt(proof, key)
+    return rc
 
 
 if __name__ == "__main__":

@@ -113,3 +113,33 @@ def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, c
     assert "--window 128" in capsys.readouterr().out
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 2
+
+
+def test_unchanged_inputs_reuse_a_pass_receipt_and_a_changed_tree_does_not(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "tree-A")
+    stages = nightly_gate.stage_names(False)
+    key = nightly_gate.receipt_key(False, stages)
+    old = tmp_path / "nightly-2026-11-06"
+    old.mkdir()
+    (old / "gate-verdict.json").write_text(json.dumps(dict(verdict="PASS", complete=True, failed=[], tier=1, written=1.0)))
+    assert nightly_gate.find_receipt(str(tmp_path), key) is None   # no receipt yet
+    nightly_gate.write_receipt(str(old), key)
+    assert nightly_gate.find_receipt(str(tmp_path), key) == str(old)
+    assert nightly_gate.find_receipt(str(tmp_path), nightly_gate.receipt_key(True, stages)) is None   # weekly is a different key
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "tree-B")
+    assert nightly_gate.find_receipt(str(tmp_path), nightly_gate.receipt_key(False, stages)) is None   # tree changed
+    assert nightly_gate.find_receipt(str(tmp_path), key, now=time.time() + 9 * 86400) is None   # stale
+    new = tmp_path / "nightly-2026-11-07"
+    new.mkdir()
+    nightly_gate.reuse_receipt(str(old), str(new), key)
+    v = json.loads((new / "gate-verdict.json").read_text())
+    assert v["verdict"] == "PASS" and v["reused_from"] == str(old) and v["written"] > 1.0
+    assert lane_merge_stage.untriaged_nightly_fail(str(tmp_path)) == []   # promote accepts the carried verdict
+
+
+def test_a_failed_or_partial_verdict_never_yields_a_receipt(tmp_path):
+    for verdict in ({"verdict": "FAIL", "failed": ["x"]}, {"verdict": "PARTIAL", "failed": []}, {"verdict": "PASS", "complete": False}):
+        (tmp_path / "gate-verdict.json").write_text(json.dumps(verdict))
+        nightly_gate.write_receipt(str(tmp_path), "k")
+        assert not (tmp_path / "receipt.json").exists()
