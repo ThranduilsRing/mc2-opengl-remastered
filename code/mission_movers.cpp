@@ -409,7 +409,7 @@ typedef struct _MoverInitData {
 				Team::teams[moverSpec->teamID]->addToRoster(mover);
 			missionInterface->addMover(mover);
 			if (auto* appearance = mover->getAppearance()) {
-				mover->unitAnimation = appearance->simulationAnimation();
+				mover->unitAnimation = appearance->pinnedSimulationAnimation();
 				mover->simulationPose = appearance->simPose;
 				appearance->setObjectParameters(mover->getPosition(), mover->getRotation(), mover->drawFlags,
 					mover->getTeamId(), 0);

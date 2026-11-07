@@ -654,7 +654,7 @@ float SCROLL_RATE =	0.005f;
 //---------------------------------------------------------------------------
 void MapData::setVertexHeight( int VertexIndex, float Val )
 {
-	blocks[VertexIndex].elevation = Val;
+	blocks[VertexIndex].elevation = Val; ++TerrainRuntime::g_heightEpoch;
 }
 
 

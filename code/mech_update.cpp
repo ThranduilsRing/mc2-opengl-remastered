@@ -18,7 +18,7 @@ constexpr int GestureGoalFallenBackward = 8;
 long BattleMech::update (void)
 {
     ZoneScopedN("GameLogic.Mech.Update");
-    unitAnimation = appearance->simulationAnimation();
+    unitAnimation = appearance->pinnedSimulationAnimation();
     simulationPose = appearance->simPose;
 
 	positionNormal = land->getTerrainNormal(position);

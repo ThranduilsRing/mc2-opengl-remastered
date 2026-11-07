@@ -18,7 +18,7 @@ static constexpr float GV_VEHICLE_PILOT_RUN_SECONDS = 4.0f;
 
 long GroundVehicle::update (void)
 {
-    unitAnimation = appearance->simulationAnimation();
+    unitAnimation = appearance->pinnedSimulationAnimation();
     simulationPose = appearance->simPose;
 
 	// What the draw side of the appearance needs from this tick is collected here and applied by applyAppearancePush in

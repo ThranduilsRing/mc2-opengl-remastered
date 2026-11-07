@@ -6,6 +6,10 @@
 
 #include "mc2_czstring.h"
 #include <atomic>
+#include <optional>
+#include <bit>
+#include <cstdint>
+#include <utility>
 #include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -702,8 +706,14 @@ void BldgAppearance::setSimInput (const SimInput& in)
 {
 	simPosition_ = in.position;
 	simRotation_ = in.rotation;
-	unitAnim().turretRotation = in.torsoRotation;
-	unitAnim().pitch = in.pitch;
+	// Write only on a bit change: the non-const accessor clears animSettled_, and this runs every tick.
+	const auto& anim = std::as_const(*this).unitAnim();
+	if (std::bit_cast<uint32_t>(anim.turretRotation) != std::bit_cast<uint32_t>(in.torsoRotation) ||
+		std::bit_cast<uint32_t>(anim.pitch) != std::bit_cast<uint32_t>(in.pitch))
+	{
+		unitAnim().turretRotation = in.torsoRotation;
+		unitAnim().pitch = in.pitch;
+	}
 	if (in.hasStatus)
 		simStatus_ = in.status;
 }
@@ -752,9 +762,12 @@ bool BldgAppearance::recalcBounds (void)
 {
 	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
 	// recalcBounds_perframe bucket. No-op when env OFF.
-	::mc2_cpu_proj_cost::Scope _f3_recalcBounds_scope(
-	    ::mc2_cpu_proj_cost::BUCKET_RECALCBOUNDS_PERFRAME);
-	::mc2_cpu_proj_cost::add_workload_recalcbounds(1);
+	// Inline fast path: the Scope ctor/dtor and workload counter are out-of-line calls per object per frame.
+	std::optional<::mc2_cpu_proj_cost::Scope> _f3_recalcBounds_scope;
+	if (::mc2_cpu_proj_cost::g_cpuProjEnabled) {
+		_f3_recalcBounds_scope.emplace(::mc2_cpu_proj_cost::BUCKET_RECALCBOUNDS_PERFRAME);
+		::mc2_cpu_proj_cost::add_workload_recalcbounds(1);
+	}
 	// [TOBJSPLIT v1] accumulators declared in code/static_update_counters.h
 	// (included above via ../code/static_update_counters.h).
 	// Gate: file-scope s_tobjSplitBdOn (defined above, shared with TreeAppearance).

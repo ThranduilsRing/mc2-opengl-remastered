@@ -652,7 +652,8 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
     };
     // These lists overlap the terrain blocks. Preserve their early update order
     // while advancing each object only once per tick.
-    std::vector<GameObjectPtr> advanced;
+    static std::vector<GameObjectPtr> advanced;   // per-tick allocation hoisted; cleared each call
+    advanced.clear();
     advanced.reserve(numSpecialBuildings + numGates);
     auto once = [&](GameObjectPtr object) {
         if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) return;

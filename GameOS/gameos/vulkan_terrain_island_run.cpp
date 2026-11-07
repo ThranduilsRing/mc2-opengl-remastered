@@ -620,18 +620,17 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
-    std::vector<uint32_t> drawOrder(patchCount);
-    std::iota(drawOrder.begin(), drawOrder.end(), 0u);
-    const auto distanceSquared = [&](uint32_t i) {
+    // Distance keys are computed once per patch (not twice per comparison); (distance, index) is a strict total order, so the result is unchanged.
+    static std::vector<std::pair<float, uint32_t>> drawOrder;
+    drawOrder.clear();
+    drawOrder.reserve(patchCount);
+    for (uint32_t i = 0; i < patchCount; ++i) {
         const auto& p = feed.patches[i];
         const float x = (p.blockOriginX + p.quadCountX * 0.5f) * 128.0f - feed.halfMap + feed.cameraPosMC2[0];
         const float y = feed.halfMap - (p.blockOriginY + p.quadCountY * 0.5f) * 128.0f - feed.cameraPosMC2[2];
-        return x * x + y * y;
-    };
-    std::sort(drawOrder.begin(), drawOrder.end(), [&](uint32_t a, uint32_t b) {
-        const float da = distanceSquared(a), db = distanceSquared(b);
-        return da < db || (da == db && a < b);
-    });
+        drawOrder.emplace_back(x * x + y * y, i);
+    }
+    std::sort(drawOrder.begin(), drawOrder.end());
 
     // TERRAIN-HIRES-NEAR-DIAG: diagonal-fitted mode-1 meshes are keyed to one bake; a rebake (rare) drops them.
     const bool diagLive = feed.visualHeightCpu && feed.visualSide > 1 && s->visualHeightReady
@@ -642,7 +641,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     }
     std::vector<TerrainDraw> draws;
     draws.reserve(patchCount);
-    for (uint32_t i : drawOrder) {
+    for (const auto& [dist, i] : drawOrder) {
+        (void)dist;
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         // TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are
         // in bake (fine) units; uint16 indices cap it at 255x255 verts, else fall back to mode 2.

@@ -25,19 +25,34 @@ inline Vec3 shadowEnd(MoverSphere s, Vec3 sun, float ground) {
 }
 
 // Camera rows are explicit: clip[i] = dot(rows[i], vec4(world,1)), Z in [0,W].
-inline bool sweptShadowInView(MoverSphere s, Vec3 sun, float ground, const float rows[16]) {
+// The six view planes and their normal lengths, built once per frame (bit-identical to rebuilding them per sphere).
+struct ViewPlanes {
+    float plane[6][4]{};
+    float norm[6]{};
+};
+inline ViewPlanes makeViewPlanes(const float rows[16]) {
+    ViewPlanes v;
+    for (int p = 0; p < 6; ++p) {
+        for (int k = 0; k < 4; ++k) {
+            if (p == 4) v.plane[p][k] = rows[8 + k];
+            else v.plane[p][k] = rows[12 + k] + (p % 2 == 0 ? 1.0f : -1.0f) * rows[(p / 2) * 4 + k];
+        }
+        v.norm[p] = std::sqrt(v.plane[p][0]*v.plane[p][0] + v.plane[p][1]*v.plane[p][1] + v.plane[p][2]*v.plane[p][2]);
+    }
+    return v;
+}
+inline bool sweptShadowInView(MoverSphere s, Vec3 sun, float ground, const ViewPlanes& v) {
     const Vec3 end = shadowEnd(s, sun, ground);
     for (int p = 0; p < 6; ++p) {
-        float plane[4]{};
-        for (int k = 0; k < 4; ++k) {
-            if (p == 4) plane[k] = rows[8 + k];
-            else plane[k] = rows[12 + k] + (p % 2 == 0 ? 1.0f : -1.0f) * rows[(p / 2) * 4 + k];
-        }
-        const float margin = s.radius * std::sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]);
-        const auto distance = [&](Vec3 v) { return plane[0]*v.x + plane[1]*v.y + plane[2]*v.z + plane[3]; };
+        const float* plane = v.plane[p];
+        const float margin = s.radius * v.norm[p];
+        const auto distance = [&](Vec3 q) { return plane[0]*q.x + plane[1]*q.y + plane[2]*q.z + plane[3]; };
         if ((std::max)(distance(s.center), distance(end)) < -margin) return false;
     }
     return true;
+}
+inline bool sweptShadowInView(MoverSphere s, Vec3 sun, float ground, const float rows[16]) {
+    return sweptShadowInView(s, sun, ground, makeViewPlanes(rows));
 }
 
 // Only the extent has hysteresis; the image is cleared and redrawn every frame.
