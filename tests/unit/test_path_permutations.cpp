@@ -489,10 +489,13 @@ std::string vfsBytesOf (const mc2::vfs::Entry& e)
 {
 	if (e.provider == mc2::vfs::Provider::Fst)
 	{
-		File f;
-		REQUIRE(f.open(e.key.c_str()) == NO_ERR);
-		std::string bytes = readAll(f);
-		f.close();
+		// The FST member itself, not File::open (which serves the key's winner: a loose file outranks the FST).
+		long member = -1;
+		FastFile* ff = FastFileFind(e.key.c_str(), member);
+		REQUIRE(ff != nullptr);
+		std::string bytes(static_cast<size_t>(ff->sizeFast(member)), '\0');
+		if (!bytes.empty()) ff->readFast(member, bytes.data(), static_cast<DWORD>(bytes.size()));
+		ff->closeFast(member);
 		return bytes;
 	}
 	FILE* fp = fopen(e.physicalPath.c_str(), "rb");
