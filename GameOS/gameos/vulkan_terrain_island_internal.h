@@ -137,7 +137,7 @@ struct OvlState {
     mc2vk::OwnedPipeline pipe[2];
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedDescriptorSetLayout texDsl;
-    mc2vk::OwnedDescriptorPool texPool;
+    mc2vk::DescPoolChain texPool;   // grows by kOvlTexPerPool textures when a mission needs more; reset (capacity kept) at mission unload
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
     VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
@@ -333,7 +333,7 @@ struct TerrainIsland : mc2vk::IslandState {
     ~TerrainIsland() override { gpuTimer.destroy(); }
 };
 
-const uint32_t kOvlMaxTex = 480;
+const uint32_t kOvlTexPerPool = 480;   // textures per pool of the overlay's descriptor chain
 const uint32_t kOvlVertStride = 28;   // WorldOverlayVert
 
 // Forward decls (COLORMAP-BASE helpers defined after snapshot_height, used earlier).

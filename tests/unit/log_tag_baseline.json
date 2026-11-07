@@ -10552,6 +10552,18 @@
    "count": 1
   },
   {
+   "tag": "VK_DESC_POOL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "pools",
+    "sets_per_pool",
+    "recoveries"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_DESC_WRITES",
    "ver": 1,
    "stream": "stderr",

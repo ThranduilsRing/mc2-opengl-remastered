@@ -15,8 +15,10 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "diagnostic_trace.h"
+#include "vk_desc_pool_chain.h"
 #include "vk_desc_write_cache.h"
 #include "owned_handle.h"
 #include "vk_render_infra.h"
@@ -142,6 +144,56 @@ inline VkResult allocateDescriptorSets(VkDevice device, const VkDescriptorSetAll
     return r;
 }
 #define MC2_VK_ALLOC_SETS(dev, info, out) ::mc2vk::allocateDescriptorSets((dev), (info), (out), __FILE__, __LINE__)
+
+// One island's chained descriptor pools (vk_desc_pool_chain.h): every pool of the chain is made from the create info given to init(). allocate() fills in
+// the pool; a dry or fragmented pool is replaced by the next one of the chain (or a fresh one) and the allocation retried once, else the caller gets the
+// actual VkResult and keeps its own failure path. reset() resets every pool (the caller idles the GPU first and restores its dummy sets).
+class DescPoolChain {
+public:
+    VkResult init(VkDevice device, const VkDescriptorPoolCreateInfo& info) {
+        device_ = device; flags_ = info.flags; maxSets_ = info.maxSets;
+        sizes_.assign(info.pPoolSizes, info.pPoolSizes + info.poolSizeCount);
+        chain_.clear();
+        OwnedDescriptorPool first;
+        const VkResult r = createPool(&first);
+        if (r == VK_SUCCESS) chain_.adopt(std::move(first));
+        return r;
+    }
+    VkResult allocate(const VkDescriptorSetAllocateInfo& info, VkDescriptorSet* out, std::string_view file, int line) {
+        const auto alloc = [&](OwnedDescriptorPool& pool) {
+            VkDescriptorSetAllocateInfo ai = info;
+            ai.descriptorPool = pool.get();
+            return static_cast<int32_t>(allocateDescriptorSets(device_, &ai, out, file, line));
+        };
+        return static_cast<VkResult>(chain_.allocate(alloc, [&](OwnedDescriptorPool* pool) { return static_cast<int32_t>(createPool(pool)); }));
+    }
+    void reset() {
+        chain_.reset([&](OwnedDescriptorPool& pool) { vkResetDescriptorPool(device_, pool.get(), 0); });
+        bumpDescEpoch();   // every set handle of the chain may come back from the next allocation
+    }
+    // [VK_DESC_POOL v1] (MC2_DIAG_TAGS=VK_DESC_POOL): the chain length at mission unload; stable across reloads unless a mission needs more.
+    void logChain(const char* island) const {
+        if (mc2_diag::tagRequested("VK_DESC_POOL"))
+            std::fprintf(stderr, "[VK_DESC_POOL v1] island=%s pools=%zu sets_per_pool=%u recoveries=%llu\n", island, chain_.length(), maxSets_,
+                         static_cast<unsigned long long>(chain_.retries()));
+    }
+    size_t length() const { return chain_.length(); }
+    explicit operator bool() const { return !chain_.empty(); }
+
+private:
+    VkResult createPool(OwnedDescriptorPool* pool) {
+        VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        pci.flags = flags_; pci.maxSets = maxSets_;
+        pci.poolSizeCount = static_cast<uint32_t>(sizes_.size()); pci.pPoolSizes = sizes_.data();
+        return createChecked(*pool, device_, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); });
+    }
+    VkDevice device_ = VK_NULL_HANDLE;
+    VkDescriptorPoolCreateFlags flags_ = 0;
+    uint32_t maxSets_ = 0;
+    std::vector<VkDescriptorPoolSize> sizes_;
+    DescPoolChainCore<OwnedDescriptorPool> chain_;
+};
+#define MC2_VK_ALLOC_SETS_CHAIN(chain, info, out) (chain).allocate((info), (out), __FILE__, __LINE__)
 
 // A VMA buffer and its allocation. `create` names the buffer for the validation layer (name, optional slot indices; see vulkan_context.h).
 class OwnedBuffer {

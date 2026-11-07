@@ -4,6 +4,7 @@
 #include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
 #include "effect_resources.h"
+#include "../GameOS/gameos/vulkan_vfx_island.h"  // mission-unload sprite descriptor pool chain reset
 
 // --- Shadow shape collection (file-scope global, no struct layout impact) ---
 struct ShadowShapeEntry {
@@ -143,4 +144,5 @@ void mc2::VkSceneRenderer::reset()
     invalidateTexResolveTable();
     mc2_vk_legacy_shape_island_reset();
     mc2_vk_overlay_reset();
+    mc2_vk_vfx_island_reset();
 }

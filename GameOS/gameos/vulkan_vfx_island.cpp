@@ -120,18 +120,18 @@ struct VfxGroupPush {
 };
 static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
 
-constexpr uint32_t kMaxSpritePages = 64;   // descriptor-set budget for the sprite pages
+constexpr uint32_t kSpritePagesPerPool = 64;   // sprite pages per pool of the descriptor chain; a mission that needs more grows it
 // Each engine frame can submit vegetation, billboards, tube ribbons and mesh effects.
 // Give each call its own command buffer and descriptors: sharing the last slot makes
 // the fourth call wait for the third call's same-frame GPU submission to retire.
 constexpr uint32_t kVfxCallsPerFrame = 4;
 constexpr uint32_t kVfxSlots = mc2vk::kMaxFramesInFlight * kVfxCallsPerFrame;
 
-// Sprite pages borrow generation identities from shared residency. Only descriptor pairs live here.
+// Sprite pages borrow generation identities from shared residency. Only descriptor pairs live here; they stay until mission unload
+// (mc2_vk_vfx_island_reset), which resets the whole chain after the GPU is idle.
 struct SpritePage {
     VkDescriptorSet set[kVfxSlots]{};
     VkImageView bound[kVfxSlots]{};
-    uint64_t lastUsedFrame=~static_cast<uint64_t>(0);
 };
 
 struct VfxIsland : mc2vk::IslandState {
@@ -165,7 +165,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef vegetationTexture;
     std::shared_ptr<const mc2tex::TextureArrayCpu> loadedVegetation;
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
-    mc2vk::OwnedDescriptorPool spritePool;
+    mc2vk::DescPoolChain spritePool;
     std::unordered_map<uint64_t, SpritePage> pages; // keyed on full service identity, never a mutable gos name
     mc2veg::GroundLighting groundLighting;
     mc2vk::OwnedPipelineLayout playout;
@@ -246,23 +246,15 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
         id=white_texture_id(ctx);
     } else id=gos_GetUiTextureId(handle);
     if (!id) return std::nullopt;
-    const uint64_t frame=ctx.tracker().frameNo();
     auto it=s->pages.find(id);
     if (it==s->pages.end()) {
         SpritePage page;
-        if (s->pages.size()>=kMaxSpritePages) {
-            auto victim=std::min_element(s->pages.begin(),s->pages.end(),[](const auto& a,const auto& b){return a.second.lastUsedFrame<b.second.lastUsedFrame;});
-            if (victim==s->pages.end() || victim->second.lastUsedFrame==frame) return std::nullopt;
-            page=victim->second; for (auto& b : page.bound) b=VK_NULL_HANDLE;
-            s->pages.erase(victim);
-        } else {
-            VkDescriptorSetLayout layouts[kVfxSlots]; for (auto& l : layouts) l=s->spriteDsl.get();
-            VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-            alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=kVfxSlots;alloc.pSetLayouts=layouts;
-            if (MC2_VK_ALLOC_SETS(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
-        }
+        VkDescriptorSetLayout layouts[kVfxSlots]; for (auto& l : layouts) l=s->spriteDsl.get();
+        VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        alloc.descriptorSetCount=kVfxSlots;alloc.pSetLayouts=layouts;
+        if (MC2_VK_ALLOC_SETS_CHAIN(s->spritePool,alloc,page.set)!=VK_SUCCESS) return std::nullopt;
         it=s->pages.emplace(id,page).first;
-        vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,static_cast<unsigned long long>(id),s->pages.size(),kMaxSpritePages);
+        vlog("sprite page identity: source=%u texture=%llu (%zu, pools=%zu).",handle,static_cast<unsigned long long>(id),s->pages.size(),s->spritePool.length());
     }
     auto& page=it->second;
     // Invalid/missing pages get the visible placeholder; eventual uploads change this view.
@@ -274,7 +266,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
         write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&image;
         vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);page.bound[par]=view;
     }
-    page.lastUsedFrame=frame;return page.set[par];
+    return page.set[par];
 }
 
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
@@ -504,12 +496,12 @@ bool init_island(VfxIsland* s, int w, int h) {
         slci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         slci.bindingCount = 1; slci.pBindings = &sb;
         if (!mc2vk::create(s->spriteDsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &slci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout(sprite) failed."); return false; }
-        VkDescriptorPoolSize spriteSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kVfxSlots * kMaxSpritePages };
+        // Sets are never freed one by one: the chain is reset as a whole at mission unload (mc2_vk_vfx_island_reset).
+        VkDescriptorPoolSize spriteSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kVfxSlots * kSpritePagesPerPool };
         VkDescriptorPoolCreateInfo spci{};
         spci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        spci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        spci.maxSets = kVfxSlots * kMaxSpritePages; spci.poolSizeCount = 1; spci.pPoolSizes = &spriteSize;
-        if (!mc2vk::create(s->spritePool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &spci, nullptr, o); })) { vlog("vkCreateDescriptorPool(sprite) failed."); return false; }
+        spci.maxSets = kVfxSlots * kSpritePagesPerPool; spci.poolSizeCount = 1; spci.pPoolSizes = &spriteSize;
+        if (const VkResult r = s->spritePool.init(s->device, spci); r != VK_SUCCESS) { vlog("vkCreateDescriptorPool(sprite) failed result=%d.", static_cast<int>(r)); return false; }
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -856,6 +848,20 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
 
 void mc2_vk_vfx_vegetation_atlas(const mc2tex::TextureArrayCpu& atlas) {
     vegetationAtlas = atlas.levels.empty() ? nullptr : std::make_shared<mc2tex::TextureArrayCpu>(atlas);
+}
+
+// Mission unload: the sprite pages name texture identities of the mission that ended. Idle the GPU (every submitted set retired), drop the pages and
+// reset the whole sprite chain; its capacity is kept for the next mission, so the chain length is the largest mission's need, not a sum.
+extern "C" void mc2_vk_vfx_island_reset() {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    auto* s=static_cast<VfxIsland*>(ctx.islandSlot(mc2vk::IslandSlot::Vfx).get());
+    if (!s || !s->inited) return;
+    ctx.waitIdle("vfx_reset");
+    s->spritePool.logChain("vfx_sprite");
+    const size_t before=s->pages.size();
+    s->pages.clear();
+    if (s->spritePool) s->spritePool.reset();
+    vlog("sprite page cache reset on mission unload: pages_before=%zu pools=%zu",before,s->spritePool.length());
 }
 
 extern "C" void mc2_vk_vfx_island_destroy() {
