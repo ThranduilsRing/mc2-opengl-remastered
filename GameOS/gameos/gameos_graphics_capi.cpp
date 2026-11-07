@@ -223,12 +223,13 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // Only BC7 is accepted, with exactly one level's worth of blocks; the blocks stay with the handle as its CPU texels, so other
 // backends import them as they are (gos_GetTextureTexels).
 DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
-                                            const uint8_t* blockData, size_t byteLen,
-                                            const char* name, gos_TextureFormat format )
+                                            std::span<const uint8_t> blockData,
+                                            mc2::czstring name, gos_TextureFormat format )
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_NewCompressedTexture2D");
     const bool bc7 = vkFormat == mc2tex::kVkFormatBc7Unorm || vkFormat == mc2tex::kVkFormatBc7Srgb;
-    if(!blockData || !bc7 || w <= 0 || h <= 0 || w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge) ||
+    const size_t byteLen = blockData.size();
+    if(blockData.empty() || !bc7 || w <= 0 || h <= 0 || w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge) ||
        byteLen != mc2tex::bc7LevelBytes(static_cast<uint32_t>(w), static_cast<uint32_t>(h))) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected compressed texture {}: format 0x{:x}, {:d}x{:d}, {:d} bytes",
                 mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(vkFormat), mc2::fmt::as_i32(w),
@@ -245,7 +246,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
     tex.fmt_ = TF_NONE;          // block-compressed; not one of the RGBA8 TexFormats
     tex.has_mipmaps = false;
 
-    auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);
+    auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData.begin(), blockData.end());
     gosTexture* ptex = new gosTexture(tex, format, name, blockVkFormat, std::move(blocks));
     return g_gos_renderer->addTexture(ptex);
 }
@@ -588,9 +589,11 @@ void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
 
 
 
-HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count)
+HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(std::span<gosVERTEX_FORMAT_RECORD> recordSpan)
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_CreateVertexDeclaration");
+    gosVERTEX_FORMAT_RECORD* const records = recordSpan.data();
+    const int count = static_cast<int>(recordSpan.size());
 	gosASSERT(records && count > 0);
     gosASSERT(g_gos_renderer);
 	gosVertexDeclaration* vdecl = gosVertexDeclaration::create(records, count);

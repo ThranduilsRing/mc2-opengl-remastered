@@ -489,7 +489,7 @@ void __stdcall InitializeGameEngine()
 
                 // sebi: get user dependent savegame directory
                 char userDataDir[1024] = {0};
-                if(!gos_GetUserDataDirectory(userDataDir, sizeof(userDataDir))) {
+                if(!gos_GetUserDataDirectory(userDataDir)) {
 				    MC2_LOG(Io, Debug, "Failed to get user data directory");
                     gos_TerminateApplication();
                 }

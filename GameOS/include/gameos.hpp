@@ -26,6 +26,8 @@
 #include<inttypes.h>
 #include <cstdarg> // va_list
 #include <string>  // TERRAIN-SHADOW-GUARD-1: mc2TerrainShadowSunDefine()
+#include <span>
+#include "../../mclib/mc2_czstring.h"
 //#include <new> because we have our own new / delete
 
 #ifndef PLATFORM_WINDOWS
@@ -371,11 +373,11 @@ struct gosEnvironment
 // function there, GameOS will jump to that function. GameOS will check for gos_GetFIle being called
 // again during this function and allow it to read from the disk normally.
 //
-	void (__stdcall *HookGetFile)( const char* FileName, BYTE** MemoryImage, DWORD* Size );
+	void (__stdcall *HookGetFile)( mc2::czstring FileName, BYTE** MemoryImage, DWORD* Size );
 
 // Other file API calls available to hook
 
-	bool (__stdcall *HookDoesFileExist)( const char* FileName);
+	bool (__stdcall *HookDoesFileExist)( mc2::czstring FileName);
 
 };
 
@@ -389,7 +391,7 @@ struct gosEnvironment
 //
 // The command line that was used to start the game is passed
 //
-void __stdcall GetGameOSEnvironment( const char* CommandLine );
+void __stdcall GetGameOSEnvironment( mc2::czstring CommandLine );
 //
 // Called by the Game to cause GameOS to quit and exit (at the end of the current frame - not immediatly)
 //
@@ -644,8 +646,8 @@ struct _gosAudio_ChannelInfo
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
 //
-void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType,  const char* file_name, gosAudio_Format* ga_wf = nullptr, void* data = nullptr, int size = 0, bool only2D = 0);
-void __stdcall gosAudio_CreateResource( HGOSAUDIO * hgosaudio, const char * identifier_name, HGOSFILE file, DWORD offset, bool only2D = 0);
+void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType,  mc2::czstring file_name, gosAudio_Format* ga_wf = nullptr, void* data = nullptr, int size = 0, bool only2D = 0);
+void __stdcall gosAudio_CreateResource( HGOSAUDIO * hgosaudio, mc2::czstring identifier_name, HGOSFILE file, DWORD offset, bool only2D = 0);
 
 //////////////////////////////////////////////////////////////////////////////////
 // Destroy a resource; any sounds currently playing using the ResourceID will be
@@ -769,7 +771,7 @@ struct _gosIME_Appearance
 //
 // Opens a DLL and returns a handle
 //
-HSTRRES __stdcall gos_OpenResourceDLL( const char* FileName, const char** strings, int num);
+HSTRRES __stdcall gos_OpenResourceDLL( mc2::czstring FileName, const char** strings, int num);
 
 //
 // Use to close a resource DLL
@@ -889,7 +891,7 @@ char* __stdcall gos_GetFormattedTime( WORD Hour=-1, WORD Minute=-1, WORD Second=
 //  CharCount is the ASCII value of the last character in the font
 //  texture plus one.
 //
-HGOSFONT3D __stdcall gos_LoadFont( const char* FontFile, DWORD StartLine = 0, int CharCount = 256, DWORD TextureHandle=0 );
+HGOSFONT3D __stdcall gos_LoadFont( mc2::czstring FontFile, DWORD StartLine = 0, int CharCount = 256, DWORD TextureHandle=0 );
 
 //
 // This routine should be called to release storage and textures used by fonts.
@@ -935,7 +937,7 @@ void __stdcall gos_TextDrawBackground( int Left, int Top, int Right, int Bottom,
 // Returns pixel height and width of string (Height=Height of charcters * number of /n found)
 //  Make sure you have setup the Text attributes before calling this.
 //
-void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, const char *Message, ... );
+void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, mc2::czstring Message, ... );
 
 //
 // Returns max line width and visual ink bounds (Top/Bottom relative to
@@ -950,7 +952,7 @@ void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, const char *Me
 // Falls back to line-skip-based geometry for legacy .glyph fonts that
 // lack per-glyph ink data; centering then matches gos_TextStringLength.
 //
-void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const char *Message, ... );
+void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, mc2::czstring Message, ... );
 
 //
 // FONT-IMGUI-SLICE-1: read-only bitmap-font atlas/glyph queries so the ImGui
@@ -998,7 +1000,7 @@ bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGl
 //		/italic=?			? is 1 or 1
 //		//					/ character (/ not followed by a special code will be displayed as - // is only required to display strings like "//color"
 //
-void __stdcall gos_TextDraw( const char *Message, ... );
+void __stdcall gos_TextDraw( mc2::czstring Message, ... );
 
 
 
@@ -1025,13 +1027,13 @@ void __stdcall gos_TextDraw( const char *Message, ... );
 // The whole file in read into memory, MemoryImage will point to the start of the file,
 // Size will be the size of the file.
 //
-void __stdcall gos_GetFile( const char* FileName, BYTE** MemoryImage, SIZE_T* Size );
+void __stdcall gos_GetFile( mc2::czstring FileName, BYTE** MemoryImage, SIZE_T* Size );
 
 
 //
 // Opens a memory mapped file - returns a handle that must be passed to the Close function below.
 //
-void* __stdcall gos_OpenMemoryMappedFile( const char* FileName, BYTE** MemoryImage, DWORD* Size );
+void* __stdcall gos_OpenMemoryMappedFile( mc2::czstring FileName, BYTE** MemoryImage, DWORD* Size );
 
 //
 // Closes a memory mapped file
@@ -1105,7 +1107,7 @@ void* __cdecl operator new[] (size_t size, HGOSHEAP Heap);
 //
 // The memory heaps and current sizes are visible in the GameOS debugger.
 //
-HGOSHEAP __stdcall gos_CreateMemoryHeap( const char* HeapName, DWORD MaximumSize=0, HGOSHEAP parentHeap = ParentClientHeap);
+HGOSHEAP __stdcall gos_CreateMemoryHeap( mc2::czstring HeapName, DWORD MaximumSize=0, HGOSHEAP parentHeap = ParentClientHeap);
 
 //
 // Allows the application to destroy a previously created memory heap.
@@ -1511,7 +1513,7 @@ void __stdcall gosJoystick_CreateEffect( HGOSFORCEEFFECT* ff, DWORD joystick, go
 //
 // Load a feedback effect from an FFE file onto joystick <joy>
 //
-void __stdcall gosJoystick_LoadEffect(HGOSFORCEEFFECT * ff, DWORD joystick, const char * file);
+void __stdcall gosJoystick_LoadEffect(HGOSFORCEEFFECT * ff, DWORD joystick, mc2::czstring file);
 
 //
 // Update the force feedback effect <ff>, given the parameters specified in <fe>
@@ -1640,19 +1642,19 @@ double __stdcall gos_GetElapsedTime( int RealTime=0 );
 //
 // When 'bool HKLM' on the read function is true it will read from LOCAL_MACHINE, otherwise CURRENT_USER. The write functions ONLY work to CURRENT_USER
 //
-void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD* szData, bool HKLM=false );
+void __stdcall gos_LoadDataFromRegistry( mc2::czstring keyName, void* pData, DWORD* szData, bool HKLM=false );
 
 //
 // Saves szData bytes starting at pData into the registry key specified.
 //
 // If szData is 4 the data will be saved as a DWORD, otherwise just binary data
 //
-void __stdcall gos_SaveDataToRegistry( const char* keyName,  void* pData,  DWORD szData );
+void __stdcall gos_SaveDataToRegistry( mc2::czstring keyName,  void* pData,  DWORD szData );
 
 
 
 // sebi:
-bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len);
+bool __stdcall gos_GetUserDataDirectory(std::span<char> user_dir);
 
 
 
@@ -2682,7 +2684,7 @@ HGOSBUFFER __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage
 void __stdcall gos_DestroyBuffer(HGOSBUFFER buffer);
 
 
-HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD* records, int count);
+HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(std::span<gosVERTEX_FORMAT_RECORD> records);
 void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION buffer);
 
 
@@ -2845,7 +2847,7 @@ using gos_RebuildFunction = void (__stdcall *)( DWORD, void *);
 // Hints should be set to any combination of gos_TextureHints or 0 is a good default.
 //
 //
-DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
+DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, mc2::czstring FileName, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
 
 //
 // Loads a texture from a memory image, returns a texture handle
@@ -2861,7 +2863,7 @@ DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* Fi
 //
 // Hints should be set to any combination of gos_TextureHints or 0 is a good default.
 //
-DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* FileName, BYTE* pBitmap, DWORD Size, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
+DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, mc2::czstring FileName, BYTE* pBitmap, DWORD Size, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
 
 //
 // TEXMGR-COMPRESSED-UPLOAD-1: create a single-level block-compressed (BC7) 2D
@@ -2871,7 +2873,7 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // single level, GL_LINEAR filtering (no mips). Returns INVALID_TEXTURE_ID on
 // failure so callers can fall back to the uncompressed path.
 //
-DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, const uint8_t* BlockData, size_t ByteLen, const char* Name, gos_TextureFormat Format = gos_Texture_Solid );
+DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, std::span<const uint8_t> BlockData, mc2::czstring Name, gos_TextureFormat Format = gos_Texture_Solid );
 
 #define RECT_TEX(width,height) (((height)<<16)|(width))
 
@@ -2895,7 +2897,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int He
 // For square textures, place the width in HeightWidth
 // For Rectangular textures, use RECT_TEX(width,height) to pack the width and height values
 //
-DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
+DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, mc2::czstring Name, DWORD HeightWidth, DWORD Hints=0, gos_RebuildFunction pFunc=nullptr, void *pInstance=nullptr );
 
 //
 // Destroy a texture handle (unload from memory)
@@ -2986,11 +2988,11 @@ enum StatFlags
 //					It will be displayed as processor information. Eventually cycles, cache, bus etc..
 //
 //
-void __stdcall AddStatistic( const char* Name, const char* TypeName, gosType Type, void* Value, DWORD Flags );
+void __stdcall AddStatistic( mc2::czstring Name, mc2::czstring TypeName, gosType Type, void* Value, DWORD Flags );
 //
 // This command adds text to the statistic display and can be used for blank lines (eg: " ") or titles (eg: "Ai Logic variables")
 //
-void __stdcall StatisticFormat( const char* String );
+void __stdcall StatisticFormat( mc2::czstring String );
 
 
 
@@ -3036,12 +3038,12 @@ enum
 //
 //
 //
-void __stdcall AddDebuggerMenuItem( const char* Name, bool(__stdcall *CheckMark)(), void(__stdcall *Activated)(), bool(__stdcall *Greyed)()=nullptr, DWORD(__stdcall *Callback)( const char* Name, DWORD MenuFunction)=nullptr );
+void __stdcall AddDebuggerMenuItem( mc2::czstring Name, bool(__stdcall *CheckMark)(), void(__stdcall *Activated)(), bool(__stdcall *Greyed)()=nullptr, DWORD(__stdcall *Callback)( mc2::czstring Name, DWORD MenuFunction)=nullptr );
 
 //
 // Deletes a debugger menu item
 //
-void __stdcall DelDebuggerMenuItem( const char* Name );
+void __stdcall DelDebuggerMenuItem( mc2::czstring Name );
 
 //
 // This API can be used to query the status of the CheckMark, if the menu is Greyed or be used to trigger the menu as if the user had selected it.
@@ -3050,7 +3052,7 @@ void __stdcall DelDebuggerMenuItem( const char* Name );
 //  if called with gosMenu_Name as the function it will return true or false if the menu exists. Other functions will be ignored if the menu does not exist.
 //  Note Debugger\\, Rasterizer\\ and Libraries\\ must appear at the start of the name, but for application menu items, no app name is needed.
 //
-DWORD __stdcall CallDebuggerMenuItem( const char* Name, DWORD MenuFunction );
+DWORD __stdcall CallDebuggerMenuItem( mc2::czstring Name, DWORD MenuFunction );
 
 
 
@@ -3204,16 +3206,16 @@ inline constexpr int Stat_Format = 0x40000000;// Used for formatting in statisti
 inline constexpr int gos_SpewNoAddCR = 1;	// Don't add "\n" to spew output
 extern char* gosErrorFile;
 extern DWORD gosErrorLine;
-extern void __cdecl InternalFunctionSpew( const char* Group, const char* Message, ... );
-extern void __cdecl InternalFunctionSpewV( int Flags, const char* Group, const char* Message, char* arglist );
-extern int __cdecl InternalFunctionStop( const char* Message, ... );
-extern int __cdecl InternalFunctionStop( const char* Message, const char* value);
-extern int __cdecl InternalFunctionPause( const char* Message, ... );
+extern void __cdecl InternalFunctionSpew( mc2::czstring Group, mc2::czstring Message, ... );
+extern void __cdecl InternalFunctionSpewV( int Flags, mc2::czstring Group, mc2::czstring Message, char* arglist );
+extern int __cdecl InternalFunctionStop( mc2::czstring Message, ... );
+extern int __cdecl InternalFunctionStop( mc2::czstring Message, mc2::czstring value);
+extern int __cdecl InternalFunctionPause( mc2::czstring Message, ... );
 extern void __stdcall gosLabRatStart( DWORD Handle );
 extern void __stdcall gosLabRatEnd( DWORD Handle );
 extern void __stdcall gosLabRatSet( DWORD Handle, DWORD Value );
 extern void __stdcall gosLabRatSet( DWORD Handle, float Value );
-extern "C" int __stdcall ErrorHandler( int Flags, const char* Text );
+extern "C" int __stdcall ErrorHandler( int Flags, mc2::czstring Text );
 extern gosEnvironment Environment;
 struct gos_CycleData
 {

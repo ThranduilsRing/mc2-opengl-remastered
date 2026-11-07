@@ -137,7 +137,7 @@ void  __stdcall gos_FindDirectoriesClose() {}
 // ===========================================================================
 HGOSBUFFER __stdcall gos_CreateBuffer(gosBUFFER_TYPE, gosBUFFER_USAGE, int, uint32_t, void*) { return nullptr; }
 void __stdcall gos_DestroyBuffer(HGOSBUFFER) {}
-HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(gosVERTEX_FORMAT_RECORD*, int) { return nullptr; }
+HGOSVERTEXDECLARATION __stdcall gos_CreateVertexDeclaration(std::span<gosVERTEX_FORMAT_RECORD>) { return nullptr; }
 void __stdcall gos_DestroyVertexDeclaration(HGOSVERTEXDECLARATION) {}
 void __stdcall gos_DrawTriangles(gos_VERTEX*, int) {}
 void __stdcall gos_SetRenderState(gos_RenderState, int) {}

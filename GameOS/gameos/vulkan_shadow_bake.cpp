@@ -189,7 +189,7 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     bc4TopSet_ = bsets[1];
     {
         std::array<char, 1024> userDir{};
-        if (gos_GetUserDataDirectory(userDir.data(), static_cast<int>(userDir.size())))
+        if (gos_GetUserDataDirectory(userDir))
             cacheDir_ = (std::filesystem::path(userDir.data()) / "cache" / "shadow").generic_string();
     }
     inited_ = true;
