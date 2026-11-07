@@ -738,8 +738,7 @@ float curTorso, maxTorso, armorTorso, pilotEffect;
 		maxWeaponEffectiveness = 1.0;
 	}
 
-	if (weaponEffectiveness > maxWeaponEffectiveness)
-		maxWeaponEffectiveness = weaponEffectiveness;
+	maxWeaponEffectiveness = std::max(maxWeaponEffectiveness, weaponEffectiveness);
 
 	weaponEffect = weaponEffectiveness / maxWeaponEffectiveness;
 

@@ -339,8 +339,7 @@ void MPLoadMap::seedFromCampaign()
 						else if ( group == groupCount )
 						{
 							tmpFile.readIdLong( "CompletedMissions", missions );
-							if ( missions > missionCount )
-								missionCount = missions;
+							missionCount = std::max(missionCount, missions);
 							newestFile = findResult.cFileName;
 						}
 					 }

@@ -405,8 +405,7 @@ class GroundVehicle : public Mover {
 			//Find MAX armor location.
 			for (long curLocation = 0; curLocation < NUM_GROUNDVEHICLE_LOCATIONS; curLocation++) 
 			{
-				if (armor[curLocation].curArmor > maxArmorLocation)
-					maxArmorLocation = armor[curLocation].curArmor;
+				maxArmorLocation = std::max(maxArmorLocation, armor[curLocation].curArmor);
 
 			}
 

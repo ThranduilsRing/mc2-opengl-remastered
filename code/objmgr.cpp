@@ -413,8 +413,7 @@ GroundVehiclePtr GameObjectManager::getOpenVehicle (void)
 	{
 		if (!vehicles[i]->getExists())
 		{
-			if (i > numVehicles)
-				numVehicles = i;
+			numVehicles = std::max(numVehicles, i);
 
 			return vehicles[i];
 		}
