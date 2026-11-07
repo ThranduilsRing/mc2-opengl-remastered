@@ -24,6 +24,7 @@ REPO = G + "/drv/A/Games/mc2-main"
 INSTALL = G + "/install"
 PC_V04 = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
 PC_SEED = Path("E:/mc2-installs/_lean-seed")
+PC_STOCK = Path("G:/mc2-assets/out/scifi-kit/round2/stock")
 PROOFS = Path("E:/mc2-archive-2026-10/proofs/laptop-gate")
 SSH_OPTS = ["-i", KEY, "-o", "BatchMode=yes", "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30"]
 
@@ -64,8 +65,9 @@ def remote_py(step, *args):
 # ---------------------------------------------------------------- laptop half
 
 def r_subst():
-    """A: for this logon session (the laptop's D:/E: are a card reader, so E-paths use MC2_GATE_EROOT instead). Never I:."""
-    for letter, target in (("A:", G + "/drv/A"),):
+    """A: and G: for this logon session (the laptop's D:/E: are a card reader, so E-paths use MC2_GATE_EROOT instead).
+    G: holds the PC's G:/mc2-assets stock mirror that the kit_art contract row reads at hard-coded paths. Never I:."""
+    for letter, target in (("A:", G + "/drv/A"), ("G:", G + "/drv/G")):
         os.makedirs(target, exist_ok=True)
         cur = subprocess.run(["subst"], capture_output=True, text=True).stdout
         if any(line.upper().startswith(letter) for line in cur.splitlines()):
@@ -188,8 +190,26 @@ def r_pack(window):
 
 # ------------------------------------------------------------------- PC half
 
+def seed_stock():
+    """One-time: mirror G:/mc2-assets/out/scifi-kit/round2/stock (kit_art row input, ~135 MB) to the laptop's drv/G."""
+    dst = G + "/drv/G/mc2-assets/out/scifi-kit/round2"
+    if ssh(f"if exist {dst.replace('/', chr(92))}\\stock\\.seeded echo yes")[1].strip() == "yes":
+        return
+    local = Path(os.environ.get("TEMP", ".")) / "mc2gate-stock.tar"
+    try:
+        if subprocess.run(["tar", "--force-local", "-cf", str(local), "-C", str(PC_STOCK.parent), PC_STOCK.name]).returncode:
+            sys.exit("stock tar failed")
+        scp(local, f"{HOST}:{G}/tmp/stock.tar")
+        ssh(f'powershell -c "New-Item -ItemType Directory -Force {dst} | Out-Null" && tar -xf {G}/tmp/stock.tar -C {dst} '
+            f"&& del {G.replace('/', chr(92))}\\tmp\\stock.tar && cmd /c echo ok> {dst.replace('/', chr(92))}\\stock\\.seeded")
+    finally:
+        local.unlink(missing_ok=True)
+    print("mirrored", PC_STOCK)
+
+
 def seed():
     """One-time: stream the PC's lean seed (published v0.4 payload + game data) into C:/mc2gate/install."""
+    seed_stock()
     if ssh(f"if exist {INSTALL.replace('/', chr(92))}\\.seeded echo yes")[1].strip() == "yes":
         print("laptop install already seeded"); return
     print("seeding laptop install from", PC_SEED, flush=True)
