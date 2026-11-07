@@ -65,7 +65,7 @@ public:
             for (unsigned a = 0; a < 2; ++a) {
                 if (!(hi[a] >= lo[a])) lo[a] = hi[a] = 0;
                 minInv[a] = lo[a] - 1.0f;
-                minInv[a + 2] = float(kDim) / (std::max)(hi[a] - lo[a] + 2.0f, 2.0f);
+                minInv[a + 2] = static_cast<float>(kDim) / (std::max)(hi[a] - lo[a] + 2.0f, 2.0f);
             }
             failure = "frame_ring_allocation";
             // The index buffer dominates. Refuse it before consuming any smaller
@@ -80,7 +80,7 @@ public:
                 uint32_t span[2];
                 for (unsigned a = 0; a < 2; ++a) {
                     const float c0 = std::floor((l.position[a] - r - minInv[a]) * minInv[a + 2]), c1 = std::floor((l.position[a] + r - minInv[a]) * minInv[a + 2]);
-                    span[a] = c1 < 0.0f || c0 > float(kDim - 1) ? 0u : uint32_t((std::min)(c1, float(kDim - 1)) - (std::max)(c0, 0.0f)) + 1u;
+                    span[a] = c1 < 0.0f || c0 > static_cast<float>(kDim - 1) ? 0u : static_cast<uint32_t>((std::min)(c1, static_cast<float>(kDim - 1)) - (std::max)(c0, 0.0f)) + 1u;
                 }
                 entries += span[0] * span[1];
             }
@@ -89,7 +89,7 @@ public:
                 !(spans_[0] = ctx.frameAlloc(VkDeviceSize(count) * 48)) ||
                 !(spans_[1] = ctx.frameAlloc(kDim * kDim * 8)) ||
                 !(params_ = ctx.frameAlloc(32))) return fail();
-            std::memcpy(spans_[0].ptr, pool, size_t(count) * 48);
+            std::memcpy(spans_[0].ptr, pool, static_cast<size_t>(count) * 48);
             *static_cast<uint32_t*>(spans_[2].ptr) = 1;
             std::memcpy(params_.ptr, minInv, 16);
             const uint32_t info[]{kDim, count, std::bit_cast<uint32_t>(moverScale), poolWords_};
@@ -110,7 +110,7 @@ public:
         for (uint32_t b = 0; b < 4; ++b) {
             const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             sets_.write(ctx.device(), parity, b, type, buffers[b].buffer, b == 0 ? 32 : buffers[b].range);
-            offsets[b] = uint32_t(buffers[b].offset);
+            offsets[b] = static_cast<uint32_t>(buffers[b].offset);
         }
         // No HOST->COMPUTE barrier: host writes before vkQueueSubmit are made visible by the submit itself.
         pipeline_.bind(cb, sets_.set(parity), offsets);

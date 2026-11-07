@@ -897,7 +897,7 @@ void VulkanContext::flushPendingLocked() const {
     sig.value = pendingValue_;
     sig.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
     VkSubmitInfo2 out{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
-    out.commandBufferInfoCount = uint32_t(cbs.size());
+    out.commandBufferInfoCount = static_cast<uint32_t>(cbs.size());
     out.pCommandBufferInfos = cbs.data();
     out.signalSemaphoreInfoCount = 1;
     out.pSignalSemaphoreInfos = &sig;

@@ -622,19 +622,19 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
                             const void* bytes, VkDeviceSize byteCount,
                             const std::vector<VkBufferImageCopy>& regions) {
     RenderCore::KtxImage image; image.width=w; image.height=h; image.mipCount=mips;
-    image.vkFormat=uint32_t(fmt); image.isCompressed=compressed; image.blockSizeBytes=compressed ? 16 : 0;
+    image.vkFormat=static_cast<uint32_t>(fmt); image.isCompressed=compressed; image.blockSizeBytes=compressed ? 16 : 0;
     image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+byteCount);
-    for (const auto& region : regions) image.mipByteOffsets.push_back(size_t(region.bufferOffset));
+    for (const auto& region : regions) image.mipByteOffsets.push_back(static_cast<size_t>(region.bufferOffset));
     uint64_t hash=1469598103934665603ull;
     for (uint8_t byte : image.pixels) { hash^=byte; hash*=1099511628211ull; }
     RenderCore::TextureKey key;
     key.source="prop-array:"+std::to_string(hash)+":"+std::to_string(w)+":"+std::to_string(h)+":"+std::to_string(layers);
-    key.format=uint32_t(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
+    key.format=static_cast<uint32_t>(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
     auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{w,h,w,h},layers,true);
     if (!texture) return false;
     if (tgt.texture == &s->albedoOnTexture) {
         // Bytes plus their interpretation identify the actual alpha-ON upload across installs/mods.
-        const uint32_t shape[] = {uint32_t(fmt), w, h, layers, mips};
+        const uint32_t shape[] = {static_cast<uint32_t>(fmt), w, h, layers, mips};
         for (uint32_t v : shape) { hash ^= v; hash *= 1099511628211ull; }
         s->alphaContentHash = hash;
     }
@@ -1869,7 +1869,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const uint32_t instanceCount = feed.count;
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
-    if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
+    poolN = std::min(poolN, kMaxPoolLights);
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
     const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)));
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
@@ -1923,7 +1923,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
-        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+        write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
     }
     void* hzbMask = nullptr;
     uint64_t hzbMaskGeneration = 0;

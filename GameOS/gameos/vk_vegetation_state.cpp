@@ -67,7 +67,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &properties);
     const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
     const VkDeviceSize instBytes = instances.size_bytes(), regBytes = regions.size_bytes();
-    const uint32_t visibleCapacity = uint32_t(std::min(instances.size(), size_t(mc2::vegetation::kVisibleCapacity)));
+    const uint32_t visibleCapacity = static_cast<uint32_t>(std::min(instances.size(), static_cast<size_t>(mc2::vegetation::kVisibleCapacity)));
     const auto policy = RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
     // The shared packed model (strideFor and the placer's capacity use the same one) against the preset ceiling; the
     // load-time staging overlap is added for the live-headroom admission.
@@ -95,12 +95,12 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     }
     for (uint32_t i = 0; i < kSlots; ++i) {
         Slot& s = slot_[i];
-        if (!s.counts.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.counts", int(i)) ||
-            !s.offsets.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.offsets", int(i)) ||
-            !s.visList.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.visList", int(i)) ||
-            !s.dense.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(visibleCapacity) * 4, kStore, "veg.dense", int(i)) ||
-            !s.stats.createHostWritable(ctx.allocator(), ctx.device(), 16, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.stats", int(i)) ||
-            !s.args.createDeviceLocal(ctx.allocator(), ctx.device(), 64, kStore | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.args", int(i))) {
+        if (!s.counts.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.counts", static_cast<int>(i)) ||
+            !s.offsets.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.offsets", static_cast<int>(i)) ||
+            !s.visList.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.visList", static_cast<int>(i)) ||
+            !s.dense.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(visibleCapacity) * 4, kStore, "veg.dense", static_cast<int>(i)) ||
+            !s.stats.createHostWritable(ctx.allocator(), ctx.device(), 16, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.stats", static_cast<int>(i)) ||
+            !s.args.createDeviceLocal(ctx.allocator(), ctx.device(), 64, kStore | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.args", static_cast<int>(i))) {
             mc2::fmt::print_err("[VEG_GPU] population upload failed: output buffer allocation\n");
             clear(ctx);
             return false;

@@ -579,7 +579,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         ZoneScopedN("VKIsl.Terrain.WriteDescriptors"); mc2_hitch2::Scope hs("terrain.write_descriptors");
-        write_descriptors(s,int(par)); s->boundTextures[par]=views;
+        write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
     }
 
     const clk::time_point tUboFill0 = clk::now();

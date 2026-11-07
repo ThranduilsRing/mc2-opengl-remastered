@@ -54,7 +54,7 @@ namespace mc2vk::infra {
 void materialSampler(VkSamplerCreateInfo& info) {
     // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite, and the
     // provider confirmed available: device features, DLL, no create/dispatch failure); the fallback keeps log2(renderScale).
-    const float scale = float(mc2::gate::get<"MC2_RENDER_SCALE">());
+    const float scale = static_cast<float>(mc2::gate::get<"MC2_RENDER_SCALE">());
     const bool provider = scale == 1.0f && mc2::options::current().spatialAA != 0 && [] {
         const auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
         return ctx.valid() && mc2vk::fsrProviderAvailable(ctx);
@@ -164,7 +164,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     s.budget=std::min(s.physicalBudget,RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).total);
     // Diagnostic clamp only: it cannot raise either the physical or preset budget.
     const int mbOverride=mc2::gate::get<"MC2_GPU_BUDGET_MB">();
-    if(mbOverride>0) s.budget=std::min(s.budget,uint64_t(mbOverride)*MiB);
+    if(mbOverride>0) s.budget=std::min(s.budget,static_cast<uint64_t>(mbOverride)*MiB);
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_RESIDENCY v1] budget_bytes={:d} physical_bytes={:d} source={} safety_bytes={:d} quality={:d} maxImageDimension2D={:d}\n",
         mc2::fmt::as_u64(s.budget),mc2::fmt::as_u64(s.physicalBudget),mc2::fmt::safe(memoryBudget?(uma?"VK_EXT_memory_budget+uma":"VK_EXT_memory_budget"):(uma?"heap_half+uma":"heap_half")),mc2::fmt::as_u64(available-s.physicalBudget),mc2::fmt::as_i32(mc2::options::current().shadowQuality),mc2::fmt::as_u32(s.imageEdge));
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
@@ -176,7 +176,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
         const auto total=in.tellg(); in.seekg(0); CacheHeader h{}; in.read(reinterpret_cast<char*>(&h),sizeof(h));
         if(in && h.magic==s.identity.magic && h.vendor==p.vendorID && h.device==p.deviceID && h.driver==p.driverVersion &&
             !std::memcmp(h.uuid,p.pipelineCacheUUID,VK_UUID_SIZE) && h.bytes>=32 && h.bytes<=maxCache && total==std::streamoff(sizeof(h)+h.bytes)) {
-            data.resize(size_t(h.bytes)); in.read(reinterpret_cast<char*>(data.data()),data.size());
+            data.resize(static_cast<size_t>(h.bytes)); in.read(reinterpret_cast<char*>(data.data()),data.size());
             // Validate the Vulkan header as well as our envelope before giving bytes to the ICD.
             uint32_t v[4]{}; std::memcpy(v,data.data(),sizeof(v));
             if(!in || hashBytes(data.data(),data.size())!=h.hash || v[0]<32 || v[0]>data.size() || v[1]!=VK_PIPELINE_CACHE_HEADER_VERSION_ONE || v[2]!=p.vendorID || v[3]!=p.deviceID || std::memcmp(data.data()+16,p.pipelineCacheUUID,VK_UUID_SIZE)) data.clear();
@@ -202,7 +202,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
                     admission.commit(reinterpret_cast<uint64_t>(s.markerMemory),"staging.gpuCrashMarkers",true);
                     if(vkBindBufferMemory(device,s.marker,s.markerMemory,0)!=VK_SUCCESS) break;
                     void* mapped=nullptr; if(vkMapMemory(device,s.markerMemory,0,VK_WHOLE_SIZE,0,&mapped)==VK_SUCCESS) {
-                        std::memset(mapped,0,size_t(bi.size)); s.markerMap=static_cast<volatile uint32_t*>(mapped);
+                        std::memset(mapped,0,static_cast<size_t>(bi.size)); s.markerMap=static_cast<volatile uint32_t*>(mapped);
                     }
                 }
                 break;
@@ -261,7 +261,7 @@ Admission::Admission(uint64_t bytes,std::string_view name) {
         ++s.denied;
         const auto [loggedIt,firstRefusal]=s.refusedLogged.insert(std::string(name)); // once per resource name; the count stays in denials
         if(firstRefusal) std::fprintf(stderr,"[VK_RESIDENCY v1] refused=%.*s bytes=%llu live=%llu pending=%llu budget=%llu fallback=%s\n",
-            int(name.size()),name.data(),bytes,s.live,s.pending,s.budget,fallbacks[category(name)]);
+            static_cast<int>(name.size()),name.data(),bytes,s.live,s.pending,s.budget,fallbacks[category(name)]);
     }
 }
 Admission::~Admission() {
@@ -281,12 +281,12 @@ bool imageSupported(const VkImageCreateInfo& info,std::string_view name) {
         info.extent.depth<=p.maxExtent.depth && info.arrayLayers<=p.maxArrayLayers && info.mipLevels<=p.maxMipLevels && (info.samples&p.sampleCounts)) return true;
     { std::lock_guard lock(s.mutex); ++s.denied; }
     std::fprintf(stderr,"[VK_RESIDENCY v1] refused=%.*s extent=%ux%u layers=%u reason=device_limits fallback=%s\n",
-        int(name.size()),name.data(),info.extent.width,info.extent.height,info.arrayLayers,fallbacks[category(name)]);
+        static_cast<int>(name.size()),name.data(),info.extent.width,info.extent.height,info.arrayLayers,fallbacks[category(name)]);
     return false;
 }
 uint32_t shadowTier(uint32_t requested,uint64_t bpp,uint32_t copies) {
-    uint32_t tier=requested; while(tier>512 && (tier>imageLimit() || !admit(uint64_t(tier)*tier*bpp*copies))) tier/=2;
-    if(!admit(uint64_t(tier)*tier*bpp*copies)) {
+    uint32_t tier=requested; while(tier>512 && (tier>imageLimit() || !admit(static_cast<uint64_t>(tier)*tier*bpp*copies))) tier/=2;
+    if(!admit(static_cast<uint64_t>(tier)*tier*bpp*copies)) {
         mc2::fmt::print_err("[VK_RESIDENCY v1] refused=shadow_map side={:d} fallback=off\n",mc2::fmt::as_u32(requested));
         return 0;
     }
@@ -303,33 +303,33 @@ std::string ledgerJson() {
 void panel() {
     if(!ImGui::CollapsingHeader("Vulkan residency")) return;
     ledgerJson(); auto& s=state(); std::lock_guard lock(s.mutex);
-    ImGui::Text("Live %.1f / %.0f MiB; peak %.1f MiB",double(s.live)/MiB,double(s.budget)/MiB,double(s.peak)/MiB);
-    for(size_t i=0;i<7;++i) ImGui::Text("%s: %.1f MiB (peak %.1f)",categories[i],double(s.current[i])/MiB,double(s.peaks[i])/MiB);
+    ImGui::Text("Live %.1f / %.0f MiB; peak %.1f MiB",static_cast<double>(s.live)/MiB,static_cast<double>(s.budget)/MiB,static_cast<double>(s.peak)/MiB);
+    for(size_t i=0;i<7;++i) ImGui::Text("%s: %.1f MiB (peak %.1f)",categories[i],static_cast<double>(s.current[i])/MiB,static_cast<double>(s.peaks[i])/MiB);
     ImGui::Text("Deferred entries: %zu; allocation denials: %llu",getOrCreateEngineVulkanContext().deferred().size(),s.denied);
     ImGui::TextUnformatted("Live includes resources awaiting GPU completion and transition overlap.");
 }
 void breadcrumb(std::string_view kind,std::string_view name,uint64_t hash,VkCommandBuffer cb) {
-    auto& s=state(); const LONG sequence=InterlockedIncrement(&s.cursor); auto& crumb=s.crumbs[uint32_t(sequence)%s.crumbs.size()];
+    auto& s=state(); const LONG sequence=InterlockedIncrement(&s.cursor); auto& crumb=s.crumbs[static_cast<uint32_t>(sequence)%s.crumbs.size()];
     if(InterlockedCompareExchange(&crumb.writing,1,0)!=0) return;
-    std::snprintf(crumb.text,sizeof(crumb.text),"seq=%ld tick=%ld frame=%llu kind=%.*s name=%.*s hash=%016llx",sequence,::turn,getOrCreateEngineVulkanContext().tracker().frameNo(),int(kind.size()),kind.data(),int(std::min<size_t>(name.size(),230)),name.data(),hash);
+    std::snprintf(crumb.text,sizeof(crumb.text),"seq=%ld tick=%ld frame=%llu kind=%.*s name=%.*s hash=%016llx",sequence,::turn,getOrCreateEngineVulkanContext().tracker().frameNo(),static_cast<int>(kind.size()),kind.data(),static_cast<int>(std::min<size_t>(name.size(),230)),name.data(),hash);
     InterlockedExchange(&crumb.writing,0);
     auto retain=[&](auto& ring,volatile LONG& cursor) {
-        auto& entry=ring[uint32_t(InterlockedIncrement(&cursor))%ring.size()];
+        auto& entry=ring[static_cast<uint32_t>(InterlockedIncrement(&cursor))%ring.size()];
         if(InterlockedCompareExchange(&entry.writing,1,0)==0) { std::memcpy(entry.text,crumb.text,sizeof(entry.text)); InterlockedExchange(&entry.writing,0); }
     };
     if(kind=="shader" || kind=="pipeline") retain(s.identities,s.identityCursor);
     if(kind=="resource") retain(s.resources,s.resourceCursor);
     if(cb) {
-        const auto index=uint32_t(InterlockedIncrement(&s.gpuCursor))%s.gpuCrumbs.size();
+        const auto index=static_cast<uint32_t>(InterlockedIncrement(&s.gpuCursor))%s.gpuCrumbs.size();
         auto& gpu=s.gpuCrumbs[index];
         InterlockedExchange(&gpu.writing,1); std::memcpy(gpu.text,crumb.text,sizeof(gpu.text)); InterlockedExchange(&gpu.writing,0);
         if(s.checkpoints) vkCmdSetCheckpointNV(cb,&gpu);
-        if(s.markerMap) vkCmdWriteBufferMarkerAMD(cb,VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,s.marker,VkDeviceSize(index)*sizeof(uint32_t),uint32_t(sequence));
+        if(s.markerMap) vkCmdWriteBufferMarkerAMD(cb,VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,s.marker,VkDeviceSize(index)*sizeof(uint32_t),static_cast<uint32_t>(sequence));
     }
 }
 void crashSnapshot(std::string_view folder) {
     if(!statePtr) return;
-    auto& s=*statePtr; char path[MAX_PATH]{}; std::snprintf(path,sizeof(path),"%.*s/gpu_breadcrumbs.txt",int(folder.size()),folder.data());
+    auto& s=*statePtr; char path[MAX_PATH]{}; std::snprintf(path,sizeof(path),"%.*s/gpu_breadcrumbs.txt",static_cast<int>(folder.size()),folder.data());
     HANDLE f=CreateFileA(path,GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr); if(f==INVALID_HANDLE_VALUE) return;
     DWORD wrote=0; auto write=[&](std::string_view p) { WriteFile(f,p.data(),DWORD(std::min<size_t>(p.size(),2048)),&wrote,nullptr); WriteFile(f,"\r\n",2,&wrote,nullptr); };
     write(s.driver); write(s.packages); write(s.ledger);
@@ -338,7 +338,7 @@ void crashSnapshot(std::string_view folder) {
     write("Recent resource names (including retired resources):");
     for(auto& c:s.resources) if(!c.writing && c.text[0]) write(c.text);
     write("Recent recording ticks and GPU pass markers:");
-    LONG end=s.cursor; for(LONG i=std::max<LONG>(1,end-255);i<=end;++i) { auto& c=s.crumbs[uint32_t(i)%s.crumbs.size()]; if(!c.writing) {
+    LONG end=s.cursor; for(LONG i=std::max<LONG>(1,end-255);i<=end;++i) { auto& c=s.crumbs[static_cast<uint32_t>(i)%s.crumbs.size()]; if(!c.writing) {
         write(c.text);
     }}
     write("GPU pass slots and completed sequences (zero means not reached):");
@@ -348,7 +348,7 @@ void crashSnapshot(std::string_view folder) {
     }
     CloseHandle(f);
     if(folder=="debug_state") return; // The device-loss snapshot already lives beside the latest state.
-    std::snprintf(path,sizeof(path),"%.*s/latest_render_state.json",int(folder.size()),folder.data());
+    std::snprintf(path,sizeof(path),"%.*s/latest_render_state.json",static_cast<int>(folder.size()),folder.data());
     // Keep crash-time copying independent of the C++ heap, just like the bundle's existing file writer.
     HANDLE input=CreateFileA("debug_state/latest_render_state.json",GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
     if(input==INVALID_HANDLE_VALUE) return;
@@ -407,7 +407,7 @@ struct Recipe {
             if(vp.pViewports) viewports.assign(vp.pViewports,vp.pViewports+vp.viewportCount);
             if(vp.pScissors) scissors.assign(vp.pScissors,vp.pScissors+vp.scissorCount); }
         if(in.pRasterizationState) rs=*in.pRasterizationState;
-        if(in.pMultisampleState) { ms=*in.pMultisampleState; if(ms.pSampleMask) sampleMasks.assign(ms.pSampleMask,ms.pSampleMask+(uint32_t(ms.rasterizationSamples)+31)/32); }
+        if(in.pMultisampleState) { ms=*in.pMultisampleState; if(ms.pSampleMask) sampleMasks.assign(ms.pSampleMask,ms.pSampleMask+(static_cast<uint32_t>(ms.rasterizationSamples)+31)/32); }
         if(in.pDepthStencilState) ds=*in.pDepthStencilState;
         if(in.pColorBlendState) { blend=*in.pColorBlendState; if(blend.attachmentCount) attachments.assign(blend.pAttachments,blend.pAttachments+blend.attachmentCount); }
         if(in.pDynamicState) { dyn=*in.pDynamicState; if(dyn.dynamicStateCount) dynamics.assign(dyn.pDynamicStates,dyn.pDynamicStates+dyn.dynamicStateCount); }
@@ -440,7 +440,7 @@ void reload() {
     std::ifstream request("shader_reload.request"); if(!request) return;
     std::string action,path,candidate,oldHash,newHash; std::getline(request,action); std::getline(request,path); std::getline(request,candidate); std::getline(request,oldHash); std::getline(request,newHash); request.close();
     std::error_code fileError; std::filesystem::remove("shader_reload.request",fileError);
-    auto fail=[&](std::string_view reason) { std::fprintf(stderr,"[VK_SHADER_RELOAD v1] failure_keeps_old reason=%.*s shader=%s\n",int(reason.size()),reason.data(),path.c_str()); std::fflush(stderr); };
+    auto fail=[&](std::string_view reason) { std::fprintf(stderr,"[VK_SHADER_RELOAD v1] failure_keeps_old reason=%.*s shader=%s\n",static_cast<int>(reason.size()),reason.data(),path.c_str()); std::fflush(stderr); };
     if(action!="validated-v1") { fail(candidate.empty()?path.c_str():candidate.c_str()); return; }
     const auto shaderDir = std::filesystem::weakly_canonical("shaders", fileError);
     if(fileError) { fail("shader_directory"); return; }
@@ -463,7 +463,7 @@ void reload() {
     original.read(originalCode.data(),originalCode.size());
     if(!original || hashBytes(originalCode.data(),originalCode.size())!=expectedOld) { fail("stale_original"); return; }
     std::ifstream in(candidate,std::ios::binary|std::ios::ate); if(!in || in.tellg()<20 || in.tellg()>16*MiB || in.tellg()%4!=0) { fail("invalid_candidate"); return; }
-    std::vector<uint32_t> code(size_t(in.tellg())/4); in.seekg(0); in.read(reinterpret_cast<char*>(code.data()),code.size()*4);
+    std::vector<uint32_t> code(static_cast<size_t>(in.tellg())/4); in.seekg(0); in.read(reinterpret_cast<char*>(code.data()),code.size()*4);
     if(!in || code[0]!=0x07230203 || hashBytes(code.data(),code.size()*4)!=expectedNew) { fail("candidate_hash"); return; }
     in.close(); // Windows CRT file handles must close before candidate cleanup.
     auto& s=state(); std::lock_guard lock(s.mutex);
@@ -651,13 +651,13 @@ void deviceLost() {
     if(s.checkpoints && vkGetQueueCheckpointDataNV) {
         std::array<VkCheckpointDataNV,64> checkpoints{};
         for(auto& checkpoint:checkpoints) checkpoint.sType=VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
-        uint32_t count=uint32_t(checkpoints.size()); vkGetQueueCheckpointDataNV(getOrCreateEngineVulkanContext().graphicsQueue(),&count,checkpoints.data());
-        for(uint32_t i=0;i<std::min<uint32_t>(count,uint32_t(checkpoints.size()));++i) {
+        uint32_t count=static_cast<uint32_t>(checkpoints.size()); vkGetQueueCheckpointDataNV(getOrCreateEngineVulkanContext().graphicsQueue(),&count,checkpoints.data());
+        for(uint32_t i=0;i<std::min<uint32_t>(count,static_cast<uint32_t>(checkpoints.size()));++i) {
             const auto ptr=reinterpret_cast<uintptr_t>(checkpoints[i].pCheckpointMarker);
             const auto begin=reinterpret_cast<uintptr_t>(s.gpuCrumbs.data()),end=begin+sizeof(s.gpuCrumbs);
             if(ptr>=begin && ptr<end && (ptr-begin)%sizeof(State::Crumb)==0) {
                 char text[384]{}; std::memcpy(text,reinterpret_cast<State::Crumb*>(ptr)->text,sizeof(text));
-                breadcrumb("gpu_checkpoint",text,uint64_t(checkpoints[i].stage));
+                breadcrumb("gpu_checkpoint",text,static_cast<uint64_t>(checkpoints[i].stage));
             }
         }
     }

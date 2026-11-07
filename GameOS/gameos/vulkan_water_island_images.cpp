@@ -53,7 +53,7 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
     const uint64_t generation = hdriGeneration;
     if (s->hdriAttempted && s->hdriGeneration == generation) {
         s->hdriRealImported=s->hdriSourceReal && mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->hdriTexture.get());
-        return bool(s->hdriTexture);
+        return static_cast<bool>(s->hdriTexture);
     }
     s->hdriAttempted = true;
     s->hdriGeneration = generation;
@@ -88,7 +88,7 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
         uint64_t gotGeneration = 0;
         const char* reason = "";
         haveReal = mc2vk::hdriFromCpu(s->phys, fmt, levels, levelDims, gotGeneration, reason);
-        if (haveReal) { w = levelDims[0].first; h = levelDims[0].second; mips = static_cast<uint32_t>(levels.size()); }
+        if (haveReal) { std::tie(w, h) = levelDims[0]; mips = static_cast<uint32_t>(levels.size()); }
         else vlog("hdri: not imported (%s) -- SH-L2 fallback.", reason);
     }
     if (!haveReal) {

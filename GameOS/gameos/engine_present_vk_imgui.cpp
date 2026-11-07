@@ -150,7 +150,7 @@ ImguiTexRetired::~ImguiTexRetired() {
 
 void imguiTexReleaseAll(EnginePresentVk::Impl& s) {
     const bool live = imguiBackendLive();
-    for (auto& kv : s.imguiTex) imguiTexDestroy(kv.second, live);
+    for (auto& [id, entry] : s.imguiTex) imguiTexDestroy(entry, live);
     s.imguiTex.clear();
     s.ctx->drainDeferred("present_imgui_release");   // the retired entries return their sets while the backend is still up
 }
@@ -160,8 +160,8 @@ namespace {
 void imguiTexSweep(EnginePresentVk::Impl& s) {
     const uint64_t now = ++s.imguiTexFrame;
     for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
-        auto& e = it->second;
-        const bool staleService = RenderCore::isUiTextureId(it->first) &&
+        auto& [id, e] = *it;
+        const bool staleService = RenderCore::isUiTextureId(id) &&
             (!RenderCore::textureService().isLive(e.serviceTexture) || e.serviceView != s.ctx->textures().view(e.serviceTexture));
         if (staleService) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
             s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
@@ -208,7 +208,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         const auto view=textures.view(handle);
         auto it=s.imguiTex.find(textureId);
         if (it!=s.imguiTex.end()) {
-            if (it->second.serviceView==view) { it->second.lastUsedFrame=s.imguiTexFrame; return reinterpret_cast<ImTextureID>(it->second.set); }
+            if (auto& [key, e] = *it; e.serviceView==view) { e.lastUsedFrame=s.imguiTexFrame; return reinterpret_cast<ImTextureID>(e.set); }
             imguiTexRetire(s,it);
         }
         if (!imguiTexMakeRoom(s)) return 0;

@@ -84,7 +84,7 @@ ResidentTextureRef TextureResidency::createRenderTarget(uint32_t width, uint32_t
 uint64_t TextureResidency::legacyUiId(uint32_t gosHandle, uint32_t width, uint32_t height, VkFormat format,
                                      std::shared_ptr<const std::vector<uint8_t>> bytes, bool displaySpace, bool mipmaps) {
     if (!bytes) return 0;
-    auto& e=legacyUi_[gosHandle | (uint64_t(displaySpace | (mipmaps<<1))<<32)];
+    auto& e=legacyUi_[gosHandle | (static_cast<uint64_t>(displaySpace | (mipmaps<<1))<<32)];
     settlePendingUiTexture(e,[this](auto h) { return service_.isLive(h); },
                            [this](auto h) { return contains(h); },[this](auto h) { return ready(h); });
     // Dynamic pages keep the last completed frame. Replacing a pending frame every tick could cancel every upload before publication.
@@ -155,10 +155,10 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     const uint32_t w=image.width,h=image.height;
     if (!layers || layers>4096 || (!arrayView && layers!=1)) return {};
     if (!w || !h || w>RenderCore::kKtxMaxEdge || h>RenderCore::kKtxMaxEdge || image.mipCount<1 ||
-        image.mipCount>15 || image.mipByteOffsets.size()!=size_t(image.mipCount)) return {};
+        image.mipCount>15 || image.mipByteOffsets.size()!=static_cast<size_t>(image.mipCount)) return {};
     uint32_t fullChain=1;
     for (uint32_t edge=std::max(w,h);edge>1;edge>>=1) ++fullChain;
-    if (uint32_t(image.mipCount)>fullChain) return {};
+    if (static_cast<uint32_t>(image.mipCount)>fullChain) return {};
     VkPhysicalDeviceProperties deviceProps{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(),&deviceProps);
     if (layers>deviceProps.limits.maxImageArrayLayers) {
         mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture layers={:d} limit={:d} fallback=placeholder\n",mc2::fmt::as_u32(layers),mc2::fmt::as_u32(deviceProps.limits.maxImageArrayLayers));
@@ -185,9 +185,9 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     size_t expected=0;
     for (int level=0;level<image.mipCount;++level) {
         const uint32_t mw=std::max(1u,w>>level),mh=std::max(1u,h>>level);
-        const size_t bytes=(image.isCompressed ? size_t((mw+3)/4)*((mh+3)/4)*image.blockSizeBytes : size_t(mw)*mh*stride)*layers;
+        const size_t bytes=(image.isCompressed ? static_cast<size_t>((mw+3)/4)*((mh+3)/4)*image.blockSizeBytes : static_cast<size_t>(mw)*mh*stride)*layers;
         if (image.mipByteOffsets[level]!=expected || !bytes || expected>image.pixels.size() || bytes>image.pixels.size()-expected) return {};
-        VkBufferImageCopy copy{}; copy.bufferOffset=expected; copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,uint32_t(level),0,layers}; copy.imageExtent={mw,mh,1};
+        VkBufferImageCopy copy{}; copy.bufferOffset=expected; copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,static_cast<uint32_t>(level),0,layers}; copy.imageExtent={mw,mh,1};
         copies.push_back(copy); expected+=bytes;
     }
     if (expected!=image.pixels.size()) return {};
@@ -195,7 +195,7 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     // arrays retain their layer count and all copies use the reduced base extent.
     const auto policy=RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
     const auto maxEdge=std::min(floating?policy.terrainEdge:policy.textureEdge,deviceProps.limits.maxImageDimension2D);
-    if (w>maxEdge || h>maxEdge || uint64_t(expected)*2>policy.textureUpload || !infra::admit(uint64_t(expected)*2 + 128*1024)) {
+    if (w>maxEdge || h>maxEdge || static_cast<uint64_t>(expected)*2>policy.textureUpload || !infra::admit(static_cast<uint64_t>(expected)*2 + 128*1024)) {
         if (image.mipCount>1) {
             RenderCore::KtxImage reduced=image;
             const size_t skip=image.mipByteOffsets[1];
@@ -211,18 +211,18 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
             RenderCore::KtxImage reduced=image;
             reduced.width=std::max(1u,w/2);
             reduced.height=std::max(1u,h/2);
-            const size_t layerBytes=size_t(reduced.width)*reduced.height*stride;
+            const size_t layerBytes=static_cast<size_t>(reduced.width)*reduced.height*stride;
             reduced.pixels.resize(layerBytes*layers);
             for(uint32_t layer=0;layer<layers;++layer) {
                 if(rgba) {
-                    std::vector<uint8_t> src(image.pixels.begin()+size_t(layer)*w*h*stride,image.pixels.begin()+size_t(layer+1)*w*h*stride);
+                    std::vector<uint8_t> src(image.pixels.begin()+static_cast<size_t>(layer)*w*h*stride,image.pixels.begin()+static_cast<size_t>(layer+1)*w*h*stride);
                     const auto down=mc2tex::boxDownsampleRgba8(src,w,h);
                     std::memcpy(reduced.pixels.data()+layer*layerBytes,down.data(),layerBytes);
                 } else {
                     // Float data keeps its native format; nearest reduction preserves encoded gradients/heights.
                     for(uint32_t y=0;y<uint32_t(reduced.height);++y) for(uint32_t x=0;x<uint32_t(reduced.width);++x)
-                        std::memcpy(reduced.pixels.data()+layer*layerBytes+(size_t(y)*reduced.width+x)*stride,
-                            image.pixels.data()+(size_t(layer)*w*h+size_t(y*2)*w+x*2)*stride,stride);
+                        std::memcpy(reduced.pixels.data()+layer*layerBytes+(static_cast<size_t>(y)*reduced.width+x)*stride,
+                            image.pixels.data()+(static_cast<size_t>(layer)*w*h+static_cast<size_t>(y*2)*w+x*2)*stride,stride);
                 }
             }
             mc2::fmt::print_err("[VK_RESIDENCY v1] refused=texture extent={:d}x{:d} fallback=resample_{:d}x{:d}\n",mc2::fmt::as_u32(w),mc2::fmt::as_u32(h),mc2::fmt::as_u32(reduced.width),mc2::fmt::as_u32(reduced.height));
@@ -237,23 +237,23 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     auto resource=std::make_shared<Image>();
     { ZoneScopedN("TextureResidency.CreateImage"); if (arrayView) {
         VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; ci.imageType=VK_IMAGE_TYPE_2D; ci.format=VkFormat(image.vkFormat);
-        ci.extent={w,h,1}; ci.mipLevels=uint32_t(image.mipCount); ci.arrayLayers=layers; ci.samples=VK_SAMPLE_COUNT_1_BIT;
+        ci.extent={w,h,1}; ci.mipLevels=static_cast<uint32_t>(image.mipCount); ci.arrayLayers=layers; ci.samples=VK_SAMPLE_COUNT_1_BIT;
         ci.tiling=VK_IMAGE_TILING_OPTIMAL; ci.usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         VmaAllocationCreateInfo aci{}; aci.usage=VMA_MEMORY_USAGE_AUTO;
         if (!resource->image.create(ctx_.allocator(),ctx_.device(),ci,aci,vegetation ? "veg.atlas" : "texture.service.array")) return {};
     } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {}; }
-    const auto record=[this,buffer=staging.get(),target=resource->image.get(),levels=uint32_t(image.mipCount),layers,copies](VkCommandBuffer cb){
+    const auto record=[this,buffer=staging.get(),target=resource->image.get(),levels=static_cast<uint32_t>(image.mipCount),layers,copies](VkCommandBuffer cb){
         const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT,0,levels,0,layers};
         mc2vk::sync::cmdImageBarrier(ctx_,cb,target,range,
             VK_IMAGE_LAYOUT_UNDEFINED,VK_PIPELINE_STAGE_2_NONE,0,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT);
-        vkCmdCopyBufferToImage(cb,buffer,target,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
+        vkCmdCopyBufferToImage(cb,buffer,target,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,static_cast<uint32_t>(copies.size()),copies.data());
         mc2vk::sync::cmdImageBarrier(ctx_,cb,target,range,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     };
     VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=resource->image.get();vi.viewType=arrayView ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;vi.format=VkFormat(image.vkFormat);
-    vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,useMips ? uint32_t(image.mipCount) : 1u,0,layers};
+    vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,useMips ? static_cast<uint32_t>(image.mipCount) : 1u,0,layers};
     if (!mc2vk::create(resource->view,ctx_.device(),[&](VkImageView* v){return vkCreateImageView(ctx_.device(),&vi,nullptr,v);})) return {};
     // This context creates only the graphics family. Copy and shader barriers therefore stay on the same queue;
     // no unsupported transfer family or ownership handoff is assumed.
@@ -327,7 +327,7 @@ void TextureResidency::pump() {
             (uploading_.size()>firstNew && std::chrono::steady_clock::now()-started>std::chrono::milliseconds(2));
     },[this](const Pending& p, Upload& next) {
         const auto& r=residents_.at(p.handle.raw());
-        return bool(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));
+        return static_cast<bool>(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));
     },[this](const Pending& p) {
         // A missing resident is terminal failure, distinct from a queued upload.
         // Retained handles may reacquire, and dynamic pages may submit newer pixels.
@@ -377,9 +377,9 @@ void TextureResidency::finishLoading() {
     }
     // Keep the progress UI's descriptor snapshot intact. Normal frame-boundary
     // publication picks up the new table revision after its consumers retire.
-    const auto readyCount=std::count_if(residents_.begin(),residents_.end(),[](const auto& entry) { const auto& [handle,resident]=entry; return bool(resident.image); });
+    const auto readyCount=std::count_if(residents_.begin(),residents_.end(),[](const auto& entry) { const auto& [handle,resident]=entry; return static_cast<bool>(resident.image); });
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_TEXTURES v1] ready=%zu batches=%u blocked=%zu ms=%.3f\n",
-        size_t(readyCount),batches,pending_.size()+uploading_.size(),
+        static_cast<size_t>(readyCount),batches,pending_.size()+uploading_.size(),
         std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
 }
 ResidentTextureRef TextureResidency::acquireLegacy(uint32_t width,uint32_t height,VkFormat format,const void* bytes,size_t count) {
@@ -389,13 +389,13 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
                                                    bool mipmaps,uint32_t layers,bool arrayView) {
     if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge || !layers || layers>4096) return {};
     const bool compressed=format>=131 && format<=146;
-    const size_t expected=(compressed ? size_t((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : size_t(width)*height*((format==VK_FORMAT_R16G16B16A16_SFLOAT || format==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u))*layers;
+    const size_t expected=(compressed ? static_cast<size_t>((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : static_cast<size_t>(width)*height*((format==VK_FORMAT_R16G16B16A16_SFLOAT || format==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u))*layers;
     if (count!=expected) return {};
     RenderCore::TextureKey key;
     key.source=RenderCore::makeTextureSourceId("legacy-cpu:P9",std::to_string(width)+"x"+std::to_string(height)+
         ":"+std::to_string(layers)+(arrayView ? ":array" : ":2d"),RenderCore::textureContentHash(static_cast<const uint8_t*>(bytes),count));
-    key.format=uint32_t(format); key.hints=mipmaps ? gosHint_MipmapFilter0 : 0;
-    RenderCore::KtxImage image; image.width=int(width); image.height=int(height); image.vkFormat=format; image.mipCount=1; image.mipByteOffsets={0};
+    key.format=static_cast<uint32_t>(format); key.hints=mipmaps ? gosHint_MipmapFilter0 : 0;
+    RenderCore::KtxImage image; image.width=static_cast<int>(width); image.height=static_cast<int>(height); image.vkFormat=format; image.mipCount=1; image.mipByteOffsets={0};
     image.isCompressed=compressed; image.blockSizeBytes=(format>=131 && format<=134)?8:compressed?16:0;
     image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+count);
     if (mipmaps && !compressed && (format==VK_FORMAT_R8G8B8A8_UNORM || format==VK_FORMAT_R8G8B8A8_SRGB)) {
@@ -403,7 +403,7 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
         uint32_t w=width,h=height;
         while (w>1 || h>1) {
             std::vector<uint8_t> next;
-            const size_t layerBytes=size_t(w)*h*4;
+            const size_t layerBytes=static_cast<size_t>(w)*h*4;
             for (uint32_t layer=0;layer<layers;++layer) {
                 std::vector<uint8_t> level(current.begin()+layer*layerBytes,current.begin()+(layer+1)*layerBytes);
                 auto down=mc2tex::boxDownsampleRgba8(level,w,h);

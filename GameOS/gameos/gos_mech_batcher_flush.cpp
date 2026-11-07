@@ -235,7 +235,7 @@ static void traceLatch() {
         // disable). s_lightCacheFullFrames retired.
         uint32_t maxIdx = 0;
         for (const auto& ps : s_pendingSubmits) {
-            if (ps.desc.lightDataIndex > maxIdx) maxIdx = ps.desc.lightDataIndex;
+            maxIdx = std::max(maxIdx, ps.desc.lightDataIndex);
         }
         mc2::fmt::print_err("[LIGHTSSBO v1] event=mech_lightidx_max submitted={:d} maxIdx={:d} (unbounded SSBO)\n", mc2::fmt::as_size(s_pendingSubmits.size()), mc2::fmt::as_u32(maxIdx));
     }

@@ -271,7 +271,7 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     sci.oldSwapchain     = oldSwapchain;
     // WSI allocations are opaque. Charge a conservative image bound, including tiling/alignment.
     const uint32_t chargedImages=caps.maxImageCount ? std::min(caps.maxImageCount,imgCount+2) : imgCount+2;
-    const uint64_t imageBytes=((uint64_t(extent.width)*extent.height*8+65535)/65536)*65536;
+    const uint64_t imageBytes=((static_cast<uint64_t>(extent.width)*extent.height*8+65535)/65536)*65536;
     mc2vk::infra::Admission admission(imageBytes*chargedImages,"targets.swapchain");
     if(!admission) { reason="swapchain residency refused; skip present"; return false; }
     const VkResult createResult = mc2vk::createChecked(s.swapchain, s.dev, [&](auto* h) { return vkCreateSwapchainKHR(s.dev, &sci, nullptr, h); });
@@ -1678,7 +1678,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // half of the single {compositeCbuf, cbuf} submission.
     // FSR 3.1 native AA replaces the spatial AA and CAS while it is active (SpatialAA=0 is the off switch).
     VkImageResource* fsrDepth = mc2SharedSceneDepthGetResource();
-    const bool scaled = bool(s.scaledComposite.image);
+    const bool scaled = static_cast<bool>(s.scaledComposite.image);
     const bool fsrActive = fsrDepth && !scaled && mc2::options::current().spatialAA != 0 &&
                            s.fsr.prepare(*s.ctx, *scene, *fsrDepth, true);
     if (!fsrActive) s.fsr.prepare(*s.ctx, *scene, fsrDepth ? *fsrDepth : *scene, false);
@@ -1755,9 +1755,9 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                   static_cast<float>(viewportW), static_cast<float>(viewportH), 0.0f, 1.0f};
     VkRect2D sc{{viewportX, viewportY}, {static_cast<uint32_t>(viewportW), static_cast<uint32_t>(viewportH)}};
     if (scaled) {
-        vp.x *= float(scene->w) / s.imgW; vp.y *= float(scene->h) / s.imgH;
-        vp.width *= float(scene->w) / s.imgW; vp.height *= float(scene->h) / s.imgH;
-        sc = {{int32_t(vp.x), int32_t(vp.y)}, {uint32_t(vp.width), uint32_t(vp.height)}};
+        vp.x *= static_cast<float>(scene->w) / s.imgW; vp.y *= static_cast<float>(scene->h) / s.imgH;
+        vp.width *= static_cast<float>(scene->w) / s.imgW; vp.height *= static_cast<float>(scene->h) / s.imgH;
+        sc = {{static_cast<int32_t>(vp.x), static_cast<int32_t>(vp.y)}, {static_cast<uint32_t>(vp.width), static_cast<uint32_t>(vp.height)}};
     }
     vkCmdSetViewport(cc, 0, 1, &vp);
     vkCmdSetScissor(cc, 0, 1, &sc);
@@ -1807,8 +1807,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         rp.renderArea.extent = {s.imgW, s.imgH};
         MC2_VK_GPU_SCOPE(upscaleScope, cc, "VKIsl.Present.Upscale");
         vkCmdBeginRenderPass(cc, &rp, VK_SUBPASS_CONTENTS_INLINE);
-        vp = {float(viewportX), float(viewportY), float(viewportW), float(viewportH), 0.0f, 1.0f};
-        sc = {{viewportX, viewportY}, {uint32_t(viewportW), uint32_t(viewportH)}};
+        vp = {static_cast<float>(viewportX), static_cast<float>(viewportY), static_cast<float>(viewportW), static_cast<float>(viewportH), 0.0f, 1.0f};
+        sc = {{viewportX, viewportY}, {static_cast<uint32_t>(viewportW), static_cast<uint32_t>(viewportH)}};
         vkCmdSetViewport(cc, 0, 1, &vp); vkCmdSetScissor(cc, 0, 1, &sc);
         mc2vk::infra::bind(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
         vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
@@ -1937,7 +1937,7 @@ bool EnginePresentVk::prewarmPipelines() {
         recordPendingHudColorProof(s, cb, nullptr, nullptr, nullptr, &recordedPipelines);
     }, "present_load_hud");
     s.pendingHudDraws = std::move(pendingHud);
-    const uint64_t key = (uint64_t(warmTexture) << 32) | warmTexture;
+    const uint64_t key = (static_cast<uint64_t>(warmTexture) << 32) | warmTexture;
     if (auto it = s.hudTextureMirrors.find(key); it != s.hudTextureMirrors.end()) {
         auto& [identity, mirror] = *it;
         vkFreeDescriptorSets(s.dev, s.hudTexPool.get(), 1, &mirror.set);
@@ -1954,7 +1954,7 @@ bool EnginePresentVk::prewarmPipelines() {
         return pipe && std::find(recordedPipelines.begin(), recordedPipelines.end(), pipe) != recordedPipelines.end();
     });
     std::fprintf(stderr, "[VK_PRESENT_WARM] hud_variants=%zu complete=%d submitted=%d\n",
-        recordedPipelines.size(), int(covered), int(hudSubmitted));
+        recordedPipelines.size(), static_cast<int>(covered), static_cast<int>(hudSubmitted));
     return hudSubmitted && covered;
 }
 

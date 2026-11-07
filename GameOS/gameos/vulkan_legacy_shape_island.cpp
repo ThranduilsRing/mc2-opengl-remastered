@@ -152,7 +152,7 @@ bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, 
     // Explicit legacy producer boundary: CPU/gos bytes stay legacy-owned; the service owns their Vulkan image.
     auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
     e.texture=textures.acquireLegacy(w,h,fmt,bytes,static_cast<size_t>(byteCount));
-    return bool(e.texture);
+    return static_cast<bool>(e.texture);
 }
 
 // Per-submission descriptor set for one texture: 0 = frame UBO, 1 = albedo.
@@ -685,7 +685,7 @@ extern "C" void mc2_vk_preview_begin(int width,int height) {
 }
 extern "C" void mc2_vk_preview_capture(const Mc2LegacyMlrDraw* draw) {
     if (!draw || !draw->vertices || draw->vertexCount<3) return;
-    auto& bytes=g_previewVertices.emplace_back(size_t(draw->vertexCount)*kVertexStride);
+    auto& bytes=g_previewVertices.emplace_back(static_cast<size_t>(draw->vertexCount)*kVertexStride);
     std::memcpy(bytes.data(),draw->vertices,bytes.size());
     auto d=*draw; d.vertices=bytes.data(); g_previewPending.push_back(d);
 }

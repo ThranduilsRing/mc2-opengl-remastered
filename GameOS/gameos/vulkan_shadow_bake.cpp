@@ -575,8 +575,8 @@ void ShadowBake::retire(uint64_t epoch) {
                         static_cast<double>(objectBytes) / 1048576.0, static_cast<double>(transientBytes_) / 1048576.0,
                         recordedMask_?"released":"retained for dirty updates");
     mc2::fmt::print_err("[SHADOW_BAKE] ledger preset={} mask_mb={:.2f} object_mb={:.2f} mover_mb={:.2f} resident_mb={:.2f} transient_peak_mb={:.2f}\n",
-        mc2shadow::shadowQuality().level,double(maskBytes)/1048576.0,double(objectBytes)/1048576.0,
-        double(objectBytes)/1048576.0,double(maskBytes+2*objectBytes)/1048576.0,double(transientBytes_)/1048576.0);
+        mc2shadow::shadowQuality().level,static_cast<double>(maskBytes)/1048576.0,static_cast<double>(objectBytes)/1048576.0,
+        static_cast<double>(objectBytes)/1048576.0,static_cast<double>(maskBytes+2*objectBytes)/1048576.0,static_cast<double>(transientBytes_)/1048576.0);
     const bool completedMask=recordedMask_;
     recordedMask_ = false;
     // Object-only rebuilds share the dirty path's retained window/encoder images.
@@ -592,20 +592,20 @@ bool ShadowBake::readHeightGrid() {
     heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, layout_.texels);
     if (heights_.empty()) return false;
     heightSide_ = (std::min)(sourceSide, layout_.texels + 1);
-    heightSpacing_ = float(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / float(heightSide_ - 1);
+    heightSpacing_ = static_cast<float>(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / static_cast<float>(heightSide_ - 1);
     return true;
 }
 
 bool ShadowBake::recordColdTile(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     const uint32_t t = coldNextTile_++;
-    const int tx = int(t) % layout_.tilesPerSide, ty = int(t) / layout_.tilesPerSide;
+    const int tx = static_cast<int>(t) % layout_.tilesPerSide, ty = static_cast<int>(t) / layout_.tilesPerSide;
     const auto& tile = tiles_[t];
     const RegionJob job{mc2shadow::kTileTexels, mc2shadow::kRegionTexels, tx * mc2shadow::kTileTexels, ty * mc2shadow::kTileTexels};
     recordRegion(cb, in, job, tile, std::span<const InstRun>(runs_.data() + tile.firstRun, tile.runCount), computeSet_, windowCasterSet_,
-                 t * uint32_t(kSlice), t * uint32_t(kSlice), 0, 0, queryCount_ ? int(t * kQueriesPerTile) : -1);
+                 t * static_cast<uint32_t>(kSlice), t * static_cast<uint32_t>(kSlice), 0, 0, queryCount_ ? static_cast<int>(t * kQueriesPerTile) : -1);
     coldPending_ = coldNextTile_ < tiles_.size();
     if (!coldPending_) {
-        const uint32_t tail = uint32_t(tiles_.size()) * kQueriesPerTile;
+        const uint32_t tail = static_cast<uint32_t>(tiles_.size()) * kQueriesPerTile;
         if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), tail);
         recordTopLevels(cb);
         recordMaskToRead(cb, true);
@@ -1379,7 +1379,7 @@ void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<
         std::memcpy(bb.data(), b.data() + i * 8, 8);
         const auto pa = mc2shadow::decodeBc4Block(ba), pb = mc2shadow::decodeBc4Block(bb);
         for (int k = 0; k < 16; ++k) {
-            const int d = std::abs(int(pa[static_cast<size_t>(k)]) - int(pb[static_cast<size_t>(k)]));
+            const int d = std::abs(static_cast<int>(pa[static_cast<size_t>(k)]) - static_cast<int>(pb[static_cast<size_t>(k)]));
             ++hist[static_cast<size_t>(d)];
             sum += d;
             maxDiff = (std::max)(maxDiff, d);
@@ -1399,7 +1399,7 @@ void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<
                 const size_t o3 = (static_cast<size_t>(y) * q + x) * 3;
                 img[o3 + 0] = pa[0];
                 img[o3 + 1] = pb[0];
-                img[o3 + 2] = static_cast<uint8_t>((std::min)(255, std::abs(int(pa[0]) - int(pb[0])) * 4));
+                img[o3 + 2] = static_cast<uint8_t>((std::min)(255, std::abs(static_cast<int>(pa[0]) - static_cast<int>(pb[0])) * 4));
             }
         const std::string path = (std::filesystem::path(cacheDir_) / "diag_dirty_fresh_diff.ppm").string();
         if (std::FILE* f = std::fopen(path.c_str(), "wb")) {

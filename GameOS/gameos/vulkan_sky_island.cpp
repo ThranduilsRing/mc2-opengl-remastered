@@ -152,7 +152,7 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         uint64_t gotGeneration = 0;
         const char* reason = "";
         haveReal = mc2vk::hdriFromCpu(s->phys, fmt, levels, dims, gotGeneration, reason);
-        if (haveReal) { w = dims[0].first; h = dims[0].second; mips = static_cast<uint32_t>(levels.size()); }
+        if (haveReal) { std::tie(w, h) = dims[0]; mips = static_cast<uint32_t>(levels.size()); }
         else vlog("HDRI not imported (%s) -- black sky.", reason);
     }
     if (!haveReal) {
@@ -221,7 +221,8 @@ bool ensure_hdri(Island* s, uint64_t generation) {
             VkBufferImageCopy c{};
             c.bufferOffset = offs[i];
             c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
-            c.imageExtent = {static_cast<uint32_t>(dims[i].first), static_cast<uint32_t>(dims[i].second), 1};
+            const auto& [dimW, dimH] = dims[i];
+            c.imageExtent = {static_cast<uint32_t>(dimW), static_cast<uint32_t>(dimH), 1};
             vkCmdCopyBufferToImage(cb, staging.get(), s->hdriImg.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
         }
         mc2vk::sync::cmdImageBarrier(bctx, cb, s->hdriImg.get(), hdriRange,

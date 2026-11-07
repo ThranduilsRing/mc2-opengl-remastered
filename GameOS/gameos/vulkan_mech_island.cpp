@@ -959,7 +959,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
             boundSet = set;
         }
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
-        const MechRunPC pc{run.materialFlags, 0, uint32_t(poolN)};
+        const MechRunPC pc{run.materialFlags, 0, static_cast<uint32_t>(poolN)};
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         s->skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run, mc2::battlebench::DrawMechColor));
         ++runs;
@@ -1238,13 +1238,13 @@ Mc2MechPreviewRequest g_previewReq{};
 // First occurrence of each transient skip reason (the lab then keeps its CPU draw that frame).
 int previewSkip(std::string_view why) {   // callers pass string literals
     static const char* s_last = nullptr;
-    if (why.data() != s_last) { s_last = why.data(); vlog("mech-lab preview skipped this frame (%.*s) -- CPU mech draw stays on.", int(why.size()), why.data()); }
+    if (why.data() != s_last) { s_last = why.data(); vlog("mech-lab preview skipped this frame (%.*s) -- CPU mech draw stays on.", static_cast<int>(why.size()), why.data()); }
     return 0;
 }
 
 int previewFail(std::string_view why) {
     g_previewUnusable = true;
-    vlog("mech-lab preview disabled (%.*s) -- the lab keeps the CPU mech draw.", int(why.size()), why.data());
+    vlog("mech-lab preview disabled (%.*s) -- the lab keeps the CPU mech draw.", static_cast<int>(why.size()), why.data());
     return 0;
 }
 
@@ -1259,7 +1259,7 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     clears[2].depthStencil = {0.0f, 0};   // reverse-Z far
     VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rbi.renderPass = s->previewRpass.get(); rbi.framebuffer = s->previewFb.get();
-    rbi.renderArea = {{0, 0}, {uint32_t(w), uint32_t(h)}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.MechPreview");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
@@ -1267,14 +1267,14 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     // The request rect is in the panel's fixed 800x600 logical space (y down), the space the legacy preview pass
     // projects with (vulkan_legacy_shape_island.cpp, proj 2/800 and -2/600); the target is that space scaled to w x h
     // and stores rows bottom-up (drawPreviewToPanel flips v), so the rect's top edge sits at row h - vpY * sy.
-    const float sx = float(w) / 800.0f, sy = float(h) / 600.0f;
-    const float fx = float(q.vpX) * sx, fw = float(q.vpW) * sx, fh = float(q.vpH) * sy;
-    const float fy = float(h) - float(q.vpY + q.vpH) * sy;
-    const int x0 = std::clamp(int(fx), 0, w - 1), y0 = std::clamp(int(fy), 0, h - 1);
-    const int x1 = std::clamp(int(fx + fw + 0.5f), x0 + 1, w), y1 = std::clamp(int(fy + fh + 0.5f), y0 + 1, h);
+    const float sx = static_cast<float>(w) / 800.0f, sy = static_cast<float>(h) / 600.0f;
+    const float fx = static_cast<float>(q.vpX) * sx, fw = static_cast<float>(q.vpW) * sx, fh = static_cast<float>(q.vpH) * sy;
+    const float fy = static_cast<float>(h) - static_cast<float>(q.vpY + q.vpH) * sy;
+    const int x0 = std::clamp(static_cast<int>(fx), 0, w - 1), y0 = std::clamp(static_cast<int>(fy), 0, h - 1);
+    const int x1 = std::clamp(static_cast<int>(fx + fw + 0.5f), x0 + 1, w), y1 = std::clamp(static_cast<int>(fy + fh + 0.5f), y0 + 1, h);
     // The viewport is the full panel rect (it may hang off the target); the scissor clips it to the target.
     VkViewport vp{fx, fy, fw, fh, 0.0f, 1.0f};
-    VkRect2D scissor{{x0, y0}, {uint32_t(x1 - x0), uint32_t(y1 - y0)}};
+    VkRect2D scissor{{x0, y0}, {static_cast<uint32_t>(x1 - x0), static_cast<uint32_t>(y1 - y0)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     if (s->backdropPipe && !runSets.empty()) {
@@ -1364,13 +1364,13 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
     const uint32_t par = rctx.frameContext().slot;
     if (!rctx.wait(s->submitted[par], 5000000000ull, "mech preview slot")) return previewFail("slot_timeout");
 
-    std::memcpy(mainPtr + instOff, feed.instances64, size_t(instBytes));
-    if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, size_t(feed.boneCount * 64ull));
+    std::memcpy(mainPtr + instOff, feed.instances64, static_cast<size_t>(instBytes));
+    if (feed.boneCount) std::memcpy(mainPtr + boneOff, feed.bones64, static_cast<size_t>(feed.boneCount * 64ull));
     std::memset(mainPtr + poolOff, 0, sizeof(gos_terrain_lighting::GpuTerrainLight));
     mc2vk::FrameAlloc lightSpan;
     if (s->wantLighting && q.lights && q.lightBytes) {
         lightSpan = rctx.frameAlloc(VkDeviceSize(q.lightBytes));
-        if (lightSpan) std::memcpy(lightSpan.ptr, q.lights, size_t(q.lightBytes));
+        if (lightSpan) std::memcpy(lightSpan.ptr, q.lights, static_cast<size_t>(q.lightBytes));
     }
 
     const VkDescriptorSet dummySet = get_scheme_set(s, 0, 0, 0, par);
@@ -1391,10 +1391,10 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.fogColorRGB[3] = q.exposure;   // MECH_PREVIEW: panel exposure (the world pass leaves it 0)
       // Backdrop (mech_backdrop.frag): feet centre and contact-shadow ellipse radii in panel-rect uv, y down.
       if (q.groundH > 1.0f && q.vpW > 0 && q.vpH > 0) {
-          u.poolF[0] = (q.groundX - float(q.vpX)) / float(q.vpW);
-          u.poolF[1] = (q.groundY - float(q.vpY)) / float(q.vpH);
-          u.poolF[2] = 0.30f * q.groundH / float(q.vpW);
-          u.poolF[3] = 0.045f * q.groundH / float(q.vpH);
+          u.poolF[0] = (q.groundX - static_cast<float>(q.vpX)) / static_cast<float>(q.vpW);
+          u.poolF[1] = (q.groundY - static_cast<float>(q.vpY)) / static_cast<float>(q.vpH);
+          u.poolF[2] = 0.30f * q.groundH / static_cast<float>(q.vpW);
+          u.poolF[3] = 0.045f * q.groundH / static_cast<float>(q.vpH);
       }
       for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = q.cameraWorldPos[k];
       u.shadeA[0] = feed.ambientStrength;  u.shadeA[1] = feed.specularStrength;
@@ -1409,8 +1409,8 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       std::memcpy(mainPtr, &u, sizeof(u)); }
     sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {
-        uint32_t(mainSpan.offset), uint32_t(mainSpan.offset + instOff), uint32_t(mainSpan.offset + boneOff),
-        uint32_t(lightSpan ? lightSpan.offset : mainSpan.offset), uint32_t(mainSpan.offset + poolOff)};
+        static_cast<uint32_t>(mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + instOff), static_cast<uint32_t>(mainSpan.offset + boneOff),
+        static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + poolOff)};
 
     // The preview target can be rebuilt (panel resize / texture service reset): rebuild the framebuffer on any change.
     const VkImageView views[3] = {static_cast<VkImageView>(colorView), static_cast<VkImageView>(normalView), static_cast<VkImageView>(depthView)};
@@ -1420,7 +1420,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
         s->previewFb.reset();
         VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fci.renderPass = s->previewRpass.get(); fci.attachmentCount = 3; fci.pAttachments = views;
-        fci.width = uint32_t(w); fci.height = uint32_t(h); fci.layers = 1;
+        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->previewFb, s->device, [&](VkFramebuffer* f) { return vkCreateFramebuffer(s->device, &fci, nullptr, f); }))
             return previewFail("framebuffer_failed");
         std::copy(views, views + 3, s->previewFbViews);

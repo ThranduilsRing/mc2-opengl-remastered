@@ -356,7 +356,7 @@ extern "C" int mc2_vk_overlay_prewarm(int w,int h) {
         for (const auto& d : p.draws)
             if (d.vertCount && !ovl_get_tex(s, s->ovl.get(), d.texHandle)) ready = false;
     vlog("[VK_TERRAIN_OVERLAY] prestage verts=%u draws=%u textures=%zu ready=%d.",
-        vertCount, drawCount, s->ovl->texs.size(), int(ready));
+        vertCount, drawCount, s->ovl->texs.size(), static_cast<int>(ready));
     return ready ? 1 : 0;
 }
 
@@ -445,7 +445,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         // Initialize the shared set after its wait even when the terrain draw was skipped.
         const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
         if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
-            write_descriptors(s,int(par)); s->boundTextures[par]=views;
+            write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
         }
         s->setBoundFrame[par] = frameNo;
     }
@@ -569,7 +569,7 @@ extern "C" void mc2_vk_overlay_reset() {
     if (!o || !o->inited) return;
     // gos texture handles are reused by the next mission: drop the copy-once cache + static bake.
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_reset");
-    for (auto& kv : o->texs) ovl_destroy_tex(kv.second);
+    for (auto& [handle, tex] : o->texs) ovl_destroy_tex(tex);
     o->texs.clear();
     o->stat.reset();
     o->statCap = 0; o->statVersion = UINT64_MAX;
