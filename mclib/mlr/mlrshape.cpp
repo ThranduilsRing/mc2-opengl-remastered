@@ -224,7 +224,11 @@ MLRShape::MLRShape(
 
 							Cast_Pointer(MLR_I_DeT_TMesh*, pt)->Copy(Cast_Pointer(MLR_I_DeT_PMesh*, pt_old));
 						}
-						pt_old->DetachReference();
+						// No branch matched (e.g. MLR_I_MT_PMesh): pt is still pt_old and stays in allPrimitives.
+						if(pt != pt_old)
+						{
+							pt_old->DetachReference();
+						}
 					}
 				}
 			}
