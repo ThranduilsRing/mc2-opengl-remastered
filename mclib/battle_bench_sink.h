@@ -19,15 +19,19 @@ inline uint64_t nativePropLeaves = 0, nativeMechLeaves = 0;
 inline uint64_t particleRecords = 0, particleSixths = 0;
 inline uint64_t (*beginTick)() = nullptr;
 inline void (*endTick)(uint64_t) = nullptr;
+// Sim ticks started since process start (all threads); the fixed measurement window is a range of these.
+inline std::atomic<uint64_t> simTicks{0};
+// [PERF_WINDOW v1]: per-frame means over frames that START with simTicks in [kWindowBegin, kWindowEnd), independent of run length.
+inline constexpr uint64_t kWindowBegin = 30, kWindowEnd = 120;
 struct Tick {
-    uint64_t sample = beginTick ? beginTick() : 0;
+    uint64_t sample = (simTicks.fetch_add(1, std::memory_order_relaxed), beginTick ? beginTick() : 0);
     ~Tick() { if (sample && endTick) endTick(sample); }
 };
 
 // [PERF_COUNTERS v1]: per-frame counters, always on (relaxed atomic adds; no env gate, no behaviour change).
 // `cur` holds this frame; beginFrame folds it into `tot` (see battle_bench.h). Wait fields are nanoseconds, main thread only.
 enum class Field : unsigned {
-    DrawProps, DrawTerrain, DrawWater, DrawMech, DrawLegacy, DrawSky, DrawVfx, DrawShadow,
+    DrawProps, DrawTerrain, DrawWater, DrawMechDepth, DrawMechColor, DrawLegacy, DrawSky, DrawVfx, DrawShadow,
     WaitSealedNs, WaitSimNs, WaitGpuMainNs,
     ExtractBytes, HeapAllocs,
     WalkVisited, WalkRecalc, WalkGround, WalkTouch, WalkUpdate,
@@ -41,7 +45,7 @@ enum class Field : unsigned {
 using enum Field;
 inline constexpr unsigned FieldCount = static_cast<unsigned>(Field::NumFields);
 inline constexpr const char* kFieldNames[FieldCount] = {
-    "draws.props", "draws.terrain", "draws.water", "draws.mech", "draws.legacy", "draws.sky", "draws.vfx", "draws.shadow",
+    "draws.props", "draws.terrain", "draws.water", "draws.mech_depth", "draws.mech_color", "draws.legacy", "draws.sky", "draws.vfx", "draws.shadow",
     "wait_sealed_ns", "wait_sim_ns", "wait_gpu_main_ns",
     "extract.bytes", "heap_allocs",
     "walk.visited", "walk.recalc", "walk.ground", "walk.touch", "walk.update",
@@ -51,6 +55,9 @@ inline constexpr const char* kFieldNames[FieldCount] = {
 inline std::atomic<uint64_t> cur[FieldCount]{};
 inline std::atomic<uint64_t> tot[FieldCount]{};
 inline std::atomic<uint64_t> totFrames{0};
+inline std::atomic<uint64_t> winTot[FieldCount]{};
+inline std::atomic<uint64_t> winFrames{0};
+inline bool curInWindow = false, windowEmitted = false;   // main thread only
 inline thread_local bool onMainThread = false;   // set by beginFrame (called on main)
 inline void add(Field f, uint64_t n = 1) { cur[std::to_underlying(f)].fetch_add(n, std::memory_order_relaxed); }
 // Movers alive and moving or firing, for the bench `world` row; written by the bench fixture.
