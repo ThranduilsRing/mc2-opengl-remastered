@@ -9,13 +9,11 @@
 #include <ffx_api/ffx_upscale.h>
 #include <ffx_api/vk/ffx_api_vk.h>
 #include <ffx_api/ffx_api_loader.h>
-#include <atomic>
 #include <chrono>
 #include "mc2fmt.h"
 
 namespace mc2vk {
 namespace {
-std::atomic<bool> g_providerFailed{false};
 FfxApiResource wrap(VkImage image, VkFormat format, uint32_t w, uint32_t h, VkImageUsageFlags usage, uint32_t state) {
     VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ci.imageType = VK_IMAGE_TYPE_2D; ci.format = format; ci.extent = {w, h, 1};
@@ -98,10 +96,7 @@ bool FsrProvider::prepare(VulkanContext& ctx, const VkImageResource& scene, cons
     Impl& s = *impl_;
     if (s.failed) return false;
     if (s.context && (s.w != scene.w || s.h != scene.h)) s.destroyContext();    // resize
-    if (!s.context && !s.create(ctx, scene.w, scene.h)) {
-        s.failed = true; s.setRegistered(false); g_providerFailed.store(true, std::memory_order_relaxed);
-        return false;
-    }
+    if (!s.context && !s.create(ctx, scene.w, scene.h)) { s.failed = true; s.setRegistered(false); return false; }
     if (s.sceneImage != scene.image.get() || s.depthImage != depth.image.get()) {   // mission load recreated the targets
         s.sceneImage = scene.image.get(); s.depthImage = depth.image.get();
         s.resetFrames = 2;
@@ -176,20 +171,8 @@ bool FsrProvider::record(VkCommandBuffer cb, const VkImageResource& scene, const
     VkMemoryBarrier m{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
     m.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; m.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &m, 0, nullptr, 0, nullptr);
-    if (!ok) { s.failed = true; s.setRegistered(false); g_providerFailed.store(true, std::memory_order_relaxed); }
+    if (!ok) { s.failed = true; s.setRegistered(false); }
     return ok;
-}
-
-bool fsrProviderAvailable(const VulkanContext& ctx) {
-    if (!ctx.temporalFeaturesEnabled() || g_providerFailed.load(std::memory_order_relaxed)) return false;
-    static const bool dllOk = [] {
-        HMODULE dll = LoadLibraryA("amd_fidelityfx_vk.dll");   // kept loaded for the process; the provider takes its own reference
-        if (!dll) return false;
-        ffxFunctions fns{};
-        ffxLoadFunctions(&fns, dll);
-        return fns.CreateContext && fns.DestroyContext && fns.Dispatch;
-    }();
-    return dllOk;
 }
 
 VkImageView FsrProvider::outputView() const { return impl_ ? impl_->output.view.get() : VK_NULL_HANDLE; }
