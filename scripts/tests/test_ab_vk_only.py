@@ -21,7 +21,9 @@ def _shot(d, bm, color):
 def test_compare_only(tmp_path):
     _shot(tmp_path / "a", "bm", (10, 10, 10))
     _shot(tmp_path / "b", "bm", (30, 10, 10))
-    ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "b"), "--out-root", str(tmp_path / "o"), "--crop", "0,0,0.5,1"])
+    with pytest.raises(SystemExit) as ex:
+        ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "b"), "--out-root", str(tmp_path / "o"), "--crop", "0,0,0.5,1"])
+    assert ex.value.code == 0
     s = json.loads((tmp_path / "o" / "summary.json").read_text())
     assert s["rows"][0]["mad"] == pytest.approx(20 / 3, abs=0.01)
     assert (tmp_path / "o" / "bm" / "montage.jpg").exists() and (tmp_path / "o" / "bm" / "diff.jpg").exists()
@@ -38,7 +40,9 @@ def test_exe_mode_stages_installs_and_runs_both(tmp_path, monkeypatch):
     runs = []
     monkeypatch.setattr(ab, "run_capture", lambda install, bms, out, env: runs.append((install, Path(out).name, env)))
     monkeypatch.setattr(ab, "compare", lambda *a, **k: None)
-    ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
+    with pytest.raises(SystemExit) as ex:
+        ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
+    assert ex.value.code == 0
     assert [Path(r[0]).name for r in runs] == ["install_a", "install_b"] and [r[1] for r in runs] == ["a", "b"]
     assert (Path(runs[0][0]) / "mc2.exe").read_bytes() == b"A" and (Path(runs[1][0]) / "mc2.exe").read_bytes() == b"B"
     assert (Path(runs[0][0]) / "data.bin").exists() and (inst / "mc2.exe").read_bytes() == b"orig"
@@ -69,3 +73,30 @@ def test_seed_install_copies_from_reference_and_fails_clearly(tmp_path):
     with pytest.raises(SystemExit) as e:
         ab.seed_install(inst, "bm1", ref)
     assert "burnin" in str(e.value)
+
+
+def _run_compare_only(tmp_path):
+    with pytest.raises(SystemExit) as ex:
+        ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "b"), "--out-root", str(tmp_path / "o")])
+    return ex.value.code
+
+
+def test_compare_only_fails_when_one_side_lacks_a_bookmark(tmp_path):
+    _shot(tmp_path / "a", "bm", (10, 10, 10))
+    _shot(tmp_path / "a", "only_a", (10, 10, 10))
+    _shot(tmp_path / "b", "bm", (10, 10, 10))
+    assert _run_compare_only(tmp_path) == 1
+    assert "only_a: side B" in "".join(json.loads((tmp_path / "o" / "summary.json").read_text())["problems"])
+
+
+def test_compare_only_fails_on_an_empty_png(tmp_path):
+    _shot(tmp_path / "a", "bm", (10, 10, 10))
+    _shot(tmp_path / "b", "bm", (10, 10, 10))
+    (tmp_path / "b" / "bm" / "bm.png").write_bytes(b"")
+    assert _run_compare_only(tmp_path) == 1
+
+
+def test_compare_only_fails_when_nothing_was_compared(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    assert _run_compare_only(tmp_path) == 1
