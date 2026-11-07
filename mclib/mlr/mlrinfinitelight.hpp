@@ -28,10 +28,6 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRInfiniteLight(
-			ClassData *class_data,
-			Stuff::Page *page
-		);
 		~MLRInfiniteLight();
 
 		virtual void

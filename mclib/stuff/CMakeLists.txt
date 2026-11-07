@@ -24,9 +24,6 @@ set(SOURCES ${SOURCES}
     filestream.cpp
     filestreammanager.cpp
     memorystream.cpp
-    notationfile.cpp
-    note.cpp
-    page.cpp
     stuff.cpp
     )
 

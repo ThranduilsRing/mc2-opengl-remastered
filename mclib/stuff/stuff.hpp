@@ -208,11 +208,7 @@ inline constexpr mc2::czstring GROUP_STUFF_TRACE = "Stuff::Trace";
 #include"marray.hpp"
 #include"glmstream.hpp"	// step 5: the engine math is glm (mclib/math/mc2_xform.h); the byte formats
 #include"filestream.hpp"
-#include"filestreammanager.hpp"
 #include"marray.hpp"
-#include"notationfile.hpp"
-#include"page.hpp"
-#include"note.hpp"
 #include"random.hpp"
 #include"vector2d.hpp"
 #include"vector4d.hpp"

@@ -69,24 +69,6 @@ MLRInfiniteLightWithFalloff::MLRInfiniteLightWithFalloff(
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRInfiniteLightWithFalloff::MLRInfiniteLightWithFalloff(
-	ClassData *class_data,
-	Stuff::Page *page
-) :
-	MLRLight(class_data, page)
-{
-	Check_Object(page);
-	Verify(gos_GetCurrentHeap() == Heap);
-	lightMask = MLRState::FaceLightingMode|MLRState::VertexLightingMode;
-	Scalar inner=0.0f;
-	page->GetEntry("InnerRadius", &inner);
-	Scalar outer=100.0;
-	page->GetEntry("OuterRadius", &outer);
-	SetFalloffDistance (inner, outer);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRInfiniteLightWithFalloff::~MLRInfiniteLightWithFalloff()
 {
 }
@@ -101,19 +83,6 @@ void
 
 	MLRLight::Save(stream);
 	*stream << innerRadius << outerRadius;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	MLRInfiniteLightWithFalloff::Write(Stuff::Page *page)
-{
-	Check_Object(this);
-	Check_Object(page);
-
-	MLRLight::Write(page);
-	page->SetEntry("InnerRadius", innerRadius);
-	page->SetEntry("OuterRadius", outerRadius);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

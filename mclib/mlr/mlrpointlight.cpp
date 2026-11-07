@@ -77,29 +77,6 @@ MLRPointLight::MLRPointLight(
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRPointLight::MLRPointLight(Stuff::Page *page):
-	MLRInfiniteLightWithFalloff(DefaultData, page)
-{
-	Check_Object(page);
-	Verify(gos_GetCurrentHeap() == Heap);
-	lightMap = nullptr;
-	const char* lightmap;
-	if (page->GetEntry("LightMap", &lightmap))
-	{
-		Check_Pointer(lightmap);
-		Check_Object(MLRTexturePool::Instance);
-		MLRTexture *texture = (*MLRTexturePool::Instance)(lightmap, 0);
-		if (!texture)
-			texture = MLRTexturePool::Instance->Add(lightmap, 0);
-		Check_Object(texture);
-		lightMap = new MLRLightMap(texture);
-		Check_Object(lightMap);
-		lightMask |= MLRState::LightMapLightingMode;
-	}
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRPointLight::~MLRPointLight()
 {
 	if (lightMap)
@@ -129,25 +106,6 @@ void
 	}
 	else
 		*stream << MString("");
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-void
-	MLRPointLight::Write(Stuff::Page *page)
-{
-	Check_Object(this);
-	Check_Object(page);
-
-	MLRInfiniteLightWithFalloff::Write(page);
-	if (lightMap)
-	{
-		Check_Object(lightMap);
-		unsigned handle = lightMap->GetState().GetTextureHandle();
-		MLRTexture *texture = (*MLRTexturePool::Instance)[handle];
-		Check_Object(texture);
-		page->SetEntry("LightMap", texture->GetTextureName());
-	}
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -27,7 +27,6 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRAmbientLight(Stuff::Page *page);
 		~MLRAmbientLight();
 
 		virtual void

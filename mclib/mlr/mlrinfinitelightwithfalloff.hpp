@@ -28,16 +28,10 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRInfiniteLightWithFalloff(
-			ClassData *class_data,
-			Stuff::Page *page
-		);
 		~MLRInfiniteLightWithFalloff();
 
 		void
 			Save(Stuff::MemoryStream *stream);
-		void
-			Write(Stuff::Page *page);
 
 		virtual void
 			LightVertex(const MLRVertexData&);

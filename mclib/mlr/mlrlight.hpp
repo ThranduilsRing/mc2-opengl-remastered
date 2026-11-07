@@ -39,10 +39,6 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		MLRLight(
-			ClassData *class_data,
-			Stuff::Page* page
-		);
 		~MLRLight();
 
 		static MLRLight*
@@ -50,13 +46,9 @@ namespace MidLevelRenderer {
 				Stuff::MemoryStream *stream,
 				int version
 			);
-		static MLRLight*
-			Make(Stuff::Page *page);
 
 		virtual void
 			Save(Stuff::MemoryStream *stream);
-		virtual void
-			Write(Stuff::Page *page);
 
 		enum LightType {
 			AmbientLight = 0,

@@ -62,19 +62,6 @@ MLRInfiniteLight::MLRInfiniteLight(
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-MLRInfiniteLight::MLRInfiniteLight(
-	ClassData *class_data,
-	Stuff::Page *page
-) :
-	MLRLight(class_data, page)
-{
-	Check_Object(page);
-	Verify(gos_GetCurrentHeap() == Heap);
-	lightMask = MLRState::FaceLightingMode|MLRState::VertexLightingMode;
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
 MLRInfiniteLight::~MLRInfiniteLight()
 {
 }

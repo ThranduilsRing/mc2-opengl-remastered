@@ -77,8 +77,6 @@ void
 	//-------------------------------------------------
 	//
 	Verify(FirstFreeStuffClassID <= LastStuffClassID);
-	Verify(!FileStreamManager::Instance);
-	FileStreamManager::Instance = std::make_unique<FileStreamManager>();
 	RegisteredClass::InitializeClass();
 	Plug::InitializeClass();
 	Node::InitializeClass();
@@ -146,6 +144,4 @@ void
 	Node::TerminateClass();
 	Plug::TerminateClass();
 	RegisteredClass::TerminateClass();
-	Check_Pointer(FileStreamManager::Instance.get());
-	FileStreamManager::Instance.reset();
 }
