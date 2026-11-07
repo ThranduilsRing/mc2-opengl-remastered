@@ -57,7 +57,7 @@ namespace missiongui_detail {
 	void mfFrameEnd(unsigned long long totalNs) {
 		if (!s_mfOn) return;
 		if (!s_mfAtexit) { s_mfAtexit=true; std::atexit(mfEmit); }
-		++s_mfFrames; s_mfFrameNs[MF_TOTAL]=totalNs;
+		++s_mfFrames; s_mfFrameNs[std::to_underlying(MifPhase::MF_TOTAL)]=totalNs;
 		for (int c=0;c<8;c++) { s_mfFrameNs[MF_CG_FIRST+c]=g_ifaceCgFrameNs[c]; g_ifaceCgFrameNs[c]=0; }
 		for (int i=0;i<MF_COUNT;i++) {
 			s_mfSum[i]+=s_mfFrameNs[i]; s_mfMax[i] = std::max(s_mfMax[i], s_mfFrameNs[i]);

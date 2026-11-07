@@ -8,6 +8,7 @@
 #define MISSIONGUI_SHARED_INTERNAL_H
 
 // Include Files
+#include <utility>
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>(), raw<>()
@@ -16,12 +17,13 @@
 // MC2_MIF_SPLIT / MC2_IFACE_COST_SPLIT phase timing and the GPU-ground-pick parity oracle: used by update() and the
 // order-style paths, defined in missiongui_diag.cpp.
 namespace missiongui_detail {
-	enum MifPhase { MF_TOTAL=0, MF_INVPROJ, MF_LOS, MF_CTRLGUI, MF_UPDTGT, MF_POSTTGT, MF_DRAWBARS, MF_ROLLOVERS,
+	enum class MifPhase { MF_TOTAL=0, MF_INVPROJ, MF_LOS, MF_CTRLGUI, MF_UPDTGT, MF_POSTTGT, MF_DRAWBARS, MF_ROLLOVERS,
 		// ControlGui::update sub-phases, folded from g_ifaceCgFrameNs[] --
 		// order matches CgPhase in controlgui.cpp.
 		MF_CG_PAUSE, MF_CG_BTNHOVER, MF_CG_ROSTER, MF_CG_MOVERSTATE, MF_CG_TACMAP, MF_CG_INFOWND, MF_CG_VEHTAB, MF_CG_FGBAR,
 		MF_COUNT };
-	const int MF_CG_FIRST = MF_CG_PAUSE;
+	inline constexpr int MF_COUNT = std::to_underlying(MifPhase::MF_COUNT);
+	inline constexpr int MF_CG_FIRST = std::to_underlying(MifPhase::MF_CG_PAUSE);
 	extern const bool s_mfOn;
 	extern unsigned long long s_mfFrameNs[MF_COUNT];
 	extern unsigned long long s_mfInvWalks, s_mfInvHits, s_mfWinWalks, s_mfWinHits;
@@ -29,7 +31,7 @@ namespace missiongui_detail {
 	extern const bool s_gpCenter;
 	struct MifScope {
 		int idx; std::chrono::steady_clock::time_point t0;
-		explicit MifScope(int i):idx(i){ if(s_mfOn) t0=std::chrono::steady_clock::now(); }
+		explicit MifScope(MifPhase p):idx(std::to_underlying(p)){ if(s_mfOn) t0=std::chrono::steady_clock::now(); }
 		~MifScope(){ if(!s_mfOn) return; s_mfFrameNs[idx]+=(unsigned long long)
 			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count(); }
 	};

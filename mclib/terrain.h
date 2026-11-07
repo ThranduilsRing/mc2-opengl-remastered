@@ -60,16 +60,13 @@ inline constexpr float TACMAP_SIZE = 128.f;
 // Per-cell flags for the editor passability overlay. Defined here so that
 // mclib/quad.cpp can use them without depending on editor/ headers.
 // Populated by EditorNavLayer (editor/EditorNavLayer.cpp) via gEditorNavFlags.
-enum EditorNavFlags : uint8_t
-{
-    EDITOR_NAV_GROUND_PASSABLE = 1 << 0,
-    EDITOR_NAV_HOVER_PASSABLE  = 1 << 1,
-    EDITOR_NAV_AIR_PASSABLE    = 1 << 2,
-    EDITOR_NAV_BLOCKED         = 1 << 3,
-    EDITOR_NAV_SHALLOW_WATER   = 1 << 4,
-    EDITOR_NAV_DEEP_WATER      = 1 << 5,
-    EDITOR_NAV_OBJECT_BLOCKED  = 1 << 6,
-};
+inline constexpr uint8_t EDITOR_NAV_GROUND_PASSABLE = 1 << 0;
+inline constexpr uint8_t EDITOR_NAV_HOVER_PASSABLE  = 1 << 1;
+inline constexpr uint8_t EDITOR_NAV_AIR_PASSABLE    = 1 << 2;
+inline constexpr uint8_t EDITOR_NAV_BLOCKED         = 1 << 3;
+inline constexpr uint8_t EDITOR_NAV_SHALLOW_WATER   = 1 << 4;
+inline constexpr uint8_t EDITOR_NAV_DEEP_WATER      = 1 << 5;
+inline constexpr uint8_t EDITOR_NAV_OBJECT_BLOCKED  = 1 << 6;
 
 extern uint8_t* gEditorNavFlags;      // null when overlay not active
 extern int      gEditorNavCellSide;   // terrain cellSide = realVerticesMapSide - 1

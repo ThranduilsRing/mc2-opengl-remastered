@@ -132,7 +132,7 @@ void Mech3DAppearance::updateGeometry (void)
 	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
 	// projection_total). One scope per visible mech per frame.
 	::mc2_cpu_proj_cost::SidecarScope _f3_skin_scope(
-	    ::mc2_cpu_proj_cost::SIDECAR_SKINNING_CHAIN);
+	    ::mc2_cpu_proj_cost::SidecarId::SIDECAR_SKINNING_CHAIN);
 
 	// BT2018-SKEL-ENGINE-1B-RUNTIME / 1C: advance + re-pose imported skinned mechs
 	// once per frame BEFORE TransformMultiShape re-reads the shared type geometry

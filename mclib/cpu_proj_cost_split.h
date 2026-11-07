@@ -30,7 +30,7 @@
 namespace mc2_cpu_proj_cost {
 
 // Bucket identifiers. Order matters: matches printout order.
-enum BucketId : int {
+enum class BucketId : int {
     BUCKET_MATRIX_BUILD          = 0,  // Camera.BuildMVP + SetCameraMatrices
     BUCKET_RECALCBOUNDS_PERFRAME = 1,  // 6 recalcBounds overrides (aggregated)
     BUCKET_TGL_TRANSFORM         = 2,  // TG_MultiShape::TransformMultiShape (aggregated)
@@ -39,7 +39,7 @@ enum BucketId : int {
 };
 
 // Sidecar (NEVER part of projection_total adjudication).
-enum SidecarId : int {
+enum class SidecarId : int {
     SIDECAR_SKINNING_CHAIN          = 0,  // Mech3D.UpdateGeometry outer
     SIDECAR_EVENTDRIVEN_PROJECT_Z   = 1,  // projectZ called outside render loop (count-only)
     SIDECAR_CULL_ADMISSION_PERFRAME = 2,  // projectForObjectAdmission (timed; R2 follow-on)
@@ -132,13 +132,13 @@ void    debug_overlay_end_ns(int64_t startNs);
 // destruction. Zero-cost when env OFF (constructor early-out).
 class Scope {
 public:
-    explicit Scope(int bucketId);
+    explicit Scope(BucketId bucketId);
     ~Scope();
     // Non-copyable, non-movable.
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
 private:
-    int     bucket_;
+    BucketId bucket_;
     bool    armed_;
     int64_t startNs_;
 };
@@ -146,12 +146,12 @@ private:
 // Sidecar scope (for skinning_chain etc).
 class SidecarScope {
 public:
-    explicit SidecarScope(int sidecarId);
+    explicit SidecarScope(SidecarId sidecarId);
     ~SidecarScope();
     SidecarScope(const SidecarScope&) = delete;
     SidecarScope& operator=(const SidecarScope&) = delete;
 private:
-    int     sidecar_;
+    SidecarId sidecar_;
     bool    armed_;
     int64_t startNs_;
 };

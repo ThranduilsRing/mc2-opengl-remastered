@@ -3,7 +3,7 @@
 #include <cstdint>
 
 namespace mc2vk {
-enum SceneReadbackChannel : uint32_t { SceneColor = 1, SceneDepth = 2, SceneObjectId = 4, SceneAll = 7 };
+inline constexpr uint32_t SceneColor = 1, SceneDepth = 2, SceneObjectId = 4, SceneAll = 7;
 struct ScenePixel {
     uint8_t rgba[4]{};
     float depth = 0;

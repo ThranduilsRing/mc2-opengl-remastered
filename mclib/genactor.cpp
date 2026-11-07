@@ -540,7 +540,7 @@ bool GenericAppearance::recalcBounds (void)
 	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
 	// recalcBounds_perframe bucket. No-op when env OFF.
 	::mc2_cpu_proj_cost::Scope _f3_recalcBounds_scope(
-	    ::mc2_cpu_proj_cost::BUCKET_RECALCBOUNDS_PERFRAME);
+	    ::mc2_cpu_proj_cost::BucketId::BUCKET_RECALCBOUNDS_PERFRAME);
 	::mc2_cpu_proj_cost::add_workload_recalcbounds(1);
 	Stuff::Vector4D tempPos;
 	setVisibilityGatesFromLegacy(false);

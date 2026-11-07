@@ -301,7 +301,7 @@ bool TreeAppearance::recalcBounds (void)
 	// Inline fast path: the Scope ctor/dtor and workload counter are out-of-line calls per object per frame.
 	std::optional<::mc2_cpu_proj_cost::Scope> _f3_recalcBounds_scope;
 	if (::mc2_cpu_proj_cost::g_cpuProjEnabled) {
-		_f3_recalcBounds_scope.emplace(::mc2_cpu_proj_cost::BUCKET_RECALCBOUNDS_PERFRAME);
+		_f3_recalcBounds_scope.emplace(::mc2_cpu_proj_cost::BucketId::BUCKET_RECALCBOUNDS_PERFRAME);
 		::mc2_cpu_proj_cost::add_workload_recalcbounds(1);
 	}
 	// [TOBJSPLIT v1] accumulators declared in code/static_update_counters.h
