@@ -65,3 +65,27 @@ def test_nightly_child_uses_g_tmp_and_0430():
     assert nightly_gate.TMP_DIR == "G:/mc2-tmp"
     xml = open(os.path.join(ROOT, "scripts", "nightly_gate.task.xml"), encoding="utf-8").read()
     assert "T04:30:00" in xml
+
+
+def test_nightly_child_never_writes_the_window_verdict():
+    import merge_gate
+    src = open(os.path.join(ROOT, "scripts", "nightly_gate.py"), encoding="utf-8").read()
+    assert '"--isolated-verdict"' in src
+    assert "--isolated-verdict" in open(merge_gate.__file__, encoding="utf-8").read()
+
+
+def test_publish_refuses_exe_the_gate_did_not_test(tmp_path):
+    import deploy_payload
+    (tmp_path / "build64-ninja").mkdir()
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"gated")
+    sha = deploy_payload.sha256_file(str(exe))
+    vf = tmp_path / "build64-ninja" / "gate-verdict.json"
+    vf.write_text(json.dumps(dict(verdict="PASS", head="abc", artifacts=dict(exe_sha256=sha))))
+    f = deploy_payload.verdict_exe_refusal
+    assert f(str(tmp_path), str(exe), "abc") is None
+    assert f(str(tmp_path), str(exe), "def")          # other HEAD
+    exe.write_bytes(b"rebuilt")
+    assert "rebuilt" in f(str(tmp_path), str(exe), "abc")
+    vf.write_text(json.dumps(dict(verdict="FAIL", head="abc", artifacts=dict(exe_sha256=sha))))
+    assert f(str(tmp_path), str(exe), "abc")

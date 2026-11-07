@@ -161,7 +161,11 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
         why.append("stage refused by its preflight: " + "; ".join(state["refused"]))
     if verdict.get("verdict") != "PASS" or not verdict.get("complete"):
         why.append(f"verdict {verdict.get('verdict')} complete={verdict.get('complete')}")
-    why.extend(untriaged_nightly_fail(NIGHTLY_PROOFS))
+    # A window verdict that ran --nightly/--weekly (tier >= 1): complete PASS, nothing failed or skipped, for this candidate IS the nightly proof.
+    own_nightly = (verdict.get("tier", 0) >= 1 and verdict.get("verdict") == "PASS" and verdict.get("complete")
+                   and not verdict.get("failed") and not verdict.get("skipped") and verdict.get("head") == cand)
+    if not own_nightly:
+        why.extend(untriaged_nightly_fail(NIGHTLY_PROOFS))
     if verdict.get("skipped"):
         why.append("skipped rows: " + ", ".join(sorted(verdict["skipped"])))
     if verdict.get("head") != cand:

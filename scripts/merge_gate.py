@@ -1108,11 +1108,11 @@ def archive_prior_verdict(proof):
     return target
 
 
-def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, timings, cleanup_errors):
+def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, timings, cleanup_errors, tier=0):
     """The durable structured verdict (schema 1). Written atomically; written BEFORE cleanup and again after it with the same verdict."""
     reasons = {n: e["MC2_GATE_SKIP_REASON"] for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
     reasons.update({n: r["status"][len("SKIP: "):] for n, r in ROW_RESULTS.items() if r["status"].startswith("SKIP: ")})
-    data = dict(schema=1, head=head, branch=branch, verdict=verdict, complete=verdict == "PASS",
+    data = dict(schema=1, head=head, branch=branch, tier=tier, verdict=verdict, complete=verdict == "PASS",
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
@@ -1167,6 +1167,36 @@ def parse_declared_views(items):
         except ValueError:
             raise argparse.ArgumentTypeError("--declared-view %r: bound %r is not a number (expected NAME or NAME=maxMAD)" % (item, bound))
     return out
+
+
+POST_SCOPE_RE = re.compile(r"VKIsl\.Post\.\w+")
+
+
+def capture_post_scopes(capture_dir):
+    """Set of VKIsl.Post.* scope names in every per-bookmark *_capture.log under a capture dir (the pipeline signature)."""
+    scopes = set()
+    for log in Path(capture_dir).glob("*/*_capture.log"):
+        scopes.update(POST_SCOPE_RE.findall(log.read_text(encoding="utf-8", errors="replace")))
+    return scopes
+
+
+def capture_pipeline_mismatch(before_dir, after_dir):
+    """One-line reason when before/after captures ran different post pipelines (W126: before had no FSR AA because the seed
+    lacked amd_fidelityfx_vk.dll), else None. Not a pixel result, so the caller marks the row INFRA instead of judging MAD."""
+    before, after = capture_post_scopes(before_dir), capture_post_scopes(after_dir)
+    if not before or not after or before == after:
+        return None  # no log evidence on a side: stay with the pixel verdict
+    install = ""
+    try:
+        match = re.search(r"install=(\S+)", (Path(before_dir) / "capture_run.log").read_text(encoding="utf-8", errors="replace"))
+        install = match.group(1) if match else ""
+    except OSError:
+        pass
+    miss = bool(install) and not (Path(install) / "amd_fidelityfx_vk.dll").is_file()
+    return ("capture pipelines differ, not a pixel result: only before has %s, only after has %s; seed %s%s"
+            % (sorted(before - after) or "-", sorted(after - before) or "-",
+               "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
+               f" ({install})" if install else ""))
 
 
 def mad_flags(output, declared=(), expected=()):
@@ -1574,7 +1604,16 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else (
                     infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
-                if result.returncode == 0 and name.startswith("compare-captures"):
+                mismatch = None
+                if name == "compare-captures" and "--compare-only" in command:
+                    cmp_i = command.index("--compare-only")
+                    mismatch = capture_pipeline_mismatch(command[cmp_i + 1], command[cmp_i + 2])
+                    if mismatch:
+                        status = "INFRA: " + mismatch.replace("|", "/")
+                        print(f"[merge_gate] {name}: {status}", flush=True)
+                if mismatch:
+                    pass
+                elif result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     for line in (getattr(result, "stdout", "") or "").splitlines():
                         if line.startswith("[pixel_hist] "):  # reported next to MAD; not a pass/fail input yet
@@ -1680,6 +1719,7 @@ def main(argv=None):
                     help="run every later stage after a failure; the final verdict still fails and lists all failed stages")
     ap.add_argument("--log", type=Path, help="gate log path (default: timestamped merge-gate proof directory)")
     ap.add_argument("--proofs-dir", type=Path, help="exact proof directory for this invocation")
+    ap.add_argument("--isolated-verdict", action="store_true", help="write the verdict only into the proof dir; leave build64-ninja/gate-verdict.json and last-green-gate.json (the stage window's) untouched (nightly_gate)")
     ap.add_argument("--before-dir", type=Path, help="reuse a previous capture-before directory")
     ap.add_argument("--expect-pre-exe-sha", help="required executable SHA256 for --before-dir evidence")
     try:
@@ -1729,7 +1769,8 @@ def main(argv=None):
     if args.resume and state_path.exists():
         resumed_proof = Path(json.loads(state_path.read_text(encoding="utf-8"))["artefact_dir"])
     proof = args.proofs_dir or resumed_proof or Path(EROOT + "/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
-    if not args.dry_run and not args.install:
+    own_marks = not args.install and not args.isolated_verdict
+    if not args.dry_run and own_marks:
         (ROOT / GREEN_MARK).unlink(missing_ok=True)  # cleared at start too, so a crashed run cannot publish an older green
     try:
         if args.before_dir:
@@ -1835,7 +1876,7 @@ def main(argv=None):
                 exe = ROOT / "build64-ninja/mc2.exe"
                 artifacts = dict(exe=str(exe), exe_sha256=gate_reuse._file_sha(exe) if exe.is_file() else None,
                                  proof=str(proof), log=str(log_path), install=str(args.install or CANDIDATE))
-                verdict_paths = [proof / "gate-verdict.json", ROOT / VERDICT_FILE]
+                verdict_paths = [proof / "gate-verdict.json"] + ([] if args.isolated_verdict else [ROOT / VERDICT_FILE])
                 if args.resume and not args.dry_run:
                     archive_prior_verdict(proof)
                 exec_started = time.time()
@@ -1846,8 +1887,9 @@ def main(argv=None):
                     v, s = verdict_of(rc, steps)
                     if not args.dry_run:
                         write_verdict(verdict_paths, head=head, branch=git("branch", "--show-current"), verdict=v, steps=steps,
-                                      skipped=s, artifacts=artifacts, timings=TIMINGS, cleanup_errors=CLEANUP_ERRORS)
-                        print(f"[merge_gate] verdict {v} written before cleanup: {ROOT / VERDICT_FILE}", flush=True)
+                                      skipped=s, artifacts=artifacts, timings=TIMINGS, cleanup_errors=CLEANUP_ERRORS,
+                                      tier=2 if args.weekly else 1 if args.nightly else 0)
+                        print(f"[merge_gate] verdict {v} written before cleanup: {verdict_paths[-1]}", flush=True)
                     return v
                 if execute_gate is execute_window:
                     scheduling["on_result"] = durable
@@ -1865,9 +1907,9 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
-                if verdict != "PASS" and not args.dry_run and not args.install:
+                if verdict != "PASS" and not args.dry_run and own_marks:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
-                if verdict == "PASS" and not args.dry_run and not args.install:
+                if verdict == "PASS" and not args.dry_run and own_marks:
                     (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time(),
                                                                         candidate=str(CANDIDATE) if args.keep_candidate and not CANDIDATE_ERRORS else None)))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")
