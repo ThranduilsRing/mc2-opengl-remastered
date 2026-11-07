@@ -17,7 +17,7 @@
 namespace MidLevelRenderer {
 
 	class GOSImage:
-		public Stuff::Plug
+		public Stuff::RegisteredClass
 	{
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Constructors/Destructors
