@@ -87,6 +87,7 @@
 #include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include "../../RenderCore/axis_convert.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
+#include "vk_island_fail_policy.h"
 
 namespace {
 
@@ -240,14 +241,8 @@ std::unique_ptr<mc2vk::IslandState>& islandSlot() {
 }
 MechIsland* parkedIsland() { return static_cast<MechIsland*>(islandSlot().get()); }
 
-// VK-RUNG8 item-2 (boot-level native-or-decline), mirrors the terrain island: a
-// PERMANENT init failure (spv/pipeline/renderpass/buffer creation past the context +
-// shared-GBuffer readiness gates) declines the mech island for the SESSION with ONE
-// receipt line (GL owns mechs from frame 0) instead of re-newing + re-init'ing every
-// frame. A TRANSIENT readiness gate (VK context / shared GBuffer not born yet at boot)
-// keeps the item-9 fail-hard-with-retry (GL draws this frame, retry next). g_mech-
-// InitReachedBuild flips to 1 once init passes the readiness gates.
-static bool g_mechSessionDeclined  = false;
+// Init failure policy (vk_island_fail_policy.h): before the readiness gates (VK context / shared GBuffer not born yet) init retries next
+// frame; past them a failure is fatal (one transient-VkResult retry). g_mechInitReachedBuild flips to 1 once init passes the readiness gates.
 static int  g_mechInitReachedBuild = 0;
 
 // gpuReadHeavy: a host-written buffer the GPU reads many times per frame (the night pool, walked by every mech fragment) is written
@@ -443,7 +438,10 @@ bool init_island(MechIsland* s, int w, int h) {
     s->allocator = ctx.allocator();
     if (s->device == VK_NULL_HANDLE || s->allocator == VK_NULL_HANDLE) { setFallback("engine_vk_device_or_allocator_null"); return false; }
     g_health.vulkanAvailable = 1;
-    if (!s->skin.init(s->device, s->allocator, spv_dir())) vlog("mech GPU skin unavailable (pipeline build failed); passes blend bones inline.");
+    if (!s->skin.init(s->device, s->allocator, spv_dir())) {
+        vlog("mech GPU skin unavailable (pipeline build failed); passes blend bones inline.");
+        (void)mc2vk::takeLastCreateFailure();   // optional: its VkResult must not be blamed for a later init failure
+    }
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -1015,29 +1013,18 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         }
     }
 
-    if (g_mechSessionDeclined)   // a permanent init failure declined this island: GL owns mechs
- return 0;
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     if (const MechIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Mech);
     if (!islandSlot()) {
         auto fresh = std::make_unique<MechIsland>();
+        (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
-            const bool permanent = (g_mechInitReachedBuild != 0);
             slotCtx.waitIdle("mech_init_failure");   // objects made before the failure may have been submitted
-            if (permanent) {
-                g_mechSessionDeclined = true;
-                vlog("[VK_MECH_ISLAND] boot-level decline: permanent init failure (%s) -- "
-                     "GL owns mechs for this session (no per-frame retry).",
-                     g_health.fallbackReason);
-            } else {
-                static bool s_transientLogged = false;
-                if (!s_transientLogged) {
-                    vlog("init not ready (%s) — GL fallback (will retry).", g_health.fallbackReason);
-                    s_transientLogged = true;
-                }
-            }
+            mc2vk::onIslandInitFailure(mc2vk::IslandKind::Mech, g_mechInitReachedBuild != 0, mc2vk::takeLastCreateFailure(),
+                                       g_health.fallbackReason);   // fatal does not return; otherwise retry next frame
             return 0;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::Mech).reset();
         islandSlot() = std::move(fresh);
     }
     MechIsland* s = parkedIsland();
@@ -1312,7 +1299,7 @@ extern "C" void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r) {
     if (r) g_previewReq = *r;
 }
 
-extern "C" int mc2_vk_mech_preview_usable(void) { return (g_previewUnusable || g_mechSessionDeclined) ? 0 : 1; }
+extern "C" int mc2_vk_mech_preview_usable(void) { return g_previewUnusable ? 0 : 1; }
 
 namespace { bool g_previewDrewLast = false; }
 extern "C" int mc2_vk_mech_preview_drew_last(void) { return g_previewDrewLast ? 1 : 0; }
@@ -1328,7 +1315,7 @@ extern "C" int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void
 static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h) {
     if (!g_previewPending) return 0;
     g_previewPending = false;
-    if (g_previewUnusable || g_mechSessionDeclined) return 0;
+    if (g_previewUnusable) return 0;
     if (!colorView || !normalView || !depthView || w <= 0 || h <= 0) return previewSkip("no_preview_target");
     ZoneScopedN("VK-mech-preview");
     const Mc2MechPreviewRequest& q = g_previewReq;

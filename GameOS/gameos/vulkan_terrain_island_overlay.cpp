@@ -1,6 +1,7 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vk_owned.h"
+#include "vk_island_fail_policy.h"
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
 #include "../../RenderCore/TemporalInputs.h"
@@ -309,7 +310,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
 }  // namespace
 
 extern "C" int mc2_vk_overlay_enabled() {
-    return (!g_terrainSessionDeclined && !g_ovlDeclined) ? 1 : 0;
+    return g_ovlDeclined ? 0 : 1;
 }
 
 extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t vertCount,
@@ -563,6 +564,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
 }
 
 extern "C" void mc2_vk_overlay_reset() {
+    mc2vk::resetAllIslandInitFailures();  // mission boundary: a new mission starts with fresh retry allowances
     g_ovlPending.clear();
     TerrainIsland* s = parkedIsland();
     OvlState* o = s ? s->ovl.get() : nullptr;

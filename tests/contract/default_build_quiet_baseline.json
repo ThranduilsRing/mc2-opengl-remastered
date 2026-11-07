@@ -80,6 +80,10 @@
     "BENCH_DEVICE v1": {
       "status": "keep",
       "reason": "GameOS/gameos/vk_gpu_profile.cpp: one line at device creation naming the GPU, driver and API version the [VK_GPU_PASSES v1] numbers were measured on, so a perf receipt carries its device. No parser consumes it yet (W125)."
+    },
+    "VK_ISLAND_INIT": {
+      "status": "keep",
+      "reason": "GameOS/gameos/vk_island_fail_policy.h: printed only when a Vulkan island's init fails (once per wait, once per retry/degrade/fatal decision), naming the island, action and VkResult; a healthy device prints none. It is the receipt for a missing effect or a fatal exit, so it must not hide behind MC2_DIAG_VERBOSE."
     }
   }
 }

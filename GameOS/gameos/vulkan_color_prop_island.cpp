@@ -78,9 +78,14 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full nigh
 #include <algorithm>
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 #include "mc2fmt.h"
+#include "vk_island_fail_policy.h"
 
 
 namespace {
+
+// Flips to 1 once init passes the context/shared-GBuffer readiness gates: a later failure is a build failure
+// (vk_island_fail_policy.h), an earlier one retries next frame.
+int g_propInitReachedBuild = 0;
 
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the shadow island's).
@@ -851,6 +856,7 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
 bool init_island(ColorPropIsland* s, int w, int h) {
     s->w = w; s->h = h;
     ++g_health.attempted;
+    g_propInitReachedBuild = 0;
 
     if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
@@ -890,8 +896,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
     if (s->tier1) {
         // ---- TIER-1: fetch the SHARED scene color/normal/depth exportable images the
         // GL scene renders terrain into (built by the postprocess seams; the island
-        // co-writes props into these SAME images in-place). Fail-soft: any missing =>
-        // GL fallback (the caller runs the GL prop flush). ----
+        // co-writes props into these SAME images in-place). Any missing => not ready yet,
+        // retry next frame. ----
         s->t1_colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
         s->t1_normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
         s->t1_depthRes  = mc2SharedSceneDepthGetResource();
@@ -938,6 +944,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
                 return false;
             }
         }
+        g_propInitReachedBuild = 1;
         s->useInterop = false;
         g_health.interopActive = 0;
         g_health.vk2glSemActive = 0;
@@ -1841,11 +1848,14 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
     if (!islandSlot()) {
         auto fresh = std::make_unique<ColorPropIsland>();
+        (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
             slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
+            mc2vk::onIslandInitFailure(mc2vk::IslandKind::ColorProp, g_propInitReachedBuild != 0,
+                                       mc2vk::takeLastCreateFailure(), g_health.fallbackReason);
             return 0;
         }
+        mc2vk::islandInitFailures(mc2vk::IslandKind::ColorProp).reset();
         islandSlot() = std::move(fresh);
     }
     ColorPropIsland* s = parkedIsland();

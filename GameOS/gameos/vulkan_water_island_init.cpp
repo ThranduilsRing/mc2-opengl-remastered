@@ -8,17 +8,16 @@
 
 namespace vk_water_detail {
 
+int g_waterInitReachedBuild = 0;
+
 // One-time init: borrow the shared device, build the exportable color seam,
 // gbuffer1 + depth images, recipe/thin/UBO buffers, render pass, pipeline.
 bool init_island(WaterIsland* s, int w, int h) {
     s->w = w; s->h = h;
     ++g_health.attempted;
+    g_waterInitReachedBuild = 0;
 
-    // VK-P9a: bring up the shared engine device on-demand, DECOUPLED from present.
-    // If MC2_RENDER_BACKEND=vulkan already born it, this is a no-op; otherwise it
-    // inits the SAME shared device (one volkLoadDevice, interop exts, NO swapchain)
-    // so the water region runs on the GL-present path (SSAO model, shared device).
-    // Fail-soft -> GL water draw.
+    // Bring up the shared engine device on demand (a no-op once born); not ready => retry next frame.
     if (!mc2vk::ensureEngineVulkanContext()) {
         setFallback("engine_vk_context_birth_failed"); return false;
     }
@@ -42,7 +41,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     }
 
     // ---- RUNG 6 (tier1): borrow the SHARED scene GBuffer (color0+normal+depth)
-    // the GL scene renders into. Fail-soft: not ready => GL water draw.
+    // the scene renders into. Not ready => retry next frame.
     // VK-RUNG8-ITEM5: fire the one-shot MC2_VK_WATER_DIRECT_CHAIN deprecation note if
     // the retired gate was explicitly set (result ignored — always direct-chain-native).
     (void)waterDirectChainRequested();
@@ -58,6 +57,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         setFallback("shared_gbuffer_not_ready");
         return false;
     }
+    g_waterInitReachedBuild = 1;
     s->useInterop = false;
     g_health.interopActive = 0;
     g_health.vk2glSemActive = 0;
