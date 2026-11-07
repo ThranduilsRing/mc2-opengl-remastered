@@ -426,8 +426,10 @@ RenderSnapshot ExtractRenderSnapshot(uint64_t packetSequence)
 
     // -----------------------------------------------------------------------
     // Extraction v2.1: per-draw-slot packet snapshot
+    // Diagnostics only (consumed by batcher_compareSnapshotPackets and the state dump, both
+    // gated on materializeProps); skipped otherwise so the per-slot map lookups do not run every frame.
     // -----------------------------------------------------------------------
-    {
+    if (materializeProps) {
         const uint32_t slotCount = batcher_getDrawSlotCount();
         RenderCore::Span<ExtractedStaticPropPacket> pktSpan =
             snap.frameArena.allocArray<ExtractedStaticPropPacket>(slotCount, "ExtractedStaticPropPacket");
