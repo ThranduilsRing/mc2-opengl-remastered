@@ -11091,6 +11091,16 @@
   {
    "tag": "VK_PRESENT",
    "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "fsr",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
    "stream": "stdout",
    "keys": [],
    "count": 3
