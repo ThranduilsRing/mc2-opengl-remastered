@@ -92,8 +92,7 @@ namespace gosFX {
 
 //------------------------------------------------------------------------------
 //
-gosFX::Event::Event(const Event& event):
-	Plug(DefaultData)
+gosFX::Event::Event(const Event& event)
 {
 	Check_Pointer(this);
 	Verify(gos_GetCurrentHeap() == Heap);
@@ -109,8 +108,7 @@ gosFX::Event::Event(const Event& event):
 gosFX::Event::Event(
 	Stuff::MemoryStream *stream,
 	int gfx_version
-):
-	Plug(DefaultData)
+)
 {
 	Check_Pointer(this);
 	Check_Object(stream);
@@ -155,8 +153,7 @@ gosFX::Effect__Specification::Effect__Specification(
 	Stuff::RegisteredClass::ClassID class_id,
 	Stuff::MemoryStream *stream,
 	int gfx_version
-):
-	m_events(nullptr)
+)
 {
 	Check_Pointer(this);
 	Check_Object(stream);
@@ -183,11 +180,12 @@ gosFX::Effect__Specification::Effect__Specification(
 	//
 	unsigned event_count;
 	*stream >> event_count;
+	m_events.reserve(event_count);
 	while (event_count-- > 0)
 	{
 		Event *event = Event::Make(stream, gfx_version);
 		Register_Object(event);
-		m_events.Add(event);
+		m_events.emplace_back(event);
 	}
 
 	//
@@ -216,8 +214,7 @@ gosFX::Effect__Specification::Effect__Specification(
 //
 gosFX::Effect__Specification::Effect__Specification(
 	Stuff::RegisteredClass::ClassID class_id
-):
-	m_events(nullptr)
+)
 {
 	Check_Pointer(this);
 	Verify(gos_GetCurrentHeap() == Heap);
@@ -229,9 +226,6 @@ gosFX::Effect__Specification::Effect__Specification(
 gosFX::Effect__Specification::~Effect__Specification()
 {
 	Check_Pointer(this);
-
-	Stuff::ChainIteratorOf<Event*> events(&m_events);
-	events.DeletePlugs();
 }
 
 //------------------------------------------------------------------------------
@@ -321,13 +315,11 @@ void
 {
 	Check_Object(this);
 	*stream << m_class << m_name;
-	Stuff::ChainIteratorOf<Event*> events(&m_events);
-	unsigned count = events.GetSize();
+	unsigned count = static_cast<unsigned>(m_events.size());
 	*stream << count;
-	Event *event;
-	while ((event = events.ReadAndNext()) != nullptr)
+	for (const std::unique_ptr<Event>& event : m_events)
 	{
-		Check_Object(event);
+		Check_Object(event.get());
 		event->Save(stream);
 	}
 	m_lifeSpan.Save(stream);
@@ -354,13 +346,10 @@ void
 	// Copy the events after delete our current ones
 	//----------------------------------------------
 	//
-	Stuff::ChainIteratorOf<Event*> old_events(&m_events);
-	old_events.DeletePlugs();
-	Stuff::ChainIteratorOf<Event*> new_events(&spec->m_events);
-	Event* event;
-	while ((event = new_events.ReadAndNext()) != nullptr)
+	m_events.clear();
+	for (const std::unique_ptr<Event>& event : spec->m_events)
 	{
-		Check_Object(event);
+		Check_Object(event.get());
 		Event *new_event = new Event(*event);
 		Register_Object(new_event);
 		AdoptEvent(new_event);
@@ -394,19 +383,10 @@ void
 	// The event must be inserted into the chain in order of time
 	//-----------------------------------------------------------
 	//
-	Stuff::ChainIteratorOf<Event*> events(&m_events);
-	Event *insert = nullptr;
-	while ((insert = events.GetCurrent()) != nullptr)
-	{
-		Check_Object(insert);
-		if (insert->m_time > event->m_time)
-		{
-			events.Insert(event);
-			return;
-		}
-		events.Next();
-	}
-	m_events.Add(event);
+	// A linear scan, not a binary search: a loaded chain may be unsorted, and this is where the chain put it.
+	const auto later = std::find_if(m_events.begin(), m_events.end(),
+		[event](const std::unique_ptr<Event>& insert) { return insert->m_time > event->m_time; });
+	m_events.emplace(later, event);
 }
 
 //############################################################################
@@ -452,7 +432,7 @@ gosFX::Effect::Effect(
 	unsigned flags
 ):
 	Node(class_data),
-	m_event(&spec->m_events)
+	m_event{&spec->m_events}
 {
 	Check_Pointer(this);
 	Check_Object(spec);

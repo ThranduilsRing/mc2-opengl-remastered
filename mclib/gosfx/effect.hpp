@@ -27,14 +27,16 @@ namespace gosFX
 	//####################################  Event  ###############################
 	//############################################################################
 
-	class Event:
-		public Stuff::Plug
+	// One child spawn of an effect spec. The spec owns its events (Effect__Specification::m_events); an Event is no longer a
+	// Stuff::Plug.
+	class Event
 	{
 	public:
-		Event():
-			Plug(DefaultData)
-				{}
+		Event() = default;
 		Event(const Event& event);
+
+		// Check_Object/Register_Object hook (armor builds); an Event has no class data to verify.
+		void TestInstance() const {}
 
 		static Event*
 			Make(
@@ -126,9 +128,11 @@ namespace gosFX
 	// Events
 	//
 	public:
-		Stuff::ChainOf<Event*>
+		// In file order after a load (a file is not guaranteed to be sorted); AdoptEvent keeps the time order it is given.
+		std::vector<std::unique_ptr<Event>>
 			m_events;
 
+		// Takes ownership: inserts before the first event later than `event` (linear, so equal times keep adoption order).
 		void
 			AdoptEvent(Event *event);
 
@@ -271,7 +275,17 @@ namespace gosFX
 		// The parent owns every child it spawned, in spawn order (Execute, Draw and Kill visit them in that order).
 		std::vector<EffectPtr>
 			m_children;
-		Stuff::ChainIteratorOf<Event*>
+		// B3 interim: the old chain-iterator calls over the spec's event vector, so this commit leaves firing untouched.
+		struct EventCursor
+		{
+			const std::vector<std::unique_ptr<Event>>* events;
+			size_t index = 0;
+			void First() { index = 0; }
+			void Last() { index = events->size() - 1; }
+			void Next() { ++index; }
+			Event* GetCurrent() const { return index < events->size() ? (*events)[index].get() : nullptr; }
+		};
+		EventCursor
 			m_event;
 
 	//----------------------------------------------------------------------------
