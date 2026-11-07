@@ -280,7 +280,7 @@ DWORD sourceId(DWORD asset) {
             const size_t bytes=cooked.mipCount>1 && cooked.mipByteOffsets.size()>1
                 ? cooked.mipByteOffsets[1] : cooked.pixels.size();
             source->cpuTexture=gos_NewCompressedTexture2D(cooked.vkFormat,cooked.width,cooked.height,
-                                                          cooked.pixels.data(),bytes,source->name.c_str(),
+                                                          std::span<const uint8_t>(cooked.pixels.data(),bytes),source->name.c_str(),
                                                           source->cookedBc7 ? format : gos_Texture_Solid);
         }
     }

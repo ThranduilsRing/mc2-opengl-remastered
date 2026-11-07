@@ -29,14 +29,15 @@ DWORD __stdcall gos_CreateThread( void (__stdcall *ThreadRoutine)(void*) );
 void __stdcall gos_DeleteThread( DWORD ThreadHandle );
 
 
-enum gosThreadPriority
-{ 
+enum class gosThreadPriority : int
+{
 	ThreadPri_Lowest=1,
 	ThreadPri_BelowNormal=2,
 	ThreadPri_Normal=3,
 	ThreadPri_AboveNormal=4,
 	ThreadPri_Highest=5
 };
+using enum gosThreadPriority;
 //
 // Set the thread priority
 //
@@ -57,13 +58,13 @@ void __stdcall gos_TriggerThread( DWORD ThreadHandle, bool* ThreadFinished, void
 // LZ Compression - returns length of compressed destination buffer
 //
 //
-DWORD __stdcall gos_LZCompress( BYTE* dest, BYTE* src, DWORD srcLen, DWORD destLen=0 );
+DWORD __stdcall gos_LZCompress( BYTE* dest, std::span<const BYTE> src, DWORD destLen=0 );
 //
 //
 // LZ Decompression routine, returns length to decompressed output in dest buffer
 //
 //
-DWORD __stdcall gos_LZDecompress( BYTE* dest, BYTE* src, DWORD srcLen );
+DWORD __stdcall gos_LZDecompress( BYTE* dest, std::span<const BYTE> src );
 
 
 
@@ -91,7 +92,7 @@ DWORD __stdcall gos_GetValidDrives( char* Buffer, DWORD buf_len );
 //
 // Returns the drive label for a root directory specified. eg:  "c:\" might return "DriveC"
 //
-bool __stdcall gos_GetDriveLabel( const char* RootName, char* DriveLabel, DWORD DriveLabelBufferLen );
+bool __stdcall gos_GetDriveLabel( mc2::czstring RootName, std::span<char> DriveLabel );
 
 //
 // Get the space available on the drive specified, either "x:" or "x:\"
@@ -108,25 +109,25 @@ void __stdcall gos_GetCurrentPath( char* Buffer,int buf_len );
 //
 // Create directory. - Returns TRUE for sucess
 //
-bool __stdcall gos_CreateDirectory( const char* FileName );
+bool __stdcall gos_CreateDirectory( mc2::czstring FileName );
 //
 // Delete directory. - Returns TRUE for sucess  (Directories must be empty)
 //
-bool __stdcall gos_DeleteDirectory( const char* DirectoryName );
+bool __stdcall gos_DeleteDirectory( mc2::czstring DirectoryName );
 
 //
 // Rename file/directory. - Returns TRUE for sucess
 //
-bool __stdcall gos_RenameFile( const char* FileNameFrom, const char* FileNameTo );
+bool __stdcall gos_RenameFile( mc2::czstring FileNameFrom, mc2::czstring FileNameTo );
 //
 // Delete file. - Returns TRUE for sucess
 //
-bool __stdcall gos_DeleteFile( const char* FileName );
+bool __stdcall gos_DeleteFile( mc2::czstring FileName );
 
 //
 // Find files matching pattern - returns NULL when no more files (Can be used too see if a directory is empty : ie: 0==gos_FindFiles( "\\graphics\\*.*" )
 //
-char* __stdcall gos_FindFiles( const char* PathFileName );
+char* __stdcall gos_FindFiles( mc2::czstring PathFileName );
 //
 // Continues the previous gos_FindFiles
 //
@@ -139,7 +140,7 @@ void __stdcall gos_FindFilesClose();
 //
 // Find directories matching pattern - returns NULL when no more directories
 //
-char* __stdcall gos_FindDirectories( const char* DirectoryName );
+char* __stdcall gos_FindDirectories( mc2::czstring DirectoryName );
 //
 // Continues the previous gos_FindDirectoriesNext
 //
@@ -152,16 +153,16 @@ void __stdcall gos_FindDirectoriesClose();
 //
 // Return full path name of file - FullPath should point to a 256 byte buffer
 //
-void __stdcall gos_GetFullPathName( char* FullPath, const char* FileName );
+void __stdcall gos_GetFullPathName( char* FullPath, mc2::czstring FileName );
 
 //
 // Get file size information (-1 if error)
 //
-DWORD __stdcall gos_FileSize( const char* FileName );
+DWORD __stdcall gos_FileSize( mc2::czstring FileName );
 //
 // Get file date/time information (-1 if error) - this can be compared directly, and decoded using gos_FileTimeString
 //
-__int64 __stdcall gos_FileTimeStamp( const char* FileName );
+__int64 __stdcall gos_FileTimeStamp( mc2::czstring FileName );
 //
 // Get current date/time information (only updates one per game logic)
 //
@@ -174,20 +175,20 @@ char* __stdcall gos_FileTimeString( __int64 Time );
 //
 // Get file read only attribute information
 //
-bool __stdcall gos_FileReadOnly( const char* FileName );
+bool __stdcall gos_FileReadOnly( mc2::czstring FileName );
 //
 // Set file to read/write
 //
-void __stdcall gos_FileSetReadWrite( const char* FileName );
+void __stdcall gos_FileSetReadWrite( mc2::czstring FileName );
 //
 // Set file to read only
 //
-void __stdcall gos_FileSetReadOnly( const char* FileName );
+void __stdcall gos_FileSetReadOnly( mc2::czstring FileName );
 
 //
 // sebi: checks if file exists
 //
-bool __stdcall gos_FileExists( const char* FileName );
+bool __stdcall gos_FileExists( mc2::czstring FileName );
 
 
 
@@ -198,30 +199,32 @@ bool __stdcall gos_FileExists( const char* FileName );
 
 //////////////////////////////////////////////////////////////////////////////////
 // Ways to specify how to open file.
-enum gosEnum_FileWriteStatus 
+enum class gosEnum_FileWriteStatus : int
 {
 	READONLY,				// Open for READ
 	READWRITE,				// Open for READ and WRITE - but clears the file on open
 	APPEND					// Open for READ and WRITE - leaves the file alone if it already exists
 };
+using enum gosEnum_FileWriteStatus;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Different ways to seek within a file.
-enum gosEnum_FileSeekType 
+enum class gosEnum_FileSeekType : int
 {
 	FROMSTART,
 	FROMCURRENT,
 	FROMEND
 };
+using enum gosEnum_FileSeekType;
 
 //////////////////////////////////////////////////////////////////////////////////
 // If the file or directory exists, return TRUE
-bool __stdcall gos_DoesFileExist( const char* FileName );
+bool __stdcall gos_DoesFileExist( mc2::czstring FileName );
 
 //////////////////////////////////////////////////////////////////////////////////
 // Open the file found at <path> with the method <writeable> and return a handle
 // hfile to it.
-void __stdcall gos_OpenFile( HGOSFILE* hfile, const char* path, gosEnum_FileWriteStatus );
+void __stdcall gos_OpenFile( HGOSFILE* hfile, mc2::czstring path, gosEnum_FileWriteStatus );
 
 //////////////////////////////////////////////////////////////////////////////////
 // Close the file specified by handle <hfile>.

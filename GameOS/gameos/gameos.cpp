@@ -665,8 +665,9 @@ void __stdcall gos_SaveDataToRegistry( mc2::czstring keyName,  void* pData,  DWO
 }
 
 
-bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
+bool __stdcall gos_GetUserDataDirectory(std::span<char> user_dir)
 {
+    const int len = static_cast<int>(user_dir.size());
 	const int cfg_dir_size = 1024;
     char cfg_dir[cfg_dir_size] = {0};
     struct stat st;
@@ -731,7 +732,7 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
     size_t conf_len = strlen(mc2_conf_dir);
     conf_len = len - 1 < conf_len ? len - 1 : conf_len;
 
-    strncpy(user_dir, mc2_conf_dir, conf_len);
+    strncpy(user_dir.data(), mc2_conf_dir, conf_len);
     user_dir[conf_len] = '\0';
     mc2_conf_dirOwner.reset();
     return true;
