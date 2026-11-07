@@ -1108,11 +1108,11 @@ def archive_prior_verdict(proof):
     return target
 
 
-def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, timings, cleanup_errors):
+def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, timings, cleanup_errors, tier=0):
     """The durable structured verdict (schema 1). Written atomically; written BEFORE cleanup and again after it with the same verdict."""
     reasons = {n: e["MC2_GATE_SKIP_REASON"] for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
     reasons.update({n: r["status"][len("SKIP: "):] for n, r in ROW_RESULTS.items() if r["status"].startswith("SKIP: ")})
-    data = dict(schema=1, head=head, branch=branch, verdict=verdict, complete=verdict == "PASS",
+    data = dict(schema=1, head=head, branch=branch, tier=tier, verdict=verdict, complete=verdict == "PASS",
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
@@ -1680,6 +1680,7 @@ def main(argv=None):
                     help="run every later stage after a failure; the final verdict still fails and lists all failed stages")
     ap.add_argument("--log", type=Path, help="gate log path (default: timestamped merge-gate proof directory)")
     ap.add_argument("--proofs-dir", type=Path, help="exact proof directory for this invocation")
+    ap.add_argument("--isolated-verdict", action="store_true", help="write the verdict only into the proof dir; leave build64-ninja/gate-verdict.json and last-green-gate.json (the stage window's) untouched (nightly_gate)")
     ap.add_argument("--before-dir", type=Path, help="reuse a previous capture-before directory")
     ap.add_argument("--expect-pre-exe-sha", help="required executable SHA256 for --before-dir evidence")
     try:
@@ -1729,7 +1730,8 @@ def main(argv=None):
     if args.resume and state_path.exists():
         resumed_proof = Path(json.loads(state_path.read_text(encoding="utf-8"))["artefact_dir"])
     proof = args.proofs_dir or resumed_proof or Path(EROOT + "/mc2-archive-2026-10/proofs/merge-gate") / time.strftime("%Y%m%d-%H%M%S")
-    if not args.dry_run and not args.install:
+    own_marks = not args.install and not args.isolated_verdict
+    if not args.dry_run and own_marks:
         (ROOT / GREEN_MARK).unlink(missing_ok=True)  # cleared at start too, so a crashed run cannot publish an older green
     try:
         if args.before_dir:
@@ -1835,7 +1837,7 @@ def main(argv=None):
                 exe = ROOT / "build64-ninja/mc2.exe"
                 artifacts = dict(exe=str(exe), exe_sha256=gate_reuse._file_sha(exe) if exe.is_file() else None,
                                  proof=str(proof), log=str(log_path), install=str(args.install or CANDIDATE))
-                verdict_paths = [proof / "gate-verdict.json", ROOT / VERDICT_FILE]
+                verdict_paths = [proof / "gate-verdict.json"] + ([] if args.isolated_verdict else [ROOT / VERDICT_FILE])
                 if args.resume and not args.dry_run:
                     archive_prior_verdict(proof)
                 exec_started = time.time()
@@ -1846,8 +1848,9 @@ def main(argv=None):
                     v, s = verdict_of(rc, steps)
                     if not args.dry_run:
                         write_verdict(verdict_paths, head=head, branch=git("branch", "--show-current"), verdict=v, steps=steps,
-                                      skipped=s, artifacts=artifacts, timings=TIMINGS, cleanup_errors=CLEANUP_ERRORS)
-                        print(f"[merge_gate] verdict {v} written before cleanup: {ROOT / VERDICT_FILE}", flush=True)
+                                      skipped=s, artifacts=artifacts, timings=TIMINGS, cleanup_errors=CLEANUP_ERRORS,
+                                      tier=2 if args.weekly else 1 if args.nightly else 0)
+                        print(f"[merge_gate] verdict {v} written before cleanup: {verdict_paths[-1]}", flush=True)
                     return v
                 if execute_gate is execute_window:
                     scheduling["on_result"] = durable
@@ -1865,9 +1868,9 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
-                if verdict != "PASS" and not args.dry_run and not args.install:
+                if verdict != "PASS" and not args.dry_run and own_marks:
                     (ROOT / GREEN_MARK).unlink(missing_ok=True)  # a red or partial rerun at the same HEAD must not leave an older green
-                if verdict == "PASS" and not args.dry_run and not args.install:
+                if verdict == "PASS" and not args.dry_run and own_marks:
                     (ROOT / GREEN_MARK).write_text(json.dumps(dict(head=head, finished=time.time(),
                                                                         candidate=str(CANDIDATE) if args.keep_candidate and not CANDIDATE_ERRORS else None)))
                     print("[merge_gate] gate green and complete: view the day and night montages, then `py -3 scripts/merge_gate.py --publish` (v0.4 is NOT published yet)")

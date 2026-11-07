@@ -1852,6 +1852,8 @@ def main():
                          "dirty=1 (built from an uncommitted tree)")
     ap.add_argument("--skip-kit", action="store_true",
                     help="lane installs: leave the install's mods/ kit untouched (no pinned-kit payload, no kit reconcile)")
+    ap.add_argument("--allow-unverified-exe", action="store_true",
+                    help="--target game: publish an exe whose sha256 is not the one in the newest PASS gate verdict for HEAD")
     ap.add_argument("--allow-new-target", action="store_true",
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default -- deploys are "
@@ -2066,7 +2068,27 @@ def seed_build_dlls(build_dir, src_root, names=None):
     return copied
 
 
+def verdict_exe_refusal(src_root, exe_src, head):
+    """Why the v0.4 publish must stop: the exe on disk is not the one the gate PASSed for HEAD (verdict artifacts.exe_sha256), else None."""
+    try:
+        with open(os.path.join(src_root, "build64-ninja", "gate-verdict.json"), encoding="utf-8") as f:
+            v = json.load(f)
+        want = (v.get("artifacts") or {}).get("exe_sha256")
+    except (OSError, ValueError, AttributeError):
+        return "no readable build64-ninja/gate-verdict.json"
+    if v.get("verdict") != "PASS" or v.get("head") != head:
+        return f"newest gate verdict is {v.get('verdict')} for {str(v.get('head'))[:9]}, not PASS for HEAD {head[:9]}"
+    have = sha256_file(exe_src) if os.path.isfile(exe_src) else None
+    if not want or have != want:
+        return f"exe sha256 {str(have)[:12]} is not the gated {str(want)[:12]} (rebuilt after the gate?)"
+    return None
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
+    if args.target == "game" and not args.allow_new_target and not args.allow_unverified_exe:
+        why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root))
+        if why:
+            fail(f"v0.4 publish refused: {why}. Publish the exe the gate tested, or pass --allow-unverified-exe.")
     seed_build_dlls(build_dir, src_root)
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
