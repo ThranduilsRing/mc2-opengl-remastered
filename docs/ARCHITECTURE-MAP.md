@@ -74,7 +74,7 @@ Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_s
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp`, `code/mech.cpp`; memory `INDEX-MECH.md` |
 | Shadows | `mclib/vk_scene_renderer_phases.cpp` (caster pass), `GameOS/gameos/vulkan_shadow_island_live.cpp` (the shadow maps), `shaders/vulkan/shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
 | Fog / sky | `shaders/vulkan/edge_fog.frag`, `shaders/vulkan/fog_oob.frag`, `shaders/vulkan/hdri_sky.frag`, `gos_hdri.cpp`, `SkyRenderAdapter.cpp` |
-| Post-process | `gos_postprocess.cpp`, `RenderCore/postprocess_subgraph.h` |
+| Post-process | `gos_postprocess.cpp`, `GameOS/gameos/vulkan_post_fog_native.cpp`, `GameOS/gameos/vulkan_post_screenfx_native.cpp` |
 | HUD / UI | `gos_RendererFlushHUDBatch` in `gameos_graphics.cpp`; `code/missiongui.cpp`, `gui/`, `GuiRuntime/` |
 | Camera | `code/gamecam.cpp`, `mclib/camera.cpp`, `mclib/camera_frustum_math.h` |
 | AI / brains / ABL | `code/brain_tactic_select.cpp`, `code/ablmc2.cpp`, `mclib/ablexec.cpp` |
