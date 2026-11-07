@@ -80,18 +80,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/scalar.cpp
     ${MC2_ROOT}/mclib/stuff/vector4d.cpp
     ${MC2_ROOT}/mclib/stuff/mstring.cpp
-    ${MC2_ROOT}/mclib/stuff/chain.cpp
-    ${MC2_ROOT}/mclib/stuff/hash.cpp
-    ${MC2_ROOT}/mclib/stuff/iterator.cpp
-    ${MC2_ROOT}/mclib/stuff/link.cpp
-    ${MC2_ROOT}/mclib/stuff/node.cpp
-    ${MC2_ROOT}/mclib/stuff/plug.cpp
     ${MC2_ROOT}/mclib/stuff/registeredclass.cpp
-    ${MC2_ROOT}/mclib/stuff/safesocket.cpp
-    ${MC2_ROOT}/mclib/stuff/socket.cpp
-    ${MC2_ROOT}/mclib/stuff/sortedchain.cpp
-    ${MC2_ROOT}/mclib/stuff/sortedsocket.cpp
-    ${MC2_ROOT}/mclib/stuff/tree.cpp
     ${MC2_ROOT}/mclib/stuff/filestream.cpp
     ${MC2_ROOT}/mclib/stuff/filestreammanager.cpp
     ${MC2_ROOT}/mclib/stuff/memorystream.cpp

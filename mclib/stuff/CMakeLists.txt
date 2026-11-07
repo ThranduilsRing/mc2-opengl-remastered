@@ -8,18 +8,7 @@ set(SOURCES ${SOURCES}
     scalar.cpp
     vector4d.cpp
     mstring.cpp
-    chain.cpp
-    hash.cpp
-    iterator.cpp
-    link.cpp
-    node.cpp
-    plug.cpp
     registeredclass.cpp
-    safesocket.cpp
-    socket.cpp
-    sortedchain.cpp
-    sortedsocket.cpp
-    tree.cpp
     filestream.cpp
     filestreammanager.cpp
     memorystream.cpp
