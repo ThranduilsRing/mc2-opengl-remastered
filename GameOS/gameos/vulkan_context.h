@@ -132,6 +132,8 @@ public:
         return true;
     }
     bool featureEnabled(std::string_view name) const { return profile::featureEnabled(profile_, name); }
+    // True when the optional features FidelityFX FSR needs were enabled (shaderInt16, shaderFloat16, 16-bit storage, separateDepthStencilLayouts).
+    bool temporalFeaturesEnabled() const { return temporalFeatures_; }
     profile::Route route(std::string_view item) const { return profile::routeOf(profile_, item); }
 
     // Records a synchronization2 barrier through the entry point of the device's route: the core 1.3 name, or the KHR name on a 1.2 device that has the
@@ -271,6 +273,7 @@ private:
     mutable uint64_t pendingValue_ = 0;                  // submitMutex_: the timeline value the pending batch signals (0 = none)
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
+    bool             temporalFeatures_  = false;   // see temporalFeaturesEnabled()
 
     EngineContextHealth health_;
 #ifdef MC2_VULKAN_ISLAND

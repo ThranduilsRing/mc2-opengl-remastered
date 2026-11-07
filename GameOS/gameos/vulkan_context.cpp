@@ -604,6 +604,23 @@ bool VulkanContext::init(bool wantPresent) {
     en11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     VkPhysicalDeviceVulkan12Features en12{};
     en12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    // Optional temporal-AA (FidelityFX FSR) features: its 16-bit shader permutations declare Float16 / Int16 / 16-bit storage, and it barriers the
+    // D32S8 scene depth with the depth aspect alone (separateDepthStencilLayouts). Enabled when the device has them; FSR is skipped otherwise.
+    {
+        VkPhysicalDeviceVulkan11Features q11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+        VkPhysicalDeviceVulkan12Features q12{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+        q11.pNext = &q12;
+        VkPhysicalDeviceFeatures2 q{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        q.pNext = &q11;
+        vkGetPhysicalDeviceFeatures2(phys_, &q);
+        enableFeatures.features.shaderInt16 = q.features.shaderInt16;
+        en11.storageBuffer16BitAccess = q11.storageBuffer16BitAccess;
+        en11.uniformAndStorageBuffer16BitAccess = q11.uniformAndStorageBuffer16BitAccess;
+        en12.shaderFloat16 = q12.shaderFloat16;
+        en12.separateDepthStencilLayouts = q12.separateDepthStencilLayouts;
+        temporalFeatures_ = q.features.shaderInt16 && q11.storageBuffer16BitAccess && q11.uniformAndStorageBuffer16BitAccess &&
+                            q12.shaderFloat16 && q12.separateDepthStencilLayouts;
+    }
     VkPhysicalDeviceVulkan13Features en13{};
     en13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     VkPhysicalDeviceDynamicRenderingFeaturesKHR enDr{};
@@ -1098,6 +1115,7 @@ void VulkanContext::destroy() {
     profile_ = profile::Evaluation{};
     profile_.accepted = false;
     luidValid_ = false;
+    temporalFeatures_ = false;
     health_.created = false;
 }
 

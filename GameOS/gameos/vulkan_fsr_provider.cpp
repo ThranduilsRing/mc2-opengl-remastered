@@ -10,6 +10,7 @@
 #include <ffx_api/vk/ffx_api_vk.h>
 #include <ffx_api/ffx_api_loader.h>
 #include <chrono>
+#include "mc2fmt.h"
 
 namespace mc2vk {
 namespace {
@@ -53,6 +54,10 @@ struct FsrProvider::Impl {
     }
     bool create(VulkanContext& c, uint32_t width, uint32_t height) {
         ctx = &c;
+        if (!c.temporalFeaturesEnabled()) {   // the FFX shaders need 16-bit types and separate depth/stencil layouts: keep the spatial AA path
+            mc2::fmt::print_err("[VK_PRESENT] fsr=off reason=device_features (shaderInt16/shaderFloat16/16-bit storage/separateDepthStencilLayouts)\n");
+            return false;
+        }
         if (!dll) {
             dll = LoadLibraryA("amd_fidelityfx_vk.dll");
             if (!dll) return false;
