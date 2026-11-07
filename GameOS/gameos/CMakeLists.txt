@@ -193,7 +193,7 @@ if(MC2_VULKAN)
         # lighting up the vk2gl back-channel). Borrows the shared engine
         # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
         # -> GL shadow path byte-identical. extern "C" entry points only.
-        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_mech_skin.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp vulkan_mover_shadow.cpp vulkan_shadow_mech_casters.cpp vulkan_mech_skin.cpp vulkan_mech_object_motion.cpp vulkan_shadow_bake.cpp vulkan_shadow_bake_cache.cpp vk_depth_caster_pipeline.cpp)
         # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
         # region rendering REAL static-prop triangle geometry in-place into the shared
         # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
