@@ -62,3 +62,8 @@ def test_from_payload_rejects_drifted_unchanged_file(tmp_path):
     (target / "shaders" / "a.glsl").write_bytes(b"x")
     with pytest.raises(SystemExit):
         deploy_payload.deploy_from_payload(payload, target, tmp_path, "0" * 40)
+
+
+@pytest.mark.parametrize("sm,rc", [({"verdict": "PASS"}, 0), ({"verdict": "FAIL"}, 1), ({}, 1), ({"gate_rc": 1}, 1)])
+def test_driver_exits_zero_only_on_pass(sm, rc):
+    assert laptop_gate.exit_code(sm) == rc

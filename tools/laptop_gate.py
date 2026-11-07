@@ -254,7 +254,12 @@ def pc_main(args):
         print("verdict file sha256", sha256(dest / "gate-verdict.json"), dest / "gate-verdict.json")
     sm = json.loads((dest / "summary.json").read_text()) if (dest / "summary.json").is_file() else {}
     print("SUMMARY", json.dumps(sm), f"total_wall_s={time.time() - t0:.0f}")
-    return 0 if sm.get("verdict") else 1
+    return exit_code(sm)
+
+
+def exit_code(sm):
+    """0 only for an explicit PASS verdict; FAIL, no verdict or a setup crash are non-zero."""
+    return 0 if sm.get("verdict") == "PASS" else 1
 
 
 def main():
