@@ -43,6 +43,9 @@ def wait(cmd, log, timeout=None):
     return rc, int(time.time() - started)
 
 
+LOG_DIR = "G:/mc2-tmp"  # never $TMP: it can be C: (lane rules, meta-0220 P2#6)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--log")
@@ -52,7 +55,7 @@ def main(argv=None):
     cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
     if not cmd:
         ap.error("give a command after --")
-    log = a.log or os.path.join(os.environ.get("TMP", "G:/mc2-tmp"), f"gate_wait-{int(time.time())}.log")
+    log = a.log or os.path.join(LOG_DIR, f"gate_wait-{int(time.time())}.log")
     os.makedirs(os.path.dirname(os.path.abspath(log)), exist_ok=True)
     try:
         rc, secs = wait(cmd, log, a.timeout)
