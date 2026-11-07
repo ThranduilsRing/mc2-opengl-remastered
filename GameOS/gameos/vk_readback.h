@@ -15,8 +15,10 @@
 
 #include "vk_completion_tracker.h"
 
+#ifdef MC2_VULKAN   // the no-Vulkan unit-test tree (test_readback.cpp) uses only ReadbackCore
 #include <volk.h>
 #include "vk_owned.h"
+#endif
 
 namespace mc2vk {
 
@@ -90,6 +92,7 @@ private:
     Slot slots_[kSlots];
 };
 
+#ifdef MC2_VULKAN
 class VulkanContext;
 
 class ReadbackRing {
@@ -116,6 +119,7 @@ private:
     void* mapped_[ReadbackCore::kSlots] = {};
     uint64_t requests_ = 0, stale_ = 0;
 };
+#endif
 
 }  // namespace mc2vk
 
