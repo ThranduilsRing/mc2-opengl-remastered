@@ -59,6 +59,9 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
+// 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
+// fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
+layout(constant_id = 2) const int kOpaqueOnly = 0;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
@@ -172,7 +175,7 @@ void main() {
     // of main() for why the distinction exists and what its granularity is.
     bool alphaTestClass = false;
     float cover = 1.0;   // PROP-COVERAGE-1 blend alpha (1 in the core pass)
-    if (uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
+    if (kOpaqueOnly == 0 && uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
         alphaTestClass = true;
         // ALPHA-ON group (alpha-MIXED buildings): sample the alpha-ON array and apply the
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
@@ -219,7 +222,7 @@ void main() {
         rgb = albedo * vArgb;
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
-        if (uPacket.packetAlphaTest != 0) {
+        if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) {
             cover = propCoverage(texOff.a, vLayer >= 0 ? textureQueryLod(uAlbedo, uvContinuous).y : 0.0);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
@@ -230,7 +233,7 @@ void main() {
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
     }
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
-    if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    if (kOpaqueOnly == 0 && uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
     // One pool walk for both albedo groups (was inlined once per branch), after the fringe discard:
     // halves the shader's code and skips the walk for fragments the fringe pass drops.
     if (haveAlbedo) {

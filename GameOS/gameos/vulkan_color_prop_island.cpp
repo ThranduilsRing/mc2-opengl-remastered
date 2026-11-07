@@ -176,11 +176,13 @@ static_assert(sizeof(PropPacketRow) == 32);
 // The vertex+fragment push block (prop_packet_vk.glsl): the packet-row buffer's device address and the first row of the list one indirect call draws.
 struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t pad; };
 static_assert(sizeof(PropPacketPush) == 16);
-struct PropRunRow { uint32_t first, count, coreStart, coreN, fringeStart, fringeN, lateStart, lateN; };
-static_assert(sizeof(PropRunRow) == 32);
+// Draw lists, in command-buffer order: opaque core (no-discard pipeline, early Z), alpha core, fringe, late fringe.
+constexpr uint32_t kListOpaque = 0, kListCore = 1, kListFringe = 2, kListLate = 3, kListCount = 4;
+struct PropRunRow { uint32_t first, count; uint32_t range[kListCount][2]; uint32_t pad[2]; };   // range[list] = {start, n}
+static_assert(sizeof(PropRunRow) == 48);
 struct PropDrawCmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
 static_assert(sizeof(PropDrawCmd) == 20);
-constexpr VkDeviceSize kPropCmdHeader = 16;   // three list counts and a pad word precede the commands
+constexpr VkDeviceSize kPropCmdHeader = 16;   // the four list counts precede the commands
 
 struct ColorPropIsland : mc2vk::IslandState {
     bool disabled = false;
@@ -285,9 +287,9 @@ struct ColorPropIsland : mc2vk::IslandState {
         VkDeviceSize pktCap = 0, runCap = 0, compactCap = 0, cmdCap = 0;
     };
     PropGpu gpu[mc2vk::kMaxFramesInFlight];
-    std::vector<PropPacketRow> pktScratch[3];   // rows parallel to cmdScratch
+    std::vector<PropPacketRow> pktScratch[kListCount];   // rows parallel to cmdScratch
     std::vector<PropRunRow> runScratch;
-    std::vector<PropDrawCmd> cmdScratch[3];   // 0 core, 1 fringe, 2 late fringe
+    std::vector<PropDrawCmd> cmdScratch[kListCount];   // indexed by kList*
     uint32_t drawIndirectLimit = 0xFFFFFFFFu; // device maxDrawIndirectCount; maxDrawCount is clamped to it
     // The late (alphaTest == 2) fringe draws, issued by the late pass after the main submit: the list's first row/command and its size.
     uint32_t lateStart = 0, lateCount = 0;
@@ -332,6 +334,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
+    mc2vk::OwnedPipeline t1_opaquePipe;   // t1_pipe with the FS discards compiled out (kOpaqueOnly), so early Z runs
     mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
     mc2vk::OwnedCommandPool cpool;   // one-shot command buffers only (allocated and freed per use)
     mc2vk::OwnedCommandPool slotPool[mc2vk::kMaxFramesInFlight];   // per-slot pools for cbuf: vkResetCommandPool instead of per-cb reset
@@ -1266,10 +1269,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->t1_frag.get(); stages[1].pName = "main";
         // Compile the small-EU preset without material detail/specular and long light walks.
-        const int specData[2] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
-                                 static_cast<int>(s->propTexSlots)};
-        const VkSpecializationMapEntry qualityEntry[2] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}};
-        const VkSpecializationInfo qualityInfo{2, qualityEntry, sizeof(specData), specData};
+        // Constant 2 (kOpaqueOnly) is 0 here; the opaque pipeline below sets it to 1.
+        int specData[3] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
+                           static_cast<int>(s->propTexSlots), 0};
+        const VkSpecializationMapEntry qualityEntry[3] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}, {2, 2 * sizeof(int), sizeof(int)}};
+        const VkSpecializationInfo qualityInfo{3, qualityEntry, sizeof(specData), specData};
         stages[1].pSpecializationInfo = &qualityInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1283,6 +1287,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_pipe.get(), "colorprop.tier1Pipe");
+        // Opaque core pipeline: identical state (same depth compare, write and bias), FS discards compiled out.
+        specData[2] = 1;
+        if (!mc2vk::create(s->t1_opaquePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            vlog("TIER-1 opaque vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
+        }
+        mc2vk::nameObject(s->device, s->t1_opaquePipe.get(), "colorprop.tier1OpaquePipe");
+        specData[2] = 0;
 
         // PROP-COVERAGE-1 fringe pipeline: the second pass over the alpha-tested packets that
         // blends the coverage the core pass cut (see color_prop_tier1.frag). Same shaders and
@@ -1613,9 +1624,12 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
             const uint32_t instCount = j - i;
             if (tid < s->typeRuns.size()) {
                 const TypeRun& tr = s->typeRuns[tid];
-                PropRunRow rr{i, instCount, static_cast<uint32_t>(s->cmdScratch[0].size()), 0, static_cast<uint32_t>(s->cmdScratch[1].size()), 0,
-                              static_cast<uint32_t>(s->cmdScratch[2].size()), 0};
+                PropRunRow rr{i, instCount, {}, {}};
+                for (uint32_t list = 0; list < kListCount; ++list) rr.range[list][0] = static_cast<uint32_t>(s->cmdScratch[list].size());
                 bool counted = false;
+                // Opaque core list: the type's packets before its first alpha-testable one. The rest of the type stays in the
+                // alpha core list in packet order, so a coplanar later packet still wins the GEQUAL tie against an earlier one.
+                bool opaquePrefix = true;
                 for (uint32_t p = 0; p < tr.packetCount; ++p) {
                     const uint32_t pk = tr.firstPacket + p;
                     if (pk >= s->packets.size()) break;
@@ -1633,8 +1647,11 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         0,
                     };
                     const PropDrawCmd cmd{pkt.indexCount, instCount, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i};
-                    // Pass 0 draws every packet (alpha-tested ones cut at the coverage threshold).
-                    s->cmdScratch[0].push_back(cmd); s->pktScratch[0].push_back(row); ++rr.coreN;
+                    // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
+                    const bool alphaTestable = row.layerOn >= 0 || row.alphaTest != 0;
+                    opaquePrefix = opaquePrefix && !alphaTestable;
+                    const uint32_t coreList = opaquePrefix ? kListOpaque : kListCore;
+                    s->cmdScratch[coreList].push_back(cmd); s->pktScratch[coreList].push_back(row); ++rr.range[coreList][1];
                     if (s_pktDump)
                         mc2::fmt::print(s_pktDump, "{:d},{:d},{:d},{:d},{:.4f},{:.4f},{:d},{:d},{:d},{:d},{:d}\n",
                                      mc2::fmt::as_u32(tid), mc2::fmt::as_u32(pk), mc2::fmt::as_i32(row.layerOff), mc2::fmt::as_i32(row.layerOn), row.uvScaleX, row.uvScaleY,
@@ -1642,11 +1659,11 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                                      mc2::fmt::as_i32(static_cast<int32_t>(pkt.baseVertex)), mc2::fmt::as_u32(instCount), mc2::fmt::as_u32(i));
                     // PROP-COVERAGE-1 pass 1 re-draws only the packets the FS can alpha-test (alpha-ON layer or the per-packet bit) with the
                     // fringe pipeline, after every core is in the depth buffer; alphaTest == 2 packets wait for the late pass.
-                    if (row.layerOn >= 0 || row.alphaTest != 0) {
+                    if (alphaTestable) {
                         row.fringe = 1;
-                        const uint32_t list = row.alphaTest == 2 ? 2u : 1u;
+                        const uint32_t list = row.alphaTest == 2 ? kListLate : kListFringe;
                         s->cmdScratch[list].push_back(cmd); s->pktScratch[list].push_back(row);
-                        (list == 2u ? rr.lateN : rr.fringeN) += 1u;
+                        ++rr.range[list][1];
                     }
                     // Native color leaves include cached registry replay; count once before GPU HZB/alpha rejection.
                     if (!counted && pkt.indexCount && mc2::battlebench::output) {
@@ -1654,7 +1671,8 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         counted = true;
                     }
                 }
-                if (rr.coreN + rr.fringeN + rr.lateN != 0) s->runScratch.push_back(rr);
+                if (rr.range[kListOpaque][1] + rr.range[kListCore][1] + rr.range[kListFringe][1] + rr.range[kListLate][1] != 0)
+                    s->runScratch.push_back(rr);
                 ++typeRuns;
             }
             i = j;
@@ -1662,13 +1680,18 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     }
     if (s_pktDump) { std::fclose(s_pktDump); s_pktDump = nullptr; }
 
-    const uint32_t coreTotal = static_cast<uint32_t>(s->cmdScratch[0].size());
-    const uint32_t fringeTotal = static_cast<uint32_t>(s->cmdScratch[1].size());
-    const uint32_t lateTotal = static_cast<uint32_t>(s->cmdScratch[2].size());
-    for (PropRunRow& rr : s->runScratch) { rr.fringeStart += coreTotal; rr.lateStart += coreTotal + fringeTotal; }
-    const uint32_t cmdTotal = coreTotal + fringeTotal + lateTotal;
-    s->lateStart = coreTotal + fringeTotal;
+    // Each list's first command in the buffer (lists laid out in kList order); run ranges become absolute.
+    uint32_t listStart[kListCount + 1] = {};
+    for (uint32_t list = 0; list < kListCount; ++list)
+        listStart[list + 1] = listStart[list] + static_cast<uint32_t>(s->cmdScratch[list].size());
+    for (PropRunRow& rr : s->runScratch)
+        for (uint32_t list = 0; list < kListCount; ++list) rr.range[list][0] += listStart[list];
+    const uint32_t cmdTotal = listStart[kListCount];
+    const uint32_t lateTotal = static_cast<uint32_t>(s->cmdScratch[kListLate].size());
+    s->lateStart = listStart[kListLate];
     s->lateCount = (std::min)(lateTotal, s->drawIndirectLimit);
+    const uint32_t counts[kListCount] = {listStart[kListOpaque + 1] - listStart[kListOpaque], listStart[kListCore + 1] - listStart[kListCore],
+                                         listStart[kListFringe + 1] - listStart[kListFringe], s->lateCount};
 
     // The per-parity buffers grow with headroom; a slot's previous submit and late fringe were waited before staging, so recreating is safe.
     {
@@ -1702,11 +1725,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
             }
             vkUpdateDescriptorSets(s->device, 3, wr, 0, nullptr);
         }
-        // Rows and commands are laid out core, fringe, late; the cmd buffer starts with the three list counts.
-        const uint32_t counts[4] = {coreTotal, fringeTotal, s->lateCount, 0};
+        // Rows and commands are laid out opaque, core, fringe, late; the cmd buffer starts with the four list counts.
         VkDeviceSize pOff = 0, cOff = kPropCmdHeader;
         bool ok = g.cmd.upload(counts, sizeof(counts), 0);
-        for (uint32_t list = 0; list < 3; ++list) {
+        for (uint32_t list = 0; list < kListCount; ++list) {
             const auto& rows = s->pktScratch[list]; const auto& cmds = s->cmdScratch[list];
             if (!rows.empty()) ok = g.pkt.upload(rows.data(), rows.size() * sizeof(PropPacketRow), pOff) && ok;
             if (!cmds.empty()) ok = g.cmd.upload(cmds.data(), cmds.size() * sizeof(PropDrawCmd), cOff) && ok;
@@ -1775,8 +1797,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
             vkCmdDrawIndexedIndirectCount(cb, cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(first) * sizeof(PropDrawCmd), cmdBuf,
                                           static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), (std::min)(n, s->drawIndirectLimit), sizeof(PropDrawCmd));
         };
-        drawList(s->t1_pipe.get(), 0, coreTotal, 0);
-        drawList(s->t1_fringePipe.get(), coreTotal, fringeTotal, 1);
+        // Opaque core first so early Z rejects the hidden fragments of everything after it.
+        drawList(s->t1_opaquePipe.get(), listStart[kListOpaque], counts[kListOpaque], kListOpaque);
+        drawList(s->t1_pipe.get(), listStart[kListCore], counts[kListCore], kListCore);
+        drawList(s->t1_fringePipe.get(), listStart[kListFringe], counts[kListFringe], kListFringe);
 
         vkCmdEndRenderPass(cb);
         gpuScope.end();
@@ -2175,7 +2199,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     const PropPacketPush latePush{s->gpu[par].pkt.deviceAddress(), lateStart, 0};
     vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(latePush),&latePush);
     mc2::battlebench::add(mc2::battlebench::DrawProps);
-    vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,2u * sizeof(uint32_t),
+    vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,kListLate * sizeof(uint32_t),
                                   (std::min)(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
