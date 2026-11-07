@@ -1199,8 +1199,12 @@ def capture_post_scopes(capture_dir):
 
 
 def capture_pipeline_mismatch(before_dir, after_dir):
-    """One-line reason when before/after captures ran different post pipelines (W126: before had no FSR AA because the seed
-    lacked amd_fidelityfx_vk.dll), else None. Not a pixel result, so the caller marks the row INFRA instead of judging MAD."""
+    """None when the before/after captures ran the same post pipeline (or a side has no log evidence), else (infra, reason).
+
+    infra is True ONLY for a proven environment mismatch: the before capture install (capture_run.log install=) lacks
+    amd_fidelityfx_vk.dll and the before side is merely missing scopes the after side has (W126: no FSR AA from a bad seed).
+    Any other scope difference (after lost FsrAA, fog, shadow resolve, or the DLL is present) is an unexplained pipeline change:
+    the caller reports FAIL and still evaluates MAD, because a product regression can look exactly like this."""
     before, after = capture_post_scopes(before_dir), capture_post_scopes(after_dir)
     if not before or not after or before == after:
         return None  # no log evidence on a side: stay with the pixel verdict
@@ -1211,10 +1215,12 @@ def capture_pipeline_mismatch(before_dir, after_dir):
     except OSError:
         pass
     miss = bool(install) and not (Path(install) / "amd_fidelityfx_vk.dll").is_file()
-    return ("capture pipelines differ, not a pixel result: only before has %s, only after has %s; seed %s%s"
-            % (sorted(before - after) or "-", sorted(after - before) or "-",
-               "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
-               f" ({install})" if install else ""))
+    infra = miss and not (before - after)
+    return infra, ("capture pipelines differ%s: only before has %s, only after has %s; seed %s%s"
+                   % (", not a pixel result" if infra else " without a proven environment cause",
+                      sorted(before - after) or "-", sorted(after - before) or "-",
+                      "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
+                      f" ({install})" if install else ""))
 
 
 def mad_flags(output, declared=(), expected=()):
@@ -1631,10 +1637,10 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     cmp_i = command.index("--compare-only")
                     mismatch = capture_pipeline_mismatch(command[cmp_i + 1], command[cmp_i + 2])
                     if mismatch:
-                        status = "INFRA: " + mismatch.replace("|", "/")
+                        status = ("INFRA: " if mismatch[0] else "FAIL: ") + mismatch[1].replace("|", "/")
                         print(f"[merge_gate] {name}: {status}", flush=True)
-                if mismatch:
-                    pass
+                if mismatch and mismatch[0]:
+                    pass  # proven environment mismatch: not a pixel result
                 elif result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     for line in (getattr(result, "stdout", "") or "").splitlines():
@@ -1642,6 +1648,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                             print(f"[merge_gate] {name} {line}")
                     if moved:
                         status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
+                    elif mismatch:
+                        print(f"[merge_gate] {name}: MAD within bounds, but the pipeline change above is unexplained: stays FAIL")
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 # The child could not be run or reaped (OS/subprocess error): the host failed, not the product.
