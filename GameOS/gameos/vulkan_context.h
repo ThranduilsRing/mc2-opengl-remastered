@@ -128,6 +128,10 @@ public:
         return true;
     }
     bool featureEnabled(std::string_view name) const { return profile::featureEnabled(profile_, name); }
+    // The ray-tracing tier selected for this device (tier none on a GPU without it: raster is unchanged) and the limits behind it. Optional capability:
+    // the extensions and feature bits are enabled only for the parts the device lists; see profile::selectRt and the `[VK_RT v1]` line.
+    const profile::RtSelection& rt() const { return rtSel_; }
+    const profile::RtCaps& rtCaps() const { return rtCaps_; }
     // True when the optional features FidelityFX FSR needs were enabled (shaderInt16, shaderFloat16, 16-bit storage, separateDepthStencilLayouts).
     bool temporalFeaturesEnabled() const { return temporalFeatures_; }
     profile::Route route(std::string_view item) const { return profile::routeOf(profile_, item); }
@@ -246,6 +250,8 @@ private:
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
+    profile::RtSelection rtSel_;   // the ray-tracing tier (see rt()); owns the extension name strings devExts points at
+    profile::RtCaps rtCaps_;
     VkSemaphore      gfxTimeline_       = VK_NULL_HANDLE;   // the graphics queue's timeline: signalled with CompletionTracker::noteSubmit values
     mutable CompletionTracker tracker_;
     mutable uint64_t hostSyncedGfx_ = 0;   // highest graphics value the host reached through vkWaitSemaphores / vkDeviceWaitIdle (see hostSynced)

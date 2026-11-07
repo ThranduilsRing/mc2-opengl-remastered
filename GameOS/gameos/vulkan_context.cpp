@@ -24,6 +24,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "vk_rt_selftest.h"
 #include "present_thread.h"
 #include "../../mclib/sim_overlap.h"
 #ifndef _WIN32
@@ -526,6 +527,9 @@ bool VulkanContext::init(bool wantPresent) {
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
         profileLog(health_.profileLine);
+        rtSel_ = profile::selectRt(caps);
+        rtCaps_ = caps.rt;
+        profileLog(profile::formatRtLine(caps, rtSel_));
         ctxlog("subgroup size=%u stages=0x%x ops=0x%x", caps.subgroupSize, caps.subgroupStages, caps.subgroupOps);
         VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
@@ -584,6 +588,10 @@ bool VulkanContext::init(bool wantPresent) {
     // KHR name unless the extension is enabled (core 1.1 promotion does not alias it), and the backend calls the pointer unchecked.
     for (const char* e : {VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME})
         if (caps.hasExtension(e) && std::ranges::find_if(devExts, [e](std::string_view x) { return x == e; }) == devExts.end()) devExts.push_back(e);
+
+    // Ray tracing is an optional tier: the base AS extensions plus ray query / RT pipeline when the device lists them (profile::selectRt).
+    for (const std::string& e : rtSel_.extensions)
+        if (std::ranges::find_if(devExts, [&e](std::string_view x) { return x == e; }) == devExts.end()) devExts.push_back(e.c_str());
 
     // The feature bits the profile selected. Eight bits are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
     // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2) and enabled although no island consumes them
@@ -652,6 +660,19 @@ bool VulkanContext::init(bool wantPresent) {
         if (featureEnabled("synchronization2") && !s2Core) chain(enS2);
     }
 
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR enAs{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
+    VkPhysicalDeviceRayQueryFeaturesKHR enRq{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR};
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR enRp{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
+    if (rtSel_.accel) {
+        VkBaseOutStructure* last = reinterpret_cast<VkBaseOutStructure*>(&enableFeatures);
+        while (last->pNext) last = last->pNext;
+        auto chainRt = [&last](auto& s) { last->pNext = reinterpret_cast<VkBaseOutStructure*>(&s); last = reinterpret_cast<VkBaseOutStructure*>(&s); };
+        enAs.accelerationStructure = VK_TRUE;
+        chainRt(enAs);
+        if (rtSel_.rayQuery) { enRq.rayQuery = VK_TRUE; chainRt(enRq); }
+        if (rtSel_.rayPipeline) { enRp.rayTracingPipeline = VK_TRUE; chainRt(enRp); }
+    }
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dci.pNext = &enableFeatures;
@@ -716,6 +737,9 @@ bool VulkanContext::init(bool wantPresent) {
     gpuprof::init(*this);   // Tracy GPU context + debug labels + MC2_VK_GPU_TIMESTAMPS ring, on the one graphics queue
     ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
            health_.deviceName, wantPresent ? 1 : 0, valPreset);
+#ifdef MC2_VULKAN_ISLAND
+    if (mc2::gate::get<"MC2_VK_RT_SELFTEST">()) rt::runSelfTest(*this);   // test hook: GPU proof of the RT infrastructure, renders nothing
+#endif
     return true;
 }
 
@@ -1081,6 +1105,8 @@ void VulkanContext::destroy() {
     }
     if (g_cbContext == this) g_cbContext = nullptr;
     profile_ = profile::Evaluation{};
+    rtSel_ = profile::RtSelection{};
+    rtCaps_ = profile::RtCaps{};
     profile_.accepted = false;
     luidValid_ = false;
     temporalFeatures_ = false;

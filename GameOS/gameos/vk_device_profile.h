@@ -56,11 +56,33 @@ constexpr std::string_view routeName(Route r) {
     return "-";
 }
 
+// Ray-tracing capability as the device reports it (VK_KHR_acceleration_structure / ray_query / ray_tracing_pipeline). Filled by gather() only when the
+// extension is listed; zero otherwise. Selection is `selectRt()` below: an optional tier, never a requirement, so a GPU without it keeps the raster path.
+struct RtCaps {
+    bool accelerationStructure = false;              // VkPhysicalDeviceAccelerationStructureFeaturesKHR::accelerationStructure
+    bool rayQuery = false;                           // VkPhysicalDeviceRayQueryFeaturesKHR::rayQuery
+    bool rayTracingPipeline = false;                 // VkPhysicalDeviceRayTracingPipelineFeaturesKHR::rayTracingPipeline
+    // VkPhysicalDeviceAccelerationStructurePropertiesKHR
+    uint64_t maxGeometryCount = 0;
+    uint64_t maxInstanceCount = 0;
+    uint64_t maxPrimitiveCount = 0;
+    uint32_t maxPerStageDescriptorAccelerationStructures = 0;
+    uint32_t maxDescriptorSetAccelerationStructures = 0;
+    uint32_t minAccelerationStructureScratchOffsetAlignment = 0;
+    // VkPhysicalDeviceRayTracingPipelinePropertiesKHR (shader binding table limits)
+    uint32_t shaderGroupHandleSize = 0;
+    uint32_t maxRayRecursionDepth = 0;
+    uint32_t maxShaderGroupStride = 0;
+    uint32_t shaderGroupBaseAlignment = 0;
+    uint32_t shaderGroupHandleAlignment = 0;
+};
+
 // What a physical device offers. `gather()` fills it from the driver; the tests fill it by hand.
 struct DeviceCaps {
     uint32_t deviceApi = 0;                          // VkPhysicalDeviceProperties::apiVersion
     uint32_t instanceApi = 0;                        // the apiVersion the instance was created with (caps what the application may use)
     std::vector<std::string> extensions;             // device extension names
+    RtCaps rt;                                       // ray-tracing features and limits (optional tier, see selectRt)
     // Feature bits. dynamicRendering / synchronization2 hold the bit of whichever struct applies (core 1.3 when both versions allow it, else the
     // KHR extension struct); every other bit comes from VkPhysicalDeviceVulkan12Features.
     bool timelineSemaphore = false;
@@ -278,6 +300,91 @@ inline std::string formatLine(std::string_view deviceName, const DeviceCaps& c, 
                              "[VK_PROFILE v1] verdict=%s device=\"%s\" api=%s instance_api=%s floor=%s required_missing=%s wanted_missing=%s items=%s enabled=%s extensions=%s",
                              e.accepted ? "ok" : "refused", device.c_str(), api.c_str(), instanceApi.c_str(), floor.c_str(), requiredMissing.c_str(),
                              wantedMissing.c_str(), items.c_str(), enabled.c_str(), extensions.c_str());
+    };
+    std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
+    print(line.data(), line.size() + 1);
+    return line;
+}
+
+// ---- Ray-tracing tier (optional capability, never a requirement) ----
+
+inline constexpr std::string_view kExtAccelerationStructure = "VK_KHR_acceleration_structure";
+inline constexpr std::string_view kExtDeferredHostOperations = "VK_KHR_deferred_host_operations";
+inline constexpr std::string_view kExtRayQuery = "VK_KHR_ray_query";
+inline constexpr std::string_view kExtRayTracingPipeline = "VK_KHR_ray_tracing_pipeline";
+
+enum class RtTier { None, Accel, Query, Pipeline, QueryPipeline };
+
+constexpr std::string_view rtTierName(RtTier t) {
+    switch (t) {
+        case RtTier::Accel: return "accel";
+        case RtTier::Query: return "query";
+        case RtTier::Pipeline: return "pipeline";
+        case RtTier::QueryPipeline: return "query+pipeline";
+        case RtTier::None: break;
+    }
+    return "none";
+}
+
+struct RtSelection {
+    RtTier tier = RtTier::None;
+    bool accel = false;                              // acceleration structures can be built (base of every tier)
+    bool rayQuery = false;                           // inline ray queries in any shader stage
+    bool rayPipeline = false;                        // trace-rays pipelines and the SBT
+    std::vector<std::string> extensions;             // device extensions to enable (empty at tier none)
+    std::string reason;                              // why a part is missing; "-" when everything the device lists is usable
+};
+
+// Picks the tier from the device caps. Acceleration structures need the two base extensions, the accelerationStructure feature and buffer device address;
+// ray query and the RT pipeline are then judged independently (extension + feature bit each). Pure: no I/O.
+inline RtSelection selectRt(const DeviceCaps& c) {
+    RtSelection r;
+    std::vector<std::string> why;
+    if (c.usableApi() < kFloorApi) {
+        why.push_back("api_below_floor");
+    } else if (!c.hasExtension(kExtAccelerationStructure)) {
+        why.push_back("no_ext_acceleration_structure");
+    } else if (!c.hasExtension(kExtDeferredHostOperations)) {
+        why.push_back("no_ext_deferred_host_operations");
+    } else if (!c.rt.accelerationStructure) {
+        why.push_back("no_feature_acceleration_structure");
+    } else if (!c.bufferDeviceAddress) {
+        why.push_back("no_buffer_device_address");
+    } else if (c.rt.minAccelerationStructureScratchOffsetAlignment == 0) {
+        why.push_back("no_scratch_alignment");
+    } else {
+        r.accel = true;
+    }
+    if (r.accel) {
+        if (!c.hasExtension(kExtRayQuery)) why.push_back("no_ext_ray_query");
+        else if (!c.rt.rayQuery) why.push_back("no_feature_ray_query");
+        else r.rayQuery = true;
+        if (!c.hasExtension(kExtRayTracingPipeline)) why.push_back("no_ext_ray_tracing_pipeline");
+        else if (!c.rt.rayTracingPipeline) why.push_back("no_feature_ray_tracing_pipeline");
+        else if (c.rt.shaderGroupHandleSize == 0 || c.rt.shaderGroupBaseAlignment == 0) why.push_back("no_sbt_limits");
+        else r.rayPipeline = true;
+        r.extensions = {std::string(kExtAccelerationStructure), std::string(kExtDeferredHostOperations)};
+        if (r.rayQuery) r.extensions.emplace_back(kExtRayQuery);
+        if (r.rayPipeline) r.extensions.emplace_back(kExtRayTracingPipeline);
+        r.tier = r.rayQuery ? (r.rayPipeline ? RtTier::QueryPipeline : RtTier::Query) : (r.rayPipeline ? RtTier::Pipeline : RtTier::Accel);
+    }
+    r.reason = joinOr(why);
+    return r;
+}
+
+// `[VK_RT v1] tier=none|accel|query|pipeline|query+pipeline reason=- accel=0|1 ray_query=0|1 ray_pipeline=0|1 max_instances=N max_primitives=N max_geometries=N
+//  scratch_align=N as_per_stage=N sbt_handle=N sbt_base_align=N sbt_handle_align=N sbt_stride=N max_recursion=N`. One snprintf so the log-tag census sees the key order.
+inline std::string formatRtLine(const DeviceCaps& c, const RtSelection& r) {
+    const std::string tier(rtTierName(r.tier)), reason = r.reason.empty() ? std::string("-") : r.reason;
+    auto print = [&](char* out, size_t capacity) {
+        return std::snprintf(out, capacity,
+                             "[VK_RT v1] tier=%s reason=%s accel=%d ray_query=%d ray_pipeline=%d max_instances=%llu max_primitives=%llu max_geometries=%llu scratch_align=%u "
+                             "as_per_stage=%u sbt_handle=%u sbt_base_align=%u sbt_handle_align=%u sbt_stride=%u max_recursion=%u",
+                             tier.c_str(), reason.c_str(), r.accel ? 1 : 0, r.rayQuery ? 1 : 0, r.rayPipeline ? 1 : 0,
+                             static_cast<unsigned long long>(c.rt.maxInstanceCount), static_cast<unsigned long long>(c.rt.maxPrimitiveCount),
+                             static_cast<unsigned long long>(c.rt.maxGeometryCount), c.rt.minAccelerationStructureScratchOffsetAlignment,
+                             c.rt.maxPerStageDescriptorAccelerationStructures, c.rt.shaderGroupHandleSize, c.rt.shaderGroupBaseAlignment,
+                             c.rt.shaderGroupHandleAlignment, c.rt.maxShaderGroupStride, c.rt.maxRayRecursionDepth);
     };
     std::string line(static_cast<size_t>(print(nullptr, 0)), ' ');
     print(line.data(), line.size() + 1);

@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 438;
+inline constexpr std::size_t kGateCount = 439;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -426,6 +426,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PROP_PACKET_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_VK_PROP_PERF", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_PROP_TEX_SLOTS", Kind::Int, Rule::Std, {}},
+    {"MC2_VK_RT_SELFTEST", Kind::Bool, Rule::Std, {}},
     {"MC2_VK_SHADOW_MATRIX_DIAG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},

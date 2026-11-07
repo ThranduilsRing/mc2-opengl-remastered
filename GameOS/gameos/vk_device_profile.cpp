@@ -88,7 +88,46 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
         if (c.hasExtension(kExtDynamicRendering)) chain(dr);
         if (c.hasExtension(kExtSynchronization2)) chain(s2);
     }
+    // Ray tracing: chained only when the extension is listed (the structs are invalid to chain otherwise).
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR asF{};
+    asF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    VkPhysicalDeviceRayQueryFeaturesKHR rqF{};
+    rqF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rpF{};
+    rpF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    const bool hasAs = c.hasExtension(kExtAccelerationStructure), hasRq = c.hasExtension(kExtRayQuery), hasRp = c.hasExtension(kExtRayTracingPipeline);
+    if (hasAs) chain(asF);
+    if (hasRq) chain(rqF);
+    if (hasRp) chain(rpF);
     vkGetPhysicalDeviceFeatures2(pd, &f2);
+
+    if (hasAs) {
+        c.rt.accelerationStructure = asF.accelerationStructure == VK_TRUE;
+        c.rt.rayQuery = hasRq && rqF.rayQuery == VK_TRUE;
+        c.rt.rayTracingPipeline = hasRp && rpF.rayTracingPipeline == VK_TRUE;
+        VkPhysicalDeviceAccelerationStructurePropertiesKHR asP{};
+        asP.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rpP{};
+        rpP.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+        if (hasRp) asP.pNext = &rpP;
+        VkPhysicalDeviceProperties2 p2{};
+        p2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        p2.pNext = &asP;
+        vkGetPhysicalDeviceProperties2(pd, &p2);
+        c.rt.maxGeometryCount = asP.maxGeometryCount;
+        c.rt.maxInstanceCount = asP.maxInstanceCount;
+        c.rt.maxPrimitiveCount = asP.maxPrimitiveCount;
+        c.rt.maxPerStageDescriptorAccelerationStructures = asP.maxPerStageDescriptorAccelerationStructures;
+        c.rt.maxDescriptorSetAccelerationStructures = asP.maxDescriptorSetAccelerationStructures;
+        c.rt.minAccelerationStructureScratchOffsetAlignment = asP.minAccelerationStructureScratchOffsetAlignment;
+        if (hasRp) {
+            c.rt.shaderGroupHandleSize = rpP.shaderGroupHandleSize;
+            c.rt.maxRayRecursionDepth = rpP.maxRayRecursionDepth;
+            c.rt.maxShaderGroupStride = rpP.maxShaderGroupStride;
+            c.rt.shaderGroupBaseAlignment = rpP.shaderGroupBaseAlignment;
+            c.rt.shaderGroupHandleAlignment = rpP.shaderGroupHandleAlignment;
+        }
+    }
 
     c.drawIndirectCount = f12.drawIndirectCount == VK_TRUE;
     c.shaderDrawParameters = f11.shaderDrawParameters == VK_TRUE;

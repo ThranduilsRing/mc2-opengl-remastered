@@ -121,6 +121,7 @@ L(Lead0Kill, "MC2_VK_PROP_LOD", Bool, true, "vk", "", "Distance LOD for model-ov
 G("MC2_VK_PROP_PACKET_DUMP", String, "", "vk", "", "", verified),
 L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VK_PROP_TEX_SLOTS", Int, 0, "vk", "", "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path.", verified),
+G("MC2_VK_RT_SELFTEST", Bool, false, "vk", "", "Test hook (not a feature): =1 runs the one-shot ray-tracing infrastructure GPU self-test at device creation (GameOS/gameos/vk_rt_selftest.cpp).", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
 // history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false)),
