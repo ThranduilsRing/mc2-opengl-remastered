@@ -457,14 +457,8 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	land->worldToCell(position, startCell[0], startCell[1]);
 	startCell[0] -= mapCellUL[0];
 	startCell[1] -= mapCellUL[1];
-	if (startCell[0] < 0)
-		startCell[0] = 0;
-	else if (startCell[0] >= GOALMAP_CELL_DIM)
-		startCell[0] = GOALMAP_CELL_DIM - 1;
-	if (startCell[1] < 0)
-		startCell[1] = 0;
-	else if (startCell[1] >= GOALMAP_CELL_DIM)
-		startCell[1] = GOALMAP_CELL_DIM - 1;
+	startCell[0] = std::clamp<long>(startCell[0], 0, GOALMAP_CELL_DIM - 1);
+	startCell[1] = std::clamp<long>(startCell[1], 0, GOALMAP_CELL_DIM - 1);
 
 	if (!playerMove)
 		for (int cellR = -1; cellR < 2; cellR++)

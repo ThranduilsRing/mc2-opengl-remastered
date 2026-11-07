@@ -136,8 +136,7 @@ void execDistanceToObject (void) {
 				resultVector = position2 - position1;
 		
 				distance = glm::length(resultVector);
-				if (distance < minDistance)
-					minDistance = distance;
+				minDistance = std::min(minDistance, distance);
 			}
 			if (minDistance < 3.4E38)
 				ABLi_pokeReal(minDistance * metersPerWorldUnit);
@@ -193,8 +192,7 @@ void execDistanceToPosition (void) {
 			resultVector = position2 - position1;
 		
 			distance = glm::length(resultVector);
-			if (distance < minDistance)
-				minDistance = distance;
+			minDistance = std::min(minDistance, distance);
 		}
 		if (minDistance < 3.4E38)
 			ABLi_pokeReal(minDistance * metersPerWorldUnit);
@@ -463,8 +461,7 @@ void execCheckTimer (void) {
 		timeLeft = timer->getCurrentTime();
 	}
 
-	if (timeLeft < 0.0f)
-		timeLeft = 0.0f;
+	timeLeft = std::max(timeLeft, 0.0f);
 
 	ABLi_pushReal(timeLeft);
 }

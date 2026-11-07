@@ -156,7 +156,7 @@ std::optional<DecodedTexture> decodeMemory(const uint8_t* bytes, size_t size, co
             if (img.isCompressed) {
                 if (!RenderCore::ktxDecodeBlocksToRgba8(img, level, mip.pixels)) return std::nullopt;
             } else {
-                const size_t at = img.mipByteOffsets[level], n = size_t(mip.width) * mip.height * 4;
+                const size_t at = img.mipByteOffsets[level], n = static_cast<size_t>(mip.width) * mip.height * 4;
                 mip.pixels.assign(img.pixels.begin() + at, img.pixels.begin() + at + n);
             }
             applyFormatPolicy(mip, requested, false);

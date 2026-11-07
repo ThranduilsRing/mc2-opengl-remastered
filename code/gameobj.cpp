@@ -1897,11 +1897,9 @@ float GameObject::lineOfSightRange() {
 	if (altitudeIntegerRange > Stuff::SMALL)
 		altLevel = altitude / altitudeIntegerRange;
 	
-	if (altLevel < 0)
-		altLevel = 0;
+	altLevel = std::max<decltype(altLevel)>(altLevel, 0);
 
-	if (altLevel > 255)
-		altLevel = 255;
+	altLevel = std::min<decltype(altLevel)>(altLevel, 255);
 
 	float radius = visualRangeTable[altLevel];
 	

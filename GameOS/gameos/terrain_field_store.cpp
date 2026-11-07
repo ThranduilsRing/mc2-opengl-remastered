@@ -183,7 +183,7 @@ bool TerrainFieldStore::setMaterialNormals(std::span<const RenderCore::KtxImage>
     // BC7 (16-byte 4x4 blocks) or lossless RGBA8 (4 bytes a texel); every layer shares slot 0's format.
     const bool rgba8 = first.vkFormat == ColormapAtlas::kRgba8;
     const auto levelBytes = [rgba8](int side, int level) {
-        const size_t e = size_t(std::max(1, side >> level));
+        const size_t e = static_cast<size_t>(std::max(1, side >> level));
         if (rgba8) return e * e * 4u;
         const size_t b = (e + 3) / 4; return b * b * 16u;
     };
@@ -191,7 +191,7 @@ bool TerrainFieldStore::setMaterialNormals(std::span<const RenderCore::KtxImage>
         bool ok = l.vkFormat == first.vkFormat && (rgba8 ? (!l.isCompressed && l.blockSizeBytes == 0)
                                                          : (l.isCompressed && l.vkFormat == ColormapAtlas::kBc7Unorm && l.blockSizeBytes == 16)) && l.width > 0 &&
                   l.width == l.height && l.width == first.width && l.width <= kMaxSide && l.mipCount == fullChain &&
-                  l.mipByteOffsets.size() == size_t(fullChain);
+                  l.mipByteOffsets.size() == static_cast<size_t>(fullChain);
         size_t offset = 0;
         for (int level = 0; ok && level < fullChain; ++level) {
             ok = l.mipByteOffsets[level] == offset;
@@ -211,11 +211,11 @@ bool TerrainFieldStore::setMaterialNormals(std::span<const RenderCore::KtxImage>
         array->mipByteOffsets.push_back(array->pixels.size());
         const size_t bytes = levelBytes(first.width, level);
         for (const auto& l : layers) {
-            const auto begin = l.pixels.begin() + ptrdiff_t(l.mipByteOffsets[level]);
-            array->pixels.insert(array->pixels.end(), begin, begin + ptrdiff_t(bytes));
+            const auto begin = l.pixels.begin() + static_cast<ptrdiff_t>(l.mipByteOffsets[level]);
+            array->pixels.insert(array->pixels.end(), begin, begin + static_cast<ptrdiff_t>(bytes));
         }
     }
-    materialNormals_ = {std::move(array), uint32_t(layers.size()), nextVersion()};
+    materialNormals_ = {std::move(array), static_cast<uint32_t>(layers.size()), nextVersion()};
     return true;
 }
 

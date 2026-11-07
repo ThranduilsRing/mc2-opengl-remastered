@@ -42,18 +42,18 @@ struct Transport {
         size_t offset = 0;
         while (offset < bytes && !stop && Clock::now() < deadline) {
             if (!wait(socket, writing)) continue;
-            int count = writing ? send(socket, data + offset, int(bytes - offset), 0)
-                                : recv(socket, data + offset, int(bytes - offset), 0);
+            int count = writing ? send(socket, data + offset, static_cast<int>(bytes - offset), 0)
+                                : recv(socket, data + offset, static_cast<int>(bytes - offset), 0);
             if (count == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) continue;
             if (count <= 0) return false;
-            offset += size_t(count);
+            offset += static_cast<size_t>(count);
         }
         return offset == bytes;
     }
     bool sendJson(SOCKET socket, const Json& message) {
         auto body = message.dump(-1, ' ', false, Json::error_handler_t::replace);
         if (body.empty() || body.size() > maxFrameBytes) return false;
-        auto header = frameHeader(uint32_t(body.size()));
+        auto header = frameHeader(static_cast<uint32_t>(body.size()));
         return transfer(socket, reinterpret_cast<char*>(header.data()), header.size(), true) &&
                transfer(socket, body.data(), body.size(), true);
     }

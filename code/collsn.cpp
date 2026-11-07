@@ -214,8 +214,7 @@ long CollisionGrid::add (GameObjectPtr object)
 
 		gx = object->getPosition().x;	// - gridOrigin.x;
 		gx += gridXOffset;
-		if (gx < 0)
-			gx = 0;
+		gx = std::max(gx, 0.0f);
 
 		if (gx >= gridXCheck)
 			gx = gridXCheck - 1;
@@ -224,8 +223,7 @@ long CollisionGrid::add (GameObjectPtr object)
 
 		gy = object->getPosition().y;	// - gridOrigin.y;
 		gy += gridYOffset;
-		if (gy < 0)
-			gy = 0;
+		gy = std::max(gy, 0.0f);
 
 		if (gy >= gridYCheck)
 			gy = gridYCheck - 1;

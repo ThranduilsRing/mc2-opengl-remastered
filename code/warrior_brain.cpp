@@ -122,7 +122,7 @@ static bool advanceBrainFixedTickAccumulator(float scenarioTime) {
         return false;
     }
     float dt = scenarioTime - s_brainFixedTickSimLast;
-    if (dt < 0.0f) dt = 0.0f;  // guard against rewind (save/load)
+    dt = std::max(dt, 0.0f);  // guard against rewind (save/load)
     s_brainFixedTickSimLast = scenarioTime;
     s_brainFixedTickAccum  += dt;
     s_brainTicksThisFrame   = 0;

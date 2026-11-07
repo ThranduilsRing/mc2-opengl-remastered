@@ -394,8 +394,7 @@ void BattleMech::updateHeat (void)
 
 		// Engine damage may cause heat buildup...
 		long numEngineHits = getInventoryDamage(engine);
-		if (numEngineHits > 2)
-			numEngineHits = 2;
+		numEngineHits = std::min(numEngineHits, 2L);
 		heatChange += (numEngineHits * 0.6 * frameLength);
 	}
 
@@ -406,8 +405,7 @@ void BattleMech::updateHeat (void)
 			float heatSinkEffect = (curLegHeatSinks * -0.15);
 			if (heatSinkType == HEATSINK_TYPE_DOUBLE)
 				heatSinkEffect *= 2.0;
-			if (heatSinkEffect < -0.9)
-				heatSinkEffect = -0.9;
+			heatSinkEffect = std::max(heatSinkEffect, -0.9f);
 			heatChange += heatSinkEffect;
 		}
 		break;
@@ -425,8 +423,7 @@ void BattleMech::updateHeat (void)
 	heatChange -= (heatDissipation * frameLength * heatSinkEfficiency);
 
 	heat += heatChange;
-	if (heat < 0.0)
-		heat = 0.0;
+	heat = std::max(heat, 0.0);
 
 	long heatIndex = static_cast<long>(heat);
 
@@ -795,8 +792,7 @@ float curTorso, maxTorso, armorTorso, pilotEffect;
 	};
 	
 	unsigned long pilotWounds = float2long(getPilot()->getWounds());
-	if (pilotWounds > 6)
-		pilotWounds = 6;
+	pilotWounds = std::min(pilotWounds, 6UL);
 		
 	pilotEffect = pilotWoundTable[pilotWounds];
 	

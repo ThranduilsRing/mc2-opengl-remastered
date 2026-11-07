@@ -318,7 +318,7 @@ static float s_gosTerrainDaylight = 0.0f;
 
 void gos_SetTerrainDaylightLevel(float level) {
     if (!(level >= 0.0f)) level = 0.0f;   // also catches NaN
-    if (level > 1.0f)     level = 1.0f;
+    level = std::min(level, 1.0f);
     s_gosTerrainDaylight = level;
 }
 float gos_GetTerrainDaylightLevel() {

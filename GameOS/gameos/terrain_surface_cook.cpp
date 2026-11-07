@@ -126,7 +126,7 @@ SurfaceColor filteredColor(const SurfaceCookInput& in, const AxisSamples& xs, co
     SurfaceColor result{0,0,0,1};
     for (size_t k = 0; k < xs.size(); ++k) {
         const auto& x = xs[k]; const auto& y = ys[k];
-        const size_t a = size_t(y.lo) * in.colorWidth, b = size_t(y.hi) * in.colorWidth;
+        const size_t a = static_cast<size_t>(y.lo) * in.colorWidth, b = static_cast<size_t>(y.hi) * in.colorWidth;
         const auto c = mixColor(mixColor(sourceColor(in,a+x.lo),sourceColor(in,a+x.hi),x.t),
                                 mixColor(sourceColor(in,b+x.lo),sourceColor(in,b+x.hi),x.t),y.t);
         for (size_t n=0;n<3;++n) result[n] += c[n];

@@ -198,7 +198,7 @@ int TacticalOverview::flComputeSlots( glm::vec3* outSlots, int maxSlots ) const
     int n = flMoverCount_;
     if ( n <= 0 || maxSlots <= 0 )
         return 0;
-    if ( n > maxSlots ) n = maxSlots;
+    n = std::min(n, maxSlots);
     // Midpoint of the drawn line; slots scale about it by flSpacing_.
     const float midX = ( flStart_.x + flEnd_.x ) * 0.5f;
     const float midY = ( flStart_.y + flEnd_.y ) * 0.5f;

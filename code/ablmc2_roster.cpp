@@ -490,8 +490,7 @@ void execNewDistanceToPosition (void) {
 			float dx = position2.x - p1.x;
 			float dy = position2.y - p1.y;
 			float d = sqrt(dx * dx + dy * dy);
-			if (d < minDistance)
-				minDistance = d;
+			minDistance = std::min(minDistance, d);
 		}
 		if (minDistance < 3.4E38f)
 			ABLi_pokeReal(minDistance * metersPerWorldUnit);

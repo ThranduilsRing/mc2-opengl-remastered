@@ -454,20 +454,17 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 		case MP_INCREMENT_DROPWEIGHT:
 			MPlayer->missionSettings.dropWeight +=10;
 			MPParameterScreen::resetCheckBoxes();
-			if ( MPlayer->missionSettings.dropWeight > 1200 )
-				MPlayer->missionSettings.dropWeight = 1200;			
+			MPlayer->missionSettings.dropWeight = std::min(MPlayer->missionSettings.dropWeight, 1200L);
 			break;
 		case MP_DECREMENT_DROPWEIGHT:
 			MPlayer->missionSettings.dropWeight -=10;
 			MPParameterScreen::resetCheckBoxes();
-			if ( MPlayer->missionSettings.dropWeight < 30 )
-				MPlayer->missionSettings.dropWeight = 30;			
+			MPlayer->missionSettings.dropWeight = std::max(MPlayer->missionSettings.dropWeight, 30L);
 
 			break;		
 		case MP_INCREMENT_CBILLS:
 			MPlayer->missionSettings.defaultCBills +=5000;
-			if ( MPlayer->missionSettings.defaultCBills < 50000 )
-				MPlayer->missionSettings.defaultCBills = 50000;
+			MPlayer->missionSettings.defaultCBills = std::max(MPlayer->missionSettings.defaultCBills, 50000L);
 			MPlayer->redistributeRP();
 
 			MPParameterScreen::resetCheckBoxes();
@@ -476,8 +473,7 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 			break;
 		case MP_DECREMENT_CBILLS:
 			MPlayer->missionSettings.defaultCBills -=5000;
-			if ( MPlayer->missionSettings.defaultCBills < 50000 )
-				MPlayer->missionSettings.defaultCBills = 50000;
+			MPlayer->missionSettings.defaultCBills = std::max(MPlayer->missionSettings.defaultCBills, 50000L);
 			MPlayer->redistributeRP();
 
 			MPParameterScreen::resetCheckBoxes();
@@ -502,8 +498,7 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 			break;
 
 		case MP_INCREMENT_RP:
-			if ( MPlayer->missionSettings.resourcePoints < 0 )
-				MPlayer->missionSettings.resourcePoints = 0;
+			MPlayer->missionSettings.resourcePoints = std::max(MPlayer->missionSettings.resourcePoints, 0L);
 
 			MPlayer->missionSettings.resourcePoints += 1000;
 			MPParameterScreen::resetCheckBoxes();
@@ -511,8 +506,7 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 			break;
 		case MP_DECREMENT_RP:
 			MPlayer->missionSettings.resourcePoints -= 1000;
-			if ( MPlayer->missionSettings.resourcePoints < 0 )
-				MPlayer->missionSettings.resourcePoints = 0;
+			MPlayer->missionSettings.resourcePoints = std::max(MPlayer->missionSettings.resourcePoints, 0L);
 
 			MPParameterScreen::resetCheckBoxes();
 			
@@ -812,8 +806,7 @@ void MPParameterScreen::update()
 
 			getButton( 50/*MB_MSG_NEXT*/ )->press( 0 );
 			int faction = MPlayer->getPlayerInfo( MPlayer->commanderID )->faction;
-			if ( faction < 0 )
-				faction = 0;
+			faction = std::max(faction, 0);
 			if ( MPlayer->missionSettings.allTech )
 				LogisticsData::instance->setPurchaseFile( pPurchaseFiles[4] );
 			else
@@ -1014,8 +1007,7 @@ void MPParameterScreen::update()
 			if ( MPlayer->startLoading || MPlayer->startLogistics )
 			{
 				int faction = MPlayer->getPlayerInfo( MPlayer->commanderID )->faction;
-				if ( faction < 0 )
-					faction = 0;
+				faction = std::max(faction, 0);
 				if ( MPlayer->missionSettings.allTech )
 					LogisticsData::instance->setPurchaseFile( pPurchaseFiles[4] );
 				else

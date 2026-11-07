@@ -305,8 +305,7 @@ void MechBayScreen::reinitMechs()
 		if ( playerCount )
 			maxUnits = MAX_MULTIPLAYER_MECHS_IN_LOGISTICS/playerCount;
 
-		if ( maxUnits > 12 )
-			maxUnits = 12;
+		maxUnits = std::min(maxUnits, 12);
 	}
 
 	for ( int j = 0; j < ICON_COUNT_Y; j++ )

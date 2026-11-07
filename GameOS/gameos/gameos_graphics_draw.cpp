@@ -382,7 +382,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) {
-        const uint32_t texture=uint32_t(renderStates_[gos_State_Texture]);
+        const uint32_t texture=static_cast<uint32_t>(renderStates_[gos_State_Texture]);
         const uint32_t pass=renderStates_[gos_State_AlphaMode]==gos_Alpha_OneZero ? MC2_LEGACY_PASS_SOLID : MC2_LEGACY_PASS_ALPHA;
         const Mc2LegacyMlrDraw draw{vertices,static_cast<uint32_t>(count),texture,texture,pass,static_cast<uint32_t>(renderStates_[gos_State_AlphaTest]!=0)};
         mc2_vk_preview_capture(&draw); return;

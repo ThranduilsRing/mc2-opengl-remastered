@@ -1104,8 +1104,7 @@ void Building::extractRenderView (mc2::render_view::RenderView& view) {
 				if (totalDmgLvl > 0.0)
 					barStatus -= getDamage() / totalDmgLvl;
 				
-				if (barStatus < 0.0)
-					barStatus = 0.0;
+				barStatus = std::max(barStatus, 0.0f);
 			}
 			else
 			{

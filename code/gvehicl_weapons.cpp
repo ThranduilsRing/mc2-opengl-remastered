@@ -574,7 +574,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			if (isStreakMissile)
 				numMissiles = missileAmount;
 			else {
-				numMissiles = (float(missileAmount) / 2.0) + 0.5;
+				numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
 				numMissiles = std::max<long>(numMissiles, 1);
 				numMissiles = std::min(numMissiles, missileAmount);
 			}

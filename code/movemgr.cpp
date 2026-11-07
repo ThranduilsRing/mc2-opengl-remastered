@@ -186,8 +186,7 @@ void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsign
 	// unconditionally (cheap scalar store) but consumed only when PATH is enabled.
 	pathQRec->enqueueFrame = s_pathFrameCounter;
 
-	if (numPaths > peakPaths)
-		peakPaths = numPaths;
+	peakPaths = std::max(peakPaths, numPaths);
 }
 
 //---------------------------------------------------------------------------

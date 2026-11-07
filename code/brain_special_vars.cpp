@@ -71,7 +71,7 @@ bool parseVarVerb(mc2::czstring verbStr, char outKey[32], char outValue[32], uin
     size_t keyLen = static_cast<size_t>((keyEnd - keyStart));
     if (keyLen == 0)
         return false;
-    if (keyLen > 31) keyLen = 31;
+    keyLen = std::min<decltype(keyLen)>(keyLen, 31);
     std::strncpy(outKey, keyStart, keyLen);
     outKey[keyLen] = '\0';
 
@@ -92,7 +92,7 @@ bool parseVarVerb(mc2::czstring verbStr, char outKey[32], char outValue[32], uin
             const char* vEnd = std::strchr(p, '"');
             if (!vEnd) return false;
             size_t vLen = static_cast<size_t>((vEnd - vStart));
-            if (vLen > 31) vLen = 31;
+            vLen = std::min<decltype(vLen)>(vLen, 31);
             std::strncpy(outValue, vStart, vLen);
             outValue[vLen] = '\0';
             p = vEnd + 1;
@@ -101,7 +101,7 @@ bool parseVarVerb(mc2::czstring verbStr, char outKey[32], char outValue[32], uin
             const char* vStart = p;
             while (*p && *p != ' ' && *p != '\t') ++p;
             size_t vLen = static_cast<size_t>((p - vStart));
-            if (vLen > 31) vLen = 31;
+            vLen = std::min<decltype(vLen)>(vLen, 31);
             std::strncpy(outValue, vStart, vLen);
             outValue[vLen] = '\0';
         }

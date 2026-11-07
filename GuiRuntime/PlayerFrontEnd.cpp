@@ -340,7 +340,7 @@ void drawMainMenu() {
                 restart = true;
                 gos_TerminateApplication();
             } else pendingStart = campaignFit;
-            std::printf("[CAMPAIGN_PICKER] start mod=%s campaign=%s deps=%s restart=%d\n", campaign.c_str(), campaignFit.c_str(), deps.c_str(), int(contentChanged));
+            std::printf("[CAMPAIGN_PICKER] start mod=%s campaign=%s deps=%s restart=%d\n", campaign.c_str(), campaignFit.c_str(), deps.c_str(), static_cast<int>(contentChanged));
             pickerOpen = false;
         }
     }
