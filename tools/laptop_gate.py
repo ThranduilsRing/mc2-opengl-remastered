@@ -259,7 +259,8 @@ def seed_ref():
     try:
         sums.write_text(text, encoding="utf-8", newline="\n")
         lst.write_text("\n".join(line.split("  ", 1)[1] for line in text.splitlines()) + "\n", encoding="utf-8", newline="\n")
-        if subprocess.run(["tar", "--force-local", "-cf", str(local), "-C", str(PC_REF), "-T", str(lst)]).returncode:
+        # the PC's tar is Windows bsdtar: it reads C:\ paths as files and rejects --force-local
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_REF), "-T", str(lst)]).returncode:
             sys.exit("ref tar failed")
         scp(local, f"{HOST}:{G}/tmp/ref.tar")
         ssh(f'powershell -c "New-Item -ItemType Directory -Force {REF} | Out-Null" && tar -xf {G}/tmp/ref.tar -C {REF} '
@@ -280,7 +281,7 @@ def seed_stock():
         return
     local = Path(os.environ.get("TEMP", ".")) / "mc2gate-stock.tar"
     try:
-        if subprocess.run(["tar", "--force-local", "-cf", str(local), "-C", str(PC_STOCK.parent), PC_STOCK.name]).returncode:
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_STOCK.parent), PC_STOCK.name]).returncode:
             sys.exit("stock tar failed")
         scp(local, f"{HOST}:{G}/tmp/stock.tar")
         ssh(f'powershell -c "New-Item -ItemType Directory -Force {dst} | Out-Null" && tar -xf {G}/tmp/stock.tar -C {dst} '
