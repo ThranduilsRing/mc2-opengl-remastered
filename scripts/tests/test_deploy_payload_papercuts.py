@@ -17,7 +17,7 @@ def test_seed_build_dlls_from_3rdparty_and_redist(tmp_path):
     build = tmp_path / "build"
     build.mkdir()
     copied = dp.seed_build_dlls(str(build), str(ROOT))
-    expect = [n for n in ("glew32.dll", "vcruntime140.dll") if any((Path(d) / n).is_file() for d in dp.dll_source_dirs(str(ROOT)))]
+    expect = [n for n in ("SDL2.dll", "vcruntime140.dll") if any((Path(d) / n).is_file() for d in dp.dll_source_dirs(str(ROOT)))]
     if not expect:
         pytest.skip("no DLL source dirs here (3rdparty/lib is git-ignored; a bare clone has none)")
     assert set(expect) <= set(copied)
