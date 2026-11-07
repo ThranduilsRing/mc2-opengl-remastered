@@ -138,7 +138,7 @@ void
 	referenceState = tMesh->GetReferenceState();
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.GetLength());
+	visibleIndexedVertices.SetLength(coords.size());
 
 	referenceState2 = detailState;
 

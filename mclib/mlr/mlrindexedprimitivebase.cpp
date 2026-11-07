@@ -83,7 +83,7 @@ MLRIndexedPrimitiveBase::MLRIndexedPrimitiveBase(
 	}
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.GetLength());
+	visibleIndexedVertices.SetLength(coords.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,14 +152,14 @@ void
 	Check_Pointer(data);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	Verify(texCoords.GetLength() == 0 || dataSize == texCoords.GetLength());
+	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
 #if defined (MAX_NUMBER_VERTICES)
 	Verify(dataSize <= MAX_NUMBER_VERTICES);
 #endif
-	coords.AssignData(data, dataSize);
+	coords.assign(data, data + dataSize);
 
-	if(index.GetLength() > 0 && visibleIndexedVertices.GetLength() != dataSize)
+	if(index.size() > 0 && visibleIndexedVertices.GetLength() != dataSize)
 	{
 		visibleIndexedVertices.SetLength(dataSize);
 	}
@@ -179,20 +179,20 @@ void
 	Check_Pointer(index_array);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	if(coords.GetLength() > 0)
+	if(coords.size() > 0)
 	{
-		visibleIndexedVertices.SetLength(coords.GetLength());
+		visibleIndexedVertices.SetLength(coords.size());
 	}
 
 #ifdef _ARMOR
-	int len = coords.GetLength();
+	int len = coords.size();
 	for(int i=0;i<index_count;i++)
 	{
 		Verify(index_array[i] < len);
 	}
 #endif
 
-	index.AssignData(index_array, index_count);
+	index.assign(index_array, index_array + index_count);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -205,8 +205,8 @@ void
 {
 	Check_Object(this); 
 
-	*index_array = index.GetData();
-	*index_count = static_cast<int>(index.GetLength());
+	*index_array = index.data();
+	*index_count = static_cast<int>(index.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -216,7 +216,7 @@ void
 {
 	Check_Object(this);
 
-	int i, len = static_cast<int>(coords.GetLength());
+	int i, len = static_cast<int>(coords.size());
 
 	for(i=0;i<len;i++)
 	{

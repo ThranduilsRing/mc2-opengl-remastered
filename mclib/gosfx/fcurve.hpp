@@ -311,7 +311,7 @@ namespace gosFX {
 		public Curve
 	{
 	protected:
-		Stuff::DynamicArrayOf<CurveKey>
+		std::vector<CurveKey>
 			m_keys;
 
 	public:
@@ -343,13 +343,13 @@ namespace gosFX {
 				{Check_Object(this); return m_keys[index];}
 		int
 			GetKeyCount()
-				{Check_Object(this); return static_cast<int>(m_keys.GetLength());}
+				{Check_Object(this); return static_cast<int>(m_keys.size());}
 		int
 			GetKeyIndex(Stuff::Scalar time)
 				{
 					Check_Object(this);
 					int i = 0;
-					const int len = static_cast<int>(m_keys.GetLength());
+					const int len = static_cast<int>(m_keys.size());
 					for (; i<len; ++i)
 						if (m_keys[i].m_time > time)
 							break;

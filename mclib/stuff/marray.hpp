@@ -9,6 +9,7 @@
 
 #include"stuff.hpp"
 #include <memory>
+#include <vector>
 
 namespace Stuff {
 
@@ -323,6 +324,40 @@ namespace Stuff {
 		Verify(length == static_cast<uint32_t>(array->length));
 		if (length > 0)
 			stream->ReadBytes(&array->data[0], length * sizeof(T));
+		return *stream;
+	}
+
+	// std::vector stream payload, byte-identical to the DynamicArrayOf one above: a uint32 element count, then
+	// count*sizeof(T) raw element bytes (native endian). Elements are read and written as raw bytes exactly as
+	// before; Vector2DOf is not trivially copyable, so there is no static_assert here.
+	template <class T> MemoryStream&
+		MemoryStreamIO_Write(
+			MemoryStream *stream,
+			const std::vector<T> *array
+		)
+	{
+		Check_Object(stream);
+		Check_Pointer(array);
+		uint32_t length = static_cast<uint32_t>(array->size());
+		MemoryStreamIO::Write(stream, &length);
+		if (length > 0)
+			stream->WriteBytes(array->data(), length * sizeof(T));
+		return *stream;
+	}
+
+	template <class T> MemoryStream&
+		MemoryStreamIO_Read(
+			MemoryStream *stream,
+			std::vector<T> *array
+		)
+	{
+		Check_Object(stream);
+		Check_Pointer(array);
+		uint32_t length;
+		MemoryStreamIO::Read(stream, &length);
+		array->resize(length);
+		if (length > 0)
+			stream->ReadBytes(array->data(), length * sizeof(T));
 		return *stream;
 	}
 

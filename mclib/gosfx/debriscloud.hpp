@@ -93,13 +93,13 @@ namespace gosFX
 		glm::vec3
 			centerOfForce;
 
-		Stuff::DynamicArrayOf<MidLevelRenderer::MLRShape*>
+		std::vector<MidLevelRenderer::MLRShape*>
 			debrisPieces;
-		Stuff::DynamicArrayOf<glm::vec3>
+		std::vector<glm::vec3>
 			debrisPositions;
-		Stuff::DynamicArrayOf<mc2::math::Sphere>
+		std::vector<mc2::math::Sphere>
 			debrisSpheres;
-		Stuff::DynamicArrayOf<Stuff::Scalar>
+		std::vector<Stuff::Scalar>
 			debrisSeed;
 	};
 
@@ -222,7 +222,7 @@ namespace gosFX
 			Draw(DrawInfo *info);
 
 	protected:
-		Stuff::DynamicArrayOf<DebrisCloud__Particle>
+		std::vector<DebrisCloud__Particle>
 			debrisPieces;
 	};
 }

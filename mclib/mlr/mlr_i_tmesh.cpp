@@ -57,7 +57,7 @@ MLR_I_TMesh::MLR_I_TMesh(
 	Check_Pointer(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	numOfTriangles = static_cast<int>(index.GetLength())/3;
+	numOfTriangles = static_cast<int>(index.size())/3;
 
 	facePlanes.SetLength(numOfTriangles);
 	testList.SetLength(numOfTriangles);
@@ -152,7 +152,7 @@ bool
 	referenceState = pMesh->GetReferenceState();
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.GetLength());
+	visibleIndexedVertices.SetLength(coords.size());
 
 	return true;
 }
@@ -180,7 +180,7 @@ void
 	int i, j, numPrimitives = GetNumPrimitives();
 	glm::vec3 v;
 
-	Verify(index.GetLength() > 0);
+	Verify(index.size() > 0);
 
 	for(i=0,j=0;i<numPrimitives;++i,j+=3)
 	{
@@ -260,10 +260,10 @@ int
 	MLR_I_TMesh::FindVisibleVertices()
 {
 	Check_Object(this);
-	Verify(index.GetLength() > 0);
+	Verify(index.size() > 0);
 
 	int ret, i, j;
-	DWORD *indices = reinterpret_cast<DWORD *>(index.GetData());
+	DWORD *indices = reinterpret_cast<DWORD *>(index.data());
 
 	for(i=0,j=0,ret=0;i<(numOfTriangles>>1);++i)
 	{
@@ -310,8 +310,8 @@ void
 {
 	Check_Object(this);
 
-	Verify(index.GetLength() > 0);
-	int i, len = coords.GetLength();
+	Verify(index.size() > 0);
+	int i, len = coords.size();
 
 	if(visibleIndexedVerticesKey == false)
 	{
@@ -319,7 +319,7 @@ void
 	}
 
 	Stuff::Vector4D *v4d = transformedCoords.GetData();
-	glm::vec3 *p3d = coords.GetData();
+	glm::vec3 *p3d = coords.data();
 	MLRClippingState *cs = clipPerVertex.GetData();
 	unsigned char *viv = visibleIndexedVertices.GetData();
 

@@ -60,7 +60,7 @@ MLR_I_MT_PMesh::MLR_I_MT_PMesh(
 	multiReferenceState.SetLength(Limits::Max_Number_Of_Multitextures);
 
 	multiTexCoords[0] = &texCoords;
-	multiTexCoordsPointers[0] = texCoords.GetData();
+	multiTexCoordsPointers[0] = texCoords.data();
 
 	multiReferenceState[0] = referenceState;
 
@@ -68,14 +68,14 @@ MLR_I_MT_PMesh::MLR_I_MT_PMesh(
 
 	for(int i=1;i<passes;i++)
 	{
-		multiReferenceState[i].Save(stream);
+		multiReferenceState[i].Load(stream, version);
 
-		multiTexCoords[i] = new DynamicArrayOf<Vector2DScalar>;
-		Register_Object(multiTexCoords[i]);
+		multiTexCoords[i] = new std::vector<Vector2DScalar>;
+		Register_Pointer(multiTexCoords[i]);
 
 		MemoryStreamIO_Read(stream, multiTexCoords[i]);
 
-		multiTexCoordsPointers[i] = multiTexCoords[i]->GetData();
+		multiTexCoordsPointers[i] = multiTexCoords[i]->data();
 	}
 
 	currentNrOfPasses = passes;
@@ -93,7 +93,7 @@ MLR_I_MT_PMesh::MLR_I_MT_PMesh(ClassData *class_data):
 	multiTexCoordsPointers.SetLength(Limits::Max_Number_Of_Multitextures);
 
 	multiTexCoords[0] = &texCoords;
-	multiTexCoordsPointers[0] = texCoords.GetData();
+	multiTexCoordsPointers[0] = texCoords.data();
 
 	multiState.SetLength(Limits::Max_Number_Of_Multitextures);
 	multiReferenceState.SetLength(Limits::Max_Number_Of_Multitextures);
@@ -125,7 +125,7 @@ void
 	SetTexCoordData(tex, num);
 
 	multiTexCoords[0] = &texCoords;
-	multiTexCoordsPointers[0] = texCoords.GetData();
+	multiTexCoordsPointers[0] = texCoords.data();
 
 	unsigned char *length_array;
 	pMesh->GetSubprimitiveLengths(&length_array, &num);
@@ -142,6 +142,16 @@ void
 
 	FindFacePlanes();
 
+	// Release the owned pass slots [1,passes) before collapsing to one pass;
+	// slot 0 borrows texCoords and is not owned.
+	for(int i=1;i<passes;i++)
+	{
+		Unregister_Pointer(multiTexCoords[i]);
+		std::unique_ptr<std::vector<Vector2DScalar>> owned(multiTexCoords[i]);
+		multiTexCoords[i] = nullptr;
+		multiTexCoordsPointers[i] = nullptr;
+	}
+
 	passes = 1;
 
 	currentNrOfPasses = passes;
@@ -155,7 +165,7 @@ MLR_I_MT_PMesh::~MLR_I_MT_PMesh()
 
 	for(int i=1;i<passes;i++)
 	{
-		Unregister_Object(multiTexCoords[i]);
+		Unregister_Pointer(multiTexCoords[i]);
 		delete multiTexCoords[i];
 	}
 }
@@ -229,27 +239,27 @@ void
 	Check_Pointer(data);
 
 	Verify(pass>=0 && pass<Limits::Max_Number_Of_Multitextures);
-	Verify(coords.GetLength() == 0 || dataSize == coords.GetLength());
+	Verify(coords.size() == 0 || dataSize == coords.size());
 
 	if(pass == 0)
 	{
-		texCoords.AssignData(const_cast<Vector2DScalar *>(data), dataSize);
+		texCoords.assign(data, data + dataSize);
 
-		multiTexCoordsPointers[0] = texCoords.GetData();
+		multiTexCoordsPointers[0] = texCoords.data();
 	}
 	else
 	{
 		if(pass == passes)
 		{
-			Verify(dataSize == multiTexCoords[pass-1]->GetLength());
+			Verify(dataSize == multiTexCoords[pass-1]->size());
 
 			gos_PushCurrentHeap(Heap);
-			multiTexCoords[pass] = new DynamicArrayOf<Vector2DScalar>;
-			Register_Object(multiTexCoords[pass]);
-			multiTexCoords[pass]->AssignData(const_cast<Vector2DScalar *>(data), dataSize);
+			multiTexCoords[pass] = new std::vector<Vector2DScalar>;
+			Register_Pointer(multiTexCoords[pass]);
+			multiTexCoords[pass]->assign(data, data + dataSize);
 			gos_PopCurrentHeap();
 
-			multiTexCoordsPointers[pass] = multiTexCoords[pass]->GetData();
+			multiTexCoordsPointers[pass] = multiTexCoords[pass]->data();
 			
 			passes++;
 			currentNrOfPasses++;
@@ -275,8 +285,8 @@ void
 
 	Verify(pass>=0 && pass<passes);
 
-	*data = multiTexCoords[pass]->GetData();
-	*dataSize = static_cast<int>(multiTexCoords[pass]->GetLength());
+	*data = multiTexCoords[pass]->data();
+	*dataSize = static_cast<int>(multiTexCoords[pass]->size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

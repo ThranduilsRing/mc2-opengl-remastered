@@ -46,6 +46,11 @@ namespace MidLevelRenderer {
 	public:
 		MLR_I_MT_PMesh(ClassData *class_data=MLR_I_MT_PMesh::DefaultData);
 
+		// Pass slots [1,passes) own heap vectors; the implicit copy would
+		// shallow-copy the pointer tables and double-delete.
+		MLR_I_MT_PMesh(const MLR_I_MT_PMesh&) = delete;
+		MLR_I_MT_PMesh& operator=(const MLR_I_MT_PMesh&) = delete;
+
 		static MLR_I_MT_PMesh*
 			Make(
 				Stuff::MemoryStream *stream,
@@ -151,7 +156,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<MLRState> multiState, multiReferenceState;
 
-		Stuff::DynamicArrayOf<Stuff::DynamicArrayOf<Vector2DScalar>* > multiTexCoords;	// Max_Number_Vertices_Per_Mesh
+		Stuff::DynamicArrayOf<std::vector<Vector2DScalar>* > multiTexCoords;	// Max_Number_Vertices_Per_Mesh
 
 		Stuff::DynamicArrayOf<const Vector2DScalar*> multiTexCoordsPointers;
 	};

@@ -47,10 +47,10 @@ gosFX::DebrisCloud__Specification::DebrisCloud__Specification():
 	Check_Pointer(this);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	debrisPieces.SetLength(0);
-	debrisPositions.SetLength(0);
-	debrisSpheres.SetLength(0);
-	debrisSeed.SetLength(0);
+	debrisPieces.resize(0);
+	debrisPositions.resize(0);
+	debrisSpheres.resize(0);
+	debrisSeed.resize(0);
 }
 
 //------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ gosFX::DebrisCloud__Specification::~DebrisCloud__Specification()
 {
 	Check_Object(this);
 
-	int i, nrOfParticles = static_cast<int>(debrisPieces.GetLength());
+	int i, nrOfParticles = static_cast<int>(debrisPieces.size());
 
 	for(i=0;i<nrOfParticles;i++)
 	{
@@ -67,10 +67,10 @@ gosFX::DebrisCloud__Specification::~DebrisCloud__Specification()
 		debrisPieces[i]->DetachReference();
 	}
 
-	debrisPieces.SetLength(0);
-	debrisPositions.SetLength(0);
-	debrisSpheres.SetLength(0);
-	debrisSeed.SetLength(0);
+	debrisPieces.resize(0);
+	debrisPositions.resize(0);
+	debrisSpheres.resize(0);
+	debrisSeed.resize(0);
 }
 
 //------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ void
 
 	MidLevelRenderer::WriteMLRVersion(stream);
 
-	int i, nrOfParticles = static_cast<int>(debrisPieces.GetLength());
+	int i, nrOfParticles = static_cast<int>(debrisPieces.size());
 	*stream << nrOfParticles;
 
 	for(i=0;i<nrOfParticles;i++)
@@ -153,12 +153,12 @@ void
 
 	centerOfForce = spec->centerOfForce;			//	Stuff::Point3D
 
-	int i, nrOfParticles = static_cast<int>(spec->debrisPieces.GetLength());
+	int i, nrOfParticles = static_cast<int>(spec->debrisPieces.size());
 
-	debrisPieces.SetLength(nrOfParticles);
-	debrisPositions.SetLength(nrOfParticles);
-	debrisSpheres.SetLength(nrOfParticles);
-	debrisSeed.SetLength(nrOfParticles);
+	debrisPieces.resize(nrOfParticles);
+	debrisPositions.resize(nrOfParticles);
+	debrisSpheres.resize(nrOfParticles);
+	debrisSeed.resize(nrOfParticles);
 
 	for(i=0;i<nrOfParticles;i++)
 	{
@@ -186,10 +186,10 @@ void
 	mlrVersion = MidLevelRenderer::ReadMLRVersion(stream);
 	*stream >> nrOfParticles;
 
-	debrisPieces.SetLength(nrOfParticles);
-	debrisPositions.SetLength(nrOfParticles);
-	debrisSpheres.SetLength(nrOfParticles);
-	debrisSeed.SetLength(nrOfParticles);
+	debrisPieces.resize(nrOfParticles);
+	debrisPositions.resize(nrOfParticles);
+	debrisSpheres.resize(nrOfParticles);
+	debrisSeed.resize(nrOfParticles);
 
 	Stuff::Scalar minRadius = 100000000000.0f, maxRadius = 0.0f;
 
@@ -365,7 +365,7 @@ gosFX::DebrisCloud::DebrisCloud(
 {
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	debrisPieces.SetLength(spec->debrisPieces.GetLength());
+	debrisPieces.resize(spec->debrisPieces.size());
 }
 
 //------------------------------------------------------------------------------
@@ -403,9 +403,9 @@ void
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
 	
-	Verify(debrisPieces.GetLength() == spec->debrisPieces.GetLength());
+	Verify(debrisPieces.size() == spec->debrisPieces.size());
 
-	int i, numOfParticles = static_cast<int>(debrisPieces.GetLength());
+	int i, numOfParticles = static_cast<int>(debrisPieces.size());
 	
 	for(i=0;i<numOfParticles;i++)
 	{
@@ -488,7 +488,7 @@ bool
 
 	local_to_world = m_localToParent * *info->m_parentToWorld;
 
-	for (i = 0; i < debrisPieces.GetLength(); i++)
+	for (i = 0; i < debrisPieces.size(); i++)
 	{
 		//
 		//--------------------------------------------------------------------
@@ -527,7 +527,7 @@ bool
 	//-------------------------------------------------------------------
 	//
 	mc2::math::Aabb box;
-	for(i=0;i<debrisPieces.GetLength();i++)
+	for(i=0;i<debrisPieces.size();i++)
 	{
 		Particle *particle = GetParticle(i);
 		Check_Object(particle);
@@ -563,7 +563,7 @@ bool
 	// Look for the other particles
 	//-----------------------------
 	//
-	while (i<debrisPieces.GetLength())
+	while (i<debrisPieces.size())
 	{
 		Particle *particle = GetParticle(i);
 		Check_Object(particle);
@@ -641,7 +641,7 @@ void
 	// Destroy all the particles and set up an empty particle cloud
 	//-------------------------------------------------------------
 	//
-	for(int i=0; i < debrisPieces.GetLength(); i++)
+	for(int i=0; i < debrisPieces.size(); i++)
 	{
 		DestroyParticle(i);
 	}
@@ -802,7 +802,7 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
 
-	int i, nrOfParticle = static_cast<int>(debrisPieces.GetLength());
+	int i, nrOfParticle = static_cast<int>(debrisPieces.size());
 
 	for(i=0;i<nrOfParticle;i++)
 	{

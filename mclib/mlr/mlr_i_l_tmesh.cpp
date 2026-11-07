@@ -149,11 +149,11 @@ void
 	Check_Object(this); 
 	Check_Pointer(data);
 
-	Verify(coords.GetLength() == 0 || dataSize == coords.GetLength());
+	Verify(coords.size() == 0 || dataSize == coords.size());
 	Verify(colors.GetLength() == 0 || dataSize == colors.GetLength());
-	Verify(texCoords.GetLength() == 0 || dataSize == texCoords.GetLength());
+	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
-	normals.AssignData(data, dataSize);
+	normals.assign(data, data + dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -165,8 +165,8 @@ void
 	)
 {
 	Check_Object(this); 
-	*data = normals.GetData();
-	*dataSize = static_cast<int>(normals.GetLength());
+	*data = normals.data();
+	*dataSize = static_cast<int>(normals.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,8 +181,8 @@ void
 	Check_Pointer(data);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	Verify(coords.GetLength() == 0 || dataSize == coords.GetLength());
-	Verify(texCoords.GetLength() == 0 || dataSize == texCoords.GetLength());
+	Verify(coords.size() == 0 || dataSize == coords.size());
+	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
 	litColors.SetLength(dataSize);
 	colors.AssignData(data, dataSize);

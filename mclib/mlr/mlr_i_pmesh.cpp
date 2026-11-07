@@ -113,7 +113,7 @@ void
 	referenceState = polyMesh->GetReferenceState();
 
 	visibleIndexedVerticesKey = false;
-	visibleIndexedVertices.SetLength(coords.GetLength());
+	visibleIndexedVertices.SetLength(coords.size());
 }
 */
 
@@ -182,7 +182,7 @@ void
 	Check_Object(this); 
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	lengths.AssignData(data, numPrimitives);
+	lengths.assign(data, data + numPrimitives);
 
 	facePlanes.SetLength(numPrimitives);
 
@@ -195,8 +195,8 @@ void
 	MLR_I_PMesh::GetSubprimitiveLengths (unsigned char **data, int *l)
 {
 	Check_Object(this);
-	*l = static_cast<int>(lengths.GetLength());
-	*data = lengths.GetData();
+	*l = static_cast<int>(lengths.size());
+	*data = lengths.data();
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -209,7 +209,7 @@ void
 	int i, j, stride, numPrimitives = GetNumPrimitives();
 	glm::vec3 v;
 
-	Verify(index.GetLength() > 0);
+	Verify(index.size() > 0);
 
 	for(i=0,j=0;i<numPrimitives;i++)
 	{
@@ -233,7 +233,7 @@ int
 	Check_Object(this);
 
 	int i, numPrimitives = GetNumPrimitives();
-	int ret = 0, len = static_cast<int>(lengths.GetLength());
+	int ret = 0, len = static_cast<int>(lengths.size());
 	unsigned char *iPtr;
 	const mc2::math::Plane *p;
 
@@ -292,11 +292,11 @@ int
 	MLR_I_PMesh::FindVisibleVertices()
 {
 	Check_Object(this);
-	Verify(index.GetLength() > 0);
+	Verify(index.size() > 0);
 
-	int ret, i, j, k, stride, len = static_cast<int>(lengths.GetLength());
+	int ret, i, j, k, stride, len = static_cast<int>(lengths.size());
 
-	Verify(index.GetLength() > 0);
+	Verify(index.size() > 0);
 	
 	for(i=0,j=0,ret=0;i<len;i++)
 	{
@@ -334,8 +334,8 @@ void
 
 	Start_Timer(Transform_Time);
 
-	Verify(index.GetLength() > 0);
-	int i, len = static_cast<int>(coords.GetLength());
+	Verify(index.size() > 0);
+	int i, len = static_cast<int>(coords.size());
 
 	if(visibleIndexedVerticesKey == false)
 	{
@@ -343,7 +343,7 @@ void
 	}
 
 	Stuff::Vector4D *v4d = transformedCoords.data();
-	glm::vec3 *p3d = coords.GetData();
+	glm::vec3 *p3d = coords.data();
 	MLRClippingState *cs = clipPerVertex.data();
 	unsigned char *viv = visibleIndexedVertices.GetData();
 
