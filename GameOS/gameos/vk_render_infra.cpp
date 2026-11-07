@@ -4,6 +4,7 @@
 #include "hitch_stats.h"
 #include "vulkan_context.h"
 #include "vulkan_fsr_provider.h"
+#include "diagnostic_trace.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
 #include "../../RenderCore/TemporalInputs.h"
@@ -60,7 +61,8 @@ void materialSampler(VkSamplerCreateInfo& info) {
                           mc2vk::fsrProviderAvailable(mc2vk::getOrCreateEngineVulkanContext());
     info.mipLodBias = RenderCore::temporal::mipBias(scale, provider);
     static std::atomic<int> logged{-1};
-    if (const int key = provider ? 1 : 0; logged.exchange(key, std::memory_order_relaxed) != key)
+    if (const int key = provider ? 1 : 0;
+        logged.exchange(key, std::memory_order_relaxed) != key && mc2_diag::tagRequested("VK_PRESENT"))
         mc2::fmt::print_err("[VK_PRESENT] material_mip_bias={:.2f} fsr_provider={}\n", info.mipLodBias, key);
 }
 namespace {

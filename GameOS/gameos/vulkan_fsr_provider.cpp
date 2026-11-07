@@ -12,6 +12,7 @@
 #include <atomic>
 #include <chrono>
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 namespace mc2vk {
 namespace {
@@ -204,7 +205,8 @@ bool fsrProviderAvailable(VulkanContext& ctx) {
             else if (!createUpscaleContext(fns, ctx, 64, 64, &probe)) reason = "create_context";
             else { fns.DestroyContext(&probe, nullptr); ok = true; }
         }
-        mc2::fmt::print_err("[VK_PRESENT] fsr_probe available={} reason={}\n", ok ? 1 : 0, reason);
+        if (mc2_diag::tagRequested("VK_PRESENT"))
+            mc2::fmt::print_err("[VK_PRESENT] fsr_probe available={} reason={}\n", ok ? 1 : 0, reason);
         return ok;
     }();
     return available;
