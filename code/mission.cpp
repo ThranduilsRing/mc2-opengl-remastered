@@ -47,8 +47,8 @@ struct MissionOrderAccess {
     }
 };
 using MissionOrderApplication = mc2::sim::MoverOrderApplication<::TacticalOrder, MissionOrderAccess>;
-static_assert(TACTICAL_ORDER_NONE == 0 && TACTICAL_ORDER_STOP == 11 && TACTICAL_ORDER_MOVETO_POINT == 2);
-static_assert(TACTICAL_ORDER_TRAVERSE_PATH == 6 && TACTICAL_ORDER_PATROL_PATH == 7);
+static_assert(std::to_underlying(TACTICAL_ORDER_NONE) == 0 && std::to_underlying(TACTICAL_ORDER_STOP) == 11 && std::to_underlying(TACTICAL_ORDER_MOVETO_POINT) == 2);
+static_assert(std::to_underlying(TACTICAL_ORDER_TRAVERSE_PATH) == 6 && std::to_underlying(TACTICAL_ORDER_PATROL_PATH) == 7);
 static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
 
 // Target identities retain the authored/runtime part ID plus the watch incarnation;
@@ -287,7 +287,7 @@ bool Mission::endedRouteOrder(MechWarrior* pilot) const {
     const auto* order = pilot->getCurTacOrder();
     if (order->stage != 2) return false;
     for (const auto& route : routeExecutions) {
-        if (!route.terminal() || order->code != static_cast<int>(route.kind)) continue;
+        if (!route.terminal() || std::to_underlying(order->code) != static_cast<int>(route.kind)) continue;
         const auto binding = std::ranges::find(orderRecipients, route.key.partIncarnation,
             &OrderRecipientBinding::partIncarnation);
         if (binding != orderRecipients.end() && binding->pilot == pilot) return true;
@@ -324,7 +324,7 @@ std::optional<mc2::sim::RouteTransition> Mission::onRouteEvent(const mc2::sim::R
                     for (long buffer = 0; buffer < 2; ++buffer) pilot->clearMovePath(buffer);
                     // Retired route orders must not resume through legacy path handling.
                     for (auto* order : {pilot->getCurTacOrder(), pilot->getTacOrder(ORDERSTATE_GENERAL)})
-                        if (order->code == static_cast<int>(found->kind)) order->setStage(2);
+                        if (std::to_underlying(order->code) == static_cast<int>(found->kind)) order->setStage(2);
                 }
             }
             mc2::fmt::print_err("[ROUTE_EXECUTION v1] execution={} revision={} sequence={} tick={} event={} reason={}\n",
@@ -469,7 +469,7 @@ void Mission::beginOrderSimulationTick() {
         const auto team = pilot->getTeam() ? pilot->getTeam()->getId() : -1;
         if (team < 0 || team >= MAX_TEAMS || !MechWarrior::brainsEnabled[team] ||
             ((route.state == RouteState::Active || route.state == RouteState::Pending) &&
-             pilot->getTacOrder(ORDERSTATE_GENERAL)->code != static_cast<int>(route.kind))) {
+             std::to_underlying(pilot->getTacOrder(ORDERSTATE_GENERAL)->code) != static_cast<int>(route.kind))) {
             signalRoute(route, RouteAction::Removed);
             continue;
         }

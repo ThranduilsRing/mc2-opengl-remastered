@@ -54,7 +54,7 @@ int32_t TargetPriorityList::calcAction (MechWarriorPtr pilot, GameObjectPtr targ
 	if (target->isMover()) {
 		if (!pilot->getTeam() || pilot->getTeam()->isEnemy(target->getTeam())) {
 			if (!target->isDisabled())
-				return(TACTICAL_ORDER_ATTACK_OBJECT);
+				return(std::to_underlying(TACTICAL_ORDER_ATTACK_OBJECT));
 
 		}
 		}
@@ -63,15 +63,15 @@ int32_t TargetPriorityList::calcAction (MechWarriorPtr pilot, GameObjectPtr targ
 			case BUILDING:
 				if (target->getTeam() != pilot->getTeam()) {
 					if (target->getFlag(OBJECT_FLAG_CONTROLBUILDING))
-						return(TACTICAL_ORDER_CAPTURE);
-					return(TACTICAL_ORDER_ATTACK_OBJECT);
+						return(std::to_underlying(TACTICAL_ORDER_CAPTURE));
+					return(std::to_underlying(TACTICAL_ORDER_ATTACK_OBJECT));
 				}
 				break;
 			case TURRET:
 				break;
 		}
 	}
-	return(TACTICAL_ORDER_NONE);
+	return(std::to_underlying(TACTICAL_ORDER_NONE));
 }
 
 int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location, int32_t contactCriteria, int32_t& action) {

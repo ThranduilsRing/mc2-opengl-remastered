@@ -276,7 +276,12 @@ void execOrderAttackObject (void) {
 	long pursue = ABLi_popInteger();
 
 	long result = 1;
-	if (!ABLi_getSkipOrder()) {
+	// LG14: script ints are checked against each order enum's own domain (fire range starts at -4) before they reach the order.
+	const bool paramsInDomain = enum_in_domain(AttackType{}, attackType) && enum_in_domain(AttackMethod{}, attackMethod) &&
+		enum_in_domain(FireRangeType{}, attackRange);
+	if (!paramsInDomain)
+		result = TACORDER_FAILURE;
+	else if (!ABLi_getSkipOrder()) {
 		unsigned long params = TACORDER_PARAM_NONE;
 		if (pursue)
 			params |= TACORDER_PARAM_PURSUE;
@@ -289,7 +294,7 @@ void execOrderAttackObject (void) {
 		else {
 			if (objectId > 0)
 				object = ObjectManager->findByPartId(objectId);
-			result = CurWarrior->orderAttackObject(false, ORDER_ORIGIN_COMMANDER, object, attackType, attackMethod, attackRange, -1, -1, params);
+			result = CurWarrior->orderAttackObject(false, std::to_underlying(ORDER_ORIGIN_COMMANDER), object, attackType, attackMethod, attackRange, -1, -1, params);
 		}
 	}
 

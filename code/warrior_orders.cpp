@@ -446,7 +446,7 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 		return(TACORDER_SUCCESS);
 	}
 
-	if ((getVehicle()->numWeapons == 0) && (method != ATTACKMETHOD_RAMMING)) {
+	if ((getVehicle()->numWeapons == 0) && (method != std::to_underlying(ATTACKMETHOD_RAMMING))) {
 		clearAttackOrders();
 		return(TACORDER_SUCCESS);
 	}

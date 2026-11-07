@@ -44,15 +44,16 @@ struct SavedQueueTargets {
 // The target type follows nine flag bits in packedData[1]. Guard-point uses code 31.
 inline bool packedOrderTargetsTerrain(unsigned long first, unsigned long second)
 {
-	switch (first & 0x1fUL) {
-	case TACTICAL_ORDER_GUARD:
-	case TACTICAL_ORDER_ATTACK_OBJECT:
-	case TACTICAL_ORDER_MOVETO_OBJECT:
-	case TACTICAL_ORDER_JUMPTO_OBJECT:
-	case TACTICAL_ORDER_CAPTURE:
-	case TACTICAL_ORDER_REFIT:
-	case TACTICAL_ORDER_RECOVER:
-	case TACTICAL_ORDER_GETFIXED:
+	// Raw 5-bit code field: 31 (guard point) matches no case, as before.
+	switch (static_cast<std::int32_t>(first & 0x1fUL)) {
+	case std::to_underlying(TACTICAL_ORDER_GUARD):
+	case std::to_underlying(TACTICAL_ORDER_ATTACK_OBJECT):
+	case std::to_underlying(TACTICAL_ORDER_MOVETO_OBJECT):
+	case std::to_underlying(TACTICAL_ORDER_JUMPTO_OBJECT):
+	case std::to_underlying(TACTICAL_ORDER_CAPTURE):
+	case std::to_underlying(TACTICAL_ORDER_REFIT):
+	case std::to_underlying(TACTICAL_ORDER_RECOVER):
+	case std::to_underlying(TACTICAL_ORDER_GETFIXED):
 		return ((second >> 9) & 3UL) == 1;
 	default:
 		return false;

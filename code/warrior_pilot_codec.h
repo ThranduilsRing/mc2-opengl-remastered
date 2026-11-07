@@ -1,5 +1,7 @@
 // Packet D: explicit pilot values, independent of the native legacy image.
 #pragma once
+#include <concepts>
+#include <utility>
 #include "warrior_value_codec.h"
 #include "tacorder_terrain_queue.h"
 
@@ -25,12 +27,18 @@ public:
         a(wire);
         if (a.reading() && a.good()) v = wire;
     }
+    // LG14: an enum that declares enum_in_domain(E, int32_t) (tacordr.h order enums) is range-checked on read;
+    // an out-of-domain value rejects the save instead of becoming an unnamed enumerator.
     template<class T> requires std::is_enum_v<T>
     void field(T& v) {
         static_assert(sizeof(T) == 4);
-        auto bits = static_cast<std::int32_t>(v);
+        auto bits = static_cast<std::int32_t>(std::to_underlying(v));
         a(bits);
-        if (a.reading() && a.good()) v = static_cast<T>(bits);
+        if (!a.reading() || !a.good()) return;
+        if constexpr (requires { { enum_in_domain(T{}, bits) } -> std::same_as<bool>; }) {
+            if (!enum_in_domain(T{}, bits)) { a.reject("warrior_enum_domain"); return; }
+        }
+        v = static_cast<T>(bits);
     }
     template<class T, size_t N> void field(T (&values)[N]) {
         for (auto& v : values) field(v);

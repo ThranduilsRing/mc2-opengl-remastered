@@ -372,7 +372,7 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
 	bool keepMoving = ((params & TACORDER_PARAM_DONT_KEEP_MOVING) == 0);
 
-	long attackMethod = ATTACKMETHOD_RANGED;
+	AttackMethod attackMethod = ATTACKMETHOD_RANGED;
 	switch (params & TACORDER_ATTACK_MASK) {
 		case TACORDER_PARAM_ATTACK_DFA:
 			attackMethod = ATTACKMETHOD_DFA;
@@ -595,9 +595,9 @@ long MechWarrior::coreControl (GameObjectPtr object, unsigned long params) {
 		return(1);
 
 	long action = targetPriorityList.calcAction(this, object);
-	if (action == TACTICAL_ORDER_ATTACK_OBJECT)
+	if (action == std::to_underlying(TACTICAL_ORDER_ATTACK_OBJECT))
 		return(coreAttack(object, params));
-	else if (action == TACTICAL_ORDER_CAPTURE)
+	else if (action == std::to_underlying(TACTICAL_ORDER_CAPTURE))
 		return(coreCapture(object, params));
 	return(1);
 }

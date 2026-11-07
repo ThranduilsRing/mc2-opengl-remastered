@@ -750,7 +750,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 bool MechWarrior::getNextWayPoint (glm::vec3& nextPoint, bool incWayPoint) {
 
     if (mission) if (auto* r = mission->ownedRoute(this)) {
-        if (getOrderState() == ORDERSTATE_GENERAL && curTacOrder.code == static_cast<int>(r->kind)) {
+        if (getOrderState() == ORDERSTATE_GENERAL && std::to_underlying(curTacOrder.code) == static_cast<int>(r->kind)) {
             if (incWayPoint) mission->signalRoute(*r, mc2::sim::RouteAction::Arrived);
             if (r->terminal()) return false;
             const auto& p = r->path.points[r->path.curPoint];

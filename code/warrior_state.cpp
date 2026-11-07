@@ -898,6 +898,19 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 	return packetNum;
 }
 
+// LG14: a legacy packet is a raw memcpy image, so the scoped order enums inside it are checked against their domains
+// before anything reads them (the value codec checks the same enums on its own path).
+static bool legacyOrderEnumsInDomain (const TacticalOrder& o)
+{
+	return enum_in_domain(OrderOriginType{}, std::to_underlying(o.origin)) &&
+		enum_in_domain(TacticalOrderCode{}, std::to_underlying(o.code)) &&
+		enum_in_domain(SpecialMoveMode{}, std::to_underlying(o.moveParams.mode)) &&
+		enum_in_domain(AttackType{}, std::to_underlying(o.attackParams.type)) &&
+		enum_in_domain(AttackMethod{}, std::to_underlying(o.attackParams.method)) &&
+		enum_in_domain(FireRangeType{}, std::to_underlying(o.attackParams.range)) &&
+		enum_in_domain(TacticType{}, std::to_underlying(o.attackParams.tactic));
+}
+
 void MechWarrior::load (PacketFilePtr file, long packetNum, bool values)
 {
 	MechWarriorData warriorData{};
@@ -913,6 +926,9 @@ void MechWarrior::load (PacketFilePtr file, long packetNum, bool values)
 	} else {
 		if (size < sizeof(warriorData)) Fatal(0, "Invalid legacy warrior packet size");
 		memcpy(&warriorData, bytes.data(), sizeof(warriorData));
+		bool ordersOk = legacyOrderEnumsInDomain(warriorData.lastTacOrder) && legacyOrderEnumsInDomain(warriorData.curTacOrder);
+		for (const TacticalOrder& o : warriorData.tacOrder) ordersOk = ordersOk && legacyOrderEnumsInDomain(o);
+		if (!ordersOk) Fatal(0, "Invalid legacy warrior order enum");
 		if (wide && (!mc2::save::decodeRecord(std::span(bytes).subspan(sizeof(warriorData)), targets) ||
 			targets.targets.size() != warriorData.numTacOrdersQueued)) Fatal(0, "Invalid saved queue targets");
 	}

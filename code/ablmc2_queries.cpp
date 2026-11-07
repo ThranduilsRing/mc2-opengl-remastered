@@ -841,7 +841,7 @@ void execGetLastTacOrder(void) {
 			if (pilot) {
 				code = pilot->getLastTacOrder()->getParamData(time, paramList);
 				count = 7;
-				switch (code) {
+				switch (static_cast<TacticalOrderCode>(code)) {	// getParamData returns a stored order's own code
 					case TACTICAL_ORDER_MOVETO_POINT:
 					case TACTICAL_ORDER_GUARD: count = 12; break;
 					case TACTICAL_ORDER_MOVETO_OBJECT: count = 10; break;
