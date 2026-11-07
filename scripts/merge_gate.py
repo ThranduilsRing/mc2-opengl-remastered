@@ -1169,6 +1169,36 @@ def parse_declared_views(items):
     return out
 
 
+POST_SCOPE_RE = re.compile(r"VKIsl\.Post\.\w+")
+
+
+def capture_post_scopes(capture_dir):
+    """Set of VKIsl.Post.* scope names in every per-bookmark *_capture.log under a capture dir (the pipeline signature)."""
+    scopes = set()
+    for log in Path(capture_dir).glob("*/*_capture.log"):
+        scopes.update(POST_SCOPE_RE.findall(log.read_text(encoding="utf-8", errors="replace")))
+    return scopes
+
+
+def capture_pipeline_mismatch(before_dir, after_dir):
+    """One-line reason when before/after captures ran different post pipelines (W126: before had no FSR AA because the seed
+    lacked amd_fidelityfx_vk.dll), else None. Not a pixel result, so the caller marks the row INFRA instead of judging MAD."""
+    before, after = capture_post_scopes(before_dir), capture_post_scopes(after_dir)
+    if not before or not after or before == after:
+        return None  # no log evidence on a side: stay with the pixel verdict
+    install = ""
+    try:
+        match = re.search(r"install=(\S+)", (Path(before_dir) / "capture_run.log").read_text(encoding="utf-8", errors="replace"))
+        install = match.group(1) if match else ""
+    except OSError:
+        pass
+    miss = bool(install) and not (Path(install) / "amd_fidelityfx_vk.dll").is_file()
+    return ("capture pipelines differ, not a pixel result: only before has %s, only after has %s; seed %s%s"
+            % (sorted(before - after) or "-", sorted(after - before) or "-",
+               "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
+               f" ({install})" if install else ""))
+
+
 def mad_flags(output, declared=(), expected=()):
     """Bookmarks in ab.py --compare-only output ('name | MAD | ...') whose MAD exceeds MAD_LIMIT, or, for a declared view, its declared bound.
     declared is {name: maxMAD} (a plain set/list means DECLARED_MAD_BOUND each). A declared view still needs a row (when expected) with a numeric MAD under its bound.
@@ -1574,7 +1604,16 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else (
                     infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
-                if result.returncode == 0 and name.startswith("compare-captures"):
+                mismatch = None
+                if name == "compare-captures" and "--compare-only" in command:
+                    cmp_i = command.index("--compare-only")
+                    mismatch = capture_pipeline_mismatch(command[cmp_i + 1], command[cmp_i + 2])
+                    if mismatch:
+                        status = "INFRA: " + mismatch.replace("|", "/")
+                        print(f"[merge_gate] {name}: {status}", flush=True)
+                if mismatch:
+                    pass
+                elif result.returncode == 0 and name.startswith("compare-captures"):
                     moved = mad_flags(getattr(result, "stdout", ""), DECLARED_VIEWS, COMPARE_BOOKMARKS if name == "compare-captures" else ())
                     for line in (getattr(result, "stdout", "") or "").splitlines():
                         if line.startswith("[pixel_hist] "):  # reported next to MAD; not a pass/fail input yet
