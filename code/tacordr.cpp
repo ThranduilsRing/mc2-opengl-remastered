@@ -109,6 +109,12 @@ constexpr int TACORDERCHUNK_TRAINCAR_BITS = 8;
 constexpr int TACORDERCHUNK_UNITORDER_MASK = 0x00000001;
 constexpr int TACORDERCHUNK_ORIGIN_MASK = 0x00000003;
 constexpr int TACORDERCHUNK_CODE_MASK = 0x0000001F;
+// Packed net sentinel: a GUARD order with no target object packs as this value (see pack/unpack "MAJOR HACK FOR GUARD").
+constexpr int TACORDERCHUNK_GUARD_POINT_SENTINEL = 31;
+// save/net layout pinned; LG14 enum-class conversion must keep it.
+static_assert(TACORDERCHUNK_GUARD_POINT_SENTINEL == TACORDERCHUNK_CODE_MASK);
+static_assert(TACORDERCHUNK_CODE_MASK == (1 << TACORDERCHUNK_CODE_BITS) - 1, "packed code field is 5 bits wide");
+static_assert(static_cast<int>(NUM_TACTICAL_ORDERS) <= TACORDERCHUNK_GUARD_POINT_SENTINEL, "sentinel must not collide with a real order code");
 constexpr int TACORDERCHUNK_GROUP_MASK = 0x0000FFFF;
 constexpr int TACORDERCHUNK_ATTACKTYPE_MASK = 0x00000003;
 constexpr int TACORDERCHUNK_ATTACKMETHOD_MASK = 0x00000003;
@@ -421,7 +427,7 @@ long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 		if (targetWID)
 			tempData |= static_cast<unsigned long>(TACTICAL_ORDER_GUARD);
 		else
-			tempData |= static_cast<unsigned long>(TACORDERCHUNK_CODE_MASK);
+			tempData |= static_cast<unsigned long>(TACORDERCHUNK_GUARD_POINT_SENTINEL);
 		}
 	else
 		tempData |= static_cast<long>(code);
@@ -555,7 +561,7 @@ long TacticalOrder::unpack (void) {
 	//------------------------
 	// MAJOR HACK FOR GUARD...
 	bool guardLocation = false;
-	if (code == TACORDERCHUNK_CODE_MASK) {
+	if (code == TACORDERCHUNK_GUARD_POINT_SENTINEL) {
 		code = TACTICAL_ORDER_GUARD;
 		guardLocation = true;
 	}
