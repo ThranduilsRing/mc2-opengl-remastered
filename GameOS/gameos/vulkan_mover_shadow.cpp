@@ -1,4 +1,3 @@
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_mover_shadow.h"
 #include "shadow_quality.h"
 #include "vulkan_context.h"
@@ -276,4 +275,3 @@ bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView de
     return true;
 }
 }
-#endif

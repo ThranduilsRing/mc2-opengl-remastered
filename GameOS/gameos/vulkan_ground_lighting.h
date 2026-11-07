@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include <volk.h>
 #include <array>
 #include <optional>
@@ -9,4 +8,3 @@ struct Mc2GroundLightingFrame {
     std::array<uint32_t, 4> offsets{}; // terrain UBO, light pool, grid headers/indices
 };
 std::optional<Mc2GroundLightingFrame> mc2_vk_ground_lighting_frame();
-#endif

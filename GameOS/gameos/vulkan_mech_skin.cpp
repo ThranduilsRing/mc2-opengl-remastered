@@ -1,5 +1,4 @@
 // vulkan_mech_skin.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -189,4 +188,3 @@ void MechSkinPass::record(VkCommandBuffer cb, VkBuffer srcVbo, VkDeviceSize srcB
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND

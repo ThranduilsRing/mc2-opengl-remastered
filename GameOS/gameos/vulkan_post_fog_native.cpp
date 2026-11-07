@@ -39,7 +39,6 @@
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"   // str<>()
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -714,4 +713,3 @@ extern "C" void mc2_vk_post_fog_native_health(
     if (renderUs)       *renderUs = g_pf.renderUs;
 }
 
-#endif // MC2_VULKAN_ISLAND

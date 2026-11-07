@@ -1,5 +1,4 @@
 // Cooked BC4 shadow products: key, encoding, transfer and cache persistence.
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_shadow_bake_internal.h"
 #include <array>
 #include "vulkan_color_prop_island.h"
@@ -333,4 +332,3 @@ void ShadowBake::storeReadback() {
 }
 
 }  // namespace mc2vk
-#endif

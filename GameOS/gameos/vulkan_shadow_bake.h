@@ -12,7 +12,6 @@
 #ifndef MC2_VULKAN_SHADOW_BAKE_H
 #define MC2_VULKAN_SHADOW_BAKE_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
 
@@ -298,5 +297,4 @@ private:
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VULKAN_SHADOW_BAKE_H

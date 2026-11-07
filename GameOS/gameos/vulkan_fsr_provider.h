@@ -1,5 +1,4 @@
 #pragma once
-#ifdef MC2_VULKAN_ISLAND
 #include <memory>
 #include <volk.h>
 struct VkImageResource;
@@ -30,4 +29,3 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 }
-#endif
