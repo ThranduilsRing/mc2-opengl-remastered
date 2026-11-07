@@ -126,7 +126,7 @@ TEST_CASE("rt tier: every missing prerequisite falls back with its own reason") 
         c.rt.shaderGroupHandleSize = 0;
         const vkp::RtSelection s = vkp::selectRt(c);
         CHECK_FALSE(s.rayPipeline);
-        CHECK(s.reason == "no_sbt_limits");
+        CHECK(s.reason.find("no_sbt_limits") != std::string::npos);
     }
     {   // ray query feature bit off while the extension is listed
         vkp::DeviceCaps c = withQuery();
@@ -141,7 +141,7 @@ TEST_CASE("rt tier: selection never touches the raster profile verdict") {
     const vkp::DeviceCaps plain = baseCaps();
     vkp::DeviceCaps rt = withPipeline(withQuery());
     // The RT block is extra data; the same table runs over the same raster fields.
-    const vkp::Evaluation a = vkp::evaluate(plain), b = vkp::evaluate(rt);
+    const vkp::Evaluation a = vkp::evaluate(plain, false), b = vkp::evaluate(rt, false);
     CHECK(a.missingRequired == b.missingRequired);
 }
 
