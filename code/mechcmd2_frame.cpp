@@ -411,8 +411,7 @@ void __stdcall DoGameLogic()
 			frameRate = 4.0f;
 	
 		frameLength = 1.0 / frameRate;
-		if (frameLength > 0.25f)
-			frameLength = 0.25f;
+		frameLength = std::min(frameLength, 0.25f);
 
 		// frameLength here is the RENDER frame's length: UI, camera and the presentation passes use it. The sim does not.
 		// Mission::update banks it (times the game speed) into the fixed 30 Hz tick clock and sets frameLength to the tick

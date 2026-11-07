@@ -201,8 +201,7 @@ int LogisticsData::createInstanceID( LogisticsVariant* pVar )
 		if ( pVar->getVariantID() == iter->getVariantID() ) 
 		{
 			int tmp = iter->getInstanceID();
-			if ( tmp > count )
-				count = tmp;
+			count = std::max(count, tmp);
 		}
 	}
 	return count + 1;

@@ -37,7 +37,7 @@ inline void mc2BattleBenchObserve() {
                 ++issued;
             }
         }
-        mc2::fmt::print(output, "{{\"type\":\"orders\",\"sim_s\":{:.6f},\"attacks\":{:d}}}\n", double(scenarioTime), mc2::fmt::as_i32(issued));
+        mc2::fmt::print(output, "{{\"type\":\"orders\",\"sim_s\":{:.6f},\"attacks\":{:d}}}\n", static_cast<double>(scenarioTime), mc2::fmt::as_i32(issued));
     }
     if (scenarioTime < nextSample) return;
     nextSample = scenarioTime + 0.5f;
@@ -55,5 +55,5 @@ inline void mc2BattleBenchObserve() {
     for (long i = 0; i < ObjectManager->getNumTurrets(); ++i) count(ObjectManager->getTurret(i));
     for (long i = 0; i < ObjectManager->getNumTerrainObjects(); ++i) count(ObjectManager->getTerrainObject(i));
     mc2::fmt::print(output, "{{\"type\":\"world\",\"frame\":{:d},\"sim_s\":{:.6f},\"movers\":{:d},\"units_alive\":{:d},\"mechs\":{:d},\"active\":{:d},\"destroyed\":{:d}}}\n",
-        mc2::fmt::as_u64(static_cast<unsigned long long>(frame)), double(scenarioTime), mc2::fmt::as_long(ObjectManager->getNumMovers()), mc2::fmt::as_i32(alive), mc2::fmt::as_i32(mechs), mc2::fmt::as_i32(active), mc2::fmt::as_size(destroyed.size()));
+        mc2::fmt::as_u64(static_cast<unsigned long long>(frame)), static_cast<double>(scenarioTime), mc2::fmt::as_long(ObjectManager->getNumMovers()), mc2::fmt::as_i32(alive), mc2::fmt::as_i32(mechs), mc2::fmt::as_i32(active), mc2::fmt::as_size(destroyed.size()));
 }

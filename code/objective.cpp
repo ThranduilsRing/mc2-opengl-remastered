@@ -2165,7 +2165,7 @@ void CObjective::RenderOverviewMarker(const mc2::render_view::HudObjective& row,
 	float sy = vay + ( 1.0f - ( r.clip.y / r.clip.w * 0.5f + 0.5f ) ) * vmy;
 
 	unsigned long aByte = static_cast<unsigned long>(( alpha * 255.0f ));
-	if ( aByte > 255 ) aByte = 255;
+	aByte = std::min(aByte, 255UL);
 	const unsigned long fg = ( aByte << 24 ) | 0x00ffe600; // warm yellow, cross-faded
 	const unsigned long bg = ( aByte << 24 ) | 0x00000000; // black shadow
 

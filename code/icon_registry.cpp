@@ -35,7 +35,7 @@ Pixels load(std::string path, bool hud = false) {
         File file;
         if (file.open(path.c_str()) != NO_ERR || file.getLength() <= 0 || file.getLength() > 64 * 1024 * 1024) return out;
         std::vector<uint8_t> bytes(file.getLength());
-        if (file.read(bytes.data(), long(bytes.size())) != bytes.size()) return out;
+        if (file.read(bytes.data(), static_cast<long>(bytes.size())) != bytes.size()) return out;
         auto image = mc2tex::decodeMemory(bytes.data(), bytes.size(), path.c_str(), gos_Texture_Alpha, 0);
         if (!image) return out;
         out.w = image->width; out.h = image->height;
