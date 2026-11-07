@@ -92,7 +92,6 @@ bool __stdcall gos_ProbeDrawableSize(int* w, int* h);
 
 // SHADOW-SPINE-0: C-linkage accessors from batcher TUs. Declared at file
 // scope because `extern "C"` is illegal at function/block scope.
-#ifdef MC2_VULKAN_ISLAND
 // VK-P9a WATER-INTEROP: water island shutdown teardown (defined in
 // vulkan_water_island.cpp under the same #ifdef). Called at engine shutdown before
 // the shared VkDevice is destroyed so the island's Vk objects don't leak.
@@ -122,7 +121,6 @@ extern "C" void mc2_vk_sky_island_destroy();            // VK-PARITY-F3
 // vulkan_shadow_island_live.cpp). Frees its VK CSM producer objects + emits the
 // [VK_SHADOW_INTEROP] health line (forbidden_* counters). No-op if never born.
 extern "C" void mc2_vk_shadow_island_destroy();
-#endif
 extern "C" uint32_t gos_getMechShadowTypesDrawn();
 extern "C" uint32_t gos_getMechShadowInstDrawn();
 

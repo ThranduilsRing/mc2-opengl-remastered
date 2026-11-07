@@ -671,10 +671,8 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
         // 3) Write last_trace.txt
         write_ring_snapshot();
         g_content.snapshot(g_crash_folderA);
-#ifdef MC2_VULKAN_ISLAND
         __try { mc2vk::infra::crashSnapshot(g_crash_folderA); }
         __except(EXCEPTION_EXECUTE_HANDLER) { /* A damaged mapping must not prevent the CPU bundle. */ }
-#endif
 
         // 4) Write profile.json
         write_profile_json();
@@ -732,9 +730,7 @@ extern "C" void crashbundle_device_lost(void)
     g_content.snapshot(g_crash_folderA);
     write_profile_json();
     write_minidump(nullptr); // Live-process dump: there is no CPU exception for device loss.
-#ifdef MC2_VULKAN_ISLAND
     mc2vk::infra::crashSnapshot(g_crash_folderA);
-#endif
     mc2::fmt::print_err("[CRASHBUNDLE] device_lost bundle={}\n", g_crash_folderA);
     InterlockedExchange(&g_in_filter, 0);
 }

@@ -21,13 +21,11 @@
 #include "view_registry.h"
 #include "../../RenderCore/PipelineRegistry.h"  // POSTPROCESS-COMPOSITE-REGISTRATION-1
 #include "render_frame_plan.h"                   // RENDER-FRAME-PLAN-SCAFFOLD-1
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
 #include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
 #include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
 #include "vulkan_sky_island.h"         // VK-PARITY-F3: HDRI sky VK owner
-#endif
 #ifdef MC2_VULKAN
 #include "engine_present_vk.h"          // VK-P14b: MC2_VK_PRESENT_DIRECT_FBO present-FBO accessor
 #endif

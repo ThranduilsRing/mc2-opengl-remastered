@@ -17,9 +17,7 @@
 #include "../../mclib/camera.h"  // VFX-LIT-PARTICLES-MVP-1: eye->light*/ambient* (same source as terrain)
 #include "particle_stall_probe.h"  // PARTICLE-FLUSH-STALL-MEASURE-1 (gated timing)
 #include "gpu_cull_readback.h"  // READBACK_SSBO_BINDING (slot 14) — single source of truth
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_vfx_island.h"  // VK-FIELD-VFX-1: VK translucent particle pass
-#endif
 
 #include <cstdio>
 #include <cstdlib>

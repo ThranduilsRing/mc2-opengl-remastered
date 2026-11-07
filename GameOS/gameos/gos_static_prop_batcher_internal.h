@@ -33,10 +33,8 @@
 #include "gpu_cull_record.h"             // 2026-05-10: GpuActorRecord, Cat_StaticProp
 #include "../../mclib/terrain.h"         // C1b temporal-superset: Terrain::worldToBlockIdx()
 #include "../../mclib/render_contract.h" // [RENDER_PASS v1] noteRenderPass
-#ifdef MC2_VULKAN_ISLAND
 extern "C" void mc2_vk_shadow_island_invalidate_geometry();  // vulkan_shadow_island_live.cpp
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color_prop_island.cpp
-#endif
 #include "../../RenderCore/top_level_pass_executor.h" // APPLY-STATE-STATICPROP-1: findTopLevelStateDesc
 #include "../../RenderCore/frame_executor.h"          // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "gameos.hpp"

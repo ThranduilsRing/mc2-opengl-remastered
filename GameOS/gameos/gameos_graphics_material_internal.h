@@ -101,9 +101,7 @@ inline constexpr const char* kDiagBuildConfig = "RelWithDebInfo";
 #endif
 #include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
 #include "Gates/gate_cold.h"   // typed gate registry: get<>(), str<>()
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"    // VK-PARITY-OVERLAY-1: overlay/decal VK owner queue
-#endif
 
 class gosRenderer;
 class gosFont;

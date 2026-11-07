@@ -59,7 +59,6 @@ extern "C" unsigned long mc2_ui_pass_draw_lines();
 extern "C" unsigned long mc2_ui_pass_draw_tris();
 extern "C" unsigned long mc2_ui_pass_draw_text();
 
-#ifdef MC2_VULKAN_ISLAND
 // VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
 // GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
 extern "C" void mc2_vk_post_fog_native_health(
@@ -118,7 +117,6 @@ extern "C" void mc2_render_backend_mech_region_health(
     unsigned long* geomVerts,
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs);
-#endif
 
 #include <chrono>
 #include <cstdlib>
@@ -492,9 +490,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"enabled\": "; b(s, enabled); s << "\n";
         s << "  },\n";
     }
-#ifdef MC2_VULKAN_ISLAND
     s << "  \"vulkan_residency\": " << mc2vk::infra::ledgerJson() << ",\n";
-#endif
     s << "  \"registeredViews\": [\n";
     {
         const uint32_t vc = RenderCore::getViewCount();
@@ -780,7 +776,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    ]\n";
         s << "  }\n";
     }
-#ifdef MC2_VULKAN_ISLAND
     // VULKAN-ISLAND-HEALTH-DUMP-1: additive "vulkan_island" section, present ONLY in
     // VK-POST-FOG-NATIVE-1 (rung 8.1): additive "vk_post_fog_native" section —
     // the used_vulkan receipt for the native fog pair (zero-copy, shared engine
@@ -990,7 +985,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"total_us\": " << totUs << "\n";
         s << "  }\n";
     }
-#endif
     s << "}\n";
     return s.str();
 }

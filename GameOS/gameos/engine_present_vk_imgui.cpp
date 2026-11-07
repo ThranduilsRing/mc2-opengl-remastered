@@ -1,6 +1,5 @@
 // EnginePresentVk, ImGui piece: the GuiRuntime (ImGui) backend over the shared present image and the per-texture descriptor
 // bridge. Split out of engine_present_vk.cpp; the Impl and the cross-TU entry points live in engine_present_vk_internal.h.
-#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 #include "engine_present_vk_internal.h"
 #include "diagnostic_trace.h"   // mc2_diag::tagRequested: the [VK_IMGUI] lines print only when asked for
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -297,4 +296,3 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
 
 }  // namespace mc2vk
 
-#endif  // MC2_VULKAN && MC2_VULKAN_ISLAND

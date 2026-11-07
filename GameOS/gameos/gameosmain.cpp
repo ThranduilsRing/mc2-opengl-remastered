@@ -148,9 +148,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "render_backend_select.h"  // VK-P13-SELECTOR-1 / T1: MC2_RENDER_BACKEND
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
-#ifdef MC2_VULKAN_ISLAND
 #include "vk_gpu_profile.h"          // VK-GPU-ZONES: per-frame Tracy GPU collect / pass timestamps
-#endif
 #include "engine_present_vk.h"      // VK-P13-SELECTOR-1 / T3: GL->VK present intercept
 #endif
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record

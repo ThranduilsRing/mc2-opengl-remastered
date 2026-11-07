@@ -35,7 +35,6 @@ extern uint32_t g_mc2FxFireCaptureFrame;   // mclib/tgl.cpp
 extern std::atomic<uint32_t> g_mc2FrameCounter;         // mclib/tgl.cpp: logic-pass epoch
 extern uint32_t g_mc2RenderFrame;          // mclib/tgl.cpp: render-frame clock, once per presented frame
 
-#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 // Render-island teardown entry points (each defined in its vulkan_*_island*.cpp; no-ops if the island was never born).
 extern "C" void mc2_vk_water_island_destroy();
 extern "C" void mc2_vk_vfx_island_destroy();
@@ -45,7 +44,6 @@ extern "C" void mc2_vk_mech_island_destroy();
 extern "C" void mc2_vk_legacy_shape_island_destroy();
 extern "C" void mc2_vk_sky_island_destroy();
 extern "C" void mc2_vk_shadow_island_destroy();
-#endif
 
 // Both hosts report the actual Vulkan adapter; no GL vendor-string fallback.
 bool gos_IsNvidiaGPU() {
@@ -153,7 +151,6 @@ void advanceFrameCounter() { g_mc2FrameCounter.fetch_add(1, std::memory_order_re
 void shutdownVulkanBackend() {
     mc2vk::present_thread::stop();
 #ifdef MC2_VULKAN
-#ifdef MC2_VULKAN_ISLAND
     // Islands first: each frees its Vulkan objects (and the GL interop FBO / imported texture, if any) while the GL context and the shared
     // device are both alive. The shadow island also emits the [VK_SHADOW_INTEROP] health line (forbidden_* counters).
     mc2_vk_water_island_destroy();
@@ -164,7 +161,6 @@ void shutdownVulkanBackend() {
     mc2_vk_legacy_shape_island_destroy();
     mc2_vk_sky_island_destroy();
     mc2_vk_shadow_island_destroy();
-#endif
     // Then the present path (copy-1 FBO / imported texture, swapchain), then the shared device.
     mc2vk::getOrCreateEnginePresentVk().destroy();
     mc2vk::getOrCreateEngineVulkanContext().destroy();

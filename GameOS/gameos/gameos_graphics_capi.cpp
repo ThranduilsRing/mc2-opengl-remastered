@@ -8,10 +8,8 @@
 #include "texture_decode.h"
 #include "ui_texture.h"
 #include "vulkan_legacy_shape_island.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
-#endif
 #include "utils/mc2log.h"
 
 
@@ -72,9 +70,7 @@ void __stdcall gos_GetViewport( float* pViewportMulX, float* pViewportMulY, floa
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_GetViewport");
     gosASSERT(g_gos_renderer);
-#ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) { *pViewportMulX=800; *pViewportMulY=600; *pViewportAddX=*pViewportAddY=0; return; }
-#endif
     g_gos_renderer->getViewportTransform(pViewportMulX, pViewportMulY, pViewportAddX, pViewportAddY);
 }
 
@@ -281,10 +277,8 @@ DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* Fi
 void __stdcall gos_DestroyTexture( DWORD Handle )
 {
     mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_DestroyTexture");   // GPU resource entry: never from the sim worker
-#ifdef MC2_VULKAN_ISLAND
     if (mc2vk::present_thread::enabled()) mc2vk::present_thread::forgetTexture(Handle);
     else if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
-#endif
     g_gos_renderer->deleteTexture(Handle);
 }
 
@@ -520,12 +514,8 @@ size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, in
     if(mi == gos_Info_NumberDevices)
         return 1;
     if(mi == gos_Info_GetDeviceName) {
-#ifdef MC2_VULKAN_ISLAND
         return mc2vk::engineVulkanContextValid()
             ? reinterpret_cast<size_t>(mc2vk::getOrCreateEngineVulkanContext().health().deviceName) : 0;
-#else
-        return 0;
-#endif
     }
     if(mi == gos_Info_ValidMode) {
         int xres = Param2;
@@ -650,16 +640,12 @@ void __stdcall gos_BeginCameraPreviewRender()
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_BeginCameraPreviewRender");
     if (!g_gos_renderer) return;
     const int sc = camPreviewScale();
-#ifdef MC2_VULKAN_ISLAND
     if (mc2vk::uiTextureServiceReady()) { mc2_vk_preview_begin(800*sc,600*sc); return; }
-#endif
     // Preview callers wait for the native renderer to be ready.
 }
 
 void __stdcall gos_EndCameraPreviewRender()
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_EndCameraPreviewRender");
-#ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) { mc2_vk_preview_end(); return; }
-#endif
 }

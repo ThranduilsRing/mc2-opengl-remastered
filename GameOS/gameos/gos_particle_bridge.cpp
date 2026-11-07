@@ -123,7 +123,6 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
     if (count == 0 || records == nullptr) return;
     mc2::ScopedFlushTimer _pfst(0, "billboard");  // PARTICLE-FLUSH-STALL-MEASURE-1
 
-#ifdef MC2_VULKAN_ISLAND
     // Vulkan owns the visible scene; a declined island has no GL fallback.
     if (mc2_vk_vfx_island_enabled() && groups != nullptr && numGroups > 0) {
         gosPostProcess* ppVk = getGosPostProcess();
@@ -151,7 +150,6 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
             }
         }
     }
-#endif
 
 }
 

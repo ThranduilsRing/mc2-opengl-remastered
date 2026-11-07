@@ -9,10 +9,8 @@
 #include "vk_scene_readback.h"
 #include "texture_decode.h"
 #include "ui_texture.h"
-#ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
-#endif
 #include "utils/mc2log.h"
 
 
@@ -272,10 +270,8 @@ void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
     // Report the actual native device selected by the shared owner.
     {
         const char* name = "unavailable";
-#ifdef MC2_VULKAN_ISLAND
         if (mc2vk::engineVulkanContextValid())
             name = mc2vk::getOrCreateEngineVulkanContext().health().deviceName;
-#endif
         char buf[512];
         mc2::fmt::to_buf(buf, "{{\"backend\":\"vulkan\",\"device\":\"{}\"}}", mc2::fmt::safe(name));
         mc2_diag::writeEvent("DEVICE", 2, 0, buf);
@@ -384,26 +380,18 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
 // Delegates to gos_GetGLTextureId; the DWORD parameter matches the GOS
 // texture handle convention used by gosFX/MLR.
 uint64_t gos_GetUiTextureId(DWORD handle) {
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2vk::uiTextureServiceReady()) return 0;
     const auto source=gos_GetTextureTexels(handle);
     if (source.status!=GosTexels::Status::Ready) return 0;
     return mc2vk::getOrCreateEngineVulkanContext().textures().legacyUiId(handle,source.width,source.height,
         mc2vk::texelFormat(source.vkFormat),source.bytes);
-#else
-    return 0;
-#endif
 }
 uint64_t gos_GetMaterialTextureId(DWORD handle) {
-#ifdef MC2_VULKAN_ISLAND
     if (!mc2vk::uiTextureServiceReady()) return 0;
     const auto texels=gos_GetTextureTexels(handle);
     if (texels.status!=GosTexels::Status::Ready || !texels.bytes) return 0;
     return mc2vk::getOrCreateEngineVulkanContext().textures().legacyUiId(handle,texels.width,texels.height,
         mc2vk::texelFormat(texels.vkFormat),texels.bytes,false,g_gos_renderer->getTexture(handle)->wantsMipmaps());
-#else
-    return 0;
-#endif
 }
 
 

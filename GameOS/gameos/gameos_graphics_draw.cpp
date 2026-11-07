@@ -380,14 +380,12 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     gosASSERT((count % 3) == 0);
 
-#ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) {
         const uint32_t texture=static_cast<uint32_t>(renderStates_[gos_State_Texture]);
         const uint32_t pass=renderStates_[gos_State_AlphaMode]==gos_Alpha_OneZero ? MC2_LEGACY_PASS_SOLID : MC2_LEGACY_PASS_ALPHA;
         const Mc2LegacyMlrDraw draw{vertices,static_cast<uint32_t>(count),texture,texture,pass,static_cast<uint32_t>(renderStates_[gos_State_AlphaTest]!=0)};
         mc2_vk_preview_capture(&draw); return;
     }
-#endif
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
         bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
         if (f) { MC2_LOG(Render, Info, "[PREVIEW] drawTris count={:d} isHUD={:d} backend=Vulkan", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD]))); }

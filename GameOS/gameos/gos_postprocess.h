@@ -148,7 +148,6 @@ public:
     float edgeFogHeight_   = 2000.0f;  // cloud bank top in world Z (MC2_EDGE_FOG_HEIGHT)
     float edgeFogMax_      = 0.92f;    // max opacity
 
-#ifdef MC2_VULKAN_ISLAND
     // Native scene image owners, rebuilt together on resize. Their registry
     // entries are the only images the islands and explicit readbacks consume.
     Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
@@ -207,7 +206,6 @@ public:
     std::unique_ptr<VkPostHzbNative, VkPostHzbNativeDeleter> vkPostHzbNative_;
 
 
-#endif
 
     // OOB-FOG-1: fullscreen fog over out-of-bounds far-plane pixels.
     // Default ON (MC2_OOB_FOG=0 to disable). Reads only scene depth —
@@ -260,11 +258,9 @@ public:
     int getHeight() const { return height_; }
     int getOutputWidth() const { return outputWidth_; }
     int getOutputHeight() const { return outputHeight_; }
-#ifdef MC2_VULKAN_ISLAND
     void prewarmVkFog();
     void prewarmVkScreenFx();
     void prewarmVkHzb();
-#endif
 
 private:
     void createSceneTargets(int w, int h);
