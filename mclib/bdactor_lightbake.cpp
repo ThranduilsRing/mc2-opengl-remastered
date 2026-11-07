@@ -524,7 +524,7 @@ void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_
 		for (int k = 0; k < 3; ++k) {
 			const int dk = static_cast<int>(leaf->lightColor[found][k] * 255.0f + 0.5f) - want.c[k];
 			const unsigned ad = static_cast<unsigned>(dk < 0 ? -dk : dk);
-			if (ad > d) d = ad;
+			d = std::max(d, ad);
 		}
 		ok = (d == 0);
 		if ((rowEpoch != 0 && rowEpoch < epoch) || (policy & mc2::prop_light::kLatchStale)) {

@@ -373,8 +373,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			testRadius = glm::length(boxCoords[i]);
 			OBBRadius = std::max(OBBRadius, testRadius);
 
-			if (boxCoords[i].z > highZ)
-				highZ = boxCoords[i].z;
+			highZ = std::max(highZ, boxCoords[i].z);
 		}
 		
 		appearType->boundsUpperLeftX = (-OBBRadius * 2.0);
