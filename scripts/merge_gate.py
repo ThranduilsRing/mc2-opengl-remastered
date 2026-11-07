@@ -56,10 +56,15 @@ PREREQUISITE = "tier1"   # the validation-enabled tier1 smoke: first game row af
 
 #: Gate tiers (owner 2026-11-06). 0 = every merge (--full); 1 = --nightly adds these; 2 = --weekly adds these. A tier-excluded stage is not in the
 #: plan, so it is never PARTIAL; only an operator --stages/--skip filter is.
+WEEKLY_SAVE_MAPS = ("mc2_03", "mc2_16", "mc2_24")   # mc2_01 (day) and mc2_10 (night) saves stay nightly
+
+
 def stage_tier(name):
     if name in ("mods", "video-decode"):
         return 2
-    return 1 if name.startswith(("determinism-", "saveload-")) or name in ("player-path", "quiet") else 0
+    if name in ("tier1-full", "quiet", *("saveload-" + m for m in WEEKLY_SAVE_MAPS)):
+        return 2   # p29 cuts 4 and 6: five-map breadth, the extra save maps and the quiet smoke are weekly
+    return 1 if name.startswith(("determinism-", "saveload-")) or name in ("player-path",) else 0
 
 
 OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
@@ -98,7 +103,7 @@ def window_reusable(window, tree, now=None):
     return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
-DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
+DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
                          "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
 
 
@@ -503,8 +508,11 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
-        ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
+        # Per window: day (mc2_01) + night (mc2_10) only (p29 cut 4); the five-map breadth is the weekly tier1-full row below.
+        ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--mission", "mc2_01", "--mission", "mc2_10", "--keep-logs", "--deploy", "0.4"],
          # sync = core validation plus synchronization validation (it caught the SpatialAA hazard fixed in c5cffa88f); no separate syncval launch.
+         {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE", "MC2_VULKAN_VALIDATION": "sync"}),
+        ("tier1-full", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
          {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE", "MC2_VULKAN_VALIDATION": "sync"}),
         # Nightly: default-output quietness (caught the unconditional STATIC_LIGHT_ROW spam fixed in 449a54c0e).
         ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
@@ -682,7 +690,7 @@ def affected_plan(steps, paths, full=False):
                 reason = "docs/tooling-only diff has no runtime inputs"
             elif name == "harnesses" and not sim:
                 reason = "diff has no C++ harness inputs"
-        if name == "tier1":
+        if name == "tier1-full":
             if batch_tier:
                 cmd += ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
                 env["MC2_GATE_COVERAGE"] = "tier1 mc2_10 assigned to the windowed determinism smoke; the headless determinism rows run no GPU, so this stage runs mc2_01/03/17/24"
@@ -718,7 +726,7 @@ def install_plan(steps, install):
         command = [arg.replace(old, str(install).replace("\\", "/")) for arg in command]
         if name == "deploy":
             command += [str(install), "--allow-new-target"]
-        if name == "tier1":
+        if name in ("tier1", "tier1-full"):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
         if name == "mods":

@@ -18,11 +18,22 @@ def test_finale_keeps_windowed_audit_and_tier1_coverage():
     assert '--headless-both' in command   # same 2601-frame chain as windowed (34 s against 121 s); the overlap worker still runs
     assert int(command[command.index('--ticks') + 1]) > 2404
     tier1 = next(c for n, c, _ in steps if n == 'tier1')
+    full = next(c for n, c, _ in steps if n == 'tier1-full')
     from scripts.smoke_lib.manifest import parse_manifest
     missions = {e.stem for e in parse_manifest(gate.ROOT / 'tests/smoke/smoke_missions.txt') if e.tier == 'tier1'}
     assert 'mc2_24' in missions
-    if '--mission' in tier1:
-        assert 'mc2_24' in [tier1[i + 1] for i, arg in enumerate(tier1) if arg == '--mission']
+    # p29 cut 4: every window runs day + night; the five-map breadth (mc2_24 included) is the weekly tier1-full row
+    assert [tier1[i + 1] for i, arg in enumerate(tier1) if arg == '--mission'] == ['mc2_01', 'mc2_10']
+    assert gate.stage_tier('tier1') == 0 and gate.stage_tier('tier1-full') == 2
+    if '--mission' in full:
+        assert 'mc2_24' in [full[i + 1] for i, arg in enumerate(full) if arg == '--mission']
+
+
+def test_weekly_only_stages_are_tier2():
+    for n in ('tier1-full', 'quiet', 'saveload-mc2_03', 'saveload-mc2_16', 'saveload-mc2_24'):
+        assert gate.stage_tier(n) == 2, n
+    for n in ('saveload-mc2_01', 'saveload-mc2_10', 'determinism-mc2_10', 'player-path', 'tier1'):
+        assert gate.stage_tier(n) < 2, n
 
 
 @pytest.mark.parametrize('path,classic', [
