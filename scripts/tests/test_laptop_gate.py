@@ -81,3 +81,19 @@ def test_ref_sums_cover_both_pinned_kits_and_refcheck_flags_a_bad_file(tmp_path,
     (tmp_path / "S").write_text(f"{good}  a.txt\n{good}  b.txt\n", encoding="utf-8")
     assert laptop_gate.r_refcheck(tmp_path / "S") == ["ref mismatch: b.txt"]
     assert laptop_gate.r_refcheck(tmp_path / "none") == [f"missing {tmp_path / 'none'}"]
+
+
+def test_toolchain_problems_names_each_missing_tool_and_skips_sccache_when_the_cache_is_off(tmp_path, monkeypatch):
+    present = tmp_path / "vcvars64.bat"
+    present.write_text("")
+
+    def no_cmake():
+        raise SystemExit(1)
+    cn = type("cn", (), {"VCVARS": str(present), "NINJA": str(tmp_path / "ninja.exe"),
+                         "SCCACHE_EXE": str(tmp_path / "sccache.exe"), "find_cmake": staticmethod(no_cmake)})
+    monkeypatch.setattr(laptop_gate, "JOBS", str(tmp_path / "JOBS"))
+    off = laptop_gate.toolchain_problems(cn, {"MC2_COMPILE_CACHE": "0"})
+    assert off == [f"missing NINJA: {tmp_path / 'ninja.exe'}", f"missing JOBS file: {tmp_path / 'JOBS'}",
+                   "missing cmake (find_cmake: VS2022 BuildTools or PATH)"]
+    assert f"missing SCCACHE_EXE: {tmp_path / 'sccache.exe'}" in laptop_gate.toolchain_problems(cn, {})
+    assert laptop_gate.gate_env()["MC2_COMPILE_CACHE"] == "0"

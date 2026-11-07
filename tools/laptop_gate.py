@@ -32,6 +32,7 @@ REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
 PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest")
 GIT_BASH = "C:/Program Files/Git/bin/bash.exe"
+JOBS = "A:/Games/mc2-ops/JOBS"   # kit_payload.build_importer reads it at this path (A: is subst'd on the laptop)
 SSH_OPTS = ["-i", KEY, "-o", "BatchMode=yes", "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30"]
 
 
@@ -122,6 +123,16 @@ def run(cmd, log, **kw):
     return r.returncode, round(time.time() - t, 1)
 
 
+def gate_env():
+    return dict(os.environ, TEMP=G + "/tmp", TMP=G + "/tmp", TMPDIR=G + "/tmp", PYTHONUTF8="1",
+                MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E",
+                # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
+                MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
+                MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
+                # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
+                MC2_BASH=GIT_BASH)
+
+
 def r_run(window, extra):
     r_subst()
     out = Path(G, "out", window)
@@ -129,13 +140,7 @@ def r_run(window, extra):
     for old in out.iterdir():
         old.unlink() if old.is_file() else None
     branch = "claude/stage-" + window
-    e = dict(os.environ, TEMP=G + "/tmp", TMP=G + "/tmp", TMPDIR=G + "/tmp", PYTHONUTF8="1",
-             MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E",
-             # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
-             MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
-             MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
-             # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
-             MC2_BASH=GIT_BASH)
+    e = gate_env()
     sm = {"window": window, "host": "laptop"}
     git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e)
     for step in (["checkout", "-q", "-f", branch], ["clean", "-fdq"]):   # no -x: build tree and deps survive
@@ -207,6 +212,20 @@ def r_refcheck(sums):
     return bad
 
 
+def toolchain_problems(cn, e):
+    """The executables and files configure_ninja/ninja_build/kit_payload.build_importer launch or read, resolved as they resolve them.
+    Other deploy_payload children: sys.executable, git (PATH check), wmic (psutil fallback, failure tolerated), ldd (Linux only)."""
+    need = {"VCVARS": cn.VCVARS, "NINJA": cn.NINJA, "JOBS file": JOBS}
+    if e.get("MC2_COMPILE_CACHE") != "0":
+        need["SCCACHE_EXE"] = cn.SCCACHE_EXE
+    bad = [f"missing {k}: {v}" for k, v in need.items() if not Path(v).exists()]
+    try:
+        cn.find_cmake()
+    except SystemExit:
+        bad.append("missing cmake (find_cmake: VS2022 BuildTools or PATH)")
+    return bad
+
+
 def r_preflight():
     """Everything the stages need before a full run: Python packages, data roots, tools. Prints one line per problem."""
     import importlib.util
@@ -218,6 +237,10 @@ def r_preflight():
         if not Path(path).exists():
             bad.append(f"missing {why}: {path}")
     bad += [f"tool not on PATH: {t}" for t in ("git", "tar") if not shutil.which(t)]
+    r_subst()   # JOBS is read at A:/Games/mc2-ops/JOBS
+    sys.path.insert(0, REPO + "/scripts")
+    import configure_ninja
+    bad += toolchain_problems(configure_ninja, gate_env())
     bad += r_refcheck(REF + "/SHA256SUMS")
     print("\n".join(bad) if bad else "preflight OK")
     return 1 if bad else 0
