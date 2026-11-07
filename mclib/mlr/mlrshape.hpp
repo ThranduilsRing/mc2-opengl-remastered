@@ -151,7 +151,7 @@ namespace MidLevelRenderer {
 			GetSize()
 		{
 			Check_Object(this); 
-			size_t ret = static_cast<size_t>(allPrimitives.GetSize());
+			size_t ret = static_cast<size_t>(allPrimitives.size() * sizeof(allPrimitives[0]));
 
 			return ret;
 		}
@@ -166,7 +166,7 @@ namespace MidLevelRenderer {
 //		void
 //			Transform();
 
-		Stuff::DynamicArrayOf<MLRPrimitiveBase*>
+		std::vector<MLRPrimitiveBase*>
 			allPrimitives;
 
 		const glm::mat4

@@ -71,7 +71,7 @@ MLR_I_C_DT_TMesh::MLR_I_C_DT_TMesh(
 		
 			int i, len = static_cast<int>(smallColors.size());
 
-			colors.SetLength(len);
+			colors.resize(len);
 
 			DWORD theColor;
 
@@ -103,7 +103,7 @@ MLR_I_C_DT_TMesh::MLR_I_C_DT_TMesh(
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 MLR_I_C_DT_TMesh::MLR_I_C_DT_TMesh(ClassData *class_data):
-	MLR_I_DT_TMesh(class_data), colors(0)
+	MLR_I_DT_TMesh(class_data)
 {
 	Check_Pointer(this);
 	Verify(gos_GetCurrentHeap() == Heap);
@@ -146,9 +146,9 @@ void
 	MLR_I_TMesh::Save(stream);
 
 	std::vector<DWORD> smallColors;
-	int i, len = static_cast<int>(colors.GetLength());
+	int i, len = static_cast<int>(colors.size());
 
-	const Stuff::RGBAColor *data = colors.GetData();
+	const Stuff::RGBAColor *data = colors.data();
 
 	smallColors.resize(len);
 
@@ -193,7 +193,7 @@ void
 	Verify(coords.size() == 0 || dataSize == coords.size());
 	Verify(texCoords.size() == 0 || 2*dataSize == texCoords.size());
 
-	colors.AssignData(data, dataSize);
+	colors.assign(data, data + dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -205,8 +205,8 @@ void
 	)
 {
 	Check_Object(this); 
-	*data = colors.GetData();
-	*dataSize = static_cast<int>(colors.GetLength());
+	*data = colors.data();
+	*dataSize = static_cast<int>(colors.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -220,7 +220,7 @@ void
 	Check_Object(this);
 	// original color is lost !!!;
 
-	int k, len = static_cast<int>(colors.GetLength());
+	int k, len = static_cast<int>(colors.size());
 
 	for(k=0;k<len;k++)
 	{

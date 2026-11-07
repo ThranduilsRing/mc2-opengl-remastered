@@ -59,8 +59,8 @@ MLR_I_TMesh::MLR_I_TMesh(
 
 	numOfTriangles = static_cast<int>(index.size())/3;
 
-	facePlanes.SetLength(numOfTriangles);
-	testList.SetLength(numOfTriangles);
+	facePlanes.resize(numOfTriangles);
+	testList.resize(numOfTriangles);
 
 	FindFacePlanes();
 }
@@ -141,8 +141,8 @@ bool
 
 	SetSubprimitiveLengths(nullptr, pMesh->GetNumPrimitives());
 
-	facePlanes.SetLength(GetNumPrimitives());
-	testList.SetLength(GetNumPrimitives());
+	facePlanes.resize(GetNumPrimitives());
+	testList.resize(GetNumPrimitives());
 
 	FindFacePlanes();
 

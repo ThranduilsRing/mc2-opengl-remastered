@@ -67,10 +67,10 @@ namespace MidLevelRenderer {
 		int
 			lastUsedInBucket[MLRState::PriorityCount];
 
-		Stuff::DynamicArrayOf<SortData*>  //, Max_Number_Primitives_Per_Frame + Max_Number_ScreenQuads_Per_Frame
+		std::vector<SortData*>  //, Max_Number_Primitives_Per_Frame + Max_Number_ScreenQuads_Per_Frame
 			priorityBuckets[MLRState::PriorityCount];
 
-		Stuff::DynamicArrayOf<SortAlpha*>  //, Max_Number_Primitives_Per_Frame + Max_Number_ScreenQuads_Per_Frame
+		std::vector<SortAlpha*>  //, Max_Number_Primitives_Per_Frame + Max_Number_ScreenQuads_Per_Frame
 			alphaSort;
 	};
 

@@ -88,9 +88,9 @@ namespace MidLevelRenderer {
 			FlashClipColors(int num)
 				{
 					Check_Object(this); Verify(clipExtraTexCoords.size() > num);
-					colors.SetLength(num);
+					colors.resize(num);
 					visibleIndexedVertices.SetLength(num);
-					Mem_Copy(colors.GetData(), clipExtraColors.data(), sizeof(Stuff::RGBAColor)*num, sizeof(Stuff::RGBAColor)*num);
+					Mem_Copy(colors.data(), clipExtraColors.data(), sizeof(Stuff::RGBAColor)*num, sizeof(Stuff::RGBAColor)*num);
 				}
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -111,14 +111,14 @@ namespace MidLevelRenderer {
 		{ 
 			Check_Object(this);
 			size_t ret = MLR_I_TMesh::GetSize();
-			ret += colors.GetSize();
+			ret += colors.size() * sizeof(colors[0]);
 
 			return ret;
 		}
 
 	protected:
-		Stuff::DynamicArrayOf<Stuff::RGBAColor> colors;	// Base address of color list 
-		Stuff::DynamicArrayOf<Stuff::RGBAColor> *actualColors;
+		std::vector<Stuff::RGBAColor> colors;	// Base address of color list 
+		std::vector<Stuff::RGBAColor> *actualColors;
 	};
 
 	MLR_I_C_TMesh*

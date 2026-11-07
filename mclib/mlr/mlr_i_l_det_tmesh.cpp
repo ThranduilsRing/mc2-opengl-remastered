@@ -70,7 +70,7 @@ MLR_I_L_DeT_TMesh::MLR_I_L_DeT_TMesh(
 		break;
 	}
 
-	litColors.SetLength(colors.GetLength());
+	litColors.resize(colors.size());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -175,7 +175,7 @@ void
 	Check_Pointer(data);
 
 	Verify(coords.size() == 0 || dataSize == coords.size());
-	Verify(colors.GetLength() == 0 || dataSize == colors.GetLength());
+	Verify(colors.size() == 0 || dataSize == colors.size());
 	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
 	normals.assign(data, data + dataSize);
@@ -209,8 +209,8 @@ void
 	Verify(coords.size() == 0 || dataSize == coords.size());
 	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
-	litColors.SetLength(dataSize);
-	colors.AssignData(data, dataSize);
+	litColors.resize(dataSize);
+	colors.assign(data, data + dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -224,15 +224,15 @@ void
 	Check_Object(this);
 
 #if 1
-	Verify(colors.GetLength() == litColors.GetLength());
+	Verify(colors.size() == litColors.size());
 #else
-	if(colors.GetLength() == litColors.GetLength())
+	if(colors.size() == litColors.size())
 	{
-		litColors.SetLength(colors.GetLength());
+		litColors.resize(colors.size());
 	}
 #endif
 
-	int k, len = static_cast<int>(litColors.GetLength());
+	int k, len = static_cast<int>(litColors.size());
 
 	for(k=0;k<len;k++)
 	{

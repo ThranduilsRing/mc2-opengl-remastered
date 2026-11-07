@@ -62,8 +62,8 @@ MLR_I_PMesh::MLR_I_PMesh(
 	Check_Pointer(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	facePlanes.SetLength(GetNumPrimitives());
-	testList.SetLength(GetNumPrimitives());
+	facePlanes.resize(GetNumPrimitives());
+	testList.resize(GetNumPrimitives());
 
 	FindFacePlanes();
 }
@@ -102,8 +102,8 @@ void
 	polyMesh->GetSubprimitiveLengths(&_lengths);
 	SetSubprimitiveLengths(_lengths, polyMesh->GetNumPrimitives());
 
-	facePlanes.SetLength(GetNumPrimitives());
-	testList.SetLength(GetNumPrimitives());
+	facePlanes.resize(GetNumPrimitives());
+	testList.resize(GetNumPrimitives());
 
 	FindFacePlanes();
 
@@ -184,9 +184,9 @@ void
 
 	lengths.assign(data, data + numPrimitives);
 
-	facePlanes.SetLength(numPrimitives);
+	facePlanes.resize(numPrimitives);
 
-	testList.SetLength(numPrimitives);
+	testList.resize(numPrimitives);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

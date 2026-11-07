@@ -144,7 +144,7 @@ namespace MidLevelRenderer {
 		MLRTexturePool *texturePool;
 
 		int lastUsedRaw;
-		Stuff::DynamicArrayOf<SortData> rawDrawData; // Max_Number_Primitives_Per_Frame
+		std::vector<SortData> rawDrawData; // Max_Number_Primitives_Per_Frame
 
 
 

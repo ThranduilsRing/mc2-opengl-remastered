@@ -90,7 +90,7 @@ MLREffect::MLREffect(int nr, ClassData *class_data):
 	visible = 0;
 	maxNrOf = nr;
 
-	testList.SetLength(maxNrOf);
+	testList.resize(maxNrOf);
 	for(int i=0; i < maxNrOf; i++)
 	{
 		testList[i] = 0;
