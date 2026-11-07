@@ -1071,12 +1071,10 @@ void MechWarrior::updateMissionSkills()
 	float MaxPilotSkill = 80.f;
 	
 	skillRank[MWS_GUNNERY] += skillPoints[MWS_GUNNERY] * 0.01f;
-	if (skillRank[MWS_GUNNERY] > MaxPilotSkill)
-		skillRank[MWS_GUNNERY] = MaxPilotSkill;
+	skillRank[MWS_GUNNERY] = std::min(skillRank[MWS_GUNNERY], MaxPilotSkill);
 
 	skillRank[MWS_PILOTING]++;		//One free point just for coming along!
 
 	skillRank[MWS_PILOTING] += skillPoints[MWS_PILOTING];
-	if (skillRank[MWS_PILOTING] > MaxPilotSkill)
-		skillRank[MWS_PILOTING] = MaxPilotSkill;
+	skillRank[MWS_PILOTING] = std::min(skillRank[MWS_PILOTING], MaxPilotSkill);
 }

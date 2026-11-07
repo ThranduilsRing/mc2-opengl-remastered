@@ -655,8 +655,7 @@ float TerrainObject::getStatusRating (void) {
 	float curDamage = getDamage();
 	float maxHealth = getDamageLevel();
 	float rating = (maxHealth - curDamage) / maxHealth;
-	if (rating < 0.0)
-		rating = 0.0;
+	rating = std::max(rating, 0.0f);
 	return(rating);
 }
 
@@ -1027,8 +1026,7 @@ void TerrainObject::extractRenderView (mc2::render_view::RenderView& view) {
 		if (totalDmgLvl > 0.0)
 			barStatus -= getDamage() / totalDmgLvl;
 
-		if (barStatus < 0.0)
-			barStatus = 0.0;
+		barStatus = std::max(barStatus, 0.0f);
 
 		view.flags |= mc2::render_view::Bars;
 		view.barColor = 0xff7f7f7f;
@@ -1442,15 +1440,11 @@ void TerrainObject::calcCellFootprint (glm::vec3& pos) {
 	long maxCol = 0;
 	long curCoord = 0;
 	while (curCoord < numCoords) {
-		if (cellList[curCoord] < minRow)
-			minRow = cellList[curCoord];
-		if (cellList[curCoord] > maxRow)
-			maxRow = cellList[curCoord];
+		minRow = std::min<long>(minRow, cellList[curCoord]);
+		maxRow = std::max<long>(maxRow, cellList[curCoord]);
 		curCoord++;
-		if (cellList[curCoord] < minCol)
-			minCol = cellList[curCoord];
-		if (cellList[curCoord] > maxCol)
-			maxCol = cellList[curCoord];
+		minCol = std::min<long>(minCol, cellList[curCoord]);
+		maxCol = std::max<long>(maxCol, cellList[curCoord]);
 		curCoord++;
 	}
 	

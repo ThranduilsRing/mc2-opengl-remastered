@@ -750,8 +750,8 @@ void GameObjectManager::updateBrainCommit() {
 			              return a.first < b.first;
 			          });
 			int committed = 0;
-			for (auto& kv : s_commitOrder) {
-				MoverPtr mover = kv.second;
+			for ([[maybe_unused]] auto& [watchId, entry] : s_commitOrder) {
+				MoverPtr mover = entry;
 				if (!mover->getExists()) continue;  // destroyed during this frame's mover loop
 				MechWarriorPtr pilot = mover->getPilot();
 				if (!pilot) continue;

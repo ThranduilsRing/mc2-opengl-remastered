@@ -168,7 +168,7 @@ inline int resolveWinningOrder(const int* orders, size_t count) {
     if (count == 0 || !orders) return coreLoadOrder();
     int best = orders[0];
     for (size_t i = 1; i < count; ++i) {
-        if (orders[i] > best) best = orders[i];
+        best = std::max(best, orders[i]);
     }
     return best;
 }

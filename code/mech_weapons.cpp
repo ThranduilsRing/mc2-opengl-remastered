@@ -220,10 +220,8 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				numMissiles = missileAmount;
 			else {
 				numMissiles = static_cast<long>((missileAmount / 2.0 + 0.5));
-				if (numMissiles < 1)
-					numMissiles = 1;
-				if (numMissiles > missileAmount)
-					numMissiles = missileAmount;
+				numMissiles = std::max(numMissiles, 1L);
+				numMissiles = std::min(numMissiles, missileAmount);
 			}
 
 			unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
@@ -412,10 +410,8 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			{
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
 				long numMissiles = (static_cast<float>(missileAmount) / 2.0) + 0.5;
-				if (numMissiles < 1)
-					numMissiles = 1;
-				if (numMissiles > missileAmount)
-					numMissiles = missileAmount;
+				numMissiles = std::max(numMissiles, 1L);
+				numMissiles = std::min(numMissiles, missileAmount);
 
 				if (numMissiles > 0) {
 						WeaponShotInfo curShotInfo;

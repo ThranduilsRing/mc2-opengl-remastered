@@ -369,8 +369,7 @@ long Mover::addWeaponFireChunks (long which, unsigned long* packedChunkBuffer, l
 long Mover::grabWeaponFireChunks (long which, unsigned long* packedChunkBuffer, long maxChunks) {
 
 	long numChunks = numWeaponFireChunks[which];
-	if (numChunks > maxChunks)
-		numChunks = maxChunks;
+	numChunks = std::min(numChunks, maxChunks);
 	if (numChunks > 0) {
 		for (long i = 0; i < numChunks; i++)
 			packedChunkBuffer[i] = weaponFireChunks[which][i];
@@ -882,10 +881,8 @@ long Mover::calcFireRanges (void) {
 			long range = MasterComponent::masterList[inventory[curWeapon].masterID].getWeaponRange();
 			float minWeaponRange = WeaponRanges[range][0];
 			float maxWeaponRange = WeaponRanges[range][1];
-			if (maxWeaponRange > maxRange)
-				maxRange = maxWeaponRange;
-			if (minWeaponRange < minRange)
-				minRange = minWeaponRange;
+			maxRange = std::max(maxRange, maxWeaponRange);
+			minRange = std::min(minRange, minWeaponRange);
 			numFunctionalWeapons++;
 		}
 	}

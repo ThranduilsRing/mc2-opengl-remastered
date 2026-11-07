@@ -249,7 +249,7 @@ void Mover::ammoExplosion (long ammoIndex) {
 	long ammoMasterId = inventory[ammoIndex].masterID;
 	long bodyLocation = inventory[ammoIndex].bodyLocation;
 	long remainingAmmo = inventory[ammoIndex].amount;
-	float damage = float(remainingAmmo) *
+	float damage = static_cast<float>(remainingAmmo) *
 				  MasterComponent::masterList[ammoMasterId].getAmmoExplosiveDamage();
 	inventory[ammoIndex].amount = 0;
 

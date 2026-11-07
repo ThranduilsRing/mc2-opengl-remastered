@@ -187,7 +187,7 @@ void Weather::init (DWORD maxDrops, float startingRain, float brChance, float lt
 	rainLevel = rainLightLevel = startingRain;
 	if (rainLevel != 0.0f)
 	{
-		rainFactor = 0.05f + float(randomNumber(100)) / 1000.0f;
+		rainFactor = 0.05f + static_cast<float>(randomNumber(100)) / 1000.0f;
 		rainTrend = 1.0f;
 	}
 
@@ -233,7 +233,7 @@ void Weather::update (void)
 		{
 			if ((baseRainChance != 0.0f) && rollDice(baseRainChance))
 			{
-				rainFactor = 0.05f + float(randomNumber(100)) / 1000.0f;
+				rainFactor = 0.05f + static_cast<float>(randomNumber(100)) / 1000.0f;
 				rainTrend = 1.0f;
 			}
 			else
@@ -249,7 +249,7 @@ void Weather::update (void)
 				float invRainChance = 100.0f - baseRainChance;
 				if ((invRainChance != 0.0f) && rollDice(invRainChance))
 				{
-					rainFactor = 0.05f + float(randomNumber(100)) / 1000.0f;
+					rainFactor = 0.05f + static_cast<float>(randomNumber(100)) / 1000.0f;
 					rainTrend = -1.0f;
 				}
 				
@@ -299,7 +299,7 @@ void Weather::update (void)
 				
 				if (rollDice(baseLighteningFlashChance))
 				{
-					lighteningLevel = 64.0f + float(randomNumber(192));
+					lighteningLevel = 64.0f + static_cast<float>(randomNumber(192));
 					if (thunderTime == 0.0f)	//Fire off a crack of thunder unless one is on its way!
 					{
 						thunderTime = randomNumber(BASE_THUNDER_RANDOM_START);
