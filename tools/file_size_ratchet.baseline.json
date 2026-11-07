@@ -14,27 +14,27 @@
   "tools"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2575,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 2235,
+  "GameOS/gameos/engine_present_vk.cpp": 2628,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 2265,
   "GameOS/include/gameos.hpp": 3362,
   "code/artlry.cpp": 1715,
-  "code/bldng.cpp": 1709,
+  "code/bldng.cpp": 1708,
   "code/brain_special_dispatch.cpp": 2696,
-  "code/gamecam.cpp": 1592,
-  "code/gameobj.cpp": 2260,
+  "code/gamecam.cpp": 1612,
+  "code/gameobj.cpp": 2258,
   "code/infowindow.cpp": 1751,
   "code/logisticsdialog.cpp": 2305,
-  "code/mechlabscreen.cpp": 2020,
+  "code/mechlabscreen.cpp": 2018,
   "code/mechlopedia.cpp": 1603,
   "code/missionbegin.cpp": 2228,
-  "code/mover.h": 1928,
-  "code/mpparameterscreen.cpp": 2390,
+  "code/mover.h": 1927,
+  "code/mpparameterscreen.cpp": 2382,
   "code/multplyr.h": 1845,
-  "code/objective.cpp": 2449,
-  "code/optionsarea.cpp": 1839,
+  "code/objective.cpp": 2419,
+  "code/optionsarea.cpp": 1835,
   "code/pilotreviewarea.cpp": 1845,
   "code/tacordr.cpp": 2107,
-  "code/terrobj.cpp": 1786,
+  "code/terrobj.cpp": 1780,
   "code/turret.cpp": 2355,
   "code/warrior.h": 1937,
   "editor/tests/test_objectives.cpp": 1996,
@@ -43,7 +43,7 @@
   "mclib/ablrtn.cpp": 1800,
   "mclib/assimp_importer.cpp": 1976,
   "mclib/camera.h": 1858,
-  "mclib/file.cpp": 1751,
+  "mclib/file.cpp": 1747,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2508,
   "mclib/move.h": 1967,
@@ -53,7 +53,7 @@
   "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
- "head": "bd3bffb75",
+ "head": "aee1c32a9",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -62,7 +62,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 400,
+   "files": 406,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3362
@@ -74,7 +74,7 @@
    "max_lines": 1115
   },
   "RenderCore": {
-   "files": 69,
+   "files": 70,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1490
@@ -86,7 +86,7 @@
    "max_lines": 1016
   },
   "code": {
-   "files": 491,
+   "files": 492,
    "files_over_1500": 20,
    "files_over_3000": 0,
    "max_lines": 2696
@@ -110,13 +110,13 @@
    "max_lines": 2508
   },
   "shaders": {
-   "files": 116,
+   "files": 118,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 542
   },
   "tools": {
-   "files": 664,
+   "files": 665,
    "files_over_1500": 4,
    "files_over_3000": 1,
    "max_lines": 3363
@@ -141,7 +141,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2575
+   "lines": 2628
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -149,11 +149,11 @@
   },
   {
    "file": "code/objective.cpp",
-   "lines": 2449
+   "lines": 2419
   },
   {
    "file": "code/mpparameterscreen.cpp",
-   "lines": 2390
+   "lines": 2382
   },
   {
    "file": "code/turret.cpp",
@@ -164,12 +164,12 @@
    "lines": 2305
   },
   {
-   "file": "code/gameobj.cpp",
-   "lines": 2260
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 2265
   },
   {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 2235
+   "file": "code/gameobj.cpp",
+   "lines": 2258
   },
   {
    "file": "code/missionbegin.cpp",
@@ -181,7 +181,7 @@
   },
   {
    "file": "code/mechlabscreen.cpp",
-   "lines": 2020
+   "lines": 2018
   },
   {
    "file": "editor/tests/test_objectives.cpp",
@@ -201,7 +201,7 @@
   },
   {
    "file": "code/mover.h",
-   "lines": 1928
+   "lines": 1927
   },
   {
    "file": "mclib/gosfx/fcurve.cpp",
@@ -225,7 +225,7 @@
   },
   {
    "file": "code/optionsarea.cpp",
-   "lines": 1839
+   "lines": 1835
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -237,7 +237,7 @@
   },
   {
    "file": "code/terrobj.cpp",
-   "lines": 1786
+   "lines": 1780
   },
   {
    "file": "code/infowindow.cpp",
@@ -245,11 +245,11 @@
   },
   {
    "file": "mclib/file.cpp",
-   "lines": 1751
+   "lines": 1747
   }
  ],
  "total": {
-  "files": 2668,
+  "files": 2679,
   "files_over_1500": 38,
   "files_over_3000": 2,
   "max_lines": 3363
