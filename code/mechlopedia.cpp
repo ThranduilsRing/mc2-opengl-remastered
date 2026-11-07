@@ -441,7 +441,7 @@ void Mechlopedia::MechScreen::begin()
 		groupListBox->removeAllItems( true );
 		for (int i = 0; i < count; i++ )
 		{
-			MechlopediaListItem* pEntry = new MechlopediaListItem();
+			auto pEntry = std::make_unique<MechlopediaListItem>();
 			char name[256];
 			cLoadString( pVehicles[i]->getNameID(), name, 255 );
 			if ( mc2IsUndefinedName( name ) ) continue;
@@ -455,19 +455,19 @@ void Mechlopedia::MechScreen::begin()
 				aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( j ));
 				if ( S_stricmp( name, pItem->getText() ) < 0 )
 				{
-					groupListBox->InsertItem( pEntry, j );
+					groupListBox->InsertItem( pEntry.release(), j );
 					bFound = true;
 					break;
 				}
 			}
 			if ( !bFound )
-				groupListBox->AddItem( pEntry );
+				groupListBox->AddItem( pEntry.release() );
 		}
 		for (int i = 0; i < copterCount; i++ )
 		{
 			if ( mc2IsUndefinedName( pCopters[i]->getName().c_str() ) ) continue;
 			if ( mc2IsUndefinedDescription( pCopters[i]->getEncyclopediaID() ) ) continue;   // ENCYCLO-UNDEFINED-FILTER-2
-			MechlopediaListItem* pEntry = new MechlopediaListItem();
+			auto pEntry = std::make_unique<MechlopediaListItem>();
 			pEntry->setText( mc2::str::ascii_upper( pCopters[i]->getName() ) );
 			pEntry->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18,
 				pEntry->height() );
@@ -478,13 +478,13 @@ void Mechlopedia::MechScreen::begin()
 				aTextListItem* pItem = static_cast<aTextListItem*>(groupListBox->GetItem( j ));
 				if ( S_stricmp( pCopters[i]->getName().c_str(), pItem->getText() ) < 0 )
 				{
-					groupListBox->InsertItem( pEntry, j );
+					groupListBox->InsertItem( pEntry.release(), j );
 					bFound = true;
 					break;
 				}
 			}
 			if ( !bFound )
-				groupListBox->AddItem( pEntry );
+				groupListBox->AddItem( pEntry.release() );
 
 		}
 	}
@@ -523,11 +523,11 @@ void Mechlopedia::MechScreen::begin()
 				cLoadString( pChassis[i]->getChassisName(), chassisName, 255 );
 				if ( mc2IsUndefinedName( chassisName ) ) continue;
 			}
-			MechlopediaListItem* pEntry = new MechlopediaListItem();
+			auto pEntry = std::make_unique<MechlopediaListItem>();
 			pEntry->setText( pChassis[i]->getChassisName() );
 			pEntry->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18,
 				pEntry->height() );
-			groupListBox->AddItem( pEntry );
+			groupListBox->AddItem( pEntry.release() );
 		}
 	}
 
@@ -680,7 +680,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	char tmp[256];
 
 	long color = (textCount > 0) ? textObjects[0].getColor() : 0xffffffff;
-	//	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	//	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 	// add house stats NO HOUSE FOR VEHICLES
 //	long houseID = pVehicle->getHouseID();
 //	cLoadString( IDS_HOUSE0 + houseID, tmp, 255 );
@@ -763,19 +763,19 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	cLoadString( pChassis->getChassisName(), name, 255 );
 	const std::string upper = mc2::str::ascii_upper( name );
 
-	aTextListItem* pItem = nullptr;
+	std::unique_ptr<aTextListItem> pItem;
 	if ( !hasDefsUiPage() )
 	{
 		descriptionListBox.removeAllItems( true );
 
-		pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+		pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 		pItem->resize( descriptionListBox.width()  - descriptionListBox.getScrollBarWidth()- 16, pItem->height() );
 		pItem->setText( loadResourceString( descID ) );
 		pItem->sizeToText( );
 		pItem->setColor( 0xff005392 );
 
 		pItem->forceToTop( true );
-		descriptionListBox.AddItem( pItem );
+		descriptionListBox.AddItem( pItem.release() );
 
 		compListBox.setMech( pChassis );
 		textObjects[0].setText( upper  );
@@ -812,7 +812,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	char formatText[256];
 	char tmp[256];
 
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	long color = (textCount > 0) ? textObjects[0].getColor() : 0xffffffff;
 
@@ -826,30 +826,30 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 		pItem->setText( formatText );
 		pItem->setColor( color );
-		statsListBox.AddItem( pItem );
+		statsListBox.AddItem( pItem.release() );
 	}
 
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 	// add weight stats
 	cLoadString( IDS_EN_WEIGHT, text, 255 );
 	sprintf( formatText, text, pChassis->getMaxWeight() );	
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 	// add weight class stats
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_CLASS, text, 255 );
 	sprintf( formatText, text, pChassis->getMechClass().c_str() );	
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 	// now armor
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_ARMOR, text, 255 );
 	cLoadString( pChassis->getArmorClass(), tmp, 255 );
@@ -857,30 +857,30 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 
 	// now speed
-	pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 	cLoadString( IDS_EN_SPEED, text, 255 );
 	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed().value_or(-1)));
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
-	statsListBox.AddItem( pItem );
+	statsListBox.AddItem( pItem.release() );
 
 	// now jump range
 	if ( bShowJump )
 	{
-		pItem = new aTextListItem( IDS_EN_LISTBOX_FONT );
+		pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
 		cLoadString( IDS_EN_JUMP, text, 255 );
 		sprintf( formatText, text, static_cast<long>(pChassis->getJumpRange()) * 25 );
 		
 		pItem->setText( formatText );
 		pItem->setColor( color );
-		statsListBox.AddItem( pItem );
+		statsListBox.AddItem( pItem.release() );
 	}
 
 	if ( hasDefsUiPage() )
@@ -1492,12 +1492,12 @@ void Mechlopedia::BuildingScreen::begin()
 		{
 			if ( S_stricmp(  str.c_str(), (static_cast<aTextListItem*>(groupListBox->GetItem( j )))->getText() ) < 0 )
 			{
-				MechlopediaListItem* pItem = new MechlopediaListItem();
+				auto pItem = std::make_unique<MechlopediaListItem>();
 				pItem->setText( str );
 				pItem->setID( pBldgs[i]->nameID );
 				pItem->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pItem->height() );
 
-				groupListBox->InsertItem( pItem, j );
+				groupListBox->InsertItem( pItem.release(), j );
 				bFound = true;
 				break;
 			}
@@ -1505,12 +1505,12 @@ void Mechlopedia::BuildingScreen::begin()
 
 		if ( !bFound )
 		{
-			MechlopediaListItem* pItem = new MechlopediaListItem();
+			auto pItem = std::make_unique<MechlopediaListItem>();
 			pItem->setText( str );
 			pItem->setID( pBldgs[i]->nameID );
 			pItem->resize( groupListBox->width() - groupListBox->getScrollBarWidth() - 18, pItem->height() );
 
-			groupListBox->AddItem( pItem );
+			groupListBox->AddItem( pItem.release() );
 		}
 		
 	}
