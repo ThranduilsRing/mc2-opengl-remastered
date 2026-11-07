@@ -101,6 +101,7 @@ gosFX::Event::Event(const Event& event):
 	m_time = event.m_time;
 	m_flags = event.m_flags;
 	m_effectID = event.m_effectID;
+	m_localToParent = event.m_localToParent;
 }
 
 //------------------------------------------------------------------------------

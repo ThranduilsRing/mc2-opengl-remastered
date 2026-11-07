@@ -684,3 +684,20 @@ TEST_CASE("vfx_frozen/card budget counts quads and resets after flush")
     batcher.Flush();
     CHECK(capture.records.size() == 31);
 }
+
+TEST_CASE("vfx_frozen/Event copy constructor copies m_localToParent")
+{
+    gosFX::Event source;
+    source.m_time = 1.5f;
+    source.m_flags = 3u;
+    source.m_effectID = 7u;
+    source.m_localToParent = glm::mat4(1.0f);
+    source.m_localToParent[3] = glm::vec4(1.0f, 2.0f, 3.0f, 1.0f);
+    gosFX::Event copy(source);
+    CHECK(copy.m_time == 1.5f);
+    CHECK(copy.m_flags == 3u);
+    CHECK(copy.m_effectID == 7u);
+    CHECK(copy.m_localToParent == source.m_localToParent);
+    CHECK(copy.m_localToParent[3][0] == 1.0f);
+    CHECK(copy.m_localToParent[3][2] == 3.0f);
+}
