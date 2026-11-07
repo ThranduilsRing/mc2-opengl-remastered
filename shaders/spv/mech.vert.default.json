@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "38a6eb925ea027012b2ec5d865c912bb993130de49b8da1cd6ec0c6e75d6833b",
-  "spirv_sha256": "2cc35bb3eb1545328f655f6db46b698e352b1fb9c95aa4f0351530a8de64086e",
+  "source_sha256": "7da5387f6a484fd040c973455f692549d20808c617e916333bf1295d6a10b8e7",
+  "spirv_sha256": "04decf288ca3326c6fb0932af65fa825ad816729e55e5149f4523618573a62c0",
   "bindings": {
     "ubos": [
       {
@@ -435,7 +435,7 @@
         }
       ]
     },
-    "_714": {
+    "_755": {
       "name": "gl_PerVertex",
       "members": [
         {
@@ -484,7 +484,7 @@
         "location": 0
       },
       {
-        "name": "a_normal",
+        "name": "a_normalOct",
         "location": 1
       },
       {
