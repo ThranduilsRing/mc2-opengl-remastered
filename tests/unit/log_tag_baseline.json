@@ -10566,6 +10566,17 @@
    "count": 1
   },
   {
+   "tag": "VK_DESC_WRITES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frames",
+    "issued_per_frame",
+    "skipped_per_frame"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ENGINE_CONTEXT",
    "ver": -1,
    "stream": "stderr",
