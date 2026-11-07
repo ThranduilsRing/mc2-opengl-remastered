@@ -428,7 +428,7 @@ enum gosVideo_Command
 
 //////////////////////////////////////////////////////////////////////////////////
 // An enumeration of the various states the video playback can be in.
-enum gosVideo_PlayMode
+enum class gosVideo_PlayMode : int
 {
 	gosVideo_PlayOnceHide,		// The Video is currently playing (will hide when done)
 	gosVideo_PlayOnceHold,		// The Video is currently playing (will hold when done)
@@ -437,6 +437,7 @@ enum gosVideo_PlayMode
 	gosVideo_Pause,				// The Video has been paused
 	gosVideo_Continue			// SET ONLY: continue a paused Video
 };
+using enum gosVideo_PlayMode;
 
 //////////////////////////////////////////////////////////////////////////////////
 // This structure is used to send and receive information about a particular video
@@ -551,7 +552,7 @@ enum gosAudio_SpeakerConfig
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Sound Channels can be in one of the following states
 //
-enum gosAudio_PlayMode
+enum class gosAudio_PlayMode : int
 {
 	gosAudio_PlayOnce,				// Play the channel's resource once and then end
 	gosAudio_Loop,					// Continually play the channel's resource, looping after each iteration
@@ -559,10 +560,11 @@ enum gosAudio_PlayMode
 	gosAudio_Continue,				// SET ONLY: continue a sound that was paused.
 	gosAudio_Stop,					// Silence the channel and stop processing the resource
 };
+using enum gosAudio_PlayMode;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Resource Types
 //
-enum gosAudio_ResourceType
+enum class gosAudio_ResourceType : int
 {
 	gosAudio_CachedFile,			// Pull a WAV file from disk, parse it, and copy the raw sound data into system memory
 	gosAudio_UserMemory,			// Use a preloaded WAV already in the client's system memory. Note: This memory must remain intact until this resource is destroyed
@@ -572,6 +574,7 @@ enum gosAudio_ResourceType
 	gosAudio_StreamedMusic,			// Leave the sound data on disk, play a non-PCM/ADPCM song.
 	gosAudio_StreamedFP				// Streamed from a file pointer
 };
+using enum gosAudio_ResourceType;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // The format structure, for describing the format of sound resources

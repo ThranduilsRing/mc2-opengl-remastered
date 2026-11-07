@@ -29,14 +29,15 @@ DWORD __stdcall gos_CreateThread( void (__stdcall *ThreadRoutine)(void*) );
 void __stdcall gos_DeleteThread( DWORD ThreadHandle );
 
 
-enum gosThreadPriority
-{ 
+enum class gosThreadPriority : int
+{
 	ThreadPri_Lowest=1,
 	ThreadPri_BelowNormal=2,
 	ThreadPri_Normal=3,
 	ThreadPri_AboveNormal=4,
 	ThreadPri_Highest=5
 };
+using enum gosThreadPriority;
 //
 // Set the thread priority
 //
@@ -198,21 +199,23 @@ bool __stdcall gos_FileExists( mc2::czstring FileName );
 
 //////////////////////////////////////////////////////////////////////////////////
 // Ways to specify how to open file.
-enum gosEnum_FileWriteStatus 
+enum class gosEnum_FileWriteStatus : int
 {
 	READONLY,				// Open for READ
 	READWRITE,				// Open for READ and WRITE - but clears the file on open
 	APPEND					// Open for READ and WRITE - leaves the file alone if it already exists
 };
+using enum gosEnum_FileWriteStatus;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Different ways to seek within a file.
-enum gosEnum_FileSeekType 
+enum class gosEnum_FileSeekType : int
 {
 	FROMSTART,
 	FROMCURRENT,
 	FROMEND
 };
+using enum gosEnum_FileSeekType;
 
 //////////////////////////////////////////////////////////////////////////////////
 // If the file or directory exists, return TRUE
