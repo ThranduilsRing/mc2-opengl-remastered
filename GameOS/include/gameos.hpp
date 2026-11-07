@@ -152,9 +152,6 @@ noexcept
 #endif
 ;
 
-
-
-
 //
 // Types used by GameOS
 //
@@ -195,8 +192,6 @@ using HSTRRES = struct gos_StringRes*; //sebi
 using HGOSBUFFER = class gosBuffer*; //sebi
 using HGOSVERTEXDECLARATION = class gosVertexDeclaration*; //sebi
 using HGOSRENDERMATERIAL = class gosRenderMaterial*; //sebi
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
