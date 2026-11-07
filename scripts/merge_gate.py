@@ -913,6 +913,8 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
         if (published / name).is_dir():
             shutil.rmtree(install / name, ignore_errors=True)
             shutil.copytree(published / name, install / name)
+    if swap_payload:
+        _forget_swapped_rows(install)
     textures = install / "data" / "textures"
     textures.mkdir(parents=True, exist_ok=True)
     for src in (published / "data" / "textures").glob("*.burnin.*"):
@@ -925,6 +927,21 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
     absent = [n for n in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"] if not (textures / n).is_file()]
     if absent:  # ensure_engine_normal_cooks only logs a WARN on failure; a candidate without them gives a false pixel diff
         raise RuntimeError(f"stage_published: detail-normal cook left {', '.join(absent)} missing in {textures}")
+
+
+def _forget_swapped_rows(install):
+    """Drop the manifest rows for the files stage_published just replaced. A gate-reuse seed carries HEAD's manifest; its
+    size+mtime_ns fast path would otherwise skip a swapped file of the same size (W125: spirv_package.json, 1915 bytes in
+    both builds) and verify_published_identity then fails on the published bytes left behind."""
+    import csv
+    path = Path(install) / ".deployed_manifest.csv"
+    if not path.is_file():
+        return
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.reader(stream))
+    keep = rows[:2] + [r for r in rows[2:] if r and not (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
+    with path.open("w", newline="", encoding="utf-8") as stream:
+        csv.writer(stream).writerows(keep)
 
 
 CANDIDATE = Path("E:/mc2-installs/merge-gate-candidate")
@@ -1136,7 +1153,7 @@ def mad_flags(output, declared=(), expected=()):
     Fail closed: an expected bookmark with no row (crashed capture), a 'missing png' line, or a size mismatch is a flag too."""
     if not isinstance(declared, dict):
         declared = {name: DECLARED_MAD_BOUND for name in declared}
-    bad, seen = [], set()
+    bad, seen, col = [], set(), 1  # ab.py's header names the MAD column ('bookmark | FLIP mean | FLIP p99 | MAD | %>24')
     raw = raw_mads(output)
     for line in (output or "").splitlines():
         if "missing png" in line or "size mismatch" in line:
@@ -1148,19 +1165,21 @@ def mad_flags(output, declared=(), expected=()):
         if len(cells) < 2:
             continue
         if cells[0] == "bookmark":
+            col = cells.index("MAD") if "MAD" in cells else 1
             continue  # table header
+        cell = cells[col] if col < len(cells) else ""
         try:
-            mad = float(cells[1])
+            mad = float(cell)
         except ValueError:
             mad = float("nan")
         if math.isnan(mad):
-            bad.append(f"{cells[0]}=non-numeric MAD '{cells[1][:20]}'")  # a nan/n-a row is never a pass, declared or not
+            bad.append(f"{cells[0]}=non-numeric MAD '{cell[:20]}'")  # a nan/n-a row is never a pass, declared or not
             continue
         seen.add(cells[0])
         mad = max(mad, raw.get(cells[0], mad))   # the unrounded value can only raise the printed one: a printed 0.05 can be a real 0.0539
         limit = declared.get(cells[0], MAD_LIMIT)
         if mad > limit:
-            bad.append(f"{cells[0]}={cells[1]}" + (f" (declared bound {limit})" if cells[0] in declared else ""))
+            bad.append(f"{cells[0]}={cell}" + (f" (declared bound {limit})" if cells[0] in declared else ""))
     bad.extend(f"{name}=no compare row" for name in expected if name not in seen)
     return bad
 

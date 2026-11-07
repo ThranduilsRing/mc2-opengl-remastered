@@ -200,31 +200,41 @@ def test_interrupt_is_held_until_the_running_stage_ends(monkeypatch):
     assert ran == ['a'] and rc
 
 
+HDR = 'bookmark | FLIP mean | FLIP p99 | MAD | %>24\n'
+
+
 def test_mad_flags_only_undeclared_views_over_limit():
-    out = 'mc2_01_saved_205644 | 1.40 | 5\nmc2_10_saved_204523 | 0.02 | 0\nbookmark | MAD | x\n'
-    assert gate.mad_flags(out) == ['mc2_01_saved_205644=1.40']
+    out = HDR + 'mc2_01_saved_205644 | 0.0100 | 0.2000 | 1.4000 | 5\nmc2_10_saved_204523 | 0.0900 | 0.5000 | 0.0200 | 0\n'
+    assert gate.mad_flags(out) == ['mc2_01_saved_205644=1.4000']
     assert gate.mad_flags(out, {'mc2_01_saved_205644': 2.0}) == []
     assert gate.mad_flags(out, {'mc2_01_saved_205644': 2.0}, expected=('mc2_01_saved_205644', 'mc2_10_saved_204523')) == []
 
 
+def test_mad_flags_reads_the_mad_column_by_header_not_flip_mean():
+    # FLIP mean 0.30 is over MAD_LIMIT but MAD is 0.01: no flag; the reverse must flag.
+    assert gate.mad_flags(HDR + 'a | 0.3000 | 0.9000 | 0.0100 | 0\n', expected=('a',)) == []
+    assert gate.mad_flags(HDR + 'a | 0.0010 | 0.0100 | 0.9000 | 3\n', expected=('a',)) == ['a=0.9000']
+    assert gate.mad_flags(HDR + 'a | n/a | n/a | 0.0100 | 0\n', expected=('a',)) == []  # no FLIP is fine
+
+
 def test_mad_flags_nan_and_non_numeric_rows_are_flagged():
-    assert gate.mad_flags('a | nan | 0\n', expected=('a',))
-    assert any('a=' in f for f in gate.mad_flags('a | n/a | 0\nb | 0.00 | 0\n', expected=('a', 'b')))
-    assert gate.mad_flags('b | 0.00 | 0\n', expected=('a', 'b')) == ['a=no compare row']
+    assert gate.mad_flags(HDR + 'a | 0.1 | 0.1 | nan | 0\n', expected=('a',))
+    assert any('a=' in f for f in gate.mad_flags(HDR + 'a | 0 | 0 | n/a | 0\nb | 0 | 0 | 0.00 | 0\n', expected=('a', 'b')))
+    assert gate.mad_flags(HDR + 'b | 0 | 0 | 0.00 | 0\n', expected=('a', 'b')) == ['a=no compare row']
 
 
 def test_mad_flags_ignores_pixel_hist_lines():
-    out = ('a | 0.03 | 0\n'
+    out = (HDR + 'a | 0.10 | 0.20 | 0.03 | 0\n'
            '[pixel_hist] a: FAIL >8:2.248% region bbox=[0, 95, 601, 183] 0.1127% | 2.2477% of pixels over delta 8 (limit 1.0000%)\n')
     assert gate.mad_flags(out, expected=('a',)) == []
 
 
 def test_mad_flags_fail_closed_on_missing_capture():
-    ok = 'a | 0.00 | 0\nb | 0.00 | 0\n'
+    ok = HDR + 'a | 0 | 0 | 0.00 | 0\nb | 0 | 0 | 0.00 | 0\n'
     assert gate.mad_flags(ok, expected=('a', 'b')) == []
-    assert gate.mad_flags('a | 0.00 | 0\n', expected=('a', 'b')) == ['b=no compare row']
-    assert gate.mad_flags('[ab] b: missing png (a=x b=None)\na | 0.00 | 0\n', expected=('a',))
-    assert gate.mad_flags('[ab] WARNING a: image size mismatch A=(1, 1) B=(2, 2)\na | 0.00 | 0\n')
+    assert gate.mad_flags(HDR + 'a | 0 | 0 | 0.00 | 0\n', expected=('a', 'b')) == ['b=no compare row']
+    assert gate.mad_flags('[ab] b: missing png (a=x b=None)\n' + HDR + 'a | 0 | 0 | 0.00 | 0\n', expected=('a',))
+    assert gate.mad_flags('[ab] WARNING a: image size mismatch A=(1, 1) B=(2, 2)\n' + HDR + 'a | 0 | 0 | 0.00 | 0\n')
 
 
 def test_publish_refuses_without_green_mark(tmp_path, monkeypatch):

@@ -551,6 +551,35 @@ def test_stage_published_cooks_detail_normals_like_the_deploy_row(monkeypatch, t
     assert cooked == [str(inst)]
 
 
+def test_stage_published_forgets_manifest_rows_of_swapped_files(monkeypatch, tmp_path):
+    # W125: a gate-reuse seed keeps HEAD's manifest; a same-size swapped shader was skipped by the deploy fast path.
+    import csv
+    import merge_gate as gate
+    import deploy_payload
+    from pathlib import Path
+    pub, inst = tmp_path / "pub", tmp_path / "inst"
+    (pub / "data" / "textures").mkdir(parents=True)
+    (pub / "shaders" / "spv").mkdir(parents=True)
+    (pub / "mc2.exe").write_bytes(b"old")
+    (pub / "shaders" / "spv" / "spirv_package.json").write_bytes(b"OLD!")
+    inst.mkdir()
+    manifest = inst / ".deployed_manifest.csv"
+    with manifest.open("w", newline="") as f:
+        csv.writer(f).writerows([["manifest_version", "v1", "", "", "", ""],
+                                 ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"],
+                                 ["mc2.exe", "a", "3", "h", "t", "1"],
+                                 ["shaders/spv/spirv_package.json", "b", "4", "h", "t", "1"],
+                                 ["data/x.fit", "c", "1", "h", "t", "1"]])
+
+    def fake_cook(target):
+        tex = Path(target) / "data" / "textures"
+        for n in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"]:
+            (tex / n).write_bytes(b"k")
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", fake_cook)
+    gate.stage_published(inst, pub)
+    assert set(deploy_payload.read_manifest(str(inst))) == {"data/x.fit"}
+
+
 def test_stage_published_fails_when_the_cook_leaves_sidecars_missing(monkeypatch, tmp_path):
     import merge_gate as gate
     import deploy_payload
