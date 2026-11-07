@@ -66,32 +66,8 @@
 #include <cstring>
 #include <vector>
 #include "mc2fmt.h"
-#include <format>
-#include <string>
-#include <cstdio>
-#ifdef _WIN32
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
 
 namespace {
-
-// One whole line, newline included, in ONE write to stdout's descriptor after draining stdio: another thread's stderr record (Vulkan
-// validation, driver text) can then land between lines but never inside one (W127: 'animrng=27' + ' to VK_FORMAT_R8' spliced a digest).
-template <class... A>
-void writeLineAtomic(std::format_string<A...> fmt, A&&... a) {
-	std::string line;
-	try { line = std::format(fmt, std::forward<A>(a)...); } catch (...) { return; }
-	std::fflush(stdout);
-#ifdef _WIN32
-	const int fd = _fileno(stdout);
-	if (fd >= 0) (void)_write(fd, line.data(), static_cast<unsigned>(line.size()));
-#else
-	const int fd = fileno(stdout);
-	if (fd >= 0) (void)!write(fd, line.data(), line.size());
-#endif
-}
 
 using mc2_sim_identity::MoverRecord;
 
@@ -412,12 +388,16 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
-	// The line and its newline go out in ONE write of the whole formatted line (writeLineAtomic), so another thread's stderr text
-	// cannot land mid-line (meta-0220 P2#7, W127).
-	writeLineAtomic("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d} animrng={:d}\n",
+	// The line and its newline go out in ONE fwrite (print_out); flushing first keeps it from straddling a stdio buffer boundary, where
+	// another thread's stderr write could land mid-line (meta-0220 P2#7).
+	fflush(stdout);
+	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d} animrng={:d}\n",
 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32(static_cast<int>(recs.size())), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
 	       mc2::fmt::as_i32(static_cast<int>(objs.size())), mc2::fmt::safe(ho), mc2::fmt::as_i32(static_cast<int>(abl.size())), mc2::fmt::safe(ha),
 	       mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u), mc2::fmt::as_u32(mc2_anim_rng::drawCount()));
+	// Flush the whole line out at once (the buffer was empty, so this is one write): left buffered it was written later in chunks cut at
+	// the stdio buffer size, where a stderr Vulkan/driver message landed inside it (W127: 'animrng=27' + ' to VK_FORMAT_R8').
+	fflush(stdout);
 
 #if MC2_SIM_TRACE
 	mc2_sim_trace::setTime(scenarioTimeNow);
@@ -427,7 +407,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 		for (const auto & r : recs) {
 			char hm[17];
 			mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
-			writeLineAtomic("[SIMID v1 mover] simframe={:d} id={:d} vd={} pos={:.4f},{:.4f},{:.4f} rot={:.4f} hp={:.5f} gesture={:d} anim={:d} status={:d} target={:d} brain={:d} mstate={:d} pstep={:d}/{:d}\n", mc2::fmt::as_i32(simFrame), mc2::fmt::as_i32(r.id), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
+			mc2::fmt::print_out("[SIMID v1 mover] simframe={:d} id={:d} vd={} pos={:.4f},{:.4f},{:.4f} rot={:.4f} hp={:.5f} gesture={:d} anim={:d} status={:d} target={:d} brain={:d} mstate={:d} pstep={:d}/{:d}\n", mc2::fmt::as_i32(simFrame), mc2::fmt::as_i32(r.id), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
 		}
 	}
 	fflush(stdout);
