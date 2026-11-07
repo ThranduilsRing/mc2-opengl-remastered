@@ -71,8 +71,8 @@ long ControlGui::hiResOffsetY = 0;
 gosEnum_KeyStatus gos_GetKeyStatus(gosEnum_KeyIndex) { return KEY_FREE; }
 std::string objectiveObservationQuote(std::string_view) { return {}; }
 CObjectives::Observation* objectiveObservation() { return nullptr; }
-void objectiveObservationSink(const char*, const char*, const char*, const char*) {}
-void CObjectives::Observation::SinkResult(const char*, const char*, const char*, std::string_view, unsigned long long) {}
+void objectiveObservationSink(std::string_view, std::string_view, std::string_view, mc2::czstring) {}
+void CObjectives::Observation::SinkResult(std::string_view, std::string_view, std::string_view, std::string_view, unsigned long long) {}
 const SmokeMode::State& SmokeMode::state() { static SmokeMode::State st{}; return st; }
 bool ControlGui::hudTabsGateOn() const { return false; }
 void ControlGui::setActiveHudTab(int, const char*) {}

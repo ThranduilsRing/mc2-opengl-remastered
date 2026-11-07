@@ -80,7 +80,7 @@ struct EnginePresentVk::Impl {
     // Camera motion vectors, recorded at the start of every composite (temporal track).
     mc2vk::MotionVectors motionVectors;
     bool showMotionVectorsDebug = false;
-    // FSR 3.1 native AA (temporal track slice C); fsrSet is the composite set with the FSR output as the scene.
+    // FSR 3.1 native AA; fsrSet is the composite set with the FSR output as the scene.
     mc2vk::FsrProvider fsr;
     VkDescriptorSet fsrSet = VK_NULL_HANDLE;
     VkImageView fsrSetView = VK_NULL_HANDLE;

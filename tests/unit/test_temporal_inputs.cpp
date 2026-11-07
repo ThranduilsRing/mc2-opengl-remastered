@@ -1,4 +1,4 @@
-// Temporal inputs (docs/plans/2026-11-06-temporal-aa.md slice B): jitter sequence, neutral path
+// Temporal inputs: jitter sequence, neutral path
 // with no consumer, jitter application, mip bias hook, and the motion-vector algebra that
 // motion_vectors.frag mirrors. Offline, no Vulkan.
 #include "doctest.h"

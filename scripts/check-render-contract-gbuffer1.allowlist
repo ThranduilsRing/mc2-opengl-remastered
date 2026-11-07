@@ -142,3 +142,11 @@ shaders/vulkan/legacy_shape_tier1.frag::oGBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 # attachments and the FS must declare both. vec4(0.0) is the inert placeholder; it never
 # reaches the GBuffer. RISK IF THE MASK CHANGES: re-adjudicate this entry, do not carry it.
 shaders/vulkan/mech_backdrop.frag::oGBuffer1 = vec4(0.0);
+
+# NOT GBUFFER1 AT ALL: TAA MOTION-VECTOR PASS (motion_vectors.frag, w125). Its own render
+# pass has two colour attachments, the RG16F motion target and the R8 FSR reactive mask
+# (vulkan_motion_vectors.cpp:84-86 `scene.reactiveMask`, attachment 1 at :134); the scene
+# GBuffer is never bound there. 0.0 = "opaque, no reactivity" for FSR 3.1; no
+# render_contract.hglsl class applies. RISK: if this pass ever binds the scene GBuffer as
+# attachment 1, this write becomes a live GBuffer1 writer and must be re-adjudicated.
+shaders/vulkan/motion_vectors.frag::Reactive = 0.0;

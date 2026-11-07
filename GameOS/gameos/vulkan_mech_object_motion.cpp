@@ -1,4 +1,4 @@
-// Per-object motion inputs for the mech island (docs/plans/2026-11-06-temporal-aa.md, Slice D state).
+// Per-object motion inputs for the mech island (previous-frame bone palettes per actor).
 #include <algorithm>
 #include <cmath>
 #include <compare>

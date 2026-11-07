@@ -239,7 +239,9 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
         glm::mat4 previousRotation = previous;
         previousRotation[3] = glm::vec4(0.0f);
         const glm::vec3 cameraPos(main.uniforms.cameraWorldPos[0], main.uniforms.cameraWorldPos[1], main.uniforms.cameraWorldPos[2]);
-        const glm::mat4 sky = previousRotation * glm::translate(glm::mat4(1.0f), -cameraPos) * inverseCurrent;
+        glm::mat4 toCamera(1.0f);   // column-convention (clip-side) translation by -cameraPos: column 3
+        toCamera[3] = glm::vec4(-cameraPos, 1.0f);
+        const glm::mat4 sky = previousRotation * toCamera * inverseCurrent;
         // The eye lies on the clip w = 0 plane; if the published position does not satisfy that (different world
         // convention) the sky keeps zero motion rather than a wrong vector.
         const float eyeW = std::abs((current * glm::vec4(cameraPos, 1.0f)).w);

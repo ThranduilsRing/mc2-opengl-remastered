@@ -1,5 +1,5 @@
 #pragma once
-// Temporal reconstruction inputs (docs/plans/2026-11-06-temporal-aa.md, slice B).
+// Temporal reconstruction inputs (jitter, mip bias, motion-vector algebra).
 // Pure math plus one consumer counter. With no consumer registered every function here
 // returns the neutral value (jitter 0, mip bias log2(renderScale)), so the image is unchanged.
 #include <atomic>
@@ -9,7 +9,7 @@
 namespace RenderCore::temporal {
 
 // Number of consumers (FSR resolve, debug views that need jittered input) that want jitter.
-// Slice B has none; slice C's provider registers here.
+// The FSR provider registers here.
 inline std::atomic<int>& consumerCount() {
     static std::atomic<int> n{0};
     return n;

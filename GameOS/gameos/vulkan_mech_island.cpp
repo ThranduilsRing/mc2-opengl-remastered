@@ -977,7 +977,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     return true;
 }
 
-// ---- Per-object motion (docs/plans/2026-11-06-temporal-aa.md, Slice D) ----------------------------------------------------
+// ---- Per-object motion ----------------------------------------------------------------------------------------------------
 namespace {
 bool g_objectMotionWritten = false;
 

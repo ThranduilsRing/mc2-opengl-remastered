@@ -6,7 +6,7 @@ struct VkImageResource;
 namespace mc2vk {
 class VulkanContext;
 class MotionVectors;
-// FSR 3.1 native AA (docs/plans/2026-11-06-temporal-aa.md, slice C): the first temporal consumer.
+// FSR 3.1 native AA: the first temporal consumer.
 // Loads the vendored amd_fidelityfx_vk.dll at runtime; with no DLL, no device support or a failed
 // dispatch it stays inactive and the spatial AA path runs unchanged. While active it counts as a
 // RenderCore::temporal consumer, which turns on the render-feed jitter and the provider mip bias.

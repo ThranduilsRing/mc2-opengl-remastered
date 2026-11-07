@@ -341,7 +341,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 @pytest.mark.parametrize("header,size,block", [
     ("GpuColorFrameUBO.h", 368, "ColorFrameUBO"),  # frame sun colour follows the prop light-pool feed
-    ("GpuMechFrameUBO.h", 224, "MechFrameUBO"),  # R2 mission ambient replaces stacked fills
+    ("GpuMechFrameUBO.h", 288, "MechFrameUBO"),  # TAA object motion appends prevFromCurClip (mat4, +64)
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
 def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):
