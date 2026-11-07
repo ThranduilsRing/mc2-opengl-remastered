@@ -80,17 +80,17 @@ namespace MidLevelRenderer {
 		void
 			SetClipColor(Stuff::RGBAColor &color, int index)
 				{
-					Check_Object(this); Verify(clipExtraColors->GetLength() > index);
-					(*clipExtraColors)[index] = color;
+					Check_Object(this); Verify(clipExtraColors.size() > index);
+					clipExtraColors[index] = color;
 				}
 
 		void
 			FlashClipColors(int num)
 				{
-					Check_Object(this); Verify(clipExtraTexCoords->GetLength() > num);
+					Check_Object(this); Verify(clipExtraTexCoords.size() > num);
 					colors.SetLength(num);
 					visibleIndexedVertices.SetLength(num);
-					Mem_Copy(colors.GetData(), clipExtraColors->GetData(), sizeof(Stuff::RGBAColor)*num, sizeof(Stuff::RGBAColor)*num);
+					Mem_Copy(colors.GetData(), clipExtraColors.data(), sizeof(Stuff::RGBAColor)*num, sizeof(Stuff::RGBAColor)*num);
 				}
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support

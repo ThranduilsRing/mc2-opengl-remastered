@@ -133,7 +133,7 @@ namespace MidLevelRenderer {
 
 		const Stuff::RGBAColor *colors;
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<Stuff::Vector4D>> transformedCoords;
+		static std::vector<Stuff::Vector4D> transformedCoords;
 
 		Stuff::DynamicArrayOf<int>	testList;
 

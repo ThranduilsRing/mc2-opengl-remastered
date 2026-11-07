@@ -9,6 +9,8 @@
 #include<mlr/mlr.hpp>
 #endif
 
+#include<array>
+
 #if !defined(MLR_GOSIMAGEPOOL_HPP)
 #include<mlr/gosimagepool.hpp>
 #endif
@@ -131,7 +133,7 @@ namespace MidLevelRenderer {
 		int lastHandle;
 		int storedTextures;
 		
-		Stuff::StaticArrayOf<MLRTexture*, MLRState::TextureMask+1> textureArray;
+		std::array<MLRTexture*, MLRState::TextureMask+1> textureArray;
 
 		int *freeHandle;
 		int firstFreeHandle;

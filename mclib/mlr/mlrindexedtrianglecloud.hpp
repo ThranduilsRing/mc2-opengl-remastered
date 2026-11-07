@@ -83,7 +83,7 @@ namespace MidLevelRenderer {
 
 
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<unsigned char>>	visibleIndexedVertices;
+		static std::vector<unsigned char>	visibleIndexedVertices;
 
 		unsigned short *gos_indices;
 		unsigned short	numGOSIndices;

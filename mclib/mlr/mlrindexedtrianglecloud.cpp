@@ -18,7 +18,7 @@ extern unsigned short *indexOffset;	// [MidLevelRenderer::Max_Number_Vertices_Pe
 //####################    MLRIndexedTriangleCloud    ##########################
 //#############################################################################
 
-std::unique_ptr<DynamicArrayOf<unsigned char>>
+std::vector<unsigned char>
 	MLRIndexedTriangleCloud::visibleIndexedVertices;
 
 
@@ -40,8 +40,7 @@ void
 		);
 	Register_Object(DefaultData);
 	
-	visibleIndexedVertices = std::make_unique<DynamicArrayOf<unsigned char>>(Limits::Max_Number_Vertices_Per_Mesh);
-	Register_Pointer(visibleIndexedVertices.get());
+	visibleIndexedVertices.resize(Limits::Max_Number_Vertices_Per_Mesh);
 
 }
 
@@ -50,8 +49,7 @@ void
 void
 	MLRIndexedTriangleCloud::TerminateClass()
 {
-	Unregister_Pointer(visibleIndexedVertices.get());
-	visibleIndexedVertices.reset();
+	std::vector<unsigned char>().swap(visibleIndexedVertices);
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
@@ -113,11 +111,11 @@ void
 
 	worldToEffect = glm::inverse((*dInfo->effectToWorld));
 
-	Vector4D *v4 = transformedCoords->GetData();
+	Vector4D *v4 = transformedCoords.data();
 	for(int k=0;k<*usedNrOfPoints;k++, v4++)
 	{
 		v4->MultiplyPoint(points[k], effectToClipMatrix);
-		(*clipPerVertex)[k].Clip4dVertex(v4);
+		clipPerVertex[k].Clip4dVertex(v4);
 	}
 
 
@@ -144,7 +142,7 @@ int
 	//------------------------
 	//
 
-	memset(visibleIndexedVertices->GetData(), 0, *usedNrOfPoints);
+	memset(visibleIndexedVertices.data(), 0, *usedNrOfPoints);
 
 	//
 	//-----------------------------------------------------------------
@@ -164,9 +162,9 @@ int
 		{
 			testList[i] = 1;
 
-			(*visibleIndexedVertices)[index0] = 1;
-			(*visibleIndexedVertices)[index1] = 1;
-			(*visibleIndexedVertices)[index2] = 1;
+			visibleIndexedVertices[index0] = 1;
+			visibleIndexedVertices[index1] = 1;
+			visibleIndexedVertices[index2] = 1;
 
 #ifdef LAB_ONLY
 			Set_Statistic(PolysClippedButInside, PolysClippedButInside+1);
@@ -183,7 +181,7 @@ int
 	unsigned short strideIndex;
 	for(j=0,strideIndex=0;j<*usedNrOfPoints;j++)
 	{
-		if((*visibleIndexedVertices)[j] == 0)
+		if(visibleIndexedVertices[j] == 0)
 		{
 			strideIndex++;
 		}
@@ -193,7 +191,7 @@ int
 
 			GOSCopyData(
 				&gos_vertices[numGOSVertices],
-				transformedCoords->GetData(),
+				transformedCoords.data(),
 				colors,
 				texCoords,
 				j

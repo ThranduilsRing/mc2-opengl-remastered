@@ -124,7 +124,7 @@ namespace MidLevelRenderer {
 
 		Stuff::DynamicArrayOf<unsigned short>	index;	// List of color indexes 
 
-		static std::unique_ptr<Stuff::DynamicArrayOf<unsigned short> > clipExtraIndex; // , Max_Number_Vertices_Per_Mesh
+		static std::vector<unsigned short> clipExtraIndex; // , Max_Number_Vertices_Per_Mesh
 
 		unsigned short *gos_indices;
 		unsigned short	numGOSIndices;
