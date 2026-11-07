@@ -314,16 +314,12 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	if (numTurrets > 0)
 	{
-		turrets = bindPoolArray(turretStore, numTurrets);
+		turrets = turretPool.reset(static_cast<size_t>(numTurrets));
 		if ( !turrets )
 			Fatal(numTurrets, " GameObjectManager.setNumObjects: cannot malloc Turrets ");
-			
-		for (i = 0; i < numTurrets; i++) 
-		{
-			turrets[i] = new Turret;
-			turrets[i]->setHandle(curHandle);
-			objList[curHandle++] = turrets[i];
-		}
+
+		for (i = 0; i < numTurrets; i++)
+			spawnTurret(curHandle++);
 	}
 
 	if (numGates > 0)
@@ -574,6 +570,19 @@ TurretPtr GameObjectManager::getTurret (long turretIndex)
 		return(nullptr);
 
 	return(turrets[turretIndex]);
+}
+
+//---------------------------------------------------------------------------
+
+TurretPtr GameObjectManager::spawnTurret (GameObjectHandle handle)
+{
+	const auto id = turretPool.spawn();
+	if (!id)
+		Fatal(handle, " GameObjectManager.spawnTurret: turret pool full ");
+	TurretPtr turret = turretPool.get(id.index);
+	turret->setHandle(handle);
+	objList[handle] = turret;
+	return turret;
 }
 
 //---------------------------------------------------------------------------
@@ -863,7 +872,7 @@ void GameObjectManager::releasePoolArrays (void)
 	std::vector<ElementalPtr>().swap(elementalStore);
 	std::vector<TerrainObjectPtr>().swap(terrainObjectStore);
 	std::vector<BuildingPtr>().swap(buildingStore);
-	std::vector<TurretPtr>().swap(turretStore);
+	turretPool.clear();
 	std::vector<GatePtr>().swap(gateStore);
 	std::vector<WeaponBoltPtr>().swap(weaponStore);
 	std::vector<CarnagePtr>().swap(carnageStore);
@@ -933,14 +942,7 @@ void GameObjectManager::destroy (void)
 	buildings = nullptr;
 
 	//--------------------------------------------------------------
-	if (turrets && numTurrets > 0)
-	{
-		for (i = 0; i < numTurrets; i++) 
-		{
-            mc2::tick::retireObject(turrets[i]);
-			turrets[i] = nullptr;
-		}
-	}
+	turretPool.clear();
 	turrets = nullptr;
 
 	//--------------------------------------------------------------

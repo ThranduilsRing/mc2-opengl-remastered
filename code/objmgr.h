@@ -21,6 +21,7 @@
 #include <optional>
 #include <string_view>
 #include "world/entity_registry.h"
+#include "world/actor_pool.h"
 #include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
 // Forward declaration for prewarmStaticPropLightBakes parameter.
@@ -262,7 +263,8 @@ class GameObjectManager {
 		std::vector<ElementalPtr>		elementalStore;
 		std::vector<TerrainObjectPtr>	terrainObjectStore;
 		std::vector<BuildingPtr>		buildingStore;
-		std::vector<TurretPtr>			turretStore;
+		// Turrets: the pool owns the actors and is the one construction path (spawnTurret) for mission setup and save load.
+		mc2::world::ActorPool<Turret>	turretPool;
 		std::vector<GatePtr>			gateStore;
 		std::vector<WeaponBoltPtr>		weaponStore;
 		std::vector<CarnagePtr>			carnageStore;
@@ -388,6 +390,9 @@ class GameObjectManager {
 		BuildingPtr getBuilding (long buildingIndex);
 
 		TurretPtr getTurret (long turretIndex);
+
+		// Constructs the next pooled turret and binds it to legacy handle `handle` (objList slot).
+		TurretPtr spawnTurret (GameObjectHandle handle);
 		
 		GatePtr	getGate (long gateIndex);
 		

@@ -829,7 +829,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 	if (numTurrets > 0)
 	{
-		turrets = bindPoolArray(turretStore, numTurrets);
+		turrets = turretPool.reset(static_cast<size_t>(numTurrets));
 		if ( !turrets )
 			Fatal(numTurrets, " GameObjectManager.setNumObjects: cannot malloc Turrets ");
 	}
@@ -1019,9 +1019,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			readData.operator()<mc2::save::TurretRecord>(data, mc2_saved_objects::kTurret);
 			packetNum++;
 
-			TurretPtr obj = new Turret; 
-			objList[i] = turrets[curTurretNum] = obj;
-			objList[i]->setHandle(i);
+			TurretPtr obj = spawnTurret(i);
+			if (obj != turrets[curTurretNum])
+				Fatal(curTurretNum, " GameObjectManager.Load: turret slot order mismatch ");
 
 			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
 			if (objType)	//We have an object type to copy from!!
