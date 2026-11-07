@@ -966,10 +966,10 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
 			for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
 			{
-				if (objList[objIndex] &&
-					objList[objIndex]->getExists() &&
-					Terrain::objVertexActive[objList[objIndex]->getVertexNum()])
-					add(list.terrain, objList[objIndex]);
+					// One load of the slot: the virtual calls stop the compiler reusing objList[objIndex].
+					GameObjectPtr obj = objList[objIndex];
+					if (obj && obj->getExists() && Terrain::objVertexActive[obj->getVertexNum()])
+						add(list.terrain, obj);
 			}
 		}
 	}
