@@ -206,6 +206,18 @@ def r_pack(window):
     print(f"payload: {len(delta)} files, {tarp.stat().st_size} bytes")
 
 
+def r_prune(manifest):
+    """Delete INSTALL shaders/ and shaders_vk/ files the published manifest lacks: deploy_payload requires the published
+    shader inventory to equal the HEAD build exactly, and an overlay refresh leaves the old seed's retired shaders behind."""
+    keep = set(manifest_rows(manifest))
+    for d in ("shaders", "shaders_vk"):
+        for p in sorted(Path(INSTALL, d).rglob("*")):
+            rel = p.relative_to(INSTALL).as_posix()
+            if p.is_file() and rel not in keep:
+                p.unlink()
+                print("pruned", rel)
+
+
 def r_refcheck(sums):
     """Problems with the laptop reference copy against a SHA256SUMS file ("<sha>  <rel>" lines); [] when every file matches."""
     if not Path(sums).is_file():
@@ -383,6 +395,8 @@ def sync_published():
     try:
         scp(f"{HOST}:{INSTALL}/.deployed_manifest.csv", lm)
         delta = manifest_delta(manifest_rows(PC_V04 / ".deployed_manifest.csv"), manifest_rows(lm))
+        scp(PC_V04 / ".deployed_manifest.csv", f"{HOST}:{G}/tmp/published.manifest.csv")
+        ssh(remote_py("prune", f"{G}/tmp/published.manifest.csv"), stream=True)
         if not delta:
             return
         print(f"refreshing the laptop's published install from {PC_V04}: {len(delta)} files", flush=True)
@@ -465,7 +479,7 @@ def main():
     if a.remote:
         step = a.remote
         return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
-                "preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
+                "prune": lambda: r_prune(a.window), "preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
         scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
         return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]

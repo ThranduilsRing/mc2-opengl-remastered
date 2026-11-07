@@ -108,3 +108,14 @@ def test_published_problems_fails_a_stale_or_unrelated_before_install():
     assert "not an ancestor" in laptop_gate.published_problems("deadbeef0000", "", "claude/stage-g125", anc)[0]
     assert laptop_gate.published_problems(None, "x", None, anc) == ["published install mc2.exe has no MC2FP1 fingerprint"]
     assert laptop_gate.manifest_delta({"a": {"sha256": "1"}, "b": {"sha256": "2"}}, {"a": {"sha256": "1"}}) == ["b"]
+
+
+def test_prune_drops_shaders_the_published_manifest_lacks(tmp_path, monkeypatch):
+    monkeypatch.setattr(laptop_gate, "INSTALL", str(tmp_path))
+    for rel in ("shaders/keep.frag", "shaders/old.frag", "shaders_vk/x/old.spv", "data/old.bin"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_bytes(b"x")
+    _manifest(tmp_path / "m.csv", {"shaders/keep.frag": b"x"})
+    laptop_gate.r_prune(tmp_path / "m.csv")
+    assert sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()) == [
+        "data/old.bin", "m.csv", "shaders/keep.frag"]
