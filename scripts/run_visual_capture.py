@@ -862,7 +862,7 @@ def main() -> int:
                          det_clock, args.show_window, declared_env, args.classic_assets)
         man = write_manifest(result, exe)
         _print_result(result, man)
-        return 0 if (result["all_present"] and result["engine_capture_fired"] and not result["backend"]["disagree"]) else 1
+        return 0 if not fail_reasons(result) else 1   # one predicate: the manifest, the log and the exit code agree
 
     # Multi-run stabilization mode.
     runs = []
@@ -889,8 +889,10 @@ def main() -> int:
         flag = "STABLE" if info["stable"] else "DRIFT"
         print(f"[viscap]   {name:20} {flag:7} {' '.join(shas)}")
     fired = all(r["engine_capture_fired"] for r in runs)
-    if any(r["backend"]["disagree"] for r in runs):
-        print("[viscap] FAIL: a run was not drawn by the requested render backend (see the log above); the stability result is void")
+    bad = [(i, r_) for i, r in enumerate(runs, 1) for r_ in fail_reasons(r) if "did not fire" not in r_]
+    if bad:
+        for i, why in bad:
+            print(f"[viscap] FAIL: run {i}: {why}; the stability result is void")
         return 1
     if not fired:
         print("[viscap]   WARNING: engine capture path did not fire in some run "
