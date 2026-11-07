@@ -57,7 +57,7 @@ PREREQUISITE = "tier1"   # the validation-enabled tier1 smoke: first game row af
 def stage_tier(name):
     if name in ("mods", "video-decode"):
         return 2
-    return 1 if name.startswith(("determinism-", "saveload-")) or name == "player-path" else 0
+    return 1 if name.startswith(("determinism-", "saveload-")) or name in ("player-path", "quiet") else 0
 
 
 OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
@@ -502,7 +502,10 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--keep-logs", "--deploy", "0.4"],
-         {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE", "MC2_VULKAN_VALIDATION": "1"}),
+         # sync = core validation plus synchronization validation (it caught the SpatialAA hazard fixed in c5cffa88f); no separate syncval launch.
+         {"MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "CONFIG,BUILD,DEVICE", "MC2_VULKAN_VALIDATION": "sync"}),
+        # Nightly: default-output quietness (caught the unconditional STATIC_LIGHT_ROW spam fixed in 449a54c0e).
+        ("quiet", [py, "scripts/check-default-build-quiet.py", "--fresh-smoke", "--exe", install + "/mc2.exe"], {}),
         # What a player does: scripted menu input (MC2_INPUT_SCRIPT) -> New Campaign mission 1 past the first comm video, and Load Game.
         # Real video decode and the real front end; every other smoke boots --mission under SmokeMode and skips both.
         ("player-path", [py, "scripts/run_player_path.py", "--install", install, "--out", str(proof / "player-path")], {}),
