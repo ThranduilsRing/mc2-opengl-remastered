@@ -157,7 +157,6 @@ if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: volk meta-loader (dynamic Vulkan load; no hard link
     # to vulkan-1.dll). Only compiled when MC2_VULKAN=ON.
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/volk/volk.c")
-    if(MC2_VULKAN_ISLAND)
         # VK-WATER-TIER1: the water island renders the armed water base layer in
         # place into the shared scene GBuffer. The old P9a side-image gate is
         # retired; no public raw water interop gate remains.
@@ -287,7 +286,6 @@ if(MC2_VULKAN)
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
         list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp vulkan_fsr_provider.cpp)
-    endif()
 endif()
 
 set_source_files_properties(
@@ -350,18 +348,6 @@ if(MC2_VULKAN)
     target_include_directories(gameos PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
-    # MC2_VULKAN_ISLAND: define the island/native-region gate on gameos so
-    # gos_postprocess.cpp's Vulkan-owned render paths are compiled.
-    # MUST be PUBLIC: gos_postprocess.h adds a member (vkFogIsland_) + methods under
-    # #ifdef MC2_VULKAN_ISLAND, so the gosPostProcess class LAYOUT depends on this
-    # macro. Consumers of the header (e.g. gameosmain.cpp in the mc2 target) must
-    # see the same layout, or getSceneFBO()/getWidth()/getHeight() read the wrong
-    # offset and return garbage (ODR violation -> broken FBO readback / capture).
-    # The gated header block only declares an opaque pointer + method decls, so no
-    # Vulkan headers leak to consumers.
-    if(MC2_VULKAN_ISLAND)
-        target_compile_definitions(gameos PUBLIC MC2_VULKAN_ISLAND)
-    endif()
 endif()
 
 # VULKAN-SHADER-TOOLCHAIN-1: compile the GLSL listed in MC2_VK_SHADER_BASENAMES to
@@ -575,15 +561,6 @@ if(MC2_VULKAN)
     target_include_directories(gameos_editor PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
-endif()
-# VULKAN-ISLAND-ODR-HARDEN-1: gameos_editor uses the same ${SOURCES} as gameos
-# (incl. gos_postprocess.cpp) and its consumers (editor/*.cpp) include
-# gos_postprocess.h, so its gosPostProcess layout must match the shared static
-# libs (mclib/renderworld/gameadapters) it links. Propagate the island define so
-# EditRel's link is uniform if ever built with MC2_VULKAN_ISLAND=ON. No effect on
-# any shipped build: the island option is OFF whenever the editor is built.
-if(MC2_VULKAN_ISLAND)
-    target_compile_definitions(gameos_editor PRIVATE MC2_VULKAN_ISLAND)
 endif()
 
 add_library(gameos_main ${MAIN_SRC})
