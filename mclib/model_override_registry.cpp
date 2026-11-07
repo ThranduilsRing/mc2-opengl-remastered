@@ -328,7 +328,7 @@ const ModelOverrideRecord* ModelOverrideRegistry::resolve(mc2::czstring override
 
 std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std::string_view envDeps,
                                                  const std::vector<std::string>& modJsonDeps) {
-    // file_mod.inc: deps = mod.json deps, then MC2_MOD_DEPS (comma/semicolon, highest-priority-first),
+    // mclib/vfs.cpp InitModSearchPaths: deps = mod.json deps, then MC2_MOD_DEPS (comma/semicolon, highest-priority-first),
     // de-duplicated; priority active > deps[0] > ... > deps[N-1] > base.
     std::vector<std::string> deps = modJsonDeps;
     const std::string all(envDeps);

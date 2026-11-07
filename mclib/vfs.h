@@ -17,6 +17,8 @@
 #include <string_view>
 #include <vector>
 
+class FastFile;
+
 namespace mc2::vfs {
 
 enum class Provider { Mod, Loose, Fst };
@@ -62,6 +64,22 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 // one entry per key, sorted by key.
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext = {});
 
+// The read-open behind File::open and fileExists. The merged index decides (mod > loose > size-stripped loose > FST,
+// the first candidate that opens wins); the disk is probed only on an index miss (a file written after the build)
+// and, before the index, for relative paths outside data/ (the loose mount indexes data/ only).
+struct OpenedFile {
+	int fd = -1;                    // mod / loose hit: an open read-only binary descriptor the caller owns
+	::FastFile* fst = nullptr;      // FST hit: the archive and its member (FastFileFind semantics)
+	long fstMember = -1;
+	std::string layer;              // "mod", "base-loose", "base-strip", "fastfile"; empty = miss
+	std::string owner;              // mod id, "loose" or "fst" (crash-bundle attribution)
+	std::string physicalPath;
+	bool found() const { return fd != -1 || fst != nullptr; }
+};
+OpenedFile openRead(const char* path, const char* req = nullptr);
+// A file created under data/ after the index was built joins the loose mount (writes stay physical).
+void noteWrite(std::string_view path);
+
 } // namespace mc2::vfs
 
 // ---- file.cpp internals (the resolution ladder's mod layer and counters) ----
@@ -74,4 +92,3 @@ extern unsigned long g_resolveMisses;
 std::string NormalizeKey(const char* p);
 void EmitResolveRecord(const char* key, const char* req, const char* layer, const char* path,
                        const std::vector<std::string>* shadowed);
-std::optional<int> TryModOpen(const char* fileName, const char* req = nullptr);

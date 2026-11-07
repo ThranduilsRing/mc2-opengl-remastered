@@ -73,7 +73,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(mc2::czstring texturePath, mc
 	FullPathFileName burnInJpg;
 	burnInJpg.init(texturePath, jName, ".jpg");
 
-	// Use File::open so the mod overlay (TryModOpen) is consulted — std::fopen bypasses it.
+	// Use File::open so the VFS (mod > loose > FST, mclib/vfs.cpp) is consulted — std::fopen bypasses it.
 	File jpgFile;
 	if (NO_ERR != jpgFile.open(static_cast<const char*>(burnInJpg)))
 		return {}; // sidecar absent -> caller uses .tga

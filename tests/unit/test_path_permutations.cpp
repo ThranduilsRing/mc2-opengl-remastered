@@ -48,6 +48,7 @@
 
 #ifdef _WIN32
 #include <direct.h>   // _mkdir / _rmdir
+#include <io.h>       // _close
 #else
 #include "platform_io.h"
 #endif
@@ -790,6 +791,74 @@ TEST_CASE("vfs index: a corrupt or unreadable winner falls back to the next cand
 	}
 	remove(fstPath.c_str());
 	vfsDropLoose("fall.fit"); vfsDropMod("fall.fit");
+	setActiveMod(nullptr);
+	InitModSearchPaths("mvh_perm_mods_nonexistent");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
+}
+
+TEST_CASE("vfs openRead: File::open and enumerate agree on every key; mod/loose/FST conflicts resolve one way; post-build writes join")
+{
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string fstPath = scratchPath("vfs_open_archive.fst");
+	const char* fstNames[] = { "data/mvh_perm_data/c_all.fit", "data/mvh_perm_data/c_lf.fit", "data/mvh_perm_data/c_f.fit" };
+	const std::string fstPayloads[] = { fitPayload(3), fitPayload(3), fitPayload(3) };
+	vfsAuthorFst(fstPath, fstNames, fstPayloads, 3);
+	vfsPutLoose("c_all.fit", fitPayload(2));
+	vfsPutLoose("c_lf.fit", fitPayload(2));
+	vfsPutMod("c_all.fit", fitPayload(1));
+	vfsPutMod("c_m.fit", fitPayload(1));
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+
+		// Conflicting sources: mod+loose+FST -> mod, loose+FST -> loose, FST-only and mod-only resolve to their one source.
+		struct Want { const char* leaf; const char* layer; int id; };
+		const Want wants[] = { { "c_all.fit", "mod", 1 }, { "c_lf.fit", "base-loose", 2 }, { "c_f.fit", "fastfile", 3 }, { "c_m.fit", "mod", 1 } };
+		for (const Want& w : wants)
+		{
+			CAPTURE(w.leaf);
+			const std::string k = std::string(kVfsDir) + w.leaf;
+			const mc2::vfs::OpenedFile o = mc2::vfs::openRead(k.c_str());
+			REQUIRE(o.found());
+			CHECK(o.layer == w.layer);
+			if (o.fd != -1) _close(o.fd);
+			CHECK(layerViaFile(k.c_str()) == w.id);
+			CHECK(fileExists(k.c_str()) == (std::string(w.layer) == "fastfile" ? FILE_ON_FST : FILE_ON_DISK));
+		}
+
+		// Every enumerated key opens, through the provider the index named (one model for open and enumerate).
+		const auto list = mc2::vfs::enumerate(kVfsDir, ".fit");
+		REQUIRE(list.size() == 4);
+		for (const mc2::vfs::Entry& e : list)
+		{
+			CAPTURE(e.key);
+			const int want = e.provider == mc2::vfs::Provider::Mod ? 1 : e.provider == mc2::vfs::Provider::Loose ? 2 : 3;
+			CHECK(layerViaFile(e.key.c_str()) == want);
+		}
+
+		// A file written after the build: File::create joins the index (enumerate sees it), fopen'd files open on the miss probe.
+		{
+			File w;
+			const std::string k = std::string(kVfsDir) + "c_new.fit";
+			REQUIRE(w.create(k.c_str()) == NO_ERR);
+			const std::string p = fitPayload(2);
+			w.write((MemoryPtr)p.data(), p.size());
+			w.close();
+			CHECK(mc2::vfs::enumerate(kVfsDir, ".fit").size() == 5);
+			CHECK(layerViaFile(k.c_str()) == 2);
+		}
+		vfsPutLoose("c_raw.fit", fitPayload(2));
+		CHECK(layerViaFile((std::string(kVfsDir) + "c_raw.fit").c_str()) == 2);
+		CHECK_FALSE(mc2::vfs::openRead("data/mvh_perm_data/c_absent.fit").found());
+	}
+
+	remove(fstPath.c_str());
+	vfsDropLoose("c_all.fit"); vfsDropLoose("c_lf.fit"); vfsDropLoose("c_new.fit"); vfsDropLoose("c_raw.fit");
+	vfsDropMod("c_all.fit"); vfsDropMod("c_m.fit");
 	setActiveMod(nullptr);
 	InitModSearchPaths("mvh_perm_mods_nonexistent");
 	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");

@@ -3,7 +3,7 @@
 // This test brings mclib/paths.cpp (path string globals)
 // under test as a leaf TU, and exercises the mods/ resolution order --
 // offline, game-free. The mod-index machinery
-// (InitModSearchPaths / TryModOpen / g_modIndex) lives in file.cpp;
+// (InitModSearchPaths / mc2::vfs::openRead / g_modIndex) lives in vfs.cpp;
 // paths.cpp only supplies the real engine
 // path globals so tests reference them instead of stand-ins.
 // Pattern doc: docs/testing/minimal-viable-harness.md.
@@ -238,7 +238,7 @@ TEST_CASE("mod search is gated: absolute paths and .. are never mod-resolved")
 
 // LG05 optional guards: ReadModJson (found: id/name/deps -> InitModSearchPaths
 // mounts the declared dep; not found / no id: the folder name becomes the id),
-// TryModOpen (found: an open handle; not found: no handle and every caller
+// mc2::vfs::openRead (found: an open handle; not found: no handle and every caller
 // falls through), and LoadModIndexCache (found: the cached entries; malformed
 // or missing: nullopt and a fresh walk). All values are scratch-tree content.
 

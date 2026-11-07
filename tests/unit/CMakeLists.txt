@@ -172,7 +172,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp  # the ABL position builtins under test (a TU of their own so they link without ablmc2_misc.cpp)
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_fst_backslash.cpp  # retail backslash/mixed-case FST members canonicalized in memory at open; stock parity
-    test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
+    test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (mc2::vfs::openRead) resolution
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
     test_pilot_pick.cpp  # getBestPilot out-of-pool kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
@@ -261,7 +261,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
 
     # MINIMAL-VIABLE-HARNESS-2: paths.cpp is a pure leaf TU (path string globals
-    # only -- no TryModOpen/mod-index; that logic lives in file.cpp, already
+    # only -- no mod-index; that logic lives in vfs.cpp, already
     # linked above). Linking it lets tests reference the engine's real path
     # globals (objectPath/artPath/...) instead of stand-ins.
     ${MC2_WORKTREE_ROOT}/mclib/paths.cpp      # path string globals (leaf)

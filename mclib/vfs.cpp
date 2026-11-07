@@ -589,41 +589,6 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
     return mj;
 }
 
-// O(1) lookup. Returns false immediately when no mod active (g_modIndex empty).
-// req: original filename as requested by caller (before lowercasing), used for level-2 trace.
-//      May be nullptr — falls back to fileName.
-std::optional<int> TryModOpen(const char* fileName, const char* req) {
-    if (g_modIndex.empty()) return std::nullopt;
-    if (!ShouldSearchMods(fileName)) return std::nullopt;
-    std::string key = NormalizeKey(fileName);
-    auto it = g_modIndex.find(key);
-    if (it == g_modIndex.end()) {
-        if (logFileResolve) { mc2::fmt::print_out("[mod-miss] {}\n", key.c_str()); fflush(stdout); }
-        // MISS record emitted by the caller after the full ladder, not here.
-        return std::nullopt;
-    }
-    int h = _open(it->second.path.c_str(), _O_RDONLY | _O_BINARY);
-    if (h == -1) return std::nullopt;
-    crashbundle_content_fd(h, fileName, it->second.modId.c_str());
-    if (logFileResolve) {
-        mc2::fmt::print_out("[mod-hit] [{}] {} -> {}\n",
-               it->second.modId.c_str(), key.c_str(), it->second.path.c_str());
-        fflush(stdout);
-    }
-    if (logFileResolve >= 2) {
-        // Build layer string "mod:<id>".
-        char layer[256];
-        _snprintf(layer, sizeof(layer), "mod:%s", it->second.modId.c_str());
-        layer[sizeof(layer)-1] = '\0';
-        // Lookup shadowed list for this key.
-        auto sit = g_shadowedBy.find(key);
-        const std::vector<std::string>* sh = (sit != g_shadowedBy.end()) ? &sit->second : nullptr;
-        static const std::vector<std::string> emptyShadow;
-        const std::vector<std::string>* shOut = sh ? sh : &emptyShadow;
-        EmitResolveRecord(key.c_str(), req ? req : fileName, layer, it->second.path.c_str(), shOut);
-    }
-    return h;
-}
 
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
 // Used for diagnostic logging only — O(1) lookup.
@@ -1277,12 +1242,6 @@ void buildLocked()
 	g_index = std::move(ix);
 }
 
-void ensureBuilt()
-{
-	std::lock_guard<std::mutex> lk(g_indexMutex);
-	if (!g_index.built) buildLocked();
-}
-
 } // namespace
 
 const char* providerName(Provider p)
@@ -1318,7 +1277,8 @@ void invalidate()
 
 Stats stats()
 {
-	ensureBuilt();
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	if (!g_index.built) buildLocked();
 	return g_index.st;
 }
 
@@ -1328,7 +1288,10 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 	const std::string raw(logicalKey);
 	std::vector<Entry> out;
 	if (IsAbsolutePath(raw.c_str()) || raw.find("..") != std::string::npos) return out;
-	ensureBuilt();
+	// File::open runs on worker threads too: the chain is copied out under the lock, so a rebuild or noteWrite
+	// on another thread never invalidates it.
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	if (!g_index.built) buildLocked();
 	const std::string k = key(raw);
 	const auto it = g_index.entries.find(k);
 	if (it != g_index.entries.end()) out = it->second;
@@ -1375,9 +1338,90 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 	return std::nullopt;
 }
 
+OpenedFile openRead(const char* path, const char* req)
+{
+	OpenedFile r;
+	if (!path || !path[0]) return r;
+	const std::string k = key(path);
+	auto openPhysical = [&](const std::string& phys, const char* layer, const std::string& owner) {
+		const int h = phys.empty() ? -1 : _open(phys.c_str(), _O_RDONLY | _O_BINARY);
+		if (h == -1) return false;
+		r.fd = h; r.layer = layer; r.owner = owner; r.physicalPath = phys;
+		return true;
+	};
+	// A physical loose probe, File::open's historical order: the path itself, then the size-stripped alias.
+	auto looseProbe = [&] {
+		if (openPhysical(path, "base-loose", "loose")) return true;
+		const std::string stripped = stripSizeDir(path);
+		return openPhysical(stripped, "base-strip", "loose");
+	};
+	// The loose mount indexes data/ only; any other relative path is probed on disk before the index (old order).
+	const bool looseIndexed = ShouldSearchMods(path);
+	bool done = !looseIndexed && looseProbe();
+	std::vector<std::string> shadowedMods;
+	if (!done) {
+		const std::vector<Entry> chain = candidates(path);
+		for (size_t i = 0; i < chain.size() && !done; ++i) {
+			const Entry& e = chain[i];
+			if (e.provider == Provider::Fst) {
+				long member = -1;
+				if (FastFile* ff = FastFileFind(path, member)) {
+					r.fst = ff; r.fstMember = member; r.layer = "fastfile"; r.owner = "fst";
+					done = true;
+				}
+				continue;
+			}
+			if (e.provider == Provider::Mod) {
+				done = openPhysical(e.physicalPath, "mod", e.mountName);
+				if (done)
+					for (size_t j = i + 1; j < chain.size(); ++j)
+						if (chain[j].provider == Provider::Mod) shadowedMods.push_back(chain[j].mountName);
+				continue;
+			}
+			done = openPhysical(e.physicalPath, e.viaStripAlias ? "base-strip" : "base-loose", "loose");
+		}
+	}
+	// Index miss: only a file written after the index was built can still be on disk.
+	if (!done && looseIndexed) done = looseProbe();
+	if (!done) return r;
+	if (r.layer == "mod") {
+		if (logFileResolve) {
+			mc2::fmt::print_out("[mod-hit] [{}] {} -> {}\n", r.owner.c_str(), k.c_str(), r.physicalPath.c_str());
+			fflush(stdout);
+		}
+		if (logFileResolve >= 2)
+			EmitResolveRecord(k.c_str(), req ? req : path, ("mod:" + r.owner).c_str(), r.physicalPath.c_str(), &shadowedMods);
+	} else if (logFileResolve >= 2) {
+		EmitResolveRecord(k.c_str(), req ? req : path, r.layer.c_str(), r.physicalPath.c_str(), nullptr);
+	}
+	return r;
+}
+
+void noteWrite(std::string_view path)
+{
+	const std::string raw(path);
+	if (!ShouldSearchMods(raw.c_str())) return;   // only the loose data/ mount is indexed
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	if (!g_index.built) return;                    // the next build scans it
+	const std::string k = key(raw);
+	std::vector<Entry>& chain = g_index.entries[k];
+	for (const Entry& e : chain)
+		if (e.provider == Provider::Loose) return;
+	Entry e;
+	const size_t slash = raw.find_last_of("/\\");
+	e.key = k; e.provider = Provider::Loose; e.mountName = "loose"; e.physicalPath = raw;
+	e.name = slash == std::string::npos ? raw : raw.substr(slash + 1);
+	size_t pos = 0;
+	while (pos < chain.size() && chain[pos].provider == Provider::Mod) ++pos;
+	chain.insert(chain.begin() + static_cast<std::ptrdiff_t>(pos), std::move(e));
+	for (size_t i = 0; i < chain.size(); ++i) chain[i].shadowed = static_cast<unsigned>(chain.size() - 1 - i);
+	g_index.st.entries = g_index.entries.size();
+}
+
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
 {
-	ensureBuilt();
+	std::lock_guard<std::mutex> lk(g_indexMutex);
+	if (!g_index.built) buildLocked();
 	std::string dir = key(dirKey);
 	if (!dir.empty() && dir.back() != '/') dir += '/';
 	const std::string e = key(ext);
