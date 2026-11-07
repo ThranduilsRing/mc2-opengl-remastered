@@ -91,9 +91,6 @@ void
 	//
 	MemoryStream::InitializeClass();
 	FileStream::InitializeClass();
-	#if defined(TRACE_ENABLED)
-		TraceManager::InitializeClass();
-	#endif
 
 
 
@@ -127,9 +124,6 @@ void
 		return;
 
 
-	#if defined(TRACE_ENABLED)
-		TraceManager::TerminateClass();
-	#endif
 	FileStream::TerminateClass();
 	MemoryStream::TerminateClass();
 

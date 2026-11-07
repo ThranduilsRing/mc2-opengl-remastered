@@ -192,7 +192,6 @@ namespace Stuff {
 inline constexpr mc2::czstring GROUP_STUFF = "Stuff::";
 inline constexpr mc2::czstring GROUP_STUFF_TEST = "Stuff::Test";
 inline constexpr mc2::czstring GROUP_STUFF_MEMORY = "Stuff::Memory";
-inline constexpr mc2::czstring GROUP_STUFF_TRACE = "Stuff::Trace";
 
 #include"style.hpp"
 #include"mstring.hpp"
@@ -212,4 +211,4 @@ inline constexpr mc2::czstring GROUP_STUFF_TRACE = "Stuff::Trace";
 #include"random.hpp"
 #include"vector2d.hpp"
 #include"vector4d.hpp"
-#include"trace.hpp"
+#include<toolos.hpp>	// gos_* file/path API; formerly reached through the deleted trace.hpp

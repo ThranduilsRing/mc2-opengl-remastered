@@ -96,7 +96,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/filestreammanager.cpp
     ${MC2_ROOT}/mclib/stuff/memorystream.cpp
     ${MC2_ROOT}/mclib/stuff/style.cpp
-    ${MC2_ROOT}/mclib/stuff/trace.cpp
     ${MC2_ROOT}/mclib/stuff/stuff.cpp
 )
 mc2_link_gate(tg_import_dump)

@@ -96,7 +96,6 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/filestreammanager.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/memorystream.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/style.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/trace.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/stuff/stuff.cpp"
     # Tracy profiler client (needed because TRACY_ENABLE is set globally and
     # msl.cpp includes gos_profiler.h which includes Tracy.hpp inline-instantiating

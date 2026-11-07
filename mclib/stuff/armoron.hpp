@@ -17,13 +17,9 @@
 #undef Str_Cat
 #undef Spew
 
-#undef USE_TIME_ANALYSIS			// trace time statistics
-#undef USE_TRACE_LOG					// logging functions
 #undef USE_EVENT_STATISTICS      // event statistics
 
 #if !defined(NO_ANALYSIS)
-	#define USE_TIME_ANALYSIS
-	#define USE_TRACE_LOG
 	#define USE_EVENT_STATISTICS
 #endif
 

@@ -3,7 +3,6 @@ project(stuff)
 
 set(SOURCES ${SOURCES}
     style.cpp
-    trace.cpp
     color.cpp
     random.cpp
     scalar.cpp
