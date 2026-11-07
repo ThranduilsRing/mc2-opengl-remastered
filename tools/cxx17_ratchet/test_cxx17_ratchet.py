@@ -40,7 +40,19 @@ class Idioms(unittest.TestCase):
     def test_lg03(self):
         self.assertEqual(n("Foo* f = new Foo;\ndelete f;\ndelete[] a;\n", "LG03"), 3)
         self.assertEqual(n("void* operator new(size_t);\nFoo(const Foo&) = delete;\nnew (buf) Foo;\n", "LG03"), 0)
-        self.assertEqual(n("p = new Foo;\n", "LG03", "heap.cpp"), 0)
+        self.assertEqual(n("p = new Foo;\n", "LG03", "mclib/heap.cpp"), 0)
+
+    def test_lg03_allowlist_is_explicit_paths_not_names(self):
+        for p in ("mclib/mlr/mlrtexturepool.cpp", "mclib/stuff/memorystream.cpp", "x/heap.cpp", "GameOS/gameos/arena_util.cpp"):
+            self.assertEqual(n("p = new Foo;\n", "LG03", p), 1, p)
+        for p, why in r.ALLOC_ALLOWLIST.items():
+            self.assertEqual(n("p = new Foo;\n", "LG03", p), 0, p)
+            self.assertTrue(why.strip(), p)
+
+    def test_inc_files_are_scanned(self):
+        self.assertIn(".inc", r.EXTS)
+        self.assertTrue(r._wanted("mclib/file_mod.inc", ["mclib"]))
+        self.assertGreater(n("const char* a = 0;\nGetFileAttributesA(p);\n", "LG11", "mclib/file_mod.inc"), 0)
 
     def test_lg04(self):
         src = "enum Kind { A, B };\nstruct V {\n  Kind kind;\n  union { int i; float f; };\n};\n"

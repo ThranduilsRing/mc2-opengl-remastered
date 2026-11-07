@@ -75,7 +75,7 @@ PLATFORM_API_EXEMPT = {
     "GameOS/include/platform_windef.h": ("LG01",),
     "GameOS/include/platform_winnt.h": ("LG02",),
 }
-EXTS = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl")
+EXTS = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl", ".inc")   # .inc: mclib/file.cpp includes file_mod.inc, so it counts as code
 EXCLUDE_PARTS = {"3rdparty", "graphify-out", "__pycache__", ".git", "out", "Tracy"}
 
 IDIOMS = {
@@ -132,7 +132,21 @@ R_NEW = re.compile(r"(?<![\w:])new\s+(?!\()[A-Za-z_:]")
 R_DELETE = re.compile(r"(?<![\w:])delete\b(?!\s*;)(?!\s*,)(?!\s*\))")
 R_EQ_DELETE = re.compile(r"=\s*delete\b")
 R_OPERATOR = re.compile(r"\boperator\s+(new|delete)\b")
-ALLOC_FILE = re.compile(r"(heap|alloc|pool|memory|gosmem|new_?delete|arena)", re.I)
+# LG03 allocator-implementation allowlist: raw new/delete is the job of these files. Explicit paths only,
+# one reason each; a file NAME containing "pool"/"memory" etc. exempts nothing (pools and streams that own
+# resources with raw new/delete are real LG03 sites).
+ALLOC_ALLOWLIST = {
+    "mclib/heap.cpp": "engine heap implementation: obtains and releases blocks",
+    "mclib/heap.h": "engine heap declarations and inline block helpers",
+    "mclib/dheap.h": "debug heap wrapper over the engine heap",
+    "mclib/open_heap.h": "open-addressed heap block table backing the engine heap",
+    "mclib/alloc_probe.cpp": "allocation probe: intercepts and counts raw allocations",
+    "mclib/alloc_probe.h": "allocation probe declarations",
+    "GameOS/include/memorymanager.hpp": "GameOS memory manager entry points (gos_Malloc/gos_Free family)",
+    "GameOS/gameos/mc2_alloc_backend.h": "allocator backend selection for the engine heap",
+    "GameOS/gameos/alloc_stats_proof.inc": "allocator statistics proof: exercises raw allocation on purpose",
+    "RenderCore/FrameArena.h": "per-frame arena: placement-constructs into its own block",
+}
 R_UNION = re.compile(r"\bunion\b\s*\w*\s*(\{|$)")
 R_TAGFIELD = re.compile(r"\b\w*(?:type|kind|tag|Type|Kind|Tag)\w*\s*;|\benum\b")
 R_SWITCH_TK = re.compile(r"\bswitch\s*\(\s*[\w\s\[\]\.\*\(\)]*?(?:->|\.)\s*\w*(?:[Tt]ype|[Kk]ind)\w*\s*\)")
@@ -212,7 +226,7 @@ def scan_text(text: str, path: str = "") -> dict:
     """Return {idiom_id: [1-based line numbers]} for one file's text."""
     nc, bl = strip(text)
     hits = defaultdict(list)
-    allocator_file = bool(ALLOC_FILE.search(os.path.basename(path)))
+    allocator_file = path in ALLOC_ALLOWLIST
     last_fn = ""
     clamp_pending = []          # (line, var, op)
     onesided = []

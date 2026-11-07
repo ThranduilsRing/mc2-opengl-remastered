@@ -54,8 +54,8 @@
    "LG05": 81,
    "LG06": 128,
    "LG07": 0,
-   "LG08": 36,
-   "LG09": 6,
+   "LG08": 44,
+   "LG09": 12,
    "LG10": 7,
    "LG11": 35,
    "LG12a": 29,
@@ -187,17 +187,17 @@
   "mclib": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 284,
+   "LG03": 307,
    "LG04": 12,
-   "LG05": 99,
-   "LG06": 32,
+   "LG05": 101,
+   "LG06": 47,
    "LG07": 0,
-   "LG08": 9,
-   "LG09": 1,
-   "LG10": 6,
-   "LG11": 25,
+   "LG08": 30,
+   "LG09": 5,
+   "LG10": 8,
+   "LG11": 49,
    "LG12a": 40,
-   "LG12b": 8,
+   "LG12b": 24,
    "LG13": 15,
    "LG14": 41,
    "LG15": 0,
@@ -303,6 +303,10 @@
    "LG12b": 5
   },
   "GameOS/gameos/MC2Strings.h": {},
+  "GameOS/gameos/alloc_stats_proof.inc": {
+   "LG08": 8,
+   "LG09": 6
+  },
   "GameOS/gameos/asset_scale.cpp": {
    "LG05": 2,
    "LG06": 3,
@@ -341,8 +345,8 @@
   },
   "GameOS/gameos/engine_present_vk.h": {},
   "GameOS/gameos/engine_present_vk_imgui.cpp": {
-   "LG06": 0,
-   "LG08": 0
+   "LG06": 1,
+   "LG08": 3
   },
   "GameOS/gameos/engine_present_vk_internal.h": {},
   "GameOS/gameos/gameos.cpp": {
@@ -1000,7 +1004,7 @@
   "GameOS/include/gameos_music_cache.h": {},
   "GameOS/include/gameos_resource.hpp": {},
   "GameOS/include/mc2_debug_out.h": {
-   "LG12a": 0
+   "LG12a": 2
   },
   "GameOS/include/mc2_diag_verbose.h": {},
   "GameOS/include/mc2_dialog.h": {},
@@ -1481,7 +1485,7 @@
   },
   "code/equipment_validator.h": {},
   "code/facet_token.h": {
-   "LG06": 0
+   "LG06": 1
   },
   "code/fire_executor_registry.cpp": {},
   "code/fire_executor_registry.h": {
@@ -1661,7 +1665,7 @@
   },
   "code/logisticsdialog.cpp": {
    "LG11": 7,
-   "LG12b": 10
+   "LG12b": 11
   },
   "code/logisticsdialog.h": {},
   "code/logisticserrors.h": {},
@@ -2350,7 +2354,7 @@
   "mclib/appearance_rng.cpp": {},
   "mclib/appearance_rng.h": {},
   "mclib/apprtype.cpp": {
-   "LG03": 0,
+   "LG03": 3,
    "LG05": 1,
    "LG06": 1
   },
@@ -2359,7 +2363,7 @@
    "LG10": 1
   },
   "mclib/assimp_importer.cpp": {
-   "LG05": 8,
+   "LG05": 9,
    "LG08": 3,
    "LG11": 1,
    "LG12a": 2
@@ -2445,7 +2449,7 @@
   "mclib/content_error.cpp": {},
   "mclib/content_error.h": {},
   "mclib/content_ir.cpp": {
-   "LG08": 0
+   "LG08": 2
   },
   "mclib/content_ir.h": {},
   "mclib/content_socket.h": {},
@@ -2503,7 +2507,7 @@
   "mclib/err.cpp": {},
   "mclib/err.h": {},
   "mclib/fastfile.cpp": {
-   "LG03": 0,
+   "LG03": 1,
    "LG05": 2,
    "LG11": 1
   },
@@ -2527,6 +2531,15 @@
   "mclib/file.h": {
    "LG06": 1,
    "LG17": 1
+  },
+  "mclib/file_mod.inc": {
+   "LG05": 2,
+   "LG06": 15,
+   "LG08": 21,
+   "LG09": 4,
+   "LG10": 2,
+   "LG11": 24,
+   "LG12b": 16
   },
   "mclib/fit_number.h": {},
   "mclib/floathelp.cpp": {},
@@ -2632,7 +2645,7 @@
   },
   "mclib/gosfx/tube.hpp": {},
   "mclib/gvactor.cpp": {
-   "LG03": 0,
+   "LG03": 2,
    "LG05": 2,
    "LG12a": 1
   },
@@ -2706,7 +2719,7 @@
    "LG08": 1
   },
   "mclib/mech3d_type.cpp": {
-   "LG03": 0,
+   "LG03": 3,
    "LG05": 4,
    "LG12a": 2
   },
@@ -2736,6 +2749,7 @@
    "LG14": 1
   },
   "mclib/mlr/gosimagepool.cpp": {
+   "LG03": 5,
    "LG06": 3
   },
   "mclib/mlr/gosimagepool.hpp": {
@@ -2936,6 +2950,7 @@
   },
   "mclib/mlr/mlrtexture.hpp": {},
   "mclib/mlr/mlrtexturepool.cpp": {
+   "LG03": 16,
    "LG06": 2
   },
   "mclib/mlr/mlrtexturepool.hpp": {
@@ -3036,7 +3051,7 @@
   "mclib/particles/light_manager.h": {},
   "mclib/particles/spec.h": {},
   "mclib/particles/spec_library.cpp": {
-   "LG03": 1,
+   "LG03": 2,
    "LG05": 1
   },
   "mclib/particles/spec_library.h": {},
@@ -3124,6 +3139,7 @@
    "LG17": 2
   },
   "mclib/stuff/memorystream.cpp": {
+   "LG03": 2,
    "LG12a": 1
   },
   "mclib/stuff/memorystream.hpp": {},
@@ -3303,7 +3319,7 @@
    "LG20": 1
   }
  },
- "head": "c75f86dc0",
+ "head": "82a61bd11",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
