@@ -62,6 +62,8 @@ void mc2SharedSceneColorDestroy(Mc2SharedSceneColor* c);
 // islands co-write LOAD color attachments over the SAME shared images.
 struct VkImageResource;
 VkImageResource* mc2SharedSceneColorGetResource(Mc2SharedSceneColorSlot slot);
+// Changes whenever any slot is created or destroyed; descriptor sets that cache a shared view key on it.
+unsigned long long mc2SharedSceneColorGeneration();
 #endif
 
 #endif // MC2_VULKAN_ISLAND

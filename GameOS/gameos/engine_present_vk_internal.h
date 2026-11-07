@@ -84,6 +84,9 @@ struct EnginePresentVk::Impl {
     mc2vk::FsrProvider fsr;
     VkDescriptorSet fsrSet = VK_NULL_HANDLE;
     VkImageView fsrSetView = VK_NULL_HANDLE;
+    // Shared scene-target generation fsrSet was written against: binding 1 names the object-id (or scene) view, which a
+    // target recreation destroys while the FSR output view can stay the same.
+    unsigned long long fsrSetTargetsGen = ~0ull;
     uint32_t        imgW = 0, imgH = 0;
 
     // Asynchronous readback; the copy buffer is reused only after completion.
