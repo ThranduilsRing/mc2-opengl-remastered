@@ -158,6 +158,9 @@ public:
 		// MC2_FRAME_JOBS=1. Plain uint32_t; no race (parallelForRange barrier ensures
 		// workers finish before serial reads).
 		uint32_t                    boundsFrame;
+		// Presentation-walk ground-height cache: valid while xy and TerrainRuntime::g_heightEpoch match.
+		float                       groundCacheX = 0.0f, groundCacheY = 0.0f, groundCacheZ = 0.0f;
+		uint32_t                    groundCacheEpoch = 0xFFFFFFFFu;
 
 		Stuff::Vector4D				upperLeft;		//used to draw select boxes.  Can be 3D Now!
 		Stuff::Vector4D				lowerRight;		//used to draw select boxes.

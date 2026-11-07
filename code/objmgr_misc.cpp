@@ -614,7 +614,16 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 							// Must force here as well.
 							glm::vec3 pos = walkObj->getPosition();
 							float rot = walkObj->getRotation();
-							pos.z = TerrainRuntime::groundElevation(pos);
+							// Static terrain objects keep xy; terrain height only changes via setVertexHeight (epoch).
+							if (appearance->groundCacheEpoch == TerrainRuntime::g_heightEpoch &&
+								appearance->groundCacheX == pos.x && appearance->groundCacheY == pos.y)
+								pos.z = appearance->groundCacheZ;
+							else
+							{
+								pos.z = TerrainRuntime::groundElevation(pos);
+								appearance->groundCacheX = pos.x; appearance->groundCacheY = pos.y;
+								appearance->groundCacheZ = pos.z; appearance->groundCacheEpoch = TerrainRuntime::g_heightEpoch;
+							}
 							long drawFlags = walkObj->drawFlags;
 							int teamID = walkObj->getTeamId();
 							appearance->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));

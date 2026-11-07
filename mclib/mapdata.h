@@ -16,6 +16,7 @@
 #ifndef DMAPDATA_H
 #include"dmapdata.h"
 #endif
+#include"terrain_runtime.h"
 
 #ifndef HEAP_H
 #include"heap.h"

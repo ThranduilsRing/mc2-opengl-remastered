@@ -23,6 +23,9 @@
 
 namespace TerrainRuntime
 {
+	// Bumped by every terrain vertex height write; per-object ground-height caches compare against it.
+	inline uint32_t g_heightEpoch = 0;
+
 	enum class FeatureMask
 	{
 		FM_Cliff = 0,      // slope-derived (live approximation)
