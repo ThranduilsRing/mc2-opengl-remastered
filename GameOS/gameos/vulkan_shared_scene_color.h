@@ -25,7 +25,6 @@
 #ifndef MC2_VULKAN_SHARED_SCENE_COLOR_H
 #define MC2_VULKAN_SHARED_SCENE_COLOR_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 // Which scene GBuffer slot a shared-color owner backs (also the island lookup key).
@@ -64,5 +63,4 @@ struct VkImageResource;
 VkImageResource* mc2SharedSceneColorGetResource(Mc2SharedSceneColorSlot slot);
 #endif
 
-#endif // MC2_VULKAN_ISLAND
 #endif // MC2_VULKAN_SHARED_SCENE_COLOR_H

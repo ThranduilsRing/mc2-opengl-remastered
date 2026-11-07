@@ -3,7 +3,6 @@
 #define MC2_VULKAN_SKY_ISLAND_H
 #include <stdint.h>
 
-#ifdef MC2_VULKAN_ISLAND
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,5 +18,4 @@ void mc2_vk_sky_island_destroy(void);
 #ifdef __cplusplus
 }
 #endif
-#endif // MC2_VULKAN_ISLAND
 #endif

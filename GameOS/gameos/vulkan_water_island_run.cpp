@@ -15,7 +15,6 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 #include "../../mclib/battle_bench_wait.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 int gos_GetWaterReflectionQuality();
 
@@ -456,4 +455,3 @@ extern "C" int mc2_vk_water_island_run(
     return 0;
 }
 
-#endif // MC2_VULKAN_ISLAND

@@ -9,7 +9,6 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "texture_decode.h"   // gos_GetTextureTexels
 #include "../../mclib/battle_bench_wait.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 // ===========================================================================
@@ -611,4 +610,3 @@ extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, f
     g_prefixClearColor[3] = a;
 }
 
-#endif // MC2_VULKAN_ISLAND

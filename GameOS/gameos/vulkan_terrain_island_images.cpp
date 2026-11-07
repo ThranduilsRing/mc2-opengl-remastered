@@ -21,7 +21,6 @@
 static_assert(mc2terrain::ColormapAtlas::kRgba8 == mc2tex::kVkFormatRgba8Unorm && mc2terrain::ColormapAtlas::kBc7Unorm == mc2tex::kVkFormatBc7Unorm
               && mc2terrain::ColormapAtlas::kBc7Srgb == mc2tex::kVkFormatBc7Srgb, "colormap atlas formats drifted from the decoder's VkFormat values");
 
-#ifdef MC2_VULKAN_ISLAND
 
 // Shared rendered-surface query: analytic cement, road alpha and vegetation exclusion.
 extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
@@ -739,4 +738,3 @@ void import_concrete_detail(TerrainIsland* s) {
 
 } // namespace
 
-#endif // MC2_VULKAN_ISLAND

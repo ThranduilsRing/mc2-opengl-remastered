@@ -3,7 +3,6 @@
 #include "vk_owned.h"
 #include "vulkan_water_island_internal.h"
 
-#ifdef MC2_VULKAN_ISLAND
 
 
 namespace vk_water_detail {
@@ -338,4 +337,3 @@ bool init_island(WaterIsland* s, int w, int h) {
 
 } // namespace vk_water_detail
 
-#endif // MC2_VULKAN_ISLAND

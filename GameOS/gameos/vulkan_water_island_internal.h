@@ -6,7 +6,6 @@
 #ifndef VULKAN_WATER_ISLAND_INTERNAL_H
 #define VULKAN_WATER_ISLAND_INTERNAL_H
 
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -268,6 +267,5 @@ bool ensure_shore(WaterIsland* s);
 bool init_island(WaterIsland* s, int w, int h);
 }  // namespace vk_water_detail
 
-#endif // MC2_VULKAN_ISLAND
 
 #endif // VULKAN_WATER_ISLAND_INTERNAL_H

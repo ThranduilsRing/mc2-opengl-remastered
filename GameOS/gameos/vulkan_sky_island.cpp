@@ -1,7 +1,6 @@
 // vulkan_sky_island.cpp -- VK-PARITY-F3: HDRI equirect sky co-write. See header.
 // Structure follows vulkan_legacy_shape_island.cpp (shared-GBuffer LOAD pass,
 // parity-fenced submit) and vulkan_water_island.cpp ensure_hdri (copy-once import).
-#ifdef MC2_VULKAN_ISLAND
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -477,4 +476,3 @@ extern "C" void mc2_vk_sky_island_destroy(void) {
     mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Sky);
 }
 
-#endif // MC2_VULKAN_ISLAND

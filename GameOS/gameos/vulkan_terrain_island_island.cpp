@@ -5,7 +5,6 @@
 #include "Gates/gate_cold.h"
 #include <cstdlib>
 
-#ifdef MC2_VULKAN_ISLAND
 
 #include <bit>
 
@@ -786,4 +785,3 @@ std::optional<Mc2GroundLightingFrame> mc2_vk_ground_lighting_frame() {
     return s->groundFrame;
 }
 
-#endif // MC2_VULKAN_ISLAND
