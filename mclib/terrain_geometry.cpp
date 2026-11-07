@@ -602,7 +602,6 @@ void Terrain::geometry (void)
 		}
 	}
 
-	#ifdef MC2_VULKAN_ISLAND
 	if (mc2_terrain_feed_observation_enabled() && objBlockInfo && objVertexActive) {
 		extern uint32_t g_mc2RenderFrame;
 		std::vector<uint8_t> blocks(static_cast<size_t>(numObjBlocks));
@@ -613,7 +612,6 @@ void Terrain::geometry (void)
 			static_cast<size_t>(realVerticesMapSide) * realVerticesMapSide}, {solid, solidCount},
 			gos_terrain_indirect::SolidWindowEnabled());
 	}
-	#endif
 
 	if (s_gpOn) {
 		const unsigned long long _geoTotal = (unsigned long long)

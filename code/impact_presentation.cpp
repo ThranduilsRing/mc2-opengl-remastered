@@ -18,9 +18,7 @@
 #include "../mclib/timing.h"
 #include "../mclib/weaponfx.h"
 
-#ifdef MC2_VULKAN_ISLAND
 #include "../GameOS/gameos/vulkan_impact_decals.h"
-#endif
 
 #include <tracy/Tracy.hpp>
 
@@ -239,9 +237,7 @@ void reset() {
     g_pool.clear();
     g_builtCount = 0;
     g_builtHot = 0;
-#ifdef MC2_VULKAN_ISLAND
     gos_SetImpactDecalFrame(nullptr, 0, 0);
-#endif
 }
 
 // G7b K3: everything that reads the sim (queue drain, anchor poses, object classes) runs here, at the render extract.
@@ -297,9 +293,7 @@ void extract() {
 }
 
 void frame() {
-#ifdef MC2_VULKAN_ISLAND
     gos_SetImpactDecalFrame(g_gpu, g_builtCount, g_builtHot);
-#endif
 }
 
 }  // namespace impact_presentation

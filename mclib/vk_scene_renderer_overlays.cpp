@@ -105,16 +105,12 @@ void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (RenderSubmissions& su
 				(submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
 				(submissions.masterVertexNodes[i].vertices))
 			{
-#ifdef MC2_VULKAN_ISLAND
 				vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_SHADOW, 0);
-#endif
 				submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 			}
 		}
 	}
-#ifdef MC2_VULKAN_ISLAND
 	vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
-#endif
 	} // end RenderLists.ShadowBlobs
 }
 
@@ -145,9 +141,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (RenderSubmissions
                     (submissions.masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
                     (submissions.masterVertexNodes[i].vertices))
             {
-#ifdef MC2_VULKAN_ISLAND
                 vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ALPHA, static_cast<uint32_t>(states));
-#endif
                 submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
             }
         }
@@ -195,9 +189,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (RenderSubmissions& s
 		if ((submissions.masterVertexNodes[i].flags & MC2_ISEFFECTS) &&
 			(submissions.masterVertexNodes[i].vertices))
 		{
-#ifdef MC2_VULKAN_ISLAND
 			vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
-#endif
 			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
@@ -212,16 +204,12 @@ void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (RenderSubmissions& s
 		if ((submissions.masterVertexNodes[i].flags & MC2_ISSPOTLGT) &&
 			(submissions.masterVertexNodes[i].vertices))
 		{
-#ifdef MC2_VULKAN_ISLAND
 			vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
-#endif
 			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
 	
-#ifdef MC2_VULKAN_ISLAND
 	vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
-#endif
 	gos_SetRenderState( gos_State_ZWrite, 0);
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState( gos_State_Perspective, 1);

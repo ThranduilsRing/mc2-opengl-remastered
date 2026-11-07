@@ -1027,13 +1027,11 @@ void Mission::initFinalizeGeometry() {
 	// land and GameMap are both stable by this point (terrain init + MOVE_readData
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
-#ifdef MC2_VULKAN_ISLAND
     // Camera activation selects this same source later. Select it before the
     // load barrier so sky/water upload the mission HDRI rather than the boot sky.
     GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z); }
     mc2PrewarmMissionPipelines();
-#endif
 }
 
