@@ -22,54 +22,49 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
-aText*		DeadPilotListItem::s_nameText = nullptr;
-aText*		DeadPilotListItem::s_rankText = nullptr;
-aText*		DeadPilotListItem::s_missionText = nullptr;
-aText*		DeadPilotListItem::s_killsText = nullptr;
-aRect*		DeadPilotListItem::s_area = nullptr;
-aRect*		DeadPilotListItem::s_liveIconRect = nullptr;
-aRect*		DeadPilotListItem::s_deadIconRect = nullptr;
+
+// One owner per template set: value members, no new/delete pairs. Children copy from these,
+// nothing borrows a pointer into them past construction.
+struct DeadPilotListItem::Templates
+{
+	aText	nameText, rankText, missionText, killsText;
+	aRect	area, liveIconRect, deadIconRect;
+};
+
+struct ActivePilotListItem::Templates
+{
+	aObject		icons[8];
+	aText		nameText, missionText, killsText, rankText, gunneryText, pilotingText;
+	aText		promotionText, medalText, medalAwardedText;
+	aRect		outline[5];
+	aRect		area, iconRect, killIconRect;
+	AttributeMeter	attributeMeters[2];
+	PilotPromotionArea	pilotPromotionArea;
+	aObject		medals[MAX_MEDAL];
+	aAnimation	skillAnim, medalAwardedAnim, pilotPromotedAnim;
+};
+
+struct SpecialtyListItem::Templates
+{
+	aButton		radioButton;
+	aObject		skillIcons[4];
+	aAnimation	highlightAnim, normalAnim, pressedAnim;
+	aText		description;
+	aRect		area, outline;
+};
+
+std::unique_ptr<DeadPilotListItem::Templates> DeadPilotListItem::s_tpl;
 long		DeadPilotListItem::s_itemCount = 0;
 
-aText*		ActivePilotListItem::s_nameText = nullptr;
-aText*		ActivePilotListItem::s_missionText = nullptr;
-aText*		ActivePilotListItem::s_killsText = nullptr;
-
-aText*		ActivePilotListItem::s_rankText = nullptr;
-aText*		ActivePilotListItem::s_gunneryText = nullptr;
-aText*		ActivePilotListItem::s_pilotingText = nullptr;
-
+std::unique_ptr<ActivePilotListItem::Templates> ActivePilotListItem::s_tpl;
 long		ActivePilotListItem::s_itemCount = 0;
-aRect*		ActivePilotListItem::s_outline[5];
-aObject*	ActivePilotListItem::s_icons[8];
-aRect*		ActivePilotListItem::s_area = nullptr;
-aRect*		ActivePilotListItem::s_iconRect = nullptr;		
-AttributeMeter*		ActivePilotListItem::s_attributeMeters[2] = { nullptr,nullptr};
-aRect*		ActivePilotListItem::s_killIconRect = nullptr;
-PilotPromotionArea* ActivePilotListItem::s_pilotPromotionArea = nullptr;
-aText*		ActivePilotListItem::s_medalAwardedText = nullptr;
-aText*		ActivePilotListItem::s_medalText= nullptr;
-aText*		ActivePilotListItem::s_promotionText = nullptr;
-aObject*	ActivePilotListItem::s_medals[MAX_MEDAL] = {nullptr};
-
-aAnimation*		ActivePilotListItem::s_skillAnim = nullptr;
-aAnimation*		ActivePilotListItem::s_medalAwardedAnim = nullptr;
-aAnimation*		ActivePilotListItem::s_pilotPromotedAnim = nullptr;
 long		ActivePilotListItem::s_totalWidth = 0;	
 
 
 
 PilotPromotionArea*	PilotReviewScreen::s_curPromotion = nullptr;;
 
-aButton*	SpecialtyListItem::s_radioButton = nullptr;
-aObject*		SpecialtyListItem::s_skillIcons[4] = {nullptr,nullptr,nullptr,nullptr};
-aAnimation*	SpecialtyListItem::s_highlightAnim = nullptr;
-aAnimation*	SpecialtyListItem::s_normalAnim = nullptr;
-aAnimation*	SpecialtyListItem::s_pressedAnim = nullptr;
-aText*		SpecialtyListItem::s_description = nullptr;
-aRect*		SpecialtyListItem::s_area = nullptr;
-aRect*		SpecialtyListItem::s_outline = nullptr;
-long		SpecialtyListItem::s_itemCount = 0; // hack, we really don't want to delete these each time
+std::unique_ptr<SpecialtyListItem::Templates> SpecialtyListItem::s_tpl;
 
 
 
@@ -391,35 +386,8 @@ DeadPilotListItem::~DeadPilotListItem()
 
 	s_itemCount--;
 	if ( s_itemCount < 1 )
-	{
-		if ( s_area )
-			delete s_area;
-		s_area = nullptr;
+		s_tpl.reset();
 
-		if ( s_missionText )
-			delete s_missionText;
-		s_missionText = nullptr;
-
-		if ( s_killsText )
-			delete s_killsText;
-		s_killsText = nullptr;
-
-		if ( s_rankText )
-			delete s_rankText;
-		s_rankText = nullptr;
-
-		if ( s_nameText )
-			delete s_nameText;
-		s_nameText = nullptr;
-
-		if ( s_liveIconRect )
-			delete s_liveIconRect;
-		s_liveIconRect = nullptr;
-
-		if ( s_deadIconRect )
-			delete s_deadIconRect;
-		s_deadIconRect = nullptr;	
-	}
 }
 
 bool	DeadPilotListItem::isDone()
@@ -428,21 +396,15 @@ bool	DeadPilotListItem::isDone()
 }
 void	DeadPilotListItem::init( FitIniFile* file )
 {
-	s_area = new aRect;
-	s_missionText = new aText;
-	s_killsText = new aText;
-	s_rankText = new aText;
-	s_nameText = new aText;
-	s_liveIconRect = new aRect;
-	s_deadIconRect = new aRect;
+	s_tpl = std::make_unique<Templates>();
 
-	s_area->init( file, "PilotReviewKIABox" );
-	s_liveIconRect->init( file, "KIABoxPilotIcon" );
-	s_deadIconRect->init( file, "KIABoxDeadIcon" );
-	s_missionText->init( file, "KIAMissionsText" );
-	s_rankText->init( file, "KIARankText" );
-	s_nameText->init( file, "KIAPilotNameText" );
-	s_killsText->init( file, "KIAKillsText" );
+	s_tpl->area.init( file, "PilotReviewKIABox" );
+	s_tpl->liveIconRect.init( file, "KIABoxPilotIcon" );
+	s_tpl->deadIconRect.init( file, "KIABoxDeadIcon" );
+	s_tpl->missionText.init( file, "KIAMissionsText" );
+	s_tpl->rankText.init( file, "KIARankText" );
+	s_tpl->nameText.init( file, "KIAPilotNameText" );
+	s_tpl->killsText.init( file, "KIAKillsText" );
 
 
 }
@@ -452,12 +414,13 @@ DeadPilotListItem::DeadPilotListItem( LogisticsPilot* pPilot )
 	char tmpText[256];	
 	char realText[256];
 
-	aObject::init( s_area->left(), s_area->top(), s_area->width(), s_area->height() );
+	s_itemCount++;
+	aObject::init( s_tpl->area.left(), s_tpl->area.top(), s_tpl->area.width(), s_tpl->area.height() );
 
-	killsText = *s_killsText;
-	nameText = *s_nameText;
-	rankText = *s_rankText;
-	missionText = *s_missionText;
+	killsText = s_tpl->killsText;
+	nameText = s_tpl->nameText;
+	rankText = s_tpl->rankText;
+	missionText = s_tpl->missionText;
 
 	int missions = pPilot->getNumberMissions();
 	cLoadString( IDS_PILOT_MISSIONS, tmpText, 255 );
@@ -521,29 +484,29 @@ void DeadPilotListItem::render()
 	tmp.bottom = globalY() + height();
 
 	aObject::render();
-	drawEmptyRect( tmp, s_area->getColor(), s_area->getColor() );
+	drawEmptyRect( tmp, s_tpl->area.getColor(), s_tpl->area.getColor() );
 	
-	liveIcon->render( globalX() + s_liveIconRect->left(), 
-						globalY() + s_liveIconRect->top(),
-						globalX() + s_liveIconRect->left() + s_liveIconRect->width(),
-						globalY() + s_liveIconRect->top() + s_liveIconRect->height() );
+	liveIcon->render( globalX() + s_tpl->liveIconRect.left(), 
+						globalY() + s_tpl->liveIconRect.top(),
+						globalX() + s_tpl->liveIconRect.left() + s_tpl->liveIconRect.width(),
+						globalY() + s_tpl->liveIconRect.top() + s_tpl->liveIconRect.height() );
 
-	tmp.left = globalX() + s_liveIconRect->left();
-	tmp.top = globalY() + s_liveIconRect->top();
-	tmp.right = globalX() + s_liveIconRect->left() + s_liveIconRect->width();
-	tmp.bottom = globalY() + s_liveIconRect->top() + s_liveIconRect->height();
-	drawEmptyRect( tmp, s_liveIconRect->getColor(), s_liveIconRect->getColor() );
+	tmp.left = globalX() + s_tpl->liveIconRect.left();
+	tmp.top = globalY() + s_tpl->liveIconRect.top();
+	tmp.right = globalX() + s_tpl->liveIconRect.left() + s_tpl->liveIconRect.width();
+	tmp.bottom = globalY() + s_tpl->liveIconRect.top() + s_tpl->liveIconRect.height();
+	drawEmptyRect( tmp, s_tpl->liveIconRect.getColor(), s_tpl->liveIconRect.getColor() );
 
-	deadIcon->render(	globalX() + s_deadIconRect->left(), 
-						globalY() + s_deadIconRect->top(),
-						globalX() + s_deadIconRect->left() +  s_deadIconRect->width(),
-						globalY() + s_deadIconRect->top() + s_deadIconRect->height() );
+	deadIcon->render(	globalX() + s_tpl->deadIconRect.left(), 
+						globalY() + s_tpl->deadIconRect.top(),
+						globalX() + s_tpl->deadIconRect.left() +  s_tpl->deadIconRect.width(),
+						globalY() + s_tpl->deadIconRect.top() + s_tpl->deadIconRect.height() );
 
-	tmp.left = globalX() + s_deadIconRect->left();
-	tmp.top = globalY() + s_deadIconRect->top();
-	tmp.right = globalX() + s_deadIconRect->left() + s_deadIconRect->width();
-	tmp.bottom = globalY() + s_deadIconRect->top() + s_deadIconRect->height();
-	drawEmptyRect( tmp, s_deadIconRect->getColor(), s_deadIconRect->getColor() );
+	tmp.left = globalX() + s_tpl->deadIconRect.left();
+	tmp.top = globalY() + s_tpl->deadIconRect.top();
+	tmp.right = globalX() + s_tpl->deadIconRect.left() + s_tpl->deadIconRect.width();
+	tmp.bottom = globalY() + s_tpl->deadIconRect.top() + s_tpl->deadIconRect.height();
+	drawEmptyRect( tmp, s_tpl->deadIconRect.getColor(), s_tpl->deadIconRect.getColor() );
 
 
 
@@ -757,7 +720,7 @@ void	ActivePilotListItem::render()
 
 	if ( currentTime - timeOffset > 0 )
 	{
-		medalAwardedText.setColor( s_medalAwardedAnim->getColor( currentTime - timeOffset ) );
+		medalAwardedText.setColor( s_tpl->medalAwardedAnim.getColor( currentTime - timeOffset ) );
 		if ( currentTime - timeOffset > 1.5 )
 		{
 			float tmpTime = currentTime - timeOffset - 1.5;
@@ -796,7 +759,7 @@ void	ActivePilotListItem::render()
 		{
 			soundSystem->playDigitalSample( LOG_PROMOTED );
 		}
-		promotionText.setColor( s_pilotPromotedAnim->getColor( currentTime -timeOffset ) );
+		promotionText.setColor( s_tpl->pilotPromotedAnim.getColor( currentTime -timeOffset ) );
 	}
 	else
 	{
@@ -809,12 +772,12 @@ void	ActivePilotListItem::render()
 
 	GUI_RECT tmp;
 
-	tmp.left = s_area->left();
-	tmp.top = globalY() + s_area->top();
-	tmp.right = tmp.left + s_area->width();
-	tmp.bottom = tmp.top + s_area->height();
+	tmp.left = s_tpl->area.left();
+	tmp.top = globalY() + s_tpl->area.top();
+	tmp.right = tmp.left + s_tpl->area.width();
+	tmp.bottom = tmp.top + s_tpl->area.height();
 
-	drawEmptyRect( tmp, s_area->getColor(), s_area->getColor() );
+	drawEmptyRect( tmp, s_tpl->area.getColor(), s_tpl->area.getColor() );
 
 	// now do same thing with line....
 	tmp.right = tmp.left + s_totalWidth;
@@ -824,12 +787,12 @@ void	ActivePilotListItem::render()
 	drawRect( tmp, 0xff002f55 );
 
 
-	pilotIcon->render( globalX() + s_iconRect->left(),
-						globalY() + s_iconRect->top(),
-						globalX() + s_iconRect->right(),
-						globalY() + s_iconRect->bottom() );
+	pilotIcon->render( globalX() + s_tpl->iconRect.left(),
+						globalY() + s_tpl->iconRect.top(),
+						globalX() + s_tpl->iconRect.right(),
+						globalY() + s_tpl->iconRect.bottom() );
 
-	long color = s_skillAnim->getColor( currentTime );
+	long color = s_tpl->skillAnim.getColor( currentTime );
 	
 
 	for (auto & attributeMeter : attributeMeters)
@@ -839,18 +802,18 @@ void	ActivePilotListItem::render()
 		attributeMeter.render(globalX(), globalY());
 	}
 
-	for (auto & i : s_outline)
+	for (auto & i : s_tpl->outline)
 	{
-		tmp = i->getGUI_RECT();
+		tmp = i.getGUI_RECT();
 		tmp.left += globalX();
 		tmp.top += globalY();
 		tmp.right += globalX();
 		tmp.bottom += globalY();
-		drawEmptyRect( tmp, i->getColor(), i->getColor() );
+		drawEmptyRect( tmp, i.getColor(), i.getColor() );
 	}
 
-	long x = globalX() + s_killIconRect->left();
-	long y = globalY() + s_killIconRect->top();
+	long x = globalX() + s_tpl->killIconRect.left();
+	long y = globalY() + s_tpl->killIconRect.top();
 
 	int counter = 0;
 	int oldPossible = 2.0 * (currentTime - frameLength - 1.5);
@@ -876,11 +839,11 @@ void	ActivePilotListItem::render()
 			break;
 		if ( counter && !(counter % 8) )
 		{
-			y += s_killIconRect->height() + 1;
-			x = globalX() + s_killIconRect->left();
+			y += s_tpl->killIconRect.height() + 1;
+			x = globalX() + s_tpl->killIconRect.left();
 		}
-		(*iter)->renderUnitIcon( x, y, x + s_killIconRect->width(), y + s_killIconRect->height() );
-		x += s_killIconRect->width() + 1;
+		(*iter)->renderUnitIcon( x, y, x + s_tpl->killIconRect.width(), y + s_tpl->killIconRect.height() );
+		x += s_tpl->killIconRect.width() + 1;
 		counter++;
 	}
 	
@@ -894,10 +857,10 @@ void		ActivePilotListItem::update()
 
 	if ( showingPromotion )// if in promotion area, do that...
 	{
-		s_pilotPromotionArea->update();
-		PilotReviewScreen::s_curPromotion = s_pilotPromotionArea;
+		s_tpl->pilotPromotionArea.update();
+		PilotReviewScreen::s_curPromotion = &s_tpl->pilotPromotionArea;
 
-		if ( s_pilotPromotionArea->isDone() )
+		if ( s_tpl->pilotPromotionArea.isDone() )
 		{
 			promotionShown = true;
 			PilotReviewScreen::s_curPromotion = nullptr;
@@ -908,7 +871,7 @@ void		ActivePilotListItem::update()
 	{
 		if ( currentTime > flashTime() + .5f  ) // wait five seconds before bringing in the doors
 		{
-				s_pilotPromotionArea->setPilot( pilot, pilotIcon.get() );
+				s_tpl->pilotPromotionArea.setPilot( pilot, pilotIcon.get() );
 				showingPromotion = true;
 				promotionShown = false;
 				showGUIWindow( true );
@@ -952,155 +915,33 @@ ActivePilotListItem::~ActivePilotListItem()
 	}
 
 	s_itemCount --;
-	if ( s_itemCount < 1 )
+	if ( s_itemCount < 1 && s_tpl )
 	{
-		if ( s_area )
-			delete s_area;
-
-		s_area =nullptr;
-
-		if ( s_missionText )
-			delete s_missionText;
-		s_missionText = nullptr;
-
-		if ( s_killsText )
-			delete s_killsText;
-
-		s_killsText = nullptr;
-
-		if ( s_rankText )
-			delete s_rankText;
-
-		s_rankText = nullptr;
-
-		if ( s_nameText )
-			delete s_nameText;
-
-		s_nameText = nullptr;
-		
-		if ( s_iconRect )
-			delete s_iconRect;
-
-		s_iconRect = nullptr;
-		
-		if ( s_gunneryText )
-			delete s_gunneryText;
-
-		s_gunneryText = nullptr;
-
-		if ( s_pilotingText )
-			delete s_pilotingText;
-
-		s_pilotingText = nullptr;
-
-		if ( s_killIconRect )
-			delete s_killIconRect;
-
-		s_killIconRect = nullptr;
-
-			for (int i = 0; i < 5; i++ )
-			{
-				if ( s_outline[i] )
-					delete s_outline[i];
-
-				s_outline[i] = nullptr;
-			}
-
-			for (int i = 0; i < 7; i++ )
-			{
-				if ( s_icons[i] )
-					delete s_icons[i];
-
-				s_icons[i]= nullptr;
-
-				
-			}
-
-		for (int i = 0; i < MAX_MEDAL; i++ )
-		{
-			if ( s_medals[i] )
-				delete s_medals[i];
-
-			s_medals[i] = nullptr;
-		}
-		
-		if ( s_promotionText )
-			delete s_promotionText;
-
-		s_promotionText = nullptr;
-
-		if ( s_medalText )
-			delete s_medalText;
-
-		s_medalText = nullptr;
-
-		if ( s_medalAwardedText )
-			delete s_medalAwardedText;
-
-		s_medalAwardedText = nullptr;
-
-		if ( s_pilotPromotedAnim )
-			delete s_pilotPromotedAnim;
-
-		s_pilotPromotedAnim = nullptr;
-
-		if ( s_medalAwardedAnim )
-			delete s_medalAwardedAnim;
-		s_medalAwardedAnim = nullptr;
-
-		if ( s_skillAnim )
-			delete s_skillAnim;
-
-		s_skillAnim = nullptr;
-
-		if ( s_pilotPromotionArea )
-			delete s_pilotPromotionArea;
-
-		s_pilotPromotionArea = nullptr;
+		if ( PilotReviewScreen::s_curPromotion == &s_tpl->pilotPromotionArea )
+			PilotReviewScreen::s_curPromotion = nullptr;
+		s_tpl.reset();
 	}
+
 }
 
 void	ActivePilotListItem::init( FitIniFile* file )
 {
-	if ( s_area )
+	if ( s_tpl )
 		return;
-	s_area = new aRect;
-	s_missionText = new aText;
-	s_killsText = new aText;
-	s_rankText = new aText;
-	s_nameText = new aText;
-	s_iconRect = new aRect;
-	s_area = new aRect;
-	s_rankText = new aText;
-	s_gunneryText = new aText;
-	s_pilotingText = new aText;
-	s_killIconRect = new aRect;
-	
-	s_pilotPromotionArea = new PilotPromotionArea;
-	for (auto & s_medal : s_medals)
-		s_medal = new aObject;
+	s_tpl = std::make_unique<Templates>();
 
-	s_promotionText = new aText;
-	s_medalText = new aText;
-	s_medalAwardedText = new aText;
-	s_pilotPromotedAnim = new aAnimation;
-	s_skillAnim = new aAnimation;
-	s_medalAwardedAnim = new aAnimation;
+	s_tpl->nameText.init( file, "ActivePilotNameText" );
+	s_tpl->missionText.init( file, "ActiveMissionsText" );
+	s_tpl->rankText.init( file, "ActiveRankText" );
+	s_tpl->gunneryText.init( file, "ActiveGunneryText" );
+	s_tpl->pilotingText.init( file, "ActivePilotingText" );
+	s_tpl->killsText.init( file, "ActiveKillsNameText" );
 	
-
-
-	s_nameText->init( file, "ActivePilotNameText" );
-	s_missionText->init( file, "ActiveMissionsText" );
-	s_rankText->init( file, "ActiveRankText" );
-	s_gunneryText->init( file, "ActiveGunneryText" );
-	s_pilotingText->init( file, "ActivePilotingText" );
-	s_killsText->init( file, "ActiveKillsNameText" );
+	s_tpl->pilotPromotionArea.init( *file );
 	
-	s_pilotPromotionArea->init( *file );
-	
-	s_promotionText->init( file, "PromotionHeader" );
-	s_medalText->init( file, "MedalDescriptionText" );
-	s_medalAwardedText->init( file, "MedalAwardedHeader" );
+	s_tpl->promotionText.init( file, "PromotionHeader" );
+	s_tpl->medalText.init( file, "MedalDescriptionText" );
+	s_tpl->medalAwardedText.init( file, "MedalAwardedHeader" );
 
 	char name[64];
 	
@@ -1108,45 +949,41 @@ void	ActivePilotListItem::init( FitIniFile* file )
 	for (int i = 0; i < MAX_MEDAL; i++ )
 	{
 		mc2::fmt::to_buf( name, "MedalIcon{:d}", mc2::fmt::as_i32(i) );
-		s_medals[i]->init( file, name );
+		s_tpl->medals[i].init( file, name );
 	}
 
 
 	char buffer[256];
 	for (int i = 0; i < 5; i++ )
 	{
-		s_outline[i] = new aRect;
 		mc2::fmt::to_buf( buffer, "ActiveDutyBoxRect{:d}", mc2::fmt::as_i32(i) );
-		s_outline[i]->init( file, buffer );
+		s_tpl->outline[i].init( file, buffer );
 	}
 
 	for (int i = 0; i < 2; i++ )
 	{
-		s_icons[i] = new aObject;
 		mc2::fmt::to_buf( buffer, "ActiveDutyBoxSkill{:d}", mc2::fmt::as_i32(i) );
-		s_icons[i]->init( file, buffer );
+		s_tpl->icons[i].init( file, buffer );
 
 		mc2::fmt::to_buf( buffer, "ActiveDutyBoxSkillMeter{:d}", mc2::fmt::as_i32(i) );
-		s_attributeMeters[i] = new AttributeMeter();
-		s_attributeMeters[i]->init( file, buffer );
-		s_attributeMeters[i]->setAddedColorMax( 0xffffffff );
-		s_attributeMeters[i]->setAddedColorMin( 0xffffffff );
+		s_tpl->attributeMeters[i].init( file, buffer );
+		s_tpl->attributeMeters[i].setAddedColorMax( 0xffffffff );
+		s_tpl->attributeMeters[i].setAddedColorMin( 0xffffffff );
 	}
 
 	for (int i = 0; i < 5; i++ )
 	{
-		s_icons[i+3] = new aObject;
 		mc2::fmt::to_buf( buffer, "ActiveDutyBoxRankIcon{:d}", mc2::fmt::as_i32(i) );
-		s_icons[i+3]->init( file, buffer );
+		s_tpl->icons[i+3].init( file, buffer );
 	}
 
-	s_area->init( file, "ActiveDutyBox" );
-	s_iconRect->init( file, "ActiveDutyBoxPilotIconRect" );
-	s_killIconRect->init( file,	"KillIcons" );
+	s_tpl->area.init( file, "ActiveDutyBox" );
+	s_tpl->iconRect.init( file, "ActiveDutyBoxPilotIconRect" );
+	s_tpl->killIconRect.init( file,	"KillIcons" );
 
-	s_skillAnim->initWithBlockName( file, "SkillMeterAnimation" );
-	s_pilotPromotedAnim->initWithBlockName( file, "PilotPromotedHeaderAnimation" );
-	s_medalAwardedAnim->initWithBlockName( file, "MedalAwardedAnimation" );
+	s_tpl->skillAnim.initWithBlockName( file, "SkillMeterAnimation" );
+	s_tpl->pilotPromotedAnim.initWithBlockName( file, "PilotPromotedHeaderAnimation" );
+	s_tpl->medalAwardedAnim.initWithBlockName( file, "MedalAwardedAnimation" );
 	
 }
 
@@ -1174,7 +1011,7 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	if ( killCount > 32 )
 		offset = (killCount - 32)/8 + 1;
 
-	offset *= s_killIconRect->height();
+	offset *= s_tpl->killIconRect.height();
 
 	for( int i = 0; i < MAX_MEDAL; i++ )
 	{
@@ -1182,8 +1019,8 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 		{
 			medalIcons[medalCount] = std::make_unique_for_overwrite<aObject>();
 			medalTexts[medalCount] = std::make_unique_for_overwrite<aText>();
-			*medalIcons[medalCount] = *s_medals[i];
-			*medalTexts[medalCount] = *s_medalText;
+			*medalIcons[medalCount] = s_tpl->medals[i];
+			*medalTexts[medalCount] = s_tpl->medalText;
 			medalIcons[medalCount]->move( 0, medalCount* medalIcons[medalCount]->height() + offset );
 			medalTexts[medalCount]->move( 0, medalCount* medalIcons[medalCount]->height() + offset );
 			medalTexts[medalCount]->setText( IDS_MEDAL + i );
@@ -1194,17 +1031,17 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	pilot = pPilot;
 	showingPromotion = 0;
 
-	int top = s_area->top();
+	int top = s_tpl->area.top();
 	
 
-	killsText = *s_killsText;
-	nameText = *s_nameText;
-	rankText = *s_rankText;
-	missionText = *s_missionText;
-	pilotingText = *s_pilotingText;
-	gunneryText = *s_gunneryText;
-	promotionText = *s_promotionText;
-	medalAwardedText = *s_medalAwardedText;
+	killsText = s_tpl->killsText;
+	nameText = s_tpl->nameText;
+	rankText = s_tpl->rankText;
+	missionText = s_tpl->missionText;
+	pilotingText = s_tpl->pilotingText;
+	gunneryText = s_tpl->gunneryText;
+	promotionText = s_tpl->promotionText;
+	medalAwardedText = s_tpl->medalAwardedText;
 	
 	if ( medalCount )
 		promotionText.moveTo( promotionText.left(), medalIcons[medalCount-1]->bottom() + 15 );
@@ -1241,7 +1078,7 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 			bottom = promotionText.top() + 34;
 	}
 
-	aObject::init( 30, top, s_area->width(), bottom );
+	aObject::init( 30, top, s_tpl->area.width(), bottom );
 
 	int missions = pPilot->getNumberMissions();
 	cLoadString( IDS_PILOT_MISSIONS, tmpText, 255 );
@@ -1277,9 +1114,9 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 
 	for (int i = 0; i < 2; i++ )
 	{
-		icons[i] = *s_icons[i];
+		icons[i] = s_tpl->icons[i];
 		addChild( &icons[i] );
-		attributeMeters[i] = *s_attributeMeters[i];
+		attributeMeters[i] = s_tpl->attributeMeters[i];
 	}
 	attributeMeters[0].setValue( pPilot->getGunnery()/100.f - pPilot->getNewGunnery()/100.f );
 	attributeMeters[1].setValue( pPilot->getPiloting()/100.f - pPilot->getNewPiloting()/100.f);
@@ -1287,7 +1124,7 @@ ActivePilotListItem::ActivePilotListItem( LogisticsPilot* pPilot )
 	attributeMeters[1].setAddedValue( pPilot->getNewPiloting()/100.f );
 
 
-	icons[3] = *s_icons[3 + pPilot->getRank()];
+	icons[3] = s_tpl->icons[3 + pPilot->getRank()];
 	addChild( &icons[3] );
 
 	addChild( &killsText );
@@ -1714,81 +1551,33 @@ void		SpecialtyListItem::update()
 
 void SpecialtyListItem::deleteStatics()
 {
-	if ( s_itemCount < 1 )
-	{
-		if ( s_radioButton )
-			delete s_radioButton;
-		s_radioButton = nullptr;
-
-		if ( s_highlightAnim )
-			delete s_highlightAnim;
-
-		s_highlightAnim = nullptr;
-
-		if ( s_normalAnim )
-			delete s_normalAnim;
-		s_normalAnim = nullptr;
-
-		if ( s_pressedAnim )
-			delete s_pressedAnim;
-		s_pressedAnim = nullptr;
-
-		if ( s_description )
-			delete s_description;
-		s_description = nullptr;
-
-		if ( s_area )
-			delete s_area;
-		s_area = nullptr;
-
-		if ( s_outline )
-			delete s_outline;
-		s_outline = nullptr;
-		
-		for ( int i = 0; i < 4; i++ )
-		{
-			if ( s_skillIcons[i] )
-				delete s_skillIcons[i];
-			s_skillIcons[i] = nullptr;
-
-		}
-	}
+	s_tpl.reset();
 }
 
 SpecialtyListItem::~SpecialtyListItem()
 {
-	s_itemCount--;
-
-
 }
 
 void			SpecialtyListItem::init( FitIniFile* file )
 {
-	s_radioButton = new aButton;
-	s_highlightAnim = new aAnimation;
-	s_normalAnim = new aAnimation;
-	s_pressedAnim = new aAnimation;
-	s_description = new aText;
-	s_area = new aRect;
-	s_outline = new aRect;
+	s_tpl = std::make_unique<Templates>();
 
-	s_radioButton->init( *file, "PromoteGadgetRightRadioButton" );
+	s_tpl->radioButton.init( *file, "PromoteGadgetRightRadioButton" );
 	
 	char buffer[64];
 	for ( int i =0; i < 4; i++ )
 	{
-		s_skillIcons[i] = new aObject;
 		mc2::fmt::to_buf( buffer, "SkillTypeIcon{:d}", mc2::fmt::as_i32(i) );
-		s_skillIcons[i]->init( file, buffer );
+		s_tpl->skillIcons[i].init( file, buffer );
 	}
-	s_description->init( file, "SkillDescriptionText" );
+	s_tpl->description.init( file, "SkillDescriptionText" );
 
 	file->seekBlock( "PromoteGadgetRightSkillEntryBox" );
-	s_highlightAnim->init( file, "Highlight" );
-	s_normalAnim->init( file, "Normal" );
-	s_pressedAnim->init( file, "Pressed" );
-	s_outline->init( file, "PromoteGadgetRightSkillEntryOutline" );
-	s_area->init( file, "PromoteGadgetRightSkillEntryBox" );
+	s_tpl->highlightAnim.init( file, "Highlight" );
+	s_tpl->normalAnim.init( file, "Normal" );
+	s_tpl->pressedAnim.init( file, "Pressed" );
+	s_tpl->outline.init( file, "PromoteGadgetRightSkillEntryOutline" );
+	s_tpl->area.init( file, "PromoteGadgetRightSkillEntryBox" );
 
 }
  
@@ -1809,18 +1598,17 @@ int					SpecialtyListItem::getID()
 
 SpecialtyListItem::SpecialtyListItem( int newID )
 {
-	s_itemCount++;
 	ID = newID;
-	aObject::init( s_area->left(), s_area->top(), s_area->right(), s_area->bottom() );
+	aObject::init( s_tpl->area.left(), s_tpl->area.top(), s_tpl->area.right(), s_tpl->area.bottom() );
 
-	normalAnim = *s_normalAnim;
-	pressedAnim = *s_pressedAnim;
-	highlightAnim = *s_highlightAnim;
-	description = *s_description;
+	normalAnim = s_tpl->normalAnim;
+	pressedAnim = s_tpl->pressedAnim;
+	highlightAnim = s_tpl->highlightAnim;
+	description = s_tpl->description;
 	int iconType = static_cast<int>(MechWarrior::skillTypes[newID]);
-	icon = *s_skillIcons[iconType];
-	radioButton  = *s_radioButton;
-	outline = *s_outline;
+	icon = s_tpl->skillIcons[iconType];
+	radioButton  = s_tpl->radioButton;
+	outline = s_tpl->outline;
 	outline.bOutline = true;
 
 	addChild( &description );
