@@ -65,11 +65,11 @@ MLR_I_C_DT_PMesh::MLR_I_C_DT_PMesh(
 		break;
 		default:
 		{
-			Stuff::DynamicArrayOf<DWORD> smallColors;
+			std::vector<DWORD> smallColors;
 
 			MemoryStreamIO_Read(stream, &smallColors);
 		
-			int i, len = static_cast<int>(smallColors.GetLength());
+			int i, len = static_cast<int>(smallColors.size());
 
 			colors.SetLength(len);
 
@@ -142,12 +142,12 @@ void
 
 	MLR_I_DT_PMesh::Save(stream);
 
-	Stuff::DynamicArrayOf<DWORD> smallColors;
+	std::vector<DWORD> smallColors;
 	int i, len = static_cast<int>(colors.GetLength());
 
 	const Stuff::RGBAColor *data = colors.GetData();
 
-	smallColors.SetLength(len);
+	smallColors.resize(len);
 
 	for(i=0;i<len;i++)
 	{
@@ -176,8 +176,8 @@ void
 	Check_Object(this); 
 	Check_Pointer(data);
 
-	Verify(coords.GetLength() == 0 || dataSize == coords.GetLength());
-//	Verify(texCoords.GetLength() == 0 || dataSize == texCoords.GetLength());
+	Verify(coords.size() == 0 || dataSize == coords.size());
+//	Verify(texCoords.size() == 0 || dataSize == texCoords.size());
 
 	colors.AssignData(data, dataSize);
 }

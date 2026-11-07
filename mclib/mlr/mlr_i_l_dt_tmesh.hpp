@@ -97,14 +97,14 @@ namespace MidLevelRenderer {
 		{ 
 			Check_Object(this);
 			size_t ret = MLR_I_C_DT_TMesh::GetSize();
-			ret += normals.GetSize();
+			ret += normals.size() * sizeof(normals[0]);
 			ret += litColors.GetSize();
 
 			return ret;
 		}
 
 	protected:
-		Stuff::DynamicArrayOf<glm::vec3> normals;		// Base address of normal list 
+		std::vector<glm::vec3> normals;		// Base address of normal list 
 
 		Stuff::DynamicArrayOf<Stuff::RGBAColor> litColors;
 	};
