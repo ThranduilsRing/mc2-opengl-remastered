@@ -40,7 +40,7 @@ inline void particleStallRecord(int idx, mc2::czstring path, double us) {
     ParticleStallAccum& a = particleStallAccum(idx);
     a.calls++;
     a.total_us += us;
-    if (us > a.max_us) a.max_us = us;
+    a.max_us = std::max(a.max_us, us);
     // Periodic summary so logs aren't per-flush noisy. One early one-shot at 10 (so
     // low-activity FX paths still report at least once), then every 50 timed flushes.
     if (a.calls == 10ull || (a.calls % 50ull) == 0ull) {

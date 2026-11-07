@@ -218,7 +218,7 @@ void event(Stream s, std::format_string<A...> f, A&&... a) noexcept {
 #define MC2_LOG_EVERY_N_FRAMES(cat, lvl, n, ...)                                              \
     do {                                                                                      \
         if (::mc2::log::enabled(::mc2::log::Cat::cat, ::mc2::log::Level::lvl) &&              \
-            (::mc2::log::frameNumber() % uint64_t(n)) == 0)                                   \
+            (::mc2::log::frameNumber() % static_cast<uint64_t>(n)) == 0)                                   \
             MC2_LOG(cat, lvl, __VA_ARGS__);                                                   \
     } while (0)
 

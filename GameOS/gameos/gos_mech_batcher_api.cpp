@@ -228,19 +228,19 @@ extern "C" void  batcher_setMechMetalRoughness(float r) {
 extern "C" float batcher_getMechMetalRoughness()             { return s_mechMetalRoughness; }
 // BT2018-MECH-MATERIAL-GAMMA-1/TUNING-1: imported-mech albedo knobs (imported only).
 extern "C" void  batcher_setImportedMechGamma(float g) {
-    if (g < 1.0f) g = 1.0f; if (g > 2.4f) g = 2.4f; g_importedMechGamma = g;
+    g_importedMechGamma = std::clamp(g, 1.0f, 2.4f);
 }
 extern "C" float batcher_getImportedMechGamma()              { return g_importedMechGamma; }
 extern "C" void  batcher_setImportedMechAlbedoScale(float s) {
-    if (s < 0.25f) s = 0.25f; if (s > 2.5f) s = 2.5f; g_importedMechAlbedoScale = s;
+    g_importedMechAlbedoScale = std::clamp(s, 0.25f, 2.5f);
 }
 extern "C" float batcher_getImportedMechAlbedoScale()        { return g_importedMechAlbedoScale; }
 extern "C" void  batcher_setImportedMechAoStrength(float s) {
-    if (s < 0.0f) s = 0.0f; if (s > 1.0f) s = 1.0f; g_importedMechAoStrength = s;
+    g_importedMechAoStrength = std::clamp(s, 0.0f, 1.0f);
 }
 extern "C" float batcher_getImportedMechAoStrength()         { return g_importedMechAoStrength; }
 extern "C" void  batcher_setImportedMechNormalStrength(float s) {
-    if (s < 0.0f) s = 0.0f; if (s > 1.0f) s = 1.0f; g_importedMechNormalStrength = s;
+    g_importedMechNormalStrength = std::clamp(s, 0.0f, 1.0f);
 }
 extern "C" float batcher_getImportedMechNormalStrength()     { return g_importedMechNormalStrength; }
 extern "C" void  batcher_setMechGlassRoughness(float r) {

@@ -222,7 +222,7 @@ static void substrate_resetSlotCounts() {
 // Maintained regardless of the gate; only frameBegin's consumption is gated.
 void substrate_rebuildStaticPrefix(const GpuActorRecord* recs, uint32_t count) {
     if (!substrate_isEnabled() || !s_initialized || !s_staticRecords) return;
-    if (count > s_maxActors) count = s_maxActors;  // clamp; shortfall surfaces as cull overflow
+    count = std::min(count, s_maxActors);  // clamp; shortfall surfaces as cull overflow
     uint32_t vis = 0u;
     for (uint32_t k = 0u; k < count; ++k) {
         s_staticRecords[k] = recs[k];
