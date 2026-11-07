@@ -14,6 +14,21 @@ This documentation update does not certify fresh visual, editor or mod acceptanc
 
 ---
 
+## FSR 3.1: `Undefined-Value-StorageImage-FormatMismatch-ImageView` on `rw_luma_history` (upstream SDK)
+
+Every FSR dispatch logs one validation warning (about 200 per mission, 3,192 in a
+full gate run): set 0 binding 7 `rw_luma_history` is declared `Rgba8` but the bound
+view is `R16G16B16A16_SFLOAT`. Neither side is ours. FidelityFX SDK v1.1.4 (the pinned
+`3rdparty/fidelityfx`) creates `FSR3UPSCALER_LumaHistory1/2` as
+`FFX_SURFACE_FORMAT_R16G16B16A16_FLOAT` (`sdk/src/components/fsr3upscaler/ffx_fsr3upscaler.cpp`)
+while its Vulkan shaders, built from `ffx_fsr3upscaler_callbacks_glsl.h`, declare
+`layout(..., rgba8) uniform image2D rw_luma_history`. Both live inside the prebuilt
+`amd_fidelityfx_vk.dll`; the app never supplies that resource. The fix is a DLL rebuilt
+from v1.1.4 with that declaration changed to `rgba16f` (needs the SDK's full shader
+permutation build) or a newer SDK with Vulkan FSR 3.1. The warning stays visible.
+
+---
+
 ## Smoke harness: intermittent `crash_silent` / `heartbeat_freeze` — HOW TO HANDLE
 
 A `--tier tier1` BATCH run intermittently fails ONE mission with `crash_silent`

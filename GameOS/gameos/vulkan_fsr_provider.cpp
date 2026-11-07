@@ -9,11 +9,30 @@
 #include <ffx_api/ffx_upscale.h>
 #include <ffx_api/vk/ffx_api_vk.h>
 #include <ffx_api/ffx_api_loader.h>
+#include <atomic>
 #include <chrono>
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 namespace mc2vk {
 namespace {
+std::atomic<bool> g_providerFailed{false};
+// Native AA: render size == upscale size. The availability probe uses the same call at a small size.
+bool createUpscaleContext(const ffxFunctions& fns, VulkanContext& c, uint32_t width, uint32_t height, ffxContext* out) {
+    ffxCreateBackendVKDesc backend{};
+    backend.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
+    backend.vkDevice = c.device();
+    backend.vkPhysicalDevice = c.physicalDevice();
+    backend.vkDeviceProcAddr = vkGetDeviceProcAddr;
+    ffxCreateContextDescUpscale up{};
+    up.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
+    up.header.pNext = &backend.header;
+    up.flags = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE | FFX_UPSCALE_ENABLE_DEPTH_INVERTED | FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
+    up.maxRenderSize = {width, height};
+    up.maxUpscaleSize = {width, height};
+    if (fns.CreateContext(out, &up.header, nullptr) != FFX_API_RETURN_OK) { *out = nullptr; return false; }
+    return true;
+}
 FfxApiResource wrap(VkImage image, VkFormat format, uint32_t w, uint32_t h, VkImageUsageFlags usage, uint32_t state) {
     VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ci.imageType = VK_IMAGE_TYPE_2D; ci.format = format; ci.extent = {w, h, 1};
@@ -66,18 +85,7 @@ struct FsrProvider::Impl {
         }
         if (!vkImageResourceCreate(&output, c.device(), c.physicalDevice(), width, height, VK_FORMAT_R16G16B16A16_SFLOAT,
                 VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, "scene.fsrOutput")) return false;
-        ffxCreateBackendVKDesc backend{};
-        backend.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
-        backend.vkDevice = c.device();
-        backend.vkPhysicalDevice = c.physicalDevice();
-        backend.vkDeviceProcAddr = vkGetDeviceProcAddr;
-        ffxCreateContextDescUpscale up{};
-        up.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
-        up.header.pNext = &backend.header;
-        up.flags = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE | FFX_UPSCALE_ENABLE_DEPTH_INVERTED | FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
-        up.maxRenderSize = {width, height};
-        up.maxUpscaleSize = {width, height};
-        if (fns.CreateContext(&context, &up.header, nullptr) != FFX_API_RETURN_OK) { context = nullptr; return false; }
+        if (!createUpscaleContext(fns, c, width, height, &context)) return false;
         w = width; h = height;
         resetFrames = 2;
         return true;
@@ -96,7 +104,10 @@ bool FsrProvider::prepare(VulkanContext& ctx, const VkImageResource& scene, cons
     Impl& s = *impl_;
     if (s.failed) return false;
     if (s.context && (s.w != scene.w || s.h != scene.h)) s.destroyContext();    // resize
-    if (!s.context && !s.create(ctx, scene.w, scene.h)) { s.failed = true; s.setRegistered(false); return false; }
+    if (!s.context && !s.create(ctx, scene.w, scene.h)) {
+        s.failed = true; s.setRegistered(false); g_providerFailed.store(true, std::memory_order_relaxed);
+        return false;
+    }
     if (s.sceneImage != scene.image.get() || s.depthImage != depth.image.get()) {   // mission load recreated the targets
         s.sceneImage = scene.image.get(); s.depthImage = depth.image.get();
         s.resetFrames = 2;
@@ -171,8 +182,34 @@ bool FsrProvider::record(VkCommandBuffer cb, const VkImageResource& scene, const
     VkMemoryBarrier m{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
     m.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; m.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &m, 0, nullptr, 0, nullptr);
-    if (!ok) { s.failed = true; s.setRegistered(false); }
+    if (!ok) { s.failed = true; s.setRegistered(false); g_providerFailed.store(true, std::memory_order_relaxed); }
     return ok;
+}
+
+bool fsrProviderAvailable(VulkanContext& ctx) {
+    if (g_providerFailed.load(std::memory_order_relaxed)) return false;
+    // Probed once, independent of present: the material samplers are created before the first FsrProvider::prepare,
+    // so the answer must already hold what prepare() will find (device features, DLL entry points, a context the
+    // SDK actually creates on this device). The probe context is destroyed at once; the DLL stays loaded.
+    static const bool available = [&ctx] {
+        const char* reason = "ok";
+        bool ok = false;
+        if (!ctx.valid()) reason = "no_device";
+        else if (!ctx.temporalFeaturesEnabled()) reason = "device_features";
+        else if (HMODULE dll = LoadLibraryA("amd_fidelityfx_vk.dll"); !dll) reason = "dll_missing";
+        else {
+            ffxFunctions fns{};
+            ffxLoadFunctions(&fns, dll);
+            ffxContext probe = nullptr;
+            if (!fns.CreateContext || !fns.DestroyContext || !fns.Dispatch) reason = "dll_entry_points";
+            else if (!createUpscaleContext(fns, ctx, 64, 64, &probe)) reason = "create_context";
+            else { fns.DestroyContext(&probe, nullptr); ok = true; }
+        }
+        if (mc2_diag::tagRequested("VK_PRESENT"))
+            mc2::fmt::print_err("[VK_PRESENT] fsr_probe available={} reason={}\n", ok ? 1 : 0, reason);
+        return ok;
+    }();
+    return available;
 }
 
 VkImageView FsrProvider::outputView() const { return impl_ ? impl_->output.view.get() : VK_NULL_HANDLE; }

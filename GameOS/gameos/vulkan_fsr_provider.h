@@ -29,5 +29,9 @@ private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
+// Provider availability for the material sampler mip bias, valid before the first prepare(): device features,
+// a loadable DLL with its entry points and a probe context the SDK creates, checked once (logs one
+// [VK_PRESENT] fsr_probe line); false for good after any provider create or dispatch failure.
+bool fsrProviderAvailable(VulkanContext& ctx);
 }
 #endif

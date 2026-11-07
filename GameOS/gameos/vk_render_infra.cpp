@@ -3,6 +3,8 @@
 #include "vk_render_infra.h"
 #include "hitch_stats.h"
 #include "vulkan_context.h"
+#include "vulkan_fsr_provider.h"
+#include "diagnostic_trace.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
 #include "../../RenderCore/TemporalInputs.h"
@@ -51,9 +53,17 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
 void materialSampler(VkSamplerCreateInfo& info) {
-    // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite); AA off keeps log2(renderScale).
+    // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite, and
+    // the provider available: fsrProviderAvailable probes the SDK itself, so it holds before present first prepares FSR);
+    // the spatial-AA fallback keeps log2(renderScale).
     const float scale = static_cast<float>(mc2::gate::get<"MC2_RENDER_SCALE">());
-    info.mipLodBias = RenderCore::temporal::mipBias(scale, scale == 1.0f && mc2::options::current().spatialAA != 0);
+    const bool provider = scale == 1.0f && mc2::options::current().spatialAA != 0 &&
+                          mc2vk::fsrProviderAvailable(mc2vk::getOrCreateEngineVulkanContext());
+    info.mipLodBias = RenderCore::temporal::mipBias(scale, provider);
+    static std::atomic<int> logged{-1};
+    if (const int key = provider ? 1 : 0;
+        logged.exchange(key, std::memory_order_relaxed) != key && mc2_diag::tagRequested("VK_PRESENT"))
+        mc2::fmt::print_err("[VK_PRESENT] material_mip_bias={:.2f} fsr_provider={}\n", info.mipLodBias, key);
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {
