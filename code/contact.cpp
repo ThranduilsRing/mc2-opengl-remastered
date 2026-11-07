@@ -630,9 +630,9 @@ long SensorSystem::scanBattlefield (void)
 			// contactOrdinals below, including out-of-range removals in original order.
 			if (owner->distanceFrom(position) > sensorRange &&
 				glm::length(position - owner->getPosition()) > visualRange) continue;
-			while (ci < contactOrdinals.size() && contactOrdinals[ci] < int(cand.ordinal)) visit.push_back({contactOrdinals[ci++], false});
-			while (ci < contactOrdinals.size() && contactOrdinals[ci] == int(cand.ordinal)) ci++;
-			visit.push_back({int(cand.ordinal), true});
+			while (ci < contactOrdinals.size() && contactOrdinals[ci] < static_cast<int>(cand.ordinal)) visit.push_back({contactOrdinals[ci++], false});
+			while (ci < contactOrdinals.size() && contactOrdinals[ci] == static_cast<int>(cand.ordinal)) ci++;
+			visit.push_back({static_cast<int>(cand.ordinal), true});
 		}
 		for (; ci < contactOrdinals.size(); ci++) visit.push_back({contactOrdinals[ci], false});
 	}

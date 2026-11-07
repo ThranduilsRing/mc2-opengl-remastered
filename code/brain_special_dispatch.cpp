@@ -240,7 +240,7 @@ static bool parseCallVerbKey(mc2::czstring verbStr, char outKey[128]) {
     if (!keyEnd) return false;
     size_t keyLen = static_cast<size_t>((keyEnd - keyStart));
     if (keyLen == 0) return false;
-    if (keyLen > 127) keyLen = 127;
+    keyLen = std::min<size_t>(keyLen, 127);
     std::strncpy(outKey, keyStart, keyLen);
     outKey[keyLen] = '\0';
     return true;
@@ -781,7 +781,7 @@ static bool parseWaitUntilCondition(mc2::czstring verbStr, char outKey[32], char
     const char* ke = std::strchr(p, close);
     if (!ke || ke == p) return false;
     size_t kl = static_cast<size_t>((ke - p));
-    if (kl > 31) kl = 31;
+    kl = std::min<size_t>(kl, 31);
     std::memcpy(outKey, p, kl); outKey[kl] = '\0';
     p = ke + 1;
     while (*p == ' ' || *p == '\t') ++p;

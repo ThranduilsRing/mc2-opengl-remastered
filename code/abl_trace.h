@@ -112,8 +112,7 @@ struct FireScope {
 		g_frame.stmts += stmts;
 		g_frame.states += states;
 		g_frame.us += us;
-		if (depth > g_frame.maxDepth)
-			g_frame.maxDepth = depth;
+		g_frame.maxDepth = std::max(g_frame.maxDepth, depth);
 
 		char buf[256];
 		(*std::format_to_n(buf, (sizeof(buf)) - 1,
