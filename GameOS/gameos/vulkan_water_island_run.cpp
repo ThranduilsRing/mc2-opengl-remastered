@@ -230,7 +230,7 @@ extern "C" int mc2_vk_water_island_run(
     const auto ground = mc2_vk_ground_lighting_frame();
     if (!ground) return 0;
     s->groundLighting.copy(s->device, par, *ground);
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
 
     const clk::time_point tStage0 = clk::now();
     const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame

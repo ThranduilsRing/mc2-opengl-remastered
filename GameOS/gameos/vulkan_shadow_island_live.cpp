@@ -1206,6 +1206,7 @@ static bool ensure_island(int size) {
         }
         mc2vk::islandInitFailures(mc2vk::IslandKind::Shadow).reset();
         islandSlot() = std::move(fresh);
+        mc2vk::bumpDescEpoch();   // new depth/dummy views and sampler may reuse retired handle values
     }
     return true;
 }
@@ -1224,14 +1225,14 @@ extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
     return s->bake.prewarmTypeBounds(in) ? 1 : 0;
 }
 
-bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {
+bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set, DescWriteStamp* stamp24) {
     ShadowIsland* s=parkedIsland();
     if (!s) {
         if (!ensure_island(1)) return false; // inactive descriptors need no full-size map
         s=parkedIsland();
     }
     const bool ready=mover_shadows_enabled() && productReady(g_dynShadowReadyThisFrame);
-    return s->mover.bind(device,set,s->depthResource.view.get(),ready);
+    return s->mover.bind(device,set,s->depthResource.view.get(),ready,stamp24);
 }
 
 extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], const float sun[3],

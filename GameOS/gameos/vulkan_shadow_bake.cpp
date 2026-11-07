@@ -241,6 +241,7 @@ void ShadowBake::invalidate() {
     objectFb_.reset(); objectView_.reset(); objectImage_.reset();
     maskView_.reset(); maskImage_.reset();
     topR8View_.reset(); topR8_.reset();
+    mc2vk::bumpDescEpoch();
     topSide_ = topMips_ = 0;
     topInitialized_ = false;
     terrainVbo_.reset(); terrainIbo_.reset(); objectInstances_.reset(); objectUbo_.reset();
@@ -359,6 +360,7 @@ bool ShadowBake::ensureProducts(int maskTexels) {
     maskImage_ = std::move(mask);
     topR8View_ = std::move(topView);
     topR8_ = std::move(top);
+    mc2vk::bumpDescEpoch();   // new mask/object views: descriptor-write caches keyed on the old view handles must rewrite
     maskTexels_ = maskTexels;
     maskMips_ = mips;
     topSide_ = topSide;

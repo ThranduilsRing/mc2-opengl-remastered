@@ -324,6 +324,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     MaskBinding boundMask[mc2vk::kMaxFramesInFlight]{};
     VkImageView boundObjectView[mc2vk::kMaxFramesInFlight]{};   // binding 14 last written with this view (null: copied from 24 or never written)
     uint32_t boundObjectViewMap[mc2vk::kMaxFramesInFlight]{};
+    mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]{};   // binding 24 of set[i]
+    mc2vk::DescWriteStamp copy14Stamp[mc2vk::kMaxFramesInFlight]{};  // binding 14 copied from 24 (no object view)
     mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
     mc2vk::ResidentTextureRef albedoOnTexture;
@@ -1467,6 +1469,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->authoredAttempted = false;
     s->packetMaterialIds.clear();
     ++s->mapGeneration;
+    mc2vk::bumpDescEpoch();   // map change: every descriptor write cache rewrites once
 }
 
 extern "C" uint64_t mc2_color_prop_island_alpha_content_hash() {
@@ -1904,6 +1907,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (groundNow) { s->lastGround = *groundNow; s->groundMissing = false; s->groundMissingFrames = 0; }
     else if (++s->groundMissingFrames > 2) {   // terrain gone (teardown, ring growth, mission change): the cached offsets and copied set may name freed/recycled resources
         s->lastGround.reset(); for (auto& copied : s->groundCopied) copied = false;
+        s->groundLighting.invalidate();
     }
     if (!groundNow && !s->groundMissing) {
         s->groundMissing = true;
@@ -1912,7 +1916,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // The copy reads the terrain island's descriptor set, so it runs only from a LIVE frame (a cached set handle can outlive a terrain teardown);
     // a parity that never copied one has nothing valid to bind and skips the draw.
     if (groundNow) { s->groundLighting.copy(s->device, par, *groundNow); s->groundCopied[par] = true; }
-    if (!s->lastGround || !s->groundCopied[par] || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
+    if (!s->lastGround || !s->groundCopied[par] || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par], &s->moverStamp[par])) return 0;
     const Mc2GroundLightingFrame* ground = &*s->lastGround;
     const auto objectView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
     if (objectView) {
@@ -1925,11 +1929,16 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
         vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
         }
+        s->copy14Stamp[par].invalidate();   // 14 now holds the object view, not a copy of 24
     } else {
         s->boundObjectView[par] = VK_NULL_HANDLE;
-        VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
-        copy.srcSet=copy.dstSet=s->set[par]; copy.srcBinding=24; copy.dstBinding=14; copy.descriptorCount=1;
-        vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
+        // Re-copy only when 24 changed (its stamp revision) or the map did.
+        if (s->copy14Stamp[par].needsWrite({1, s->moverStamp[par].rev, s->mapGeneration, mc2vk::descKeyWord(s->set[par])})) {
+            VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
+            copy.srcSet=copy.dstSet=s->set[par]; copy.srcBinding=24; copy.dstBinding=14; copy.descriptorCount=1;
+            vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
+            mc2vk::noteDescWrites(1,0);
+        } else mc2vk::noteDescWrites(0,1);
     }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {

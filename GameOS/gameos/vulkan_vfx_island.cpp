@@ -158,6 +158,8 @@ struct VfxIsland : mc2vk::IslandState {
     // submit completed.
     VkDescriptorSet  set[kVfxSlots] = {};
     VkBuffer         ringBound[kVfxSlots][2] = {};
+    mc2vk::DescWriteStamp moverStamp[kVfxSlots]{};   // binding 24 of set[i]
+    mc2vk::DescWriteStamp maskStamp[kVfxSlots]{};    // binding 17 of set[i] (bake mask or the white fallback)
     mc2vk::OwnedShaderModule vert, frag, vegFrag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedSampler vegetationSampler;
@@ -599,7 +601,7 @@ void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRi
 
 // Both draw paths borrow current shadow resources only after this parity retires.
 bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return false;
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) return false;
     // The white page is a valid fallback while the bake is pending. This set
     // has retired its prior submission, so changing borrowed views is safe.
     auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
@@ -610,6 +612,12 @@ bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
     const VkImageView mask = mc2_vk_shadow_island_bake_ready()
         ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : white;
     const VkDescriptorImageInfo image{s->samp.get(),mask,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    // Mask vs white is the view; whiteId keys a recycled white page.
+    if (!s->maskStamp[par].needsWrite({mc2vk::descKeyWord(s->set[par]),mc2vk::descKeyWord(mask),mc2vk::descKeyWord(image.sampler),whiteId})) {
+        mc2vk::noteDescWrites(0,1);
+        return true;
+    }
+    mc2vk::noteDescWrites(1,0);
     VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     write.dstSet=s->set[par]; write.dstBinding=17; write.descriptorCount=1;
     write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;

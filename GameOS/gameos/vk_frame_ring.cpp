@@ -47,6 +47,7 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     mapped_ = static_cast<uint8_t*>(info.pMappedData);
     core_.setCapacity(perSlot);
     ++growths_;
+    bumpDescEpoch();   // descriptor-write caches keyed on the ring buffer handle must rewrite
     if (policyRefusals_ && perSlot >= refusedCapacity_) {
         mc2::fmt::print_err("[VK_RESIDENCY v1] framering recovered refused_count={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(policyRefusals_)));
         policyRefusals_ = 0; refusedCapacity_ = 0;

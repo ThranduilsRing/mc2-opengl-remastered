@@ -209,6 +209,7 @@ struct gosPostProcess::VkPostScreenFx {
     // A single set makes next-frame preparation wait for the previous GPU pass.
     struct Frame {
         VkDescriptorSet cloudSet = VK_NULL_HANDLE, shoreSet = VK_NULL_HANDLE, shadowSet = VK_NULL_HANDLE;
+        mc2vk::DescWriteStamp moverStamp{}, staticStamp{};   // shadowSet bindings 24 and 2
         VkCommandBuffer cbuf[2]{}; // shadow, then cloud/shoreline
         mc2vk::OwnedCommandPool cpool[2];   // one pool per cb (the two are recorded and submitted at different points of the frame): vkResetCommandPool instead of per-cb reset
         mc2vk::OwnedBuffer cloudUbo, shoreUbo, shadowUbo;
@@ -723,7 +724,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         }
         mc2vk::islandInitFailures(mc2vk::IslandKind::ScreenFx).reset();
     }
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,frame.shadowSet)) { setFallback("mover_receiver_unavailable"); return false; }
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,frame.shadowSet,&frame.moverStamp)) { setFallback("mover_receiver_unavailable"); return false; }
     // The static sun map is the shadow island's, used only when its build is of the engine's current generation, so it pairs with
     // staticLightSpaceMatrix_ below. Without it and without the cascades this pass declines and the GL screen-shadow pass runs.
     float objectMatrix[16]{};
@@ -751,12 +752,17 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         staticInfo.sampler = s->shadowCompareSampler.get();
         staticInfo.imageView = hasStaticShadow ? staticView : s->depthSampleView.get();
         staticInfo.imageLayout = hasStaticShadow ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        const bool write = frame.staticStamp.needsWrite({mc2vk::descKeyWord(frame.shadowSet), mc2vk::descKeyWord(staticInfo.imageView),
+                                                         mc2vk::descKeyWord(staticInfo.sampler), mc2vk::descKeyWord(staticInfo.imageLayout)});
+        mc2vk::noteDescWrites(write ? 1u : 0u, write ? 0u : 1u);
+        if (write) {
         VkWriteDescriptorSet w{};
         w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         w.dstSet = frame.shadowSet; w.dstBinding = 2; w.descriptorCount = 1;
         w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         w.pImageInfo = &staticInfo;
         vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+        }
     }
 
 

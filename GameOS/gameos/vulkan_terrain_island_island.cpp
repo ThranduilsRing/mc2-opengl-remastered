@@ -301,6 +301,7 @@ void write_descriptors(TerrainIsland* s, int parity) {
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &cdInfo; ++n;
     }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
+    s->setRev[i] = mc2vk::nextDescRevision();   // ground-lighting copies of this set are stale
     }   // per-parity set loop
 }
 
@@ -320,14 +321,17 @@ void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc&
     if (s->ringBound[par][0] != ubo.buffer) {
         mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ubo.buffer, sizeof(TerrainFrameUBO));
         s->ringBound[par][0] = ubo.buffer;
+        s->setRev[par] = mc2vk::nextDescRevision();
     }
-    s->groundFrame = {s->set[par], {static_cast<uint32_t>(ubo.offset), static_cast<uint32_t>(lp[0].offset), static_cast<uint32_t>(lp[1].offset), static_cast<uint32_t>(lp[2].offset)}};
-    s->groundFrameNo = mc2vk::getOrCreateEngineVulkanContext().tracker().frameNo();
     for (uint32_t k = 0; k < 3; ++k) {
         if (s->ringBound[par][1 + k] == lp[k].buffer) continue;
         mc2vk::writeDynamicBinding(s->device, s->set[par], 11 + k, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lp[k].buffer, lp[k].range);
         s->ringBound[par][1 + k] = lp[k].buffer;
+        s->setRev[par] = mc2vk::nextDescRevision();
     }
+    // Published after the ring writes so the revision covers them (consumers copy this set's bindings by revision).
+    s->groundFrame = {s->set[par], {static_cast<uint32_t>(ubo.offset), static_cast<uint32_t>(lp[0].offset), static_cast<uint32_t>(lp[1].offset), static_cast<uint32_t>(lp[2].offset)}, s->setRev[par]};
+    s->groundFrameNo = mc2vk::getOrCreateEngineVulkanContext().tracker().frameNo();
 }
 
 // One-time init: fetch shared GBuffer, build LOAD renderpass/framebuffer/pipeline.

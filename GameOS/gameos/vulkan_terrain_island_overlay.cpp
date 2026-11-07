@@ -441,7 +441,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     { ZoneScopedN("VKIsl.Overlay.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
       if (!vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(slotTicket, 5000000000ull, "overlay submission slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     if (s->setBoundFrame[par] != frameNo) {
-        if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
+        if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) return 0;
         // Overlays can be the first terrain consumer of this parity (including load warmup).
         // Initialize the shared set after its wait even when the terrain draw was skipped.
         const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};

@@ -150,6 +150,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_gpu_profile.h"          // VK-GPU-ZONES: per-frame Tracy GPU collect / pass timestamps
+#include "vk_desc_write_cache.h"     // per-frame descriptor write/skip counter (Tracy plot + [VK_DESC_WRITES v1])
 #endif
 #include "engine_present_vk.h"      // VK-P13-SELECTOR-1 / T3: GL->VK present intercept
 #endif
@@ -1152,6 +1153,9 @@ int main(int argc, char** argv)
         }   // !headless
 
         FrameMark;
+#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+        mc2vk::reportDescWrites();
+#endif
         mc2::gpumem::tick(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed)));   // VRAM.Process.MB plot beside the frame marks
 
         {

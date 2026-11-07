@@ -3,6 +3,7 @@
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
 #include "vulkan_ground_lighting.h"
+#include "vk_desc_write_cache.h"
 namespace mc2veg {
 // Fragment-only subset of the terrain layout: FS uses four SSBOs, VS stays at
 // three. Shadows use the shared VFX set 0; this set carries lighting only.
@@ -11,6 +12,7 @@ class GroundLighting {
     mc2vk::OwnedDescriptorSetLayout layout_;
     mc2vk::OwnedDescriptorPool pool_;
     VkDescriptorSet sets_[mc2vk::kMaxFramesInFlight]{};
+    mc2vk::DescWriteStamp stamps_[mc2vk::kMaxFramesInFlight]{};
     // 19 = LOCAL-LIGHTS-2 local-light shadow atlas, read by the pool loop.
     static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16, 19};
     static constexpr size_t kN = sizeof(bindings_) / sizeof(bindings_[0]);
@@ -43,8 +45,16 @@ public:
         alloc.descriptorPool = pool_.get(); alloc.descriptorSetCount = mc2vk::kMaxFramesInFlight; alloc.pSetLayouts = layouts;
         return MC2_VK_ALLOC_SETS(device, &alloc, sets_) == VK_SUCCESS;
     }
-    // Caller must retire this VFX parity before changing its descriptors.
+    // Forget every parity's copy (mission reset: the next copy is issued even if the source key repeats).
+    void invalidate() { for (auto& s : stamps_) s.invalidate(); }
+    // Caller must retire this VFX parity before changing its descriptors. Skipped when this parity already holds the
+    // source set's current revision (terrain bumps it on every write to that set).
     void copy(VkDevice device, uint32_t parity, const Mc2GroundLightingFrame& source) {
+        if (!stamps_[parity].needsWrite({mc2vk::descKeyWord(source.set), source.revision, 0, 0})) {
+            mc2vk::noteDescWrites(0, static_cast<uint32_t>(kN));
+            return;
+        }
+        mc2vk::noteDescWrites(static_cast<uint32_t>(kN), 0);
         VkCopyDescriptorSet copies[kN]{};
         for (size_t k = 0; k < kN; ++k) {
             copies[k].sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
