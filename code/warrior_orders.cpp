@@ -494,23 +494,6 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	if (origin == ORDER_ORIGIN_COMMANDER)
 		setGeneralTacOrder(tacOrder);
 
-	/*
-	if (GameSystemWindow) {
-		char debugStr[200];
-		GameSystemWindow->print("");
-		GameSystemWindow->print("-----------------------------------");
-		sprintf(debugStr, "%s:", name);
-		GameSystemWindow->print(debugStr);
-		sprintf(debugStr, "Longest Range Weapon = %s (%.4f)",
-			MasterComponentList[(MoverPtr(BaseObjectPtr(vehicle)))->inventory[(MoverPtr(BaseObjectPtr(vehicle)))->longestRangeWeapon].masterID].getName(),
-			MasterComponentList[(MoverPtr(BaseObjectPtr(vehicle)))->inventory[(MoverPtr(BaseObjectPtr(vehicle)))->longestRangeWeapon].masterID].getWeaponLongRange());
-		GameSystemWindow->print(debugStr);
-		sprintf(debugStr, "Optimal Range = %.4f", (MoverPtr(BaseObjectPtr(vehicle)))->optimalRange);
-		GameSystemWindow->print(debugStr);
-		GameSystemWindow->print("-----------------------------------");
-	}
-	*/
-
 	return(TACORDER_FAILURE);
 }
 

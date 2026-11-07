@@ -545,36 +545,10 @@ long CSVFile::floatToText (char *result, float num, unsigned long bufLen)
 }			
 
 //---------------------------------------------------------------------------
-long CSVFile::longToTextDec (char *result, long num, unsigned long bufLen)
-{
-	char temp[250];
-	mc2::fmt::to_buf(temp, "{:d}", mc2::fmt::as_i32(num));
-
-	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
-	if (numLength >= bufLen)
-		return(-2);
-
-	strncpy(result,temp,numLength);
-	result[numLength] = '\0';
 	
-	return(NO_ERR);
-}	
 
 //---------------------------------------------------------------------------
-long CSVFile::longToTextHex (char *result, long num, unsigned long bufLen)
-{
-	char temp[250];
-	mc2::fmt::to_buf(temp, "0x{:x}", mc2::fmt::as_u32(num));
-
-	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
-	if (numLength >= bufLen)
-		return(-2);
-
-	strncpy(result,temp,numLength);
-	result[numLength] = '\0';
 	
-	return(NO_ERR);
-}	
 
 //---------------------------------------------------------------------------
 long CSVFile::shortToTextDec (char *result, short num, unsigned long bufLen)

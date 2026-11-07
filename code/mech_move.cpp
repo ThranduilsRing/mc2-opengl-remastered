@@ -670,25 +670,6 @@ void BattleMech::updateTorso (float newRotatePerSec)
 		}
 		control.settings.mech.rotateTorso = turnRate;
 	}
-/*
-	if (target && CombatLog) {
-		static char moveStateChar[NUM_MOVESTATES] = {' ', ' ', ' ', '*', '*', '*'};
-		static char s[512];
-		sprintf(s, "TORSO ROTATE: %-15s %-06d %-05d %-5c, relF = %-06d    torR = %06d   nRot = %06d torRF = %06d(%06d) turnR = %06d",
-			getName(),
-			target->getWatchID(),
-			turn,
-			moveStateChar[getMoveState()],
-			(long)rotateValues[0],
-			(long)rotateValues[1],
-			(long)rotateValues[2],
-			(long)rotateValues[3],
-			(long)rotateValues[4],
-			(long)rotateValues[5]);
-		CombatLog->write(s);
-		CombatLog->write(" ");
-	}
-*/
 }
 
 void BattleMech::setControlSettings (float& newRotate, char& newThrottleSetting, long& newGestureStateGoal, long& minThrottle, long& maxThrottle, float &facingRotate) {

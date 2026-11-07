@@ -9,7 +9,6 @@ set(SOURCES ${SOURCES}
     err.cpp
     content_error.cpp
     floathelp.cpp
-    heap.cpp
     lzcomp.cpp
     lzdecomp.cpp
     mathfunc.cpp

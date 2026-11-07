@@ -9,10 +9,6 @@ wchar_t* StringDup(const wchar_t* s);
 char* StringDupSafe(mc2::czstring s);
 wchar_t* StringDupSafe(const wchar_t* s);
 
-// this function assume that szPath and szLowerPath are valid pointers
-int StringToLower(const char* const szPath, char* szLowerPath, int nLen);
-
-int StringToLowerSafe(const char* const szPath, char* szLowerPath, int nLen);
 /*
 char* WStringToString(const wchar_t* wstring, char* string, int stringMaxLen);
 char* WStringToString(const wchar_t* wstring);

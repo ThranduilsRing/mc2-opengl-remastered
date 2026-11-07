@@ -109,8 +109,6 @@ class FitIniFile : public File
 
 		long floatToText (char *result, float num, unsigned long bufLen);
 		
-		long longToTextDec (char *result, long num, unsigned long bufLen);
-		long longToTextHex (char *result, long num, unsigned long bufLen);
 
 		long shortToTextDec (char *result, short num, unsigned long bufLen);
 		long shortToTextHex (char *result, short num, unsigned long bufLen);
