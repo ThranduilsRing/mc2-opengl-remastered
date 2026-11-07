@@ -17,13 +17,15 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
+
 PROOF_ROOT = "E:/mc2-archive-2026-10/proofs/merge-gate"
 NIFTY = "claude/nifty-mendeleev"
-BELOW_NORMAL = 0x4000
 
 
 def git(*a):
-    return subprocess.run(["git", "-C", ROOT, *a], capture_output=True, text=True).stdout.strip()
+    return subprocess.run(["git", "-C", ROOT, *a], capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
 def refusal():
@@ -61,7 +63,7 @@ def main(argv=None):
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0
-    return subprocess.run(cmd, cwd=ROOT, creationflags=BELOW_NORMAL if os.name == "nt" else 0).returncode
+    return subprocess.run(cmd, cwd=ROOT, **console_child.child_kwargs()).returncode
 
 
 if __name__ == "__main__":
