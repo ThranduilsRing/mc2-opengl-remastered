@@ -1287,7 +1287,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             stamp = source_stamp(src)
             if (row is not None and row[2] is not None and stamp == (row[1], row[2])
                     and os.path.isfile(dst)
-                    and os.path.getsize(dst) == row[1]):
+                    and os.path.getsize(dst) == row[1]
+                    and sha256_file(dst) == row[0]):   # destination BYTES, not size: a same-length corruption must be re-copied
                 src_hashes[rel] = (row[0], row[1], stamp[1])
                 skipped += 1
                 pdb_skipped = pdb_skipped or kind == "pdb"
@@ -1747,7 +1748,7 @@ def verify_published_identity(target, source_root, head):
 def deploy_from_payload(payload, target, src_root, head):
     """Publish a payload built and gated elsewhere (tools/laptop_gate.py): payload/files/<rel> holds every file
     that differs from this install, payload/.deployed_manifest.csv is the full manifest. Every copied byte is
-    sha256-checked against its manifest row, untouched files are size-checked, the exe fingerprint must be a clean HEAD build."""
+    sha256-checked against its manifest row, untouched files are sha256-checked, the exe fingerprint must be a clean HEAD build."""
     from exe_fingerprint import extract, build_current
     payload, target = Path(payload), Path(target)
     manifest = payload / '.deployed_manifest.csv'
@@ -1765,8 +1766,8 @@ def deploy_from_payload(payload, target, src_root, head):
             tmp = dst.with_name(dst.name + '.payload-tmp')
             shutil.copy2(src, tmp)
             os.replace(tmp, dst)
-        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']):
-            fail(f'{rel}: not in the payload and the target copy does not match the manifest (size); the PC v0.4 drifted since the delta was taken')
+        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']) or sha256_file(str(dst)) != row['sha256']:
+            fail(f'{rel}: not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken')
     exe = target / 'mc2.exe'
     fp = extract(exe)
     if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \

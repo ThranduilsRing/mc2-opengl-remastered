@@ -35,3 +35,24 @@ def test_target_path_names_positional_arg():
     r = subprocess.run([sys.executable, str(ROOT / "scripts/deploy_payload.py"), "--target", "E:/mc2-installs/lane9"],
                        capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 2 and "positional target_dir" in r.stderr and "preset name" in r.stderr
+
+
+def test_cache_skip_hashes_destination_bytes_not_size(tmp_path, monkeypatch):
+    """p29 P1: an unchanged source plus a same-size corrupted destination must be re-copied, not certified from the cache."""
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    src, target = tmp_path / "src.bin", tmp_path / "target"
+    target.mkdir()
+    src.write_bytes(b"good-bytes")
+    dst = target / "data.bin"
+    dst.write_bytes(b"good-bytes")
+    stamp = dp.source_stamp(str(src))
+    cache = {"data.bin": (dp.sha256_file(str(src)), stamp[0], stamp[1])}
+    items = [(str(src), "data.bin", "data")]
+    dp.deploy(items, str(target), False, cache=cache)
+    assert dst.read_bytes() == b"good-bytes"
+    dst.write_bytes(b"evil-bytes!"[:10])   # same length as the cached row
+    assert dst.stat().st_size == stamp[0]
+    hashes = dp.deploy(items, str(target), False, cache=cache)
+    assert dst.read_bytes() == b"good-bytes"
+    assert hashes["data.bin"][0] == dp.sha256_file(str(src))
