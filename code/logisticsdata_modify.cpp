@@ -228,7 +228,7 @@ void encryptFile (mc2::czstring inputFile, mc2::czstring outputFile)
 	free(LZData);
 }
 
-void decryptFile (char *inputFile, char *outputFile)
+void decryptFile (mc2::czstring inputFile, mc2::czstring outputFile)
 {
     PAUSE((""));
 
