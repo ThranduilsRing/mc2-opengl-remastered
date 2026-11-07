@@ -29,12 +29,16 @@ inline const ShadowQuality& shadowQuality() {
     // fixed for the lifetime of the renderer and include them in cook keys.
     static const ShadowQuality value=[] {
         int level=mc2::options::current().shadowQuality;
+#ifdef MC2_VULKAN   // the no-Vulkan unit-test tree has no device limits or budget
         level=qualityForLimit(level,static_cast<int>(mc2vk::infra::imageLimit())).level;
         // Reserve room for the complete shadow family, including bake scratch and old/new overlap.
         while(level>0 && !mc2vk::infra::admit(level==2 ? 384ull*1024*1024 : 192ull*1024*1024)) --level;
         if(level!=mc2::options::current().shadowQuality)
             mc2::fmt::print_err("[VK_RESIDENCY v1] refused=shadow_family quality={:d} fallback=quality_{:d} reason=budget_or_device_limits\n",mc2::fmt::as_i32(mc2::options::current().shadowQuality),mc2::fmt::as_i32(level));
         return qualityForLimit(level,static_cast<int>(mc2vk::infra::imageLimit()));
+#else
+        return qualityForLevel(level);
+#endif
     }();
     return value;
 }

@@ -145,6 +145,7 @@ def test_products_and_transients_publish_atomically(tmp_path):
 #include <utility>
 #include <vector>
 #define ZoneScopedN(x)
+namespace mc2vk { inline void bumpDescEpoch() {} }   // descriptor write-cache epoch (vk_desc_write_cache.h)
 static int operation, failAt, live;
 static bool succeed() { return ++operation != failAt; }
 struct Owned {

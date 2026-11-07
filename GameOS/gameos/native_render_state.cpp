@@ -6,6 +6,7 @@
 
 namespace mc2vk {
 bool nativeRenderTargetAvailable(RenderCore::RenderResourceId target) {
+#ifdef MC2_VULKAN   // the no-Vulkan unit-test tree links this TU without a device
     using RenderCore::RenderResourceId;
     const auto* pp=getGosPostProcess();
     switch(target) {
@@ -19,8 +20,16 @@ bool nativeRenderTargetAvailable(RenderCore::RenderResourceId target) {
         case RenderResourceId::Unknown: return false;
         default: return RenderCore::getRenderResource(target) != nullptr;
     }
+#else
+    (void)target;
+    return false;
+#endif
 }
 bool nativeRenderHealthy() {
+#ifdef MC2_VULKAN
     return engineVulkanContextValid() && getOrCreateEngineVulkanContext().health().validationErrors.load()==0;
+#else
+    return false;
+#endif
 }
 }

@@ -13,8 +13,10 @@
 #include <algorithm>
 #include <cstdint>
 
+#ifdef MC2_VULKAN   // the no-Vulkan unit-test tree (build64-tests) uses only the FrameRing counters above the VK half
 #include <volk.h>
 #include "vk_owned.h"
+#endif
 
 namespace mc2vk {
 
@@ -61,6 +63,7 @@ private:
     uint32_t slot_ = 0;
 };
 
+#ifdef MC2_VULKAN
 class VulkanContext;
 
 constexpr VkDeviceSize alignUp(VkDeviceSize v, VkDeviceSize a) { return (v + a - 1) / a * a; }
@@ -113,6 +116,7 @@ private:
     uint64_t policyRefusals_ = 0;
     VkDeviceSize refusedCapacity_ = 0;
 };
+#endif
 
 }  // namespace mc2vk
 
