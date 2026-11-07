@@ -81,6 +81,11 @@ constexpr const char* vkResultName(int32_t result) {
     return "VK_RESULT_OTHER";
 }
 
+// A readiness Wait that lasts this many consecutive init attempts (about a minute) is no longer "pending creation": the substrate this
+// island needs is terminally unavailable. An optional effect then degrades; a required island keeps waiting but says so once.
+inline constexpr int kMaxWaitFrames = 3600;
+constexpr bool islandWaitTerminal(int waits) { return waits >= kMaxWaitFrames; }
+
 // reachedBuild: init passed its readiness gates before it failed. buildFailures: build-phase failures this session, this one included.
 constexpr IslandInitAction islandInitAction(IslandKind kind, bool reachedBuild, int32_t vkResult, int buildFailures) {
     if (!reachedBuild) return IslandInitAction::Wait;
@@ -92,7 +97,9 @@ constexpr IslandInitAction islandInitAction(IslandKind kind, bool reachedBuild, 
 // recovered once does not make the next mission's or resize's first transient fatal.
 struct IslandInitFailures {
     int build = 0;
+    int waits = 0;   // consecutive Wait frames since the last build attempt
     bool waitLogged = false;
+    bool stuckLogged = false;
     void reset() { *this = IslandInitFailures{}; }
 };
 
@@ -109,9 +116,18 @@ inline void resetAllIslandInitFailures() {
 // effect off for the process".
 inline IslandInitAction onIslandInitFailure(IslandKind kind, bool reachedBuild, int32_t vkResult, std::string_view reason,
                                             IslandInitFailures& state) {
-    if (reachedBuild) ++state.build;
-    const IslandInitAction action = islandInitAction(kind, reachedBuild, vkResult, state.build);
+    if (reachedBuild) { ++state.build; state.waits = 0; } else ++state.waits;
+    IslandInitAction action = islandInitAction(kind, reachedBuild, vkResult, state.build);
     const std::string why(reason.empty() ? std::string_view("unspecified") : reason);
+    if (action == IslandInitAction::Wait && islandWaitTerminal(state.waits)) {
+        if (!islandRequired(kind)) action = IslandInitAction::Degrade;
+        else if (!state.stuckLogged) {
+            state.stuckLogged = true;
+            std::fprintf(stderr, "[VK_ISLAND_INIT] island=%s action=wait terminal=1 reason=%s (readiness never arrived)\n", islandKindName(kind),
+                         why.c_str());
+            std::fflush(stderr);
+        }
+    }
     if (action == IslandInitAction::Wait && state.waitLogged) return action;
     if (action == IslandInitAction::Wait) state.waitLogged = true;
     std::fprintf(stderr, "[VK_ISLAND_INIT] island=%s action=%s vkresult=%s(%d) reason=%s\n", islandKindName(kind),
