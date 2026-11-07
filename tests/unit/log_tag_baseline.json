@@ -4104,15 +4104,6 @@
     "staticFlush",
     "staticSnapshot",
     "water",
-    "glBufData",
-    "glBufBytes",
-    "glBufSubData",
-    "glBufSubBytes",
-    "glMapBuf",
-    "glTexImage",
-    "glTexImageBytes",
-    "glBindTex",
-    "glUseProgram",
     "fenceWaitMs",
     "fenceWaits"
    ],
@@ -4176,25 +4167,6 @@
    "count": 1
   },
   {
-   "tag": "HITCH_GL",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "glBufferData",
-    "glBufferDataBytes",
-    "glBufferSubData",
-    "glBufferSubDataBytes",
-    "glMapBuffer",
-    "glTexImage",
-    "glTexImageBytes",
-    "glTexSubImage",
-    "glTexSubImageBytes",
-    "glBindTexture",
-    "glUseProgram"
-   ],
-   "count": 1
-  },
-  {
    "tag": "HITCH_INIT",
    "ver": -1,
    "stream": "stderr",
@@ -4228,9 +4200,7 @@
     "records",
     "draws",
     "bufferBytes",
-    "realloc",
-    "map",
-    "subData"
+    "realloc"
    ],
    "count": 1
   },
@@ -4272,8 +4242,7 @@
    "keys": [
     "called",
     "waterPresent",
-    "earlyOut",
-    "glCalls"
+    "earlyOut"
    ],
    "count": 1
   },
@@ -7546,7 +7515,6 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "gl",
     "ssbo",
     "tess",
     "compute",
@@ -8082,13 +8050,6 @@
     "sun_match",
     "cum_sun_mismatch"
    ],
-   "count": 1
-  },
-  {
-   "tag": "SCENE_TARGETS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
    "count": 1
   },
   {
