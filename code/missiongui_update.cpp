@@ -867,7 +867,7 @@ void MissionInterfaceManager::update (void)
 		// Coarse cache-miss-frames-only zone (not per-quad): the O(quads)
 		// inverseProject walk was invisible in Tracy without it.
 		ZoneScopedN("MIF.InverseProject");
-		MifScope _mInv(MF_INVPROJ);
+		MifScope _mInv(MifPhase::MF_INVPROJ);
 		if (s_mfOn) { ++s_mfInvWalks; ++s_mfWinWalks; }
 		// Per-frame cursor world position: ray-march the camera ray over the
 		// heightfield (pickTerrainRay, O(ray length), forward-projection verified).
@@ -924,7 +924,7 @@ void MissionInterfaceManager::update (void)
 	bool passable = 1;
 	bool lineOfSight = 0;
 	{
-		ZoneScopedN("MIF.LOS"); MifScope _mLOS(MF_LOS);
+		ZoneScopedN("MIF.LOS"); MifScope _mLOS(MifPhase::MF_LOS);
 		if ( Terrain::IsGameSelectTerrainPosition( wPos ) )
 		{
 			land->worldToCell(wPos, cellR, cellC);
@@ -936,7 +936,7 @@ void MissionInterfaceManager::update (void)
 
 	// update buttons and stuff, even if not in region, it draws objectives and stuff
 	{
-		ZoneScopedN("MIF.ControlGui"); MifScope _mCG(MF_CTRLGUI);
+		ZoneScopedN("MIF.ControlGui"); MifScope _mCG(MifPhase::MF_CTRLGUI);
 		controlGui.update( isPaused() && !isPausedWithoutMenu(), lineOfSight );
 	}
 
@@ -946,7 +946,7 @@ void MissionInterfaceManager::update (void)
 
 
 	{
-		ZoneScopedN("MIF.UpdateTarget"); MifScope _mUT(MF_UPDTGT);
+		ZoneScopedN("MIF.UpdateTarget"); MifScope _mUT(MifPhase::MF_UPDTGT);
 		// Pass the RAW-space GUI flag (not the HUD-inverse bGui): the world pick +
 		// hovered-unit name must be suppressed only when the cursor is over a widget
 		// in the space the pick (findObjectByMouse) and the user actually use.
@@ -1069,7 +1069,7 @@ void MissionInterfaceManager::update (void)
 	}
 
 	{
-		ZoneScopedN("MIF.DrawBars"); MifScope _mDB(MF_DRAWBARS);
+		ZoneScopedN("MIF.DrawBars"); MifScope _mDB(MifPhase::MF_DRAWBARS);
 		for (int i = 0; i < Team::home->getRosterSize(); i++ )
 		{
 			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
@@ -1094,7 +1094,7 @@ void MissionInterfaceManager::update (void)
 		lastUpdateDoubleClick = false;
 
 	{
-		ZoneScopedN("MIF.Rollovers"); MifScope _mRO(MF_ROLLOVERS);
+		ZoneScopedN("MIF.Rollovers"); MifScope _mRO(MifPhase::MF_ROLLOVERS);
 		updateRollovers();
 	}
 

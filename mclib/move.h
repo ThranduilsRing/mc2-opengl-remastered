@@ -72,11 +72,10 @@ inline constexpr int NUM_EXTRA_DOOR_LINKS = 2;
 inline constexpr int SIMPLE_PATHMAP = 0;
 inline constexpr int SECTOR_PATHMAP = 1;
 
-enum GlobalMapDoorOffset {
-	DOOR_OFFSET_START,
-	DOOR_OFFSET_GOAL,
-	NUM_DOOR_OFFSETS
-};
+// Slots appended after the real doors in the global-map door arrays (in-memory arithmetic only).
+inline constexpr int DOOR_OFFSET_START = 0;
+inline constexpr int DOOR_OFFSET_GOAL = 1;
+inline constexpr int NUM_DOOR_OFFSETS = 2;
 
 inline constexpr int SECTOR_DIM = 30;
 

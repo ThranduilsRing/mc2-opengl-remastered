@@ -10,11 +10,18 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <utility>
 #include <vector>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
 namespace mc2_cpu_proj_cost {
+
+using enum BucketId;
+using enum SidecarId;
+static constexpr int kNumBuckets  = std::to_underlying(BUCKET_COUNT);
+static constexpr int kNumSidecars = std::to_underlying(SIDECAR_COUNT);
+template <class E> static constexpr size_t ix(E e) { return static_cast<size_t>(std::to_underlying(e)); }
 
 // --- Module state ---------------------------------------------------------
 
@@ -30,8 +37,8 @@ struct PerFrameSample {
     int64_t  workload; // workload counter for this frame
 };
 
-static PerFrameSample s_curFrameBucket[BUCKET_COUNT]   = {};
-static PerFrameSample s_curFrameSidecar[SIDECAR_COUNT] = {};
+static PerFrameSample s_curFrameBucket[kNumBuckets]   = {};
+static PerFrameSample s_curFrameSidecar[kNumSidecars] = {};
 
 // Ring buffer of per-frame samples (one entry per committed frame).
 // Window cadence: every WINDOW_FRAMES, compute p50/p95/max per bucket and
@@ -39,16 +46,16 @@ static PerFrameSample s_curFrameSidecar[SIDECAR_COUNT] = {};
 static constexpr int WINDOW_FRAMES = 500;
 
 // Per-bucket ring of ns + workload (cleared each window).
-static std::vector<int64_t> s_winNs[BUCKET_COUNT];
-static std::vector<int64_t> s_winWorkload[BUCKET_COUNT];
-static std::vector<int64_t> s_winSidecarNs[SIDECAR_COUNT];
-static std::vector<int64_t> s_winSidecarWorkload[SIDECAR_COUNT];
+static std::vector<int64_t> s_winNs[kNumBuckets];
+static std::vector<int64_t> s_winWorkload[kNumBuckets];
+static std::vector<int64_t> s_winSidecarNs[kNumSidecars];
+static std::vector<int64_t> s_winSidecarWorkload[kNumSidecars];
 
 // Full-capture retention for the [CPU_PROJ v1 final] line. Holds per-frame
 // projection_total ns (for worst_window_p95 derivation) and per-bucket p95
 // per window so we can compute worst_window_p95 = max(window.proj_total.p95).
 static std::vector<int64_t> s_fullProjectionTotalNs;   // per frame
-static std::vector<int64_t> s_fullBucketP95Ns[BUCKET_COUNT];   // per window
+static std::vector<int64_t> s_fullBucketP95Ns[kNumBuckets];   // per window
 static std::vector<int64_t> s_windowProjTotalP95Ns;            // per window
 
 // Frame counter (global; reset on hard_reset).
@@ -61,14 +68,14 @@ static constexpr const char* WORST_CASE_LABEL = "mc2_10";
 static constexpr int64_t BUDGET_US = 100;
 
 // Bucket names (in printout order).
-static const char* kBucketName[BUCKET_COUNT] = {
+static const char* kBucketName[kNumBuckets] = {
     "matrix_build",
     "recalcBounds_perframe",
     "tgl_transform",
     "mlr_total",
 };
 
-static const char* kSidecarName[SIDECAR_COUNT] = {
+static const char* kSidecarName[kNumSidecars] = {
     "skinning_chain",
     "eventdriven_projection_total",
     "cull_admission_perframe",
@@ -144,7 +151,7 @@ static void emit_window_stats() {
 
     mc2::fmt::print_err("[CPU_PROJ v1] window={:d}..{:d} worst-case-camera={}\n  projection_total           p50={:.1f}us p95={:.1f}us max={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64(static_cast<long long>(s_windowStartFrame)), mc2::fmt::as_i64(static_cast<long long>(winEnd)), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), mc2::fmt::as_i64(static_cast<long long>(BUDGET_US)), mc2::fmt::safe(over ? "OVER" : "PASS"));
 
-    for (int b = 0; b < BUCKET_COUNT; ++b) {
+    for (int b = 0; b < kNumBuckets; ++b) {
         std::vector<int64_t> tmpA(s_winNs[b]);
         std::vector<int64_t> tmpB(s_winNs[b]);
         int64_t p50 = percentile_inplace(tmpA, 50);
@@ -159,7 +166,7 @@ static void emit_window_stats() {
 
     // Sidecars.
     mc2::fmt::print_err("  sidecar buckets (NEVER in projection_total adjudication):\n");
-    for (int s = 0; s < SIDECAR_COUNT; ++s) {
+    for (int s = 0; s < kNumSidecars; ++s) {
         std::vector<int64_t> tmpA(s_winSidecarNs[s]);
         std::vector<int64_t> tmpB(s_winSidecarNs[s]);
         int64_t p50 = percentile_inplace(tmpA, 50);
@@ -174,11 +181,11 @@ static void emit_window_stats() {
     s_windowProjTotalP95Ns.push_back(projP95);
 
     // Clear window rings.
-    for (int b = 0; b < BUCKET_COUNT; ++b) {
+    for (int b = 0; b < kNumBuckets; ++b) {
         s_winNs[b].clear();
         s_winWorkload[b].clear();
     }
-    for (int s = 0; s < SIDECAR_COUNT; ++s) {
+    for (int s = 0; s < kNumSidecars; ++s) {
         s_winSidecarNs[s].clear();
         s_winSidecarWorkload[s].clear();
     }
@@ -225,12 +232,12 @@ void frame_end() {
     if (!g_cpuProjEnabled) return;
     // Commit current frame into window rings.
     int64_t projTotalNs = 0;
-    for (int b = 0; b < BUCKET_COUNT; ++b) {
+    for (int b = 0; b < kNumBuckets; ++b) {
         s_winNs[b].push_back(s_curFrameBucket[b].ns);
         s_winWorkload[b].push_back(s_curFrameBucket[b].workload);
         projTotalNs += s_curFrameBucket[b].ns;
     }
-    for (int s = 0; s < SIDECAR_COUNT; ++s) {
+    for (int s = 0; s < kNumSidecars; ++s) {
         s_winSidecarNs[s].push_back(s_curFrameSidecar[s].ns);
         s_winSidecarWorkload[s].push_back(s_curFrameSidecar[s].workload);
     }
@@ -249,14 +256,14 @@ void hard_reset(mc2::czstring reason) {
     // isn't silently dropped.
     final_stats(reason ? reason : "hard_reset");
     // Clear everything for the next mission.
-    for (int b = 0; b < BUCKET_COUNT; ++b) {
+    for (int b = 0; b < kNumBuckets; ++b) {
         s_winNs[b].clear();
         s_winWorkload[b].clear();
         s_fullBucketP95Ns[b].clear();
         s_curFrameBucket[b].ns = 0;
         s_curFrameBucket[b].workload = 0;
     }
-    for (int s = 0; s < SIDECAR_COUNT; ++s) {
+    for (int s = 0; s < kNumSidecars; ++s) {
         s_winSidecarNs[s].clear();
         s_winSidecarWorkload[s].clear();
         s_curFrameSidecar[s].ns = 0;
@@ -299,7 +306,7 @@ void final_stats(mc2::czstring reason) {
     mc2::fmt::print_err("[CPU_PROJ v1 final] frames={:d} reason={} worst-case-camera={}\n  projection_total p50={:.1f}us p95={:.1f}us max={:.1f}us  worst_window_p95={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64(static_cast<long long>(frames)), mc2::fmt::safe(reason ? reason : "(none)"), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), ns_to_us(worstWinP95), mc2::fmt::as_i64(static_cast<long long>(BUDGET_US)), mc2::fmt::safe(over ? "OVER" : "PASS"));
 
     // Per-bucket worst-window p95 (max of window p95s).
-    for (int b = 0; b < BUCKET_COUNT; ++b) {
+    for (int b = 0; b < kNumBuckets; ++b) {
         int64_t bWorst = max_inplace(s_fullBucketP95Ns[b]);
         mc2::fmt::print_err("    {:<24} worst_window_p95={:.1f}us\n", mc2::fmt::safe(kBucketName[b]), ns_to_us(bWorst));
     }
@@ -309,22 +316,22 @@ void final_stats(mc2::czstring reason) {
 
 void add_workload_recalcbounds(int actorsRecalc) {
     if (!g_cpuProjEnabled) return;
-    s_curFrameBucket[BUCKET_RECALCBOUNDS_PERFRAME].workload += actorsRecalc;
+    s_curFrameBucket[ix(BUCKET_RECALCBOUNDS_PERFRAME)].workload += actorsRecalc;
 }
 
 void add_workload_tgl_transform(int numShapes) {
     if (!g_cpuProjEnabled) return;
-    s_curFrameBucket[BUCKET_TGL_TRANSFORM].workload += numShapes;
+    s_curFrameBucket[ix(BUCKET_TGL_TRANSFORM)].workload += numShapes;
 }
 
 void add_workload_mlr_prim_clipped() {
     if (!g_cpuProjEnabled) return;
-    s_curFrameBucket[BUCKET_MLR_TOTAL].workload += 1;
+    s_curFrameBucket[ix(BUCKET_MLR_TOTAL)].workload += 1;
 }
 
 void add_workload_eventdriven_projectZ() {
     if (!g_cpuProjEnabled) return;
-    s_curFrameSidecar[SIDECAR_EVENTDRIVEN_PROJECT_Z].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_EVENTDRIVEN_PROJECT_Z)].workload += 1;
 }
 
 // R2: per-call chrono around projectForObjectAdmission. Pair pattern keeps
@@ -338,8 +345,8 @@ int64_t cull_admission_begin_ns() {
 void cull_admission_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_CULL_ADMISSION_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_CULL_ADMISSION_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_CULL_ADMISSION_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_CULL_ADMISSION_PERFRAME)].workload += 1;
 }
 
 // R3 narrow-subset wrapper sidecars. One pair per remaining policy-split
@@ -352,8 +359,8 @@ int64_t screenxy_begin_ns() {
 void screenxy_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_SCREENXY_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_SCREENXY_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_SCREENXY_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_SCREENXY_PERFRAME)].workload += 1;
 }
 
 int64_t effect_admission_begin_ns() {
@@ -363,8 +370,8 @@ int64_t effect_admission_begin_ns() {
 void effect_admission_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_EFFECT_ADMISSION_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_EFFECT_ADMISSION_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_EFFECT_ADMISSION_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_EFFECT_ADMISSION_PERFRAME)].workload += 1;
 }
 
 int64_t terrain_admission_begin_ns() {
@@ -374,8 +381,8 @@ int64_t terrain_admission_begin_ns() {
 void terrain_admission_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_TERRAIN_ADMISSION_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_TERRAIN_ADMISSION_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_TERRAIN_ADMISSION_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_TERRAIN_ADMISSION_PERFRAME)].workload += 1;
 }
 
 int64_t lighting_shadow_begin_ns() {
@@ -385,8 +392,8 @@ int64_t lighting_shadow_begin_ns() {
 void lighting_shadow_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_LIGHTING_SHADOW_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_LIGHTING_SHADOW_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_LIGHTING_SHADOW_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_LIGHTING_SHADOW_PERFRAME)].workload += 1;
 }
 
 int64_t selection_picking_begin_ns() {
@@ -396,8 +403,8 @@ int64_t selection_picking_begin_ns() {
 void selection_picking_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_SELECTION_PICKING_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_SELECTION_PICKING_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_SELECTION_PICKING_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_SELECTION_PICKING_PERFRAME)].workload += 1;
 }
 
 int64_t debug_overlay_begin_ns() {
@@ -407,13 +414,13 @@ int64_t debug_overlay_begin_ns() {
 void debug_overlay_end_ns(int64_t startNs) {
     if (!g_cpuProjEnabled) return;
     int64_t elapsed = now_ns() - startNs;
-    s_curFrameSidecar[SIDECAR_DEBUG_OVERLAY_PERFRAME].ns       += elapsed;
-    s_curFrameSidecar[SIDECAR_DEBUG_OVERLAY_PERFRAME].workload += 1;
+    s_curFrameSidecar[ix(SIDECAR_DEBUG_OVERLAY_PERFRAME)].ns       += elapsed;
+    s_curFrameSidecar[ix(SIDECAR_DEBUG_OVERLAY_PERFRAME)].workload += 1;
 }
 
 // --- Scope guards ---------------------------------------------------------
 
-Scope::Scope(int bucketId) : bucket_(bucketId), armed_(false), startNs_(0) {
+Scope::Scope(BucketId bucketId) : bucket_(bucketId), armed_(false), startNs_(0) {
     if (!g_cpuProjEnabled) return;
     armed_   = true;
     startNs_ = now_ns();
@@ -422,10 +429,10 @@ Scope::Scope(int bucketId) : bucket_(bucketId), armed_(false), startNs_(0) {
 Scope::~Scope() {
     if (!armed_) return;
     int64_t elapsed = now_ns() - startNs_;
-    s_curFrameBucket[bucket_].ns += elapsed;
+    s_curFrameBucket[ix(bucket_)].ns += elapsed;
 }
 
-SidecarScope::SidecarScope(int sidecarId) : sidecar_(sidecarId), armed_(false), startNs_(0) {
+SidecarScope::SidecarScope(SidecarId sidecarId) : sidecar_(sidecarId), armed_(false), startNs_(0) {
     if (!g_cpuProjEnabled) return;
     armed_   = true;
     startNs_ = now_ns();
@@ -434,7 +441,7 @@ SidecarScope::SidecarScope(int sidecarId) : sidecar_(sidecarId), armed_(false), 
 SidecarScope::~SidecarScope() {
     if (!armed_) return;
     int64_t elapsed = now_ns() - startNs_;
-    s_curFrameSidecar[sidecar_].ns += elapsed;
+    s_curFrameSidecar[ix(sidecar_)].ns += elapsed;
 }
 
 RenderLoopGuard::RenderLoopGuard() : prior_(tls_inRenderLoop), armed_(false) {

@@ -795,7 +795,7 @@ void GameCamera::render (void)
 		// F3 CPU projection cost-baseline: mlr_total bucket — wraps StartDraw
 		// (per-frame MLR setup). RenderNow gets a second scope further below.
 		::mc2_cpu_proj_cost::Scope _f3_mlr_start_scope(
-		    ::mc2_cpu_proj_cost::BUCKET_MLR_TOTAL);
+		    ::mc2_cpu_proj_cost::BucketId::BUCKET_MLR_TOTAL);
 		theClipper->StartDraw(cameraOrigin, cameraToClip, fColor, &fColor, default_state, &z);
 	}
 	MidLevelRenderer::GOSVertex::farClipReciprocal = (1.0f-cameraToClip[2][2])/cameraToClip[2][3];
@@ -814,7 +814,7 @@ void GameCamera::render (void)
 			ZoneScopedN("Camera.BuildMVP");
 			// F3 CPU projection cost-baseline: matrix_build site (a).
 			::mc2_cpu_proj_cost::Scope _f3_mvp_scope(
-			    ::mc2_cpu_proj_cost::BUCKET_MATRIX_BUILD);
+			    ::mc2_cpu_proj_cost::BucketId::BUCKET_MATRIX_BUILD);
 			// F1 Stage A unified-projection: single producer call.
 			// gos_SetWorldToClipGL composes nothing here — the matrix is
 			// built once by Camera::worldToClipGL() (axisSwap *
@@ -1083,7 +1083,7 @@ void GameCamera::render (void)
 			// F3 CPU projection cost-baseline: mlr_total bucket — RenderNow
 			// scope (joined with the StartDraw scope above into mlr_total).
 			::mc2_cpu_proj_cost::Scope _f3_mlr_rendernow_scope(
-			    ::mc2_cpu_proj_cost::BUCKET_MLR_TOTAL);
+			    ::mc2_cpu_proj_cost::BucketId::BUCKET_MLR_TOTAL);
 			// VFX-MESH-BRACKET-1: theClipper->RenderNow() draws gosFX MESH shapes
 			// (gosFX::Shape::Draw -> gos_vfx_mesh_flush) — scene geometry that ran
 			// OUTSIDE any PassIdentity: it fires AFTER the particle/VFX guard scope

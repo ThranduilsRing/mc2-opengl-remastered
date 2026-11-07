@@ -79,14 +79,14 @@ inline constexpr int GAMEOBJECT_BYTES = 1;
 
 // RELPOS_FLAG_*: defined once in move.h (included above).
 
-enum AttackSourceType {
-	ATTACKSOURCE_WEAPONFIRE,
-	ATTACKSOURCE_COLLISION,
-	ATTACKSOURCE_DFA,
-	ATTACKSOURCE_MINE,
-	ATTACKSOURCE_ARTILLERY,
-	NUM_ATTACKSOURCES
-};
+// In-memory only: passed as `long attackSource` through calcHitLocation and used
+// to index MechHitSectionTable. Same values as the former unscoped enum.
+inline constexpr int ATTACKSOURCE_WEAPONFIRE = 0;
+inline constexpr int ATTACKSOURCE_COLLISION = 1;
+inline constexpr int ATTACKSOURCE_DFA = 2;
+inline constexpr int ATTACKSOURCE_MINE = 3;
+inline constexpr int ATTACKSOURCE_ARTILLERY = 4;
+inline constexpr int NUM_ATTACKSOURCES = 5;
 
 struct _WeaponShotInfo {
 	GameObjectWatchID	attackerWID;
