@@ -617,7 +617,7 @@ VERIFY_STEPS = {
 
 #: Seconds-cheap contract rows a lane must see before the window (W109 found them late): (label, script relative to the root, args).
 EARLY_ROWS = [("sim_include_firewall", "scripts/check_sim_include_firewall.py", []),
-              ("log_tag_census", "tools/log_tag_census.py", ["--check"])]
+              ("log_tag_census", "tools/log_tag_census.py", ["--check"]), ("doc_links", "scripts/check-doc-links.py", ["--quiet"])]   # W127: a broken link
 
 
 #: Seconds-cheap ownership/callers checks, run before the ~18 min build + doctest so a duplicate-ownership red shows at once.
@@ -1161,7 +1161,6 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         ("background-launch", py + [os.path.join(root, "scripts", "check-background-launch.py"), "--quiet"]),
         ("gate_gen", py + [os.path.join(root, "tools", "gate_gen.py"), "--check"]),
         ("cxx17", py + [os.path.join(root, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--worktree"]),
-        ("doc_links", py + [os.path.join(root, "scripts", "check-doc-links.py"), "--quiet"]),   # W127 lost a gate run to one broken link
     ]
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
