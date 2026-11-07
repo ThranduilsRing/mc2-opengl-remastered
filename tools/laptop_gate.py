@@ -523,13 +523,19 @@ def sync_tree():
     print(f"sync_tree done in {time.time() - t:.0f}s", flush=True)
 
 
+def upload_self():
+    """The remote half runs from C:/mc2gate/bin alone: ship console_child.py next to it (its import, w126)."""
+    scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
+    scp(console_child.__file__, f"{HOST}:{G}/bin/console_child.py")
+
+
 def pc_main(args):
     w = args.window
     branch = "claude/stage-" + w
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
     ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
-    scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
+    upload_self()
     ssh(remote_py("init"), stream=True)
     seed()
     seed_ref()
@@ -599,7 +605,7 @@ def main():
         return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
                 "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
-        scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
+        upload_self()
         return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
     if not a.window:
         ap.error("window required")
