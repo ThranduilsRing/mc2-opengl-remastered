@@ -1004,10 +1004,7 @@ void VulkanContext::beginFrame() {
         }
     }
     frameRing_.beginFrame(f, slotFree);
-    if (textures_) {
-        { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
-        { ZoneScopedN("VKContext.TextureDescriptors"); textures_->descriptors(); }
-    }
+    if (textures_) { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
 #endif
 }
 
@@ -1026,9 +1023,6 @@ void VulkanContext::endFrame() {
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
 #endif
     { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // the sealed frame ticket must be on the queue
-#ifdef MC2_VULKAN_ISLAND
-    if (textures_) textures_->sealFrame();
-#endif
     tracker_.endFrame();
     deferred_.sealFrame(tracker_.frameTicket(tracker_.frameNo()));
     if (tracker_.frameNo() % 600 == 0 && mc2DiagVerbose()) {   // the periodic summaries are MC2_DIAG_VERBOSE lines (a default build stays quiet)
