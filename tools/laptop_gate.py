@@ -27,6 +27,7 @@ PC_SEED = Path("E:/mc2-installs/_lean-seed")
 PC_STOCK = Path("G:/mc2-assets/out/scifi-kit/round2/stock")
 PROOFS = Path("E:/mc2-archive-2026-10/proofs/laptop-gate")
 PC_REF = Path("E:/mc2-ref")
+PC_TMP = Path("G:/mc2-tmp/gatelaptop")
 REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
@@ -182,15 +183,20 @@ def r_run(window, extra):
     print(json.dumps({k: v for k, v in sm.items() if k != "timings"}))
 
 
+def manifest_rows(p):
+    lines = Path(p).read_text(encoding="utf-8-sig").splitlines()[1:]
+    return {r["relpath"]: r for r in csv.DictReader(lines)}
+
+
+def manifest_delta(mine, theirs):
+    """relpaths in manifest `mine` whose sha256 manifest `theirs` lacks."""
+    return sorted(rel for rel, r in mine.items() if theirs.get(rel, {}).get("sha256") != r["sha256"])
+
+
 def r_pack(window):
     """tar of every file in the laptop install's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
     out = Path(G, "out", window)
-
-    def rows(p):
-        lines = Path(p).read_text(encoding="utf-8-sig").splitlines()[1:]
-        return {r["relpath"]: r for r in csv.DictReader(lines)}
-    mine, theirs = rows(Path(INSTALL, ".deployed_manifest.csv")), rows(Path(G, "in", window, "pc.manifest.csv"))
-    delta = [rel for rel, r in mine.items() if theirs.get(rel, {}).get("sha256") != r["sha256"]]
+    delta = manifest_delta(manifest_rows(Path(INSTALL, ".deployed_manifest.csv")), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
     tarp = out / "payload.tar"
     with tarfile.open(tarp, "w") as tar:
         for rel in delta:
@@ -227,7 +233,20 @@ def toolchain_problems(cn, e):
     return bad
 
 
-def r_preflight():
+def published_problems(src, published, tip, is_ancestor):
+    """merge_gate's capture-before and stage_published read the published install (the laptop's v0.4 junction = INSTALL):
+    its mc2.exe must be the PC's published v0.4 build and an ancestor of the stage tip, else the before-captures are stale."""
+    if not src:
+        return ["published install mc2.exe has no MC2FP1 fingerprint"]
+    bad = []
+    if published and not (src.startswith(published) or published.startswith(src)):
+        bad.append(f"published install mc2.exe src {src} != the PC's published v0.4 {published} (laptop_gate refreshes it)")
+    if tip and not is_ancestor(src, tip):
+        bad.append(f"published install mc2.exe src {src} is not an ancestor of {tip}")
+    return bad
+
+
+def r_preflight(window="-", published=""):
     """Everything the stages need before a full run: Python packages, data roots, tools. Prints one line per problem."""
     import importlib
     import shutil
@@ -247,6 +266,11 @@ def r_preflight():
     sys.path.insert(0, REPO + "/scripts")
     import configure_ninja
     bad += toolchain_problems(configure_ninja, gate_env())
+    import exe_fingerprint
+    fp = exe_fingerprint.parse_literal(Path(INSTALL, "mc2.exe").read_bytes()) if Path(INSTALL, "mc2.exe").is_file() else None
+    tip = None if window in (None, "-") else "claude/stage-" + window
+    bad += published_problems((fp or {}).get("sha"), published, tip,
+                              lambda a, b: subprocess.run(["git", "-C", REPO, "merge-base", "--is-ancestor", a, b]).returncode == 0)
     bad += r_refcheck(REF + "/SHA256SUMS")
     print("\n".join(bad) if bad else "preflight OK")
     return 1 if bad else 0
@@ -344,6 +368,38 @@ def seed():
     print(f"seeded in {time.time() - t:.0f}s, mc2.exe sha256 {want}")
 
 
+def published_sha():
+    """The MC2FP1 source sha of the PC's published v0.4 mc2.exe (what merge_gate on the PC captures 'before' with)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import exe_fingerprint
+    return (exe_fingerprint.parse_literal((PC_V04 / "mc2.exe").read_bytes()) or {}).get("sha", "")
+
+
+def sync_published():
+    """Make the laptop's published install (v0.4 junction = INSTALL) match the PC's published v0.4, file by manifest row,
+    the way merge_gate's capture-before and stage_published read A:/Games/mc2-opengl/mc2-win64-v0.4 on the PC (r_pack in reverse)."""
+    PC_TMP.mkdir(parents=True, exist_ok=True)
+    lm, lst, local = PC_TMP / "laptop.manifest.csv", PC_TMP / "published.lst", PC_TMP / "published.tar"
+    try:
+        scp(f"{HOST}:{INSTALL}/.deployed_manifest.csv", lm)
+        delta = manifest_delta(manifest_rows(PC_V04 / ".deployed_manifest.csv"), manifest_rows(lm))
+        if not delta:
+            return
+        print(f"refreshing the laptop's published install from {PC_V04}: {len(delta)} files", flush=True)
+        lst.write_text("\n".join([*delta, ".deployed_manifest.csv"]) + "\n", encoding="utf-8", newline="\n")
+        if subprocess.run(["tar", "-cf", str(local), "-C", str(PC_V04), "-T", str(lst)]).returncode:
+            sys.exit("published tar failed")
+        scp(local, f"{HOST}:{G}/tmp/published.tar")
+        ssh(f"tar -xf {G}/tmp/published.tar -C {INSTALL} && del {G.replace('/', chr(92))}\\tmp\\published.tar")
+    finally:
+        for p in (lm, lst, local):
+            p.unlink(missing_ok=True)
+    want = sha256(PC_V04 / "mc2.exe")
+    got = ssh(f'certutil -hashfile "{INSTALL}/mc2.exe" SHA256')[1].splitlines()[1].strip()
+    if got.lower() != want.lower():
+        sys.exit(f"published mc2.exe sha mismatch {got} != {want}")
+
+
 def pc_main(args):
     w = args.window
     branch = "claude/stage-" + w
@@ -354,8 +410,7 @@ def pc_main(args):
     ssh(remote_py("init"), stream=True)
     seed()
     seed_ref()
-    if ssh(remote_py("preflight"), check=False, stream=True)[0]:
-        sys.exit("laptop preflight failed (above); fix it before a full run")
+    sync_published()
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
     url = f"ssh://{HOST}/{REPO}"
@@ -367,6 +422,8 @@ def pc_main(args):
         sys.exit("push to laptop clone failed")
     ssh(f"cmd /c mkdir C:\\mc2gate\\in\\{w} 2>nul & exit /b 0", check=False)
     scp(PC_V04 / ".deployed_manifest.csv", f"{HOST}:{G}/in/{w}/pc.manifest.csv")
+    if ssh(remote_py("preflight", w, published_sha()), check=False, stream=True)[0]:   # after the push: it checks the stage tip
+        sys.exit("laptop preflight failed (above); fix it before a full run")
     extra = " ".join(args.gate_args)
     print("running build + gate on the laptop (long)", flush=True)
     rc, _ = ssh(remote_py("run", w, extra), check=False, stream=True)
@@ -408,10 +465,10 @@ def main():
     if a.remote:
         step = a.remote
         return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
-                "preflight": r_preflight, "ref-commit": r_ref_commit}[step]() or 0
+                "preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
         scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
-        return ssh(remote_py("preflight"), check=False, stream=True)[0]
+        return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
     if not a.window:
         ap.error("window required")
     return pc_main(a)

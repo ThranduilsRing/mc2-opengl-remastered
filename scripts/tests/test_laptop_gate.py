@@ -97,3 +97,14 @@ def test_toolchain_problems_names_each_missing_tool_and_skips_sccache_when_the_c
                    "missing cmake (find_cmake: VS2022 BuildTools or PATH)"]
     assert f"missing SCCACHE_EXE: {tmp_path / 'sccache.exe'}" in laptop_gate.toolchain_problems(cn, {})
     assert laptop_gate.gate_env()["MC2_COMPILE_CACHE"] == "0"
+
+
+def test_published_problems_fails_a_stale_or_unrelated_before_install():
+    history = {("2d042f852b04", "claude/stage-g125"), ("c0eba1a0ac1c", "claude/stage-g125")}
+    anc = lambda a, b: (a, b) in history  # noqa: E731
+    assert laptop_gate.published_problems("2d042f852b04", "2d042f852b04", "claude/stage-g125", anc) == []
+    stale = laptop_gate.published_problems("c0eba1a0ac1c", "2d042f852b04", "claude/stage-g125", anc)
+    assert len(stale) == 1 and "!= the PC's published v0.4 2d042f852b04" in stale[0]
+    assert "not an ancestor" in laptop_gate.published_problems("deadbeef0000", "", "claude/stage-g125", anc)[0]
+    assert laptop_gate.published_problems(None, "x", None, anc) == ["published install mc2.exe has no MC2FP1 fingerprint"]
+    assert laptop_gate.manifest_delta({"a": {"sha256": "1"}, "b": {"sha256": "2"}}, {"a": {"sha256": "1"}}) == ["b"]
