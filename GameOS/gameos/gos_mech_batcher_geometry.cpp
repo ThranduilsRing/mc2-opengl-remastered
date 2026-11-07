@@ -56,10 +56,11 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
         float fr[3] = { e1[1]*e2[2]-e1[2]*e2[1],
                         e1[2]*e2[0]-e1[0]*e2[2],
                         e1[0]*e2[1]-e1[1]*e2[0] };
-        float ref[3] = {
-            V[3*k+0].normal[0] + V[3*k+1].normal[0] + V[3*k+2].normal[0],
-            V[3*k+0].normal[1] + V[3*k+1].normal[1] + V[3*k+2].normal[1],
-            V[3*k+0].normal[2] + V[3*k+1].normal[2] + V[3*k+2].normal[2] };
+        float n0[3], n1[3], n2[3];
+        mechUnpackNormal(V[3*k+0].normalOct, n0);
+        mechUnpackNormal(V[3*k+1].normalOct, n1);
+        mechUnpackNormal(V[3*k+2].normalOct, n2);
+        float ref[3] = { n0[0] + n1[0] + n2[0], n0[1] + n1[1] + n2[1], n0[2] + n1[2] + n2[2] };
         if (dot3(fr, ref) < 0.0f) { fr[0]=-fr[0]; fr[1]=-fr[1]; fr[2]=-fr[2]; }
         faceRaw[k] = { fr[0], fr[1], fr[2] };
         float m = std::sqrt(dot3(fr, fr));
@@ -70,9 +71,7 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
     if (mode == 1) {
         for (size_t k = 0; k < triCount; ++k)
             for (int c = 0; c < 3; ++c) {
-                V[3*k+c].normal[0] = faceUnit[k][0];
-                V[3*k+c].normal[1] = faceUnit[k][1];
-                V[3*k+c].normal[2] = faceUnit[k][2];
+                mechPackNormal(faceUnit[k].data(), V[3*k+c].normalOct);
             }
         return;
     }
@@ -106,9 +105,7 @@ void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
         }
     }
     for (uint32_t i = 0; i < static_cast<uint32_t>(n); ++i) {
-        V[i].normal[0] = out[i][0];
-        V[i].normal[1] = out[i][1];
-        V[i].normal[2] = out[i][2];
+        mechPackNormal(out[i].data(), V[i].normalOct);
     }
 }
 
@@ -328,7 +325,7 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
 
                     GpuMechVertex vert{};
                     std::memcpy(vert.position, &src.position.x, 12);
-                    std::memcpy(vert.normal,   &src.normal.x,   12);
+                    mechPackNormal(&src.normal.x, vert.normalOct);
                     vert.uv[0] = cornerU[c];
                     vert.uv[1] = cornerV[c];
                     // boneIndices: .x = nodeIdx (rigid, Slice A), .yzw = 0.

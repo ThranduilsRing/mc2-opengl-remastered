@@ -19,7 +19,7 @@
 invariant gl_Position;
 
 layout(location = 0) in vec3  a_position;
-layout(location = 1) in vec3  a_normal;
+layout(location = 1) in vec2  a_normalOct;     // s16x2 normalized, octahedral unit normal
 layout(location = 2) in vec2  a_uv;
 layout(location = 3) in uvec4 a_boneIndices;  // u8x4 -> uvec4
 layout(location = 4) in vec4  a_boneWeights;  // u8x4 normalized -> [0,1]
@@ -167,7 +167,10 @@ void main() {
 
     vec4 worldStuff = boneT * vec4(a_position, 1.0);
     vec3 worldMC2 = mc2ToRender(worldStuff.xyz);   // Stuff->MC2 swap
-    vec3 normalStuff = mat3(boneT) * a_normal;
+    vec3 nLocal = vec3(a_normalOct.xy, 1.0 - abs(a_normalOct.x) - abs(a_normalOct.y));   // octahedral decode (snorm16x2)
+    if (nLocal.z < 0.0)
+        nLocal.xy = (1.0 - abs(nLocal.yx)) * vec2(nLocal.x >= 0.0 ? 1.0 : -1.0, nLocal.y >= 0.0 ? 1.0 : -1.0);
+    vec3 normalStuff = mat3(boneT) * normalize(nLocal);
     vec3 worldNormal = normalize(mc2ToRender(normalStuff));
 
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);

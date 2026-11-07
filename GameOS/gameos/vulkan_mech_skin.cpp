@@ -23,7 +23,7 @@ namespace mc2vk {
 
 namespace {
 
-constexpr uint32_t kVertexBytes = 48;                   // GpuMechVertex
+constexpr uint32_t kVertexBytes = 40;                  // GpuMechVertex
 constexpr uint64_t kMaxSkinVertices = 1ull << 21;       // 96 MB per frame slot; an instance past the cap stays on the inline blend
 constexpr uint64_t kMaxStorageRange = 128ull << 20;     // the portable maxStorageBufferRange floor: bigger source or skinned buffers stay inline
 constexpr uint32_t kInstanceBytes = 64;
@@ -34,7 +34,7 @@ constexpr uint32_t kRenderFlagsWord = 3;                // GpuMechInstance::rend
 bool MechSkinPass::init(VkDevice device, VmaAllocator allocator, std::string_view spvDir) {
     device_ = device;
     allocator_ = allocator;
-    if (mc2_mech_vertex_stride() != kVertexBytes) return false;   // the shader strides 12 words per vertex
+    if (mc2_mech_vertex_stride() != kVertexBytes) return false;   // the shader strides 10 words per vertex
     const std::string path = std::string(spvDir) + "mech_skin.comp.spv";
     const std::vector<ComputeBinding> bindings = {
         {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},          // bind-pose vertices
