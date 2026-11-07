@@ -181,7 +181,7 @@ void drawDrawPacketsSection() {
         if (descOk && desc.packetCount > 0u) {
             const float x0 = p0.x + availW * (static_cast<float>(desc.firstPacket) / static_cast<float>(total));
             float       x1 = p0.x + availW * (static_cast<float>(desc.firstPacket + desc.packetCount) / static_cast<float>(total));
-            if (x1 < x0 + 2.f) x1 = x0 + 2.f;
+            x1 = std::max(x1, x0 + 2.f);
             dl->AddRectFilled(ImVec2(x0, p0.y + 2.f), ImVec2(x1, p0.y + barH - 2.f),
                               IM_COL32(255, 220, 50, 200));
         }
