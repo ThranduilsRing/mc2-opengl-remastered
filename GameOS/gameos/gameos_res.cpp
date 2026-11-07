@@ -217,6 +217,24 @@ const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
     return MC2Strings::MissingResourceId(id);
 }
 
+std::string gos_FormatResourceMessage(HSTRRES handle, DWORD id, std::span<const MC2Strings::ArgKind> signature, std::span<const MC2Strings::MessageArg> args)
+{
+    gosASSERT(handle);
+    // Catalog handles share one compiled template per catalog revision; a legacy DLL handle is rare and compiled per call.
+    if (handle && !handle->module)
+        return MC2Strings::FormatLegacyMessage(static_cast<long>(id), signature, args);
+
+    MC2Strings::CompiledMessage compiled;
+    std::string why;
+    const char* text = gos_GetResourceString(handle, id);
+    if (!MC2Strings::CompileMessage(text ? text : "", signature, compiled, &why))
+    {
+        mc2::fmt::print_err("[MC2Strings] message id={:d} template rejected ({}); printing it as plain text\n", mc2::fmt::as_i32(id), mc2::fmt::safe(why.c_str()));
+        return text ? std::string(text) : std::string();
+    }
+    return MC2Strings::FormatMessage(compiled, args);
+}
+
 std::optional<std::size_t> gos_ResourceStringLength(HSTRRES handle, DWORD id)
 {
     if (const std::optional<std::string_view> text = lookupResourceString(handle, id))

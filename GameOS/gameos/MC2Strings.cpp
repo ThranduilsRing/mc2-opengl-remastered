@@ -31,6 +31,7 @@
 #include <cstring>
 #include <fstream>
 #include <map>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -79,6 +80,12 @@ namespace
         std::map<std::string, std::string> keyByResourceSymbol;
 
         std::map<std::string, std::string> keyByMenuBinding;
+
+        // The legacy-id maps as the stock files left them, before any mod overlay: the fallback for a bad override.
+        bool stockTaken = false;
+        std::map<long, std::string> stockAliasByLegacyId;
+        std::map<long, std::string> stockKeyByLegacyId;
+        unsigned long long revision = 1;
 
         CatalogState()
             : attempted(false)
@@ -715,6 +722,8 @@ namespace
             }
         }
 
+        ++State().revision;   // strings or aliases may have changed: template caches revalidate
+
         if (stringCount || aliasCount || legacyAliasCount || menuCount)
             Trace("loaded %ld String, %ld ResourceTextAlias, %ld LegacyTextAlias, %ld MenuTextBinding from %s",
                   stringCount, aliasCount, legacyAliasCount, menuCount, path.c_str());
@@ -852,6 +861,10 @@ namespace MC2Strings
         for (std::vector<std::string>::const_iterator it = dirs.begin(); it != dirs.end(); ++it)
             TryLoadDirectory(*it);
 
+        state.stockAliasByLegacyId = state.keyByLegacyAlias;
+        state.stockKeyByLegacyId = state.keyByLegacyId;
+        state.stockTaken = true;
+
         // Load mod-overlay text FITs (e.g. mods/cveg/data/defs/text/en_us/*.fit).
         // These are NOT discoverable via raw filesystem scan (only the base data/ dir is on-disk).
         // EnumerateModFitFiles returns them sorted by filename — last-write-wins for aliases.
@@ -864,6 +877,7 @@ namespace MC2Strings
         }
 
         state.loaded = !state.byKey.empty();
+        ++state.revision;
 
         Trace("string catalog loaded=%d keys=%u legacyIds=%u resourceIds=%u resourceSymbols=%u menuBindings=%u",
               state.loaded ? 1 : 0,
@@ -896,34 +910,65 @@ namespace MC2Strings
         return stringRecord.text.c_str();
     }
 
-    const char* GetByLegacyId(long legacyId)
+    namespace
     {
-        if (legacyId <= 0)
-            return nullptr;
-
-        Load();
-
         /*
             Lookup order:
             1. Explicit LegacyTextAlias to the clean localization layer.
             2. Direct mc2res_legacy/String legacyId coverage.
             3. Missing marker at caller.
         */
-        const std::map<long, std::string>::const_iterator aliasIt = State().keyByLegacyAlias.find(legacyId);
-        if (aliasIt != State().keyByLegacyAlias.end())
+        const char* LookupLegacy(const std::map<long, std::string>& aliases, const std::map<long, std::string>& ids, long legacyId)
         {
-            const auto& [aliasId, aliasKey] = *aliasIt;
-            const char* aliasText = Get(aliasKey.c_str());
-            if (aliasText && aliasText[0])
-                return aliasText;
-        }
+            const std::map<long, std::string>::const_iterator aliasIt = aliases.find(legacyId);
+            if (aliasIt != aliases.end())
+            {
+                const auto& [aliasId, aliasKey] = *aliasIt;
+                const char* aliasText = Get(aliasKey.c_str());
+                if (aliasText && aliasText[0])
+                    return aliasText;
+            }
 
-        const std::map<long, std::string>::const_iterator it = State().keyByLegacyId.find(legacyId);
-        if (it == State().keyByLegacyId.end())
+            const std::map<long, std::string>::const_iterator it = ids.find(legacyId);
+            if (it == ids.end())
+                return nullptr;
+
+            const auto& [mapKey, stringKey] = *it;
+            return Get(stringKey.c_str());
+        }
+    }
+
+    const char* GetByLegacyId(long legacyId)
+    {
+        if (legacyId <= 0)
             return nullptr;
 
-        const auto& [mapKey, stringKey] = *it;
-        return Get(stringKey.c_str());
+        Load();
+        return LookupLegacy(State().keyByLegacyAlias, State().keyByLegacyId, legacyId);
+    }
+
+    const char* GetStockByLegacyId(long legacyId)
+    {
+        if (legacyId <= 0)
+            return nullptr;
+
+        Load();
+        const CatalogState& state = State();
+        return state.stockTaken ? LookupLegacy(state.stockAliasByLegacyId, state.stockKeyByLegacyId, legacyId) : GetByLegacyId(legacyId);
+    }
+
+    unsigned long long Revision()
+    {
+        return State().revision;
+    }
+
+    void LoadOverlayFile(mc2::czstring path)
+    {
+        if (path && path[0])
+        {
+            Load();
+            LoadFile(path);
+        }
     }
 
     const char* GetByResourceId(unsigned int resourceId)
@@ -1056,6 +1101,285 @@ namespace MC2Strings
 
         // Refresh loaded flag in case catalog was previously empty
         State().loaded = !State().byKey.empty();
+        ++State().revision;
 
+    }
+
+    bool CompileMessage(std::string_view text, std::span<const ArgKind> signature, CompiledMessage& out, std::string* why)
+    {
+        out.pieces.clear();
+        const auto fail = [&](const char* reason)
+        {
+            if (why)
+                *why = reason;
+            out.pieces.clear();
+            return false;
+        };
+        const auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
+
+        MessagePiece current;
+        size_t used = 0;
+        size_t i = 0;
+        while (i < text.size())
+        {
+            const char c = text[i++];
+            if (c != '%')
+            {
+                current.literal.push_back(c);
+                continue;
+            }
+            if (i >= text.size())
+                return fail("trailing percent");
+            if (text[i] == '%')
+            {
+                current.literal.push_back('%');
+                ++i;
+                continue;
+            }
+
+            std::string flags;
+            while (i < text.size() && (text[i] == '-' || text[i] == '+' || text[i] == ' ' || text[i] == '#' || text[i] == '0'))
+                flags.push_back(text[i++]);
+            std::string spec = flags;
+            size_t digits = 0;
+            while (i < text.size() && isDigit(text[i]))
+            {
+                spec.push_back(text[i++]);
+                ++digits;
+            }
+            if (digits > 4)
+                return fail("width too large");
+            if (i < text.size() && text[i] == '.')
+            {
+                spec.push_back(text[i++]);
+                digits = 0;
+                while (i < text.size() && isDigit(text[i]))
+                {
+                    spec.push_back(text[i++]);
+                    ++digits;
+                }
+                if (digits > 4)
+                    return fail("precision too large");
+            }
+
+            IntWidth width = IntWidth::Int;
+            if (i < text.size() && text[i] == 'h')
+            {
+                ++i;
+                width = IntWidth::Short;
+                if (i < text.size() && text[i] == 'h')
+                {
+                    ++i;
+                    width = IntWidth::Char;
+                }
+            }
+            else if (i < text.size() && text[i] == 'l')
+            {
+                ++i;
+                width = IntWidth::Long;
+                if (i < text.size() && text[i] == 'l')
+                {
+                    ++i;
+                    width = IntWidth::LongLong;
+                }
+            }
+            if (i >= text.size())
+                return fail("truncated conversion");
+
+            const char conv = text[i++];
+            ArgKind need = ArgKind::Int;
+            switch (conv)
+            {
+            case 'd': case 'i': case 'u': case 'x': case 'X': case 'o':
+                need = ArgKind::Int;
+                break;
+            case 's':
+                need = ArgKind::Str;
+                if (width != IntWidth::Int || flags.find_first_of("+ #0") != std::string::npos)
+                    return fail("unsupported %s modifier");
+                break;
+            case 'f': case 'F': case 'e': case 'E': case 'g': case 'G':
+                need = ArgKind::Float;
+                if (width != IntWidth::Int && width != IntWidth::Long)   // %lf is a double, as in C
+                    return fail("unsupported float modifier");
+                width = IntWidth::Int;
+                break;
+            case 'n':
+                return fail("%n is rejected");
+            default:
+                return fail("unsupported conversion");
+            }
+
+            if (used >= signature.size())
+                return fail("more conversions than arguments");
+            if (signature[used] != need)
+                return fail("argument type mismatch");
+
+            current.arg = static_cast<int>(used++);
+            current.conv = conv;
+            current.width = width;
+            current.spec = spec;
+            out.pieces.push_back(std::move(current));
+            current = MessagePiece();
+        }
+        if (!current.literal.empty())
+            out.pieces.push_back(std::move(current));
+        return true;
+    }
+
+    namespace
+    {
+        template <class T>
+        void AppendPrintf(std::string& out, const char* format, T value)
+        {
+            char stackBuf[128];   // not "small": rpcndr.h defines that as a macro
+            const int needed = std::snprintf(stackBuf, sizeof(stackBuf), format, value);
+            if (needed < 0)
+                return;
+            if (static_cast<size_t>(needed) < sizeof(stackBuf))
+            {
+                out.append(stackBuf, static_cast<size_t>(needed));
+                return;
+            }
+            std::string big(static_cast<size_t>(needed) + 1, '\0');
+            std::snprintf(big.data(), big.size(), format, value);
+            out.append(big.data(), static_cast<size_t>(needed));
+        }
+
+        const char* LengthText(IntWidth width)
+        {
+            switch (width)
+            {
+            case IntWidth::Char: return "hh";
+            case IntWidth::Short: return "h";
+            case IntWidth::Long: return "l";
+            case IntWidth::LongLong: return "ll";
+            default: return "";
+            }
+        }
+
+        void AppendInt(std::string& out, const MessagePiece& piece, long long value)
+        {
+            const std::string format = "%" + piece.spec + LengthText(piece.width) + piece.conv;
+            const bool isSigned = piece.conv == 'd' || piece.conv == 'i';
+            // Cast to the type the conversion reads, so the result matches a correctly typed sprintf on this platform.
+            switch (piece.width)
+            {
+            case IntWidth::Char:
+                isSigned ? AppendPrintf(out, format.c_str(), static_cast<int>(static_cast<signed char>(value)))
+                         : AppendPrintf(out, format.c_str(), static_cast<unsigned int>(static_cast<unsigned char>(value)));
+                break;
+            case IntWidth::Short:
+                isSigned ? AppendPrintf(out, format.c_str(), static_cast<int>(static_cast<short>(value)))
+                         : AppendPrintf(out, format.c_str(), static_cast<unsigned int>(static_cast<unsigned short>(value)));
+                break;
+            case IntWidth::Long:
+                isSigned ? AppendPrintf(out, format.c_str(), static_cast<long>(value))
+                         : AppendPrintf(out, format.c_str(), static_cast<unsigned long>(value));
+                break;
+            case IntWidth::LongLong:
+                isSigned ? AppendPrintf(out, format.c_str(), value)
+                         : AppendPrintf(out, format.c_str(), static_cast<unsigned long long>(value));
+                break;
+            default:
+                isSigned ? AppendPrintf(out, format.c_str(), static_cast<int>(value))
+                         : AppendPrintf(out, format.c_str(), static_cast<unsigned int>(value));
+                break;
+            }
+        }
+    }
+
+    std::string FormatMessage(const CompiledMessage& message, std::span<const MessageArg> args)
+    {
+        std::string out;
+        for (const MessagePiece& piece : message.pieces)
+        {
+            out += piece.literal;
+            if (piece.arg < 0 || static_cast<size_t>(piece.arg) >= args.size())
+                continue;
+            const MessageArg& arg = args[static_cast<size_t>(piece.arg)];
+            switch (piece.conv)
+            {
+            case 's':
+                if (arg.kind == ArgKind::Str)
+                    AppendPrintf(out, ("%" + piece.spec + "s").c_str(), std::string(arg.s).c_str());
+                break;
+            case 'f': case 'F': case 'e': case 'E': case 'g': case 'G':
+                if (arg.kind == ArgKind::Float)
+                    AppendPrintf(out, ("%" + piece.spec + piece.conv).c_str(), arg.d);
+                break;
+            default:
+                if (arg.kind == ArgKind::Int)
+                    AppendInt(out, piece, arg.i);
+                break;
+            }
+        }
+        return out;
+    }
+
+    namespace
+    {
+        struct CachedMessage
+        {
+            unsigned long long revision = 0;
+            std::vector<ArgKind> signature;
+            CompiledMessage message;
+        };
+
+        std::mutex g_messageCacheLock;
+        std::map<long, CachedMessage> g_messageCache;
+
+        CompiledMessage LiteralMessage(std::string_view text)
+        {
+            CompiledMessage literal;
+            MessagePiece piece;
+            piece.literal = std::string(text);
+            literal.pieces.push_back(std::move(piece));
+            return literal;
+        }
+
+        // The template for the id as the catalog holds it now; a rejected override falls back to the stock text.
+        CompiledMessage BuildLegacyMessage(long legacyId, std::span<const ArgKind> signature)
+        {
+            CompiledMessage compiled;
+            const char* current = GetByLegacyId(legacyId);
+            if (!current || !current[0])
+            {
+                mc2::fmt::print_err("[MC2Strings] message id={:d} has no template\n", mc2::fmt::as_i32(legacyId));
+                return compiled;
+            }
+
+            std::string why;
+            if (CompileMessage(current, signature, compiled, &why))
+                return compiled;
+
+            const char* stock = GetStockByLegacyId(legacyId);
+            const bool haveStock = stock && stock[0] && std::strcmp(stock, current) != 0;
+            if (haveStock && CompileMessage(stock, signature, compiled, nullptr))
+            {
+                mc2::fmt::print_err("[MC2Strings] message id={:d} override rejected ({}); using the stock template\n",
+                    mc2::fmt::as_i32(legacyId), mc2::fmt::safe(why.c_str()));
+                return compiled;
+            }
+            mc2::fmt::print_err("[MC2Strings] message id={:d} template rejected ({}); printing it as plain text\n",
+                mc2::fmt::as_i32(legacyId), mc2::fmt::safe(why.c_str()));
+            return LiteralMessage(current);
+        }
+    }
+
+    std::string FormatLegacyMessage(long legacyId, std::span<const ArgKind> signature, std::span<const MessageArg> args)
+    {
+        Load();
+        const unsigned long long revision = Revision();
+
+        std::lock_guard<std::mutex> lock(g_messageCacheLock);
+        CachedMessage& entry = g_messageCache[legacyId];
+        if (entry.revision != revision || !std::equal(signature.begin(), signature.end(), entry.signature.begin(), entry.signature.end()))
+        {
+            entry.message = BuildLegacyMessage(legacyId, signature);
+            entry.signature.assign(signature.begin(), signature.end());
+            entry.revision = revision;
+        }
+        return FormatMessage(entry.message, args);
     }
 }

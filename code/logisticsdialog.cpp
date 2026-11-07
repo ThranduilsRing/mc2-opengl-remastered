@@ -23,6 +23,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 #include"mclib.h"
 #include"platform_windows.h"
 #include "../resource.h"
+#include "resource_messages.h"
 #include"aedit.h"
 #include"logisticsdata.h"
 #include<malloc.h>
@@ -413,12 +414,9 @@ void				LogisticsOneButtonDialog::setText( mc2::czstring mainText )
 
 void LogisticsOneButtonDialog::setPlayerLeftText( mc2::czstring playerName )
 {
-	char leaveStr[256];
-	char formatStr[256];
-	cLoadString( IDS_PLAYER_LEFT, leaveStr, 255 );
-	sprintf( formatStr, leaveStr, playerName );
+	const std::string formatStr = mc2msg::message<IDS_PLAYER_LEFT>( playerName );
 	setText( IDS_PLAYER_LEFT, IDS_DIALOG_OK, IDS_DIALOG_OK );
-	setText( formatStr );
+	setText( formatStr.c_str() );
 }
 
 LogisticsSaveDialog::LogisticsSaveDialog(  ) 
@@ -1214,9 +1212,7 @@ void LogisticsSaveDialog::updateMissionInfo()
 
 		long cBills;
 		file.readIdLong( "CBills", cBills );
-		cLoadString( IDS_DIALOG_CBILLS, tmp2, 255 );
-		sprintf( tmp, tmp2, cBills );
-		strcat( real, tmp );
+		strcat( real, mc2msg::message<IDS_DIALOG_CBILLS>( cBills ).c_str() );
 		strcat( real, "\n" );
 
 		time_t time = file.getFileMTime();
@@ -1226,9 +1222,7 @@ void LogisticsSaveDialog::updateMissionInfo()
 		char* dateStr = gos_GetFormattedDate( 0, ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday );
 
 
-		cLoadString( IDS_DIALOG_TIME, tmp2, 255 );
-		sprintf( tmp, tmp2, dateStr, timeStr  );
-		strcat( real, tmp );
+		strcat( real, mc2msg::message<IDS_DIALOG_TIME>( dateStr, timeStr ).c_str() );
 
 
 		setDefsElementText( kSvInfoKey, real );
@@ -1413,13 +1407,10 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 		 {
 			 // do prompt here
 			selectedName = mc2::str::from_c( (static_cast<aLocalizedListItem*>(gameListBox.GetItem( i )))->getHiddenText() );
-			char str[256];
-			cLoadString( IDS_DIALOG_OVERWRITE_PROMPT, str, 255 );
-			char promptString[256];
-			sprintf( promptString, str, selectedName.c_str() );
+			const std::string promptString = mc2msg::message<IDS_DIALOG_OVERWRITE_PROMPT>( selectedName );
 			LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
 				IDS_DIALOG_NO, IDS_DIALOG_YES );
-			LogisticsOKDialog::instance()->setText( promptString );
+			LogisticsOKDialog::instance()->setText( promptString.c_str() );
 			LogisticsOKDialog::instance()->begin();
 			bPromptOverwrite = true;
 			bFound = 1;
@@ -1469,14 +1460,11 @@ int	LogisticsSaveDialog::handleMessage( unsigned long what, unsigned long who )
 					break;
 				}
 			}
-			char str[256];
-			cLoadString( IDS_DIALOG_DELETE_PROMPT, str, 255 );
-			char promptString[256];
-			sprintf( promptString, str, tmpName.c_str() );
-	
+			const std::string promptString = mc2msg::message<IDS_DIALOG_DELETE_PROMPT>( tmpName );
+
 			LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
-						IDS_DIALOG_NO, IDS_DIALOG_YES );	
-			LogisticsOKDialog::instance()->setText( promptString );
+						IDS_DIALOG_NO, IDS_DIALOG_YES );
+			LogisticsOKDialog::instance()->setText( promptString.c_str() );
 			LogisticsOKDialog::instance()->begin();
 	
 			bDeletePrompt = true;
@@ -1936,13 +1924,10 @@ int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long wh
 			 {
 				 // do prompt here
 				 
-				char str[256];
-				cLoadString( IDS_DIALOG_OVERWRITE_PROMPT, str, 255 );
-				char promptString[256];
-				sprintf( promptString, str, selectedName.c_str() );
+				const std::string promptString = mc2msg::message<IDS_DIALOG_OVERWRITE_PROMPT>( selectedName );
 				LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
 					IDS_DIALOG_NO, IDS_DIALOG_YES );
-				LogisticsOKDialog::instance()->setText( promptString );
+				LogisticsOKDialog::instance()->setText( promptString.c_str() );
 				LogisticsOKDialog::instance()->begin();
 				bPromptOverwrite = true;
 				bFound = 1;
@@ -1965,14 +1950,11 @@ int	LogisticsVariantDialog::handleMessage ( unsigned long what, unsigned long wh
 	if ( DELETE_BUTTON == who )
 	{
 		selectedName = entryText();
-		char str[256];
-		cLoadString( IDS_DIALOG_DELETE_PROMPT, str, 255 );
-		char promptString[256];
-		sprintf( promptString, str, selectedName.c_str() );
+		const std::string promptString = mc2msg::message<IDS_DIALOG_DELETE_PROMPT>( selectedName );
 
 		LogisticsOKDialog::instance()->setText( IDS_DIALOG_QUIT_PROMPT,
-					IDS_DIALOG_NO, IDS_DIALOG_YES );	
-		LogisticsOKDialog::instance()->setText( promptString );
+					IDS_DIALOG_NO, IDS_DIALOG_YES );
+		LogisticsOKDialog::instance()->setText( promptString.c_str() );
 		LogisticsOKDialog::instance()->begin();
 
 		bDeletePrompt = true;
@@ -2197,12 +2179,10 @@ void LogisticsMapInfoDialog::setMap( mc2::czstring pFileName )
 		{
 		
 			char missionName[256];
-			char text[1024];
 			missionName[0] = 0;
-			char text2[1024];
 			bool bRes = 0;
 
-			char totalText[1024];
+			std::string totalText;
 
 			file.seekBlock( "MissionSettings" );
 			file.readIdBoolean( "MissionNameUseResourceString", bRes );
@@ -2217,31 +2197,20 @@ void LogisticsMapInfoDialog::setMap( mc2::czstring pFileName )
 				file.readIdString( "MissionName", missionName, 255 );
 			}
 	
-			cLoadString( IDS_MP_LM_MAP_LIST_MAP_NAME, text, 255 );
-			sprintf( text2, text, missionName );
-
-			strcpy( totalText, text2 );	// already formatted; never a format string again (a mission name may hold %s)
-			strcat( totalText, "\n" );
+			// The mission name is an argument, never part of a format string (it may hold %s).
+			totalText = mc2msg::message<IDS_MP_LM_MAP_LIST_MAP_NAME>( missionName );
+			totalText += "\n";
 
 				unsigned long type = 0;
 			file.readIdULong( "MissionType", type );
-			cLoadString( IDS_MP_LM_MAP_LIST_TYPE, text, 255 );
-			char mType[128];
-			cLoadString( IDS_MP_LM_TYPE0 + type, mType, 127 );
-			
-			sprintf( text2, text, mType );
-
-			strcat( totalText, text2 );
-			strcat( totalText, "\n" );
+			totalText += mc2msg::message<IDS_MP_LM_MAP_LIST_TYPE>( loadResourceString( IDS_MP_LM_TYPE0 + type ) );
+			totalText += "\n";
 
 			unsigned long numPlayers = 2;
 
 			file.readIdULong( "MaximumNumberOfPlayers", numPlayers );
-			cLoadString( IDS_MP_LM_MAP_LIST_MAX_PLAYERS, text, 255 );
-			sprintf( text2, text, numPlayers );
-
-			strcat( totalText, text2 );
-			strcat( totalText, "\n" );
+			totalText += mc2msg::message<IDS_MP_LM_MAP_LIST_MAX_PLAYERS>( numPlayers );
+			totalText += "\n";
 
 			textObjects[1].setText( totalText );
 

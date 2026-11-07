@@ -163,6 +163,7 @@ add_executable(mc2_tests
     test_gui_bridge.cpp     # widget text bridge: setText / setEntry overload resolution (compile-time, step 4 B1)
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
     test_resource_strings.cpp
+    test_resource_messages.cpp  # typed resource messages over the real catalog (MC2Strings.cpp linked)
     test_abl_include_path.cpp  # ABL #include_ next to the including script: mixed separators, OConst.abi (Windows regression)
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
@@ -224,6 +225,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/sim_overlap.cpp
     ${MC2_WORKTREE_ROOT}/mclib/unit_animation_tick.cpp
     ${MC2_WORKTREE_ROOT}/mclib/resource_strings.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/MC2Strings.cpp
     ${MC2_WORKTREE_ROOT}/mclib/alloc_probe.cpp       # allocation accounting seam (portable, proof builds + this tier)
     ${MC2_WORKTREE_ROOT}/mclib/xform_conventions.cpp  # XFORM-CONVENTION-HARNESS-1: GL-free leaf TU
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp

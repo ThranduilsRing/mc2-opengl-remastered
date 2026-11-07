@@ -21,6 +21,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 #include <cstdlib>
 #include"platform_str.h"   // S_stricmp (encyclopedia_<tab> parse)
 #include"../resource.h"
+#include"resource_messages.h"
 #include"prefs.h"
 #include"cmponent.h"
 #include"../GuiRuntime/GuiRuntime.h"
@@ -676,8 +677,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 
 	statsListBox.removeAllItems( true );
 
-	char formatText[256];
-	char tmp[256];
+	std::string formatText;
 
 	long color = (textCount > 0) ? textObjects[0].getColor() : 0xffffffff;
 	//	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
@@ -693,8 +693,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 	// add weight stats
-	cLoadString( IDS_EN_WEIGHT, text, 255 );
-	sprintf( formatText, text, pVehicle->getMaxWeight() );	
+	formatText = mc2msg::message<IDS_EN_WEIGHT>( pVehicle->getMaxWeight() );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -703,8 +702,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	// add weight class stats
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-	cLoadString( IDS_EN_CLASS, text, 255 );
-	sprintf( formatText, text, pVehicle->getMechClass().c_str() );	
+	formatText = mc2msg::message<IDS_EN_CLASS>( pVehicle->getMechClass() );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -713,9 +711,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	// now armor
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-	cLoadString( IDS_EN_ARMOR, text, 255 );
-	cLoadString( pVehicle->getArmorClass(), tmp, 255 );
- 	sprintf( formatText, text, tmp, pVehicle->getArmor() );	
+	formatText = mc2msg::message<IDS_EN_ARMOR>( loadResourceString( pVehicle->getArmorClass() ), static_cast<long>(pVehicle->getArmor()) );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -725,8 +721,7 @@ void Mechlopedia::MechScreen::setVehicle( LogisticsVehicle* pVehicle )
 	// now speed
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, static_cast<long>(pVehicle->getDisplaySpeed().value_or(-1)));
+	formatText = mc2msg::message<IDS_EN_SPEED>( static_cast<long>(pVehicle->getDisplaySpeed().value_or(-1)) );
 
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -808,9 +803,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 	statsListBox.removeAllItems( true );
 
-	char text[256];
-	char formatText[256];
-	char tmp[256];
+	std::string formatText;
 
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
@@ -820,9 +813,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	if ( !bIsVehicle )
 	{
 		long houseID = pChassis->getHouseID();
-		cLoadString( IDS_HOUSE0 + houseID, tmp, 255 );
-		cLoadString( IDS_EN_HOUSE, text, 255 );
-		sprintf( formatText, text, tmp );
+		formatText = mc2msg::message<IDS_EN_HOUSE>( loadResourceString( IDS_HOUSE0 + houseID ) );
 
 		pItem->setText( formatText );
 		pItem->setColor( color );
@@ -831,8 +822,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 	// add weight stats
-	cLoadString( IDS_EN_WEIGHT, text, 255 );
-	sprintf( formatText, text, pChassis->getMaxWeight() );	
+	formatText = mc2msg::message<IDS_EN_WEIGHT>( pChassis->getMaxWeight() );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -841,8 +831,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	// add weight class stats
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-	cLoadString( IDS_EN_CLASS, text, 255 );
-	sprintf( formatText, text, pChassis->getMechClass().c_str() );	
+	formatText = mc2msg::message<IDS_EN_CLASS>( pChassis->getMechClass() );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -851,9 +840,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	// now armor
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-	cLoadString( IDS_EN_ARMOR, text, 255 );
-	cLoadString( pChassis->getArmorClass(), tmp, 255 );
- 	sprintf( formatText, text, tmp, pChassis->getArmor() );	
+	formatText = mc2msg::message<IDS_EN_ARMOR>( loadResourceString( pChassis->getArmorClass() ), static_cast<long>(pChassis->getArmor()) );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -863,8 +850,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	// now speed
 	pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-	cLoadString( IDS_EN_SPEED, text, 255 );
-	sprintf( formatText, text, static_cast<long>(pChassis->getDisplaySpeed().value_or(-1)));
+	formatText = mc2msg::message<IDS_EN_SPEED>( static_cast<long>(pChassis->getDisplaySpeed().value_or(-1)) );
 	
 	pItem->setText( formatText );
 	pItem->setColor( color );
@@ -875,8 +861,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	{
 		pItem = std::make_unique<aTextListItem>( IDS_EN_LISTBOX_FONT );
 
-		cLoadString( IDS_EN_JUMP, text, 255 );
-		sprintf( formatText, text, static_cast<long>(pChassis->getJumpRange()) * 25 );
+		formatText = mc2msg::message<IDS_EN_JUMP>( static_cast<long>(pChassis->getJumpRange()) * 25 );
 		
 		pItem->setText( formatText );
 		pItem->setColor( color );
@@ -1059,9 +1044,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		descriptionListBox.AddItem( pEntry.release() );
 	}
 
-	char buffer[256];
-	char final[256];
-	char tmp[256];
+	std::string final;
 	long color = (textCount > 0) ? textObjects[0].getColor() : 0xffffffff;
 
 	/*
@@ -1084,9 +1067,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	{
 		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-		cLoadString( IDS_EN_WEAPON_RANGE, buffer, 255 );
-		cLoadString( IDS_HOTKEY1 + pComponent->getRangeType(), tmp, 255 );
-		sprintf( final, buffer, tmp );
+		final = mc2msg::message<IDS_EN_WEAPON_RANGE>( loadResourceString( IDS_HOTKEY1 + pComponent->getRangeType() ) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 		statsListBox.AddItem( pEntry.release() );
@@ -1094,8 +1075,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 		//	DAMAGE
 		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-		cLoadString( IDS_EN_WEAPON_DAMAGE, buffer, 255 );
-		sprintf( final, buffer, static_cast<long>(pComponent->getDamage()) );
+		final = mc2msg::message<IDS_EN_WEAPON_DAMAGE>( static_cast<long>(pComponent->getDamage()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 		statsListBox.AddItem( pEntry.release() );
@@ -1105,8 +1085,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	{
 		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-		cLoadString( IDS_EN_WEAPON_ARMOR, buffer, 255 );
-		sprintf( final, buffer, 32 );
+		final = mc2msg::message<IDS_EN_WEAPON_ARMOR>( 32 );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 //		pEntry->setHelpID( IDS_EN_WEAPON_ARMOR_HELP );
@@ -1121,8 +1100,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	{
 		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-		cLoadString( IDS_EN_WEAPON_RATEOFFIRE, buffer, 255 );
-		sprintf( final, buffer, (10.f/pComponent->getRecycleTime()) );
+		final = mc2msg::message<IDS_EN_WEAPON_RATEOFFIRE>( 10.f/pComponent->getRecycleTime() );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 		statsListBox.AddItem( pEntry.release() );
@@ -1132,8 +1110,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	// heat
 	pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-	cLoadString( IDS_EN_WEAPON_HEAT, buffer, 255 );
-	sprintf( final, buffer, static_cast<long>(pComponent->getHeat()) );
+	final = mc2msg::message<IDS_EN_WEAPON_HEAT>( static_cast<long>(pComponent->getHeat()) );
 	pEntry->setText( final );
 	pEntry->setColor( color );
 	statsListBox.AddItem( pEntry.release() );
@@ -1143,8 +1120,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	{
 		pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-		cLoadString( IDS_EN_WEAPON_AMMO, buffer, 255 );
-		sprintf( final, buffer, static_cast<long>(pComponent->getAmmo()) );
+		final = mc2msg::message<IDS_EN_WEAPON_AMMO>( static_cast<long>(pComponent->getAmmo()) );
 		pEntry->setText( final );
 		pEntry->setColor( color );
 		statsListBox.AddItem( pEntry.release() );
@@ -1153,8 +1129,7 @@ void Mechlopedia::WeaponScreen::setWeapon ( LogisticsComponent* pComponent )
 	// COST
 	pEntry = std::make_unique<aTextListItem>( IDS_EN_WEAPON_FONT );
 
-	cLoadString( IDS_EN_WEAPON_COST, buffer, 255 );
-	sprintf( final, buffer, static_cast<long>(pComponent->getCost()) );
+	final = mc2msg::message<IDS_EN_WEAPON_COST>( static_cast<long>(pComponent->getCost()) );
 	pEntry->setText( final );
 	pEntry->setColor( color );
 	statsListBox.AddItem( pEntry.release() );
@@ -1538,9 +1513,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 		{
 			textObjects[0].setText( tmpStr );
 
-			cLoadString( IDS_EN_BUILDING_WEIGHT, name, 255 );
-			char formatted[256];
-			sprintf( formatted, name, pBldg->weight );
+			const std::string formatted = mc2msg::message<IDS_EN_BUILDING_WEIGHT>( pBldg->weight );
 			textObjects[1].setText( formatted );
 
 			descriptionListBox.removeAllItems( true );
@@ -1582,9 +1555,7 @@ void Mechlopedia::BuildingScreen::select( aTextListItem* pEntry )
 			setDefsElementText( "game.mcl_en_bldg.text.description", descText );
 
 			// Structure points readout (legacy textObjects[1]).
-			char structFmt[256] = {}, structText[256] = {};
-			cLoadString( IDS_EN_BUILDING_WEIGHT, structFmt, 255 );
-			sprintf( structText, structFmt, pBldg->weight );
+			const std::string structText = mc2msg::message<IDS_EN_BUILDING_WEIGHT>( pBldg->weight );
 			setDefsElementText( "game.mcl_en_bldg.text.structure_readout", structText );
 
 			// Weapons loadout (per-range colored), populated from the building's
