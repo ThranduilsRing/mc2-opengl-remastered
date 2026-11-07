@@ -71,5 +71,5 @@ void mc2_mech_stage_object_motion(const Mc2MechFrameFeed& feed, void* tailMem) {
     }
     for (auto& [key, pal] : updates) prevPalettes[key] = std::move(pal);
     if ((frame & 63u) == 0u)
-        std::erase_if(prevPalettes, [frame](const auto& kv) { const auto& [key, pal] = kv; return pal.frame + 4u < frame; });
+        std::erase_if(prevPalettes, [now = frame](const auto& kv) { const auto& [key, pal] = kv; return pal.frame + 4u < now; });
 }
