@@ -71,3 +71,18 @@ TEST_CASE("island init: residency admission denial retries once and the registry
     mc2vk::resetAllIslandInitFailures();
     CHECK(mc2vk::islandInitFailures(IslandKind::ScreenFx).build == 0);
 }
+
+TEST_CASE("island init: a readiness wait that never ends is terminal: optional degrades, required keeps waiting") {
+    CHECK(!mc2vk::islandWaitTerminal(mc2vk::kMaxWaitFrames - 1));
+    CHECK(mc2vk::islandWaitTerminal(mc2vk::kMaxWaitFrames));
+    mc2vk::IslandInitFailures fog, mech;
+    for (int i = 1; i < mc2vk::kMaxWaitFrames; ++i) {
+        CHECK(mc2vk::onIslandInitFailure(IslandKind::Fog, false, 0, "gbuffer", fog) == IslandInitAction::Wait);
+        CHECK(mc2vk::onIslandInitFailure(IslandKind::Mech, false, 0, "gbuffer", mech) == IslandInitAction::Wait);
+    }
+    CHECK(mc2vk::onIslandInitFailure(IslandKind::Fog, false, 0, "gbuffer", fog) == IslandInitAction::Degrade);
+    CHECK(mc2vk::onIslandInitFailure(IslandKind::Mech, false, 0, "gbuffer", mech) == IslandInitAction::Wait);
+    CHECK(mech.stuckLogged);
+    fog.reset();
+    CHECK(fog.waits == 0);
+}
