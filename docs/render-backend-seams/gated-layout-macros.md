@@ -342,6 +342,126 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
+- Header: `GameOS/gameos/vk_frame_ring.h:87`
+- Class: `FrameAlloc`  (data-member)
+- Member: `VkBuffer buffer = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:88`
+- Class: `FrameAlloc`  (data-member)
+- Member: `VkDeviceSize offset = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:89`
+- Class: `FrameAlloc`  (data-member)
+- Member: `void* ptr = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:90`
+- Class: `FrameAlloc`  (data-member)
+- Member: `VkDeviceSize size = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:112`
+- Class: `FrameRing`  (data-member)
+- Member: `FrameRingCore core_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:113`
+- Class: `FrameRing`  (data-member)
+- Member: `OwnedBuffer buffer_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:114`
+- Class: `FrameRing`  (data-member)
+- Member: `uint8_t* mapped_ = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:115`
+- Class: `FrameRing`  (data-member)
+- Member: `uint32_t growths_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:116`
+- Class: `FrameRing`  (data-member)
+- Member: `uint64_t policyRefusals_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_frame_ring.h:117`
+- Class: `FrameRing`  (data-member)
+- Member: `VkDeviceSize refusedCapacity_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_readback.h:116`
+- Class: `ReadbackRing`  (data-member)
+- Member: `ReadbackCore core_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_readback.h:117`
+- Class: `ReadbackRing`  (data-member)
+- Member: `OwnedBuffer buf_[ReadbackCore::kSlots];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_readback.h:118`
+- Class: `ReadbackRing`  (data-member)
+- Member: `VkDeviceSize cap_[ReadbackCore::kSlots] = {};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_readback.h:119`
+- Class: `ReadbackRing`  (data-member)
+- Member: `void* mapped_[ReadbackCore::kSlots] = {};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vk_readback.h:120`
+- Class: `ReadbackRing`  (data-member)
+- Member: `uint64_t requests_ = 0, stale_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
 - Header: `GameOS/gameos/vulkan_context.h:62`
 - Class: `EngineContextHealth`  (data-member)
 - Member: `bool         validationEnabled  = false;`
@@ -534,4 +654,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 66 guard(s) analyzed, 0 violation(s).
+Result: 81 guard(s) analyzed, 0 violation(s).
