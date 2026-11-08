@@ -104,6 +104,10 @@ void aText::setText(std::string_view) {}
 std::string aEdit::entry() const { return {}; }
 void aEdit::setEntry(std::string_view, unsigned char) {}
 void aEdit::setFocus(bool) {}
+void aEdit::update() {}
+void aEdit::render() {}
+void aObject::move(float, float) {}
+void aText::render() {}
 
 TEST_CASE("ControlGui::playMovie from the sim worker defers the decoder open to the main-thread commit") {
     // ControlGui's constructor loads GUI assets; playMovie only needs the zero state a fresh object has for these members.

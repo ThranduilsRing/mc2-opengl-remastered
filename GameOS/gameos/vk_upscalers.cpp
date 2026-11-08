@@ -13,11 +13,15 @@
 #include <chrono>
 
 namespace mc2vk {
+#ifdef _WIN32
 RenderCore::IUpscalerProvider* fsrUpscaler();   // vulkan_fsr_provider.cpp
+#endif
 
 void registerBuiltinUpscalers() {
     static const bool done = [] {
+#ifdef _WIN32
         RenderCore::registerUpscaler(fsrUpscaler());
+#endif
         return true;
     }();
     (void)done;
