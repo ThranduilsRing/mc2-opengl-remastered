@@ -188,6 +188,7 @@ def summarize(reader, frame_range=None, bookmarks=None, warmup_seconds=0):
 def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=False):
     """Record through mission exit: a connection-time cutoff can capture only loading."""
     env = tracy.game_env("vk", False, 0, None, extra_env)
+    env["MC2_VK_GPU_TIMESTAMPS"] = "0"  # CPU attribution must not include blocking GPU query resolve.
     if os.environ.get("MC2_VK_DEVICE"):
         env.setdefault("MC2_VK_DEVICE", os.environ["MC2_VK_DEVICE"])
     env["MC2_FORCE_ALL_VISIBLE"] = "0"  # profile normal mission visibility, overriding smoke's forced value
@@ -204,7 +205,7 @@ def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=Fals
         env.update({"MC2_TEST_SPAWN": "1", "MC2_UI_COMMAND_FILE": str(channel),
                     "MC2_VISUAL_BOOKMARK_CAPTURE": str(bookmark_file),
                     "MC2_VISUAL_CAPTURE_DIR": str(trace.parent), "MC2_VISUAL_CAPTURE_FRAME": "120",
-                    "MC2_VISUAL_SETTLE": "30", "MC2_VK_GPU_TIMESTAMPS": "1",
+                    "MC2_VISUAL_SETTLE": "30", "MC2_VK_GPU_TIMESTAMPS": "0",
                     "MC2_WIDTH": "1920", "MC2_HEIGHT": "1080", "MC2_FPS_CAP": "0", "MC2_VSYNC": "0",
                     "MC2_DETERMINISTIC_RNG": "1"})
         # The PNG sweep freezes simulation; the subsequent performance schedule resumes live simulation.

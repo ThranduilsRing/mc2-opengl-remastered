@@ -187,6 +187,7 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
         assert config.env_extra["TRACY_PORT"] == "8086"
         assert config.env_extra["MC2_FORCE_ALL_VISIBLE"] == "0"
         assert config.env_extra["MC2_VK_DEVICE"] == "NVIDIA"
+        assert config.env_extra["MC2_VK_GPU_TIMESTAMPS"] == "0"
         return SimpleNamespace(stdout_text="failed", exit_code=1, killed_by_timeout=False)
     monkeypatch.setattr(profile.runner, "run_one", failed_run)
     assert profile.capture_mission(tmp_path, "mc2_01", 10, tmp_path / "test.tracy", []) == 1
@@ -214,3 +215,55 @@ def test_failed_capture_keeps_both_noise_numbers(tmp_path, monkeypatch, has_samp
     assert noise['external_cpu_p95'] == (19 if has_samples else None)
     assert noise['whole_machine_external_cpu_p95'] == (41 if has_samples else None)
     assert report['errors']['mc2_03'] == 'capture failed'
+
+
+def tracy_table():
+    spec = importlib.util.spec_from_file_location("tracy_table", PATH.with_name("tracy_table.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def attribution_capture():
+    # Tracy -u schema. Two WaitWorker sites on main, one on a worker;
+    # a pre-ready event deliberately extends into steady play.
+    return ("name,src_file,src_line,ns_since_start,exec_time_ns,thread,value\n"
+            "startup,boot.cpp,1,0,10,main,\n"
+            "Mission::init,mission_init.cpp,1004,10,10,main,\n"
+            "GameLogic.Mission.Interface,mission_update.cpp,319,20,1,main,\n"
+            "load_worker,load.cpp,1,15,100,loader,\n"
+            "Frame,gameosmain.cpp,1,30,10,main,\n"
+            "Frame,gameosmain.cpp,1,50,20,main,\n"
+            "Frame.WaitWorker,gameosmain.cpp,1049,51,3,main,\n"
+            "Frame.WaitWorker,gameosmain.cpp,1100,55,4,main,\n"
+            "Frame.WaitWorker,gameosmain.cpp,1049,51,6,worker,\n"
+            "Frame,gameosmain.cpp,1,80,30,main,\n"
+            "Frame.WaitWorker,gameosmain.cpp,1049,81,2,main,\n")
+
+
+def test_attribution_keeps_threads_sites_phases_and_frame_tails(attribution_capture):
+    phases = tracy_table().summarize(csv.DictReader(io.StringIO(attribution_capture)), first_playable_frames=1)
+    assert phases['startup']['zones'][0]['name'] == 'startup'
+    assert any(z['name'] == 'Mission::init' for z in phases['mission_load']['zones'])
+    assert phases['first_playable']['frames'] == 1
+    steady = phases['steady_play']
+    assert steady['frames'] == 2
+    assert steady['frame_latency'] == {'mean_ms': 25e-6, 'p99_ms': 30e-6, 'worst_ms': 30e-6}
+    assert not any(z['name'] in ('load_worker', 'startup', 'Mission::init') for z in steady['zones'])
+    waits = {(z['thread'], z['src_line']): z for z in steady['zones'] if z['name'] == 'Frame.WaitWorker'}
+    assert set(waits) == {('main', 1049), ('main', 1100), ('worker', 1049)}
+    assert waits['main', 1049]['count'] == 2
+    assert waits['main', 1049]['self_per_frame']['p99_ms'] == 3e-6
+    assert waits['main', 1100]['self_per_frame']['mean_ms'] == 2e-6  # absent frame is zero
+    frame = next(z for z in steady['zones'] if z['name'] == 'Frame')
+    assert frame['self_total_ms'] == 41e-6  # subtract main children only
+
+
+def test_attribution_rejects_missing_identity_or_phase_anchors(attribution_capture):
+    table = tracy_table()
+    with pytest.raises(ValueError, match='thread and source identity'):
+        table.summarize(csv.DictReader(io.StringIO('name,ns\nA,1\n')))
+    with pytest.raises(ValueError, match='Mission::init phase anchor'):
+        table.summarize(csv.DictReader(io.StringIO(attribution_capture.replace('Mission::init', 'unknown'))))
+    assert table.stats([1_000_000] * 99 + [50_000_000]) == {'mean_ms': 1.49, 'p99_ms': 1, 'worst_ms': 50}
