@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <format>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -50,7 +51,8 @@ struct Bench {
     explicit Bench(const VulkanContext& c) : ctx(c) {}
 
     // `r`: 8 floats per ray (origin.xyz, tMin, direction.xyz, tMax).
-    bool init(const float* r, uint32_t n) {
+    bool init(std::span<const float> r) {
+        const uint32_t n = static_cast<uint32_t>(r.size() / 8);
         const VkDevice dev = ctx.device();
         if (!set.create(ctx)) return fail("descriptor set");
         module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "rt_smoke.comp.spv", nullptr));
@@ -65,10 +67,10 @@ struct Bench {
 
         if (n == 0) return fail("no rays");
         count = n;
-        const size_t rayBytes = size_t(n) * 32;
-        if (!rays.createHostWritable(ctx.allocator(), dev, rayBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.rays") || !rays.upload(r, rayBytes))
+        const size_t rayBytes = static_cast<size_t>(n) * 32;
+        if (!rays.createHostWritable(ctx.allocator(), dev, rayBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.rays") || !rays.upload(r.data(), rayBytes))
             return fail("rays buffer");
-        if (!results.createHostWritable(ctx.allocator(), dev, size_t(n) * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.results")) return fail("results buffer");
+        if (!results.createHostWritable(ctx.allocator(), dev, static_cast<size_t>(n) * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.results")) return fail("results buffer");
         return true;
     }
 
@@ -120,15 +122,16 @@ constexpr float kSelfTestRays[kRayCount][8] = {
 
 }  // namespace
 
-bool traceRays(const VulkanContext& ctx, VkAccelerationStructureKHR tlas, const float* rays, uint32_t count, float* out) {
-    if (!ctx.rt().rayQuery || tlas == VK_NULL_HANDLE || count == 0) return false;
+bool traceRays(const VulkanContext& ctx, VkAccelerationStructureKHR tlas, std::span<const float> rays, std::span<float> out) {
+    const size_t count = rays.size() / 8;
+    if (!ctx.rt().rayQuery || tlas == VK_NULL_HANDLE || count == 0 || out.size() < count * 4) return false;
     Bench b(ctx);
-    if (!b.init(rays, count)) return false;
+    if (!b.init(rays)) return false;
     const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
         b.recordTrace(cmd, tlas);
     }, "rt trace probe");
-    return ok && b.results.read(out, size_t(count) * 16);
+    return ok && b.results.read(out.data(), count * 16);
 }
 
 bool runSelfTest(const VulkanContext& ctx) {
@@ -139,7 +142,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     const VkDevice dev = ctx.device();
     const VmaAllocator al = ctx.allocator();
     Bench b(ctx);
-    if (!b.init(&kSelfTestRays[0][0], kRayCount)) { slog("FAIL init: {}", b.failure); return false; }
+    if (!b.init({&kSelfTestRays[0][0], static_cast<size_t>(kRayCount) * 8})) { slog("FAIL init: {}", b.failure); return false; }
 
     const float verts[9] = {0, 0, 0, 1, 0, 0, 0, 1, 0};
     const uint32_t idx[3] = {0, 1, 2};
@@ -257,7 +260,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     grid.indices = gib.deviceAddress();
     grid.triangleCount = kGridN * kGridN * 2;
 
-    auto traceOver = [&](const TriangleGeometry& geo, bool anyPrim, AccelStructure& bl, AccelStructure& tl, ScratchArena& sc, const char* stage, bool refit) {
+    auto traceOver = [&](const TriangleGeometry& geo, bool anyPrim, AccelStructure& bl, AccelStructure& tl, ScratchArena& sc, std::string_view stage, bool refit) {
         bool rec = false;
         const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
             if (refit) {

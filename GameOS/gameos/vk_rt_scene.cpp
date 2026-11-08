@@ -238,21 +238,41 @@ void probe(VulkanContext& ctx, State& s) {
         expectT.push_back(kTop - p.h);
     }
     const uint32_t n = static_cast<uint32_t>(expect.size());
-    std::vector<float> out(size_t(n) * 4, 0.0f);
-    if (n == 0 || !traceRays(ctx, s.tlas.get(), rays.data(), n, out.data())) {
+    std::vector<float> out(static_cast<size_t>(n) * 4, 0.0f);
+    if (n == 0 || !traceRays(ctx, s.tlas.get(), rays, out)) {
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe FAIL trace rays={}", n);
         return;
     }
     uint32_t propOk = 0, terrainOk = 0;
     for (uint32_t i = 0; i < n; ++i) {
-        const float* o = &out[size_t(i) * 4];
+        const float* o = &out[static_cast<size_t>(i) * 4];
         const bool hit = o[0] != 0.0f;
         const uint32_t idx = static_cast<uint32_t>(o[3]);
         const bool isProp = i < props;
-        const bool match = hit && idx == expect[i] && (isProp || std::abs(o[1] - expectT[i]) < 1.0f);
+        bool match = hit && idx == expect[i] && (isProp || std::abs(o[1] - expectT[i]) < 1.0f);
+        // A prop ray can be occluded by a taller neighbour at the same x,y (the ray starts far above the map). Continue the ray past each
+        // occluder: finding the expected custom index behind it proves the instance mapping and only the occlusion is at fault; never
+        // finding it is a wrong-instance fault. passes= is the number of occluders skipped.
+        if (isProp && hit && !match) {
+            const size_t base = static_cast<size_t>(i) * 8;
+            float z = kTop - o[1] - 0.05f;
+            uint32_t passes = 0;
+            while (passes < 8 && z > -kTop) {
+                ++passes;
+                const float ray[8] = {rays[base], rays[base + 1], z, 0.0f, 0.0f, 0.0f, -1.0f, z + kTop};
+                float r[4] = {};
+                if (!traceRays(ctx, s.tlas.get(), ray, r) || r[0] == 0.0f) break;
+                if (static_cast<uint32_t>(r[3]) == expect[i]) {
+                    match = true;
+                    break;
+                }
+                z -= r[1] + 0.05f;
+            }
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} occluded_by=0x{:x} behind_found={} passes={}", i, idx, match ? 1 : 0, passes);
+        }
         (isProp ? propOk : terrainOk) += match ? 1u : 0u;
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} kind={} origin=({:.1f},{:.1f}) hit={} t={:.2f} prim={} custom=0x{:x} expect=0x{:x} expect_t={:.2f} match={}", i,
-             isProp ? "prop" : "terrain", rays[size_t(i) * 8], rays[size_t(i) * 8 + 1], hit ? 1 : 0, o[1], static_cast<uint32_t>(o[2]), idx, expect[i],
+             isProp ? "prop" : "terrain", rays[static_cast<size_t>(i) * 8], rays[static_cast<size_t>(i) * 8 + 1], hit ? 1 : 0, o[1], static_cast<uint32_t>(o[2]), idx, expect[i],
              expectT[i], match ? 1 : 0);
     }
     MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe result props={}/{} terrain={}/{} tlas_instances={}", propOk, props, terrainOk, n - props, s.tlasInstances);
@@ -292,9 +312,9 @@ void noteTerrain(const TerrainSource& t) {
         std::vector<TriangleGeometry> geos;
         for (const Range& r : ranges) {
             TriangleGeometry g;
-            g.vertices = vb.deviceAddress() + uint64_t(r.firstVertex) * 12;
+            g.vertices = vb.deviceAddress() + static_cast<uint64_t>(r.firstVertex) * 12;
             g.vertexCount = r.vertexCount;
-            g.indices = ib.deviceAddress() + uint64_t(r.firstIndex) * 4;
+            g.indices = ib.deviceAddress() + static_cast<uint64_t>(r.firstIndex) * 4;
             g.triangleCount = r.indexCount / 3;
             geos.push_back(g);
         }
@@ -395,7 +415,7 @@ void updateProps(uint64_t propVbo) {
                 g.vertices = propVbo;
                 g.vertexStride = feed.vertexStride;
                 g.vertexCount = vertexCount;
-                g.indices = ib.deviceAddress() + uint64_t(firstIndex[i]) * 4;
+                g.indices = ib.deviceAddress() + static_cast<uint64_t>(firstIndex[i]) * 4;
                 g.triangleCount = triangles[i];
                 geos.push_back(g);
             }

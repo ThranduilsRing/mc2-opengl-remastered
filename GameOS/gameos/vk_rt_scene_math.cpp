@@ -65,7 +65,7 @@ namespace {
 float coarseAt(const TerrainSource& t, int32_t x, int32_t y) {
     x = std::clamp(x, 0, t.mapSide - 1);
     y = std::clamp(y, 0, t.mapSide - 1);
-    return t.heights[size_t(x) + size_t(y) * size_t(t.mapSide)];
+    return t.heights[static_cast<size_t>(x) + static_cast<size_t>(y) * static_cast<size_t>(t.mapSide)];
 }
 }  // namespace
 
@@ -78,18 +78,18 @@ float terrainGridHeight(const TerrainSource& t, int32_t gx, int32_t gy) {
     gy = std::clamp(gy, 0, maxF);
     const int32_t cx = std::min(gx / 4, t.mapSide - 2);
     const int32_t cy = std::min(gy / 4, t.mapSide - 2);
-    const float u = float(gx - cx * 4) * 0.25f;
-    const float v = float(gy - cy * 4) * 0.25f;
+    const float u = static_cast<float>(gx - cx * 4) * 0.25f;
+    const float v = static_cast<float>(gy - cy * 4) * 0.25f;
     const float h00 = coarseAt(t, cx, cy), h10 = coarseAt(t, cx + 1, cy), h01 = coarseAt(t, cx, cy + 1), h11 = coarseAt(t, cx + 1, cy + 1);
     const float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v;
-    const float fine = t.fine[size_t(gx) + size_t(gy) * size_t(t.visualSide)];
-    const float edge = std::clamp(float(std::min({gx, gy, maxF - gx, maxF - gy})) * 0.125f, 0.0f, 1.0f);
+    const float fine = t.fine[static_cast<size_t>(gx) + static_cast<size_t>(gy) * static_cast<size_t>(t.visualSide)];
+    const float edge = std::clamp(static_cast<float>(std::min({gx, gy, maxF - gx, maxF - gy})) * 0.125f, 0.0f, 1.0f);
     const float w = std::clamp(t.displaceFar, 0.0f, 1.0f) * edge;
     return hc + (fine - hc) * w;
 }
 
-float terrainGridX(const TerrainSource& t, int32_t gx) { return float(gx) * (terrainUsesFine(t) ? 32.0f : 128.0f) - t.halfMap; }
-float terrainGridY(const TerrainSource& t, int32_t gy) { return t.halfMap - float(gy) * (terrainUsesFine(t) ? 32.0f : 128.0f); }
+float terrainGridX(const TerrainSource& t, int32_t gx) { return static_cast<float>(gx) * (terrainUsesFine(t) ? 32.0f : 128.0f) - t.halfMap; }
+float terrainGridY(const TerrainSource& t, int32_t gy) { return t.halfMap - static_cast<float>(gy) * (terrainUsesFine(t) ? 32.0f : 128.0f); }
 
 uint32_t terrainTilesPerSide(const TerrainSource& t) {
     if (!terrainUsable(t)) return 0;
@@ -110,15 +110,15 @@ void buildTerrainTile(const TerrainSource& t, uint32_t tx, uint32_t ty, std::vec
     const size_t pitch = static_cast<size_t>(t.visualSide);
     auto raw = [&](size_t gx, size_t gy) { return t.fine[gx + gy * pitch]; };
     const uint32_t vx = nx + 1;
-    positions.reserve(size_t(vx) * (ny + 1) * 3);
+    positions.reserve(static_cast<size_t>(vx) * (ny + 1) * 3);
     for (uint32_t y = 0; y <= ny; ++y)
         for (uint32_t x = 0; x <= nx; ++x) {
-            const int32_t gx = int32_t(x0 + x), gy = int32_t(y0 + y);
+            const int32_t gx = static_cast<int32_t>(x0 + x), gy = static_cast<int32_t>(y0 + y);
             positions.push_back(terrainGridX(t, gx));
             positions.push_back(terrainGridY(t, gy));
             positions.push_back(terrainGridHeight(t, gx, gy));
         }
-    indices.reserve(size_t(nx) * ny * 6);
+    indices.reserve(static_cast<size_t>(nx) * ny * 6);
     for (uint32_t y = 0; y < ny; ++y)
         for (uint32_t x = 0; x < nx; ++x) {
             const uint32_t i00 = y * vx + x, i10 = i00 + 1, i01 = i00 + vx, i11 = i01 + 1;
@@ -138,12 +138,12 @@ uint64_t terrainKey(const TerrainSource& t) {
             h *= 1099511628211ull;
         }
     };
-    mix(uint64_t(uint32_t(t.mapSide)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(t.mapSide)));
     mix(std::bit_cast<uint32_t>(t.halfMap));
     mix(t.heightVersion);
     mix(terrainUsesFine(t) ? 1 : 0);
     mix(t.visualVersion);
-    mix(uint64_t(uint32_t(t.visualSide)));
+    mix(static_cast<uint64_t>(static_cast<uint32_t>(t.visualSide)));
     mix(std::bit_cast<uint32_t>(t.displaceFar));
     return h;
 }
@@ -151,14 +151,14 @@ uint64_t terrainKey(const TerrainSource& t) {
 uint32_t appendRebasedIndices(std::span<const uint32_t> ibo, std::span<const PacketRange> packets, uint32_t vertexCount, std::vector<uint32_t>& out) {
     uint32_t tris = 0;
     for (const PacketRange& p : packets) {
-        if (uint64_t(p.firstIndex) + p.indexCount > ibo.size()) continue;
+        if (static_cast<uint64_t>(p.firstIndex) + p.indexCount > ibo.size()) continue;
         const uint32_t whole = p.indexCount / 3 * 3;
         for (uint32_t i = 0; i < whole; i += 3) {
-            const uint64_t a = uint64_t(ibo[p.firstIndex + i]) + p.baseVertex;
-            const uint64_t b = uint64_t(ibo[p.firstIndex + i + 1]) + p.baseVertex;
-            const uint64_t c = uint64_t(ibo[p.firstIndex + i + 2]) + p.baseVertex;
+            const uint64_t a = static_cast<uint64_t>(ibo[p.firstIndex + i]) + p.baseVertex;
+            const uint64_t b = static_cast<uint64_t>(ibo[p.firstIndex + i + 1]) + p.baseVertex;
+            const uint64_t c = static_cast<uint64_t>(ibo[p.firstIndex + i + 2]) + p.baseVertex;
             if (a >= vertexCount || b >= vertexCount || c >= vertexCount) continue;
-            out.insert(out.end(), {uint32_t(a), uint32_t(b), uint32_t(c)});
+            out.insert(out.end(), {static_cast<uint32_t>(a), static_cast<uint32_t>(b), static_cast<uint32_t>(c)});
             ++tris;
         }
     }
