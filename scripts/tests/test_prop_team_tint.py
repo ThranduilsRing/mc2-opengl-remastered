@@ -38,3 +38,13 @@ def test_compiled_team_mask_channel_selects_stock_paint_slot(tint_spirv, channel
                for ptr in weight_ptrs]
     assert any(re.search(r"OpVectorTimesScalar %v3float " + re.escape(paint) + " " + re.escape(weight) + r"\b", body)
                for weight in weights)
+
+
+def test_compiled_unmasked_palette_indexes_the_stock_team_slots(tint_spirv):
+    # The maskless path must consume the dominant albedo channel's paint;
+    # returning the authored blue, or indexing a constant slot, fails this check.
+    body = tint_spirv
+    channel = re.search(r"(%\w+) = OpLoad %int %channel\b", body)[1]
+    pointer = re.search(r"(%\w+) = OpAccessChain %\w+ %team " + re.escape(channel) + r"\b", body)[1]
+    packed = re.search(r"(%\w+) = OpLoad %uint " + re.escape(pointer) + r"\b", body)[1]
+    assert re.search(r"OpStore %packed " + re.escape(packed) + r"\b", body)

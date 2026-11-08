@@ -66,11 +66,11 @@ struct ModelOverrideRecord {
     // The condition variant by name; nullptr = pristine (the record's own chains).
     const ModelOverrideCondition* condition(std::string_view name) const;
 
-    // Only a team mask supplies shader-side paint. Normal/ORM maps alone must
-    // retain the per-palette, CPU-recoloured body (including the stock fallback).
+    // Object-map bodies share a pre-finalize GPU recipe. Without an explicit
+    // team mask the shader uses the stock dominant-channel palette classifier.
     bool usesShaderTeamPaint() const {
         for (const auto& m : materials)
-            if (!m.teamMaskPath.empty()) return true;
+            if (!m.albedoPath.empty() || !m.normalPath.empty() || !m.ormPath.empty() || !m.teamMaskPath.empty()) return true;
         return false;
     }
 };

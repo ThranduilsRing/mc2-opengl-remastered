@@ -111,7 +111,21 @@ bool propHasObjectAlbedo(int id) {
 vec3 propTeamTint(int id, vec3 albedo, uvec3 team) {
     if (id < 0 || id >= uPropMaterials.materials.length()) return albedo;
     PropMaterialGpu row = uPropMaterials.materials[id];
-    if ((row.material.flags & kMatFlagTeamMask) == 0u || row.material.emissiveTex == 0xffffffffu || team == uvec3(0u)) return albedo;
+    if (team == uvec3(0u)) return albedo;
+    if ((row.material.flags & kMatFlagTeamMask) == 0u || row.material.emissiveTex == 0xffffffffu) {
+        // Unmasked vehicle kits bake the stock key colours into the albedo.
+        // Keep one registered body: late CPU palette variants have no GPU recipe.
+        if (row.metadata.x == SURF_CLASS_GLASS || row.metadata.x == SURF_CLASS_EMISSIVE) return albedo;
+        int channel = albedo.r >= albedo.g && albedo.r >= albedo.b ? 0 : (albedo.g >= albedo.b ? 1 : 2);
+        float dominant = albedo[channel];
+        float other = max(albedo[(channel + 1) % 3], albedo[(channel + 2) % 3]);
+        if (dominant < 16.0 / 255.0 || dominant < 1.5 * other) return albedo;
+        uint packed = team[channel]; // stock R/G/B -> psRed/psGreen/psBlue
+        vec3 paint = vec3((packed >> 16) & 255u, (packed >> 8) & 255u, packed & 255u) / 255.0;
+        float shade = 1.0 - (1.0 - dominant) * (1.0 - dominant);
+        float cover = clamp((dominant / (other + 1.0 / 255.0) - 1.5) / 0.15, 0.0, 1.0);
+        return mix(albedo, paint * shade, cover);
+    }
     vec3 w = texture(uPropTex[nonuniformEXT(row.material.emissiveTex)], vUv * row.uvScale).rgb;
     float cover = clamp(w.r + w.g + w.b, 0.0, 1.0);
     if (cover <= 0.0) return albedo;
