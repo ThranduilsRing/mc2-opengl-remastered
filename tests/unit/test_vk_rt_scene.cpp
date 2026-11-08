@@ -260,3 +260,38 @@ TEST_CASE("rt scene: packet indices are rebased onto the shared VBO, bad ranges 
     CHECK(appendRebasedIndices(ibo, bad, 24, out) == 1);
     CHECK(out == std::vector<uint32_t>{0, 2, 3});
 }
+
+TEST_CASE("rt scene movers: custom index slots stay inside the reserved mech range (24-bit)") {
+    uint32_t idx = 0;
+    REQUIRE(moverCustomIndex(0, idx));
+    CHECK(idx == kMechIdFirst);
+    REQUIRE(moverCustomIndex(kMoverSlots - 1, idx));
+    CHECK(idx == 0x3FFFFu);
+    CHECK(isMechId(idx));
+    CHECK(idx <= 0xFFFFFFu);
+    CHECK_FALSE(moverCustomIndex(kMoverSlots, idx));
+}
+
+TEST_CASE("rt scene movers: Stuff space to MC2 world and the mover transform") {
+    const float in[3] = {1.0f, 2.0f, 3.0f};
+    float out[3] = {};
+    stuffToWorld(in, out);
+    CHECK(out[0] == -1.0f);
+    CHECK(out[1] == 3.0f);
+    CHECK(out[2] == 2.0f);
+    float xf[12] = {};
+    moverTransform(xf);
+    for (int r = 0; r < 3; ++r) {   // the 3x4 applied to a Stuff-space point matches stuffToWorld
+        const float v = xf[r * 4 + 0] * in[0] + xf[r * 4 + 1] * in[1] + xf[r * 4 + 2] * in[2] + xf[r * 4 + 3];
+        CHECK(v == out[r]);
+    }
+}
+
+TEST_CASE("rt scene movers: leave rules") {
+    CHECK(moverIsHandleKey(0x00100005u));
+    CHECK_FALSE(moverIsHandleKey(0x80001234u));
+    CHECK(moverLeaves(true, false, 0));                               // a dead handle leaves at once
+    CHECK_FALSE(moverLeaves(true, true, kMoverUnseenFrames * 10));    // a live off-screen mech stays
+    CHECK_FALSE(moverLeaves(false, false, kMoverUnseenFrames - 1));
+    CHECK(moverLeaves(false, false, kMoverUnseenFrames));             // vehicles leave by timeout
+}

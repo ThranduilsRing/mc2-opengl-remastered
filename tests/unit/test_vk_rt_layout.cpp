@@ -168,3 +168,50 @@ TEST_CASE("rt layout: a zero limit, a non power-of-two alignment or an oversize 
     CHECK_FALSE(computeSbtLayout(32, 32, 64, 1, 1, 0, 16).valid);   // stride 32 > maxShaderGroupStride 16
     CHECK(computeSbtLayout(32, 32, 64, 1, 1, 0, 4096).valid);
 }
+
+TEST_CASE("rt refit: refitAction rebuilds on anything but an unchanged updatable topology") {
+    const GeometrySignature a{100, 50, 106, 1, 40, 1, 0x1000};
+    GeometrySignature moved = a;
+    moved.indexSource = 0x2000;
+    GeometrySignature grown = a;
+    grown.vertexCount = 101;
+    const GeometrySignature one[1] = {a};
+    const GeometrySignature two[2] = {a, a};
+    const GeometrySignature other[1] = {moved};
+    const GeometrySignature bigger[1] = {grown};
+    CHECK(refitAction({}, 0, one, kBuildAllowUpdate, 0) == RefitAction::Build);                                // nothing built yet
+    CHECK(refitAction(one, 0, one, 0, 0) == RefitAction::Build);                                               // built without ALLOW_UPDATE
+    CHECK(refitAction(one, kBuildAllowUpdate, one, kBuildAllowUpdate | kBuildAllowCompaction, 0) == RefitAction::Build);   // flags changed
+    CHECK(refitAction(one, kBuildAllowUpdate, other, kBuildAllowUpdate, 0) == RefitAction::Build);             // another mesh section (LOD swap)
+    CHECK(refitAction(one, kBuildAllowUpdate, bigger, kBuildAllowUpdate, 0) == RefitAction::Build);            // topology changed
+    CHECK(refitAction(one, kBuildAllowUpdate, two, kBuildAllowUpdate, 0) == RefitAction::Build);               // geometry count changed
+    CHECK(refitAction(one, kBuildAllowUpdate, one, kBuildAllowUpdate, kRefitsBeforeRebuild) == RefitAction::Build);   // BVH quality: rebuild after N
+    CHECK(refitAction(one, kBuildAllowUpdate, one, kBuildAllowUpdate, kRefitsBeforeRebuild - 1) == RefitAction::Refit);
+    CHECK(refitAction(two, kBuildAllowUpdate, two, kBuildAllowUpdate, 0) == RefitAction::Refit);
+}
+
+TEST_CASE("rt refit: compaction is forbidden for ALLOW_UPDATE on AMD proprietary") {
+    CHECK(compactionAllowed(kBuildAllowCompaction, true));
+    CHECK(compactionAllowed(kBuildAllowCompaction | kBuildAllowUpdate, false));
+    CHECK_FALSE(compactionAllowed(kBuildAllowCompaction | kBuildAllowUpdate, true));
+    CHECK_FALSE(compactionAllowed(kBuildAllowUpdate, false));
+}
+
+TEST_CASE("rt instance custom index: 24 bits, asserted at the limit") {
+    CHECK(kMaxInstanceCustomIndex == 0xFFFFFFu);
+    CHECK(instanceCustomIndexFits(0));
+    CHECK(instanceCustomIndexFits(0xFFFFFFu));
+    CHECK_FALSE(instanceCustomIndexFits(0x1000000u));
+    CHECK_FALSE(instanceCustomIndexFits(0xFFFFFFFFu));
+}
+
+TEST_CASE("rt frame rebuild barrier: upload and compute inputs plus the previous frame AS builds and reads") {
+    constexpr Barrier b = frameRebuildBarrier();
+    constexpr Barrier up = barrierBetween(Phase::Upload, Phase::Blas);
+    CHECK(b.valid);
+    CHECK((b.srcStage & up.srcStage) == up.srcStage);
+    CHECK((b.srcStage & kStageAsBuild) != 0);
+    CHECK((b.srcAccess & kAccessAsWrite) != 0);
+    CHECK(b.dstStage == up.dstStage);
+    CHECK(b.dstAccess == up.dstAccess);
+}

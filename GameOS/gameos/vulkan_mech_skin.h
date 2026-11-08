@@ -74,6 +74,19 @@ public:
 
     uint32_t plannedInstances() const noexcept { return plannedInstances_; }
 
+    // RT movers: the skinned buffers also carry SHADER_DEVICE_ADDRESS | ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY so a mover BLAS builds straight from
+    // the skin output (no readback). Set once after init, before the first plan(); buffers created earlier are recreated on the next plan of their slot.
+    void setRayInput(bool on) noexcept;
+    static constexpr uint32_t kVertexStride = 40;   // GpuMechVertex; position R32G32B32_SFLOAT at offset 0
+    // First skinned vertex of instance `k` of run `r` this frame, -1 when it draws from the bind-pose VBO (or nothing is active).
+    int32_t region(uint32_t r, uint32_t k) const noexcept {
+        if (!active_ || r + 1 >= runOff_.size() || k >= runOff_[r + 1] - runOff_[r]) return -1;
+        return dst_[runOff_[r] + k];
+    }
+    // Device address of this frame's skinned buffer (0 without setRayInput or when nothing is active).
+    VkDeviceAddress skinnedAddress() const noexcept { return active_ ? skinned_[slot_].deviceAddress() : 0; }
+    uint32_t slot() const noexcept { return slot_; }
+
 private:
     struct Job { uint32_t srcFirst, count, dstFirst, boneBase; };
 
@@ -86,6 +99,8 @@ private:
     uint32_t plannedInstances_ = 0;
     uint32_t maxCount_ = 0;
     uint32_t jobCount_ = 0;
+    VkBufferUsageFlags extraUsage_ = 0;             // setRayInput
+    bool usageStale_[kMaxFramesInFlight] = {};      // the slot's skinned buffer predates extraUsage_
 
     std::vector<Job> jobs_;
     std::vector<uint32_t> runOff_;     // per run: offset of its instances in dst_ (size runCount + 1)

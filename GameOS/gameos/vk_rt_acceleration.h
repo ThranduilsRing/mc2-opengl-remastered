@@ -68,6 +68,48 @@ constexpr bool worthCompacting(uint64_t originalSize, uint64_t compactedSize, ui
     return originalSize > 0 && compactedSize > 0 && compactedSize < originalSize && (originalSize - compactedSize) * 100 >= originalSize * minSavedPercent;
 }
 
+// Build-flag bits as plain values (VkBuildAccelerationStructureFlagBitsKHR; vk_rt_acceleration.cpp static_asserts them against the Vulkan header).
+inline constexpr uint32_t kBuildAllowUpdate = 0x1u;
+inline constexpr uint32_t kBuildAllowCompaction = 0x2u;
+
+// Compaction is legal only for a structure built with ALLOW_COMPACTION, and never for an ALLOW_UPDATE one on AMD proprietary (the compacted copy of an
+// updatable BLAS comes back as a structure every ray misses there). Skinned movers are ALLOW_UPDATE and never compact on any driver.
+constexpr bool compactionAllowed(uint32_t buildFlags, bool amdProprietary) {
+    return (buildFlags & kBuildAllowCompaction) != 0 && !((buildFlags & kBuildAllowUpdate) != 0 && amdProprietary);
+}
+
+// What a BLAS was built from, per geometry. A refit (BUILD_MODE_UPDATE) is legal only when every field of every geometry matches the build and the
+// structure was built with ALLOW_UPDATE: counts, formats, stride, geometry flags, and the index source (same counts on a different mesh section = rebuild).
+struct GeometrySignature {
+    uint32_t vertexCount = 0;
+    uint32_t triangleCount = 0;
+    uint32_t vertexFormat = 0;
+    uint32_t indexType = 0;
+    uint32_t vertexStride = 0;
+    uint32_t geometryFlags = 0;
+    uint64_t indexSource = 0;
+    constexpr bool operator==(const GeometrySignature&) const = default;
+};
+
+enum class RefitAction { Build, Refit };
+// A refitted BVH degrades as the pose drifts from the build pose; after this many refits the structure is rebuilt (one fast build every ~2 s at 60 Hz).
+inline constexpr uint32_t kRefitsBeforeRebuild = 120;
+
+// Refit only when the structure exists (`built` non-empty), was built updatable, the flags are unchanged, the geometry signature matches element for
+// element, and fewer than `maxRefits` refits ran since its build. Anything else rebuilds.
+constexpr RefitAction refitAction(std::span<const GeometrySignature> built, uint32_t builtFlags, std::span<const GeometrySignature> now, uint32_t nowFlags,
+                                  uint32_t refitsSinceBuild, uint32_t maxRefits = kRefitsBeforeRebuild) {
+    if (built.empty() || (builtFlags & kBuildAllowUpdate) == 0 || builtFlags != nowFlags || built.size() != now.size() || refitsSinceBuild >= maxRefits)
+        return RefitAction::Build;
+    for (size_t i = 0; i < built.size(); ++i)
+        if (!(built[i] == now[i])) return RefitAction::Build;
+    return RefitAction::Refit;
+}
+
+// VkAccelerationStructureInstanceKHR::instanceCustomIndex is 24 bits: a larger value would silently alias another index, so it is refused, not masked.
+inline constexpr uint32_t kMaxInstanceCustomIndex = 0xFFFFFFu;
+constexpr bool instanceCustomIndexFits(uint32_t customIndex) { return customIndex <= kMaxInstanceCustomIndex; }
+
 // The build phases of a frame, in the only legal order (Copy is the optional BLAS compaction between BLAS and TLAS).
 enum class Phase { Upload, Blas, Copy, Tlas, Consumer };
 
@@ -116,6 +158,16 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
         case Phase::Consumer: b.dstStage = kStageComputeShader; b.dstAccess = kAccessAsRead; break;
     }
     b.valid = true;
+    return b;
+}
+
+// The head of a per-frame rebuild in the frame command buffer: this frame's build inputs (a compute skin or a transfer) AND the previous frame's builds
+// of the same structures and scratch (write-after-write) and its ray queries (write-after-read) -> this frame's AS builds. barrierBetween cannot name it
+// (it would be a Tlas -> Blas / Consumer -> Blas edge, which it rejects as a reversed edge).
+constexpr Barrier frameRebuildBarrier() {
+    Barrier b = barrierBetween(Phase::Upload, Phase::Blas);
+    b.srcStage |= kStageAsBuild;
+    b.srcAccess |= kAccessAsWrite;
     return b;
 }
 
@@ -174,6 +226,16 @@ struct BuildFlags {
     bool preferFastTrace = true;                     // false: prefer fast build (per-frame rebuilds)
 };
 
+class AccelStructure;
+// One multi-geometry BLAS build or refit for recordBlasJobs. Build: `blas` must be empty and is created here. Refit: `blas` was built updatable and
+// refitAction(blas->signature(), ...) said Refit; a mismatch is refused here as well (ok stays false, nothing recorded for the job).
+struct BlasJob {
+    std::span<const TriangleGeometry> geometries;
+    AccelStructure* blas = nullptr;
+    bool refit = false;
+    bool ok = false;                                 // out: recorded
+};
+
 // One acceleration structure: the handle and the buffer that backs it. Move-only; destroyed handle-first (member order), then the buffer.
 class AccelStructure {
 public:
@@ -186,6 +248,9 @@ public:
     VkDeviceSize updateScratchSize() const noexcept { return updateScratch_; }
     uint32_t primitiveCount() const noexcept { return primitiveCount_; }
     explicit operator bool() const noexcept { return static_cast<bool>(handle_); }
+    // The build-flag bits (kBuildAllowUpdate / kBuildAllowCompaction) and the per-geometry signature it was built from: refitAction's inputs.
+    uint32_t buildFlagBits() const noexcept;
+    std::span<const GeometrySignature> signature() const noexcept { return signature_; }
     // For VulkanContext::retire (the GPU may still read it): marks the backing allocation as retiring in the ownership ledger.
     void markDeferred() { buffer_.markDeferred(); }
 
@@ -198,7 +263,11 @@ private:
     friend bool recordTlasBuild(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, const BuildFlags&, std::string_view, AccelStructure&,
                                 ScratchArena&);
     friend bool recordTlasUpdate(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, AccelStructure&, ScratchArena&);
+    friend bool recordTlasRebuild(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, uint32_t, const BuildFlags&, std::string_view,
+                                  AccelStructure&, ScratchArena&);
     friend bool recordCompactCopy(const VulkanContext&, VkCommandBuffer, const AccelStructure&, VkDeviceSize, std::string_view, AccelStructure&);
+    friend bool recordBlasJobs(const VulkanContext&, VkCommandBuffer, std::span<BlasJob>, const BuildFlags&, std::string_view, ScratchArena&, uint32_t*,
+                               VkDeviceSize*);
     OwnedBuffer buffer_;                             // declared before handle_ so the handle is destroyed first
     OwnedAccelStruct handle_;
     VkDeviceAddress address_ = 0;
@@ -207,6 +276,7 @@ private:
     VkBuildAccelerationStructureFlagsKHR flags_ = 0;
     uint32_t primitiveCount_ = 0;
     bool top_ = false;
+    std::vector<GeometrySignature> signature_;       // set by every BLAS build; a refit must match it (refitAction)
 };
 
 // Creates an empty structure of `size` bytes (handle + BDA storage buffer). Used by the build entry points and by the compact copy.
@@ -226,14 +296,30 @@ bool recordBlasBuildBatch(const VulkanContext& ctx, VkCommandBuffer cmd, const s
                           std::string_view name, std::vector<AccelStructure>& out, ScratchArena& scratch, uint32_t* groupsOut = nullptr,
                           VkDeviceSize* scratchOut = nullptr);
 // Refits `blas` in place (same topology: vertexCount / triangleCount unchanged; the structure was built with allowUpdate). Needs a scratch of updateScratchSize.
+// Refused (false, nothing recorded) unless signatureOf(geometry) equals the build's one-geometry signature.
 bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& geometry, AccelStructure& blas, ScratchArena& scratch);
+
+// The refit signature of one geometry; the index source is the index address (a different mesh section with equal counts still rebuilds).
+GeometrySignature signatureOf(const TriangleGeometry& geometry);
+
+// Records every job in `jobs` (per-frame skinned movers: one BLAS per mover, one geometry per draw run) batched per scratchBatchPlan over `scratch`,
+// a Blas -> Tlas barrier between groups. A job whose structure cannot be created, or a refit whose signature does not match, is skipped (ok false).
+// False (nothing recorded) only when the scratch cannot be reserved. The caller owes the Blas -> Tlas barrier after the last group.
+bool recordBlasJobs(const VulkanContext& ctx, VkCommandBuffer cmd, std::span<BlasJob> jobs, const BuildFlags& flags, std::string_view name, ScratchArena& scratch,
+                    uint32_t* groupsOut = nullptr, VkDeviceSize* scratchOut = nullptr);
 
 // Records a TLAS build over `instanceCount` VkAccelerationStructureInstanceKHR (kInstanceBytes each, 16-byte-aligned address) at `instances`.
 bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, const BuildFlags& flags,
                      std::string_view name, AccelStructure& tlas, ScratchArena& scratch);
 bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, AccelStructure& tlas, ScratchArena& scratch);
+// A full TLAS build (mode BUILD, never an update) that reuses `tlas` in place when it is big enough for `instanceCount`: for a structure rebuilt every frame
+// in the frame command buffer, where the caller orders the previous frame's reads before it (frameRebuildBarrier). An empty `tlas` is created sized for
+// max(capacity, instanceCount) instances. False, with nothing recorded, when the held structure is too small (the caller retires it and passes an empty one).
+bool recordTlasRebuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, uint32_t capacity, const BuildFlags& flags,
+                       std::string_view name, AccelStructure& tlas, ScratchArena& scratch);
 
 // One instance entry: an identity-or-given 3x4 transform (row-major, 12 floats; null = identity), the BLAS address, custom index and mask 0xFF.
+// A customIndex past 24 bits is refused (instanceCustomIndexFits): the entry comes back with mask 0 and a null BLAS reference, so no ray can hit it.
 VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex = 0, uint8_t mask = 0xFF);
 
 // Compaction. 1: a query pool of `count` compacted-size queries. 2: after the BLAS build (and a Blas -> Blas-read barrier), write the size query.
@@ -246,6 +332,7 @@ bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const Acce
 
 // Issues the barrier between two phases through the context's sync2 route (a no-op, with false, for an invalid edge).
 bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Phase to);
+bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, const Barrier& b);
 
 }  // namespace mc2vk::rt
 

@@ -25,6 +25,18 @@ void identityTransform(float out[12]) {
     std::copy(kIdentity, kIdentity + 12, out);
 }
 
+void moverTransform(float out[12]) {
+    static constexpr float kIdentity4[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    propTransform(kIdentity4, out);
+}
+
+void stuffToWorld(const float in[3], float out[3]) {
+    const float x = in[0], y = in[1], z = in[2];
+    out[0] = -x;
+    out[1] = z;
+    out[2] = y;
+}
+
 std::vector<Record> buildRecords(std::span<const PropPlacement> props, uint32_t terrainChunks, uint32_t* dropped) {
     std::vector<Record> out;
     out.reserve(terrainChunks + props.size());
