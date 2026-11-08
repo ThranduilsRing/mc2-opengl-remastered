@@ -22,6 +22,7 @@
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
 // FIX1 music, held from applySaveSections until loadActivateAndFinalize re-arms the mission tune.
 static std::optional<mc2::save::FixMusic> s_restoredMusic;
+extern void preloadMissionSupportAtLoad();
 
 
 // Create the trigger-area and object managers.
@@ -795,6 +796,8 @@ void Mission::loadActivateAndFinalize() {
 	DebugGameObject[0] = DebugGameObject[1] = DebugGameObject[2] = nullptr;
 
 	// Restored appearances need immutable geometry before rendering or light prewarm.
+	// Quickload also needs the support palette, even when no craft was in flight.
+	preloadMissionSupportAtLoad();
 	GameAdapters::StaticProp::finalizeGeometry();
 	GpuMechBatcher::instance().finalizeGeometry();
 
