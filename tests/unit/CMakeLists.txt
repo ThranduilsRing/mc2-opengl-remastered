@@ -290,7 +290,7 @@ mc2_link_gate(mc2_tests)
 # The ABL native-binding headers (ablmc2_internal.h) pull the gui/ and netlib/ headers; only the TUs that include them get those directories.
 set_source_files_properties(test_playmovie_deferral.cpp ${MC2_WORKTREE_ROOT}/code/controlgui_chat.cpp ${MC2_WORKTREE_ROOT}/code/mc2movie.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
-set_source_files_properties(test_abl_position.cpp test_abl_stack_limit.cpp test_cast_census.cpptest_gui_bridge.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp PROPERTIES
+set_source_files_properties(test_abl_position.cpp test_abl_stack_limit.cpp test_cast_census.cpp test_gui_bridge.cpp abl_exec_shim.cpp ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 
 # LOGGING-FACADE-P0: mc2log.h needs <format>/consteval (C++20); engine headers already build at 23.
