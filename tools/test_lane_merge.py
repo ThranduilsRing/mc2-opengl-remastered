@@ -1428,10 +1428,14 @@ def test_ratchet_tighten_compares_against_the_accepted_bases_baseline(tmp_path, 
         ran.append((os.path.basename(cmd[2]), open(baseline).read()))
         return subprocess.CompletedProcess(cmd, 1 if "file_size" in cmd[2] else 0, "line\nover the base baseline")
     monkeypatch.setattr(lm, "run", fake_run)
-    failed = lm.base_baseline_check(str(tmp_path), str(tools), "b" * 40)
+    failed = _bbc(tmp_path, tools)
     assert [a for a in shown] == [("show", "b" * 40 + ":" + p) for p in lm.TIGHTENED_BASELINES]
     assert all(body == '{"base": 1}' for _n, body in ran) and len(ran) == 3
     assert len(failed) == 1 and failed[0][0].startswith("file_size vs accepted base")
+
+
+def _bbc(tmp_path, tools):
+    return lm.lane_merge_baseline.base_baseline_check(str(tmp_path), str(tools), "b" * 40, lm.RATCHETS, lm.TIGHTENED_BASELINES, lm.run, lm.git, lm.lines)
 
 
 def test_base_baseline_check_skips_a_baseline_absent_at_the_base(tmp_path, monkeypatch):
@@ -1439,4 +1443,4 @@ def test_base_baseline_check_skips_a_baseline_absent_at_the_base(tmp_path, monke
     (tools).mkdir()
     monkeypatch.setattr(lm, "git", lambda root, *a: subprocess.CompletedProcess(a, 128, "missing"))
     monkeypatch.setattr(lm, "run", lambda *a, **k: pytest.fail("ran a ratchet with no base baseline"))
-    assert lm.base_baseline_check(str(tmp_path), str(tools), "b" * 40) == []
+    assert _bbc(tmp_path, tools) == []

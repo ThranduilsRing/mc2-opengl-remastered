@@ -59,7 +59,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
-import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
+import _git_util, lane_merge_baseline, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
@@ -588,28 +588,6 @@ def run_ratchets(root: str, tools_dir: str, *, tighten=True) -> list[tuple[str, 
         tail = "\n".join(lines(r.stdout)[-60:] if r.returncode else lines(r.stdout)[-3:])
         results.append((label, r.returncode, tail))
     return results
-
-
-def base_baseline_check(root: str, tools_dir: str, base: str) -> list[tuple[str, int, str]]:
-    """p31: the ratchet baselines at the merged HEAD may be the candidate's own (conflicts resolve to the lane's side), so a lane that
-    raised one would pass its own check. Re-run each baselined ratchet against the ACCEPTED base's baseline (git show base:path).
-    -> the failing (label, rc, tail); a baseline absent at the base is skipped (a new ratchet has nothing to loosen)."""
-    failed = []
-    scratch = tempfile.mkdtemp(prefix="base-baseline-", dir=os.environ.get("TMP") or None)
-    try:
-        for (label, rel, args), path in zip(RATCHETS, TIGHTENED_BASELINES):
-            script = os.path.join(tools_dir, *rel.split("/"))
-            old = git(root, "show", f"{base}:{path}")
-            if old.returncode or not os.path.isfile(script):
-                continue
-            tmp = os.path.join(scratch, label + ".json")
-            Path(tmp).write_text(old.stdout, encoding="utf-8", newline="")
-            r = run(root, [sys.executable, "-B", script, *[a for a in args if a != "--tighten"], "--baseline", tmp])
-            if r.returncode:
-                failed.append((f"{label} vs accepted base {base[:9]}", r.returncode, "\n".join(lines(r.stdout)[-60:])))
-    finally:
-        shutil.rmtree(scratch, ignore_errors=True)
-    return failed
 
 
 def git_bash(which=shutil.which, exists=os.path.exists, environ=None) -> str:
@@ -1306,7 +1284,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     if batch:
         results = run_ratchets(root, tools_dir, tighten=False)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
-    semantic = semantic_precheck(root, tools_dir) or base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"))
+    semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), RATCHETS, TIGHTENED_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
     artifacts = regenerate_all(root)
@@ -1456,7 +1434,7 @@ def main(argv: list[str] | None = None) -> int:
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
-            semantic = semantic_precheck(root, tools_dir) or base_baseline_check(root, tools_dir, window_base)
+            semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, RATCHETS, TIGHTENED_BASELINES, run, git, lines)
             if semantic:
                 reds.append((refs[-1], semantic))
         if batch and merged and not reds:
