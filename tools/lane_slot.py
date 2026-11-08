@@ -6,7 +6,8 @@ each slot keeps its warm Ninja tree between lanes.
         # pick/create a free slot; new branch = created at --base (default nifty); EXISTING branch = checked out at its own tip,
         # never moved (a differing --base is refused unless --reset-branch); prints HEAD, starts the warm build (pid in <tree>/warm.pid)
   py -3 tools/lane_slot.py release <slot|slot03|path> [--discard]   # refuses a dirty slot (--discard archives the diff to
-        # E:/mc2-archive-2026-10/stray-diffs first); drops the slot's registry claim, deletes scratch/install, detaches at nifty
+        # E:/mc2-archive-2026-10/stray-diffs first); drops the claim and detaches; retains install/scratch
+  py -3 tools/lane_slot.py gc [--hours 72]                         # unclaimed merged/aged installs and slot scratch; archives crashes first
   py -3 tools/lane_slot.py status                                   # shows each claiming lane and its age
 
 A slot is free when it exists, is git-clean, is not claimed in the lane registry, and its branch is merged into
@@ -15,11 +16,14 @@ claude/nifty-mendeleev (or has a refs/archive/<branch> ref) or it is detached. N
 import argparse
 import datetime
 import glob
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import time
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
@@ -34,7 +38,8 @@ MAIN_ROOT = "A:/Games/mc2-main"
 INSTALLS = "E:/mc2-installs"
 SCRATCH = "G:/mc2-tmp"
 STRAY_DIR = "E:/mc2-archive-2026-10/stray-diffs"
-PROTECTED =("owner-test-", "v0.4", "_")  # install names never deleted
+PROTECTED =("owner-test-", "v0.4", "_", "merge-acceptance", "mc2-win64-v0.4", "mods")
+CRASH_ARCHIVE = "E:/mc2-archive-2026-10/proofs"
 
 
 def git(root, *args):
@@ -137,9 +142,10 @@ def pick_slot(infos):
     return None
 
 
-def branch_plan(branch, base, reset_branch, root=MAIN_ROOT):
+def branch_plan(branch, base, reset_branch, root=None):
     """-> (switch args, start ref). An existing branch is NEVER moved: it is checked out at its own tip; a --base that
     differs from that tip is refused unless --reset-branch (2026-11-07: `switch -C` wiped rt-scene-1). A new branch is created at base (default nifty)."""
+    root = root or MAIN_ROOT
     rc, tip, _ = git(root, "rev-parse", "--verify", "-q", f"refs/heads/{branch}")
     if rc:
         return ["switch", "-c", branch, base or NIFTY], base or NIFTY
@@ -223,16 +229,98 @@ def release(path, discard=False):
         if not discard:
             sys.exit(f"release: {path} has uncommitted changes; commit them, or pass --discard to archive the diff under {STRAY_DIR} and drop them")
         print(f"[lane_slot] discarded uncommitted changes, diff saved to {discard_dirty(path)}")
-    deleted = []
-    for d in glob.glob(f"{SCRATCH}/{os.path.basename(path)}-*") + (install_dirs(info["branch"]) if info["branch"] else []):
-        if os.path.isdir(d):
-            shutil.rmtree(d, ignore_errors=True)
-            deleted.append(d)
     rc, _, err = git(path, "switch", "--detach", NIFTY)
     if rc:
         sys.exit("release: detach at nifty failed: " + err)
     dropped = drop_claims(path, info["branch"])
-    print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; deleted: {deleted or 'nothing'}; build tree kept")
+    print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; install, scratch and build tree kept")
+    return []
+
+
+def gc(hours=72):
+    """Collect only unclaimed branch installs / slot scratch; registry failures abort before deletion."""
+    if hours < 0:
+        sys.exit("gc: --hours must be non-negative")
+    import lane_registry  # noqa: PLC0415
+    store = lane_registry.store_path(Path(MAIN_ROOT))
+    with lane_registry._lock(store):
+        # list_lanes treats unreadable/corrupt data as empty, which is unsafe for GC.
+        data = json.loads(store.read_text(encoding="utf-8"))
+        if not isinstance(data.get("lanes"), dict):
+            sys.exit("gc: invalid registry; nothing deleted")
+        return _gc(list(data["lanes"].values()), hours)
+
+
+def _gc(entries, hours):
+    held = {norm(e.get("worktree", "")) for e in entries}
+    names = {NIFTY} | {e.get("name", "") for e in entries} | {e.get("deploy_lane") or "" for e in entries}
+    for p in held:
+        slot = re.fullmatch(r"mc2-slot(\d+)", os.path.basename(p))
+        if slot:
+            number = int(slot.group(1))
+            names.update((f"slot{number:02d}", f"mc2-slot{number:02d}", f"lane{number}", f"lane{number:02d}"))
+        if os.path.isdir(p):
+            names.add(git(p, "symbolic-ref", "--short", "-q", "HEAD")[1])
+    protected_paths = {norm(d) for name in names for d in install_dirs(name)}
+    rc, refs, err = git(MAIN_ROOT, "for-each-ref", "--format=%(refname:short)", "refs/heads/claude/")
+    if rc:
+        sys.exit("gc: cannot enumerate branches: " + err)
+    candidates = {}
+    for branch in refs.splitlines():
+        if branch == NIFTY or branch in names:
+            continue
+        merged = git(MAIN_ROOT, "merge-base", "--is-ancestor", branch, NIFTY)[0] == 0
+        for d in install_dirs(branch):
+            candidates[d] = (branch, merged, INSTALLS)
+    # Orphaned branch installs still age out after the branch ref has been removed.
+    if os.path.isdir(INSTALLS):
+        for path in Path(INSTALLS).iterdir():
+            paths = path.iterdir() if path.name == "claude" and path.is_dir() else [path]
+            for install in paths:
+                branch = install.relative_to(INSTALLS).as_posix()
+                candidates.setdefault(str(install), (branch, False, INSTALLS))
+    for slot in SLOT_PATHS:
+        if norm(slot) in held:
+            continue
+        info = slot_info(slot, held)
+        branch = info["branch"] or os.path.basename(slot)
+        if branch in names:
+            continue
+        for d in glob.glob(f"{SCRATCH}/{os.path.basename(slot)}-*"):
+            # A detached slot no longer identifies the scratch's branch: age/disk policy only.
+            candidates[d] = (branch, bool(info["branch"]) and info["merged"], SCRATCH)
+    deleted = []
+    for d, (branch, merged, root) in candidates.items():
+        path = Path(d)
+        if not path.is_dir() or norm(d) in protected_paths:
+            continue
+        relative = path.relative_to(Path(root))
+        resolved_relative = path.resolve().relative_to(Path(root).resolve())
+        if any(part.lower().startswith(PROTECTED) for part in relative.parts + resolved_relative.parts):
+            continue
+        # Validate the absolute target and all descendants before moving/deleting anything.
+        tree = [path]
+        for parent, dirs, files in os.walk(path, followlinks=False):
+            tree.extend(Path(parent) / n for n in dirs + files)
+        if any(p.is_symlink() or getattr(os.path, "isjunction", lambda _: False)(p) for p in tree):
+            print(f"[lane_slot] gc skipped linked tree: {path}")
+            continue
+        newest = max(p.stat().st_mtime for p in tree)
+        low_disk = shutil.disk_usage(root).free < 30 * 2**30
+        if not (merged or time.time() - newest >= hours * 3600 or low_disk):
+            continue
+        evidence = [p for p in tree if p.is_file() and
+                    (any("crash" in part.lower() for part in p.relative_to(path).parts)
+                     or p.suffix.lower() in (".dmp", ".mdmp", ".wer", ".pdb"))]
+        if evidence:
+            archive = Path(CRASH_ARCHIVE) / branch / "crashes" / (path.name + "-" + str(time.time_ns()))
+            for p in evidence:
+                dst = archive / p.relative_to(path)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(p), str(dst))  # failure aborts; never delete unarchived evidence
+        shutil.rmtree(path)
+        deleted.append(d)
+        print(f"[lane_slot] gc deleted {d}; crash evidence archived first")
     return deleted
 
 
@@ -262,11 +350,15 @@ def main(argv=None):
     r.add_argument("slot")
     r.add_argument("--discard", action="store_true", help="drop uncommitted changes after saving their diff to " + STRAY_DIR)
     sub.add_parser("status")
+    g = sub.add_parser("gc", help="delete unclaimed merged/aged installs and slot scratch, or reclaim below 30 GiB free")
+    g.add_argument("--hours", type=float, default=72)
     args = ap.parse_args(argv)
     if args.cmd == "acquire":
         acquire(args.branch, args.base, args.reset_branch, args.no_warm)
     elif args.cmd == "release":
         release(args.slot, args.discard)
+    elif args.cmd == "gc":
+        gc(args.hours)
     else:
         status()
     return 0

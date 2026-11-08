@@ -91,3 +91,23 @@ def test_only_accepts_a_single_doctest_case_and_wildcards(monkeypatch):
     assert builder.main(["--run", "--only", case]) == 0
     assert commands[2][0][-1] == "--test-case=" + case
     assert builder.unknown_selection(["job_system_harness/*", case, "icon_atlas_harness", "nope/*"]) == ["nope/*"]
+
+
+def test_only_reports_each_phase(monkeypatch, capsys):
+    record_runs(monkeypatch, [0, 0, 0])
+    monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
+    clock = iter([0, 1, 3, 4, 7, 8, 13, 14])
+    monkeypatch.setattr(builder.time, "monotonic", lambda: next(clock))
+    assert builder.main(["--run", "--only", "icon_atlas_harness"]) == 0
+    out = capsys.readouterr().out
+    assert "configure seconds=2.000" in out
+    assert "build seconds=3.000" in out
+    assert "run seconds=5.000" in out
+
+
+def test_zero_matching_binary_cases_exits_nonzero(monkeypatch, capsys):
+    commands = record_runs(monkeypatch, [0, 0])
+    monkeypatch.setattr(builder, "matched_case_count", lambda *a: 0)
+    assert builder.main(["--run", "--only", "icon_atlas_harness"]) == 1
+    assert len(commands) == 2
+    assert "matched 0 doctest cases" in capsys.readouterr().out

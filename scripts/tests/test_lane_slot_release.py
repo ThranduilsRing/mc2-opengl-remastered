@@ -2,7 +2,9 @@
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -42,6 +44,106 @@ def slot(tmp_path, monkeypatch):
 
 def _names():
     return {e["name"] for e in lane_registry.list_lanes(Path(lane_slot.MAIN_ROOT))["lanes"]}
+
+
+def test_release_and_reacquire_keep_install_and_scratch(slot):
+    install = Path(lane_slot.INSTALLS) / "lane-x"
+    scratch = Path(lane_slot.SCRATCH) / (Path(slot).name + "-proof")
+    for p in (install, scratch):
+        p.mkdir(parents=True)
+        (p / "retained").write_text("cached")
+    lane_registry.register_lane(Path(slot), "claude/lane-x", worktree=slot)
+    assert lane_slot.release(slot) == []
+    lane_slot.acquire("claude/lane-x", no_warm=True)
+    assert all((p / "retained").read_text() == "cached" for p in (install, scratch))
+
+
+@pytest.fixture
+def gc_setup(slot, tmp_path, monkeypatch):
+    lane_registry.register_lane(Path(slot), "unrelated", worktree="other-slot")
+    monkeypatch.setattr(lane_slot, "CRASH_ARCHIVE", str(tmp_path / "archive"))
+    monkeypatch.setattr(lane_slot.shutil, "disk_usage", lambda p: SimpleNamespace(free=100 * 2**30))
+    Path(lane_slot.INSTALLS).mkdir()
+    return Path(lane_slot.INSTALLS)
+
+
+def test_gc_archives_before_delete_and_never_touches_protected(slot, gc_setup, monkeypatch):
+    install = gc_setup / "lane-x"
+    (install / "crashes").mkdir(parents=True)
+    (install / "crashes/failure.dmp").write_bytes(b"dump")
+    (install / "mc2.pdb").write_bytes(b"symbols")
+    (install / "outside.dmp").write_bytes(b"wer")
+    protected = gc_setup / "claude/owner-test-do-not-touch"
+    protected.mkdir(parents=True)
+    _git(slot, "branch", "claude/owner-test-do-not-touch")
+    rmtree = lane_slot.shutil.rmtree
+
+    def checked_delete(path):
+        archive = Path(lane_slot.CRASH_ARCHIVE) / "claude/lane-x/crashes"
+        assert len(list(archive.rglob("*.dmp"))) == 2
+        assert len(list(archive.rglob("*.pdb"))) == 1
+        rmtree(path)
+
+    monkeypatch.setattr(lane_slot.shutil, "rmtree", checked_delete)
+    assert str(install).replace("\\", "/") in [p.replace("\\", "/") for p in lane_slot.gc()]
+    assert not install.exists() and protected.exists()
+
+
+@pytest.mark.parametrize("policy", ["young", "old", "low", "claimed"])
+def test_gc_only_unclaimed_eligible_trees(slot, gc_setup, monkeypatch, policy):
+    Path(slot, "a.txt").write_text("unmerged")
+    _git(slot, "commit", "-qam", "unmerged")
+    install = gc_setup / "lane-x"
+    install.mkdir()
+    scratch = Path(lane_slot.SCRATCH) / (Path(slot).name + "-proof")
+    scratch.mkdir(parents=True)
+    if policy == "old":
+        for p in (install, scratch):
+            os.utime(p, (time.time() - 100 * 3600,) * 2)
+    if policy in ("low", "claimed"):
+        monkeypatch.setattr(lane_slot.shutil, "disk_usage", lambda p: SimpleNamespace(free=1))
+    if policy == "claimed":
+        lane_registry.register_lane(Path(slot), "different-name", worktree=slot)
+    lane_slot.gc(hours=72)
+    assert install.exists() == (policy in ("young", "claimed"))
+    assert scratch.exists() == install.exists()
+
+
+def test_gc_archive_failure_preserves_install(slot, gc_setup, monkeypatch):
+    install = gc_setup / "lane-x"
+    install.mkdir()
+    (install / "fault.dmp").write_bytes(b"evidence")
+    monkeypatch.setattr(lane_slot.shutil, "move", lambda *a: (_ for _ in ()).throw(OSError("archive failed")))
+    with pytest.raises(OSError, match="archive failed"):
+        lane_slot.gc()
+    assert (install / "fault.dmp").exists()
+
+
+def test_gc_corrupt_registry_fails_closed(slot, gc_setup):
+    install = gc_setup / "lane-x"
+    install.mkdir()
+    lane_registry.store_path(Path(slot)).write_text("broken")
+    with pytest.raises(ValueError):
+        lane_slot.gc()
+    assert install.exists()
+
+
+def test_gc_protects_claimed_slot_aliases_even_under_disk_pressure(slot, gc_setup, monkeypatch):
+    lane_registry.register_lane(Path(slot), "other-lane", worktree="A:/Games/mc2-slot09", deploy_lane="custom-install")
+    paths = [gc_setup / name for name in ("lane9", "lane09", "slot09", "custom-install")]
+    for p in paths:
+        p.mkdir()
+    monkeypatch.setattr(lane_slot.shutil, "disk_usage", lambda p: SimpleNamespace(free=1))
+    lane_slot.gc()
+    assert all(p.exists() for p in paths)
+
+
+def test_gc_ages_out_orphaned_branch_install(slot, gc_setup):
+    orphan = gc_setup / "deleted-branch"
+    orphan.mkdir()
+    os.utime(orphan, (time.time() - 100 * 3600,) * 2)
+    lane_slot.gc(hours=72)
+    assert not orphan.exists()
 
 
 def test_release_drops_claim_even_when_lane_name_differs_from_branch(slot):

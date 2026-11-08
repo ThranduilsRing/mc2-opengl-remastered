@@ -242,18 +242,21 @@ def test_status_loop_and_row_file_wiring():
 
 # --- GPU fallback, row log names, refspec -------------------------------------------------------------------------
 
-def cand(gpu, cap0=0, strict=0):
-    a = box_run.REMOTE.index('if [ "$GPU" = auto ]; then cand=')
+def cand(gpu, cap0=0, strict=0, count=3):
+    a = box_run.REMOTE.index('AVAILABLE=$(nvidia-smi -L')
     snip = box_run.REMOTE[a:box_run.REMOTE.index("\nGOT=\"\"\n", a)]
-    return bash(f'GPU={gpu}; CAP0={cap0}; MC2_GPU_STRICT={strict}\n{snip}\necho "$cand"').stdout.strip()
+    fake = "\\n".join(f"GPU {i}: fake (UUID: GPU-{i})" for i in range(count))
+    return bash(f'nvidia-smi() {{ printf "{fake}\\n"; }}\nGPU={gpu}; CAP0={cap0}; MC2_GPU_STRICT={strict}\n{snip}\necho "$cand"').stdout.strip()
 
 
 def test_busy_gpu_falls_back_to_the_others_unless_strict():
     assert cand("1") == "1 0 2"          # requested first, then the rest: the first free one wins at once
     assert cand("1", strict=1) == "1"
     assert cand("auto") == "0 1 2" and cand("auto", cap0=1) == "0"
-    assert cand("3") == "3"              # the gate GPU never falls back
+    assert "does not exist" in cand("3")
     assert cand("2", cap0=1) == "2 0"
+    assert cand("auto", count=1) == "0" and cand("0", count=1) == "0"
+    assert "does not exist" in cand("1", count=1)
 
 
 def test_gpu_strict_flag_reaches_the_remote_command():

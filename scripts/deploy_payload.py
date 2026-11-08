@@ -55,6 +55,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 try:
@@ -1281,6 +1282,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     cache = cache or {}
     skipped = 0
     pdb_skipped = False
+    copy_seconds = 0.0
+    verify_started = time.perf_counter()
 
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
@@ -1312,6 +1315,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                 continue
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
+            copy_started = time.perf_counter()
             if rel.endswith(".mcasset.json"):
                 # Authored sidecars ship unchanged except for checkout line endings;
                 # mixed CRLF/LF copies must not change the pinned data fingerprint.
@@ -1319,11 +1323,13 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                     content = fh.read().replace(b"\r\n", b"\n")
                 with open(dst, "wb") as fh:
                     fh.write(content)
+                copy_seconds += time.perf_counter() - copy_started
                 s_hash = hashlib.sha256(content).hexdigest()
             else:
                 shutil.copyfile(src, dst)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, dst)
+                copy_seconds += time.perf_counter() - copy_started
                 s_hash = sha256_file(src)
         except PermissionError:
             fail(f"copy refused (file locked?): {dst}\n"
@@ -1346,6 +1352,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                 shader_mismatches.append(rel)  # DLLs hard-fail too
         log(f"deployed {rel} ({'OK' if s_hash == d_hash else 'MISMATCH'})")
 
+    log(f"phase hash/verify seconds={time.perf_counter() - verify_started - copy_seconds:.3f}")
+    log(f"phase copy seconds={copy_seconds:.3f}")
     if skipped:
         log(f"skipped {skipped} unchanged file(s) "
             f"(source size+mtime_ns and destination sha256 match the manifest; --full-verify to re-copy)")
@@ -2195,6 +2203,7 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     vehicle_manifest = None
     kit_tool = None
     remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
+    kit_prepare_started = time.perf_counter()
     if not args.classic_assets and not args.skip_kit and remastered:
         try:
             kit_manifest, kit_items = kit_payload.payload(src_root)
@@ -2205,6 +2214,7 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             kit_tool = kit_payload.build_importer(src_root)
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
+    kit_prepare_seconds = time.perf_counter() - kit_prepare_started
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
         f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
@@ -2233,13 +2243,20 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                     cache=cache, full_verify=args.full_verify)
     if kit_manifest:
         try:
+            phase_started = time.perf_counter()
             kit_payload.reconcile_stock_textures(target,
                 jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
+            log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
+            phase_started = time.perf_counter()
             kit_payload.finish(target, kit_manifest, kit_tool)
             if vehicle_manifest:
                 kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"))
+            log(f"phase kit cook seconds={kit_prepare_seconds + time.perf_counter() - phase_started:.3f}")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
+    else:
+        log("phase stock receipts seconds=0.000 (skipped)")
+        log("phase kit cook seconds=0.000 (skipped)")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):

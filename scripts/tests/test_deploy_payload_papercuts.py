@@ -3,6 +3,7 @@ import subprocess
 import sys
 import pytest
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import console_child  # noqa: E402
@@ -56,3 +57,45 @@ def test_cache_skip_hashes_destination_bytes_not_size(tmp_path, monkeypatch):
     hashes = dp.deploy(items, str(target), False, cache=cache)
     assert dst.read_bytes() == b"good-bytes"
     assert hashes["data.bin"][0] == dp.sha256_file(str(src))
+
+
+def test_deploy_logs_hash_and_copy_phases(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    src = tmp_path / "source"
+    src.write_bytes(b"payload")
+    dp.deploy([(str(src), "data.bin", "data")], str(tmp_path / "target"), False)
+    out = capsys.readouterr().out
+    assert "phase hash/verify seconds=" in out and "phase copy seconds=" in out
+    assert (tmp_path / "target/data.bin").read_bytes() == b"payload"
+
+
+@pytest.mark.parametrize("kit_enabled", [True, False])
+def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, capsys, kit_enabled):
+    import kit_payload
+    from smoke_lib import render_options_pin
+    build, target = tmp_path / "build", tmp_path / "target"
+    build.mkdir()
+    target.mkdir()
+    (build / "mc2").write_bytes(b"exe")
+    for name in ("seed_build_dlls", "check_exe_fresh", "check_free_space_for_payload", "check_hardlink_isolation",
+                 "ensure_engine_normal_cooks", "write_manifest"):
+        monkeypatch.setattr(dp, name, lambda *a, **kw: None)
+    monkeypatch.setattr(dp, "git_head", lambda *a: "head")
+    monkeypatch.setattr(dp, "require_head_exe", lambda *a: {"dirty": False})
+    monkeypatch.setattr(dp, "check_install_complete", lambda *a: [])
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: {})
+    monkeypatch.setattr(dp, "enumerate_payload", lambda *a, **kw: [(str(build / "mc2"), "mc2", "exe")])
+    monkeypatch.setattr(render_options_pin, "record", lambda *a: {"values": {"RemasteredBuildings": kit_enabled}})
+    monkeypatch.setattr(kit_payload, "payload", lambda *a: ({"fake": True}, []))
+    monkeypatch.setattr(kit_payload, "build_importer", lambda *a: "importer")
+    phases = []
+    monkeypatch.setattr(kit_payload, "reconcile_stock_textures", lambda *a, **kw: phases.append("stock"))
+    monkeypatch.setattr(kit_payload, "finish", lambda *a, **kw: phases.append("cook"))
+    monkeypatch.setattr(dp.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=""))
+    args = SimpleNamespace(allow_stale_exe=False, build64_root=None, classic_assets=False, skip_kit=False,
+                           require_clean=False, full_verify=False, allow_stale_pdb=False, preserve=[])
+    dp.run_deploy(args, str(tmp_path), str(build), str(target), "mc2", "mc2.pdb")
+    out = capsys.readouterr().out
+    assert all(f"phase {phase} seconds=" in out for phase in ("hash/verify", "copy", "stock receipts", "kit cook"))
+    assert phases == (["stock", "cook", "cook"] if kit_enabled else [])
