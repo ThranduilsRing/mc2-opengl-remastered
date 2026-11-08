@@ -309,6 +309,9 @@ void Mover::disable (unsigned long cause)
 			sensorSystem->disable();
 
 		causeOfDeath = cause;
+		if (getObjectClass() == BATTLEMECH)
+			mc2::fmt::print_out("[MECH_WRECK] part={} cause={} hulk=retained salvage=1\n",
+				mc2::fmt::as_i32(getPartId()), causeOfDeath);
 
 		if (isMech() && (getMoveType() != MOVETYPE_AIR))
 		{
