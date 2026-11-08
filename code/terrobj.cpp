@@ -753,6 +753,19 @@ void TerrainObject::applyAppearancePush (void)
 		appearance->setMoverParameters(pitchAngle);
 		static_cast<TreeAppearance*>(appearance)->setShadowMoving(getFlag(OBJECT_FLAG_FALLING));
 	}
+	// Dust poof: presentation owns the particle Execute; the sim only Start()s it (deferred to the commit).
+	if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
+	{
+		glm::vec3 actualPosition;
+		glm::mat4 shapeOrigin;
+		mc2ToRender(actualPosition, position);
+		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+		mc2::math::buildTranslation(shapeOrigin, actualPosition);
+		mc2::math::Obb boundingBox;
+		gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
+		if (!bldgDustPoofEffect->Execute(&info))
+			mc2::tick::releaseEffect(bldgDustPoofEffect);
+	}
 }
 
 long TerrainObject::update (void) {
@@ -967,27 +980,7 @@ long TerrainObject::update (void) {
 				}
 			}
 
-			if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
-			{
-				glm::vec3			actualPosition;
-				glm::mat4 	shapeOrigin;
-				glm::mat4 	localToWorld;
-					
-				mc2ToRender(actualPosition, position);
-			
- 				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-				mc2::math::buildTranslation(shapeOrigin, actualPosition);
-		
-				mc2::math::Obb boundingBox;
-				gosFX::Effect::ExecuteInfo info(static_cast<Stuff::Time>(scenarioTime),&shapeOrigin,&boundingBox);
-		
-				bool result = bldgDustPoofEffect->Execute(&info);
-				if (!result)
-				{
-					bldgDustPoofEffect->Kill();
-					bldgDustPoofEffect.reset();
-				}
-			}
+			// The dust poof Execute runs in applyAppearancePush (presentation), never on the sim worker.
 		}
 
 		// [TOBJPARITY v1] readback-vs-coarse superset-parity instrument
@@ -1032,6 +1025,9 @@ void TerrainObject::extractRenderView (mc2::render_view::RenderView& view) {
 		view.barColor = 0xff7f7f7f;
 		view.barStatus = barStatus;
 	}
+	view.effects[0] = bldgDustPoofEffect.get();	// retained by releaseEffect until the join
+	if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
+		view.flags |= mc2::render_view::EffectLive0;
 	setSelected(false);		//ALWAYS reset the selected flags.  GUI needs this to work!
 	setTargeted( false );	//ALWAYS do it here, too!  Otherwise things may draw FUNNY!
 }
@@ -1073,7 +1069,8 @@ void TerrainObject::renderView (const mc2::render_view::RenderView& view) {
 		
 		//------------------------------------------------
 		// Render GOSFX (draw info is built only when a dust effect is live: most terrain objects have none)
-		if (bldgDustPoofEffect && bldgDustPoofEffect->IsExecuted())
+		gosFX::Effect* const dust = view.effects[0];
+		if (dust && view.has(mc2::render_view::EffectLive0))
 		{
 			gosFX::Effect::DrawInfo drawInfo;
 			drawInfo.m_clipper = theClipper;
@@ -1099,7 +1096,7 @@ void TerrainObject::renderView (const mc2::render_view::RenderView& view) {
 			drawInfo.m_parentToWorld = &shapeOrigin;
 
 			if (!MLRVertexLimitReached)
-				bldgDustPoofEffect->Draw(&drawInfo);
+				dust->Draw(&drawInfo);
 		}
 	}
 }
