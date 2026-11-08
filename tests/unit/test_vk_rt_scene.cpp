@@ -7,6 +7,7 @@
 #define MC2_RT_PURE_ONLY
 #include "vk_rt_scene.h"
 #include "terrain_diagonal.h"
+#include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 
 using namespace mc2vk::rt::scene;
 
@@ -18,6 +19,74 @@ void model(float tx, float ty, float tz, float out[16]) {
     out[11] = tz;
 }
 }  // namespace
+
+TEST_CASE("rt scene: demand requires capability and a registered consumer") {
+    Demand d;
+    CHECK_FALSE(d.needed(false));
+    CHECK_FALSE(d.needed(true));
+    d.set(Consumer::SelfTest, true);
+    CHECK_FALSE(d.needed(false));
+    CHECK(d.needed(true));
+    CHECK_FALSE(d.set(Consumer::SelfTest, true));   // registration is idempotent
+    CHECK(d.set(Consumer::SelfTest, false));        // losing demand invalidates terrain too
+    CHECK_FALSE(d.set(Consumer::SelfTest, false));  // an already idle scene stays idle
+    CHECK_FALSE(d.needed(true));
+}
+
+TEST_CASE("rt scene: first demand samples current placements and invalidated snapshots rebuild") {
+    Demand d;
+    float oldModel[16], currentModel[16];
+    model(1, 2, 3, oldModel);
+    model(4, 5, 6, currentModel);   // the world moved while no consumer existed
+    const PropPlacement old{7, 0x100007, oldModel}, current{7, 0x100007, currentModel};
+    CHECK_FALSE(d.needed(true));
+    d.set(Consumer::SelfTest, true);
+    CHECK(d.needed(true));
+    CHECK(updateNeeded(false, false));   // no cached generation was recorded without demand
+    CHECK(updateNeeded(true, !samePlacement(old, current)));
+    CHECK_FALSE(updateNeeded(true, !samePlacement(current, current)));
+    d.set(Consumer::SelfTest, false);
+    CHECK_FALSE(d.needed(true));
+    d.set(Consumer::SelfTest, true);
+    CHECK(updateNeeded(false, false));   // unregistering the last consumer invalidates placements
+}
+
+TEST_CASE("rt scene: unchanged RT state skips publication despite raster-only writes") {
+    float m[16], moved[16];
+    model(1, 2, 3, m);
+    model(2, 2, 3, moved);
+    const PropPlacement p{7, 0x100007, m};
+    GpuStaticPropInstance before{};
+    for (uint32_t i = 0; i < 16; ++i) before.modelMatrix[i] = m[i];
+    before.typeID = 7;
+    auto after = before;
+    after.actorTint = 42;
+    after.flags = 7;
+    after.lightDataIndex = 88;
+    after.fogRGB[0] = 0.5f;
+    after.aRGBHighlight[0] = 1.0f;
+    CHECK(samePlacement({before.typeID, p.objectId, before.modelMatrix}, {after.typeID, p.objectId, after.modelMatrix}));
+    CHECK(samePlacement(p, {7, 0x100007, m}));
+    CHECK_FALSE(samePlacement(p, {8, 0x100007, m}));
+    CHECK_FALSE(samePlacement(p, {7, 0x100008, m}));
+    CHECK_FALSE(samePlacement(p, {7, 0x100007, moved}));
+    CHECK_FALSE(updateNeeded(true, false));   // static snapshot or held off-screen mover TLAS
+    CHECK(updateNeeded(true, true));         // geometry, membership or a freshly skinned pose
+    CHECK(updateNeeded(false, false));       // empty/invalidated snapshots still publish
+    auto row = propMaterialRow({}, 3, 4);
+    CHECK(row == propMaterialRow({}, 3, 4));
+    row.firstIndex = 6;
+    CHECK_FALSE(row == propMaterialRow({}, 3, 4));
+}
+
+TEST_CASE("rt scene: prop-row growth invalidates retained mover terrain offsets") {
+    CHECK(moverRowsCompatible(20, 20));
+    CHECK_FALSE(moverRowsCompatible(20, 21));
+    CHECK_FALSE(moverRowsCompatible(21, 20));
+    const uint32_t tile = 4;
+    CHECK(terrainRowBase(20) + tile != terrainRowBase(21) + tile);
+    CHECK(updateNeeded(false, false));   // the retired mover TLAS rebuilds even without new poses
+}
 
 TEST_CASE("rt scene: records are keyed by kind, object ID and per-ID ordinal") {
     float a[16], b[16], c[16];
