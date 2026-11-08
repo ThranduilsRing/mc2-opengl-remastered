@@ -12,6 +12,9 @@ USAGE:
   py -3 scripts/ninja_build.py --warm --base <ref> -j3   # lane prep: detach HEAD at <ref>, then build this tree in the background
 Configure first (once): py -3 scripts/configure_ninja.py (--warm configures a missing tree itself)
 
+One build per tree: a build takes <tree>/.build.lock and a second one waits (MC2_BUILD_LOCK_WAIT seconds, default 3600; 0 = exit
+at once with the holder named). lane_slot.py acquire records the warm build's pid in <tree>/warm.pid; --no-warm skips that build.
+
 --warm returns at once; the build runs detached at BelowNormal priority and logs to <tree>/warm.log, whose last line is
 "[warm] done rc=<n> elapsed=<s>s". --base needs a clean tracked tree (it runs `git switch --detach <ref>`). No daemon: one build, then it exits.
 """
@@ -77,6 +80,71 @@ def warm(root, argv, tree):
         child = subprocess.Popen([sys.executable, os.path.abspath(__file__), *argv, "--warm-run"], cwd=root, env=env, stdin=subprocess.DEVNULL,
                                  stdout=out, stderr=subprocess.STDOUT, creationflags=flags if os.name == "nt" else 0)
     print(f"warm: pid {child.pid} building {tree} at {base or 'HEAD'}; log {log}")
+
+
+class TreeLock:
+    """One build per tree: an OS byte-range lock on <tree>/.build.lock (released when the holder exits, even if killed).
+    The holder's pid/command is written at offset 16 so a waiter can name it. Two ninjas in one tree race sccache/LNK1104."""
+
+    def __init__(self, root, tree):
+        self.path = f"{root}/{tree}/.build.lock"
+        self.fh = None
+
+    def _try(self):
+        if os.name == "nt":
+            import msvcrt
+            self.fh.seek(0)
+            msvcrt.locking(self.fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(self.fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def holder(self):
+        try:
+            with open(self.path, "rb") as f:
+                f.seek(16)
+                return f.read(200).split(b"\0")[0].decode("utf-8", "replace").strip() or "unknown"
+        except OSError:
+            return "unknown"
+
+    def acquire(self, wait_s):
+        """True when held. Waits up to wait_s (0 = fail at once), saying who holds it every 60 s."""
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        self.fh = open(self.path, "a+b")
+        deadline = time.monotonic() + wait_s
+        last = 0.0
+        while True:
+            try:
+                self._try()
+                break
+            except OSError:
+                now = time.monotonic()
+                if now >= deadline:
+                    self.fh.close()
+                    self.fh = None
+                    return False
+                if now - last >= 60 or last == 0.0:
+                    print(f"[ninja_build] another build holds this tree ({self.holder()}); waiting (set MC2_BUILD_LOCK_WAIT=0 to fail instead)",
+                          flush=True)
+                    last = now
+                time.sleep(2)
+        self.fh.seek(16)
+        self.fh.truncate(16)
+        self.fh.write(f"pid {os.getpid()} {' '.join(sys.argv[1:])[:120]}".encode())
+        self.fh.flush()
+        return True
+
+    def close(self):
+        if self.fh:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    self.fh.seek(0)
+                    msvcrt.locking(self.fh.fileno(), msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+            self.fh.close()
+            self.fh = None
 
 
 def pool_jobs(argv):
@@ -159,6 +227,11 @@ def main():
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)
     dry_run = "-n" in argv
+    lock = None
+    if not dry_run:   # one build per tree: a lane's own build waits for the slot's warm build instead of racing it (sccache / LNK1104)
+        lock = TreeLock(root, tree)
+        if not lock.acquire(float(os.environ.get("MC2_BUILD_LOCK_WAIT", "3600"))):
+            sys.exit(f"[ninja_build] {tree} is being built by another process ({lock.holder()}); not starting a second build in the same tree")
     if not dry_run:
         warning = build_warning(root, tree)
         if warning:
@@ -178,6 +251,8 @@ def main():
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
     if tokens is not None:
         tokens.close()
+    if lock is not None:
+        lock.close()
     sys.exit(rc)
 
 
