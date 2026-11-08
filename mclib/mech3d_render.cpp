@@ -459,7 +459,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		// The native batch has no per-instance fade alpha. Stock hides sensor
 		// bodies via mesh alpha; do not submit a known blip as an opaque mech.
-		if (visible && (sensorLevel == 0 || sensorLevel >= 5))
+		if (visible && contactView.model)
 		{
 			uint32_t color = SD_BLUE;
 			uint32_t highLight = 0x007f7f7f;
@@ -785,15 +785,15 @@ long Mech3DAppearance::render (long depthFixup)
 				}
 			}
 
-			if (selected & DRAW_BARS)
+			if (contactView.bar && (selected & DRAW_BARS))
 			{
 				drawBars();
 			}
-			if ( selected & DRAW_BRACKETS )
+			if (contactView.model && (selected & DRAW_BRACKETS))
 			{
 				drawSelectBrackets(color);
 			}
-			if ((objectNameId != -1) && (selected & DRAW_TEXT) && !sensorLevel )
+			if (contactView.tag && (objectNameId != -1) && (selected & DRAW_TEXT))
 			{
 				drawBars();
 
@@ -1020,7 +1020,7 @@ long Mech3DAppearance::render (long depthFixup)
 				   
 		}
 		
-		if ((sensorLevel > 0) && (sensorLevel < 5))
+		if (contactView.blip && !contactView.model)
 		{
 			if (sensorLevel > 1)
 			{
@@ -1033,7 +1033,7 @@ long Mech3DAppearance::render (long depthFixup)
 		}
 	}
 
-	if (unitAnim().rightArmOff && rightArm && rightArmInView)
+	if (contactView.model && unitAnim().rightArmOff && rightArm && rightArmInView)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
@@ -1073,7 +1073,7 @@ long Mech3DAppearance::render (long depthFixup)
 		}
 	}
  	
- 	if (unitAnim().leftArmOff && leftArm && leftArmInView)
+	if (contactView.model && unitAnim().leftArmOff && leftArm && leftArmInView)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 

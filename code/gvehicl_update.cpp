@@ -707,13 +707,17 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
+		|| isDestroyed() || isDisabled() || ShowMovers
+		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
+	view.contact = contactView;
 	if (!Terrain::IsGameSelectTerrainPosition(position))
 		return;
 	if (teamId != Team::home->getId())
 	{
-		long cStat = conStat;
+		long cStat = contactView.quality;
 
-		if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		if (contactView.model)
 		{
 			DWORD color = 0xff7f7f7f;
 			if ((teamId > -1) && (teamId < 8)) {
@@ -743,10 +747,6 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 			view.mode = Mode::SensorText;
 			view.nameId = mc2::hoverNameId(cStat, tonnage, descID, true);
 		}
-		else if (alphaValue != 0x0)	//What if we are out of LOS and NOT on sensors!!!  Let 'em fade out.
-		{
-			view.mode = Mode::Fade;
-		}
 	}
 	else
 	{
@@ -775,6 +775,9 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 
 void GroundVehicle::renderView (const mc2::render_view::RenderView& view)
 {
+	appearance->contactView = view.contact;
+	appearance->setSensorLevel(view.contact.sensorLevel());
+	appearance->setAlphaValue(view.contact.model ? 0xff : 0);
 	using mc2::render_view::Mode;
 	switch (view.mode)
 	{

@@ -27,6 +27,7 @@
 #include "mc2_czstring.h"
 #include<stuff/stuff.hpp>
 #include "unit_anim_state.h"
+#include "contact_visibility.h"
 #include "presentation_phase.h"
 
 unsigned currentAppearanceRegistryGeneration (void); // apprtype.cpp
@@ -74,6 +75,8 @@ class Appearance
     // Set once a mover caches simAnim_ (pinnedSimulationAnimation): its writes bypass the clears, so it never settles.
     mutable std::atomic<bool> animPinned_{false};
 public:
+    // Non-mover appearances and previews retain ordinary visual admission.
+    mc2::ContactVisibility contactView = mc2::contactVisibility(CONTACT_VISUAL);
     // Generation of the type registry that issued this holder's appearance type (stamped by init(tree)); 0 = none.
     unsigned registryGeneration = 0;
     bool simulationOwned() const { return simulationOwned_; }

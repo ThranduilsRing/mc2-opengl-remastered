@@ -13,6 +13,7 @@
 #include "mc2_czstring.h"
 #include "dradio.h"
 #include "unit_anim_state.h"
+#include "contact_visibility.h"
 
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -982,6 +983,7 @@ public:
 		bool				isOnGui;						//For movers which start out on player team but not on gui.  Like raven in 0103
 
 		int32_t             conStat;						//Contact status stored for this frame, for this machine
+		mc2::ContactVisibility contactView{}; // shared by this frame's draw, hover and minimap
 		float				fadeTime;						//Time between fade from LOS to non-LOS
 		BYTE				alphaValue;						//Current Fade value;
 		int32_t             causeOfDeath;

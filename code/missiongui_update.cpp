@@ -1189,9 +1189,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			target = nullptr;
 		else if ( target && target->isMover() && !ShowMovers && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
 		{
-			if ((target->getTeamId() != Team::home->getId()) && 
-				!target->isDisabled() && 
-				((static_cast<Mover *>(target))->conStat < CONTACT_SENSOR_QUALITY_1))
+			if (!static_cast<Mover*>(target)->contactView.blip)
 				target = nullptr;
 		}
 		
@@ -1220,10 +1218,9 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			int descID = target->getDescription();
 			long hoverName = descID;
 			if (target->isMover()) {
-				const bool full = target->getTeamId() == Team::home->getId() || target->isDisabled()
-					|| ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]);
-				hoverName = mc2::hoverNameId(full ? CONTACT_VISUAL : static_cast<Mover*>(target)->conStat,
-					target->getTonnage(), descID, target->getObjectClass() != BATTLEMECH);
+				const auto& contact = static_cast<Mover*>(target)->contactView;
+				hoverName = contact.tag ? mc2::hoverNameId(contact.quality,
+					target->getTonnage(), descID, target->getObjectClass() != BATTLEMECH) : 0;
 			}
 			// ISSUE-42 deref hardening: getAppearance() may be NULL for a
 			// partially-initialized/mid-teardown object; guard the deref.

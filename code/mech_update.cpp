@@ -681,13 +681,17 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
+		|| isDestroyed() || isDisabled() || ShowMovers
+		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
+	view.contact = contactView;
 	if (!Terrain::IsGameSelectTerrainPosition(position))
 		return;
 	if (getTeamId() != Team::home->getId())
 	{
-		long cStat = conStat;
+		long cStat = contactView.quality;
 
-		if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		if (contactView.model)
 		{
 			DWORD color = 0xff7f7f7f;
 			if ((teamId > -1) && (teamId < 8)) {
@@ -745,6 +749,11 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 
 void BattleMech::renderView (const mc2::render_view::RenderView& view)
 {
+	appearance->contactView = view.contact;
+	appearance->setSensorLevel(view.contact.sensorLevel());
+	// Native opaque bodies cannot implement the old alpha fade. Admit model
+	// and HUD atomically on visual acquisition, including the first frame.
+	appearance->setAlphaValue(view.contact.model ? 0xff : 0);
 	using mc2::render_view::Mode;
 	switch (view.mode)
 	{

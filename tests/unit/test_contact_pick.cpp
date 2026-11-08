@@ -1,6 +1,74 @@
 #include "doctest.h"
 #include "../../code/hover_name.h"
 #include "../../mclib/terrain_ray_pick.h"
+#include "../../mclib/contact_visibility.h"
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+
+TEST_CASE("contact visibility: resolved quality and visual overrides share one table")
+{
+    for (int quality = CONTACT_NONE; quality <= CONTACT_VISUAL; ++quality) {
+        // ContactStatus already incorporates visual range/LOS. Outside visual
+        // range the sensor system resolves VISUAL back to its sensor quality.
+        const auto state = mc2::contactVisibility(quality);
+        CHECK(state.model == (quality == CONTACT_VISUAL));
+        CHECK(state.bar == state.model);
+        CHECK(state.shadow == state.model);
+        CHECK(state.tag == (quality >= CONTACT_SENSOR_QUALITY_3));
+        CHECK(state.blip == (quality != CONTACT_NONE));
+        CHECK(state.sensorLevel() == (state.model ? 0 : quality));
+        const auto ownOrRevealed = mc2::contactVisibility(quality, true);
+        CHECK(ownOrRevealed.model);
+        CHECK(ownOrRevealed.bar);
+        CHECK(ownOrRevealed.tag);
+        CHECK(ownOrRevealed.blip);
+        CHECK(ownOrRevealed.shadow);
+    }
+    // A visual -> none -> sensor -> visual transition must carry no old level
+    // or alpha admission into the next frame.
+    auto state = mc2::contactVisibility(CONTACT_VISUAL);
+    state = mc2::contactVisibility(CONTACT_NONE);
+    CHECK_FALSE(state.model);
+    CHECK_FALSE(state.bar);
+    CHECK_FALSE(state.shadow);
+    state = mc2::contactVisibility(CONTACT_SENSOR_QUALITY_4);
+    CHECK_FALSE(state.model);
+    CHECK(state.tag);
+    state = mc2::contactVisibility(CONTACT_VISUAL);
+    CHECK(state.bar);
+    CHECK(state.sensorLevel() == 0);
+}
+
+TEST_CASE("contact visibility: production consumers read the shared snapshot")
+{
+    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto source = [&](const char* file) {
+        std::ifstream input(root / file);
+        REQUIRE(input.good());
+        return std::string(std::istreambuf_iterator<char>(input), {});
+    };
+    for (const char* file : {"code/mech_update.cpp", "code/gvehicl_update.cpp"}) {
+        const auto text = source(file);
+        CHECK(text.find("view.contact = contactView") != std::string::npos);
+        CHECK(text.find("appearance->contactView = view.contact") != std::string::npos);
+        CHECK(text.find("setSensorLevel(view.contact.sensorLevel())") != std::string::npos);
+        CHECK(text.find("setAlphaValue(view.contact.model ? 0xff : 0)") != std::string::npos);
+    }
+    for (const char* file : {"mclib/mech3d_render.cpp", "mclib/gvactor_render.cpp"}) {
+        const auto text = source(file);
+        CHECK(text.find("visible && contactView.model") != std::string::npos);
+        CHECK(text.find("contactView.bar && (selected & DRAW_BARS)") != std::string::npos);
+        CHECK(text.find("contactView.model && (selected & DRAW_BRACKETS)") != std::string::npos);
+        CHECK(text.find("contactView.blip && !contactView.model") != std::string::npos);
+    }
+    CHECK(source("mclib/gvactor_render.cpp").find("contactView.shadow") != std::string::npos);
+    CHECK(source("code/missiongui_update.cpp").find("hoverName = contact.tag") != std::string::npos);
+    CHECK(source("code/missiongui.cpp").find("g_hoverTipNameID = contact.tag") != std::string::npos);
+    CHECK(source("code/objmgr_pick.cpp").find("contactView.blip") != std::string::npos);
+    CHECK(source("code/gametacmap.cpp").find("mover->contactView.blip") != std::string::npos);
+    CHECK(source("code/controlgui_render.cpp").find("m->contactView.blip") != std::string::npos);
+}
 
 TEST_CASE("contact pick: sensor naming never leaks DEMO or visual identification")
 {

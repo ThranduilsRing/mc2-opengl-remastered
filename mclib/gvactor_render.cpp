@@ -33,7 +33,7 @@ long GVAppearance::render (long depthFixup)
 	mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), visibility);
 	// Sensor contacts keep visible=true while the body fades to alpha zero.
 	// Retain offscreen casters, but never reveal a fog-hidden body through its shadow.
-	if (visible && (sensorLevel == 0 || sensorLevel >= 5) && mc2_vis::meshDrawn(visibility) && gos_IsModernShadowPathActive())
+	if (visible && contactView.shadow && gos_IsModernShadowPathActive())
 		GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),
 			// An override body is imported after the batcher finalized (late registerType), so it has no recipe;
 			// the stock shape is registered at mission load and carries the same pose, so it casts the shadow.
@@ -55,7 +55,7 @@ long GVAppearance::render (long depthFixup)
 			highLight = highLightTable[homeTeamRelationship];
 		}
 
-		if (visible && (sensorLevel == 0 || sensorLevel >= 5))
+		if (visible && contactView.model)
 		{
 			if (selected & DRAW_COLORED && duration <= 0 )
 			{
@@ -163,17 +163,17 @@ long GVAppearance::render (long depthFixup)
 			}
 
 				
-			if (selected & DRAW_BARS)
+			if (contactView.bar && (selected & DRAW_BARS))
 			{
 				drawBars();
 			}
 
-			if ( selected & DRAW_BRACKETS )
+			if (contactView.model && (selected & DRAW_BRACKETS))
 			{
 				drawSelectBrackets(color);
 			}
 
-			if ( selected & DRAW_TEXT && !sensorLevel )
+			if (contactView.tag && (selected & DRAW_TEXT))
 			{
  
 				if (objectNameId != -1)
@@ -334,7 +334,7 @@ long GVAppearance::render (long depthFixup)
 			}
 		}
 		
-		if ((sensorLevel > 0) && (sensorLevel < 5))
+		if (contactView.blip && !contactView.model)
 		{
 			transformSensorShapes();
 			if (sensorLevel > 1)
