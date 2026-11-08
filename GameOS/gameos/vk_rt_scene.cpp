@@ -246,12 +246,17 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     rows.insert(rows.end(), propRows.begin(), propRows.end());
     for (uint32_t tile = 0; tile < terrain.size(); ++tile) rows.push_back(terrainMaterialRow(tile));
     const uint32_t terrainBase = terrainRowBase(static_cast<uint32_t>(propRows.size()));
-    const uint32_t noUv = 0;
-    const VkDeviceSize uvBytes = uv.empty() ? sizeof(noUv) : uv.size() * sizeof(uint32_t);
+    // Both tables are padded to 256-byte multiples: the driver may report a 4-byte alignment for host buffers, and VMA packs the next buffer
+    // (rt_scene.instances, which must sit on a 16-byte address) right behind an odd-sized one; that made every TLAS record fail (stage=tlas_record).
+    constexpr size_t kPadWords = 64;
+    while (rows.size() * sizeof(MaterialRow) % 256 != 0) rows.push_back(MaterialRow{});
+    std::vector<uint32_t> uvPadded(uv.empty() ? kPadWords : (uv.size() + kPadWords - 1) / kPadWords * kPadWords, 0u);
+    std::copy(uv.begin(), uv.end(), uvPadded.begin());
+    const VkDeviceSize uvBytes = uvPadded.size() * sizeof(uint32_t);
     g_failStage = !customIndexFits(static_cast<uint32_t>(rows.size())) ? "rows_fit" : "material_buffers";
     if (!customIndexFits(static_cast<uint32_t>(rows.size())) ||
         !s.pendingMat.createFilled(ctx.allocator(), ctx.device(), rows.data(), rows.size() * sizeof(MaterialRow), kStorage, "rt_scene.materials") ||
-        !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uv.empty() ? &noUv : uv.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
+        !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uvPadded.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
         retirePending(ctx, s);
         return std::nullopt;
     }
