@@ -33,6 +33,7 @@
 #include "tick_commit.h"
 
 extern void releaseMissionSupportPreloads();
+extern long g_hoverTipNameID; // missiongui_update.cpp; refreshed at frame extraction
 
 	const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
