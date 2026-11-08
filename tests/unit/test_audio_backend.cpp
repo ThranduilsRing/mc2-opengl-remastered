@@ -219,12 +219,12 @@ TEST_CASE("AudioBackend/stream prebuffers bounded chunks and loops without a gap
     auto other = MusicStream::open(path.string().c_str(), 22050, 2);
     REQUIRE(other);
     std::array<short, 2> frame{};
-    REQUIRE(stream->read(frame.data(), sizeof(frame)) == sizeof(frame));
+    REQUIRE(stream->read(std::as_writable_bytes(std::span(frame))) == sizeof(frame));
     CHECK(frame[0] == 1000);
     std::array<short, 6> independent{};
-    REQUIRE(other->read(independent.data(), sizeof(independent)) == sizeof(independent));
+    REQUIRE(other->read(std::as_writable_bytes(std::span(independent))) == sizeof(independent));
     CHECK(independent == samples);
-    REQUIRE(stream->read(frame.data(), sizeof(frame)) == sizeof(frame));
+    REQUIRE(stream->read(std::as_writable_bytes(std::span(frame))) == sizeof(frame));
     CHECK(frame[0] == 3000);
     other.reset();
     stream = MusicStream::open(path.string().c_str(), 22050, 2);
@@ -232,13 +232,13 @@ TEST_CASE("AudioBackend/stream prebuffers bounded chunks and loops without a gap
     stream->setLoop(true);
     // Exactly the prebuffered cycles: no dependency on scheduling the worker.
     std::array<short, 6 * MusicStream::PrebufferChunks> out{};
-    CHECK(stream->read(out.data(), sizeof(out)) == sizeof(out));
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
     for (size_t i = 0; i < out.size(); ++i) CHECK(out[i] == samples[i % samples.size()]);
     CHECK_FALSE(stream->ended());
     stream.reset();
     stream = MusicStream::open(path.string().c_str(), 22050, 2);
     REQUIRE(stream);
-    CHECK(stream->read(out.data(), sizeof(out)) == sizeof(samples));
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(samples));
     CHECK(stream->ended());
     for (size_t i = samples.size(); i < out.size(); ++i) CHECK(out[i] == 0);
 }
@@ -281,7 +281,7 @@ TEST_CASE("AudioBackend/music prebuffer does not decode the declared full track"
     // together must stay below 1 MiB, regardless of catalog/track length.
     CHECK(allocations.bytesDelta() < 1024 * 1024);
     std::array<short, MusicStream::ChunkBytes / 2 * MusicStream::PrebufferChunks> out{};
-    CHECK(stream->read(out.data(), sizeof(out)) == sizeof(out));
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
     for (short sample : out) CHECK(sample == 2345);
 }
 
@@ -309,6 +309,6 @@ TEST_CASE("AudioBackend/Microsoft ADPCM music decodes and loops as resident PCM"
     REQUIRE(stream);
     stream->setLoop(true);
     std::array<short, 8 * MusicStream::PrebufferChunks> out{};
-    CHECK(stream->read(out.data(), sizeof(out)) == sizeof(out));
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
     for (short sample : out) CHECK(sample == 1000);
 }

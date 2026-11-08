@@ -260,7 +260,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             auto stream = MusicStream::open(file_name, dst_freq, dst_channels);
             if (!stream) { *hgosaudio = nullptr; return; }
             // A silent carrier lets SDL keep per-channel volume, pause and pan.
-            auto silence = std::shared_ptr<uint8_t[]>(new uint8_t[4096]{});
+            auto silence = std::make_shared<uint8_t[]>(4096);
             auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(silence), 4096);
             audio->stream = std::move(stream);
             audio->musicPath = file_name;
@@ -572,7 +572,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
                 Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
                 if (audio->stream) Mix_RegisterEffect(Channel,
                     [](int, void* bytes, int length, void* context) {
-                        static_cast<MusicStream*>(context)->read(bytes, length);
+                        static_cast<MusicStream*>(context)->read({static_cast<std::byte*>(bytes), static_cast<size_t>(length)});
                     }, nullptr, audio->stream.get());
                 // SDL removes effects when a chunk finishes or is halted; GOS sliders persist.
                 gosAudio_SetChannelSlider(Channel, gosAudio_Panning, ci->fPanning);

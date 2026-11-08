@@ -1,4 +1,5 @@
 #pragma once
+#include "mc2_czstring.h"
 #include "../../3rdparty/dr_wav.h"
 #include <SDL2/SDL.h>
 #include <array>
@@ -7,17 +8,19 @@
 #include <cstring>
 #include <memory>
 #include <semaphore>
+#include <span>
 #include <thread>
 
 // Each active music slot owns a decoder and a fixed queue. The mixer only copies
 // ready PCM; disk IO and conversion never run on the audio callback.
 class MusicStream {
 public:
+    MusicStream() = default;
     static constexpr int ChunkBytes = 4096;
     static constexpr int QueueChunks = 8;
     static constexpr int PrebufferChunks = 4;
-    static std::unique_ptr<MusicStream> open(const char* path, int rate, int channels) {
-        auto result = std::unique_ptr<MusicStream>(new MusicStream);
+    static std::unique_ptr<MusicStream> open(mc2::czstring path, int rate, int channels) {
+        auto result = std::make_unique<MusicStream>();
         if (!drwav_init_file(&result->wav_, path, nullptr)) return {};
         result->opened_ = true;
         if (result->wav_.channels < 1 || result->wav_.channels > 8 ||
@@ -50,8 +53,9 @@ public:
     void setLoop(bool loop) { loop_ = loop; }
     bool ended() const { return ended_.load(); }
     // Returns bytes copied. A short read is silence on underrun, never a decode.
-    int read(void* destination, int length) {
-        auto* out = static_cast<Uint8*>(destination);
+    int read(std::span<std::byte> destination) {
+        auto* out = reinterpret_cast<Uint8*>(destination.data());
+        const auto length = static_cast<int>(destination.size());
         std::memset(out, 0, length);
         int copied = 0;
         while (copied < length && !ended_) {
@@ -109,7 +113,6 @@ private:
         write_.store(w + 1, std::memory_order_release);
         return true;
     }
-    MusicStream() = default;
     drwav wav_{};
     SDL_AudioStream* convert_ = nullptr;
     bool opened_ = false, eof_ = false, firstCycle_ = true;

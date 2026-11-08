@@ -97,7 +97,7 @@ static bool hdriBc6hOn()
 }
 
 // Use the same overlay/FST provider as the cooked-sidecar decision.
-static int loadSourceExr(float** pixels, int* w, int* h, const char* path, const char** error)
+static int loadSourceExr(float** pixels, int* w, int* h, mc2::czstring path, const char** error)
 {
     File source;
     if (source.open(path) != NO_ERR) return TINYEXR_ERROR_CANT_OPEN_FILE;
