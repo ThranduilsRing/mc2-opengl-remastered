@@ -166,12 +166,7 @@ static bool IsAbsolutePath(std::string_view p) {
 }
 
 static bool StartsWithDataPath(std::string_view p) {
-    return p.size() >= 5 &&
-        std::tolower(static_cast<unsigned char>(p[0])) == 'd' &&
-        std::tolower(static_cast<unsigned char>(p[1])) == 'a' &&
-        std::tolower(static_cast<unsigned char>(p[2])) == 't' &&
-        std::tolower(static_cast<unsigned char>(p[3])) == 'a' &&
-        (p[4] == '/' || p[4] == '\\');
+    return p.size() >= 5 && NormalizeKey(p.substr(0, 5)) == "data/";
 }
 
 static bool ShouldSearchMods(std::string_view fileName) {
@@ -184,11 +179,7 @@ static bool ShouldSearchMods(std::string_view fileName) {
 }
 
 std::string NormalizeKey(std::string_view p) {
-    // Same case/slash fold as fst_normalize_loose_key, bounded by the view.
-    std::string result(p);
-    for (char& c : result)
-        c = c == '\\' ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    return result;
+    return fst_normalize_loose_key(p);
 }
 
 // Index all files under dataDir (absolute, trailing '/') into idx (first-wins).
