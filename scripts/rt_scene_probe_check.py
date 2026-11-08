@@ -2,7 +2,9 @@
 """Parse the VK_RT_SCENE material probe line(s) from an MC2 log (MC2_VK_RT_SELFTEST=1).
 
 Exit 0 when at least one `material result=` line exists and every one is PASS with props, vegetation and terrain all found, holes > 0 and
-false_holes == opaque_diffs == 0. Exit 1 otherwise. See docs/rt-scene-contract.md.
+false_holes == opaque_diffs == 0. Exit 1 otherwise. A `material miss` line whose instance (custom=) or material row (row=) differs from the
+expected value also fails, whatever the result line says; `material info` lines (same instance and row, different triangle) and prim_info are
+information only. See docs/rt-scene-contract.md.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import sys
 from pathlib import Path
 
 LINE = re.compile(r"material result=(PASS|FAIL)(.*)")
+MISS = re.compile(r"material miss .*?custom=(0x[0-9a-f]+)/(0x[0-9a-f]+) row=(\d+)/(\d+)")
 FIELD = re.compile(r"(\w+)=(\d+)/(\d+)|(\w+)=(\S+)")
 
 
@@ -49,6 +52,9 @@ def check(text: str) -> tuple[bool, list[str]]:
     if not rows:
         return False, ["no 'material result=' line"]
     msgs = []
+    for m in MISS.finditer(text):
+        if m.group(1) != m.group(2) or m.group(3) != m.group(4):
+            msgs.append(f"wrong instance or material row: custom={m.group(1)}/{m.group(2)} row={m.group(3)}/{m.group(4)}")
     for i, r in enumerate(rows):
         msgs += [f"line {i}: {p}" for p in verdict(r)]
     return not msgs, msgs

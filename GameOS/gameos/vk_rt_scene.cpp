@@ -52,8 +52,86 @@ struct Target {
     uint32_t row = 0;            // local prop row (MaterialRow index - kPropRowBase)
     uint32_t prim = 0;           // primitive index inside that row's geometry
     float area = 0.0f;
+    bool cutout = false;
     bool valid = false;
 };
+constexpr size_t kTargetCandidates = 8;   // per type and class, largest first, none with a coplanar twin
+
+// CPU copy of the traced terrain grid (MC2_VK_RT_SELFTEST only): the probe keeps its targets above the ground.
+struct TerrainGrid {
+    int32_t side = 0;
+    float step = 128.0f, halfMap = 0.0f;
+    std::vector<float> h;
+    // The highest of the four grid corners around world (x, y): a conservative terrain height.
+    float maxAt(float x, float y) const {
+        if (side < 2) return 0.0f;
+        const int32_t gx = std::clamp(static_cast<int32_t>(std::floor((x + halfMap) / step)), 0, side - 2);
+        const int32_t gy = std::clamp(static_cast<int32_t>(std::floor((halfMap - y) / step)), 0, side - 2);
+        const size_t i = static_cast<size_t>(gx) + static_cast<size_t>(gy) * static_cast<size_t>(side);
+        return std::max({h[i], h[i + 1], h[i + static_cast<size_t>(side)], h[i + static_cast<size_t>(side) + 1]});
+    }
+};
+
+// Plane data of a triangle (local space).
+struct TriPlane {
+    float n[3], c[3], radius;
+    bool ok;
+};
+TriPlane triPlane(const float v[9]) {
+    TriPlane p{};
+    const float e1[3] = {v[3] - v[0], v[4] - v[1], v[5] - v[2]}, e2[3] = {v[6] - v[0], v[7] - v[1], v[8] - v[2]};
+    p.n[0] = e1[1] * e2[2] - e1[2] * e2[1];
+    p.n[1] = e1[2] * e2[0] - e1[0] * e2[2];
+    p.n[2] = e1[0] * e2[1] - e1[1] * e2[0];
+    const float len = std::sqrt(p.n[0] * p.n[0] + p.n[1] * p.n[1] + p.n[2] * p.n[2]);
+    p.ok = len > 1e-6f;
+    if (!p.ok) return p;
+    for (float& c : p.n) c /= len;
+    for (int r = 0; r < 3; ++r) p.c[r] = (v[r] + v[3 + r] + v[6 + r]) / 3.0f;
+    for (int k = 0; k < 3; ++k) {
+        float d2 = 0.0f;
+        for (int r = 0; r < 3; ++r) d2 += (v[3 * k + r] - p.c[r]) * (v[3 * k + r] - p.c[r]);
+        p.radius = std::max(p.radius, std::sqrt(d2));
+    }
+    return p;
+}
+
+// The candidate targets of one class: the largest triangles with no coplanar, overlapping twin (a ground plate or a doubled face would win the ray
+// instead of the target).
+std::vector<Target> pickCandidates(const std::vector<Target>& all, bool cutout) {
+    constexpr float kEps = 0.05f;
+    constexpr size_t kExamine = 64;
+    std::vector<uint32_t> order;
+    for (uint32_t i = 0; i < all.size(); ++i)
+        if (all[i].cutout == cutout) order.push_back(i);
+    std::sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return all[a].area > all[b].area; });
+    std::vector<Target> out;
+    for (size_t k = 0; k < order.size() && k < kExamine && out.size() < kTargetCandidates; ++k) {
+        const Target& tg = all[order[k]];
+        const TriPlane p = triPlane(tg.v);
+        if (!p.ok) continue;
+        bool twin = false;
+        for (uint32_t j = 0; j < all.size() && !twin; ++j) {
+            if (j == order[k]) continue;
+            const TriPlane q = triPlane(all[j].v);
+            if (!q.ok) continue;
+            const float dot = p.n[0] * q.n[0] + p.n[1] * q.n[1] + p.n[2] * q.n[2];
+            if (std::abs(dot) < 0.999f) continue;
+            bool near = true;
+            for (int v = 0; v < 3 && near; ++v) {
+                float dist = 0.0f;
+                for (int r = 0; r < 3; ++r) dist += (all[j].v[3 * v + r] - p.c[r]) * p.n[r];
+                near = std::abs(dist) < kEps;
+            }
+            if (!near) continue;
+            float apart = 0.0f;
+            for (int r = 0; r < 3; ++r) apart += (q.c[r] - p.c[r]) * (q.c[r] - p.c[r]);
+            twin = std::sqrt(apart) < p.radius + q.radius;
+        }
+        if (!twin) out.push_back(tg);
+    }
+    return out;
+}
 
 struct BuildStats {
     uint64_t builtBytes = 0;     // before compaction
@@ -112,7 +190,8 @@ public:
     std::vector<uint32_t> uvIndices;                // every prop geometry's rebased indices (MaterialRow::firstIndex), CPU copy of uvIndex
     OwnedBuffer materials, uvIndex, pendingMat, pendingUv;
     uint64_t materialBytes = 0, pendingMaterialBytes = 0;
-    std::vector<std::array<Target, 2>> typeTarget;  // by typeID: [0] the largest opaque triangle, [1] the largest cutout one
+    std::vector<std::array<std::vector<Target>, 2>> typeTarget;  // by typeID: [0] opaque, [1] cutout candidates (pickCandidates)
+    TerrainGrid terrainGrid;                        // MC2_VK_RT_SELFTEST only
     uint32_t propStride = 0;
     uint32_t matWait = 0, matProbeWait = 0, propsWithoutMaterial = 0;
     bool matProbed = false;
@@ -423,6 +502,7 @@ bool worldTri(const float t[12], const float v[9], WorldTri& w) {
 // The ray starts kProbeLift above the target triangle along its normal: short, so terrain or another part of the same mesh rarely sits between
 // (a 2-unit lift let the terrain hide buried props on mc2_10 and other triangles of the mesh win on mc2_01).
 constexpr float kProbeLift = 0.25f;
+constexpr float kProbeClear = 0.1f;   // a target's ray must start and end at least this far above the (conservative) terrain height
 void pushTriRay(std::vector<float>& rays, const WorldTri& w, float u, float v) {
     const float k = 1.0f - u - v;
     float p[3];
@@ -447,8 +527,8 @@ bool sameHit(const ProbeHit& a, const ProbeHit& b) {
 }
 
 // MC2_VK_RT_SELFTEST part 3: material rows, albedo layers and alpha cutouts through rt_scene_probe.comp, every ray traced twice (alpha-tested and every
-// candidate committed). props / vegetation: rays along the normal of each type's largest opaque / cutout triangle must report that instance, row,
-// primitive, layer and packet. terrain: an upward ray from below each probe cell must report the tile's row. holes: a 16x16 barycentric grid over each
+// candidate committed). props / vegetation: rays along the normal of the type's largest opaque / cutout triangle that has no coplanar twin and sits above
+// the terrain (pickTarget) must report that instance, row, layer and packet (a different triangle of the same row passes; `material info` lines). terrain: an upward ray from below each probe cell must report the tile's row. holes: a 16x16 barycentric grid over each
 // vegetation triangle; a hole is a ray the opaque trace lands on the triangle and the alpha trace passes through. false_holes: grid rays whose opaque
 // hit is a non-cutout row and whose alpha trace differs; opaque_diffs: prop / terrain rays whose two traces differ. FAIL unless every check passes,
 // at least one hole was found and both difference counts are 0.
@@ -483,44 +563,60 @@ void probeMaterials(VulkanContext& ctx, State& s) {
         const MaterialRow& r = s.propRows[tg.row];
         return Expect{id, kPropRowBase + tg.row, tg.prim, r.packet, r.albedoLayer};
     };
-    // Props: up to 8 instances spread over the registry; vegetation: up to 4 instances of distinct cutout types.
-    const size_t step = std::max<size_t>(1, s.instances.size() / 64);
-    for (size_t i = 0; i < s.instances.size() && propX.size() < 8; i += step) {
-        const uint32_t ty = s.instances[i].typeID, id = s.objectIds[i];
-        if (id == kTerrainObjectId || !customIndexFits(id) || ty >= s.typeTarget.size() || !s.typeTarget[ty][0].valid) continue;
+    // The first candidate of the type (largest first, no coplanar twin) whose centroid, and the ray's whole 0.5 span, sits clearly above the terrain at
+    // that point: otherwise the ray would land on the ground or on a plate in the terrain plane.
+    auto pickTarget = [&](size_t inst, uint32_t ty, int cls, WorldTri& w, Target& out) {
         float t[12];
-        propTransform(s.instances[i].modelMatrix, t);
+        propTransform(s.instances[inst].modelMatrix, t);
+        for (const Target& tg : s.typeTarget[ty][cls]) {
+            if (!worldTri(t, tg.v, w)) continue;
+            const float cx = (w.a[0] + w.b[0] + w.c[0]) / 3.0f, cy = (w.a[1] + w.b[1] + w.c[1]) / 3.0f, cz = (w.a[2] + w.b[2] + w.c[2]) / 3.0f;
+            if (cz - kProbeLift * std::abs(w.n[2]) < s.terrainGrid.maxAt(cx, cy) + kProbeClear) continue;
+            out = tg;
+            return true;
+        }
+        return false;
+    };
+    // Props: up to 8 instances spread over the registry (a second pass over the rest when targets were skipped); vegetation: up to 4 instances of
+    // distinct cutout types.
+    const size_t step = std::max<size_t>(1, s.instances.size() / 64);
+    std::vector<size_t> propInst;
+    auto tryProp = [&](size_t i) {
+        const uint32_t ty = s.instances[i].typeID, id = s.objectIds[i];
+        if (id == kTerrainObjectId || !customIndexFits(id) || ty >= s.typeTarget.size() || std::find(propInst.begin(), propInst.end(), i) != propInst.end()) return;
         WorldTri w;
-        if (!worldTri(t, s.typeTarget[ty][0].v, w)) continue;
+        Target tg;
+        if (!pickTarget(i, ty, 0, w, tg)) return;
         pushTriRay(rays, w, 1.0f / 3.0f, 1.0f / 3.0f);
-        propX.push_back(expectOf(id, s.typeTarget[ty][0]));
-    }
+        propX.push_back(expectOf(id, tg));
+        propInst.push_back(i);
+    };
+    for (size_t i = 0; i < s.instances.size() && propX.size() < 8; i += step) tryProp(i);
+    for (size_t i = 0; i < s.instances.size() && propX.size() < 8; ++i) tryProp(i);
     const size_t vegFirst = propX.size();
     std::vector<uint32_t> vegTypes;
+    std::vector<size_t> vegInst;
+    std::vector<Target> vegTarget;
     for (size_t i = 0; i < s.instances.size() && vegX.size() < 4; ++i) {
         const uint32_t ty = s.instances[i].typeID, id = s.objectIds[i];
-        if (id == kTerrainObjectId || !customIndexFits(id) || ty >= s.typeTarget.size() || !s.typeTarget[ty][1].valid ||
-            std::find(vegTypes.begin(), vegTypes.end(), ty) != vegTypes.end())
-            continue;
-        float t[12];
-        propTransform(s.instances[i].modelMatrix, t);
+        if (id == kTerrainObjectId || !customIndexFits(id) || ty >= s.typeTarget.size() || std::find(vegTypes.begin(), vegTypes.end(), ty) != vegTypes.end()) continue;
         WorldTri w;
-        if (!worldTri(t, s.typeTarget[ty][1].v, w)) continue;
+        Target tg;
+        if (!pickTarget(i, ty, 1, w, tg)) continue;
         vegTypes.push_back(ty);
+        vegInst.push_back(i);
+        vegTarget.push_back(tg);
         pushTriRay(rays, w, 1.0f / 3.0f, 1.0f / 3.0f);
-        vegX.push_back(expectOf(id, s.typeTarget[ty][1]));
+        vegX.push_back(expectOf(id, tg));
     }
     const size_t gridFirst = vegFirst + vegX.size();
     {   // the hole grids, after the centroid rays so the indices stay contiguous
         size_t at = gridFirst;
         for (size_t k = 0; k < vegX.size(); ++k) {
-            const uint32_t ty = vegTypes[k];
-            size_t inst = 0;
-            while (inst < s.instances.size() && !(s.instances[inst].typeID == ty && s.objectIds[inst] == vegX[k].custom)) ++inst;
             float t[12];
-            propTransform(s.instances[inst].modelMatrix, t);
+            propTransform(s.instances[vegInst[k]].modelMatrix, t);
             WorldTri w;
-            worldTri(t, s.typeTarget[ty][1].v, w);
+            worldTri(t, vegTarget[k].v, w);
             vegGridFirst.push_back(at);
             size_t n = 0;
             for (int gy = 0; gy < 16; ++gy)
@@ -554,7 +650,12 @@ void probeMaterials(VulkanContext& ctx, State& s) {
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result=FAIL reason=trace rays={} rows={}", n, rowCount);
         return;
     }
-    uint32_t propOk = 0, vegOk = 0, terrOk = 0, holes = 0, falseHoles = 0, opaqueDiffs = 0, logged = 0;
+    uint32_t propOk = 0, vegOk = 0, terrOk = 0, holes = 0, falseHoles = 0, opaqueDiffs = 0, logged = 0, primDiffs = 0;
+    // The triangle index is information only: another triangle of the same mesh row may sit coplanar with or just in front of the target.
+    auto primInfo = [&](std::string_view kind, size_t i, const ProbeHit& h, const Expect& e) {
+        ++primDiffs;
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material info kind={} ray={} prim={}/{} t={:.3f} custom=0x{:x} row={}", kind, i, h.prim, e.prim, h.t, h.custom, h.row);
+    };
     auto report = [&](std::string_view kind, size_t i, const ProbeHit& h, const Expect& e) {
         if (logged++ < 12)
             MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material miss kind={} ray={} hit={} t={:.3f} custom=0x{:x}/0x{:x} row={}/{} prim={}/{} layer={}/{} packet={}/{} flags={}", kind, i,
@@ -563,20 +664,28 @@ void probeMaterials(VulkanContext& ctx, State& s) {
     for (size_t i = 0; i < propX.size(); ++i) {
         const ProbeHit a = hitAt(outA, i), o = hitAt(outO, i);
         const Expect& e = propX[i];
-        const bool ok = a.hit && a.custom == e.custom && a.row == e.row && a.prim == e.prim && a.layer == e.layer && a.packet == static_cast<int32_t>(e.packet) &&
+        const bool ok = a.hit && a.custom == e.custom && a.row == e.row && a.layer == e.layer && a.packet == static_cast<int32_t>(e.packet) &&
                         (a.flags & static_cast<int32_t>(kMatProp)) != 0;
-        if (ok) ++propOk;
-        else report("prop", i, a, e);
+        if (ok) {
+            ++propOk;
+            if (a.prim != e.prim) primInfo("prop", i, a, e);
+        } else {
+            report("prop", i, a, e);
+        }
         opaqueDiffs += sameHit(a, o) ? 0u : 1u;
     }
     for (size_t k = 0; k < vegX.size(); ++k) {
         const size_t i = vegFirst + k;
         const ProbeHit o = hitAt(outO, i);
         const Expect& e = vegX[k];
-        const bool ok = o.hit && o.custom == e.custom && o.row == e.row && o.prim == e.prim && o.layer == e.layer && o.packet == static_cast<int32_t>(e.packet) &&
+        const bool ok = o.hit && o.custom == e.custom && o.row == e.row && o.layer == e.layer && o.packet == static_cast<int32_t>(e.packet) &&
                         (o.flags & static_cast<int32_t>(kMatCutout)) != 0;
-        if (ok) ++vegOk;
-        else report("vegetation", i, o, e);
+        if (ok) {
+            ++vegOk;
+            if (o.prim != e.prim) primInfo("vegetation", i, o, e);
+        } else {
+            report("vegetation", i, o, e);
+        }
         for (size_t g = vegGridFirst[k]; g < vegGridFirst[k] + vegGridCount[k]; ++g) {
             const ProbeHit ga = hitAt(outA, g), go = hitAt(outO, g);
             const bool onTri = go.hit && go.custom == e.custom && go.row == e.row && go.prim == e.prim;
@@ -597,8 +706,8 @@ void probeMaterials(VulkanContext& ctx, State& s) {
     }
     const bool pass = !propX.empty() && propOk == propX.size() && !vegX.empty() && vegOk == vegX.size() && !terrX.empty() && terrOk == terrX.size() &&
                       holes > 0 && falseHoles == 0 && opaqueDiffs == 0;
-    MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result={} props={}/{} vegetation={}/{} terrain={}/{} holes={} false_holes={} opaque_diffs={} rows={} rays={}",
-              pass ? "PASS" : "FAIL", propOk, propX.size(), vegOk, vegX.size(), terrOk, terrX.size(), holes, falseHoles, opaqueDiffs, rowCount, n);
+    MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result={} props={}/{} vegetation={}/{} terrain={}/{} holes={} false_holes={} opaque_diffs={} prim_info={} rows={} rays={}",
+              pass ? "PASS" : "FAIL", propOk, propX.size(), vegOk, vegX.size(), terrOk, terrX.size(), holes, falseHoles, opaqueDiffs, primDiffs, rowCount, n);
 }
 
 // A mover leaves: its BLAS retires frame-fenced (the TLAS of an in-flight frame may still reference it) and its slot becomes reusable.
@@ -777,6 +886,15 @@ void noteTerrain(const TerrainSource& t) {
     s.tlasProps = props;
     s.dropped = dropped;
     s.terrainProbe.clear();
+    if (mc2::gate::get<"MC2_VK_RT_SELFTEST">()) {
+        TerrainGrid& g = s.terrainGrid;
+        g.side = static_cast<int32_t>(terrainGridSide(t));
+        g.step = terrainUsesFine(t) ? 32.0f : 128.0f;
+        g.halfMap = t.halfMap;
+        g.h.resize(static_cast<size_t>(g.side) * static_cast<size_t>(g.side));
+        for (int32_t gy = 0; gy < g.side; ++gy)
+            for (int32_t gx = 0; gx < g.side; ++gx) g.h[static_cast<size_t>(gx) + static_cast<size_t>(gy) * static_cast<size_t>(g.side)] = terrainGridHeight(t, gx, gy);
+    }
     const int32_t side = static_cast<int32_t>(terrainGridSide(t));
     const uint32_t tileCells = terrainTileCells(t);
     for (const auto& [fx, fy] : {std::pair{1, 1}, std::pair{1, 3}, std::pair{3, 1}, std::pair{3, 3}}) {
@@ -869,11 +987,14 @@ void updateProps(uint64_t propVbo) {
     if (rowBase.size() < feed.typeCount) rowBase.resize(feed.typeCount, kNoRow);
     const uint32_t uvBase = static_cast<uint32_t>(s.uvIndices.size());
     std::vector<std::vector<Geo>> perType(types.size());
-    std::vector<std::array<Target, 2>> targets(types.size());
+    std::vector<std::array<std::vector<Target>, 2>> targets(types.size());
+    std::vector<Target> allTris;
+    const bool selftest = mc2::gate::get<"MC2_VK_RT_SELFTEST">();
     auto position = [&](uint32_t v, float* o) { std::memcpy(o, static_cast<const uint8_t*>(vboCpu) + static_cast<size_t>(v) * feed.vertexStride, 12); };
     for (size_t k = 0; k < types.size(); ++k) {
         const uint32_t ty = types[k];
         rowBase[ty] = static_cast<uint32_t>(rows.size());
+        allTris.clear();
         const uint32_t first = feed.typeFirstPacket[ty], count = feed.typePacketCount[ty];
         for (uint32_t p = first; p < first + count && p < feed.packetCount; ++p) {
             const uint32_t at = static_cast<uint32_t>(indices.size());
@@ -883,23 +1004,29 @@ void updateProps(uint64_t propVbo) {
             const MaterialRow row = propMaterialRow(packetMaterial(ty, p), uvBase + at, p);
             const bool cutout = (row.flags & kMatCutout) != 0;
             perType[k].push_back({at, tris, !cutout});
-            // MC2_VK_RT_SELFTEST targets: the largest triangle of the type's opaque / cutout rows.
-            Target& tg = targets[k][cutout ? 1 : 0];
-            for (uint32_t tri = 0; tri < tris; ++tri) {
+            // MC2_VK_RT_SELFTEST targets: every triangle of the type, narrowed to candidates after the packet loop.
+            for (uint32_t tri = 0; selftest && tri < tris; ++tri) {
                 float v[9];
                 for (int j = 0; j < 3; ++j) position(indices[at + 3 * tri + j], &v[3 * j]);
                 const float e1[3] = {v[3] - v[0], v[4] - v[1], v[5] - v[2]}, e2[3] = {v[6] - v[0], v[7] - v[1], v[8] - v[2]};
                 const float cx = e1[1] * e2[2] - e1[2] * e2[1], cy = e1[2] * e2[0] - e1[0] * e2[2], cz = e1[0] * e2[1] - e1[1] * e2[0];
                 const float area = 0.5f * std::sqrt(cx * cx + cy * cy + cz * cz);
-                if (area > tg.area) {
+                if (area > 0.0f) {
+                    Target tg;
                     std::memcpy(tg.v, v, sizeof(v));
                     tg.row = static_cast<uint32_t>(rows.size());
                     tg.prim = tri;
                     tg.area = area;
+                    tg.cutout = cutout;
                     tg.valid = true;
+                    allTris.push_back(tg);
                 }
             }
             rows.push_back(row);
+        }
+        if (!allTris.empty()) {
+            targets[k][0] = pickCandidates(allTris, false);
+            targets[k][1] = pickCandidates(allTris, true);
         }
     }
     std::vector<uint32_t> uv = s.uvIndices;
