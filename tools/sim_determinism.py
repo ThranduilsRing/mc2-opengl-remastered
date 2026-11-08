@@ -352,6 +352,15 @@ def check_baseline(lines, baseline_path: str, seed: str = "", fingerprint: dict 
     return True, f"first {n} frames match the baseline chain {got} in every digest"
 
 
+def check_baseline_both(a, b, baseline_path: str, seed_a: str = "", seed_b: str = "", fingerprint: dict | None = None):
+    """-> (ok, message). BOTH original streams must satisfy the pin: matching run a to the baseline says nothing about run b."""
+    for name, lines, seed in (("a", a, seed_a), ("b", b, seed_b)):
+        ok, msg = check_baseline(lines, baseline_path, seed, fingerprint)
+        if not ok:
+            return False, f"run {name}: {msg}"
+    return True, msg
+
+
 def _build_sha(log: str) -> str:
     """The sha of the exe that wrote the log (its [INSTR v1] enabled: line carries build=<sha>)."""
     with open(log, encoding="utf-8", errors="replace") as fh:
@@ -874,7 +883,7 @@ def main(argv=None) -> int:
     if args.deploy:
         build_and_deploy(args.install)
     try:
-        needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) and not args.headless else 0
+        needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) else 0
     except (OSError, ValueError, KeyError, TypeError):
         needed = 0  # unreadable baseline: check_baseline reports it
     la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install,
@@ -893,7 +902,9 @@ def main(argv=None) -> int:
     if reached < needed:
         print(f"sim_determinism: INCONCLUSIVE (too few frames): {reached} of {needed} sim frames within the requested {args.duration} s budget")
         return 3
-    ok, msg = compare(a, b, args.min_frames, required_length=required)
+    # The baseline pins `needed` ticks: both runs must cover ALL of them after alignment (a garbled interior tick is a missing
+    # pinned observation, INCONCLUSIVE), not merely the frames they happen to share.
+    ok, msg = compare(a, b, args.min_frames, required_length=needed)
     print(_verdict(ok, msg) + msg)
     if not ok and _inconclusive(msg):
         return 3  # incomplete evidence is neither PASS nor a divergence; the gate row still fails on a nonzero rc
@@ -901,7 +912,7 @@ def main(argv=None) -> int:
         if not os.path.exists(base):
             print(f"sim_determinism: baseline FAIL no baseline at {os.path.relpath(base, ROOT)} (record one with write-baseline)")
             return 1
-        ok2, msg2 = check_baseline(a, base, _seed(la), data_fingerprint(args.install))
+        ok2, msg2 = check_baseline_both(a, b, base, _seed(la), _seed(lb), data_fingerprint(args.install))
         print(("sim_determinism: baseline PASS " if ok2 else "sim_determinism: baseline FAIL ") + msg2)
         ok = ok and ok2
     return 0 if ok else 1

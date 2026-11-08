@@ -29,7 +29,7 @@ The laptop is a separate, serial game slot. SSH is session 0; GPU jobs must run
 through `MC2FarmRunner` in Kaitlyn's logged-in desktop session. All laptop files
 belong under `C:\mc2farm`. No service or firewall changes are needed.
 
-Copy `runner.py` and `install-task.cmd` to `C:\mc2farm`, then run
+Copy `runner.py`, `queue_lock.py` (the one queue shared with the laptop gate's build) and `install-task.cmd` to `C:\mc2farm`, then run
 `C:\mc2farm\install-task.cmd` as Kaitlyn. It uses `schtasks /create /tn MC2FarmRunner
 /sc ONLOGON /ru DESKTOP-Q11RABS\Kaitlyn /it /rl LIMITED /tr
 "C:\Users\Kaitlyn\AppData\Local\Python\bin\python.exe C:\mc2farm\runner.py --root C:\mc2farm"`.

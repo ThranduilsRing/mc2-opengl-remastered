@@ -235,3 +235,78 @@ def test_from_payload_rejects_same_length_drift_of_an_unchanged_file(tmp_path):
     (target / "shaders" / "a.glsl").write_bytes(b"EXPECTED")   # same length, different bytes
     with pytest.raises(SystemExit):
         deploy_payload.deploy_from_payload(payload, target, tmp_path, "0" * 40)
+
+
+# ---- p31 P0: transactional result acceptance (stubbed scp: pull_one) ----
+import json  # noqa: E402
+import tarfile  # noqa: E402
+
+HEAD = "a" * 40
+
+
+def _fake_remote(tmp_path, *, head=HEAD, gate_rc=0, build_rc=0, drop=(), payload_ok=True, evidence=True):
+    """A stub for laptop_gate.pull_one that 'pulls' from a fake remote out dir."""
+    rem = tmp_path / "remote"
+    rem.mkdir(exist_ok=True)
+    tarp = rem / "payload.tar"
+    with tarfile.open(tarp, "w") as t:
+        pass
+    (rem / "payload.sha256").write_text(("%s" % laptop_gate.sha256(tarp) if payload_ok else "0" * 64) + "  payload.tar\n")
+    (rem / "summary.json").write_text(json.dumps({"head": head, "gate_rc": gate_rc, "build_rc": build_rc, "verdict": "PASS"}))
+    (rem / "gate-verdict.json").write_text(json.dumps({"head": head, "verdict": "PASS"}))
+    for n in ("gate.log", "gate.console.log", "build.log"):
+        (rem / n).write_text("x")
+    (rem / "evidence" / "ab").mkdir(parents=True, exist_ok=True)
+    (rem / "evidence" / "ab" / "montage.jpg").write_bytes(b"jpg")
+
+    def pull_one(remote, local, recursive=False):
+        name = remote.rsplit("/", 1)[1]
+        if name in drop or (name == "evidence" and not evidence):
+            return False
+        src = rem / name
+        if recursive:
+            import shutil
+            shutil.copytree(src, Path(local) / name)
+        else:
+            Path(local).write_bytes(src.read_bytes())
+        return True
+    return pull_one
+
+
+def _accept(tmp_path, monkeypatch, run_rc=0, pack_rc=0, **kw):
+    monkeypatch.setattr(laptop_gate, "pull_one", _fake_remote(tmp_path, **kw))
+    dest, inc = tmp_path / "proofs" / "7", tmp_path / "proofs" / "7.incoming"
+    return laptop_gate.pull_and_accept("7", HEAD, run_rc, pack_rc, dest, inc), dest, inc
+
+
+def test_laptop_accepts_a_complete_matching_result_and_pulls_the_montages(tmp_path, monkeypatch):
+    (ok, why, sm), dest, inc = _accept(tmp_path, monkeypatch)
+    assert ok, why
+    assert (dest / "gate-verdict.json").is_file() and (dest / "evidence/ab/montage.jpg").is_file() and not inc.exists()
+
+
+@pytest.mark.parametrize("kw,run_rc,pack_rc,needle", [
+    ({}, 255, 0, "ssh exit"),
+    ({}, 0, 1, "ssh exit"),
+    ({"gate_rc": 1}, 0, 0, "gate_rc"),
+    ({"build_rc": 2}, 0, 0, "build_rc"),
+    ({"drop": ("gate-verdict.json",)}, 0, 0, "partial pull"),
+    ({"drop": ("payload.tar",)}, 0, 0, "partial pull"),
+    ({"evidence": False}, 0, 0, "evidence"),
+    ({"head": "b" * 40}, 0, 0, "pushed stage sha"),
+    ({"payload_ok": False}, 0, 0, "payload"),
+])
+def test_laptop_rejects_every_failure_mode_and_leaves_no_dest(tmp_path, monkeypatch, kw, run_rc, pack_rc, needle):
+    (ok, why, _), dest, inc = _accept(tmp_path, monkeypatch, run_rc, pack_rc, **kw)
+    assert not ok and needle in why
+    assert not dest.exists() and not inc.exists() and (tmp_path / "proofs" / "7.rejected").is_dir()
+
+
+def test_laptop_old_pass_cannot_survive_a_failed_pull(tmp_path, monkeypatch):
+    old = tmp_path / "proofs" / "7"
+    old.mkdir(parents=True)
+    (old / "gate-verdict.json").write_text('{"verdict": "PASS"}')
+    import shutil
+    shutil.rmtree(old)   # pc_main clears dest before the run; a rejected pull must not recreate it
+    (ok, _, _), dest, _ = _accept(tmp_path, monkeypatch, drop=("summary.json",))
+    assert not ok and not dest.exists()

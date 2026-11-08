@@ -59,7 +59,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
-import _git_util, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
+import _git_util, lane_merge_baseline, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
@@ -1247,7 +1247,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     if batch:
         results = run_ratchets(root, tools_dir, tighten=False)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
-    semantic = semantic_precheck(root, tools_dir)
+    semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), RATCHETS, TIGHTENED_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
     artifacts = regenerate_all(root)
@@ -1397,7 +1397,7 @@ def main(argv: list[str] | None = None) -> int:
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
-            semantic = semantic_precheck(root, tools_dir)
+            semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, RATCHETS, TIGHTENED_BASELINES, run, git, lines)
             if semantic:
                 reds.append((refs[-1], semantic))
         if batch and merged and not reds:

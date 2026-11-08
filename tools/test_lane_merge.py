@@ -1414,3 +1414,35 @@ def test_stage_help_documents_the_queue_commands(capsys):
     out = capsys.readouterr().out
     assert all(k in out for k in ("--stage W --batch", "--promote W", "--bisect W --red", "nifty untouched"))
 
+
+
+def test_ratchet_tighten_compares_against_the_accepted_bases_baseline(tmp_path, monkeypatch):
+    # p31: the candidate's own (possibly raised) baseline must not be the yardstick; the base's `git show` copy is.
+    tools = tmp_path / "tools"
+    for rel in FAKES:
+        (tools / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tools / rel).write_text("")
+    shown, ran = [], []
+    monkeypatch.setattr(lm, "git", lambda root, *a: (shown.append(a), subprocess.CompletedProcess(a, 0, '{"base": 1}'))[1])
+
+    def fake_run(root, cmd, env=None):
+        baseline = cmd[cmd.index("--baseline") + 1]
+        ran.append((os.path.basename(cmd[2]), open(baseline).read()))
+        return subprocess.CompletedProcess(cmd, 1 if "file_size" in cmd[2] else 0, "line\nover the base baseline")
+    monkeypatch.setattr(lm, "run", fake_run)
+    failed = _bbc(tmp_path, tools)
+    assert [a for a in shown] == [("show", "b" * 40 + ":" + p) for p in lm.TIGHTENED_BASELINES]
+    assert all(body == '{"base": 1}' for _n, body in ran) and len(ran) == 3
+    assert len(failed) == 1 and failed[0][0].startswith("file_size vs accepted base")
+
+
+def _bbc(tmp_path, tools):
+    return lm.lane_merge_baseline.base_baseline_check(str(tmp_path), str(tools), "b" * 40, lm.RATCHETS, lm.TIGHTENED_BASELINES, lm.run, lm.git, lm.lines)
+
+
+def test_base_baseline_check_skips_a_baseline_absent_at_the_base(tmp_path, monkeypatch):
+    tools = tmp_path / "tools"
+    (tools).mkdir()
+    monkeypatch.setattr(lm, "git", lambda root, *a: subprocess.CompletedProcess(a, 128, "missing"))
+    monkeypatch.setattr(lm, "run", lambda *a, **k: pytest.fail("ran a ratchet with no base baseline"))
+    assert _bbc(tmp_path, tools) == []

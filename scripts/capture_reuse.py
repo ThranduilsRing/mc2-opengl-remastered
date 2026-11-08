@@ -1,6 +1,10 @@
 """capture-before reuse (p29 cut 2): the old build's reference captures are restored instead of re-shot when the COMPLETE identity of
 the reference run matches an earlier one and every artifact still hashes to what the sweep recorded.
 
+DISABLED BY DEFAULT (p31 item 3): reuse runs only with MC2_CAPTURE_REUSE=1 until the key is complete (selected GPU/driver, effective stage
+environment, transitive helpers and loose data are still not in it). The key now carries the real shader and DLL bytes, not manifest text:
+merge_gate stages the candidate by removing the shader rows from .deployed_manifest.csv, so the manifest cannot describe them.
+
 Identity = exe sha256, deployed-file content (the install's .deployed_manifest.csv rows: relpath, sha256, bytes; shaders and data
 included), options/prefs files, poses (bookmark names and their file hashes), capture arguments, harness source, MC2_* environment
 and GPU + driver. Any missing piece (no manifest, no GPU answer) means no reuse: a miss only costs the capture it replaces.
@@ -16,6 +20,8 @@ from pathlib import Path
 
 CACHE_ROOT = Path("G:/mc2-tmp/capture-reuse")
 KEEP = 3   # newest reference sets kept
+SHADER_DIRS = ("shaders", "shaders_vk")   # install-relative; every file under them is hashed by content
+ENABLE_ENV = "MC2_CAPTURE_REUSE"
 OPTION_FILES = ("options.cfg", "system.cfg", "prefs.cfg")
 HARNESS = ("tools/visual_verify/capture.py", "scripts/run_visual_capture.py", "tools/visual_verify/ab.py")
 
@@ -39,6 +45,24 @@ def gpu_identity() -> str | None:
     except Exception:
         return None
     return json.dumps(info, sort_keys=True) if info else None
+
+
+def enabled() -> bool:
+    return os.environ.get(ENABLE_ENV) == "1"
+
+
+def deployed_bytes(install: Path) -> dict | None:
+    """relpath -> sha256 of the shader files and root DLLs actually on disk, or None when there are no shaders (cannot be identified)."""
+    out = {}
+    for d in SHADER_DIRS:
+        for p in sorted((install / d).rglob("*")) if (install / d).is_dir() else []:
+            if p.is_file():
+                out[p.relative_to(install).as_posix()] = _sha(p)
+    if not any(k.split("/", 1)[0] in SHADER_DIRS for k in out):
+        return None
+    for p in sorted(install.glob("*.dll")):
+        out[p.name] = _sha(p)
+    return out
 
 
 def _arg(command: list, flag: str) -> str | None:
@@ -70,13 +94,17 @@ def identity(command: list, root: Path, gpu: str | None = None) -> dict | None:
         harness = {h: _sha(root / h) for h in HARNESS}
         options = {f: _sha(install / f) for f in OPTION_FILES if (install / f).is_file()}
         exe_sha = _sha(exe)
+        files = deployed_bytes(install)
     except OSError:
+        return None
+    if files is None:
         return None
     if not all(poses.values()):
         return None   # a pose that cannot be hashed cannot be identified
     return {
         "exe": exe_sha,
         "deployed": hashlib.sha256("\n".join(sorted(rows)).encode()).hexdigest(),
+        "shader_bytes": files,
         "options": options,
         "poses": poses,
         "args": [a for i, a in enumerate(command[2:], 2) if a != "--out" and command[i - 1] != "--out"],
@@ -118,6 +146,8 @@ def _copy(src: Path, dst: Path) -> None:
 def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None) -> str | None:
     """Copy a matching verified reference set to the command's --out. Returns a one-line note on reuse, None on a miss."""
     out = _arg(command, "--out")
+    if not enabled():
+        return None
     ident = identity(command, root, gpu)
     if not out or ident is None:
         return None
@@ -143,6 +173,8 @@ def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None
 def store(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None) -> bool:
     """Keep a freshly verified reference set under its identity (newest KEEP sets survive)."""
     out = _arg(command, "--out")
+    if not enabled():
+        return False
     ident = identity(command, root, gpu)
     if not out or ident is None or verify_artifacts(Path(out)) is not None:
         return False
