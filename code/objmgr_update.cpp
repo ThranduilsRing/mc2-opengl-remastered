@@ -992,11 +992,11 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 	if (weapons)
 		for (long i = 0; i < numWeapons; i++)
 			if (weapons[i] && weapons[i]->hasPresentation())
-				add(list.other, weapons[i]);
+				weapons[i]->extractFxPacket(list);
 	if (carnage)
 		for (long i = 0; i < numCarnage; i++)
 			if (carnage[i] && carnage[i]->gosEffect)
-				add(list.other, carnage[i]);
+				carnage[i]->extractFxPacket(list);
 	if (lights)
 		for (long i = 0; i < numLights; i++)
 			if (lights[i] && lights[i]->getExists())

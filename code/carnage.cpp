@@ -781,8 +781,7 @@ void Carnage::updatePresentation()
 			bool result = gosEffect->Execute(&info);
 			if (!result)
 			{
-				gosEffect->Kill();		//Effect is over.
-				gosEffect.reset();
+				mc2::tick::releaseEffect(gosEffect);		//Effect is over.
 
 				if (pointLight)
 				{
@@ -813,20 +812,25 @@ void Carnage::updatePresentation()
 //---------------------------------------------------------------------------
 
 // G7b K3: the sim reads (type, JUSTCREATED, position) at the render extract; the draw reads the view.
-void Carnage::extractRenderView (mc2::render_view::RenderView& view)
+void Carnage::extractFxPacket (mc2::render_view::RenderList& list)
 {
-	GameObject::extractRenderView(view);
-	view.effects[0] = gosEffect.get();
+	mc2::render_view::FxPacket& view = list.fx.emplace_back();
+	view.kind = mc2::render_view::FxPacket::Kind::Carnage;
+	view.position = position;
+	view.watchId = getWatchID(false);
+	view.effects[0] = list.retain(gosEffect.get());
+	if (gosEffect && gosEffect->IsExecuted())
+		view.flags |= mc2::render_view::EffectLive0;
 	if (carnageType == CARNAGE_EXPLOSION && !getFlag(OBJECT_FLAG_JUSTCREATED))
 		view.flags |= mc2::render_view::Visible;
 }
 
-void Carnage::renderView (const mc2::render_view::RenderView& view)
+void Carnage::drawPacket (const mc2::render_view::FxPacket& view, const mc2::render_view::RenderList& list)
 {
-	auto* const gosEffect = view.effects[0];
+	auto* const gosEffect = list.effect(view.effects[0]);
 	if (view.has(mc2::render_view::Visible))
 	{
-		if (gosEffect && gosEffect->IsExecuted())
+		if (gosEffect && view.executed(0))
 		{
 			gosFX::Effect::DrawInfo drawInfo;
 			drawInfo.m_clipper = theClipper;

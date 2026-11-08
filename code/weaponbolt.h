@@ -313,8 +313,9 @@ class WeaponBolt : public GameObject
 		void createPresentationResources();
 		std::uint64_t simulationHash();
 		bool hasPresentation() const { return targetPosition != nullptr; }
-		virtual void extractRenderView (mc2::render_view::RenderView& view);
-		virtual void renderView (const mc2::render_view::RenderView& view);
+		// Extract (main, sim quiescent) appends a self-contained FxPacket; drawPacket reads only the packet.
+		void extractFxPacket (mc2::render_view::RenderList& list);
+		static void drawPacket (const mc2::render_view::FxPacket& view, const mc2::render_view::RenderList& list);
 		
 		virtual void init (bool create, ObjectTypePtr _type);
 		

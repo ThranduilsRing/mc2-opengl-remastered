@@ -1156,7 +1156,9 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// blend). scaleExempt so the bottom-band HUD shrink doesn't move the effects.
 		gos_SetHudScaleExempt(true);
 		gos_SetRenderState(gos_State_IsHUD, 1);
-		// Weapons, carnage, lights, artillery: the extract keeps that order.
+		// Weapons, carnage (value packets, no object read), then lights, artillery: the extract keeps that order.
+		for (const mc2::render_view::FxPacket& p : rl.fx)
+			(p.kind == mc2::render_view::FxPacket::Kind::Bolt ? WeaponBolt::drawPacket : Carnage::drawPacket)(p, rl);
 		for (const mc2::render_view::RenderView& v : rl.other)
 			if (viewIsCurrent(v))
 				v.obj->renderView(v);

@@ -129,8 +129,8 @@ class Carnage : public GameObject
 			void createPresentationEffect();
 			bool presentationStarted = false;
 
-			virtual void extractRenderView (mc2::render_view::RenderView& view);
-			virtual void renderView (const mc2::render_view::RenderView& view);
+			void extractFxPacket (mc2::render_view::RenderList& list);
+			static void drawPacket (const mc2::render_view::FxPacket& view, const mc2::render_view::RenderList& list);
 
 			virtual void setOwner (GameObjectPtr myOwner) 
 			{

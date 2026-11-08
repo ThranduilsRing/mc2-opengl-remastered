@@ -43,9 +43,11 @@ std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence) {
         namespace bb = mc2::battlebench;
         const auto& h = g_hud;
         bb::add(bb::ExtractBytes, (g_list.terrain.size() + g_list.movers.size() + g_list.other.size()) * sizeof(RenderView)
+            + g_list.fx.size() * sizeof(FxPacket) + g_list.effects.size() * sizeof(gosFX::Effect*)
             + h.movers.size() * sizeof(HudMover) + h.roster.size() * sizeof(size_t) + (h.sensors.size() + h.coverage.size()) * sizeof(HudSensor)
             + h.objectives.size() * sizeof(HudObjective) + h.blips.size() * sizeof(HudBlip) + h.vtols.size() * sizeof(HudVtol));
         bb::add(bb::HeapAllocs, 1 + (g_list.terrain.empty() ? 0 : 1) + (g_list.movers.empty() ? 0 : 1) + (g_list.other.empty() ? 0 : 1)
+            + (g_list.fx.empty() ? 0 : 1) + (g_list.effects.empty() ? 0 : 1)
             + (h.movers.empty() ? 0 : 1) + (h.roster.empty() ? 0 : 1) + (h.sensors.empty() ? 0 : 1) + (h.coverage.empty() ? 0 : 1)
             + (h.objectives.empty() ? 0 : 1) + (h.blips.empty() ? 0 : 1) + (h.vtols.empty() ? 0 : 1));
     }
@@ -63,6 +65,8 @@ std::shared_ptr<const FrameDraws> freezeDrawFrame(uint64_t sequence) {
     frame->list.terrain.swap(g_list.terrain);
     frame->list.movers.swap(g_list.movers);
     frame->list.other.swap(g_list.other);
+    frame->list.fx.swap(g_list.fx);
+    frame->list.effects.swap(g_list.effects);
     std::swap(frame->hud, g_hud);
     return std::shared_ptr<const FrameDraws>(frame, [](const FrameDraws* done) {
         auto* f = const_cast<FrameDraws*>(done);   // sole owner here; empty the streams (marker holders release on this thread) and recycle
@@ -83,20 +87,6 @@ DrawFrameScope::DrawFrameScope(const FrameDraws& frame, RenderCore::FrameArena* 
 DrawFrameScope::~DrawFrameScope() {
     g_drawFrame = previous_;
     g_drawArena = previousArena_;
-}
-
-void RenderList::freezeBoltDraws(RenderCore::FrameArena& arena) {
-    uint32_t count = 0;
-    for (const auto& view : other) if (view.has(BoltGeometry)) ++count;
-    if (!count) return;
-    auto draws = arena.allocArray<BoltDraw>(count, "BoltDraw");
-    if (draws.empty()) std::abort();
-    uint32_t i = 0;
-    for (auto& view : other) {
-        if (!view.has(BoltGeometry)) continue;
-        draws.data[i] = view.bolt;
-        view.frozenBolt = &draws.data[i++];
-    }
 }
 
 }  // namespace mc2::render_view

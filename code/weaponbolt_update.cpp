@@ -9,6 +9,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
 #include "impact_presentation.h"
+#include "tick_commit.h"
 
 //---------------------------------------------------------------------------
 // PPC de-curve + direct-fire speed (env-gated, default-off). "Direct-fire" =
@@ -509,16 +510,16 @@ void WeaponBolt::updatePresentation()
 	}
 	if (hitTarget && !presentationImpactStarted) {
 		presentationImpactStarted = true;
-		if (gosEffect) { gosEffect->Kill(); gosEffect.reset(); }
+		mc2::tick::releaseEffect(gosEffect);
 		int row, col; land->worldToCell(*targetPosition, row, col);
 		const bool water = GameMap->getDeepWater(row, col) || GameMap->getShallowWater(row, col);
 		if (target) {
-			missEffect.reset(); waterMissEffect.reset(); start(hitEffect, laserPosition);
+			mc2::tick::releaseEffect(missEffect); mc2::tick::releaseEffect(waterMissEffect); start(hitEffect, laserPosition);
 		} else if (water) {
-			hitEffect.reset(); missEffect.reset();
+			mc2::tick::releaseEffect(hitEffect); mc2::tick::releaseEffect(missEffect);
 			auto at = *targetPosition; at.z = Terrain::waterElevation; start(waterMissEffect, at);
 		} else {
-			hitEffect.reset(); waterMissEffect.reset(); start(missEffect, *targetPosition);
+			mc2::tick::releaseEffect(hitEffect); mc2::tick::releaseEffect(waterMissEffect); start(missEffect, *targetPosition);
 		}
 	}
 	if (static_cast<WeaponBoltTypePtr>(getObjectType())->isBeam) {
@@ -559,8 +560,7 @@ void WeaponBolt::updatePresentation()
 		bool result = gosEffect->Execute(&info);
 		if (!result)
 		{
-			gosEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-			gosEffect.reset();
+			mc2::tick::releaseEffect(gosEffect);		//Effect is over.  Otherwise, wait until hit!
 		}
    	}
 	
@@ -591,8 +591,7 @@ void WeaponBolt::updatePresentation()
 		bool result = muzzleEffect->Execute(&info);
 		if (!result)
 		{
-			muzzleEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-			muzzleEffect.reset();
+			mc2::tick::releaseEffect(muzzleEffect);		//Effect is over.  Otherwise, wait until hit!
 		}
 
    	}
@@ -705,8 +704,7 @@ void WeaponBolt::updatePresentation()
 
 		if (gosEffect && (hitLeft < 0.0f))
 		{
-			gosEffect->Kill();
-			gosEffect.reset();
+			mc2::tick::releaseEffect(gosEffect);
 			
 			if (pointLight)
 			{
@@ -751,8 +749,7 @@ void WeaponBolt::updatePresentation()
 			{
 				if (hitEffect)
 				{
-					hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-					hitEffect.reset();
+					mc2::tick::releaseEffect(hitEffect);		//Effect is over.  Otherwise, wait until hit!
 				}
 					
 				inView = FALSE;
@@ -766,8 +763,7 @@ void WeaponBolt::updatePresentation()
 				
 				if (muzzleEffect)
 				{
-					muzzleEffect->Kill();
-					muzzleEffect.reset();
+					mc2::tick::releaseEffect(muzzleEffect);
 				}
 			}
 		}
@@ -775,8 +771,7 @@ void WeaponBolt::updatePresentation()
 		{
 			if (hitEffect)
 			{
-				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				hitEffect.reset();
+				mc2::tick::releaseEffect(hitEffect);		//Effect is over.  Otherwise, wait until hit!
 			}
 				
 			if (pointLight)
@@ -822,14 +817,12 @@ void WeaponBolt::updatePresentation()
 			{
 				if (missEffect)
 				{
-					missEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-					missEffect.reset();
+					mc2::tick::releaseEffect(missEffect);		//Effect is over.  Otherwise, wait until hit!
 				}
 					
 				if (muzzleEffect)
 				{
-					muzzleEffect->Kill();
-					muzzleEffect.reset();
+					mc2::tick::releaseEffect(muzzleEffect);
 				}
 				
 				inView = FALSE;
@@ -846,8 +839,7 @@ void WeaponBolt::updatePresentation()
 		{
 			if (missEffect)
 			{
-				missEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				missEffect.reset();
+				mc2::tick::releaseEffect(missEffect);		//Effect is over.  Otherwise, wait until hit!
 			}
 				
 			if (pointLight)
@@ -895,14 +887,12 @@ void WeaponBolt::updatePresentation()
 			{
 				if (waterMissEffect)
 				{
-					waterMissEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-					waterMissEffect.reset();
+					mc2::tick::releaseEffect(waterMissEffect);		//Effect is over.  Otherwise, wait until hit!
 				}
 					
 				if (muzzleEffect)
 				{
-					muzzleEffect->Kill();
-					muzzleEffect.reset();
+					mc2::tick::releaseEffect(muzzleEffect);
 				}
 				
 				inView = FALSE;
@@ -919,8 +909,7 @@ void WeaponBolt::updatePresentation()
 		{
 			if (waterMissEffect)
 			{
-				waterMissEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				waterMissEffect.reset();
+				mc2::tick::releaseEffect(waterMissEffect);		//Effect is over.  Otherwise, wait until hit!
 			}
 				
 			if (pointLight)

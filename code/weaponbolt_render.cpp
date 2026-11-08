@@ -45,15 +45,20 @@ static glm::vec3 boltTargetHotSpot (const glm::vec3& raw, GameObjectWatchID targ
 	return hotSpot;
 }
 
-void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
+void WeaponBolt::extractFxPacket (mc2::render_view::RenderList& list)
 {
-	GameObject::extractRenderView(view);
+	mc2::render_view::FxPacket& view = list.fx.emplace_back();
+	view.kind = mc2::render_view::FxPacket::Kind::Bolt;
+	view.position = position;
+	view.watchId = getWatchID(false);
 	const auto* type = static_cast<WeaponBoltTypePtr>(getObjectType());
-	view.effects[0] = gosEffect.get();
-	view.effects[1] = muzzleEffect.get();
-	view.effects[2] = hitEffect.get();
-	view.effects[3] = missEffect.get();
-	view.effects[4] = waterMissEffect.get();
+	gosFX::Effect* const fx[5] = {gosEffect.get(), muzzleEffect.get(), hitEffect.get(), missEffect.get(), waterMissEffect.get()};
+	for (int i = 0; i < 5; i++)
+	{
+		view.effects[i] = list.retain(fx[i]);
+		if (fx[i] && fx[i]->IsExecuted())
+			view.flags |= mc2::render_view::EffectLive0 << i;
+	}
 	if (getFlag(OBJECT_FLAG_JUSTCREATED) || isTargeted())	//can we be seen by the enemy?
 		return;
 	view.flags |= mc2::render_view::Visible;
@@ -89,20 +94,20 @@ void WeaponBolt::extractRenderView (mc2::render_view::RenderView& view)
 	view.flags |= mc2::render_view::BoltGeometry;
 }
 
-void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
+void WeaponBolt::drawPacket (const mc2::render_view::FxPacket& view, const mc2::render_view::RenderList& list)
 {
-	auto* const gosEffect = view.effects[0];
-	auto* const muzzleEffect = view.effects[1];
-	auto* const hitEffect = view.effects[2];
-	auto* const missEffect = view.effects[3];
-	auto* const waterMissEffect = view.effects[4];
+	auto* const gosEffect = list.effect(view.effects[0]);
+	auto* const muzzleEffect = list.effect(view.effects[1]);
+	auto* const hitEffect = list.effect(view.effects[2]);
+	auto* const missEffect = list.effect(view.effects[3]);
+	auto* const waterMissEffect = list.effect(view.effects[4]);
 	if (view.has(mc2::render_view::Visible))
 	{
 		// Extract copies under the member names, so the draw body below reads the view.
 		const glm::vec3 position = view.position;
 		glm::vec3 laserPosition = view.aux[0];
-		// Legacy projection takes mutable positions; never hand it arena storage.
-		auto draw = view.frozenBolt ? *view.frozenBolt : view.bolt;
+		// Legacy projection takes mutable positions; never hand it the frozen packet.
+		auto draw = view.bolt;
 		auto& laserVertices = draw.laserVertices;
 		auto& laserSide = draw.laserSide;
 		const float startUV = draw.startUV;
@@ -714,7 +719,7 @@ void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
 				muzzleEffect->Draw(&drawInfo);
 		}
 
-		if (hitEffect && hitTarget && hitEffect->IsExecuted())
+		if (hitEffect && hitTarget && view.executed(2))
 		{
 			glm::vec3 hotSpot = view.aux[1];
 
@@ -733,7 +738,7 @@ void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
 				hitEffect->Draw(&drawInfo);
 		}
 
-		if (missEffect && hitTarget && missEffect->IsExecuted())
+		if (missEffect && hitTarget && view.executed(3))
 		{
 			glm::vec3 hotSpot = view.aux[2];
 			
@@ -752,7 +757,7 @@ void WeaponBolt::renderView (const mc2::render_view::RenderView& view)
 				missEffect->Draw(&drawInfo);
 		}
 
-		if (waterMissEffect && hitTarget && waterMissEffect->IsExecuted())
+		if (waterMissEffect && hitTarget && view.executed(4))
 		{
 			glm::vec3 hotSpot = view.aux[2];
 			
