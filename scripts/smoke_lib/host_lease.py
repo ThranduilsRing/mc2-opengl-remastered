@@ -122,6 +122,44 @@ def lane_devices() -> tuple:
         return GPU_SPLIT_DEFAULT
 
 
+_HOST_GPU_NAMES: Optional[List[str]] = None
+
+
+def host_gpu_names() -> Optional[List[str]]:
+    """Lower-case adapter names of THIS host (Win32_VideoController), cached; None when it cannot be read or a test redirects the lease."""
+    global _HOST_GPU_NAMES
+    if redirected():
+        return None
+    if _HOST_GPU_NAMES is None:
+        try:
+            from smoke_lib import crash_evidence
+            info = crash_evidence._gpu_info(20)
+            rows = info if isinstance(info, list) else [info] if isinstance(info, dict) else []
+            _HOST_GPU_NAMES = [str(r.get("Name", "")).lower() for r in rows if isinstance(r, dict) and r.get("Name")]
+        except Exception:
+            _HOST_GPU_NAMES = []
+    return _HOST_GPU_NAMES or None
+
+
+def device_on_host(label: str, names: Optional[List[str]] = None) -> Optional[bool]:
+    """Does a GPU matching the MC2_VK_DEVICE substring `label` exist on this host? None = unknown (do not second-guess)."""
+    names = host_gpu_names() if names is None else names
+    if not names:
+        return None
+    tokens = (label.lower(),) + tuple(DEVICE_ALIASES.get(label, ()))
+    return any(t in n for n in names for t in tokens)
+
+
+def host_lane_device(devices: Optional[tuple] = None, names: Optional[List[str]] = None) -> Optional[str]:
+    """The first lane GPU (GPU_SPLIT order) this host really has: the PC gives slot 0 (the XTX), the GTX 1050 Ti laptop gives
+    slot 1 (NVIDIA). None when the host has none of them: force nothing and let the engine and run_smoke route. Unknown host = slot 0."""
+    devices = lane_devices() if devices is None else devices
+    names = host_gpu_names() if names is None else names
+    if not names:
+        return devices[0]
+    return next((d for d in devices if device_on_host(d, names)), None)
+
+
 def slot_device(slot: int) -> str:
     devices = lane_devices()
     return devices[slot % len(devices)]

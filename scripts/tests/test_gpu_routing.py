@@ -89,3 +89,26 @@ def test_an_explicit_request_that_matched_nothing_is_red():
 def test_an_explicit_mistyped_device_hint_is_red_even_when_it_matched_nothing():
     log = "MC2_VK_DEVICE=NVDIA matches no accepted device; using the default pick"
     assert nofocus.gpu_mismatch({"PATH": "x", "MC2_VK_DEVICE": "NVDIA"}, False, ["Intel(R) HD Graphics 630"], log)
+
+
+def test_host_lane_device_follows_the_gpus_the_host_has():
+    from smoke_lib import host_lease
+    pc = ["amd radeon rx 7900 xtx", "nvidia geforce rtx 2070 super"]
+    laptop = ["nvidia geforce gtx 1050 ti", "intel(r) hd graphics 630"]
+    split = ("AMD", "NVIDIA")
+    assert host_lease.host_lane_device(split, pc) == "AMD"          # the PC gate still selects the XTX
+    assert host_lease.host_lane_device(split, laptop) == "NVIDIA"   # the laptop never gets AMD forced
+    assert host_lease.host_lane_device(split, ["intel(r) hd graphics 630"]) is None
+    assert host_lease.host_lane_device(split, []) == "AMD"          # unknown host: slot 0, as before
+
+
+def test_gate_env_never_forces_a_missing_gpu(monkeypatch):
+    import merge_gate as gate
+    from smoke_lib import host_lease
+    monkeypatch.setattr(host_lease, "host_gpu_names", lambda: ["nvidia geforce gtx 1050 ti"])
+    assert gate.gate_env("tier1")["MC2_VK_DEVICE"] == "NVIDIA"
+    assert gate.gate_env("tier1", "AMD")["MC2_VK_DEVICE"] == "NVIDIA"   # an aux/explicit AMD the host lacks falls back
+    monkeypatch.setattr(host_lease, "host_gpu_names", lambda: ["intel(r) hd graphics 630"])
+    assert "MC2_VK_DEVICE" not in gate.gate_env("tier1")
+    monkeypatch.setattr(host_lease, "host_gpu_names", lambda: ["amd radeon rx 7900 xtx"])
+    assert gate.gate_env("tier1")["MC2_VK_DEVICE"] == "AMD"

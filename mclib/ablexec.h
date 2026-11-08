@@ -135,6 +135,11 @@ using StackFrameHeaderPtr = StackFrameHeader*;
 extern char*			codeBuffer;
 extern char*			codeBufferPtr;
 extern StackItem*		stack;	// environment-owned root stack; eternal variables live in [0, eternalOffset)
+extern size_t			stackCount;	// items in the root stack's backing storage (set where it is allocated)
+extern long				eternalOffset;
+
+// The one place the root stack's limit comes from: one past the last item the storage really holds.
+inline StackItem* ablRootStackLimit () { return stack ? stack + stackCount : nullptr; }
 
 // The executor state of one ABL run: code cursor, stack, current module/routine, static data base and the
 // exit/error flags. The interpreter reads the context bound to g_ablExec. A host call that runs a second
@@ -179,7 +184,16 @@ struct AblExecContext {
 	std::vector<StackItem>	ownStack;
 
 	// Points tos and the frame base at the bottom of this context's stack (an entry frame starts here).
-	void resetStack ();
+	void resetStack () {
+		if (ownStack.empty()) {
+			tos = stack + eternalOffset;
+			stackLimit = ablRootStackLimit();
+		} else {
+			tos = ownStack.data();
+			stackLimit = ownStack.data() + ownStack.size();
+		}
+		stackFrameBasePtr = tos;
+	}
 };
 
 extern AblExecContext*	g_ablExec;	// the bound context; the root context unless an AblExecScope is live
