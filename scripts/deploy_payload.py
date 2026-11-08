@@ -1266,13 +1266,9 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
            full_verify=False):
     """Copy + verify the payload.
 
-    `cache` is read_manifest()'s relpath -> (sha256, bytes, mtime_ns). A file
-    other than an executable whose source size and mtime_ns still match the recorded row, and whose
-    deployed copy still hashes to the recorded sha256 (destination bytes are
-    read, never trusted by size), is skipped: not copied. `full_verify` (--full-verify) ignores the cache and does what
-    every deploy did before: copy every file and hash source + target.
-    `.mcasset.json` is always copied: its deployed bytes are line-ending
-    normalized, so the deployed size is not a source size.
+    Hash receipts retain source and destination metadata plus the hash verified
+    at write time. Metadata drift rehashes bytes, including same-size corruption.
+    Executables are always hashed on both sides. --full-verify copies everything.
     """
     src_hashes = ensure_terrain_materials(target_dir)
     ensure_engine_normal_cooks(target_dir)
@@ -1280,6 +1276,10 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}
     cache = cache or {}
+    from kit_payload import HashReceipts, contained_path
+    receipts = HashReceipts(Path(target_dir) / ".deploy-receipts.json")
+    kit_root = Path(target_dir).resolve()
+    kit_parents = {}
     skipped = 0
     pdb_skipped = False
     copy_seconds = 0.0
@@ -1288,8 +1288,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
         if kind == "kit":
-            from kit_payload import contained_path
-            dst = str(contained_path(target_dir, rel))
+            dst = str(contained_path(kit_root, rel, parents=kit_parents))
         if kind == "pdb" and not os.path.isfile(src):
             pdb_problem = f"source PDB missing: {src}"
             continue
@@ -1302,14 +1301,18 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             src_hashes[rel] = (sha256_file(dst), os.path.getsize(dst))
             log(f"preserved {rel} (existing target copy kept)")
             continue
-        if kind != "exe" and not full_verify and not rel.endswith(".mcasset.json"):
-            row = cache.get(rel)
-            stamp = source_stamp(src)
-            if (row is not None and row[2] is not None and stamp == (row[1], row[2])
-                    and os.path.isfile(dst)
-                    and os.path.getsize(dst) == row[1]
-                    and sha256_file(dst) == row[0]):   # destination BYTES, not size: a same-length corruption must be re-copied
-                src_hashes[rel] = (row[0], row[1], stamp[1])
+        def source_hash(path):
+            if rel.endswith(".mcasset.json"):
+                return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+            return sha256_file(path)
+
+        s_hash = receipts.digest(src, force=full_verify or kind == "exe", hasher=source_hash,
+                                 variant='lf' if rel.endswith('.mcasset.json') else '')
+        if not full_verify and os.path.isfile(dst):
+            d_hash = receipts.digest(dst, force=kind == "exe", hasher=sha256_file)
+            if s_hash == d_hash:
+                stamp = source_stamp(src)
+                src_hashes[rel] = (d_hash, os.path.getsize(dst), stamp[1])
                 skipped += 1
                 pdb_skipped = pdb_skipped or kind == "pdb"
                 continue
@@ -1324,18 +1327,16 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                 with open(dst, "wb") as fh:
                     fh.write(content)
                 copy_seconds += time.perf_counter() - copy_started
-                s_hash = hashlib.sha256(content).hexdigest()
             else:
                 shutil.copyfile(src, dst)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, dst)
                 copy_seconds += time.perf_counter() - copy_started
-                s_hash = sha256_file(src)
         except PermissionError:
             fail(f"copy refused (file locked?): {dst}\n"
                  "  A process is holding this file. Close it and re-run; "
                  "this script never taskkills.", 2)
-        d_hash = sha256_file(dst)
+        d_hash = receipts.digest(dst, force=True, hasher=sha256_file)
         stamp = source_stamp(src)
         src_hashes[rel] = (d_hash, os.path.getsize(dst),
                            stamp[1] if stamp is not None else None)
@@ -1356,7 +1357,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     log(f"phase copy seconds={copy_seconds:.3f}")
     if skipped:
         log(f"skipped {skipped} unchanged file(s) "
-            f"(source size+mtime_ns and destination sha256 match the manifest; --full-verify to re-copy)")
+            f"(verified hash receipts match; --full-verify to re-copy)")
 
     if shader_mismatches:
         fail("post-copy diff MISMATCH (stale files in target):\n  "
@@ -1376,6 +1377,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     retire_unowned(target_dir, src_hashes, preserve,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
                                    for _src, rel, kind in items))
+    receipts.save()
     return src_hashes
 
 
@@ -2206,11 +2208,13 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     kit_prepare_started = time.perf_counter()
     if not args.classic_assets and not args.skip_kit and remastered:
         try:
-            kit_manifest, kit_items = kit_payload.payload(src_root)
+            kit_receipts = kit_payload.HashReceipts(Path(target) / '.deploy-receipts.json')
+            kit_manifest, kit_items = kit_payload.payload(src_root, receipts=kit_receipts)
             items.extend(kit_items)
             vehicle_manifest, vehicle_items = kit_payload.payload(src_root,
-                Path("data/kit/vehicle-kit.json"), Path("mods/mc2-vehicle-kit"))
+                Path("data/kit/vehicle-kit.json"), Path("mods/mc2-vehicle-kit"), receipts=kit_receipts)
             items.extend(vehicle_items)
+            kit_receipts.save()
             kit_tool = kit_payload.build_importer(src_root)
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")

@@ -55,9 +55,51 @@ def test_unchanged_file_is_skipped_and_manifest_round_trips(tmp_path, monkeypatc
         raise AssertionError("unchanged source must not be re-copied")
 
     monkeypatch.setattr(dp.shutil, "copyfile", no_copy)
+    monkeypatch.setattr(dp, "sha256_file", lambda path: pytest.fail("unchanged bytes rehashed"))
     skipped = _deploy(src, target, rel, cache=cache)
     assert skipped[rel][:2] == cache[rel][:2], "skip must reuse the recorded sha256/size"
     assert target_file.stat().st_mtime_ns == mtime_ns
+
+
+@pytest.mark.parametrize('restore_mtime', [False, True])
+def test_same_size_corruption_invalidates_receipt(tmp_path, monkeypatch, restore_mtime):
+    src, target, rel = _setup(tmp_path, monkeypatch)
+    cache = _cache_after(src, target, rel, _deploy(src, target, rel, cache={}))
+    installed = Path(target) / rel
+    before = installed.stat()
+    installed.write_bytes(b"x" * installed.stat().st_size)
+    if restore_mtime:
+        os.utime(installed, ns=(before.st_atime_ns, before.st_mtime_ns))
+    _deploy(src, target, rel, cache=cache)
+    assert installed.read_bytes() == Path(src).read_bytes()
+
+
+def test_unchanged_exe_is_hashed_but_not_copied(tmp_path, monkeypatch):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    items = [(src, "mc2.exe", "exe")]
+    cache = _cache_after(src, target, "mc2.exe", dp.deploy(items, target, False))
+    monkeypatch.setattr(dp.shutil, "copyfile", lambda *a: pytest.fail("unchanged exe copied"))
+    calls = []
+    original = dp.sha256_file
+    monkeypatch.setattr(dp, "sha256_file", lambda path: calls.append(path) or original(path))
+    dp.deploy(items, target, False, cache=cache)
+    assert src in calls and str(Path(target) / "mc2.exe") in calls
+
+
+def test_normalized_sidecar_receipt_is_distinct_from_source_hash(tmp_path, monkeypatch):
+    from kit_payload import HashReceipts
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    Path(src).write_bytes(b'asset\r\n')
+    hashes = HashReceipts(Path(target) / '.deploy-receipts.json')
+    raw = hashes.digest(src)
+    hashes.save()
+    rel = 'data/asset.mcasset.json'
+    _deploy(src, target, rel, cache={})
+    assert (Path(target) / rel).read_bytes() == b'asset\n'
+    assert raw != dp.sha256_file(str(Path(target) / rel))
+    monkeypatch.setattr(dp.shutil, 'copyfile', lambda *a: pytest.fail('unchanged sidecar copied'))
+    monkeypatch.setattr(Path, 'read_bytes', lambda *a: pytest.fail('unchanged sidecar rehashed'))
+    _deploy(src, target, rel, cache={})
 
 
 def test_changed_file_is_copied_and_rehashed(tmp_path, monkeypatch):

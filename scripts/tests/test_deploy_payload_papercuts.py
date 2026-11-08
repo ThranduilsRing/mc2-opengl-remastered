@@ -87,7 +87,7 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: {})
     monkeypatch.setattr(dp, "enumerate_payload", lambda *a, **kw: [(str(build / "mc2"), "mc2", "exe")])
     monkeypatch.setattr(render_options_pin, "record", lambda *a: {"values": {"RemasteredBuildings": kit_enabled}})
-    monkeypatch.setattr(kit_payload, "payload", lambda *a: ({"fake": True}, []))
+    monkeypatch.setattr(kit_payload, "payload", lambda *a, **kw: ({"fake": True}, []))
     monkeypatch.setattr(kit_payload, "build_importer", lambda *a: "importer")
     phases = []
     monkeypatch.setattr(kit_payload, "reconcile_stock_textures", lambda *a, **kw: phases.append("stock"))
