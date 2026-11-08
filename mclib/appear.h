@@ -10,9 +10,9 @@
 #define APPEAR_H
 //---------------------------------------------------------------------------
 // Include Files
+#include <atomic>
 #ifndef DAPPEAR_H
 #include <algorithm>
-#include <atomic>
 #include"dappear.h"
 #endif
 
