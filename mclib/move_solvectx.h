@@ -1,28 +1,30 @@
 //***************************************************************************
 //
-//	move_solvectx.h -- per-solve context for the A* solver
+//	move_solvectx.h -- explicit path query and solver scratch for the MoveMap A* solvers
 //
-//	The caller stages the solve flags into file-static globals (JumpOnBlocked, ...) immediately
-//	before a solve. A solve snapshots them once at entry (SolveContext, on the stack) and reads
-//	only the snapshot afterwards, so nothing the solver reads mid-solve is shared mutable state.
-//	Every other per-solve value lives on the MoveMap (solveJumpOnBlocked, maxHPrime, openHeap,
-//	the node grid). Output is identical to reading the globals: the solve never writes them.
+//	PathQuery is a value: the caller builds it and hands it to calcPath/calcPathJUMP/calcEscapePath.
+//	The solver reads only the query it was given (it used to read caller-staged file-static globals).
+//
+//	SolverScratch owns the per-solve working state that is not the node grid: the OPEN list and
+//	the per-solve cost cutoff and jump flag. A solve takes a SolverScratch by reference, so two
+//	scratches on one prepared grid give identical results; nothing here is a global or a static.
 //
 //***************************************************************************
 #pragma once
 
-extern bool JumpOnBlocked;          // caller-staged solve flag
-extern bool FindingEscapePath;      // caller-staged bake flag
-extern long RamObjectWID;           // caller-staged bake input
+#include "open_heap.h"
 
 namespace mc2_move {
 
-struct SolveContext {
-	bool jumpOnBlockedSnap = JumpOnBlocked;
-	bool findingEscapePathSnap = FindingEscapePath;
-	long ramObjectWIDSnap = RamObjectWID;
+struct PathQuery {
+	// Jump moves replace the step cost instead of adding to it (elementals closing on a target).
+	bool jumpOnBlocked = false;
+};
 
-	bool jumpOnBlocked() const { return jumpOnBlockedSnap; }
+struct SolverScratch {
+	mc2::OpenHeap openHeap;       // OPEN list; each solve clears it before use
+	long maxHPrime = 1000;        // hPrime ceiling, set at the top of each solve
+	bool jumpOnBlocked = false;   // the query's flag, copied at the top of each solve
 };
 
 } // namespace mc2_move

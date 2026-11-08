@@ -46,6 +46,7 @@
 #include<mdspan>
 #include<vector>
 #include"open_heap.h"	// the per-solver open list (mc2::OpenHeap)
+#include"move_solvectx.h"	// mc2_move::PathQuery, SolverScratch
 
 // MC2_MOVE_RECON: lightweight OOB counter for pathlock calls (see move_recon.h).
 // Include is deferred to avoid pulling <chrono> into every TU that includes move.h;
@@ -1736,17 +1737,9 @@ class MoveMap {
 		void				(*blockedDoorCallback) (int moveLevel, int door, char* openCells);
 		void				(*placeStationaryMoversCallback) (MoveMapPtr map);
 
-		// PATHFINDING-SOLVER-ISOLATION-1: per-solve seam. Set at the top of each
-		// solve (calcPath/calcPathJUMP/calcEscapePath): the flag snapshot the solve
-		// and its cost helpers read instead of the file-static global.
-		bool				solveJumpOnBlocked;
-
-		// Per-solve hPrime ceiling, set at the top of each solve (was the file-static MaxHPrime).
-		long				maxHPrime;
-
-		// The OPEN list of every solve this map runs. WHY a member: the list used to be one global shared by all solvers, so a solve could meet nodes another
-		// solve had left in it; each map now owns its list and a solve starts it empty.
-		mc2::OpenHeap		openHeap;
+		// Working state of the solves this map runs (OPEN list, hPrime cutoff). The solvers take a
+		// SolverScratch by reference; callers pass this one, tests may pass their own.
+		mc2_move::SolverScratch	solverScratch;
 		// A prepared grid may be reused only against the mission inputs it baked.
 		MissionMapPtr inputMap = nullptr;
 		MoveLayerRevisions inputRevisions;
@@ -1759,12 +1752,12 @@ class MoveMap {
 	protected:
 
 		// Gives the OPEN node of a map cell its new key; a cell flagged OPEN that the list does not hold is skipped (one log line per map, an assert in debug).
-		void reKeyOpen (long cellId, long newKey);
-		void updateOpenNode(MoveMapNode& node, long parent, long g, long cellId);
+		void reKeyOpen (mc2_move::SolverScratch& scratch, long cellId, long newKey);
+		void updateOpenNode(mc2_move::SolverScratch& scratch, MoveMapNode& node, long parent, long g, long cellId);
 		bool adjacentCellOpen (long mapCellIndex, long dir);
 		bool adjacentCellOpenJUMP (long r, long c, long dir);
-		void propogateCost (long mapCellIndex, long cost, long g);
-		void propogateCostJUMP (long r, long c, long cost, long g);
+		void propogateCost (mc2_move::SolverScratch& scratch, long mapCellIndex, long cost, long g);
+		void propogateCostJUMP (mc2_move::SolverScratch& scratch, long r, long c, long cost, long g);
 		int calcHPrime (int r, int c);
 		
 	public:
@@ -1808,8 +1801,6 @@ class MoveMap {
 			overlayWeightTable = nullptr;
 			blockedDoorCallback = nullptr;
 			placeStationaryMoversCallback = nullptr;
-			solveJumpOnBlocked = false;
-			maxHPrime = 1000;
 			inputMap = nullptr;
 		}
 		
@@ -1841,7 +1832,8 @@ class MoveMap {
 					long clearCellCost,
 					long jumpCellCost,
 					long offsets,
-					unsigned long params = MOVEPARAM_NONE);
+					unsigned long params = MOVEPARAM_NONE,
+					bool escapeGoals = false);
 
 		long setUp (long moveLevel,
 					glm::vec3* startPos,
@@ -1913,11 +1905,11 @@ class MoveMap {
 			moverWithdrawing = withdrawing;
 		}
 
-		long calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell);
+		long calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell);
 
-		long calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell);
+		long calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell);
 
-		long calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell);
+		long calcEscapePath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell);
 
 		float getDistanceFloat (long rowDelta, long colDelta) {
 			return(distanceFloat[rowDelta][colDelta]);

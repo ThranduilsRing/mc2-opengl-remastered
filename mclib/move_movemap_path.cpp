@@ -8,20 +8,20 @@
 
 // WHAT: re-keys the OPEN node of a map cell. WHY: the cell is flagged OPEN, so the list should hold it; if it does not (a corrupt flag), rekey() changes
 // nothing and the cell keeps its place. The first miss of a map logs one line, later ones are silent; release builds compile the assert out.
-void MoveMap::reKeyOpen (long cellId, long newKey) {
+void MoveMap::reKeyOpen(mc2_move::SolverScratch& scratch, long cellId, long newKey) {
 
-	if (openHeap.rekey(static_cast<uint32_t>(cellId), static_cast<int32_t>(newKey)))
+	if (scratch.openHeap.rekey(static_cast<uint32_t>(cellId), static_cast<int32_t>(newKey)))
 		return;
 	gosASSERT(false);
-	if (openHeap.rekeyMisses() == 1)
+	if (scratch.openHeap.rekeyMisses() == 1)
 		mc2::fmt::print_err("[PATH v1] event=open_list_miss solver=movemap id={:d}\n", mc2::fmt::as_i32(cellId));
 }
 
-void MoveMap::updateOpenNode(MoveMapNode& node, long parent, long g, long cellId) {
+void MoveMap::updateOpenNode(mc2_move::SolverScratch& scratch, MoveMapNode& node, long parent, long g, long cellId) {
 	node.parent = parent;
 	node.g = g;
 	node.fPrime = g + node.hPrime;
-	reKeyOpen(cellId, node.fPrime);
+	reKeyOpen(scratch, cellId, node.fPrime);
 }
 
 unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
@@ -45,13 +45,10 @@ unsigned long long mc2_path_trace::hashMovePath (const MovePath* path) {
 	return h;
 }
 
-long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
-
-	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
-	mc2_move::SolveContext ctx;
+long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("plain", openHeap);
+	mc2_path_trace::SolveScope _pt("plain", scratch.openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -101,11 +98,11 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	}
 
 	// Let's use their hPrime as a barrier for cutting off the search...
-	maxHPrime = calcHPrime(startR, startC) * 2.5;
-	maxHPrime = std::max<long>(maxHPrime, 500);
+	scratch.maxHPrime = calcHPrime(startR, startC) * 2.5;
+	scratch.maxHPrime = std::max<long>(scratch.maxHPrime, 500);
 	
 	// Storage was sized at init; each solve starts with an empty OPEN list below.
-	solveJumpOnBlocked = ctx.jumpOnBlocked();
+	scratch.jumpOnBlocked = query.jumpOnBlocked;
 
 	int curCol = startC;
 	int curRow = startR;
@@ -121,24 +118,24 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	initialVertex.id = mapRowStartTable[curRow] + curCol;
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
-	openHeap.clear();
-	openHeap.insert(initialVertex);
+	scratch.openHeap.clear();
+	scratch.openHeap.insert(initialVertex);
 	curMapNode->setFlag(MOVEFLAG_OPEN);
 
 	bool goalFound = false;
 	int bestRow = -1;
 	int bestCol = -1;
 
-	while (!openHeap.isEmpty()) {
+	while (!scratch.openHeap.isEmpty()) {
 
 
 		if (_pathTrace) {
-			long openN = openHeap.size();
+			long openN = scratch.openHeap.size();
 			_ptOpenPeak = std::max(_ptOpenPeak, openN);
 		}
 
 		PQNode bestPQNode;
-		bestPQNode = openHeap.popMin().value();
+		bestPQNode = scratch.openHeap.popMin().value();
 		_aln.n++;
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
@@ -212,7 +209,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = calcHPrime(mapRowTable[succCellIndex/*bestPQNode.id*/], mapColTable[succCellIndex/*bestPQNode.id*/]);
 
-					if (succMapNode->hPrime < maxHPrime) {
+					if (succMapNode->hPrime < scratch.maxHPrime) {
 
 						char dirToParent = reverseShift[dir];
 
@@ -230,14 +227,14 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
 								succMapNode->fPrime = succNodeG + succMapNode->hPrime;
-								reKeyOpen(succCellIndex, succMapNode->fPrime);
+								reKeyOpen(scratch, succCellIndex, succMapNode->fPrime);
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
 							if (succNodeG < succMapNode->g) {
 								succMapNode->parent = dirToParent;
 
-								propogateCost(succCellIndex, cost, bestNodeG);
+								propogateCost(scratch, succCellIndex, cost, bestNodeG);
 							}
 							}
 						else {
@@ -249,7 +246,7 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 							succPQNode.id = succCellIndex;
 							succPQNode.row = mapRowTable[succCellIndex];
 							succPQNode.col = mapColTable[succCellIndex];
-							openHeap.insert(succPQNode);
+							scratch.openHeap.insert(succPQNode);
 							succMapNode->setFlag(MOVEFLAG_OPEN);
 						}
 					}
@@ -477,13 +474,10 @@ long MoveMap::calcPath (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell
 	return(0);
 }
 
-long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
-
-	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
-	mc2_move::SolveContext ctx;
+long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, int* goalCell) {
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("jump", openHeap);
+	mc2_path_trace::SolveScope _pt("jump", scratch.openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -510,11 +504,11 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 		gosASSERT((goalR >= 0) && (goalR < height) && (goalC >= 0) && (goalC < width));
 	}
 
-	maxHPrime = calcHPrime(startR, startC) * 2.5;
-	maxHPrime = std::max<long>(maxHPrime, 500);
+	scratch.maxHPrime = calcHPrime(startR, startC) * 2.5;
+	scratch.maxHPrime = std::max<long>(scratch.maxHPrime, 500);
 	
 	// Storage was sized at init; each solve starts with an empty OPEN list below.
-	solveJumpOnBlocked = ctx.jumpOnBlocked();
+	scratch.jumpOnBlocked = query.jumpOnBlocked;
 
     int curCol = startC;
 	int curRow = startR;
@@ -530,8 +524,8 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 	initialVertex.id = curRow * MAX_MAPWIDTH + curCol;
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
-	openHeap.clear();
-	openHeap.insert(initialVertex);
+	scratch.openHeap.clear();
+	scratch.openHeap.insert(initialVertex);
 	curMapNode->setFlag(MOVEFLAG_OPEN);
 
 	bool goalFound = false;
@@ -545,16 +539,16 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
     const int num_offsets_loc = numOffsets;
     const int jump_cost_loc = jumpCost;
 
-	while (!openHeap.isEmpty()) {
+	while (!scratch.openHeap.isEmpty()) {
 
 
 		if (_pathTrace) {
-			long openN = openHeap.size();
+			long openN = scratch.openHeap.size();
 			_ptOpenPeak = std::max(_ptOpenPeak, openN);
 		}
 
 		PQNode bestPQNode;
-		bestPQNode = openHeap.popMin().value();
+		bestPQNode = scratch.openHeap.popMin().value();
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;
@@ -593,7 +587,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = calcHPrime(succRow, succCol);
 
-					if (succMapNode->hPrime < maxHPrime) {
+					if (succMapNode->hPrime < scratch.maxHPrime) {
 
 						char dirToParent = reverseShift[dir];
 
@@ -601,7 +595,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 						gosASSERT(cost > 0);
 						if (dir > 7) {
 							jumping = true;
-							if (solveJumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
+							if (scratch.jumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
 								cost = jump_cost_loc;
 							else
 								cost += jump_cost_loc;
@@ -616,14 +610,14 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
 							if (succNodeG < succMapNode->g) {
-								updateOpenNode(*succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
+								updateOpenNode(scratch, *succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
 							if (succNodeG < succMapNode->g) {
 								succMapNode->parent = dirToParent;
 
-								propogateCostJUMP(succRow, succCol, cost, bestNodeG);
+								propogateCostJUMP(scratch, succRow, succCol, cost, bestNodeG);
 							}
 							}
 						else {
@@ -635,7 +629,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, glm::vec3* goalWorldPos, int* goal
 							succPQNode.id = succRow * MAX_MAPWIDTH + succCol;
 							succPQNode.row = succRow;
 							succPQNode.col = succCol;
-							openHeap.insert(succPQNode);
+							scratch.openHeap.insert(succPQNode);
 							succMapNode->setFlag(MOVEFLAG_OPEN);
 						}
 					}

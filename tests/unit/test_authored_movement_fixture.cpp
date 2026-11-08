@@ -360,7 +360,7 @@ struct MovementWorld {
         saved.keep(cellShiftDistance); saved.keep(tileMulMAPCELL_DIM);
         saved.keep(VerticesMapSideDivTwo); saved.keep(MetersMapSideDivTwo);
         saved.keep(MapCellDiagonal); saved.keep(HalfMapCell);
-        saved.keep(ClearBridgeTiles); saved.keep(JumpOnBlocked);
+        saved.keep(ClearBridgeTiles);
         saved.keep(DebugMovePathType); saved.keep(RamObjectWID); saved.keep(LastMoveCalcErr);
         saved.keep(goalMap); saved.keep(goalMapRowStart); saved.keep(goalMapRowCol);
         GameObject::initialize = true;
@@ -1008,12 +1008,12 @@ TEST_CASE("AuthoredOrderProduction/path scratch is private to its worker and ret
         MOVE_bindPathFindMaps(1);
         prepared = PathFindMap[SIMPLE_PATHMAP] && PathFindMap[SIMPLE_PATHMAP]->map.size() == 43 * 43;
         workerScratch = MOVE_acquirePathFindMap(SIMPLE_PATHMAP);
-        const auto allocations = workerScratch->openHeap.allocations();
+        const auto allocations = workerScratch->solverScratch.openHeap.allocations();
         configured = workerScratch->placeStationaryMoversCallback == mainScratch->placeStationaryMoversCallback;
         workerScratch->map[0].parent = 17;
         MOVE_bindPathFindMaps(1);
         retained = MOVE_acquirePathFindMap(SIMPLE_PATHMAP) == workerScratch &&
-                   workerScratch->openHeap.allocations() == allocations;
+                   workerScratch->solverScratch.openHeap.allocations() == allocations;
     });
     worker.join();
     CHECK(initiallyEmpty);
@@ -1029,8 +1029,6 @@ TEST_CASE("AuthoredOrderProduction/path scratch rejects changed inputs and rebak
     MovementWorld world;
     MOVE_init(21);
     MOVE_buildData(180, 180, nullptr, 0, nullptr);
-    world.saved.keep(FindingEscapePath);
-    FindingEscapePath = false;
     auto* scratch = PathFindMap[SIMPLE_PATHMAP];
     auto prepare = [&] {
         auto start = world.point(90);
@@ -1039,11 +1037,27 @@ TEST_CASE("AuthoredOrderProduction/path scratch rejects changed inputs and rebak
         REQUIRE(scratch->inputRevisionsValid());
     };
     prepare();
-    const auto allocations = scratch->openHeap.allocations();
+    const auto allocations = scratch->solverScratch.openHeap.allocations();
     MovePath path;
     int goalCell[2]{};
-    REQUIRE(scratch->calcPath(&path, nullptr, goalCell) > 0);
+    const mc2_move::PathQuery query;
+    REQUIRE(scratch->calcPath(query, scratch->solverScratch, &path, nullptr, goalCell) > 0);
     const auto expectedPath = mc2_path_trace::hashMovePath(&path);
+    {
+        // Reentrancy: the same query on a freshly prepared grid gives the identical path whichever
+        // scratch the solver is handed, and a scratch left dirty by another solve changes nothing.
+        mc2_move::SolverScratch otherScratch;
+        for (auto* use : {&otherScratch, &scratch->solverScratch, &otherScratch}) {
+            prepare();
+            MovePath again;
+            int againCell[2]{};
+            REQUIRE(scratch->calcPath(query, *use, &again, nullptr, againCell) > 0);
+            CHECK(mc2_path_trace::hashMovePath(&again) == expectedPath);
+            CHECK(againCell[0] == goalCell[0]);
+            CHECK(againCell[1] == goalCell[1]);
+        }
+        prepare();
+    }
     using Mutation = void (*)(MissionMap&);
     const Mutation mutations[] = {
         [](MissionMap& m) { m.setTerrain(1, 1, 1); },
@@ -1070,21 +1084,21 @@ TEST_CASE("AuthoredOrderProduction/path scratch rejects changed inputs and rebak
     for (auto mutate : mutations) {
         mutate(*GameMap);
         CHECK_FALSE(scratch->inputRevisionsValid());
-        CHECK(scratch->calcPath(&path, nullptr, nullptr) == 0);
-        CHECK(scratch->calcPathJUMP(&path, nullptr, nullptr) == 0);
-        CHECK(scratch->calcEscapePath(&path, nullptr, nullptr) == 0);
+        CHECK(scratch->calcPath(query, scratch->solverScratch, &path, nullptr, nullptr) == 0);
+        CHECK(scratch->calcPathJUMP(query, scratch->solverScratch, &path, nullptr, nullptr) == 0);
+        CHECK(scratch->calcEscapePath(query, scratch->solverScratch, &path, nullptr, nullptr) == 0);
         CHECK(path.numSteps == 0);
         CHECK(path.numStepsWhenNotPaused == 0);
         prepare();
-        REQUIRE(scratch->calcPath(&path, nullptr, goalCell) > 0);
+        REQUIRE(scratch->calcPath(query, scratch->solverScratch, &path, nullptr, goalCell) > 0);
         CHECK(mc2_path_trace::hashMovePath(&path) == expectedPath);
-        CHECK(scratch->openHeap.allocations() == allocations);
+        CHECK(scratch->solverScratch.openHeap.allocations() == allocations);
     }
     const auto revision = GameMap->rev.statics;
     GameMap->init(180, 180);
     CHECK(GameMap->rev.statics == revision + 1);
     CHECK_FALSE(scratch->inputRevisionsValid());
-    CHECK(scratch->calcPath(&path, nullptr, nullptr) == 0);
+    CHECK(scratch->calcPath(query, scratch->solverScratch, &path, nullptr, nullptr) == 0);
 }
 
 TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and retries a ready zero-step path") {

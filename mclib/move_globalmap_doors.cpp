@@ -275,7 +275,8 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 					   8,
 					   MOVEPARAM_NONE);
 		int goalCell[2];
-		PathFindMap[SECTOR_PATHMAP]->calcPath(&newPath, nullptr, goalCell);
+		const mc2_move::PathQuery pathQuery;
+		PathFindMap[SECTOR_PATHMAP]->calcPath(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, &newPath, nullptr, goalCell);
 		ClearBridgeTiles = false;
 	}
 
