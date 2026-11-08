@@ -27,7 +27,7 @@ inline uint64_t shadowMaskContentKey(std::array<uint64_t, 6>& parts, uint64_t al
 
 struct ShadowMaskAsset {
     static constexpr uint32_t kSchema = 2;   // 2: word-wise payload hash
-    static constexpr uint32_t kEvaluator = 3;   // TEMP diagnostic: isolate prop visibility, restore before hand-back
+    static constexpr uint32_t kEvaluator = 1;   // bump when bake output for the same inputs changes
     static constexpr uint32_t kMaxTexels = 16384;
     static constexpr uint64_t kMaxBytes = 48ull + static_cast<uint64_t>(kMaxTexels) * kMaxTexels / 2 * 4 / 3 + 4096;
     uint32_t texels = 0;   // mip 0 is texels x texels, a whole number of 4x4 blocks

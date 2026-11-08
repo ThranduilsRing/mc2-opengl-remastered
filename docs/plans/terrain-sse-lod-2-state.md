@@ -21,5 +21,6 @@ Terrain chunk LOD is chosen by screen-space error, not distance. `MC2_TERRAIN_LO
 - Tool slowness: inherited warm build 785 s; verified seed ~26 min; initial deploy ~25 min; scout timed out at 420 s. Host captures also waited behind another lane's mod smoke; no foreign process killed or lease guard bypassed.
 - Final receipts/results go in the proof folder, keeping the proved-at tip unchanged after validation.
 - Candidate 647eb0931: compiled and captured all three poses; blob unchanged. REJECTED; spline clamp removed.
-- CURRENT CODE IS DIAGNOSTIC ONLY: evaluator 3, resolve outputs prop visibility without terrain self-shadow. Next: capture two day poses with debug mode 3, identify prop vs terrain contribution, RESTORE normal min(props, terrain) and evaluator before final proof/hand-back. Do not merge this diagnostic state.
+- Prop-only diagnostic fc2fcfdd1 removes exactly the blob in both day poses: terrain self-shadow is responsible. Full bake and original evaluator restored.
+- Current candidate: static-shadow underwater fade samples the fine bake height instead of drawn LOD Z. Next: three-pose A/B in receiver-fix/, then requested final checks only if visually improved. If unchanged, revert candidate and park diagnosis; never ship an unproved cosmetic change.
 - Proof root: E:/mc2-archive-2026-10/proofs/terrain-sse-lod-2/blob-followup; private install: E:/mc2-installs/terrain-sse-lod-2.
