@@ -476,7 +476,7 @@ def test_gate_proofs_dir_routes_log_and_commands(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--proofs-dir", str(tmp_path)]) == 0
+    assert gate.main(["--dry-run", "--full", "--base", "head", "--proofs-dir", str(tmp_path)]) == 0
     assert (tmp_path / "gate.log").is_file()
     assert str(tmp_path / "before") in next(c for n, c, _ in seen if n == "capture-before")
 
@@ -498,7 +498,7 @@ def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeyp
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    args = ["--dry-run", "--before-dir", str(before), "--expect-pre-exe-sha", "a" * 64,
+    args = ["--dry-run", "--full", "--base", "head", "--before-dir", str(before), "--expect-pre-exe-sha", "a" * 64,
             "--proofs-dir", str(tmp_path / "proof")]
     assert gate.main(args) == 0
     assert not any(n.startswith("capture-before") for n, _, _ in seen)
@@ -641,7 +641,7 @@ def test_gate_log_includes_child_stdout_and_stderr(tmp_path, monkeypatch, capsys
     # main is mocked at the execution boundary: it can only run the synthetic child above.
     monkeypatch.setattr(gate, "execute", lambda steps, head, dry: execute(steps, head))
     log = tmp_path / "gate.log"
-    assert gate.main(["--dry-run", "--log", str(log)]) == 0
+    assert gate.main(["--dry-run", "--base", "head", "--log", str(log)]) == 0
     for output in (log.read_text(), capsys.readouterr().out):
         assert "child-out" in output and "child-err" in output and "| child | PASS" in output
 
@@ -1074,7 +1074,9 @@ def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monke
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    with pytest.raises(SystemExit):   # W135: no window receipt and no --base is refused, never silently full
+        gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")])
+    assert gate.main(["--dry-run", "--nightly", "--full", "--base", "head", "--proofs-dir", str(tmp_path / "proof")]) == 0
     assert [n for n, _, _ in seen if n.startswith("saveload-")] == ["saveload-mc2_01", "saveload-mc2_10"]   # p29 cut 6: 03/16/24 are weekly
     assert "capture-before" in {n for n, _, _ in seen}
     assert not any(n.endswith("-classic") for n, _, _ in seen)
