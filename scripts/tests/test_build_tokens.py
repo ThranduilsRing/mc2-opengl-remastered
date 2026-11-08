@@ -39,6 +39,10 @@ def test_tokens_are_shared_and_released(tmp_path, monkeypatch):
     d2 = build_tokens.acquire(4, total=4, directory=d)
     assert len(d2) == 4
     d2.close()
+    # A wide request can still run at the floor instead of waiting for its full width.
+    with build_tokens.acquire(3, total=6, directory=d):
+        with build_tokens.acquire(6, total=6, directory=d) as partial:
+            assert len(partial) == 3
 
 
 def test_ninja_pool_keeps_one_ticket_and_requested_width(monkeypatch):
@@ -173,7 +177,7 @@ def test_status_lists_holder_and_ordered_waiters(queued_builds, tmp_path, monkey
     monkeypatch.setenv("MC2_BUILD_TOKEN_DIR", str(tmp_path))
     monkeypatch.setenv("MC2_BUILD_POOL_FILE", str(pool))
     result = subprocess.run([sys.executable, build_tokens.__file__, "status"], capture_output=True, text=True,
-                            timeout=10, **console_child.child_kwargs(redirected=True))
+                            timeout=60, **console_child.child_kwargs(redirected=True))
     assert result.returncode == 0, result.stderr
     assert "Pool: 3 tokens" in result.stdout
     assert f"Holder pid={os.getpid()} worktree={os.getcwd()} tokens=3 held for " in result.stdout

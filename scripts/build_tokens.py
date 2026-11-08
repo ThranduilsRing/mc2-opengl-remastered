@@ -176,7 +176,7 @@ def acquire(want: int, total: int | None = None, directory: str | None = None, p
             number = max((int(path.stem.split("-")[1]) for path, _ in live), default=0) + 1
             path = Path(directory) / f"ticket-{number:020d}.lock"
             ticket = _lock_file(path)
-            record = {"pid": os.getpid(), "worktree": os.getcwd(), "requested": want,
+            record = {"pid": os.getpid(), "worktree": str(Path(__file__).resolve().parent.parent), "requested": want,
                       "created": time.time(), "state": "waiter"}
             _write_ticket(ticket, record)
         while True:
