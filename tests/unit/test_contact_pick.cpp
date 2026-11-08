@@ -1,6 +1,42 @@
 #include "doctest.h"
 #include "../../code/hover_name.h"
 #include "../../mclib/terrain_ray_pick.h"
+#include "../../code/pick_occlusion.h"
+
+TEST_CASE("pick occlusion: ridge rejects rear object and accepts foreground")
+{
+    const double r = std::sqrt(2.0);
+    const double origin[3] = {0, 0, 10}, direction[3] = {1/r, 0, -1/r};
+    const double mapLo[2] = {0, -1}, mapHi[2] = {12, 1};
+    auto ridge = [](double x, double) { return std::max(0.0, 8.0-8.0*std::abs(x-3.0)); };
+    double terrainT = 0;
+    REQUIRE(mc2::firstTerrainHit(origin, direction, mapLo, mapHi, 0.125, ridge, terrainT));
+    const double rearLo[3] = {7, -0.5, 0}, rearHi[3] = {9, 0.5, 4};
+    const double frontLo[3] = {1, -0.5, 7}, frontHi[3] = {2, 0.5, 10};
+    double rearT = 0, frontT = 0;
+    REQUIRE(mc2::pickBoxHit(origin, direction, rearLo, rearHi, rearT));
+    REQUIRE(mc2::pickBoxHit(origin, direction, frontLo, frontHi, frontT));
+    CHECK_FALSE(mc2::pickBeforeSurface(rearT, terrainT));
+    CHECK(mc2::pickBeforeSurface(frontT, terrainT));
+    CHECK_FALSE(mc2::pickBeforeSurface(rearT, frontT));
+    CHECK(mc2::pickBeforeSurface(frontT, rearT));
+    CHECK_FALSE(mc2::pickBeforeSurface(-1, terrainT));
+    CHECK_FALSE(mc2::pickBeforeSurface(std::numeric_limits<double>::quiet_NaN(), terrainT));
+}
+
+TEST_CASE("pick occlusion: box intersection rejects misses and behind-eye boxes")
+{
+    const double origin[3] = {0, 0, 10}, down[3] = {0, 0, -1};
+    const double lo[3] = {-1, -1, 0}, hi[3] = {1, 1, 4};
+    double t = -1;
+    REQUIRE(mc2::pickBoxHit(origin, down, lo, hi, t));
+    CHECK(t == doctest::Approx(6));
+    REQUIRE(mc2::pickBoxHit(origin, down, hi, lo, t));
+    CHECK(t == doctest::Approx(6));
+    const double up[3] = {0, 0, 1}, miss[3] = {2, 0, 10};
+    CHECK_FALSE(mc2::pickBoxHit(origin, up, lo, hi, t));
+    CHECK_FALSE(mc2::pickBoxHit(miss, down, lo, hi, t));
+}
 
 TEST_CASE("contact pick: sensor naming never leaks DEMO or visual identification")
 {

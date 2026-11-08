@@ -232,10 +232,8 @@ static bool pickFail (int code, long sx, long sy)
 	return false;
 }
 
-bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, glm::vec3 *rawHit)
+bool Camera::pickScreenRay(long screenX, long screenY, double (&ro)[3], double (&d)[3])
 {
-	if (turn < 4 || !land || !Terrain::mapData)
-		return pickFail(1, screenX, screenY);
 	const double w = screenResolution.x;
 	const double h = screenResolution.y;
 	if (w <= 0.0 || h <= 0.0)
@@ -271,15 +269,24 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 	// ray. Origin = the near-plane point, direction = toward NDC z=0.5 (z=0 is infinity: w -> 0). Both
 	// come from the matrix, so the ray is the one the GPU rasterises (physicalPos is NOT used: it is
 	// stored in render space and is not the MC2 eye).
-	double ro[3], midPt[3];
+	double midPt[3];
 	if (!unproject(1.0, ro))
 		return pickFail(5, screenX, screenY);
 	if (!unproject(0.5, midPt))
 		return pickFail(6, screenX, screenY);
-	double d[3] = { midPt[0]-ro[0], midPt[1]-ro[1], midPt[2]-ro[2] };
+	for (int i = 0; i < 3; ++i) d[i] = midPt[i]-ro[i];
 	const double dl = sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
 	if (dl < 1e-9) return pickFail(7, screenX, screenY);
 	for (double & i : d) i /= dl;
+	return true;
+}
+
+bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, glm::vec3 *rawHit)
+{
+	if (turn < 4 || !land || !Terrain::mapData)
+		return pickFail(1, screenX, screenY);
+	double ro[3], d[3];
+	if (!pickScreenRay(screenX, screenY, ro, d)) return false;
 	if (d[2] > -1e-6)            // a ray that never descends cannot hit the surface
 		return pickFail(8, screenX, screenY);
 

@@ -1261,6 +1261,8 @@ class Camera
 		// inverseProject walk (85-126 ms on a 1024-cell map). Discrete click paths
 		// keep inverseProject. rawHit (optional) receives the un-snapped hit.
 		bool pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, glm::vec3 *rawHit = nullptr);
+		// The same MC2-space ray for terrain and object occlusion; origin is on the near plane.
+		bool pickScreenRay(long screenX, long screenY, double (&origin)[3], double (&direction)[3]);
 
 		// screenToTerrainApprox: screenToGroundPlaneApprox refined onto the
 		// terrain surface by iterating the plane height (fixed 3 steps, O(1),
