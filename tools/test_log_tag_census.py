@@ -48,6 +48,16 @@ def test_diff_reports_a_changed_key_order_and_a_missing_emitter():
     assert len(d) == 2 and any("baseline 1, now 0" in x for x in d) and any("baseline 0, now 1" in x for x in d)
 
 
+def test_diff_with_consumed_tags_ignores_unconsumed_changes_and_counts():
+    base = {"emitters": [{"tag": "A", "ver": 1, "stream": "stderr", "keys": ["x"], "count": 1},
+                         {"tag": "B", "ver": 1, "stream": "stderr", "keys": ["x"], "count": 1}]}
+    import collections
+    now = collections.Counter({("A", 1, "stderr", ("x",)): 3, ("C", 1, "stderr", ("z",)): 1})
+    assert lc.diff(now, base, {"A"}) == []   # B gone, C new, A count 1 -> 3: documentary
+    moved = collections.Counter({("A", 1, "stderr", ("y",)): 1, ("B", 1, "stderr", ("x",)): 1})
+    assert len(lc.diff(moved, base, {"A"})) == 2   # a consumed key-order change still fails
+
+
 def test_the_frozen_baseline_matches_the_tree():
     assert lc.main(["--check"]) == 0
 

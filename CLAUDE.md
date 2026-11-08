@@ -39,13 +39,23 @@ py -3 scripts/deploy_payload.py --target game --ninja
 "$CMAKE" --build build64 --config RelWithDebInfo --target mc2   # deploy without --ninja
 ```
 
-Offline checks (no game launch) — run these first, all should be green:
+Offline checks (no game launch): run the rung for what changed, not the whole board. Intuition first, tests where they can fail for a reason.
+
+| Change | Offline proof |
+|---|---|
+| Docs | `git diff --check` |
+| Shader | `bash scripts/check-contracts.sh --rows 'slang\|shader\|vk_shaders'` + production shader compile |
+| Tooling (Python/scripts) | targeted pytest for the modules touched (`py -3 scripts/run_scripts_tests.py <module...>`) + the owning row via `--rows` |
+| Data / art | the loader/validator row; `kit_art` runs only when art paths changed |
+| C++ engine | covering rows + `py -3 tools/build_contract_harnesses.py --run --unit --only <test>` |
 
 ```bash
-bash scripts/check-contracts.sh                       # ~157 static contract rows, parallel (~50-90 s); --serial / -jN to override
+bash scripts/check-contracts.sh                       # full board (~50-90 s parallel): merge candidate and schedule, not every lane iteration
 py -3 tools/build_contract_harnesses.py --run --unit  # C++ harnesses + doctest tier
-py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
+py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider   # full suite: merge candidate and schedule
 ```
+
+Generated inventories and count ratchets are not lane proof: the merge commit regenerates them once, and `log_tag_census` fails only on a tag a Python parser consumes.
 
 Smoke (mc2-main / merge-gate commands; a lane deploys to its own install, see Operating mode), **default inner-loop check = smoke-lite** (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error + deploy fingerprint; reduced soak coverage):
 

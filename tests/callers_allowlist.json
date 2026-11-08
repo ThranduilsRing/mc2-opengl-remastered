@@ -1,4 +1,5 @@
 {
+  "tools/axis_swizzle_ratchet.py": "Proof-diet: gate cut from check-contracts/lane_merge; advisory manual report (py -3 tools/axis_swizzle_ratchet.py --check). Transform coverage: tests/unit/test_xform_convention.cpp.",
   "tools/dup_check.py": "Run by tools/lane_merge.py --lint (python import, not a shell row); manual: py -3 tools/dup_check.py.",
   "scripts/crashpad_proof.py": "Run on the Linux box through a box_run sh: row (sh:python3 scripts/crashpad_proof.py): deliberate crash plus symbolized minidump proof.",
   "tools/box_run.py":"Manual orchestrator entry point: runs the Linux box gate (py -3 tools/box_run.py --gate); documented in A:/Games/mc2-ops/box-game-runs.md.",
@@ -202,7 +203,6 @@
   "tools/test_crash_bundle_summary.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_estring_callsites.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_git_util.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
-  "tools/test_journal_comment_ratchet.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_lane_merge.py":"Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_identity.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_tag_census.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",

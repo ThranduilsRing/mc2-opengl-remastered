@@ -20,7 +20,6 @@ log_tag_census: .
 script_callers: .
 cxx_standard_floor: .
 cxx17_ratchet: .
-journal_comment_ratchet: .
 doc_links: .
 golden_coverage: .
 asset_manifests: .
@@ -45,8 +44,6 @@ counter_honesty: @CPP
 own_inventory: @CPP
 pointer_order_scan: @CPP
 dup_check: @ALLSRC
-file_size_ratchet: @ALLSRC
-axis_swizzle_ratchet: @ALLSRC docs/axis-conversion-sites.md
 render_contract_gbuf1: @ALLSRC
 asset_scale_callers: @CPP
 mover_registry_coherence: code mclib gui editor GameAdapters

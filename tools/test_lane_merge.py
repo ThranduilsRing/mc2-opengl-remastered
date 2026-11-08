@@ -78,7 +78,7 @@ def test_precheck_fast_path_has_no_native_build_and_no_scratch_in_root(env, monk
     before = git(repo, "rev-parse", "HEAD")
     seen = precheck_fixture(lm, repo, monkeypatch, red)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(red is not None)
-    assert len(seen) == 9    # 4 ratchets + callers --check + 2 early rows + 2 suites
+    assert len(seen) == 8    # 2 ratchets (cxx17, split_map) + callers --check + 3 early rows + 2 suites
     assert not any(is_native(cmd) for _, cmd in seen)
     assert all(not lm._inside(root, str(repo)) for root, _ in seen)   # scratch is never inside the main worktree
     caller_commands = [cmd for _, cmd in seen if "tools/callers.py" in cmd]
@@ -100,7 +100,7 @@ def test_precheck_with_link_uses_warm_tree_outside_root(env, monkeypatch, capsys
     tree = tmp_path / "warm" / "tree"
     seen = precheck_fixture(lm, repo, monkeypatch, red, tree)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD", "--with-link"]) == int(red is not None)
-    assert len(seen) == 12
+    assert len(seen) == 11
     # only configure + link run in the warm tree; the checks run in shared clones
     build = [r for r, cmd in seen if any(x in " ".join(cmd) for x in ("configure_ninja.py", "ninja_build.py"))]
     assert build and all(root == str(tree) for root in build)
@@ -1077,7 +1077,8 @@ def test_early_rows_are_the_contract_commands():
     lm = _load_module()
     assert dict((l, (s, a)) for l, s, a in lm.EARLY_ROWS) == {
         "sim_include_firewall": ("scripts/check_sim_include_firewall.py", []),
-        "log_tag_census": ("tools/log_tag_census.py", ["--check"])}
+        "log_tag_census": ("tools/log_tag_census.py", ["--check"]),
+        "doc_links": ("scripts/check-doc-links.py", ["--quiet"])}
 
 
 def test_precheck_runs_the_early_rows(env, monkeypatch):
@@ -1180,7 +1181,8 @@ def test_stage_merges_without_precheck_receipts_but_batch_still_refuses(env, tmp
     git(repo, "branch", "claude/nifty-mendeleev", "main")
     lm = _load_module()
     monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
-    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5    # plain --batch: unchanged
+    monkeypatch.setattr(lm, "batch_lint_ok", lambda root, run=None: True)   # the fake repo has no lint scripts; lint is not under test here
+    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5   # plain --batch: unchanged
     assert "PRECHECK MISSING" in capsys.readouterr().out
     rc = lm.main(["--stage", "W1", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
     out = capsys.readouterr().out

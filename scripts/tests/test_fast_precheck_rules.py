@@ -109,7 +109,6 @@ def test_precheck_auto_link_follows_compiled_inputs(monkeypatch):
         raise lm.Stop(9, "stop here")
     monkeypatch.setattr(lm, "TreeLock", tree_lock)
     monkeypatch.setattr(lm, "stage", lambda *a, **k: None, raising=False)
-    monkeypatch.setattr(lm, "stale_inventories", lambda *a, **k: [])
     monkeypatch.setattr(lm, "run", lambda *a, **k: type("R", (), {"returncode": 0, "stdout": ""})())
     assert lm.precheck(ROOT, "tip", None) == 1  # forced stop inside the linked branch
     assert seen.get("linked")
@@ -215,7 +214,6 @@ def test_warm_tree_lock_covers_only_the_build(monkeypatch, tmp_path):
     monkeypatch.setattr(lm, "virtual_merge", lambda *a, **k: ("tree", []))
     monkeypatch.setattr(lm, "virtual_head", lambda *a, **k: "vcommit")
     monkeypatch.setattr(lm, "ensure_precheck_tree", lambda *a, **k: None)
-    monkeypatch.setattr(lm, "stale_inventories", lambda *a, **k: [])
     monkeypatch.setattr(lm, "precheck_scratch_base", lambda root: str(tmp_path))
     # "tip" is not a real ref: the sim-row classifier (added after this test) would run git merge-base on it and fail.
     monkeypatch.setattr(lm, "tip_changed_paths", lambda root, tip: [])

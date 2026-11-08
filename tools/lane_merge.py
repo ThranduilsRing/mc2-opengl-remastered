@@ -155,9 +155,8 @@ TIGHTENED_BASELINES = [
 ]
 # (label, script relative to the tools dir, args)
 RATCHETS = [
-    ("file_size", "file_size_ratchet.py", ["--check", "--worktree"]),
+    # proof-diet: the file_size and axis_swizzle count gates are cut (the tools stay as advisory reports).
     ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--worktree"]),
-    ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
 # Row tables where both sides append rows: merged mechanically (keep both, the lane's new rows renumbered after ours).
@@ -887,20 +886,6 @@ PYTHON_SUITES = [
 ]
 
 
-def stale_inventories(root: str, commit: str, regen=None) -> list[str]:
-    """A9: derived inventories that regenerating at `commit` would change (empty = fresh). The batch regenerates and
-    commits them anyway; failing here moves that cost from the merge window to the lane."""
-    regen = regen or regenerate_all
-    proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
-    with scratch_dir("stale-inv-", proof_root) as scratch:
-        snapshot = os.path.join(scratch, "tree")
-        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
-        if r.returncode:
-            raise Stop(5, "clone failed: " + failure_summary(r.stdout))
-        git_out(snapshot, "checkout", "--quiet", "--detach", commit)
-        return list(regen(snapshot))
-
-
 def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[str], str]]:
     """The seconds-cheap checks a precheck would fail on: (label, command, fix hint). Same tables as precheck."""
     rows = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]],
@@ -915,18 +900,18 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
 REGEN_WORKERS = 4   # regenerate_all's inner pool; counted against a lint's CPU budget
 
 
-def lint(root: str, ref: str, runner=None, regen=None) -> int:
+def lint(root: str, ref: str, runner=None) -> int:
     """One host slot per lint run (granted FIFO by LintSlots), after sweeping dead lints' scratch."""
     sweep_stale_scratch([precheck_scratch_base(root), "E:/mc2-archive-2026-10/proofs"])
     hold = LintSlots().acquire()   # host-wide JOBS cap across all `--lint` processes, released when this run ends
     try:
-        return _lint_locked(root, ref, runner, regen)
+        return _lint_locked(root, ref, runner)
     finally:
         hold.close()
 
 
-def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
-    """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags, stale inventories)
+def _lint_locked(root: str, ref: str, runner=None) -> int:
+    """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
     runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
     try:
@@ -954,10 +939,8 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
                 out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
-        # Budget: the inventories worker fans out REGEN_WORKERS generators, the rows get the rest of the lane half's CPUs.
-        row_workers = max(1, min(len(chains), bin(cpu_masks()["lane"]).count("1") - REGEN_WORKERS))
-        with ThreadPoolExecutor(max_workers=row_workers + 1) as pool:
-            inv = pool.submit(lambda: list(regen(root, sha)) if regen else stale_inventories(root, sha))   # the slowest check: overlap it with the rows
+        row_workers = max(1, min(len(chains), bin(cpu_masks()["lane"]).count("1")))
+        with ThreadPoolExecutor(max_workers=row_workers) as pool:
             for f in [pool.submit(chain, i) for i in range(len(chains))]:
                 try:
                     results = f.result()
@@ -971,12 +954,6 @@ def _lint_locked(root: str, ref: str, runner=None, regen=None) -> int:
                         print("  " + tail.replace("\n", "\n  "), flush=True)
                         if hint:
                             print("  fix: " + hint, flush=True)
-    try:
-        changed = inv.result()
-    except Stop as exc:
-        changed = []
-        failed.append("inventories:" + str(exc).replace(chr(10), " "))
-    print("lint: inventories: " + ("WARN (stale: " + ", ".join(changed) + "; do not commit regenerated output, lane_merge --batch regenerates it)" if changed else "PASS"), flush=True)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
     return int(bool(failed))
 
@@ -1084,13 +1061,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", base_ref, "--head", commit])
         stage(tag_step[0], root, tag_step[1])
 
-        def inventory_fresh():
-            changed = stale_inventories(root, commit)
-            word = "FAIL" if changed else "PASS"
-            print(f"precheck: inventories: {word}" + (" (stale: " + ", ".join(changed) + "; regenerate with tools/lane_merge.py --regenerate-all and commit)" if changed else ""), flush=True)
-            if changed:
-                failed.append("inventories-stale:" + ",".join(changed))
-        timed("inventories", inventory_fresh)
+        # proof-diet: generated inventories are no precheck proof; the merge commit regenerates them once.
 
         def build_job():
             # The warm tree lock covers only checkout + configure + link; ratchets, callers and pytest run in shared
@@ -1157,7 +1128,6 @@ def pre_gate(root: str, exe: str | None = None) -> int:
     Every step runs; one verdict line at the end. Exit 0 = clean."""
     py = [sys.executable, "-B"]
     steps = [
-        ("regenerate-all", None),
         ("background-launch", py + [os.path.join(root, "scripts", "check-background-launch.py"), "--quiet"]),
         ("gate_gen", py + [os.path.join(root, "tools", "gate_gen.py"), "--check"]),
         ("cxx17", py + [os.path.join(root, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--worktree"]),
@@ -1169,15 +1139,8 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)
         failed.append("exe-fingerprint")
     for label, cmd in steps:
-        if cmd is None:
-            try:
-                changed = regenerate_all(root, dry_run=True)
-                rc, out = (1 if changed else 0), ("would change: " + ", ".join(changed))
-            except Stop as exc:
-                rc, out = 1, str(exc)
-        else:
-            r = run(root, cmd)
-            rc, out = r.returncode, "\n".join(lines(r.stdout)[-15:])
+        r = run(root, cmd)
+        rc, out = r.returncode, "\n".join(lines(r.stdout)[-15:])
         print(f"pre-gate: {label}: {'OK' if rc == 0 else 'FAIL'}", flush=True)
         if rc:
             print(out, flush=True)
@@ -1196,7 +1159,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--red", action="store_true", help="with --bisect: the candidate failed")
     ap.add_argument("--green", action="store_true", help="with --bisect: the candidate passed (and was promoted)")
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
-    ap.add_argument("--lint", metavar="REF", help="seconds-fast subset of --precheck (ratchets, callers, early rows, ungated tags, stale inventories) with a fix per red; run it before --precheck")
+    ap.add_argument("--lint", metavar="REF", help="seconds-fast subset of --precheck (ratchets, callers, early rows, ungated tags) with a fix per red; run it before --precheck")
     ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: conflicts, ratchets, callers, Python suites (fast, no native build; --with-link adds links)")
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
@@ -1206,7 +1169,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-sim-rows", action="store_true", help="with --precheck: skip the saveload/determinism rows a sim-sensitive tip requires (recorded in the receipt)")
     ap.add_argument("--sim-install", help="with --precheck: install holding the tip's exe for the sim rows (default E:/mc2-installs/<laneN>)")
     ap.add_argument("--pre-gate", action="store_true",
-                    help="at the merged HEAD run regenerate-all (dry), check-background-launch, gate_gen --check and cxx17; "
+                    help="at the merged HEAD run check-background-launch, gate_gen --check and cxx17; "
                          "all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
     ap.add_argument("--exe", help="with --pre-gate: exe whose fingerprint must match HEAD (default <root>/build64-ninja/mc2.exe, skipped if absent)")
     ap.add_argument("--batch", nargs="+", metavar="TIP",
