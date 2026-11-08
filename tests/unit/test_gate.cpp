@@ -20,6 +20,7 @@
 #include "Gates/render_options.h"
 #include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
+#include "vk_caps_json.h"        // the per-GPU capability report's JSON writer (header-only)
 #include "vk_device_profile.h"   // the Vulkan device profile table (header-only, so the table is tested without a Vulkan link)
 #include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
 #include "render_backend_select.h"  // the one MC2_RENDER_BACKEND parse rule
@@ -1528,6 +1529,16 @@ vkp::DeviceCaps fullCaps() {
     return c;
 }
 
+}  // namespace
+
+TEST_CASE("vk caps JSON writer: nesting, commas and escaping") {
+    vkp::JsonWriter j;
+    j.beginObject().str("name", "a\"b\\c\n").num("n", 7).beginArray("xs").beginObject().boolean("t", true).endObject().beginObject().boolean("t", false).endObject().endArray()
+        .beginObject("o").endObject().endObject();
+    CHECK(j.text() == "{\"name\":\"a\\\"b\\\\c\\u000a\",\"n\":7,\"xs\":[{\"t\":true},{\"t\":false}],\"o\":{}}");
+}
+
+namespace {
 // A 1.2-only device: the 1.3 features exist only behind their KHR extensions.
 vkp::DeviceCaps device12Caps(bool withExtensions) {
     vkp::DeviceCaps c = fullCaps();
