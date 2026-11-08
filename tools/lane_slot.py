@@ -5,13 +5,15 @@ each slot keeps its warm Ninja tree between lanes.
   py -3 tools/lane_slot.py acquire --branch <name> [--base <ref>] [--reset-branch] [--no-warm]
         # pick/create a free slot; new branch = created at --base (default nifty); EXISTING branch = checked out at its own tip,
         # never moved (a differing --base is refused unless --reset-branch); prints HEAD, starts the warm build (pid in <tree>/warm.pid)
-  py -3 tools/lane_slot.py release <slot|slot03|path>               # clean check, delete the lane's scratch/install, detach at nifty
-  py -3 tools/lane_slot.py status
+  py -3 tools/lane_slot.py release <slot|slot03|path> [--discard]   # refuses a dirty slot (--discard archives the diff to
+        # E:/mc2-archive-2026-10/stray-diffs first); drops the slot's registry claim, deletes scratch/install, detaches at nifty
+  py -3 tools/lane_slot.py status                                   # shows each claiming lane and its age
 
 A slot is free when it exists, is git-clean, is not claimed in the lane registry, and its branch is merged into
 claude/nifty-mendeleev (or has a refs/archive/<branch> ref) or it is detached. Never touches owner-test-*, v0.4c, mods or drive I:.
 """
 import argparse
+import datetime
 import glob
 import os
 import re
@@ -31,7 +33,8 @@ SLOT_PATHS = [f"A:/Games/mc2-slot{n:02d}" for n in range(1, MAX_SLOTS + 1)]
 MAIN_ROOT = "A:/Games/mc2-main"
 INSTALLS = "E:/mc2-installs"
 SCRATCH = "G:/mc2-tmp"
-PROTECTED = ("owner-test-", "v0.4", "_")  # install names never deleted
+STRAY_DIR = "E:/mc2-archive-2026-10/stray-diffs"
+PROTECTED =("owner-test-", "v0.4", "_")  # install names never deleted
 
 
 def git(root, *args):
@@ -44,15 +47,66 @@ def norm(p):
     return p.replace("\\", "/").rstrip("/").lower()
 
 
-def claimed_worktrees():
-    """Normalised worktree paths of fresh (non-stale) lanes in the lane registry."""
+def registry_lanes():
+    """All lane registry entries (stale ones included, flagged); [] with a warning when the registry is unreadable."""
     try:
         import lane_registry  # noqa: PLC0415
         from pathlib import Path  # noqa: PLC0415
-        return {norm(e.get("worktree", "")) for e in lane_registry.list_lanes(Path(MAIN_ROOT))["lanes"] if not e.get("stale")}
+        return lane_registry.list_lanes(Path(MAIN_ROOT))["lanes"]
     except Exception:  # noqa: BLE001 -- registry unreadable: treat nothing as claimed but say so
         print("[lane_slot] WARNING: lane registry unreadable; claims not checked", file=sys.stderr)
-        return set()
+        return []
+
+
+def claims():
+    """{normalised worktree: (lane name, age_secs)} for fresh (non-stale) registry lanes."""
+    return {norm(e.get("worktree", "")): (e.get("name") or e.get("lane") or "?", e.get("age_secs"))
+            for e in registry_lanes() if not e.get("stale")}
+
+
+def claimed_worktrees():
+    """Normalised worktree paths of fresh (non-stale) lanes in the lane registry."""
+    return set(claims())
+
+
+def fmt_age(secs):
+    if secs is None:
+        return "?"
+    return f"{secs // 3600}h{secs % 3600 // 60:02d}m" if secs >= 3600 else f"{secs // 60}m"
+
+
+def drop_claims(path, branch=None):
+    """Release every registry entry (fresh or stale) whose worktree is this slot, plus the branch's own entry. -> names released."""
+    names = {e.get("name") for e in registry_lanes() if norm(e.get("worktree", "")) == norm(path)} - {None}
+    if branch:
+        names.add(branch)
+    done = []
+    try:
+        import lane_registry  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+        for n in sorted(names):
+            if lane_registry.release_lane(Path(MAIN_ROOT), n).get("released"):
+                done.append(n)
+    except Exception as e:  # noqa: BLE001
+        print(f"[lane_slot] WARNING: lane registry release failed: {e}", file=sys.stderr)
+    return done
+
+
+def discard_dirty(path):
+    """Write the slot's uncommitted diff (tracked + untracked, binary-safe) to STRAY_DIR, then reset and clean it. -> patch path."""
+    os.makedirs(STRAY_DIR, exist_ok=True)
+    stem = f"{STRAY_DIR}/{os.path.basename(path)}-{datetime.date.today().isoformat()}"
+    patch, n = stem + ".patch", 1
+    while os.path.exists(patch):
+        n += 1
+        patch = f"{stem}-{n}.patch"
+    git(path, "add", "-N", ".")  # intent-to-add so untracked files appear in the diff
+    rc, _, err = git(path, "diff", "HEAD", "--binary", f"--output={patch}")
+    if rc:
+        sys.exit("release: could not write the stray diff, nothing discarded: " + err)
+    git(path, "reset", "--hard", "-q")
+    git(path, "clean", "-fdq")  # no -x: ignored build trees stay
+    return patch
 
 
 def slot_info(path, claimed):
@@ -158,7 +212,7 @@ def slot_path(arg):
     return arg
 
 
-def release(path):
+def release(path, discard=False):
     path = slot_path(path)
     if norm(path) not in {norm(p) for p in SLOT_PATHS}:
         sys.exit(f"release: {path} is not a slot")
@@ -166,7 +220,9 @@ def release(path):
     if not info["exists"]:
         sys.exit(f"release: {path} does not exist")
     if not info["clean"]:
-        sys.exit(f"release: {path} has uncommitted changes; commit or discard them first")
+        if not discard:
+            sys.exit(f"release: {path} has uncommitted changes; commit them, or pass --discard to archive the diff under {STRAY_DIR} and drop them")
+        print(f"[lane_slot] discarded uncommitted changes, diff saved to {discard_dirty(path)}")
     deleted = []
     for d in glob.glob(f"{SCRATCH}/{os.path.basename(path)}-*") + (install_dirs(info["branch"]) if info["branch"] else []):
         if os.path.isdir(d):
@@ -175,27 +231,23 @@ def release(path):
     rc, _, err = git(path, "switch", "--detach", NIFTY)
     if rc:
         sys.exit("release: detach at nifty failed: " + err)
-    if info["branch"]:
-        try:
-            from pathlib import Path  # noqa: PLC0415
-            import lane_registry  # noqa: PLC0415
-            lane_registry.release_lane(Path(MAIN_ROOT), info["branch"])
-        except Exception:  # noqa: BLE001
-            pass
-    print(f"released {path} (was {info['branch']}); deleted: {deleted or 'nothing'}; build tree kept")
+    dropped = drop_claims(path, info["branch"])
+    print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; deleted: {deleted or 'nothing'}; build tree kept")
     return deleted
 
 
 def status():
-    claimed = claimed_worktrees()
-    print(f"{'slot':<8}{'branch':<44}{'clean':<7}{'claimed':<9}{'merged':<7}free")
+    held = claims()
+    print(f"{'slot':<8}{'branch':<44}{'clean':<7}{'claimed':<9}{'merged':<7}{'free':<6}claim")
     for p in SLOT_PATHS:
-        i = slot_info(p, claimed)
+        i = slot_info(p, set(held))
         if not i["exists"]:
             print(f"{os.path.basename(p)[-6:]:<8}(not created)")
             continue
+        who = held.get(norm(p))
+        claim = f"{who[0]} ({fmt_age(who[1])})" if who else ""
         print(f"{os.path.basename(p)[-6:]:<8}{(i['branch'] or '(detached)'):<44}{str(i['clean']):<7}{str(i['claimed']):<9}"
-              f"{str(i['merged']):<7}{'yes' if is_free(i) else 'no'}")
+              f"{str(i['merged']):<7}{'yes' if is_free(i) else 'no':<6}{claim}")
 
 
 def main(argv=None):
@@ -208,12 +260,13 @@ def main(argv=None):
     a.add_argument("--no-warm", action="store_true", help="do not start the background warm build")
     r = sub.add_parser("release")
     r.add_argument("slot")
+    r.add_argument("--discard", action="store_true", help="drop uncommitted changes after saving their diff to " + STRAY_DIR)
     sub.add_parser("status")
     args = ap.parse_args(argv)
     if args.cmd == "acquire":
         acquire(args.branch, args.base, args.reset_branch, args.no_warm)
     elif args.cmd == "release":
-        release(args.slot)
+        release(args.slot, args.discard)
     else:
         status()
     return 0

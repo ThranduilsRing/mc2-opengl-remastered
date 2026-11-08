@@ -30,7 +30,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 # dev build = Ninja tree (exact header deps, no stale-binary traps; fresh tree: py -3 scripts/configure_ninja.py)
 py -3 scripts/ninja_build.py
 # lane prep: get a fixed slot worktree (warm tree, shared compile cache); release it at hand-back, never delete it
-py -3 tools/lane_slot.py acquire --branch <name> [--base <ref>] [--reset-branch] [--no-warm]   # existing branch = its own tip, never moved; ... release <slot|slot03|path> | status
+py -3 tools/lane_slot.py acquire --branch <name> [--base <ref>] [--reset-branch] [--no-warm]   # existing branch = its own tip, never moved; ... release <slot|slot03|path> [--discard] | status
 # lane prep after a base switch: detach at <ref> and build the tree in the background (no daemon; log in build64-ninja/warm.log)
 py -3 scripts/ninja_build.py --warm --base <ref> -j3
 # deploy, mc2-main / merge gate ONLY (default v0.4); a lane passes its own E:/mc2-installs/<branch> + --allow-new-target. sha256-verified; COMMIT FIRST
