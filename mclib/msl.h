@@ -17,6 +17,7 @@
 #define MSL_H
 #include "../RenderCore/MaterialRegistry.h"
 #include "content_socket.h"
+#include "anim_binding.h"
 #include "mc2_czstring.h"
 //-------------------------------------------------------------------------------
 // Include Files
@@ -369,6 +370,7 @@ class TG_MultiShape
 		void init (void)
 		{
             instanceTextures_.clear(); instanceMaterials_.clear(); materialSet_={};
+			animationBinding_.invalidate();
 			myMultiType = nullptr;
 			numTG_Shapes = 0;
 			listOfShapes = nullptr;
@@ -642,9 +644,12 @@ class TG_MultiShape
 		//As such, the shape will stop animating and return to base pose.
 		void ClearAnimation (void)
 		{
+			animationBinding_.invalidate();
 			for (int i=0;i<numTG_Shapes;i++)
 				listOfShapes[i].currentAnimation = nullptr;
 		}
+
+		AnimBindingCache animationBinding_;
 
 		void SetARGBHighLight (DWORD argb)
 		{
@@ -749,6 +754,7 @@ class TG_AnimateShape
 		int                 count;
 		int                 actualCount;
 		bool				shapeIdsSet;
+		std::uint64_t bindingId_ = nextAnimationBindingId();
 
 	public:
 		void init (void)

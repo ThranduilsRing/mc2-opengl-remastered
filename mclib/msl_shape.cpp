@@ -318,7 +318,10 @@ void TG_MultiShape::StopUsing (mc2::czstring nodeName)
 	{
 		//Keep the joint_xUARM so that the shoulder sparks work.
 		if (S_stricmp(detachables[i]->node->getNodeName(),nodeName) != 0)
+		{
+			if (detachables[i]->processMe) animationBinding_.invalidate();
 			detachables[i]->processMe = false;
+		}
 	}
 }
 
@@ -328,6 +331,7 @@ void TG_MultiShape::StopUsing (mc2::czstring nodeName)
 // Uses are endless but for now limited to blowing the arms off of the mechs!
 TG_MultiShapePtr TG_MultiShape::Detach (mc2::czstring nodeName)
 {
+	animationBinding_.invalidate();
 	//First, find all shapes which are children of nodeName, including nodeName!
 	TG_ShapeRecPtr childChain[MAX_NODES];
 	TG_ShapeRecPtr detachables[MAX_NODES];
