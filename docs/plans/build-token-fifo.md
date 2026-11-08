@@ -18,5 +18,20 @@ cxx17, contracts, lint). Use run_scripts_tests.py with the full module path
 scripts/tests/test_build_tokens.py (the runner does not accept bare build_tokens).
 The owning scripts_tests row is absent from this base's check-contracts.sh;
 record a zero-row selection as missing coverage, never a passing contract proof.
-Next on interruption: finish pending validation, fix any new red, commit locally.
+Handoff: implementation committed; validation BLOCKED, not green. Initial direct
+pytest: 6 passed, 3 fixture startup errors in 148.85 s. Subsequent targeted runner
+and cxx17 attempts accumulated <0.5 CPU seconds over several minutes on a 100%
+loaded host. Both were stopped. The box fallback also stalled before upload
+(only child: local git update-ref); it was stopped before remote execution.
+The requested contract selection ran zero rows. Final-tip lint NOT RUN.
+Cleanup of G:/mc2-tmp/build-token-fifo-pytest was rejected by tool policy; leave
+that scratch listed as pending, do not bypass the rejection. No installs created.
+
+Next when CPU capacity is available, from this worktree at the final tip:
+1. py -3 scripts/run_scripts_tests.py scripts/tests/test_build_tokens.py --jobs 6 --report
+2. py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check --worktree --jobs 6
+3. py -3 tools/lane_merge.py --lint HEAD
+4. Resolve the absent owning contract row with the orchestrator; no board changes
+   were made in this lane. Fix any code/test red and commit locally.
+
 No engine build, install or game needed. No lane rules or host config changed.
