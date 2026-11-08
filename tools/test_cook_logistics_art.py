@@ -15,10 +15,13 @@ from tools import cook_logistics_art as cook
 
 def test_shipped_art_decodes_with_loader_dimensions_and_transparent_border():
     art = Path(__file__).resolve().parents[1]/'data/art'
-    for mission in range(1, 25):
-        with Image.open(art/f'missionmaps/mc2_{mission:02d}.png') as image:
+    maps = sorted((art/'missionmaps').glob('*.png'))
+    assert len(maps) == 43
+    assert {f'mc2_{mission:02d}' for mission in range(1, 25)} <= {p.stem for p in maps}
+    for path in maps:
+        with Image.open(path) as image:
             image.load()
-            assert image.mode == 'RGB' and image.size == (512, 512)
+            assert image.mode == 'RGB' and image.size == (1024, 1024)
     icons = list((art/'mechicons').rglob('*.png'))
     assert art/'mechicons/starslayer.png' in icons
     assert art/'mechicons/hollander.png' in icons
@@ -112,9 +115,68 @@ def test_map_north_up_extent_water_and_building(monkeypatch):
             return im
     image = cook.cook_map(Source(), 'test', 512, {})
     assert image.size == (512, 512)
-    assert image.getpixel((2, 2)) == (36, 99, 132)  # northwest water stays northwest
+    assert image.getpixel((0, 0)) == (36, 99, 132)  # northwest water stays northwest
     assert image.getpixel((8, 480))[0] > 180       # southwest colormap stays southwest
+    assert image.getpixel((8, 255)) == (94, 104, 114)  # bilinear colormap boundary
     assert image.getpixel((384, 384)) == (255, 0, 0)  # +X,-Y building -> southeast
+
+
+def test_diagonal_coast_has_one_pixel_coverage_not_cell_steps(tmp_path):
+    assets = cook.Assets(tmp_path)
+    y, x = np.mgrid[:60, :60]
+    mask = np.array(cook.water_mask(assets, 'diagonal', x + y - 50.03, 0, 1024))
+    assert mask.shape == (1024, 1024)
+    # The contour moves a pixel for every row, rather than jumping by 17px cells.
+    edge = (mask[:700] >= 128).sum(axis=1)
+    assert np.all(np.diff(edge) == -1)
+    transition = ((mask[:700] > 0) & (mask[:700] < 255)).sum(axis=1)
+    assert np.all((transition >= 1) & (transition <= 2))
+
+
+def test_visual_heights_override_sim_and_keep_corner_extent(tmp_path):
+    folder = tmp_path/'data/missions/test.beauty'
+    folder.mkdir(parents=True)
+    y, x = np.mgrid[:237, :237]
+    visual = (x / 4 + y / 4 - 50.03).astype('<f4')
+    (folder/'visual_height_4x.r32').write_bytes(visual.tobytes())
+    assets = cook.Assets(tmp_path)
+    actual = np.array(cook.water_mask(assets, 'test', np.full((60, 60), 100.), 0, 1024))
+    expected = np.array(cook.water_mask(assets, 'missing', np.mgrid[:60, :60].sum(axis=0) - 50.03, 0, 1024))
+    assert np.abs(actual.astype(int) - expected).max() <= 1
+    assert actual[0, 0] == 255 and actual[-1, -1] == 0
+    (folder/'visual_height_4x.r32').write_bytes(b'bad')
+    with pytest.raises(ValueError, match='dimensions'):
+        cook.water_mask(assets, 'test', np.zeros((60, 60)), 0, 1024)
+
+
+def test_road_tiles_are_filtered_together_without_cell_seams():
+    n = 60
+    vertices = np.zeros((n, n, 32), dtype=np.uint8)
+    vertices[:, :, 12:16] = np.array([10.], dtype='<f4').view('u1')
+    vertices[:, :, 16:20] = np.array([255 << 16], dtype='<u4').view('u1')
+    pak = packet_file([(0, vertices.tobytes())])
+    tile = np.full((64, 64, 4), 255, dtype=np.uint8)
+    tile[:, :, 3] = np.arange(64, dtype=np.uint8)[None, :] * 4
+
+    class Source:
+        def read(self, key):
+            if key.endswith('.pak'):
+                return pak
+            if key.endswith('.fit'):
+                return b'[Water]\nf Elevation=-100\n'
+            if key.endswith('buildings.csv'):
+                return b''
+            raise FileNotFoundError(key)
+        def image(self, key):
+            if key == 'road':
+                return Image.fromarray(tile)
+            return Image.new('RGBA', (60, 60), (10, 20, 30, 255))
+
+    actual = cook.cook_map(Source(), 'test', 128, {255: 'road'})
+    roads = Image.fromarray(np.tile(tile, (n, n, 1))).resize((128, 128), Image.Resampling.BILINEAR)
+    expected = Image.new('RGB', (128, 128), (10, 20, 30))
+    expected.paste(roads, (0, 0), roads)
+    assert np.array_equal(actual, expected)
 
 
 def test_loose_input_beats_base_and_source_is_read_only(tmp_path):

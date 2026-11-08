@@ -233,6 +233,36 @@ def stamp_objects(assets, image, data, n):
         break
 
 
+def water_mask(assets, mission, elev, level, size):
+    """Sample the corner-pinned height grid over the editor's full N*128 extent."""
+    n = elev.shape[0]
+    try:
+        raw = assets.read(f'data/missions/{mission}.beauty/visual_height_4x.r32')
+    except FileNotFoundError:
+        raw = None
+    if raw is not None:
+        side = (n - 1) * 4 + 1
+        if len(raw) != side * side * 4:
+            raise ValueError('invalid visual height dimensions')
+        elev = np.frombuffer(raw, dtype='<f4').reshape(side, side)
+        if not np.isfinite(elev).all():
+            raise ValueError('nonfinite visual heights')
+    # Height vertices start at the northwest corner; the last cell clamps.
+    coords = np.minimum((np.arange(size) + .5) * n / size, n - 1)
+    coords *= (elev.shape[0] - 1) / (n - 1)
+    lo = coords.astype(int)
+    hi = np.minimum(lo + 1, elev.shape[0] - 1)
+    frac = coords - lo
+    rows = elev[lo, :] * (1 - frac[:, None]) + elev[hi, :] * frac[:, None]
+    heights = rows[:, lo] * (1 - frac) + rows[:, hi] * frac
+    dy, dx = np.gradient(heights)
+    # One output pixel of coverage across the contour, including diagonal coasts.
+    width = np.maximum(np.hypot(dx, dy), 1e-6)
+    coverage = np.clip(.5 + (level - heights) / width, 0, 1)
+    coverage[(dx == 0) & (dy == 0)] = heights[(dx == 0) & (dy == 0)] <= level
+    return Image.fromarray(np.rint(coverage * 255).astype('uint8'))
+
+
 def cook_map(assets, mission, size, overlays):
     data = packets(assets.read(f"data/missions/{mission}.pak"))
     md = locate_mapdata(data)
@@ -251,22 +281,30 @@ def cook_map(assets, mission, size, overlays):
             pass
     if image is None:
         raise ValueError("no colormap (stock preview retained)")
-    image = image.resize((size, size), Image.Resampling.LANCZOS).convert("RGB")
+    image = image.resize((size, size), Image.Resampling.BILINEAR).convert("RGB")
     # Same N*MAPCELL_DIM extent as EditorData::drawTacMap; no crop or rotation.
-    water = Image.fromarray(layers['water'].astype('uint8') * 255).resize(image.size, Image.Resampling.NEAREST)
-    image.paste((36, 99, 132), mask=water)
+    water = water_mask(assets, mission, layers['elev'], layers['water_elev'], size)
     concrete = np.isin(layers['terrtype'], [10, 13, 14, 15, 16, 17, 18, 19, 20]) & ~layers['water']
     image.paste((147, 144, 131), mask=Image.fromarray(concrete.astype('uint8') * 255).resize(image.size, Image.Resampling.NEAREST))
+    image.paste((36, 99, 132), mask=water)
     tex = np.frombuffer(blocks, dtype=np.dtype({'names':['tex'], 'formats':['<u4'], 'offsets':[16], 'itemsize':32}))['tex'].reshape(n, n) >> 16
+    # Filter connected roads as one image: separate cell resizes clamp at each
+    # tile edge and round their widths differently, leaving a faint square grid.
+    roads = Image.new('RGBA', (n * 64, n * 64))
+    tiles = {}
     for r, c in zip(*np.where((tex != 0) & (tex != 65535))):
         path = overlays.get(int(tex[r, c]))
         if not path:
             raise ValueError(f"unknown overlay handle {tex[r,c]}")
-        tile = np.array(assets.image(path))
-        tile[(tile[:, :, 0] == 255) & (tile[:, :, 1] == 0) & (tile[:, :, 2] == 255)] = 0
-        x, y, right, bottom = round(c*size/n), round(r*size/n), round((c+1)*size/n), round((r+1)*size/n)
-        tile = Image.fromarray(tile).resize((right-x, bottom-y), Image.Resampling.LANCZOS)
-        image.paste(tile, (x, y), tile)
+        if path not in tiles:
+            tile = np.array(assets.image(path))
+            tile[(tile[:, :, 0] == 255) & (tile[:, :, 1] == 0) & (tile[:, :, 2] == 255)] = 0
+            if tile.shape != (64, 64, 4):
+                raise ValueError(f'invalid 64overlays tile: {path}')
+            tiles[path] = Image.fromarray(tile)
+        roads.paste(tiles[path], (c * 64, r * 64))
+    roads = roads.resize(image.size, Image.Resampling.BILINEAR)
+    image.paste(roads, (0, 0), roads)
     stamp_objects(assets, image, data, n)
     return image
 
@@ -291,7 +329,7 @@ def main(argv=None):
     parser.add_argument('--base', type=Path)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--proof', type=Path, required=True)
-    parser.add_argument('--size', type=int, choices=(512, 1024), default=512)
+    parser.add_argument('--size', type=int, choices=(512, 1024), default=1024)
     args = parser.parse_args(argv)
     if args.source.resolve() == args.out.resolve():
         parser.error('source and output must differ')
