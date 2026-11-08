@@ -18,6 +18,10 @@ Implemented: explicit tree fallback flag, mutation-driven dedup/sorted-ID queue,
 camera matrix / height epoch invalidation, spawn/pose/status/damage/team/power/
 animation/falling/selection notifications, render-owned static frame stamps,
 dynamic/effect requeue, dead terrain shadow walk removal. Sim order untouched.
+Source review also preserves load-time recipes (consume pose dirtiness before
+mission registration), keeps active light slots in presentation order, refreshes
+on exact camera matrices/night changes, and removes the redundant full-scene
+optional frame-jobs prepass. Pure statics leave the queue; lights/effects do not.
 Covering queue doctests include drain-to-zero, repeated mark, height block,
 reset and generator invalidation. Negative full box unit tier aborted in a job
 system harness; targeted tree/queue selection isolated the expected failure.
@@ -25,3 +29,6 @@ Local queue-only harness passed (297 s, tool slowness: whole target rebuilt).
 Final proof pending: box compile, targeted unit/contracts, census 10/24,
 headless SIMID 01/03/10/24, smoke-lite and lint. Receipts go under
 E:/mc2-archive-2026-10/proofs/box/mc2-slot04/<final-sha8>/.
+Intermediate 6e0f76df: covering three contract rows and lane lint passed.
+Git diff checks must recognize this repository's tracked CRLF source files:
+core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol.

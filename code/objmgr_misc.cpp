@@ -579,8 +579,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		ZoneScopedN("GameLogic.Presentation.Terrain");
         { ZoneScopedN("Presentation.Terrain.ReadbackSnapshot"); updateReadbackSnapshot(); }
         { ZoneScopedN("Presentation.Terrain.ActiveSweep"); updateActiveSweep(); }
-		int frameJobsPrePassCount = 0;
-		{ ZoneScopedN("Presentation.Terrain.FrameJobsPrepass"); updateFrameJobsPrepass(frameJobsPrePassCount); }
+		// The dirty queue is already the bounded work list; the old optional
+		// prepass rebuilt a full-scene bounds/touch list even for settled statics.
 		ZoneNamedN(walkZone, "Presentation.Terrain.Walk", true);
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
