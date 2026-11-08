@@ -8,8 +8,8 @@
 // MEMBERSHIP: the full registry, never the camera frustum: off-screen geometry is in the TLAS so a ray leaving the view still hits it.
 // FOG OF WAR: terrain and static props are map geometry that the raster draws under the fog too (the fog darkens them, it does not hide them), so every one
 // is ray-visible. Movers (part 2) are gameplay-hidden outside sensor range and must enter with an instance mask a consumer can exclude.
-// GEOMETRY: props trace their raster mesh (the colour-prop VBO; tree sway (flags bit 2) is not applied and every packet is opaque until part 3 adds
-// cutouts). Terrain traces the terrain_tier1.vert surface: the 4x visual-bake grid (hiresNearHeight's interior path) when the bake is loaded, else the
+// GEOMETRY: props trace their raster mesh (the colour-prop VBO; tree sway (flags bit 2) is not applied), one BLAS geometry per non-empty packet; a packet
+// the raster alpha-tests (vegetation, fences) is a NON-OPAQUE geometry that a ray query must alpha-test (MATERIALS below), every other geometry is OPAQUE. Terrain traces the terrain_tier1.vert surface: the 4x visual-bake grid (hiresNearHeight's interior path) when the bake is loaded, else the
 // coarse 128-unit grid, split per quad by the shared terrain_diagonal.h rule (as the raster patches), cut into the kTerrainTileCoarse world tiles (one BLAS each). The per-patch visualMode 0 (GL keeps
 // a few patches undisplaced) is not mirrored: the traced surface is displaced everywhere the bake exists. TLAS space is MC2 world (x, y, z up).
 // BUILD FLAGS: every static BLAS is PREFER_FAST_TRACE | ALLOW_COMPACTION (no ALLOW_UPDATE) and is compacted when that saves >= 10%; the TLAS is rebuilt
@@ -18,6 +18,9 @@
 // own command buffer is a part-2 follow-up). Replacements are built into new owners and published only when the whole set succeeded; the replaced TLAS,
 // then the replaced BLASes, retire through VulkanContext::retire. A failed build keeps the last valid snapshot (never a partial membership) and stops
 // retrying until the inputs change. No ray query on the device: nothing is created.
+// MATERIALS (part 3, docs/rt-scene-contract.md): one MaterialRow per BLAS geometry in one storage buffer published with the TLAS. A hit's row is
+// instanceShaderBindingTableRecordOffset + geometry index (the custom index stays the object ID). Row 0 is the movers' row, the prop rows follow type by
+// type (packet order), then one row per terrain tile (row = terrainRowBase + tile ID).
 #ifndef MC2_VK_RT_SCENE_H
 #define MC2_VK_RT_SCENE_H
 
@@ -138,6 +141,65 @@ struct PacketRange {
 // Appends the indices of `packets` (whole triangles only) to `out`, each rebased by its packet's baseVertex, so one index list addresses the shared VBO from
 // its base. Indices >= vertexCount, ranges past the IBO and partial triangles are dropped. Returns the number of triangles appended.
 uint32_t appendRebasedIndices(std::span<const uint32_t> ibo, std::span<const PacketRange> packets, uint32_t vertexCount, std::vector<uint32_t>& out);
+
+// ---- materials (part 3) ----
+inline constexpr uint32_t kMatAlphaOn = 1;    // albedoLayer indexes the colour-prop island's alpha-ON array (else alpha-OFF)
+inline constexpr uint32_t kMatCutout = 2;     // the geometry is NON-OPAQUE: commit a candidate only when its albedo alpha >= alphaCut
+inline constexpr uint32_t kMatTerrain = 4;    // materialId / packet = the terrain tile ID
+inline constexpr uint32_t kMatMover = 8;
+inline constexpr uint32_t kMatProp = 16;
+inline constexpr float kAlphaCut = 0.5f;      // the raster's mip-0 cut (color_prop_tier1.frag)
+
+// One row per BLAS geometry; std430 twin in shaders/vulkan/rt_scene_probe.comp.
+struct MaterialRow {
+    int32_t albedoLayer = -1;    // layer in the array kMatAlphaOn selects; -1 = untextured
+    uint32_t flags = 0;
+    float alphaCut = kAlphaCut;
+    int32_t materialId = -1;     // props: the raster PropMaterialGpu index (packetMaterialIds); terrain: the tile ID; -1 none
+    float uvScaleX = 1.0f, uvScaleY = 1.0f;   // the raster's per-packet crop: uv = fract(uv) * scale
+    uint32_t firstIndex = 0;     // props: first of this geometry's rebased indices in the published uv-index buffer
+    uint32_t packet = 0;         // props: the global packet; terrain: the tile ID
+};
+static_assert(sizeof(MaterialRow) == 32);
+
+inline constexpr uint32_t kMoverRow = 0;
+inline constexpr uint32_t kPropRowBase = 1;
+constexpr uint32_t terrainRowBase(uint32_t propRows) { return kPropRowBase + propRows; }
+
+// What the colour-prop island routes for one packet.
+struct PacketMaterial {
+    int32_t layerOff = -1;       // alpha-OFF array layer (alpha class 0 types)
+    int32_t layerOn = -1;        // alpha-ON array layer (alpha class 1 types)
+    float uvX = 1.0f, uvY = 1.0f;
+    int alphaTest = 0;           // mc2_static_prop_packet_alpha_test
+    int32_t materialId = -1;
+};
+// The raster cuts an ON packet always and an OFF packet when it is alpha-tested and textured (untextured OFF samples vec4(1): never cut).
+constexpr bool packetIsCutout(const PacketMaterial& p) { return p.layerOn >= 0 || (p.alphaTest != 0 && p.layerOff >= 0); }
+constexpr MaterialRow propMaterialRow(const PacketMaterial& p, uint32_t firstIndex, uint32_t packet) {
+    MaterialRow r;
+    const bool on = p.layerOn >= 0;
+    r.albedoLayer = on ? p.layerOn : p.layerOff;
+    r.flags = kMatProp | (on ? kMatAlphaOn : 0u) | (packetIsCutout(p) ? kMatCutout : 0u);
+    r.materialId = p.materialId;
+    r.uvScaleX = p.uvX;
+    r.uvScaleY = p.uvY;
+    r.firstIndex = firstIndex;
+    r.packet = packet;
+    return r;
+}
+constexpr MaterialRow terrainMaterialRow(uint32_t tile) {
+    MaterialRow r;
+    r.flags = kMatTerrain;
+    r.materialId = static_cast<int32_t>(tile);
+    r.packet = tile;
+    return r;
+}
+constexpr MaterialRow moverMaterialRow() {
+    MaterialRow r;
+    r.flags = kMatMover;
+    return r;
+}
 
 }  // namespace mc2vk::rt::scene
 

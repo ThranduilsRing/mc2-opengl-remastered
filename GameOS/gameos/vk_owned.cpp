@@ -18,7 +18,7 @@
 namespace mc2vk {
 
 bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBufferCreateInfo& info, const VmaAllocationCreateInfo& alloc, std::string_view name,
-                         int i0, int i1) {
+                         int i0, int i1, VkDeviceSize minAlignment) {
     reset();
     VkBuffer buffer = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
@@ -29,7 +29,9 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     infra::Admission admission(requirements.size,name);
     if (!admission) { t_lastCreateFailure = static_cast<VkResult>(kVkAdmissionDenied); return false; }
     VmaAllocationInfo placed{};
-    if (const VkResult r = vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, &placed); r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
+    const VkResult r = minAlignment > 1 ? vmaCreateBufferWithAlignment(allocator, &info, &alloc, minAlignment, &buffer, &allocation, &placed)
+                                        : vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, &placed);
+    if (r != VK_SUCCESS) { t_lastCreateFailure = r; return false; }
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) {   // where the buffer landed (audit S2): DL = DEVICE_LOCAL, HV = HOST_VISIBLE, HC = HOST_CACHED
         VkMemoryPropertyFlags pf = 0;
         vmaGetMemoryTypeProperties(allocator, placed.memoryType, &pf);
@@ -51,7 +53,8 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     return true;
 }
 
-bool OwnedBuffer::createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1) {
+bool OwnedBuffer::createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1,
+                                     VkDeviceSize minAlignment) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16;
@@ -59,7 +62,7 @@ bool OwnedBuffer::createHostWritable(VmaAllocator allocator, VkDevice device, Vk
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    return create(allocator, device, bci, aci, name, i0, i1);
+    return create(allocator, device, bci, aci, name, i0, i1, minAlignment);
 }
 
 bool OwnedBuffer::createGpuRead(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1) {
@@ -74,8 +77,8 @@ bool OwnedBuffer::createGpuRead(VmaAllocator allocator, VkDevice device, VkDevic
 }
 
 bool OwnedBuffer::createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage,
-                               std::string_view name) {
-    if (!src || bytes == 0 || !createHostWritable(allocator, device, bytes, usage, name) || !upload(src, bytes)) {
+                               std::string_view name, VkDeviceSize minAlignment) {
+    if (!src || bytes == 0 || !createHostWritable(allocator, device, bytes, usage, name, -1, -1, minAlignment) || !upload(src, bytes)) {
         reset();
         return false;
     }
@@ -113,14 +116,15 @@ bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offse
     return true;
 }
 
-bool OwnedBuffer::createDeviceLocal(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1) {
+bool OwnedBuffer::createDeviceLocal(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1,
+                                    VkDeviceSize minAlignment) {
     VkBufferCreateInfo bci{};
     bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bci.size = size ? size : 16;
     bci.usage = usage;
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    return create(allocator, device, bci, aci, name, i0, i1);
+    return create(allocator, device, bci, aci, name, i0, i1, minAlignment);
 }
 
 bool OwnedBuffer::read(void* dst, VkDeviceSize bytes, VkDeviceSize offset) const {

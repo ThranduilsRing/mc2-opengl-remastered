@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <format>
+#include <utility>
 
 namespace mc2vk::rt {
 
@@ -27,6 +29,18 @@ static_assert(kBuildAllowUpdate == VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_
 static_assert(kBuildAllowCompaction == VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
 
 namespace {
+
+thread_local std::string t_lastRecordFailure;
+template <class... Args> bool failWith(std::format_string<Args...> fmt, Args&&... args) {
+    t_lastRecordFailure = std::format(fmt, std::forward<Args>(args)...);
+    return false;
+}
+// True (and the failure recorded) when the instance array cannot feed a TLAS build.
+bool instancesBad(VkDeviceAddress instances, uint32_t count) {
+    if (count == 0 || instances == 0 || instances % kInstanceAddressAlignment != 0)
+        return !failWith("instances count={} addr=0x{:x} addr%16={}", count, instances, instances % kInstanceAddressAlignment);
+    return false;
+}
 
 VkBuildAccelerationStructureFlagsKHR toVkFlags(const BuildFlags& f) {
     VkBuildAccelerationStructureFlagsKHR v = f.preferFastTrace ? VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
@@ -69,13 +83,17 @@ bool ScratchArena::reserve(const VulkanContext& ctx, VkDeviceSize needed, std::s
         capacity_ = 0;
         OwnedBuffer fresh;
         const VkDeviceSize bytes = scratchAllocBytes(needed, align);
-        if (!fresh.createDeviceLocal(ctx.allocator(), ctx.device(), bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name))
-            return false;
+        if (!fresh.createDeviceLocal(ctx.allocator(), ctx.device(), bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name,
+                                     -1, -1, align))
+            return failWith("scratch_alloc bytes={} result={}", bytes, static_cast<int>(takeLastCreateFailure()));
         buffer_ = std::move(fresh);
         capacity_ = bytes;
     }
     alignedAddress = scratchAlignedAddress(buffer_.deviceAddress(), align);
-    return scratchFits(buffer_.deviceAddress(), capacity_, needed, align);
+    if (!scratchFits(buffer_.deviceAddress(), capacity_, needed, align))
+        return failWith("scratch_fit base=0x{:x} base%align={} align={} capacity={} need={}", buffer_.deviceAddress(), buffer_.deviceAddress() % align, align,
+                        capacity_, needed);
+    return true;
 }
 
 void ScratchArena::retireStale(VulkanContext& ctx) {
@@ -107,11 +125,11 @@ bool recordBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkAccelerationSt
     if (outSize) *outSize = sizes.accelerationStructureSize;
     // A fresh build goes into an empty `as` only: overwriting a live structure would destroy it while the GPU may still read it. The caller builds the
     // replacement into a new owner, publishes it on success and retires the old one. `as` is assigned only once every allocation has succeeded.
-    if (createNew && as) return false;
+    if (createNew && as) return failWith("dst_not_empty size={}", as.size());
     std::optional<AccelStructure> created;
     if (createNew) {
         created = createAccelStructure(ctx, type, sizes.accelerationStructureSize, name);
-        if (!created) return false;
+        if (!created) return false;   // createAccelStructure recorded why
     }
     VkDeviceAddress scratchAddr = 0;
     if (!scratch.reserve(ctx, update ? sizes.updateScratchSize : sizes.buildScratchSize, name, scratchAddr)) return false;
@@ -128,21 +146,32 @@ bool recordBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkAccelerationSt
 
 }  // namespace
 
+std::string takeLastRecordFailure() { return std::exchange(t_lastRecordFailure, std::string{}); }
+
 std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkAccelerationStructureTypeKHR type, VkDeviceSize size, std::string_view name) {
     if (!ctx.rt().accel) return std::nullopt;
     AccelStructure out;
     const VkDeviceSize bytes = asStorageBytes(size);
     if (!out.buffer_.createDeviceLocal(ctx.allocator(), ctx.device(), bytes,
-                                       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name))
+                                       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name, -1, -1,
+                                       kAsStorageAlignment)) {
+        failWith("as_storage_alloc bytes={} result={}", bytes, static_cast<int>(takeLastCreateFailure()));
         return std::nullopt;
+    }
+    if (out.buffer_.deviceAddress() % kAsStorageAlignment != 0) {
+        failWith("as_storage_align addr=0x{:x} addr%256={}", out.buffer_.deviceAddress(), out.buffer_.deviceAddress() % kAsStorageAlignment);
+        return std::nullopt;
+    }
     VkAccelerationStructureCreateInfoKHR ci{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
     ci.buffer = out.buffer_.get();
     ci.offset = 0;
     ci.size = size;
     ci.type = type;
     const VkDevice device = ctx.device();
-    if (!mc2vk::create(out.handle_, device, [&](VkAccelerationStructureKHR* h) { return vkCreateAccelerationStructureKHR(device, &ci, nullptr, h); }))
+    if (!mc2vk::create(out.handle_, device, [&](VkAccelerationStructureKHR* h) { return vkCreateAccelerationStructureKHR(device, &ci, nullptr, h); })) {
+        failWith("as_handle size={} result={}", size, static_cast<int>(takeLastCreateFailure()));
         return std::nullopt;
+    }
     VkAccelerationStructureDeviceAddressInfoKHR ai{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
     ai.accelerationStructure = out.handle_.get();
     out.address_ = vkGetAccelerationStructureDeviceAddressKHR(device, &ai);
@@ -372,7 +401,8 @@ bool recordBlasJobs(const VulkanContext& ctx, VkCommandBuffer cmd, std::span<Bla
 
 bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, const BuildFlags& flags, std::string_view name,
                      AccelStructure& tlas, ScratchArena& scratch) {
-    if (!ctx.rt().accel || instanceCount == 0 || instances == 0 || instances % kInstanceAddressAlignment != 0) return false;
+    if (!ctx.rt().accel) return failWith("no_accel");
+    if (instancesBad(instances, instanceCount)) return false;
     const VkAccelerationStructureGeometryKHR geo = instancesOf(instances);
     VkDeviceSize updateScratch = 0, size = 0;
     const VkBuildAccelerationStructureFlagsKHR vkFlags = toVkFlags(flags);
@@ -386,7 +416,8 @@ bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddr
 
 bool recordTlasRebuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, uint32_t capacity, const BuildFlags& flags,
                        std::string_view name, AccelStructure& tlas, ScratchArena& scratch) {
-    if (!ctx.rt().accel || instanceCount == 0 || instances == 0 || instances % kInstanceAddressAlignment != 0) return false;
+    if (!ctx.rt().accel) return failWith("no_accel");
+    if (instancesBad(instances, instanceCount)) return false;
     if (tlas && !tlas.isTop()) return false;
     const VkAccelerationStructureGeometryKHR geo = instancesOf(instances);
     const VkBuildAccelerationStructureFlagsKHR vkFlags = toVkFlags(flags);
@@ -402,7 +433,7 @@ bool recordTlasRebuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAd
         return sizes;
     };
     const VkAccelerationStructureBuildSizesInfoKHR need = sizesFor(instanceCount);
-    if (tlas && need.accelerationStructureSize > tlas.size()) return false;   // too small: the caller retires it and passes an empty one
+    if (tlas && need.accelerationStructureSize > tlas.size()) return failWith("tlas_small need={} have={}", need.accelerationStructureSize, tlas.size());   // too small: the caller retires it and passes an empty one
     if (!tlas) {
         const VkAccelerationStructureBuildSizesInfoKHR cap = sizesFor(std::max(capacity, instanceCount));
         auto created = createAccelStructure(ctx, VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, cap.accelerationStructureSize, name);
@@ -437,16 +468,16 @@ bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAdd
                        false);
 }
 
-VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex, uint8_t mask) {
+VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex, uint8_t mask, uint32_t sbtOffset) {
     VkAccelerationStructureInstanceKHR inst{};
     static constexpr float kIdentity[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
     std::memcpy(&inst.transform, transform3x4 ? transform3x4 : kIdentity, sizeof(inst.transform));
     // F5: a masked index would alias another object's id (0x1000000 -> terrain). Refuse it: mask 0 and a null reference, never traced.
-    assert(instanceCustomIndexFits(customIndex) && "instanceCustomIndex is 24 bits");
-    if (!instanceCustomIndexFits(customIndex)) return inst;
+    assert(instanceCustomIndexFits(customIndex) && instanceCustomIndexFits(sbtOffset) && "instanceCustomIndex / SBT offset are 24 bits");
+    if (!instanceCustomIndexFits(customIndex) || !instanceCustomIndexFits(sbtOffset)) return inst;
     inst.instanceCustomIndex = customIndex;
     inst.mask = mask;
-    inst.instanceShaderBindingTableRecordOffset = 0;
+    inst.instanceShaderBindingTableRecordOffset = sbtOffset;
     inst.flags = static_cast<uint32_t>(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
     inst.accelerationStructureReference = blasAddress;
     return inst;

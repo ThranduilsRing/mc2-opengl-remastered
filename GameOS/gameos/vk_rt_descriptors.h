@@ -10,10 +10,11 @@
 
 #include <array>
 #include <cstdint>
+#include <span>
 
 namespace mc2vk::rt {
 
-enum class BindingKind : uint8_t { AccelerationStructure, StorageBuffer };
+enum class BindingKind : uint8_t { AccelerationStructure, StorageBuffer, SampledImage };   // SampledImage: a combined image sampler
 
 struct BindingDesc {
     uint32_t binding;
@@ -27,6 +28,19 @@ inline constexpr std::array<BindingDesc, 3> kSmokeBindings = {{
     {1, BindingKind::StorageBuffer, "rays"},       // in: 2 x vec4 per ray (origin.xyz + tMin, direction.xyz + tMax)
     {2, BindingKind::StorageBuffer, "results"},    // out: 1 x vec4 per ray (x = hit flag, y = t, z = primitive id, w = instance custom index)
 }};
+
+// shaders/vulkan/rt_scene_probe.comp: the RT scene material probe (vk_rt_scene.cpp, MC2_VK_RT_SELFTEST). Push constants: kSceneProbePushBytes.
+inline constexpr std::array<BindingDesc, 7> kSceneProbeBindings = {{
+    {0, BindingKind::AccelerationStructure, "tlas"},
+    {1, BindingKind::StorageBuffer, "rays"},       // in: as kSmokeBindings
+    {2, BindingKind::StorageBuffer, "results"},    // out: 2 x vec4 per ray ((hit, t, primitive id, custom index), (material row, albedo layer, packet / tile, flags))
+    {3, BindingKind::StorageBuffer, "materials"},  // scene::MaterialRow[] (32 bytes each)
+    {4, BindingKind::StorageBuffer, "uv_index"},   // uint[]: the prop geometries' rebased indices (MaterialRow::firstIndex addresses it)
+    {5, BindingKind::SampledImage, "alpha_off"},   // the colour-prop island's alpha-OFF albedo array
+    {6, BindingKind::SampledImage, "alpha_on"},    // its alpha-ON array
+}};
+// vbo address (uvec2), vertex stride, mode (0 alpha-tested cutouts, 1 every candidate opaque).
+inline constexpr uint32_t kSceneProbePushBytes = 16;
 
 constexpr bool bindingsAreValid(const BindingDesc* table, uint32_t count) {
     for (uint32_t i = 0; i < count; ++i)
@@ -91,12 +105,16 @@ class VulkanContext;
 
 namespace mc2vk::rt {
 
-// Set layout + pipeline layout + one descriptor set for kSmokeBindings, compute-stage visible.
+// Set layout + pipeline layout (+ `pushBytes` of compute push constants) + one descriptor set for a binding table (kSmokeBindings by default),
+// compute-stage visible.
 class RayQuerySet {
 public:
-    bool create(const VulkanContext& ctx);
-    // Writes the TLAS and the two storage buffers (whole range) into the set.
+    bool create(const VulkanContext& ctx, std::span<const BindingDesc> table = kSmokeBindings, uint32_t pushBytes = 0);
+    // Writes the TLAS and the two storage buffers (whole range) into the set (kSmokeBindings).
     void write(VkDevice device, VkAccelerationStructureKHR tlas, VkBuffer rays, VkBuffer results) const;
+    void writeTlas(VkDevice device, uint32_t binding, VkAccelerationStructureKHR tlas) const;
+    void writeBuffer(VkDevice device, uint32_t binding, VkBuffer buffer) const;
+    void writeImage(VkDevice device, uint32_t binding, VkSampler sampler, VkImageView view) const;   // SHADER_READ_ONLY_OPTIMAL
     VkDescriptorSetLayout setLayout() const noexcept { return dsl_.get(); }
     VkPipelineLayout pipelineLayout() const noexcept { return layout_.get(); }
     VkDescriptorSet set() const noexcept { return set_; }

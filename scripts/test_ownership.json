@@ -6,6 +6,7 @@
     {"module": "scripts/tests/test_gate_farm.py", "owners": ["gate_farm"]},
     {"module": "scripts/tests/test_box_queue.py", "owners": ["gate_farm"]},
     {"module": "scripts/tests/test_paired_cpu.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_rt_scene_probe_check.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_lint_slots.py", "owners": ["scripts_tests"]},    {"module": "scripts/tests/test_deploy_seed.py", "owners": ["gate_inputs"]},
     {"module": "scripts/tests/test_gate_preflight.py", "owners": ["gate_inputs"]},
     {"module": "scripts/tests/test_gate_reuse.py", "owners": ["scripts_tests"]},

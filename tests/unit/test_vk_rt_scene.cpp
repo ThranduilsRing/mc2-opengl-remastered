@@ -287,6 +287,47 @@ TEST_CASE("rt scene movers: Stuff space to MC2 world and the mover transform") {
     }
 }
 
+TEST_CASE("rt scene materials: row layout is mover, props, then one row per terrain tile") {
+    CHECK(kMoverRow == 0);
+    CHECK(kPropRowBase == 1);
+    CHECK(terrainRowBase(0) == 1);
+    CHECK(terrainRowBase(37) == 38);
+    const MaterialRow t = terrainMaterialRow(5);
+    CHECK(t.flags == kMatTerrain);
+    CHECK(t.materialId == 5);
+    CHECK(t.packet == 5);
+    CHECK(t.albedoLayer == -1);
+    CHECK(moverMaterialRow().flags == kMatMover);
+}
+
+TEST_CASE("rt scene materials: the cutout predicate follows the raster's alpha cut") {
+    PacketMaterial m;
+    CHECK_FALSE(packetIsCutout(m));                 // untextured: opaque
+    m.alphaTest = 1;
+    CHECK_FALSE(packetIsCutout(m));                 // alpha-tested but untextured OFF samples vec4(1): never cut
+    m.layerOff = 3;
+    CHECK(packetIsCutout(m));                       // alpha-tested, textured OFF
+    m.alphaTest = 0;
+    CHECK_FALSE(packetIsCutout(m));                 // textured OFF, not alpha-tested: opaque
+    PacketMaterial on;
+    on.layerOn = 2;
+    CHECK(packetIsCutout(on));                      // alpha-ON array always cuts
+
+    on.uvX = 0.5f;
+    on.materialId = 9;
+    const MaterialRow r = propMaterialRow(on, 120, 44);
+    CHECK(r.albedoLayer == 2);
+    CHECK(r.flags == (kMatProp | kMatAlphaOn | kMatCutout));
+    CHECK(r.uvScaleX == 0.5f);
+    CHECK(r.materialId == 9);
+    CHECK(r.firstIndex == 120);
+    CHECK(r.packet == 44);
+    CHECK(r.alphaCut == kAlphaCut);
+    const MaterialRow o = propMaterialRow(m, 0, 1);
+    CHECK(o.albedoLayer == 3);
+    CHECK(o.flags == kMatProp);                     // opaque row, alpha-OFF array
+}
+
 TEST_CASE("rt scene movers: leave rules") {
     CHECK(moverIsHandleKey(0x00100005u));
     CHECK_FALSE(moverIsHandleKey(0x80001234u));

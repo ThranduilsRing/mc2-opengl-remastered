@@ -179,6 +179,7 @@ constexpr Barrier frameRebuildBarrier() {
 #include <volk.h>
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -320,7 +321,9 @@ bool recordTlasRebuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAd
 
 // One instance entry: an identity-or-given 3x4 transform (row-major, 12 floats; null = identity), the BLAS address, custom index and mask 0xFF.
 // A customIndex past 24 bits is refused (instanceCustomIndexFits): the entry comes back with mask 0 and a null BLAS reference, so no ray can hit it.
-VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex = 0, uint8_t mask = 0xFF);
+// `sbtOffset` (24 bits): with no SBT bound (ray query), the RT scene stores the instance's first material row there (row = offset + geometry index).
+VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex = 0, uint8_t mask = 0xFF,
+                                                uint32_t sbtOffset = 0);
 
 // Compaction. 1: a query pool of `count` compacted-size queries. 2: after the BLAS build (and a Blas -> Blas-read barrier), write the size query.
 // 3: once the build's ticket completed, readCompactedSize. 4: recordCompactCopy into a fresh structure of that size.
@@ -333,6 +336,9 @@ bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const Acce
 // Issues the barrier between two phases through the context's sync2 route (a no-op, with false, for an invalid edge).
 bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Phase to);
 bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, const Barrier& b);
+
+// Which check made the last record call on this thread return false, with its values ("" when none since the last take). A FAIL line prints it.
+std::string takeLastRecordFailure();
 
 }  // namespace mc2vk::rt
 

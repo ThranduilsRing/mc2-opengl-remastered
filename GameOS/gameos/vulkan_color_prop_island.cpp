@@ -1510,6 +1510,15 @@ extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* gene
     return 1;
 }
 
+extern "C" int mc2_color_prop_island_get_albedo_off_array(void** view, uint32_t* generation) {
+    const ColorPropIsland* s = parkedIsland();
+    if (!view || !generation || !s || !s->materialReady || !s->albedoTexture) return 0;
+    if (!mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->albedoTexture.get())) return 0;
+    *view = reinterpret_cast<void*>(s->albedoTexture.view());
+    *generation = s->mapGeneration;
+    return 1;
+}
+
 extern "C" int mc2_vk_color_prop_island_enabled() {
     return 1;
 }

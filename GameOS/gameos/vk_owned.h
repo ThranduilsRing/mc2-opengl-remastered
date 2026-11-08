@@ -214,16 +214,22 @@ public:
         return *this;
     }
 
+    // `minAlignment` (0 = the driver's own requirement) places the allocation, and so the device address, on a multiple of it through
+    // vmaCreateBufferWithAlignment. A buffer whose device address a consumer needs aligned beyond what the usage flags imply (RT instance arrays 16,
+    // AS storage 256, build scratch minAccelerationStructureScratchOffsetAlignment) must pass it: the driver may report 4 for a host buffer and VMA
+    // then packs it right behind an odd-sized neighbour.
     bool create(VmaAllocator allocator, VkDevice device, const VkBufferCreateInfo& info, const VmaAllocationCreateInfo& alloc, std::string_view name,
-                int i0 = -1, int i1 = -1);
+                int i0 = -1, int i1 = -1, VkDeviceSize minAlignment = 0);
     // A host-visible buffer the CPU writes in random order (a per-frame feed, a copy of CPU geometry).
-    bool createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
+    bool createHostWritable(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1,
+                            VkDeviceSize minAlignment = 0);
     // A buffer the CPU writes sequentially and the GPU reads every frame (UBO/SSBO feeds): prefers device-local host-visible memory
     // (ReBAR) so the GPU does not read across PCIe; falls back to host memory where the device has no such heap. Never read back.
     bool createGpuRead(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
     // A host-writable buffer holding a copy of `bytes` of CPU data (copy-once geometry). On any failure the buffer is left empty,
     // so a caller that retries later never holds a half-filled buffer.
-    bool createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name);
+    bool createFilled(VmaAllocator allocator, VkDevice device, const void* src, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name,
+                      VkDeviceSize minAlignment = 0);
     void reset() noexcept;
 
     VkBuffer get() const noexcept { return buffer_; }
@@ -240,7 +246,8 @@ public:
     // Copies `bytes` to `offset` and flushes the written range, for memory that is not coherent. False when the buffer is empty or the map fails.
     bool upload(const void* src, VkDeviceSize bytes, VkDeviceSize offset = 0) const;
     // A device-local buffer, filled by a transfer (copy-once data).
-    bool createDeviceLocal(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
+    bool createDeviceLocal(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1,
+                           VkDeviceSize minAlignment = 0);
     // Copies `bytes` from `offset` to `dst` after invalidating the range, for host-visible memory the GPU wrote. False when the buffer is empty or the map fails.
     bool read(void* dst, VkDeviceSize bytes, VkDeviceSize offset = 0) const;
 

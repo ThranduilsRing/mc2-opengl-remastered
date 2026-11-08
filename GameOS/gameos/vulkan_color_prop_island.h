@@ -31,6 +31,8 @@ int mc2_vk_color_prop_island_enabled();
 // has none. `generation` changes at every map change, so a caller that bound the view re-binds even when a new array comes back with the same handle value. Owned by the island: the caller reads it within the frame and re-queries each frame (a new map brings a new array).
 uint64_t mc2_color_prop_island_alpha_content_hash();
 int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation);
+// The alpha-OFF albedo array view (same contract), or 0 while the island has none.
+int mc2_color_prop_island_get_albedo_off_array(void** view, uint32_t* generation);
 
 // Per-frame entry. Renders the visible static-prop color instances in-place into the
 // shared scene GBuffer. Pulls its geometry/instance feed from the batcher.

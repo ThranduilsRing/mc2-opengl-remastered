@@ -157,6 +157,7 @@ ISLANDS = {
     "shaders/vulkan/aa_experiment_taa.frag": "Dev-only temporal AA comparison; Vulkan-only prototype, no shipping GL sibling. Evidence: docs/temporal-ab-decision.md.",
     "shaders/vulkan/motion_vectors.frag": "Native Vulkan velocity prerequisite; no GL consumer or sibling. Default-path parity is checked by the merge gate day/night captures.",
     "shaders/vulkan/rt_smoke.comp": "Native Vulkan ray-query self-test compute (MC2_VK_RT_SELFTEST diagnostic, vk_rt_selftest.cpp); no GL twin, GL is being deleted. Correctness is the in-process [VK_RT_SELFTEST v1] PASS line, not pixel parity.",
+    "shaders/vulkan/rt_scene_probe.comp": "Native Vulkan ray-query material / alpha-cutout probe (MC2_VK_RT_SELFTEST, vk_rt_scene.cpp); no GL twin, GL is being deleted. Correctness is the VK_RT_SCENE material result= line (scripts/rt_scene_probe_check.py), not pixel parity.",
     "shaders/vulkan/edge_fog.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",

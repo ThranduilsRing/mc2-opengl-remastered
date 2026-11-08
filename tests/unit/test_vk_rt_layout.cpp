@@ -62,6 +62,27 @@ TEST_CASE("rt layout: batched BLAS scratch sub-ranges are aligned, disjoint and 
     CHECK(scratchBatchPlan(std::span<const uint64_t>(big, 0), 256, 1024, off, grp) == 0);
 }
 
+TEST_CASE("rt layout: every batched build's scratch address is aligned and inside the reserve, whatever the base") {
+    // Odd sizes (none a multiple of the alignment) on the RX 7900 XTX's 128 and a 256 alignment, from an aligned base and from a 4-aligned one.
+    const uint64_t need[6] = {1, 129, 4093, 0, 77777, 255};
+    for (const uint64_t align : {uint64_t{128}, uint64_t{256}}) {
+        uint64_t off[6] = {};
+        uint32_t grp[6] = {};
+        const uint64_t peak = scratchBatchPlan(need, align, 64 * 1024, off, grp);
+        for (const uint64_t base : {uint64_t{0x10000}, uint64_t{0x10004}}) {
+            const uint64_t alloc = scratchAllocBytes(peak, align);
+            const uint64_t aligned = scratchAlignedAddress(base, align);
+            CHECK(scratchFits(base, alloc, peak, align));
+            for (size_t i = 0; i < 6; ++i) {
+                CHECK((aligned + off[i]) % align == 0);
+                CHECK(aligned + off[i] + need[i] <= base + alloc);
+                // Disjoint inside a group: the next build of the same group starts at or after this one ends.
+                if (i + 1 < 6 && grp[i + 1] == grp[i] && need[i] > 0) CHECK(off[i + 1] >= off[i] + need[i]);
+            }
+        }
+    }
+}
+
 TEST_CASE("rt layout: compaction is worth it at 10 percent saved or more") {
     CHECK(worthCompacting(1000, 900));
     CHECK(worthCompacting(1000, 100));
@@ -132,6 +153,17 @@ TEST_CASE("rt layout: the ray-query binding table is valid and starts with the T
     const BindingDesc noAs[] = {{0, BindingKind::StorageBuffer, "a"}};
     CHECK_FALSE(bindingsAreValid(noAs, 1));
     CHECK_FALSE(bindingsAreValid(nullptr, 0));
+}
+
+TEST_CASE("rt layout: the scene material probe table matches rt_scene_probe.comp") {
+    CHECK(bindingsAreValid(kSceneProbeBindings.data(), static_cast<uint32_t>(kSceneProbeBindings.size())));
+    REQUIRE(kSceneProbeBindings.size() == 7);
+    CHECK(kSceneProbeBindings[0].kind == BindingKind::AccelerationStructure);
+    for (uint32_t b = 1; b <= 4; ++b) CHECK(kSceneProbeBindings[b].kind == BindingKind::StorageBuffer);
+    CHECK(kSceneProbeBindings[5].kind == BindingKind::SampledImage);
+    CHECK(kSceneProbeBindings[6].kind == BindingKind::SampledImage);
+    for (uint32_t b = 0; b < kSceneProbeBindings.size(); ++b) CHECK(kSceneProbeBindings[b].binding == b);
+    CHECK(kSceneProbePushBytes == 16);   // uvec2 vbo, uint stride, uint mode
 }
 
 TEST_CASE("rt layout: shader binding table regions honour handle and base alignment") {
