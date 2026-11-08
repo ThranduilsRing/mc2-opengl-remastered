@@ -22,8 +22,15 @@ Lane `claude/rt-scene-2`, base 2d90723cf. Part 2 of the RT shared ray-visible sc
 - No mech feed in a frame means no mover update that frame. The lab preview path is not hooked.
 - The static `s.tlas` is kept beside the mover TLAS; the per-frame instance upload copies all static instances (fine at current counts).
 
+## Closed (2026-11-08, second pass)
+- cxx17 LG05: moverCustomIndex and MechSkinPass::region now return std::optional; ratchet adds 0, `lane_merge.py --lint HEAD` PASS.
+- Doctests: `build_contract_harnesses.py --run --unit --only "rt *"` (case-name wildcard) 32/32 pass.
+- AMD bug: the mover TLAS never built on the RX 7900 XTX. Its host-writable instance buffer got a 4-byte-aligned device address and
+  recordTlasRebuild refuses instances that are not 16-aligned. The buffer is now padded by kInstanceAddressAlignment and the instances are written at
+  the aligned offset. A `FAIL mover tlas` event (first 3) logs count/cap/address/sizes if the build is ever refused again.
+- RT selftest (MC2_VK_RT_SELFTEST=1, MC2_VULKAN_VALIDATION=sync) at 3417587b9: XTX and 2070 x mc2_01 (movers=1/1) and mc2_10 (movers=4/4), all
+  despawn_clean=1, 0 validation errors, 0 SYNC-HAZARD, 0 FAIL lines, byte ledger present.
+- Smoke-lite on E:/mc2-installs/rt-scene-2 at 3417587b9: 2/2 PASS, deploy fingerprint OK.
+
 ## Open
-- cxx17 ratchet: LG05 +2 (moverCustomIndex bool+out-param, vk_rt_scene.h:47; MechSkinPass::region -1 sentinel, vulkan_mech_skin.h:83). Convert both
-  to std::optional before merge. LG08 fixed.
-- Doctests not run: `build_contract_harnesses.py --only` did not match test_vk_rt_layout / test_vk_rt_scene / case names; find the registered name.
-- NOT RUN: RT selftest on XTX and 2070 under MC2_VULKAN_VALIDATION=sync, smoke-lite on E:/mc2-installs/rt-scene-2 (install never created), A/B.
+- NOT RUN: A/B against 2d90723cf, saveload, ms numbers.
