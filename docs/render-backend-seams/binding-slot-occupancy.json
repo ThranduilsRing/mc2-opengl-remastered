@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 273,
+    "glsl_blocks_with_binding": 280,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -285,6 +285,16 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/postprocess_visual.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 29,
+        "role": "uTlas",
+        "std": null,
+        "type": "accelerationStructureEXT",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
         "branch": {}
       },
       {
@@ -716,6 +726,16 @@
         "std": null,
         "type": "usampler2D",
         "source": "shaders/vulkan/postprocess_visual.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 30,
+        "role": "Rays",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
         "branch": {}
       },
       {
@@ -1422,6 +1442,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 31,
+        "role": "Results",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/rt_smoke.comp",
         "line": 12,
         "role": "Results",
@@ -1858,6 +1888,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 32,
+        "role": "Materials",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/screen_shadow_csm.frag",
         "line": 11,
         "role": "ScreenShadowParams",
@@ -2012,6 +2052,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 33,
+        "role": "UvIndex",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
         "line": 22,
         "role": "u_props",
@@ -2126,6 +2176,16 @@
       },
       {
         "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 34,
+        "role": "uAlphaOff",
+        "std": null,
+        "type": "sampler2DArray",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
         "line": 23,
         "role": "u_terrain",
@@ -2220,6 +2280,16 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/mech_tier1.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/rt_scene_probe.comp",
+        "line": 35,
+        "role": "uAlphaOn",
+        "std": null,
+        "type": "sampler2DArray",
+        "source": "shaders/vulkan/rt_scene_probe.comp",
         "branch": {}
       },
       {
@@ -3140,6 +3210,7 @@
     "shaders/vulkan/postprocess.vert",
     "shaders/vulkan/postprocess_visual.frag",
     "shaders/vulkan/postprocess_visual.vert",
+    "shaders/vulkan/rt_scene_probe.comp",
     "shaders/vulkan/rt_smoke.comp",
     "shaders/vulkan/screen_shadow_csm.frag",
     "shaders/vulkan/screen_shadow_csm.vert",

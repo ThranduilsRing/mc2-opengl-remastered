@@ -1,0 +1,62 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/rt_scene_probe.comp",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "rays",
+          "offset": 0,
+          "type": "vec4"
+        }
+      ],
+      "name": "Rays"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "results",
+          "offset": 0,
+          "type": "vec4"
+        }
+      ],
+      "name": "Results"
+    },
+    {
+      "binding": 3,
+      "members": [
+        {
+          "array_stride": 32,
+          "matrix_stride": null,
+          "name": "rows",
+          "offset": 0,
+          "type": "_253"
+        }
+      ],
+      "name": "Materials"
+    },
+    {
+      "binding": 4,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "uvIndex",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "UvIndex"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [],
+  "variant": "default"
+}

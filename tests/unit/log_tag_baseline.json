@@ -11513,7 +11513,9 @@
    "keys": [
     "gen",
     "types",
-    "instances"
+    "instances",
+    "stage",
+    "why"
    ],
    "count": 1
   },
@@ -11547,6 +11549,38 @@
     "key",
     "slot",
     "why"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "ray",
+    "hit",
+    "t",
+    "custom",
+    "row",
+    "prim",
+    "layer",
+    "packet",
+    "flags"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "ray",
+    "prim",
+    "t",
+    "custom",
+    "row"
    ],
    "count": 1
   },
@@ -11637,8 +11671,55 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "result",
+    "props",
+    "vegetation",
+    "terrain",
+    "holes",
+    "false_holes",
+    "opaque_diffs",
+    "prim_info",
+    "rows",
+    "rays"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "reason",
+    "off",
+    "on",
+    "need_off",
+    "need_on",
+    "rows"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "reason",
+    "rays",
+    "rows"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "tiles",
-    "key"
+    "key",
+    "stage",
+    "why"
    ],
    "count": 1
   },
@@ -11660,6 +11741,9 @@
     "tlas_bytes",
     "scratch_bytes",
     "instance_bytes",
+    "material_bytes",
+    "material_rows",
+    "cutout_rows",
     "total_bytes",
     "blas_build_calls",
     "batch_scratch_bytes",
