@@ -5,7 +5,7 @@
 // the CPU consumers (CopyResultsToVertexPool); this one feeds the VK water cull/pack directly on the GPU.
 //
 // Set 0:
-//   b0  StructuredBuffer<GpuTerrainVertexInput>        input window: element i is vertex number (vertexOffset + i)
+//   b0  StructuredBuffer<GpuTerrainVertexInput>        resident input, indexed by ABSOLUTE vertex number
 //   b1  StructuredBuffer<GpuTerrainLight>              lights [2..N-1] of the terrain light list
 //   b2  RWStructuredBuffer<GpuTerrainLightingOutput>   output, indexed by ABSOLUTE vertex number
 //   b3  ConstantBuffer<LightingParams>                 per-frame scalars
@@ -90,7 +90,7 @@ void main(uint3 tid : SV_DispatchThreadID)
     uint vn = id + uint(P.counts.z);
     if (vn >= uint(P.counts.x)) return;
 
-    GpuTerrainVertexInput v = vertices[id];
+    GpuTerrainVertexInput v = vertices[vn];
 
     uint lightr = 255u, lightg = 255u, lightb = 255u;
     uint specR = 0u, specG = 0u, specB = 0u;

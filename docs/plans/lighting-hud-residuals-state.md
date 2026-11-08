@@ -20,15 +20,30 @@ E:/mc2-archive-2026-10/proofs/lighting-hud-residuals and proofs/box/mc2-slot06):
 - tools/lane_merge.py --lint HEAD
 - tools/box_run.py --gpu 0 -- build unit smoke-lite
 
-Remaining terrain pack work: existing CPU pack storage is already persistent.
-Safe suppression of repacking needs source dirty notifications covering elevation,
-normal, shadow, water, vertex XY and calcThisFrame, including camera re-entry and
-mission reset. The assigned files expose no complete revision/dirty feed. Do not
-add a redundant candidate-pack comparison and call it a performance improvement.
-Native producers still upload the visible window each frame; GPU dirty updates
-would also need changes outside the assigned files (vk_native_producers).
-Next run: establish complete terrain source invalidation and retired-slot GPU
-residency with that consumer's owner, then add the plan's random-edit/full-repack
-equivalence case. No terrain vertex optimization or dirty-range test is claimed.
+Continuation: resident terrain inputs and complete source dirty feed implemented.
+MapData::setVertexHeight marks the changed absolute vertex; same-height writes
+do not mark. calcLight advances a bulk epoch for normals and sun shadows;
+calcWater/recalcWater/clearShadows, map replacement and PostcompVertex assignment
+also invalidate. Craters/damage overlays do not write these vertex inputs;
+any height deformation uses the same height setter. Light/camera/weather scalars
+remain per-frame inputs and lighting compute still runs every frame.
+
+TerrainVertexPack checks source revisions plus transient calcThisFrame bits,
+source presence and XY before packing. Off-screen edits survive until re-entry.
+Mission init resets the CPU pack and source feed. NativeProducers owns one
+resident absolute-indexed input buffer per retired frame slot; each slot keeps
+independent revision receipts, coalesces adjacent dirty vertices and acknowledges
+only successful uploads. Zero-filled unvisited holes preserve the old window
+semantics. The Vulkan shader reads absolute indices; its synthetic startup test
+still uses a nonzero vertex offset. No island file was changed.
+
+New test_terrain_vertex_dirty.cpp covers one edit = one range, clean = zero bytes,
+adjacent merge, missed slot updates, random-edit/full-repack parity, moving window
+re-entry, all input fields, lighting epochs and same-size mission reset.
+
+Next: commit, Windows Ninja mc2 compile; box build/unit, lighting and shader/layout
+contracts, smoke-lite (with sync validation for the resident-buffer handoff), lint.
+Final receipts and exact SHA go in the external proof STATE.md, not a follow-up
+documentation commit that would invalidate the proved tip.
 
 No performance claim; weekly measurement belongs to the orchestrator.
