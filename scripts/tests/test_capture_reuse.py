@@ -4,8 +4,15 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import capture_reuse  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reuse_on(monkeypatch):
+    monkeypatch.setenv(capture_reuse.ENABLE_ENV, "1")   # reuse is off by default; these tests exercise the enabled path
 
 
 def _world(tmp_path):
@@ -18,6 +25,8 @@ def _world(tmp_path):
     install = tmp_path / "install"
     install.mkdir()
     (install / "mc2.exe").write_bytes(b"exe-v1")
+    (install / "shaders").mkdir()
+    (install / "shaders" / "terrain.frag.spv").write_bytes(b"spv-v1")
     (install / ".deployed_manifest.csv").write_text("# h\nrelpath,sha256,bytes\nmc2.exe,aa,6\n")
     out = tmp_path / "out"
     cmd = ["py", "capture.py", "--install", str(install), "--bookmarks", "pose_a", "--out", str(out)]
@@ -78,3 +87,33 @@ def test_a_tampered_or_incomplete_stored_set_is_never_reused(tmp_path):
     run["n_captured"] = 0
     (stored / "capture_run.json").write_text(json.dumps(run))
     assert capture_reuse.restore(cmd, root, cache, "gpuA") is None
+
+
+def test_a_changed_shader_with_an_unchanged_exe_and_manifest_is_a_miss(tmp_path):
+    # p31: the staged manifest has its shader rows removed, so only the real shader bytes can tell the sets apart.
+    root, install, out, cmd = _world(tmp_path)
+    cache = tmp_path / "cache"
+    _capture(out)
+    assert capture_reuse.store(cmd, root, cache, "gpuA")
+    (install / "shaders" / "terrain.frag.spv").write_bytes(b"spv-v2")
+    assert capture_reuse.restore(cmd, root, cache, "gpuA") is None
+    (install / "shaders" / "terrain.frag.spv").write_bytes(b"spv-v1")
+    assert capture_reuse.restore(cmd, root, cache, "gpuA")
+
+
+def test_an_install_without_shader_files_cannot_be_identified(tmp_path):
+    root, install, out, cmd = _world(tmp_path)
+    (install / "shaders" / "terrain.frag.spv").unlink()
+    _capture(out)
+    assert not capture_reuse.store(cmd, root, tmp_path / "cache", "gpuA")
+
+
+def test_reuse_is_disabled_by_default(tmp_path, monkeypatch):
+    root, _install, out, cmd = _world(tmp_path)
+    cache = tmp_path / "cache"
+    _capture(out)
+    assert capture_reuse.store(cmd, root, cache, "gpuA")
+    monkeypatch.delenv(capture_reuse.ENABLE_ENV)
+    assert not capture_reuse.enabled()
+    assert capture_reuse.restore(cmd, root, cache, "gpuA") is None
+    assert not capture_reuse.store(cmd, root, cache, "gpuA")
