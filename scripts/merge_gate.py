@@ -67,6 +67,50 @@ def stage_tier(name):
     return 1 if name.startswith(("determinism-", "saveload-")) or name in ("player-path",) else 0
 
 
+#: Nightly 03/16 determinism is one pinned run (`check --single`, p29 L23); weekly and sim-sensitive diffs keep the a/b pair.
+SINGLE_RUN_DETERMINISM = ("mc2_03", "mc2_16")
+#: Front end, logistics and comm video: only player-path drives them (every other smoke boots --mission under SmokeMode).
+PLAYER_PATH_GLOBS = ("code/logistics*", "code/mainmenu*", "code/mc2movie*", "code/loadscreen*", "code/mechlab*", "code/mechbay*",
+                     "code/pilotready*", "code/missionbegin*", "code/missionselect*", "code/*video*", "code/*movie*", "code/*menu*",
+                     "guiruntime/playerfrontend*", "gameos/gameos/*video*", "gameos/gameos/*movie*", "scripts/run_player_path.py")
+
+
+def sim_sensitive(paths):
+    """Changed paths matching tools/sim_sensitive_paths.json (the lane precheck's own sim/save list; '*' crosses '/')."""
+    import fnmatch
+    pats = json.loads((ROOT / "tools/sim_sensitive_paths.json").read_text(encoding="utf-8"))["patterns"]
+    return sorted(p for p in paths if any(fnmatch.fnmatchcase(p.replace("\\", "/"), g) for g in pats))
+
+
+def promoted_stages(paths):
+    """p31: stages a diff needs at this merge whatever the scheduled tier filtered out. A sim-sensitive change restores the
+    windowed pair, the mc2_24 finale (2600 ticks) and the day/night saves; a path naming a mission restores that map's rows;
+    a front-end/logistics/video change restores the player-path witness."""
+    import fnmatch
+    norm = [p.replace("\\", "/") for p in paths]
+    want = set()
+    if sim_sensitive(norm):
+        want |= {"determinism-" + WINDOWED_DETERMINISM, "determinism-mc2_24", "saveload-mc2_01", "saveload-mc2_10"}
+    for m in sorted({m for p in norm for m in re.findall(r"mc2_\d\d", p.lower())}):
+        want |= {"determinism-" + m, "saveload-" + m}
+    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
+        want.add("player-path")
+    return want
+
+
+def promote_for_diff(steps, scheduled, planned, paths, asked, weekly):
+    """-> (steps, promoted names). Re-adds the tier-filtered rows promoted_stages(paths) needs, in plan order (never over an
+    operator --stages/--skip choice), and returns 03/16 determinism to the a/b pair on --weekly or a sim-sensitive diff."""
+    tiered = {s[0] for s in planned}
+    want = set() if asked else {n for n in promoted_stages(paths) if n not in tiered}
+    promoted = {n for n, _, _ in scheduled if n in want}
+    order = {s[0]: i for i, s in enumerate(scheduled)}
+    keep = sorted(list(steps) + [s for s in scheduled if s[0] in promoted], key=lambda s: order.get(s[0], len(order)))
+    if weekly or sim_sensitive(paths):
+        keep = [(n, [a for a in c if a != "--single"] if n.startswith("determinism-") else c, e) for n, c, e in keep]
+    return keep, promoted
+
+
 OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
 
 
@@ -545,7 +589,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
                        *(["--sim-speed", "2"] if mission == WINDOWED_DETERMINISM else
-                         (["--headless-both", "--ticks", "2600"] if mission == "mc2_24" else ["--headless-both"]))], {}))
+                         (["--headless-both", "--ticks", "2600"] if mission == "mc2_24" else ["--headless-both"])),
+                       *(["--single"] if mission in SINGLE_RUN_DETERMINISM else [])], {}))
     for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("saveload-" + mission,
                       [py, "tools/saveload_roundtrip.py", "check", "--mission", mission,
@@ -1839,6 +1884,7 @@ def main(argv=None):
             raise ValueError("--expect-pre-exe-sha requires --before-dir")
         planned = (plan(args.j, proof, args.capture_before_runs, args.before_dir) if args.before_dir
                    else plan(args.j, proof, args.capture_before_runs))
+        scheduled = planned   # before tier filtering: promoted_stages() restores rows from here
         asked = [n for g in args.stages or [] for n in g.split(',')]
         if not asked:
             tier = 2 if args.weekly else 1 if args.nightly else 0
@@ -1865,9 +1911,13 @@ def main(argv=None):
     if base:
         git("merge-base", "--is-ancestor", base, head)
         paths = [p for p in git("diff", "--name-only", "-z", base, head).split("\0") if p]
+        steps, promoted = promote_for_diff(steps, scheduled, planned, paths, asked, args.weekly)
         steps = affected_plan(steps, paths, args.full)
+        # A promoted row the diff classification would skip anyway (e.g. a doc naming a map) is not added as a SKIP.
+        steps = [s for s in steps if not (s[0] in promoted and s[2].get("MC2_GATE_SKIP_REASON"))]
         steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
     else:
+        steps, _ = promote_for_diff(steps, scheduled, planned, [], asked, args.weekly)
         steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
         # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
