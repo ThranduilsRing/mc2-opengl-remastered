@@ -495,9 +495,10 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 				
   	paintingVtol[commanderID] = 1;
 	if (mc2_diag::tagRequested("SUPPORT_CRAFT"))
-		mc2::fmt::print_err("[SUPPORT_CRAFT] event=spawn vehicle={} commander={} name={} x={} y={} z={}\n",
+		mc2::fmt::print_err("[SUPPORT_CRAFT] event=spawn vehicle={} commander={} name={} x={} y={} z={} appearance={:016X} shape={:016X}\n",
 			vehicleID[commanderID], commanderID, mc2::fmt::safe(vTol[commanderID]->appearType->name),
-			newPos.x, newPos.y, newPos.z);
+			newPos.x, newPos.y, newPos.z, mc2::fmt::as_ptr(static_cast<void*>(vTol[commanderID].get())),
+			mc2::fmt::as_ptr(static_cast<void*>(vTol[commanderID]->bldgShape)));
 	vTolSpeed = -75.f;
 
 	vPos[commanderID] = vtolPos;

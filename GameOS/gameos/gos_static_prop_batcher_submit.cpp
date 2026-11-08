@@ -11,9 +11,12 @@ std::unordered_map<uint32_t, uint32_t> supportTraceTypes;
 }
 
 bool mc2SupportCraftTraceType(uint32_t typeID) {
+    static const bool enabled = mc2_diag::tagRequested("SUPPORT_CRAFT");
+    if (!enabled) return false;
     const auto it = supportTraceTypes.find(typeID);
-    return it != supportTraceTypes.end() &&
-        g_mc2FrameCounter.load(std::memory_order_relaxed) - it->second < 60;
+    if (it == supportTraceTypes.end()) return false;
+    const auto& [id, firstFrame] = *it;
+    return g_mc2FrameCounter.load(std::memory_order_relaxed) - firstFrame < 60;
 }
 
 

@@ -1883,6 +1883,21 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     Mc2ColorPropFeed feed{};
     if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
     if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
+    if (mc2_diag::tagRequested("SUPPORT_CRAFT")) {
+        const auto* instances = static_cast<const GpuStaticPropInstance*>(feed.instances112);
+        for (uint32_t i = 0; i < feed.count; ++i) {
+            const auto& inst = instances[i];
+            if (!mc2SupportCraftTraceType(inst.typeID)) continue;
+            // Match the production vertex shader's row-vector matrix and axis swap.
+            const float world[4] = {-inst.modelMatrix[3], inst.modelMatrix[11], inst.modelMatrix[7], 1};
+            float clip[4] = {};
+            for (int a = 0; a < 4; ++a)
+                for (int k = 0; k < 4; ++k) clip[a] += feed.worldToClipGL[k*4+a] * world[k];
+            mc2::fmt::print_err("[SUPPORT_CRAFT] event=projection frame={} type={} world={},{},{} clip={},{},{},{} pixel={},{}\n",
+                g_mc2RenderFrame, inst.typeID, world[0], world[1], world[2], clip[0], clip[1], clip[2], clip[3],
+                (clip[0]/clip[3]+1)*0.5f*w, (1-clip[1]/clip[3])*0.5f*h);
+        }
+    }
     // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
 
 

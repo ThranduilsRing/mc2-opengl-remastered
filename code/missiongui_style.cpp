@@ -28,6 +28,9 @@ void MissionInterfaceManager::updateVTol()
             const bool startBeam = state.ejectionSerial != vTol[vtolNum]->appliedEffects_.ejectionSerial;
             vTol[vtolNum]->presentAnimation(state);
             vTol[vtolNum]->recalcBounds();
+            // Flight clips translate the model far outside the fixed landing-site
+            // bounds. Keep posing/submitting it; GPU clipping sees the animated leaves.
+            vTol[vtolNum]->setInView(true);
             vTol[vtolNum]->update(false);
             if (startBeam) {
 					if (recoveryBeam[vtolNum])
