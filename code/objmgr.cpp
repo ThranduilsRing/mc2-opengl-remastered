@@ -445,8 +445,7 @@ GroundVehiclePtr GameObjectManager::newVehicle (void) {
 	if (numVehicles < maxVehicles) {
         // Detach a recycled support slot before init discards its old sensor.
         // Otherwise setTeamId removes the fresh, unregistered sensor at index -1.
-        if (mc2::gate::get<"MC2_PLAY_MISSION">() && mc2::brainpolicy::techBrain()
-            && vehicles[numVehicles]->getTeamId() >= 0) {
+        if (vehicles[numVehicles]->getTeamId() >= 0) {
             auto* sensor = vehicles[numVehicles]->getSensorSystem();
             mc2::fmt::print_err("[PLAYER_SUPPORT_RECYCLE] handle={} team={} sensor_index={}\n",
                 vehicles[numVehicles]->getHandle(), vehicles[numVehicles]->getTeamId(),
