@@ -11,10 +11,12 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "visual_verify"))
 import ab  # noqa: E402
+import console_child  # noqa: E402
 
 
 def _git(repo, *a):
-    return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True).stdout.strip()
+    return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True,
+                          **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
 @pytest.fixture()

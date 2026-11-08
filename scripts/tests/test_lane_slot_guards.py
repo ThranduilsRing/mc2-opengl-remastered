@@ -9,16 +9,17 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import lane_slot  # noqa: E402
+import console_child  # noqa: E402
 
 
 def _repo(tmp_path):
     r = str(tmp_path / "r")
-    subprocess.run(["git", "init", "-q", r], check=True)
+    subprocess.run(["git", "init", "-q", r], check=True, **console_child.child_kwargs())
     for k, v in (("user.email", "t@t"), ("user.name", "t")):
-        subprocess.run(["git", "-C", r, "config", k, v], check=True)
+        subprocess.run(["git", "-C", r, "config", k, v], check=True, **console_child.child_kwargs())
     shas = []
     for n in range(2):
-        subprocess.run(["git", "-C", r, "commit", "-q", "--allow-empty", "-m", str(n)], check=True)
+        subprocess.run(["git", "-C", r, "commit", "-q", "--allow-empty", "-m", str(n)], check=True, **console_child.child_kwargs())
         shas.append(lane_slot.git(r, "rev-parse", "HEAD")[1])
     lane_slot.git(r, "branch", "lane", shas[0])
     return r, shas

@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
 from smoke_lib import nofocus  # noqa: E402
 import mc2_env_pin as env_pin  # noqa: E402
+import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pixel_hist  # noqa: E402
 
@@ -75,7 +76,8 @@ def install_commit(install):
 
 
 def git_ok(*args):
-    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True).returncode == 0
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True)).returncode == 0
 
 
 def commit_order_problem(older, newer, what_older, what_newer):
