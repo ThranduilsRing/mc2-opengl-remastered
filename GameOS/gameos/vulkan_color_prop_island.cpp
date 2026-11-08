@@ -46,6 +46,8 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
 #include "gos_postprocess.h"
+#include "gos_static_prop_registry.h"   // OBJECT-ID-1: getRecipeIndexForType
+#include "../../RenderWorld/RenderWorld.h"   // OBJECT-ID-1: IsObjectIdBufferEnabled, objectIdRawForStaticPropRecipe
 #include "vulkan_color_prop_island.h"
 #include "texture_decode.h"
 #include "vk_texture_residency.h"
@@ -176,7 +178,7 @@ struct TypeRun {
 // GPU-driven props, CPU mirrors of the shader tables (color_prop_cull.comp, prop_packet_vk.glsl). One packet row and one indirect command exist per
 // (type run, packet, list); the compute pass writes each command's instanceCount.
 struct PropPacketRow {
-    int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, materialId, pad;
+    int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, materialId, objectId;
 };
 static_assert(sizeof(PropPacketRow) == 32);
 // The vertex+fragment push block (prop_packet_vk.glsl): the packet-row buffer's device address and the first row of the list one indirect call draws.
@@ -196,6 +198,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     bool inited   = false;
     bool useInterop = false;
     bool tier1    = false;   // TIER-1 in-place shared-GBuffer co-write
+    bool t1_haveId = false;  // OBJECT-ID-1: the render pass carries the shared object-id attachment
 
     // ---- TIER-1: shared-GBuffer co-write objects (built over the SAME shared
     // color/normal/depth images the GL scene renders terrain into). ----
@@ -204,6 +207,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     struct VkImageResource* t1_colorRes  = nullptr;
     struct VkImageResource* t1_normalRes = nullptr;
     struct VkImageResource* t1_depthRes  = nullptr;
+    struct VkImageResource* t1_idRes     = nullptr;   // OBJECT-ID-1: shared R32_UINT object-id image (MRT2); null when MC2_OBJECT_ID_BUFFER is off
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL interop view). Prop co-writes
     // direct-chain-native only; the former t1_*View handoff handles are deleted.
 
@@ -902,6 +906,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         s->t1_colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
         s->t1_normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
         s->t1_depthRes  = mc2SharedSceneDepthGetResource();
+        s->t1_idRes     = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
+        if (!s->t1_idRes && RenderWorld::IsObjectIdBufferEnabled()) {
+            setFallback("tier1_object_id_not_ready");   // the id image is realised a frame or two after the colour; retry
+            return false;
+        }
         // VK-RUNG8-ITEM5: direct-chain-native only. The shared GBuffer is VK-only and
         // left Vulkan-owned by the terrain first-owner; only the VkImageResources are
         // required (no GL interop view, no GL<->VK semaphore handoff).
@@ -957,7 +966,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->t1_normalRes);
         VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->t1_depthRes);
 
-        VkAttachmentDescription att[3]{};
+        VkImageResource* idRes = reinterpret_cast<VkImageResource*>(s->t1_idRes);
+        const bool haveId = idRes && idRes->view.get() != VK_NULL_HANDLE;
+        VkAttachmentDescription att[4]{};
         // color0 (MRT0) — LOAD GL terrain color, STORE result.
         att[0].format = colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -978,14 +989,25 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        VkAttachmentReference colorRefs[2] = {
+        // OBJECT-ID-1: attachment 3 = shared R32_UINT object id, LOAD (the terrain island zeroed it this frame), STORE. With the id buffer
+        // off the subpass slot is UNUSED and the pipelines mask it, so one shader serves both.
+        if (haveId) {
+            att[3].format = idRes->format; att[3].samples = VK_SAMPLE_COUNT_1_BIT;
+            att[3].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[3].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            att[3].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[3].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            att[3].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            att[3].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+        s->t1_haveId = haveId;
+        VkAttachmentReference colorRefs[3] = {
             {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
             {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+            {haveId ? 3u : VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
         };
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.colorAttachmentCount = 3; sub.pColorAttachments = colorRefs;
         sub.pDepthStencilAttachment = &depthRef;
 
         // Cross-submit WAW/hand-off deps shape (GL semaphore provides
@@ -1005,16 +1027,16 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.attachmentCount = haveId ? 4 : 3; rpci.pAttachments = att;
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->t1_rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
             vlog("TIER-1 vkCreateRenderPass failed."); setFallback("tier1_renderpass_failed"); return false;
         }
-        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
+        VkImageView fbViews[4] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get(), haveId ? idRes->view.get() : VK_NULL_HANDLE };
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->t1_rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.renderPass = s->t1_rpass.get(); fci.attachmentCount = haveId ? 4 : 3; fci.pAttachments = fbViews;
         fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
         if (!mc2vk::create(s->t1_fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
             vlog("TIER-1 vkCreateFramebuffer failed."); setFallback("tier1_framebuffer_failed"); return false;
@@ -1261,15 +1283,16 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // NO blend on EITHER attachment: opaque in-place overwrite. GBuffer1 is NOT
         // alpha-blendable (premult-over would corrupt the normal+class encoding), and
         // the color pass is opaque, so a winning fragment writes rgba directly.
-        VkPipelineColorBlendAttachmentState cba[2]{};
-        for (int k = 0; k < 2; ++k) {
+        VkPipelineColorBlendAttachmentState cba[3]{};
+        for (int k = 0; k < 3; ++k) {
             cba[k].blendEnable = VK_FALSE;
             cba[k].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         }
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        cb.attachmentCount = 2; cb.pAttachments = cba;
+        if (!s->t1_haveId) cba[2].colorWriteMask = 0;
+        cb.attachmentCount = 3; cb.pAttachments = cba;
 
         VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
         VkPipelineDynamicStateCreateInfo dsci{};
@@ -1324,6 +1347,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
         cba[1].blendEnable = VK_FALSE;
         cba[1].colorWriteMask = 0;
+        cba[2].colorWriteMask = 0;   // a fringe blends coverage the core pass cut; it never owns the pixel id
         if (!mc2vk::create(s->t1_fringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 fringe vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
@@ -1644,6 +1668,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                 // Opaque core list: the type's packets before its first alpha-testable one. The rest of the type stays in the
                 // alpha core list in packet order, so a coplanar later packet still wins the GEQUAL tie against an earlier one.
                 bool opaquePrefix = true;
+                // OBJECT-ID-1: the RenderWorld handle for this type (recipe index, generation 1); 0 when the type has no recipe.
+                const int32_t typeObjectId = static_cast<int32_t>(RenderWorld::objectIdRawForStaticPropRecipe(
+                    GpuStaticPropRegistry::getRecipeIndexForType(tr.typeID)));
                 for (uint32_t p = 0; p < tr.packetCount; ++p) {
                     const uint32_t pk = tr.firstPacket + p;
                     if (pk >= s->packets.size()) break;
@@ -1658,7 +1685,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         mc2_static_prop_packet_alpha_test(pk),
                         0,
                         s->authoredReady && pk < s->packetMaterialIds.size() ? s->packetMaterialIds[pk] : -1,
-                        0,
+                        typeObjectId,
                     };
                     const PropDrawCmd cmd{pkt.indexCount, instCount, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i};
                     // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).

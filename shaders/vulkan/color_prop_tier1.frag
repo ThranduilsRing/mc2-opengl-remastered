@@ -96,6 +96,7 @@ flat layout(location = 17) in uint vPacketIdx;
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
+layout(location = 2) out uint oObjectId;   // MRT2 R32_UINT object id (RenderWorld handle bits, 0 = background)
 
 // PROP-COVERAGE-1: partial alpha (tree cards, fences, alpha-mixed buildings) is resolved by a two-pass
 // draw, not by the Bayer 4x4 screen-door dither this island used to share with GL static_prop.frag. The
@@ -360,4 +361,5 @@ void main() {
     // RECEIVE opt-in at all. Closing the granularity gap needs a per-packet alpha bit
     // on the feed; it is not required for class correctness and is NOT done here.
     oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 1.0 : alphaTestClass ? 0.1875 : 0.25);
+    oObjectId = uint(uPacket.objectId);
 }

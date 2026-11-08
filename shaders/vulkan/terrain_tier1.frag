@@ -411,6 +411,7 @@ void main() {
         max(dot(cliffDx.xz, cliffDx.xz), dot(cliffDy.xz, cliffDy.xz)),
         max(dot(cliffDx.xy, cliffDx.xy), dot(cliffDy.xy, cliffDy.xy))))));
     vec3 lit = base;
+    vec3 gbufN = vec3(0.0, 0.0, 1.0);   // GBuffer1 rgb: the lit surface normal (flat-up when lighting is off)
     if (uT.lightingEnabled != 0) {
         vec3 lightDir = uT.terrainLightDir.xyz;
         // Colormaps are prelit: authored burnins, or sources baked by the loader.
@@ -450,6 +451,7 @@ void main() {
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
         if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
+        gbufN = N;
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
@@ -537,6 +539,7 @@ void main() {
 
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)
 
-    // ★TERRAIN shadow-class GBuffer1: flat-up normal + a=1.0 (handles own shadow).
-    GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+    // ★TERRAIN GBuffer1: the real shading normal in rgb (guide buffer for temporal/denoise consumers) and
+    // a=1.0 (handles own shadow, the class every consumer keys on; screen_shadow skips a>0.5 before reading rgb).
+    GBuffer1 = vec4(gbufN * 0.5 + 0.5, 1.0);
 }

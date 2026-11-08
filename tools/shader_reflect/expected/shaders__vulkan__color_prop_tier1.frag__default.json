@@ -10,6 +10,11 @@
       "location": 1,
       "name": "oGBuffer1",
       "type": "vec4"
+    },
+    {
+      "location": 2,
+      "name": "oObjectId",
+      "type": "uint"
     }
   ],
   "shader": "shaders/vulkan/color_prop_tier1.frag",

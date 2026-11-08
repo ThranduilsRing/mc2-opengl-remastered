@@ -187,21 +187,19 @@ void retireRecord(uint32_t handleIndex)
     rec.generation = static_cast<uint16_t>(rec.generation + 1u);
 }
 
-// M1.5 T9 (OBJECT_ID_PASSIVE_CANARY): real-rendering validator.
-// Runs after the scene is stable (canary frame N) when both
-// MC2_OBJECT_ID_BUFFER=1 AND MC2_OBJECT_ID_BUFFER_SELFTEST=1.
-// Samples a deterministic pixel pattern; expects at least one valid
-// static-prop hit AND at least one invalid background hit; validates
-// every valid handle against s_objectRecords (generation match + alive).
+// M1.5 T9 / OBJECT-ID-1 (OBJECT_ID_PASSIVE_CANARY): real-rendering validator, one passive log line at canary
+// frame N (no gate: it only reads, and logs once). Samples a grid over the output, expects at least one valid
+// static-prop hit and at least one background miss, validates every valid handle against s_objectRecords
+// (generation match + alive), and proves recycled-handle rejection: a handle with the generation bumped must be
+// refused by getObjectRecordView (the record table is not mutated).
 bool s_canaryRan = false;
 
 void runPassiveStableFrameCanary() {
     if (s_canaryRan) return;
-    if (true) return;
+    s_canaryRan = true;
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
         std::fprintf(stderr,
             "[OBJECT_ID_SELFTEST v1] mode=passive_stable_frame result=SKIPPED reason=env_disabled\n");
-        s_canaryRan = true;
         return;
     }
 
@@ -209,53 +207,49 @@ void runPassiveStableFrameCanary() {
     if (!pp) {
         std::fprintf(stderr,
             "[OBJECT_ID_SELFTEST v1] mode=passive_stable_frame result=SKIPPED reason=no_postprocess\n");
-        s_canaryRan = true;
         return;
     }
 
-    // Conservative deterministic sample pattern around an estimated
-    // screen center plus a far-corner background sentinel. Actual
-    // positions are not load-bearing as long as they hit the
-    // rendered region.
-    const int cx = 640;
-    const int cy = 360;
-    struct Sample { int x; int y; const char* role; };
-    const Sample samples[] = {
-        { cx,        cy,        "center"     },
-        { cx - 64,   cy,        "c-64x"      },
-        { cx + 64,   cy,        "c+64x"      },
-        { cx,        cy - 64,   "c-64y"      },
-        { cx,        cy + 64,   "c+64y"      },
-        { cx - 128,  cy - 128,  "c-128,-128" },
-        { cx + 128,  cy - 128,  "c+128,-128" },
-        { cx - 128,  cy + 128,  "c-128,+128" },
-        { cx + 128,  cy + 128,  "c+128,+128" },
-        { 8,         8,         "corner"     },
-    };
-
-    int validHits   = 0;
-    int invalidHits = 0;
-    bool genMismatch = false;
-    bool deadSlot    = false;
-    for (const auto& s : samples) {
-        RenderWorld::LookupResult res = RenderWorld::lookupAtPixel(s.x, s.y);
-        if (res.isValid) {
-            ++validHits;
-            // Double-check generation + alive for log clarity
-            // (lookupAtPixel already validates internally).
-            std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
-            if (res.handle.index() < s_objectRecords.size()) {
-                const auto& rec = s_objectRecords[res.handle.index()];
-                if (rec.generation != static_cast<uint16_t>(res.handle.generation())) {
-                    genMismatch = true;
+    const int ow = pp->getOutputWidth();
+    const int oh = pp->getOutputHeight();
+    int sampled = 0, validHits = 0, invalidHits = 0, backgroundMisses = 0;
+    bool genMismatch = false, deadSlot = false;
+    bool staleChecked = false, staleRejected = false;
+    uint32_t firstRaw = 0u, firstGameObjectId = 0u;
+    int firstKind = -1;
+    for (int gy = 0; gy < 6; ++gy) {
+        for (int gx = 0; gx < 8; ++gx) {
+            const int px = (ow * (2 * gx + 1)) / 16;
+            const int py = (oh * (2 * gy + 1)) / 12;
+            RenderWorld::LookupResult res = RenderWorld::lookupAtPixel(px, py);
+            ++sampled;
+            if (res.isValid) {
+                ++validHits;
+                if (firstRaw == 0u) {
+                    firstRaw = res.rawObjectId;
+                    firstGameObjectId = res.gameObjectId;
+                    firstKind = static_cast<int>(res.kind);
                 }
-                if ((rec.flags & RenderWorld::kRenderObjectFlagAlive) == 0u) {
-                    deadSlot = true;
+                std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
+                if (res.handle.index() < s_objectRecords.size()) {
+                    const auto& rec = s_objectRecords[res.handle.index()];
+                    if (rec.generation != static_cast<uint16_t>(res.handle.generation())) genMismatch = true;
+                    if ((rec.flags & RenderWorld::kRenderObjectFlagAlive) == 0u) deadSlot = true;
                 }
+            } else {
+                ++invalidHits;
+                if (res.rawObjectId == 0u) ++backgroundMisses;
             }
-        } else {
-            ++invalidHits;
         }
+    }
+    if (firstRaw != 0u) {
+        RenderCore::RenderObjectHandle live;
+        live.bits = firstRaw;
+        RenderCore::RenderObjectHandle stale = RenderCore::RenderObjectHandle::make(live.index(), live.generation() + 1u);
+        RenderWorld::ObjectRecordView view;
+        staleChecked = true;
+        // The live handle resolves, the same index with a bumped generation (a recycled slot) must not.
+        staleRejected = RenderWorld::getObjectRecordView(live, &view) && !RenderWorld::getObjectRecordView(stale, &view);
     }
 
     const char* result;
@@ -265,17 +259,20 @@ void runPassiveStableFrameCanary() {
         result = "DEAD_SLOT_HIT";
     } else if (validHits == 0) {
         result = "NO_STATIC_PROP_HIT";
-    } else if (invalidHits == 0) {
-        result = "ALL_VALID_NO_BACKGROUND";
+    } else if (backgroundMisses == 0) {
+        result = "NO_BACKGROUND_MISS";
+    } else if (!staleChecked || !staleRejected) {
+        result = "STALE_HANDLE_ACCEPTED";
     } else {
         result = "PASS";
     }
 
     std::fprintf(stderr,
         "[OBJECT_ID_SELFTEST v1] mode=passive_stable_frame result=%s "
-        "sampled=10 valid_hits=%d invalid_hits=%d\n",
-        result, validHits, invalidHits);
-    s_canaryRan = true;
+        "sampled=%d valid_hits=%d invalid_hits=%d background_misses=%d stale_rejected=%d "
+        "first_raw=0x%08X first_kind=%d first_gameObjectId=%u\n",
+        result, sampled, validHits, invalidHits, backgroundMisses, staleRejected ? 1 : 0,
+        firstRaw, firstKind, firstGameObjectId);
 }
 
 // M1.5 T10: substrate self-test. Exercises the record table directly

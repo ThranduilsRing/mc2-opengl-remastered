@@ -6224,7 +6224,12 @@
     "result",
     "sampled",
     "valid_hits",
-    "invalid_hits"
+    "invalid_hits",
+    "background_misses",
+    "stale_rejected",
+    "first_raw",
+    "first_kind",
+    "first_gameObjectId"
    ],
    "count": 1
   },
