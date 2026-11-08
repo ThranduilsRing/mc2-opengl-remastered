@@ -130,6 +130,28 @@ def nightly_unmet(verdict: dict) -> list[str]:
     return [n for n in required if not merge_gate.stage_passed(str((executed.get(n) or {}).get("status", "")))]
 
 
+COMPARE_BOOKMARKS = ("mc2_01_saved_205644", "mc2_10_saved_204523")   # merge_gate's day/night capture pair
+
+
+def missing_visual_evidence(verdict: dict, vpath: Path) -> list[str]:
+    """p31: promotion read only JSON, so a window could land without the day/night images the owner is told to view. A verdict
+    that required compare-captures must come with its evidence: before/after PNG and the A/B montage per bookmark, either pulled
+    beside the verdict (laptop_gate: <pulled>/evidence) or in the gate's own proof dir (artifacts.proof)."""
+    if "compare-captures" not in (verdict.get("required") or []):
+        return []
+    roots = [vpath.parent / "evidence", Path(str((verdict.get("artifacts") or {}).get("proof") or vpath.parent))]
+    root = next((r for r in roots if (r / "ab").is_dir()), None)
+    if root is None:
+        return ["no capture evidence (before/after/ab) beside the verdict or in its proof dir: " + ", ".join(map(str, roots))]
+    need = [p for b in COMPARE_BOOKMARKS
+            for p in (root / "before" / b / f"{b}.png", root / "after" / b / f"{b}.png", root / "ab" / b / "montage.jpg")]
+    gone = [str(p.relative_to(root)) for p in need if not (p.is_file() and p.stat().st_size)]
+    if gone:
+        return [f"capture evidence incomplete in {root}: missing or empty " + ", ".join(gone)]
+    print("[promote] day/night evidence to view: " + ", ".join(str(root / "ab" / b / "montage.jpg") for b in COMPARE_BOOKMARKS))
+    return []
+
+
 def untriaged_nightly_fail(proofs: str, now: float | None = None, max_age_h: float = 36.0) -> list[str]:
     """Fail-closed: refusal reasons unless the newest nightly-<date>/gate-verdict.json is fresh (< max_age_h), has failed == [] and
     is PASS or PARTIAL (an operator stage filter is fine when every row it ran passed). INFRA, FAIL (unless a triage* file sits
@@ -183,6 +205,7 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
         why.extend(untriaged_nightly_fail(NIGHTLY_PROOFS))
     if verdict.get("skipped"):
         why.append("skipped rows: " + ", ".join(sorted(verdict["skipped"])))
+    why.extend(missing_visual_evidence(verdict, vpath))
     if verdict.get("head") != cand:
         why.append(f"verdict head {str(verdict.get('head'))[:9]} is not the candidate {cand[:9]}")
     if _git_util.git(root, "merge-base", "--is-ancestor", old, cand, merge_stderr=True).returncode != 0:
