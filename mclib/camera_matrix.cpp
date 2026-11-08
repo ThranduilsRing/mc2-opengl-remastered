@@ -496,6 +496,11 @@ void Camera::setCameraOrigin (void)
 					float horiz = sqrtf(dx*dx + dy*dy);
 					float newPitch = (horiz > 0.1f) ? atan2f(dz, horiz) : (dz < 0.0f ? -1.5707f : 0.0f);
 					mc2::math::buildRotation(cameraOrigin, mc2::math::Euler(newPitch, cameraDirection.yaw, 0.0f));
+					lookVector = mc2::math::transformVector(glm::vec3(0.0f, 0.0f, -1.0f), cameraOrigin);
+					// Angular object culling must use the lifted view too; its frame
+					// was initialized from the requested pitch before this clamp.
+					cameraFrame.reset_to_world_frame();
+					cameraFrame.rotate(glm::vec3(newPitch / DEGREES_TO_RADS, 0.0f, cameraRotation));
 				}
 			}
 
