@@ -109,6 +109,9 @@ def transparent_border(image, hud=False):
     if not hud:
         pixels[np.sum(pixels[:, :, :3].astype(int), axis=2) <= 16] = 0
         pixels[(pixels[:, :, 0] == 255) & (pixels[:, :, 1] == 0) & (pixels[:, :, 2] == 255)] = 0
+        # Stock unused slots are solid pink (226,0,127), not TGA magenta.
+        if np.all(pixels == pixels[0, 0]) and pixels[0, 0, 0] > 200 and pixels[0, 0, 1] < 10 and pixels[0, 0, 2] > 100:
+            pixels[:] = 0
     pixels[pixels[:, :, 3] == 0] = 0
     return ImageOps.expand(Image.fromarray(pixels), border=1, fill=(0, 0, 0, 0))
 

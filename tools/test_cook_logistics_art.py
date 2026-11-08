@@ -129,3 +129,4 @@ def test_loose_input_beats_base_and_source_is_read_only(tmp_path):
 
 def test_magenta_placeholder():
     assert cook.transparent_border(Image.new('RGBA', (25, 30), (255, 0, 255, 255))).getbbox() is None
+    assert cook.transparent_border(Image.new('RGBA', (25, 30), (226, 0, 127, 255))).getbbox() is None
