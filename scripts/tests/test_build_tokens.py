@@ -38,15 +38,18 @@ def test_tokens_are_shared_and_released(tmp_path):
     d2.close()
 
 
-def test_ninja_pool_wait_is_bounded_and_timeout_never_requests_unlimited_jobs(monkeypatch):
-    seen = {}
+def test_ninja_pool_timeout_keeps_waiting_and_never_runs_an_unpooled_job(monkeypatch):
+    seen, calls = {}, []
 
-    def exhausted(want, **kwargs):
+    def exhausted_twice(want, **kwargs):
         seen.update(kwargs)
-        return build_tokens.Tokens([], 120, 6)
+        calls.append(want)
+        if len(calls) <= 2:
+            return build_tokens.Tokens([], 120, 6)      # the 120 s wait timed out with the pool still busy
+        return build_tokens.Tokens([object()], 5, 6)    # a slot finally freed
 
-    monkeypatch.setattr(build_tokens, "acquire", exhausted)
+    monkeypatch.setattr(build_tokens, "acquire", exhausted_twice)
     argv, tokens = ninja_build.pool_jobs(["mc2", "-j6"])
-    assert seen["timeout_s"] == 120
-    assert argv == ["mc2", "-j1"]
-    tokens.close()
+    assert seen["timeout_s"] == 120 and len(calls) == 3  # re-asked until a pooled token exists
+    assert argv == ["mc2", "-j1"] and len(tokens) == 1   # the width is the token count, never an extra unpooled slot
+    tokens.handles = []

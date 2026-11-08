@@ -1267,8 +1267,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     `cache` is read_manifest()'s relpath -> (sha256, bytes, mtime_ns). A file
     other than an executable whose source size and mtime_ns still match the recorded row, and whose
-    deployed copy is still the recorded size, is skipped: not copied, not
-    re-hashed. `full_verify` (--full-verify) ignores the cache and does what
+    deployed copy still hashes to the recorded sha256 (destination bytes are
+    read, never trusted by size), is skipped: not copied. `full_verify` (--full-verify) ignores the cache and does what
     every deploy did before: copy every file and hash source + target.
     `.mcasset.json` is always copied: its deployed bytes are line-ending
     normalized, so the deployed size is not a source size.
@@ -1304,7 +1304,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             stamp = source_stamp(src)
             if (row is not None and row[2] is not None and stamp == (row[1], row[2])
                     and os.path.isfile(dst)
-                    and os.path.getsize(dst) == row[1]):
+                    and os.path.getsize(dst) == row[1]
+                    and sha256_file(dst) == row[0]):   # destination BYTES, not size: a same-length corruption must be re-copied
                 src_hashes[rel] = (row[0], row[1], stamp[1])
                 skipped += 1
                 pdb_skipped = pdb_skipped or kind == "pdb"
@@ -1347,7 +1348,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     if skipped:
         log(f"skipped {skipped} unchanged file(s) "
-            f"(size+mtime_ns match the manifest; --full-verify to re-copy)")
+            f"(source size+mtime_ns and destination sha256 match the manifest; --full-verify to re-copy)")
 
     if shader_mismatches:
         fail("post-copy diff MISMATCH (stale files in target):\n  "
@@ -1817,7 +1818,7 @@ def verify_published_identity(target, source_root, head):
 def deploy_from_payload(payload, target, src_root, head):
     """Publish a payload built and gated elsewhere (tools/laptop_gate.py): payload/files/<rel> holds every file
     that differs from this install, payload/.deployed_manifest.csv is the full manifest. Every copied byte is
-    sha256-checked against its manifest row, untouched files are size-checked, the exe fingerprint must be a clean HEAD build."""
+    sha256-checked against its manifest row, untouched files are sha256-checked, the exe fingerprint must be a clean HEAD build."""
     from exe_fingerprint import extract, build_current
     payload, target = Path(payload), Path(target)
     manifest = payload / '.deployed_manifest.csv'
@@ -1835,8 +1836,8 @@ def deploy_from_payload(payload, target, src_root, head):
             tmp = dst.with_name(dst.name + '.payload-tmp')
             shutil.copy2(src, tmp)
             os.replace(tmp, dst)
-        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']):
-            fail(f'{rel}: not in the payload and the target copy does not match the manifest (size); the PC v0.4 drifted since the delta was taken')
+        elif not dst.is_file() or dst.stat().st_size != int(row['bytes']) or sha256_file(str(dst)) != row['sha256']:
+            fail(f'{rel}: not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken')
     exe = target / 'mc2.exe'
     fp = extract(exe)
     if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \

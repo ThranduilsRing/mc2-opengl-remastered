@@ -224,3 +224,14 @@ def test_fast_red_reports_art_suite_and_shader_inventory_before_the_gate(tmp_pat
     bad = laptop_gate.fast_red(tmp_path / "preflight.log", {})
     assert len(bad) == reds
     assert (tmp_path / "preflight.log").read_text().strip()
+
+
+def test_from_payload_rejects_same_length_drift_of_an_unchanged_file(tmp_path):
+    """p29 P1: the untouched-file check compares destination BYTES, not just the manifest size."""
+    payload, target = tmp_path / "payload", tmp_path / "target"
+    (payload / "files").mkdir(parents=True)
+    (target / "shaders").mkdir(parents=True)
+    _manifest(payload / ".deployed_manifest.csv", {"shaders/a.glsl": b"expected"})
+    (target / "shaders" / "a.glsl").write_bytes(b"EXPECTED")   # same length, different bytes
+    with pytest.raises(SystemExit):
+        deploy_payload.deploy_from_payload(payload, target, tmp_path, "0" * 40)

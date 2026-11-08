@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -17,19 +18,18 @@ from scripts.smoke_lib import host_lease, nofocus  # noqa: E402
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
-@pytest.mark.parametrize('slots', [2, 3])
-@pytest.mark.parametrize('cores', [[12,13,14,15], [8,9,12,13]])
-def test_real_host_partition_never_assigns_build_or_desktop_cores(monkeypatch, slots, cores):
+def test_real_host_partition_never_assigns_build_cores(monkeypatch):
+    """The real PC: slot 0 = CPUs 0-1 (one physical core), slot 1 = CPUs 2-3; compiles get the other 12 CPUs."""
     monkeypatch.setattr(host_lease, 'redirected', lambda: False)
     monkeypatch.setattr(host_lease.sys, 'platform', 'win32')
-    monkeypatch.setattr(host_lease.os, 'cpu_count', lambda: 16)
-    monkeypatch.setattr(host_lease, 'slot_count', lambda: slots)
-    monkeypatch.setattr(host_lease, 'game_cores', lambda: cores)
-    masks = [host_lease.affinity_mask(i) for i in range(slots)]
-    reserved=sum(1 << c for c in cores)
-    assert sum(masks) == reserved
-    assert all(mask and not mask & ~reserved for mask in masks)
-    assert all(not a & b for i, a in enumerate(masks) for b in masks[i+1:])
+    monkeypatch.setattr(host_lease, 'CPU_SPLIT_PATH', Path("Z:/no/such/CPU_SPLIT"))
+    monkeypatch.setattr(host_lease, 'GPU_SPLIT_PATH', Path("Z:/no/such/GPU_SPLIT"))
+    assert host_lease.slot_count() == 2
+    masks = [host_lease.affinity_mask(i) for i in range(2)]
+    assert masks == [0x3, 0xC]
+    assert host_lease.game_cores() == [0, 1, 2, 3]
+    compile_mask = host_lease._cpu_split()["compile"]
+    assert all(not m & compile_mask for m in masks) and not masks[0] & masks[1]
 
 
 @pytest.fixture()
@@ -606,10 +606,11 @@ def test_slot_count_comes_from_the_shared_waiver_file_not_the_environment(monkey
         waiver.write_text(junk)
         assert not host_lease.waiver_active()
     monkeypatch.setattr(host_lease, "redirected", lambda: False)
+    monkeypatch.setattr(host_lease, "GPU_SPLIT_PATH", Path("Z:/no/such/GPU_SPLIT"))
     monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "1")                      # ignored on the real lease file
-    assert host_lease.slot_count() == 2
+    assert host_lease.slot_count() == 2                                 # one slot per lane GPU
     waiver.write_text(str(time.time() + 60))
-    assert host_lease.slot_count() == 3
+    assert host_lease.slot_count() == 2                                 # the waiver no longer adds a slot: there is no third lane GPU
 
 
 @pytest.mark.parametrize("in_gate,granted", [(True, True), (False, False)])
@@ -675,13 +676,10 @@ def test_gate_quiet_refuses_live_marker(lease, monkeypatch):
         monkeypatch.delenv("MC2_IN_GATE", raising=False)
         monkeypatch.delenv(host_lease.QUIET_OVERRIDE_ENV, raising=False)
         _quiet_marker(holder.pid)
-        monkeypatch.setenv("MC2_VK_DEVICE", "AMD")                  # the lane's GPU is not the gate's: not refused
-        host_lease.acquire("lane run", wait=False, scan=lambda: [], log=lambda m: None)
-        assert host_lease.holds()
-        host_lease.release()
-        monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")               # the gate's GPU is busy
-        with pytest.raises(host_lease.GateQuiet, match=rf"GATE QUIET: the gate's device \(NVIDIA\) is busy, refusing game run on it \(gate pid {holder.pid} since ") as exc:
-            host_lease.acquire("lane run", wait=False, scan=lambda: [], log=lambda m: None)
+        for device in ("AMD", "NVIDIA"):                            # the PC gate fallback holds both lane GPUs: either is refused
+            monkeypatch.setenv("MC2_VK_DEVICE", device)
+            with pytest.raises(host_lease.GateQuiet, match=rf"GATE QUIET: the PC gate fallback holds both lane GPUs, refusing game run \(gate pid {holder.pid} since ") as exc:
+                host_lease.acquire("lane run", wait=False, scan=lambda: [], log=lambda m: None)
         assert exc.value.rc == host_lease.QUIET_RC != 4
         assert not host_lease.holds()
         monkeypatch.setenv(host_lease.QUIET_OVERRIDE_ENV, "1")      # the explicit owner override
@@ -718,56 +716,32 @@ def test_gate_quiet_passes_the_gate_itself_and_its_children(lease, monkeypatch):
         holder.wait()
 
 
-def test_gpu_split_parse_and_per_device_lease_paths(lease, monkeypatch):
-    assert host_lease._parse_gpu_split("# c\ngate=AMD\nlane = NVIDIA\nbogus=1\n") == {"gate": "AMD", "lane": "NVIDIA"}
-    assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT
-    monkeypatch.delenv("MC2_IN_GATE", raising=False)
-    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
-    lane_path = host_lease.lease_path()
-    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
-    assert host_lease.lease_path() != lane_path                     # the gate's GPU has its own slots, queue and locks
-    monkeypatch.delenv("MC2_VK_DEVICE")
-    monkeypatch.setenv("MC2_IN_GATE", "1")
-    assert host_lease.lease_path() != lane_path
-    monkeypatch.delenv("MC2_IN_GATE")
-    assert host_lease.lease_path() == lane_path                     # no pin: a lane run
+def test_gpu_split_parse_and_one_lease_set(lease, monkeypatch):
+    assert host_lease._parse_gpu_split("# c\nslot0=NVIDIA\nslot1 = AMD\nbogus=1\n") == ("NVIDIA", "AMD")
+    assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT == ("AMD", "NVIDIA")
+    assert host_lease._parse_gpu_split("lane=NVIDIA\ngate=AMD\n") == ("NVIDIA", "AMD")        # old keys: lane = slot 0, gate = slot 1
+    assert host_lease._parse_gpu_split("lane=NVIDIA\nslot0=AMD\n") == ("AMD", "NVIDIA")       # an explicit slotN wins
+    base = host_lease.lease_path()
+    for device in ("AMD", "NVIDIA"):                                 # one lease file set whatever the device
+        monkeypatch.setenv("MC2_VK_DEVICE", device)
+        assert host_lease.lease_path() == base
 
 
-def test_game_cores_follow_the_device_half(monkeypatch):
-    monkeypatch.delenv("MC2_IN_GATE", raising=False)
-    # off the PC there is no core_plan.json and the fallback derives game cores from cpu_count: pin a 16-CPU host so they sit in the lane mask
-    monkeypatch.setattr(host_lease.os, "cpu_count", lambda: 16)
-    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
-    lane = set(host_lease.game_cores())
-    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
-    gate = set(host_lease.game_cores())
+def test_game_cores_are_the_two_game_masks(monkeypatch):
+    monkeypatch.setattr(host_lease, "CPU_SPLIT_PATH", Path("Z:/no/such/CPU_SPLIT"))
+    cores = set(host_lease.game_cores())
     masks = host_lease._cpu_split()
-    assert lane and gate and not lane & gate
-    assert all(masks["lane"] >> c & 1 for c in lane) and all(masks["gate"] >> c & 1 for c in gate)
+    assert cores == {0, 1, 2, 3}
+    assert all((masks["game0"] | masks["game1"]) >> c & 1 for c in cores) and not any(masks["compile"] >> c & 1 for c in cores)
 
 
-def test_keyed_by_restores_and_the_child_env_keys_the_lease(lease, monkeypatch):
-    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+def test_keyed_by_restores_the_env(lease, monkeypatch):
     monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
-    lane_path = host_lease.lease_path()
     with host_lease.keyed_by("NVIDIA"):
-        assert host_lease.lease_path() != lane_path
-    assert host_lease.lease_path() == lane_path
-    with host_lease.keyed_by(None):
-        assert host_lease.lease_path() == lane_path
-
-
-def test_a_gate_device_run_acquires_and_gate_device_env_restores(lease, monkeypatch):
-    monkeypatch.delenv("MC2_IN_GATE", raising=False)
-    monkeypatch.setenv("MC2_VK_DEVICE", "NVIDIA")
-    host_lease.acquire("gate stage", wait=False, scan=lambda: [], log=lambda m: None)
-    assert host_lease.holds()
-    host_lease.release()
-    monkeypatch.setenv("MC2_VK_DEVICE", "AMD")
-    with host_lease.gate_device_env():
-        assert host_lease.on_gate_device()
         assert host_lease.os.environ["MC2_VK_DEVICE"] == "NVIDIA"
-    assert host_lease.os.environ["MC2_VK_DEVICE"] == "AMD"           # restored
+    assert host_lease.os.environ["MC2_VK_DEVICE"] == "AMD"
+    with host_lease.keyed_by(None):
+        assert host_lease.os.environ["MC2_VK_DEVICE"] == "AMD"
 
 
 def test_lease_busy_names_queue_head_not_unknown(lease):
@@ -790,3 +764,21 @@ def test_a_second_gate_process_does_not_take_over_or_remove_the_live_gate_marker
     finally:
         holder.kill()
         holder.wait()
+
+
+def test_capture_lease_holds_the_marker_only_while_the_stage_runs(lease):
+    assert not host_lease.gate_window_path().exists()
+    with host_lease.gate_capture_lease("abc", "capture-after"):
+        assert host_lease.gate_window_path().exists()
+    assert not host_lease.gate_window_path().exists()
+    with pytest.raises(RuntimeError):
+        with host_lease.gate_capture_lease("abc", "capture-before"):
+            raise RuntimeError("stage crashed")
+    assert not host_lease.gate_window_path().exists()    # a crashed stage never leaves the window shut
+
+
+def test_merge_gate_opens_no_window_long_quiet_marker():
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[1] / "merge_gate.py").read_text(encoding="utf-8")
+    assert "host_lease.open_gate_window(" not in src
+    assert "gate_capture_lease(" in src

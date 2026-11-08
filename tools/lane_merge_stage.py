@@ -118,6 +118,18 @@ def stage(root: str, window: str, tips: list[str]) -> dict:
 NIGHTLY_PROOFS = "E:/mc2-archive-2026-10/proofs/merge-gate"
 
 
+def nightly_unmet(verdict: dict) -> list[str]:
+    """Required stages of the verdict's nightly/weekly tier that did not execute green. A PARTIAL with no recorded tier proves nothing."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import merge_gate
+    tier = verdict.get("tier") or 0
+    if tier < 1:
+        return ["(verdict records no nightly tier)"]
+    executed = verdict.get("executed") or {}
+    required = [n for n, _c, _e in merge_gate.plan(1) if n == "deploy" or 1 <= merge_gate.stage_tier(n) <= tier]
+    return [n for n in required if not merge_gate.stage_passed(str((executed.get(n) or {}).get("status", "")))]
+
+
 def untriaged_nightly_fail(proofs: str, now: float | None = None, max_age_h: float = 36.0) -> list[str]:
     """Fail-closed: refusal reasons unless the newest nightly-<date>/gate-verdict.json is fresh (< max_age_h), has failed == [] and
     is PASS or PARTIAL (an operator stage filter is fine when every row it ran passed). INFRA, FAIL (unless a triage* file sits
@@ -138,6 +150,9 @@ def untriaged_nightly_fail(proofs: str, now: float | None = None, max_age_h: flo
     verdict = v.get("verdict")
     if verdict == "INFRA":
         why.append(f"newest nightly verdict is INFRA, not a result ({newest.parent}); rerun the nightly")
+    elif verdict == "PARTIAL" and not v.get("failed"):
+        # A stage filter is the nightly's design, but it is only a nightly if it still ran every stage of ITS tier green.
+        why += [f"newest nightly PARTIAL did not run/pass its required stage {n} ({newest.parent})" for n in nightly_unmet(v)]
     elif verdict not in ("PASS", "PARTIAL") or v.get("failed"):
         if not list(newest.parent.glob("triage*")):
             why.append(f"newest nightly verdict is {verdict} with failed rows and untriaged ({newest.parent}); add a triage file there")

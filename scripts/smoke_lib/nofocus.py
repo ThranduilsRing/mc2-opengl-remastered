@@ -209,8 +209,8 @@ def gpu_hint(out: dict) -> "Optional[str]":
 
 
 def route_gpu(out: dict, perf: bool = False) -> None:
-    """Route the run to its side of the GPU split (A:/Games/mc2-ops/GPU_SPLIT; default gate = RTX 2070 SUPER, lanes = 7900 XTX),
-    so the gate's game runs and lane game runs never share a GPU.
+    """Force a GPU only when asked (explicit MC2_VK_DEVICE or MC2_HARNESS_GPU=2070|xtx). Otherwise the lease slot a run wins
+    decides: slot 0 = 7900 XTX, slot 1 = RTX 2070 SUPER (A:/Games/mc2-ops/GPU_SPLIT), injected by spawn() after the hold.
 
     MC2_HARNESS_GPU = auto (default) | xtx | 2070 | any overrides. An explicit MC2_VK_DEVICE wins.
     The engine reads MC2_VK_DEVICE (a device-name substring): the Vulkan loader on this host ignores
@@ -477,6 +477,9 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     # The lease (slot, queue, core reservation) is keyed off the device the child actually gets, not this process's env.
     with host_lease.keyed_by(child_env.get("MC2_VK_DEVICE")):
         _hold_host_lease(argv)
+        dev = host_lease.held_device()   # the slot this run won decides its GPU unless one was forced
+        if dev and not child_env.get("MC2_VK_DEVICE"):
+            child_env["MC2_VK_DEVICE"] = dev
         proc = subprocess.Popen(list(argv), env=child_env, **popen_kwargs(show_window=show_window, **kw))
         _record_child(proc, argv)
         if any(exe_guard.engine_kind(a) is not None for a in argv):

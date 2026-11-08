@@ -118,18 +118,48 @@ def capture_gpus(cap_dir: Path) -> list:
     return sorted(names)
 
 
-def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
+def usable_png(p) -> bool:
+    """True for an existing, non-empty PNG that PIL can decode (a 0-byte or truncated capture is not evidence)."""
+    try:
+        if not p or Path(p).stat().st_size == 0:
+            return False
+        with Image.open(p) as im:
+            im.load()
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def evidence_problems(a_dir: Path, b_dir: Path, bookmarks) -> list:
+    """One line per bookmark whose A or B image is missing, empty or undecodable. An empty bookmark list is itself a
+    problem: a comparison of nothing must never exit 0."""
     if not bookmarks:
-        bookmarks = sorted(p.name for p in gl_dir.iterdir()
-                           if p.is_dir() and (vk_dir / p.name).is_dir())
+        return ["no bookmarks were compared"]
+    return [f"{bm}: side {name} has no usable png" for bm in bookmarks
+            for name, d in (("A", a_dir), ("B", b_dir)) if not usable_png(find_png(d, bm))]
+
+
+def discover_bookmarks(a_dir: Path, b_dir: Path) -> list:
+    """Union of the capture folders on either side, so a bookmark one side lacks is reported instead of silently skipped."""
+    names = set()
+    for d in (a_dir, b_dir):
+        if d.is_dir():
+            names |= {p.name for p in d.iterdir() if p.is_dir()}
+    return sorted(names)
+
+
+def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
+    """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
+    if not bookmarks:
+        bookmarks = discover_bookmarks(gl_dir, vk_dir)
     out.mkdir(parents=True, exist_ok=True)
     rows = []
     gpu_a, gpu_b = capture_gpus(gl_dir), capture_gpus(vk_dir)
     ph_cfg = pixel_hist.load_thresholds()
     for bm in bookmarks:
         pg, pv = find_png(gl_dir, bm), find_png(vk_dir, bm)
-        if not pg or not pv:
-            print(f"[ab] {bm}: missing png (a={pg} b={pv})")
+        if not usable_png(pg) or not usable_png(pv):
+            print(f"[ab] {bm}: missing or empty png (a={pg} b={pv})")
             continue
         a, b = load(pg), load(pv)
         size_mismatch = None
@@ -185,10 +215,14 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
         print(f"[pixel_hist] {r['bookmark']}: {pixel_hist.summary_line(r['pixel_hist'])}")
     if gpu_a and gpu_b and gpu_a != gpu_b:
         print(f"[ab] WARNING: the two sides ran on different GPUs ({gpu_a} vs {gpu_b}); the diff is not a clean A/B")
+    problems = evidence_problems(gl_dir, vk_dir, bookmarks)
+    if problems:
+        print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
-        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows,
+        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
+    compare.problems = problems
     return rows
 
 
@@ -280,7 +314,7 @@ def main(argv=None):
     out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
     if a.compare_only:
         compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops)
-        return
+        sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")
     out.mkdir(parents=True, exist_ok=True)
@@ -288,7 +322,8 @@ def main(argv=None):
     env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
     run_capture(ib, a.bookmarks, out / "b", env)
-    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",")])
+    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()])
+    sys.exit(1 if getattr(compare, "problems", None) else 0)
 
 
 if __name__ == "__main__":

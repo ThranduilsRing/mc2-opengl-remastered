@@ -1,5 +1,7 @@
 """video_decode_smoke.judge: offline verdicts on the log lines (the game run itself is scripts/video_decode_smoke.py)."""
 import sys
+
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -64,3 +66,21 @@ def test_graveyard_real_pass_log_audits_drains():
     assert ok, why
     ok, why = v.judge(text.replace("retire_calls=4200", "retire_calls=40").replace("retire_calls=2000", "retire_calls=40").replace("retire_calls=100", "retire_calls=40"), min_retires=200)
     assert not ok and "ordering proof did not run" in why
+
+
+def test_early_exit_only_accepts_the_bare_countdown_exit():
+    text = (FIXTURES / "video_smoke_end_pass.txt").read_text()
+    assert v.early_exit_only(text)
+    assert v.early_exit_only(text + "| mc2_01 | FAIL | engine_reported_fail: reason=early_exit stage=atexit |\n")
+
+
+@pytest.mark.parametrize("extra", [
+    "[runner] [DEPLOY_FINGERPRINT] MISMATCH: exe sha differs\n",
+    "| mc2_01 | FAIL | engine_reported_fail, shader_error |\n",
+    "[VK] shader compile failed: terrain.comp\n",
+    "[runner] [ORDER-LIVENESS] HARD FAIL: 1 check failed\n",
+    "> **RUN INVALID**\n",
+])
+def test_early_exit_with_mixed_failure_is_not_accepted(extra):
+    text = (FIXTURES / "video_smoke_end_pass.txt").read_text()
+    assert not v.early_exit_only(text + extra)

@@ -9,6 +9,7 @@ A build asks for K tokens (its -jK), waits until at least one is free, takes up 
 from __future__ import annotations
 
 import os
+import sys
 import time
 
 OPS = "A:/Games/mc2-ops"
@@ -20,10 +21,23 @@ def pool_size(pool_file: str | None = None) -> int:
         with open(path, encoding="utf-8") as fh:
             n = int(fh.read().split()[0])
         if n > 0:
-            return n
+            return min(n, compile_cpu_count())
     except (OSError, ValueError, IndexError):
         pass
-    return max(1, (os.cpu_count() or 8) - 4)
+    return min(max(1, (os.cpu_count() or 8) - 4), compile_cpu_count())
+
+
+def compile_cpu_count() -> int:
+    """Logical CPUs of the CPU_SPLIT compile mask (default 0xFFF0 = 12): the host-wide -j total never exceeds the cores compiles may use."""
+    try:
+        tools = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools")
+        if tools not in sys.path:
+            sys.path.append(tools)
+        from lint_slots import parse_cpu_split   # the one CPU_SPLIT grammar (also accepts the old lane= key)
+        with open(os.path.join(OPS, "CPU_SPLIT"), encoding="utf-8") as fh:
+            return max(1, bin(parse_cpu_split(fh.read())["compile"]).count("1"))
+    except (OSError, ImportError):
+        return 12
 
 
 def token_dir() -> str:
@@ -67,7 +81,8 @@ class Tokens:
 
 def acquire(want: int, total: int | None = None, directory: str | None = None, poll_s: float = 2.0, timeout_s: float | None = None,
             on_wait=None, sleep=time.sleep, clock=time.monotonic) -> Tokens:
-    """Wait until >= 1 token is free, then take up to `want`. After timeout_s, run with 1 unpooled slot rather than block forever."""
+    """Wait until >= 1 token is free, then take up to `want`. After timeout_s, return an EMPTY set: the caller must keep waiting
+    (ninja_build.pool_jobs does); running an unpooled job would exceed the host-wide compile budget."""
     total = total or pool_size()
     directory = directory or token_dir()
     os.makedirs(directory, exist_ok=True)

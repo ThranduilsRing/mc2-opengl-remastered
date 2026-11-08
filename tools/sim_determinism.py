@@ -470,11 +470,9 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             if not headless_exit_ok(r.returncode, text):
                 sys.exit(f"sim_determinism: headless smoke run {tag} did not reach its tick budget cleanly (rc={r.returncode}):\n"
                          + "\n".join(r.stdout.splitlines()[-8:]))
-        elif r.returncode and os.environ.get("MC2_IN_GATE") == "1":
-            sys.exit(f"sim_determinism: gate smoke {tag} failed (rc={r.returncode}):\n" + r.stdout)
-        if not headless_run and r.returncode and os.path.exists(log_path):
-            print(f"sim_determinism: note: smoke run {tag} returned {r.returncode} (a smoke gate verdict); its SIMID stream is still compared")
-        elif not headless_run and r.returncode:
+        elif r.returncode and not windowed_exit_ok(r.returncode, text):
+            # A windowed run must pass its smoke everywhere (gate or standalone): matching SIMIDs cannot launder a fingerprint,
+            # shader, crash or content failure. The one narrow exception is the perf_counter-only verdict (see windowed_exit_ok).
             sys.exit(f"sim_determinism: smoke run {tag} failed (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
         shutil.copytree(arts[-1], dest)
         logs.append(os.path.join(dest, mission + ".log"))
@@ -520,6 +518,26 @@ def headless_exit_ok(returncode: int, text: str) -> bool:
         if not names or any(not b.startswith(HEADLESS_RENDER_BUCKETS) for b in names):
             return False
     return True
+
+
+#: The only render-gate verdict a windowed determinism run may fail by (owner rule: perf_counter-only verdicts never fail a row).
+WINDOWED_TOLERATED_BUCKETS = ("perf_counter",)
+
+
+def windowed_exit_ok(returncode: int, text: str) -> bool:
+    """rc=0 is clean; rc=1 is tolerated only when the engine summary passed, no hard failure was printed (fingerprint, shader,
+    invalid run) and every FAIL row lists only WINDOWED_TOLERATED_BUCKETS. Any other nonzero exit is red."""
+    if returncode == 0:
+        return True
+    if returncode != 1 or "[SMOKE v1] event=summary result=pass" not in text or "Crash Report" in text:
+        return False
+    if "HARD FAIL" in text or "RUN INVALID" in text or "[DEPLOY_FINGERPRINT] MISMATCH" in text or "DEPLOY_FINGERPRINT:** FAIL" in text:
+        return False
+    rows = _SMOKE_FAIL_ROW.findall(text)
+    if not rows:
+        return False
+    return all((names := [b.strip() for b in buckets.split(",") if b.strip()]) and all(b.startswith(WINDOWED_TOLERATED_BUCKETS) for b in names)
+               for _stem, buckets in rows)
 
 
 #: Processes whose presence beside a pair explains a timing-dependent result (builds and other game runs).

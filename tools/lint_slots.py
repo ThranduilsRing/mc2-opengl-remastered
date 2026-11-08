@@ -167,24 +167,45 @@ def sweep_stale_scratch(parents, max_age_s=7200, now=None):
     return removed
 
 
-CPU_SPLIT_DEFAULT ={"gate": 0x00FF, "lane": 0xFF00}   # Ryzen 7 5800X3D, 16 logical CPUs: merge gate on 0-7, lane_merge lane work on 8-15
+CPU_SPLIT_DEFAULT = {"game0": 0x0003, "game1": 0x000C, "compile": 0xFFF0}   # 5800X3D, 16 logical CPUs, SMT siblings adjacent: one core per lane game, the other 6 cores (12 CPUs) for compiles
+
+
+CPU_SPLIT_PATH = Path("A:/Games/mc2-ops/CPU_SPLIT")
+
+
+def parse_cpu_split(text):
+    """Same grammar as scripts/smoke_lib/host_lease.parse_cpu_split (a test holds them equal). The old `lane=` mask is accepted for one
+    window as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. Bad lines are skipped."""
+    masks, legacy_lane = dict(CPU_SPLIT_DEFAULT), None
+    for line in text.splitlines():
+        k, _, v = line.partition("=")
+        k = k.strip()
+        try:
+            if k in masks and v.strip():
+                masks[k] = int(v.strip(), 0)
+            elif k == "lane" and v.strip():
+                legacy_lane = int(v.strip(), 0)
+        except ValueError:
+            continue
+    if legacy_lane and not re.search(r"^\s*compile\s*=\s*\S", text, re.M):
+        masks["compile"] = legacy_lane
+    return masks
 
 
 def cpu_masks():
-    """{"gate": mask, "lane": mask} from A:/Games/mc2-ops/CPU_SPLIT (lines `gate=0x00FF`, `lane=0xFF00`), else the defaults."""
-    masks = dict(CPU_SPLIT_DEFAULT)
+    """Masks from A:/Games/mc2-ops/CPU_SPLIT (lines game0=, game1=, compile=; the file is the one source of truth, scripts/smoke_lib/host_lease.py reads the same).
+    Derived modes: "lane" = compile (lane lint/build work never touches a game core); "gate" = every CPU (the rare PC gate fallback holds both game slots)."""
     try:
-        for line in Path("A:/Games/mc2-ops/CPU_SPLIT").read_text().splitlines():
-            k, _, v = line.partition("=")
-            if k.strip() in masks and v.strip():
-                masks[k.strip()] = int(v.strip(), 0)
-    except (OSError, ValueError):
-        pass
+        masks = parse_cpu_split(CPU_SPLIT_PATH.read_text())
+    except OSError:
+        masks = dict(CPU_SPLIT_DEFAULT)
+    masks["lane"] = masks["compile"]
+    masks["gate"] = masks["game0"] | masks["game1"] | masks["compile"]
     return masks
 
 
 def pin_cpus(mode):
-    """Pin this process to the `mode` half ("gate" or "lane"); children inherit the affinity. Returns the applied mask (0 = not applied)."""
+    """Pin this process to the `mode` mask ("lane"/"compile" = the 6 compile cores, "gate" = all); children inherit the affinity. Returns the applied mask (0 = not applied)."""
     mask = cpu_masks()[mode]
     if os.environ.get("MC2_NO_CPU_PIN") or (os.name != "nt" and not os.path.exists("A:/Games/mc2-ops/CPU_SPLIT")):   # the PC's 16-CPU split means nothing elsewhere; the box pins with taskset   # pytest: never pin the test runner
         return 0
@@ -207,3 +228,47 @@ def pin_cpus(mode):
         return 0
     print(f"cpu split: {mode} affinity mask=0x{mask:04X}", flush=True)
     return mask
+
+
+def sccache_server_pids():
+    """PIDs of every running sccache.exe (the persistent cache server runs cl/link for the builds; Windows only)."""
+    if os.name != "nt":
+        return []
+    import subprocess
+    import console_child
+    try:
+        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                             timeout=30, **console_child.child_kwargs(redirected=True)).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    rows = [ln.replace('"', "").split(",") for ln in out.splitlines()]
+    return [int(r[1]) for r in rows if len(r) > 1 and r[1].strip().isdigit()]
+
+
+def pin_pid(pid, mode="compile"):
+    """Set the affinity of ANOTHER process to the `mode` mask (intersected with the system mask); its later children inherit it.
+    Returns the applied mask, 0 when not applied (not Windows, no access, empty mask). Callers decide whether to pin (MC2_NO_CPU_PIN)."""
+    if os.name != "nt":
+        return 0
+    import ctypes
+    k32 = ctypes.windll.kernel32
+    k32.OpenProcess.restype = ctypes.c_void_p
+    h = k32.OpenProcess(0x0200 | 0x0400, False, int(pid))      # PROCESS_SET_INFORMATION | PROCESS_QUERY_INFORMATION
+    if not h:
+        return 0
+    try:
+        proc, sysm = ctypes.c_size_t(), ctypes.c_size_t()
+        if not k32.GetProcessAffinityMask(ctypes.c_void_p(h), ctypes.byref(proc), ctypes.byref(sysm)):
+            return 0
+        mask = cpu_masks()[mode] & sysm.value
+        return mask if mask and k32.SetProcessAffinityMask(ctypes.c_void_p(h), ctypes.c_size_t(mask)) else 0
+    finally:
+        k32.CloseHandle(ctypes.c_void_p(h))
+
+
+def pin_sccache_servers(mode="compile"):
+    """Re-pin every running sccache server to the compile mask so the cl.exe it spawns cannot land on a game core (a server started
+    outside a pinned build, or before the split, keeps the affinity it was born with). No-op under MC2_NO_CPU_PIN. Returns pids pinned."""
+    if os.environ.get("MC2_NO_CPU_PIN"):
+        return []
+    return [pid for pid in sccache_server_pids() if pin_pid(pid, mode)]
