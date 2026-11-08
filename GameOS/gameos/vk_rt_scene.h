@@ -17,7 +17,7 @@
 // LIFETIME: builds are blocking one-shots on map load and when the registry generation or the terrain key changes (a stall then; moving them to the frame's
 // own command buffer is a part-2 follow-up). Replacements are built into new owners and published only when the whole set succeeded; the replaced TLAS,
 // then the replaced BLASes, retire through VulkanContext::retire. A failed build keeps the last valid snapshot (never a partial membership) and stops
-// retrying until the inputs change. No ray query on the device: nothing is created.
+// retrying until the inputs change. Without RT capability and a registered consumer, nothing is collected, uploaded or built.
 // MATERIALS (part 3, docs/rt-scene-contract.md): one MaterialRow per BLAS geometry in one storage buffer published with the TLAS. A hit's row is
 // instanceShaderBindingTableRecordOffset + geometry index (the custom index stays the object ID). Row 0 is the movers' row, the prop rows follow type by
 // type (packet order), then one row per terrain tile (row = terrainRowBase + tile ID).
@@ -34,6 +34,18 @@
 namespace mc2vk::rt::scene {
 
 enum class Kind : uint8_t { Terrain = 0, StaticProp = 1, Mover = 2 };
+
+enum class Consumer : uint32_t { SelfTest = 1 };
+struct Demand {
+    uint32_t consumers = 0;
+    constexpr void set(Consumer consumer, bool registered) {
+        const uint32_t bit = static_cast<uint32_t>(consumer);
+        if (registered) consumers |= bit;
+        else consumers &= ~bit;
+    }
+    constexpr bool needed(bool capable) const { return capable && consumers != 0; }
+};
+constexpr bool updateNeeded(bool snapshotValid, bool changed) { return !snapshotValid || changed; }
 
 inline constexpr uint32_t kTerrainObjectId = 0;
 inline constexpr uint32_t kMechIdFirst = 0x10000;   // the movers: kMechIdFirst + scene-table slot
@@ -92,6 +104,15 @@ struct PropPlacement {
     uint32_t objectId = 0;
     const float* model = nullptr;   // 16 floats
 };
+
+// Lighting, fog and raster visibility do not change the ray-visible placement.
+constexpr bool samePlacement(const PropPlacement& a, const PropPlacement& b) {
+    if (a.typeId != b.typeId || a.objectId != b.objectId) return false;
+    if (!a.model || !b.model) return a.model == b.model;
+    for (uint32_t i = 0; i < 16; ++i)
+        if (a.model[i] != b.model[i]) return false;
+    return true;
+}
 
 // Records for `terrainChunks` terrain chunks (ordinal = chunk index) and `props`, sorted by key, prop ordinals assigned per object ID in input order. Props
 // whose object ID is 0 (no recipe; it would alias terrain) or does not fit the custom index are dropped and counted in `dropped`.
@@ -159,12 +180,16 @@ struct MaterialRow {
     float uvScaleX = 1.0f, uvScaleY = 1.0f;   // the raster's per-packet crop: uv = fract(uv) * scale
     uint32_t firstIndex = 0;     // props: first of this geometry's rebased indices in the published uv-index buffer
     uint32_t packet = 0;         // props: the global packet; terrain: the tile ID
+    friend constexpr bool operator==(const MaterialRow&, const MaterialRow&) = default;
 };
 static_assert(sizeof(MaterialRow) == 32);
 
 inline constexpr uint32_t kMoverRow = 0;
 inline constexpr uint32_t kPropRowBase = 1;
 constexpr uint32_t terrainRowBase(uint32_t propRows) { return kPropRowBase + propRows; }
+constexpr bool moverRowsCompatible(uint32_t oldPropRows, uint32_t newPropRows) {
+    return terrainRowBase(oldPropRows) == terrainRowBase(newPropRows);
+}
 
 // What the colour-prop island routes for one packet.
 struct PacketMaterial {
@@ -212,6 +237,11 @@ class VulkanContext;
 }
 
 namespace mc2vk::rt::scene {
+
+// Main thread. SelfTest registers from its existing diagnostic setting. Losing
+// the last consumer invalidates cached placements; feeds are sampled on demand.
+bool demanded();
+void setConsumer(Consumer consumer, bool registered);
 
 // The terrain island's frame feed: rebuilds the terrain BLAS (and the TLAS) when the surface changed. Main thread.
 void noteTerrain(const TerrainSource& t);

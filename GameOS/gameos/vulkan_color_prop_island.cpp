@@ -1907,7 +1907,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
 
     if (!prepare_mission_resources(s)) return 0;
-    mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());   // no-op without ray query or while the registry generation is unchanged
+    if (mc2vk::rt::scene::demanded()) mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());
 
     // Frame-ring allocations already belong to the current engine frame slot.
     // Private commands and descriptors retire against this island's submissions,
