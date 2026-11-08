@@ -45,8 +45,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         Mc2TerrainTier1Patch p{};
         p.blockOriginX = cmd.blockOriginX;
         p.blockOriginY = cmd.blockOriginY;
-        p.quadCountX = cmd.lodStep > 0 ? (qcX / cmd.lodStep) * cmd.lodStep : qcX;
-        p.quadCountY = cmd.lodStep > 0 ? (qcY / cmd.lodStep) * cmd.lodStep : qcY;
+        // Full block extent: a partial block is not rounded down to a stride multiple (that dropped the edge strip and left
+        // a gap); getOrBuildPatch appends the endpoint vertex when the extent is not a stride multiple.
+        p.quadCountX = qcX;
+        p.quadCountY = qcY;
         p.lodStep = cmd.lodStep;
         p.skirtDepth = skirts && skirtDepths ? skirtDepths[i] : 0.0f;
         p.skirtEdgeMask = skirts && skirtEdgeMasks ? skirtEdgeMasks[i] : 0u;

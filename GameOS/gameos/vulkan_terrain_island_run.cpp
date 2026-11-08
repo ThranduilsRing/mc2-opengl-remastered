@@ -24,6 +24,16 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 float mc2SceneLightScale();   // mclib/camera.cpp: LOCAL-LIGHTS-4 mission night scale of the prelit ground
 static uint32_t g_sceneClearedRenderFrame = 0;   // render frame + 1 of the last shared-scene clear (0 = never)
 
+// The visual mode a patch is actually drawn in. Single source for the draw loop and the feed receipt (the receipt used to report
+// the requested mode, so a mode-1 patch that fell back showed as 0 or 2 inconsistently with what was drawn).
+// TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are in bake (fine) units; uint16 indices cap it
+// at 255x255 verts, else it falls back to mode 2. No live bake -> mode 0.
+static int32_t resolveVisualMode(const Mc2TerrainTier1Patch& pr, bool bakeLive) {
+    int32_t mode = bakeLive ? pr.visualMode : 0;
+    if (mode == 1 && (pr.lodStep != 1 || pr.quadCountX * 4 + 1 > 255 || pr.quadCountY * 4 + 1 > 255)) mode = 2;
+    return mode;
+}
+
 extern "C" int mc2_vk_terrain_island_enabled() {
     return 1;
 }
@@ -567,7 +577,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
             u.blockOriginX = p.blockOriginX; u.blockOriginY = p.blockOriginY;
             u.quadCountX = p.quadCountX; u.quadCountY = p.quadCountY;
             u.edgeStitch = static_cast<int32_t>(p.edgeStitch);
-            u.visualMode = (p.visualMode == 2 && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
+            u.visualMode = resolveVisualMode(p, s->visualHeightReady && feed.visualSide > 1);
             u.skirtDepth = p.skirtDepth;
         }
         const uint64_t imported[] = {s->heightVersionCopied, s->cementVersionCopied, s->visualHeightVersionCopied,
@@ -615,9 +625,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         // TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are
         // in bake (fine) units; uint16 indices cap it at 255x255 verts, else fall back to mode 2.
-        const bool bakeLive = s->visualHeightReady && feed.visualSide > 1;
-        int32_t mode = bakeLive ? pr.visualMode : 0;
-        if (mode == 1 && (pr.lodStep != 1 || pr.quadCountX * 4 + 1 > 255 || pr.quadCountY * 4 + 1 > 255)) mode = 2;
+        const int32_t mode = resolveVisualMode(pr, s->visualHeightReady && feed.visualSide > 1);
         const int32_t meshQX = mode == 1 ? pr.quadCountX * 4 : pr.quadCountX;
         const int32_t meshQY = mode == 1 ? pr.quadCountY * 4 : pr.quadCountY;
         const PatchMesh* pm = (mode == 1 && diagLive)

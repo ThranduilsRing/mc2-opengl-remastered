@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include <algorithm>
 #include "terrain_internal.h"
+#include "terrain_lod_rules.h"
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
 #include "terrain_surface_cook.h"
@@ -364,6 +365,28 @@ long Terrain::update (void)
 			fflush(stdout);
 		}
 
+		// Cull boxes carry the real z range (gameplay + baked heights): refresh them when the bake lands or a block was edited.
+		{
+			static uint64_t s_cullVisVer = ~0ull;
+			const auto* fieldStore = gos_TerrainFieldStore();
+			const uint64_t visVer = fieldStore ? fieldStore->visualHeightVersion() : 0;
+			bool refreshed = (visVer != s_cullVisVer);
+			const int blockCount = s_terrainChunkSide * s_terrainChunkSide;
+			for (int bi = 0; bi < blockCount; ++bi) {
+				TerrainBlockMeta& rb = s_blockMeta[bi];
+				if (refreshed || rb.dirtyAabb) {
+					recomputeBlockAabb(rb);
+					refreshed = true;
+				}
+			}
+			if (refreshed) {
+				for (int scY = 0; scY < s_superchunkSide; ++scY)
+					for (int scX = 0; scX < s_superchunkSide; ++scX)
+						recomputeSuperchunkAabb(scX, scY);
+			}
+			s_cullVisVer = visVer;
+		}
+
 		// --- Phase 5 Pass 1: superchunk cull + per-block frustum + LOD selection ---
 		for (int scY = 0; scY < s_superchunkSide; ++scY)
 		{
@@ -414,11 +437,9 @@ long Terrain::update (void)
 						bmMx.x =  static_cast<float>(bm.originX + bm.quadCountX)  * 128.0f - halfMap;
 						bmMx.y =  halfMap - static_cast<float>(bm.originY)                  * 128.0f;
 						bmMn.y =  halfMap - static_cast<float>(bm.originY + bm.quadCountY)  * 128.0f;
-						// Use conservative z-range matching old MC2_BLOCK_FRUSTUM_FALLBACK path
-						// (kBlockZMin=-200, kBlockZMax=2500) so tight actual elevations don't cause
-						// spurious frustum failure. Actual elevations still used for skirt depth below.
-						bmMn.z = -200.0f;
-						bmMx.z = 2500.0f;
+						// Real per-block z range (gameplay + baked 4x heights + skirt/decal margin).
+						bmMn.z = bm.cullZMin;
+						bmMx.z = bm.cullZMax;
 
 						// CRIT-1: write inFrustum BEFORE any continue.
 						// [LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] skip-near variant when gated.
@@ -578,8 +599,9 @@ long Terrain::update (void)
 								(!nbm.inFrustum || nbm.lodLevel != bm.lodLevel))
 								edgeMask |= static_cast<uint8_t>((1u << e));  // skirt backstop
 							if (!s_noStitch && nbm.inFrustum &&
-								nbm.lodLevel > bm.lodLevel)      // coarser visible neighbour
-								stitch |= (static_cast<uint32_t>((LOD_STEPS[nbm.lodLevel] & 0xFF)))
+								nbm.lodLevel != bm.lodLevel)     // visible neighbour at another stride: both sides snap to lcm
+								stitch |= (static_cast<uint32_t>((mc2lod::stitchStride(LOD_STEPS[bm.lodLevel], LOD_STEPS[nbm.lodLevel],
+											(e < 2) ? bm.quadCountX : bm.quadCountY) & 0xFF)))
 										  << (e * 8);            // edge order N,S,W,E -> byte 0..3
 						}
 					}

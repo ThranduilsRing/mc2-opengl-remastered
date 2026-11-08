@@ -142,6 +142,8 @@ struct TerrainBlockMeta {
 	int            quadCountY;  // min(20, (realVerticesMapSide-1) - originY); 1021->always 20
 	float          minElev;     // min elevation over [originX..originX+quadCountX] inclusive
 	float          maxElev;     // max elevation over [originY..originY+quadCountY] inclusive
+	float          cullZMin;    // cull box z: gameplay + baked 4x visual heights over the block, plus margin (not the LOD metric)
+	float          cullZMax;
 	bool           dirtyAabb;   // height changed -> recompute AABB + patch SSBO
 	bool           inFrustum;   // result of AABB cull this frame
 	unsigned char  lodLevel;    // 0-5, chosen each frame
