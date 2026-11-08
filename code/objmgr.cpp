@@ -230,6 +230,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
 	terrainPresentationWorldToClip = glm::mat4{0.0f};
 	terrainPresentationHeightEpoch = ~uint64_t{0};
+	terrainPresentationNightFactor = -1.0f;
 	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));

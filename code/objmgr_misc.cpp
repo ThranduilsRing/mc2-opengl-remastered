@@ -586,7 +586,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
 		auto& dirty = mc2::terrainDirtyQueue();
 		const glm::mat4 worldToClip = eye ? eye->getWorldToClip() : glm::mat4{0.0f};
-		if (worldToClip != terrainPresentationWorldToClip || TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch) {
+		const float nightFactor = eye ? eye->nightFactor : 0.0f;
+		const bool isNight = eye && eye->isNight;
+		if (worldToClip != terrainPresentationWorldToClip || TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
+			nightFactor != terrainPresentationNightFactor || isNight != terrainPresentationIsNight) {
 			for (long block = 0; block < Terrain::numObjBlocks; ++block) {
 				const auto& info = Terrain::objBlockInfo[block];
 				for (long h = info.firstHandle; h < info.firstHandle + info.numObjects; ++h)
@@ -595,6 +598,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			}
 			terrainPresentationWorldToClip = worldToClip;
 			terrainPresentationHeightEpoch = TerrainRuntime::g_heightEpoch;
+			terrainPresentationNightFactor = nightFactor;
+			terrainPresentationIsNight = isNight;
 		}
 		for (long objIndex : dirty.drain())
 		{
@@ -649,6 +654,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 							appearance->setVisibility(true, true);
 						}
 						if (!appearance->IsStaticNow() || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
+							(appearance->getAppearanceClass() == BLDG_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
 							((kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING) && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
 							dirty.mark(objIndex);
 					}

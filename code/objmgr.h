@@ -184,6 +184,8 @@ class GameObjectManager {
 	public:
 		glm::mat4 terrainPresentationWorldToClip{0.0f};
 		uint64_t terrainPresentationHeightEpoch = ~uint64_t{0};
+		float terrainPresentationNightFactor = -1.0f;
+		bool terrainPresentationIsNight = false;
 
 		// B7o.7 (G7): objTypeManager is a VIEW (the unit tests point it at objects they own); ownedTypeManager is what init() fills and
 		// destroy() releases. Both are written together in objmgr.cpp only.

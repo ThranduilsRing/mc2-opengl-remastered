@@ -47,7 +47,6 @@ long BldgAppearance::render (long depthFixup)
 		// Static presentation has settled; render owns registry frame liveness.
 		bldgShape->Touch();
 		bldgShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
-		updateFrameEffects();
 	}
 	// World markers keep world depth and colour, but never enter a caster feed.
 	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);

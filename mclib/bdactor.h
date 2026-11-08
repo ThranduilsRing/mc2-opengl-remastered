@@ -516,6 +516,7 @@ class BldgAppearance : public ObjectAppearance
 		{
 			return (appearType->terrainLightRGB != 0xffffffff);
 		}
+		bool hasFrameLights() const { return pointLight || !spotlightLights_.empty(); }
 		
 		virtual void setLightsOut (bool lightFlag)
 		{
