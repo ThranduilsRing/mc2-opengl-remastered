@@ -536,6 +536,7 @@ bool VulkanContext::init(bool wantPresent) {
         VkPhysicalDeviceProperties2 props{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         props.pNext = caps.usableApi() >= profile::kFloorApi ? &driver : nullptr;
         vkGetPhysicalDeviceProperties2(phys_, &props);
+        if (props.pNext) driverId_ = driver.driverID;
         VkPhysicalDeviceMemoryProperties memory{};
         vkGetPhysicalDeviceMemoryProperties(phys_, &memory);
         uint64_t localBytes = 0;

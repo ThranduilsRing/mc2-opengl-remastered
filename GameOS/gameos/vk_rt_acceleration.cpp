@@ -302,6 +302,10 @@ bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const Acce
                        AccelStructure& dst) {
     // `dst` must be empty: a live structure is never overwritten in place (the caller publishes the copy and retires its old owner).
     if (!src || dst || compactedSize == 0) return false;
+    // AMD proprietary (26.9.2, RX 7900 XTX): a compacted copy of a 1-triangle ALLOW_UPDATE BLAS traces as a miss (stage 6 matrix,
+    // both PREFER_FAST_TRACE and PREFER_FAST_BUILD; the 512-triangle copies and every non-update copy hit; the 2070 hits all six).
+    // Refuse the copy there so the caller keeps the uncompacted structure; one sample size cannot place a primitive floor.
+    if (src.canUpdate() && ctx.driverId() == VK_DRIVER_ID_AMD_PROPRIETARY) return false;
     auto created = createAccelStructure(ctx, src.isTop() ? VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
                                         compactedSize, name);
     if (!created) return false;
