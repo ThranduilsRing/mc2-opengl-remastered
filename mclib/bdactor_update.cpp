@@ -570,6 +570,7 @@ long BldgAppearance::update (bool animate)
 		}
 
 		mc2ToRender(xlatPosition, position);
+		xlatPosition.y += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 
 		if (!fogLightSet)
 		{
