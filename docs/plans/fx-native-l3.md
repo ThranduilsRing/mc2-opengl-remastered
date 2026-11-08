@@ -25,4 +25,13 @@ Next: finish compile; run fx_render/VfxDrawPlan and L2 fx_playback doctests,
 covering shader/layout/native-boundary rows, final-tip compile and one lint.
 Then box smoke-lite and one day/night ab.py capture, inspect montage.
 Evidence destination: E:/mc2-archive-2026-10/proofs/fx-native-l3.
+At eca64ee60: clean Ninja compile PASS; 8 render/ordering cases plus the
+L2 driver PASS (all 3,000 scenarios identical). Logs: final-build.log,
+doctests.log in the evidence destination. Shader reflection PASS.
+Box compile blocked in unchanged vulkan_fsr_provider.cpp (Windows FidelityFX
+loader on Linux); starting L2 does not contain the required Linux build fix.
+Box smoke/captures therefore NOT RUN. Box lint otherwise passed; cxx17 flagged
+RenderDraw.first as pair access. Consume the draw as a structured binding.
+Next: prove the corrected tip, PC fallback smoke/A-B if the budget permits;
+otherwise integrate a green Linux-capable base and finish the named captures.
 No install/game/copy created. Scout scratch: G:/mc2-tmp/scout (remove own report).

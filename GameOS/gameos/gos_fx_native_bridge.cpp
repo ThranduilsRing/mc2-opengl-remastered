@@ -35,13 +35,14 @@ int gos_fx_native_flush(const mc2::fx::RenderResources& resources,
     mc2::fx::resolve_materials(resources, frame, resolve, nullptr, resolved);
     draws.clear();
     for (const auto& packet : frame.draws) {
-        const auto* material = resources.material(packet.material);
-        const auto it = resolved.find(packet.material);
+        const auto& [materialId, firstIndex, indexCount] = packet;
+        const auto* material = resources.material(materialId);
+        const auto it = resolved.find(materialId);
         if (!material || it == resolved.end()) continue;
         const auto& [key, texture] = *it;
         if (texture == 0xffffffffu) continue;
         VfxParticleDraw draw{};
-        draw.start = packet.first; draw.count = packet.count;
+        draw.start = firstIndex; draw.count = indexCount;
         draw.additive = material->blend; draw.texture = texture;
         draw.atlasColumns = kVfxCompactGeometryAtlas;
         draws.push_back(draw);
