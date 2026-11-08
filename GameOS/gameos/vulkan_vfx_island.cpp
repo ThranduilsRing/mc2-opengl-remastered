@@ -40,6 +40,8 @@
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
 #include "vulkan_vfx_geometry.h"
+#include "vfx_draw_plan.h"
+#include "vk_desc_write_cache.h"
 #include "vulkan_mover_shadow.h"
 #include "vulkan_shadow_island_live.h"
 #include "texture_decode.h"
@@ -685,10 +687,6 @@ extern "C" int mc2_vk_vfx_island_run(
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
-    {
-        ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
-        std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
-    }
     fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
     { ZoneScopedN("VKIsl.Vfx.Descriptors");
     if (!prepare_shadow_descriptors(s, par)) return 0;
@@ -708,6 +706,34 @@ extern "C" int mc2_vk_vfx_island_run(
     } }
     if (s->disabled) return 0;
 
+    // Pack drawable groups so equal-state neighbours are one draw (vfx_draw_plan.h); the ring holds the records in packed order.
+    std::vector<mc2vfx::PlanItem> items;
+    std::vector<mc2vfx::PlanDraw> plan;
+    unsigned long meshDraws = 0, tubeDraws = 0, vegetationDraws = 0;
+    items.reserve(drawCount);
+    for (uint32_t gi = 0; gi < drawCount; ++gi) {
+        const VfxParticleDraw& d = draws[gi];
+        if (d.count == 0) continue;
+        if (static_cast<uint64_t>(d.start) + d.count > particleCount) continue;   // clamp bad ranges
+        if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
+        if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
+        items.push_back({d.start, d.count, d.additive, d.atlasColumns, mc2vk::descKeyWord(*groupPage[gi]), d.u0, d.v0, d.us, d.vs, gi});
+        if (d.atlasColumns == kVfxGeometryAtlas) {
+            const auto flags = static_cast<const VfxGeometryVertex*>(particles)[d.start].flags;
+            if ((flags & VfxGeometryMesh) != 0u) ++meshDraws;
+            if ((flags & VfxGeometryTube) != 0u) ++tubeDraws;
+        }
+    }
+    mc2vfx::plan_draws(items, plan);
+    {
+        ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
+        uint8_t* dst = static_cast<uint8_t*>(span.ptr) + partOff;
+        for (const mc2vfx::PlanItem& it : items) {
+            std::memcpy(dst, static_cast<const uint8_t*>(particles) + static_cast<size_t>(it.src) * 64u, static_cast<size_t>(it.count) * 64u);
+            dst += static_cast<size_t>(it.count) * 64u;
+        }
+    }
+
     // Record: one renderpass, per-group pipeline + sub-range draw.
     VkCommandBuffer cb = s->cbuf[par];
     vkResetCommandPool(s->device, s->cpool[par].get(), 0);
@@ -726,31 +752,25 @@ extern "C" int mc2_vk_vfx_island_run(
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
-    unsigned long groupsDrawn = 0, meshDraws = 0, tubeDraws = 0, vegetationDraws = 0;
+    unsigned long groupsDrawn = 0;
     VkPipeline bound = VK_NULL_HANDLE;
-    for (uint32_t gi = 0; gi < drawCount; ++gi) {
+    VkDescriptorSet boundPage = VK_NULL_HANDLE;
+    for (const mc2vfx::PlanDraw& pd : plan) {
+        const uint32_t gi = items[pd.item].tag;
         const VfxParticleDraw& d = draws[gi];
-        if (d.count == 0) continue;
-        if (static_cast<uint64_t>(d.start) + d.count > particleCount) continue;   // clamp bad ranges
-        if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
-        if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
         if (d.additive == 4) want = s->oneAlphaPipe.get();
         else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
+        if (*groupPage[gi] != boundPage) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
+            boundPage = *groupPage[gi];
+        }
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        {
-            const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
-            mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
-            ++groupsDrawn;
-        }
-        if (d.atlasColumns == kVfxGeometryAtlas) {
-            const auto flags = static_cast<const VfxGeometryVertex*>(particles)[d.start].flags;
-            if ((flags & VfxGeometryMesh) != 0u) ++meshDraws;
-            if ((flags & VfxGeometryTube) != 0u) ++tubeDraws;
-        }
+        const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
+        mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, pd.count * expansion, 1, pd.start * expansion, 0);
+        ++groupsDrawn;
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
