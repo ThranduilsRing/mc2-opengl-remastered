@@ -14,6 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import check_boundaries as cb  # noqa: E402
+import console_child  # noqa: E402
 
 COPIED = ["scripts/check-include-firewall.allowlist", "scripts/check-unified-projection-retirement.allowlist",
           "scripts/check-gate-echo-reads.py", "scripts/check_boundaries.py", "scripts/boundary_rules.json"]
@@ -83,7 +84,7 @@ def build_fixture(root: Path) -> None:
     for rel in COPIED:
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / rel, root / rel)
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, **console_child.child_kwargs())
 
 
 def apply_case(root: Path, files: dict, deletes: list) -> list[Path]:

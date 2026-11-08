@@ -236,8 +236,8 @@ def test_a_capture_reaps_only_its_own_children_not_another_captures(monkeypatch)
     the reap of one must leave the other's child alive."""
     import run_visual_capture as rvc
     sleeper = [sys.executable, "-c", "import time; time.sleep(60)"]
-    kw = console_child.child_kwargs(redirected=True)
-    own, foreign = subprocess.Popen(sleeper, **kw), subprocess.Popen(sleeper, **kw)
+    own = subprocess.Popen(sleeper, **console_child.child_kwargs(redirected=True))
+    foreign = subprocess.Popen(sleeper, **console_child.child_kwargs(redirected=True))
     try:
         monkeypatch.setattr(rvc, "_ACTIVE", [own])
         rvc._kill_existing_mc2()

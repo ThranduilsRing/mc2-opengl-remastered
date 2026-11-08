@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import pytest  # noqa: E402
 import queue_lock  # noqa: E402
 import runner  # noqa: E402
+import console_child  # noqa: E402
 
 
 def test_a_second_holder_waits_and_times_out_while_the_first_holds(tmp_path):
@@ -18,7 +19,7 @@ def test_a_second_holder_waits_and_times_out_while_the_first_holds(tmp_path):
         child = subprocess.run([sys.executable, "-B", "-c",
                                 "import sys; sys.path.insert(0, sys.argv[1]); import queue_lock\n"
                                 "try:\n    queue_lock.hold(sys.argv[2], timeout=1, poll=0.1).__enter__()\nexcept TimeoutError:\n    sys.exit(7)\n",
-                                str(ROOT / "tools" / "farm"), str(lock)])
+                                str(ROOT / "tools" / "farm"), str(lock)], **console_child.child_kwargs())
         assert child.returncode == 7
     with queue_lock.hold(lock, timeout=1):   # released on exit
         pass
@@ -29,7 +30,8 @@ def test_the_lock_dies_with_its_holder(tmp_path):
     holder = subprocess.Popen([sys.executable, "-B", "-c",
                                "import sys, time; sys.path.insert(0, sys.argv[1]); import queue_lock\n"
                                "with queue_lock.hold(sys.argv[2]):\n    print('held', flush=True); time.sleep(60)\n",
-                               str(ROOT / "tools" / "farm"), str(lock)], stdout=subprocess.PIPE, text=True)
+                               str(ROOT / "tools" / "farm"), str(lock)], stdout=subprocess.PIPE, text=True,
+                              **console_child.child_kwargs(redirected=True))
     try:
         assert holder.stdout.readline().strip() == "held"
         with pytest.raises(TimeoutError):

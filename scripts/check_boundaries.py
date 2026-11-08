@@ -26,11 +26,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_TABLE = HERE / "boundary_rules.json"
+sys.path.insert(0, str(HERE))
+import console_child  # noqa: E402  (windowless git child)
 
 
 def list_files(root: Path) -> list[str]:
     r = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                       capture_output=True, check=True)
+                       capture_output=True, check=True, **console_child.child_kwargs(redirected=True))
     return sorted({p for p in r.stdout.decode("utf-8", "replace").split("\0") if p and (root / p).is_file()})
 
 
