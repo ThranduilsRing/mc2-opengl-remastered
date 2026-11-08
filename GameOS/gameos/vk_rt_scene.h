@@ -38,10 +38,13 @@ enum class Kind : uint8_t { Terrain = 0, StaticProp = 1, Mover = 2 };
 enum class Consumer : uint32_t { SelfTest = 1 };
 struct Demand {
     uint32_t consumers = 0;
-    constexpr void set(Consumer consumer, bool registered) {
+    // Returns true only when the last consumer leaves (invalidate snapshots).
+    constexpr bool set(Consumer consumer, bool registered) {
+        const bool hadConsumers = consumers != 0;
         const uint32_t bit = static_cast<uint32_t>(consumer);
         if (registered) consumers |= bit;
         else consumers &= ~bit;
+        return hadConsumers && consumers == 0;
     }
     constexpr bool needed(bool capable) const { return capable && consumers != 0; }
 };

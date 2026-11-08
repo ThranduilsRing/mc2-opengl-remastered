@@ -846,8 +846,14 @@ void logMoverLedger(const VulkanContext& ctx, State& s, uint64_t frame, uint32_t
 bool demanded() { return consumers().needed(rayContext() != nullptr); }
 
 void setConsumer(Consumer consumer, bool registered) {
-    consumers().set(consumer, registered);
-    if (consumers().consumers == 0) invalidateProps();
+    if (!consumers().set(consumer, registered)) return;
+    invalidateProps();
+    if (State::exists()) {
+        // invalidateProps retains terrain BLASes, but may have retired their
+        // only TLAS. Resample even an unchanged surface when demand returns.
+        State& s = State::instance();
+        s.terrainKeyLive = s.terrainKeyFailed = kNone;
+    }
 }
 
 void noteTerrain(const TerrainSource& t) {

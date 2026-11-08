@@ -14,3 +14,8 @@ sequential XTX/2070 self-tests with sync validation and probe checker, ordinary
 2070 zero-work run, smoke-lite. Orchestrator seed became ready before deploy.
 Baseline receipt: 549 unchanged publishes / 555 frames, median 2.8 ms/publish;
 2.706 seconds total (existing W134 log, no new timing runs).
+
+Follow-up before runtime: invalidate retained terrain keys when the final consumer
+leaves, so terrain-only scenes rebuild their retired TLAS on renewed demand.
+Retest/rebuild/lint this corrected tip. First deploy is copying shared payload;
+refresh its executable/manifest after the final build, before any game proof.

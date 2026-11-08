@@ -27,8 +27,9 @@ TEST_CASE("rt scene: demand requires capability and a registered consumer") {
     d.set(Consumer::SelfTest, true);
     CHECK_FALSE(d.needed(false));
     CHECK(d.needed(true));
-    d.set(Consumer::SelfTest, true);   // registration is idempotent
-    d.set(Consumer::SelfTest, false);
+    CHECK_FALSE(d.set(Consumer::SelfTest, true));   // registration is idempotent
+    CHECK(d.set(Consumer::SelfTest, false));        // losing demand invalidates terrain too
+    CHECK_FALSE(d.set(Consumer::SelfTest, false));  // an already idle scene stays idle
     CHECK_FALSE(d.needed(true));
 }
 
