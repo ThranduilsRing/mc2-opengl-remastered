@@ -34,6 +34,7 @@ PC_TMP = Path("G:/mc2-tmp/gatelaptop")
 REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
+E_EXTRA = ("mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json",)   # scifi_kit counts.CATALOG (art suite)
 # flip_evaluator: compare-captures' FLIP columns (no cp315 wheel: build the sdist under vcvars64 with CC=CXX=cl, not MinGW)
 PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest", "flip_evaluator")
 GIT_BASH = "C:/Program Files/Git/bin/bash.exe"
@@ -431,6 +432,19 @@ def seed_stock():
     print("mirrored", PC_STOCK)
 
 
+def seed_eroot():
+    """E:-rooted files the contracts read (MC2_GATE_EROOT on the laptop): copy when the laptop's sha differs."""
+    for rel in E_EXTRA:
+        want = sha256(Path("E:/", rel))
+        dst = f"{G}/drv/E/{rel}"
+        rc, out = ssh(f'certutil -hashfile "{dst}" SHA256', check=False)
+        if rc == 0 and want in out.replace(" ", "").lower():
+            continue
+        print(f"copying E:/{rel} to the laptop", flush=True)
+        ssh(f'cmd /c mkdir "{str(Path(dst).parent).replace("/", chr(92))}" 2>nul & exit /b 0', check=False)
+        scp(Path("E:/", rel), f"{HOST}:{dst}")
+
+
 def seed():
     """One-time: stream the PC's lean seed (published v0.4 payload + game data) into C:/mc2gate/install."""
     seed_stock()
@@ -539,6 +553,7 @@ def pc_main(args):
     ssh(remote_py("init"), stream=True)
     seed()
     seed_ref()
+    seed_eroot()
     sync_tree()
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))

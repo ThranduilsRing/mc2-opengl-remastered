@@ -6,10 +6,12 @@ authoring space. Render review is a separate, explicitly recorded step.
 """
 import hashlib
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
-CATALOG=Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json')
+# MC2_GATE_EROOT re-roots E: on the laptop gate (no E: drive there; laptop_gate.py seeds this file under it).
+CATALOG=Path(os.environ.get('MC2_GATE_EROOT', 'E:').rstrip('/\\') + '/mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json')
 STOCK=Path('G:/mc2-assets/out/scifi-kit/round2/stock')
 FIELDS=('doors','windows','openings_bays','panels_sections','crates','barrels',
         'tanks','arches_ribs','legs_supports','antennas_dishes','stairs_ladders')
