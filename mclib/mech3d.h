@@ -510,17 +510,21 @@ class Mech3DAppearance: public ObjectAppearance
 		long						simRotationalNodeIndex_ = -1;
 		long						simHitLeftNodeIndex_ = -1;
 		long						simHitRightNodeIndex_ = -1;
+		long simCockpitNodeIndex_ = -1;
+		std::vector<long> simAnchorNodeIndices_;
+		std::uint64_t simNodeShapeId_ = 0;
+		std::uint64_t simNodeRevision_ = 0;
 		bool						buildingSimPose_ = false;
 		// The shape, node indices and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
 		// the palette, the draw copy otherwise. lift is the visual-height delta baked into that shape's transform (draw copy
 		// only); the getters subtract it (mc2snap::unliftNodeZ) so no caller, sim or presentation, ever sees it.
-		struct PoseView { TG_MultiShapePtr shape; long& rotNode; long& hitLeft; long& hitRight; long lod; glm::vec3 pos; float rot; float lift; };
+		struct PoseView { TG_MultiShapePtr shape; long& rotNode; long& hitLeft; long& hitRight; long lod; glm::vec3 pos; float rot; float lift; bool sim; };
 		PoseView poseView (void)
 		{
 			// Main can request simulation reads for LOS/UI; only inspect the build flag while owning Sim.
 			if (!simPresentationPass && (mc2::overlap::onSimWorker() || !mc2::overlap::jobInFlight()) && buildingSimPose_)
-				return { simulationShape_.get(), simRotationalNodeIndex_, simHitLeftNodeIndex_, simHitRightNodeIndex_, 0, simPosition_, simRotation_, 0.0f };
-			return { mechShape, rotationalNodeIndex, hitLeftNodeIndex, hitRightNodeIndex, currentLOD, position, rotation, visualDelta_ };
+				return { simulationShape_.get(), simRotationalNodeIndex_, simHitLeftNodeIndex_, simHitRightNodeIndex_, 0, simPosition_, simRotation_, 0.0f, true };
+			return { mechShape, rotationalNodeIndex, hitLeftNodeIndex, hitRightNodeIndex, currentLOD, position, rotation, visualDelta_, false };
 		}
 		long						rootNodeIndex;
 		long						leftArmNodeIndex;

@@ -1039,11 +1039,25 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     const long status = simStatus_;
     const long currentLOD = 0;
     long& rotationalNodeIndex = simRotationalNodeIndex_;
-    rotationalNodeIndex = simHitLeftNodeIndex_ = simHitRightNodeIndex_ = -1;
     buildingSimPose_ = true;
     simPose->ready = false;
     if (unitAnim().leftArmOff) mechShape->StopUsing("joint_luarm");
     if (unitAnim().rightArmOff) mechShape->StopUsing("joint_ruarm");
+
+    // The sim shape owns its node order. Refresh on replacement/load, animation
+    // clearing, detach or arm loss, not on every tick. Missing nodes stay -1.
+    if (simNodeShapeId_ != mechShape->stableId().value
+        || simNodeRevision_ != mechShape->animationBinding_.revision()) {
+        simNodeShapeId_ = mechShape->stableId().value;
+        simNodeRevision_ = mechShape->animationBinding_.revision();
+        rotationalNodeIndex = mechShape->GetNodeNameId("joint_torso");
+        simHitLeftNodeIndex_ = mechShape->GetNodeNameId("hit_left");
+        simHitRightNodeIndex_ = mechShape->GetNodeNameId("hit_right");
+        simCockpitNodeIndex_ = mechShape->GetNodeNameId("cockpit");
+        simAnchorNodeIndices_.resize(mechType->getTotalNodes());
+        for (long i = 0; i < mechType->getTotalNodes(); ++i)
+            simAnchorNodeIndices_[i] = mechShape->GetNodeNameId(mechType->nodeData[i].nodeId);
+    }
 
 	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
 	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.

@@ -716,7 +716,9 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
-	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId), pv_.lift);
+	result = mc2snap::unliftNodeZ(pv_.sim
+		? mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,simAnchorNodeIndices_[nodeId])
+		: mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -765,7 +767,9 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (mc2::czstring nodeName)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
     
-	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName), pv_.lift);
+	result = mc2snap::unliftNodeZ(pv_.sim && S_stricmp(nodeName, "cockpit") == 0
+		? mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,simCockpitNodeIndex_)
+		: mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName), pv_.lift);
 
 	if ((result.x == 0.0f) &&
 		(result.y == 0.0f) && 
@@ -833,7 +837,9 @@ glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
 
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
     
-	result = mc2snap::unliftNodeZ(mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId), pv_.lift);
+	result = mc2snap::unliftNodeZ(pv_.sim
+		? mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,simAnchorNodeIndices_[nodeId])
+		: mechShape->GetTransformedNodePosition(&xlatPosition,&qRotation,mechType->nodeData[nodeId].nodeId), pv_.lift);
 
 	return result;
 }
