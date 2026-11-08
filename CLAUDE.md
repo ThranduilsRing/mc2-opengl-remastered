@@ -45,7 +45,7 @@ py -3 tools/build_contract_harnesses.py --run --unit  # C++ harnesses + doctest 
 py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
 ```
 
-Smoke (mc2-main / merge-gate commands; a lane deploys to its own install, see Operating mode), **default inner-loop check = smoke-lite** (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error + deploy fingerprint; reduced soak coverage):
+Smoke (mc2-main / merge-gate commands; a lane deploys to its own install, see Operating mode), **default inner-loop check for a RUNTIME change = smoke-lite** (none for docs/tests/tools/scripts; mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error + deploy fingerprint; reduced soak coverage). Lanes do not measure ms on the PC (two lane GPUs, one game core each, six compile cores; perf pairs go to the farm laptop via `tools/farm/host.py submit`). GATE_QUIET applies only to the PC gate fallback:
 
 ```bash
 py -3 scripts/run_smoke.py --lite --keep-logs --deploy 0.4
