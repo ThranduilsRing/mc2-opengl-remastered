@@ -147,6 +147,7 @@ void retireEach(VulkanContext& ctx, Seq& seq) {
 // Builds one BLAS per geometry list into `out` (same order) with PREFER_FAST_TRACE | ALLOW_COMPACTION, then compacts those that save >= 10%. All or
 // nothing: on any failure `out` is retired and false returned. An empty list yields an empty structure (every listed geometry must have triangles).
 const char* g_failStage = "none";   // the last scene-build failure point, printed on the FAIL lines
+std::string g_failWhy;   // the failed check and its values (takeLastRecordFailure), printed after the stage
 
 bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<TriangleGeometry>>& geos, std::string_view name, std::vector<AccelStructure>& out,
                  BuildStats& st) {
@@ -302,7 +303,7 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     bool ok = false;
     const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Tlas);
-        if (!recordTlasBuild(ctx, cmd, buf.deviceAddress(), instanceCount, flags, "rt_scene.tlas", tlas, s.scratch)) { g_failStage = "tlas_record"; return; }
+        if (!recordTlasBuild(ctx, cmd, buf.deviceAddress(), instanceCount, flags, "rt_scene.tlas", tlas, s.scratch)) { g_failStage = "tlas_record"; g_failWhy = takeLastRecordFailure(); return; }
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
         ok = true;
     }, "rt_scene tlas");
@@ -760,7 +761,7 @@ void noteTerrain(const TerrainSource& t) {
     if (!tlas) {
         retireEach(*ctx, built);
         s.terrainKeyFailed = key;
-        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL terrain build tiles={} key=0x{:x} stage={}; keeping the last snapshot", ranges.size(), key, g_failStage);
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL terrain build tiles={} key=0x{:x} stage={} why={}; keeping the last snapshot", ranges.size(), key, g_failStage, g_failWhy);
         return;
     }
     // Publish: the old TLAS retires before the BLASes it referenced.
@@ -942,7 +943,7 @@ void updateProps(uint64_t propVbo) {
         for (auto& [ty, a] : added)
             if (a) ctx->retire(std::move(a));
         s.propGenFailed = gen;
-        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL prop build gen={} types={} instances={} stage={}; keeping the last snapshot", gen, types.size(), inst.size(), g_failStage);
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL prop build gen={} types={} instances={} stage={} why={}; keeping the last snapshot", gen, types.size(), inst.size(), g_failStage, g_failWhy);
         return;
     }
     if (s.tlas) ctx->retire(std::move(s.tlas));

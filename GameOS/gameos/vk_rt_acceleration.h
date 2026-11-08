@@ -179,6 +179,7 @@ constexpr Barrier frameRebuildBarrier() {
 #include <volk.h>
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -335,6 +336,9 @@ bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const Acce
 // Issues the barrier between two phases through the context's sync2 route (a no-op, with false, for an invalid edge).
 bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Phase to);
 bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, const Barrier& b);
+
+// Which check made the last record call on this thread return false, with its values ("" when none since the last take). A FAIL line prints it.
+std::string takeLastRecordFailure();
 
 }  // namespace mc2vk::rt
 
