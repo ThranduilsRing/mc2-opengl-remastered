@@ -11117,6 +11117,23 @@
   {
    "tag": "VK_PRESENT",
    "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "upscaler",
+    "render",
+    "display",
+    "near",
+    "far",
+    "fov_y_deg",
+    "reverse_z",
+    "infinite_far",
+    "perspective"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
    "stream": "stdout",
    "keys": [],
    "count": 3
