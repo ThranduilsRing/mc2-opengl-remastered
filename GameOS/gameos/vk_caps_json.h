@@ -30,12 +30,13 @@ private:
         out_ += '"';
         for (const char ch : s) {
             const unsigned char u = static_cast<unsigned char>(ch);
-            if (ch == '"' || ch == '\\') { out_ += '\\'; out_ += ch; }
+            if (ch == '"' || ch == kEscape) { out_ += kEscape; out_ += ch; }
             else if (u < 0x20) { static const char* hex = "0123456789abcdef"; out_ += "\\u00"; out_ += hex[u >> 4]; out_ += hex[u & 15]; }
             else out_ += ch;
         }
         out_ += '"';
     }
+    static constexpr char kEscape = static_cast<char>(0x5C);  // JSON escape character
     std::string out_;
     bool first_ = true;
 };
