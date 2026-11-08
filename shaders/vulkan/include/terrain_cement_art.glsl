@@ -6,7 +6,7 @@ float cCutLt(float x, float fw) {
 }
 
 // Permanent road art uses the former overlay's material response on the terrain
-// receiver. Alpha remains binary; rejected texels expose the original ground.
+// receiver. The caller blends the authored shoulder over shaded ground.
 vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     bool adopt = (road & 0x00010000u) != 0u;
     bool cementTile = (cw & 0x80000000u) != 0u;
@@ -57,8 +57,9 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     return color;
 }
 
-// Tile-level road art early out: true when this fragment is permanent road art (color set).
-bool shadeRoadArtTile(out vec3 outColor) {
+// Tile-level road art coverage, smoothly preserving the stock alpha shoulder.
+float shadeRoadArtTile(out vec3 outColor) {
+    outColor = vec3(0.0);
     vec2 roadDx = dFdx(v_worldPos.xy), roadDy = dFdy(v_worldPos.xy);
     int plane = uT.mapSide * uT.mapSide;
     if (uT.useCement != 0 && uC.cementWordsF.length() >= 2 * plane) {
@@ -73,11 +74,12 @@ bool shadeRoadArtTile(out vec3 outColor) {
             vec2 uv = mix(vec2(0.0078125), vec2(0.9921875),
                 fract(vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0));
             vec4 art = textureLod(u_cementAtlas, (vec2(layer % grid, layer / grid) + uv) / float(grid), 0.0);
-            if (art.a >= 0.5) {
+            float coverage = smoothstep(0.3, 0.7, art.a);
+            if (coverage > 0.0) {
                 outColor = shadeRoadArt(art, road, uC.cementWordsF[index], roadDx, roadDy);
-                return true;
+                return coverage;
             }
         }
     }
-    return false;
+    return 0.0;
 }
