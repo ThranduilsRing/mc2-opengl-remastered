@@ -386,26 +386,95 @@ def test_sim_verdict_needs_every_planned_row_green():
     assert laptop_gate.sim_args(["determinism-mc2_01", "--pair"]) == (["determinism-mc2_01"], True)
 
 
-def test_merge_sim_summary_creates_merges_and_rejects_head_mismatch(tmp_path):
+@pytest.mark.parametrize("bad", ["head", "short-head", "window", "main-head", "main-window", "main-missing", "main-invalid", "missing", "red", "red-row", "ssh"])
+def test_rejected_sim_never_changes_accepted_summary(tmp_path, bad):
     import json
     dest = tmp_path / "W"
-    assert laptop_gate.merge_sim_summary(dest, {"head": "a" * 40, "verdict": "PASS"}) == ""
-    assert json.loads((dest / "summary.json").read_text())["sim"]["verdict"] == "PASS"
-    (dest / "summary.json").write_text(json.dumps({"head": "a" * 40, "x": 1}))
-    assert laptop_gate.merge_sim_summary(dest, {"head": "a" * 40}) == ""
-    assert json.loads((dest / "summary.json").read_text())["x"] == 1
-    assert "not the window summary head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40})
+    dest.mkdir()
+    path = dest / "summary.json"
+    main = {"head": "a" * 40, "window": "W", "sim": {"accepted": True}}
+    sim = {"head": "a" * 40, "window": "W", "verdict": "PASS", "rc": 0, "rows": {"a": {"status": "PASS"}}}
+    if bad == "head":
+        sim["head"] = "b" * 40
+    elif bad == "short-head":
+        sim["head"] = "a" * 9
+    elif bad == "window":
+        sim["window"] = "other"
+    elif bad == "main-head":
+        main["head"] = "b" * 40
+    elif bad == "main-window":
+        main["window"] = "other"
+    elif bad == "missing":
+        sim.pop("rows")
+    elif bad == "red":
+        sim["verdict"] = "FAIL"
+    elif bad == "red-row":
+        sim["rows"]["a"]["status"] = "FAIL"
+    if bad != "main-missing":
+        path.write_text("invalid" if bad == "main-invalid" else json.dumps(main))
+    before = path.read_bytes() if path.exists() else None
+    assert laptop_gate.merge_sim_summary(dest, sim, "a" * 40, "W", run_rc=int(bad == "ssh"))
+    assert (path.read_bytes() if path.exists() else None) == before
+    assert json.loads((dest / "rejected-sim.json").read_text())["sim"] == sim
 
 
-def test_merge_sim_summary_rejects_wrong_staged_head_with_or_without_summary(tmp_path):
+def test_merge_sim_summary_accepts_only_matching_identity(tmp_path):
     import json
-    dest = tmp_path / "W"   # no summary yet: the old check was skipped here
-    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40}, expected_head="a" * 40)
-    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {}, expected_head="a" * 40)
-    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {"head": "a" * 40}, expected_head="(claude/stage-W not found on the PC)")
-    (dest / "summary.json").write_text(json.dumps({"head": "a" * 40}))
-    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40}, expected_head="a" * 40)
-    assert laptop_gate.merge_sim_summary(dest, {"head": "a" * 40}, expected_head="a" * 40) == ""
+    (tmp_path / "summary.json").write_text(json.dumps({"head": "a" * 40, "window": "W", "x": 1}))
+    sim = {"head": "a" * 40, "window": "W", "verdict": "PASS", "rc": 0, "rows": {"a": {"status": "PASS"}}}
+    assert laptop_gate.merge_sim_summary(tmp_path, sim, "a" * 40, "W") == ""
+    assert json.loads((tmp_path / "summary.json").read_text()) == {"head": "a" * 40, "window": "W", "x": 1, "sim": sim}
+
+
+@pytest.mark.parametrize("missing", ["pull", "summary", "branch", "wrong-head", "valid"])
+def test_sim_main_missing_evidence_preserves_summary_and_sends_guard(tmp_path, monkeypatch, missing):
+    from types import SimpleNamespace
+    import json
+    import subprocess
+    dest = tmp_path / "W"
+    dest.mkdir()
+    path = dest / "summary.json"
+    before = b'{"head":"accepted", "sim":{"accepted":true}}'
+    if missing == "valid":
+        before = json.dumps({"head": "a" * 40, "window": "W"}).encode()
+    path.write_bytes(before)
+    (dest / "sim").mkdir()
+    (dest / "sim/summary.json").write_bytes(b"accepted sim")
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path)
+    for name in ("provision", "sync_mods"):
+        monkeypatch.setattr(laptop_gate, name, lambda *a, **k: None)
+
+    def expected(*a, **k):
+        if missing == "branch":
+            raise subprocess.CalledProcessError(1, a)
+        return "a" * 40
+
+    monkeypatch.setattr(laptop_gate.subprocess, "check_output", expected)
+    calls = []
+    monkeypatch.setattr(laptop_gate, "remote_py", lambda *a: a)
+    monkeypatch.setattr(laptop_gate, "ssh", lambda cmd, **k: (calls.append(cmd) or (0, "")))
+    def pull(remote, local, **kwargs):
+        if missing in ("wrong-head", "valid"):
+            (local / "sim").mkdir()
+            (local / "sim/summary.json").write_text(json.dumps({"head": ("a" if missing == "valid" else "b") * 40,
+                                                              "window": "W", "verdict": "PASS", "rc": 0,
+                                                              "rows": {"a": {"status": "PASS"}}}))
+        return missing != "pull"
+
+    monkeypatch.setattr(laptop_gate, "pull_one", pull)
+    assert laptop_gate.sim_main(SimpleNamespace(window="W", sim_rows="", sim_pair=False)) == (0 if missing == "valid" else 1)
+    if missing == "valid":
+        assert json.loads(path.read_text())["sim"]["head"] == "a" * 40
+        assert json.loads((dest / "sim/summary.json").read_text())["head"] == "a" * 40
+    else:
+        assert path.read_bytes() == before
+        assert (dest / "sim/summary.json").read_bytes() == b"accepted sim"
+        assert json.loads((dest / "rejected-sim.json").read_text())["reason"]
+    assert not (dest / "incoming-sim").exists()
+    if missing == "branch":
+        assert not calls
+    else:
+        assert "--expect-head=" + "a" * 40 in calls[0]
 
 
 def test_sim_checkout_refuses_missing_branch_and_head_off_the_tip():
@@ -422,9 +491,12 @@ def test_sim_checkout_refuses_missing_branch_and_head_off_the_tip():
     b = "claude/stage-W"
     head, why = laptop_gate.sim_checkout(fake({"rev-parse --verify -q " + b: (1, "")}), b)
     assert why and "missing" in why
-    head, why = laptop_gate.sim_checkout(fake({"rev-parse HEAD": (0, "a" * 40 + "\n"), "rev-parse " + b: (0, "b" * 40 + "\n")}), b)
+    calls = []
+    head, why = laptop_gate.sim_checkout(fake({"rev-parse " + b: (0, "b" * 40 + "\n")}, calls), b, "a" * 40)
+    assert "expected staged head" in why and not any(a[0] == "checkout" for a in calls)
+    head, why = laptop_gate.sim_checkout(fake({"rev-parse HEAD": (0, "b" * 40 + "\n"), "rev-parse " + b: (0, "a" * 40 + "\n")}), b, "a" * 40)
     assert "is not " + b in why
-    head, why = laptop_gate.sim_checkout(fake({"rev-parse HEAD": (0, "a" * 40 + "\n"), "rev-parse " + b: (0, "a" * 40 + "\n")}), b)
+    head, why = laptop_gate.sim_checkout(fake({"rev-parse HEAD": (0, "a" * 40 + "\n"), "rev-parse " + b: (0, "a" * 40 + "\n")}), b, "a" * 40)
     assert (head, why) == ("a" * 40, "")
 
 
