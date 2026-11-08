@@ -47,6 +47,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
 #include "gos_postprocess.h"
 #include "gos_static_prop_registry.h"   // OBJECT-ID-1: getRecipeIndexForType
+#include "gos_static_prop_batcher.h"
 #include "../../RenderWorld/RenderWorld.h"   // OBJECT-ID-1: IsObjectIdBufferEnabled, objectIdRawForStaticPropRecipe
 #include "vulkan_color_prop_island.h"
 #include "vk_rt_scene.h"
@@ -1698,6 +1699,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         typeObjectId,
                     };
                     const PropDrawCmd cmd{pkt.indexCount, instCount, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i};
+                    if (mc2SupportCraftTraceType(tid))
+                        mc2::fmt::print_err("[SUPPORT_CRAFT] event=packet frame={} type={} pipeline=prop indices={} instances={} hzb={} albedo={} firstIndex={} baseVertex={}\n",
+                            g_mc2RenderFrame, tid, pkt.indexCount, instCount, hzbCulled, row.layerOff, pkt.firstIndex, pkt.baseVertex);
                     // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
                     const bool alphaTestable = row.layerOn >= 0 || row.alphaTest != 0;
                     opaquePrefix = opaquePrefix && !alphaTestable;

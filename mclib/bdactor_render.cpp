@@ -44,6 +44,16 @@ uint32_t captureForcedBuildingHighlight()
 long BldgAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
+	if (appearType && !S_stricmp(appearType->name, "karnov") && mc2_diag::tagRequested("SUPPORT_CRAFT")) {
+		static unsigned frames = 0;
+		if (frames++ < 60) {
+			const auto lo = bldgShape->GetMinBox();
+			const auto hi = bldgShape->GetMaxBox();
+			mc2::fmt::print_err("[SUPPORT_CRAFT] event=appearance turn={} shape={:016X} inView={} lod={} anim={} pos={},{},{} bounds={},{},{}:{},{},{} radius={}\n",
+				turn, mc2::fmt::as_ptr(static_cast<void*>(bldgShape)), inView, currentLOD, unitAnim().currentFrame,
+				position.x, position.y, position.z, lo.x, lo.y, lo.z, hi.x, hi.y, hi.z, bldgShape->GetExtentRadius());
+		}
+	}
 	if (!inView && appearType && (!S_stricmp(appearType->name, "karnov") || !S_stricmp(appearType->name, "vtol"))) {
 		static unsigned culled = 0;
 		if ((culled++ < 8 || culled % 600 == 0) && mc2_diag::tagRequested("SUPPORT_CRAFT"))

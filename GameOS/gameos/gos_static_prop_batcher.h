@@ -85,6 +85,9 @@ enum class GpuStaticPropPopulation : uint8_t {
     Legacy   = 3,
 };
 
+// Bounded SUPPORT_CRAFT diagnostic: correlate submitted leaves with native packets.
+bool mc2SupportCraftTraceType(uint32_t typeID);
+
 // Per-type descriptor: range of packets + vertex count (for color block sizing).
 //
 // Substrate-coalesce fields (instanceCap, coalesceByteOffsetWithinGroup,
