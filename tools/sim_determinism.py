@@ -447,6 +447,9 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
     """
     if int(duration) > MAX_DURATION:
         sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
+    battle_fixture = mission == "battle"
+    if battle_fixture:
+        mission = "mc2_24"  # battle is the CPU profiler's 128-clone/two-vehicle fixture, not a map.
     target = smoke_target(install, ref_exe, ref_commit)
     logs = []
     for tag in ("a", "b")[:runs]:
@@ -455,6 +458,16 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
         env = dict(os.environ, **GATES, **({"MC2_SIM_OVERLAP_AUDIT": "1"} if mission in OVERLAP_AUDIT_MISSIONS else {}),
                    **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
+        if battle_fixture:
+            # The UI channel consumes its input. Each run needs a private copy;
+            # never let the engine truncate the committed baseline fixture.
+            fixture = "tests/smoke/sim_determinism/battle-128.commands.txt"
+            if env.get("MC2_UI_COMMAND_FILE") != fixture or env.get("MC2_TEST_SPAWN") != "1":
+                sys.exit("battle baseline requires the recorded 128-mech fixture env")
+            os.makedirs(out, exist_ok=True)
+            channel = os.path.abspath(os.path.join(out, tag + ".commands.txt"))
+            shutil.copyfile(os.path.join(ROOT, fixture), channel)
+            env["MC2_UI_COMMAND_FILE"] = channel
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else []),
                             *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless == "both" or (headless and tag == "b") else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,

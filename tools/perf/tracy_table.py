@@ -54,8 +54,8 @@ def summarize(reader, mission_load_ns=None, mission_ready_ns=None, first_playabl
         mission_ready_ns = min(updates)
     if not 0 <= mission_load_ns < mission_ready_ns or first_playable_frames < 1:
         raise ValueError("invalid mission phase boundaries")
-    frames = sorted((e["start"], e["end"]) for e in events
-                    if e["identity"][1] == "Frame" and e["start"] >= mission_ready_ns)
+    all_frames = sorted((e["start"], e["end"]) for e in events if e["identity"][1] == "Frame")
+    frames = [(s, t) for s, t in all_frames if s >= mission_ready_ns]
     if len(frames) <= first_playable_frames:
         raise ValueError("capture lacks steady Frame scopes after mission_ready")
     if any(a[1] > b[0] for a, b in zip(frames, frames[1:])):
@@ -74,13 +74,13 @@ def summarize(reader, mission_load_ns=None, mission_ready_ns=None, first_playabl
             parent["self"].extend([(lo, event["start"]), (event["end"], hi)])
         stack.append(event)
     steady = frames[first_playable_frames][0]
-    end = max(e["end"] for e in events)
+    end = frames[-1][1]  # trailing exporter/shutdown work is not steady gameplay
     windows = [("startup", 0, mission_load_ns),
                ("mission_load", mission_load_ns, mission_ready_ns),
                ("first_playable", mission_ready_ns, steady), ("steady_play", steady, end)]
     result = {}
     for phase, lo, hi in windows:
-        phase_frames = [(s, t) for s, t in frames if lo <= s and t <= hi]
+        phase_frames = [(s, t) for s, t in all_frames if lo <= s and t <= hi]
         starts = [s for s, _ in phase_frames]
         groups = {}
         for event in events:

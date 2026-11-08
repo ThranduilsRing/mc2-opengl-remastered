@@ -83,6 +83,44 @@ def test_rejected_log_leaves_existing_baseline(tmp_path, monkeypatch):
     assert not (tmp_path / "base.json.tmp").exists()
 
 
+def test_battle_baseline_names_exact_cpu_profile_fixture():
+    data = json.loads((ROOT / 'tests/smoke/sim_determinism/battle.json').read_text())
+    assert data['mission'] == 'battle' and data['chain_schema'] == 2
+    assert data['frames'] >= sim.MIN_FRAMES
+    assert data['env']['MC2_TEST_SPAWN'] == '1'
+    assert data['env']['MC2_UI_COMMAND_FILE'] == 'tests/smoke/sim_determinism/battle-128.commands.txt'
+    commands = (ROOT / data['env']['MC2_UI_COMMAND_FILE']).read_text().splitlines()
+    assert sum(c.startswith('spawn clone ') for c in commands) == 128
+    assert sum(c.startswith('spawn vehicle ') for c in commands) == 2
+    assert commands[-5:] == ['select all', 'order powerup', 'bench_attack',
+                             'bench_view -763 2652 20 1800 42', 'list all']
+    assert 'MC2_MOVER_FIXTURE' not in data['env']
+
+
+def test_battle_runs_reset_the_consumed_command_channel(tmp_path, monkeypatch):
+    source = ROOT / 'tests/smoke/sim_determinism/battle-128.commands.txt'
+    original = source.read_bytes()
+    artifacts = tmp_path / 'artifacts'
+    artifacts.mkdir()
+    (artifacts / 'mc2_24.log').write_text('unused')
+    channels = []
+    def smoke(argv, **kwargs):
+        assert argv[argv.index('--mission') + 1] == 'mc2_24'
+        channel = Path(kwargs['env']['MC2_UI_COMMAND_FILE'])
+        assert channel.read_bytes() == original
+        channels.append(channel)
+        channel.write_text('')  # the engine consumes the UI channel
+        return sim.subprocess.CompletedProcess(argv, 0,
+            f'[runner] artifacts: {artifacts}\n[SMOKE v1] event=tick_budget\n')
+    monkeypatch.setattr(sim.subprocess, 'run', smoke)
+    sim.run_mission('battle', '20', str(tmp_path / 'runs'),
+                    {'both': {'MC2_TEST_SPAWN': '1',
+                              'MC2_UI_COMMAND_FILE': source.relative_to(ROOT).as_posix()}},
+                    headless='both', ticks=300)
+    assert len(set(channels)) == 2
+    assert source.read_bytes() == original
+
+
 @pytest.mark.parametrize("argv,expected", [(["run", "mc2_03"], "20"), (["check", "mc2_03"], "20"), (["check", "mc2_03", "--duration", "40"], "40")])
 def test_determinism_runs_default_to_20s(monkeypatch, argv, expected):
     seen = []
