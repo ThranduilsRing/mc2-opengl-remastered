@@ -644,7 +644,8 @@ long Mech3DAppearance::render (long depthFixup)
 						// FAIL-LOUD: one line per distinct mech type, uncapped
 						// counter inline. Silence is what let this ship.
 						static std::set<const void*> s_loggedStaleMechTypes;
-						if (s_loggedStaleMechTypes.insert(static_cast<const void*>(mechType)).second) {
+						const auto [loggedType, inserted] = s_loggedStaleMechTypes.insert(static_cast<const void*>(mechType));
+						if (inserted) {
 							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected mechType={:016X} lod={:d} staleIndex={:d} cachedFrame={:d} currentFrame={:d} stale_so_far={:d} (prior-frame light slot; submit PROCEEDS with it -- declining would not draw, see MECH-DECLINE-FIX-1)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(currentLOD)), mc2::fmt::as_u32(cachedLI), mc2::fmt::as_u32(cachedFR), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed))), mc2::fmt::as_u64(static_cast<unsigned long long>(s_mechStaleLightRowStale)));
 							fflush(stderr);
 						}

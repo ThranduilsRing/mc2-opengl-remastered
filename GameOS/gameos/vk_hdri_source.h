@@ -50,8 +50,13 @@ inline bool hdriFromCpu(VkPhysicalDevice phys, VkFormat& fmt, std::vector<std::v
     // Reuse authored float mips so Low/Potato never upload those top levels.
     size_t first = 0;
     const int cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
-    if (mc2::options::lowCost() && img->format == HdriCpuImage::Format::Rgba16f)
-        while (first + 1 < img->levels.size() && img->dims[first].first > cap) ++first;
+    if (mc2::options::lowCost() && img->format == HdriCpuImage::Format::Rgba16f) {
+        while (first + 1 < img->levels.size()) {
+            const auto& [width, height] = img->dims[first];
+            if (width <= cap) break;
+            ++first;
+        }
+    }
     for (size_t i = first; i < img->levels.size(); ++i) levels.emplace_back(img->levels[i].begin(), img->levels[i].end());
     dims.assign(img->dims.begin() + first, img->dims.end());
     generation = img->generation;
