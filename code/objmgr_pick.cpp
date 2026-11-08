@@ -637,13 +637,19 @@ bool objectPickDepth(GameObjectPtr obj, const double (&origin)[3], const double 
     glm::vec3 lo, hi;
     mc2ToRender(lo, type->typeUpperLeft);
     mc2ToRender(hi, type->typeLowerRight);
-    const auto position = obj->getPosition();
+    auto position = obj->getPosition();
+    auto rotation = obj->getRotation();
+    if (auto* ba = dynamic_cast<BldgAppearance*>(obj->getAppearance())) {
+        // Static rectangles use the appearance transform, including visual ground placement.
+        position = ba->position;
+        rotation = ba->rotation;
+    }
     glm::vec3 localOrigin(static_cast<float>(origin[0]-position.x),
                           static_cast<float>(origin[1]-position.y), static_cast<float>(origin[2]-position.z));
     glm::vec3 localDirection(static_cast<float>(direction[0]), static_cast<float>(direction[1]), static_cast<float>(direction[2]));
     // Projection rotates local corners by -rotation; undo it for the ray.
-    Rotate(localOrigin, obj->getRotation());
-    Rotate(localDirection, obj->getRotation());
+    Rotate(localOrigin, rotation);
+    Rotate(localDirection, rotation);
     const double ro[3] = {localOrigin.x, localOrigin.y, localOrigin.z};
     const double rd[3] = {localDirection.x, localDirection.y, localDirection.z};
     const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
