@@ -51,6 +51,7 @@ struct RawImage { void operator()(VkDevice d, VkImage h) const { vkDestroyImage(
 struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { infra::release(reinterpret_cast<uint64_t>(h)); vkFreeMemory(d, h, nullptr); } };
 struct RawBuffer { void operator()(VkDevice d, VkBuffer h) const { vkDestroyBuffer(d, h, nullptr); } };
 struct Swapchain { void operator()(VkDevice d, VkSwapchainKHR h) const { infra::release(reinterpret_cast<uint64_t>(h)); vkDestroySwapchainKHR(d, h, nullptr); } };
+struct AccelStruct { void operator()(VkDevice d, VkAccelerationStructureKHR h) const { vkDestroyAccelerationStructureKHR(d, h, nullptr); } };
 struct Surface { void operator()(VkInstance i, VkSurfaceKHR h) const { vkDestroySurfaceKHR(i, h, nullptr); } };
 }  // namespace release
 
@@ -97,6 +98,8 @@ using OwnedDeviceMemory = DeviceOwned<VkDeviceMemory, release::DeviceMemory>;
 // A buffer made by vkCreateBuffer whose memory the owner of the buffer allocates and binds itself (VMA buffers use OwnedBuffer). Declare the memory owner before it.
 using OwnedRawBuffer = DeviceOwned<VkBuffer, release::RawBuffer>;
 using OwnedSwapchain = DeviceOwned<VkSwapchainKHR, release::Swapchain>;
+// A ray-tracing acceleration structure handle (VK_KHR_acceleration_structure). The backing buffer is an OwnedBuffer next to it (see vk_rt_acceleration.h).
+using OwnedAccelStruct = DeviceOwned<VkAccelerationStructureKHR, release::AccelStruct>;
 // The surface belongs to the instance, not the device: it must be released before the instance (the engine context destroys that last).
 using OwnedSurface = mc2::OwnedHandle<VkSurfaceKHR, VkInstance, release::Surface>;
 

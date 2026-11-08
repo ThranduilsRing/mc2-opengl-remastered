@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 438
+gate_count: 439
 registry_entry_count: 124
-verified_count: 415
+verified_count: 416
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3267,6 +3267,13 @@ flags:
     rule: Std
     owner: vk
     doc: "Test knob: cap the per-object prop texture slot count (0 = device derived); exercises the more-maps-than-slots path."
+    verified: true
+  - name: MC2_VK_RT_SELFTEST
+    kind: Bool
+    default: false
+    rule: Std
+    owner: vk
+    doc: "Test hook (not a feature): =1 runs the one-shot ray-tracing infrastructure GPU self-test at device creation (GameOS/gameos/vk_rt_selftest.cpp)."
     verified: true
   - name: MC2_VK_SHADOW_MATRIX_DIAG
     kind: Bool

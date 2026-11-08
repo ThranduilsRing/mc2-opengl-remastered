@@ -258,6 +258,8 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_owned.cpp)
         # STEP 3.4P: native Vulkan compute producers (Slang compute pipelines; terrain lighting + water cull/pack).
         list(APPEND SOURCES vk_compute_pipeline.cpp vk_native_producers.cpp)
+        # Vulkan ray-tracing infrastructure (acceleration-structure build/update/compaction, ray-query descriptors, GPU self-test hook). No scene use yet.
+        list(APPEND SOURCES vk_rt_acceleration.cpp vk_rt_descriptors.cpp vk_rt_selftest.cpp)
         # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
         # host-visible ring on the shared engine device) consumed by the mech +
         # color-prop islands instead of twin per-island ~3.5 MB copies of the
@@ -422,6 +424,7 @@ if(MC2_VULKAN)
     # Mech-lab panel pass: mech_tier1.frag baked with -DMECH_PREVIEW=1 (no terrain set 1,
     # in-shader exposure/tonemap for the RGBA8 preview target). Loaded by vulkan_mech_island.cpp.
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
+    list(APPEND MC2_VK_SHADER_BASENAMES rt_smoke)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
     # hzb_cull.comp uses subgroup arithmetic (SPIR-V 1.3); glslang defaults to Vulkan 1.0 / SPIR-V 1.0. Engine floor is Vulkan 1.2.
