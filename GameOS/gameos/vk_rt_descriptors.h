@@ -79,6 +79,8 @@ constexpr SbtLayout computeSbtLayout(uint32_t handleSize, uint32_t handleAlignme
 }  // namespace mc2vk::rt
 
 
+#ifndef MC2_RT_PURE_ONLY  // the unit tests include only the Vulkan-free half above
+
 #include <volk.h>
 
 #include "vk_owned.h"
@@ -109,4 +111,5 @@ private:
 
 }  // namespace mc2vk::rt
 
+#endif  // MC2_RT_PURE_ONLY
 #endif  // MC2_VK_RT_DESCRIPTORS_H

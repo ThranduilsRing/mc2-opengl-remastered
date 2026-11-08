@@ -2,6 +2,7 @@
 // shader binding table layout (vk_rt_acceleration.h / vk_rt_descriptors.h Vulkan-free halves). No Vulkan link.
 #include "doctest.h"
 
+#define MC2_RT_PURE_ONLY
 #include "vk_rt_acceleration.h"
 #include "vk_rt_descriptors.h"
 

@@ -83,6 +83,8 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
 }  // namespace mc2vk::rt
 
 
+#ifndef MC2_RT_PURE_ONLY  // the unit tests include only the Vulkan-free half above
+
 #include <volk.h>
 
 #include <optional>
@@ -178,4 +180,5 @@ bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Ph
 
 }  // namespace mc2vk::rt
 
+#endif  // MC2_RT_PURE_ONLY
 #endif  // MC2_VK_RT_ACCELERATION_H
