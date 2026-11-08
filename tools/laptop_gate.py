@@ -141,6 +141,24 @@ def gate_env():
                 MC2_BASH=GIT_BASH)
 
 
+def fast_red(log, e):
+    """The laptop-environment reds that used to surface only after a full gate, in minutes, before merge_gate.py: the art/kit
+    suite (W129 run 1: no catalog under drv/E, after 2.5 min of contracts) and the deploy row's shader inventory against the
+    published install (W129 run 2: 'published shader inventory != HEAD build', after contracts + harnesses + capture-before)."""
+    bad = []
+    rc, s = run([sys.executable, "scripts/run_tools_tests.py", "--suite", "art", "--jobs", "3"], log, env=e)
+    if rc:
+        bad.append(f"art/kit suite rc={rc} ({s} s, see preflight.log)")
+    sys.path.insert(0, REPO + "/scripts")
+    import deploy_payload
+    problems = deploy_payload.shader_inventory_problems(REPO, INSTALL)
+    with open(log, "a", encoding="utf-8") as lf:
+        lf.write("\n".join(problems or ["shader inventory OK"]) + "\n")
+    bad += problems
+    print("fast red: " + ("; ".join(bad) if bad else "OK"), flush=True)
+    return bad
+
+
 def r_run(window, extra):
     r_subst()
     out = Path(G, "out", window)
@@ -172,7 +190,11 @@ def r_run(window, extra):
         if rc:
             sm["error"] = "build failed"
     if "error" not in sm:
-        proof = G + "/drv/E/mc2-archive-2026-10/proofs/merge-gate/" + window
+        sm["fast_red"] = fast_red(out / "preflight.log", e)
+        if sm["fast_red"]:
+            sm["error"] = "fast red: " + "; ".join(sm["fast_red"])
+    if "error" not in sm:
+        proof =G + "/drv/E/mc2-archive-2026-10/proofs/merge-gate/" + window
         cmd = [sys.executable, "scripts/merge_gate.py", "--full",
                "--proofs-dir", proof, "--expect-head", head]
         if window.isdigit():
@@ -575,7 +597,8 @@ def pc_main(args):
     ssh(remote_py("pack", w), check=False, stream=True)
     dest = PROOFS / w
     dest.mkdir(parents=True, exist_ok=True)
-    for name in ("summary.json", "gate-verdict.json", "gate.log", "gate.console.log", "build.log", "payload.tar", "payload.sha256"):
+    for name in ("summary.json", "gate-verdict.json", "gate.log", "gate.console.log", "build.log", "preflight.log", "payload.tar",
+                 "payload.sha256"):
         r = subprocess.run(["scp", "-q", *SSH_OPTS, f"{HOST}:{G}/out/{w}/{name}", str(dest / name)], env=env(),
                            **console_child.child_kwargs())
         if r.returncode:

@@ -162,3 +162,13 @@ def test_extract_payload_clears_the_previous_payload(tmp_path):
     (tmp_path / "payload.sha256").write_text(f"{laptop_gate.sha256(tmp_path / 'payload.tar')}  payload.tar\n")
     laptop_gate.extract_payload(tmp_path)
     assert [p.name for p in (tmp_path / "payload/files").iterdir()] == ["new.bin"]
+
+
+@pytest.mark.parametrize("art_rc,inventory,reds", [(0, [], 0), (1, [], 1), (0, ["shader inventory: x"], 1), (1, ["y"], 2)])
+def test_fast_red_reports_art_suite_and_shader_inventory_before_the_gate(tmp_path, monkeypatch, art_rc, inventory, reds):
+    """W129: both laptop-environment reds surfaced only after a full gate; fast_red names each one before merge_gate runs."""
+    monkeypatch.setattr(laptop_gate, "run", lambda cmd, log, **kw: (art_rc, 1.0))
+    monkeypatch.setattr(deploy_payload, "shader_inventory_problems", lambda src, published: inventory)
+    bad = laptop_gate.fast_red(tmp_path / "preflight.log", {})
+    assert len(bad) == reds
+    assert (tmp_path / "preflight.log").read_text().strip()

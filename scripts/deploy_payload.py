@@ -324,6 +324,26 @@ def log(msg):
     print(f"[deploy_payload] {msg}")
 
 
+_NINJA_SPV = re.compile(r"shaders[\\/]vulkan[\\/]([A-Za-z0-9_.\-]+\.spv)")
+
+
+def baked_spv_files(b64):
+    """The build's own SPIR-V outputs under <b64>/shaders/vulkan. A Ninja tree names every output in build.ninja; a .spv
+    left in the directory by a retired CMake rule is not an output and never ships (W129: 20 dead .spv, 2026-10-09..11-04,
+    shipped to v0.4 on every PC deploy). A tree whose build.ninja names no .spv (VS tree, test fixture) falls back to the
+    directory listing."""
+    spv_dir = Path(b64) / "shaders" / "vulkan"
+    files = sorted(p for p in spv_dir.glob("*.spv") if p.is_file()) if spv_dir.is_dir() else []
+    ninja = Path(b64) / "build.ninja"
+    produced = set(_NINJA_SPV.findall(ninja.read_text(encoding="utf-8", errors="replace"))) if ninja.is_file() else set()
+    if not produced:
+        return files
+    stale = [p.name for p in files if p.name not in produced]
+    if stale:
+        log(f"skipped {len(stale)} stale .spv no build rule produces: {', '.join(stale)}")
+    return [p for p in files if p.name in produced]
+
+
 _last_failure = []
 
 
@@ -988,11 +1008,8 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # Vulkan is mandatory. A release/deploy without baked shaders cannot run.
     vk_spv_dir = os.path.join(b64, "shaders", "vulkan") if b64 else ""
     if vk_spv_dir and os.path.isdir(vk_spv_dir):
-        for fn in sorted(os.listdir(vk_spv_dir)):
-            if fn.endswith(".spv"):
-                p = os.path.join(vk_spv_dir, fn)
-                if os.path.isfile(p):
-                    items.append((p, f"shaders/vulkan/{fn}", "shader"))
+        for p in baked_spv_files(b64):
+            items.append((str(p), f"shaders/vulkan/{p.name}", "shader"))
     if require_build and not any(rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
                                  for _src, rel, _kind in items):
         fail(f"No baked Vulkan SPIR-V at {vk_spv_dir or '<no build root>'}; build shaders before deploying")
@@ -1347,11 +1364,23 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     else:
         log("PDB check OK: deployed PDB matches source hash")
 
-    # Retire only unchanged files owned by the previous deploy. Resolve paths before
-    # unlinking so a malformed manifest or a directory junction cannot escape the target.
+    retire_unowned(target_dir, src_hashes, preserve,
+                   own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
+                                   for _src, rel, kind in items))
+    return src_hashes
+
+
+def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
+    """Retire files the new payload (`keep`, its relpaths) no longer carries.
+
+    Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
+    manifest or a directory junction cannot escape the target. With `own_shaders` (the payload carries the baked SPIR-V) the
+    build's output list owns shaders/: any file there the payload does not carry is retired, manifest row or not (W129:
+    merge_gate.stage_published copies v0.4's shaders/ and _forget_swapped_rows drops their rows, so dead .spv slipped past the
+    manifest loop and verify_published_identity failed the shader inventory)."""
     root = Path(target_dir).resolve()
     for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
-        if rel in src_hashes or rel in preserve:
+        if rel in keep or rel in preserve:
             continue
         retired = root / rel
         resolved = retired.resolve()
@@ -1366,8 +1395,13 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                 continue
             retired.unlink()
             log(f"pruned retired payload: {rel}")
-
-    return src_hashes
+    shader_root = root / "shaders"
+    if own_shaders and shader_root.is_dir():
+        for path in sorted(shader_root.rglob("*")):
+            rel = path.relative_to(root).as_posix()
+            if path.is_file() and rel not in keep and rel not in preserve:
+                path.unlink()
+                log(f"pruned retired payload: {rel}")
 
 
 def write_manifest(target_dir, hashes, src_commit):
@@ -1703,6 +1737,48 @@ def bootstrap_install(src, target, exe_name, pdb_name):
     os.rename(partial, target)
 
 
+def published_shader_sources(source_root, build):
+    """The shaders/ inventory a published install must hold exactly: every source file except fixtures plus the build's baked SPIR-V."""
+    source_root, build = Path(source_root), Path(build)
+    expected = {p.relative_to(source_root).as_posix(): p
+                for p in (source_root / 'shaders').rglob('*')
+                if p.is_file() and 'fixtures' not in p.relative_to(source_root / 'shaders').parts}
+    baked = baked_spv_files(build)
+    if not baked:
+        raise ValueError(f'{build}: missing baked Vulkan shaders')
+    expected.update({'shaders/vulkan/' + p.name: p for p in baked})
+    return expected
+
+
+def shader_inventory_problems(source_root, published):
+    """Dry run of the deploy row's shader half on a copy of the published install's shaders/ (about 2 MB): what the deploy
+    ships, minus what it retires, must equal what verify_published_identity expects. Laptop-gate fast red (W129 run 2 found
+    this mismatch only after contracts, harnesses and capture-before). Returns problem lines."""
+    source_root, build = Path(source_root), Path(source_root) / 'build64-ninja'
+    try:
+        expected = published_shader_sources(source_root, build)
+        items = enumerate_payload(str(source_root), str(build), 'mc2.exe', 'mc2.pdb', build64_root=str(build))
+    except (ValueError, SystemExit) as exc:
+        return [f'shader inventory: {exc}']
+    shipped = {rel: src for src, rel, _kind in items if rel.startswith('shaders/')}
+    bad = []
+    if set(shipped) != set(expected):
+        bad.append(f'shader inventory: deploy ships {sorted(set(shipped) - set(expected))[:5]} extra, '
+                   f'{sorted(set(expected) - set(shipped))[:5]} missing vs verify_published_identity')
+    with tempfile.TemporaryDirectory(prefix='shader-inventory-') as tmp:
+        if (Path(published) / 'shaders').is_dir():
+            shutil.copytree(Path(published) / 'shaders', Path(tmp) / 'shaders')
+        for rel, src in shipped.items():
+            (Path(tmp) / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, Path(tmp) / rel)
+        retire_unowned(tmp, shipped, own_shaders=True)
+        left = {p.relative_to(tmp).as_posix() for p in (Path(tmp) / 'shaders').rglob('*') if p.is_file()}
+    if left != set(expected):
+        bad.append(f'shader inventory: after deploy {published} would hold {sorted(left - set(expected))[:5]} extra, '
+                   f'{sorted(set(expected) - left)[:5]} missing (published shader inventory != HEAD build)')
+    return bad
+
+
 def verify_published_identity(target, source_root, head):
     """Hash the published exe/shaders against the clean HEAD build, not its own CSV."""
     from exe_fingerprint import extract, sha_agrees, build_current
@@ -1713,13 +1789,7 @@ def verify_published_identity(target, source_root, head):
         if not fp.get('present') or not build_current(fp.get('sha'), head, source_root, bool(fp.get('dirty'))):
             raise ValueError(f'{exe}: fingerprint != clean HEAD {head}')
     expected = {'mc2.exe': build / 'mc2.exe'}
-    expected.update({p.relative_to(source_root).as_posix(): p
-                     for p in (source_root / 'shaders').rglob('*')
-                     if p.is_file() and 'fixtures' not in p.relative_to(source_root / 'shaders').parts})
-    baked = list((build / 'shaders/vulkan').glob('*.spv'))
-    if not baked:
-        raise ValueError(f'{build}: missing baked Vulkan shaders')
-    expected.update({'shaders/vulkan/' + p.name: p for p in baked})
+    expected.update(published_shader_sources(source_root, build))
     with (target / '.deployed_manifest.csv').open(encoding='utf-8-sig', newline='') as stream:
         if next(csv.reader(stream), [])[:2] != ['manifest_version', 'v1']:
             raise ValueError('unsupported published manifest')
@@ -1772,6 +1842,7 @@ def deploy_from_payload(payload, target, src_root, head):
     if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \
             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
+    retire_unowned(str(target), rows, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     shutil.copy2(manifest, target / '.deployed_manifest.csv')
     log(f'payload published: {len(rows)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
 
