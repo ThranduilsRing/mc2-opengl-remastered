@@ -5,7 +5,77 @@
 #include "doctest.h"
 #include "../../RenderWorld/ScreenPick.h"
 #include "cursor_world_pick.h"
+#include "pick_query.h"
+#include <algorithm>
+#include <array>
+#include <vector>
 #include <utility>
+
+TEST_CASE("pick priority/depth/handle selection equals sorted result on ties") {
+    struct Hit { mc2::pick::Rank rank; int identity; };
+    // Every priority, tied depths, tied handles, and exact ties (first input wins).
+    std::vector<Hit> hits;
+    for (int priority = 0; priority < 10; ++priority)
+        for (int depth = 0; depth < 3; ++depth)
+            for (int handle = 1; handle < 4; ++handle)
+                for (int duplicate = 0; duplicate < 2; ++duplicate)
+                    hits.push_back({{priority, float(depth), handle}, int(hits.size())});
+    unsigned seed = 891u;
+    for (int order = 0; order < 100; ++order) {
+        for (size_t i = hits.size(); i > 1; --i) {
+            seed = seed * 1664525u + 1013904223u;
+            std::swap(hits[i - 1], hits[seed % i]);
+        }
+        // Include misses, single hits, all-tied priority groups, and the full corpus.
+        for (size_t count : {size_t(0), size_t(1), size_t(9), size_t(31), hits.size()}) {
+            auto sorted = std::vector<Hit>(hits.begin(), hits.begin() + count);
+            std::stable_sort(sorted.begin(), sorted.end(), [](const Hit& a, const Hit& b) {
+                if (a.rank.depth != b.rank.depth) return a.rank.depth < b.rank.depth;
+                return a.rank.handle < b.rank.handle;
+            });
+            int expected = -1, priority = 10;
+            for (const auto& hit : sorted)
+                if (hit.rank.priority < priority) {
+                    expected = hit.identity;
+                    priority = hit.rank.priority;
+                }
+            mc2::pick::Rank best;
+            int got = -1;
+            for (size_t i = 0; i < count; ++i)
+                if (mc2::pick::precedes(hits[i].rank, best)) {
+                    best = hits[i].rank;
+                    got = hits[i].identity;
+                }
+            CHECK(got == expected);
+        }
+    }
+}
+
+TEST_CASE("GUI-covered pointer skips pick but clears hover and reentry picks fresh") {
+    int old = 1, fresh = 2, newest = 3;
+    int* target = &old;
+    int picks = 0, clears = 0;
+    bool bars = true, targeted = true;
+    auto clear = [&] { ++clears; bars = false; targeted = false; };
+    auto pick = [&] {
+        CHECK_FALSE(bars);
+        CHECK_FALSE(targeted);
+        ++picks;
+        return picks == 1 ? &fresh : &newest;
+    };
+    mc2::pick::refreshHover(true, target, clear, pick);
+    CHECK(target == nullptr);
+    CHECK(picks == 0);
+    CHECK(clears == 1);
+    CHECK_FALSE(bars);
+    CHECK_FALSE(targeted);
+    mc2::pick::refreshHover(false, target, clear, pick);
+    CHECK(target == &fresh);
+    mc2::pick::refreshHover(false, target, clear, pick);
+    CHECK(target == &newest);
+    CHECK(picks == 2);
+    CHECK(clears == 3);
+}
 
 TEST_CASE("screen pick scene scaling keeps center and edge clicks aligned") {
     for (const auto scene : {std::pair{3840,2160}, std::pair{2560,1440}, std::pair{1920,1080}}) {

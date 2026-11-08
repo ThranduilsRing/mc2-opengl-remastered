@@ -216,6 +216,59 @@ TEST_CASE("los_kernel_worker_matrix") {
     CHECK(std::memcmp(serial.data(), got.data(), static_cast<size_t>(n)) == 0);
 }
 
+TEST_CASE("los_kernel any-hit equals full batch for every ray order") {
+    World w;
+    auto corpus = w.queries(256, 518u);
+    std::vector<mc2::los::Query> visible, blocked;
+    for (const auto& ray : corpus)
+        (mc2::los::query(w.snap, ray) ? visible : blocked).push_back(ray);
+    REQUIRE_FALSE(visible.empty());
+    REQUIRE_FALSE(blocked.empty());
+    Rng rng{194u};
+    for (int workers : {0, 1, 3}) {
+        if (workers) mc2::jobs::startPool(workers);
+        for (size_t count : {size_t(0), size_t(1), size_t(8), size_t(9), size_t(65), size_t(128)}) {
+            for (int order = 0; order < 30; ++order) {
+                std::vector<mc2::los::Query> rays;
+                for (size_t i = 0; i < count; ++i)
+                    rays.push_back(blocked[rng.next() % blocked.size()]);
+                if (count && order % 2) rays[rng.next() % count] = visible[rng.next() % visible.size()];
+                std::vector<uint8_t> hits(count);
+                mc2::los::batch(w.snap, rays, hits);
+                const bool expected = std::any_of(hits.begin(), hits.end(), [](uint8_t h) { return h != 0; });
+                CHECK(mc2::los::any(w.snap, rays) == expected);
+            }
+        }
+        // Exhaust every permutation of a randomized four-ray set.
+        std::array<int, 4> indices{0, 1, 2, 3};
+        const std::array<mc2::los::Query, 4> set{blocked[0], visible[0], blocked[1], blocked[2]};
+        do {
+            std::array<mc2::los::Query, 4> rays;
+            for (size_t i = 0; i < rays.size(); ++i) rays[i] = set[indices[i]];
+            CHECK(mc2::los::any(w.snap, rays));
+        } while (std::next_permutation(indices.begin(), indices.end()));
+        mc2::jobs::stopPool();
+    }
+}
+
+TEST_CASE("los_kernel any-hit stops after nearest visible ray") {
+    World w;
+    auto rays = w.queries(128, 743u);
+    mc2::los::Query nearest = rays.back();
+    nearest.position = nearest.target;
+    rays.back() = nearest;
+    static int elevations;
+    elevations = 0;
+    w.snap.elevationOverride = [](const glm::vec3&) { ++elevations; return 0.0f; };
+    REQUIRE(mc2::los::query(w.snap, nearest));
+    const int singleRay = elevations;
+    elevations = 0;
+    CHECK(mc2::los::any(w.snap, rays));
+    CHECK(elevations == singleRay);
+    w.snap.valid = false;
+    CHECK_FALSE(mc2::los::any(w.snap, rays));
+}
+
 TEST_CASE("los_kernel_elevation_matches_legacy_structure") {
     for (float tl : { 0.0f, 1.0f, 2.0f, 3.0f }) {
         World w;

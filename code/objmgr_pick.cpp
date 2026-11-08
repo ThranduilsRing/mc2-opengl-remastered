@@ -5,6 +5,7 @@
 #include "mc2fmt.h"
 #include "mech3d.h"
 #include "gameplay_pick.h"
+#include "pick_query.h"
 #include "multplyr.h"
 
 extern bool ShowMovers;
@@ -627,8 +628,6 @@ void gameplayPickBattery(GameObjectManager& manager) {
     busy = false;
 }
 
-struct PickCandidate { GameObjectPtr obj; float depth; int priority; };
-
 int pickPriority(GameObjectPtr obj) {
     if (obj->isDisabled()) return 3;
     if (obj->isEnemy(Team::home)) {
@@ -640,13 +639,13 @@ int pickPriority(GameObjectPtr obj) {
     return 4;
 }
 
-// All gameplay point picks share filtering, bounds and a depth-ordered stack.
+// All gameplay point picks share filtering, bounds and priority/depth/handle selection.
 // Policy ranks live enemies, friendlies, wrecks, then neutral props.
 GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                  bool skipDisabled, long excludeCommander, bool terrainOnly) {
     if (!eye || list.empty() || x < 0 || y < 0 || x >= Environment.screenWidth || y >= Environment.screenHeight) return GameObjectPtr{};
-    static thread_local std::vector<PickCandidate> stack;
-    stack.clear();
+    GameObjectPtr best = nullptr;
+    mc2::pick::Rank bestRank;
     for (auto* obj : list) {
         if (!gameplayPickEligible(obj, skipDisabled)
             || (excludeCommander != -1 && obj->getCommanderId() == excludeCommander)
@@ -660,16 +659,11 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             && y >= rect.top+pad && y <= rect.bottom-pad;
         const auto delta = obj->getPosition() - eye->getCameraOrigin();
         // Forgiveness must not steal a direct hit on another object's bounds.
-        stack.push_back({obj, glm::dot(delta, delta), pickPriority(obj) + (coreHit ? 0 : 5)});
-    }
-    std::stable_sort(stack.begin(), stack.end(), [](const auto& a, const auto& b) {
-        if (a.depth != b.depth) return a.depth < b.depth;
-        return a.obj->getHandle() < b.obj->getHandle();
-    });
-    GameObjectPtr best = nullptr;
-    int priority = 10;
-    for (const auto& candidate : stack) {
-        if (candidate.priority < priority) { best=candidate.obj; priority=candidate.priority; }
+        const mc2::pick::Rank rank{pickPriority(obj) + (coreHit ? 0 : 5), glm::dot(delta, delta), obj->getHandle()};
+        if (mc2::pick::precedes(rank, bestRank)) {
+            best = obj;
+            bestRank = rank;
+        }
     }
     return best;
 }

@@ -7,6 +7,7 @@
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 #include "cursor_world_pick.h"
+#include "pick_query.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 namespace {
@@ -1151,23 +1152,22 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		}
 	}
 
-	// unset anything that isn't targeted (now validated-live, safe to deref)
-	for ( int i = 0; i < MAX_ICONS; i++ )
-	{
-		if ( oldTargets[i] )
+	mc2::pick::refreshHover(bGui, target, [&] {
+		// Clear previous hover even when the pointer is covered by GUI.
+		for ( int i = 0; i < MAX_ICONS; i++ )
 		{
-			oldTargets[i]->setDrawBars( 0 );
-			oldTargets[i] = nullptr;
-			s_oldTargetWatchID[i] = 0;
+			if ( oldTargets[i] )
+			{
+				oldTargets[i]->setDrawBars( 0 );
+				oldTargets[i] = nullptr;
+				s_oldTargetWatchID[i] = 0;
+			}
 		}
-	}
-
-	if ( target )
-		target->setTargeted( 0 );
-
-	//
-	// Hover and orders consume the same grounded-bounds pick.
-	target = ObjectManager->findObjectByMouse(mouseX, mouseY);
+		if ( target )
+			target->setTargeted( 0 );
+	}, [&] { return ObjectManager->findObjectByMouse(mouseX, mouseY); });
+	if (bGui)
+		s_targetWatchID = 0;
 	if ( target )
 	{
 		// Remember the freshly-picked (live) target's watch-ID so next frame's top-of-function
@@ -1184,9 +1184,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		// (isDisabled / getDescription) jumps through a freed vtable -> EXEC at 0x0.
 		if ( ObjectManager->getByWatchID( s_targetWatchID ) != target )
 			target = nullptr;
-		if ( target && bGui )
-			target = nullptr;
-		else if ( target && target->isMover() && !ShowMovers && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		if ( target && target->isMover() && !ShowMovers && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
 		{
 			if ((target->getTeamId() != Team::home->getId()) && 
 				!target->isDisabled() && 
