@@ -140,7 +140,17 @@ def gate_env():
                 MC2_BASH=GIT_BASH)
 
 
+FARM_QUEUE_LOCK = "C:/mc2farm/queue.lock"   # the runner's lock: perf timing never overlaps this build + gate (p31)
+
+
 def r_run(window, extra):
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import queue_lock   # uploaded next to this file by pc_main (tools/farm/queue_lock.py)
+    with queue_lock.hold(FARM_QUEUE_LOCK, log=lambda m: print("laptop_gate: " + m, flush=True)):
+        return _r_run(window, extra)
+
+
+def _r_run(window, extra):
     r_subst()
     out = Path(G, "out", window)
     # nothing from an earlier run may survive: a gate that dies before writing its verdict must leave no verdict to copy
@@ -537,6 +547,7 @@ def pc_main(args):
     t0 = time.time()
     ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
     scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
+    scp(Path(__file__).resolve().parent / "farm" / "queue_lock.py", f"{HOST}:{G}/bin/queue_lock.py")
     ssh(remote_py("init"), stream=True)
     seed()
     seed_ref()

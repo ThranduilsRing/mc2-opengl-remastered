@@ -369,6 +369,7 @@ def test_deployed_runner_replaces_interrupted_and_requeued_jobs(tmp_path):
     from tools.farm import runner
     deployed = tmp_path / 'runner.py'
     shutil.copy2(runner.__file__, deployed)
+    shutil.copy2(Path(runner.__file__).with_name('queue_lock.py'), tmp_path / 'queue_lock.py')
     helper = tmp_path / 'harness/scripts'
     helper.mkdir(parents=True)
     shutil.copy2(console_child.__file__, helper / 'console_child.py')

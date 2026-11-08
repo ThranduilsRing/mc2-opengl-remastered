@@ -11,9 +11,11 @@ import time
 
 runner_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(runner_dir / 'harness/scripts'))
+sys.path.append(str(runner_dir))  # queue_lock.py sits next to runner.py (also when imported as tools.farm.runner)
 if len(runner_dir.parents) > 1:
     sys.path.append(str(runner_dir.parents[1] / 'scripts'))
 import console_child
+import queue_lock
 
 
 def atomic_json(path, value):
@@ -65,12 +67,18 @@ def run_job(path, root):
 
 def poll_once(root):
     for path in sorted((root / 'jobs').glob('*.json')):
-        claimed = path.with_suffix('.running')
         try:
-            path.replace(claimed)
-        except FileNotFoundError:
-            continue  # desktop cancelled this still-pending job after our directory snapshot
-        run_job(claimed, root)
+            # One queue for jobs and the laptop gate's build (p31): take it BEFORE claiming, so a job waiting behind a gate build stays
+            # cancellable, and give up after a few seconds so the heartbeat keeps beating.
+            with queue_lock.hold(root / 'queue.lock', timeout=5):
+                claimed = path.with_suffix('.running')
+                try:
+                    path.replace(claimed)
+                except FileNotFoundError:
+                    continue  # desktop cancelled this still-pending job after our directory snapshot
+                run_job(claimed, root)
+        except TimeoutError:
+            return
 
 
 def main():
