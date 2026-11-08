@@ -591,6 +591,7 @@ class GameObject {
 
 		virtual void setRotation (float rot) 
 		{
+			if (rotation != rot) markTerrainPoseDirty();
 			rotation = rot;
 		}
 
@@ -624,9 +625,12 @@ class GameObject {
 		// COMBAT-TRACE-1: out-of-line death-event emitter (defined in gameobj.cpp, which has the
 		// diag include). Keeps the widely-included gameobj.h free of the diagnostic_trace header.
 		void emitCombatDeathTrace (long newStatus);
+		void markTerrainPresentationDirty(bool powerChange = false);
+		void markTerrainPoseDirty();
 
 		void setStatus (long newStatus, bool forceStatus = false)
 		{
+			if (status != newStatus) markTerrainPresentationDirty(newStatus == OBJECT_STATUS_DESTROYED);
 			// COMBAT-TRACE-1: detect the alive -> DISABLED/DESTROYED transition (a combat kill;
 			// DISABLED = mech taken out, DESTROYED = blown up) before status is overwritten, then
 			// emit a death event. Fires only on the transition (helper no-ops unless COMBAT tag on).
@@ -809,6 +813,8 @@ class GameObject {
 		// FLAG functions
 
 		virtual void setFlag (unsigned long flag, bool set) {
+			if ((flag & (OBJECT_FLAG_FALLING | OBJECT_FLAG_FALLEN | OBJECT_FLAG_JUSTCREATED)) && getFlag(flag) != set)
+				markTerrainPresentationDirty();
 			if (set)
 				flags |= flag;
 			else
@@ -869,11 +875,13 @@ class GameObject {
 
 		virtual void setDrawNormal()
 		{
+			if (drawFlags != DRAW_NORMAL) markTerrainPresentationDirty();
 			drawFlags = DRAW_NORMAL;
 		}
 
 		virtual void setDrawText( bool set )
 		{
+			if (((drawFlags & DRAW_TEXT) != 0) != set) markTerrainPresentationDirty();
 			if ( set )
 				drawFlags |= DRAW_TEXT;
 			else
@@ -887,6 +895,7 @@ class GameObject {
 
 		virtual void setDrawBars( bool set )
 		{
+			if (((drawFlags & DRAW_BARS) != 0) != set) markTerrainPresentationDirty();
 			if ( set )
 				drawFlags |= DRAW_BARS;
 			else
@@ -900,6 +909,7 @@ class GameObject {
 
 		virtual void setDrawBrackets( bool set )
 		{
+			if (((drawFlags & DRAW_BRACKETS) != 0) != set) markTerrainPresentationDirty();
 			if ( set )
 				drawFlags |= DRAW_BRACKETS;
 			else
@@ -913,6 +923,7 @@ class GameObject {
 
 		virtual void setDrawColored( bool set )
 		{
+			if (((drawFlags & DRAW_COLORED) != 0) != set) markTerrainPresentationDirty();
 			if ( set )
 				drawFlags |= DRAW_COLORED;
 			else

@@ -1144,6 +1144,7 @@ void TerrainObject::destroy (void)
 //---------------------------------------------------------------------------
 
 void TerrainObject::setDamage (long newDamage) {
+	if (damage != static_cast<float>(newDamage)) markTerrainPresentationDirty();
 
 	damage = static_cast<float>(newDamage);
 

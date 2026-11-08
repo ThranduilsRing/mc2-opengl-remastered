@@ -43,6 +43,12 @@ uint32_t captureForcedBuildingHighlight()
 long BldgAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
+	if (inView && IsStaticNow() && bldgShape) {
+		// Static presentation has settled; render owns registry frame liveness.
+		bldgShape->Touch();
+		bldgShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
+		updateFrameEffects();
+	}
 	// World markers keep world depth and colour, but never enter a caster feed.
 	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);
 	if (marker && bldgShape) {
@@ -456,6 +462,10 @@ long BldgAppearance::renderShadows (void)
 long TreeAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
+	if (inView && IsStaticNow() && treeShape) {
+		treeShape->Touch();
+		treeShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
+	}
 	if (gos_IsModernShadowPathActive() && shadowIsMoving()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),treeShape);
 	// Mirror BldgAppearance::render: bypass inView under GPU path — the
 	// GPU clipper decides visibility, and the legacy angular cull has a
@@ -532,7 +542,7 @@ long TreeAppearance::render (long depthFixup)
 					}
 				}
 				static const bool s_forceDynamicTrees =
-				    bdForceDynamicDefault<"MC2_FORCE_DYNAMIC_TREES">();
+				    mc2::gate::get<"MC2_FORCE_DYNAMIC_TREES">();
 				if (s_forceDynamicTrees) {
 					invalidateStaticRegistration();
 				} else if (treeShape->getCachedGpuLightIndex() == UINT32_MAX) {

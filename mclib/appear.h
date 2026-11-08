@@ -28,6 +28,7 @@
 #include<stuff/stuff.hpp>
 #include "unit_anim_state.h"
 #include "presentation_phase.h"
+#include "../code/terrain_dirty_queue.h"
 
 unsigned currentAppearanceRegistryGeneration (void); // apprtype.cpp
 // Forward declaration for prewarmStaticLightBake parameter.
@@ -74,12 +75,15 @@ class Appearance
     // Set once a mover caches simAnim_ (pinnedSimulationAnimation): its writes bypass the clears, so it never settles.
     mutable std::atomic<bool> animPinned_{false};
 public:
+    long terrainPresentationHandle = -1; // only terrain-pool owners bind this
+    bool terrainPoseDirty = false; // consumed after the simulation joins
+    void markTerrainPresentationDirty() const { mc2::terrainDirtyQueue().mark(terrainPresentationHandle); }
     // Generation of the type registry that issued this holder's appearance type (stamped by init(tree)); 0 = none.
     unsigned registryGeneration = 0;
     bool simulationOwned() const { return simulationOwned_; }
-    mc2::sim::UnitAnimState& unitAnim() { animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
+    mc2::sim::UnitAnimState& unitAnim() { if (!simPresentationPass) markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
-    auto simulationAnimation() const { animSettled_.store(false, std::memory_order_relaxed); return simAnim_; }
+    auto simulationAnimation() const { markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simAnim_; }
     auto pinnedSimulationAnimation() const { animPinned_.store(true, std::memory_order_relaxed); return simulationAnimation(); }
     void presentAnimation(const mc2::sim::UnitAnimState& value) { animSettled_.store(false, std::memory_order_relaxed); renderAnim_ = value; flushSimEvents(); }
     // Terrain walk: presentAnimation(sim) + presentEffects(), skipped when neither copy was touched since the last
@@ -96,8 +100,9 @@ public:
     }
     // Kill and flash events the tick recorded (it must not touch draw state): consumed here, once per presentation visit.
     // Last status wins; the draw implementations are idempotent.
-    void recordSimStatus(long oStatus) { pendingStatus_ = oStatus; hasPendingStatus_ = true; }
+    void recordSimStatus(long oStatus) { markTerrainPresentationDirty(); pendingStatus_ = oStatus; hasPendingStatus_ = true; }
     void recordSimFlash(float duration, float flashDuration, DWORD color) {
+        markTerrainPresentationDirty();
         pendingFlash_[0] = duration; pendingFlash_[1] = flashDuration; pendingFlashColor_ = color; hasPendingFlash_ = true;
     }
     void flushSimEvents() {

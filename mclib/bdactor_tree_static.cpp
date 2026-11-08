@@ -137,6 +137,7 @@ void TreeAppearance::touchSerialCommit()
 
 void TreeAppearance::invalidateStaticRegistration()
 {
+	markTerrainPresentationDirty();
 	// TREE-OVERRIDE-LOD-MVP Task 2: tear down every registered LOD recipe.
 	for (long lod = 0; lod < MAX_LODS; ++lod) {
 		if (staticReg[lod].registered && staticReg[lod].recipeIndex >= 0) {

@@ -8,7 +8,6 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "battle_bench_sink.h"
-#include "../GameOS/gameos/diagnostic_trace.h"
 
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
@@ -592,10 +591,6 @@ long TreeAppearance::update (bool animate)
 				appearType && appearType->treeRenderShapeLodCount > 0,
 				staticReg[activeLOD].lightDataIndex);
 			needsFullBakeNextFrame = false;
-			if (mc2_diag::tagRequested("LIGHT_CONTRACT")) {
-				static int samples = 0;
-				if (samples++ < 8) std::fprintf(stderr, "TREE_RECOVERY tree=%p slot=%u lod=%ld reg=%d\n", static_cast<void*>(this), _sharedLightSlot, activeLOD, staticReg[activeLOD].registered);
-			}
 		}
 
 		light->active = true;

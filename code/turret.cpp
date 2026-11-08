@@ -371,6 +371,7 @@ void Turret::init (bool create) {
 //---------------------------------------------------------------------------
 
 long Turret::setTeamId (long _teamId, bool setup) {
+	if (teamId != _teamId) markTerrainPresentationDirty();
 
 	if (MPlayer)
 	{

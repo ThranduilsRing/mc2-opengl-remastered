@@ -733,6 +733,7 @@ void BldgAppearance::touchSerialCommit()
 // Recipe invalidation queues the old leaves for incremental shadow updates.
 void BldgAppearance::invalidateStaticRegistration()
 {
+	markTerrainPresentationDirty();
 	if (staticReg.registered && staticReg.recipeIndex >= 0) {
 		mc2shadow::staticCasterSet().ownerInvalidated(static_cast<const Appearance*>(this), staticReg.recipeIndex);
 		GameAdapters::StaticProp::destroyStaticPropByIndex(staticReg.recipeIndex);

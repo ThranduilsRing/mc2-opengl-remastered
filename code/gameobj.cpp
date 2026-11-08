@@ -1550,6 +1550,26 @@ void GameObject::adoptAppearance (std::unique_ptr<Appearance> newAppearance) {
 
     if (mc2::tick::collecting()) releaseAppearance();
 	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance.release());
+	const auto kind = getObjectClass();
+	if (appearance && (kind == TREE || kind == TERRAINOBJECT || kind == BRIDGE || kind == BUILDING || kind == TURRET || kind == GATE)) {
+		appearance->terrainPresentationHandle = getHandle();
+		appearance->markTerrainPresentationDirty();
+	}
+}
+
+void GameObject::markTerrainPresentationDirty(bool powerChange) {
+	if (appearance) {
+		appearance->markTerrainPresentationDirty();
+		// A destroyed generator can power terrain objects outside its own block.
+		if (powerChange && appearance->terrainPresentationHandle >= 0) mc2::terrainDirtyQueue().markAll();
+	}
+}
+
+void GameObject::markTerrainPoseDirty() {
+	if (appearance && appearance->terrainPresentationHandle >= 0) {
+		appearance->terrainPoseDirty = true;
+		appearance->markTerrainPresentationDirty();
+	}
 }
 
 void GameObject::releaseAppearance (void) {
@@ -1763,6 +1783,7 @@ glm::vec3 GameObject::relativePosition (float angle, float distance, unsigned lo
 //---------------------------------------------------------------------------
 
 void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) {
+	if (position != newPosition) markTerrainPoseDirty();
 	if (ObjectManager) ObjectManager->invalidateSpatialGrid(!isMover());
 
 	position = newPosition;
@@ -1803,6 +1824,7 @@ void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) 
 
 void GameObject::setExists(bool set) {
 	if (getExists() != set) {
+		markTerrainPresentationDirty();
 		if (mc2::world_trace::enabled())
 			mc2::world_trace::event(set ? "spawn" : "remove", this);
 		if (ObjectManager) ObjectManager->invalidateEntity(handle, this);

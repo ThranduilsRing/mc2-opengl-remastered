@@ -519,6 +519,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual void setLightsOut (bool lightFlag)
 		{
+			if (forceLightsOut != lightFlag) markTerrainPresentationDirty();
 			forceLightsOut = lightFlag;
 		}
 
@@ -793,6 +794,7 @@ class TreeAppearance : public ObjectAppearance
 
 		virtual void setLightsOut (bool lightFlag)
 		{
+			if (forceLightsOut != lightFlag) markTerrainPresentationDirty();
 			forceLightsOut = lightFlag;
 		}
 		

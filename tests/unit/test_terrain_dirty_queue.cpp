@@ -35,4 +35,7 @@ TEST_CASE("terrain_dirty_queue/height epoch marks every object of the block")
     queue.mark(4);
     queue.reset(3); // mission teardown/reload must discard stale IDs
     CHECK(queue.drain().empty());
+    queue.markAll(); // power generator destruction invalidates linked blocks
+    CHECK(queue.drain() == std::vector<long>{1, 2});
+    CHECK(queue.drain().empty());
 }

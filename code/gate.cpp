@@ -565,6 +565,7 @@ void Gate::openGate (void)
 //---------------------------------------------------------------------------
 long Gate::setTeamId (long _teamId, bool setup) 
 {
+	if (teamId != _teamId) markTerrainPresentationDirty();
 	if (MPlayer)
 	{
 		teamId = _teamId;
