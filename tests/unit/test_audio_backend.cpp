@@ -202,7 +202,8 @@ TEST_CASE("AudioBackend/two music slots stream independently across catalog rele
 TEST_CASE("AudioBackend/stream prebuffers bounded chunks and loops without a gap") {
     AudioDevice device;
     REQUIRE(gos_CreateAudio());
-    const auto path = std::filesystem::temp_directory_path() / "mc2-stream-loop.wav";
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-stream-loop-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
     struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
     // Three stereo frames force multiple EOF boundaries inside one mixer buffer.
     const std::array<short, 6> samples{1000,2000,3000,4000,5000,6000};
@@ -258,7 +259,8 @@ TEST_CASE("AudioBackend/catalog beyond old PCM cache never decodes at registrati
 TEST_CASE("AudioBackend/music prebuffer does not decode the declared full track") {
     AudioDevice device;
     REQUIRE(gos_CreateAudio());
-    const auto path = std::filesystem::temp_directory_path() / "mc2-stream-bounded.wav";
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-stream-bounded-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
     struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
     SDL_RWops* file = SDL_RWFromFile(path.string().c_str(), "wb");
     REQUIRE(file);
@@ -288,7 +290,8 @@ TEST_CASE("AudioBackend/music prebuffer does not decode the declared full track"
 TEST_CASE("AudioBackend/Microsoft ADPCM music decodes and loops as resident PCM") {
     AudioDevice device;
     REQUIRE(gos_CreateAudio());
-    const auto path = std::filesystem::temp_directory_path() / "mc2-stream-adpcm.wav";
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-stream-adpcm-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
     struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
     SDL_RWops* file = SDL_RWFromFile(path.string().c_str(), "wb");
     REQUIRE(file);
