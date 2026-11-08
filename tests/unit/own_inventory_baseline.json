@@ -2767,6 +2767,18 @@
     ""
    ]
   },
+  "T": {
+   "delete": 0,
+   "delete_array": 0,
+   "files": {
+    "code/world/actor_pool.h": {
+     "new": 1
+    }
+   },
+   "new": 1,
+   "new_array": 0,
+   "owners": []
+  },
   "TG_TypeMultiShape": {
    "delete": 0,
    "delete_array": 0,
@@ -2942,17 +2954,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/objmgr.cpp": {
-     "new": 1
-    },
-    "code/objmgr_io.cpp": {
-     "new": 1
-    },
     "code/turret.cpp": {
      "new": 1
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
