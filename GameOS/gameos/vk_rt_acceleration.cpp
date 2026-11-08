@@ -83,7 +83,8 @@ bool ScratchArena::reserve(const VulkanContext& ctx, VkDeviceSize needed, std::s
         capacity_ = 0;
         OwnedBuffer fresh;
         const VkDeviceSize bytes = scratchAllocBytes(needed, align);
-        if (!fresh.createDeviceLocal(ctx.allocator(), ctx.device(), bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name))
+        if (!fresh.createDeviceLocal(ctx.allocator(), ctx.device(), bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name,
+                                     -1, -1, align))
             return failWith("scratch_alloc bytes={} result={}", bytes, static_cast<int>(takeLastCreateFailure()));
         buffer_ = std::move(fresh);
         capacity_ = bytes;
@@ -152,7 +153,8 @@ std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkA
     AccelStructure out;
     const VkDeviceSize bytes = asStorageBytes(size);
     if (!out.buffer_.createDeviceLocal(ctx.allocator(), ctx.device(), bytes,
-                                       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name)) {
+                                       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name, -1, -1,
+                                       kAsStorageAlignment)) {
         failWith("as_storage_alloc bytes={} result={}", bytes, static_cast<int>(takeLastCreateFailure()));
         return std::nullopt;
     }

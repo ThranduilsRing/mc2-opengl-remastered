@@ -194,7 +194,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     constexpr VkBufferUsageFlags kInput = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
     OwnedBuffer vb, ib, inst;
     if (!vb.createFilled(al, dev, verts, sizeof(verts), kInput, "rt_selftest.vb") || !ib.createFilled(al, dev, idx, sizeof(idx), kInput, "rt_selftest.ib") ||
-        !inst.createHostWritable(al, dev, kInstanceBytes, kInput, "rt_selftest.instances")) {
+        !inst.createHostWritable(al, dev, kInstanceBytes, kInput, "rt_selftest.instances", -1, -1, kInstanceAddressAlignment)) {
         slog("FAIL buffers");
         return false;
     }

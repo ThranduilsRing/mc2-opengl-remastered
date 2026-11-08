@@ -247,17 +247,13 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     rows.insert(rows.end(), propRows.begin(), propRows.end());
     for (uint32_t tile = 0; tile < terrain.size(); ++tile) rows.push_back(terrainMaterialRow(tile));
     const uint32_t terrainBase = terrainRowBase(static_cast<uint32_t>(propRows.size()));
-    // Both tables are padded to 256-byte multiples: the driver may report a 4-byte alignment for host buffers, and VMA packs the next buffer
-    // (rt_scene.instances, which must sit on a 16-byte address) right behind an odd-sized one; that made every TLAS record fail (stage=tlas_record).
-    constexpr size_t kPadWords = 64;
-    while (rows.size() * sizeof(MaterialRow) % 256 != 0) rows.push_back(MaterialRow{});
-    std::vector<uint32_t> uvPadded(uv.empty() ? kPadWords : (uv.size() + kPadWords - 1) / kPadWords * kPadWords, 0u);
-    std::copy(uv.begin(), uv.end(), uvPadded.begin());
-    const VkDeviceSize uvBytes = uvPadded.size() * sizeof(uint32_t);
+    // No padding: every buffer whose address the build needs aligned asks VMA for it (rt_scene.instances below, AS storage, scratch).
+    const std::vector<uint32_t> uvOrZero = uv.empty() ? std::vector<uint32_t>{0u} : uv;   // a storage buffer is never empty
+    const VkDeviceSize uvBytes = uvOrZero.size() * sizeof(uint32_t);
     g_failStage = !customIndexFits(static_cast<uint32_t>(rows.size())) ? "rows_fit" : "material_buffers";
     if (!customIndexFits(static_cast<uint32_t>(rows.size())) ||
         !s.pendingMat.createFilled(ctx.allocator(), ctx.device(), rows.data(), rows.size() * sizeof(MaterialRow), kStorage, "rt_scene.materials") ||
-        !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uvPadded.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
+        !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uvOrZero.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
         retirePending(ctx, s);
         return std::nullopt;
     }
@@ -291,7 +287,7 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     AccelStructure tlas;
     if (inst.empty()) return tlas;   // an empty scene: nothing to trace, still a valid (empty) snapshot
     OwnedBuffer buf;
-    if (!buf.createFilled(ctx.allocator(), ctx.device(), inst.data(), inst.size() * sizeof(inst[0]), kBuildInput, "rt_scene.instances")) {
+    if (!buf.createFilled(ctx.allocator(), ctx.device(), inst.data(), inst.size() * sizeof(inst[0]), kBuildInput, "rt_scene.instances", kInstanceAddressAlignment)) {
         g_failStage = "instance_buffer";
         retirePending(ctx, s);
         return std::nullopt;
@@ -1137,31 +1133,30 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
         if (s.moverInst[fs]) ctx->retire(std::move(s.moverInst[fs]));
         const uint32_t cap = std::max<uint32_t>(count + count / 2, 64);
         s.moverInstCap[fs] = 0;
-        // +kInstanceAddressAlignment: a host-writable sub-allocation is only guaranteed 4-byte aligned (seen on the RX 7900 XTX), the instances need 16.
-        if (s.moverInst[fs].createHostWritable(ctx->allocator(), ctx->device(), static_cast<VkDeviceSize>(cap) * kInstanceBytes + kInstanceAddressAlignment,
-                                               kBuildInput, "rt_scene.mover_instances"))
+        // Allocated on a 16-byte address (kInstanceAddressAlignment): the driver reports 4 for a host buffer on the RX 7900 XTX.
+        if (s.moverInst[fs].createHostWritable(ctx->allocator(), ctx->device(), static_cast<VkDeviceSize>(cap) * kInstanceBytes, kBuildInput,
+                                               "rt_scene.mover_instances", -1, -1, kInstanceAddressAlignment))
             s.moverInstCap[fs] = cap;
         else
             ok = false;
     }
     const VkDeviceAddress instBase = ok ? s.moverInst[fs].deviceAddress() : 0;
-    const VkDeviceSize instOffset = (kInstanceAddressAlignment - instBase % kInstanceAddressAlignment) % kInstanceAddressAlignment;
-    if (ok) ok = s.moverInst[fs].upload(s.instStage.data(), static_cast<VkDeviceSize>(count) * kInstanceBytes, instOffset);
+    if (ok) ok = s.moverInst[fs].upload(s.instStage.data(), static_cast<VkDeviceSize>(count) * kInstanceBytes);
     if (ok) {
         BuildFlags flags;
         flags.preferFastTrace = false;
         const uint32_t capacity = s.moverInstCap[fs];
-        ok = recordTlasRebuild(*ctx, cmd, instBase + instOffset, count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
+        ok = recordTlasRebuild(*ctx, cmd, instBase, count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
         if (!ok && s.moverTlas) {   // too small: a new one sized for the capacity
             ctx->retire(std::move(s.moverTlas));
             s.moverTlas = AccelStructure{};
-            ok = recordTlasRebuild(*ctx, cmd, instBase + instOffset, count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
+            ok = recordTlasRebuild(*ctx, cmd, instBase, count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
         }
         if (ok) recordBarrier(*ctx, cmd, Phase::Tlas, Phase::Consumer);
     }
     if (!ok && count > 0 && ++s.moverTlasFailed <= 3)
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL mover tlas count={} cap={} inst_addr=0x{:x} tlas_bytes={} scratch_bytes={}", count, s.moverInstCap[fs],
-                  instBase + instOffset, s.moverTlas ? s.moverTlas.size() : 0, s.moverScratch.capacity());
+                  instBase, s.moverTlas ? s.moverTlas.size() : 0, s.moverScratch.capacity());
     if (!ok && s.moverTlas) ctx->retire(std::move(s.moverTlas));   // never leave a TLAS whose build was not recorded this frame
     s.moverScratch.retireStale(*ctx);
 
