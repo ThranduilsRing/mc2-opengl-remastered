@@ -420,11 +420,14 @@ bool worldTri(const float t[12], const float v[9], WorldTri& w) {
 }
 
 // A ray along -normal through barycentric (u, v) of `w`, starting 2 units off the surface: no neighbour above can occlude it (the 1/8 object-ID miss).
+// The ray starts kProbeLift above the target triangle along its normal: short, so terrain or another part of the same mesh rarely sits between
+// (a 2-unit lift let the terrain hide buried props on mc2_10 and other triangles of the mesh win on mc2_01).
+constexpr float kProbeLift = 0.25f;
 void pushTriRay(std::vector<float>& rays, const WorldTri& w, float u, float v) {
     const float k = 1.0f - u - v;
     float p[3];
-    for (int r = 0; r < 3; ++r) p[r] = w.a[r] * k + w.b[r] * u + w.c[r] * v + w.n[r] * 2.0f;
-    rays.insert(rays.end(), {p[0], p[1], p[2], 0.0f, -w.n[0], -w.n[1], -w.n[2], 4.0f});
+    for (int r = 0; r < 3; ++r) p[r] = w.a[r] * k + w.b[r] * u + w.c[r] * v + w.n[r] * kProbeLift;
+    rays.insert(rays.end(), {p[0], p[1], p[2], 0.0f, -w.n[0], -w.n[1], -w.n[2], 2.0f * kProbeLift});
 }
 
 struct ProbeHit {
@@ -554,8 +557,8 @@ void probeMaterials(VulkanContext& ctx, State& s) {
     uint32_t propOk = 0, vegOk = 0, terrOk = 0, holes = 0, falseHoles = 0, opaqueDiffs = 0, logged = 0;
     auto report = [&](std::string_view kind, size_t i, const ProbeHit& h, const Expect& e) {
         if (logged++ < 12)
-            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material miss kind={} ray={} hit={} custom=0x{:x}/0x{:x} row={}/{} prim={}/{} layer={}/{} packet={}/{} flags={}", kind, i,
-                      h.hit ? 1 : 0, h.custom, e.custom, h.row, e.row, h.prim, e.prim, h.layer, e.layer, h.packet, e.packet, h.flags);
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material miss kind={} ray={} hit={} t={:.3f} custom=0x{:x}/0x{:x} row={}/{} prim={}/{} layer={}/{} packet={}/{} flags={}", kind, i,
+                      h.hit ? 1 : 0, h.t, h.custom, e.custom, h.row, e.row, h.prim, e.prim, h.layer, e.layer, h.packet, e.packet, h.flags);
     };
     for (size_t i = 0; i < propX.size(); ++i) {
         const ProbeHit a = hitAt(outA, i), o = hitAt(outO, i);
