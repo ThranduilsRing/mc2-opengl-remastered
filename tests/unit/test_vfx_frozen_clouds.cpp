@@ -28,6 +28,7 @@ namespace {
 std::vector<GosVfxMeshInstance> meshInstances;
 std::vector<std::vector<uint16_t>> meshIndices;
 std::vector<std::vector<float>> meshPositions, meshUvs;
+std::vector<mc2::particles::GpuParticle>* playbackParticles = nullptr;
 }
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned count,
     const GosVfxMeshInstance* instances, unsigned instanceCount)
@@ -39,6 +40,14 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads, unsigned cou
     }
     meshInstances.insert(meshInstances.end(), instances, instances + instanceCount);
 }
+
+// Playback oracle shares the actual legacy draw sink, including nested meshes.
+void vfx_test_clear_mesh_capture()
+{
+    meshInstances.clear(); meshIndices.clear(); meshPositions.clear(); meshUvs.clear();
+}
+const std::vector<GosVfxMeshInstance>& vfx_test_mesh_instances() { return meshInstances; }
+void vfx_test_capture_particles(std::vector<mc2::particles::GpuParticle>* capture) { playbackParticles = capture; }
 
 void vfx_test_bind_rng(std::uint32_t* state);
 extern "C" unsigned long long mc2_vfx_getEmitTotal();
@@ -522,6 +531,7 @@ void checkFrozenCloud(bool alignX = false, bool alignY = false, unsigned sides =
 extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned count,
     const mc2::particles::GroupInfo* groups, unsigned groupCount)
 {
+    if (playbackParticles) playbackParticles->insert(playbackParticles->end(), records, records + count);
     if (!borrowedCapture) return;
     ++borrowedCapture->calls;
     borrowedCapture->records.insert(borrowedCapture->records.end(), records, records + count);
