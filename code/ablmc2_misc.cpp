@@ -292,7 +292,7 @@ void execSendMessage (void) {
 			DebugMissionScriptMessages();
 			Assert(false, NumMissionScriptMessages, " Way too many Mission Script Messages! ");
 		}
-		MissionScriptMessageLog[NumMissionScriptMessages][0] = execLineNumber;
+		MissionScriptMessageLog[NumMissionScriptMessages][0] = g_ablExec->execLineNumber;
 		MissionScriptMessageLog[NumMissionScriptMessages][1] = CurMultiplayCode;
 		MissionScriptMessageLog[NumMissionScriptMessages][2] = CurMultiplayParam;
 		NumMissionScriptMessages++;

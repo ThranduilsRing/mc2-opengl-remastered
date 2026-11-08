@@ -38,11 +38,9 @@ extern bool s_ablRuntimeSoftfail;
 //----------
 // EXTERNALS
 extern char*		tokenp;
-extern int          execLineNumber;
 extern int32_t      lineNumber;
 extern int32_t      FileNumber;
 extern char			SourceFiles[MAX_SOURCE_FILES][MAXLEN_FILENAME];
-extern ABLModulePtr	CurModule;
 extern char			wordString[];
 
 //---------------------------------------------------------------------------
@@ -188,24 +186,24 @@ void runtimeError (RuntimeErrorType errCode) {
 	if (debugger) {
 		mc2::fmt::to_buf(message, "RUNTIME ERROR:  [{:d}] {}", mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "MODULE {}", mc2::fmt::safe(CurModule->getName()));
+		mc2::fmt::to_buf(message, "MODULE {}", mc2::fmt::safe(g_ablExec->CurModule->getName()));
 		debugger->print(message);
 		if (FileNumber > -1)
-			mc2::fmt::to_buf(message, "FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
+			mc2::fmt::to_buf(message, "FILE {}", mc2::fmt::safe(g_ablExec->CurModule->getSourceFile(FileNumber)));
 		else
 			mc2::fmt::to_buf(message, "FILE : unavailable");
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "LINE {:d}", mc2::fmt::as_i32(execLineNumber));
+		mc2::fmt::to_buf(message, "LINE {:d}", mc2::fmt::as_i32(g_ablExec->execLineNumber));
 		debugger->print(message);
 		debugger->debugMode();
 	}
 
-	mc2::fmt::to_buf(message, "ABL RUNTIME ERROR {} [line {:d}] - (type {:d}) {}\n", mc2::fmt::safe((FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable"), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
+	mc2::fmt::to_buf(message, "ABL RUNTIME ERROR {} [line {:d}] - (type {:d}) {}\n", mc2::fmt::safe((FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable"), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 	if (s_ablArgGuard && s_ablRuntimeSoftfail) {
 		// H3: log-and-continue instead of aborting the process.
 		char softMsg[512];
-		const char* srcFile = (FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
-		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(CurModule ? CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
+		const char* srcFile = (FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable";
+		mc2::fmt::to_buf(softMsg, "[ABL_SOFTFAIL] func=(runtime) module={} file={} line={:d} errCode={:d} — {}", mc2::fmt::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "(unknown)"), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(code), mc2::fmt::safe(runtimeErrorMessages[code]));
 		mc2::fmt::print_out("{}\n", mc2::fmt::safe(softMsg)); fflush(stdout);
 		return;
 	}

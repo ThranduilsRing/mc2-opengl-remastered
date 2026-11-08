@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <array>
 
-extern int execLineNumber;
-extern ABLModulePtr CurModule;
 
 namespace {
 
@@ -144,7 +142,7 @@ void reportTruncated(std::string_view event, size_t capacity, size_t dropped) {
 	if (!takeLine(eventKey(event)))
 		return;
 	mc2::fmt::print_err("[ABL v1] event={} module={} line={:d} capacity={:d} dropped={:d}\n", event,
-	                    mc2::fmt::safe(CurModule ? CurModule->getName() : nullptr), mc2::fmt::as_i32(execLineNumber),
+	                    mc2::fmt::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : nullptr), mc2::fmt::as_i32(g_ablExec->execLineNumber),
 	                    mc2::fmt::as_size(capacity), mc2::fmt::as_size(dropped));
 }
 
@@ -152,7 +150,7 @@ void reportBadArgument(std::string_view builtin, std::string_view argument) {
 	if (!takeLine(Event::BadArgument))
 		return;
 	mc2::fmt::print_err("[ABL v1] event=bad_argument builtin={} argument={} module={} line={:d}\n", builtin, argument,
-	                    mc2::fmt::safe(CurModule ? CurModule->getName() : nullptr), mc2::fmt::as_i32(execLineNumber));
+	                    mc2::fmt::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : nullptr), mc2::fmt::as_i32(g_ablExec->execLineNumber));
 }
 
 }  // namespace abl

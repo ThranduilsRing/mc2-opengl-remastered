@@ -10,8 +10,11 @@
 #ifndef ABLEXEC_H
 #define ABLEXEC_H
 
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <utility>
+#include <vector>
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -131,17 +134,66 @@ using StackFrameHeaderPtr = StackFrameHeader*;
 
 extern char*			codeBuffer;
 extern char*			codeBufferPtr;
-extern char*			codeSegmentPtr;
-extern char*			codeSegmentLimit;
-extern char*			statementStartPtr;
+extern StackItem*		stack;	// environment-owned root stack; eternal variables live in [0, eternalOffset)
 
-extern TokenCodeType	codeToken;
-extern int              execLineNumber;
-extern int              execStatementCount;
+// The executor state of one ABL run: code cursor, stack, current module/routine, static data base and the
+// exit/error flags. The interpreter reads the context bound to g_ablExec. A host call that runs a second
+// module binds its own context with AblExecScope, so the caller's run resumes untouched when it returns.
+// Eternal variables stay in the root stack and are shared by every context.
+struct AblExecContext {
+	AblExecContext () = default;
+	explicit AblExecContext (std::size_t ownStackItems) : ownStack(ownStackItems) {}
+	AblExecContext (const AblExecContext&) = delete;
+	AblExecContext& operator= (const AblExecContext&) = delete;
 
-extern StackItem*		stack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
+	// Code cursor.
+	char*			codeSegmentPtr = nullptr;
+	char*			codeSegmentLimit = nullptr;
+	char*			statementStartPtr = nullptr;
+	TokenCodeType	codeToken{};
+	int				execLineNumber = 0;
+	int				execStatementCount = 0;
+	// Stack.
+	StackItemPtr	tos = nullptr;
+	StackItemPtr	stackFrameBasePtr = nullptr;
+	StackItemPtr	stackLimit = nullptr;	// one past the last usable item
+	// Current module, routine and static data.
+	StackItemPtr	StaticDataPtr = nullptr;
+	unsigned long*	OrderCompletionFlags = nullptr;
+	ABLModulePtr	CurModule = nullptr;
+	long			CurModuleHandle = 0;
+	ABLModulePtr	CurFSM = nullptr;
+	SymTableNodePtr	CurRoutineIdPtr = nullptr;
+	int32_t			level = 0;
+	int32_t			CallStackLevel = 0;
+	int32_t			NumStateTransitions = 0;
+	bool			CallModuleInit = false;
+	bool			NewStateSet = false;
+	bool			AutoReturnFromOrders = false;
+	// Exit state and result.
+	bool			ExitWithReturn = false;
+	bool			ExitFromTacOrder = false;
+	StackItem		returnValue{};
+
+	// Empty: the context runs on the root stack above the eternals.
+	std::vector<StackItem>	ownStack;
+
+	// Points tos and the frame base at the bottom of this context's stack (an entry frame starts here).
+	void resetStack ();
+};
+
+extern AblExecContext*	g_ablExec;	// the bound context; the root context unless an AblExecScope is live
+
+// Binds a context for the scope (a host call running another module) and restores the caller's on exit.
+class AblExecScope {
+public:
+	explicit AblExecScope (AblExecContext& context) noexcept : previous(g_ablExec) { g_ablExec = &context; }
+	~AblExecScope () { g_ablExec = previous; }
+	AblExecScope (const AblExecScope&) = delete;
+	AblExecScope& operator= (const AblExecScope&) = delete;
+private:
+	AblExecContext*	previous;
+};
 
 //***************************************************************************
 

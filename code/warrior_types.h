@@ -2,6 +2,8 @@
 #ifndef WARRIOR_TYPES_H
 #define WARRIOR_TYPES_H
 
+#include <cstdint>
+
 #include "dwarrior.h"
 #include "dmovemgr.h"
 

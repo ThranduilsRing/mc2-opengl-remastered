@@ -20,8 +20,8 @@ ScriptedArgs& args() {
 // ABL exec context (mclib/ablxstd.cpp, ablexec.cpp).
 bool s_ablArgGuard = false;
 bool s_ablRuntimeSoftfail = false;
-int execLineNumber = 0;
-ABLModulePtr CurModule = nullptr;
+static AblExecContext s_shimExec;  // execLineNumber and CurModule for the softfail message
+AblExecContext* g_ablExec = &s_shimExec;
 int32_t FileNumber = -1;
 
 char* ABLModule::getSourceFile(int) { return const_cast<char*>(""); }

@@ -264,8 +264,8 @@ void execSetCurrentBRValue (void) {
 	//		PARAMS:	integer, integer
 	//		Returns: None
 
-	long objectNum = tos->integer;
-	long newBRValue = tos->integer;
+	long objectNum = g_ablExec->tos->integer;
+	long newBRValue = g_ablExec->tos->integer;
 
 	GameObjectPtr object1 = getObject(objectNum);
 	if (object1)

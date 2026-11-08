@@ -134,7 +134,6 @@ extern int32_t          level;
 extern int32_t          lineNumber;
 extern int32_t          FileNumber;
 extern long				errorCount;
-extern int              execStatementCount;
 
 extern TokenCodeType	curToken;
 extern char				wordString[];
@@ -144,16 +143,12 @@ extern BlockType		blockType;
 extern bool				printFlag;
 extern SymTableNodePtr	CurModuleIdPtr;
 extern SymTableNodePtr	CurRoutineIdPtr;
-extern long				CurModuleHandle;
-extern bool				CallModuleInit;
 
 extern Type				DummyType;
 extern char*			codeBuffer;
 extern char*			codeBufferPtr;
 extern StackItem*		stack;
 //extern StackItem*		eternalStack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
 extern long				eternalOffset;
 
 extern TokenCodeType	statementStartList[];
@@ -181,9 +176,6 @@ extern TypePtr			IntegerTypePtr;
 extern TypePtr			RealTypePtr;
 extern TypePtr			BooleanTypePtr;
 
-extern unsigned long*	OrderCompletionFlags;
-extern StackItemPtr		StaticDataPtr;
-extern StackItem		returnValue;
 
 extern DebuggerPtr		debugger;
 extern long*			EternalVariablesSizes;
@@ -201,17 +193,13 @@ int32_t				NumModulesRegistered = 0;
 int32_t				NumModuleInstances = 0;
 int32_t				MaxWatchesPerModule = 20;
 int32_t				MaxBreakPointsPerModule = 20;
-ABLModulePtr		CurModule = nullptr;
-ABLModulePtr		CurFSM = nullptr;
 ABLModulePtr		CurLibrary = nullptr;
 ABLModulePtr*		LibraryInstanceRegistry = nullptr;
 int32_t				NumStateTransitions = 0;
 int32_t				MaxLibraries = 0;
-bool				NewStateSet = false;
 extern int32_t	    numLibrariesLoaded;
 
 extern int32_t	    NumExecutions;
-int32_t				CallStackLevel = 0;
 
 constexpr int MAX_PROFILE_LINELEN = 128;
 constexpr int MAX_PROFILE_LINES = 256;
@@ -657,7 +645,7 @@ long ABLModule::init (int moduleHandle) {
 		SymTableNodePtr startState = searchSymTable("start", ModuleRegistry[handle].moduleIdPtr->defn.info.routine.localSymTable);
 		if (!startState) {
 			char err[255];
-			mc2::fmt::to_buf(err, "ABL: FSM has no Start state [{}]", mc2::fmt::safe(CurModule->getName()));
+			mc2::fmt::to_buf(err, "ABL: FSM has no Start state [{}]", mc2::fmt::safe(g_ablExec->CurModule->getName()));
 			ABL_Fatal(0, err);
 		}
 		prevState = nullptr;
@@ -971,22 +959,23 @@ long ABLModule::execute (ABLParamPtr paramList) {
 		return 0;
 	}
 
-	CurModule = this;
+	g_ablExec->CurModule = this;
 	if (debugger)
 		debugger->setModule(this);
 
 	SymTableNodePtr moduleIdPtr = ModuleRegistry[handle].moduleIdPtr;
 	if (moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
-		CurFSM = this;
+		g_ablExec->CurFSM = this;
 	else
-		CurFSM = nullptr;
-	NumStateTransitions = 0;
+		g_ablExec->CurFSM = nullptr;
+	NumStateTransitions = g_ablExec->NumStateTransitions = 0;
 
-	StaticDataPtr = staticData;
-	OrderCompletionFlags = orderCallFlags;
+	g_ablExec->StaticDataPtr = staticData;
+	g_ablExec->OrderCompletionFlags = orderCallFlags;
 
 	CurModuleIdPtr = nullptr;
 	CurRoutineIdPtr = nullptr;
+	g_ablExec->CurRoutineIdPtr = nullptr;
 	FileNumber = -1;
 	initializeEntryFrame();
 
@@ -1011,10 +1000,10 @@ long ABLModule::execute (ABLParamPtr paramList) {
 						mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module {:d}]", mc2::fmt::as_i32(id));
 						ABL_Fatal(0, err);
 					}
-					char* src = tos->address;
+					char* src = g_ablExec->tos->address;
 					char* savePtr = dest;
 					memcpy(dest, src, size);
-					tos->address = savePtr;
+					g_ablExec->tos->address = savePtr;
 				}
 				}
 			else {
@@ -1029,18 +1018,19 @@ long ABLModule::execute (ABLParamPtr paramList) {
 		}
 	}
 
-	CurModuleHandle = handle;
+	g_ablExec->CurModuleHandle = handle;
 
 	// No init function in FSM. Put all init stuff into the start state...
-	CallModuleInit = !initCalled;
+	g_ablExec->CallModuleInit = !initCalled;
 	initCalled = true;
 
-	NewStateSet = false;
+	g_ablExec->NewStateSet = false;
 	::execute(moduleIdPtr);
+	NumStateTransitions = g_ablExec->NumStateTransitions;
 
-	memcpy(&returnVal, &returnValue, sizeof(StackItem));
+	memcpy(&returnVal, &g_ablExec->returnValue, sizeof(StackItem));
 
-	return(execStatementCount);	
+	return(g_ablExec->execStatementCount);	
 }
 
 //---------------------------------------------------------------------------
@@ -1053,7 +1043,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 		return 0;
 	}
 
-	CurModule = this;
+	g_ablExec->CurModule = this;
 	if (debugger)
 		debugger->setModule(this);
 
@@ -1061,36 +1051,37 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 	// Execute the ABL module...
 	SymTableNodePtr moduleIdPtr = ModuleRegistry[handle].moduleIdPtr;
 	if (moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
-		CurFSM = this;
+		g_ablExec->CurFSM = this;
 	else
-		CurFSM = nullptr;
-	NumStateTransitions = 0;
+		g_ablExec->CurFSM = nullptr;
+	NumStateTransitions = g_ablExec->NumStateTransitions = 0;
 
 
 	//--------------------------------------------
 	// Point to this module's static data space...
-	StaticDataPtr = staticData;
-	OrderCompletionFlags = orderCallFlags;
+	g_ablExec->StaticDataPtr = staticData;
+	g_ablExec->OrderCompletionFlags = orderCallFlags;
 
 	//---------------------------------
 	// Init some important variables...
 	CurModuleIdPtr = nullptr;
 	CurRoutineIdPtr = nullptr;
+	g_ablExec->CurRoutineIdPtr = nullptr;
 	FileNumber = -1;
 	errorCount = 0;
-	execStatementCount = 0;
+	g_ablExec->execStatementCount = 0;
 	NumExecutions++;
-	NewStateSet = false;
+	g_ablExec->NewStateSet = false;
 
 	//------------------
 	// Init the stack...
-	stackFrameBasePtr = tos = (stack + eternalOffset);
+	g_ablExec->resetStack();
 
 	//---------------------------------------
 	// Initialize the module's stack frame...
-	level = 1;
-	CallStackLevel = 0;
-	stackFrameBasePtr = tos + 1;
+	g_ablExec->level = 1;
+	g_ablExec->CallStackLevel = 0;
+	g_ablExec->stackFrameBasePtr = g_ablExec->tos + 1;
 	
 	//-------------------------
 	// Function return value...
@@ -1152,10 +1143,10 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 						mc2::fmt::to_buf(err, "ABL: Unable to AblStackHeap->malloc array parameter [Module {:d}]", mc2::fmt::as_i32(id));
 						ABL_Fatal(0, err);
 					}
-					char* src = tos->address;
+					char* src = g_ablExec->tos->address;
 					char* savePtr = dest;
 					memcpy(dest, src, size);
-					tos->address = savePtr;
+					g_ablExec->tos->address = savePtr;
 				}
 				}
 			else {
@@ -1172,18 +1163,19 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 		}
 	}
 
-	CurModuleHandle = handle;
+	g_ablExec->CurModuleHandle = handle;
 
-	CallModuleInit = !initCalled;
+	g_ablExec->CallModuleInit = !initCalled;
 	initCalled = true;
 
 	::executeChild(moduleIdPtr, functionIdPtr);
+	NumStateTransitions = g_ablExec->NumStateTransitions;
 
-	memcpy(&returnVal, &returnValue, sizeof(StackItem));
+	memcpy(&returnVal, &g_ablExec->returnValue, sizeof(StackItem));
 
 	//-----------
 	// Summary...
-	return(execStatementCount);	
+	return(g_ablExec->execStatementCount);	
 }
 
 //---------------------------------------------------------------------------
