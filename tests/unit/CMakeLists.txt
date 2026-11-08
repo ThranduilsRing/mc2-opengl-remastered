@@ -92,6 +92,7 @@ add_executable(mc2_tests
     test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open
     test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer
     test_tick_commit.cpp
+    test_actor_pool.cpp  # session-owned typed actor pool: spawn/retire/reuse, stale IDs, render-packet deferred destruction (offline)
     ${MC2_WORKTREE_ROOT}/code/tick_commit.cpp
     test_playmovie_deferral.cpp  # VIDEO-DECODE-OFFLINE-1: real ControlGui::playMovie + MC2Movie::init on the real overlap worker, decoder seam only
     ${MC2_WORKTREE_ROOT}/code/controlgui_chat.cpp
