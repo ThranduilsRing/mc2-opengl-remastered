@@ -1,7 +1,19 @@
 #include "doctest.h"
 #include "building_static_eligibility.h"
+#include "battle_bench_sink.h"
+#include <string_view>
 
 using mc2::building_static::activityNeedsUpdate;
+
+TEST_CASE("building_static_eligibility/census reasons keep count units")
+{
+    using namespace mc2::battlebench;
+    // The formatter interprets the suffix beginning at PresAcquireNs as nanoseconds.
+    CHECK(BldgUpdateType < PresAcquireNs);
+    CHECK(TreeUpdateOther < PresAcquireNs);
+    CHECK(std::string_view(kFieldNames[std::to_underlying(BldgUpdateActivity)]) == "bldg.update.activity");
+    CHECK(std::string_view(kFieldNames[std::to_underlying(TreeUpdateUnregistered)]) == "tree.update.unregistered");
+}
 
 TEST_CASE("building_static_eligibility/stopped effects do not keep geometry dynamic")
 {
