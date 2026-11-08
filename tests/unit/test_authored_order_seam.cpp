@@ -209,6 +209,7 @@ TEST_CASE("ABLExec/stack overflow stops every push with both softfail flags enab
     CompileFixture fixture;
     extern bool s_ablArgGuard;
     extern bool s_ablRuntimeSoftfail;
+    extern int32_t FileNumber;
     struct RestoreFlags {
         bool argGuard = s_ablArgGuard;
         bool softfail = s_ablRuntimeSoftfail;
