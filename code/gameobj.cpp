@@ -1557,21 +1557,6 @@ void GameObject::adoptAppearance (std::unique_ptr<Appearance> newAppearance) {
 	}
 }
 
-void GameObject::markTerrainPresentationDirty(bool powerChange) {
-	if (appearance) {
-		appearance->markTerrainPresentationDirty();
-		// A destroyed generator can power terrain objects outside its own block.
-		if (powerChange && appearance->terrainPresentationHandle >= 0) mc2::terrainDirtyQueue().markAll();
-	}
-}
-
-void GameObject::markTerrainPoseDirty() {
-	if (appearance && appearance->terrainPresentationHandle >= 0) {
-		appearance->terrainPoseDirty = true;
-		appearance->markTerrainPresentationDirty();
-	}
-}
-
 void GameObject::releaseAppearance (void) {
 
 	verifyAppearanceView("releaseAppearance");

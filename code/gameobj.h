@@ -31,7 +31,7 @@
 #endif
 
 #ifndef DAPPEAR_H
-#include"dappear.h"
+#include"appear.h"
 #endif
 
 #ifndef DCONTACT_H
@@ -625,8 +625,19 @@ class GameObject {
 		// COMBAT-TRACE-1: out-of-line death-event emitter (defined in gameobj.cpp, which has the
 		// diag include). Keeps the widely-included gameobj.h free of the diagnostic_trace header.
 		void emitCombatDeathTrace (long newStatus);
-		void markTerrainPresentationDirty(bool powerChange = false);
-		void markTerrainPoseDirty();
+		void markTerrainPresentationDirty(bool powerChange = false) {
+			if (appearance) {
+				appearance->markTerrainPresentationDirty();
+				// A destroyed generator can power objects outside its own block.
+				if (powerChange && appearance->terrainPresentationHandle >= 0) mc2::terrainDirtyQueue().markAll();
+			}
+		}
+		void markTerrainPoseDirty() {
+			if (appearance && appearance->terrainPresentationHandle >= 0) {
+				appearance->terrainPoseDirty = true;
+				appearance->markTerrainPresentationDirty();
+			}
+		}
 
 		void setStatus (long newStatus, bool forceStatus = false)
 		{
