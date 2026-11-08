@@ -14,6 +14,7 @@
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include "../../mclib/battle_bench_sink.h"
@@ -75,6 +76,11 @@ bool ShadowMechCasters::init(VkDevice device, VmaAllocator allocator, VkRenderPa
     frameUbo_ = frameUbo;
     uboRange_ = uboRange;
     vertexStride_ = mc2_mech_vertex_stride();
+    const auto& context = getOrCreateEngineVulkanContext();
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(context.physicalDevice(), &properties);
+    maxIndirectDraws_ = context.featureEnabled("multiDrawIndirect") && context.featureEnabled("drawIndirectFirstInstance")
+        ? properties.limits.maxDrawIndirectCount : 0;
 
     const std::string dir(spvDir);
     vert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_mech.vert.spv", nullptr));
@@ -145,6 +151,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     stagedEpoch_ = epoch;
     runs_.clear();
     stagedInstances_ = 0;
+    drawCursor_ = 0;
     skin_.cancel();
 
     Mc2MechShadowFeed feed{};
@@ -210,6 +217,11 @@ void ShadowMechCasters::stage(uint64_t epoch) {
     skinVboBytes_ = feed.vboBytes;
     skin_.plan(parity, runs_, std::span<const uint8_t>(static_cast<const uint8_t*>(feed.instances64), static_cast<size_t>(feed.instanceCount) * 64), skinInstances_, vertexCount);
     if (!instBuf_[parity].upload(skinInstances_.data(), instBytes)) { skin_.cancel(); runs_.clear(); stagedInstances_ = 0; }
+    // At most one command per staged instance per map. Reserve for the island's
+    // 40 UBO slices, bounded like the static draw ring; excess uses direct draws.
+    const VkDeviceSize commands = (std::min<uint64_t>)(1u << 17, static_cast<uint64_t>(stagedInstances_) * 40);
+    if (commands) ensureBuffer(drawCmds_[parity], drawCap_[parity], commands * sizeof(VkDrawIndexedIndirectCommand),
+                               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, "shadow.mechDraws");
 }
 
 void ShadowMechCasters::recordSkin(VkCommandBuffer cb) {
@@ -217,7 +229,7 @@ void ShadowMechCasters::recordSkin(VkCommandBuffer cb) {
     skin_.record(cb, vertexBuf_, skinVboBytes_, boneBuf_[skinParity_].get(), VK_WHOLE_SIZE, 0);
 }
 
-uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask) const {
+uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask, bool localLight) {
     if (!hasCasters() || !geomUploaded_ || !pipeline_) return 0;
     if (runMask) {
         bool any = false;
@@ -232,15 +244,47 @@ uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &offset);
     vkCmdBindIndexBuffer(cb, indexBuf_, 0, VK_INDEX_TYPE_UINT32);
     VkBuffer boundVertex = vertexBuf;
-    uint32_t drawn = 0;
+    static thread_local std::vector<VkDrawIndexedIndirectCommand> commands[2];
+    commands[0].clear(); commands[1].clear();
+    VkBuffer buffers[2] = {vertexBuf, VK_NULL_HANDLE};
     for (size_t k = 0; k < runs_.size(); ++k) {
         if (runMask && !runMask[k]) continue;
         const Mc2MechDrawRun& r = runs_[k];
         skin_.drawRun(cb, static_cast<uint32_t>(k), r, vertexBuf, boundVertex, [&](uint32_t n, uint32_t first, int32_t baseVertex) {
-            mc2::battlebench::add(mc2::battlebench::DrawShadow), vkCmdDrawIndexed(cb, r.indexCount, n, r.firstIndex, baseVertex, first);
+            const uint32_t group = boundVertex == vertexBuf ? 0u : 1u;
+            buffers[group] = boundVertex;
+            commands[group].push_back({r.indexCount, n, r.firstIndex, baseVertex, first});
         });
-        ++drawn;
     }
+    uint32_t drawn = 0;
+    for (uint32_t group = 0; group < 2; ++group) {
+        const auto& cmds = commands[group];
+        if (cmds.empty()) continue;
+        mc2::battlebench::add(mc2::battlebench::ShadowMoverRecords, cmds.size());
+        if (localLight) mc2::battlebench::add(mc2::battlebench::ShadowLocalMoverRecords, cmds.size());
+        vkCmdBindVertexBuffers(cb, 0, 1, &buffers[group], &offset);
+        const VkDeviceSize bytes = cmds.size() * sizeof(VkDrawIndexedIndirectCommand);
+        const uint32_t slot = parity % kMaxFramesInFlight;
+        if (maxIndirectDraws_ && drawCmds_[slot] && drawCursor_ + bytes <= drawCap_[slot] &&
+            drawCmds_[slot].upload(cmds.data(), bytes, drawCursor_)) {
+            for (uint32_t first = 0; first < cmds.size();) {
+                const uint32_t count = (std::min)(maxIndirectDraws_, static_cast<uint32_t>(cmds.size()) - first);
+                vkCmdDrawIndexedIndirect(cb, drawCmds_[slot].get(), drawCursor_ + first * sizeof(VkDrawIndexedIndirectCommand), count, sizeof(VkDrawIndexedIndirectCommand));
+                first += count;
+                ++drawn;
+            }
+            drawCursor_ += bytes;
+        } else {
+            // Allocation/upload failure or an unusually large mod: preserve all casters.
+            for (const auto& d : cmds) {
+                vkCmdDrawIndexed(cb, d.indexCount, d.instanceCount, d.firstIndex, d.vertexOffset, d.firstInstance);
+                ++drawn;
+            }
+        }
+    }
+    mc2::battlebench::add(mc2::battlebench::DrawShadow, drawn);
+    mc2::battlebench::add(mc2::battlebench::DrawShadowMover, drawn);
+    if (localLight) mc2::battlebench::add(mc2::battlebench::DrawShadowLocal, drawn);
     return drawn;
 }
 

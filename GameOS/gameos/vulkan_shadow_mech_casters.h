@@ -48,7 +48,7 @@ public:
     // Binds the pipeline and draws every run into the open render pass of `cb`; `uboOffset` is this pass's slice of the frame UBO. The caller has set the
     // viewport, the scissor and the depth bias. `runMask` (one byte per runs() entry, null = all) drops the runs whose mechs cannot reach this map.
     // Returns the draws recorded.
-    uint32_t record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask = nullptr) const;
+    uint32_t record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask = nullptr, bool localLight = false);
     const std::vector<Mc2MechDrawRun>& runs() const { return runs_; }
 
     // Mech instances drawn by the last staged epoch (for the health line).
@@ -79,6 +79,12 @@ private:
     std::vector<uint8_t> skinInstances_; // the instance records uploaded this epoch (the feed copy plus the pre-skin flags)
     uint32_t skinParity_ = 0;
     uint64_t skinVboBytes_ = 0;
+    // Indirect commands retain every skin draw, grouped only by vertex buffer.
+    // stage() resets the retired frame slot; each shadow map gets its own range.
+    OwnedBuffer drawCmds_[kMaxFramesInFlight];
+    VkDeviceSize drawCap_[kMaxFramesInFlight] = {};
+    VkDeviceSize drawCursor_ = 0;
+    uint32_t maxIndirectDraws_ = 0;
 
     // Declared in creation order: released in reverse, so the pipeline goes before its layout and shaders, the sets with their pool before the layout.
     OwnedBuffer instBuf_[kMaxFramesInFlight], boneBuf_[kMaxFramesInFlight];
