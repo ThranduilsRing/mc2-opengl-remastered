@@ -259,6 +259,9 @@ def r_pack(window):
 
 
 SYNC_SKIP = {".seeded", ".tree-synced"}   # laptop-only markers (seed() and the first sha-mode sync)
+# Runtime outputs any game run on either side rewrites (pipeline cache, vegetation diag), not inputs to a capture: W129 run 4's
+# preflight failed because a PC run touched them between sync_tree's listing and its tar.
+SYNC_SKIP_RUNTIME = ("cache/", "veg_diag.txt")
 
 
 def tree_rows(root, sha=False):
@@ -268,7 +271,7 @@ def tree_rows(root, sha=False):
         for f in files:
             p = Path(d, f)
             rel = p.relative_to(root).as_posix()
-            if rel in SYNC_SKIP:
+            if rel in SYNC_SKIP or rel.startswith(SYNC_SKIP_RUNTIME):
                 continue
             st = p.stat()
             rows.append(f"{rel}|{st.st_size}|{int(st.st_mtime)}" + (f"|{sha256(p)}" if sha else ""))
