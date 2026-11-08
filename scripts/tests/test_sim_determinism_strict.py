@@ -288,3 +288,30 @@ _WIN_PASS = "[SMOKE v1] event=summary result=pass\n"
 ])
 def test_windowed_exit_ok_requires_a_successful_smoke(rc, text, ok):
     assert sim.windowed_exit_ok(rc, text) is ok
+
+
+def _ticks(ticks):
+    return sim.SimidLines([f"{sim.PREFIX}{i} t=0.000 n=2 graded=aa visual=bb strict=cc "
+                           "nobj=3 objects=dd nabl=1 abl=ee rng=1/2/3 animrng=4" for i in ticks])
+
+
+def test_windowed_pin_rejects_one_garbled_interior_tick_in_b():
+    # p31 P0: A has ticks 1-800, B has 1-801 minus garbled tick 400: both reach 800 observations but only 799 are common.
+    a, b = _ticks(range(1, 801)), _ticks([i for i in range(1, 802) if i != 400])
+    b.dropped = 1
+    ok, msg = sim.compare(a, b, 300, required_length=800)   # main() now passes the baseline's pinned frame count
+    assert not ok and msg.startswith("INCONCLUSIVE") and "799" in msg
+
+
+def test_windowed_pin_passes_complete_aligned_evidence():
+    assert sim.compare(_ticks(range(1, 801)), _ticks(range(1, 801)), 300, required_length=800)[0]
+
+
+def test_both_streams_are_validated_against_the_pin(tmp_path):
+    good = list(_ticks(range(5)))
+    bad = list(good)
+    bad[3] = bad[3].replace("strict=cc", "strict=ff")
+    path = baseline(tmp_path, good)
+    assert sim.check_baseline_both(good, good, path)[0]
+    ok, msg = sim.check_baseline_both(good, bad, path)
+    assert not ok and msg.startswith("run b:")

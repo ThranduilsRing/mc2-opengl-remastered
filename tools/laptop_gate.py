@@ -143,9 +143,10 @@ def gate_env():
 def r_run(window, extra):
     r_subst()
     out = Path(G, "out", window)
+    # nothing from an earlier run may survive: a gate that dies before writing its verdict must leave no verdict to copy
+    shutil.rmtree(out, ignore_errors=True)
+    shutil.rmtree(Path(G, "drv/E/mc2-archive-2026-10/proofs/merge-gate", window), ignore_errors=True)
     out.mkdir(parents=True, exist_ok=True)
-    for old in out.iterdir():
-        old.unlink() if old.is_file() else None
     branch = "claude/stage-" + window
     e = gate_env()
     sm = {"window": window, "host": "laptop"}
@@ -182,6 +183,11 @@ def r_run(window, extra):
             src = Path(G, "drv/E/mc2-archive-2026-10/proofs/merge-gate", window, name)
             if src.is_file():
                 (out / dst).write_bytes(src.read_bytes())
+        proof_dir = Path(G, "drv/E/mc2-archive-2026-10/proofs/merge-gate", window)
+        for sub in EVIDENCE_DIRS:   # the capture images and A/B montages the orchestrator views before --publish
+            if (proof_dir / sub).is_dir():
+                shutil.copytree(proof_dir / sub, out / "evidence" / sub, dirs_exist_ok=True,
+                                ignore=shutil.ignore_patterns("*.log", "*.exe", "*.dll", "*.pdb"))
         if (out / "gate-verdict.json").is_file():
             v = json.loads((out / "gate-verdict.json").read_text())
             sm["verdict"], sm["timings"] = v.get("verdict"), v.get("timings")
@@ -225,6 +231,7 @@ def r_pack(window):
     print(f"payload from {cand}: {len(delta)} files, {tarp.stat().st_size} bytes")
 
 
+EVIDENCE_DIRS = ("before", "after", "ab")   # merge_gate proof subdirs holding the day/night captures and montages
 SYNC_SKIP = {".seeded", ".tree-synced"}   # laptop-only markers (seed() and the first sha-mode sync)
 
 
@@ -550,28 +557,82 @@ def pc_main(args):
         sys.exit("laptop preflight failed (above); fix it before a full run")
     extra = " ".join(args.gate_args)
     print("running build + gate on the laptop (long)", flush=True)
-    rc, _ = ssh(remote_py("run", w, extra), check=False, stream=True)
-    ssh(remote_py("pack", w), check=False, stream=True)
     dest = PROOFS / w
-    dest.mkdir(parents=True, exist_ok=True)
-    for name in ("summary.json", "gate-verdict.json", "gate.log", "gate.console.log", "build.log", "payload.tar", "payload.sha256"):
-        r = subprocess.run(["scp", "-q", *SSH_OPTS, f"{HOST}:{G}/out/{w}/{name}", str(dest / name)], env=env(),
-                           **console_child.child_kwargs())
-        if r.returncode:
-            print(f"laptop_gate: {name} not available", flush=True)
-    extract_payload(dest)
+    incoming = PROOFS / (w + ".incoming")
+    for stale in (dest, incoming, PROOFS / (w + ".rejected")):   # a failed rerun must never leave an old PASS to read
+        shutil.rmtree(stale, ignore_errors=True)
+    run_rc, _ = ssh(remote_py("run", w, extra), check=False, stream=True)
+    pack_rc, _ = ssh(remote_py("pack", w), check=False, stream=True)
+    ok, why, sm = pull_and_accept(w, head, run_rc, pack_rc, dest, incoming)
+    print("SUMMARY", json.dumps(sm), f"total_wall_s={time.time() - t0:.0f}")
+    if not ok:
+        print(f"laptop_gate: result REJECTED: {why} (diagnostics in {PROOFS / (w + '.rejected')})", flush=True)
+        return 1
     if (dest / "gate-verdict.json").is_file():
         print("verdict file sha256", sha256(dest / "gate-verdict.json"), dest / "gate-verdict.json")
-    sm = json.loads((dest / "summary.json").read_text()) if (dest / "summary.json").is_file() else {}
-    print("SUMMARY", json.dumps(sm), f"total_wall_s={time.time() - t0:.0f}")
     return exit_code(sm)
+
+
+PULL_REQUIRED = ("summary.json", "gate-verdict.json", "gate.log", "gate.console.log", "build.log", "payload.tar", "payload.sha256")
+
+
+def pull_one(remote, local, recursive=False):
+    """scp one remote path to local; True only on rc 0."""
+    r = subprocess.run(["scp", "-q", *(["-r"] if recursive else []), *SSH_OPTS, f"{HOST}:{remote}", str(local)], env=env(),
+                       **console_child.child_kwargs())
+    return r.returncode == 0
+
+
+def _same_sha(a, b):
+    return bool(a) and bool(b) and (a.startswith(b) or b.startswith(a))
+
+
+def pull_and_accept(w, expected_head, run_rc, pack_rc, dest, incoming):
+    """Pull the laptop's results into `incoming`, accept them only if every check passes, then rename incoming -> dest
+    atomically. On any failure `dest` does not exist and the pulled diagnostics sit in <w>.rejected. -> (ok, reason, summary)."""
+    incoming.mkdir(parents=True, exist_ok=True)
+    missing = [n for n in PULL_REQUIRED if not pull_one(f"{G}/out/{w}/{n}", incoming / n)]
+    ev_ok = pull_one(f"{G}/out/{w}/evidence", incoming, recursive=True)
+    sm = {}
+    try:
+        sm = json.loads((incoming / "summary.json").read_text())
+    except (OSError, ValueError):
+        pass
+    why = ""
+    if run_rc or pack_rc:
+        why = f"ssh exit status run={run_rc} pack={pack_rc}"
+    elif missing:
+        why = "partial pull, missing " + ", ".join(missing)
+    elif not ev_ok:
+        why = "capture evidence (images/montages) could not be pulled"
+    elif sm.get("gate_rc") != 0 or sm.get("build_rc") != 0 or "error" in sm:
+        why = f"gate_rc={sm.get('gate_rc')} build_rc={sm.get('build_rc')} error={sm.get('error')}"
+    else:
+        try:
+            verdict = json.loads((incoming / "gate-verdict.json").read_text())
+        except (OSError, ValueError):
+            verdict = {}
+        if not _same_sha(verdict.get("head"), expected_head):
+            why = f"verdict head {verdict.get('head')} is not the pushed stage sha {expected_head}"
+        elif not _same_sha(sm.get("head"), expected_head):
+            why = f"summary head {sm.get('head')} is not the pushed stage sha {expected_head}"
+        elif not extract_payload(incoming):
+            why = "payload.tar sha256 mismatch"
+    if why:
+        rej = incoming.with_name(w + ".rejected")
+        shutil.rmtree(rej, ignore_errors=True)
+        os.replace(incoming, rej)
+        return False, why, sm
+    shutil.rmtree(dest, ignore_errors=True)
+    os.replace(incoming, dest)
+    return True, "", sm
 
 
 def extract_payload(dest):
     """sha-check dest/payload.tar and extract it into a cleared dest/payload (no files left from an earlier run)."""
     tarp = dest / "payload.tar"
     if not tarp.is_file():
-        return
+        return False
     want = (dest / "payload.sha256").read_text().split()[0]
     got = sha256(tarp)
     print(f"payload.tar sha256 {got} {'OK' if got == want else 'MISMATCH expected ' + want}")
@@ -580,6 +641,7 @@ def extract_payload(dest):
         with tarfile.open(tarp) as tar:
             tar.extractall(dest / "payload", filter="data")
         print(f"payload extracted: {dest / 'payload'} (deploy with --from-payload)")
+    return got == want
 
 
 def exit_code(sm):
