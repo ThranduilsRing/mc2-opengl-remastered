@@ -48,6 +48,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/gos_render.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "../RenderCore/KtxLoader.h"
 #include <algorithm>
 
@@ -178,13 +179,16 @@ void MouseCursorData::initCursors (mc2::czstring cursorFileName)
 		SDL_Cursor* cursor = SDL_CreateColorCursor(surface, static_cast<unsigned char>(mouseHS[shape][0]),
 			static_cast<unsigned char>(mouseHS[shape][1]));
 		SDL_FreeSurface(surface);
-		if (!cursor) MC2_LOG(Ui, Warn, "[CURSOR] native creation failed shape={} frame={}: {}", shape, frame, SDL_GetError());
+		if (mc2_diag::tagRequested("CURSOR")) {
+			if (!cursor) MC2_LOG(Ui, Warn, "[CURSOR] native creation failed shape={} frame={}: {}", shape, frame, SDL_GetError());
+		}
 		return cursor;
 	});
 	size_t created = 0, failed = 0;
 	for (const auto& shape : nativeCursors.shapes)
 		for (const auto cursor : shape) cursor ? ++created : ++failed;
-	MC2_LOG(Ui, Info, "[CURSOR] native shapes={} created={} failed={}", nativeCursors.shapes.size(), created, failed);
+	if (mc2_diag::tagRequested("CURSOR"))
+		MC2_LOG(Ui, Info, "[CURSOR] native shapes={} created={} failed={}", nativeCursors.shapes.size(), created, failed);
 }
 
 //---------------------------------------------------------------------------
