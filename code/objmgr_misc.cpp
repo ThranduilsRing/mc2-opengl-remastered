@@ -621,7 +621,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						}
 						appearance->flushSimEvents();
 						++walkVisited;
-						if (appearance->recalcBounds())
+						const bool inView = appearance->recalcBounds();
+						if (inView)
 						{
 							++walkRecalc; ++walkGround;
 							// Must force here as well.
@@ -653,7 +654,9 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
                                 { appearance->update(false); ++walkUpdate; }
 							appearance->setVisibility(true, true);
 						}
-						if (!appearance->IsStaticNow() || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
+						// Offscreen bake recovery waits for camera invalidation, as update()
+						// above cannot service it until recalcBounds admits the object.
+						if ((inView && !appearance->IsStaticNow()) || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
 							(appearance->getAppearanceClass() == BLDG_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
 							((kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING) && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
 							dirty.mark(objIndex);

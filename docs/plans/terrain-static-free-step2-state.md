@@ -28,6 +28,8 @@ system harness; targeted tree/queue selection isolated the expected failure.
 Local queue-only harness passed (297 s, tool slowness: whole target rebuilt).
 Standalone tests exposed setters' new out-of-line dependency; dirty marking is
 inline with the real Appearance definition, so both engine and tests share it.
+Offscreen unfinished bakes no longer perpetually requeue: camera invalidation
+admits them again when visible; live lights/effects/falling retain their path.
 Intermediate box production compile and SIMID 01/03/10 passed; final proof
 pending: box compile, targeted unit/contracts, census 10/24,
 headless SIMID 01/03/10/24, smoke-lite and lint. Receipts go under
