@@ -1,0 +1,43 @@
+{
+ "mission": "battle",
+ "frames": 300,
+ "chain_schema": 2,
+ "chain": "0b6b0b698e47f0d5",
+ "full": "f67120eade4731db",
+ "visible_chain": "b1fda028656a90e0",
+ "sha": "5770b9bfa4c9",
+ "seed": "0x00C0FFEE",
+ "data_fingerprint": {
+  "digest": "631bc626ca376941",
+  "inputs": [
+   "mission.fst",
+   "tgl.fst",
+   "effect.fst",
+   "misc.fst",
+   "camera.fst",
+   "data/tgl/",
+   "data/objects/",
+   "data/effects/",
+   "data/missions/",
+   "data/warriors/"
+  ],
+  "stock_digest": "8703ccf15c7c117f",
+  "overlay": {
+   "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
+  },
+  "problems": []
+ },
+ "gates": {
+  "MC2_SMOKE_FIXED_TIMESTEP": "1",
+  "MC2_SIM_IDENTITY_TRACE": "1"
+ },
+ "env": {
+  "MC2_TEST_SPAWN": "1",
+  "MC2_UI_COMMAND_FILE": "tests/smoke/sim_determinism/battle-128.commands.txt",
+  "MC2_DETERMINISTIC_RNG": "1",
+  "MC2_SMOKE_SEED": "0xC0FFEE",
+  "MC2_RNG_SEED": "0xC0FFEE"
+ },
+ "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"
+}

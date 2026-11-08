@@ -2,6 +2,33 @@
 
 Assignment: A:/Games/mc2-slot02, claude/perf-attrib, base f269b312d.
 
+Continuation 2026-11-08 (supersedes the historical handoff below):
+- Merged Linux fix 8fc0c6c89 at 5770b9bfa4c9973525f43fdc95e0d70991ebce3e.
+- Box battle pair: PASS, 301 identical SIMID frames and healthy 128-mech /
+  two-vehicle / attack acknowledgements. Readiness 26.05 / 25.18 seconds.
+  Committed Linux pin: tests/smoke/sim_determinism/linux/battle.json, 300 ticks.
+  No increased load timeout needed on Linux; no speculative timeout change made.
+- Recorded mc2_24 saveload pin and text reference from a detached box checkout
+  of trusted 8fc0c6c89, rebuilt and deployed there (not the lane executable).
+  An independent second trusted-base run matches the pin: PASS.
+- Reproduced the profile row's host-lease failure using exported f269b312d
+  sources: unknown `bogus` GPU_SPLIT key. Left unrelated lease code unchanged.
+- Proof root: E:/mc2-archive-2026-10/proofs/perf-attrib. See battle-diagnosis.txt,
+  lease-base.log, continuation-box/ and trusted-box/. Final-tip proof results
+  and proved-at SHA belong in final-state.txt, written after the final checks.
+- Queue mode unavailable (pueue missing); foreground box runs use GPU 0 lock.
+- Cleanup rejected by automatic approval review ("blocked by policy"); retained
+  exported-base scratch G:/mc2-tmp/perf-attrib-base*, no workaround attempted.
+
+Still unproved: Windows battle.json and the original Windows terrain-load stall.
+The task requires box-only game rows; Linux chains must not populate Windows
+pins (existing mc2_24 Windows/Linux chains differ). Next Windows-authorized run:
+deploy this tip, rerun the recorded pair below with a fresh --out; on a stall
+capture the loader stack before deciding whether fixture-only grace helps.
+Only a healthy Windows pair may populate tests/smoke/sim_determinism/battle.json.
+
+Historical handoff from the first run:
+
 Implemented: tools/perf/tracy_table.py preserves thread/name/full source/line,
 splits startup/load/first 60 playable frames/steady frames, reports exclusive
 and inclusive per-frame p99/worst (including zero-call frames). Readiness is
