@@ -591,6 +591,10 @@ long TreeAppearance::update (bool animate)
 				appearType && appearType->treeRenderShapeLodCount > 0,
 				staticReg[activeLOD].lightDataIndex);
 			needsFullBakeNextFrame = false;
+			if (mc2_diag::tagRequested("LIGHT_CONTRACT")) {
+				static int samples = 0;
+				if (samples++ < 8) std::fprintf(stderr, "TREE_RECOVERY tree=%p slot=%u lod=%ld reg=%d\n", static_cast<void*>(this), _sharedLightSlot, activeLOD, staticReg[activeLOD].registered);
+			}
 		}
 
 		light->active = true;
