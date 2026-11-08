@@ -8,6 +8,10 @@ Target validation extracted unchanged in meaning (gameplay XY, Z height, world-u
 Capability: loadout COMPONENT_FORM_JUMPJET sets numJumpJets=5; profile refresh grants CAP_JUMP;
 executor supports mech walkers. Button and held J both activate the existing jump cursor.
 Occupied landing cells are redistributed by calcJumpGoals; LOS changes the cursor only.
-Done: implementation and focused target/queue tests. Proof pending.
-Next: add scripted jump through existing UI channel, log execution, commit, box build/unit/
-smoke-lite/headless mc2_01 determinism, covering contracts, final PC compile and lint.
+Done: fix, target/queue tests, scripted UI jump and opt-in execution receipt (PATH tag).
+At 6fd27de7c: box build/unit/lint and headless mc2_01 determinism green; scripted
+jump executed part 512 but witness used windowed render verdicts. Corrected witness
+to use the existing strict headless verdict and a fixed tick budget.
+Covering order_gate_coverage contract green on PC (--nightly required).
+Next: final-tip box rows and Windows compile; receipts and remaining steps live in
+E:/mc2-archive-2026-10/proofs/jump-command/STATE.md. No PC install or perf claim.

@@ -711,7 +711,7 @@ void BattleMech::setControlSettings (float& newRotate, char& newThrottleSetting,
 		control.settings.mech.gestureGoal = newGestureStateGoal;
 		switch (newGestureStateGoal) {
 			case 6:
-				if (!inJump && mc2_diag::tagRequested("JUMP_ORDER"))
+				if (!inJump && mc2_diag::tagRequested("PATH"))
 					mc2::fmt::print_err("[JUMP_ORDER v1] event=executing part={} goal=({},{},{})\n",
 						getPartId(), jumpGoal.x, jumpGoal.y, jumpGoal.z);
 				control.settings.mech.throttle = 100.0f;

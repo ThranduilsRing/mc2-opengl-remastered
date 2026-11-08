@@ -10,6 +10,8 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child
+sys.path.insert(0, str(ROOT / "tools"))
+from sim_determinism import GATES, headless_exit_ok
 
 
 def main():
@@ -19,9 +21,11 @@ def main():
     ack = output / "commands.txt.ack"
     channel.write_text("skip_intro\nlist player\n", encoding="utf-8")
     ack.unlink(missing_ok=True)
-    env = dict(os.environ, MC2_UI_COMMAND_FILE=str(channel), MC2_DIAG_TAGS="JUMP_ORDER")
+    env = dict(os.environ, **GATES)
+    env.update(MC2_UI_COMMAND_FILE=str(channel), MC2_DIAG_TAGS="PATH")
     command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe", str(exe),
-               "--mission", "mc2_01", "--headless", "--duration", "30", "--keep-logs"]
+               "--mission", "mc2_01", "--headless", "--sim-determinism", "--ticks", "2000",
+               "--duration", "30", "--keep-logs"]
     done = threading.Event()
     with (output / "runner.log").open("w") as log:
         proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
@@ -67,7 +71,7 @@ def main():
             engine_text = engine.read_text(errors="replace") if engine and engine.exists() else ""
             (output / "engine.log").write_text(engine_text, encoding="utf-8")
             receipt = f"[JUMP_ORDER v1] event=executing part={pid} "
-            if rc or receipt not in engine_text:
+            if not headless_exit_ok(rc, evidence + engine_text) or receipt not in engine_text:
                 raise RuntimeError(f"jump not executed: rc={rc}; expected {receipt}")
             print(f"PASS jump command executed by part={pid}; evidence={output}")
         finally:
