@@ -13,12 +13,17 @@ original normal-layer-2 alpha. Embed sun metadata in KTX2, resolve sky sources
 through the texture/file providers, and defer default sky until first use.
 Old sky sidecars without metadata retain their EXR sun scan until recooked.
 
-Green at implementation checkpoint: cook pytest (4 cases), git diff --check.
+Green at implementation checkpoint: 19 native cases / 12561 assertions;
+initial cook pytest (4 cases), git diff --check. Native proof caught a refill
+dropout under compile load: decoder threads now keep normal thread priority
+inside their parent process. Fixtures use distinct temporary filenames.
 Selected contract filter `audio|terrain|hdri` matches no active rows at this base;
 this is a proof gap, not a PASS. Native cases cover streaming/loops/ADPCM,
 catalog overflow, independent slots, bounded startup, terrain alpha and KTX sun.
-Native proof and cxx17 ratchet are running. Next: resolve any test/compile reds,
-final Ninja compile, box build/unit/smoke-lite, final lint. Receipts and final
+Cook metadata preserves/replaces sorted keys and BC6H 16-byte mip alignment;
+the extended cook pytest and final cxx17 ratchet are pending. Next: resolve any
+test/compile reds, final Ninja compile, box build/unit/smoke-lite, final lint.
+Completion state is E:/mc2-archive-2026-10/proofs/load-waste/state.md. Receipts and final
 proved-at SHA go in E:/mc2-archive-2026-10/proofs/load-waste and final hand-back.
 No sim mutation is changed; SIMID/saveload and perf measurement are not required
 by section 5's load-waste row. No local install or copied exe was created.

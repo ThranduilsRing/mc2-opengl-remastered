@@ -110,19 +110,31 @@ def write_sun_metadata(ktx2_path, azimuth):
         data = bytearray(file.read())
     levels = struct.unpack_from('<I', data, 40)[0]
     offsets = [struct.unpack_from('<Q', data, 80 + level * 24)[0] for level in range(levels)]
-    insert = min(offsets)
+    payload_start = min(offsets)
     kv_offset, kv_size = struct.unpack_from('<II', data, 56)
-    value = b'MC2.sunAzimuth\0' + struct.pack('<Bf', azimuth is not None, azimuth or 0.0)
-    entry = struct.pack('<I', len(value)) + value + bytes(-len(value) % 4)
-    kv = data[kv_offset:kv_offset + kv_size] + entry
-    padding = bytes(-len(kv) % 8)
-    data[insert:insert] = kv + padding
-    shift = len(kv) + len(padding)
+    insert = kv_offset if kv_size else payload_start
+    values = {}
+    at, end = kv_offset, kv_offset + kv_size
+    while at < end:
+        length = struct.unpack_from('<I', data, at)[0]
+        at += 4
+        key, value = bytes(data[at:at + length]).split(b'\0', 1)
+        values[key] = value
+        at += (length + 3) & ~3
+    values[b'MC2.sunAzimuth'] = struct.pack('<Bf', azimuth is not None, azimuth or 0.0)
+    kv = bytearray()
+    for key, value in sorted(values.items()):
+        entry = key + b'\0' + value
+        kv += struct.pack('<I', len(entry)) + entry + bytes(-len(entry) % 4)
+    # BC6H texel blocks require 16-byte mip offsets (KTX 2.0 mipPadding).
+    padding = bytes(-(insert + len(kv)) % 16)
+    data[insert:payload_start] = kv + padding
+    shift = len(kv) + len(padding) - (payload_start - insert)
     struct.pack_into('<II', data, 56, insert, len(kv))
     for level, offset in enumerate(offsets):
         struct.pack_into('<Q', data, 80 + level * 24, offset + shift)
     sgd_offset = struct.unpack_from('<Q', data, 64)[0]
-    if sgd_offset >= insert:
+    if sgd_offset >= payload_start:
         struct.pack_into('<Q', data, 64, sgd_offset + shift)
     with open(ktx2_path, 'wb') as file:
         file.write(data)

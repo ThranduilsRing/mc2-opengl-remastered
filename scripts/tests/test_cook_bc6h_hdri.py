@@ -26,11 +26,11 @@ def test_sun_azimuth_wrap_and_upper_hemisphere():
 @pytest.mark.parametrize("azimuth", [None, 1.25, -3.0])
 def test_sidecar_embeds_sun_without_changing_block_payload(tmp_path, azimuth):
     file = tmp_path / "sky.ktx2"
-    data = bytearray(120)
+    data = bytearray(128)
     data[:12] = bytes.fromhex('ab4b5458203230bb0d0a1a0a')
     struct.pack_into('<I', data, 40, 1)
-    struct.pack_into('<QQQ', data, 80, 104, 16, 16)
-    data[104:] = bytes(range(16))
+    struct.pack_into('<QQQ', data, 80, 112, 16, 16)
+    data[112:] = bytes(range(16))
     file.write_bytes(data)
     cook.write_sun_metadata(file, azimuth)
     result = file.read_bytes()
@@ -43,6 +43,39 @@ def test_sidecar_embeds_sun_without_changing_block_payload(tmp_path, azimuth):
     assert bool(valid) == (azimuth is not None)
     assert az == pytest.approx(azimuth or 0)
     payload = struct.unpack_from('<Q', result, 80)[0]
-    assert payload % 8 == 0
+    assert payload % 16 == 0
     assert result[payload:payload + 16] == bytes(range(16))
     assert offset + length <= payload
+
+
+def test_metadata_preserves_other_keys_and_replaces_old_sun(tmp_path):
+    file = tmp_path / "sky.ktx2"
+    values = [b'KTXwriter\0test\0', b'zzCustom\0value']
+    kv = b''.join(struct.pack('<I', len(value)) + value + bytes(-len(value) % 4) for value in values)
+    payload = (104 + len(kv) + 15) & ~15
+    data = bytearray(payload + 16)
+    struct.pack_into('<I', data, 40, 1)
+    struct.pack_into('<II', data, 56, 104, len(kv))
+    struct.pack_into('<QQQ', data, 80, payload, 16, 16)
+    data[104:104 + len(kv)] = kv
+    data[payload:] = bytes(range(16))
+    file.write_bytes(data)
+    cook.write_sun_metadata(file, 1.0)
+    first_size = file.stat().st_size
+    cook.write_sun_metadata(file, 2.0)
+    assert file.stat().st_size == first_size
+    result = file.read_bytes()
+    at, size = struct.unpack_from('<II', result, 56)
+    end = at + size
+    entries = []
+    while at < end:
+        length = struct.unpack_from('<I', result, at)[0]
+        entries.append(result[at + 4:at + 4 + length].split(b'\0', 1))
+        at += 4 + ((length + 3) & ~3)
+    assert [key for key, _ in entries] == [b'KTXwriter', b'MC2.sunAzimuth', b'zzCustom']
+    assert entries[0][1] == b'test\0'
+    assert entries[1][1] == struct.pack('<Bf', 1, 2.0)
+    assert entries[2][1] == b'value'
+    offset = struct.unpack_from('<Q', result, 80)[0]
+    assert offset % 16 == 0
+    assert result[offset:offset + 16] == bytes(range(16))
