@@ -6,6 +6,7 @@
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
 #include "mission_init_frame.h"
+#include "static_prop_prewarm.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 
@@ -1011,7 +1012,7 @@ void Mission::initFinalizeGeometry() {
 	// without it activeLights is empty at load time and SetLightList gets zero lights.
 	{ ZoneScopedN("Mission::init prewarmStaticPropLightBakes");
 	  eye->primeActiveLightsForPrewarm();
-	  ObjectManager->prewarmStaticPropLightBakes(eye); }
+	  prewarmStaticPropLightBakes(*ObjectManager, eye); }
 	{ ZoneScopedN("Mission::init buildStaticShadowCasterSet");
 	  ObjectManager->buildStaticShadowCasterSet(); }
 	mission_phase_mark("gpu_finalize_ready"); // LOAD-PHASE-FACTS-1: geometry finalize + indirect-buffer build + light-bake prewarm done

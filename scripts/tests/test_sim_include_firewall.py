@@ -96,6 +96,12 @@ def test_comments_literals_and_line_splices():
     assert scan({"Sim/kernel.cpp": 'timeGet\\\nTime();\n'})[0]["rule"] == "wall-clock"
 
 
+def test_line_after_include_is_not_swallowed():
+    # Blanking "x.h" left `#include` + spaces; the old \s-based INCLUDE then ate the next line.
+    for tail in ("class Camera;\n", "auto t = timeGetTime();\n"):
+        assert scan({"Sim/kernel.cpp": '#include "Core/x.h"\n' + tail, "Core/x.h": "struct X {};\n"}), tail
+
+
 def test_stored_time_member_is_data_but_clock_calls_and_addresses_remain_forbidden():
     assert not scan({"Sim/kernel.cpp": "archive(orders.time, ptr->time);"})
     for source in ("time(nullptr);", "auto clockSource = &time;",

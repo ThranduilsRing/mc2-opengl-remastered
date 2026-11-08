@@ -905,18 +905,6 @@
       "occurrence": 1
     },
     {
-      "tu": "code/sim_identity.cpp",
-      "file": "code/sim_identity.cpp",
-      "chain": [
-        "code/sim_identity.cpp",
-        "code/objmgr.h"
-      ],
-      "rule": "camera",
-      "subject": "transitive objmgr.h",
-      "evidence": "#include \"objmgr.h\"",
-      "occurrence": 1
-    },
-    {
       "tu": "mclib/cmponent.cpp",
       "file": "mclib/cmponent.cpp",
       "chain": [
@@ -3207,18 +3195,6 @@
       "rule": "wall-clock",
       "subject": "time",
       "evidence": "void flush(const float* terrainLightDir_4f, float time,",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/sim_identity.cpp",
-      "file": "code/objmgr.h",
-      "chain": [
-        "code/sim_identity.cpp",
-        "code/objmgr.h"
-      ],
-      "rule": "camera",
-      "subject": "Camera",
-      "evidence": "void prewarmStaticPropLightBakes(Camera* cam);",
       "occurrence": 1
     },
     {

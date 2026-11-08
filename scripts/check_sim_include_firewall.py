@@ -26,7 +26,7 @@ EXTERNAL = {"zlib.h", "jpeglib.h", "png.h", "bzlib.h"}
 LITERAL = r'R"(?P<delim>[^ ()\\\t\r\n]{0,16})\([\s\S]*?\)(?P=delim)"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\''
 COMMENTS_AND_LITERALS = re.compile(LITERAL + r"|//[^\n]*|/\*[\s\S]*?\*/")
 LITERALS = re.compile(LITERAL)
-INCLUDE = re.compile(r"^\s*#\s*include\s+(.+?)\s*$", re.M)
+INCLUDE = re.compile(r"^[ \t]*#[ \t]*include[ \t]+(.+?)[ \t]*$", re.M)  # not \s: it crosses newlines once literals are blanked
 DEFINE = re.compile(r'^[ \t]*#[ \t]*define[ \t]+(\w+)[ \t]+([^\n]+)$', re.M)
 TOKENS = re.compile(r"\b[A-Za-z_]\w*\b")
 
