@@ -44,7 +44,7 @@ def test_compiled_unmasked_palette_indexes_the_stock_team_slots(tint_spirv):
     # The maskless path must consume the dominant albedo channel's paint;
     # returning the authored blue, or indexing a constant slot, fails this check.
     body = tint_spirv
-    channel = re.search(r"(%\w+) = OpLoad %int %channel\b", body)[1]
-    pointer = re.search(r"(%\w+) = OpAccessChain %\w+ %team " + re.escape(channel) + r"\b", body)[1]
+    pointer, channel = re.search(r"(%\w+) = OpAccessChain %\w+ %team (%\w+)\b", body).groups()
+    assert re.search(re.escape(channel) + r" = OpLoad %int %channel\b", body)
     packed = re.search(r"(%\w+) = OpLoad %uint " + re.escape(pointer) + r"\b", body)[1]
-    assert re.search(r"OpStore %packed " + re.escape(packed) + r"\b", body)
+    assert re.search(r"OpStore %packed(?:_\d+)? " + re.escape(packed) + r"\b", body)
