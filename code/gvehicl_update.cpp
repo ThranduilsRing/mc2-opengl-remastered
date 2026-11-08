@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
+#include "hover_name.h"
 #include "tacticaloverview.h"
 #include "Gates/gate.h"
 
@@ -735,17 +736,12 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 		else if (cStat == CONTACT_SENSOR_QUALITY_3)
 		{
 			view.mode = Mode::SensorText;
-			if (tonnage <= 40)
-				view.nameId = IDS_SENSOR_LIGHT_VEHICLE;
-			else if (tonnage <= 65)
-				view.nameId = IDS_SENSOR_MEDIUM_VEHICLE;
-			else
-				view.nameId = IDS_SENSOR_HEAVY_VEHICLE;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID, true);
 		}
 		else if (cStat == CONTACT_SENSOR_QUALITY_4)
 		{
 			view.mode = Mode::SensorText;
-			view.nameId = descID;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID, true);
 		}
 		else if (alphaValue != 0x0)	//What if we are out of LOS and NOT on sensors!!!  Let 'em fade out.
 		{

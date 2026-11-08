@@ -457,7 +457,9 @@ long Mech3DAppearance::render (long depthFixup)
 			: inView;
 	if (mechShouldRender)
 	{
-		if (visible)
+		// The native batch has no per-instance fade alpha. Stock hides sensor
+		// bodies via mesh alpha; do not submit a known blip as an opaque mech.
+		if (visible && (sensorLevel == 0 || sensorLevel >= 5))
 		{
 			uint32_t color = SD_BLUE;
 			uint32_t highLight = 0x007f7f7f;

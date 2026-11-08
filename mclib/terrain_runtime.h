@@ -53,7 +53,7 @@ namespace TerrainRuntime
 	float visualHeightDelta(const glm::vec3& worldPos);
 	void setCpuVisualHeight(const float* vh, int V);   // nullptr clears (mission start / bake rejected)
 
-	// Render/visual surface height. == gameplay height today; may diverge later.
+	// Accepted 4x visual bake (bilinear CPU sampler); gameplay fallback when absent.
 	float sampleVisualHeight(const glm::vec3& worldPos);
 
 	// Decal chokepoint: terrain decals (footprints, contact blobs) sit ON the rendered

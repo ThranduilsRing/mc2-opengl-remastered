@@ -7,6 +7,7 @@
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 #include "cursor_world_pick.h"
+#include "hover_name.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 namespace {
@@ -1217,21 +1218,28 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			if ( !target )
 				return;
 			int descID = target->getDescription();
+			long hoverName = descID;
+			if (target->isMover()) {
+				const bool full = target->getTeamId() == Team::home->getId() || target->isDisabled()
+					|| ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]);
+				hoverName = mc2::hoverNameId(full ? CONTACT_VISUAL : static_cast<Mover*>(target)->conStat,
+					target->getTonnage(), descID, target->getObjectClass() != BATTLEMECH);
+			}
 			// ISSUE-42 deref hardening: getAppearance() may be NULL for a
 			// partially-initialized/mid-teardown object; guard the deref.
 			if ( descID != -1 && target->getAppearance() )
 			{
-				int nameID = target->getAppearance()->getObjectNameId();
+				int nameID = target->isMover() ? hoverName : target->getAppearance()->getObjectNameId();
 
 				helpTextHeaderID = nameID;
-				helpTextID = descID;
+				helpTextID = target->isMover() ? hoverName : descID;
 			}
 			// Only objects that own a name: movers and the building classes. Scenery terrain objects (fences, lights,
 			// tents) keep the appearance default (the Processing Plant string) and have no name of their own.
 			const long hoverClass = target->getObjectClass();
-			if ( ( target->isMover() || hoverClass == BUILDING || hoverClass == TURRET || hoverClass == GATE ) && target->getAppearance() && target->getAppearance()->getObjectNameId() > 0 )
+			if ( ( target->isMover() || hoverClass == BUILDING || hoverClass == TURRET || hoverClass == GATE ) && target->getAppearance() && (target->isMover() ? hoverName : target->getAppearance()->getObjectNameId()) > 0 )
 			{
-				g_hoverTipNameID = target->getAppearance()->getObjectNameId();
+				g_hoverTipNameID = target->isMover() ? hoverName : target->getAppearance()->getObjectNameId();
 				g_hoverTipX = mouseX;
 				g_hoverTipY = mouseY;
 			}

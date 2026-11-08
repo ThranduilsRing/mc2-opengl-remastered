@@ -5,6 +5,8 @@
 
 #include "camera_internal.h"
 #include "mc2fmt.h"
+#include "terrain_runtime.h"
+#include "terrain_ray_pick.h"
 //---------------------------------------------------------------------------
 
 inline void mapTileCellToWorldPos (long tileR, long tileC, long cellR, long cellC, glm::vec3& worldPos) {
@@ -281,35 +283,22 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 	if (d[2] > -1e-6)            // a ray that never descends cannot hit the surface
 		return pickFail(8, screenX, screenY);
 
-	// Advance the origin to where the ray enters the map's XY box so the DDA starts
-	// on-map (raycastTerrain stops at the first off-map cell). Slab clip in XY.
+	// The marcher clips to the map before sampling, including eyes outside it.
 	const double half = static_cast<double>(Terrain::worldUnitsMapSide) * 0.5 - 1.0;
-	double t0 = 0.0, t1 = 1e30;
-	for (int ax = 0; ax < 2; ++ax)
-	{
-		if (fabs(d[ax]) < 1e-12)
-		{
-			if (ro[ax] < -half || ro[ax] > half) return pickFail(9, screenX, screenY);
-			continue;
-		}
-		double ta = (-half - ro[ax]) / d[ax];
-		double tb = ( half - ro[ax]) / d[ax];
-		if (ta > tb) { const double t = ta; ta = tb; tb = t; }
-		t0 = std::max(t0, ta);
-		t1 = std::min(t1, tb);
-	}
-	if (t0 > t1) return pickFail(10, screenX, screenY);
-	const double ox = ro[0] + t0*d[0], oy = ro[1] + t0*d[1], oz = ro[2] + t0*d[2];
-
-	float hx, hy, hz;
-	if (!Terrain::raycastTerrain(static_cast<float>(ox), static_cast<float>(oy), static_cast<float>(oz),
-	                             static_cast<float>(d[0]), static_cast<float>(d[1]), static_cast<float>(d[2]),
-	                             &hx, &hy, &hz))
+	const double lower[2] = {-half, -half}, upper[2] = {half, half};
+	double hitT = 0;
+	if (!mc2::firstTerrainHit(ro, d, lower, upper, Terrain::worldUnitsPerVertex / 8.0,
+		[](double x, double y) {
+			return TerrainRuntime::sampleVisualHeight(glm::vec3(static_cast<float>(x), static_cast<float>(y), 0));
+		}, hitT))
 		return pickFail(11, screenX, screenY);
+	const float hx = static_cast<float>(ro[0] + hitT*d[0]);
+	const float hy = static_cast<float>(ro[1] + hitT*d[1]);
+	const float hz = static_cast<float>(ro[2] + hitT*d[2]);
 
 	// Verify against the forward projection the GPU and inverseProject use: the hit
 	// must land back on the cursor pixel. Anything else (degenerate matrix, a ray the
-	// DDA mis-walked) is a miss so the caller falls back.
+	// march mis-walked) is a miss so the caller retains its previous position.
 	{
 		glm::vec3 hp(hx, hy, hz);
 		Stuff::Vector4D sc;
@@ -321,112 +310,23 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 	}
 	if (rawHit) { rawHit->x = hx; rawHit->y = hy; rawHit->z = hz; }
 
-	glm::vec3 hp(hx, hy, hz);
-	if (land->getNumQuads() == 0)
-	{
-		// The production ground picker whenever the quadList is empty (LOD-chunk terrain path) is
-		// inverseProject's "closest vertex in screen space" fallback: reproduce it from the four
-		// corners of the quad the ray hit (the nearest projected vertex to a surface point is one of
-		// them), so the answer is the same point the O(vertices) walk returns.
-		int tileR = 0, tileC = 0;
-		land->worldToTile(hp, tileR, tileC);
-		const int side = static_cast<int>(Terrain::realVerticesMapSide);
-		float bestD = 1.0e30f;
-		for (int dr = 0; dr < 2; ++dr)
-			for (int dc = 0; dc < 2; ++dc)
-			{
-				int r = tileR + dr, c = tileC + dc;
-				r = std::clamp(r, 0, side - 1);
-				c = std::clamp(c, 0, side - 1);
-				glm::vec3 vw(Terrain::tileColToWorldCoord[c], Terrain::tileRowToWorldCoord[r], land->getTerrainElevation(r, c));
-				Stuff::Vector4D sc;
-				projectForSelectionPicking(vw, sc);
-				const float dx = sc.x - static_cast<float>(screenX), dy = sc.y - static_cast<float>(screenY);
-				const float d = dx*dx + dy*dy;
-				if (d < bestD) { bestD = d; outWorld = vw; }			}
-		return true;
-	}
-
-	// Snap to the containing cell's centre (the point inverseProject returns for a populated quadList).
-	int cellR = 0, cellC = 0;
-	land->worldToCell(hp, cellR, cellC);
-	const int maxCell = static_cast<int>(Terrain::realVerticesMapSide) * MAPCELL_DIM - 1;
-	cellR = std::clamp(cellR, 0, maxCell);
-	cellC = std::clamp(cellC, 0, maxCell);
-	mapCellToWorldPos(cellR, cellC, outWorld);
-	outWorld.z = land->getTerrainElevation(outWorld);
+	// Keep the first surface hit. Snapping to a nearest projected vertex can
+	// jump behind the ridge the cursor actually sees.
+	outWorld = glm::vec3(hx, hy, hz);
 	return true;
 }
 
 //---------------------------------------------------------------------------
 bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWorld)
 {
-	outWorld.x = outWorld.y = outWorld.z = 0.0f;
-	if (turn < 4)
-		return false;
-
-	glm::mat4 M = worldToClipGL();
-	const auto inverse = lowCamInvert4x4(M);
-	if (!inverse) return false;
-	const auto& Minv = *inverse;
-
-	const float w = screenResolution.x;
-	const float h = screenResolution.y;
-	if (w <= 0.0f || h <= 0.0f)
-		return false;
-
-	const float ndcX =  2.0f * (static_cast<float>(screenX) / w) - 1.0f;
-	const float ndcY =  1.0f - 2.0f * (static_cast<float>(screenY) / h);
-
-	auto unprojectNDC = [&](float nz) -> glm::vec3 {
-		float wx = ndcX*Minv[0][0] + ndcY*Minv[0][1] + nz*Minv[0][2] + Minv[0][3];
-		float wy = ndcX*Minv[1][0] + ndcY*Minv[1][1] + nz*Minv[1][2] + Minv[1][3];
-		float wz = ndcX*Minv[2][0] + ndcY*Minv[2][1] + nz*Minv[2][2] + Minv[2][3];
-		float ww = ndcX*Minv[3][0] + ndcY*Minv[3][1] + nz*Minv[3][2] + Minv[3][3];
-		const float invW = (fabsf(ww) > 1e-8f) ? (1.0f / ww) : 0.0f;
-		glm::vec3 v; v.x = wx*invW; v.y = wy*invW; v.z = wz*invW;
-		return v;
-	};
-	auto renderToMc2 = [](const glm::vec3& g) -> glm::vec3 {
-		glm::vec3 r; mc2ToRender(r, g); return r;
-	};
-
-	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0.
-	glm::vec3 ro = renderToMc2(unprojectNDC(1.0f));    // near
-	glm::vec3 rf = renderToMc2(unprojectNDC( 0.0f));   // far
-
-	const float dz = rf.z - ro.z;
-	if (fabsf(dz) < 1e-6f) { outWorld = ro; return false; }
-
-	// Fixed-point iteration: intersect the ray with the horizontal plane at
-	// the terrain height of the previous hit. Converges in 2-3 steps on any
-	// terrain a camera ray can see (slope bounded by the tilt).
-	float planeZ = 0.0f;
-	glm::vec3 hit;
-	hit.x = hit.y = hit.z = 0.0f;
-	for (int iter = 0; iter < 3; ++iter)
-	{
-		const float t = (planeZ - ro.z) / dz;
-		hit.x = ro.x + t * (rf.x - ro.x);
-		hit.y = ro.y + t * (rf.y - ro.y);
-		hit.z = planeZ;
-		if (!land)
-			break;
-		const float e = land->getTerrainElevation(hit);
-		if (fabsf(e - planeZ) < 1.0f)
-		{
-			hit.z = e;
-			break;
-		}
-		planeZ = e;
-	}
-	outWorld = hit;
-	return true;
+	return pickTerrainRay(screenX, screenY, outWorld);
 }
 
 //---------------------------------------------------------------------------
 unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, glm::vec3 &point)
 {
+	if (getUsePerspective())
+		return pickTerrainRay(screenPos.x, screenPos.y, point) ? 0 : 1;
 	if (turn < 4)
 	{
 		point.x = point.y = point.z = 0.0f;

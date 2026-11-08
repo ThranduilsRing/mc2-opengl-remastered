@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech_internal.h"
+#include "hover_name.h"
 #include "tacticaloverview.h"
 #include "appearance_rng.h"
 #include "Gates/gate.h"
@@ -709,19 +710,12 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 		else if (cStat == CONTACT_SENSOR_QUALITY_3)
 		{
 			view.mode = Mode::SensorText;
-			if (tonnage < 40)
-				view.nameId = IDS_SENSOR_LIGHT_MECH;
-			else if (tonnage < 65)
-				view.nameId = IDS_SENSOR_MEDIUM_MECH;
-			else if (tonnage < 80)
-				view.nameId = IDS_SENSOR_HEAVY_MECH;
-			else
-				view.nameId = IDS_SENSOR_ASSAULT_MECH;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID);
 		}
 		else if (cStat == CONTACT_SENSOR_QUALITY_4)
 		{
 			view.mode = Mode::SensorText;
-			view.nameId = descID;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID);
 		}
 	}
 	else if (isOnGui)

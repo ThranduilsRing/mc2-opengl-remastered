@@ -50,30 +50,29 @@ void setCpuVisualHeight(const float* vh, int V)
 	else { s_cpuVisualHeight.clear(); s_cpuVisualV = 0; }
 }
 
-float visualHeightDelta(const glm::vec3& worldPos)
+float sampleVisualHeight(const glm::vec3& worldPos)
 {
-	static const bool s_on = mc2::gate::get<"MC2_UNIT_VISUAL_SNAP">();
-	if (!s_on || !land || s_cpuVisualV < 2) return 0.0f;
+	const float gameplay = land ? land->getTerrainElevation(worldPos) : 0.0f;
+	if (!land || s_cpuVisualV < 2) return gameplay;
 	const float inv = 4.0f / Terrain::worldUnitsPerVertex;
 	float fx = (worldPos.x - Terrain::mapTopLeft3d.x) * inv;
 	float fy = (Terrain::mapTopLeft3d.y - worldPos.y) * inv;
 	const float hi = static_cast<float>(s_cpuVisualV - 1);
-	if (fx < 0.0f || fy < 0.0f || fx > hi || fy > hi) return 0.0f;
+	if (fx < 0.0f || fy < 0.0f || fx > hi || fy > hi) return gameplay;
 	int x0 = static_cast<int>(fx), y0 = static_cast<int>(fy);
 	if (x0 >= s_cpuVisualV - 1) x0 = s_cpuVisualV - 2;
 	if (y0 >= s_cpuVisualV - 1) y0 = s_cpuVisualV - 2;
 	const float tx = fx - static_cast<float>(x0), ty = fy - static_cast<float>(y0);
 	const float* p = s_cpuVisualHeight.data() + static_cast<size_t>(y0) * s_cpuVisualV + x0;
 	const float v = (p[0] * (1 - tx) + p[1] * tx) * (1 - ty) + (p[s_cpuVisualV] * (1 - tx) + p[s_cpuVisualV + 1] * tx) * ty;
-	return v - land->getTerrainElevation(worldPos);
+	return v;
 }
 
-float sampleVisualHeight(const glm::vec3& worldPos)
+float visualHeightDelta(const glm::vec3& worldPos)
 {
-	// Render surface. SAME buffer as gameplay today; a future visual-height
-	// slice (resample/displacement) will diverge this without touching the
-	// gameplay accessor above. Kept distinct on purpose.
-	return land ? land->getTerrainElevation(worldPos) : 0.0f;
+	static const bool s_on = mc2::gate::get<"MC2_UNIT_VISUAL_SNAP">();
+	if (!s_on || !land) return 0.0f;
+	return sampleVisualHeight(worldPos) - land->getTerrainElevation(worldPos);
 }
 
 float decalElevation(const glm::vec3& worldPos)
