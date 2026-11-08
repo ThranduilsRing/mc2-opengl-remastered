@@ -267,8 +267,9 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 		const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(m_fileName.c_str(), fName);
 		if (opened.found())
 			++g_resolveOpens;
-		if (opened.fd != -1)
-			handle = opened.fd;
+		// Always assign: close() leaves CLOSED_HANDLE_VALUE behind, and a miss must read as INVALID_HANDLE_VALUE (the old _open() result),
+		// not as that stale value (a reopened File used to take the 'loose file opened' branch with no descriptor).
+		handle = opened.fd != -1 ? opened.fd : INVALID_HANDLE_VALUE;
 		const std::string looseOwner = opened.owner;
 
 		if (handle == INVALID_HANDLE_VALUE)

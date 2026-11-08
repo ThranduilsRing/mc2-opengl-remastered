@@ -175,6 +175,21 @@ TEST_CASE("FC4 a closed file opens again and reports the new name")
 	remove(b.c_str());
 }
 
+TEST_CASE("FC4b a closed file reopened on a missing path reports a miss, not a phantom open")
+{
+	const std::string a = scratch("miss_a.bin");
+	writeBytes(a, "aaaa", 4);
+
+	File f;
+	REQUIRE(f.open(a.c_str()) == NO_ERR);
+	f.close();
+	// close() leaves CLOSED_HANDLE_VALUE in the handle; the VFS miss must not be read as an open file with it.
+	CHECK(f.open("ffc_scratch_does_not_exist.bin") != NO_ERR);
+	CHECK(!f.isOpen());
+
+	remove(a.c_str());
+}
+
 TEST_CASE("FC5 a parent holds its default 50 children and a closed child frees its slot")
 {
 	const std::string path = scratch("many.bin");
