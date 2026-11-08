@@ -117,13 +117,13 @@ std::vector<Target> pickCandidates(const std::vector<Target>& all, bool cutout) 
             if (!q.ok) continue;
             const float dot = p.n[0] * q.n[0] + p.n[1] * q.n[1] + p.n[2] * q.n[2];
             if (std::abs(dot) < 0.999f) continue;
-            bool near = true;
-            for (int v = 0; v < 3 && near; ++v) {
+            bool inPlane = true;
+            for (int v = 0; v < 3 && inPlane; ++v) {
                 float dist = 0.0f;
                 for (int r = 0; r < 3; ++r) dist += (all[j].v[3 * v + r] - p.c[r]) * p.n[r];
-                near = std::abs(dist) < kEps;
+                inPlane = std::abs(dist) < kEps;
             }
-            if (!near) continue;
+            if (!inPlane) continue;
             float apart = 0.0f;
             for (int r = 0; r < 3; ++r) apart += (q.c[r] - p.c[r]) * (q.c[r] - p.c[r]);
             twin = std::sqrt(apart) < p.radius + q.radius;
