@@ -24,6 +24,7 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -44,10 +45,9 @@ inline constexpr uint8_t kMaskMover = 0x02;               // skinned movers (mec
 // (off screen) keeps its last pose and stays in the TLAS; it leaves when its RenderWorld handle dies (mechs) or after kMoverUnseenFrames unseen frames
 // (vehicles, keyed by shape address), and on map unload. A left slot is reused only after every fresh slot was used (FIFO), so a stale index ages out.
 inline constexpr uint32_t kMoverSlots = kMechIdLast - kMechIdFirst + 1;
-constexpr bool moverCustomIndex(uint32_t slot, uint32_t& out) {
-    if (slot >= kMoverSlots) return false;
-    out = kMechIdFirst + slot;
-    return true;
+constexpr std::optional<uint32_t> moverCustomIndex(uint32_t slot) {
+    if (slot >= kMoverSlots) return std::nullopt;
+    return kMechIdFirst + slot;
 }
 inline constexpr uint64_t kMoverUnseenFrames = 600;
 // A mech's key is its RenderWorld object handle (bit 31 clear); a vehicle's carries bit 31 (shape address based, no liveness query).

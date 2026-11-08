@@ -262,14 +262,14 @@ TEST_CASE("rt scene: packet indices are rebased onto the shared VBO, bad ranges 
 }
 
 TEST_CASE("rt scene movers: custom index slots stay inside the reserved mech range (24-bit)") {
-    uint32_t idx = 0;
-    REQUIRE(moverCustomIndex(0, idx));
-    CHECK(idx == kMechIdFirst);
-    REQUIRE(moverCustomIndex(kMoverSlots - 1, idx));
-    CHECK(idx == 0x3FFFFu);
-    CHECK(isMechId(idx));
-    CHECK(idx <= 0xFFFFFFu);
-    CHECK_FALSE(moverCustomIndex(kMoverSlots, idx));
+    REQUIRE(moverCustomIndex(0).has_value());
+    CHECK(*moverCustomIndex(0) == kMechIdFirst);
+    const std::optional<uint32_t> last = moverCustomIndex(kMoverSlots - 1);
+    REQUIRE(last.has_value());
+    CHECK(*last == 0x3FFFFu);
+    CHECK(isMechId(*last));
+    CHECK(*last <= 0xFFFFFFu);
+    CHECK_FALSE(moverCustomIndex(kMoverSlots).has_value());
 }
 
 TEST_CASE("rt scene movers: Stuff space to MC2 world and the mover transform") {

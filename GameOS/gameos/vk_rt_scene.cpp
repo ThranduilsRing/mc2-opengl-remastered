@@ -373,8 +373,7 @@ void probeMovers(VulkanContext& ctx, State& s, uint64_t frame) {
         for (const Mover& m : s.movers) {
             if (n >= 8 || !m.blas) continue;
             ++n;
-            uint32_t want = 0;
-            moverCustomIndex(m.slot, want);
+            const uint32_t want = moverCustomIndex(m.slot).value_or(0);
             bool found = false, traced = true;
             for (const float d : {0.0f, 8.0f, -8.0f})
                 if (!found) found = rayFinds(ctx, s.moverTlas.get(), m.anchor[0] + d, m.anchor[1] + d, want, traced);
@@ -386,7 +385,7 @@ void probeMovers(VulkanContext& ctx, State& s, uint64_t frame) {
         for (size_t i = 0; i < s.movers.size(); ++i)
             if (s.movers[i].blas) {
                 s.victimKey = s.movers[i].key;
-                moverCustomIndex(s.movers[i].slot, s.victimIndex);
+                s.victimIndex = moverCustomIndex(s.movers[i].slot).value_or(0);
                 std::copy(s.movers[i].anchor, s.movers[i].anchor + 3, s.victimAnchor);
                 s.suppressed.push_back(s.victimKey);
                 dropMover(ctx, s, i, "selftest_despawn");
@@ -739,9 +738,9 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
     float xf[12];
     moverTransform(xf);
     for (const Mover& m : s.movers) {
-        uint32_t index = 0;
-        if (!m.blas || !moverCustomIndex(m.slot, index)) continue;
-        s.instStage.push_back(makeInstance(m.blas.address(), xf, index, kMaskMover));
+        const std::optional<uint32_t> index = moverCustomIndex(m.slot);
+        if (!m.blas || !index) continue;
+        s.instStage.push_back(makeInstance(m.blas.address(), xf, *index, kMaskMover));
     }
     const uint32_t count = static_cast<uint32_t>(s.instStage.size());
     if (s.moverInst.size() < fc.framesInFlight) {

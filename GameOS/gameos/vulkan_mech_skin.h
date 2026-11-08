@@ -23,6 +23,7 @@
 #include "vulkan_mech_island.h"   // Mc2MechDrawRun
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <unordered_map>
@@ -78,10 +79,12 @@ public:
     // the skin output (no readback). Set once after init, before the first plan(); buffers created earlier are recreated on the next plan of their slot.
     void setRayInput(bool on) noexcept;
     static constexpr uint32_t kVertexStride = 40;   // GpuMechVertex; position R32G32B32_SFLOAT at offset 0
-    // First skinned vertex of instance `k` of run `r` this frame, -1 when it draws from the bind-pose VBO (or nothing is active).
-    int32_t region(uint32_t r, uint32_t k) const noexcept {
-        if (!active_ || r + 1 >= runOff_.size() || k >= runOff_[r + 1] - runOff_[r]) return -1;
-        return dst_[runOff_[r] + k];
+    // First skinned vertex of instance `k` of run `r` this frame; empty when it draws from the bind-pose VBO (or nothing is active).
+    std::optional<uint32_t> region(uint32_t r, uint32_t k) const noexcept {
+        if (!active_ || r + 1 >= runOff_.size() || k >= runOff_[r + 1] - runOff_[r]) return std::nullopt;
+        const int32_t first = dst_[runOff_[r] + k];
+        if (first < 0) return std::nullopt;
+        return static_cast<uint32_t>(first);
     }
     // Device address of this frame's skinned buffer (0 without setRayInput or when nothing is active).
     VkDeviceAddress skinnedAddress() const noexcept { return active_ ? skinned_[slot_].deviceAddress() : 0; }

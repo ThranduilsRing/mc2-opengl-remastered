@@ -897,11 +897,11 @@ static void record_ray_movers(MechIsland* s, VkCommandBuffer cb, uint32_t par, c
         if (run.vertexCount == 0 || run.indexCount < 3) continue;
         for (uint32_t k = 0; k < run.instanceCount; ++k) {
             const uint32_t i = run.instanceBase + k;
-            const int32_t region = s->skin.region(r, k);
-            if (i >= feed.instanceCount || region < 0 || feed.motionKeys[i] == 0) continue;
+            const std::optional<uint32_t> region = s->skin.region(r, k);
+            if (i >= feed.instanceCount || !region || feed.motionKeys[i] == 0) continue;
             mc2vk::rt::scene::MoverGeometry g;
             g.key = feed.motionKeys[i];
-            g.vertices = skinned + static_cast<uint64_t>(region) * mc2vk::MechSkinPass::kVertexStride;
+            g.vertices = skinned + static_cast<uint64_t>(*region) * mc2vk::MechSkinPass::kVertexStride;
             g.vertexStride = mc2vk::MechSkinPass::kVertexStride;
             g.vertexCount = run.vertexCount;
             g.indices = ibo + static_cast<uint64_t>(run.firstIndex) * 4u;
