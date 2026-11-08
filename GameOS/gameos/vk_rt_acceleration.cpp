@@ -201,7 +201,8 @@ std::optional<VkDeviceSize> readCompactedSize(const VulkanContext& ctx, VkQueryP
 
 bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const AccelStructure& src, VkDeviceSize compactedSize, std::string_view name,
                        AccelStructure& dst) {
-    if (!src || compactedSize == 0) return false;
+    // An ALLOW_UPDATE structure does not survive a COMPACT copy on AMD (every ray misses): compact only structures built without update.
+    if (!src || compactedSize == 0 || src.canUpdate()) return false;
     auto created = createAccelStructure(ctx, src.isTop() ? VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
                                         compactedSize, name);
     if (!created) return false;

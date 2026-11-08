@@ -147,7 +147,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     OwnedQueryPool qp = createCompactionQueryPool(ctx, 1);
     if (!qp) { slog("FAIL query pool"); return false; }
 
-    // Submit 1: upload (host writes, visible at submit) -> BLAS (+ compaction query) -> TLAS -> trace.
+    // Submit 1: upload (host writes, visible at submit) -> BLAS -> TLAS -> trace.
     bool recorded = false;
     const bool s1 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         if (!recordBlasBuild(ctx, cmd, g, flags, "rt_selftest.blas", blas, blasScratch)) return;
@@ -168,7 +168,6 @@ bool runSelfTest(const VulkanContext& ctx) {
     const bool s2 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         if (!recordBlasUpdate(ctx, cmd, g, blas, blasUpd)) return;
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
-        recordCompactionQuery(ctx, cmd, qp.get(), 0, blas);  // sized after the last build or refit
         if (!recordTlasUpdate(ctx, cmd, inst.deviceAddress(), 1, tlas, tlasUpd)) return;
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
         b.recordTrace(cmd, tlas.get());
@@ -176,49 +175,27 @@ bool runSelfTest(const VulkanContext& ctx) {
     }, "rt_selftest update");
     if (!s2 || !recorded || !b.check("update")) { slog("FAIL update: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
-    auto variant = [&](const char* label, bool upd, bool refit) {
-        BuildFlags f;
-        f.allowUpdate = upd;
-        f.allowCompaction = true;
-        AccelStructure vb, vs, vt;
-        OwnedBuffer vbs, vus, vts;
-        OwnedQueryPool vq = createCompactionQueryPool(ctx, 1);
-        const bool a = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
-            if (!recordBlasBuild(ctx, cmd, g, f, "rt_selftest.vb", vb, vbs)) return;
-            recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
-            if (refit && !recordBlasUpdate(ctx, cmd, g, vb, vus)) return;
-            if (refit) recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
-            recordCompactionQuery(ctx, cmd, vq.get(), 0, vb);
-        }, "rt_selftest vA");
-        const std::optional<VkDeviceSize> cs = readCompactedSize(ctx, vq.get(), 0);
-        if (!a || !cs) { slog("diag {}: stage1 fail", label); return; }
-        const bool c = submitOneShot(ctx, [&](VkCommandBuffer cmd) { recordCompactCopy(ctx, cmd, vb, *cs, "rt_selftest.vs", vs); }, "rt_selftest vC");
-        if (!c || !vs) { slog("diag {}: copy fail", label); return; }
-        const bool t = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
-            const VkAccelerationStructureInstanceKHR i1 = makeInstance(vs.address(), nullptr, kCustomIndex);
-            if (!inst.upload(&i1, sizeof(i1))) return;
-            if (!recordTlasBuild(ctx, cmd, inst.deviceAddress(), 1, flags, "rt_selftest.vt", vt, vts)) return;
-            recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
-            b.recordTrace(cmd, vt.get());
-        }, "rt_selftest vT");
-        slog("diag {}: size={}->{} {}", label, static_cast<unsigned long long>(vb.size()), static_cast<unsigned long long>(*cs), t && b.check(label) ? "HIT-OK" : b.failure);
-    };
-    variant("compactOnly", false, false);
-    variant("updNoRefit", true, false);
-    variant("updRefit", true, true);
-
-    // Submit 3: compact-copy the BLAS. Submit 4: build a fresh TLAS over the copy and re-trace.
-    const std::optional<VkDeviceSize> compactedSize = readCompactedSize(ctx, qp.get(), 0);
+    // Stages 3-5: compaction. A BLAS built with ALLOW_UPDATE does not survive a COMPACT copy on the AMD RX 7900 XTX (the copy shrinks 724 -> 660 bytes and
+    // every ray misses, with or without a refit), so a structure that will be compacted is built with ALLOW_COMPACTION only.
+    BuildFlags cflags;
+    cflags.allowCompaction = true;
+    AccelStructure cb, small, tlas2;
+    OwnedBuffer cbScratch, tlas2Scratch;
+    const bool s3 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+        if (!recordBlasBuild(ctx, cmd, g, cflags, "rt_selftest.blas.c", cb, cbScratch)) return;
+        recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+        recordCompactionQuery(ctx, cmd, qp.get(), 0, cb);
+    }, "rt_selftest compact build");
+    const std::optional<VkDeviceSize> compactedSize = s3 ? readCompactedSize(ctx, qp.get(), 0) : std::nullopt;
     if (!compactedSize) { slog("FAIL compaction query"); return false; }
     const VkDeviceSize compacted = *compactedSize;
-    AccelStructure small, tlas2;
-    OwnedBuffer tlas2Scratch;
-    const bool s3 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
-        recordCompactCopy(ctx, cmd, blas, compacted, "rt_selftest.blas.compact", small);
-    }, "rt_selftest compact copy");
-    if (!s3 || !small) { slog("FAIL compact: copy submit"); return false; }
-    recorded = false;
     const bool s4 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+        recordCompactCopy(ctx, cmd, cb, compacted, "rt_selftest.blas.compact", small);
+        recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
+    }, "rt_selftest compact copy");
+    if (!s4 || !small) { slog("FAIL compact: copy submit"); return false; }
+    recorded = false;
+    const bool s5 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         const VkAccelerationStructureInstanceKHR i0 = makeInstance(small.address(), nullptr, kCustomIndex);
         if (!inst.upload(&i0, sizeof(i0))) return;
         if (!recordTlasBuild(ctx, cmd, inst.deviceAddress(), 1, flags, "rt_selftest.tlas2", tlas2, tlas2Scratch)) return;
@@ -226,7 +203,7 @@ bool runSelfTest(const VulkanContext& ctx) {
         b.recordTrace(cmd, tlas2.get());
         recorded = true;
     }, "rt_selftest compact trace");
-    if (!s4 || !recorded || !b.check("compact")) { slog("FAIL compact: {}", b.failure.empty() ? "submit" : b.failure); return false; }
+    if (!s5 || !recorded || !b.check("compact")) { slog("FAIL compact: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
     slog("PASS rays={} blas_bytes={} compacted_bytes={} stages=build,update,compact", kRayCount, static_cast<unsigned long long>(blas.size()),
          static_cast<unsigned long long>(compacted));
