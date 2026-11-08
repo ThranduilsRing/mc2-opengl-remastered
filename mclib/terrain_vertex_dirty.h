@@ -20,7 +20,7 @@ public:
     }
     void invalidateAll() { epoch_ = ++serial_; }
     uint64_t revision(uint32_t vertex) const {
-        return std::max(epoch_, revisions_[vertex]);
+        return (std::max)(epoch_, revisions_[vertex]);
     }
 private:
     std::vector<uint64_t> revisions_;
