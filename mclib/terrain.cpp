@@ -125,6 +125,8 @@ std::vector<uint8_t> s_skirtEdgeMaskVec;
 // the fine edge's intermediate verts onto the coarse edge line -> bit-identical
 // shared edge -> no T-junction crack (neighbour-min technique, cf c2d7eb46).
 std::vector<uint32_t> s_stitchStepVec;
+// terrain-sse-lod-2: per-command geomorph word (four 6-bit corner weights + target stride), see mc2lod::packMorph.
+std::vector<uint32_t> s_morphVec;
 
 bool 						drawTerrainGrid = false;		//Override locally in editor so game don't come with these please!  Love -fs
 bool						drawEditorPassability = false;	// Editor passability overlay — MOVE-free path for large maps

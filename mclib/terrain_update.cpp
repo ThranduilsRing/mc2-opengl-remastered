@@ -13,24 +13,12 @@
 static int s_lodZeroCmdFrames = 0;
 
 // ---------------------------------------------------------------------------
-// Terrain LOD chunk Phase 5 — per-block distance LOD selection.
-// LOD_STEPS[i] is the vertex stride baked into each patch VBO.
-// LOD_DIST_THRESH[k] is the upper distance (world units) for lodLevel k.
-// Each block is 20 quads * 128 wu/quad = 2560 wu per side.
+// Terrain LOD chunk: per-block screen-space-error LOD selection (terrain-sse-lod-2).
+// LOD_STEPS[i] is the vertex stride (coarse cells) of level i; each block is
+// 20 quads * 128 wu/quad = 2560 wu per side. The chooser and its error/morph
+// rules live in terrain_lod_rules.h (doctest: tests/unit/test_terrain_lod_rules.cpp).
 // ---------------------------------------------------------------------------
-static const int   LOD_STEPS[6]      = {1, 2, 4, 5, 10, 20};
-// Doubled 2026-06-09 (was 3K/7K/15K/30K/60K) so LOD transitions sit well outside
-// normal RTS view distance -> no visible pop-in at gameplay zoom. Runtime-scale
-// with MC2_TERRAIN_LOD_CHUNK_DIST_SCALE (default 1.0; e.g. 0.5 restores the old
-// thresholds, 2.0 pushes them even farther).
-static const float LOD_DIST_THRESH[5] = {
-    6000.0f,    // lodLevel 0: lodStep=1  — within 6 K wu
-    14000.0f,   // lodLevel 1: lodStep=2  — within 14 K wu
-    30000.0f,   // lodLevel 2: lodStep=4  — within 30 K wu
-    60000.0f,   // lodLevel 3: lodStep=5  — within 60 K wu
-    120000.0f,  // lodLevel 4: lodStep=10 — within 120 K wu
-                // lodLevel 5: lodStep=20 — beyond 120 K wu
-};
+static const int (&LOD_STEPS)[mc2lod::kLodStepCount] = mc2lod::kLodSteps;
 
 // Camera-isolation diagnostic: MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=k forces every
 // block to LOD k (0=finest). With FORCE_LOD=0 + NO_CULL + NO_SKIRTS, rotation
@@ -42,77 +30,53 @@ static int lodForceLevel()
     return s_forceLod;
 }
 
-// Runtime distance scale (default 1.0). >1 pushes LOD transitions farther.
-static float lodDistScale()
+// Per-block level errors, against the 4x visual bake when one is loaded (that is
+// what LOD0 draws), else against the coarse height field. Rebuilt when either
+// height version changes. Render-only: heights and activity admission are never
+// modified here.
+struct BlockErrors { mc2lod::LevelErrors level; mc2lod::EdgeErrors edge; };
+static const BlockErrors* blockLevelErrors(const TerrainBlockMeta& bm)
 {
-    static const float s_distScale = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE">();
-    return s_distScale;
-}
-
-// Choose LOD level (0-5) for a block given squared distance and previous level.
-// Promotion (going finer) is immediate; demotion (going coarser) uses 10%
-// hysteresis in linear distance (= 1.21x in distSq) to prevent flickering.
-static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
-{
-    const int forceLod = lodForceLevel();
-    if (forceLod >= 0)
-        return static_cast<uint8_t>((forceLod > 5 ? 5 : forceLod));
-
-    const float s_distScale = lodDistScale();
-
-    uint8_t desired = 5;
-    for (int k = 0; k < 5; ++k) {
-        float t = LOD_DIST_THRESH[k] * s_distScale;
-        if (distSq < t * t) {
-            desired = static_cast<uint8_t>(k);
-            break;
-        }
-    }
-    if (desired > prevLevel) {
-        // Demotion — only commit if clearly past the current fine threshold.
-        float thresh = LOD_DIST_THRESH[desired - 1] * s_distScale;
-        if (distSq < thresh * thresh * 1.21f)
-            return prevLevel; // stay fine
-    }
-    return desired;
-}
-
-// Render-only LOD: bound the fine-mesh height error in screen pixels. Heights
-// and activity admission remain authoritative and are never modified here.
-static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Camera* camera)
-{
-    if (lodForceLevel() >= 0) return static_cast<uint8_t>(std::min(lodForceLevel(), 5));
-    const auto* store = gos_TerrainFieldStore();
-    // Authored visual-height data uses a different reference mesh. Preserve its
-    // established selection (including cement contacts) until its errors are cooked.
-    if (!store || !store->heightVersion() || !store->visualHeight().empty()) {
-        const auto origin = camera->getCameraOrigin();
-        const float dx = (bm.originX + bm.quadCountX * 0.5f) * 128.0f - halfMap + origin.x;
-        const float dy = halfMap - (bm.originY + bm.quadCountY * 0.5f) * 128.0f - origin.z;
-        auto level = chooseLodLevel(dx * dx + dy * dy, bm.lodLevel);
-        if (bm.hasConcrete) level = std::min(level, static_cast<uint8_t>(0));
-        return level;
-    }
-    static uint64_t cachedVersion = 0;
+    static uint64_t cachedVersion = 0, cachedVisualVersion = 0;
     static int cachedSide = 0;
-    static std::vector<std::array<float, 6>> errors;
+    static bool cachedBake = false;
+    static std::vector<BlockErrors> errors;
+    const auto* store = gos_TerrainFieldStore();
+    if (!store || !store->heightVersion()) return nullptr;
     const int side = store->mapSide();
+    const bool bake = !store->visualHeight().empty() && store->visualSide() > 1;
     const int blockSide = (side - 1 + 19) / 20;
-    if (cachedVersion != store->heightVersion() || cachedSide != side) {
-        errors.resize(static_cast<size_t>(blockSide) * blockSide);
-        for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x)
-            errors[x + y * blockSide] = mc2terrain::terrainPatchHeightErrors(store->height(), side,
-                x * 20, y * 20,
-                std::min(20, side - 1 - x * 20),
-                std::min(20, side - 1 - y * 20));
+    if (cachedVersion != store->heightVersion() || cachedSide != side || cachedBake != bake
+        || (bake && cachedVisualVersion != store->visualHeightVersion())) {
+        errors.assign(static_cast<size_t>(blockSide) * blockSide, BlockErrors{});
+        const float* ref = bake ? store->visualHeight().data() : store->height().data();
+        const int refSide = bake ? store->visualSide() : side;
+        for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x) {
+            const int qx = std::min(20, side - 1 - x * 20);
+            const int qy = std::min(20, side - 1 - y * 20);
+            errors[x + y * blockSide] = {mc2lod::levelErrors(ref, refSide, bake ? 4 : 1, x * 20, y * 20, qx, qy),
+                                         mc2lod::edgeErrors(ref, refSide, bake ? 4 : 1, x * 20, y * 20, qx, qy)};
+        }
         cachedVersion = store->heightVersion();
+        cachedVisualVersion = store->visualHeightVersion();
         cachedSide = side;
+        cachedBake = bake;
     }
-    const size_t errorIndex = static_cast<size_t>(bm.originX / 20) + static_cast<size_t>(bm.originY / 20) * static_cast<size_t>(blockSide);
-    if (errorIndex >= errors.size()) return bm.lodLevel;   // block outside the cooked grid: keep its authored level
-    const auto& error = errors[errorIndex];
-    // Projection derivatives use the camera's own transform and pixel convention.
-    // The absolute numerator is affine over the box; its extrema are at corners.
+    const size_t i = static_cast<size_t>(bm.originX / 20) + static_cast<size_t>(bm.originY / 20) * static_cast<size_t>(blockSide);
+    return i < errors.size() ? &errors[i] : nullptr;
+}
+
+// Sets bm.lodLevel and bm.morph from the block's projected geometric error.
+static void chooseProjectedLod(TerrainBlockMeta& bm, float halfMap, Camera* camera)
+{
+    bm.morph = 0;
+    bm.sseNumerator = 0.0f;   // 0 = no projection this frame (forced / unknown): the stitch pass leaves it alone
+    if (lodForceLevel() >= 0) { bm.lodLevel = static_cast<uint8_t>(std::min(lodForceLevel(), 5)); return; }
+    const BlockErrors* errors = blockLevelErrors(bm);
+    if (!errors) { bm.lodLevel = 0; return; }
+    // Projection derivatives use the camera's own transform and pixel convention
+    // (live FOV and viewport). The absolute numerator is affine over the box; its
+    // extrema are at corners.
     Stuff::Vector4D zero, up;
     zero.MultiplyPoint(glm::vec3(0, 0, 0), camera->getWorldToClip());
     up.MultiplyPoint(glm::vec3(0, 1, 0), camera->getWorldToClip());
@@ -121,7 +85,7 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
     for (int corner = 0; corner < 8; ++corner) {
         const float x = (bm.originX + ((corner & 1) ? bm.quadCountX : 0)) * 128.0f - halfMap;
         const float y = halfMap - (bm.originY + ((corner & 2) ? bm.quadCountY : 0)) * 128.0f;
-        const float z = (corner & 4) ? bm.maxElev : bm.minElev;
+        const float z = (corner & 4) ? bm.cullZMax : bm.cullZMin;
         Stuff::Vector4D clip;
         clip.MultiplyPoint(glm::vec3(-x, z, y), camera->getWorldToClip());
         minW = std::min(minW, clip.w);
@@ -129,19 +93,32 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
         nx = std::max(nx, std::abs(ax * clip.w - clip.x * aw));
         ny = std::max(ny, std::abs(ay * clip.w - clip.y * aw));
     }
-    if (minW <= 0 && maxW >= 0) return 0;
+    if (minW <= 0 && maxW >= 0) { bm.lodLevel = 0; return; }   // camera plane crosses the block
     const float w = std::min(std::abs(minW), std::abs(maxW));
     const float numerator = std::max(nx * camera->fgetScreenResX(), ny * camera->fgetScreenResY());
-    // Coarsen below 0.05 pixel, refine at 0.1 pixel. Keep contacts and skyline
-    // changes far below a pixel while avoiding oscillation on camera motion.
-    for (int level = 5; level > 0; --level) {
-        const float e = error[level];
-        const float denominator = w * (w - e * std::abs(aw));
-        const float tolerance = level <= bm.lodLevel ? 0.1f : 0.05f;
-        if (std::isfinite(e) && denominator > 1e-8f && e * numerator <= tolerance * denominator)
-            return static_cast<uint8_t>(level);
+    const float tol = bm.hasConcrete ? mc2lod::kSseConcreteTolerancePx : mc2lod::kSseTolerancePx;
+    const mc2lod::LodPick pick = mc2lod::chooseSseLevel(errors->level, bm.lodLevel, tol, numerator, w, std::abs(aw));
+    bm.sseNumerator = numerator;
+    bm.sseW = w;
+    bm.sseAbsAw = std::abs(aw);
+    bm.lodLevel = static_cast<uint8_t>(pick.level);
+    bm.morph = static_cast<uint8_t>(pick.morph * 255.0f + 0.5f);
+}
+
+// Stitch error is in the bound: true when the shared edge (bm's edge e, order N,S,W,E) of a pair at different levels,
+// drawn at the stitch stride, projects above either block's tolerance.
+static bool stitchOverTolerance(const TerrainBlockMeta& bm, const TerrainBlockMeta& nbm, int e)
+{
+    const std::optional<int> k = mc2lod::stitchErrorLevel(bm.lodLevel, nbm.lodLevel, (e < 2) ? bm.quadCountX : bm.quadCountY);
+    const BlockErrors* errors = k ? blockLevelErrors(bm) : nullptr;
+    if (!errors) return false;
+    const float edgeError = errors->edge[e][*k];
+    for (const TerrainBlockMeta* b : {&bm, &nbm}) {
+        const float tol = b->hasConcrete ? mc2lod::kSseConcreteTolerancePx : mc2lod::kSseTolerancePx;
+        if (b->sseNumerator > 0.0f && mc2lod::projectedErrorPx(edgeError, b->sseNumerator, b->sseW, b->sseAbsAw) > tol)
+            return true;
     }
-    return 0;
+    return false;
 }
 
 extern float textureOffset;
@@ -250,6 +227,8 @@ long Terrain::update (void)
 				s_skirtEdgeMaskVec.resize(need, 0);
 			if (s_stitchStepVec.size() < need)
 				s_stitchStepVec.resize(need, 0);
+			if (s_morphVec.size() < need)
+				s_morphVec.resize(need, 0);
 		}
 
 		// Cache frustum planes once for this frame (eye->cacheFrustumPlanes()
@@ -449,7 +428,7 @@ long Terrain::update (void)
 						bm.inFrustum = passedCull;
 
 
-						bm.lodLevel = chooseProjectedLod(bm, halfMap, eye);
+						chooseProjectedLod(bm, halfMap, eye);
 					}
 				}
 			}
@@ -488,7 +467,7 @@ long Terrain::update (void)
 					TerrainBlockMeta& bm = s_blockMeta[bx + by * side];
 					if (bm.dirtyAabb) recomputeBlockAabb(bm);
 
-					bm.lodLevel  = chooseProjectedLod(bm, halfMap, eye);
+					chooseProjectedLod(bm, halfMap, eye);
 					bm.inFrustum = true;   // render this apron block
 				}
 			}
@@ -523,6 +502,7 @@ long Terrain::update (void)
 						// Check 4 axis-aligned neighbors: E, W, S, N
 						const int nbDx[4] = { 1, -1,  0,  0};
 						const int nbDy[4] = { 0,  0,  1, -1};
+						const int kEdgeOfNeighbour[4] = { 3, 2, 1, 0 };   // E, W, S, N -> stitch edge index (N,S,W,E)
 						for (int n = 0; n < 4; ++n)
 						{
 							int nx = bx + nbDx[n], ny = by + nbDy[n];
@@ -533,9 +513,18 @@ long Terrain::update (void)
 							int delta = static_cast<int>(bm.lodLevel) - static_cast<int>(nbm.lodLevel);
 							if (delta > 1) {
 								bm.lodLevel = nbm.lodLevel + 1;
+								bm.morph = 255;    // forced finer than its error asks: draw the next coarser surface
 								lodChanged = true;
 							} else if (delta < -1) {
 								nbm.lodLevel = bm.lodLevel + 1;
+								nbm.morph = 255;
+								lodChanged = true;
+							} else if (delta != 0 && stitchOverTolerance(bm, nbm, kEdgeOfNeighbour[n])) {
+								// The stitched edge (lcm stride, e.g. 4|5 -> 20) is coarser than the tolerance allows:
+								// refine the coarser block to the finer level, still drawing its own surface (morph 255).
+								TerrainBlockMeta& coarse = (delta > 0) ? bm : nbm;
+								coarse.lodLevel = static_cast<unsigned char>(std::min(bm.lodLevel, nbm.lodLevel));
+								coarse.morph = 255;
 								lodChanged = true;
 							}
 						}
@@ -607,6 +596,32 @@ long Terrain::update (void)
 					}
 					s_skirtEdgeMaskVec[s_cmdCount] = edgeMask;
 					s_stitchStepVec[s_cmdCount]    = stitch;
+					// Geomorph toward the next coarser level: per-corner weights shared by every block at the corner
+					// (mc2lod::cornerMorph), so same-level edges agree and stitched/skirted edges stay unmorphed.
+					{
+						uint32_t morphWord = 0;
+						if (bm.lodLevel + 1 < mc2lod::kLodStepCount)
+						{
+							float corner[4];
+							const int cdx[4] = { 0, 1, 0, 1 };   // NW, NE, SW, SE
+							const int cdy[4] = { 0, 0, 1, 1 };
+							for (int c = 0; c < 4; ++c)
+							{
+								mc2lod::CornerBlock tb[4];
+								for (int t = 0; t < 4; ++t)
+								{
+									const int tx = bx + cdx[c] - 1 + (t & 1), ty = by + cdy[c] - 1 + (t >> 1);
+									const bool onMap = tx >= 0 && ty >= 0 && tx < s_terrainChunkSide && ty < s_terrainChunkSide;
+									const TerrainBlockMeta* tm = onMap ? &s_blockMeta[tx + ty * s_terrainChunkSide] : nullptr;
+									tb[t] = { onMap, tm && tm->inFrustum, tm ? tm->lodLevel : 0, tm ? tm->morph / 255.0f : 0.0f };
+								}
+								corner[c] = mc2lod::cornerMorph(tb, bm.lodLevel);
+							}
+							if (corner[0] > 0.0f || corner[1] > 0.0f || corner[2] > 0.0f || corner[3] > 0.0f)
+								morphWord = mc2lod::packMorph(corner, LOD_STEPS[bm.lodLevel + 1]);
+						}
+						s_morphVec[s_cmdCount] = morphWord;
+					}
 					if (edgeMask)
 					{
 						// Skirt depth must cover the LOD CRACK (deviation of the fine

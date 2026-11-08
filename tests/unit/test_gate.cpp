@@ -826,7 +826,7 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
     constexpr double kFltMax = 3.4028234663852886e38;
     const Want want[] = {
         {"MC2_MOVER_CONTACT_SHADOW", false, 0.0, 1.0},
-        {"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", false, static_cast<double>(0.05f), kFltMax},
+        {"MC2_TERRAIN_SHORELINE_FOAM_RUN", false, 0.0, kFltMax},
         {"MC2_TERRAIN_SHORELINE_EDGE_JITTER", true, 0.0, 32.0},
         {"MC2_TERRAIN_SHORELINE_STRENGTH", true, 0.0, 2.0},
         {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", true, 0.0, 1.0},
@@ -841,10 +841,10 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
         CHECK(r.range.lo == w.lo);
         CHECK(r.range.hi == w.hi);
     }
-    // The old reader tested `s > 0.05f` in float: exactly 0.05 is rejected, the next float up is accepted.
-    const gate::Row& dist = g1b::rowNamed("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE");
-    CHECK(asFloat(gate::detail::parseRow(dist, "0.05")) == 1.0f);
-    CHECK(asFloat(gate::detail::parseRow(dist, "0.050001")) == 0.050001f);
+    // An exclusive lower bound: exactly 0 is rejected (default), anything above is accepted.
+    const gate::Row& foam = g1b::rowNamed("MC2_TERRAIN_SHORELINE_FOAM_RUN");
+    CHECK(asFloat(gate::detail::parseRow(foam, "0")) == 5.0f);
+    CHECK(asFloat(gate::detail::parseRow(foam, "0.5")) == 0.5f);
     // A clamp row clamps; a reject row falls back to its default.
     const gate::Row& clamp = g1b::rowNamed("MC2_TERRAIN_SHORELINE_STRENGTH");
     const gate::Row& reject = g1b::rowNamed("MC2_MOVER_CONTACT_SHADOW");

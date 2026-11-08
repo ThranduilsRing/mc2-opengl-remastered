@@ -275,6 +275,7 @@ void Terrain::flushDrawCommands (void)
 		gos_TerrainLodChunk_SubmitDrawCommands(s_drawCmds, s_skirtDepths.get(),
 			s_skirtEdgeMaskVec.empty() ? nullptr : s_skirtEdgeMaskVec.data(),
 			s_stitchStepVec.empty() ? nullptr : s_stitchStepVec.data(),
+			s_morphVec.empty() ? nullptr : s_morphVec.data(),
 			s_cmdCount);
 	}
 	gos_TerrainLodChunk_EnsureSceneClear();   // a frame without a terrain pass still starts from a cleared shared scene

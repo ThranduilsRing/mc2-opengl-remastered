@@ -71,8 +71,8 @@ void main() {
         else if (localOffset.x == uP.quadCountX && ((uP.edgeStitch >> 24) & 0xFF) > 0) { Sc = (uP.edgeStitch >> 24) & 0xFF; along = localOffset.y; alongX = false; }
         if (Sc > 0 && (along % Sc) != 0) {
             int   c0 = (along / Sc) * Sc;
-            int   c1 = c0 + Sc;
-            float t  = float(along - c0) / float(Sc);
+            int   c1 = min(c0 + Sc, alongX ? uP.quadCountX : uP.quadCountY);   // partial edge: mc2lod::edgeHeight
+            float t  = float(along - c0) / float(c1 - c0);
             float h0, h1;
             if (alongX) {
                 int fy = uP.blockOriginY + localOffset.y;
@@ -104,8 +104,8 @@ void main() {
         else if (localOffset.x == uP.quadCountX && ((uP.edgeStitch >> 24) & 0xFF) > 0) { Sc2 = (uP.edgeStitch >> 24) & 0xFF; along2 = localOffset.y; alongX2 = false; }
         if (Sc2 > 0 && (along2 % Sc2) != 0) {
             int c0 = (along2 / Sc2) * Sc2;
-            int c1 = c0 + Sc2;
-            float t2 = float(along2 - c0) / float(Sc2);
+            int c1 = min(c0 + Sc2, alongX2 ? uP.quadCountX : uP.quadCountY);   // partial edge: mc2lod::edgeHeight
+            float t2 = float(along2 - c0) / float(c1 - c0);
             float hv0, hv1;
             if (alongX2) {
                 int fyC = uP.blockOriginY + localOffset.y;

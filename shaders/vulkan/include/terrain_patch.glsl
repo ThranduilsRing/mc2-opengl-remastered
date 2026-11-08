@@ -9,7 +9,7 @@ struct TerrainPatchRec {
     int edgeStitch;
     int visualMode;
     float skirtDepth;
-    int pad;
+    int morph;        // geomorph word: 4x6-bit corner weights (NW,NE,SW,SE) + target coarse stride << 24 (terrain-sse-lod-2)
 };
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer TerrainPatchRecs {
     TerrainPatchRec p[];

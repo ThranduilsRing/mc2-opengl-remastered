@@ -59,11 +59,14 @@ constexpr int TERRAIN_SHORELINE_TEXUNIT = 2;
 //   neighbour's vertex stride per edge (N=bits0-7, S=8-15, W=16-23, E=24-31; 0 =
 //   no stitch). Passed to the vert as u_edgeStitch; the fine edge's intermediate
 //   verts snap onto the coarse edge line -> crack-free LOD seam. nullptr -> off.
+// morph: parallel uint32 array [count] (terrain-sse-lod-2), mc2lod::packMorph word:
+//   geomorph toward the next coarser level. nullptr / 0 -> no morph.
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds,
     const float*              skirtDepths,
     const unsigned char*      skirtEdgeMasks,
     const unsigned int*       edgeStitch,
+    const unsigned int*       morph,
     int                       count);
 
 // The end of the terrain flush: guarantees the shared scene was cleared this frame (a frame with no terrain draw, or one the terrain pass declined, would

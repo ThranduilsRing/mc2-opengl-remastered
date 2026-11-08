@@ -125,6 +125,7 @@ extern bool justResaveAllMaps;
 // Per-draw-command scratch the update and render pieces share (defined in terrain.cpp), and the AABB helpers init and update call.
 extern std::vector<uint8_t> s_skirtEdgeMaskVec;
 extern std::vector<uint32_t> s_stitchStepVec;
+extern std::vector<uint32_t> s_morphVec;   // per-command geomorph word (mc2lod::packMorph)
 void recomputeBlockAabb(TerrainBlockMeta& bm);
 void recomputeSuperchunkAabb(int scX, int scY);
 void clearList (void);

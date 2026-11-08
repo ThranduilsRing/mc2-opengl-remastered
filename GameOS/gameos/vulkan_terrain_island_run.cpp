@@ -648,7 +648,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (!pm || pm->indexCount == 0) continue;
         TerrainDraw d{};
         d.patch = TerrainPatchConstants{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
-            static_cast<int32_t>(pr.edgeStitch), mode, pr.skirtDepth};
+            static_cast<int32_t>(pr.edgeStitch), mode, pr.skirtDepth, static_cast<int32_t>(pr.morph)};
         d.pm = pm;
         if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) { d.sm = getOrBuildSkirtMesh(s, meshQX, meshQY, pr.lodStep); d.skirtMask = pr.skirtEdgeMask; }
         draws.push_back(d);
