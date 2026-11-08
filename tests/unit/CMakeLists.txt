@@ -202,6 +202,7 @@ add_executable(mc2_tests
     test_shadow_mask_asset.cpp  # the shadow mask cook: header/payload validation, BC4 block packing, cold/warm/changed/healed cache
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/shadow_mask_asset.cpp
     test_terrain_surface_cook.cpp
+    test_terrain_lod_rules.cpp  # stitch stride pairs crack-free, cull z range; header-only (mclib/terrain_lod_rules.h)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan
     test_vk_island_fail_policy.cpp  # VK island init failure -> wait/retry/degrade/fatal; header-only, no Vulkan

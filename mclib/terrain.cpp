@@ -12,6 +12,8 @@
 // Include Files
 
 #include "terrain_internal.h"
+#include "terrain_lod_rules.h"
+#include "terrain_field_store.h"
 #include <algorithm>
 #include "mc2fmt.h"
 
@@ -237,6 +239,17 @@ void recomputeBlockAabb(TerrainBlockMeta& bm)
     }
     bm.minElev   = mn;
     bm.maxElev   = mx;
+
+    // Cull z range: the baked 4x visual surface (mode 1 / mode 2 draw it, and it can leave the gameplay range) over the block's
+    // fine footprint, plus a margin for skirts (capped 256 wu) and decal lift.
+    mc2lod::ZRange vr{mn, mx};
+    const auto* store = gos_TerrainFieldStore();
+    if (store && !store->visualHeight().empty())
+        vr = mc2lod::widenByVisualFootprint(vr, store->visualHeight().data(), store->visualSide(),
+                                            bm.originX, bm.originY, bm.quadCountX, bm.quadCountY);
+    const mc2lod::ZRange zr = mc2lod::blockZRange(vr.lo, vr.hi, 300.0f);
+    bm.cullZMin  = zr.lo;
+    bm.cullZMax  = zr.hi;
     bm.dirtyAabb = false;
 }
 
@@ -263,15 +276,15 @@ void recomputeSuperchunkAabb(int scX, int scY)
             xMax = std::max(xMax, wMaxX);
             yMin = std::min(yMin, wMinY);
             yMax = std::max(yMax, wMaxY);
-            zMin = std::min(zMin, bm.minElev);
-            zMax = std::max(zMax, bm.maxElev);
+            zMin = std::min(zMin, bm.cullZMin);
+            zMax = std::max(zMax, bm.cullZMax);
         }
     }
     sc.worldMinX = xMin; sc.worldMaxX = xMax;
     sc.worldMinY = yMin; sc.worldMaxY = yMax;
-    // Conservative z-range matching old frustum path.
-    sc.worldMinZ = -200.0f;
-    sc.worldMaxZ = 2500.0f;
+    // Real z range of the member blocks (gameplay + baked heights + margin).
+    sc.worldMinZ = zMin;
+    sc.worldMaxZ = zMax;
     sc.inFrustum = false;
 }
 
