@@ -42,6 +42,9 @@ REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gat
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
 E_EXTRA = ("mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json",)   # scifi_kit counts.CATALOG (art suite)
+# Generated, gitignored deploy inputs whose cook sources exist only on the PC: the laptop clone gets the published copies. Without
+# them the laptop deploy omits and then prunes them, and compare-captures fails on the cliffs and concrete (W129 run 3: MAD 0.20/0.52).
+LAYER_EXTRA = tuple(f"data/terrain_layers/{n}.ktx2" for n in ("concrete_detail_pad", "concrete_detail_road", "cliff_rock_ah", "cliff_rock_nra"))
 # flip_evaluator: compare-captures' FLIP columns (no cp315 wheel: build the sdist under vcvars64 with CC=CXX=cl, not MinGW)
 PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest", "flip_evaluator")
 GIT_BASH = "C:/Program Files/Git/bin/bash.exe"
@@ -555,18 +558,24 @@ def sync_tree():
 
 def provision_files(eroot=Path("E:/")):
     """(laptop path relative to C:/mc2gate, PC source) for every file the remote half needs before it runs: itself, its HELPERS
-    and the E-rooted seeds the contracts read under MC2_GATE_EROOT (E_EXTRA, e.g. the scifi_kit catalog)."""
+    and the E-rooted seeds the contracts read under MC2_GATE_EROOT (E_EXTRA, e.g. the scifi_kit catalog), plus the generated
+    deploy inputs (LAYER_EXTRA) copied from the published install into the laptop clone."""
     scripts = Path(__file__).resolve().parents[1] / "scripts"
+    clone = REPO.removeprefix(G + "/")
     return ([("bin/laptop_gate.py", Path(__file__).resolve())] + [("bin/" + h, scripts / h) for h in HELPERS]
-            + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA])
+            + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA]
+            + [(f"{clone}/{rel}", PC_V04 / rel) for rel in LAYER_EXTRA])
 
 
-def provision():
+def provision(bin_only=False):
     """Self-provisioning, run at the start of every PC-side run (and --preflight): sync every provision_files() entry whose laptop
-    sha differs, then upload bin/PROVISION.sha256, which the remote preflight verifies (missing or stale = a clear preflight red)."""
+    sha differs, then upload bin/PROVISION.sha256, which the remote preflight verifies (missing or stale = a clear preflight red).
+    bin_only: just the remote half and its helpers (before init)."""
     ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
     lines = []
     for rel, src in provision_files():
+        if bin_only and not rel.startswith("bin/"):
+            continue
         if not src.is_file():
             sys.exit(f"laptop_gate: provision source missing on the PC: {src}")
         want, dst = sha256(src), f"{G}/{rel}"
@@ -576,6 +585,8 @@ def provision():
             ssh(f'cmd /c mkdir "{str(Path(dst).parent).replace("/", chr(92))}" 2>nul & exit /b 0', check=False)
             scp(src, f"{HOST}:{dst}")
         lines.append(f"{want}  {rel}")
+    if bin_only:
+        return
     sums = PC_TMP / "PROVISION.sha256"
     sums.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -606,8 +617,9 @@ def pc_main(args):
     branch = "claude/stage-" + w
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
-    provision()   # helpers + E-root seeds, sha-checked; the remote preflight verifies PROVISION.sha256
+    provision(bin_only=True)   # the remote half itself, so init can run (init clones the repo the layer seeds go into)
     ssh(remote_py("init"), stream=True)
+    provision()   # helpers + E-root and layer seeds, sha-checked; the remote preflight verifies PROVISION.sha256
     seed()
     seed_ref()
     sync_tree()

@@ -195,6 +195,10 @@ def test_every_module_the_remote_half_imports_is_provisioned():
         assert "bin/" + helper in uploaded
     assert "bin/laptop_gate.py" in uploaded
     assert {"drv/E/" + rel for rel in laptop_gate.E_EXTRA} <= uploaded
+    # every generated deploy input the PC cooks from a PC-only source reaches the laptop clone (W129 run 3 pixel red)
+    layers = {r for r in deploy_payload.TERRAIN_LAYER_PAYLOAD if "concrete_detail" in r or "cliff_rock" in r}
+    assert layers == set(laptop_gate.LAYER_EXTRA)
+    assert {"drv/A/Games/mc2-main/" + rel for rel in layers} <= uploaded
 
 
 def test_provision_problems_names_missing_and_stale_files(tmp_path):
