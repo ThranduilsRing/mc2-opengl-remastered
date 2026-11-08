@@ -33,10 +33,7 @@ bool s_ablRuntimeSoftfail = mc2::gate::get<"MC2_ABL_RUNTIME_SOFTFAIL">();
 //--------
 // GLOBALS
 
-StackItem				returnValue;
 bool					eofFlag = false;
-bool					ExitWithReturn = false;
-bool					ExitFromTacOrder = false;
 bool					SkipOrder = false;
 TokenCodeType			ExitRoutineCodeSegment[2] = {TKN_END_FUNCTION,
 													 TKN_SEMICOLON};
@@ -56,11 +53,11 @@ void execStdSetState (void) {
 	unsigned int stateHandle = ABLi_popInteger();
 
 	if (stateHandle > 0) {
-		SymTableNodePtr stateFunction = ModuleRegistry[CurFSM->getHandle()].stateHandles[stateHandle].state;
-		CurFSM->setPrevState(CurFSM->getState());
-		CurFSM->setState(stateFunction);
-		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(CurFSM->getFileName()), mc2::fmt::safe(stateFunction->name), mc2::fmt::as_i32(execLineNumber));
-		NewStateSet = true;
+		SymTableNodePtr stateFunction = ModuleRegistry[g_ablExec->CurFSM->getHandle()].stateHandles[stateHandle].state;
+		g_ablExec->CurFSM->setPrevState(g_ablExec->CurFSM->getState());
+		g_ablExec->CurFSM->setState(stateFunction);
+		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(g_ablExec->CurFSM->getFileName()), mc2::fmt::safe(stateFunction->name), mc2::fmt::as_i32(g_ablExec->execLineNumber));
+		g_ablExec->NewStateSet = true;
 	}
 }
 
@@ -72,7 +69,7 @@ void execStdGetFunctionHandle (void) {
 
 	char* name = ABLi_popCharPtr();
 
-	SymTableNodePtr function = CurModule->findFunction(name, false);
+	SymTableNodePtr function = g_ablExec->CurModule->findFunction(name, false);
 	if (function)
 		ABLi_pushInteger(static_cast<unsigned int>(reinterpret_cast<size_t>(function)));
 	else
@@ -177,13 +174,13 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 				char err[255];
 				if (s_ablArgGuard && s_ablRuntimeSoftfail) {
 					// H2/H3: soft-fail — log and synthesize default return, do NOT abort.
-					const char* modName = CurModule ? CurModule->getName() : "(unknown)";
-					const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
-					mc2::fmt::to_buf(err, "[ABL_SOFTFAIL] key={:d} func=(out-of-range) module={} file={} line={:d} errCode=0 — key >= NumStandardFunctions({:d}), skipping", mc2::fmt::as_i32(key), mc2::fmt::safe(modName), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
+					const char* modName = g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "(unknown)";
+					const char* srcFile = (g_ablExec->CurModule && FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable";
+					mc2::fmt::to_buf(err, "[ABL_SOFTFAIL] key={:d} func=(out-of-range) module={} file={} line={:d} errCode=0 — key >= NumStandardFunctions({:d}), skipping", mc2::fmt::as_i32(key), mc2::fmt::safe(modName), mc2::fmt::safe(srcFile), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
 					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
 					return nullptr;
 				}
-				mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d} (>= {:d}) — bailing", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
+				mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d} (>= {:d}) — bailing", mc2::fmt::as_i32(key), mc2::fmt::safe(g_ablExec->CurModule->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::as_i32(NumStandardFunctions));
 				ABL_Fatal(0, err);
 				return nullptr;
 			}
@@ -206,7 +203,7 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 				// does, we want the data in o.log automatically.
 				if (ablCallbackIsBogus(cb)) {
 					char err[255];
-					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
+					mc2::fmt::to_buf(err, "[ABL_BAD_CB] key={:d} val={:016X} module={} line={:d}", mc2::fmt::as_i32(key), mc2::fmt::as_ptr(cb), mc2::fmt::safe(g_ablExec->CurModule->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber));
 					mc2::fmt::print_out("{}\n", mc2::fmt::safe(err)); fflush(stdout);
 					switch (FunctionInfoTable[key].returnType) {
 						case RETURN_TYPE_INTEGER: pushInteger(0); break;
@@ -216,12 +213,12 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 					}
 				} else if (cb) {
 #if MC2_SIM_TRACE_ABL
-					MC2_SIM_TRACE_LINE("ABL mod={} ln={:d} fn={}", mc2_sim_trace::safe(CurModule ? CurModule->getName() : "?"), static_cast<int32_t>(execLineNumber), mc2_sim_trace::safe(routineIdPtr->name));
+					MC2_SIM_TRACE_LINE("ABL mod={} ln={:d} fn={}", mc2_sim_trace::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "?"), static_cast<int32_t>(g_ablExec->execLineNumber), mc2_sim_trace::safe(routineIdPtr->name));
 #endif
 					(*cb)();
 				} else {
 					char err[255];
-					mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d}", mc2::fmt::as_i32(key), mc2::fmt::safe(CurModule->getName()), mc2::fmt::as_i32(execLineNumber));
+					mc2::fmt::to_buf(err, " ABL: Undefined ABL RoutineKey {:d} in {}:{:d}", mc2::fmt::as_i32(key), mc2::fmt::safe(g_ablExec->CurModule->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber));
 					ABL_Fatal(key, err);
 				}
 			}

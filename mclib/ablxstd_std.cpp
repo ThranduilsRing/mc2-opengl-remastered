@@ -17,24 +17,24 @@ void execOrderReturn (long returnVal) {
 
 	//-----------------------------
 	// Assignment to function id...
-	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-	long delta = level - CurRoutineIdPtr->level - 1;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+	long delta = g_ablExec->level - g_ablExec->CurRoutineIdPtr->level - 1;
 	while (delta-- > 0)
 		headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 
-	if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE) {
+	if (g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE) {
 		//----------------------------------
 		// Return in a state function, so...
 		if (debugger)
-			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, reinterpret_cast<StackItemPtr>(headerPtr), CurRoutineIdPtr->typePtr);
+			debugger->traceDataStore(g_ablExec->CurRoutineIdPtr, g_ablExec->CurRoutineIdPtr->typePtr, reinterpret_cast<StackItemPtr>(headerPtr), g_ablExec->CurRoutineIdPtr->typePtr);
 	
-		ExitWithReturn = true;
-		ExitFromTacOrder = true;
+		g_ablExec->ExitWithReturn = true;
+		g_ablExec->ExitFromTacOrder = true;
 
 		if (returnVal == 0) {
 			//----------------------------------------------------------
 			// Use the "eject" code only if called for a failed Order...
-			codeSegmentPtr = reinterpret_cast<char*>(ExitStateCodeSegment);
+			g_ablExec->codeSegmentPtr = reinterpret_cast<char*>(ExitStateCodeSegment);
 			getCodeToken();
 		}
 		
@@ -48,18 +48,18 @@ void execOrderReturn (long returnVal) {
 
 		//----------------------------------------------------------------------
 		// Preserve the return value, in case we need it for the calling user...
-		memcpy(&returnValue, targetPtr, sizeof(StackItem));
+		memcpy(&g_ablExec->returnValue, targetPtr, sizeof(StackItem));
 
 		if (debugger)
-			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, reinterpret_cast<StackItemPtr>(headerPtr), CurRoutineIdPtr->typePtr);
+			debugger->traceDataStore(g_ablExec->CurRoutineIdPtr, g_ablExec->CurRoutineIdPtr->typePtr, reinterpret_cast<StackItemPtr>(headerPtr), g_ablExec->CurRoutineIdPtr->typePtr);
 	
-		ExitWithReturn = true;
-		ExitFromTacOrder = true;
+		g_ablExec->ExitWithReturn = true;
+		g_ablExec->ExitFromTacOrder = true;
 
 		if (returnVal == 0) {
 			//----------------------------------------------------------
 			// Use the "eject" code only if called for a failed Order...
-			codeSegmentPtr = reinterpret_cast<char*>(ExitOrderCodeSegment);
+			g_ablExec->codeSegmentPtr = reinterpret_cast<char*>(ExitOrderCodeSegment);
 			getCodeToken();
 		}
 	}
@@ -69,17 +69,17 @@ void execOrderReturn (long returnVal) {
 
 void execStdReturn (void) {
 
-	memset(&returnValue, 0, sizeof(StackItem));
-	if (CurRoutineIdPtr->typePtr) {
+	memset(&g_ablExec->returnValue, 0, sizeof(StackItem));
+	if (g_ablExec->CurRoutineIdPtr->typePtr) {
 		//-----------------------------
 		// Assignment to function id...
-		StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-		long delta = level - CurRoutineIdPtr->level - 1;
+		StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+		long delta = g_ablExec->level - g_ablExec->CurRoutineIdPtr->level - 1;
 		while (delta-- > 0)
 			headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 
 		StackItemPtr targetPtr = reinterpret_cast<StackItemPtr>(headerPtr);
-		TypePtr targetTypePtr = CurRoutineIdPtr->typePtr;
+		TypePtr targetTypePtr = g_ablExec->CurRoutineIdPtr->typePtr;
 		getCodeToken();
 
 		//---------------------------------------------------------------
@@ -93,13 +93,13 @@ void execStdReturn (void) {
 		if ((targetTypePtr == RealTypePtr) && (expressionTypePtr == IntegerTypePtr)) {
 			//-------------------------
 			// integer assigned to real
-			targetPtr->real = static_cast<float>((tos->integer));
+			targetPtr->real = static_cast<float>((g_ablExec->tos->integer));
 			}
 		else if (targetTypePtr->form == FRM_ARRAY) {
 			//-------------------------
 			// Copy the array/record...
 			char* dest = reinterpret_cast<char*>(targetPtr);
-			char* src = tos->address;
+			char* src = g_ablExec->tos->address;
 			const size_t capacity = static_cast<size_t>(std::clamp(static_cast<long>(targetTypePtr->size), 0L, static_cast<long>(sizeof(StackItem))));
 			const size_t sourceSize = src && expressionTypePtr && expressionTypePtr->form == FRM_ARRAY
 			    ? static_cast<size_t>(std::max(0L, expressionTypePtr->size)) : 0;
@@ -111,12 +111,12 @@ void execStdReturn (void) {
 		else if ((targetTypePtr == IntegerTypePtr) || (targetTypePtr->form == FRM_ENUM)) {
 			//------------------------------------------------------
 			// Range check assignment to integer or enum subrange...
-			targetPtr->integer = tos->integer;
+			targetPtr->integer = g_ablExec->tos->integer;
 			}
 		else {
 			//-----------------------
 			// Assign real to real...
-			targetPtr->real = tos->real;
+			targetPtr->real = g_ablExec->tos->real;
 		}
 
 		//-----------------------------
@@ -125,23 +125,23 @@ void execStdReturn (void) {
 
 		//----------------------------------------------------------------------
 		// Preserve the return value, in case we need it for the calling user...
-		memcpy(&returnValue, targetPtr, sizeof(StackItem));
+		memcpy(&g_ablExec->returnValue, targetPtr, sizeof(StackItem));
 		
 		if (debugger)
-			debugger->traceDataStore(CurRoutineIdPtr, CurRoutineIdPtr->typePtr, targetPtr, targetTypePtr);
+			debugger->traceDataStore(g_ablExec->CurRoutineIdPtr, g_ablExec->CurRoutineIdPtr->typePtr, targetPtr, targetTypePtr);
 	}
 
 	//-----------------------
 	// Grab the semi-colon...
 	getCodeToken();
 
-	if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER)
-		codeSegmentPtr = reinterpret_cast<char*>(ExitOrderCodeSegment);
-	else if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE)
-		codeSegmentPtr = reinterpret_cast<char*>(ExitStateCodeSegment);
+	if (g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER)
+		g_ablExec->codeSegmentPtr = reinterpret_cast<char*>(ExitOrderCodeSegment);
+	else if (g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE)
+		g_ablExec->codeSegmentPtr = reinterpret_cast<char*>(ExitStateCodeSegment);
 	else
-		codeSegmentPtr = reinterpret_cast<char*>(ExitRoutineCodeSegment);
-	ExitWithReturn = true;
+		g_ablExec->codeSegmentPtr = reinterpret_cast<char*>(ExitRoutineCodeSegment);
+	g_ablExec->ExitWithReturn = true;
 
 	getCodeToken();
 }
@@ -162,26 +162,26 @@ void execStdPrint (void) {
 	char buffer[20];
 	char* s = buffer;
 	if (paramTypePtr == IntegerTypePtr)
-		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(tos->integer));
+		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(g_ablExec->tos->integer));
 	else if (paramTypePtr == BooleanTypePtr)
-		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(tos->integer ? "true" : "false"));
+		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(g_ablExec->tos->integer ? "true" : "false"));
 	else if (paramTypePtr == CharTypePtr)
-		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(tos->byte));
+		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(g_ablExec->tos->byte));
 	else if (paramTypePtr == RealTypePtr)
-		mc2::fmt::to_buf(buffer, "{:.4f}", tos->real);
+		mc2::fmt::to_buf(buffer, "{:.4f}", g_ablExec->tos->real);
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
-		s = reinterpret_cast<char*>(tos->address);
+		s = reinterpret_cast<char*>(g_ablExec->tos->address);
 	pop();
 
 	if (debugger) {
 		char message[512];
 		mc2::fmt::to_buf(message, "PRINT:  \"{}\"", mc2::fmt::safe(s));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "   MODULE {}", mc2::fmt::safe(CurModule->getName()));
+		mc2::fmt::to_buf(message, "   MODULE {}", mc2::fmt::safe(g_ablExec->CurModule->getName()));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
+		mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(g_ablExec->CurModule->getSourceFile(FileNumber)));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(execLineNumber));
+		mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(g_ablExec->execLineNumber));
 		debugger->print(message);
 		}
 /*	else if (TACMAP) {
@@ -223,30 +223,30 @@ TypePtr execStdConcat (void) {
 	char buffer[32];
 	const char* item = nullptr;
 	if (paramTypePtr == IntegerTypePtr) {
-		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(tos->integer));
+		mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(g_ablExec->tos->integer));
 		item = buffer;
 		}
 	else if (paramTypePtr == CharTypePtr) {
-		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(tos->byte));
+		mc2::fmt::to_buf(buffer, "{:c}", mc2::fmt::as_char(g_ablExec->tos->byte));
 		item = buffer;
 		}
 	else if (paramTypePtr == RealTypePtr) {
-		mc2::fmt::to_buf(buffer, "{:.2f}", tos->real);
+		mc2::fmt::to_buf(buffer, "{:.2f}", g_ablExec->tos->real);
 		item = buffer;
 		}
 	else if (paramTypePtr == BooleanTypePtr) {
-		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(tos->integer ? "true" : "false"));
+		mc2::fmt::to_buf(buffer, "{}", mc2::fmt::safe(g_ablExec->tos->integer ? "true" : "false"));
 		item = buffer;
 		}
 	else if ((paramTypePtr->form == FRM_ARRAY) && (paramTypePtr->info.array.elementTypePtr == CharTypePtr))
-		item = reinterpret_cast<char*>(tos->address);
+		item = reinterpret_cast<char*>(g_ablExec->tos->address);
 
 	if (item) {
 		if (const size_t dropped = abl::appendBounded(dest, item))
 			abl::reportTruncated("concat_truncated", dest.size(), dropped);
 	}
 
-	tos->integer = 0;
+	g_ablExec->tos->integer = 0;
 
 	getCodeToken();
 	return(IntegerTypePtr);
@@ -345,11 +345,11 @@ void execStdGetModule (void) {
 	// The names go into the script's char[N] variables, bounded by their declared sizes.
 	const std::span<char> curBuffer = ABLi_popCharBuf();
 	const std::span<char> fsmBuffer = ABLi_popCharBuf();
-	if (const size_t dropped = abl::copyBounded(curBuffer, abl::textOf(CurModule->getFileName())))
+	if (const size_t dropped = abl::copyBounded(curBuffer, abl::textOf(g_ablExec->CurModule->getFileName())))
 		abl::reportTruncated("getmodule_truncated", curBuffer.size(), dropped);
-	if (const size_t dropped = abl::copyBounded(fsmBuffer, abl::textOf(CurFSM ? CurFSM->getFileName() : "none")))
+	if (const size_t dropped = abl::copyBounded(fsmBuffer, abl::textOf(g_ablExec->CurFSM ? g_ablExec->CurFSM->getFileName() : "none")))
 		abl::reportTruncated("getmodule_truncated", fsmBuffer.size(), dropped);
-	ABLi_pushInteger(CurModuleHandle);
+	ABLi_pushInteger(g_ablExec->CurModuleHandle);
 }
 
 //***************************************************************************
@@ -399,11 +399,11 @@ void execStdFatal (void) {
 	if (debugger) {
 		mc2::fmt::to_buf(message, "FATAL:  [{:d}] \"{}\"", mc2::fmt::as_i32(code), mc2::fmt::safe(s));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "   MODULE ({:d}) {}", mc2::fmt::as_i32(CurModule->getId()), mc2::fmt::safe(CurModule->getName()));
+		mc2::fmt::to_buf(message, "   MODULE ({:d}) {}", mc2::fmt::as_i32(g_ablExec->CurModule->getId()), mc2::fmt::safe(g_ablExec->CurModule->getName()));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
+		mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(g_ablExec->CurModule->getSourceFile(FileNumber)));
 		debugger->print(message);
-		mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(execLineNumber));
+		mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(g_ablExec->execLineNumber));
 		debugger->print(message);
 		debugger->debugMode();
 		}
@@ -446,11 +446,11 @@ void execStdAssert (void) {
 		if (debugger) {
 			mc2::fmt::to_buf(message, "ASSERT:  [{:d}] \"{}\"", mc2::fmt::as_i32(code), mc2::fmt::safe(s));
 			debugger->print(message);
-			mc2::fmt::to_buf(message, "   MODULE ({:d}) {}", mc2::fmt::as_i32(CurModule->getId()), mc2::fmt::safe(CurModule->getName()));
+			mc2::fmt::to_buf(message, "   MODULE ({:d}) {}", mc2::fmt::as_i32(g_ablExec->CurModule->getId()), mc2::fmt::safe(g_ablExec->CurModule->getName()));
 			debugger->print(message);
-			mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(CurModule->getSourceFile(FileNumber)));
+			mc2::fmt::to_buf(message, "   FILE {}", mc2::fmt::safe(g_ablExec->CurModule->getSourceFile(FileNumber)));
 			debugger->print(message);
-			mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(execLineNumber));
+			mc2::fmt::to_buf(message, "   LINE {:d}", mc2::fmt::as_i32(g_ablExec->execLineNumber));
 			debugger->print(message);
 			debugger->debugMode();
 			}
@@ -473,7 +473,7 @@ void execStdRandom (void) {
 	// param of (n), should be: 0 <= r <= (n-1).
 	// A script's random() draws from the simulation stream; the trace names the brain and script line so an extra draw in one
 	// run points at the condition that reached it.
-	MC2_SIM_TRACE_LINE("ABLRAND mod={} ln={:d} n={:d}", mc2_sim_trace::safe(CurModule ? CurModule->getName() : "?"), static_cast<int32_t>(execLineNumber), static_cast<int32_t>(n));
+	MC2_SIM_TRACE_LINE("ABLRAND mod={} ln={:d} n={:d}", mc2_sim_trace::safe(g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "?"), static_cast<int32_t>(g_ablExec->execLineNumber), static_cast<int32_t>(n));
 	ABLi_pokeInteger(ABLRandomCallback(n));
 }
 
@@ -498,14 +498,14 @@ void execStdResetOrders (void) {
 	int scope = ABLi_popInteger();
 
 	if (scope == 0)
-		CurModule->resetOrderCallFlags();
+		g_ablExec->CurModule->resetOrderCallFlags();
 	else if (scope == 1) {
-		long startIndex = CurRoutineIdPtr->defn.info.routine.orderCallIndex;
-		long endIndex = startIndex + CurRoutineIdPtr->defn.info.routine.numOrderCalls;
+		long startIndex = g_ablExec->CurRoutineIdPtr->defn.info.routine.orderCallIndex;
+		long endIndex = startIndex + g_ablExec->CurRoutineIdPtr->defn.info.routine.numOrderCalls;
 		for (long i = startIndex; i < endIndex; i++) {
 			unsigned char orderDWord = static_cast<unsigned char>((i / 32));
 			unsigned char orderBitMask = static_cast<unsigned char>((i % 32));
-			CurModule->clearOrderCallFlag(orderDWord, orderBitMask);
+			g_ablExec->CurModule->clearOrderCallFlag(orderDWord, orderBitMask);
 		}
 	}
 }
@@ -516,7 +516,7 @@ void execStdGetStateHandle (void) {
 
 	char* name = ABLi_popCharPtr();
 
-    int stateHandle = CurFSM->findStateHandle(S_strlwr(name));
+    int stateHandle = g_ablExec->CurFSM->findStateHandle(S_strlwr(name));
 	ABLi_pushInteger(stateHandle);
 }
 
@@ -524,6 +524,6 @@ void execStdGetStateHandle (void) {
 
 void execStdGetCurrentStateHandle (void) {
 
-	int stateHandle = CurFSM->getStateHandle();
+	int stateHandle = g_ablExec->CurFSM->getStateHandle();
 	ABLi_pushInteger(stateHandle);
 }

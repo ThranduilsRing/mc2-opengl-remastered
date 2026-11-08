@@ -33,16 +33,9 @@
 #endif
 
 // Globals defined in abldbug.cpp (or elsewhere in the engine) that the split pieces share.
-extern int32_t          level;
 extern int32_t          lineNumber;
-extern int              execLineNumber;
-extern TokenCodeType	codeToken;
 extern char*			codeBuffer;
 extern char*			codeBufferPtr;
-extern char*			codeSegmentPtr;
-extern char*			statementStartPtr;
-extern StackItemPtr		tos;
-extern SymTableNodePtr	CurRoutineIdPtr;
 extern SymTableNodePtr	symTableDisplay[];
 extern long				errorCount;
 extern char				curChar;
@@ -65,7 +58,6 @@ extern int32_t				NumModuleInstances;
 extern int32_t				MaxWatchesPerModule;
 extern int32_t				MaxBreakPointsPerModule;
 extern const char*			TokenStrings[std::to_underlying(TokenCodeType::NUM_TOKENS)];
-extern StackItemPtr		StaticDataPtr;
 extern void CheckMouse(void);
 extern long MaxBreaks;
 extern long MaxWatches;

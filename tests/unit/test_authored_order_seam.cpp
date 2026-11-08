@@ -613,6 +613,95 @@ TEST_CASE("ABLCompile/statements includes and library calls preserve parent byte
 }
 
 namespace {
+// alpha calls the host function runbeta mid-expression, inside a function frame and a for loop; beta has its own
+// function frames and loop. Nested, runbeta runs beta on a second context; serial, it replays beta's recorded results.
+constexpr const char* kInterleaveAlpha =
+    "module alpha;\nvar\nstatic integer before;\nstatic integer after;\nstatic integer mixed;\n"
+    "function work (integer n) : integer;\nvar\ninteger i;\ninteger s;\ncode\n"
+    "s = 0;\nfor i = 0 to n do\ns = s + i * 3;\nendfor;\nreturn(s);\nendfunction;\n"
+    "function mix (integer n) : integer;\nvar\ninteger i;\ninteger s;\ncode\n"
+    "s = 100;\nfor i = 1 to n do\ns = s + work(i) + runbeta * i;\nendfor;\nreturn(s);\nendfunction;\n"
+    "code\nbefore = work(7);\nmixed = mix(3);\nafter = before + mix(2) + work(5) + mixed;\nendmodule.\n";
+constexpr const char* kInterleaveBeta =
+    "module beta;\nvar\nstatic integer calls;\nstatic integer acc;\n"
+    "function square (integer n) : integer;\nvar\ninteger i;\ninteger s;\ncode\n"
+    "s = 0;\nfor i = 1 to n do\ns = s + n;\nendfor;\nreturn(s);\nendfunction;\n"
+    "code\ncalls = calls + 1;\nacc = acc * 2 + square(calls + 4);\nendmodule.\n";
+
+struct InterleaveHost {
+    static inline ABLModule* beta = nullptr;   // nested mode: run this module on its own context
+    static inline std::vector<int> replay;     // serial mode: beta's recorded results, in call order
+    static inline size_t next = 0;
+    static inline std::vector<AblExecContext*> seen;  // the context bound when each nested run started
+    static void runbeta() {
+        if (beta) {
+            AblExecContext nested(4096);
+            {
+                AblExecScope scope(nested);
+                seen.push_back(g_ablExec);
+                beta->execute();
+            }
+            ABLi_pushInteger(beta->getStaticData()[1].integer);
+        } else {
+            ABLi_pushInteger(replay.at(next++));
+        }
+    }
+};
+
+struct InterleaveRun { std::vector<int> alpha, beta; long alphaResult; int betaCalls; };
+
+InterleaveRun runInterleave(bool nested) {
+    CompileFixture fixture;
+    fixture.sources["alpha.abl"] = kInterleaveAlpha;
+    fixture.sources["beta.abl"] = kInterleaveBeta;
+    ABLi_addFunction("runbeta", false, nullptr, "i", InterleaveHost::runbeta);
+    const int alphaHandle = ABLi_preProcess("alpha.abl");
+    const int betaHandle = ABLi_preProcess("beta.abl");
+    REQUIRE(alphaHandle >= 0);
+    REQUIRE(betaHandle >= 0);
+    ABLModule alpha, beta;
+    REQUIRE(alpha.init(alphaHandle) == ABL_NO_ERR);
+    REQUIRE(beta.init(betaHandle) == ABL_NO_ERR);
+    InterleaveHost::next = 0;
+    InterleaveHost::seen.clear();
+    if (nested) {
+        InterleaveHost::beta = &beta;
+    } else {
+        // Serial: beta's runs first, one after another on the root context; alpha then sees the same results.
+        InterleaveHost::beta = nullptr;
+        InterleaveHost::replay.clear();
+        for (int run = 0; run < 5; ++run) {  // mix(3) + mix(2) call runbeta five times
+            beta.execute();
+            InterleaveHost::replay.push_back(beta.getStaticData()[1].integer);
+        }
+    }
+    AblExecContext* const root = g_ablExec;
+    InterleaveRun result;
+    result.alphaResult = alpha.execute();
+    CHECK(g_ablExec == root);
+    InterleaveHost::beta = nullptr;
+    result.alpha = {alpha.getStaticData()[0].integer, alpha.getStaticData()[1].integer, alpha.getStaticData()[2].integer};
+    result.beta = {beta.getStaticData()[0].integer, beta.getStaticData()[1].integer};
+    result.betaCalls = nested ? static_cast<int>(InterleaveHost::seen.size()) : static_cast<int>(InterleaveHost::next);
+    for (AblExecContext* bound : InterleaveHost::seen)
+        CHECK(bound != root);
+    return result;
+}
+}
+
+TEST_CASE("ABLExec/two contexts interleaved through a host call match the serial runs") {
+    const InterleaveRun serial = runInterleave(false);
+    const InterleaveRun nested = runInterleave(true);
+    CHECK(serial.betaCalls == 5);
+    CHECK(nested.betaCalls == 5);
+    CHECK(serial.beta == std::vector<int>{5, 1093});  // acc = 2 * acc + (calls + 4)^2 over five calls: 25, 86, 221, 506, 1093
+    CHECK(nested.beta == serial.beta);
+    CHECK(nested.alpha == serial.alpha);
+    CHECK(nested.alphaResult == serial.alphaResult);
+    CHECK(serial.alpha[0] == 84);  // work(7) = 3 * (0 + ... + 7)
+}
+
+namespace {
 // Supply world resources without replacing production constructors or order handling.
 struct Actor : Mover {
     void attach(MechWarrior& warrior) { pilot = &warrior; commanderId = 7; partId = 2; watchID = 1; setExists(true); }

@@ -42,16 +42,8 @@
 //----------
 // EXTERNALS
 
-extern int32_t          level;
-extern char*			codeSegmentPtr;
-extern TokenCodeType	codeToken;
 
 extern StackItem*		stack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
-extern StackItemPtr		StaticDataPtr;
-extern SymTableNodePtr	CurRoutineIdPtr;
-extern ABLModulePtr		CurModule;
 
 extern TypePtr			IntegerTypePtr;
 extern TypePtr			CharTypePtr;
@@ -78,12 +70,12 @@ TypePtr execSubscripts (TypePtr typePtr) {
 	//----------------------------------------
 	// Loop to execute bracketed subscripts...
 
-	while (codeToken == TKN_LBRACKET) {
+	while (g_ablExec->codeToken == TKN_LBRACKET) {
 		do {
 			getCodeToken();
 			execExpression();
 			
-			int subscriptValue = tos->integer;
+			int subscriptValue = g_ablExec->tos->integer;
 			pop();
 
 			//-------------------------
@@ -91,14 +83,14 @@ TypePtr execSubscripts (TypePtr typePtr) {
 			if ((subscriptValue < 0) || (subscriptValue >= typePtr->info.array.elementCount))
 				runtimeError(ABL_ERR_RUNTIME_VALUE_OUT_OF_RANGE);
 
-			tos->address += (subscriptValue * typePtr->info.array.elementTypePtr->size);
+			g_ablExec->tos->address += (subscriptValue * typePtr->info.array.elementTypePtr->size);
 
-			if (codeToken == TKN_COMMA)
+			if (g_ablExec->codeToken == TKN_COMMA)
 				typePtr = typePtr->info.array.elementTypePtr;
-		} while (codeToken == TKN_COMMA);
+		} while (g_ablExec->codeToken == TKN_COMMA);
 
 		getCodeToken();
-		if (codeToken == TKN_LBRACKET)
+		if (g_ablExec->codeToken == TKN_LBRACKET)
 			typePtr = typePtr->info.array.elementTypePtr;
 	}
 	return(typePtr->info.array.elementTypePtr);
@@ -119,7 +111,7 @@ TypePtr execConstant (SymTableNodePtr idPtr) {
 		pushAddress(idPtr->defn.info.constant.value.stringPtr);
 
 	if (debugger)
-		debugger->traceDataFetch(idPtr, typePtr, tos);
+		debugger->traceDataFetch(idPtr, typePtr, g_ablExec->tos);
 
 	getCodeToken();
 
@@ -139,8 +131,8 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	StackItem tempStackItem;
 	switch (idPtr->defn.info.data.varType) {
 		case VAR_TYPE_NORMAL: {
-			StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-			long delta = level - idPtr->level;
+			StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+			long delta = g_ablExec->level - idPtr->level;
 			while (delta-- > 0)
 				headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 			dataPtr = reinterpret_cast<StackItemPtr>(headerPtr) + idPtr->defn.info.data.offset;
@@ -153,11 +145,11 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 			//---------------------------------------------------------
 			// If we're referencing a library's static variable, we may
 			// need to shift to its static data space temporarily...
-			if (idPtr->library && (idPtr->library != CurModule))
-				StaticDataPtr = idPtr->library->getStaticData();
-			dataPtr = StaticDataPtr + idPtr->defn.info.data.offset;
-			if (idPtr->library && (idPtr->library != CurModule))
-				StaticDataPtr = CurModule->getStaticData();
+			if (idPtr->library && (idPtr->library != g_ablExec->CurModule))
+				g_ablExec->StaticDataPtr = idPtr->library->getStaticData();
+			dataPtr = g_ablExec->StaticDataPtr + idPtr->defn.info.data.offset;
+			if (idPtr->library && (idPtr->library != g_ablExec->CurModule))
+				g_ablExec->StaticDataPtr = g_ablExec->CurModule->getStaticData();
 			break;
 		case VAR_TYPE_REGISTERED:
 			tempStackItem.address = reinterpret_cast<char*>(idPtr->defn.info.data.registeredData);
@@ -189,7 +181,7 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	// If there is a subscript (or field identifier, if records are being used in ABL)
 	// then modify the address to point to the proper element of the array (or record)...
 	getCodeToken();
-	while (codeToken == TKN_LBRACKET /*|| (codeTOken == TKN_PERIOD)*/) {
+	while (g_ablExec->codeToken == TKN_LBRACKET /*|| (codeTOken == TKN_PERIOD)*/) {
 		//if (codeToken == TKN_LBRACKET)
 			typePtr = execSubscripts(typePtr);
 		//else if (codeToken == TKN_PERIOD)
@@ -204,20 +196,20 @@ TypePtr execVariable (SymTableNodePtr idPtr, UseType use) {
 	// Otherwise, replace the address with the value it points to.
 	if ((use != USE_TARGET) && (use != USE_REFPARAM) &&	(typePtr->form != FRM_ARRAY)) {
 		if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM)) {
-			tos->integer = *(reinterpret_cast<int*>(tos->address));
+			g_ablExec->tos->integer = *(reinterpret_cast<int*>(g_ablExec->tos->address));
 			}
 		else if (typePtr == CharTypePtr)
-			tos->byte = *(reinterpret_cast<char*>(tos->address));
+			g_ablExec->tos->byte = *(reinterpret_cast<char*>(g_ablExec->tos->address));
 		else
-			tos->real = ablLoadFloat(tos->address);
+			g_ablExec->tos->real = ablLoadFloat(g_ablExec->tos->address);
 	}
 
 	if (debugger) {
 		if ((use != USE_TARGET) && (use != USE_REFPARAM)) {
 			if (typePtr->form == FRM_ARRAY)
-				debugger->traceDataFetch(idPtr, typePtr, reinterpret_cast<StackItemPtr>(tos->address));
+				debugger->traceDataFetch(idPtr, typePtr, reinterpret_cast<StackItemPtr>(g_ablExec->tos->address));
 			else
-				debugger->traceDataFetch(idPtr, typePtr, tos);
+				debugger->traceDataFetch(idPtr, typePtr, g_ablExec->tos);
 		}
 	}
 
@@ -230,13 +222,13 @@ TypePtr execFactor (void) {
 
 	TypePtr resultTypePtr = nullptr;
 
-   	switch (codeToken) {
+   	switch (g_ablExec->codeToken) {
 		case TKN_IDENTIFIER: {
 			SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 			if (idPtr->defn.key == DFN_FUNCTION) {
-				SymTableNodePtr thisRoutineIdPtr = CurRoutineIdPtr;
+				SymTableNodePtr thisRoutineIdPtr = g_ablExec->CurRoutineIdPtr;
 				resultTypePtr = execRoutineCall(idPtr, false);
-				CurRoutineIdPtr = thisRoutineIdPtr;
+				g_ablExec->CurRoutineIdPtr = thisRoutineIdPtr;
 				}
 			else if (idPtr->defn.key == DFN_CONST)
 				resultTypePtr = execConstant(idPtr);
@@ -280,7 +272,7 @@ TypePtr execFactor (void) {
 			resultTypePtr = execFactor();
 			//--------------------------------------
 			// Following flips 1 to 0, and 0 to 1...
-			tos->integer = 1 - tos->integer;
+			g_ablExec->tos->integer = 1 - g_ablExec->tos->integer;
 			break;
 		case TKN_LPAREN:
 			getCodeToken();
@@ -305,17 +297,17 @@ TypePtr execTerm (void) {
 
 	//----------------------------------------------
 	// Process the factors separated by operators...
-	while ((codeToken == TKN_STAR) || (codeToken == TKN_FSLASH) ||
-		   (codeToken == TKN_DIV) || (codeToken == TKN_MOD) ||
-		   (codeToken == TKN_AND)) {
+	while ((g_ablExec->codeToken == TKN_STAR) || (g_ablExec->codeToken == TKN_FSLASH) ||
+		   (g_ablExec->codeToken == TKN_DIV) || (g_ablExec->codeToken == TKN_MOD) ||
+		   (g_ablExec->codeToken == TKN_AND)) {
 
-		op = codeToken;
+		op = g_ablExec->codeToken;
 
 		getCodeToken();
 		type2Ptr = execFactor();
 
-		operand1Ptr = tos - 1;
-		operand2Ptr = tos;
+		operand1Ptr = g_ablExec->tos - 1;
+		operand2Ptr = g_ablExec->tos;
 
 		if (op == TKN_AND) {
 			operand1Ptr->integer = operand1Ptr->integer && operand2Ptr->integer;
@@ -410,8 +402,8 @@ TypePtr execSimpleExpression (void) {
 	TokenCodeType unaryOp = TKN_PLUS;
 	//------------------------------------------------------
 	// If there's a + or - before the expression, save it...
-	if ((codeToken == TKN_PLUS) || (codeToken == TKN_MINUS)) {
-		unaryOp = codeToken;
+	if ((g_ablExec->codeToken == TKN_PLUS) || (g_ablExec->codeToken == TKN_MINUS)) {
+		unaryOp = g_ablExec->codeToken;
 		getCodeToken();
 	}
 
@@ -421,18 +413,18 @@ TypePtr execSimpleExpression (void) {
 	// If there was a unary -, negate the top of the stack...
 	if (unaryOp == TKN_MINUS) {
 		if (resultTypePtr == IntegerTypePtr)
-			tos->integer = -(tos->integer);
+			g_ablExec->tos->integer = -(g_ablExec->tos->integer);
 		else
-			tos->real = -(tos->real);
+			g_ablExec->tos->real = -(g_ablExec->tos->real);
 	}
 
-	while ((codeToken == TKN_PLUS) || (codeToken == TKN_MINUS) || (codeToken == TKN_OR)) {
-		TokenCodeType op = codeToken;
+	while ((g_ablExec->codeToken == TKN_PLUS) || (g_ablExec->codeToken == TKN_MINUS) || (g_ablExec->codeToken == TKN_OR)) {
+		TokenCodeType op = g_ablExec->codeToken;
 		getCodeToken();
 		TypePtr type2Ptr = execTerm();
 
-		StackItemPtr operand1Ptr = tos - 1;
-		StackItemPtr operand2Ptr = tos;
+		StackItemPtr operand1Ptr = g_ablExec->tos - 1;
+		StackItemPtr operand2Ptr = g_ablExec->tos;
 
 		if (op == TKN_OR) {
 			operand1Ptr->integer = operand1Ptr->integer || operand2Ptr->integer;
@@ -482,10 +474,10 @@ TypePtr execExpression (void) {
 	// If there is a relational operator, save it and process the
 	// second simple expression...
 
-	if ((codeToken == TKN_EQUALEQUAL) || (codeToken == TKN_LT) ||
-		(codeToken == TKN_GT) || (codeToken == TKN_NE) ||
-		(codeToken == TKN_LE) || (codeToken == TKN_GE)) {
-		op = codeToken;
+	if ((g_ablExec->codeToken == TKN_EQUALEQUAL) || (g_ablExec->codeToken == TKN_LT) ||
+		(g_ablExec->codeToken == TKN_GT) || (g_ablExec->codeToken == TKN_NE) ||
+		(g_ablExec->codeToken == TKN_LE) || (g_ablExec->codeToken == TKN_GE)) {
+		op = g_ablExec->codeToken;
 
 		getCodeToken();
 
@@ -493,8 +485,8 @@ TypePtr execExpression (void) {
 		// Get the 2nd simple expression...
 		type2Ptr = execSimpleExpression();
 
-		operand1Ptr = tos - 1;
-		operand2Ptr = tos;
+		operand1Ptr = g_ablExec->tos - 1;
+		operand2Ptr = g_ablExec->tos;
 
 		// OMNITECH-ABL crash guard: a module that failed to compile (STOPSYNTAX) can emit
 		// malformed bytecode that leaves resultTypePtr NULL or underflows the operand stack,

@@ -40,18 +40,9 @@
 // GLOBALS
 char*					codeBuffer = nullptr;
 char*					codeBufferPtr = nullptr;
-char*					codeSegmentPtr = nullptr;
-char*					codeSegmentLimit = nullptr;
-char*					statementStartPtr = nullptr;
 
-TokenCodeType			codeToken;
-int                     execLineNumber;
-int                     execStatementCount = 0;
 
 StackItem*				stack = nullptr;
-StackItemPtr			tos = nullptr;
-StackItemPtr			stackFrameBasePtr = nullptr;
-StackItemPtr			StaticDataPtr = nullptr;
 long*					StaticVariablesSizes = nullptr;
 long*					EternalVariablesSizes = nullptr;
 long					eternalOffset = 0;
@@ -61,10 +52,7 @@ long					NumStaticVariables = 0;
 long					NumOrderCalls = 1;
 long					NumStateHandles = 0;
 StateHandleInfo			StateHandleList[MAX_STATE_HANDLES_PER_MODULE];
-long					CurModuleHandle = 0;
 long					MaxCodeBufferSize = 0;
-bool					CallModuleInit = false;
-bool					AutoReturnFromOrders = false;
 long					MaxLoopIterations = 100001;
 bool					AssertEnabled = false;
 bool					PrintEnabled = true;
@@ -76,33 +64,40 @@ bool					Crunch = true;
 
 char					SetStateDebugStr[256];
 
+// The root executor context runs every script on the environment stack; a nested run binds its own.
+AblExecContext			g_ablRootExec;
+AblExecContext*			g_ablExec = &g_ablRootExec;
+
+void AblExecContext::resetStack () {
+	if (ownStack.empty()) {
+		tos = stack + eternalOffset;
+		stackLimit = stack + MAXSIZE_STACK;
+	} else {
+		tos = ownStack.data();
+		stackLimit = ownStack.data() + ownStack.size();
+	}
+	stackFrameBasePtr = tos;
+}
+
 //----------
 // EXTERNALS
 
-extern SymTableNodePtr	CurRoutineIdPtr;
 
 extern ModuleEntryPtr	ModuleRegistry;
 extern ABLModulePtr*	ModuleInstanceRegistry;
-extern ABLModulePtr		CurModule;
 extern ABLModulePtr		CurLibrary;
-extern int32_t          NumStateTransitions;
 
 extern TokenCodeType	curToken;
 extern int32_t          lineNumber;
 extern int32_t          FileNumber;
-extern int32_t          level;
 extern TypePtr			IntegerTypePtr;
 extern TypePtr			CharTypePtr;
 extern TypePtr			RealTypePtr;
 extern TypePtr			BooleanTypePtr;
 
-extern StackItem		returnValue;
 
-extern bool				ExitWithReturn;
-extern bool				ExitFromTacOrder;
 
 extern DebuggerPtr		debugger;
-extern bool				NewStateSet;
 
 extern void (*ABLEndlessStateCallback) (UserFile* log);
 
@@ -318,8 +313,8 @@ char* createCodeSegment (long& codeSegmentSize) {
 
 SymTableNodePtr getCodeSymTableNodePtr (void) {
 
-	SymTableNodePtr nodePtr = peekCode<SymTableNodePtr>(codeSegmentPtr);
-	codeSegmentPtr += sizeof(SymTableNodePtr);
+	SymTableNodePtr nodePtr = peekCode<SymTableNodePtr>(g_ablExec->codeSegmentPtr);
+	g_ablExec->codeSegmentPtr += sizeof(SymTableNodePtr);
 	return(nodePtr);
 }
 
@@ -331,12 +326,12 @@ int getCodeStatementMarker (void) {
 	// NOTE: If there's a problem, we return -1.
 
 	int lineNum = -1;
-	if (codeToken == TKN_STATEMENT_MARKER) {
+	if (g_ablExec->codeToken == TKN_STATEMENT_MARKER) {
 		if (IncludeDebugInfo) {
-			FileNumber = *(reinterpret_cast<unsigned char*>(codeSegmentPtr));
-			codeSegmentPtr += sizeof(unsigned char);
-			lineNum = peekCode<int>(codeSegmentPtr);
-			codeSegmentPtr += sizeof(int);
+			FileNumber = *(reinterpret_cast<unsigned char*>(g_ablExec->codeSegmentPtr));
+			g_ablExec->codeSegmentPtr += sizeof(unsigned char);
+			lineNum = peekCode<int>(g_ablExec->codeSegmentPtr);
+			g_ablExec->codeSegmentPtr += sizeof(int);
 		}
 	}
 	return(lineNum);
@@ -348,9 +343,9 @@ char* getCodeAddressMarker (void) {
 
 	Address address = nullptr;
 
-	if (codeToken == TKN_ADDRESS_MARKER) {
-		address = peekCode<size_t>(codeSegmentPtr) + codeSegmentPtr - 1;
-		codeSegmentPtr += sizeof(Address);
+	if (g_ablExec->codeToken == TKN_ADDRESS_MARKER) {
+		address = peekCode<size_t>(g_ablExec->codeSegmentPtr) + g_ablExec->codeSegmentPtr - 1;
+		g_ablExec->codeSegmentPtr += sizeof(Address);
 	}
 	return(address);
 }
@@ -359,8 +354,8 @@ char* getCodeAddressMarker (void) {
 
 int getCodeInteger (void) {
 
-	int value = peekCode<int>(codeSegmentPtr);
-	codeSegmentPtr += sizeof(int);
+	int value = peekCode<int>(g_ablExec->codeSegmentPtr);
+	g_ablExec->codeSegmentPtr += sizeof(int);
 	return(value);
 }
 
@@ -368,8 +363,8 @@ int getCodeInteger (void) {
 
 unsigned char getCodeByte (void) {
 
-	unsigned char value = *(reinterpret_cast<unsigned char*>(codeSegmentPtr));
-	codeSegmentPtr += sizeof(unsigned char);
+	unsigned char value = *(reinterpret_cast<unsigned char*>(g_ablExec->codeSegmentPtr));
+	g_ablExec->codeSegmentPtr += sizeof(unsigned char);
 	return(value);
 }
 
@@ -377,8 +372,8 @@ unsigned char getCodeByte (void) {
 
 char* getCodeAddress (void) {
 
-	Address address = peekCode<size_t>(codeSegmentPtr) + codeSegmentPtr - 1;
-	codeSegmentPtr += sizeof(size_t);
+	Address address = peekCode<size_t>(g_ablExec->codeSegmentPtr) + g_ablExec->codeSegmentPtr - 1;
+	g_ablExec->codeSegmentPtr += sizeof(size_t);
 	return(address);
 }
 
@@ -388,24 +383,24 @@ char* getCodeAddress (void) {
 
 void pop (void) {
 
-	--tos;
+	--g_ablExec->tos;
 }
 
 //***************************************************************************
 
 void getCodeToken (void) {
 
-	codeToken = static_cast<TokenCodeType>(*codeSegmentPtr);
-	codeSegmentPtr++;
+	g_ablExec->codeToken = static_cast<TokenCodeType>(*g_ablExec->codeSegmentPtr);
+	g_ablExec->codeSegmentPtr++;
 }
 
 //***************************************************************************
 
 void pushInteger (int value) {
 
-	StackItemPtr valuePtr = ++tos;
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 
-	if (valuePtr >= &stack[MAXSIZE_STACK])
+	if (valuePtr >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
 	valuePtr->integer = value;
 }
@@ -414,9 +409,9 @@ void pushInteger (int value) {
 
 void pushReal (float value) {
 
-	StackItemPtr valuePtr = ++tos;
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 
-	if (valuePtr >= &stack[MAXSIZE_STACK])
+	if (valuePtr >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
 	valuePtr->real = value;
 }
@@ -425,9 +420,9 @@ void pushReal (float value) {
 
 void pushByte (char value) {
 
-	StackItemPtr valuePtr = ++tos;
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 
-	if (valuePtr >= &stack[MAXSIZE_STACK])
+	if (valuePtr >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
 	valuePtr->byte = value;
 }
@@ -436,9 +431,9 @@ void pushByte (char value) {
 
 void pushAddress (Address address) {
 
-	StackItemPtr valuePtr = ++tos;
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 
-	if (valuePtr >= &stack[MAXSIZE_STACK])
+	if (valuePtr >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
 	valuePtr->address = address;
 }
@@ -447,9 +442,9 @@ void pushAddress (Address address) {
 
 void pushBoolean (bool value) {
 
-	StackItemPtr valuePtr = ++tos;
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 
-	if (valuePtr >= &stack[MAXSIZE_STACK])
+	if (valuePtr >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
 	valuePtr->integer = (value ? 1 : 0);
 }
@@ -461,7 +456,7 @@ void pushStackFrameHeader (long oldLevel, long newLevel) {
 	// Make space for the return value...
 	pushInteger(0);
 
-	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
 
 	//----------------------------------------------------------------------
 	// STATIC LINK
@@ -495,7 +490,7 @@ void pushStackFrameHeader (long oldLevel, long newLevel) {
 		// Oops. We don't want nested functions, for now, in ABL.
 		runtimeError(ABL_ERR_RUNTIME_NESTED_FUNCTION_CALL);
 	}
-	pushAddress(reinterpret_cast<Address>(stackFrameBasePtr));
+	pushAddress(reinterpret_cast<Address>(g_ablExec->stackFrameBasePtr));
 
 	//---------------------------
 	// Push the return address...
@@ -547,7 +542,7 @@ void freeLocal (SymTableNodePtr idPtr) {
 		(idPtr->defn.key != DFN_REFPARAM)) {
 		switch (idPtr->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL:
-				itemPtr = stackFrameBasePtr + idPtr->defn.info.data.offset;
+				itemPtr = g_ablExec->stackFrameBasePtr + idPtr->defn.info.data.offset;
 				break;
 //			case VAR_TYPE_ETERNAL:
 //				itemPtr = stack + idPtr->defn.info.data.offset;
@@ -592,11 +587,11 @@ void routineEntry (SymTableNodePtr routineIdPtr) {
 	if (debugger)
 		debugger->traceRoutineEntry(routineIdPtr);
 
-	memset(&returnValue, 0, sizeof(StackItem));
+	memset(&g_ablExec->returnValue, 0, sizeof(StackItem));
 
 	//------------------------------
 	// Switch to new code segment...
-	codeSegmentPtr = routineIdPtr->defn.info.routine.codeSegment;
+	g_ablExec->codeSegmentPtr = routineIdPtr->defn.info.routine.codeSegment;
 
 	//----------------------------------------------
 	// Allocate local variables onto system stack...
@@ -628,49 +623,49 @@ void routineExit (SymTableNodePtr routineIdPtr) {
 		if (idPtr->defn.info.data.varType == VAR_TYPE_NORMAL)
 			freeLocal(idPtr);
 
-	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-	codeSegmentPtr = headerPtr->returnAddress.address;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+	g_ablExec->codeSegmentPtr = headerPtr->returnAddress.address;
 
 	if (routineIdPtr->typePtr == nullptr)
-		tos = stackFrameBasePtr - 1;
+		g_ablExec->tos = g_ablExec->stackFrameBasePtr - 1;
 	else
-		tos = stackFrameBasePtr;
+		g_ablExec->tos = g_ablExec->stackFrameBasePtr;
 
-	stackFrameBasePtr = reinterpret_cast<StackItemPtr>(headerPtr->dynamicLink.address);
+	g_ablExec->stackFrameBasePtr = reinterpret_cast<StackItemPtr>(headerPtr->dynamicLink.address);
 }
 
 //***************************************************************************
 
 void execute (SymTableNodePtr routineIdPtr) {
 
-	SymTableNodePtr thisRoutineIdPtr = CurRoutineIdPtr;
+	SymTableNodePtr thisRoutineIdPtr = g_ablExec->CurRoutineIdPtr;
 
-	CurRoutineIdPtr = routineIdPtr;
+	g_ablExec->CurRoutineIdPtr = routineIdPtr;
 
 	routineEntry(routineIdPtr);
 
 	//----------------------------------------------------
 	// Now, search this module for the function we want...
-	if (CallModuleInit) {
-		CallModuleInit = false;
-		SymTableNodePtr initFunctionIdPtr = searchSymTable("init", ModuleRegistry[CurModule->getHandle()].moduleIdPtr->defn.info.routine.localSymTable);
+	if (g_ablExec->CallModuleInit) {
+		g_ablExec->CallModuleInit = false;
+		SymTableNodePtr initFunctionIdPtr = searchSymTable("init", ModuleRegistry[g_ablExec->CurModule->getHandle()].moduleIdPtr->defn.info.routine.localSymTable);
 		if (initFunctionIdPtr) {
 			execRoutineCall(initFunctionIdPtr, false);
 			//-------------------------------------------------------------------------
 			// Since we're calling the function directly, we need to compensate for the
 			// codeSegmentPtr being incremented by 1 in the normal execRoutineCall...
-			codeSegmentPtr--;
+			g_ablExec->codeSegmentPtr--;
 		}
 	}
 
 	if (routineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM) {
-		NewStateSet = true;
+		g_ablExec->NewStateSet = true;
 		static char stateList[60][256];
 		strcpy(SetStateDebugStr, "--");
-		while (NewStateSet) {
-			NumStateTransitions++;
-			mc2::fmt::to_buf(stateList[NumStateTransitions], "{} ({})", mc2::fmt::safe(CurModule->getState()->name), mc2::fmt::safe(SetStateDebugStr));
-			if (NumStateTransitions == 50) {
+		while (g_ablExec->NewStateSet) {
+			g_ablExec->NumStateTransitions++;
+			mc2::fmt::to_buf(stateList[g_ablExec->NumStateTransitions], "{} ({})", mc2::fmt::safe(g_ablExec->CurModule->getState()->name), mc2::fmt::safe(SetStateDebugStr));
+			if (g_ablExec->NumStateTransitions == 50) {
 				UserFile* userFile = UserFile::getNewFile();
 				char errStr[512];
 				if (userFile) {
@@ -679,7 +674,7 @@ void execute (SymTableNodePtr routineIdPtr) {
 						//char s[1024];
 						//sprintf(s, "Current Date: %s\n", GetTime());
 						//userFile->write(s);
-						userFile->write(ModuleRegistry[CurModule->getHandle()].fileName);
+						userFile->write(ModuleRegistry[g_ablExec->CurModule->getHandle()].fileName);
 						for (long i = 1; i < 51; i++)
 							userFile->write(stateList[i]);
 						userFile->write(" ");
@@ -688,25 +683,25 @@ void execute (SymTableNodePtr routineIdPtr) {
 						userFile->close();
 					}
 				}
-				mc2::fmt::to_buf(errStr, " ABL endless state loop in {} [{}:{}] ", mc2::fmt::safe(ModuleRegistry[CurModule->getHandle()].fileName), mc2::fmt::safe(CurModule->getState()->name), mc2::fmt::safe(CurModule->getPrevState()->name));
+				mc2::fmt::to_buf(errStr, " ABL endless state loop in {} [{}:{}] ", mc2::fmt::safe(ModuleRegistry[g_ablExec->CurModule->getHandle()].fileName), mc2::fmt::safe(g_ablExec->CurModule->getState()->name), mc2::fmt::safe(g_ablExec->CurModule->getPrevState()->name));
 				#if 0
-				ABL_Fatal(NumStateTransitions, errStr);
+				ABL_Fatal(g_ablExec->NumStateTransitions, errStr);
 				#else
-				NewStateSet = false;
+				g_ablExec->NewStateSet = false;
 				#endif
 				}
 			else {
-				NewStateSet = false;
-				SymTableNodePtr curState = CurModule->getState();
+				g_ablExec->NewStateSet = false;
+				SymTableNodePtr curState = g_ablExec->CurModule->getState();
 				if (!curState)
 					ABL_Fatal(0, " ABL.execute: NULL state in FSM ");
 				execRoutineCall(curState, false);
-				codeSegmentPtr--;
+				g_ablExec->codeSegmentPtr--;
 			}
 			//---------------------------------------------
 			// In case we exited with a return statement...
-			ExitWithReturn = false;
-			ExitFromTacOrder = false;
+			g_ablExec->ExitWithReturn = false;
+			g_ablExec->ExitFromTacOrder = false;
 		}
 		}
 	else {
@@ -714,13 +709,13 @@ void execute (SymTableNodePtr routineIdPtr) {
 		execStatement();
 		//---------------------------------------------
 		// In case we exited with a return statement...
-		ExitWithReturn = false;
-		ExitFromTacOrder = false;
+		g_ablExec->ExitWithReturn = false;
+		g_ablExec->ExitFromTacOrder = false;
 	}
 
 	routineExit(routineIdPtr);
 
-	CurRoutineIdPtr = thisRoutineIdPtr;
+	g_ablExec->CurRoutineIdPtr = thisRoutineIdPtr;
 }
 
 //***************************************************************************
@@ -729,24 +724,24 @@ void executeChild (SymTableNodePtr routineIdPtr, SymTableNodePtr childRoutineIdP
 
 	// THIS DOES NOT SUPPORT CALLING FUNCTIONS WITH PARAMETERS YET!
 
-	SymTableNodePtr thisRoutineIdPtr = CurRoutineIdPtr;
+	SymTableNodePtr thisRoutineIdPtr = g_ablExec->CurRoutineIdPtr;
 
-	CurRoutineIdPtr = routineIdPtr;
+	g_ablExec->CurRoutineIdPtr = routineIdPtr;
 
 	routineEntry(routineIdPtr);
 
 	//----------------------------------------------------
 	// Now, search this module for the function we want...
 	SymTableNodePtr initFunctionIdPtr = nullptr;
-	if (CallModuleInit) {
-		CallModuleInit = false;
+	if (g_ablExec->CallModuleInit) {
+		g_ablExec->CallModuleInit = false;
 		initFunctionIdPtr = searchSymTable("init", routineIdPtr->defn.info.routine.localSymTable);
 		if (initFunctionIdPtr) {
 			execRoutineCall(initFunctionIdPtr, false);
 			//-------------------------------------------------------------------------
 			// Since we're calling the function directly, we need to compensate for the
 			// codeSegmentPtr being incremented by 1 in the normal execRoutineCall...
-			codeSegmentPtr--;
+			g_ablExec->codeSegmentPtr--;
 		}
 	}
 
@@ -758,17 +753,17 @@ void executeChild (SymTableNodePtr routineIdPtr, SymTableNodePtr childRoutineIdP
 		//-------------------------------------------------------------------------
 		// Since we're calling the function directly, we need to compensate for the
 		// codeSegmentPtr being incremented by 1 in the normal execRoutineCall...
-		codeSegmentPtr--;
+		g_ablExec->codeSegmentPtr--;
 	}
 
 	//---------------------------------------------
 	// In case we exited with a return statement...
-	ExitWithReturn = false;
-	ExitFromTacOrder = false;
+	g_ablExec->ExitWithReturn = false;
+	g_ablExec->ExitFromTacOrder = false;
 
 	routineExit(routineIdPtr);
 
-	CurRoutineIdPtr = thisRoutineIdPtr;
+	g_ablExec->CurRoutineIdPtr = thisRoutineIdPtr;
 }
 
 //***************************************************************************

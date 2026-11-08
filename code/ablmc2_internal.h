@@ -120,8 +120,6 @@
 // ABL-OPCODE-BOUNDS-HARDEN gates and the ABL exec context (defined in mclib/ablxstd.cpp / ablexec.cpp).
 extern bool s_ablArgGuard;
 extern bool s_ablRuntimeSoftfail;
-extern int         execLineNumber;
-extern ABLModulePtr CurModule;
 extern int32_t     FileNumber;
 
 // Globals defined in ablmc2.cpp.
@@ -149,10 +147,10 @@ void DEBUGWINS_print (mc2::czstring s, long window);
 
 // Emits an [ABL_ARG_GUARD] trace line (flushed, for smoke-log capture) when an exec* binding skips a null pointer arg.
 static inline void abl_arg_guard_log(mc2::czstring funcName, mc2::czstring paramName) {
-	const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
-	const char* modName = CurModule ? CurModule->getName() : "(unknown)";
+	const char* srcFile = (g_ablExec->CurModule && FileNumber > -1) ? g_ablExec->CurModule->getSourceFile(FileNumber) : "unavailable";
+	const char* modName = g_ablExec->CurModule ? g_ablExec->CurModule->getName() : "(unknown)";
 	printf("[ABL_ARG_GUARD] func=%s param=%s module=%s file=%s line=%d — null ptr, skipping\n",
-		funcName, paramName, modName, srcFile, execLineNumber);
+		funcName, paramName, modName, srcFile, g_ablExec->execLineNumber);
 	fflush(stdout);
 }
 

@@ -54,46 +54,25 @@ void mc2AblNotePeakDepth(int level);
 //----------
 // EXTERNALS
 
-extern int32_t          level;
-extern int32_t          CallStackLevel;
-extern int              execLineNumber;
-extern int              execStatementCount;
-extern char*			codeSegmentPtr;
-extern char*			statementStartPtr;
-extern TokenCodeType	codeToken;
 extern int32_t          NumExecutions;
 
 extern StackItem*		stack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
-extern SymTableNodePtr	CurRoutineIdPtr;
 
 extern TypePtr			IntegerTypePtr;
 extern TypePtr			CharTypePtr;
 extern TypePtr			RealTypePtr;
 extern TypePtr			BooleanTypePtr;
 
-extern bool				ExitWithReturn;
-extern bool				ExitFromTacOrder;
-extern bool				AutoReturnFromOrders;
 
 extern long				MaxLoopIterations;
 
 extern DebuggerPtr		debugger;
-extern ABLModulePtr		CurModule;
-extern ABLModulePtr		CurFSM;
 extern SymTableNodePtr	CurModuleIdPtr;
-extern long				CurModuleHandle;
-extern bool				CallModuleInit;
-extern StackItemPtr		StaticDataPtr;
-unsigned long*	OrderCompletionFlags = nullptr;
 extern ModuleEntryPtr	ModuleRegistry;
 extern ABLModulePtr*	ModuleInstanceRegistry;
-extern ABLModulePtr		CurModule;
 extern ABLModulePtr		CurLibrary;
 extern long				ProfileLogFunctionTimeLimit;
 extern ABLFile*			ProfileLog;
-extern bool				NewStateSet;
 
 long	dummyCount = 0;
 
@@ -107,11 +86,11 @@ void transState (SymTableNodePtr newState);
 
 void execStatement (void) {
 
-	if (codeToken == TKN_STATEMENT_MARKER) {
-		execLineNumber = getCodeStatementMarker();
-		execStatementCount++;
+	if (g_ablExec->codeToken == TKN_STATEMENT_MARKER) {
+		g_ablExec->execLineNumber = getCodeStatementMarker();
+		g_ablExec->execStatementCount++;
 
-		statementStartPtr = codeSegmentPtr;
+		g_ablExec->statementStartPtr = g_ablExec->codeSegmentPtr;
 
 		if (debugger)
 			debugger->traceStatementExecution();
@@ -119,7 +98,7 @@ void execStatement (void) {
 		getCodeToken();
 	}
 
-	switch (codeToken) {
+	switch (g_ablExec->codeToken) {
 		case TKN_IDENTIFIER: {
 			SymTableNodePtr idPtr = getCodeSymTableNodePtr();
 			ABL_Assert(idPtr != nullptr, 0, " oops ");
@@ -139,23 +118,23 @@ void execStatement (void) {
 				bool skipOrder = false;
 				unsigned char orderDWord = 0;
 				unsigned char orderBitMask = 0;
-				if ((idPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER) && CurModule->getOrderCallFlags()) {
+				if ((idPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER) && g_ablExec->CurModule->getOrderCallFlags()) {
 					orderDWord = getCodeByte();
 					orderBitMask = getCodeByte();
-					skipOrder = !CurModule->isLibrary() && CurModule->getOrderCallFlag(orderDWord, orderBitMask);
+					skipOrder = !g_ablExec->CurModule->isLibrary() && g_ablExec->CurModule->getOrderCallFlag(orderDWord, orderBitMask);
 				}
 				TypePtr returnType = execRoutineCall(idPtr, skipOrder);
 				if (idPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER) {
-					if (AutoReturnFromOrders) {
+					if (g_ablExec->AutoReturnFromOrders) {
 						//-----------------------------------------------------------------
 						// We called an Order function, and we're in an Orders/State block,
 						// so do we continue the flow of orders or stop here?
-						int returnVal = tos->integer;
+						int returnVal = g_ablExec->tos->integer;
 						pop();
 						if (returnVal == 0)
 							execOrderReturn(returnVal);
-						else if (CurModule->getOrderCallFlags()) {
-							CurModule->setOrderCallFlag(orderDWord, orderBitMask);
+						else if (g_ablExec->CurModule->getOrderCallFlags()) {
+							g_ablExec->CurModule->setOrderCallFlag(orderDWord, orderBitMask);
 						}
 					}
 					}
@@ -171,25 +150,25 @@ void execStatement (void) {
 			}
 			break;
 		case TKN_CODE: {
-			bool wasAutoReturnFromOrders = AutoReturnFromOrders;
-			AutoReturnFromOrders = ((CurRoutineIdPtr->defn.info.routine.flags & (ROUTINE_FLAG_ORDER + ROUTINE_FLAG_STATE)) != 0);
+			bool wasAutoReturnFromOrders = g_ablExec->AutoReturnFromOrders;
+			g_ablExec->AutoReturnFromOrders = ((g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & (ROUTINE_FLAG_ORDER + ROUTINE_FLAG_STATE)) != 0);
 			getCodeToken();
 			TokenCodeType endToken = TKN_END_FUNCTION;
-			if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER)
+			if (g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_ORDER)
 				endToken = TKN_END_ORDER;
-			else if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE)
+			else if (g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_STATE)
 				endToken = TKN_END_STATE;
 			TokenCodeType endTokenFinal = TKN_END_MODULE;
 			if (CurLibrary)
 				endTokenFinal = TKN_END_LIBRARY;
-			else if (CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
+			else if (g_ablExec->CurRoutineIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
 				endTokenFinal = TKN_END_FSM;
-			while ((codeToken != endToken) && (codeToken != endTokenFinal) && !NewStateSet)
+			while ((g_ablExec->codeToken != endToken) && (g_ablExec->codeToken != endTokenFinal) && !g_ablExec->NewStateSet)
 				execStatement();
-			if (NewStateSet)
+			if (g_ablExec->NewStateSet)
 				return;
 			getCodeToken();
-			AutoReturnFromOrders = wasAutoReturnFromOrders;
+			g_ablExec->AutoReturnFromOrders = wasAutoReturnFromOrders;
 			}
 			break;
 		case TKN_FOR:
@@ -221,7 +200,7 @@ void execStatement (void) {
 			runtimeError(ABL_ERR_RUNTIME_UNIMPLEMENTED_FEATURE);
 	}
 
-	while (codeToken == TKN_SEMICOLON)
+	while (g_ablExec->codeToken == TKN_SEMICOLON)
 		getCodeToken();
 }
 
@@ -236,7 +215,7 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 	//--------------------------
 	// Assignment to variable...
 	targetTypePtr = execVariable(idPtr, USE_TARGET);
-	targetPtr = reinterpret_cast<StackItemPtr>(tos->address);
+	targetPtr = reinterpret_cast<StackItemPtr>(g_ablExec->tos->address);
 
 	//------------------------------
 	// Pop off the target address...
@@ -259,17 +238,17 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 	// targetTypePtr/targetPtr/tos NULL (execVariable failed) -> the assignment derefs crash
 	// (execAssignmentStatement, ablxstmt.cpp). Skip the store when invalid; pop() below still
 	// balances the stack. Valid bytecode is unaffected.
-	if (targetTypePtr && targetPtr && tos) {
+	if (targetTypePtr && targetPtr && g_ablExec->tos) {
 	if ((targetTypePtr == RealTypePtr) && (expressionTypePtr == IntegerTypePtr)) {
 		//-------------------------
 		// integer assigned to real
-		targetPtr->real = static_cast<float>((tos->integer));
+		targetPtr->real = static_cast<float>((g_ablExec->tos->integer));
 		}
 	else if (targetTypePtr->form == FRM_ARRAY) {
 		//-------------------------
 		// Copy the array/record...
 		char* dest = reinterpret_cast<char*>(targetPtr);
-		char* src = tos->address;
+		char* src = g_ablExec->tos->address;
 		// Copy no more than the source holds: a literal shorter than the variable must not be read past its end.
 		const int srclen = static_cast<int>(strlen(src) + 1);
 		long size = targetTypePtr->size;
@@ -284,14 +263,14 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 	else if ((targetTypePtr == IntegerTypePtr) || (targetTypePtr->form == FRM_ENUM)) {
 		//------------------------------------------------------
 		// Range check assignment to integer or enum subrange...
-		targetPtr->integer = tos->integer;
+		targetPtr->integer = g_ablExec->tos->integer;
 		}
 	else if (targetTypePtr == CharTypePtr)
-		targetPtr->byte = tos->byte;
+		targetPtr->byte = g_ablExec->tos->byte;
 	else {
 		//-----------------------
 		// Assign real to real...
-		targetPtr->real = tos->real;
+		targetPtr->real = g_ablExec->tos->real;
 	}
 	}  // OMNITECH-ABL crash guard (targetTypePtr && targetPtr && tos)
 
@@ -318,29 +297,29 @@ TypePtr execRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 
 	if (skipOrder) {
-		StackItemPtr curStackFrameBase = tos;
+		StackItemPtr curStackFrameBase = g_ablExec->tos;
 		//----------------------------------------
 		// Push parameter values onto the stack...
 		getCodeToken();
-		if (codeToken == TKN_LPAREN) {
+		if (g_ablExec->codeToken == TKN_LPAREN) {
 			execActualParams(routineIdPtr);
 			getCodeToken();
 		}
 		getCodeToken();
-		tos = curStackFrameBase;
+		g_ablExec->tos = curStackFrameBase;
 		pushInteger(1);
 		return(routineIdPtr->typePtr);
 	}
 
-	long oldLevel = level;						// level of caller
+	long oldLevel = g_ablExec->level;						// level of caller
 	long newLevel = routineIdPtr->level + 1;	// level of callee
-	CallStackLevel++;
-	mc2AblNotePeakDepth(CallStackLevel);  // ABL-VM-FACTS-1 (no-op when OFF)
+	g_ablExec->CallStackLevel++;
+	mc2AblNotePeakDepth(g_ablExec->CallStackLevel);  // ABL-VM-FACTS-1 (no-op when OFF)
 
 	//-------------------------------------------
 	// First, set up the stack frame of callee...
-	StackItemPtr newStackFrameBasePtr = tos + 1;
-	bool isLibraryCall = (routineIdPtr->library && (routineIdPtr->library != CurRoutineIdPtr->library));
+	StackItemPtr newStackFrameBasePtr = g_ablExec->tos + 1;
+	bool isLibraryCall = (routineIdPtr->library && (routineIdPtr->library != g_ablExec->CurRoutineIdPtr->library));
 	if (isLibraryCall)
 		pushStackFrameHeader(-1, -1);
 	else
@@ -349,31 +328,31 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 	//----------------------------------------
 	// Push parameter values onto the stack...
 	getCodeToken();
-	if (codeToken == TKN_LPAREN) {
+	if (g_ablExec->codeToken == TKN_LPAREN) {
 		execActualParams(routineIdPtr);
 		getCodeToken();
 	}
 
 	//-------------------------------------------------
 	// Set the return address in the new stack frame...
-	level = newLevel;
-	stackFrameBasePtr = newStackFrameBasePtr;
-	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-	headerPtr->returnAddress.address = codeSegmentPtr - 1;
+	g_ablExec->level = newLevel;
+	g_ablExec->stackFrameBasePtr = newStackFrameBasePtr;
+	StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+	headerPtr->returnAddress.address = g_ablExec->codeSegmentPtr - 1;
 
 	//---------------------------------------------------------
 	// If we're calling a library function, we need to set some
 	// module-specific info...
 	ABLModulePtr PrevModule = nullptr;
 	if (isLibraryCall) {
-		PrevModule = CurModule;
-		CurModule = routineIdPtr->library;
-		CurModuleHandle = CurModule->getHandle();
+		PrevModule = g_ablExec->CurModule;
+		g_ablExec->CurModule = routineIdPtr->library;
+		g_ablExec->CurModuleHandle = g_ablExec->CurModule->getHandle();
 		if (debugger)
-			debugger->setModule(CurModule);
-		StaticDataPtr = CurModule->getStaticData();
-		CallModuleInit = !CurModule->getInitCalled();
-		CurModule->setInitCalled(true);
+			debugger->setModule(g_ablExec->CurModule);
+		g_ablExec->StaticDataPtr = g_ablExec->CurModule->getStaticData();
+		g_ablExec->CallModuleInit = !g_ablExec->CurModule->getInitCalled();
+		g_ablExec->CurModule->setInitCalled(true);
 	//	routineEntry(ModuleRegistry[CurModule->getHandle()].moduleIdPtr);
 	}
 
@@ -385,7 +364,7 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 		if (functionExecTime > ProfileLogFunctionTimeLimit) {
 			char s[512];
 			mc2::fmt::to_buf(s, "[{:08d}] ", mc2::fmt::as_i32(NumExecutions));
-			for (long i = 0; i < CallStackLevel; i++)
+			for (long i = 0; i < g_ablExec->CallStackLevel; i++)
 				strcat(s, " ");
 			char s1[512];
 			mc2::fmt::to_buf(s1, "{} ({:d})\n", mc2::fmt::safe(routineIdPtr->name), mc2::fmt::as_i32(functionExecTime));
@@ -401,19 +380,19 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 	// info...
 	if (isLibraryCall) {
 	//	routineExit(ModuleRegistry[CurModule->getHandle()].moduleIdPtr);
-		CurModule = PrevModule;
-		CurModuleHandle = CurModule->getHandle();
+		g_ablExec->CurModule = PrevModule;
+		g_ablExec->CurModuleHandle = g_ablExec->CurModule->getHandle();
 		if (debugger)
-			debugger->setModule(CurModule);
-		StaticDataPtr = CurModule->getStaticData();
+			debugger->setModule(g_ablExec->CurModule);
+		g_ablExec->StaticDataPtr = g_ablExec->CurModule->getStaticData();
 	}
 
 	//-------------------------------------------------------
 	// Return from the callee, and grab the first token after
 	// the return...
-	level = oldLevel;
+	g_ablExec->level = oldLevel;
 	getCodeToken();
-	CallStackLevel--;
+	g_ablExec->CallStackLevel--;
 
 	return(routineIdPtr->typePtr);
 }
@@ -451,18 +430,18 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 			if ((formalTypePtr == RealTypePtr) && (actualTypePtr == IntegerTypePtr)) {
 				//---------------------------------------------
 				// Real formal parameter, but integer actual...
-				tos->real = static_cast<float>((tos->integer));
+				g_ablExec->tos->real = static_cast<float>((g_ablExec->tos->integer));
 			}
 
 			//----------------------------------------------------------
 			// Formal parameter is an array or record, so make a copy...
 			if (formalTypePtr->form == FRM_ARRAY/* || (formalTypePtr->form == FRM_RECORD)*/) {
 				long size = formalTypePtr->size;
-				char* src = tos->address;
+				char* src = g_ablExec->tos->address;
 				char* dest = static_cast<char*>(ABL_alloc(ABLPool::Stack, static_cast<size_t>(size)));
 				if (!dest) {
 					char err[255];
-					mc2::fmt::to_buf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module {})", mc2::fmt::safe(CurModule->getName()));
+					mc2::fmt::to_buf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module {})", mc2::fmt::safe(g_ablExec->CurModule->getName()));
 					ABL_Fatal(0, err);
 				}
 				// The compile check accepts any char array no larger than the formal as the actual, so copy what the actual declares and zero the
@@ -476,7 +455,7 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 					abl::reportTruncated("array_param_truncated", static_cast<size_t>(size), static_cast<size_t>(actualSize - size));
 				}
 				char* savePtr = dest;
-				tos->address = savePtr;
+				g_ablExec->tos->address = savePtr;
 			}
 			}
 		else {
@@ -501,14 +480,14 @@ void execSwitchStatement (void) {
 
 	int switchExpressionValue;
 	if ((switchExpressionTypePtr == IntegerTypePtr) || (switchExpressionTypePtr->form == FRM_ENUM))
-		switchExpressionValue = tos->integer;
+		switchExpressionValue = g_ablExec->tos->integer;
 	else
-		switchExpressionValue = tos->byte;
+		switchExpressionValue = g_ablExec->tos->byte;
 	pop();
 
 	//---------------------------------------------------------
 	// Now, search the branch table for the expression value...
-	codeSegmentPtr = branchTableLocation;
+	g_ablExec->codeSegmentPtr = branchTableLocation;
 	getCodeToken();
 	int caseLabelCount = getCodeInteger();
 	bool done = false;
@@ -522,22 +501,22 @@ void execSwitchStatement (void) {
 	//-----------------------------------------------
 	// If found, go to the aprropriate branch code...
 	if (caseLabelCount >= 0) {
-		codeSegmentPtr = caseBranchLocation;
+		g_ablExec->codeSegmentPtr = caseBranchLocation;
 		getCodeToken();
 
-		if (codeToken != TKN_END_CASE)
+		if (g_ablExec->codeToken != TKN_END_CASE)
 			do {
 				execStatement();
-				if (ExitWithReturn)
+				if (g_ablExec->ExitWithReturn)
 					return;
-			} while (codeToken != TKN_END_CASE);
+			} while (g_ablExec->codeToken != TKN_END_CASE);
 		
 
 		//----------------------------------
 		// Grab the end case and semi-colon...
 		getCodeToken();
 		getCodeToken();
-		codeSegmentPtr = getCodeAddressMarker();
+		g_ablExec->codeSegmentPtr = getCodeAddressMarker();
 		getCodeToken();
 		}
 	else {
@@ -566,7 +545,7 @@ void execForStatement (void) {
 	getCodeToken();
 	SymTableNodePtr controlIdPtr = getCodeSymTableNodePtr();
 	TypePtr controlTypePtr = execVariable(controlIdPtr, USE_TARGET);
-	StackItemPtr targetPtr = reinterpret_cast<StackItemPtr>(tos->address);
+	StackItemPtr targetPtr = reinterpret_cast<StackItemPtr>(g_ablExec->tos->address);
 	
 	//------------------------------------
 	// Control variable address...
@@ -578,15 +557,15 @@ void execForStatement (void) {
 	execExpression();
 	int initialValue;
 	if (controlTypePtr == IntegerTypePtr)
-		initialValue = tos->integer;
+		initialValue = g_ablExec->tos->integer;
 	else
-		initialValue = tos->byte;
+		initialValue = g_ablExec->tos->byte;
 	//---------------------
 	// The initial value...
 	pop();
 
 	int deltaValue;
-	if (codeToken == TKN_TO)
+	if (g_ablExec->codeToken == TKN_TO)
 		deltaValue = 1;
 	else
 		deltaValue = -1;
@@ -597,16 +576,16 @@ void execForStatement (void) {
 	execExpression();
 	int finalValue;
 	if (controlTypePtr == IntegerTypePtr)
-		finalValue = tos->integer;
+		finalValue = g_ablExec->tos->integer;
 	else
-		finalValue = tos->byte;
+		finalValue = g_ablExec->tos->byte;
 	//-------------------
 	// The final value...
 	pop();
 
 	//----------------------------
 	// Address of start of loop...
-	char* loopStartLocation = codeSegmentPtr;
+	char* loopStartLocation = g_ablExec->codeSegmentPtr;
 
 	int controlValue = initialValue;
 
@@ -622,12 +601,12 @@ void execForStatement (void) {
 
 			getCodeToken();
 
-			if (codeToken != TKN_END_FOR)
+			if (g_ablExec->codeToken != TKN_END_FOR)
 				do {
 					execStatement();
-					if (ExitWithReturn)
+					if (g_ablExec->ExitWithReturn)
 						return;
-				} while (codeToken != TKN_END_FOR);
+				} while (g_ablExec->codeToken != TKN_END_FOR);
 
 			//---------------------------
 			// Check for infinite loop...
@@ -635,7 +614,7 @@ void execForStatement (void) {
 				runtimeError(ABL_ERR_RUNTIME_INFINITE_LOOP);
 
 			controlValue++;
-			codeSegmentPtr = loopStartLocation;
+			g_ablExec->codeSegmentPtr = loopStartLocation;
 		}
 	else
 		while (controlValue >= finalValue) {
@@ -646,12 +625,12 @@ void execForStatement (void) {
 
 			getCodeToken();
 
-			if (codeToken != TKN_END_FOR)
+			if (g_ablExec->codeToken != TKN_END_FOR)
 				do {
 					execStatement();
-					if (ExitWithReturn)
+					if (g_ablExec->ExitWithReturn)
 						return;
-				} while (codeToken != TKN_END_FOR);
+				} while (g_ablExec->codeToken != TKN_END_FOR);
 
 			//---------------------------
 			// Check for infinite loop...
@@ -659,10 +638,10 @@ void execForStatement (void) {
 				runtimeError(ABL_ERR_RUNTIME_INFINITE_LOOP);
 			
 			controlValue--;
-			codeSegmentPtr = loopStartLocation;
+			g_ablExec->codeSegmentPtr = loopStartLocation;
 		}
 
-	codeSegmentPtr = loopEndLocation;
+	g_ablExec->codeSegmentPtr = loopEndLocation;
 	getCodeToken();
 }
 
@@ -681,7 +660,7 @@ void execTransStatement (void) {
 
 void execTransBackStatement (void) {
 
-	SymTableNodePtr prevState = CurModule->getPrevState();
+	SymTableNodePtr prevState = g_ablExec->CurModule->getPrevState();
 	if (!prevState)
 		runtimeError(ABL_ERR_RUNTIME_NULL_PREVSTATE);
 	transState(prevState);
@@ -703,7 +682,7 @@ void execIfStatement (void) {
 	// want to change this?
 	getCodeToken();
 	execExpression();
-	bool test = (tos->integer == 1);
+	bool test = (g_ablExec->tos->integer == 1);
 	pop();
 
 	if (test) {
@@ -711,37 +690,37 @@ void execIfStatement (void) {
 		// execute the TRUE branch...
 		getCodeToken();
 
-		if ((codeToken != TKN_END_IF) && (codeToken != TKN_ELSE))
+		if ((g_ablExec->codeToken != TKN_END_IF) && (g_ablExec->codeToken != TKN_ELSE))
 			do {
 				execStatement();
-				if (ExitWithReturn)
+				if (g_ablExec->ExitWithReturn)
 					return;
-			} while ((codeToken != TKN_END_IF) && (codeToken != TKN_ELSE));
+			} while ((g_ablExec->codeToken != TKN_END_IF) && (g_ablExec->codeToken != TKN_ELSE));
 		
-		if (codeToken == TKN_ELSE) {
+		if (g_ablExec->codeToken == TKN_ELSE) {
 			getCodeToken();
-			codeSegmentPtr = getCodeAddressMarker();
+			g_ablExec->codeSegmentPtr = getCodeAddressMarker();
 			getCodeToken();
 		}
 		}
 	else {
 		//----------------------------
 		// Execute the FALSE branch...
-		codeSegmentPtr = falseLocation;
+		g_ablExec->codeSegmentPtr = falseLocation;
 		getCodeToken();
 
-		if (codeToken == TKN_ELSE) {
+		if (g_ablExec->codeToken == TKN_ELSE) {
 			getCodeToken();
 			getCodeAddressMarker();
 
 			getCodeToken();
 
-			if (codeToken != TKN_END_IF)
+			if (g_ablExec->codeToken != TKN_END_IF)
 				do {
 					execStatement();
-					if (ExitWithReturn)
+					if (g_ablExec->ExitWithReturn)
 						return;
-				} while (codeToken != TKN_END_IF);
+				} while (g_ablExec->codeToken != TKN_END_IF);
 		}
 	}
 	getCodeToken();
@@ -751,18 +730,18 @@ void execIfStatement (void) {
 
 void execRepeatStatement (void) {
 
-	char* loopStartLocation = codeSegmentPtr;
+	char* loopStartLocation = g_ablExec->codeSegmentPtr;
 
 	int iterations = 0;
 	do {
 		getCodeToken();
 
-		if (codeToken != TKN_UNTIL)
+		if (g_ablExec->codeToken != TKN_UNTIL)
 			do {
 				execStatement();
-				if (ExitWithReturn)
+				if (g_ablExec->ExitWithReturn)
 					return;
-			} while (codeToken != TKN_UNTIL);
+			} while (g_ablExec->codeToken != TKN_UNTIL);
 
 		//---------------------------
 		// Check for infinite loop...
@@ -774,13 +753,13 @@ void execRepeatStatement (void) {
 		// Eval the boolean expression...
 		getCodeToken();
 		execExpression();
-		if (tos->integer == 0)
-			codeSegmentPtr = loopStartLocation;
+		if (g_ablExec->tos->integer == 0)
+			g_ablExec->codeSegmentPtr = loopStartLocation;
 
 		//--------------------------
 		// Grab the boolean value...
 		pop();
-	} while (codeSegmentPtr == loopStartLocation);
+	} while (g_ablExec->codeSegmentPtr == loopStartLocation);
 }
 
 //***************************************************************************
@@ -789,7 +768,7 @@ void execWhileStatement (void) {
 
 	getCodeToken();
 	char* loopEndLocation = getCodeAddressMarker();
-	char* testLocation = codeSegmentPtr;
+	char* testLocation = g_ablExec->codeSegmentPtr;
 
 	bool loopDone = false;
 	int iterations = 0;
@@ -798,8 +777,8 @@ void execWhileStatement (void) {
 		// Eval the boolean expression...
 		getCodeToken();
 		execExpression();
-		if (tos->integer == 0) {
-			codeSegmentPtr = loopEndLocation;
+		if (g_ablExec->tos->integer == 0) {
+			g_ablExec->codeSegmentPtr = loopEndLocation;
 			loopDone = true;
 		}
 		
@@ -812,14 +791,14 @@ void execWhileStatement (void) {
 		if (!loopDone) {
 			getCodeToken();
 
-			if (codeToken != TKN_END_WHILE)
+			if (g_ablExec->codeToken != TKN_END_WHILE)
 				do {
 					execStatement();
-					if (ExitWithReturn)
+					if (g_ablExec->ExitWithReturn)
 						return;
-				} while (codeToken != TKN_END_WHILE);
+				} while (g_ablExec->codeToken != TKN_END_WHILE);
 
-			codeSegmentPtr = testLocation;
+			g_ablExec->codeSegmentPtr = testLocation;
 
 			//---------------------------
 			// Check for infinite loop...

@@ -77,17 +77,10 @@ extern int32_t          NumModuleInstances;
 extern int32_t          MaxWatchesPerModule;
 extern int32_t          MaxBreakPointsPerModule;
 extern long				MaxCodeBufferSize;
-extern ABLModulePtr		CurModule;
 extern ABLModulePtr		CurLibrary;
 extern char*			codeBuffer;
 extern char*			codeBufferPtr;
-extern char*			codeSegmentPtr;
-extern char*			codeSegmentLimit;
-extern char*			statementStartPtr;
 extern StackItem*		stack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
-extern StackItemPtr		StaticDataPtr;
 extern long*			StaticVariablesSizes;
 extern long*			EternalVariablesSizes;
 extern long				MaxEternalVariables;
@@ -97,9 +90,6 @@ extern long				NumStaticVariables;
 extern long				NumOrderCalls;
 extern StateHandleInfo	StateHandleList[MAX_STATE_HANDLES_PER_MODULE];
 extern long				NumStateHandles;
-extern long				CurModuleHandle;
-extern bool				CallModuleInit;
-extern bool				AutoReturnFromOrders;
 extern long				MaxLoopIterations;
 extern bool				AssertEnabled;
 extern bool				IncludeDebugInfo;
@@ -131,13 +121,10 @@ extern int				lineCount;
 extern long				CurAlarm;
 
 extern bool				eofFlag;
-extern bool				ExitWithReturn;
-extern bool				ExitFromTacOrder;
 
 extern long				dummyCount;
 
 extern long				errorCount;
-extern int              execStatementCount;
 extern long				NumSourceFiles;
 extern char				SourceFiles[MAX_SOURCE_FILES][MAXLEN_FILENAME];
  
@@ -152,8 +139,6 @@ extern SymTableNodePtr	CurRoutineIdPtr;
 extern Type				DummyType;
 extern StackItem*		stack;
 //extern StackItem*		eternalStack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
 extern long				eternalOffset;
 
 extern TokenCodeType	statementStartList[];
@@ -179,8 +164,6 @@ extern TypePtr			IntegerTypePtr;
 extern TypePtr			RealTypePtr;
 extern TypePtr			BooleanTypePtr;
 
-extern StackItemPtr		StaticDataPtr;
-extern StackItem		returnValue;
 
 extern ModuleEntryPtr	ModuleRegistry;
 extern long		        MaxStaticVariables;
@@ -197,11 +180,8 @@ extern DebuggerPtr		debugger;
 bool					ABLenabled = false;
 char					buffer[MAXLEN_PRINTLINE];
 
-extern int32_t          CallStackLevel;
 extern bool				SkipOrder;
 
-extern ABLModulePtr		CurFSM;
-extern bool				NewStateSet;
 
 extern void transState (SymTableNodePtr newState);
 
@@ -411,18 +391,18 @@ profile = true;
 	NumModuleInstances = 0;
 	MaxWatchesPerModule = 20;
 	MaxBreakPointsPerModule = 20;
-	CurModule = nullptr;
+	g_ablExec->CurModule = nullptr;
 	errorCount = 0;
 	codeBuffer = nullptr;
 	codeBufferPtr = nullptr;
-	codeSegmentPtr = nullptr;
-	codeSegmentLimit = nullptr;
-	statementStartPtr = nullptr;
-	execStatementCount = 0;
+	g_ablExec->codeSegmentPtr = nullptr;
+	g_ablExec->codeSegmentLimit = nullptr;
+	g_ablExec->statementStartPtr = nullptr;
+	g_ablExec->execStatementCount = 0;
 	stack = nullptr;
-	tos = nullptr;
-	stackFrameBasePtr = nullptr;
-	StaticDataPtr = nullptr;
+	g_ablExec->tos = nullptr;
+	g_ablExec->stackFrameBasePtr = nullptr;
+	g_ablExec->StaticDataPtr = nullptr;
 	StaticVariablesSizes = nullptr;
 	EternalVariablesSizes = nullptr;
 	MaxEternalVariables = 5000;
@@ -431,9 +411,9 @@ profile = true;
 	NumStaticVariables = 0;
 	NumOrderCalls = 0;
 	NumStateHandles = 1;
-	CurModuleHandle = 0;
-	CallModuleInit = false;
-	AutoReturnFromOrders = false;
+	g_ablExec->CurModuleHandle = 0;
+	g_ablExec->CallModuleInit = false;
+	g_ablExec->AutoReturnFromOrders = false;
 	MaxLoopIterations = 100001;
 	AssertEnabled = false;
 	PrintEnabled = false;
@@ -462,8 +442,8 @@ profile = true;
 	lineCount = MAX_LINES_PER_PAGE;
 
 	eofFlag = false;
-	ExitWithReturn = false;
-	ExitFromTacOrder = false;
+	g_ablExec->ExitWithReturn = false;
+	g_ablExec->ExitFromTacOrder = false;
 	dummyCount = 0;
 	numLibrariesLoaded = 0;
 	
@@ -495,7 +475,7 @@ profile = true;
 	NumStaticVariables = 0;
 	NumOrderCalls = 0;
 	NumStateHandles = 1;
-	StaticDataPtr = nullptr;
+	g_ablExec->StaticDataPtr = nullptr;
 	StaticVariablesSizes = nullptr;
 	if (MaxStaticVariables > 0) {
 		StaticVariablesSizes = static_cast<long*>(ABL_alloc(ABLPool::Stack, sizeof(long) * MaxStaticVariables));
@@ -767,7 +747,7 @@ int32_t ABLi_preProcess (mc2::czstring sourceFileName, long* numErrors, long* nu
 	pageNumber = 0;
 	errorCount = 0;
 	DumbGetCharOn = false;
-	execStatementCount = 0;
+	g_ablExec->execStatementCount = 0;
 	eofFlag = false;
 	NumStaticVariables = 0;
 	NumOrderCalls = 0;
@@ -925,12 +905,12 @@ int32_t ABLi_preProcess (mc2::czstring sourceFileName, long* numErrors, long* nu
 
 void initializeEntryFrame () {
 	errorCount = 0;
-	execStatementCount = 0;
+	g_ablExec->execStatementCount = 0;
 	NumExecutions++;
-	stackFrameBasePtr = tos = (stack + eternalOffset);
-	level = 1;
-	CallStackLevel = 0;
-	stackFrameBasePtr = tos + 1;
+	g_ablExec->resetStack();
+	g_ablExec->level = 1;
+	g_ablExec->CallStackLevel = 0;
+	g_ablExec->stackFrameBasePtr = g_ablExec->tos + 1;
 	pushInteger(0);
 	pushAddress(nullptr);
 	pushAddress(nullptr);
@@ -956,6 +936,7 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 
 	CurModuleIdPtr = nullptr;
 	CurRoutineIdPtr = nullptr;
+	g_ablExec->CurRoutineIdPtr = nullptr;
 	initializeEntryFrame();
 
 	if (paramList) {
@@ -998,9 +979,9 @@ long ABLi_execute (SymTableNodePtr moduleIdPtr, SymTableNodePtr functionIdPtr, A
 	execute(moduleIdPtr);
 
 	if (returnVal)
-		memcpy(returnVal, &returnValue, sizeof(StackItem));
+		memcpy(returnVal, &g_ablExec->returnValue, sizeof(StackItem));
 
-	return(execStatementCount);
+	return(g_ablExec->execStatementCount);
 }
 
 //***************************************************************************
@@ -1215,15 +1196,15 @@ bool ABLi_getSkipOrder (void) {
 
 void ABLi_resetOrders (void) {
 
-	CurModule->resetOrderCallFlags();
+	g_ablExec->CurModule->resetOrderCallFlags();
 }
 
 //***************************************************************************
 
 long ABLi_getCurrentState (void) {
 
-	if (CurFSM)
-		return(CurFSM->getStateHandle());
+	if (g_ablExec->CurFSM)
+		return(g_ablExec->CurFSM->getStateHandle());
 	return(0);
 }
 
@@ -1231,8 +1212,8 @@ long ABLi_getCurrentState (void) {
 
 void ABLi_transState (long newStateHandle) {
 
-	if (CurFSM && (newStateHandle > 0) && (newStateHandle < ModuleRegistry[CurFSM->getHandle()].numStateHandles))
-		transState(ModuleRegistry[CurFSM->getHandle()].stateHandles[newStateHandle].state);
+	if (g_ablExec->CurFSM && (newStateHandle > 0) && (newStateHandle < ModuleRegistry[g_ablExec->CurFSM->getHandle()].numStateHandles))
+		transState(ModuleRegistry[g_ablExec->CurFSM->getHandle()].stateHandles[newStateHandle].state);
 }
 
 //***************************************************************************
@@ -1788,11 +1769,11 @@ extern char	SetStateDebugStr[256];
 
 void transState (SymTableNodePtr newState) {
 
-	if (CurFSM) {
-		CurFSM->setPrevState(CurFSM->getState());
-		CurFSM->setState(newState);
-		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(CurModule->getFileName()), mc2::fmt::safe(newState->name), mc2::fmt::as_i32(execLineNumber));
-		NewStateSet = true;
+	if (g_ablExec->CurFSM) {
+		g_ablExec->CurFSM->setPrevState(g_ablExec->CurFSM->getState());
+		g_ablExec->CurFSM->setState(newState);
+		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(g_ablExec->CurModule->getFileName()), mc2::fmt::safe(newState->name), mc2::fmt::as_i32(g_ablExec->execLineNumber));
+		g_ablExec->NewStateSet = true;
 	}
 }
 

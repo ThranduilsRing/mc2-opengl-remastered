@@ -20,31 +20,17 @@
 #endif
 
 // Globals defined in ablxstd.cpp (or elsewhere in the engine) that the split pieces share.
-extern int32_t          level;
 extern int32_t          FileNumber;
-extern int              execLineNumber;
-extern char*			codeSegmentPtr;
-extern TokenCodeType	codeToken;
 extern StackItem*		stack;
-extern StackItemPtr		tos;
-extern StackItemPtr		stackFrameBasePtr;
-extern SymTableNodePtr	CurRoutineIdPtr;
-extern long				CurModuleHandle;
 extern TypePtr			IntegerTypePtr;
 extern TypePtr			RealTypePtr;
 extern TypePtr			BooleanTypePtr;
 extern TypePtr			CharTypePtr;
-extern ABLModulePtr		CurModule;
-extern ABLModulePtr		CurFSM;
 extern long	MaxLoopIterations;
 extern DebuggerPtr		debugger;
-extern bool				NewStateSet;
 extern bool s_ablArgGuard;
 extern bool s_ablRuntimeSoftfail;
-extern StackItem returnValue;
 extern bool eofFlag;
-extern bool ExitWithReturn;
-extern bool ExitFromTacOrder;
 extern bool SkipOrder;
 extern TokenCodeType ExitRoutineCodeSegment[2];
 extern TokenCodeType ExitOrderCodeSegment[2];

@@ -18,7 +18,7 @@ void Debugger::sprintStatement (char* dest) {
 	// First, rebuild the the current statement from the module code. Then,
 	// spit it out as we do so...
 	bool done = false;
-	char* cp = statementStartPtr;
+	char* cp = g_ablExec->statementStartPtr;
 	
 	do {
 		TokenCodeType token = static_cast<TokenCodeType>(*cp);
@@ -130,8 +130,8 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL: {
-				StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-				long delta = level - symbol->level;
+				StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+				long delta = g_ablExec->level - symbol->level;
 				while (delta-- > 0)
 					headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 				dataPtr = reinterpret_cast<StackItemPtr>(headerPtr) + symbol->defn.info.data.offset;
@@ -141,7 +141,7 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 				dataPtr = reinterpret_cast<StackItemPtr>(stack) + symbol->defn.info.data.offset;
 				break;
 			case VAR_TYPE_STATIC:
-				dataPtr = StaticDataPtr + symbol->defn.info.data.offset;
+				dataPtr = g_ablExec->StaticDataPtr + symbol->defn.info.data.offset;
 				break;
             default:;
 		}
@@ -186,8 +186,8 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL: {
-				StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(stackFrameBasePtr);
-				long delta = level - symbol->level;
+				StackFrameHeaderPtr headerPtr = reinterpret_cast<StackFrameHeaderPtr>(g_ablExec->stackFrameBasePtr);
+				long delta = g_ablExec->level - symbol->level;
 				while (delta-- > 0)
 					headerPtr = reinterpret_cast<StackFrameHeaderPtr>(headerPtr->staticLink.address);
 				dataPtr = reinterpret_cast<StackItemPtr>(headerPtr) + symbol->defn.info.data.offset;
@@ -197,7 +197,7 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 				dataPtr = reinterpret_cast<StackItemPtr>(stack) + symbol->defn.info.data.offset;
 				break;
 			case VAR_TYPE_STATIC:
-				dataPtr = StaticDataPtr + symbol->defn.info.data.offset;
+				dataPtr = g_ablExec->StaticDataPtr + symbol->defn.info.data.offset;
 				break;
             default:;
 		}
@@ -256,7 +256,7 @@ long Debugger::sprintValue (char* dest, char* exprString) {
 	if (!subscript) {
 		//------------------------------------------
 		// Probably a simple variable or constant...
-		SymTableNodePtr symbol = debugModule->findSymbol(exprString, CurRoutineIdPtr);
+		SymTableNodePtr symbol = debugModule->findSymbol(exprString, g_ablExec->CurRoutineIdPtr);
 		if (!symbol)
 			return(1);
 		if (symbol->typePtr->form != FRM_ARRAY) {
@@ -274,7 +274,7 @@ long Debugger::sprintValue (char* dest, char* exprString) {
 		strcpy(subscriptString, subscript);
 		*subscript = '\0';
 
-		SymTableNodePtr symbol = debugModule->findSymbol(exprString, CurRoutineIdPtr);
+		SymTableNodePtr symbol = debugModule->findSymbol(exprString, g_ablExec->CurRoutineIdPtr);
 		if (!symbol)
 			return(1);
 		sprintArrayValue(dest, symbol, subscriptString);
@@ -282,7 +282,7 @@ long Debugger::sprintValue (char* dest, char* exprString) {
 	else {
 		//-------------------------
 		// Print the whole thing...
-		SymTableNodePtr symbol = debugModule->findSymbol(exprString, CurRoutineIdPtr);
+		SymTableNodePtr symbol = debugModule->findSymbol(exprString, g_ablExec->CurRoutineIdPtr);
 		if (!symbol)
 			return(1);
 		sprintArrayValue(dest, symbol, nullptr);
@@ -302,8 +302,8 @@ long Debugger::traceStatementExecution (void) {
 	//--------------------------------------
 	// Do we have a breakpoint on this line?
 	if (breakPointManager) {
-		if (breakPointManager->isBreakPoint(execLineNumber)) {
-			mc2::fmt::to_buf(message, "HIT BP: ({:d}) {} [{:d}]", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber));
+		if (breakPointManager->isBreakPoint(g_ablExec->execLineNumber)) {
+			mc2::fmt::to_buf(message, "HIT BP: ({:d}) {} [{:d}]", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber));
 			print(message);
 			halt = true;
 		}
@@ -366,11 +366,11 @@ long Debugger::traceDataStore (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		char valString[255];
 		sprintDataValue(valString, target, targetType);
 		if (idType->form == FRM_ARRAY)
-			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
+			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		//else if (idType->form == FRM_RECORD)
 		//	sprintf(message, "STORE AT LINE %d - %s.# = %s\n", execLineNumber, id->name, valString);
 		else
-			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
+			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
 		if ((reinterpret_cast<WatchPtr>(id->info))->breakOnStore)
 			debugMode();
@@ -388,11 +388,11 @@ long Debugger::traceDataFetch (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		char valString[255];
 		sprintDataValue(valString, data, idType);
 		if (idTypePtr->form == FRM_ARRAY)
-			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
+			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		//else if (idTypePtr->form == FRM_RECORD)
 		//	sprintf(message, "STORE AT LINE %d - %s.# = %s\n", id->name, valString);
 		else
-			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
+			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(g_ablExec->execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
 		if ((reinterpret_cast<WatchPtr>(id->info))->breakOnFetch)
 			debugMode();
@@ -422,8 +422,8 @@ void Debugger::showValue (void) {
 		if (errorCount > 0)
 			return;
 			
-		char* savedCodeSegmentPtr = codeSegmentPtr;
-		TokenCodeType savedCodeToken = codeToken;
+		char* savedCodeSegmentPtr = g_ablExec->codeSegmentPtr;
+		TokenCodeType savedCodeToken = g_ablExec->codeToken;
 		execExpression();
 
 		if (typePtr->form == FRM_ARRAY) {
@@ -431,15 +431,15 @@ void Debugger::showValue (void) {
 			}
 		else {
 			char message[255];
-			sprintDataValue(message, tos, typePtr);
+			sprintDataValue(message, g_ablExec->tos, typePtr);
 			const size_t used = std::strlen(message);
 			mc2::fmt::to_buf_n(message + used, sizeof(message) - used, "\n");
 			print(message);
 		}
 
 		pop();
-		codeSegmentPtr = savedCodeSegmentPtr;
-		codeToken = savedCodeToken;
+		g_ablExec->codeSegmentPtr = savedCodeSegmentPtr;
+		g_ablExec->codeToken = savedCodeToken;
 	}
 
 }
@@ -464,17 +464,17 @@ void Debugger::assignVariable (void) {
 
 		//-------------------
 		// Now, execute it...
-		char* savedCodeSegmentPtr = codeSegmentPtr;
-		long savedCodeToken = codeToken;
-		codeSegmentPtr = codeBuffer + 1;
+		char* savedCodeSegmentPtr = g_ablExec->codeSegmentPtr;
+		long savedCodeToken = g_ablExec->codeToken;
+		g_ablExec->codeSegmentPtr = codeBuffer + 1;
 		getCodeToken();
 		idPtr = getSymTableCodePtr();
 		execAssignmentStatement(idPtr);
 
 		//----------------------------
 		// Restore the code segment...
-		codeSegmentPtr = savedCodeSegmentPtr;
-		codeToken = savedCodeToken;
+		g_ablExec->codeSegmentPtr = savedCodeSegmentPtr;
+		g_ablExec->codeToken = savedCodeToken;
 	}
 #endif
 }
