@@ -140,7 +140,7 @@ PACKAGE_SCHEMA_VERSION = 1
 
 # --- Deterministic shader package metadata -----------------------------------
 # Canonical, portable content hashes over the deployed artifact set. Used by
-# BOTH this generator and scripts/check-shader-package.py (imported), so the
+# BOTH this generator and scripts/check_shader_interface.py (imported), so the
 # hashing stays in lockstep by construction. All inputs are content-based
 # (canonicalized JSON / portable source+spirv hashes) => identical across
 # worktrees and machines.

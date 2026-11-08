@@ -22,13 +22,10 @@
 # Excluded (too heavy for this aggregator):
 #   (none since 2026-10-12; the live-engine JSON checks moved to the mc2-render-state MCP)
 #
-# RED-ROWS-CLOSE-2 (2026-07-31): check-shader-schema.sh USED to be excluded here,
-# by this comment, on the stated grounds that it "requires glslangValidator +
-# compiled goldens". BOTH CLAUSES WERE FALSE and it is now wired below as
-# `shader_schema`. Measured: tools/shader_schema/validate.py contains no
-# subprocess/glslang/spirv-cross call of any kind (it is pure stdlib), and the
-# 82 shader_reflect goldens it reads are TRACKED, COMMITTED files, not build
-# output. It runs in ~0.3s -- inside this file's own ~5s promise.
+# RED-ROWS-CLOSE-2 (2026-07-31): the shader ABI schema check USED to be excluded
+# here on the stated grounds that it "requires glslangValidator + compiled
+# goldens". BOTH CLAUSES WERE FALSE: it is pure stdlib over TRACKED
+# shader_reflect goldens. It is now the `schema` family of `shader_interface`.
 #
 # The cost of that wrong sentence: the check was red and unwatched, on a REAL
 # C++/GLSL desync (GpuMechInstance bytes 56/60 renamed in gos_mech_batcher.h with
@@ -892,7 +889,6 @@ run_nightly "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
 run_nightly "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
 run_check "vk_pipeline_infra"      "sh scripts/check-vk-submit-funnel.sh --pipelines"
 run_nightly "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
-run_nightly "veg_gpu_cull"             "py -3 scripts/check-veg-gpu-cull.py"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep
 run_nightly "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
 run_nightly "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
 run_nightly "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
@@ -964,13 +960,15 @@ run_nightly "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-owners
 run_nightly "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
 run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --strict --quiet && py -3 -B -m pytest scripts/tests/test_native_binding_contracts.py -q -p no:cacheprovider"
 # Reject reintroduced GL runtime, SDK and link dependencies.
-run_nightly "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet && py -3 -B -m pytest scripts/tests/test_spirv_fixups.py -q -p no:cacheprovider"
+# One shader-interface pass (p30 offline 2): baked SPIR-V artifacts + index, cross-variant reflection, the
+# artifact package, the C++/GLSL std430 schema (a layout skew inside a matching-size struct is invisible to every
+# binding row), and the table-driven source lockstep in scripts/shader_interface_rules.json (vegetation GPU cull).
+# Replaces rows spirv_artifacts, spirv_reflection, shader_package, shader_schema, veg_gpu_cull.
+run_nightly "shader_interface"       "py -3 scripts/check_shader_interface.py --quiet && py -3 -B -m pytest scripts/tests/test_check_shader_interface.py scripts/tests/test_spirv_fixups.py -q -p no:cacheprovider"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
 run_nightly "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
 run_nightly "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider"
-run_nightly "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_nightly "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"
-run_nightly "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
 # Vulkan UBO layout and offline shader compilation remain required.
 run_nightly "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
 run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B -m pytest scripts/tests/test_window_emission.py -q -p no:cacheprovider"
@@ -986,15 +984,6 @@ run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py && py -3 -B 
 # against the reader bands, and fails when prose in the contract file set names
 # a prop-band value that nothing emits.
 run_nightly "render_contract_alpha_classes"          "py -3 scripts/check-render-contract-alpha-classes.py"
-# RED-ROWS-CLOSE-2 (2026-07-31): the C++/GLSL struct ABI gate, wired at last --
-# see the header for why the comment that excluded it was wrong on both clauses.
-# It asserts that every field with an offsetof static_assert on the C++ side
-# exists in the GLSL struct AT THE SAME std430 OFFSET. That is the one desync no
-# other shader row can see: binding_slots/spirv_* grade bindings and artifacts,
-# material_gpu_mirror grades a different struct, and a layout skew inside a
-# matching-size struct is invisible to all of them while the shader silently
-# reads the wrong words.
-run_nightly "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
 # VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
 # manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).

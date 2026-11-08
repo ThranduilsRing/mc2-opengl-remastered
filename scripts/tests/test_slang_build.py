@@ -109,7 +109,7 @@ def test_broken_shader_fails_with_diagnostic(work):
 
 
 def test_artifact_checker_accepts_slang_and_detects_drift(work, tmp_path):
-    """scripts/check-spirv-artifacts.py with a Slang pilot: in sync passes, edit fails."""
+    """check_shader_interface.py (artifacts) with a Slang pilot: in sync passes, edit fails."""
     with open(os.path.join(work, 'probe.comp.slang'), 'a', encoding='utf-8') as f:
         f.write('\nimport shared;\n')
     Path(work, 'shared.slang').write_text('static const int VALUE = 1;\n')
@@ -117,7 +117,7 @@ def test_artifact_checker_accepts_slang_and_detects_drift(work, tmp_path):
     mf = tmp_path / "tools" / "shader_offline_build"
     mf.mkdir(parents=True)
     shutil.copy(os.path.join(work, "pilots.json"), mf / "pilots.json")
-    chk = os.path.join(ROOT, "scripts", "check-spirv-artifacts.py")
+    chk = os.path.join(ROOT, "scripts", "check_shader_interface.py")
 
     def run(*extra):
         # pilots.json lives under <root>/tools/...; sources and out/ under <root>
@@ -127,7 +127,7 @@ def test_artifact_checker_accepts_slang_and_detects_drift(work, tmp_path):
                 (shutil.copytree if os.path.isdir(os.path.join(work, item))
                  else shutil.copy)(os.path.join(work, item), dst)
         return subprocess.run([sys.executable, "-I", chk, "--root", str(tmp_path),
-                               *extra], capture_output=True, text=True,
+                               "--families", "artifacts", *extra], capture_output=True, text=True,
                               **console_child.child_kwargs(redirected=True))
 
     assert run("--quiet").returncode == 0
@@ -303,14 +303,14 @@ void main() { result.value[0] = 42u; }
     manifest_dir = Path(work, 'tools/shader_offline_build')
     manifest_dir.mkdir(parents=True)
     (manifest_dir / 'pilots.json').write_text(json.dumps(cfg), encoding='utf-8')
-    checked = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'scripts/check-spirv-artifacts.py'),
-                              '--root', work, '--quiet'], capture_output=True, text=True,
+    checked = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'scripts/check_shader_interface.py'),
+                              '--root', work, '--quiet', '--families', 'artifacts'], capture_output=True, text=True,
                              **console_child.child_kwargs(redirected=True))
     assert checked.returncode == 0, checked.stdout + checked.stderr
     assert run_build(work, '--check', '--quiet').returncode == 0
     def check_variants():
-        return subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'scripts/check-spirv-reflection-contract.py'),
-                               '--root', work], capture_output=True, text=True,
+        return subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'scripts/check_shader_interface.py'),
+                               '--root', work, '--families', 'reflection'], capture_output=True, text=True,
                               **console_child.child_kwargs(redirected=True))
     assert check_variants().returncode == 0
     census.write_text(json.dumps({'occupancy': {'set0:binding0': [site]}}))

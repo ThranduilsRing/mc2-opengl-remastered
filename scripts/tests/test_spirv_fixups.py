@@ -1,5 +1,4 @@
-"""Exercise the real bake and both checkers with corrupted descriptor/layout copies."""
-import importlib
+"""Exercise the real bake and the artifacts + reflection families with corrupted descriptor/layout copies."""
 import json
 import sys
 from pathlib import Path
@@ -10,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'tools/shader_offline_build'), str(ROOT / 'tools')]
 import build_variants
 import gpu_abi_gen
+import check_shader_interface as csi
 import shader_common
 import slang_compile
 
@@ -48,11 +48,8 @@ void main() { imageStore(destination, ivec2(0), texture(source, vec2(0)) * paylo
     assert clean['bindings']['samplers'][0]['set'] == 1
 
     def check():
-        results = []
-        for name in ('check-spirv-artifacts', 'check-spirv-reflection-contract'):
-            monkeypatch.setattr(sys, 'argv', [name, '--root', str(tmp_path), '--quiet'])
-            results.append(importlib.import_module(name).main())
-        return results
+        return [csi.main(['--root', str(tmp_path), '--quiet', '--families', fam])
+                for fam in ('artifacts', 'reflection')]
 
     assert check() == [0, 0]
     for group in ('samplers', 'images'):

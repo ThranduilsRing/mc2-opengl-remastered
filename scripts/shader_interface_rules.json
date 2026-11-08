@@ -1,0 +1,29 @@
+{
+  "_doc": "Source-lockstep rules read by scripts/check_shader_interface.py (family 'rules'). kind: absent|present (substring needles in each of files), members (block regex group 1, member regex findall == expect), glob (each pattern matches a file name in dir). Add a row here instead of a new check script.",
+  "rules": [
+    {"id": "veg_cpu_path", "kind": "absent", "files": ["GameOS/gameos/gos_vegetation.cpp"],
+     "needles": ["VfxGeometryVertex", "for (size_t index", "instances[", "std::vector<GosVegetation::Instance> instances"],
+     "msg": "CPU per-instance vegetation path is back"},
+    {"id": "veg_gpu_run", "kind": "present", "files": ["GameOS/gameos/gos_vegetation.cpp"],
+     "needles": ["mc2_vk_vfx_vegetation_run"], "msg": "no GPU vegetation run call"},
+    {"id": "veg_cullparams_members", "kind": "members", "files": ["GameOS/gameos/vk_vegetation_state.h"],
+     "block": "struct CullParams \\{(.*?)\\};", "member": "(?:float|uint32_t)\\s+(\\w+)\\[\\d\\]",
+     "expect": ["plane", "planeLen", "clipRow", "cam", "misc", "grid", "counts", "flags"],
+     "msg": "CullParams member list changed"},
+    {"id": "veg_cullparams_size", "kind": "present", "files": ["GameOS/gameos/vk_vegetation_state.h"],
+     "needles": ["sizeof(CullParams) == 176"], "msg": "CullParams size assert (176) missing"},
+    {"id": "veg_glsl_members", "kind": "members", "files": ["shaders/vulkan/include/vegetation_structs.glsl"],
+     "block": "struct\\s+VegParamsData\\s*\\{(.*?)\\}", "member": "(?:u?vec4)\\s+(\\w+)(?:\\[\\d\\])?\\s*;",
+     "expect": ["plane", "planeLen", "clipRow", "cam", "misc", "grid", "counts", "flags"],
+     "msg": "VegParamsData members != CullParams"},
+    {"id": "veg_shared_include", "kind": "present",
+     "files": ["shaders/vulkan/include/vegetation_cull_common.glsl", "shaders/vulkan/vfx_vegetation.vert"],
+     "needles": ["vegetation_structs.glsl"], "msg": "does not include the shared vegetation_structs.glsl"},
+    {"id": "veg_baked", "kind": "present", "files": ["GameOS/gameos/CMakeLists.txt"],
+     "needles": ["vegetation_region", "vegetation_cull", "vegetation_compact", "vfx_vegetation"],
+     "msg": "vegetation shader is not baked"},
+    {"id": "veg_sources", "kind": "glob", "dir": "shaders/vulkan",
+     "patterns": ["vegetation_region.*", "vegetation_cull.*", "vegetation_compact.*", "vfx_vegetation.*"],
+     "msg": "missing"}
+  ]
+}

@@ -20,7 +20,7 @@ spirv-cross; `shader_common.find_tool`). Minimum version pinned in `tools/slang/
 3. Build: `py -3 tools/shader_offline_build/build_variants.py` (`--check` verifies without
    writing). Output: `shaders/spv/<base>.<stage>.<variant>.<id>.spv`, sidecar JSON (with
    `language: "slang"`), `spirv_index.json` and `spirv_package.json`, same layout as GLSL.
-   `scripts/check-spirv-artifacts.py` (contract row `spirv_artifacts`) detects stale artifacts.
+   `scripts/check_shader_interface.py` (contract row `shader_interface`) detects stale artifacts.
 
 ## Conventions shared with the GLSL
 - Target is Vulkan SPIR-V 1.0, same as `glslangValidator -V` (`tools/check_vk_shaders.py`).

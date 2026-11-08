@@ -949,9 +949,9 @@ endif()
 #
 # Run manually: cmake --build build64 --target shader_schema
 # ---------------------------------------------------------------------------
-if(Python3_FOUND AND BASH_EXECUTABLE)
+if(Python3_FOUND)
     add_custom_target(shader_schema
-        COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check_shader_interface.py --families schema
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Shader ABI validation — C++/GLSL layout contract gate"
         VERBATIM

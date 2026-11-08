@@ -38,6 +38,8 @@ background_launch: glob:scripts/**.py glob:tools/**.py glob:.claude/**.py glob:t
 
 # C++ source scanners
 boundaries: .
+# shader_interface: sources + baked SPIR-V + reflect goldens + schema manifest + census + ABI headers + veg rule files
+shader_interface: shaders tools/shader_offline_build tools/shader_reflect/expected tools/shader_schema tools/gpu_abi_gen.py docs/render-backend-seams/binding-slot-occupancy.json RenderCore/gpu_abi RenderCore/MaterialGpu.h GameOS/gameos/gos_vegetation.cpp GameOS/gameos/vk_vegetation_state.h GameOS/gameos/CMakeLists.txt scripts/shader_interface_rules.json scripts/shader_common.py scripts/console_child.py
 gate_gen_check: @CPP docs/flags.auto.yaml
 gated_layout_macros: @CPP
 counter_honesty: @CPP
