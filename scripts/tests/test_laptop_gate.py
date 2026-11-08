@@ -324,3 +324,62 @@ def test_laptop_old_pass_cannot_survive_a_failed_pull(tmp_path, monkeypatch):
     shutil.rmtree(old)   # pc_main clears dest before the run; a rejected pull must not recreate it
     (ok, _, _), dest, _ = _accept(tmp_path, monkeypatch, drop=("summary.json",))
     assert not ok and not dest.exists()
+
+
+# ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----
+def test_sim_plan_is_merge_gates_own_determinism_and_saveload_steps(tmp_path):
+    import merge_gate
+    inst, proof = tmp_path / "inst", tmp_path / "proof"
+    steps = merge_gate.sim_plan(inst, proof)
+    assert [n for n, _, _ in steps] == list(merge_gate.SIM_STAGES)
+    by = {n: (c, e) for n, c, e in steps}
+    gate = {n: c for n, c, _ in merge_gate.plan(1, proof)}
+    for n, (cmd, env) in by.items():
+        assert str(inst).replace("\\", "/") in " ".join(cmd) and "mc2-opengl" not in " ".join(cmd) and env["MC2_SMOKE_ARTIFACT_ROOT"] == str(proof / "smokes" / n)
+        assert len(cmd) == len(gate[n])   # same shape as the gate's own step (install swapped only)
+    assert "--headless-both" in by["determinism-mc2_01"][0]
+    c24 = by["determinism-mc2_24"][0]
+    assert c24[c24.index("--ticks") + 1] == "2600"
+    for m in ("mc2_03", "mc2_10"):
+        c = by["saveload-" + m][0]
+        assert c[c.index("--mission") + 1] == m and "--mask" in c
+    assert "--single" in by["determinism-mc2_03"][0]
+    pair = {n: c for n, c, _ in merge_gate.sim_plan(inst, proof, ["determinism-mc2_03"], pair=True)}
+    assert list(pair) == ["determinism-mc2_03"] and "--single" not in pair["determinism-mc2_03"]
+    with pytest.raises(ValueError):
+        merge_gate.sim_plan(inst, proof, ["determinism-mc2_16"])
+
+
+def test_sim_verdict_needs_every_planned_row_green():
+    ok = {"rc": 0, "rows": {"a": {"status": "PASS"}, "b": {"status": "REUSED: x"}}}
+    assert laptop_gate.sim_verdict(ok, ["a", "b"]) == "PASS"
+    assert laptop_gate.sim_verdict(dict(ok, rc=1), ["a", "b"]) == "FAIL"
+    assert laptop_gate.sim_verdict(dict(ok, error="boom"), ["a", "b"]) == "FAIL"
+    assert laptop_gate.sim_verdict(ok, ["a", "b", "c"]) == "FAIL"   # a planned row that never reported
+    assert laptop_gate.sim_verdict(ok, []) == "FAIL"
+    assert laptop_gate.sim_verdict({"rc": 0, "rows": {"a": {"status": "FAIL"}}}, ["a"]) == "FAIL"
+    assert laptop_gate.sim_args(["determinism-mc2_01", "--pair"]) == (["determinism-mc2_01"], True)
+
+
+def test_merge_sim_summary_creates_merges_and_rejects_head_mismatch(tmp_path):
+    import json
+    dest = tmp_path / "W"
+    assert laptop_gate.merge_sim_summary(dest, {"head": "a" * 40, "verdict": "PASS"}) == ""
+    assert json.loads((dest / "summary.json").read_text())["sim"]["verdict"] == "PASS"
+    (dest / "summary.json").write_text(json.dumps({"head": "a" * 40, "x": 1}))
+    assert laptop_gate.merge_sim_summary(dest, {"head": "a" * 40}) == ""
+    assert json.loads((dest / "summary.json").read_text())["x"] == 1
+    assert "not the window summary head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40})
+
+
+def test_mods_problems_and_idempotent_mirror_diff(tmp_path):
+    src, dst = tmp_path / "src", tmp_path / "dst"
+    mods = {f"{n}/data/a.bin": (b"x", 100) for n in laptop_gate.MODS_NAMES}
+    _tree(src, mods)
+    bad = laptop_gate.mods_problems(dst)
+    assert len(bad) == len(laptop_gate.MODS_NAMES) and "MechCommanderOmnitech" in " ".join(bad)
+    copy, touch, delete = laptop_gate.tree_diff(laptop_gate.tree_rows(src), laptop_gate.tree_rows(dst))
+    assert len(copy) == len(mods) and not touch and not delete
+    _tree(dst, mods)   # what the tar extract leaves (mtimes kept)
+    assert laptop_gate.mods_problems(dst) == []
+    assert laptop_gate.tree_diff(laptop_gate.tree_rows(src), laptop_gate.tree_rows(dst)) == ([], [], [])

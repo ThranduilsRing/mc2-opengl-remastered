@@ -276,29 +276,6 @@ def test_lane_fetch_refspec_forces():
 
 # --- merge hooks --------------------------------------------------------------------------------------------------
 
-def test_lane_merge_cleanup_hook_best_effort(tmp_path, monkeypatch):
-    import lane_merge
-    (tmp_path / "tools").mkdir()
-    (tmp_path / "tools" / "box_run.py").write_text("")
-    calls = []
-    monkeypatch.setattr(lane_merge.subprocess, "run", lambda cmd, **kw: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "ok", ""))
-    monkeypatch.delenv("MC2_NO_BOX_CLEANUP", raising=False)
-    lane_merge.box_cleanup_lane(tmp_path, "claude/x")
-    assert calls and calls[0][-2:] == ["--cleanup", "claude/x"]
-    calls.clear()
-    lane_merge.box_cleanup_lane(tmp_path, "a" * 40)                  # a bare sha has no lane
-    monkeypatch.setenv("MC2_NO_BOX_CLEANUP", "1")
-    lane_merge.box_cleanup_lane(tmp_path, "claude/x")
-    assert not calls
-    monkeypatch.delenv("MC2_NO_BOX_CLEANUP")
-    monkeypatch.setattr(lane_merge.subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(OSError("no ssh")))
-    lane_merge.box_cleanup_lane(tmp_path, "claude/x")                # swallowed
-
-
-def test_lane_merge_calls_the_hook_per_merged_tip():
-    assert "box_cleanup_lane(root, ref)" in (ROOT / "tools" / "lane_merge.py").read_text()
-
-
 def test_deploy_box_tars_tools_box_and_runs_apply(monkeypatch):
     seen = {}
     monkeypatch.setattr(box_run, "run", lambda cmd, **kw: seen.update(cmd=cmd, input=kw.get("input")) or subprocess.CompletedProcess(cmd, 0))

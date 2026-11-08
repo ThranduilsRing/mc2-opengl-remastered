@@ -13,6 +13,16 @@ Then, on PASS (orchestrator only):
 The laptop has no A:/E: drive, so the remote half substs A: and E: onto C:/mc2gate/drv/{A,E}; merge_gate.py then runs
 unchanged with its hard-coded paths. The laptop's v0.4 and _lean-seed are junctions to C:/mc2gate/install.
 Remote half: this same file, uploaded to C:/mc2gate/bin, run as `--remote <step>`.
+
+Determinism + saveload evidence for a window in ONE invocation, after the full run (or --keep-candidate) left the deployed candidate:
+  py -3 tools/laptop_gate.py W --sim [--sim-rows determinism-mc2_01,saveload-mc2_10] [--sim-pair] [--dry-run]
+  No push, build or capture: the laptop runs merge_gate.sim_plan() (merge_gate's OWN determinism-mc2_01/03/10/24 and saveload-mc2_03/10
+  step definitions: same args, --mask, tick ranges) on a stock copy of the gate's deployed candidate (_gate-reuse/deployed), under the
+  farm queue lock. Results land in <proofs>/laptop-gate/W/sim/ and a "sim" key in that window's summary.json; exit 0 only when every row is
+  green. --dry-run prints the command list and runs nothing. The clone must still be at the stage tip the gate deployed (else a clear error).
+Every run (and --sim) also mirrors the PC's E:/mc2-ref/campaign-mods (MechCommanderOmnitech, mco-compat; the sources of --keep-candidate's
+  mods and of merge_gate's MC2_GATE_MODS_SOURCE default) into the laptop's drv/E/mc2-ref/campaign-mods, size+mtime-synced and idempotent.
+  It only reads the PC folder; nothing is written under A:/Games/mc2-opengl.
 """
 import argparse, csv, hashlib, json, os, shutil, subprocess, sys, tarfile, time
 from pathlib import Path
@@ -41,6 +51,9 @@ PC_TMP = Path("G:/mc2-tmp/gatelaptop")
 REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
+MODS_SRC = Path("E:/mc2-ref/campaign-mods")   # merge_gate.CANDIDATE_MODS_SOURCE on the PC (EROOT + /mc2-ref/campaign-mods)
+MODS_DST = G + "/drv/E/mc2-ref/campaign-mods"   # the same path under the laptop's MC2_GATE_EROOT
+MODS_NAMES = ("MechCommanderOmnitech", "mco-compat")   # merge_gate.CANDIDATE_MODS
 E_EXTRA = ("mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json",)   # scifi_kit counts.CATALOG (art suite)
 # Generated, gitignored deploy inputs whose cook sources exist only on the PC: the laptop clone gets the published copies. Without
 # them the laptop deploy omits and then prunes them, and compare-captures fails on the cliffs and concrete (W129 run 3: MAD 0.20/0.52).
@@ -245,6 +258,69 @@ def _r_run(window, extra):
     print(json.dumps({k: v for k, v in sm.items() if k != "timings"}))
 
 
+def r_sim(window, tokens):
+    """Remote `sim` step: merge_gate.sim_plan() rows on a stock copy of the gate's deployed candidate, under the farm queue lock."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import queue_lock   # uploaded next to this file by provision()
+    with queue_lock.hold(FARM_QUEUE_LOCK, log=lambda m: print("laptop_gate: " + m, flush=True)):
+        return _r_sim(window, tokens)
+
+
+def sim_args(tokens):
+    """(rows, pair) from the remote `sim` tokens: row names plus --pair."""
+    return [t for t in tokens if not t.startswith("-")], "--pair" in tokens
+
+
+def _r_sim(window, tokens):
+    r_subst()
+    rows, pair = sim_args(tokens)
+    e = gate_env()
+    os.environ.update(e)   # merge_gate / gate_reuse read MC2_GATE_EROOT and MC2_GATE_REUSE_ROOT at import
+    git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e,
+                                    **console_child.child_kwargs(redirected=True))
+    branch = "claude/stage-" + window
+    if git("rev-parse", "--verify", "-q", branch).returncode == 0 and git("checkout", "-q", "-f", branch).returncode:
+        sys.exit("remote git checkout failed for " + branch)
+    head = git("rev-parse", "HEAD").stdout.strip()
+    out = Path(G, "out", window, "sim")
+    shutil.rmtree(out, ignore_errors=True)   # nothing from an earlier sim run may survive; the gate's own out/<W> files stay
+    out.mkdir(parents=True, exist_ok=True)
+    sm = {"window": window, "host": "laptop", "head": head, "rows": {}, "pair": pair}
+    sys.path.insert(0, REPO + "/scripts")
+    import gate_reuse
+    import merge_gate
+    if not hasattr(merge_gate, "sim_plan"):
+        sm["error"] = f"{REPO}/scripts/merge_gate.py at {head[:9]} has no sim_plan (stage the window from a tip that has it)"
+    seed = None if "error" in sm else gate_reuse.deployed_seed(Path(REPO), head)
+    if "error" not in sm and seed is None:
+        sm["error"] = (f"no deployed candidate seed for {head[:9]} under {gate_reuse.CACHE_ROOT}: run the laptop gate (or --keep-candidate) "
+                       f"for {window} first, and keep the clone at claude/stage-{window}")
+    rc = 1
+    if "error" not in sm:
+        sm["seed"] = str(seed)
+        try:
+            with merge_gate.stock_copy(seed, parent=Path(merge_gate.CANDIDATE_SEED).parent) as install:
+                steps = merge_gate.sim_plan(install, out, rows, pair)
+                sm["commands"] = {n: subprocess.list2cmdline(c) for n, c, _ in steps}
+                merge_gate.ROW_RESULTS.clear()
+                rc = merge_gate.execute_parallel(steps, head)
+        except Exception as exc:  # noqa: BLE001 - recorded in the summary the PC pulls
+            sm["error"] = f"{type(exc).__name__}: {exc}"
+        sm["rows"] = {n: {k: r.get(k) for k in ("status", "seconds", "wait")} for n, r in merge_gate.ROW_RESULTS.items()}
+    sm["rc"] = rc
+    sm["verdict"] = sim_verdict(sm, [n for n, _, _ in steps] if "commands" in sm else [])
+    (out / "summary.json").write_text(json.dumps(sm, indent=1))
+    print(json.dumps({k: v for k, v in sm.items() if k != "commands"}))
+
+
+def sim_verdict(sm, planned):
+    """PASS only when the run had no error, rc 0, and every planned row reported a green status; else FAIL."""
+    green = lambda st: st == "PASS" or st.startswith(("REUSED:", "PASS (perf_counter-only WARN"))   # merge_gate.stage_passed
+    rows = sm.get("rows", {})
+    ok = "error" not in sm and sm.get("rc") == 0 and bool(planned) and all(green(str(rows.get(n, {}).get("status", ""))) for n in planned)
+    return "PASS" if ok else "FAIL"
+
+
 def manifest_rows(p):
     lines = Path(p).read_text(encoding="utf-8-sig").splitlines()[1:]
     return {r["relpath"]: r for r in csv.DictReader(lines)}
@@ -333,16 +409,16 @@ def tree_problems(pc_rows, mine):
     return [f"install tree {tree_digest(b)} != PC v0.4 {tree_digest(a)}", *diffs[:10]]
 
 
-def r_tree(sha="0"):
-    """Write INSTALL's tree rows to tmp/tree.txt for the PC to fetch."""
-    Path(G, "tmp/tree.txt").write_text("\n".join(tree_rows(INSTALL, sha == "1")) + "\n", encoding="utf-8")
+def r_tree(sha="0", root=INSTALL, name="tree.txt"):
+    """Write root's (default INSTALL) tree rows to tmp/<name> for the PC to fetch."""
+    Path(G, "tmp", name).write_text("\n".join(tree_rows(root, sha == "1")) + "\n", encoding="utf-8")
 
 
-def r_apply(listfile):
-    """Apply "D|rel" (delete) and "T|rel|mtime" (set mtime) lines to INSTALL."""
+def r_apply(listfile, root=INSTALL):
+    """Apply "D|rel" (delete) and "T|rel|mtime" (set mtime) lines to root (default INSTALL)."""
     for line in Path(listfile).read_text(encoding="utf-8").splitlines():
         op, rel, *mt = line.split("|")
-        p = Path(INSTALL, rel)
+        p = Path(root, rel)
         if op == "D":
             p.unlink(missing_ok=True)
         elif op == "T":
@@ -416,11 +492,18 @@ def r_preflight(window="-", published=""):
                               lambda a, b: subprocess.run(["git", "-C", REPO, "merge-base", "--is-ancestor", a, b],
                                                                        **console_child.child_kwargs()).returncode == 0)
     bad += r_refcheck(REF + "/SHA256SUMS")
+    bad += mods_problems()
     pc_tree = Path(G, "in/pc.tree.txt")   # the PC v0.4's rows, uploaded by sync_tree
     bad += tree_problems(pc_tree.read_text(encoding="utf-8").splitlines(), tree_rows(INSTALL)) if pc_tree.is_file() \
         else [f"missing {pc_tree} (the PC v0.4 tree listing sync_tree uploads)"]
     print("\n".join(bad) if bad else "preflight OK")
     return 1 if bad else 0
+
+
+def mods_problems(dst=MODS_DST):
+    """One line per campaign mod --keep-candidate stages that is not mirrored (with its data/) under the laptop's EROOT."""
+    return [f"missing campaign mod {n} under {dst}: run tools/laptop_gate.py from the PC, which mirrors E:/mc2-ref/campaign-mods"
+            for n in MODS_NAMES if not Path(dst, n, "data").is_dir()]
 
 
 def r_ref_commit():
@@ -525,10 +608,10 @@ def published_sha():
 CHUNK = 2 << 30   # bytes per tar chunk
 
 
-def remote_rows(sha):
-    ssh(remote_py("tree", "-", "1" if sha else "0"))
-    local = PC_TMP / "laptop.tree.txt"
-    scp(f"{HOST}:{G}/tmp/tree.txt", local)
+def remote_rows(sha, step="tree", name="tree.txt"):
+    ssh(remote_py(step, "-", "1" if sha else "0"))
+    local = PC_TMP / ("laptop." + name)
+    scp(f"{HOST}:{G}/tmp/{name}", local)
     try:
         return local.read_text(encoding="utf-8").splitlines()
     finally:
@@ -581,6 +664,39 @@ def sync_tree():
         for p in (lst, local, ops):
             p.unlink(missing_ok=True)
     print(f"sync_tree done in {time.time() - t:.0f}s", flush=True)
+
+
+def sync_mods(src=MODS_SRC):
+    """Idempotent size+mtime mirror of the PC's campaign-mods reference (read only on the PC) into MODS_DST on the laptop, where
+    merge_gate's stage_candidate_mods reads it (W132 keep-candidate: 'MechCommanderOmnitech missing under ...campaign-mods').
+    Copies missing/different files in tar chunks (tar keeps mtimes), fixes mtimes, deletes laptop-only files; a second run is a no-op."""
+    missing = [n for n in MODS_NAMES if not Path(src, n, "data").is_dir()]
+    if missing:
+        sys.exit(f"laptop_gate: campaign mod(s) {', '.join(missing)} missing under {src} on the PC")
+    PC_TMP.mkdir(parents=True, exist_ok=True)
+    t = time.time()
+    pc = tree_rows(src)
+    copy, touch, delete = tree_diff(pc, remote_rows(False, "mods-tree", "mods.tree.txt"))
+    sizes = {r.split("|", 1)[0]: int(r.split("|")[1]) for r in pc}
+    print(f"sync_mods (size+mtime): copy {len(copy)} files ({sum(sizes[r] for r in copy) >> 20} MB), touch {len(touch)}, delete {len(delete)}", flush=True)
+    lst, local, ops = PC_TMP / "mods.lst", PC_TMP / "mods.tar", PC_TMP / "mods.ops"
+    try:
+        for group in chunks(copy, sizes):
+            lst.write_text("\n".join(group) + "\n", encoding="utf-8", newline="\n")
+            if subprocess.run(["tar", "-cf", str(local), "-C", str(src), "-T", str(lst)], **console_child.child_kwargs()).returncode:
+                sys.exit("campaign-mods tar failed")
+            scp(local, f"{HOST}:{G}/tmp/mods.tar")
+            ssh(f'powershell -c "New-Item -ItemType Directory -Force {MODS_DST} | Out-Null" && tar -xf {G}/tmp/mods.tar -C {MODS_DST} '
+                f"&& del {G.replace('/', chr(92))}\\tmp\\mods.tar")
+        if touch or delete:
+            mt = {r.split("|", 1)[0]: r.split("|")[2] for r in pc}
+            ops.write_text("".join([*(f"T|{r}|{mt[r]}\n" for r in touch), *(f"D|{r}\n" for r in delete)]), encoding="utf-8")
+            scp(ops, f"{HOST}:{G}/tmp/mods.ops")
+            ssh(remote_py("mods-apply", "-", f"{G}/tmp/mods.ops"))
+    finally:
+        for p in (lst, local, ops):
+            p.unlink(missing_ok=True)
+    print(f"sync_mods done in {time.time() - t:.0f}s", flush=True)
 
 
 def provision_files(eroot=Path("E:/")):
@@ -649,6 +765,7 @@ def pc_main(args):
     provision()   # helpers + E-root and layer seeds, sha-checked; the remote preflight verifies PROVISION.sha256
     seed()
     seed_ref()
+    sync_mods()
     sync_tree()
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
@@ -679,6 +796,59 @@ def pc_main(args):
     if (dest / "gate-verdict.json").is_file():
         print("verdict file sha256", sha256(dest / "gate-verdict.json"), dest / "gate-verdict.json")
     return exit_code(sm)
+
+
+def sim_command_list(window, rows=None, pair=False):
+    """Lines (`env... command`) of the sim rows laptop_gate --sim would run, from the checkout's own merge_gate.sim_plan()."""
+    import merge_gate
+    steps = merge_gate.sim_plan("<deployed candidate stock copy>", f"{G}/out/{window}/sim", rows, pair)
+    return [" ".join(f"{k}={v}" for k, v in env.items()) + " " + subprocess.list2cmdline(cmd) for _, cmd, env in steps]
+
+
+def merge_sim_summary(dest, sim):
+    """Put the pulled sim summary under the "sim" key of dest/summary.json (created when the window has no laptop summary yet).
+    -> a problem string when the sim head is not the window summary's head, else ''."""
+    path = dest / "summary.json"
+    try:
+        sm = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        sm = {}
+    why = ""
+    if sm.get("head") and sim.get("head") and not _same_sha(sm["head"], sim["head"]):
+        why = f"sim head {sim['head']} is not the window summary head {sm['head']}"
+    sm["sim"] = sim
+    dest.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(sm, indent=1), encoding="utf-8")
+    return why
+
+
+def sim_main(a):
+    """--sim: provision, run the remote sim step, pull out/<W>/sim into <proofs>/<W>/sim, merge its summary. 0 only on an all-green PASS."""
+    w = a.window
+    rows = [r for r in (a.sim_rows or "").split(",") if r]
+    t0 = time.time()
+    provision(bin_only=True)
+    provision()
+    sync_mods()
+    tokens = [*rows, *(["--pair"] if a.sim_pair else [])]
+    run_rc, _ = ssh(remote_py("sim", w, *(["--", *tokens] if tokens else [])), check=False, stream=True)
+    dest = PROOFS / w
+    shutil.rmtree(dest / "sim", ignore_errors=True)
+    dest.mkdir(parents=True, exist_ok=True)
+    if not pull_one(f"{G}/out/{w}/sim", dest, recursive=True):
+        print("laptop_gate --sim: could not pull out/%s/sim (ssh status %s)" % (w, run_rc))
+        return 1
+    try:
+        sim = json.loads((dest / "sim/summary.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print("laptop_gate --sim: sim/summary.json missing or unreadable")
+        return 1
+    why = merge_sim_summary(dest, sim)
+    print("SIM", json.dumps({k: v for k, v in sim.items() if k != "commands"}), f"total_wall_s={time.time() - t0:.0f}")
+    if why or run_rc:
+        print(f"laptop_gate --sim: REJECTED: {why or 'ssh exit status ' + str(run_rc)}")
+        return 1
+    return 0 if sim.get("verdict") == "PASS" else 1
 
 
 PULL_REQUIRED = ("summary.json", "gate-verdict.json", "gate.log", "gate.console.log", "build.log", "payload.tar", "payload.sha256")
@@ -763,17 +933,31 @@ def main():
     ap.add_argument("window", nargs="?")
     ap.add_argument("--remote", help=argparse.SUPPRESS)
     ap.add_argument("--preflight", action="store_true", help="check the laptop's packages, data roots and tools; no build or gate")
+    ap.add_argument("--sim", action="store_true", help="run merge_gate's determinism+saveload rows on the gate's deployed candidate (no push/build)")
+    ap.add_argument("--sim-rows", help="comma list of sim rows (default: determinism-mc2_01/03/10/24, saveload-mc2_03/10)")
+    ap.add_argument("--sim-pair", action="store_true", help="a/b pair for mc2_03 determinism, as on --weekly or a sim-sensitive diff")
+    ap.add_argument("--dry-run", action="store_true", help="with --sim: print the command list and run nothing")
     ap.add_argument("gate_args", nargs="*", help="extra merge_gate.py args (after --)")
     a, rest = ap.parse_known_args()
     if a.remote:
         step = a.remote
         return {"init": r_init, "run": lambda: r_run(a.window, [x for x in a.gate_args + rest if x != "--"]), "pack": lambda: r_pack(a.window),
-                "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
+                "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),
+                "mods-tree": lambda: r_tree((a.gate_args + rest)[0], MODS_DST, "mods.tree.txt"),
+                "mods-apply": lambda: r_apply((a.gate_args + rest)[0], MODS_DST),
+                "sim": lambda: r_sim(a.window, [x for x in a.gate_args + rest if x != "--"]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
         provision()
         return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
     if not a.window:
         ap.error("window required")
+    if a.dry_run and not a.sim:
+        ap.error("--dry-run is for --sim")
+    if a.sim and a.dry_run:
+        print("\n".join(sim_command_list(a.window, [r for r in (a.sim_rows or "").split(",") if r], a.sim_pair)))
+        return 0
+    if a.sim:
+        return sim_main(a)
     return pc_main(a)
 
 

@@ -78,7 +78,8 @@ PLAYER_PATH_GLOBS = ("code/logistics*", "code/mainmenu*", "code/mc2movie*", "cod
 def sim_sensitive(paths):
     """Changed paths matching tools/sim_sensitive_paths.json (the lane precheck's own sim/save list; '*' crosses '/')."""
     import fnmatch
-    pats = json.loads((ROOT / "tools/sim_sensitive_paths.json").read_text(encoding="utf-8"))["patterns"]
+    # the gate's own data file: resolved from this script, not ROOT (tests and the laptop gate point ROOT at a throwaway tree)
+    pats = json.loads((Path(__file__).resolve().parents[1] / "tools/sim_sensitive_paths.json").read_text(encoding="utf-8"))["patterns"]
     return sorted(p for p in paths if any(fnmatch.fnmatchcase(p.replace("\\", "/"), g) for g in pats))
 
 
@@ -599,7 +600,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
     # Only mc2_10 retains the GPU path (it also covers the windowed overlap audit). The mc2_24 finale
     # spawns infantry after tick 2404: --ticks is a required SIMID length (zero
     # tolerance), so the baseline prefix alone cannot satisfy this audit.
-    for mission in ("mc2_03", "mc2_10", "mc2_16", "mc2_24"):
+    # mc2_01 (day) runs headless like 03/16, a proper row since the laptop --sim step needed it (W132 ran it by hand)
+    for mission in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24"):
         steps.append(("determinism-" + mission,
                       [py, "tools/sim_determinism.py", "check", mission, "--install", install, "--out", str(proof / ("determinism-" + mission)),
                        # mc2_10 reaches only ~650 of the 800 sim frames in 20 s under load; 2x gets there in half the host time (both runs of a pair share the speed)
@@ -797,6 +799,24 @@ def install_plan(steps, install):
             command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
+
+
+#: The sim-proof rows tools/laptop_gate.py --sim runs against the deployed candidate (determinism 01/03/10/24, saveload 03/10).
+SIM_STAGES = ("determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24", "saveload-mc2_03", "saveload-mc2_10")
+
+
+def sim_plan(install, proof_dir, rows=None, pair=False):
+    """The determinism/saveload rows of plan() (same args, --mask and tick ranges), pointed at `install` with each row's own
+    MC2_SMOKE_ARTIFACT_ROOT under proof_dir, as main() builds them. pair: a/b pair for 03 as on --weekly or a sim-sensitive diff."""
+    wanted = tuple(rows or SIM_STAGES)
+    unknown = sorted(set(wanted) - set(SIM_STAGES))
+    if unknown:
+        raise ValueError(f"not a sim row: {', '.join(unknown)} (choose from {', '.join(SIM_STAGES)})")
+    steps = [s for s in plan(1, proof_dir) if s[0] in wanted]
+    if pair:
+        steps = [(n, [a for a in c if a != "--single"] if n.startswith("determinism-") else c, e) for n, c, e in steps]
+    steps = install_plan(steps, Path(install))
+    return [(n, c, dict(e, MC2_SMOKE_ARTIFACT_ROOT=str(Path(proof_dir) / "smokes" / n))) for n, c, e in steps]
 
 
 def git(*args):
