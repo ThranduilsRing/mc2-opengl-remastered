@@ -115,31 +115,46 @@ def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, c
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 2
 
 
-def test_unchanged_inputs_reuse_a_pass_receipt_and_a_changed_tree_does_not(tmp_path, monkeypatch):
+def _stage_verdict(stages, bad=(), verdict="PARTIAL"):
+    return dict(verdict=verdict, complete=True, failed=list(bad), tier=1, written=1.0,
+                executed={n: {"status": "FAIL" if n in bad else "PASS"} for n in stages})
+
+
+def test_scheduled_run_partial_verdict_still_issues_per_stage_receipts_and_reuses_them(tmp_path, monkeypatch):
+    # p31 item 4: a --stages run ends PARTIAL by design; receipts follow each stage's own PASS.
     import time
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "tree-A")
     stages = nightly_gate.stage_names(False)
-    key = nightly_gate.receipt_key(False, stages)
+    assert len(stages) >= 2
     old = tmp_path / "nightly-2026-11-06"
     old.mkdir()
-    (old / "gate-verdict.json").write_text(json.dumps(dict(verdict="PASS", complete=True, failed=[], tier=1, written=1.0)))
-    assert nightly_gate.find_receipt(str(tmp_path), key) is None   # no receipt yet
-    nightly_gate.write_receipt(str(old), key)
-    assert nightly_gate.find_receipt(str(tmp_path), key) == str(old)
-    assert nightly_gate.find_receipt(str(tmp_path), nightly_gate.receipt_key(True, stages)) is None   # weekly is a different key
+    (old / "gate-verdict.json").write_text(json.dumps(_stage_verdict(stages, bad=[stages[0]], verdict="FAIL")))
+    assert nightly_gate.write_receipts(str(old), False, stages) == []   # a verdict with failed rows issues nothing
+    (old / "gate-verdict.json").write_text(json.dumps(_stage_verdict(stages)))
+    assert nightly_gate.write_receipts(str(old), False, stages) == stages
+    assert nightly_gate.find_stage_receipts(str(tmp_path), False, stages) == {n: str(old) for n in stages}
+    assert nightly_gate.find_stage_receipts(str(tmp_path), True, stages) == {}   # weekly is a different key
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "tree-B")
-    assert nightly_gate.find_receipt(str(tmp_path), nightly_gate.receipt_key(False, stages)) is None   # tree changed
-    assert nightly_gate.find_receipt(str(tmp_path), key, now=time.time() + 9 * 86400) is None   # stale
+    assert nightly_gate.find_stage_receipts(str(tmp_path), False, stages) == {}   # tree changed
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "tree-A")
+    assert nightly_gate.find_stage_receipts(str(tmp_path), False, stages, now=time.time() + 9 * 86400) == {}   # stale
     new = tmp_path / "nightly-2026-11-07"
     new.mkdir()
-    nightly_gate.reuse_receipt(str(old), str(new), key)
+    found = nightly_gate.find_stage_receipts(str(tmp_path), False, stages)
+    nightly_gate.reuse_receipts(found, str(new), False, stages)
     v = json.loads((new / "gate-verdict.json").read_text())
-    assert v["verdict"] == "PASS" and v["reused_from"] == str(old) and v["written"] > 1.0
-    assert lane_merge_stage.untriaged_nightly_fail(str(tmp_path)) == []   # promote accepts the carried verdict
+    assert v["written"] > 1.0 and v["failed"] == [] and all(v["executed"][n]["status"].startswith("REUSED:") for n in stages)
+    assert lane_merge_stage.untriaged_nightly_fail(str(tmp_path)) == []
+    assert lane_merge_stage.nightly_unmet(v) == []
 
 
-def test_a_failed_or_partial_verdict_never_yields_a_receipt(tmp_path):
-    for verdict in ({"verdict": "FAIL", "failed": ["x"]}, {"verdict": "PARTIAL", "failed": []}, {"verdict": "PASS", "complete": False}):
-        (tmp_path / "gate-verdict.json").write_text(json.dumps(verdict))
-        nightly_gate.write_receipt(str(tmp_path), "k")
-        assert not (tmp_path / "receipt.json").exists()
+def test_only_the_green_stages_get_a_receipt_when_one_stage_is_skipped(tmp_path, monkeypatch):
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "tree-A")
+    stages = nightly_gate.stage_names(False)
+    ex = {n: {"status": "PASS"} for n in stages}
+    ex[stages[0]] = {"status": "SKIP: x"}
+    (tmp_path / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[], tier=1, executed=ex)))
+    assert nightly_gate.write_receipts(str(tmp_path), False, stages) == stages[1:]
+    (tmp_path / "gate-verdict.json").write_text("{}")
+    (tmp_path / "receipt.json").unlink()
+    assert nightly_gate.write_receipts(str(tmp_path), False, stages) == [] and not (tmp_path / "receipt.json").exists()

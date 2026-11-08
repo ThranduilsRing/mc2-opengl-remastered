@@ -48,10 +48,10 @@ def current_window():
 RECEIPT_MAX_AGE_H = 8 * 24
 
 
-def receipt_key(weekly, stages):
-    """Hash of everything a nightly's result depends on: the published tree, the mode and the stage list."""
+def receipt_key(weekly, stage):
+    """Hash of everything one stage's result depends on: the published tree, the mode and the stage."""
     import hashlib
-    blob = "\n".join([git("rev-parse", "HEAD^{tree}"), "weekly" if weekly else "nightly", *stages])
+    blob = "\n".join([git("rev-parse", "HEAD^{tree}"), "weekly" if weekly else "nightly", stage])
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
@@ -64,43 +64,58 @@ def _load(path):
         return None
 
 
-def _clean_pass(v):
-    return v.get("verdict") == "PASS" and v.get("complete") and not v.get("failed")
+def passed_stages(verdict, required):
+    """The required stages that executed green in this verdict. A scheduled run passes --stages, so its overall verdict is PARTIAL by
+    design; per-stage status is the only honest signal. A verdict with failed rows issues nothing."""
+    import merge_gate
+    if not verdict or verdict.get("failed"):
+        return []
+    ex = verdict.get("executed") or {}
+    return [n for n in required if merge_gate.stage_passed(str((ex.get(n) or {}).get("status", "")))]
 
 
-def find_receipt(proof_root, key, now=None):
-    """The newest earlier PASS verdict dir whose receipt has this key and is recent enough, else None."""
+def find_stage_receipts(proof_root, weekly, required, now=None):
+    """stage -> newest recent nightly dir holding a receipt for that stage's key whose own verdict shows the stage green."""
     import glob
     import time
     now = time.time() if now is None else now
+    found = {}
     for d in sorted(glob.glob(os.path.join(proof_root, "nightly-*")), reverse=True):
         r = _load(os.path.join(d, "receipt.json"))
         v = _load(os.path.join(d, "gate-verdict.json"))
-        if r and v and r.get("key") == key and _clean_pass(v) \
-                and (now - float(r.get("written") or 0)) / 3600 <= RECEIPT_MAX_AGE_H:
-            return d
-    return None
+        if not r or not v or (now - float(r.get("written") or 0)) / 3600 > RECEIPT_MAX_AGE_H:
+            continue
+        ok = passed_stages(v, required)
+        for n in required:
+            if n not in found and n in ok and (r.get("stages") or {}).get(n) == receipt_key(weekly, n):
+                found[n] = d
+    return found
 
 
-def reuse_receipt(src_dir, proof, key, now=None):
-    """Carry an unchanged-input PASS forward: same verdict, fresh timestamp, honest reused_from marker."""
+def write_receipts(proof, weekly, required):
+    """One receipt per stage, issued on that stage's own PASS (not on the overall verdict, which is PARTIAL for a --stages run)."""
+    import json
+    import time
+    ok = passed_stages(_load(os.path.join(proof, "gate-verdict.json")), required)
+    if ok:
+        with open(os.path.join(proof, "receipt.json"), "w", encoding="utf-8") as f:
+            json.dump({"written": time.time(), "stages": {n: receipt_key(weekly, n) for n in ok}}, f, indent=1)
+    return ok
+
+
+def reuse_receipts(found, proof, weekly, required, now=None):
+    """Every required stage already has a same-tree receipt: carry them into a fresh verdict with honest REUSED statuses."""
     import json
     import time
     now = time.time() if now is None else now
-    v = _load(os.path.join(src_dir, "gate-verdict.json"))
-    v.update(written=now, reused_from=src_dir)
-    for name, body in (("gate-verdict.json", v), ("receipt.json", {"key": key, "written": now, "reused_from": src_dir})):
+    first = _load(os.path.join(found[required[0]], "gate-verdict.json"))
+    executed = {n: dict((_load(os.path.join(found[n], "gate-verdict.json")).get("executed") or {})[n],
+                        status=f"REUSED: {found[n]}") for n in required}
+    v = dict(first, written=now, executed=executed, failed=[], reused_from=sorted(set(found.values())))
+    receipt = {"written": now, "stages": {n: receipt_key(weekly, n) for n in required}, "reused_from": v["reused_from"]}
+    for name, body in (("gate-verdict.json", v), ("receipt.json", receipt)):
         with open(os.path.join(proof, name), "w", encoding="utf-8") as f:
             json.dump(body, f, indent=1)
-
-
-def write_receipt(proof, key):
-    import json
-    import time
-    v = _load(os.path.join(proof, "gate-verdict.json")) or {}
-    if _clean_pass(v):
-        with open(os.path.join(proof, "receipt.json"), "w", encoding="utf-8") as f:
-            json.dump({"key": key, "written": time.time()}, f, indent=1)
 
 
 def stage_names(weekly):
@@ -135,17 +150,17 @@ def main(argv=None):
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0
-    key = receipt_key(weekly, stage_names(weekly))
-    prior = None if args.force else find_receipt(PROOF_ROOT, key)
-    if prior:   # p29 cut 5: same tree, mode and stages already passed; do not burn another hour of the box
-        reuse_receipt(prior, proof, key)
-        print(f"[nightly_gate] inputs unchanged since {prior}; reused its PASS (--force reruns)")
+    required = stage_names(weekly)
+    found = {} if args.force else find_stage_receipts(PROOF_ROOT, weekly, required)
+    if required and len(found) == len(required):   # same tree, mode and every stage already passed; do not burn another hour of the box
+        reuse_receipts(found, proof, weekly, required)
+        print(f"[nightly_gate] every required stage already passed on this tree ({', '.join(sorted(set(found.values())))}); reused (--force reruns)")
         return 0
     env = dict(os.environ, TMP=TMP_DIR, TEMP=TMP_DIR, TMPDIR=TMP_DIR)  # never write to C: (lane rules)
     os.makedirs(TMP_DIR, exist_ok=True)
     rc = subprocess.run(cmd, cwd=ROOT, env=env, **console_child.child_kwargs()).returncode
-    if rc == 0:
-        write_receipt(proof, key)
+    issued = write_receipts(proof, weekly, required)   # per stage, whatever the overall rc: a red stage must not void the green ones
+    print(f"[nightly_gate] receipts issued for {len(issued)}/{len(required)} stages: {', '.join(issued) or 'none'}")
     return rc
 
 
