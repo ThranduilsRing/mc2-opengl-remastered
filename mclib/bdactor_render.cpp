@@ -5,6 +5,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
+#include "diagnostic_trace.h"
 
 #include <cstdlib>
 #include <string>
@@ -45,7 +46,7 @@ long BldgAppearance::render (long depthFixup)
 	if (!eye) return 0;
 	if (!inView && appearType && (!S_stricmp(appearType->name, "karnov") || !S_stricmp(appearType->name, "vtol"))) {
 		static unsigned culled = 0;
-		if (culled++ < 8 || culled % 600 == 0)
+		if ((culled++ < 8 || culled % 600 == 0) && mc2_diag::tagRequested("SUPPORT_CRAFT"))
 			mc2::fmt::print_err("[SUPPORT_CRAFT] event=culled name={} x={} y={} z={} frame={}\n",
 				mc2::fmt::safe(appearType->name), position.x, position.y, position.z, unitAnim().currentFrame);
 	}
@@ -313,7 +314,7 @@ long BldgAppearance::render (long depthFixup)
 		}
 		if (appearType && (!S_stricmp(appearType->name, "karnov") || !S_stricmp(appearType->name, "vtol"))) {
 			static unsigned draws = 0;
-			if (draws++ < 8 || draws % 600 == 0)
+			if ((draws++ < 8 || draws % 600 == 0) && mc2_diag::tagRequested("SUPPORT_CRAFT"))
 				mc2::fmt::print_err("[SUPPORT_CRAFT] event=draw name={} gpu={} static={} x={} y={} z={} frame={}\n",
 					mc2::fmt::safe(appearType->name), submittedToGpu, IsStaticNow(),
 					position.x, position.y, position.z, unitAnim().currentFrame);

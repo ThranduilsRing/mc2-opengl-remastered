@@ -8,6 +8,7 @@
 #include <utility>
 #include <string_view>
 #include "tick_commit.h"
+#include "diagnostic_trace.h"
 
 extern void preloadSupportRadioArchive(std::string_view name);
 extern void preloadSupportSample(unsigned id);
@@ -493,9 +494,10 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 	}
 				
   	paintingVtol[commanderID] = 1;
-	mc2::fmt::print_err("[SUPPORT_CRAFT] event=spawn vehicle={} commander={} name={} x={} y={} z={}\n",
-		vehicleID[commanderID], commanderID, mc2::fmt::safe(vTol[commanderID]->appearType->name),
-		newPos.x, newPos.y, newPos.z);
+	if (mc2_diag::tagRequested("SUPPORT_CRAFT"))
+		mc2::fmt::print_err("[SUPPORT_CRAFT] event=spawn vehicle={} commander={} name={} x={} y={} z={}\n",
+			vehicleID[commanderID], commanderID, mc2::fmt::safe(vTol[commanderID]->appearType->name),
+			newPos.x, newPos.y, newPos.z);
 	vTolSpeed = -75.f;
 
 	vPos[commanderID] = vtolPos;

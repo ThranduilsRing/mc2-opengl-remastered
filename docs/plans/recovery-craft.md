@@ -7,6 +7,11 @@
   missiongui_style.cpp updateVTol presents landing/hover/departure;
   missiongui.cpp drawVTOL submits through bdactor_render.cpp GPU prop batcher.
 - Existing fixture: select mech; animate <partId> damaged; support 147 <x> <y>.
-- Next: instrument spawn/submission, reproduce on mc2_01, fix demonstrated cause.
-- Proof pending: covering regression/contract, box build+unit+smoke-lite,
-  final Windows Ninja compile, lint, PC recovery log and capture.
+- Fixed: preload the support palette before immutable prop geometry finalization
+  on mission init and quickload. Late registration had forced Karnov/VTOL to CPU fallback.
+- Added SUPPORT_CRAFT diagnostics (request with MC2_DIAG_TAGS=SUPPORT_CRAFT).
+- Green: focused doctest (1 case / 8 assertions), static_prop_family contract,
+  cxx17 ratchet. Box build blocked by unrelated FSR Windows headers / atomic includes.
+- Remaining: final Windows compile, lint after diagnostic tag guards, PC smoke
+  and recovery capture. Current receipts/next steps are in
+  E:/mc2-archive-2026-10/proofs/recovery-craft/state.md.
