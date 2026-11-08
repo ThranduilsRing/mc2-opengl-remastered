@@ -746,7 +746,7 @@ void VulkanContext::retireIsland(IslandSlot slot) {
     std::unique_ptr<IslandState>& parked = islandSlot(slot);
     if (!parked) return;
     // The order of these lines is the shutdown order: with the image-owner lines of vk_image_resource.cpp they let a log show the destroy() precondition.
-    static constexpr const char* kSlotNames[] = {"Vfx", "Sky", "LegacyShape", "Preview", "Mech", "ColorProp", "Water", "Shadow", "Terrain", "PassTimer", "ActorCull", "Vegetation"};
+    static constexpr const char* kSlotNames[] = {"Vfx", "Sky", "LegacyShape", "Preview", "Mech", "ColorProp", "Water", "Shadow", "Terrain", "PassTimer", "ActorCull", "Vegetation", "RtScene"};
     static_assert(sizeof(kSlotNames) / sizeof(kSlotNames[0]) == static_cast<size_t>(IslandSlot::Count), "name every island slot");
     if (mc2_diag::tagRequested("VK_SHUTDOWN")) ctxlog("retire island slot=%s.", kSlotNames[static_cast<size_t>(slot)]);
     waitIdle("retire_island");

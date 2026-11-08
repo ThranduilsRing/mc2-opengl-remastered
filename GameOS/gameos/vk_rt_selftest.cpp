@@ -44,11 +44,13 @@ struct Bench {
     OwnedShaderModule module;
     OwnedPipeline pipe;
     OwnedBuffer rays, results;
+    uint32_t count = 0;
     std::string failure;
 
     explicit Bench(const VulkanContext& c) : ctx(c) {}
 
-    bool init() {
+    // `r`: 8 floats per ray (origin.xyz, tMin, direction.xyz, tMax).
+    bool init(const float* r, uint32_t n) {
         const VkDevice dev = ctx.device();
         if (!set.create(ctx)) return fail("descriptor set");
         module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "rt_smoke.comp.spv", nullptr));
@@ -61,15 +63,12 @@ struct Bench {
         cpci.layout = set.pipelineLayout();
         if (!mc2vk::create(pipe, dev, [&](VkPipeline* h) { return mc2vk::infra::compute(dev, VK_NULL_HANDLE, 1, &cpci, nullptr, h); })) return fail("pipeline");
 
-        const float r[kRayCount][8] = {
-            {0.25f, 0.25f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 10.0f},
-            {2.0f, 2.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 10.0f},
-            {0.1f, 0.1f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 10.0f},
-            {0.25f, 0.25f, -1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 10.0f},
-        };
-        if (!rays.createHostWritable(ctx.allocator(), dev, sizeof(r), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.rays") || !rays.upload(r, sizeof(r)))
+        if (n == 0) return fail("no rays");
+        count = n;
+        const size_t rayBytes = size_t(n) * 32;
+        if (!rays.createHostWritable(ctx.allocator(), dev, rayBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.rays") || !rays.upload(r, rayBytes))
             return fail("rays buffer");
-        if (!results.createHostWritable(ctx.allocator(), dev, kRayCount * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.results")) return fail("results buffer");
+        if (!results.createHostWritable(ctx.allocator(), dev, size_t(n) * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.results")) return fail("results buffer");
         return true;
     }
 
@@ -84,7 +83,7 @@ struct Bench {
         mc2vk::infra::bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.get());
         const VkDescriptorSet s = set.set();
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, set.pipelineLayout(), 0, 1, &s, 0, nullptr);
-        vkCmdDispatch(cmd, 1, 1, 1);
+        vkCmdDispatch(cmd, (count + 63) / 64, 1, 1);
         VkMemoryBarrier2 mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
         mb.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
         mb.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
@@ -111,7 +110,25 @@ struct Bench {
     }
 };
 
+constexpr float kSelfTestRays[kRayCount][8] = {
+    {0.25f, 0.25f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 10.0f},
+    {2.0f, 2.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 10.0f},
+    {0.1f, 0.1f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 10.0f},
+    {0.25f, 0.25f, -1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 10.0f},
+};
+
 }  // namespace
+
+bool traceRays(const VulkanContext& ctx, VkAccelerationStructureKHR tlas, const float* rays, uint32_t count, float* out) {
+    if (!ctx.rt().rayQuery || tlas == VK_NULL_HANDLE || count == 0) return false;
+    Bench b(ctx);
+    if (!b.init(rays, count)) return false;
+    const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+        recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
+        b.recordTrace(cmd, tlas);
+    }, "rt trace probe");
+    return ok && b.results.read(out, size_t(count) * 16);
+}
 
 bool runSelfTest(const VulkanContext& ctx) {
     if (!ctx.rt().rayQuery) {
@@ -121,7 +138,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     const VkDevice dev = ctx.device();
     const VmaAllocator al = ctx.allocator();
     Bench b(ctx);
-    if (!b.init()) { slog("FAIL init: {}", b.failure); return false; }
+    if (!b.init(&kSelfTestRays[0][0], kRayCount)) { slog("FAIL init: {}", b.failure); return false; }
 
     const float verts[9] = {0, 0, 0, 1, 0, 0, 0, 1, 0};
     const uint32_t idx[3] = {0, 1, 2};
@@ -143,7 +160,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     flags.allowCompaction = true;
 
     AccelStructure blas, tlas;
-    OwnedBuffer blasScratch, tlasScratch;
+    ScratchArena blasScratch, tlasScratch;   // every submit waits, so the arenas are destroyed at scope exit with no GPU use in flight
     OwnedQueryPool qp = createCompactionQueryPool(ctx, 1);
     if (!qp) { slog("FAIL query pool"); return false; }
 
@@ -163,7 +180,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     if (!s1 || !recorded || !b.check("build")) { slog("FAIL build: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
     // Submit 2: refit both structures in place and re-trace.
-    OwnedBuffer blasUpd, tlasUpd;
+    ScratchArena blasUpd, tlasUpd;
     recorded = false;
     const bool s2 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         if (!recordBlasUpdate(ctx, cmd, g, blas, blasUpd)) return;
@@ -180,7 +197,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     BuildFlags cflags;
     cflags.allowCompaction = true;
     AccelStructure cb, small, tlas2;
-    OwnedBuffer cbScratch, tlas2Scratch;
+    ScratchArena cbScratch, tlas2Scratch;
     const bool s3 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         if (!recordBlasBuild(ctx, cmd, g, cflags, "rt_selftest.blas.c", cb, cbScratch)) return;
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
@@ -205,8 +222,48 @@ bool runSelfTest(const VulkanContext& ctx) {
     }, "rt_selftest compact trace");
     if (!s5 || !recorded || !b.check("compact")) { slog("FAIL compact: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
-    slog("PASS rays={} blas_bytes={} compacted_bytes={} stages=build,update,compact", kRayCount, static_cast<unsigned long long>(blas.size()),
-         static_cast<unsigned long long>(compacted));
+    // Stage 6 (informational, decides whether recordCompactCopy may take ALLOW_UPDATE structures): compact the ALLOW_UPDATE BLAS of stages 1-2, trace it,
+    // refit the compacted copy and trace again. Re-run after the barrier chain stopped emitting the AS-COPY stage (needs ray_tracing_maintenance1).
+    std::string updateCompact = "pass";
+    {
+        AccelStructure ucomp, tlas3, tlas4;
+        ScratchArena s6Scratch;
+        const bool q = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+            recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+            recordCompactionQuery(ctx, cmd, qp.get(), 0, blas);
+        }, "rt_selftest update-compact query");
+        const std::optional<VkDeviceSize> usize = q ? readCompactedSize(ctx, qp.get(), 0) : std::nullopt;
+        auto traceOver = [&](AccelStructure& bl, AccelStructure& tl, const char* stage, bool refit) {
+            recorded = false;
+            const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+                if (refit) {
+                    if (!recordBlasUpdate(ctx, cmd, g, bl, s6Scratch)) return;
+                    recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+                }
+                const VkAccelerationStructureInstanceKHR i0 = makeInstance(bl.address(), nullptr, kCustomIndex);
+                if (!inst.upload(&i0, sizeof(i0))) return;
+                if (!recordTlasBuild(ctx, cmd, inst.deviceAddress(), 1, cflags, stage, tl, s6Scratch)) return;
+                recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
+                b.recordTrace(cmd, tl.get());
+                recorded = true;
+            }, stage);
+            return ok && recorded && b.check(stage);
+        };
+        if (!usize) {
+            updateCompact = "fail:query";
+        } else if (!submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+                       if (recordCompactCopy(ctx, cmd, blas, *usize, "rt_selftest.blas.ucompact", ucomp)) recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
+                   }, "rt_selftest update-compact copy") || !ucomp) {
+            updateCompact = "fail:copy";
+        } else if (!traceOver(ucomp, tlas3, "rt_selftest.update_compact", false)) {
+            updateCompact = std::format("fail:trace({}) {}->{}", b.failure, static_cast<unsigned long long>(blas.size()), static_cast<unsigned long long>(*usize));
+        } else if (!traceOver(ucomp, tlas4, "rt_selftest.update_compact_refit", true)) {
+            updateCompact = std::format("fail:refit({})", b.failure);
+        }
+    }
+
+    slog("PASS rays={} blas_bytes={} compacted_bytes={} stages=build,update,compact update_compact={}", kRayCount, static_cast<unsigned long long>(blas.size()),
+         static_cast<unsigned long long>(compacted), updateCompact);
     return true;
 }
 

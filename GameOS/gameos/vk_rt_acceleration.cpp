@@ -16,6 +16,8 @@ static_assert(kStageComputeShader == VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
 static_assert(kStageRayTracingShader == VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR);
 static_assert(kStageAsBuild == VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 static_assert(kStageAsCopy == VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR);
+static_assert(kAccessShaderRead == VK_ACCESS_2_SHADER_READ_BIT);
+static_assert(kAccessShaderWrite == VK_ACCESS_2_SHADER_WRITE_BIT);
 static_assert(kAccessTransferWrite == VK_ACCESS_2_TRANSFER_WRITE_BIT);
 static_assert(kAccessAsRead == VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR);
 static_assert(kAccessAsWrite == VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
@@ -55,19 +57,41 @@ VkAccelerationStructureGeometryKHR instancesOf(VkDeviceAddress instances) {
     return geo;
 }
 
-bool makeScratch(const VulkanContext& ctx, VkDeviceSize needed, std::string_view name, OwnedBuffer& scratch, VkDeviceAddress& alignedAddress) {
+}  // namespace
+
+bool ScratchArena::reserve(const VulkanContext& ctx, VkDeviceSize needed, std::string_view name, VkDeviceAddress& alignedAddress) {
     const uint64_t align = ctx.rtCaps().minAccelerationStructureScratchOffsetAlignment;
-    if (!scratch.createDeviceLocal(ctx.allocator(), ctx.device(), scratchAllocBytes(needed, align),
-                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name))
-        return false;
-    alignedAddress = scratchAlignedAddress(scratch.deviceAddress(), align);
-    return scratchFits(scratch.deviceAddress(), scratchAllocBytes(needed, align), needed, align);
+    if (!buffer_ || !scratchReusable(capacity_, needed, align)) {
+        if (buffer_) stale_.push_back(std::move(buffer_));   // an earlier recorded build may still read it: retired by retireStale
+        capacity_ = 0;
+        OwnedBuffer fresh;
+        const VkDeviceSize bytes = scratchAllocBytes(needed, align);
+        if (!fresh.createDeviceLocal(ctx.allocator(), ctx.device(), bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name))
+            return false;
+        buffer_ = std::move(fresh);
+        capacity_ = bytes;
+    }
+    alignedAddress = scratchAlignedAddress(buffer_.deviceAddress(), align);
+    return scratchFits(buffer_.deviceAddress(), capacity_, needed, align);
 }
+
+void ScratchArena::retireStale(VulkanContext& ctx) {
+    for (OwnedBuffer& b : stale_) ctx.retire(std::move(b));
+    stale_.clear();
+}
+
+void ScratchArena::retireAll(VulkanContext& ctx) {
+    retireStale(ctx);
+    if (buffer_) ctx.retire(std::move(buffer_), capacity_);
+    capacity_ = 0;
+}
+
+namespace {
 
 // Shared by BLAS and TLAS: query the sizes for `geo` x `primitives`, create structure + scratch, record the build (or the update when `update`).
 bool recordBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkAccelerationStructureTypeKHR type, const VkAccelerationStructureGeometryKHR& geo,
                  uint32_t primitives, VkBuildAccelerationStructureFlagsKHR flags, std::string_view name, bool update, AccelStructure& as,
-                 OwnedBuffer& scratch, VkDeviceSize* outUpdateScratch, VkDeviceSize* outSize, bool createNew) {
+                 ScratchArena& scratch, VkDeviceSize* outUpdateScratch, VkDeviceSize* outSize, bool createNew) {
     VkAccelerationStructureBuildGeometryInfoKHR info{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
     info.type = type;
     info.flags = flags;
@@ -78,13 +102,17 @@ bool recordBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkAccelerationSt
     vkGetAccelerationStructureBuildSizesKHR(ctx.device(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &info, &primitives, &sizes);
     if (outUpdateScratch) *outUpdateScratch = sizes.updateScratchSize;
     if (outSize) *outSize = sizes.accelerationStructureSize;
+    // A fresh build goes into an empty `as` only: overwriting a live structure would destroy it while the GPU may still read it. The caller builds the
+    // replacement into a new owner, publishes it on success and retires the old one. `as` is assigned only once every allocation has succeeded.
+    if (createNew && as) return false;
+    std::optional<AccelStructure> created;
     if (createNew) {
-        auto created = createAccelStructure(ctx, type, sizes.accelerationStructureSize, name);
+        created = createAccelStructure(ctx, type, sizes.accelerationStructureSize, name);
         if (!created) return false;
-        as = std::move(*created);
     }
     VkDeviceAddress scratchAddr = 0;
-    if (!makeScratch(ctx, update ? sizes.updateScratchSize : sizes.buildScratchSize, name, scratch, scratchAddr)) return false;
+    if (!scratch.reserve(ctx, update ? sizes.updateScratchSize : sizes.buildScratchSize, name, scratchAddr)) return false;
+    if (created) as = std::move(*created);
     info.srcAccelerationStructure = update ? as.get() : VK_NULL_HANDLE;
     info.dstAccelerationStructure = as.get();
     info.scratchData.deviceAddress = scratchAddr;
@@ -121,7 +149,7 @@ std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkA
 }
 
 bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& g, const BuildFlags& flags, std::string_view name, AccelStructure& blas,
-                     OwnedBuffer& scratch) {
+                     ScratchArena& scratch) {
     if (!ctx.rt().accel || g.triangleCount == 0 || g.vertices == 0) return false;
     const VkAccelerationStructureGeometryKHR geo = trianglesOf(g);
     VkDeviceSize updateScratch = 0, size = 0;
@@ -135,7 +163,7 @@ bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const Triang
     return true;
 }
 
-bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& g, AccelStructure& blas, OwnedBuffer& scratch) {
+bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& g, AccelStructure& blas, ScratchArena& scratch) {
     if (!blas || blas.isTop() || !blas.canUpdate() || g.triangleCount != blas.primitiveCount_) return false;
     const VkAccelerationStructureGeometryKHR geo = trianglesOf(g);
     return recordBuild(ctx, cmd, VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, geo, g.triangleCount, blas.flags_, "blas_update", true, blas, scratch, nullptr,
@@ -143,7 +171,7 @@ bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const Trian
 }
 
 bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, const BuildFlags& flags, std::string_view name,
-                     AccelStructure& tlas, OwnedBuffer& scratch) {
+                     AccelStructure& tlas, ScratchArena& scratch) {
     if (!ctx.rt().accel || instanceCount == 0 || instances == 0 || instances % kInstanceAddressAlignment != 0) return false;
     const VkAccelerationStructureGeometryKHR geo = instancesOf(instances);
     VkDeviceSize updateScratch = 0, size = 0;
@@ -156,7 +184,7 @@ bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddr
     return true;
 }
 
-bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, AccelStructure& tlas, OwnedBuffer& scratch) {
+bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, AccelStructure& tlas, ScratchArena& scratch) {
     if (!tlas || !tlas.isTop() || !tlas.canUpdate() || instanceCount != tlas.primitiveCount_ || instances == 0 || instances % kInstanceAddressAlignment != 0)
         return false;
     const VkAccelerationStructureGeometryKHR geo = instancesOf(instances);
@@ -201,8 +229,8 @@ std::optional<VkDeviceSize> readCompactedSize(const VulkanContext& ctx, VkQueryP
 
 bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const AccelStructure& src, VkDeviceSize compactedSize, std::string_view name,
                        AccelStructure& dst) {
-    // An ALLOW_UPDATE structure does not survive a COMPACT copy on AMD (every ray misses): compact only structures built without update.
-    if (!src || compactedSize == 0 || src.canUpdate()) return false;
+    // `dst` must be empty: a live structure is never overwritten in place (the caller publishes the copy and retires its old owner).
+    if (!src || dst || compactedSize == 0) return false;
     auto created = createAccelStructure(ctx, src.isTop() ? VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
                                         compactedSize, name);
     if (!created) return false;
