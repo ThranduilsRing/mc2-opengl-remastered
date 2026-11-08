@@ -236,9 +236,10 @@ static void IndexModData(
             if (existing == idx.end()) {
                 idx[key] = { fullChild, modId };
             } else {
+                const auto& [existingKey, existingEntry] = *existing;
                 if (logFileResolve) {
                     mc2::fmt::print_out("[mod-dup] {}  winner=[{}]  loser=[{}]\n",
-                           key.c_str(), existing->second.modId.c_str(), mc2::fmt::safe(modId));
+                           key.c_str(), existingEntry.modId.c_str(), mc2::fmt::safe(modId));
                     fflush(stdout);
                 }
                 // Track for level-2 shadowed[] field (built regardless of log level so
@@ -332,8 +333,8 @@ static void WriteModIndexCache(
     mc2::fmt::print(f, "modid {}\n", modId.c_str());
     mc2::fmt::print(f, "{}\n", mc2::fmt::safe(sigLine));
     mc2::fmt::print(f, "count {:d}\n", mc2::fmt::as_size(entries.size()));
-    for (auto& e : entries)
-        mc2::fmt::print(f, "{}\t{}\t{}\n", e.first.c_str(), e.second.path.c_str(), e.second.modId.c_str());
+    for (auto& [key, entry] : entries)
+        mc2::fmt::print(f, "{}\t{}\t{}\n", key.c_str(), entry.path.c_str(), entry.modId.c_str());
     fclose(f);
 }
 
@@ -398,8 +399,8 @@ static std::optional<int> LoadModIndexCache(
             const size_t n = strlen(dataDir);
             bool same = path.size() >= n;
             for (size_t i = 0; same && i < n; ++i) {
-                char a = path[i] == '\\' ? '/' : (char)tolower((unsigned char)path[i]);
-                char b = dataDir[i] == '\\' ? '/' : (char)tolower((unsigned char)dataDir[i]);
+                char a = path[i] == '\\' ? '/' : static_cast<char>(tolower(static_cast<unsigned char>(path[i])));
+                char b = dataDir[i] == '\\' ? '/' : static_cast<char>(tolower(static_cast<unsigned char>(dataDir[i])));
                 same = a == b;
             }
             if (!same) { fclose(f); return std::nullopt; }
@@ -409,11 +410,12 @@ static std::optional<int> LoadModIndexCache(
         if (existing == idx.end()) {
             idx[key] = { path, modid };
         } else {
+            const auto& [existingKey, existingEntry] = *existing;
             // Same loser bookkeeping as IndexModData, so the conflict report
             // does not depend on whether the layer came from cache or a walk.
             if (logFileResolve) {
                 mc2::fmt::print_out("[mod-dup] {}  winner=[{}]  loser=[{}]\n",
-                       key.c_str(), existing->second.modId.c_str(), modid.c_str());
+                       key.c_str(), existingEntry.modId.c_str(), modid.c_str());
                 fflush(stdout);
             }
             shadowed[key].push_back(modid);
@@ -496,9 +498,10 @@ static void IndexModDataCached(
         if (existing == idx.end()) {
             idx[key] = entry;
         } else {
+            const auto& [existingKey, existingEntry] = *existing;
             if (logFileResolve) {
                 mc2::fmt::print_out("[mod-dup] {}  winner=[{}]  loser=[{}]\n",
-                       key.c_str(), existing->second.modId.c_str(), mc2::fmt::safe(modId));
+                       key.c_str(), existingEntry.modId.c_str(), mc2::fmt::safe(modId));
                 fflush(stdout);
             }
             shadowed[key].push_back(modId);
@@ -615,7 +618,10 @@ int LookupModPriority(mc2::czstring dataPath) {
     // outrank the kit's KTX, while the kit still outranks packed stock assets.
     if (owner && (std::string_view(owner) == "mc2-industrial-kit" || std::string_view(owner) == "mc2-vehicle-kit")) return 999999;
     auto it = owner ? g_modPriority.find(owner) : g_modPriority.end();
-    if (it != g_modPriority.end()) return it->second;
+    if (it != g_modPriority.end()) {
+        const auto& [modId, priority] = *it;
+        return priority;
+    }
     return _access(dataPath, 4) == 0 ? 999998 : 1000000;
 }
 
@@ -624,7 +630,8 @@ const char* LookupModOwner(mc2::czstring dataPath) {
     std::string key = NormalizeKey(dataPath);
     auto it = g_modIndex.find(key);
     if (it == g_modIndex.end()) return nullptr;
-    return it->second.modId.c_str();
+    const auto& [modKey, entry] = *it;
+    return entry.modId.c_str();
 }
 
 ModFileSource ResolveModFileSource(std::string_view dataPath) {
@@ -632,9 +639,11 @@ ModFileSource ResolveModFileSource(std::string_view dataPath) {
     const std::string logical(dataPath);
     if (!ShouldSearchMods(logical.c_str())) return source;
     const auto it = g_modIndex.find(NormalizeKey(logical.c_str()));
-    if (it == g_modIndex.end() || _access(it->second.path.c_str(),4) != 0) return source;
-    source.path = it->second.path;
-    source.editable = it->second.modId == g_activeModId;
+    if (it == g_modIndex.end()) return source;
+    const auto& [key, entry] = *it;
+    if (_access(entry.path.c_str(),4) != 0) return source;
+    source.path = entry.path;
+    source.editable = entry.modId == g_activeModId;
     return source;
 }
 
@@ -700,8 +709,8 @@ void EnumerateModFitFiles(mc2::czstring keyPrefix, ModFitCallback cb, void* user
         hits.push_back({ fname, entry.path });
     }
     std::sort(hits.begin(), hits.end()); // sort by filename
-    for (auto& h : hits)
-        cb(h.second.c_str(), userData);
+    for (auto& [filename, path] : hits)
+        cb(path.c_str(), userData);
 }
 
 // Mod duplicate-content scan (informational; never changes which file wins).
@@ -748,14 +757,15 @@ static void ScanModDuplicateContent(const char* absRoot, const std::string& acti
     bool partial = false;
     std::vector<std::string> keys;
     keys.reserve(g_modIndex.size());
-    for (const auto& kv : g_modIndex) keys.push_back(kv.first);
+    for (const auto& [key, entry] : g_modIndex) keys.push_back(key);
     std::sort(keys.begin(), keys.end());
     for (const std::string& key : keys) {
         if (partial || (budgetMs && GetTickCount64() - t0 > budgetMs)) { partial = true; ++unscanned; continue; }
         const ModFileEntry& win = g_modIndex.at(key);
         std::vector<std::pair<std::string, std::string>> losers;   // layer label, path
         if (auto sit = g_shadowedBy.find(key); sit != g_shadowedBy.end()) {
-            for (const std::string& id : sit->second) {
+            const auto& [shadowedKey, ids] = *sit;
+            for (const std::string& id : ids) {
                 const size_t h = id.rfind("#scratch");
                 std::string path = h != std::string::npos
                     ? std::string(absRoot) + id.substr(0, h) + "/.scratch/" + key
@@ -948,7 +958,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     }
 
     g_modPriority[modId] = 0;
-    for (size_t i = 0; i < deps.size(); ++i) g_modPriority.try_emplace(deps[i], int(i + 1));
+    for (size_t i = 0; i < deps.size(); ++i) g_modPriority.try_emplace(deps[i], static_cast<int>(i + 1));
     // Layer 0 (scratch overrides): mods/<active>/.scratch/data/,
     // indexed BEFORE the active mod so first-wins puts it on top. Always walked fresh
     // (never cached: small, and a cache would hide edits). Presence of files is the
@@ -999,7 +1009,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir, "data/");
-        crashbundle_mod(dep.c_str(), int(i + 1));
+        crashbundle_mod(dep.c_str(), static_cast<int>(i + 1));
         mc2::fmt::print_out("[mod] [{:d}/{:d}] dep '{}': {:d} new files\n",
                mc2::fmt::as_size(i+2), mc2::fmt::as_size(deps.size()+1), dep.c_str(), mc2::fmt::as_size(g_modIndex.size() - before));
     }
@@ -1014,7 +1024,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     if (stockMode) {
         size_t erased = 0;
         for (auto it = g_modIndex.begin(); it != g_modIndex.end(); ) {
-            const std::string& k = it->first;  // NormalizeKey: lowercase, '/' separators
+            const auto& [k, entry] = *it;  // NormalizeKey: lowercase, '/' separators
             const bool inMissions = (k.rfind("data/missions/", 0) == 0);
             const bool isAbx = (k.size() >= 4 && k.compare(k.size() - 4, 4, ".abx") == 0);
             if (inMissions && isAbx) { it = g_modIndex.erase(it); ++erased; }
@@ -1028,7 +1038,8 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     // bundled kit for every reader (File, texture probes and importer adapters),
     // including when the index came from cache. Other mounted mods still win.
     for (auto it = g_modIndex.begin(); it != g_modIndex.end(); ) {
-        if ((it->second.modId == "mc2-industrial-kit" || it->second.modId == "mc2-vehicle-kit") && _access(it->first.c_str(), 4) == 0)
+        const auto& [key, entry] = *it;
+        if ((entry.modId == "mc2-industrial-kit" || entry.modId == "mc2-vehicle-kit") && _access(key.c_str(), 4) == 0)
             it = g_modIndex.erase(it);
         else ++it;
     }
@@ -1047,7 +1058,10 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
             e.key = key;
             e.winnerModId = entry.modId;
             auto sit = g_shadowedBy.find(key);
-            if (sit != g_shadowedBy.end()) e.shadowedModIds = sit->second;
+            if (sit != g_shadowedBy.end()) {
+                const auto& [shadowedKey, ids] = *sit;
+                e.shadowedModIds = ids;
+            }
             // A scratch override of its own project is intentional, not a conflict.
             if (const size_t h = e.winnerModId.rfind("#scratch"); h != std::string::npos) {
                 const std::string base = e.winnerModId.substr(0, h);
@@ -1198,10 +1212,13 @@ void buildLocked()
 			// corrupt winner can fall back to the next mod without breaking precedence.
 			auto sh = g_shadowedBy.find(k);
 			if (sh != g_shadowedBy.end()) {
-				std::vector<std::string> ids = sh->second;
+				const auto& [shadowedKey, shadowedIds] = *sh;
+				std::vector<std::string> ids = shadowedIds;
 				auto prio = [](const std::string& id) {
 					auto pr = g_modPriority.find(id.substr(0, id.rfind("#scratch")));
-					return pr != g_modPriority.end() ? pr->second : 0;
+					if (pr == g_modPriority.end()) return 0;
+					const auto& [modId, priority] = *pr;
+					return priority;
 				};
 				std::stable_sort(ids.begin(), ids.end(), [&](const std::string& a, const std::string& b) { return prio(a) < prio(b); });
 				for (const std::string& id : ids) {
@@ -1217,8 +1234,13 @@ void buildLocked()
 		for (const auto& [id, cnt] : perMod) {
 			++mounts;
 			auto pr = g_modPriority.find(id);
+			int priority = 0;
+			if (pr != g_modPriority.end()) {
+				const auto& [modId, value] = *pr;
+				priority = value;
+			}
 			mc2::fmt::print_out("[VFS] mount mod name={} files={:d} priority={:d}\n", mc2::fmt::safe(id.c_str()),
-			                    mc2::fmt::as_size(cnt), pr != g_modPriority.end() ? pr->second : 0);
+			                    mc2::fmt::as_size(cnt), priority);
 		}
 	}
 
@@ -1294,14 +1316,18 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 	if (!g_index.built) buildLocked();
 	const std::string k = key(raw);
 	const auto it = g_index.entries.find(k);
-	if (it != g_index.entries.end()) out = it->second;
+	if (it != g_index.entries.end()) {
+		const auto& [entryKey, entries] = *it;
+		out = entries;
+	}
 
 	// Alias rung, File::open order: mod -> loose -> size-stripped loose -> FST. Only a loose file can serve the strip.
 	const std::string stripped = stripSizeDir(k);
 	if (!stripped.empty()) {
 		const auto sit = g_index.entries.find(stripped);
-		if (sit != g_index.entries.end())
-			for (const Entry& c : sit->second)
+		if (sit != g_index.entries.end()) {
+			const auto& [entryKey, entries] = *sit;
+			for (const Entry& c : entries)
 				if (c.provider == Provider::Loose) {
 					Entry a = c;
 					a.key = k;
@@ -1311,6 +1337,7 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 					out.insert(out.begin() + static_cast<std::ptrdiff_t>(pos), std::move(a));
 					break;
 				}
+		}
 	}
 	for (size_t i = 0; i < out.size(); ++i) out[i].shadowed = static_cast<unsigned>(out.size() - 1 - i);
 	return out;
@@ -1427,11 +1454,11 @@ std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
 	const std::string e = key(ext);
 	std::vector<Entry> out;
 	for (auto it = g_index.entries.lower_bound(dir); it != g_index.entries.end(); ++it) {
-		const std::string& k = it->first;
+		const auto& [k, entries] = *it;
 		if (k.compare(0, dir.size(), dir) != 0) break;
 		if (k.find('/', dir.size()) != std::string::npos) continue;   // direct children only
 		if (!e.empty() && (k.size() < dir.size() + e.size() || k.compare(k.size() - e.size(), e.size(), e) != 0)) continue;
-		out.push_back(it->second.front());   // the winner; one entry per key
+		out.push_back(entries.front());   // the winner; one entry per key
 	}
 	return out;   // std::map order == sorted by key
 }

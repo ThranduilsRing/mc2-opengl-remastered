@@ -160,9 +160,11 @@ void batcher_compareMechSnapshot(RenderSnapshot* snap) {
         // upload used, so a divergence here means the persist capture was wrong.
         {
             auto it = s_mechHandleToMaterialIdx.find(row.texHandle);
-            const uint32_t liveMat = (s_mechMaterialGpuEnabled &&
-                                      it != s_mechHandleToMaterialIdx.end())
-                ? it->second : 0xFFFFFFFFu;
+            uint32_t liveMat = 0xFFFFFFFFu;
+            if (s_mechMaterialGpuEnabled && it != s_mechHandleToMaterialIdx.end()) {
+                const auto& [handle, index] = *it;
+                liveMat = index;
+            }
             if (row.materialIdx != liveMat)
                 ++snap->mechMaterialIdxMismatch;
         }

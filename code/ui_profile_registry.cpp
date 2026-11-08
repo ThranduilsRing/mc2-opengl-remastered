@@ -72,8 +72,10 @@ struct UIProfileRegistry {
         openOnce();
         if (!srcOk) return nullptr;
         auto hit = have.find(stem);
-        if (hit != have.end())
-            return hit->second ? &cache[stem] : nullptr;
+        if (hit != have.end()) {
+            const auto& [name, present] = *hit;
+            return present ? &cache[stem] : nullptr;
+        }
         // First time: seek the chassis-stem block. Absent -> record miss.
         if (fit.seekBlock(stem.c_str()) != NO_ERR) {
             have[stem] = false;

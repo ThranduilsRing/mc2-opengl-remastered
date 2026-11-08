@@ -55,10 +55,16 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
     auto& cache = s->patchCache;
     if (fine) {
         auto dit = s->diagPatchCache.find(dkey);
-        if (dit != s->diagPatchCache.end()) return &dit->second;
+        if (dit != s->diagPatchCache.end()) {
+            const auto& [cacheKey, mesh] = *dit;
+            return &mesh;
+        }
     } else {
         auto it = cache.find(key);
-        if (it != cache.end()) return &it->second;
+        if (it != cache.end()) {
+            const auto& [cacheKey, mesh] = *it;
+            return &mesh;
+        }
     }
     if (qcX <= 0 || qcY <= 0) return nullptr;
     auto fineH = [&](int lx, int ly) {
@@ -129,7 +135,10 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
     const uint32_t key = (static_cast<uint32_t>((qcX & 0xFFFF))) | ((static_cast<uint32_t>((qcY & 0xFFFF))) << 16)
                         ^ (static_cast<uint32_t>((lodStep & 0xFF)) << 24);
     auto it = s->skirtCache.find(key);
-    if (it != s->skirtCache.end()) return &it->second;
+    if (it != s->skirtCache.end()) {
+        const auto& [cacheKey, mesh] = *it;
+        return &mesh;
+    }
     if (qcX <= 0 || qcY <= 0) return nullptr;
 
     std::vector<int> xs, ys;
@@ -179,8 +188,9 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
       if (vmaMapMemory(s->allocator, sm.ibo.allocation(), &p) == VK_SUCCESS) {
           std::memcpy(p, skirtIdx.data(), static_cast<size_t>(iboBytes)); vmaUnmapMemory(s->allocator, sm.ibo.allocation()); } }
 
-    auto res = s->skirtCache.emplace(key, std::move(sm));
-    return &res.first->second;
+    const auto [cachedIt, inserted] = s->skirtCache.emplace(key, std::move(sm));
+    const auto& [cacheKey, mesh] = *cachedIt;
+    return &mesh;
 }
 
 // The shadow island hands its depth images over in DEPTH_STENCIL_READ_ONLY (its render pass final layout); the descriptor must name the layout the image is in at

@@ -277,10 +277,11 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         alloc.descriptorSetCount=kVfxSlots;alloc.pSetLayouts=layouts;
         if (MC2_VK_ALLOC_SETS_CHAIN(s->spritePool,alloc,page.set)!=VK_SUCCESS) return std::nullopt;
-        it=s->pages.emplace(id,page).first;
+        const auto [cachedIt, inserted] = s->pages.emplace(id,page);
+        it=cachedIt;
         vlog("sprite page identity: source=%u texture=%llu (%zu, pools=%zu).",handle,static_cast<unsigned long long>(id),s->pages.size(),s->spritePool.length());
     }
-    auto& page=it->second;
+    auto& [pageId, page]=*it;
     // Invalid/missing pages get the visible placeholder; eventual uploads change this view.
     const VkImageView view=ctx.textures().view(RenderCore::uiTextureHandle(id));
     const bool vegStale = handle==kVfxVegetationAtlas && s->vegBoundGen[par]!=s->vegGen;
