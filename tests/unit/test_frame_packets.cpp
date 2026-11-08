@@ -159,6 +159,20 @@ TEST_CASE("fx packet effect ids resolve only against their own list") {
     CHECK(list.effect(b) == nullptr);
 }
 
+TEST_CASE("terrain dust view keeps its retained effect and live bit after the owner drops it") {
+    using namespace mc2::render_view;
+    alignas(16) unsigned char storage[16]{};
+    RenderView view;                       // extract: effect pointer and live bit sampled once
+    view.effects[0] = reinterpret_cast<gosFX::Effect*>(storage);
+    view.flags |= EffectLive0;
+    RenderView drawn = view;               // the frozen copy the draw reads
+    view = RenderView{};                   // owner released (slot re-inited); retire holds the effect itself
+    CHECK(drawn.effects[0] == reinterpret_cast<gosFX::Effect*>(storage));
+    CHECK(drawn.has(EffectLive0));
+    CHECK_FALSE(view.has(EffectLive0));
+    CHECK(view.effects[0] == nullptr);     // a stale handle resolves to nothing, never to the old effect
+}
+
 namespace {
 ViewPacket mainView(float x, uint64_t frame) {
     ViewPacket v;

@@ -28,6 +28,7 @@
 #endif
 
 #include<gosfx/gosfxheaders.hpp>
+#include"tick_commit.h"
 //---------------------------------------------------------------------------
 // Macro Definitions
 //#define NO_RAM_FOR_BUILDING				0xDCDC0006
@@ -175,7 +176,7 @@ class TerrainObject : public GameObject {
 			numCellsCovered = 0;
 			cellsCovered = nullptr;
 
-			bldgDustPoofEffect = nullptr;
+			mc2::tick::releaseEffect(bldgDustPoofEffect);	// a pooled re-init must not free an effect the frame still draws
 		}
 
 	   	TerrainObject (void) : GameObject() {
