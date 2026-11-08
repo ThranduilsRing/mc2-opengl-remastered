@@ -266,6 +266,20 @@ def r_sim(window, tokens):
         return _r_sim(window, tokens)
 
 
+def sim_checkout(git, branch):
+    """Put the clone on `branch` for a sim run -> (head, problem). A sim result must name the staged window's head: a missing branch or a
+    HEAD that is not the branch tip (W133 review P1-1) is a problem, never a run at whatever HEAD the clone happens to be on."""
+    if git("rev-parse", "--verify", "-q", branch).returncode:
+        return "", f"{branch} is missing on the laptop clone: push the staged window first (a sim must not run at another head)"
+    if git("checkout", "-q", "-f", branch).returncode:
+        return "", "remote git checkout failed for " + branch
+    head = git("rev-parse", "HEAD").stdout.strip()
+    tip = git("rev-parse", branch).stdout.strip()
+    if not head or head != tip:
+        return head, f"laptop clone HEAD {head[:9] or '(none)'} is not {branch} ({tip[:9] or '(none)'})"
+    return head, ""
+
+
 def sim_args(tokens):
     """(rows, pair) from the remote `sim` tokens: row names plus --pair."""
     return [t for t in tokens if not t.startswith("-")], "--pair" in tokens
@@ -279,9 +293,9 @@ def _r_sim(window, tokens):
     git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e,
                                     **console_child.child_kwargs(redirected=True))
     branch = "claude/stage-" + window
-    if git("rev-parse", "--verify", "-q", branch).returncode == 0 and git("checkout", "-q", "-f", branch).returncode:
-        sys.exit("remote git checkout failed for " + branch)
-    head = git("rev-parse", "HEAD").stdout.strip()
+    head, problem = sim_checkout(git, branch)
+    if problem:
+        sys.exit("laptop_gate --sim: " + problem)
     out = Path(G, "out", window, "sim")
     shutil.rmtree(out, ignore_errors=True)   # nothing from an earlier sim run may survive; the gate's own out/<W> files stay
     out.mkdir(parents=True, exist_ok=True)
@@ -808,7 +822,7 @@ def sim_command_list(window, rows=None, pair=False):
     return [" ".join(f"{k}={v}" for k, v in env.items()) + " " + subprocess.list2cmdline(cmd) for _, cmd, env in steps]
 
 
-def merge_sim_summary(dest, sim):
+def merge_sim_summary(dest, sim, expected_head=None):
     """Put the pulled sim summary under the "sim" key of dest/summary.json (created when the window has no laptop summary yet).
     -> a problem string when the sim head is not the window summary's head, else ''."""
     path = dest / "summary.json"
@@ -817,7 +831,9 @@ def merge_sim_summary(dest, sim):
     except (OSError, ValueError):
         sm = {}
     why = ""
-    if sm.get("head") and sim.get("head") and not _same_sha(sm["head"], sim["head"]):
+    if expected_head and not _same_sha(expected_head, sim.get("head")):   # the PC's claude/stage-W tip, whether or not a summary exists
+        why = f"sim head {sim.get('head') or '(none)'} is not the staged head {expected_head}"
+    elif sm.get("head") and sim.get("head") and not _same_sha(sm["head"], sim["head"]):
         why = f"sim head {sim['head']} is not the window summary head {sm['head']}"
     sm["sim"] = sim
     dest.mkdir(parents=True, exist_ok=True)
@@ -846,7 +862,12 @@ def sim_main(a):
     except (OSError, ValueError):
         print("laptop_gate --sim: sim/summary.json missing or unreadable")
         return 1
-    why = merge_sim_summary(dest, sim)
+    try:
+        expected = subprocess.check_output(["git", "rev-parse", "claude/stage-" + w], text=True,
+                                           **console_child.child_kwargs(redirected=True)).strip()
+    except (OSError, subprocess.CalledProcessError):
+        expected = ""
+    why = merge_sim_summary(dest, sim, expected_head=expected or f"(claude/stage-{w} not found on the PC)")
     print("SIM", json.dumps({k: v for k, v in sim.items() if k != "commands"}), f"total_wall_s={time.time() - t0:.0f}")
     if why or run_rc:
         print(f"laptop_gate --sim: REJECTED: {why or 'ssh exit status ' + str(run_rc)}")

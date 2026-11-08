@@ -62,7 +62,13 @@ def test_gpu_routing_failure_clears_passed():
 def test_gpu_routing_check_skips_headless_runs():
     """A --headless run opens no Vulkan device: the routing check must not fire on it (W133 --sim: every headless determinism row went red)."""
     import ast
-    tree = ast.parse((ROOT / "scripts/run_smoke.py").read_text(encoding="utf-8"))
-    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
-    sites = [n for n in ast.walk(main) if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "_gpu_msg"]
-    assert sites and all(isinstance(s.value, ast.IfExp) and "args.headless" in ast.unparse(s.value.test) for s in sites)
+    import run_smoke
+    env = {"MC2_HARNESS_GPU": "2070", "MC2_VK_DEVICE": "2070"}   # an explicit request the (empty) device list cannot satisfy
+    msg = run_smoke.gpu_routing_failure(False, env, False, [], "")
+    assert msg and "GPU routing" in msg, "a windowed run with an unroutable GPU request must report the mismatch"
+    assert run_smoke.gpu_routing_failure(True, env, False, [], "") is None, "a headless run must never report a routing failure"
+    assert run_smoke.gpu_routing_failure(True, env, False, ["Some Other GPU"], "") is None
+    # main() must feed the headless flag through that helper (the behaviour above is only worth anything if the call site uses it)
+    main = next(n for n in ast.parse((ROOT / "scripts/run_smoke.py").read_text(encoding="utf-8")).body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    assert any(isinstance(n, ast.Call) and getattr(n.func, "id", "") == "gpu_routing_failure" and "args.headless" in ast.unparse(n.args[0])
+               for n in ast.walk(main))

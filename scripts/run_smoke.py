@@ -579,6 +579,14 @@ DEFAULT_DURATION_S = 15
 COLD_CACHE_EXTRA_GRACE_S = 120
 
 
+def gpu_routing_failure(headless, env, visible, devices, stdout_text):
+    """The GPU-routing failure text for one run, or None. --headless opens no GPU device, so there is no device line to route (W133 --sim:
+    the routing HARD FAIL turned every headless determinism row red; sim_determinism.headless_exit_ok refuses any HARD FAIL line)."""
+    if headless:
+        return None
+    return nofocus.gpu_mismatch(env, visible, devices, stdout_text)
+
+
 def cold_cache_extra_grace(exe, extra=COLD_CACHE_EXTRA_GRACE_S):
     """Extra load grace (s) when this exe has not been launched by the harness since it was deployed; records the launch."""
     exe = Path(exe)
@@ -1771,8 +1779,8 @@ def main():
         # The GPU the run asked for must be the one the engine logged ([VK_PROFILE] device): routing that does not reach the device pick is red.
         # --headless opens no GPU device, so there is no device line to route (W133 --sim: the routing HARD FAIL turned every headless
         # determinism row red; sim_determinism.headless_exit_ok refuses any HARD FAIL line).
-        _gpu_msg = None if args.headless else nofocus.gpu_mismatch(
-            {**os.environ, **cfg.env_extra}, bool(args.show_window or os.environ.get("MC2_SMOKE_VISIBLE")),
+        _gpu_msg = gpu_routing_failure(
+            args.headless, {**os.environ, **cfg.env_extra}, bool(args.show_window or os.environ.get("MC2_SMOKE_VISIBLE")),
             [p.device for p in result.summary.vk_profile], result.stdout_text)
         if _gpu_msg:
             _gpu_failures.append(f"{label}: {_gpu_msg}")

@@ -432,7 +432,8 @@ def main(argv=None):
     bad = base_problems(a.install_a, a.install_b, a.exe_a, a.exe_b, a.install)
     if bad and not a.allow_base_mismatch:
         sys.exit("ab.py: refusing an A/B across different bases:\n  " + "\n  ".join(bad)
-                 + "\n  (deliberate cross-base comparison: --allow-base-mismatch; the montage is then stamped CROSS-BASE)")
+                 + "\n  fix: deploy side A's base to the install (so both sides run the same base), or pass --allow-base-mismatch"
+                 + " for a deliberate cross-base comparison (the montage is then stamped CROSS-BASE)")
     for b in bad:
         print("[ab] CROSS-BASE (allowed): " + b, flush=True)
     out.mkdir(parents=True, exist_ok=True)

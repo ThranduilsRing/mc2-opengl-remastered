@@ -372,6 +372,37 @@ def test_merge_sim_summary_creates_merges_and_rejects_head_mismatch(tmp_path):
     assert "not the window summary head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40})
 
 
+def test_merge_sim_summary_rejects_wrong_staged_head_with_or_without_summary(tmp_path):
+    import json
+    dest = tmp_path / "W"   # no summary yet: the old check was skipped here
+    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40}, expected_head="a" * 40)
+    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {}, expected_head="a" * 40)
+    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {"head": "a" * 40}, expected_head="(claude/stage-W not found on the PC)")
+    (dest / "summary.json").write_text(json.dumps({"head": "a" * 40}))
+    assert "not the staged head" in laptop_gate.merge_sim_summary(dest, {"head": "b" * 40}, expected_head="a" * 40)
+    assert laptop_gate.merge_sim_summary(dest, {"head": "a" * 40}, expected_head="a" * 40) == ""
+
+
+def test_sim_checkout_refuses_missing_branch_and_head_off_the_tip():
+    import subprocess
+
+    def fake(answers, calls=None):
+        def git(*a):
+            if calls is not None:
+                calls.append(a)
+            key = " ".join(a) if a[0] == "rev-parse" else a[0]
+            rc, out = answers.get(key, (0, ""))
+            return subprocess.CompletedProcess(a, rc, out, "")
+        return git
+    b = "claude/stage-W"
+    head, why = laptop_gate.sim_checkout(fake({"rev-parse --verify -q " + b: (1, "")}), b)
+    assert why and "missing" in why
+    head, why = laptop_gate.sim_checkout(fake({"rev-parse HEAD": (0, "a" * 40 + "\n"), "rev-parse " + b: (0, "b" * 40 + "\n")}), b)
+    assert "is not " + b in why
+    head, why = laptop_gate.sim_checkout(fake({"rev-parse HEAD": (0, "a" * 40 + "\n"), "rev-parse " + b: (0, "a" * 40 + "\n")}), b)
+    assert (head, why) == ("a" * 40, "")
+
+
 def test_mods_problems_and_idempotent_mirror_diff(tmp_path):
     src, dst = tmp_path / "src", tmp_path / "dst"
     mods = {f"{n}/data/a.bin": (b"x", 100) for n in laptop_gate.MODS_NAMES}
