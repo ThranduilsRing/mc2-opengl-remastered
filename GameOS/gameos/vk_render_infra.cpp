@@ -6,6 +6,7 @@
 #include "diagnostic_trace.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
+#include "vk_material_sampler.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include "../../RenderCore/UpscalerProvider.h"
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp

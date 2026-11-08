@@ -24,18 +24,10 @@ void mc2PrewarmMissionPipelines();
 #include <string>
 #include <string_view>
 #include <span>
-#include <functional>
-#include <initializer_list>
-#include "vk_owned.h"
 
 namespace mc2vk::infra {
 void init(VkDevice device, VkPhysicalDevice physical);
 void materialSampler(VkSamplerCreateInfo& info);
-// Build a trilinear material sampler at the current effective bias (recorded in usedBias).
-bool makeMaterialSampler(VkDevice device, OwnedSampler& samp, VkSamplerAddressMode address, float& usedBias);
-struct SamplerRebuild { OwnedSampler* samp; std::function<bool()> make; };
-// When the effective resolve state changed since usedBias: retire each live sampler (freed after its in-flight frames) and rebuild it. True = rebuilt, owner rewrites its sets.
-bool refreshSamplers(float& usedBias, std::initializer_list<SamplerRebuild> items);
 bool materialBiasStale(float usedBias);   // the sampler was built at usedBias; the effective resolve state has since changed
 void materialBiasTick();                  // once per present frame: logs [VK_PRESENT] material_mip_bias on every change
 void shutdown();
