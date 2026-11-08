@@ -46,3 +46,14 @@ def test_cold_cache_grace_applies_once_per_deployed_exe(tmp_path):
 def test_exe_directory_names_the_exe_path(tmp_path):
     r = _run("--mission", "mc2_01", "--exe", str(tmp_path), "--no-wait")
     assert r.returncode == 2 and "mc2.exe" in r.stderr and "directory" in r.stderr
+
+
+def test_gpu_routing_failure_clears_passed():
+    """report.md says FAIL for a GPU routing mismatch; the exit code must too (the laptop gate recorded PASS for it, W131/W132)."""
+    import ast
+    tree = ast.parse((ROOT / "scripts/run_smoke.py").read_text(encoding="utf-8"))
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    clears = [n for n in ast.walk(main) if isinstance(n, ast.If) and isinstance(n.test, ast.Name) and n.test.id == "_gpu_failures"
+              and any(isinstance(b, ast.Assign) and getattr(b.targets[0], "id", "") == "passed"
+                      and isinstance(b.value, ast.Constant) and b.value.value is False for b in n.body)]
+    assert clears, "run_smoke.main must set passed = False when _gpu_failures is non-empty"

@@ -1962,6 +1962,12 @@ def main():
         print(f"[runner] [RESOLUTION] HARD FAIL: {'; '.join(_resolution_failures)}", file=sys.stderr)
         passed = False
 
+    # GPU routing mismatch (run_smoke "RUN INVALID (GPU routing)"): report.md already says FAIL; the exit code must too
+    # (W131/W132: the laptop forced AMD on a 1050 Ti, the report said FAIL, the exit was 0 and merge_gate recorded PASS).
+    if _gpu_failures:
+        print(f"[runner] [GPU] HARD FAIL: {'; '.join(_gpu_failures)}", file=sys.stderr)
+        passed = False
+
     # SMOKE-GATE-GUARD-1: --require-gate assertion.
     # Gate → dotted counter path in latest_render_state.json["frame_graph"].
     # Counter must be > 0 to prove the gate reached the child and did work.
