@@ -194,7 +194,7 @@ void MPStats::update()
 		long textureHandle = MissionBriefingScreen::getMissionTGA( MPlayer->missionSettings.map );
 
 		statics[15].setTexture( textureHandle );
-		statics[15].setUVs( 0, 127, 127, 0 );
+		statics[15].setUVs( 0, statics[15].getFileHeight() - 1.f, statics[15].getFileHeight() - 1.f, 0 );
 		statics[15].setColor( 0xffffffff );
 
 		long playerCount = 0;

@@ -73,6 +73,13 @@ public:
         return &icon;
     }
 
+    // Lower VFS rank wins: a mod atlas must beat a base game's split icon.
+    const Icon* lookup(std::string named, std::string legacy, int namedRank, int sheetRank) const {
+        if (namedRank <= sheetRank)
+            if (const Icon* icon = find(std::move(named))) return icon;
+        return find(std::move(legacy));
+    }
+
     bool pack() {
         std::vector<Icon*> ordered;
         size_t area = 0;
