@@ -79,6 +79,7 @@ struct Terrain {
     static inline long blocksMapSide = 1, realVerticesMapSide = 20;
     static inline float worldUnitsMapSide = 2560.0f;
     static inline float oneOverWorldUnitsMapSide = 1.0f / worldUnitsMapSide;
+    static inline float waterElevation = 0.0f;
     static inline glm::vec3 mapTopLeft3d{-1280, 1280, 0};
     static inline TerrainColorMap* terrainTextures2 = nullptr;
     static bool IsValidTerrainPosition(glm::vec3 position);
@@ -209,8 +210,9 @@ TEST_CASE("TerrainHeightCompat/visual bake and near plane ridge") {
     CHECK(floor == 94.0f);
     // The ridge at (64,-32) is between corners, and the plane slopes down 4 wu.
     CHECK(floor - 4 >= 80 + 10);
-    terrain.water = 120;
+    Terrain::waterElevation = 120;
     CHECK(TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10) == 134.0f);
+    Terrain::waterElevation = 0;
     TerrainRuntime::setCpuVisualHeight(nullptr, 0);
     CHECK(TerrainRuntime::sampleVisualHeight(midpoint) == 7.0f);
     land = nullptr;
