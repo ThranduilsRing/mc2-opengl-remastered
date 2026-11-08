@@ -1,5 +1,5 @@
 // Immutable, sampled TG pose inputs. No engine objects or animation pointers
-// cross the fork/join barrier; publication stays at the original call site.
+// reach the kernel; publication stays at the original call site.
 #pragma once
 #include "math/mc2_math.h"
 #include "math/mc2_xform.h"
@@ -13,6 +13,7 @@ struct PoseNodeInput {
     int parent = -1;
     bool current = false;
     bool animated = false;
+    bool inverseRequired = true; // false leaves the output inverse untouched
     glm::quat base = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f), animation = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f);
     glm::vec3 translation{};
     PoseMatrices cached;
@@ -37,24 +38,38 @@ inline glm::mat4 poseLocal(const PoseNodeInput& n) {
     return local;
 }
 
-inline glm::mat4 poseChain(std::span<const PoseNodeInput> nodes, int index) {
-    // Each job walks its immutable ancestry. Cached parents retain precisely
-    // the matrices the old calcedThisFrame test would have reused.
-    if (nodes[index].current) return nodes[index].cached.local;
-    const auto& node = nodes[index];
-    auto local = poseLocal(node);
-    if (node.parent >= 0)
-        local = local * poseChain(nodes, node.parent);
-    return local;
-}
+struct PoseEvaluationObserver {
+    void operator()(int, bool) const {}
+};
 
-inline PoseMatrices poseNode(std::span<const PoseNodeInput> nodes,
-                            const glm::mat4& origin, int index) {
-    if (nodes[index].current) return nodes[index].cached;
-    PoseMatrices result;
-    result.local = poseChain(nodes, index);
-    result.world = result.local * origin;
-    result.inverse = glm::inverse(result.world);
-    return result;
+// Scratch and results belong to this evaluation. The observer is compiled out
+// in production; tests count the actual local/inverse evaluations through it.
+template<class Observer = PoseEvaluationObserver>
+inline void poseNodes(std::span<const PoseNodeInput> nodes,
+                      const glm::mat4& origin, std::span<PoseMatrices> results,
+                      std::span<unsigned char> evaluated, Observer observe = {}) {
+    for (size_t i = 0; i < nodes.size(); ++i) evaluated[i] = 0;
+    const auto evaluate = [&](auto&& self, int index) -> void {
+        if (evaluated[index]) return;
+        const auto& node = nodes[index];
+        auto& result = results[index];
+        if (node.current) {
+            result = node.cached;
+        } else {
+            if (node.parent >= 0) self(self, node.parent);
+            result.local = poseLocal(node);
+            observe(index, false);
+            // Preserve local * (parent * (...)); never reassociate with origin.
+            if (node.parent >= 0) result.local = result.local * results[node.parent].local;
+            result.world = result.local * origin;
+            if (node.inverseRequired) {
+                result.inverse = glm::inverse(result.world);
+                observe(index, true);
+            }
+        }
+        evaluated[index] = 1;
+    };
+    // Node storage need not be topologically sorted (including imported shapes).
+    for (size_t i = 0; i < nodes.size(); ++i) evaluate(evaluate, static_cast<int>(i));
 }
 } // namespace mc2::sim
