@@ -7,6 +7,7 @@ extern uint32_t mc2LightSlotBakedHighWater();
 #include "gos_static_prop_registry.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "battle_bench_sink.h"
 #include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
@@ -487,6 +488,29 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 		return true;  // baked successfully
 	}
 	return false;  // gpu objects not enabled or CacheGpuLightData early-returned
+}
+
+void BldgAppearance::recordStaticUpdateReason() const
+{
+	// Count full presentation updates, not the many eligibility probes in render/registration.
+	// Eligibility precedes registration here so an unregistered animated actor is attributed
+	// to animation rather than hiding every disqualifier in the unregistered bucket.
+	using namespace mc2::battlebench;
+	Field reason = BldgUpdateOther;
+	if (!appearType) reason = BldgUpdateType;
+	else if (mc2WorldMarkerAppearance(appearType->name)) reason = BldgUpdateMarker;
+	else if (appearType->spinMe) reason = BldgUpdateSpin;
+	else if (!s_bldgTypeAnimStaticEligible && bldgTypeHasAnimations(appearType)) reason = BldgUpdateLegacyAnim;
+	else if (drawFlash) reason = BldgUpdateFlash;
+	else if (destructFX) reason = BldgUpdateDestruct;
+	else if (activity || activity1) reason = BldgUpdateActivity;
+	else if (appearType->rotationalNodeId[0] != '\0' && S_stricmp(appearType->rotationalNodeId, "NONE") != 0) reason = BldgUpdateRotation;
+	else if (bldgGestureHasAnimation(appearType, unitAnim().bdAnimationState)) reason = BldgUpdateAnimation;
+	else if (!staticReg.registered) reason = BldgUpdateUnregistered;
+	else if (currentLOD != desiredRenderLOD()) reason = BldgUpdateLod;
+	else if (staticReg.shape != bldgShape) reason = BldgUpdateShape;
+	else if (needsFullBakeNextFrame) reason = BldgUpdateBake;
+	add(reason);
 }
 
 bool BldgAppearance::IsStaticNow() const

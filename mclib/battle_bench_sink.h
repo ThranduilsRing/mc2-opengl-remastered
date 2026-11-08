@@ -40,6 +40,10 @@ enum class Field : unsigned {
     PresCollectNs, PresBoundaryNs, PresCompositeWaitNs, PresQueuePresentNs,
     // Terrain-object walks on main (D2 census): presentation walk, extract terrain list, render walk. Nanoseconds.
     WalkPresNs, WalkExtractNs, WalkRenderNs,
+    BldgUpdateType, BldgUpdateMarker, BldgUpdateSpin, BldgUpdateLegacyAnim,
+    BldgUpdateFlash, BldgUpdateDestruct, BldgUpdateActivity, BldgUpdateRotation,
+    BldgUpdateAnimation, BldgUpdateUnregistered, BldgUpdateLod, BldgUpdateShape,
+    BldgUpdateBake, BldgUpdateOther,
     NumFields
 };
 using enum Field;
@@ -51,7 +55,11 @@ inline constexpr const char* kFieldNames[FieldCount] = {
     "walk.visited", "walk.recalc", "walk.ground", "walk.touch", "walk.update",
     "pres.acquire_ns", "pres.tail_ns", "pres.tail_hud_ns", "pres.tail_imgui_ns", "pres.tail_blit_ns", "pres.tail_submit_ns",
     "pres.collect_ns", "pres.boundary_ns", "pres.composite_wait_ns", "pres.queue_present_ns",
-    "walk.pres_ns", "walk.extract_ns", "walk.render_ns"};
+    "walk.pres_ns", "walk.extract_ns", "walk.render_ns",
+    "bldg.update.type", "bldg.update.marker", "bldg.update.spin", "bldg.update.legacy_anim",
+    "bldg.update.flash", "bldg.update.destruct", "bldg.update.activity", "bldg.update.rotation",
+    "bldg.update.animation", "bldg.update.unregistered", "bldg.update.lod", "bldg.update.shape",
+    "bldg.update.bake", "bldg.update.other"};
 inline std::atomic<uint64_t> cur[FieldCount]{};
 inline std::atomic<uint64_t> tot[FieldCount]{};
 inline std::atomic<uint64_t> totFrames{0};
