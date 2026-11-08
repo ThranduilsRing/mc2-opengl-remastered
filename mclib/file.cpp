@@ -284,7 +284,7 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
                 if(!Environment.checkCDForFiles) {
                     ++g_resolveMisses;
                     if (logFileResolve >= 2) {
-                        std::string key = NormalizeKey(m_fileName.c_str());
+                        std::string key = NormalizeKey(m_fileName);
                         EmitResolveRecord(key.c_str(), fName, "MISS", "", nullptr);
                     }
                     return 2;
@@ -318,7 +318,7 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 						{
 							++g_resolveMisses;
 							if (logFileResolve >= 2) {
-								std::string key = NormalizeKey(m_fileName.c_str());
+								std::string key = NormalizeKey(m_fileName);
 								EmitResolveRecord(key.c_str(), fName, "MISS", "", nullptr);
 							}
 							return 2;
@@ -345,7 +345,7 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 				{
 					++g_resolveOpens;
 					if (logFileResolve >= 2 && handle != INVALID_HANDLE_VALUE) {
-						std::string key = NormalizeKey(m_fileName.c_str());
+						std::string key = NormalizeKey(m_fileName);
 						EmitResolveRecord(key.c_str(), fName, "cd", actualPath, nullptr);
 					}
 					setup();
