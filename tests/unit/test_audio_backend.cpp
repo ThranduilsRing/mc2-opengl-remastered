@@ -192,7 +192,17 @@ TEST_CASE("AudioBackend/two music slots stream independently across catalog rele
     REQUIRE(capture.record());
     CHECK(capture.mean(0) < 1);
     CHECK(capture.mean(1) > 1000);
+    // GOS resources may be shared by channels too. Starting the same handle
+    // again must not destroy a decoder still used by the other callback.
+    gosAudio_AssignResourceToChannel(0, second);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
+    Capture shared;
+    REQUIRE(shared.record());
+    CHECK(shared.mean(0) > 1000);
+    CHECK(shared.mean(1) > 1000);
     gosAudio_DestroyResource(&second);
+    CHECK(gosAudio_GetChannelPlayMode(0) == gosAudio_Stop);
+    CHECK(gosAudio_GetChannelPlayMode(1) == gosAudio_Stop);
     REQUIRE(std::filesystem::remove(path));
     HGOSAUDIO missing = nullptr;
     gosAudio_CreateResource(&missing, gosAudio_StreamedFile, name.c_str());

@@ -63,7 +63,6 @@ class gosAudio {
         Mix_Chunk mix_chunk_;
         std::unique_ptr<MusicStream> stream;
         std::string musicPath;
-        bool streamStarted = false;
 
 };
 
@@ -72,6 +71,7 @@ class SoundEngine {
     public:
         // Catalog entries are paths only; only active slots own bounded PCM queues.
         std::unordered_set<std::string> musicPaths;
+        std::array<std::unique_ptr<MusicStream>, 32> channelStreams;
         SoundEngine():frequency_(0), format_(0), channels_(0), chunksize_(0), is_initialized_(false) {} 
         bool init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool b_stereo);
         void destroy();
@@ -181,6 +181,7 @@ void SoundEngine::destroy() {
 
     for(int i=0; i<NUM_CHANNELS;++i) {
         Mix_HaltChannel(i);
+        channelStreams[i].reset();
     }
 
     std::vector<gosAudio*>::iterator it = audioList_.begin();
@@ -434,6 +435,7 @@ void __stdcall gosAudio_DestroyResource(HGOSAUDIO* handle)
     for (int i = 0; i < SoundEngine::NUM_CHANNELS; ++i) {
         if (channels[i].hAudio == audio) {
             Mix_HaltChannel(i);
+            g_sound_engine->channelStreams[i].reset();
             channels[i].hAudio = nullptr;
             channels[i].ePlayMode = gosAudio_Stop;
         }
@@ -561,19 +563,21 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
             gosAudio* audio = static_cast<gosAudio*>(ci->hAudio);
             if(audio) {
                 Mix_HaltChannel(Channel);
-                if (audio->streamStarted) {
-                    audio->stream = MusicStream::open(audio->musicPath.c_str(),
-                        g_sound_engine->getFrequency(), g_sound_engine->getNumChannels());
-                    if (!audio->stream) { ci->ePlayMode = gosAudio_Stop; break; }
+                auto& stream = g_sound_engine->channelStreams[Channel];
+                stream.reset();
+                if (!audio->musicPath.empty()) {
+                    stream = audio->stream ? std::move(audio->stream) :
+                        MusicStream::open(audio->musicPath.c_str(),
+                            g_sound_engine->getFrequency(), g_sound_engine->getNumChannels());
+                    if (!stream) { ci->ePlayMode = gosAudio_Stop; break; }
                 }
-                if (audio->stream) audio->streamStarted = true;
-                int loops = audio->stream || ci->ePlayMode == gosAudio_Loop ? -1 : 0;
-                if (audio->stream) audio->stream->setLoop(ci->ePlayMode == gosAudio_Loop);
+                int loops = stream || ci->ePlayMode == gosAudio_Loop ? -1 : 0;
+                if (stream) stream->setLoop(ci->ePlayMode == gosAudio_Loop);
                 Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
-                if (audio->stream) Mix_RegisterEffect(Channel,
+                if (stream) Mix_RegisterEffect(Channel,
                     [](int, void* bytes, int length, void* context) {
                         static_cast<MusicStream*>(context)->read({static_cast<std::byte*>(bytes), static_cast<size_t>(length)});
-                    }, nullptr, audio->stream.get());
+                    }, nullptr, stream.get());
                 // SDL removes effects when a chunk finishes or is halted; GOS sliders persist.
                 gosAudio_SetChannelSlider(Channel, gosAudio_Panning, ci->fPanning);
             }
@@ -592,6 +596,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
         case gosAudio_Stop:
         {
             Mix_HaltChannel(Channel);
+            g_sound_engine->channelStreams[Channel].reset();
             break;
         }
     }
@@ -608,8 +613,8 @@ gosAudio_PlayMode __stdcall gosAudio_GetChannelPlayMode( int Channel )
         return gosAudio_PlayOnce;
     }
     int playing = Mix_Playing(Channel);
-    const auto* audio = static_cast<gosAudio*>(ci->hAudio);
-    if (audio && audio->stream && audio->stream->ended()) return gosAudio_Stop;
+    const auto& stream = g_sound_engine->channelStreams[Channel];
+    if (stream && stream->ended()) return gosAudio_Stop;
     return playing ? ci->ePlayMode : gosAudio_Stop;
 }
 
