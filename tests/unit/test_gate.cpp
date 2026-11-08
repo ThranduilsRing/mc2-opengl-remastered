@@ -1903,18 +1903,18 @@ TEST_CASE("overlap audit retains numeric fence and jitter levels") {
     CHECK_FALSE(gate::lookupName("MC2_SIM_OVERLAP_JITTER").has_value());
 }
 
-TEST_CASE("spatial AA defaults on and all four modes round-trip through options.cfg") {
+TEST_CASE("spatial AA defaults on and all five modes round-trip through options.cfg") {
     namespace mo = mc2::options;
     CHECK(mo::RenderOptions{}.spatialAA == 1);
     const auto& option = *mo::find("SpatialAA");
-    for (int mode = 0; mode <= 3; ++mode) {
+    for (int mode = 0; mode <= 4; ++mode) {
         const std::string cfg = mo::cfg::set("[MechCommander2]\nFITend\n", option, std::to_string(mode));
         mo::RenderOptions loaded;
         CHECK(mo::cfg::loadFromText(loaded, cfg) == 1);
         CHECK(loaded.spatialAA == mode);
     }
     mo::RenderOptions loaded;
-    CHECK(mo::setFromText(loaded, option, "4") == mo::Verdict::OutOfRange);
+    CHECK(mo::setFromText(loaded, option, "5") == mo::Verdict::OutOfRange);
     CHECK(mo::setFromText(loaded, option, "-1") == mo::Verdict::OutOfRange);
     CHECK(loaded.spatialAA == 1);
 }

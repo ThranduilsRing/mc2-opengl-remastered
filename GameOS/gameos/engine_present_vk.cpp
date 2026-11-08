@@ -1675,12 +1675,12 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
-    // The upscaler provider (RenderCore/UpscalerProvider.h; FSR 3.1 native AA today) replaces spatial AA and CAS (SpatialAA=0 = off).
+    // The explicit temporal-AA preference replaces spatial AA and CAS; spatial modes never register a jitter consumer.
     VkImageResource* upDepth = mc2SharedSceneDepthGetResource();
     const bool scaled = static_cast<bool>(s.scaledComposite.image);
     RenderCore::UpscalerFrame upFrame{};
     RenderCore::IUpscalerProvider* const up = mc2vk::selectUpscaler(
-        s.upscaler, *scene, upDepth, !scaled && mc2::options::current().spatialAA != 0, s.captureFrame, upFrame);
+        s.upscaler, *scene, upDepth, !scaled && mc2::options::current().temporalAA(), s.captureFrame, upFrame);
     mc2vk::infra::materialBiasTick();   // provider failure / AA toggle: log the effective bias; material owners rebuild stale samplers
     const int aaMode = up ? 0 : mc2::options::current().spatialAA;
     if (up) casEnabled = false;
