@@ -11,6 +11,9 @@ quiescent frame extraction, copied into RenderView and Appearance. Consumers:
   brackets/text, sensor shapes, detached mech arms, vehicle shadow admission.
 - code/missiongui_update.cpp: hover identification and hidden target rejection.
 - code/gametacmap.cpp and controlgui_render.cpp: legacy/snapshot minimap blips.
+- code/infowindow.cpp and missiongui_style.cpp: clicked health/details admission,
+  including contact loss at extraction; objmgr_pick.cpp, missiongui_input.cpp and
+  gamecam.cpp: pick admission, orders target and camera tracking eligibility.
 - Mech shadows consume the same admitted native batch (gos_mech_batcher_flush.cpp
   snapshotFrame, vulkan_shadow_mech_casters.cpp); vehicle shadow feed is current-frame.
 
@@ -26,7 +29,8 @@ from body admission. The snapshot now sets both sensorLevel and alpha every fram
 including frames without a sim tick. Snapshot minimap no longer re-queries contacts.
 Main-view CPU/GPU lagged cull/HZB remains unchanged; model and appearance bars share
 the enclosing visibility/cull block. Selected/targeted flags still control bar display.
-No render-cull root cause established; no PC capture or performance claims.
+HZB admits only static props, not movers. No render-cull root cause established;
+no PC capture or performance claims.
 
 Proof pending: contact table/consumer doctests, covering shader/layout contracts,
 box build/unit/smoke-lite/headless mc2_03 determinism, Windows Ninja compile and lint.

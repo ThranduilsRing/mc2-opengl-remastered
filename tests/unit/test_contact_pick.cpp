@@ -68,6 +68,8 @@ TEST_CASE("contact visibility: production consumers read the shared snapshot")
     CHECK(source("code/objmgr_pick.cpp").find("contactView.blip") != std::string::npos);
     CHECK(source("code/gametacmap.cpp").find("mover->contactView.blip") != std::string::npos);
     CHECK(source("code/controlgui_render.cpp").find("m->contactView.blip") != std::string::npos);
+    CHECK(source("code/infowindow.cpp").find("if (pUnit && !pUnit->contactView.model) setUnit(nullptr)") != std::string::npos);
+    CHECK(source("code/missiongui_style.cpp").find("getContactStatus(") == std::string::npos);
 }
 
 TEST_CASE("contact pick: sensor naming never leaks DEMO or visual identification")

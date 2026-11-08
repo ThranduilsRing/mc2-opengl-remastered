@@ -541,7 +541,7 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
             const bool mpDefeat   = (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]);
             const bool hostile    = (bm->getTeamId() != Team::home->getId());
             const bool disabled   = bm->isDisabled();
-            const bool sub_q1     = ((static_cast<Mover*>(bm))->conStat < CONTACT_SENSOR_QUALITY_1);
+            const bool sub_q1     = !static_cast<Mover*>(bm)->contactView.blip;
             const bool fogSuppresses =
                 !showMovers && !mpDefeat && hostile && !disabled && sub_q1;
             visible = !fogSuppresses;
