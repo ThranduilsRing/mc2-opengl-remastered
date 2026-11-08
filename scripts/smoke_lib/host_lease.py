@@ -92,10 +92,15 @@ DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", 
 
 
 LEGACY_GPU_KEYS = {"lane": 0, "gate": 1}   # old GPU_SPLIT keys (lane=AMD, gate=NVIDIA), accepted for one window: lane = slot 0, gate = slot 1
+GPU_SPLIT_KEYS = frozenset({"slot0", "slot1", "gate_aux", *LEGACY_GPU_KEYS})   # gate_aux: merge_gate.aux_device()
 
 
 def _parse_gpu_split(text: str) -> tuple:
     devices = list(GPU_SPLIT_DEFAULT)
+    for n, line in enumerate(text.splitlines(), 1):   # p31: an unknown key (slot2=, Slot0=) silently kept the default device
+        k, eq, _ = line.partition("=")
+        if line.strip() and not line.lstrip().startswith("#") and (not eq or k.strip() not in GPU_SPLIT_KEYS):
+            raise ValueError(f"GPU_SPLIT line {n}: unknown key {k.strip()!r} (known: {', '.join(sorted(GPU_SPLIT_KEYS))})")
     for legacy_pass in (True, False):   # legacy keys first so an explicit slotN line always wins
         for line in text.splitlines():
             k, _, v = line.partition("=")
@@ -192,18 +197,23 @@ def _cpu_split() -> dict:
 
 def parse_cpu_split(text: str) -> dict:
     """Same grammar as tools/lint_slots.parse_cpu_split (a test holds them equal). The old `lane=` mask is accepted for one window
-    as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. Bad lines are skipped."""
+    as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. An unknown key or a bad value raises ValueError."""
     masks, legacy_lane = dict(CPU_SPLIT_DEFAULT), None
-    for line in text.splitlines():
-        k, _, v = line.partition("=")
-        k = k.strip()
-        try:
-            if k in masks and v.strip():
-                masks[k] = int(v.strip(), 0)
-            elif k == "lane" and v.strip():
-                legacy_lane = int(v.strip(), 0)
-        except ValueError:
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
             continue
+        k, eq, v = line.partition("=")
+        k, v = k.strip(), v.strip()
+        if not eq or k not in (*masks, "lane", "gate"):   # p31: a typo (gameO=, complie=) silently kept the default mask
+            raise ValueError(f"CPU_SPLIT line {n}: unknown key {k!r} (known: game0, game1, compile; legacy lane, gate)")
+        try:
+            value = int(v, 0)
+        except ValueError:
+            raise ValueError(f"CPU_SPLIT line {n}: {k}={v!r} is not an integer mask") from None
+        if k in masks:
+            masks[k] = value
+        elif k == "lane":
+            legacy_lane = value
     if legacy_lane and not re.search(r"^\s*compile\s*=\s*\S", text, re.M):
         masks["compile"] = legacy_lane
     return masks

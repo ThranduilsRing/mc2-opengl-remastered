@@ -175,18 +175,23 @@ CPU_SPLIT_PATH = Path("A:/Games/mc2-ops/CPU_SPLIT")
 
 def parse_cpu_split(text):
     """Same grammar as scripts/smoke_lib/host_lease.parse_cpu_split (a test holds them equal). The old `lane=` mask is accepted for one
-    window as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. Bad lines are skipped."""
+    window as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. An unknown key or a bad value raises ValueError."""
     masks, legacy_lane = dict(CPU_SPLIT_DEFAULT), None
-    for line in text.splitlines():
-        k, _, v = line.partition("=")
-        k = k.strip()
-        try:
-            if k in masks and v.strip():
-                masks[k] = int(v.strip(), 0)
-            elif k == "lane" and v.strip():
-                legacy_lane = int(v.strip(), 0)
-        except ValueError:
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
             continue
+        k, eq, v = line.partition("=")
+        k, v = k.strip(), v.strip()
+        if not eq or k not in (*masks, "lane", "gate"):   # p31: a typo (gameO=, complie=) silently kept the default mask
+            raise ValueError(f"CPU_SPLIT line {n}: unknown key {k!r} (known: game0, game1, compile; legacy lane, gate)")
+        try:
+            value = int(v, 0)
+        except ValueError:
+            raise ValueError(f"CPU_SPLIT line {n}: {k}={v!r} is not an integer mask") from None
+        if k in masks:
+            masks[k] = value
+        elif k == "lane":
+            legacy_lane = value
     if legacy_lane and not re.search(r"^\s*compile\s*=\s*\S", text, re.M):
         masks["compile"] = legacy_lane
     return masks

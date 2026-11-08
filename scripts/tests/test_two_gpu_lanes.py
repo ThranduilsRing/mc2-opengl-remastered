@@ -17,7 +17,8 @@ from scripts.smoke_lib import host_lease  # noqa: E402
 import lint_slots  # noqa: E402
 
 SPLIT_TEXTS = ["", "game0=0x3\ngame1=0xC\ncompile=0xFFF0\n", "game0=0x30\ngame1=0xC0\ncompile = 0xFF0F\n", "lane=0x0FF0\ngate=0xF000\n",
-               "lane=0x0FF0\ncompile=0xF0F0\n", "# c\ngame0=oops\ngame1=0xC\nbogus=1\ncompile=\n"]
+               "lane=0x0FF0\ncompile=0xF0F0\n", "# c\n\ngame1=0xC\n  # indented comment\n"]
+BAD_SPLIT_TEXTS = ["gameO=0x3\n", "complie=0xFFF0\n", "game0=oops\n", "compile=\n", "game0 0x3\n", "bogus=1\ngame0=0x3\n"]
 
 
 @pytest.fixture()
@@ -124,6 +125,27 @@ def test_game_and_compile_masks_are_disjoint_and_cover_the_machine():
 @pytest.mark.parametrize("text", SPLIT_TEXTS)
 def test_lint_slots_and_host_lease_parse_cpu_split_the_same(text):
     assert lint_slots.parse_cpu_split(text) == host_lease.parse_cpu_split(text)
+
+
+@pytest.mark.parametrize("text", BAD_SPLIT_TEXTS)
+def test_unknown_cpu_split_key_or_bad_mask_is_a_hard_error_in_both_parsers(text):
+    """p31: a typo'd key or bad value was skipped, so the default mask ran silently while the owner's split was ignored."""
+    for parse in (lint_slots.parse_cpu_split, host_lease.parse_cpu_split):
+        with pytest.raises(ValueError, match="CPU_SPLIT line"):
+            parse(text)
+
+
+@pytest.mark.parametrize("text", ["slot2=AMD\n", "Slot0=AMD\n", "slot0 AMD\n", "lanes=AMD\n"])
+def test_unknown_gpu_split_key_is_a_hard_error(text):
+    with pytest.raises(ValueError, match="GPU_SPLIT line 1"):
+        host_lease._parse_gpu_split(text)
+
+
+def test_gpu_split_known_keys_still_parse():
+    text = "# c\nslot0=NVIDIA\ngate_aux=AMD\nlane=AMD\nslot1=AMD\n"
+    assert host_lease._parse_gpu_split(text) == ("NVIDIA", "AMD")
+    assert host_lease._parse_gpu_split(Path("A:/Games/mc2-ops/GPU_SPLIT").read_text(encoding="utf-8")
+                                       if Path("A:/Games/mc2-ops/GPU_SPLIT").is_file() else "") is not None
 
 
 def test_cpu_split_legacy_keys_for_one_window():
