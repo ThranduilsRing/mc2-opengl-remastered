@@ -18,6 +18,9 @@ ScriptedArgs& args() {
 }  // namespace abl_test
 
 // ABL exec context (mclib/ablxstd.cpp, ablexec.cpp).
+StackItem* stack = nullptr;  // the root stack AblExecContext::resetStack reads (mclib/ablexec.cpp)
+size_t stackCount = 0;
+long eternalOffset = 0;
 bool s_ablArgGuard = false;
 bool s_ablRuntimeSoftfail = false;
 static AblExecContext s_shimExec;  // execLineNumber and CurModule for the softfail message

@@ -122,7 +122,13 @@ def gate_env(name, device=None):
     if name in OFFLINE_STAGES:
         return {}
     from smoke_lib import host_lease
-    return {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": device or host_lease.lane_devices()[0]}
+    chosen = device or host_lease.host_lane_device()   # a host without a lane GPU (none of GPU_SPLIT) gets no forced device
+    if device and host_lease.device_on_host(device) is False:
+        chosen = host_lease.host_lane_device()
+    env = {"MC2_IN_GATE": "1"}
+    if chosen:
+        env["MC2_VK_DEVICE"] = chosen
+    return env
 
 
 def aux_device():
@@ -180,6 +186,15 @@ def balance_movable(movable, load_a, load_b, seconds=None):
 # A red row whose child output names one of these failed on the host, not in the product: no suspect range.
 INFRA_RE = re.compile(r"WinError (?:32|5|112)\b|No space left on device|not enough space on the disk"
                       r"|REFUSED: a merge gate is running|host[- ]lease[^\n]*(?:timed out|timeout)|BOX_INFRA", re.I)
+
+
+SMOKE_BAD_RE = re.compile(r"^# Smoke run .*\bresult=(?:FAIL|INVALID)\b|^> \*\*RUN INVALID", re.M)
+
+
+def smoke_report_status(output):
+    """'FAIL: smoke report ...' when run_smoke printed a FAIL/INVALID verdict (whatever its exit code), else None."""
+    match = SMOKE_BAD_RE.search(output or "")
+    return "FAIL: run_smoke reported " + match.group(0).lstrip("# >*").strip()[-60:].replace("|", "/") if match else None
 
 
 def infra_status(returncode, output):
@@ -1705,7 +1720,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     verify_published_identity(target, ROOT, head)
                 measured = getattr(result, "gate_elapsed", None)
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
-                status = perf_warn_status(getattr(result, "stdout", "")) if result.returncode == 0 else (
+                status = (smoke_report_status(getattr(result, "stdout", "")) or perf_warn_status(getattr(result, "stdout", ""))) if result.returncode == 0 else (
                     infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
                 mismatch = None
                 if name == "compare-captures" and "--compare-only" in command:

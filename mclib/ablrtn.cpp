@@ -400,6 +400,7 @@ profile = true;
 	g_ablExec->statementStartPtr = nullptr;
 	g_ablExec->execStatementCount = 0;
 	stack = nullptr;
+	stackCount = 0;
 	g_ablExec->stackLimit = nullptr;
 	g_ablExec->tos = nullptr;
 	g_ablExec->stackFrameBasePtr = nullptr;
@@ -488,7 +489,8 @@ profile = true;
 	// Allocate the runtime stack...
 	stackStore.assign(runtimeStackSize / sizeof(StackItem), StackItem{});
 	stack = stackStore.data();
-	g_ablExec->stackLimit = stack + stackStore.size();
+	stackCount = stackStore.size();
+	g_ablExec->stackLimit = ablRootStackLimit();
 
 	//-----------------------------------
 	// Allocate Eternal Vars Size List...
@@ -1023,6 +1025,7 @@ void ABLi_close (void) {
 
 	std::vector<StackItem>().swap(stackStore);
 	stack = nullptr;
+	stackCount = 0;
 
 	if (debugger) {
 		delete debugger;

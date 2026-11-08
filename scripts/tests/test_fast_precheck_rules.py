@@ -228,3 +228,13 @@ def test_warm_tree_lock_covers_only_the_build(monkeypatch, tmp_path):
     other = [h for t, h in seen if "configure_ninja" not in t and "ninja_build" not in t]
     assert len(build) == 3 and all(build)          # configure + two links run under the lock
     assert len(other) >= 8 and not any(other)      # ratchets, callers, pytest suites never do
+
+
+def test_gate_row_fails_on_run_smoke_invalid_or_fail_even_with_rc0():
+    invalid = ("# Smoke run 20261108  tier=tier1  profile=x  result=FAIL (5/5 passed)\n\n"
+               "> **RUN INVALID — the missions' results do not count.**\n>\n> - GPU: GPU routing: asked AMD\n")
+    st = gate.smoke_report_status(invalid)
+    assert st and st.startswith("FAIL") and not gate.stage_passed(st)
+    assert gate.smoke_report_status("# Smoke run t  tier=tier1  result=FAIL (3/5 passed)\n")
+    assert gate.smoke_report_status("# Smoke run t  tier=tier1  result=PASS (5/5 passed)\n") is None
+    assert gate.smoke_report_status("") is None

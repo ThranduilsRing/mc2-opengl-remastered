@@ -43,6 +43,7 @@ char*					codeBufferPtr = nullptr;
 
 
 StackItem*				stack = nullptr;
+size_t					stackCount = 0;
 long*					StaticVariablesSizes = nullptr;
 long*					EternalVariablesSizes = nullptr;
 long					eternalOffset = 0;
@@ -68,16 +69,6 @@ char					SetStateDebugStr[256];
 AblExecContext			g_ablRootExec;
 AblExecContext*			g_ablExec = &g_ablRootExec;
 
-void AblExecContext::resetStack () {
-	if (ownStack.empty()) {
-		tos = stack + eternalOffset;
-		stackLimit = stack + MAXSIZE_STACK;
-	} else {
-		tos = ownStack.data();
-		stackLimit = ownStack.data() + ownStack.size();
-	}
-	stackFrameBasePtr = tos;
-}
 
 //----------
 // EXTERNALS
