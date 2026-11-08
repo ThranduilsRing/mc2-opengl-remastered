@@ -456,17 +456,7 @@ void main() {
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
-        vec3 staticReceiver = v_worldPos;
-        if (uT.visualMode != 0) {
-            // The baked shadow's underwater fade must follow the bake surface,
-            // rather than a camera-dependent LOD triangle crossing the shore.
-            vec2 fc = vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 32.0;
-            ivec2 i0 = ivec2(floor(fc));
-            vec2 f = fract(fc);
-            staticReceiver.z = mix(mix(mv_fineH(i0), mv_fineH(i0 + ivec2(1, 0)), f.x),
-                                   mix(mv_fineH(i0 + ivec2(0, 1)), mv_fineH(i0 + ivec2(1, 1)), f.x), f.y);
-        }
-        float staticS=uT.enableShadows!=0?terrainStaticShadow(staticReceiver):1.0;
+        float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
