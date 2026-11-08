@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include <glm/glm.hpp>
+#include "../mclib/math/glm_config.h"
 
 // Gameplay coordinates are XY horizontal, Z height; range is in world units.
 inline bool jumpTargetValid(bool capable, bool passable, const glm::vec3& from,
