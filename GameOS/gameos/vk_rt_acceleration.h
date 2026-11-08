@@ -82,7 +82,6 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
 
 }  // namespace mc2vk::rt
 
-#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include <volk.h>
 
@@ -178,5 +177,4 @@ bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Ph
 
 }  // namespace mc2vk::rt
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_RT_ACCELERATION_H

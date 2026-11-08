@@ -1,6 +1,5 @@
 // vk_rt_descriptors.cpp -- see vk_rt_descriptors.h.
 
-#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include "vk_rt_descriptors.h"
 
@@ -83,4 +82,3 @@ void RayQuerySet::write(VkDevice device, VkAccelerationStructureKHR tlas, VkBuff
 
 }  // namespace mc2vk::rt
 
-#endif  // MC2_VULKAN_ISLAND

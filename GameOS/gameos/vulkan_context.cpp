@@ -737,9 +737,7 @@ bool VulkanContext::init(bool wantPresent) {
     gpuprof::init(*this);   // Tracy GPU context + debug labels + MC2_VK_GPU_TIMESTAMPS ring, on the one graphics queue
     ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
            health_.deviceName, wantPresent ? 1 : 0, valPreset);
-#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
     if (mc2::gate::get<"MC2_VK_RT_SELFTEST">()) rt::runSelfTest(*this);   // test hook: GPU proof of the RT infrastructure, renders nothing
-#endif
     return true;
 }
 

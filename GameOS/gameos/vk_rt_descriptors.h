@@ -78,7 +78,6 @@ constexpr SbtLayout computeSbtLayout(uint32_t handleSize, uint32_t handleAlignme
 
 }  // namespace mc2vk::rt
 
-#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include <volk.h>
 
@@ -110,5 +109,4 @@ private:
 
 }  // namespace mc2vk::rt
 
-#endif  // MC2_VULKAN_ISLAND
 #endif  // MC2_VK_RT_DESCRIPTORS_H

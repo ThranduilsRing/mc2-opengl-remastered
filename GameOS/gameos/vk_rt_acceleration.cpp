@@ -1,6 +1,5 @@
 // vk_rt_acceleration.cpp -- see vk_rt_acceleration.h.
 
-#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 
 #include "vk_rt_acceleration.h"
 
@@ -231,4 +230,3 @@ bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Ph
 
 }  // namespace mc2vk::rt
 
-#endif  // MC2_VULKAN_ISLAND

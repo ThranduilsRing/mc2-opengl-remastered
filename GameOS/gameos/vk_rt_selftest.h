@@ -2,7 +2,6 @@
 #ifndef MC2_VK_RT_SELFTEST_H
 #define MC2_VK_RT_SELFTEST_H
 
-#if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree)
 namespace mc2vk {
 class VulkanContext;
 namespace rt {
@@ -10,6 +9,5 @@ namespace rt {
 bool runSelfTest(const VulkanContext& ctx);
 }  // namespace rt
 }  // namespace mc2vk
-#endif
 
 #endif
