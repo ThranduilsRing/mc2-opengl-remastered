@@ -493,6 +493,9 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 	}
 				
   	paintingVtol[commanderID] = 1;
+	mc2::fmt::print_err("[SUPPORT_CRAFT] event=spawn vehicle={} commander={} name={} x={} y={} z={}\n",
+		vehicleID[commanderID], commanderID, mc2::fmt::safe(vTol[commanderID]->appearType->name),
+		newPos.x, newPos.y, newPos.z);
 	vTolSpeed = -75.f;
 
 	vPos[commanderID] = vtolPos;

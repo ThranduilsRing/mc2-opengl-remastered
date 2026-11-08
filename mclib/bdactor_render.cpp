@@ -305,6 +305,13 @@ long BldgAppearance::render (long depthFixup)
 			else if (depthFixup < 0)
 				bldgShape->Render(eye->getViewUniforms(),false,0.00001f);
 		}
+		if (appearType && (!S_stricmp(appearType->name, "karnov") || !S_stricmp(appearType->name, "vtol"))) {
+			static unsigned draws = 0;
+			if (draws++ < 8 || draws % 600 == 0)
+				mc2::fmt::print_err("[SUPPORT_CRAFT] event=draw name={} gpu={} static={} x={} y={} z={} frame={}\n",
+					mc2::fmt::safe(appearType->name), submittedToGpu, IsStaticNow(),
+					position.x, position.y, position.z, unitAnim().currentFrame);
+		}
 
 		if (selected & DRAW_BARS)
 		{
