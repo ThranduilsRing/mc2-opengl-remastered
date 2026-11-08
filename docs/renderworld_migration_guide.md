@@ -120,7 +120,7 @@ Convention for a new adapter (e.g. `TerrainRenderAdapter.h` for M3):
 
 ## 3. What RenderWorld must never include
 
-The firewall is enforced by `scripts/check-include-firewall.sh` (run
+The firewall is enforced by `scripts/check_boundaries.py` (run
 pre-commit when any RenderCore/RenderWorld/GameAdapters file changes).
 
 `SCOPE_DIRS` (the watched modules):
@@ -530,7 +530,7 @@ in a breaking way; readers grep for `\[X_SELFTEST v[0-9]+\]`.
 
 ## 10. Firewall summary
 
-`scripts/check-include-firewall.sh` is grep-based, comment-aware (single
+`scripts/check_boundaries.py` is grep-based, comment-aware (single
 -line `//`, `/*`, `*` opens), allowlist-supported
 (`scripts/check-include-firewall.allowlist`).
 
@@ -695,7 +695,7 @@ Working order for "add `Terrain=2` (M3) pickup":
 11. Revise.
 12. Execute (subagent-driven, `--keep-logs`).
 13. Tier1 5/5 env-OFF AND env-ON.
-14. Run `scripts/check-include-firewall.sh`.
+14. Run `scripts/check_boundaries.py`.
 15. Greybeard ruling (META-FIX vs PATCH) on the shipped diff.
 16. Update `CLAUDE.md` "Active campaigns" with a one-paragraph SHIPPED
     entry mirroring the M2.6 entry style.
@@ -718,7 +718,7 @@ fair game.
 -   `RenderCore/Handle.h`, `RenderWorld/RenderWorld.h` -- public API
 -   `GameAdapters/StaticPropRenderAdapter.h`,
     `GameAdapters/MechRenderAdapter.h` -- adapter convention
--   `scripts/check-include-firewall.sh` -- the firewall script itself
+-   `scripts/check_boundaries.py` -- the firewall script itself
 -   `.claude/skills/greybeard.md` -- META-FIX discipline
 -   `.claude/skills/adversarial-plan-review.md` -- review skill
 -   `docs/superpowers/specs/2026-05-22-renderworld-boundary-spec.md` --

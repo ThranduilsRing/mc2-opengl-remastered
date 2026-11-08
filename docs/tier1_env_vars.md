@@ -308,7 +308,7 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 - Object lifecycle: `sh scripts/check-destroy-invariant.sh`
 - UI icon atlas: `sh scripts/check-asset-scale-callers.sh`
 - Shader ABI: `cmake --build build64 --target shader_schema`
-- RenderWorld firewall: `sh scripts/check-include-firewall.sh`
+- RenderWorld firewall: `sh scripts/check_boundaries.py`
 - No raw GL from game: `sh scripts/check-no-raw-gl-from-game.sh`
 - VFX no objectId: `sh scripts/check-vfx-no-objectid.sh`
 
