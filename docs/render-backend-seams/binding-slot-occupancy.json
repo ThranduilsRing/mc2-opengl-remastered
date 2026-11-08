@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 272,
+    "glsl_blocks_with_binding": 273,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -1125,7 +1125,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 134,
+        "line": 135,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1398,6 +1398,16 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/mech_tier1.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/motion_vectors.frag",
+        "line": 16,
+        "role": "sceneNormal",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/motion_vectors.frag",
         "branch": {}
       },
       {

@@ -11526,6 +11526,18 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "ray",
+    "occluded_by",
+    "behind_found",
+    "passes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "rays"
    ],
    "count": 1
@@ -12260,7 +12272,6 @@
   "SAVELOAD",
   "SHADER",
   "SHADER ERROR",
-  "SHADER_SCHEMA",
   "SHADOW_BAKE",
   "SIMID",
   "SIM_OVERLAP",
