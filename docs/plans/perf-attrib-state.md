@@ -43,5 +43,9 @@ assertion and run the strict tests. No production battle.json exists yet.
 
 Extra background-launch diagnostic found only a stale generated inventory;
 not regenerated, per the no-generated-baseline-churn instruction.
+Final proof fixes: allowlisted the requested manual tracy_table CLI (no
+generated caller census edits); baseline writer handles --out on another drive.
+The owning rows are nightly rows: select --nightly with --rows
+'^(mission_cpu_profile|sim_determinism)$', not the unfiltered nightly board.
 Scout was unresponsive and its own process tree was stopped; direct source
 inspection confirms the command channel is consumed in updateFrontEnd.

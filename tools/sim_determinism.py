@@ -917,7 +917,11 @@ def main(argv=None) -> int:
                        "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"}, fh, indent=1)
             fh.write("\n")
         os.replace(tmp, out)
-        print(f"sim_determinism: wrote {os.path.relpath(out, ROOT)}")
+        try:
+            display_path = os.path.relpath(out, ROOT)
+        except ValueError:  # proof/temp output may be on G: while the checkout is on A:
+            display_path = os.path.abspath(out)
+        print(f"sim_determinism: wrote {display_path}")
         return 0
     if args.cmd == "compare":
         ok, msg = compare(load_simid(args.log_a), load_simid(args.log_b), args.min_frames)
