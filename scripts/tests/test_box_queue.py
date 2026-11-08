@@ -213,6 +213,32 @@ def test_detached_head_gets_its_own_lane_dir():
     assert box_run.lane_key("claude/x", SHA) == "claude_x"
 
 
+def test_slot_dry_run_reuses_path_across_branches(monkeypatch, tmp_path, capsys):
+    repo = tmp_path / "mc2-slot02"
+    repo.mkdir()
+    for branch, sha in (("claude/first", "a" * 40), ("claude/second", "b" * 40)):
+        monkeypatch.setattr(box_run, "git", lambda *a, repo=None: (branch if "--abbrev-ref" in a else sha) if a[0] == "rev-parse" else "")
+        monkeypatch.setattr(box_run, "run", lambda *a, **kw: pytest.fail("dry-run contacted the box"))
+        monkeypatch.setattr(sys, "argv", ["box_run.py", "--repo", str(repo), "--dry-run", "--gpu", "0", "build"])
+        assert box_run.main() == 0
+        out = capsys.readouterr().out
+        assert "lane=/workspace/lanes/box-lane-02 " in out
+        assert f"branch={branch} sha={sha}" in out
+        assert str(box_run.local_reports(repo, sha[:8])) in out
+
+
+def test_slot_submission_reuses_checkout_build_and_install(monkeypatch, tmp_path):
+    repo = tmp_path / "mc2-slot02"
+    repo.mkdir()
+    for branch in ("claude/first", "claude/second"):
+        rc, calls = harness(monkeypatch, repo, ["--gpu", "0", "build"], have=SHA, abbrev=branch)
+        cmd = next(c for c in remote_cmds(calls) if "bash /workspace/lanes/.box_lane_" in c)
+        assert ".box_lane_box-lane-02.sh" in cmd
+        assert "/workspace/lanes/box-lane-02/out/deadbeef" in cmd
+        assert cmd.endswith(branch.replace("/", "_"))
+    assert "L=/workspace/lanes/$BR; S=$L/src; I=$L/install" in box_run.REMOTE
+
+
 def test_detached_run_uses_the_detached_lane_in_every_path(monkeypatch, tmp_path):
     rc, calls = harness(monkeypatch, tmp_path, ["--gpu", "0", "sh:true"], have=SHA, abbrev="HEAD")
     run_cmd = [c for c in remote_cmds(calls) if "bash /workspace/lanes/.box_lane_" in c][0]

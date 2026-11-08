@@ -8,7 +8,7 @@
 #                                                   NEVER evicted: a lane with a process, a held lock, a queued/running pueue task (command or path names the lane),
 #                                                   a locks/<key>.want file, or activity in the last IDLE_MIN minutes. If the pueue queue cannot be read, nothing is evicted.
 #   lane_cleanup.sh holders                         table of lane dirs: unique MB (hardlinks once), age, last activity, why each is not evictable
-# <key> is the lane dir name (the branch with / replaced by _). A lane is LIVE (never touched) when any of: a process command line
+# <key> is box-lane-NN for slots (legacy: branch with / replaced by _). A lane is LIVE (never touched) when any of: a process command line
 # names its dir or its .box_lane script, a process has its cwd inside it, or its .lane.lock is held (box_run holds it for a whole run).
 # W/LANES/MIRROR/FILLER_SRC/IDLE_MIN can be overridden for tests; NO_PROC_SCAN=1 skips the /proc cwd scan (slow under MSYS).
 set -u
@@ -18,7 +18,12 @@ DRY=0; ARGS=(); for a in "$@"; do if [ "$a" = --dry-run ]; then DRY=1; else ARGS
 act() { if [ $DRY = 1 ]; then echo "[lane_cleanup] would: $*"; else echo "[lane_cleanup] $*"; "$@"; fi; }
 
 live() {   # live <key>: 0 when a process uses the lane
-  local k=$1 L=$LANES/$1 p c
+  local k=$1 L=$LANES/$1 p c owner_pid owner_lane
+  for p in "$LOCKS"/gpu*.owner; do
+    [ -f "$p" ] || continue
+    read -r owner_pid owner_lane _ < "$p"
+    [ "$owner_lane" = "$k" ] && kill -0 "$owner_pid" 2>/dev/null && return 0
+  done
   ps -eo args | grep -v grep | grep -qF -e "$L/" -e ".box_lane_$k.sh" && return 0
   [ "${NO_PROC_SCAN:-0}" = 1 ] || for p in /proc/[0-9]*; do c=$(readlink "$p/cwd" 2>/dev/null) || continue; case "$c" in "$L"|"$L"/*) return 0;; esac; done
   [ -e "$L/.lane.lock" ] && { ( flock -n 8 ) 8<"$L/.lane.lock" || return 0; }
@@ -38,6 +43,7 @@ ACTIVE=""; ACTIVE_FAIL=0; ACTIVE_LOADED=0
 load_active() {   # text of every queued/running/stashed/paused pueue task (command, path, label); ACTIVE_FAIL=1 when the queue cannot be read
   [ $ACTIVE_LOADED = 1 ] && return 0; ACTIVE_LOADED=1
   if [ -n "${PUEUE_ACTIVE_FILE:-}" ]; then ACTIVE=$(cat "$PUEUE_ACTIVE_FILE" 2>/dev/null); return 0; fi   # tests
+  command -v "$PUEUE" >/dev/null 2>&1 || return 0   # no pueue installed: no queue; live() still protects GPU owners
   ACTIVE=$("$PUEUE" status --json 2>/dev/null | jq -r '.tasks[]|select(.status|tostring|test("Queued|Running|Stashed|Paused|Locked"))|[.command,.path,(.label//"")]|join(" ")' 2>/dev/null) || ACTIVE_FAIL=1
   [ -n "$ACTIVE" ] || { "$PUEUE" status --json >/dev/null 2>&1 || ACTIVE_FAIL=1; }
 }
@@ -81,6 +87,7 @@ daily() {
   [ -z "$n" ] && { echo "[lane_cleanup] no nifty ref in the mirror: merged-lane cleanup skipped"; return 0; }
   for k in $(lane_dirs); do
     [ "$k" = "$NIFTY_KEY" ] && continue
+    [[ "$k" =~ ^box-lane-[0-9]{2}$ ]] && continue   # retained slots: only disk-pressure eviction removes them
     [ -n "$(hard_busy "$k")" ] && continue
     [ -n "$(find "$LANES/$k" -maxdepth 1 -mmin -"$IDLE_MIN" 2>/dev/null)" ] && continue   # touched recently: not idle
     merged "$k" "$n" && REASON="daily-merged" one "$k"

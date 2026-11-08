@@ -44,6 +44,11 @@ def test_install_dirs_never_protected():
     assert lane_slot.install_dirs("owner-test-1") == []
 
 
+def test_install_is_keyed_by_slot_number():
+    assert lane_slot.slot_install("A:/Games/mc2-slot02") == "E:/mc2-installs/pc-lane-02"
+    assert lane_slot.slot_install("A:\\Games\\mc2-slot12") == "E:/mc2-installs/pc-lane-12"
+
+
 def test_slot_info_merge_rules(monkeypatch, tmp_path):
     calls = {"merge-base": 1, "rev-parse": 1}
     fake = {"status": (0, "", ""), "symbolic-ref": (0, "claude/x", "")}

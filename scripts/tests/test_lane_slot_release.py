@@ -58,6 +58,21 @@ def test_release_and_reacquire_keep_install_and_scratch(slot):
     assert all((p / "retained").read_text() == "cached" for p in (install, scratch))
 
 
+def test_two_branches_acquire_the_same_slot_install(slot, capsys):
+    expected = lane_slot.slot_install(slot)
+    assert expected == f"{lane_slot.INSTALLS}/pc-lane-01"
+    lane_slot.release(slot)
+    for branch in ("claude/first", "claude/second"):
+        lane_slot.acquire(branch, no_warm=True)
+        entries = lane_registry.list_lanes(Path(slot))["lanes"]
+        assert next(e for e in entries if e["name"] == branch)["deploy_lane"] == expected
+        assert f"install {expected}" in capsys.readouterr().out
+        Path(expected).mkdir(parents=True, exist_ok=True)
+        Path(expected, "retained").write_text("cache")
+        lane_slot.release(slot)
+        assert Path(expected, "retained").read_text() == "cache"
+
+
 @pytest.fixture
 def gc_setup(slot, tmp_path, monkeypatch):
     lane_registry.register_lane(Path(slot), "unrelated", worktree="other-slot")
@@ -136,6 +151,21 @@ def test_gc_protects_claimed_slot_aliases_even_under_disk_pressure(slot, gc_setu
     monkeypatch.setattr(lane_slot.shutil, "disk_usage", lambda p: SimpleNamespace(free=1))
     lane_slot.gc()
     assert all(p.exists() for p in paths)
+
+
+def test_gc_retains_slot_installs_until_disk_pressure(slot, gc_setup, monkeypatch):
+    install = Path(lane_slot.slot_install(slot))
+    install.mkdir()
+    os.utime(install, (time.time() - 100 * 3600,) * 2)
+    lane_slot.gc(hours=0)
+    assert install.exists()
+    lane_registry.register_lane(Path(slot), "active", worktree=slot)
+    monkeypatch.setattr(lane_slot.shutil, "disk_usage", lambda p: SimpleNamespace(free=1))
+    lane_slot.gc(hours=0)
+    assert install.exists()
+    lane_registry.release_lane(Path(slot), "active")
+    lane_slot.gc(hours=0)
+    assert not install.exists()
 
 
 def test_gc_ages_out_orphaned_branch_install(slot, gc_setup):

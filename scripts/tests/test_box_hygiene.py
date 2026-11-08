@@ -133,6 +133,15 @@ def test_cleanup_dry_run_changes_nothing(lanes):
     assert (w / "lanes" / "zz_t").is_dir() and (w / "lanes" / ".box_lane_zz_t.sh").exists()
 
 
+def test_daily_retains_fixed_slots_after_merge():
+    script = (BOX / "lane_cleanup.sh").read_text().split('case "${ARGS[0]:-}"')[0]
+    r = bash(script + '\nouts() { :; }; nifty_ref() { echo tip; }; '
+             'lane_dirs() { printf "box-lane-02\\nlegacy\\n"; }; '
+             'hard_busy() { :; }; find() { :; }; merged() { return 0; }; '
+             'one() { echo "removed $1"; }; daily')
+    assert r.returncode == 0 and r.stdout.strip() == "removed legacy", r.stdout + r.stderr
+
+
 def test_cleanup_removes_dir_script(lanes):
     w, m, env = lanes
     r = cleanup(env, "one", "zz_t")
@@ -360,8 +369,28 @@ def test_evict_removes_nothing_when_the_queue_is_unreadable(lanes):
     w, m, env = lanes
     _touch_lock(w, "zz_old", 9)
     env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
-    r = cleanup({**env, "PUEUE": (w / "no_such_pueue").as_posix(), "FAKE_FREE_GB": "10"}, "evict", "30")
+    pueue = w / "pueue"
+    pueue.write_text("#!/bin/sh\nexit 1\n")
+    pueue.chmod(0o755)
+    r = cleanup({**env, "PUEUE": pueue.as_posix(), "FAKE_FREE_GB": "10"}, "evict", "30")
     assert (w / "lanes" / "zz_old").is_dir() and "QUEUE-UNKNOWN" in r.stdout, r.stdout
+
+
+def test_cleanup_without_pueue_allows_idle_lane(lanes):
+    w, m, env = lanes
+    env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
+    r = cleanup({**env, "PUEUE": (w / "missing-pueue").as_posix()}, "one", "zz_t")
+    assert r.returncode == 0 and not (w / "lanes" / "zz_t").exists(), r.stdout + r.stderr
+
+
+def test_cleanup_without_pueue_keeps_live_gpu_owner(lanes):
+    w, m, env = lanes
+    env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
+    # $$ is a live bash PID even under MSYS; the owner must block cleanup.
+    r = bash(f'echo "$$ zz_t abc now" > "{w.as_posix()}/locks/gpu0.owner"; '
+             f'bash "{(BOX / "lane_cleanup.sh").as_posix()}" one zz_t',
+             env={**env, "PUEUE": (w / "missing-pueue").as_posix()})
+    assert r.returncode == 3 and "RUNNING" in r.stdout, r.stdout + r.stderr
 
 
 def test_evict_spares_a_recently_active_lane(lanes):

@@ -6,7 +6,7 @@
     py -3 tools/box_run.py --seed          # once: build the golden install on the box (needs the Windows golden)
 
 Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to the box mirror, clang build in
-/workspace/lanes/<branch>/src (ccache, -j16, pinned to the GPU's 8 cores), install = hardlink copy of the golden install
+/workspace/lanes/box-lane-NN/src (worktree slot, reused across branches), install = hardlink copy of the golden install
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
@@ -66,6 +66,7 @@ REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR CAP0 ROWS_B64 (rows newline-joined, base64)
 set -uo pipefail
 GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS < <(printf %s "$6" | base64 -d); ROWS=("${ROWS[@]%$'\r'}")   # $5 = cap0, $6 = base64 of the rows
+echo "[box_run] lane=$BR branch=${7:-$BR} sha=$SHA"
 L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; MIRROR=/workspace/toolchains/mirror.git
 #@@FRESH_FN@@
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
@@ -374,22 +375,26 @@ def task_verdict(tid, repo, wait):
     if wait:
         run([*SSH, f"{PUEUE} wait {tid} >/dev/null 2>&1"])
     state, rc, label = task_state(tid)
-    parts = label.split(":")   # box_run:<branch>:<sha8>:<group>
+    parts = label.split(":")   # box_run:<lane>:<sha8>:<group>[:<branch>]
     rows = ""
-    if state == "Done" and len(parts) == 4:
+    if state == "Done" and len(parts) in (4, 5):
         local_out = local_reports(repo, parts[2])
         local_out.mkdir(parents=True, exist_ok=True)
         fetch_back(f"/workspace/lanes/{parts[1]}/out/{parts[2]}", local_out)
         tsv = local_out / "rows.tsv"
         v = row_codes(tsv)
         rows = f" rows={sum(x == '0' for x in v)}/{len(v)} reports={local_out}"
-    name, code = verdict(rc, row_codes(local_reports(repo, parts[2]) / "rows.tsv") if state == "Done" and len(parts) == 4 else ()) if rc is not None else ("", 2)
+    name, code = verdict(rc, row_codes(local_reports(repo, parts[2]) / "rows.tsv") if state == "Done" and len(parts) in (4, 5) else ()) if rc is not None else ("", 2)
     print(f"[box_run] task={tid} state={state} rc={'-' if rc is None else rc}{rows}" + (f" verdict={name}" if name else ""))
     return code
 
 
-def lane_key(abbrev, sha):
-    """Lane dir / ref key: the branch name, or detached-<sha8> when HEAD is detached (git prints 'HEAD'), so detached runs never share a dir."""
+def lane_key(abbrev, sha, repo=None):
+    """Reuse a fixed box lane for slot worktrees; retain legacy keys elsewhere."""
+    if repo is not None:
+        slot = re.fullmatch(r"mc2-slot(\d{2})", Path(repo).resolve().name, re.I)
+        if slot:
+            return f"box-lane-{slot.group(1)}"
     return f"detached-{sha[:8]}" if abbrev in ("", "HEAD") else abbrev.replace("/", "_")
 
 
@@ -473,7 +478,7 @@ def main():
     ap.add_argument("--status", metavar="ID", nargs="?", const="", help="with ID: ONE state line for queued task ID (exit 0 done+ok, 1 failed, 2 queued/running); with no ID: print the box's STATUS.json (GPU lock holders, load, free disk)")
     ap.add_argument("--gpu-strict", action="store_true", help="wait for --gpu N only; otherwise fall back to another discovered GPU")
     ap.add_argument("--cleanup", metavar="BRANCH", help="remove BRANCH's lane on the box (dir, runner script, mirror ref, worktree entry); refuses a lane a live process uses")
-    ap.add_argument("--dry-run", action="store_true", help="with --cleanup: only print what would be removed")
+    ap.add_argument("--dry-run", action="store_true", help="print run paths without contacting the box; with --cleanup: print removals")
     ap.add_argument("--deploy-box", action="store_true", help="install tools/box/ on the box (backs up what it replaces); --revert [TS] undoes it")
     ap.add_argument("--revert", metavar="TS", nargs="?", const="", help="with --deploy-box: restore the backup TS (default newest)")
     ap.add_argument("--repo", default=str(Path(__file__).resolve().parents[1]))
@@ -499,7 +504,12 @@ def main():
     if git("status", "--porcelain", "--untracked-files=no", repo=repo):
         print("[box_run] warning: uncommitted changes are NOT sent; the box runs HEAD", file=sys.stderr)
     sha = git("rev-parse", "HEAD", repo=repo)
-    branch = lane_key(git("rev-parse", "--abbrev-ref", "HEAD", repo=repo), sha)
+    abbrev = git("rev-parse", "--abbrev-ref", "HEAD", repo=repo)
+    identity = lane_key(abbrev, sha)
+    branch = lane_key(abbrev, sha, repo)
+    if a.dry_run:
+        print(f"[box_run] lane=/workspace/lanes/{branch} branch={abbrev} sha={sha} rows={a.rows} reports={local_reports(repo, sha[:8])}")
+        return 0
     check_behind_box_fix(repo)
     t = {}
     t0 = time.time()
@@ -566,15 +576,15 @@ def main():
         grp = "gate" if a.gate else f"gpu{gpu}"
         if all(x in NO_GPU_ROWS for x in a.rows):
             grp = "build"   # build-only / unit-only: never touches a GPU, so it queues in the build group and holds no gpuN slot
-        label = f"box_run:{branch}:{sha[:8]}:{grp}"
+        label = f"box_run:{branch}:{sha[:8]}:{grp}" + (f":{identity}" if identity != branch else "")
         after = ""
         if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
-            rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])}"],
+            rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build:{identity} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])} {identity}"],
                      input=REMOTE.encode(), capture_output=True)
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()
             if rb.returncode == 0 and bt and bt[-1].isdigit():
                 after = f"-a {bt[-1]} "
-        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
+        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)} {identity}"],
                 input=REMOTE.encode(), capture_output=True)   # bytes: text mode would turn LF into CRLF on Windows and bash chokes on the CR
         out = r.stdout.decode(errors="replace") if isinstance(r.stdout, bytes) else r.stdout
         err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
@@ -582,7 +592,7 @@ def main():
         print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {err.strip()[-200:]}")
         return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode(), stderr=subprocess.PIPE)
+    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)} {identity}"], input=REMOTE.encode(), stderr=subprocess.PIPE)
     t["remote (build+install+rows)"] = time.time() - t1
     err_bytes = getattr(r, "stderr", None) or b""
     err_text = err_bytes.decode(errors="replace") if isinstance(err_bytes, bytes) else str(err_bytes)
@@ -597,7 +607,7 @@ def main():
     name, code = verdict(r.returncode, row_codes(local_out / "rows.tsv"))
     print(f"[box_run] verdict={name}")
     if a.gate:
-        return gate_verdict(write_receipt(local_out, sha, branch, a.rows, r.returncode), first_err)
+        return gate_verdict(write_receipt(local_out, sha, identity, a.rows, r.returncode), first_err)
     return code
 
 

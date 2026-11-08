@@ -179,9 +179,10 @@ def acquire(branch, base=None, reset_branch=False, no_warm=False):
     try:
         from pathlib import Path  # noqa: PLC0415
         import lane_registry  # noqa: PLC0415
-        lane_registry.register_lane(Path(MAIN_ROOT), branch, worktree=path)
+        lane_registry.register_lane(Path(MAIN_ROOT), branch, worktree=path, deploy_lane=slot_install(path))
     except Exception as e:  # noqa: BLE001
         print(f"[lane_slot] WARNING: lane registration failed: {e}", file=sys.stderr)
+    print(f"[lane_slot] install {slot_install(path)} (deploy with --allow-new-target)")
     # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created). The warm build holds
     # the tree's build lock (scripts/ninja_build.py), so the lane's own build waits for it; its PID is recorded in <tree>/warm.pid.
     if no_warm:
@@ -198,6 +199,12 @@ def acquire(branch, base=None, reset_branch=False, no_warm=False):
             print("[lane_slot] WARNING: warm build did not report a pid: " + (r.stderr.strip() or r.stdout.strip()), file=sys.stderr)
     print(path)
     return path
+
+
+def slot_install(path):
+    """The PC install belongs to the fixed slot, across branch changes."""
+    number = next(n for n, p in enumerate(SLOT_PATHS, 1) if norm(p) == norm(path))
+    return f"{INSTALLS}/pc-lane-{number:02d}"
 
 
 def install_dirs(branch):
@@ -262,6 +269,7 @@ def _gc(entries, hours):
         if os.path.isdir(p):
             names.add(git(p, "symbolic-ref", "--short", "-q", "HEAD")[1])
     protected_paths = {norm(d) for name in names for d in install_dirs(name)}
+    protected_paths.update(norm(slot_install(p)) for p in SLOT_PATHS if norm(p) in held)
     rc, refs, err = git(MAIN_ROOT, "for-each-ref", "--format=%(refname:short)", "refs/heads/claude/")
     if rc:
         sys.exit("gc: cannot enumerate branches: " + err)
@@ -307,6 +315,8 @@ def _gc(entries, hours):
             continue
         newest = max(p.stat().st_mtime for p in tree)
         low_disk = shutil.disk_usage(root).free < 30 * 2**30
+        if re.fullmatch(r"pc-lane-\d{2}", path.name) and not low_disk:
+            continue  # retained slots are reclaimed only under disk pressure
         if not (merged or time.time() - newest >= hours * 3600 or low_disk):
             continue
         evidence = [p for p in tree if p.is_file() and
