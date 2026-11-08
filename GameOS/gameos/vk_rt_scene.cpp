@@ -754,27 +754,31 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
         if (s.moverInst[fs]) ctx->retire(std::move(s.moverInst[fs]));
         const uint32_t cap = std::max<uint32_t>(count + count / 2, 64);
         s.moverInstCap[fs] = 0;
-        if (s.moverInst[fs].createHostWritable(ctx->allocator(), ctx->device(), static_cast<VkDeviceSize>(cap) * kInstanceBytes, kBuildInput, "rt_scene.mover_instances"))
+        // +kInstanceAddressAlignment: a host-writable sub-allocation is only guaranteed 4-byte aligned (seen on the RX 7900 XTX), the instances need 16.
+        if (s.moverInst[fs].createHostWritable(ctx->allocator(), ctx->device(), static_cast<VkDeviceSize>(cap) * kInstanceBytes + kInstanceAddressAlignment,
+                                               kBuildInput, "rt_scene.mover_instances"))
             s.moverInstCap[fs] = cap;
         else
             ok = false;
     }
-    if (ok) ok = s.moverInst[fs].upload(s.instStage.data(), static_cast<VkDeviceSize>(count) * kInstanceBytes);
+    const VkDeviceAddress instBase = ok ? s.moverInst[fs].deviceAddress() : 0;
+    const VkDeviceSize instOffset = (kInstanceAddressAlignment - instBase % kInstanceAddressAlignment) % kInstanceAddressAlignment;
+    if (ok) ok = s.moverInst[fs].upload(s.instStage.data(), static_cast<VkDeviceSize>(count) * kInstanceBytes, instOffset);
     if (ok) {
         BuildFlags flags;
         flags.preferFastTrace = false;
         const uint32_t capacity = s.moverInstCap[fs];
-        ok = recordTlasRebuild(*ctx, cmd, s.moverInst[fs].deviceAddress(), count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
+        ok = recordTlasRebuild(*ctx, cmd, instBase + instOffset, count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
         if (!ok && s.moverTlas) {   // too small: a new one sized for the capacity
             ctx->retire(std::move(s.moverTlas));
             s.moverTlas = AccelStructure{};
-            ok = recordTlasRebuild(*ctx, cmd, s.moverInst[fs].deviceAddress(), count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
+            ok = recordTlasRebuild(*ctx, cmd, instBase + instOffset, count, capacity, flags, "rt_scene.mover_tlas", s.moverTlas, s.moverScratch);
         }
         if (ok) recordBarrier(*ctx, cmd, Phase::Tlas, Phase::Consumer);
     }
     if (!ok && count > 0 && ++s.moverTlasFailed <= 3)
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL mover tlas count={} cap={} inst_addr=0x{:x} tlas_bytes={} scratch_bytes={}", count, s.moverInstCap[fs],
-                  s.moverInst[fs] ? s.moverInst[fs].deviceAddress() : 0, s.moverTlas ? s.moverTlas.size() : 0, s.moverScratch.capacity());
+                  instBase + instOffset, s.moverTlas ? s.moverTlas.size() : 0, s.moverScratch.capacity());
     if (!ok && s.moverTlas) ctx->retire(std::move(s.moverTlas));   // never leave a TLAS whose build was not recorded this frame
     s.moverScratch.retireStale(*ctx);
 
