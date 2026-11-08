@@ -414,7 +414,7 @@ _default_jobs() {
 }
 
 # Rows measured slow go first so the pool does not end on a long tail.
-_SLOW_FIRST=" include_firewall delivery_installs input_capture_visibility_selftest scripts_tests tools_tests "
+_SLOW_FIRST=" boundaries delivery_installs input_capture_visibility_selftest scripts_tests tools_tests "
 
 _drain_queue() {
     local n="${#Q_LABEL[@]}" i
@@ -852,7 +852,7 @@ run_nightly "analyze_dangling"              "py -3 tests/analyze/analyze_danglin
 run_nightly "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
 run_nightly "container_callsites"       "py -3 tests/analyze/container_callsites.py --check"   # step 4 B2: the compiler-derived EList/SortList/PriorityQueue call-site list; an edited file needs --remap BASE, a converted one --drop
 # (the vk_umbrella_readers rule was retired with the umbrella: the Vulkan scene path is unconditional)
-run_nightly "gate_echo_reads"                 "py -3 scripts/check-gate-echo-reads.py --quiet"
+run_nightly "boundaries"                      "py -3 scripts/check_boundaries.py --quiet && py -3 -B -m pytest scripts/tests/test_check_boundaries.py -q -p no:cacheprovider"   # one declarative scanner (scripts/boundary_rules.json): include_firewall, sim_no_audio_reads, no_gl_census, json_isolation, particles_no_cpu_projection, unified_projection_retirement, gate_echo_reads
 # GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
 # gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every
 # seed gate is still a row, registered gates agree with the feature registry, and the per-site
@@ -889,10 +889,8 @@ run_nightly "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.
 # cannot be missing from it; the old allowlist ratchet and its debt file are gone.
 run_nightly "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
 run_nightly "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
-run_nightly "include_firewall"       "sh scripts/check-include-firewall.sh"
 run_nightly "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
 run_check "vk_pipeline_infra"      "sh scripts/check-vk-submit-funnel.sh --pipelines"
-run_nightly "sim_no_audio_reads"     "sh scripts/check-sim-no-audio-reads.sh"
 run_nightly "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
 run_nightly "veg_gpu_cull"             "py -3 scripts/check-veg-gpu-cull.py"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep
 run_nightly "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
@@ -956,7 +954,6 @@ run_nightly "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quie
 run_nightly "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider"
 run_nightly "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
 run_nightly "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
-run_check "no_gl_census"              "sh scripts/check-no-gl-census.sh"
 run_nightly "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
 run_nightly "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
 run_nightly "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
@@ -1424,12 +1421,9 @@ run_nightly "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fix
 run_nightly "mod_packaging"             "py -3 -B -m pytest tests/mod_install/test_packaging.py tests/mc2mod -q -p no:cacheprovider"
 run_nightly "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
 run_nightly "claude_md_pointer"          "sh scripts/check-claude-md-pointer.sh"
-run_nightly "json_isolation"             "sh scripts/check-json-isolation.sh"
 run_nightly "mlr_leaves_gated"           "sh scripts/check-mlr-leaves-gated.sh"
 run_nightly "object_mvp_currency"        "py -3 scripts/check-object-mvp-currency.py"
-run_nightly "particles_no_cpu_projection" "sh scripts/check-particles-no-cpu-projection.sh"
 run_nightly "toolchain_bom"              "py -3 scripts/check-toolchain-bom.py"
-run_nightly "unified_projection_retirement" "sh scripts/check-unified-projection-retirement.sh"
 # --allow-missing-artifacts is DELIBERATE and must stay explicit: this check
 # grades the tag registry against BOTH a gate doc and a golden artifact log
 # dir. The log dir is a smoke output that is usually absent in a source

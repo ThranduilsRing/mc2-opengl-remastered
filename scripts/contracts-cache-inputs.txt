@@ -37,7 +37,7 @@ mapgen_fof: tools tests/mapgen data
 background_launch: glob:scripts/**.py glob:tools/**.py glob:.claude/**.py glob:tests/**.py glob:**.bat glob:**.cmd glob:**.ps1 +ignored
 
 # C++ source scanners
-gate_echo_reads: @CPP
+boundaries: .
 gate_gen_check: @CPP docs/flags.auto.yaml
 gated_layout_macros: @CPP
 counter_honesty: @CPP
@@ -48,11 +48,9 @@ render_contract_gbuf1: @ALLSRC
 asset_scale_callers: @CPP
 mover_registry_coherence: code mclib gui editor GameAdapters
 tgl_load_callers: code mclib gui editor GameAdapters GameOS Viewer EditorBridge
-include_firewall: RenderCore RenderWorld Visibility MeshRenderer MaterialSystem DebugRenderer RenderDeviceGL EditorBridge Gates editor
 material_gpu_mirror: RenderCore GameOS mclib code shaders
 binding_slots: GameOS RenderCore RenderWorld GameAdapters mclib code shaders
 sampler_bindings: GameOS RenderCore RenderWorld GameAdapters mclib code shaders
-unified_projection_retirement: shaders code GameOS mclib
 
 # shader-side (rows that run an external compiler -- glslang, slang -- are deliberately NOT declared: the toolchain is not in the key)
 vk_pipeline_layout: shaders GameOS RenderCore
