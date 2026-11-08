@@ -115,14 +115,14 @@ bool Batcher::is_log_enabled() {
 //   * Eyes-on (mc2_01 + MC2_FX_FORCE_SPAWN, ~8 frames post-fire): Bushwacker
 //     PPC renders the blue oracle ribbon; recognizable weapon FX.
 // Default-ON with a =0 kill-switch: absent or any value != "0" = oracle;
-// MC2_VFX_ORACLE_TUBE=0 = legacy MLR fallback.
+// MC2_VFX_ORACLE_TUBE=0 = kill-switch: suppresses tube drawing (no MLR fallback).
 bool Batcher::is_oracle_tube_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE">();    // native Vulkan ribbons; =0 is the legacy MLR kill-switch
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE">();    // native Vulkan ribbons; =0 suppresses tube drawing
         s_init = true;
-        MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-on; =0 uses legacy MLR)\n",
+        MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-on; =0 suppresses tubes)\n",
                      s_val ? "on" : "off");
         std::fflush(stderr);
     }

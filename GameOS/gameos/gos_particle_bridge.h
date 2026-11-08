@@ -34,9 +34,9 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
  *   (positions already in MC2 WORLD space; caller pre-multiplies by
  *   local_to_world before enqueuing) into an internal per-frame queue.
  *   No GPU work. Returns void. Texture argument is an MLR pool index, resolved at drain.
- *   gosHandle==0 must NOT be enqueued (untextured → legacy MLR path is
- *   correct-phase via the MLR sorter; the caller must skip enqueue and
- *   leave ribbonSubmitted=false so DrawEffect runs).
+ *   mlrHandle==0 = untextured (drawn white). blendMode low byte: 0 alpha,
+ *   1 SRC_ALPHA/ONE, 2 ONE/ONE, 3 opaque (depth write), 4 ONE/SRC_ALPHA,
+ *   5 ONE/ONE_MINUS_SRC_ALPHA; bit 8 = clamp UVs.
  *
  * gos_tube_ribbon_flush_deferred — called ONCE from code/gamecam.cpp
  *   immediately after Batcher::Instance().Flush() (post-renderLists).

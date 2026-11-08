@@ -14,10 +14,10 @@
 #include<string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
-// MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
+// Tube mesh submit bridge (GameOS-side Vulkan VFX island).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
 // TUBE-DEFERRED-FLUSH-1: enqueue for post-renderLists composite.
-// mlrHandle==0 must NOT be enqueued (caller must leave ribbonSubmitted=false).
+// mlrHandle==0 means untextured (drawn white).
 extern "C" void gos_tube_ribbon_enqueue(const float*          positions,
                                         const float*          colors,
                                         const float*          uvs,
@@ -1179,8 +1179,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	Check_Object(this);
 	Check_Object(info);
 
-	// Textured profiles use the native swept mesh. Untextured and opaque
-	// tubes retain MLR until the populated opaque control is visually correct.
+	// Every tube draws through the native swept mesh (see below).
 
 	//
 	//---------------------------------------------------------
@@ -1190,7 +1189,6 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	if (m_activeProfileCount>1)
 	{
 		MidLevelRenderer::DrawEffectInformation dInfo;
-		dInfo.effect = m_mesh.get();
 		Specification *spec = GetSpecification();
 
 		// MC2_TUBE_PROFILE_LOG=1: log each tube spec's PEAK m_activeProfileCount.
@@ -1219,10 +1217,8 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			dInfo.state.SetTextureHandle(0);
 			dInfo.state.SetAlphaMode(MidLevelRenderer::MLRState::OneZeroMode);
 		}
-		dInfo.clippingFlags = info->m_clippingFlags;
 		glm::mat4 local_to_world;
 		local_to_world = m_localToParent * *info->m_parentToWorld;
-		dInfo.effectToWorld = &local_to_world;
 		unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.size());
 		m_vertexCount = m_activeProfileCount * vertex_count;
 		m_triangleCount = 2 * (m_activeProfileCount-1) * (vertex_count-1);
@@ -1325,120 +1321,66 @@ void gosFX::Tube::Draw(DrawInfo *info)
 
 		//
 		//-----------------------------------------------------------------
-		// MC2_VFX_ORACLE_TUBE: if the gate is ON and this Tube is a supported
-		// kind, submit the already-built swept-quad/polygon-tube mesh to the
-		// GPU ribbon bridge instead of the legacy MLR DrawEffect.
-		//
-		// Slice 1: alpha-blend ribbon, vertex_count==2 (MissileSmoke).
-		// Slice 2 widens coverage to the remaining live Tube kinds, SAME gate:
-		//   A. Additive bolt trails (PPC / ER-PPC): OneOneMode / AlphaOneMode.
-		//      Carried through as blendMode=1 -> the bridge uses additive GL
-		//      blend (GL_SRC_ALPHA, GL_ONE), same indexed ribbon mesh, NO card-
-		//      per-profile billboards (the old "white squares" came from the
-		//      billboard topology, not the ribbon swept-quad).
-		//   B. Polygon profile tubes (vertex_count 3..7 â€” triangle/square/
-		//      pentagon/hexagon/cross). BuildMesh already emits the full ring's
-		//      panel quads (incl. the cross special-case) into m_P_indices with
-		//      the correct insideOut winding; we just submit the full
-		//      m_triangleCount*3 index range that BuildMesh built.
-		// Truly unsupported / edge kinds still fall through to legacy MLR.
+		// Native submission: the swept-quad / polygon-tube mesh BuildMesh
+		// already produced goes to the Vulkan VFX island (drained after the
+		// scene, like card groups). Every MLR state is covered: textured or
+		// untextured (texture handle 0 = white), opaque/additive/alpha blend
+		// recipes, wrap or clamp addressing. The GPU clips against the
+		// frustum, so no CPU clipper or sorter runs. MC2_VFX_ORACLE_TUBE=0
+		// now only suppresses tube drawing.
 		//-----------------------------------------------------------------
 		//
-		bool ribbonSubmitted = false;
-		if (mc2::particles::Batcher::is_oracle_tube_enabled())
+		if (mc2::particles::Batcher::is_oracle_tube_enabled() && m_P_indices)
 		{
-			const unsigned vc = vertex_count;  // captured above
-			const bool isRibbonKind =
-				(spec->m_profileType == Specification::e_Ribbon ||
-				 spec->m_profileType == Specification::e_AlignedRibbon ||
-				 spec->m_profileType == Specification::e_VerticalRibbon);
-			const MidLevelRenderer::MLRState::AlphaMode am =
-				dInfo.state.GetAlphaMode();
-			// Alpha-blend (smoke ribbons) vs additive (PPC bolts). Same
-			// classification convention as the billboard bridge / spawn_*.cpp:
-			// OneOneMode / AlphaOneMode = additive; everything else = alpha.
-			const bool isAdditive =
-				(am == MidLevelRenderer::MLRState::OneOneMode ||
-				 am == MidLevelRenderer::MLRState::AlphaOneMode);
-			const bool isAlphaBlend =
-				(am == MidLevelRenderer::MLRState::AlphaInvAlphaMode ||
-				 am == MidLevelRenderer::MLRState::OneInvAlphaMode  ||
-				 am == MidLevelRenderer::MLRState::OneAlphaMode);
-
-			// Slice 2 widens the kind classifier:
-			//  - ribbon kinds (vc==2): alpha OR additive (was alpha-only).
-			//  - polygon profiles (vc 3..7): triangle/square/pentagon/hexagon/
-			//    cross. m_triangleCount and m_P_indices already encode the full
-			//    ring (BuildMesh, incl. the vc==5 cross special-case) with the
-			//    spec's insideOut winding â€” submit exactly what BuildMesh built.
-			const bool isPolygonKind = (vc >= 3 && vc <= 7);
-			const bool isSupportedBlend = isAlphaBlend || isAdditive;
-			// Both ribbon and polygon tubes route through the same indexed mesh
-			// submit. (Ribbon == vc 2 swept quad; polygon == vc>=3 ring panels.)
-			const bool supported =
-				isSupportedBlend && (vc >= 2) && (isRibbonKind || isPolygonKind);
-			// Preserve the existing additive recipe and the authored texture-address mode.
-			const int blendMode =
-				(am == MidLevelRenderer::MLRState::OneOneMode ? 2 :
-				 am == MidLevelRenderer::MLRState::AlphaOneMode ? 1 :
-				 am == MidLevelRenderer::MLRState::OneAlphaMode ? 4 :
-				 am == MidLevelRenderer::MLRState::OneInvAlphaMode ? 5 : 0) |
-				(dInfo.state.GetTextureWrapMode() == MidLevelRenderer::MLRState::TextureClamp ? 256 : 0);
-
-			if (supported && m_P_indices)
+			using MlrState = MidLevelRenderer::MLRState;
+			// Blend recipe codes, LOCKSTEP with vulkan_vfx_island.cpp and the
+			// tube bridge: 0 alpha, 1 SRC_ALPHA/ONE, 2 ONE/ONE, 3 opaque,
+			// 4 ONE/SRC_ALPHA, 5 ONE/ONE_MINUS_SRC_ALPHA.
+			int blendRecipe = 0;
+			switch (dInfo.state.GetAlphaMode())
 			{
-				// Live, compacted mesh: profiles 0..m_activeProfileCount are
-				// contiguous in m_P_vertices/colors/uvs (AnimateProfile writes
-				// vertex_index = profile_count*vc). Index range = the first
-				// m_triangleCount triangles of the BuildMesh stencil â€” for both
-				// the vc==2 ribbon and the vc>=3 polygon ring (cross included).
-				const unsigned numVerts   = m_activeProfileCount * vc;
-				const unsigned numIndices = static_cast<unsigned>(m_triangleCount) * 3u;
-
-				const uint32_t mlrHandle =
-					static_cast<uint32_t>(dInfo.state.GetTextureHandle());
-
-				// Enqueue an MLR pool index; the deferred bridge resolves it after
-				// ForceLoadImages. Untextured tubes keep the CPU route.
-				if (mlrHandle != 0) {
-					// Transform local-space verts to MC2/Stuff world space.
-					// (m_P_vertices are effect-local; the ribbon VS applies the GL
-					// axis swap, so we hand it MC2 world unswapped.)
-					static std::vector<float> s_worldPos;
-					if (static_cast<unsigned>(s_worldPos.size()) < numVerts*3u)
-						s_worldPos.resize(numVerts*3u);
-					for (unsigned vi = 0; vi < numVerts; ++vi)
-					{
-						glm::vec3 wp;
-						wp = mc2::math::transformPoint(m_P_vertices[vi], local_to_world);
-						s_worldPos[vi*3+0] = wp.x;
-						s_worldPos[vi*3+1] = wp.y;
-						s_worldPos[vi*3+2] = wp.z;
-					}
-
-					gos_tube_ribbon_enqueue(
-						s_worldPos.data(),
-						reinterpret_cast<const float*>(m_P_colors),
-						reinterpret_cast<const float*>(m_P_uvs),
-						numVerts,
-						m_P_indices,
-						numIndices,
-						mlrHandle,
-						blendMode);  // low bits: blend recipe; bit 8: clamp UVs
-					ribbonSubmitted = true;
-				}
-				// mlrHandle==0: ribbonSubmitted stays false â†’ DrawEffect below.
+			case MlrState::OneZeroMode:     blendRecipe = 3; break;
+			case MlrState::OneOneMode:      blendRecipe = 2; break;
+			case MlrState::AlphaOneMode:    blendRecipe = 1; break;
+			case MlrState::OneAlphaMode:    blendRecipe = 4; break;
+			case MlrState::OneInvAlphaMode: blendRecipe = 5; break;
+			default:                        blendRecipe = 0; break;
 			}
-		}
+			const int blendMode = blendRecipe |
+				(dInfo.state.GetTextureWrapMode() == MlrState::TextureClamp ? 256 : 0);
 
-		//
-		//--------------------
-		// Now draw the effect (legacy MLR) â€” skipped when the ribbon oracle
-		// submitted this Tube above.
-		//--------------------
-		//
-		if (!ribbonSubmitted)
-	 		info->m_clipper->DrawEffect(&dInfo);
+			// Live, compacted mesh: profiles 0..m_activeProfileCount are
+			// contiguous (AnimateProfile writes vertex_index = profile_count*vc).
+			const unsigned numVerts   = m_activeProfileCount * vertex_count;
+			const unsigned numIndices = static_cast<unsigned>(m_triangleCount) * 3u;
+			// MLR pool index; 0 = untextured. The bridge resolves it after
+			// ForceLoadImages.
+			const uint32_t mlrHandle =
+				static_cast<uint32_t>(dInfo.state.GetTextureHandle());
+
+			// Local-space verts to MC2/Stuff world space (the tube vertex
+			// shader applies the GL axis swap).
+			static std::vector<float> s_worldPos;
+			if (static_cast<unsigned>(s_worldPos.size()) < numVerts*3u)
+				s_worldPos.resize(numVerts*3u);
+			for (unsigned vi = 0; vi < numVerts; ++vi)
+			{
+				const glm::vec3 wp = mc2::math::transformPoint(m_P_vertices[vi], local_to_world);
+				s_worldPos[vi*3+0] = wp.x;
+				s_worldPos[vi*3+1] = wp.y;
+				s_worldPos[vi*3+2] = wp.z;
+			}
+
+			gos_tube_ribbon_enqueue(
+				s_worldPos.data(),
+				reinterpret_cast<const float*>(m_P_colors),
+				reinterpret_cast<const float*>(m_P_uvs),
+				numVerts,
+				m_P_indices,
+				numIndices,
+				mlrHandle,
+				blendMode);  // low bits: blend recipe; bit 8: clamp UVs
+		}
 	}
 
 	Effect::Draw(info);

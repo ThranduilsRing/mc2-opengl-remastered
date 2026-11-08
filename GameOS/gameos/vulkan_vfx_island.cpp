@@ -178,7 +178,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule vegVert;        // vfx_vegetation.vert: reads the GPU cull's survivor list
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
-    mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe;
+    mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe, opaquePipe;
     mc2vk::OwnedCommandPool cpool[kVfxSlots];   // per-slot pools: vkResetCommandPool instead of per-cb reset
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
@@ -315,13 +315,13 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     VkPipelineDepthStencilStateCreateInfo ds{};
     ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     ds.depthTestEnable = VK_TRUE;
-    ds.depthWriteEnable = vegetation ? VK_TRUE : VK_FALSE;
+    ds.depthWriteEnable = (vegetation || tubeMode == 3) ? VK_TRUE : VK_FALSE;
     ds.depthCompareOp = vegetation ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_GREATER_OR_EQUAL;
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
     //   additive = SRC_ALPHA / ONE                  (GL additive groups)
     VkPipelineColorBlendAttachmentState cba[2]{};
-    cba[0].blendEnable = vegetation ? VK_FALSE : VK_TRUE;
+    cba[0].blendEnable = (vegetation || tubeMode == 3) ? VK_FALSE : VK_TRUE;  // tubeMode 3 = opaque ONE/ZERO
     cba[0].srcColorBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstColorBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     cba[0].colorBlendOp = VK_BLEND_OP_ADD;
@@ -556,8 +556,9 @@ bool init_island(VfxIsland* s, int w, int h) {
         s->oneOnePipe = make_pipeline(s, w, h, /*additive=*/true, /*oneOne=*/true);
         s->oneAlphaPipe = make_pipeline(s, w, h, false, false, false, 4);
         s->oneInvAlphaPipe = make_pipeline(s, w, h, false, false, false, 5);
+        s->opaquePipe = make_pipeline(s, w, h, false, false, false, 3);
         if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe ||
-            !s->oneAlphaPipe || !s->oneInvAlphaPipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
+            !s->oneAlphaPipe || !s->oneInvAlphaPipe || !s->opaquePipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
     }
 
     // One command buffer per call and frame slot; reuse waits on its last timeline ticket.
@@ -761,6 +762,7 @@ extern "C" int mc2_vk_vfx_island_run(
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
         if (d.additive == 4) want = s->oneAlphaPipe.get();
         else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
+        else if (d.additive == 3) want = s->opaquePipe.get();
         if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
         if (*groupPage[gi] != boundPage) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
