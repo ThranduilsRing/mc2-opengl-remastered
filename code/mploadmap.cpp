@@ -683,18 +683,25 @@ void MPLoadMap::getMapNameFromFile( mc2::czstring pFileName, std::span<char> mis
 
 	FitIniFile file;
 
-	if ( NO_ERR != file.open( static_cast<const char*>(path) ) )
-	{
-		char errorStr[256];
-		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)));
-		Assert( 0, 0, errorStr );
-	}
-
-	
-	long result = file.seekBlock( "MissionSettings" );
-	Assert( result == NO_ERR, 0, "Coudln't find the mission settings block in the mission file" );
+	// Mod and FST lists can include a .fit that is not a mission or has no name: show the file name instead of asserting.
+	auto useFileName = [&]() {
+		mc2::fmt::to_buf_n( missionName.data(), missionName.size(), "{}", mc2::fmt::safe(static_cast<const char*>(pFileName)) );
+	};
 
 	missionName[0] = 0;
+	if ( NO_ERR != file.open( static_cast<const char*>(path) ) )
+	{
+		useFileName();
+		return;
+	}
+
+	long result = file.seekBlock( "MissionSettings" );
+	if ( NO_ERR != result )
+	{
+		useFileName();
+		return;
+	}
+
 	bool bRes = 0;
 
 	result = file.readIdBoolean( "MissionNameUseResourceString", bRes );
@@ -703,13 +710,16 @@ void MPLoadMap::getMapNameFromFile( mc2::czstring pFileName, std::span<char> mis
 	{
 		unsigned long lRes;
 		result = file.readIdULong( "MissionNameResourceStringID", lRes );
-		Assert( result == NO_ERR, 0, "couldn't find the MissionNameResourceStringID" );
-		cLoadString( lRes, missionName.data(), static_cast<long>(missionName.size()) );
+		if ( NO_ERR != result )
+			useFileName();
+		else
+			cLoadString( lRes, missionName.data(), static_cast<long>(missionName.size()) );
 	}
 	else
 	{
 		result = file.readIdString( "MissionName", missionName.data(), static_cast<long>(missionName.size()) );
-		Assert( result == NO_ERR, 0, "couldn't find the missionName" );
+		if ( NO_ERR != result || missionName[0] == 0 )
+			useFileName();
 	}
 }
 

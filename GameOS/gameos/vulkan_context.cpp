@@ -203,7 +203,7 @@ void runValidationCanary(VkDevice device) {
 
 // Validation preset resolver (same values the islands accept via
 // MC2_VULKAN_VALIDATION). Kept local so the context has no link dependency on
-// the island TU (which is #if 1  // always built (MC2_VULKAN_ISLAND is not a define in this tree) and may not be compiled).
+// the island TU (always built; MC2_VULKAN_ISLAND is not a define in this tree).
 bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
                              const char*& resolvedName) {
     feats.clear();

@@ -729,7 +729,9 @@ extern "C" int mc2_vk_vfx_island_run(
     {
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
         uint8_t* dst = static_cast<uint8_t*>(span.ptr) + partOff;
+        uint8_t* const dstEnd = dst + needBytes;
         for (const mc2vfx::PlanItem& it : items) {
+            if (static_cast<size_t>(dstEnd - dst) < static_cast<size_t>(it.count) * 64u) break;   // never write past the particle staging region
             std::memcpy(dst, static_cast<const uint8_t*>(particles) + static_cast<size_t>(it.src) * 64u, static_cast<size_t>(it.count) * 64u);
             dst += static_cast<size_t>(it.count) * 64u;
         }
