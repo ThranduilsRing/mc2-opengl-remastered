@@ -344,8 +344,11 @@ def main(argv=None):
             image = cook_map(assets, mission, args.size, overlays)
             dest = args.out / f'data/art/missionmaps/{mission}.png'
             dest.parent.mkdir(parents=True, exist_ok=True)
-            image.save(dest)
-            maps.append((mission, image))
+            # Indexed PNG keeps 1024px art near/below 1 MiB without reducing
+            # spatial resolution; the runtime PNG decoder expands the palette.
+            image = image.quantize(colors=256, dither=Image.Dither.NONE)
+            image.save(dest, optimize=True)
+            maps.append((mission, image.convert('RGB')))
         except (FileNotFoundError, ValueError) as error:
             skipped.append(f'{mission}: {error}')
     contact_sheet(maps, args.proof/'minimaps.png')

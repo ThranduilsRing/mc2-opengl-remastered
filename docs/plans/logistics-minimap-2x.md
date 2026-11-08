@@ -19,6 +19,8 @@ rounded cell resizes). Ten code tests passed (cooker-code-2x.log); full shipped
 art test waits for recook. New tests cover diagonal coast, visual priority and
 dimensions, road-cell filtering, and bilinear color. Initial NW-water assertion
 was updated to sample deep water instead of the new AA contour.
+Final PNGs use an adaptive 256-color palette to keep the doubled art below the
+repository's approximate 1 MiB generated-file limit; runtime decoding expands it.
 
 Framing inspected: UiDefs::setElementTextureNode sets full normalized UVs;
 drawUiImageElement scales e.rect independently of texture dimensions. The defs

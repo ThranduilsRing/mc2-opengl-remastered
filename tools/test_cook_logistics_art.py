@@ -19,9 +19,10 @@ def test_shipped_art_decodes_with_loader_dimensions_and_transparent_border():
     assert len(maps) == 43
     assert {f'mc2_{mission:02d}' for mission in range(1, 25)} <= {p.stem for p in maps}
     for path in maps:
+        assert path.stat().st_size <= 1024 * 1024
         with Image.open(path) as image:
             image.load()
-            assert image.mode == 'RGB' and image.size == (1024, 1024)
+            assert image.mode in ('P', 'RGB') and image.size == (1024, 1024)
     icons = list((art/'mechicons').rglob('*.png'))
     assert art/'mechicons/starslayer.png' in icons
     assert art/'mechicons/hollander.png' in icons
