@@ -533,6 +533,11 @@ target_sources(mc2_tests PRIVATE test_combat_retirement.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
 target_sources(vfx_lifecycle_tests PRIVATE test_vfx_frozen_clouds.cpp)
 target_sources(vfx_lifecycle_tests PRIVATE
+    test_vfx_native_playback.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_runtime.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_emitters.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_tubes.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_geometry.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp

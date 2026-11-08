@@ -16,6 +16,6 @@ TEST_CASE("vfx_oracle/CardCloud lifecycle in an isolated platform")
     for (const auto* arm : {"0", "1"}) {
         CAPTURE(arm);
         mc2::gate::ScopedOverride<"MC2_GPU_PARTICLES"> gpu{arm};
-        CHECK(runContractChild(executable, {"--no-breaks"}) == 0);
+        CHECK(runContractChild(executable, {"--no-breaks", "--test-case-exclude=fx_playback/*"}) == 0);
     }
 }

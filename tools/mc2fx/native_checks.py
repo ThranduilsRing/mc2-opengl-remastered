@@ -160,7 +160,7 @@ def prove(payload, tmp_path, label):
 def test_boundary():
     """The independent reader and public records must survive deleting both legacy trees."""
     sources = sorted((ROOT / "mclib/fx").glob("fx_*.*"))
-    assert len(sources) == 8
+    assert len(sources) == 16
     for path in sources:
         text = path.read_text(encoding="utf-8")
         assert not re.search(r'#include\s*[<"][^">]*(?:gosfx|mlr|stuff|particles)[/\\]', text), path
