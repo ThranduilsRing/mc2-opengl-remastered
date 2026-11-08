@@ -30,6 +30,12 @@ def test_packed_data_and_reject_corruption():
         cook.packets(packet_file([(4, struct.pack('<I', 1) + zlib.compress(data))]))
 
 
+def test_fit_comments_and_shared_colormap_name():
+    fit = '[Static1] // mech icon\r\nl Width = 40 // pixels\r\nst FileName = "mod.png"\r\n[Other]\r\nl Width = 99'
+    assert cook.fit_value(fit, 'Static1', 'Width') == '40'
+    assert cook.fit_value(fit, 'Static1', 'FileName') == 'mod.png'
+
+
 def test_split_border_has_no_neighbour_and_keeps_hud_palette():
     atlas = Image.new('RGBA', (6, 3), (255, 0, 0, 255))
     atlas.paste((0, 0, 0, 255), (0, 0, 3, 3))

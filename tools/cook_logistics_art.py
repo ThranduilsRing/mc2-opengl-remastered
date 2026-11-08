@@ -39,6 +39,8 @@ class Assets:
 
     def keys(self, prefix, suffix):
         keys = {k for k in self.entries if k.startswith(prefix) and k.endswith(suffix)}
+        if self.base:
+            keys.update(self.base.keys(prefix, suffix))
         folder = self.root / prefix
         if folder.is_dir():
             keys.update(p.relative_to(self.root).as_posix().lower() for p in folder.glob(f"*{suffix}"))
@@ -92,6 +94,7 @@ def packets(data):
 
 
 def fit_value(text, block, key, default=""):
+    text = re.sub(r'(?m)//[^\r\n]*', '', text)
     section = re.search(r'(?ims)^\s*\[' + re.escape(block) + r'\]\s*$(.*?)(?=^\s*\[|\Z)', text)
     if section:
         found = re.search(r'(?im)^\s*\w+\s+' + re.escape(key) + r'\s*=\s*([^\r\n;]+)', section[1])
@@ -115,7 +118,19 @@ def split_icons(assets, out):
     cw = int(fit_value(layout, "Static1", "Width", "25"))
     ch = int(fit_value(layout, "Static1", "Height", "30"))
     sheet_name = fit_value(layout, "Static1", "FileName", "mcui_gn_mechicons")
-    atlas = assets.image("data/art/" + sheet_name.lower().removesuffix('.tga') + ".tga")
+    sheet_path = "data/art/" + sheet_name.lower()
+    if not sheet_path.endswith(('.tga', '.png')):
+        sheet_path += '.tga'
+    atlas = assets.image(sheet_path)
+    try:
+        sizes = csv.reader(io.StringIO(assets.read('data/art/asset_sizes.csv').decode('latin1')))
+        for row in sizes:
+            if len(row) >= 3 and 'data/' + row[0].strip().lower() == sheet_path:
+                cw = round(cw*atlas.width/int(row[1]))
+                ch = round(ch*atlas.height/int(row[2]))
+                break
+    except FileNotFoundError:
+        pass
     sheets = {}
     for name, width, height in (("mcui_low4", 25, 30), ("mcui_med4", 32, 38), ("mcui_high7", 40, 48)):
         try:
@@ -291,8 +306,9 @@ def main(argv=None):
             skipped.append(f'{mission}: {error}')
     contact_sheet(maps, args.proof/'minimaps.png')
     contact_sheet(icons, args.proof/'icons.png', cell=(180, 100), columns=8)
-    (args.proof/'cook.txt').write_text(f'maps={len(maps)} chassis={len(icons)}\n' + '\n'.join(skipped) + '\n')
-    print(f'logistics-art: maps={len(maps)} chassis={len(icons)} skipped={len(skipped)}; {args.proof}/cook.txt')
+    chassis = sum(':' not in name for name, _ in icons)
+    (args.proof/'cook.txt').write_text(f'maps={len(maps)} chassis={chassis} images={len(icons)}\n' + '\n'.join(skipped) + '\n')
+    print(f'logistics-art: maps={len(maps)} chassis={chassis} images={len(icons)} skipped={len(skipped)}; {args.proof}/cook.txt')
     return 0 if maps and icons else 1
 
 
