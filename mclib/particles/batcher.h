@@ -70,11 +70,10 @@ class Batcher {
     // banners and error/overflow one-shots.
     static bool is_log_enabled();
 
-    // MC2_VFX_ORACLE_TUBE slice 1: gosFX Tube swept-quad ribbon oracle gate
-    // (default OFF). When ON, supported Tube kinds (MissileSmoke / alpha
-    // ribbon, vertex_count==2) submit their already-built swept-quad mesh via
-    // gos_tube_ribbon_flush instead of legacy MLR; unsupported kinds (additive
-    // PPC, polygon profiles) fall through to legacy MLR unchanged.
+    // MC2_VFX_ORACLE_TUBE: gosFX Tube native submission gate (default ON).
+    // Every Tube kind submits its already-built mesh to the Vulkan VFX island
+    // via gos_tube_ribbon_enqueue; there is no MLR fallback. =0 suppresses
+    // tube drawing (kill-switch).
     static bool is_oracle_tube_enabled();
     // MC2_VFX_ORACLE_SHAPE (default OFF). When ON, gosFX::Shape::Draw harvests
     // its single rigid MLRShape (model-space verts/UVs/indices + per-primitive

@@ -17,8 +17,8 @@ std::vector<RibbonRecord> ribbons;
 
 void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParticleDraw>& draws,
                   const float* positions, const float* colors, const float* uvs, unsigned numVerts,
-                  const unsigned short* indices, unsigned numIndices, unsigned texture, int blend) {
-    if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || !texture) return;
+                  const unsigned short* indices, unsigned numIndices, unsigned texture, bool untextured, int blend) {
+    if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || (!texture && !untextured)) return;
     if (std::any_of(indices, indices + numIndices, [&](auto i) { return i >= numVerts; })) return;
     VfxParticleDraw draw{};
     draw.start = static_cast<uint32_t>(vertices.size());
@@ -26,7 +26,7 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
     draw.texture = texture;
     // Low byte: Vulkan blend recipe; bit 8: authored UV clamp.
     const unsigned mode = static_cast<unsigned>(blend) & 255u;
-    if (mode > 5 || mode == 3) return; // opaque Tube remains with MLR
+    if (mode > 5) return;
     if (groupLogEnabled()) {
         static bool seen[6]{};
         if (!seen[mode]) {
@@ -46,7 +46,8 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
         constexpr uint32_t clampUv = 16u; // vfx_particle.frag geometry UV policy
         v.flags = VfxGeometryTube | (additive ? VfxGeometryOneOne : 0u) |
                   ((blend & 256) != 0 ? clampUv : 0u) |
-                  (mode == 4 || mode == 5 ? 512u : 0u);
+                  (mode == 4 || mode == 5 ? 512u : 0u) |
+                  (mode == 3 ? 1024u : 0u) | (untextured ? VfxGeometryUntextured : 0u);
         vertices.push_back(v);
     }
     draws.push_back(draw);
@@ -61,7 +62,7 @@ void submit(const std::vector<VfxGeometryVertex>& vertices, const std::vector<Vf
 }
 extern "C" void gos_tube_ribbon_enqueue(const float* positions, const float* colors, const float* uvs,
     unsigned numVerts, const unsigned short* indices, unsigned numIndices, unsigned mlrHandle, int blendMode) {
-    if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || !mlrHandle) return;
+    if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices) return;
     ribbons.push_back({{positions, positions + static_cast<size_t>(numVerts)*3}, {colors, colors + static_cast<size_t>(numVerts)*4},
                        {uvs, uvs + static_cast<size_t>(numVerts)*2}, {indices, indices + numIndices}, mlrHandle, blendMode});
 }
@@ -81,7 +82,7 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
             if (entry && entry->GetImage()) texture = entry->GetImage()->GetHandle();
         }
         appendRibbon(vertices, draws, r.positions.data(), r.colors.data(), r.uvs.data(),
-            static_cast<unsigned>(r.positions.size()/3), r.indices.data(), static_cast<unsigned>(r.indices.size()), texture, r.blendMode);
+            static_cast<unsigned>(r.positions.size()/3), r.indices.data(), static_cast<unsigned>(r.indices.size()), texture, r.mlrHandle == 0, r.blendMode);
     } }
     submit(vertices, draws);
     ribbons.clear();
