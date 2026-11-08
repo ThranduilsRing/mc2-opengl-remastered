@@ -2,8 +2,10 @@
 """lane_slot.py -- fixed pool of lane worktrees (A:/Games/mc2-slot01 .. slot12) so the sccache base-dir list never changes and
 each slot keeps its warm Ninja tree between lanes.
 
-  py -3 tools/lane_slot.py acquire --branch <name> [--base <ref>]   # pick/create a free slot, switch -C, warm build, print path
-  py -3 tools/lane_slot.py release <slot>                           # clean check, delete the lane's scratch/install, detach at nifty
+  py -3 tools/lane_slot.py acquire --branch <name> [--base <ref>] [--reset-branch] [--no-warm]
+        # pick/create a free slot; new branch = created at --base (default nifty); EXISTING branch = checked out at its own tip,
+        # never moved (a differing --base is refused unless --reset-branch); prints HEAD, starts the warm build (pid in <tree>/warm.pid)
+  py -3 tools/lane_slot.py release <slot|slot03|path>               # clean check, delete the lane's scratch/install, detach at nifty
   py -3 tools/lane_slot.py status
 
 A slot is free when it exists, is git-clean, is not claimed in the lane registry, and its branch is merged into
@@ -12,6 +14,7 @@ claude/nifty-mendeleev (or has a refs/archive/<branch> ref) or it is detached. N
 import argparse
 import glob
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -80,28 +83,59 @@ def pick_slot(infos):
     return None
 
 
-def acquire(branch, base):
+def branch_plan(branch, base, reset_branch, root=MAIN_ROOT):
+    """-> (switch args, start ref). An existing branch is NEVER moved: it is checked out at its own tip; a --base that
+    differs from that tip is refused unless --reset-branch (2026-11-07: `switch -C` wiped rt-scene-1). A new branch is created at base (default nifty)."""
+    rc, tip, _ = git(root, "rev-parse", "--verify", "-q", f"refs/heads/{branch}")
+    if rc:
+        return ["switch", "-c", branch, base or NIFTY], base or NIFTY
+    if base:
+        rc, want, err = git(root, "rev-parse", "--verify", "-q", f"{base}^{{commit}}")
+        if rc:
+            sys.exit(f"acquire: --base {base} does not resolve: {err}")
+        if want != tip:
+            if not reset_branch:
+                sys.exit(f"acquire: branch {branch} exists at {tip[:9]} but --base {base} is {want[:9]}; refusing to move it "
+                         "(drop --base to check it out at its own tip, or pass --reset-branch to discard its commits from the branch name)")
+            return ["switch", "-C", branch, base], base
+    return ["switch", branch], branch
+
+
+def acquire(branch, base=None, reset_branch=False, no_warm=False):
     claimed = claimed_worktrees()
     picked = pick_slot([slot_info(p, claimed) for p in SLOT_PATHS])
     if not picked:
         sys.exit(f"acquire: all {MAX_SLOTS} slots are busy (dirty, claimed or unmerged); run `lane_slot.py status`")
     path, create = picked
+    switch_args, start = branch_plan(branch, base, reset_branch)
     if create:
-        rc, _, err = git(MAIN_ROOT, "worktree", "add", "--detach", path, base)
+        rc, _, err = git(MAIN_ROOT, "worktree", "add", "--detach", path, start)
         if rc:
             sys.exit("acquire: worktree add failed: " + err)
-    rc, _, err = git(path, "switch", "-C", branch, base)
+    rc, _, err = git(path, *switch_args)
     if rc:
-        sys.exit("acquire: git switch -C failed: " + err)
+        sys.exit(f"acquire: git {' '.join(switch_args)} failed: " + err)
+    print(f"[lane_slot] {branch} HEAD {git(path, 'rev-parse', 'HEAD')[1]}")
     try:
         from pathlib import Path  # noqa: PLC0415
         import lane_registry  # noqa: PLC0415
         lane_registry.register_lane(Path(MAIN_ROOT), branch, worktree=path)
     except Exception as e:  # noqa: BLE001
         print(f"[lane_slot] WARNING: lane registration failed: {e}", file=sys.stderr)
-    # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created).
-    subprocess.run([sys.executable, f"{path}/scripts/ninja_build.py", "--warm"], cwd=path, stdin=subprocess.DEVNULL,
-                   **console_child.child_kwargs(redirected=True))
+    # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created). The warm build holds
+    # the tree's build lock (scripts/ninja_build.py), so the lane's own build waits for it; its PID is recorded in <tree>/warm.pid.
+    if no_warm:
+        print("[lane_slot] --no-warm: no background build started")
+    else:
+        r = subprocess.run([sys.executable, f"{path}/scripts/ninja_build.py", "--warm"], cwd=path, stdin=subprocess.DEVNULL,
+                           capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+        sys.stdout.write(r.stdout)
+        m = re.search(r"warm: pid (\d+) building (\S+)", r.stdout)
+        if m:
+            with open(f"{path}/{m.group(2)}/warm.pid", "w") as f:
+                f.write(m.group(1) + "\n")
+        else:
+            print("[lane_slot] WARNING: warm build did not report a pid: " + (r.stderr.strip() or r.stdout.strip()), file=sys.stderr)
     print(path)
     return path
 
@@ -115,8 +149,17 @@ def install_dirs(branch):
     return out
 
 
+def slot_path(arg):
+    """A slot short name (slot03, mc2-slot03, 3) or a path -> the full slot path; anything else is returned normalised."""
+    arg = arg.replace("\\", "/").rstrip("/")
+    m = re.fullmatch(r"(?:mc2-)?(?:slot)?0*(\d{1,2})", arg, re.I)
+    if m and 1 <= int(m.group(1)) <= MAX_SLOTS:
+        return SLOT_PATHS[int(m.group(1)) - 1]
+    return arg
+
+
 def release(path):
-    path = path.replace("\\", "/").rstrip("/")
+    path = slot_path(path)
     if norm(path) not in {norm(p) for p in SLOT_PATHS}:
         sys.exit(f"release: {path} is not a slot")
     info = slot_info(path, set())
@@ -160,13 +203,15 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("acquire")
     a.add_argument("--branch", required=True)
-    a.add_argument("--base", default=NIFTY)
+    a.add_argument("--base", default=None, help="start ref for a NEW branch (default nifty); for an existing branch it must equal its tip")
+    a.add_argument("--reset-branch", action="store_true", help="allow --base to move an existing branch (discards its commits from the name)")
+    a.add_argument("--no-warm", action="store_true", help="do not start the background warm build")
     r = sub.add_parser("release")
     r.add_argument("slot")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     if args.cmd == "acquire":
-        acquire(args.branch, args.base)
+        acquire(args.branch, args.base, args.reset_branch, args.no_warm)
     elif args.cmd == "release":
         release(args.slot)
     else:

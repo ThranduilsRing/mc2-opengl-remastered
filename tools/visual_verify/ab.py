@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import shutil
@@ -33,6 +34,97 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 DEFAULT_INSTALL = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 THRESH = 24
+
+
+MANIFEST = ".deployed_manifest.csv"
+
+
+def read_manifest(install):
+    """{relpath: sha256} from <install>/.deployed_manifest.csv, plus the src_commit recorded for mc2.exe (or None); ({}, None) when absent."""
+    files, exe_commit = {}, None
+    try:
+        with open(Path(install) / MANIFEST, newline="", encoding="utf-8") as f:
+            for row in csv.reader(f):
+                if len(row) >= 4 and row[0] not in ("manifest_version", "relpath"):
+                    files[row[0]] = row[1]
+                    if row[0] == "mc2.exe":
+                        exe_commit = row[3] or None
+    except OSError:
+        pass
+    return files, exe_commit
+
+
+def exe_commit(exe):
+    """Commit sha embedded in an exe (build fingerprint), or None."""
+    try:
+        from exe_fingerprint import extract
+        fp = extract(exe)
+        sha = fp.get("sha") if fp.get("present") else None
+        return sha if sha and sha != "unknown" else None
+    except Exception:  # noqa: BLE001 -- an unreadable exe is "unknown", reported by the caller
+        return None
+
+
+def install_commit(install):
+    """(commit, how) of an install: its mc2.exe fingerprint, else the manifest's mc2.exe row; (None, why) when unknown."""
+    c = exe_commit(Path(install) / "mc2.exe")
+    if c:
+        return c, "exe fingerprint"
+    c = read_manifest(install)[1]
+    return (c, MANIFEST) if c else (None, f"no fingerprint in {install}/mc2.exe and no mc2.exe row in {MANIFEST}")
+
+
+def git_ok(*args):
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True).returncode == 0
+
+
+def commit_order_problem(older, newer, what_older, what_newer):
+    """None when `older` is an ancestor of (or equal to) `newer`; else the exact mismatch."""
+    if not older or not newer:
+        return f"{what_older if not older else what_newer}: commit unknown"
+    for c, w in ((older, what_older), (newer, what_newer)):
+        if not git_ok("cat-file", "-e", c + "^{commit}"):
+            return f"{w} commit {c[:12]} is not in this repository"
+    if not git_ok("merge-base", "--is-ancestor", older, newer):
+        return f"{what_older} {older[:12]} is not an ancestor of {what_newer} {newer[:12]}"
+    return None
+
+
+def manifest_mismatches(ma, mb):
+    """Data/shader manifest differences ignoring mc2.exe and shaders/vulkan/*.spv (those are the build under test)."""
+    skip = lambda p: p == "mc2.exe" or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))
+    ma = {k: v for k, v in ma.items() if not skip(k)}
+    mb = {k: v for k, v in mb.items() if not skip(k)}
+    out = [f"only in A: {k}" for k in sorted(ma.keys() - mb.keys())] + [f"only in B: {k}" for k in sorted(mb.keys() - ma.keys())]
+    out += [f"differs: {k} (A {ma[k][:12]} vs B {mb[k][:12]})" for k in sorted(ma.keys() & mb.keys()) if ma[k] != mb[k]]
+    return out
+
+
+def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, install=None):
+    """Reasons the two sides are not a same-base A/B. Install mode: A's commit must be an ancestor of B's and the data/shader
+    manifests must match. Exe-swap mode: each exe's commit must descend from the install's deployed commit."""
+    problems = []
+    if install_a and install_b:
+        ca, how_a = install_commit(install_a)
+        cb, how_b = install_commit(install_b)
+        p = commit_order_problem(ca, cb, f"A ({install_a}; {how_a})", f"B ({install_b}; {how_b})")
+        if p:
+            problems.append(p)
+        (ma, _), (mb, _) = read_manifest(install_a), read_manifest(install_b)
+        if not ma or not mb:
+            problems.append(f"{MANIFEST} missing in " + " and ".join(d for d, m in ((install_a, ma), (install_b, mb)) if not m))
+        else:
+            diffs = manifest_mismatches(ma, mb)
+            if diffs:
+                problems.append(f"{len(diffs)} data/shader manifest mismatch(es) besides mc2.exe and shaders/vulkan/*.spv: "
+                                + "; ".join(diffs[:20]) + (" ..." if len(diffs) > 20 else ""))
+    elif exe_a and exe_b:
+        base, how = install_commit(install)
+        for name, exe in (("A", exe_a), ("B", exe_b)):
+            p = commit_order_problem(base, exe_commit(exe), f"install {install} ({how})", f"exe {name} {exe}")
+            if p:
+                problems.append(p)
+    return problems
 
 
 def run_capture(install, bookmarks, out, env_extra):
@@ -148,7 +240,21 @@ def discover_bookmarks(a_dir: Path, b_dir: Path) -> list:
     return sorted(names)
 
 
-def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
+def stamp_cross_base(img: Image.Image) -> Image.Image:
+    """Burn a red CROSS-BASE banner into the top-left of a montage (the two sides are not a same-base A/B)."""
+    from PIL import ImageDraw, ImageFont
+    d = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.load_default(size=max(16, img.width // 40))
+    except TypeError:
+        font = ImageFont.load_default()
+    box = d.textbbox((8, 8), "CROSS-BASE", font=font)
+    d.rectangle((box[0] - 4, box[1] - 4, box[2] + 4, box[3] + 4), fill=(200, 0, 0))
+    d.text((8, 8), "CROSS-BASE", fill=(255, 255, 255), font=font)
+    return img
+
+
+def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -190,6 +296,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
             mm.paste(fi, (0, m.height))
             m = mm
             flip_image(fm).save(bd / "flip.jpg", quality=85)
+        if cross_base:
+            m = stamp_cross_base(m)
         m.save(bd / "montage.jpg", quality=85)
         h = heat(D.astype(np.uint8))
         if h.width > 1200:
@@ -219,7 +327,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
     if problems:
         print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
-        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "rows": rows, "problems": problems,
+        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
     compare.problems = problems
@@ -304,6 +412,8 @@ def main(argv=None):
     ap.add_argument("--crop", action="append", default=[], help="x0,y0,x1,y1 fractions")
     ap.add_argument("--out-root")
     ap.add_argument("--compare-only", nargs=2, metavar=("DIR_A", "DIR_B"))
+    ap.add_argument("--allow-base-mismatch", action="store_true",
+                    help="deliberate cross-base comparison: print the base/data mismatch, stamp CROSS-BASE on the montage, go on")
     a = ap.parse_args(argv)
     os.environ["MC2_CURSOR_NO_PARK"] = "1"
     crops = [tuple(float(x) for x in c.split(",")) for c in a.crop]
@@ -313,16 +423,22 @@ def main(argv=None):
     stamp = time.strftime("%Y%m%d_%H%M%S")
     out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
     if a.compare_only:
-        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops)
+        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops, cross_base=a.allow_base_mismatch)  # capture dirs carry no install identity
         sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")
+    bad = base_problems(a.install_a, a.install_b, a.exe_a, a.exe_b, a.install)
+    if bad and not a.allow_base_mismatch:
+        sys.exit("ab.py: refusing an A/B across different bases:\n  " + "\n  ".join(bad)
+                 + "\n  (deliberate cross-base comparison: --allow-base-mismatch; the montage is then stamped CROSS-BASE)")
+    for b in bad:
+        print("[ab] CROSS-BASE (allowed): " + b, flush=True)
     out.mkdir(parents=True, exist_ok=True)
     ia, ib = resolve_installs(a, out)
     env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
     run_capture(ib, a.bookmarks, out / "b", env)
-    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()])
+    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()], cross_base=bool(bad))
     sys.exit(1 if getattr(compare, "problems", None) else 0)
 
 

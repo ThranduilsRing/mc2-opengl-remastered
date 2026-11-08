@@ -40,6 +40,7 @@ def test_exe_mode_stages_installs_and_runs_both(tmp_path, monkeypatch):
     runs = []
     monkeypatch.setattr(ab, "run_capture", lambda install, bms, out, env: runs.append((install, Path(out).name, env)))
     monkeypatch.setattr(ab, "compare", lambda *a, **k: None)
+    monkeypatch.setattr(ab, "base_problems", lambda *a, **k: [])  # fake exes carry no fingerprint; the guard has its own tests
     with pytest.raises(SystemExit) as ex:
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
     assert ex.value.code == 0

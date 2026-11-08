@@ -92,6 +92,33 @@ def test_case_filter(only):
     return ",".join(name + "/*" if name in REGISTERED_HARNESSES else name for name in only)
 
 
+def unit_file_cases(item):
+    """Case names declared in tests/unit/<item>[.cpp] when item names a test FILE (not a registered contract); None otherwise."""
+    stem = item[:-4] if item.endswith(".cpp") else item
+    path = REPO_ROOT / "tests/unit" / (stem + ".cpp")
+    if item in REGISTERED_HARNESSES or not path.is_file():
+        return None
+    pattern = re.compile(r'\bTEST_CASE(?:_FIXTURE)?\s*\(\s*(?:\w+\s*,\s*)?"([^"]+)"')
+    return pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
+
+
+def expand_file_selection(only):
+    """--only items that name a tests/unit file (test_vk_rt_scene) become that file's TEST_CASE names (commas wildcarded);
+    a file with no cases exits listing the available file names."""
+    out = []
+    for item in only:
+        cases = unit_file_cases(item)
+        if cases is None:
+            out.append(item)
+        elif cases:
+            print(f"[contracts] --only {item}: tests/unit file, running its {len(cases)} case(s)")
+            out += [c.replace(",", "*") for c in cases]
+        else:
+            sys.exit(f"--only {item}: tests/unit/{item}.cpp declares no TEST_CASE; files: "
+                     + ", ".join(sorted(p.stem for p in (REPO_ROOT / "tests/unit").glob("test_*.cpp"))))
+    return out
+
+
 def unknown_selection(only):
     """Selections that match no registered contract and no doctest case in the sources."""
     names = None
@@ -369,9 +396,11 @@ def main(argv=None):
         ap.error("--asan runtime deployment is currently MSVC-only")
     os.environ.setdefault("_MSPDBSRV_ENDPOINT_", f"sol-s4b2-contracts-{os.getpid()}")
     if args.only:
+        args.only = expand_file_selection(args.only)
         unknown = unknown_selection(args.only)
         if unknown:
-            ap.error("no registered contract or doctest case matches: " + ", ".join(sorted(unknown)))
+            ap.error("no registered contract or doctest case matches: " + ", ".join(sorted(unknown))
+                     + " (--only takes a contract name, a TEST_CASE name/wildcard, or a tests/unit file such as test_vk_rt_scene)")
     if args.python_only:
         ok = True
         print("[contracts] Python-only selection; native units are not rerun")
