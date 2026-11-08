@@ -83,10 +83,18 @@ def test_rejected_log_leaves_existing_baseline(tmp_path, monkeypatch):
     assert not (tmp_path / "base.json.tmp").exists()
 
 
-def test_battle_baseline_names_exact_cpu_profile_fixture():
-    data = json.loads((ROOT / 'tests/smoke/sim_determinism/battle.json').read_text())
+def test_battle_baseline_records_exact_cpu_profile_fixture_env(tmp_path, monkeypatch):
+    """Writer contract only: an actual pin still requires an accepted game log."""
+    log = tmp_path / 'battle.log'
+    log.write_text('\n'.join(observations()) + '\n')
+    out = tmp_path / 'battle.json'
+    monkeypatch.setattr(sim, 'data_fingerprint', lambda *a, **k: {'digest': 'd', 'problems': []})
+    assert sim.main(['write-baseline', str(log), '--frames', '5', '--mission', 'battle', '--out', str(out),
+                     '--env', 'MC2_TEST_SPAWN=1', '--env',
+                     'MC2_UI_COMMAND_FILE=tests/smoke/sim_determinism/battle-128.commands.txt']) == 0
+    data = json.loads(out.read_text())
     assert data['mission'] == 'battle' and data['chain_schema'] == 2
-    assert data['frames'] >= sim.MIN_FRAMES
+    assert data['frames'] == 5
     assert data['env']['MC2_TEST_SPAWN'] == '1'
     assert data['env']['MC2_UI_COMMAND_FILE'] == 'tests/smoke/sim_determinism/battle-128.commands.txt'
     commands = (ROOT / data['env']['MC2_UI_COMMAND_FILE']).read_text().splitlines()
@@ -97,7 +105,8 @@ def test_battle_baseline_names_exact_cpu_profile_fixture():
     assert 'MC2_MOVER_FIXTURE' not in data['env']
 
 
-def test_battle_runs_reset_the_consumed_command_channel(tmp_path, monkeypatch):
+@pytest.mark.parametrize('acknowledged', [True, False])
+def test_battle_runs_reset_the_consumed_command_channel(tmp_path, monkeypatch, acknowledged):
     source = ROOT / 'tests/smoke/sim_determinism/battle-128.commands.txt'
     original = source.read_bytes()
     artifacts = tmp_path / 'artifacts'
@@ -109,16 +118,32 @@ def test_battle_runs_reset_the_consumed_command_channel(tmp_path, monkeypatch):
         channel = Path(kwargs['env']['MC2_UI_COMMAND_FILE'])
         assert channel.read_bytes() == original
         channels.append(channel)
+        if acknowledged:
+            Path(str(channel) + '.ack').write_text(''.join(
+                f'{line} -> ok (healthy)\n' for line in original.decode().splitlines()
+                if line.startswith('spawn ')) + 'bench_attack -> ok\n')
         channel.write_text('')  # the engine consumes the UI channel
         return sim.subprocess.CompletedProcess(argv, 0,
             f'[runner] artifacts: {artifacts}\n[SMOKE v1] event=tick_budget\n')
     monkeypatch.setattr(sim.subprocess, 'run', smoke)
-    sim.run_mission('battle', '20', str(tmp_path / 'runs'),
-                    {'both': {'MC2_TEST_SPAWN': '1',
-                              'MC2_UI_COMMAND_FILE': source.relative_to(ROOT).as_posix()}},
-                    headless='both', ticks=300)
-    assert len(set(channels)) == 2
+    args = ('battle', '20', str(tmp_path / 'runs'),
+            {'both': {'MC2_TEST_SPAWN': '1', 'MC2_UI_COMMAND_FILE': source.relative_to(ROOT).as_posix()}})
+    if acknowledged:
+        sim.run_mission(*args, headless='both', ticks=300)
+        assert len(set(channels)) == 2
+    else:
+        with pytest.raises(SystemExit, match='128 healthy clone acknowledgements'):
+            sim.run_mission(*args, headless='both', ticks=300)
     assert source.read_bytes() == original
+
+
+def test_battle_rejects_stale_fixture_acknowledgements(tmp_path, monkeypatch):
+    (tmp_path / 'a.commands.txt.ack').write_text('old evidence')
+    monkeypatch.setattr(sim.subprocess, 'run', lambda *a, **k: pytest.fail('must reject before launch'))
+    with pytest.raises(SystemExit, match='stale acknowledgements'):
+        sim.run_mission('battle', '20', str(tmp_path),
+                        {'both': {'MC2_TEST_SPAWN': '1', 'MC2_UI_COMMAND_FILE':
+                                  'tests/smoke/sim_determinism/battle-128.commands.txt'}}, headless='both', ticks=300)
 
 
 @pytest.mark.parametrize("argv,expected", [(["run", "mc2_03"], "20"), (["check", "mc2_03"], "20"), (["check", "mc2_03", "--duration", "40"], "40")])

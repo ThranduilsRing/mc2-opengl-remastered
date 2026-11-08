@@ -466,6 +466,8 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
                 sys.exit("battle baseline requires the recorded 128-mech fixture env")
             os.makedirs(out, exist_ok=True)
             channel = os.path.abspath(os.path.join(out, tag + ".commands.txt"))
+            if os.path.exists(channel + ".ack"):
+                sys.exit("battle fixture has stale acknowledgements; use a fresh --out")
             shutil.copyfile(os.path.join(ROOT, fixture), channel)
             env["MC2_UI_COMMAND_FILE"] = channel
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
@@ -497,6 +499,18 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             # A windowed run must pass its smoke everywhere (gate or standalone): matching SIMIDs cannot launder a fingerprint,
             # shader, crash or content failure. The one narrow exception is the perf_counter-only verdict (see windowed_exit_ok).
             sys.exit(f"sim_determinism: smoke run {tag} failed (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
+        if battle_fixture:
+            ack_path = channel + ".ack"
+            ack = ""
+            if os.path.isfile(ack_path):
+                with open(ack_path, encoding="utf-8", errors="replace") as ack_file:
+                    ack = ack_file.read()
+            for kind, count in (("clone", 128), ("vehicle", 2)):
+                spawned = re.findall(r"spawn " + kind + r" .*? -> (\w+) \(([^\n]+)\)", ack)
+                if len(spawned) != count or any(status != "ok" or "WARNING" in detail for status, detail in spawned):
+                    sys.exit(f"battle fixture failed: expected {count} healthy {kind} acknowledgements")
+            if "bench_attack -> ok" not in ack:
+                sys.exit("battle fixture failed: attack command was not acknowledged")
         shutil.copytree(arts[-1], dest)
         logs.append(os.path.join(dest, mission + ".log"))
     return logs

@@ -21,6 +21,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib import nofocus
+
 
 def stats(values):
     values = sorted(values)
@@ -127,13 +130,24 @@ def main():
     output = {}
     for trace in traces:
         flags = {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if sys.platform == "win32" else {}
+        # background-launch: allow the windowless Tracy CSV console exporter.
         exported = subprocess.run(["C:/Users/Joe/Downloads/TracyProfiler/tracy-csvexport.exe", "-u", str(trace)],
-                                  capture_output=True, text=True, check=True, timeout=180, **flags)
+                                  capture_output=True, text=True, check=True, timeout=180,
+                                  **nofocus.hidden_kwargs(**flags))
         output[str(trace.relative_to(args.root))] = summarize(csv.DictReader(io.StringIO(exported.stdout)))
     args.out.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
     for trace, phases in output.items():
         for phase, data in phases.items():
             print(f"{trace} {phase}: frames={data['frames']} latency={data['frame_latency']}")
+            print("| zone | thread | source | self total ms | self/frame mean ms | p99 ms | worst ms |")
+            print("|---|---|---|---:|---:|---:|---:|")
+            for zone in data['zones'][:18]:
+                per_frame = zone['self_per_frame']
+                tail = (f"{per_frame['mean_ms']:.3f} | {per_frame['p99_ms']:.3f} | {per_frame['worst_ms']:.3f}"
+                        if per_frame else "n/a | n/a | n/a")
+                label = zone['name'].replace('|', '\\|').replace('\n', ' ')
+                print(f"| {label} | {zone['thread']} | {zone['src_file']}:{zone['src_line']} | "
+                      f"{zone['self_total_ms']:.3f} | {tail} |")
 
 
 if __name__ == "__main__":

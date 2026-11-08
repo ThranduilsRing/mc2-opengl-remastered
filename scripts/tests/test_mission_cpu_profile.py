@@ -162,6 +162,8 @@ def test_battle_uses_main_thread_spawn_pools(tmp_path, monkeypatch):
         assert sum(line.startswith('spawn clone ') for line in commands) == 128
         assert sum(line.startswith('spawn vehicle ') for line in commands) == 2
         assert commands.index('select all') > max(i for i, line in enumerate(commands) if line.startswith('spawn '))
+        recipe = (PATH.parents[2] / 'tests/smoke/sim_determinism/battle-128.commands.txt').read_text().splitlines()
+        assert commands[1:] == recipe  # only bench_output's artifact path differs
         raise RuntimeError('spawn pools checked')
     monkeypatch.setattr(profile, 'capture_mission', inspect)
     with pytest.raises(RuntimeError, match='spawn pools checked'):
