@@ -22,6 +22,8 @@
 // Everything below mirrors the GL VS math VERBATIM. Any single index/stride
 // drift = geometry garbage; this file is the load-bearing parity surface.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "../include/water_shore_lift.hglsl"
 
 // --- Recipe SSBO (mission-static). std430 layout mirrors WaterRecipe (64B).
 //     GL binding 5; here set0/binding5 for descriptor-set clarity. ---
@@ -55,7 +57,7 @@ layout(set = 0, binding = 0, std140) uniform WaterVsParams {
     vec4  p0;   // (waterElevation, alphaDepth, mapTopLeftX, mapTopLeftY)
     vec4  p1;   // (frameCos, maxMinUV, uvScale, uvOffsetX)
     vec4  p2;   // (uvOffsetY, waterDepthFudgeFast, alphaEdgeByte, alphaMiddleByte)
-    vec4  p3;   // (alphaDeepByte, shoreFlat (mode 3 flat plane, 0/1), shoreDepthK, _pad)
+    vec4  p3;   // (alphaDeepByte, shoreFlat (mode 3 flat plane, 0/1), shoreDepthK, bakeLive)
 } U;
 
 // HORIZON-WAVE-1: the vertex stage reads the camera position (f0.yzw, MC2 world, the same space as
@@ -219,17 +221,17 @@ void main() {
     // GL clip emit + water reverse-Z depth bias (pre-divide). SAME as GL VS.
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
     clip.z   += fudge * clip.w;
-    // Mode 3 depth-only lift so coarse terrain poking just above the flat plane where the smooth
+    // Sim-only mode 3 depth lift so coarse terrain poking just above the flat plane where the smooth
     // shore field says water does not cut notches into it. Cover the tile's highest corner:
     // a fixed ray distance left tall corners above water, exposing the terrain triangulation.
-    // The field still owns coverage; cap the depth-only lift at one terrain cell.
-    if (shoreFlat && U.p3.z > 0.0) {
+    // A live visual bake owns land depth: never lift water in front of it or shore objects.
+    if (shoreFlat && U.p3.z > 0.0 && U.p3.w == 0.0) {
         vec3 toCam   = F.f0.yzw - worldPos;
         float camRun = length(toCam);
         if (camRun > 1.0 && abs(worldPos.z - F.f0.w) < camRun) {
             float tileTop = max(max(rec.elev.x, rec.elev.y), max(rec.elev.z, rec.elev.w));
             float cover = max(tileTop - worldPos.z + 1.0, 0.0) * camRun / max(toCam.z, 1.0);
-            float lift = min(max(U.p3.z, cover), 128.0);
+            float lift = waterShoreLift(U.p3.z, cover, U.p3.w != 0.0);
             vec3 lifted  = worldPos + toCam * (lift / camRun);
             vec4 clipL   = U.worldToClipGL * vec4(lifted, 1.0);
             if (abs(clipL.w) > 1e-5)

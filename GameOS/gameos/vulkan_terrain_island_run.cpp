@@ -60,6 +60,16 @@ extern "C" int mc2_vk_terrain_island_ready() {
     return 1;
 }
 
+// Match the current feed as well as GPU readiness: mission reload or a disabled bake
+// must retain sim-terrain shore cover, even if the island still owns an older buffer.
+extern "C" int mc2_vk_terrain_visual_bake_live() {
+    const TerrainIsland* s = parkedIsland();
+    Mc2TerrainTier1Feed feed{};
+    return mc2_vk_terrain_island_ready() && s->visualHeightReady &&
+           mc2_terrain_tier1_get_load_feed(&feed) && feed.visualHeightCpu && feed.visualSide > 1 &&
+           s->visualHeightVersionCopied == feed.visualHeightVersion;
+}
+
 // Birth/(re)init the island for the given scene target size, independent of any per-frame feed. Returns true when the parked island
 // is live (inited, not disabled). Factored out of run() so the LOD loop can prepare the island before deciding to skip LOD0.
 // Init failure follows vk_island_fail_policy.h: not ready yet -> retry next frame; a build failure -> fatal (one transient retry).

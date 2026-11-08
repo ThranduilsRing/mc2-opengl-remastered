@@ -268,6 +268,9 @@ int mc2_vk_terrain_skirts_enabled();
 // frame; the first successful run flips it ready).
 int mc2_vk_terrain_island_ready();
 
+// Current mission's visual bake is imported and available to terrain draws.
+int mc2_vk_terrain_visual_bake_live();
+
 // FAIL-SOFT prepare: births/(re)inits the island for the scene target size (w/h),
 // independent of any per-frame feed, so the GL loop can decide the LOD0-skip BEFORE
 // the feed is populated (breaks the skip<->ready<->feed chicken-egg deadlock). Must be
