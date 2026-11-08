@@ -296,7 +296,7 @@ namespace mc2vk::profile {
 DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi);
 // Writes the structured per-GPU capability report (versions, driver, every extension, feature bits of the families the roadmap tracks, key limits, cooperative-matrix
 // shapes, queue families) as JSON to `path` (parent dir created). Best effort: returns false on an I/O failure, never throws.
-bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, const char* path);
+bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, std::string_view path);
 #endif
 
 }  // namespace mc2vk::profile

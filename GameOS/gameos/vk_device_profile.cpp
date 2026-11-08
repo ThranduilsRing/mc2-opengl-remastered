@@ -119,7 +119,7 @@ struct FeatureFamily { const char* ext; uint32_t promotedApi; };
 // Queries one feature struct on its own (so one unsupported family cannot poison the rest) and writes {"queried":..., fields...}. Skipped, with
 // "queried":false, when neither the extension nor the core version that promoted it is present.
 template <class S>
-void featureFamily(JsonWriter& j, const DeviceCaps& c, VkPhysicalDevice pd, const char* family, FeatureFamily f, VkStructureType sType,
+void featureFamily(JsonWriter& j, const DeviceCaps& c, VkPhysicalDevice pd, std::string_view family, FeatureFamily f, VkStructureType sType,
                    std::initializer_list<std::pair<const char*, VkBool32 S::*>> fields) {
     j.beginObject(family);
     const bool avail = (f.ext && c.hasExtension(f.ext)) || (f.promotedApi && c.deviceApi >= f.promotedApi);
@@ -138,7 +138,7 @@ void featureFamily(JsonWriter& j, const DeviceCaps& c, VkPhysicalDevice pd, cons
 
 }  // namespace
 
-bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, const char* path) {
+bool writeCapsReport(VkPhysicalDevice pd, uint32_t instanceApi, std::string_view path) {
     const DeviceCaps c = gather(pd, instanceApi);
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(pd, &props);
