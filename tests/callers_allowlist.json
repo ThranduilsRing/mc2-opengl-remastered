@@ -1,4 +1,5 @@
 {
+  "tools/mc2fx/native_checks.py": "Explicit pytest artifact proof documented in tools/mc2fx/README.md; fx_native_boundary invokes its source-only case via -m pytest, which the caller scanner does not resolve. Full proof requires built mc2fx and installed catalogs and fails on missing evidence.",
   "tools/axis_swizzle_ratchet.py": "Proof-diet: gate cut from check-contracts/lane_merge; advisory manual report (py -3 tools/axis_swizzle_ratchet.py --check). Transform coverage: tests/unit/test_xform_convention.cpp.",
   "tools/dup_check.py": "Run by tools/lane_merge.py --lint (python import, not a shell row); manual: py -3 tools/dup_check.py.",
   "scripts/crashpad_proof.py": "Run on the Linux box through a box_run sh: row (sh:python3 scripts/crashpad_proof.py): deliberate crash plus symbolized minidump proof.",
