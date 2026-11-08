@@ -4,10 +4,12 @@
 #include "vk_rt_scene.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <initializer_list>
 #include <cstdio>
+#include <cstring>
 #include <deque>
 #include <format>
 #include <numeric>
@@ -33,9 +35,24 @@ namespace {
 
 constexpr VkBufferUsageFlags kBuildInput = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 constexpr uint64_t kNone = ~0ull;
+constexpr uint32_t kNoRow = ~0u;
+constexpr uint32_t kMatWaitCalls = 120;        // updateProps calls a new type waits for the colour-prop material feed before building without materials
+constexpr uint32_t kMatProbeWaitCalls = 600;   // MC2_VK_RT_SELFTEST: calls the material probe waits for the island's albedo arrays before it FAILs
+constexpr VkBufferUsageFlags kStorage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
 struct ProbePoint {
-    float x = 0, y = 0, h = 0;
+    float x = 0, y = 0, h = 0;   // a grid vertex (the object-ID probe)
+    float mx = 0, my = 0;        // the centre of the cell right of / above it, inside `tile` (the material probe)
+    uint32_t tile = 0;
+};
+
+// MC2_VK_RT_SELFTEST material probe target: one triangle of a prop type, local space.
+struct Target {
+    float v[9] = {};
+    uint32_t row = 0;            // local prop row (MaterialRow index - kPropRowBase)
+    uint32_t prim = 0;           // primitive index inside that row's geometry
+    float area = 0.0f;
+    bool valid = false;
 };
 
 struct BuildStats {
@@ -89,6 +106,16 @@ public:
     std::vector<ProbePoint> terrainProbe;
     uint32_t tlasInstances = 0, tlasProps = 0, dropped = 0;
     bool probed = false;
+    // Materials (part 3): published with the TLAS (row layout in vk_rt_scene.h MATERIALS).
+    std::vector<MaterialRow> propRows;              // local prop rows (row - kPropRowBase), type by type in build order
+    std::vector<uint32_t> typeRowBase;              // by typeID: the type's first local prop row, kNoRow until built
+    std::vector<uint32_t> uvIndices;                // every prop geometry's rebased indices (MaterialRow::firstIndex), CPU copy of uvIndex
+    OwnedBuffer materials, uvIndex, pendingMat, pendingUv;
+    uint64_t materialBytes = 0, pendingMaterialBytes = 0;
+    std::vector<std::array<Target, 2>> typeTarget;  // by typeID: [0] the largest opaque triangle, [1] the largest cutout one
+    uint32_t propStride = 0;
+    uint32_t matWait = 0, matProbeWait = 0, propsWithoutMaterial = 0;
+    bool matProbed = false;
 
     static bool exists() {
         return mc2vk::engineVulkanContextValid() && mc2vk::getOrCreateEngineVulkanContext().islandSlot(IslandSlot::RtScene) != nullptr;
@@ -117,13 +144,18 @@ void retireEach(VulkanContext& ctx, Seq& seq) {
     seq.clear();
 }
 
-// Builds every geometry into `out` (same order) with PREFER_FAST_TRACE | ALLOW_COMPACTION, then compacts those that save >= 10%. All or nothing: on any
-// failure `out` is retired and false returned. A geometry with no triangles yields an empty structure.
-bool buildStatic(VulkanContext& ctx, State& s, const std::vector<TriangleGeometry>& geos, std::string_view name, std::vector<AccelStructure>& out,
+// Builds one BLAS per geometry list into `out` (same order) with PREFER_FAST_TRACE | ALLOW_COMPACTION, then compacts those that save >= 10%. All or
+// nothing: on any failure `out` is retired and false returned. An empty list yields an empty structure (every listed geometry must have triangles).
+bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<TriangleGeometry>>& geos, std::string_view name, std::vector<AccelStructure>& out,
                  BuildStats& st) {
     out.clear();
     out.resize(geos.size());
-    if (geos.empty()) return true;
+    if (std::all_of(geos.begin(), geos.end(), [](const std::vector<TriangleGeometry>& g) { return g.empty(); })) return true;
+    std::vector<BlasJob> jobs(geos.size());
+    for (size_t i = 0; i < geos.size(); ++i) {
+        jobs[i].geometries = geos[i];
+        jobs[i].blas = &out[i];
+    }
     BuildFlags flags;
     flags.allowCompaction = true;
     OwnedQueryPool qp = createCompactionQueryPool(ctx, static_cast<uint32_t>(geos.size()));
@@ -134,10 +166,12 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<TriangleGeometr
         // One build call per scratch group, each BLAS on its own scratch sub-range (scratchBatchPlan), instead of one call and one barrier per BLAS.
         uint32_t calls = 0;
         VkDeviceSize span = 0;
-        if (!recordBlasBuildBatch(ctx, cmd, geos, flags, name, out, s.scratch, &calls, &span)) {
+        if (!recordBlasJobs(ctx, cmd, jobs, flags, name, s.scratch, &calls, &span)) {
             ok = false;
             return;
         }
+        for (size_t i = 0; i < geos.size(); ++i)
+            if (!geos[i].empty() && !jobs[i].ok) ok = false;   // recorded builds of the others still complete; everything retires below
         st.buildCalls += calls;
         st.scratchSpan = std::max<uint64_t>(st.scratchSpan, span);
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the compaction query below reads the built structures
@@ -180,9 +214,43 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<TriangleGeometr
 }
 
 // Builds the TLAS over `terrain` + the prop BLASes (`props` replaces s.propBlas entries where non-empty) into a new owner. Nothing is published here.
+// Also builds the material table (mover row, `propRows`, one row per terrain tile) and the uv-index buffer into s.pendingMat / s.pendingUv: the caller
+// publishes them with the TLAS (publishMaterials) or retires them.
+void retirePending(VulkanContext& ctx, State& s) {
+    if (s.pendingMat) ctx.retire(std::move(s.pendingMat));
+    if (s.pendingUv) ctx.retire(std::move(s.pendingUv));
+    s.pendingMaterialBytes = 0;
+}
+
+void publishMaterials(VulkanContext& ctx, State& s) {
+    if (s.materials) ctx.retire(std::move(s.materials));
+    if (s.uvIndex) ctx.retire(std::move(s.uvIndex));
+    s.materials = std::move(s.pendingMat);
+    s.uvIndex = std::move(s.pendingUv);
+    s.materialBytes = s.pendingMaterialBytes;
+    s.pendingMaterialBytes = 0;
+}
+
 std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std::vector<AccelStructure>& terrain,
-                                        const std::vector<std::pair<uint32_t, AccelStructure>>& added, uint32_t& instanceCount, uint32_t& propCount,
-                                        uint32_t& dropped) {
+                                        const std::vector<std::pair<uint32_t, AccelStructure>>& added, const std::vector<MaterialRow>& propRows,
+                                        const std::vector<uint32_t>& typeRowBase, const std::vector<uint32_t>& uv, uint32_t& instanceCount,
+                                        uint32_t& propCount, uint32_t& dropped) {
+    retirePending(ctx, s);
+    std::vector<MaterialRow> rows;
+    rows.reserve(1 + propRows.size() + terrain.size());
+    rows.push_back(moverMaterialRow());
+    rows.insert(rows.end(), propRows.begin(), propRows.end());
+    for (uint32_t tile = 0; tile < terrain.size(); ++tile) rows.push_back(terrainMaterialRow(tile));
+    const uint32_t terrainBase = terrainRowBase(static_cast<uint32_t>(propRows.size()));
+    const uint32_t noUv = 0;
+    const VkDeviceSize uvBytes = uv.empty() ? sizeof(noUv) : uv.size() * sizeof(uint32_t);
+    if (!customIndexFits(static_cast<uint32_t>(rows.size())) ||
+        !s.pendingMat.createFilled(ctx.allocator(), ctx.device(), rows.data(), rows.size() * sizeof(MaterialRow), kStorage, "rt_scene.materials") ||
+        !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uv.empty() ? &noUv : uv.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
+        retirePending(ctx, s);
+        return std::nullopt;
+    }
+    s.pendingMaterialBytes = rows.size() * sizeof(MaterialRow) + uvBytes;
     std::vector<PropPlacement> placements;
     placements.reserve(s.instances.size());
     for (size_t i = 0; i < s.instances.size(); ++i) placements.push_back({s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix});
@@ -200,7 +268,11 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
         if (r.key.kind == Kind::Terrain) blas = (r.key.ordinal < terrain.size() && terrain[r.key.ordinal]) ? terrain[r.key.ordinal].address() : 0;
         else blas = propAddress(r.typeId);
         if (blas == 0) continue;   // a type or chunk with no triangles
-        inst.push_back(makeInstance(blas, r.transform, customIndexOf(r.key), kMaskStatic));
+        // The instance's first material row (ray query: row = instanceShaderBindingTableRecordOffset + geometry index).
+        uint32_t sbt = kMoverRow;
+        if (r.key.kind == Kind::Terrain) sbt = terrainBase + r.key.ordinal;
+        else if (r.typeId < typeRowBase.size() && typeRowBase[r.typeId] != kNoRow) sbt = kPropRowBase + typeRowBase[r.typeId];
+        inst.push_back(makeInstance(blas, r.transform, customIndexOf(r.key), kMaskStatic, sbt));
         propCount += r.key.kind == Kind::StaticProp ? 1u : 0u;
     }
     instanceCount = static_cast<uint32_t>(inst.size());
@@ -208,7 +280,10 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     AccelStructure tlas;
     if (inst.empty()) return tlas;   // an empty scene: nothing to trace, still a valid (empty) snapshot
     OwnedBuffer buf;
-    if (!buf.createFilled(ctx.allocator(), ctx.device(), inst.data(), inst.size() * sizeof(inst[0]), kBuildInput, "rt_scene.instances")) return std::nullopt;
+    if (!buf.createFilled(ctx.allocator(), ctx.device(), inst.data(), inst.size() * sizeof(inst[0]), kBuildInput, "rt_scene.instances")) {
+        retirePending(ctx, s);
+        return std::nullopt;
+    }
     // Fable p34 section 3: the TLAS is PREFER_FAST_BUILD and fully rebuilt (never refit). The static scene rebuilds it on every membership change; the
     // per-frame rebuild in the frame command buffer arrives with movers (part 2), the first members that change every frame.
     BuildFlags flags;
@@ -224,6 +299,7 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     ctx.retire(std::move(buf));
     if (!submitted || !ok) {
         if (tlas) ctx.retire(std::move(tlas));
+        retirePending(ctx, s);
         return std::nullopt;
     }
     return tlas;
@@ -239,11 +315,16 @@ void logPublish(const State& s, std::string_view why, const BuildStats& st, doub
             ++types;
         }
     // Byte ledger: every resident RT byte by kind. instance_bytes is the TLAS build input (64 per instance, uploaded per build, retired after it).
+    // material_bytes: the material table + the uv-index buffer (resident with the TLAS).
     const uint64_t tlasBytes = s.tlas ? s.tlas.size() : 0, instanceBytes = static_cast<uint64_t>(s.tlasInstances) * kInstanceBytes;
+    uint32_t cutouts = 0;
+    for (const MaterialRow& r : s.propRows) cutouts += (r.flags & kMatCutout) ? 1u : 0u;
     MC2_EVENT(Vk, "VK_RT_SCENE", 1, "publish why={} tlas_instances={} terrain_tiles={} props={} prop_types={} dropped={} blas_bytes={} built_bytes={} compacted={} "
-         "compacted_bytes={} tlas_bytes={} scratch_bytes={} instance_bytes={} total_bytes={} blas_build_calls={} batch_scratch_bytes={} build_ms={:.1f}",
+         "compacted_bytes={} tlas_bytes={} scratch_bytes={} instance_bytes={} material_bytes={} material_rows={} cutout_rows={} total_bytes={} blas_build_calls={} "
+         "batch_scratch_bytes={} build_ms={:.1f}",
          why, s.tlasInstances, s.terrainBlas.size(), s.tlasProps, types, s.dropped, blasBytes, st.builtBytes, st.compacted, st.finalBytes, tlasBytes,
-         s.scratch.capacity(), instanceBytes, blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes, st.buildCalls, st.scratchSpan, ms);
+         s.scratch.capacity(), instanceBytes, s.materialBytes, 1 + s.propRows.size() + s.terrainBlas.size(), cutouts,
+         blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes + s.materialBytes, st.buildCalls, st.scratchSpan, ms);
 }
 
 // MC2_VK_RT_SELFTEST: once the scene holds terrain and props, fixed downward rays at known props and terrain vertices; logs every hit.
@@ -308,6 +389,204 @@ void probe(VulkanContext& ctx, State& s) {
              expectT[i], match ? 1 : 0);
     }
     MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe result props={}/{} terrain={}/{} tlas_instances={}", propOk, props, terrainOk, n - props, s.tlasInstances);
+}
+
+struct WorldTri {
+    float a[3], b[3], c[3], n[3];
+};
+
+// The target triangle through the instance's 3x4 transform; false when degenerate.
+bool worldTri(const float t[12], const float v[9], WorldTri& w) {
+    float* dst[3] = {w.a, w.b, w.c};
+    for (int k = 0; k < 3; ++k)
+        for (int r = 0; r < 3; ++r) dst[k][r] = t[4 * r] * v[3 * k] + t[4 * r + 1] * v[3 * k + 1] + t[4 * r + 2] * v[3 * k + 2] + t[4 * r + 3];
+    const float e1[3] = {w.b[0] - w.a[0], w.b[1] - w.a[1], w.b[2] - w.a[2]}, e2[3] = {w.c[0] - w.a[0], w.c[1] - w.a[1], w.c[2] - w.a[2]};
+    w.n[0] = e1[1] * e2[2] - e1[2] * e2[1];
+    w.n[1] = e1[2] * e2[0] - e1[0] * e2[2];
+    w.n[2] = e1[0] * e2[1] - e1[1] * e2[0];
+    const float len = std::sqrt(w.n[0] * w.n[0] + w.n[1] * w.n[1] + w.n[2] * w.n[2]);
+    if (!(len > 1e-4f)) return false;
+    for (float& c : w.n) c /= len;
+    return true;
+}
+
+// A ray along -normal through barycentric (u, v) of `w`, starting 2 units off the surface: no neighbour above can occlude it (the 1/8 object-ID miss).
+void pushTriRay(std::vector<float>& rays, const WorldTri& w, float u, float v) {
+    const float k = 1.0f - u - v;
+    float p[3];
+    for (int r = 0; r < 3; ++r) p[r] = w.a[r] * k + w.b[r] * u + w.c[r] * v + w.n[r] * 2.0f;
+    rays.insert(rays.end(), {p[0], p[1], p[2], 0.0f, -w.n[0], -w.n[1], -w.n[2], 4.0f});
+}
+
+struct ProbeHit {
+    bool hit;
+    float t;
+    uint32_t prim, custom, row;
+    int32_t layer, packet, flags;
+};
+ProbeHit hitAt(const std::vector<float>& out, size_t i) {
+    const float* o = &out[i * 8];
+    return {o[0] != 0.0f, o[1], static_cast<uint32_t>(o[2]), static_cast<uint32_t>(o[3]), static_cast<uint32_t>(o[4]), static_cast<int32_t>(o[5]),
+            static_cast<int32_t>(o[6]), static_cast<int32_t>(o[7])};
+}
+bool sameHit(const ProbeHit& a, const ProbeHit& b) {
+    if (a.hit != b.hit) return false;
+    return !a.hit || (a.custom == b.custom && a.row == b.row && a.prim == b.prim && std::abs(a.t - b.t) < 1e-3f);
+}
+
+// MC2_VK_RT_SELFTEST part 3: material rows, albedo layers and alpha cutouts through rt_scene_probe.comp, every ray traced twice (alpha-tested and every
+// candidate committed). props / vegetation: rays along the normal of each type's largest opaque / cutout triangle must report that instance, row,
+// primitive, layer and packet. terrain: an upward ray from below each probe cell must report the tile's row. holes: a 16x16 barycentric grid over each
+// vegetation triangle; a hole is a ray the opaque trace lands on the triangle and the alpha trace passes through. false_holes: grid rays whose opaque
+// hit is a non-cutout row and whose alpha trace differs; opaque_diffs: prop / terrain rays whose two traces differ. FAIL unless every check passes,
+// at least one hole was found and both difference counts are 0.
+void probeMaterials(VulkanContext& ctx, State& s) {
+    if (s.matProbed || !s.tlas || s.terrainBlas.empty() || s.tlasProps == 0 || !s.materials || !s.uvIndex || !mc2::gate::get<"MC2_VK_RT_SELFTEST">()) return;
+    bool needOn = false, needOff = false;
+    for (const MaterialRow& r : s.propRows)
+        if (r.albedoLayer >= 0) ((r.flags & kMatAlphaOn) ? needOn : needOff) = true;
+    void* offView = nullptr;
+    void* onView = nullptr;
+    uint32_t gen = 0;
+    const bool off = mc2_color_prop_island_get_albedo_off_array(&offView, &gen) != 0;
+    const bool on = mc2_color_prop_island_get_alpha_array(&onView, &gen) != 0;
+    const uint32_t rowCount = static_cast<uint32_t>(1 + s.propRows.size() + s.terrainBlas.size());
+    if ((needOff && !off) || (needOn && !on) || (!off && !on)) {
+        if (++s.matProbeWait < kMatProbeWaitCalls) return;
+        s.matProbed = true;
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result=FAIL reason=albedo_arrays off={} on={} need_off={} need_on={} rows={}", off ? 1 : 0, on ? 1 : 0,
+                  needOff ? 1 : 0, needOn ? 1 : 0, rowCount);
+        return;
+    }
+    s.matProbed = true;
+
+    struct Expect {
+        uint32_t custom, row, prim, packet;
+        int32_t layer;
+    };
+    std::vector<float> rays;
+    std::vector<Expect> propX, vegX, terrX;
+    std::vector<size_t> vegGridFirst, vegGridCount;
+    auto expectOf = [&](uint32_t id, const Target& tg) {
+        const MaterialRow& r = s.propRows[tg.row];
+        return Expect{id, kPropRowBase + tg.row, tg.prim, r.packet, r.albedoLayer};
+    };
+    // Props: up to 8 instances spread over the registry; vegetation: up to 4 instances of distinct cutout types.
+    const size_t step = std::max<size_t>(1, s.instances.size() / 64);
+    for (size_t i = 0; i < s.instances.size() && propX.size() < 8; i += step) {
+        const uint32_t ty = s.instances[i].typeID, id = s.objectIds[i];
+        if (id == kTerrainObjectId || !customIndexFits(id) || ty >= s.typeTarget.size() || !s.typeTarget[ty][0].valid) continue;
+        float t[12];
+        propTransform(s.instances[i].modelMatrix, t);
+        WorldTri w;
+        if (!worldTri(t, s.typeTarget[ty][0].v, w)) continue;
+        pushTriRay(rays, w, 1.0f / 3.0f, 1.0f / 3.0f);
+        propX.push_back(expectOf(id, s.typeTarget[ty][0]));
+    }
+    const size_t vegFirst = propX.size();
+    std::vector<uint32_t> vegTypes;
+    for (size_t i = 0; i < s.instances.size() && vegX.size() < 4; ++i) {
+        const uint32_t ty = s.instances[i].typeID, id = s.objectIds[i];
+        if (id == kTerrainObjectId || !customIndexFits(id) || ty >= s.typeTarget.size() || !s.typeTarget[ty][1].valid ||
+            std::find(vegTypes.begin(), vegTypes.end(), ty) != vegTypes.end())
+            continue;
+        float t[12];
+        propTransform(s.instances[i].modelMatrix, t);
+        WorldTri w;
+        if (!worldTri(t, s.typeTarget[ty][1].v, w)) continue;
+        vegTypes.push_back(ty);
+        pushTriRay(rays, w, 1.0f / 3.0f, 1.0f / 3.0f);
+        vegX.push_back(expectOf(id, s.typeTarget[ty][1]));
+    }
+    const size_t gridFirst = vegFirst + vegX.size();
+    {   // the hole grids, after the centroid rays so the indices stay contiguous
+        size_t at = gridFirst;
+        for (size_t k = 0; k < vegX.size(); ++k) {
+            const uint32_t ty = vegTypes[k];
+            size_t inst = 0;
+            while (inst < s.instances.size() && !(s.instances[inst].typeID == ty && s.objectIds[inst] == vegX[k].custom)) ++inst;
+            float t[12];
+            propTransform(s.instances[inst].modelMatrix, t);
+            WorldTri w;
+            worldTri(t, s.typeTarget[ty][1].v, w);
+            vegGridFirst.push_back(at);
+            size_t n = 0;
+            for (int gy = 0; gy < 16; ++gy)
+                for (int gx = 0; gx < 16; ++gx) {
+                    const float u = (gx + 0.5f) / 16.0f, v = (gy + 0.5f) / 16.0f;
+                    if (u + v >= 1.0f) continue;
+                    pushTriRay(rays, w, u, v);
+                    ++n;
+                }
+            vegGridCount.push_back(n);
+            at += n;
+        }
+    }
+    const size_t terrFirst = rays.size() / 8;
+    const uint32_t terrainBase = terrainRowBase(static_cast<uint32_t>(s.propRows.size()));
+    for (const ProbePoint& p : s.terrainProbe) {
+        rays.insert(rays.end(), {p.mx, p.my, p.h - 2000.0f, 0.0f, 0.0f, 0.0f, 1.0f, 4000.0f});   // from below: nothing can occlude the terrain
+        terrX.push_back({kTerrainObjectId, terrainBase + p.tile, 0, p.tile, -1});
+    }
+    const size_t n = rays.size() / 8;
+    std::vector<float> outA(n * 8, 0.0f), outO(n * 8, 0.0f);
+    SceneProbeInputs in;
+    in.tlas = s.tlas.get();
+    in.materials = s.materials.get();
+    in.uvIndex = s.uvIndex.get();
+    in.vbo = s.propVbo;
+    in.stride = s.propStride;
+    in.alphaOff = off ? reinterpret_cast<VkImageView>(offView) : VK_NULL_HANDLE;
+    in.alphaOn = on ? reinterpret_cast<VkImageView>(onView) : VK_NULL_HANDLE;
+    if (n == 0 || !traceSceneRays(ctx, in, rays, outA, false) || !traceSceneRays(ctx, in, rays, outO, true)) {
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result=FAIL reason=trace rays={} rows={}", n, rowCount);
+        return;
+    }
+    uint32_t propOk = 0, vegOk = 0, terrOk = 0, holes = 0, falseHoles = 0, opaqueDiffs = 0, logged = 0;
+    auto report = [&](const char* kind, size_t i, const ProbeHit& h, const Expect& e) {
+        if (logged++ < 12)
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material miss kind={} ray={} hit={} custom=0x{:x}/0x{:x} row={}/{} prim={}/{} layer={}/{} packet={}/{} flags={}", kind, i,
+                      h.hit ? 1 : 0, h.custom, e.custom, h.row, e.row, h.prim, e.prim, h.layer, e.layer, h.packet, e.packet, h.flags);
+    };
+    for (size_t i = 0; i < propX.size(); ++i) {
+        const ProbeHit a = hitAt(outA, i), o = hitAt(outO, i);
+        const Expect& e = propX[i];
+        const bool ok = a.hit && a.custom == e.custom && a.row == e.row && a.prim == e.prim && a.layer == e.layer && a.packet == static_cast<int32_t>(e.packet) &&
+                        (a.flags & static_cast<int32_t>(kMatProp)) != 0;
+        if (ok) ++propOk;
+        else report("prop", i, a, e);
+        opaqueDiffs += sameHit(a, o) ? 0u : 1u;
+    }
+    for (size_t k = 0; k < vegX.size(); ++k) {
+        const size_t i = vegFirst + k;
+        const ProbeHit o = hitAt(outO, i);
+        const Expect& e = vegX[k];
+        const bool ok = o.hit && o.custom == e.custom && o.row == e.row && o.prim == e.prim && o.layer == e.layer && o.packet == static_cast<int32_t>(e.packet) &&
+                        (o.flags & static_cast<int32_t>(kMatCutout)) != 0;
+        if (ok) ++vegOk;
+        else report("vegetation", i, o, e);
+        for (size_t g = vegGridFirst[k]; g < vegGridFirst[k] + vegGridCount[k]; ++g) {
+            const ProbeHit ga = hitAt(outA, g), go = hitAt(outO, g);
+            const bool onTri = go.hit && go.custom == e.custom && go.row == e.row && go.prim == e.prim;
+            const bool alphaOnTri = ga.hit && ga.custom == e.custom && ga.row == e.row && ga.prim == e.prim;
+            if (onTri && !alphaOnTri) ++holes;
+            if (go.hit && go.flags >= 0 && (go.flags & static_cast<int32_t>(kMatCutout)) == 0 && !sameHit(ga, go)) ++falseHoles;
+        }
+    }
+    for (size_t k = 0; k < terrX.size(); ++k) {
+        const size_t i = terrFirst + k;
+        const ProbeHit a = hitAt(outA, i), o = hitAt(outO, i);
+        const Expect& e = terrX[k];
+        const bool ok = a.hit && a.custom == e.custom && a.row == e.row && a.packet == static_cast<int32_t>(e.packet) && a.flags >= 0 &&
+                        (a.flags & static_cast<int32_t>(kMatTerrain)) != 0;
+        if (ok) ++terrOk;
+        else report("terrain", i, a, e);
+        opaqueDiffs += sameHit(a, o) ? 0u : 1u;
+    }
+    const bool pass = !propX.empty() && propOk == propX.size() && !vegX.empty() && vegOk == vegX.size() && !terrX.empty() && terrOk == terrX.size() &&
+                      holes > 0 && falseHoles == 0 && opaqueDiffs == 0;
+    MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result={} props={}/{} vegetation={}/{} terrain={}/{} holes={} false_holes={} opaque_diffs={} rows={} rays={}",
+              pass ? "PASS" : "FAIL", propOk, propX.size(), vegOk, vegX.size(), terrOk, terrX.size(), holes, falseHoles, opaqueDiffs, rowCount, n);
 }
 
 // A mover leaves: its BLAS retires frame-fenced (the TLAS of an in-flight frame may still reference it) and its slot becomes reusable.
@@ -450,14 +729,14 @@ void noteTerrain(const TerrainSource& t) {
     bool ok = !pos.empty() && vb.createFilled(ctx->allocator(), ctx->device(), pos.data(), pos.size() * sizeof(float), kBuildInput, "rt_scene.terrain_vb") &&
               ib.createFilled(ctx->allocator(), ctx->device(), idx.data(), idx.size() * sizeof(uint32_t), kBuildInput, "rt_scene.terrain_ib");
     if (ok) {
-        std::vector<TriangleGeometry> geos;
+        std::vector<std::vector<TriangleGeometry>> geos;
         for (const Range& r : ranges) {
             TriangleGeometry g;
             g.vertices = vb.deviceAddress() + static_cast<uint64_t>(r.firstVertex) * 12;
             g.vertexCount = r.vertexCount;
             g.indices = ib.deviceAddress() + static_cast<uint64_t>(r.firstIndex) * 4;
             g.triangleCount = r.indexCount / 3;
-            geos.push_back(g);
+            geos.push_back(g.triangleCount ? std::vector<TriangleGeometry>{g} : std::vector<TriangleGeometry>{});
         }
         ok = buildStatic(*ctx, s, geos, "rt_scene.terrain", built, st);
     }
@@ -465,7 +744,7 @@ void noteTerrain(const TerrainSource& t) {
     if (ib) ctx->retire(std::move(ib));
     uint32_t count = 0, props = 0, dropped = 0;
     std::optional<AccelStructure> tlas;
-    if (ok) tlas = buildTlas(*ctx, s, built, {}, count, props, dropped);
+    if (ok) tlas = buildTlas(*ctx, s, built, {}, s.propRows, s.typeRowBase, s.uvIndices, count, props, dropped);
     if (!tlas) {
         retireEach(*ctx, built);
         s.terrainKeyFailed = key;
@@ -477,6 +756,7 @@ void noteTerrain(const TerrainSource& t) {
     s.tlas = std::move(*tlas);
     if (s.moverTlas) ctx->retire(std::move(s.moverTlas));   // it references the replaced BLASes; the next mover frame rebuilds it
     s.staticInst = std::move(s.pendingInst);
+    publishMaterials(*ctx, s);
     retireEach(*ctx, s.terrainBlas);
     s.terrainBlas = std::move(built);
     s.terrainKeyLive = key;
@@ -486,13 +766,21 @@ void noteTerrain(const TerrainSource& t) {
     s.dropped = dropped;
     s.terrainProbe.clear();
     const int32_t side = static_cast<int32_t>(terrainGridSide(t));
+    const uint32_t tileCells = terrainTileCells(t);
     for (const auto& [fx, fy] : {std::pair{1, 1}, std::pair{1, 3}, std::pair{3, 1}, std::pair{3, 3}}) {
         const int32_t gx = side * fx / 4, gy = side * fy / 4;
-        s.terrainProbe.push_back({terrainGridX(t, gx), terrainGridY(t, gy), terrainGridHeight(t, gx, gy)});
+        ProbePoint p{terrainGridX(t, gx), terrainGridY(t, gy), terrainGridHeight(t, gx, gy)};
+        p.mx = 0.5f * (terrainGridX(t, gx) + terrainGridX(t, gx + 1));
+        p.my = 0.5f * (terrainGridY(t, gy) + terrainGridY(t, gy + 1));
+        p.tile = terrainTileId(t, std::min(static_cast<uint32_t>(gx) / tileCells, per - 1), std::min(static_cast<uint32_t>(gy) / tileCells, per - 1));
+        s.terrainProbe.push_back(p);
     }
     s.probed = false;
+    s.matProbed = false;
+    s.matProbeWait = 0;
     logPublish(s, terrainUsesFine(t) ? "terrain_fine" : "terrain_coarse", st, msSince(t0));
     probe(*ctx, s);
+    probeMaterials(*ctx, s);
 }
 
 void updateProps(uint64_t propVbo) {
@@ -504,7 +792,10 @@ void updateProps(uint64_t propVbo) {
         s.propVbo = propVbo;
     }
     const uint64_t gen = GpuStaticPropRegistry::getRegistryGeneration();
-    if (gen == s.propGen || gen == s.propGenFailed) return;
+    if (gen == s.propGen || gen == s.propGenFailed) {
+        probeMaterials(*ctx, s);   // MC2_VK_RT_SELFTEST: retried until the island's albedo arrays exist
+        return;
+    }
     Mc2ShadowGeomFeed feed{};
     const void* vboCpu = nullptr;
     const void* iboCpu = nullptr;
@@ -524,7 +815,7 @@ void updateProps(uint64_t propVbo) {
         ids[i] = recipe >= 0 ? RenderWorld::objectIdRawForStaticPropRecipe(recipe) : kTerrainObjectId;   // 0 = no recipe: dropped by buildRecords
     }
 
-    // The types that still need a BLAS: one combined rebased IBO, one geometry per type over the shared VBO.
+    // The types that still need a BLAS: one combined rebased IBO, one BLAS per type with one geometry per non-empty packet over the shared VBO.
     if (s.propBlas.size() < feed.typeCount) {
         s.propBlas.resize(feed.typeCount);
         s.propTried.resize(feed.typeCount, 0);
@@ -537,14 +828,70 @@ void updateProps(uint64_t propVbo) {
         if (ty >= feed.typeCount || s.propTried[ty] || std::find(types.begin(), types.end(), ty) != types.end()) continue;
         types.push_back(ty);
     }
-    std::vector<uint32_t> triangles;
-    for (uint32_t ty : types) {
-        firstIndex.push_back(static_cast<uint32_t>(indices.size()));
-        const uint32_t first = feed.typeFirstPacket[ty], count = feed.typePacketCount[ty];
-        std::vector<PacketRange> packets;
-        for (uint32_t p = first; p < first + count && p < feed.packetCount; ++p) packets.push_back({feed.packets[p].firstIndex, feed.packets[p].indexCount, feed.packets[p].baseVertex});
-        triangles.push_back(appendRebasedIndices(ibo, packets, vertexCount, indices));
+    // Materials: the colour-prop island's packet routing (layer per packet, alpha class per type, uv crop). A new type waits a bounded number of calls
+    // for it, then builds untextured (every geometry opaque).
+    Mc2ColorPropMaterialFeed mf{};
+    const bool haveMat = mc2_color_prop_island_get_material_feed(&mf) && mf.packetAlbedoLayer && mf.typeAlphaClass && mf.packetCount > 0;
+    if (!haveMat && !types.empty() && s.matWait < kMatWaitCalls) {
+        ++s.matWait;
+        return;
     }
+    auto packetMaterial = [&](uint32_t ty, uint32_t pk) {
+        PacketMaterial m;
+        m.alphaTest = mc2_static_prop_packet_alpha_test(pk);
+        if (!haveMat || pk >= mf.packetCount || ty >= mf.typeCount) return m;
+        (mf.typeAlphaClass[ty] == 1 ? m.layerOn : m.layerOff) = mf.packetAlbedoLayer[pk];
+        if (mf.packetUvScaleX && mf.packetUvScaleY) {
+            m.uvX = mf.packetUvScaleX[pk];
+            m.uvY = mf.packetUvScaleY[pk];
+        }
+        if (mf.packetMaterialIds) m.materialId = mf.packetMaterialIds[pk];
+        return m;
+    };
+    struct Geo {
+        uint32_t firstIndex, triangles;
+        bool opaque;
+    };
+    std::vector<MaterialRow> rows = s.propRows;
+    std::vector<uint32_t> rowBase = s.typeRowBase;
+    if (rowBase.size() < feed.typeCount) rowBase.resize(feed.typeCount, kNoRow);
+    const uint32_t uvBase = static_cast<uint32_t>(s.uvIndices.size());
+    std::vector<std::vector<Geo>> perType(types.size());
+    std::vector<std::array<Target, 2>> targets(types.size());
+    auto position = [&](uint32_t v, float* o) { std::memcpy(o, static_cast<const uint8_t*>(vboCpu) + static_cast<size_t>(v) * feed.vertexStride, 12); };
+    for (size_t k = 0; k < types.size(); ++k) {
+        const uint32_t ty = types[k];
+        rowBase[ty] = static_cast<uint32_t>(rows.size());
+        const uint32_t first = feed.typeFirstPacket[ty], count = feed.typePacketCount[ty];
+        for (uint32_t p = first; p < first + count && p < feed.packetCount; ++p) {
+            const uint32_t at = static_cast<uint32_t>(indices.size());
+            const PacketRange pr{feed.packets[p].firstIndex, feed.packets[p].indexCount, feed.packets[p].baseVertex};
+            const uint32_t tris = appendRebasedIndices(ibo, std::span<const PacketRange>(&pr, 1), vertexCount, indices);
+            if (tris == 0) continue;
+            const MaterialRow row = propMaterialRow(packetMaterial(ty, p), uvBase + at, p);
+            const bool cutout = (row.flags & kMatCutout) != 0;
+            perType[k].push_back({at, tris, !cutout});
+            // MC2_VK_RT_SELFTEST targets: the largest triangle of the type's opaque / cutout rows.
+            Target& tg = targets[k][cutout ? 1 : 0];
+            for (uint32_t tri = 0; tri < tris; ++tri) {
+                float v[9];
+                for (int j = 0; j < 3; ++j) position(indices[at + 3 * tri + j], &v[3 * j]);
+                const float e1[3] = {v[3] - v[0], v[4] - v[1], v[5] - v[2]}, e2[3] = {v[6] - v[0], v[7] - v[1], v[8] - v[2]};
+                const float cx = e1[1] * e2[2] - e1[2] * e2[1], cy = e1[2] * e2[0] - e1[0] * e2[2], cz = e1[0] * e2[1] - e1[1] * e2[0];
+                const float area = 0.5f * std::sqrt(cx * cx + cy * cy + cz * cz);
+                if (area > tg.area) {
+                    std::memcpy(tg.v, v, sizeof(v));
+                    tg.row = static_cast<uint32_t>(rows.size());
+                    tg.prim = tri;
+                    tg.area = area;
+                    tg.valid = true;
+                }
+            }
+            rows.push_back(row);
+        }
+    }
+    std::vector<uint32_t> uv = s.uvIndices;
+    uv.insert(uv.end(), indices.begin(), indices.end());
     OwnedBuffer ib;
     std::vector<AccelStructure> built;
     BuildStats st;
@@ -552,16 +899,18 @@ void updateProps(uint64_t propVbo) {
     if (!indices.empty()) {
         ok = ib.createFilled(ctx->allocator(), ctx->device(), indices.data(), indices.size() * sizeof(uint32_t), kBuildInput, "rt_scene.prop_ib");
         if (ok) {
-            std::vector<TriangleGeometry> geos;
-            for (size_t i = 0; i < types.size(); ++i) {
-                TriangleGeometry g;
-                g.vertices = propVbo;
-                g.vertexStride = feed.vertexStride;
-                g.vertexCount = vertexCount;
-                g.indices = ib.deviceAddress() + static_cast<uint64_t>(firstIndex[i]) * 4;
-                g.triangleCount = triangles[i];
-                geos.push_back(g);
-            }
+            std::vector<std::vector<TriangleGeometry>> geos(types.size());
+            for (size_t i = 0; i < types.size(); ++i)
+                for (const Geo& pg : perType[i]) {
+                    TriangleGeometry g;
+                    g.vertices = propVbo;
+                    g.vertexStride = feed.vertexStride;
+                    g.vertexCount = vertexCount;
+                    g.indices = ib.deviceAddress() + static_cast<uint64_t>(pg.firstIndex) * 4;
+                    g.triangleCount = pg.triangles;
+                    g.opaque = pg.opaque;
+                    geos[i].push_back(g);
+                }
             ok = buildStatic(*ctx, s, geos, "rt_scene.prop", built, st);
         }
     }
@@ -574,7 +923,7 @@ void updateProps(uint64_t propVbo) {
     std::swap(s.objectIds, ids);
     uint32_t count = 0, props = 0, dropped = 0;
     std::optional<AccelStructure> tlas;
-    if (ok) tlas = buildTlas(*ctx, s, s.terrainBlas, added, count, props, dropped);
+    if (ok) tlas = buildTlas(*ctx, s, s.terrainBlas, added, rows, rowBase, uv, count, props, dropped);
     if (!tlas) {
         std::swap(s.instances, inst);
         std::swap(s.objectIds, ids);
@@ -587,15 +936,24 @@ void updateProps(uint64_t propVbo) {
     if (s.tlas) ctx->retire(std::move(s.tlas));
     s.tlas = std::move(*tlas);
     s.staticInst = std::move(s.pendingInst);   // no published BLAS was replaced: the held mover TLAS stays valid until the next mover frame
+    publishMaterials(*ctx, s);   // the held mover TLAS's static instances keep their rows: rows are only appended, the terrain rows move with this TLAS
     for (auto& [ty, a] : added) s.propBlas[ty] = std::move(a);   // new types only: no published BLAS is replaced
+    if (!types.empty() && !haveMat) ++s.propsWithoutMaterial;
+    s.propRows = std::move(rows);
+    s.typeRowBase = std::move(rowBase);
+    s.uvIndices = std::move(uv);
+    s.propStride = feed.vertexStride;
+    if (s.typeTarget.size() < feed.typeCount) s.typeTarget.resize(feed.typeCount);
+    for (size_t k = 0; k < types.size(); ++k) s.typeTarget[types[k]] = targets[k];
     for (uint32_t ty : types) s.propTried[ty] = 1;
     s.propGen = gen;
     s.propGenFailed = kNone;
     s.tlasInstances = count;
     s.tlasProps = props;
     s.dropped = dropped;
-    logPublish(s, "props", st, msSince(t0));
+    logPublish(s, haveMat || types.empty() ? "props" : "props_untextured", st, msSince(t0));
     probe(*ctx, s);
+    probeMaterials(*ctx, s);
 }
 
 void invalidateProps() {
@@ -615,6 +973,18 @@ void invalidateProps() {
     s.propGen = s.propGenFailed = kNone;
     s.tlasInstances = s.tlasProps = s.dropped = 0;
     s.probed = false;
+    // The material table references the prop rows: it goes with the TLAS.
+    retirePending(ctx, s);
+    if (s.materials) ctx.retire(std::move(s.materials));
+    if (s.uvIndex) ctx.retire(std::move(s.uvIndex));
+    s.materialBytes = 0;
+    s.propRows.clear();
+    s.typeRowBase.clear();
+    s.uvIndices.clear();
+    s.typeTarget.clear();
+    s.propStride = 0;
+    s.matWait = s.matProbeWait = 0;
+    s.matProbed = false;
 }
 
 void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeometry> geos) {

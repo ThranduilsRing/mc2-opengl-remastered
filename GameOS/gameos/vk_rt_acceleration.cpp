@@ -437,16 +437,16 @@ bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAdd
                        false);
 }
 
-VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex, uint8_t mask) {
+VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex, uint8_t mask, uint32_t sbtOffset) {
     VkAccelerationStructureInstanceKHR inst{};
     static constexpr float kIdentity[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
     std::memcpy(&inst.transform, transform3x4 ? transform3x4 : kIdentity, sizeof(inst.transform));
     // F5: a masked index would alias another object's id (0x1000000 -> terrain). Refuse it: mask 0 and a null reference, never traced.
-    assert(instanceCustomIndexFits(customIndex) && "instanceCustomIndex is 24 bits");
-    if (!instanceCustomIndexFits(customIndex)) return inst;
+    assert(instanceCustomIndexFits(customIndex) && instanceCustomIndexFits(sbtOffset) && "instanceCustomIndex / SBT offset are 24 bits");
+    if (!instanceCustomIndexFits(customIndex) || !instanceCustomIndexFits(sbtOffset)) return inst;
     inst.instanceCustomIndex = customIndex;
     inst.mask = mask;
-    inst.instanceShaderBindingTableRecordOffset = 0;
+    inst.instanceShaderBindingTableRecordOffset = sbtOffset;
     inst.flags = static_cast<uint32_t>(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
     inst.accelerationStructureReference = blasAddress;
     return inst;

@@ -51,12 +51,13 @@ struct Bench {
     explicit Bench(const VulkanContext& c) : ctx(c) {}
 
     // `r`: 8 floats per ray (origin.xyz, tMin, direction.xyz, tMax).
-    bool init(std::span<const float> r) {
+    bool init(std::span<const float> r, const char* spv = "rt_smoke.comp.spv", std::span<const BindingDesc> table = kSmokeBindings, uint32_t pushBytes = 0,
+              uint32_t resultVec4s = 1) {
         const uint32_t n = static_cast<uint32_t>(r.size() / 8);
         const VkDevice dev = ctx.device();
-        if (!set.create(ctx)) return fail("descriptor set");
-        module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "rt_smoke.comp.spv", nullptr));
-        if (!module) return fail("rt_smoke.comp.spv");
+        if (!set.create(ctx, table, pushBytes)) return fail("descriptor set");
+        module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + spv, nullptr));
+        if (!module) return fail(spv);
         VkComputePipelineCreateInfo cpci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
         cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         cpci.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -70,7 +71,8 @@ struct Bench {
         const size_t rayBytes = static_cast<size_t>(n) * 32;
         if (!rays.createHostWritable(ctx.allocator(), dev, rayBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.rays") || !rays.upload(r.data(), rayBytes))
             return fail("rays buffer");
-        if (!results.createHostWritable(ctx.allocator(), dev, static_cast<size_t>(n) * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.results")) return fail("results buffer");
+        if (!results.createHostWritable(ctx.allocator(), dev, static_cast<size_t>(n) * 16 * resultVec4s, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "rt_selftest.results"))
+            return fail("results buffer");
         return true;
     }
 
@@ -132,6 +134,49 @@ bool traceRays(const VulkanContext& ctx, VkAccelerationStructureKHR tlas, std::s
         b.recordTrace(cmd, tlas);
     }, "rt trace probe");
     return ok && b.results.read(out.data(), count * 16);
+}
+
+bool traceSceneRays(const VulkanContext& ctx, const SceneProbeInputs& in, std::span<const float> rays, std::span<float> out, bool forceOpaque) {
+    const size_t count = rays.size() / 8;
+    const VkImageView off = in.alphaOff ? in.alphaOff : in.alphaOn, on = in.alphaOn ? in.alphaOn : in.alphaOff;   // a missing array: bind the other
+    if (!ctx.rt().rayQuery || in.tlas == VK_NULL_HANDLE || !in.materials || !in.uvIndex || in.vbo == 0 || !off || count == 0 || out.size() < count * 8)
+        return false;
+    const VkDevice dev = ctx.device();
+    Bench b(ctx);
+    if (!b.init(rays, "rt_scene_probe.comp.spv", kSceneProbeBindings, kSceneProbePushBytes, 2)) return false;
+    VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    sci.magFilter = sci.minFilter = VK_FILTER_NEAREST;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sci.maxLod = 0.0f;
+    OwnedSampler samp;
+    if (!mc2vk::create(samp, dev, [&](VkSampler* h) { return vkCreateSampler(dev, &sci, nullptr, h); })) return false;
+    b.set.writeTlas(dev, 0, in.tlas);
+    b.set.writeBuffer(dev, 1, b.rays.get());
+    b.set.writeBuffer(dev, 2, b.results.get());
+    b.set.writeBuffer(dev, 3, in.materials);
+    b.set.writeBuffer(dev, 4, in.uvIndex);
+    b.set.writeImage(dev, 5, samp.get(), off);
+    b.set.writeImage(dev, 6, samp.get(), on);
+    const uint32_t push[4] = {static_cast<uint32_t>(in.vbo), static_cast<uint32_t>(in.vbo >> 32), in.stride, forceOpaque ? 1u : 0u};
+    const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+        recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
+        mc2vk::infra::bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, b.pipe.get());
+        const VkDescriptorSet s = b.set.set();
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, b.set.pipelineLayout(), 0, 1, &s, 0, nullptr);
+        vkCmdPushConstants(cmd, b.set.pipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push), push);
+        vkCmdDispatch(cmd, (b.count + 63) / 64, 1, 1);
+        VkMemoryBarrier2 mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+        mb.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        mb.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
+        mb.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        mb.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+        VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+        dep.memoryBarrierCount = 1;
+        dep.pMemoryBarriers = &mb;
+        ctx.cmdPipelineBarrier2(cmd, dep);
+    }, "rt scene material probe");
+    return ok && b.results.read(out.data(), count * 32);
 }
 
 bool runSelfTest(const VulkanContext& ctx) {

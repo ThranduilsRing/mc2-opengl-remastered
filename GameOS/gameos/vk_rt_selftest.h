@@ -15,6 +15,18 @@ bool runSelfTest(const VulkanContext& ctx);
 // Traces rays.size()/8 rays (8 floats each: origin.xyz, tMin, direction.xyz, tMax) against `tlas` through rt_smoke.comp in one waited submit (a Tlas -> Consumer
 // barrier first); `out` (>= 4 floats per ray) receives 4 floats per ray (hit, t, primitiveId, instanceCustomIndex). Diagnostic probe for the RT scene; false on any failure.
 bool traceRays(const VulkanContext& ctx, VkAccelerationStructureKHR tlas, std::span<const float> rays, std::span<float> out);
+// The RT scene material probe (shaders/vulkan/rt_scene_probe.comp): `out` gets 8 floats per ray ((hit, t, prim, custom), (row, albedo layer, packet, flags)).
+// `forceOpaque` commits every candidate (the reference a cutout hole is measured against). Blocking one-shot.
+struct SceneProbeInputs {
+    VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
+    VkBuffer materials = VK_NULL_HANDLE;
+    VkBuffer uvIndex = VK_NULL_HANDLE;
+    uint64_t vbo = 0;
+    uint32_t stride = 0;
+    VkImageView alphaOff = VK_NULL_HANDLE;
+    VkImageView alphaOn = VK_NULL_HANDLE;
+};
+bool traceSceneRays(const VulkanContext& ctx, const SceneProbeInputs& in, std::span<const float> rays, std::span<float> out, bool forceOpaque);
 }  // namespace rt
 }  // namespace mc2vk
 

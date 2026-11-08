@@ -11,21 +11,26 @@ namespace mc2vk::rt {
 
 namespace {
 VkDescriptorType typeOf(BindingKind k) {
-    return k == BindingKind::AccelerationStructure ? VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    switch (k) {
+    case BindingKind::AccelerationStructure: return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    case BindingKind::SampledImage: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    default: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    }
 }
 }  // namespace
 
-bool RayQuerySet::create(const VulkanContext& ctx) {
+bool RayQuerySet::create(const VulkanContext& ctx, std::span<const BindingDesc> table, uint32_t pushBytes) {
     static_assert(bindingsAreValid(kSmokeBindings.data(), static_cast<uint32_t>(kSmokeBindings.size())));
+    static_assert(bindingsAreValid(kSceneProbeBindings.data(), static_cast<uint32_t>(kSceneProbeBindings.size())));
     const VkDevice device = ctx.device();
-    if (!ctx.rt().rayQuery) return false;
+    if (!ctx.rt().rayQuery || !bindingsAreValid(table.data(), static_cast<uint32_t>(table.size()))) return false;
 
-    std::vector<VkDescriptorSetLayoutBinding> b(kSmokeBindings.size());
+    std::vector<VkDescriptorSetLayoutBinding> b(table.size());
     std::vector<VkDescriptorPoolSize> sizes;
-    for (size_t i = 0; i < kSmokeBindings.size(); ++i) {
+    for (size_t i = 0; i < table.size(); ++i) {
         b[i] = {};
-        b[i].binding = kSmokeBindings[i].binding;
-        b[i].descriptorType = typeOf(kSmokeBindings[i].kind);
+        b[i].binding = table[i].binding;
+        b[i].descriptorType = typeOf(table[i].kind);
         b[i].descriptorCount = 1;
         b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
         bool found = false;
@@ -42,6 +47,9 @@ bool RayQuerySet::create(const VulkanContext& ctx) {
     VkPipelineLayoutCreateInfo plci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     plci.setLayoutCount = 1;
     plci.pSetLayouts = &dsl;
+    const VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, pushBytes};
+    plci.pushConstantRangeCount = pushBytes ? 1u : 0u;
+    plci.pPushConstantRanges = pushBytes ? &push : nullptr;
     if (!mc2vk::create(layout_, device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(device, &plci, nullptr, h); })) return false;
 
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
@@ -78,6 +86,41 @@ void RayQuerySet::write(VkDevice device, VkAccelerationStructureKHR tlas, VkBuff
     w[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     w[2].pBufferInfo = &resultsInfo;
     vkUpdateDescriptorSets(device, 3, w, 0, nullptr);
+}
+
+void RayQuerySet::writeTlas(VkDevice device, uint32_t binding, VkAccelerationStructureKHR tlas) const {
+    VkWriteDescriptorSetAccelerationStructureKHR asInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+    asInfo.accelerationStructureCount = 1;
+    asInfo.pAccelerationStructures = &tlas;
+    VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    w.pNext = &asInfo;
+    w.dstSet = set_;
+    w.dstBinding = binding;
+    w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+}
+
+void RayQuerySet::writeBuffer(VkDevice device, uint32_t binding, VkBuffer buffer) const {
+    const VkDescriptorBufferInfo info{buffer, 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    w.dstSet = set_;
+    w.dstBinding = binding;
+    w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    w.pBufferInfo = &info;
+    vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+}
+
+void RayQuerySet::writeImage(VkDevice device, uint32_t binding, VkSampler sampler, VkImageView view) const {
+    const VkDescriptorImageInfo info{sampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    w.dstSet = set_;
+    w.dstBinding = binding;
+    w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    w.pImageInfo = &info;
+    vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
 }
 
 }  // namespace mc2vk::rt

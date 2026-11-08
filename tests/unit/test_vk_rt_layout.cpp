@@ -134,6 +134,17 @@ TEST_CASE("rt layout: the ray-query binding table is valid and starts with the T
     CHECK_FALSE(bindingsAreValid(nullptr, 0));
 }
 
+TEST_CASE("rt layout: the scene material probe table matches rt_scene_probe.comp") {
+    CHECK(bindingsAreValid(kSceneProbeBindings.data(), static_cast<uint32_t>(kSceneProbeBindings.size())));
+    REQUIRE(kSceneProbeBindings.size() == 7);
+    CHECK(kSceneProbeBindings[0].kind == BindingKind::AccelerationStructure);
+    for (uint32_t b = 1; b <= 4; ++b) CHECK(kSceneProbeBindings[b].kind == BindingKind::StorageBuffer);
+    CHECK(kSceneProbeBindings[5].kind == BindingKind::SampledImage);
+    CHECK(kSceneProbeBindings[6].kind == BindingKind::SampledImage);
+    for (uint32_t b = 0; b < kSceneProbeBindings.size(); ++b) CHECK(kSceneProbeBindings[b].binding == b);
+    CHECK(kSceneProbePushBytes == 16);   // uvec2 vbo, uint stride, uint mode
+}
+
 TEST_CASE("rt layout: shader binding table regions honour handle and base alignment") {
     // RTX-class limits: handle 32, handle alignment 32, base alignment 64.
     const SbtLayout l = computeSbtLayout(32, 32, 64, 2, 3, 0);
