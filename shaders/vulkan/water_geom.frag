@@ -334,5 +334,7 @@ void main(void)
     // composites onto MainColor (GL_ONE / GL_ONE_MINUS_SRC_ALPHA) == GL's native one-stage
     // col*a + bg*(1-a) blend, bit-exact. (Straight-alpha two-stage double-applied alpha.)
     FragColor = vec4(col * waterA, waterA);
-    GBuffer1 = rc_gbuffer1_shadowHandled(vec3(0.0,0.0,1.0));
+    // Water class: still > 0.75 (shadow-handled, terrain-class for screen shadow / shoreline / decals) but distinct,
+    // so the motion pass can mark water in the reactive mask. Only A is written (pipeline mask), rgb stays.
+    GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
 }

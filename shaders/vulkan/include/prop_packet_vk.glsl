@@ -14,7 +14,7 @@ struct PropPacket {
     int   packetAlphaTest;      // GL's live per-packet ALPHA_TEST bit (the FS reads it)
     int   coverageFringePass;   // PROP-COVERAGE-1 (FS only): 0 core, 1 fringe
     int   materialId;
-    int   pad;
+    int   objectId;             // OBJECT-ID-1: RenderWorld handle bits for this packet type (0 = none); the FS writes it to MRT2
 };
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer PropPackets {
     PropPacket p[];

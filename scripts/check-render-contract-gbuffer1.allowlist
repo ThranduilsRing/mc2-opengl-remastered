@@ -83,7 +83,13 @@ shaders/vulkan/mech_tier1.frag::oGBuffer1 = vec4(Nshade * 0.5 + 0.5, 0.0);
 # terrain_lod_chunk.frag, whose every attachment-1 write is flatUp (:863-2608).
 # Terrain handles its own shadow in-shader, hence a = 1.0 (> the 0.5
 # rc_pixelHandlesOwnShadow threshold).
+shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(gbufN * 0.5 + 0.5, 1.0);
 shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+
+# WATER (reactive-mask class). A-only write (pipeline colour mask); 0.875 stays above every >0.5 / >0.75 consumer
+# threshold (screen_shadow, shoreline land test, impact_decal terrain class) and is the water marker read by
+# motion_vectors.frag (reactive mask).
+shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875);
 
 # TERRAIN, CSM debug early-outs (uT.csmDebugMode 1..8, eight sites collapsing to
 # one key -- the expression is identical at every one). Same flatUp value as the
@@ -150,3 +156,8 @@ shaders/vulkan/mech_backdrop.frag::oGBuffer1 = vec4(0.0);
 # render_contract.hglsl class applies. RISK: if this pass ever binds the scene GBuffer as
 # attachment 1, this write becomes a live GBuffer1 writer and must be re-adjudicated.
 shaders/vulkan/motion_vectors.frag::Reactive = 0.0;
+
+# MOTION PASS (not a GBuffer1 writer). Output location 1 here is the upscaler Reactive R8 mask, not the
+# GBuffer1 shadow-class attachment; the census discovers "attachment 1" by location only. It READS the
+# water class (0.875) from GBuffer1 and marks reactive=0.5; no shadow-class value is written.
+shaders/vulkan/motion_vectors.frag::Reactive = 0.5;

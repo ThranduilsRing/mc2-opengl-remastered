@@ -62,6 +62,7 @@ struct MotionVectors::Impl {
     VkDescriptorSet set = VK_NULL_HANDLE;       // binding 0 = scene depth
     VkDescriptorSet debugSet = VK_NULL_HANDLE;  // binding 0 = motion output
     VkImage sourceDepth = VK_NULL_HANDLE;
+    const VkImageResource* normalImage = nullptr;   // shared GBuffer1, bound at binding 2 for the water reactive class
     // Debug inset over the shared present image (built on first use).
     OwnedRenderPass debugPass;
     OwnedPipeline debugPipeline;
@@ -93,12 +94,13 @@ struct MotionVectors::Impl {
         si.addressModeU = si.addressModeV = si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         if (!mc2vk::create(sampler, dev, [&](auto* h) { return vkCreateSampler(dev, &si, nullptr, h); })) return false;
         // 0 = scene depth (debug set: motion output), 1 = per-object motion from the mech island (debug set: unused dummy).
-        VkDescriptorSetLayoutBinding binding[2] = {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
-                                                   {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
+        VkDescriptorSetLayoutBinding binding[3] = {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+                                                   {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+                                                   {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
         VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        di.bindingCount = 2; di.pBindings = binding;
+        di.bindingCount = 3; di.pBindings = binding;
         if (!mc2vk::create(dsl, dev, [&](auto* h) { return vkCreateDescriptorSetLayout(dev, &di, nullptr, h); })) return false;
-        VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4}};
+        VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6}};
         VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pi.maxSets = 2; pi.poolSizeCount = 1; pi.pPoolSizes = sizes;
         if (!mc2vk::create(pool, dev, [&](auto* h) { return vkCreateDescriptorPool(dev, &pi, nullptr, h); })) return false;
@@ -116,14 +118,19 @@ struct MotionVectors::Impl {
         VkDescriptorImageInfo objectImages[2] = {
             {sampler.get(), objectMv ? objectMv->view.get() : output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
             {sampler.get(), output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
-        VkWriteDescriptorSet writes[4]{};
-        for (uint32_t i = 0; i < 4; ++i) {
+        // Binding 2: shared GBuffer1 (water class in .a). The scene keeps it in COLOR_ATTACHMENT_OPTIMAL; record() brackets the pass.
+        normalImage = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+        VkDescriptorImageInfo normalImages[2] = {
+            {sampler.get(), normalImage ? normalImage->view.get() : output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+            {sampler.get(), output.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+        VkWriteDescriptorSet writes[6]{};
+        for (uint32_t i = 0; i < 6; ++i) {
             writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[i].dstSet = sets[i & 1];
             writes[i].dstBinding = i >> 1; writes[i].descriptorCount = 1;
             writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            writes[i].pImageInfo = (i >> 1) ? &objectImages[i & 1] : &images[i & 1];
+            writes[i].pImageInfo = (i >> 1) == 2 ? &normalImages[i & 1] : (i >> 1) ? &objectImages[i & 1] : &images[i & 1];
         }
-        vkUpdateDescriptorSets(dev, 4, writes, 0, nullptr);
+        vkUpdateDescriptorSets(dev, 6, writes, 0, nullptr);
         VkPushConstantRange pc{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 124};
         const auto sl = dsl.get();
         VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
@@ -258,6 +265,18 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
     b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
+    VkImageMemoryBarrier nb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    const bool normalReadable = s.normalImage && s.normalImage->image;
+    if (normalReadable) {
+        nb.srcQueueFamilyIndex = nb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        nb.image = s.normalImage->image.get();
+        nb.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        nb.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        nb.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        nb.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        nb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &nb);
+    }
     {
         MC2_VK_GPU_SCOPE(timer, cb, "VKIsl.Post.MotionVectors");
         VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
@@ -270,9 +289,16 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 64, glm::value_ptr(reprojection));
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 64, 48, skyRows);
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 112, 8, jitterClip);
-        const uint32_t objectValid = objectMotionWritten ? 1u : 0u;
+        const uint32_t objectValid = (objectMotionWritten ? 1u : 0u) | (normalReadable ? 2u : 0u);
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 120, 4, &objectValid);
         vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
+    }
+    if (normalReadable) {
+        nb.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        nb.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        nb.srcAccessMask = 0;
+        nb.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &nb);
     }
     b.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     b.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
