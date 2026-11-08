@@ -1,6 +1,7 @@
 """Offline loader/cook checks: coordinate frame, atlas isolation, packed input."""
 import io
 import struct
+import sys
 import zlib
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import numpy as np
 from PIL import Image
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import cook_logistics_art as cook
 
 
@@ -133,4 +135,4 @@ def test_magenta_placeholder():
 
 
 if __name__ == '__main__':
-    raise SystemExit(pytest.main([__file__, * __import__('sys').argv[1:]]))
+    raise SystemExit(pytest.main([__file__, *sys.argv[1:]]))
