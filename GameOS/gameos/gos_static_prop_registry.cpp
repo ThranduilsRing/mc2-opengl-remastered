@@ -577,6 +577,23 @@ void flush() {
         s_staticFrozenReg, s_currentGen, s_storeLiveSig);
     flushFrozenStoreRebuild(batcher_pb, s_storeDirty);
 
+    // Clean-frame skip: with a clean store (same generation, same visible set) every
+    // cached range is a no-op, and its light row cannot change without a generation bump
+    // (markVisible bumps it on a light change). The walk below still submits per-frame
+    // instances only for legacy ranges, so it is skipped only when the last full walk
+    // put every live range on the cached path (or the frozen store owns all of them)
+    // and no per-range diagnostic is asked for.
+    static bool s_lastWalkAllCached = false;
+    static const bool s_walkDiag = s_guard2 || s_trace
+        || mc2::gate::get<"MC2_STATIC_STALE_DROP_FATAL">()
+        || mc2::gate::get<"MC2_MODOVERRIDE_TRACE">()
+        || mc2_diag::tagRequested("STATIC_LIGHT_ROW");
+    if (!s_storeDirty && s_perInstanceLight && !s_walkDiag
+        && (s_lastWalkAllCached || s_staticFrozenReg)) {
+        return;
+    }
+    uint32_t walkCached = 0;
+
     for (uint32_t regIdx : s_liveRangeIndices) {
         RecipeRange& rng = s_recipeRanges[regIdx];
         if (flushRangeTombstoneGuard(s_diag_ranges_total, s_diag_ranges_tombstone, regIdx, rng)) continue;
@@ -657,8 +674,10 @@ void flush() {
             flushLegacyRange(batcher, rng, freshLightIdx);
         } else {
             flushCachedRange(batcher, s_storeDirty, rng);
+            ++walkCached;
         }
     }
+    s_lastWalkAllCached = walkCached == s_liveRangeIndices.size();
 
     // The native feed reads the persistent store directly and used to discard
     // its duplicate in the transient buckets. Publish only dirty generations.
