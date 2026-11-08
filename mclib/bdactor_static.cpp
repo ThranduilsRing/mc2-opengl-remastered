@@ -8,6 +8,7 @@ extern uint32_t mc2LightSlotBakedHighWater();
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "battle_bench_sink.h"
+#include "building_static_eligibility.h"
 #include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
@@ -69,8 +70,8 @@ bool BldgAppearance::isStaticEligible() const
 	// Instance-level disqualifiers.
 	if (drawFlash)          return false;
 	if (destructFX)         return false;
-	if (activity)           return false;
-	if (activity1)          return false;
+	if (mc2::building_static::activityNeedsUpdate(isActivitying, static_cast<bool>(activity), static_cast<bool>(activity1)))
+		return false;
 	// MODEL-OVERRIDE admission fix (SEAMPROBE-1, override branch): a renderOnly
 	// override prop substitutes a static .glb render shape that carries NO MC2
 	// bdAnimData; setAnimation() on it is a no-op. Stock buildings get a default
@@ -503,7 +504,7 @@ void BldgAppearance::recordStaticUpdateReason() const
 	else if (!s_bldgTypeAnimStaticEligible && bldgTypeHasAnimations(appearType)) reason = BldgUpdateLegacyAnim;
 	else if (drawFlash) reason = BldgUpdateFlash;
 	else if (destructFX) reason = BldgUpdateDestruct;
-	else if (activity || activity1) reason = BldgUpdateActivity;
+	else if (mc2::building_static::activityNeedsUpdate(isActivitying, static_cast<bool>(activity), static_cast<bool>(activity1))) reason = BldgUpdateActivity;
 	else if (appearType->rotationalNodeId[0] != '\0' && S_stricmp(appearType->rotationalNodeId, "NONE") != 0) reason = BldgUpdateRotation;
 	else if (bldgGestureHasAnimation(appearType, unitAnim().bdAnimationState)) reason = BldgUpdateAnimation;
 	else if (!staticReg.registered) reason = BldgUpdateUnregistered;
