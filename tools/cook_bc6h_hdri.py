@@ -32,12 +32,6 @@ import os as _os, sys as _sys  # noqa: E401
 _sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
-try:
-    import OpenEXR
-    import Imath
-except ImportError:
-    print("ERROR: OpenEXR Python module required. Install via: pip install openexr", file=sys.stderr)
-    sys.exit(1)
 
 # Default tool paths
 DEFAULT_KTX_EXE     = r'A:\Games\mc2-tools\ktx\ktx.exe'
@@ -60,6 +54,8 @@ def exr_to_radiance_hdr(exr_path):
     Decoding: R_f = R/256 * 2^(E-128).  Precision: ~8 mantissa bits per channel,
     sufficient for texconv's GPU encoder which operates at float32 internally.
     """
+    import OpenEXR
+    import Imath
     exr = OpenEXR.InputFile(exr_path)
     hdr = exr.header()
     dw = hdr['dataWindow']
@@ -73,6 +69,8 @@ def exr_to_radiance_hdr(exr_path):
 
     # Stack and encode as RGBE
     pixels = np.stack([R, G, B], axis=2)  # (h, w, 3) float32
+    sun_azimuth = scan_sun_azimuth(pixels)
+    exr.close()
 
     eps = 1e-9
     max_c = np.maximum(pixels.max(axis=2), eps)          # (h, w)
@@ -88,7 +86,46 @@ def exr_to_radiance_hdr(exr_path):
     buf.write(f'-Y {h} +X {w}\n'.encode('ascii'))
     buf.write(rgbe.tobytes())
 
-    return w, h, buf.getvalue()
+    return w, h, buf.getvalue(), sun_azimuth
+
+
+def scan_sun_azimuth(pixels):
+    """Same upper-hemisphere bright-texel circular mean as gos_hdri.cpp."""
+    upper = pixels[:pixels.shape[0] // 2]
+    if not upper.size:
+        return None
+    lum = upper @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    peak = np.max(lum)
+    if not peak > 0:
+        return None
+    weights = np.where(lum >= peak * 0.5, lum, 0).sum(axis=0, dtype=np.float64)
+    az = ((np.arange(pixels.shape[1], dtype=np.float32) + np.float32(0.5)) /
+          np.float32(pixels.shape[1]) - np.float32(0.5)) * np.float32(2 * np.pi)
+    return float(np.arctan2(weights @ np.sin(az), weights @ np.cos(az)))
+
+
+def write_sun_metadata(ktx2_path, azimuth):
+    """Embed the sun in the cooked sky, preserving existing KTX key/value data."""
+    with open(ktx2_path, 'rb') as file:
+        data = bytearray(file.read())
+    levels = struct.unpack_from('<I', data, 40)[0]
+    offsets = [struct.unpack_from('<Q', data, 80 + level * 24)[0] for level in range(levels)]
+    insert = min(offsets)
+    kv_offset, kv_size = struct.unpack_from('<II', data, 56)
+    value = b'MC2.sunAzimuth\0' + struct.pack('<Bf', azimuth is not None, azimuth or 0.0)
+    entry = struct.pack('<I', len(value)) + value + bytes(-len(value) % 4)
+    kv = data[kv_offset:kv_offset + kv_size] + entry
+    padding = bytes(-len(kv) % 8)
+    data[insert:insert] = kv + padding
+    shift = len(kv) + len(padding)
+    struct.pack_into('<II', data, 56, insert, len(kv))
+    for level, offset in enumerate(offsets):
+        struct.pack_into('<Q', data, 80 + level * 24, offset + shift)
+    sgd_offset = struct.unpack_from('<Q', data, 64)[0]
+    if sgd_offset >= insert:
+        struct.pack_into('<Q', data, 64, sgd_offset + shift)
+    with open(ktx2_path, 'wb') as file:
+        file.write(data)
 
 
 def run_texconv_bc6h(hdr_path, out_dir, texconv_exe):
@@ -257,7 +294,7 @@ def cook(exr_path, ktx2_path, ktx_exe, texconv_exe):
     # EXR -> Radiance HDR (lossless RGBE, in-memory)
     print("Converting EXR -> Radiance HDR...", flush=True)
     t0 = time.perf_counter()
-    w, h, hdr_bytes = exr_to_radiance_hdr(exr_path)
+    w, h, hdr_bytes, sun_azimuth = exr_to_radiance_hdr(exr_path)
     t1 = time.perf_counter()
     print(f"  {w}x{h}, {len(hdr_bytes)/(1024*1024):.1f} MB HDR ({t1-t0:.1f}s)", flush=True)
 
@@ -303,6 +340,7 @@ def cook(exr_path, ktx2_path, ktx_exe, texconv_exe):
             print(f"ktx.exe error (rc={result.returncode}): {result.stderr}", file=sys.stderr)
             sys.exit(1)
 
+    write_sun_metadata(ktx2_path, sun_azimuth)
     out_bytes = os.path.getsize(ktx2_path)
     cook_elapsed = time.perf_counter() - cook_start
     print(

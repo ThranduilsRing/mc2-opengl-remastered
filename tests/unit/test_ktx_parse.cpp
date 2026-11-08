@@ -50,6 +50,32 @@ RenderCore::KtxParseResult parse(const uint8_t* bytes, size_t size) {
 
 }  // namespace
 
+TEST_CASE("ktx2: cooked sun metadata parses azimuth and no-sun without trusting malformed values") {
+    for (int valid : {0, 1, 2}) {
+        auto file = makeKtx2(143, 4, 4, 16);
+        const size_t at = file.size();
+        const char key[] = "MC2.sunAzimuth";
+        const size_t length = sizeof(key) + 5;
+        file.resize(at + 4 + ((length + 3) & ~size_t{3}), 0);
+        putU32(file, 56, static_cast<uint32_t>(at));
+        putU32(file, 60, static_cast<uint32_t>(file.size() - at));
+        putU32(file, at, static_cast<uint32_t>(length));
+        std::memcpy(file.data() + at + 4, key, sizeof(key));
+        file[at + 4 + sizeof(key)] = static_cast<uint8_t>(valid);
+        const float az = 1.25f;
+        std::memcpy(file.data() + at + 5 + sizeof(key), &az, sizeof(az));
+        auto r = RenderCore::ktxParse(file);
+        REQUIRE(r.image);
+        CHECK(r.image->hasSunMetadata == (valid <= 1));
+        CHECK(r.image->sunAzimuth.has_value() == (valid == 1));
+        if (valid == 1) CHECK(*r.image->sunAzimuth == az);
+        putU32(file, at, 0xffffffff);
+        r = RenderCore::ktxParse(file);
+        REQUIRE(r.image);
+        CHECK_FALSE(r.image->hasSunMetadata);
+    }
+}
+
 TEST_CASE("ktx2: a stored BC7 level is returned as its blocks, untouched") {
     const auto file = makeKtx2(kBc7Srgb, 8, 6, 2 * 2 * 16);   // 8x6 = 2x2 blocks
     const auto r = parse(file.data(), file.size());

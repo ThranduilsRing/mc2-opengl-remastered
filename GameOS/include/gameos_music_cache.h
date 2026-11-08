@@ -2,6 +2,6 @@
 
 #include <string_view>
 
-// Decode configured music before mission ticks. Existing resources survive cache release.
+// Register configured music for bounded streaming. No catalog audio is decoded.
 bool gosAudio_PreloadMusic(std::string_view path);
 void gosAudio_ClearMusicCache();

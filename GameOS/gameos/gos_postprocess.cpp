@@ -93,7 +93,18 @@ void gosPostProcess::loadHdri(mc2::czstring path, float* outSunAz, bool* outSunV
 const HdriCpuImage* gos_GetHdriCpuImage()
 {
     gosPostProcess* pp = getGosPostProcess();
+    if (pp) pp->ensureDefaultSky();
     return pp ? pp->getHdriCpu() : nullptr;
+}
+
+void gosPostProcess::ensureDefaultSky()
+{
+    if (!hdriEnabled_ || hdriCurrentPath_[0] || skyNumber_ >= 1) return;
+    const char* path = "data/hdr/DaySkyHDRI063B_4K.exr";
+    // Remember the attempt too: a missing menu sky must not retry every frame.
+    std::strncpy(hdriCurrentPath_, path, sizeof(hdriCurrentPath_) - 1);
+    loadHdri(path, &hdriBakedSunAz_, &hdriBakedSunValid_);
+    hdriReady_ = static_cast<bool>(hdriCpu_);
 }
 
 // Free-function bridge: GameAdapters or profile code calls this without
@@ -182,20 +193,9 @@ void gosPostProcess::init(int w, int h)
     {
         hdriEnabled_ = mc2::gate::get<"MC2_HDRI_SKY">();
 
-        if (hdriEnabled_) {
-            // HDRI-SKY-NUMBER-1: default path (overridden at mission load via setSkyNumber).
-            const char* hdrPath = "data/hdr/DaySkyHDRI063B_4K.exr";
-            // Item 2: also scan for the baked sun azimuth (read-only; used only
-            // when sun-sync is enabled at draw time).
-            loadHdri(hdrPath, &hdriBakedSunAz_, &hdriBakedSunValid_);  // logs failures internally
-            if (hdriCpu_) {
-                std::strncpy(hdriCurrentPath_, hdrPath, sizeof(hdriCurrentPath_) - 1);
-                hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';
-            }
-
-            hdriReady_ = static_cast<bool>(hdriCpu_);
-
-        } else {
+        // Mission selection supplies its sky before first use. The menu's
+        // default is decoded lazily only if a renderer actually requests it.
+        if (!hdriEnabled_) {
             MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] enabled=0 reason=env_gate MC2_HDRI_SKY=0\n");
         }
@@ -332,6 +332,7 @@ void gosPostProcess::init(int w, int h)
 void gosPostProcess::beginScene()
 {
     if (!initialized_) return;
+    ensureDefaultSky();
     prevFrameHadTerrain_ = sceneHasTerrain_;
     sceneHasTerrain_ = false;
     // Scene clears belong to the native terrain prefix or host menu clear.

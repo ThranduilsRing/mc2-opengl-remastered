@@ -32,6 +32,7 @@ public:
     bool   isHdriReady()  const { return hdriReady_; }
     uint64_t getHdriGeneration() const { return hdriCpu_ ? hdriCpuGeneration_ : 0; }
     const struct HdriCpuImage* getHdriCpu() const { return hdriCpu_.get(); }
+    void ensureDefaultSky();
 
     // FRAME-GRAPH-EXECUTOR-ISLAND-1: read-only accessors used by the executor
     // wrapper (executorOwnBegin / executorOwnEnd) in gos_postprocess.cpp to

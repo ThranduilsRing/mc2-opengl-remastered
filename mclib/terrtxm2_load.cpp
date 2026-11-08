@@ -7,6 +7,7 @@
 #include "texture_assets.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
+#include "terrain_normal_load.h"
 #include "../GameOS/gameos/terrain_field_store.h"
 
 using mc2::tga::loadTga;
@@ -645,18 +646,27 @@ long TerrainColorMap::init (char *fileName)
 			"mat0_normal", "mat1_normal", "mat2_normal", "mat3_normal", "mat4_normal",
 			"mat5_normal", "mat6_normal", "mat7_normal", "mat8_normal"
 		};
-		const char* dispNames[9] = {
-			"mat0_displacement", "mat1_displacement", "mat2_displacement", "mat3_displacement", "mat4_displacement",
-			"mat5_displacement", "mat6_displacement", "mat7_displacement", "mat8_displacement"
-		};
 		const unsigned char* normalLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-		const unsigned char* dispLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 		// The decoded layers; the pointers above view these until the block ends.
-		std::vector<DWORD> normalStore[9], dispStore[9];
+		std::vector<DWORD> normalStore[9];
 		int arrayWidth = 0;
-		bool allLoaded = true;
+		bool usedCooked = false;
+		if (auto* fields = gos_TerrainFieldStore()) {
+			std::vector<RenderCore::KtxImage> cooked(6);
+			bool all = true;
+			for (int mat = 0; mat < 6 && all; ++mat) {
+				FullPathFileName nmPath;
+				nmPath.init(texturePath, normalNames[mat], ".tga");
+				auto layer = mc2::textures::loadCookedSidecar(static_cast<const char*>(nmPath));
+				all = layer.has_value();
+				if (all) cooked[mat] = std::move(*layer);
+			}
+			usedCooked = all && fields->setMaterialNormals(cooked);
+			if (!usedCooked) fields->setMaterialNormals({});
+			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}\n", usedCooked ? "cooked sidecars" : "absent, TGA import");
+		}
 
-		for (int mat = 0; mat < 9; mat++)
+		const bool allLoaded = mc2::terrain::loadNormalSources(usedCooked, [&](int mat)
 		{
 			FullPathFileName nmPath;
 			nmPath.init(texturePath, normalNames[mat], ".tga");
@@ -664,22 +674,21 @@ long TerrainColorMap::init (char *fileName)
 			if (!fileExists(nmPath)) {
 				mc2::fmt::print_out("[SPLATTING] NOT FOUND: {}{}\n", mc2::fmt::safe(static_cast<const char*>(nmPath)), mc2::fmt::safe(mat >= 4 ? " (optional slot skipped)" : ""));
 				// mat4+ are optional — missing file leaves the slot empty but doesn't fail the load.
-				if (mat >= 4) continue;
-				allLoaded = false; break;
+				return mat >= 4;
 			}
 
 			File nmFile;
-			if (nmFile.open(nmPath) != NO_ERR) { if (mat >= 4) continue; allLoaded = false; break; }
+			if (nmFile.open(nmPath) != NO_ERR) return mat >= 4;
 			std::vector<unsigned char> nmData;
 			TGAFileHeader nmInfo{};
 			if (!loadTga(nmFile, nmData, nmInfo, "terrain material normal map"))
-			{ allLoaded = false; break; }
+			{ return false; }
 			if (nmInfo.image_type != UNC_TRUE || nmInfo.width != nmInfo.height || !tgaPixelsPresent(nmData, nmInfo, "terrain material normal map"))
-			{ allLoaded = false; break; }
+			{ return false; }
 
 			if (arrayWidth == 0) arrayWidth = nmInfo.width;
 			else if (nmInfo.width != arrayWidth)
-			{ allLoaded = false; break; }
+			{ return false; }
 
 			long pixels = static_cast<long>(nmInfo.width) * static_cast<long>(nmInfo.width);
 			normalStore[mat].assign(static_cast<size_t>(pixels), 0);
@@ -696,44 +705,10 @@ long TerrainColorMap::init (char *fileName)
 			bool top = (nmInfo.image_descriptor & 32) != 0;
 			if (!top) flipTopToBottom(reinterpret_cast<MemoryPtr>(rgba), 32, nmInfo.width, nmInfo.height);
 			normalLayers[mat] = reinterpret_cast<const unsigned char*>(rgba);
-		}
+			return true;
+		});
 
-		// Load displacement layers (same pattern) — slot 4+ optional.
-		if (allLoaded) {
-			for (int mat = 0; mat < 9; mat++)
-			{
-				FullPathFileName dispPath;
-				dispPath.init(texturePath, dispNames[mat], ".tga");
-				if (!fileExists(dispPath)) { if (mat >= 4) continue; allLoaded = false; break; }
-
-				File dispFile;
-				if (dispFile.open(dispPath) != NO_ERR) { if (mat >= 4) continue; allLoaded = false; break; }
-				std::vector<unsigned char> dispData;
-				TGAFileHeader dispInfo{};
-				if (!loadTga(dispFile, dispData, dispInfo, "terrain material displacement map"))
-				{ allLoaded = false; break; }
-				if (dispInfo.image_type != UNC_TRUE || dispInfo.width != arrayWidth || !tgaPixelsPresent(dispData, dispInfo, "terrain material displacement map"))
-				{ allLoaded = false; break; }
-
-				long pixels = static_cast<long>(dispInfo.width) * static_cast<long>(dispInfo.width);
-				dispStore[mat].assign(static_cast<size_t>(pixels), 0);
-				DWORD* rgba = dispStore[mat].data();
-				MemoryPtr loadBuf = dispData.data() + sizeof(TGAFileHeader);
-				if (dispInfo.pixel_depth == 24) {
-					MemoryPtr cMap = reinterpret_cast<MemoryPtr>(rgba);
-					MemoryPtr lMap = loadBuf;
-					for (long i = 0; i < pixels; i++)
-					{ *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff; }
-				} else {
-					memcpy(rgba, loadBuf, pixels * sizeof(DWORD));
-				}
-				bool top = (dispInfo.image_descriptor & 32) != 0;
-				if (!top) flipTopToBottom(reinterpret_cast<MemoryPtr>(rgba), 32, dispInfo.width, dispInfo.height);
-				dispLayers[mat] = reinterpret_cast<const unsigned char*>(rgba);
-			}
-		}
-
-		if (allLoaded) {
+		if (allLoaded && !usedCooked) {
 			mc2::fmt::print_out("[SPLATTING] all loaded OK, width={:d}, creating individual textures\n", mc2::fmt::as_i32(arrayWidth));
 			for (int i = 0; i < 9; i++) {
 				if (!normalLayers[i]) continue;  // optional slot absent
@@ -741,25 +716,8 @@ long TerrainColorMap::init (char *fileName)
 				mc2::fmt::print_out("[SPLATTING] matNormal{:d} handle={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(nmId));
 				gos_SetTerrainMaterialNormal(i, nmId);
 			}
-		} else {
+		} else if (!allLoaded) {
 			mc2::fmt::print_out("[SPLATTING] FAILED to load all material textures\n");
-		}
-
-		// The layers the terrain samples (0-5) prefer their cooked BC7 mip-complete sidecars (matN_normal.ktx2, same provider
-		// precedence as every texture sidecar). One missing or unusable layer keeps the TGA import for all of them.
-		if (auto* fields = gos_TerrainFieldStore()) {
-			std::vector<RenderCore::KtxImage> cooked(6);
-			bool all = true;
-			for (int mat = 0; mat < 6 && all; mat++) {
-				FullPathFileName nmPath;
-				nmPath.init(texturePath, normalNames[mat], ".tga");
-				auto layer = mc2::textures::loadCookedSidecar(static_cast<const char*>(nmPath));
-				all = layer.has_value();
-				if (all) cooked[mat] = std::move(*layer);
-			}
-			const bool used = all && fields->setMaterialNormals(cooked);
-			if (!used) fields->setMaterialNormals({});
-			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}\n", used ? "cooked sidecars" : "absent, TGA import");
 		}
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement
@@ -770,9 +728,8 @@ long TerrainColorMap::init (char *fileName)
 			gosASSERT(cpuDispAlpha != nullptr);
 			cpuDispAlphaSize = arrayWidth;
 			const unsigned char* src = normalLayers[2];
-			for (long i = 0; i < pixels; i++) {
-				cpuDispAlpha[i] = src[i * 4 + 3]; // alpha channel (RGBA layout)
-			}
+			mc2::terrain::copyDisplacementAlpha({src, static_cast<size_t>(pixels) * 4},
+			                                   {cpuDispAlpha, static_cast<size_t>(pixels)});
 			mc2::fmt::print_out("[SPLATTING] retained matNormal2 alpha on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(arrayWidth), mc2::fmt::as_i32(arrayWidth));
 		}
 

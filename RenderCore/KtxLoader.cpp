@@ -7,6 +7,8 @@
 #include "../mclib/mc2fmt.h"
 
 #include <algorithm>
+#include <bit>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -112,6 +114,28 @@ KtxParseResult ktxParse(std::span<const uint8_t> file)
     if (size - kLevelIndexOffset < std::size_t{levels} * kLevelEntryBytes) { r.error = "truncated level index"; return r; }
 
     KtxImage img;
+    // Embedded metadata shares the sky's provider identity and cannot override
+    // a mod sky independently. Older skies simply use the EXR scan fallback.
+    const uint32_t kvOffset = readU32(h + 44), kvSize = readU32(h + 48);
+    if (kvOffset <= size && kvSize <= size - kvOffset) {
+        size_t at = kvOffset, end = at + kvSize;
+        constexpr char key[] = "MC2.sunAzimuth";
+        while (end - at >= 4) {
+            const uint32_t length = readU32(bytes + at); at += 4;
+            if (length > end - at) break;
+            if (length == sizeof(key) + 5 && std::memcmp(bytes + at, key, sizeof(key)) == 0) {
+                const uint8_t valid = bytes[at + sizeof(key)];
+                const float az = std::bit_cast<float>(readU32(bytes + at + sizeof(key) + 1));
+                if (valid <= 1 && std::isfinite(az) && std::abs(az) <= 3.141593f) {
+                    img.hasSunMetadata = true;
+                    if (valid) img.sunAzimuth = az;
+                }
+            }
+            const size_t padded = (static_cast<size_t>(length) + 3) & ~size_t{3};
+            if (padded > end - at) break;
+            at += padded;
+        }
+    }
     img.mipByteOffsets.resize(levels);
     uint64_t total = 0;
     for (uint32_t lvl = 0; lvl < levels; ++lvl) {
