@@ -34,7 +34,9 @@ public:
             if (!result->produce()) return {};
         }
         result->worker_ = std::thread([self = result.get()] {
-            SDL_SetThreadPriority(SDL_THREAD_PRIORITY_LOW);
+            // Refill has an audio deadline. Lowering this below the game's
+            // normal threads can starve both queues during CPU-heavy loads.
+            SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
             while (true) {
                 self->free_.acquire();
                 if (self->stop_.load()) break;
