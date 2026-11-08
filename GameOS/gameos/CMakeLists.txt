@@ -258,8 +258,9 @@ if(MC2_VULKAN)
         list(APPEND SOURCES vk_owned.cpp)
         # STEP 3.4P: native Vulkan compute producers (Slang compute pipelines; terrain lighting + water cull/pack).
         list(APPEND SOURCES vk_compute_pipeline.cpp vk_native_producers.cpp)
-        # Vulkan ray-tracing infrastructure (acceleration-structure build/update/compaction, ray-query descriptors, GPU self-test hook). No scene use yet.
-        list(APPEND SOURCES vk_rt_acceleration.cpp vk_rt_descriptors.cpp vk_rt_selftest.cpp)
+        # Vulkan ray-tracing infrastructure (acceleration-structure build/update/compaction, ray-query descriptors, GPU self-test hook) and the persistent
+        # static scene (terrain + static-prop BLASes, full-registry TLAS; nothing consumes it yet).
+        list(APPEND SOURCES vk_rt_acceleration.cpp vk_rt_descriptors.cpp vk_rt_selftest.cpp vk_rt_scene.cpp vk_rt_scene_math.cpp)
         # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
         # host-visible ring on the shared engine device) consumed by the mech +
         # color-prop islands instead of twin per-island ~3.5 MB copies of the

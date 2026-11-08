@@ -11482,6 +11482,90 @@
    "count": 1
   },
   {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "gen",
+    "types",
+    "instances"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "props",
+    "terrain",
+    "tlas_instances"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ray",
+    "kind",
+    "origin",
+    "hit",
+    "t",
+    "prim",
+    "custom",
+    "expect",
+    "expect_t",
+    "match"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "rays"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tiles",
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "why",
+    "tlas_instances",
+    "terrain_tiles",
+    "props",
+    "prop_types",
+    "dropped",
+    "blas_bytes",
+    "built_bytes",
+    "compacted",
+    "compacted_bytes",
+    "tlas_bytes",
+    "scratch_bytes",
+    "instance_bytes",
+    "total_bytes",
+    "blas_build_calls",
+    "batch_scratch_bytes",
+    "build_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_SCENE_READBACK",
    "ver": -1,
    "stream": "stderr",

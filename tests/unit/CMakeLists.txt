@@ -210,6 +210,8 @@ add_executable(mc2_tests
     test_vk_desc_pool_chain.cpp  # chained descriptor pools past the 192/480/64 caps, injected pool errors, stable chain on reset; header-only, no Vulkan
     test_vk_rt_caps.cpp  # RT tier selection + [VK_RT v1] line from faked caps; header-only, no Vulkan
     test_vk_rt_layout.cpp  # RT AS storage/scratch math, build barrier chain, SBT layout; header-only, no Vulkan
+    test_vk_rt_scene.cpp  # RT scene records/keys, prop transform, terrain surface chunks, packet rebase; no Vulkan
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/vk_rt_scene_math.cpp
     test_debug_line_project.cpp  # debug overlay segment projection; header-only
     test_camera_pick_hash.cpp  # pick revision hash: altitude / shift each move it; header-only
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan

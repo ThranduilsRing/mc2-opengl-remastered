@@ -11,7 +11,9 @@
 #ifndef MC2_VK_RT_ACCELERATION_H
 #define MC2_VK_RT_ACCELERATION_H
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace mc2vk::rt {
 
@@ -32,6 +34,34 @@ constexpr uint64_t scratchAlignedAddress(uint64_t base, uint64_t alignment) { re
 constexpr bool scratchFits(uint64_t base, uint64_t allocBytes, uint64_t needed, uint64_t alignment) {
     return scratchAlignedAddress(base, alignment) + needed <= base + allocBytes;
 }
+// A held scratch allocation of `capacityBytes` serves a build needing `needed` bytes when the over-allocated size fits (any base address then aligns).
+constexpr bool scratchReusable(uint64_t capacityBytes, uint64_t needed, uint64_t alignment) {
+    return capacityBytes > 0 && scratchAllocBytes(needed, alignment) <= capacityBytes;
+}
+
+// BATCHED BLAS BUILDS: several builds in one vkCmdBuildAccelerationStructuresKHR, each on its own scratch sub-range (no barrier inside a call, so the
+// sub-ranges must not overlap). Builds are taken in order into groups whose summed sub-ranges stay within `budget` (a group always holds at least one
+// build); a group is one build call, and consecutive groups reuse the arena behind a Blas -> Tlas barrier. Writes each build's sub-range offset from the
+// aligned arena base (a multiple of `alignment`) and its group; returns the largest group span, the scratch to reserve. `offsets` and `groups` hold at
+// least needed.size() entries.
+constexpr uint64_t scratchBatchPlan(std::span<const uint64_t> needed, uint64_t alignment, uint64_t budget, std::span<uint64_t> offsets,
+                                    std::span<uint32_t> groups) {
+    uint64_t span = 0, peak = 0;
+    uint32_t group = 0;
+    for (size_t i = 0; i < needed.size(); ++i) {
+        const uint64_t bytes = alignUp(needed[i], alignment);   // 0: an empty geometry (no build), takes no room
+        if (span > 0 && bytes > 0 && span + bytes > budget) {
+            ++group;
+            span = 0;
+        }
+        offsets[i] = span;
+        groups[i] = group;
+        span += bytes;
+        peak = span > peak ? span : peak;
+    }
+    return peak;
+}
+inline constexpr uint64_t kScratchBatchBudget = 64ull << 20;   // per build call; a map's terrain tiles take a few groups
 
 // A compaction copy is only worth its second buffer and its copy when it saves at least `minSavedPercent` of the original.
 constexpr bool worthCompacting(uint64_t originalSize, uint64_t compactedSize, uint32_t minSavedPercent = 10) {
@@ -49,6 +79,8 @@ inline constexpr uint64_t kStageComputeShader = 0x800ull;
 inline constexpr uint64_t kStageRayTracingShader = 0x200000ull;
 inline constexpr uint64_t kStageAsBuild = 0x02000000ull;
 inline constexpr uint64_t kStageAsCopy = 0x10000000ull;
+inline constexpr uint64_t kAccessShaderRead = 0x20ull;
+inline constexpr uint64_t kAccessShaderWrite = 0x40ull;
 inline constexpr uint64_t kAccessTransferWrite = 0x1000ull;
 inline constexpr uint64_t kAccessAsRead = 0x00200000ull;
 inline constexpr uint64_t kAccessAsWrite = 0x00400000ull;
@@ -59,22 +91,29 @@ struct Barrier {
 };
 
 // The execution + memory dependency between two phases. Invalid when `to` does not come after `from` (a reversed or repeated edge is a recording bug).
+// - Copies (vkCmdCopyAccelerationStructureKHR) run in the AS-BUILD stage: the AS-COPY stage bit needs VK_KHR_ray_tracing_maintenance1, which the device
+//   profile does not enable (VUID-VkMemoryBarrier2-srcStageMask-10752), so kStageAsCopy is never emitted.
+// - Build inputs (vertex / index / instance buffers) are read at the AS-BUILD stage with SHADER_READ; Upload covers a transfer or a compute shader writing them.
+// - The consumer is a compute-shader ray query: the ray-tracing-pipeline stage is invalid on a query-only device, and nothing traces from a pipeline yet.
 constexpr Barrier barrierBetween(Phase from, Phase to) {
     Barrier b;
     if (phaseRank(to) <= phaseRank(from) || from == Phase::Consumer) return b;
     switch (from) {
-        case Phase::Upload: b.srcStage = kStageTransfer; b.srcAccess = kAccessTransferWrite; break;
+        case Phase::Upload: b.srcStage = kStageTransfer | kStageComputeShader; b.srcAccess = kAccessTransferWrite | kAccessShaderWrite; break;
         case Phase::Blas:
+        case Phase::Copy:
         case Phase::Tlas: b.srcStage = kStageAsBuild; b.srcAccess = kAccessAsWrite; break;
-        case Phase::Copy: b.srcStage = kStageAsCopy; b.srcAccess = kAccessAsWrite; break;
         case Phase::Consumer: return b;
     }
     switch (to) {
         case Phase::Upload: return Barrier{};
         case Phase::Blas:
-        case Phase::Tlas: b.dstStage = kStageAsBuild; b.dstAccess = kAccessAsRead | kAccessAsWrite; break;   // inputs and the scratch are read and written
-        case Phase::Copy: b.dstStage = kStageAsCopy; b.dstAccess = kAccessAsRead; break;
-        case Phase::Consumer: b.dstStage = kStageComputeShader | kStageRayTracingShader; b.dstAccess = kAccessAsRead; break;
+        case Phase::Tlas:   // inputs are shader-read; source structures and the scratch are read and written
+            b.dstStage = kStageAsBuild;
+            b.dstAccess = kAccessAsRead | kAccessAsWrite | (from == Phase::Upload ? kAccessShaderRead : 0);
+            break;
+        case Phase::Copy: b.dstStage = kStageAsBuild; b.dstAccess = kAccessAsRead | kAccessAsWrite; break;
+        case Phase::Consumer: b.dstStage = kStageComputeShader; b.dstAccess = kAccessAsRead; break;
     }
     b.valid = true;
     return b;
@@ -89,6 +128,7 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
 
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "vk_owned.h"
 
@@ -97,6 +137,25 @@ class VulkanContext;
 }
 
 namespace mc2vk::rt {
+
+// The build scratch of one owner (a scene, a self-test), reused across builds. A build that needs more than the held buffer replaces it; the replaced
+// buffer may still be read by a build recorded earlier in an unsubmitted command buffer, so it parks in `stale` until the owner hands it to
+// VulkanContext::retire (retireStale, after the submit) or retires the whole arena (retireAll, e.g. on map change). Destruction without a retire is only
+// for the context's own teardown, after the device idled. Builds that share the arena in one command buffer need a Blas -> Tlas barrier between them
+// (an AS-build write -> AS-build read/write dependency on the scratch).
+class ScratchArena {
+public:
+    // The aligned scratch address for a build of `needed` bytes; false on an allocation failure (nothing recorded then).
+    bool reserve(const VulkanContext& ctx, VkDeviceSize needed, std::string_view name, VkDeviceAddress& alignedAddress);
+    void retireStale(VulkanContext& ctx);
+    void retireAll(VulkanContext& ctx);
+    VkDeviceSize capacity() const noexcept { return capacity_; }
+
+private:
+    OwnedBuffer buffer_;
+    VkDeviceSize capacity_ = 0;
+    std::vector<OwnedBuffer> stale_;
+};
 
 struct TriangleGeometry {
     VkDeviceAddress vertices = 0;
@@ -132,11 +191,13 @@ public:
 
 private:
     friend std::optional<AccelStructure> createAccelStructure(const VulkanContext&, VkAccelerationStructureTypeKHR, VkDeviceSize, std::string_view);
-    friend bool recordBlasBuild(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, const BuildFlags&, std::string_view, AccelStructure&, OwnedBuffer&);
-    friend bool recordBlasUpdate(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, AccelStructure&, OwnedBuffer&);
+    friend bool recordBlasBuild(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, const BuildFlags&, std::string_view, AccelStructure&, ScratchArena&);
+    friend bool recordBlasBuildBatch(const VulkanContext&, VkCommandBuffer, const std::vector<TriangleGeometry>&, const BuildFlags&, std::string_view,
+                                     std::vector<AccelStructure>&, ScratchArena&, uint32_t*, VkDeviceSize*);
+    friend bool recordBlasUpdate(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, AccelStructure&, ScratchArena&);
     friend bool recordTlasBuild(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, const BuildFlags&, std::string_view, AccelStructure&,
-                                OwnedBuffer&);
-    friend bool recordTlasUpdate(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, AccelStructure&, OwnedBuffer&);
+                                ScratchArena&);
+    friend bool recordTlasUpdate(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, AccelStructure&, ScratchArena&);
     friend bool recordCompactCopy(const VulkanContext&, VkCommandBuffer, const AccelStructure&, VkDeviceSize, std::string_view, AccelStructure&);
     OwnedBuffer buffer_;                             // declared before handle_ so the handle is destroyed first
     OwnedAccelStruct handle_;
@@ -152,17 +213,25 @@ private:
 std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkAccelerationStructureTypeKHR type, VkDeviceSize size, std::string_view name);
 
 // Records a BLAS build of one triangle geometry into `cmd`: size query, structure + scratch creation, vkCmdBuildAccelerationStructuresKHR. The geometry
-// buffers must carry SHADER_DEVICE_ADDRESS | ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY usage and be visible to the build (see Phase::Upload). `scratch`
-// receives the scratch buffer: keep it alive until the submit completes, then retire it. False (nothing recorded) on any creation failure.
+// buffers must carry SHADER_DEVICE_ADDRESS | ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY usage and be visible to the build (see Phase::Upload). Scratch
+// comes from `scratch` (reused when big enough; a replaced buffer parks until the owner calls retireStale after the submit). Builds that share one arena
+// in a command buffer need a Phase::Blas -> Phase::Tlas barrier between them. False (nothing recorded) on any creation failure.
 bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& geometry, const BuildFlags& flags, std::string_view name,
-                     AccelStructure& blas, OwnedBuffer& scratch);
+                     AccelStructure& blas, ScratchArena& scratch);
+// Records one BLAS build per geometry (geometries with no triangles get an empty structure) batched per scratchBatchPlan: one
+// vkCmdBuildAccelerationStructuresKHR per group, each build on its own scratch sub-range, a Blas -> Tlas barrier between groups. `out` is resized to
+// geometries.size() and filled only when every allocation succeeded (else false, nothing recorded, `out` empty). `groupsOut` / `scratchOut`: the build
+// calls recorded and the scratch span reserved, for the byte ledger. The caller still owes the Blas -> consumer barrier after the last group.
+bool recordBlasBuildBatch(const VulkanContext& ctx, VkCommandBuffer cmd, const std::vector<TriangleGeometry>& geometries, const BuildFlags& flags,
+                          std::string_view name, std::vector<AccelStructure>& out, ScratchArena& scratch, uint32_t* groupsOut = nullptr,
+                          VkDeviceSize* scratchOut = nullptr);
 // Refits `blas` in place (same topology: vertexCount / triangleCount unchanged; the structure was built with allowUpdate). Needs a scratch of updateScratchSize.
-bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& geometry, AccelStructure& blas, OwnedBuffer& scratch);
+bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& geometry, AccelStructure& blas, ScratchArena& scratch);
 
 // Records a TLAS build over `instanceCount` VkAccelerationStructureInstanceKHR (kInstanceBytes each, 16-byte-aligned address) at `instances`.
 bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, const BuildFlags& flags,
-                     std::string_view name, AccelStructure& tlas, OwnedBuffer& scratch);
-bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, AccelStructure& tlas, OwnedBuffer& scratch);
+                     std::string_view name, AccelStructure& tlas, ScratchArena& scratch);
+bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, AccelStructure& tlas, ScratchArena& scratch);
 
 // One instance entry: an identity-or-given 3x4 transform (row-major, 12 floats; null = identity), the BLAS address, custom index and mask 0xFF.
 VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, const float* transform3x4, uint32_t customIndex = 0, uint8_t mask = 0xFF);

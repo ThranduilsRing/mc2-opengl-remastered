@@ -49,6 +49,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "gos_static_prop_registry.h"   // OBJECT-ID-1: getRecipeIndexForType
 #include "../../RenderWorld/RenderWorld.h"   // OBJECT-ID-1: IsObjectIdBufferEnabled, objectIdRawForStaticPropRecipe
 #include "vulkan_color_prop_island.h"
+#include "vk_rt_scene.h"
 #include "texture_decode.h"
 #include "vk_texture_residency.h"
 #include "vk_vegetation_ground.h"
@@ -1416,9 +1417,13 @@ bool upload_geometry_once(ColorPropIsland* s) {
     // Static geometry is read every frame. Keep the identical bytes in device
     // memory rather than the CPU-writable allocation createFilled() provides.
     mc2vk::OwnedBuffer stageVertices, stageIndices;
+    // The RT scene (vk_rt_scene.h) builds the static-prop BLASes straight from this VBO.
+    const VkBufferUsageFlags rtBuildInput = mc2vk::getOrCreateEngineVulkanContext().rt().accel
+        ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0;
     if (!stageVertices.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.vertices") ||
         !stageIndices.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.indices") ||
-        !s->vbo.createDeviceLocal(s->allocator, s->device, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.vbo") ||
+        !s->vbo.createDeviceLocal(s->allocator, s->device, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | rtBuildInput,
+                                  "colorprop.vbo") ||
         !s->ibo.createDeviceLocal(s->allocator, s->device, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.ibo")) {
         vlog("geometry upload failed (buffer creation or map); retrying next frame.");
         s->vbo.reset();
@@ -1467,6 +1472,7 @@ bool upload_geometry_once(ColorPropIsland* s) {
 
 // currently-bound draw FBO (MainColor at flush() time). Reused water-island shape.
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
+    mc2vk::rt::scene::invalidateProps();   // the prop BLASes and the TLAS over them go with the map
     ColorPropIsland* s = parkedIsland();
     if (!s) return;
     // The map's geometry retires on the open-frame ticket: in-flight submits may still draw it.
@@ -1892,6 +1898,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
 
     if (!prepare_mission_resources(s)) return 0;
+    mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());   // no-op without ray query or while the registry generation is unchanged
 
     // Frame-ring allocations already belong to the current engine frame slot.
     // Private commands and descriptors retire against this island's submissions,

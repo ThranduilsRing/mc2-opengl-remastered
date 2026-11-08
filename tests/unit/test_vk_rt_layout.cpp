@@ -2,6 +2,8 @@
 // shader binding table layout (vk_rt_acceleration.h / vk_rt_descriptors.h Vulkan-free halves). No Vulkan link.
 #include "doctest.h"
 
+#include <initializer_list>
+
 #define MC2_RT_PURE_ONLY
 #include "vk_rt_acceleration.h"
 #include "vk_rt_descriptors.h"
@@ -36,6 +38,30 @@ TEST_CASE("rt layout: scratch is over-allocated so an aligned address always fit
     CHECK(scratchAllocBytes(0, 128) == 129);
 }
 
+TEST_CASE("rt layout: batched BLAS scratch sub-ranges are aligned, disjoint and grouped under the budget") {
+    const uint64_t need[5] = {100, 0, 300, 600, 50};
+    uint64_t off[5] = {};
+    uint32_t grp[5] = {};
+    // Aligned sizes 128, 0, 384, 640, 128; budget 1024: {0, 1, 2} = 512, then 640 would make 1152 -> new group {3, 4} = 768.
+    CHECK(scratchBatchPlan(need, 128, 1024, off, grp) == 768);
+    CHECK(off[0] == 0);
+    CHECK(off[1] == 128);   // empty: takes no room
+    CHECK(off[2] == 128);
+    CHECK(off[3] == 0);
+    CHECK(off[4] == 640);
+    CHECK(grp[0] == 0);
+    CHECK(grp[2] == 0);
+    CHECK(grp[3] == 1);
+    CHECK(grp[4] == 1);
+    for (uint64_t o : off) CHECK(o % 128 == 0);
+    // One build bigger than the budget still gets a group of its own.
+    const uint64_t big[2] = {5000, 10};
+    CHECK(scratchBatchPlan(big, 256, 1024, off, grp) == 5120);
+    CHECK(grp[0] == 0);
+    CHECK(grp[1] == 1);
+    CHECK(scratchBatchPlan(std::span<const uint64_t>(big, 0), 256, 1024, off, grp) == 0);
+}
+
 TEST_CASE("rt layout: compaction is worth it at 10 percent saved or more") {
     CHECK(worthCompacting(1000, 900));
     CHECK(worthCompacting(1000, 100));
@@ -51,10 +77,13 @@ TEST_CASE("rt layout: compaction is worth it at 10 percent saved or more") {
 TEST_CASE("rt layout: the build-phase barrier chain upload -> BLAS -> TLAS -> consumer") {
     const Barrier up = barrierBetween(Phase::Upload, Phase::Blas);
     REQUIRE(up.valid);
-    CHECK(up.srcStage == kStageTransfer);
-    CHECK(up.srcAccess == kAccessTransferWrite);
+    CHECK(up.srcStage == (kStageTransfer | kStageComputeShader));   // a copy or a compute pass wrote the inputs
+    CHECK(up.srcAccess == (kAccessTransferWrite | kAccessShaderWrite));
     CHECK(up.dstStage == kStageAsBuild);
+    CHECK((up.dstAccess & kAccessShaderRead) != 0);                  // the build reads vertex / index / instance inputs as SHADER_READ
     CHECK((up.dstAccess & kAccessAsRead) != 0);
+    CHECK((barrierBetween(Phase::Upload, Phase::Tlas).dstAccess & kAccessShaderRead) != 0);
+    CHECK((barrierBetween(Phase::Blas, Phase::Tlas).dstAccess & kAccessShaderRead) == 0);
 
     const Barrier blas = barrierBetween(Phase::Blas, Phase::Tlas);
     REQUIRE(blas.valid);
@@ -65,18 +94,22 @@ TEST_CASE("rt layout: the build-phase barrier chain upload -> BLAS -> TLAS -> co
 
     const Barrier copy = barrierBetween(Phase::Blas, Phase::Copy);
     REQUIRE(copy.valid);
-    CHECK(copy.dstStage == kStageAsCopy);
+    CHECK(copy.dstStage == kStageAsBuild);   // the AS-COPY stage needs ray_tracing_maintenance1, which is not enabled
     const Barrier afterCopy = barrierBetween(Phase::Copy, Phase::Tlas);
     REQUIRE(afterCopy.valid);
-    CHECK(afterCopy.srcStage == kStageAsCopy);
+    CHECK(afterCopy.srcStage == kStageAsBuild);
     CHECK(afterCopy.dstStage == kStageAsBuild);
+    for (Phase a : {Phase::Upload, Phase::Blas, Phase::Copy, Phase::Tlas})
+        for (Phase c : {Phase::Blas, Phase::Copy, Phase::Tlas, Phase::Consumer}) {
+            const Barrier e = barrierBetween(a, c);
+            CHECK(((e.srcStage | e.dstStage) & (kStageAsCopy | kStageRayTracingShader)) == 0);
+        }
 
     const Barrier tlas = barrierBetween(Phase::Tlas, Phase::Consumer);
     REQUIRE(tlas.valid);
     CHECK(tlas.srcStage == kStageAsBuild);
     CHECK(tlas.srcAccess == kAccessAsWrite);
-    CHECK((tlas.dstStage & kStageComputeShader) != 0);
-    CHECK((tlas.dstStage & kStageRayTracingShader) != 0);
+    CHECK(tlas.dstStage == kStageComputeShader);   // compute ray query; the ray-pipeline stage is invalid on a query-only device
     CHECK(tlas.dstAccess == kAccessAsRead);
 }
 

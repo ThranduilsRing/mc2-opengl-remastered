@@ -13,6 +13,7 @@
 #include <numeric>
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
+#include "vk_rt_scene.h"
 
 
 
@@ -459,6 +460,18 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bool gotFeed;
     { ZoneScopedN("VKIsl.Terrain.GetFrameFeed"); mc2_hitch2::Scope hs("terrain.feed"); gotFeed = mc2_terrain_tier1_get_frame_feed(&feed); }
     if (!gotFeed) { setFallback("no_terrain_feed"); return 0; }
+    {   // RT scene: the terrain BLAS traces this frame's displaced surface (rebuilt only when the surface key moves; no-op without ray query)
+        mc2vk::rt::scene::TerrainSource rt;
+        rt.mapSide = feed.mapSide;
+        rt.halfMap = feed.halfMap;
+        rt.heights = feed.heightCpu;
+        rt.fine = feed.visualSide > 0 ? feed.visualHeightCpu : nullptr;
+        rt.visualSide = feed.visualSide;
+        rt.displaceFar = feed.visualDisplaceFar;
+        rt.heightVersion = feed.heightVersion;
+        rt.visualVersion = feed.visualHeightVersion;
+        mc2vk::rt::scene::noteTerrain(rt);
+    }
     if (!feed.patches || feed.patchCount == 0) { setFallback("no_lod0_patches"); return 0; }
     if (feed.mapSide <= 0) { setFallback("bad_mapside"); return 0; }
 
