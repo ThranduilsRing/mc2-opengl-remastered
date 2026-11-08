@@ -2,11 +2,13 @@
 #include "vk_render_infra.h"
 #include "hitch_stats.h"
 #include "vulkan_context.h"
-#include "vulkan_fsr_provider.h"
+#include "vk_upscalers.h"
 #include "diagnostic_trace.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
+#include "vk_material_sampler.h"
 #include "../../RenderCore/TemporalInputs.h"
+#include "../../RenderCore/UpscalerProvider.h"
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vk_texture_residency.h"
 #include "imgui.h"
@@ -51,18 +53,49 @@ extern "C" int mc2_vk_overlay_prewarm(int,int);
 extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
-void materialSampler(VkSamplerCreateInfo& info) {
-    // Provider bias only when the FSR native-AA resolve will run (present's condition: AA on, no render-scale composite, and
-    // the provider available: fsrProviderAvailable probes the SDK itself, so it holds before present first prepares FSR);
-    // the spatial-AA fallback keeps log2(renderScale).
+namespace {
+float effectiveMipBias(bool& provider) {
+    // Provider bias only when a temporal resolve will run (present's condition: AA on, no render-scale composite, and an
+    // available provider; each provider probes its own SDK, so this holds before present first prepares it and goes
+    // false once a real context or dispatch fails). The provider reports its own bias for the ratio; native keeps
+    // log2(renderScale). Vendor-neutral: only the IUpscalerProvider seam is named here.
+    mc2vk::registerBuiltinUpscalers();
     const float scale = static_cast<float>(mc2::gate::get<"MC2_RENDER_SCALE">());
-    const bool provider = scale == 1.0f && mc2::options::current().spatialAA != 0 &&
-                          mc2vk::fsrProviderAvailable(mc2vk::getOrCreateEngineVulkanContext());
-    info.mipLodBias = RenderCore::temporal::mipBias(scale, provider);
-    static std::atomic<int> logged{-1};
-    if (const int key = provider ? 1 : 0;
-        logged.exchange(key, std::memory_order_relaxed) != key && mc2_diag::tagRequested("VK_PRESENT"))
-        mc2::fmt::print_err("[VK_PRESENT] material_mip_bias={:.2f} fsr_provider={}\n", info.mipLodBias, key);
+    const RenderCore::IUpscalerProvider* up =
+        (scale == 1.0f && mc2::options::current().spatialAA != 0) ? RenderCore::effectiveUpscaler() : nullptr;
+    provider = up != nullptr;
+    return up ? up->mipLodBias(scale) : RenderCore::temporal::mipBias(scale, false);
+}
+}  // namespace
+void materialSampler(VkSamplerCreateInfo& info) { bool provider; info.mipLodBias = effectiveMipBias(provider); }
+// Samplers bake the bias at creation: an owner whose sampler was built at `used` rebuilds it (retire the old one, rewrite its sets)
+// when the effective resolve state has since changed.
+bool materialBiasStale(float used) { bool provider; return used != effectiveMipBias(provider); }
+bool makeMaterialSampler(VkDevice device, OwnedSampler& samp, VkSamplerAddressMode address, float& usedBias) {
+    VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    materialSampler(sci);
+    usedBias = sci.mipLodBias;
+    sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = address;
+    sci.maxLod = VK_LOD_CLAMP_NONE;
+    return create(samp, device, [&](VkSampler* h) { return vkCreateSampler(device, &sci, nullptr, h); });
+}
+bool refreshSamplers(float& usedBias, std::initializer_list<SamplerRebuild> items) {
+    if (!materialBiasStale(usedBias)) return false;
+    bool provider;
+    usedBias = effectiveMipBias(provider);
+    for (const auto& it : items)
+        if (*it.samp) { getOrCreateEngineVulkanContext().retire(std::move(*it.samp)); it.make(); }
+    return true;
+}
+void materialBiasTick() {
+    static RenderCore::temporal::MipBiasState state;
+    bool provider;
+    const float bias = effectiveMipBias(provider);
+    if (state.observe(bias) && mc2_diag::tagRequested("VK_PRESENT"))
+        mc2::fmt::print_err("[VK_PRESENT] material_mip_bias={:.2f} upscaler={}\n", bias,
+                             provider ? RenderCore::effectiveUpscaler()->name() : std::string_view("native"));
 }
 namespace {
 uint64_t hashBytes(const void* data, size_t n) {

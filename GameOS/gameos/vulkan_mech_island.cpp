@@ -13,23 +13,11 @@
 //   - a VS that does LINEAR-BLEND SKINNING over 4 bone weights (mech.vert:156-180),
 //     then the Stuff->MC2 axis swap worldMC2 = vec3(-x,z,y) (mech.vert:178).
 //
-// SUB-SLICE 1 (this file): skinning + FLAT color. This is the P-conjugation /
-// axis-swap silhouette proof — verify the mech is not gliding/mirrored/in-sky
-// BEFORE adding material + calc_light lighting. Those are gated follow-ons:
-//   MC2_VK_MECH_MATERIAL  — copy-once single 2D albedo (slot-0 paint scheme) sampled
-//                           per run (single-material probe; per-actor VK-descriptor
-//                           cache DEFERRED — see the run() material note).
-//   MC2_VK_MECH_LIGHTING  — port calc_light + feed the LightsData UBO (DEFERRED;
-//                           needs the whole ObjectLights SSBO mirrored to VK).
-//
-// Gate MC2_VK_MECH_TIER1 (requires MC2_VK_SHARED_SCENE_DEPTH), default-OFF -> GL
-// mech color flush byte-identical. The feed (instances + bone palette + shared
-// VBO/IBO + per-run slot-0 GL texture) comes from gos_mech_batcher.cpp via the
-// Mc2Mech*Feed accessors. NO fenced GL buffer crosses.
+// Material and calc_light lighting are gated follow-ons (MC2_VK_MECH_MATERIAL / MC2_VK_MECH_LIGHTING). The feed (instances, bone palette,
+// shared VBO/IBO, per-run slot-0 texture) comes from gos_mech_batcher.cpp via the Mc2Mech*Feed accessors; no fenced GL buffer crosses.
 //
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 // =============================================================================
-
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -176,6 +164,9 @@ struct MechIsland : mc2vk::IslandState {
     VkBuffer ringBound[mc2vk::kMaxFramesInFlight][8] = {};
     // LOCAL-LIGHTS-2: the local-light shadow atlas binding 8 of every scheme set of a parity (null = sets hold the dummy).
     VkImageView localShadowBound[mc2vk::kMaxFramesInFlight] = {};
+    // FSR-SAMPLER-REFRESH: the bias albedoSamp was built at, and the sampler generation each parity's scheme sets were last written at.
+    float albedoBias = 0.0f;
+    uint32_t sampGen = 0, sampBoundGen[mc2vk::kMaxFramesInFlight] = {};
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData span (binding 4) for calc_light.
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
@@ -280,7 +271,9 @@ void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
 // Point the ring bindings of EVERY cached scheme set's [par] slot at the buffers this frame's spans live in. Safe after beginFrame (the parity fence
 // retired every [par] consumer); the [1-par] sets, possibly in flight, are untouched and follow at their own frame. A binding already pointing at its
 // buffer is skipped.
+void refresh_albedo_sampler(MechIsland* s, uint32_t par);
 void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& mainSpan, const mc2vk::FrameAlloc& lightSpan) {
+    refresh_albedo_sampler(s, par);
     struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; };
     const VkBuffer mainBuf = mainSpan.buffer;
     const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
@@ -338,14 +331,21 @@ void bind_scheme_images(MechIsland* s, VkDescriptorSet set, VkImageView albedo,
 }
 
 bool make_albedo_sampler(MechIsland* s) {
-    if (s->albedoSamp) return true;
-    VkSamplerCreateInfo sci{};
-    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=VK_LOD_CLAMP_NONE;
-    mc2vk::infra::materialSampler(sci);
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    return mc2vk::create(s->albedoSamp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
+    return s->albedoSamp || mc2vk::infra::makeMaterialSampler(s->device, s->albedoSamp, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->albedoBias);
+}
+
+// FSR-SAMPLER-REFRESH: on a resolve-state change rebuild the sampler, then rewrite each parity's scheme sets once after that parity's fence.
+void refresh_albedo_sampler(MechIsland* s, uint32_t par) {
+    if (mc2vk::infra::refreshSamplers(s->albedoBias, {{&s->albedoSamp, [s] { return make_albedo_sampler(s); }}})) { ++s->sampGen; mc2vk::bumpDescEpoch(); }
+    if (!s->albedoSamp || s->sampBoundGen[par] == s->sampGen) return;
+    const VkImageView w = s->whiteTexture.view();
+    for (auto& e : s->schemes) {
+        if (e.set[par] == VK_NULL_HANDLE) continue;
+        const bool r = e.bound[par][0] != VK_NULL_HANDLE;
+        bind_scheme_images(s, e.set[par], r ? e.bound[par][0] : w, r ? e.bound[par][1] : w, r ? e.bound[par][2] : w);
+    }
+    s->localShadowBound[par] = reinterpret_cast<VkImageView>(~uint64_t(0));   // sync_ring_bindings rewrites binding 8 next
+    s->sampBoundGen[par] = s->sampGen;
 }
 
 // Allocate a descriptor set pair for a scheme (all 8 bindings), write buffer bindings

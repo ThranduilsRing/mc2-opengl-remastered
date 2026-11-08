@@ -218,6 +218,7 @@ struct WaterIsland : mc2vk::IslandState {
     bool hdriSourceReal=false,shHSourceReal=false,shMSourceReal=false;
     mc2vk::ResidentTextureRef hdriTexture;
     mc2vk::OwnedSampler   hdriSampler;
+    float                 sampBias = 0.0f;   // mip bias hdriSampler was built with
     mc2vk::ResidentTextureRef shHTexture;
     mc2vk::ResidentTextureRef shMTexture;
     mc2vk::OwnedShaderModule vert, frag;
@@ -260,6 +261,7 @@ VkShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
                  std::string_view name, int i0 = -1, int i1 = -1);
 void write_descriptors(WaterIsland* s, int only = -1);
+void refresh_hdri_sampler(WaterIsland* s);   // rebuild the mip-biased sampler when the effective resolve state changed
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);

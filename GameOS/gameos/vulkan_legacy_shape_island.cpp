@@ -121,6 +121,7 @@ struct Island : mc2vk::IslandState {
 
     mc2vk::OwnedCommandPool cpool[kSubmissionSlots];   // one pool per slot: vkResetCommandPool per frame instead of per-cb reset
     mc2vk::OwnedSampler samp;
+    float sampBias = 0.0f; uint32_t sampGen = 0, sampBoundGen[kSubmissionSlots] = {};
     mc2vk::OwnedRenderPass rpass;
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -255,6 +256,7 @@ bool init_island(Island* s, int w, int h) {
         sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=s->preview ? 0.0f : VK_LOD_CLAMP_NONE;
         if (!s->preview) mc2vk::infra::materialSampler(sci);
+        s->sampBias = sci.mipLodBias;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { setFallback("sampler_failed"); return false; }
     }
@@ -549,6 +551,29 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
             u.proj[5]=-2.0f/600; u.proj[7]=1; u.proj[10]=1; u.proj[15]=1; }
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
         std::memcpy(base, &u, sizeof(u));
+    }
+    if (!s->preview) {   // FSR/AA resolve state changed: rebuild the biased sampler, then rewrite this slot's sets (after its fence, above)
+        if (mc2vk::infra::materialBiasStale(s->sampBias)) {
+            VkSamplerCreateInfo sci{};
+            sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+            sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod = VK_LOD_CLAMP_NONE;
+            mc2vk::infra::materialSampler(sci);
+            sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            mc2vk::OwnedSampler fresh;
+            if (mc2vk::create(fresh, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) {
+                rctx.retire(std::move(s->samp));
+                s->samp = std::move(fresh);
+                s->sampBias = sci.mipLodBias;
+                ++s->sampGen;
+                mc2vk::bumpDescEpoch();
+            }
+        }
+        if (s->sampBoundGen[par] != s->sampGen) {
+            for (auto& [key, tex] : s->texs) { (void)key; tex.bound[par] = VK_NULL_HANDLE; }
+            s->dummyTex.bound[par] = VK_NULL_HANDLE;
+            s->sampBoundGen[par] = s->sampGen;
+        }
     }
     for (const auto& r : list) {
         const auto view=rctx.textures().view(r.t->texture.get());

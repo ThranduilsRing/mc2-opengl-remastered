@@ -28,6 +28,8 @@ void mc2PrewarmMissionPipelines();
 namespace mc2vk::infra {
 void init(VkDevice device, VkPhysicalDevice physical);
 void materialSampler(VkSamplerCreateInfo& info);
+bool materialBiasStale(float usedBias);   // the sampler was built at usedBias; the effective resolve state has since changed
+void materialBiasTick();                  // once per present frame: logs [VK_PRESENT] material_mip_bias on every change
 void shutdown();
 void frame();
 void prewarm(int width, int height);

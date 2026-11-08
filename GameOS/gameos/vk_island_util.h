@@ -8,6 +8,7 @@
 
 #include <volk.h>
 #include "vk_render_infra.h"
+#include "vk_material_sampler.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include <cstdarg>

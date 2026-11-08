@@ -21,6 +21,18 @@ TEST_CASE("temporal: no consumer means zero jitter and the existing mip bias") {
     CHECK(T::mipBias(0.5f, true) == doctest::Approx(-2.0f));
 }
 
+TEST_CASE("temporal: mip bias state flags FSR on, provider failure and AA off, and stays quiet otherwise") {
+    T::MipBiasState st;
+    CHECK(st.observe(T::mipBias(1.0f, true)));       // first observation: FSR resolve active, -1
+    CHECK(st.last == doctest::Approx(-1.0f));
+    CHECK_FALSE(st.observe(T::mipBias(1.0f, true))); // steady
+    CHECK(st.observe(T::mipBias(1.0f, false)));      // provider failed after the probe: 0
+    CHECK(st.last == doctest::Approx(0.0f));
+    CHECK_FALSE(st.observe(T::mipBias(1.0f, false)));
+    CHECK(st.observe(T::mipBias(1.0f, true)));       // AA toggled back on
+    CHECK(st.observe(T::mipBias(1.0f, false)));      // AA toggled off
+}
+
 TEST_CASE("temporal: Halton jitter stays inside half a pixel and cycles over the phase count") {
     CHECK(T::phaseCount(1920, 1920) == 8u);
     CHECK(T::phaseCount(1280, 1920) == 18u);   // 8 * 2.25

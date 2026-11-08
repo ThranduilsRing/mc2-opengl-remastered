@@ -95,6 +95,7 @@ bool create_colormap_sampler(TerrainIsland* s) {
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; // GL_CLAMP_TO_EDGE
     sci.maxLod = 0.25f;
     mc2vk::infra::materialSampler(sci);
+    s->sampBias = sci.mipLodBias;
     return mc2vk::create(s->colormapSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -255,6 +256,7 @@ bool create_cement_sampler(TerrainIsland* s) {
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     mc2vk::infra::materialSampler(sci);
+    s->sampBias = sci.mipLodBias;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
@@ -430,6 +432,7 @@ bool create_matnormal_sampler(TerrainIsland* s) {
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     mc2vk::infra::materialSampler(sci);
+    s->sampBias = sci.mipLodBias;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR (mag)
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     // GL_REPEAT wrap (gameos_graphics.cpp:2174-2175) — material detail normals tile.
@@ -668,17 +671,21 @@ bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // asphalt road/runway detail. Each texel is (normal.x, normal.y, roughness, AO) from CC0 PBR sets; the albedo of those sets is never
 // loaded, MC2's own colour stays the colour source. Cooked by tools/mc2texcook/cook_concrete_detail.py (BC7 KTX2), decoded to RGBA8
 // here and mip-chained by the residency service. Absent files leave the flat dummy bound and uT.concreteDetail = 0 (base game look).
+bool create_concrete_detail_sampler(TerrainIsland* s) {
+    if (s->concreteDetailSamp) return true;
+    VkSamplerCreateInfo sci{};
+    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    mc2vk::infra::materialSampler(sci);
+    s->sampBias = sci.mipLodBias;
+    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    sci.maxLod = VK_LOD_CLAMP_NONE;
+    return mc2vk::create(s->concreteDetailSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
+}
+
 bool ensure_dummy_concrete_detail(TerrainIsland* s) {
-    if (!s->concreteDetailSamp) {
-        VkSamplerCreateInfo sci{};
-        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        mc2vk::infra::materialSampler(sci);
-        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sci.maxLod = VK_LOD_CLAMP_NONE;
-        if (!mc2vk::create(s->concreteDetailSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
-    }
+    if (!create_concrete_detail_sampler(s)) return false;
     if (s->concreteDetailTexture) return true;
     const uint8_t px[8] = {128, 128, 200, 255, 128, 128, 200, 255};   // flat normal, mid roughness, no occlusion, x2 layers
     return upload_sampled_image_array(s, s->concreteDetailTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 2, px, sizeof(px));
@@ -733,6 +740,25 @@ void import_concrete_detail(TerrainIsland* s) {
         s->cliffRockPresent = rock;
         vlog("CONCRETE-DETAIL: imported pad + road%s detail array %dx%d x%u layers.", rock ? " + cliff rock" : "", w, h, layers);
     }
+}
+
+
+// FSR/AA resolve state changed: rebuild every biased sampler (the old ones retire with the in-flight frames) and mark both parities' sets for one rewrite.
+void refresh_biased_samplers(TerrainIsland* s) {
+    if (!mc2vk::infra::materialBiasStale(s->sampBias)) return;
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const bool hadCm = static_cast<bool>(s->colormapSamp), hadCe = static_cast<bool>(s->cementSamp), hadMn = static_cast<bool>(s->matNormalSamp), hadCd = static_cast<bool>(s->concreteDetailSamp);
+    if (hadCm) ctx.retire(std::move(s->colormapSamp));
+    if (hadCe) ctx.retire(std::move(s->cementSamp));
+    if (hadMn) ctx.retire(std::move(s->matNormalSamp));
+    if (hadCd) ctx.retire(std::move(s->concreteDetailSamp));
+    if (hadCm) create_colormap_sampler(s);
+    if (hadCe) create_cement_sampler(s);
+    if (hadMn) create_matnormal_sampler(s);
+    if (hadCd) create_concrete_detail_sampler(s);
+    if (!hadCm && !hadCe && !hadMn && !hadCd) { VkSamplerCreateInfo probe{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; mc2vk::infra::materialSampler(probe); s->sampBias = probe.mipLodBias; }
+    mc2vk::bumpDescEpoch();
+    write_descriptors(s, -1);
 }
 
 } // namespace

@@ -335,6 +335,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     std::vector<mc2vk::ResidentTextureRef> propTextures;   // per-object maps, index = uPropTex[] slot
     uint32_t propTexSlots = 1;   // uPropTex[] length; 1 = per-object maps off (lowCost, or a device with tight sampler limits)
     mc2vk::OwnedSampler detailSampler, treeShadowSampler;
+    float sampBias = 0.0f;   // mip bias the albedo / albedoOn / detail samplers were built with
     mc2veg::GroundLighting groundLighting;
     std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
     bool groundMissing = false;
@@ -607,15 +608,17 @@ AlbedoTarget cp_target_on(ColorPropIsland* s) {
 }
 
 bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint32_t mipLevels) {
-    if (*samp) return true;
-    VkSamplerCreateInfo sci{};
-    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    mc2vk::infra::materialSampler(sci);
-    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    sci.maxLod = VK_LOD_CLAMP_NONE; // image view bounds the immutable sampler to its supplied mip chain
-    return mc2vk::create(*samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
+    (void)mipLevels;
+    return *samp || mc2vk::infra::makeMaterialSampler(s->device, *samp, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, s->sampBias);
+}
+
+// FSR/AA resolve state changed: rebuild the biased samplers and rewrite every parity's sets once.
+void cp_refresh_samplers(ColorPropIsland* s) {
+    const auto albedo = [s](mc2vk::OwnedSampler* p) { return [s, p] { return cp_make_albedo_sampler(s, p, 0); }; };
+    const auto detail = [s] { return mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias); };
+    if (!mc2vk::infra::refreshSamplers(s->sampBias, {{&s->albedoSamp, albedo(&s->albedoSamp)}, {&s->albedoOnSamp, albedo(&s->albedoOnSamp)}, {&s->detailSampler, detail}})) return;
+    mc2vk::bumpDescEpoch();
+    write_descriptors(s, -1);
 }
 
 // Build a VK sampled 2D_ARRAY image from a contiguous byte blob laid out
@@ -726,15 +729,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1,false,neutral,4,regions);
     };
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
-    if (!s->detailSampler) {
-        VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-        mc2vk::infra::materialSampler(info);
-        info.magFilter = info.minFilter = VK_FILTER_LINEAR;
-        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        info.addressModeU = info.addressModeV = info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        info.maxLod = VK_LOD_CLAMP_NONE;
-        if (!mc2vk::create(s->detailSampler, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &info, nullptr, h); })) return false;
-    }
+    if (!s->detailSampler && !mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias)) return false;
     const uint8_t normal[4] = {128,128,255,255}, orm[4] = {255,255,0,255};
     mc2vk::ResidentTextureRef nextNormal, nextOrm;
     mc2vk::OwnedBuffer nextTable;
@@ -1900,6 +1895,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
     }
     us_fence_wait = usSince(tFence0);
+    cp_refresh_samplers(s);
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
     // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
     auto groundNow = mc2_vk_ground_lighting_frame();

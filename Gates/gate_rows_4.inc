@@ -18,6 +18,7 @@ L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Bool, true, "terrain", "", "
 L(Lead0, "MC2_TERRAIN_VISUAL_HEIGHT", Bool, false, "terrain", "", "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_VISUAL_HEIGHT", -1, false) | verified),
 G("MC2_TERRAIN_VISUAL_HEIGHT_FILE", String, "", "terrain", "", "", passthrough | verified),
 G("MC2_TEST_CRASH_FRAME", Int, 0, "gameos", "", "Diagnostic: deliberately crash at this mission frame to prove bundle collection; zero disables injection.", passthrough | verified),
+G("MC2_TEST_FSR_FAIL_FRAME", Int, 0, "gameos", "", "Diagnostic: fail the FSR provider at this frame to prove the material samplers drop the FSR mip bias; zero disables.", passthrough | verified),
 // history: docs/gate-history.md#MC2_TEST_SPAWN
 L(Lead1, "MC2_TEST_SPAWN", Bool, false, "code", "", "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel.", passthrough | registry(Trace, "MC2_TRACE_TEST_SPAWN", -1, false) | verified),
 L(Presence, "MC2_TEXMGR_LOAD_TRACE", Bool, false, "code", "", "", passthrough | verified),

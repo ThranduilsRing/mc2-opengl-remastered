@@ -9,12 +9,28 @@
 namespace RenderCore::temporal {
 
 // Number of consumers (FSR resolve, debug views that need jittered input) that want jitter.
-// The FSR provider registers here.
+// Present registers here while an IUpscalerProvider resolve is active.
 inline std::atomic<int>& consumerCount() {
     static std::atomic<int> n{0};
     return n;
 }
 inline bool consumerActive() { return consumerCount().load(std::memory_order_relaxed) > 0; }
+// Jitter phase count the active provider asked for (IUpscalerProvider::jitterPhaseCount); 0 = the default formula.
+inline std::atomic<uint32_t>& providerPhases() {
+    static std::atomic<uint32_t> n{0};
+    return n;
+}
+
+// Projection the scene camera last built (mclib Camera::setOrthogonal publishes it for the main camera; the upscaler
+// glue copies it into UpscalerFrame). Distances positive in world units, fovY in radians, reverse-Z, finite far plane.
+struct Projection {
+    float nearZ = 1.0f, farZ = 20000.0f, fovY = 0.6f;
+    bool perspective = true, reverseZ = true, infiniteFar = false;
+};
+inline std::atomic<Projection>& projection() {
+    static std::atomic<Projection> p{Projection{}};
+    return p;
+}
 
 // Halton(base) in (0,1).
 inline float halton(uint32_t index, uint32_t base) {
@@ -45,7 +61,8 @@ inline void jitterPixels(uint32_t frame, uint32_t phases, float out[2]) {
 // Zero unless a consumer is active, so every feed is unchanged with the provider off.
 inline void sceneJitterPixels(uint32_t frame, float out[2]) {
     out[0] = out[1] = 0.0f;
-    if (consumerActive()) jitterPixels(frame, phaseCount(1, 1), out);
+    const uint32_t provider = providerPhases().load(std::memory_order_relaxed);
+    if (consumerActive()) jitterPixels(frame, provider ? provider : phaseCount(1, 1), out);
 }
 
 // Clip-space offset for a render extent: 2 * jitterPx / extent (y follows the GL clip convention).
@@ -60,7 +77,8 @@ inline void frameJitterClip(uint32_t frame, uint32_t renderW, uint32_t renderH,
     out[0] = out[1] = 0.0f;
     if (!consumerActive()) return;
     float px[2];
-    jitterPixels(frame, phaseCount(renderW, displayW), px);
+    const uint32_t provider = providerPhases().load(std::memory_order_relaxed);
+    jitterPixels(frame, provider ? provider : phaseCount(renderW, displayW), px);
     jitterClip(px, renderW, renderH, out);
 }
 
@@ -79,6 +97,18 @@ inline float mipBias(float renderScale, bool providerResolve) {
     const float base = std::log2(renderScale);
     return providerResolve ? base - 1.0f : base;
 }
+
+// Effective material bias as the resolve state changes (FSR active / AA toggled / provider failure). `observe` is true
+// when the bias differs from the last one seen (the first observation counts), so a sampler built at `last` is stale.
+struct MipBiasState {
+    float last = 0.0f;
+    bool seen = false;
+    bool observe(float now) {
+        const bool changed = !seen || now != last;
+        last = now; seen = true;
+        return changed;
+    }
+};
 
 // Unjittered motion of a pixel, mirrors motion_vectors.frag (unit-tested against the shader math).
 // uv in [0,1]; depth reverse-Z; reproj = previousClip * inverse(currentClip), column-major.

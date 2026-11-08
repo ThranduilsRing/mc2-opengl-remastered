@@ -2793,6 +2793,14 @@ flags:
     doc: "Diagnostic: deliberately crash at this mission frame to prove bundle collection; zero disables injection."
     smoke_passthrough: true
     verified: true
+  - name: MC2_TEST_FSR_FAIL_FRAME
+    kind: Int
+    default: 0
+    rule: Std
+    owner: gameos
+    doc: "Diagnostic: fail the FSR provider at this frame to prove the material samplers drop the FSR mip bias; zero disables."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_TEST_SPAWN
     kind: Bool
     default: false

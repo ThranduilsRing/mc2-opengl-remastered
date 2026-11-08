@@ -268,6 +268,7 @@ extern "C" int mc2_vk_water_island_run(
     }
     g_health.thinRecords = 0;   // GPU-produced: the count lives in the draw args
 
+    refresh_hdri_sampler(s);
     const std::array<VkImageView,4> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view(),s->maskView};
     if (s->imageDescriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;

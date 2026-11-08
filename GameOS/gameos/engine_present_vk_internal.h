@@ -12,7 +12,9 @@
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
 #include "vulkan_motion_vectors.h"
-#include "vulkan_fsr_provider.h"
+#include "vk_upscalers.h"
+#include "../../RenderCore/UpscalerProvider.h"
+#include "../../RenderCore/TemporalInputs.h"
 #include "present_imgui_snapshot.h"
 #include "imgui.h"
 
@@ -79,13 +81,15 @@ struct EnginePresentVk::Impl {
     // Camera motion vectors, recorded at the start of every composite (temporal track).
     mc2vk::MotionVectors motionVectors;
     bool showMotionVectorsDebug = false;
-    // FSR 3.1 native AA; fsrSet is the composite set with the FSR output as the scene.
-    mc2vk::FsrProvider fsr;
-    VkDescriptorSet fsrSet = VK_NULL_HANDLE;
-    VkImageView fsrSetView = VK_NULL_HANDLE;
-    // Shared scene-target generation fsrSet was written against: binding 1 names the object-id (or scene) view, which a
-    // target recreation destroys while the FSR output view can stay the same.
-    unsigned long long fsrSetTargetsGen = ~0ull;
+    // Temporal upscaler (RenderCore::IUpscalerProvider, owned by the registry; present calls only the interface).
+    // upscaler = the provider that resolved last frame (deactivated when it stops being used); upscalerSet is the
+    // composite set with its output as the scene.
+    RenderCore::IUpscalerProvider* upscaler = nullptr;
+    VkDescriptorSet upscalerSet = VK_NULL_HANDLE;
+    VkImageView upscalerSetView = VK_NULL_HANDLE;
+    // Shared scene-target generation upscalerSet was written against: binding 1 names the object-id (or scene) view,
+    // which a target recreation destroys while the provider output view can stay the same.
+    unsigned long long upscalerSetTargetsGen = ~0ull;
     uint32_t        imgW = 0, imgH = 0;
 
     // Asynchronous readback; the copy buffer is reused only after completion.
@@ -196,6 +200,11 @@ struct EnginePresentVk::Impl {
     // The shared present image holds raw allocations that vkImageResourceDestroy releases (and counts); the framebuffers over its view go first. Every
     // other member is an owner and follows in reverse declaration order.
     ~Impl() {
+        if (upscaler) {   // present registered itself as the temporal consumer while a provider resolved
+            RenderCore::temporal::consumerCount().fetch_sub(1, std::memory_order_relaxed);
+            RenderCore::temporal::providerPhases().store(0, std::memory_order_relaxed);
+        }
+        RenderCore::releaseUpscalers();
         motionVectors.reset();
         spatialAA.reset();
         scaledCompositeFramebuffer.reset();

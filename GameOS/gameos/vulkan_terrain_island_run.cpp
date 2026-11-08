@@ -541,6 +541,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
           setFallback("submission_slot_timeout"); vlog("[VK_TERRAIN_ISLAND] LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0;
       } }
     us_fence_wait = usSince(tFence0);
+    refresh_biased_samplers(s);
     s->setBoundFrame[par] = rctx.frameContext().frame;
     bool moverBound;
     { ZoneScopedN("VKIsl.Terrain.BindMoverShadow"); mc2_hitch2::Scope hs("terrain.bind_mover_shadow"); moverBound = mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par]); }

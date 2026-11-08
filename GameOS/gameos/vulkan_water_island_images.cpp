@@ -72,6 +72,7 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
         sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.maxLod = VK_LOD_CLAMP_NONE;
         mc2vk::infra::materialSampler(sci);
+        s->sampBias = sci.mipLodBias;
         if (!mc2vk::create(s->hdriSampler, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) {
             vlog("hdri: vkCreateSampler failed."); return false;
         }
@@ -167,6 +168,31 @@ bool ensure_shore(WaterIsland* s) {
          s->shHSourceReal ? "REAL" : "DUMMY", s->shMSourceReal ? "REAL" : "DUMMY",
          static_cast<unsigned long long>(heightVersion), static_cast<unsigned long long>(maskVersion), s->shMTexture.get().raw());
     return true;
+}
+
+// FSR/AA resolve state changed: rebuild the sampler (the old one retires with the in-flight frames) and mark both parities' sets for one rewrite.
+void refresh_hdri_sampler(WaterIsland* s) {
+    if (!mc2vk::infra::materialBiasStale(s->sampBias)) return;
+    if (s->hdriSampler) {
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        mc2vk::infra::materialSampler(sci);
+        mc2vk::OwnedSampler fresh;
+        if (!mc2vk::create(fresh, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return;
+        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->hdriSampler));
+        s->hdriSampler = std::move(fresh);
+        s->sampBias = sci.mipLodBias;
+    } else {
+        VkSamplerCreateInfo probe{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        mc2vk::infra::materialSampler(probe);
+        s->sampBias = probe.mipLodBias;
+    }
+    mc2vk::bumpDescEpoch();
+    write_descriptors(s);
 }
 
 }  // namespace vk_water_detail
