@@ -21,5 +21,5 @@ add_library(particles ${SOURCES})
 # Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
 # not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
 if(TARGET particles)
-    target_link_libraries(particles PUBLIC mc2_gate)
+    target_link_libraries(particles PUBLIC mc2_gate fx_native)
 endif()

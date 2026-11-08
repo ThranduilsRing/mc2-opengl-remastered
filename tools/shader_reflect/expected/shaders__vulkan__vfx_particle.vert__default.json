@@ -7,11 +7,11 @@
       "binding": 1,
       "members": [
         {
-          "array_stride": 64,
+          "array_stride": 4,
           "matrix_stride": null,
-          "name": "particles",
+          "name": "words",
           "offset": 0,
-          "type": "_53"
+          "type": "uint"
         }
       ],
       "name": "Particles"

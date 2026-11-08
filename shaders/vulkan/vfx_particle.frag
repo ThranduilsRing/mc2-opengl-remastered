@@ -43,7 +43,7 @@ void main() {
     // clamping a repeating trail stretches its edge texel into a flat sheet.
     // Bit 4 carries the tube's MLR texture-address policy; meshes keep clamp.
     vec2 uv = v_uv;
-    if ((v_flags & 20u) != 0u) {
+    if ((v_flags & 16u) != 0u) {
         vec2 edge = 0.5 / vec2(textureSize(uAtlas, 0));
         uv = clamp(uv, edge, 1.0 - edge);
     }

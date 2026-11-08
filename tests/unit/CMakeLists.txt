@@ -31,6 +31,7 @@ set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERT
 add_executable(mc2_tests
     test_water_reactive.cpp
     test_fx_native.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_render.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
@@ -568,6 +569,7 @@ target_sources(vfx_lifecycle_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_emitters.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_tubes.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_geometry.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_render.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp

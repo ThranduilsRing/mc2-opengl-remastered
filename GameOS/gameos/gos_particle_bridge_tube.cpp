@@ -1,10 +1,12 @@
 // Native ribbon submission; the queue preserves the post-renderLists drain order.
 #include "gos_particle_bridge_internal.h"
 #include "vulkan_vfx_geometry.h"
+#include "../../mclib/fx/fx_render.h"
 #include "mc2fmt.h"
 #include "mlr/mlrtexturepool.hpp"
 #include "mlr/mlrtexture.hpp"
 #include <algorithm>
+#include <map>
 
 namespace {
 struct RibbonRecord {
@@ -14,14 +16,18 @@ struct RibbonRecord {
     int blendMode;
 };
 std::vector<RibbonRecord> ribbons;
+std::vector<mc2::fx::RenderVertex> vertices;
+std::vector<uint32_t> elementIndices;
+std::vector<VfxParticleDraw> draws;
+std::map<unsigned, unsigned> resolved;
 
-void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParticleDraw>& draws,
+void appendRibbon(std::vector<mc2::fx::RenderVertex>& vertices, std::vector<VfxParticleDraw>& draws,
                   const float* positions, const float* colors, const float* uvs, unsigned numVerts,
                   const unsigned short* indices, unsigned numIndices, unsigned texture, bool untextured, int blend) {
     if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices || (!texture && !untextured)) return;
     if (std::any_of(indices, indices + numIndices, [&](auto i) { return i >= numVerts; })) return;
     VfxParticleDraw draw{};
-    draw.start = static_cast<uint32_t>(vertices.size());
+    draw.start = static_cast<uint32_t>(elementIndices.size());
     draw.count = numIndices;
     draw.texture = texture;
     // Low byte: Vulkan blend recipe; bit 8: authored UV clamp.
@@ -36,10 +42,10 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
     }
     const bool additive = mode == 2;
     draw.additive = mode;
-    draw.atlasColumns = kVfxGeometryAtlas;
-    for (unsigned n = 0; n < numIndices; ++n) {
-        const auto i = indices[n];
-        VfxGeometryVertex v{};
+    draw.atlasColumns = kVfxCompactGeometryAtlas;
+    const auto base = static_cast<uint32_t>(vertices.size());
+    for (unsigned i = 0; i < numVerts; ++i) {
+        mc2::fx::RenderVertex v{};
         std::copy_n(positions + i * 3, 3, v.position);
         std::copy_n(colors + i * 4, 4, v.color);
         std::copy_n(uvs + i * 2, 2, v.uv);
@@ -50,13 +56,15 @@ void appendRibbon(std::vector<VfxGeometryVertex>& vertices, std::vector<VfxParti
                   (mode == 3 ? 1024u : 0u) | (untextured ? VfxGeometryUntextured : 0u);
         vertices.push_back(v);
     }
+    for (unsigned n = 0; n < numIndices; ++n) elementIndices.push_back(base + indices[n]);
     draws.push_back(draw);
 }
-void submit(const std::vector<VfxGeometryVertex>& vertices, const std::vector<VfxParticleDraw>& draws) {
+void submit(const std::vector<mc2::fx::RenderVertex>& vertices, const std::vector<VfxParticleDraw>& draws) {
     auto* pp = getGosPostProcess();
     const auto* mvp = gos_GetTerrainMVPMat4();
     if (mc2_vk_vfx_island_enabled() && pp && mvp && !vertices.empty())
-        mc2_vk_vfx_island_run(vertices.data(), static_cast<uint32_t>(vertices.size()), draws.data(),
+        mc2_vk_vfx_indexed_run(vertices.data(), static_cast<uint32_t>(vertices.size()),
+            elementIndices.data(), static_cast<uint32_t>(elementIndices.size()), draws.data(),
             static_cast<uint32_t>(draws.size()), mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
 }
 }
@@ -70,14 +78,14 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
     if (ribbons.empty()) return;
     mc2::ScopedFlushTimer timer(2, "tube_deferred");
     ZoneScopedN("gos.TubeRibbon.FlushDeferred");
-    std::vector<VfxGeometryVertex> vertices;
-    std::vector<VfxParticleDraw> draws;
+    vertices.clear(); elementIndices.clear(); draws.clear(); resolved.clear();
     // Enqueue carries MLR pool indices, not GOS handles. Resolve after the
     // camera's ResolveTextures/ForceLoadImages, just like card groups.
     { ZoneScopedN("Tube.Expand");
     for (const auto& r : ribbons) {
-        unsigned texture = 0;
-        if (r.mlrHandle && MidLevelRenderer::MLRTexturePool::Instance) {
+        auto [entryIt, inserted] = resolved.try_emplace(r.mlrHandle, 0);
+        auto& [key, texture] = *entryIt;
+        if (inserted && r.mlrHandle && MidLevelRenderer::MLRTexturePool::Instance) {
             auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[r.mlrHandle];
             if (entry && entry->GetImage()) texture = entry->GetImage()->GetHandle();
         }

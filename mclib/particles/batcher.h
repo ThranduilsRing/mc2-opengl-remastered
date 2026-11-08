@@ -23,6 +23,8 @@
 #include "spec.h"
 #include <cstdint>
 #include <memory>
+#include <span>
+namespace mc2::fx { struct Geometry; struct FrameView; }
 
 namespace mc2 {
 namespace particles {
@@ -121,6 +123,12 @@ class Batcher {
     // code/gamecam.cpp post-renderLists. Clears staging after flush.
     // No-op when is_enabled() is false OR staged count is zero.
     void Flush();
+
+    // L2/L3 native path: immutable geometry, persistent material identities,
+    // indexed packets and reusable storage. No MLR handles or camera access.
+    void SubmitNative(std::span<const fx::Geometry> geometry);
+    void FlushNative(const fx::FrameView& view);
+    void ResetNative();
 
     // Global singleton accessor. Stage 1' uses one batcher per process;
     // Stage 2' (per-type Spawn) may sharded if budget breakdown demands.

@@ -64,6 +64,7 @@ set(SOURCES ${SOURCES}
     gos_particle_bridge.cpp
     gos_particle_bridge_tube.cpp
     gos_vfx_mesh_bridge.cpp
+    gos_fx_native_bridge.cpp
     gos_vegetation.cpp
     gos_materials.cpp
     gos_mech_batcher.cpp

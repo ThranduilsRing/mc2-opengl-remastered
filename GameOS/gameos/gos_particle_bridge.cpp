@@ -130,7 +130,8 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         const int vkH = ppVk ? static_cast<int>(ppVk->getHeight()) : 0;
         const float* mvp = gos_GetTerrainMVPMat4();
         if (vkW > 0 && vkH > 0 && mvp) {
-            std::vector<VfxParticleDraw> vkDraws;
+            static std::vector<VfxParticleDraw> vkDraws;
+            vkDraws.clear();
             vkDraws.reserve(numGroups);
             for (unsigned gi = 0; gi < numGroups; ++gi) {
                 VfxParticleDraw d;

@@ -46,5 +46,7 @@ void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
 // untextured triangles through the same mesh cache and transform as gosFX shapes.
 void gos_vfx_mesh_fixture(const float origin[3]);
 void gos_vfx_mesh_flush_deferred();
+uint64_t gos_vfx_mesh_generation();
+void gos_vfx_mesh_reset(); // GPU frames must retire first
 
 }  // extern "C"

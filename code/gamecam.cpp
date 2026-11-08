@@ -71,6 +71,8 @@ extern "C" void mc2_note_particle_effect_pass();
 extern "C" void mc2_vfx_pass_begin();
 extern "C" void mc2_vfx_pass_end();
 #include "../GameOS/gameos/gos_particle_bridge.h"
+#include "../GameOS/gameos/gos_postprocess.h"
+#include "../mclib/fx/fx_render.h"
 #include "../GameOS/gameos/gos_vfx_mesh_bridge.h"  // B2 P1: camera basis bridge
 #include "../GameOS/gameos/debug_renderer.h"
 #include "../GuiRuntime/EditorInspector.h"  // IMG-INSPECT-3 flushDebugHighlight
@@ -1049,6 +1051,11 @@ void GameCamera::render (void)
 				mc2_vfx_pass_begin();
 				struct TlVfxGuard_ { ~TlVfxGuard_() { mc2_vfx_pass_end(); } } _tlVfxGuard;
 				::mc2::particles::Batcher::Instance().Flush();
+				mc2::fx::FrameView fxView;
+				if (const float* mvp = gos_GetTerrainMVPMat4()) std::copy_n(mvp, 16, &fxView.world_to_clip[0][0]);
+				gos_GetCameraRight(&fxView.right.x); gos_GetCameraUp(&fxView.up.x);
+				if (auto* pp = getGosPostProcess()) { fxView.width = pp->getWidth(); fxView.height = pp->getHeight(); }
+				::mc2::particles::Batcher::Instance().FlushNative(fxView);
 
 				// TUBE-DEFERRED-FLUSH-1: drain the ribbon queue enqueued by
 				// gosFX::Tube::Draw during the effect-render phase.  MUST run

@@ -178,6 +178,9 @@ extern "C" void gos_tube_ribbon_enqueue(const float*, const float*, const float*
                                         const unsigned short*, unsigned int, unsigned int, int) {}
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned int,
                                    const GosVfxMeshInstance*, unsigned int) {}
+extern "C" uint64_t gos_vfx_mesh_generation() { return 1; }
+namespace mc2::fx { class RenderResources; struct FramePackets; struct FrameView; }
+int gos_fx_native_flush(const mc2::fx::RenderResources&, const mc2::fx::FramePackets&, const mc2::fx::FrameView&) { return 0; }
 
 namespace mc2::textures { bool ready() { return false; } }
 

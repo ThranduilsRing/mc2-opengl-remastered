@@ -19,7 +19,10 @@ struct Mesh {
 };
 std::unordered_map<uint64_t, Mesh> meshes;
 std::vector<GosVfxMeshInstance> pending;
+uint64_t generation = 1;
 }
+extern "C" uint64_t gos_vfx_mesh_generation() { return generation; }
+extern "C" void gos_vfx_mesh_reset() { pending.clear(); meshes.clear(); ++generation; }
 
 namespace {
 void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMeshInstance> instances) {
@@ -41,8 +44,8 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
 }
 
 extern "C" void gos_vfx_mesh_flush_deferred() {
-    const auto instances = std::move(pending);
-    pending.clear();
+    const auto& instances = pending;
+    struct Clear { ~Clear() { pending.clear(); } } clear;
     if (instances.empty()) return;
     if (!mc2_vk_vfx_island_enabled()) return;
     const float* mvp = gos_GetTerrainMVPMat4();
@@ -62,7 +65,7 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
             if (entry && entry->GetImage()) draw.texture = entry->GetImage()->GetHandle();
         }
         const unsigned blend = static_cast<unsigned>(inst.blendMode);
-        draw.additive = blend == 3 ? 0u : blend;
+        draw.additive = blend;
         draw.atlasColumns = kVfxGeometryAtlas;
         for (auto i : mesh.indices) {
             VfxGeometryVertex v{};
@@ -74,7 +77,7 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
             std::copy_n(inst.rgba, 4, v.color);
             if (blend == 2 || blend == 3) v.color[3] = 1.0f;
             std::copy_n(mesh.uvs[i].data(), 2, v.uv);
-            v.flags = VfxGeometryMesh | (inst.mlrTexHandle == 0 ? VfxGeometryUntextured : 0u);
+            v.flags = VfxGeometryMesh | 16u | (inst.mlrTexHandle == 0 ? VfxGeometryUntextured : 0u);
             vertices.push_back(v);
         }
         draws.push_back(draw);

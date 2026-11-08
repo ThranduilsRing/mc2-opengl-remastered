@@ -386,7 +386,7 @@ add_subdirectory("./mclib/fx_trace" "./out/mclib/fx_trace")
 add_library(fx_native STATIC mclib/fx/fx_format.cpp mclib/fx/fx_catalog.cpp
     mclib/fx/fx_curve.cpp mclib/fx/fx_mesh_data.cpp
     mclib/fx/fx_runtime.cpp mclib/fx/fx_emitters.cpp
-    mclib/fx/fx_tubes.cpp mclib/fx/fx_geometry.cpp)
+    mclib/fx/fx_tubes.cpp mclib/fx/fx_geometry.cpp mclib/fx/fx_render.cpp)
 target_include_directories(fx_native PUBLIC "${CMAKE_SOURCE_DIR}/mclib")
 target_compile_features(fx_native PUBLIC cxx_std_23)
 add_subdirectory("./mclib/particles" "./out/mclib/particles")
