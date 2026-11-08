@@ -83,6 +83,10 @@ def sim_sensitive(paths):
     return sorted(p for p in paths if any(fnmatch.fnmatchcase(p.replace("\\", "/"), g) for g in pats))
 
 
+MOD_CONTENT_GLOBS = ("data/*", "mods/*", "examples/mods/*", "tests/mods/*", "tools/mod_smoke*", "tools/mod_*.py",
+                     "tools/mc2x_import/*", "tools/mco_import/*")
+
+
 def promoted_stages(paths):
     """p31: stages a diff needs at this merge whatever the scheduled tier filtered out. A sim-sensitive change restores the
     windowed pair, the mc2_24 finale (2600 ticks) and the day/night saves; a path naming a mission restores that map's rows;
@@ -96,11 +100,10 @@ def promoted_stages(paths):
         want |= {"determinism-" + m, "saveload-" + m}
     if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
         want.add("player-path")
-    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in (
-            "mclib/vfs*", "mclib/abl*", "mclib/file*", "mclib/*texture*", "mclib/terrtxm*", "mclib/dterrtxm*",
-            "mclib/terrain*", "gameos/gameos/*material*", "gameos/gameos/*texture*",
-            "gameos/gameos/terrain_*", "rendercore/materialregistry.h", "rendercore/textureservice.h",
-            "rendercore/texturestream.h")):
+    # Owner rule (2026-11-06, memory process/feedback-speed-skip-mods-lint-box-2026-11-05.md): the mod battery runs only
+    # when the diff touches mod content or mod tooling. Engine C++, shaders, the VFS and loaders never promote it; the
+    # nightly full gate covers them. (W135: an engine-path glob list here promoted mods on a VFS refactor.)
+    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in MOD_CONTENT_GLOBS):
         want.add("mods")
     return want
 

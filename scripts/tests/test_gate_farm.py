@@ -393,18 +393,25 @@ def test_movement_is_sim_sensitive(path):
     assert gate.sim_sensitive([path]) == [path]
 
 
-@pytest.mark.parametrize("path", ["mclib/vfs.cpp", "mclib/ablvm.cpp", "mclib/file.cpp",
-                                  "mclib/texture_assets.cpp", "mclib/terrtxm2_load.cpp", "mclib/terrain_init.cpp",
-                                  "GameOS/gameos/gos_materials.cpp", "GameOS/gameos/texture_decode.cpp",
-                                  "GameOS/gameos/terrain_surface_asset.cpp", "mclib/mlr/mlrtexturepool.cpp",
-                                  "mclib/dterrtxm.h", "RenderCore/TextureService.h"])
-def test_compatibility_diff_promotes_existing_mod_battery(path):
+@pytest.mark.parametrize("path", ["data/missions/mc2_01.fit", "mods/core_unlocks/data/foo.fit",
+                                  "examples/mods/sample_variant/data/x.csv", "tests/mods/fixture.fit",
+                                  "tools/mod_smoke.py", "tools/mc2x_import/transfer_mc2x_campaign.py",
+                                  "tools/mco_import/build_mco_compat.py"])
+def test_mod_content_diff_promotes_existing_mod_battery(path):
     scheduled = gate.plan(6)
     steps, promoted = gate.promote_for_diff(_tier0(scheduled), scheduled, _tier0(scheduled), [path], [], False)
     assert "mods" in promoted
     command = next(c for n, c, _ in steps if n == "mods")
     assert "tools/mod_smoke.py" in command
-    assert "mods" not in gate.promoted_stages(["RenderCore/vk_sync.cpp"])
+    assert gate.stage_tier("mods") == 2
+
+
+@pytest.mark.parametrize("path", ["mclib/vfs.cpp", "mclib/ablvm.cpp", "mclib/file.cpp", "mclib/texture_assets.cpp",
+                                  "GameOS/gameos/texture_decode.cpp", "RenderCore/TextureService.h",
+                                  "RenderCore/vk_sync.cpp", "shaders/vulkan/terrain.frag"])
+def test_engine_vfs_loader_diff_never_promotes_mods(path):
+    # Owner rule 2026-11-06: engine C++, shaders, the VFS and loaders never trigger mods; the nightly gate covers them.
+    assert "mods" not in gate.promoted_stages([path])
     assert gate.stage_tier("mods") == 2
 
 
