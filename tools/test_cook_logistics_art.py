@@ -2,12 +2,30 @@
 import io
 import struct
 import zlib
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 import pytest
 
 from tools import cook_logistics_art as cook
+
+
+def test_shipped_art_decodes_with_loader_dimensions_and_transparent_border():
+    art = Path(__file__).resolve().parents[1]/'data/art'
+    for mission in range(1, 25):
+        with Image.open(art/f'missionmaps/mc2_{mission:02d}.png') as image:
+            image.load()
+            assert image.mode == 'RGB' and image.size == (512, 512)
+    icons = list((art/'mechicons').rglob('*.png'))
+    assert art/'mechicons/starslayer.png' in icons
+    assert art/'mechicons/hollander.png' in icons
+    for path in icons:
+        with Image.open(path) as image:
+            assert image.mode == 'RGBA'
+            pixels = np.array(image)
+            assert not pixels[0].any() and not pixels[-1].any(), path
+            assert not pixels[:, 0].any() and not pixels[:, -1].any(), path
 
 
 def packet_file(payloads):
@@ -49,6 +67,27 @@ def test_split_border_has_no_neighbour_and_keeps_hud_palette():
     assert hud.getpixel((1, 1)) == (0, 0, 0, 255)
 
 
+def test_csv_crcrlf_and_named_icon_output(tmp_path):
+    class Source:
+        def read(self, key):
+            if key.endswith('.csv') and not key.endswith('asset_sizes.csv'):
+                return b'BaseChassisInfo,\r\r\nMechParts,0\r\r\n'
+            if key.endswith('.fit'):
+                return b'[Static1] // icon\nl Width=25\nl Height=30\nst FileName="mcui_gn_mechicons.tga"\n'
+            raise FileNotFoundError(key)
+        def keys(self, prefix, suffix):
+            return ['data/objects/starslayer.csv']
+        def image(self, key):
+            if not key.endswith('mcui_gn_mechicons.tga'):
+                raise FileNotFoundError(key)
+            return Image.new('RGBA', (50, 60), (70, 80, 90, 255))
+    icons = cook.split_icons(Source(), tmp_path)
+    assert [name for name, _ in icons] == ['starslayer']
+    image = Image.open(tmp_path/'data/art/mechicons/starslayer.png')
+    assert image.size == (27, 32)
+    assert image.getpixel((0, 0)) == (0, 0, 0, 0)
+
+
 def test_map_north_up_extent_water_and_building(monkeypatch):
     n = 60
     vertices = np.zeros((n, n, 32), dtype=np.uint8)
@@ -86,3 +125,7 @@ def test_loose_input_beats_base_and_source_is_read_only(tmp_path):
     assets = cook.Assets(source, cook.Assets(base))
     assert assets.read('TEST.FIT') == b'mod'
     assert (base/'test.fit').read_bytes() == b'base'
+
+
+def test_magenta_placeholder():
+    assert cook.transparent_border(Image.new('RGBA', (25, 30), (255, 0, 255, 255))).getbbox() is None

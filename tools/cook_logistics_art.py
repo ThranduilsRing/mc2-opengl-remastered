@@ -108,12 +108,12 @@ def transparent_border(image, hud=False):
     # The legacy bay is black keyed. HUD palette colours must stay exact.
     if not hud:
         pixels[np.sum(pixels[:, :, :3].astype(int), axis=2) <= 16] = 0
+        pixels[(pixels[:, :, 0] == 255) & (pixels[:, :, 1] == 0) & (pixels[:, :, 2] == 255)] = 0
     pixels[pixels[:, :, 3] == 0] = 0
     return ImageOps.expand(Image.fromarray(pixels), border=1, fill=(0, 0, 0, 0))
 
 
 def split_icons(assets, out):
-    atlas = assets.image("data/art/mcui_gn_mechicons.tga")
     layout = assets.read("data/art/mcl_gn_availablemechentry.fit").decode('latin1')
     cw = int(fit_value(layout, "Static1", "Width", "25"))
     ch = int(fit_value(layout, "Static1", "Height", "30"))
@@ -123,7 +123,7 @@ def split_icons(assets, out):
         sheet_path += '.tga'
     atlas = assets.image(sheet_path)
     try:
-        sizes = csv.reader(io.StringIO(assets.read('data/art/asset_sizes.csv').decode('latin1')))
+        sizes = csv.reader(io.StringIO(assets.read('data/art/asset_sizes.csv').decode('latin1'), newline=None))
         for row in sizes:
             if len(row) >= 3 and 'data/' + row[0].strip().lower() == sheet_path:
                 cw = round(cw*atlas.width/int(row[1]))
@@ -139,24 +139,27 @@ def split_icons(assets, out):
             pass
     written = []
     for key in assets.keys("data/objects/", ".csv"):
-        rows = list(csv.reader(io.StringIO(assets.read(key).decode('latin1'))))
-        # CSVFile uses 1-based row/column indices. Only chassis tables have this row.
-        if len(rows) < 12 or len(rows[11]) < 2 or rows[11][0].strip().lower() not in ("iconindex", "mechparts"):
+        rows = csv.reader(io.StringIO(assets.read(key).decode('latin1'), newline=None))
+        # Some mod CSVs use CRCRLF. Find the semantic row rather than counting blanks.
+        row = next((r for r in rows if len(r) >= 2 and r[0].strip().lower() in ('iconindex', 'mechparts')), None)
+        if row is None:
             continue
         try:
-            index = int(rows[11][1])
+            index = int(row[1])
         except ValueError:
             continue
         name = Path(key).stem
         cols = atlas.width // cw
-        if index < 0 or cols == 0 or (index // cols + 1) * ch > atlas.height:
+        if index < 0:
             continue
-        x, y = index % cols * cw, index // cols * ch
-        icon = transparent_border(atlas.crop((x, y, x + cw, y + ch)))
-        dest = out / f"data/art/mechicons/{name}.png"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        icon.save(dest)
-        written.append((name, icon))
+        if cols > 0 and (index // cols + 1)*ch <= atlas.height:
+            x, y = index % cols * cw, index // cols * ch
+            icon = transparent_border(atlas.crop((x, y, x + cw, y + ch)))
+            if icon.getbbox():
+                dest = out / f"data/art/mechicons/{name}.png"
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                icon.save(dest)
+                written.append((name, icon))
         for sheet, (image, w, h) in sheets.items():
             # HUD height, not total width, defines scale (mods add columns).
             scale = image.height / (h * 2)
@@ -190,7 +193,7 @@ def overlay_table(assets):
 
 def stamp_objects(assets, image, data, n):
     # EditorObjectMgr saves the catalog FitID followed by XYZ/heading and five ints.
-    rows = csv.reader(io.StringIO(assets.read('data/art/buildings.csv').decode('latin1')))
+    rows = csv.reader(io.StringIO(assets.read('data/art/buildings.csv').decode('latin1'), newline=None))
     catalog = {}
     for row in rows:
         if len(row) >= 10 and row[4].strip().isdigit():
@@ -309,7 +312,12 @@ def main(argv=None):
     chassis = sum(':' not in name for name, _ in icons)
     (args.proof/'cook.txt').write_text(f'maps={len(maps)} chassis={chassis} images={len(icons)}\n' + '\n'.join(skipped) + '\n')
     print(f'logistics-art: maps={len(maps)} chassis={chassis} images={len(icons)} skipped={len(skipped)}; {args.proof}/cook.txt')
-    return 0 if maps and icons else 1
+    required = {Path(k).stem for k in assets.keys('data/missions/', '.pak')
+                if re.fullmatch(r'mc2_\d{2}', Path(k).stem)}
+    missing = sorted(required - {name for name, _ in maps})
+    if missing:
+        print('ERROR: stock mission maps not cooked: ' + ', '.join(missing))
+    return 0 if maps and icons and not missing else 1
 
 
 if __name__ == '__main__':
