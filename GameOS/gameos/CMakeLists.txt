@@ -288,7 +288,11 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp vulkan_fsr_provider.cpp vk_upscalers.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp engine_present_vk_imgui.cpp vulkan_spatial_aa.cpp vulkan_motion_vectors.cpp vk_upscalers.cpp)
+        # FSR loads the Windows-only amd_fidelityfx_vk.dll through ffx-api (windows.h, __declspec); Linux has no provider.
+        if(WIN32)
+            list(APPEND SOURCES vulkan_fsr_provider.cpp)
+        endif()
 endif()
 
 set_source_files_properties(
