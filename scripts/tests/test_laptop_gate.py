@@ -24,6 +24,31 @@ def _manifest(path, files):
             w.writerow([rel, hashlib.sha256(data).hexdigest(), len(data), "abc", "t", 0])
 
 
+def test_sim_records_deployed_payload_identity_without_game(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    import gate_reuse
+    import merge_gate
+    import json
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    _manifest(seed / ".deployed_manifest.csv", {"mc2.exe": b"exe"})
+    monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
+    monkeypatch.setattr(laptop_gate, "r_subst", lambda: None)
+    monkeypatch.setattr(laptop_gate, "gate_env", lambda: {})
+    monkeypatch.setattr(laptop_gate, "sim_checkout", lambda *args: ("a" * 40, ""))
+    monkeypatch.setattr(gate_reuse, "deployed_seed", lambda *args: seed)
+    monkeypatch.setattr(merge_gate, "stock_copy", lambda *args, **kwargs: nullcontext(seed))
+    monkeypatch.setattr(merge_gate, "ROW_RESULTS", {})
+    def execute(steps, head):
+        merge_gate.ROW_RESULTS.update({name: {"status": "PASS"} for name, _, _ in steps})
+        return 0
+    monkeypatch.setattr(merge_gate, "execute_parallel", execute)
+    laptop_gate._r_sim("test", [])
+    result = json.loads((tmp_path / "out/test/sim/summary.json").read_text())
+    assert result["verdict"] == "PASS"
+    assert result["manifest_sha256"] == hashlib.sha256((seed / ".deployed_manifest.csv").read_bytes()).hexdigest()
+
+
 def test_pack_ships_only_candidate_files_that_differ(tmp_path, monkeypatch):
     gate = tmp_path / "gate"
     install = gate / "drv/E/mc2-installs/install-stock-abc"   # the candidate, not INSTALL (the published v0.4)

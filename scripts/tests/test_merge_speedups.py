@@ -551,7 +551,7 @@ def test_stage_published_cooks_detail_normals_like_the_deploy_row(monkeypatch, t
     assert cooked == [str(inst)]
 
 
-def test_stage_published_forgets_manifest_rows_of_swapped_files(monkeypatch, tmp_path):
+def test_stage_published_replaces_manifest_rows_of_swapped_files(monkeypatch, tmp_path):
     # W125: a gate-reuse seed keeps HEAD's manifest; a same-size swapped shader was skipped by the deploy fast path.
     import csv
     import merge_gate as gate
@@ -564,6 +564,9 @@ def test_stage_published_forgets_manifest_rows_of_swapped_files(monkeypatch, tmp
     (pub / "shaders" / "spv" / "spirv_package.json").write_bytes(b"OLD!")
     inst.mkdir()
     manifest = inst / ".deployed_manifest.csv"
+    (pub / ".deployed_manifest.csv").write_text(
+        "manifest_version,v1\nrelpath,sha256,bytes,src_commit,timestamp,mtime_ns\n"
+        "mc2.exe,old-exe,3,old,t,0\nshaders/spv/spirv_package.json,old-shader,4,old,t,0\n")
     with manifest.open("w", newline="") as f:
         csv.writer(f).writerows([["manifest_version", "v1", "", "", "", ""],
                                  ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"],
@@ -577,7 +580,9 @@ def test_stage_published_forgets_manifest_rows_of_swapped_files(monkeypatch, tmp
             (tex / n).write_bytes(b"k")
     monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", fake_cook)
     gate.stage_published(inst, pub)
-    assert set(deploy_payload.read_manifest(str(inst))) == {"data/x.fit"}
+    rows = deploy_payload.read_manifest(str(inst))
+    assert set(rows) == {"data/x.fit", "mc2.exe", "shaders/spv/spirv_package.json"}
+    assert rows["mc2.exe"][0] == "old-exe"
 
 
 def test_stage_published_gives_capture_before_the_published_dlls(monkeypatch, tmp_path):

@@ -312,6 +312,7 @@ def _r_sim(window, tokens):
     rc = 1
     if "error" not in sm:
         sm["seed"] = str(seed)
+        sm["manifest_sha256"] = sha256(Path(seed) / ".deployed_manifest.csv")
         try:
             with merge_gate.stock_copy(seed, parent=Path(merge_gate.CANDIDATE_SEED).parent) as install:
                 steps = merge_gate.sim_plan(install, out, rows, pair)

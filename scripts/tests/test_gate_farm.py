@@ -388,6 +388,44 @@ def test_operator_stage_choice_is_never_widened():
     assert promoted == set() and len(steps) == 1
 
 
+@pytest.mark.parametrize("path", ["mclib/move.cpp", "mclib/movegrid.h", "code/movemgr.cpp", "code/warrior.h"])
+def test_movement_is_sim_sensitive(path):
+    assert gate.sim_sensitive([path]) == [path]
+
+
+@pytest.mark.parametrize("path", ["mclib/vfs.cpp", "mclib/ablvm.cpp", "mclib/file.cpp",
+                                  "mclib/texture_assets.cpp", "mclib/terrtxm2_load.cpp", "mclib/terrain_init.cpp",
+                                  "GameOS/gameos/gos_materials.cpp", "GameOS/gameos/texture_decode.cpp",
+                                  "GameOS/gameos/terrain_surface_asset.cpp", "mclib/mlr/mlrtexturepool.cpp",
+                                  "mclib/dterrtxm.h", "RenderCore/TextureService.h"])
+def test_compatibility_diff_promotes_existing_mod_battery(path):
+    scheduled = gate.plan(6)
+    steps, promoted = gate.promote_for_diff(_tier0(scheduled), scheduled, _tier0(scheduled), [path], [], False)
+    assert "mods" in promoted
+    command = next(c for n, c, _ in steps if n == "mods")
+    assert "tools/mod_smoke.py" in command
+    assert "mods" not in gate.promoted_stages(["RenderCore/vk_sync.cpp"])
+    assert gate.stage_tier("mods") == 2
+
+
+@pytest.mark.parametrize("base", [None, "invalid-base"])
+def test_gate_refuses_missing_or_invalid_comparison_base(tmp_path, monkeypatch, capsys, base):
+    import subprocess
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    def git(*args):
+        if args[0] == "merge-base":
+            raise subprocess.CalledProcessError(1, args)
+        return "a" * 40
+    monkeypatch.setattr(gate, "git", git)
+    argv = ["--full", "--dry-run", "--proofs-dir", str(tmp_path / "proof")]
+    if base:
+        argv += ["--base", base]
+    with pytest.raises(SystemExit) as exc:
+        gate.main(argv)
+    assert exc.value.code == 2
+    assert "comparison base" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize('weekly,paths,single', [(False, [], True), (True, [], False), (False, ['mclib/sim_overlap.h'], False)])
 def test_nightly_03_16_single_run_and_pairs_on_weekly_or_sim(weekly, paths, single):
     scheduled = gate.plan(6)
