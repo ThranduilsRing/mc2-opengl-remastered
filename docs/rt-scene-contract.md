@@ -60,3 +60,19 @@ Every publish logs one `[VK_RT_SCENE] publish ...` line: TLAS instances, terrain
 - Compaction is forbidden with `ALLOW_UPDATE` on the AMD proprietary driver (mover BLAS are refit, never compacted).
 - Non-opaque geometry costs candidate-loop iterations on RDNA: keep cutouts to packets the raster really cuts.
 - Bind the alpha arrays with a NEAREST / CLAMP sampler at mip 0 in the probe so the result does not depend on filtering.
+
+## Buffer alignment rule
+
+The driver's memory requirements do not promise the alignment an RT build needs: on the RX 7900 XTX a host-visible buffer reports 4, and VMA packs it
+straight behind an odd-sized neighbour (the prop TLAS instance array landed at `addr % 16 = 8` and `12`, so `recordTlasBuild` refused it). Every buffer
+whose device address a build consumes therefore asks VMA for the alignment itself, through the `minAlignment` argument of `OwnedBuffer::create*`
+(`vmaCreateBufferWithAlignment`):
+
+| Buffer | Alignment |
+|---|---|
+| TLAS instance arrays (static snapshot, per-frame mover, selftest) | `kInstanceAddressAlignment` (16) |
+| AS storage | `kAsStorageAlignment` (256) |
+| Build scratch | `minAccelerationStructureScratchOffsetAlignment` from the RT caps; batched sub-range offsets are aligned up to it (`scratchBatchPlan`) |
+
+Never pad a neighbour or offset inside an over-allocated buffer to fix an address. A failed record names the check and its values on the
+`FAIL ... stage=... why=...` line (`takeLastRecordFailure`).
