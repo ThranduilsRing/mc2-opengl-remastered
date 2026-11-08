@@ -172,7 +172,8 @@ def affinity_mask(slot: int) -> int:
     width = cores_per_slot()
     if not 0 <= slot < 6 // max(2, width):
         raise ValueError("slot exceeds the physical game core budget")
-    if not redirected() and sys.platform == 'win32':
+    # The CPU_SPLIT masks describe the owner's PC only (W130 review): the laptop gate sets MC2_NO_CPU_PIN and keeps the legacy shape.
+    if not redirected() and sys.platform == 'win32' and not os.environ.get("MC2_NO_CPU_PIN"):
         return game_masks()[slot % 2]
     return ((1 << (width * 2)) - 1) << (4 + slot * max(2, width) * 2)
 

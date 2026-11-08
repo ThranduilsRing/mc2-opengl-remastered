@@ -1396,10 +1396,15 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
                 continue
             retired.unlink()
             log(f"pruned retired payload: {rel}")
-    shader_root = root / "shaders"
-    if own_shaders and shader_root.is_dir():
-        for path in sorted(shader_root.rglob("*")):
+    # W130 review P1: the sweep owns only the baked SPIR-V (shaders/vulkan/*.spv, the W129 defect), never owner or mod files
+    # elsewhere under shaders/, and it resolves like the manifest loop so a junction cannot take it outside the target.
+    spv_root = root / "shaders" / "vulkan"
+    if own_shaders and spv_root.is_dir():
+        for path in sorted(spv_root.glob("*.spv")):
             rel = path.relative_to(root).as_posix()
+            resolved = path.resolve()
+            if not resolved.is_relative_to(spv_root.resolve()):
+                fail(f"retired shader path escapes target: {rel}")
             if path.is_file() and rel not in keep and rel not in preserve:
                 path.unlink()
                 log(f"pruned retired payload: {rel}")

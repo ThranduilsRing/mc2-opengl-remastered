@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -1349,6 +1350,12 @@ def _stage_fixture(env, monkeypatch):
     lm = _load_module()
     import lane_merge_stage
     monkeypatch.setattr(lane_merge_stage, "NIFTY", "main")
+    # hermetic (W130 review): a fresh green nightly fixture, never the live E:/ proofs dir
+    nightly = repo.parent / "nightly-proofs"
+    (nightly / "nightly-fixture").mkdir(parents=True, exist_ok=True)
+    (nightly / "nightly-fixture" / "gate-verdict.json").write_text(
+        json.dumps({"verdict": "PASS", "complete": True, "tier": 1, "written": time.time()}), encoding="utf-8")
+    monkeypatch.setattr(lane_merge_stage, "NIGHTLY_PROOFS", str(nightly))
     write(repo, ".gitignore", "build64-ninja/\n")   # ignored in the real tree too
     commit_all(repo, "ignore build dir")
     _branch(repo, "lane_a", "a_lane.txt", "a\n", "lane a")
@@ -1428,16 +1435,17 @@ def test_ratchet_tighten_compares_against_the_accepted_bases_baseline(tmp_path, 
     def fake_run(root, cmd, env=None):
         baseline = cmd[cmd.index("--baseline") + 1]
         ran.append((os.path.basename(cmd[2]), open(baseline).read()))
-        return subprocess.CompletedProcess(cmd, 1 if "file_size" in cmd[2] else 0, "line\nover the base baseline")
+        return subprocess.CompletedProcess(cmd, 1 if "cxx17" in cmd[2] else 0, "line\nover the base baseline")
     monkeypatch.setattr(lm, "run", fake_run)
     failed = _bbc(tmp_path, tools)
-    assert [a for a in shown] == [("show", "b" * 40 + ":" + p) for p in lm.TIGHTENED_BASELINES]
-    assert all(body == '{"base": 1}' for _n, body in ran) and len(ran) == 3
-    assert len(failed) == 1 and failed[0][0].startswith("file_size vs accepted base")
+    # W130: paired by label, not position: cxx17 gets ITS baseline; split_map (no baseline) is not re-run
+    assert shown == [("show", "b" * 40 + ":tools/cxx17_ratchet/baseline.json")]
+    assert [n for n, _b in ran] == ["cxx17_ratchet.py"] and all(body == '{"base": 1}' for _n, body in ran)
+    assert len(failed) == 1 and failed[0][0].startswith("cxx17 vs accepted base")
 
 
 def _bbc(tmp_path, tools):
-    return lm.lane_merge_baseline.base_baseline_check(str(tmp_path), str(tools), "b" * 40, lm.RATCHETS, lm.TIGHTENED_BASELINES, lm.run, lm.git, lm.lines)
+    return lm.lane_merge_baseline.base_baseline_check(str(tmp_path), str(tools), "b" * 40, lm.RATCHETS, lm.RATCHET_BASELINES, lm.run, lm.git, lm.lines)
 
 
 def test_base_baseline_check_skips_a_baseline_absent_at_the_base(tmp_path, monkeypatch):

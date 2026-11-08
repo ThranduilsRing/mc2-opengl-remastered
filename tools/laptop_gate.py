@@ -21,10 +21,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 # The remote half runs from C:/mc2gate/bin alone: every module it imports (module level, plus r_run's queue_lock) is a HELPER,
 # repo-relative, that provision() uploads next to it (scripts/tests/test_laptop_gate.py fails when an import is missing).
 HELPERS = ("scripts/console_child.py", "tools/farm/queue_lock.py")
-# The farm runner (C:/mc2farm, task MC2FarmRunner) takes the same queue lock as r_run, so provision() keeps its runner.py and
-# queue_lock.py in sync with the PC too (the task loads a new runner.py at its next start).
-FARM_FILES = ("tools/farm/runner.py", "tools/farm/queue_lock.py")
-FARM_ROOT = "C:/mc2farm"
 try:
     import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
 except ImportError as exc:
@@ -89,6 +85,12 @@ def remote_py(step, *args):
     return f'py -3 {G}/bin/laptop_gate.py --remote {step} ' + " ".join(args)
 
 
+def remote_run_cmd(window, gate_args):
+    """The remote run command; merge_gate args go after `--` (W130 run 1: without it the remote parse put `deploy` into the
+    positionals and handed merge_gate `deploy --stages --keep-candidate`)."""
+    return remote_py("run", window, *(["--", *gate_args] if gate_args else []))
+
+
 # ---------------------------------------------------------------- laptop half
 
 def r_subst():
@@ -148,6 +150,7 @@ def run(cmd, log, **kw):
 def gate_env():
     return dict(os.environ, TEMP=G + "/tmp", TMP=G + "/tmp", TMPDIR=G + "/tmp", PYTHONUTF8="1",
                 MC2_BUILD_JOBS="7", MC2_BUILD_TOKENS="0", MC2_COMPILE_CACHE="0", MC2_GATE_EROOT=G + "/drv/E",
+                MC2_NO_CPU_PIN="1",   # CPU_SPLIT is the PC's 16-CPU split; on the 8-thread laptop it would pin 7 jobs to 4 CPUs
                 # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
                 MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
                 MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
@@ -587,7 +590,6 @@ def provision_files(eroot=Path("E:/")):
     repo = Path(__file__).resolve().parents[1]
     clone = REPO.removeprefix(G + "/")
     return ([("bin/laptop_gate.py", Path(__file__).resolve())] + [("bin/" + Path(h).name, repo / h) for h in HELPERS]
-            + [(f"{FARM_ROOT}/{Path(h).name}", repo / h) for h in FARM_FILES]   # absolute: outside C:/mc2gate
             + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA]
             + [(f"{clone}/{rel}", PC_V04 / rel) for rel in LAYER_EXTRA])
 
@@ -603,7 +605,7 @@ def provision(bin_only=False):
             continue
         if not src.is_file():
             sys.exit(f"laptop_gate: provision source missing on the PC: {src}")
-        want, dst = sha256(src), (rel if rel.startswith(FARM_ROOT + "/") else f"{G}/{rel}")
+        want, dst = sha256(src), f"{G}/{rel}"
         rc, out = ssh(f'certutil -hashfile "{dst}" SHA256', check=False)
         if not (rc == 0 and want in out.replace(" ", "").lower()):
             print(f"provision: copying {src} -> {dst}", flush=True)
@@ -662,13 +664,12 @@ def pc_main(args):
     scp(PC_V04 / ".deployed_manifest.csv", f"{HOST}:{G}/in/{w}/pc.manifest.csv")
     if ssh(remote_py("preflight", w, published_sha()), check=False, stream=True)[0]:   # after the push: it checks the stage tip
         sys.exit("laptop preflight failed (above); fix it before a full run")
-    extra = " ".join(args.gate_args)
     print("running build + gate on the laptop (long)", flush=True)
     dest = PROOFS / w
     incoming = PROOFS / (w + ".incoming")
     for stale in (dest, incoming, PROOFS / (w + ".rejected")):   # a failed rerun must never leave an old PASS to read
         shutil.rmtree(stale, ignore_errors=True)
-    run_rc, _ = ssh(remote_py("run", w, extra), check=False, stream=True)
+    run_rc, _ = ssh(remote_run_cmd(w, args.gate_args), check=False, stream=True)
     pack_rc, _ = ssh(remote_py("pack", w), check=False, stream=True)
     ok, why, sm = pull_and_accept(w, head, run_rc, pack_rc, dest, incoming)
     print("SUMMARY", json.dumps(sm), f"total_wall_s={time.time() - t0:.0f}")
@@ -766,7 +767,7 @@ def main():
     a, rest = ap.parse_known_args()
     if a.remote:
         step = a.remote
-        return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
+        return {"init": r_init, "run": lambda: r_run(a.window, [x for x in a.gate_args + rest if x != "--"]), "pack": lambda: r_pack(a.window),
                 "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
         provision()

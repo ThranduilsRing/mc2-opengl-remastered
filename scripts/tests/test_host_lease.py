@@ -24,6 +24,9 @@ def test_real_host_partition_never_assigns_build_cores(monkeypatch):
     monkeypatch.setattr(host_lease.sys, 'platform', 'win32')
     monkeypatch.setattr(host_lease, 'CPU_SPLIT_PATH', Path("Z:/no/such/CPU_SPLIT"))
     monkeypatch.setattr(host_lease, 'GPU_SPLIT_PATH', Path("Z:/no/such/GPU_SPLIT"))
+    monkeypatch.setenv("MC2_NO_CPU_PIN", "1")   # W130: the laptop gate's env keeps the legacy (non-PC) shape
+    assert host_lease.affinity_mask(0) != 0x3
+    monkeypatch.delenv("MC2_NO_CPU_PIN")
     assert host_lease.slot_count() == 2
     masks = [host_lease.affinity_mask(i) for i in range(2)]
     assert masks == [0x3, 0xC]

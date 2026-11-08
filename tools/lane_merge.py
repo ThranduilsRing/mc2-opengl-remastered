@@ -159,6 +159,8 @@ RATCHETS = [
     ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
+# p31 base-baseline re-check: each baselined ratchet's baseline, by label (split_map has none).
+RATCHET_BASELINES = {"cxx17": "tools/cxx17_ratchet/baseline.json"}
 # Row tables where both sides append rows: merged mechanically (keep both, the lane's new rows renumbered after ours).
 BUG_TABLES = {".claude/cleanup/BUGS-FOUND-FIXED.md"}
 ROW = re.compile(r"^\| (\d+) \|")
@@ -1247,7 +1249,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     if batch:
         results = run_ratchets(root, tools_dir, tighten=False)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
-    semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), RATCHETS, TIGHTENED_BASELINES, run, git, lines)
+    semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), RATCHETS, RATCHET_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
     artifacts = regenerate_all(root)
@@ -1397,7 +1399,7 @@ def main(argv: list[str] | None = None) -> int:
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
-            semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, RATCHETS, TIGHTENED_BASELINES, run, git, lines)
+            semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, RATCHETS, RATCHET_BASELINES, run, git, lines)
             if semantic:
                 reds.append((refs[-1], semantic))
         if batch and merged and not reds:

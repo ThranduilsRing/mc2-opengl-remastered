@@ -42,6 +42,8 @@ def _target_with_unlisted_dead_spv(tmp_path):
     (target / "shaders" / "vulkan" / "dead.frag.spv").write_bytes(b"old")  # copied in, no manifest row
     (target / "data").mkdir()
     (target / "data" / "keep.txt").write_bytes(b"user")  # outside shaders/, no row: never touched
+    (target / "shaders" / "owner_override.frag").write_bytes(b"owner")   # W130 review: not baked SPIR-V, never swept
+    (target / "shaders" / "vulkan" / "notes.txt").write_bytes(b"owner")
     return target
 
 
@@ -56,6 +58,7 @@ def test_deploy_prunes_shader_files_the_payload_does_not_carry(tmp_path, monkeyp
     assert not (target / "shaders" / "vulkan" / "dead.frag.spv").exists()
     assert (target / "shaders" / "vulkan" / "live.frag.spv").is_file()
     assert (target / "data" / "keep.txt").is_file()
+    assert (target / "shaders" / "owner_override.frag").is_file() and (target / "shaders" / "vulkan" / "notes.txt").is_file()
 
 
 def test_partial_payload_without_spv_leaves_shaders_alone(tmp_path, monkeypatch):

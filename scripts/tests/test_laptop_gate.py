@@ -197,17 +197,25 @@ def test_every_module_the_remote_half_imports_is_provisioned():
     for helper in laptop_gate.HELPERS:
         assert (ROOT / helper).is_file()
         assert "bin/" + Path(helper).name in uploaded
-    # the farm runner imports queue_lock next to itself: both reach C:/mc2farm (W130)
-    assert {"runner", "queue_lock"} <= {Path(h).stem for h in laptop_gate.FARM_FILES}
-    for farm in laptop_gate.FARM_FILES:
-        assert (ROOT / farm).is_file()
-        assert f"{laptop_gate.FARM_ROOT}/{Path(farm).name}" in uploaded
+    # the candidate's farm runner never goes live before promote (W130 review P1): nothing is provisioned outside C:/mc2gate
+    assert not any(":" in rel or rel.startswith("/") for rel in uploaded)
     assert "bin/laptop_gate.py" in uploaded
     assert {"drv/E/" + rel for rel in laptop_gate.E_EXTRA} <= uploaded
     # every generated deploy input the PC cooks from a PC-only source reaches the laptop clone (W129 run 3 pixel red)
     layers = {r for r in deploy_payload.TERRAIN_LAYER_PAYLOAD if "concrete_detail" in r or "cliff_rock" in r}
     assert layers == set(laptop_gate.LAYER_EXTRA)
     assert {"drv/A/Games/mc2-main/" + rel for rel in layers} <= uploaded
+
+
+@pytest.mark.parametrize("gate_args", [["--stages", "deploy", "--keep-candidate"], ["--nightly"], []])
+def test_remote_run_round_trips_merge_gate_args(monkeypatch, gate_args):
+    """W130 run 1: `--stages deploy --keep-candidate` reached merge_gate as `deploy --stages --keep-candidate`."""
+    cmd = laptop_gate.remote_run_cmd("130", gate_args)
+    got = {}
+    monkeypatch.setattr(laptop_gate, "r_run", lambda w, extra: got.update(w=w, extra=extra))
+    monkeypatch.setattr(sys, "argv", cmd.split()[2:])
+    assert laptop_gate.main() == 0
+    assert got == {"w": "130", "extra": gate_args}
 
 
 def test_provision_problems_names_missing_and_stale_files(tmp_path):
