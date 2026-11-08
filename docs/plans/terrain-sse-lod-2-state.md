@@ -20,4 +20,6 @@ Terrain chunk LOD is chosen by screen-space error, not distance. `MC2_TERRAIN_LO
 - A/B: `ab.py --compare-only <proof>/tip <proof>/fix --crop 0.18,0.16,0.34,0.23 --crop 0.18,0.35,0.34,0.43 --out-root <proof>/tip-vs-fix`; both arms fully built/deployed from slot02, same private install, no exe/shader mixing.
 - Tool slowness: inherited warm build 785 s; verified seed ~26 min; initial deploy ~25 min; scout timed out at 420 s. Host captures also waited behind another lane's mod smoke; no foreign process killed or lease guard bypassed.
 - Final receipts/results go in the proof folder, keeping the proved-at tip unchanged after validation.
+- Candidate 647eb0931: compiled and captured all three poses; blob unchanged. REJECTED; spline clamp removed.
+- CURRENT CODE IS DIAGNOSTIC ONLY: evaluator 3, resolve outputs prop visibility without terrain self-shadow. Next: capture two day poses with debug mode 3, identify prop vs terrain contribution, RESTORE normal min(props, terrain) and evaluator before final proof/hand-back. Do not merge this diagnostic state.
 - Proof root: E:/mc2-archive-2026-10/proofs/terrain-sse-lod-2/blob-followup; private install: E:/mc2-installs/terrain-sse-lod-2.

@@ -59,7 +59,7 @@ void fused(int n) {
         float ramp = clamp((dist - uB.fade.x) / max(uB.fade.y - uB.fade.x, 1.0), 0.0, 1.0);
         float opacity = 1.0 - uB.fade.z * ramp;
         float props = mix(1.0, imageLoad(u_props, t).x, opacity);
-        sComb[i] = min(props, imageLoad(u_terrain, t).x);
+        sComb[i] = props;   // TEMP diagnostic: identify which static-bake component contains the shore blob
     }
     barrier();
     const int lx = int(gl_LocalInvocationID.x), ly = int(gl_LocalInvocationID.y);
