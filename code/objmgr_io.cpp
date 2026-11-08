@@ -376,6 +376,8 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 		const long teamId = obj->getTeamId();
 		const long homeRelation = Team::home ? Team::getRelation(teamId, Team::home->getId()) : 0;
 		app->setObjectParameters(obj->getPosition(), obj->getRotation(), obj->drawFlags, teamId, homeRelation);
+		// Load-time setters already fed this pose to the recipe built below.
+		app->terrainPoseDirty = false;
 		app->registerStatic();
 		if (app->isStaticRegistered()) { ++totalRegistered; ++byArr_reg[currentArr]; }
 		else                           { ++totalSkipped;    ++byArr_skip[currentArr]; }
