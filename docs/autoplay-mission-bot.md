@@ -88,7 +88,7 @@ drives. Not fixed: needs a retarget/unstick pass in `producePlayerIntent`, large
 
 `Unable to open Mission File` came from a stale `mods/<mod>/.modindex-cache` copied by deploy from another
 install: it matched the file-count + mtime signature but held that install's absolute paths, so every mod
-`_open` failed silently. `LoadModIndexCache` (mclib/file_mod.inc) now rejects a cache whose first path is not
+`_open` failed silently. `LoadModIndexCache` (mclib/vfs.cpp) now rejects a cache whose first path is not
 under the current data dir and rebuilds it. `--mod NAME:DEPS:BOOT` arguments were correct.
 
 ## Dev gates (documented here; registered in Gates/gate_rows_2.inc)

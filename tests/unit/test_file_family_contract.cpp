@@ -26,6 +26,7 @@
 #include <cstring>
 #include <string>
 #include <climits>
+#include <type_traits>
 
 extern bool g_mc2TestStopFatal;   // tests/unit/heap_shim.cpp: STOP counts and continues instead of aborting
 extern int  g_mc2TestStopCount;
@@ -113,6 +114,47 @@ TEST_CASE("FC3 closing a file opened on a caller's buffer leaves the buffer alon
 	CHECK(std::string(buffer) == "caller-owned bytes");
 }
 
+// FC6 byte views: a borrowed read-only view cannot be written (compile time: its span holds const bytes; run time: File::write fails and the
+// caller's memory is untouched); a borrowed writable view is written in place and never grown.
+static_assert(!std::is_assignable_v<File::ReadOnlyBytes::reference, unsigned char>, "a read-only byte view must not be writable");
+static_assert(std::is_assignable_v<File::WritableBytes::reference, unsigned char>);
+static_assert(!std::is_constructible_v<File::WritableBytes, const unsigned char*, size_t>, "const memory must not become a writable view");
+
+TEST_CASE("FC6 read-only borrow rejects writes; writable borrow writes in place")
+{
+	const unsigned char ro[] = { 'a', 'b', 'c', 'd' };
+	File r;
+	REQUIRE(r.openReadOnly(File::ReadOnlyBytes(ro)) == NO_ERR);
+	CHECK(r.getFileMode() == READ);
+	unsigned char x = 'Z';
+	CHECK(r.write(&x, 1) == static_cast<long>(BAD_WRITE_ERR));
+	CHECK(r.readByte() == 'a');
+	r.close();
+	CHECK(memcmp(ro, "abcd", 4) == 0);
+
+	// open(buffer, length) is the read-only borrow.
+	const char legacy[] = "wxyz";
+	File l;
+	REQUIRE(l.open(legacy, 4) == NO_ERR);
+	CHECK(l.write(&x, 1) == static_cast<long>(BAD_WRITE_ERR));
+	l.close();
+	CHECK(std::string(legacy) == "wxyz");
+
+	unsigned char rw[] = { '1', '2', '3' };
+	File w;
+	REQUIRE(w.openWritable(File::WritableBytes(rw)) == NO_ERR);
+	CHECK(w.write(&x, 1) == 1);
+	CHECK(w.writeByte('Y') == NO_ERR);
+	CHECK(w.writeByte('Q') == NO_ERR);
+	CHECK(w.writeByte('!') == static_cast<long>(BAD_WRITE_ERR));   // never grown past the view
+	w.close();
+	CHECK(memcmp(rw, "ZYQ", 3) == 0);
+
+	File e;
+	CHECK(e.openReadOnly({}) == static_cast<long>(FILE_NOT_OPEN));
+	CHECK(e.openWritable({}) == static_cast<long>(FILE_NOT_OPEN));
+}
+
 TEST_CASE("FC4 a closed file opens again and reports the new name")
 {
 	const std::string a = scratch("again_a.bin");
@@ -131,6 +173,21 @@ TEST_CASE("FC4 a closed file opens again and reports the new name")
 
 	remove(a.c_str());
 	remove(b.c_str());
+}
+
+TEST_CASE("FC4b a closed file reopened on a missing path reports a miss, not a phantom open")
+{
+	const std::string a = scratch("miss_a.bin");
+	writeBytes(a, "aaaa", 4);
+
+	File f;
+	REQUIRE(f.open(a.c_str()) == NO_ERR);
+	f.close();
+	// close() leaves CLOSED_HANDLE_VALUE in the handle; the VFS miss must not be read as an open file with it.
+	CHECK(f.open("ffc_scratch_does_not_exist.bin") != NO_ERR);
+	CHECK(!f.isOpen());
+
+	remove(a.c_str());
 }
 
 TEST_CASE("FC5 a parent holds its default 50 children and a closed child frees its slot")

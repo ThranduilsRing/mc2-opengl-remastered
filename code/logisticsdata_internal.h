@@ -39,6 +39,6 @@ extern CPrefs prefs;
 extern long SaveGameVersionNumber;
 
 // Free functions defined in the split pieces.
-void decryptFile (char *inputFile, char *outputFile);
+void decryptFile (mc2::czstring inputFile, mc2::czstring outputFile);
 
 #endif // LOGISTICSDATA_INTERNAL_H

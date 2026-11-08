@@ -39,6 +39,7 @@
 #include <memory>
 #include <string>
 #include <optional>
+#include <span>
 #include <string_view>
 #include "mc2_czstring.h"
 #include <vector>
@@ -102,9 +103,6 @@ bool ModCapabilityMounted(std::string_view capability);
 bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capability);
 // Archive metadata for a loose override; the normal File::open precedence stays authoritative.
 std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBytes);
-// Enumerate data/campaign/*.fit files from the active mod (for campaign list UI).
-using ModCampaignCallback = void(*)(mc2::czstring fitFileName, mc2::czstring fullPath, void* userData);
-void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData);
 // Enumerate mod-indexed .fit files whose key starts with keyPrefix (e.g. "data/defs/text/en_us/").
 // Appends absolute paths to out, sorted by filename. Used by MC2Strings to pick up mod text FITs.
 using ModFitCallback = void(*)(mc2::czstring absPath, void* userData);
@@ -171,9 +169,13 @@ class File
 		unsigned long			physicalLength;
 
 		bool					inRAM;
-		// The bytes a RAM file reads and writes. It points into m_ownedImage when this file loaded the bytes itself (a FastFile member, or a child
-		// read into RAM) and at the caller's buffer after open(buffer, length); closing never frees a caller's buffer.
-		MemoryPtr				fileImage;
+		// The bytes a RAM file reads (read-only view: writing through it does not compile). It points into m_ownedImage when this file loaded
+		// the bytes itself (a FastFile member, or a child read into RAM) and at the caller's buffer after openReadOnly / openWritable;
+		// closing never frees a caller's buffer.
+		const unsigned char*	fileImage;
+		// The same bytes when they may be written: the owned image, or a buffer handed over with openWritable. Null for a read-only borrow,
+		// so File::write on it fails with BAD_WRITE_ERR instead of scribbling on the caller's const memory.
+		unsigned char*			m_writableImage;
 		std::vector<unsigned char>	m_ownedImage;
 
 	public:
@@ -199,7 +201,13 @@ class File
 			bool eof (void);
 
 			virtual long open ( mc2::czstring fName, FileMode _mode = READ, long numChildren = 50, bool doNotLower = false);
-			virtual long open( const char* buffer, int bufferLength ); // for streaming from memory
+			// Streaming from a caller's memory. Three byte-view kinds, three types: an owned image (the opens above), a borrowed read-only view
+			// (ReadOnlyBytes; open(buffer, length) is that borrow) and a borrowed writable view (WritableBytes, written in place, never grown).
+			using ReadOnlyBytes = std::span<const unsigned char>;
+			using WritableBytes = std::span<unsigned char>;
+			long openReadOnly (ReadOnlyBytes bytes);
+			long openWritable (WritableBytes bytes);
+			virtual long open( const char* buffer, int bufferLength ); // = openReadOnly
 
 			virtual long create (mc2::czstring fName);
 			virtual long createWithCase(mc2::czstring fName ); // don't strlwr for me please!

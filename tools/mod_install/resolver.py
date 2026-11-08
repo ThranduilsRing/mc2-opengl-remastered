@@ -17,12 +17,12 @@ Spec refs: docs/superpowers/strategy/mod-virtual-filesystem-design.md §2, §4,
            §15.2; superpowers-execution-roadmap.md §5 S4 + ruling C5.
 
 Ground truth: mclib/file.cpp in the worktree (line numbers verified 2026-06-11):
-  - NormalizeKey      file.cpp:105
-  - ShouldSearchMods  file.cpp:97
-  - InitModSearchPaths file.cpp:486 (active mod -> dep[0]..dep[N-1])
-  - TryModOpen        file.cpp:412
-  - File::open READ   file.cpp:764-860
-  - ReadModJson       file.cpp:393 (minimal JSON extractor)
+  - NormalizeKey      mclib/vfs.cpp
+  - ShouldSearchMods  mclib/vfs.cpp
+  - InitModSearchPaths mclib/vfs.cpp (active mod -> dep[0]..dep[N-1])
+  - mc2::vfs::openRead mclib/vfs.cpp (merged index: mod > loose > size-strip > FST)
+  - File::open READ   mclib/file.cpp (calls mc2::vfs::openRead)
+  - ReadModJson       mclib/vfs.cpp (minimal JSON extractor)
 
 Resolution order (from highest to lowest priority):
   1. g_modIndex first-wins (active mod, then dep[0]..dep[N-1])  -> layer "mod:<id>"
@@ -74,7 +74,7 @@ def normalize_key(path: str) -> str:
     Mirrors NormalizeKey (file.cpp:105) + S_strlwr (file.cpp:744).
 
     Note: the engine lowercases the stored fileName before calling NormalizeKey,
-    so even doNotLower callers end up with a lowercased key in TryModOpen.
+    so even doNotLower callers end up with a lowercased key in mc2::vfs::openRead.
     The static resolver therefore always lowercases -- the key lookup is safe
     regardless of the original casing of the request.
     """
@@ -305,7 +305,7 @@ class ResolverConfig:
         json_path = f"{mod_dir}/mod.json"
 
         mod_id_from_json, _, deps = _read_mod_json(json_path)
-        # MC2_MOD_DEPS (file_mod.inc InitModSearchPaths) is appended after the
+        # MC2_MOD_DEPS (mclib/vfs.cpp InitModSearchPaths) is appended after the
         # mod.json dependencies, highest priority first, de-duplicated.
         for dep_id in self.dependencies:
             if dep_id not in deps:
@@ -330,7 +330,7 @@ class ResolverConfig:
 
 def parse_mod_deps(value: Optional[str]) -> List[str]:
     """
-    Mirrors the MC2_MOD_DEPS parser in InitModSearchPaths (file_mod.inc):
+    Mirrors the MC2_MOD_DEPS parser in InitModSearchPaths (mclib/vfs.cpp):
     comma/semicolon separated, surrounding spaces/tabs trimmed, empty entries
     dropped, later duplicates ignored.  Order is highest priority first.
     """
@@ -408,7 +408,7 @@ def resolve(req: str, config: ResolverConfig) -> dict:
             "shadowed": shadowed_layers if shadowed_layers is not None else [],
         }
 
-    # Mod overlay (mirrors TryModOpen file.cpp:412-431)
+    # Mod overlay (mirrors the mod rung of mc2::vfs::openRead, mclib/vfs.cpp)
     if config.mod_index and should_search_mods(key):
         if key in config.mod_index:
             abs_path, mod_id = config.mod_index[key]

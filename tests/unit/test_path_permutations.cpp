@@ -37,14 +37,18 @@
 #include "packet.h"
 #include "ffile.h"
 #include "fastfile.h"
+#include "vfs.h"
+#include "../../code/save_select.h"
 
 #include <cstdio>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #ifdef _WIN32
 #include <direct.h>   // _mkdir / _rmdir
+#include <io.h>       // _close
 #else
 #include "platform_io.h"
 #endif
@@ -429,6 +433,438 @@ TEST_CASE("PacketFile::open resolves loose and FST-backed paks across spellings"
 	}
 	remove(fstPath.c_str());
 	_rmdir("data/mvh_perm_data");
+}
+
+
+// ===========================================================================
+// mc2::vfs -- mount table + merged index (mclib/vfs.{h,cpp}).
+// ===========================================================================
+namespace
+{
+const char kVfsDir[] = "data/mvh_perm_data/";
+
+void vfsPutLoose (const char* leaf, const std::string& payload)
+{
+	_mkdir("data");
+	_mkdir("data/mvh_perm_data");
+	writeRaw(std::string(kVfsDir) + leaf, payload);
+}
+void vfsDropLoose (const char* leaf)
+{
+	remove((std::string(kVfsDir) + leaf).c_str());
+	_rmdir("data/mvh_perm_data");
+}
+void vfsPutMod (const char* leaf, const std::string& payload)
+{
+	const std::string base = std::string(kModsRoot) + "/" + kModId;
+	_mkdir(kModsRoot);
+	_mkdir(base.c_str());
+	_mkdir((base + "/data").c_str());
+	_mkdir((base + "/data/mvh_perm_data").c_str());
+	writeRaw(base + "/" + kVfsDir + leaf, payload);
+}
+void vfsDropMod (const char* leaf)
+{
+	const std::string base = std::string(kModsRoot) + "/" + kModId;
+	remove((base + "/" + kVfsDir + leaf).c_str());
+	_rmdir((base + "/data/mvh_perm_data").c_str());
+	remove((base + "/.modindex-cache").c_str());
+	_rmdir((base + "/data").c_str());
+	_rmdir(base.c_str());
+	_rmdir(kModsRoot);
+}
+void vfsAuthorFst (const std::string& fstPath, const char* const* names, const std::string* payloads, int n)
+{
+	FastFile ff;
+	REQUIRE(ff.create(fstPath.c_str(), /*compressed=*/true) == NO_ERR);
+	REQUIRE(ff.reserve(n) == NO_ERR);
+	for (int i = 0; i < n; ++i)
+	{
+		std::string buf = payloads[i];
+		REQUIRE(ff.writeFast(names[i], (void*)buf.data(), (int)buf.size()) == NO_ERR);
+	}
+	ff.close();
+}
+std::string vfsBytesOf (const mc2::vfs::Entry& e)
+{
+	if (e.provider == mc2::vfs::Provider::Fst)
+	{
+		// The FST member itself, not File::open (which serves the key's winner: a loose file outranks the FST).
+		long member = -1;
+		FastFile* ff = FastFileFind(e.key.c_str(), member);
+		REQUIRE(ff != nullptr);
+		std::string bytes(static_cast<size_t>(ff->sizeFast(member)), '\0');
+		if (!bytes.empty()) ff->readFast(member, bytes.data(), static_cast<DWORD>(bytes.size()));
+		ff->closeFast(member);
+		return bytes;
+	}
+	FILE* fp = fopen(e.physicalPath.c_str(), "rb");
+	REQUIRE(fp != nullptr);
+	std::string out;
+	char buf[512];
+	size_t n;
+	while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) out.append(buf, n);
+	fclose(fp);
+	return out;
+}
+} // namespace
+
+TEST_CASE("vfs index: mod-only, loose-only, FST-only and shadowed names report the right provider and bytes")
+{
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string fstPath = scratchPath("vfs_archive.fst");
+	const char* fstNames[] = { "data/mvh_perm_data/fstonly.fit", "data/mvh_perm_data/shadow.fit" };
+	const std::string fstPayloads[] = { fitPayload(3), fitPayload(3) };
+	vfsAuthorFst(fstPath, fstNames, fstPayloads, 2);
+	vfsPutLoose("loosely.fit", fitPayload(2));
+	vfsPutLoose("Mixed.FIT", fitPayload(2));          // upper-case extension on disk
+	vfsPutLoose("shadow.fit", fitPayload(2));
+	vfsPutMod("modonly.fit", fitPayload(1));
+	vfsPutMod("shadow.fit", fitPayload(1));
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+
+		struct Cell { const char* leaf; mc2::vfs::Provider want; int layer; unsigned shadowed; };
+		const Cell cells[] = {
+			{ "modonly.fit",  mc2::vfs::Provider::Mod,   1, 0 },
+			{ "loosely.fit",  mc2::vfs::Provider::Loose, 2, 0 },
+			{ "Mixed.FIT",    mc2::vfs::Provider::Loose, 2, 0 },
+			{ "fstonly.fit",  mc2::vfs::Provider::Fst,   3, 0 },
+			{ "shadow.fit",   mc2::vfs::Provider::Mod,   1, 2 },   // mod hides loose AND FST
+		};
+		for (const Cell& c : cells)
+		{
+			CAPTURE(c.leaf);
+			const auto e = mc2::vfs::lookup(std::string(kVfsDir) + c.leaf);
+			REQUIRE(e.has_value());
+			CHECK(e->provider == c.want);
+			CHECK(e->shadowed == c.shadowed);
+			CHECK(vfsBytesOf(*e) == fitPayload(c.layer));
+			// Key and physical path stay separate: key is canonical, the physical path keeps its case.
+			CHECK(e->key == mc2::vfs::key(std::string(kVfsDir) + c.leaf));
+			if (c.want != mc2::vfs::Provider::Fst)
+				CHECK(e->physicalPath.find(c.leaf) != std::string::npos);
+			CHECK_FALSE(e->name.empty());
+			if (c.want != mc2::vfs::Provider::Fst) CHECK(e->name == c.leaf);
+
+			// Index lookup and the per-lookup ladder agree for every fixture key, every spelling.
+			for (int i = 0; i < kNumSpellings; ++i)
+			{
+				std::string sp = kSpellings[i];
+				sp.replace(sp.size() - 9, 9, "");         // drop "entry.fit" ...
+				sp += c.leaf;                              // ... and splice the fixture leaf in
+				CAPTURE(sp);
+				const auto viaSpelling = mc2::vfs::lookup(sp);
+				REQUIRE(viaSpelling.has_value());
+				CHECK(viaSpelling->provider == c.want);
+				CHECK(layerViaFile(sp.c_str()) == c.layer);
+			}
+		}
+
+		// Case-insensitive extension filter; one entry per key, sorted.
+		for (const char* ext : { ".fit", ".FIT", ".Fit" })
+		{
+			CAPTURE(ext);
+			const auto list = mc2::vfs::enumerate(kVfsDir, ext);
+			REQUIRE(list.size() == 5);
+			const char* wantKeys[] = { "fstonly.fit", "loosely.fit", "mixed.fit", "modonly.fit", "shadow.fit" };
+			for (size_t i = 0; i < list.size(); ++i)
+				CHECK(list[i].key == std::string(kVfsDir) + wantKeys[i]);
+		}
+		CHECK(mc2::vfs::enumerate(kVfsDir, ".var").empty());
+
+		// Absent names, '..' and absolute paths never resolve.
+		CHECK_FALSE(mc2::vfs::lookup("data/mvh_perm_data/nope.fit").has_value());
+		CHECK_FALSE(mc2::vfs::lookup("data/../mvh_perm_data/loosely.fit").has_value());
+		CHECK_FALSE(mc2::vfs::lookup("C:/data/mvh_perm_data/loosely.fit").has_value());
+
+		const mc2::vfs::Stats st = mc2::vfs::stats();
+		CHECK(st.entries >= 5);
+		CHECK(st.mounts >= 3);          // the FST archive, loose, the mod
+		CHECK(st.bytes > 0);
+	}
+
+	remove(fstPath.c_str());
+	vfsDropLoose("loosely.fit"); vfsDropLoose("Mixed.FIT"); vfsDropLoose("shadow.fit");
+	vfsDropMod("modonly.fit"); vfsDropMod("shadow.fit");
+	setActiveMod(nullptr);
+	InitModSearchPaths("mvh_perm_mods_nonexistent");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
+}
+
+TEST_CASE("vfs index: a mod-only map appears in the MP map list (data/missions/*.fit)")
+{
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string base = std::string(kModsRoot) + "/" + kModId;
+	_mkdir(kModsRoot);
+	_mkdir(base.c_str());
+	_mkdir((base + "/data").c_str());
+	_mkdir((base + "/data/missions").c_str());
+	writeRaw(base + "/data/missions/mvh_perm_map.fit", fitPayload(1));
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+	mc2::vfs::rebuild();
+
+	// MPLoadMap::seedDialog lists exactly this enumeration (missionPath = "data/missions/").
+	const auto maps = mc2::vfs::enumerate("data/missions/", ".fit");
+	bool found = false;
+	for (const auto& m : maps)
+		if (m.key == "data/missions/mvh_perm_map.fit")
+		{
+			found = true;
+			CHECK(m.provider == mc2::vfs::Provider::Mod);
+			CHECK(m.name == "mvh_perm_map.fit");     // the writable basename addFile strips ".fit" from
+		}
+	CHECK(found);
+
+	// Sorted by key, no duplicate keys.
+	for (size_t i = 1; i < maps.size(); ++i)
+		CHECK(maps[i - 1].key < maps[i].key);
+
+	// Stock mode: the mod map disappears after the reload (rebuild is explicit, no watcher).
+	setActiveMod(nullptr);
+	InitModSearchPaths("mvh_perm_mods_nonexistent");
+	for (const auto& m : mc2::vfs::enumerate("data/missions/", ".fit"))
+		CHECK(m.key != "data/missions/mvh_perm_map.fit");
+
+	remove((base + "/data/missions/mvh_perm_map.fit").c_str());
+	_rmdir((base + "/data/missions").c_str());
+	remove((base + "/.modindex-cache").c_str());
+	_rmdir((base + "/data").c_str());
+	_rmdir(base.c_str());
+	_rmdir(kModsRoot);
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
+}
+
+TEST_CASE("vfs join/key: one value-type helper, exactly one separator, canonical key")
+{
+	CHECK(mc2::vfs::key("Data\\Missions/Foo.FIT") == "data/missions/foo.fit");
+	CHECK(mc2::vfs::join("data/missions", "a.fit") == "data/missions/a.fit");
+	CHECK(mc2::vfs::join("data/missions/", "a.fit") == "data/missions/a.fit");
+	CHECK(mc2::vfs::join("Data\\Missions\\", "\\A.FIT") == "data/missions/a.fit");
+	CHECK(mc2::vfs::join("", "A.fit") == "a.fit");
+}
+
+TEST_CASE("newest save: (group, completedMissions, name) is order-independent")
+{
+	struct S { long g, m; const char* n; };
+	const S saves[] = {
+		{ 2, 5, "alpha" },
+		{ 2, 5, "Bravo" },     // same rank as alpha: the name decides (case-insensitive, greatest wins)
+		{ 2, 3, "zulu" },      // same group, FEWER missions: must NOT win just because it is seen last
+		{ 1, 9, "charlie" },   // lower group: never wins despite more missions
+	};
+	int idx[] = { 0, 1, 2, 3 };
+	int orders = 0;
+	do {
+		mc2::NewestSave best;
+		for (int i : idx) best.consider(saves[i].g, saves[i].m, saves[i].n);
+		CHECK(best.name == "Bravo");
+		CHECK(best.group == 2);
+		CHECK(best.missions == 5);
+		++orders;
+	} while (std::next_permutation(idx, idx + 4));
+	CHECK(orders == 24);
+	CHECK_FALSE(mc2::NewestSave().valid());
+}
+
+// Size-stripped alias rung and the ordered candidate chain (File::open order: mod -> loose -> stripped -> FST).
+TEST_CASE("vfs index: size-stripped alias keeps its ladder position and the chain is ordered")
+{
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string fstPath = scratchPath("vfs_alias.fst");
+	const char* fstNames[] = { "data/mvh_perm_data/128/a.fit", "data/mvh_perm_data/128/b.fit", "data/mvh_perm_data/128/c.fit" };
+	const std::string fstPayloads[] = { fitPayload(3), fitPayload(3), fitPayload(3) };
+	vfsAuthorFst(fstPath, fstNames, fstPayloads, 3);
+	const std::string base = std::string(kModsRoot) + "/" + kModId;
+	_mkdir("data"); _mkdir("data/mvh_perm_data"); _mkdir("data/mvh_perm_data/128");
+	_mkdir(kModsRoot); _mkdir(base.c_str()); _mkdir((base + "/data").c_str());
+	_mkdir((base + "/data/mvh_perm_data").c_str()); _mkdir((base + "/data/mvh_perm_data/128").c_str());
+	writeRaw("data/mvh_perm_data/a.fit", fitPayload(2));          // stripped alias of a (FST literal below it)
+	writeRaw("data/mvh_perm_data/b.fit", fitPayload(2));          // stripped alias of b
+	writeRaw(base + "/data/mvh_perm_data/128/b.fit", fitPayload(1)); // mod literal beats the alias
+	writeRaw("data/mvh_perm_data/128/c.fit", fitPayload(2));      // loose literal beats the alias
+	writeRaw("data/mvh_perm_data/c.fit", fitPayload(4));
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+
+		// a: no mod, no loose literal -> the stripped loose alias beats the FST literal.
+		auto a = mc2::vfs::candidates("data/mvh_perm_data/128/a.fit");
+		REQUIRE(a.size() == 2);
+		CHECK(a[0].provider == mc2::vfs::Provider::Loose);
+		CHECK(a[0].viaStripAlias);
+		CHECK(vfsBytesOf(a[0]) == fitPayload(2));
+		CHECK(a[1].provider == mc2::vfs::Provider::Fst);
+		CHECK(layerViaFile("data/mvh_perm_data/128/a.fit") == 2);   // the live ladder agrees
+
+		// b: mod literal > stripped alias > FST literal.
+		auto b = mc2::vfs::candidates("DATA\\mvh_perm_data\\128\\B.FIT");
+		REQUIRE(b.size() == 3);
+		CHECK(b[0].provider == mc2::vfs::Provider::Mod);
+		CHECK_FALSE(b[0].viaStripAlias);
+		CHECK(b[1].viaStripAlias);
+		CHECK(b[2].provider == mc2::vfs::Provider::Fst);
+		CHECK(layerViaFile("data/mvh_perm_data/128/b.fit") == 1);
+
+		// c: loose literal > stripped alias > FST literal.
+		auto c = mc2::vfs::candidates("data/mvh_perm_data/128/c.fit");
+		REQUIRE(c.size() == 3);
+		CHECK_FALSE(c[0].viaStripAlias);
+		CHECK(vfsBytesOf(c[0]) == fitPayload(2));
+		CHECK(c[1].viaStripAlias);
+		CHECK(vfsBytesOf(c[1]) == fitPayload(4));
+		CHECK(c[2].provider == mc2::vfs::Provider::Fst);
+		CHECK(layerViaFile("data/mvh_perm_data/128/c.fit") == 2);
+
+		// An aliased key is not a directory entry: enumeration lists literal keys only.
+		const auto list = mc2::vfs::enumerate("data/mvh_perm_data/128/", ".fit");
+		CHECK(list.size() == 3);
+	}
+	remove(fstPath.c_str());
+	remove("data/mvh_perm_data/a.fit"); remove("data/mvh_perm_data/b.fit"); remove("data/mvh_perm_data/c.fit");
+	remove("data/mvh_perm_data/128/c.fit"); _rmdir("data/mvh_perm_data/128"); _rmdir("data/mvh_perm_data");
+	remove((base + "/data/mvh_perm_data/128/b.fit").c_str()); _rmdir((base + "/data/mvh_perm_data/128").c_str());
+	_rmdir((base + "/data/mvh_perm_data").c_str()); remove((base + "/.modindex-cache").c_str());
+	_rmdir((base + "/data").c_str()); _rmdir(base.c_str()); _rmdir(kModsRoot);
+	setActiveMod(nullptr);
+	InitModSearchPaths("mvh_perm_mods_nonexistent");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
+}
+
+namespace
+{
+bool vfsLooksLikeFit (const mc2::vfs::Entry& e)
+{
+	return vfsBytesOf(e).compare(0, 6, "FITini") == 0;
+}
+}
+
+TEST_CASE("vfs index: a corrupt or unreadable winner falls back to the next candidate, precedence intact")
+{
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string fstPath = scratchPath("vfs_corrupt.fst");
+	const char* fstNames[] = { "data/mvh_perm_data/fall.fit" };
+	const std::string fstPayloads[] = { fitPayload(3) };
+	vfsAuthorFst(fstPath, fstNames, fstPayloads, 1);
+	vfsPutLoose("fall.fit", fitPayload(2));
+	vfsPutMod("fall.fit", "garbage, not a FIT file");
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+		const std::string k = "data/mvh_perm_data/fall.fit";
+
+		// Precedence is unchanged: the (corrupt) mod is still the lookup winner.
+		const auto win = mc2::vfs::lookup(k);
+		REQUIRE(win.has_value());
+		CHECK(win->provider == mc2::vfs::Provider::Mod);
+		CHECK(win->shadowed == 2);
+
+		// A content-validating predicate skips it: the loose candidate serves.
+		auto r1 = mc2::vfs::resolve(k, &vfsLooksLikeFit);
+		REQUIRE(r1.has_value());
+		CHECK(r1->provider == mc2::vfs::Provider::Loose);
+		CHECK(vfsBytesOf(*r1) == fitPayload(2));
+
+		// Corrupt the loose file as well: the FST candidate serves.
+		writeRaw(std::string(kVfsDir) + "fall.fit", "also garbage");
+		auto r2 = mc2::vfs::resolve(k, &vfsLooksLikeFit);
+		REQUIRE(r2.has_value());
+		CHECK(r2->provider == mc2::vfs::Provider::Fst);
+		CHECK(vfsBytesOf(*r2) == fitPayload(3));
+
+		// Default readability (physical file opens): delete the mod file under the stale index.
+		writeRaw(std::string(kVfsDir) + "fall.fit", fitPayload(2));
+		const std::string modFile = std::string(kModsRoot) + "/" + kModId + "/" + k;
+		remove(modFile.c_str());
+		auto r3 = mc2::vfs::resolve(k);
+		REQUIRE(r3.has_value());
+		CHECK(r3->provider == mc2::vfs::Provider::Loose);
+	}
+	remove(fstPath.c_str());
+	vfsDropLoose("fall.fit"); vfsDropMod("fall.fit");
+	setActiveMod(nullptr);
+	InitModSearchPaths("mvh_perm_mods_nonexistent");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
+}
+
+TEST_CASE("vfs openRead: File::open and enumerate agree on every key; mod/loose/FST conflicts resolve one way; post-build writes join")
+{
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"1");
+	const std::string fstPath = scratchPath("vfs_open_archive.fst");
+	const char* fstNames[] = { "data/mvh_perm_data/c_all.fit", "data/mvh_perm_data/c_lf.fit", "data/mvh_perm_data/c_f.fit" };
+	const std::string fstPayloads[] = { fitPayload(3), fitPayload(3), fitPayload(3) };
+	vfsAuthorFst(fstPath, fstNames, fstPayloads, 3);
+	vfsPutLoose("c_all.fit", fitPayload(2));
+	vfsPutLoose("c_lf.fit", fitPayload(2));
+	vfsPutMod("c_all.fit", fitPayload(1));
+	vfsPutMod("c_m.fit", fitPayload(1));
+	setActiveMod(kModId);
+	InitModSearchPaths(kModsRoot);
+
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		mc2::vfs::rebuild();
+
+		// Conflicting sources: mod+loose+FST -> mod, loose+FST -> loose, FST-only and mod-only resolve to their one source.
+		struct Want { const char* leaf; const char* layer; int id; };
+		const Want wants[] = { { "c_all.fit", "mod", 1 }, { "c_lf.fit", "base-loose", 2 }, { "c_f.fit", "fastfile", 3 }, { "c_m.fit", "mod", 1 } };
+		for (const Want& w : wants)
+		{
+			CAPTURE(w.leaf);
+			const std::string k = std::string(kVfsDir) + w.leaf;
+			const mc2::vfs::OpenedFile o = mc2::vfs::openRead(k.c_str());
+			REQUIRE(o.found());
+			CHECK(o.layer == w.layer);
+			if (o.fd != -1) _close(o.fd);
+			CHECK(layerViaFile(k.c_str()) == w.id);
+			CHECK(fileExists(k.c_str()) == (std::string(w.layer) == "fastfile" ? FILE_ON_FST : FILE_ON_DISK));
+		}
+
+		// Every enumerated key opens, through the provider the index named (one model for open and enumerate).
+		const auto list = mc2::vfs::enumerate(kVfsDir, ".fit");
+		REQUIRE(list.size() == 4);
+		for (const mc2::vfs::Entry& e : list)
+		{
+			CAPTURE(e.key);
+			const int want = e.provider == mc2::vfs::Provider::Mod ? 1 : e.provider == mc2::vfs::Provider::Loose ? 2 : 3;
+			CHECK(layerViaFile(e.key.c_str()) == want);
+		}
+
+		// A file written after the build: File::create joins the index (enumerate sees it), fopen'd files open on the miss probe.
+		{
+			File w;
+			const std::string k = std::string(kVfsDir) + "c_new.fit";
+			REQUIRE(w.create(k.c_str()) == NO_ERR);
+			const std::string p = fitPayload(2);
+			w.write((MemoryPtr)p.data(), p.size());
+			w.close();
+			CHECK(mc2::vfs::enumerate(kVfsDir, ".fit").size() == 5);
+			CHECK(layerViaFile(k.c_str()) == 2);
+		}
+		vfsPutLoose("c_raw.fit", fitPayload(2));
+		CHECK(layerViaFile((std::string(kVfsDir) + "c_raw.fit").c_str()) == 2);
+		CHECK_FALSE(mc2::vfs::openRead("data/mvh_perm_data/c_absent.fit").found());
+	}
+
+	remove(fstPath.c_str());
+	vfsDropLoose("c_all.fit"); vfsDropLoose("c_lf.fit"); vfsDropLoose("c_new.fit"); vfsDropLoose("c_raw.fit");
+	vfsDropMod("c_all.fit"); vfsDropMod("c_m.fit");
+	setActiveMod(nullptr);
+	InitModSearchPaths("mvh_perm_mods_nonexistent");
+	_putenv_s(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">(),"");
 }
 
 } // TEST_SUITE("PathPermutations")

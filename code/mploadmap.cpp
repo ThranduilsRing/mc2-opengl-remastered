@@ -16,6 +16,8 @@ MPLoadMap.cpp			: Implementation of the MPLoadMap component.
 #include"platform_windows.h"
 #include"missionbriefingscreen.h"
 #include "mc2fmt.h"
+#include "vfs.h"
+#include "save_select.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -151,25 +153,15 @@ void MPLoadMap::seedDialog( bool bSeedSingle )
 {
 	mapList.removeAllItems( true );
 
-	// need to add items to the save game list
-	char findString[512];
-	mc2::fmt::to_buf(findString, "{}*.fit", mc2::fmt::safe(missionPath));
-
-
-	WIN32_FIND_DATA	findResult;
-	HANDLE searchHandle = FindFirstFile(findString,&findResult); 
-	if ( searchHandle != INVALID_HANDLE_VALUE )
+	// Maps come from the merged VFS index (mods + loose + FST), so a mod-only or FST-only map
+	// is listed. Enumerated at menu time only; sorted by key, one entry per name.
+	for ( const auto& mapEntry : mc2::vfs::enumerate( missionPath, ".fit" ) )
 	{
-		do
-		{
-			if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-			{
-				addFile( findResult.cFileName, bSeedSingle );
-			}
-		} while (FindNextFile(searchHandle,&findResult) != 0);
+		char name[256];	// addFile strips ".fit" in place, so it gets a writable copy
+		strncpy( name, mapEntry.name.c_str(), sizeof(name) - 1 );
+		name[sizeof(name) - 1] = '\0';
+		addFile( name, bSeedSingle );
 	}
-
-	FindClose(searchHandle);
 
 	if ( bSeedSingle )
 	{
@@ -307,9 +299,7 @@ void MPLoadMap::seedFromCampaign()
 		FullPathFileName findPath;
 		findPath.init( savePath, finalStr.c_str(), ".fit" );
 
-		std::string newestFile;
-		long	groupCount = -1;
-		long	missionCount = -1;
+		mc2::NewestSave newest;	// order-independent: (group, completedMissions, name) -- see save_select.h
 		FitIniFile tmpFile;
 
 		WIN32_FIND_DATA	findResult;
@@ -326,22 +316,11 @@ void MPLoadMap::seedFromCampaign()
 
 					 if ( NO_ERR == tmpFile.seekBlock( "General" ) )
 					 {
-						 long group, missions;
+						 long group = 0, missions = 0;
 
 						tmpFile.readIdLong( "Group ", group );
-						if ( group > groupCount )
-						{
-							groupCount = group;
-							tmpFile.readIdLong( "CompletedMissions", missions );
-							missionCount = missions;
-							newestFile = findResult.cFileName;
-						}
-						else if ( group == groupCount )
-						{
-							tmpFile.readIdLong( "CompletedMissions", missions );
-							missionCount = std::max(missionCount, missions);
-							newestFile = findResult.cFileName;
-						}
+						tmpFile.readIdLong( "CompletedMissions", missions );
+						newest.consider( group, missions, findResult.cFileName );
 					 }
 
 					tmpFile.close();
@@ -353,12 +332,12 @@ void MPLoadMap::seedFromCampaign()
 
 		 FindClose(searchHandle);
 
-		 if ( !newestFile.empty() )
+		 if ( newest.valid() )
 		 {
-			 findPath.init( savePath, newestFile.c_str(), ".fit" );
+			 findPath.init( savePath, newest.name.c_str(), ".fit" );
 			 FitIniFile file;
-			 long group;
-			 long missions;
+			 long group = 0;
+			 long missions = 0;
 			 char campaignFileName[256];
 			 campaignFileName[0] = 0;
 			 if ( NO_ERR == file.open( findPath ) )

@@ -64,7 +64,8 @@
 #include <algorithm>
 
 #include "../GameOS/gameos/crash_content.h"
-#include "file_mod.inc"
+#include "vfs.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 //-----------------
 // Static Variables
@@ -110,22 +111,18 @@ long fileExists (mc2::czstring fName, long destination_mask)
 	normName[sizeof(normName) - 1] = '\0';
 	fst_normalize_loose_key_inplace(normName);
 
-	// Active mod wins; falls back to base data, then FastFile.
-	if (auto modHandle = TryModOpen(normName)) {
-		_close(*modHandle);
+	// The same resolution as File::open (mclib/vfs.h): 1 = a mod or loose file, 2 = an FST member.
+	const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(normName);
+	if (opened.fd != -1) {
+		_close(opened.fd);
 		return 1 & destination_mask;
 	}
-
+	if (opened.fst)
+		return 2 & destination_mask;
+	// A directory (or anything else that stats but does not open as a file) still "exists" for the probe.
 	struct _stat st;
 	if (mc2_stat(normName,&st) != -1)
-	{
 		return 1 & destination_mask;
-	}
-
-	long fastFileHandle = -1;
-	FastFilePtr	fastFile = FastFileFind(normName,fastFileHandle);
-	if (fastFile)
-		return 2 & destination_mask;
 
 	// Full-ladder miss. fileExists is a probe API (the CD-presence check
 	// calls it internally), so misses here are often benign — the nightly
@@ -193,6 +190,7 @@ File::File (void)
 
 	inRAM = FALSE;
 	fileImage = nullptr;
+	m_writableImage = nullptr;
 
 	fastFile = nullptr;
 }
@@ -258,79 +256,29 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 			lastError = errno;
 			return lastError;
 		}
+		mc2::vfs::noteWrite(m_fileName);
 	}
 	else
 	{
 		// sebi: add this check because we do not use fileMode and for some reason assume that it is read only
 		gosASSERT(fileMode == READ);
 		//----------------------------------------------------------------
-		//-- Active mod wins; falls back to base data/.
-		{
-			// Pass original fName as req so level-2 trace shows pre-lowercase casing.
-			if (auto modHandle = TryModOpen(m_fileName.c_str(), fName))
-			{
-				handle = *modHandle;
-				++g_resolveOpens;
-				if (false && strstr(m_fileName.c_str(), "mechicon"))
-					printf("[MECHICON] File::open MOD-HIT: %s\n", m_fileName.c_str());
-			}
-			else
-			{
-				handle = _open(m_fileName.c_str(), _O_RDONLY | _O_BINARY);
-				if (handle != INVALID_HANDLE_VALUE)
-					++g_resolveOpens;
-				if (false && strstr(m_fileName.c_str(), "mechicon") && handle != INVALID_HANDLE_VALUE)
-					printf("[MECHICON] File::open LOOSE: %s\n", m_fileName.c_str());
-				if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
-					std::string key = NormalizeKey(m_fileName.c_str());
-					EmitResolveRecord(key.c_str(), fName, "base-loose", m_fileName.c_str(), nullptr);
-				}
-			}
-		}
+		//-- The merged VFS index resolves mod > loose > size-stripped loose > FST (mclib/vfs.h).
+		//-- Pass the original fName as req so the level-2 trace shows the caller's casing.
+		const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(m_fileName.c_str(), fName);
+		if (opened.found())
+			++g_resolveOpens;
+		// Always assign: close() leaves CLOSED_HANDLE_VALUE behind, and a miss must read as INVALID_HANDLE_VALUE (the old _open() result),
+		// not as that stale value (a reopened File used to take the 'loose file opened' branch with no descriptor).
+		handle = opened.fd != -1 ? opened.fd : INVALID_HANDLE_VALUE;
+		const std::string looseOwner = opened.owner;
 
-		// Try stripping a numeric size subdir (e.g. data/tgl/128/foo.tga -> data/tgl/foo.tga).
-		// Upscaled loose overrides live in the parent dir without the size component.
-		if (handle == INVALID_HANDLE_VALUE) {
-			for (const char* p = m_fileName.c_str(); *p; ++p) {
-				if (*p != '/') continue;
-				const char* digits = p + 1;
-				const char* q = digits;
-				while (*q >= '0' && *q <= '9') ++q;
-				if (q > digits && *q == '/') {
-					char stripped[2048];
-					const size_t prefixLen = static_cast<size_t>((digits - m_fileName.c_str()));
-					const char* suffix = q + 1;
-					if (prefixLen + strlen(suffix) < sizeof(stripped)) {
-						memcpy(stripped, m_fileName.c_str(), prefixLen);
-						strcpy(stripped + prefixLen, suffix);
-						handle = _open(stripped, _O_RDONLY | _O_BINARY);
-						if (handle != INVALID_HANDLE_VALUE)
-							++g_resolveOpens;
-						if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
-							std::string key = NormalizeKey(m_fileName.c_str());
-							EmitResolveRecord(key.c_str(), fName, "base-strip", stripped, nullptr);
-						}
-					}
-					break;
-				}
-			}
-		}
-
-		//------------------------------------------
-		//-- Next, see if file is in fastFile.
 		if (handle == INVALID_HANDLE_VALUE)
 		{
 			lastError = errno;
 
-			fastFile = FastFileFind(m_fileName.c_str(),fastFileHandle);
-			if (fastFile)
-				++g_resolveOpens;
-			if (false && fastFile && strstr(m_fileName.c_str(), "mechicon"))
-				printf("[MECHICON] File::open FST-HIT: %s\n", m_fileName.c_str());
-			if (fastFile && logFileResolve >= 2) {
-				std::string key = NormalizeKey(m_fileName.c_str());
-				EmitResolveRecord(key.c_str(), fName, "fastfile", "", nullptr);
-			}
+			fastFile = opened.fst;
+			fastFileHandle = opened.fstMember;
 			if (!fastFile)
 			{
                 if(!Environment.checkCDForFiles) {
@@ -443,11 +391,11 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 
 			// Never empty, so a zero-length member still has an image to read from (what malloc(0) gave).
 			m_ownedImage.assign(std::max<size_t>(fileSize(), 1), 0);
-			fileImage = m_ownedImage.data();
+			fileImage = m_writableImage = m_ownedImage.data();
 			if (fileImage)
 			{
-				fastFile->readFast(fastFileHandle,fileImage,fileSize());
-				crashbundle_content_image(m_fileName.c_str(), fileImage, fileSize());
+				fastFile->readFast(fastFileHandle,m_ownedImage.data(),fileSize());
+				crashbundle_content_image(m_fileName.c_str(), m_ownedImage.data(), fileSize());
 
 				physicalLength = getLength();
 				//------------------------------------
@@ -464,7 +412,7 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 		else
 		{
 			setup();
-			crashbundle_content_fd(handle, m_fileName.c_str(), "loose");
+			crashbundle_content_fd(handle, m_fileName.c_str(), looseOwner);
 	
 			//------------------------------------------------------------
 			// NEW FUNCTIONALITY!!!
@@ -551,15 +499,15 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 
 			// Never empty (see the FastFile case above).
 			m_ownedImage.assign(std::max<size_t>(fileSize, 1), 0);
-			fileImage = m_ownedImage.data();
+			fileImage = m_writableImage = m_ownedImage.data();
 
 			if (_parent->getFileClass() == PACKETFILE)
 			{
-				result = (static_cast<PacketFilePtr>(_parent))->readPacket((static_cast<PacketFilePtr>(_parent))->getCurrentPacket(),fileImage);
+				result = (static_cast<PacketFilePtr>(_parent))->readPacket((static_cast<PacketFilePtr>(_parent))->getCurrentPacket(),m_ownedImage.data());
 			}
 			else
 			{
-				result = _read(handle,fileImage,fileSize);
+				result = _read(handle,m_ownedImage.data(),fileSize);
 				if (result != fileSize)
 					lastError = errno;
 			}
@@ -575,23 +523,37 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 
 long File::open(const char* buffer, int bufferLength )
 {
-	if ( buffer && bufferLength > 0 )
-	{	
-		m_ownedImage.clear();
-		fileImage = reinterpret_cast<unsigned char*>(const_cast<char*>(buffer));
-		physicalLength = bufferLength;
-		logicalPosition = 0;
-		fileMode = RDWRITE;
-		inRAM = true;
-	}
-	else// fail on NULL
-	{
+	if (!buffer || bufferLength <= 0)	// fail on NULL
 		return FILE_NOT_OPEN;
-	}
+	return openReadOnly(ReadOnlyBytes(reinterpret_cast<const unsigned char*>(buffer), static_cast<size_t>(bufferLength)));
+}
 
+long File::openReadOnly(ReadOnlyBytes bytes)
+{
+	if (bytes.empty() || !bytes.data())
+		return FILE_NOT_OPEN;
+	m_ownedImage.clear();
+	fileImage = bytes.data();
+	m_writableImage = nullptr;	// writes fail with BAD_WRITE_ERR; the caller's memory is never modified
+	physicalLength = static_cast<unsigned long>(bytes.size());
+	logicalPosition = 0;
+	fileMode = READ;
+	inRAM = true;
 	return NO_ERR;
+}
 
-
+long File::openWritable(WritableBytes bytes)
+{
+	if (bytes.empty() || !bytes.data())
+		return FILE_NOT_OPEN;
+	m_ownedImage.clear();
+	fileImage = bytes.data();
+	m_writableImage = bytes.data();	// written in place, never grown past bytes.size()
+	physicalLength = static_cast<unsigned long>(bytes.size());
+	logicalPosition = 0;
+	fileMode = RDWRITE;
+	inRAM = true;
+	return NO_ERR;
 }
 
 //---------------------------------------------------------------------------
@@ -614,6 +576,7 @@ long File::createWithCase(mc2::czstring fName )
 		lastError = errno;
 		return lastError;
 	}
+	mc2::vfs::noteWrite(m_fileName);
 
 	return 0;
 }
@@ -699,6 +662,7 @@ void File::close (void)
 		m_ownedImage.clear();
 		m_ownedImage.shrink_to_fit();
 		fileImage = nullptr;
+		m_writableImage = nullptr;
 		inRAM = FALSE;
 	}
 }
@@ -838,7 +802,7 @@ long File::read (unsigned long pos, MemoryPtr buffer, long length)
 
 	if (inRAM && fileImage)
 	{
-		char *readAddress = (reinterpret_cast<char *>(fileImage))+pos;
+		const char *readAddress = (reinterpret_cast<const char *>(fileImage))+pos;
 		memcpy(reinterpret_cast<char *>(buffer),readAddress,length);
 		return(length);
 	}
@@ -877,7 +841,7 @@ unsigned char File::readByte (void)
 
 	if (inRAM && fileImage)
 	{
-		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
 		memcpy(reinterpret_cast<char *>(&value),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
@@ -913,7 +877,7 @@ short File::readWord (void)
 
 	if (inRAM && fileImage)
 	{
-		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
 		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
@@ -955,7 +919,7 @@ int File::readInt(void)
 
 	if (inRAM && fileImage)	
 	{
-		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
 		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
@@ -997,7 +961,7 @@ float File::readFloat( void )
 
 	if (inRAM && fileImage)	
 	{
-		char *readAddress = reinterpret_cast<char*>(fileImage)+logicalPosition;
+		const char *readAddress = reinterpret_cast<const char*>(fileImage)+logicalPosition;
 		memcpy(reinterpret_cast<char *>((&value)),readAddress,sizeof(value));
 		logicalPosition += sizeof(value);
 	}
@@ -1063,7 +1027,7 @@ long File::read (MemoryPtr buffer, long length)
 	
 	if (inRAM && fileImage)
 	{
-		char *readAddress = reinterpret_cast<char *>(fileImage)+logicalPosition;
+		const char *readAddress = reinterpret_cast<const char *>(fileImage)+logicalPosition;
 		memcpy(reinterpret_cast<char *>(buffer),readAddress,length);
 		logicalPosition += length;
 		return(length);
@@ -1120,7 +1084,7 @@ long File::readLine (MemoryPtr buffer, long maxLength)
 	{
 		if (isOpen())
 		{
-			unsigned char *readAddress = reinterpret_cast<unsigned char *>(fileImage)+logicalPosition;
+			const unsigned char *readAddress = fileImage+logicalPosition;
 
             //sebi support linux created files
 			while ((i<maxLength) && ((i+logicalPosition) < fileSize()) && readAddress[i]!='\r' && readAddress[i]!='\n' )
@@ -1217,7 +1181,7 @@ long File::readLineEx (MemoryPtr buffer, long maxLength)
 	{
 		if (isOpen())
 		{
-			unsigned char *readAddress = reinterpret_cast<unsigned char *>(fileImage)+logicalPosition;
+			const unsigned char *readAddress = fileImage+logicalPosition;
 
 			while( i<maxLength && readAddress[i]!='\n' )
 				i++;
@@ -1289,9 +1253,9 @@ long File::write (unsigned long pos, MemoryPtr buffer, long bytes)
 
 			if ( inRAM )
 			{
-				if ( logicalPosition + bytes > physicalLength )
+				if ( !m_writableImage || logicalPosition +bytes > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, buffer, bytes );
+				memcpy( m_writableImage + logicalPosition, buffer, bytes );
 				result = bytes;
 
 			}
@@ -1326,9 +1290,9 @@ long File::writeByte (byte value)
 		{
 			if ( inRAM )
 			{
-				if ( logicalPosition + sizeof(byte) > physicalLength )
+				if ( !m_writableImage || logicalPosition +sizeof(byte) > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, &value, sizeof( byte ) );
+				memcpy( m_writableImage + logicalPosition, &value, sizeof( byte ) );
 				result = sizeof( byte );				
 			}
 			else
@@ -1367,9 +1331,9 @@ long File::writeWord (short value)
 		{
 			if ( inRAM )
 			{
-				if ( logicalPosition + sizeof( short ) > physicalLength )
+				if ( !m_writableImage || logicalPosition +sizeof( short ) > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, &value, sizeof( short ) );
+				memcpy( m_writableImage + logicalPosition, &value, sizeof( short ) );
 				result = sizeof( value );				
 			}
 			else
@@ -1418,9 +1382,9 @@ long File::writeLong (long value)
 		{
 			if ( inRAM )
 			{
-				if ( logicalPosition + sizeof( value ) > physicalLength )
+				if ( !m_writableImage || logicalPosition +sizeof( value ) > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, &value, sizeof( value ) );
+				memcpy( m_writableImage + logicalPosition, &value, sizeof( value ) );
 				result = sizeof( value );				
 			}
 			else
@@ -1459,9 +1423,9 @@ long File::writeInt (int value)
 		{
 			if ( inRAM )
 			{
-				if ( logicalPosition + sizeof( value ) > physicalLength )
+				if ( !m_writableImage || logicalPosition +sizeof( value ) > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, &value, sizeof( value ) );
+				memcpy( m_writableImage + logicalPosition, &value, sizeof( value ) );
 				result = sizeof( value );				
 			}
 			else
@@ -1502,9 +1466,9 @@ long File::writeFloat (float value)
 		{
 			if ( inRAM )
 			{
-				if ( logicalPosition + sizeof( value ) > physicalLength )
+				if ( !m_writableImage || logicalPosition +sizeof( value ) > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, &value, sizeof( value ) );
+				memcpy( m_writableImage + logicalPosition, &value, sizeof( value ) );
 				result = sizeof( value );				
 			}
 			else
@@ -1606,9 +1570,9 @@ long File::write(MemoryPtr buffer, size_t bytes)
 		{
 			if ( inRAM )
 			{
-				if ( logicalPosition + bytes > physicalLength )
+				if ( !m_writableImage || logicalPosition +bytes > physicalLength )
 					return BAD_WRITE_ERR;
-				memcpy( fileImage + logicalPosition, buffer, bytes );
+				memcpy( m_writableImage + logicalPosition, buffer, bytes );
 				result = static_cast<long>(bytes);
 			}
 			else

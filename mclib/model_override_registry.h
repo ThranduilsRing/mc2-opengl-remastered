@@ -99,7 +99,7 @@ private:
 };
 
 // Mounted mod roots ("mods/<id>"), lowest priority first, in the order the file VFS mounts
-// them (mclib/file_mod.inc InitModSearchPaths): MC2_MOD_DEPS and the active mod.json's
+// them (mclib/vfs.cpp InitModSearchPaths): MC2_MOD_DEPS and the active mod.json's
 // dependencies below the active mod. modJsonDeps is the active mod's declared dependency list.
 std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std::string_view envDeps,
                                                  const std::vector<std::string>& modJsonDeps);
