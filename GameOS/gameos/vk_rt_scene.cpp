@@ -146,6 +146,8 @@ void retireEach(VulkanContext& ctx, Seq& seq) {
 
 // Builds one BLAS per geometry list into `out` (same order) with PREFER_FAST_TRACE | ALLOW_COMPACTION, then compacts those that save >= 10%. All or
 // nothing: on any failure `out` is retired and false returned. An empty list yields an empty structure (every listed geometry must have triangles).
+const char* g_failStage = "none";   // the last scene-build failure point, printed on the FAIL lines
+
 bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<TriangleGeometry>>& geos, std::string_view name, std::vector<AccelStructure>& out,
                  BuildStats& st) {
     out.clear();
@@ -159,7 +161,7 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<Tri
     BuildFlags flags;
     flags.allowCompaction = true;
     OwnedQueryPool qp = createCompactionQueryPool(ctx, static_cast<uint32_t>(geos.size()));
-    if (!qp) return false;
+    if (!qp) { g_failStage = "query_pool"; return false; }
     bool ok = true;
     const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Blas);
@@ -167,11 +169,12 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<Tri
         uint32_t calls = 0;
         VkDeviceSize span = 0;
         if (!recordBlasJobs(ctx, cmd, jobs, flags, name, s.scratch, &calls, &span)) {
+            g_failStage = "blas_record";
             ok = false;
             return;
         }
         for (size_t i = 0; i < geos.size(); ++i)
-            if (!geos[i].empty() && !jobs[i].ok) ok = false;   // recorded builds of the others still complete; everything retires below
+            if (!geos[i].empty() && !jobs[i].ok) { g_failStage = "blas_job"; ok = false; }   // recorded builds of the others still complete; everything retires below
         st.buildCalls += calls;
         st.scratchSpan = std::max<uint64_t>(st.scratchSpan, span);
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the compaction query below reads the built structures
@@ -180,6 +183,7 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<Tri
     }, "rt_scene blas");
     s.scratch.retireStale(ctx);
     if (!submitted || !ok) {
+        if (!submitted) g_failStage = "blas_submit";
         retireEach(ctx, out);
         return false;
     }
@@ -244,6 +248,7 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     const uint32_t terrainBase = terrainRowBase(static_cast<uint32_t>(propRows.size()));
     const uint32_t noUv = 0;
     const VkDeviceSize uvBytes = uv.empty() ? sizeof(noUv) : uv.size() * sizeof(uint32_t);
+    g_failStage = !customIndexFits(static_cast<uint32_t>(rows.size())) ? "rows_fit" : "material_buffers";
     if (!customIndexFits(static_cast<uint32_t>(rows.size())) ||
         !s.pendingMat.createFilled(ctx.allocator(), ctx.device(), rows.data(), rows.size() * sizeof(MaterialRow), kStorage, "rt_scene.materials") ||
         !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uv.empty() ? &noUv : uv.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
@@ -281,6 +286,7 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     if (inst.empty()) return tlas;   // an empty scene: nothing to trace, still a valid (empty) snapshot
     OwnedBuffer buf;
     if (!buf.createFilled(ctx.allocator(), ctx.device(), inst.data(), inst.size() * sizeof(inst[0]), kBuildInput, "rt_scene.instances")) {
+        g_failStage = "instance_buffer";
         retirePending(ctx, s);
         return std::nullopt;
     }
@@ -291,13 +297,14 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     bool ok = false;
     const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Tlas);
-        if (!recordTlasBuild(ctx, cmd, buf.deviceAddress(), instanceCount, flags, "rt_scene.tlas", tlas, s.scratch)) return;
+        if (!recordTlasBuild(ctx, cmd, buf.deviceAddress(), instanceCount, flags, "rt_scene.tlas", tlas, s.scratch)) { g_failStage = "tlas_record"; return; }
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
         ok = true;
     }, "rt_scene tlas");
     s.scratch.retireStale(ctx);
     ctx.retire(std::move(buf));
     if (!submitted || !ok) {
+        if (!submitted) g_failStage = "tlas_submit";
         if (tlas) ctx.retire(std::move(tlas));
         retirePending(ctx, s);
         return std::nullopt;
@@ -748,7 +755,7 @@ void noteTerrain(const TerrainSource& t) {
     if (!tlas) {
         retireEach(*ctx, built);
         s.terrainKeyFailed = key;
-        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL terrain build tiles={} key=0x{:x}; keeping the last snapshot", ranges.size(), key);
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL terrain build tiles={} key=0x{:x} stage={}; keeping the last snapshot", ranges.size(), key, g_failStage);
         return;
     }
     // Publish: the old TLAS retires before the BLASes it referenced.
@@ -930,7 +937,7 @@ void updateProps(uint64_t propVbo) {
         for (auto& [ty, a] : added)
             if (a) ctx->retire(std::move(a));
         s.propGenFailed = gen;
-        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL prop build gen={} types={} instances={}; keeping the last snapshot", gen, types.size(), inst.size());
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL prop build gen={} types={} instances={} stage={}; keeping the last snapshot", gen, types.size(), inst.size(), g_failStage);
         return;
     }
     if (s.tlas) ctx->retire(std::move(s.tlas));
