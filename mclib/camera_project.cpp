@@ -7,6 +7,7 @@
 #include "mc2fmt.h"
 #include "terrain_runtime.h"
 #include "terrain_ray_pick.h"
+#include "pick_occlusion.h"
 //---------------------------------------------------------------------------
 
 inline void mapTileCellToWorldPos (long tileR, long tileC, long cellR, long cellC, glm::vec3& worldPos) {
@@ -232,16 +233,16 @@ static bool pickFail (int code, long sx, long sy)
 	return false;
 }
 
-bool Camera::pickScreenRay(long screenX, long screenY, double (&ro)[3], double (&d)[3])
+bool mc2::pickScreenRay(Camera& camera, long screenX, long screenY, double (&ro)[3], double (&d)[3])
 {
-	const double w = screenResolution.x;
-	const double h = screenResolution.y;
+	const double w = camera.getScreenRes().x;
+	const double h = camera.getScreenRes().y;
 	if (w <= 0.0 || h <= 0.0)
 		return pickFail(2, screenX, screenY);
 
 	// Row-vector convention (clip = p * G), G(r,c) = Mf[c][r] as in projectModernClipGL.
 	// Inverse: p = clip * Gi, so p_i = sum_k clip_k * Gi[k][i].
-	const glm::mat4 Mf = worldToClipGL();
+	const glm::mat4 Mf = camera.worldToClipGL();
 	double G[4][4], Gi[4][4];
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
@@ -286,7 +287,7 @@ bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, gl
 	if (turn < 4 || !land || !Terrain::mapData)
 		return pickFail(1, screenX, screenY);
 	double ro[3], d[3];
-	if (!pickScreenRay(screenX, screenY, ro, d)) return false;
+	if (!mc2::pickScreenRay(*this, screenX, screenY, ro, d)) return false;
 	if (d[2] > -1e-6)            // a ray that never descends cannot hit the surface
 		return pickFail(8, screenX, screenY);
 

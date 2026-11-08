@@ -8,6 +8,8 @@ terrain-rejected point picks (object name ID, pixel and the two ray distances).
 Shared point picker uses the terrain pick's exact near-plane MC2 ray, intersects
 rotated object bounds, rejects hits behind the first visual-heightfield surface,
 and resolves foreground depth before selection priority. Drag rectangles unchanged.
+The ray adapter is a free function in a leaf picking header; Camera's shared
+class header is unchanged from the contact-pick base.
 Bounds are a CPU approximation, not pixel-exact animated/alpha-tested geometry.
 Added ridge/front/rear and ray-box miss doctests in test_contact_pick.cpp.
 Next: review diff; targeted contracts/doctests; box build/unit/smoke-lite; final

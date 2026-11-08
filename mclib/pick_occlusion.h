@@ -3,7 +3,12 @@
 #include <cmath>
 #include <limits>
 
+class Camera;
+
 namespace mc2 {
+// Engine adapter shared with the terrain picker, without changing Camera's header.
+bool pickScreenRay(Camera& camera, long x, long y, double (&origin)[3], double (&direction)[3]);
+
 // Ray and bounds are in the object's unrotated MC2 frame. A projected rect
 // alone does not say where along the cursor ray the object is encountered.
 inline bool pickBoxHit(const double (&origin)[3], const double (&direction)[3],

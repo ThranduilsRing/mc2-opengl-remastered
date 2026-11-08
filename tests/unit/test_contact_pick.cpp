@@ -1,7 +1,7 @@
 #include "doctest.h"
 #include "../../code/hover_name.h"
 #include "../../mclib/terrain_ray_pick.h"
-#include "../../code/pick_occlusion.h"
+#include "../../mclib/pick_occlusion.h"
 
 TEST_CASE("pick occlusion: ridge rejects rear object and accepts foreground")
 {

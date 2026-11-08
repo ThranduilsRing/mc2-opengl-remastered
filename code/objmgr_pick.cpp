@@ -669,7 +669,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     static thread_local std::vector<PickCandidate> stack;
     stack.clear();
     double origin[3], direction[3];
-    if (!eye->pickScreenRay(x, y, origin, direction)) return GameObjectPtr{};
+    if (!mc2::pickScreenRay(*eye, x, y, origin, direction)) return GameObjectPtr{};
     // Include non-targetable foreground objects and other commanders in the
     // occlusion stack. Filtering them first would pick straight through them.
     for (long h = 1; h <= ObjectManager->getMaxObjects(); ++h) {
