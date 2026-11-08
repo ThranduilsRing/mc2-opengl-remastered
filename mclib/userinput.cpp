@@ -181,7 +181,10 @@ void MouseCursorData::initCursors (mc2::czstring cursorFileName)
 		if (!cursor) MC2_LOG(Ui, Warn, "[CURSOR] native creation failed shape={} frame={}: {}", shape, frame, SDL_GetError());
 		return cursor;
 	});
-	MC2_LOG(Ui, Info, "[CURSOR] native shapes={}", nativeCursors.shapes.size());
+	size_t created = 0, failed = 0;
+	for (const auto& shape : nativeCursors.shapes)
+		for (const auto cursor : shape) cursor ? ++created : ++failed;
+	MC2_LOG(Ui, Info, "[CURSOR] native shapes={} created={} failed={}", nativeCursors.shapes.size(), created, failed);
 }
 
 //---------------------------------------------------------------------------
@@ -638,7 +641,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	static int s_osCursor = -1;
 	if (s_osCursor < 0) s_osCursor = mc2::gate::get<"MC2_OS_CURSOR">() ? 1 : 0;
 	if (s_osCursor) return;
-	if (cursors && cursors->nativeCursors.get(mouseState, mouseFrame)) return;
+	if (usesNativeCursor()) return;
 
     //sebi, always NOT async mouse
 	//if (!mc2UseAsyncMouse)

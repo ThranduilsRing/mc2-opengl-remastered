@@ -106,6 +106,8 @@ void __stdcall UpdateRenderers()
 			// panel. Paint it into the ImGui foreground list instead.
 			if ( GuiRuntime::FrameActive() )
 			GuiRuntime::RegisterForegroundCursor( []() -> bool {
+				// Native ownership also suppresses ImGui's frame-paced fallback arrow.
+				if (userInput && userInput->usesNativeCursor()) return true;
 				gos_VERTEX q[4];
 				unsigned long tex = 0;
 				if ( !userInput || !userInput->captureCursorQuad( q, tex ) || !tex || tex == 0xffffffff )

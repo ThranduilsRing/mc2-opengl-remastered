@@ -588,6 +588,10 @@ class UserInput
 		}
 
 		void syncNativeCursor();
+		bool usesNativeCursor() const
+		{
+			return cursors && cursors->nativeCursors.get(mouseState, mouseFrame);
+		}
 
 		long getMouseFrame (void)
 		{
