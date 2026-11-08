@@ -400,6 +400,7 @@ profile = true;
 	g_ablExec->statementStartPtr = nullptr;
 	g_ablExec->execStatementCount = 0;
 	stack = nullptr;
+	g_ablExec->stackLimit = nullptr;
 	g_ablExec->tos = nullptr;
 	g_ablExec->stackFrameBasePtr = nullptr;
 	g_ablExec->StaticDataPtr = nullptr;
@@ -487,6 +488,7 @@ profile = true;
 	// Allocate the runtime stack...
 	stackStore.assign(runtimeStackSize / sizeof(StackItem), StackItem{});
 	stack = stackStore.data();
+	g_ablExec->stackLimit = stack + stackStore.size();
 
 	//-----------------------------------
 	// Allocate Eternal Vars Size List...

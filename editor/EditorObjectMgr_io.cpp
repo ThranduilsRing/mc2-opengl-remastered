@@ -21,7 +21,7 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 	long* pPoints = pTacMapPoints + 1;
 	long pointCounter = 0;
 	
-	file.open(pBuffer, bufferSize );
+	file.openWritable( File::WritableBytes( reinterpret_cast<unsigned char*>(pBuffer), static_cast<size_t>(bufferSize) ) );
 	file.writeLong( static_cast<int>(buildings.size()) );
 
 	gos_VERTEX point;
