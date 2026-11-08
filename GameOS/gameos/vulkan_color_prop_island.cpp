@@ -38,6 +38,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "gos_terrain_lighting.h"
 #include "../../RenderCore/PropMaterialGpu.h"
 #include "../../RenderCore/PropMaterialRows.h"
+#include "../../RenderCore/PropRecordCache.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
@@ -236,6 +237,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     std::vector<int32_t>        packetMaterialIds;
     bool authoredReady = false;
     bool authoredAttempted = false;
+    std::array<uint32_t, 2> materialFeedKeys{};
+    bool packetMaterialsReady = false;
     // FENCE-UVSCALE-1: per-packet UV sub-region scale, same indexing as
     // packetLayerOff/On above. Default 1.0 (no crop) until the feed populates
     // it -- matches GL's PerDrawEntry.uvScaleX/Y default (gos_static_prop_batcher.cpp
@@ -296,8 +299,19 @@ struct ColorPropIsland : mc2vk::IslandState {
     struct PropGpu {
         mc2vk::OwnedBuffer pkt, run, compact, cmd;
         VkDeviceSize pktCap = 0, runCap = 0, compactCap = 0, cmdCap = 0;
+        mc2vk::OwnedBuffer instances;
+        VkDeviceSize instanceCap = 0;
+        uint64_t instanceGeneration = 0;
+        std::optional<PropRecordCacheKey> uploaded;
     };
     PropGpu gpu[mc2vk::kMaxFramesInFlight];
+    PropInstanceGeneration instanceSource;
+    uint64_t materialGeneration = 0, resourceGeneration = 0;
+    PropRecordCacheKey recordKey{};
+    std::optional<PropRecordCacheKey> recorded;
+    uint32_t listStart[kListCount + 1]{}, listCounts[kListCount]{};
+    unsigned long cachedTypeRuns = 0;
+    uint64_t cachedLeaves = 0;
     std::vector<PropPacketRow> pktScratch[kListCount];   // rows parallel to cmdScratch
     std::vector<PropRunRow> runScratch;
     std::vector<PropDrawCmd> cmdScratch[kListCount];   // indexed by kList*
@@ -404,7 +418,7 @@ void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAllo
     const VkDeviceSize lightRange = lightSpan ? lightSpan.range : mainSpan.range;
     const Want want[3] = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kFrameUboRange, true},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range, true},
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, s->gpu[par].instances.get(), s->gpu[par].instanceCap, true},
         {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, lightRange, s->tier1 && s->wantLighting},
     };
     for (const Want& w : want) {
@@ -714,6 +728,7 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     }
     *tgt.importedGlName = changeKey;
     *tgt.ready = true;
+    ++s->materialGeneration;
     vlog("%s albedo 2D_ARRAY imported: %ux%u layers=%u mips=%u fmt=%s (%zu B).",
          tgt.tag, width, height, a->layers, mips, a->vkFormat == 141u ? "BC5" : compressed ? "BC7" : "RGBA8", blob.size());
     return true;
@@ -790,6 +805,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     s->packetMaterialIds.clear();
     if (have) s->packetMaterialIds.assign(feed->packetMaterialIds, feed->packetMaterialIds + feed->packetCount);
     s->authoredReady = feed != nullptr;
+    ++s->materialGeneration;
     write_descriptors(s);
     return true;
 }
@@ -1464,6 +1480,7 @@ bool upload_geometry_once(ColorPropIsland* s) {
              feed.vertexStride, mc2_static_prop_vertex_stride());
     }
     s->geomUploaded = true;
+    ++s->resourceGeneration;
     vlog("prop geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",
          static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes),
          feed.vertexStride, feed.packetCount, feed.typeCount);
@@ -1491,8 +1508,11 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->hotCpu = {};
     s->authoredReady = false;
     s->authoredAttempted = false;
+    s->materialFeedKeys = {};
+    s->packetMaterialsReady = false;
     s->packetMaterialIds.clear();
     ++s->mapGeneration;
+    ++s->resourceGeneration;
     mc2vk::bumpDescEpoch();   // map change: every descriptor write cache rewrites once
 }
 
@@ -1523,6 +1543,12 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
     if (s->wantMaterial && s->tier1) {
         Mc2ColorPropMaterialFeed mf{};
         if (mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOff != 0 && !mf.bucketed) {
+            const std::array<uint32_t, 2> keys{mf.arrayKeyOff, mf.arrayKeyOn};
+            if (s->materialFeedKeys != keys) {
+                s->materialFeedKeys = keys;
+                s->authoredAttempted = false;
+                s->packetMaterialsReady = false;
+            }
             if (!s->authoredAttempted) {
                 s->authoredAttempted = true;
                 if (!cp_import_authored(s, &mf))
@@ -1531,7 +1557,8 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
             s->terrainSunMC2[0] = mf.terrainSunMC2[0];
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
-            if (s->materialReady && s->materialReadyOn) return true;
+            if (s->materialReady && s->materialReadyOn &&
+                s->albedoGlTexImported == mf.arrayKeyOff && s->albedoOnGlTexImported == mf.arrayKeyOn) return true;
             bool changed = false;
             // The night emission colours of the type table, once per map (like the material arrays).
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
@@ -1542,7 +1569,7 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
                 }
             }
             // ---- alpha-OFF (class 0): textured layer per type -> s_texArrayOff. ----
-            if (!s->materialReady) {
+            if (!s->materialReady || s->albedoGlTexImported != mf.arrayKeyOff) {
                 std::vector<int32_t> layerTbl(mf.typeCount, -1);
                 for (uint32_t t = 0; t < mf.typeCount; ++t) {
                     if (mf.typeAlphaClass[t] == 0 && mf.typeAlbedoLayer[t] >= 0)
@@ -1559,7 +1586,9 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
             // tables (both groups) once the packet feed is available, regardless of
             // which group's SSBO import just ran — the push-constant draw path reads
             // these every frame, not gated by materialReady/materialReadyOn latches.
-            if (mf.packetAlbedoLayer && mf.packetCount > 0) {
+            if (!s->packetMaterialsReady && mf.packetAlbedoLayer && mf.packetCount > 0) {
+                ++s->materialGeneration;
+                s->packetMaterialsReady = true;
                 s->packetLayerOff.assign(mf.packetCount, -1);
                 s->packetLayerOn.assign(mf.packetCount, -1);
                 // FENCE-UVSCALE-1: default 1.0 (no crop) so any packet the feed
@@ -1586,7 +1615,7 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
             // ---- alpha-ON (class 1): the alpha-MIXED buildings. typeAlbedoLayer[t] is
             // ALREADY group-relative into s_texArrayOn for class-1 types, so the same
             // table shape works with the alpha-ON array + a 0.5 alpha-test in the FS. ----
-            if (!s->materialReadyOn && mf.arrayKeyOn != 0) {
+            if ((!s->materialReadyOn || s->albedoOnGlTexImported != mf.arrayKeyOn) && mf.arrayKeyOn != 0) {
                 std::vector<int32_t> layerOnTbl(mf.typeCount, -1);
                 for (uint32_t t = 0; t < mf.typeCount; ++t) {
                     if (mf.typeAlphaClass[t] == 1 && mf.typeAlbedoLayer[t] >= 0)
@@ -1632,8 +1661,12 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     ColorPropIsland* s = in.s; VkCommandBuffer cb = in.cb; const int w = in.w, h = in.h; const uint32_t par = in.par;
     const uint32_t nDyn = in.nDyn; const uint32_t* dynOffsets = in.dynOffsets; const Mc2GroundLightingFrame* ground = in.ground;
     const bool hzbCulled = in.hzbCulled; const uint32_t instanceCount = in.instanceCount; const GpuStaticPropInstance* insts = in.insts;
-    // GPU-driven props: build the packet rows, run table and the three indirect draw lists on the CPU (every packet of every type run, in the
-    // old draw order), then let the compaction pass fill each command's instanceCount from the HZB visibility words.
+    // Metadata is independent of the camera/UBO and GPU HZB visibility. Keep it
+    // until a scene, material or resource generation changes; commands still
+    // record each frame with current dynamic offsets and compaction results.
+    auto& listStart = s->listStart;
+    auto& counts = s->listCounts;
+    if (s->recorded != s->recordKey) {
     for (auto& v : s->cmdScratch) v.clear();
     for (auto& v : s->pktScratch) v.clear();
     s->runScratch.clear();
@@ -1654,6 +1687,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     }
 
     unsigned long typeRuns = 0;
+    uint64_t nativeLeaves = 0;
     {
         uint32_t i = 0;
         while (i < instanceCount) {
@@ -1708,8 +1742,8 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         ++rr.range[list][1];
                     }
                     // Native color leaves include cached registry replay; count once before GPU HZB/alpha rejection.
-                    if (!counted && pkt.indexCount && mc2::battlebench::output) {
-                        mc2::battlebench::nativePropLeaves += instCount;
+                    if (!counted && pkt.indexCount) {
+                        nativeLeaves += instCount;
                         counted = true;
                     }
                 }
@@ -1723,20 +1757,26 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
     if (s_pktDump) { std::fclose(s_pktDump); s_pktDump = nullptr; }
 
     // Each list's first command in the buffer (lists laid out in kList order); run ranges become absolute.
-    uint32_t listStart[kListCount + 1] = {};
+    listStart[0] = 0;
     for (uint32_t list = 0; list < kListCount; ++list)
         listStart[list + 1] = listStart[list] + static_cast<uint32_t>(s->cmdScratch[list].size());
     for (PropRunRow& rr : s->runScratch)
         for (uint32_t list = 0; list < kListCount; ++list) rr.range[list][0] += listStart[list];
-    const uint32_t cmdTotal = listStart[kListCount];
     const uint32_t lateTotal = static_cast<uint32_t>(s->cmdScratch[kListLate].size());
+    for (uint32_t list = 0; list < kListCount; ++list)
+        counts[list] = listStart[list + 1] - listStart[list];
+    counts[kListLate] = (std::min)(lateTotal, s->drawIndirectLimit);
+    s->cachedTypeRuns = typeRuns;
+    s->cachedLeaves = nativeLeaves;
+    s->recorded = s->recordKey;
+    }
+    const uint32_t cmdTotal = listStart[kListCount];
     s->lateStart = listStart[kListLate];
-    s->lateCount = (std::min)(lateTotal, s->drawIndirectLimit);
-    const uint32_t counts[kListCount] = {listStart[kListOpaque + 1] - listStart[kListOpaque], listStart[kListCore + 1] - listStart[kListCore],
-                                         listStart[kListFringe + 1] - listStart[kListFringe], s->lateCount};
+    s->lateCount = counts[kListLate];
+    if (mc2::battlebench::output) mc2::battlebench::nativePropLeaves += s->cachedLeaves;
 
     // The per-parity buffers grow with headroom; a slot's previous submit and late fringe were waited before staging, so recreating is safe.
-    {
+    if (s->gpu[par].uploaded != s->recordKey) {
         auto& g = s->gpu[par];
         bool rebound = false;
         auto ensure = [&](mc2vk::OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, bool host, std::string_view name) {
@@ -1778,6 +1818,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
         }
         if (!s->runScratch.empty()) ok = g.run.upload(s->runScratch.data(), s->runScratch.size() * sizeof(PropRunRow), 0) && ok;
         if (!ok) return false;
+        g.uploaded = s->recordKey;
     }
     const VkBuffer cmdBuf = s->gpu[par].cmd.get();
 
@@ -1850,7 +1891,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
         gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) return false;
-    typeRunsOut = typeRuns;
+    typeRunsOut = s->cachedTypeRuns;
     return true;
 }
 
@@ -1911,8 +1952,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
     poolN = std::min(poolN, kMaxPoolLights);
-    const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)));
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign));
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -1929,6 +1969,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
     }
     us_fence_wait = usSince(tFence0);
+    // No cached slot data is overwritten until BOTH submissions above retire.
+    const uint64_t sceneGeneration = s->instanceSource.update(
+        GpuStaticPropRegistry::getRegistryGeneration(),
+        {static_cast<const std::byte*>(feed.instances112), static_cast<size_t>(instBytes)});
+    s->recordKey = {sceneGeneration, s->materialGeneration, s->resourceGeneration};
     cp_refresh_samplers(s);
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
     // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
@@ -2054,7 +2099,23 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // ---- 1) Upload the per-frame color instances into slot `par` (grouped by typeID). ----
     {
         ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
-        if (instBytes) std::memcpy(mainPtr + instOff, feed.instances112, static_cast<size_t>(instBytes));
+        auto& g = s->gpu[par];
+        if (!g.instances || instBytes > g.instanceCap) {
+            g.instances.reset();
+            g.instanceCap = std::max<VkDeviceSize>(instBytes + instBytes / 2, sizeof(GpuStaticPropInstance));
+            if (!make_buffer(s, g.instances, g.instanceCap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true,
+                             "colorprop.instances", static_cast<int>(par))) {
+                setFallback("instance_buffer_failed"); s->disabled = true; return 0;
+            }
+            g.instanceGeneration = 0;
+            s->ringBound[par][1] = VK_NULL_HANDLE; // allocator may recycle the same VkBuffer handle
+        }
+        if (g.instanceGeneration != sceneGeneration) {
+            if (!g.instances.upload(feed.instances112, instBytes, 0)) {
+                setFallback("instance_upload_failed"); s->disabled = true; return 0;
+            }
+            g.instanceGeneration = sceneGeneration;
+        }
     }
     g_health.instRecords = instanceCount;
 
@@ -2134,7 +2195,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     uint32_t dynOffsets[3];
     uint32_t nDyn = 0;
     dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset);
-    dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + instOff);
+    dynOffsets[nDyn++] = 0; // persistent instance buffer, private to this retired slot
     if (s->tier1 && s->wantLighting) dynOffsets[nDyn++] = static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset);
     s->lateParity = par; s->lateDynCount = nDyn;
     std::copy_n(dynOffsets, nDyn, s->lateOffsets);
