@@ -6,13 +6,10 @@
 #include "mc2_debug_out.h"
 
 
-long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {
-
-	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
-	mc2_move::SolveContext ctx;
+long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {
 
 	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
-	mc2_path_trace::SolveScope _pt("escape", openHeap);
+	mc2_path_trace::SolveScope _pt("escape", scratch.openHeap);
 	_pt.out = path;
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -44,11 +41,11 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 */
 
 	// Let's use their hPrime as a barrier for cutting off the search...
-	maxHPrime = 500; //float2short(calcHPrime(startR, startC) * 2.5);
-	maxHPrime = std::max<long>(maxHPrime, 500);
+	scratch.maxHPrime = 500; //float2short(calcHPrime(startR, startC) * 2.5);
+	scratch.maxHPrime = std::max<long>(scratch.maxHPrime, 500);
 	
 	// Storage was sized at init; each solve starts with an empty OPEN list below.
-	solveJumpOnBlocked = ctx.jumpOnBlocked();
+	scratch.jumpOnBlocked = query.jumpOnBlocked;
 
 	long curCol = startC;
 	long curRow = startR;
@@ -63,24 +60,24 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 	initialVertex.id = curRow * MAX_MAPWIDTH + curCol;
 	initialVertex.row = curRow;
 	initialVertex.col = curCol;
-	openHeap.clear();
-	openHeap.insert(initialVertex);
+	scratch.openHeap.clear();
+	scratch.openHeap.insert(initialVertex);
 	curMapNode->setFlag(MOVEFLAG_OPEN);
 
 	bool goalFound = false;
 	long bestRow = -1;
 	long bestCol = -1;
 
-	while (!openHeap.isEmpty()) {
+	while (!scratch.openHeap.isEmpty()) {
 
 
 		if (_pathTrace) {
-			long openN = openHeap.size();
+			long openN = scratch.openHeap.size();
 			_ptOpenPeak = std::max(_ptOpenPeak, openN);
 		}
 
 		PQNode bestPQNode;
-		bestPQNode = openHeap.popMin().value();
+		bestPQNode = scratch.openHeap.popMin().value();
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;
@@ -117,7 +114,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 					if (succMapNode->hPrime == HPRIME_NOT_CALCED)
 						succMapNode->hPrime = 10; //calcHPrime(succRow, succCol);
 
-					if (succMapNode->hPrime < maxHPrime) {
+					if (succMapNode->hPrime < scratch.maxHPrime) {
 
 						char dirToParent = reverseShift[dir];
 
@@ -125,7 +122,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 						long cost = succMapNode->cost;
 						if (dir > 7) {
 							jumping = true;
-							if (solveJumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
+							if (scratch.jumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
 								cost = jumpCost;
 							else
 								cost += jumpCost;
@@ -140,14 +137,14 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
 							if (succNodeG < succMapNode->g) {
-								updateOpenNode(*succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
+								updateOpenNode(scratch, *succMapNode, dirToParent, succNodeG, succRow * MAX_MAPWIDTH + succCol);
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
 							if (succNodeG < succMapNode->g) {
 								succMapNode->parent = dirToParent;
 
-								propogateCostJUMP(succRow, succCol, cost, bestNodeG);
+								propogateCostJUMP(scratch, succRow, succCol, cost, bestNodeG);
 							}
 							}
 						else {
@@ -159,7 +156,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, glm::vec3* goalWorldPos, long* g
 							succPQNode.id = succRow * MAX_MAPWIDTH + succCol;
 							succPQNode.row = succRow;
 							succPQNode.col = succCol;
-							openHeap.insert(succPQNode);
+							scratch.openHeap.insert(succPQNode);
 							succMapNode->setFlag(MOVEFLAG_OPEN);
 						}
 					}

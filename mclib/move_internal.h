@@ -27,7 +27,6 @@
 #include"../GameOS/gameos/gos_terrain_indirect.h"  // PR2c Stage 1c — MarkMineDirty
 #include"move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include"path_trace.h"  // PATHFINDING-FACTS-1 Stage 1 gated PATH telemetry
-#include"move_solvectx.h"  // PATHFINDING-SOLVER-ISOLATION-1 per-solve SolveContext
 #include"globalmap_limits.h"   // the range checks of the counts a global move map reads from a pak
 
 static_assert(mc2::globalmap::kMaxAreas == MAX_GLOBALMAP_AREAS && mc2::globalmap::kMaxDoors == MAX_GLOBALMAP_DOORS &&
@@ -57,8 +56,6 @@ extern bool CullPathAreas;
 extern bool debugMoveMap;
 extern bool ClearBridgeTiles;
 extern long RamObjectWID;
-extern bool JumpOnBlocked;
-extern bool FindingEscapePath;
 extern bool BlockWallTiles;
 extern MissionMapPtr GameMap;
 extern GlobalMapPtr GlobalMoveMap[3];
@@ -161,7 +158,7 @@ inline int MoveMap::calcHPrime (int r, int c) {
 
 inline constexpr int MAX_MAPWIDTH = 1000;
 
-inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
+inline void MoveMap::propogateCost(mc2_move::SolverScratch& scratch, long mapCellIndex, long cost, long g) {
 
 	gosASSERT(cost > 0);
 	gosASSERT(g >= 0);
@@ -171,7 +168,7 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 		curMapNode->g = g + cost;
 		curMapNode->fPrime = curMapNode->g + curMapNode->hPrime;
 		if (curMapNode->flags & MOVEFLAG_OPEN) {
-			reKeyOpen(mapCellIndex, curMapNode->fPrime);
+			reKeyOpen(scratch, mapCellIndex, curMapNode->fPrime);
 			}
 		else {
 			for (long dir = 0; dir < numOffsets; dir++) {
@@ -202,7 +199,7 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 				if (succCellIndex > -1) {
 					MoveMapNodePtr succMapNode = &map[succCellIndex];
 					if (succMapNode->cost < COST_BLOCKED)
-						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < maxHPrime)) {
+						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < scratch.maxHPrime)) {
 							char dirToParent = reverseShift[dir];
 							long cost = succMapNode->cost;
 							// Diagonal movement is more costly...
@@ -210,10 +207,10 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 							if (isDiagonalWalk)
 								cost += (cost << 1);
 							if (dirToParent == succMapNode->parent)
-								propogateCost(succCellIndex, cost, curMapNode->g);
+								propogateCost(scratch, succCellIndex, cost, curMapNode->g);
 							else if ((curMapNode->g + cost) < succMapNode->g) {
 								succMapNode->parent = dirToParent;
-								propogateCost(succCellIndex, cost, curMapNode->g);
+								propogateCost(scratch, succCellIndex, cost, curMapNode->g);
 							}
 						}
 				}
@@ -222,7 +219,7 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 	}
 }
 
-inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
+inline void MoveMap::propogateCostJUMP(mc2_move::SolverScratch& scratch, long r, long c, long cost, long g) {
 
 	gosASSERT(cost > 0);
 	gosASSERT(g >= 0);
@@ -232,7 +229,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 		curMapNode->g = g + cost;
 		curMapNode->fPrime = curMapNode->g + curMapNode->hPrime;
 		if (curMapNode->flags & MOVEFLAG_OPEN) {
-			reKeyOpen(r * MAX_MAPWIDTH + c, curMapNode->fPrime);
+			reKeyOpen(scratch, r * MAX_MAPWIDTH + c, curMapNode->fPrime);
 			}
 		else {
 			long cellOffsetIndex = 0;
@@ -252,7 +249,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 				if (inMapBounds(succRow, succCol, height, width)) {
 					MoveMapNodePtr succMapNode = &nodeAt(succRow, succCol);
 					if (succMapNode->cost < COST_BLOCKED)
-						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < maxHPrime)) {
+						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < scratch.maxHPrime)) {
 							char dirToParent = reverseShift[dir];
 
 							bool jumping = false;
@@ -262,7 +259,7 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 							gosASSERT(cost > 0);
 							if (dir > 7) {
 								jumping = true;
-								if (solveJumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
+								if (scratch.jumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
 									cost = jumpCost;
 								else
 									cost += jumpCost;
@@ -271,10 +268,10 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 								cost += (cost / 2);
 
 							if (dirToParent == succMapNode->parent)
-								propogateCostJUMP(succRow, succCol, cost, curMapNode->g);
+								propogateCostJUMP(scratch, succRow, succCol, cost, curMapNode->g);
 							else if ((curMapNode->g + cost) < succMapNode->g) {
 								succMapNode->parent = dirToParent;
-								propogateCostJUMP(succRow, succCol, cost, curMapNode->g);
+								propogateCostJUMP(scratch, succRow, succCol, cost, curMapNode->g);
 							}
 						}
 				}

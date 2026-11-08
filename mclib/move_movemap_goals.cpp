@@ -31,7 +31,7 @@ void MoveMap::init (long maxW, long maxH) {
 	// A second init on a sized map replaces the grid (it does not leak the first one).
 	const size_t cellCount = static_cast<size_t>(maxWidth) * static_cast<size_t>(maxHeight);
 	map.assign(cellCount, MoveMapNode{});
-	openHeap.reserve(static_cast<int>(cellCount));
+	solverScratch.openHeap.reserve(static_cast<int>(cellCount));
 	inputMap = nullptr;
 
 	mapRowStartTable.assign(static_cast<size_t>(maxHeight), 0);
@@ -356,7 +356,8 @@ long MoveMap::setUp (long mapULr,
 					 long clearCellCost,
 					 long jumpCellCost,
 					 long offsets,
-					 unsigned long params) {
+					 unsigned long params,
+					 bool escapeGoals) {
 
 	ZoneScopedN("GameLogic.PathManager.CalcPath1");
 
@@ -393,11 +394,7 @@ long MoveMap::setUp (long mapULr,
 	startCol -= ULc;
 	Assert(startRow > -1, 0, " huh ");
 	setStart(startPos, startRow, startCol);
-	if (FindingEscapePath) {
-		setGoal(goalPos, goalRow, goalCol);
-		}
-	else
-		setGoal(goalPos, goalRow, goalCol);
+	setGoal(goalPos, goalRow, goalCol);
 
 	travelOffMap = false;
 	cannotEnterOffMap = true;
@@ -485,7 +482,7 @@ long MoveMap::setUp (long mapULr,
 			}
 		}
 
-	if (FindingEscapePath)
+	if (escapeGoals)
 		markEscapeGoals(goalPos);
 	else
 		nodeAt(goalR, goalC).setFlag(MOVEFLAG_GOAL);

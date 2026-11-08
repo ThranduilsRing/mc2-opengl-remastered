@@ -32,8 +32,6 @@ bool ClearBridgeTiles = false;
 
 long RamObjectWID = 0;
 
-bool JumpOnBlocked = false;
-bool FindingEscapePath = false;
 bool BlockWallTiles = true;
 MissionMapPtr GameMap = nullptr;
 GlobalMapPtr GlobalMoveMap[3] = {nullptr, nullptr, nullptr};

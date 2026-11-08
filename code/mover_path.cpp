@@ -787,6 +787,9 @@ int Mover::calcMovePath (MovePathPtr path,
 						  int* goalCell,
 						  unsigned long moveParams) {
 
+	// Explicit solve query (the solvers read this, not a global).
+	mc2_move::PathQuery pathQuery;
+
 	// This assumes the goal is already the "optimum" goal (it should have been
 	// passed thru "calcMoveGoal" before being sent here)...
 
@@ -825,7 +828,7 @@ int Mover::calcMovePath (MovePathPtr path,
 					numOffsets = 8;
 					}
 				else
-					JumpOnBlocked = true;
+					pathQuery.jumpOnBlocked = true;
 			}
 			#endif
 			if (isMineSweeper())
@@ -857,7 +860,7 @@ int Mover::calcMovePath (MovePathPtr path,
 
 			int goalCell[2];
 			if (numOffsets > 8) {
-				result = PathFindMap[SIMPLE_PATHMAP]->calcPathJUMP(path, nullptr, goalCell);
+				result = PathFindMap[SIMPLE_PATHMAP]->calcPathJUMP(pathQuery, PathFindMap[SIMPLE_PATHMAP]->solverScratch, path, nullptr, goalCell);
 				// PATHFINDING-JUMP-FAIL-1: doomed jump solve -> stamp the REQUESTED
 				// goal cell (goalCell out-param is only written on success). No-op
 				// unless gate on. See requestMovePath.
@@ -865,9 +868,8 @@ int Mover::calcMovePath (MovePathPtr path,
 					pilot->noteJumpPathFailed();
 			}
 			else
-				result = PathFindMap[SIMPLE_PATHMAP]->calcPath(path, nullptr, goalCell);
+				result = PathFindMap[SIMPLE_PATHMAP]->calcPath(pathQuery, PathFindMap[SIMPLE_PATHMAP]->solverScratch, path, nullptr, goalCell);
 			PathFindMap[SIMPLE_PATHMAP]->setMover(0);
-			JumpOnBlocked = false;
 		}
 		}
 	else {
@@ -903,7 +905,7 @@ int Mover::calcMovePath (MovePathPtr path,
 					numOffsets = 8;
 					}
 				else
-					JumpOnBlocked = true;
+					pathQuery.jumpOnBlocked = true;
 			}
 			#endif
 			if (isMineSweeper())
@@ -936,7 +938,7 @@ int Mover::calcMovePath (MovePathPtr path,
 			DebugMovePathType = pathType;
 
 			if (numOffsets > 8) {
-				result = PathFindMap[SECTOR_PATHMAP]->calcPathJUMP(path, nullptr, goalCell);
+				result = PathFindMap[SECTOR_PATHMAP]->calcPathJUMP(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, path, nullptr, goalCell);
 				// PATHFINDING-JUMP-FAIL-1: doomed jump solve -> stamp the REQUESTED
 				// goal cell (goalCell out-param is only written on success). No-op
 				// unless gate on. See requestMovePath.
@@ -944,9 +946,8 @@ int Mover::calcMovePath (MovePathPtr path,
 					pilot->noteJumpPathFailed();
 			}
 			else
-				result = PathFindMap[SECTOR_PATHMAP]->calcPath(path, nullptr, goalCell);
+				result = PathFindMap[SECTOR_PATHMAP]->calcPath(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, path, nullptr, goalCell);
 			PathFindMap[SECTOR_PATHMAP]->setMover(0);
-			JumpOnBlocked = false;
 		}
 	}
 
@@ -959,6 +960,9 @@ int Mover::calcEscapePath (MovePathPtr path,
 							int* goalCell,
 							unsigned long moveParams,
 							glm::vec3& escapeGoal) {
+
+	// Explicit solve query (the solvers read this, not a global).
+	mc2_move::PathQuery pathQuery;
 
 	escapeGoal.x = -999999.0;
 	escapeGoal.y = -999999.0;
@@ -999,14 +1003,13 @@ int Mover::calcEscapePath (MovePathPtr path,
 				numOffsets = 8;
 				}
 			else
-				JumpOnBlocked = true;
+				pathQuery.jumpOnBlocked = true;
 		}
 #endif
 		if (isMineSweeper())
 			moveParams |= MOVEPARAM_SWEEP_MINES;
 		if (followRoads)
 			moveParams |= MOVEPARAM_FOLLOW_ROADS;
-		FindingEscapePath = true;
 		PathFindMap[SIMPLE_PATHMAP]->setMover(getWatchID(), getTeamId(), isLayingMines());
 		PathFindMap[SIMPLE_PATHMAP]->setUp(mapULr,
 						   mapULc,
@@ -1022,14 +1025,13 @@ int Mover::calcEscapePath (MovePathPtr path,
 						   clearCost,
 						   jumpCost,
 						   numOffsets,
-						   moveParams);
+						   moveParams,
+						   true);
 
 		DebugMovePathType = 0;
 
 		long goalCell[2];
-		result = PathFindMap[SIMPLE_PATHMAP]->calcEscapePath(path, &escapeGoal, goalCell);
-		JumpOnBlocked = false;
-		FindingEscapePath = false;
+		result = PathFindMap[SIMPLE_PATHMAP]->calcEscapePath(pathQuery, PathFindMap[SIMPLE_PATHMAP]->solverScratch, path, &escapeGoal, goalCell);
 	}
 
 	return(result);
@@ -1177,6 +1179,9 @@ int Mover::calcMovePath (MovePathPtr path,
 						  int* goalCell,
 						  unsigned long moveParams) {
 
+	// Explicit solve query (the solvers read this, not a global).
+	mc2_move::PathQuery pathQuery;
+
 	// This assumes the goal is already the "optimum" goal (it should have been
 	// passed thru "calcMoveGoal" before being sent here)...
 	if (!PathFindMap[SECTOR_PATHMAP] || !PathFindMap[SIMPLE_PATHMAP])
@@ -1209,7 +1214,7 @@ int Mover::calcMovePath (MovePathPtr path,
 				numOffsets = 8;
 				}
 			else
-				JumpOnBlocked = true;
+				pathQuery.jumpOnBlocked = true;
 		}
 		#endif
 
@@ -1239,12 +1244,11 @@ int Mover::calcMovePath (MovePathPtr path,
 				scenarioTime, start.x, start.y, start.z, posCellR, posCellC, thruArea[0], thruArea[1], goalDoor,
 				finalGoal.x, finalGoal.y, finalGoal.z, maxMoveSpeed, moveLevel, clearCost, jumpCost, numOffsets, moveParams, result);
 		if (result == -1) {
-			JumpOnBlocked = false;
 			return(-999);
 		}
 
 		if (numOffsets > 8) {
-			result = PathFindMap[SECTOR_PATHMAP]->calcPathJUMP(path, goal, goalCell);
+			result = PathFindMap[SECTOR_PATHMAP]->calcPathJUMP(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, path, goal, goalCell);
 			// PATHFINDING-JUMP-FAIL-1: doomed jump solve -> stamp the REQUESTED goal
 			// cell (goalCell out-param is only written on success). No-op unless gate
 			// on. See requestMovePath.
@@ -1252,11 +1256,10 @@ int Mover::calcMovePath (MovePathPtr path,
 				pilot->noteJumpPathFailed();
 		}
 		else
-			result = PathFindMap[SECTOR_PATHMAP]->calcPath(path, goal, goalCell);
+			result = PathFindMap[SECTOR_PATHMAP]->calcPath(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, path, goal, goalCell);
 		PathFindMap[SECTOR_PATHMAP]->setMover(0);
 		if (mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">() && getPartId() == 724)
 			mc2::fmt::print_err("[LOADPATH] t={} result={}\n", scenarioTime, result);
-		JumpOnBlocked = false;
 	}
 
 	return(result);
