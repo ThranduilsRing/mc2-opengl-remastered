@@ -23,8 +23,6 @@
 #include "world/entity_registry.h"
 #include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
-// Forward declaration for prewarmStaticPropLightBakes parameter.
-class Camera;
 
 #ifndef GAMEOBJ_H
 #include"gameobj.h"
@@ -432,12 +430,8 @@ class GameObjectManager {
 		// and before finalizeGeometry. Guarded by MC2_STATIC_PROP_MISSION_LOAD_REG.
 		void registerStaticPropsForMissionLoad();
 
-		// STATIC-REG-PREWARM-QUEUE-1: off-screen light bake at mission load.
-		// Called after finalizeGeometry() + eye init, when world lights are valid.
-		// Drains needsFullBakeNextFrame latches for all registered static props
-		// using the permanent SSBO path, so off-screen set-dressing is baked before
-		// the first frame. Guarded by MC2_STATIC_REG_PREWARM=1 (default off).
-		void prewarmStaticPropLightBakes(Camera* cam);
+		// STATIC-REG-PREWARM-QUEUE-1: the off-screen light bake at mission load is the free function
+		// prewarmStaticPropLightBakes in static_prop_prewarm.h (it takes a Camera, which sim headers must not name).
 
 		// The static shadow bake's caster set: every registered terrain object, building, turret and gate with its shadow recipe, rebuilt once
 		// the static-prop geometry is final. Reads the objects; changes nothing in the simulation.

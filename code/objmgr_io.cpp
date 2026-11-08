@@ -12,6 +12,7 @@
 #include <memory>
 #include <span>
 #include "objmgr_internal.h"
+#include "static_prop_prewarm.h"
 #include "saved_objects_check.h"
 #include "object_slot_codec.h"
 #include "watch_list_save_data.h"
@@ -445,7 +446,7 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 // which runs SetLightList → TransformMultiShape_HierarchyOnly → mc2CacheOrBakeStaticGpuLight
 // and clears needsFullBakeNextFrame if the bake produced a valid permanent SSBO slot.
 // Guarded by MC2_STATIC_REG_PREWARM=1 (default off).
-void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
+void prewarmStaticPropLightBakes(GameObjectManager& objects, Camera* cam)
 {
 	ZoneScopedN("GameObjectManager::prewarmStaticPropLightBakes");
 	static const bool s_enabled  = true;   // ships ON (presentation-terrain 2026-11-05): offscreen registered props otherwise never leave needsFullBakeNextFrame and take the full update() every frame
@@ -477,10 +478,10 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 		}
 	};
 
-	for (long i = 0; i < numTerrainObjects; ++i) tryBake(terrainObjects[i]);
-	for (long i = 0; i < numBuildings;      ++i) tryBake(buildings[i]);
-	for (long i = 0; i < numTurrets;        ++i) tryBake(turrets[i]);
-	for (long i = 0; i < numGates;          ++i) tryBake(gates[i]);
+	for (long i = 0; i < objects.numTerrainObjects; ++i) tryBake(objects.terrainObjects[i]);
+	for (long i = 0; i < objects.numBuildings;      ++i) tryBake(objects.buildings[i]);
+	for (long i = 0; i < objects.numTurrets;        ++i) tryBake(objects.turrets[i]);
+	for (long i = 0; i < objects.numGates;          ++i) tryBake(objects.gates[i]);
 
 	// Count remaining needsPrewarmBake objects (acceptance metric).
 	int remaining_needs_full_bake = 0;
@@ -489,10 +490,10 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 		AppearancePtr app = obj->getAppearance();
 		if (app && app->needsPrewarmBake()) ++remaining_needs_full_bake;
 	};
-	for (long i = 0; i < numTerrainObjects; ++i) countRemaining(terrainObjects[i]);
-	for (long i = 0; i < numBuildings;      ++i) countRemaining(buildings[i]);
-	for (long i = 0; i < numTurrets;        ++i) countRemaining(turrets[i]);
-	for (long i = 0; i < numGates;          ++i) countRemaining(gates[i]);
+	for (long i = 0; i < objects.numTerrainObjects; ++i) countRemaining(objects.terrainObjects[i]);
+	for (long i = 0; i < objects.numBuildings;      ++i) countRemaining(objects.buildings[i]);
+	for (long i = 0; i < objects.numTurrets;        ++i) countRemaining(objects.turrets[i]);
+	for (long i = 0; i < objects.numGates;          ++i) countRemaining(objects.gates[i]);
 
 	auto t1 = std::chrono::steady_clock::now();
 	long long elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();

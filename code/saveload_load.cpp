@@ -9,6 +9,7 @@
 // orchestrator are in saveload.cpp.
 #include "saveload_internal.h"
 #include "mission_load_frame.h"
+#include "static_prop_prewarm.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "tex_resolve_table.h"
@@ -799,7 +800,7 @@ void Mission::loadActivateAndFinalize() {
 
 
 	eye->primeActiveLightsForPrewarm();
-	ObjectManager->prewarmStaticPropLightBakes(eye);
+	prewarmStaticPropLightBakes(*ObjectManager, eye);
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
 	// Quickload resumes without Mission::start, which normally arms input and HUD layout.
 	MissionInterfaceManager::armHoverTarget();
