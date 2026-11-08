@@ -20,6 +20,8 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 
+extern "C" void mission_load_pump();
+
 // Legacy saves dispatch by native size; keep that reader unambiguous.
 namespace {
 constexpr bool recordSizesDistinct() {
@@ -221,6 +223,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 		ZoneScopedN("GameObjectManager::loadTerrainObjects addObjectLoop");
 		for (int i = 0; i < totalObjCount; ++i )
 		{
+			mission_load_pump();
 			addObject( data, 
 				curTerrainObjectIndex, curBuildingIndex, 
 				curTurretIndex, curGateIndex, handles[2 * data->blockNumber], 
@@ -338,6 +341,7 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 	const float increment = progressRange / static_cast<float>(numTerrainObjects);
 	for (long i = 0; i < numTerrainObjects; ++i)
 	{
+		mission_load_pump();
 		TerrainObjectPtr obj = terrainObjects[i];
 		if (obj && obj->getExists())
 		{

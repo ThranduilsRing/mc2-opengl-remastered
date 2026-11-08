@@ -710,8 +710,16 @@ extern float frameRate;
         return static_cast<double>((now - g_startup_t0)) / freq;
     }
     void startup_phase(std::string_view name) {
+        static double firstAudio = -1.0;
+        const double elapsed = startup_elapsed();
+        if (name == "first_audio_queued") {
+            if (firstAudio >= 0.0) return;
+            firstAudio = elapsed;
+        }
         const std::string nameZ(name);   // printf / emitTiming take a NUL-terminated string
-        mc2::fmt::print_out("[TIME] t={:6.2f}s  phase={}\n", startup_elapsed(), nameZ.c_str());
+        mc2::fmt::print_out("[TIME] t={:6.2f}s  phase={}\n", elapsed, nameZ.c_str());
+        if (name == "first_frame_presented")
+            mc2::fmt::print_out("[STARTUP] first_present_s={:.3f} first_audio_queued_s={:.3f}\n", elapsed, firstAudio);
         if (SmokeMode::state().enabled) {
             // Emit canonical smoke-line for the same milestone.
             SmokeMode::emitTiming(nameZ.c_str());
@@ -725,6 +733,21 @@ extern float frameRate;
 static Uint64 g_mission_t0 = 0;
 static unsigned g_missionTraceFrames = 5;
 static Uint64 g_missionReadyTrace = 0;
+
+// Loading runs on the window's main thread. Service OS messages without
+// dispatching game input against the partially constructed mission.
+extern "C" void mission_load_pump()
+{
+    if (SmokeMode::state().headless) return;
+    static Uint64 lastPump = 0;
+    const Uint64 now = SDL_GetTicks64();
+    if (now - lastPump < 50) return;
+    lastPump = now;
+    SDL_PumpEvents();
+    // The sprite cannot advance during synchronous loading; use the OS arrow.
+    // The central policy preserves the unattended harness cursor guard.
+    graphics::apply_os_cursor_policy("mission_load", false);
+}
 
 // LOAD-PHASE-FACTS-1: coarse wall-clock phase breakdown for the mission-load
 // critical path (FST/pak parse, texture prewarm, object/actor spawn, etc).
@@ -743,6 +766,7 @@ namespace {
 
 extern "C" void mission_phase_begin()
 {
+    mission_load_pump();
     g_missionTraceFrames = 5;
     g_missionReadyTrace = 0;
     g_mission_t0 = SDL_GetPerformanceCounter();
@@ -754,6 +778,7 @@ extern "C" void mission_phase_begin()
 
 extern "C" void mission_phase_mark(mc2::czstring name)
 {
+    mission_load_pump();
     const Uint64 now = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     const double elapsed = static_cast<double>((now - g_mission_t0)) / freq;
@@ -772,6 +797,8 @@ extern "C" void mission_phase_mark(mc2::czstring name)
 // for the first mark), so the numbers sum to the final mark's total.
 extern "C" void mission_phase_report()
 {
+    if (g_sdl_window)
+        graphics::apply_os_cursor_policy("mission_ready", !g_focus_lost);
     g_missionTraceFrames = 0;
     char buf[1024];
     int off = 0;
@@ -806,6 +833,7 @@ namespace {
 // same points.
 int main(int argc, char** argv)
 {
+    g_startup_t0 = SDL_GetPerformanceCounter();
     RenderCore::TextureService textures;
     RenderCore::TextureServiceScope textureScope(textures);
     // Gate reads resolved before this line are "pre-main" (static initialisers).
@@ -888,7 +916,6 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     (void)&mc2_unhandled_exception_filter; // silence "unused" warning
 #endif
-    g_startup_t0 = SDL_GetPerformanceCounter();
     startup_phase("process_start");
 
     // gather command line

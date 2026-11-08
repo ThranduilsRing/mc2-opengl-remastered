@@ -247,7 +247,8 @@ long SoundSystem::init (mc2::czstring soundFileName)
 			result = soundFile.readIdULong("soundId",sounds[i].soundId);
 			gosASSERT(result == NO_ERR);
 			
-			preloadSoundBite(i);		//ALWAYS Preload!!!!!!!!!!!!!
+			// Keep the catalog resident; decode a bite only when it is played.
+			// Mission-only effects must not hold up the startup movie.
 
 			result = soundFile.readIdFloat("volume",sounds[i].volume);
 			gosASSERT(result == NO_ERR);
@@ -553,6 +554,8 @@ void SoundSystem::update (void)
 		//Play the isRaining SoundEffect at the soundEffect level in a loop.
 		if (isRaining && (isRaining < numSoundBites))
 		{
+			if (!sounds[isRaining].resourceHandle)
+				preloadSoundBite(isRaining);
 			long ourChannel = FIRE_CHANNEL;
 	
 			gosAudio_SetChannelSlider(ourChannel,gosAudio_Panning, 0.0);
@@ -1038,6 +1041,8 @@ long SoundSystem::playDigitalSample (unsigned long sampleId, glm::vec3 pos, bool
 			if (vol <= 0.0f)		//No VOlume.  DON't PLAY!
 				return -1;
 			vol = std::min(vol, 1.0f);
+			if (!sounds[sampleId].resourceHandle)
+				preloadSoundBite(sampleId);
 
 			gosAudio_SetChannelSlider(ourChannel,gosAudio_Panning, panVolume);
 			gosAudio_SetChannelSlider(ourChannel,gosAudio_Volume, (digitalMasterVolume * vol * SFXVolume)) ;
