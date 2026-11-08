@@ -789,10 +789,12 @@ void Mission::initTerrain(MissionInitFrame& f) {
 #endif
 
 	long terrainInitResult;
+	mission_phase_mark("mission_settings_ready");
 	{
 		ZoneScopedN("Mission::init land->init");
 		terrainInitResult = land->init(&pakFile, 0, GameVisibleVertices, loadProgress, 20.0 );
 	}
+	mission_phase_mark("terrain_data_ready");
 
 	if (terrainInitResult != NO_ERR)
 	{
@@ -807,6 +809,7 @@ void Mission::initTerrain(MissionInitFrame& f) {
 #endif
 
 	{ ZoneScopedN("Mission::init land->load"); land->load( missionFile ); }
+	mission_phase_mark("terrain_config_ready");
 
 	loadProgress = 36.0f;
 	{ ZoneScopedN("Mission::init land->primeMissionTerrainCache"); land->primeMissionTerrainCache(loadProgress, 4.0f); }
@@ -1050,6 +1053,7 @@ initLabTimingAndClose();
 	// After the static-prop geometry is finalized: a type registered before it (the VTOL, Karnov) joins the batch and changes how other props shade.
 	// Registered after, it takes the CPU-fallback path exactly as when it was first loaded in gameplay. Still behind the loading screen.
 	preloadMissionSupportAtLoad();
+	mission_phase_mark("mission_support_ready");
 	// The warm registers mech-class types after finalizeGeometry; rebuild the shared VBO/IBO now, behind the loading screen, not at the first playable flush.
 	GpuMechBatcher::instance().finalizePending();
 	mc2::content::reportMission(missionName);

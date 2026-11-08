@@ -1028,5 +1028,6 @@ void Mission::initFinalizeGeometry() {
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z); }
     mc2PrewarmMissionPipelines();
+	mission_phase_mark("render_prewarm_ready");
 }
 
