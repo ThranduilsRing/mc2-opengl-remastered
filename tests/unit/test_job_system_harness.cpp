@@ -134,7 +134,8 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/pose_evaluated_once") {
         });
         jobs::stopPool();
         for (int i = 0; i < 96; ++i) {
-            CAPTURE(workers, i);
+            CAPTURE(workers);
+            CAPTURE(i);
             CHECK(locals[i] == (inputs[i].current ? 0 : 1));
             CHECK(inverses[i] == (!inputs[i].current && inputs[i].inverseRequired ? 1 : 0));
             if (!inputs[i].current && !inputs[i].inverseRequired)
