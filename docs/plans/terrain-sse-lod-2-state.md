@@ -3,8 +3,11 @@
 ## terrain-blob-2 (slot06, 2026-11-08)
 - Starting tip da83399c4; assigned branch claude/terrain-sse-lod-2, base 609d07294.
 - Prior blob-followup/RESULTS.md read. Do not repeat ruled-out checks or the two rejected fixes.
-- Next: diagnostic bake height/sun snapshot and capture camera matrix; locate the blob's receiver, march exact samples, distinguish real occlusion from self-intersection. Remove instrumentation before hand-back.
-- Proof root E:/mc2-archive-2026-10/proofs/terrain-sse-lod-2/blob-2. Planned proof: blob-number march doctest, covering rows/compile, one three-bookmark A/B, smoke-lite if runtime changes.
+- Diagnosis: real local bank occlusion, amplified by the bake's Catmull-Rom smoothing; no bias/start-offset hack applied. Sun (0.443912417,0.658127189,0.608120441), grid 397^2 @ 32 wu, mask 8704^2 @ 1.455882311 wu, water 350.
+- saved_205644 pixel (488,216): receiver XY (1140.742430,1612.331020), smooth Z 361.807077, fine-triangle Z 362.424713. Bake reaches visibility 0 at d=7.359198 (h=368.839285, ray=367.944550). Drawn triangles still block at d=22.082154 (h=381.189973, biased ray=379.840625), visibility 0.205886.
+- owner_lowwide pixel (488,420): receiver XY (1129.095371,1610.875138), smooth Z 361.072248, triangle Z 361.946045. Bake visibility 0 at d=7.967225; triangle visibility 0.239193 at d=22.690181 (h=381.057217, biased ray=379.827732).
+- Temporary height/camera logging removed. Shared scalar march math now runs in both the shader and a measured-number doctest; behavior is preserved. The shadow's appearance remains an owner decision, not a resolved visual fix.
+- Proof root E:/mc2-archive-2026-10/proofs/terrain-sse-lod-2/blob-2. Next: commit, final build/covering rows/doctest/lint, final three-bookmark capture vs archived original-tip A/B, inspect crops; smoke-lite. Then cleanup and record final SHA in external RESULTS.md.
 
 Terrain chunk LOD is chosen by screen-space error, not distance. `MC2_TERRAIN_LOD_CHUNK_DIST_SCALE` and the distance path are deleted.
 

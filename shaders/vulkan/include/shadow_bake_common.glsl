@@ -4,6 +4,27 @@
 #ifndef SHADOW_BAKE_COMMON_GLSL
 #define SHADOW_BAKE_COMMON_GLSL
 
+#ifdef __cplusplus
+#include <algorithm>
+namespace mc2shadow {
+using std::clamp;
+#define SHADOW_BAKE_INLINE inline
+#else
+#define SHADOW_BAKE_INLINE
+#endif
+
+// Shared with the CPU doctest: the march's biased ray and cone clearance.
+SHADOW_BAKE_INLINE float bakeTerrainRayHeight(float receiver, float distance, float tanAltitude) {
+    return receiver + distance * tanAltitude + 0.5f;
+}
+SHADOW_BAKE_INLINE float bakeTerrainMarchVisibility(float rayHeight, float terrainHeight, float distance, float cone) {
+    return clamp(0.5f + 0.5f * (rayHeight - terrainHeight) / (distance * cone), 0.0f, 1.0f);
+}
+#undef SHADOW_BAKE_INLINE
+
+#ifdef __cplusplus
+} // namespace mc2shadow
+#else
 layout(set = 0, binding = 0, std140) uniform BakeTile {
     mat4  window;       // world -> caster-window clip (x, y in [-1, 1], z in [0, 1] with 0 nearest the sun)
     vec4  region;       // x: world x of the region's west edge, y: world y of its north edge, z: mask texel (world), w: water elevation
@@ -72,4 +93,5 @@ float bakeHash(ivec2 t) {
     return float(h & 0xFFFFFFu) / 16777216.0;
 }
 
+#endif // !__cplusplus
 #endif
