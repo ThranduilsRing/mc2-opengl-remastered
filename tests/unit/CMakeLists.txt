@@ -29,6 +29,11 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_fx_native.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
     test_present_handoff.cpp
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
@@ -527,6 +532,12 @@ target_sources(mc2_tests PRIVATE test_editor_mission_reader.cpp)
 target_sources(mc2_tests PRIVATE test_combat_retirement.cpp)
 include("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/CMakeLists.txt")
 target_sources(vfx_lifecycle_tests PRIVATE test_vfx_frozen_clouds.cpp)
+target_sources(vfx_lifecycle_tests PRIVATE
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
+    ${MC2_WORKTREE_ROOT}/tools/mc2fx/fx_compare.cpp)
 # The frozen-cloud tests own the particle bridge capture instead of the platform sink.
 set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_platform.cpp"
     PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")

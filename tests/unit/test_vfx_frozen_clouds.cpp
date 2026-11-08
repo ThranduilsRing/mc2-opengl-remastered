@@ -724,6 +724,7 @@ TEST_CASE("vfx_frozen/card budget counts quads and resets after flush")
 }
 
 // B6 holder round-trips: the converted std::vector holders must Save and Load back to the same bytes.
+#include "tools/mc2fx/mc2fx_core.h"
 namespace {
 // Textured states serialize the texture name through MLRTexturePool::Instance, which
 // MLRTexturePool::TerminateClass deletes; borrow it for the test and hand it back empty.
@@ -784,6 +785,31 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/B6 holder: textured multipass MLR_
     WriteMLRVersion(&saved);
     mesh->Save(&saved);
     const auto savedBytes = streamBytes(saved);
+
+    // The existing raw-mesh fixture also exercises the independent data boundary.
+    mc2::fx::Reader nativeReader(savedBytes);
+    const auto nativeVersion = mc2::fx::read_mlr_version(nativeReader);
+    mc2::fx::Writer shapeBytes;
+    shapeBytes.integer(1);
+    shapeBytes.bytes.insert(shapeBytes.bytes.end(), savedBytes.begin() + nativeReader.offset(), savedBytes.end());
+    mc2::fx::Reader shapeReader(shapeBytes.bytes);
+    const auto nativeShape = mc2::fx::read_shape(shapeReader, nativeVersion.value);
+    mc2::fx::Writer rebuiltShape;
+    mc2::fx::write_shape(rebuiltShape, nativeShape, nativeVersion.value);
+    CHECK(rebuiltShape.bytes == shapeBytes.bytes);
+    REQUIRE(nativeShape.primitives.size() == 1);
+    CHECK(nativeShape.primitives[0].materials.size() == 3);
+    CHECK(nativeShape.primitives[0].bounds.minimum == mc2::fx::Vec3{0, 0, 0});
+    CHECK(nativeShape.primitives[0].bounds.maximum == mc2::fx::Vec3{1, 1, 0});
+    for (size_t pass = 0; pass < 3; ++pass) {
+        const auto& primitive = nativeShape.primitives[0];
+        CHECK(primitive.materials[pass].texture == kPassTextures[pass]);
+        const auto& uv = pass ? primitive.extra_texcoords[pass - 1] : primitive.texcoords;
+        for (size_t vertex = 0; vertex < 4; ++vertex) {
+            CHECK(uv[vertex][0] == kPassUvs[pass][vertex].x);
+            CHECK(uv[vertex][1] == kPassUvs[pass][vertex].y);
+        }
+    }
 
     Stuff::MemoryStream reader(const_cast<unsigned char*>(savedBytes.data()), savedBytes.size());
     const int version = ReadMLRVersion(&reader);
@@ -861,6 +887,15 @@ TEST_CASE_FIXTURE(FrozenPlatform, "vfx_frozen/B6 holder: debris cloud specificat
     }
 
     Stuff::MemoryStream reader(savedBytes.data(), savedBytes.size());
+    // Existing debris fixture: wrap its single legacy spec as a one-entry catalog.
+    auto catalogBytes = savedBytes;
+    catalogBytes.insert(catalogBytes.begin() + 8, {1, 0, 0, 0});
+    std::string nativeError;
+    const auto nativeCatalog = mc2::fx::read_catalog(catalogBytes, nativeError);
+    REQUIRE_MESSAGE(nativeCatalog, nativeError);
+    CHECK(nativeCatalog->rebuild() == catalogBytes);
+    CHECK_MESSAGE(mc2fx::compareLegacy(*nativeCatalog, catalogBytes, nativeError), nativeError);
+
     const int gfxVersion = gosFX::ReadGFXVersion(&reader);
     Stuff::RegisteredClass::ClassID classId;
     reader >> classId;

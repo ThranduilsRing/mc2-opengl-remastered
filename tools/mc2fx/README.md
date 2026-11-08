@@ -28,6 +28,7 @@ parked at the install root (where `data\` lives) with `mc2fx` on the PATH.
 mc2fx dump        <in.fx> [out.json]               catalog: index / effectID / classID / name
 mc2fx dump --full <in.fx> [out.json]               + every animation curve's values
 mc2fx rebuild     <in.fx> <out.fx>                 load->save round-trip (sanity check)
+mc2fx compare     <in.fx>                          native/legacy semantic comparison
 mc2fx build       <base.fx> <patch.json> <out.fx>  apply curve overrides to named effects
 mc2fx clone       <base.fx> <src> <newName> <out.fx>   duplicate + rename an effect
 mc2fx new         <base.fx> <type> <newName> <out.fx>   blank effect of a given type
@@ -78,14 +79,34 @@ Then **tie the effect to a weapon** (these are separate data files, edited by ha
 loader.) A blank effect has default curves and no texture, so it's mostly a
 starting skeleton; `clone` is usually the better start.
 
+## Native data boundary
+
+`dump`, `dump --full` and `rebuild` use the independent bounded reader in
+`mclib/fx`. It retains authored values and nested versions, including packed mesh
+colors, and rebuilds byte exactly. Errors identify the byte offset and effect.
+Supported GFX versions are 9–17; mesh MLR versions are 3–9. Unknown/abstract
+effect classes and unsupported mesh classes are rejected. The game still uses
+its existing loader. Authoring and GUI sampling still use gosFX.
+
+`mc2fx compare input.fx` compares the native catalog against legacy objects
+offline (no graphics context). It checks class ordinals, event order/transforms,
+curve coefficients/keys, material masks/textures, mesh attributes and bounds.
+Comparison accounts for legacy load-time curve-tail and state fixups; rebuilding
+always uses the original authored values. Polygon conversion is disabled only
+inside the oracle so serialized class ordinals remain comparable.
+
+Proof: build `mc2fx`, run `pytest tools/mc2fx/native_checks.py -q -s`, then
+`py -3 tools/build_contract_harnesses.py --run --unit --only test_fx_native`.
+Tool tests require the built executable and installed provider catalogs; missing
+evidence fails. `MC2FX_EXE` and `MC2_FX_INSTALL_ROOT` select their locations.
+
 ## Current limits
 - `build` edits **constant-value** curves only (no multi-keyframe curve authoring,
   no per-particle seed sub-curves, no texture/blend-state or emitter-physics edits yet).
 - Authoring appends to the **end** of the catalog; no insert / delete / in-place
   rename of existing effects.
-- Saved blobs reload correctly and are catalog-identical, but are **not** byte-for-byte
-  identical to the original (a harmless sub-1/255 color round-trip drift on mesh
-  effects). Fine for modding; just don't expect `rebuild` to report "IDENTICAL".
+- Legacy authoring can change curve tails and quantize packed vertex colors.
+  Native `rebuild` preserves both exactly; authoring remains on the legacy path.
 - `mc2fx_preview` graphs the animation **curves**; it does not run the live particle
   simulation (that needs the full game renderer).
 
