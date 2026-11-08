@@ -11,7 +11,9 @@
 #ifndef MC2_VK_RT_ACCELERATION_H
 #define MC2_VK_RT_ACCELERATION_H
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace mc2vk::rt {
 
@@ -36,6 +38,30 @@ constexpr bool scratchFits(uint64_t base, uint64_t allocBytes, uint64_t needed, 
 constexpr bool scratchReusable(uint64_t capacityBytes, uint64_t needed, uint64_t alignment) {
     return capacityBytes > 0 && scratchAllocBytes(needed, alignment) <= capacityBytes;
 }
+
+// BATCHED BLAS BUILDS: several builds in one vkCmdBuildAccelerationStructuresKHR, each on its own scratch sub-range (no barrier inside a call, so the
+// sub-ranges must not overlap). Builds are taken in order into groups whose summed sub-ranges stay within `budget` (a group always holds at least one
+// build); a group is one build call, and consecutive groups reuse the arena behind a Blas -> Tlas barrier. Writes each build's sub-range offset from the
+// aligned arena base (a multiple of `alignment`) and its group; returns the largest group span, the scratch to reserve. `offsets` and `groups` hold at
+// least needed.size() entries.
+constexpr uint64_t scratchBatchPlan(std::span<const uint64_t> needed, uint64_t alignment, uint64_t budget, std::span<uint64_t> offsets,
+                                    std::span<uint32_t> groups) {
+    uint64_t span = 0, peak = 0;
+    uint32_t group = 0;
+    for (size_t i = 0; i < needed.size(); ++i) {
+        const uint64_t bytes = alignUp(needed[i], alignment);   // 0: an empty geometry (no build), takes no room
+        if (span > 0 && bytes > 0 && span + bytes > budget) {
+            ++group;
+            span = 0;
+        }
+        offsets[i] = span;
+        groups[i] = group;
+        span += bytes;
+        peak = span > peak ? span : peak;
+    }
+    return peak;
+}
+inline constexpr uint64_t kScratchBatchBudget = 64ull << 20;   // per build call; a map's terrain tiles take a few groups
 
 // A compaction copy is only worth its second buffer and its copy when it saves at least `minSavedPercent` of the original.
 constexpr bool worthCompacting(uint64_t originalSize, uint64_t compactedSize, uint32_t minSavedPercent = 10) {
@@ -166,6 +192,8 @@ public:
 private:
     friend std::optional<AccelStructure> createAccelStructure(const VulkanContext&, VkAccelerationStructureTypeKHR, VkDeviceSize, std::string_view);
     friend bool recordBlasBuild(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, const BuildFlags&, std::string_view, AccelStructure&, ScratchArena&);
+    friend bool recordBlasBuildBatch(const VulkanContext&, VkCommandBuffer, const std::vector<TriangleGeometry>&, const BuildFlags&, std::string_view,
+                                     std::vector<AccelStructure>&, ScratchArena&, uint32_t*, VkDeviceSize*);
     friend bool recordBlasUpdate(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, AccelStructure&, ScratchArena&);
     friend bool recordTlasBuild(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, const BuildFlags&, std::string_view, AccelStructure&,
                                 ScratchArena&);
@@ -190,6 +218,13 @@ std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkA
 // in a command buffer need a Phase::Blas -> Phase::Tlas barrier between them. False (nothing recorded) on any creation failure.
 bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& geometry, const BuildFlags& flags, std::string_view name,
                      AccelStructure& blas, ScratchArena& scratch);
+// Records one BLAS build per geometry (geometries with no triangles get an empty structure) batched per scratchBatchPlan: one
+// vkCmdBuildAccelerationStructuresKHR per group, each build on its own scratch sub-range, a Blas -> Tlas barrier between groups. `out` is resized to
+// geometries.size() and filled only when every allocation succeeded (else false, nothing recorded, `out` empty). `groupsOut` / `scratchOut`: the build
+// calls recorded and the scratch span reserved, for the byte ledger. The caller still owes the Blas -> consumer barrier after the last group.
+bool recordBlasBuildBatch(const VulkanContext& ctx, VkCommandBuffer cmd, const std::vector<TriangleGeometry>& geometries, const BuildFlags& flags,
+                          std::string_view name, std::vector<AccelStructure>& out, ScratchArena& scratch, uint32_t* groupsOut = nullptr,
+                          VkDeviceSize* scratchOut = nullptr);
 // Refits `blas` in place (same topology: vertexCount / triangleCount unchanged; the structure was built with allowUpdate). Needs a scratch of updateScratchSize.
 bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& geometry, AccelStructure& blas, ScratchArena& scratch);
 

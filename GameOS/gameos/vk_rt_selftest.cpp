@@ -95,12 +95,13 @@ struct Bench {
         ctx.cmdPipelineBarrier2(cmd, dep);
     }
 
-    bool check(std::string_view stage) {
+    // `anyPrim`: the geometry has more than one triangle, so the primitive id is not checked.
+    bool check(std::string_view stage, bool anyPrim = false) {
         float out[kRayCount][4] = {};
         if (!results.read(out, sizeof(out))) return fail("results readback");
         for (uint32_t i = 0; i < kRayCount; ++i) {
             const bool hit = out[i][0] > 0.5f;
-            const bool ok = hit == kExpect[i].hit && (!hit || (std::fabs(out[i][1] - kExpect[i].t) < 1e-3f && out[i][2] == 0.0f &&
+            const bool ok = hit == kExpect[i].hit && (!hit || (std::fabs(out[i][1] - kExpect[i].t) < 1e-3f && (anyPrim || out[i][2] == 0.0f) &&
                                                               static_cast<uint32_t>(out[i][3]) == kCustomIndex));
             if (!ok) {
                 return fail(std::format("{} ray {} got hit={} t={:.4f} prim={:.0f} custom={:.0f}", stage, i, hit ? 1 : 0, out[i][1], out[i][2], out[i][3]));
@@ -222,48 +223,95 @@ bool runSelfTest(const VulkanContext& ctx) {
     }, "rt_selftest compact trace");
     if (!s5 || !recorded || !b.check("compact")) { slog("FAIL compact: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
-    // Stage 6 (informational, decides whether recordCompactCopy may take ALLOW_UPDATE structures): compact the ALLOW_UPDATE BLAS of stages 1-2, trace it,
-    // refit the compacted copy and trace again. Re-run after the barrier chain stopped emitting the AS-COPY stage (needs ray_tracing_maintenance1).
-    std::string updateCompact = "pass";
-    {
-        AccelStructure ucomp, tlas3, tlas4;
-        ScratchArena s6Scratch;
-        const bool q = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
-            recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
-            recordCompactionQuery(ctx, cmd, qp.get(), 0, blas);
-        }, "rt_selftest update-compact query");
-        const std::optional<VkDeviceSize> usize = q ? readCompactedSize(ctx, qp.get(), 0) : std::nullopt;
-        auto traceOver = [&](AccelStructure& bl, AccelStructure& tl, const char* stage, bool refit) {
-            recorded = false;
-            const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
-                if (refit) {
-                    if (!recordBlasUpdate(ctx, cmd, g, bl, s6Scratch)) return;
-                    recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+    // Stage 6 (informational; the evidence behind recordCompactCopy's ALLOW_UPDATE rule, memory amd-blas-compact-allow-update-2026-11-07): the matrix
+    // {1 triangle, 16x16 grid = 512 triangles} x {C fast-trace, U|C fast-trace, U|C fast-build}. Each cell builds, COMPACT-copies, traces the copy, and
+    // (updatable cells) refits the copy and traces again. One "matrix" line per cell; the PASS line counts the cells that missed.
+    constexpr uint32_t kGridN = 16;
+    constexpr uint32_t kGridVerts = (kGridN + 1) * (kGridN + 1);
+    float gridVerts[kGridVerts * 3];
+    uint32_t gridIdx[kGridN * kGridN * 6];
+    for (uint32_t y = 0; y <= kGridN; ++y) {
+        for (uint32_t x = 0; x <= kGridN; ++x) {   // offset by -0.01 so no ray lands exactly on a grid vertex or edge
+            float* v = &gridVerts[(y * (kGridN + 1) + x) * 3];
+            v[0] = static_cast<float>(x) / kGridN - 0.01f;
+            v[1] = static_cast<float>(y) / kGridN - 0.01f;
+            v[2] = 0.0f;
+        }
+    }
+    for (uint32_t y = 0, k = 0; y < kGridN; ++y) {
+        for (uint32_t x = 0; x < kGridN; ++x) {
+            const uint32_t a = y * (kGridN + 1) + x, c = a + kGridN + 1;
+            const uint32_t quad[6] = {a, a + 1, c, a + 1, c + 1, c};
+            for (uint32_t j = 0; j < 6; ++j) gridIdx[k++] = quad[j];
+        }
+    }
+    OwnedBuffer gvb, gib;
+    if (!gvb.createFilled(al, dev, gridVerts, sizeof(gridVerts), kInput, "rt_selftest.grid.vb") ||
+        !gib.createFilled(al, dev, gridIdx, sizeof(gridIdx), kInput, "rt_selftest.grid.ib")) {
+        slog("FAIL grid buffers");
+        return false;
+    }
+    TriangleGeometry grid = g;
+    grid.vertices = gvb.deviceAddress();
+    grid.vertexCount = kGridVerts;
+    grid.indices = gib.deviceAddress();
+    grid.triangleCount = kGridN * kGridN * 2;
+
+    auto traceOver = [&](const TriangleGeometry& geo, bool anyPrim, AccelStructure& bl, AccelStructure& tl, ScratchArena& sc, const char* stage, bool refit) {
+        bool rec = false;
+        const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+            if (refit) {
+                if (!recordBlasUpdate(ctx, cmd, geo, bl, sc)) return;
+                recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+            }
+            const VkAccelerationStructureInstanceKHR i0 = makeInstance(bl.address(), nullptr, kCustomIndex);
+            if (!inst.upload(&i0, sizeof(i0))) return;
+            if (!recordTlasBuild(ctx, cmd, inst.deviceAddress(), 1, cflags, stage, tl, sc)) return;
+            recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
+            b.recordTrace(cmd, tl.get());
+            rec = true;
+        }, stage);
+        return ok && rec && b.check(stage, anyPrim);
+    };
+    struct Geo { const char* name; const TriangleGeometry* geo; bool anyPrim; };
+    struct Var { const char* name; bool update; bool fastTrace; };
+    const Geo geos[2] = {{"tri1", &g, false}, {"grid512", &grid, true}};
+    const Var vars[3] = {{"C", false, true}, {"UCtrace", true, true}, {"UCbuild", true, false}};
+    uint32_t missed = 0;
+    for (const Geo& ge : geos) {
+        for (const Var& v : vars) {
+            BuildFlags f;
+            f.allowCompaction = true;
+            f.allowUpdate = v.update;
+            f.preferFastTrace = v.fastTrace;
+            AccelStructure src, copy, t1, t2;
+            ScratchArena sc;
+            const bool built = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+                if (!recordBlasBuild(ctx, cmd, *ge.geo, f, "rt_selftest.m.blas", src, sc)) return;
+                recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+                recordCompactionQuery(ctx, cmd, qp.get(), 0, src);
+            }, "rt_selftest matrix build");
+            const std::optional<VkDeviceSize> csize = built && src ? readCompactedSize(ctx, qp.get(), 0) : std::nullopt;
+            std::string copied = "fail:query", refit = "n/a";
+            if (csize) {
+                const bool cp = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+                    if (recordCompactCopy(ctx, cmd, src, *csize, "rt_selftest.m.compact", copy)) recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
+                }, "rt_selftest matrix copy");
+                if (!cp || !copy) {
+                    copied = "refused";
+                } else {
+                    copied = traceOver(*ge.geo, ge.anyPrim, copy, t1, sc, "rt_selftest.m.copied", false) ? "hit" : "miss(" + b.failure + ")";
+                    if (v.update) refit = traceOver(*ge.geo, ge.anyPrim, copy, t2, sc, "rt_selftest.m.refit", true) ? "hit" : "miss(" + b.failure + ")";
                 }
-                const VkAccelerationStructureInstanceKHR i0 = makeInstance(bl.address(), nullptr, kCustomIndex);
-                if (!inst.upload(&i0, sizeof(i0))) return;
-                if (!recordTlasBuild(ctx, cmd, inst.deviceAddress(), 1, cflags, stage, tl, s6Scratch)) return;
-                recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
-                b.recordTrace(cmd, tl.get());
-                recorded = true;
-            }, stage);
-            return ok && recorded && b.check(stage);
-        };
-        if (!usize) {
-            updateCompact = "fail:query";
-        } else if (!submitOneShot(ctx, [&](VkCommandBuffer cmd) {
-                       if (recordCompactCopy(ctx, cmd, blas, *usize, "rt_selftest.blas.ucompact", ucomp)) recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
-                   }, "rt_selftest update-compact copy") || !ucomp) {
-            updateCompact = "fail:copy";
-        } else if (!traceOver(ucomp, tlas3, "rt_selftest.update_compact", false)) {
-            updateCompact = std::format("fail:trace({}) {}->{}", b.failure, static_cast<unsigned long long>(blas.size()), static_cast<unsigned long long>(*usize));
-        } else if (!traceOver(ucomp, tlas4, "rt_selftest.update_compact_refit", true)) {
-            updateCompact = std::format("fail:refit({})", b.failure);
+            }
+            if (copied.starts_with("miss") || copied.starts_with("fail") || refit.starts_with("miss")) ++missed;
+            slog("matrix geo={} flags={} as_bytes={} compacted_bytes={} copied={} refit={}", ge.name, v.name, static_cast<unsigned long long>(src.size()),
+                 static_cast<unsigned long long>(csize.value_or(0)), copied, refit);
         }
     }
 
-    slog("PASS rays={} blas_bytes={} compacted_bytes={} stages=build,update,compact update_compact={}", kRayCount, static_cast<unsigned long long>(blas.size()),
-         static_cast<unsigned long long>(compacted), updateCompact);
+    slog("PASS rays={} blas_bytes={} compacted_bytes={} stages=build,update,compact matrix_cells=6 matrix_missed={}", kRayCount,
+         static_cast<unsigned long long>(blas.size()), static_cast<unsigned long long>(compacted), missed);
     return true;
 }
 

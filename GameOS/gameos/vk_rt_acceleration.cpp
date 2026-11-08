@@ -163,6 +163,77 @@ bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const Triang
     return true;
 }
 
+bool recordBlasBuildBatch(const VulkanContext& ctx, VkCommandBuffer cmd, const std::vector<TriangleGeometry>& geometries, const BuildFlags& flags,
+                          std::string_view name, std::vector<AccelStructure>& out, ScratchArena& scratch, uint32_t* groupsOut, VkDeviceSize* scratchOut) {
+    out.clear();
+    if (groupsOut) *groupsOut = 0;
+    if (scratchOut) *scratchOut = 0;
+    if (!ctx.rt().accel) return false;
+    const uint32_t n = static_cast<uint32_t>(geometries.size());
+    const VkBuildAccelerationStructureFlagsKHR vkFlags = toVkFlags(flags);
+    std::vector<VkAccelerationStructureGeometryKHR> geos(n);
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> infos(n, {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR});
+    std::vector<uint64_t> need(n, 0), offsets(n, 0), updateScratch(n, 0);
+    std::vector<uint32_t> group(n, 0);
+    std::vector<AccelStructure> built(n);
+    for (uint32_t i = 0; i < n; ++i) {
+        const TriangleGeometry& g = geometries[i];
+        if (g.triangleCount == 0 || g.vertices == 0) continue;
+        geos[i] = trianglesOf(g);
+        VkAccelerationStructureBuildGeometryInfoKHR& info = infos[i];
+        info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        info.flags = vkFlags;
+        info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        info.geometryCount = 1;
+        info.pGeometries = &geos[i];
+        VkAccelerationStructureBuildSizesInfoKHR sizes{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+        vkGetAccelerationStructureBuildSizesKHR(ctx.device(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &info, &g.triangleCount, &sizes);
+        std::optional<AccelStructure> created = createAccelStructure(ctx, VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, sizes.accelerationStructureSize, name);
+        if (!created) return false;   // nothing recorded yet: `built` is destroyed directly
+        built[i] = std::move(*created);
+        need[i] = sizes.buildScratchSize ? sizes.buildScratchSize : 1;
+        updateScratch[i] = sizes.updateScratchSize;
+    }
+    const uint64_t align = ctx.rtCaps().minAccelerationStructureScratchOffsetAlignment;
+    const uint64_t peak = scratchBatchPlan(need, align, kScratchBatchBudget, offsets, group);
+    VkDeviceAddress base = 0;
+    if (peak > 0 && !scratch.reserve(ctx, peak, name, base)) return false;
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> callInfos;
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> callRanges;
+    std::vector<const VkAccelerationStructureBuildRangeInfoKHR*> callRangePtrs;
+    uint32_t calls = 0;
+    for (uint32_t i = 0; i < n;) {
+        const uint32_t g = group[i];
+        callInfos.clear();
+        callRanges.clear();
+        for (; i < n && group[i] == g; ++i) {
+            if (!built[i]) continue;
+            infos[i].dstAccelerationStructure = built[i].get();
+            infos[i].scratchData.deviceAddress = base + offsets[i];
+            callInfos.push_back(infos[i]);
+            VkAccelerationStructureBuildRangeInfoKHR r{};
+            r.primitiveCount = geometries[i].triangleCount;
+            callRanges.push_back(r);
+        }
+        if (callInfos.empty()) continue;
+        callRangePtrs.clear();
+        for (const VkAccelerationStructureBuildRangeInfoKHR& r : callRanges) callRangePtrs.push_back(&r);
+        if (calls > 0) recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the next group reuses the arena
+        vkCmdBuildAccelerationStructuresKHR(cmd, static_cast<uint32_t>(callInfos.size()), callInfos.data(), callRangePtrs.data());
+        ++calls;
+    }
+    for (uint32_t i = 0; i < n; ++i) {
+        if (!built[i]) continue;
+        built[i].flags_ = vkFlags;
+        built[i].updateScratch_ = updateScratch[i];
+        built[i].primitiveCount_ = geometries[i].triangleCount;
+    }
+    out = std::move(built);
+    if (groupsOut) *groupsOut = calls;
+    if (scratchOut) *scratchOut = peak;
+    return true;
+}
+
 bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& g, AccelStructure& blas, ScratchArena& scratch) {
     if (!blas || blas.isTop() || !blas.canUpdate() || g.triangleCount != blas.primitiveCount_) return false;
     const VkAccelerationStructureGeometryKHR geo = trianglesOf(g);

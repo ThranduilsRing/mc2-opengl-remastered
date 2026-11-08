@@ -38,6 +38,30 @@ TEST_CASE("rt layout: scratch is over-allocated so an aligned address always fit
     CHECK(scratchAllocBytes(0, 128) == 129);
 }
 
+TEST_CASE("rt layout: batched BLAS scratch sub-ranges are aligned, disjoint and grouped under the budget") {
+    const uint64_t need[5] = {100, 0, 300, 600, 50};
+    uint64_t off[5] = {};
+    uint32_t grp[5] = {};
+    // Aligned sizes 128, 0, 384, 640, 128; budget 1024: {0, 1, 2} = 512, then 640 would make 1152 -> new group {3, 4} = 768.
+    CHECK(scratchBatchPlan(need, 128, 1024, off, grp) == 768);
+    CHECK(off[0] == 0);
+    CHECK(off[1] == 128);   // empty: takes no room
+    CHECK(off[2] == 128);
+    CHECK(off[3] == 0);
+    CHECK(off[4] == 640);
+    CHECK(grp[0] == 0);
+    CHECK(grp[2] == 0);
+    CHECK(grp[3] == 1);
+    CHECK(grp[4] == 1);
+    for (uint64_t o : off) CHECK(o % 128 == 0);
+    // One build bigger than the budget still gets a group of its own.
+    const uint64_t big[2] = {5000, 10};
+    CHECK(scratchBatchPlan(big, 256, 1024, off, grp) == 5120);
+    CHECK(grp[0] == 0);
+    CHECK(grp[1] == 1);
+    CHECK(scratchBatchPlan(std::span<const uint64_t>(big, 0), 256, 1024, off, grp) == 0);
+}
+
 TEST_CASE("rt layout: compaction is worth it at 10 percent saved or more") {
     CHECK(worthCompacting(1000, 900));
     CHECK(worthCompacting(1000, 100));

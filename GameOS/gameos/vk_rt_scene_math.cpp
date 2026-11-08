@@ -2,6 +2,7 @@
 // index rebase. Unit-tested without a Vulkan link (tests/unit/test_vk_rt_scene.cpp).
 #define MC2_RT_PURE_ONLY
 #include "vk_rt_scene.h"
+#include "terrain_diagonal.h"
 
 #include <algorithm>
 #include <bit>
@@ -90,19 +91,24 @@ float terrainGridHeight(const TerrainSource& t, int32_t gx, int32_t gy) {
 float terrainGridX(const TerrainSource& t, int32_t gx) { return float(gx) * (terrainUsesFine(t) ? 32.0f : 128.0f) - t.halfMap; }
 float terrainGridY(const TerrainSource& t, int32_t gy) { return t.halfMap - float(gy) * (terrainUsesFine(t) ? 32.0f : 128.0f); }
 
-uint32_t terrainChunksPerSide(const TerrainSource& t) {
-    const uint32_t side = terrainGridSide(t);
-    return side < 2 ? 0 : (side - 1 + kTerrainChunkCells - 1) / kTerrainChunkCells;
+uint32_t terrainTilesPerSide(const TerrainSource& t) {
+    if (!terrainUsable(t)) return 0;
+    return (static_cast<uint32_t>(t.mapSide - 1) + kTerrainTileCoarse - 1) / kTerrainTileCoarse;
 }
 
-void buildTerrainChunk(const TerrainSource& t, uint32_t cx, uint32_t cy, std::vector<float>& positions, std::vector<uint32_t>& indices) {
+uint32_t terrainTileCells(const TerrainSource& t) { return kTerrainTileCoarse * (terrainUsesFine(t) ? 4u : 1u); }
+
+void buildTerrainTile(const TerrainSource& t, uint32_t tx, uint32_t ty, std::vector<float>& positions, std::vector<uint32_t>& indices) {
     positions.clear();
     indices.clear();
-    const uint32_t per = terrainChunksPerSide(t);
-    if (cx >= per || cy >= per) return;
-    const uint32_t cells = terrainGridSide(t) - 1;
-    const uint32_t x0 = cx * kTerrainChunkCells, y0 = cy * kTerrainChunkCells;
-    const uint32_t nx = std::min(kTerrainChunkCells, cells - x0), ny = std::min(kTerrainChunkCells, cells - y0);
+    const uint32_t per = terrainTilesPerSide(t);
+    if (tx >= per || ty >= per) return;
+    const uint32_t cells = terrainGridSide(t) - 1, tileCells = terrainTileCells(t);
+    const uint32_t x0 = tx * tileCells, y0 = ty * tileCells;
+    const uint32_t nx = std::min(tileCells, cells - x0), ny = std::min(tileCells, cells - y0);
+    const bool fine = terrainUsesFine(t);
+    const size_t pitch = static_cast<size_t>(t.visualSide);
+    auto raw = [&](size_t gx, size_t gy) { return t.fine[gx + gy * pitch]; };
     const uint32_t vx = nx + 1;
     positions.reserve(size_t(vx) * (ny + 1) * 3);
     for (uint32_t y = 0; y <= ny; ++y)
@@ -116,7 +122,11 @@ void buildTerrainChunk(const TerrainSource& t, uint32_t cx, uint32_t cy, std::ve
     for (uint32_t y = 0; y < ny; ++y)
         for (uint32_t x = 0; x < nx; ++x) {
             const uint32_t i00 = y * vx + x, i10 = i00 + 1, i01 = i00 + vx, i11 = i01 + 1;
-            indices.insert(indices.end(), {i00, i11, i01, i00, i10, i11});
+            const uint32_t gx = x0 + x, gy = y0 + y;
+            if (fine && mc2terrain::quadSplitsTrBl(raw(gx, gy), raw(gx + 1, gy), raw(gx, gy + 1), raw(gx + 1, gy + 1)))
+                indices.insert(indices.end(), {i00, i10, i01, i10, i11, i01});   // TR-BL, same winding
+            else
+                indices.insert(indices.end(), {i00, i11, i01, i00, i10, i11});   // TL-BR
         }
 }
 

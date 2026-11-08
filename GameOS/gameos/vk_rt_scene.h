@@ -10,7 +10,7 @@
 // is ray-visible. Movers (part 2) are gameplay-hidden outside sensor range and must enter with an instance mask a consumer can exclude.
 // GEOMETRY: props trace their raster mesh (the colour-prop VBO; tree sway (flags bit 2) is not applied and every packet is opaque until part 3 adds
 // cutouts). Terrain traces the terrain_tier1.vert surface: the 4x visual-bake grid (hiresNearHeight's interior path) when the bake is loaded, else the
-// coarse 128-unit grid, both with the TL-BR diagonal triangulation, cut into kTerrainChunkCells chunks (one BLAS each). The per-patch visualMode 0 (GL keeps
+// coarse 128-unit grid, split per quad by the shared terrain_diagonal.h rule (as the raster patches), cut into the kTerrainTileCoarse world tiles (one BLAS each). The per-patch visualMode 0 (GL keeps
 // a few patches undisplaced) is not mirrored: the traced surface is displaced everywhere the bake exists. TLAS space is MC2 world (x, y, z up).
 // BUILD FLAGS: every static BLAS is PREFER_FAST_TRACE | ALLOW_COMPACTION (no ALLOW_UPDATE) and is compacted when that saves >= 10%; the TLAS is rebuilt
 // (never refit) when membership changes.
@@ -93,11 +93,18 @@ uint32_t terrainGridSide(const TerrainSource& t);
 float terrainGridHeight(const TerrainSource& t, int32_t gx, int32_t gy);
 float terrainGridX(const TerrainSource& t, int32_t gx);
 float terrainGridY(const TerrainSource& t, int32_t gy);
-// The terrain is cut into square chunks of kTerrainChunkCells grid cells (one BLAS each, all rebuilt together when the surface key changes).
-inline constexpr uint32_t kTerrainChunkCells = 64;
-uint32_t terrainChunksPerSide(const TerrainSource& t);
-// Vertex positions (xyz floats, TLAS space) and uint32 indices of chunk (cx, cy); empty when out of range.
-void buildTerrainChunk(const TerrainSource& t, uint32_t cx, uint32_t cy, std::vector<float>& positions, std::vector<uint32_t>& indices);
+// TILE CONTRACT (p35 section 6): the terrain is cut into stable world-space tiles of kTerrainTileCoarse coarse intervals (2048 world units), one BLAS each,
+// anchored at the map's north-west corner (grid 0, 0). Tile (tx, ty) has ID ty * tilesPerSide + tx; the count and IDs depend only on mapSide (never the
+// camera, never whether the visual bake is loaded); a loaded bake only makes each tile 4x denser. The last row / column holds the remainder.
+inline constexpr uint32_t kTerrainTileCoarse = 16;
+inline constexpr float kTerrainTileWorld = static_cast<float>(kTerrainTileCoarse) * 128.0f;
+uint32_t terrainTilesPerSide(const TerrainSource& t);
+// Grid cells per tile side: kTerrainTileCoarse, x4 when terrainUsesFine.
+uint32_t terrainTileCells(const TerrainSource& t);
+inline uint32_t terrainTileId(const TerrainSource& t, uint32_t tx, uint32_t ty) { return ty * terrainTilesPerSide(t) + tx; }
+// Vertex positions (xyz floats, TLAS space) and uint32 indices of tile (tx, ty); empty when out of range. Each quad's diagonal comes from
+// mc2terrain::quadSplitsTrBl on the raw bake corners (the raster rule), TL-BR without a bake.
+void buildTerrainTile(const TerrainSource& t, uint32_t tx, uint32_t ty, std::vector<float>& positions, std::vector<uint32_t>& indices);
 // What a rebuild of the terrain BLAS keys on.
 uint64_t terrainKey(const TerrainSource& t);
 

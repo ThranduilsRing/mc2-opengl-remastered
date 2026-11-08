@@ -3,6 +3,7 @@
 #include "vk_owned.h"
 #include "vulkan_terrain_island_internal.h"
 #include "Gates/gate_cold.h"
+#include "terrain_diagonal.h"
 #include <cstdlib>
 
 
@@ -91,7 +92,7 @@ const PatchMesh* getOrBuildPatch(TerrainIsland* s, int qcX, int qcY, int lodStep
             uint16_t tr = static_cast<uint16_t>((j * W + i + 1));
             uint16_t bl = static_cast<uint16_t>(((j + 1) * W + i));
             uint16_t br = static_cast<uint16_t>(((j + 1) * W + i + 1));
-            if (fine && std::fabs(fineH(xs[i + 1], ys[j]) - fineH(xs[i], ys[j + 1])) < std::fabs(fineH(xs[i], ys[j]) - fineH(xs[i + 1], ys[j + 1])))
+            if (fine && mc2terrain::quadSplitsTrBl(fineH(xs[i], ys[j]), fineH(xs[i + 1], ys[j]), fineH(xs[i], ys[j + 1]), fineH(xs[i + 1], ys[j + 1])))
                 indices.insert(indices.end(), {tl, bl, tr, bl, br, tr});   // TR-BL diagonal, same CCW winding
             else
                 indices.insert(indices.end(), {tl, bl, br, tl, br, tr});

@@ -17,6 +17,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "../../RenderWorld/RenderWorld.h"
 #include "gos_static_prop_registry.h"
+#include "utils/mc2log.h"
 #include "vk_one_shot.h"
 #include "vk_rt_acceleration.h"
 #include "vk_rt_selftest.h"
@@ -27,12 +28,6 @@
 namespace mc2vk::rt::scene {
 
 namespace {
-
-template <class... Args>
-void slog(std::format_string<Args...> fmt, Args&&... args) {
-    const std::string line = std::format("[VK_RT_SCENE v1] {}\n", std::format(fmt, std::forward<Args>(args)...));
-    std::fwrite(line.data(), 1, line.size(), stderr);
-}
 
 constexpr VkBufferUsageFlags kBuildInput = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 constexpr uint64_t kNone = ~0ull;
@@ -45,6 +40,8 @@ struct BuildStats {
     uint64_t builtBytes = 0;     // before compaction
     uint64_t finalBytes = 0;     // after
     uint32_t compacted = 0;
+    uint32_t buildCalls = 0;     // vkCmdBuildAccelerationStructuresKHR calls for the BLASes (batched)
+    uint64_t scratchSpan = 0;    // the largest batch's scratch span
 };
 
 class State final : public IslandState {
@@ -103,12 +100,16 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<TriangleGeometr
     bool ok = true;
     const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Blas);
-        for (size_t i = 0; i < geos.size() && ok; ++i) {
-            if (geos[i].triangleCount == 0) continue;
-            if (!recordBlasBuild(ctx, cmd, geos[i], flags, name, out[i], s.scratch)) ok = false;
-            recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the shared scratch, and the compaction query below
+        // One build call per scratch group, each BLAS on its own scratch sub-range (scratchBatchPlan), instead of one call and one barrier per BLAS.
+        uint32_t calls = 0;
+        VkDeviceSize span = 0;
+        if (!recordBlasBuildBatch(ctx, cmd, geos, flags, name, out, s.scratch, &calls, &span)) {
+            ok = false;
+            return;
         }
-        if (!ok) return;
+        st.buildCalls += calls;
+        st.scratchSpan = std::max<uint64_t>(st.scratchSpan, span);
+        recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the compaction query below reads the built structures
         for (size_t i = 0; i < geos.size(); ++i)
             if (out[i]) recordCompactionQuery(ctx, cmd, qp.get(), static_cast<uint32_t>(i), out[i]);
     }, "rt_scene blas");
@@ -176,7 +177,10 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
     if (inst.empty()) return tlas;   // an empty scene: nothing to trace, still a valid (empty) snapshot
     OwnedBuffer buf;
     if (!buf.createFilled(ctx.allocator(), ctx.device(), inst.data(), inst.size() * sizeof(inst[0]), kBuildInput, "rt_scene.instances")) return std::nullopt;
-    BuildFlags flags;   // rebuilt on every membership change: fast trace, no update
+    // Fable p34 section 3: the TLAS is PREFER_FAST_BUILD and fully rebuilt (never refit). The static scene rebuilds it on every membership change; the
+    // per-frame rebuild in the frame command buffer arrives with movers (part 2), the first members that change every frame.
+    BuildFlags flags;
+    flags.preferFastTrace = false;
     bool ok = false;
     const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Tlas);
@@ -202,10 +206,12 @@ void logPublish(const State& s, std::string_view why, const BuildStats& st, doub
             blasBytes += a.size();
             ++types;
         }
-    slog("publish why={} tlas_instances={} terrain_chunks={} props={} prop_types={} dropped={} blas_bytes={} built_bytes={} compacted={} "
-         "compacted_bytes={} tlas_bytes={} scratch_bytes={} build_ms={:.1f}",
-         why, s.tlasInstances, s.terrainBlas.size(), s.tlasProps, types, s.dropped, blasBytes, st.builtBytes, st.compacted, st.finalBytes,
-         s.tlas ? s.tlas.size() : 0, s.scratch.capacity(), ms);
+    // Byte ledger: every resident RT byte by kind. instance_bytes is the TLAS build input (64 per instance, uploaded per build, retired after it).
+    const uint64_t tlasBytes = s.tlas ? s.tlas.size() : 0, instanceBytes = static_cast<uint64_t>(s.tlasInstances) * kInstanceBytes;
+    MC2_EVENT(Vk, "VK_RT_SCENE", 1, "publish why={} tlas_instances={} terrain_tiles={} props={} prop_types={} dropped={} blas_bytes={} built_bytes={} compacted={} "
+         "compacted_bytes={} tlas_bytes={} scratch_bytes={} instance_bytes={} total_bytes={} blas_build_calls={} batch_scratch_bytes={} build_ms={:.1f}",
+         why, s.tlasInstances, s.terrainBlas.size(), s.tlasProps, types, s.dropped, blasBytes, st.builtBytes, st.compacted, st.finalBytes, tlasBytes,
+         s.scratch.capacity(), instanceBytes, blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes, st.buildCalls, st.scratchSpan, ms);
 }
 
 // MC2_VK_RT_SELFTEST: once the scene holds terrain and props, fixed downward rays at known props and terrain vertices; logs every hit.
@@ -234,7 +240,7 @@ void probe(VulkanContext& ctx, State& s) {
     const uint32_t n = static_cast<uint32_t>(expect.size());
     std::vector<float> out(size_t(n) * 4, 0.0f);
     if (n == 0 || !traceRays(ctx, s.tlas.get(), rays.data(), n, out.data())) {
-        slog("probe FAIL trace rays={}", n);
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe FAIL trace rays={}", n);
         return;
     }
     uint32_t propOk = 0, terrainOk = 0;
@@ -245,11 +251,11 @@ void probe(VulkanContext& ctx, State& s) {
         const bool isProp = i < props;
         const bool match = hit && idx == expect[i] && (isProp || std::abs(o[1] - expectT[i]) < 1.0f);
         (isProp ? propOk : terrainOk) += match ? 1u : 0u;
-        slog("probe ray={} kind={} origin=({:.1f},{:.1f}) hit={} t={:.2f} prim={} custom=0x{:x} expect=0x{:x} expect_t={:.2f} match={}", i,
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} kind={} origin=({:.1f},{:.1f}) hit={} t={:.2f} prim={} custom=0x{:x} expect=0x{:x} expect_t={:.2f} match={}", i,
              isProp ? "prop" : "terrain", rays[size_t(i) * 8], rays[size_t(i) * 8 + 1], hit ? 1 : 0, o[1], static_cast<uint32_t>(o[2]), idx, expect[i],
              expectT[i], match ? 1 : 0);
     }
-    slog("probe result props={}/{} terrain={}/{} tlas_instances={}", propOk, props, terrainOk, n - props, s.tlasInstances);
+    MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe result props={}/{} terrain={}/{} tlas_instances={}", propOk, props, terrainOk, n - props, s.tlasInstances);
 }
 
 }  // namespace
@@ -262,7 +268,7 @@ void noteTerrain(const TerrainSource& t) {
     if (key == s.terrainKeyLive || key == s.terrainKeyFailed) return;
     const auto t0 = std::chrono::steady_clock::now();
 
-    const uint32_t per = terrainChunksPerSide(t);
+    const uint32_t per = terrainTilesPerSide(t);
     std::vector<float> pos, chunkPos;
     std::vector<uint32_t> idx, chunkIdx;
     struct Range {
@@ -271,7 +277,7 @@ void noteTerrain(const TerrainSource& t) {
     std::vector<Range> ranges;
     for (uint32_t cy = 0; cy < per; ++cy)
         for (uint32_t cx = 0; cx < per; ++cx) {
-            buildTerrainChunk(t, cx, cy, chunkPos, chunkIdx);
+            buildTerrainTile(t, cx, cy, chunkPos, chunkIdx);   // record ordinal == terrainTileId(t, cx, cy)
             ranges.push_back({static_cast<uint32_t>(pos.size() / 3), static_cast<uint32_t>(chunkPos.size() / 3), static_cast<uint32_t>(idx.size()),
                               static_cast<uint32_t>(chunkIdx.size())});
             pos.insert(pos.end(), chunkPos.begin(), chunkPos.end());
@@ -302,7 +308,7 @@ void noteTerrain(const TerrainSource& t) {
     if (!tlas) {
         retireEach(*ctx, built);
         s.terrainKeyFailed = key;
-        slog("FAIL terrain build chunks={} key=0x{:x}; keeping the last snapshot", ranges.size(), key);
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL terrain build tiles={} key=0x{:x}; keeping the last snapshot", ranges.size(), key);
         return;
     }
     // Publish: the old TLAS retires before the BLASes it referenced.
@@ -412,7 +418,7 @@ void updateProps(uint64_t propVbo) {
         for (auto& [ty, a] : added)
             if (a) ctx->retire(std::move(a));
         s.propGenFailed = gen;
-        slog("FAIL prop build gen={} types={} instances={}; keeping the last snapshot", gen, types.size(), inst.size());
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL prop build gen={} types={} instances={}; keeping the last snapshot", gen, types.size(), inst.size());
         return;
     }
     if (s.tlas) ctx->retire(std::move(s.tlas));
