@@ -121,7 +121,7 @@ No (c) runtime-uniform macros; no confirmed (d) dead (matrix harness anchors wou
 `tools/shader_reflect/reflect.py`:
 - **Compiles each variant to SPIR-V** (`glslangValidator --auto-map-locations --auto-map-bindings -V -R`, :329-339) reusing **engine-identical** include/define flattening (`shader_common.build_shader_source`, :312-314) → can reproduce runtime-injected source offline.
 - **`spirv-cross --reflect`** (:365-385) → normalized contract (`:464-472`): UBOs (binding+members), SSBOs (binding+members w/ offset/stride/matrix_stride), frag `outputs` (loc+name+type), `stage`/`variant`/`defines`.
-- Has `SHADER_VARIANTS` table (:63-119) enumerating the (a)-class macros + `REQUIRED_INVARIANTS` (:131-258) locking output locs / bindings (ViewUniforms=3, readback=14) / std430 offsets. `tools/shader_schema/validate.py` rides these goldens for C++↔GLSL ABI lockstep.
+- Has `SHADER_VARIANTS` table (:63-119) enumerating the (a)-class macros + `REQUIRED_INVARIANTS` (:131-258) locking output locs / bindings (ViewUniforms=3, readback=14) / std430 offsets. `scripts/check_shader_interface.py` (family `schema`) rides these goldens for C++↔GLSL ABI lockstep.
 
 **Can feed a PSO?** Yes for **stage interfaces + descriptor-set layout** (the `VkPipelineLayout` core). **Gaps:** no **vertex input attributes** extracted (only frag outputs normalized, :459); no push-constants; no pipeline render-state (blend/depth/cull is C++-side, §2); and **samplers are auto-mapped** (`--auto-map-bindings`) not read from real units — the audit's one true missing descriptor contract.
 

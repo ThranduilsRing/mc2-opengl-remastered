@@ -26,7 +26,7 @@ lifetime/sync**.
 | **Render passes (identity)** | `mclib/render_contract.h` `PassIdentity` (15) · `RenderCore/RenderPassContract.h` `RenderPassId` (5) | **PARTIAL/SPLIT** | Two un-reconciled taxonomies; 10 PassIdentity orphans have no RenderPassId. → RENDERPASS-ENUM-RECON-1 (largely done below) |
 | **Pass resource flow / barriers** | `RenderCore/RenderPassContract.h` `reads[4]`/`writes[4]`/`barrierAfter` + `RenderResourceRegistry.h` | **SKELETON EXISTS** | No load/store ops, no layout transitions, no ordered pass list, only 5 of ~15 passes have rows. → RENDER-PASS-DAG-CONTRACT-1 |
 | **Pass GL-state (blend/depth/MRT)** | `mclib/render_contract.h` `PassStateContract` | **COVERED** (separate file, different enum key) | Split from resource-flow half; not joined to DAG |
-| **Shader variants / ABI** | `scripts/check-shader-schema.sh` + `tools/shader_schema/manifest.json` + `check-material-gpu-mirror.sh` | **COVERED** (SSBO struct/std430/offset CI) | Runtime `#define` prefix injection still un-inventoried (separate SHADER-PIPELINE-OFFLINE-ARC, deferred) |
+| **Shader variants / ABI** | `scripts/check_shader_interface.py` (family `schema`) + `tools/shader_schema/manifest.json` + `check-material-gpu-mirror.sh` | **COVERED** (SSBO struct/std430/offset CI) | Runtime `#define` prefix injection still un-inventoried (separate SHADER-PIPELINE-OFFLINE-ARC, deferred) |
 | **Xform / transform conventions** | `docs/render-contract.md` + `check-unified-projection-retirement.sh` + ViewUniforms ABI (binding=3, 144B) | **PARTIAL** | Per-subsystem transform-ownership (mech bone-fold vs static model-matrix vs terrain global) not in one ledger. → XFORM-CONVENTION-LEDGER-1 |
 | **Resource lifetime / sync** | docs/render-backend-seams/gpu-buffer-owner-recon-1.md (archived 2026-10-11, E:/mc2-archive-2026-10/docs/cull-wave1-docs-2026-10-11.tar.gz) + `gpu-buffer-wrapper-design-1.md` | **RECON DONE, no instrumentation** | No live per-frame orphan-vs-ring counter. → GPU-UPDATE-BUFFER-COUNTER-1 |
 
@@ -35,7 +35,7 @@ lifetime/sync**.
 ### Checkers (`scripts/`)
 - `check-contracts.sh` — aggregator (runs all cheap static-contract checks)
 - `check-binding-slots.py` — buffer binding slots, C++↔GLSL lockstep, preprocessor-branch-aware (**samplers explicitly out of scope per its docstring**)
-- `check-shader-schema.sh` — SSBO struct ABI vs `manifest.json` golden, std430/offsetof
+- `check_shader_interface.py` — one pass over the shader manifest: SPIR-V artifacts/reflection/package, SSBO struct ABI vs `manifest.json` golden (std430/offsetof), rule-table source lockstep
 - `check-material-gpu-mirror.sh` — `MaterialGpu.h` ↔ `material_gpu.hglsl` field-order lockstep
 - `check-render-contract-gbuffer1.sh` — fragment shaders must use `rc_*` helpers for GBuffer1
 
