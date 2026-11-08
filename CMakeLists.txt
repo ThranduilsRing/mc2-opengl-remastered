@@ -664,7 +664,7 @@ include_directories(${COMMON_INCLUDE_DIRS} "./mclib" "./gui" "./code" "./netlib"
 include_directories(${THIRDPARTY_INCLUDE_DIRS})
 
 if(NOT WIN32)
-	set(ADDITIONAL_LIBS dl)
+	set(ADDITIONAL_LIBS dl atomic) # 16-byte temporal projection atomics use libatomic on Linux.
 	message("Not win32 system")
 else()
 	# winmm for timeGetTime, maybe switch to GetTickCount to remove this dependency
