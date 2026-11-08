@@ -105,7 +105,8 @@ void buildTerrainTile(const TerrainSource& t, uint32_t tx, uint32_t ty, std::vec
     if (tx >= per || ty >= per) return;
     const uint32_t cells = terrainGridSide(t) - 1, tileCells = terrainTileCells(t);
     const uint32_t x0 = tx * tileCells, y0 = ty * tileCells;
-    const uint32_t nx = std::min(tileCells, cells - x0), ny = std::min(tileCells, cells - y0);
+    const uint32_t nx = std::min(tileCells, cells - x0);
+    const uint32_t ny = std::min(tileCells, cells - y0);
     const bool fine = terrainUsesFine(t);
     const size_t pitch = static_cast<size_t>(t.visualSide);
     auto raw = [&](size_t gx, size_t gy) { return t.fine[gx + gy * pitch]; };
