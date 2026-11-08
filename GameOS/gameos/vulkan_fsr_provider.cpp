@@ -2,10 +2,12 @@
 // runtime; with no DLL, no device support or a failed create/dispatch it reports unavailable and present falls back to
 // the next provider or native (spatial AA). Present-owner object: every call runs on the thread that records the
 // composite. Registered in vk_upscalers.cpp.
+#include "../../RenderCore/UpscalerProvider.h"
+// The bundled ffx-api loader and runtime are Windows DLLs. Other platforms use spatial AA.
+#ifdef _WIN32
 #include "vulkan_context.h"
 #include "vk_image_resource.h"
 #include "vk_gpu_profile.h"
-#include "../../RenderCore/UpscalerProvider.h"
 #include <ffx_api/ffx_api.h>
 #include <ffx_api/ffx_upscale.h>
 #include <ffx_api/vk/ffx_api_vk.h>
@@ -263,3 +265,8 @@ RenderCore::IUpscalerProvider* fsrUpscaler() {
     return &p;
 }
 }  // namespace mc2vk
+#else
+namespace mc2vk {
+RenderCore::IUpscalerProvider* fsrUpscaler() { return nullptr; }
+}  // namespace mc2vk
+#endif
