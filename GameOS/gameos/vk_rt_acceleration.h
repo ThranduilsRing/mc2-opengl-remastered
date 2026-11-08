@@ -85,6 +85,7 @@ constexpr Barrier barrierBetween(Phase from, Phase to) {
 
 #include <volk.h>
 
+#include <optional>
 #include <string_view>
 
 #include "vk_owned.h"
@@ -128,7 +129,7 @@ public:
     void markDeferred() { buffer_.markDeferred(); }
 
 private:
-    friend bool createAccelStructure(const VulkanContext&, VkAccelerationStructureTypeKHR, VkDeviceSize, std::string_view, AccelStructure&);
+    friend std::optional<AccelStructure> createAccelStructure(const VulkanContext&, VkAccelerationStructureTypeKHR, VkDeviceSize, std::string_view);
     friend bool recordBlasBuild(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, const BuildFlags&, std::string_view, AccelStructure&, OwnedBuffer&);
     friend bool recordBlasUpdate(const VulkanContext&, VkCommandBuffer, const TriangleGeometry&, AccelStructure&, OwnedBuffer&);
     friend bool recordTlasBuild(const VulkanContext&, VkCommandBuffer, VkDeviceAddress, uint32_t, const BuildFlags&, std::string_view, AccelStructure&,
@@ -146,7 +147,7 @@ private:
 };
 
 // Creates an empty structure of `size` bytes (handle + BDA storage buffer). Used by the build entry points and by the compact copy.
-bool createAccelStructure(const VulkanContext& ctx, VkAccelerationStructureTypeKHR type, VkDeviceSize size, std::string_view name, AccelStructure& out);
+std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkAccelerationStructureTypeKHR type, VkDeviceSize size, std::string_view name);
 
 // Records a BLAS build of one triangle geometry into `cmd`: size query, structure + scratch creation, vkCmdBuildAccelerationStructuresKHR. The geometry
 // buffers must carry SHADER_DEVICE_ADDRESS | ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY usage and be visible to the build (see Phase::Upload). `scratch`
@@ -166,9 +167,9 @@ VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, con
 
 // Compaction. 1: a query pool of `count` compacted-size queries. 2: after the BLAS build (and a Blas -> Blas-read barrier), write the size query.
 // 3: once the build's ticket completed, readCompactedSize. 4: recordCompactCopy into a fresh structure of that size.
-bool createCompactionQueryPool(const VulkanContext& ctx, uint32_t count, OwnedQueryPool& pool);
+OwnedQueryPool createCompactionQueryPool(const VulkanContext& ctx, uint32_t count);  // empty (false) on failure
 void recordCompactionQuery(const VulkanContext& ctx, VkCommandBuffer cmd, VkQueryPool pool, uint32_t index, const AccelStructure& blas);
-bool readCompactedSize(const VulkanContext& ctx, VkQueryPool pool, uint32_t index, VkDeviceSize& size);
+std::optional<VkDeviceSize> readCompactedSize(const VulkanContext& ctx, VkQueryPool pool, uint32_t index);
 bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const AccelStructure& src, VkDeviceSize compactedSize, std::string_view name,
                        AccelStructure& dst);
 

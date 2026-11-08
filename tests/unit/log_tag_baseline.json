@@ -11391,6 +11391,29 @@
    "count": 1
   },
   {
+   "tag": "VK_RT",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "tier",
+    "reason",
+    "accel",
+    "ray_query",
+    "ray_pipeline",
+    "max_instances",
+    "max_primitives",
+    "max_geometries",
+    "scratch_align",
+    "as_per_stage",
+    "sbt_handle",
+    "sbt_base_align",
+    "sbt_handle_align",
+    "sbt_stride",
+    "max_recursion"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_SCENE_READBACK",
    "ver": -1,
    "stream": "stderr",

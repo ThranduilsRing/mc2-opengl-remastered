@@ -8,9 +8,11 @@
 #include "vk_rt_selftest.h"
 
 #include <cmath>
-#include <cstdarg>
 #include <cstdio>
+#include <format>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "Gates/gate.h"
 #include "vk_island_util.h"
@@ -30,13 +32,10 @@ struct Expect { bool hit; float t; };
 // ray 0: front hit at t=1; ray 1: beside the triangle; ray 2: back hit at t=1; ray 3: pointing away.
 constexpr Expect kExpect[kRayCount] = {{true, 1.0f}, {false, 0.0f}, {true, 1.0f}, {false, 0.0f}};
 
-void slog(const char* fmt, ...) {
-    std::va_list ap;
-    va_start(ap, fmt);
-    std::fputs("[VK_RT_SELFTEST v1] ", stderr);
-    std::vfprintf(stderr, fmt, ap);
-    std::fputc('\n', stderr);
-    va_end(ap);
+template <class... Args>
+void slog(std::format_string<Args...> fmt, Args&&... args) {
+    const std::string line = std::format("[VK_RT_SELFTEST v1] {}\n", std::format(fmt, std::forward<Args>(args)...));
+    std::fwrite(line.data(), 1, line.size(), stderr);
 }
 
 struct Bench {
@@ -52,7 +51,7 @@ struct Bench {
     bool init() {
         const VkDevice dev = ctx.device();
         if (!set.create(ctx)) return fail("descriptor set");
-        module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "rt_smoke.comp.spv", slog));
+        module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "rt_smoke.comp.spv", nullptr));
         if (!module) return fail("rt_smoke.comp.spv");
         VkComputePipelineCreateInfo cpci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
         cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -74,7 +73,7 @@ struct Bench {
         return true;
     }
 
-    bool fail(const char* what) {
+    bool fail(std::string_view what) {
         failure = what;
         return false;
     }
@@ -97,7 +96,7 @@ struct Bench {
         ctx.cmdPipelineBarrier2(cmd, dep);
     }
 
-    bool check(const char* stage) {
+    bool check(std::string_view stage) {
         float out[kRayCount][4] = {};
         if (!results.read(out, sizeof(out))) return fail("results readback");
         for (uint32_t i = 0; i < kRayCount; ++i) {
@@ -105,9 +104,7 @@ struct Bench {
             const bool ok = hit == kExpect[i].hit && (!hit || (std::fabs(out[i][1] - kExpect[i].t) < 1e-3f && out[i][2] == 0.0f &&
                                                               static_cast<uint32_t>(out[i][3]) == kCustomIndex));
             if (!ok) {
-                char buf[160];
-                std::snprintf(buf, sizeof(buf), "%s ray %u got hit=%d t=%.4f prim=%.0f custom=%.0f", stage, i, hit ? 1 : 0, out[i][1], out[i][2], out[i][3]);
-                return fail(buf);
+                return fail(std::format("{} ray {} got hit={} t={:.4f} prim={:.0f} custom={:.0f}", stage, i, hit ? 1 : 0, out[i][1], out[i][2], out[i][3]));
             }
         }
         return true;
@@ -118,13 +115,13 @@ struct Bench {
 
 bool runSelfTest(const VulkanContext& ctx) {
     if (!ctx.rt().rayQuery) {
-        slog("skipped tier=%s (no ray query on this device)", profile::rtTierName(ctx.rt().tier));
+        slog("skipped tier={} (no ray query on this device)", profile::rtTierName(ctx.rt().tier));
         return false;
     }
     const VkDevice dev = ctx.device();
     const VmaAllocator al = ctx.allocator();
     Bench b(ctx);
-    if (!b.init()) { slog("FAIL init: %s", b.failure.c_str()); return false; }
+    if (!b.init()) { slog("FAIL init: {}", b.failure); return false; }
 
     const float verts[9] = {0, 0, 0, 1, 0, 0, 0, 1, 0};
     const uint32_t idx[3] = {0, 1, 2};
@@ -147,8 +144,8 @@ bool runSelfTest(const VulkanContext& ctx) {
 
     AccelStructure blas, tlas;
     OwnedBuffer blasScratch, tlasScratch;
-    OwnedQueryPool qp;
-    if (!createCompactionQueryPool(ctx, 1, qp)) { slog("FAIL query pool"); return false; }
+    OwnedQueryPool qp = createCompactionQueryPool(ctx, 1);
+    if (!qp) { slog("FAIL query pool"); return false; }
 
     // Submit 1: upload (host writes, visible at submit) -> BLAS (+ compaction query) -> TLAS -> trace.
     bool recorded = false;
@@ -164,7 +161,7 @@ bool runSelfTest(const VulkanContext& ctx) {
         b.recordTrace(cmd, tlas.get());
         recorded = true;
     }, "rt_selftest build");
-    if (!s1 || !recorded || !b.check("build")) { slog("FAIL build: %s", b.failure.empty() ? "submit" : b.failure.c_str()); return false; }
+    if (!s1 || !recorded || !b.check("build")) { slog("FAIL build: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
     // Submit 2: refit both structures in place and re-trace.
     OwnedBuffer blasUpd, tlasUpd;
@@ -177,11 +174,12 @@ bool runSelfTest(const VulkanContext& ctx) {
         b.recordTrace(cmd, tlas.get());
         recorded = true;
     }, "rt_selftest update");
-    if (!s2 || !recorded || !b.check("update")) { slog("FAIL update: %s", b.failure.empty() ? "submit" : b.failure.c_str()); return false; }
+    if (!s2 || !recorded || !b.check("update")) { slog("FAIL update: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
     // Submit 3: compact-copy the BLAS, build a fresh TLAS over the copy, re-trace.
-    VkDeviceSize compacted = 0;
-    if (!readCompactedSize(ctx, qp.get(), 0, compacted)) { slog("FAIL compaction query"); return false; }
+    const std::optional<VkDeviceSize> compactedSize = readCompactedSize(ctx, qp.get(), 0);
+    if (!compactedSize) { slog("FAIL compaction query"); return false; }
+    const VkDeviceSize compacted = *compactedSize;
     AccelStructure small, tlas2;
     OwnedBuffer tlas2Scratch;
     recorded = false;
@@ -195,9 +193,9 @@ bool runSelfTest(const VulkanContext& ctx) {
         b.recordTrace(cmd, tlas2.get());
         recorded = true;
     }, "rt_selftest compact");
-    if (!s3 || !recorded || !b.check("compact")) { slog("FAIL compact: %s", b.failure.empty() ? "submit" : b.failure.c_str()); return false; }
+    if (!s3 || !recorded || !b.check("compact")) { slog("FAIL compact: {}", b.failure.empty() ? "submit" : b.failure); return false; }
 
-    slog("PASS rays=%u blas_bytes=%llu compacted_bytes=%llu stages=build,update,compact", kRayCount, static_cast<unsigned long long>(blas.size()),
+    slog("PASS rays={} blas_bytes={} compacted_bytes={} stages=build,update,compact", kRayCount, static_cast<unsigned long long>(blas.size()),
          static_cast<unsigned long long>(compacted));
     return true;
 }

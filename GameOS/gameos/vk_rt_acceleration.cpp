@@ -78,7 +78,11 @@ bool recordBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkAccelerationSt
     vkGetAccelerationStructureBuildSizesKHR(ctx.device(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &info, &primitives, &sizes);
     if (outUpdateScratch) *outUpdateScratch = sizes.updateScratchSize;
     if (outSize) *outSize = sizes.accelerationStructureSize;
-    if (createNew && !createAccelStructure(ctx, type, sizes.accelerationStructureSize, name, as)) return false;
+    if (createNew) {
+        auto created = createAccelStructure(ctx, type, sizes.accelerationStructureSize, name);
+        if (!created) return false;
+        as = std::move(*created);
+    }
     VkDeviceAddress scratchAddr = 0;
     if (!makeScratch(ctx, update ? sizes.updateScratchSize : sizes.buildScratchSize, name, scratch, scratchAddr)) return false;
     info.srcAccelerationStructure = update ? as.get() : VK_NULL_HANDLE;
@@ -93,29 +97,27 @@ bool recordBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkAccelerationSt
 
 }  // namespace
 
-bool createAccelStructure(const VulkanContext& ctx, VkAccelerationStructureTypeKHR type, VkDeviceSize size, std::string_view name, AccelStructure& out) {
-    out = AccelStructure{};
-    if (!ctx.rt().accel) return false;
+std::optional<AccelStructure> createAccelStructure(const VulkanContext& ctx, VkAccelerationStructureTypeKHR type, VkDeviceSize size, std::string_view name) {
+    if (!ctx.rt().accel) return std::nullopt;
+    AccelStructure out;
     const VkDeviceSize bytes = asStorageBytes(size);
     if (!out.buffer_.createDeviceLocal(ctx.allocator(), ctx.device(), bytes,
                                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, name))
-        return false;
+        return std::nullopt;
     VkAccelerationStructureCreateInfoKHR ci{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
     ci.buffer = out.buffer_.get();
     ci.offset = 0;
     ci.size = size;
     ci.type = type;
     const VkDevice device = ctx.device();
-    if (!mc2vk::create(out.handle_, device, [&](VkAccelerationStructureKHR* h) { return vkCreateAccelerationStructureKHR(device, &ci, nullptr, h); })) {
-        out = AccelStructure{};
-        return false;
-    }
+    if (!mc2vk::create(out.handle_, device, [&](VkAccelerationStructureKHR* h) { return vkCreateAccelerationStructureKHR(device, &ci, nullptr, h); }))
+        return std::nullopt;
     VkAccelerationStructureDeviceAddressInfoKHR ai{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
     ai.accelerationStructure = out.handle_.get();
     out.address_ = vkGetAccelerationStructureDeviceAddressKHR(device, &ai);
     out.size_ = size;
     out.top_ = type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    return true;
+    return out;
 }
 
 bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& g, const BuildFlags& flags, std::string_view name, AccelStructure& blas,
@@ -174,12 +176,14 @@ VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, con
     return inst;
 }
 
-bool createCompactionQueryPool(const VulkanContext& ctx, uint32_t count, OwnedQueryPool& pool) {
+OwnedQueryPool createCompactionQueryPool(const VulkanContext& ctx, uint32_t count) {
+    OwnedQueryPool pool;
     VkQueryPoolCreateInfo qi{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     qi.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
     qi.queryCount = std::max(count, 1u);
     const VkDevice device = ctx.device();
-    return mc2vk::create(pool, device, [&](VkQueryPool* h) { return vkCreateQueryPool(device, &qi, nullptr, h); });
+    mc2vk::create(pool, device, [&](VkQueryPool* h) { return vkCreateQueryPool(device, &qi, nullptr, h); });
+    return pool;
 }
 
 void recordCompactionQuery(const VulkanContext&, VkCommandBuffer cmd, VkQueryPool pool, uint32_t index, const AccelStructure& blas) {
@@ -188,20 +192,20 @@ void recordCompactionQuery(const VulkanContext&, VkCommandBuffer cmd, VkQueryPoo
     vkCmdWriteAccelerationStructuresPropertiesKHR(cmd, 1, &handle, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, pool, index);
 }
 
-bool readCompactedSize(const VulkanContext& ctx, VkQueryPool pool, uint32_t index, VkDeviceSize& size) {
+std::optional<VkDeviceSize> readCompactedSize(const VulkanContext& ctx, VkQueryPool pool, uint32_t index) {
     VkDeviceSize v = 0;
     const VkResult r = vkGetQueryPoolResults(ctx.device(), pool, index, 1, sizeof(v), &v, sizeof(v), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
-    if (r != VK_SUCCESS || v == 0) return false;
-    size = v;
-    return true;
+    if (r != VK_SUCCESS || v == 0) return std::nullopt;
+    return v;
 }
 
 bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const AccelStructure& src, VkDeviceSize compactedSize, std::string_view name,
                        AccelStructure& dst) {
     if (!src || compactedSize == 0) return false;
-    if (!createAccelStructure(ctx, src.isTop() ? VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, compactedSize, name,
-                              dst))
-        return false;
+    auto created = createAccelStructure(ctx, src.isTop() ? VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+                                        compactedSize, name);
+    if (!created) return false;
+    dst = std::move(*created);
     VkCopyAccelerationStructureInfoKHR ci{VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR};
     ci.src = src.get();
     ci.dst = dst.get();
