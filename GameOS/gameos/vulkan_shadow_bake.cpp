@@ -594,6 +594,13 @@ bool ShadowBake::readHeightGrid() {
     if (heights_.empty()) return false;
     heightSide_ = (std::min)(sourceSide, layout_.texels + 1);
     heightSpacing_ = static_cast<float>(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / static_cast<float>(heightSide_ - 1);
+    // Temporary blob investigation: exact input snapshot, removed before hand-back.
+    if (FILE* f = std::fopen("E:/mc2-archive-2026-10/proofs/terrain-sse-lod-2/blob-2/heights.bin", "wb")) {
+        std::fwrite(heights_.data(), sizeof(float), heights_.size(), f);
+        std::fclose(f);
+    }
+    mc2::fmt::print_err("[SHADOW_BAKE] blob inputs side={} spacing={:.9f} half={:.9f} origin=({:.9f},{:.9f}) mask={} texel={:.9f} water={:.9f} sun=({:.9f},{:.9f},{:.9f})\n",
+        heightSide_, heightSpacing_, halfMap_, layout_.originX, layout_.originYNorth, layout_.texels, layout_.texelWorld, waterZ_, sun_.x, sun_.y, sun_.z);
     return true;
 }
 

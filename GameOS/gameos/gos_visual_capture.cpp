@@ -303,6 +303,12 @@ void write_sidecar(const std::string& jsonPath, std::string_view mission,
     buf += "  \"mission\": \""; esc.clear(); json_escape(mission, esc); buf += esc; buf += "\",\n";
     buf += "  \"label\": \""; esc.clear(); json_escape(label, esc); buf += esc; buf += "\",\n";
     char num[64];
+    if (eye) {
+        const glm::mat4 m = eye->worldToClipGL();
+        for (int r = 0; r < 4; ++r)
+            mc2::fmt::print_err("[SHADOW_BAKE] blob camera {} row={} {:.9f} {:.9f} {:.9f} {:.9f}\n",
+                label, r, m[r][0], m[r][1], m[r][2], m[r][3]);
+    }
     mc2::fmt::to_buf(num, "  \"frame\": {:d},\n", mc2::fmt::as_u32(frame)); buf += num;
     mc2::fmt::to_buf(num, "  \"trigger_frame\": {:d},\n", mc2::fmt::as_i32(triggerFrame)); buf += num;
     // CAPTURE-DETERMINISM-1: `frame` above is the RENDER frame counter

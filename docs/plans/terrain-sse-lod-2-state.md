@@ -1,5 +1,11 @@
 # terrain-sse-lod-2 state (lane 2, Astra review p35)
 
+## terrain-blob-2 (slot06, 2026-11-08)
+- Starting tip da83399c4; assigned branch claude/terrain-sse-lod-2, base 609d07294.
+- Prior blob-followup/RESULTS.md read. Do not repeat ruled-out checks or the two rejected fixes.
+- Next: diagnostic bake height/sun snapshot and capture camera matrix; locate the blob's receiver, march exact samples, distinguish real occlusion from self-intersection. Remove instrumentation before hand-back.
+- Proof root E:/mc2-archive-2026-10/proofs/terrain-sse-lod-2/blob-2. Planned proof: blob-number march doctest, covering rows/compile, one three-bookmark A/B, smoke-lite if runtime changes.
+
 Terrain chunk LOD is chosen by screen-space error, not distance. `MC2_TERRAIN_LOD_CHUNK_DIST_SCALE` and the distance path are deleted.
 
 - Error: `mc2lod::levelErrors` / `edgeErrors` (mclib/terrain_lod_rules.h) per block from the 4x visual bake when loaded, else coarse heights; cached per height version.
