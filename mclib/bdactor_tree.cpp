@@ -8,6 +8,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "battle_bench_sink.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
