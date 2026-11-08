@@ -64,7 +64,8 @@ def test_dead_process_frees_slot(tmp_path):
 
 
 def test_cpu_split_masks_and_child_inherits():
-    assert lane_merge.cpu_masks()["gate"] & lane_merge.cpu_masks()["lane"] == 0
+    m = lane_merge.cpu_masks()
+    assert m["lane"] == m["compile"] and m["gate"] == m["game0"] | m["game1"] | m["compile"]   # the PC gate fallback holds both game slots and the compile cores
     code = ("import os,sys,subprocess;sys.path.insert(0,sys.argv[1]);os.environ.pop('MC2_NO_CPU_PIN',None);import lint_slots as l;"
             "m=l.pin_cpus(sys.argv[2]);"
             "c=subprocess.run([sys.executable,'-c','import ctypes;k=ctypes.windll.kernel32;p=ctypes.c_size_t();s=ctypes.c_size_t();"

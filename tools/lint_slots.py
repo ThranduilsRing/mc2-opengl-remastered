@@ -170,17 +170,35 @@ def sweep_stale_scratch(parents, max_age_s=7200, now=None):
 CPU_SPLIT_DEFAULT = {"game0": 0x0003, "game1": 0x000C, "compile": 0xFFF0}   # 5800X3D, 16 logical CPUs, SMT siblings adjacent: one core per lane game, the other 6 cores (12 CPUs) for compiles
 
 
+CPU_SPLIT_PATH = Path("A:/Games/mc2-ops/CPU_SPLIT")
+
+
+def parse_cpu_split(text):
+    """Same grammar as scripts/smoke_lib/host_lease.parse_cpu_split (a test holds them equal). The old `lane=` mask is accepted for one
+    window as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. Bad lines are skipped."""
+    masks, legacy_lane = dict(CPU_SPLIT_DEFAULT), None
+    for line in text.splitlines():
+        k, _, v = line.partition("=")
+        k = k.strip()
+        try:
+            if k in masks and v.strip():
+                masks[k] = int(v.strip(), 0)
+            elif k == "lane" and v.strip():
+                legacy_lane = int(v.strip(), 0)
+        except ValueError:
+            continue
+    if legacy_lane and not re.search(r"^\s*compile\s*=\s*\S", text, re.M):
+        masks["compile"] = legacy_lane
+    return masks
+
+
 def cpu_masks():
     """Masks from A:/Games/mc2-ops/CPU_SPLIT (lines game0=, game1=, compile=; the file is the one source of truth, scripts/smoke_lib/host_lease.py reads the same).
     Derived modes: "lane" = compile (lane lint/build work never touches a game core); "gate" = every CPU (the rare PC gate fallback holds both game slots)."""
-    masks = dict(CPU_SPLIT_DEFAULT)
     try:
-        for line in Path("A:/Games/mc2-ops/CPU_SPLIT").read_text().splitlines():
-            k, _, v = line.partition("=")
-            if k.strip() in masks and v.strip():
-                masks[k.strip()] = int(v.strip(), 0)
-    except (OSError, ValueError):
-        pass
+        masks = parse_cpu_split(CPU_SPLIT_PATH.read_text())
+    except OSError:
+        masks = dict(CPU_SPLIT_DEFAULT)
     masks["lane"] = masks["compile"]
     masks["gate"] = masks["game0"] | masks["game1"] | masks["compile"]
     return masks

@@ -1,4 +1,4 @@
-"""Lane game runs route to the lane side of the GPU split (default 7900 XTX), gate runs to the gate side (2070 SUPER); a run that landed elsewhere is red."""
+"""Two lane GPUs, no gate GPU: a run is routed by the lease slot it wins (slot 0 = 7900 XTX, slot 1 = 2070 SUPER) unless a device is forced; a run that landed elsewhere than forced is red."""
 import subprocess
 import sys
 from pathlib import Path
@@ -21,15 +21,11 @@ def _clean_gpu_env(monkeypatch):
     monkeypatch.setattr(host_lease, "GPU_SPLIT_PATH", Path("Z:/no/such/GPU_SPLIT"))
 
 
-def test_lane_runs_default_to_the_lane_gpu():
-    assert _env()[K] == "AMD"
-    assert _env(MC2_VK_GPU_TIMESTAMPS="1")[K] == "AMD"
-    assert _env(MC2_FPS_CAP="0")[K] == "AMD"
-    assert nofocus.apply_env({"PATH": "x"}, perf=True)[K] == "AMD"
-
-
-def test_gate_runs_route_to_the_gate_gpu():
-    assert _env(MC2_IN_GATE="1")[K] == "NVIDIA"
+def test_an_unforced_run_asks_for_no_device_the_lease_slot_decides():
+    assert K not in _env()
+    assert K not in _env(MC2_VK_GPU_TIMESTAMPS="1")
+    assert K not in _env(MC2_IN_GATE="1")                      # no gate GPU on the PC any more
+    assert K not in nofocus.apply_env({"PATH": "x"}, perf=True)
 
 
 def test_explicit_override():
@@ -39,13 +35,13 @@ def test_explicit_override():
     assert _env(**{K: "Intel"})[K] == "Intel"
 
 
-def test_the_split_file_picks_the_sides(tmp_path, monkeypatch):
+def test_the_split_file_orders_the_slots(tmp_path, monkeypatch):
     split = tmp_path / "GPU_SPLIT"
-    split.write_text("# swapped\ngate=AMD\nlane=NVIDIA\n", encoding="utf-8")
+    split.write_text("# swapped\nslot0=NVIDIA\nslot1=AMD\n", encoding="utf-8")
     monkeypatch.setattr(host_lease, "GPU_SPLIT_PATH", split)
     monkeypatch.delenv(host_lease.PATH_ENV, raising=False)   # a redirected lease (tests) ignores the real split
-    assert _env()[K] == "NVIDIA"
-    assert _env(MC2_IN_GATE="1")[K] == "AMD"
+    assert host_lease.lane_devices() == ("NVIDIA", "AMD")
+    assert host_lease.slot_device(0) == "NVIDIA" and host_lease.slot_device(1) == "AMD"
 
 
 # The engine's side of the contract, run through the real nofocus.spawn: the child sees the routed env and logs the device it "picked" the way
@@ -65,28 +61,28 @@ def _logged_devices(env):
     return [p.device for p in vk_profile.parse(out)]
 
 
-def test_the_spawned_child_lands_on_the_requested_gpu():
+def test_the_spawned_child_lands_on_the_forced_gpu():
     env = {"PATH": "x", "SystemRoot": "C:\\Windows"}
-    devices = _logged_devices(env)
-    assert devices == ["AMD Radeon RX 7900 XTX"]
-    assert nofocus.gpu_mismatch(env, False, devices) is None
-    gate = {**env, "MC2_IN_GATE": "1"}
-    devices = _logged_devices(gate)
+    forced = {**env, K: "NVIDIA"}
+    devices = _logged_devices(forced)
     assert devices == ["NVIDIA GeForce RTX 2070 SUPER"]
-    assert nofocus.gpu_mismatch(gate, False, devices) is None
+    assert nofocus.gpu_mismatch(forced, False, devices) is None
+    xtx = {**env, "MC2_HARNESS_GPU": "xtx"}
+    devices = _logged_devices(xtx)
+    assert devices == ["AMD Radeon RX 7900 XTX"]
+    assert nofocus.gpu_mismatch(xtx, False, devices) is None
 
 
 def test_a_run_on_the_wrong_gpu_or_without_a_device_line_is_red():
-    assert "2070" in nofocus.gpu_mismatch({"PATH": "x"}, False, ["NVIDIA GeForce RTX 2070 SUPER"])
-    assert "no [VK_PROFILE]" in nofocus.gpu_mismatch({"PATH": "x"}, False, [])
+    assert nofocus.gpu_mismatch({"PATH": "x"}, False, ["NVIDIA GeForce RTX 2070 SUPER"]) is None   # nothing forced: either lane GPU is right
+    assert "no [VK_PROFILE]" in nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "xtx"}, False, [])
     assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "xtx"}, False, ["NVIDIA GeForce RTX 2070 SUPER"])
-    assert nofocus.gpu_mismatch({"PATH": "x", "MC2_IN_GATE": "1"}, False, ["AMD Radeon RX 7900 XTX"])   # a gate run on the lane GPU
+    assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "2070"}, False, ["AMD Radeon RX 7900 XTX"])
     assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "any"}, False, ["AMD Radeon RX 7900 XTX"]) is None   # nothing asked for
 
 
-def test_an_unmatched_implicit_hint_is_not_red_but_an_explicit_request_is():
+def test_an_explicit_request_that_matched_nothing_is_red():
     log = "MC2_VK_DEVICE=AMD matches no accepted device; using the default pick"
-    assert nofocus.gpu_mismatch({"PATH": "x"}, False, ["Intel(R) HD Graphics 630"], log) is None
     assert nofocus.gpu_mismatch({"PATH": "x", "MC2_HARNESS_GPU": "2070"}, False, ["Intel(R) HD Graphics 630"], log)
 
 

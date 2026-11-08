@@ -72,8 +72,8 @@ OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
 
 def gate_env(name, device=None):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
-    stages run test suites that must see the same environment a lane sees. Game stages are also pinned to the gate's side
-    of the GPU split (A:/Games/mc2-ops/GPU_SPLIT) so lane game runs on the other GPU proceed during the window.
+    stages run test suites that must see the same environment a lane sees. Game stages are also pinned to a lane GPU
+    (slot 0 of A:/Games/mc2-ops/GPU_SPLIT unless `device` names one); the real gate runs on the farm laptop, this is the PC fallback.
     device: the worker's own MC2_VK_DEVICE name substring (the auxiliary chain runs on aux_device(), not the stock chain's GPU)."""
     if name in OFFLINE_STAGES:
         return {}

@@ -1203,7 +1203,7 @@ def test_in_gate_flag_only_on_game_stages():
         assert gate.gate_env(name) == {}
     for name in ("tier1", "mods", "saveload-mc2_01", "determinism-mc2_03"):
         from smoke_lib import host_lease
-        assert gate.gate_env(name) == {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.gpu_split()["gate"]}   # pinned to the gate's GPU
+        assert gate.gate_env(name) == {"MC2_IN_GATE": "1", "MC2_VK_DEVICE": host_lease.lane_devices()[0]}   # the PC gate fallback pins slot 0's GPU
 
 
 def test_conftest_clears_inherited_gate_flag():

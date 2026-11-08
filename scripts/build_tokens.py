@@ -9,6 +9,7 @@ A build asks for K tokens (its -jK), waits until at least one is free, takes up 
 from __future__ import annotations
 
 import os
+import sys
 import time
 
 OPS = "A:/Games/mc2-ops"
@@ -29,14 +30,14 @@ def pool_size(pool_file: str | None = None) -> int:
 def compile_cpu_count() -> int:
     """Logical CPUs of the CPU_SPLIT compile mask (default 0xFFF0 = 12): the host-wide -j total never exceeds the cores compiles may use."""
     try:
+        tools = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools")
+        if tools not in sys.path:
+            sys.path.append(tools)
+        from lint_slots import parse_cpu_split   # the one CPU_SPLIT grammar (also accepts the old lane= key)
         with open(os.path.join(OPS, "CPU_SPLIT"), encoding="utf-8") as fh:
-            for line in fh:
-                k, _, v = line.partition("=")
-                if k.strip() == "compile" and v.strip():
-                    return max(1, bin(int(v.strip(), 0)).count("1"))
-    except (OSError, ValueError):
-        pass
-    return 12
+            return max(1, bin(parse_cpu_split(fh.read())["compile"]).count("1"))
+    except (OSError, ImportError):
+        return 12
 
 
 def token_dir() -> str:

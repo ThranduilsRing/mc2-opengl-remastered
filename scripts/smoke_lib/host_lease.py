@@ -91,13 +91,19 @@ GPU_SPLIT_DEFAULT = ("AMD", "NVIDIA")                  # slot 0 = RX 7900 XTX, s
 DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", "geforce", "rtx", "2070")}
 
 
+LEGACY_GPU_KEYS = {"lane": 0, "gate": 1}   # old GPU_SPLIT keys (lane=AMD, gate=NVIDIA), accepted for one window: lane = slot 0, gate = slot 1
+
+
 def _parse_gpu_split(text: str) -> tuple:
     devices = list(GPU_SPLIT_DEFAULT)
-    for line in text.splitlines():
-        k, _, v = line.partition("=")
-        m = re.fullmatch(r"slot([01])", k.strip())
-        if m and v.strip():
-            devices[int(m.group(1))] = v.strip()
+    for legacy_pass in (True, False):   # legacy keys first so an explicit slotN line always wins
+        for line in text.splitlines():
+            k, _, v = line.partition("=")
+            k = k.strip()
+            m = re.fullmatch(r"slot([01])", k)
+            index = LEGACY_GPU_KEYS.get(k) if legacy_pass else (int(m.group(1)) if m else None)
+            if index is not None and v.strip():
+                devices[index] = v.strip()
     return tuple(devices)
 
 
@@ -177,14 +183,28 @@ CPU_SPLIT_DEFAULT = {"game0": 0x0003, "game1": 0x000C, "compile": 0xFFF0}   # 58
 
 def _cpu_split() -> dict:
     """{"game0", "game1", "compile"} masks from A:/Games/mc2-ops/CPU_SPLIT (same file and defaults as tools/lint_slots.cpu_masks)."""
-    masks = dict(CPU_SPLIT_DEFAULT)
     try:
-        for line in CPU_SPLIT_PATH.read_text().splitlines():
-            k, _, v = line.partition("=")
-            if k.strip() in masks and v.strip():
-                masks[k.strip()] = int(v.strip(), 0)
-    except (OSError, ValueError):
-        pass
+        return parse_cpu_split(CPU_SPLIT_PATH.read_text())
+    except OSError:
+        return dict(CPU_SPLIT_DEFAULT)
+
+
+def parse_cpu_split(text: str) -> dict:
+    """Same grammar as tools/lint_slots.parse_cpu_split (a test holds them equal). The old `lane=` mask is accepted for one window
+    as `compile` when the file has no compile line; the old `gate=` mask has no meaning any more and is ignored. Bad lines are skipped."""
+    masks, legacy_lane = dict(CPU_SPLIT_DEFAULT), None
+    for line in text.splitlines():
+        k, _, v = line.partition("=")
+        k = k.strip()
+        try:
+            if k in masks and v.strip():
+                masks[k] = int(v.strip(), 0)
+            elif k == "lane" and v.strip():
+                legacy_lane = int(v.strip(), 0)
+        except ValueError:
+            continue
+    if legacy_lane and not re.search(r"^\s*compile\s*=\s*\S", text, re.M):
+        masks["compile"] = legacy_lane
     return masks
 
 
