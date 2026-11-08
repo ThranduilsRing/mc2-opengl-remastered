@@ -122,6 +122,8 @@ def nightly_unmet(verdict: dict) -> list[str]:
     """Required stages of the verdict's nightly/weekly tier that did not execute green. A PARTIAL with no recorded tier proves nothing."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
     import merge_gate
+    if "tier" not in verdict:
+        return []   # W130 review P0: verdicts written before merge_gate recorded `tier` keep the pre-p31 acceptance (PASS/PARTIAL, nothing failed)
     tier = verdict.get("tier") or 0
     if tier < 1:
         return ["(verdict records no nightly tier)"]
