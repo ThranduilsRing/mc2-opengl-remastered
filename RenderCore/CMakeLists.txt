@@ -18,6 +18,10 @@ target_include_directories(rendercore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_compile_features(rendercore PUBLIC cxx_std_17)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # TemporalInputs::Projection uses atomics larger than the native word size.
+    target_link_libraries(rendercore PUBLIC atomic)
+endif()
 
 # Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
 # not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
