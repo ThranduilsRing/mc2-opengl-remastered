@@ -32,7 +32,12 @@ The lane stopped at its tool-call budget. The code is committed on `claude/rt-sc
 
 ## Not done
 
-- **Proof ladder:** doctests, ratchet, lint, the real-scene probe run, a sync-validation row, smoke-lite on `E:/mc2-installs/claude/rt-scene-1`, and the A/B on mc2_01 and mc2_10.
+- **Astra p35 terrain review** (A:/Games/mc2-ops/studies/astra-review-p35-2026-11-07.md, last third). Received at the tool budget; do these FIRST in the next lane:
+  1. `kTerrainChunkCells=64` counts intervals of whichever grid is active (`vk_rt_scene_math.cpp:58`): 2048 wu with the bake, 8192 wu without. Replace it with stable world-space tiles of 16 coarse intervals (2048 wu), independent of the bake and of gameplay blocks. Keep shared border samples, and give each tile a version and bounds.
+  2. RT always emits the TL-BR diagonal (`vk_rt_scene_math.cpp:119`), but raster picks the flatter-pair diagonal when the bake is present (`vulkan_terrain_island_island.cpp:93-99`). Factor raster's choice into one pure function that both call. Add a doctest: in a saddle cell, raster and RT triangles give the same interior height. The existing chunk test that expects `idx 0,66,65` must follow the shared rule.
+  3. Build fixed, camera-independent, error-bounded RT meshes. Do not follow raster LOD or morphing (the current mesh already complies).
+  4. Picking and line of sight stay on the CPU path (unchanged here).
+- **Proof ladder:** the Ninja build is green (rc=0). Not run: ratchet, lint, the real-scene probe run, a sync-validation row, smoke-lite on `E:/mc2-installs/claude/rt-scene-1`, and the A/B on mc2_01 and mc2_10.
 - **`log_tag_baseline.json`:** needs a `VK_RT_SCENE` entry.
 
 ### Orchestrator asks after the Fable review (A:/Games/mc2-ops/studies/fable-review-p34-2026-11-07.md), not started
