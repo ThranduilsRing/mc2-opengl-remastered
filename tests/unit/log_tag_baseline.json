@@ -11486,9 +11486,99 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "count",
+    "cap",
+    "inst_addr",
+    "tlas_bytes",
+    "scratch_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "despawn_clean",
+    "key",
+    "index",
+    "traced"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "gen",
     "types",
     "instances"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "jobs"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "slot",
+    "anchor",
+    "traced",
+    "found"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "slot",
+    "why"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "live",
+    "tlas_instances",
+    "blas_bytes",
+    "builds",
+    "refits",
+    "rebuilds",
+    "retired",
+    "left",
+    "dropped",
+    "failed",
+    "pending_retire",
+    "pending_retire_bytes",
+    "tlas_bytes",
+    "instance_bytes",
+    "scratch_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "movers"
    ],
    "count": 1
   },
