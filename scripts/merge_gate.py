@@ -1103,8 +1103,12 @@ def publish_revoked(head, mark):
     """The reason a green marker no longer authorises publishing HEAD (a newer isolated non-PASS verdict at that HEAD), or ''."""
     try:
         iso = json.loads((ROOT / ISOLATED_MARK).read_text())
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return ""
+    except (OSError, ValueError) as exc:  # unreadable/torn marker: fail closed (p31)
+        return f"the isolated verdict marker is unreadable ({ISOLATED_MARK}: {exc})"
+    if not isinstance(iso, dict):
+        return f"the isolated verdict marker is malformed ({ISOLATED_MARK})"
     if iso.get("head") == head and iso.get("verdict") != "PASS" and iso.get("finished", 0) >= mark.get("finished", 0):
         return f"a newer isolated gate run at this HEAD ended {iso.get('verdict')} ({ISOLATED_MARK})"
     return ""
@@ -1209,26 +1213,35 @@ def capture_post_scopes(capture_dir):
 def capture_pipeline_mismatch(before_dir, after_dir):
     """None when the before/after captures ran the same post pipeline (or a side has no log evidence), else (infra, reason).
 
-    infra is True ONLY for a proven environment mismatch: the before capture install (capture_run.log install=) lacks
-    amd_fidelityfx_vk.dll and the before side is merely missing scopes the after side has (W126: no FSR AA from a bad seed).
-    Any other scope difference (after lost FsrAA, fog, shadow resolve, or the DLL is present) is an unexplained pipeline change:
-    the caller reports FAIL and still evaluates MAD, because a product regression can look exactly like this."""
+    infra is True ONLY for a proven environment mismatch: the before capture recorded AT CAPTURE TIME (capture_run.log
+    fsr_dll=missing) that its install lacked amd_fidelityfx_vk.dll, and the only difference is the FSR scopes the after side
+    adds (W126: no FSR AA from a bad seed). The install's current state is never evidence (p31: a deleted old install looked
+    like a missing DLL). Any other scope difference, or no capture-time record, is an unexplained pipeline change: the caller
+    reports FAIL and still evaluates MAD, because a product regression can look exactly like this."""
     before, after = capture_post_scopes(before_dir), capture_post_scopes(after_dir)
     if not before or not after or before == after:
         return None  # no log evidence on a side: stay with the pixel verdict
-    install = ""
+    install = recorded = ""
     try:
-        match = re.search(r"install=(\S+)", (Path(before_dir) / "capture_run.log").read_text(encoding="utf-8", errors="replace"))
+        text = (Path(before_dir) / "capture_run.log").read_text(encoding="utf-8", errors="replace")
+        match = re.search(r"install=(\S+)", text)
         install = match.group(1) if match else ""
+        match = re.search(r"\bfsr_dll=(present|missing)\b", text)
+        recorded = match.group(1) if match else ""
     except OSError:
         pass
-    miss = bool(install) and not (Path(install) / "amd_fidelityfx_vk.dll").is_file()
-    infra = miss and not (before - after)
+    miss = recorded == "missing"
+    infra = miss and not (before - after) and (after - before) <= FSR_SCOPES
     return infra, ("capture pipelines differ%s: only before has %s, only after has %s; seed %s%s"
                    % (", not a pixel result" if infra else " without a proven environment cause",
                       sorted(before - after) or "-", sorted(after - before) or "-",
-                      "MISSed amd_fidelityfx_vk.dll" if miss else "has amd_fidelityfx_vk.dll or is gone",
+                      "MISSed amd_fidelityfx_vk.dll" if miss else
+                      "has amd_fidelityfx_vk.dll" if recorded else "has no capture-time DLL record",
                       f" ({install})" if install else ""))
+
+
+#: The scopes a missing amd_fidelityfx_vk.dll removes; no other scope difference is explained by that environment.
+FSR_SCOPES = frozenset({"VKIsl.Post.FsrAA", "VKIsl.Post.MotionVectors"})
 
 
 def mad_flags(output, declared=(), expected=()):
@@ -1836,6 +1849,9 @@ def main(argv=None):
     except ValueError as exc:
         ap.error(str(exc))
     head = git("rev-parse", "HEAD")
+    if args.isolated_verdict and not args.install and not args.dry_run:
+        # Revoke first, then execute (p31): a crash before the final verdict must not leave an older green publishable.
+        record_isolated_verdict(head, "RUNNING")
     match = re.search(r'merge(\d+)(?:\D|$)', str(proof))
     window_number = args.window or (int(match[1]) if match else None)
     window = {}

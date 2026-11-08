@@ -889,14 +889,12 @@ def main() -> int:
         flag = "STABLE" if info["stable"] else "DRIFT"
         print(f"[viscap]   {name:20} {flag:7} {' '.join(shas)}")
     fired = all(r["engine_capture_fired"] for r in runs)
-    bad = [(i, r_) for i, r in enumerate(runs, 1) for r_ in fail_reasons(r) if "did not fire" not in r_]
+    # p31: the same predicate as single-run mode; a run whose engine capture did not fire proves nothing about stability.
+    bad = [(i, r_) for i, r in enumerate(runs, 1) for r_ in fail_reasons(r)]
     if bad:
         for i, why in bad:
             print(f"[viscap] FAIL: run {i}: {why}; the stability result is void")
         return 1
-    if not fired:
-        print("[viscap]   WARNING: engine capture path did not fire in some run "
-              "-- RC may predate S9. Check the .log.")
     if not det_clock:
         print("[viscap]   NOTE: --no-fixed-clock set; drift is EXPECTED.")
     print(f"[viscap] STABILITY {'PASS (all bookmarks byte-stable post-warmup)' if all_stable else 'FAIL (residual drift)'}")

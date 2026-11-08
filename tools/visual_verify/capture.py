@@ -327,7 +327,9 @@ def main(argv=None) -> int:
     out_dir = Path(args.out).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     logf = open(out_dir / "capture_run.log", "w", encoding="utf-8", errors="replace")
-    logf.write(f"[vv-capture] start {_now_iso()} install={install} "
+    # fsr_dll= is the capture-time environment record merge_gate needs to call a missing-FSR pipeline INFRA (p31).
+    fsr_dll = "present" if (install / "amd_fidelityfx_vk.dll").is_file() else "missing"
+    logf.write(f"[vv-capture] start {_now_iso()} install={install} fsr_dll={fsr_dll} "
                f"bookmarks={len(files)} frame={args.frame}\n")
 
     # Restore desktop cursor on exit (the sweep parks it center for determinism).

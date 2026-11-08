@@ -9,6 +9,7 @@ fails on a [SIM_OVERLAP v1] VIOLATION, or when no "[VIDEO] init: opened" line sh
   py -3 scripts/video_decode_smoke.py --exe E:/mc2-installs/<lane>/mc2.exe [--mission mc2_01 ...]
 """
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -41,6 +42,20 @@ def early_exit_only(text: str) -> bool:
         return False
     return all({b.strip().split(":")[0] for b in buckets.split(",") if b.strip()} <= {"engine_reported_fail"}
                for _stem, buckets in FAIL_ROW.findall(text))
+
+
+def countdown_exit_ok(rc: int, text: str, report) -> bool:
+    """The mission-end row's accepted failure, judged on run_smoke's structured verdict, not only on log text (p31: all() over
+    zero parsed FAIL rows was true, any nonzero rc qualified, and truncated output kept the markers). Exactly rc 1, the text
+    carries only the early_exit summary, and a complete report.json has no run failure, no fingerprint failure, and at least
+    one row, every row FAIL with the single bucket engine_reported_fail."""
+    if rc != 1 or not EARLY_EXIT.search(text) or not early_exit_only(text) or not isinstance(report, dict):
+        return False
+    if report.get("run_failures") or (report.get("fingerprint") or {}).get("hard_fail"):
+        return False
+    rows = report.get("rows")
+    return bool(rows) and isinstance(rows, list) and all(
+        isinstance(r, dict) and r.get("result") == "FAIL" and r.get("buckets") == ["engine_reported_fail"] for r in rows)
 
 
 GRAVEYARD = re.compile(r"\[GRAVEYARD v1\] retire_calls=(\d+) nonempty=(\d+)")
@@ -76,15 +91,20 @@ def run_mission(exe: str, mission: str, duration: int, countdown: bool = False, 
                           **console_child.child_kwargs(redirected=True))
     text = proc.stdout + "\n" + proc.stderr
     m = re.search(r"\[runner\] artifacts: (.+)", text)
+    report = None
     if m:
         for log in Path(m.group(1).strip()).glob("*.log"):
             text += "\n" + log.read_text(encoding="utf-8", errors="replace")
+        try:
+            report = json.loads((Path(m.group(1).strip()) / "report.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            report = None   # no complete structured verdict: the countdown exception cannot apply
     if log_to:
         log_to.parent.mkdir(parents=True, exist_ok=True)
         log_to.write_text(text, encoding="utf-8")
     ok, why = judge(text, require_results=countdown, min_retires=MIN_RETIRES if ordering else 0)
     # The end row ends the mission on purpose: run_smoke reports that as early_exit (rc=1), which is the pass shape.
-    if proc.returncode != 0 and countdown and ok and EARLY_EXIT.search(text) and early_exit_only(text):
+    if countdown and ok and countdown_exit_ok(proc.returncode, text, report):
         return True, why + " (mission ended by the countdown: early_exit)"
     if proc.returncode != 0:
         ok, why = False, f"run_smoke rc={proc.returncode}; {why}"

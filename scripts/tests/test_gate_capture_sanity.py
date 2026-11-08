@@ -15,13 +15,33 @@ FSR = ("[VK_RESOURCE_GRAPH] chain=SMAA passes=4 transient_images=3 slots=3 alias
        "VKIsl.Post.MotionVectors=0.1(x1.0) VKIsl.Post.FsrAA=0.3(x1.0) VKIsl.Post.Fog=0.1(x1.0) VKIsl.Post.ShadowResolve=0.2(x1.0)\n")
 
 
-def capture(root, side, text, install=None):
+def capture(root, side, text, install=None, fsr_dll=None):
+    """fsr_dll: the capture-time record capture.py writes; by default derived from the install as capture.py does."""
     d = root / side
     (d / "mc2_01_saved_205644").mkdir(parents=True)
     (d / "mc2_01_saved_205644" / "mc2_01_capture.log").write_text(text)
     if install:
-        (d / "capture_run.log").write_text(f"[vv-capture] start 2026-11-07T11:17:50Z install={install} bookmarks=2\n")
+        if fsr_dll is None:
+            fsr_dll = "present" if (Path(install) / "amd_fidelityfx_vk.dll").is_file() else "missing"
+        rec = f" fsr_dll={fsr_dll}" if fsr_dll else ""
+        (d / "capture_run.log").write_text(f"[vv-capture] start 2026-11-07T11:17:50Z install={install}{rec} bookmarks=2\n")
     return d
+
+
+def test_deleted_install_without_capture_time_record_is_not_infra(tmp_path):
+    """p31: an absent DLL at the recorded install path (the old install was deleted) proved nothing about capture time."""
+    infra, reason = gate.capture_pipeline_mismatch(
+        capture(tmp_path, "before", NO_FSR, tmp_path / "deleted-install", fsr_dll=""), capture(tmp_path, "after", FSR))
+    assert not infra and "no capture-time DLL record" in reason
+
+
+def test_recorded_missing_dll_explains_only_fsr_scopes(tmp_path):
+    """p31: any before-scope subset qualified; a missing DLL explains FsrAA/MotionVectors, never e.g. a lost bloom pass."""
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    after = FSR.replace("VKIsl.ActorCull", "VKIsl.Post.Bloom")
+    infra, reason = gate.capture_pipeline_mismatch(capture(tmp_path, "before", NO_FSR, seed), capture(tmp_path, "after", after))
+    assert not infra and "VKIsl.Post.Bloom" in reason
 
 
 def test_broken_seed_without_fsr_is_infra_naming_scopes_and_miss(tmp_path):
