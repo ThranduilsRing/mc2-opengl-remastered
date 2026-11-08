@@ -6,6 +6,7 @@
 #include "vulkan_context.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 
 namespace mc2vk::rt {
@@ -22,6 +23,8 @@ static_assert(kAccessTransferWrite == VK_ACCESS_2_TRANSFER_WRITE_BIT);
 static_assert(kAccessAsRead == VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR);
 static_assert(kAccessAsWrite == VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
 static_assert(sizeof(VkAccelerationStructureInstanceKHR) == kInstanceBytes);
+static_assert(kBuildAllowUpdate == VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);
+static_assert(kBuildAllowCompaction == VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
 
 namespace {
 
@@ -160,6 +163,7 @@ bool recordBlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, const Triang
     blas.flags_ = vkFlags;
     blas.updateScratch_ = updateScratch;
     blas.primitiveCount_ = g.triangleCount;
+    blas.signature_.assign(1, signatureOf(g));
     return true;
 }
 
@@ -227,6 +231,7 @@ bool recordBlasBuildBatch(const VulkanContext& ctx, VkCommandBuffer cmd, const s
         built[i].flags_ = vkFlags;
         built[i].updateScratch_ = updateScratch[i];
         built[i].primitiveCount_ = geometries[i].triangleCount;
+        built[i].signature_.assign(1, signatureOf(geometries[i]));
     }
     out = std::move(built);
     if (groupsOut) *groupsOut = calls;
@@ -235,10 +240,134 @@ bool recordBlasBuildBatch(const VulkanContext& ctx, VkCommandBuffer cmd, const s
 }
 
 bool recordBlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, const TriangleGeometry& g, AccelStructure& blas, ScratchArena& scratch) {
-    if (!blas || blas.isTop() || !blas.canUpdate() || g.triangleCount != blas.primitiveCount_) return false;
+    if (!blas || blas.isTop()) return false;
+    const GeometrySignature now = signatureOf(g);
+    if (refitAction(blas.signature_, blas.buildFlagBits(), std::span<const GeometrySignature>(&now, 1), blas.buildFlagBits(), 0, 1) != RefitAction::Refit)
+        return false;
     const VkAccelerationStructureGeometryKHR geo = trianglesOf(g);
     return recordBuild(ctx, cmd, VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, geo, g.triangleCount, blas.flags_, "blas_update", true, blas, scratch, nullptr,
                        nullptr, false);
+}
+
+GeometrySignature signatureOf(const TriangleGeometry& g) {
+    GeometrySignature s;
+    s.vertexCount = g.vertexCount;
+    s.triangleCount = g.triangleCount;
+    s.vertexFormat = static_cast<uint32_t>(g.vertexFormat);
+    s.indexType = g.indices ? static_cast<uint32_t>(g.indexType) : static_cast<uint32_t>(VK_INDEX_TYPE_NONE_KHR);
+    s.vertexStride = g.vertexStride;
+    s.geometryFlags = g.opaque ? static_cast<uint32_t>(VK_GEOMETRY_OPAQUE_BIT_KHR) : 0u;
+    s.indexSource = g.indices;
+    return s;
+}
+
+uint32_t AccelStructure::buildFlagBits() const noexcept {
+    return static_cast<uint32_t>(flags_ & (VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR));
+}
+
+bool recordBlasJobs(const VulkanContext& ctx, VkCommandBuffer cmd, std::span<BlasJob> jobs, const BuildFlags& flags, std::string_view name, ScratchArena& scratch,
+                    uint32_t* groupsOut, VkDeviceSize* scratchOut) {
+    if (groupsOut) *groupsOut = 0;
+    if (scratchOut) *scratchOut = 0;
+    for (BlasJob& j : jobs) j.ok = false;
+    if (!ctx.rt().accel) return false;
+    const VkBuildAccelerationStructureFlagsKHR vkFlags = toVkFlags(flags);
+    const uint32_t flagBits = static_cast<uint32_t>(flags.allowUpdate ? kBuildAllowUpdate : 0u) | (flags.allowCompaction ? kBuildAllowCompaction : 0u);
+    const size_t n = jobs.size();
+    size_t totalGeos = 0;
+    for (const BlasJob& j : jobs) totalGeos += j.geometries.size();
+    // Flat storage: every info's pGeometries / range pointer stays valid until the build calls are recorded.
+    std::vector<VkAccelerationStructureGeometryKHR> geos(totalGeos);
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> ranges(totalGeos);
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> infos(n, {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR});
+    std::vector<size_t> firstGeo(n, 0);
+    std::vector<uint64_t> need(n, 0), offsets(n, 0), updateScratch(n, 0);
+    std::vector<uint32_t> group(n, 0), primitives;
+    std::vector<GeometrySignature> sig;
+    std::vector<std::vector<GeometrySignature>> sigs(n);
+    std::vector<AccelStructure> created(n);
+    std::vector<uint8_t> live(n, 0);
+    size_t at = 0;
+    for (size_t i = 0; i < n; ++i) {
+        BlasJob& j = jobs[i];
+        firstGeo[i] = at;
+        const size_t gc = j.geometries.size();
+        at += gc;
+        if (!j.blas || gc == 0 || (!j.refit && *j.blas)) continue;
+        bool valid = true;
+        sig.clear();
+        primitives.assign(gc, 0);
+        for (size_t k = 0; k < gc; ++k) {
+            const TriangleGeometry& g = j.geometries[k];
+            if (g.triangleCount == 0 || g.vertices == 0) valid = false;
+            geos[firstGeo[i] + k] = trianglesOf(g);
+            ranges[firstGeo[i] + k] = VkAccelerationStructureBuildRangeInfoKHR{g.triangleCount, 0, 0, 0};
+            primitives[k] = g.triangleCount;
+            sig.push_back(signatureOf(g));
+        }
+        if (!valid) continue;
+        if (j.refit && (j.blas->isTop() || refitAction(j.blas->signature_, j.blas->buildFlagBits(), sig, flagBits, 0, 1) != RefitAction::Refit)) continue;
+        VkAccelerationStructureBuildGeometryInfoKHR& info = infos[i];
+        info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        info.flags = j.refit ? j.blas->flags_ : vkFlags;
+        info.mode = j.refit ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        info.geometryCount = static_cast<uint32_t>(gc);
+        info.pGeometries = &geos[firstGeo[i]];
+        if (j.refit) {
+            need[i] = j.blas->updateScratch_ ? j.blas->updateScratch_ : 1;
+        } else {
+            VkAccelerationStructureBuildSizesInfoKHR sizes{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+            vkGetAccelerationStructureBuildSizesKHR(ctx.device(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &info, primitives.data(), &sizes);
+            std::optional<AccelStructure> as = createAccelStructure(ctx, VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, sizes.accelerationStructureSize, name);
+            if (!as) continue;
+            created[i] = std::move(*as);
+            need[i] = sizes.buildScratchSize ? sizes.buildScratchSize : 1;
+            updateScratch[i] = sizes.updateScratchSize;
+            sigs[i] = sig;
+        }
+        live[i] = 1;
+    }
+    const uint64_t align = ctx.rtCaps().minAccelerationStructureScratchOffsetAlignment;
+    const uint64_t peak = scratchBatchPlan(need, align, kScratchBatchBudget, offsets, group);
+    VkDeviceAddress base = 0;
+    if (peak > 0 && !scratch.reserve(ctx, peak, name, base)) return false;   // `created` is destroyed directly: nothing recorded
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> callInfos;
+    std::vector<const VkAccelerationStructureBuildRangeInfoKHR*> callRanges;
+    uint32_t calls = 0;
+    for (size_t i = 0; i < n;) {
+        const uint32_t g = group[i];
+        callInfos.clear();
+        callRanges.clear();
+        for (; i < n && group[i] == g; ++i) {
+            if (!live[i]) continue;
+            AccelStructure& dst = jobs[i].refit ? *jobs[i].blas : created[i];
+            infos[i].srcAccelerationStructure = jobs[i].refit ? dst.get() : VK_NULL_HANDLE;
+            infos[i].dstAccelerationStructure = dst.get();
+            infos[i].scratchData.deviceAddress = base + offsets[i];
+            callInfos.push_back(infos[i]);
+            callRanges.push_back(&ranges[firstGeo[i]]);
+        }
+        if (callInfos.empty()) continue;
+        if (calls > 0) recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the next group reuses the arena
+        vkCmdBuildAccelerationStructuresKHR(cmd, static_cast<uint32_t>(callInfos.size()), callInfos.data(), callRanges.data());
+        ++calls;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        if (!live[i]) continue;
+        jobs[i].ok = true;
+        if (jobs[i].refit) continue;
+        AccelStructure& out = created[i];
+        out.flags_ = vkFlags;
+        out.updateScratch_ = updateScratch[i];
+        uint32_t prims = 0;
+        for (const TriangleGeometry& tg : jobs[i].geometries) prims += tg.triangleCount;
+        out.primitiveCount_ = prims;
+        out.signature_ = std::move(sigs[i]);
+        *jobs[i].blas = std::move(out);
+    }
+    if (groupsOut) *groupsOut = calls;
+    if (scratchOut) *scratchOut = peak;
+    return true;
 }
 
 bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, const BuildFlags& flags, std::string_view name,
@@ -255,6 +384,51 @@ bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddr
     return true;
 }
 
+bool recordTlasRebuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, uint32_t capacity, const BuildFlags& flags,
+                       std::string_view name, AccelStructure& tlas, ScratchArena& scratch) {
+    if (!ctx.rt().accel || instanceCount == 0 || instances == 0 || instances % kInstanceAddressAlignment != 0) return false;
+    if (tlas && !tlas.isTop()) return false;
+    const VkAccelerationStructureGeometryKHR geo = instancesOf(instances);
+    const VkBuildAccelerationStructureFlagsKHR vkFlags = toVkFlags(flags);
+    auto sizesFor = [&](uint32_t primitives) {
+        VkAccelerationStructureBuildGeometryInfoKHR info{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
+        info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        info.flags = vkFlags;
+        info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        info.geometryCount = 1;
+        info.pGeometries = &geo;
+        VkAccelerationStructureBuildSizesInfoKHR sizes{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+        vkGetAccelerationStructureBuildSizesKHR(ctx.device(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &info, &primitives, &sizes);
+        return sizes;
+    };
+    const VkAccelerationStructureBuildSizesInfoKHR need = sizesFor(instanceCount);
+    if (tlas && need.accelerationStructureSize > tlas.size()) return false;   // too small: the caller retires it and passes an empty one
+    if (!tlas) {
+        const VkAccelerationStructureBuildSizesInfoKHR cap = sizesFor(std::max(capacity, instanceCount));
+        auto created = createAccelStructure(ctx, VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, cap.accelerationStructureSize, name);
+        if (!created) return false;
+        tlas = std::move(*created);
+    }
+    VkDeviceAddress scratchAddr = 0;
+    if (!scratch.reserve(ctx, need.buildScratchSize, name, scratchAddr)) return false;
+    VkAccelerationStructureBuildGeometryInfoKHR info{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
+    info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    info.flags = vkFlags;
+    info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    info.geometryCount = 1;
+    info.pGeometries = &geo;
+    info.dstAccelerationStructure = tlas.get();
+    info.scratchData.deviceAddress = scratchAddr;
+    VkAccelerationStructureBuildRangeInfoKHR range{};
+    range.primitiveCount = instanceCount;
+    const VkAccelerationStructureBuildRangeInfoKHR* ranges = &range;
+    vkCmdBuildAccelerationStructuresKHR(cmd, 1, &info, &ranges);
+    tlas.flags_ = vkFlags;
+    tlas.updateScratch_ = need.updateScratchSize;
+    tlas.primitiveCount_ = instanceCount;
+    return true;
+}
+
 bool recordTlasUpdate(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, AccelStructure& tlas, ScratchArena& scratch) {
     if (!tlas || !tlas.isTop() || !tlas.canUpdate() || instanceCount != tlas.primitiveCount_ || instances == 0 || instances % kInstanceAddressAlignment != 0)
         return false;
@@ -267,7 +441,10 @@ VkAccelerationStructureInstanceKHR makeInstance(VkDeviceAddress blasAddress, con
     VkAccelerationStructureInstanceKHR inst{};
     static constexpr float kIdentity[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
     std::memcpy(&inst.transform, transform3x4 ? transform3x4 : kIdentity, sizeof(inst.transform));
-    inst.instanceCustomIndex = customIndex & 0xFFFFFFu;
+    // F5: a masked index would alias another object's id (0x1000000 -> terrain). Refuse it: mask 0 and a null reference, never traced.
+    assert(instanceCustomIndexFits(customIndex) && "instanceCustomIndex is 24 bits");
+    if (!instanceCustomIndexFits(customIndex)) return inst;
+    inst.instanceCustomIndex = customIndex;
     inst.mask = mask;
     inst.instanceShaderBindingTableRecordOffset = 0;
     inst.flags = static_cast<uint32_t>(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
@@ -305,7 +482,7 @@ bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const Acce
     // AMD proprietary (26.9.2, RX 7900 XTX): a compacted copy of a 1-triangle ALLOW_UPDATE BLAS traces as a miss (stage 6 matrix,
     // both PREFER_FAST_TRACE and PREFER_FAST_BUILD; the 512-triangle copies and every non-update copy hit; the 2070 hits all six).
     // Refuse the copy there so the caller keeps the uncompacted structure; one sample size cannot place a primitive floor.
-    if (src.canUpdate() && ctx.driverId() == VK_DRIVER_ID_AMD_PROPRIETARY) return false;
+    if (!compactionAllowed(src.buildFlagBits(), ctx.driverId() == VK_DRIVER_ID_AMD_PROPRIETARY)) return false;
     auto created = createAccelStructure(ctx, src.isTop() ? VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
                                         compactedSize, name);
     if (!created) return false;
@@ -318,11 +495,13 @@ bool recordCompactCopy(const VulkanContext& ctx, VkCommandBuffer cmd, const Acce
     dst.flags_ = src.flags_;
     dst.updateScratch_ = src.updateScratch_;
     dst.primitiveCount_ = src.primitiveCount_;
+    dst.signature_ = src.signature_;
     return true;
 }
 
-bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Phase to) {
-    const Barrier b = barrierBetween(from, to);
+bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, Phase from, Phase to) { return recordBarrier(ctx, cmd, barrierBetween(from, to)); }
+
+bool recordBarrier(const VulkanContext& ctx, VkCommandBuffer cmd, const Barrier& b) {
     if (!b.valid) return false;
     VkMemoryBarrier2 mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
     mb.srcStageMask = b.srcStage;

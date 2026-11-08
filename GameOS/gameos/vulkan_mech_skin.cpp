@@ -48,15 +48,17 @@ bool MechSkinPass::init(VkDevice device, VmaAllocator allocator, std::string_vie
 
 bool MechSkinPass::ensure(uint32_t slot, uint64_t vertices, uint64_t jobs) {
     // The caller has retired every submit that read this slot's buffers.
-    if (!skinned_[slot] || vertices > vertexCap_[slot]) {
+    if (!skinned_[slot] || vertices > vertexCap_[slot] || usageStale_[slot]) {
         const uint64_t cap = std::min<uint64_t>(kMaxSkinVertices, std::max<uint64_t>(vertices + vertices / 4, 1ull << 14));
         OwnedBuffer fresh;
-        if (!fresh.createDeviceLocal(allocator_, device_, cap * kVertexBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "mech.skinned", static_cast<int>(slot))) {
+        if (!fresh.createDeviceLocal(allocator_, device_, cap * kVertexBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | extraUsage_,
+                                     "mech.skinned", static_cast<int>(slot))) {
             if (mc2_diag::tagRequested("VK_MECH_SKIN")) mc2::fmt::print_err("[VK_MECH_SKIN] skinned buffer ({} vertices) could not be created; mechs blend inline.\n", mc2::fmt::as_u64(cap));
             return false;
         }
         skinned_[slot] = std::move(fresh);
         vertexCap_[slot] = cap;
+        usageStale_[slot] = false;
         stamps_[slot][3].invalidate();  // a recycled VkBuffer handle value must not match the cached key
     }
     if (!jobBuf_[slot] || jobs > jobCap_[slot]) {
@@ -174,6 +176,14 @@ void MechSkinPass::plan(uint32_t slot, std::span<const Mc2MechDrawRun> runSpan, 
     maxCount_ = maxCount;
     jobCount_ = static_cast<uint32_t>(jobs_.size());
     active_ = true;
+}
+
+void MechSkinPass::setRayInput(bool on) noexcept {
+    static_assert(kVertexStride == kVertexBytes);
+    const VkBufferUsageFlags want = on ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0;
+    if (want == extraUsage_) return;
+    extraUsage_ = want;
+    for (bool& s : usageStale_) s = true;   // ensure() swaps each slot's buffer the next time it plans that slot (its prior submit has retired then)
 }
 
 void MechSkinPass::record(VkCommandBuffer cb, VkBuffer srcVbo, VkDeviceSize srcBytes, VkBuffer bones, VkDeviceSize boneRange, uint32_t boneOffset) {

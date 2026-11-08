@@ -75,6 +75,7 @@
 #include "../../RenderCore/axis_convert.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 #include "vk_island_fail_policy.h"
+#include "vk_rt_scene.h"
 
 namespace {
 
@@ -441,6 +442,7 @@ bool init_island(MechIsland* s, int w, int h) {
         vlog("mech GPU skin unavailable (pipeline build failed); passes blend bones inline.");
         (void)mc2vk::takeLastCreateFailure();   // optional: its VkResult must not be blamed for a later init failure
     }
+    s->skin.setRayInput(ctx.rt().accel && ctx.rt().rayQuery);   // RT scene part 2: the skin output feeds the mover BLASes
     {
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(s->phys, &props);
@@ -826,7 +828,8 @@ bool upload_geometry_once(MechIsland* s) {
         bool ok = stageVertices.createFilled(s->allocator, s->device, feed.vboCpu, feed.vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.vertices") &&
                   stageIndices.createFilled(s->allocator, s->device, feed.iboCpu, feed.iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "mech.stage.indices") &&
                   s->vbo.createDeviceLocal(s->allocator, s->device, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.vbo") &&
-                  s->ibo.createDeviceLocal(s->allocator, s->device, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "mech.ibo");
+                  s->ibo.createDeviceLocal(s->allocator, s->device, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                      (mc2vk::getOrCreateEngineVulkanContext().rt().accel ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0u), "mech.ibo");
         if (ok) {
             ok = mc2vk::submitOneShot(mc2vk::getOrCreateEngineVulkanContext(), [&](VkCommandBuffer cb) {
                 const VkBufferCopy vertices{0, 0, feed.vboBytes}, indices{0, 0, feed.iboBytes};
@@ -881,6 +884,43 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
     return ensure_dummy_scheme(s) ? 1 : 0;
 }
 
+// RT scene part 2: every pre-skinned run instance this frame becomes one geometry of its actor's mover BLAS, read straight from the skin output (no
+// readback). The anchor is the instance's base bone translation (Stuff space -> MC2 world). Runs drawn from the bind-pose VBO are not ray-visible.
+static void record_ray_movers(MechIsland* s, VkCommandBuffer cb, uint32_t par, const Mc2MechFrameFeed& feed) {
+    const VkDeviceAddress skinned = s->skin.skinnedAddress(), ibo = s->ibo ? s->ibo.deviceAddress() : 0;
+    if (!s->skin.active() || skinned == 0 || ibo == 0 || feed.motionKeys == nullptr || feed.runs == nullptr) return;
+    std::vector<mc2vk::rt::scene::MoverGeometry> geos;
+    const auto* inst = static_cast<const uint8_t*>(feed.instances64);
+    const auto* bones = static_cast<const uint8_t*>(feed.bones64);
+    for (uint32_t r = 0; r < feed.runCount; ++r) {
+        const Mc2MechDrawRun& run = feed.runs[r];
+        if (run.vertexCount == 0 || run.indexCount < 3) continue;
+        for (uint32_t k = 0; k < run.instanceCount; ++k) {
+            const uint32_t i = run.instanceBase + k;
+            const std::optional<uint32_t> region = s->skin.region(r, k);
+            if (i >= feed.instanceCount || !region || feed.motionKeys[i] == 0) continue;
+            mc2vk::rt::scene::MoverGeometry g;
+            g.key = feed.motionKeys[i];
+            g.vertices = skinned + static_cast<uint64_t>(*region) * mc2vk::MechSkinPass::kVertexStride;
+            g.vertexStride = mc2vk::MechSkinPass::kVertexStride;
+            g.vertexCount = run.vertexCount;
+            g.indices = ibo + static_cast<uint64_t>(run.firstIndex) * 4u;
+            g.triangleCount = run.indexCount / 3;
+            if (inst && bones) {
+                uint32_t baseBone = 0;
+                std::memcpy(&baseBone, inst + static_cast<size_t>(i) * 64 + 4, sizeof(baseBone));
+                if (baseBone < feed.boneCount) {
+                    float t[3];
+                    std::memcpy(t, bones + static_cast<size_t>(baseBone) * 64 + 12 * sizeof(float), sizeof(t));
+                    mc2vk::rt::scene::stuffToWorld(t, g.anchor);
+                }
+            }
+            geos.push_back(g);
+        }
+    }
+    mc2vk::rt::scene::recordMovers(cb, par, geos);
+}
+
 // GPU-FRONTIER-1: pure command recording for the mech pass (depth pre-pass + colour runs). Staging, descriptor-set resolution and the
 // dynamic offsets are prepared by mc2_vk_mech_island_run on the main thread; this touches only the command buffer and the island timers.
 static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, int h, const Mc2MechFrameFeed& feed,
@@ -897,6 +937,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     s->gpuTimer.reset(cb);
     s->gpuTimer.write(cb, 0);
     if (s->skin.active()) { MC2_VK_GPU_SCOPE(skinScope, cb, "VKIsl.Mech.Skin"); s->skin.record(cb, s->vbo.get(), s->vboBytes, boneBuffer, boneRange, dynOffsets[2]); }   // compute pre-skin, outside the render pass
+    record_ray_movers(s, cb, par, feed);
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();

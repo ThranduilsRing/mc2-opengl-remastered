@@ -24,18 +24,39 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
 namespace mc2vk::rt::scene {
 
-enum class Kind : uint8_t { Terrain = 0, StaticProp = 1 };
+enum class Kind : uint8_t { Terrain = 0, StaticProp = 1, Mover = 2 };
 
 inline constexpr uint32_t kTerrainObjectId = 0;
-inline constexpr uint32_t kMechIdFirst = 0x10000;   // reserved for movers (part 2)
+inline constexpr uint32_t kMechIdFirst = 0x10000;   // the movers: kMechIdFirst + scene-table slot
 inline constexpr uint32_t kMechIdLast = 0x3FFFF;
 inline constexpr uint32_t kCustomIndexMask = 0xFFFFFF;   // VkAccelerationStructureInstanceKHR::instanceCustomIndex is 24 bits
-inline constexpr uint8_t kMaskStatic = 0x01;              // instance mask bit of terrain + static props (movers get their own bits)
+inline constexpr uint8_t kMaskStatic = 0x01;              // instance mask bit of terrain + static props
+inline constexpr uint8_t kMaskMover = 0x02;               // skinned movers (mechs, vehicles): gameplay-hidden in the fog, so a consumer can exclude them
+
+// MOVERS (part 2): one updatable BLAS per actor (a mech or a vehicle), built in the frame command buffer straight from the GPU skin output
+// (MechSkinPass, no readback), refit every frame it is drawn and rebuilt on a topology / LOD change or after kRefitsBeforeRebuild refits. Its TLAS
+// instance custom index is kMechIdFirst + a bounded scene-table slot (never the 32-bit handle; the table keeps the key). An actor not drawn this frame
+// (off screen) keeps its last pose and stays in the TLAS; it leaves when its RenderWorld handle dies (mechs) or after kMoverUnseenFrames unseen frames
+// (vehicles, keyed by shape address), and on map unload. A left slot is reused only after every fresh slot was used (FIFO), so a stale index ages out.
+inline constexpr uint32_t kMoverSlots = kMechIdLast - kMechIdFirst + 1;
+constexpr std::optional<uint32_t> moverCustomIndex(uint32_t slot) {
+    if (slot >= kMoverSlots) return std::nullopt;
+    return kMechIdFirst + slot;
+}
+inline constexpr uint64_t kMoverUnseenFrames = 600;
+// A mech's key is its RenderWorld object handle (bit 31 clear); a vehicle's carries bit 31 (shape address based, no liveness query).
+constexpr bool moverIsHandleKey(uint32_t key) { return (key & 0x80000000u) == 0; }
+constexpr bool moverLeaves(bool handleKey, bool alive, uint64_t unseenFrames) { return handleKey ? !alive : unseenFrames >= kMoverUnseenFrames; }
+// The skin output is MC2 Stuff space (x, y = -mc2 x, mc2 z (up), mc2 y order as GpuStaticPropInstance): the mover instance transform into MC2 world
+// (the static-prop axis swap with an identity model), and the same map for one point.
+void moverTransform(float out[12]);
+void stuffToWorld(const float in[3], float out[3]);
 
 // A record's identity: kind, object ID and the occurrence of that ID (props of one type share the type's object ID; the ordinal is the instance's rank among
 // them in registry order, so the key of a given placed prop is stable while the registry is).
@@ -122,6 +143,8 @@ uint32_t appendRebasedIndices(std::span<const uint32_t> ibo, std::span<const Pac
 
 #ifndef MC2_RT_PURE_ONLY
 
+struct VkCommandBuffer_T;   // VkCommandBuffer, without pulling volk into every includer
+
 namespace mc2vk {
 class VulkanContext;
 }
@@ -133,8 +156,23 @@ void noteTerrain(const TerrainSource& t);
 // The colour-prop island once its map geometry is resident (`propVbo` = its VBO's device address, 0 when the VBO lacks BDA usage): builds the missing type
 // BLASes and rebuilds the TLAS when the registry generation moved. Main thread.
 void updateProps(uint64_t propVbo);
-// Map unload (the prop geometry is going away): retires every prop BLAS, the records and the TLAS.
+// Map unload (the prop geometry is going away): retires every prop BLAS, the records and the TLAS, and every mover.
 void invalidateProps();
+
+// One draw run of one mover this frame, already skinned on the GPU: positions R32G32B32_SFLOAT at `vertices` (device address, `vertexStride` apart),
+// uint32 indices at `indices` (the node range's own vertex numbering). `anchor` is the actor's root in MC2 world (the self-test aims at it).
+struct MoverGeometry {
+    uint32_t key = 0;
+    uint64_t vertices = 0;
+    uint32_t vertexStride = 0;
+    uint32_t vertexCount = 0;
+    uint64_t indices = 0;
+    uint32_t triangleCount = 0;
+    float anchor[3] = {};
+};
+// The mech island, in its frame command buffer `cb` (outside a render pass, after the skin dispatch), with its frame slot `slot` (the slot's previous
+// submit has retired): refits / builds every drawn mover's BLAS and rebuilds the frame TLAS (static instances + every live mover). Main thread.
+void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeometry> geos);
 
 }  // namespace mc2vk::rt::scene
 
