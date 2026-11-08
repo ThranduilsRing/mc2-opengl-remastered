@@ -608,41 +608,15 @@ AlbedoTarget cp_target_on(ColorPropIsland* s) {
 }
 
 bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint32_t mipLevels) {
-    if (*samp) return true;
-    VkSamplerCreateInfo sci{};
-    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    mc2vk::infra::materialSampler(sci);
-    s->sampBias = sci.mipLodBias;
-    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;           // LINEAR_MIPMAP_LINEAR
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    sci.maxLod = VK_LOD_CLAMP_NONE; // image view bounds the immutable sampler to its supplied mip chain
-    return mc2vk::create(*samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
+    (void)mipLevels;
+    return *samp || mc2vk::infra::makeMaterialSampler(s->device, *samp, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, s->sampBias);
 }
 
-bool cp_make_detail_sampler(ColorPropIsland* s) {
-    VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    mc2vk::infra::materialSampler(info);
-    s->sampBias = info.mipLodBias;
-    info.magFilter = info.minFilter = VK_FILTER_LINEAR;
-    info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    info.addressModeU = info.addressModeV = info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    info.maxLod = VK_LOD_CLAMP_NONE;
-    return mc2vk::create(s->detailSampler, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &info, nullptr, h); });
-}
-
-// FSR/AA resolve state changed: rebuild the biased samplers (old ones retire with the in-flight frames) and mark every parity's sets for one rewrite.
+// FSR/AA resolve state changed: rebuild the biased samplers and rewrite every parity's sets once.
 void cp_refresh_samplers(ColorPropIsland* s) {
-    if (!mc2vk::infra::materialBiasStale(s->sampBias)) return;
-    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
-    const bool hadAlbedo = static_cast<bool>(s->albedoSamp), hadOn = static_cast<bool>(s->albedoOnSamp), hadDetail = static_cast<bool>(s->detailSampler);
-    if (hadAlbedo) ctx.retire(std::move(s->albedoSamp));
-    if (hadOn) ctx.retire(std::move(s->albedoOnSamp));
-    if (hadDetail) ctx.retire(std::move(s->detailSampler));
-    if (hadAlbedo) cp_make_albedo_sampler(s, &s->albedoSamp, 0);
-    if (hadOn) cp_make_albedo_sampler(s, &s->albedoOnSamp, 0);
-    if (hadDetail) cp_make_detail_sampler(s);
-    if (!hadAlbedo && !hadOn && !hadDetail) { VkSamplerCreateInfo probe{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO}; mc2vk::infra::materialSampler(probe); s->sampBias = probe.mipLodBias; }
+    const auto albedo = [s](mc2vk::OwnedSampler* p) { return [s, p] { return cp_make_albedo_sampler(s, p, 0); }; };
+    const auto detail = [s] { return mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias); };
+    if (!mc2vk::infra::refreshSamplers(s->sampBias, {{&s->albedoSamp, albedo(&s->albedoSamp)}, {&s->albedoOnSamp, albedo(&s->albedoOnSamp)}, {&s->detailSampler, detail}})) return;
     mc2vk::bumpDescEpoch();
     write_descriptors(s, -1);
 }
@@ -755,7 +729,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1,false,neutral,4,regions);
     };
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
-    if (!s->detailSampler && !cp_make_detail_sampler(s)) return false;
+    if (!s->detailSampler && !mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias)) return false;
     const uint8_t normal[4] = {128,128,255,255}, orm[4] = {255,255,0,255};
     mc2vk::ResidentTextureRef nextNormal, nextOrm;
     mc2vk::OwnedBuffer nextTable;

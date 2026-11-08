@@ -13,23 +13,11 @@
 //   - a VS that does LINEAR-BLEND SKINNING over 4 bone weights (mech.vert:156-180),
 //     then the Stuff->MC2 axis swap worldMC2 = vec3(-x,z,y) (mech.vert:178).
 //
-// SUB-SLICE 1 (this file): skinning + FLAT color. This is the P-conjugation /
-// axis-swap silhouette proof — verify the mech is not gliding/mirrored/in-sky
-// BEFORE adding material + calc_light lighting. Those are gated follow-ons:
-//   MC2_VK_MECH_MATERIAL  — copy-once single 2D albedo (slot-0 paint scheme) sampled
-//                           per run (single-material probe; per-actor VK-descriptor
-//                           cache DEFERRED — see the run() material note).
-//   MC2_VK_MECH_LIGHTING  — port calc_light + feed the LightsData UBO (DEFERRED;
-//                           needs the whole ObjectLights SSBO mirrored to VK).
-//
-// Gate MC2_VK_MECH_TIER1 (requires MC2_VK_SHARED_SCENE_DEPTH), default-OFF -> GL
-// mech color flush byte-identical. The feed (instances + bone palette + shared
-// VBO/IBO + per-run slot-0 GL texture) comes from gos_mech_batcher.cpp via the
-// Mc2Mech*Feed accessors. NO fenced GL buffer crosses.
+// Material and calc_light lighting are gated follow-ons (MC2_VK_MECH_MATERIAL / MC2_VK_MECH_LIGHTING). The feed (instances, bone palette,
+// shared VBO/IBO, per-run slot-0 texture) comes from gos_mech_batcher.cpp via the Mc2Mech*Feed accessors; no fenced GL buffer crosses.
 //
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 // =============================================================================
-
 
 #if defined(_WIN32) && !defined(VK_USE_PLATFORM_WIN32_KHR)
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -343,36 +331,20 @@ void bind_scheme_images(MechIsland* s, VkDescriptorSet set, VkImageView albedo,
 }
 
 bool make_albedo_sampler(MechIsland* s) {
-    if (s->albedoSamp) return true;
-    VkSamplerCreateInfo sci{};
-    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=VK_LOD_CLAMP_NONE;
-    mc2vk::infra::materialSampler(sci);
-    s->albedoBias = sci.mipLodBias;
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    return mc2vk::create(s->albedoSamp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
+    return s->albedoSamp || mc2vk::infra::makeMaterialSampler(s->device, s->albedoSamp, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->albedoBias);
 }
 
-// FSR-SAMPLER-REFRESH: the effective resolve state changed (FSR provider failed, AA toggled): retire the sampler built at the old bias
-// (destroyed after the GPU finishes the frames that may use it), build a new one, and rewrite each parity's scheme sets once, after
-// that parity's fence (the other parity keeps its submitted descriptors until its own turn).
+// FSR-SAMPLER-REFRESH: on a resolve-state change rebuild the sampler, then rewrite each parity's scheme sets once after that parity's fence.
 void refresh_albedo_sampler(MechIsland* s, uint32_t par) {
-    if (s->albedoSamp && mc2vk::infra::materialBiasStale(s->albedoBias)) {
-        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->albedoSamp));
-        if (!make_albedo_sampler(s)) return;   // device-level create failure: the island's own failure handling owns it
-        ++s->sampGen;
-        mc2vk::bumpDescEpoch();
-    }
+    if (mc2vk::infra::refreshSamplers(s->albedoBias, {{&s->albedoSamp, [s] { return make_albedo_sampler(s); }}})) { ++s->sampGen; mc2vk::bumpDescEpoch(); }
     if (!s->albedoSamp || s->sampBoundGen[par] == s->sampGen) return;
+    const VkImageView w = s->whiteTexture.view();
     for (auto& e : s->schemes) {
         if (e.set[par] == VK_NULL_HANDLE) continue;
-        const bool real = e.bound[par][0] != VK_NULL_HANDLE;
-        const VkImageView white = s->whiteTexture.view();
-        if (real) bind_scheme_images(s, e.set[par], e.bound[par][0], e.bound[par][1], e.bound[par][2]);
-        else bind_scheme_images(s, e.set[par], white, white, white);
+        const bool r = e.bound[par][0] != VK_NULL_HANDLE;
+        bind_scheme_images(s, e.set[par], r ? e.bound[par][0] : w, r ? e.bound[par][1] : w, r ? e.bound[par][2] : w);
     }
-    s->localShadowBound[par] = reinterpret_cast<VkImageView>(~uint64_t(0));   // never an atlas: sync_ring_bindings rewrites binding 8 below
+    s->localShadowBound[par] = reinterpret_cast<VkImageView>(~uint64_t(0));   // sync_ring_bindings rewrites binding 8 next
     s->sampBoundGen[par] = s->sampGen;
 }
 

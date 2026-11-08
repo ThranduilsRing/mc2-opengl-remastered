@@ -70,6 +70,24 @@ void materialSampler(VkSamplerCreateInfo& info) { bool provider; info.mipLodBias
 // Samplers bake the bias at creation: an owner whose sampler was built at `used` rebuilds it (retire the old one, rewrite its sets)
 // when the effective resolve state has since changed.
 bool materialBiasStale(float used) { bool provider; return used != effectiveMipBias(provider); }
+bool makeMaterialSampler(VkDevice device, OwnedSampler& samp, VkSamplerAddressMode address, float& usedBias) {
+    VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    materialSampler(sci);
+    usedBias = sci.mipLodBias;
+    sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = address;
+    sci.maxLod = VK_LOD_CLAMP_NONE;
+    return create(samp, device, [&](VkSampler* h) { return vkCreateSampler(device, &sci, nullptr, h); });
+}
+bool refreshSamplers(float& usedBias, std::initializer_list<SamplerRebuild> items) {
+    if (!materialBiasStale(usedBias)) return false;
+    bool provider;
+    usedBias = effectiveMipBias(provider);
+    for (const auto& it : items)
+        if (*it.samp) { getOrCreateEngineVulkanContext().retire(std::move(*it.samp)); it.make(); }
+    return true;
+}
 void materialBiasTick() {
     static RenderCore::temporal::MipBiasState state;
     bool provider;

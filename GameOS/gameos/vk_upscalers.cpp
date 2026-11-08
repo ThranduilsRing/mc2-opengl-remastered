@@ -2,6 +2,7 @@
 // present-side glue that turns engine images into the vendor-neutral per-frame contract.
 // Adding a vendor: one provider file implementing RenderCore::IUpscalerProvider (docs/plans/upscaler-providers.md),
 // its factory declaration below, and one registerUpscaler line.
+#include <cmath>
 #include "vk_upscalers.h"
 #include "vk_image_resource.h"
 #include "../../RenderCore/UpscalerProvider.h"
@@ -27,15 +28,24 @@ RenderCore::UpscalerImage wrapImage(const VkImageResource& r) {
     return {reinterpret_cast<uint64_t>(r.image.get()), reinterpret_cast<uint64_t>(r.view.get()),
             static_cast<uint32_t>(r.format), static_cast<uint32_t>(r.usage), r.w, r.h};
 }
-// One [VK_PRESENT] line per change of provider, extents or projection, so captures record the provider inputs.
+// One [VK_PRESENT] line per change of provider, extents or a meaningful projection change (the dynamic near plane
+// moves constantly, so near/far only count past 2x and FOV past 0.5 degrees), so captures record the provider inputs.
 void logInputsOnChange(const RenderCore::IUpscalerProvider& up, const RenderCore::UpscalerFrame& f) {
     static const RenderCore::IUpscalerProvider* lastUp = nullptr;
-    static float last[7]{};
-    const float now[7]{float(f.renderWidth), float(f.renderHeight), float(f.displayWidth), float(f.displayHeight),
-                       f.cameraNear, f.cameraFar, f.cameraFovY};
-    if (lastUp == &up && std::equal(now, now + 7, last)) return;
+    static uint32_t ext[4]{};
+    static float proj[3]{};
+    static bool flags[3]{};
+    const uint32_t nowExt[4]{f.renderWidth, f.renderHeight, f.displayWidth, f.displayHeight};
+    const bool nowFlags[3]{f.depthReversed, f.depthInfinite, f.perspective};
+    const auto ratioFar = [](float a, float b) { return a > 0.f && b > 0.f ? (a > b ? a / b : b / a) > 2.f : a != b; };
+    const bool changed = lastUp != &up || !std::equal(nowExt, nowExt + 4, ext) || !std::equal(nowFlags, nowFlags + 3, flags) ||
+                         ratioFar(f.cameraNear, proj[0]) || ratioFar(f.cameraFar, proj[1]) ||
+                         std::fabs(f.cameraFovY - proj[2]) * 57.29578f > 0.5f;
+    if (!changed) return;
     lastUp = &up;
-    std::copy(now, now + 7, last);
+    std::copy(nowExt, nowExt + 4, ext);
+    std::copy(nowFlags, nowFlags + 3, flags);
+    proj[0] = f.cameraNear; proj[1] = f.cameraFar; proj[2] = f.cameraFovY;
     if (mc2_diag::tagRequested("VK_PRESENT"))
         mc2::fmt::print_err("[VK_PRESENT] upscaler_inputs upscaler={} render={}x{} display={}x{} near={:.1f} far={:.1f} "
                             "fov_y_deg={:.2f} reverse_z={} infinite_far={} perspective={}\n", up.name(), f.renderWidth,
