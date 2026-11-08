@@ -212,10 +212,16 @@ TEST_CASE("ABLExec/stack overflow stops every push with both softfail flags enab
     struct RestoreFlags {
         bool argGuard = s_ablArgGuard;
         bool softfail = s_ablRuntimeSoftfail;
-        ~RestoreFlags() { s_ablArgGuard = argGuard; s_ablRuntimeSoftfail = softfail; }
+        int fileNumber = FileNumber;
+        ~RestoreFlags() {
+            s_ablArgGuard = argGuard;
+            s_ablRuntimeSoftfail = softfail;
+            FileNumber = fileNumber;
+        }
     } restore;
     s_ablArgGuard = true;
     s_ablRuntimeSoftfail = true;
+    FileNumber = -1;  // This direct stack test has no compiled module/source file.
 
     // Slot zero is the initial stack top; the last slot guards the usable storage.
     std::array<StackItem, 5> storage{};
