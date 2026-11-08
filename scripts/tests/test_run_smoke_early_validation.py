@@ -57,3 +57,12 @@ def test_gpu_routing_failure_clears_passed():
               and any(isinstance(b, ast.Assign) and getattr(b.targets[0], "id", "") == "passed"
                       and isinstance(b.value, ast.Constant) and b.value.value is False for b in n.body)]
     assert clears, "run_smoke.main must set passed = False when _gpu_failures is non-empty"
+
+
+def test_gpu_routing_check_skips_headless_runs():
+    """A --headless run opens no Vulkan device: the routing check must not fire on it (W133 --sim: every headless determinism row went red)."""
+    import ast
+    tree = ast.parse((ROOT / "scripts/run_smoke.py").read_text(encoding="utf-8"))
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    sites = [n for n in ast.walk(main) if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "_gpu_msg"]
+    assert sites and all(isinstance(s.value, ast.IfExp) and "args.headless" in ast.unparse(s.value.test) for s in sites)

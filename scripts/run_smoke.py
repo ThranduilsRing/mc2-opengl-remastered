@@ -1769,8 +1769,11 @@ def main():
             if f"[RESOLUTION] Pre-window: {_asked_w}x{_asked_h} (from MC2_WIDTH/MC2_HEIGHT env)" not in result.stdout_text:
                 _resolution_failures.append(f"{label}: the engine log has no '[RESOLUTION] Pre-window: {_asked_w}x{_asked_h}' line")
         # The GPU the run asked for must be the one the engine logged ([VK_PROFILE] device): routing that does not reach the device pick is red.
-        _gpu_msg = nofocus.gpu_mismatch({**os.environ, **cfg.env_extra}, bool(args.show_window or os.environ.get("MC2_SMOKE_VISIBLE")),
-                                        [p.device for p in result.summary.vk_profile], result.stdout_text)
+        # --headless opens no GPU device, so there is no device line to route (W133 --sim: the routing HARD FAIL turned every headless
+        # determinism row red; sim_determinism.headless_exit_ok refuses any HARD FAIL line).
+        _gpu_msg = None if args.headless else nofocus.gpu_mismatch(
+            {**os.environ, **cfg.env_extra}, bool(args.show_window or os.environ.get("MC2_SMOKE_VISIBLE")),
+            [p.device for p in result.summary.vk_profile], result.stdout_text)
         if _gpu_msg:
             _gpu_failures.append(f"{label}: {_gpu_msg}")
         # The options the engine saw: the exe's options.cfg plus the MC2_OPTIONS_OVERRIDE of this run's environment (the runner passes the
