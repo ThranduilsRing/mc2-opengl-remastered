@@ -57,11 +57,18 @@ float bakeTerrainHeightSmooth(vec2 xy) {
     vec2 f = g - vec2(i);
     vec4 wx = bakeCatmullW(f.x), wy = bakeCatmullW(f.y);
     float h = 0.0;
+    float lo = 1e30, hi = -1e30;
     for (int y = 0; y < 4; ++y) {
         vec4 row = vec4(bakeHeightAt(i + ivec2(-1, y - 1)), bakeHeightAt(i + ivec2(0, y - 1)), bakeHeightAt(i + ivec2(1, y - 1)), bakeHeightAt(i + ivec2(2, y - 1)));
         h += wy[y] * dot(wx, row);
+        if (y == 1 || y == 2) {
+            lo = min(lo, min(row.y, row.z));
+            hi = max(hi, max(row.y, row.z));
+        }
     }
-    return h;
+    // Catmull-Rom can invent pits/ridges at a shore crease. Keep the smooth
+    // surface within its cell's bake heights, for both receiver and blockers.
+    return clamp(h, lo, hi);
 }
 
 // Deterministic per global mask texel (the same texel in two tiles' aprons gets the same value).
