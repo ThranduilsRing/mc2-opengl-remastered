@@ -183,19 +183,25 @@ def _module_level_imports(path):
 def test_every_module_the_remote_half_imports_is_provisioned():
     """The remote half runs from C:/mc2gate/bin alone (w126: console_child missing -> ModuleNotFoundError on --remote init).
     Every non-stdlib module laptop_gate.py or a helper imports at module level must be a HELPER provision() uploads."""
-    shipped = {Path(h).stem for h in laptop_gate.HELPERS}
+    shipped = {Path(h).stem: ROOT / h for h in laptop_gate.HELPERS}
     uploaded = {rel for rel, _src in laptop_gate.provision_files(eroot=ROOT)}
     todo, seen = [ROOT / "tools" / "laptop_gate.py"], set()
     while todo:
         path = todo.pop()
         for mod in _module_level_imports(path):
-            assert mod in shipped, f"{path.name} imports {mod} at module level; add {mod}.py to laptop_gate.HELPERS"
+            assert mod in shipped, f"{path.name} imports {mod} at module level; add its repo path to laptop_gate.HELPERS"
             if mod not in seen:
                 seen.add(mod)
-                todo.append(ROOT / "scripts" / f"{mod}.py")
+                todo.append(shipped[mod])
+    assert "queue_lock" in shipped   # r_run imports it from bin/ (p31 shared queue lock; a function-level import)
     for helper in laptop_gate.HELPERS:
-        assert (ROOT / "scripts" / helper).is_file()
-        assert "bin/" + helper in uploaded
+        assert (ROOT / helper).is_file()
+        assert "bin/" + Path(helper).name in uploaded
+    # the farm runner imports queue_lock next to itself: both reach C:/mc2farm (W130)
+    assert {"runner", "queue_lock"} <= {Path(h).stem for h in laptop_gate.FARM_FILES}
+    for farm in laptop_gate.FARM_FILES:
+        assert (ROOT / farm).is_file()
+        assert f"{laptop_gate.FARM_ROOT}/{Path(farm).name}" in uploaded
     assert "bin/laptop_gate.py" in uploaded
     assert {"drv/E/" + rel for rel in laptop_gate.E_EXTRA} <= uploaded
     # every generated deploy input the PC cooks from a PC-only source reaches the laptop clone (W129 run 3 pixel red)
@@ -261,9 +267,9 @@ def _fake_remote(tmp_path, *, head=HEAD, gate_rc=0, build_rc=0, drop=(), payload
 
     def pull_one(remote, local, recursive=False):
         name = remote.rsplit("/", 1)[1]
-        if name in drop or (name == "evidence" and not evidence):
-            return False
         src = rem / name
+        if name in drop or (name == "evidence" and not evidence) or not src.exists():   # scp of a missing file: rc != 0
+            return False
         if recursive:
             import shutil
             shutil.copytree(src, Path(local) / name)
