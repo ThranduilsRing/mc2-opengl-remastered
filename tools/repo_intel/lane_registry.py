@@ -140,7 +140,7 @@ def _lock(path: Path):
             except OSError:
                 pass
             if time.time() >= deadline:
-                break  # proceed best-effort rather than deadlock
+                raise TimeoutError(f"lane registry lock unavailable: {lp}")
             time.sleep(0.05)
     try:
         yield
@@ -282,6 +282,19 @@ def release_lane(repo_root: Path, name: str) -> dict:
         removed = data["lanes"].pop(name, None)
         _write(path, data)
     return {"released": bool(removed), "name": name, "store": str(path)}
+
+
+def release_worktree(repo_root: Path, worktree: str) -> dict:
+    """Remove every claim for this worktree atomically; names alone confer no ownership."""
+    path = store_path(repo_root)
+    with _lock(path):
+        data = _read(path)
+        names = sorted(n for n, e in data["lanes"].items()
+                       if _norm(e.get("worktree", "")).rstrip("/") == _norm(worktree).rstrip("/"))
+        for name in names:
+            del data["lanes"][name]
+        _write(path, data)
+    return {"released": names, "store": str(path)}
 
 
 def _fresh_lanes(repo_root: Path) -> dict:

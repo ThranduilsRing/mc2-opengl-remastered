@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 from pathlib import Path
 
@@ -13,9 +14,20 @@ sys.path.insert(0, str(ROOT / "tools" / "visual_verify"))
 import ab  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def ancestry_covered_elsewhere(monkeypatch):
+    monkeypatch.setattr(ab, "commit_order_problem", lambda *args: None)
+
+
+def _identity():
+    payload = {"mc2.exe": hashlib.sha256(b"orig").hexdigest(), "shaders/vulkan/x.spv": hashlib.sha256(b"spv").hexdigest()}
+    return dict(commit="a" * 40, payload=payload, manifest=payload.copy())
+
+
 def _shot(d, bm, color):
     (d / bm).mkdir(parents=True)
     Image.new("RGB", (40, 20), color).save(d / bm / f"{bm}.png")
+    ab.stamp_identity(d, _identity())
 
 
 def test_compare_only(tmp_path):
@@ -34,6 +46,11 @@ def test_exe_mode_stages_installs_and_runs_both(tmp_path, monkeypatch):
     inst.mkdir()
     (inst / "mc2.exe").write_bytes(b"orig")
     (inst / "data.bin").write_bytes(b"d")
+    (inst / "shaders/vulkan").mkdir(parents=True)
+    (inst / "shaders/vulkan/x.spv").write_bytes(b"spv")
+    (inst / ab.MANIFEST).write_text("manifest_version,v1\nrelpath,sha256,bytes,src_commit\n" +
+        "\n".join(f"{p},{sha},1,{'a' * 40}" for p, sha in _identity()["payload"].items()))
+    monkeypatch.setattr(ab, "exe_commit", lambda *args: "a" * 40)
     ea, eb = tmp_path / "a.exe", tmp_path / "b.exe"
     ea.write_bytes(b"A")
     eb.write_bytes(b"B")
@@ -100,4 +117,6 @@ def test_compare_only_fails_on_an_empty_png(tmp_path):
 def test_compare_only_fails_when_nothing_was_compared(tmp_path):
     (tmp_path / "a").mkdir()
     (tmp_path / "b").mkdir()
+    for side in ("a", "b"):
+        ab.stamp_identity(tmp_path / side, _identity())
     assert _run_compare_only(tmp_path) == 1
