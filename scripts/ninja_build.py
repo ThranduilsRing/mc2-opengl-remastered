@@ -61,6 +61,19 @@ def warm(root, argv, tree):
         i = argv.index("--base")
         base = argv[i + 1]
         del argv[i:i + 2]
+    lock = None
+    if base:   # take the tree lock BEFORE the checkout moves: a build running in this tree must not have its sources switched under it
+        lock = TreeLock(root, tree)
+        if not lock.acquire(float(os.environ.get("MC2_BUILD_LOCK_WAIT", "3600"))):
+            sys.exit(f"warm: {tree} is being built by another process ({lock.holder()}); not switching the base under it")
+    try:
+        _warm_locked(root, argv, tree, base)
+    finally:
+        if lock is not None:
+            lock.close()
+
+
+def _warm_locked(root, argv, tree, base):
     if base:
         dirty = subprocess.run(["git", "-C", root, "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True,
                                **console_child.child_kwargs(redirected=True)).stdout.strip()
