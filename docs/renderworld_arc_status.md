@@ -112,7 +112,7 @@ Three scripts enforce the contract mechanically:
 
 | Script | What it enforces | Allowlist |
 |---|---|---|
-| `scripts/check-include-firewall.sh` | SCOPE_DIRS layering (engine TUs don't pull game-side headers) | `scripts/check-include-firewall.allowlist` (one entry: `GameAdapters/MechRenderAdapter.cpp`) |
+| `scripts/check_boundaries.py` | SCOPE_DIRS layering (engine TUs don't pull game-side headers) | `scripts/check-include-firewall.allowlist` (one entry: `GameAdapters/MechRenderAdapter.cpp`) |
 | `36544d925:scripts/check-no-raw-gl-from-game.sh` | Game-side TUs (`code/`, `mclib/`) don't call raw `gl*()` | `scripts/check-no-raw-gl-from-game.allowlist` (one entry: `mclib/render_contract.cpp`) |
 | `scripts/check-vfx-no-objectid.sh` | VFX shaders don't write attachment-2 | `scripts/check-vfx-no-objectid.allowlist` (expected EMPTY forever) |
 

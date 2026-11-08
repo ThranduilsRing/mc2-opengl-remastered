@@ -1,0 +1,163 @@
+{
+  "_doc": "Declarative boundary table for scripts/check_boundaries.py. Each rule: id; dirs (path prefixes, '' = whole repo); exclude_prefixes; exts (null = every file); patterns [{re, msg, strip_strings, strip_line_comment, mask, skip_line_re}]; comment_prefixes (a line whose body starts with one is skipped); allow_files (exact repo paths); allow_basenames; allow_list_file (one repo path per line, # comments); allow_substrings_file (grep -F style, matched against 'path:content'); floor {min, exts, kind: corpus|matching_files}; kind py_call runs a python function over each file. Rationale of each rule sits in 'why'.",
+  "rules": [
+    {
+      "id": "include_firewall.headers",
+      "why": "RenderWorld boundary (spec 2026-05-22-renderworld-boundary-spec section 12): engine-pure modules may not include game-side headers.",
+      "dirs": ["RenderCore/", "RenderWorld/", "Visibility/", "MeshRenderer/", "MaterialSystem/", "DebugRenderer/", "RenderDeviceGL/", "EditorBridge/", "Gates/"],
+      "exts": null,
+      "comment_prefixes": ["//", "/*", "*"],
+      "allow_list_file": "scripts/check-include-firewall.allowlist",
+      "patterns": [
+        {"re": "include.*(appear.h|bdactor.h|mech3d.h|objectappearance.h|objmgr.h|mission.h|warrior.h|gos_static_prop_batcher.h|tgl.h|msl.h|GL/glew.h|Stuff/Stuff.hpp)", "msg": "forbidden include of a game-side header"}
+      ]
+    },
+    {
+      "id": "include_firewall.symbols",
+      "why": "Forward-decls, signatures and aliases of game-side types that an include-only check misses.",
+      "dirs": ["RenderCore/", "RenderWorld/", "Visibility/", "MeshRenderer/", "MaterialSystem/", "DebugRenderer/", "RenderDeviceGL/", "EditorBridge/", "Gates/"],
+      "exts": null,
+      "comment_prefixes": ["//", "/*", "*"],
+      "allow_list_file": "scripts/check-include-firewall.allowlist",
+      "patterns": [
+        {"re": "(?<![A-Za-z0-9_])(Appearance|BldgAppearance|TreeAppearance|GVAppearance|Mech3DAppearance|GenericAppearance|ObjectAppearance|ObjectManager|Mission|MechWarrior)(?![A-Za-z0-9_])",
+         "msg": "forbidden game-side symbol", "strip_strings": true, "strip_line_comment": true,
+         "mask": ["RenderResourceLifetime::Mission"], "skip_line_re": "^\\s*Mission\\s*=\\s*[0-9]"}
+      ]
+    },
+    {
+      "id": "include_firewall.editor",
+      "why": "editor/ routes all GPU access through EditorBridge: no direct include of the GPU-internal batcher/registry/cull headers.",
+      "dirs": ["editor/"],
+      "exts": null,
+      "comment_prefixes": ["//", "/*", "*"],
+      "allow_list_file": "scripts/check-include-firewall.allowlist",
+      "patterns": [
+        {"re": "include.*(gos_static_prop_batcher.h|gos_static_prop_registry.h|gos_mech_batcher.h|gpu_cull_compute.h)", "msg": "editor/ must route GPU access through EditorBridge"}
+      ]
+    },
+    {
+      "id": "sim_no_audio_reads",
+      "why": "Simulation never reads audio-device state (wall-clock playback position forked mc2_16, 2026-10-12). Only the sound system and the radio queue read gosAudio_Get*.",
+      "dirs": ["code/", "mclib/", "gui/", "editor/"],
+      "exts": [".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".inl"],
+      "comment_prefixes": ["//", "/*", "*"],
+      "allow_files": ["mclib/soundsys.cpp", "code/gamesound.cpp"],
+      "patterns": [
+        {"re": "\\bgosAudio_Get[A-Za-z]*\\s*\\(", "msg": "audio-state read outside mclib/soundsys.cpp and code/gamesound.cpp"}
+      ]
+    },
+    {
+      "id": "no_gl.include",
+      "why": "GL is gone from the engine: no GL header include in owned C/C++.",
+      "dirs": [""],
+      "exclude_prefixes": ["3rdparty/"],
+      "exts": [".cpp", ".h", ".hpp", ".c", ".inc"],
+      "floor": {"min": 500, "kind": "corpus"},
+      "patterns": [
+        {"re": "^\\s*#\\s*include\\s*[<\"](GL/|GLES|glad|glew|SDL_opengl|SDL2/SDL_opengl|imgui_impl_opengl)", "msg": "GL header include in owned code"}
+      ]
+    },
+    {
+      "id": "no_gl.call",
+      "why": "GL is gone from the engine: no gl*() call in owned C/C++ (comment text and string literals ignored).",
+      "dirs": [""],
+      "exclude_prefixes": ["3rdparty/"],
+      "exts": [".cpp", ".h", ".hpp", ".c", ".inc"],
+      "comment_prefixes": ["/*", "*"],
+      "patterns": [
+        {"re": "\\bgl[A-Z][A-Za-z0-9]*\\s*\\(", "msg": "gl*() call in owned code", "strip_strings": true, "strip_line_comment": true}
+      ]
+    },
+    {
+      "id": "json_isolation",
+      "why": "Only the registry/profile parser TUs and their focused tests include nlohmann/json. Floor 1 distinguishes clean from looked-at-nothing.",
+      "dirs": ["mclib/", "GameOS/", "RenderCore/", "code/", "tests/"],
+      "exts": [".cpp", ".h"],
+      "floor": {"min": 1, "kind": "matching_files"},
+      "allow_files": [
+        "mclib/model_override_registry.cpp", "mclib/anim_override_registry.cpp", "mclib/fx_def_registry.cpp",
+        "tests/model_override/test_model_override_registry.cpp", "GameOS/gameos/visual_tuning_profile.cpp",
+        "GameOS/gameos/runtime_bridge.cpp", "GameOS/gameos/runtime_bridge_protocol.cpp",
+        "tests/unit/test_runtime_bridge_protocol.cpp", "tests/unit/test_mission_environment.cpp"
+      ],
+      "allow_basenames": ["model_override_registry.cpp", "anim_override_registry.cpp", "fx_def_registry.cpp", "test_model_override_registry.cpp"],
+      "patterns": [
+        {"re": "nlohmann/json", "msg": "json isolation violated: nlohmann/json include outside the allowed TUs"}
+      ]
+    },
+    {
+      "id": "particles_no_cpu_projection",
+      "why": "The GPU particle pipeline projects on the GPU only; CPU projection APIs inside mclib/particles/ regress the gosFX retirement (plan 2026-05-20 section 5.4).",
+      "dirs": ["mclib/particles/"],
+      "exts": null,
+      "floor": {"min": 3, "kind": "corpus", "exts": [".cpp", ".h", ".hpp", ".inl"]},
+      "patterns": [
+        {"re": "cameraToClip|Camera::projectZ|worldToClipMatrix|projectForObjectAdmission|projectForEffectAdmission", "msg": "forbidden CPU-projection API inside mclib/particles/"}
+      ]
+    },
+    {
+      "id": "unified_projection.terrainMVP_shaders",
+      "why": "F1 retirement: the terrainMVP uniform no longer exists; no shader may reference it.",
+      "dirs": ["shaders/"],
+      "exts": null,
+      "comment_prefixes": ["//", "#"],
+      "allow_substrings_file": "scripts/check-unified-projection-retirement.allowlist",
+      "patterns": [{"re": "\\bterrainMVP\\b|\\bu_terrainMVP\\b", "msg": "legacy terrainMVP scaffolding in shaders"}]
+    },
+    {
+      "id": "unified_projection.terrainMVP_cpu_literals",
+      "why": "No CPU code looks up the retired uniform names by string literal (the gos_SetTerrainMVP API half was adjudicated rot 2026-07-30).",
+      "dirs": ["code/", "GameOS/", "mclib/"],
+      "exts": null,
+      "comment_prefixes": ["//", "#"],
+      "allow_substrings_file": "scripts/check-unified-projection-retirement.allowlist",
+      "patterns": [{"re": "\"terrainMVP\"|\"u_terrainMVP\"", "msg": "legacy terrainMVP/u_terrainMVP string-literal uniform lookup in CPU code"}]
+    },
+    {
+      "id": "unified_projection.abs_w_kludge",
+      "why": "F1 retirement: the abs(clip.w) round-trip kludge is gone.",
+      "dirs": ["shaders/"],
+      "exts": null,
+      "comment_prefixes": ["//", "#"],
+      "allow_substrings_file": "scripts/check-unified-projection-retirement.allowlist",
+      "patterns": [{"re": "abs\\(\\s*[a-zA-Z_]+\\.w\\s*\\)", "msg": "abs(.w) kludge survives"}]
+    },
+    {
+      "id": "unified_projection.terrainViewport",
+      "why": "F1 retirement: terrainViewport / u_terrainViewport are gone.",
+      "dirs": ["code/", "GameOS/", "mclib/", "shaders/"],
+      "exts": null,
+      "comment_prefixes": ["//", "#"],
+      "allow_substrings_file": "scripts/check-unified-projection-retirement.allowlist",
+      "patterns": [{"re": "terrainViewport|u_terrainViewport", "msg": "terrainViewport survives"}]
+    },
+    {
+      "id": "unified_projection.screen_rhw",
+      "why": "F1 retirement: no screen-rhw round trip in shaders.",
+      "dirs": ["shaders/"],
+      "exts": null,
+      "comment_prefixes": ["//", "#"],
+      "allow_substrings_file": "scripts/check-unified-projection-retirement.allowlist",
+      "patterns": [{"re": "\\*\\s*rhw\\s*[+\\-*]", "msg": "screen-rhw round-trip survives"}]
+    },
+    {
+      "id": "unified_projection.bare_mvp",
+      "why": "F1 retirement: no bare mvp uniform outside the allowlisted shadow/HUD shaders.",
+      "dirs": ["shaders/"],
+      "exts": null,
+      "comment_prefixes": ["//", "#"],
+      "allow_substrings_file": "scripts/check-unified-projection-retirement.allowlist",
+      "patterns": [{"re": "\\buniform\\s+mat4\\s+u?_?mvp\\b", "msg": "bare mvp uniform in a non-allowlisted shader"}]
+    },
+    {
+      "id": "gate_echo_reads",
+      "why": "gate::raw / envText / boolState are display-only readers; decisions go through the typed registry. Logic lives in scripts/check-gate-echo-reads.py (check_text), run per file here.",
+      "kind": "py_call",
+      "module": "scripts/check-gate-echo-reads.py",
+      "func": "check_text",
+      "dirs": ["code/", "mclib/", "GameOS/", "RenderCore/", "GuiRuntime/", "RenderWorld/", "GameAdapters/", "HostServices/", "editor/", "gui/", "Gates/", "EditorBridge/", "Viewer/"],
+      "exts": [".cpp", ".h", ".hpp", ".cc", ".inl"]
+    }
+  ]
+}

@@ -15,7 +15,7 @@
 
 Two themes dominate:
 
-1. **The editor is outside every firewall and CI gate.** `scripts/check-include-firewall.sh` does **not** scope `editor/`, and neither editor target has any test/smoke/ASan coverage. So the EditorBridge layer (which exists and is well-designed) is silently bypassed in 3 places, and any RenderCore/GameOS API change that breaks the editor link goes undetected until a human builds it by hand.
+1. **The editor is outside every firewall and CI gate.** `scripts/check_boundaries.py` does **not** scope `editor/`, and neither editor target has any test/smoke/ASan coverage. So the EditorBridge layer (which exists and is well-designed) is silently bypassed in 3 places, and any RenderCore/GameOS API change that breaks the editor link goes undetected until a human builds it by hand.
 
 2. **The legacy editor's 3D render path predates reverse-Z.** `EditorGameOS.cpp` sets up forward-Z depth (`GL_LEQUAL`, no `glClipControl`) but runs the engine's reverse-Z shaders — so editor 3D depth testing is wrong. Pre-existing, not introduced by Track V, but now clearly identified.
 
@@ -38,7 +38,7 @@ Two themes dominate:
 | P2 | B | ASan DLL copied next to `mc2.exe` under `MC2_ASAN=ON` but **not** next to `EditRel` | editor CMake post-build vs main target | ASan build of editor launches with `0xC0000139` (entry point not found) | XS |
 | P2 | C | Dead upload error check `if (glTexture == 0)` after `glGenTextures` (always false); no `glGetError()` after `glTexImage2D` | asset_viewer texture upload | Silent VRAM-OOM marked `loaded=true` | XS |
 | P2 | C | Unbounded asset_viewer texture cache `g_cache` — no eviction until `Shutdown()` | asset_viewer image cache | VRAM grows monotonically across a browse session (dev tool) | S |
-| P3 | A | include-firewall contract scope does not include `editor/` (root cause enabling the A-lane bypasses) | `scripts/check-include-firewall.sh` | Editor firewall drift undetectable | S (extend scope) |
+| P3 | A | include-firewall contract scope does not include `editor/` (root cause enabling the A-lane bypasses) | `scripts/check_boundaries.py` | Editor firewall drift undetectable | S (extend scope) |
 
 ---
 
@@ -59,7 +59,7 @@ Two themes dominate:
 ### Lane A — Editor firewall — CONCERNS (P0:0 P1:3)
 **Checked:** EditRel + asset_viewer reach into engine/game internals; EditorBridge narrowness; shared globals; object-id/pick ownership; resource duplication.
 **Verdict:** EditorBridge (`EditorRenderBridge.h`/.cpp) exists, is narrow and one-way with a tight allowlist — but `editor/` code bypasses it in 3 spots (EditorData GPU-internal includes; EditorInterface raw-GL pick handler; EditorGameOS raw-GL frame state). `mc2_asset_viewer` is fully standalone/clean. The include-firewall contract does not watch `editor/`, so these are invisible to CI.
-**Follow-up:** route the 3 bypasses through EditorBridge; extend `check-include-firewall.sh` scope to `editor/`. Full: `docs/audit-lanes-editor/lane-A-editor-firewall.md`.
+**Follow-up:** route the 3 bypasses through EditorBridge; extend `check_boundaries.py` scope to `editor/`. Full: `docs/audit-lanes-editor/lane-A-editor-firewall.md`.
 
 ### Lane B — Editor build/CMake/coverage — CONCERNS (P0:0 P1:4 P2:3 P3:3)
 **Checked:** default-build status, the `:78` find_package warning, dep sanity, legacy Viewer disablement, test/smoke/ASan coverage, flag consistency, editor env gates, SDL2/GLEW fallback.
@@ -82,7 +82,7 @@ Two themes dominate:
 | 3 | Add minimal editor build-link smoke to CI (compile+link both targets) — stops silent rot | B | M |
 | 4 | Fix editor 3D depth: `glClipControl(ZERO_TO_ONE)` + `glClearDepth(0)` + `GL_GEQUAL` in editor `InitGameOS` | C | S |
 | 5 | Route the 3 editor firewall bypasses (EditorData includes, EditorInterface pick GL, EditorGameOS frame GL) through EditorBridge | A | M |
-| 6 | Extend `check-include-firewall.sh` scope to `editor/` so bypasses are caught | A | S |
+| 6 | Extend `check_boundaries.py` scope to `editor/` so bypasses are caught | A | S |
 | 7 | asset_viewer: real `glGetError()` upload check + LRU texture-cache cap | C | S |
 
 ---
