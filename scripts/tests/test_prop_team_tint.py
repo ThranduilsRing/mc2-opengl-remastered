@@ -25,8 +25,9 @@ def tint_spirv(tmp_path_factory):
     return re.search(r"%propTeamTint_\w+ = OpFunction .*?OpFunctionEnd", text, re.S)[0]
 
 
-@pytest.mark.parametrize("channel,slot", [(0, "red"), (1, "green"), (2, "blue")])
+@pytest.mark.parametrize("channel,slot", [(0, "blue"), (1, "red"), (2, "green")])
 def test_compiled_team_mask_channel_selects_stock_paint_slot(tint_spirv, channel, slot):
+    # Authored R is base; mission_movers passes base as the third argument (psBlue).
     # Follow the compiled weight and paint loads into the multiply, rather than
     # duplicating the shader formula in a CPU model that could pass independently.
     body = tint_spirv
