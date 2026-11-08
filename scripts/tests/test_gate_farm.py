@@ -364,7 +364,7 @@ def _tier0(planned):
     (['code/mission_update.cpp'], {'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'}, False),
     (['code/logisticsdata_save.cpp'], {'player-path'}, True),
     (['code/mc2movie.cpp'], {'player-path'}, True),
-    (['data/missions/mc2_16.fit'], {'determinism-mc2_16', 'saveload-mc2_16'}, True),
+    (['data/missions/mc2_16.fit'], {'determinism-mc2_16', 'saveload-mc2_16', 'mods'}, True),   # data/ is mod content
     (['RenderCore/vk_sync.cpp'], set(), True),
 ])
 def test_diff_restores_tier_filtered_rows(paths, want, single):
