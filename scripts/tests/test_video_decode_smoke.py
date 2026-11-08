@@ -84,3 +84,38 @@ def test_early_exit_only_accepts_the_bare_countdown_exit():
 def test_early_exit_with_mixed_failure_is_not_accepted(extra):
     text = (FIXTURES / "video_smoke_end_pass.txt").read_text()
     assert not v.early_exit_only(text + extra)
+
+
+def _stub_run(monkeypatch, tmp_path, rc, report):
+    """run_mission with run_smoke stubbed: the end-pass log fixture in the artifacts dir, plus an optional report.json."""
+    import json
+    import types
+    art = tmp_path / "art"
+    art.mkdir()
+    (art / "mc2_01.log").write_text((FIXTURES / "video_smoke_end_pass.txt").read_text())
+    if report is not None:
+        (art / "report.json").write_text(json.dumps(report))
+    monkeypatch.setattr(v.subprocess, "run", lambda *a, **k: types.SimpleNamespace(
+        returncode=rc, stdout=f"[runner] artifacts: {art}\n", stderr=""))
+    return v.run_mission("mc2.exe", "mc2_01", 30, countdown=True)
+
+
+GOOD_REPORT = {"overall_result": "FAIL", "run_failures": [], "fingerprint": {"hard_fail": False},
+               "rows": [{"stem": "mc2_01", "result": "FAIL", "buckets": ["engine_reported_fail"]}]}
+
+
+def test_countdown_accepts_only_a_complete_structured_early_exit(monkeypatch, tmp_path):
+    ok, why = _stub_run(monkeypatch, tmp_path, 1, GOOD_REPORT)
+    assert ok and "early_exit" in why
+
+
+@pytest.mark.parametrize("rc,report", [
+    (1, None),                                              # p31: zero parsed FAIL rows; all() over nothing was true
+    (1, dict(GOOD_REPORT, rows=[])),
+    (3, GOOD_REPORT),                                       # p31: any nonzero rc entered the exception
+    (1, dict(GOOD_REPORT, run_failures=["DEPLOY_FINGERPRINT mismatch"])),
+    (1, dict(GOOD_REPORT, rows=[{"stem": "mc2_01", "result": "FAIL", "buckets": ["engine_reported_fail", "shader_error"]}])),
+])
+def test_countdown_rejects_incomplete_or_mixed_verdicts(monkeypatch, tmp_path, rc, report):
+    ok, why = _stub_run(monkeypatch, tmp_path, rc, report)
+    assert not ok and f"rc={rc}" in why

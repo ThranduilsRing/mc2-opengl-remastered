@@ -354,3 +354,46 @@ def test_farm_local_fallback_waits_for_the_game_row_on_the_same_install(tmp_path
 def test_saveload_headless_rows_are_the_proven_ones():
     steps = dict((n, c) for n, c, _ in gate.plan(6))
     assert {m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24") if "--headless" in steps["saveload-" + m]} == {"mc2_16", "mc2_24"}
+
+
+def _tier0(planned):
+    return [s for s in planned if gate.stage_tier(s[0]) == 0]
+
+
+@pytest.mark.parametrize('paths,want,single', [
+    (['code/mission_update.cpp'], {'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'}, False),
+    (['code/logisticsdata_save.cpp'], {'player-path'}, True),
+    (['code/mc2movie.cpp'], {'player-path'}, True),
+    (['data/missions/mc2_16.fit'], {'determinism-mc2_16', 'saveload-mc2_16'}, True),
+    (['RenderCore/vk_sync.cpp'], set(), True),
+])
+def test_diff_restores_tier_filtered_rows(paths, want, single):
+    """p31: tier filtering runs before diff classification; sim, map and front-end changes get their rows back at the merge."""
+    scheduled = gate.plan(6)
+    steps, promoted = gate.promote_for_diff(_tier0(scheduled), scheduled, _tier0(scheduled), paths, [], False)
+    assert promoted == want
+    names = [n for n, _, _ in steps]
+    assert set(names) == {n for n, _, _ in _tier0(scheduled)} | want
+    assert names == [n for n, _, _ in scheduled if n in set(names)]   # plan order kept
+    finale = [c for n, c, _ in steps if n == 'determinism-mc2_24']
+    assert all(c[c.index('--ticks') + 1] == '2600' for c in finale)
+    for n, c, _ in steps:
+        if n == 'determinism-mc2_16':
+            assert ('--single' in c) == single
+
+
+def test_operator_stage_choice_is_never_widened():
+    scheduled = gate.plan(6)
+    steps, promoted = gate.promote_for_diff(_tier0(scheduled)[:1], scheduled, scheduled, ['code/mission_update.cpp'], ['contracts'], False)
+    assert promoted == set() and len(steps) == 1
+
+
+@pytest.mark.parametrize('weekly,paths,single', [(False, [], True), (True, [], False), (False, ['mclib/sim_overlap.h'], False)])
+def test_nightly_03_16_single_run_and_pairs_on_weekly_or_sim(weekly, paths, single):
+    scheduled = gate.plan(6)
+    steps, _ = gate.promote_for_diff(scheduled, scheduled, scheduled, paths, [], weekly)
+    for n, c, _ in steps:
+        if n in ('determinism-mc2_03', 'determinism-mc2_16'):
+            assert ('--single' in c) == single, n
+        elif n.startswith('determinism-'):
+            assert '--single' not in c, n

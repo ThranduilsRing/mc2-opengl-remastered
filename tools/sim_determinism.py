@@ -439,8 +439,9 @@ def add_ref_args(p) -> None:
 
 
 def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None, install: str = INSTALL_DIR,
-                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1, headless: bool | str = False, ticks: int = 0) -> list:
-    """Launch two fresh determinism runs under host slots and retain their own logs.
+                ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1, headless: bool | str = False, ticks: int = 0,
+                runs: int = 2) -> list:
+    """Launch two (runs=1: one, for `check --single`) fresh determinism runs under host slots and retain their own logs.
 
     `extra_env` maps a/b to per-run variables and both to a shared fixture.
     """
@@ -448,7 +449,7 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
         sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
     target = smoke_target(install, ref_exe, ref_commit)
     logs = []
-    for tag in ("a", "b"):
+    for tag in ("a", "b")[:runs]:
         dest = os.path.join(out, tag)
         if os.path.exists(dest):
             sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
@@ -746,6 +747,28 @@ def selftest() -> int:
     return 1 if fails else 0
 
 
+def check_single(args, out: str, extra: dict, base: str, needed: int) -> int:
+    """`check --single`: one headless run must cover every pinned tick and match the committed chain (seed and data
+    fingerprint included). INCONCLUSIVE (3) when it falls short; a missing pin is a FAIL, as in the pair."""
+    (la,) = run_mission(args.mission, args.duration, out, extra, install=args.install, ref_exe=args.ref_exe,
+                        ref_commit=args.ref_commit, sim_speed=args.sim_speed, headless=args.headless, ticks=args.ticks, runs=1)
+    a = load_simid(la)
+    needed = max(needed, args.ticks, args.min_frames)
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "result.json"), "w", encoding="utf-8") as fh:
+        json.dump({"mode": "single", "requested_ticks": args.ticks, "tick_tolerance": 0, "required_frames": needed,
+                   "frames_a": len(a), "complete": len(a) >= needed}, fh, indent=2)
+    if len(a) < needed:
+        print(f"sim_determinism: INCONCLUSIVE (too few frames): {len(a)} of {needed} sim frames in the single run")
+        return 3
+    if not os.path.exists(base):
+        print(f"sim_determinism: baseline FAIL no baseline at {os.path.relpath(base, ROOT)} (record one with write-baseline)")
+        return 1
+    ok, msg = check_baseline(a, base, _seed(la), data_fingerprint(args.install))
+    print(("sim_determinism: baseline PASS (single run) " if ok else "sim_determinism: baseline FAIL (single run) ") + msg)
+    return 0 if ok else 1
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -799,6 +822,8 @@ def main(argv=None) -> int:
         hp.add_argument("--headless", action="store_true", help="run b headless (no window, GPU or audio): a windowed-vs-headless equality check; needs --ticks")
         hp.add_argument("--headless-both", action="store_true", help="run a AND b headless (the merge gate's determinism rows: no GPU, no host slot); ticks default to the baseline's frames")
         hp.add_argument("--ticks", type=int, default=0, metavar="N", help="both runs quit after N sim ticks (run_smoke --ticks) instead of at the wall-clock end")
+    k.add_argument("--single", action="store_true", help="one headless run checked against the pin only (nightly 03/16, p31); needs "
+                   "--headless-both. No a/b pair: run-to-run drift is the weekly and sim-change pair's job")
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
@@ -817,6 +842,8 @@ def main(argv=None) -> int:
             if args.ticks <= 0:
                 args.ticks = frames
             args.min_frames = max(args.min_frames, frames)
+    if getattr(args, "single", False) and not args.headless_both:
+        sys.exit("sim_determinism: --single needs --headless-both (the pin's full tick budget, no windowed wall-clock end)")
     if getattr(args, "headless", False) and getattr(args, "ticks", 0) <= 0:
         sys.exit("sim_determinism: --headless needs --ticks N (a headless run has no wall-clock end)")
     if args.cmd == "selftest":
@@ -886,6 +913,8 @@ def main(argv=None) -> int:
         needed = int(json.load(open(base, encoding="utf-8"))["frames"]) if base and os.path.exists(base) else 0
     except (OSError, ValueError, KeyError, TypeError):
         needed = 0  # unreadable baseline: check_baseline reports it
+    if getattr(args, "single", False):
+        return check_single(args, out, extra, base, needed)
     la, lb = run_mission(args.mission, args.duration, out, extra, install=args.install,
                         ref_exe=args.ref_exe, ref_commit=args.ref_commit, sim_speed=args.sim_speed,
                         headless=args.headless, ticks=args.ticks)

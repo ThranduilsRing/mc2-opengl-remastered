@@ -795,15 +795,7 @@ def main():
               f"{args.duration}s, all gates on. Inner-loop check only; run "
               "full --tier tier1 before milestones.", file=sys.stderr)
 
-    # SMOKE-LATENCY-WINS-1 win #1: --duration hard cap + quick-tier banner.
-    # CLAUDE.md rule: NEVER --duration > 30 (soak/parity tier is 30s fixed); the one exception is a sim_determinism pair, which may run 60 (owner 2026-10-13).
-    # 15s is a valid opt-in "does it still boot+run+not crash" inner-loop tier
-    # (see .claude/SMOKE-LATENCY-1-RECON.md §4) -- all duration-independent
-    # gates (crash_silent, crash_no_summary, engine_reported_fail,
-    # pool_null, asset_oob, shader_error, missing_file) and the play-heartbeat
-    # freeze gate (3s threshold) are satisfied well within 15s. It intentionally
-    # loses soak coverage (mid-mission combat/FX/leak/hitch observation), so it
-    # must stay opt-in and never silently replace the 30s default.
+    # --duration hard cap: 30 s, 60 for a sim_determinism pair (owner 2026-10-13). Every gate is duration-independent.
     duration_cap = 60 if args.sim_determinism else 30
     # Mission test runs explicitly request a simulation budget in minutes.
     # Keep longer wall budgets confined to this headless developer fixture.
@@ -812,21 +804,9 @@ def main():
     if args.duration is not None:
         if args.duration > duration_cap:
             print(f"[runner] ERROR: --duration {args.duration} exceeds the hard "
-                  f"cap of {duration_cap}s. The 30s window is the soak/parity tier and must "
-                  f"never be exceeded (CLAUDE.md); only tools/sim_determinism.py "
-                  f"may run up to 60s (--sim-determinism). Use the default (30) or a "
-                  f"shorter --duration for a quick inner-loop tier.",
+                  f"cap of {duration_cap}s (60 only with --sim-determinism).",
                   file=sys.stderr)
             sys.exit(2)
-        if args.duration < 30:
-            print(f"[runner] [QUICK-TIER] --duration {args.duration} < 30s "
-                  f"default: this run has REDUCED SOAK COVERAGE (mid-mission "
-                  f"combat/FX/AI divergence, slow leaks, and late hitches get "
-                  f"a shorter observation window). Crash/heartbeat/summary "
-                  f"gates are still fully valid at this duration. Use for "
-                  f"inner-loop iteration only -- NOT a substitute for the 30s "
-                  f"soak/parity tier before landing a change.",
-                  file=sys.stderr)
 
     # ----- Deploy-folder lease / auto-selection --------------------------
     # Must run before any code that uses args.exe (coherence check, lock, etc.)

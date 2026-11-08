@@ -2,6 +2,9 @@
 import json
 from pathlib import Path
 import sys
+import threading
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import merge_gate as gate
@@ -52,4 +55,38 @@ def test_passing_nightly_or_other_head_or_older_red_does_not_block(tmp_path, mon
 def test_partial_nightly_also_revokes(tmp_path, monkeypatch):
     ran = setup(tmp_path, monkeypatch)
     isolated(tmp_path, monkeypatch, "PARTIAL", 200.0)
+    assert gate.publish(HEAD) == 1 and not ran
+
+
+def test_isolated_run_revokes_before_executing_so_a_crash_keeps_publish_refused(tmp_path, monkeypatch, capsys):
+    """p31: revocation was written only after execution; a nightly that crashed mid-run left the older green publishable."""
+    ran = setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(gate.time, "time", lambda: 200.0)
+    monkeypatch.setattr(gate, "git", lambda *a: HEAD)
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+
+    def crash(*a, **k):
+        raise RuntimeError("simulated crash mid-gate")
+    monkeypatch.setattr(gate, "affected_plan", crash)
+    crashed = []
+
+    def run():  # off the main thread, so main() installs no watchdog / atexit lease hooks in the test process
+        try:
+            gate.main(["--isolated-verdict", "--proofs-dir", str(tmp_path / "proof")])
+        except RuntimeError:
+            crashed.append(True)
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+    assert crashed
+    assert json.loads((tmp_path / gate.ISOLATED_MARK).read_text())["verdict"] == "RUNNING"
+    assert gate.publish(HEAD) == 1 and not ran
+    assert "ended RUNNING" in capsys.readouterr().out
+
+
+def test_malformed_isolated_marker_fails_closed(tmp_path, monkeypatch):
+    ran = setup(tmp_path, monkeypatch)
+    (tmp_path / gate.ISOLATED_MARK).write_text('{"head": "' + HEAD[:10])   # torn write
+    assert gate.publish(HEAD) == 1 and not ran
+    (tmp_path / gate.ISOLATED_MARK).write_text("[]")
     assert gate.publish(HEAD) == 1 and not ran

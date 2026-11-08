@@ -1454,3 +1454,28 @@ def test_base_baseline_check_skips_a_baseline_absent_at_the_base(tmp_path, monke
     monkeypatch.setattr(lm, "git", lambda root, *a: subprocess.CompletedProcess(a, 128, "missing"))
     monkeypatch.setattr(lm, "run", lambda *a, **k: pytest.fail("ran a ratchet with no base baseline"))
     assert _bbc(tmp_path, tools) == []
+
+
+def test_promote_requires_the_day_night_evidence_a_capture_verdict_names(env, monkeypatch):
+    """p31: promotion read only JSON; a window that required compare-captures landed without its viewable images."""
+    lm, repo, old, cand = _stage_fixture(env, monkeypatch)
+    pulled = repo.parent / "pulled"
+    pulled.mkdir()
+    vpath = pulled / "gate-verdict.json"
+    vpath.write_text(json.dumps(dict(schema=1, head=cand, verdict="PASS", complete=True, skipped={},
+                                     required=["capture-before", "compare-captures"],
+                                     artifacts={"proof": "G:/laptop-only/proof"})), encoding="utf-8")
+    with pytest.raises(lm.Stop) as e:
+        lm.promote(str(repo), "t1", str(vpath))
+    assert "no capture evidence" in str(e.value) and git(repo, "rev-parse", "main") == old
+    ev = pulled / "evidence"
+    for b in ("mc2_01_saved_205644", "mc2_10_saved_204523"):
+        for rel in (f"before/{b}/{b}.png", f"after/{b}/{b}.png", f"ab/{b}/montage.jpg"):
+            (ev / rel).parent.mkdir(parents=True, exist_ok=True)
+            (ev / rel).write_bytes(b"x")
+    (ev / "ab/mc2_10_saved_204523/montage.jpg").write_bytes(b"")
+    with pytest.raises(lm.Stop) as e:
+        lm.promote(str(repo), "t1", str(vpath))
+    assert "ab" in str(e.value) and "montage.jpg" in str(e.value) and git(repo, "rev-parse", "main") == old
+    (ev / "ab/mc2_10_saved_204523/montage.jpg").write_bytes(b"x")
+    assert lm.promote(str(repo), "t1", str(vpath)) == 0 and git(repo, "rev-parse", "main") == cand

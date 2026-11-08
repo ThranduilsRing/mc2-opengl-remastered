@@ -315,3 +315,29 @@ def test_both_streams_are_validated_against_the_pin(tmp_path):
     assert sim.check_baseline_both(good, good, path)[0]
     ok, msg = sim.check_baseline_both(good, bad, path)
     assert not ok and msg.startswith("run b:")
+
+
+@pytest.mark.parametrize("case,rc", [("pinned", 0), ("short", 3), ("drift", 1)])
+def test_single_run_is_held_to_the_pin_alone(monkeypatch, tmp_path, case, rc):
+    """p31: nightly 03/16 run once and must match the committed chain over every pinned tick; short is INCONCLUSIVE, drift fails."""
+    lines = observations()
+    base = baseline(tmp_path, lines)
+    run = lines[:3] if case == "short" else lines[:4] + [lines[4].replace("strict=cc", "strict=ff")] if case == "drift" else lines
+    log = tmp_path / "a.log"
+    log.write_text("\n".join(run) + "\n")
+    calls = []
+    monkeypatch.setattr(sim, "baseline_path", lambda m: base)
+    monkeypatch.setattr(sim, "_load_env", lambda p: {})
+    monkeypatch.setattr(sim, "_seed", lambda p: "")
+    monkeypatch.setattr(sim, "data_fingerprint", lambda i: {})
+    monkeypatch.setattr(sim, "run_mission", lambda *a, **k: calls.append(k) or [str(log)][:k.get("runs", 2)])
+    out = tmp_path / "out"
+    assert sim.main(["check", "mc2_03", "--headless-both", "--single", "--min-frames", "1", "--out", str(out)]) == rc
+    assert [k["runs"] for k in calls] == [1] and calls[0]["headless"] == "both" and calls[0]["ticks"] == len(lines)
+    result = json.loads((out / "result.json").read_text())
+    assert result["mode"] == "single" and result["complete"] == (case != "short")
+
+
+def test_single_needs_headless_both():
+    with pytest.raises(SystemExit):
+        sim.main(["check", "mc2_03", "--single"])
