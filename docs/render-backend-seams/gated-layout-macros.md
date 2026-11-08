@@ -494,7 +494,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:240`
+- Header: `GameOS/gameos/vulkan_context.h:244`
 - Class: `VulkanContext`  (data-member)
 - Member: `bool             initedVolk_        = false;`
 - Consuming targets: gameos, gameos_main
@@ -502,7 +502,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:241`
+- Header: `GameOS/gameos/vulkan_context.h:245`
 - Class: `VulkanContext`  (data-member)
 - Member: `VkInstance       instance_          = VK_NULL_HANDLE;`
 - Consuming targets: gameos, gameos_main
@@ -510,7 +510,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:242`
+- Header: `GameOS/gameos/vulkan_context.h:246`
 - Class: `VulkanContext`  (data-member)
 - Member: `VkDebugUtilsMessengerEXT messenger_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos, gameos_main
@@ -518,7 +518,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:243`
+- Header: `GameOS/gameos/vulkan_context.h:247`
 - Class: `VulkanContext`  (data-member)
 - Member: `VkPhysicalDevice phys_              = VK_NULL_HANDLE;`
 - Consuming targets: gameos, gameos_main
@@ -526,7 +526,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:244`
+- Header: `GameOS/gameos/vulkan_context.h:248`
 - Class: `VulkanContext`  (data-member)
 - Member: `VkDevice         device_            = VK_NULL_HANDLE;`
 - Consuming targets: gameos, gameos_main
@@ -534,7 +534,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:245`
+- Header: `GameOS/gameos/vulkan_context.h:249`
 - Class: `VulkanContext`  (data-member)
 - Member: `VkQueue          gfxQueue_          = VK_NULL_HANDLE;`
 - Consuming targets: gameos, gameos_main
@@ -542,7 +542,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:246`
+- Header: `GameOS/gameos/vulkan_context.h:250`
 - Class: `VulkanContext`  (data-member)
 - Member: `uint32_t         gfxFamily_         = UINT32_MAX;`
 - Consuming targets: gameos, gameos_main
@@ -550,7 +550,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:247`
+- Header: `GameOS/gameos/vulkan_context.h:251`
 - Class: `VulkanContext`  (data-member)
 - Member: `VmaAllocator     allocator_         = nullptr;`
 - Consuming targets: gameos, gameos_main
@@ -558,7 +558,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:250`
+- Header: `GameOS/gameos/vulkan_context.h:254`
+- Class: `VulkanContext`  (data-member)
+- Member: `profile::RtCaps rtCaps_;`
+- Consuming targets: gameos, gameos_main
+- Reached by define: gameos[gameos(PRIVATE)], gameos_main[gameos_main(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_context.h:256`
 - Class: `VulkanContext`  (data-member)
 - Member: `mutable CompletionTracker tracker_;`
 - Consuming targets: gameos, gameos_main
@@ -566,7 +574,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:252`
+- Header: `GameOS/gameos/vulkan_context.h:258`
 - Class: `VulkanContext`  (data-member)
 - Member: `FrameRing        frameRing_;`
 - Consuming targets: gameos, gameos_main
@@ -574,7 +582,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:253`
+- Header: `GameOS/gameos/vulkan_context.h:259`
 - Class: `VulkanContext`  (data-member)
 - Member: `uint32_t         framesInFlight_ = 1;`
 - Consuming targets: gameos, gameos_main
@@ -582,7 +590,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:254`
+- Header: `GameOS/gameos/vulkan_context.h:260`
 - Class: `VulkanContext`  (data-member)
 - Member: `mutable UploadBatch uploads_;`
 - Consuming targets: gameos, gameos_main
@@ -590,7 +598,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:255`
+- Header: `GameOS/gameos/vulkan_context.h:261`
 - Class: `VulkanContext`  (data-member)
 - Member: `ReadbackRing     readbacks_;`
 - Consuming targets: gameos, gameos_main
@@ -598,7 +606,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:259`
+- Header: `GameOS/gameos/vulkan_context.h:265`
 - Class: `VulkanContext`  (data-member)
 - Member: `mutable std::timed_mutex submitMutex_;`
 - Consuming targets: gameos, gameos_main
@@ -606,7 +614,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:264`
+- Header: `GameOS/gameos/vulkan_context.h:270`
 - Class: `VulkanContext`  (data-member)
 - Member: `uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};`
 - Consuming targets: gameos, gameos_main
@@ -614,7 +622,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:265`
+- Header: `GameOS/gameos/vulkan_context.h:271`
 - Class: `VulkanContext`  (data-member)
 - Member: `bool             luidValid_         = false;`
 - Consuming targets: gameos, gameos_main
@@ -622,7 +630,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:268`
+- Header: `GameOS/gameos/vulkan_context.h:274`
 - Class: `VulkanContext`  (data-member)
 - Member: `EngineContextHealth health_;`
 - Consuming targets: gameos, gameos_main
@@ -630,7 +638,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:269`
+- Header: `GameOS/gameos/vulkan_context.h:275`
 - Class: `VulkanContext`  (data-member)
 - Member: `std::unique_ptr<RenderCore::TextureService> textureServiceOwner_;`
 - Consuming targets: gameos, gameos_main
@@ -638,7 +646,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:270`
+- Header: `GameOS/gameos/vulkan_context.h:276`
 - Class: `VulkanContext`  (data-member)
 - Member: `std::unique_ptr<TextureResidency> textures_;`
 - Consuming targets: gameos, gameos_main
@@ -646,7 +654,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/vulkan_context.h:271`
+- Header: `GameOS/gameos/vulkan_context.h:277`
 - Class: `VulkanContext`  (data-member)
 - Member: `SharedLightFeed lightFeed_;`
 - Consuming targets: gameos, gameos_main
@@ -654,4 +662,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 81 guard(s) analyzed, 0 violation(s).
+Result: 82 guard(s) analyzed, 0 violation(s).

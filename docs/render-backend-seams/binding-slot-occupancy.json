@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 269,
+    "glsl_blocks_with_binding": 272,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -285,6 +285,16 @@
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/postprocess_visual.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/rt_smoke.comp",
+        "line": 10,
+        "role": "uTlas",
+        "std": null,
+        "type": "accelerationStructureEXT",
+        "source": "shaders/vulkan/rt_smoke.comp",
         "branch": {}
       },
       {
@@ -706,6 +716,16 @@
         "std": null,
         "type": "usampler2D",
         "source": "shaders/vulkan/postprocess_visual.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/rt_smoke.comp",
+        "line": 11,
+        "role": "Rays",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/rt_smoke.comp",
         "branch": {}
       },
       {
@@ -1388,6 +1408,16 @@
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/postprocess.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/rt_smoke.comp",
+        "line": 12,
+        "role": "Results",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/rt_smoke.comp",
         "branch": {}
       },
       {
@@ -3100,6 +3130,7 @@
     "shaders/vulkan/postprocess.vert",
     "shaders/vulkan/postprocess_visual.frag",
     "shaders/vulkan/postprocess_visual.vert",
+    "shaders/vulkan/rt_smoke.comp",
     "shaders/vulkan/screen_shadow_csm.frag",
     "shaders/vulkan/screen_shadow_csm.vert",
     "shaders/vulkan/shadow_bake_bc4.comp",

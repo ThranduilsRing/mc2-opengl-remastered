@@ -5235,13 +5235,6 @@
    "count": 1
   },
   {
-   "tag": "MECHICON",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 3
-  },
-  {
    "tag": "MECHLIST",
    "ver": -1,
    "stream": "log",
@@ -10149,6 +10142,29 @@
     "MC2_VERIFY_MODE"
    ],
    "count": 1
+  },
+  {
+   "tag": "VFS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "entries",
+    "mounts",
+    "bytes",
+    "build_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "files",
+    "priority"
+   ],
+   "count": 3
   },
   {
    "tag": "VFX_BIRTH",

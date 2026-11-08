@@ -32,9 +32,9 @@ code and the proof of a finished conversion, not a leak detector.
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 2 | 2 | +0 | 4 | - |
 | textures | 2 | 0 | 0 | +0 | 0 | - |
-| render_infra | 2 | 10 | 10 | +0 | 20 | Pipeline 4/5, PipelineCache 2/1 |
+| render_infra | 2 | 11 | 10 | +1 | 21 | Pipeline 4/5, PipelineCache 2/1, Sampler 1/0 |
 
-Total over all islands: created 13, released 12, imbalance +1.
+Total over all islands: created 14, released 12, imbalance +2.
 
 ## Files
 
@@ -42,14 +42,14 @@ Total over all islands: created 13, released 12, imbalance +1.
 |---|---:|---:|---:|
 | `engine_present_vk_imgui.cpp` | 1 | 0 | +1 |
 | `vulkan_context.cpp` | 2 | 2 | +0 |
-| `vk_render_infra.cpp` | 10 | 10 | +0 |
+| `vk_render_infra.cpp` | 11 | 10 | +1 |
 
 ## Conversion order
 
 Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
 1. present (1 manual tokens)
-2. render_infra (20 manual tokens)
+2. render_infra (21 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 
@@ -57,6 +57,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 
 | Kind | Release tokens |
 |---|---:|
+| AccelerationStructureKHR | 1 |
 | Buffer | 3 |
 | CommandPool | 1 |
 | DescriptorPool | 1 |
