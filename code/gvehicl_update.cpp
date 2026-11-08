@@ -683,19 +683,8 @@ void GroundVehicle::renderShadows (void)
 	{
 		if ((getStatus() != OBJECT_STATUS_DESTROYED) && (getStatus() != OBJECT_STATUS_DISABLED))
 		{
-			if (getTeamId() != Team::home->getId())
-			{
-				long cStat = conStat;
-		
-				if (cStat == CONTACT_VISUAL)
-				{
-					appearance->renderShadows();
-				}
-			}
-			else		//We are Home Team and we always see ourselves.
-			{
+			if (contactView.shadow)
 				appearance->renderShadows();
-			}
 		}
 	}
 }	

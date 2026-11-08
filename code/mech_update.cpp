@@ -851,22 +851,8 @@ void BattleMech::renderShadows (void)
 			return;			//No shadows on a fall!
 		}
 			
-		if (getTeamId() != Team::home->getId())
-		{
-			long cStat = conStat;
-	
-			if ((cStat == CONTACT_VISUAL) && (alphaValue == 0xff))
-			{
-				appearance->renderShadows();
-			}
-		}
-		else		//We are Home Team and we always see ourselves.  Unless we haven't linked up yet!
-		{
-			if (isOnGui && (alphaValue == 0xff))
-			{
-				appearance->renderShadows();
-			}
-		}
+		if (contactView.shadow)
+			appearance->renderShadows();
 	}
 }	
 

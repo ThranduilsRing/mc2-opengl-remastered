@@ -32,7 +32,9 @@ the enclosing visibility/cull block. Selected/targeted flags still control bar d
 HZB admits only static props, not movers. No render-cull root cause established;
 no PC capture or performance claims.
 
-Proof pending: contact table/consumer doctests, covering shader/layout contracts,
-box build/unit/smoke-lite/headless mc2_03 determinism, Windows Ninja compile and lint.
-Next: inspect final diff, commit locally, run proof once at that tip; record receipts.
+Proof: contact table/consumer doctests (including quality x visual-range/LOS),
+covering shader/layout contracts, box build/unit/smoke-lite/headless mc2_03
+determinism, Windows Ninja compile and lint. The final completion state, exact
+proved-at SHA and receipt paths are recorded outside git at
+E:/mc2-archive-2026-10/proofs/contact-visibility/STATE.md to preserve tip identity.
 No PC install created. Retain this note and proof receipts; remove lane scratch.

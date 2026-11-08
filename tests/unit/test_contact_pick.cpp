@@ -8,6 +8,17 @@
 
 TEST_CASE("contact visibility: resolved quality and visual overrides share one table")
 {
+    for (int sensorQuality = CONTACT_SENSOR_QUALITY_1; sensorQuality <= CONTACT_SENSOR_QUALITY_4; ++sensorQuality) {
+        for (bool visualRangeAndLOS : {false, true}) {
+            // This is the contact-system promotion at contact.cpp add/modifyContact.
+            const auto state = mc2::contactVisibility(visualRangeAndLOS ? CONTACT_VISUAL : sensorQuality);
+            CHECK(state.model == visualRangeAndLOS);
+            CHECK(state.bar == visualRangeAndLOS);
+            CHECK(state.shadow == visualRangeAndLOS);
+            CHECK(state.tag == (visualRangeAndLOS || sensorQuality >= CONTACT_SENSOR_QUALITY_3));
+            CHECK(state.blip);
+        }
+    }
     for (int quality = CONTACT_NONE; quality <= CONTACT_VISUAL; ++quality) {
         // ContactStatus already incorporates visual range/LOS. Outside visual
         // range the sensor system resolves VISUAL back to its sensor quality.
@@ -54,6 +65,7 @@ TEST_CASE("contact visibility: production consumers read the shared snapshot")
         CHECK(text.find("appearance->contactView = view.contact") != std::string::npos);
         CHECK(text.find("setSensorLevel(view.contact.sensorLevel())") != std::string::npos);
         CHECK(text.find("setAlphaValue(view.contact.model ? 0xff : 0)") != std::string::npos);
+        CHECK(text.find("if (contactView.shadow)") != std::string::npos);
     }
     for (const char* file : {"mclib/mech3d_render.cpp", "mclib/gvactor_render.cpp"}) {
         const auto text = source(file);
