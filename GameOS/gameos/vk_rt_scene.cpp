@@ -552,7 +552,7 @@ void probeMaterials(VulkanContext& ctx, State& s) {
         return;
     }
     uint32_t propOk = 0, vegOk = 0, terrOk = 0, holes = 0, falseHoles = 0, opaqueDiffs = 0, logged = 0;
-    auto report = [&](const char* kind, size_t i, const ProbeHit& h, const Expect& e) {
+    auto report = [&](std::string_view kind, size_t i, const ProbeHit& h, const Expect& e) {
         if (logged++ < 12)
             MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material miss kind={} ray={} hit={} custom=0x{:x}/0x{:x} row={}/{} prim={}/{} layer={}/{} packet={}/{} flags={}", kind, i,
                       h.hit ? 1 : 0, h.custom, e.custom, h.row, e.row, h.prim, e.prim, h.layer, e.layer, h.packet, e.packet, h.flags);
@@ -781,7 +781,7 @@ void noteTerrain(const TerrainSource& t) {
         ProbePoint p{terrainGridX(t, gx), terrainGridY(t, gy), terrainGridHeight(t, gx, gy)};
         p.mx = 0.5f * (terrainGridX(t, gx) + terrainGridX(t, gx + 1));
         p.my = 0.5f * (terrainGridY(t, gy) + terrainGridY(t, gy + 1));
-        p.tile = terrainTileId(t, std::min(static_cast<uint32_t>(gx) / tileCells, per - 1), std::min(static_cast<uint32_t>(gy) / tileCells, per - 1));
+        p.tile = terrainTileId(t, std::clamp<uint32_t>(static_cast<uint32_t>(gx) / tileCells, 0u, per - 1), std::clamp<uint32_t>(static_cast<uint32_t>(gy) / tileCells, 0u, per - 1));
         s.terrainProbe.push_back(p);
     }
     s.probed = false;

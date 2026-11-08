@@ -51,12 +51,12 @@ struct Bench {
     explicit Bench(const VulkanContext& c) : ctx(c) {}
 
     // `r`: 8 floats per ray (origin.xyz, tMin, direction.xyz, tMax).
-    bool init(std::span<const float> r, const char* spv = "rt_smoke.comp.spv", std::span<const BindingDesc> table = kSmokeBindings, uint32_t pushBytes = 0,
+    bool init(std::span<const float> r, std::string_view spv = "rt_smoke.comp.spv", std::span<const BindingDesc> table = kSmokeBindings, uint32_t pushBytes = 0,
               uint32_t resultVec4s = 1) {
         const uint32_t n = static_cast<uint32_t>(r.size() / 8);
         const VkDevice dev = ctx.device();
         if (!set.create(ctx, table, pushBytes)) return fail("descriptor set");
-        module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + spv, nullptr));
+        module = OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + std::string(spv), nullptr));
         if (!module) return fail(spv);
         VkComputePipelineCreateInfo cpci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
         cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
