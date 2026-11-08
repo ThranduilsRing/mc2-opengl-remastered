@@ -418,6 +418,8 @@ def r_apply(listfile, root=INSTALL):
     """Apply "D|rel" (delete) and "T|rel|mtime" (set mtime) lines to root (default INSTALL)."""
     for line in Path(listfile).read_text(encoding="utf-8").splitlines():
         op, rel, *mt = line.split("|")
+        if not rel.strip("./"):
+            continue   # never the root itself
         p = Path(root, rel)
         if op == "D":
             p.unlink(missing_ok=True)
@@ -613,7 +615,8 @@ def remote_rows(sha, step="tree", name="tree.txt"):
     local = PC_TMP / ("laptop." + name)
     scp(f"{HOST}:{G}/tmp/{name}", local)
     try:
-        return local.read_text(encoding="utf-8").splitlines()
+        # an empty tree is written as "\n": without the filter its "" row became a delete of the root itself (W133 sync_mods)
+        return [r for r in local.read_text(encoding="utf-8").splitlines() if r]
     finally:
         local.unlink(missing_ok=True)
 

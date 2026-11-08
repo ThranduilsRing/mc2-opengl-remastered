@@ -383,3 +383,17 @@ def test_mods_problems_and_idempotent_mirror_diff(tmp_path):
     _tree(dst, mods)   # what the tar extract leaves (mtimes kept)
     assert laptop_gate.mods_problems(dst) == []
     assert laptop_gate.tree_diff(laptop_gate.tree_rows(src), laptop_gate.tree_rows(dst)) == ([], [], [])
+
+
+def test_empty_remote_tree_never_deletes_root(tmp_path, monkeypatch):
+    """W133: an empty laptop tree is written as "\n"; its "" row must not become "D|" (unlink of the mirror root itself)."""
+    monkeypatch.setattr(laptop_gate, "PC_TMP", tmp_path)
+    monkeypatch.setattr(laptop_gate, "ssh", lambda *a, **k: (0, ""))
+    monkeypatch.setattr(laptop_gate, "scp", lambda src, dst, recursive=False: Path(dst).write_text("\n", encoding="utf-8"))
+    assert laptop_gate.remote_rows(False, "mods-tree", "mods.tree.txt") == []
+    root = tmp_path / "root"
+    root.mkdir()
+    ops = tmp_path / "ops"
+    ops.write_text("D|\nD|.\n", encoding="utf-8")
+    laptop_gate.r_apply(str(ops), root)
+    assert root.is_dir()
