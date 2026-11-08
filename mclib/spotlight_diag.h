@@ -38,6 +38,10 @@ std::optional<SourceClass> is_e_slot(const void* camera, long slot);
 void reset();
 void reset(const void* camera);
 
+// Changes on tag, removal, slot reuse and camera teardown. Consumers may cache
+// pointer classification until this revision changes (including empty untag).
+uint64_t registration_revision();
+
 // Whether MC2_SPOT_DIAG env is set. Cached at startup.
 bool is_enabled();
 

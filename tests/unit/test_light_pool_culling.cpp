@@ -1,7 +1,56 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/light_pool_culling.h"
+#include "../../mclib/spotlight_diag.h"
 #include <vector>
 using namespace gos_terrain_lighting;
+
+TEST_CASE("Registered mover lights equal the world slot scan across lifecycle changes") {
+    namespace tags = mc2_spotlight_diag;
+    int camera = 0, preview = 0;
+    int lights[5]{};
+    std::array<int*, 6> slots{&lights[0], &lights[1], nullptr, &lights[2], &lights[1], &lights[3]};
+    tags::reset(&camera);
+    tags::reset(&preview);
+    RegisteredMoverLights cached;
+    size_t scans = 0;
+    auto moverSlot = [&](size_t slot) {
+        ++scans;
+        const auto src = tags::is_e_slot(&camera, static_cast<long>(slot));
+        return src == tags::Mech || src == tags::Gv;
+    };
+    auto check = [&] {
+        cached.refresh(&camera, tags::registration_revision(), std::span<int*>(slots), moverSlot);
+        for (const int& light : lights) {
+            bool reference = false;
+            for (size_t i = 0; i < slots.size(); ++i) {
+                const auto src = tags::is_e_slot(&camera, static_cast<long>(i));
+                reference |= slots[i] == &light && (src == tags::Mech || src == tags::Gv);
+            }
+            CHECK(cached.contains(&light) == reference);
+        }
+    };
+    tags::tag_slot(&camera, 1, tags::Mech);
+    tags::tag_slot(&camera, 3, tags::Gv);
+    tags::tag_slot(&camera, 0, tags::Bldg);
+    tags::tag_slot(&preview, 0, tags::Mech);
+    check();
+    const auto once = scans;
+    check();
+    CHECK(scans == once); // stable frames must not rescan slots
+    tags::untag_slot(&camera, 1);
+    slots[1] = &lights[4];
+    check();
+    tags::tag_slot(&camera, 4, tags::Gv); // duplicate pointer still classified
+    check();
+    tags::tag_slot(&camera, 3, tags::Bldg); // retag in place
+    check();
+    tags::untag_slot(&camera, 5); // untagged slot reuse must also invalidate
+    slots[5] = &lights[2];
+    check();
+    tags::reset(&camera);
+    check();
+    tags::reset(&preview);
+}
 namespace {
 GpuTerrainLight light(float x,float y,float r,float g,float b,bool mover=true) {
     return {{x,y,0},1,{r,g,b},2,50,1.0f/48,mover?1.0f:0.0f,1};

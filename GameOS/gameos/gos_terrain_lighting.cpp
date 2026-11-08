@@ -645,26 +645,14 @@ void PackAndDispatch() {
         // consumer ignores the pad field — no legacy deviation). Slot tags
         // are recorded unconditionally at the mover registration sites
         // (mc2_spotlight_diag::tag_slot).
-        static std::vector<TG_LightPtr> s_moverLightPtrs;
-        s_moverLightPtrs.clear();
-        if (TG_LightPtr* wl = eye->getWorldLights()) {
-            for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s) {
-                if (!wl[s]) continue;
-                mc2_spotlight_diag::SourceClass src;
-                if (mc2_spotlight_diag::is_e_slot(eye, s).transform([&src](auto value) {
-                        src = value;
-                        return true;
-                    }).value_or(false)
-                    && (src == mc2_spotlight_diag::Mech
-                        || src == mc2_spotlight_diag::Gv))
-                    s_moverLightPtrs.push_back(wl[s]);
-            }
-        }
-        auto lightIsMover = [&](TG_LightPtr lp) -> bool {
-            for (TG_LightPtr p : s_moverLightPtrs)
-                if (p == lp) return true;
-            return false;
-        };
+        static RegisteredMoverLights moverLights;
+        TG_LightPtr* worldLights = eye->getWorldLights();
+        moverLights.refresh(eye, mc2_spotlight_diag::registration_revision(),
+            std::span<TG_LightPtr>(worldLights, worldLights ? MAX_LIGHTS_IN_WORLD : 0),
+            [](size_t slot) {
+                const auto src = mc2_spotlight_diag::is_e_slot(eye, static_cast<long>(slot));
+                return src == mc2_spotlight_diag::Mech || src == mc2_spotlight_diag::Gv;
+            });
         // LIGHT-REALISM-1: pool-shape knobs (see the reshape block below).
         // CONE-SPILL-POLICY-1: default ON (user-approved variant B; free
         // with MC2_LIGHT_GRID=1 per PERF-HARNESS-TRUTH-1). =0 reverts.
@@ -811,7 +799,7 @@ void PackAndDispatch() {
             // LOCAL-LIGHTS-2: a coned light is a building lamp, never a mover -- the
             // slot tags can be stale (mc2_10: the S_TurretControl lamps' slots read
             // as Mech), which dimmed them 4x, shrank them and denied them a shadow tile.
-            gl._pad1           = (!coned && lightIsMover(tl)) ? 1.0f : 0.0f;
+            gl._pad1           = (!coned && moverLights.contains(tl)) ? 1.0f : 0.0f;
             gl.intensity       = tl->intensity;
             // Lamp-type variation: terrain fixtures (runway, taxiway and pad edge lights, dozens per base)
             // marked the ground with rows of identical small bright discs. They are markers, not floodlights:
