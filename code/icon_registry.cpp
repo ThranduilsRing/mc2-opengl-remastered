@@ -203,7 +203,7 @@ void apply(aObject& widget, const aObject& source, long index, std::string chass
     init(sheet, static_cast<int>(source.width()), static_cast<int>(source.height()));
     const std::string named = "mech/" + canonical(std::filesystem::path(chassis).stem().string());
     const auto found = namedPriority.find(named);
-    const bool individual = found != namedPriority.end() && found->second <= LookupModPriority(sheet.c_str()) && registry.find(named);
+    const bool individual = found != namedPriority.end() && namedPriority.at(named) <= LookupModPriority(sheet.c_str()) && registry.find(named);
     const auto& icon = resolve(individual ? named : legacyKey(sheet, index));
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
@@ -220,13 +220,13 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
     const std::string named = "hud/" + canonical(std::filesystem::path(sheet).stem().string()) +
                               (back ? "/back/" : "/front/") + stem;
     const auto priority = namedPriority.find(named);
-    const Icon* found = registry.lookup(named, key, priority == namedPriority.end() ? 1000001 : priority->second,
+    const Icon* found = registry.lookup(named, key, priority == namedPriority.end() ? 1000001 : namedPriority.at(named),
                                        LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
         const std::string bay = "mech/" + stem;
         const auto bayPriority = namedPriority.find(bay);
-        if (bayPriority != namedPriority.end() && bayPriority->second <= LookupModPriority(sheet.c_str()))
+        if (bayPriority != namedPriority.end() && namedPriority.at(bay) <= LookupModPriority(sheet.c_str()))
             found = registry.find(bay);
         if (!found) found = registry.find(legacyKey("data/art/mc2x_mechicons.tga", index));
     }
