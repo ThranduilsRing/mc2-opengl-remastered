@@ -500,7 +500,8 @@ void Camera::setCameraOrigin (void)
 					// Angular object culling must use the lifted view too; its frame
 					// was initialized from the requested pitch before this clamp.
 					cameraFrame.reset_to_world_frame();
-					cameraFrame.rotate(glm::vec3(newPitch / DEGREES_TO_RADS, 0.0f, cameraRotation));
+					glm::vec3 clampedRotation(newPitch / DEGREES_TO_RADS, 0.0f, cameraRotation);
+					cameraFrame.rotate(clampedRotation);
 				}
 			}
 
