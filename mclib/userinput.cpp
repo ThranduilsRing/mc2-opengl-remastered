@@ -47,6 +47,9 @@
 #include<math.h>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/gos_render.h"
+#include "../RenderCore/KtxLoader.h"
+#include <algorithm>
 
 //---------------------------------------------------------------------------
 UserInput *userInput = nullptr;
@@ -109,7 +112,7 @@ void MouseCursorData::initCursors (mc2::czstring cursorFileName)
 		mc2::fmt::to_buf(blockName, "Cursor{:d}", mc2::fmt::as_i32(i));
 		{
 			ZoneScopedN("MouseCursorData::initCursors staticInfo");
-			cursorInfos[i].init( cursorFile, blockName,0,0,0x1);
+			cursorInfos[i].init( cursorFile, blockName,0,0,0x1,gos_Texture_Keyed);
 		}
 		{
 			ZoneScopedN("MouseCursorData::initCursors metadata");
@@ -140,11 +143,54 @@ void MouseCursorData::initCursors (mc2::czstring cursorFileName)
 	}
 
 	cursorFile.close();
+	nativeCursors.create(std::span<const unsigned long>(numFrames, numCursors), [this](size_t shape, size_t frame) -> SDL_Cursor* {
+		const auto& info = cursorInfos[shape];
+		const auto image = mc2::textures::image(info.textureHandle);
+		if (!image || info.uWidth <= 0 || info.vHeight <= 0 || !info.textureWidth) return nullptr;
+		std::vector<uint8_t> decoded;
+		const std::vector<uint8_t>* pixels = &image->pixels;
+		if (image->isCompressed) {
+			if (!RenderCore::ktxDecodeBlocksToRgba8(*image, 0, decoded)) return nullptr;
+			pixels = &decoded;
+		} else if (image->vkFormat != 37 && image->vkFormat != 43) return nullptr;
+		// FIT coordinates use the logical atlas size; cooked replacements may be larger.
+		const int x0 = static_cast<int>(info.u * image->width / info.textureWidth);
+		const int y0 = static_cast<int>(info.v * image->height / info.textureWidth);
+		const int w = static_cast<int>(info.uWidth * image->width / info.textureWidth);
+		const int h = static_cast<int>(info.vHeight * image->height / info.textureWidth);
+		const int columns = w > 0 ? image->width / w : 0;
+		if (w <= 0 || h <= 0 || columns <= 0) return nullptr;
+		const int x = x0 + static_cast<int>(frame % columns) * w;
+		const int y = y0 + static_cast<int>(frame / columns) * h;
+		if (x < 0 || y < 0 || x + w > image->width || y + h > image->height ||
+			pixels->size() < static_cast<size_t>(image->width) * image->height * 4) return nullptr;
+		std::vector<uint8_t> rgba(static_cast<size_t>(info.uWidth) * info.vHeight * 4);
+		for (long py = 0; py < info.vHeight; ++py)
+			for (long px = 0; px < info.uWidth; ++px) {
+				const size_t src = (x + px * w / info.uWidth + (y + py * h / info.vHeight) * image->width) * 4;
+				const size_t dst = (px + py * info.uWidth) * 4;
+				std::copy_n(pixels->data() + src, 4, rgba.data() + dst);
+			}
+		mc2::keyCursorPixels(rgba);
+		SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(rgba.data(), static_cast<int>(info.uWidth),
+			static_cast<int>(info.vHeight), 32, static_cast<int>(info.uWidth * 4), SDL_PIXELFORMAT_RGBA32);
+		if (!surface) return nullptr;
+		SDL_Cursor* cursor = SDL_CreateColorCursor(surface, static_cast<unsigned char>(mouseHS[shape][0]),
+			static_cast<unsigned char>(mouseHS[shape][1]));
+		SDL_FreeSurface(surface);
+		if (!cursor) MC2_LOG(Ui, Warn, "[CURSOR] native creation failed shape={} frame={}: {}", shape, frame, SDL_GetError());
+		return cursor;
+	});
+	MC2_LOG(Ui, Info, "[CURSOR] native shapes={}", nativeCursors.shapes.size());
 }
 
 //---------------------------------------------------------------------------
 void MouseCursorData::destroy (void)
 {
+	graphics::set_native_cursor(nullptr, false);
+	for (const auto& shape : nativeCursors.shapes)
+		for (SDL_Cursor* cursor : shape) if (cursor) SDL_FreeCursor(cursor);
+	nativeCursors.shapes.clear();
 	if (mc2UseAsyncMouse && mc2MouseThreadStarted)
 		MouseTimerKill();
 
@@ -162,11 +208,13 @@ void MouseCursorData::destroy (void)
 void UserInput::mouseOn (void)				//Draw Mouse Cursor
 {
 	drawMouse = true;
+	syncNativeCursor();
 }
 
 void UserInput::mouseOff (void)				//Don't Draw Mouse Cursor
 {
 	drawMouse = false;
+	syncNativeCursor();
 }
 
 void UserInput::setMouseCursor (long state)
@@ -182,6 +230,12 @@ void UserInput::setMouseCursor (long state)
     */
 
 	mouseState = state;
+	syncNativeCursor();
+}
+
+void UserInput::syncNativeCursor()
+{
+	graphics::set_native_cursor(cursors ? cursors->nativeCursors.get(mouseState, mouseFrame) : nullptr, drawMouse);
 }
 
 //---------------------------------------------------------------------------
@@ -438,6 +492,7 @@ void UserInput::update (void)
 		}
 	}
 	
+	syncNativeCursor();
 	//sebi: no ASYNC mouse data
 	//if (mc2UseAsyncMouse)
 	if (false)
@@ -518,6 +573,7 @@ void UserInput::initMouseCursors (mc2::czstring mouseFile)
 	}
 
 	mouseFrame = 0;
+	syncNativeCursor();
 }
 	
 //---------------------------------------------------------------------------
@@ -582,11 +638,12 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	static int s_osCursor = -1;
 	if (s_osCursor < 0) s_osCursor = mc2::gate::get<"MC2_OS_CURSOR">() ? 1 : 0;
 	if (s_osCursor) return;
+	if (cursors && cursors->nativeCursors.get(mouseState, mouseFrame)) return;
 
     //sebi, always NOT async mouse
 	//if (!mc2UseAsyncMouse)
 	{
-		if (drawMouse && mouseState != -1)
+		if (drawMouse && cursors && mouseState >= 0 && mouseState < cursors->numCursors)
 		{
 			if (!s_cursorCaptureQuad)
 				gos_SetHudScaleExempt(true);   // cursor sprite never shrunk by the HUD-fit scale

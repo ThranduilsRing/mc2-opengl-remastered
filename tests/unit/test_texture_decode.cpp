@@ -44,6 +44,19 @@ TEST_CASE("texture decode: mipmaps are opt-in and DisableMipmap wins") {
     CHECK_FALSE(mc2tex::wantsMipmaps(gosHint_MipmapFilter0 | gosHint_DisableMipmap));
 }
 
+TEST_CASE("cursor image: keyed TGA decode clears magenta for RGB and RGBA art") {
+    for (const int bits : {24, 32}) {
+        const std::vector<uint8_t> pixels = bits == 24 ?
+            std::vector<uint8_t>{255,0,255, 30,20,10} :
+            std::vector<uint8_t>{255,0,255,255, 30,20,10,128};
+        const auto file = tga(2, 1, bits, pixels);
+        const auto decoded = mc2tex::decodeMemory(file.data(), file.size(), "cursor.tga", gos_Texture_Keyed, 0);
+        REQUIRE(decoded);
+        CHECK(decoded->layout == mc2tex::PixelLayout::RGBA8);
+        CHECK(decoded->pixels == std::vector<uint8_t>{0,0,0,0, 10,20,30,static_cast<uint8_t>(bits == 24 ? 255 : 128)});
+    }
+}
+
 TEST_CASE("texture decode: Detect resolves from the alpha channel") {
     auto opaque = rgba({1, 2, 3, 255, 4, 5, 6, 255}, 2, 1);
     mc2tex::applyFormatPolicy(opaque, gos_Texture_Detect, false);

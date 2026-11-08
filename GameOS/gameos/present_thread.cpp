@@ -1,4 +1,5 @@
 #include "present_thread.h"
+#include "gos_render.h"
 #include "present_thread_wait.h"
 #include "engine_present_vk.h"
 #include "vulkan_context.h"
@@ -148,6 +149,7 @@ void run() {
 }
 
 void pumpWindowMessages() {
+    graphics::pump_loading_events();
 #ifdef _WIN32
     if (std::this_thread::get_id() != mainThread.load(std::memory_order_relaxed)) return;
     MSG m;

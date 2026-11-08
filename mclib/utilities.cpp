@@ -204,7 +204,7 @@ void StaticInfo::getData(unsigned char * buffer)
 
 }
 
-void StaticInfo::init( FitIniFile& file, mc2::czstring blockName, long hiResOffsetX, long hiResOffsetY, DWORD neverFlush )
+void StaticInfo::init( FitIniFile& file, mc2::czstring blockName, long hiResOffsetX, long hiResOffsetY, DWORD neverFlush, gos_TextureFormat format )
 {
 	ZoneScopedN("StaticInfo::init");
 	memset( location, 0, sizeof( location ) );
@@ -246,7 +246,7 @@ void StaticInfo::init( FitIniFile& file, mc2::czstring blockName, long hiResOffs
 		int ID;
 		{
 			ZoneScopedN("StaticInfo::init loadTexture");
-			ID = mc2::textures::load( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );
+			ID = mc2::textures::load( fullPath, format, 0, 0, neverFlush );
 		}
 		textureHandle = ID;
 		DWORD logicalWidth = 0;

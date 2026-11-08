@@ -2,6 +2,7 @@
 // No GL and no state of its own: every call works on the caller's DecodedTexture.
 
 #include "texture_decode.h"
+#include "../../RenderCore/CursorImage.h"
 
 #include <cstdio>
 #include <cstring>
@@ -85,6 +86,15 @@ bool wantsMipmaps(DWORD hints) {
 }
 
 void applyFormatPolicy(DecodedTexture& t, gos_TextureFormat requested, bool keyMagenta) {
+    if (requested == gos_Texture_Keyed && t.layout == PixelLayout::RGB8) {
+        std::vector<uint8_t> rgba;
+        rgba.reserve(t.pixels.size() / 3 * 4);
+        for (size_t i = 0; i + 2 < t.pixels.size(); i += 3)
+            rgba.insert(rgba.end(), {t.pixels[i], t.pixels[i + 1], t.pixels[i + 2], 255});
+        t.pixels = std::move(rgba);
+        t.layout = PixelLayout::RGBA8;
+    }
+    if (requested == gos_Texture_Keyed) mc2::keyCursorPixels(t.pixels);
     const bool rgba = t.layout == PixelLayout::RGBA8;
     const size_t n = static_cast<size_t>(t.width) * static_cast<size_t>(t.height);
     uint8_t* p = t.pixels.data();
