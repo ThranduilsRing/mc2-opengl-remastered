@@ -13,7 +13,10 @@ import sys
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-EXE = Path(os.environ.get("MC2FX_EXE", ROOT / "build64-ninja/out/tools/mc2fx/mc2fx.exe"))
+sys.path.append(str(ROOT / "scripts"))
+import console_child  # noqa: E402  (windowless console children)
+
+EXE =Path(os.environ.get("MC2FX_EXE", ROOT / "build64-ninja/out/tools/mc2fx/mc2fx.exe"))
 STOCK_SHA = "0fc3f12eec5245a7544429c93fc891f0f770a4131cd4a8ca95616bf4b5361b3d"
 
 
@@ -142,7 +145,8 @@ def wire_fixture(version=17, mlr=9):
 
 def run(*arguments):
     assert EXE.is_file(), f"build mc2fx first: missing {EXE}"
-    result = subprocess.run([str(EXE), *map(str, arguments)], capture_output=True, text=True, timeout=90)
+    result = subprocess.run([str(EXE), *map(str, arguments)], capture_output=True, text=True, timeout=90,
+                            **console_child.child_kwargs(redirected=True))
     assert result.returncode == 0, result.stdout + result.stderr
     return result.stdout
 
@@ -187,7 +191,8 @@ def test_cli_corruption(tmp_path):
     bad = tmp_path / "bad.fx"
     for data in (payload[:7], payload[:-1], payload + b"\0", payload[:12] + u32(0xFFFFFFFF) + payload[16:]):
         bad.write_bytes(data)
-        result = subprocess.run([str(EXE), "dump", str(bad)], capture_output=True, text=True, timeout=30)
+        result = subprocess.run([str(EXE), "dump", str(bad)], capture_output=True, text=True, timeout=30,
+                                **console_child.child_kwargs(redirected=True))
         assert result.returncode == 4 and "FX byte" in result.stderr
 
 
