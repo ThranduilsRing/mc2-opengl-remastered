@@ -152,7 +152,6 @@ bool runSelfTest(const VulkanContext& ctx) {
     const bool s1 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         if (!recordBlasBuild(ctx, cmd, g, flags, "rt_selftest.blas", blas, blasScratch)) return;
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
-        recordCompactionQuery(ctx, cmd, qp.get(), 0, blas);
         const float shift[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
         const VkAccelerationStructureInstanceKHR i0 = makeInstance(blas.address(), shift, kCustomIndex);
         if (!inst.upload(&i0, sizeof(i0))) return;
@@ -169,6 +168,7 @@ bool runSelfTest(const VulkanContext& ctx) {
     const bool s2 = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         if (!recordBlasUpdate(ctx, cmd, g, blas, blasUpd)) return;
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);
+        recordCompactionQuery(ctx, cmd, qp.get(), 0, blas);  // sized after the last build or refit
         if (!recordTlasUpdate(ctx, cmd, inst.deviceAddress(), 1, tlas, tlasUpd)) return;
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
         b.recordTrace(cmd, tlas.get());
