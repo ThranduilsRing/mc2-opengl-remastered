@@ -18,7 +18,14 @@ import argparse, csv, hashlib, json, os, shutil, subprocess, sys, tarfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
+# The remote half runs from C:/mc2gate/bin alone: every scripts/ module it imports at module level is a HELPER that provision()
+# uploads next to it (scripts/tests/test_laptop_gate.py fails when an import is missing from HELPERS).
+HELPERS = ("console_child.py",)
+try:
+    import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
+except ImportError as exc:
+    sys.exit(f"laptop_gate: helper missing next to {__file__} ({exc}); run laptop_gate.py from the PC, which provisions "
+             f"{', '.join(HELPERS)} into C:/mc2gate/bin")
 
 HOST = "Kaitlyn@192.168.68.107"
 KEY = "C:/SPB_Data/.ssh/mc2farm_ed25519"
@@ -356,7 +363,7 @@ def r_preflight(window="-", published=""):
     """Everything the stages need before a full run: Python packages, data roots, tools. Prints one line per problem."""
     import importlib
     import shutil
-    bad = []
+    bad = provision_problems()   # first: a missing helper or seed is a preflight red, never a mid-gate one
     for m in PACKAGES:   # import, not find_spec: a source-built extension can be present and still fail to load its DLLs
         try:
             importlib.import_module(m)
@@ -454,19 +461,6 @@ def seed_stock():
     print("mirrored", PC_STOCK)
 
 
-def seed_eroot():
-    """E:-rooted files the contracts read (MC2_GATE_EROOT on the laptop): copy when the laptop's sha differs."""
-    for rel in E_EXTRA:
-        want = sha256(Path("E:/", rel))
-        dst = f"{G}/drv/E/{rel}"
-        rc, out = ssh(f'certutil -hashfile "{dst}" SHA256', check=False)
-        if rc == 0 and want in out.replace(" ", "").lower():
-            continue
-        print(f"copying E:/{rel} to the laptop", flush=True)
-        ssh(f'cmd /c mkdir "{str(Path(dst).parent).replace("/", chr(92))}" 2>nul & exit /b 0', check=False)
-        scp(Path("E:/", rel), f"{HOST}:{dst}")
-
-
 def seed():
     """One-time: stream the PC's lean seed (published v0.4 payload + game data) into C:/mc2gate/install."""
     seed_stock()
@@ -559,10 +553,52 @@ def sync_tree():
     print(f"sync_tree done in {time.time() - t:.0f}s", flush=True)
 
 
-def upload_self():
-    """The remote half runs from C:/mc2gate/bin alone: ship console_child.py next to it (its import, w126)."""
-    scp(__file__, f"{HOST}:{G}/bin/laptop_gate.py")
-    scp(console_child.__file__, f"{HOST}:{G}/bin/console_child.py")
+def provision_files(eroot=Path("E:/")):
+    """(laptop path relative to C:/mc2gate, PC source) for every file the remote half needs before it runs: itself, its HELPERS
+    and the E-rooted seeds the contracts read under MC2_GATE_EROOT (E_EXTRA, e.g. the scifi_kit catalog)."""
+    scripts = Path(__file__).resolve().parents[1] / "scripts"
+    return ([("bin/laptop_gate.py", Path(__file__).resolve())] + [("bin/" + h, scripts / h) for h in HELPERS]
+            + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA])
+
+
+def provision():
+    """Self-provisioning, run at the start of every PC-side run (and --preflight): sync every provision_files() entry whose laptop
+    sha differs, then upload bin/PROVISION.sha256, which the remote preflight verifies (missing or stale = a clear preflight red)."""
+    ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
+    lines = []
+    for rel, src in provision_files():
+        if not src.is_file():
+            sys.exit(f"laptop_gate: provision source missing on the PC: {src}")
+        want, dst = sha256(src), f"{G}/{rel}"
+        rc, out = ssh(f'certutil -hashfile "{dst}" SHA256', check=False)
+        if not (rc == 0 and want in out.replace(" ", "").lower()):
+            print(f"provision: copying {src} -> {dst}", flush=True)
+            ssh(f'cmd /c mkdir "{str(Path(dst).parent).replace("/", chr(92))}" 2>nul & exit /b 0', check=False)
+            scp(src, f"{HOST}:{dst}")
+        lines.append(f"{want}  {rel}")
+    sums = PC_TMP / "PROVISION.sha256"
+    sums.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        sums.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        scp(sums, f"{HOST}:{G}/bin/PROVISION.sha256")
+    finally:
+        sums.unlink(missing_ok=True)
+
+
+def provision_problems(root=G):
+    """Remote: every file in bin/PROVISION.sha256 exists under `root` with its sha. Missing manifest, file or sha = one line each."""
+    sums = Path(root, "bin/PROVISION.sha256")
+    if not sums.is_file():
+        return [f"missing {sums}: run tools/laptop_gate.py from the PC, which provisions the laptop"]
+    bad = []
+    for line in sums.read_text(encoding="utf-8").splitlines():
+        want, rel = line.split("  ", 1)
+        path = Path(root, rel)
+        if not path.is_file():
+            bad.append(f"missing provisioned file {path} (helper or E-root seed; laptop_gate.py on the PC uploads it)")
+        elif sha256(path) != want:
+            bad.append(f"stale provisioned file {path}: sha256 != the PC's {want[:12]}")
+    return bad
 
 
 def pc_main(args):
@@ -570,12 +606,10 @@ def pc_main(args):
     branch = "claude/stage-" + w
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
-    ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
-    upload_self()
+    provision()   # helpers + E-root seeds, sha-checked; the remote preflight verifies PROVISION.sha256
     ssh(remote_py("init"), stream=True)
     seed()
     seed_ref()
-    seed_eroot()
     sync_tree()
     print(f"pushing {branch} @ {head[:9]}", flush=True)
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
@@ -643,7 +677,7 @@ def main():
         return {"init": r_init, "run": lambda: r_run(a.window, a.gate_args + rest), "pack": lambda: r_pack(a.window),
                 "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
-        upload_self()
+        provision()
         return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
     if not a.window:
         ap.error("window required")

@@ -1,4 +1,5 @@
 """laptop_gate: payload delta pack and deploy_payload --from-payload sha256 checks."""
+import ast
 import csv
 import hashlib
 import sys
@@ -162,6 +163,50 @@ def test_extract_payload_clears_the_previous_payload(tmp_path):
     (tmp_path / "payload.sha256").write_text(f"{laptop_gate.sha256(tmp_path / 'payload.tar')}  payload.tar\n")
     laptop_gate.extract_payload(tmp_path)
     assert [p.name for p in (tmp_path / "payload/files").iterdir()] == ["new.bin"]
+
+
+def _module_level_imports(path):
+    names = set()
+    for node in ast.parse(path.read_text(encoding="utf-8")).body:
+        if isinstance(node, (ast.Import, ast.ImportFrom, ast.Try)):
+            for n in ast.walk(node):
+                if isinstance(n, ast.Import):
+                    names |= {a.name.split(".")[0] for a in n.names}
+                elif isinstance(n, ast.ImportFrom) and n.module and not n.level:
+                    names.add(n.module.split(".")[0])
+    return names - set(sys.stdlib_module_names) - {"__future__"}
+
+
+def test_every_module_the_remote_half_imports_is_provisioned():
+    """The remote half runs from C:/mc2gate/bin alone (w126: console_child missing -> ModuleNotFoundError on --remote init).
+    Every non-stdlib module laptop_gate.py or a helper imports at module level must be a HELPER provision() uploads."""
+    shipped = {Path(h).stem for h in laptop_gate.HELPERS}
+    uploaded = {rel for rel, _src in laptop_gate.provision_files(eroot=ROOT)}
+    todo, seen = [ROOT / "tools" / "laptop_gate.py"], set()
+    while todo:
+        path = todo.pop()
+        for mod in _module_level_imports(path):
+            assert mod in shipped, f"{path.name} imports {mod} at module level; add {mod}.py to laptop_gate.HELPERS"
+            if mod not in seen:
+                seen.add(mod)
+                todo.append(ROOT / "scripts" / f"{mod}.py")
+    for helper in laptop_gate.HELPERS:
+        assert (ROOT / "scripts" / helper).is_file()
+        assert "bin/" + helper in uploaded
+    assert "bin/laptop_gate.py" in uploaded
+    assert {"drv/E/" + rel for rel in laptop_gate.E_EXTRA} <= uploaded
+
+
+def test_provision_problems_names_missing_and_stale_files(tmp_path):
+    (tmp_path / "bin").mkdir()
+    assert "missing" in laptop_gate.provision_problems(tmp_path)[0]
+    (tmp_path / "bin" / "console_child.py").write_bytes(b"ok")
+    (tmp_path / "bin" / "stale.py").write_bytes(b"old")
+    want = hashlib.sha256(b"ok").hexdigest()
+    (tmp_path / "bin" / "PROVISION.sha256").write_text(
+        f"{want}  bin/console_child.py\n{want}  bin/stale.py\n{want}  drv/E/catalog.json\n", encoding="utf-8")
+    bad = laptop_gate.provision_problems(tmp_path)
+    assert len(bad) == 2 and "stale" in bad[0] and "catalog.json" in bad[1]
 
 
 @pytest.mark.parametrize("art_rc,inventory,reds", [(0, [], 0), (1, [], 1), (0, ["shader inventory: x"], 1), (1, ["y"], 2)])
