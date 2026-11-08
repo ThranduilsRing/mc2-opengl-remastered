@@ -225,8 +225,9 @@ void MissionInterfaceManager::doJump()
 			tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_JUMPTO_POINT, false);
 		
 			tacOrder.moveParams.wait = false;
-			tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_JUMP;
-			tacOrder.setWayPoint( 0, wPos );
+			// The tick ingress copies only counted waypoints. setWayPoint alone
+			// left numPoints at zero and admission rejected order_goal_missing.
+			tacOrder.addWayPoint(wPos, TRAVEL_MODE_JUMP);
 			tacOrder.pack(nullptr, nullptr);
 
 			handleOrders(tacOrder);

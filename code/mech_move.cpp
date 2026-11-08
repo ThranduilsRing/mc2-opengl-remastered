@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "mc2fmt.h"
+#include "mc2_diag_verbose.h"
 
 
 
@@ -710,6 +711,9 @@ void BattleMech::setControlSettings (float& newRotate, char& newThrottleSetting,
 		control.settings.mech.gestureGoal = newGestureStateGoal;
 		switch (newGestureStateGoal) {
 			case 6:
+				if (!inJump && mc2_diag::tagRequested("JUMP_ORDER"))
+					mc2::fmt::print_err("[JUMP_ORDER v1] event=executing part={} goal=({},{},{})\n",
+						getPartId(), jumpGoal.x, jumpGoal.y, jumpGoal.z);
 				control.settings.mech.throttle = 100.0f;
 				inJump = true;
 				break;

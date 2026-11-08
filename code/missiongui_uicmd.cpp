@@ -36,6 +36,7 @@
 // GAMEPLAY-DRIVER-1 world verbs (route through the mouse/keyboard dispatchers):
 //   select <partId|all|lance|class <NAME>|name <substr>>
 //   order move <x> <y> [run|walk]  - MOVETO order via handleOrders (doMove path)
+//   order jump <x> <y>            - jump mode, validation and doJump as in the UI
 //   order attack <targetPartId>    - ATTACK_OBJECT via handleTacticalOrder
 //   order stop|hold_fire|free_fire - the corresponding TACTICAL_ORDER_* code
 //   camera <x> <y> [rot] [zoomAlt] - eye->setPosition (swoopy goal-seek) + rot/zoom
@@ -418,6 +419,28 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			result = "ok";
 		}
 	}
+	else if (line.compare(0, 11, "order jump ") == 0) {
+		float x = 0, y = 0;
+		if (sscanf(line.c_str() + 11, "%f %f", &x, &y) != 2) {
+			note = "order jump <x> <y>";
+		} else {
+			const glm::vec3 savedPos = wPos;
+			GameObjectPtr savedTarget = target;
+			wPos = {x, y, 0};
+			wPos.z = land->getTerrainElevation(wPos);
+			target = nullptr;
+			jump();
+			if (controlGui.getJump() && canJumpToWPos()) {
+				doJump();
+				result = "ok";
+			} else {
+				result = "blocked";
+				note = "jump capability, range or passability";
+			}
+			wPos = savedPos;
+			target = savedTarget;
+		}
+	}
 	else if (line.compare(0, 11, "order move ") == 0) {
 		// order move <x> <y> [run|walk]  (default run)
 		float x = 0, y = 0; char mode[16] = {0};
@@ -781,6 +804,9 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				if (obj->isMover()) {
 					MoverPtr m = static_cast<MoverPtr>(obj);
 					MechWarriorPtr pilot = m->getPilot();
+					mc2::fmt::to_buf(b, "  jump: capable={} range_world={} executing={}\n",
+						m->canJump(), m->getJumpRange(), m->isJumping());
+					extra += b;
 					mc2::fmt::to_buf(b, "  mover: team={:d} cmdr={:d} gui={:d} selected={:d} typeHandle={:d} pilot={}\n", mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_i32(m->getCommanderId()), mc2::fmt::as_i32(m->isOnGUI() ? 1 : 0), mc2::fmt::as_i32(m->isSelected() ? 1 : 0), mc2::fmt::as_i32(m->getTypeHandle()), mc2::fmt::safe((pilot && pilot->getName()) ? pilot->getName() : "<none>"));
 					extra += b;
 				}
