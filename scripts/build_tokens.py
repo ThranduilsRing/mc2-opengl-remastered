@@ -81,7 +81,8 @@ class Tokens:
 
 def acquire(want: int, total: int | None = None, directory: str | None = None, poll_s: float = 2.0, timeout_s: float | None = None,
             on_wait=None, sleep=time.sleep, clock=time.monotonic) -> Tokens:
-    """Wait until >= 1 token is free, then take up to `want`. After timeout_s, run with 1 unpooled slot rather than block forever."""
+    """Wait until >= 1 token is free, then take up to `want`. After timeout_s, return an EMPTY set: the caller must keep waiting
+    (ninja_build.pool_jobs does); running an unpooled job would exceed the host-wide compile budget."""
     total = total or pool_size()
     directory = directory or token_dir()
     os.makedirs(directory, exist_ok=True)

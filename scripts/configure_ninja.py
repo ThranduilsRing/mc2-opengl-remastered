@@ -75,6 +75,20 @@ def ensure_cache_server(root, env_extra):
                 return
         subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
         subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
+        pin_cache_server()
+
+
+def pin_cache_server():
+    """The persistent cache server spawns cl/link itself, so it must carry the compile mask (CPU_SPLIT); never fails a build."""
+    try:
+        tools = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools")
+        if tools not in sys.path:
+            sys.path.append(tools)
+        from lint_slots import pin_sccache_servers
+        return pin_sccache_servers("compile")
+    except Exception as exc:
+        print(f"[sccache] server pin skipped: {exc}", flush=True)
+        return []
 
 
 def cache_cmake_args(root):

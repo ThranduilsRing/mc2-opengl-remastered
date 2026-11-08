@@ -148,6 +148,67 @@ def test_ninja_pool_is_capped_by_the_compile_mask(tmp_path, monkeypatch):
     assert build_tokens.pool_size() == 8
 
 
+def _physical_core_masks():
+    """Windows GetLogicalProcessorInformationEx(RelationProcessorCore) -> one affinity mask per physical core (group 0)."""
+    import ctypes
+    k32 = ctypes.windll.kernel32
+    n = ctypes.c_ulong(0)
+    k32.GetLogicalProcessorInformationEx(0, None, ctypes.byref(n))
+    buf = ctypes.create_string_buffer(n.value)
+    assert k32.GetLogicalProcessorInformationEx(0, buf, ctypes.byref(n))
+    raw, off, masks = buf.raw, 0, []
+    while off < n.value:
+        size = int.from_bytes(raw[off + 4:off + 8], "little")
+        masks.append(int.from_bytes(raw[off + 32:off + 40], "little"))   # PROCESSOR_RELATIONSHIP.GroupMask[0].Mask
+        off += size
+    return masks
+
+
+@pytest.mark.skipif(os.name != "nt" or (os.cpu_count() or 0) != 16, reason="the 16-CPU PC topology")
+def test_game_masks_are_whole_physical_cores_per_windows_topology():
+    cores = _physical_core_masks()
+    assert len(cores) == 8 and sorted(cores)[0] == 0x3
+    m = lint_slots.cpu_masks()
+    for half in (m["game0"], m["game1"]):
+        assert half in cores                                           # exactly one complete core, SMT siblings together
+    assert all(not (c & m["compile"] and c & (m["game0"] | m["game1"])) for c in cores)   # no core is shared between games and compiles
+
+
+_GRANDCHILD = "import ctypes;k=ctypes.windll.kernel32;p=ctypes.c_size_t();s=ctypes.c_size_t();k.GetProcessAffinityMask(ctypes.c_void_p(k.GetCurrentProcess()),ctypes.byref(p),ctypes.byref(s));print(p.value)"
+_PARENT = ("import subprocess,sys,time;print('ready',flush=True);sys.stdin.readline();"
+           "print(subprocess.run([sys.executable,'-c',sys.argv[1]],capture_output=True,text=True).stdout.strip(),flush=True)")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows process affinity")
+def test_a_server_repinned_by_pid_passes_the_compile_mask_to_its_later_children():
+    """Stands in for sccache.exe -> cl.exe: a persistent process born unpinned is re-pinned from outside; a child it spawns afterwards
+    inherits the compile mask (what lint_slots.pin_sccache_servers does to the live cache server)."""
+    server = subprocess.Popen([sys.executable, "-c", _PARENT, _GRANDCHILD], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                              **console_child.child_kwargs(redirected=True))
+    try:
+        assert server.stdout.readline().strip() == "ready"
+        applied = lint_slots.pin_pid(server.pid, "compile")
+        want = lint_slots.cpu_masks()["compile"] & ((1 << (os.cpu_count() or 1)) - 1)
+        assert applied == want or not want
+        server.stdin.write("go\n")
+        server.stdin.flush()
+        assert int(server.stdout.readline().strip()) == applied and applied & 0x3 == 0   # the descendant sits off the game0 core
+    finally:
+        if server.poll() is None:
+            server.kill()
+        server.communicate(timeout=15)
+
+
+def test_pin_sccache_servers_honours_the_pin_opt_out(monkeypatch):
+    monkeypatch.setenv("MC2_NO_CPU_PIN", "1")
+    monkeypatch.setattr(lint_slots, "sccache_server_pids", lambda: [1])
+    monkeypatch.setattr(lint_slots, "pin_pid", lambda *a: pytest.fail("pinned despite MC2_NO_CPU_PIN"))
+    assert lint_slots.pin_sccache_servers() == []
+    monkeypatch.delenv("MC2_NO_CPU_PIN")
+    monkeypatch.setattr(lint_slots, "pin_pid", lambda pid, mode: 0xFFF0)
+    assert lint_slots.pin_sccache_servers() == [1]
+
+
 def test_a_capture_reaps_only_its_own_children_not_another_captures(monkeypatch):
     """Landmine: a capture that reaped on start used to kill foreign games. Two captures in two processes are two _ACTIVE lists;
     the reap of one must leave the other's child alive."""

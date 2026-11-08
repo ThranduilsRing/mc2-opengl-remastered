@@ -228,3 +228,47 @@ def pin_cpus(mode):
         return 0
     print(f"cpu split: {mode} affinity mask=0x{mask:04X}", flush=True)
     return mask
+
+
+def sccache_server_pids():
+    """PIDs of every running sccache.exe (the persistent cache server runs cl/link for the builds; Windows only)."""
+    if os.name != "nt":
+        return []
+    import subprocess
+    import console_child
+    try:
+        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                             timeout=30, **console_child.child_kwargs(redirected=True)).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    rows = [ln.replace('"', "").split(",") for ln in out.splitlines()]
+    return [int(r[1]) for r in rows if len(r) > 1 and r[1].strip().isdigit()]
+
+
+def pin_pid(pid, mode="compile"):
+    """Set the affinity of ANOTHER process to the `mode` mask (intersected with the system mask); its later children inherit it.
+    Returns the applied mask, 0 when not applied (not Windows, no access, empty mask). Callers decide whether to pin (MC2_NO_CPU_PIN)."""
+    if os.name != "nt":
+        return 0
+    import ctypes
+    k32 = ctypes.windll.kernel32
+    k32.OpenProcess.restype = ctypes.c_void_p
+    h = k32.OpenProcess(0x0200 | 0x0400, False, int(pid))      # PROCESS_SET_INFORMATION | PROCESS_QUERY_INFORMATION
+    if not h:
+        return 0
+    try:
+        proc, sysm = ctypes.c_size_t(), ctypes.c_size_t()
+        if not k32.GetProcessAffinityMask(ctypes.c_void_p(h), ctypes.byref(proc), ctypes.byref(sysm)):
+            return 0
+        mask = cpu_masks()[mode] & sysm.value
+        return mask if mask and k32.SetProcessAffinityMask(ctypes.c_void_p(h), ctypes.c_size_t(mask)) else 0
+    finally:
+        k32.CloseHandle(ctypes.c_void_p(h))
+
+
+def pin_sccache_servers(mode="compile"):
+    """Re-pin every running sccache server to the compile mask so the cl.exe it spawns cannot land on a game core (a server started
+    outside a pinned build, or before the split, keeps the affinity it was born with). No-op under MC2_NO_CPU_PIN. Returns pids pinned."""
+    if os.environ.get("MC2_NO_CPU_PIN"):
+        return []
+    return [pid for pid in sccache_server_pids() if pin_pid(pid, mode)]

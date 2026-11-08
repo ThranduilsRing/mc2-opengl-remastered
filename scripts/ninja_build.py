@@ -84,8 +84,15 @@ def pool_jobs(argv):
     import build_tokens
     idx = next(i for i, a in enumerate(argv) if a.startswith("-j"))
     want = int(argv[idx][2:] or "2")
-    tokens = build_tokens.acquire(want, timeout_s=120, on_wait=lambda total: print(
-        f"[build-tokens] host pool of {total} jobs is busy; waiting for a free slot", flush=True))
+    waited = 0.0
+    while True:   # never run an unpooled job: the host-wide -j total stays within the compile cores, so keep waiting (message every 120 s)
+        tokens = build_tokens.acquire(want, timeout_s=120, on_wait=lambda total: print(
+            f"[build-tokens] host pool of {total} jobs is busy; waiting for a free slot", flush=True))
+        waited += tokens.waited_s
+        if len(tokens):
+            tokens.waited_s = waited
+            break
+        print(f"[build-tokens] still waiting after {waited:.0f}s", flush=True)
     if tokens.waited_s >= 1:
         print(f"[build-tokens] waited {tokens.waited_s:.0f}s, running -j{max(1, len(tokens))}", flush=True)
     argv = list(argv)
@@ -121,7 +128,8 @@ def pin_compile_cores(root):
     """Pin this process (and every compiler it spawns) to the CPU_SPLIT compile mask; no-op off the PC or under MC2_NO_CPU_PIN."""
     sys.path.insert(0, os.path.join(root, "tools"))
     try:
-        from lint_slots import pin_cpus
+        from lint_slots import pin_cpus, pin_sccache_servers
+        pin_sccache_servers("compile")   # a cache server started outside a pinned build would run cl.exe on game cores
         return pin_cpus("compile")
     except Exception as exc:   # a pin failure must never fail a build
         print(f"[ninja_build] compile-core pin skipped: {exc}", flush=True)
