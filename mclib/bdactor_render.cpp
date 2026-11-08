@@ -43,6 +43,12 @@ uint32_t captureForcedBuildingHighlight()
 long BldgAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
+	if (!inView && appearType && (!S_stricmp(appearType->name, "karnov") || !S_stricmp(appearType->name, "vtol"))) {
+		static unsigned culled = 0;
+		if (culled++ < 8 || culled % 600 == 0)
+			mc2::fmt::print_err("[SUPPORT_CRAFT] event=culled name={} x={} y={} z={} frame={}\n",
+				mc2::fmt::safe(appearType->name), position.x, position.y, position.z, unitAnim().currentFrame);
+	}
 	// World markers keep world depth and colour, but never enter a caster feed.
 	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);
 	if (marker && bldgShape) {
