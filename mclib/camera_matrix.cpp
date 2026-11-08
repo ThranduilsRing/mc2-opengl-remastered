@@ -4,6 +4,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
 #include "camera_pick_hash.h"
+#include "../RenderCore/TemporalInputs.h"
 #include <format>
 namespace {
 // XFORM-CONVENTION-HARNESS-1: the two canonical clip-space convention
@@ -231,6 +232,10 @@ void Camera::setOrthogonal(void)
 		cameraToClip[UP_AXIS][3] = 0.0f;
 		cameraToClip[FORWARD_AXIS][3] = far_clip * near_clip * depth_range;
 		cameraToClip[3][3] = 0.0f;
+		// Temporal upscalers get the real projection (vertical FOV from the horizontal one and the frustum aspect).
+		if (this == eye)
+			RenderCore::temporal::projection().store({std::fabs(near_clip), std::fabs(far_clip),
+				2.0f * std::atan(std::tan(horizontal_fov * 0.5f) * height2width), true, true, false});
 		// F2 unified-projection: keep GL-native product in sync with cameraToClip.
 		cameraToClipGL = cameraToClip * kPixelHomogToGLNDC;
 

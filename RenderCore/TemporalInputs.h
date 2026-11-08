@@ -21,6 +21,17 @@ inline std::atomic<uint32_t>& providerPhases() {
     return n;
 }
 
+// Projection the scene camera last built (mclib Camera::setOrthogonal publishes it for the main camera; the upscaler
+// glue copies it into UpscalerFrame). Distances positive in world units, fovY in radians, reverse-Z, finite far plane.
+struct Projection {
+    float nearZ = 1.0f, farZ = 20000.0f, fovY = 0.6f;
+    bool perspective = true, reverseZ = true, infiniteFar = false;
+};
+inline std::atomic<Projection>& projection() {
+    static std::atomic<Projection> p{Projection{}};
+    return p;
+}
+
 // Halton(base) in (0,1).
 inline float halton(uint32_t index, uint32_t base) {
     float f = 1.0f, r = 0.0f;

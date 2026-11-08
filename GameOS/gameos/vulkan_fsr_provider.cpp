@@ -37,7 +37,8 @@ constexpr RenderCore::UpscalerCaps kFsrCaps{kFsrModes, static_cast<int>(std::siz
                                             RenderCore::MotionVectorUnits::RenderPixels, {1.0f, 1.0f}, true, false};
 
 bool createUpscaleContext(const ffxFunctions& fns, VulkanContext& c, uint32_t renderW, uint32_t renderH,
-                          uint32_t displayW, uint32_t displayH, ffxContext* out) {
+                          uint32_t displayW, uint32_t displayH, ffxContext* out, bool depthReversed = true,
+                          bool depthInfinite = false) {
     ffxCreateBackendVKDesc backend{};
     backend.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
     backend.vkDevice = c.device();
@@ -46,7 +47,8 @@ bool createUpscaleContext(const ffxFunctions& fns, VulkanContext& c, uint32_t re
     ffxCreateContextDescUpscale up{};
     up.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
     up.header.pNext = &backend.header;
-    up.flags = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE | FFX_UPSCALE_ENABLE_DEPTH_INVERTED | FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
+    up.flags = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE | FFX_UPSCALE_ENABLE_AUTO_EXPOSURE |
+               (depthReversed ? FFX_UPSCALE_ENABLE_DEPTH_INVERTED : 0u) | (depthInfinite ? FFX_UPSCALE_ENABLE_DEPTH_INFINITE : 0u);
     up.maxRenderSize = {renderW, renderH};
     up.maxUpscaleSize = {displayW, displayH};
     if (fns.CreateContext(out, &up.header, nullptr) != FFX_API_RETURN_OK) { *out = nullptr; return false; }
@@ -140,7 +142,8 @@ private:
             if (!vkImageResourceCreate(&output, c.device(), c.physicalDevice(), f.displayWidth, f.displayHeight,
                     VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, "scene.fsrOutput"))
                 return false;
-            if (!createUpscaleContext(fns, c, f.renderWidth, f.renderHeight, f.displayWidth, f.displayHeight, &context))
+            if (!createUpscaleContext(fns, c, f.renderWidth, f.renderHeight, f.displayWidth, f.displayHeight, &context,
+                                      f.depthReversed, f.depthInfinite))
                 return false;
             renderW = f.renderWidth; renderH = f.renderHeight; displayW = f.displayWidth; displayH = f.displayHeight;
             resetFrames = 2;

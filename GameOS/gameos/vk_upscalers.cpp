@@ -6,6 +6,9 @@
 #include "vk_image_resource.h"
 #include "../../RenderCore/UpscalerProvider.h"
 #include "../../RenderCore/TemporalInputs.h"
+#include "mc2fmt.h"
+#include "diagnostic_trace.h"
+#include <algorithm>
 #include <chrono>
 
 namespace mc2vk {
@@ -23,6 +26,21 @@ namespace {
 RenderCore::UpscalerImage wrapImage(const VkImageResource& r) {
     return {reinterpret_cast<uint64_t>(r.image.get()), reinterpret_cast<uint64_t>(r.view.get()),
             static_cast<uint32_t>(r.format), static_cast<uint32_t>(r.usage), r.w, r.h};
+}
+// One [VK_PRESENT] line per change of provider, extents or projection, so captures record the provider inputs.
+void logInputsOnChange(const RenderCore::IUpscalerProvider& up, const RenderCore::UpscalerFrame& f) {
+    static const RenderCore::IUpscalerProvider* lastUp = nullptr;
+    static float last[7]{};
+    const float now[7]{float(f.renderWidth), float(f.renderHeight), float(f.displayWidth), float(f.displayHeight),
+                       f.cameraNear, f.cameraFar, f.cameraFovY};
+    if (lastUp == &up && std::equal(now, now + 7, last)) return;
+    lastUp = &up;
+    std::copy(now, now + 7, last);
+    if (mc2_diag::tagRequested("VK_PRESENT"))
+        mc2::fmt::print_err("[VK_PRESENT] upscaler_inputs upscaler={} render={}x{} display={}x{} near={:.1f} far={:.1f} "
+                            "fov_y_deg={:.2f} reverse_z={} infinite_far={} perspective={}\n", up.name(), f.renderWidth,
+                            f.renderHeight, f.displayWidth, f.displayHeight, f.cameraNear, f.cameraFar,
+                            f.cameraFovY * 57.29578f, f.depthReversed ? 1 : 0, f.depthInfinite ? 1 : 0, f.perspective ? 1 : 0);
 }
 }  // namespace
 
@@ -44,6 +62,10 @@ RenderCore::IUpscalerProvider* selectUpscaler(RenderCore::IUpscalerProvider*& ac
         if (last.time_since_epoch().count()) f.frameDeltaMs = std::chrono::duration<float, std::milli>(now - last).count();
         last = now;
         f.frameIndex = frame;
+        const T::Projection p = T::projection().load(std::memory_order_relaxed);
+        f.cameraNear = p.nearZ; f.cameraFar = p.farZ; f.cameraFovY = p.fovY;
+        f.depthReversed = p.reverseZ; f.depthInfinite = p.infiniteFar; f.perspective = p.perspective;
+        logInputsOnChange(*up, f);
         if (!up->prepare(f)) up = nullptr;   // failed or unusable this frame: native path, bias back to 0
     }
     if (up != active) {   // present owns the temporal-consumer registration that turns on the scene-feed jitter

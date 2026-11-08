@@ -97,7 +97,10 @@ struct UpscalerFrame {
     float frameDeltaMs = 16.6f;
     uint32_t frameIndex = 0;
     bool reset = false;                   // camera cut / mission load / target recreation: discard history
+    // Real scene projection (RenderCore::temporal::projection()): positive world-unit distances, vertical FOV in
+    // radians, depth convention. Render vs display size is the renderWidth/displayWidth pair above.
     float cameraNear = 1.0f, cameraFar = 20000.0f, cameraFovY = 0.6f;
+    bool depthReversed = true, depthInfinite = false, perspective = true;
 };
 
 // ---- Provider -------------------------------------------------------------------------------------------------------

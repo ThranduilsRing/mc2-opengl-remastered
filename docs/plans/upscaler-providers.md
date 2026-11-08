@@ -10,7 +10,10 @@ Background: `docs/plans/2026-11-06-temporal-aa.md` and memory `process/decision-
   registry and math compile in the offline unit tests (`tests/unit/test_upscaler_provider.cpp`).
 - `UpscalerFrame` is the per-frame contract: color, depth, motion vectors, reactive mask, transparency mask,
   jitter in render pixels, motion-vector scale, pre-exposure and auto-exposure, render and display extents,
-  frame delta, frame index, reset (camera cut), and camera near/far/fov.
+  frame delta, frame index, reset (camera cut), and the real scene projection: near/far, vertical FOV, reverse-Z,
+  infinite-far and perspective flags. The main camera publishes these in `RenderCore::temporal::projection()`
+  (`mclib/camera_matrix.cpp`, which derives vertical FOV from the configurable horizontal FOV and the frustum
+  aspect), and the glue logs them once per change as `[VK_PRESENT] upscaler_inputs ...`.
 - `UpscalerCaps` is per provider: the quality modes and their render scales, the motion-vector units and sign,
   and whether the reactive and transparency masks are consumed. The helpers `renderScaleFor`, `renderExtentFor`,
   `motionVectorScaleFor` and `defaultJitterPhaseCount` turn caps into numbers.
