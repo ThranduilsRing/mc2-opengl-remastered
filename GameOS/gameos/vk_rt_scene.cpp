@@ -73,6 +73,7 @@ public:
     uint64_t lastLedgerFrame = 0, lastLiveFrame = 0, firstMoverFrame = 0;
     uint32_t lastLedgerLive = ~0u;
     uint32_t moverProbe = 0;                        // MC2_VK_RT_SELFTEST: 0 pending, 1 victim despawned, 2 done
+    uint32_t moverTlasFailed = 0;                   // frame TLAS build failures (first three logged)
     uint64_t moverProbeFrame = 0;
     uint32_t victimKey = 0, victimIndex = 0;
     float victimAnchor[3] = {};
@@ -771,6 +772,9 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
         }
         if (ok) recordBarrier(*ctx, cmd, Phase::Tlas, Phase::Consumer);
     }
+    if (!ok && count > 0 && ++s.moverTlasFailed <= 3)
+        MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL mover tlas count={} cap={} inst_addr=0x{:x} tlas_bytes={} scratch_bytes={}", count, s.moverInstCap[fs],
+                  s.moverInst[fs] ? s.moverInst[fs].deviceAddress() : 0, s.moverTlas ? s.moverTlas.size() : 0, s.moverScratch.capacity());
     if (!ok && s.moverTlas) ctx->retire(std::move(s.moverTlas));   // never leave a TLAS whose build was not recorded this frame
     s.moverScratch.retireStale(*ctx);
 
