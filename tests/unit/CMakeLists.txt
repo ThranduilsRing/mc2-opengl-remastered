@@ -30,6 +30,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
     test_building_static_eligibility.cpp
+    test_terrain_dirty_queue.cpp
     test_present_handoff.cpp
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
@@ -691,3 +692,12 @@ endif()
 
 target_sources(mc2_tests PRIVATE test_tgl_registry.cpp)
 target_sources(mc2_tests PRIVATE test_content_error.cpp ${MC2_WORKTREE_ROOT}/mclib/content_error.cpp)
+
+mc2_height_slice(tree_dynamic_default mclib/bdactor_internal.h
+    "template <mc2::gate::Name n>" "inline constexpr float SPINRATE")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tree_dynamic_default.inc" CONTENT "${tree_dynamic_default}")
+mc2_height_slice(tree_recovery_gate mclib/bdactor_render.cpp
+    "static const bool s_forceDynamicTrees =" "if (s_forceDynamicTrees)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tree_recovery_gate.inc" CONTENT "${tree_recovery_gate}")
+target_sources(mc2_tests PRIVATE test_tree_bake_recovery.cpp)
+set_source_files_properties(test_tree_bake_recovery.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
