@@ -59,7 +59,7 @@ uncompilable-standalone) TUs:
 
 | Symbol | Real owner | Why shimmed |
 |---|---|---|
-| `UserHeap`/`HeapManager`/`HeapList` methods, `systemHeap`, `globalHeapList` | `mclib/heap.cpp` | heap.cpp does not compile standalone (C2601/C1004, recon blocker #3); allocator is swappable by design (`USE_GOS_HEAP` precedent) |
+| `UserHeap`/`HeapManager`/`HeapList` methods, `systemHeap`, `globalHeapList` | `mclib/heap.h` | the old heap.cpp (an include of heap.h only, now removed) did not compile standalone (C2601/C1004, recon blocker #3); allocator is swappable by design (`USE_GOS_HEAP` precedent) |
 | `Environment` | `GameOS/gameos/gameos.cpp` | drags the whole platform layer; zero-init means `checkCDForFiles=0` |
 | `InternalFunctionStop/Pause` | `GameOS/gameos/gameos_debugging.cpp` | STOP aborts loudly in tests; PAUSE logs and continues |
 | `EnterWindowMode/EnterFullScreenMode/ExitGameOS` | gameos graphics | CD-missing dialog path in `File::open`; no display in tests |

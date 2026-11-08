@@ -58,26 +58,6 @@ inline wchar_t* StringDupSafe(const wchar_t* s)
 		return StringDup(s);
 }
 
-// this function assume that szPath and szLowerPath are valid pointers
-inline int StringToLower(const char* const szPath, char* szLowerPath, int nLen)
-{
-	int i, l = static_cast<int>(strlen(szPath));
-	if(l > (nLen - 1))
-		l = nLen - 1;
-	for(i = 0; i < l; ++i)
-		szLowerPath[i] = static_cast<char>(tolower(szPath[i]));
-	szLowerPath[i] = 0;
-	
-	return l;
-}
-
-inline int StringToLowerSafe(const char* const szPath, char* szLowerPath, int nLen)
-{
-	if(szPath == nullptr || szLowerPath == nullptr)
-		return -1;
-	else
-		return StringToLower(szPath, szLowerPath, nLen);
-}
 /*
 inline char* WStringToString(const wchar_t* wstring, char* string, int stringMaxLen)
 {

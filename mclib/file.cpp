@@ -21,6 +21,7 @@
 
 #ifndef HEAP_H
 #include"heap.h"
+#include <cmath>
 #endif
 
 #ifndef FFILE_H
@@ -989,22 +990,6 @@ long File::readLong (void)
     return readInt();
 }
 
-bool isNAN(float *pFloat)
-{
-	/* We're assuming ansi/ieee 754 floating point representation. See http://www.research.microsoft.com/~hollasch/cgindex/coding/ieeefloat.html. */
-	BYTE *byteArray = reinterpret_cast<BYTE *>(pFloat);
-	if ((0x7f == (0x7f & byteArray[3])) && (0x80 == (0x80 & byteArray[2]))) {
-		if (0x80 == (0x80 & byteArray[3])) {
-			/* if the mantissa is a 1 followed by all zeros in this case then it is technically
-			"Indeterminate" rather than an NaN, but we'll just count it as a NaN here. */
-			return true;
-		} else {
-			return true;
-		}
-	}
-	return false;
-}
-
 float File::readFloat( void )
 {
 	float value = 0;
@@ -1037,7 +1022,7 @@ float File::readFloat( void )
 		}
 	}
 
-	if (isNAN(&value)) {
+	if (!std::isfinite(value)) {
 		gosASSERT(false);
 		value = 1.0/*arbitrary value that seems safe*/;
 	}
@@ -1510,7 +1495,7 @@ long File::writeFloat (float value)
 {
 	unsigned long result = 0;
 
-	gosASSERT(!isNAN(&value));
+	gosASSERT(std::isfinite(value));
 	if (parent == nullptr)
 	{
 		if (isOpen())

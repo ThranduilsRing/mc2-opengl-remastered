@@ -529,14 +529,6 @@ void	LogisticsData::setMissionCompleted( )
 								mc2::fmt::print_out( "[LOGISTICS] setMissionCompleted: no variant for surviving mech '{}' -- mech lost\n",
 								        mc2::fmt::safe(vname) );
 								fflush( stdout );
-								if ( false && mc2_diag::tagEnabled("LOGISTICS") )
-								{
-									char _ml_vn[80]; const char* _ml_s = vname ? vname : "";
-									size_t _ml_k; for(_ml_k=0;_ml_k<79 && _ml_s[_ml_k];++_ml_k) _ml_vn[_ml_k]=(_ml_s[_ml_k]=='\\'||_ml_s[_ml_k]=='"')?'_':_ml_s[_ml_k]; _ml_vn[_ml_k]='\0';
-									char _ml_buf[160];
-									mc2::fmt::to_buf(_ml_buf, "{{\"site\":\"mech_lost\",\"variant\":\"{}\"}}", mc2::fmt::safe(_ml_vn));
-									mc2_diag::writeEvent("LOGISTICS", 1, 0, _ml_buf);
-								}
 							}
 						}
 						if ( pVariant )
