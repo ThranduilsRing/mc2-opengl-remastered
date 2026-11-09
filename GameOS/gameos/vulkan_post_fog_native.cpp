@@ -58,6 +58,7 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
+#include "vulkan_post_chain.h"
 
 // Fixed-timestep clock so the animated OOB FBM time matches the GL path under smoke.
 #include "gos_smoke.h"
@@ -609,48 +610,15 @@ bool gosPostProcess::runVkPostFogNative()
     // ---- Shared resource ownership (VK-RUNG8 item-4: direct-chain only). Native fog
     // engages only when upstream left the shared GBuffer Vulkan-owned; otherwise decline
     // to the GL fog pass (native-or-decline). No GL<->VK semaphore handoff. ----
-    VkCommandBuffer cb = frame.cbuf;
+    if (!mc2vk::postchain::chain().open) vkResetCommandPool(s->device, frame.cpool.get(), 0);
+    VkCommandBuffer cb = mc2vk::postchain::acquire(frame.cbuf, s->sDepthRes->image.get(), nullptr);
+    if (!cb) { setFallback("record_failed"); s->disabled = true; return false; }
+    mc2vk::postchain::addTicket(&frame.ticket);
 
-    vkResetCommandPool(s->device, frame.cpool.get(), 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
-        setFallback("record_failed"); s->disabled = true; return false;
-    }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
-
-    // Depth: DEPTH_STENCIL_ATTACHMENT (GL hand-off layout) -> SHADER_READ_ONLY for
-    // sampling; BOTH aspects in the range (combined depth/stencil layout rules).
-    // Memory visibility of GL's depth writes rides the GL->VK semaphore in
-    // handoff mode; direct-chain mode inherits Vulkan ownership from upstream.
-    auto depthBarrier = [&](VkImageLayout oldL, VkImageLayout newL,
-                            VkAccessFlags srcA, VkAccessFlags dstA,
-                            VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
-        VkImageMemoryBarrier b{};
-        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sDepthRes->image.get();
-        b.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1};
-        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
-        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
-    };
-    depthBarrier(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
-    rbi.clearValueCount = 0; // LOAD, no clear
+    // Fog blends over the shadowed scene inside the chain's render pass; depth is already in the sampleable layout (read once for the chain).
+    mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.Fog");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    const auto fogDraws=fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
+    const auto fogDraws = fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
         const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
         const auto pipeline=edge ? s->edgePipe.get() : s->oobPipe.get();
         const auto descriptor=edge ? frame.edgeSet : frame.oobSet;
@@ -658,31 +626,7 @@ bool gosPostProcess::runVkPostFogNative()
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &descriptor, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
     });
-    vkCmdEndRenderPass(cb);
     gpuScope.end();
-
-    // Depth back to the GL hand-off layout (layout-stable across the boundary).
-    depthBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
-        setFallback("record_failed"); s->disabled = true; return false;
-    }
-
-    // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
-    // images stay Vulkan-owned for the following native post/composite pass. ----
-    // The submit goes through the completion tracker; its timeline value is waited at the next run of this pass (top of the function), not here.
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &frame.ticket) != VK_SUCCESS) {
-        setFallback("submit_failed"); s->disabled = true; return false;
-    }
-    timerGuard.submitted();
-
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_pf.usedVulkan;

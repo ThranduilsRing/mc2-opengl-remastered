@@ -68,6 +68,7 @@
 #include "vulkan_mover_shadow.h"
 #include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun
 #include "vk_shared_gbuffer_gate.h"
+#include "vulkan_post_chain.h"
 
 // Fixed-timestep clock so the animated cloud/foam time matches the GL path under smoke.
 #include "gos_smoke.h"
@@ -771,86 +772,22 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = frame.cbuf[0];
-
-    vkResetCommandPool(s->device, frame.cpool[0].get(), 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
-        setFallback("record_failed"); return false;
+    // The chain (vulkan_post_chain.h) records this draw, cloud/shore and fog into one command buffer; it submits at flushVkPostChain().
+    if (!mc2vk::postchain::chain().open) vkResetCommandPool(s->device, frame.cpool[0].get(), 0);
+    VkCommandBuffer cb = mc2vk::postchain::acquire(frame.cbuf[0], s->sDepthRes->image.get(), s->sNormalRes->image.get());
+    if (!cb) { setFallback("record_failed"); return false; }
+    mc2vk::postchain::addTicket(&frame.ticket[0]);
+    // Depth and normal are in sampleable layouts for the whole chain. The cascade images are NOT transitioned here: the shadow island
+    // hands them over in DEPTH_STENCIL_READ_ONLY (its render pass final layout) and the descriptors name that layout (VUID-vkCmdDraw-None-09600
+    // if a barrier assumed the attachment layout). Their visibility comes from the shadow render pass's external dependency.
+    mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
+    {
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &frame.shadowSet, 0, nullptr);
+        vkCmdDraw(cb, 3, 1, 0, 0);
+        gpuScope.end();
     }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
-
-    auto barrier = [&](VkImage image, VkImageAspectFlags aspect,
-                       VkImageLayout oldL, VkImageLayout newL,
-                       VkAccessFlags srcA, VkAccessFlags dstA,
-                       VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
-        VkImageMemoryBarrier b{};
-        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = image;
-        b.subresourceRange = {aspect, 0, 1, 0, 1};
-        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
-        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
-    };
-    barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    barrier(s->sNormalRes->image.get(), VK_IMAGE_ASPECT_COLOR_BIT,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    // The cascade images are NOT transitioned here: the shadow island hands them over in DEPTH_STENCIL_READ_ONLY (its render pass final layout) and the
-    // descriptors above name that layout. Barriers that assumed the attachment layout on entry and restored it on exit disagreed with the terrain
-    // consumer of the same images (VUID-vkCmdDraw-None-09600 in both directions).
-    // Visibility of the writes comes from the shadow render pass itself: its external dependency makes the cascade depth writes visible to fragment-shader
-    // reads, and the next frame's writes wait for those reads. The shadow island submits once per frame without a CPU wait, so a change of that dependency
-    // (or of the single queue) makes a barrier owed here.
-
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &frame.shadowSet, 0, nullptr);
-    vkCmdDraw(cb, 3, 1, 0, 0);
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-
-    barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-    barrier(s->sNormalRes->image.get(), VK_IMAGE_ASPECT_COLOR_BIT,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
-        setFallback("record_failed"); return false;
-    }
-
-    // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
-    // semaphores; the images stay Vulkan-owned for the following native pass.
-    // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
-    // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
-    // fence creation ever fails.
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &frame.ticket[0]) != VK_SUCCESS) {
-        setFallback("submit_failed"); return false;
-    }
-    timerGuard.submitted();
-
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_fx.usedVulkan;
@@ -960,63 +897,15 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     // ---- Shared resource ownership (handoff mode, or direct-chain skip). ----
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL screenfx passes. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = frame.cbuf[1];
+    if (!mc2vk::postchain::chain().open) vkResetCommandPool(s->device, frame.cpool[1].get(), 0);
+    VkCommandBuffer cb = mc2vk::postchain::acquire(frame.cbuf[1], s->sDepthRes->image.get(), s->sNormalRes->image.get());
+    if (!cb) { setFallback("record_failed"); s->disabled = true; return 0; }
+    mc2vk::postchain::addTicket(&frame.ticket[1]);
 
-    vkResetCommandPool(s->device, frame.cpool[1].get(), 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) {
-        setFallback("record_failed"); s->disabled = true; return 0;
-    }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_Post);
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_Post);
-
-    auto depthBarrier = [&](VkImageLayout oldL, VkImageLayout newL,
-                            VkAccessFlags srcA, VkAccessFlags dstA,
-                            VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
-        VkImageMemoryBarrier b{};
-        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sDepthRes->image.get();
-        b.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1};
-        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
-        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
-    };
-    auto normalBarrier = [&](VkImageLayout oldL, VkImageLayout newL,
-                             VkAccessFlags srcA, VkAccessFlags dstA,
-                             VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
-        VkImageMemoryBarrier b{};
-        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        b.oldLayout = oldL; b.newLayout = newL;
-        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.image = s->sNormalRes->image.get();
-        b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
-        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
-    };
-    // Depth + normal to sampleable layouts for the pass's fragment reads.
-    depthBarrier(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    normalBarrier(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-    // ---- One render pass, up to two multiply draws (GL order: cloud, shore). ----
+    // Up to two multiply draws (GL order: cloud, shore) inside the chain's render pass.
+    mc2vk::postchain::beginPass(s->rpass.get(), s->fb.get(), static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height));
     {
-        VkRenderPassBeginInfo rbi{};
-        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
-        rbi.clearValueCount = 0; // LOAD, no clear
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.CloudShore");
-        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         if (wantCloud) {
             mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPlayout.get(), 0, 1, &frame.cloudSet, 0, nullptr);
@@ -1027,38 +916,8 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePlayout.get(), 0, 1, &frame.shoreSet, 0, nullptr);
             vkCmdDraw(cb, 3, 1, 0, 0);
         }
-        vkCmdEndRenderPass(cb);
         gpuScope.end();
     }
-
-    // Depth + normal back to the GL hand-off layouts (layout-stable).
-    depthBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-    normalBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                  VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Post);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) {
-        setFallback("record_failed"); s->disabled = true; return 0;
-    }
-
-    // ---- Submit (VK-RUNG8 item-4: direct-chain only — no GL<->VK semaphores). The
-    // images stay Vulkan-owned for the following native pass. ----
-    // VK-QWI-TO-FENCE-1: dedicated per-submit fence instead of the queue-wide drain
-    // (see vulkan_post_fog_native.cpp for the full rationale). Fail-soft to QWI if
-    // fence creation ever fails.
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &frame.ticket[1]) != VK_SUCCESS) {
-        setFallback("submit_failed"); s->disabled = true; return 0;
-    }
-    timerGuard.submitted();
-
 
     g_fx.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_fx.usedVulkan;
@@ -1066,6 +925,38 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
     if (wantCloud) { mask |= 1u; ++g_fx.cloudFrames; ++g_fx.glSkipped; }
     if (wantShore) { mask |= 2u; ++g_fx.shoreFrames; ++g_fx.glSkipped; }
     return mask;
+}
+
+// Ends the post chain the native post islands recorded into (vulkan_post_chain.h) and submits it once. No-op when none recorded.
+void gosPostProcess::flushVkPostChain()
+{
+    namespace pc = mc2vk::postchain;
+    pc::Chain& c = pc::chain();
+    if (!c.open) return;
+    if (c.rpOpen) { vkCmdEndRenderPass(c.cb); c.rpOpen = false; }
+    // Depth and normal back to the hand-off layouts (layout-stable across the boundary).
+    pc::imageBarrier(c.cb, c.depth, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                     VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+    if (c.normal)
+        pc::imageBarrier(c.cb, c.normal, VK_IMAGE_ASPECT_COLOR_BIT,
+                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                         VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    vk_render_pass_timer::End(c.cb, gos_render_pass_timer::Pass_Post);
+    c.open = false;
+    if (vkEndCommandBuffer(c.cb) != VK_SUCCESS) { setFallback("record_failed"); c.guard.reset(); return; }
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &c.cb;
+    uint64_t ticket = 0;
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &ticket) != VK_SUCCESS) {
+        setFallback("submit_failed"); c.guard.reset(); return;
+    }
+    c.guard->submitted();
+    c.guard.reset();
+    for (int i = 0; i < c.nTickets; ++i) *c.tickets[i] = ticket;
 }
 
 void gosPostProcess::destroyVkPostScreenFxNative()

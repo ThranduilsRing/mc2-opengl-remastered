@@ -347,6 +347,7 @@ void gosPostProcess::endScene()
         runVkPostScreenFxNative();
     }
     runVkPostFogNative();
+    flushVkPostChain();
     int x=0,y=0,w=outputWidth_,h=outputHeight_;
     int bx=0,by=0,bw=0,bh=0;
     if (gos_Compute43Box(outputWidth_,outputHeight_,&bx,&by,&bw,&bh)) { x=bx; y=by; w=bw; h=bh; }

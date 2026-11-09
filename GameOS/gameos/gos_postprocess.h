@@ -192,6 +192,7 @@ public:
     bool      vkPostScreenFxNativeEnabled();
     bool      runVkPostScreenShadowStaticNative();
     unsigned  runVkPostScreenFxNative();
+    void      flushVkPostChain();   // ends + submits the shared post chain the native post islands recorded into (vulkan_post_chain.h)
     void      destroyVkPostScreenFxNative();
     struct VkPostScreenFx;              // defined in vulkan_post_screenfx_native.cpp
     // Owner of the state: releases through destroy_state (idles the GPU first), defined next to the state.
