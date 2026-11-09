@@ -838,12 +838,8 @@ def refresh_layer(layer: Path, target: Path) -> dict:
     return overlay_mod(layer, target, link_ok=same_volume(layer, target), incremental=True)
 
 
-#: run_smoke's load/walltime cap text: the game never finished loading inside the cap (cold model cook, starved host).
-WALLTIME_CAP_RE = re.compile(r'walltime cap hit at [0-9.]+s')
-
-
 def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path | None = None,
-            window: int = 0, known_failures=(), grace_s: int | None = None) -> dict:
+            window: int = 0, known_failures=()) -> dict:
     # Give the bounded host-lease wait its own allowance in the outer watchdog;
     # a queue wait is not a game hang.
     lease_wait = min(float(os.environ.get('MC2_HOST_LEASE_TIMEOUT') or 1200), 1200)
@@ -859,8 +855,6 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
         '--content-error-budget', str(sum(e['count_ceiling'] for e in known_failures
             if e['mod'] == staged.name and e['mission'] == stem)),
     ]
-    if grace_s is not None:
-        cmd += ['--grace-s', str(grace_s)]
     if ref_exe is not None:
         cmd += ['--ref-exe', str(ref_exe)]
     started = dt.datetime.now().timestamp() - 2
@@ -907,9 +901,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     # a diagnostic twice just because stdout also echoed the saved engine log.
     for message, count in warning_counts(output).items():
         warnings[message] = max(warnings.get(message, 0), count)
-    # A timeout (ours or run_smoke's walltime cap) is a host/load-time result, not a mod verdict: INFRA (owner 2026-11-08 slim check).
-    timed_out = rc == 124 or bool(WALLTIME_CAP_RE.search(output))
-    return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict, 'infra': 'timeout' if rc and timed_out else None,
+    return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
             'log': str(log), 'health': health, 'note': failure_note(text),
             'warnings': warnings,
             'content_errors': content_errors, 'content_budget': sum(known.values()),
@@ -966,8 +958,6 @@ def failure_note(text: str) -> str:
 
 
 def result_word(row: dict) -> str:
-    if row.get('infra'):
-        return 'INFRA(%s)' % row['infra']
     if row.get('front_end'):
         return 'PASS' if row['exit'] == 0 else 'FAIL(front-end)'
     if row['exit'] != 0:
@@ -1084,9 +1074,6 @@ def battery(args) -> int:
         display, folder, layers, picks = entry
         timeout = (min(args.timeout, 90) if os.environ.get('MC2_IN_GATE') == '1'
                    else max(args.timeout, 600) if folder == 'MCO-Carver5' else args.timeout)
-        grace = getattr(args, 'grace_s', None)
-        if grace:   # the outer watchdog must outlast run_smoke's cap: duration + grace + its one-time cold-cache grace (120 s)
-            timeout = max(timeout, args.duration + grace + 180)
         results = []
         precheck = None
         if getattr(args, 'asset_load_exe', None):
@@ -1102,7 +1089,7 @@ def battery(args) -> int:
                 (staged / 'smoke.log').write_text(json.dumps(precheck), encoding='utf-8')
             else:
                 result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None),
-                                 args.window, known_failures, **({'grace_s': grace} if grace else {}))
+                                 args.window, known_failures)
                 print(f"[mod_smoke] {display} {stem} KNOWN={result.get('content_known', {})} NEW={result.get('content_new', {})}", flush=True)
                 if precheck is not None:
                     result['asset_load'] = precheck
@@ -1173,11 +1160,7 @@ def battery(args) -> int:
     report.write_text(json.dumps(rows, indent=2), encoding='utf-8')
     print(format_table(rows))
     print('[mod_smoke] report:', report)
-    words = [result_word(r) for r in rows]
-    if rows and all(w == 'PASS' for w in words):
-        return 0
-    # 3 = every non-PASS row is INFRA (timeouts): no mod regression is claimed.
-    return 3 if rows and all(w == 'PASS' or w.startswith('INFRA') for w in words) else 1
+    return 0 if rows and all(result_word(r) == 'PASS' for r in rows) else 1
 
 
 def main() -> int:
@@ -1199,8 +1182,6 @@ def main() -> int:
     ap.add_argument('--duration', type=int, default=15)
     ap.add_argument('--timeout', type=int, default=300)
     ap.add_argument('--fail-fast', action='store_true')
-    ap.add_argument('--grace-s', type=int, default=None,
-                    help="run_smoke load/walltime grace beyond --duration (default: run_smoke's); a cold per-stage model cook needs minutes")
     ap.add_argument('--no-front-end', dest='front_end', action='store_false',
                     help='skip the bounded front-end walk (briefing, mech lab/bay, launch) run for MCO and MCO-Carver5')
     ap.add_argument('--keep-stages', action='store_true',
