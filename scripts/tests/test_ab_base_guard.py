@@ -109,6 +109,15 @@ def test_capture_identity_ignores_shader_sources_not_data():
     assert ab.manifest_mismatches(a, {**b, "data/a.fit": "d2"}) == ["differs: data/a.fit (A d1 vs B d2)"]
 
 
+def test_capture_identity_skips_only_deployed_shader_dirs():
+    # W137: shaders/include and shaders/spv ship with the exe like shaders/vulkan; any other file under shaders/ still refuses.
+    a = {"shaders/include/x.hglsl": "h1", "shaders/spv/p.pkg": "p1", "shaders/lut.dat": "l1", "shaders/fixtures/f.bin": "f1"}
+    b = {"shaders/include/x.hglsl": "h2", "shaders/spv/p.pkg": "p2", "shaders/lut.dat": "l2", "shaders/fixtures/f.bin": "f2"}
+    assert ab.manifest_mismatches(a, b) == ["differs: shaders/fixtures/f.bin (A f1 vs B f2)", "differs: shaders/lut.dat (A l1 vs B l2)"]
+    assert ab.manifest_mismatches(a, {k: v for k, v in b.items() if k != "shaders/lut.dat"}) == [
+        "only in A: shaders/lut.dat", "differs: shaders/fixtures/f.bin (A f1 vs B f2)"]
+
+
 @pytest.mark.parametrize("rel", ["mc2.exe", "shaders/vulkan/x.spv"])
 def test_manifest_byte_mismatch_refuses_before_capture(tmp_path, repo, monkeypatch, rel):
     install = _install(tmp_path / "install", repo[0])
