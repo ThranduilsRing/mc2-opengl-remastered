@@ -464,7 +464,7 @@ RUNTIME_DLLS = Path(__file__).with_name("release-dlls.txt").read_text().splitlin
 
 
 def log(msg):
-    print(f"[deploy_payload] {msg}")
+    print(f"[deploy_payload] {msg}", flush=True)
 
 
 _NINJA_SPV = re.compile(r"shaders[\\/]vulkan[\\/]([A-Za-z0-9_.\-]+\.spv)")

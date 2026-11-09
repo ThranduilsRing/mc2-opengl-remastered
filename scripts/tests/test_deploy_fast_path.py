@@ -108,7 +108,8 @@ def test_deploy_phase_timeout_names_phase_and_exits(tmp_path):
     result = subprocess.run([sys.executable, "-c",
         "import sys,time; sys.path.insert(0,'scripts'); import deploy_payload as d; "
         "exec('with d.deploy_phase(\"injected stall\", .05):\\n time.sleep(10)')"],
-        cwd=ROOT, capture_output=True, text=True, timeout=5)
+        cwd=ROOT, capture_output=True, text=True, timeout=30,
+        **dp.console_child.child_kwargs(redirected=True))
     assert result.returncode == 8
     assert "phase injected stall timed out" in result.stdout
 
