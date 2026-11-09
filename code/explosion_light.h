@@ -40,10 +40,10 @@ inline Light scale(int effect, float sourceRadius, float intensity, float inner,
     const float authoredReach = std::isfinite(outer) ? std::max(outer, 0.0f) : 0.0f;
     const float limit = profile->referenceRadius * size * reachPerRadius;
     const float reach = std::min(authoredReach, limit * 64.0f) * profile->reach * size;
-    const float far = std::max(1.0f, limit * (reach / (limit + reach)));
+    const float outerRadius = std::max(1.0f, limit * (reach / (limit + reach)));
     // A broad constant-intensity core was the white disc. Keep only a small
     // source core, with the existing smooth GPU falloff covering the rest.
     const float authoredCore = std::isfinite(inner) ? std::max(inner, 0.0f) : 0.0f;
-    return {peak, std::min(authoredCore * size, far * coreShare), far};
+    return {peak, std::min(authoredCore * size, outerRadius * coreShare), outerRadius};
 }
 } // namespace mc2::explosion_light

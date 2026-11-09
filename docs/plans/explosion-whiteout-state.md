@@ -38,3 +38,12 @@ the box lane tmp directory. Bookmarks are gitignored, so fixtures stay in proofs
 Next: commit fix, final box build/unit/covering contracts/lint/smoke and matching
 captures, one Windows Ninja compile, inspect montages, archive logs and clean
 lane-owned scratch. No PC install created. Box install is lane-owned/reused.
+
+Checkpoint: box disconnected (SSH reset then connection refused) during the
+remaining baseline captures and before final box proof. First baseline day
+capture and building diagnostic retained. At ad0be26c the focused doctest
+passed 3 cases / 45 assertions, covering contracts passed 3 rows, lint passed.
+Windows compile found the legacy Windows `far` macro colliding with the helper's
+local variable; renamed it to outerRadius. Resume the failed build and the
+focused final-tip checks. Current receipts and exact remaining capture rows:
+E:/mc2-archive-2026-10/proofs/explosion-whiteout/state.md.
