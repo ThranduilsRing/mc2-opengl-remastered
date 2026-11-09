@@ -188,6 +188,8 @@ add_executable(mc2_tests
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_fst_backslash.cpp  # retail backslash/mixed-case FST members canonicalized in memory at open; stock parity
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (mc2::vfs::openRead) resolution
+    test_mod_regressions.cpp # quick synthetic regressions; no installed mods or game required
+    ${MC2_WORKTREE_ROOT}/mclib/model_override_registry.cpp
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
     test_pilot_pick.cpp  # getBestPilot out-of-pool kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
