@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Run game rows for the CURRENT worktree HEAD on the rented Linux box (4x RTX 3060).
+"""Run game rows for the CURRENT worktree HEAD on the rented Linux box (RTX 4060; GPUs discovered at submission).
 
     py -3 tools/box_run.py --gpu auto -- smoke-lite
     py -3 tools/box_run.py --gpu 1 -- smoke-lite capture:mc2_01:mc2_01_saved_205644 determinism:mc2_10
     py -3 tools/box_run.py --seed          # once: build the golden install on the box (needs the Windows golden)
 
 Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to the box mirror, clang build in
-/workspace/lanes/<branch>/src (ccache, -j16, pinned to the GPU's 8 cores), install = hardlink copy of the golden install
+/workspace/lanes/box-lane-NN/src (worktree slot, reused across branches), install = hardlink copy of the golden install
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
 Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
-(sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
-do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
+(sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). Merge gates share the discovered GPUs.
+Legacy capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
 """
-import argparse, base64, io, json, os, subprocess, sys, tarfile, tempfile, time
+import argparse, base64, io, json, os, re, subprocess, sys, tarfile, tempfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -66,6 +66,7 @@ REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR CAP0 ROWS_B64 (rows newline-joined, base64)
 set -uo pipefail
 GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS < <(printf %s "$6" | base64 -d); ROWS=("${ROWS[@]%$'\r'}")   # $5 = cap0, $6 = base64 of the rows
+echo "[box_run] lane=$BR branch=${7:-$BR} sha=$SHA"
 L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; MIRROR=/workspace/toolchains/mirror.git
 #@@FRESH_FN@@
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
@@ -126,9 +127,17 @@ export TMPDIR=$L/tmp; mkdir -p $TMPDIR
 grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): cores 32-63, no GPU lock
 take_lock() {   # taken lazily, just before the first row that runs the game
 CAP0=${5:-0}; LW0=$SECONDS   # the 30 min wait is measured from here (the build already ran)
-if [ "$GPU" = auto ]; then cand="0 1 2"; [ "$CAP0" = 1 ] && cand=0
-elif [ "$GPU" = 3 ] || [ "${MC2_GPU_STRICT:-0}" = 1 ]; then cand=$GPU   # gate GPU and --gpu-strict: only that GPU
-else cand=$GPU; for o in 0 1 2; do [ "$o" = "$GPU" ] && continue; [ "$CAP0" = 1 ] && [ "$o" != 0 ] && continue; cand="$cand $o"; done; fi   # busy requested GPU falls back to the others at once
+AVAILABLE=$(nvidia-smi -L | sed -n 's/^GPU \([0-9][0-9]*\):.*/\1/p' | tr '\n' ' ')
+[ -n "$AVAILABLE" ] || { echo "[box_run] no GPUs discovered"; exit 77; }
+if [ "$GPU" != auto ]; then
+  case " $AVAILABLE " in *" $GPU "*) ;; *) echo "[box_run] GPU $GPU does not exist ($AVAILABLE)"; exit 77;; esac
+fi
+if [ "$GPU" = auto ]; then cand="$AVAILABLE"
+  if [ "$CAP0" = 1 ]; then
+    case " $AVAILABLE " in *" 0 "*) cand=0;; *) echo "[box_run] capture GPU 0 does not exist"; exit 77;; esac
+  fi
+elif [ "${MC2_GPU_STRICT:-0}" = 1 ]; then cand=$GPU
+else cand=$GPU; for o in $AVAILABLE; do [ "$o" = "$GPU" ] && continue; [ "$CAP0" = 1 ] && [ "$o" != 0 ] && continue; cand="$cand $o"; done; fi
 GOT=""
 for g in $cand; do exec 9>>/workspace/locks/gpu$g; flock -n 9 && { GOT=$g; break; }; done
 if [ -z "$GOT" ]; then
@@ -142,7 +151,7 @@ if [ -z "$GOT" ]; then
   done
 fi
 [ -n "$WANTF" ] && rm -f "$WANTF" "$LWANT"; WANTF=""
-[ "$GPU" != auto ] && [ "$GPU" != "$GOT" ] && { [ "$GPU" = 3 ] || [ "${MC2_GPU_STRICT:-0}" = 1 ]; } && { echo "[box_run] GPU_MISMATCH: asked for GPU $GPU, locked $GOT"; exit 77; }   # strict (--gpu-strict, gate GPU 3) never lands elsewhere; a plain busy --gpu N falls back
+[ "$GPU" != auto ] && [ "$GPU" != "$GOT" ] && [ "${MC2_GPU_STRICT:-0}" = 1 ] && { echo "[box_run] GPU_MISMATCH: asked for GPU $GPU, locked $GOT"; exit 77; }
 GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
 echo "[box_run] gpu=$GPU locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
@@ -299,15 +308,23 @@ def ssh_out(cmd):
     return run([*SSH, cmd], capture_output=True, text=True).stdout
 
 
+def gpu_ids():
+    ids = re.findall(r"^GPU (\d+):", ssh_out("nvidia-smi -L"), re.MULTILINE)
+    if not ids:
+        raise RuntimeError("no GPUs discovered by nvidia-smi -L on the box")
+    return ids
+
+
 def pick_gpu():
-    """least-loaded of the lane GPUs 0-2 by queued+running pueue tasks (ties: lowest)"""
-    out = ssh_out(f"for g in 0 1 2; do echo $g $({PUEUE} status -g gpu$g --json | jq '[.tasks[]|select(.status|tostring|test(\"Queued|Running\"))]|length'); done")
+    """Least queued+running tasks among GPUs that actually exist (ties: lowest index)."""
+    ids = gpu_ids()
+    out = ssh_out(f"for g in {' '.join(ids)}; do echo $g $({PUEUE} status -g gpu$g --json | jq '[.tasks[]|select(.status|tostring|test(\"Queued|Running\"))]|length'); done")
     load = {}
     for line in out.splitlines():
         p = line.split()
         if len(p) == 2 and p[1].isdigit():
             load[p[0]] = int(p[1])
-    return min(("0", "1", "2"), key=lambda g: (load.get(g, 99), g))
+    return min(ids, key=lambda g: (load.get(g, 99), int(g)))
 
 
 def local_reports(repo, sha8):
@@ -358,22 +375,26 @@ def task_verdict(tid, repo, wait):
     if wait:
         run([*SSH, f"{PUEUE} wait {tid} >/dev/null 2>&1"])
     state, rc, label = task_state(tid)
-    parts = label.split(":")   # box_run:<branch>:<sha8>:<group>
+    parts = label.split(":")   # box_run:<lane>:<sha8>:<group>[:<branch>]
     rows = ""
-    if state == "Done" and len(parts) == 4:
+    if state == "Done" and len(parts) in (4, 5):
         local_out = local_reports(repo, parts[2])
         local_out.mkdir(parents=True, exist_ok=True)
         fetch_back(f"/workspace/lanes/{parts[1]}/out/{parts[2]}", local_out)
         tsv = local_out / "rows.tsv"
         v = row_codes(tsv)
         rows = f" rows={sum(x == '0' for x in v)}/{len(v)} reports={local_out}"
-    name, code = verdict(rc, row_codes(local_reports(repo, parts[2]) / "rows.tsv") if state == "Done" and len(parts) == 4 else ()) if rc is not None else ("", 2)
+    name, code = verdict(rc, row_codes(local_reports(repo, parts[2]) / "rows.tsv") if state == "Done" and len(parts) in (4, 5) else ()) if rc is not None else ("", 2)
     print(f"[box_run] task={tid} state={state} rc={'-' if rc is None else rc}{rows}" + (f" verdict={name}" if name else ""))
     return code
 
 
-def lane_key(abbrev, sha):
-    """Lane dir / ref key: the branch name, or detached-<sha8> when HEAD is detached (git prints 'HEAD'), so detached runs never share a dir."""
+def lane_key(abbrev, sha, repo=None):
+    """Reuse a fixed box lane for slot worktrees; retain legacy keys elsewhere."""
+    if repo is not None:
+        slot = re.fullmatch(r"mc2-slot(\d{2})", Path(repo).resolve().name, re.I)
+        if slot:
+            return f"box-lane-{slot.group(1)}"
     return f"detached-{sha[:8]}" if abbrev in ("", "HEAD") else abbrev.replace("/", "_")
 
 
@@ -447,17 +468,17 @@ def deploy_box(revert=None):
 
 def main():
     ap =argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--gpu", default="auto", help="0-2, or auto (first free of 0-2; captures need 0); 3 needs --gate")
-    ap.add_argument("--capture-any-gpu", action="store_true", help="allow capture and smoke rows on GPU 1-3 (they present; mc2_01 dies after the 60 s present-retry budget) (needs a build with claude/vk-headless-present eac614635)")
-    ap.add_argument("--gate", action="store_true", help="merge gate: allow GPU 3")
+    ap.add_argument("--gpu", default="auto", help="existing GPU index, or auto (discover GPUs with nvidia-smi -L; queue when busy)")
+    ap.add_argument("--capture-any-gpu", action="store_true", help="allow capture and smoke rows on any discovered GPU (requires headless-present support)")
+    ap.add_argument("--gate", action="store_true", help="merge gate rows and queue priority, using available GPUs")
     ap.add_argument("--seed", action="store_true", help="one-time golden install seeding")
     ap.add_argument("--probe", action="store_true", help="exit 0 if the box answers ssh within 15 s (merge_gate picks the box route or the Windows-full fallback with it)")
     ap.add_argument("--queue", action="store_true", help="submit to the box's pueue group (gpuN, or gate with --gate) and print the task id at once instead of blocking")
     ap.add_argument("--wait", metavar="ID", help="block until queued task ID ends, copy the reports back, print ONE verdict line (exit code = the task's)")
     ap.add_argument("--status", metavar="ID", nargs="?", const="", help="with ID: ONE state line for queued task ID (exit 0 done+ok, 1 failed, 2 queued/running); with no ID: print the box's STATUS.json (GPU lock holders, load, free disk)")
-    ap.add_argument("--gpu-strict", action="store_true", help="wait for the --gpu N GPU only; without it a busy GPU N falls back to any free GPU of 0-2 at once")
+    ap.add_argument("--gpu-strict", action="store_true", help="wait for --gpu N only; otherwise fall back to another discovered GPU")
     ap.add_argument("--cleanup", metavar="BRANCH", help="remove BRANCH's lane on the box (dir, runner script, mirror ref, worktree entry); refuses a lane a live process uses")
-    ap.add_argument("--dry-run", action="store_true", help="with --cleanup: only print what would be removed")
+    ap.add_argument("--dry-run", action="store_true", help="print run paths without contacting the box; with --cleanup: print removals")
     ap.add_argument("--deploy-box", action="store_true", help="install tools/box/ on the box (backs up what it replaces); --revert [TS] undoes it")
     ap.add_argument("--revert", metavar="TS", nargs="?", const="", help="with --deploy-box: restore the backup TS (default newest)")
     ap.add_argument("--repo", default=str(Path(__file__).resolve().parents[1]))
@@ -483,7 +504,12 @@ def main():
     if git("status", "--porcelain", "--untracked-files=no", repo=repo):
         print("[box_run] warning: uncommitted changes are NOT sent; the box runs HEAD", file=sys.stderr)
     sha = git("rev-parse", "HEAD", repo=repo)
-    branch = lane_key(git("rev-parse", "--abbrev-ref", "HEAD", repo=repo), sha)
+    abbrev = git("rev-parse", "--abbrev-ref", "HEAD", repo=repo)
+    identity = lane_key(abbrev, sha)
+    branch = lane_key(abbrev, sha, repo)
+    if a.dry_run:
+        print(f"[box_run] lane=/workspace/lanes/{branch} branch={abbrev} sha={sha} rows={a.rows} reports={local_reports(repo, sha[:8])}")
+        return 0
     check_behind_box_fix(repo)
     t = {}
     t0 = time.time()
@@ -523,13 +549,8 @@ def main():
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
     cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
     gpu = a.gpu
-    if gpu not in ("auto", "0", "1", "2", "3"):
-        print(f"[box_run] --gpu must be 0-2 or auto, got {gpu!r}")
-        return 2
-    if a.gate:
-        gpu = "3"   # advisory clang gate evidence runs on the reserved gate GPU (lock /workspace/locks/gpu3)
-    if gpu == "3" and not a.gate:
-        print("[box_run] GPU 3 is reserved for merge gates (--gate)")
+    if gpu != "auto" and not gpu.isdigit():
+        print(f"[box_run] --gpu must be an index or auto, got {gpu!r}")
         return 2
     out_remote = f"/workspace/lanes/{branch}/out/{sha[:8]}"
     local_out = local_reports(repo, sha[:8])
@@ -542,19 +563,28 @@ def main():
     runner = "env MC2_GPU_STRICT=1 bash" if a.gpu_strict else "bash"   # a busy --gpu N falls back to auto unless --gpu-strict
     if a.queue:   # submit to the pueue group and return the task id; --wait/--status give the verdict later
         if gpu == "auto":
-            gpu = "0" if cap0 else pick_gpu()
+            if cap0:
+                if "0" not in gpu_ids():
+                    print("[box_run] capture GPU 0 does not exist on the box")
+                    return 2
+                gpu = "0"
+            else:
+                gpu = pick_gpu()
+        elif any(x not in NO_GPU_ROWS for x in a.rows) and gpu not in gpu_ids():
+            print(f"[box_run] GPU {gpu} does not exist on the box")
+            return 2
         grp = "gate" if a.gate else f"gpu{gpu}"
         if all(x in NO_GPU_ROWS for x in a.rows):
             grp = "build"   # build-only / unit-only: never touches a GPU, so it queues in the build group and holds no gpuN slot
-        label = f"box_run:{branch}:{sha[:8]}:{grp}"
+        label = f"box_run:{branch}:{sha[:8]}:{grp}" + (f":{identity}" if identity != branch else "")
         after = ""
         if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
-            rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])}"],
+            rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build:{identity} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])} {identity}"],
                      input=REMOTE.encode(), capture_output=True)
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()
             if rb.returncode == 0 and bt and bt[-1].isdigit():
                 after = f"-a {bt[-1]} "
-        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"],
+        r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g {grp} {after}--print-task-id -l {label} -- {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)} {identity}"],
                 input=REMOTE.encode(), capture_output=True)   # bytes: text mode would turn LF into CRLF on Windows and bash chokes on the CR
         out = r.stdout.decode(errors="replace") if isinstance(r.stdout, bytes) else r.stdout
         err = r.stderr.decode(errors="replace") if isinstance(r.stderr, bytes) else r.stderr
@@ -562,7 +592,7 @@ def main():
         print(f"[box_run] queued task={tid} group={grp} sha={sha[:12]} reports={local_out}" if tid else f"[box_run] queue submit FAILED rc={r.returncode} {err.strip()[-200:]}")
         return 0 if tid else 1
     t1 = time.time()
-    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)}"], input=REMOTE.encode(), stderr=subprocess.PIPE)
+    r = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {runner} {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(a.rows)} {identity}"], input=REMOTE.encode(), stderr=subprocess.PIPE)
     t["remote (build+install+rows)"] = time.time() - t1
     err_bytes = getattr(r, "stderr", None) or b""
     err_text = err_bytes.decode(errors="replace") if isinstance(err_bytes, bytes) else str(err_bytes)
@@ -577,7 +607,7 @@ def main():
     name, code = verdict(r.returncode, row_codes(local_out / "rows.tsv"))
     print(f"[box_run] verdict={name}")
     if a.gate:
-        return gate_verdict(write_receipt(local_out, sha, branch, a.rows, r.returncode), first_err)
+        return gate_verdict(write_receipt(local_out, sha, identity, a.rows, r.returncode), first_err)
     return code
 
 
@@ -612,14 +642,19 @@ def write_receipt(local_out, sha, branch, rows, rc):
             exe, _, data = rest.partition("\t")
             row_fp[row] = {"exe_sha256_16": exe, "data_fingerprint": data}
     fp = ""
+    locked_gpu = None
     for lg in sorted(local_out.glob("*.log")):
-        for ln in lg.read_text(errors="replace").splitlines():
+        content = lg.read_text(errors="replace")
+        locked = re.search(r"\[box_run\] gpu=(\d+) locked", content)
+        if locked:
+            locked_gpu = int(locked.group(1))
+        for ln in content.splitlines():
             if "DEPLOY_FINGERPRINT" in ln or "BUILD_FINGERPRINT" in ln:
                 fp = ln.strip()[:300]
                 break
         if fp:
             break
-    rec = {"kind": "box-clang-gate-advisory", "sha": sha, "branch": branch, "gpu": 3, "toolchain": "clang-20 + libc++ + lld, RelWithDebInfo, ccache",
+    rec = {"kind": "box-clang-gate-advisory", "sha": sha, "branch": branch, "gpu": locked_gpu, "toolchain": "clang-20 + libc++ + lld, RelWithDebInfo, ccache",
            "rows": [{"row": r, "verdict": verdicts.get(r, "LOCK_TIMEOUT" if rc == RC_LOCK_TIMEOUT else "NOT RUN"), **row_fp.get(r, {})} for r in rows], "fingerprint": fp, "script_rc": rc,
            "note": "advisory; box ms are ratio-only; the PC gate keeps the MSVC tier1"}
     out = local_out / "gate_receipt.json"

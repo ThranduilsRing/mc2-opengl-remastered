@@ -78,6 +78,7 @@ def guard():
 @pytest.mark.parametrize("avail,floor,rc", [(5, None, 77), (14, None, 77), (15, None, 0), (40, None, 0), (20, "30", 77), (20, "10", 0)])
 def test_disk_guard_floor(avail, floor, rc, tmp_path):
     (tmp_path / "df").write_text(f'#!/bin/sh\necho Avail\necho "{avail}G"\n')   # a fake df first on PATH
+    (tmp_path / "df").chmod(0o755)
     env = {"PATH": f"{tmp_path.as_posix()}{os.pathsep}{os.environ['PATH']}"}
     r = bash('unset MC2_BOX_MIN_FREE_GB\n' + (f"export MC2_BOX_MIN_FREE_GB={floor}\n" if floor else "") + guard() + "\necho PASSED", env=env)
     assert r.returncode == rc, r.stdout + r.stderr
@@ -131,6 +132,15 @@ def test_cleanup_dry_run_changes_nothing(lanes):
     r = cleanup(env, "one", "zz_t", "--dry-run")
     assert r.returncode == 0 and r.stdout.count("would:") == 4, r.stdout + r.stderr
     assert (w / "lanes" / "zz_t").is_dir() and (w / "lanes" / ".box_lane_zz_t.sh").exists()
+
+
+def test_daily_retains_fixed_slots_after_merge():
+    script = (BOX / "lane_cleanup.sh").read_text().split('case "${ARGS[0]:-}"')[0]
+    r = bash(script + '\nouts() { :; }; nifty_ref() { echo tip; }; '
+             'lane_dirs() { printf "box-lane-02\\nlegacy\\n"; }; '
+             'hard_busy() { :; }; find() { :; }; merged() { return 0; }; '
+             'one() { echo "removed $1"; }; daily')
+    assert r.returncode == 0 and r.stdout.strip() == "removed legacy", r.stdout + r.stderr
 
 
 def test_cleanup_removes_dir_script(lanes):
@@ -242,18 +252,21 @@ def test_status_loop_and_row_file_wiring():
 
 # --- GPU fallback, row log names, refspec -------------------------------------------------------------------------
 
-def cand(gpu, cap0=0, strict=0):
-    a = box_run.REMOTE.index('if [ "$GPU" = auto ]; then cand=')
+def cand(gpu, cap0=0, strict=0, count=3):
+    a = box_run.REMOTE.index('AVAILABLE=$(nvidia-smi -L')
     snip = box_run.REMOTE[a:box_run.REMOTE.index("\nGOT=\"\"\n", a)]
-    return bash(f'GPU={gpu}; CAP0={cap0}; MC2_GPU_STRICT={strict}\n{snip}\necho "$cand"').stdout.strip()
+    fake = "\\n".join(f"GPU {i}: fake (UUID: GPU-{i})" for i in range(count))
+    return bash(f'nvidia-smi() {{ printf "{fake}\\n"; }}\nGPU={gpu}; CAP0={cap0}; MC2_GPU_STRICT={strict}\n{snip}\necho "$cand"').stdout.strip()
 
 
 def test_busy_gpu_falls_back_to_the_others_unless_strict():
     assert cand("1") == "1 0 2"          # requested first, then the rest: the first free one wins at once
     assert cand("1", strict=1) == "1"
     assert cand("auto") == "0 1 2" and cand("auto", cap0=1) == "0"
-    assert cand("3") == "3"              # the gate GPU never falls back
+    assert "does not exist" in cand("3")
     assert cand("2", cap0=1) == "2 0"
+    assert cand("auto", count=1) == "0" and cand("0", count=1) == "0"
+    assert "does not exist" in cand("1", count=1)
 
 
 def test_gpu_strict_flag_reaches_the_remote_command():
@@ -357,8 +370,28 @@ def test_evict_removes_nothing_when_the_queue_is_unreadable(lanes):
     w, m, env = lanes
     _touch_lock(w, "zz_old", 9)
     env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
-    r = cleanup({**env, "PUEUE": (w / "no_such_pueue").as_posix(), "FAKE_FREE_GB": "10"}, "evict", "30")
+    pueue = w / "pueue"
+    pueue.write_text("#!/bin/sh\nexit 1\n")
+    pueue.chmod(0o755)
+    r = cleanup({**env, "PUEUE": pueue.as_posix(), "FAKE_FREE_GB": "10"}, "evict", "30")
     assert (w / "lanes" / "zz_old").is_dir() and "QUEUE-UNKNOWN" in r.stdout, r.stdout
+
+
+def test_cleanup_without_pueue_allows_idle_lane(lanes):
+    w, m, env = lanes
+    env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
+    r = cleanup({**env, "PUEUE": (w / "missing-pueue").as_posix()}, "one", "zz_t")
+    assert r.returncode == 0 and not (w / "lanes" / "zz_t").exists(), r.stdout + r.stderr
+
+
+def test_cleanup_without_pueue_keeps_live_gpu_owner(lanes):
+    w, m, env = lanes
+    env = {k: v for k, v in env.items() if k != "PUEUE_ACTIVE_FILE"}
+    # $$ is a live bash PID even under MSYS; the owner must block cleanup.
+    r = bash(f'echo "$$ zz_t abc now" > "{w.as_posix()}/locks/gpu0.owner"; '
+             f'bash "{(BOX / "lane_cleanup.sh").as_posix()}" one zz_t',
+             env={**env, "PUEUE": (w / "missing-pueue").as_posix()})
+    assert r.returncode == 3 and "RUNNING" in r.stdout, r.stdout + r.stderr
 
 
 def test_evict_spares_a_recently_active_lane(lanes):

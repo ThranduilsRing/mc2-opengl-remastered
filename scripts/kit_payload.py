@@ -137,6 +137,46 @@ def seed_install(source, target, hash_cache=None):
     print(f'[deploy_payload] seed verified: {len(members)} files; exe sha={digest(target / "mc2.exe")}; no cook')
 
 
+def stock_fnv(paths):
+    """Compute legacy FNV in native code, batching Windows files in one child."""
+    if os.name != 'nt':
+        import ctypes
+        import ctypes.util
+        native = ctypes.CDLL(ctypes.util.find_library('stdc++'))
+        fnv = native._ZSt15_Fnv_hash_bytesPKvmm
+        fnv.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_size_t]
+        fnv.restype = ctypes.c_size_t
+        values = []
+        for path in paths:
+            data = path.read_bytes()
+            values.append(f'{fnv(data, len(data), 14695981039346656037):016x}')
+        return values
+    command = r"""
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition 'using System; using System.IO;
+public static class StockHash {
+  public static string Hash(string path) {
+    ulong hash = 14695981039346656037UL;
+    using (var input = File.OpenRead(path)) {
+      var buffer = new byte[65536]; int n;
+      while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+        for (int i = 0; i < n; ++i) hash = unchecked((hash ^ buffer[i]) * 1099511628211UL);
+    }
+    return hash.ToString("x16");
+  }
+}'
+foreach ($path in (ConvertFrom-Json ([Console]::In.ReadToEnd()))) { [StockHash]::Hash($path) }
+"""
+    result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', command],
+                            input=json.dumps([str(p) for p in paths]), capture_output=True,
+                            text=True, timeout=300, check=True,
+                            **console_child.child_kwargs(redirected=True))
+    values = result.stdout.splitlines()
+    if len(values) != len(paths) or any(not re.fullmatch('[0-9a-f]{16}', v) for v in values):
+        raise ValueError('native stock FNV returned an incomplete inventory')
+    return values
+
+
 def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
     """Receipt byte-proven stock sources, appearance definitions and sidecars.
 
@@ -144,36 +184,51 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
     never trusts paired source existence, target art, or MOD overlay contents.
     Unknown recipes and mismatched bytes retain user priority.
     """
-    target = Path(target_dir)
+    target = Path(target_dir).resolve()
     if inventory is None:
         inventory = json.loads((Path(__file__).resolve().parents[1] /
             "data/kit/stock-textures.json").read_text())
     sources = inventory["sha256"]
     cooks = inventory["cooked_sha256"]
 
-    # Invalidate legacy cooker stamps and receipts for removed/unpinned files.
-    for stamp in (target / "data/tgl").rglob("*"):
-        if stamp.is_file() and stamp.name.casefold().endswith(".cookstamp"):
+    pins = {**sources, **cooks}
+    receipts = HashReceipts(target / '.deploy-receipts.json')
+    parents = {}
+    # Remove only unpinned/invalid receipts; retained stock stamps keep their inode.
+    for stamp in (target / "data/tgl").rglob("*.cookstamp"):
+        if stamp.relative_to(target).as_posix()[:-10] not in pins:
             stamp.unlink()
 
     def reconcile(item):
         rel, expected = item
-        path = contained_path(target, rel)
+        path = contained_path(target, rel, parents=parents)
+        stamp = Path(str(path) + '.cookstamp')
         if not path.is_file():
-            return 0
-        data = path.read_bytes()
+            stamp.unlink(missing_ok=True)
+            return None
         accepted = [expected] if isinstance(expected, str) else expected
-        if hashlib.sha256(data).hexdigest() not in accepted:
-            return 0
-        value = 14695981039346656037
-        for byte in data:
-            value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
-        Path(str(path) + ".cookstamp").write_text(
-            f"mc2-stock-v1 {value:016x}\n", encoding="ascii")
-        return int(path.suffix.casefold() == ".ktx2")
+        digest = receipts.digest(path)
+        if digest not in accepted:
+            stamp.unlink(missing_ok=True)
+            return None
+        return path, stamp, digest
 
     with ThreadPoolExecutor(max_workers=max(1, min(jobs, int(Path("A:/Games/mc2-ops/JOBS").read_text())))) as pool:
-        count = sum(pool.map(reconcile, sorted({**sources, **cooks}.items())))
+        verified = [row for row in pool.map(reconcile, sorted(pins.items())) if row]
+    missing = [row for row in verified if 'fnv:' + row[2] not in receipts.rows]
+    if missing:
+        for row, value in zip(missing, stock_fnv([row[0] for row in missing])):
+            if receipts.digest(row[0], force=True) != row[2]:
+                raise ValueError(f'stock texture changed during native hash: {row[0]}')
+            receipts.rows['fnv:' + row[2]] = value
+    for path, stamp, digest in verified:
+        content = f"mc2-stock-v1 {receipts.rows['fnv:' + digest]}\n"
+        if not stamp.is_file() or stamp.read_text(encoding='ascii', errors='replace') != content:
+            pending = stamp.with_name(stamp.name + f'.{os.getpid()}.tmp')
+            pending.write_text(content, encoding='ascii')
+            os.replace(pending, stamp)
+    receipts.save()
+    count = sum(path.suffix.casefold() == '.ktx2' for path, _, _ in verified)
     print(f"[deploy_payload] stock texture receipts verified/backfilled: {count}", flush=True)
     return count
 
@@ -183,41 +238,104 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def contained_path(root, rel):
+class HashReceipts:
+    """Private, disposable hash cache; metadata drift forces byte verification."""
+    def __init__(self, path):
+        self.path = Path(path)
+        try:
+            self.rows = json.loads(self.path.read_text())
+            if not isinstance(self.rows, dict):
+                self.rows = {}
+        except (OSError, ValueError):
+            self.rows = {}
+
+    @staticmethod
+    def stamp(path):
+        info = os.stat(path)
+        stamp = [info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_ino]
+        if os.name == 'nt':
+            # Windows st_ctime is birth time. NTFS ChangeTime also catches writes
+            # whose length and last-write timestamp were deliberately restored.
+            import ctypes
+            import msvcrt
+            basic = (ctypes.c_longlong * 5)()
+            with open(path, 'rb') as stream:
+                handle = ctypes.c_void_p(msvcrt.get_osfhandle(stream.fileno()))
+                if not ctypes.windll.kernel32.GetFileInformationByHandleEx(handle, 0, ctypes.byref(basic), 40):
+                    raise ctypes.WinError()
+            stamp.append(basic[3])
+        return stamp
+
+    def digest(self, path, *, force=False, hasher=None, variant=''):
+        stamp = self.stamp(path)
+        key = variant + ':' + os.path.abspath(path)
+        old = self.rows.get(key)
+        if not force and isinstance(old, list) and old[:-1] == stamp:
+            return old[-1]
+        value = (hasher or sha)(path)
+        if self.stamp(path) != stamp:
+            raise ValueError(f"file changed during hash verification: {path}")
+        self.rows[key] = [*stamp, value]
+        return value
+
+    def save(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        pending = self.path.with_name(self.path.name + f'.{os.getpid()}.tmp')
+        try:
+            pending.write_text(json.dumps(self.rows, separators=(',', ':')))
+            os.replace(pending, self.path)
+        finally:
+            pending.unlink(missing_ok=True)
+
+
+def contained_path(root, rel, *, parents=None):
     """Require a canonical relative member and a contained resolved destination."""
     win = PureWindowsPath(rel)
     if (not rel or win.drive or win.root or "\\" in rel
             or any(p in ("", ".", "..") for p in rel.split("/"))):
         raise ValueError(f"unsafe kit path: {rel}")
-    root = Path(root).resolve()
-    path = (root / rel).resolve()
+    root = Path(root).resolve() if parents is None else Path(root)
+    path = root / rel
+    if parents is None:
+        path = path.resolve()
+    else:
+        parent = path.parent
+        if parent not in parents:
+            parents[parent] = parent.resolve()
+        path = parents[parent] / path.name
+        if path.is_symlink():
+            path = path.resolve()
     if not path.is_relative_to(root):
         raise ValueError(f"unsafe kit path: {rel}")
     return path
 
 
-def checked_files(root, rows):
+def checked_files(root, rows, receipts=None):
     """Reject absent, altered and unsafe package members before copying any bytes."""
     root = Path(root).resolve()
     seen = set()
+    folded = set()
+    parents = {}
     for row in rows:
         rel = row["path"]
-        path = contained_path(root, rel)
-        if rel.casefold() in {p.casefold() for p in seen}:
+        path = contained_path(root, rel, parents=parents)
+        if rel.casefold() in folded:
             raise ValueError(f"unsafe/duplicate kit path: {rel}")
         seen.add(rel)
-        if not path.is_file() or path.stat().st_size != row["bytes"] or sha(path) != row["sha256"]:
+        folded.add(rel.casefold())
+        if (not path.is_file() or path.stat().st_size != row["bytes"]
+                or (receipts.digest(path) if receipts else sha(path)) != row["sha256"]):
             raise ValueError(f"missing/mismatched pinned kit file: {path}")
     return seen
 
 
-def payload(src_root, manifest_path=MANIFEST, kit_rel=KIT_REL):
+def payload(src_root, manifest_path=MANIFEST, kit_rel=KIT_REL, receipts=None):
     manifest = json.loads((Path(src_root) / manifest_path).read_text(encoding="utf-8"))
     if manifest["schema"] != 1 or not manifest["assets"] or not manifest["files"]:
         raise ValueError("invalid pinned kit manifest")
     store = Path(os.environ.get("MC2_KIT_STORE", ref_path(manifest["store"])) if manifest_path == MANIFEST
                  else ref_path(manifest["store"]))
-    checked_files(store, manifest["files"])
+    checked_files(store, manifest["files"], receipts)
     models = {p["path"] for p in manifest["files"] if p["path"].endswith(".glb")}
     expected = {f"data/model_overrides/{a['id']}/pristine_intact_lod{i}.glb"
                 for a in manifest["assets"] for i in range(3)}
@@ -255,9 +373,10 @@ def build_importer(src_root):
 
 def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL):
     """Verify installed source, cook native recipes and verify the cache receipt."""
-    target = Path(target_dir)
+    target = Path(target_dir).resolve()
     kit = target / kit_rel
-    paths = checked_files(kit, manifest["files"])
+    hashes = HashReceipts(target / '.deploy-receipts.json')
+    paths = checked_files(kit, manifest["files"], hashes)
     extra = {p.relative_to(kit).as_posix() for p in kit.rglob("*") if p.is_file()}
     extra -= paths | {".modindex-cache"}
     if extra:
@@ -267,22 +386,68 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     models = sorted(p for p in paths if p.endswith(".glb"))
     # Identical small-prop LODs share a content-addressed native recipe.
     unique_models = len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")})
-    identity = hashlib.sha256((sha(tool) + json.dumps(manifest, sort_keys=True)
+    identity = hashlib.sha256((hashes.digest(tool) + json.dumps(manifest, sort_keys=True)
                                + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
+    cache.mkdir(parents=True, exist_ok=True)
     receipt = cache / ("industrial-cook.json" if kit_rel == KIT_REL else "vehicle-cook.json")
-    try:
-        previous = json.loads(receipt.read_text())
-        recipes = previous["recipes"]
-        rows = previous["files"]
-        if (previous["identity"] == identity and isinstance(recipes, dict) and set(recipes) == set(models)
-                and len(rows) == unique_models
-                and set(recipes.values()) == {r["path"] for r in rows}):
-            checked_files(cache, rows)
+    shared = target.parent / '.cooked-kit' / identity
+    shared_receipt = shared / receipt.name
+
+    def publish(previous):
+        # Private copies prevent later in-place lane writes from touching the store.
+        shared.mkdir(parents=True, exist_ok=True)
+        for row in previous['files']:
+            dst = shared / row['path']
+            pending = dst.with_name(dst.name + f'.{os.getpid()}.tmp')
+            try:
+                shutil.copyfile(cache / row['path'], pending)
+                if sha(pending) != row['sha256']:
+                    raise ValueError(f'shared recipe copy mismatch: {dst}')
+                os.replace(pending, dst)
+            finally:
+                pending.unlink(missing_ok=True)
+        pending = shared_receipt.with_name(shared_receipt.name + f'.{os.getpid()}.tmp')
+        pending.write_text(json.dumps(previous, indent=2) + '\n')
+        os.replace(pending, shared_receipt)
+
+    for candidate in (receipt, shared_receipt):
+        try:
+            previous = json.loads(candidate.read_text())
+            recipes = previous["recipes"]
+            rows = previous["files"]
+            if not (previous["identity"] == identity and isinstance(recipes, dict) and set(recipes) == set(models)
+                    and len(rows) == unique_models
+                    and set(recipes.values()) == {r["path"] for r in rows}
+                    and all(re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']) for row in rows)):
+                continue
+            checked_files(candidate.parent, rows, hashes)
+            if candidate == shared_receipt:
+                for row in rows:
+                    dst = cache / row['path']
+                    pending = dst.with_name(dst.name + f'.{os.getpid()}.tmp')
+                    try:
+                        os.link(shared / row['path'], pending)
+                        os.replace(pending, dst)
+                    finally:
+                        pending.unlink(missing_ok=True)
+                receipt.write_text(json.dumps(previous, indent=2) + '\n')
+            elif not shared_receipt.is_file():
+                publish(previous)
+            hashes.save()
             print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cached; cook skipped")
             return
-    except (OSError, ValueError, KeyError, TypeError):
-        pass
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+    # Cookers may overwrite in place; detach every shared recipe before invoking one.
+    for path in cache.glob('model-*.mci'):
+        if path.stat().st_nlink > 1:
+            pending = path.with_name(path.name + f'.{os.getpid()}.tmp')
+            try:
+                shutil.copyfile(path, pending)
+                os.replace(pending, path)
+            finally:
+                pending.unlink(missing_ok=True)
     # Record the importer's source-to-recipe mapping with the verified inventory.
     recipes = {}
     recipes_by_sha = {}
@@ -316,5 +481,8 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     rows = [dict(path=p.name, bytes=p.stat().st_size, sha256=sha(p)) for p in outputs]
     checked_files(cache, rows)
     checked_files(kit, manifest["files"])
-    receipt.write_text(json.dumps(dict(identity=identity, recipes=recipes, files=rows), indent=2) + "\n")
+    previous = dict(identity=identity, recipes=recipes, files=rows)
+    receipt.write_text(json.dumps(previous, indent=2) + "\n")
+    publish(previous)
+    hashes.save()
     print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cooked")

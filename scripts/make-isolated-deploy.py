@@ -67,7 +67,9 @@ import argparse
 import csv
 import hashlib
 import importlib.util
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -158,7 +160,7 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
 def seed_member(rel, guard, manifest):
     """Only runtime data and manifested payload enter the lean seed projection."""
     low = rel.casefold()
-    if low.startswith('mods/'):
+    if low.startswith('mods/') and not low.startswith(('mods/mc2-industrial-kit/', 'mods/mc2-vehicle-kit/')):
         return False
     if low in manifest or low == '.deployed_manifest.csv':
         # PDBs are deploy/debug outputs, never runtime seed inputs.
@@ -203,6 +205,24 @@ def verified_seed(src):
             digest = hashlib.file_digest(f, 'sha256').hexdigest()
         if digest != row['sha256']:
             fail(f'seed manifest hash mismatch: {rel}', 2)
+    # Pinned kits and their byte-verified native recipes survive lean projection.
+    # Arbitrary mods and writable runtime caches still stay out of the seed.
+    import kit_payload
+    for kit, name in (('mc2-industrial-kit', 'industrial-cook.json'),
+                      ('mc2-vehicle-kit', 'vehicle-cook.json')):
+        if not any(rel.startswith(f'mods/{kit}/') for rel in manifest):
+            continue
+        receipt = src / 'cache/content-model' / name
+        if not receipt.is_file():
+            continue
+        rows = json.loads(receipt.read_text())['files']
+        if any(not re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']) for row in rows):
+            fail(f'unsafe seed recipe inventory: {receipt}', 2)
+        kit_payload.checked_files(receipt.parent, rows)
+        for path in [receipt, *(receipt.parent / row['path'] for row in rows)]:
+            rel = path.relative_to(src).as_posix()
+            manifest[rel] = dict(relpath=rel, sha256=kit_payload.sha(path),
+                                 bytes=path.stat().st_size, src_commit='', timestamp='', mtime_ns='')
     return manifest
 
 

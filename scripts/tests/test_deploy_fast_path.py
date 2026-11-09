@@ -15,12 +15,114 @@ import os
 import sys
 from pathlib import Path
 import types
+import json
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from scripts import deploy_payload as dp  # noqa: E402
+
+
+def test_input_hashes_cover_kit_and_example_mod_but_ignore_game_cpp(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True,
+                   **dp.console_child.child_kwargs(redirected=True))
+    kit = tmp_path / "data/kit/industrial-kit.json"
+    mod = tmp_path / "examples/mods/test/mod.json"
+    game = tmp_path / "mclib/game.cpp"
+    for path in (kit, mod, game):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("original")
+    before = dp.deploy_inputs(tmp_path)
+    game.write_text("code-only")
+    assert dp.deploy_inputs(tmp_path) == before
+    kit.write_text("changed")
+    assert dp.deploy_inputs(tmp_path) != before
+    kit.write_text("original")
+    mod.write_text("changed")
+    assert dp.deploy_inputs(tmp_path) != before
+
+
+@pytest.fixture
+def recorded_payload(tmp_path):
+    target = tmp_path / "install"
+    source = tmp_path / "source.glb"
+    source.write_bytes(b"kit")
+    path = target / "mods/mc2-industrial-kit/model.glb"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"kit")
+    rel = path.relative_to(target).as_posix()
+    hashes = {rel: (dp.sha256_file(path), 3)}
+    inputs = {"data/kit/industrial-kit.json": "pinned-input-hash"}
+    dp.write_manifest(target, hashes, "a" * 40)
+    dp.record_deploy_inputs(target, inputs, hashes, [(str(source), rel, "kit")])
+    return target, inputs, path, source
+
+
+def test_unchanged_inputs_skip_kit(recorded_payload):
+    target, inputs, _, _ = recorded_payload
+    assert dp.reusable_payload(None, target, inputs)[0]
+
+
+def test_changed_input_requires_full_deploy(recorded_payload):
+    target, inputs, _, _ = recorded_payload
+    assert not dp.reusable_payload(None, target, inputs | {"new": "changed"})[0]
+
+
+def test_malformed_reuse_evidence_requires_full_deploy(recorded_payload):
+    target, inputs, _, _ = recorded_payload
+    path = target / dp.REUSE_NAME
+    saved = json.loads(path.read_text())
+    saved["outputs"] = "broken inventory"
+    path.write_text(json.dumps(saved))
+    assert not dp.reusable_payload(None, target, inputs)[0]
+
+
+@pytest.mark.parametrize("missing", [dp.MANIFEST_NAME, dp.REUSE_NAME, "mods/mc2-industrial-kit/model.glb"])
+def test_missing_evidence_requires_full_deploy(recorded_payload, missing):
+    target, inputs, _, _ = recorded_payload
+    (target / missing).unlink()
+    assert not dp.reusable_payload(None, target, inputs)[0]
+
+
+@pytest.mark.parametrize("source", [False, True])
+def test_sampled_mismatch_requires_full_deploy(recorded_payload, source):
+    target, inputs, output, original = recorded_payload
+    path = original if source else output
+    path.write_bytes(b"bad")
+    # Model byte drift that metadata alone cannot detect: forge the saved stamp.
+    saved = json.loads((target / dp.REUSE_NAME).read_text())
+    s = path.stat()
+    stamp = [s.st_size, s.st_mtime_ns, s.st_ctime_ns]
+    if source:
+        saved["sources"][str(path)][0] = stamp
+    else:
+        saved["outputs"][path.relative_to(target).as_posix()] = stamp
+    (target / dp.REUSE_NAME).write_text(json.dumps(saved))
+    assert "mismatch" in dp.reusable_payload(None, target, inputs)[1]
+
+
+def test_deploy_phase_timeout_names_phase_and_exits(tmp_path):
+    import subprocess
+    result = subprocess.run([sys.executable, "-c",
+        "import sys,time; sys.path.insert(0,'scripts'); import deploy_payload as d; "
+        "exec('with d.deploy_phase(\"injected stall\", .05):\\n time.sleep(10)')"],
+        cwd=ROOT, capture_output=True, text=True, timeout=30,
+        **dp.console_child.child_kwargs(redirected=True))
+    assert result.returncode == 8
+    assert "phase injected stall timed out" in result.stdout
+
+
+def test_code_only_keeps_static_payload_and_does_not_cook(tmp_path, monkeypatch):
+    src, target, rel = _setup(tmp_path, monkeypatch)
+    hashes = _deploy(src, target, rel, cache={})
+    dp.write_manifest(target, hashes, "a" * 40)
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: pytest.fail("terrain recooked"))
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda *a: pytest.fail("normals recooked"))
+    retained = dp.deploy([], target, False, cache=hashes, code_only=True)
+    assert retained == hashes
+    assert (Path(target) / rel).read_bytes() == Path(src).read_bytes()
 
 
 def _setup(tmp_path, monkeypatch):
@@ -55,9 +157,51 @@ def test_unchanged_file_is_skipped_and_manifest_round_trips(tmp_path, monkeypatc
         raise AssertionError("unchanged source must not be re-copied")
 
     monkeypatch.setattr(dp.shutil, "copyfile", no_copy)
+    monkeypatch.setattr(dp, "sha256_file", lambda path: pytest.fail("unchanged bytes rehashed"))
     skipped = _deploy(src, target, rel, cache=cache)
     assert skipped[rel][:2] == cache[rel][:2], "skip must reuse the recorded sha256/size"
     assert target_file.stat().st_mtime_ns == mtime_ns
+
+
+@pytest.mark.parametrize('restore_mtime', [False, True])
+def test_same_size_corruption_invalidates_receipt(tmp_path, monkeypatch, restore_mtime):
+    src, target, rel = _setup(tmp_path, monkeypatch)
+    cache = _cache_after(src, target, rel, _deploy(src, target, rel, cache={}))
+    installed = Path(target) / rel
+    before = installed.stat()
+    installed.write_bytes(b"x" * installed.stat().st_size)
+    if restore_mtime:
+        os.utime(installed, ns=(before.st_atime_ns, before.st_mtime_ns))
+    _deploy(src, target, rel, cache=cache)
+    assert installed.read_bytes() == Path(src).read_bytes()
+
+
+def test_unchanged_exe_is_hashed_but_not_copied(tmp_path, monkeypatch):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    items = [(src, "mc2.exe", "exe")]
+    cache = _cache_after(src, target, "mc2.exe", dp.deploy(items, target, False))
+    monkeypatch.setattr(dp.shutil, "copyfile", lambda *a: pytest.fail("unchanged exe copied"))
+    calls = []
+    original = dp.sha256_file
+    monkeypatch.setattr(dp, "sha256_file", lambda path: calls.append(path) or original(path))
+    dp.deploy(items, target, False, cache=cache)
+    assert src in calls and str(Path(target) / "mc2.exe") in calls
+
+
+def test_normalized_sidecar_receipt_is_distinct_from_source_hash(tmp_path, monkeypatch):
+    from kit_payload import HashReceipts
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    Path(src).write_bytes(b'asset\r\n')
+    hashes = HashReceipts(Path(target) / '.deploy-receipts.json')
+    raw = hashes.digest(src)
+    hashes.save()
+    rel = 'data/asset.mcasset.json'
+    _deploy(src, target, rel, cache={})
+    assert (Path(target) / rel).read_bytes() == b'asset\n'
+    assert raw != dp.sha256_file(str(Path(target) / rel))
+    monkeypatch.setattr(dp.shutil, 'copyfile', lambda *a: pytest.fail('unchanged sidecar copied'))
+    monkeypatch.setattr(Path, 'read_bytes', lambda *a: pytest.fail('unchanged sidecar rehashed'))
+    _deploy(src, target, rel, cache={})
 
 
 def test_changed_file_is_copied_and_rehashed(tmp_path, monkeypatch):

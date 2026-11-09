@@ -70,8 +70,28 @@ def test_failed_task_exits_1(monkeypatch, tmp_path):
 
 
 def test_pick_gpu_takes_the_least_loaded(monkeypatch):
+    monkeypatch.setattr(box_run, "gpu_ids", lambda: ["0", "1", "2"])
     monkeypatch.setattr(box_run, "ssh_out", lambda cmd: "0 2\n1 0\n2 1\n")
     assert box_run.pick_gpu() == "1"
+
+
+def test_one_gpu_busy_submissions_stay_on_gpu_zero(monkeypatch):
+    seen = []
+
+    def fake_ssh(cmd):
+        seen.append(cmd)
+        return "GPU 0: NVIDIA GeForce RTX 4060 (UUID: GPU-fake)\n" if cmd == "nvidia-smi -L" else "0 1\n"
+
+    monkeypatch.setattr(box_run, "ssh_out", fake_ssh)
+    assert box_run.pick_gpu() == "0"
+    assert box_run.pick_gpu() == "0"  # the second task queues in the same gpu0 group
+    assert all("for g in 0;" in cmd for cmd in seen if cmd != "nvidia-smi -L")
+
+
+def test_no_discovered_gpu_fails_closed(monkeypatch):
+    monkeypatch.setattr(box_run, "ssh_out", lambda cmd: "")
+    with pytest.raises(RuntimeError, match="no GPUs discovered"):
+        box_run.pick_gpu()
 
 
 def test_fetch_back_extracts_what_the_box_tarred(monkeypatch, tmp_path):
@@ -87,7 +107,7 @@ def test_fetch_back_extracts_what_the_box_tarred(monkeypatch, tmp_path):
     assert "*.tsv" in box_run.BACK and "*.json" in box_run.BACK and "tail -n 200" in box_run.BACK
 
 
-def queued_main(monkeypatch, tmp_path, argv, stdout="12\n"):
+def queued_main(monkeypatch, tmp_path, argv, stdout="12\n", picked="2"):
     sent = []
 
     def fake_run(cmd, **kw):
@@ -95,10 +115,21 @@ def queued_main(monkeypatch, tmp_path, argv, stdout="12\n"):
         return SimpleNamespace(returncode=0, stdout=stdout if "pueue add" in cmd[-1] else "", stderr="")
     monkeypatch.setattr(box_run, "run", fake_run)
     monkeypatch.setattr(box_run, "git", lambda *a, repo=None: ("br" if "--abbrev-ref" in a else "deadbeef" * 5) if a[0] == "rev-parse" else "")
-    monkeypatch.setattr(box_run, "pick_gpu", lambda: "2")
+    if picked is not None:
+        monkeypatch.setattr(box_run, "pick_gpu", lambda: picked)
+        monkeypatch.setattr(box_run, "gpu_ids", lambda: ["0", "1", "2"])
     monkeypatch.setattr(box_run.subprocess, "run", lambda cmd, **kw: SimpleNamespace(stdout="deadbeef" * 5, returncode=0))
     monkeypatch.setattr(sys, "argv", ["box_run.py", "--repo", str(tmp_path), *argv])
     return box_run.main(), sent
+
+
+def test_one_gpu_queue_uses_existing_busy_group(monkeypatch, tmp_path):
+    monkeypatch.setattr(box_run, "ssh_out", lambda cmd: "GPU 0: RTX 4060 (UUID: GPU-fake)\n" if cmd == "nvidia-smi -L" else "0 1\n")
+    for _ in range(2):
+        rc, sent = queued_main(monkeypatch, tmp_path, ["--queue", "gpu:true"], picked=None)
+        assert rc == 0
+        assert any("-g gpu0 -a 12" in cmd for cmd, _ in sent)
+        assert not any("-g gpu1" in cmd or "-g gpu2" in cmd for cmd, _ in sent)
 
 
 def test_queue_submits_one_ssh_to_the_group_and_returns_the_task_id(monkeypatch, tmp_path, capsys):
@@ -180,6 +211,32 @@ def test_detached_head_gets_its_own_lane_dir():
     assert box_run.lane_key("HEAD", SHA) == "detached-deadbeef"
     assert box_run.lane_key("", SHA) == "detached-deadbeef"
     assert box_run.lane_key("claude/x", SHA) == "claude_x"
+
+
+def test_slot_dry_run_reuses_path_across_branches(monkeypatch, tmp_path, capsys):
+    repo = tmp_path / "mc2-slot02"
+    repo.mkdir()
+    for branch, sha in (("claude/first", "a" * 40), ("claude/second", "b" * 40)):
+        monkeypatch.setattr(box_run, "git", lambda *a, repo=None: (branch if "--abbrev-ref" in a else sha) if a[0] == "rev-parse" else "")
+        monkeypatch.setattr(box_run, "run", lambda *a, **kw: pytest.fail("dry-run contacted the box"))
+        monkeypatch.setattr(sys, "argv", ["box_run.py", "--repo", str(repo), "--dry-run", "--gpu", "0", "build"])
+        assert box_run.main() == 0
+        out = capsys.readouterr().out
+        assert "lane=/workspace/lanes/box-lane-02 " in out
+        assert f"branch={branch} sha={sha}" in out
+        assert str(box_run.local_reports(repo, sha[:8])) in out
+
+
+def test_slot_submission_reuses_checkout_build_and_install(monkeypatch, tmp_path):
+    repo = tmp_path / "mc2-slot02"
+    repo.mkdir()
+    for branch in ("claude/first", "claude/second"):
+        rc, calls = harness(monkeypatch, repo, ["--gpu", "0", "build"], have=SHA, abbrev=branch)
+        cmd = next(c for c in remote_cmds(calls) if "bash /workspace/lanes/.box_lane_" in c)
+        assert ".box_lane_box-lane-02.sh" in cmd
+        assert "/workspace/lanes/box-lane-02/out/deadbeef" in cmd
+        assert cmd.endswith(branch.replace("/", "_"))
+    assert "L=/workspace/lanes/$BR; S=$L/src; I=$L/install" in box_run.REMOTE
 
 
 def test_detached_run_uses_the_detached_lane_in_every_path(monkeypatch, tmp_path):

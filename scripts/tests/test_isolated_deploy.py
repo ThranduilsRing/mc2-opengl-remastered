@@ -137,6 +137,35 @@ def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
     (tmp_path / 'runtime.dll').write_bytes(b'tampered')
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path)
+
     (tmp_path / '.deployed_manifest.csv').unlink()
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path)
+
+
+def test_lean_seed_preserves_verified_pinned_cooks_with_private_writes(tmp_path):
+    iso = lean_tool()
+    src, dst = tmp_path / 'source', tmp_path / 'dest'
+    lean_fixture(src)
+    model = 'mods/mc2-industrial-kit/data/model.glb'
+    source_model = src / model
+    source_model.parent.mkdir(parents=True)
+    source_model.write_bytes(b'kit')
+    with (src / '.deployed_manifest.csv').open('a', newline='') as stream:
+        csv.writer(stream).writerow([model, kit_payload.sha(source_model), 3, 'abc', '', 0])
+    cache = src / 'cache/content-model'
+    recipe = cache / 'model-0123456789abcdef.mci'
+    recipe.write_bytes(b'cooked')
+    receipt = cache / 'industrial-cook.json'
+    receipt.write_text(json.dumps({'files': [dict(path=recipe.name, bytes=6, sha256=kit_payload.sha(recipe))]}))
+    seed = iso.verified_seed(src)
+    links, copies, _, _ = iso.plan(src, iso._load_guard(), seed)
+    iso.build(src, dst, links, copies)
+    assert recipe.samefile(dst / recipe.relative_to(src))
+    assert not receipt.samefile(dst / receipt.relative_to(src))
+    assert not source_model.samefile(dst / model)
+    (dst / model).write_bytes(b'lane model')
+    (dst / receipt.relative_to(src)).write_text('{}')
+    assert source_model.read_bytes() == b'kit'
+    assert json.loads(receipt.read_text())['files']
+    assert not (dst / 'cache/content-model/temp.mci').exists()

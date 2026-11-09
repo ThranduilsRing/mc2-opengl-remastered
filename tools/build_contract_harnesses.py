@@ -192,6 +192,7 @@ def run_with_tree_timeout(command, cwd, env, timeout, log_path=None):
 def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
                              keep_going=False, log_dir=None, jobs=None, cache=False, build_root=None):
     started = time.monotonic()
+    timings = {}
     tree = "build64-tests-asan" if asan else "build64-tests"
     bdir = Path(build_root or REPO_ROOT) / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
     cm = cmake_exe()
@@ -206,6 +207,7 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
             bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
         ]
     for stage, command in zip(("configure", "build"), commands):
+        phase_started = time.monotonic()
         if cache or preset or log_dir is not None or jobs or keep_going:
             rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,
                                 vcvars=bool(preset) or cache, capture=True, env=cache_env)
@@ -213,6 +215,9 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
             result = subprocess.run(command, capture_output=True, text=True, cwd=REPO_ROOT,
                                     **console_child.child_kwargs(redirected=True))
             rc, output = result.returncode, result.stdout + result.stderr
+        timings[stage] = time.monotonic() - phase_started
+        if only:
+            print(f"[contracts] {stage} seconds={timings[stage]:.3f}")
         if rc:
             lines = output.strip().splitlines()
             errors = [line for line in lines if " error " in line or "fatal error" in line]
@@ -244,7 +249,10 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
         # The allocation probe owns leak checks; ASan supplies bounds and lifetime evidence.
         env.setdefault("ASAN_OPTIONS", "detect_leaks=0:halt_on_error=0:print_stacktrace=1")
     unit_log = Path(tempfile.gettempdir()) / f"mc2_tests_{os.getpid()}.log"
+    run_started = time.monotonic()
     rc = run_with_tree_timeout(command, REPO_ROOT, env, UNIT_RUN_TIMEOUT_S, log_path=unit_log)
+    if only:
+        print(f"[contracts] run seconds={time.monotonic() - run_started:.3f}")
     if rc:
         print_failed_cases(unit_log)
     try:

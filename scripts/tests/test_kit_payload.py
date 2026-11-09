@@ -123,20 +123,20 @@ def test_cooks_then_validates_receipt_and_repairs_corrupt_cache(tmp_path, monkey
     assert len(calls) == cooks
     next((target / "cache/content-model").glob("*.mci")).write_bytes(b"broken") # same-size hash mismatch
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 2 * cooks
+    assert len(calls) == cooks  # repair from the independently verified store
     tool.write_bytes(b"rebuilt importer")
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 3 * cooks
+    assert len(calls) == 2 * cooks
     # A retained receipt cannot hide a pruned recipe or an incomplete inventory.
     next((target / "cache/content-model").glob("*.mci")).unlink()
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 4 * cooks
+    assert len(calls) == 2 * cooks
     receipt = target / "cache/content-model/industrial-cook.json"
     partial = json.loads(receipt.read_text())
     partial["files"].pop()
     receipt.write_text(json.dumps(partial))
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 5 * cooks
+    assert len(calls) == 2 * cooks
     (target / kit.KIT_REL / "extra.glb").write_bytes(b"unversioned")
     with pytest.raises(ValueError, match="unpinned"):
         kit.finish(target, manifest, tool, cook)
@@ -163,6 +163,7 @@ def test_deploy_classic_needs_no_package_but_remastered_fails(tmp_path, monkeypa
     monkeypatch.setattr(dp, "require_head_exe", lambda *a: dict(dirty=False))
     monkeypatch.setattr(dp, "enumerate_payload", lambda *a, **kw: [])
     monkeypatch.setattr(dp, "viewer_payload", lambda *a, **kw: [])
+    monkeypatch.setattr(dp, "deploy_inputs", lambda *a: {})
     monkeypatch.delenv("MC2_OPTIONS_OVERRIDE", raising=False)
     (tmp_path / "options.cfg").write_text(f"[MechCommander2]\nb RemasteredBuildings = {'TRUE' if option else 'FALSE'}\n")
     class ReachedCopyPreflight(Exception):
@@ -223,7 +224,7 @@ def test_full_receipt_cannot_substitute_an_unrelated_valid_recipe(cook_install):
     receipt.write_text(json.dumps(previous))
     (cache / original).unlink()
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 6
+    assert len(calls) == 3  # the original recipe is restored from the shared store
     assert (cache / original).is_file()
     assert unrelated.name not in {r["path"] for r in json.loads(receipt.read_text())["files"]}
 
@@ -269,6 +270,93 @@ def test_input_mutation_during_cook_prevents_receipt(cook_install):
     with pytest.raises(ValueError, match="missing/mismatched"):
         kit.finish(target, manifest, tool, mutate)
     assert not (target / "cache/content-model/industrial-cook.json").exists()
+
+
+def test_retained_and_cross_install_reuse_isolated_outputs(cook_install):
+    import os
+    import shutil
+    target, manifest, tool, cook, calls = cook_install
+    kit.finish(target, manifest, tool, cook)
+    count = len(calls)
+    def no_cook(*a, **kw):
+        pytest.fail("unchanged package cooked")
+    kit.finish(target, manifest, tool, no_cook)
+    other = target.with_name("other")
+    shutil.copytree(target / kit.KIT_REL, other / kit.KIT_REL)
+    kit.finish(other, manifest, tool, no_cook)
+    recipe = next((other / "cache/content-model").glob("*.mci"))
+    original = recipe.read_bytes()
+    assert recipe.stat().st_nlink >= 2
+    # Runtime publication replaces directory entries; receipts remain private.
+    replacement = recipe.with_suffix(".tmp")
+    replacement.write_bytes(b"lane write")
+    recipe.unlink()
+    os.replace(replacement, recipe)
+    assert next((target / "cache/content-model").glob(recipe.name)).read_bytes() == original
+    assert len(calls) == count
+    assert not (other / "cache/content-model/industrial-cook.json").samefile(
+        target / "cache/content-model/industrial-cook.json")
+
+
+def test_changed_package_is_recooked(cook_install):
+    target, manifest, tool, cook, calls = cook_install
+    kit.finish(target, manifest, tool, cook)
+    row = manifest["files"][0]
+    path = target / kit.KIT_REL / row["path"]
+    path.write_bytes(b"changed asset")
+    row.update(bytes=path.stat().st_size, sha256=kit.sha(path))
+    kit.finish(target, manifest, tool, cook)
+    assert len(calls) == 6
+
+
+def test_second_full_payload_deploy_copies_nothing_and_cooks_nothing(cook_install, monkeypatch):
+    import deploy_payload as dp
+    target, manifest, tool, cook, calls = cook_install
+    monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
+    monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
+    _, items = kit.payload(target.parent)
+    dp.deploy(items, str(target), False)
+    kit.finish(target, manifest, tool, cook)
+    count = len(calls)
+    monkeypatch.setattr(dp.shutil, 'copyfile', lambda *a, **kw: pytest.fail('unchanged payload copied'))
+    dp.deploy(items, str(target), False)
+    kit.finish(target, manifest, tool, lambda *a, **kw: pytest.fail('unchanged payload cooked'))
+    assert len(calls) == count
+
+
+def test_recook_detaches_shared_outputs_before_in_place_writes(cook_install):
+    target, manifest, tool, cook, calls = cook_install
+    kit.finish(target, manifest, tool, cook)
+    recipe = next((target / 'cache/content-model').glob('*.mci'))
+    recipe.write_bytes(b'broken')
+    kit.finish(target, manifest, tool, cook)  # restore as a hardlink
+    shared = next((target.parent / '.cooked-kit').glob('*/' + recipe.name))
+    assert recipe.samefile(shared)
+    before = shared.read_bytes()
+    tool.write_bytes(b'new importer')
+    def overwrite(command, **kwargs):
+        result = cook(command, **kwargs)
+        recipe.write_bytes(b'new recipe')
+        return result
+    kit.finish(target, manifest, tool, overwrite)
+    assert shared.read_bytes() == before
+
+
+def test_stock_receipt_retained_and_corruption_removes_stamp(tmp_path, monkeypatch):
+    path = tmp_path / "data/tgl/test.ktx2"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"hello")
+    inventory = {"sha256": {}, "cooked_sha256": {"data/tgl/test.ktx2": kit.sha(path)}}
+    assert kit.reconcile_stock_textures(tmp_path, inventory) == 1
+    stamp = Path(str(path) + ".cookstamp")
+    assert stamp.read_text().strip() == "mc2-stock-v1 a430d84680aabd0b"
+    before = stamp.stat().st_mtime_ns
+    monkeypatch.setattr(kit, "stock_fnv", lambda *a: pytest.fail("retained stock rehashed with FNV"))
+    assert kit.reconcile_stock_textures(tmp_path, inventory) == 1
+    assert stamp.stat().st_mtime_ns == before
+    path.write_bytes(b"wrong")
+    assert kit.reconcile_stock_textures(tmp_path, inventory) == 0
+    assert not stamp.exists()
 
 
 def test_ref_root_reroots_only_the_reference_store(monkeypatch):
