@@ -1016,7 +1016,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 		}
 		{
 			static long s_calls = 0;
-			if (++s_calls % 600 == 0)
+			if (++s_calls % 600 == 0 && mc2_diag::tagRequested("STATIC_RESIDENT"))
 				mc2::fmt::print_err("[STATIC_RESIDENT v1] extracts={:d} resident={:d} skipped_last={:d} registry_resident={:d}\n", mc2::fmt::as_i64(s_calls), mc2::fmt::as_i64(static_cast<long>(staticResident.size())), mc2::fmt::as_i64(residentSkipped), mc2::fmt::as_i64(static_cast<long>(GpuStaticPropRegistry::residentCount())));
 		}
 	}
