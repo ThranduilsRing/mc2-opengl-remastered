@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstring>
 #include <optional>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -27,6 +28,25 @@ inline bool bodyFits (std::size_t fileBytes, std::size_t headerBytes, long width
 		return false;
 	const std::size_t bytesPerPixel = pixelDepth == 24 ? 3 : 4;
 	return fileBytes - headerBytes >= static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * bytesPerPixel;
+}
+
+// Reuse loaded pixels as RGBA scratch. 32-bit images need no allocation or copy.
+// Expand 24-bit pixels backwards so unread pixels survive in-place writes.
+inline bool expandPixels(std::vector<unsigned char>& bytes, std::size_t headerBytes,
+                         std::size_t pixels, int depth)
+{
+    if (headerBytes > bytes.size() || pixels > (std::numeric_limits<std::size_t>::max() - headerBytes) / 4)
+        return false;
+    const std::size_t stride = depth == 24 ? 3 : 4;
+    if (pixels > (bytes.size() - headerBytes) / stride) return false;
+    if (depth != 24) return true;
+    bytes.resize(headerBytes + pixels * 4);
+    auto* data = bytes.data() + headerBytes;
+    for (std::size_t i = pixels; i-- > 0;) {
+        const unsigned char b = data[i * 3], g = data[i * 3 + 1], r = data[i * 3 + 2];
+        data[i * 4] = b; data[i * 4 + 1] = g; data[i * 4 + 2] = r; data[i * 4 + 3] = 255;
+    }
+    return true;
 }
 
 // The leading header, absent when the file is shorter than the header.

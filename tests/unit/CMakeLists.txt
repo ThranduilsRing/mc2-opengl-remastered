@@ -123,6 +123,7 @@ add_executable(mc2_tests
     test_sim_identity.cpp   # SIM-IDENTITY-HASH-1: world-hash order/quantum kernel
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_veg_hardsurface.cpp  # VEG-CEMENT-1: cement coverage -> vegetation falloff curve, crack weeds, class-3 union (offline)
+    test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
     test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)

@@ -1,5 +1,6 @@
 #include <cmath>
 #include "content_ir.h"
+#include "content_source_digest.h"
 #include "file.h"
 #include "../GameOS/gameos/cook_cache.h"
 #include "mc2fmt.h"
@@ -48,15 +49,9 @@ uint64_t sourceKey(const Asset& asset, std::string_view sourcePath) {
         if (it != digestMemo().end() && it->second.first == size) { digest = it->second.second; known = true; }
     }
     if (!known) {
-        digest = 14695981039346656037ull;
-        std::vector<uint8_t> chunk(64 * 1024);
-        unsigned long left = input.fileSize();
-        while (left) {
-            const auto count = std::min<unsigned long>(left, static_cast<unsigned long>(chunk.size()));
-            if (input.read(chunk.data(), count) != static_cast<long>(count)) return 0;
-            digest = hash(std::span<const uint8_t>(chunk.data(), count), digest);
-            left -= count;
-        }
+        const auto readDigest = readSourceDigest(input, fastHash);
+        if (!readDigest) return 0;
+        digest = *readDigest;
         std::lock_guard lock(digestLock);
         digestMemo()[sourceStorage] = {size, digest};
     }

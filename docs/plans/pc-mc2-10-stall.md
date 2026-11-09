@@ -116,3 +116,28 @@ post-fix acceptance or root-cause covering tests have been completed.
   E:/mc2-archive-2026-10/crashes/pc-mc2-10-stall-baseline-2026-11-08/.
   Updated ongoing/final receipts live in the proof folder's state.md and
   clean-matrix.json, so documentation updates do not invalidate tip identity.
+
+## Continuation 2026-11-09
+
+Owner symptom: "mc2_10 (night map) has TIMED OUT on the PC smoke at least
+three times with zero frames, across different exes".
+New evidence: final-tip deadline dumps put main in File::read/sourceKey and
+the per-shape string vertex map's _Forced_rehash, not a proved deadlock.
+Vegetation and colormap timings are 1.09-5.16 s and 0.84-7.38 s respectively.
+
+Changes: reserve the emitted-corner bound before vertex deduplication;
+defer five pure appearance hashes until placement acceptance; expand TGA
+material pixels in their loaded buffers (32-bit avoids zero-fill/copy);
+batch source-digest reads at 1 MiB instead of 64 KiB, preserving aligned
+hash boundaries. These reduce known load work; timeout causality remains
+a hypothesis until the normal-deadline PC matrix passes.
+
+Offline proof first: startup_work doctests exercise bucket stability and
+index order, exact appearance hashes, TGA channels/storage reuse/short
+input, digest equality/read count/short reads. Then box unit/build/lint/
+smoke-lite, one final Windows game+viewer build, isolated seed + --skip-kit
+deploy, five default + three NO_CPU_PIN night runs and two day runs.
+Evidence/next steps/green receipts: proof folder state.md. No temporal work,
+new runtime flag, shader/layout, simulation or content changes.
+Slot acquire refused the old --base on the existing continuation branch;
+the assigned worktree is already on its correct tip. No reset attempted.
