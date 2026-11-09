@@ -7,6 +7,7 @@
 #include "texture_assets.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "battle_bench_sink.h"
 
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
@@ -389,6 +390,14 @@ long TreeAppearance::update (bool animate)
 	// Trees have no simulation animation; presentation owns their geometry and lights.
 	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) return TRUE;
 	mc2::overlap::assertMainThread("TreeAppearance::update");
+	{
+		using namespace mc2::battlebench;
+		const Field reason = shadowIsMoving() ? TreeUpdateMoving
+			: !staticReg[activeLOD].registered ? TreeUpdateUnregistered
+			: (activeLOD == 0 && staticReg[0].shape != treeShape) ? TreeUpdateShape
+			: needsFullBakeNextFrame ? TreeUpdateBake : TreeUpdateOther;
+		add(reason);
+	}
 	::mc2_object_recon::Scope _recon_tree_(
 		&::mc2_object_recon::g_per_frame.tree_update_ns,
 		&::mc2_object_recon::g_per_frame.tree_update_calls);

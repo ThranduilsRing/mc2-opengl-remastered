@@ -227,6 +227,10 @@ void GameObjectManager::setNumObjects (long nMechs,
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
 	objList = entities.reset(getMaxObjects() + 1);
+	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
+	terrainPresentationWorldToClip = glm::mat4{0.0f};
+	terrainPresentationHeightEpoch = ~uint64_t{0};
+	terrainPresentationNightFactor = -1.0f;
 	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
@@ -1211,37 +1215,8 @@ void GameObjectManager::renderShadows (bool terrain, bool movers, bool other) {
 		gos_SetRenderState(	gos_State_ZWrite, 1);
 	}
 
-	if (terrain && renderObjects)
-	{
-		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
-		{
-			// Cull-cascade consumer (shadow render). Post-8c source of truth for
-			// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
-			// slim reduction loop in mclib/terrain.cpp (8c-part-1 merges the
-			// per-vertex cull writes into that loop) — NOT the deleted VPL body,
-			// NOT a "Step 5 / 5B slim pass" (that producer never existed; v3.2
-			// deleted it). See VPL-retirement plan v3.5 note (CRIT-0).
-			if (Terrain::objBlockInfo[terrainBlock].active)
-			{
-				long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
-				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
-				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
-				{
-					if (objList[objIndex] &&
-						objList[objIndex]->getExists() &&
-						Terrain::objVertexActive[objList[objIndex]->getVertexNum()])
-					{
-						objList[objIndex]->renderShadows();
-						if (MaxObjectsDrawn) {
-							//-----------------------------------------
-							// No more element groups, so stop drawing.
-							return;
-						}
-					}
-				}
-			}
-		}
-	}
+	// Terrain appearances' renderShadows are no-ops; the static caster registry
+	// supplies their shadows. Selection flags were consumed by the render extract.
 
 	if (movers) {
 		if (mechs) {

@@ -203,6 +203,7 @@ class TerrainObject : public GameObject {
 
 		// Presentation phase: applies the draw-side parameters update() leaves to the presentation pass.
 		void applyAppearancePush (void);
+		bool hasPresentationEffects() const { return static_cast<bool>(bldgDustPoofEffect); }
 
 		virtual void extractRenderView (mc2::render_view::RenderView& view);
 		virtual void renderView (const mc2::render_view::RenderView& view);
@@ -267,6 +268,7 @@ class TerrainObject : public GameObject {
 		
 		virtual void setPowerSupply (GameObjectPtr power)
 		{
+			markTerrainPresentationDirty();
 			powerSupply = power->getWatchID();
 		}
 

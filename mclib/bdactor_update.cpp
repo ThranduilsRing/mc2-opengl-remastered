@@ -542,6 +542,7 @@ long BldgAppearance::update (bool animate)
         if (simulationOwned() || mc2::overlap::onSimWorker()) { updateSimPose(); return TRUE; }
     }
 	mc2::overlap::assertMainThread("BldgAppearance::update presentation");
+	recordStaticUpdateReason();
 	updateRenderLOD();
 	updateFrameEffects();
 

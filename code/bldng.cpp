@@ -939,6 +939,7 @@ long Building::update (void)
 
 long Building::setTeamId (long _teamId, bool setup) 
 {
+	if (teamId != _teamId) markTerrainPresentationDirty();
 	if (sensorSystem)
 		SensorManager->removeTeamSensor(teamId, sensorSystem);
 

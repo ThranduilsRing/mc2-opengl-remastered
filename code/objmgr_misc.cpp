@@ -579,36 +579,50 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		ZoneScopedN("GameLogic.Presentation.Terrain");
         { ZoneScopedN("Presentation.Terrain.ReadbackSnapshot"); updateReadbackSnapshot(); }
         { ZoneScopedN("Presentation.Terrain.ActiveSweep"); updateActiveSweep(); }
-		int frameJobsPrePassCount = 0;
-		{ ZoneScopedN("Presentation.Terrain.FrameJobsPrepass"); updateFrameJobsPrepass(frameJobsPrePassCount); }
+		// The dirty queue is already the bounded work list; the old optional
+		// prepass rebuilt a full-scene bounds/touch list even for settled statics.
 		ZoneNamedN(walkZone, "Presentation.Terrain.Walk", true);
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
-		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
+		auto& dirty = mc2::terrainDirtyQueue();
+		const glm::mat4 worldToClip = eye ? eye->getWorldToClip() : glm::mat4{0.0f};
+		const float nightFactor = eye ? eye->nightFactor : 0.0f;
+		const bool isNight = eye && eye->isNight;
+		if (worldToClip != terrainPresentationWorldToClip || TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
+			nightFactor != terrainPresentationNightFactor || isNight != terrainPresentationIsNight) {
+			for (long block = 0; block < Terrain::numObjBlocks; ++block) {
+				const auto& info = Terrain::objBlockInfo[block];
+				for (long h = info.firstHandle; h < info.firstHandle + info.numObjects; ++h)
+					if (objList[h] && objList[h]->getAppearance()) objList[h]->getAppearance()->terrainPresentationHandle = h;
+				dirty.markBlock(Terrain::objBlockInfo[block].firstHandle, Terrain::objBlockInfo[block].numObjects);
+			}
+			terrainPresentationWorldToClip = worldToClip;
+			terrainPresentationHeightEpoch = TerrainRuntime::g_heightEpoch;
+			terrainPresentationNightFactor = nightFactor;
+			terrainPresentationIsNight = isNight;
+		}
+		for (long objIndex : dirty.drain())
 		{
-			// Cull-cascade consumer (object collect). Post-8c source of truth for
-			// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
-			// slim reduction loop in mclib/terrain.cpp (8c-part-1 merges the
-			// per-vertex cull writes into that loop) — NOT the deleted VPL body,
-			// NOT a "Step 5 / 5B slim pass" (that producer never existed; v3.2
-			// deleted it). See VPL-retirement plan v3.5 note (CRIT-0).
-			if (Terrain::objBlockInfo[terrainBlock].active)
-			{
-				long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
-				long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
-				for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
-				{
-					GameObjectPtr walkObj = objList[objIndex];   // hoisted: virtual calls force a reload of objList each use
-					if (walkObj &&
-						Terrain::objVertexActive[walkObj->getVertexNum()] &&
-						walkObj->getExists())
+			GameObjectPtr walkObj = objList[objIndex];
+			if (!walkObj || walkObj->isMover()) continue;
+			const auto kind = walkObj->getObjectClass();
+			if (kind != TREE && kind != TERRAINOBJECT && kind != BRIDGE && kind != BUILDING && kind != TURRET && kind != GATE) continue;
+					// Dirty poses are refreshed even before the render cull admits their
+					// vertices (its mask can still describe the previous camera).
+					if (walkObj->getExists())
 					{
-						if (walkObj->getObjectClass() == TERRAINOBJECT)
+						if (kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING)
 							static_cast<TerrainObject*>(walkObj)->applyAppearancePush();
 						auto* appearance = walkObj->getAppearance();
+						if (!appearance) continue;
+						if (appearance->terrainPoseDirty) {
+							appearance->terrainPoseDirty = false;
+							appearance->invalidateStaticRegistration();
+						}
 						appearance->flushSimEvents();
 						++walkVisited;
-						if (appearance->recalcBounds())
+						const bool inView = appearance->recalcBounds();
+						if (inView)
 						{
 							++walkRecalc; ++walkGround;
 							// Must force here as well.
@@ -620,6 +634,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 								pos.z = appearance->groundCacheZ;
 							else
 							{
+								if (appearance->groundCacheEpoch != 0xFFFFFFFFu && appearance->groundCacheEpoch != TerrainRuntime::g_heightEpoch)
+									appearance->invalidateStaticRegistration();
 								pos.z = TerrainRuntime::groundElevation(pos);
 								appearance->groundCacheX = pos.x; appearance->groundCacheY = pos.y;
 								appearance->groundCacheZ = pos.z; appearance->groundCacheEpoch = TerrainRuntime::g_heightEpoch;
@@ -638,9 +654,13 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
                                 { appearance->update(false); ++walkUpdate; }
 							appearance->setVisibility(true, true);
 						}
+						// Offscreen bake recovery waits for camera invalidation, as update()
+						// above cannot service it until recalcBounds admits the object.
+						if ((inView && !appearance->IsStaticNow()) || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
+							(appearance->getAppearanceClass() == BLDG_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
+							((kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING) && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
+							dirty.mark(objIndex);
 					}
-				}
-			}
 		}
 		namespace bb = mc2::battlebench;
 		bb::add(bb::WalkVisited, walkVisited); bb::add(bb::WalkRecalc, walkRecalc); bb::add(bb::WalkGround, walkGround);

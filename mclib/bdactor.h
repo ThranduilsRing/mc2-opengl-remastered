@@ -392,6 +392,7 @@ class BldgAppearance : public ObjectAppearance
 		// can pre-filter at submit time (don't bake a recipe for an animated
 		// or actively-fx'd building — it would never enter the static path).
 		bool isStaticEligible() const;
+		void recordStaticUpdateReason() const;
 		// Task 5 (Track B): mission-load bulk registration overrides.
 		virtual void registerStatic()              override;
 		virtual bool isStaticRegistered()    const override;
@@ -515,9 +516,11 @@ class BldgAppearance : public ObjectAppearance
 		{
 			return (appearType->terrainLightRGB != 0xffffffff);
 		}
+		bool hasFrameLights() const { return pointLight || !spotlightLights_.empty(); }
 		
 		virtual void setLightsOut (bool lightFlag)
 		{
+			if (forceLightsOut != lightFlag) markTerrainPresentationDirty();
 			forceLightsOut = lightFlag;
 		}
 
@@ -792,6 +795,7 @@ class TreeAppearance : public ObjectAppearance
 
 		virtual void setLightsOut (bool lightFlag)
 		{
+			if (forceLightsOut != lightFlag) markTerrainPresentationDirty();
 			forceLightsOut = lightFlag;
 		}
 		

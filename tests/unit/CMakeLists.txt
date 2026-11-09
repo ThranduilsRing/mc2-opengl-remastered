@@ -37,6 +37,8 @@ add_executable(mc2_tests
     test_support_craft.cpp
     test_jump_target.cpp
     test_contact_pick.cpp
+    test_building_static_eligibility.cpp
+    test_terrain_dirty_queue.cpp
     test_present_handoff.cpp
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
@@ -738,3 +740,11 @@ mc2_height_slice(radio_playback code/gamesound.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "${radio_playback}")
 target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
 set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(tree_dynamic_default mclib/bdactor_internal.h
+    "template <mc2::gate::Name n>" "inline constexpr float SPINRATE")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tree_dynamic_default.inc" CONTENT "${tree_dynamic_default}")
+mc2_height_slice(tree_recovery_gate mclib/bdactor_render.cpp
+    "static const bool s_forceDynamicTrees =" "if (s_forceDynamicTrees)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tree_recovery_gate.inc" CONTENT "${tree_recovery_gate}")
+target_sources(mc2_tests PRIVATE test_tree_bake_recovery.cpp)
+set_source_files_properties(test_tree_bake_recovery.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")

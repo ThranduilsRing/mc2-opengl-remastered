@@ -1550,6 +1550,11 @@ void GameObject::adoptAppearance (std::unique_ptr<Appearance> newAppearance) {
 
     if (mc2::tick::collecting()) releaseAppearance();
 	mc2::adoptOwnedView(appearanceOwner, appearance, newAppearance.release());
+	const auto kind = getObjectClass();
+	if (appearance && (kind == TREE || kind == TERRAINOBJECT || kind == BRIDGE || kind == BUILDING || kind == TURRET || kind == GATE)) {
+		appearance->terrainPresentationHandle = getHandle();
+		appearance->markTerrainPresentationDirty();
+	}
 }
 
 void GameObject::releaseAppearance (void) {
@@ -1763,6 +1768,7 @@ glm::vec3 GameObject::relativePosition (float angle, float distance, unsigned lo
 //---------------------------------------------------------------------------
 
 void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) {
+	if (position != newPosition) markTerrainPoseDirty();
 	if (ObjectManager) ObjectManager->invalidateSpatialGrid(!isMover());
 
 	position = newPosition;
@@ -1803,6 +1809,7 @@ void GameObject::setPosition (const glm::vec3& newPosition, bool calcPositions) 
 
 void GameObject::setExists(bool set) {
 	if (getExists() != set) {
+		markTerrainPresentationDirty();
 		if (mc2::world_trace::enabled())
 			mc2::world_trace::event(set ? "spawn" : "remove", this);
 		if (ObjectManager) ObjectManager->invalidateEntity(handle, this);
