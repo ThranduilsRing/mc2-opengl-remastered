@@ -6,6 +6,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "static_caster_set.h"
 #include "gos_static_prop_selflit.h"
+#include "../../RenderCore/StaticPropVertexIndex.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "meshoptimizer.h"
@@ -235,7 +236,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     // preserving authored triangle order. Reuse byte-identical packed vertices:
     // corner UV seams, source vertex IDs/light tags and reversed card normals
     // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
-    std::unordered_map<std::string, uint32_t> vertexIndices;
+    auto vertexIndices = mc2_prop::makeVertexIndex(numTris, selfLitTwoSided);
     uint32_t runStart = 0;
     uint32_t packetCountForThisType = 0;
     while (runStart < numTris) {

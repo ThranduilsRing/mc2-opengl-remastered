@@ -9,6 +9,7 @@ Run:
 from __future__ import annotations
 
 import sys
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,42 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from smoke_lib import nofocus  # noqa: E402
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows priority inheritance")
+@pytest.mark.parametrize("flags", [0, 0x40, 0x80, 0x08008000])
+def test_engine_spawn_from_idle_parent_is_below_normal(monkeypatch, flags, capsys):
+    import ctypes
+    from ctypes import wintypes
+    from smoke_lib import exe_guard, host_lease
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel.GetPriorityClass.argtypes = [wintypes.HANDLE]
+    kernel.GetPriorityClass.restype = wintypes.DWORD
+    kernel.SetPriorityClass.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel.SetPriorityClass.restype = wintypes.BOOL
+    parent = kernel.GetCurrentProcess()
+    saved = kernel.GetPriorityClass(parent)
+    monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda *_: None)
+    monkeypatch.setattr(nofocus, "_hold_host_lease", lambda *_: None)
+    monkeypatch.setattr(nofocus, "_record_child", lambda *_: None)
+    monkeypatch.setattr(exe_guard, "engine_kind", lambda _: "mc2")
+    monkeypatch.setattr(host_lease, "held_device", lambda: None)
+    monkeypatch.setattr(host_lease, "apply_affinity", lambda *_: None)
+    proc = None
+    try:
+        assert kernel.SetPriorityClass(parent, 0x40)
+        proc = nofocus.spawn([sys.executable, "-c", "import sys; sys.stdin.read()"],
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, creationflags=flags)
+        assert kernel.GetPriorityClass(int(proc._handle)) == 0x4000
+        assert kernel.GetPriorityClass(parent) == 0x40
+        assert "class=0x4000 expected=0x4000" in capsys.readouterr().err
+    finally:
+        assert kernel.SetPriorityClass(parent, saved)
+        if proc is not None:
+            proc.communicate(timeout=10)
 
 
 def test_constant_pairs_no_launcher_with_json_kill_switch():

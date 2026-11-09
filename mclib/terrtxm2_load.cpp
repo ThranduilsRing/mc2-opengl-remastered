@@ -652,7 +652,7 @@ long TerrainColorMap::init (char *fileName)
 		const unsigned char* normalLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 		const unsigned char* dispLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 		// The decoded layers; the pointers above view these until the block ends.
-		std::vector<DWORD> normalStore[9], dispStore[9];
+		std::vector<unsigned char> normalStore[9], dispStore[9];
 		int arrayWidth = 0;
 		bool allLoaded = true;
 
@@ -682,17 +682,10 @@ long TerrainColorMap::init (char *fileName)
 			{ allLoaded = false; break; }
 
 			long pixels = static_cast<long>(nmInfo.width) * static_cast<long>(nmInfo.width);
-			normalStore[mat].assign(static_cast<size_t>(pixels), 0);
-			DWORD* rgba = normalStore[mat].data();
-			MemoryPtr loadBuf = nmData.data() + sizeof(TGAFileHeader);
-			if (nmInfo.pixel_depth == 24) {
-				MemoryPtr cMap = reinterpret_cast<MemoryPtr>(rgba);
-				MemoryPtr lMap = loadBuf;
-				for (long i = 0; i < pixels; i++)
-				{ *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff; }
-			} else {
-				memcpy(rgba, loadBuf, pixels * sizeof(DWORD));
-			}
+			if (!mc2::tga::expandPixels(nmData, sizeof(TGAFileHeader), static_cast<size_t>(pixels), nmInfo.pixel_depth))
+			{ allLoaded = false; break; }
+			normalStore[mat] = std::move(nmData);
+			MemoryPtr rgba = normalStore[mat].data() + sizeof(TGAFileHeader);
 			bool top = (nmInfo.image_descriptor & 32) != 0;
 			if (!top) flipTopToBottom(reinterpret_cast<MemoryPtr>(rgba), 32, nmInfo.width, nmInfo.height);
 			normalLayers[mat] = reinterpret_cast<const unsigned char*>(rgba);
@@ -716,17 +709,10 @@ long TerrainColorMap::init (char *fileName)
 				{ allLoaded = false; break; }
 
 				long pixels = static_cast<long>(dispInfo.width) * static_cast<long>(dispInfo.width);
-				dispStore[mat].assign(static_cast<size_t>(pixels), 0);
-				DWORD* rgba = dispStore[mat].data();
-				MemoryPtr loadBuf = dispData.data() + sizeof(TGAFileHeader);
-				if (dispInfo.pixel_depth == 24) {
-					MemoryPtr cMap = reinterpret_cast<MemoryPtr>(rgba);
-					MemoryPtr lMap = loadBuf;
-					for (long i = 0; i < pixels; i++)
-					{ *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff; }
-				} else {
-					memcpy(rgba, loadBuf, pixels * sizeof(DWORD));
-				}
+				if (!mc2::tga::expandPixels(dispData, sizeof(TGAFileHeader), static_cast<size_t>(pixels), dispInfo.pixel_depth))
+				{ allLoaded = false; break; }
+				dispStore[mat] = std::move(dispData);
+				MemoryPtr rgba = dispStore[mat].data() + sizeof(TGAFileHeader);
 				bool top = (dispInfo.image_descriptor & 32) != 0;
 				if (!top) flipTopToBottom(reinterpret_cast<MemoryPtr>(rgba), 32, dispInfo.width, dispInfo.height);
 				dispLayers[mat] = reinterpret_cast<const unsigned char*>(rgba);

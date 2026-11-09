@@ -263,11 +263,6 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
 
                 const float h1 = hashf(clumpCx + fi * 73.1f,  clumpCy + fi *  7.3f);
                 const float h2 = hashf(clumpCy + fi * 83.7f,  clumpCx + fi *  3.1f);
-                const float h3 = hashf(clumpCx + fi * 199.1f, clumpCy + fi * 17.3f);
-                const float h4 = hashf(clumpCy + fi * 151.3f, clumpCx + fi * 11.7f);
-                const float h5 = hashf(clumpCx + fi * 37.9f,  clumpCy + fi * 59.1f);
-                const float h6 = hashf(clumpCy + fi * 61.3f,  clumpCx + fi * 43.1f);
-                const float h7 = hashf(clumpCx + fi * 113.7f, clumpCy + fi * 89.3f);
 
                 const float instWx = clumpCx + (h1 - 0.5f) * 20.0f;
                 const float instWy = clumpCy + (h2 - 0.5f) * 20.0f;
@@ -321,6 +316,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     }
                 }
 
+                // Rejected candidates need position hashes only.
+                const auto [h3, h4, h5, h6, h7] = mc2::vegetation::appearanceNoise(clumpCx, clumpCy, fi);
                 GosVegetation::Instance inst;
                 inst.x          = instWx - originX - mapHalf;
                 inst.y          = instWy - originY + mapHalf;

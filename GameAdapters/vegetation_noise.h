@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <array>
 
 namespace mc2::vegetation {
 
@@ -28,6 +29,16 @@ namespace mc2::vegetation {
     const float h01 = hashf(static_cast<float>(cx    ), static_cast<float>(cy + 1));
     const float h11 = hashf(static_cast<float>(cx + 1), static_cast<float>(cy + 1));
     return h00*(1-fx)*(1-fy) + h10*fx*(1-fy) + h01*(1-fx)*fy + h11*fx*fy;
+}
+
+// Pure appearance values: evaluate only after placement gates accept a card.
+[[nodiscard]] inline std::array<float, 5> appearanceNoise(float x, float y, float i) noexcept
+{
+    return {hashf(x + i * 199.1f, y + i * 17.3f),
+            hashf(y + i * 151.3f, x + i * 11.7f),
+            hashf(x + i * 37.9f, y + i * 59.1f),
+            hashf(y + i * 61.3f, x + i * 43.1f),
+            hashf(x + i * 113.7f, y + i * 89.3f)};
 }
 
 } // namespace mc2::vegetation
