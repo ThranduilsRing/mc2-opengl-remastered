@@ -39,6 +39,7 @@
 #include <cstddef>
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <source_location>
 #include <mutex>
@@ -178,7 +179,9 @@ private:
     // Plain submits (command buffers only: no fence, no binary semaphores) are collected and go out as ONE vkQueueSubmit2 with one timeline
     // signal (the newest value) at the next flush point: a submit that carries a fence or a semaphore, present, poll (so isComplete/wait),
     // waitIdle and endFrame. Queue order equals call order; the older tickets complete with the batch.
-    void flushPendingLocked() const;   // submitMutex_ held
+    void flushPendingLocked() const;   // submitMutex_ held; resolves reserved recordings first (not on the present worker: that one queues the prefix before the first)
+    void flushPrefixLocked(size_t count) const;   // submitMutex_ held: queue the first `count` pending entries (signals the value of the last)
+    void resolveRecordsLocked() const;            // submitMutex_ held
     GpuTicket flushUploadsLocked() const;
 public:
     CompletionTracker&       tracker()       { return tracker_; }
@@ -229,6 +232,26 @@ public:
     // initial state and valid until the frame slot restarts. Any thread while a frame records; VK_NULL_HANDLE when the thread has no lane or the pool
     // failed (record on main instead). The caller keeps the buffers in its own canonical order and appends them to the submit batch from main.
     VkCommandBuffer acquireRecordCommandBuffer();
+
+    // Recorded islands: an island whose inputs are frozen (staged into the frame ring and its descriptor sets on main) hands its recording over as a
+    // callback. submitRecorded() reserves the island's place in the deferred submit batch and its timeline value NOW (queue order = call order, as
+    // with submit()), and the recording runs later, at the next flush point (poll, wait, waitIdle, endFrame, a submit that carries a fence or a
+    // semaphore), on a Render-domain parallel_for: every callback of the batch records into acquireRecordCommandBuffer() of the thread it runs on,
+    // and main fills the batch with the finished buffers in reserved order. Without an active executor (MC2_FRAME_JOBS=0, no pool) the callback runs
+    // inline on main and submits at once. `rec` runs on any thread: it may touch only what the island captured by value or owns (pipelines,
+    // descriptor sets, the frame-ring bytes it was given); it must not submit, poll, wait or queue uploads. `done(ok)` runs on the flushing thread
+    // (main in the engine), in reserved order, once the callback returned (ok = recorded; inline mode: and submitted); it must not call back into
+    // this context. Main thread only.
+    using RecordFn = std::function<bool(VkCommandBuffer)>;
+    using RecordDoneFn = std::function<void(bool ok)>;
+    struct RecordExecutor {
+        bool (*active)() = nullptr;                                               // true while worker threads exist
+        void (*run)(int count, const std::function<void(int)>& body) = nullptr;   // body(i) for i in [0,count), any order, joined before return
+    };
+    void setRecordExecutor(const RecordExecutor& ex) { recordExecutor_ = ex; }
+    VkResult submitRecorded(RecordFn rec, RecordDoneFn done, uint64_t* outValue);
+    // Render thread (a no-op on the present worker): record everything reserved so far (does not submit). Called before a per-frame slot closes (pass timer, GPU profiler).
+    void resolveRecorded();
     VkDeviceSize frameAlignment() const { return frameAlign_; }
     VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
 
@@ -273,10 +296,13 @@ private:
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
-    mutable std::vector<VkCommandBuffer> pendingCbs_;   // submitMutex_
+    struct PendingEntry { VkCommandBuffer cb = VK_NULL_HANDLE; uint64_t value = 0; };   // cb null = a reserved record not resolved yet (or one that failed)
+    struct PendingRecord { size_t entry = 0; RecordFn rec; RecordDoneFn done; VkCommandBuffer cb = VK_NULL_HANDLE; bool ok = false; std::chrono::steady_clock::time_point reservedAt{}; };
+    mutable std::vector<PendingEntry> pending_;          // submitMutex_: the deferred batch in submit order; the batch signals the last entry's value
+    mutable std::vector<PendingRecord> pendingRecs_;     // submitMutex_: reserved recordings, in entry order
+    RecordExecutor recordExecutor_;
     mutable bool pendingFailed_ = false;                 // submitMutex_: a batched submit failed after its callers were told VK_SUCCESS; the next submit() reports it
     mutable std::chrono::steady_clock::time_point pendingSince_{};   // submitMutex_: when the pending batch got its first command buffer
-    mutable uint64_t pendingValue_ = 0;                  // submitMutex_: the timeline value the pending batch signals (0 = none)
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
     bool             temporalFeatures_  = false;   // see temporalFeaturesEnabled()
@@ -316,6 +342,10 @@ inline void nameObjectAt(VkDevice device, Handle handle, std::string_view name, 
 // engine init (gameosmain) so init order + fail-soft coercion are controlled by
 // the caller. Never returns null.
 VulkanContext& getOrCreateEngineVulkanContext(std::source_location site = std::source_location::current());
+
+// The same object without the present-seal wait. For a recording callback on a pool worker (VulkanContext::submitRecorded), which must never block on the
+// present worker: the render thread holds the submit lock while the callbacks run, and the present worker needs it to seal.
+VulkanContext& engineVulkanContextNoWait();
 
 // Convenience: true if the engine context has been born and holds a live device.
 bool engineVulkanContextValid(std::source_location site = std::source_location::current());

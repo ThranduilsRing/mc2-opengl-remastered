@@ -836,29 +836,12 @@ extern "C" int mc2_vk_vfx_island_run(
         }
     }
 
-    // Record: one renderpass, per-group pipeline + sub-range draw.
-    VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
-    VkRenderPassBeginInfo rbi{};   // all attachments LOAD: no clear values
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-    const VkPipelineLayout layout = indexed ? s->indexedLayout.get() : s->playout.get();
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &s->set[par], 2, dynOffsets);
-    if (indexed) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 1, 1, &s->indexedSet[par], 0, nullptr);
-    unsigned long groupsDrawn = 0;
-    VkPipeline bound = VK_NULL_HANDLE;
-    VkDescriptorSet boundPage = VK_NULL_HANDLE;
+    // Record: one renderpass, per-group pipeline + sub-range draw. The draw list is copied out here (the caller's arrays do not outlive this call; the
+    // pipelines and pages are resolved now, on the render thread) and the recording runs on a worker with the frame's other recorded islands
+    // (VulkanContext::submitRecorded). It touches only the copies and handles it captured.
+    struct RecDraw { VkPipeline pipe; VkDescriptorSet page; VfxGroupPush push; uint32_t count; uint32_t start; };
+    std::vector<RecDraw> recDraws;
+    recDraws.reserve(plan.size());
     for (const mc2vfx::PlanDraw& pd : plan) {
         const uint32_t gi = items[pd.item].tag;
         const VfxParticleDraw& d = draws[gi];
@@ -867,32 +850,65 @@ extern "C" int mc2_vk_vfx_island_run(
         else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         else if (d.additive == 3) want = s->opaquePipe.get();
         if (indexed) want = s->indexedPipes[mc2vfx::plan_pipe(d.additive)].get();
-        if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
-        if (!indexed && *groupPage[gi] != boundPage) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 1, 1, &*groupPage[gi], 0, nullptr);
-            boundPage = *groupPage[gi];
-        }
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
-        vkCmdPushConstants(cb, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
-        mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, pd.count * expansion, 1, pd.start * expansion, 0);
-        ++groupsDrawn;
+        recDraws.push_back({want, indexed ? VK_NULL_HANDLE : *groupPage[gi], push, pd.count * expansion, pd.start * expansion});
     }
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_AlphaVfx);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    if (recDraws.empty()) return 0;   // nothing drawable this frame: nothing is recorded or submitted
+    const unsigned long groupsDrawn = static_cast<unsigned long>(recDraws.size());
 
-    if (groupsDrawn == 0) return 0;   // nothing drawable this frame: the recorded buffer is not submitted (the guard cancels its bracket)
-
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    { ZoneScopedN("VKIsl.Vfx.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      uint64_t value = 0;
-      if (slotCtx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+    const VkRenderPass rpass = s->rpass.get();
+    const VkFramebuffer fb = s->fb.get();
+    const VkPipelineLayout playout = indexed ? s->indexedLayout.get() : s->playout.get();
+    const VkDescriptorSet frameSet = s->set[par];
+    const VkDescriptorSet indexedSet = indexed ? s->indexedSet[par] : VK_NULL_HANDLE;
+    const uint32_t offs0 = dynOffsets[0], offs1 = dynOffsets[1];
+    auto record = [recDraws = std::move(recDraws), rpass, fb, playout, frameSet, indexedSet, offs0, offs1, w, h](VkCommandBuffer cb) -> bool {
+        ZoneScopedN("VKIsl.Vfx.Record");
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+        vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
+        VkRenderPassBeginInfo rbi{};   // all attachments LOAD: no clear values
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = rpass; rbi.framebuffer = fb;
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx");
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
+        const uint32_t dynOffsets[2] = {offs0, offs1};
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &frameSet, 2, dynOffsets);
+        if (indexedSet != VK_NULL_HANDLE) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 1, 1, &indexedSet, 0, nullptr);
+        VkPipeline bound = VK_NULL_HANDLE;
+        VkDescriptorSet boundPage = VK_NULL_HANDLE;
+        for (const RecDraw& d : recDraws) {
+            if (d.pipe != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipe); bound = d.pipe; }
+            if (d.page != VK_NULL_HANDLE && d.page != boundPage) {
+                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 1, 1, &d.page, 0, nullptr);
+                boundPage = d.page;
+            }
+            vkCmdPushConstants(cb, playout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(d.push), &d.push);
+            mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, d.count, 1, d.start, 0);
+        }
+        vkCmdEndRenderPass(cb);
+        gpuScope.end();
+        vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_AlphaVfx);
+        return vkEndCommandBuffer(cb) == VK_SUCCESS;
+    };
+    // done() runs on the render thread once the recording ran (and, with no worker pool, was submitted): a failed recording disables the island and
+    // cancels the pass bracket, as the inline path did.
+    auto done = [s](bool ok) {
+        if (ok) return;
+        vk_render_pass_timer::Cancel(gos_render_pass_timer::Pass_AlphaVfx);
+        setFallback("record_failed");
+        s->disabled = true;
+    };
+    uint64_t value = 0;
+    { ZoneScopedN("VKIsl.Vfx.Submit");   // VK-ISLAND-TRACY-1: the reservation in the deferred submit batch (the recording runs at the flush)
+      if (slotCtx.submitRecorded(std::move(record), std::move(done), &value) != VK_SUCCESS) return 0;   // done(false) already disabled the island
       s->ticket[par] = value; }
-    timerGuard.submitted();
 
     if (meshDraws && !g_health.nativeMeshDraws) vlog("native_geometry kind=mesh draws=%lu", meshDraws);
     if (tubeDraws && !g_health.nativeTubeDraws) vlog("native_geometry kind=tube draws=%lu", tubeDraws);
