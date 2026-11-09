@@ -173,7 +173,8 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
 
 // Moves a live entry to the deferred-destroy queue (destroyed once the frame that may sample it has completed).
 void imguiTexRetire(EnginePresentVk::Impl& s, std::unordered_map<uint64_t, EnginePresentVk::Impl::ImguiTexEntry>::iterator it) {
-    s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(it->second)));
+    auto& [id, entry] = *it;
+    s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(entry)));
     s.imguiTex.erase(it);
 }
 
@@ -185,10 +186,16 @@ bool imguiTexMakeRoom(EnginePresentVk::Impl& s) {
         return false;
     if (s.imguiTex.size() >= kImguiTexCap) {
         auto victim = s.imguiTex.end();
-        for (auto v = s.imguiTex.begin(); v != s.imguiTex.end(); ++v)
-            if (v->second.lastUsedFrame != s.imguiTexFrame &&
-                (victim == s.imguiTex.end() || v->second.lastUsedFrame < victim->second.lastUsedFrame))
+        for (auto v = s.imguiTex.begin(); v != s.imguiTex.end(); ++v) {
+            const auto& [id, entry] = *v;
+            if (entry.lastUsedFrame == s.imguiTexFrame) continue;
+            if (victim == s.imguiTex.end()) {
                 victim = v;
+            } else {
+                const auto& [victimId, victimEntry] = *victim;
+                if (entry.lastUsedFrame < victimEntry.lastUsedFrame) victim = v;
+            }
+        }
         if (victim == s.imguiTex.end())
             return false;
         imguiTexRetire(s, victim);
