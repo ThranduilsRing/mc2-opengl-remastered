@@ -52,6 +52,7 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
         if (!archive.empty()) {
             static std::unordered_map<std::string, bool> userArchives;
             auto [it, inserted] = userArchives.try_emplace(archive, false);
+            auto& [archiveKey, isUserArchive] = *it;
             if (inserted) {
                 std::ifstream input(archive, std::ios::binary); // path-audit: loose-only root FST provenance
                 uLong crc = crc32(0, nullptr, 0);
@@ -60,9 +61,9 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
                     crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
                 std::error_code error;
                 const auto bytes = std::filesystem::file_size(archive, error);
-                it->second = error || !input.eof() || !RenderCore::stockPbrArchive(bytes, static_cast<uint32_t>(crc));
+                isUserArchive = error || !input.eof() || !RenderCore::stockPbrArchive(bytes, static_cast<uint32_t>(crc));
             }
-            userArchive = it->second;
+            userArchive = isUserArchive;
         }
     }
     if (userArchive || (!legacyMod && userLooseBuildingAsset(original, "", [&] {
