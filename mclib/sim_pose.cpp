@@ -3,30 +3,25 @@
 #include "msl_internal.h"
 #include "sim_pose_kernel.h"
 
-long TG_MultiShape::TransformSimPose(glm::vec3* pos, glm::quat* rot)
+void TG_MultiShape::CaptureSimPose(glm::vec3* pos, glm::quat* rot, mc2::sim::PoseJob& job)
 {
-    ZoneScopedN("GameLogic.SimPose.Kernel");
-    // Synchronous evaluation is the revision/lifetime boundary: no mover,
-    // animation, shape generation or turn can change before publication.
-    const int32_t revision = turn;
+    // Capture is the revision/lifetime boundary: the job owns copies of every input, so no mover, animation, shape
+    // generation or turn change after this point can reach the evaluation; publication writes back in node order.
+    job.revision = turn;
+    job.done = false;
     const long frame = float2long(frameNum);
-    glm::mat4 origin;
-    mc2::math::buildRotation(origin, *rot);
-    mc2::math::buildTranslation(origin, *pos);
+    mc2::math::buildRotation(job.origin, *rot);
+    mc2::math::buildTranslation(job.origin, *pos);
     BindMaterials(); // material registry writes must stay on the sim thread
 
-    // Reuse capture storage without adding per-instance state or save bytes.
-    static thread_local std::vector<mc2::sim::PoseNodeInput> inputs;
-    static thread_local std::vector<mc2::sim::PoseMatrices> outputs;
-    static thread_local std::vector<unsigned char> evaluated;
-    inputs.resize(numTG_Shapes);
-    outputs.resize(numTG_Shapes);
-    evaluated.resize(numTG_Shapes);
+    job.inputs.resize(numTG_Shapes);
+    job.outputs.resize(numTG_Shapes);
+    job.evaluated.resize(numTG_Shapes);
     for (int i = 0; i < numTG_Shapes; ++i) {
         const auto& rec = listOfShapes[i];
-        auto& in = inputs[i];
+        auto& in = job.inputs[i];
         in.parent = rec.parentNode ? static_cast<int>(rec.parentNode - listOfShapes) : -1;
-        in.current = rec.calcedThisFrame == revision;
+        in.current = rec.calcedThisFrame == job.revision;
         // Only private mech/vehicle simulation shapes call this entry point.
         // Their anchor queries read shapeToWorld; CpuDraw's inverse consumer
         // uses the separate presentation shapes and TransformMultiShape.
@@ -43,17 +38,30 @@ long TG_MultiShape::TransformSimPose(glm::vec3* pos, glm::quat* rot)
             ? rec.currentAnimation->pos[frame]
             : (in.parent < 0 ? rec.node->myType->GetNodeCenter() : rec.node->myType->GetRelativeNodeCenter());
     }
-    mc2::sim::poseNodes(inputs, origin, outputs, evaluated);
+}
+
+void TG_MultiShape::PublishSimPose(const mc2::sim::PoseJob& job)
+{
     // Canonical node order, independent of worker count.
     for (int i = 0; i < numTG_Shapes; ++i) {
         auto& rec = listOfShapes[i];
-        if (!inputs[i].current) {
-            rec.localShapeToWorld = outputs[i].local;
-            rec.shapeToWorld = outputs[i].world;
-            if (inputs[i].inverseRequired) rec.worldToShape = outputs[i].inverse;
-            rec.calcedThisFrame = revision;
+        if (!job.inputs[i].current) {
+            rec.localShapeToWorld = job.outputs[i].local;
+            rec.shapeToWorld = job.outputs[i].world;
+            if (job.inputs[i].inverseRequired) rec.worldToShape = job.outputs[i].inverse;
+            rec.calcedThisFrame = job.revision;
         }
-        if (rec.node) rec.node->lastTurnTransformed = revision;
+        if (rec.node) rec.node->lastTurnTransformed = job.revision;
     }
+}
+
+long TG_MultiShape::TransformSimPose(glm::vec3* pos, glm::quat* rot)
+{
+    ZoneScopedN("GameLogic.SimPose.Kernel");
+    // Reuse capture storage without adding per-instance state or save bytes.
+    static thread_local mc2::sim::PoseJob job;
+    CaptureSimPose(pos, rot, job);
+    job.evaluate();
+    PublishSimPose(job);
     return 0;
 }

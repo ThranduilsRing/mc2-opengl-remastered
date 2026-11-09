@@ -670,6 +670,7 @@ void Mech3DAppearance::setWeaponNodeRecycle(long nodeId, float time)
 
 glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 {
+    settleSimPose();
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
 
 	POSE_VIEW_LOCALS
@@ -730,6 +731,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 
 glm::vec3 Mech3DAppearance::getNodeNamePosition (mc2::czstring nodeName)
 {
+    settleSimPose();
     if (!simPresentationPass && simPose->ready) {
         if (S_stricmp(nodeName, "cockpit") == 0) return simPose->cockpit;
         if (S_stricmp(nodeName, "hit_left") == 0) return simPose->hitLeft;
@@ -781,6 +783,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (mc2::czstring nodeName)
 
 glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 {
+    settleSimPose();
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
 
 	POSE_VIEW_LOCALS
@@ -814,6 +817,7 @@ glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 
 glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
 {
+    settleSimPose();
     if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
 
 	POSE_VIEW_LOCALS

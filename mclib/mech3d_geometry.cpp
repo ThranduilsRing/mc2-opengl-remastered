@@ -10,6 +10,7 @@
 #include <format>
 #include "mover_lamps.h"
 #include "mech_death_policy.h"
+#include "../code/job_system.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
@@ -1029,6 +1030,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	// Built entirely from the sim copies (simulationShape_, simPosition_/simRotation_/simStatus_, the sim node indices): the
 	// draw-side mechShape, position, rotation, status and node indices are never touched here, so presentation and render can
 	// use them while a tick runs. The locals shadow the draw members of the same names so the body below is unchanged.
+	if (simPosePending_) finishSimPose();
 	if (!mechType || !mechType->mechShape[0])
 		return;
 
@@ -1080,7 +1082,10 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	key.position = position;
 	key.leftArmOff = unitAnim().leftArmOff;
 	key.rightArmOff = unitAnim().rightArmOff;
-	const bool reusePose = hadPose && simPoseKeyValid_ && key == simPoseKey_ && !mc2mechanim::AnyImportedAnim();
+	const bool reusePose = mc2::sim::reuseSimPose(hadPose, simPoseKeyValid_, key, simPoseKey_, mc2mechanim::AnyImportedAnim());
+	if (reusePose) ++s_simPoseReused;
+	// Imported clips tick (and are read back) inside this call, so only stock poses join the cross-mech batch.
+	const bool deferPose = !reusePose && s_simPoseBatching && advanceClock && !mc2mechanim::AnyImportedAnim();
 	if (!reusePose)
 	{
 	simPoseKeyValid_ = false;
@@ -1098,7 +1103,13 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
-	mechShape->TransformSimPose(&xlatPosition, &qRotation);
+	if (deferPose) {
+		mechShape->CaptureSimPose(&xlatPosition, &qRotation, simPoseJob_);
+		++s_simPoseBatched;
+	} else {
+		mechShape->TransformSimPose(&xlatPosition, &qRotation);
+		++s_simPoseEager;
+	}
 	}
 	{
 		mc2mechanim::MechMotion _mm;
@@ -1130,9 +1141,31 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	}
 
 
-    if (!reusePose) {
+    if (deferPose) {
+        // simPose stays not-ready until finishSimPose publishes it (flush, or the first read of this mech's pose).
+        pendingSimPoseKey_ = key;
+        pendingSimXlat_ = xlatPosition;
+        pendingSimRot_ = qRotation;
+        simPosePending_ = true;
+        s_simPosePending.push_back(this);
+    } else if (!reusePose) {
+        publishSimPose(xlatPosition, qRotation, key);
+    }
+    if (!deferPose) simPose->ready = true;
+    buildingSimPose_ = false;
+}
+
+std::uint64_t Mech3DAppearance::s_simPoseEager = 0, Mech3DAppearance::s_simPoseBatched = 0, Mech3DAppearance::s_simPoseReused = 0;
+bool Mech3DAppearance::s_simPoseBatching = false;
+std::vector<Mech3DAppearance*> Mech3DAppearance::s_simPosePending;
+
+// Writes every simPose field from the posed simulationShape_ (the getters take the sim view while buildingSimPose_).
+void Mech3DAppearance::publishSimPose (const glm::vec3& xlatPosition, const glm::quat& qRotation, const SimPoseKey& key)
+{
+    TG_MultiShapePtr const mechShape = simulationShape_.get();
+    const glm::vec3 position = key.position;
     simPose->root = position;
-    simPose->heading = rotation;
+    simPose->heading = key.rotation;
     simPose->nodes.resize(mechType->getTotalNodes());
     for (long i = 0; i < mechType->getTotalNodes(); ++i) simPose->nodes[i] = (i >= mechType->numSmokeNodes && i < mechType->numSmokeNodes + mechType->numWeaponNodes) ? getWeaponNodePosition(i) : getNodePosition(i);
     simPose->hitLeft = getHitNodeLeft();
@@ -1145,9 +1178,45 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     }
     simPoseKey_ = key;
     simPoseKeyValid_ = true;
-    }
+}
+
+void Mech3DAppearance::finishSimPose (void)
+{
+    simPosePending_ = false;
+    simPoseJob_.evaluate();
+    simulationShape_->PublishSimPose(simPoseJob_);
+    buildingSimPose_ = true;
+    publishSimPose(pendingSimXlat_, pendingSimRot_, pendingSimPoseKey_);
     simPose->ready = true;
     buildingSimPose_ = false;
+}
+
+void Mech3DAppearance::beginSimPoseBatch (void)
+{
+    s_simPoseBatching = true;
+}
+
+void Mech3DAppearance::flushSimPoseBatch (void)
+{
+    s_simPoseBatching = false;
+    auto& list = s_simPosePending;
+    if (!list.empty()) {
+        ZoneScopedN("GameLogic.SimPose.Batch");
+        // Each job reads only its own captured inputs and writes only its own outputs; publication below runs serially in
+        // mech-walk order, so the result is identical for any worker count. Jobs a reader already settled are skipped.
+        mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(list.size()), 1, 20000, [&](int begin, int end) {
+            for (int i = begin; i < end; ++i)
+                if (list[i]->simPosePending_) list[i]->simPoseJob_.evaluate();
+        });
+        for (auto* appearance : list)
+            if (appearance->simPosePending_) appearance->finishSimPose();
+        list.clear();
+    }
+    static std::uint64_t s_batches = 0;
+    if ((++s_batches % 1024) == 0)
+        fprintf(stderr, "[SIM_POSE v1] ticks=%llu eager=%llu batched=%llu reused=%llu\n",
+                static_cast<unsigned long long>(s_batches), static_cast<unsigned long long>(s_simPoseEager),
+                static_cast<unsigned long long>(s_simPoseBatched), static_cast<unsigned long long>(s_simPoseReused));
 }
 
 bool Mech3DAppearance::setJumpParameters (glm::vec3 &end)

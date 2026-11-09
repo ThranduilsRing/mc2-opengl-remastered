@@ -52,6 +52,7 @@ namespace Microsoft
 // Structs used by layer.
 //
 
+namespace mc2::sim { struct PoseJob; }
 class TG_MultiShape;
 class TG_AnimateShape;
 namespace mc2::content { struct Asset; }
@@ -476,6 +477,10 @@ class TG_MultiShape
 		long TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot);
 		// Simulation-only immutable capture, fork/join, then node-order publish.
 		long TransformSimPose (glm::vec3 *pos, glm::quat *rot);
+		// TransformSimPose split for cross-mech batching: capture (sim thread), PoseJob::evaluate (any thread), publish
+		// (sim thread). Capture + evaluate + publish is exactly TransformSimPose.
+		void CaptureSimPose (glm::vec3 *pos, glm::quat *rot, mc2::sim::PoseJob& job);
+		void PublishSimPose (const mc2::sim::PoseJob& job);
 
 		// Slice D-leaf-skip-v2 (2026-05-09): runtime alias of _BuildRecipe for the
 		// GPU mech body callsite. Reuses s_buildRecipeOnly mechanism to skip

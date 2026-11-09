@@ -143,6 +143,9 @@ public:
         bool wakeRequested = false, activityLoop = false, leftArmOff = false, rightArmOff = false;
     } appliedEffects_;
     virtual void refreshSimPose() {}
+    // Completes a simulation pose deferred into the tick's cross-mech batch (Mech3DAppearance); direct simPose readers
+    // call it before trusting simPose->ready.
+    virtual void settleSimPose() {}
     // What the tick feeds the sim half of an appearance (animation state machine, SimPose). Only the tick writes it; the draw
     // state (position, rotation, status, alpha, bars ...) is pushed by presentation from the owner's state.
     struct SimInput {

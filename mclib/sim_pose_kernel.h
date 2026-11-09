@@ -3,7 +3,9 @@
 #pragma once
 #include "math/mc2_math.h"
 #include "math/mc2_xform.h"
+#include <cstdint>
 #include <span>
+#include <vector>
 
 namespace mc2::sim {
 struct PoseMatrices {
@@ -71,5 +73,38 @@ inline void poseNodes(std::span<const PoseNodeInput> nodes,
     };
     // Node storage need not be topologically sorted (including imported shapes).
     for (size_t i = 0; i < nodes.size(); ++i) evaluate(evaluate, static_cast<int>(i));
+}
+
+// One shape's captured pose: TG_MultiShape::CaptureSimPose fills it on the sim thread, evaluate() is pure (any thread,
+// alloc-free once sized), TG_MultiShape::PublishSimPose writes the matrices back on the sim thread.
+struct PoseJob {
+    std::vector<PoseNodeInput> inputs;
+    std::vector<PoseMatrices> outputs;
+    std::vector<unsigned char> evaluated;
+    glm::mat4 origin{1.0f};
+    int32_t revision = 0;
+    bool done = false;
+    void evaluate() {
+        if (done) return;
+        poseNodes(inputs, origin, outputs, evaluated);
+        done = true;
+    }
+};
+
+// Every input of a published mech simulation pose. An equal key reuses the published pose; any change (shape or
+// binding, gesture, frame, torso, root, status, arm loss), a pose cleared by load/reset (hadPose false) or any
+// imported clip (which advances its own clock) recomputes it.
+struct SimPoseKey {
+    std::uint64_t shapeId = 0, bindRevision = 0;
+    const void* type = nullptr;
+    long gesture = 0, status = 0;
+    float frame = 0.0f, torso = 0.0f, rotation = 0.0f;
+    glm::vec3 position{};
+    bool leftArmOff = false, rightArmOff = false;
+    bool operator==(const SimPoseKey&) const = default;
+};
+inline bool reuseSimPose(bool hadPose, bool keyValid, const SimPoseKey& now, const SimPoseKey& published,
+                         bool anyImportedAnim) {
+    return hadPose && keyValid && now == published && !anyImportedAnim;
 }
 } // namespace mc2::sim

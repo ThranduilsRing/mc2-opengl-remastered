@@ -29,6 +29,7 @@
 #include "mc2_czstring.h"
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
 #include "sim_overlap.h"
+#include "sim_pose_kernel.h"
 
 #include"memfunc.h"
 
@@ -515,17 +516,22 @@ class Mech3DAppearance: public ObjectAppearance
 		std::uint64_t simNodeShapeId_ = 0;
 		std::uint64_t simNodeRevision_ = 0;
 		// Every input of the last published simulation pose; an equal key reuses simPose (see updateSimPose).
-		struct SimPoseKey {
-			std::uint64_t shapeId = 0, bindRevision = 0;
-			const void* type = nullptr;
-			long gesture = 0, status = 0;
-			float frame = 0.0f, torso = 0.0f, rotation = 0.0f;
-			glm::vec3 position{};
-			bool leftArmOff = false, rightArmOff = false;
-			bool operator==(const SimPoseKey&) const = default;
-		};
+		using SimPoseKey = mc2::sim::SimPoseKey;
 		SimPoseKey simPoseKey_;
 		bool simPoseKeyValid_ = false;
+		// Cross-mech batch: during the mech walk a moving mech captures its pose (simPoseJob_) and defers the evaluation;
+		// flushSimPoseBatch evaluates every captured job on the Sim job domain, then publishes in mech-walk order. Any read of
+		// this mech's pose before then (the six node getters, settleSimPose) publishes it first, so readers see the same pose.
+		mc2::sim::PoseJob simPoseJob_;
+		SimPoseKey pendingSimPoseKey_;
+		glm::vec3 pendingSimXlat_{};
+		glm::quat pendingSimRot_{};
+		bool simPosePending_ = false;
+		static bool s_simPoseBatching;
+		static std::vector<Mech3DAppearance*> s_simPosePending;
+		static std::uint64_t s_simPoseEager, s_simPoseBatched, s_simPoseReused; // [SIM_POSE v1] counters
+		void finishSimPose (void);
+		void publishSimPose (const glm::vec3& xlatPosition, const glm::quat& qRotation, const SimPoseKey& key);
 		bool						buildingSimPose_ = false;
 		// The shape, node indices and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
 		// the palette, the draw copy otherwise. lift is the visual-height delta baked into that shape's transform (draw copy
@@ -628,6 +634,15 @@ class Mech3DAppearance: public ObjectAppearance
 		// weapon, LOS and named-node positions the simulation reads come from that pose, so it must not depend on the camera.
 		void updateSimPose (bool advanceClock = true);
         void refreshSimPose() override { updateSimPose(false); }
+        // Same ownership test as poseView: only the sim thread (or main with no tick in flight) may publish.
+        void settleSimPose() override
+        {
+            if (simPosePending_ && !simPresentationPass && (mc2::overlap::onSimWorker() || !mc2::overlap::jobInFlight()))
+                finishSimPose();
+        }
+        // Bracket the tick's mech walk; only the sim thread calls them (see simPoseJob_).
+        static void beginSimPoseBatch (void);
+        static void flushSimPoseBatch (void);
 
 		virtual void setPaintScheme (void);
 

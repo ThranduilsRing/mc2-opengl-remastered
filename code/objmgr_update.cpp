@@ -683,6 +683,9 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 	if (mechs)
 	{
 		ZoneScopedN("GameLogic.Units.Mechs");
+		// Moving mechs capture their simulation pose during the walk; the batch evaluates them across the Sim job domain and
+		// publishes in walk order before anything after the walk reads a pose (see Mech3DAppearance::flushSimPoseBatch).
+		Mech3DAppearance::beginSimPoseBatch();
 		for (long i = 0; i < numMechs; i++)
 		{
 			MoverPtr mover = mechs[i];
@@ -698,6 +701,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 					removeList[numRemoved++] = mover;
 			}
 		}
+		Mech3DAppearance::flushSimPoseBatch();
 	}
 
 	if (vehicles)
