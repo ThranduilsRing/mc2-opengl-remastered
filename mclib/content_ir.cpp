@@ -1,6 +1,7 @@
 #include <cmath>
 #include "content_ir.h"
 #include "file.h"
+#include "vfs.h"
 #include "../GameOS/gameos/cook_cache.h"
 #include "mc2fmt.h"
 #include <algorithm>
@@ -14,11 +15,6 @@ namespace mc2::content {
 namespace {
 constexpr mc2cache::CacheKind kind{"model-", ".mci", 4096, 128ull << 20};
 constexpr std::string_view directory = "cache/content-model";
-std::mutex digestLock;
-std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>& digestMemo() {
-    static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> memo;  // path -> {size, hash}
-    return memo;
-}
 uint64_t hash(std::span<const uint8_t> bytes, uint64_t h = 14695981039346656037ull) { return fastHash(bytes, h); }
 template<class T> void append(std::vector<uint8_t>& bytes, const T& value) {
     const auto* p = reinterpret_cast<const uint8_t*>(&value);
@@ -33,39 +29,16 @@ bool finite(const glm::vec3& v) { return std::isfinite(v.x) && std::isfinite(v.y
 uint64_t sourceKey(const Asset& asset, std::string_view sourcePath) {
     const std::string sourceStorage(sourcePath);
     const char* source = sourceStorage.empty() ? nullptr : sourceStorage.c_str();
-    File input;
-    if (!source || input.open(source) != NO_ERR) return 0;
+    if (!source) return 0;
     std::vector<uint8_t> params;
     append(params, cookerVersion); append(params, asset.legacyBounds); append(params, asset.ground);
     text(params, asset.parameters);
     uint64_t key = hash(params);
-    const uint64_t size = input.fileSize();
-    uint64_t digest = 0;
-    bool known = false;
-    {
-        std::lock_guard lock(digestLock);
-        const auto it = digestMemo().find(sourceStorage);
-        if (it != digestMemo().end()) {
-            const auto& [path, memo] = *it;
-            const auto& [memoSize, memoDigest] = memo;
-            if (memoSize == size) { digest = memoDigest; known = true; }
-        }
-    }
-    if (!known) {
-        digest = 14695981039346656037ull;
-        std::vector<uint8_t> chunk(64 * 1024);
-        unsigned long left = input.fileSize();
-        while (left) {
-            const auto count = std::min<unsigned long>(left, static_cast<unsigned long>(chunk.size()));
-            if (input.read(chunk.data(), count) != static_cast<long>(count)) return 0;
-            digest = hash(std::span<const uint8_t>(chunk.data(), count), digest);
-            left -= count;
-        }
-        std::lock_guard lock(digestLock);
-        digestMemo()[sourceStorage] = {size, digest};
-    }
-    const uint64_t parts[2] = {size, digest};
-    key = hash(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(parts), sizeof(parts)), key);
+    // Content identity comes from the VFS: the digest of the bytes the winning candidate serves, memoised by
+    // (path, size, mtime) and cleared on every VFS rebuild; never by path+size alone.
+    const uint64_t digest = mc2::vfs::contentDigest(sourceStorage);
+    if (!digest) return 0;
+    key = hash(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(&digest), sizeof(digest)), key);
     return key ? key : 1;
 }
 
@@ -87,38 +60,10 @@ struct Reader {
 };
 }
 
-uint64_t fastHash(std::span<const uint8_t> bytes, uint64_t h) {
-    // Word-at-a-time multiply/xorshift mix (about 8x the old byte-wise FNV-1a). Chunk splits at
-    // multiples of 8 bytes hash identically to one call, so streamed and in-memory digests agree.
-    const uint8_t* p = bytes.data();
-    size_t n = bytes.size();
-    for (; n >= 8; p += 8, n -= 8) {
-        uint64_t w;
-        std::memcpy(&w, p, 8);
-        h = (h ^ w) * 0x9E3779B97F4A7C15ull;
-        h ^= h >> 29;
-    }
-    for (; n; ++p, --n) { h ^= *p; h *= 1099511628211ull; }
-    return h;
-}
-
-uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t> bytes) {
-    const std::string key(sourcePath);
-    {
-        std::lock_guard lock(digestLock);
-        const auto it = digestMemo().find(key);
-        if (it != digestMemo().end()) {
-            const auto& [path, memo] = *it;
-            const auto& [memoSize, memoDigest] = memo;
-            if (memoSize == bytes.size()) return memoDigest;
-        }
-    }
-    uint64_t digest = 14695981039346656037ull;
-    for (size_t at = 0; at < bytes.size(); at += 64 * 1024)
-        digest = fastHash(bytes.subspan(at, std::min<size_t>(64 * 1024, bytes.size() - at)), digest);
-    std::lock_guard lock(digestLock);
-    digestMemo()[key] = {bytes.size(), digest};
-    return digest;
+uint64_t sourceBytesDigest(std::string_view, std::span<const uint8_t> bytes) {
+    // The bytes are already in memory: hash them (a path+size memo here was a stale-digest hazard for a
+    // same-size edit). Same value as vfs::contentDigest for the same bytes.
+    return fastHash(bytes);
 }
 
 bool loadCached(Asset& asset, std::string_view sourcePath) {

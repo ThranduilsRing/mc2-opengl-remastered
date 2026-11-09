@@ -3,6 +3,7 @@
 // Frontends own CPU data only; runtime handles belong exclusively to the cooker/consumer.
 #pragma once
 #include "tgl.h"
+#include "fast_hash.h"
 #include "content_socket.h"
 #include <string>
 #include <span>
@@ -37,9 +38,6 @@ struct Asset {
 // source bytes, the complete IR payload and the cooker version. No simulation state/RNG.
 bool cook(Asset& asset, std::string_view source);
 bool loadCached(Asset& asset, std::string_view source);
-// Fast 8-byte-word hash used for cache keys and source digests (replaces byte-wise FNV-1a).
-uint64_t fastHash(std::span<const uint8_t> bytes, uint64_t seed = 14695981039346656037ull);
-// Digest of a source file's bytes, memoised per path+size so cache lookup, cook and the
-// importer's IO layer hash each file once per session.
+// Digest of a source file's bytes (fastHash of the content; equals vfs::contentDigest for the same bytes).
 uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t> bytes);
 }
