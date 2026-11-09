@@ -381,12 +381,11 @@ void
 	}
 	else if (spec->m_randomStartingRotation)
 	{
-		mc2::math::Euler
-			rotation(
-				Stuff::Two_Pi*Stuff::Random::GetFraction(),
-				Stuff::Pi*Stuff::Random::GetFraction(),
-				Stuff::Two_Pi*Stuff::Random::GetFraction()
-			);
+		// Match the shipped MSVC draw order, independent of argument evaluation.
+		const auto roll = Stuff::Two_Pi * Stuff::Random::GetFraction();
+		const auto yaw = Stuff::Pi * Stuff::Random::GetFraction();
+		const auto pitch = Stuff::Two_Pi * Stuff::Random::GetFraction();
+		const mc2::math::Euler rotation(pitch, yaw, roll);
 		particle->m_localRotation = mc2::math::quatFromEuler(rotation);
 	}
 	else

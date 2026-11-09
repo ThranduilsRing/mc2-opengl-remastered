@@ -576,12 +576,11 @@ void
 	// Figure out the initial position
 	//--------------------------------
 	//
-	mc2::math::YawPitchRange
-		initial_p(
-			Stuff::Random::GetFraction() * Stuff::Two_Pi,
-			Stuff::Random::GetFraction() * Stuff::Pi - Stuff::Pi_Over_2,
-			Stuff::Random::GetFraction()
-		);
+	// Preserve the shipped MSVC right-to-left RNG draw order on every compiler.
+	const auto range = Stuff::Random::GetFraction();
+	const auto pitch = Stuff::Random::GetFraction() * Stuff::Pi - Stuff::Pi_Over_2;
+	const auto yaw = Stuff::Random::GetFraction() * Stuff::Two_Pi;
+	const mc2::math::YawPitchRange initial_p(yaw, pitch, range);
 	glm::vec3 position = (mc2::math::polarToVector(initial_p));
 	translation->x =
 		position.x * spec->m_emitterSizeX.ComputeValue(m_age, seed);
