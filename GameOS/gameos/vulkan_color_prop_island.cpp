@@ -1699,7 +1699,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         typeObjectId,
                     };
                     const PropDrawCmd cmd{pkt.indexCount, instCount, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i};
-                    if (mc2SupportCraftTraceType(tid))
+                    if (mc2_diag::tagRequested("SUPPORT_CRAFT") && mc2SupportCraftTraceType(tid))
                         mc2::fmt::print_err("[SUPPORT_CRAFT] event=packet frame={} type={} pipeline=prop indices={} instances={} hzb={} albedo={} firstIndex={} baseVertex={}\n",
                             g_mc2RenderFrame, tid, pkt.indexCount, instCount, hzbCulled, row.layerOff, pkt.firstIndex, pkt.baseVertex);
                     // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
@@ -1893,9 +1893,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             float clip[4] = {};
             for (int a = 0; a < 4; ++a)
                 for (int k = 0; k < 4; ++k) clip[a] += feed.worldToClipGL[k*4+a] * world[k];
-            mc2::fmt::print_err("[SUPPORT_CRAFT] event=projection frame={} type={} world={},{},{} clip={},{},{},{} pixel={},{}\n",
-                g_mc2RenderFrame, inst.typeID, world[0], world[1], world[2], clip[0], clip[1], clip[2], clip[3],
-                (clip[0]/clip[3]+1)*0.5f*w, (1-clip[1]/clip[3])*0.5f*h);
+            if (mc2_diag::tagRequested("SUPPORT_CRAFT")) {
+                mc2::fmt::print_err("[SUPPORT_CRAFT] event=projection frame={} type={} world={},{},{} clip={},{},{},{} pixel={},{}\n",
+                    g_mc2RenderFrame, inst.typeID, world[0], world[1], world[2], clip[0], clip[1], clip[2], clip[3],
+                    (clip[0]/clip[3]+1)*0.5f*w, (1-clip[1]/clip[3])*0.5f*h);
+            }
         }
     }
     // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
