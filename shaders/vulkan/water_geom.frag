@@ -163,6 +163,90 @@ float waterRippleNoise(PREC vec2 q0, PREC vec2 q1, float waveLOD){
     return (fbm23(q0, w3) + fbm23(q1, w3)) - (0.75 + 0.125 * w3);
 }
 
+// WATER-WAVES-GLINT: wind-driven wave trains that read from the RTS camera, lit by a GGX sun/moon and lamp specular.
+// Analytic sine slopes animated by time only (no history). Each train: (wind dir x, y, wavelength wu, slope amplitude
+// A*k); a train's slope variance is slope^2 / 2. Trains below the pixel footprint fade out of the normal and their
+// variance moves into the GGX roughness (LEAN-style), so distant water keeps a wide highlight instead of sparkling.
+const int   WAVE_TRAINS = 4;
+const vec4  kWaveTrain[WAVE_TRAINS] = vec4[WAVE_TRAINS](
+    vec4(0.866, 0.500, 760.0, 0.10),
+    vec4(0.643, 0.766, 430.0, 0.09),
+    vec4(0.985, 0.174, 260.0, 0.08),
+    vec4(0.500, 0.866, 150.0, 0.07));
+const float WAVE_G           = 30.0;    // deep-water dispersion in wu/s^2: 760 wu swell ~60 wu/s, 150 wu chop ~27 wu/s
+const float WAVE_RESOLVE_LO  = 2.0;     // pixels per wavelength: at or below -> roughness only
+const float WAVE_RESOLVE_HI  = 6.0;     // pixels per wavelength: at or above -> fully in the normal
+const float WATER_ALPHA0     = 0.06;    // GGX alpha of the calm surface
+const float RIPPLE_SLOPE_VAR = 0.004;   // slope variance of the fine ripples once they fade with distance
+const float SUN_SPEC_GAIN    = 3.0;     // sun/moon specular scale at the default glint gain (0.30)
+const float LAMP_SPEC_GAIN   = 1.5;     // lamp/weapon pool-light specular scale at the default glint gain
+
+PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
+    PREC vec2 s = vec2(0.0);
+    unresolvedVar = 0.0;
+    for (int i = 0; i < WAVE_TRAINS; ++i) {
+        vec4  w = kWaveTrain[i];
+        float k = 6.2831853 / w.z;
+        float r = smoothstep(WAVE_RESOLVE_LO, WAVE_RESOLVE_HI, w.z / max(footprint, 1e-3));
+        float a = w.w * gain;
+        unresolvedVar += 0.5 * a * a * (1.0 - r * r);
+        if (r > 0.0) {
+            PREC float ph = k * dot(w.xy, p) - sqrt(WAVE_G * k) * t + float(i) * 1.7;
+            s += w.xy * (a * r * cos(ph));
+        }
+    }
+    return s;
+}
+
+// GGX with height-correlated Smith visibility and Schlick Fresnel (water F0): energy-normalised lobe, times N.L.
+float waterGgxSpec(vec3 N, vec3 V, vec3 L, float alpha2){
+    float NdotL = dot(N, L);
+    if (NdotL <= 0.0) return 0.0;
+    float NdotV = max(dot(N, V), 1e-3);
+    vec3  H     = normalize(L + V);
+    float NdotH = max(dot(N, H), 0.0);
+    float VdotH = max(dot(V, H), 0.0);
+    float d     = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
+    float D     = alpha2 / (3.14159265 * d * d);
+    float vis   = 0.5 / (NdotL * sqrt(NdotV * NdotV * (1.0 - alpha2) + alpha2)
+                       + NdotV * sqrt(NdotL * NdotL * (1.0 - alpha2) + alpha2));
+    float Fr    = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - VdotH, 5.0);
+    return D * vis * Fr * NdotL;
+}
+
+// Lamp and weapon pool lights reflected by the wave normal: the same grid cell walk and attenuation as the terrain
+// pool term, with the GGX lobe toward each light instead of the flat diffuse pool.
+vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
+    int  lo = 0, hi = uT.numPoolLights;
+    bool indexed = false;
+    if (uT.lightGridDim > 0) {
+        ivec2 c = ivec2(floor((wp.xy - vec2(uT.lightGridMinX, uT.lightGridMinY))
+                              * vec2(uT.lightGridInvCellX, uT.lightGridInvCellY)));
+        if (any(lessThan(c, ivec2(0))) || any(greaterThanEqual(c, ivec2(uT.lightGridDim)))) return vec3(0.0);
+        uvec2 cell = lightGridCells[c.y * uT.lightGridDim + c.x];
+        lo = int(cell.x);
+        hi = int(cell.x + cell.y);
+        indexed = true;
+    }
+    if (TLP_POOL_BUDGET > 0) hi = min(hi, lo + TLP_POOL_BUDGET);
+    vec3 s = vec3(0.0);
+    for (int k = lo; k < hi; ++k) {
+        int i = indexed ? int(lightGridIndices[k]) : k;
+        if (i >= uT.numPoolLights || poolLights[i].lightType == 0u) continue;
+        vec3  vtl   = wp - poolLights[i].position;
+        bool  mover = poolLights[i]._plPad1 > 0.5;
+        float nearD = poolLights[i].closeDistance;
+        float len, falloff;
+        if (!lpa_falloff(vtl, mover, uT.lightPoolMoverScale, uT.lightPoolSoft, nearD,
+                         poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
+        falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);
+        if (falloff <= 0.0) continue;
+        vec3 plCol = poolLights[i].color * poolLights[i].intensity * (mover ? uT.lightPoolMoverDim : 1.0);
+        s += plCol * (falloff * waterGgxSpec(N, V, -vtl / max(len, 1e-3), alpha2));
+    }
+    return s;
+}
+
 void main(void)
 {
     // o_isWater==1 base-water branch (reflection/HDRI OFF -> skipped).
@@ -213,7 +297,28 @@ void main(void)
     float shoreSlope = max(length(shoreGrad), 0.08);
     float shoreDistance = max(shoreDepth, 0.0) / shoreSlope;
     float foamAA = max((abs(depthD.x) + abs(depthD.y)) / shoreSlope, 1.0);
-    PREC float trans    = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
+
+    // WATER-WAVES-GLINT: surface normal = wind wave trains + the fine ripple gradient (faded by waveLOD), and the GGX
+    // roughness that carries every slope the pixel cannot resolve. The wave/ripple strength follows the ripple gain
+    // (default 0.22) and the glint strength follows the glint gain (default 0.30). Low/Potato keeps flat geometry:
+    // every train goes to roughness. Before the coverage discard so the normal's derivatives stay defined.
+    // WATER-ASPECT-CORRECT-1/2: frustum aspect fed from GL (== viewport aspect by default,
+    // so _ac is a 1.0 no-op; the old hard-coded *3/4 over-corrected 16:9 by 1.33x).
+    float _ac = (u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0)) / max(F.f9.w, 0.0001);
+    // WATER-GRAZE-REFL-1: fade the wave-normal perturbation by waveLOD.
+    PREC vec2  nzGrad    = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0) * waveLOD;
+    float      footprint = (uT._lightPad1 != 0) ? 1e9 : max(length(shoreDx), length(shoreDy));
+    float      waveVar;
+    PREC vec2  waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
+    PREC vec3  waveN     = normalize(vec3(-waveSlope + nzGrad * REFL_WAVE_SLOPE, 1.0));
+    PREC vec3  vdir      = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
+    // Specular AA: the normal's own screen-space variance (Kaplanyan-Hoffman) on top of the unresolved train variance.
+    vec3  dNx = dFdx(waveN), dNy = dFdy(waveN);
+    float kernelVar = 0.25 * (dot(dNx, dNx) + dot(dNy, dNy));
+    float specAlpha2 = clamp(WATER_ALPHA0 * WATER_ALPHA0
+                             + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
+                             + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
+    PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
@@ -263,15 +368,24 @@ void main(void)
     col *= 1.0 + shoreRipple * nearShore;
     col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
+    // sunVis carries the same shadows (no floor) to the sun specular.
+    float sunVis = 1.0;
     if (F.f7.z > 0.5) {
         vec2 maskUv = vec2(WorldPos.x + F.f7.w, F.f7.w - WorldPos.y) / max(F.f7.y, 1.0);
         if (all(greaterThanEqual(maskUv, vec2(0.0))) && all(lessThanEqual(maskUv, vec2(1.0))))
-            col *= mix(sunShadowFloor(0.4), 1.0, texture(u_staticMask, maskUv).r);
+        {
+            float staticLit = texture(u_staticMask, maskUv).r;
+            col *= mix(sunShadowFloor(0.4), 1.0, staticLit);
+            sunVis *= staticLit;
+        }
     }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
     // Beyond the ripple fade distance a mover shadow is sub-pixel on water: skip the blocker search + PCF there.
-    if (waveLOD > 0.0)
-        col *= mix(sunShadowFloor(0.4),1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
+    if (waveLOD > 0.0) {
+        float moverLit = moverVisibility(WorldPos,vec3(0.0,0.0,1.0));
+        col *= mix(sunShadowFloor(0.4),1.0,moverLit);
+        sunVis *= moverLit;
+    }
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
@@ -284,14 +398,8 @@ void main(void)
         PREC vec3  reflectCol = col;
         PREC float reflMix    = 0.0;
         //PORT-BEGIN:waterReflSetup
-        // WATER-ASPECT-CORRECT-1/2: frustum aspect fed from GL (== viewport aspect by default,
-        // so _ac is a 1.0 no-op; the old hard-coded *3/4 over-corrected 16:9 by 1.33x).
-        float vpAspect = u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0);
-        float _ac = vpAspect / max(F.f9.w, 0.0001);
-        // WATER-GRAZE-REFL-1: fade the wave-normal perturbation by waveLOD.
-        PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0) * waveLOD;
-        PREC vec3  waveNormal = normalize(vec3(nzGrad * REFL_WAVE_SLOPE, 1.0));
-        PREC vec3  vdir       = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
+        // WATER-WAVES-GLINT: the sky and geometry reflections follow the wave normal (trains + fine ripples).
+        PREC vec3  waveNormal = waveN;
         PREC vec3  rdir       = reflect(-vdir, waveNormal);           // MC2 Z-up
         PREC vec3  skyDir     = vec3(rdir.x, rdir.z, -rdir.y);
         if (u_waterHdriLod >= 0.0) {
@@ -306,13 +414,13 @@ void main(void)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
         if (F.DEEP_COLOR.w > 0.5) {
-            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + nzGrad*0.003;
+            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + nzGrad*0.003 + waveSlope*0.03;
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
                 geometry=texture(u_waterReflection,reflectionUV);
             }
         }
         //PORT-BEGIN:waterReflMix
-        PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(vdir.z, 0.0), 5.0);
+        PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(dot(waveN, vdir), 0.0), 5.0);
         // WATER-GRAZE-REFL-1: grazing fragments keep full reflection at distance.
         reflMix = clamp(fres * u_waterReflStrength * max(waveLOD, fres), 0.0, REFL_MAX);
         // Ripple LOD fades only the legacy sky treatment. Geometry retains
@@ -321,6 +429,19 @@ void main(void)
         float totalMix=mix(reflMix,geometryMix,geometry.a);
         col=col*(1.0-totalMix)+reflectCol*(reflMix*(1.0-geometry.a))+geometry.rgb*geometryMix;
         //PORT-END:waterReflMix
+    }
+
+    // WATER-WAVES-GLINT: sun (moon at night, half strength) specular on the wave normal, after the reflection mix so
+    // the glints sit on top of the reflected sky. The sun altitude takes the shadow clamp (mc2_10 authors a horizon sun),
+    // and the radiance is the vertex sun light, so sunset tints the glitter path and shadows remove it.
+    {
+        float glintScale = GLINT_GAIN / 0.30;
+        vec3  Ls = uT.terrainLightDir.xyz;
+        Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
+        vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
+        col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
+        if (uT.numPoolLights > 0 && nightSky < 1.0)
+            col += min(waterLampSpec(WorldPos, waveN, vdir, specAlpha2) * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
     }
 
     // The same local pools cross the shoreline; apply after sky reflection so
