@@ -8173,6 +8173,35 @@
    "count": 1
   },
   {
+   "tag": "SCREEN_SHOT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "screen",
+    "path",
+    "w",
+    "h",
+    "settled",
+    "frames",
+    "imgui_vk_ready"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SCREEN_SHOT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "screen",
+    "reason",
+    "path",
+    "imgui_vk_ready",
+    "frames",
+    "settled"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SEAMPROBE",
    "ver": -1,
    "stream": "stderr",
@@ -12624,6 +12653,7 @@
   "RESULTS",
   "RGBA",
   "SAVELOAD",
+  "SCREEN_SHOT",
   "SHADER",
   "SHADER ERROR",
   "SHADOW_BAKE",

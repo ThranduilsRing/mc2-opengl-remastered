@@ -17,6 +17,7 @@
     {"module": "scripts/tests/test_runtime_bridge.py", "owners": ["runtime_bridge"]},
     {"module": "scripts/tests/test_runtime_bridge_socket.py", "owners": ["runtime_bridge"]},
     {"module": "scripts/tests/test_run_visual.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_screen_shot.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_perf_budget.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_mission_cpu_profile.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_play_mission.py", "owners": ["scripts_tests"]},

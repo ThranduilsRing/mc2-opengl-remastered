@@ -138,6 +138,10 @@ namespace GuiRuntime {
     // True between NewFrame and Render: the ImGui pass will run this frame.
     bool FrameActive();
 
+    // True once ImGui is initialised AND the Vulkan ImGui renderer has come up (health imgui_vk_ready). False when the build has no
+    // MC2_IMGUI (Init never runs) or the renderer declined: a front-end screenshot taken then is black apart from the cursor.
+    bool VulkanReady();
+
     // True when the editor force-docks all panels into the right column each launch
     // (MC2_EDITOR_AUTODOCK != 0). Panel windows must then SKIP SetNextWindowPos before
     // Begin -- an explicit next-window-pos pulls the window out of the dock and floats it.

@@ -696,6 +696,15 @@ bool GuiRuntime::FrameActive()
     return g_imguiInitialized && s_frameActive;
 }
 
+bool GuiRuntime::VulkanReady()
+{
+#ifdef MC2_VULKAN
+    return g_imguiInitialized && mc2vk::getOrCreateEnginePresentVk().imguiVulkanReady();
+#else
+    return false;
+#endif
+}
+
 void GuiRuntime::RegisterPostImGuiRender(std::function<void()> fn)
 {
     s_postRenderFns.push_back(std::move(fn));

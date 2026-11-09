@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | screen:<id>[@N] (logistics, campaign_missions, mechbay: front-end screenshot) | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). Merge gates share the discovered GPUs.
 Legacy capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -129,9 +129,11 @@ build_install() {
 # build: shared ccache keyed without the directory so every lane hits the same objects
 export CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 cd $S
+# MC2_IMGUI=ON: without it GuiRuntime is compiled out and every front-end screen renders black on the box (imgui_vk_ready=0); a tree configured before this reconfigures once.
+grep -q "^MC2_IMGUI:BOOL=ON" build64-ninja/CMakeCache.txt 2>/dev/null || rm -f build64-ninja/build.ninja
 [ -f build64-ninja/build.ninja ] || nice -n 19 taskset -c "$BCPUS" cmake -S . -B build64-ninja -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
- -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+ -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DMC2_IMGUI=ON \
  -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc -DMC2_SPIRV_OPT=/workspace/toolchains/gfxr-1.4.350.0/bin/spirv-opt > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
 nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j16 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
 [ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
@@ -246,11 +248,12 @@ for row in "${ROWS[@]}"; do
   esac
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
-  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; gpu-passes) TMO=1500;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
+  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*|screen:*) TMO=600;; gpu-passes) TMO=1500;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  QS=""; [ "$GOT" = 3 ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu 3 --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
                  cmd="$QS python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
+    screen:*)    sc=${row#screen:}; cmd="python3 scripts/screen_shot.py --screen $sc --exe $I/mc2 --out-dir $(fresh $OUT/$name)" ;;
     capture:*)   IFS=: read -r _ m b <<< "$row"; cmd="python3 scripts/run_visual_capture.py --mission $m --bookmarks tests/visual/bookmarks/$b.json --exe $I/mc2 --classic-assets --out-dir $(fresh $OUT/$name)" ;;
     determinism:*) m=${row#*:}; extra=""; [ "$m" = mc2_24 ] && extra="--ticks 2600"   # mc2_24: the finale spawns infantry after tick 2404 (as the PC gate)
                    cmd="python3 tools/sim_determinism.py check $m --install $I --headless-both $extra --out $(fresh $OUT/$name)" ;;
@@ -656,7 +659,7 @@ def main():
         sync_nifty(repo)
     # gpu choice
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
-    cap0 = 1 if (any(r.startswith(("capture", "smoke", "gpu-passes")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
+    cap0 = 1 if (any(r.startswith(("capture", "smoke", "screen", "gpu-passes")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
     gpu = a.gpu
     if gpu != "auto" and not gpu.isdigit():
         print(f"[box_run] --gpu must be an index or auto, got {gpu!r}")

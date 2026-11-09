@@ -7,6 +7,19 @@
 #include "appearance_rng.h"
 #include "command_replay.h"
 #include "tick_commit.h"
+#include <string_view>
+#include <cstring>
+
+namespace {
+// Bounded, NUL-terminated copy (replaces MSVC-only strncpy_s(_TRUNCATE) so the Linux box build compiles).
+template <size_t N>
+void copyTrunc(char (&dst)[N], const char* src) {
+	const std::string_view sv = src ? std::string_view(src) : std::string_view();
+	const size_t n = sv.size() < N - 1 ? sv.size() : N - 1;
+	std::memcpy(dst, sv.data(), n);
+	dst[n] = '\0';
+}
+} // namespace
 
 
 namespace { std::uint64_t s_vtolHash = 14695981039346656037ull; }
@@ -590,8 +603,8 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				if (bm) {
 					EditorInspector::MechInspectorData md;
 					md.populated   = true;
-					strncpy_s(md.variantName, sizeof(md.variantName), bm->variantName, _TRUNCATE);
-					strncpy_s(md.longName,    sizeof(md.longName),    bm->longName,    _TRUNCATE);
+					copyTrunc(md.variantName, bm->variantName);
+					copyTrunc(md.longName, bm->longName);
 					md.chassisClass = static_cast<int>(bm->chassisClass);
 					md.teamId       = bm->getTeamId();
 					md.disabled     = bm->isDisabled();
@@ -608,7 +621,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 					}
 					MechWarriorPtr pilot = bm->getPilot();
 					if (pilot)
-						strncpy_s(md.pilotName, sizeof(md.pilotName), pilot->getName(), _TRUNCATE);
+						copyTrunc(md.pilotName, pilot->getName());
 					EditorInspector::setMechData(md);
 				}
 #ifdef MC2_IS_EDITOR
@@ -971,8 +984,8 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 				if (bm) {
 					EditorInspector::MechInspectorData md;
 					md.populated   = true;
-					strncpy_s(md.variantName, sizeof(md.variantName), bm->variantName, _TRUNCATE);
-					strncpy_s(md.longName,    sizeof(md.longName),    bm->longName,    _TRUNCATE);
+					copyTrunc(md.variantName, bm->variantName);
+					copyTrunc(md.longName, bm->longName);
 					md.chassisClass = static_cast<int>(bm->chassisClass);
 					md.teamId       = bm->getTeamId();
 					md.disabled     = bm->isDisabled();
@@ -989,7 +1002,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 					}
 					MechWarriorPtr pilot = bm->getPilot();
 					if (pilot)
-						strncpy_s(md.pilotName, sizeof(md.pilotName), pilot->getName(), _TRUNCATE);
+						copyTrunc(md.pilotName, pilot->getName());
 					EditorInspector::setMechData(md);
 				}
 #ifdef MC2_IS_EDITOR

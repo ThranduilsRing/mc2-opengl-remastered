@@ -18,6 +18,7 @@ P("MC2_SHADOW_MOVER_SAMPLES", Int, 32, "post", "", "Spatial mover-shadow filter 
 // kFeatureTable is indexed by RendererFeature, so this entry's position is
 // its enum value (58).
 L(Presence, "MC2_SHOT_RESULTS", Bool, false, "code", "", "", verified),
+G("MC2_SHOT_SCREEN", String, "", "code", "", "Proof tool: screenshot a front-end screen (<id>[@N]: campaign_missions, logistics, mechbay, ...) after N settled frames, then exit.", passthrough | verified),
 L(Presence, "MC2_SIM_CLOCK_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_SIM_FAULT_INJECT", Int, 0, "code", "", "Test-only crash-bundle fault injection: 1 worker throw, 2 worker invalid-parameter, 3 hard overlap violation; 0 = off.", clampRange(0, 3) | passthrough | registry(Trace, "MC2_SIM_FAULT_INJECT", -1, false) | verified),
 // ── SIM-IDENTITY-HASH-1 ────────────────────────────────────────────────

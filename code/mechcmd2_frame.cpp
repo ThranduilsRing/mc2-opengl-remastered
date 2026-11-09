@@ -8,6 +8,7 @@
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "screen_settle_capture.h"
 #include "startup_preload.h"
 #ifdef MC2_IMGUI
 #include "imgui.h"
@@ -388,6 +389,7 @@ void __stdcall DoGameLogic()
 				long result = logistics->update();
 				if (result == log_DONE)
 				{
+					mc2::screen_settle::onMissionStarted();   // MC2_SHOT_SCREEN: the front end ended before the screen was captured
 					logistics->stop();
 				}
 			}

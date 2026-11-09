@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 439;
+inline constexpr std::size_t kGateCount = 440;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -288,6 +288,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SHADOW_MECH_SOFT", Kind::Float, Rule::Prefix, {}},
     {"MC2_SHADOW_MOVER_SAMPLES", Kind::Int, Rule::Prefix, {}},
     {"MC2_SHOT_RESULTS", Kind::Bool, Rule::Presence, {}},
+    {"MC2_SHOT_SCREEN", Kind::String, Rule::Std, {}},
     {"MC2_SIM_CLOCK_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SIM_FAULT_INJECT", Kind::Int, Rule::Std, {}},
     {"MC2_SIM_IDENTITY_TRACE", Kind::Bool, Rule::Std, {}},

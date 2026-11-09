@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 439
+gate_count: 440
 registry_entry_count: 124
-verified_count: 417
+verified_count: 418
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2177,6 +2177,14 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
+  - name: MC2_SHOT_SCREEN
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Proof tool: screenshot a front-end screen (<id>[@N]: campaign_missions, logistics, mechbay, ...) after N settled frames, then exit."
+    smoke_passthrough: true
     verified: true
   - name: MC2_SIM_CLOCK_TRACE
     kind: Bool
