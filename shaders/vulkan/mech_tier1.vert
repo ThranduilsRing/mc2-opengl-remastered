@@ -225,6 +225,7 @@ void main() {
     // tangent decode (MC2_IMPORTED_MECH_MATERIAL) and the specular sun finder
     // (MC2_USE_VIEW_UNIFORMS) -- verbatim, same SSBO bytes.
     vImportedMech = (inst.renderFlags >> 3) & 7u;
+    if ((inst.renderFlags & MECH_RENDER_FLAG_ORM) != 0u) vImportedMech |= 8u;
     vLegacyVehicle = legacyVehicle ? 1u : 0u;
     vTangentW = (a_boneIndices.w != 0u) ? -1.0 : 1.0;
     {

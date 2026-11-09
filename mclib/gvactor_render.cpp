@@ -371,6 +371,14 @@ bool GVAppearance::submitToMechBatcher(uint32_t highlightARGB)
 	desc.mechType = nullptr;
 	desc.renderFlags = kMechRenderFlagLegacyVehicle;	// legacy vehicle lighting: sun and ambient, no point or spot lights
 	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
+	if (stockPbr.orm) {
+		desc.slot6TexHandle = stockPbr.orm.get();
+		desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+	}
+	if (stockPbr.normal) {
+		desc.slot7TexHandle = stockPbr.normal.get();
+		desc.renderFlags |= 0x20u;
+	}
 	const uint32_t lightRow = gvShape->getCachedGpuLightIndex();
 	if (lightRow == 0xFFFFFFFFu) { ++s_row; return false; }
 	if (mc2::textures::ready() && lightRow >= mc2::vkLights::getLightStructCount()) { ++s_range; return false; }

@@ -27,6 +27,7 @@
 #endif
 
 #include "mc2_czstring.h"
+#include "texture_assets.h"
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
 #include "sim_overlap.h"
 #include "sim_pose_kernel.h"
@@ -470,6 +471,7 @@ class Mech3DAppearance: public ObjectAppearance
 		// in node-position functions. -1 = no owner; set in init().
 		long						actorHandle_ = -1;
 
+		mc2::textures::StockPbrTextures stockPbr;
 		DWORD						localTextureHandle;
 		DWORD						aoTextureHandle = 0;   // AO-1: imported-mech AO slot (unit 6)
 		bool						aoValid = false;       // AO-1: AO handle loaded OK (gates HAS_AO)

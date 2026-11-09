@@ -1,6 +1,10 @@
 #include "mc2_czstring.h"
 #include "../code/tick_commit.h"
 #include "../RenderCore/TextureService.h"
+#include "../RenderCore/StockPbr.h"
+#include "loose_asset_priority.h"
+#include <zlib.h>
+#include <unordered_map>
 #include "sim_overlap.h"
 // VFS texture sources and CPU consumer snapshots, owned by the session service.
 #include "texture_sources_internal.h"
@@ -25,6 +29,61 @@
 #include <unordered_set>
 
 namespace mc2::textures {
+std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps) {
+    const std::string original(legacy);
+    const auto stem = RenderCore::stockPbrStem(legacy);
+    const auto base = std::string("data/textures/") + (vehicle ? "vehicle_pbr/" : "mech_pbr/") + stem;
+    const auto albedo = base + "_albedo.png";
+    File probe;
+    const bool exists = probe.open(albedo.c_str()) == NO_ERR;
+    const auto dot = original.find_last_of('.');
+    const auto cooked = original.substr(0, dot) + ".ktx2";
+    const bool legacyMod = LookupModOwner(original.c_str()) || LookupModOwner(cooked.c_str());
+    const int legacyPriority = std::min(LookupModPriority(original.c_str()), LookupModPriority(cooked.c_str()));
+    if (!RenderCore::preferStockPbr(exists, legacyMod, legacyPriority, LookupModPriority(albedo.c_str()))) {
+        maps = {};
+        return original;
+    }
+    // Standalone mods replace root FSTs or loose files without a mod.json owner.
+    // Apply the same stock provenance rule as the bundled building replacements.
+    bool userArchive = false;
+    if (!legacyMod) {
+        const auto archive = LookupArchivePath(original);
+        if (!archive.empty()) {
+            static std::unordered_map<std::string, bool> userArchives;
+            auto [it, inserted] = userArchives.try_emplace(archive, false);
+            if (inserted) it->second = userPackedBuildingArchive(archive, [](const auto& path) {
+                std::ifstream input(path, std::ios::binary); // path-audit: loose-only root FST provenance
+                uLong crc = crc32(0, nullptr, 0);
+                char buffer[65536];
+                while (input.read(buffer, sizeof(buffer)) || input.gcount())
+                    crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
+                return input.eof() ? static_cast<uint32_t>(crc) : 0u;
+            });
+            userArchive = it->second;
+        }
+    }
+    if (userArchive || (!legacyMod && userLooseBuildingAsset(original, "", [&] {
+            return ReadArchiveBytes(original.c_str(), 64u * 1024u * 1024u); }))) {
+        maps = {};
+        return original;
+    }
+    if (maps.albedo != albedo) {
+        maps = {};
+        maps.albedo = albedo;
+        auto detail = [&](const char* suffix, mc2::TextureRef& ref) {
+            const auto path = base + suffix;
+            File file;
+            if (file.open(path.c_str()) == NO_ERR)
+                ref.reset(load(path.c_str(), gos_Texture_Solid, gosHint_MipmapFilter0 | gosHint_DontShrink));
+        };
+        detail("_normal.png", maps.normal);
+        detail("_orm.png", maps.orm);
+        mc2::fmt::print_out("[STOCK_PBR] atlas={} albedo={} normal={} orm={}\n", stem,
+            albedo, static_cast<bool>(maps.normal), static_cast<bool>(maps.orm));
+    }
+    return albedo;
+}
 namespace {
 constexpr size_t kMaxSourceBytes = static_cast<size_t>(512) * 1024 * 1024;
 constexpr DWORD kInvalidAsset = 0xffffffffu;
@@ -69,6 +128,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, mc2::czstring name, DWORD& 
 		if (!pngWidth || !pngHeight)
 			return false;
 		// PNG UI art is authored 1:1; do not apply the TGA uvScale shrink.
+		uvScale = 1;
 		logicalWidth = pngWidth;
 		logicalHeight = pngHeight;
 		return true;

@@ -549,10 +549,10 @@ long Mech3DAppearance::render (long depthFixup)
 				desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 				// AO-1: carry the AO slot (0 when no/failed AO). HAS_AO bit (4) added
 				// below ONLY if aoValid, so the shader samples unit 6 iff a real AO loaded.
-				desc.slot6TexHandle = aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u;
+				desc.slot6TexHandle = stockPbr.orm ? stockPbr.orm.get() : (aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u);
 				// NORMALS-1: carry the normal-map slot. HAS_NORMAL bit (5) added below ONLY
 				// if normalValid, so the shader samples unit 7 iff a real normal map loaded.
-				desc.slot7TexHandle = normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u;
+				desc.slot7TexHandle = stockPbr.normal ? stockPbr.normal.get() : (normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u);
 				// Slice B1: use the dedup-cache slot populated by
 				// CacheGpuLightData() in update() (mech3d.cpp — the ONLY
 				// writer that ever runs on a mech shape).
@@ -683,6 +683,8 @@ long Mech3DAppearance::render (long depthFixup)
 					(status == OBJECT_STATUS_DISABLED) ||
 					(status == OBJECT_STATUS_SHUTDOWN);
 				desc.renderFlags    = lightsOut ? 0x2u : 0x0u;  // bit 1
+				if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+				if (stockPbr.normal) desc.renderFlags |= 0x20u;
 				if (aoValid) desc.renderFlags |= 0x10u;          // AO-1: bit 4 = HAS_AO (handle loaded)
 				if (normalValid) desc.renderFlags |= 0x20u;      // NORMALS-1: bit 5 = HAS_NORMAL (handle loaded)
 				desc.highlightARGB  = gpuHighlightARGB;
@@ -1153,10 +1155,12 @@ bool Mech3DAppearance::submitPreviewGpu (bool freshSession)
 	desc.mechType       = mechType;
 	desc.currentLOD     = static_cast<int>(currentLOD);
 	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
-	desc.slot6TexHandle = aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u;
-	desc.slot7TexHandle = normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u;
+	desc.slot6TexHandle = stockPbr.orm ? stockPbr.orm.get() : (aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u);
+	desc.slot7TexHandle = stockPbr.normal ? stockPbr.normal.get() : (normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u);
 	desc.lightDataIndex = 0u;	// the lab posts its own single light row
 	desc.renderFlags    = 0u;
+	if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+	if (stockPbr.normal) desc.renderFlags |= 0x20u;
 	if (aoValid) desc.renderFlags |= 0x10u;
 	if (normalValid) desc.renderFlags |= 0x20u;
 	desc.highlightARGB  = static_cast<uint32_t>(highlightColor);

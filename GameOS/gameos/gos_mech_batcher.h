@@ -108,6 +108,8 @@ constexpr uint32_t kMechRenderFlagLegacyVehicle = 0x40u;
 // Instance renderFlags bit 7, set on the VK copy of the record only (never by the batcher, never seen by GL): this instance vertices were skinned by
 // mech_skin.comp, so the vertex stages skip their bone blend. Keep in step with shaders/include/mech_render_flags.hglsl.
 constexpr uint32_t kMechRenderFlagPreskinned = 0x80u;
+// Slot 6 is packed AO/roughness/metallic, rather than the imported grayscale AO.
+constexpr uint32_t kMechRenderFlagOrm = 0x100u;
 
 struct GpuMechSubmitDesc {
     TG_MultiShape*              mechShape;      // live per-instance shape (shapeToWorld only)

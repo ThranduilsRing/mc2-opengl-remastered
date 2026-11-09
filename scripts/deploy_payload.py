@@ -239,6 +239,9 @@ EDITOR_SUPPORT_TREES = ["tools/terrain_gen"]
 #   tools/cook_bc6h_hdri.py  -- EXR -> BC6H KTX2 via texconv+ktx (HDRI baking)
 #   tools/examples/          -- asset inspection helpers (list_mission_assets etc.)
 GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
+# Tracked loose stock-art PBR maps (PNG albedo/normal/ORM per stock mech and vehicle); mods keep
+# their own art (File::open priority). Walked file-by-file.
+GAME_LOOSE_ART_TREES = ["data/textures/mech_pbr", "data/textures/vehicle_pbr"]
 
 # Repo-shipped imported structure (TERRAIN-CLIFF-MESH-DRESSING-P0): data/tgl is enumerated
 # file-by-file, not copied wholesale, so these reach an install only through this list.
@@ -1320,7 +1323,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         items.extend(generate_defs_payload(src_root, b64))
 
     # Cook tools ship with both game and editor installs (modder/user asset pipeline).
-    for entry in GAME_COOK_TOOLS:
+    for entry in GAME_COOK_TOOLS + GAME_LOOSE_ART_TREES:
         entry_abs = os.path.join(src_root, entry)
         if os.path.isfile(entry_abs):
             items.append((entry_abs, entry.replace(os.sep, "/"), "support"))

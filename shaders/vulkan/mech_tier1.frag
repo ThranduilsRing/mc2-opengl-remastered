@@ -87,7 +87,7 @@ void main() {
         // Service images expose a complete mip chain for regenerated paint.
         vec4 tex_color = texture(uAlbedo, vUv);
         if ((uRun.materialFlags & 1u) != 0u && tex_color.a < 0.5) discard;
-        if (vImportedMech != 0u)
+        if ((vImportedMech & 1u) != 0u)
             tex_color.rgb = msh_importedAlbedo(tex_color.rgb, uFrame.shadeB.z, uFrame.shadeB.w);
 
         // Material inputs (SurfaceMaterial); the composition below is the lighting lane's.
@@ -130,8 +130,9 @@ void main() {
                 rgb *= surface.ao;
             float ndv = clamp(dot(Nshade, Vs), 0.0, 1.0);
             vec3 R = reflect(-Vs, Nshade);
-            float rough = clamp(uFrame.shadeA.z, 0.15, 0.9);
-            // Stock textures have no authored PBR roughness: paint should read as satin.
+            bool authoredOrm = (vImportedMech & 8u) != 0u;
+            float rough = clamp(authoredOrm ? surface.roughness : uFrame.shadeA.z, 0.15, 0.9);
+            // Stock textures without authored PBR roughness: paint should read as satin.
             if (vImportedMech == 0u) rough = max(rough, 0.60);
             float shin = clamp(2.0 / (rough * rough) - 2.0, 4.0, 400.0);
             float lobe = pow(max(dot(R, Lk), 0.0), shin) * 1.6
@@ -139,21 +140,25 @@ void main() {
                        + pow(max(dot(R, Lf), 0.0), shin * 0.5) * 0.3;
             vec3 envRefl = mix(vec3(0.05, 0.045, 0.04), vec3(0.30, 0.34, 0.42), 0.5 + 0.5 * R.y);
             float fres = 0.05 + 0.95 * pow(1.0 - ndv, 5.0);
-            rgb += (envRefl * (0.25 + fres) + vec3(lobe)) * (0.10 + 0.25 * fres) * 0.65;
+            // Authored ORM: f0-weighted (dielectric 0.04), so it keeps the original 2.0 scale; untextured stock paint 0.65.
+            vec3 f0 = authoredOrm ? mix(vec3(0.04), albedo, surface.metallic) : vec3(1.0);
+            rgb += f0 * (envRefl * (0.25 + fres) + vec3(lobe)) * (0.10 + 0.25 * fres) * (authoredOrm ? 2.0 : 0.65);
         }
 #endif
 
 
         // A ground vehicle keeps its legacy look: no specular sheen, no light pools.
 #ifndef MECH_PREVIEW
-        if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0 && vLegacyVehicle == 0u) {
+        if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0 && (vLegacyVehicle == 0u || (vImportedMech & 8u) != 0u)) {
             bool isGlass = msh_isGlass(tex_color.rgb, uFrame.shadeB.x, uFrame.shadeB.y);
             if (uFrame.miscI.x != 0) {
                 rgb = isGlass ? vec3(0.0, 1.0, 0.0) : vec3(0.15);
             } else {
                 vec3 V = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
-                rgb += msh_blinnSpecular(Nshade, V, vMechSunDirGL, isGlass,
-                                         uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);
+                bool authored = (vImportedMech & 8u) != 0u;
+                vec3 f0 = authored ? mix(vec3(0.04), tex_color.rgb, surface.metallic) : vec3(1.0);
+                rgb += f0 * msh_blinnSpecular(Nshade, V, vMechSunDirGL, !authored && isGlass,
+                                         authored ? surface.roughness : uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);
             }
         }
 #endif

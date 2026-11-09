@@ -318,8 +318,10 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
    	char texturePath[1024];
    	mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 
-   	FullPathFileName textureName;
-   	textureName.init(texturePath,txmName,"");
+	FullPathFileName legacyTextureName;
+	legacyTextureName.init(texturePath,txmName,"");
+	const auto pbrAlbedo = mc2::textures::stockPbrOverride(legacyTextureName, true, stockPbr);
+	const char* textureName = pbrAlbedo.c_str();
 
 	/* The texture manager asks for a unique 32bit identifier for every texture instance.
 	However, it requires 72 bits to fully describe a mech texture (the base color (stored in
