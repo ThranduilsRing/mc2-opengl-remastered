@@ -41,7 +41,10 @@ std::vector<uint8_t> tga(int w, int h, int bpp, const std::vector<uint8_t>& bgra
 }  // namespace
 
 TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the texture service") {
-    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    auto root = std::filesystem::current_path();
+    while (!std::filesystem::exists(root / "RenderCore/StockPbr.h") && root != root.parent_path())
+        root = root.parent_path();
+    REQUIRE(std::filesystem::exists(root / "RenderCore/StockPbr.h"));
     const std::vector<std::string> mechs = {
         "anubis", "atlas", "bloodasp", "bushwacker", "catapult", "couger", "cyclops", "enfield",
         "fireant", "ghoul", "highlander", "hollander", "hunchback", "jagermech", "lauhu", "madcat",
@@ -93,7 +96,7 @@ TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the 
                 CHECK_FALSE(RenderCore::preferStockPbr(true, true, 0, 100));
                 CHECK_FALSE(RenderCore::preferStockPbr(false, false, 100, 100));
             }
-            std::printf("[STOCK_PBR_OFFLINE] %s/%s albedo normal orm decoded\n",
+            std::printf("StockPbr offline: %s/%s albedo normal orm decoded\n",
                 vehicle ? "vehicle" : "mech", stem.c_str());
         }
     }
