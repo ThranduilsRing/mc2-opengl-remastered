@@ -50,6 +50,7 @@ void fst_normalize_loose_key_inplace(char* s);
 }
 
 #include <string>
+#include <string_view>
 
 // Loose-file / mod-overlay index key normalizer: lowercase + forward-slash in
 // one pass (the canonical key used by mclib/file.cpp's loose-file index, which
@@ -58,7 +59,12 @@ void fst_normalize_loose_key_inplace(char* s);
 // S_strlwr); this one folds case AND slashes together so a mod path and its
 // case/slash variants resolve to ONE index key. tolower follows the existing
 // engine behavior (C locale; ASCII asset paths fold deterministically).
-std::string fst_normalize_loose_key(mc2::czstring src);
+std::string fst_normalize_loose_key(std::string_view src);
+// Explicit NUL-terminated adapter for legacy callers, including null inputs.
+inline std::string fst_normalize_loose_key(mc2::czstring src)
+{
+    return fst_normalize_loose_key(src ? std::string_view(src) : std::string_view{});
+}
 #endif
 
 #endif // MCLIB_FST_HASH_H

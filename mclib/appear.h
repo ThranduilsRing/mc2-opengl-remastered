@@ -8,11 +8,11 @@
 
 #ifndef APPEAR_H
 #define APPEAR_H
-#include <atomic>
 //---------------------------------------------------------------------------
 // Include Files
-#ifndef DAPPEAR_H
 #include <algorithm>
+#include <atomic>
+#ifndef DAPPEAR_H
 #include"dappear.h"
 #endif
 

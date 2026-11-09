@@ -163,6 +163,7 @@ public:
     std::vector<uint32_t> moverInstCap;             // instances per moverInst
     std::vector<VkAccelerationStructureInstanceKHR> instStage;
     AccelStructure moverTlas;
+    bool moverTlasDirty = true;
     ScratchArena moverScratch;
     uint64_t moverBuilds = 0, moverRefits = 0, moverRebuilds = 0, moverRetired = 0, moverLeft = 0, moverDropped = 0, moverFailed = 0;
     uint64_t lastLedgerFrame = 0, lastLiveFrame = 0, firstMoverFrame = 0;
@@ -210,6 +211,15 @@ VulkanContext* rayContext() {
     if (!mc2vk::engineVulkanContextValid()) return nullptr;
     VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     return (ctx.device() != VK_NULL_HANDLE && ctx.rt().accel && ctx.rt().rayQuery) ? &ctx : nullptr;
+}
+
+Demand& consumers() {
+    static Demand demand = [] {
+        Demand d;
+        d.set(Consumer::SelfTest, mc2::gate::get<"MC2_VK_RT_SELFTEST">());
+        return d;
+    }();
+    return demand;
 }
 
 double msSince(std::chrono::steady_clock::time_point t0) {
@@ -307,10 +317,14 @@ void retirePending(VulkanContext& ctx, State& s) {
 }
 
 void publishMaterials(VulkanContext& ctx, State& s) {
-    if (s.materials) ctx.retire(std::move(s.materials));
-    if (s.uvIndex) ctx.retire(std::move(s.uvIndex));
-    s.materials = std::move(s.pendingMat);
-    s.uvIndex = std::move(s.pendingUv);
+    if (s.pendingMat) {
+        if (s.materials) ctx.retire(std::move(s.materials));
+        s.materials = std::move(s.pendingMat);
+    }
+    if (s.pendingUv) {
+        if (s.uvIndex) ctx.retire(std::move(s.uvIndex));
+        s.uvIndex = std::move(s.pendingUv);
+    }
     s.materialBytes = s.pendingMaterialBytes;
     s.pendingMaterialBytes = 0;
 }
@@ -320,23 +334,29 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
                                         const std::vector<uint32_t>& typeRowBase, const std::vector<uint32_t>& uv, uint32_t& instanceCount,
                                         uint32_t& propCount, uint32_t& dropped) {
     retirePending(ctx, s);
+    const size_t rowCount = 1 + propRows.size() + terrain.size();
+    const bool sameRows = s.materials && propRows == s.propRows && terrain.size() == s.terrainBlas.size();
     std::vector<MaterialRow> rows;
-    rows.reserve(1 + propRows.size() + terrain.size());
-    rows.push_back(moverMaterialRow());
-    rows.insert(rows.end(), propRows.begin(), propRows.end());
-    for (uint32_t tile = 0; tile < terrain.size(); ++tile) rows.push_back(terrainMaterialRow(tile));
+    if (!sameRows) {
+        rows.reserve(rowCount);
+        rows.push_back(moverMaterialRow());
+        rows.insert(rows.end(), propRows.begin(), propRows.end());
+        for (uint32_t tile = 0; tile < terrain.size(); ++tile) rows.push_back(terrainMaterialRow(tile));
+    }
     const uint32_t terrainBase = terrainRowBase(static_cast<uint32_t>(propRows.size()));
     // No padding: every buffer whose address the build needs aligned asks VMA for it (rt_scene.instances below, AS storage, scratch).
-    const std::vector<uint32_t> uvOrZero = uv.empty() ? std::vector<uint32_t>{0u} : uv;   // a storage buffer is never empty
+    const uint32_t zero = 0;
+    const std::span<const uint32_t> uvOrZero = uv.empty() ? std::span<const uint32_t>(&zero, 1) : std::span<const uint32_t>(uv);
     const VkDeviceSize uvBytes = uvOrZero.size() * sizeof(uint32_t);
-    g_failStage = !customIndexFits(static_cast<uint32_t>(rows.size())) ? "rows_fit" : "material_buffers";
-    if (!customIndexFits(static_cast<uint32_t>(rows.size())) ||
-        !s.pendingMat.createFilled(ctx.allocator(), ctx.device(), rows.data(), rows.size() * sizeof(MaterialRow), kStorage, "rt_scene.materials") ||
-        !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uvOrZero.data(), uvBytes, kStorage, "rt_scene.uv_index")) {
+    const bool sameUv = s.uvIndex && uv == s.uvIndices;
+    g_failStage = !customIndexFits(static_cast<uint32_t>(rowCount)) ? "rows_fit" : "material_buffers";
+    if (!customIndexFits(static_cast<uint32_t>(rowCount)) ||
+        (!sameRows && !s.pendingMat.createFilled(ctx.allocator(), ctx.device(), rows.data(), rows.size() * sizeof(MaterialRow), kStorage, "rt_scene.materials")) ||
+        (!sameUv && !s.pendingUv.createFilled(ctx.allocator(), ctx.device(), uvOrZero.data(), uvBytes, kStorage, "rt_scene.uv_index"))) {
         retirePending(ctx, s);
         return std::nullopt;
     }
-    s.pendingMaterialBytes = rows.size() * sizeof(MaterialRow) + uvBytes;
+    s.pendingMaterialBytes = rowCount * sizeof(MaterialRow) + uvBytes;
     std::vector<PropPlacement> placements;
     placements.reserve(s.instances.size());
     for (size_t i = 0; i < s.instances.size(); ++i) placements.push_back({s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix});
@@ -712,6 +732,7 @@ void probeMaterials(VulkanContext& ctx, State& s) {
 
 // A mover leaves: its BLAS retires frame-fenced (the TLAS of an in-flight frame may still reference it) and its slot becomes reusable.
 void dropMover(VulkanContext& ctx, State& s, size_t i, std::string_view why) {
+    s.moverTlasDirty = true;
     Mover& m = s.movers[i];
     if (m.blas) {
         const VkDeviceSize bytes = m.blas.size();
@@ -725,6 +746,7 @@ void dropMover(VulkanContext& ctx, State& s, size_t i, std::string_view why) {
 }
 
 void dropAllMovers(VulkanContext& ctx, State& s) {
+    s.moverTlasDirty = true;
     if (s.moverTlas) ctx.retire(std::move(s.moverTlas));
     while (!s.movers.empty()) dropMover(ctx, s, s.movers.size() - 1, "unload");
     s.moverScratch.retireAll(ctx);
@@ -821,7 +843,21 @@ void logMoverLedger(const VulkanContext& ctx, State& s, uint64_t frame, uint32_t
 
 }  // namespace
 
+bool demanded() { return consumers().needed(rayContext() != nullptr); }
+
+void setConsumer(Consumer consumer, bool registered) {
+    if (!consumers().set(consumer, registered)) return;
+    invalidateProps();
+    if (State::exists()) {
+        // invalidateProps retains terrain BLASes, but may have retired their
+        // only TLAS. Resample even an unchanged surface when demand returns.
+        State& s = State::instance();
+        s.terrainKeyLive = s.terrainKeyFailed = kNone;
+    }
+}
+
 void noteTerrain(const TerrainSource& t) {
+    if (!demanded()) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || !terrainUsable(t)) return;
     const uint64_t key = terrainKey(t);
@@ -877,6 +913,7 @@ void noteTerrain(const TerrainSource& t) {
     s.tlas = std::move(*tlas);
     if (s.moverTlas) ctx->retire(std::move(s.moverTlas));   // it references the replaced BLASes; the next mover frame rebuilds it
     s.staticInst = std::move(s.pendingInst);
+    s.moverTlasDirty = true;
     publishMaterials(*ctx, s);
     retireEach(*ctx, s.terrainBlas);
     s.terrainBlas = std::move(built);
@@ -914,6 +951,7 @@ void noteTerrain(const TerrainSource& t) {
 }
 
 void updateProps(uint64_t propVbo) {
+    if (!demanded()) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || propVbo == 0) return;
     State& s = State::instance();
@@ -958,6 +996,16 @@ void updateProps(uint64_t propVbo) {
         if (ty >= feed.typeCount || s.propTried[ty] || std::find(types.begin(), types.end(), ty) != types.end()) continue;
         types.push_back(ty);
     }
+    bool sameInstances = ids == s.objectIds && inst.size() == s.instances.size();
+    for (size_t i = 0; sameInstances && i < inst.size(); ++i)
+        sameInstances = samePlacement({inst[i].typeID, ids[i], inst[i].modelMatrix},
+                                     {s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix});
+    if (!updateNeeded(s.propGen != kNone, !types.empty() || !sameInstances)) {
+        s.propGen = gen;   // registry light/fog writes are irrelevant to RT
+        s.propGenFailed = kNone;
+        probeMaterials(*ctx, s);
+        return;
+    }
     // Materials: the colour-prop island's packet routing (layer per packet, alpha class per type, uv crop). A new type waits a bounded number of calls
     // for it, then builds untextured (every geometry opaque).
     Mc2ColorPropMaterialFeed mf{};
@@ -982,9 +1030,15 @@ void updateProps(uint64_t propVbo) {
         uint32_t firstIndex, triangles;
         bool opaque;
     };
-    std::vector<MaterialRow> rows = s.propRows;
-    std::vector<uint32_t> rowBase = s.typeRowBase;
-    if (rowBase.size() < feed.typeCount) rowBase.resize(feed.typeCount, kNoRow);
+    std::vector<MaterialRow> newRows;
+    std::vector<uint32_t> newRowBase;
+    if (!types.empty()) {
+        newRows = s.propRows;
+        newRowBase = s.typeRowBase;
+        newRowBase.resize(feed.typeCount, kNoRow);
+    }
+    auto& rows = types.empty() ? s.propRows : newRows;
+    auto& rowBase = types.empty() ? s.typeRowBase : newRowBase;
     const uint32_t uvBase = static_cast<uint32_t>(s.uvIndices.size());
     std::vector<std::vector<Geo>> perType(types.size());
     std::vector<std::array<std::vector<Target>, 2>> targets(types.size());
@@ -1029,8 +1083,12 @@ void updateProps(uint64_t propVbo) {
             targets[k][1] = pickCandidates(allTris, true);
         }
     }
-    std::vector<uint32_t> uv = s.uvIndices;
-    uv.insert(uv.end(), indices.begin(), indices.end());
+    std::vector<uint32_t> newUv;
+    if (!indices.empty()) {
+        newUv = s.uvIndices;
+        newUv.insert(newUv.end(), indices.begin(), indices.end());
+    }
+    const auto& uv = indices.empty() ? s.uvIndices : newUv;
     OwnedBuffer ib;
     std::vector<AccelStructure> built;
     BuildStats st;
@@ -1074,13 +1132,20 @@ void updateProps(uint64_t propVbo) {
     }
     if (s.tlas) ctx->retire(std::move(s.tlas));
     s.tlas = std::move(*tlas);
-    s.staticInst = std::move(s.pendingInst);   // no published BLAS was replaced: the held mover TLAS stays valid until the next mover frame
-    publishMaterials(*ctx, s);   // the held mover TLAS's static instances keep their rows: rows are only appended, the terrain rows move with this TLAS
+    // Appending prop rows moves every terrain row. A retained mover TLAS must
+    // never be queried with the new table and its old terrain offsets.
+    if (!moverRowsCompatible(static_cast<uint32_t>(s.propRows.size()), static_cast<uint32_t>(rows.size())) && s.moverTlas)
+        ctx->retire(std::move(s.moverTlas));
+    s.staticInst = std::move(s.pendingInst);
+    s.moverTlasDirty = true;
+    publishMaterials(*ctx, s);
     for (auto& [ty, a] : added) s.propBlas[ty] = std::move(a);   // new types only: no published BLAS is replaced
     if (!types.empty() && !haveMat) ++s.propsWithoutMaterial;
-    s.propRows = std::move(rows);
-    s.typeRowBase = std::move(rowBase);
-    s.uvIndices = std::move(uv);
+    if (!types.empty()) {
+        s.propRows = std::move(newRows);
+        s.typeRowBase = std::move(newRowBase);
+    }
+    if (!indices.empty()) s.uvIndices = std::move(newUv);
     s.propStride = feed.vertexStride;
     if (s.typeTarget.size() < feed.typeCount) s.typeTarget.resize(feed.typeCount);
     for (size_t k = 0; k < types.size(); ++k) s.typeTarget[types[k]] = targets[k];
@@ -1127,6 +1192,7 @@ void invalidateProps() {
 }
 
 void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeometry> geos) {
+    if (!demanded()) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || cb == nullptr) return;
     if (geos.empty() && !State::exists()) return;
@@ -1185,6 +1251,24 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
         s.movers.insert(it, std::move(m));
     }
 
+    // Leaves must be resolved before jobs take pointers into the mover vector.
+    // Drawn actors stay even though lastSeen is updated by pass 2 below.
+    if (frame >= s.lastLiveFrame + 30) {
+        s.lastLiveFrame = frame;
+        for (size_t i = s.movers.size(); i-- > 0;) {
+            const Mover& m = s.movers[i];
+            const auto drawn = std::lower_bound(actors.begin(), actors.end(), m.key, [](const Actor& a, uint32_t key) { return a.key < key; });
+            if (drawn != actors.end() && drawn->key == m.key) continue;
+            const bool handle = moverIsHandleKey(m.key);
+            bool alive = false;
+            if (handle) {
+                RenderWorld::ObjectRecordView view;
+                alive = RenderWorld::getObjectRecordView(RenderCore::RenderObjectHandle::make(m.key & 0xFFFFFu, m.key >> 20), &view) && view.valid;
+            }
+            if (moverLeaves(handle, alive, frame - m.lastSeen)) dropMover(*ctx, s, i, handle ? "handle_dead" : "unseen");
+        }
+    }
+
     // Pass 2: one job per drawn actor. Refit while the topology and flags hold and fewer than kRefitsBeforeRebuild refits ran; otherwise rebuild.
     std::vector<BlasJob> jobs;
     std::vector<Mover*> jobMover;
@@ -1218,6 +1302,11 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
         }
         jobs.push_back(j);
         jobMover.push_back(&m);
+    }
+
+    if (!updateNeeded(static_cast<bool>(s.moverTlas), s.moverTlasDirty || !jobs.empty())) {
+        logMoverLedger(*ctx, s, frame, static_cast<uint32_t>(s.staticInst.size() + s.movers.size()));
+        return;
     }
 
     // This frame's skin writes, the previous frame's builds (WAW on the BLASes, scratch, TLAS) and its ray reads (WAR) -> this frame's builds.
@@ -1288,23 +1377,8 @@ void recordMovers(VkCommandBuffer_T* cb, uint32_t slot, std::span<const MoverGeo
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL mover tlas count={} cap={} inst_addr=0x{:x} tlas_bytes={} scratch_bytes={}", count, s.moverInstCap[fs],
                   instBase, s.moverTlas ? s.moverTlas.size() : 0, s.moverScratch.capacity());
     if (!ok && s.moverTlas) ctx->retire(std::move(s.moverTlas));   // never leave a TLAS whose build was not recorded this frame
+    s.moverTlasDirty = !ok;
     s.moverScratch.retireStale(*ctx);
-
-    // Leave: a mech whose RenderWorld handle died, or (vehicles, high-generation handles) a mover unseen for kMoverUnseenFrames. Checked every 30 frames.
-    if (frame >= s.lastLiveFrame + 30) {
-        s.lastLiveFrame = frame;
-        for (size_t i = s.movers.size(); i-- > 0;) {
-            const Mover& m = s.movers[i];
-            if (m.lastSeen == frame) continue;
-            const bool handle = moverIsHandleKey(m.key);
-            bool alive = false;
-            if (handle) {
-                RenderWorld::ObjectRecordView view;
-                alive = RenderWorld::getObjectRecordView(RenderCore::RenderObjectHandle::make(m.key & 0xFFFFFu, m.key >> 20), &view) && view.valid;
-            }
-            if (moverLeaves(handle, alive, frame - m.lastSeen)) dropMover(*ctx, s, i, handle ? "handle_dead" : "unseen");
-        }
-    }
     logMoverLedger(*ctx, s, frame, ok ? count : 0);
 }
 
