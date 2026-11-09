@@ -138,6 +138,7 @@ def reusable_payload(src_root, target, inputs):
     import random
     from kit_payload import contained_path
     try:
+        parents = {}
         saved = json.loads((Path(target) / REUSE_NAME).read_text())
         if saved["inputs"] != inputs:
             return False, "authored kit/mod or deploy inputs changed"
@@ -147,7 +148,7 @@ def reusable_payload(src_root, target, inputs):
         if not manifest or not saved["outputs"]:
             return False, "missing payload manifest or output inventory"
         for rel, stamp in saved["outputs"].items():
-            p = contained_path(target, rel)
+            p = contained_path(target, rel, parents=parents)
             s = p.stat()
             if [s.st_size, s.st_mtime_ns, s.st_ctime_ns] != stamp:
                 return False, f"output missing or changed: {rel}"
@@ -177,7 +178,7 @@ def reusable_payload(src_root, target, inputs):
         for paths in groups.values():
             for rel in random.SystemRandom().sample(paths, min(3, len(paths))):
                 expected = saved["hashes"][rel]
-                if sha256_file(contained_path(target, rel)) != expected:
+                if sha256_file(contained_path(target, rel, parents=parents)) != expected:
                     return False, f"sampled hash mismatch: {rel}"
         return True, "authored input hashes and recorded payload match; output samples verified"
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -195,8 +196,9 @@ def record_deploy_inputs(target, inputs, hashes, items):
             for row in json.loads(receipt.read_text())["files"]:
                 inventory["cache/content-model/" + row["path"]] = row["sha256"]
     outputs = {}
+    parents = {}
     for rel in inventory:
-        s = contained_path(target, rel).stat()
+        s = contained_path(target, rel, parents=parents).stat()
         outputs[rel] = [s.st_size, s.st_mtime_ns, s.st_ctime_ns]
     sources = {}
     for src, rel, kind in items:
@@ -2400,7 +2402,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # after enumeration, because this is the first moment the required byte
     # count is actually KNOWN. Every byte below is measured from the real
     # payload; nothing is guessed. Still before deploy() copies anything.
-    check_free_space_for_payload(items, target)
+    with deploy_phase("disk space guard", 120):
+        check_free_space_for_payload(items, target)
 
     # LINK-GUARD-1 (2026-07-30 shared-install incident) -- checked HERE for the
     # same reason as the disk guard: `items` is the first moment the exact set
@@ -2412,8 +2415,9 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # that file was itself hardlinked four ways in the incident. Append it so
     # the guard covers every file this run will write, not just the copied
     # ones.
-    check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")],
-                             target)
+    with deploy_phase("hardlink isolation", 300):
+        check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")],
+                                 target)
 
     cache = {} if args.full_verify else read_manifest(target)
     preserve = list(args.preserve)
