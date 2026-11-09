@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "mc2_czstring.h"
 #include <algorithm>
+#include <chrono>
 #include <string>
 #include "terrain_internal.h"
 #include "mc2fmt.h"
@@ -1184,10 +1185,13 @@ void Terrain::initColorMapLoad() {
 	// Startup the Terrain Color Map
 	if ( terrainTextures2  && !(terrainTextures2->colorMapStarted))
 	{
+		const auto colorMapStart = std::chrono::steady_clock::now();
 		if (colorMapName)
 			terrainTextures2->init(colorMapName);
 		else
 			terrainTextures2->init(terrainName);
+		mc2::fmt::print_out("[MISSION] load=TerrainColorMap::init elapsed_ms={:.3f}\n",
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - colorMapStart).count());
 	}
 }
 

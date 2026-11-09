@@ -1,6 +1,7 @@
 #include "brain_execution_policy.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include <atomic>
+#include <chrono>
 #include "../GameAdapters/SkyRenderAdapter.h"
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
@@ -1020,7 +1021,10 @@ void Mission::initFinalizeGeometry() {
 	// Vegetation card system — notify adapter that terrain + move map are ready.
 	// land and GameMap are both stable by this point (terrain init + MOVE_readData
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
+	const auto vegetationStart = std::chrono::steady_clock::now();
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
+	mc2::fmt::print_out("[MISSION] load=Vegetation::missionLoaded elapsed_ms={:.3f}\n",
+		std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - vegetationStart).count());
     // Camera activation selects this same source later. Select it before the
     // load barrier so sky/water upload the mission HDRI rather than the boot sky.
     GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));

@@ -480,9 +480,27 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         dev = host_lease.held_device()   # the slot this run won decides its GPU unless one was forced
         if dev and not child_env.get("MC2_VK_DEVICE"):
             child_env["MC2_VK_DEVICE"] = dev
+        engine = any(exe_guard.engine_kind(a) is not None for a in argv)
+        if engine and sys.platform == "win32":
+            # Games must not inherit the lane harness's Idle priority. Replace
+            # any caller priority bits while preserving window/console flags.
+            kw["creationflags"] = (kw.get("creationflags", 0) & ~0xC1E0) | 0x4000
         proc = subprocess.Popen(list(argv), env=child_env, **popen_kwargs(show_window=show_window, **kw))
         _record_child(proc, argv)
-        if any(exe_guard.engine_kind(a) is not None for a in argv):
+        if engine:
+            if sys.platform == "win32":
+                import ctypes
+                from ctypes import wintypes
+                kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+                kernel.GetPriorityClass.argtypes = [wintypes.HANDLE]
+                kernel.GetPriorityClass.restype = wintypes.DWORD
+                actual = kernel.GetPriorityClass(int(proc._handle))
+                print(f"[host-priority] pid={proc.pid} class={actual:#x} expected=0x4000 (BelowNormal)",
+                      file=sys.stderr, flush=True)
+                if actual != 0x4000:
+                    proc.kill()
+                    proc.wait()
+                    raise RuntimeError(f"engine priority mismatch: expected BelowNormal, got {actual:#x}")
             host_lease.apply_affinity(proc)
     return proc
 

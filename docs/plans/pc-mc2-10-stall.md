@@ -2,7 +2,8 @@
 
 Assignment: slot07, claude/pc-mc2-10-stall, runtime baseline
 d63c403c9715b6a664a3513b445430e722c94c10. No production changes.
-This investigation is INCOMPLETE; no root cause or mitigation is proved.
+This investigation is INCOMPLETE; priority inheritance is confirmed in the
+runner and fixed below, but its causal role in the startup failures is unproved.
 
 Evidence root: E:/mc2-archive-2026-10/proofs/pc-mc2-10-stall/
 The state.md there contains chronology; logs/dumps stay outside Git.
@@ -82,3 +83,19 @@ See ../box/mc2-slot07/d63c403c/{rows.tsv,.tails/unit.log} under proofs.
 No pin3 game started: its waiting observer and matrix parent were stopped
 between games to hand back within the call budget. No unrestricted runs,
 post-fix acceptance or root-cause covering tests have been completed.
+
+## Continuation 2026-11-08 (in progress)
+
+- Plan: <=150 calls; inspect checkpoint/launch path, fix explicit BelowNormal
+  engine priority, log actual priority, time the two named load phases, then
+  box build/unit/smoke + targeted contracts/lint, one Windows build/deploy,
+  and a clean debugger-free 5 default + 3 NO_CPU_PIN night / 2 day matrix.
+- Implemented explicit BelowNormal creation flags in nofocus.spawn, preserving
+  non-priority flags; actual GetPriorityClass is logged and checked.
+- Windows regression: four real Python child launches from an Idle parent
+  passed, including conflicting requested priority bits. Parent stays Idle.
+- Added wall-clock timing around Vegetation::missionLoaded and the cold
+  TerrainColorMap::init call. No vegetation algorithm or simulation changes.
+- Next: finish targeted test/contract proofs; commit; run box first and the
+  single Windows compile; deploy to retained install and measure mc2_10.
+  No causal claim or initialization optimization before those measurements.
