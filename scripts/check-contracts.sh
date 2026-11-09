@@ -849,6 +849,10 @@ run_nightly "analyze_dangling"              "py -3 tests/analyze/analyze_danglin
 run_nightly "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
 run_nightly "container_callsites"       "py -3 tests/analyze/container_callsites.py --check"   # step 4 B2: the compiler-derived EList/SortList/PriorityQueue call-site list; an edited file needs --remap BASE, a converted one --drop
 # (the vk_umbrella_readers rule was retired with the umbrella: the Vulkan scene path is unconditional)
+# load-waste: music streams through bounded per-channel queues instead of a PCM predecode. The doctest cases AudioBackend/* pin it
+# (no decode at catalog registration, bounded prebuffer, gapless loop, independent slots). build_contract_harnesses refuses an --only that
+# selects no test, so a rename cannot leave this row green on zero cases.
+run_check "audio_music_stream"          "py -3 -B tools/build_contract_harnesses.py --run --unit-only --only 'AudioBackend/*'"
 run_nightly "boundaries"                      "py -3 scripts/check_boundaries.py --quiet && py -3 -B -m pytest scripts/tests/test_check_boundaries.py -q -p no:cacheprovider"   # one declarative scanner (scripts/boundary_rules.json): include_firewall, sim_no_audio_reads, no_gl_census, json_isolation, particles_no_cpu_projection, unified_projection_retirement, gate_echo_reads
 # GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
 # gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every
