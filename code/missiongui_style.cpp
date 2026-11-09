@@ -590,8 +590,8 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				if (bm) {
 					EditorInspector::MechInspectorData md;
 					md.populated   = true;
-					strncpy_s(md.variantName, sizeof(md.variantName), bm->variantName, _TRUNCATE);
-					strncpy_s(md.longName,    sizeof(md.longName),    bm->longName,    _TRUNCATE);
+					snprintf(md.variantName, sizeof(md.variantName), "%s", bm->variantName);
+					snprintf(md.longName, sizeof(md.longName), "%s", bm->longName);
 					md.chassisClass = static_cast<int>(bm->chassisClass);
 					md.teamId       = bm->getTeamId();
 					md.disabled     = bm->isDisabled();
@@ -608,7 +608,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 					}
 					MechWarriorPtr pilot = bm->getPilot();
 					if (pilot)
-						strncpy_s(md.pilotName, sizeof(md.pilotName), pilot->getName(), _TRUNCATE);
+						snprintf(md.pilotName, sizeof(md.pilotName), "%s", pilot->getName());
 					EditorInspector::setMechData(md);
 				}
 #ifdef MC2_IS_EDITOR
@@ -971,8 +971,8 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 				if (bm) {
 					EditorInspector::MechInspectorData md;
 					md.populated   = true;
-					strncpy_s(md.variantName, sizeof(md.variantName), bm->variantName, _TRUNCATE);
-					strncpy_s(md.longName,    sizeof(md.longName),    bm->longName,    _TRUNCATE);
+					snprintf(md.variantName, sizeof(md.variantName), "%s", bm->variantName);
+					snprintf(md.longName, sizeof(md.longName), "%s", bm->longName);
 					md.chassisClass = static_cast<int>(bm->chassisClass);
 					md.teamId       = bm->getTeamId();
 					md.disabled     = bm->isDisabled();
@@ -989,7 +989,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 					}
 					MechWarriorPtr pilot = bm->getPilot();
 					if (pilot)
-						strncpy_s(md.pilotName, sizeof(md.pilotName), pilot->getName(), _TRUNCATE);
+						snprintf(md.pilotName, sizeof(md.pilotName), "%s", pilot->getName());
 					EditorInspector::setMechData(md);
 				}
 #ifdef MC2_IS_EDITOR
