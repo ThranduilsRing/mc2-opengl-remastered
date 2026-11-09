@@ -851,8 +851,15 @@ void TeamSensorSystem::addSensor (SensorSystemPtr sensor) {
 
 void TeamSensorSystem::removeSensor (SensorSystemPtr sensor) {
 
-	sensor->clearContacts();
 	long index = sensor->getMasterIndex();
+	// A freshly allocated replacement sensor has not joined this team yet.
+	// Index -1 aliases numContacts/numEnemyContacts on Win64; never compact it.
+	if (index < 0 || index >= numSensors || sensors[index] != sensor) {
+		MC2_LOG_ONCE(Sim, Warn, "removeSensor: unregistered sensor rejected (team={} index={} count={})",
+			teamId, index, numSensors);
+		return;
+	}
+	sensor->clearContacts();
 	sensor->setMasterIndex(-1);
 
 	sensors[index] = nullptr;
@@ -937,6 +944,10 @@ long TeamSensorSystem::getSensorContacts (MoverPtr* moverList) {
 
 bool TeamSensorSystem::meetsCriteria (GameObjectPtr looker, MoverPtr mover, long contactCriteria) {
 
+	if (!mover || !mover->getContactInfo()) {
+		MC2_LOG_ONCE(Sim, Warn, "meetsCriteria: invalid mover contact rejected (team={})", teamId);
+		return false;
+	}
 	bool isSensor[NUM_CONTACT_STATUSES] = {false, true, true, true, true, false};
 	long status = mover->getContactStatus(teamId, true);
 

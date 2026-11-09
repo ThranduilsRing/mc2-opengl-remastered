@@ -720,3 +720,14 @@ endif()
 
 target_sources(mc2_tests PRIVATE test_tgl_registry.cpp)
 target_sources(mc2_tests PRIVATE test_content_error.cpp ${MC2_WORKTREE_ROOT}/mclib/content_error.cpp)
+
+# Repair deployment: use the production slot acquisition and sensor removal,
+# with only the engine services replaced by device-free seams.
+mc2_height_slice(repair_vehicle_acquire code/objmgr.cpp
+    "GroundVehiclePtr GameObjectManager::newVehicle (void)" "void GameObjectManager::setWatchID (")
+mc2_height_slice(repair_sensor_remove code/contact.cpp
+    "void TeamSensorSystem::removeSensor (SensorSystemPtr sensor)" "void TeamSensorSystem::update (void)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_vehicle_acquire.inc" CONTENT "${repair_vehicle_acquire}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_remove.inc" CONTENT "${repair_sensor_remove}")
+target_sources(mc2_tests PRIVATE test_repair_deploy.cpp)
+set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
