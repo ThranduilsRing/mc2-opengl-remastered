@@ -62,6 +62,28 @@ layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 #include "../include/water_shore_edge.hglsl"
+#include "../include/water_reactive.hglsl"
+
+struct ReactiveStamp { vec4 positionRadiusAge; vec4 velocityType; };
+layout(set = 0, binding = 13, std430) readonly buffer WaterReactive {
+    ReactiveStamp stamps[128];
+    uint counts[1024];
+    uint indices[8192];
+} R;
+
+vec3 reactiveWater(vec2 worldXY, float pixelWidth) {
+    ivec2 cell = ivec2(floor(worldXY / 256.0));
+    uint tile = (uint(cell.y) & 31u) * 32u + (uint(cell.x) & 31u);
+    vec3 result = vec3(0.0);
+    for (uint i = 0u; i < min(R.counts[tile], 8u); ++i) {
+        ReactiveStamp s = R.stamps[R.indices[tile * 8u + i]];
+        vec2 delta = worldXY - s.positionRadiusAge.xy;
+        if (dot(delta, delta) < 224.0 * 224.0)
+            result += wr_profile(delta, s.velocityType.xy, s.positionRadiusAge.z,
+                                 s.positionRadiusAge.w, s.velocityType.z, pixelWidth);
+    }
+    return vec3(clamp(result.xy, vec2(-0.12), vec2(0.12)), min(result.z, 0.08));
+}
 #include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 
 // Global aliases (assigned in main) so the ported GL blocks below stay
@@ -318,6 +340,9 @@ void main(void)
                                  WorldPos.xy, F.f7.x);
     }
     if (shore <= 0.0) discard;
+    // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
+    float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
+    vec3 reactive = reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
@@ -345,6 +370,7 @@ void main(void)
     vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));
     col *= 1.0 + shoreRipple * nearShore;
     col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
+    col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, reactive.z);
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
     // sunVis carries the same shadows (no floor) to the sun specular.
     float sunVis = 1.0;
@@ -376,8 +402,9 @@ void main(void)
         PREC vec3  reflectCol = col;
         PREC float reflMix    = 0.0;
         //PORT-BEGIN:waterReflSetup
-        // WATER-WAVES-GLINT: the sky and geometry reflections follow the wave normal (trains + fine ripples).
-        PREC vec3  waveNormal = waveN;
+        // WATER-WAVES-GLINT: the sky and geometry reflections follow the wave normal (trains + fine ripples);
+        // the actor ripple/wake slope (reactive.xy) rides on top of it.
+        PREC vec3  waveNormal = normalize(waveN + vec3(reactive.xy, 0.0));
         PREC vec3  rdir       = reflect(-vdir, waveNormal);           // MC2 Z-up
         PREC vec3  skyDir     = vec3(rdir.x, rdir.z, -rdir.y);
         if (u_waterHdriLod >= 0.0) {
@@ -392,7 +419,7 @@ void main(void)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
         if (F.DEEP_COLOR.w > 0.5) {
-            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize; // TREE-REFL-SOLID: no wave-normal offset (it tore the reflected canopy)
+            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + reactive.xy*0.015; // TREE-REFL-SOLID: no wave-normal offset (it tore the reflected canopy); only the local actor ripple bends it
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
                 geometry=texture(u_waterReflection,reflectionUV);
             }

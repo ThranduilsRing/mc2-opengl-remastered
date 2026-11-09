@@ -10,6 +10,7 @@
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "../RenderCore/water_reactive.h"
 
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
@@ -412,6 +413,10 @@ bool Mech3DAppearance::recalcBounds (void)
 long Mech3DAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
+    mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
+        position.x, position.y, getRadius() * 0.35f,
+        renderAnim_.wakeRequested && !isHelicopter && renderAnim_.currentGestureId != 20,
+        visible && inView && mc2_vis::meshDrawn(buildVisState()), false);
 	// FX_COUNT one-time init: register the shutdown emit from a code path that
 	// is guaranteed to run (a discardable anon-namespace static can be elided
 	// by /OPT:REF). Unconditional init print proves render() runs + flag state.
@@ -975,34 +980,7 @@ long Mech3DAppearance::render (long depthFixup)
 					}
 				}
 				
-				if (waterWake && isWaking && (unitAnim().currentGestureId != 20))	//Do NOT draw wake if we are jumping.  keep calcing it, though!
-				{
-					glm::mat4 	shapeOrigin;
-					glm::mat4	localToWorld;
-					glm::mat4	localResult;
-							
-					glm::vec3 wakePos;
-					wakePos.x = -position.x;
-					wakePos.y = Terrain::waterElevation;
-					wakePos.z = position.y;
-					
-					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-					mc2::math::buildTranslation(shapeOrigin, wakePos);
-							
-					glm::quat effectRot;
-					effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
-
-					if (!unitAnim().inReverse)
-						localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
-					else
-						localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
-
-					localResult = localToWorld * shapeOrigin;
-		
- 					drawInfo.m_parentToWorld = &localResult;
-					if (!MLRVertexLimitReached)
-						waterWake->Draw(&drawInfo); if (s_fxCountLog) fxCountTick(FX_WAKE);
-				}
+				// Water wakes now shade the material from the completed presentation pose.
 				
 				if (isDusting && helicopterDustCloud)
 				{

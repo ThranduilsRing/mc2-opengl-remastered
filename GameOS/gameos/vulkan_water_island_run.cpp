@@ -15,6 +15,8 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
+#include "../../RenderCore/water_reactive.h"
+#include "../../mclib/timing.h"
 
 
 int gos_GetWaterReflectionQuality();
@@ -216,7 +218,8 @@ extern "C" int mc2_vk_water_island_run(
     // The parameter UBOs go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence); the ring slot belongs to the
     // frame, not to the parity, so staging them here races nothing.
     const VkDeviceSize fsUboOff = mc2vk::alignUp(kWaterVsUboSize, slotCtx.frameAlignment());
-    const mc2vk::FrameAlloc uboSpan = slotCtx.frameAlloc(fsUboOff + sizeof(WaterFsParams));
+    const VkDeviceSize reactiveOff = mc2vk::alignUp(fsUboOff + sizeof(WaterFsParams), slotCtx.frameAlignment());
+    const mc2vk::FrameAlloc uboSpan = slotCtx.frameAlloc(reactiveOff + sizeof(mc2::waterreactive::GpuFrame));
     if (!uboSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
 
     const clk::time_point tFence0 = clk::now();
@@ -314,6 +317,16 @@ extern "C" int mc2_vk_water_island_run(
         }
         fsLocal.DEEP_COLOR[3] = reflectThisFrame ? 1.0f : 0.0f;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
+        // Frame-owned host writes, after this descriptor slot's fence; no readback or extra submit.
+        mc2::waterreactive::GpuFrame reactive;
+        mc2::waterreactive::buffer().snapshot(scenarioTime, reactive);
+        std::memcpy(base + reactiveOff, &reactive, sizeof(reactive));
+        VkDescriptorBufferInfo reactiveInfo{uboSpan.buffer, uboSpan.offset + reactiveOff, sizeof(reactive)};
+        VkWriteDescriptorSet reactiveWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        reactiveWrite.dstSet = s->set[par]; reactiveWrite.dstBinding = 13;
+        reactiveWrite.descriptorCount = 1; reactiveWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        reactiveWrite.pBufferInfo = &reactiveInfo;
+        vkUpdateDescriptorSets(s->device, 1, &reactiveWrite, 0, nullptr);
         if (s->ringBound[par] != uboSpan.buffer) {
             mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, kWaterVsUboSize);
             mc2vk::writeDynamicBinding(s->device, s->set[par], 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uboSpan.buffer, sizeof(WaterFsParams));
