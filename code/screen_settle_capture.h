@@ -31,9 +31,10 @@ inline bool iequals(std::string_view a, std::string_view b) {
 }
 
 inline const ScreenCell* findScreen(std::string_view id) {
+    const ScreenCell* hit = nullptr;
     for (const ScreenCell& c : kScreens)
-        if (iequals(id, c.name)) return &c;
-    return nullptr;
+        if (!hit && iequals(id, c.name)) hit = &c;
+    return hit;
 }
 
 struct Spec {
