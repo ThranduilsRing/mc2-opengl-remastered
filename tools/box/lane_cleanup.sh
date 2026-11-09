@@ -130,11 +130,11 @@ holders() {   # table of the lane dirs holding space: unique size, age, last act
 }
 
 evict() {   # evict <floor_gb> [keep_key]: free space up to the floor by removing the OLDEST idle lane dirs (never one that is running, queued in pueue, wanted, or active in the last IDLE_MIN), each logged by name
-  local floor=$1 keep=${2:-} free k n=0 est gone=" " d
+  local floor=$1 keep=${2:-} free k n=0 est gone=" " d m nref
   free=$(free_gb); [ "${free:-0}" -lt "$floor" ] || { echo "[lane_cleanup] evict: $free GB free (floor $floor GB), 0 lane dir(s) evicted"; return 0; }
-  scan_lanes
+  scan_lanes; nref=$(nifty_ref)
   while [ "${free:-0}" -lt "$floor" ]; do
-    k=$(for d in $(lane_dirs); do printf '%s %s\n' "${ACT[$d]}" "$d"; done | sort -n | while read -r _ d; do
+    k=$(for d in $(lane_dirs); do m=1; { [ -n "$nref" ] && merged "$d" "$nref"; } && m=0; printf '%s %s %s\n' "$m" "${ACT[$d]}" "$d"; done | sort -k1,1n -k2,2n | while read -r _ _ d; do   # branches already merged into nifty first, then oldest
           [ "$d" = "$keep" ] && continue; case "$gone" in *" $d "*) continue;; esac; [ -n "${WHY[$d]}" ] && continue; echo "$d"; break; done)
     if [ -z "$k" ]; then echo "[lane_cleanup] evict: $free GB free, floor $floor GB, and no evictable lane dir left (all are running, queued, wanted or recently active):"; holders; return 1; fi
     est=$(( ${SZ[$k]:-0} / 1024 ))
