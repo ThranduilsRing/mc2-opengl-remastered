@@ -140,3 +140,125 @@ def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
     (tmp_path / '.deployed_manifest.csv').unlink()
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path)
+
+
+def test_verified_cache_rehashes_only_changed_members_and_rejects_corruption(tmp_path, monkeypatch):
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    iso.verified_seed(tmp_path, use_cache=True)
+    calls = []
+    sha = iso.file_sha
+    monkeypatch.setattr(iso, 'file_sha', lambda p: (calls.append(p), sha(p))[1])
+    iso.verified_seed(tmp_path, use_cache=True)
+    assert calls == []
+    victim = tmp_path / 'runtime.dll'
+    stat = victim.stat()
+    victim.write_bytes(b'corrupt')  # same length; preserve mtime as well
+    os.utime(victim, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    with pytest.raises(SystemExit):
+        iso.verified_seed(tmp_path, use_cache=True)
+    assert victim in calls
+
+
+def test_plan_prunes_excluded_trees_before_descent(tmp_path, monkeypatch):
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    visited = []
+    walk = os.walk
+
+    def recording(*args, **kwargs):
+        for row in walk(*args, **kwargs):
+            visited.append(Path(row[0]).relative_to(tmp_path).as_posix())
+            yield row
+
+    monkeypatch.setattr(iso.os, 'walk', recording)
+    iso.plan(tmp_path, iso._load_guard(), iso.verified_seed(tmp_path))
+    assert not {'cache', 'mods', 'debug_state'} & set(visited)
+
+
+def test_link_failure_falls_back_to_guarded_verified_private_copy(tmp_path, monkeypatch):
+    iso = lean_tool()
+    src, dst = tmp_path / 'src', tmp_path / 'dst'
+    src.mkdir()
+    (src / 'textures.fst').write_bytes(b'stock')
+    guards = []
+    monkeypatch.setattr(iso.os, 'link', lambda *args: (_ for _ in ()).throw(OSError('unsupported')))
+    monkeypatch.setattr(iso, 'check_space', lambda size, path: guards.append((size, path)))
+    assert iso.build(src, dst, [('textures.fst', 5)], []) == (0, 1)
+    assert guards and guards[0][0] >= 5
+    assert (dst / 'textures.fst').read_bytes() == b'stock'
+    assert not (src / 'textures.fst').samefile(dst / 'textures.fst')
+
+
+def test_copied_file_checked_against_manifest(tmp_path, monkeypatch):
+    iso = lean_tool()
+    src, dst = tmp_path / 'src', tmp_path / 'dst'
+    src.mkdir()
+    (src / 'mc2.exe').write_bytes(b'good')
+    copy = iso.shutil.copy2
+
+    def corrupt(a, b):
+        copy(a, b)
+        Path(b).write_bytes(b'evil')
+
+    monkeypatch.setattr(iso.shutil, 'copy2', corrupt)
+    with pytest.raises(SystemExit):
+        iso.build(src, dst, [], [('mc2.exe', 4)],
+                  {'mc2.exe': {'sha256': hashlib.sha256(b'good').hexdigest()}})
+
+
+def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, monkeypatch):
+    iso = lean_tool()
+    source, repo = tmp_path / 'src', tmp_path / 'repo'
+    monkeypatch.setattr(iso, 'SCRIPTS', repo / 'scripts')
+    name = 'mods/mc2-industrial-kit/model.glb'
+    path = source / name
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b'model')
+    pinned = repo / 'data/kit/industrial-kit.json'
+    pinned.parent.mkdir(parents=True)
+    pinned.write_text(json.dumps({'files': [{'path': 'model.glb', 'bytes': 5,
+                                           'sha256': iso.file_sha(path)}]}))
+    cache = source / 'cache/content-model'
+    cache.mkdir(parents=True)
+    recipe = cache / 'model-123.mci'
+    recipe.write_bytes(b'cooked')
+    (cache / 'industrial-cook.json').write_text(json.dumps({'files': [
+        {'path': recipe.name, 'bytes': 6, 'sha256': iso.file_sha(recipe)}]}))
+    extras = iso.kit_seed_members(source, {})
+    assert set(extras) == {name, 'cache/content-model/industrial-cook.json',
+                           'cache/content-model/model-123.mci'}
+    path.write_bytes(b'wrong')
+    with pytest.raises(ValueError, match='pinned kit'):
+        iso.kit_seed_members(source, {})
+
+
+def test_seed_inventory_reuses_and_refreshes_on_manifest_change(tmp_path, monkeypatch):
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    seed = iso.verified_seed(tmp_path)
+    guard = iso._load_guard()
+    cold = iso.seed_plan(tmp_path, guard, seed)
+    original = iso.plan
+    monkeypatch.setattr(iso, 'plan', lambda *a: pytest.fail('unchanged seed walked again'))
+    assert iso.seed_plan(tmp_path, guard, seed) == cold
+    manifest = tmp_path / '.deployed_manifest.csv'
+    manifest.write_text(manifest.read_text().replace('abc', 'next-commit'))
+    monkeypatch.setattr(iso, 'plan', original)
+    refreshed = iso.seed_plan(tmp_path, guard, iso.verified_seed(tmp_path))
+    assert refreshed[0] == cold[0]
+    assert refreshed[3] > cold[3]  # the rewritten manifest grew
+
+
+def test_linked_pinned_kit_safe_only_with_skip_kit(tmp_path):
+    iso = lean_tool()
+    guard = iso._load_guard()
+    src, dst = tmp_path / 'src', tmp_path / 'dst'
+    name = 'mods/mc2-industrial-kit/model.glb'
+    (src / name).parent.mkdir(parents=True)
+    (src / name).write_bytes(b'kit')
+    before = iso.content_stamp(src / name)
+    iso.build(src, dst, [(name, 3)], [])
+    print('NTFS hardlink stamp before/after:', before, iso.content_stamp(src / name))
+    assert guard.run_check(str(dst), payload_rels=['mc2.exe'])[0] == 'OK'
+    assert guard.run_check(str(dst), payload_rels=[name])[0] == 'SHARED'
