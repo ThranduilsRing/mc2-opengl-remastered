@@ -176,7 +176,7 @@ def test_review_pack_registry_guard():
     _assert_pass(subprocess.run([sys.executable, "scripts/build_review_pack.py", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
-@pytest.mark.timeout(120)
+@pytest.mark.timeout(300)  # fork-heavy sh selftest: 119 s alone on the loaded host, over 120 s inside the full suite
 def test_fail_reason_selftest():
     _assert_pass(subprocess.run([git_bash(), "scripts/check-contracts.sh", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
