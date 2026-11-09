@@ -6,7 +6,7 @@
 #
 # Rule 1 — CONFINEMENT: FastFileFind( / elfHash( call sites may exist ONLY in
 #   the chokepoint surface {mclib/file.cpp, mclib/fastfile.cpp/.h,
-#   mclib/ffile.cpp, mclib/fst_hash.cpp/.h} (tests/unit/ and tools/ are not
+#   mclib/ffile.cpp, mclib/fst_hash.cpp/.h, mclib/vfs.cpp} (tests/unit/ and tools/ are not
 #   scanned). A new game-code caller bypassing the normalized funnel is red.
 #
 # Rule 2 — PER-FILE COUNT RATCHET: raw read-mode opens (fopen "r*",
@@ -50,7 +50,7 @@ rule1_confinement() {
     grep -rEn '(FastFileFind|elfHash)[[:space:]]*\(' $dirs \
         --include='*.cpp' --include='*.h' --include='*.hpp' 2>/dev/null \
         | grep -Ev '^[^:]*:[0-9]+:[[:space:]]*(//|\*)' \
-        | grep -Ev 'mclib/(file|fastfile|ffile|fst_hash)\.(cpp|h):' \
+        | grep -Ev 'mclib/(file|fastfile|ffile|fst_hash)\.(cpp|h):|mclib/vfs\.cpp:' \
         || true
 }
 
@@ -169,6 +169,19 @@ EOF
     v="$(rule1_confinement "$tmp")"
     if [ -z "$v" ]; then
         echo "path-normalization --self-test: FAIL (Rule 1 synthetic caller NOT detected)"
+        return 1
+    fi
+
+    # VFS owns the ladder's FST calls, but its raw opens still need inline exemptions.
+    mkdir -p "$tmp/mclib"
+    cat > "$tmp/mclib/vfs.cpp" <<'EOF'
+void f() { FastFileFind("data/x.bin", handle); }
+void g() { FILE* f = fopen("data/x.bin", "rb"); (void)f; }
+EOF
+    v="$(rule1_confinement "$tmp" | grep 'mclib/vfs.cpp:' || true)"
+    c="$(rule2_census "$tmp" | awk -F"$TAB" '$2 == "mclib/vfs.cpp" {print $1}')"
+    if [ -n "$v" ] || [ "${c:-0}" -ne 1 ]; then
+        echo "path-normalization --self-test: FAIL (VFS confinement/census boundary)"
         return 1
     fi
 
