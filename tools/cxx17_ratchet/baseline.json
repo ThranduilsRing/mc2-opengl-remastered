@@ -54,8 +54,8 @@
    "LG05": 80,
    "LG06": 131,
    "LG07": 0,
-   "LG08": 17,
-   "LG09": 12,
+   "LG08": 8,
+   "LG09": 6,
    "LG10": 7,
    "LG11": 35,
    "LG12a": 29,
@@ -147,7 +147,7 @@
    "LG06": 64,
    "LG07": 2,
    "LG08": 1,
-   "LG09": 4,
+   "LG09": 3,
    "LG10": 24,
    "LG11": 33,
    "LG12a": 25,
@@ -192,7 +192,7 @@
    "LG05": 100,
    "LG06": 55,
    "LG07": 2,
-   "LG08": 2,
+   "LG08": 1,
    "LG09": 2,
    "LG10": 8,
    "LG11": 56,
@@ -303,10 +303,7 @@
    "LG12b": 5
   },
   "GameOS/gameos/MC2Strings.h": {},
-  "GameOS/gameos/alloc_stats_proof.inc": {
-   "LG08": 8,
-   "LG09": 6
-  },
+  "GameOS/gameos/alloc_stats_proof.inc": {},
   "GameOS/gameos/asset_scale.cpp": {
    "LG05": 2,
    "LG06": 3,
@@ -815,9 +812,7 @@
   "GameOS/gameos/vk_gpu_profile.cpp": {},
   "GameOS/gameos/vk_gpu_profile.h": {},
   "GameOS/gameos/vk_gpu_timestamps.h": {},
-  "GameOS/gameos/vk_hdri_source.h": {
-   "LG08": 1
-  },
+  "GameOS/gameos/vk_hdri_source.h": {},
   "GameOS/gameos/vk_image_resource.cpp": {
    "LG06": 2
   },
@@ -1957,7 +1952,6 @@
   "code/mpparameterscreen.cpp": {
    "LG03": 1,
    "LG05": 3,
-   "LG09": 1,
    "LG12b": 5
   },
   "code/mpparameterscreen.h": {},
@@ -2683,9 +2677,7 @@
   "mclib/mech3d_internal.h": {
    "LG12a": 1
   },
-  "mclib/mech3d_render.cpp": {
-   "LG08": 1
-  },
+  "mclib/mech3d_render.cpp": {},
   "mclib/mech3d_type.cpp": {
    "LG03": 3,
    "LG05": 4,
@@ -3297,7 +3289,7 @@
    "LG20": 1
   }
  },
- "head": "8fc0c6c89",
+ "head": "8ab1d9855",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

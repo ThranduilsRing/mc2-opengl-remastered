@@ -43,14 +43,17 @@ static void trackAlloc(void* p, size_t bytes)
     USHORT n = CaptureStackBackTrace(2, 12, fr, nullptr);
     uint64_t h = 1469598103934665603ull;
     std::array<void*, 10> key{};
-    for (USHORT i = 0; i < n && i < 10; ++i) { key[i] = fr[i]; h = (h ^ (uint64_t)fr[i]) * 1099511628211ull; }
+    for (USHORT i = 0; i < n && i < 10; ++i) { key[i] = fr[i]; h = (h ^ reinterpret_cast<uint64_t>(fr[i])) * 1099511628211ull; }
     {
         std::lock_guard<std::mutex> lk(g_trkMu);
         auto it = g_siteIdx->find(h);
         uint32_t si;
-        if (it == g_siteIdx->end()) { si = (uint32_t)g_sites->size(); g_sites->push_back(key); (*g_siteIdx)[h] = si; }
-        else si = it->second;
-        (*g_trk)[p] = TrkRec{(uint32_t)bytes, g_trkGen, si};
+        if (it == g_siteIdx->end()) { si = static_cast<uint32_t>(g_sites->size()); g_sites->push_back(key); (*g_siteIdx)[h] = si; }
+        else {
+            const auto& [siteHash, siteIndex] = *it;
+            si = siteIndex;
+        }
+        (*g_trk)[p] = TrkRec{static_cast<uint32_t>(bytes), g_trkGen, si};
     }
     tl_inTracker = false;
 }
@@ -86,11 +89,15 @@ void mc2AllocTrackReport(uint32_t gen)
     uint64_t total = 0, totalBytes = 0;
     {
         std::lock_guard<std::mutex> lk(g_trkMu);
-        for (auto& kv : *g_trk)
-            if (kv.second.gen == gen) { auto& a = agg[kv.second.site]; ++a.count; a.bytes += kv.second.size; ++total; totalBytes += kv.second.size; }
+        for (const auto& [pointer, record] : *g_trk)
+            if (record.gen == gen) { auto& a = agg[record.site]; ++a.count; a.bytes += record.size; ++total; totalBytes += record.size; }
     }
     std::vector<std::pair<uint32_t, Agg>> v(agg.begin(), agg.end());
-    std::sort(v.begin(), v.end(), [](auto& a, auto& b) { return a.second.count > b.second.count; });
+    std::sort(v.begin(), v.end(), [](const auto& a, const auto& b) {
+        const auto& [siteA, statsA] = a;
+        const auto& [siteB, statsB] = b;
+        return statsA.count > statsB.count;
+    });
     mc2::fmt::print_out("[ALLOC_SURVIVORS] gen={} blocks={} bytes={} sites={}\n", mc2::fmt::as_u32(gen), mc2::fmt::as_u64(total), mc2::fmt::as_u64(totalBytes), mc2::fmt::as_u64(v.size()));
     HANDLE proc = GetCurrentProcess();
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
@@ -98,29 +105,30 @@ void mc2AllocTrackReport(uint32_t gen)
     if (!s_symInit) { SymInitialize(proc, nullptr, TRUE); s_symInit = true; }
     // S10_SKIP=<substring>: sites with that text in any frame symbol are left out (a known, separately reported leak); S10_SITES = ranks to print.
     const char* skip = std::getenv("S10_SKIP");
-    const size_t maxSites = std::getenv("S10_SITES") ? (size_t)std::atoi(std::getenv("S10_SITES")) : 12;
+    const size_t maxSites = std::getenv("S10_SITES") ? static_cast<size_t>(std::atoi(std::getenv("S10_SITES"))) : 12;
     size_t printed = 0;
     uint64_t skippedBlocks = 0;
     for (size_t r = 0; r < v.size() && printed < maxSites; ++r) {
+        const auto& [site, stats] = v[r];
         if (skip) {
             bool hit = false;
-            for (int i = 0; i < 10 && (*g_sites)[v[r].first][i]; ++i) {
-                char sb[sizeof(SYMBOL_INFO) + 256]; SYMBOL_INFO* sy = (SYMBOL_INFO*)sb; sy->SizeOfStruct = sizeof(SYMBOL_INFO); sy->MaxNameLen = 256; DWORD64 dd = 0;
-                if (SymFromAddr(proc, (DWORD64)(*g_sites)[v[r].first][i], &dd, sy) && std::strstr(sy->Name, skip)) { hit = true; break; }
+            for (int i = 0; i < 10 && (*g_sites)[site][i]; ++i) {
+                char sb[sizeof(SYMBOL_INFO) + 256]; SYMBOL_INFO* sy = reinterpret_cast<SYMBOL_INFO*>(sb); sy->SizeOfStruct = sizeof(SYMBOL_INFO); sy->MaxNameLen = 256; DWORD64 dd = 0;
+                if (SymFromAddr(proc, reinterpret_cast<DWORD64>((*g_sites)[site][i]), &dd, sy) && std::strstr(sy->Name, skip)) { hit = true; break; }
             }
-            if (hit) { skippedBlocks += v[r].second.count; continue; }
+            if (hit) { skippedBlocks += stats.count; continue; }
         }
         ++printed;
-        mc2::fmt::print_out("[ALLOC_SITE] rank={} blocks={} bytes={}\n", mc2::fmt::as_u64(r), mc2::fmt::as_u64(v[r].second.count), mc2::fmt::as_u64(v[r].second.bytes));
-        auto& key = (*g_sites)[v[r].first];
+        mc2::fmt::print_out("[ALLOC_SITE] rank={} blocks={} bytes={}\n", mc2::fmt::as_u64(r), mc2::fmt::as_u64(stats.count), mc2::fmt::as_u64(stats.bytes));
+        auto& key = (*g_sites)[site];
         for (int i = 0; i < 8 && key[i]; ++i) {
             char symBuf[sizeof(SYMBOL_INFO) + 256];
-            SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
+            SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
             sym->SizeOfStruct = sizeof(SYMBOL_INFO); sym->MaxNameLen = 256;
             DWORD64 d = 0; const char* nm = "?";
             IMAGEHLP_LINE64 ln{}; ln.SizeOfStruct = sizeof(ln); DWORD dl = 0; const char* fn = "?"; DWORD lno = 0;
-            if (SymFromAddr(proc, (DWORD64)key[i], &d, sym)) nm = sym->Name;
-            if (SymGetLineFromAddr64(proc, (DWORD64)key[i], &dl, &ln)) { fn = ln.FileName; lno = ln.LineNumber; }
+            if (SymFromAddr(proc, reinterpret_cast<DWORD64>(key[i]), &d, sym)) nm = sym->Name;
+            if (SymGetLineFromAddr64(proc, reinterpret_cast<DWORD64>(key[i]), &dl, &ln)) { fn = ln.FileName; lno = ln.LineNumber; }
             mc2::fmt::print_out("    {} ({}:{})\n", mc2::fmt::safe(nm), mc2::fmt::safe(fn), mc2::fmt::as_u32(lno));
         }
     }
