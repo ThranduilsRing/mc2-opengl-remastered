@@ -93,3 +93,13 @@ TEST_CASE("terrain_dirty_queue/height epoch and night revisit residents")
     queue.reset(6); // mission reload forgets residency
     CHECK_FALSE(queue.isResident(2));
 }
+
+TEST_CASE("terrain_dirty_queue/night drift does not invalidate residents")
+{
+    CHECK(mc2::terrainNightFullInvalidate(-1.0f, 0.0f, false, false));      // first frame
+    CHECK_FALSE(mc2::terrainNightFullInvalidate(0.31f, 0.32f, false, false)); // dusk drift
+    CHECK_FALSE(mc2::terrainNightFullInvalidate(0.0f, 0.0f, false, false));   // full day
+    CHECK(mc2::terrainNightFullInvalidate(0.0f, 0.01f, false, false));        // lamps may spawn
+    CHECK(mc2::terrainNightFullInvalidate(0.4f, 0.0f, false, false));         // lamps may drop
+    CHECK(mc2::terrainNightFullInvalidate(0.5f, 0.5f, false, true));          // isNight flip
+}
