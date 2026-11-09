@@ -167,7 +167,7 @@ def main():
                                             **nofocus.hidden_kwargs(creationflags=0x00004000))
             targets = ([21, 20, 22, 31] if args.walk else
                        [-2] if encyclopedia else [-1] if args.screen == "mainmenu" else
-                       [{"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
+                       [{"campaign_select":1,"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
             while p.poll() is None and time.monotonic() - started < args.timeout:
                 if recorder is not None and recorder.poll() is not None:
                     break
