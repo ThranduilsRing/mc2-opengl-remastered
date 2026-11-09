@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "vk_frame_ring.h"
+#include "light_feed_sync.h"
 #include "../../mclib/vk_object_lights.h"
 
 namespace mc2vk {
@@ -46,9 +47,10 @@ private:
         OwnedBuffer buffer;
         void* mapped = nullptr;
         VkDeviceSize capacity = 0;
-        std::vector<uint64_t> generations;
+        LightFeedSyncState sync;   // LIGHTING-CPU-CUT: rows this slot mirrors
     };
     Slot slots_[mc2vk::kMaxFramesInFlight];
+    LightFeedSyncStats syncStats_;
     uint64_t revision_ = 0;
     uint64_t packetKey_ = 0;
     FrameAlloc    span_;

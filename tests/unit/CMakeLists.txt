@@ -112,6 +112,7 @@ add_executable(mc2_tests
     test_light_pool_culling.cpp
     test_explosion_light.cpp
     test_terrain_vertex_dirty.cpp
+    test_light_feed_sync.cpp  # LIGHTING-CPU-CUT: light-feed slot sync (revision fast exit + journal) equals the source rows
     test_local_lights.cpp   # LOCAL-LIGHTS: pool packing vs shader decode, shadow-tile selection, mission light profile (offline)
     test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
     test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open

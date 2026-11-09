@@ -7,6 +7,10 @@
 struct TG_HWLightsData;
 namespace mc2::vkLights {
 struct Packet;
+// LIGHTING-CPU-CUT: one row write (generation order). The journal holds every write
+// with gen > journalBase, so a feed mirror synced at revision R >= journalBase needs
+// only the entries after R.
+struct RowWrite { uint64_t gen; uint32_t row; };
 // Retains the exact CPU version used by a native draw, including its row stamps.
 struct Feed {
     std::shared_ptr<const Packet> owner;
@@ -15,6 +19,8 @@ struct Feed {
     std::span<const uint64_t> generations;
     uint64_t revision = 0;
     uint64_t packetKey = 0;
+    std::span<const RowWrite> journal;
+    uint64_t journalBase = 0;
 };
 Feed captureFeed();
 void start();
