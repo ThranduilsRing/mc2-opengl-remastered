@@ -1,4 +1,5 @@
 #include "doctest.h"
+#include "test_repo_root.h"
 #include "gosfxheaders.hpp"
 #include "Gates/gate_cold.h"
 #include "fx/fx_geometry.h"
@@ -25,6 +26,15 @@ void vfx_test_capture_particles(std::vector<mc2::particles::GpuParticle>* captur
 namespace {
 namespace fx = mc2::fx;
 namespace math = mc2::math;
+const std::string stock_fixture_path = MC2_TEST_FIXTURE_DIR + "/vfx/mc2.fx";
+
+bool stock_fixture_missing() {
+    std::error_code error;
+    if (std::filesystem::is_regular_file(stock_fixture_path, error)) return false;
+    std::printf("SKIP fx_playback/stock: stock VFX fixture unavailable: %s\n", stock_fixture_path.c_str());
+    return true;
+}
+
 // Public member pointers expose protected oracle observations without casting
 // a real base instance to a fabricated derived object or changing legacy code.
 struct EffectView : gosFX::Effect {
@@ -505,15 +515,14 @@ std::vector<uint8_t> controlled_catalog(unsigned orientation) {
 }
 }
 
-TEST_CASE_FIXTURE(Platform, "fx_playback/stock classes match legacy lifecycle RNG bounds and geometry") {
+TEST_CASE_FIXTURE(Platform, "fx_playback/stock classes match legacy lifecycle RNG bounds and geometry" * doctest::skip(stock_fixture_missing())) {
     size_t begin = 0, end = 0;
     SUBCASE("quarter1") { begin = 0; end = 226; }
     SUBCASE("quarter2") { begin = 226; end = 452; }
     SUBCASE("quarter3") { begin = 452; end = 678; }
     SUBCASE("quarter4") { begin = 678; end = 904; }
     REQUIRE(end > begin);
-    const char* path = "A:/Games/mc2-opengl/mc2-win64-v0.4/data/effects/mc2.fx";
-    std::ifstream file(path, std::ios::binary);
+    std::ifstream file(stock_fixture_path, std::ios::binary);
     REQUIRE(file.is_open());
     std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(file), {}};
     Library library(bytes);
