@@ -188,7 +188,7 @@ void main() {
         // FENCE-UVSCALE-1: the crop to this packet's sub-region of the group's max-dims layer mirrors GL's
         // `fract(v_uv) * vec2(uvScaleX, uvScaleY)`.
         vec2  uvContinuousOn = vUv * vUvScale;
-        vec2  uvSampledOn = fract(uvContinuousOn);
+        vec2  uvSampledOn = fract(vUv) * vUvScale;
         vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
         vec2  duv1 = dFdx(uvContinuousOn) * tsOn;
         vec2  duv2 = dFdy(uvContinuousOn) * tsOn;
@@ -211,7 +211,8 @@ void main() {
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
         vec2 uvContinuous = vUv * vUvScale;
-        vec4 texOff = vLayer >= 0 ? texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer))) : vec4(1.0);
+        vec4 texOff = vLayer >= 0 ? textureGrad(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer)),
+                                               dFdx(uvContinuous), dFdy(uvContinuous)) : vec4(1.0);
         vec3 albedo = texOff.rgb;
         vec3 objectAlbedo;
         if (propAlbedoOverride(uPacket.materialId, objectAlbedo)) albedo = objectAlbedo;
