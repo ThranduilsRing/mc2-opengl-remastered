@@ -225,9 +225,12 @@ def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, m
     recipe.write_bytes(b'cooked')
     (cache / 'industrial-cook.json').write_text(json.dumps({'files': [
         {'path': recipe.name, 'bytes': 6, 'sha256': iso.file_sha(recipe)}]}))
-    extras = iso.kit_seed_members(source, {})
+    extras = iso.kit_seed_members(source, {}, use_cache=True)
     assert set(extras) == {name, 'cache/content-model/industrial-cook.json',
                            'cache/content-model/model-123.mci'}
+    with monkeypatch.context() as warm:
+        warm.setattr(kit_payload, 'checked_files', lambda *a: pytest.fail('unchanged kit rehashed'))
+        assert iso.kit_seed_members(source, {}, use_cache=True) == extras
     lean_fixture(source)
     guard = lean_tool()._load_guard()
     monkeypatch.setattr(iso, '_load_guard', lambda: guard)
@@ -242,9 +245,11 @@ def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, m
     assert recipe.read_bytes() == b'cooked'
     assert installed.read_bytes() == b'new recipe'
     assert not (lane / 'cache/content-model/industrial-cook.json').samefile(cache / 'industrial-cook.json')
+    stamp = path.stat()
     path.write_bytes(b'wrong')
+    os.utime(path, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
     with pytest.raises(ValueError, match='pinned kit'):
-        iso.kit_seed_members(source, {})
+        iso.kit_seed_members(source, {}, use_cache=True)
 
 
 def test_seed_inventory_reuses_and_refreshes_on_manifest_change(tmp_path, monkeypatch):
@@ -325,3 +330,45 @@ def test_normal_deploy_keeps_hardlink_refusal(tmp_path):
     assert dp.prepare_seed_delta(items, str(lane)) == {}
     with pytest.raises(SystemExit):
         dp.check_hardlink_isolation(items, str(lane))
+
+
+@pytest.mark.parametrize('receipt', [False, True])
+def test_mission_write_breaks_seed_links_including_manifest(tmp_path, receipt):
+    """The bake-recook-smooth 58-file refusal must never require shared writes."""
+    iso = lean_tool()
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    rel = 'data/missions/mc2_01.beauty/visual_height_4x.r32'
+    for name in (rel, dp.MANIFEST_NAME):
+        path = seed / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'original')
+    iso.build(seed, lane, [(rel, 8), (dp.MANIFEST_NAME, 8)], [])
+    if receipt:
+        (lane / '.lane-seed.json').write_text(json.dumps({'shared': {rel: {
+            'stamp': iso.content_stamp(lane / rel),
+            'sha256': hashlib.sha256(b'original').hexdigest()}}}))
+    source = tmp_path / 'changed.r32'
+    source.write_bytes(b'changed')
+    items = [(str(source), rel, 'data'), (None, dp.MANIFEST_NAME, 'manifest')]
+    assert dp.prepare_seed_delta(items, str(lane), allow_legacy=True) == {}
+    dp.check_hardlink_isolation(items, str(lane))
+    for name in (rel, dp.MANIFEST_NAME):
+        assert not (lane / name).samefile(seed / name)
+        (lane / name).write_bytes(b'changed')
+        assert (seed / name).read_bytes() == b'original'
+
+
+def test_failed_privatization_preserves_shared_bytes(tmp_path, monkeypatch):
+    iso = lean_tool()
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    seed.mkdir()
+    (seed / 'mc2.exe').write_bytes(b'original')
+    iso.build(seed, lane, [('mc2.exe', 8)], [])
+    def failed_replace(*args):
+        raise OSError('injected replacement failure')
+    monkeypatch.setattr(dp.os, 'replace', failed_replace)
+    with pytest.raises(OSError, match='injected'):
+        dp.prepare_seed_delta([(None, 'mc2.exe', 'exe')], str(lane), allow_legacy=True)
+    assert (seed / 'mc2.exe').samefile(lane / 'mc2.exe')
+    assert (seed / 'mc2.exe').read_bytes() == b'original'
+    assert sorted(p.name for p in lane.iterdir()) == ['mc2.exe']

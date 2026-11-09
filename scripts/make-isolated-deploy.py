@@ -822,7 +822,9 @@ def main(argv=None) -> int:
     out(f"planning: {src}  ->  {dst}")
     seed = None if args.snapshot else verified_seed(src, use_cache=not args.dry_run)
     out(f'timing manifest verification: {time.perf_counter() - started:.3f}s')
+    kit_started = time.perf_counter()
     extras = {} if seed is None else kit_seed_members(src, seed, use_cache=not args.dry_run)
+    out(f'timing kit verification: {time.perf_counter() - kit_started:.3f}s')
     selection = None if seed is None else {**seed, **{r.casefold(): row for r, row in extras.items()}}
     full_link, full_copy, full_lb, full_cb = (plan(src, guard) if seed is None else
                                            seed_plan(src, guard, seed, use_cache=not args.dry_run))

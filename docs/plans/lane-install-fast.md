@@ -29,6 +29,10 @@ receipt permits deploy to retain identical payload and atomically privatize
 changed shared files before the exact-payload isolation guard. Installs without
 this receipt retain the original guard behavior. Kit-changing lanes omit
 `--skip-kit`; that deliberately retains normal pinned-kit verification/cooking.
+Legacy installs under E:/mc2-installs without a seed receipt also detach the
+exact deploy write set when `--allow-new-target` is explicit. This includes
+mission beauty assets and the deployment manifest; the isolation guard still
+runs after detaching. Published installs retain their existing behavior.
 
 Seed verification is cold once, then persisted in `.lane-seed-verification.json`
 and `.lane-kit-verification.json`. Reuse requires file identity, size, mtime,
@@ -71,8 +75,14 @@ The source manifest lists 3,879 non-PDB files / 5,155,486,539 bytes.
 Hypothesis: repeated verification of that payload dominates seed planning.
 Development tests exercise corruption (including restored mtime), fallback,
 pruning, inventory invalidation, kit preservation and exact isolation guards.
-Cold seed verification is running; it is a one-time prerequisite for measuring
-the warm common case. Next: final-tip owning gate_inputs row, ratchet/lint,
-measure creation with the verified cache, archive receipts, clean owned install.
-No C++ compile or deploy is needed for this tooling change; section 7's tooling
-row overrides the brief's smoke request. No game run is currently planned.
+Continuation: rebased onto nifty b26fc9bfe. New evidence is the completed seed
+cache plus the bake-recook-smooth refusal naming 58 shared mission assets.
+The prior full install took 202.737 s; recipe linking at a5e946837 was unmeasured.
+Added regression tests for legacy mission writes, shared manifest detachment,
+replacement failure, warm kit hash reuse and same-size kit corruption.
+Next: commit final code; run gate_inputs targeted pytest plus ratchet/lint;
+time a fresh install and smoke-lite using the seed executable as the explicit
+fingerprint reference (this tooling lane changes no C++). No build/deploy needed.
+lane_slot.install_dirs assigns E:/mc2-installs/claude/lane-install-fast as well
+as the existing short-name directory. Use the unused full-branch path for timing;
+preserve the old directory because its prior cleanup was refused.

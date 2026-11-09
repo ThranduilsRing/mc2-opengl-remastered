@@ -2169,26 +2169,27 @@ def verdict_exe_refusal(src_root, exe_src, head):
     return None
 
 
-def prepare_seed_delta(items, target, full_verify=False):
+def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     """Keep verified shared lane bytes; detach changed writes before the guard.
 
-    Only installs made by make-isolated-deploy carry this receipt. Published
-    v0.4 behavior is unchanged. Replacement never writes through a shared inode.
+    Legacy lane installs have no receipt: detach their exact write set when
+    explicitly allowed. Published v0.4 behavior is unchanged. Replacement never
+    writes through a shared inode; the isolation guard still runs afterwards.
     """
     receipt = Path(target) / '.lane-seed.json'
-    if not receipt.is_file():
+    if not receipt.is_file() and not allow_legacy:
         return {}
     spec = importlib.util.spec_from_file_location('lane_seed', Path(__file__).with_name('make-isolated-deploy.py'))
     iso = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(iso)
-    shared = json.loads(receipt.read_text(encoding='utf-8'))['shared']
+    shared = json.loads(receipt.read_text(encoding='utf-8'))['shared'] if receipt.is_file() else {}
     verified = {}
     for src, rel, kind in items:
         dst = Path(target) / rel
         if not dst.is_file() or dst.stat().st_nlink <= 1:
             continue
         row = shared.get(rel)
-        if (not full_verify and row and iso.content_stamp(dst) == row['stamp']
+        if (not full_verify and src is not None and row and iso.content_stamp(dst) == row['stamp']
                 and Path(src).is_file() and sha256_file(src) == row['sha256']):
             verified[rel] = row['sha256']
             continue
@@ -2268,7 +2269,10 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # that file was itself hardlinked four ways in the incident. Append it so
     # the guard covers every file this run will write, not just the copied
     # ones.
-    verified = prepare_seed_delta(items, target, args.full_verify)
+    write_set = items + [(None, MANIFEST_NAME, "manifest")]
+    legacy_lane = (args.allow_new_target and
+                   Path(target).resolve().is_relative_to(Path('E:/mc2-installs').resolve()))
+    verified = prepare_seed_delta(write_set, target, args.full_verify, allow_legacy=legacy_lane)
     check_hardlink_isolation([item for item in items if item[1] not in verified] + [(None, MANIFEST_NAME, "manifest")],
                              target)
 
