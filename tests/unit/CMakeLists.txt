@@ -54,6 +54,7 @@ add_executable(mc2_tests
     test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_camera_start_pick.cpp
+    test_spawn_tree_clear.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants

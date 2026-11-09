@@ -37,6 +37,17 @@ TEST_CASE("timing_math_harness/ticks_no_overflow_large") {
     return;
 }
 
+TEST_CASE("timing_math_harness/presentation_retains_submillisecond_frames") {
+    CHECK(tmath::ticks_to_ms_fractional(3, 1000000) == doctest::Approx(0.003));
+    CHECK(tmath::ticks_to_ms_fractional(166667, 10000000) == doctest::Approx(16.6667));
+    CHECK(tmath::ticks_to_ms_fractional(17, 0) == 17.0);
+    // The camera integrates this per-frame time. Integer ms lost 4% at 240 Hz.
+    double elapsedMs = 0.0;
+    for (int i = 0; i < 240; ++i)
+        elapsedMs += tmath::ticks_to_ms_fractional(12500, 3000000);
+    CHECK(elapsedMs == doctest::Approx(1000.0));
+}
+
 TEST_CASE("timing_math_harness/clamp_first_call_seeds") {
 
     CHECK((tmath::advance_elapsed_clamp(-1.0, 42.0, 1.0) == 42.0));

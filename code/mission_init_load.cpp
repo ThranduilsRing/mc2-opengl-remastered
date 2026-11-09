@@ -7,6 +7,7 @@
 #include "mission_internal.h"
 #include "mission_init_frame.h"
 #include "static_prop_prewarm.h"
+#include "spawn_tree_clear.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 
@@ -732,6 +733,20 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 
 	{ ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30); }
 	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
+	// Movers were placed before trees existed. Do the same tree contact as
+	// walking, before static registration can retain an intact spawn tree.
+	unsigned spawnTrees = 0;
+	for (long i = 0; i < ObjectManager->numMechs; ++i) {
+		auto* mech = ObjectManager->getMech(i);
+		if (!mech) continue;
+		spawnTrees += mc2::clearSpawnTrees(*mech,
+			std::span(ObjectManager->terrainObjects, static_cast<size_t>(ObjectManager->numTerrainObjects)),
+			[](auto* tree, auto* mover) {
+				tree->getObjectType()->handleCollision(tree, mover);
+				tree->primeAppearanceForMissionLoad();
+			});
+	}
+	mc2::fmt::print_err("[SPAWN_TREES] cleared={}\n", spawnTrees);
 	{ ZoneScopedN("Mission::init Track B static-prop registration walk"); ObjectManager->registerStaticPropsForMissionLoad(); }
 	mission_phase_mark("texture_prewarm_ready"); // LOAD-PHASE-FACTS-1: terrain-object load + static-prop residency prewarm done
 
