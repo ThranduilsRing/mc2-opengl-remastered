@@ -121,6 +121,16 @@ struct VfxGroupPush {
     uint32_t oneOne;
 };
 static_assert(sizeof(VfxGroupPush) == 24, "VfxGroupPush push-constant size (vfx_particle.vert)");
+static_assert(offsetof(VfxGroupPush, uvSize) == 8 && offsetof(VfxGroupPush, atlasColumns) == 16 && offsetof(VfxGroupPush, oneOne) == 20);
+static_assert(offsetof(VfxGeometryVertex, pad0) == 12);
+
+// std430 Group in vfx_particle.vert; the record's unused pad at byte 12 selects it.
+struct VfxIndexedGroup {
+    VfxGroupPush draw;
+    uint32_t page;
+    uint32_t blend = 0;   // island blend mode; the fragment shader applies the premultiplied fold weights
+};
+static_assert(sizeof(VfxIndexedGroup) == 32 && offsetof(VfxIndexedGroup, page) == 24 && offsetof(VfxIndexedGroup, blend) == 28);
 
 constexpr uint32_t kSpritePagesPerPool = 64;   // sprite pages per pool of the descriptor chain; a mission that needs more grows it
 // Each engine frame can submit vegetation, billboards, tube ribbons and mesh effects.
@@ -179,6 +189,13 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
     mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedPipeline oneAlphaPipe, oneInvAlphaPipe, opaquePipe;
+    bool indexed = false;
+    mc2vk::OwnedShaderModule indexedVert, indexedFrag;
+    mc2vk::OwnedDescriptorSetLayout indexedDsl;
+    mc2vk::OwnedDescriptorPool indexedPool;
+    VkDescriptorSet indexedSet[kVfxSlots]{};
+    mc2vk::OwnedPipelineLayout indexedLayout;
+    mc2vk::OwnedPipeline indexedPipes[5];   // [0] premultiplied fold of modes 0/1/2/5, [3] opaque, [4] ONE/SRC_ALPHA
     mc2vk::OwnedCommandPool cpool[kVfxSlots];   // per-slot pools: vkResetCommandPool instead of per-cb reset
     VkCommandBuffer  cbuf[kVfxSlots] = {};   // one per slot
     uint64_t         ticket[kVfxSlots] = {};   // timeline value of the slot's last submit (0 = never submitted)
@@ -299,7 +316,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
 inline constexpr uint32_t VFX_ADD_ALPHA = 0, VFX_ADD_SRC_ALPHA = 1, VFX_ADD_ONE_ONE = 2;
 
-mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false, unsigned tubeMode = 0) {
+mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false, unsigned tubeMode = 0, bool indexed = false) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
@@ -333,6 +350,10 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
         cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor =
             tubeMode == 4 ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     }
+    if (indexed && tubeMode == 0) {   // premultiplied fold of modes 0/1/2/5: the fragment shader weights rgb and alpha per record
+        cba[0].srcColorBlendFactor = cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    }
     cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
     cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -351,6 +372,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vegetation ? s->vegVert.get() : s->vert.get(); stages[0].pName = "main";
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = vegetation ? s->vegFrag.get() : s->frag.get(); stages[1].pName = "main";
+    if (indexed) { stages[0].module = s->indexedVert.get(); stages[1].module = s->indexedFrag.get(); }
     VkGraphicsPipelineCreateInfo gp{};
     gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     gp.stageCount = 2; gp.pStages = stages;
@@ -362,6 +384,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     gp.pViewportState = &vps; gp.pRasterizationState = &rs;
     gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
     gp.layout = vegetation ? s->vegLayout.get() : s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+    if (indexed) gp.layout = s->indexedLayout.get();
     mc2vk::OwnedPipeline pipe;
     if (!mc2vk::create(pipe, s->device, [&](VkPipeline* out) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out); })) {
         vlog("mc2vk::infra::graphics(%s) failed.", additive ? "additive" : "alpha");
@@ -560,6 +583,41 @@ bool init_island(VfxIsland* s, int w, int h) {
         s->opaquePipe = make_pipeline(s, w, h, false, false, false, 3);
         if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe ||
             !s->oneAlphaPipe || !s->oneInvAlphaPipe || !s->opaquePipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
+
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(s->phys, &props);
+        s->indexed = mc2vk::profile::featureEnabled(ctx.profile(), "shaderSampledImageArrayNonUniformIndexing") &&
+            props.limits.maxPerStageDescriptorSamplers >= kSpritePagesPerPool + 2 &&
+            props.limits.maxPerStageDescriptorSampledImages >= kSpritePagesPerPool + 2;
+        if (s->indexed) {
+            s->indexedVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_indexed.vert.spv"));
+            s->indexedFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_indexed.frag.spv"));
+            if (!s->indexedVert || !s->indexedFrag) return false;
+            const VkDescriptorSetLayoutBinding bindings[] = {
+                {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kSpritePagesPerPool, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+                {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr}};
+            VkDescriptorSetLayoutCreateInfo ilci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+            ilci.bindingCount = 2; ilci.pBindings = bindings;
+            if (!mc2vk::create(s->indexedDsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &ilci, nullptr, o); })) return false;
+            const VkDescriptorPoolSize sizes[] = {
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kVfxSlots * kSpritePagesPerPool},
+                {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, kVfxSlots}};
+            VkDescriptorPoolCreateInfo ipci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+            ipci.maxSets = kVfxSlots; ipci.poolSizeCount = 2; ipci.pPoolSizes = sizes;
+            if (!mc2vk::create(s->indexedPool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &ipci, nullptr, o); })) return false;
+            VkDescriptorSetLayout layouts[kVfxSlots];
+            for (auto& layout : layouts) layout = s->indexedDsl.get();
+            VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+            alloc.descriptorPool = s->indexedPool.get(); alloc.descriptorSetCount = kVfxSlots; alloc.pSetLayouts = layouts;
+            if (MC2_VK_ALLOC_SETS(s->device, &alloc, s->indexedSet) != VK_SUCCESS) return false;
+            const VkDescriptorSetLayout indexedLayouts[] = {s->dsl.get(), s->indexedDsl.get()};
+            plci.pSetLayouts = indexedLayouts;
+            if (!mc2vk::create(s->indexedLayout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) return false;
+            for (const unsigned mode : {0u, 3u, 4u}) {
+                s->indexedPipes[mode] = make_pipeline(s, w, h, false, false, false, mode, true);
+                if (!s->indexedPipes[mode]) return false;
+            }
+        }
     }
 
     // One command buffer per call and frame slot; reuse waits on its last timeline ticket.
@@ -687,7 +745,8 @@ extern "C" int mc2_vk_vfx_island_run(
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; } }
     const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
-    const mc2vk::FrameAlloc span = slotCtx.frameAlloc(partOff + needBytes);
+    const VkDeviceSize groupOff = mc2vk::alignUp(partOff + needBytes, slotCtx.frameAlignment());
+    const mc2vk::FrameAlloc span = slotCtx.frameAlloc(groupOff + drawCount * sizeof(VfxIndexedGroup));
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
     { ZoneScopedN("VKIsl.Vfx.Descriptors");
@@ -726,7 +785,42 @@ extern "C" int mc2_vk_vfx_island_run(
             if ((flags & VfxGeometryTube) != 0u) ++tubeDraws;
         }
     }
-    mc2vfx::plan_draws(items, plan);
+    // Table writes happen only after this slot's previous submission retired. Fill
+    // every descriptor; devices need neither partially-bound nor update-after-bind.
+    bool indexed = s->indexed && !items.empty();
+    std::vector<VkDescriptorSet> pageSets;
+    std::vector<VkDescriptorImageInfo> pageImages;
+    auto* groups = reinterpret_cast<VfxIndexedGroup*>(static_cast<uint8_t*>(span.ptr) + groupOff);
+    if (indexed) {
+        for (const auto& it : items) {
+            const VkDescriptorSet set = *groupPage[it.tag];
+            auto page = std::find(pageSets.begin(), pageSets.end(), set);
+            if (page == pageSets.end()) {
+                if (pageSets.size() == kSpritePagesPerPool) { indexed = false; break; }
+                const auto resident = std::find_if(s->pages.begin(), s->pages.end(), [&](const auto& entry) { const auto& [pageKey, pageEntry] = entry; return pageEntry.set[par] == set; });
+                if (resident == s->pages.end()) { indexed = false; break; }
+                pageSets.push_back(set);
+                const auto& [residentKey, residentPage] = *resident;
+                pageImages.push_back({s->samp.get(), residentPage.bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+                page = pageSets.end() - 1;
+            }
+            groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend == VFX_ADD_ONE_ONE ? 1u : 0u},
+                              static_cast<uint32_t>(page - pageSets.begin()), it.blend};
+        }
+    }
+    if (indexed) {
+        pageImages.resize(kSpritePagesPerPool, pageImages.front());
+        const VkDescriptorBufferInfo buffer{span.buffer, span.offset + groupOff, drawCount * sizeof(VfxIndexedGroup)};
+        VkWriteDescriptorSet writes[2]{};
+        writes[0].sType = writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = writes[1].dstSet = s->indexedSet[par];
+        writes[0].dstBinding = 0; writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].descriptorCount = kSpritePagesPerPool; writes[0].pImageInfo = pageImages.data();
+        writes[1].dstBinding = 1; writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[1].descriptorCount = 1; writes[1].pBufferInfo = &buffer;
+        vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
+    }
+    mc2vfx::plan_draws(items, plan, indexed);
     {
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
         uint8_t* dst = static_cast<uint8_t*>(span.ptr) + partOff;
@@ -734,6 +828,10 @@ extern "C" int mc2_vk_vfx_island_run(
         for (const mc2vfx::PlanItem& it : items) {
             if (static_cast<size_t>(dstEnd - dst) < static_cast<size_t>(it.count) * 64u) break;   // never write past the particle staging region
             std::memcpy(dst, static_cast<const uint8_t*>(particles) + static_cast<size_t>(it.src) * 64u, static_cast<size_t>(it.count) * 64u);
+            if (indexed) {
+                for (uint32_t vertex = 0; vertex < it.count; ++vertex)
+                    std::memcpy(dst + static_cast<size_t>(vertex) * 64u + 12u, &it.tag, sizeof(it.tag));
+            }
             dst += static_cast<size_t>(it.count) * 64u;
         }
     }
@@ -755,7 +853,9 @@ extern "C" int mc2_vk_vfx_island_run(
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
+    const VkPipelineLayout layout = indexed ? s->indexedLayout.get() : s->playout.get();
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &s->set[par], 2, dynOffsets);
+    if (indexed) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 1, 1, &s->indexedSet[par], 0, nullptr);
     unsigned long groupsDrawn = 0;
     VkPipeline bound = VK_NULL_HANDLE;
     VkDescriptorSet boundPage = VK_NULL_HANDLE;
@@ -766,13 +866,14 @@ extern "C" int mc2_vk_vfx_island_run(
         if (d.additive == 4) want = s->oneAlphaPipe.get();
         else if (d.additive == 5) want = s->oneInvAlphaPipe.get();
         else if (d.additive == 3) want = s->opaquePipe.get();
+        if (indexed) want = s->indexedPipes[mc2vfx::plan_pipe(d.additive)].get();
         if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
-        if (*groupPage[gi] != boundPage) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
+        if (!indexed && *groupPage[gi] != boundPage) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 1, 1, &*groupPage[gi], 0, nullptr);
             boundPage = *groupPage[gi];
         }
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
+        vkCmdPushConstants(cb, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
         mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, pd.count * expansion, 1, pd.start * expansion, 0);
         ++groupsDrawn;

@@ -22,7 +22,7 @@
 #include "../include/axis.hglsl"
 
 struct Particle {
-    vec3  position;  float _pad0;   // 0
+    vec3  position;  uint _pad0;    // 0 / 12: group index on the indexed path
     vec4  color;                     // 16
     vec3  velocity;  uint  kind_flags; // 32 / 44
     float lifetime;  float age;      // 48 / 52
@@ -46,6 +46,20 @@ layout(push_constant) uniform VfxGroupPush {
     uint oneOne;         // additive mode, ADDITIVE_*
 } G;
 
+#ifdef VFX_INDEXED
+struct Group {
+    vec2 uvOffset;
+    vec2 uvSize;
+    uint atlasColumns;
+    uint oneOne;
+    uint page;
+    uint blend;   // island blend mode 0/1/2/3/4/5; the fragment shader weights it for the premultiplied fold
+};
+layout(std430, set = 1, binding = 1) readonly buffer Groups { Group groups[]; };
+layout(location = 5) flat out uint v_page;
+layout(location = 6) flat out uint v_blend;
+#endif
+
 // Atlas UVs for the four billboard corners (normalized [0,1]).
 const vec2 kCornerUv[4] = vec2[](
     vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0), vec2(1.0, 1.0));
@@ -62,9 +76,17 @@ layout(location = 2) flat out uint v_flags;
 layout(location = 3) out vec4 v_vegData;
 layout(location = 4) out vec2 v_vegAux;
 void main() {
+#ifdef VFX_INDEXED
+    uint record = G.atlasColumns == 0xffffffffu ? uint(gl_VertexIndex) : uint(gl_VertexIndex) / 6u;
+    Group g = groups[particles[record]._pad0];
+    v_page = g.page; v_blend = g.blend;
+#else
+    // Keep the original page-binding shader usable without descriptor indexing.
+    #define g G
+#endif
     v_vegData=vec4(0.0); v_vegAux=vec2(0.0);   // vegetation has its own vertex shader (vfx_vegetation.vert); the fragment shader still reads these
     // Native mesh/ribbon vertices share the 64-byte frame-ring stride.
-    if (G.atlasColumns == 0xffffffffu) {
+    if (g.atlasColumns == 0xffffffffu) {
         Particle p = particles[gl_VertexIndex];
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
@@ -72,7 +94,7 @@ void main() {
         gl_Position = U.worldToClipGL * vec4(world, 1.0);
         // Surface flares need depth clearance, but moving their world corners
         // toward the camera enlarges explosions. Preserve authored screen size.
-        if ((p.kind_flags & 64u) != 0u && G.oneOne == ADDITIVE_ONE_ONE) {
+        if ((p.kind_flags & 64u) != 0u && g.oneOne == ADDITIVE_ONE_ONE) {
             vec3 liftedWorld = world - normalize(cross(U.camRight.xyz, U.camUp.xyz))
                              * min(4.0 * p.size, 0.25 * max(gl_Position.w, 0.0));
             vec4 lifted = U.worldToClipGL * vec4(liftedWorld, 1.0);
@@ -106,7 +128,7 @@ void main() {
     vec3 glCenter    = mc2ToRender(stuffCenter);
     // Beam heads and additive flares sit on the surface they hit and would fail the depth test there, so lift them
     // toward the camera. Smoke, dust and alpha sprites keep true depth. The lift never crosses the near plane.
-    bool pulled = ((p.kind_flags & 1u) != 0u) || (G.oneOne == ADDITIVE_ONE_ONE);
+    bool pulled = ((p.kind_flags & 1u) != 0u) || (g.oneOne == ADDITIVE_ONE_ONE);
     if (pulled) {
         vec3  toCamera = normalize(cross(U.camRight.xyz, U.camUp.xyz));
         float viewW    = (U.worldToClipGL * vec4(glCenter, 1.0)).w;
@@ -121,10 +143,10 @@ void main() {
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
 
     vec2 frameOffset = vec2(0.0);
-    if (G.atlasColumns > 1u) {
-        frameOffset = vec2(float(p.atlasIndex % G.atlasColumns), float(p.atlasIndex / G.atlasColumns));
+    if (g.atlasColumns > 1u) {
+        frameOffset = vec2(float(p.atlasIndex % g.atlasColumns), float(p.atlasIndex / g.atlasColumns));
     }
-    v_uv      = G.uvOffset + (frameOffset + kCornerUv[cornerIdx]) * G.uvSize;
+    v_uv      = g.uvOffset + (frameOffset + kCornerUv[cornerIdx]) * g.uvSize;
     v_color   = p.color;
-    v_flags = (p.kind_flags & 1u) | (G.oneOne << 1);
+    v_flags = (p.kind_flags & 1u) | (g.oneOne << 1);
 }

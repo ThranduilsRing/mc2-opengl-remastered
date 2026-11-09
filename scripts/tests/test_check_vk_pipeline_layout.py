@@ -105,3 +105,29 @@ def test_pieces_checked_alone_cannot_see_the_layout(env):
     out = []
     vkpl.check_file(path, vkpl.read(path), sym, shaders, out)
     assert "VK-PUSH-MISSING" in rules(out, "ERROR")   # the push range and layout sit in the other piece
+
+
+def test_indexed_vfx_group_layout_and_page_array(tmp_path):
+    """Reflect the production variants, including the new 32-byte SSBO record."""
+    import json
+    import subprocess
+    glslc = vkpl.find_tool(SDK, "glslc")
+    cross = vkpl.find_tool(SDK, "spirv-cross")
+    reflected = {}
+    for stage in ("vert", "frag"):
+        spv = str(tmp_path / f"vfx_indexed.{stage}.spv")
+        source = os.path.join(ROOT, "shaders", "vulkan", f"vfx_particle.{stage}")
+        subprocess.run([glslc, "--target-env=vulkan1.2", "-DVFX_INDEXED=1", source, "-o", spv],
+                       check=True, capture_output=True, **vkpl.console_child.child_kwargs(redirected=True))
+        reflected[stage] = json.loads(subprocess.check_output([cross, spv, "--reflect"],
+                                     **vkpl.console_child.child_kwargs(redirected=True)))
+    vert, frag = reflected["vert"], reflected["frag"]
+    group = next(t for t in vert["types"].values() if t.get("name") == "Group")
+    # Member order mirrors VfxIndexedGroup in vulkan_vfx_island.cpp (std430 packs these eight 4-byte words into 32 bytes).
+    assert [m["name"] for m in group["members"]] == ["uvOffset", "uvSize", "atlasColumns", "oneOne", "page", "blend"]
+    groups = next(t for t in vert["types"].values() if t.get("name") == "Groups")
+    assert groups["members"][0]["array_stride"] == 32
+    metadata = next(b for b in vert["ssbos"] if b["name"] == "Groups")
+    assert (metadata["set"], metadata["binding"]) == (1, 1)
+    pages = next(b for b in frag["textures"] if b["name"] == "uPages")
+    assert (pages["set"], pages["binding"], pages["array"]) == (1, 0, [64])
