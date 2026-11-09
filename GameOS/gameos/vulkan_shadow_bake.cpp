@@ -221,7 +221,7 @@ void ShadowBake::releaseTransients() {
     windowFb_.reset(); windowView_.reset(); windowImage_.reset();
     for (int i = 0; i < 4; ++i) { scratchView_[i].reset(); scratch_[i].reset(); }
     staging_.reset(); tileParams_.reset(); passParams_.reset(); casterUbo_.reset(); instances_.reset(); heightBuf_.reset();
-    tileR8View_.reset(); tileR8_.reset(); blockStaging_.reset(); bc4Params_.reset(); transfer_.reset();
+    tileR8View_.reset(); tileR8_.reset(); tileGeneral_ = false; blockStaging_.reset(); bc4Params_.reset(); transfer_.reset();
     queries_.reset();
     queryCount_ = 0;
     leaves_.clear(); leaves_.shrink_to_fit();
@@ -409,6 +409,7 @@ bool ShadowBake::ensureTransients() {
         staging_ = std::move(staging);
         tileR8View_ = std::move(tileView);
         tileR8_ = std::move(tile);
+        tileGeneral_ = false;
     }
     const VkDeviceSize region = static_cast<VkDeviceSize>(mc2shadow::kRegionTexels) * mc2shadow::kRegionTexels;
     transientBytes_ = static_cast<VkDeviceSize>(mc2shadow::shadowQuality().windowSide) * mc2shadow::shadowQuality().windowSide * 4 + region * (8 + 4 + 8 + 4) +

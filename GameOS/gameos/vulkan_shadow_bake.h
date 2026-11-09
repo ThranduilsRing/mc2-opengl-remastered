@@ -289,6 +289,7 @@ private:
     OwnedBuffer staging_, tileParams_, passParams_, casterUbo_, instances_, heightBuf_;
     OwnedImage tileR8_;   // one tile's levels 512..4, R8, before BC4
     OwnedImageView tileR8View_;
+    bool tileGeneral_ = false;   // tileR8_ moved to GENERAL once; copies, blits and sampling then share that layout (no per-level image barriers)
     OwnedBuffer blockStaging_, bc4Params_, transfer_;   // encoder output, per-level parameters, the read-back / upload of the whole chain
     // Last member: destruction joins the fenced readback worker before Vulkan
     // resources are released. invalidate() also joins at the map boundary.
