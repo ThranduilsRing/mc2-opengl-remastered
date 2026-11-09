@@ -48,7 +48,7 @@ SCCACHE_FIXED_ROOTS = (["A:/Games/mc2-main"] + [f"A:/Games/mc2-slot{n:02d}" for 
 
 
 def _norm_root(p):
-    return p.replace("\\", "/").rstrip("/").lower()
+    return p.strip().replace("\\", "/").rstrip("/").lower()
 
 
 def root_in_fixed_list(root):
@@ -86,8 +86,14 @@ def ensure_cache_server(root, env_extra):
     wanted_dir = env_extra["SCCACHE_DIR"].replace("\\", "/").lower()
     if server_base_dirs(shown) != {_norm_root(r) for r in SCCACHE_FIXED_ROOTS} or wanted_dir not in shown.replace("\\", "/"):
         if os.name == "nt":
-            inventory = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
-                                       **console_child.child_kwargs(redirected=True))
+            try:
+                inventory = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+                                           timeout=15, **console_child.child_kwargs(redirected=True))
+            except (OSError, subprocess.TimeoutExpired):
+                # run() kills and reaps the child on timeout. An unknown inventory
+                # must never authorize a restart while another lane may compile.
+                print("[sccache] restart deferred: process inventory unavailable", flush=True)
+                return
             active = inventory.stdout.lower()
             if inventory.returncode or any('"' + name + '"' in active for name in ("ninja.exe", "cl.exe", "link.exe")):
                 print("[sccache] restart deferred: a ninja/cl/link process is running", flush=True)

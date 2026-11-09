@@ -80,9 +80,10 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     const uint32_t w = texels.width, h = texels.height;
     auto it = o->texs.find(gosHandle);
     if (it != o->texs.end()) {
-        if (it->second.source == texels.bytes) return &it->second;
-        if (!ovl_upload_tex(s,it->second,w,h,mc2vk::texelFormat(texels.vkFormat),texels.bytes->data(),texels.bytes->size())) return nullptr;
-        it->second.source=texels.bytes; return &it->second;
+        auto& [handle, texture] = *it;
+        if (texture.source == texels.bytes) return &texture;
+        if (!ovl_upload_tex(s,texture,w,h,mc2vk::texelFormat(texels.vkFormat),texels.bytes->data(),texels.bytes->size())) return nullptr;
+        texture.source=texels.bytes; return &texture;
     }
     ZoneScopedN("VKIsl.Overlay.TextureFirstUse");
 
@@ -99,7 +100,9 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
     t.source = std::move(texels.bytes);
     vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u %ux%u format=%u (%zu, pools=%zu).",
          gosHandle, w, h, texels.vkFormat, o->texs.size() + 1, o->texPool.length());
-    return &o->texs.emplace(gosHandle, std::move(t)).first->second;
+    const auto [cachedIt, inserted] = o->texs.emplace(gosHandle, std::move(t));
+    auto& [handle, texture] = *cachedIt;
+    return &texture;
 }
 
 bool ovl_prepare_static(TerrainIsland* s, OvlState* o, const std::vector<OvlPending>& pending) {
@@ -426,8 +429,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         fill_frame_ubo(s, feed, feed.patches[0], vkPoolLights, vkGridDim, u);
         std::memcpy(uboSpan.ptr, &u, sizeof(u));
     }
-    for (const auto& r : dynRuns)
-        std::memcpy(static_cast<uint8_t*>(vtxSpan.ptr) + static_cast<size_t>(r.second) * kOvlVertStride, r.first->verts.data(), static_cast<size_t>(r.first->vertCount) * kOvlVertStride);
+    for (const auto& [pending, firstVertex] : dynRuns)
+        std::memcpy(static_cast<uint8_t*>(vtxSpan.ptr) + static_cast<size_t>(firstVertex) * kOvlVertStride, pending->verts.data(), static_cast<size_t>(pending->vertCount) * kOvlVertStride);
 
     // ---- sync: same shared parity-slot fence discipline as the other islands ----
     // GPU-FRONTIER-1: engine frame slot + this island's own previous submit. The overlay draws through the terrain run's set[par]; when the run already

@@ -3,9 +3,31 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "../mclib/texture_assets.h"
+#include "objectives_panel.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
+
+namespace {
+void makeObjectiveMarkerTransparent(StaticInfo& tile) {
+    const auto image = mc2::textures::image(tile.textureHandle);
+    if (!image || image->vkFormat != 37 || image->width != image->height)
+        return;
+    std::vector<DWORD> pixels(static_cast<size_t>(image->width) * image->height);
+    if (image->pixels.size() != pixels.size() * sizeof(DWORD))
+        return;
+    memcpy(pixels.data(), image->pixels.data(), image->pixels.size());
+    auto* rgba = reinterpret_cast<uint8_t*>(pixels.data());
+    for (size_t i = 0; i < pixels.size(); ++i)
+        mc2::objectives_panel::clearMarkerBackground(rgba + i * 4);
+    const DWORD replacement = mc2::textures::fromRawPixels(
+        pixels.data(), gos_Texture_Alpha, 0, image->width);
+    if (!replacement || replacement >= mc2::textures::kTextureAssetLimit)
+        return;
+    mc2::textures::release(tile.textureHandle);
+    tile.textureHandle = replacement;
+}
+}
 
 void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, ControlButton* Buttons, ButtonData* Data, const char* str, aFont* font )
 {
@@ -286,6 +308,8 @@ void ControlGui::initStatics( FitIniFile& file )
 	objectiveInfos[i++].init( file, "PrimaryObjX" );
 
 	objectiveInfoCount = i;
+	for (int marker = objectiveInfoCount - 3; marker < objectiveInfoCount; ++marker)
+		makeObjectiveMarkerTransparent(objectiveInfos[marker]);
 	}
 
 	{

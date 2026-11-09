@@ -45,7 +45,11 @@ uint64_t sourceKey(const Asset& asset, std::string_view sourcePath) {
     {
         std::lock_guard lock(digestLock);
         const auto it = digestMemo().find(sourceStorage);
-        if (it != digestMemo().end() && it->second.first == size) { digest = it->second.second; known = true; }
+        if (it != digestMemo().end()) {
+            const auto& [path, memo] = *it;
+            const auto& [memoSize, memoDigest] = memo;
+            if (memoSize == size) { digest = memoDigest; known = true; }
+        }
     }
     if (!known) {
         digest = 14695981039346656037ull;
@@ -103,7 +107,11 @@ uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t>
     {
         std::lock_guard lock(digestLock);
         const auto it = digestMemo().find(key);
-        if (it != digestMemo().end() && it->second.first == bytes.size()) return it->second.second;
+        if (it != digestMemo().end()) {
+            const auto& [path, memo] = *it;
+            const auto& [memoSize, memoDigest] = memo;
+            if (memoSize == bytes.size()) return memoDigest;
+        }
     }
     uint64_t digest = 14695981039346656037ull;
     for (size_t at = 0; at < bytes.size(); at += 64 * 1024)

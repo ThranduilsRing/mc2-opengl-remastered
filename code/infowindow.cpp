@@ -317,9 +317,7 @@ InfoWindow::~InfoWindow()
 void InfoWindow::setUnit(Mover* pNewMover)
 {
 
-	if ( pNewMover && ( pNewMover->getTeamId() != Team::home->getId() &&
-		( CONTACT_VISUAL != pNewMover->getContactStatus(Team::home->getId(), true)) 
-		&& !pNewMover->isDisabled() ))
+	if (pNewMover && !pNewMover->contactView.model)
 	{
 		return;
 	}
@@ -386,6 +384,7 @@ bool InfoWindow::imguiInfoEnabled()
 void InfoWindow::extractHudSnapshot()
 {
     hudInfo = HudInfo{};
+    if (pUnit && !pUnit->contactView.model) setUnit(nullptr);
     if (!pUnit) return;
     hudInfo.name = pUnit->getIfaceName();
     hudInfo.health = mc2::render_view::hud().mover(pUnit).health;
@@ -1074,9 +1073,7 @@ void InfoWindow::render()
 
 void InfoWindow::update()
 {
-	if ( pUnit && ( pUnit->getTeamId() != Team::home->getId() &&
-		( CONTACT_VISUAL != (pUnit->getContactStatus(Team::home->getId(), true)) 
-		&& !pUnit->isDisabled() ) ) )
+	if (pUnit && !pUnit->contactView.model)
 	{
 		setUnit( nullptr );
 		return;

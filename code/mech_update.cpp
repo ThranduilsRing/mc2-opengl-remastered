@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech_internal.h"
+#include "hover_name.h"
 #include "tacticaloverview.h"
 #include "appearance_rng.h"
 #include "Gates/gate.h"
@@ -680,13 +681,17 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
+		|| isDestroyed() || isDisabled() || ShowMovers
+		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
+	view.contact = contactView;
 	if (!Terrain::IsGameSelectTerrainPosition(position))
 		return;
 	if (getTeamId() != Team::home->getId())
 	{
-		long cStat = conStat;
+		long cStat = contactView.quality;
 
-		if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		if (contactView.model)
 		{
 			DWORD color = 0xff7f7f7f;
 			if ((teamId > -1) && (teamId < 8)) {
@@ -709,19 +714,12 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 		else if (cStat == CONTACT_SENSOR_QUALITY_3)
 		{
 			view.mode = Mode::SensorText;
-			if (tonnage < 40)
-				view.nameId = IDS_SENSOR_LIGHT_MECH;
-			else if (tonnage < 65)
-				view.nameId = IDS_SENSOR_MEDIUM_MECH;
-			else if (tonnage < 80)
-				view.nameId = IDS_SENSOR_HEAVY_MECH;
-			else
-				view.nameId = IDS_SENSOR_ASSAULT_MECH;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID);
 		}
 		else if (cStat == CONTACT_SENSOR_QUALITY_4)
 		{
 			view.mode = Mode::SensorText;
-			view.nameId = descID;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID);
 		}
 	}
 	else if (isOnGui)
@@ -751,6 +749,11 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 
 void BattleMech::renderView (const mc2::render_view::RenderView& view)
 {
+	appearance->contactView = view.contact;
+	appearance->setSensorLevel(view.contact.sensorLevel());
+	// Native opaque bodies cannot implement the old alpha fade. Admit model
+	// and HUD atomically on visual acquisition, including the first frame.
+	appearance->setAlphaValue(view.contact.model ? 0xff : 0);
 	using mc2::render_view::Mode;
 	switch (view.mode)
 	{
@@ -848,22 +851,8 @@ void BattleMech::renderShadows (void)
 			return;			//No shadows on a fall!
 		}
 			
-		if (getTeamId() != Team::home->getId())
-		{
-			long cStat = conStat;
-	
-			if ((cStat == CONTACT_VISUAL) && (alphaValue == 0xff))
-			{
-				appearance->renderShadows();
-			}
-		}
-		else		//We are Home Team and we always see ourselves.  Unless we haven't linked up yet!
-		{
-			if (isOnGui && (alphaValue == 0xff))
-			{
-				appearance->renderShadows();
-			}
-		}
+		if (contactView.shadow)
+			appearance->renderShadows();
 	}
 }	
 

@@ -476,7 +476,7 @@ bool gameplayPickEligible(GameObjectPtr obj, bool skipDisabled) {
     if (obj->isMover() && !ShowMovers
         && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID])
         && obj->getTeamId() != Team::home->getId() && !obj->isDisabled()
-        && static_cast<Mover*>(obj)->conStat < CONTACT_SENSOR_QUALITY_1) return false;
+        && !static_cast<Mover*>(obj)->contactView.blip) return false;
     return !obj->isMover() || (obj->isOnGUI() && Terrain::IsGameSelectTerrainPosition(obj->getPosition()));
 }
 

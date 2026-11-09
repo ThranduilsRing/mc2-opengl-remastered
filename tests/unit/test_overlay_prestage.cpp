@@ -140,6 +140,22 @@ struct Terrain {
 #include "overlay_road_inputs.inc"
 }
 
+TEST_CASE("OverlayPrestage/authored transition coverage precedes corner masks without sidecars") {
+    // A road can cross any cement-corner arrangement. Its actual alpha art,
+    // including the runway middle and pad fence boundary, must survive all 15.
+    for (unsigned corners = 0; corners < 15; ++corners) {
+        CHECK(roadInputs::TransitionCementWord(7, 3, corners) == 0xc0800007u);
+        CHECK(roadInputs::TransitionCementWord(7, 0xffff, corners) == 0xc0800007u);
+    }
+    // Solid interiors remain opaque; unavailable mod art retains corner fallback.
+    CHECK(roadInputs::TransitionCementWord(7, 3, 15) == 0x80000003u);
+    for (unsigned corners = 1; corners < 15; ++corners)
+        CHECK(roadInputs::TransitionCementWord(0xffff, 3, corners)
+              == (0xc0000003u | ((corners - 1u) << 24u)));
+    CHECK(roadInputs::TransitionCementWord(0xffff, 3, 0) == 0u);
+    CHECK(roadInputs::TransitionCementWord(0xffff, 0xffff, 8) == 0u);
+}
+
 TEST_CASE("OverlayPrestage/load selection matches the first-update metadata purge") {
     using namespace roadInputs;
     Map map;
