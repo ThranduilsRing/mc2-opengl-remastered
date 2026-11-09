@@ -1,3 +1,4 @@
+// Logistics deployment: campaign save mech records (write/read, legacy 10004 and 10005), load compatibility and the slot cap.
 #include "logistics_deployment.h"
 #include "inifile.h"
 #include "objective_text.h"
