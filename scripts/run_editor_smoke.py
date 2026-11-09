@@ -442,7 +442,7 @@ def dependency_manifest(deploy: Path, destination: Path, allowlist: dict | None 
 
 
 STOCK_CLONE_SKIP = ("data", "_rdoc", "_pngcap", "debug_state", "crashes", "dev_shell_out", "terrain_gen_out",
-                    "saved_bookmarks")
+                    "saved_bookmarks", "mods", "cache")  # mods/cache: ~9 GB the stock editor run never reads
 
 
 def load_stock_allowances(args) -> dict:
@@ -465,7 +465,7 @@ def clone_install_for_stock_scratch(install: Path, allowances: dict | None = Non
         shutil.rmtree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(install, target, ignore=lambda _dir, names: [
-        n for n in names if (Path(_dir) == install and n in STOCK_CLONE_SKIP) or n.lower().endswith(".pdb")])
+        n for n in names if (Path(_dir) == install and n in STOCK_CLONE_SKIP) or n.lower().endswith((".pdb", ".log"))])
     (target / "data").mkdir(exist_ok=True)
     # The waived stock-derived files (allowlist: path + sha256) are not in any archive; carry them over when the install holds the exact bytes.
     for relative, waiver in (allowances or {}).items():
@@ -526,6 +526,15 @@ def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> 
             target.write_bytes(content)
     destination.write_bytes((json.dumps(dict(changes=changes), indent=2, sort_keys=True) + "\n").encode())
     print(f"[STOCK_SCRATCH] {len(changes)} loose files removed/replaced; {len(stock)} stock entries materialized")
+
+
+# Cases the merge gate's `editor` stage runs (scripts/merge_gate_editor.py), off-screen, < 2 min in total.
+# Contract for a new tool check (placement, rotation, team change, patrol/guard route, pick parity):
+# an editor flag -smoke-<name> drives the edit on stock mc2_01, writes the result through -smoke-save and
+# reloads it; add a build_suite() row with a grade, prove it green, then append its name here.
+# Load a stock mission, save it, byte-compare against the frozen baseline, exit cleanly (~25 s).
+# gen_map_basic is left out: it crashes (0xC0000005) after the first render frame at 330c5d625.
+GATE_CASES = ("stock_roundtrip:mc2_01",)
 
 
 def baseline_fact(row: dict) -> dict:
