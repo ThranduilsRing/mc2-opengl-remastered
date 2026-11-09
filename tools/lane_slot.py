@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
@@ -75,45 +76,58 @@ def fmt_age(secs):
     return f"{secs // 3600}h{secs % 3600 // 60:02d}m" if secs >= 3600 else f"{secs // 60}m"
 
 
-def drop_claims(path, branch=None):
-    """Release every registry entry (fresh or stale) whose worktree is this slot, plus the branch's own entry. -> names released."""
-    names = {e.get("name") for e in registry_lanes() if norm(e.get("worktree", "")) == norm(path)} - {None}
-    if branch:
-        names.add(branch)
-    done = []
+def drop_claims(path):
+    """Release only claims belonging to this slot, in one locked registry operation."""
     try:
         import lane_registry  # noqa: PLC0415
         from pathlib import Path  # noqa: PLC0415
-        for n in sorted(names):
-            if lane_registry.release_lane(Path(MAIN_ROOT), n).get("released"):
-                done.append(n)
+        return lane_registry.release_worktree(Path(MAIN_ROOT), path)["released"]
     except Exception as e:  # noqa: BLE001
-        print(f"[lane_slot] WARNING: lane registry release failed: {e}", file=sys.stderr)
-    return done
+        sys.exit(f"release: lane registry release failed: {e}")
 
 
 def discard_dirty(path):
-    """Write the slot's uncommitted diff (tracked + untracked, binary-safe) to STRAY_DIR, then reset and clean it. -> patch path."""
+    """Archive index, worktree and untracked bytes separately before reset/clean."""
     os.makedirs(STRAY_DIR, exist_ok=True)
     stem = f"{STRAY_DIR}/{os.path.basename(path)}-{datetime.date.today().isoformat()}"
-    patch, n = stem + ".patch", 1
-    while os.path.exists(patch):
-        n += 1
-        patch = f"{stem}-{n}.patch"
-    git(path, "add", "-N", ".")  # intent-to-add so untracked files appear in the diff
-    rc, _, err = git(path, "diff", "HEAD", "--binary", f"--output={patch}")
-    if rc:
-        sys.exit("release: could not write the stray diff, nothing discarded: " + err)
-    git(path, "reset", "--hard", "-q")
-    git(path, "clean", "-fdq")  # no -x: ignored build trees stay
-    return patch
+    archive, n = stem, 1
+    while True:
+        try:
+            os.mkdir(archive)
+            break
+        except FileExistsError:
+            n += 1
+            archive = f"{stem}-{n}"
+    try:
+        for name, args in (("index.patch", ("--cached",)), ("worktree.patch", ())):
+            rc, _, err = git(path, "diff", *args, "--binary", f"--output={archive}/{name}")
+            if rc:
+                raise OSError(f"{name}: {err}")
+        files = subprocess.run(["git", "-C", path, "ls-files", "--others", "--exclude-standard", "-z"],
+                               check=True, capture_output=True, stdin=subprocess.DEVNULL,
+                               **console_child.child_kwargs(redirected=True)).stdout
+        with tarfile.open(f"{archive}/untracked.tar", "w") as tar:
+            for raw in files.split(b"\0"):
+                if raw:
+                    name = os.fsdecode(raw)
+                    tar.add(os.path.join(path, name), arcname=name, recursive=False)
+    except (OSError, subprocess.CalledProcessError, tarfile.TarError) as e:
+        sys.exit(f"release: archive failed, nothing discarded: {e}")
+    for args in (("reset", "--hard", "-q"), ("clean", "-fdq")):  # no -x: ignored build trees stay
+        rc, _, err = git(path, *args)
+        if rc:
+            sys.exit(f"release: {args[0]} failed; archive kept at {archive}: {err}")
+    return archive
 
 
 def slot_info(path, claimed):
     info = {"path": path, "exists": os.path.isdir(path), "clean": False, "branch": None, "claimed": norm(path) in claimed, "merged": False}
     if not info["exists"]:
         return info
-    info["clean"] = git(path, "status", "--porcelain")[1] == ""
+    rc, status, err = git(path, "status", "--porcelain")
+    if rc:
+        sys.exit("lane_slot: could not inspect slot status: " + err)
+    info["clean"] = status == ""
     rc, branch, _ = git(path, "symbolic-ref", "--short", "-q", "HEAD")
     info["branch"] = branch if rc == 0 and branch else None
     b = info["branch"]
@@ -231,7 +245,7 @@ def release(path, discard=False):
     rc, _, err = git(path, "switch", "--detach", NIFTY)
     if rc:
         sys.exit("release: detach at nifty failed: " + err)
-    dropped = drop_claims(path, info["branch"])
+    dropped = drop_claims(path)
     print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; deleted: {deleted or 'nothing'}; build tree kept")
     return deleted
 

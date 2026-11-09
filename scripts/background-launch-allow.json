@@ -31,6 +31,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "tools/mc2fx/native_checks.py": "FX proof tests: run only the built mc2fx.exe CLI (build64-ninja/out/tools/mc2fx or MC2FX_EXE) with console_child, captured stdio and a timeout; never the game.",
     "scripts/tests/test_two_gpu_lanes.py": "Reap-isolation test: spawns two windowless python sleepers (sys.executable -c time.sleep) to prove a capture reaps only its own children; never the game.",
     "tools/box/box_health_remote.py": "Linux-box-only health probe (nvidia-smi, pueue); runs on the rented box, never launches the game on this desktop.",
     "tools/box/box_supervisor.py": "Linux-box-only supervisor: starts the filler worker, pueue and git on the rented box; the game never launches on this desktop.",

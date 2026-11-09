@@ -20,6 +20,7 @@ file(GLOB MC2FX_STUFF_SRC     "${CMAKE_SOURCE_DIR}/mclib/stuff/*.cpp")
 add_executable(mc2fx
     main.cpp
     mc2fx_core.cpp
+    fx_compare.cpp
     mc2fx_stubs.cpp
     ${MC2FX_GOSFX_SRC}
     ${MC2FX_MLR_SRC}
@@ -90,4 +91,4 @@ if(WIN32)
 endif()
 
 # The gosFX / mlr / particles TUs read their gates through the typed registry.
-target_link_libraries(mc2fx PRIVATE mc2_gate)
+target_link_libraries(mc2fx PRIVATE mc2_gate fx_native)

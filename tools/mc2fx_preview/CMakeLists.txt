@@ -71,7 +71,7 @@ if(WIN32)
 endif()
 
 # The gosFX / mlr / particles TUs read their gates through the typed registry.
-target_link_libraries(mc2fx_corelib PRIVATE mc2_gate)
+target_link_libraries(mc2fx_corelib PRIVATE mc2_gate fx_native)
 
 # ---------------------------------------------------------------------------
 # mc2fx_preview — SDL2 + Vulkan + Dear ImGui shell (curve grapher).

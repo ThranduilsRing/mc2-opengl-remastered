@@ -3,6 +3,9 @@
   "why": "W114 (2026-11-04): a draw-only unit height snap leaked into MechAppearanceData::baseRootNodeHeight. sim_determinism stayed green (the field is not in SIMID); only the gate's saveload stage caught it. Map: A:/Games/mc2-ops/studies/fable-render-sim-boundary-2026-11-04.md (P1-P13).",
   "patterns": [
     "mclib/abl*",
+    "mclib/move*",
+    "code/movemgr*",
+    "code/warrior*",
     "mclib/mech3d*",
     "mclib/gvactor*",
     "mclib/bdactor*",

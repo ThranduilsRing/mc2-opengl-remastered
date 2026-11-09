@@ -389,10 +389,9 @@ void getCodeToken (void) {
 
 void pushInteger (int value) {
 
-	StackItemPtr valuePtr = ++g_ablExec->tos;
-
-	if (valuePtr >= g_ablExec->stackLimit)
+	if (g_ablExec->tos + 1 >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 	valuePtr->integer = value;
 }
 
@@ -400,10 +399,9 @@ void pushInteger (int value) {
 
 void pushReal (float value) {
 
-	StackItemPtr valuePtr = ++g_ablExec->tos;
-
-	if (valuePtr >= g_ablExec->stackLimit)
+	if (g_ablExec->tos + 1 >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 	valuePtr->real = value;
 }
 
@@ -411,10 +409,9 @@ void pushReal (float value) {
 
 void pushByte (char value) {
 
-	StackItemPtr valuePtr = ++g_ablExec->tos;
-
-	if (valuePtr >= g_ablExec->stackLimit)
+	if (g_ablExec->tos + 1 >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 	valuePtr->byte = value;
 }
 
@@ -422,10 +419,9 @@ void pushByte (char value) {
 
 void pushAddress (Address address) {
 
-	StackItemPtr valuePtr = ++g_ablExec->tos;
-
-	if (valuePtr >= g_ablExec->stackLimit)
+	if (g_ablExec->tos + 1 >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 	valuePtr->address = address;
 }
 
@@ -433,10 +429,9 @@ void pushAddress (Address address) {
 
 void pushBoolean (bool value) {
 
-	StackItemPtr valuePtr = ++g_ablExec->tos;
-
-	if (valuePtr >= g_ablExec->stackLimit)
+	if (g_ablExec->tos + 1 >= g_ablExec->stackLimit)
 		runtimeError(ABL_ERR_RUNTIME_STACK_OVERFLOW);
+	StackItemPtr valuePtr = ++g_ablExec->tos;
 	valuePtr->integer = (value ? 1 : 0);
 }
 

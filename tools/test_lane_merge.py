@@ -1369,10 +1369,32 @@ def _stage_fixture(env, monkeypatch):
     return lm, repo, old, cand
 
 
+def _sim_evidence(directory, head, payload_head=None, payload_bytes=b"exe"):
+    import hashlib
+    import io
+    import tarfile
+    manifest = ("manifest_version,v1\nrelpath,sha256,bytes,src_commit\n"
+                f"mc2.exe,{hashlib.sha256(b'exe').hexdigest()},3,{payload_head or head}\n").encode()
+    with tarfile.open(directory / "payload.tar", "w") as archive:
+        member = tarfile.TarInfo(".deployed_manifest.csv")
+        member.size = len(manifest)
+        archive.addfile(member, io.BytesIO(manifest))
+        member = tarfile.TarInfo("files/mc2.exe")
+        member.size = len(payload_bytes)
+        archive.addfile(member, io.BytesIO(payload_bytes))
+    (directory / "payload.sha256").write_text(hashlib.sha256((directory / "payload.tar").read_bytes()).hexdigest())
+    sim = dict(head=head, verdict="PASS", rc=0, manifest_sha256=hashlib.sha256(manifest).hexdigest(),
+               rows={n: {"status": "PASS"} for n in (
+                   "determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24",
+                   "saveload-mc2_03", "saveload-mc2_10")})
+    (directory / "summary.json").write_text(json.dumps(dict(head=head, sim=sim)))
+
+
 def _verdict(repo, **kw):
     data = dict(schema=1, head=None, verdict="PASS", complete=True, skipped={}) | kw
     path = repo / "build64-ninja" / "gate-verdict.json"
     path.write_text(json.dumps(data), encoding="utf-8")
+    _sim_evidence(path.parent, data["head"])
     return path
 
 
@@ -1399,6 +1421,73 @@ def test_promote_fast_forwards_on_a_complete_pass(env, monkeypatch):
     assert lm.promote(str(repo), "t1") == 0
     assert git(repo, "rev-parse", "main") == cand and git(repo, "branch", "--show-current") == "main"
     assert "promotion" in json.loads(path.read_text(encoding="utf-8"))["timings"]
+
+
+@pytest.mark.parametrize("fault,expected", [
+    ("missing", "missing or unreadable sim/payload"),
+    ("missing-row", "sim row saveload-mc2_03: MISSING"),
+    ("missing-sim", "sim row determinism-mc2_01: MISSING"),
+    ("red", "sim row determinism-mc2_10: FAIL"),
+    ("reused", "explicit PASS required"),
+    ("head", "sim head"),
+    ("summary-head", "summary head"),
+    ("payload", "payload sha256 mismatch"),
+    ("identity", "manifest sha256 mismatch"),
+    ("payload-head", "payload mc2.exe candidate head mismatch"),
+    ("payload-bytes", "payload byte sha256 mismatch: mc2.exe"),
+])
+def test_promote_dry_refusals_leave_nifty_untouched(tmp_path, monkeypatch, fault, expected):
+    import lane_merge_stage as lm
+    repo, old, cand = tmp_path, "a" * 40, "b" * 40
+    (repo / "build64-ninja").mkdir()
+    updates = []
+    def git_out(root, *args):
+        if args[0] == "rev-parse":
+            return old if args[-1] == "main^{commit}" else cand
+        updates.append(args)
+        return ""
+    monkeypatch.setattr(lm, "NIFTY", "main")
+    monkeypatch.setattr(lm, "git_out", git_out)
+    monkeypatch.setattr(lm, "load_stage", lambda *args: {})
+    monkeypatch.setattr(lm, "checked_out_elsewhere", lambda *args: [])
+    monkeypatch.setattr(lm._git_util, "git", lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, ""))
+    path = _verdict(repo, head=cand, tier=1)
+    summary = path.parent / "summary.json"
+    data = json.loads(summary.read_text())
+    if fault == "missing":
+        summary.unlink()
+    else:
+        if fault == "missing-sim":
+            del data["sim"]
+        elif fault == "payload-head":
+            _sim_evidence(path.parent, cand, payload_head=old)
+            data = json.loads(summary.read_text())
+        elif fault == "payload-bytes":
+            _sim_evidence(path.parent, cand, payload_bytes=b"bad")
+            data = json.loads(summary.read_text())
+        elif fault == "missing-row":
+            del data["sim"]["rows"]["saveload-mc2_03"]
+        elif fault in ("red", "reused"):
+            data["sim"]["rows"]["determinism-mc2_10"]["status"] = "FAIL" if fault == "red" else "REUSED: old"
+        elif fault == "head":
+            data["sim"]["head"] = old
+        elif fault == "summary-head":
+            data["head"] = old
+        elif fault == "payload":
+            (path.parent / "payload.sha256").write_text("0" * 64)
+        elif fault == "identity":
+            data["sim"]["manifest_sha256"] = "0" * 64
+        summary.write_text(json.dumps(data))
+    with pytest.raises(lm.Stop, match=expected) as exc:
+        lm.promote(str(repo), "t1")
+    print(f"DRY PROMOTE {fault}: {exc.value}")
+    assert not updates   # no update-ref, tag, or checkout on any refusal
+
+
+def test_sim_evidence_accepts_full_candidate_payload(tmp_path):
+    import lane_merge_stage
+    _sim_evidence(tmp_path, "a" * 40)
+    assert lane_merge_stage.sim_evidence_problems(tmp_path / "gate-verdict.json", "a" * 40) == []
 
 
 def test_bisect_halves_a_red_batch_and_rejects_the_guilty_tip():
@@ -1462,6 +1551,7 @@ def test_promote_requires_the_day_night_evidence_a_capture_verdict_names(env, mo
     pulled = repo.parent / "pulled"
     pulled.mkdir()
     vpath = pulled / "gate-verdict.json"
+    _sim_evidence(pulled, cand)
     vpath.write_text(json.dumps(dict(schema=1, head=cand, verdict="PASS", complete=True, skipped={},
                                      required=["capture-before", "compare-captures"],
                                      artifacts={"proof": "G:/laptop-only/proof"})), encoding="utf-8")
