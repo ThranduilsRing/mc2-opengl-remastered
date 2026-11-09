@@ -70,4 +70,7 @@ bool query(const Snapshot& s, const Query& q);
 // out is pre-sized by the caller; the caller applies results in its own (original) order.
 void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out);
 
+// Test the nearest origin first, then batch the remainder. Reorders caller scratch only.
+bool any(const Snapshot& s, std::span<Query> q);
+
 }  // namespace mc2::los

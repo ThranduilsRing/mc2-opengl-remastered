@@ -222,8 +222,8 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 {
 	ZoneScopedN("GameLogic.LOS.Team");
 	// The range gates run here in roster order; each in-range member contributes one ray. The rays are pure reads, so
-	// they run as one batch (jobs when the batch is big enough) and the answer is "any hit" - the same bit the legacy
-	// first-hit early return produced.
+	// the nearest origin gets a synchronous first chance, then the remaining rays batch.
+	// All reads use this call's snapshot; no result survives intra-tick movement.
 	thread_local std::vector<mc2::los::Query> pending;
 	pending.clear();
 	auto addRay = [&](glm::vec3 from, float ext, float startExt) {
@@ -267,21 +267,7 @@ bool Team::teamLineOfSight (glm::vec3 tPos, float extRad)
 	if (!snap.valid)
 		return false;
 
-	constexpr size_t kBatchMin = 8;
-	if (pending.size() >= kBatchMin && mc2::jobs::enabled())
-	{
-		thread_local std::vector<uint8_t> hits;
-		hits.assign(pending.size(), 0);
-		mc2::los::batch(snap, pending, hits);
-		for (uint8_t h : hits)
-			if (h)
-				return true;
-		return false;
-	}
-	for (const mc2::los::Query& q : pending)
-		if (mc2::los::query(snap, q))
-			return true;
-	return false;
+	return mc2::los::any(snap, pending);
 }
 
 //---------------------------------------------------------------------------

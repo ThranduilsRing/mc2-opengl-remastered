@@ -2,6 +2,8 @@
 // (MapData::terrainElevation, Terrain::worldToCell/getCellPos, Team::lineOfSight); do not "tidy" the float/double mix.
 #include <cmath>  // before any other include: which floor/sqrt overload a call binds must not depend on include order
 #include <array>
+#include <algorithm>
+#include <vector>
 #include "los_kernel.h"
 #include "job_system.h"
 #include <cstring>
@@ -348,6 +350,30 @@ void batch(const Snapshot& s, std::span<const Query> q, std::span<uint8_t> out)
 		mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(q.size()),
 			kBlockQueries, kCostNsPerQuery, runBlock);
 	}
+}
+
+bool any(const Snapshot& s, std::span<Query> q)
+{
+	if (!s.valid || q.empty()) return false;
+	const auto distance = [](const Query& ray) {
+		const auto delta = ray.position - ray.target;
+		return glm::dot(delta, delta);
+	};
+	auto nearest = std::min_element(q.begin(), q.end(), [&](const Query& a, const Query& b) {
+		return distance(a) < distance(b);
+	});
+	if (query(s, *nearest)) return true;
+	std::iter_swap(q.begin(), nearest);
+	q = q.subspan(1);
+	if (q.size() < 8) {
+		for (const auto& ray : q)
+			if (query(s, ray)) return true;
+		return false;
+	}
+	thread_local std::vector<uint8_t> hits;
+	hits.resize(q.size());
+	batch(s, q, hits);
+	return std::any_of(hits.begin(), hits.end(), [](uint8_t hit) { return hit != 0; });
 }
 
 }  // namespace mc2::los
