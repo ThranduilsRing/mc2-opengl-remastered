@@ -228,8 +228,9 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
     if (pc.generation != s->visibilityGeneration || pc.w != s->width || pc.h != s->height || pc.mips != s->mipCount || !s->parityMips) return;
     ZoneScopedN("HZB.ParityCheck");
     vmaInvalidateAllocation(s->allocator, s->parityMips.allocation(), 0, VK_WHOLE_SIZE);
-    const float* mips = static_cast<const float*>(s->parityMips.map());
-    const uint32_t* vis = mips ? reinterpret_cast<const uint32_t*>(reinterpret_cast<const uint8_t*>(mips) + pc.visOffset) : nullptr;
+    void* const mapped = s->parityMips.map();
+    const float* mips = static_cast<const float*>(mapped);
+    const uint32_t* vis = mapped ? static_cast<const uint32_t*>(static_cast<const void*>(static_cast<const uint8_t*>(mapped) + pc.visOffset)) : nullptr;
     if (vis && mips) {
         std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
         size_t at = 0;
