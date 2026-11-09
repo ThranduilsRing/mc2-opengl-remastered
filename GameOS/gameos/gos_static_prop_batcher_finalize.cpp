@@ -5,6 +5,7 @@
 #include "../../mclib/texture_assets.h"
 #include <cstring>
 #include <map>
+#include "../../RenderCore/StockPropMaterial.h"
 #include "gos_static_prop_finalize_frame.h"
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
@@ -636,10 +637,23 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
     // Record identity includes the winning manifest/provider and override, then
     // the authored slot. Albedo sharing cannot collapse different detail sets.
     std::map<std::pair<const ModelOverrideRecord*, uint32_t>, int32_t> ids;
+    std::map<RenderCore::SurfaceClass, int32_t> stockIds;
     for (size_t pi = 0; pi < s_packets.size(); ++pi) {
         const auto& packet = s_packets[pi];
         if (packet.owningTypeID >= s_types.size()) continue;
         const auto& type = s_types[packet.owningTypeID];
+        std::string_view textureName;
+        if (mc2::textures::ready() && type.source && type.source->listOfTextures && packet.textureSlot < type.source->numTextures) {
+            const auto node = type.source->listOfTextures[packet.textureSlot].mcTextureNodeIndex;
+            if (node != 0xffffffffu) {
+                if (const auto* name = mc2::textures::name(node)) textureName = name;
+            }
+        }
+        const auto stockClass = RenderCore::stockPropClass(textureName);
+        auto [stock, newClass] = stockIds.try_emplace(stockClass, static_cast<int32_t>(materialSources_.table.size()));
+        if (newClass) materialSources_.table.push_back(RenderCore::stockPropMaterial(stockClass));
+        const auto& [defaultClass, defaultId] = *stock;
+        materialSources_.packetIds[pi] = defaultId;
         const auto* owner = type.isOverride ? type.materialSource : nullptr;
         if (!owner) continue;
         for (const auto& input : owner->materials) {
@@ -655,7 +669,7 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
                 mc2::fmt::print_err("[MODOVERRIDE] authored material {} slot={} id={}\n",
                     owner->appearanceName, input.slot, materialId);
             }
-            materialSources_.packetIds[pi] = materialId;
+            if (materialId >= 0) materialSources_.packetIds[pi] = materialId;
             break;
         }
     }
