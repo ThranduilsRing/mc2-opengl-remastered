@@ -1,0 +1,13 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Same rock slope at two zooms; three 8-world-unit pan positions per zoom, with matched arms.",
+  "bookmarks": [
+    {"name": "near_pan_1", "pos": [902.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 700.0, "covers": ["terrain_splat"]},
+    {"name": "near_pan_2", "pos": [910.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 700.0, "covers": ["terrain_splat"]},
+    {"name": "near_pan_3", "pos": [918.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 700.0, "covers": ["terrain_splat"]},
+    {"name": "far_pan_1", "pos": [902.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 1400.0, "covers": ["terrain_splat"]},
+    {"name": "far_pan_2", "pos": [910.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 1400.0, "covers": ["terrain_splat"]},
+    {"name": "far_pan_3", "pos": [918.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 1400.0, "covers": ["terrain_splat"]}
+  ]
+}

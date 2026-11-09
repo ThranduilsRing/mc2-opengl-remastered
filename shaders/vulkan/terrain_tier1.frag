@@ -467,6 +467,13 @@ void main() {
         else if (kCsmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (kCsmDebugMode >= 30 && kCsmDebugMode <= 39) {
+            float threshold = exp2(2.0 * float(kCsmDebugMode - 30));
+            fragColor = vec4(step(threshold, mv_pomOffsetMeasure.x),
+                             step(0.25 * threshold, mv_pomOffsetMeasure.y),
+                             float(mv_pomOffsetMeasure.x > 0.0), 1.0);
+            GBuffer1 = vec4(0.5,0.5,1.0,1.0); return;
+        }
 
         float normalSize = float(textureSize(u_matNormalArray, 0).x);
         float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))
