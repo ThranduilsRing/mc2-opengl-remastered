@@ -8,54 +8,6 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
-#include <algorithm>
-#include <cmath>
-#include "../../RenderCore/ground_lighting_bindings.h"
-
-TEST_CASE("shoreline_animation/descriptor_floor") {
-    const auto ground = mc2veg::groundLightingBindings(false);
-    auto water = mc2veg::groundLightingBindings(true);
-    CHECK(std::count(water.begin(), water.end(), 10u) == 1);
-    CHECK(std::count(water.begin(), water.end(), 4u) == 0);
-    // The bake replaces the single static SSBO; the three dynamic light-grid
-    // buffers and every lighting/shadow binding must remain identical.
-    for (auto& binding : water) if (binding == 10u) binding = 4u;
-    CHECK(water == ground);
-    std::sort(water.begin(), water.end());
-    CHECK(std::adjacent_find(water.begin(), water.end()) == water.end());
-}
-
-namespace shoreline_animation_test {
-using std::abs;
-using std::sin;
-static float smoothstep(float lo, float hi, float x) {
-    const float t = std::clamp((x - lo) / (hi - lo), 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
-}
-#include "../../shaders/include/water_shore_animation.hglsl"
-}
-
-TEST_CASE("shoreline_animation/depth_and_motion") {
-    using namespace shoreline_animation_test;
-    // Exposed rock/land and deep water never receive the animated material.
-    CHECK(wsa_depthFade(-20.0f) == 0.0f);
-    CHECK(wsa_depthFade(0.0f) == 0.0f);
-    CHECK(wsa_depthFade(3.0f) == 1.0f);
-    CHECK(wsa_depthFade(24.0f) < wsa_depthFade(12.0f));
-    CHECK(wsa_depthFade(32.0f) == 0.0f);
-    constexpr float pi = 3.14159265f;
-    // Crest advances and retreats over one five-second period, without state.
-    CHECK(wsa_reach(pi * 0.5f) == doctest::Approx(38.0f));
-    CHECK(wsa_reach(pi * 1.5f) == doctest::Approx(6.0f));
-    CHECK(wsa_reach(2.0f * pi) == doctest::Approx(wsa_reach(0.0f)));
-    CHECK(wsa_crest(38.0f, wsa_reach(pi * 0.5f), 1.0f) == 1.0f);
-    CHECK(wsa_crest(38.0f, wsa_reach(pi * 1.5f), 1.0f) == 0.0f);
-    CHECK(wsa_wash(12.0f, wsa_reach(pi * 0.5f), 1.0f) > 0.0f);
-    CHECK(wsa_wash(12.0f, wsa_reach(pi * 1.5f), 1.0f) == 0.0f);
-    // Coarse screen footprints stay finite and cannot amplify coverage.
-    CHECK(wsa_crest(38.0f, 22.0f, 64.0f) >= 0.0f);
-    CHECK(wsa_crest(38.0f, 22.0f, 64.0f) <= 1.0f);
-}
 
 #include <cstdlib>
 #include <filesystem>

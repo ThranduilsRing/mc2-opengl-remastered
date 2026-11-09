@@ -152,11 +152,8 @@ void main() {
                 rgb = isGlass ? vec3(0.0, 1.0, 0.0) : vec3(0.15);
             } else {
                 vec3 V = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
-                float roughness = isGlass ? uFrame.shadeA.w : uFrame.shadeA.z;
-                LsvkPbrOut sun = computePBR(Nshade, V, normalize(-vMechSunDirGL),
-                                           surface.baseColor, 0.0, roughness, vec3(1.0));
-                rgb = surfaceEncodeSrgb(surfaceDecodeSrgb(rgb)
-                      + sun.specular * uFrame.shadeA.y * (isGlass ? 1.6 : 1.0));
+                rgb += msh_blinnSpecular(Nshade, V, vMechSunDirGL, isGlass,
+                                         uFrame.shadeA.z, uFrame.shadeA.w, uFrame.shadeA.y);
             }
         }
 #endif

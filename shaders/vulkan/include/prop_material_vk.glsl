@@ -26,20 +26,6 @@ layout(set = 0, binding = 12, std430) readonly buffer PropMaterials {
 vec3 propDecodeColor(vec3 c) { return surfaceDecodeSrgb(c); }
 vec3 propEncodeColor(vec3 c) { return surfaceEncodeSrgb(c); }
 
-// Defensive fallback for absent/invalid native rows (including albedo-only mods).
-SurfaceMaterial propDefaultSurface(vec3 albedo) {
-    SurfaceMaterial s;
-    s.baseColor = propDecodeColor(albedo);
-    s.normal = normalize(mc2ToRender(vNormalStuff));
-    s.roughness = 0.85;
-    s.metallic = 0.0;
-    s.ao = 1.0;
-    s.emission = (vMaterialFlags & 2u) != 0u ? s.baseColor * propDecodeColor(vMaterialSeed) : vec3(0);
-    s.alphaMode = SURF_ALPHA_STOCK;
-    s.materialClass = SURF_CLASS_DIELECTRIC;
-    return s;
-}
-
 // Derivatives use continuous detail UVs (before repeat), world positions and a
 // render-space normal. Solving both axes preserves mirrored UV handedness.
 vec3 propDetailNormal(vec3 geometric, vec2 uv, vec3 sampled, float strength) {
@@ -98,6 +84,14 @@ SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage) {
     s.alphaMode = row.metadata.y;
     s.materialClass = row.metadata.x;
     return s;
+}
+
+// Only a decoded ORM sidecar authorizes specular; class scalars and normal maps
+// alone do not. Explicit legacy materials remain diffuse even with an ORM map.
+bool propHasAuthoredOrm(int id) {
+    PropMaterialGpu row = uPropMaterials.materials[id];
+    return row.metadata.x != SURF_CLASS_LEGACY_PRELIT
+        && row.material.metallicRoughnessTex != 0xffffffffu;
 }
 
 SurfaceMaterial propSurface(int id, vec3 albedo) {

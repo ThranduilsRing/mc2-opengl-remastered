@@ -9,10 +9,21 @@
 //   location=0 lit color  -> sceneColorTex_  (MRT0, RGBA16F).
 //     * MC2_VK_PROP_MATERIAL OFF (or albedo not ready / vLayer<0): flat teal
 //       fail-soft teal placeholder, never crashes/holes.
-//     * ON: decodes sRGB albedo once, then shades props per pixel with shared
-//       GGX sun and mission SH ambient. Optional normal/ORM maps replace stock
-//       class defaults. Tree cards retain their specialized foliage lighting.
-//       The shared screen-shadow and scene output passes remain authoritative.
+//     * ON: samples the REAL alpha-OFF albedo GL_TEXTURE_2D_ARRAY (VK copy-once
+//       import of s_texArrayOff) at float(vLayer) and multiplies it by the
+//       VERTEX-BAKED lit color vArgb (the ACTUAL GL default prop model — NOT PBR):
+//         oColor = albedo * vArgb   (mirrors static_prop.frag:346
+//                                    FragColor = tex_color * vec4(v_argb.rgb, a)).
+//       a=1 (opaque, in-place — NOT premult).
+//       ★PARITY: vArgb reproduces the SHAPE of the GL default term
+//       (base_light seed from the per-vertex a_aRGBLight + ambient + terrain-sun*NdotL,
+//       see color_prop_tier1.vert). The per-type magic-color SSBO and the ObjectLights
+//       UBO (ambient + per-actor sun color) are NOT fed to the island, so the ambient
+//       and sun color are stand-in constants — this is the correct MODEL with an
+//       approximate light, NOT byte-parity. computePBR is intentionally NOT used here
+//       (props are vertex-baked; the GL GGX block is gated OFF by default). Remaining
+//       diff after the screen shadow pass = the ambient/sun-color feed gap + dynamic
+//       screen-space shadow.
 //   location=1 GBuffer1    -> sceneNormalTex_ (MRT1, RGBA16F). BIT-ADJACENT to the GL
 //                            producer static_prop.frag:657-661, which selects between
 //                            TWO classes off the packet alpha-test bit:
@@ -232,21 +243,19 @@ void main() {
         rgb += materialAlbedo * poolLight;
     }
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
-    // Every prop quality uses per-pixel lighting. A missing row or zero ORM
-    // coverage falls back to a rough dielectric, never baked Gouraud lighting.
-    bool hasNativeMaterial = uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length();
-    if (haveAlbedo && !treeMaterial && !hasNativeMaterial)
-        rgb = propAuthoredColor(propDefaultSurface(materialAlbedo), poolLight);
-    if (haveAlbedo && hasNativeMaterial && (!treeMaterial || kBaseQuality == 2)) {
-        float materialCoverage;
-        SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
-        materialAO = mix(1.0, surface.ao, materialCoverage);
-        if (!treeMaterial) {
-            rgb = propAuthoredColor(surface, poolLight);
-            if (materialCoverage < 1.0)
-                rgb = mix(propAuthoredColor(propDefaultSurface(materialAlbedo), poolLight), rgb, materialCoverage);
+    // Low/Potato reuse the VS's existing SH + sun + authored-light result.
+    // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
+    if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
+        if (kBaseQuality == 2) {
+            float materialCoverage;
+            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
+            if (materialCoverage > 0.0) {
+                materialAO = mix(1.0, surface.ao, materialCoverage);
+                if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
+                              propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
+                outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
+            }
         }
-        outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         // Detail-map coverage cannot turn off an authored lamp surface.
         if (uPropMaterials.materials[uPacket.materialId].metadata.x == SURF_CLASS_EMISSIVE && (vMaterialFlags & 3u) == 0u)
             rgb = propAddWindowEmission(rgb, propDecodeColor(materialAlbedo) * uFrame.nightDarkness);
@@ -293,7 +302,7 @@ void main() {
     if (debugView != 0 && haveAlbedo) {
         vec3 debugNormal = normalize(mc2ToRender(vNormalStuff));
         vec3 rawNormal = vec3(0.5, 0.5, 1.0);
-        float roughness = 0.85, metallic = 0.0, ao = 1.0;
+        float roughness = 1.0, metallic = 0.0, ao = 1.0;
         bool validMaterial = uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length();
         if (validMaterial) {
             SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);

@@ -232,29 +232,38 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                 mc2::fmt::to_buf(matBuf, "MaterialGpu  idx {:d}  albedo {:d}  layer {:d}  {}", mc2::fmt::as_u32(s_staticPropData.materialIdx), mc2::fmt::as_u32(s_staticPropData.materialGpu.albedoTex), mc2::fmt::as_i32(layer), mc2::fmt::safe(matchOk ? "OK" : "(mismatch)"));
                 ImGui::Text("  material       %s", matBuf);
             } else if (s_selection.kind == RenderWorld::RenderObjectKind::StaticProp) {
-                ImGui::TextDisabled("  material       native class defaults / override (legacy snapshot unavailable)");
+                ImGui::TextDisabled("  material       (no GPU material data)");
             }
 
             // Factual lighting-model labels. These are descriptive of the
             // shader; if the static_prop .frag adds normal/PBR/IBL/emissive
             // sampling, update these strings in lockstep.
             if (s_selection.kind == RenderWorld::RenderObjectKind::StaticProp) {
-                // Native Vulkan prop island, independent of the legacy material snapshot.
-                ImGui::Text("  lighting       per-pixel PBR (GGX)");
+                // Lighting model — directional + ambient via LightsData
+                // SSBO 20 (see lighting.hglsl:43-56 + calc_light()).
+                ImGui::Text("  lighting       per-vertex Gouraud (no PBR)");
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Shared GGX sun, mission SH ambient and local light pools.\n"
-                                      "Stock props use rough class defaults; overrides may supply normal/ORM maps.");
-                // Per-pixel geometric normal, optionally perturbed by an override map.
-                ImGui::Text("  normal source  geometric / optional override normal map");
+                    ImGui::SetTooltip("calc_light() in shaders/include/lighting.hglsl\n"
+                                      "drives AMBIENT/INFINITE/POINT/SPOT.\n"
+                                      "No specular, no PBR, no IBL.");
+                // Normal source — vertex-interpolated only; .frag does NOT
+                // sample MaterialGpu::normalTex even when the bit is set.
+                ImGui::Text("  normal source  vertex-interpolated (no normal map)");
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Interpolated geometry normal normalized per pixel.\n"
-                                      "Optional normal maps use a derivative tangent frame.");
+                    ImGui::SetTooltip("static_prop.frag uses normalize(v_normal)\n"
+                                      "only for the GBuffer1 write. normalTex is\n"
+                                      "declared in MaterialGpu but unused today.");
 
-                // One mission environment ambient source.
-                ImGui::Text("  ambient        mission SH (single source)");
+                // Hemisphere ambient fill mode (default ON).
+                // Read the published option (this panel only runs when
+                // MC2_IMGUI_INSPECTOR is on).
+                bool ambOn = mc2::options::current().staticPropAmbient;
+                ImGui::Text("  ambient        %s", ambOn ? "hemisphere_v1" : "off");
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("SH irradiance in linear light, AO on indirect only.\n"
-                                      "No extra hemisphere or baked vertex fill.");
+                    ImGui::SetTooltip("V-AMBIENT-STATIC-1 hemisphere ambient fill in\n"
+                                      "static_prop.vert (skips window-flag nodes).\n"
+                                      "options.cfg: StaticPropAmbient = TRUE.\n"
+                                      "OFF -> u_ambientV1Strength=0.0 (byte-identical).");
 
                 // Interactive debug view combo for StaticPropOpaque.
                 {

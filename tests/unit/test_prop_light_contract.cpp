@@ -2,34 +2,6 @@
 // Colour-prop light contract: contractSun() against a verbatim copy of Camera::getLightRed.
 #include "doctest.h"
 #include "../../mclib/prop_light_contract.h"
-#include "../../RenderCore/StockPropMaterial.h"
-
-TEST_CASE("stock prop PBR defaults: classes and missing maps") {
-    using namespace RenderCore;
-    struct Example { const char* name; SurfaceClass cls; float roughness; float metallic; };
-    const Example cases[] = {
-        {"TENT01.tga", SurfaceClass::Fabric, 0.9f, 0.0f},
-        {"liao_wall.tga", SurfaceClass::Concrete, 0.9f, 0.0f},
-        {"fuel_tank.tga", SurfaceClass::PaintedMetal, 0.8f, 0.0f},
-        {"quonset.tga", SurfaceClass::PaintedMetal, 0.8f, 0.0f},
-        {"vehicle.tga", SurfaceClass::PaintedMetal, 0.8f, 0.0f},
-        {"tower.tga", SurfaceClass::PaintedMetal, 0.8f, 0.0f},
-        {"chainlink.tga", SurfaceClass::Grating, 0.7f, 1.0f},
-        {"bare_metal.tga", SurfaceClass::BareMetal, 0.7f, 1.0f},
-        {"mod_unknown.tga", SurfaceClass::Dielectric, 0.85f, 0.0f},
-        {"", SurfaceClass::Dielectric, 0.85f, 0.0f},
-    };
-    for (const auto& e : cases) {
-        INFO(e.name);
-        CHECK(stockPropClass(e.name) == e.cls);
-        const auto row = stockPropMaterial(stockPropClass(e.name));
-        CHECK(row.material.roughnessFactor == doctest::Approx(e.roughness));
-        CHECK(row.material.metallicFactor == doctest::Approx(e.metallic));
-        CHECK(row.material.normalTex == kMaterialTexAbsent);
-        CHECK(row.material.metallicRoughnessTex == kMaterialTexAbsent);
-        CHECK(row.uvScale[0] == 1.0f);
-    }
-}
 
 namespace {
 long refFloat2long(float v) { return static_cast<long>(v); }

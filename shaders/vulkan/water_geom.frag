@@ -62,7 +62,6 @@ layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 #include "../include/water_shore_edge.hglsl"
-#include "include/water_shore_animation.glsl"
 #include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 
 // Global aliases (assigned in main) so the ported GL blocks below stay
@@ -193,7 +192,7 @@ void main(void)
     // Recover horizontal shore distance from the depth field already sampled above.
     // World-space gradients keep the wash width stable across camera zoom and shore slopes.
     // Derivatives precede coverage discard so helper lanes remain defined at the coast.
-    float shoreDepth = wsa_visualDepth(WorldPos.xy, F.f7.x, hasField ? fieldThick : WaterThickness);
+    float shoreDepth = hasField ? fieldThick : WaterThickness;
     vec2 shoreDx = dFdx(WorldPos.xy), shoreDy = dFdy(WorldPos.xy);
     vec2 depthD = vec2(dFdx(shoreDepth), dFdy(shoreDepth));
     float shoreDet = shoreDx.x * shoreDy.y - shoreDx.y * shoreDy.x;
@@ -234,21 +233,23 @@ void main(void)
     PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz);
     col += glint * GLINT_GAIN * waveLOD * GLINT_TINT * nightSky;
     //PORT-END:waterBaseColor
-    // SHORELINE-ANIMATED: one broken advancing/retreating crest plus a weaker
-    // trailing line. The same analytic clock animates every water map/quality.
-    float coastPhase = dot(WorldPos.xy, vec2(0.003, 0.002));
-    float washPhase = time * 1.25663706 + coastPhase;
-    float washReach = wsa_reach(washPhase);
-    float foamBreakup = smoothstep(0.22, 0.72,
-        vnoise(WorldPos.xy * 0.045 + vec2(time * 0.16, -time * 0.09)));
+    // A shallow wash rolls toward the coast and recedes in the SAME water draw.
+    // Coverage and depth stay owned by the existing shore field: no new surface to z-fight.
+    float washReach = 18.0;
+    float shoreRipple = 0.0;
+    float foamBreakup = 1.0;
+    if (F.f3.w > 0.5) {
+        float coastPhase = dot(WorldPos.xy, vec2(0.003, 0.002));
+        washReach = 12.0 + 30.0 * (0.5 + 0.5 * sin(time * 1.25 + coastPhase));
+        shoreRipple = sin(shoreDistance * 0.18 + time * 1.8 + coastPhase) * 0.045;
+        foamBreakup = clamp(0.8 + nz * 0.6, 0.45, 1.0);
+    }
     float nearShore = 1.0 - smoothstep(36.0, 100.0, shoreDistance);
-    float wetShore = nearShore * wsa_depthFade(shoreDepth);
-    float foam = wsa_crest(shoreDistance, washReach, foamAA)
-               + 0.3 * wsa_crest(shoreDistance, washReach + 15.0, foamAA);
-    float wash = wsa_wash(shoreDistance, washReach, foamAA) * wetShore;
-    float foamMix = clamp(foam * 0.55 * foamBreakup * wetShore + wash * 0.08, 0.0, 0.75);
+    float foam = 1.0 - smoothstep(2.0, 6.0 + foamAA, abs(shoreDistance - washReach));
+    float wash = (1.0 - smoothstep(0.0, washReach + foamAA, shoreDistance)) * 0.10;
+    float foamMix = (foam * 0.42 * foamBreakup + wash) * nearShore;
     vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));
-    col *= wsa_normalLight(shoreGrad, shoreSlope, washPhase + shoreDistance * 0.18, wash);
+    col *= 1.0 + shoreRipple * nearShore;
     col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
     if (F.f7.z > 0.5) {
@@ -321,12 +322,7 @@ void main(void)
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
 
-    PREC float waterA = shore * mix(WATER_MAX_ALPHA, 1.0, wash * 0.18);
-    // Test the material at its physical surface, including the existing wave.
-    // A depth-only VS shore lift must never paint foam across exposed rocks.
-    // This leaves the VS height/lift calculation untouched for its owning lane.
-    vec4 surfaceClip = uT.worldToClipGL * vec4(WorldPos, 1.0);
-    gl_FragDepth = clamp(surfaceClip.z / surfaceClip.w, 0.0, 1.0);
+    PREC float waterA = shore * WATER_MAX_ALPHA;
     // WATER-EDGE-FEATHER-1 (default ON in GL): tint + dissolve the map-edge rim.
     if (F.f8.x != 0.0 && F.f8.z > 0.0) {
         float h = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);

@@ -76,7 +76,6 @@ add_executable(mc2_tests
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
     test_shadow_mover_fit.cpp
-    test_water_shore_lift.cpp
     test_static_caster_set.cpp
     ../../GameOS/gameos/static_caster_set.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/diagnostic_trace.cpp

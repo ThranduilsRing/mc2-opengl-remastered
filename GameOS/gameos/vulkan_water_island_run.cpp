@@ -9,7 +9,6 @@
 #include "mc2fmt.h"
 #include "utils/vec.h"   // inverseMat4
 #include "vulkan_shadow_island_live.h"   // the bake mask
-#include "vulkan_terrain_island.h"
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
@@ -288,7 +287,6 @@ extern "C" int mc2_vk_water_island_run(
         reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
             && WaterStream::NativeWaterInFrustum(*nat,shoreSdf);
         vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
-        vsLocal.p3[3] = mc2_vk_terrain_visual_bake_live() ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         {   // the reflection compute reads inverse(worldToClip) from here instead of inverting per thread
             mat4 clip; std::memcpy(&clip, vsLocal.worldToClipGL, sizeof(vsLocal.worldToClipGL));
