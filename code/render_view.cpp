@@ -7,6 +7,7 @@
 #include "impact_presentation.h"
 #include "../mclib/camera.h"
 #include "../mclib/timing.h"
+#include "../GameOS/gameos/beam_lights.h"
 #include <tracy/Tracy.hpp>
 
 #include <atomic>
@@ -30,6 +31,7 @@ void extractRenderFrame(float tickAlpha)
 	lists.clear();
 	if (eye && eye->active && turn > 1) {
 		if (ObjectManager) ObjectManager->extractRenderList(lists);
+		mc2::beam_lights::appendFrameLights();
 		impact_presentation::extract();
 	}
 	if (auto* ui = MissionInterfaceManager::instance()) ui->extractHudSnapshot();

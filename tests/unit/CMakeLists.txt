@@ -87,6 +87,7 @@ add_executable(mc2_tests
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
     test_searchlight_aim.cpp
     test_cone_beam_links.cpp
+    test_beam_lights.cpp
     test_capability.cpp     # UNIT-PROFILE-SEAM-1
     test_unit_actions.cpp   # UNITPROFILE-OFFLINE-HARNESS-1: resolveAction + executor registry (offline)
     test_unit_profile_validator.cpp  # UNITPROFILE-VALIDATOR-1: load-time construction-rules validator (offline)

@@ -3,6 +3,8 @@
 #include "terrain_vertex_pack.h"
 #include "../../mclib/terrain_vertex_dirty.h"
 #include "light_pool_culling.h"
+#include "beam_lights.h"
+#include "../../code/render_view.h"
 #include "local_light_shadow.h"   // LOCAL-LIGHTS-2: shadow tile selection
 #include "vulkan_shadow_island_live.h"   // mc2_vk_local_shadows_capable
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -867,3 +869,43 @@ void PackAndDispatch() {
 }
 
 } // namespace gos_terrain_lighting
+
+void mc2::beam_lights::appendFrameLights() {
+    if (!eye || !s_vkSnapValid) return;
+    Pool beams;
+    const auto visible = [](const float p[3]) {
+        glm::vec3 point(p[0], p[1], p[2]);
+        Stuff::Vector4D screen;
+        eye->projectForScreenXY(point, screen);
+        const auto res = eye->getScreenRes();
+        constexpr float margin = 160.0f;
+        return screen.w > 0 && screen.x >= -margin && screen.y >= -margin &&
+            screen.x <= res.x + margin && screen.y <= res.y + margin;
+    };
+    for (const auto& fx : mc2::render_view::list().fx) {
+        if (fx.kind != mc2::render_view::FxPacket::Kind::Bolt ||
+            !fx.has(mc2::render_view::Visible) || !fx.has(mc2::render_view::BoltGeometry) ||
+            !fx.bolt.energyLight) continue;
+        const bool impact = fx.has(mc2::render_view::HitTarget);
+        const glm::vec3 start = fx.bolt.isBeam ? fx.position : fx.bolt.laserVertices[2];
+        const glm::vec3 end = impact || fx.bolt.isBeam ? fx.aux[1] : fx.aux[0];
+        const uint32_t rgb = fx.bolt.middleRGB ? fx.bolt.middleRGB :
+            (fx.bolt.frontRGB ? fx.bolt.frontRGB : 0x80bfffu);
+        beams.add({{start.x, start.y, start.z}, {end.x, end.y, end.z},
+                   rgb, fx.bolt.lightRemaining, false}, visible);
+        const auto& hit = fx.aux[1];
+        beams.add({{hit.x, hit.y, hit.z}, {hit.x, hit.y, hit.z},
+                   rgb, fx.bolt.impactLightRemaining, true}, visible);
+    }
+    uint32_t count = s_lastNumLights;
+    const uint32_t cap = std::min(s_maxLights, gos_terrain_lighting::kObjectPoolLights);
+    for (unsigned i = 0; i < beams.count && count < cap; ++i)
+        s_lightBuf[count++] = beams.lights[i];
+    if (count == s_lastNumLights) return;
+    // Preserve the early vertex window and existing shadow assignments; refresh
+    // only the shared pool/grid before any native consumer records its inputs.
+    BuildLightGrid(count);
+    s_lastNumLights = count;
+    s_objectPoolDirty = true;
+    s_vkSnap.numLights = count;
+}
