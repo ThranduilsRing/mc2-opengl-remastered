@@ -3,7 +3,58 @@
 #include "../../mclib/terrain_ray_pick.h"
 #include "../../mclib/pick_occlusion.h"
 
-TEST_CASE("pick occlusion: ridge rejects rear object and accepts foreground")
+TEST_CASE("contact pick: mover in front of a building")
+{
+    const double origin[3] = {0, 0, 10}, ray[3] = {0, 0, -1};
+    const double mechLo[3] = {-1, -1, 6}, mechHi[3] = {1, 1, 8};
+    const double buildingLo[3] = {-3, -3, 0}, buildingHi[3] = {3, 3, 5};
+    double mechT, buildingT;
+    REQUIRE(mc2::pickBoxHit(origin, ray, mechLo, mechHi, mechT));
+    REQUIRE(mc2::pickBoxHit(origin, ray, buildingLo, buildingHi, buildingT));
+    REQUIRE(mc2::pickBeforeSurface(mechT, 10));
+    CHECK(mc2::pickCandidateBefore(true, mechT, 2, false, buildingT, 1));
+    CHECK_FALSE(mc2::pickCandidateBefore(false, buildingT, 1, true, mechT, 2));
+}
+
+TEST_CASE("contact pick: mover partly behind a building still wins overlap")
+{
+    const double origin[3] = {0, 0, 10}, ray[3] = {0, 0, -1};
+    const double mechLo[3] = {-2, -1, 1}, mechHi[3] = {1, 1, 3};
+    const double buildingLo[3] = {-1, -3, 4}, buildingHi[3] = {3, 3, 6};
+    double mechT, buildingT;
+    REQUIRE(mc2::pickBoxHit(origin, ray, mechLo, mechHi, mechT));
+    REQUIRE(mc2::pickBoxHit(origin, ray, buildingLo, buildingHi, buildingT));
+    REQUIRE(buildingT < mechT);
+    CHECK(mc2::pickCandidateBefore(true, mechT, 2, false, buildingT, 1));
+    // Within a class, foreground depth remains stronger than enemy priority.
+    CHECK_FALSE(mc2::pickCandidateBefore(true, mechT, 0, true, buildingT, 2));
+    CHECK_FALSE(mc2::pickCandidateBefore(false, mechT, 0, false, buildingT, 2));
+}
+
+TEST_CASE("contact pick: near miss beside a mech keeps mover forgiveness")
+{
+    // Cursor lies in the padded rectangle, just outside the actual bounds.
+    const double miss[3] = {1.1, 0, 10}, center[3] = {0, 0, 10}, ray[3] = {0, 0, -1};
+    const double lo[3] = {-1, -1, 0}, hi[3] = {1, 1, 4};
+    auto exact = [&](double& t) { return mc2::pickBoxHit(miss, ray, lo, hi, t); };
+    auto forgiven = [&](double& t) { return mc2::pickBoxHit(center, ray, lo, hi, t); };
+    double t;
+    REQUIRE_FALSE(exact(t));
+    const auto hit = mc2::pickDepthWithForgiveness(true, exact, forgiven);
+    REQUIRE(hit.has_value());
+    t = *hit;
+    CHECK(t == doctest::Approx(6));
+    CHECK(mc2::pickBeforeSurface(t, 10));
+    CHECK_FALSE(mc2::pickDepthWithForgiveness(false, exact, forgiven).has_value());
+    // Forgiveness cannot resurrect a mover behind a hill.
+    CHECK_FALSE(mc2::pickBeforeSurface(t, 5));
+    bool usedFallback = false;
+    CHECK(mc2::pickDepthWithForgiveness(true, forgiven,
+        [&](double&) { usedFallback = true; return false; }).has_value());
+    CHECK_FALSE(usedFallback);
+}
+
+TEST_CASE("pick occlusion: tower behind a hill is rejected before ranking")
 {
     const double r = std::sqrt(2.0);
     const double origin[3] = {0, 0, 10}, direction[3] = {1/r, 0, -1/r};

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 
 class Camera;
 
@@ -36,5 +37,25 @@ inline bool pickBoxHit(const double (&origin)[3], const double (&direction)[3],
 inline bool pickBeforeSurface(double objectT, double surfaceT)
 {
     return std::isfinite(objectT) && objectT >= 0 && objectT <= surfaceT + 1e-3;
+}
+
+// The caller has already tested the stock screen rectangle. Static scenery
+// requires an exact hit; movers may recover via a ray through their bounds.
+template<class ExactHit, class MoverHit>
+std::optional<double> pickDepthWithForgiveness(bool mover, ExactHit exactHit, MoverHit moverHit)
+{
+    double depth;
+    if (exactHit(depth) || (mover && moverHit(depth))) return depth;
+    return std::nullopt;
+}
+
+// Apply only after terrain rejection. Visible units win overlapping scenery;
+// depth still resolves two units (or two static objects).
+inline bool pickCandidateBefore(bool mover, double depth, int priority,
+                                bool otherMover, double otherDepth, int otherPriority)
+{
+    if (mover != otherMover) return mover;
+    if (depth != otherDepth) return depth < otherDepth;
+    return priority < otherPriority;
 }
 } // namespace mc2
