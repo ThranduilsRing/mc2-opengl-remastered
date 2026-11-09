@@ -23,7 +23,8 @@ TEST_CASE("screen settle: spec parsing") {
     CHECK(s.cell->y == 1);
 
     CHECK(parseSpec("logistics", s, &why));   // alias of the briefing screen (the one with the tactical minimap)
-    CHECK(s.cell == findScreen("briefing"));
+    CHECK(s.cell->x == findScreen("briefing")->x);
+    CHECK(s.cell->y == findScreen("briefing")->y);
 
     CHECK_FALSE(parseSpec("", s, &why));
     CHECK_FALSE(parseSpec("nowhere", s, &why));
