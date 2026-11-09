@@ -118,7 +118,7 @@ TEST_CASE("round-robin: a weapon no node accepts resolves to -1; lost arms are s
 TEST_CASE("node coverage: every weapon of every stock mech variant resolves to a node (needs the stock data)") {
     using namespace stockscan;
     const fs::path root = srcDataRoot();
-    if (root.empty()) { MESSAGE("MC2_TEST_SRCDATA not found: stock data scan skipped"); return; }
+    if (root.empty()) { MESSAGE("FXTEST_SRCDATA not found: stock data scan skipped"); return; }
     const auto weaponOf = parseCompbasWeaponTypes(readAll(root / "objects" / "compbas.csv"));
     REQUIRE_FALSE(weaponOf.empty());
     int mechs = 0, variants = 0;

@@ -2,7 +2,7 @@
 //
 // Offline readers for the stock mech data the node-coverage doctests scan (tgl/*.ini [Nodes], objects/*.csv variants,
 // compbas.csv, tgl/*.package.json + GLB node names). The stock data is not in the repo: the tests locate it through
-// MC2_TEST_SRCDATA (mc2srcdata root: objects/, tgl/) and MC2_TEST_INSTALL_DATA (an install's data/ dir), with the
+// FXTEST_SRCDATA (mc2srcdata root: objects/, tgl/) and FXTEST_INSTALL_DATA (an install's data/ dir), with the
 // maintainer-machine paths as defaults, and the data-driven cases skip when it is absent. Header-only, no engine code.
 #pragma once
 
@@ -29,8 +29,8 @@ inline fs::path rootFromEnv(const char* env, const char* fallback) {
 	std::error_code ec;
 	return fs::is_directory(p, ec) ? p : fs::path();
 }
-inline fs::path srcDataRoot() { return rootFromEnv("MC2_TEST_SRCDATA", "A:/Games/mc2-opengl/mc2srcdata-fresh"); }
-inline fs::path installDataRoot() { return rootFromEnv("MC2_TEST_INSTALL_DATA", "A:/Games/mc2-opengl/mc2-win64-v0.4/data"); }
+inline fs::path srcDataRoot() { return rootFromEnv("FXTEST_SRCDATA", "A:/Games/mc2-opengl/mc2srcdata-fresh"); }
+inline fs::path installDataRoot() { return rootFromEnv("FXTEST_INSTALL_DATA", "A:/Games/mc2-opengl/mc2-win64-v0.4/data"); }
 
 inline std::string readAll(const fs::path& p) {
 	std::ifstream in(p, std::ios::binary);

@@ -135,7 +135,7 @@ TEST_CASE("equipment ADD: a pack missile rack keeps the stock missile-type token
 }
 
 // FX-LOOP-AIM: every weapon_* socket a package chassis names must be a node that exists in its GLB (a missing bone
-// silently drops the mount to the legacy round-robin node). Needs the install data (MC2_TEST_INSTALL_DATA).
+// silently drops the mount to the legacy round-robin node). Needs the install data (FXTEST_INSTALL_DATA).
 #include "stock_data_scan.h"
 
 TEST_CASE("package chassis: bone-name parsing and GLB node lookup") {
@@ -158,7 +158,7 @@ TEST_CASE("package chassis: bone-name parsing and GLB node lookup") {
 TEST_CASE("package chassis: every weapon_* name maps to a bone present in the GLB (needs the install data)") {
     using namespace stockscan;
     const fs::path tgl = installDataRoot() / "tgl";
-    if (installDataRoot().empty()) { MESSAGE("MC2_TEST_INSTALL_DATA not found: package scan skipped"); return; }
+    if (installDataRoot().empty()) { MESSAGE("FXTEST_INSTALL_DATA not found: package scan skipped"); return; }
     int packages = 0;
     for (const auto& e : fs::directory_iterator(tgl)) {
         const std::string fn = e.path().filename().string();
