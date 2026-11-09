@@ -15,7 +15,7 @@ using Cache = mc2::terrain::RecordCache<P, D>;
 struct Harness {
     uint32_t resolves = 0;
     uint32_t run(Cache& c, const std::vector<P>& ps, uint64_t key, float cx, float cy) {
-        return c.update(ps.data(), static_cast<uint32_t>(ps.size()), key, cx, cy,
+        return c.update(std::span<const P>(ps), key, cx, cy,
             [&](const P& p, D& d) { ++resolves; if (p.depth < 0.0f) return false; d = {p.x, p.y, p.x % 3}; return true; },
             [&](const P& p) { const float dx = p.x - cx, dy = p.y - cy; return dx * dx + dy * dy; });
     }

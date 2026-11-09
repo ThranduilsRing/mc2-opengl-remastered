@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -23,8 +24,9 @@ public:
     // (no mesh); `distKey(patch)` is the front-to-back sort key (ties break by patch index, a strict total order).
     // `viewKey` identifies the camera position; `externalKey` everything else the resolved draws depend on.
     template <class Resolve, class DistKey>
-    uint32_t update(const Patch* patches, uint32_t n, uint64_t externalKey, float camX, float camY,
+    uint32_t update(std::span<const Patch> patches, uint64_t externalKey, float camX, float camY,
                     Resolve&& resolve, DistKey&& distKey) {
+        const auto n = static_cast<uint32_t>(patches.size());
         uint32_t rebuilt = 0;
         bool changed = false;
         if (!valid_ || externalKey != externalKey_ || entries_.size() != n) {
@@ -49,7 +51,7 @@ public:
             for (uint32_t i = 0; i < n; ++i) keys_.emplace_back(distKey(patches[i]), i);
             std::sort(keys_.begin(), keys_.end());
             order_.clear();
-            for (const auto& k : keys_) if (entries_[k.second].has) order_.push_back(k.second);
+            for (const auto& [dist, idx] : keys_) if (entries_[idx].has) order_.push_back(idx);
             if (changed || order_ != lastOrder_) {
                 lastOrder_ = order_;
                 draws_.clear();

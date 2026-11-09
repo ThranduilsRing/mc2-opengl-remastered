@@ -652,7 +652,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         | (diagLive ? (static_cast<uint64_t>(feed.visualHeightVersion) << 2) : 0ull);
     {
         ZoneScopedN("VKIsl.Terrain.RecordCache");
-        rec.cache.update(feed.patches, patchCount, cacheKey, feed.cameraPosMC2[0], feed.cameraPosMC2[2],
+        rec.cache.update(std::span<const Mc2TerrainTier1Patch>(feed.patches, patchCount), cacheKey, feed.cameraPosMC2[0], feed.cameraPosMC2[2],
             [&](const Mc2TerrainTier1Patch& pr, TerrainDraw& d) {
                 // TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are
                 // in bake (fine) units; uint16 indices cap it at 255x255 verts, else fall back to mode 2.
