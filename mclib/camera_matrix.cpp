@@ -4,7 +4,6 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
 #include "camera_pick_hash.h"
-#include "terrain_runtime.h"
 #include "../RenderCore/TemporalInputs.h"
 #include <format>
 namespace {
@@ -465,29 +464,12 @@ void Camera::setCameraOrigin (void)
 			// aiming into the ground with the pre-lift pitch.
 			if (land)
 			{
-				// Re-evaluate after repointing: lifting the eye rotates the near
-				// plane, which may expose a ridge outside its original footprint.
-				for (int attempt = 0; attempt < 8; ++attempt)
+				float terrainAtCam = land->getTerrainElevation(actualPosition);
+				terrainAtCam = std::max(terrainAtCam, Terrain::waterElevation);
+				if (translation.y < terrainAtCam + AltitudeMinimum)
 				{
-					const float halfWidth = std::fabs(NearPlaneDistance) * std::tan(camera_fov * DEGREES_TO_RADS * 0.5f);
-					// The projection's diagonal contains the exact current aspect,
-					// including native-window and panel-preview overrides.
-					const float halfHeight = halfWidth * std::fabs(cameraToClip[0][0] / cameraToClip[1][1]);
-					glm::vec3 nearOffsets[4];
-					for (int corner = 0; corner < 4; ++corner) {
-						const glm::vec3 local((corner & 1) ? halfWidth : -halfWidth,
-							(corner & 2) ? halfHeight : -halfHeight, NearPlaneDistance);
-						const auto offset = mc2::math::transformVector(local, cameraOrigin);
-						nearOffsets[corner] = glm::vec3(-offset.x, offset.z, offset.y);
-					}
-					const glm::vec3 eyePosition(actualPosition.x, actualPosition.y, translation.y);
-					const float floor = TerrainRuntime::cameraClearanceHeight(eyePosition, nearOffsets, AltitudeMinimum);
-					if (translation.y >= floor) break;
-					translation.y = floor;
+					translation.y = terrainAtCam + AltitudeMinimum;
 					actualPosition.z = translation.y - ELEVATION_BUFFER;
-					// At the iteration limit keep the rotation whose footprint was
-					// just proved clear instead of rotating into untested terrain.
-					if (attempt == 7) break;
 
 					// Repoint at focus from clamped position.
 					float dx = position.x - actualPosition.x;
@@ -496,12 +478,6 @@ void Camera::setCameraOrigin (void)
 					float horiz = sqrtf(dx*dx + dy*dy);
 					float newPitch = (horiz > 0.1f) ? atan2f(dz, horiz) : (dz < 0.0f ? -1.5707f : 0.0f);
 					mc2::math::buildRotation(cameraOrigin, mc2::math::Euler(newPitch, cameraDirection.yaw, 0.0f));
-					lookVector = mc2::math::transformVector(glm::vec3(0.0f, 0.0f, -1.0f), cameraOrigin);
-					// Angular object culling must use the lifted view too; its frame
-					// was initialized from the requested pitch before this clamp.
-					cameraFrame.reset_to_world_frame();
-					glm::vec3 clampedRotation(newPitch / DEGREES_TO_RADS, 0.0f, cameraRotation);
-					cameraFrame.rotate(clampedRotation);
 				}
 			}
 
