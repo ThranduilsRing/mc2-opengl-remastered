@@ -744,6 +744,13 @@ bool TreeAppearance::IsStaticNow() const
 		&& !needsFullBakeNextFrame;
 }
 
+bool TreeAppearance::lodFollowsCamera() const
+{
+	for (int l = 1; l < MAX_LODS; ++l)
+		if (staticReg[l].registered) return true;
+	return false;
+}
+
 void TreeAppearance::selectActiveLOD()
 {
 	// Per-frame distance-driven LOD pick. MUST run on BOTH update() and touch()
