@@ -187,7 +187,7 @@ long Camera::update (void)
 			unsigned over50 = 0;
 			for (double ms : samples) { sum += ms; if (ms > 50.0) ++over50; }
 			const size_t n = samples.size();
-			mc2::fmt::print_err("[CINEMATIC] frames={} avg_ms={:.3f} p50_ms={:.3f} p95_ms={:.3f} p99_ms={:.3f} max_ms={:.3f} over50={}\n",
+			if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[CINEMATIC] frames={} avg_ms={:.3f} p50_ms={:.3f} p95_ms={:.3f} p99_ms={:.3f} max_ms={:.3f} over50={}\n",
 				n, sum / n, samples[(n - 1) / 2], samples[(n - 1) * 95 / 100],
 				samples[(n - 1) * 99 / 100], samples.back(), over50);
 			samples.clear();

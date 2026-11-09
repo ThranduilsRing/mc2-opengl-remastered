@@ -746,7 +746,7 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 				tree->primeAppearanceForMissionLoad();
 			});
 	}
-	mc2::fmt::print_err("[SPAWN_TREES] cleared={}\n", spawnTrees);
+	if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[SPAWN_TREES] cleared={}\n", spawnTrees);
 	{ ZoneScopedN("Mission::init Track B static-prop registration walk"); ObjectManager->registerStaticPropsForMissionLoad(); }
 	mission_phase_mark("texture_prewarm_ready"); // LOAD-PHASE-FACTS-1: terrain-object load + static-prop residency prewarm done
 
