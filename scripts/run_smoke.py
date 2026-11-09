@@ -1240,7 +1240,7 @@ def main():
             _stale_pid = int(_LOCK_PATH.read_text().strip())
             _tl = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {_stale_pid}", "/NH", "/FO", "CSV"],
-                capture_output=True, text=True,
+                capture_output=True, text=True, timeout=15,
                 **nofocus.hidden_kwargs()).stdout
             # Robust: match the exact PID column (CSV field 1), not a substring of
             # the whole output. The old .count(str(pid)) gave false-positives on

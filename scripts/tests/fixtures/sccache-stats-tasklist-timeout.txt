@@ -1,0 +1,29 @@
+Compile requests                   16843
+Compile requests executed          16843
+Cache hits                         14302
+Cache hits (C/C++)                 14302
+Cache misses                        2516
+Cache misses (C/C++)                2516
+Cache hits rate                    85.04 %
+Cache hits rate (C/C++)            85.04 %
+Cache timeouts                         0
+Cache read errors                      0
+Forced recaches                        0
+Cache write errors                     0
+Cache errors                           0
+Compilations                        2516
+Compilation failures                   6
+Non-cacheable compilations             0
+Non-cacheable calls                    0
+Non-compilation calls                  0
+Unsupported compiler calls             0
+Average cache write                0.019 s
+Average compiler                  20.465 s
+Average cache read hit             0.020 s
+Failed distributed compilations        0
+Cache location                  Local disk: "G:/mc2-build/compile-cache"
+Base directories                a:/games/mc2-main/, a:/games/mc2-slot01/, a:/games/mc2-slot02/, a:/games/mc2-slot03/, a:/games/mc2-slot04/, a:/games/mc2-slot05/, a:/games/mc2-slot06/, a:/games/mc2-slot07/, a:/games/mc2-slot08/, a:/games/mc2-slot09/, a:/games/mc2-slot10/, a:/games/mc2-slot11/, a:/games/mc2-slot12/, e:/mc2-installs/_precheck/tree/
+Use direct/preprocessor mode?   yes
+Version (client)                0.18.0
+Cache size                            50 GiB
+Max cache size                        50 GiB

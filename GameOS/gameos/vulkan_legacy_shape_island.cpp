@@ -187,16 +187,19 @@ TexEntry* get_tex(Island* s,uint32_t texNode,uint32_t gosHandle) {
     const auto handle=RenderCore::uiTextureHandle(gos_GetMaterialTextureId(gosHandle));
     if (!handle.isValid()) return &s->dummyTex;
     if (auto it=s->texs.find(texNode);it!=s->texs.end()) {
-        if (it->second.texture.get()!=handle) {
-            it->second.texture=textures.retain(handle);
-            for (auto& bound : it->second.bound) bound = VK_NULL_HANDLE; // recycled VkImageView names still require fresh descriptors
+        auto& [node, entry] = *it;
+        if (entry.texture.get()!=handle) {
+            entry.texture=textures.retain(handle);
+            for (auto& bound : entry.bound) bound = VK_NULL_HANDLE; // recycled VkImageView names still require fresh descriptors
         }
-        return &it->second;
+        return &entry;
     }
     TexEntry entry;entry.texture=textures.retain(handle);
     if (!entry.texture || !alloc_tex_sets(s,entry)) return &s->dummyTex;
     ++g_health.texUploads;
-    return &s->texs.emplace(texNode,std::move(entry)).first->second;
+    const auto [it, inserted] = s->texs.emplace(texNode,std::move(entry));
+    auto& [node, cached] = *it;
+    return &cached;
 }
 
 bool init_island(Island* s, int w, int h) {
@@ -586,8 +589,8 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     }
     // Every texture set of this slot follows the ring buffer the span came from; the draw passes the UBO offset.
     if (s->ringBound[par] != span.buffer) {
-        for (auto& kv : s->texs)
-            if (kv.second.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, kv.second.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(LegacyFrameUBO));
+        for (auto& [node, entry] : s->texs)
+            if (entry.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, entry.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(LegacyFrameUBO));
         if (s->dummyTex.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, s->dummyTex.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(LegacyFrameUBO));
         s->ringBound[par] = span.buffer;
     }

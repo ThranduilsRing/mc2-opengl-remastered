@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
+#include "hover_name.h"
 #include "tacticaloverview.h"
 #include "Gates/gate.h"
 
@@ -682,19 +683,8 @@ void GroundVehicle::renderShadows (void)
 	{
 		if ((getStatus() != OBJECT_STATUS_DESTROYED) && (getStatus() != OBJECT_STATUS_DISABLED))
 		{
-			if (getTeamId() != Team::home->getId())
-			{
-				long cStat = conStat;
-		
-				if (cStat == CONTACT_VISUAL)
-				{
-					appearance->renderShadows();
-				}
-			}
-			else		//We are Home Team and we always see ourselves.
-			{
+			if (contactView.shadow)
 				appearance->renderShadows();
-			}
 		}
 	}
 }	
@@ -706,13 +696,17 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
+		|| isDestroyed() || isDisabled() || ShowMovers
+		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
+	view.contact = contactView;
 	if (!Terrain::IsGameSelectTerrainPosition(position))
 		return;
 	if (teamId != Team::home->getId())
 	{
-		long cStat = conStat;
+		long cStat = contactView.quality;
 
-		if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
+		if (contactView.model)
 		{
 			DWORD color = 0xff7f7f7f;
 			if ((teamId > -1) && (teamId < 8)) {
@@ -735,21 +729,12 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 		else if (cStat == CONTACT_SENSOR_QUALITY_3)
 		{
 			view.mode = Mode::SensorText;
-			if (tonnage <= 40)
-				view.nameId = IDS_SENSOR_LIGHT_VEHICLE;
-			else if (tonnage <= 65)
-				view.nameId = IDS_SENSOR_MEDIUM_VEHICLE;
-			else
-				view.nameId = IDS_SENSOR_HEAVY_VEHICLE;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID, true);
 		}
 		else if (cStat == CONTACT_SENSOR_QUALITY_4)
 		{
 			view.mode = Mode::SensorText;
-			view.nameId = descID;
-		}
-		else if (alphaValue != 0x0)	//What if we are out of LOS and NOT on sensors!!!  Let 'em fade out.
-		{
-			view.mode = Mode::Fade;
+			view.nameId = mc2::hoverNameId(cStat, tonnage, descID, true);
 		}
 	}
 	else
@@ -779,6 +764,9 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 
 void GroundVehicle::renderView (const mc2::render_view::RenderView& view)
 {
+	appearance->contactView = view.contact;
+	appearance->setSensorLevel(view.contact.sensorLevel());
+	appearance->setAlphaValue(view.contact.model ? 0xff : 0);
 	using mc2::render_view::Mode;
 	switch (view.mode)
 	{

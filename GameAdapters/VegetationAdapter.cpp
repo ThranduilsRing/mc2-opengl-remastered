@@ -16,6 +16,7 @@
 
 // Game side -- terrain geometry + type queries.
 #include "../mclib/terrain.h"
+#include "../mclib/terrain_runtime.h"
 // Game side -- terrain type codes (TerrainType enum).
 #include "../mclib/dmapdata.h"
 // Game side -- MissionMap overlay / water queries.
@@ -273,7 +274,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
 
                 ++instTriedTotal;
                 const glm::vec3 instPos(instWx, instWy, 0.0f);
-                const float elevation = land->getTerrainElevation(instPos);
+                const float elevation = TerrainRuntime::sampleVisualHeight(instPos);
                 if (elevation <= Terrain::waterElevation) { ++instRejWater; continue; }
 
                 // Per-instance terrain type classification.

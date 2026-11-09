@@ -1440,7 +1440,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         if (idx < 0) {
             static int s_warnJoint = 0;
             if (s_warnJoint++ < 8)
-                mc2::fmt::print_err("[MECH_IMPORT] node '{}' joint '{}' absent (-> legacy)\n", mc2::fmt::safe(mc2Name), mit->second.c_str());
+                mc2::fmt::print_err("[MECH_IMPORT] node '{}' joint '{}' absent (-> legacy)\n", mc2::fmt::safe(mc2Name), jointName.c_str());
             return false;
         }
         ActorAnimState* s = nullptr;
@@ -1451,7 +1451,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         }
         else if (!actorKey && !e.cpuState.lastGlobals.empty()) s = &e.cpuState;
         if (!s || idx >= static_cast<int>(s->lastGlobals.size())) {
-            if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}' joint '{}' idx={:d}: no actor state / lastGlobals empty (actors={:d})\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), mc2::fmt::as_i32(idx), mc2::fmt::as_size(e.actors.size())); }
+            if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}' joint '{}' idx={:d}: no actor state / lastGlobals empty (actors={:d})\n", mc2::fmt::safe(mc2Name), jointName.c_str(), mc2::fmt::as_i32(idx), mc2::fmt::as_size(e.actors.size())); }
             return false;
         }
         // F = Msw * (AS1 * C_i); its translation (gx,gy,gz) = F[3],F[7],F[11] — the
@@ -1478,7 +1478,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         outXYZ[0] = -gx;   // result.x = -entries[3]
         outXYZ[1] =  gz;   // result.y =  entries[11]
         outXYZ[2] =  gy;   // result.z =  entries[7]  (world elevation)
-        if (diag) { static int w=0; if (w++<16) mc2::fmt::print_err("[NODE-DIAG] '{}'->'{}' OK world=({:.1f},{:.1f},{:.1f}) lift={:.2f}\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), outXYZ[0], outXYZ[1], outXYZ[2], s->gpuLift); }
+        if (diag) { static int w=0; if (w++<16) mc2::fmt::print_err("[NODE-DIAG] '{}'->'{}' OK world=({:.1f},{:.1f},{:.1f}) lift={:.2f}\n", mc2::fmt::safe(mc2Name), jointName.c_str(), outXYZ[0], outXYZ[1], outXYZ[2], s->gpuLift); }
         return true;
     }
     if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}': no imported entry matched typeKey={:016X} (registered={:d})\n", mc2::fmt::safe(mc2Name), mc2::fmt::as_ptr(typeKey), mc2::fmt::as_size(g_importedAnims.size())); }

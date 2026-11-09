@@ -83,8 +83,8 @@ def sim_sensitive(paths):
     return sorted(p for p in paths if any(fnmatch.fnmatchcase(p.replace("\\", "/"), g) for g in pats))
 
 
-MOD_CONTENT_GLOBS = ("data/*", "mods/*", "examples/mods/*", "tests/mods/*", "tools/mod_smoke*", "tools/mod_*.py",
-                     "tools/mc2x_import/*", "tools/mco_import/*")
+MOD_CONTENT_GLOBS = ("data/*", "mods/*", "examples/mods/*", "tests/mods/*", "tools/mod_*", "tools/mc2mod/*",
+                     "tools/mc2_modlint/*", "tools/validate_mod_package.py", "tools/mc2x_import/*", "tools/mco_import/*")
 
 
 def promoted_stages(paths):

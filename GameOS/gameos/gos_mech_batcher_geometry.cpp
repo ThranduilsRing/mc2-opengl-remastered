@@ -470,7 +470,8 @@ void uploadMechGeometryVbo() {
             const char* bytes = reinterpret_cast<const char*>(work.data() + (soupBase + v) * kStride);
             const auto [it, inserted] = seen.emplace(std::string(bytes, kStride), static_cast<uint32_t>(seen.size()));
             if (inserted) uniq.insert(uniq.end(), bytes, bytes + kStride);
-            remap[v] = it->second;
+            const auto& [vertex, index] = *it;
+            remap[v] = index;
         }
         const size_t nUniq = uniq.size() / kStride;
         for (uint32_t i = ibFirst; i < ibEnd; ++i) {

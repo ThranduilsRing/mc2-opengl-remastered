@@ -1490,6 +1490,17 @@ def test_sim_evidence_accepts_full_candidate_payload(tmp_path):
     assert lane_merge_stage.sim_evidence_problems(tmp_path / "gate-verdict.json", "a" * 40) == []
 
 
+def test_sim_evidence_accepts_perf_counter_only_pass(tmp_path):
+    # W135: a perf_counter-only note never fails a row; promote refused a green mc2_10 sim pair on it.
+    import lane_merge_stage
+    _sim_evidence(tmp_path, "a" * 40)
+    summary = tmp_path / "summary.json"
+    data = json.loads(summary.read_text())
+    data["sim"]["rows"]["determinism-mc2_10"]["status"] = "PASS (perf_counter-only WARN: mc2_10: draws.vfx=5.5>3.968)"
+    summary.write_text(json.dumps(data))
+    assert lane_merge_stage.sim_evidence_problems(tmp_path / "gate-verdict.json", "a" * 40) == []
+
+
 def test_bisect_halves_a_red_batch_and_rejects_the_guilty_tip():
     bisect_step = _load_module().bisect_step
     s = dict(testing=["a", "b", "c"], queue=["d"])

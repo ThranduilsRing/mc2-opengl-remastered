@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <type_traits>
 #include "math/glm_config.h"
+#include "contact_visibility.h"
 
 class GameObject;
 class BldgAppearance;
@@ -56,6 +57,7 @@ struct BoltDraw {
 };
 
 struct RenderView {
+    mc2::ContactVisibility contact{};
     GameObject* obj = nullptr;
     // The tick can clear/reuse owner slots; releaseEffect retains these payloads until the join.
     // Artillery: hit, left contrail, right contrail (bolts and carnage record from FxPacket).

@@ -561,6 +561,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 				if (!MPlayer || (MPlayer && MPlayer->isServer()))
 				{
 					timeLeft = 1.0f;
+					causeOfDeath = CORE_EXPLOSION_DEATH;
 					setStatus(OBJECT_STATUS_DESTROYED);
 					exploding = false;
 				
