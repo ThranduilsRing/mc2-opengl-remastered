@@ -10,7 +10,26 @@
 // so the FS emits straight color; the src-alpha factor premultiplies in HW.
 #version 450
 
+#ifdef VFX_INDEXED
+#extension GL_EXT_nonuniform_qualifier : require
+layout(set = 1, binding = 0) uniform sampler2D uPages[64];
+layout(location = 5) flat in uint v_page;
+layout(location = 6) flat in uint v_blend;
+#define uAtlas uPages[nonuniformEXT(v_page)]
+// Premultiplied fold: one pipeline (ONE, ONE_MINUS_SRC_ALPHA) draws blend modes 0/1/2/5; the record's mode picks
+//   0 alpha SRC_ALPHA/1-SRC_ALPHA: (rgb*a, a)   1 SRC_ALPHA/ONE: (rgb*a, 0)
+//   2 ONE/ONE: (rgb, 0)                         5 ONE/1-SRC_ALPHA: (rgb, a)   [3 opaque and 4 ONE/SRC_ALPHA keep their pipelines]
+// Scene alpha is never read after this pass (every consumer reads rgb), so only the rgb result must match the old modes.
+vec4 foldBlend(vec4 c) {
+    if (v_blend == 3u || v_blend == 4u) return c;
+    float a = clamp(c.a, 0.0, 1.0);
+    return vec4(c.rgb * ((v_blend == 0u || v_blend == 1u) ? a : 1.0), (v_blend == 0u || v_blend == 5u) ? a : 0.0);
+}
+#define VFX_OUT(c) foldBlend(c)
+#else
 layout(set = 1, binding = 0) uniform sampler2D uAtlas;   // the draw group's sprite page
+#define VFX_OUT(c) (c)
+#endif
 
 layout(location = 0) in vec2 v_uv;
 layout(location = 1) in vec4 v_color;
@@ -40,7 +59,7 @@ void main() {
             if ((v_flags & 1024u) != 0u) c.a = 1.0;
         }
         // Mesh SRC_ALPHA/ONE keeps its authored alpha. Tube ONE/ONE uses RGB.
-        o_color = c;
+        o_color = VFX_OUT(c);
         o_normal = vec4(0.0);
         return;
     }
@@ -53,6 +72,6 @@ void main() {
     // (the halo cards carry alpha 0), so such a group neither multiplies by nor discards on alpha.
     if ((v_flags & 2u) != 0u) c.a = 1.0;
     else if (c.a < 0.01) discard;
-    o_color  = c;
+    o_color  = VFX_OUT(c);
     o_normal = vec4(0.0);   // GL VFX writes nothing to the normal target
 }
