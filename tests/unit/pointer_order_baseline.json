@@ -28,6 +28,9 @@
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "pointer_key": 1
   },
+  "GameOS/gameos/light_pool_culling.h": {
+   "pointer_key": 1
+  },
   "GameOS/gameos/static_caster_set.h": {
    "pointer_key": 2
   },
