@@ -981,7 +981,8 @@ run_nightly "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quie
 run_nightly "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py scripts/tests/test_vfx_scene_alpha_unread.py -q -p no:cacheprovider"
 run_nightly "fx_native_boundary"      "py -3 -B -m pytest tools/mc2fx/native_checks.py -k test_boundary -q -p no:cacheprovider"
 run_nightly "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
-run_nightly "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
+run_check "render_no_update"         "py -3 scripts/check-render-no-update.py --quiet && py -3 -B -m pytest scripts/tests/test_check_render_no_update.py -q -p no:cacheprovider"   # R2 item 3: renderView / Appearance::render never call update()
+run_nightly "colormask_ownership"   "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
 run_nightly "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
 run_nightly "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
 run_nightly "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
