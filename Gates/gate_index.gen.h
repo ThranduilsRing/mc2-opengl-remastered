@@ -125,7 +125,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FRAMEGRAPH_AMBIENT_FATAL", Kind::Bool, Rule::Presence, {}},
     {"MC2_FRAMEGRAPH_DRYRUN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_FRAMEGRAPH_EXECUTOR", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_FRAME_JOBS", Kind::Bool, Rule::AtoiNZ, {}},
+    {"MC2_FRAME_JOBS", Kind::Bool, Rule::DefOnAtoiNZ, {}},
     {"MC2_FRAME_JOBS_BATCH", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAME_JOBS_WORKERS", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAME_PASS_STATS", Kind::Bool, Rule::Exact1, {}},

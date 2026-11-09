@@ -480,6 +480,10 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         dev = host_lease.held_device()   # the slot this run won decides its GPU unless one was forced
         if dev and not child_env.get("MC2_VK_DEVICE"):
             child_env["MC2_VK_DEVICE"] = dev
+        if not child_env.get("MC2_FRAME_JOBS_WORKERS") and any(exe_guard.engine_kind(a) is not None for a in argv):
+            width = host_lease.frame_jobs_workers()   # the lane host's game cores, not the whole machine
+            if width:
+                child_env["MC2_FRAME_JOBS_WORKERS"] = str(width)
         proc = subprocess.Popen(list(argv), env=child_env, **popen_kwargs(show_window=show_window, **kw))
         _record_child(proc, argv)
         if any(exe_guard.engine_kind(a) is not None for a in argv):

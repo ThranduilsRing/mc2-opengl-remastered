@@ -787,3 +787,11 @@ def test_merge_gate_opens_no_window_long_quiet_marker():
     src = (pathlib.Path(__file__).resolve().parents[1] / "merge_gate.py").read_text(encoding="utf-8")
     assert "host_lease.open_gate_window(" not in src
     assert "gate_capture_lease(" in src
+
+
+@pytest.mark.parametrize("width,workers", [(1, 1), (2, 3)])
+def test_frame_jobs_workers_follow_the_held_cores(lease, monkeypatch, width, workers):
+    assert host_lease.frame_jobs_workers() is None           # no lease held: the engine keeps its own default
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", str(width))
+    host_lease.acquire("jobs-width")
+    assert host_lease.frame_jobs_workers() == workers        # one worker per reserved logical CPU beyond main's

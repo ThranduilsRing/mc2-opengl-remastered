@@ -1,7 +1,7 @@
 // code/frame_jobs.h
 // FRAME-JOBS-1: Fixed worker pool for batched CPU-only prep passes.
 // Workers must not call GL, gos_*, txmmgr, or ObjectManager mutation.
-// Gates: MC2_FRAME_JOBS=1  MC2_FRAME_JOBS_WORKERS=N (1..hw_concurrency)
+// Gates: MC2_FRAME_JOBS=0 (kill-switch, default ON)  MC2_FRAME_JOBS_WORKERS=N (1..hw_concurrency; default clamp(hw/2, 2, 6))
 //        MC2_FRAME_JOBS_BATCH=N (default 64)  MC2_FRAME_JOBS_TRACE=1
 //
 // MC2-JOBS-CORE-1: this header is now the BACK-COMPAT SHIM. The pool was
@@ -23,12 +23,7 @@ void frameJobsInit();
 // Call once at shutdown (near gpu_cull substrate shutdown).
 void frameJobsShutdown();
 
-// Execute fn(begin, end) for each chunk of [0, count).
-// Serial on main thread when MC2_FRAME_JOBS=0 or resolved workers <= 1.
-void parallelForRange(int count, int batchSize,
-                      const std::function<void(int, int)>& fn);
-
-bool frameJobsEnabled();  // true when parallel mode is active
+bool frameJobsEnabled();  // true when the Render-domain bounds prepass is active (default ON; MC2_FRAME_JOBS=0 is the kill-switch)
 int  frameJobsBatch();    // resolved batch size (MC2_FRAME_JOBS_BATCH or 128)
 bool frameJobsTrace();    // true when MC2_FRAME_JOBS_TRACE=1
 // Returns true only if MC2_FRAME_JOBS=1 AND MC2_FRAME_JOBS_TOUCH=1

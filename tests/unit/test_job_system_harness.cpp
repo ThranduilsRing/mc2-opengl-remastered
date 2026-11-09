@@ -1,4 +1,5 @@
 #include "doctest.h"
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -113,13 +114,26 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/immutable_pose_bits") {
     }
 }
 
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/default_pool_width") {
+    const int hw = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+    if (!mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">()) {
+        frameJobsInit();
+        CHECK(jobs::workerCount() == std::clamp(hw / 2, 2, 6));
+        frameJobsShutdown();
+    }
+    mc2::gate::ScopedOverride<"MC2_FRAME_JOBS_WORKERS"> one("1");
+    frameJobsInit();
+    CHECK(jobs::workerCount() == 1);
+    CHECK_FALSE(frameJobsEnabled());   // nothing to overlap: the Render domain has no worker
+    frameJobsShutdown();
+}
+
 TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/startup_cannot_release_first_dispatch_early") {
-    mc2::gate::ScopedOverride<"MC2_FRAME_JOBS"> enabled("1");
     mc2::gate::ScopedOverride<"MC2_FRAME_JOBS_WORKERS"> workers("4");
     jobs::kDispatchFloorNs = 0;
     bool legacy = false;
-    SUBCASE("frame jobs") { legacy = true; }
-    SUBCASE("domain jobs") { legacy = false; }
+    SUBCASE("frameJobsInit") { legacy = true; }
+    SUBCASE("startPool") { legacy = false; }
 
     for (int iteration = 0; iteration < 256; ++iteration) {
         std::array<std::atomic<int>, 256> visits{};
@@ -133,11 +147,11 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/startup_cannot_release_first_
         };
         if (legacy) {
             frameJobsInit();
-            parallelForRange(256, 1, body);
+            REQUIRE(jobs::workerCount() == 4);
         } else {
             jobs::startPool(4);
-            jobs::parallel_for(jobs::Domain::Render, 256, 1, 1000, body);
         }
+        jobs::parallel_for(jobs::Domain::Render, 256, 1, 1000, body);
         const int completedAtReturn = completed.load(std::memory_order_acquire);
         // Captures stay alive until every worker is joined, even if the barrier fails.
         if (legacy) frameJobsShutdown();

@@ -4,7 +4,7 @@ L(Presence, "MC2_FRAMEGRAPH_AMBIENT_FATAL", Bool, false, "code", "", "", verifie
 L(Lead1, "MC2_FRAMEGRAPH_DRYRUN", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_FRAMEGRAPH_EXECUTOR
 L(Lead0Kill, "MC2_FRAMEGRAPH_EXECUTOR", Bool, true, "post", "", "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).", passthrough | registry(Feature, "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", -1, true) | verified),
-L(AtoiNZ, "MC2_FRAME_JOBS", Bool, false, "code", "", "", passthrough | verified),
+L(DefOnAtoiNZ, "MC2_FRAME_JOBS", Bool, true, "code", "", "", passthrough | verified),
 P("MC2_FRAME_JOBS_BATCH", Int, 64, "code", "", "", passthrough | verified),
 P("MC2_FRAME_JOBS_WORKERS", Int, 0, "code", "", "", passthrough | verified),  // default not derivable from the tree
 L(Exact1, "MC2_FRAME_PASS_STATS", Bool, false, "gameos", "", "", passthrough | verified),

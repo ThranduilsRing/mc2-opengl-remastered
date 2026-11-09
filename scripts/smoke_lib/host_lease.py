@@ -330,17 +330,29 @@ def _exclusive(value=None):
     return os.environ.get("MC2_HOST_LEASE_EXCLUSIVE") == "1" if value is None else value
 
 
-def apply_affinity(proc) -> None:
-    """Pin an engine or its launcher; descendants inherit the core reservation."""
-    records = [rec for _, rec in _records() if _ours(rec)]
-    if not records:
-        return
+def _held_affinity() -> int:
+    """The core mask this process's lease records reserve (0 when it holds none)."""
     mask = 0
-    for rec in records:
+    for rec in [rec for _, rec in _records() if _ours(rec)]:
         mask |= rec.get("affinity_mask", 3 << (4 + rec.get("slot", 0) * 2))
-    if not redirected() and sys.platform == 'win32':
+    if mask and not redirected() and sys.platform == 'win32':
         reserved = sum(1 << c for c in game_cores())
         mask = (mask & reserved) or reserved
+    return mask
+
+
+def frame_jobs_workers():
+    """MC2_FRAME_JOBS_WORKERS for an engine on the held cores: one worker per reserved logical CPU beyond main's.
+    The engine default (hw/2, clamped 2..6) assumes a whole machine; a lane game owns two logical CPUs. None when no lease is held."""
+    mask = _held_affinity()
+    return max(1, mask.bit_count() - 1) if mask else None
+
+
+def apply_affinity(proc) -> None:
+    """Pin an engine or its launcher; descendants inherit the core reservation."""
+    mask = _held_affinity()
+    if not mask:
+        return
     if sys.platform == "win32":
         import ctypes
         from ctypes import wintypes
