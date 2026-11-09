@@ -6,14 +6,13 @@ MechCommander 2 engine port: Vulkan-only engine renderer, PBR terrain, shadows, 
 
 - **Lane rules (every agent, every model):** `A:/Games/mc2-ops/lane-rules.md`. Read it first. Parallelism: `A:/Games/mc2-ops/JOBS`.
 - **Parallel lanes** work in their own worktree (a `tools/lane_slot.py` slot), one writer per worktree. Merges into `claude/nifty-mendeleev` happen only in merge windows (`tools/lane_merge.py --batch`), each followed by an adversarial review. **Architecture first:** asks the owner adds mid-session go on the backlog (memory `process/project-architecture-backlog-2026-10-27.md`). Never stop or deprioritize running architecture lanes for them unless the owner says it's urgent.
-- **Deploy:** a lane deploys only to the install its assignment names (default `E:/mc2-installs/<branch>`, which `lane_slot.py release` deletes), always with an explicit target. Only the orchestrator's merge gate deploys to v0.4.
 - **Model/effort:** Sonnet coding = medium; heavy-conflict merges, reviews and root-causing = high; Sol = medium; Opus case by case; avoid Haiku for build loops.
-- **Game runs** default to about 15 s; benches use `--acceptance` only in the orchestrator's quiet window. Lanes do not measure ms on the PC; perf pairs go to the farm laptop (`tools/farm/host.py submit`). RGP is a weekly orchestrator checkpoint, never a per-change proof.
-- **Acceptance:** accept a visual change only after opening the exact-tip montage yourself and writing what you saw (MAD is not a pass signal). "Delivered" means present and rendering in the owner's install. A brief quotes the owner's symptom verbatim and adds no requirements. A second failed proof of the same class goes to the owner as a question, not to another continuation.
+- **Game runs / perf:** defaults, off-screen rule and perf routing are in lane-rules; benches use `--acceptance` only in the orchestrator's quiet window.
+- **Acceptance:** visual changes per lane-rules section 7 (montage opened by you, MAD is not a pass signal). "Delivered" means present and rendering in the owner's install. A second failed proof of the same class goes to the owner as a question, not to another continuation (orchestrator; lanes take the safe default).
 - **Basics over process.** A check red on nifty for more than a week gets fixed or deleted.
-- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates (count legacy ones from `docs/flags.auto.yaml`).
+- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot (legacy gates: `docs/flags.auto.yaml`).
 - **Vulkan only.** The GL backend is removed (`MC2_RENDER_BACKEND=gl` is ignored with a `[RENDER_BACKEND]` log line); don't add GL paths or GL A/B arms.
-- **Mods** (MC2X-CVE-G, MC2X-REAP3, Exodus, MagicExpansion, MechCommanderOmnitech, MCO-Carver5; installs in `A:/Games/mc2-opengl/`): the nightly gate runs a slim, non-blocking `mods-slim` check (one short load per mod, PASS/FAIL per mod in the summary, never fails the gate). A break gets a dedicated fix lane. The full battery runs weekly, and per merge only when the diff touches mod content (`data/`, `mods/`, `examples/mods/`, `tests/mods/`, mod tooling). See `docs/merge-queue-v2.md`.
+- **Mods:** nightly slim non-blocking `mods-slim` check; a break gets a dedicated fix lane; details in lane-rules and `docs/merge-queue-v2.md`.
 - **Commit locally only.** Never push, open PRs, or upload unless the user explicitly says so.
 
 ## Paths
@@ -34,23 +33,13 @@ py -3 scripts/deploy_payload.py --target game --ninja                         # 
 
 ## Proof
 
-**Offline first** (owner 2026-11-08): proof starts with a unit test, harness, pytest or static check; write a quick new test when none covers the change. Launch the game or capture only for what pixels or runtime alone can show.
-
-| Change | Offline proof |
-|---|---|
-| Docs | `git diff --check` |
-| Shader | `bash scripts/check-contracts.sh --rows 'slang\|shader\|vk_shaders'` + production shader compile |
-| Tooling (Python/scripts) | targeted pytest (`py -3 scripts/run_scripts_tests.py scripts/tests/test_<x>.py ...`) + the owning row via `--rows` |
-| Data / art | the loader/validator row; `kit_art` only when art paths changed |
-| C++ engine | covering rows + `py -3 tools/build_contract_harnesses.py --run --unit --only <test>` |
+Proof ladder (offline first), lane proof rules and default run lengths: lane-rules section 7. Merge candidate and schedule run the full board:
 
 ```bash
-bash scripts/check-contracts.sh                                # full board (~50-90 s): merge candidate and schedule
+bash scripts/check-contracts.sh                                # full board (~50-90 s)
 py -3 tools/build_contract_harnesses.py --run --unit           # C++ harnesses + doctest tier
-py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider       # full suite: merge candidate and schedule
+py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider       # full suite
 ```
-
-Generated inventories and count ratchets are not lane proof: the merge commit regenerates them once, and `log_tag_census` fails only on a tag a Python parser consumes.
 
 **Runtime change:** one smoke-lite on your own install, `py -3 scripts/run_smoke.py --lite --keep-logs --exe <install>/mc2.exe` (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error and the deploy fingerprint `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD`). None for docs/tests/tools/scripts. Full tier1, the gate tiers (per merge / `--nightly` / `--weekly`) and the nightly schedule: `docs/merge-queue-v2.md`.
 
