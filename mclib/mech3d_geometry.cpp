@@ -1212,11 +1212,6 @@ void Mech3DAppearance::flushSimPoseBatch (void)
             if (appearance->simPosePending_) appearance->finishSimPose();
         list.clear();
     }
-    static std::uint64_t s_batches = 0;
-    if ((++s_batches % 1024) == 0)
-        fprintf(stderr, "[SIM_POSE v1] ticks=%llu eager=%llu batched=%llu reused=%llu\n",
-                static_cast<unsigned long long>(s_batches), static_cast<unsigned long long>(s_simPoseEager),
-                static_cast<unsigned long long>(s_simPoseBatched), static_cast<unsigned long long>(s_simPoseReused));
 }
 
 bool Mech3DAppearance::setJumpParameters (glm::vec3 &end)
