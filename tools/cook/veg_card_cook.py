@@ -19,7 +19,61 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child
 
-CARDS = [f"{family}_{i:02d}" for family in ("grass", "fern") for i in range(1, 5)]
+CARDS = [f"grass_{i:02d}" for i in range(1, 5)] + ["bush_round", "bush_heath", "sapling_leaf", "sapling_pine"]
+
+
+def procedural_woody_cards(source: Path, sheet: Path) -> None:
+    """Original seeded branch/leaf silhouettes; no source photography or licences.
+
+    Four species share the existing eight-layer BC7 array with the grass.
+    Runtime ground colour supplies biome/season hues without extra textures.
+    """
+    import random
+    import math
+    from PIL import ImageDraw
+
+    source.mkdir(parents=True, exist_ok=True)
+    samples = []
+    for species, name in enumerate(CARDS[4:]):
+        rng = random.Random(20261108 + species)
+        image = Image.new("RGBA", (512, 512))
+        draw = ImageDraw.Draw(image)
+        tree = species >= 2
+        base = (256, 504)
+        top = (250, 50 if tree else 230)
+        draw.line([base, top], fill=(90, 72, 43, 255), width=9 if tree else 5)
+        for branch in range(18 if tree else 28):
+            t = 0.28 + 0.70*(branch + 1) / (19 if tree else 29)
+            y = base[1] + (top[1] - base[1])*t
+            side = -1 if branch % 2 else 1
+            span = (1-t)*250+15 if species == 3 else 190*math.sin(t*math.pi)
+            if not tree:
+                span = 65 + rng.random()*155
+                y = 455 - rng.random()*155
+            end = (256+side*span, y-25-rng.random()*60)
+            draw.line([(256,y), end], fill=(94,80,48,255), width=4 if tree else 3)
+            for leaf in range(100 if tree else 110):
+                u = 0.20 + rng.random()*0.8
+                px = 256+(end[0]-256)*u+rng.gauss(0,20)
+                py = y+(end[1]-y)*u+rng.gauss(0,14 if species == 3 else 25)
+                r = rng.uniform(5,12) if species != 1 else rng.uniform(3,8)
+                tone = rng.uniform(0.7,1.25)
+                colour = tuple(int(c*tone) for c in ((69,105,43) if species != 1 else (102,111,62)))+(255,)
+                draw.ellipse((px-r,py-r*0.65,px+r,py+r*0.65), fill=colour)
+        # Scale shrubs to the full card height while preserving the root.
+        if not tree:
+            bounds = image.getbbox()
+            image = image.crop((0,bounds[1],512,512)).resize((512,512), Image.Resampling.LANCZOS)
+        image.save(source / f"{name}.png")
+        preview = Image.new("RGB", (512, 552), (48, 53, 44))
+        preview.paste(image, (0,0), image)
+        ImageDraw.Draw(preview).text((15,525), name, fill=(240,240,220))
+        samples.append(preview)
+    result = Image.new("RGB", (1024,1104))
+    for i, sample in enumerate(samples):
+        result.paste(sample, ((i%2)*512,(i//2)*552))
+    sheet.parent.mkdir(parents=True, exist_ok=True)
+    result.save(sheet)
 
 
 def preserve_coverage(alpha: np.ndarray, target: float) -> np.ndarray:

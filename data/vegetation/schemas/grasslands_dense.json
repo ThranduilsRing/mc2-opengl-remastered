@@ -2,5 +2,6 @@
   "name": "grasslands_dense",
   "cards_full": ["grass_summer", "grass_spring", "grass_patch_summer", "grass_patch_spring"],
   "cards_sparse": ["grass_patch_summer", "grass_patch_fall"],
-  "fade_dist": 1000.0
+  "fade_dist": 1000.0,
+  "clump": {"radius": 11, "tree_chance": 0.45, "moisture_bias": 0.15, "grass": 16}
 }
