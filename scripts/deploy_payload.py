@@ -256,6 +256,8 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "data/art/gui/mcl_cm_5.png",
+    "data/art/gui/mcl_cm_5.tga",
     "data/terrain_materials.json",
     "data/visual_tuning.json",
     # Native vegetation packs these tracked cards into its 4x2 atlas at load.

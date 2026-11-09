@@ -40,7 +40,7 @@ def acquire_label(args) -> str:
 def main():
     os.environ.update(MC2_HOST_GAME_SLOTS="2", MC2_HOST_CORES_PER_SLOT="2")
     ap = argparse.ArgumentParser()
-    ap.add_argument("screen", choices=["mainmenu", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
+    ap.add_argument("screen", choices=["mainmenu", "campaign_select", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
