@@ -108,13 +108,18 @@ def deploy_phase(name, timeout=600):
 
 def deploy_inputs(src_root):
     """Hash authored inputs, never the multi-GB kit store or cooked outputs."""
-    roots = ["data", "mods", "assets", "scripts", "tools", "cmake", "CMakeLists.txt",
-             "run-mc2.bat", "run-with-log.bat", "3rdparty/smaa", "3rdparty/cmaa2"]
+    roots = ["data", "mods", "examples", "assets", "scripts", "tools", "cmake", "CMakeLists.txt",
+             "run-mc2.bat", "run-editor.bat", "run-with-log.bat", "3rdparty/smaa", "3rdparty/cmaa2"]
     result = subprocess.run(["git", "-C", str(src_root), "ls-files", "-z", "--cached",
                              "--others", "--exclude-standard", "--", *roots],
                             capture_output=True, check=True, timeout=30,
                             **console_child.child_kwargs(redirected=True))
     names = set(os.fsdecode(p) for p in result.stdout.split(b"\0") if p)
+    # Loose deploy members may be ignored by Git, but are still live inputs.
+    names.update(rel for rel in IMPORTED_STRUCTURE_PAYLOAD + GAME_DATA_PAYLOAD + TERRAIN_LAYER_PAYLOAD
+                 if (Path(src_root) / rel).is_file())
+    names.update(p.relative_to(src_root).as_posix()
+                 for p in (Path(src_root) / EXAMPLE_MODS_SRC).rglob("*") if p.is_file())
     # The importer consumes engine sources too; changes to its source closure
     # invalidate the cook even when the pinned package JSON did not change.
     cmake = Path(src_root) / "tools/tg_import_dump/CMakeLists.txt"
@@ -123,7 +128,7 @@ def deploy_inputs(src_root):
                      if Path(p).suffix in (".cpp", ".h", ".c", ".hpp"))
     for directory in ("mclib", "GameOS"):
         names.update(p.relative_to(src_root).as_posix()
-                     for p in (Path(src_root) / directory).rglob("*.h"))
+                     for p in (Path(src_root) / directory).rglob("*") if p.suffix in (".h", ".hpp"))
     return {name: sha256_file(Path(src_root) / name) for name in sorted(names)} | {
         "environment": [os.environ.get(k, "") for k in ("MC2_KIT_STORE", "MC2_REF_ROOT")]}
 
@@ -195,7 +200,7 @@ def record_deploy_inputs(target, inputs, hashes, items):
         outputs[rel] = [s.st_size, s.st_mtime_ns, s.st_ctime_ns]
     sources = {}
     for src, rel, kind in items:
-        if kind == "kit":
+        if kind not in ("exe", "pdb", "shader", "dll"):
             s = Path(src).stat()
             sources[str(src)] = [[s.st_size, s.st_mtime_ns, s.st_ctime_ns], hashes[rel][0]]
     value = dict(inputs=inputs, manifest=sha256_file(Path(target) / MANIFEST_NAME),

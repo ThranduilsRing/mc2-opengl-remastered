@@ -24,6 +24,26 @@ sys.path.insert(0, str(ROOT))
 from scripts import deploy_payload as dp  # noqa: E402
 
 
+def test_input_hashes_cover_kit_and_example_mod_but_ignore_game_cpp(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True,
+                   **dp.console_child.child_kwargs(redirected=True))
+    kit = tmp_path / "data/kit/industrial-kit.json"
+    mod = tmp_path / "examples/mods/test/mod.json"
+    game = tmp_path / "mclib/game.cpp"
+    for path in (kit, mod, game):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("original")
+    before = dp.deploy_inputs(tmp_path)
+    game.write_text("code-only")
+    assert dp.deploy_inputs(tmp_path) == before
+    kit.write_text("changed")
+    assert dp.deploy_inputs(tmp_path) != before
+    kit.write_text("original")
+    mod.write_text("changed")
+    assert dp.deploy_inputs(tmp_path) != before
+
+
 @pytest.fixture
 def recorded_payload(tmp_path):
     target = tmp_path / "install"
