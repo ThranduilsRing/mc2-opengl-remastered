@@ -149,12 +149,14 @@ void readSlot(uint32_t slot, uint32_t& used) {
     bool any = false;
     struct Iv { uint64_t b, e; uint32_t name; } iv[kMaxScopes];
     uint32_t ivN = 0;
+    // present-tail-cut: one vkGetQueryPoolResults for the slot's contiguous used*2 queries instead of one call per scope (Finish.Collect).
+    // Same flags (no WAIT): an unavailable query reports availability 0 and is dropped exactly as before.
+    uint64_t all[kMaxScopes * 4] = {};   // per scope: (begin, avail, end, avail)
+    const VkResult batchRes = vkGetQueryPoolResults(g.device, g.pool, slot * kMaxScopes * 2, used * 2, sizeof(uint64_t) * 4 * used, all,
+                                                    2 * sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
     for (uint32_t i = 0; i < used; ++i) {
-        uint64_t r[4] = {};   // (begin, avail, end, avail)
-        const uint32_t q = (slot * kMaxScopes + i) * 2;
-        const VkResult res = vkGetQueryPoolResults(g.device, g.pool, q, 2, sizeof(r), r, 2 * sizeof(uint64_t),
-                                                   VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
-        if ((res != VK_SUCCESS && res != VK_NOT_READY) || r[1] == 0 || r[3] == 0) { ++g.windowDropped; continue; }
+        const uint64_t* r = all + i * 4;
+        if ((batchRes != VK_SUCCESS && batchRes != VK_NOT_READY) || r[1] == 0 || r[3] == 0) { ++g.windowDropped; continue; }
         const uint64_t b = r[0] & g.validMask, e = r[2] & g.validMask;
         if (!haveBase) { base = b; haveBase = true; }
         const uint64_t rb = (b - base) & g.validMask, re = (e - base) & g.validMask;
