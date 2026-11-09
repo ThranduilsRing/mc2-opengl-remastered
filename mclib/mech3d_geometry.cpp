@@ -1039,6 +1039,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     const long status = simStatus_;
     const long currentLOD = 0;
     long& rotationalNodeIndex = simRotationalNodeIndex_;
+    const bool hadPose = simPose->ready;
     buildingSimPose_ = true;
     simPose->ready = false;
     if (unitAnim().leftArmOff) mechShape->StopUsing("joint_luarm");
@@ -1059,6 +1060,30 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
             simAnchorNodeIndices_[i] = mechShape->GetNodeNameId(mechType->nodeData[i].nodeId);
     }
 
+	glm::quat qRotation;
+	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+	glm::vec3 xlatPosition;
+	mc2ToRender(xlatPosition, position);
+
+	// Unchanged pose: same shape/binding, gesture, frame, torso, root transform, status and arm state as the pose already
+	// published (every input of the evaluation below), so its matrices and every simPose field are bit-identical. Imported
+	// clips advance their own clock in TickImportedMechs and are never reused.
+	SimPoseKey key;
+	key.shapeId = mechShape->stableId().value;
+	key.bindRevision = mechShape->animationBinding_.revision();
+	key.type = mechType;
+	key.gesture = unitAnim().currentGestureId;
+	key.status = status;
+	key.frame = unitAnim().currentFrame;
+	key.torso = unitAnim().torsoRotation;
+	key.rotation = rotation;
+	key.position = position;
+	key.leftArmOff = unitAnim().leftArmOff;
+	key.rightArmOff = unitAnim().rightArmOff;
+	const bool reusePose = hadPose && simPoseKeyValid_ && key == simPoseKey_ && !mc2mechanim::AnyImportedAnim();
+	if (!reusePose)
+	{
+	simPoseKeyValid_ = false;
 	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
 	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.
 	if (mc2wreck::animate(status == OBJECT_STATUS_DESTROYED, false))
@@ -1073,11 +1098,8 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
-	glm::quat qRotation;
-	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
-	glm::vec3 xlatPosition;
-	mc2ToRender(xlatPosition, position);
 	mechShape->TransformSimPose(&xlatPosition, &qRotation);
+	}
 	{
 		mc2mechanim::MechMotion _mm;
 		_mm.gestureId = static_cast<int>(unitAnim().currentGestureId);
@@ -1108,6 +1130,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	}
 
 
+    if (!reusePose) {
     simPose->root = position;
     simPose->heading = rotation;
     simPose->nodes.resize(mechType->getTotalNodes());
@@ -1119,6 +1142,9 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     for (long i = 0; i < mechShape->GetNumShapes(); ++i) {
         auto node = mechShape->GetTransformedNodePosition(&xlatPosition, &qRotation, i);
         simPose->shapeNodes[i] = (node.x == 0 && node.y == 0 && node.z == 0) ? position : node;
+    }
+    simPoseKey_ = key;
+    simPoseKeyValid_ = true;
     }
     simPose->ready = true;
     buildingSimPose_ = false;
