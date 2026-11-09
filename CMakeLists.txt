@@ -383,6 +383,12 @@ add_subdirectory("./RenderWorld" "./out/RenderWorld")
 add_subdirectory("./GameAdapters" "./out/GameAdapters")
 add_subdirectory("./EditorBridge" "./out/EditorBridge")
 add_subdirectory("./mclib/fx_trace" "./out/mclib/fx_trace")
+add_library(fx_native STATIC mclib/fx/fx_format.cpp mclib/fx/fx_catalog.cpp
+    mclib/fx/fx_curve.cpp mclib/fx/fx_mesh_data.cpp
+    mclib/fx/fx_runtime.cpp mclib/fx/fx_emitters.cpp
+    mclib/fx/fx_tubes.cpp mclib/fx/fx_geometry.cpp)
+target_include_directories(fx_native PUBLIC "${CMAKE_SOURCE_DIR}/mclib")
+target_compile_features(fx_native PUBLIC cxx_std_23)
 add_subdirectory("./mclib/particles" "./out/mclib/particles")
 add_subdirectory("./mclib/mlr" "./out/mclib/mlr")
 add_subdirectory("./mclib/gosfx" "./out/mclib/gosfx")

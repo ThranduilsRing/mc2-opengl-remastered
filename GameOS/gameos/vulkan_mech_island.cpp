@@ -887,6 +887,7 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
 // RT scene part 2: every pre-skinned run instance this frame becomes one geometry of its actor's mover BLAS, read straight from the skin output (no
 // readback). The anchor is the instance's base bone translation (Stuff space -> MC2 world). Runs drawn from the bind-pose VBO are not ray-visible.
 static void record_ray_movers(MechIsland* s, VkCommandBuffer cb, uint32_t par, const Mc2MechFrameFeed& feed) {
+    if (!mc2vk::rt::scene::demanded()) return;
     const VkDeviceAddress skinned = s->skin.skinnedAddress(), ibo = s->ibo ? s->ibo.deviceAddress() : 0;
     if (!s->skin.active() || skinned == 0 || ibo == 0 || feed.motionKeys == nullptr || feed.runs == nullptr) return;
     std::vector<mc2vk::rt::scene::MoverGeometry> geos;
@@ -937,7 +938,7 @@ static bool record_mech(MechIsland* s, VkCommandBuffer cb, uint32_t par, int w, 
     s->gpuTimer.reset(cb);
     s->gpuTimer.write(cb, 0);
     if (s->skin.active()) { MC2_VK_GPU_SCOPE(skinScope, cb, "VKIsl.Mech.Skin"); s->skin.record(cb, s->vbo.get(), s->vboBytes, boneBuffer, boneRange, dynOffsets[2]); }   // compute pre-skin, outside the render pass
-    record_ray_movers(s, cb, par, feed);
+    if (mc2vk::rt::scene::demanded()) record_ray_movers(s, cb, par, feed);
     VkRenderPassBeginInfo rbi{};
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();

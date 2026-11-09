@@ -157,29 +157,28 @@ void EmitResolveRecord(
     }
 }
 
-static bool IsAbsolutePath(const char* p) {
-    if (!p || !p[0]) return false;
+static bool IsAbsolutePath(std::string_view p) {
+    if (p.empty()) return false;
     if (p[0] == '\\' || p[0] == '/') return true;
-    if (((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z')) && p[1] == ':')
+    if (p.size() >= 2 && ((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z')) && p[1] == ':')
         return true;
     return false;
 }
 
-static bool StartsWithDataPath(const char* p) {
-    return _strnicmp(p, "data/", 5) == 0 || _strnicmp(p, "data\\", 5) == 0;
+static bool StartsWithDataPath(std::string_view p) {
+    return p.size() >= 5 && NormalizeKey(p.substr(0, 5)) == "data/";
 }
 
-static bool ShouldSearchMods(const char* fileName) {
-    if (!fileName || !fileName[0])         return false;
+static bool ShouldSearchMods(std::string_view fileName) {
+    if (fileName.empty())                  return false;
     if (IsAbsolutePath(fileName))          return false;
-    if (strstr(fileName, "..") != nullptr) return false;
+    if (fileName.find("..") != std::string_view::npos) return false;
+    if (fileName.find('\0') != std::string_view::npos) return false;
     if (!StartsWithDataPath(fileName))     return false;
     return true;
 }
 
-std::string NormalizeKey(const char* p) {
-    // Delegates to the leaf-TU normalizer (mclib/fst_hash.cpp) so the loose-file
-    // index key contract is unit-testable game-free (GAMEOS-PATHSEP-HARNESS-1).
+std::string NormalizeKey(std::string_view p) {
     return fst_normalize_loose_key(p);
 }
 
@@ -319,8 +318,8 @@ static void ComputeModDataSignature(const char* dataDir, ModCacheSignature* sig)
 // We write ALL entries from the map — the cache is per-call-to-IndexModData, so we
 // pass the entries vector directly.
 static void WriteModIndexCache(
-    const char* cachePath,
-    const std::string& modId,
+    mc2::czstring cachePath,
+    std::string_view modId,
     const ModCacheSignature& sig,
     const std::vector<std::pair<std::string,ModFileEntry>>& entries
 ) {
@@ -329,7 +328,7 @@ static void WriteModIndexCache(
     char sigLine[64];
     formatModCacheSigLine(sig, sigLine, sizeof(sigLine));
     mc2::fmt::print(f, "{}\n", mc2::fmt::safe(kCacheHeader));
-    mc2::fmt::print(f, "modid {}\n", modId.c_str());
+    mc2::fmt::print(f, "modid {}\n", modId);
     mc2::fmt::print(f, "{}\n", mc2::fmt::safe(sigLine));
     mc2::fmt::print(f, "count {:d}\n", mc2::fmt::as_size(entries.size()));
     for (auto& e : entries)
@@ -342,10 +341,10 @@ static void WriteModIndexCache(
 static std::optional<int> LoadModIndexCache(
     std::unordered_map<std::string, ModFileEntry>& idx,
     std::unordered_map<std::string, std::vector<std::string>>& shadowed,
-    const char* cachePath,
-    const char* expectedModId,
+    mc2::czstring cachePath,
+    std::string_view expectedModId,
     const ModCacheSignature& expectedSig,
-    const char* dataDir,
+    std::string_view dataDir,
     bool* sigMismatch   // out: header/modid ok but signature differs (stale)
 ) {
     if (sigMismatch) *sigMismatch = false;
@@ -361,7 +360,7 @@ static std::optional<int> LoadModIndexCache(
     if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
     line[strcspn(line, "\r\n")] = '\0';
     if (strncmp(line, "modid ", 6) != 0) { fclose(f); return std::nullopt; }
-    if (strcmp(line + 6, expectedModId) != 0) { fclose(f); return std::nullopt; }
+    if (std::string_view(line + 6) != expectedModId) { fclose(f); return std::nullopt; }
     // sig (MOD-INDEX-CACHE-MTIME-1): stored tree signature vs the one just
     // recomputed from disk -- ANY mismatch means files changed since index time.
     if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
@@ -395,7 +394,7 @@ static std::optional<int> LoadModIndexCache(
         if (loaded == 0) {
             // A cache copied from another install (deploy/clone) carries that install's absolute paths and
             // still matches the signature; every _open would then fail silently. Rebuild instead.
-            const size_t n = strlen(dataDir);
+            const size_t n = dataDir.size();
             bool same = path.size() >= n;
             for (size_t i = 0; same && i < n; ++i) {
                 char a = path[i] == '\\' ? '/' : (char)tolower((unsigned char)path[i]);
@@ -621,7 +620,7 @@ int LookupModPriority(mc2::czstring dataPath) {
 
 const char* LookupModOwner(mc2::czstring dataPath) {
     if (g_modIndex.empty()) return nullptr;
-    std::string key = NormalizeKey(dataPath);
+    std::string key = NormalizeKey(dataPath ? std::string_view(dataPath) : std::string_view{});
     auto it = g_modIndex.find(key);
     if (it == g_modIndex.end()) return nullptr;
     return it->second.modId.c_str();
@@ -629,9 +628,8 @@ const char* LookupModOwner(mc2::czstring dataPath) {
 
 ModFileSource ResolveModFileSource(std::string_view dataPath) {
     ModFileSource source{std::nullopt,g_activeModId.empty()};
-    const std::string logical(dataPath);
-    if (!ShouldSearchMods(logical.c_str())) return source;
-    const auto it = g_modIndex.find(NormalizeKey(logical.c_str()));
+    if (!ShouldSearchMods(dataPath)) return source;
+    const auto it = g_modIndex.find(NormalizeKey(dataPath));
     if (it == g_modIndex.end() || _access(it->second.path.c_str(),4) != 0) return source;
     source.path = it->second.path;
     source.editable = it->second.modId == g_activeModId;
@@ -639,7 +637,7 @@ ModFileSource ResolveModFileSource(std::string_view dataPath) {
 }
 
 const char* LookupModAbsolutePath(std::string_view dataPath) {
-    const std::string key = NormalizeKey(std::string(dataPath).c_str());
+    const std::string key = NormalizeKey(dataPath);
     if (const auto it = g_modIndex.find(key); it != g_modIndex.end()) {
         const auto& [indexKey, entry] = *it;
         return entry.path.c_str();
@@ -678,7 +676,7 @@ void DeactivateMod() {}
 
 void EnumerateModFiles(std::string_view keyPrefix, ModFitCallback cb, void* userData) {
     if (keyPrefix.empty() || !cb) return;
-    const std::string prefix = NormalizeKey(std::string(keyPrefix).c_str());
+    const std::string prefix = NormalizeKey(keyPrefix);
     std::vector<std::string> keys;
     for (const auto& [key, entry] : g_modIndex)
         if (key.compare(0, prefix.size(), prefix) == 0) keys.push_back(key);
@@ -1251,7 +1249,7 @@ const char* providerName(Provider p)
 
 std::string key(std::string_view path)
 {
-	return fst_normalize_loose_key(std::string(path).c_str());
+	return NormalizeKey(path);
 }
 
 std::string join(std::string_view dir, std::string_view leaf)
@@ -1285,14 +1283,14 @@ Stats stats()
 std::vector<Entry> candidates(std::string_view logicalKey)
 {
 	// Same guard as the mod layer: absolute paths and '..' never resolve.
-	const std::string raw(logicalKey);
 	std::vector<Entry> out;
-	if (IsAbsolutePath(raw.c_str()) || raw.find("..") != std::string::npos) return out;
+	if (IsAbsolutePath(logicalKey) || logicalKey.find("..") != std::string_view::npos ||
+		logicalKey.find('\0') != std::string_view::npos) return out;
 	// File::open runs on worker threads too: the chain is copied out under the lock, so a rebuild or noteWrite
 	// on another thread never invalidates it.
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	if (!g_index.built) buildLocked();
-	const std::string k = key(raw);
+	const std::string k = key(logicalKey);
 	const auto it = g_index.entries.find(k);
 	if (it != g_index.entries.end()) out = it->second;
 
@@ -1399,8 +1397,8 @@ OpenedFile openRead(const char* path, const char* req)
 
 void noteWrite(std::string_view path)
 {
-	const std::string raw(path);
-	if (!ShouldSearchMods(raw.c_str())) return;   // only the loose data/ mount is indexed
+	if (!ShouldSearchMods(path)) return;   // only the loose data/ mount is indexed
+	const std::string raw(path);          // owned physical path for the index and CRT probes
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	if (!g_index.built) return;                    // the next build scans it
 	const std::string k = key(raw);

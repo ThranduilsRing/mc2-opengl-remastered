@@ -57,9 +57,9 @@ extern "C" void fst_normalize_loose_key_inplace(char* s)
 // backslash -> '/', every other byte -> tolower. Folds case AND slashes so a
 // mod-overlay path resolves to one canonical index key regardless of how the
 // caller spelled it.
-std::string fst_normalize_loose_key(mc2::czstring src)
+std::string fst_normalize_loose_key(std::string_view src)
 {
-    std::string s = src ? src : "";
+    std::string s(src);
     for (char& c : s)
         c = (c == '\\') ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;

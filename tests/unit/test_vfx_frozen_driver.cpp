@@ -36,6 +36,19 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors
 }
 
 
+TEST_CASE("fx_playback/native playback matches the isolated legacy oracle")
+{
+    const auto executable = contractExecutable("vfx_lifecycle_tests");
+    REQUIRE(std::filesystem::is_regular_file(executable));
+    ContractEnvironment sanitizer{"ASAN_OPTIONS", "detect_leaks=0:halt_on_error=1:print_stacktrace=1"};
+    CHECK(runContractChild(executable, {"--no-breaks", "--test-case=fx_playback/controlled*", "--abort-after=1"}) == 0);
+    // Keep each owned child within contract_process's existing 60-second limit.
+    for (const auto* quarter : {"--subcase=quarter1", "--subcase=quarter2", "--subcase=quarter3", "--subcase=quarter4"}) {
+        CAPTURE(quarter);
+        CHECK(runContractChild(executable, {"--no-breaks", "--test-case=fx_playback/stock*", quarter, "--abort-after=1"}) == 0);
+    }
+}
+
 TEST_CASE("contract process/quoted \"arguments\" and long argv")
 {
     const auto path = std::filesystem::temp_directory_path() /

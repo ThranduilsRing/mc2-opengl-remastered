@@ -1,7 +1,6 @@
 // tools/mc2fx/mc2fx_core.h
 //
-// Reusable gosFX effect-blob load/dump/save core. main.cpp (dump/rebuild) and
-// the later previewer both link this for the SAME headless load path.
+// Native inspection plus legacy authoring/sampling for the CLI and previewer.
 //
 // Dependency-light: forward-declares the gosFX/SpecLibrary types; the .cpp
 // includes the heavy engine headers.
@@ -11,12 +10,19 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include "fx/fx_catalog.h"
 
 namespace mc2 { namespace particles { class SpecLibrary; } }
 
 namespace mc2fx {
 
-// ---- shared curve sampling (used by `dump --full` AND the GUI previewer) ----
+// Native inspection/rebuild never initialize or call the legacy engine.
+std::string dumpCatalogJson(const mc2::fx::Catalog& catalog, bool full = false);
+// Offline comparison oracle, linked into the console tool only.
+bool compareLegacy(const mc2::fx::Catalog& catalog, const std::vector<unsigned char>& bytes,
+                   std::string& report);
+
+// ---- legacy curve sampling (GUI previewer and authoring) ----
 // One named curve, sampled across particle age in [0,1]. `type` is a short
 // human label ("constant"/"linear"/"spline"/"complex"/"seeded"). `samples`
 // holds N evenly-spaced values: samples[k] = curve(age = k/(N-1), seed).
