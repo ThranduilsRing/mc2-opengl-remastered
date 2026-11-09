@@ -10,6 +10,20 @@
 #include "Gates/gate_cold.h"
 #include <algorithm>
 #include <cmath>
+#include "../../RenderCore/ground_lighting_bindings.h"
+
+TEST_CASE("shoreline_animation/descriptor_floor") {
+    const auto ground = mc2veg::groundLightingBindings(false);
+    auto water = mc2veg::groundLightingBindings(true);
+    CHECK(std::count(water.begin(), water.end(), 10u) == 1);
+    CHECK(std::count(water.begin(), water.end(), 4u) == 0);
+    // The bake replaces the single static SSBO; the three dynamic light-grid
+    // buffers and every lighting/shadow binding must remain identical.
+    for (auto& binding : water) if (binding == 10u) binding = 4u;
+    CHECK(water == ground);
+    std::sort(water.begin(), water.end());
+    CHECK(std::adjacent_find(water.begin(), water.end()) == water.end());
+}
 
 namespace shoreline_animation_test {
 using std::abs;

@@ -10,8 +10,10 @@ whose reach oscillates when the water quality permits. The existing ring has
 no independent scrolling breakup, no wash alpha or normal response, and uses
 the coverage field rather than the actual 4x visual bake for its depth.
 
-Use the terrain visual-height SSBO already in water's bound terrain set (set 1,
-binding 10, already fragment-visible). Bilinearly sample its 32 wu grid.
+Use the terrain visual-height SSBO through water's reduced lighting set (set 1,
+binding 10). Water replaces the unused cement-word binding 4 with the visual
+bake binding 10, keeping the four-storage-buffer Vulkan floor and leaving other
+lighting consumers' descriptor sets unchanged. Bilinearly sample its 32 wu grid.
 Use water plane minus bake height for the animation; retain the cooked field's
 coverage and missing-bake fallback. Fade foam to zero above the physical plane
 and in deep water. Keep all derivatives ahead of coverage discard.
@@ -37,8 +39,10 @@ No timing claim.
 
 ## Proof and current state
 
-Inspection/design and implementation complete. All 79 Vulkan shaders compile
-locally; diff whitespace and C++ idiom ratchet are green. Next: box production build,
+Inspection/design and implementation complete. The first AMD capture rejected
+the missing bake binding in water's reduced lighting set; the corrected layout
+replaces water's unused cement descriptor and has a covering descriptor-plan test.
+All 79 Vulkan shaders compile locally. Next: final-tip production build,
 shader contract rows, covering doctest, box build/unit/lint/smoke-lite, day low shore
 and rock plus night A/B sequences (three frames per pose), montage inspection,
 and one final Windows Ninja build of mc2 and mc2_asset_viewer. Commit locally only.
