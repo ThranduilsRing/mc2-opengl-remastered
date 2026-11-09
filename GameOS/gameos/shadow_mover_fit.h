@@ -6,6 +6,9 @@
 #include <span>
 
 namespace mc2shadow {
+// Mover penumbra cone: half the static bake's 1.5 degree radius, so mech shadows stay crisp further from the feet
+// (owner 2026-11-09) while the penumbra still grows with blocker distance.
+inline constexpr float kMoverSunAngularRadiusDeg = 0.75f;
 struct MoverSphere { Vec3 center; float radius; };
 struct alignas(16) MoverShadowFrame {
     float matrix[16]{};
