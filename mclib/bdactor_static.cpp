@@ -149,14 +149,13 @@ void BldgAppearance::registerStatic() {
 	}
 
 	// Compute transform — same coordinate convention as BldgAppearance::update().
-	// At mission-load time position.z may not yet hold terrain elevation (set by
-	// bldng.cpp on first update), so use getTerrainElevation() directly.
+	// Mission-load registration precedes the first gameplay grounding update.
 	float yaw = rotation * DEGREES_TO_RADS;
 	glm::quat rot;
 	rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
 	glm::vec3 xlatPosition;
 	xlatPosition.x = -position.x;
-	xlatPosition.y = TerrainRuntime::groundElevation(position);
+	xlatPosition.y = TerrainRuntime::sampleVisualHeight(position);
 	xlatPosition.z = position.y;
 	bldgShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
 
@@ -466,6 +465,7 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 	// Same coordinate transform as BldgAppearance::update (line ~3281):
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
+	xlatPosition.y += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 
 	float yaw = rotation * DEGREES_TO_RADS;
 	glm::quat rot;
