@@ -57,6 +57,8 @@ struct Mc2TerrainTier1Patch {
     // VK-TERRAIN-EDGE-STITCH-1: packed per-edge coarser-neighbor stride, mirroring
     // terrain_lod_chunk.vert u_edgeStitch (N,S,W,E in bytes). 0 = no stitch.
     uint32_t edgeStitch;
+    // terrain-sse-lod-2: geomorph word toward the next coarser level (mc2lod::packMorph). 0 = none.
+    uint32_t morph;
 };
 
 // Per-frame terrain feed (mirrors Mc2ColorPropFeed). Populated by the GL LOD-chunk

@@ -16,7 +16,7 @@ void gos_TerrainLodChunk_EnsureSceneClear() {
 
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds, const float* skirtDepths,
-    const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, int count)
+    const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, const unsigned int* morph, int count)
 {
     if (!cmds || count <= 0 || s_mapSide <= 0) return;
     s_vkTerrainPatches.clear();
@@ -56,6 +56,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // bands Z-swap their coarse verts onto it (mode 2); both share the bake corner heights.
         p.visualMode = visualDisplaceActive ? (cmd.lodStep == 1 ? 1 : 2) : 0;
         p.edgeStitch = edgeStitch ? edgeStitch[i] : 0u;
+        p.morph = morph ? morph[i] : 0u;
         s_vkTerrainPatches.push_back(p);
     }
     s_vkTerrainFeedValid = !s_vkTerrainPatches.empty();

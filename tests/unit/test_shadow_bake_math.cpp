@@ -5,12 +5,40 @@
 #include "gameos/shadow_bake_math.h"
 #include "gameos/shadow_dirty_tiles.h"
 #include "RenderCore/GpuResidencyPolicy.h"
+#include "../../shaders/vulkan/include/shadow_bake_common.glsl"
 
 #include <algorithm>
 
 #include <cmath>
 
 using namespace mc2shadow;
+
+TEST_CASE("shadow bake: mc2_01 shore blob is local bank occlusion") {
+    // blob-2 diagnostic snapshots, saved_205644 pixel (488,216), owner_lowwide (488,420).
+    // Height grid: 397^2 @ 32 wu, water 350; sun is the actual altitude-clamped bake input.
+    const float horizontal = std::hypot(0.443912417f, 0.658127189f);
+    const float tanAltitude = 0.608120441f / horizontal;
+    const float cone = kTerrainConeScale * std::tan(kSunAngularRadiusDeg * 0.01745329252f) / (horizontal * horizontal);
+    struct Sample { float receiver, blocker, distance, ray, visibility; };
+    const Sample samples[] = {
+        // Catmull-Rom bake: both bookmarks reach umbra on the second sample.
+        {361.807077f, 368.839285f, 7.359198f, 367.944550f, 0.0f},
+        {361.072248f, 368.540864f, 7.967225f, 367.675496f, 0.0f},
+        // Actual fine triangles also block the centre ray, but retain part of the sun disk.
+        {362.424713f, 381.189973f, 22.082154f, 379.840625f, 0.205886f},
+        {361.946045f, 381.057217f, 22.690181f, 379.827732f, 0.239193f},
+        // Farther up the same ray the bank clears the entire cone.
+        {361.807077f, 405.588520f, 99.595286f, 438.601494f, 1.0f},
+    };
+    for (const auto& sample : samples) {
+        const float ray = bakeTerrainRayHeight(sample.receiver, sample.distance, tanAltitude);
+        CHECK(ray == doctest::Approx(sample.ray).epsilon(0.000001));
+        CHECK(bakeTerrainMarchVisibility(ray, sample.blocker, sample.distance, cone)
+              == doctest::Approx(sample.visibility).epsilon(0.001));
+    }
+    CHECK(samples[2].blocker - samples[2].ray > 1.3f);
+    CHECK(samples[3].blocker - samples[3].ray > 1.2f);
+}
 
 TEST_CASE("GPU residency: physical headroom, preset ceiling and overlap admission") {
     using namespace RenderCore;

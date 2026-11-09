@@ -20487,36 +20487,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_TERRAIN_LOD_CHUNK_DIST_SCALE",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "mclib/terrain.cpp:266",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "lo": 0.05,
-    "loExclusive": true,
-    "style": "compare"
-   },
-   "readerDefault": 1,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR",
    "kind": "Bool",
    "default": false,

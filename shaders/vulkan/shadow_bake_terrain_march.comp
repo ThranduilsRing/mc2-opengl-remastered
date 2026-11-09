@@ -25,10 +25,10 @@ void main() {
         float stepLen = uB.march.y;
         float dist = stepLen * (0.5 + bakeHash(t));
         for (int i = 0; i < 96; ++i) {
-            float rayZ = z + dist * tanAlt + 0.5;
+            float rayZ = bakeTerrainRayHeight(z, dist, tanAlt);
             if (rayZ > uB.march.x || dist > uB.march.w) break;
             float h = bakeTerrainHeightSmooth(xy + dir * dist);
-            vis = min(vis, clamp(0.5 + 0.5 * (rayZ - h) / (dist * cone), 0.0, 1.0));
+            vis = min(vis, bakeTerrainMarchVisibility(rayZ, h, dist, cone));
             if (vis <= 0.0) break;
             stepLen *= uB.march.z;
             dist += stepLen;

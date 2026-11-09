@@ -423,7 +423,7 @@ struct TerrainPatchConstants {
     int32_t quadCountX, quadCountY;
     int32_t edgeStitch, visualMode;
     float skirtDepth;
-    int32_t pad = 0;
+    int32_t morph = 0;   // terrain-sse-lod-2 geomorph word (mc2lod::packMorph): 4x6-bit corner weights NW,NE,SW,SE + target stride << 24
 };
 // One record per indirect draw, read by the vertex shader through buffer device address (LOCKSTEP with TerrainPatchRec in terrain_patch.glsl).
 static_assert(sizeof(TerrainPatchConstants) == 32);

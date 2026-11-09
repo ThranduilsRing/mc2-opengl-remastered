@@ -147,8 +147,11 @@ struct TerrainBlockMeta {
 	bool           dirtyAabb;   // height changed -> recompute AABB + patch SSBO
 	bool           inFrustum;   // result of AABB cull this frame
 	unsigned char  lodLevel;    // 0-5, chosen each frame
-	bool           hasConcrete; // Step 5c: any cement/concrete vertex -> clamp LOD fine
-	                            // (cement word is per-tile; coarse LOD tears the runway)
+	bool           hasConcrete; // concrete contact block -> tighter screen-space-error tolerance
+	unsigned char  morph;       // 0-255 geomorph weight toward lodLevel+1 (terrain-sse-lod-2), chosen each frame
+	float          sseNumerator; // this frame's error projection (mc2lod::projectedErrorPx); 0 = none
+	float          sseW;
+	float          sseAbsAw;
 };
 
 struct SuperchunkMeta {
