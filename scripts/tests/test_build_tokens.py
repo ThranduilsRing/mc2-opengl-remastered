@@ -110,7 +110,10 @@ def queued_builds(tmp_path, monkeypatch):
     finally:
         blocker.close()
         for process, _, release in children:
-            release.set()
+            # terminate() can strand Event's condition semaphore in a dead waiter.
+            # Its token locks are already released; never signal its test event.
+            if process.is_alive():
+                release.set()
             process.join(5)
             if process.is_alive():
                 process.terminate()

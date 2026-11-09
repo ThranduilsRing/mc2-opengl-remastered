@@ -35,3 +35,14 @@ Next when CPU capacity is available, from this worktree at the final tip:
    were made in this lane. Fix any code/test red and commit locally.
 
 No engine build, install or game needed. No lane rules or host config changed.
+
+Continuation 2026-11-08: faulthandler reproduced the killed-holder/status order
+hang in queued_builds teardown, at release.set() -> Condition.notify(). A killed
+Event.wait() participant strands the event's condition semaphore; the next test
+never starts. Both successor builds already acquired and released production
+tokens before the hang, proving crash recovery works. Skip signaling dead
+children during teardown; production build_tokens.py needs no change.
+Evidence: proofs/build-token-fifo/hang-direct.{out,err} in the archive above.
+Next: commit fix, three full-file Windows pytest runs each under 60 seconds,
+owning test_ninja_build_lock.py, final-tip lint and requested Windows Ninja build.
+No game/deploy/smoke (tooling only). Remove this run's scratch before hand-back.
