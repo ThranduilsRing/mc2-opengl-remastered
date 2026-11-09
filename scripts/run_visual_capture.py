@@ -810,7 +810,14 @@ def main() -> int:
                     help="WATER-VISUAL-GATE-1: do NOT taskkill foreign mc2.exe "
                          "(concurrent-safe). The capture still launches its own "
                          "child exe; only the global taskkill is skipped.")
+    ap.add_argument("--screen", default=None, metavar="ID[@N]",
+                    help="SCREEN-SETTLE-SHOT-1: screenshot a front-end screen (logistics, campaign_missions, mechbay, ...) after N settled "
+                         "frames instead of a mission bookmark sweep; delegates to scripts/screen_shot.py")
     args = ap.parse_args()
+    if args.screen:
+        import screen_shot
+        return screen_shot.run(Path(args.exe), args.screen, Path(args.out_dir or "tests/visual/captures/screens"),
+                               declared=env_pin.parse_declarations(args.env_declare))
 
     # WATER-VISUAL-GATE-1 concurrent-safety: opt out of the global kill, and
     # always restore the desktop cursor on exit (the sweep parks it center).

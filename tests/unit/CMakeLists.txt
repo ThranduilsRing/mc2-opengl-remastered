@@ -228,6 +228,7 @@ add_executable(mc2_tests
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan
     test_hitch_stats.cpp # hitch_stats.h direct fence-wait and staged-byte counters
     test_screenshot_slot.cpp  # screenshot request slot and its expiry; header-only
+    test_screen_settle_capture.cpp  # MC2_SHOT_SCREEN settle trigger state machine; header-only
     test_tgl_force_z.cpp  # forceZ reverse-Z mirror, both render paths
     test_static_prop_selflit.cpp  # self-lit two-sided card predicate (stock coil yes, imported override no)
     test_ktx_parse.cpp  # the KTX2 container parser every sidecar texture goes through (bounds on hostile files)

@@ -42,7 +42,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"../GameOS/gameos/gos_screenshot.h"
 #include <cstdlib>
 #include <string>
-#include"platform_str.h"   // S_stricmp (MC2_BOOT_TO_SCREEN parse, LINUX_BUILD-safe)
+#include"screen_settle_capture.h"   // MC2_BOOT_TO_SCREEN / MC2_SHOT_SCREEN screen ids and the settle trigger
 
 #include"prefs.h"
 #include "Gates/gate.h"
@@ -236,18 +236,85 @@ static bool mc2BootScreenXY( int& x, int& y )
 	if ( !mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
 		return false;
 	x = 2; y = 1; // default: mech bay
+	// Screen ids and cells live in screen_settle_capture.h (the table the MC2_SHOT_SCREEN trigger shares).
+	// MC2_BOOT_TO_SCREEN wins; else the MC2_SHOT_SCREEN target; else the bay.
 	const std::string scrText = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();   // "" when unset or empty
-	const char* scr = scrText.c_str();
-	if ( scr[0] )
+	const mc2::screen_settle::ScreenCell* cell = scrText.empty() ? nullptr : mc2::screen_settle::findScreen(scrText);
+	if ( !cell )
 	{
-		if      ( !S_stricmp(scr, "purchase") ) { x = 2; y = 0; }
-		else if ( !S_stricmp(scr, "bay") )      { x = 2; y = 1; }
-		else if ( !S_stricmp(scr, "loadout") )  { x = 2; y = 2; }
-		else if ( !S_stricmp(scr, "launch") )   { x = 3; y = 1; }
-		else if ( !S_stricmp(scr, "briefing") ) { x = 1; y = 1; }
+		mc2::screen_settle::Spec spec;
+		if ( mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), spec) )
+			cell = spec.cell;
 	}
+	if ( cell ) { x = cell->x; y = cell->y; }
 	return true;
 }
+
+// SCREEN-SETTLE-SHOT-1 (MC2_SHOT_SCREEN=<id>[@N] + MC2_SCREENSHOT_PATH): screenshot a front-end screen after N settled frames, then exit.
+// The result is always one [SCREEN_SHOT v1] line (OK or FAIL) and the process ends; a front-end frame is never saved while the ImGui
+// renderer is not up (it would be black apart from the cursor).
+namespace mc2::screen_settle {
+namespace {
+Trigger g_trigger;
+std::string g_shotPath;
+std::string g_shotScreen;
+bool g_shotInit = false;
+constexpr int kMaxWaitFrames = 3600;
+
+void shotFail(const char* why)
+{
+	mc2::fmt::print_err("[SCREEN_SHOT v1] FAIL screen={} reason=\"{}\" path={} imgui_vk_ready={} frames={} settled={}\n",
+		mc2::fmt::safe(g_shotScreen.c_str()), why, mc2::fmt::safe(g_shotPath.c_str()),
+		GuiRuntime::VulkanReady() ? 1 : 0, g_trigger.framesSeen(), g_trigger.settledFrames());
+	std::fflush(stderr);
+	gos_TerminateApplication();
+}
+
+void shotDone(mc2::czstring path, bool ok, int w, int h)
+{
+	g_trigger.onCaptureResult(ok);
+	if (!ok) { shotFail(g_trigger.reason()); return; }
+	mc2::fmt::print_err("[SCREEN_SHOT v1] OK screen={} path={} w={} h={} settled={} frames={} imgui_vk_ready=1\n",
+		mc2::fmt::safe(g_shotScreen.c_str()), mc2::fmt::safe(path), w, h, g_trigger.settledFrames(), g_trigger.framesSeen());
+	std::fflush(stderr);
+	gos_TerminateApplication();
+}
+}  // namespace
+
+void tickFrontEnd(int curX, int curY)
+{
+	if (!g_shotInit)
+	{
+		g_shotInit = true;
+		g_shotScreen = mc2::gate::str<"MC2_SHOT_SCREEN">();
+		if (g_shotScreen.empty()) return;
+		g_shotPath = mc2::gate::str<"MC2_SCREENSHOT_PATH">();
+		Spec spec;
+		std::string why;
+		if (!parseSpec(g_shotScreen, spec, &why)) { g_trigger.arm(0, 0, 1, 1); shotFail(why.c_str()); return; }
+		if (g_shotPath.empty()) { g_trigger.arm(0, 0, 1, 1); shotFail("MC2_SCREENSHOT_PATH is not set"); return; }
+		g_trigger.arm(spec.cell->x, spec.cell->y, spec.settleFrames, kMaxWaitFrames);
+	}
+	if (!g_trigger.armed() || g_trigger.finished()) return;
+	Trigger::Action a = g_trigger.onFrame(curX, curY);
+	if (a == Trigger::Action::Capture)
+	{
+		if (!GuiRuntime::VulkanReady())
+			a = g_trigger.onImguiNotReady();
+		else if (!gos::screenshot::request(g_shotPath.c_str(), &shotDone))
+		{
+			g_trigger.onCaptureResult(false);
+			a = Trigger::Action::Fail;
+		}
+	}
+	if (a == Trigger::Action::Fail) shotFail(g_trigger.reason());
+}
+
+void onMissionStarted()
+{
+	if (g_trigger.onLeftFrontEnd() == Trigger::Action::Fail) shotFail(g_trigger.reason());
+}
+}  // namespace mc2::screen_settle
 
 // CRASH-SOAK harness (MC2_SOAK_AUTOWIN). When set, the booted campaign drives
 // itself from logistics to mission start with no clicks: each settled (RUNNING)
@@ -1769,6 +1836,8 @@ void MissionBegin::render()
 			gos::screenshot::request(path.c_str());
 		}
 	}
+	// MC2_SHOT_SCREEN: the splash/main menu counts as "no screen" so only the logistics grid cell is matched.
+	mc2::screen_settle::tickFrontEnd(bSplash ? -1 : curScreenX, bSplash ? -1 : curScreenY);
 	ZoneScopedN("MissionBegin::render");
 	ZoneValue(bSplash ? 0xffff : 10 * curScreenX + curScreenY);
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
