@@ -5,7 +5,9 @@
 #include "mc2fmt.h"
 #include "mech3d.h"
 #include "gameplay_pick.h"
-#include "pick_query.h"
+#include "pick_occlusion.h"
+#include "terrain_runtime.h"
+#include "terrain_ray_pick.h"
 #include "multplyr.h"
 
 extern bool ShowMovers;
@@ -628,6 +630,45 @@ void gameplayPickBattery(GameObjectManager& manager) {
     busy = false;
 }
 
+struct PickCandidate { GameObjectPtr obj; double depth; int priority; bool eligible; };
+
+double pickTerrainDepth(const double (&origin)[3], const double (&direction)[3]) {
+    double depth = std::numeric_limits<double>::infinity();
+    if (land && Terrain::mapData) {
+        const double half = Terrain::worldUnitsMapSide * 0.5 - 1.0;
+        const double lower[2] = {-half, -half}, upper[2] = {half, half};
+        mc2::firstTerrainHit(origin, direction, lower, upper, Terrain::worldUnitsPerVertex / 8.0,
+            [](double px, double py) {
+                return TerrainRuntime::sampleVisualHeight(glm::vec3(static_cast<float>(px), static_cast<float>(py), 0));
+            }, depth);
+    }
+    return depth;
+}
+
+bool objectPickDepth(GameObjectPtr obj, const double (&origin)[3], const double (&direction)[3], double& depth) {
+    const auto* type = obj->getAppearance()->getAppearanceType();
+    glm::vec3 lo, hi;
+    mc2ToRender(lo, type->typeUpperLeft);
+    mc2ToRender(hi, type->typeLowerRight);
+    auto position = obj->getPosition();
+    auto rotation = obj->getRotation();
+    if (auto* ba = dynamic_cast<BldgAppearance*>(obj->getAppearance())) {
+        // Static rectangles use the appearance transform, including visual ground placement.
+        position = ba->position;
+        rotation = ba->rotation;
+    }
+    glm::vec3 localOrigin(static_cast<float>(origin[0]-position.x),
+                          static_cast<float>(origin[1]-position.y), static_cast<float>(origin[2]-position.z));
+    glm::vec3 localDirection(static_cast<float>(direction[0]), static_cast<float>(direction[1]), static_cast<float>(direction[2]));
+    // Projection rotates local corners by -rotation; undo it for the ray.
+    Rotate(localOrigin, rotation);
+    Rotate(localDirection, rotation);
+    const double ro[3] = {localOrigin.x, localOrigin.y, localOrigin.z};
+    const double rd[3] = {localDirection.x, localDirection.y, localDirection.z};
+    const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
+    return mc2::pickBoxHit(ro, rd, lower, upper, depth);
+}
+
 int pickPriority(GameObjectPtr obj) {
     if (obj->isDisabled()) return 3;
     if (obj->isEnemy(Team::home)) {
@@ -639,17 +680,21 @@ int pickPriority(GameObjectPtr obj) {
     return 4;
 }
 
-// All gameplay point picks share filtering, bounds and priority/depth/handle selection.
-// Policy ranks live enemies, friendlies, wrecks, then neutral props.
+// All gameplay point picks reject terrain first, then prefer visible movers.
 GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                  bool skipDisabled, long excludeCommander, bool terrainOnly) {
     if (!eye || list.empty() || x < 0 || y < 0 || x >= Environment.screenWidth || y >= Environment.screenHeight) return GameObjectPtr{};
-    GameObjectPtr best = nullptr;
-    mc2::pick::Rank bestRank;
-    for (auto* obj : list) {
-        if (!gameplayPickEligible(obj, skipDisabled)
-            || (excludeCommander != -1 && obj->getCommanderId() == excludeCommander)
-            || (terrainOnly && obj->isMover())) continue;
+    static thread_local std::vector<PickCandidate> stack;
+    stack.clear();
+    double origin[3], direction[3];
+    if (!mc2::pickScreenRay(*eye, x, y, origin, direction)) return GameObjectPtr{};
+    const double terrainT = pickTerrainDepth(origin, direction);
+    // Include non-targetable foreground objects and other commanders in the
+    // occlusion stack. Filtering them first would pick straight through them.
+    for (long h = 1; h <= ObjectManager->getMaxObjects(); ++h) {
+        auto* obj = ObjectManager->get(h);
+        if (!obj || !obj->getExists() || obj->inTransport() || !obj->getAppearance()
+            || !obj->getAppearance()->canBeSeen()) continue;
         PickRect rect;
         if (!gameplayPickRect(obj, rect) || !rect.contains(x, y)) continue;
         if (!obj->isMover())
@@ -657,15 +702,57 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         const float pad = gameplayPickPad();
         const bool coreHit = x >= rect.left+pad && x <= rect.right-pad
             && y >= rect.top+pad && y <= rect.bottom-pad;
-        const auto delta = obj->getPosition() - eye->getCameraOrigin();
-        // Forgiveness must not steal a direct hit on another object's bounds.
-        const mc2::pick::Rank rank{pickPriority(obj) + (coreHit ? 0 : 5), glm::dot(delta, delta), obj->getHandle()};
-        if (mc2::pick::precedes(rank, bestRank)) {
-            best = obj;
-            bestRank = rank;
+        double surfaceT = terrainT;
+        const auto hit = mc2::pickDepthWithForgiveness(obj->isMover(),
+            [&](double& t) { return objectPickDepth(obj, origin, direction, t); },
+            [&](double& t) {
+            // Keep the stock padded mover rectangle, including animated limbs
+            // and salvage. Check terrain along a ray that actually hits the
+            // mover, rather than the empty ground beside the clicked mech.
+            const auto* type = obj->getAppearance()->getAppearanceType();
+            glm::vec3 lo, hi;
+            mc2ToRender(lo, type->typeUpperLeft);
+            mc2ToRender(hi, type->typeLowerRight);
+            auto offset = (lo + hi) * 0.5f;
+            Rotate(offset, -obj->getRotation());
+            auto center = obj->getPosition() + offset;
+            Stuff::Vector4D screen;
+            eye->projectForScreenXY(center, screen);
+            double moverOrigin[3], moverDirection[3];
+            if (screen.w <= 1e-4f || !std::isfinite(screen.x) || !std::isfinite(screen.y)
+                || !mc2::pickScreenRay(*eye, std::lround(screen.x), std::lround(screen.y), moverOrigin, moverDirection)
+                || !objectPickDepth(obj, moverOrigin, moverDirection, t)) return false;
+            surfaceT = pickTerrainDepth(moverOrigin, moverDirection);
+            return true;
+        });
+        if (!hit) continue;
+        const double depth = *hit;
+        if (!mc2::pickBeforeSurface(depth, surfaceT)) {
+            if (mc2_diag::tagEnabled("CURSOR_TARGET")) {
+                char payload[256];
+                mc2::fmt::to_buf(payload,
+                    "{{\"site\":\"pick_occlusion\",\"mouse\":[{},{}],\"part_id\":{},\"name_id\":{},\"object_t\":{:.3f},\"terrain_t\":{:.3f}}}",
+                    mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), obj->getPartId(),
+                    obj->getAppearance()->getObjectNameId(), depth, surfaceT);
+                mc2_diag::writeEvent("CURSOR_TARGET", 1, 0, payload);
+            }
+            continue;
         }
+        const bool eligible = gameplayPickEligible(obj, skipDisabled)
+            && (excludeCommander == -1 || obj->getCommanderId() != excludeCommander)
+            && (!terrainOnly || !obj->isMover()) && std::find(list.begin(), list.end(), obj) != list.end();
+        stack.push_back({obj, depth, pickPriority(obj) + (coreHit ? 0 : 5), eligible});
     }
-    return best;
+    if (stack.empty()) return GameObjectPtr{};
+    std::stable_sort(stack.begin(), stack.end(), [](const auto& a, const auto& b) {
+        const bool mover = a.obj->isMover() && a.eligible;
+        const bool otherMover = b.obj->isMover() && b.eligible;
+        if (mc2::pickCandidateBefore(mover, a.depth, a.priority, otherMover, b.depth, b.priority)) return true;
+        if (mc2::pickCandidateBefore(otherMover, b.depth, b.priority, mover, a.depth, a.priority)) return false;
+        return a.obj->getHandle() < b.obj->getHandle();
+    });
+    const auto& front = stack.front();
+    return front.eligible ? front.obj : nullptr;
 }
 } // namespace
 
