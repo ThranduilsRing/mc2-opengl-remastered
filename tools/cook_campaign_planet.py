@@ -27,11 +27,12 @@ def marker_alpha(image):
 
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    with Image.open(SOURCE) as source:
-        atlas = marker_alpha(source)
-    atlas.save(OUTPUT / "mcl_cm_5.png")
-    atlas.save(OUTPUT / "mcl_cm_5.tga", compression="tga_rle")
-    print("campaign marker atlas: PNG and TGA cooked with transparent black")
+    for name in ("mcl_cm_5", "mcl_mn_4"):
+        with Image.open(SOURCE.with_name(name + ".tga")) as source:
+            atlas = marker_alpha(source)
+        atlas.save(OUTPUT / (name + ".png"))
+        atlas.save(OUTPUT / (name + ".tga"), compression="tga_rle")
+        print(f"{name}: PNG and TGA cooked with transparent black")
 
 
 if __name__ == "__main__":

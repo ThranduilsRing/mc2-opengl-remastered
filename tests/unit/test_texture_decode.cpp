@@ -106,8 +106,10 @@ TEST_CASE("texture decode: a 24-bit TGA decodes to RGB8 top-down, R first") {
 }
 
 TEST_CASE("campaign marker: production decode keeps black padding transparent") {
+    for (const char* name : {"mcl_cm_5.tga", "mcl_mn_4.tga"}) {
+    CAPTURE(name);
     const auto path = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path()
-        / "data/art/gui/mcl_cm_5.tga";
+        / "data/art/gui" / name;
     const auto decoded = mc2tex::decodeFile(path.string().c_str(), gos_Texture_Alpha, 0);
     REQUIRE(decoded);
     REQUIRE(decoded->width == 128);
@@ -126,6 +128,7 @@ TEST_CASE("campaign marker: production decode keeps black padding transparent") 
     }
     CHECK(padding > 1000);
     CHECK(ink > 100);
+    }
 }
 
 TEST_CASE("texture decode: malformed sources are rejected, not trusted") {

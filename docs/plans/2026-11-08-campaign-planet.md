@@ -13,7 +13,9 @@ Local commits only. Proof directory: E:/mc2-archive-2026-10/proofs/campaign-plan
 - Marker cook keys black to alpha zero in both formats, retaining all other
   RGBA values and both button states. Source is art/source/campaign-planet.
 - All campaign and generic/tutorial mission-select pages share this atlas.
-  Briefing uses mcl_mn_3; tactical blips use blip.tga (distinct assets).
+  Briefing controls use mcl_mn_3; its numbered/lettered map glyph atlas mcl_mn_4
+  also has opaque black padding, and receives the same alpha cook. mcl_mn_1/2/3
+  contain panel backgrounds that must stay opaque. Tactical blips use blip.tga.
 - gos_screenshot::deliver writes 24-bit RGB from the composed Vulkan present
   readback. engine_present_vk.cpp delivers the same pixel buffer to visual PNG
   capture and in-game TGA screenshots. It does not blend an RGBA UI texture

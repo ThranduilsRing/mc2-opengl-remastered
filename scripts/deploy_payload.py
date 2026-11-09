@@ -258,6 +258,8 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 GAME_DATA_PAYLOAD = [
     "data/art/gui/mcl_cm_5.png",
     "data/art/gui/mcl_cm_5.tga",
+    "data/art/gui/mcl_mn_4.png",
+    "data/art/gui/mcl_mn_4.tga",
     "data/terrain_materials.json",
     "data/visual_tuning.json",
     # Native vegetation packs these tracked cards into its 4x2 atlas at load.
