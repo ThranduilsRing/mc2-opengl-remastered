@@ -70,6 +70,15 @@ def test_changed_input_requires_full_deploy(recorded_payload):
     assert not dp.reusable_payload(None, target, inputs | {"new": "changed"})[0]
 
 
+def test_malformed_reuse_evidence_requires_full_deploy(recorded_payload):
+    target, inputs, _, _ = recorded_payload
+    path = target / dp.REUSE_NAME
+    saved = json.loads(path.read_text())
+    saved["outputs"] = "broken inventory"
+    path.write_text(json.dumps(saved))
+    assert not dp.reusable_payload(None, target, inputs)[0]
+
+
 @pytest.mark.parametrize("missing", [dp.MANIFEST_NAME, dp.REUSE_NAME, "mods/mc2-industrial-kit/model.glb"])
 def test_missing_evidence_requires_full_deploy(recorded_payload, missing):
     target, inputs, _, _ = recorded_payload

@@ -180,7 +180,7 @@ def reusable_payload(src_root, target, inputs):
                 if sha256_file(contained_path(target, rel)) != expected:
                     return False, f"sampled hash mismatch: {rel}"
         return True, "authored input hashes and recorded payload match; output samples verified"
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return False, "missing or invalid reuse/manifest evidence"
 
 
