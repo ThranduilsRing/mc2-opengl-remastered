@@ -14,22 +14,20 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
     float fwConcrete = clamp(1.0 - (length(uvWidth * MATV_TILING.w) - 0.5) * 2.0, 0.0, 1.0);
     float fwSnow     = clamp(1.0 - (length(uvWidth * MATV_TILING_SNOW) - 0.5) * 2.0, 0.0, 1.0);
 
-    // POM: parallax-offset the material UVs, fwidth-gated (near only). The march uses the real view vector, faded out over the world
-    // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
+    // POM follows the continuous material footprint, not eye altitude. Fade to
+    // zero before skipping the march; zoom must not introduce a contour band.
     if (fwRock > 0.4) {
         const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
         float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
         vec2  pomOff   = vec2(0.0);
         vec3  camW     = mc2ToRender(uT.cameraPosMC2.xyz);   // the eye in the MC2 world frame (the feed is the Stuff frame)
-        float altBoost = max(camW.z - v_worldPos.z, 0.0) * 0.7;
-        float camDist  = distance(v_worldPos.xy, camW.xy) + altBoost;
-        float distFade = 1.0 - smoothstep(MATV_POM_FADE_NEAR, MATV_POM_FADE_FAR, camDist);
+        float footprintFade = smoothstep(0.4, 0.8, fwRock);
         float slopeFade = smoothstep(0.55, 0.85, abs(macroNz));
         // Scatter roots use the terrain mesh. Keep grass, dirt and snow on that
         // surface rather than sliding their relief underneath the plants.
         float scatterSurface = smoothstep(0.01, 0.05, w.y + w.z + snowWeight);
-        float pomStrength = distFade * slopeFade * w.x * (1.0 - scatterSurface);
+        float pomStrength = footprintFade * slopeFade * w.x * (1.0 - scatterSurface);
         if (pomStrength > 0.001) {
             vec3 Vw = normalize(camW - v_worldPos);                 // fragment -> eye, MC2 world
             // The detail UVs are top-down planar with no y flip: tangent u = east, bitangent v = north, normal = up.
@@ -48,26 +46,26 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
     vec3 dN = vec3(0.0);
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
     if (w.x > 0.01 && fwRock != 0.0) {
-        vec4 s = (atsRock > 0.01 && fwRock > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0))
+        vec4 s = (atsRock > 0.01 && fwRock > 0.4)
+               ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0), fwRock)
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * (s.rgb * 2.0 - 1.0);
     }
     if (w.y > 0.01 && fwGrass != 0.0) {
-        vec4 s = (atsGrass > 0.01 && fwGrass > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y)
+        vec4 s = (atsGrass > 0.01 && fwGrass > 0.4)
+               ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y, fwGrass)
                : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
     }
     if (w.z > 0.01 && fwDirt != 0.0) {
-        vec4 s = (atsDirt > 0.01 && fwDirt > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z)
+        vec4 s = (atsDirt > 0.01 && fwDirt > 0.4)
+               ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z, fwDirt)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * (s.rgb * 2.0 - 1.0);
     }
     if (w.w > 0.01 && fwConcrete != 0.0) {
-        vec4 s = (atsConc > 0.01 && fwConcrete > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w)
+        vec4 s = (atsConc > 0.01 && fwConcrete > 0.4)
+               ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w, fwConcrete)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * (s.rgb * 2.0 - 1.0);
     }

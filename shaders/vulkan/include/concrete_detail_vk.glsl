@@ -16,6 +16,10 @@ layout(set = 0, binding = 18) uniform sampler2DArray u_concreteDetail;
 #define CD_LAYER_PAD  0
 #define CD_LAYER_ROAD 1
 
+// One relief target for material-weight concrete, pads and adopted road art.
+// Between the former flat slab (0.15) and exaggerated concrete layer (2.5).
+const float CD_CONCRETE_RELIEF_STRENGTH = 0.65;
+
 struct MaterialDetail {
     vec3  n;          // unit normal, world frame (x east, y north, z up)
     float roughness;  // 0..1
@@ -32,7 +36,8 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     float lod = log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-8)) * 0.5 + log2(kScale * 0.5 * float(textureSize(u_concreteDetail, 0).x));
     vec4 a = textureLod(u_concreteDetail, vec3(uv, float(layer)), max(lod, 0.0));
     // Image rows run top-down while world v runs north, so the GL-convention green channel is negated.
-    vec2 nxy = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0)) * uT.concreteDetailStrength;
+    float strength = layer == CD_LAYER_PAD ? CD_CONCRETE_RELIEF_STRENGTH : uT.concreteDetailStrength;
+    vec2 nxy = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0)) * strength;
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
     d.roughness = clamp(a.z, 0.05, 1.0);
