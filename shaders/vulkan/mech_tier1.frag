@@ -106,7 +106,7 @@ void main() {
 #ifdef MECH_PREVIEW
         {
             // Mech-lab studio rig, fixed relative to the camera (the turntable spins the mech, not the lights):
-            // warm key upper-left, cool fill right, hard rim from behind, a sky/ground hemisphere ambient and a
+            // neutral key upper-left, soft fill right, restrained rim, a sky/ground hemisphere ambient and a
             // procedural softbox environment for the specular term.
             vec3 Vs = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
             vec3 cf = normalize(uFrame.cameraWorldPos.xyz);
@@ -120,10 +120,10 @@ void main() {
             float nf = max(dot(Nshade, Lf), 0.0);
             float nr = max(dot(Nshade, Lr), 0.0);
             float hemi = 0.5 + 0.5 * Nshade.y;
-            vec3 amb = mix(vec3(0.16, 0.14, 0.12), vec3(0.42, 0.48, 0.58), hemi) * 0.42;
-            vec3 diff = amb + vec3(1.00, 0.93, 0.82) * 1.15 * nk
-                            + vec3(0.45, 0.55, 0.78) * 0.45 * nf
-                            + vec3(0.80, 0.90, 1.00) * 0.90 * nr;
+            vec3 amb = mix(vec3(0.16), vec3(0.42, 0.44, 0.48), hemi) * 0.30;
+            vec3 diff = amb + vec3(1.00, 0.98, 0.95) * 0.85 * nk
+                            + vec3(0.75, 0.80, 0.90) * 0.22 * nf
+                            + vec3(0.90, 0.95, 1.00) * 0.35 * nr;
             rgb = albedo * diff;
             rgb += vHighlight.rgb * vHighlight.a;
             if ((vImportedMech & 2u) != 0u)
@@ -131,13 +131,15 @@ void main() {
             float ndv = clamp(dot(Nshade, Vs), 0.0, 1.0);
             vec3 R = reflect(-Vs, Nshade);
             float rough = clamp(uFrame.shadeA.z, 0.15, 0.9);
+            // Stock textures have no authored PBR roughness: paint should read as satin.
+            if (vImportedMech == 0u) rough = max(rough, 0.60);
             float shin = clamp(2.0 / (rough * rough) - 2.0, 4.0, 400.0);
             float lobe = pow(max(dot(R, Lk), 0.0), shin) * 1.6
                        + pow(max(dot(R, Lr), 0.0), shin * 0.7) * 1.1
                        + pow(max(dot(R, Lf), 0.0), shin * 0.5) * 0.3;
             vec3 envRefl = mix(vec3(0.05, 0.045, 0.04), vec3(0.30, 0.34, 0.42), 0.5 + 0.5 * R.y);
             float fres = 0.05 + 0.95 * pow(1.0 - ndv, 5.0);
-            rgb += (envRefl * (0.25 + fres) + vec3(lobe)) * (0.10 + 0.25 * fres) * 2.0;
+            rgb += (envRefl * (0.25 + fres) + vec3(lobe)) * (0.10 + 0.25 * fres) * 0.65;
         }
 #endif
 
@@ -173,7 +175,7 @@ void main() {
 #ifdef MECH_PREVIEW
     // Panel exposure (fogColorRGB.w; the world pass leaves it 0) + a Reinhard shoulder so
     // the spec sheen rolls off instead of clipping on the 8-bit panel target.
-    rgb *= max(uFrame.fogColorRGB.w, 0.0);
+    rgb *= max(uFrame.fogColorRGB.w, 0.0) * 0.80; // Preview-only studio exposure.
     // ACES (Narkowicz fit) filmic curve.
     rgb = clamp((rgb * (2.51 * rgb + 0.03)) / (rgb * (2.43 * rgb + 0.59) + 0.14), 0.0, 1.0);
 #endif
