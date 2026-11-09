@@ -32,6 +32,9 @@ def test_remote_script_truncates_the_append_only_tsvs_and_prints_lock_wait():
     ("Queued", "Queued", None),
     ({"Done": {"result": "Success"}}, "Done", 0),
     ({"Done": {"result": {"Failed": 3}}}, "Done", 3),
+    ({"Done": "Success"}, "Done", 0),
+    ({"Done": {"Failed": 1}}, "Done", 1),
+    ({"Done": "Killed"}, "Done", 77),
 ])
 def test_task_state_reads_pueue_status_json(monkeypatch, status, state, rc):
     monkeypatch.setattr(box_run, "ssh_out", lambda cmd: tasks(**{"7": {"status": status, "label": "box_run:b:abcd1234:gpu1"}}))
@@ -51,7 +54,7 @@ def test_status_prints_one_line_and_exit_code_2_while_running(monkeypatch, capsy
 
 def test_wait_blocks_fetches_reports_and_prints_one_verdict_line(monkeypatch, capsys, tmp_path):
     calls = []
-    monkeypatch.setattr(box_run, "run", lambda cmd, **kw: calls.append(cmd[-1]))
+    monkeypatch.setattr(box_run, "run", lambda cmd, **kw: (calls.append(cmd[-1]), SimpleNamespace(returncode=0))[1])
     monkeypatch.setattr(box_run, "ssh_out", lambda cmd: tasks(**{"5": {"status": {"Done": {"result": "Success"}}, "label": "box_run:br:abcd1234:gpu2"}}))
 
     def fake_fetch(out_remote, local_out):
@@ -64,9 +67,9 @@ def test_wait_blocks_fetches_reports_and_prints_one_verdict_line(monkeypatch, ca
     assert len(lines) == 1 and "state=Done rc=0 rows=1/2" in lines[0]
 
 
-def test_failed_task_exits_1(monkeypatch, tmp_path):
+def test_unlabelled_task_is_infra(monkeypatch, tmp_path):
     monkeypatch.setattr(box_run, "ssh_out", lambda cmd: tasks(**{"6": {"status": {"Done": {"result": {"Failed": 1}}}, "label": "x"}}))
-    assert box_run.task_verdict(6, tmp_path, wait=False) == 1
+    assert box_run.task_verdict(6, tmp_path, wait=False) == 77
 
 
 def test_pick_gpu_takes_the_least_loaded(monkeypatch):
@@ -92,6 +95,45 @@ def test_no_discovered_gpu_fails_closed(monkeypatch):
     monkeypatch.setattr(box_run, "ssh_out", lambda cmd: "")
     with pytest.raises(RuntimeError, match="no GPUs discovered"):
         box_run.pick_gpu()
+@pytest.mark.parametrize("result,tsv,expected,word", [
+    ("Success", "sh:true\t0\nsh:exit 0\t0\n", 0, "PASS"),
+    ({"Failed": 1}, "sh:true\t0\nsh:false\t1\n", 1, "sh:false"),
+    ({"Failed": 2}, "sh:true\t0\n", 77, "BOX_INFRA"),
+    ({"Failed": 1}, "determinism:mc2_01\t78\n", 4, "NO_BASELINE"),
+    ("Success", "", 77, "BOX_INFRA"),
+    ({"Failed": 76}, "", 76, "LOCK_TIMEOUT"),
+    ({"Failed": 77}, "", 77, "BOX_INFRA"),
+])
+def test_wait_real_pueue_shapes_and_row_table(monkeypatch, tmp_path, capsys, result, tsv, expected, word):
+    monkeypatch.setattr(box_run, "run", lambda *a, **kw: SimpleNamespace(returncode=0))
+    monkeypatch.setattr(box_run, "ssh_out", lambda cmd: tasks(**{"5": {"status": {"Done": result}, "label": "box_run:br:abcd1234:build"}}))
+    monkeypatch.setattr(box_run, "local_reports", lambda *a: tmp_path)
+    monkeypatch.setattr(box_run, "fetch_back", lambda remote, local: (local / "rows.tsv").write_text(tsv))
+    assert box_run.task_verdict(5, tmp_path, wait=True) == expected
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == 1 and word in lines[0] and "table=" in lines[0]
+    assert json.loads(lines[0].split("table=", 1)[1]) == [ln.split("\t") for ln in tsv.splitlines()]
+
+
+def test_wait_rejects_missing_requested_row(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(box_run, "ssh_out", lambda cmd: tasks(**{"5": {"status": {"Done": "Success"}, "label": "box_run:br:abcd1234:build"}}))
+    monkeypatch.setattr(box_run, "local_reports", lambda *a: tmp_path)
+    def fetch(remote, local):
+        (local / "rows.tsv").write_text("sh:true\t0\n")
+        (local / "requested.tsv").write_text("sh:true\nsh:false\n")
+    monkeypatch.setattr(box_run, "fetch_back", fetch)
+    assert box_run.task_verdict(5, tmp_path, wait=False) == 77
+    assert "missing requested rows" in capsys.readouterr().out
+
+
+def test_copy_back_failure_cannot_reuse_stale_green_rows(monkeypatch, tmp_path, capsys):
+    (tmp_path / "rows.tsv").write_text("sh:true\t0\n")
+    monkeypatch.setattr(box_run, "ssh_out", lambda cmd: tasks(**{"5": {"status": {"Done": "Success"}, "label": "box_run:br:abcd1234:build"}}))
+    monkeypatch.setattr(box_run, "local_reports", lambda *a: tmp_path)
+    monkeypatch.setattr(box_run.subprocess, "run", lambda *a, **kw: SimpleNamespace(returncode=255, stdout=b""))
+    assert box_run.task_verdict(5, tmp_path, wait=False) == 77
+    assert not (tmp_path / "rows.tsv").exists()
+    assert "copy-back failed" in capsys.readouterr().out
 
 
 def test_fetch_back_extracts_what_the_box_tarred(monkeypatch, tmp_path):
@@ -309,7 +351,7 @@ def test_presubmit_warns_when_the_tip_lacks_the_box_clang_fix(monkeypatch, capsy
 
 
 def test_copy_back_never_tars_the_home_dir_when_the_out_dir_is_missing():
-    assert box_run.BACK.startswith("cd {out} || exit 0;")
+    assert box_run.BACK.startswith("set -euo pipefail; cd {out};")
 
 
 def test_deploy_never_requires_files_the_lane_tree_did_not_build():
