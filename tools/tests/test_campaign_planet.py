@@ -1,7 +1,7 @@
 """Pixel checks for the atlas shared by campaign mission markers."""
 from PIL import Image
 
-from tools.cook_campaign_planet import SOURCE, OUTPUT, marker_alpha
+from tools.cook_campaign_planet import ROOT, SOURCE, OUTPUT, marker_alpha
 
 
 def test_black_key_preserves_other_icon_colours_and_coverage():
@@ -30,7 +30,8 @@ def test_shipped_marker_pixels_match_the_cook_and_have_no_black_square():
                 assert atlas.getpixel((x, 58))[3] == 0
 
 
-def test_both_loader_formats_are_in_the_deploy_payload():
-    from scripts.deploy_payload import GAME_DATA_PAYLOAD
+def test_both_loader_formats_are_in_the_deploy_payload(monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    from deploy_payload import GAME_DATA_PAYLOAD
     assert "data/art/gui/mcl_cm_5.png" in GAME_DATA_PAYLOAD
     assert "data/art/gui/mcl_cm_5.tga" in GAME_DATA_PAYLOAD
