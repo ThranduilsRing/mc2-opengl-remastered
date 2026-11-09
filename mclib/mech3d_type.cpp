@@ -266,7 +266,7 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 	*forwardNameEnd = '\0';
 
 	char backwardName[1024];
-	auto backwardNameEnd = std::format_to_n(backwardName, sizeof(backwardName) - 1, "{}FallForwardDam", fileName).out;
+	auto backwardNameEnd = std::format_to_n(backwardName, sizeof(backwardName) - 1, "{}FallBackwardDam", fileName).out;
 	*backwardNameEnd = '\0';
 
 	{
@@ -296,6 +296,8 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 			mechBackwardDmgShape.reset();
 		}
 	}
+	GpuMechBatcher::instance().registerVehicleType(mechForwardDmgShape.get());
+	GpuMechBatcher::instance().registerVehicleType(mechBackwardDmgShape.get());
 
 	if (animationLoadingEnabled)
 	{

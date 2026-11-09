@@ -13,6 +13,7 @@
 #include "mc2_czstring.h"
 #include "dradio.h"
 #include "unit_anim_state.h"
+#include "mech_death_policy.h"
 
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -157,15 +158,6 @@ enum class SpeedState : int32_t {
 };
 using enum SpeedState;
 
-enum DeathCause
-{
-	DEBUGGER_DEATH = 0,
-	ENGINE_DEATH = 1,
-	PILOT_DEATH = 2,
-	EJECTION_DEATH = 3,
-	UNDETERMINED_DEATH = 4,
-	POWER_USED_UP = 5
-};
 
 //---------------------------------------------------------------------------
 

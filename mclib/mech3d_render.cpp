@@ -539,6 +539,10 @@ long Mech3DAppearance::render (long depthFixup)
 				GpuMechSubmitDesc desc{};
 				desc.mechShape      = mechShape;
 				desc.mechType       = mechType;
+				// Damaged shapes have different vertices/node counts from the living
+				// LOD. Submit their pre-registered shape record, as vehicles do.
+				if (mechShape->GetMultiType() != mechType->mechShape[currentLOD].get())
+					desc.mechType = nullptr;
 				desc.currentLOD     = static_cast<int>(currentLOD);
 				desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 				// AO-1: carry the AO slot (0 when no/failed AO). HAS_AO bit (4) added

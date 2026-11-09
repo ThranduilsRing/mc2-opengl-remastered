@@ -127,6 +127,7 @@ add_executable(mc2_tests
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
     test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)
+    test_mech_wreck.cpp
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
     test_weapon_definition.cpp  # WEAPONDEF-SCHEMA-1: WeaponFacet (was WeaponDefinition) facets + WeaponId string-id identity + weaponFitsHardpoint join (offline)
     test_equipment_definition.cpp  # EQUIPMENT-DEFINITION-SCHEMA-1: EquipmentDefinition top type (kind/tags/legacyMasterId-alias/facet slots) + WeaponFacet fold-in + equipmentFitsHardpoint (offline)
