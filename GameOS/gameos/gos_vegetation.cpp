@@ -43,8 +43,8 @@ std::optional<mc2tex::DecodedTexture> builtinAtlas() {
     static constexpr std::array<const char*, 8> paths{
         "data/vegetation/cards/grass_01.png", "data/vegetation/cards/grass_02.png",
         "data/vegetation/cards/grass_03.png", "data/vegetation/cards/grass_04.png",
-        "data/vegetation/cards/fern_01.png", "data/vegetation/cards/fern_02.png",
-        "data/vegetation/cards/fern_03.png", "data/vegetation/cards/fern_04.png"};
+        "data/vegetation/cards/bush_round.png", "data/vegetation/cards/bush_heath.png",
+        "data/vegetation/cards/sapling_leaf.png", "data/vegetation/cards/sapling_pine.png"};
     mc2tex::DecodedTexture atlas;
     atlas.layout = mc2tex::PixelLayout::RGBA8;
     atlas.format = gos_Texture_Alpha;
@@ -68,7 +68,7 @@ std::optional<mc2tex::DecodedTexture> builtinAtlas() {
 }
 std::optional<mc2tex::TextureArrayCpu> builtinCards() {
     constexpr std::array<const char*, 8> names{"grass_01", "grass_02", "grass_03", "grass_04",
-        "fern_01", "fern_02", "fern_03", "fern_04"};
+        "bush_round", "bush_heath", "sapling_leaf", "sapling_pine"};
     mc2tex::TextureArrayCpu array;
     array.width = array.height = 512; array.layers = 8;
     array.vkFormat = mc2tex::kVkFormatBc7Unorm;

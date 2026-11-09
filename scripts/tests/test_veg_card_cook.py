@@ -52,3 +52,42 @@ def test_mip_chain_is_complete_and_repeatable():
         assert a.tobytes() == b.tobytes()
         if a.width >= 2:
             assert np.count_nonzero(np.array(a)[:, :, 3] >= 128) == a.width * a.height // 2
+
+
+def test_shipped_cards_and_biome_recipes_load():
+    import json
+    import struct
+
+    root = Path(__file__).resolve().parents[2] / "data/vegetation"
+    manifest = json.loads((root / "cooked/cards.json").read_text())
+    assert [card["name"] for card in manifest] == cook.CARDS
+    for card in manifest:
+        name = card["name"]
+        source = root / "cards" / f"{name}.png"
+        cooked = root / "cooked" / f"{name}.ktx2"
+        assert source.stat().st_size < 1_000_000
+        assert cooked.stat().st_size < 1_000_000
+        image = Image.open(source)
+        assert image.size == (512,512) and image.mode == "RGBA"
+        assert 0.01 < np.count_nonzero(np.array(image)[:,:,3] >= 128) / (512*512) < 0.9
+        header = cooked.read_bytes()[:48]
+        assert header[:12] == b"\xabKTX 20\xbb\r\n\x1a\n"
+        fields = struct.unpack_from("<9I",header,12)
+        assert fields[0] == 145 and fields[2:4] == (512,512)  # BC7_UNORM
+        assert fields[7] == 10  # full mip chain
+        assert len(card["strip"]) == 8
+    for path in (root / "schemas").glob("*.json"):
+        recipe = json.loads(path.read_text())
+        assert 4 <= recipe["clump"]["radius"] <= 16
+        assert 0 <= recipe["clump"]["tree_chance"] <= 1
+        assert 6 <= recipe["clump"]["grass"] <= 16
+        for name in recipe["cards_full"] + recipe["cards_sparse"]:
+            assert (root / "cards" / f"{name}.png").is_file()
+
+
+def test_procedural_woody_cards_repeat_without_external_sources(tmp_path):
+    first, second = tmp_path/"first", tmp_path/"second"
+    cook.procedural_woody_cards(first,tmp_path/"sheet-a.png")
+    cook.procedural_woody_cards(second,tmp_path/"sheet-b.png")
+    for name in cook.CARDS[4:]:
+        assert (first/f"{name}.png").read_bytes() == (second/f"{name}.png").read_bytes()

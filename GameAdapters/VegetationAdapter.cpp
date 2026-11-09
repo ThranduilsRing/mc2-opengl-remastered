@@ -7,6 +7,7 @@
 #include "VegetationAdapter.h"
 #include "vegetation_budget.h"
 #include "vegetation_noise.h"
+#include "vegetation_clumps.h"
 #include "vegetation_hardsurface.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
@@ -33,6 +34,7 @@
 #include <cstdlib>   // std::getenv, std::atoi
 #include <cstdio>    // fprintf, snprintf
 #include <cmath>     // sinf, fmodf, fabsf
+#include <fstream>
 #include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
@@ -62,22 +64,6 @@ constexpr float kGridStep = 14.0f;
 // kSparse = transitional surfaces: dirt, ash, mountain, slimy
 // kFull   = vegetated surfaces: grass, moss, forest floor, mud, tundra
 enum class VegDensity : int { kHard = -1, kNone = 0, kSparse = 1, kFull = 2 };
-
-// Atlas frame palettes per vegetation density tier.
-// vegetation_atlas_v2.png: 2 rows x 4 cols = 8 frames.
-//   Row 0 (frames 0-3): grass / ground-cover variants
-//   Row 1 (frames 4-7): ferns, shrubs, taller plants
-// dominant = how many leading frames to pick the clump dominant from.
-// NOTE: frames 4-7 (ferns/shrubs) are intentionally excluded — grass cards only.
-struct FramePalette { uint8_t f[8]; int dominant; int n; };
-
-[[nodiscard]] FramePalette framePalette(VegDensity vdc) noexcept
-{
-    if (vdc == VegDensity::kFull)
-        return {{ 0, 1, 2, 3, 0, 1, 2, 3 }, 4, 4};  // grass only, all 4 variants
-    // kSparse: short dry grass only
-    return {{ 0, 1, 2, 0, 1, 2, 0, 1 }, 3, 3};
-}
 
 // Classify a terrain cell by its actual material type code from getTerrain().
 // This is the authoritative classification — it uses what the engine actually
@@ -164,7 +150,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     const float originX = Terrain::mapTopLeft3d.x;
     const float originY = Terrain::mapTopLeft3d.y;   // max world-Y
     const float mapSpan = Terrain::worldUnitsMapSide;
-    const float gridStep = mc2::vegetation::placementStep(mapSpan, kGridStep, density, maxInst);
+    const float gridStep = mc2::vegetation::placementStep(mapSpan, kGridStep * 1.5f,
+                                                        (std::max)(density,44), maxInst);
 
     std::vector<GosVegetation::Instance> instances;
     instances.reserve(static_cast<size_t>(maxInst));
@@ -185,161 +172,92 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     int instTriedTotal = 0, instRejWater = 0, instRejHard = 0, instRejNoneFringe = 0,
         instRejOverlay = 0, instRejSlope = 0;
 
-    // Walk the map in world-space steps of gridStep.
-    // wy decreases (southward) because MissionMap row increases as Y decreases.
-    for (float wy = originY - gridStep * 0.5f;
-         wy > (originY - mapSpan + gridStep);
-         wy -= gridStep)
-    {
-        if (static_cast<int>(instances.size()) >= maxInst) break;
-
-        for (float wx = originX + gridStep * 0.5f;
-             wx < (originX + mapSpan - gridStep);
-             wx += gridStep)
-        {
-            if (static_cast<int>(instances.size()) >= maxInst) break;
-
-            // worldToTileCell: tile indices for Terrain::getTerrain (vertex grid).
-            // worldToCell: absolute cell indices for MissionMap (cell grid = 3x finer).
-            // Both return row/col in the same spatial convention; use the right
-            // index type for each API.
+    using namespace mc2::vegetation;
+    const uint32_t seed = mapSeed(Terrain::terrainName);
+    std::array<ClumpRecipe,4> recipes{{{9,0.30f,0,12},{8,0.25f,-0.15f,8},
+                                      {7,0.10f,-0.3f,8},{11,0.4f,0.2f,14}}};
+    constexpr std::array<const char*,4> paths{
+        "data/vegetation/schemas/grasslands.json", "data/vegetation/schemas/snow.json",
+        "data/vegetation/schemas/desert.json", "data/vegetation/schemas/swamp.json"};
+    for (size_t i = 0; i < paths.size(); ++i) {
+        std::ifstream input(paths[i]);
+        if (input) {
+            if (const auto recipe = readClumpRecipe(nlohmann::json::parse(input,nullptr,false))) recipes[i] = *recipe;
+        }
+    }
+    const int side = static_cast<int>(mapSpan/gridStep);
+    const long mapSide = static_cast<long>(Terrain::realVerticesMapSide);
+    for (int row = 1; row < side-1; ++row) {
+        for (int col = 1; col < side-1; ++col) {
             ++diagCellsTotal;
-
-            const glm::vec3 samplePos(wx, wy, 0.0f);
-            int tileR = 0, tileC = 0, subR = 0, subC = 0;
-            land->worldToTileCell(samplePos, tileR, tileC, subR, subC);
-            const long mapSide = static_cast<long>(Terrain::realVerticesMapSide);
-            if (tileR < 0 || tileC < 0 || tileR >= mapSide || tileC >= mapSide) { ++diagOOB; continue; }
-
-            // Classify by actual terrain material type (getTerrain tile code).
-            // Cement/concrete/water/cliff → kHard (rejected).
-            // Dirt/ash/mountain/slimy → kSparse. Grass/moss/mud/tundra/forest → kFull.
-            const int terrainCode = land->getTerrain(static_cast<long>(tileR),
-                                                     static_cast<long>(tileC));
-            const VegDensity vdc = classifyTerrainType(terrainCode);
-            if (vdc == VegDensity::kHard) { ++diagHard; continue; }
-
-            (void)gameMap;
-
-            // Water rejection at grid centre — counted by diagWater.
-            // Do NOT remove until placement_health event confirms:
-            //   cells_total > 0 AND reject_water < cells_total AND instances > 0
-            {
-                const float sampleElev = land->getTerrainElevation(samplePos);
-                if (sampleElev <= Terrain::waterElevation) { ++diagWater; continue; }
-            }
-
-            // macroZone [0,1] — secondary variation WITHIN terrain-type zones.
-            // Large blob (512 WU) gives the overall patchy coverage.
-            // Fine blob (80 WU) perturbs the threshold to roughen straight edges.
-            const float zone      = macroZone(wx, wy);
-            const float zoneEdge  = macroZone(wx, wy, 80.0f);  // fine-scale edge roughness
-            // kFull:   base threshold 0.20, perturbed ±0.08 by fine blob → 0.12..0.28
-            // kSparse: base threshold 0.10, perturbed ±0.06 by fine blob → 0.04..0.16
-            const float zoneThresh = (vdc == VegDensity::kFull)
-                                   ? 0.20f + (zoneEdge - 0.5f) * 0.16f
-                                   : 0.10f + (zoneEdge - 0.5f) * 0.12f;
-            if (zone < zoneThresh) { ++diagNotGreen; continue; }
-            const float zoneDepth = (zone - zoneThresh) / (1.0f - zoneThresh);
-
-            // Cards per clump: kFull = 6..density/2 (6..12), kSparse = 2..5.
-            const int clumpMax = (vdc == VegDensity::kFull) ? density / 2 : 5;
-            const int clumpMin = (vdc == VegDensity::kFull) ? 6 : 2;
-            const int count = clumpMin + static_cast<int>(zoneDepth * static_cast<float>(clumpMax - clumpMin));
-
-            const float mapHalf = mapSpan * 0.5f;
-
-            // Jitter clump centre by half grid step — breaks visible 32 WU rows.
-            const float jx = (hashf(wx * 0.017f, wy * 0.013f + 1234.0f) - 0.5f) * gridStep;
-            const float jy = (hashf(wy * 0.019f, wx * 0.023f + 5678.0f) - 0.5f) * gridStep;
-            const float clumpCx = wx + jx;
-            const float clumpCy = wy + jy;
-
-            for (int i = 0; i < count; ++i) {
+            const auto centre = clumpCandidate(col,row,seed);
+            const float wx = originX+centre.x*gridStep;
+            const float wy = originY-centre.y*gridStep;
+            const bool isCentre = clumpCentreAccepted(col,row,seed);
+            // Sparse grass singles occupy gaps between layered clumps.
+            const bool single = !isCentre || clumpRoll(col,row,seed,110) < 0.12f;
+            if (single && clumpRoll(col,row,seed,111) > 0.10f) { ++diagNotGreen; continue; }
+            const glm::vec3 pos(wx,wy,0);
+            int tr=0,tc=0,sr=0,sc=0;
+            land->worldToTileCell(pos,tr,tc,sr,sc);
+            if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide) { ++diagOOB; continue; }
+            const int code = land->getTerrain(tr,tc);
+            const auto tier = classifyTerrainType(code);
+            if (tier == VegDensity::kHard) { ++diagHard; continue; }
+            Biome biome = Biome::Temperate;
+            if (code == MC_TUNDRA_TYPE) biome = Biome::Snow;
+            else if (code == MC_DIRT_TYPE || code == MC_ASH_TYPE || code == MC_MOUNTAIN_TYPE) biome = Biome::Desert;
+            else if (code == MC_MUD_TYPE || code == MC_MOSS_TYPE || code == MC_SLIMY_TYPE) biome = Biome::Swamp;
+            // A low-frequency field is a moisture proxy, not a simulation input.
+            const float moisture = macroZone(wx+static_cast<float>(seed&4095u),wy,512);
+            if (clumpRoll(col,row,seed,112) > (tier == VegDensity::kFull ? 0.9f : 0.4f)*(0.5f+moisture))
+                { ++diagNotGreen; continue; }
+            glm::vec3 normal;
+            const auto clump = makeClump(col,row,seed,recipes[static_cast<size_t>(biome)],
+                                          moisture,land->getTerrainAngle(pos,&normal),single);
+            for (int i=0; i<clump.count; ++i) {
                 if (static_cast<int>(instances.size()) >= maxInst) break;
-
-                const float fi = static_cast<float>(i);
-
-                const float h1 = hashf(clumpCx + fi * 73.1f,  clumpCy + fi *  7.3f);
-                const float h2 = hashf(clumpCy + fi * 83.7f,  clumpCx + fi *  3.1f);
-                const float h3 = hashf(clumpCx + fi * 199.1f, clumpCy + fi * 17.3f);
-                const float h4 = hashf(clumpCy + fi * 151.3f, clumpCx + fi * 11.7f);
-                const float h5 = hashf(clumpCx + fi * 37.9f,  clumpCy + fi * 59.1f);
-                const float h6 = hashf(clumpCy + fi * 61.3f,  clumpCx + fi * 43.1f);
-                const float h7 = hashf(clumpCx + fi * 113.7f, clumpCy + fi * 89.3f);
-
-                const float instWx = clumpCx + (h1 - 0.5f) * 20.0f;
-                const float instWy = clumpCy + (h2 - 0.5f) * 20.0f;
-
+                const auto& member = clump.members[static_cast<size_t>(i)];
+                const float instWx = wx+member.x, instWy = wy+member.y;
+                const glm::vec3 instPos(instWx,instWy,0);
                 ++instTriedTotal;
-                const glm::vec3 instPos(instWx, instWy, 0.0f);
+                int ir=0,ic=0,isr=0,isc=0;
+                land->worldToTileCell(instPos,ir,ic,isr,isc);
+                if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide) { ++instRejHard; continue; }
+                if (classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard)
+                    { ++instRejHard; continue; }
                 const float elevation = land->getTerrainElevation(instPos);
-                if (elevation <= Terrain::waterElevation) { ++instRejWater; continue; }
-
-                // Per-instance terrain type classification.
-                // kHard (cement/concrete/water/cliff): always reject — no fringe.
-                // kNone is not returned by classifyTerrainType (kHard covers hard-excludes).
-                {
-                    int iInstR = 0, iInstC = 0, iInstSR = 0, iInstSC = 0;
-                    land->worldToTileCell(instPos, iInstR, iInstC, iInstSR, iInstSC);
-                    if (iInstR >= 0 && iInstC >= 0 &&
-                        iInstR < static_cast<int>(mapSide) && iInstC < static_cast<int>(mapSide)) {
-                        const int instCode = land->getTerrain(static_cast<long>(iInstR),
-                                                              static_cast<long>(iInstC));
-                        const VegDensity instVdc = classifyTerrainType(instCode);
-                        if (instVdc == VegDensity::kHard) { ++instRejHard; continue; }
-                    }
+                bool occupied = false;
+                if (gameMap) {
+                    int cr=0,cc=0;
+                    land->worldToCell(instPos,cr,cc);
+                    // Read-only static masks: never alter movement, LOS or RNG.
+                    occupied = gameMap->getOffMap(cr,cc) || !gameMap->getPassable(cr,cc) ||
+                        gameMap->getForest(cr,cc) || gameMap->getBuildSpecial(cr,cc) ||
+                        gameMap->getBuildGate(cr,cc) || gameMap->getBuildWall(cr,cc) ||
+                        gameMap->getBuildLandBridge(cr,cc) || gameMap->getOverlay(cr,cc) != 0;
                 }
-                const auto hardSurface = mc2::vegetation::hardSurfacePlacement(
-                    instWx, instWy, Terrain::worldUnitsPerVertex,
-                    gos_terrain_indirect_HardSurfaceCoverage, hashf);
-                using enum mc2::vegetation::HardSurfacePlacement;
-                if (hardSurface == Reject) { ++instRejOverlay; continue; }
-                const bool isWeed = hardSurface == Weed;
-                if (isWeed) ++diagWeeds;
-                if (hardSurface == TransitionCover) ++diagCoverKept;
-
-                // Slope gate: getTerrainAngle() returns DEGREES.
-                // Hard limit 60°: cliff faces above this never get vegetation.
-                // Soft fade zone 45°..60°: reject with linearly increasing
-                // probability so the edge is organic rather than a sharp line.
-                // Position-based hash (deterministic, no rand()) for the fade.
-                {
-                    glm::vec3 slopeNormal;
-                    const float angle = land->getTerrainAngle(instPos, &slopeNormal);
-                    constexpr float kSlopeHard  = 60.0f;   // hard reject above this
-                    constexpr float kSlopeSoft  = 45.0f;   // fade begins here
-                    if (angle >= kSlopeHard)
-                        { ++instRejSlope; continue; }
-                    if (angle > kSlopeSoft) {
-                        // t in [0,1]: 0 at soft start, 1 at hard limit
-                        const float t = (angle - kSlopeSoft) / (kSlopeHard - kSlopeSoft);
-                        const float h8 = hashf(instWx * 97.3f, instWy * 137.9f);
-                        if (h8 < t)
-                            { ++instRejSlope; continue; }
-                    }
+                const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
+                const float slope = land->getTerrainAngle(instPos,&normal);
+                if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation,occupied,coverage,slope,member.woody)) {
+                    if (elevation<=Terrain::waterElevation) ++instRejWater;
+                    else if (occupied || coverage>=0.15f) ++instRejOverlay;
+                    else ++instRejSlope;
+                    continue;
                 }
-
+                const auto salt = static_cast<uint32_t>(150+i*3);
                 GosVegetation::Instance inst;
-                inst.x          = instWx - originX - mapHalf;
-                inst.y          = instWy - originY + mapHalf;
-                inst.z          = elevation + 0.5f;
-                inst.yaw        = h3 * 6.2831f;
-                inst.scale      = isWeed ? (0.5f + h4 * 1.0f)    // small crack weeds
-                                         : (1.0f + h4 * 5.0f);   // 1-6 WU range
-                // Species: dominant frame for this clump (70%), fill from palette (30%).
-                const FramePalette pal = framePalette(vdc);
-                const float domHash = hashf(clumpCx * 0.11f, clumpCy * 0.09f + 9999.0f);
-                const uint8_t domFrame = pal.f[static_cast<int>(domHash * static_cast<float>(pal.dominant)) % pal.dominant];
-                const uint32_t frame = (h5 < 0.70f)
-                    ? static_cast<uint32_t>(domFrame)
-                    : static_cast<uint32_t>(pal.f[static_cast<int>(h5 * static_cast<float>(pal.n)) % pal.n]);
-                // Card role (bits 4-5): 0=vertical 40%, 1=tilted 25%, 2=top 15%, 3=ground 20%.
-                const uint32_t cardRole = (h7 < 0.40f) ? 0u : (h7 < 0.65f) ? 1u : (h7 < 0.80f) ? 2u : 3u;
-                inst.atlasFrame = (cardRole << 4u) | (frame & 0x0Fu)
-                                | (isWeed ? mc2::vegetation::kWeedFlagBit : 0u);
-                inst.seed       = h6;
-
+                inst.x = instWx-originX-mapSpan*0.5f;
+                inst.y = instWy-originY+mapSpan*0.5f;
+                inst.z = elevation+0.5f;
+                inst.yaw = clumpRoll(col,row,seed,salt)*6.2831853f;
+                inst.scale = member.scale;
+                unsigned frame = member.frame;
+                // Keep two silhouettes per role; snow favours the conifer.
+                if (frame>=6 && biome==Biome::Snow && clumpRoll(col,row,seed,salt+1)<0.8f) frame=7;
+                const unsigned role = member.woody ? 0u : (clumpRoll(col,row,seed,salt+1)<0.25f ? 1u : 0u);
+                inst.atlasFrame = frame | (role<<4u) | (biome==Biome::Snow ? 128u : 0u);
+                inst.seed = clumpRoll(col,row,seed,salt+2);
                 instances.push_back(inst);
             }
         }

@@ -51,7 +51,9 @@ void main() {
     // stays tan, night stays dark; a stable small variation cannot make a ring.
     float cardValue = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
     vec3 albedo = macro * mix(0.75, 1.15, clamp(cardValue*2.0, 0.0, 1.0));
-    albedo *= mix(0.96, 1.04, v_vegData.x);
+    // Root colour provides biome/season; per-map seeds break repeated hues.
+    albedo *= mix(vec3(1.04,0.94,0.85),vec3(0.92,1.04,0.96),v_vegData.x);
+    if ((v_flags & 128u) != 0u) albedo = mix(albedo,macro*vec3(1.03,1.03,1.08),0.65);
     vec3 rootN = rootNormal();
     vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
     vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)));
