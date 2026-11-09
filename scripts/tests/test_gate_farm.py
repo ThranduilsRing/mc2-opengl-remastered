@@ -396,7 +396,9 @@ def test_movement_is_sim_sensitive(path):
 @pytest.mark.parametrize("path", ["data/missions/mc2_01.fit", "mods/core_unlocks/data/foo.fit",
                                   "examples/mods/sample_variant/data/x.csv", "tests/mods/fixture.fit",
                                   "tools/mod_smoke.py", "tools/mc2x_import/transfer_mc2x_campaign.py",
-                                  "tools/mco_import/build_mco_compat.py"])
+                                  "tools/mco_import/build_mco_compat.py", "tools/mc2mod/__init__.py",
+                                  "tools/mc2_modlint/rules.py", "tools/validate_mod_package.py",
+                                  "tools/mod_install/install.py", "tools/mod_load.cpp"])
 def test_mod_content_diff_promotes_existing_mod_battery(path):
     scheduled = gate.plan(6)
     steps, promoted = gate.promote_for_diff(_tier0(scheduled), scheduled, _tier0(scheduled), [path], [], False)
