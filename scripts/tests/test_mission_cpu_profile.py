@@ -185,6 +185,7 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
     monkeypatch.setattr(profile.subprocess, "Popen", lambda *a, **k: child)
     monkeypatch.setattr(profile.tracy, "_stop_capture_child", lambda p: None)
     def failed_run(config):
+        assert Path(config.exe[0]).name == ('mc2.exe' if profile.os.name == 'nt' else 'mc2')
         assert "MC2_HOST_GAME_SLOTS" not in config.env_extra
         assert config.env_extra["TRACY_PORT"] == "8086"
         assert config.env_extra["MC2_FORCE_ALL_VISIBLE"] == "0"
@@ -201,7 +202,7 @@ def test_runner_does_not_receive_host_knobs_or_wait_for_failed_client(tmp_path, 
 def test_failed_capture_keeps_both_noise_numbers(tmp_path, monkeypatch, has_samples):
     install = tmp_path / 'install'
     install.mkdir()
-    (install / 'mc2.exe').write_bytes(b'test')
+    (install / ('mc2.exe' if profile.os.name == 'nt' else 'mc2')).write_bytes(b'test')
     monkeypatch.setattr(profile.tracy, 'tracy_exe', lambda *a: tmp_path / 'recorder.exe')
     def fail(args, name, directory, psutil):
         directory.mkdir(parents=True)

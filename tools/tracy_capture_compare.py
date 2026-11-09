@@ -128,6 +128,8 @@ def tracy_dir() -> Path:
 
 
 def tracy_exe(name: str) -> Path:
+    if os.name != "nt":
+        name = name.removesuffix(".exe")
     exe = tracy_dir() / name
     if not exe.is_file():
         sys.exit(f"ERROR: {exe} not found (set TRACY_TOOLS_DIR to the Tracy tools folder; "

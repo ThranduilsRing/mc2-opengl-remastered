@@ -230,7 +230,7 @@ def capture_mission(install, mission, seconds, trace, extra_env, full_sweep=Fals
             if driver:
                 driver.start()
             result = runner.run_one(runner.RunConfig(
-                exe=[str(install / "mc2.exe")], profile="stock", stem=mission,
+                exe=[str(install / ("mc2.exe" if os.name == "nt" else "mc2"))], profile="stock", stem=mission,
                 duration=seconds, heartbeat_timeout_load_s=120,
                 heartbeat_timeout_play_s=15, grace_s=150, env_extra=env, show_window=True))
             trace.with_suffix(".game.log").write_text(result.stdout_text, encoding="utf-8")
@@ -526,7 +526,7 @@ def main(argv=None):
     if os.name == "nt":
         psutil.Process().nice(psutil.IDLE_PRIORITY_CLASS)
     args.install = args.install.resolve()
-    exe = args.install / "mc2.exe"
+    exe = args.install / ("mc2.exe" if os.name == "nt" else "mc2")
     if not exe.is_file():
         parser.error(f"missing {exe}")
     tracy.tracy_exe("tracy-capture.exe")

@@ -1,6 +1,18 @@
 # perf-attrib state
 
-Assignment: A:/Games/mc2-slot02, claude/perf-attrib, base f269b312d.
+Assignment: A:/Games/mc2-slot05, claude/perf-attrib, base 8fc0c6c8957673ab0be789403a10b91b852c59b2.
+
+W135 continuation (2026-11-08, current):
+- Merged nifty d63c403c9 at bf922455b; preserved both caller allowlist entries.
+- Old PC install E:/mc2-installs/perf-attrib is already absent; no PC games.
+- Native executable names fixed for Linux mission profiling and Tracy lookup.
+  Targeted mission-profile/Tracy pytest: 51 passed (w135-pytest.log).
+- Trusted nifty build initially rejected `battle` (that alias exists only in
+  lane tooling). Second run uses lane harness with the trusted nifty executable
+  and explicit --ref-commit, preserving executable provenance.
+- Next: fetch trusted pair/pin; run box profile; commit pin and final state;
+  box build/unit/lint and one final Windows Ninja build. Proof root remains
+  E:/mc2-archive-2026-10/proofs/perf-attrib, w135-* receipts.
 
 Continuation 2026-11-08 (supersedes the historical handoff below):
 - Merged Linux fix 8fc0c6c89 at 5770b9bfa4c9973525f43fdc95e0d70991ebce3e.
