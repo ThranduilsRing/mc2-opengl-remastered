@@ -720,7 +720,9 @@ def test_gate_quiet_passes_the_gate_itself_and_its_children(lease, monkeypatch):
 
 
 def test_gpu_split_parse_and_one_lease_set(lease, monkeypatch):
-    assert host_lease._parse_gpu_split("# c\nslot0=NVIDIA\nslot1 = AMD\nbogus=1\n") == ("NVIDIA", "AMD")
+    assert host_lease._parse_gpu_split("# c\nslot0=NVIDIA\nslot1 = AMD\n") == ("NVIDIA", "AMD")
+    with pytest.raises(ValueError, match="unknown key 'bogus'"):                         # p31: an unknown key is a hard error
+        host_lease._parse_gpu_split("slot0=NVIDIA\nbogus=1\n")
     assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT == ("AMD", "NVIDIA")
     assert host_lease._parse_gpu_split("lane=NVIDIA\ngate=AMD\n") == ("NVIDIA", "AMD")        # old keys: lane = slot 0, gate = slot 1
     assert host_lease._parse_gpu_split("lane=NVIDIA\nslot0=AMD\n") == ("AMD", "NVIDIA")       # an explicit slotN wins
