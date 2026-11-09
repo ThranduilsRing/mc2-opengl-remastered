@@ -168,7 +168,14 @@ REASONS=()
 # Report timing overruns without turning the runtime budget into a gate.
 BUDGET_SEC=5
 
-_now_ms() { date +%s%N 2>/dev/null | cut -c1-13; }
+_now_ms() {
+    if [ -n "${EPOCHREALTIME:-}" ]; then
+        local stamp=${EPOCHREALTIME/./}
+        printf '%s' "${stamp:0:13}"
+    else
+        date +%s%N 2>/dev/null | cut -c1-13
+    fi
+}
 
 # ---------------------------------------------------------------------------
 # DUPLICATE REGISTRATION GUARD (PROVENANCE-FORGERY-CLOSE-1)
@@ -260,19 +267,22 @@ FAILLOG_DIR=""
 # heuristic and says so: the bounded block below the table always carries the
 # rest, so a bad guess costs a glance, never the diagnosis.
 _reason_digest() {          # $1 = captured output, $2 = rc  -> one line on stdout
-    local out="$1" rc="$2" line=""
-    if printf '%s\n' "$out" | grep -q '^Traceback'; then
-        # A CRASHED checker. "Traceback (most recent call last):" is not the
-        # reason; the exception on the last line is.
-        line="$(printf '%s\n' "$out" | grep -vE '^[[:space:]]*$' | tail -n 1)" || true
-    else
-        line="$(printf '%s\n' "$out" \
-            | grep -m1 -E '(^|[^[:alnum:]_])(FAIL|ERROR|VIOLATION|MISMATCH|Traceback)')" || true
-        if [ -z "$line" ]; then
-            line="$(printf '%s\n' "$out" | grep -vE '^[[:space:]]*$' | tail -n 1)" || true
+    local out="$1" rc="$2" line="" last="" first="" traceback=0
+    # Built-ins keep synthetic shell fixtures bounded on Windows, where each
+    # grep/sed/date process costs far more than the formatting work itself.
+    while IFS= read -r line; do
+        [[ "$line" =~ [^[:space:]] ]] || continue
+        last=$line
+        [[ "$line" == Traceback* ]] && traceback=1
+        if [ -z "$first" ] && [[ "$line" =~ (^|[^[:alnum:]_])(FAIL|ERROR|VIOLATION|MISMATCH|Traceback) ]]; then
+            first=$line
         fi
-    fi
-    line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    done <<< "$out"
+    line=${first:-$last}
+    # A traceback's final exception is more useful than its header.
+    [ "$traceback" -eq 0 ] || line=$last
+    line=${line#"${line%%[![:space:]]*}"}
+    line=${line%"${line##*[![:space:]]}"}
     if [ -z "$line" ]; then
         # Not a cosmetic case. A check that fails and says NOTHING is a defect in
         # that check, and this line is the only place anyone would ever see it.

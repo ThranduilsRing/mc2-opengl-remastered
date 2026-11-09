@@ -27,6 +27,14 @@ Causes/fixes:
 - timeout retries repeated hangs; stop at first rc=124 and skip diagnostic rerun.
 Shell fixtures have 120s markers using the existing watchdog (child-tree cleanup).
 
-Next: finish baseline receipts; full scripts suite including direct-owned modules,
-owning contracts, final ratchet/lint/precheck at committed tip; cleanup/release.
+Baseline precheck FAIL: 16 cases, tools_tests + scripts_tests; other rows PASS,
+713s total (baseline-precheck.log). Full 163-module scripts pass at 28c7265bf:
+162 green; test_fail_reason_selftest hit 120s, diagnostic rerun passed at 119s.
+Changed prerequisite: replace fork-heavy shell timing/digests with Bash built-ins;
+retain the 120s watchdog. Preserve original failure tails before diagnostic reruns.
+Ratchet, lint and path_normalization passed at 28c7265bf (earlier checkpoint).
+
+Next: full scripts suite including direct-owned modules, final ratchet/lint and
+shared precheck at new committed tip; cleanup/release. Latest receipts and exact
+failure catalog: E:/mc2-archive-2026-10/proofs/precheck-green/STATE.md.
 Offline only. No engine build or deploy needed for Python/test changes.
