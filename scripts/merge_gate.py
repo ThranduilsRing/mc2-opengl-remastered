@@ -624,8 +624,9 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("capture-before", capture + ["--out", str(proof / "before")], {}),
         ("deploy", [py, "scripts/deploy_payload.py", "--target", "game", "--ninja", "--require-clean", "--full-verify"], {}),
         ("capture-after", capture + ["--out", str(proof / "after")], {}),
+        # --allow-data-delta: after descends from before, so a data difference is the window's payload (listed, not refused)
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
-                              str(proof / "after"), "--out-root", str(proof / "ab")], {}),
+                              str(proof / "after"), "--allow-data-delta", "--out-root", str(proof / "ab")], {}),
         # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),

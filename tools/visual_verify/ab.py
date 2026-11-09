@@ -516,6 +516,9 @@ def main(argv=None):
     ap.add_argument("--compare-only", nargs=2, metavar=("DIR_A", "DIR_B"))
     ap.add_argument("--allow-base-mismatch", action="store_true",
                     help="deliberate cross-base comparison: print the base/data mismatch, stamp CROSS-BASE on the montage, go on")
+    ap.add_argument("--allow-data-delta", action="store_true",
+                    help="--compare-only: when capture B's commit descends from A's, list data-manifest differences (the window's "
+                         "payload) instead of refusing; the commit order and payload identity checks still apply")
     a = ap.parse_args(argv)
     os.environ["MC2_CURSOR_NO_PARK"] = "1"
     crops = [tuple(float(x) for x in c.split(",")) for c in a.crop]
@@ -530,7 +533,14 @@ def main(argv=None):
         except ValueError as exc:
             sys.exit(f"ab.py: {exc}")
         bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
-        bad += manifest_mismatches(ia["manifest"], ib["manifest"])
+        delta = manifest_mismatches(ia["manifest"], ib["manifest"])
+        if a.allow_data_delta and not bad:
+            # the merge gate's before (published v0.4) vs after (candidate): B descends from A, so a data difference is the
+            # window's own payload; list it next to the MAD table instead of refusing (W138: logistics-art shipped 574 icons)
+            for line in delta:
+                print("[ab] data delta (window payload): " + line, flush=True)
+        else:
+            bad += delta
         if bad and not a.allow_base_mismatch:
             sys.exit("ab.py: mismatched capture identities: " + "; ".join(bad))
         compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops, cross_base=bool(bad))

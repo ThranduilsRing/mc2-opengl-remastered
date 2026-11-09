@@ -80,6 +80,27 @@ def test_platform_payload_stamp_and_compare(tmp_path, monkeypatch, exe):
     assert (tmp_path / "compare/day/montage.jpg").is_file()
 
 
+@pytest.mark.parametrize("flag,ancestor,code", [(False, True, "refuse"), (True, True, 0), (True, False, "refuse")])
+def test_gate_compare_lists_the_windows_data_delta(tmp_path, monkeypatch, capsys, flag, ancestor, code):
+    """W138: the merge gate's before (published) vs after (candidate) differ by the window's data payload. --allow-data-delta
+    lists it instead of refusing, but only when B descends from A; without the flag the data difference still refuses."""
+    identity = ab.payload_identity(install_payload(tmp_path / "install"))
+    after = dict(identity, manifest=dict(identity["manifest"], **{"data/art/mechicons/new.png": "c" * 64}))
+    monkeypatch.setattr(ab, "git_ok", lambda *args: ancestor or args[0] != "merge-base")
+    for arm, ident in (("a", identity), ("b", after)):
+        (tmp_path / arm / "day").mkdir(parents=True)
+        Image.new("RGB", (32, 32)).save(tmp_path / arm / "day/day.png")
+        ab.stamp_identity(tmp_path / arm, ident)
+    with pytest.raises(SystemExit) as verdict:
+        ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "b"), "--out-root", str(tmp_path / "cmp")]
+                + (["--allow-data-delta"] if flag else []))
+    if code == "refuse":
+        assert "mismatched capture identities" in str(verdict.value.code)
+    else:
+        assert verdict.value.code == 0
+        assert "[ab] data delta (window payload): only in B: data/art/mechicons/new.png" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("fault", ["exe", "shader", "commit", "extra_shader", "ambiguous"])
 def test_linux_payload_refuses_drift(tmp_path, fault):
     install = install_payload(tmp_path / "install")
