@@ -219,6 +219,25 @@ TEST_CASE("TerrainHeightCompat/visual bake and near plane ridge") {
     CHECK(TerrainRuntime::sampleVisualHeight(midpoint) == 0.0f);
 }
 
+TEST_CASE("contact pick: visual sampler uses accepted 4x bake and clears on unload") {
+    using namespace height_compat;
+    Terrain terrain;
+    terrain.height = [](const glm::vec3&) { return 17.0f; };
+    land = &terrain;
+    const glm::vec3 corner = Terrain::mapTopLeft3d;
+    const glm::vec3 middle = corner + glm::vec3(16, -16, 0);
+    const float bake[4] = {20, 40, 60, 80};
+    TerrainRuntime::setCpuVisualHeight(bake, 2);
+    CHECK(TerrainRuntime::sampleVisualHeight(corner) == 20);
+    CHECK(TerrainRuntime::sampleVisualHeight(middle) == 50);
+    CHECK(TerrainRuntime::sampleGameplayHeight(middle) == 17);
+    CHECK(TerrainRuntime::sampleVisualHeight(corner + glm::vec3(-1, 0, 0)) == 17);
+    TerrainRuntime::setCpuVisualHeight(nullptr, 0);
+    CHECK(TerrainRuntime::sampleVisualHeight(middle) == 17);
+    land = nullptr;
+    CHECK(TerrainRuntime::sampleVisualHeight(middle) == 0);
+}
+
 TEST_CASE("TerrainHeightCompat/production query corpus stays bit identical") {
     using namespace height_compat;
     const auto previousOptions = mc2::options::current();

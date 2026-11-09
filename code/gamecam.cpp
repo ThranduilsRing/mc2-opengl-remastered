@@ -1246,7 +1246,7 @@ long GameCamera::update (void)
 		targetObject->getExists() && 
 		((targetObject->getCommanderId() == Commander::home->getId()) || 
 		!targetObject->isMover() ||
-		(targetObject->isMover() && (static_cast<Mover *>(targetObject))->conStat >= CONTACT_SENSOR_QUALITY_1) ))
+		(targetObject->isMover() && static_cast<Mover*>(targetObject)->contactView.blip) ))
 	{
 		setPosition(targetObject->getPosition(),false);
 	}

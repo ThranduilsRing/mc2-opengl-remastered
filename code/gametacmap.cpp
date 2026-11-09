@@ -446,7 +446,6 @@ int GameTacMap::extractBlips( unsigned long* colors, unsigned long* ringColors,
 		{
 			SensorSystem* pSensor = mover->getSensorSystem();
 			float range = pSensor ? pSensor->getRange() : 0;
-			long contactStatus = mover->getContactStatus(Team::home->getId(), true);
 			if (mover->getTeamId() == Team::home->id)
 			{
 				if (mover->getCommanderId() == Commander::home->getId())
@@ -470,11 +469,10 @@ int GameTacMap::extractBlips( unsigned long* colors, unsigned long* ringColors,
 						continue;
 				}
 			}
-			else if (ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]) || ((mover->getTeamId() != Team::home->id)
-				&&  ( contactStatus != CONTACT_NONE )
+			else if (mover->contactView.blip && (mover->contactView.model || ((mover->getTeamId() != Team::home->id)
 				&&  (mover->getStatus() != OBJECT_STATUS_SHUTDOWN) 
 				&&  (!mover->hasNullSignature())
-				&&	(mover->getEcmRange() <= 0.0f) ) )	//Do not draw ECM mechs!!)
+				&&	(mover->getEcmRange() <= 0.0f) ) ))	//Do not draw sensor-only ECM mechs.
 			{
 				//Not on our side.  Draw by contact status
 				colorBlip = mover->getSelected() ? 0xffff3f3f : 0xffff0000;

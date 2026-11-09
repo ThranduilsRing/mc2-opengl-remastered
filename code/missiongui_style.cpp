@@ -458,7 +458,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				//if the mouse cursor is some form of attack, attack the target.
 		{
 			if ( target->isMover() && ( target->getTeamId() == Team::home->getId() || 
-					CONTACT_VISUAL == (static_cast<Mover*>(target))->getContactStatus(Team::home->getId(), true)
+					static_cast<Mover*>(target)->contactView.model
 					|| target->isDisabled() ) )
 				{
 					controlGui.setInfoWndMover( static_cast<Mover*>(target) );
@@ -867,7 +867,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 		else if ( target )
 		{
 			if ( target->isMover() && ( target->getTeamId() == Team::home->getId() || 
-					CONTACT_VISUAL == (static_cast<Mover*>(target))->getContactStatus(Team::home->getId(), true)
+					static_cast<Mover*>(target)->contactView.model
 					|| target->isDisabled() ) )
 				{
 					controlGui.setInfoWndMover( static_cast<Mover*>(target) );
