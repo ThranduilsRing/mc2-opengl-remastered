@@ -5,7 +5,7 @@
 // .tga or .ktx2 (the content cook contract: BC5 normal, BC7 linear ORM, full mip chain); a slot with no
 // maps is a class-scalar material (metal/roughness from the declared class, full coverage).
 // WHY: presence is decoded-and-valid, never declared-only: a missing or malformed optional map rejects
-// that slot (logged by the caller) and the packet keeps the legacy response with no added specular.
+// that slot (logged by the caller) and the packet uses its stock class defaults.
 #pragma once
 #include "texture_decode.h"
 #include "../../RenderCore/PropMaterialGpu.h"

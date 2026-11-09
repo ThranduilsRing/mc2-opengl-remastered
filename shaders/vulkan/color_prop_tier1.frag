@@ -242,19 +242,21 @@ void main() {
         rgb += materialAlbedo * poolLight;
     }
     bool treeMaterial = haveAlbedo && vTree.y > 0.5;
-    // Low/Potato reuse the VS's existing SH + sun + authored-light result.
-    // Re-evaluating diffuse material lighting per fragment wastes the 24-EU budget.
-    if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
-        if (kBaseQuality == 2) {
-            float materialCoverage;
-            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
-            if (materialCoverage > 0.0) {
-                materialAO = mix(1.0, surface.ao, materialCoverage);
-                if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
-                              propHasAuthoredOrm(uPacket.materialId), poolLight), materialCoverage);
-                outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
-            }
+    // Every prop quality uses per-pixel lighting. A missing row or zero ORM
+    // coverage falls back to a rough dielectric, never baked Gouraud lighting.
+    bool hasNativeMaterial = uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length();
+    if (haveAlbedo && !treeMaterial && !hasNativeMaterial)
+        rgb = propAuthoredColor(propDefaultSurface(materialAlbedo), poolLight);
+    if (haveAlbedo && hasNativeMaterial && (!treeMaterial || kBaseQuality == 2)) {
+        float materialCoverage;
+        SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
+        materialAO = mix(1.0, surface.ao, materialCoverage);
+        if (!treeMaterial) {
+            rgb = propAuthoredColor(surface, poolLight);
+            if (materialCoverage < 1.0)
+                rgb = mix(propAuthoredColor(propDefaultSurface(materialAlbedo), poolLight), rgb, materialCoverage);
         }
+        outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         // Detail-map coverage cannot turn off an authored lamp surface.
         if (uPropMaterials.materials[uPacket.materialId].metadata.x == SURF_CLASS_EMISSIVE && (vMaterialFlags & 3u) == 0u)
             rgb = propAddWindowEmission(rgb, propDecodeColor(materialAlbedo) * uFrame.nightDarkness);
@@ -301,7 +303,7 @@ void main() {
     if (debugView != 0 && haveAlbedo) {
         vec3 debugNormal = normalize(mc2ToRender(vNormalStuff));
         vec3 rawNormal = vec3(0.5, 0.5, 1.0);
-        float roughness = 1.0, metallic = 0.0, ao = 1.0;
+        float roughness = 0.85, metallic = 0.0, ao = 1.0;
         bool validMaterial = uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length();
         if (validMaterial) {
             SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);

@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_03",
+  "_note": "Prop PBR: walled SAM base at (-3710,3995), reusing the inspected base poses from mc2_03_building_faces for identical before/after framing. Reverse view exposes the away-facing walls. No geometry or art delta.",
+  "bookmarks": [
+    {"name":"sam_lightaway","pos":[-3710.0,3995.0,0.0],"rot":199.0,"proj":22.0,"alt":650.0,"covers":["base","walls","buildings","turrets","prop_pbr"]},
+    {"name":"sam_lightfacing","pos":[-3710.0,3995.0,0.0],"rot":19.0,"proj":22.0,"alt":650.0,"covers":["base","walls","buildings","turrets","prop_pbr"]}
+  ]
+}
