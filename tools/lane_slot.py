@@ -242,6 +242,12 @@ def release(path, discard=False):
         if os.path.isdir(d):
             shutil.rmtree(d, ignore_errors=True)
             deleted.append(d)
+    if any(d.startswith(INSTALLS) for d in deleted):
+        # Deleting links bumps the seed's NTFS ChangeTime; re-stamp so the next install does not re-hash it.
+        seed = f"{INSTALLS}/_lean-seed"
+        if os.path.isdir(seed):
+            tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "make-isolated-deploy.py")
+            subprocess.run([sys.executable, tool, "--refresh-receipts", "--from", seed], check=False)
     rc, _, err = git(path, "switch", "--detach", NIFTY)
     if rc:
         sys.exit("release: detach at nifty failed: " + err)

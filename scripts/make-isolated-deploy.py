@@ -287,6 +287,24 @@ def refresh_link_receipts(src, shared):
                 pending.unlink(missing_ok=True)
 
 
+def restamp_seed(src):
+    """After an install delete (link count down, ChangeTime up) re-stamp the seed."""
+    rels = set()
+    for name in ('.lane-seed-verification.json', '.lane-kit-verification.json'):
+        try:
+            rels.update(json.loads((src / name).read_text(encoding='utf-8')))
+        except (OSError, ValueError):
+            pass
+    shared = {}
+    for rel in rels:
+        try:
+            shared[rel] = {'stamp': content_stamp(src / rel)}
+        except OSError:
+            pass
+    refresh_link_receipts(src, shared)
+    return len(shared)
+
+
 def content_stamp(path):
     """Include NTFS ChangeTime: Windows st_ctime is the creation time.
 
@@ -815,12 +833,19 @@ def main(argv=None) -> int:
                     help="report the plan and cost; write nothing")
     ap.add_argument('--snapshot', action='store_true',
                     help='merge-gate snapshot: retain warm caches and the complete source tree')
+    ap.add_argument("--refresh-receipts", action="store_true",
+                    help="re-stamp the --from seed's verification receipts after an install delete")
     ap.add_argument("--selftest", action="store_true",
                     help="prove the tool works; temp dirs only")
     args = ap.parse_args(argv)
 
     if args.selftest:
         return selftest()
+    if args.refresh_receipts:
+        if not args.src:
+            fail("--refresh-receipts needs --from <seed>", 2)
+        print(f'[ISO_DEPLOY] re-stamped {restamp_seed(Path(args.src))} seed receipts')
+        return 0
     if args.lane and args.dst:
         fail("--lane and --to are two ways to say the same thing; pass one.\n"
              f"  --lane {args.lane}  would mean  --to {resolve_lane(args.lane)}",
