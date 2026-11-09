@@ -8,6 +8,7 @@ alpha entirely. Black is the atlas background, including the space inside
 the concentric triangles. Key it before either renderer samples the atlas.
 All other colours and their original coverage remain unchanged.
 """
+import json
 from pathlib import Path
 
 from PIL import Image
@@ -33,6 +34,13 @@ def main():
         atlas.save(OUTPUT / (name + ".png"))
         atlas.save(OUTPUT / (name + ".tga"), compression="tga_rle")
         print(f"{name}: PNG and TGA cooked with transparent black")
+    # Eleven registered poses reconstruct one surface; all thirteen operation
+    # images are rendered from it. The TGA sibling wins in the existing loader.
+    import campaign_globe as globe
+    registration = json.loads((globe.SOURCE / 'registration.json').read_text())
+    maps = globe.SOURCE / 'maps'
+    globe.reconstruct(globe.SOURCE, registration, maps)
+    globe.render(globe.SOURCE, registration, maps, OUTPUT, extension='tga')
 
 
 if __name__ == "__main__":
