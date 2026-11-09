@@ -83,6 +83,10 @@ def sim_sensitive(paths):
     return sorted(p for p in paths if any(fnmatch.fnmatchcase(p.replace("\\", "/"), g) for g in pats))
 
 
+MOD_CONTENT_GLOBS = ("data/*", "mods/*", "examples/mods/*", "tests/mods/*", "tools/mod_smoke*", "tools/mod_*.py",
+                     "tools/mc2x_import/*", "tools/mco_import/*")
+
+
 def promoted_stages(paths):
     """p31: stages a diff needs at this merge whatever the scheduled tier filtered out. A sim-sensitive change restores the
     windowed pair, the mc2_24 finale (2600 ticks) and the day/night saves; a path naming a mission restores that map's rows;
@@ -96,6 +100,11 @@ def promoted_stages(paths):
         want |= {"determinism-" + m, "saveload-" + m}
     if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
         want.add("player-path")
+    # Owner rule (2026-11-06, memory process/feedback-speed-skip-mods-lint-box-2026-11-05.md): the mod battery runs only
+    # when the diff touches mod content or mod tooling. Engine C++, shaders, the VFS and loaders never promote it; the
+    # nightly full gate covers them. (W135: an engine-path glob list here promoted mods on a VFS refactor.)
+    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in MOD_CONTENT_GLOBS):
+        want.add("mods")
     return want
 
 
@@ -1004,7 +1013,7 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
             shutil.rmtree(install / name, ignore_errors=True)
             shutil.copytree(published / name, install / name)
     if swap_payload:
-        _forget_swapped_rows(install)
+        _forget_swapped_rows(install, published)
         # The lean seed has no amd_fidelityfx_vk.dll (W126: capture-before ran without FSR AA, a false MAD of 1.2/0.6); give
         # the old exe the runtime DLLs it shipped with. Only missing ones: the deploy row still owns every DLL it lists.
         for src in published.glob("*.dll"):
@@ -1024,10 +1033,8 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
         raise RuntimeError(f"stage_published: detail-normal cook left {', '.join(absent)} missing in {textures}")
 
 
-def _forget_swapped_rows(install):
-    """Drop the manifest rows for the files stage_published just replaced. A gate-reuse seed carries HEAD's manifest; its
-    size+mtime_ns fast path would otherwise skip a swapped file of the same size (W125: spirv_package.json, 1915 bytes in
-    both builds) and verify_published_identity then fails on the published bytes left behind."""
+def _forget_swapped_rows(install, published=PUBLISHED):
+    """Replace swapped rows with the published payload's identity for capture-before and the next deploy."""
     import csv
     path = Path(install) / ".deployed_manifest.csv"
     if not path.is_file():
@@ -1035,6 +1042,9 @@ def _forget_swapped_rows(install):
     with path.open(newline="", encoding="utf-8") as stream:
         rows = list(csv.reader(stream))
     keep = rows[:2] + [r for r in rows[2:] if r and not (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
+    with (Path(published) / ".deployed_manifest.csv").open(newline="", encoding="utf-8") as stream:
+        published_rows = list(csv.reader(stream))
+    keep += [r for r in published_rows[2:] if r and (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
     with path.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(keep)
 
@@ -1835,7 +1845,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
-    ap.add_argument("--base", help="pre-window commit; absent/stale window record means full coverage")
+    ap.add_argument("--base", help="pre-window ancestor commit (required unless a verified window records it)")
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
@@ -1943,17 +1953,19 @@ def main(argv=None):
     except (OSError, ValueError):
         pass
     base = args.base or window.get("base")
+    if not base:
+        ap.error("change-based promotion requires a valid comparison base: pass --base or verify the merge window")
     if base:
-        git("merge-base", "--is-ancestor", base, head)
+        try:
+            git("merge-base", "--is-ancestor", base, head)
+        except subprocess.CalledProcessError:
+            ap.error(f"invalid comparison base {base}: must be an ancestor of {head}")
         paths = [p for p in git("diff", "--name-only", "-z", base, head).split("\0") if p]
         steps, promoted = promote_for_diff(steps, scheduled, planned, paths, asked, args.weekly)
         steps = affected_plan(steps, paths, args.full)
         # A promoted row the diff classification would skip anyway (e.g. a doc naming a map) is not added as a SKIP.
         steps = [s for s in steps if not (s[0] in promoted and s[2].get("MC2_GATE_SKIP_REASON"))]
         steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
-    else:
-        steps, _ = promote_for_diff(steps, scheduled, planned, [], asked, args.weekly)
-        steps = [(n, c, dict(e, MC2_GATE_BASE="")) for n, c, e in affected_plan(steps, [], True)]
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
         # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
         classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")

@@ -50,7 +50,11 @@ std::string jsonEscape(const char* s)
         if (c == '"' || c == '\\') { r.push_back('\\'); r.push_back(c); }
         else if (c == '\n') r += "\\n";
         else if (c == '\t') r += "\\t";
-        else r.push_back(c);
+        else if (static_cast<unsigned char>(c) < 32) {
+            char escaped[7];
+            std::snprintf(escaped, sizeof escaped, "\\u%04x", static_cast<unsigned char>(c));
+            r += escaped;
+        } else r.push_back(c);
     }
     return r;
 }
@@ -355,6 +359,11 @@ void initEngineHeadless()
 mc2::particles::SpecLibrary* loadBlob(const unsigned char* bytes, size_t n)
 {
     if (!bytes || n == 0) return nullptr;
+    std::string error;
+    if (!mc2::fx::read_catalog({bytes, n}, error)) {
+        std::fprintf(stderr, "mc2fx: %s\n", error.c_str());
+        return nullptr;
+    }
     gos_PushCurrentHeap(gosFX::Heap);
     // const_cast: MemoryStream takes a non-const void* but only reads on Load.
     Stuff::MemoryStream stream(const_cast<unsigned char*>(bytes),
@@ -363,6 +372,101 @@ mc2::particles::SpecLibrary* loadBlob(const unsigned char* bytes, size_t n)
     lib->Load(&stream);
     gos_PopCurrentHeap();
     return lib;
+}
+
+std::string dumpCatalogJson(const mc2::fx::Catalog& catalog, bool full)
+{
+    std::string out = "{\"version\":" + std::to_string(catalog.version()) + ",\"effects\":[";
+    const auto numbers = [&](const auto& values) {
+        out += '[';
+        bool first = true;
+        for (const auto& value : values) { if (!first) out += ','; first = false; emitNum(out, value); }
+        out += ']';
+    };
+    const auto data = [&](const mc2::fx::CurveData& curve) {
+        static constexpr const char* types[] = {"constant", "linear", "spline", "complex"};
+        out += "{\"type\":\""; out += types[static_cast<unsigned>(curve.kind)]; out += '"';
+        if (curve.kind == mc2::fx::CurveKind::complex) {
+            out += ",\"keys\":[";
+            bool first = true;
+            for (const auto& key : curve.keys) {
+                if (!first) out += ','; first = false;
+                out += "{\"time\":"; emitNum(out, key.time);
+                out += ",\"slope\":"; emitNum(out, key.slope);
+                out += ",\"value\":"; emitNum(out, key.value); out += '}';
+            }
+            out += ']';
+        } else {
+            out += ",\"value\":"; emitNum(out, curve.coefficients[0]);
+            if (curve.kind != mc2::fx::CurveKind::constant) { out += ",\"slope\":"; emitNum(out, curve.coefficients[1]); }
+            if (curve.kind == mc2::fx::CurveKind::spline) {
+                out += ",\"b\":"; emitNum(out, curve.coefficients[2]);
+                out += ",\"a\":"; emitNum(out, curve.coefficients[3]);
+            }
+        }
+        out += '}';
+    };
+    const auto material = [&](const mc2::fx::Material& state) {
+        out += "{\"state\":"; numbers(state.words);
+        out += ",\"texture\":\"" + jsonEscape(state.texture.c_str()) + "\",\"instance\":";
+        out += std::to_string(state.texture_instance); out += '}';
+    };
+    for (size_t i = 0; i < catalog.effects().size(); ++i) {
+        if (i) out += ',';
+        const auto& effect = catalog.effects()[i];
+        out += "{\"index\":" + std::to_string(i) + ",\"effectID\":" + std::to_string(i);
+        out += ",\"classID\":" + std::to_string(effect.class_id) + ",\"typeName\":\"";
+        out += mc2::fx::class_name(effect.class_id);
+        out += "\",\"name\":\"" + jsonEscape(effect.name.c_str()) + '"';
+        if (full) {
+            out += ",\"decoded\":true,\"fields\":{";
+            for (size_t j = 0; j < effect.curves.size(); ++j) {
+                if (j) out += ',';
+                const auto& curve = effect.curves[j];
+                out += '"' + curve.name + "\":";
+                if (curve.seed) {
+                    out += "{\"seeded\":"; out += curve.seeded ? "true" : "false";
+                    out += ",\"age\":"; data(curve.age); out += ",\"seed\":"; data(*curve.seed); out += '}';
+                } else data(curve.age);
+            }
+            out += "},\"events\":[";
+            for (size_t j = 0; j < effect.events.size(); ++j) {
+                if (j) out += ',';
+                const auto& event = effect.events[j];
+                out += "{\"time\":"; emitNum(out, event.time);
+                out += ",\"flags\":" + std::to_string(event.flags) + ",\"effectID\":" + std::to_string(event.effect_id);
+                out += ",\"localToParent\":"; numbers(event.local_to_parent); out += '}';
+            }
+            out += "],\"material\":"; material(effect.material);
+            out += ",\"radius\":"; emitNum(out, effect.radius);
+            out += ",\"geometry\":[";
+            for (size_t j = 0; j < effect.geometry.size(); ++j) {
+                if (j) out += ',';
+                const auto& piece = effect.geometry[j];
+                out += "{\"position\":"; numbers(piece.position);
+                out += ",\"sphereCenter\":"; numbers(piece.sphere_center);
+                out += ",\"sphereRadius\":"; emitNum(out, piece.sphere_radius);
+                out += ",\"primitives\":[";
+                for (size_t k = 0; k < piece.shape.primitives.size(); ++k) {
+                    if (k) out += ',';
+                    const auto& mesh = piece.shape.primitives[k];
+                    out += "{\"classID\":" + std::to_string(mesh.class_id) + ",\"positions\":[";
+                    for (size_t n = 0; n < mesh.positions.size(); ++n) { if (n) out += ','; numbers(mesh.positions[n]); }
+                    out += "],\"indices\":"; numbers(mesh.indices);
+                    out += ",\"boundsMin\":"; numbers(mesh.bounds.minimum);
+                    out += ",\"boundsMax\":"; numbers(mesh.bounds.maximum);
+                    out += ",\"materials\":[";
+                    for (size_t n = 0; n < mesh.materials.size(); ++n) { if (n) out += ','; material(mesh.materials[n]); }
+                    out += "]}";
+                }
+                out += "]}";
+            }
+            out += ']';
+        }
+        out += '}';
+    }
+    out += "]}\n";
+    return out;
 }
 
 std::string dumpCatalogJson(mc2::particles::SpecLibrary* lib)

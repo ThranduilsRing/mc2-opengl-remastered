@@ -460,7 +460,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bool gotFeed;
     { ZoneScopedN("VKIsl.Terrain.GetFrameFeed"); mc2_hitch2::Scope hs("terrain.feed"); gotFeed = mc2_terrain_tier1_get_frame_feed(&feed); }
     if (!gotFeed) { setFallback("no_terrain_feed"); return 0; }
-    {   // RT scene: the terrain BLAS traces this frame's displaced surface (rebuilt only when the surface key moves; no-op without ray query)
+    if (mc2vk::rt::scene::demanded()) {   // sample the current surface only when a ray consumer needs it
         mc2vk::rt::scene::TerrainSource rt;
         rt.mapSide = feed.mapSide;
         rt.halfMap = feed.halfMap;
