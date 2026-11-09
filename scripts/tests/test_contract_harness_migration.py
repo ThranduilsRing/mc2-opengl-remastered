@@ -96,6 +96,8 @@ def test_only_accepts_a_single_doctest_case_and_wildcards(monkeypatch):
 def test_only_reports_each_phase(monkeypatch, capsys):
     record_runs(monkeypatch, [0, 0, 0])
     monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
+    # the tree lock reads the clock for its wait deadline; this test counts only the phase clock reads
+    monkeypatch.setattr(builder, "TreeLock", lambda *a: SimpleNamespace(acquire=lambda wait: True, close=lambda: None))
     clock = iter([0, 1, 3, 4, 7, 8, 13, 14])
     monkeypatch.setattr(builder.time, "monotonic", lambda: next(clock))
     assert builder.main(["--run", "--only", "icon_atlas_harness"]) == 0

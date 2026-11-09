@@ -23,6 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import console_child
 import configure_ninja as cn
+from ninja_build import TreeLock
 sys.path.insert(0, str(REPO_ROOT / "cmake"))
 import build_driver as bd
 
@@ -144,6 +145,7 @@ def cached_configure(src, bdir, extra=()):
 
 
 UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 min
+TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesses step) finishes well inside this
 
 
 def print_failed_cases(log_path):
@@ -206,6 +208,24 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
             ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
             bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
         ]
+    # One configure+build per tree: merge_gate overlaps the contracts board (audio_music_stream builds mc2_tests with --only)
+    # with the harnesses step, and two MSBuilds in one tree fail on the shared PDB (C1041, W138 laptop gate).
+    lock = TreeLock(str(bdir.parent), bdir.name)
+    if not lock.acquire(TREE_LOCK_WAIT_S):
+        return False, f"build failed:\nanother build held {bdir.name} for {TREE_LOCK_WAIT_S}s ({lock.holder()})"
+    try:
+        built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
+    finally:
+        lock.close()
+    if built:
+        return False, built
+    if not run:
+        return True, f"built in {time.monotonic() - started:.0f}s"
+    return _run_unit_exe(bdir, config, preset, only, asan, started)
+
+
+def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
+    """Run configure then build; None on success, else the "<stage> failed:" detail."""
     for stage, command in zip(("configure", "build"), commands):
         phase_started = time.monotonic()
         if cache or preset or log_dir is not None or jobs or keep_going:
@@ -222,14 +242,16 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
             lines = output.strip().splitlines()
             errors = [line for line in lines if " error " in line or "fatal error" in line]
             detail = "\n".join(errors + lines[-12:])
-            return False, f"{stage} failed:\n{detail}"
+            return f"{stage} failed:\n{detail}"
         if stage == "configure" and preset:
             try:
                 bd.verify_compiler(bdir, preset)
             except RuntimeError as exc:
-                return False, str(exc)
-    if not run:
-        return True, f"built in {time.monotonic() - started:.0f}s"
+                return str(exc)
+    return None
+
+
+def _run_unit_exe(bdir, config, preset, only, asan, started):
     suffix = ".exe" if os.name == "nt" else ""
     exe = bdir / config / ("mc2_tests" + suffix)
     if not exe.is_file():
