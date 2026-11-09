@@ -18,6 +18,12 @@ vec3 propAuthoredColor(SurfaceMaterial s, vec3 poolLight) {
     vec3 sh[9];
     for (int k=0; k<9; ++k) sh[k] = uFrame.iblSh[k].xyz;
     vec3 ibl = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(nStuff), sh)*uFrame.iblShStrength : vec3(0);
+    // Some stock night skies have almost no SH irradiance. Use the mission's
+    // Camera ambient/floor as the environment lower bound (also used by stock
+    // movers), replacing missing SH energy rather than stacking another fill.
+    vec3 missionAmbient = propDecodeColor(clamp(max(uFrame.ambientColor.rgb,
+        vec3(uFrame.ambientColor.w))/255.0,0.0,1.0)) * 3.14159265 * uFrame.nightDarkness;
+    ibl = max(ibl,missionAmbient);
     // No baked vertex-light seed, hemisphere or cutout light floor on top of SH.
     // AO occludes indirect only. Sun shadows and scene tonemap remain in the
     // common downstream passes, exactly once, with the existing GBuffer class.
@@ -32,6 +38,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, vec3 poolLight) {
     // retain environment reflection even when their diffuse response is zero.
     vec3 reflected = uFrame.iblShStrength > 0.0
         ? evalShL2(renderToMc2(reflect(-V,N)),sh)*uFrame.iblShStrength : vec3(0);
+    reflected = max(reflected,missionAmbient);
     color += mix(max(reflected,vec3(0)),max(ibl,vec3(0)),s.roughness*s.roughness)
            * F * s.ao / 3.14159265;
     LsvkPbrOut sun = computePBR(N,V,L,s.baseColor,s.metallic,s.roughness,
