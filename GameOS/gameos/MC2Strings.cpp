@@ -792,11 +792,7 @@ namespace
 
         char* buffer = buffers[index++ % 8];
 
-#ifdef _MSC_VER
-        _snprintf_s(buffer, 256, _TRUNCATE, "<missing-string:%s:%s>", prefix ? prefix : "unknown", value ? value : "");
-#else
         mc2::fmt::to_buf_n(buffer, 256, "<missing-string:{}:{}>", mc2::fmt::safe(prefix ? prefix : "unknown"), mc2::fmt::safe(value ? value : ""));
-#endif
 
         buffer[255] = 0;
         return buffer;
@@ -805,11 +801,7 @@ namespace
     const char* MissingMarkerNumber(mc2::czstring prefix, long value)
     {
         char number[64] = {0};
-#ifdef _MSC_VER
-        _snprintf_s(number, sizeof(number), _TRUNCATE, "%ld", value);
-#else
         mc2::fmt::to_buf(number, "{:d}", mc2::fmt::as_i32(value));
-#endif
         if ( false )
         {
             mc2::fmt::print_out("[strings] missing prefix='{}' id={:d}\n", mc2::fmt::safe(prefix ? prefix : "null"), mc2::fmt::as_i32(value));
@@ -1020,13 +1012,8 @@ namespace MC2Strings
     {
         char menu[32] = {0};
         char command[32] = {0};
-#ifdef _MSC_VER
-        _snprintf_s(menu, sizeof(menu), _TRUNCATE, "%u", menuId);
-        mc2::fmt::to_buf(command, "{:d}", mc2::fmt::as_u32(commandId));
-#else
         mc2::fmt::to_buf(menu, "{:d}", mc2::fmt::as_u32(menuId));
         mc2::fmt::to_buf(command, "{:d}", mc2::fmt::as_u32(commandId));
-#endif
         return GetMenuText(menu, command);
     }
 

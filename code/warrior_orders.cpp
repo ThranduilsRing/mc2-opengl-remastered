@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
 #include "tactic_table.h"
+#include "mc2format.h"
 #include <array>
 
 
@@ -530,13 +531,13 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, glm::vec3 locat
 		char debugStr[200];
 		GameSystemWindow->print("");
 		GameSystemWindow->print("-----------------------------------");
-		sprintf(debugStr, "%s:", name);
+		mc2::fmt::to_buf(debugStr, "{}:", mc2::fmt::safe(name));
 		GameSystemWindow->print(debugStr);
-		sprintf(debugStr, "Longest Range Weapon = %s (%.4f)",
+		mc2::fmt::to_buf(debugStr, "Longest Range Weapon = {} ({:.4f})",
 			MasterComponentList[(MoverPtr(BaseObjectPtr(vehicle)))->inventory[(MoverPtr(BaseObjectPtr(vehicle)))->longestRangeWeapon].masterID].getName(),
 			MasterComponentList[(MoverPtr(BaseObjectPtr(vehicle)))->inventory[(MoverPtr(BaseObjectPtr(vehicle)))->longestRangeWeapon].masterID].getWeaponLongRange());
 		GameSystemWindow->print(debugStr);
-		sprintf(debugStr, "Optimal Range = %.4f", (MoverPtr(BaseObjectPtr(vehicle)))->optimalRange);
+		mc2::fmt::to_buf(debugStr, "Optimal Range = {:.4f}", (MoverPtr(BaseObjectPtr(vehicle)))->optimalRange);
 		GameSystemWindow->print(debugStr);
 		GameSystemWindow->print("-----------------------------------");
 	}

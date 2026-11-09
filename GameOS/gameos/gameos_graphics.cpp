@@ -255,15 +255,15 @@ void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
     // BUILD — one-shot build metadata; fires immediately after init().
     {
         char buf[512];
-        snprintf(buf, sizeof(buf),
-            "{\"commit\":\"%s\","
-            "\"dirty\":%s,"
-            "\"branch\":\"%s\","
-            "\"build_time\":\"%s\","
-            "\"config\":\"%s\","
-            "\"platform\":\"windows\"}",
-            MC2_BUILD_GIT_SHA, MC2_BUILD_GIT_DIRTY ? "true" : "false",
-            MC2_BUILD_GIT_BRANCH, MC2_BUILD_TIME_ISO, kDiagBuildConfig);
+        mc2::fmt::to_buf(buf,
+            "{{\"commit\":\"{}\","
+            "\"dirty\":{},"
+            "\"branch\":\"{}\","
+            "\"build_time\":\"{}\","
+            "\"config\":\"{}\","
+            "\"platform\":\"windows\"}}",
+            mc2::fmt::safe(MC2_BUILD_GIT_SHA), MC2_BUILD_GIT_DIRTY ? "true" : "false",
+            mc2::fmt::safe(MC2_BUILD_GIT_BRANCH), mc2::fmt::safe(MC2_BUILD_TIME_ISO), mc2::fmt::safe(kDiagBuildConfig));
         mc2_diag::writeEvent("BUILD", 1, 0, buf);
     }
 

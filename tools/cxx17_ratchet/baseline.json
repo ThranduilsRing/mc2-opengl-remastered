@@ -59,7 +59,7 @@
    "LG10": 7,
    "LG11": 35,
    "LG12a": 29,
-   "LG12b": 24,
+   "LG12b": 14,
    "LG13": 19,
    "LG14": 41,
    "LG15": 0,
@@ -190,16 +190,16 @@
    "LG03": 307,
    "LG04": 12,
    "LG05": 100,
-   "LG06": 55,
+   "LG06": 50,
    "LG07": 2,
    "LG08": 1,
    "LG09": 2,
-   "LG10": 8,
+   "LG10": 7,
    "LG11": 56,
    "LG12a": 36,
-   "LG12b": 23,
+   "LG12b": 6,
    "LG13": 15,
-   "LG14": 36,
+   "LG14": 35,
    "LG15": 0,
    "LG16": 9,
    "LG17": 64,
@@ -300,7 +300,7 @@
    "LG05": 2,
    "LG06": 7,
    "LG11": 12,
-   "LG12b": 5
+   "LG12b": 2
   },
   "GameOS/gameos/MC2Strings.h": {},
   "GameOS/gameos/alloc_stats_proof.inc": {},
@@ -363,7 +363,6 @@
   "GameOS/gameos/gameos_graphics.cpp": {
    "LG03": 5,
    "LG06": 2,
-   "LG12b": 1,
    "LG17": 1,
    "LG18": 2
   },
@@ -434,7 +433,6 @@
   "GameOS/gameos/gameosmain.cpp": {
    "LG04": 1,
    "LG12a": 5,
-   "LG12b": 6,
    "LG20": 1
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
@@ -713,6 +711,7 @@
   "GameOS/gameos/static_caster_set.h": {},
   "GameOS/gameos/static_prop_dispatch_meta.h": {},
   "GameOS/gameos/static_prop_visible_set.h": {},
+  "GameOS/gameos/terrain_diagonal.h": {},
   "GameOS/gameos/terrain_field_store.cpp": {
    "LG17": 1
   },
@@ -854,6 +853,9 @@
   "GameOS/gameos/vk_rt_descriptors.h": {
    "LG17": 1
   },
+  "GameOS/gameos/vk_rt_scene.cpp": {},
+  "GameOS/gameos/vk_rt_scene.h": {},
+  "GameOS/gameos/vk_rt_scene_math.cpp": {},
   "GameOS/gameos/vk_rt_selftest.cpp": {},
   "GameOS/gameos/vk_rt_selftest.h": {},
   "GameOS/gameos/vk_scene_readback.cpp": {
@@ -1159,6 +1161,7 @@
   },
   "RenderCore/PropMaterialGpu.h": {},
   "RenderCore/PropMaterialRows.h": {},
+  "RenderCore/PropRecordCache.h": {},
   "RenderCore/RenderDebugView.cpp": {},
   "RenderCore/RenderDebugView.h": {},
   "RenderCore/RenderObjectDesc.h": {},
@@ -1562,6 +1565,7 @@
    "LG04": 1
   },
   "code/hardpoint.h": {},
+  "code/hover_name.h": {},
   "code/hud_imgui_font.cpp": {
    "LG06": 2
   },
@@ -2005,6 +2009,7 @@
   "code/objective_flags.h": {},
   "code/objective_text.cpp": {},
   "code/objective_text.h": {},
+  "code/objectives_panel.h": {},
   "code/objmgr.cpp": {
    "LG03": 10,
    "LG05": 2,
@@ -2397,8 +2402,7 @@
   },
   "mclib/camera_pick_hash.h": {},
   "mclib/camera_project.cpp": {
-   "LG05": 1,
-   "LG10": 1
+   "LG05": 1
   },
   "mclib/camera_update.cpp": {},
   "mclib/celement.cpp": {},
@@ -2430,6 +2434,7 @@
    "LG06": 1
   },
   "mclib/cone_glow.h": {},
+  "mclib/contact_visibility.h": {},
   "mclib/content_error.cpp": {},
   "mclib/content_error.h": {},
   "mclib/content_ir.cpp": {},
@@ -2515,6 +2520,22 @@
    "LG11": 3
   },
   "mclib/fst_hash.h": {},
+  "mclib/fx/fx_catalog.cpp": {},
+  "mclib/fx/fx_catalog.h": {},
+  "mclib/fx/fx_curve.cpp": {},
+  "mclib/fx/fx_curve.h": {},
+  "mclib/fx/fx_emitters.cpp": {},
+  "mclib/fx/fx_emitters.h": {},
+  "mclib/fx/fx_format.cpp": {},
+  "mclib/fx/fx_format.h": {},
+  "mclib/fx/fx_geometry.cpp": {},
+  "mclib/fx/fx_geometry.h": {},
+  "mclib/fx/fx_mesh_data.cpp": {},
+  "mclib/fx/fx_mesh_data.h": {},
+  "mclib/fx/fx_runtime.cpp": {},
+  "mclib/fx/fx_runtime.h": {},
+  "mclib/fx/fx_tubes.cpp": {},
+  "mclib/fx/fx_tubes.h": {},
   "mclib/fx_def_registry.cpp": {
    "LG05": 2,
    "LG11": 1
@@ -2689,7 +2710,7 @@
   "mclib/mech_anim_runtime.h": {},
   "mclib/mech_clip_state.h": {},
   "mclib/mech_death_policy.h": {
-   "LG14": 1
+   "LG14": 0
   },
   "mclib/mech_grounding.h": {},
   "mclib/mech_skel_import.cpp": {},
@@ -3158,6 +3179,7 @@
   },
   "mclib/terrain_lod_rules.h": {},
   "mclib/terrain_material.h": {},
+  "mclib/terrain_ray_pick.h": {},
   "mclib/terrain_raycast.cpp": {},
   "mclib/terrain_render.cpp": {},
   "mclib/terrain_runtime.cpp": {},
@@ -3177,7 +3199,6 @@
   },
   "mclib/terrtxm2_bake.cpp": {},
   "mclib/terrtxm2_internal.h": {
-   "LG12b": 2,
    "LG17": 1
   },
   "mclib/terrtxm2_load.cpp": {
@@ -3233,13 +3254,12 @@
   "mclib/vertex.h": {},
   "mclib/vfs.cpp": {
    "LG05": 2,
-   "LG06": 21,
+   "LG06": 17,
    "LG10": 2,
-   "LG11": 32,
-   "LG12b": 15
+   "LG11": 32
   },
   "mclib/vfs.h": {
-   "LG06": 3
+   "LG06": 2
   },
   "mclib/vfx.h": {
    "LG13": 2
@@ -3292,7 +3312,7 @@
    "LG20": 1
   }
  },
- "head": "8ab1d9855",
+ "head": "58ac2d21d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

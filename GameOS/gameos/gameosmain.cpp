@@ -508,8 +508,8 @@ static void mc2resFrameAudit(int viewport_w, int viewport_h)
     if (gos_GetHudResClampEnabled() &&
         (Environment.screenWidth != 800 || Environment.screenHeight != 600))
     {
-        snprintf(resDetail, sizeof(resDetail),
-                 "screen=%dx%d expected=800x600 (clamp enabled)",
+        mc2::fmt::to_buf(resDetail,
+                 "screen={}x{} expected=800x600 (clamp enabled)",
                  Environment.screenWidth, Environment.screenHeight);
         mc2res::violation("hud_clamp", resDetail);
     }
@@ -517,8 +517,8 @@ static void mc2resFrameAudit(int viewport_w, int viewport_h)
     // (b) drawable validity + freshness (3-frame grace).
     if (viewport_w <= 0 || viewport_h <= 0)
     {
-        snprintf(resDetail, sizeof(resDetail),
-                 "drawable=%dx%d (must be positive)", viewport_w, viewport_h);
+        mc2::fmt::to_buf(resDetail,
+                 "drawable={}x{} (must be positive)", viewport_w, viewport_h);
         mc2res::violation("drawable_nonpositive", resDetail);
     }
     else
@@ -531,8 +531,8 @@ static void mc2resFrameAudit(int viewport_w, int viewport_h)
             {
                 if (++s_staleFrames > 3)
                 {
-                    snprintf(resDetail, sizeof(resDetail),
-                             "cached=%dx%d probe=%dx%d for %d frames",
+                    mc2::fmt::to_buf(resDetail,
+                             "cached={}x{} probe={}x{} for {} frames",
                              viewport_w, viewport_h, probeW, probeH,
                              s_staleFrames);
                     s_staleFrames = 0;
@@ -560,8 +560,8 @@ static void mc2resFrameAudit(int viewport_w, int viewport_h)
                 SDL_DisplayMode dm;
                 if (SDL_GetDesktopDisplayMode(0, &dm) == 0)
                     desktopSmaller = (dm.w < s_reqW || dm.h < s_reqH);
-                snprintf(resDetail, sizeof(resDetail),
-                         "drawable=%dx%d requested=%dx%d (MC2_WINDOWED)",
+                mc2::fmt::to_buf(resDetail,
+                         "drawable={}x{} requested={}x{} (MC2_WINDOWED)",
                          viewport_w, viewport_h, s_reqW, s_reqH);
                 if (desktopSmaller)
                     mc2res::note("windowed_size_desktop_clamp", resDetail);
@@ -806,11 +806,11 @@ extern "C" void mission_phase_report()
     double prev_ms = 0.0;
     const double total_ms = (g_loadPhaseCount > 0) ? g_loadPhaseSamples[g_loadPhaseCount - 1].t_ms : 0.0;
 
-    off += snprintf(buf + off, sizeof(buf) - off, "[LOAD_PHASES v1] total=%.1fms", total_ms);
+    off += mc2::fmt::to_buf_n(buf + off, sizeof(buf) - off, "[LOAD_PHASES v1] total={:.1f}ms", total_ms);
     for (int i = 0; i < g_loadPhaseCount && off < static_cast<int>(sizeof(buf)); i++) {
         const double delta_ms = g_loadPhaseSamples[i].t_ms - prev_ms;
-        off += snprintf(buf + off, sizeof(buf) - off, " phase%d=%s:%.1fms",
-                         i + 1, g_loadPhaseSamples[i].name, delta_ms);
+        off += mc2::fmt::to_buf_n(buf + off, sizeof(buf) - off, " phase{}={}:{:.1f}ms",
+                         i + 1, mc2::fmt::safe(g_loadPhaseSamples[i].name), delta_ms);
         prev_ms = g_loadPhaseSamples[i].t_ms;
     }
     // QUIET-DEFAULT-BUILD-1: the [LOAD_PHASES v1] line is assembled across

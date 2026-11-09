@@ -93,7 +93,7 @@ static void JsonEscape(const char* src, char* buf, size_t bufSize) {
         else if (c < 0x20) {
             // write \uXXXX
             char esc[8];
-            _snprintf(esc, sizeof(esc), "\\u%04x", static_cast<unsigned>(c));
+            mc2::fmt::to_buf(esc, "\\u{:04x}", static_cast<unsigned>(c));
             for (int i = 0; esc[i] && out + 1 < bufSize; ++i)
                 buf[out++] = esc[i];
         } else {
@@ -198,7 +198,7 @@ static void IndexModData(
     int* skippedDotCount = nullptr
 ) {
     char pattern[MAX_PATH];
-    _snprintf(pattern, sizeof(pattern), "%s*", dataDir);
+    mc2::fmt::to_buf(pattern, "{}*", mc2::fmt::safe(dataDir));
     pattern[sizeof(pattern) - 1] = '\0';
 
     WIN32_FIND_DATAA fd;
@@ -221,15 +221,15 @@ static void IndexModData(
         }
 
         char fullChild[MAX_PATH], relChild[MAX_PATH];
-        _snprintf(fullChild, sizeof(fullChild), "%s%s", dataDir, fd.cFileName);
+        mc2::fmt::to_buf(fullChild, "{}{}", mc2::fmt::safe(dataDir), mc2::fmt::safe(fd.cFileName));
         fullChild[sizeof(fullChild) - 1] = '\0';
-        _snprintf(relChild, sizeof(relChild), "%s%s", relBase, fd.cFileName);
+        mc2::fmt::to_buf(relChild, "{}{}", mc2::fmt::safe(relBase), mc2::fmt::safe(fd.cFileName));
         relChild[sizeof(relChild) - 1] = '\0';
 
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             char fullSub[MAX_PATH], relSub[MAX_PATH];
-            _snprintf(fullSub, sizeof(fullSub), "%s/", fullChild);
-            _snprintf(relSub,  sizeof(relSub),  "%s/", relChild);
+            mc2::fmt::to_buf(fullSub, "{}/", mc2::fmt::safe(fullChild));
+            mc2::fmt::to_buf(relSub, "{}/", mc2::fmt::safe(relChild));
             fullSub[sizeof(fullSub) - 1] = '\0';
             relSub[sizeof(relSub) - 1]   = '\0';
             IndexModData(idx, shadowed, fullSub, relSub, modId, skippedDotCount);
@@ -296,7 +296,7 @@ static void ComputeModDataSignature(const char* dataDir, ModCacheSignature* sig)
     }
 
     char pat[MAX_PATH];
-    _snprintf(pat, sizeof(pat), "%s*", dataDir);
+    mc2::fmt::to_buf(pat, "{}*", mc2::fmt::safe(dataDir));
     pat[sizeof(pat)-1] = '\0';
     WIN32_FIND_DATAA fd;
     HANDLE h = FindFirstFileA(pat, &fd);
@@ -309,7 +309,7 @@ static void ComputeModDataSignature(const char* dataDir, ModCacheSignature* sig)
         if (t.QuadPart > sig->maxMtime) sig->maxMtime = t.QuadPart;
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             char sub[MAX_PATH];
-            _snprintf(sub, sizeof(sub), "%s%s/", dataDir, fd.cFileName);
+            mc2::fmt::to_buf(sub, "{}{}/", mc2::fmt::safe(dataDir), mc2::fmt::safe(fd.cFileName));
             sub[sizeof(sub)-1] = '\0';
             ComputeModDataSignature(sub, sig);
         } else {
@@ -445,7 +445,7 @@ static bool TryLoadModCache(
     }
 
     char cachePath[MAX_PATH];
-    _snprintf(cachePath, sizeof(cachePath), "%s%s/.modindex-cache", absModRoot, modId);
+    mc2::fmt::to_buf(cachePath, "{}{}/.modindex-cache", mc2::fmt::safe(absModRoot), mc2::fmt::safe(modId));
     cachePath[sizeof(cachePath)-1] = '\0';
 
     // MOD-INDEX-CACHE-MTIME-1: recompute the tree signature (one recursive
@@ -515,7 +515,7 @@ static void IndexModDataCached(
     std::vector<std::pair<std::string,ModFileEntry>> fresh(layer.begin(), layer.end());
 
     char cachePath[MAX_PATH];
-    _snprintf(cachePath, sizeof(cachePath), "%s%s/.modindex-cache", absModRoot, modId);
+    mc2::fmt::to_buf(cachePath, "{}{}/.modindex-cache", mc2::fmt::safe(absModRoot), mc2::fmt::safe(modId));
     cachePath[sizeof(cachePath)-1] = '\0';
     // Signature is taken AFTER the index walk so it reflects the exact tree
     // state the entries were built from (the cache file itself is dot-named ->
@@ -535,7 +535,7 @@ static void IndexModDataCached(
 // Minimal JSON string field extractor — no full parser needed for mod.json.
 static std::string JsonGetString(const char* json, const char* key) {
     char needle[128];
-    _snprintf(needle, sizeof(needle), "\"%s\"", key);
+    mc2::fmt::to_buf(needle, "\"{}\"", mc2::fmt::safe(key));
     needle[sizeof(needle)-1] = '\0';
     const char* p = strstr(json, needle);
     if (!p) return {};
@@ -551,7 +551,7 @@ static std::string JsonGetString(const char* json, const char* key) {
 // Extract string array from "key": ["a","b",...].
 static std::vector<std::string> JsonGetStringArray(const char* json, const char* key) {
     char needle[128];
-    _snprintf(needle, sizeof(needle), "\"%s\"", key);
+    mc2::fmt::to_buf(needle, "\"{}\"", mc2::fmt::safe(key));
     needle[sizeof(needle)-1] = '\0';
     const char* p = strstr(json, needle);
     if (!p) return {};
@@ -896,7 +896,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
 
     // Read active mod's mod.json for dependencies.
     char jsonPath[MAX_PATH];
-    _snprintf(jsonPath, sizeof(jsonPath), "%s%s/mod.json", absRoot, envMod);
+    mc2::fmt::to_buf(jsonPath, "{}{}/mod.json", mc2::fmt::safe(absRoot), mc2::fmt::safe(envMod));
     jsonPath[sizeof(jsonPath)-1] = '\0';
 
     std::string modId, modName;
@@ -981,7 +981,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
 
     // Index active mod first (highest priority). Skipped entirely in stock mode.
     char activeDataDir[MAX_PATH];
-    _snprintf(activeDataDir, sizeof(activeDataDir), "%s%s/data/", absRoot, envMod);
+    mc2::fmt::to_buf(activeDataDir, "{}{}/data/", mc2::fmt::safe(absRoot), mc2::fmt::safe(envMod));
     activeDataDir[sizeof(activeDataDir)-1] = '\0';
     if (!stockMode && GetFileAttributesA(activeDataDir) != INVALID_FILE_ATTRIBUTES) {
         crashbundle_mod(modId.c_str(), 0);
@@ -996,7 +996,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     for (size_t i = 0; i < deps.size(); i++) {
         const std::string& dep = deps[i];
         char depDataDir[MAX_PATH];
-        _snprintf(depDataDir, sizeof(depDataDir), "%s%s/data/", absRoot, dep.c_str());
+        mc2::fmt::to_buf(depDataDir, "{}{}/data/", mc2::fmt::safe(absRoot), dep);
         depDataDir[sizeof(depDataDir)-1] = '\0';
         if (GetFileAttributesA(depDataDir) == INVALID_FILE_ATTRIBUTES) {
             mc2::fmt::print_out("[mod] dep '{}' not found at {}, skipping\n", dep.c_str(), mc2::fmt::safe(depDataDir));
