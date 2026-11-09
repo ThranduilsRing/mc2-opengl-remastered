@@ -404,7 +404,7 @@ def test_only_game_rows_take_the_lock_cpu_rows_run_first_under_timeout():
     assert "build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z \"$LOCKED\" ] && { take_lock" in r      # lock lazily, game rows only
     # r7 finding 3: the headless determinism/saveload rows (no window, no device) run on the build cores and never take the GPU lock
     assert 'grh() { nice -n 19 taskset -c "$BCPUS" xvfb-run' in r
-    assert "$RUN timeout -k 30 $TMO bash -c" in r and "unit) TMO=1200" in r and "smoke*|capture:*) TMO=600" in r and "*) TMO=1800" in r
+    assert "$RUN timeout -k 30 $TMO bash -c" in r and "unit) TMO=1200" in r and "smoke*|capture:*|screen:*) TMO=600" in r and "*) TMO=1800" in r
     assert "sh:*|cpu:*)  cmd=" in r and "gpu:*)" in r
     assert "(SECONDS - LW0)" in r   # the 30 min lock wait is not eaten by the build
 
