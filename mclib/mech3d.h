@@ -514,6 +514,18 @@ class Mech3DAppearance: public ObjectAppearance
 		std::vector<long> simAnchorNodeIndices_;
 		std::uint64_t simNodeShapeId_ = 0;
 		std::uint64_t simNodeRevision_ = 0;
+		// Every input of the last published simulation pose; an equal key reuses simPose (see updateSimPose).
+		struct SimPoseKey {
+			std::uint64_t shapeId = 0, bindRevision = 0;
+			const void* type = nullptr;
+			long gesture = 0, status = 0;
+			float frame = 0.0f, torso = 0.0f, rotation = 0.0f;
+			glm::vec3 position{};
+			bool leftArmOff = false, rightArmOff = false;
+			bool operator==(const SimPoseKey&) const = default;
+		};
+		SimPoseKey simPoseKey_;
+		bool simPoseKeyValid_ = false;
 		bool						buildingSimPose_ = false;
 		// The shape, node indices and pose inputs the node-position getters work from: the sim copy while updateSimPose builds
 		// the palette, the draw copy otherwise. lift is the visual-height delta baked into that shape's transform (draw copy
