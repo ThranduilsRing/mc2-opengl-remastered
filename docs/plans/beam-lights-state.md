@@ -16,6 +16,11 @@ lifetime; shared pool gets up to 32 modest beam samples, 1..6 along each segment
 endpoint impact. Non-beam energy/PPC uses its moving bolt segment. Existing world
 lights retain priority; beam lights use remaining capacity, no shader/ABI changes.
 
+Integration correction: terrain geometry packs before projectile extraction.
+Append beam samples at extractRenderFrame after extractRenderList, then refresh
+the shared pool/grid snapshot before the frame is frozen. Packing from the
+earlier terrain stage produced a pixel-identical A/B and was rejected.
+
 Next: targeted doctests, box build/unit/smoke + night VK baseline/changed capture
 using existing force-fire fixture, inspect montage; one final Windows Ninja build
 and lint. Commit locally, record exact receipts and any missing proof. No perf claim.

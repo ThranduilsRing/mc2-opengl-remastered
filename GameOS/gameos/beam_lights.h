@@ -68,4 +68,7 @@ public:
         }
     }
 };
+// Main-thread extract hook: the terrain vertex pack precedes projectile packets.
+// Append only after those packets exist, before the render frame is frozen.
+void appendFrameLights();
 } // namespace mc2::beam_lights
