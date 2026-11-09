@@ -257,6 +257,36 @@ def verified_seed(src, use_cache=False):
     return manifest
 
 
+def refresh_link_receipts(src, shared):
+    """Re-stamp seed receipts after our own hard links bumped NTFS ChangeTime.
+
+    Linking changes only the link count/ChangeTime, so every later install would
+    re-hash the whole seed (about 170 s). Accept the new stamp only when the
+    verified entry still matches device, inode, size and mtime; any other drift
+    keeps the old stamp and forces a re-hash.
+    """
+    wanted = {r.casefold(): v['stamp'] for r, v in shared.items()}
+    for name in ('.lane-seed-verification.json', '.lane-kit-verification.json'):
+        path = src / name
+        try:
+            cached = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        changed = False
+        for rel, entry in cached.items():
+            new = wanted.get(rel)
+            if new and entry.get('stamp', [])[:4] == new[:4] and entry['stamp'] != new:
+                entry['stamp'] = new
+                changed = True
+        if changed:
+            pending = path.with_suffix(f'.{os.getpid()}.tmp')
+            try:
+                pending.write_text(json.dumps(cached), encoding='utf-8')
+                pending.replace(path)
+            finally:
+                pending.unlink(missing_ok=True)
+
+
 def content_stamp(path):
     """Include NTFS ChangeTime: Windows st_ctime is the creation time.
 
@@ -910,6 +940,7 @@ def main(argv=None) -> int:
         shared = {r: {'stamp': content_stamp(dst / r), 'sha256': selection[r.casefold()]['sha256']}
                   for r, _ in to_link if r.casefold() in selection}
         (dst / '.lane-seed.json').write_text(json.dumps({'shared': shared}), encoding='utf-8')
+        refresh_link_receipts(src, shared)
     out(f'timing manifest + lane receipt write: {time.perf_counter() - writing:.3f}s')
     checking = time.perf_counter()
     out(f"built: {linked} linked, {copied} copied")

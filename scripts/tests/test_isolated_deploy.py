@@ -426,3 +426,25 @@ def test_lane_payload_deploy_preserves_seed_and_other_install(tmp_path, monkeypa
     for rel in rels + [dp.MANIFEST_NAME]:
         assert (seed / rel).read_bytes() == (other / rel).read_bytes() == b'original'
         assert not (lane / rel).samefile(seed / rel)
+
+
+def test_link_creation_does_not_invalidate_seed_receipts(tmp_path, monkeypatch):
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    iso.verified_seed(tmp_path, use_cache=True)
+    victim = tmp_path / 'runtime.dll'
+    other = tmp_path / 'link-of-runtime.dll'
+    os.link(victim, other)  # bumps NTFS ChangeTime / link count like an install
+    shared = {'runtime.dll': {'stamp': iso.content_stamp(other)}}
+    iso.refresh_link_receipts(tmp_path, shared)
+    calls = []
+    sha = iso.file_sha
+    monkeypatch.setattr(iso, 'file_sha', lambda p: (calls.append(p), sha(p))[1])
+    iso.verified_seed(tmp_path, use_cache=True)
+    assert victim not in calls
+    # Same-size corruption with restored mtime is still caught after a refresh.
+    stat = victim.stat()
+    victim.write_bytes(b'corrupt')
+    os.utime(victim, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    with pytest.raises(SystemExit):
+        iso.verified_seed(tmp_path, use_cache=True)
