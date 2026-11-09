@@ -23,5 +23,12 @@ unit source-slice seam; count callsign/message plays with/without opening static
 and 90 busy device updates. This isolates a real duplication bug; matching the
 owner's specific heard cue and all mc2_01 startup cues remains unproven.
 
-Next: box build/unit/smoke,
-Windows Ninja compile, covering contracts and final lint; record receipts here.
+First proof at e1c2a4d27: box engine build, smoke-lite and lint passed. Unit
+compile found two seam mistakes (handle must be a pointer; CAPTURE takes one
+argument), corrected in the next commit. Covering sim_include_firewall row
+passed (114.51 s, board wall 194.78 s: tool slowness). Boundaries is nightly and
+was not selected by the initial non-nightly command.
+
+Next: box build/unit/smoke/lint at corrected tip; Windows compile completion
+and final identity; targeted doctests and boundaries row; final receipts go to
+E:/mc2-archive-2026-10/proofs/mission-audio-twice/STATE.md.

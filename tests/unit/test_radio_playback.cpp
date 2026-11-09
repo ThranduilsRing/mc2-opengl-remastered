@@ -13,7 +13,7 @@ float frameLength = 1.0f / 30;
 enum { gosAudio_Stop, gosAudio_PlayOnce };
 int channelMode = gosAudio_Stop;
 int gosAudio_GetChannelPlayMode(int) { return channelMode; }
-void gosAudio_DestroyResource(int* handle) { *handle = 0; }
+void gosAudio_DestroyResource(void** handle) { *handle = nullptr; }
 struct Pilot {
     void setMessagePlaying() {}
     void clearMessagePlaying() {}
@@ -32,7 +32,7 @@ struct GameSoundSystem : SoundSystem {
     std::unique_ptr<RadioData> currentMessage, queued;
     unsigned messagesInQueue = 0, currentFragment = 0;
     bool playingNoise = false, wholeMsgDone = true;
-    int radioHandle = 0;
+    void* radioHandle = nullptr;
     float generalAlarmTimer = 0;
     std::vector<int> plays;
     bool playClip(const RadioClip& clip) {
@@ -58,7 +58,8 @@ struct GameSoundSystem : SoundSystem {
 TEST_CASE("MissionAudio/radio cues play once with and without opening static and a slow load") {
     for (bool openingStatic : {false, true}) {
         for (int busyFrames : {0, 90}) {
-            CAPTURE(openingStatic, busyFrames);
+            CAPTURE(openingStatic);
+            CAPTURE(busyFrames);
             channelMode = gosAudio_Stop;
             GameSoundSystem sound;
             sound.queued = std::make_unique<RadioData>();
