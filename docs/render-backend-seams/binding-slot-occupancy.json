@@ -1,12 +1,14 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 280,
+    "glsl_blocks_with_binding": 282,
     "native_pairs": 7,
     "fails": 0,
-    "warns": 0
+    "warns": 1
   },
   "fails": [],
-  "warns": [],
+  "warns": [
+    "mode-alternate (intentional): shaders/vulkan/vfx_particle.frag set 1 binding 0 = 'uPages' / 'uAtlas' on exclusive #if branches"
+  ],
   "occupancy": {
     "set0:binding0": [
       {
@@ -2734,12 +2736,26 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.frag",
-        "line": 13,
+        "line": 15,
+        "role": "uPages",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/vfx_particle.frag",
+        "branch": {
+          "1": 0
+        }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.frag",
+        "line": 30,
         "role": "uAtlas",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/vfx_particle.frag",
-        "branch": {}
+        "branch": {
+          "1": 1
+        }
       },
       {
         "side": "glsl",
@@ -2762,6 +2778,20 @@
         "branch": {
           "1": 0,
           "3": 0
+        }
+      }
+    ],
+    "set1:binding1": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_particle.vert",
+        "line": 58,
+        "role": "Groups",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/vfx_particle.vert",
+        "branch": {
+          "2": 0
         }
       }
     ],

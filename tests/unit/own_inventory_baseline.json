@@ -1335,24 +1335,6 @@
     "Mission"
    ]
   },
-  "Gate": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/gate.cpp": {
-     "new": 1
-    },
-    "code/objmgr.cpp": {
-     "new": 1
-    },
-    "code/objmgr_io.cpp": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
   "GenericAppearance": {
    "delete": 1,
    "delete_array": 0,
