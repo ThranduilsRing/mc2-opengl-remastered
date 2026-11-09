@@ -39,8 +39,9 @@ float moverVisibility(vec3 worldPos, vec3 N) {
         if (lo > hi || pc.z * 255.0 < lo || pc.z * 255.0 > hi) return 1.0;
     }
     float bias = 2.0 / 65535.0 + 0.25 * moverFrame.params.x * moverFrame.params.y;
-    // Match the bake's 1.5 degree sun, short-blocker lift and linear 480 wu
-    // fade. Raw depth shares the existing image view and descriptor slot.
+    // Contact hardening without the bake's short-blocker lift: the penumbra is
+    // meanD * tanT, so mech-height casters stay crisp away from the feet.
+    // Raw depth shares the existing image view and descriptor slot.
     float tanT = moverFrame.sun.w;
     float worldToUV = moverFrame.params.w / moverFrame.params.x;
     // Movers need a dense local blocker search. Spacing the taps for a 480-wu
@@ -54,9 +55,8 @@ float moverVisibility(vec3 worldPos, vec3 N) {
             // Mask the gathered vector instead of looping over dynamic components.
             // Keep the scalar accumulation order so blocker depth and count agree.
             vec4 d = (vec4(pc.z) - depths) / moverFrame.params.y;
-            vec4 lift = 1.0 + 2.0 * (1.0 - clamp(d / 200.0, 0.0, 1.0));
             bvec4 near = lessThan(depths, vec4(pc.z - bias));
-            bvec4 reach = greaterThanEqual(d * tanT * lift, vec4(length(offset) - moverFrame.params.x));
+            bvec4 reach = greaterThanEqual(d * tanT, vec4(length(offset) - moverFrame.params.x));
             bvec4 accept = bvec4(near.x && reach.x, near.y && reach.y, near.z && reach.z, near.w && reach.w);
             vec4 ds = mix(vec4(0.0), d, accept);
             vec4 ns = mix(vec4(0.0), vec4(1.0), accept);
@@ -66,8 +66,7 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     }
     if (found == 0.0) return 1.0;
     float meanD = sumD / found;
-    float lift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
-    float radius = max(meanD * tanT * lift, max(1.5 * moverFrame.params.x, 1.0));
+    float radius = max(meanD * tanT, max(1.5 * moverFrame.params.x, 1.0));
     int count = min(moverFrame.flags.z == 0 ? 12 : 32, int(moverFrame.light.y));
     // World-anchored rotation breaks up repeated edge bands without a temporal
     // sequence or a camera-dependent pattern.
