@@ -109,12 +109,47 @@ def test_promote_refuses_a_partial_that_skipped_a_required_nightly_stage(tmp_pat
 
 def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, capsys):
     monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge w128: x\nmerge follow-up w127: y\nunrelated")
     assert nightly_gate.current_window() == 128
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 0
     assert "--window 128" in capsys.readouterr().out
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 2
+
+
+def test_window_regex_reads_uppercase_and_lettered_subjects(monkeypatch):
+    """nifty writes 'merge fix W137:' and 'W138a' (meta-1417 N1: the lowercase-only regex dropped mods-slim every night)."""
+    monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge fix W137: regen\nmerge W138a: lane\nfixw999 not a window")
+    assert nightly_gate.current_window() == 138
+
+
+def test_nightly_passes_the_previous_green_window_as_base(monkeypatch, capsys, tmp_path):
+    """merge_gate exits in 1 s without --base on the published nifty (meta-1417 N1). Every flag of the built argv exists in
+    merge_gate's parser."""
+    import re
+    base = "b26fc9bfe" + "0" * 31
+    tags = ["nifty-green-136-b26fc9bfe\nnifty-green-137-1d968ffd3\nnifty-green-x-junk"]
+
+    def fake_git(*a):
+        if a[:2] == ("tag", "-l"):
+            return tags[0]
+        if a[0] == "rev-parse":
+            return base if a[-1] == "nifty-green-136-b26fc9bfe^{commit}" else ""
+        return "merge fix W137: x"
+    monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
+    monkeypatch.setattr(nightly_gate, "PROOF_ROOT", str(tmp_path))
+    monkeypatch.setattr(nightly_gate, "git", fake_git)
+    assert nightly_gate.nightly_base() == base
+    assert nightly_gate.main(["--dry-run"]) == 0
+    argv = capsys.readouterr().out.split("merge_gate.py", 1)[1].split()
+    assert argv[argv.index("--base") + 1] == base and argv[argv.index("--window") + 1] == "137"
+    with open(os.path.join(ROOT, "scripts", "merge_gate.py"), encoding="utf-8") as fh:
+        declared = set(re.findall(r'add_argument\("(--[a-z0-9-]+)"', fh.read()))
+    assert {a for a in argv if a.startswith("--")} <= declared
+    tags[0] = "nifty-green-137-1d968ffd3"
+    assert nightly_gate.nightly_base() is None
+    assert nightly_gate.main(["--dry-run"]) == 2   # one green tag: no previous window to compare against
 
 
 def _stage_verdict(stages, bad=(), verdict="PARTIAL"):

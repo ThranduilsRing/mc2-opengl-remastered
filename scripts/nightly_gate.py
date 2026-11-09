@@ -39,10 +39,27 @@ def refusal():
 
 
 def current_window():
-    """The newest merge window number named in nifty's recent subjects ('merge ... w128'), or None."""
+    """The newest merge window number named in nifty's recent subjects ('merge ... w128', 'merge fix W137:', 'W138a'), or None."""
     import re
-    nums = [int(m) for m in re.findall(r"\bw(\d{2,4})\b", git("log", "-40", "--format=%s"))]
+    nums = [int(m) for m in re.findall(r"\bw(\d{2,4})[a-z]?\b", git("log", "-40", "--format=%s"), re.IGNORECASE)]
     return max(nums) if nums else None
+
+
+def nightly_base():
+    """merge_gate's --base: the previous published window (second-newest nifty-green-<W>-<sha> tag on HEAD's history).
+
+    merge_gate refuses without a comparison base unless build64-ninja/merge-window.json names HEAD (it names the last
+    stage window, so it never does for the published nifty). The previous window's tip makes the diff span the whole
+    newest window, so its runtime rows are not skipped as unaffected. None when fewer than two tags are reachable."""
+    import re
+    tags = {}
+    for name in git("tag", "-l", "nifty-green-*", "--merged", "HEAD").split():
+        m = re.fullmatch(r"nifty-green-(\d+)-[0-9a-f]+", name)
+        if m:
+            tags[int(m[1])] = name
+    if len(tags) < 2:
+        return None
+    return git("rev-parse", "--verify", "--quiet", tags[sorted(tags)[-2]] + "^{commit}") or None
 
 
 RECEIPT_MAX_AGE_H = 8 * 24
@@ -153,12 +170,16 @@ def main(argv=None):
     if window is None and "mods-slim" in names:   # the battery refuses without --window; the slim check is advisory, so drop it
         names.remove("mods-slim")
         print("[nightly_gate] mods-slim dropped tonight: nifty's log names no merge window (mod_smoke needs --window)")
+    base = nightly_base()
+    if base is None:
+        print("[nightly_gate] REFUSED: no previous nifty-green-<W> tag on HEAD's history (merge_gate needs --base)")
+        return 2
     proof = f"{PROOF_ROOT}/nightly-{today.isoformat()}"
     os.makedirs(proof, exist_ok=True)
     py = [sys.executable] if os.name != "nt" else ["py", "-3"]
     cmd = py + [f"{ROOT}/scripts/gate_wait.py", "--timeout", "7200", "--log", f"{proof}/gate_wait.log", "--"] + py + [
         f"{ROOT}/scripts/merge_gate.py", "--weekly" if weekly else "--nightly", "--proofs-dir", proof, "--isolated-verdict",
-        *(["--window", str(window)] if window else []), "--stages"] + names
+        "--base", base, *(["--window", str(window)] if window else []), "--stages"] + names
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0

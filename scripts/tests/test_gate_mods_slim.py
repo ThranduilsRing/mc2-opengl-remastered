@@ -53,6 +53,17 @@ def test_slim_command_is_short_with_cold_grace_and_exe_reference():
     assert "--stage-root" in staged and staged.count("--duration") == 1
 
 
+def test_every_slim_flag_exists_in_mod_smokes_parser():
+    """meta-1417 N1: merge_gate passed --grace-s to a mod_smoke.py that had dropped it, so argparse killed the row every night."""
+    import re
+    cmd = next(c for n, c, _ in gate.plan(1) if n == "mods-slim")
+    at = next(i for i, a in enumerate(cmd) if a.replace("\\", "/").endswith("tools/mod_smoke.py"))
+    source = Path(__file__).resolve().parents[2] / "tools" / "mod_smoke.py"
+    declared = set(re.findall(r"""add_argument\(\s*['"](--[a-z0-9-]+)['"]""", source.read_text(encoding="utf-8")))
+    flags = {a for a in cmd[at + 1:] if a.startswith("--")}
+    assert flags and flags <= declared, sorted(flags - declared)
+
+
 def test_per_mod_results_parse_the_battery_table():
     assert gate.mod_battery_results(TABLE) == {"MC2X-CVE-G": "INFRA(timeout)", "MC2X-REAP3": "PASS", "MC2-Exodus": "NO RESULT"}
     assert gate.mod_battery_results("") == {}
@@ -72,8 +83,8 @@ def test_red_slim_row_reports_but_never_fails_the_gate(offline, capsys, rc, word
 
 def test_a_red_blocking_row_still_fails(offline):
     runner = lambda command, **kw: types.SimpleNamespace(returncode=1, stdout="")
-    assert gate.execute([("mods", ["mods"], {})], "head", runner=runner) == 1
-    assert [n for n, _ in gate.FAILED_STAGES] == ["mods"]
+    assert gate.execute([("tier1", ["tier1"], {})], "head", runner=runner) == 1   # the full mods battery is ADVISORY too (owner 2026-11-08)
+    assert [n for n, _ in gate.FAILED_STAGES] == ["tier1"]
 
 
 def test_promotion_does_not_require_the_slim_row():
@@ -90,6 +101,7 @@ def test_nightly_without_a_window_drops_the_slim_row(monkeypatch, capsys, tmp_pa
     monkeypatch.setattr(nightly_gate, "datetime", types.SimpleNamespace(date=types.SimpleNamespace(today=lambda: monday)))
     monkeypatch.setattr(nightly_gate, "PROOF_ROOT", str(tmp_path))
     monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
     assert nightly_gate.main(["--dry-run"]) == 0
     out = capsys.readouterr().out
