@@ -35,7 +35,7 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 		p.y = (Terrain::worldUnitsMapSide / 2) - ((float)(goalR) * MetersPerCell) - MetersPerCell / 2;
 		p.z = (float)0; // How do we get the elevation for this point? Do we care?
 		char msg[200];
-		sprintf(msg, " Bad Move Goal: %d [%d(%d), %d(%d)], (%.2f, %.2f, %.2f)", DebugMovePathType, goalR, cellHeight, goalC, cellWidth, p.x, p.y, p.z);
+		mc2::fmt::to_buf(msg, " Bad Move Goal: {} [{}({}), {}({})], ({:.2f}, {:.2f}, {:.2f})", DebugMovePathType, goalR, cellHeight, goalC, cellWidth, p.x, p.y, p.z);
 		Fatal(0, msg);
 	}
 */

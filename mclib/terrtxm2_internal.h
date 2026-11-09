@@ -69,7 +69,7 @@ inline std::vector<unsigned char> tryLoadBurninJpg(mc2::czstring texturePath, mc
 	if (outWidth) *outWidth = 0;
 
 	char jName[1024];
-	sprintf(jName, "%s.burnin", fileName);
+	mc2::fmt::to_buf(jName, "{}.burnin", mc2::fmt::safe(fileName));
 	FullPathFileName burnInJpg;
 	burnInJpg.init(texturePath, jName, ".jpg");
 
@@ -177,7 +177,7 @@ inline void saveTGAFile(MemoryPtr ColorMap, mc2::czstring fileName, long pixelWi
 	colorMapInfo.image_descriptor = 32;	//DO NOT FLIP!
 	
 	char newName[1024];
-	sprintf(newName,"%s.burnin",fileName);
+	mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 	FullPathFileName outputName;
 	outputName.init(texturePath,newName,".tga");
