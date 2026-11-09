@@ -11,6 +11,7 @@
 //---------------------------------------------------------------------------
 // Include Files
 #include "texture_assets.h"
+#include "terrain_vertex_dirty.h"
 #ifndef MAPDATA_H
 #include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -47,6 +48,7 @@ PostcompVertex& PostcompVertex::operator=( const PostcompVertex& src )
 {
 	if ( &src != this )
 	{
+        mc2::terrain::vertexDirtyFeed.invalidateAll();
 		vertexNormal = src.vertexNormal;
 		elevation = src.elevation;
 		textureData = src.textureData;
@@ -158,6 +160,7 @@ void MapData::destroy (void)
 //---------------------------------------------------------------------------
 void MapData::newInit (long numVertices)
 {
+    mc2::terrain::vertexDirtyFeed.invalidateAll();
 	if (blocks)
 		destroy();
 	// VirtualAlloc used to supply zero-filled storage, including the sentinel vertex.
@@ -554,6 +557,7 @@ long waterTest = 0;				//Stores the water test elevation.  Everything at or belo
 //---------------------------------------------------------------------------
 void MapData::calcWater (float wDepth, float sDepth, float aDepth)
 {
+    mc2::terrain::vertexDirtyFeed.invalidateAll();
 	PostcompVertexPtr currentVertex = blocks;
 	//---------------------------------------------------------------------------
 	// BETTER.  Store bits in top to indicate which way water goes.  Store 2 bits
@@ -598,6 +602,7 @@ void MapData::calcWater (float wDepth, float sDepth, float aDepth)
 //---------------------------------------------------------------------------
 void MapData::recalcWater (void)
 {
+    mc2::terrain::vertexDirtyFeed.invalidateAll();
 	PostcompVertexPtr currentVertex = blocks;
 	bool odd1 = false;
 	bool odd2 = false;
@@ -654,6 +659,8 @@ float SCROLL_RATE =	0.005f;
 //---------------------------------------------------------------------------
 void MapData::setVertexHeight( int VertexIndex, float Val )
 {
+	if (blocks[VertexIndex].elevation != Val)
+        mc2::terrain::vertexDirtyFeed.mark(static_cast<uint32_t>(VertexIndex));
 	blocks[VertexIndex].elevation = Val; ++TerrainRuntime::g_heightEpoch;
 }
 
@@ -668,6 +675,7 @@ inline constexpr float ContrastEnhance = 1.0f;
 //---------------------------------------------------------------------------
 void MapData::calcLight (void)
 {
+    mc2::terrain::vertexDirtyFeed.invalidateAll(); // normals and sun-direction shadows
 	Terrain::recalcLight = false;
 
 	//----------------------------------------
@@ -908,6 +916,7 @@ void MapData::calcLight (void)
 //---------------------------------------------------------------------------
 void MapData::clearShadows()
 {
+    mc2::terrain::vertexDirtyFeed.invalidateAll();
 	//----------------------------------------
 	// Let's calc the map dimensions...
 	long height, width;

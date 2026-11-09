@@ -1,6 +1,7 @@
 #include "../../RenderCore/TextureService.h"
 #include <algorithm>
 #include "engine_present_vk.h"
+#include "hud_command_merge.h"
 #include "present_thread.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "../../mclib/sim_overlap.h"
@@ -1176,23 +1177,20 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         }
     }
 
-    std::vector<HudColorGpuVertex> triVerts;
-    std::vector<HudColorGpuVertex> lineVerts;
-    std::vector<HudTexGpuVertex> texVerts;
-    struct HudNativeCmd {
-        uint32_t stream = 0; // 0=tri color, 1=line color, 2=textured tri
-        uint32_t first = 0;
-        uint32_t count = 0;
-        VkDescriptorSet set = VK_NULL_HANDLE;
-        uint32_t width = 0;
-        uint32_t height = 0;
-        uint32_t textMode = 0;
-        uint32_t foreground = 0;
-        bool opaque = false;
-        bool oneInvAlpha = false; // VK-FIELD-VFX-3: AlphaMode 4 -> additive-glow tex pipe
-        bool oneOne = false;      // VK-FIELD-VFX-7: AlphaMode 2 -> pure-additive (ONE,ONE) pipe
+    using HudNativeCmd = HudNativeCommand<VkDescriptorSet>;
+    struct HudScratch {
+        std::vector<HudColorGpuVertex> triVerts, lineVerts;
+        std::vector<HudTexGpuVertex> texVerts;
+        std::vector<HudNativeCmd> commands;
     };
-    std::vector<HudNativeCmd> commands;
+    // CPU scratch is copied into the retired frame ring before returning. Each
+    // recording thread owns its slot storage, including the load-time warmup.
+    static thread_local HudScratch scratch[mc2vk::kMaxFramesInFlight];
+    auto& [triVerts, lineVerts, texVerts, commands] = scratch[s.slot()];
+    triVerts.clear();
+    lineVerts.clear();
+    texVerts.clear();
+    commands.clear();
     uint32_t triDraws = 0;
     uint32_t lineDraws = 0;
     uint32_t texDraws = 0;
@@ -1207,7 +1205,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 continue;
             HudNativeCmd td;
             td.stream = 2;
-            td.first = static_cast<uint32_t>(texVerts.size());
+            td.firstVertex = static_cast<uint32_t>(texVerts.size());
             td.set = mirror->set;
             td.width = mirror->width;
             td.height = mirror->height;
@@ -1238,10 +1236,9 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 for (const VkHudVertex& v : d.vertices)
                     addTex(v);
             }
-            td.count = static_cast<uint32_t>(texVerts.size()) - td.first;
+            td.count = static_cast<uint32_t>(texVerts.size()) - td.firstVertex;
             if (td.count != 0) {
-                commands.push_back(td);
-                ++texDraws;
+                if (!AppendHudCommand(commands, td)) ++texDraws;
             }
             continue;
         }
@@ -1288,15 +1285,15 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         if (dst.size() != before) {
             HudNativeCmd cmd;
             cmd.stream = (d.kind == 1) ? 1u : 0u;
-            cmd.first = static_cast<uint32_t>(before);
+            cmd.firstVertex = static_cast<uint32_t>(before);
             cmd.count = static_cast<uint32_t>((dst.size() - before));
             cmd.opaque = (d.alphaMode == 1);
             // VK-FIELD-VFX-3: untextured tri effect ribbon (AlphaMode 4) -> additive pipe.
             // Only the tri stream has an additive variant; lines keep standard alpha.
             cmd.oneInvAlpha = (d.kind != 1) && (d.alphaMode == 4);
             cmd.oneOne = (d.kind != 1) && (d.alphaMode == 2);
-            commands.push_back(cmd);
-            (d.kind == 1) ? ++lineDraws : ++triDraws;
+            if (!AppendHudCommand(commands, cmd))
+                (d.kind == 1) ? ++lineDraws : ++triDraws;
         }
     }
 
@@ -1365,8 +1362,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 boundStream = 0;
             }
             const uint32_t first = (td.stream == 1)
-                ? static_cast<uint32_t>(triVerts.size()) + td.first
-                : td.first;
+                ? static_cast<uint32_t>(triVerts.size()) + td.firstVertex
+                : td.firstVertex;
             vkCmdDraw(cb, td.count, 1, first, 0);
         } else {
             const VkPipeline pipe = td.opaque ? s.hudTexOpaquePipe.get()
@@ -1394,7 +1391,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             vkCmdPushConstants(cb, s.hudTexLayout.get(),
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(pc), &pc);
-            vkCmdDraw(cb, td.count, 1, td.first, 0);
+            vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
         }
     }
     vkCmdEndRenderPass(cb);

@@ -156,13 +156,13 @@ void GetObjectLightPoolParams(ObjectLightPoolParams* out);
 
 // STEP 3.4P: the CPU-side inputs of THIS frame's PackAndDispatch (the exact arrays and scalars the GL compute was given), so the native Vulkan
 // terrain-lighting compute (vk_native_producers) runs the same math on the same data. Pointers stay valid until the next PackAndDispatch /
-// mission_shutdown. `window` points at vertex number `vertexOffset` (element i is vertex vertexOffset + i); the VK output is indexed by absolute
-// vertex number like the GL output SSBO.
+// mission_shutdown. Vertices and revisions use absolute map indices; vertexOffset/windowCount bound the dispatch, independently of dirty uploads.
 struct VkProducerSnapshot {
     uint32_t numVertices;            // realVerticesMapSide^2 (absolute bound)
-    uint32_t vertexOffset;           // vertex number of window[0]
-    uint32_t windowCount;            // vertices packed this frame (0 = nothing to light)
-    const GpuTerrainVertexInput* window;
+    uint32_t vertexOffset;           // first vertex in the visible dispatch range
+    uint32_t windowCount;            // dispatch range length (0 = nothing to light)
+    const GpuTerrainVertexInput* vertices;
+    const uint64_t* vertexVersions;  // changes only when a resident input is repacked
     uint32_t numLights;
     const GpuTerrainLight* lights;
     int      lightRgb[3];            // eye->lightRed/Green/Blue

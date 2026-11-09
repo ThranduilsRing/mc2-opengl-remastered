@@ -1,5 +1,7 @@
 // CPU terrain-lighting inputs and light-grid ownership for native Vulkan consumers.
 #include "gos_terrain_lighting.h"
+#include "terrain_vertex_pack.h"
+#include "../../mclib/terrain_vertex_dirty.h"
 #include "light_pool_culling.h"
 #include "local_light_shadow.h"   // LOCAL-LIGHTS-2: shadow tile selection
 #include "vulkan_shadow_island_live.h"   // mc2_vk_local_shadows_capable
@@ -126,7 +128,7 @@ static uint32_t LightGridDimEnv() {
 }
 
 // Dense vertex pack buffer (persistent across frames to avoid per-frame alloc)
-static std::vector<gos_terrain_lighting::GpuTerrainVertexInput> s_packBuf;
+static gos_terrain_lighting::TerrainVertexPack s_vertexPack;
 // Light pack buffer
 static std::vector<gos_terrain_lighting::GpuTerrainLight> s_lightBuf;
 
@@ -458,7 +460,8 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     }
 
     // Pre-size pack buffers
-    s_packBuf.assign(numVertices, GpuTerrainVertexInput{});
+    s_vertexPack.reset(numVertices);
+    mc2::terrain::vertexDirtyFeed.reset(numVertices);
     s_lightBuf.resize(s_maxLights);
     s_frameIndex   = 0;
     s_initialized  = true;
@@ -516,26 +519,14 @@ void PackAndDispatch() {
     // --- Stage 2: Dense vertex pack by vertexNum ---
     // Walk the camera-windowed vertex list (land->vertexList, numberVertices entries).
     // For each vertex, slot it at inputs[vertexNum] (dense map-stable index).
-    // Zero-initialize the pack buffer each frame so unreached slots are clean.
-    //
-    // Keep the packed visible range for the native input snapshot below.
+    // Keep the visible dispatch range. Only source-dirty vertices are repacked;
+    // native consumers retain their own upload receipts across frame slots.
     uint32_t packMinVN = s_numVertices;   // sentinel: will be lowered to min written vn
     uint32_t packMaxVN = 0;               // sentinel: will be raised to max written vn
 
     if (land && land->getVertexList() && land->getNumVertices() > 0) {
         const int nv = land->getNumVertices();
         const VertexPtr vlist = land->getVertexList();
-
-        // PERF-FIX: previously memset'd the entire pack buffer (O(N²) = up to 32 MB
-        // for a 1k map) every frame even though only ~40K entries (200×200 visible
-        // window) are written.  The compute dispatch is bounded by the solid-window
-        // SSBO (camera-windowed recipe indices), so stale entries for off-screen quads
-        // are never dispatched and stale lighting data causes no visual artifact.
-        // Instead we skip the full memset and upload only the min–max contiguous range
-        // covering this frame's visible window — typically ~6.5 MB for a 1k map vs 32 MB.
-        // For the full-range fallback (s_solidUseWindow=0), off-screen quads have stale
-        // lighting but are frustum-culled by the compute shader before reaching the draw
-        // command, so correctness is maintained in both modes.
 
         // Step 7: MC2_HAZE_PARITY — per-frame accumulators (first ~256 verts).
         int    hpProbed = 0;
@@ -554,11 +545,7 @@ void PackAndDispatch() {
             packMinVN = std::min(packMinVN, uvn);
             packMaxVN = std::max(packMaxVN, uvn);
 
-            GpuTerrainVertexInput& vi = s_packBuf[uvn];
-            vi.xy[0]      = v.vx;
-            vi.xy[1]      = v.vy;
-            vi.elevation  = v.pVertex ? v.pVertex->elevation : 0.0f;
-            vi.hazeFactor = 0.0f; // Step 7: computed inline in compute; SSBO field dead, retained for std430 stride (alignas(16) stride-neutral; removal deferred to Step 10 cleanup, cpp_glsl_ubo_struct_lockstep.md)
+            s_vertexPack.update(v, mc2::terrain::vertexDirtyFeed.revision(uvn));
 
             // Step 7: MC2_HAZE_PARITY probe — CPU-recompute the inline formula and
             // compare to the still-live VPL-written v.hazeFactor (first ~256 verts).
@@ -586,26 +573,6 @@ void PackAndDispatch() {
                 if (delta > 1e-4) ++hpFrameViol;
             }
 
-            if (v.pVertex) {
-                vi.normal[0] = v.pVertex->vertexNormal.x;
-                vi.normal[1] = v.pVertex->vertexNormal.y;
-                vi.normal[2] = v.pVertex->vertexNormal.z;
-            } else {
-                vi.normal[0] = vi.normal[1] = 0.0f;
-                vi.normal[2] = 1.0f;
-            }
-
-            // Pack flags (Phase 1 bits 0-3 + Phase 2 bits 4-7)
-            uint32_t flags = 0;
-            if (v.pVertex) {
-                if (v.pVertex->shadow)       flags |= GPU_VERT_SHADOW;
-                if (v.calcThisFrame & 1)      flags |= GPU_VERT_CALCFRAME_LIGHT;
-                if (v.pVertex->water & 1)     flags |= GPU_VERT_WATER;
-                if (v.pVertex->water & 128)   flags |= GPU_VERT_WATER_ANIM_NEG;
-                if (v.pVertex->water & 64)    flags |= GPU_VERT_WATER_ANIM_POS;
-                if (v.calcThisFrame & 2)      flags |= GPU_VERT_CALCFRAME_WATER;
-            }
-            vi.flags = flags;
         }
 
         // Step 7: MC2_HAZE_PARITY — fold this frame into running totals, emit a
@@ -645,26 +612,14 @@ void PackAndDispatch() {
         // consumer ignores the pad field — no legacy deviation). Slot tags
         // are recorded unconditionally at the mover registration sites
         // (mc2_spotlight_diag::tag_slot).
-        static std::vector<TG_LightPtr> s_moverLightPtrs;
-        s_moverLightPtrs.clear();
-        if (TG_LightPtr* wl = eye->getWorldLights()) {
-            for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s) {
-                if (!wl[s]) continue;
-                mc2_spotlight_diag::SourceClass src;
-                if (mc2_spotlight_diag::is_e_slot(eye, s).transform([&src](auto value) {
-                        src = value;
-                        return true;
-                    }).value_or(false)
-                    && (src == mc2_spotlight_diag::Mech
-                        || src == mc2_spotlight_diag::Gv))
-                    s_moverLightPtrs.push_back(wl[s]);
-            }
-        }
-        auto lightIsMover = [&](TG_LightPtr lp) -> bool {
-            for (TG_LightPtr p : s_moverLightPtrs)
-                if (p == lp) return true;
-            return false;
-        };
+        static RegisteredMoverLights moverLights;
+        TG_LightPtr* worldLights = eye->getWorldLights();
+        moverLights.refresh(eye, mc2_spotlight_diag::registration_revision(),
+            std::span<TG_LightPtr>(worldLights, worldLights ? MAX_LIGHTS_IN_WORLD : 0),
+            [](size_t slot) {
+                const auto src = mc2_spotlight_diag::is_e_slot(eye, static_cast<long>(slot));
+                return src == mc2_spotlight_diag::Mech || src == mc2_spotlight_diag::Gv;
+            });
         // LIGHT-REALISM-1: pool-shape knobs (see the reshape block below).
         // CONE-SPILL-POLICY-1: default ON (user-approved variant B; free
         // with MC2_LIGHT_GRID=1 per PERF-HARNESS-TRUTH-1). =0 reverts.
@@ -811,7 +766,7 @@ void PackAndDispatch() {
             // LOCAL-LIGHTS-2: a coned light is a building lamp, never a mover -- the
             // slot tags can be stale (mc2_10: the S_TurretControl lamps' slots read
             // as Mech), which dimmed them 4x, shrank them and denied them a shadow tile.
-            gl._pad1           = (!coned && lightIsMover(tl)) ? 1.0f : 0.0f;
+            gl._pad1           = (!coned && moverLights.contains(tl)) ? 1.0f : 0.0f;
             gl.intensity       = tl->intensity;
             // Lamp-type variation: terrain fixtures (runway, taxiway and pad edge lights, dozens per base)
             // marked the ground with rows of identical small bright discs. They are markers, not floodlights:
@@ -882,7 +837,8 @@ void PackAndDispatch() {
         sn.numVertices  = s_numVertices;
         sn.vertexOffset = (packMinVN <= packMaxVN) ? packMinVN : 0u;
         sn.windowCount  = (packMinVN <= packMaxVN) ? (packMaxVN - packMinVN + 1u) : 0u;
-        sn.window       = (packMinVN <= packMaxVN) ? (s_packBuf.data() + packMinVN) : nullptr;
+        sn.vertices     = s_vertexPack.vertices.data();
+        sn.vertexVersions = s_vertexPack.versions.data();
         sn.numLights    = numLights;
         sn.lights       = s_lightBuf.data();
         if (eye) {

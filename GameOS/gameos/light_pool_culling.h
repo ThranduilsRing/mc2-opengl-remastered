@@ -8,8 +8,33 @@
 #include <vector>
 #include <limits>
 #include <span>
+#include <unordered_set>
 
 namespace gos_terrain_lighting {
+// Registration tags own source classification. Rebuild their pointer lookup
+// only after a lifecycle mutation; active/FoW filtering remains per frame.
+class RegisteredMoverLights {
+public:
+    template<class Light, class IsMoverSlot>
+    bool refresh(const void* camera, uint64_t revision, std::span<Light*> slots,
+                 IsMoverSlot isMoverSlot) {
+        if (valid_ && camera_ == camera && revision_ == revision) return false;
+        movers_.clear();
+        for (size_t i = 0; i < slots.size(); ++i)
+            if (slots[i] && isMoverSlot(i)) movers_.insert(slots[i]);
+        camera_ = camera;
+        revision_ = revision;
+        valid_ = true;
+        return true;
+    }
+    bool contains(const void* light) const { return movers_.contains(light); }
+private:
+    const void* camera_ = nullptr;
+    uint64_t revision_ = 0;
+    bool valid_ = false;
+    std::unordered_set<const void*> movers_;
+};
+
 // Exact per-object sphere culling and MAX-blend dominance. Additive lights retain
 // source order. Three retained anchors establish a guaranteed RGB lower bound;
 // another mover is redundant only if its upper bound cannot exceed any channel.
