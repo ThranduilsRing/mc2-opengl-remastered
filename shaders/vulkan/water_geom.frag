@@ -146,10 +146,21 @@ PREC float vnoise(PREC vec2 uv){
     return mix(mix(h21(i),               h21(i + vec2(1.0, 0.0)), f.x),
                mix(h21(i + vec2(0.0,1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
 }
-PREC float fbm3(PREC vec2 uv){
-    PREC float s = 0.0, a = 0.5;
-    for (int k = 0; k < 3; ++k){ s += a * vnoise(uv); uv = uv * 2.03 + 11.7; a *= 0.5; }
+// Two octaves plus a third weighted by w3 (the third is skipped outright at w3 == 0).
+PREC float fbm23(PREC vec2 uv, float w3){
+    PREC float s = 0.5 * vnoise(uv);
+    uv = uv * 2.03 + 11.7;
+    s += 0.25 * vnoise(uv);
+    if (w3 > 0.0) { uv = uv * 2.03 + 11.7; s += 0.125 * w3 * vnoise(uv); }
     return s;
+}
+// Ripple detail by distance (deterministic, no history): ripple and glint gains scale with waveLOD, so the finest
+// octave fades out smoothly over waveLOD 0.65..0.35 and all ripple noise is skipped once waveLOD reaches 0.
+// Zero-mean offset: 0.5 mean * amplitude sum per fbm, two fbms = 0.75 + 0.125 * w3 (0.875 at full detail, as before).
+float waterRippleNoise(PREC vec2 q0, PREC vec2 q1, float waveLOD){
+    if (waveLOD <= 0.0) return 0.0;
+    float w3 = smoothstep(0.35, 0.65, waveLOD);
+    return (fbm23(q0, w3) + fbm23(q1, w3)) - (0.75 + 0.125 * w3);
 }
 
 void main(void)
@@ -179,7 +190,7 @@ void main(void)
     PREC vec2  q0 = WorldPos.xy * WAVE_FREQ        + vec2( 1.00,  0.60) * sc;
     PREC vec2  q1 = WorldPos.xy * WAVE_FREQ * 1.70 + vec2(-0.80, -1.10) * sc;
     // Low/Potato (uT._lightPad1 != 0): flat water, no ripple/glint noise (6 value-noise octaves per fragment on a 24-EU part).
-    PREC float nz = (uT._lightPad1 != 0) ? 0.0 : (fbm3(q0) + fbm3(q1)) - 0.875;
+    PREC float nz = (uT._lightPad1 != 0) ? 0.0 : waterRippleNoise(q0, q1, waveLOD);
 
     // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
     // per-vertex thickness -- no more deep-water diamonds around single low vertices.
@@ -258,7 +269,9 @@ void main(void)
             col *= mix(sunShadowFloor(0.4), 1.0, texture(u_staticMask, maskUv).r);
     }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
-    col *= mix(sunShadowFloor(0.4),1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
+    // Beyond the ripple fade distance a mover shadow is sub-pixel on water: skip the blocker search + PCF there.
+    if (waveLOD > 0.0)
+        col *= mix(sunShadowFloor(0.4),1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
