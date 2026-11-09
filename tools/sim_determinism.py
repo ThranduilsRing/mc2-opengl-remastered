@@ -447,6 +447,9 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
     """
     if int(duration) > MAX_DURATION:
         sys.exit(f"sim_determinism: --duration {duration} exceeds the {MAX_DURATION} s cap")
+    battle_fixture = mission == "battle"
+    if battle_fixture:
+        mission = "mc2_24"  # battle is the CPU profiler's 128-clone/two-vehicle fixture, not a map.
     target = smoke_target(install, ref_exe, ref_commit)
     logs = []
     for tag in ("a", "b")[:runs]:
@@ -455,6 +458,18 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
         env = dict(os.environ, **GATES, **({"MC2_SIM_OVERLAP_AUDIT": "1"} if mission in OVERLAP_AUDIT_MISSIONS else {}),
                    **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
+        if battle_fixture:
+            # The UI channel consumes its input. Each run needs a private copy;
+            # never let the engine truncate the committed baseline fixture.
+            fixture = "tests/smoke/sim_determinism/battle-128.commands.txt"
+            if env.get("MC2_UI_COMMAND_FILE") != fixture or env.get("MC2_TEST_SPAWN") != "1":
+                sys.exit("battle baseline requires the recorded 128-mech fixture env")
+            os.makedirs(out, exist_ok=True)
+            channel = os.path.abspath(os.path.join(out, tag + ".commands.txt"))
+            if os.path.exists(channel + ".ack"):
+                sys.exit("battle fixture has stale acknowledgements; use a fresh --out")
+            shutil.copyfile(os.path.join(ROOT, fixture), channel)
+            env["MC2_UI_COMMAND_FILE"] = channel
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             *target, "--keep-logs", "--sim-determinism", *(["--sim-speed", str(sim_speed)] if sim_speed > 1 else []),
                             *(["--ticks", str(ticks)] if ticks > 0 else []), *(["--headless"] if headless == "both" or (headless and tag == "b") else [])], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -484,6 +499,18 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
             # A windowed run must pass its smoke everywhere (gate or standalone): matching SIMIDs cannot launder a fingerprint,
             # shader, crash or content failure. The one narrow exception is the perf_counter-only verdict (see windowed_exit_ok).
             sys.exit(f"sim_determinism: smoke run {tag} failed (rc={r.returncode}):\n" + "\n".join(r.stdout.splitlines()[-8:]))
+        if battle_fixture:
+            ack_path = channel + ".ack"
+            ack = ""
+            if os.path.isfile(ack_path):
+                with open(ack_path, encoding="utf-8", errors="replace") as ack_file:
+                    ack = ack_file.read()
+            for kind, count in (("clone", 128), ("vehicle", 2)):
+                spawned = re.findall(r"spawn " + kind + r" .*? -> (\w+) \(([^\n]+)\)", ack)
+                if len(spawned) != count or any(status != "ok" or "WARNING" in detail for status, detail in spawned):
+                    sys.exit(f"battle fixture failed: expected {count} healthy {kind} acknowledgements")
+            if "bench_attack -> ok" not in ack:
+                sys.exit("battle fixture failed: attack command was not acknowledged")
         shutil.copytree(arts[-1], dest)
         logs.append(os.path.join(dest, mission + ".log"))
     return logs
@@ -890,7 +917,11 @@ def main(argv=None) -> int:
                        "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"}, fh, indent=1)
             fh.write("\n")
         os.replace(tmp, out)
-        print(f"sim_determinism: wrote {os.path.relpath(out, ROOT)}")
+        try:
+            display_path = os.path.relpath(out, ROOT)
+        except ValueError:  # proof/temp output may be on G: while the checkout is on A:
+            display_path = os.path.abspath(out)
+        print(f"sim_determinism: wrote {display_path}")
         return 0
     if args.cmd == "compare":
         ok, msg = compare(load_simid(args.log_a), load_simid(args.log_b), args.min_frames)

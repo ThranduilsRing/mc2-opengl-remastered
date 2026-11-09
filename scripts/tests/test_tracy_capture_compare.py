@@ -12,6 +12,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import tracy_capture_compare as capture  # noqa: E402
 
 
+@pytest.mark.parametrize("platform,filename", [("nt", "tracy-capture.exe"), ("posix", "tracy-capture")])
+def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, filename):
+    tool = tmp_path / filename
+    tool.write_bytes(b"tool")
+    monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform))
+    monkeypatch.setattr(capture, "tracy_dir", lambda: tmp_path)
+    assert capture.tracy_exe("tracy-capture.exe") == tool
+
+
 @pytest.fixture
 def harness(monkeypatch):
     h = SimpleNamespace(held=False, events=[], logs=[], children=[])
