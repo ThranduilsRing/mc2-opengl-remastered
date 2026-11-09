@@ -392,7 +392,7 @@ void main(void)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
         if (F.DEEP_COLOR.w > 0.5) {
-            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + nzGrad*0.003 + waveSlope*0.03;
+            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize; // TREE-REFL-SOLID: no wave-normal offset (it tore the reflected canopy)
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
                 geometry=texture(u_waterReflection,reflectionUV);
             }

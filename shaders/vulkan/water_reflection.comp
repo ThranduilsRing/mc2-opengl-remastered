@@ -20,6 +20,23 @@ vec3 unproject(mat4 inv, vec2 uv, float depth) {
     vec4 h = inv * vec4(uv*2.0-1.0,depth,1.0);
     return h.xyz/h.w;
 }
+
+// TREE-REFL-SOLID: foliage is alpha-tested cards, so the depth and colour the march reads keep
+// every leaf hole (and overlapping cards cut holes in each other). Dilate to the nearest (reverse-Z:
+// largest) depth over a small window so a canopy is a closed silhouette, and return the UV of that
+// nearest texel so the reflected colour is leaf colour, never the background seen through a hole.
+vec2 gSceneTexel;
+float nearestDepth(vec2 uv, out vec2 nearUV) {
+    nearUV=uv;
+    float z=textureLod(sceneDepth,uv,0).r;
+    const vec2 k[4]=vec2[4](vec2(-3,-3),vec2(3,-3),vec2(-3,3),vec2(3,3));
+    for (int j=0;j<4;++j) {
+        vec2 u=uv+k[j]*gSceneTexel;
+        float d=textureLod(sceneDepth,u,0).r;
+        if (d>z) { z=d; nearUV=u; }
+    }
+    return z;
+}
 void main() {
     ivec2 size=imageSize(reflectionOut);
     int tilesX=(size.x+7)/8;
@@ -27,6 +44,7 @@ void main() {
     ivec2 pixel=ivec2(int(tile)%tilesX,int(tile)/tilesX)*8+ivec2(gl_LocalInvocationID.xy);
     if (any(greaterThanEqual(pixel,size))) return;
     imageStore(reflectionOut,pixel,vec4(0));
+    gSceneTexel=1.0/vec2(textureSize(sceneDepth,0));
     vec2 uv=(vec2(pixel)+0.5)/vec2(size);
     mat4 inv=U.invWorldToClip;
     // The legacy projection's signed far plane lies behind the eye. Both
@@ -60,11 +78,13 @@ void main() {
     vec3 q0=origin/start.w, q1=endWorld/finish.w;
     float k0=1.0/start.w, k1=1.0/finish.w;
     float previous=0.0;
-    float previousGap=textureLod(sceneDepth,beginUV,0).r-start.z/start.w;
-    for (int i=1;i<=24;++i) {
-        float t=extent*float(i)/24.0;
+    vec2 nuv;
+    float previousGap=nearestDepth(beginUV,nuv)-start.z/start.w;
+    const int STEPS=64;
+    for (int i=1;i<=STEPS;++i) {
+        float t=extent*float(i)/float(STEPS);
         vec2 hitUV=beginUV+delta*t;
-        float sceneZ=textureLod(sceneDepth,hitUV,0).r;
+        float sceneZ=nearestDepth(hitUV,nuv);
         float rayZ=mix(start.z/start.w,finish.z/finish.w,t);
         float gap=sceneZ-rayZ;
         // Reflected rays may travel towards or away from the eye. Find either
@@ -74,12 +94,12 @@ void main() {
             for (int refine=0;refine<5;++refine) {
                 float mid=(lo+hi)*0.5;
                 vec2 midUV=beginUV+delta*mid;
-                float midGap=textureLod(sceneDepth,midUV,0).r-mix(start.z/start.w,finish.z/finish.w,mid);
+                float midGap=nearestDepth(midUV,nuv)-mix(start.z/start.w,finish.z/finish.w,mid);
                 if ((midGap>=0.0)==(previousGap>=0.0)) lo=mid;
                 else hi=mid;
             }
             hitUV=beginUV+delta*hi;
-            vec3 hit=unproject(inv,hitUV,textureLod(sceneDepth,hitUV,0).r);
+            vec3 hit=unproject(inv,hitUV,nearestDepth(hitUV,nuv));
             vec3 rayPoint=mix(q0,q1,hi)/mix(k0,k1,hi);
             // Reject the underside, lakebed and depth discontinuities. A miss
             // remains transparent rather than stretching an edge texel.
@@ -88,9 +108,11 @@ void main() {
             // behind that surface. A 12 wu shell accepted only the rays that grazed it
             // and reflected trees as see-through dots; accept an object-sized shell.
             if (hit.z>U.p0.x+1.0 && length(hit-rayPoint)<max(64.0,length(hit-origin)*0.03)) {
+                // The hit is the dilated texel, so colour comes from that texel. No screen-edge fade: it
+                // thinned the reflected canopy toward the left edge; only the last texel row is feathered.
                 vec2 edge=min(hitUV,1.0-hitUV);
-                float confidence=smoothstep(0.0,0.04,min(edge.x,edge.y));
-                imageStore(reflectionOut,pixel,vec4(textureLod(sceneColor,hitUV,0).rgb*confidence,confidence));
+                float confidence=smoothstep(0.0,0.004,min(edge.x,edge.y));
+                imageStore(reflectionOut,pixel,vec4(textureLod(sceneColor,nuv,0).rgb*confidence,confidence));
                 return;
             }
         }

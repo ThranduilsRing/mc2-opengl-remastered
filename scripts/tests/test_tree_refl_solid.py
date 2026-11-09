@@ -19,3 +19,19 @@ def test_hit_shell_is_object_sized():
 
 def test_reflection_stays_spatial():
     assert "imageLoad" not in SRC and "history" not in SRC.lower().replace("no history", "")
+
+
+GEOM = (Path(__file__).resolve().parents[2] / "shaders/vulkan/water_geom.frag").read_text(encoding="utf-8")
+
+
+def test_lookup_takes_no_wave_offset():
+    m = re.search(r"vec2 reflectionUV=([^;]*);", GEOM)
+    assert m and "nzGrad" not in m[1] and "waveSlope" not in m[1]
+
+
+def test_foliage_depth_is_dilated_and_colour_follows():
+    assert "nearestDepth" in SRC
+    assert "textureLod(sceneDepth" in SRC.split("float nearestDepth")[1].split("void main")[0]
+    assert "sceneColor,nuv" in SRC          # colour from the nearest texel, not the leaf-hole texel
+    assert "const int STEPS=64" in SRC
+    assert "smoothstep(0.0,0.04" not in SRC  # no wide screen-edge fade
