@@ -4,6 +4,7 @@
 #include "gos_terrain_indirect_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 #include "texture_decode.h"
 #include <mdspan>
 #include "../../GameAdapters/vegetation_hardsurface.h"
@@ -458,7 +459,7 @@ void BuildDecalStaticVBOFromInputs(bool overlayMetadata) {
             const uint16_t artLayer = slot < MC_MAX_TERRAIN_TXMS && g_cementAlphaLayerMapReady
                 ? g_cementAlphaLayerIndexBySlot[slot] : 0xffffu;
             if (artLayer != 0xffffu && !gos_TerrainLodChunk_OverlaySidecarLoaded()) {
-                static const bool adopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
+                static const bool adopt = !mc2::options::current().stockOverlayConcrete;
                 surfaceWords[plane + static_cast<size_t>(tileR) * mapSide + tileC] =
                     0x80000000u | (adopt ? 0x00010000u : 0u) | artLayer;
                 ++cookedRoads;

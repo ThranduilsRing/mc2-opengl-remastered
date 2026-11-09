@@ -346,7 +346,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
-    REQUIRE(n == 425);   // -15 vk-gate-amnesty-3 (dead diagnostics + folded editor/unit-snap kill switches); +MC2_TEST_FSR_FAIL_FRAME (diagnostic injection for the FSR sampler refresh proof); +MC2_VK_RT_SELFTEST (RT self-test hook, off by default); +9 restored (Astra f1 P1: hitch/forcepose/clipdiag launchers + terrain_near FORCE_LOD recipes; 4 pass-stats/timer reads for dup_lines_ratchet); -323 vk-signoff batch2 (folded to defaults; MC2_SIM_CLOCK_TRACE kept, upstream passthrough); -10 vk-signoff batch1 (MC2_PRESENT_THREAD + 9 reader-less); +MC2_UNIT_VISUAL_SNAP (render-only unit snap, ships ON); +MC2_MECH_FILL (mech lighting strength, ships ON at 2); -MC2_TERRAIN_MATERIAL_TEXTURES(+_STRENGTH) retired W107; +MC2_PLAY_MISSION_GOTO (dev test knob) W108.
+    REQUIRE(n == 424);   // -15 vk-gate-amnesty-3 (dead diagnostics + folded editor/unit-snap kill switches); +MC2_TEST_FSR_FAIL_FRAME (diagnostic injection for the FSR sampler refresh proof); +MC2_VK_RT_SELFTEST (RT self-test hook, off by default); +9 restored (Astra f1 P1: hitch/forcepose/clipdiag launchers + terrain_near FORCE_LOD recipes; 4 pass-stats/timer reads for dup_lines_ratchet); -323 vk-signoff batch2 (folded to defaults; MC2_SIM_CLOCK_TRACE kept, upstream passthrough); -10 vk-signoff batch1 (MC2_PRESENT_THREAD + 9 reader-less); +MC2_UNIT_VISUAL_SNAP (render-only unit snap, ships ON); +MC2_MECH_FILL (mech lighting strength, ships ON at 2); -MC2_TERRAIN_MATERIAL_TEXTURES(+_STRENGTH) retired W107; +MC2_PLAY_MISSION_GOTO (dev test knob) W108; -MC2_OVERLAY_CEMENT_ADOPT (now options.cfg StockOverlayConcrete).
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -1268,7 +1268,26 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK_FALSE(d.sunElevationFix);
     CHECK_FALSE(d.vfxSoftParticles);
     CHECK_FALSE(d.vfxLitParticles);
+    CHECK_FALSE(d.stockOverlayConcrete);   // new concrete is the default; stock overlay concrete is the opt-in
     CHECK(d.impactDecals == 2);        // features ship on: full impact decals unless a preset or the player lowers them
+}
+
+TEST_CASE("StockOverlayConcrete defaults to the new concrete and the stock overlay look is a persisted opt-in") {
+    namespace mo = mc2::options;
+    CHECK_FALSE(mo::RenderOptions{}.stockOverlayConcrete);
+    const mo::Option* opt = mo::find("stockoverlayconcrete");
+    REQUIRE(opt);
+    CHECK(opt->kind == mo::Kind::Bool);
+    mo::RenderOptions loaded{};
+    CHECK(mo::cfg::loadFromText(loaded, "[MechCommander2]
+b StockOverlayConcrete = TRUE
+") == 1);
+    CHECK(loaded.stockOverlayConcrete);
+    mo::RenderOptions pinned{};
+    std::vector<std::string> rej;
+    CHECK(mo::applyOverrides(pinned, "StockOverlayConcrete=1", rej) == 1);
+    CHECK(pinned.stockOverlayConcrete);
+    CHECK(rej.empty());
 }
 
 TEST_CASE("render option keys are unique and findable") {

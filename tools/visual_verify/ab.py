@@ -39,6 +39,18 @@ DEFAULT_INSTALL = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 THRESH = 24
 
 
+def pin_stock_overlay_concrete(env):
+    """Both sides of an A/B run with the same StockOverlayConcrete (default 0 = new concrete) regardless of either install's options.cfg; an explicit
+    StockOverlayConcrete in --env (MC2_OPTIONS_OVERRIDE=StockOverlayConcrete=1) wins. An exe that predates the key logs and ignores the entry."""
+    env = list(env)
+    for i, kv in enumerate(env):
+        if kv.startswith("MC2_OPTIONS_OVERRIDE="):
+            if "stockoverlayconcrete" not in kv.lower():
+                env[i] = kv + ",StockOverlayConcrete=0"
+            return env
+    return env + ["MC2_OPTIONS_OVERRIDE=StockOverlayConcrete=0"]
+
+
 MANIFEST = ".deployed_manifest.csv"
 EXECUTABLES = {"mc2.exe", "mc2", "mc2.elf"}
 
@@ -560,7 +572,7 @@ def main(argv=None):
         identities = [payload_identity(d) for d in (ia, ib)]
     except (OSError, ValueError) as exc:
         sys.exit(f"ab.py: refusing capture: {exc}")
-    env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
+    env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + pin_stock_overlay_concrete(a.env) + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
     stamp_identity(out / "a", identities[0])
     run_capture(ib, a.bookmarks, out / "b", env)
