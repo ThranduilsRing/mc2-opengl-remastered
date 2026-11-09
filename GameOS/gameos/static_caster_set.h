@@ -79,7 +79,7 @@ public:
     // Re-takes the load snapshot from the live set and drops the events queued since endRebuild(). The first mask of a set calls it: the presentation
     // pass applies load-time damage/destroyed status and shape swaps during the first frames, after the set was built, and a snapshot taken before them
     // leaves the cooked mask stale on arrival (hundreds of drifted entries -> ~1000 dirty sub-tiles drained at 2 a frame). Nothing is baked yet, so
-    // those changes are not edits.
+    // those changes are not edits. Once per set version: later calls are no-ops, so a destruction between a bake attempt and its retry stays queued.
     void settleLoadSnapshot();
     // A static owner that keeps changing its leaves (a moving body registered as a static prop) is demoted to a mover after this many real changes.
     static constexpr uint8_t kDemoteAfterChanges = 3;
@@ -104,6 +104,7 @@ private:
     uint64_t version_ = 0;
     uint32_t nextGameHandle_ = 1;
     bool building_ = false;
+    bool settled_ = false;
     bool admitNewOwners_ = false;
 };
 

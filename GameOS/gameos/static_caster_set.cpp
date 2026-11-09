@@ -46,6 +46,7 @@ void StaticCasterSet::add(const StaticCasterEntry& entry) {
 
 void StaticCasterSet::endRebuild() {
     building_ = false;
+    settled_ = false;
     version_ = g_nextVersion++;
     takeLoadSnapshot();
     std::array<uint32_t, 4> byKind = {0, 0, 0, 0};
@@ -70,7 +71,10 @@ void StaticCasterSet::takeLoadSnapshot() {
 }
 
 void StaticCasterSet::settleLoadSnapshot() {
-    if (building_ || version_ == 0) return;
+    // Once per set: the bake re-enters recordBake after its async cache read; a second settle would drop events queued since the first while the
+    // mask (keyed by the first snapshot) still shows the object intact.
+    if (building_ || version_ == 0 || settled_) return;
+    settled_ = true;
     takeLoadSnapshot();
     events_.clear();
     removed_.clear();
@@ -90,6 +94,7 @@ void StaticCasterSet::clear() {
     loadRanges_.clear();
     loadHash_ = 0;
     version_ = 0;
+    settled_ = false;
     nextGameHandle_ = 1;
     building_ = false;
     admitNewOwners_ = false;
