@@ -127,3 +127,20 @@ def test_box_ab_releases_gpu_before_rebuild_and_checks_deploy():
     after = remote.index('> "$OUT/ab_after.log"', rebuild)
     assert before < release < rebuild < after
     assert 'DEPLOY FAILED: manifest' in remote
+    assert "*.jpg" in box_run.BACK  # montages must reach the operator, not just raw captures
+
+
+@pytest.mark.parametrize("exe", ["mc2", "mc2.elf", "mc2.exe"])
+def test_executable_swap_preserves_platform_and_source_install(tmp_path, exe):
+    install = install_payload(tmp_path / "install")
+    if exe != "mc2":
+        (install / "mc2").rename(install / exe)
+        manifest = install / ab.MANIFEST
+        manifest.write_text(manifest.read_text().replace("mc2,", exe + ","))
+    original = (install / exe).read_bytes()
+    replacement = tmp_path / "replacement"
+    replacement.write_bytes(original + b"different build bytes")
+    staged = ab.stage_install(install, replacement, tmp_path / "staged")
+    assert ab.game_executable(staged).name == exe
+    assert ab.payload_identity(staged)["payload"][exe] != ab.payload_identity(install)["payload"][exe]
+    assert (install / exe).read_bytes() == original

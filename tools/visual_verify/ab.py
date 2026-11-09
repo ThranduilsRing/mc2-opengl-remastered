@@ -423,7 +423,7 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
     if dest.exists():
         shutil.rmtree(dest)
     shutil.copytree(install, dest, copy_function=link)
-    target = dest / "mc2.exe"
+    target = dest / game_executable(install).name
     if target.exists():
         target.unlink()
     shutil.copy2(exe, target)
@@ -438,7 +438,7 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
         commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
                                          **console_child.child_kwargs(redirected=True)).strip()
     for row in rows[2:]:
-        if row and row[0] == "mc2.exe":
+        if row and row[0] == target.name:
             row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
     manifest.unlink()  # copied installs may share this inode with their source
     with manifest.open("w", newline="", encoding="utf-8") as stream:
