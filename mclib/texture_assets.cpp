@@ -52,14 +52,16 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
         if (!archive.empty()) {
             static std::unordered_map<std::string, bool> userArchives;
             auto [it, inserted] = userArchives.try_emplace(archive, false);
-            if (inserted) it->second = userPackedBuildingArchive(archive, [](const auto& path) {
-                std::ifstream input(path, std::ios::binary); // path-audit: loose-only root FST provenance
+            if (inserted) {
+                std::ifstream input(archive, std::ios::binary); // path-audit: loose-only root FST provenance
                 uLong crc = crc32(0, nullptr, 0);
                 char buffer[65536];
                 while (input.read(buffer, sizeof(buffer)) || input.gcount())
                     crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer), static_cast<uInt>(input.gcount()));
-                return input.eof() ? static_cast<uint32_t>(crc) : 0u;
-            });
+                std::error_code error;
+                const auto bytes = std::filesystem::file_size(archive, error);
+                it->second = error || !input.eof() || !RenderCore::stockPbrArchive(bytes, static_cast<uint32_t>(crc));
+            }
             userArchive = it->second;
         }
     }

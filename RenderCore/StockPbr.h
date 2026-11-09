@@ -1,8 +1,13 @@
 #pragma once
 #include <string>
 #include <string_view>
+#include <cstdint>
 
 namespace RenderCore {
+inline bool stockPbrArchive(uintmax_t bytes, uint32_t crc) {
+    // Shipped stock tgl.fst; standalone mod archives retain their own atlases.
+    return bytes == 25925639u && crc == 0x2620c4b9u;
+}
 // Texture names, rather than appearance names, identify the fixed stock UV atlas.
 inline std::string stockPbrStem(std::string_view texture) {
     const auto slash = texture.find_last_of("/\\");

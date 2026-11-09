@@ -15,6 +15,9 @@
 using namespace RenderCore;
 
 TEST_CASE("StockPbr resolves stock UV atlas names and preserves mod priority") {
+    CHECK(stockPbrArchive(25925639, 0x2620c4b9));
+    CHECK_FALSE(stockPbrArchive(25925639, 0x2620c4ba));
+    CHECK_FALSE(stockPbrArchive(25925640, 0x2620c4b9));
     CHECK(stockPbrStem("data/tgl/128/MadCatRGB.tga") == "madcat");
     CHECK(stockPbrStem("data\\tgl\\128\\AtlasRGB.tga") == "atlas");
     CHECK(stockPbrStem("ShootistRGB.tga") == "shootist");
