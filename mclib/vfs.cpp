@@ -349,7 +349,7 @@ static std::optional<int> LoadModIndexCache(
     bool* sigMismatch   // out: header/modid ok but signature differs (stale)
 ) {
     if (sigMismatch) *sigMismatch = false;
-    FILE* f = fopen(cachePath, "rb");
+    FILE* f = fopen(cachePath, "rb"); // path-audit: loose-only; physical mod-index cache, not game data.
     if (!f) return std::nullopt;
 
     char line[MAX_PATH * 3];
@@ -576,7 +576,7 @@ struct ModJson { std::string id, name; std::vector<std::string> deps, capabiliti
 
 // Read mod.json at jsonPath. Returns nullopt if file not found or has no id.
 static std::optional<ModJson> ReadModJson(const char* jsonPath) {
-    HANDLE fh = CreateFileA(jsonPath, GENERIC_READ, FILE_SHARE_READ, nullptr,
+    HANDLE fh = CreateFileA(jsonPath, GENERIC_READ, FILE_SHARE_READ, nullptr, // path-audit: loose-only; manifest of the specific mod being mounted.
                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (fh == INVALID_HANDLE_VALUE) return std::nullopt;
     char buf[4096] = {};
@@ -719,8 +719,8 @@ void EnumerateModFitFiles(mc2::czstring keyPrefix, ModFitCallback cb, void* user
 // Lines are "[CONTENT] mod-dup ..." (no "kind=", so mod_smoke's content-error scrape
 // does not count them) and one "[CONTENT] mod-dup summary" line.
 static bool ModFilesEqualBytes(const std::string& a, const std::string& b) {
-    FILE* fa = fopen(a.c_str(), "rb");
-    FILE* fb = fopen(b.c_str(), "rb");
+    FILE* fa = fopen(a.c_str(), "rb"); // path-audit: loose-only; compare this physical winner, without overlay resolution.
+    FILE* fb = fopen(b.c_str(), "rb"); // path-audit: loose-only; compare this physical loser, without overlay resolution.
     bool equal = fa && fb;
     if (equal) {
         static char bufA[65536], bufB[65536];
@@ -1354,7 +1354,7 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 		bool ok = true;
 		if (readable) ok = readable(e);
 		else if (e.provider != Provider::Fst) {
-			FILE* fp = e.physicalPath.empty() ? nullptr : fopen(e.physicalPath.c_str(), "rb");
+			FILE* fp = e.physicalPath.empty() ? nullptr : fopen(e.physicalPath.c_str(), "rb"); // path-audit: loose-only; ladder probes its normalized candidate's physical file.
 			ok = fp != nullptr;
 			if (fp) fclose(fp);
 		}
@@ -1369,7 +1369,7 @@ OpenedFile openRead(const char* path, const char* req)
 	if (!path || !path[0]) return r;
 	const std::string k = key(path);
 	auto openPhysical = [&](const std::string& phys, const char* layer, const std::string& owner) {
-		const int h = phys.empty() ? -1 : _open(phys.c_str(), _O_RDONLY | _O_BINARY);
+		const int h = phys.empty() ? -1 : _open(phys.c_str(), _O_RDONLY | _O_BINARY); // path-audit: loose-only; ladder opens the selected mod/loose physical file.
 		if (h == -1) return false;
 		r.fd = h; r.layer = layer; r.owner = owner; r.physicalPath = phys;
 		return true;
