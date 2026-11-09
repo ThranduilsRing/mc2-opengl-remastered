@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <utility>
 #include "missiongui_shared_internal.h"
+#include "jump_target.h"
 constexpr float ATTILA_FACTOR = 1.0f;
 constexpr float ATTILA_ROTATION_FACTOR = 4.1f;
 constexpr float ATTILA_THRESHOLD = 0.01f;
@@ -237,14 +238,7 @@ bool MissionInterfaceManager::canJumpToWPos()
 						lastWayPoint = pMover->getPosition();
 					else
 						lastWayPoint = lastQueuedTacOrder.getWayPoint(0);
-					glm::vec3 distance;
-					distance = lastWayPoint - wPos;
-
-					//JUMP distance is always JUST horizontal.  NO Vertical!!
-					distance.z = 0.0f;
-					float dist = glm::length(distance);
-					
-					if (dist > pMover->getJumpRange())
+					if (!jumpTargetValid(true, passable, lastWayPoint, wPos, pMover->getJumpRange()))
 						canJump = false;
 				}
 				else
