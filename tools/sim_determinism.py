@@ -81,6 +81,13 @@ def overlap_violation(text: str) -> str:
         if OVERLAP_VIOLATION in line:
             return line.strip()
     return ""
+
+
+def overlap_audit_env(mission: str, environ) -> dict:
+    """The audit env of a determinism run: level 1 (abort on the first violation) unless the caller armed a level (box row `:audit`)."""
+    if mission not in OVERLAP_AUDIT_MISSIONS:
+        return {}
+    return {"MC2_SIM_OVERLAP_AUDIT": environ.get("MC2_SIM_OVERLAP_AUDIT") or "1"}
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
 #: One baseline file per mission.
@@ -456,7 +463,7 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
         dest = os.path.join(out, tag)
         if os.path.exists(dest):
             sys.exit(f"sim_determinism: output already exists: {dest}; use a fresh --out")
-        env = dict(os.environ, **GATES, **({"MC2_SIM_OVERLAP_AUDIT": "1"} if mission in OVERLAP_AUDIT_MISSIONS else {}),
+        env = dict(os.environ, **GATES, **overlap_audit_env(mission, os.environ),
                    **(extra_env or {}).get("both", {}), **(extra_env or {}).get(tag, {}))
         if battle_fixture:
             # The UI channel consumes its input. Each run needs a private copy;
