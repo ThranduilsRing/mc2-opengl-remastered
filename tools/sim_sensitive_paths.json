@@ -31,6 +31,19 @@
     "code/artlry.cpp",
     "GameOS/gameos/sim_overlap.cpp",
     "GameOS/gameos/utils/timing.*",
-    "GameOS/gameos/gos_terrain_lod_chunk*"
+    "GameOS/gameos/gos_terrain_lod_chunk*",
+    "code/team_los*",
+    "code/los_kernel*",
+    "code/contact.cpp",
+    "code/objmgr.cpp",
+    "code/mech_move*",
+    "code/missiongui_orders*",
+    "code/group_orders*",
+    "code/tactical_order_queue*",
+    "code/tacorder_*",
+    "code/ablmc2_orders*",
+    "code/brain_order_intent.h",
+    "code/logisticsdata_save*",
+    "code/logistics_deployment*"
   ]
 }
