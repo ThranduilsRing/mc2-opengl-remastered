@@ -487,8 +487,7 @@ static bool EditorInterface_IsDoubleClickDistance(int x1, int y1, int x2, int y2
 // unset -> on, exactly "0" -> off, any other value -> on.
 static bool EditorInterface_GpuPickEnabled()
 {
-	static const bool s_enabled = mc2::gate::get<"MC2_EDITOR_GPU_PICK">();   // Lead0Kill row, default on
-	return s_enabled;
+	return true;
 }
 
 // CPU forward-projection picker. Kept as the killswitch fallback for the GPU

@@ -248,28 +248,13 @@ bool EvaluateClipGpuBones(const SkelPlan& plan,
         if (outDurTicks) *outDurTicks = 1.0;
         return true;
     }
-    const bool clipDiag = mc2::gate::get<"MC2_MECH_IMPORT_CLIP_DIAG">();
     const std::optional<int> aiOpt = findAnim(scene, clip);
     if (!aiOpt) {
-        if (clipDiag) {
-            static int miss = 0;
-            if (miss++ < 12) {
-                mc2::fmt::print_err("[CLIP-DIAG] NOT FOUND clip='{}' (scene has {:d} anims; first few:", clip.substr(0, clip.find('\0')), mc2::fmt::as_u32(scene->mNumAnimations));
-                for (unsigned a = 0; a < scene->mNumAnimations && a < 4; ++a)
-                    mc2::fmt::print_err(" '{}'", mc2::fmt::safe(scene->mAnimations[a]->mName.C_Str()));
-                mc2::fmt::print_err(")\n");
-            }
-        }
         return false;
     }
     const int ai = *aiOpt;
     const aiAnimation* anim = scene->mAnimations[ai];
     const double t = clipTicks(anim, frame);
-    if (clipDiag) {
-        static int hit = 0;
-        if (hit++ < 12)
-            mc2::fmt::print_err("[CLIP-DIAG] FOUND clip='{}' frame={:.2f} t={:.2f} dur={:.2f} rotOnly={:d}\n", clip.substr(0, clip.find('\0')), static_cast<double>(frame), t, anim->mDuration, mc2::fmt::as_i32(static_cast<int>(rotationOnlyEnabled())));
-    }
     if (outTimeTicks) *outTimeTicks = t;
     if (outDurTicks) *outDurTicks = anim->mDuration;
 

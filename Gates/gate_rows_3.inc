@@ -19,7 +19,6 @@ P("MC2_SHADOW_MOVER_SAMPLES", Int, 32, "post", "", "Spatial mover-shadow filter 
 // its enum value (58).
 L(Presence, "MC2_SHOT_RESULTS", Bool, false, "code", "", "", verified),
 G("MC2_SHOT_SCREEN", String, "", "code", "", "Proof tool: screenshot a front-end screen (<id>[@N]: campaign_missions, logistics, mechbay, ...) after N settled frames, then exit.", passthrough | verified),
-L(Presence, "MC2_SIM_CLOCK_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_SIM_FAULT_INJECT", Int, 0, "code", "", "Test-only crash-bundle fault injection: 1 worker throw, 2 worker invalid-parameter, 3 hard overlap violation; 0 = off.", clampRange(0, 3) | passthrough | registry(Trace, "MC2_SIM_FAULT_INJECT", -1, false) | verified),
 // ── SIM-IDENTITY-HASH-1 ────────────────────────────────────────────────
 // Per-sim-frame world-state hash (mover positions / orientations / gesture
@@ -87,7 +86,6 @@ L(Lead0Kill, "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Bool, true, "props", "", ""
 // history: docs/gate-history.md#MC2_STATIC_LIGHT_UPLOAD_SPLIT
 L(Lead0Kill, "MC2_STATIC_LIGHT_UPLOAD_SPLIT", Bool, true, "code", "", "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead...", registry(Feature, "MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT", -1, true)),
 L(Presence, "MC2_STATIC_POP_SPLIT", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_STATIC_PROP_BAKE_SELFTEST", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
 P("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Int, -1, "code", "", "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).", passthrough | registry(Trace, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", -1, false) | verified),
 // SPFLUSH-COST-SPLIT-1: RDTSC decomposition of StaticPropRegistryFlush hot zone.
@@ -101,7 +99,6 @@ L(Lead0P, "MC2_STATIC_PROP_GLOBAL_POOL_LEGACY", Bool, false, "props", "", "", ve
 G("MC2_STATIC_PROP_LATE_SPAWN_REG", Bool, false, "props", "", "Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20).", verified),
 G("MC2_STATIC_PROP_MISSION_LOAD_REG", Bool, true, "props", "", "Task 9 (Track B): mission-load + late-spawn registration ON by default.", verified),
 L(Lead0, "MC2_STATIC_PROP_PICK", Bool, false, "code", "", "", verified),
-L(Lead0, "MC2_STATIC_PROP_PICK_DEBUG", Bool, false, "code", "", "", verified),
 L(Lead0Kill, "MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY", Bool, true, "gameos", "", "", passthrough | verified),
 L(Lead0, "MC2_STATIC_PROP_TRACE", Bool, false, "props", "", "Stage 2.C+ instrumentation: one-shot registered-types dump.", verified),
 L(Presence, "MC2_STATIC_STALE_DROP_FATAL", Bool, false, "props", "", "Opt-in teeth for CI / bisection: abort on the regression signature.", passthrough | verified),
@@ -142,7 +139,6 @@ P("MC2_TERRAIN_DETAIL_FADE_END", Float, 3000.0, "gameos", "", ""),
 P("MC2_TERRAIN_DETAIL_FADE_START", Float, 1000.0, "gameos", "", ""),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT", Bool, true, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT_MINE", Bool, true, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_TERRAIN_INDIRECT_THINEMIT_TRACE", Bool, false, "terrain", "", "Step 1b-1 (cpu-pack-retirement plan ?2 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) - the GPU compute shader..."),
 L(Lead0Kill, "MC2_TERRAIN_LIGHTING_GPU", Bool, true, "terrain", "", "", passthrough | verified),
 // NIGHT-LIGHT-POOLS-1: the LOD-chunk terrain consumes the per-frame terrain
 // light pool (gos_terrain_lighting PackAndDispatch light SSBO) per-fragment,

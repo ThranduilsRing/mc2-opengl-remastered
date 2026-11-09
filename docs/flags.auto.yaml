@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 440
+gate_count: 425
 registry_entry_count: 124
-verified_count: 418
+verified_count: 405
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -664,13 +664,6 @@ flags:
     owner: editor
     doc: ""
     verified: true
-  - name: MC2_EDITOR_DOCK
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: ""
-    verified: true
   - name: MC2_EDITOR_FAR_CLIP
     kind: Float
     default: 0
@@ -686,13 +679,6 @@ flags:
     doc: "Editor frame-rate cap; <= 0 is uncapped."
     smoke_passthrough: true
     verified: true
-  - name: MC2_EDITOR_GPU_PICK
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: editor
-    doc: ""
-    verified: true
   - name: MC2_EDITOR_GPU_TIMERS
     kind: Bool
     default: false
@@ -704,27 +690,6 @@ flags:
     kind: Bool
     default: false
     rule: Exact1
-    owner: editor
-    doc: ""
-    verified: true
-  - name: MC2_EDITOR_MOVER_REFRESH
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: editor
-    doc: ""
-    verified: true
-  - name: MC2_EDITOR_PICK_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: editor
-    doc: ""
-    verified: true
-  - name: MC2_EDITOR_STATIC_PREWARM_OFF
-    kind: Bool
-    default: false
-    rule: Presence
     owner: editor
     doc: ""
     verified: true
@@ -856,13 +821,6 @@ flags:
     default: false
     rule: Presence
     owner: gameos
-    doc: ""
-    verified: true
-  - name: MC2_FRAMEGRAPH_AMBIENT_FATAL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
     doc: ""
     verified: true
   - name: MC2_FRAMEGRAPH_DRYRUN
@@ -1163,12 +1121,6 @@ flags:
     doc: "ImGui inspector panel (GuiRuntime/EditorInspector.cpp)."
     verified: true
     registry: {feature_id: MC2_FEATURE_IMGUI_INSPECTOR, kind: Feature, order: 7, default_on: true}
-  - name: MC2_IMPORTER_DIR
-    kind: String
-    default: ""
-    rule: Std
-    owner: unclassified
-    doc: ""
   - name: MC2_INPUT_SCRIPT
     kind: String
     default: ""
@@ -1467,20 +1419,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_MATERIAL_GPU_SAMPLE, kind: Feature, order: 10, default_on: true}
-  - name: MC2_MECHLAB_3D_OFF
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech."
-    verified: true
-  - name: MC2_MECHLAB_GPU_OFF
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass."
-    verified: true
   - name: MC2_MECH_BATCHER_STATS
     kind: Bool
     default: false
@@ -1502,13 +1440,6 @@ flags:
     rule: Lead1
     owner: code
     doc: "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path)."
-    verified: true
-  - name: MC2_MECH_IMPORT_CLIP_DIAG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_MECH_IMPORT_FORCE_BONE
     kind: String
@@ -2186,14 +2117,6 @@ flags:
     doc: "Proof tool: screenshot a front-end screen (<id>[@N]: campaign_missions, logistics, mechbay, ...) after N settled frames, then exit."
     smoke_passthrough: true
     verified: true
-  - name: MC2_SIM_CLOCK_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_SIM_FAULT_INJECT
     kind: Int
     default: 0
@@ -2422,13 +2345,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_STATIC_PROP_BAKE_SELFTEST
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
     kind: Int
     default: -1
@@ -2467,13 +2383,6 @@ flags:
     doc: "Task 9 (Track B): mission-load + late-spawn registration ON by default."
     verified: true
   - name: MC2_STATIC_PROP_PICK
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: code
-    doc: ""
-    verified: true
-  - name: MC2_STATIC_PROP_PICK_DEBUG
     kind: Bool
     default: false
     rule: Lead0
@@ -2602,12 +2511,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_TERRAIN_INDIRECT_THINEMIT_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "Step 1b-1 (cpu-pack-retirement plan ?2 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) - the GPU compute shader..."
   - name: MC2_TERRAIN_LIGHTING_GPU
     kind: Bool
     default: true
@@ -2876,15 +2779,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_UNIT_PROFILE_DATA, kind: Feature, order: -1, default_on: false}
-  - name: MC2_UNIT_VISUAL_SNAP
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    retire_by: 2026-11-24
-    doc: "UNIT-VISUAL-SNAP-1: draw mech/vehicle models at the visual-bake terrain height (render only); 0 = gameplay height. Retire after three green merge windows."
-    smoke_passthrough: true
-    verified: true
   - name: MC2_VEGETATION_ATLAS
     kind: String
     default: ""

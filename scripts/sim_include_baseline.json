@@ -3111,17 +3111,6 @@
       "occurrence": 2
     },
     {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "wall-clock",
-      "subject": "timeGetTime",
-      "evidence": "uint64_t nowMs = static_cast<uint64_t>(timeGetTime());",
-      "occurrence": 1
-    },
-    {
       "tu": "code/sim_identity.cpp",
       "file": "mclib/appear.h",
       "chain": [

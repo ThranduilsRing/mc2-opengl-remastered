@@ -45,40 +45,6 @@ static inline bool mc2SimTickFrozen(MissionInterfaceManager* mim)
 //: True for the second and later sim ticks of one render frame (set by Mission::update).
 static bool s_extraTickInFrame = false;
 
-static void simClockTraceTick(float scenarioTimeNow)
-{
-	static const bool s_traceEnabled = mc2::gate::get<"MC2_SIM_CLOCK_TRACE">();
-	if (!s_traceEnabled)
-		return;
-
-	static bool s_seeded = false;
-	static uint64_t s_wallStartMs = 0;
-	static float s_scenarioStart = 0.0f;
-	static uint64_t s_frameCount = 0;
-	static uint64_t s_lastEmitWallMs = 0;
-
-	uint64_t nowMs = static_cast<uint64_t>(timeGetTime());
-	if (!s_seeded)
-	{
-		s_wallStartMs = nowMs;
-		s_scenarioStart = scenarioTimeNow;
-		s_lastEmitWallMs = nowMs;
-		s_seeded = true;
-	}
-	++s_frameCount;
-
-	if (nowMs - s_lastEmitWallMs >= 1000)
-	{
-		double wallElapsedSec = static_cast<double>((nowMs - s_wallStartMs)) / 1000.0;
-		double simElapsedSec = static_cast<double>((scenarioTimeNow - s_scenarioStart));
-		double ratio = (wallElapsedSec > 0.0) ? (simElapsedSec / wallElapsedSec) : 0.0;
-		mc2::fmt::print_err("[SIM-CLOCK-TRACE] wall={:.3f}s sim={:.3f}s ratio(sim/wall)={:.3f} frames={:d} frameLength={:.5f}\n",
-			wallElapsedSec, simElapsedSec, ratio,
-			mc2::fmt::as_u64(static_cast<unsigned long long>(s_frameCount)), static_cast<double>(frameLength));
-		fflush(stderr);
-		s_lastEmitWallMs = nowMs;
-	}
-}
 namespace {
 	static const bool s_misSplit = mc2::gate::get<"MC2_MISSION_SPLIT">();
 	enum class MisPhase : int { MS_LAND_UPDATE=0, MS_PATHMGR, MS_CLEAR_BLOCKS, MS_CLEAR_VERTS,
@@ -305,7 +271,6 @@ void Mission::updateTickClock(bool advanceTime) {
 			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
 	}
 	SmokeMode::onSimTick(static_cast<double>(scenarioTime));
-	simClockTraceTick(scenarioTime);
 	resumeTickAudio();
 	actualTime = scenarioTime;
 }

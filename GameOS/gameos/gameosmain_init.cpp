@@ -116,13 +116,6 @@ void initInstrBanner() {
         // to the mission log when MC2_GPU_CULL_READBACK=1 is set.
         // (No call needed here — readback_selftest() in readback.cpp is self-contained.)
 
-        if (mc2::gate::get<"MC2_STATIC_PROP_BAKE_SELFTEST">()) {
-            // Stub: full self-test wired in Task 5 after buildRecipeFromShape
-            // has callers and a registered type to test against.
-            mc2::fmt::print_err("[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n");
-            fflush(stderr);
-        }
-
         if (g_pzTrace) {
             char _pzbuf[256];
             mc2::fmt::to_buf(_pzbuf, "[PROJECTZ v1] enabled: trace={:d} heatmap={:d} summary={:d} guard_px={:d}", mc2::fmt::as_i32(g_pzDoTrace ? 1 : 0), mc2::fmt::as_i32(g_pzDoHeatmap ? 1 : 0), mc2::fmt::as_i32(g_pzDoSummary ? 1 : 0), mc2::fmt::as_i32(g_pzGuardPx));

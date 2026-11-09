@@ -69,8 +69,7 @@ float sampleVisualHeight(const glm::vec3& worldPos)
 
 float visualHeightDelta(const glm::vec3& worldPos)
 {
-	static const bool s_on = mc2::gate::get<"MC2_UNIT_VISUAL_SNAP">();
-	if (!s_on || !land || s_cpuVisualV < 2) return 0.0f;
+	if (!land || s_cpuVisualV < 2) return 0.0f;
 	return sampleVisualHeight(worldPos) - sampleGameplayHeight(worldPos);
 }
 

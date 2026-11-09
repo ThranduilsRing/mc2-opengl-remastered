@@ -360,14 +360,11 @@ void MechLabScreen::begin()
 		statics[50].setTexture( path );
 
 		// MECHLAB-3D-1: pose the real model; a chassis with no model keeps the silhouette statics.
-		if ( !mc2::gate::get<"MC2_MECHLAB_3D_OFF">() )
-		{
-			mechCamera.setMech( mc2::str::file_stem( pVariant->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
-			if ( mechCamera.hasObject() && pVariant->getChassis() )
-				mechCamera.setScale( pVariant->getChassis()->getScale() );
-			if ( mechCamera.hasObject() )
-				mechCamera.setFramedPose( 0.88f, -35.f, 30.f );	// front three-quarter, 88% of the panel height
-		}
+		mechCamera.setMech( mc2::str::file_stem( pVariant->getFileName() ).c_str(), prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+		if ( mechCamera.hasObject() && pVariant->getChassis() )
+			mechCamera.setScale( pVariant->getChassis()->getScale() );
+		if ( mechCamera.hasObject() )
+			mechCamera.setFramedPose( 0.88f, -35.f, 30.f );	// front three-quarter, 88% of the panel height
 
 
 		for (int i = COMPONENT_FORM_WEAPON_ENERGY; i < COMPONENT_FORM_JUMPJET + 1; i++ )

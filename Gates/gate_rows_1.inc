@@ -1,6 +1,5 @@
 P("MC2_FPS_CAP", Int, 90, "gameos", "", "MC2_FPS_CAP: max FPS override.", passthrough | verified),
 L(Presence, "MC2_FRAMECTX_MISMATCH_FATAL", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_FRAMEGRAPH_AMBIENT_FATAL", Bool, false, "code", "", "", verified),
 L(Lead1, "MC2_FRAMEGRAPH_DRYRUN", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_FRAMEGRAPH_EXECUTOR
 L(Lead0Kill, "MC2_FRAMEGRAPH_EXECUTOR", Bool, true, "post", "", "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).", passthrough | registry(Feature, "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", -1, true) | verified),
@@ -66,7 +65,6 @@ L(Lead0Kill, "MC2_IMGUI", Bool, true, "code", "", "ImGui overlay (GuiRuntime/Gui
 L(Lead1, "MC2_IMGUI_DEMO", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_IMGUI_INSPECTOR
 L(Lead0Kill, "MC2_IMGUI_INSPECTOR", Bool, true, "code", "", "ImGui inspector panel (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_IMGUI_INSPECTOR", 7, true) | verified),
-G("MC2_IMPORTER_DIR", String, "", "unclassified", "", ""),
 G("MC2_INPUT_SCRIPT", String, "", "code", "", "Player-path harness only: file of scripted input commands (click/key/wait) fed into the engine input state; inert when unset.", passthrough | verified),
 L(Presence, "MC2_JUMPJETS_ALL", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_LAUNCHED", Bool, false, "gameos", "", "", verified),

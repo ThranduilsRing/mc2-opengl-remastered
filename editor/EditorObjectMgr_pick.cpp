@@ -274,42 +274,6 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	for ( auto dIter = dropZones.begin(); dIter != dropZones.end(); dIter++ )
 		EditorObjectMgr_ConsiderScreenPick(*dIter, clickX, clickY, pixelFloor, bestPixSq, pBest);
 
-	// MC2_EDITOR_PICK_TRACE diagnostic (default-off). Independent measurement of the
-	// rotate-pick failure: forward-project EVERY object and report the one whose
-	// projGL screen pos is NEAREST the cursor. After a camera rotate, if the user
-	// clicked a VISIBLE object but its projGL screen pos is FAR from the cursor, the
-	// forward projection is wrong at this yaw (not a stale matrix). If it is NEAR but
-	// hit==NO, the failure is the pick tolerance / selection gate, not projection.
-	{
-		static const bool s_pickTrace = mc2::gate::get<"MC2_EDITOR_PICK_TRACE">();
-		if ( s_pickTrace )
-		{
-			float nbest = 1.0e30f, nSx = -1.f, nSy = -1.f;
-			glm::vec3 nWorld; nWorld.x = nWorld.y = nWorld.z = 0.f;
-			const char* nKind = "none";
-			for ( auto i = buildings.begin(); i != buildings.end(); i++ )
-			{
-				if ( !(*i) || !(*i)->appearance() ) continue;
-				glm::vec3 wp = (*i)->appearance()->position; Stuff::Vector4D sp;
-				if ( !EditorObjectMgr_ProjectScreenXY_GL( wp, sp ) ) continue;
-				float dx = sp.x - clickX, dy = sp.y - clickY, d2 = dx*dx + dy*dy;
-				if ( d2 < nbest ) { nbest = d2; nWorld = wp; nSx = sp.x; nSy = sp.y; nKind = "bldg"; }
-			}
-			for ( auto i = units.begin(); i != units.end(); i++ )
-			{
-				if ( !(*i) || !(*i)->appearance() ) continue;
-				glm::vec3 wp = (*i)->appearance()->position; Stuff::Vector4D sp;
-				if ( !EditorObjectMgr_ProjectScreenXY_GL( wp, sp ) ) continue;
-				float dx = sp.x - clickX, dy = sp.y - clickY, d2 = dx*dx + dy*dy;
-				if ( d2 < nbest ) { nbest = d2; nWorld = wp; nSx = sp.x; nSy = sp.y; nKind = "unit"; }
-			}
-			fprintf( stderr,
-				"[PickTrace] cursor=(%d,%d) hit=%s nearest=%s world=(%.1f,%.1f,%.1f) projScreen=(%.1f,%.1f) pixDist=%.1f\n",
-				screenX, screenY, pBest ? "YES" : "NO", nKind,
-				nWorld.x, nWorld.y, nWorld.z, nSx, nSy, sqrtf( nbest ) );
-			fflush( stderr );
-		}
-	}
 
 	return pBest;
 }

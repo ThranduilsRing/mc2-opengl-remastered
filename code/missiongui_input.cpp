@@ -445,7 +445,7 @@ void MissionInterfaceManager::tryStaticPropPick(bool moverSelectedThisFrame,
         // Clear the unified debug-state struct on empty Shift+click so
         // a stale prior pick does not survive an empty-click gesture.
         RenderWorld::clearLastGameplayPick();
-        // Verbose miss log only when MC2_STATIC_PROP_PICK_DEBUG=1;
+        // Verbose miss log (compiled in, disabled);
         // coord-diag BYTE-IDENTICAL to M1.6 modulo the schema prefix.
         if (RenderWorld::IsStaticPropPickDebugEnabled()) {
             MC2_DIAGFE(stderr,
