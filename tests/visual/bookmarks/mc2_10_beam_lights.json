@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "Night weapon lighting: player Zeus spawn, two close oblique poses. Use MC2_FX_FORCE_SPAWN=loop and MC2_VISUAL_CAPTURE_ON_FIRE=1, --focus mech --no-kill to frame the first player mech's laser/PPC volley.",
+  "bookmarks": [
+    {"name": "beam_exchange", "pos": [-4850, -5397.334, 0], "rot": 45, "proj": 30, "alt": 350, "covers": ["laser", "ppc", "night_lighting"]},
+    {"name": "beam_exchange_side", "pos": [-4850, -5397.334, 0], "rot": 135, "proj": 30, "alt": 350, "covers": ["laser", "ppc", "night_lighting"]}
+  ]
+}
