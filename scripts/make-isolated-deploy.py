@@ -579,8 +579,12 @@ def build(src: Path, dst: Path, to_link, to_copy, expected=None) -> tuple[int, i
                  f"{dst} is INCOMPLETE -- delete it and re-run.", 4)
 
     with ThreadPoolExecutor(max_workers=io_workers()) as pool:
+        started = time.perf_counter()
         linked = sum(pool.map(link_one, to_link))
+        out(f'timing link creation (including fallbacks): {time.perf_counter() - started:.3f}s')
+        started = time.perf_counter()
         list(pool.map(copy_one, to_copy))
+        out(f'timing private copies + changed-file hashes: {time.perf_counter() - started:.3f}s')
     return linked, len(to_link) - linked + len(to_copy)
 
 
@@ -860,8 +864,8 @@ def main(argv=None) -> int:
         to_copy = [(r, n) for r, n in to_copy if r not in static_names]
         known = {r for r, _ in to_link + to_copy}
         # Pinned kit sources are read-only at runtime. --skip-kit excludes
-        # them from the deploy write set; a full kit deploy still refuses
-        # these shared inodes through the existing exact-payload guard.
+        # them from the deploy write set; a full kit deploy detaches changed
+        # shared inodes before the existing exact-payload guard.
         def immutable_kit_member(rel):
             # Native recipes publish by atomic replacement; see the isolation
             # guard's contract. Their JSON receipts remain private.
@@ -900,15 +904,19 @@ def main(argv=None) -> int:
     out(f'timing links + private copies + changed-file hashes: {time.perf_counter() - copying:.3f}s')
     # The seed is a projection, so retain only the manifest rows it contains.
     # This makes the resulting tree a verified source for the next lane, too.
+    writing = time.perf_counter()
     if seed is not None:
         write_seed_manifest(dst, seed)
         shared = {r: {'stamp': content_stamp(dst / r), 'sha256': selection[r.casefold()]['sha256']}
                   for r, _ in to_link if r.casefold() in selection}
         (dst / '.lane-seed.json').write_text(json.dumps({'shared': shared}), encoding='utf-8')
+    out(f'timing manifest + lane receipt write: {time.perf_counter() - writing:.3f}s')
+    checking = time.perf_counter()
     out(f"built: {linked} linked, {copied} copied")
     verdict, _, _ = guard.run_check(str(dst), payload_rels=[r for r, _ in to_copy] + ['.deployed_manifest.csv', '.lane-seed.json'])
     if verdict != 'OK':
         fail(f'post-build isolation: {verdict}', 5)
+    out(f'timing isolation verification: {time.perf_counter() - checking:.3f}s')
     out(f'timing total: {time.perf_counter() - started:.3f}s')
 
     out("")

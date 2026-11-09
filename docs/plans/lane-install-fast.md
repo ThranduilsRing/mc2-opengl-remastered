@@ -6,6 +6,34 @@ campaign-globe was "BLOCKED by a 15-min isolated full deploy".
 Assignment: slot12, claude/lane-install-fast, base b26fc9bfe90a.
 No engine changes; no change to the v0.4 deploy payload.
 
+## Continuation at slot05 (2026-11-09)
+
+New prerequisite: the brief assigns the unused
+`E:/mc2-installs/lane-install-fast-t2`; older installs remain under their
+deletion refusal. Continue from f582fa813, not the original base.
+Before changing code, profile-stages.py measured manifest verification 54.659 s,
+kit verification 19.002 s and cached inventory planning 0.432 s on the PC.
+The earlier cache diagnostic records 3,835 ChangeTime-only manifest misses.
+Hypothesis: linking invalidates metadata receipts and causes subsequent reads.
+The earlier full creation was 171.132 s; do not present the 74-second profile
+(verification only) as a full-install measurement.
+
+The coherence advisory previously serially hashed every file and its smoke
+subprocess timed out at 30 s. It now reuses the lane's exact verified
+inode/size/mtime/NTFS ChangeTime receipt only when the expected digest matches,
+hashes all remaining files with bounded workers, and bounds each git call at
+5 s. Published installs retain byte verification of every manifest member.
+Tests cover same-size corruption with restored mtime, malformed-receipt fallback,
+and actual payload+manifest deployment over seed-linked mission/tree files
+without altering the seed or a second install. No deploy_payload.py change.
+
+Next: commit, rebase onto current local nifty, run targeted owning gate_inputs
+and coherence tests, ratchet and lint; time exactly one fresh t2 creation with
+separate link/copy/manifest/isolation timings, then one smoke-lite using the
+seed executable as the explicit fingerprint reference. No C++ compile or
+payload deployment is needed for this tooling-only seed launch. Final receipts
+and unresolved claims go in the proof directory's STATE.md.
+
 ## Use (proposed installs paragraph for lane-rules section 5)
 
 After `lane_slot.py acquire`, use the assigned install (last branch component):

@@ -81,6 +81,33 @@ def test_exe_same_size_content_drift_warns(deploy, tmp_path):
     assert "hash drift" in text and "mc2.exe" in text
 
 
+def test_lane_receipt_avoids_unchanged_hash_and_detects_restored_mtime_corruption(
+        deploy, tmp_path, monkeypatch):
+    iso = _load('make-isolated-deploy')
+    manifest = json.loads((deploy / writer.MANIFEST_NAME).read_text())
+    shared = {e['path']: {'stamp': iso.content_stamp(deploy / e['path']),
+                          'sha256': e['sha256']} for e in manifest['files']}
+    (deploy / '.lane-seed.json').write_text(json.dumps({'shared': shared}))
+    calls = []
+    sha = checker._sha256
+    monkeypatch.setattr(checker, '_sha256', lambda p: (calls.append(p), sha(p))[1])
+    assert _warns(deploy, tmp_path)[0] == 0
+    assert calls == []
+    victim = deploy / 'mc2.exe'
+    st = victim.stat()
+    victim.write_bytes(b'XXE' * 1000)
+    _os.utime(victim, ns=(st.st_atime_ns, st.st_mtime_ns))
+    n, text = _warns(deploy, tmp_path)
+    assert n == 1 and 'hash drift: mc2.exe' in text
+    assert calls == [victim]
+
+
+def test_malformed_lane_receipt_falls_back_to_hashes(deploy, tmp_path):
+    (deploy / '.lane-seed.json').write_text('{')
+    (deploy / 'mc2.exe').write_bytes(b'XXE' * 1000)
+    assert 'hash drift: mc2.exe' in _warns(deploy, tmp_path)[1]
+
+
 def test_shader_mutated_warns(deploy, tmp_path):
     (deploy / "shaders" / "gos_terrain.frag").write_text("void main() { /*x*/ }\n")
     n, text = _warns(deploy, tmp_path)

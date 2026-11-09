@@ -389,3 +389,40 @@ def test_failed_privatization_preserves_shared_bytes(tmp_path, monkeypatch):
     assert (seed / 'mc2.exe').samefile(lane / 'mc2.exe')
     assert (seed / 'mc2.exe').read_bytes() == b'original'
     assert sorted(p.name for p in lane.iterdir()) == ['mc2.exe']
+
+
+@pytest.mark.parametrize('receipt', [False, True])
+def test_lane_payload_deploy_preserves_seed_and_other_install(tmp_path, monkeypatch, receipt):
+    """trees-ship/bake-recook-smooth: run the copy+manifest path after detachment."""
+    iso = lean_tool()
+    seed, lane, other = (tmp_path / p for p in ('seed', 'lane', 'other'))
+    rels = ['data/missions/mc2_01.beauty/visual_height_4x.r32',
+            'data/trees/tree.bin']
+    for rel in rels + [dp.MANIFEST_NAME]:
+        p = seed / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b'original')
+    for target in (lane, other):
+        iso.build(seed, target, [(r, 8) for r in rels + [dp.MANIFEST_NAME]], [])
+    if receipt:
+        shared = {r: {'stamp': iso.content_stamp(lane / r),
+                       'sha256': hashlib.sha256(b'original').hexdigest()} for r in rels}
+        (lane / '.lane-seed.json').write_text(json.dumps({'shared': shared}))
+    source = tmp_path / 'changed.bin'
+    source.write_bytes(b'new lane bytes')
+    items = [(str(source), r, 'data') for r in rels]
+    writes = items + [(None, dp.MANIFEST_NAME, 'manifest')]
+    verified = dp.prepare_seed_delta(writes, str(lane), allow_legacy=True)
+    assert verified == {}
+    dp.check_hardlink_isolation(writes, str(lane))
+    monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
+    monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
+    monkeypatch.setattr(dp, 'retire_unowned', lambda *a, **k: None)
+    hashes = dp.deploy(items, str(lane), False, verified=verified)
+    dp.write_manifest(str(lane), hashes, 'lane-tip')
+    assert set(dp.read_manifest(str(lane))) == set(rels)
+    for rel in rels:
+        assert (lane / rel).read_bytes() == b'new lane bytes'
+    for rel in rels + [dp.MANIFEST_NAME]:
+        assert (seed / rel).read_bytes() == (other / rel).read_bytes() == b'original'
+        assert not (lane / rel).samefile(seed / rel)
