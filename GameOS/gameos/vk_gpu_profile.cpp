@@ -79,6 +79,12 @@ struct State {
 
 State g;
 
+// present-tail-cut: the frame-end work (read-back, query reset, Tracy collect) recorded into the present tail instead of a second
+// vkQueueSubmit. tailFrame is the frame it was recorded for; frameEnd() of that frame only finishes the bookkeeping.
+uint64_t tailFrame = ~0ull;
+uint32_t tailFirst = 0, tailCount = 0;
+bool     tailSubmitted = false;
+
 #ifdef TRACY_ENABLE
 const tracy::SourceLocationData* locFor(std::string_view nameSv, std::string_view fileSv, uint32_t line) {
     const char* name = nameSv.data();
@@ -321,14 +327,55 @@ void shutdown(VulkanContext& ctx) {
     for (OwnedCommandPool& p : g.endPool) p.reset();
     g.endPoolsReady = false;
     for (uint32_t i = 0; i < kRing; ++i) { g.endCb[i] = VK_NULL_HANDLE; g.endTicket[i] = {}; }
+    tailFrame = ~0ull;
     g.timers = false;
     g.labels = false;
     g.device = VK_NULL_HANDLE;
     g.ctx = nullptr;
 }
 
+bool recordFrameEnd(VkCommandBuffer cb) {
+    if (g.device == VK_NULL_HANDLE || cb == VK_NULL_HANDLE) return false;
+    bool tracyLive = false;
+#ifdef TRACY_ENABLE
+    tracyLive = g.tracy && tracy::GetProfiler().IsConnected();
+#endif
+    if (!g.timers && !tracyLive) return false;
+    const uint64_t f = g.frame.load(std::memory_order_relaxed);
+    uint32_t used = 0;
+    const uint32_t rslot = static_cast<uint32_t>((f + kRing - 2) % kRing);   // recorded two frames ago, as in frameEnd()
+    if (g.timers && f >= 2) {
+        readSlot(rslot, used);
+        if (g.windowFrames >= kLogEvery) flushWindow(f);
+    }
+    if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
+#ifdef TRACY_ENABLE
+    if (tracyLive) TracyVkCollect(g.tracy, cb);
+#endif
+    tailFrame = f;
+    tailFirst = rslot * kQueriesPerSlot;
+    tailCount = used * 2;
+    tailSubmitted = false;
+    return true;
+}
+
+void frameEndSubmitted() {
+    if (tailFrame == g.frame.load(std::memory_order_relaxed)) tailSubmitted = true;
+}
+
 void frameEnd() {
     if (g.device == VK_NULL_HANDLE) return;
+    if (tailFrame == g.frame.load(std::memory_order_relaxed)) {
+        // Recorded into this frame's present tail. A refused submit never ran the reset: issue it now so the slot does not read stale.
+        if (!tailSubmitted && tailCount != 0) {
+            const VkQueryPool pool = g.pool;
+            const uint32_t first = tailFirst, count = tailCount;
+            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); }, "gpuprof_reset_late");
+        }
+        tailFrame = ~0ull;
+        g.frame.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
     bool tracyLive = false;
 #ifdef TRACY_ENABLE
     tracyLive = g.tracy && tracy::GetProfiler().IsConnected();

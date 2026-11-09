@@ -2367,6 +2367,8 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     blitScope.end();
+    // present-tail-cut: the GPU-profile read-back reset + Tracy collect ride this submit instead of a second vkQueueSubmit in frameEnd().
+    gpuprof::recordFrameEnd(s.curCbuf());
     vkEndCommandBuffer(s.curCbuf());
     }
 
@@ -2402,6 +2404,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
+    gpuprof::frameEndSubmitted();
 
     s.spatialAA.submitted();
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
