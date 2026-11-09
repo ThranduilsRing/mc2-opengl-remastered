@@ -535,7 +535,8 @@ def prepare_stock_scratch(deploy: Path, destination: Path, allowances: dict) -> 
 # reloads it; add a build_suite() row with a grade, prove it green, then append its name here.
 # Load a stock mission, save it, byte-compare against the frozen baseline, exit cleanly (~25 s).
 # gen_map_basic is left out: it crashes (0xC0000005) after the first render frame at 330c5d625.
-GATE_CASES = ("stock_roundtrip:mc2_01",)
+# workflows (~95 s) drives every panel probe, saves, reopens in the editor; green since the tac-map allocator fix.
+GATE_CASES = ("stock_roundtrip:mc2_01", "workflows")
 
 
 def baseline_fact(row: dict) -> dict:

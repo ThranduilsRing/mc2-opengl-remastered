@@ -392,6 +392,11 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	float buildingYaw = 0.0f;
 	float unitYaw = 0.0f;
 	bool rotateReady = false;
+	// Yaw is compared modulo 360 (a reload normalizes 225 to -135). A spinMe building (radar dish;
+	// isSelectable() false) advances its yaw on every update(), so its yaw is animation, not authored
+	// state: the proof then rests on the unit and the building only has to survive the round trip.
+	const auto sameYaw = [](float a, float b) { const float d = fmodf(fabsf(a - b), 360.0f); return (d < 360.0f - d ? d : 360.0f - d) < 0.01f; };
+	const bool buildingSpins = placed && placed->appearance() && !placed->appearance()->isSelectable();
 	if (placed && brainUnit && placed->appearance() && brainUnit->appearance())
 	{
 		mgr->unselectAll();
@@ -403,15 +408,23 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 		rotateSelectedObjects(1);
 		buildingYaw = placed->appearance()->rotation;
 		unitYaw = brainUnit->appearance()->rotation;
-		rotateReady = buildingYaw != oldBuildingYaw && unitYaw != oldUnitYaw
-			&& EditorData::instance->MissionNeedsSaving()
-			&& undoMgr.Undo() && placed->appearance()->rotation == oldBuildingYaw && brainUnit->appearance()->rotation == oldUnitYaw
-			&& undoMgr.Redo() && placed->appearance()->rotation == buildingYaw && brainUnit->appearance()->rotation == unitYaw;
+		const bool turned = (buildingSpins || !sameYaw(buildingYaw, oldBuildingYaw)) && !sameYaw(unitYaw, oldUnitYaw);
+		const bool dirty = EditorData::instance->MissionNeedsSaving();
+		const bool undone = undoMgr.Undo();
+		const float undoBuildingYaw = placed->appearance()->rotation;
+		const float undoUnitYaw = brainUnit->appearance()->rotation;
+		const bool redone = undoMgr.Redo();
+		fprintf(stderr, "[EDITOR_ROTATE v1] spins=%d turned=%d dirty=%d undo=%d redo=%d building=%.2f->%.2f undo=%.2f now=%.2f unit=%.2f->%.2f undo=%.2f now=%.2f\n",
+			buildingSpins, turned, dirty, undone, redone, oldBuildingYaw, buildingYaw, undoBuildingYaw, placed->appearance()->rotation,
+			oldUnitYaw, unitYaw, undoUnitYaw, brainUnit->appearance()->rotation);
+		rotateReady = turned && dirty && undone && (buildingSpins || sameYaw(undoBuildingYaw, oldBuildingYaw)) && sameYaw(undoUnitYaw, oldUnitYaw)
+			&& redone && (buildingSpins || sameYaw(placed->appearance()->rotation, buildingYaw)) && sameYaw(brainUnit->appearance()->rotation, unitYaw);
 		mgr->unselectAll();
 	}
 	const bool authoredSaved = EditorData::instance->save("terrain_gen_out/e0_authored.pak", true);
 	// Undo removes the authored state before reload, so in-memory remnants cannot pass.
-	const bool removedRotation = rotateReady && undoMgr.Undo() && placed->appearance()->rotation != buildingYaw;
+	const bool removedRotation = rotateReady && undoMgr.Undo() && !sameYaw(brainUnit->appearance()->rotation, unitYaw)
+		&& (buildingSpins || !sameYaw(placed->appearance()->rotation, buildingYaw));
 	const bool removedBrain = brainReady && undoMgr.Undo() && brainUnit->getWaypointCount() + 1 == waypointCount
 		&& brainUnit->isOrderAuthored() == beforeAuthored;
 	const bool removedTeam = teamReady && undoMgr.Undo() && placed->getAlignment() == oldTeam;
@@ -426,9 +439,12 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 	const bool brainReloaded = loadedBrain && loadedBrain->getID() == brainID && loadedBrain->isOrderAuthored()
 		&& loadedBrain->getOrderType() == orderType && loadedBrain->getStance() == stance && loadedBrain->getWaypointCount() == waypointCount
 		&& loadedBrain->getWaypoints().back().x == 32.0f && loadedBrain->getWaypoints().back().y == 48.0f;
-	const auto yawMatches = [](EditorObject* obj, float yaw) { return obj && obj->appearance() && fabsf(obj->appearance()->rotation - yaw) < 0.01f; };
+	const auto yawMatches = [&](EditorObject* obj, float yaw) { return obj && obj->appearance() && sameYaw(obj->appearance()->rotation, yaw); };
+	fprintf(stderr, "[EDITOR_ROTATE v1] ready=%d removed=%d reloaded_building=%.2f reloaded_unit=%.2f\n", rotateReady, removedRotation,
+		loadedObject && loadedObject->appearance() ? loadedObject->appearance()->rotation : -999.0f,
+		loadedBrain && loadedBrain->appearance() ? loadedBrain->appearance()->rotation : -999.0f);
 	EditorSmokePanelFact("rotation", "Rotate", rotateReady && removedRotation && objectReloaded && brainReloaded
-		&& yawMatches(loadedObject, buildingYaw) && yawMatches(loadedBrain, unitYaw));
+		&& (buildingSpins || yawMatches(loadedObject, buildingYaw)) && yawMatches(loadedBrain, unitYaw));
 	EditorSmokePanelFact("terrain_paint", "PaintMaterial", terrainReady && removedTerrain && reloaded && land->getTerrain(mid, mid) == newType);
 	EditorSmokePanelFact("object_placement", "AssetBrowser", placementUndo && removedObject && objectReloaded);
 	EditorSmokePanelFact("teams_abl", "Inspector", teamReady && removedTeam && objectReloaded && loadedObject->getAlignment() == newTeam);
