@@ -9,6 +9,8 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "sim_trace.h"
+#include "fx_fixture_aim.h"
+extern float worldUnitsPerMeter;
 
 long MechWarrior::getVehicleStatus (void) {
 
@@ -30,6 +32,37 @@ static const long kJumpFailBackoffFrames = 45;
 
 // Defined in movemgr.cpp (PATHFINDING-FACTS-2 counter, advanced once per update()).
 extern long MovePathManager_getFrameCounter (void);
+
+// MC2_FX_FORCE_SPAWN fixtures: fire the whole weapon bank, each weapon aimed along the mech's facing at the middle of its
+// own range class (gamesys.fit [WeaponRanges]). A fixed short aim (the old pos.x+150 = 30 m) sits under every long-range
+// weapon's minimum, so LRMs were refused every volley and never showed a launch. The summary is logged once per capture.
+struct FxFixtureVolley { int fired = 0, recycle = 0, other = 0; };
+
+static FxFixtureVolley fxFireBankAlongFacing (MoverPtr mech, float time) {
+	FxFixtureVolley v;
+	const glm::vec3 pos = mech->getPosition();
+	glm::vec3 facing = mech->getRotationVector();
+	facing.z = 0.0f;
+	for (long cw = 0; cw < mech->numWeapons; cw++) {
+		const long wi = mech->numOther + cw;
+		const float meters = mc2_fx_aim::fixtureAimDistance(WeaponRanges, NUM_WEAPON_RANGE_TYPES,
+			MasterComponent::masterList[mech->inventory[wi].masterID].getWeaponRange());
+		glm::vec3 targetPoint = pos + facing * (meters * worldUnitsPerMeter);
+		float dmgDone = 0.0f;
+		const long rc = mech->fireWeapon(nullptr, time, wi, ATTACK_TO_DESTROY, -1, &targetPoint, dmgDone);
+		if (rc == NO_ERR) v.fired++;
+		else if (rc == 3) v.recycle++;
+		else v.other++;
+	}
+	static bool s_logged = false;
+	if (!s_logged) {
+		s_logged = true;
+		mc2::fmt::print_out("[FX_FORCE_SPAWN aim] event=volley_summary weapons={:d} fired={:d} refused_node_recycle={:d} refused_other(range/shots)={:d}\n",
+			mc2::fmt::as_i32(mech->numWeapons), mc2::fmt::as_i32(v.fired), mc2::fmt::as_i32(v.recycle), mc2::fmt::as_i32(v.other));
+		fflush(stdout);
+	}
+	return v;
+}
 
 void MechWarrior::noteJumpPathFailed (void) {
 
@@ -406,16 +439,7 @@ void MechWarrior::updateActions (void) {
 		static float s_nextFire = 0.0f;
 		if (myVehicle && scenarioTime > 5.0f && scenarioTime >= s_nextFire && myVehicle->canFireWeapons()) {
 			glm::vec3 pos = myVehicle->getPosition();
-			glm::vec3 targetPoint = pos;
-			targetPoint.x += 150.0f;
-			int firedCount = 0;
-			for (long cw = 0; cw < myVehicle->numWeapons; cw++) {
-				long wi = myVehicle->numOther + cw;
-				float dmgDone = 0.0f;
-				if (NO_ERR == myVehicle->fireWeapon(nullptr, scenarioTime, wi,
-						ATTACK_TO_DESTROY, -1, &targetPoint, dmgDone))
-					firedCount++;
-			}
+			const int firedCount = fxFireBankAlongFacing(myVehicle, scenarioTime).fired;
 			if (firedCount > 0) {
 				s_nextFire = scenarioTime + 0.05f;   // ~20 volleys/sec -> a live bolt every frame
 				mc2::fmt::print_out("[FX_FORCE_SPAWN loop] event=mech_fire wid={:d} weapons={:d} pos={:.0f},{:.0f},{:.0f} scenarioTime={:.2f}\n",
@@ -457,16 +481,7 @@ void MechWarrior::updateActions (void) {
 				if (s_firedWIDs[i] == wid) { already = true; break; }
 			if (!already) {
 				glm::vec3 pos = myVehicle->getPosition();
-				glm::vec3 targetPoint = pos;
-				targetPoint.x += 150.0f;   // a point in front; any on-map point spawns a bolt
-				int firedCount = 0;
-				for (long cw = 0; cw < myVehicle->numWeapons; cw++) {
-					long wi = myVehicle->numOther + cw;
-					float dmgDone = 0.0f;
-					if (NO_ERR == myVehicle->fireWeapon(nullptr, scenarioTime, wi,
-							ATTACK_TO_DESTROY, -1, &targetPoint, dmgDone))
-						firedCount++;
-				}
+				const int firedCount = fxFireBankAlongFacing(myVehicle, scenarioTime).fired;
 				if (firedCount > 0) {
 					s_firedWIDs[s_firedMechs++] = wid;
 					mc2::fmt::print_out("[FX_FORCE_SPAWN v1] event=mech_fire mech={:d} wid={:d} weapons={:d} pos={:.0f},{:.0f},{:.0f} scenarioTime={:.2f}\n", mc2::fmt::as_i32(s_firedMechs), mc2::fmt::as_i32(wid), mc2::fmt::as_i32(firedCount), pos.x, pos.y, pos.z, scenarioTime);

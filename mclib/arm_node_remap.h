@@ -45,4 +45,20 @@ inline long remapLostArmNode(std::span<const Node> nodes, long own, long weaponT
 	return best >= 0 ? best : own;
 }
 
+// Pure mirror of Mech3DAppearance::getWeaponNode's load-time pick: the least-used node that accepts weaponType and is not on a
+// lost arm (ties go to the lowest index). Returns the weapon-node index or -1 when no node can mount the weapon. The caller
+// bumps nodes[i].used to emulate setWeaponNodeUsed.
+inline long roundRobinWeaponNode(std::span<const Node> nodes, long weaponType, bool rightArmOff, bool leftArmOff) {
+	long best = -1, least = 999999999;
+	for (long i = 0; static_cast<size_t>(i) < nodes.size(); ++i) {
+		if ((rightArmOff && nodes[i].onRightArm) || (leftArmOff && nodes[i].onLeftArm) || !nodeAccepts(nodes[i].weaponType, weaponType))
+			continue;
+		if (nodes[i].used < least) {
+			least = nodes[i].used;
+			best = i;
+		}
+	}
+	return best;
+}
+
 } // namespace mc2_arm_remap
