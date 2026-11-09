@@ -18,4 +18,13 @@ cost on box; final lint/precheck and one Windows Ninja build; archive/release.
 Receipts: c0a5df41 box production compile failed on private renderAnim_ access;
 fixed by a const completed-presentation accessor (no class-layout change).
 Evidence: E:/mc2-archive-2026-10/proofs/box/mc2-slot01/c0a5df41/.tails/build.log.
-Runtime/pixels/performance are unproven. Next attempt uses that corrected accessor.
+At 6e614f94: Windows mc2+viewer compile rc=0; box production compile PASS;
+WaterReactive: 5/5 cases, 2133 assertions PASS; three nightly shader rows and PC
+vk_shaders_compile PASS; actual production SPIR-V/CPU layout PASS (40960 bytes,
+offsets 0/4096/8192, stamp stride 32). Broad box units: 3910/3911, existing VFX
+oracle/Windows-path fixture failure; not repaired in this lane.
+Cxx17 ratchet found two new idioms: velocity clamp and flattened tile indexing.
+Replaced with std::clamp/std::mdspan, with unchanged payload/layout and math.
+Next: prove corrected tip (including lint), then runtime day/night A/B and GPU
+cost. Runtime/pixels/performance remain unproven. Current receipts/state:
+E:/mc2-archive-2026-10/proofs/water-reactive-a/STATE.md.

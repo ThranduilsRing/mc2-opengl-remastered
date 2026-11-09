@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <mdspan>
 
 namespace mc2::waterreactive {
 constexpr uint32_t kCapacity = 128;
@@ -95,7 +96,7 @@ public:
         float vx = 0, vy = 0;
         if (dt > 0 && !discontinuity) {
             vx = dx / dt; vy = dy / dt;
-            const float scale = std::min(1.0f, 200.0f / std::max(std::hypot(vx, vy), 0.001f));
+            const float scale = std::clamp(200.0f / std::max(std::hypot(vx, vy), 0.001f), 0.0f, 1.0f);
             vx *= scale; vy *= scale;
         }
         source->x = x; source->y = y; source->seen = now;
@@ -113,6 +114,7 @@ public:
     void snapshot(float now, GpuFrame& out) {
         advance(now);
         out = {};
+        std::mdspan<uint32_t, std::extents<std::size_t, kTiles, kPerTile>> lists(out.indices.data());
         for (uint32_t i = 0; i < count_; ++i) {
             out.stamps[i] = events_[i].stamp;
             const auto& p = out.stamps[i].positionRadiusAge;
@@ -125,10 +127,10 @@ public:
                 auto& n = out.counts[t];
                 if (n == kPerTile) {
                     for (uint32_t j = 1; j < n; ++j)
-                        out.indices[t * kPerTile + j - 1] = out.indices[t * kPerTile + j];
+                        lists[t, j - 1] = lists[t, j];
                     --n;
                 }
-                out.indices[t * kPerTile + n++] = i;
+                lists[t, n++] = i;
             }
         }
     }
