@@ -54,7 +54,7 @@
    "LG05": 80,
    "LG06": 131,
    "LG07": 0,
-   "LG08": 8,
+   "LG08": 4,
    "LG09": 6,
    "LG10": 7,
    "LG11": 35,
@@ -141,10 +141,10 @@
   "code": {
    "LG01": 0,
    "LG02": 0,
-   "LG03": 172,
+   "LG03": 169,
    "LG04": 15,
    "LG05": 120,
-   "LG06": 64,
+   "LG06": 68,
    "LG07": 2,
    "LG08": 1,
    "LG09": 3,
@@ -192,20 +192,20 @@
    "LG05": 100,
    "LG06": 50,
    "LG07": 2,
-   "LG08": 1,
+   "LG08": 4,
    "LG09": 2,
-   "LG10": 7,
+   "LG10": 9,
    "LG11": 56,
    "LG12a": 36,
    "LG12b": 6,
    "LG13": 15,
-   "LG14": 35,
+   "LG14": 36,
    "LG15": 0,
    "LG16": 9,
    "LG17": 64,
    "LG18": 18,
    "LG19": 0,
-   "LG20": 9
+   "LG20": 8
   },
   "tests": {
    "LG01": 0,
@@ -313,6 +313,7 @@
   },
   "GameOS/gameos/asset_scale.h": {},
   "GameOS/gameos/battle_bench.h": {},
+  "GameOS/gameos/beam_lights.h": {},
   "GameOS/gameos/cook_cache.cpp": {},
   "GameOS/gameos/cook_cache.h": {},
   "GameOS/gameos/crash_content.h": {},
@@ -338,7 +339,7 @@
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
    "LG06": 4,
-   "LG08": 8
+   "LG08": 2
   },
   "GameOS/gameos/engine_present_vk.h": {},
   "GameOS/gameos/engine_present_vk_imgui.cpp": {
@@ -650,6 +651,7 @@
   "GameOS/gameos/gpu_memory_report.h": {},
   "GameOS/gameos/height_sig.h": {},
   "GameOS/gameos/hitch_stats.h": {},
+  "GameOS/gameos/hud_command_merge.h": {},
   "GameOS/gameos/ibl_sh_runtime.h": {},
   "GameOS/gameos/input_capture_policy.h": {},
   "GameOS/gameos/light_pool_culling.h": {
@@ -667,6 +669,7 @@
   },
   "GameOS/gameos/mdi_submit.h": {},
   "GameOS/gameos/mech_tangent_sign.h": {},
+  "GameOS/gameos/music_stream.h": {},
   "GameOS/gameos/native_render_state.cpp": {},
   "GameOS/gameos/native_render_state.h": {},
   "GameOS/gameos/owned_handle.h": {},
@@ -724,6 +727,7 @@
   "GameOS/gameos/terrain_surface_asset.h": {},
   "GameOS/gameos/terrain_surface_cook.cpp": {},
   "GameOS/gameos/terrain_surface_cook.h": {},
+  "GameOS/gameos/terrain_vertex_pack.h": {},
   "GameOS/gameos/texture_decode.cpp": {
    "LG06": 5,
    "LG17": 1
@@ -824,7 +828,8 @@
   "GameOS/gameos/vk_light_lists.h": {},
   "GameOS/gameos/vk_material_sampler.h": {},
   "GameOS/gameos/vk_native_producers.cpp": {
-   "LG06": 2
+   "LG06": 2,
+   "LG08": 2
   },
   "GameOS/gameos/vk_native_producers.h": {
    "LG06": 1
@@ -1114,6 +1119,7 @@
   "GuiRuntime/PlayerOptionRows.h": {},
   "GuiRuntime/PlayerSettings.h": {},
   "GuiRuntime/QualityPresets.h": {},
+  "RenderCore/CursorImage.h": {},
   "RenderCore/CursorMap.h": {},
   "RenderCore/DrawPacket.h": {},
   "RenderCore/EngineView.h": {},
@@ -1182,6 +1188,7 @@
   "RenderCore/StaticPropInstanceDesc.h": {},
   "RenderCore/StaticPropOrigin.h": {},
   "RenderCore/StaticPropTypeDesc.h": {},
+  "RenderCore/StaticPropVertexIndex.h": {},
   "RenderCore/SurfaceMaterial.h": {},
   "RenderCore/TemporalInputs.h": {},
   "RenderCore/TextureService.h": {
@@ -1480,6 +1487,7 @@
    "LG17": 1
   },
   "code/equipment_validator.h": {},
+  "code/explosion_light.h": {},
   "code/facet_token.h": {
    "LG06": 1
   },
@@ -1506,6 +1514,7 @@
    "LG06": 1
   },
   "code/frame_jobs.h": {},
+  "code/fx_fixture_aim.h": {},
   "code/gamecam.cpp": {
    "LG11": 2,
    "LG17": 2
@@ -1532,9 +1541,7 @@
   "code/gametacmap.h": {
    "LG17": 1
   },
-  "code/gate.cpp": {
-   "LG03": 1
-  },
+  "code/gate.cpp": {},
   "code/gate.h": {},
   "code/gate_value_codec.h": {},
   "code/goal.cpp": {},
@@ -1606,6 +1613,7 @@
    "LG06": 1
   },
   "code/jobs_fatal.h": {},
+  "code/jump_target.h": {},
   "code/keyboardref.cpp": {
    "LG03": 2
   },
@@ -1837,7 +1845,7 @@
   },
   "code/missionbegin.cpp": {
    "LG03": 10,
-   "LG06": 2,
+   "LG06": 3,
    "LG10": 1
   },
   "code/missionbegin.h": {
@@ -1876,7 +1884,9 @@
   "code/missiongui_shared_internal.h": {
    "LG06": 1
   },
-  "code/missiongui_style.cpp": {},
+  "code/missiongui_style.cpp": {
+   "LG06": 1
+  },
   "code/missiongui_support.cpp": {
    "LG05": 2,
    "LG10": 1
@@ -2011,14 +2021,14 @@
   "code/objective_text.h": {},
   "code/objectives_panel.h": {},
   "code/objmgr.cpp": {
-   "LG03": 10,
+   "LG03": 9,
    "LG05": 2,
    "LG12a": 2
   },
   "code/objmgr.h": {},
   "code/objmgr_internal.h": {},
   "code/objmgr_io.cpp": {
-   "LG03": 8
+   "LG03": 7
   },
   "code/objmgr_misc.cpp": {
    "LG03": 1
@@ -2051,6 +2061,7 @@
   "code/pausewindow.h": {
    "LG14": 1
   },
+  "code/pick_query.h": {},
   "code/pilot_pick.h": {},
   "code/pilotreadyscreen.cpp": {},
   "code/pilotreadyscreen.h": {},
@@ -2100,6 +2111,9 @@
   "code/saveload_load.cpp": {
    "LG03": 7
   },
+  "code/screen_settle_capture.h": {
+   "LG06": 2
+  },
   "code/sensor_trace.h": {},
   "code/sim_identity.cpp": {},
   "code/sim_identity.h": {},
@@ -2119,6 +2133,7 @@
   "code/simplecomponentlistbox.cpp": {},
   "code/simplecomponentlistbox.h": {},
   "code/simulation_save_section.h": {},
+  "code/spawn_tree_clear.h": {},
   "code/startup_preload.cpp": {},
   "code/startup_preload.h": {},
   "code/static_natural_skip_policy.h": {},
@@ -2152,6 +2167,7 @@
   "code/team_internal.h": {},
   "code/team_los.cpp": {},
   "code/team_save_data.h": {},
+  "code/terrain_dirty_queue.h": {},
   "code/terrain_part_chunk.h": {},
   "code/terrain_value_codec.h": {},
   "code/terrobj.cpp": {
@@ -2351,7 +2367,7 @@
   },
   "mclib/apprtype.h": {},
   "mclib/arm_node_remap.h": {
-   "LG10": 1
+   "LG10": 2
   },
   "mclib/assimp_importer.cpp": {
    "LG05": 9,
@@ -2368,9 +2384,7 @@
   "mclib/bdactor_diag.cpp": {},
   "mclib/bdactor_internal.h": {},
   "mclib/bdactor_lightbake.cpp": {},
-  "mclib/bdactor_render.cpp": {
-   "LG20": 1
-  },
+  "mclib/bdactor_render.cpp": {},
   "mclib/bdactor_sidecar.cpp": {
    "LG06": 1,
    "LG20": 8
@@ -2384,6 +2398,7 @@
   "mclib/bdactor_update.cpp": {},
   "mclib/bldg_anim_gate_counters.h": {},
   "mclib/building_gameplay_observation.h": {},
+  "mclib/building_static_eligibility.h": {},
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
   },
@@ -2440,6 +2455,7 @@
   "mclib/content_ir.cpp": {},
   "mclib/content_ir.h": {},
   "mclib/content_socket.h": {},
+  "mclib/content_source_digest.h": {},
   "mclib/control_map_png_decode.cpp": {
    "LG17": 1
   },
@@ -2488,6 +2504,7 @@
   "mclib/effect_resources.h": {},
   "mclib/err.cpp": {},
   "mclib/err.h": {},
+  "mclib/fast_hash.h": {},
   "mclib/fastfile.cpp": {
    "LG03": 1,
    "LG05": 2
@@ -2710,7 +2727,7 @@
   "mclib/mech_anim_runtime.h": {},
   "mclib/mech_clip_state.h": {},
   "mclib/mech_death_policy.h": {
-   "LG14": 0
+   "LG14": 1
   },
   "mclib/mech_grounding.h": {},
   "mclib/mech_skel_import.cpp": {},
@@ -3041,6 +3058,9 @@
   "mclib/paths.h": {
    "LG13": 2
   },
+  "mclib/pick_occlusion.h": {
+   "LG10": 1
+  },
   "mclib/presentation_phase.h": {},
   "mclib/preview_draw.cpp": {},
   "mclib/projectz_overlay.cpp": {},
@@ -3179,12 +3199,16 @@
   },
   "mclib/terrain_lod_rules.h": {},
   "mclib/terrain_material.h": {},
+  "mclib/terrain_normal_load.h": {},
   "mclib/terrain_ray_pick.h": {},
   "mclib/terrain_raycast.cpp": {},
   "mclib/terrain_render.cpp": {},
   "mclib/terrain_runtime.cpp": {},
   "mclib/terrain_runtime.h": {},
   "mclib/terrain_update.cpp": {},
+  "mclib/terrain_vertex_dirty.h": {
+   "LG08": 3
+  },
   "mclib/terrtxm.cpp": {
    "LG12a": 2
   },
@@ -3312,7 +3336,7 @@
    "LG20": 1
   }
  },
- "head": "58ac2d21d",
+ "head": "eb811bb6f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
