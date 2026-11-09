@@ -320,7 +320,7 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 
 	FullPathFileName legacyTextureName;
 	legacyTextureName.init(texturePath,txmName,"");
-	const auto pbrAlbedo = mc2::textures::stockPbrOverride(legacyTextureName, true, stockPbr);
+	const auto pbrAlbedo = mc2::textures::stockPbrOverride(static_cast<const char*>(legacyTextureName), true, stockPbr);
 	const char* textureName = pbrAlbedo.c_str();
 
 	/* The texture manager asks for a unique 32bit identifier for every texture instance.
