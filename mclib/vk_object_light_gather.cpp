@@ -100,6 +100,11 @@ static void lightRowCensusEmit(mc2::czstring tag, unsigned t) {
 
 void GatherLightsParameters(TG_HWLightsData* lights)
 {
+	GatherLightsParameters(TG_Shape::lightContext(), lights);
+}
+
+void GatherLightsParameters(const TG_LightContext& ctx, TG_HWLightsData* lights)
+{
 	gosASSERT(lights);
 
 	// Stage 2.D.2 diagnostic: dump gathered lights when MC2_OBJECT_PARITY_TRACE=1.
@@ -117,8 +122,8 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	static constexpr uint32_t kRuntimeLightClamp = MAX_HW_LIGHTS_IN_WORLD; // 32
 	const uint32_t max_num_lights = kRuntimeLightClamp;
 
-	const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
-	const DWORD numLights = TG_Shape::s_numLights;
+	const TG_LightPtr* listOfLights = ctx.list;
+	const DWORD numLights = ctx.count;
 
 	// T1.15 [SPOT_DIAG v1] per-call active/inactive/point_active tally.
 	unsigned diagActiveLights = 0;
@@ -407,22 +412,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
 		return;
 	*out = TG_HWLightsData();   // ctor zeroes arrays and sets numLights_ = 0
 
-	TG_LightPtr* const savedList  = TG_Shape::s_listOfLights;
-	const DWORD        savedCount = TG_Shape::s_numLights;
-
-	// Mirror SetLightList's own null-normalisation (mclib/tgl.cpp):
-	// a NULL list forces the count to 0 there, and the gather's
-	// `listOfLights[iLight]` deref would otherwise run against a null base.
-	if (lights) {
-		TG_Shape::s_listOfLights = lights;
-		TG_Shape::s_numLights    = static_cast<DWORD>(nLights);
-	} else {
-		TG_Shape::s_listOfLights = nullptr;
-		TG_Shape::s_numLights    = 0;
-	}
-
-	GatherLightsParameters(out);
-
-	TG_Shape::s_listOfLights = savedList;
-	TG_Shape::s_numLights    = savedCount;
+	// R2 item 1: the probe's list rides in its own context; TG_Shape's statics are never written (null list =
+	// zero count, same normalisation as SetLightList).
+	GatherLightsParameters(TG_LightContext::make(lights, static_cast<DWORD>(nLights)), out);
 }

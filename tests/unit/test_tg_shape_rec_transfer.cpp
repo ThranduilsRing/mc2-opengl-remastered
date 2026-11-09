@@ -298,3 +298,43 @@ TEST_CASE("TG_ShapeRec: detach immediately borrows the destination texture slots
     CHECK(TextureBorrowProbe::slots(*to.node)[0].mcTextureNodeIndex==19);
     CHECK_FALSE(from.node);
 }
+
+// RENDER-THREAD-R2 item 1: a gather reads its own TG_LightContext. Two contexts never alias each other or the TG_Shape
+// statics, and building one (what the light_row probe does) writes nothing shared.
+TEST_CASE("TG_LightContext/contexts do not alias and building one leaves the TG_Shape statics alone")
+{
+    TG_Light a, b;
+    a.init(TG_LIGHT_AMBIENT);
+    b.init(TG_LIGHT_AMBIENT);
+    TG_LightPtr listA[] = { &a };
+    TG_LightPtr listB[] = { &b, &a };
+    auto* const savedLights = TG_Shape::s_listOfLights;
+    const auto savedCount = TG_Shape::s_numLights;
+    TG_Shape::s_listOfLights = listA;
+    TG_Shape::s_numLights = 1;
+
+    const TG_LightContext live = TG_Shape::lightContext();
+    TG_LightContext probe = TG_LightContext::make(listB, 2);
+    CHECK(live.list == listA);
+    CHECK(live.count == 1);
+    CHECK(probe.list == listB);
+    CHECK(probe.count == 2);
+    CHECK(&live != &probe);
+    CHECK(live.list != probe.list);
+
+    // Editing a copy does not reach the statics; the statics are untouched by make().
+    probe.count = 0;
+    CHECK(TG_Shape::s_listOfLights == listA);
+    CHECK(TG_Shape::s_numLights == 1);
+    // A snapshot taken before the pass moves on is unaffected by the move.
+    TG_Shape::s_listOfLights = listB;
+    CHECK(live.list == listA);
+
+    // Null list normalises to a zero count, like SetLightList.
+    const TG_LightContext none = TG_LightContext::make(nullptr, 7);
+    CHECK(none.list == nullptr);
+    CHECK(none.count == 0);
+
+    TG_Shape::s_listOfLights = savedLights;
+    TG_Shape::s_numLights = savedCount;
+}

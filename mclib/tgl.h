@@ -346,6 +346,18 @@ using TG_HWLightsDataPtr = TG_HWLightsData*;
 void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
                               TG_HWLightsData* out);
 
+// RENDER-THREAD-R2 item 1: the light list one gather reads. The live pass snapshots the TG_Shape::s_listOfLights /
+// s_numLights pair (TG_Shape::lightContext(), declared with the class); anything that wants a different list (the
+// light_row probe) builds its own and passes it down, so no reader has to write the shared statics to look at a list.
+struct TG_LightContext
+{
+	TG_LightPtr*	list  = nullptr;
+	DWORD			count = 0;
+	// Mirrors TG_Shape::SetLightList's null normalisation: a null list is a zero count.
+	static TG_LightContext make(TG_LightPtr* l, DWORD n) { TG_LightContext c; if (l) { c.list = l; c.count = n; } return c; }
+};
+void GatherLightsParameters(const TG_LightContext& ctx, TG_HWLightsData* lights);
+
 
 
 //-------------------------------------------------------------------------------
@@ -898,6 +910,8 @@ class TG_Shape
 		//Matrices used to transform the shapes.
 		static TG_LightPtr				*s_listOfLights;		//List passed in a transform time
 		static DWORD					s_numLights;
+		// The pair as one value for the gather (TG_LightContext, above).
+		static TG_LightContext			lightContext() { TG_LightContext c; c.list = s_listOfLights; c.count = s_numLights; return c; }
 
 
 	//-----------------
