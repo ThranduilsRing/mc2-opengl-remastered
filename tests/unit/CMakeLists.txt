@@ -95,6 +95,7 @@ add_executable(mc2_tests
     test_vfx_draw_plan.cpp  # VFX island draw packing: equal-state merge, additive runs sorted, alpha order kept
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
     test_light_pool_culling.cpp
+    test_terrain_vertex_dirty.cpp
     test_local_lights.cpp   # LOCAL-LIGHTS: pool packing vs shader decode, shadow-tile selection, mission light profile (offline)
     test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
     test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open

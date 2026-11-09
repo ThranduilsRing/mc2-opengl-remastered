@@ -17,6 +17,7 @@
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
 #include "vk_frame_ring.h"
+#include "../../mclib/terrain_vertex_dirty.h"
 
 #include <cstdint>
 
@@ -116,7 +117,7 @@ private:
     uint32_t selfTestLighting();
     bool makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUsageFlags usage, const char* name, int i0 = -1);
     void writeAll();
-    // Points slot `par`'s frame-ring bindings (lighting set 0 lightIn, 1 lights, 3 params; cull set 3 params) at `buffer` when they do not already name it.
+    // Points slot `par`'s frame-ring bindings (lights and params) at `buffer`.
     void syncInputs(uint32_t par, VkBuffer buffer, VkDeviceSize range);
 
     bool ready_ = false;
@@ -134,7 +135,9 @@ private:
     ComputePipeline lightP_, cullP_, argsP_;
     ComputeSets lightSets_, cullSets_, argsSets_;
     OwnedBuffer lightOut_;                       // numVertices x 8 B, device-local, written by the lighting compute, read by the cull
-    // The per-frame inputs (lighting vertices and lights, the two parameter blocks) are frame-ring spans bound with dynamic offsets; ringBound_[par] = the
+    OwnedBuffer lightIn_[kSlots];                // resident absolute vertex inputs; written only after this slot retires
+    mc2::terrain::VertexUploadRanges vertexUploads_[kSlots];
+    // Lights and the two parameter blocks are frame-ring spans bound with dynamic offsets; ringBound_[par] = the
     // ring buffer slot `par`'s bindings currently name (the slot's set is rewritten only after the island's slot fence retired its last use).
     VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     OwnedBuffer argsUbo_[kSlots];   // thin capacity + this frame's reflection dispatch size

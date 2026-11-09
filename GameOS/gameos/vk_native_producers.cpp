@@ -84,7 +84,14 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
 
     const VkBufferUsageFlags dst = VK_BUFFER_USAGE_TRANSFER_DST_BIT, src = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     if (!makeDevice(lightOut_, static_cast<VkDeviceSize>(numVertices) * 8u, kStorage | dst | src, "producers.lightOut")) return false;
+    // Preserve the old zero pack for holes between visible rows. Such vertices
+    // have version zero until first visited, so they need no per-frame upload.
+    const std::vector<gos_terrain_lighting::GpuTerrainVertexInput> zeroInputs(numVertices);
     for (uint32_t p = 0; p < kSlots; ++p) {
+        const VkDeviceSize bytes = static_cast<VkDeviceSize>(numVertices) * sizeof(zeroInputs[0]);
+        if (!lightIn_[p].createGpuRead(allocator_, device_, bytes, kStorage, "producers.lightIn", static_cast<int>(p)) ||
+            !lightIn_[p].upload(zeroInputs.data(), bytes)) return false;
+        vertexUploads_[p].reset(numVertices);
         if (!argsUbo_[p].createGpuRead(allocator_, device_, sizeof(VkDrawArgsParams), kUniform, "producers.argsUbo", static_cast<int>(p))) return false;
         VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6, 0, 0}};
         if (!argsUbo_[p].upload(&ap, sizeof(ap))) return false;
@@ -244,7 +251,7 @@ uint32_t NativeProducers::selfTestLighting() {
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();
     const VkDeviceSize offIn = alignUp(sizeof(P), al);
-    const VkDeviceSize offLights = alignUp(offIn + sizeof(GpuTerrainVertexInput) * N, al);
+    const VkDeviceSize offLights = alignUp(offIn + sizeof(GpuTerrainVertexInput) * (kFirst + N), al);
     const FrameAlloc span = rctx.frameAlloc(offLights + sizeof(GpuTerrainLight) * NL);
     OwnedBuffer rb;
     if (!span || !rb.createHostWritable(allocator_, device_, static_cast<VkDeviceSize>(N) * 8u, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "producers.selfTest")) {
@@ -252,10 +259,11 @@ uint32_t NativeProducers::selfTestLighting() {
         return 0;
     }
     std::memcpy(span.ptr, &P, sizeof(P));
-    std::memcpy(static_cast<uint8_t*>(span.ptr) + offIn, vin.data(), sizeof(GpuTerrainVertexInput) * N);
+    std::memcpy(static_cast<uint8_t*>(span.ptr) + offIn + sizeof(GpuTerrainVertexInput) * kFirst, vin.data(), sizeof(GpuTerrainVertexInput) * N);
     std::memcpy(static_cast<uint8_t*>(span.ptr) + offLights, lights.data(), sizeof(GpuTerrainLight) * NL);
     ringBound_[par] = VK_NULL_HANDLE;
     syncInputs(par, span.buffer, span.range);
+    lightSets_.write(device_, par, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, span.buffer, span.range);
     const uint32_t offsets[3] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset + offLights), static_cast<uint32_t>(span.offset)};
     const bool ok = submitOneShot(*ctx_, [&](VkCommandBuffer cb) {
         lightP_.bind(cb, lightSets_.set(par), offsets);
@@ -265,6 +273,7 @@ uint32_t NativeProducers::selfTestLighting() {
         vkCmdCopyBuffer(cb, lightOut_.get(), rb.get(), 1, &c);
         cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
     }, "producers_selftest");
+    lightSets_.write(device_, par, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightIn_[par].get());
     lightOutCleared_ = false;   // the self-test wrote real values: the first frame refills the white sentinel
     if (!ok) { plog("[VK_PRODUCER_SELFTEST v1] lighting skipped (submit)."); return 0; }
     std::vector<GpuTerrainLightingOutput> got(N);
@@ -286,6 +295,7 @@ uint32_t NativeProducers::selfTestLighting() {
 void NativeProducers::writeAll() {
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     for (uint32_t p = 0; p < kSlots; ++p) {
+        lightSets_.write(device_, p, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightIn_[p].get());
         lightSets_.write(device_, p, 2, S, lightOut_.get());
         cullSets_.write(device_, p, 0, S, recipes_);
         cullSets_.write(device_, p, 1, S, lightOut_.get());
@@ -301,7 +311,6 @@ void NativeProducers::writeAll() {
 
 void NativeProducers::syncInputs(uint32_t p, VkBuffer buffer, VkDeviceSize range) {
     if (ringBound_[p] == buffer) return;
-    lightSets_.write(device_, p, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, buffer, range);
     lightSets_.write(device_, p, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, buffer, range);
     lightSets_.write(device_, p, 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkTerrainLightingParams));
     cullSets_.write(device_, p, 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, buffer, sizeof(VkWaterCullParams));
@@ -324,7 +333,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
                          hdr[1], maxTiles_, eligibleBound_ != 0 && hdr[0] > eligibleBound_, hdr[0] > maxThin_);
     }
 
-    // ---- stage the frame's inputs: one frame-ring span holding both parameter blocks, the lighting window and the lights ----
+    // ---- stage scalar/light inputs; vertex inputs stay resident per retired slot ----
     VkTerrainLightingParams lp{};
     lp.counts[0] = static_cast<int32_t>(L.numVertices); lp.counts[1] = static_cast<int32_t>(L.numLights);
     lp.counts[2] = static_cast<int32_t>(L.vertexOffset); lp.counts[3] = static_cast<int32_t>(L.windowCount);
@@ -350,20 +359,35 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
 
     VulkanContext& rctx = getOrCreateEngineVulkanContext();
     const VkDeviceSize al = rctx.frameAlignment();
-    const VkDeviceSize inBytes = static_cast<VkDeviceSize>(L.windowCount) * sizeof(gos_terrain_lighting::GpuTerrainVertexInput);
     const VkDeviceSize lightBytes = static_cast<VkDeviceSize>(std::max(L.numLights, 1u)) * sizeof(gos_terrain_lighting::GpuTerrainLight);
     const VkDeviceSize offCull = alignUp(sizeof(VkTerrainLightingParams), al);
-    const VkDeviceSize offIn = alignUp(offCull + sizeof(VkWaterCullParams), al);
-    const VkDeviceSize offLights = alignUp(offIn + (inBytes ? inBytes : sizeof(gos_terrain_lighting::GpuTerrainVertexInput)), al);
+    const VkDeviceSize offLights = alignUp(offCull + sizeof(VkWaterCullParams), al);
     const FrameAlloc span = rctx.frameAlloc(offLights + lightBytes);
     if (!span) return false;
     uint8_t* const base = static_cast<uint8_t*>(span.ptr);
     std::memcpy(base, &lp, sizeof(lp));
     std::memcpy(base + offCull, &wp, sizeof(wp));
-    if (L.windowCount > 0) std::memcpy(base + offIn, L.window, static_cast<size_t>(inBytes));
+    const std::span<const uint64_t> versions(L.vertexVersions, L.numVertices);
+    const auto ranges = vertexUploads_[par].pending(versions, L.vertexOffset, L.windowCount);
+    if (!ranges.empty()) {
+        void* mapped = nullptr;
+        if (vmaMapMemory(allocator_, lightIn_[par].allocation(), &mapped) != VK_SUCCESS) return false;
+        for (const auto range : ranges) {
+            const VkDeviceSize offset = static_cast<VkDeviceSize>(range.first) * sizeof(*L.vertices);
+            const VkDeviceSize bytes = static_cast<VkDeviceSize>(range.count) * sizeof(*L.vertices);
+            std::memcpy(static_cast<uint8_t*>(mapped) + offset, L.vertices + range.first, static_cast<size_t>(bytes));
+            if (vmaFlushAllocation(allocator_, lightIn_[par].allocation(), offset, bytes) != VK_SUCCESS) {
+                vmaUnmapMemory(allocator_, lightIn_[par].allocation());
+                return false;
+            }
+            vertexUploads_[par].acknowledge(range, versions);
+        }
+        // OwnedBuffer::unmap flushes the whole allocation; keep dirty flushes bounded.
+        vmaUnmapMemory(allocator_, lightIn_[par].allocation());
+    }
     if (L.numLights > 0) std::memcpy(base + offLights, L.lights, static_cast<size_t>(L.numLights) * sizeof(gos_terrain_lighting::GpuTerrainLight));
     syncInputs(par, span.buffer, span.range);   // the island's slot fence retired this slot's last use; the other slot may be in flight and is not touched
-    const uint32_t lightOffsets[3] = {static_cast<uint32_t>(span.offset + offIn), static_cast<uint32_t>(span.offset + offLights), static_cast<uint32_t>(span.offset)};
+    const uint32_t lightOffsets[3] = {0u, static_cast<uint32_t>(span.offset + offLights), static_cast<uint32_t>(span.offset)};
     const uint32_t cullOffset = static_cast<uint32_t>(span.offset + offCull);
 
     // ---- record ----

@@ -23,11 +23,13 @@ CameraTags& slot_map()
 }
 
 bool s_enabled_cached = false;
+uint64_t s_registration_revision = 0;
 
 } // namespace
 
 void tag_slot(const void* camera, long slot, SourceClass src, const void* owner)
 {
+    ++s_registration_revision;
     SlotTag t;
     t.src = static_cast<uint8_t>(src);
     t.owner = owner;
@@ -47,6 +49,7 @@ const void* slot_owner(const void* camera, long slot)
 
 void untag_slot(const void* camera, long slot)
 {
+    ++s_registration_revision;
     auto& cameras = slot_map();
     const auto cam = cameras.find(camera);
     if (cam == cameras.end()) return;
@@ -68,12 +71,19 @@ std::optional<SourceClass> is_e_slot(const void* camera, long slot)
 
 void reset()
 {
+    ++s_registration_revision;
     slot_map().clear();
 }
 
 void reset(const void* camera)
 {
+    ++s_registration_revision;
     slot_map().erase(camera);
+}
+
+uint64_t registration_revision()
+{
+    return s_registration_revision;
 }
 
 bool is_enabled()
