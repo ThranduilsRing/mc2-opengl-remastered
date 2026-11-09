@@ -1,8 +1,63 @@
 #include "doctest.h"
 #include "sim_overlap.h"
 #include "present_imgui_snapshot.h"
+#include "../../GameOS/gameos/hud_command_merge.h"
 #include <barrier>
 #include <thread>
+
+TEST_CASE("HUD adjacent commands with identical state merge, differing state never merges") {
+    using Command = mc2vk::HudNativeCommand<uint64_t>;
+    Command first;
+    first.stream = 2;
+    first.count = 6;
+    first.set = 17; // distinct mirrors represent distinct texture serials
+    first.width = 64;
+    first.height = 32;
+    first.textMode = 1;
+    first.foreground = 0xffabcd12u;
+    Command next = first;
+    next.firstVertex = 6;
+    std::vector<Command> commands{first};
+    CHECK(mc2vk::AppendHudCommand(commands, next));
+    REQUIRE(commands.size() == 1);
+    CHECK(commands[0].count == 12);
+
+    const auto checkSplit = [&](Command changed) {
+        std::vector<Command> separate{first};
+        CHECK_FALSE(mc2vk::AppendHudCommand(separate, changed));
+        REQUIRE(separate.size() == 2);
+        CHECK(separate[0].count == first.count);
+        CHECK(separate[1].firstVertex == changed.firstVertex);
+    };
+    auto changed = next; ++changed.stream; checkSplit(changed);
+    changed = next; ++changed.set; checkSplit(changed);
+    changed = next; ++changed.width; checkSplit(changed);
+    changed = next; ++changed.height; checkSplit(changed);
+    changed = next; ++changed.textMode; checkSplit(changed);
+    changed = next; ++changed.foreground; checkSplit(changed);
+    changed = next; changed.opaque = true; checkSplit(changed);
+    changed = next; changed.oneInvAlpha = true; checkSplit(changed);
+    changed = next; changed.oneOne = true; checkSplit(changed);
+    changed = next; ++changed.firstVertex; checkSplit(changed);
+    changed = next; --changed.count; checkSplit(changed);
+
+    // Never merge across an intervening command, even if streams are contiguous.
+    commands = {first};
+    changed = next; changed.stream = 0;
+    CHECK_FALSE(mc2vk::AppendHudCommand(commands, changed));
+    CHECK_FALSE(mc2vk::AppendHudCommand(commands, next));
+    CHECK(commands.size() == 3);
+    // Two incomplete lists must not become a complete primitive together.
+    first.count = 1;
+    next.firstVertex = 1; next.count = 2;
+    checkSplit(next);
+    // Lines use pairs, triangles use triples.
+    first.stream = next.stream = 1;
+    first.count = next.count = 2; next.firstVertex = 2;
+    commands = {first};
+    CHECK(mc2vk::AppendHudCommand(commands, next));
+    CHECK(commands[0].count == 4);
+}
 
 TEST_CASE("present handoff transfers GPU ownership while keeping WSI on its worker") {
     using namespace mc2::overlap;
