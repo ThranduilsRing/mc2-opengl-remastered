@@ -708,6 +708,19 @@ void Carnage::updatePresentation()
 				inRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightMaxMaxRadius;
 				pointLight->SetIntensity(intensity);
 				pointLight->SetFalloffDistances(inRadius,outRadius);
+				if (mc2_diag::tagEnabled("EXPLOSION_LIGHT")) {
+					const auto rgb = pointLight->GetSourceRGB();
+					char data[768];
+					mc2::fmt::to_buf(data,
+						"{{\"effect\":{},\"rgb\":{},\"maxIntensity\":{},\"sourceRadius\":{},\"inner\":{},\"outer\":{},\"intensity\":{},\"poolRadiance\":[{},{},{}]}}",
+						static_cast<int>(effectId), static_cast<unsigned>(rgb),
+						(static_cast<ExplosionTypePtr>(getObjectType()))->maxIntensity,
+						lightSourceRadius, inRadius, outRadius, pointLight->intensity,
+						float((rgb >> 16) & 255) / 255.0f * pointLight->intensity,
+						float((rgb >> 8) & 255) / 255.0f * pointLight->intensity,
+						float(rgb & 255) / 255.0f * pointLight->intensity);
+					mc2_diag::writeEvent("EXPLOSION_LIGHT", 1, 0, data);
+				}
 
 				lightId = eye->addWorldLight(pointLight);
 				duration = (static_cast<ExplosionTypePtr>(getObjectType()))->duration;
@@ -901,6 +914,7 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 
 	gosEffect = nullptr;
 	presentationStarted = false;
+	lightSourceRadius = 0.0f;
 	pointLight = nullptr;
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 	

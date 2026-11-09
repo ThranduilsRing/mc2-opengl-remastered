@@ -82,6 +82,8 @@ class Carnage : public GameObject
 			float				inRadius;
 			float 				outRadius;
 			float				duration;
+			// Presentation only; never changes splash damage or damage ownership.
+			float lightSourceRadius = 0.0f;
 
 	//-----------------
 	// member Functions

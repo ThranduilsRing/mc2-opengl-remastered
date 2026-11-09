@@ -176,10 +176,10 @@ long GroundVehicle::update (void)
 			if (!appearance->playDestruction())
 			{
 				if ((static_cast<GroundVehicleTypePtr>(getObjectType()))->explDmg > 0.0f)
-					ObjectManager->createExplosion(SPLASH_VEHICLE_EXPLOSION_ID,nullptr,position, (static_cast<GroundVehicleTypePtr>(getObjectType()))->explDmg,(static_cast<GroundVehicleTypePtr>(getObjectType()))->explRad);
+					ObjectManager->createExplosion(SPLASH_VEHICLE_EXPLOSION_ID,nullptr,position, (static_cast<GroundVehicleTypePtr>(getObjectType()))->explDmg,(static_cast<GroundVehicleTypePtr>(getObjectType()))->explRad,getExtentRadius());
 				else if (pathLocks)
 				{
-					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,position, 0.0f,0.0f);
+					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,position, 0.0f,0.0f,getExtentRadius());
 				}
 				else
 				{

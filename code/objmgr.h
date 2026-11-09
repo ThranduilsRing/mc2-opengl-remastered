@@ -598,7 +598,8 @@ class GameObjectManager {
 									GameObjectPtr owner,
 									glm::vec3& position,
 									float dmg = 0.0,
-									float radius = 0.0);
+									float radius = 0.0,
+									float lightSourceRadius = 0.0);
 
 		WeaponBoltPtr createWeaponBolt (long effectId);
 
