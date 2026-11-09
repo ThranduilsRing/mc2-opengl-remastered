@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Register (orchestrator only): schtasks /Create /TN "\mc2-nightly-gate" /XML A:\Games\mc2-main\scripts\nightly_gate.task.xml /F
-     Remove the dead one:          schtasks /Delete /TN "\mc2-smoke-overnight" /F -->
+<!-- Daily 04:30: scripts/nightly_gate.py = merge_gate.py --nightly (Sundays --weekly) on the published nifty in mc2-main.
+     Nightly stages: deploy + tier-1 rows + the slim, non-blocking mods-slim check (one short load per mod, reported per mod,
+     never fails the gate); Sundays run the full mods battery instead. The script refuses (rc 2) when mc2-main is not on
+     claude/nifty-mendeleev or is dirty, so a night while a merge agent holds a stage branch there is skipped.
+     Register (orchestrator only): schtasks /Create /TN "\mc2-nightly-gate" /XML A:\Games\mc2-main\scripts\nightly_gate.task.xml /F
+     Remove the dead one:          schtasks /Delete /TN "\mc2-smoke-overnight" /F
+     Check / run now:              schtasks /Query /TN "\mc2-nightly-gate" /V /FO LIST   |   schtasks /Run /TN "\mc2-nightly-gate" -->
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <Triggers>
     <CalendarTrigger>
@@ -14,12 +19,13 @@
     <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
     <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
     <StartWhenAvailable>true</StartWhenAvailable>
-    <ExecutionTimeLimit>PT3H</ExecutionTimeLimit>
+    <!-- gate_wait may wait up to 2 h for another gate's quiet hold; a full nightly runs about 2 h (mods-slim adds up to ~15 min). -->
+    <ExecutionTimeLimit>PT5H</ExecutionTimeLimit>
   </Settings>
   <Actions Context="Author">
     <Exec>
       <Command>py</Command>
-      <Arguments>-3 scripts\nightly_gate.py</Arguments>
+      <Arguments>-3 A:\Games\mc2-main\scripts\nightly_gate.py</Arguments>
       <WorkingDirectory>A:\Games\mc2-main</WorkingDirectory>
     </Exec>
   </Actions>

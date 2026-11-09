@@ -62,7 +62,7 @@ def main():
     if not hits:
         return
     hits.sort(key=lambda h: -h[0])
-    print("Possibly relevant memories (read before acting):")
+    print("Historical candidates; verify against current rules:")
     for _, fn, desc in hits[:TOP_N]:
         print(f"- {MEM_DIR}/{fn} - {desc[:140].encode('ascii', 'replace').decode()}")
 
@@ -70,6 +70,8 @@ def main():
 def _score(path, fn, q, hits):
     if True:
         name, desc = describe(path)
+        if desc.lstrip("*").upper().startswith(("SUPERSEDED", "HISTORICAL")):
+            return  # stale bodies stay for history, never recalled
         name_words = words(name.replace("-", " ").replace("_", " "))
         score = 2 * len(q & name_words) + len(q & words(desc))
         if os.path.basename(fn).startswith("INDEX-"):

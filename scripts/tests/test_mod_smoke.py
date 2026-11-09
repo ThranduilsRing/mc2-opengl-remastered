@@ -446,6 +446,25 @@ def test_result_word():
     assert ms.result_word(ok) == "PASS"
     assert ms.result_word({"exit": 1, "health": ok["health"]}).startswith("FAIL")
     assert ms.result_word({"exit": 0, "health": ms.analyze_health("")}) == "HEALTH-FAIL"
+    assert ms.result_word({"exit": 1, "infra": "timeout", "health": ok["health"]}) == "INFRA(timeout)"
+
+
+def test_run_mod_timeout_is_infra_and_forwards_grace(tmp_path, monkeypatch):
+    """2026-11-08: cold model cooks hit run_smoke's walltime cap before frame 0; that is a host/load result, not a mod FAIL."""
+    from types import SimpleNamespace
+    seen = []
+    capped = "| metropolitan | FAIL | timeout |\nwalltime cap hit at 258.0s\n"
+    def run(cmd, **kw):
+        seen.append(cmd)
+        return SimpleNamespace(returncode=1, stdout=capped, stderr="")
+    monkeypatch.setattr(ms.subprocess, "run", run)
+    stage = tmp_path / "mod"
+    stage.mkdir()
+    row = ms.run_mod(stage, "metropolitan", 10, 700, tmp_path / "ref.exe", 0, (), grace_s=480)
+    assert row["infra"] == "timeout" and ms.result_word(row) == "INFRA(timeout)"
+    assert seen[0][-4:] == ["--grace-s", "480", "--ref-exe", str(tmp_path / "ref.exe")]
+    monkeypatch.setattr(ms.subprocess, "run", lambda cmd, **kw: SimpleNamespace(returncode=1, stdout="[CRASH] boom\n", stderr=""))
+    assert ms.run_mod(stage, "metropolitan", 10, 60)["infra"] is None
 
 
 def test_first_mission_prefers_numbered_over_test_maps(tmp_path):

@@ -3,7 +3,7 @@
     py -3 scripts/nightly_gate.py [--dry-run] [--weekly]
 
 Runs `gate_wait.py --timeout 7200 -- merge_gate.py --nightly` (Sundays: --weekly), restricted to the tier-1/2 stages plus
-deploy, at BELOW_NORMAL, never --kill-existing. Proof dir: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/
+deploy (nightly: the non-blocking mods-slim check; weekly: the full mods battery), at BELOW_NORMAL, never --kill-existing. Proof dir: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/
 (gate-verdict.json inside; never written to mc2-main's build64-ninja, which holds the stage window's verdict). Refuses (rc 2) when mc2-main is not on claude/nifty-mendeleev or is dirty. While another gate holds
 A:/Games/mc2-ops/GATE_QUIET.json, gate_wait waits for it (up to --timeout) instead of skipping the night. tools/lane_merge_stage.py --promote refuses unless the newest
 verdict here is under 36 h old, failed == [] and not INFRA (FAIL needs a triage* file). The gate must run in mc2-main, so a stage
@@ -119,10 +119,18 @@ def reuse_receipts(found, proof, weekly, required, now=None):
 
 
 def stage_names(weekly):
+    """deploy plus every tier-1 (nightly) or tier-1/2 (weekly) stage. Nightly carries the slim, non-blocking mods-slim check;
+    weekly carries the full mods battery instead."""
     import merge_gate
-    keep = [n for n, _c, _e in merge_gate.plan(1)
-            if n == "deploy" or merge_gate.stage_tier(n) >= 1]
-    return [n for n in keep if weekly or merge_gate.stage_tier(n) < 2]
+    tier = 2 if weekly else 1
+    return [n for n, _c, _e in merge_gate.plan(1)
+            if n == "deploy" or (merge_gate.stage_tier(n) >= 1 and merge_gate.tier_includes(n, tier))]
+
+
+def required_stages(names):
+    """The stages a receipt (and promotion) needs green: non-blocking rows report but never gate."""
+    import merge_gate
+    return [n for n in names if n not in merge_gate.NON_BLOCKING_STAGES]
 
 
 def main(argv=None):
@@ -141,16 +149,20 @@ def main(argv=None):
     if weekly and window is None:   # the mods battery refuses without --window; say so up front instead of failing hours in
         print("[nightly_gate] REFUSED: the weekly run needs the merge-window number and nifty's log names none")
         return 2
+    names = stage_names(weekly)
+    if window is None and "mods-slim" in names:   # the battery refuses without --window; the slim check is advisory, so drop it
+        names.remove("mods-slim")
+        print("[nightly_gate] mods-slim dropped tonight: nifty's log names no merge window (mod_smoke needs --window)")
     proof = f"{PROOF_ROOT}/nightly-{today.isoformat()}"
     os.makedirs(proof, exist_ok=True)
     py = [sys.executable] if os.name != "nt" else ["py", "-3"]
     cmd = py + [f"{ROOT}/scripts/gate_wait.py", "--timeout", "7200", "--log", f"{proof}/gate_wait.log", "--"] + py + [
         f"{ROOT}/scripts/merge_gate.py", "--weekly" if weekly else "--nightly", "--proofs-dir", proof, "--isolated-verdict",
-        *(["--window", str(window)] if window else []), "--stages"] + stage_names(weekly)
+        *(["--window", str(window)] if window else []), "--stages"] + names
     print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0
-    required = stage_names(weekly)
+    required = required_stages(names)
     found = {} if args.force else find_stage_receipts(PROOF_ROOT, weekly, required)
     if required and len(found) == len(required):   # same tree, mode and every stage already passed; do not burn another hour of the box
         reuse_receipts(found, proof, weekly, required)
