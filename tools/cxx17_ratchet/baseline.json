@@ -153,7 +153,7 @@
    "LG12a": 25,
    "LG12b": 37,
    "LG13": 0,
-   "LG14": 63,
+   "LG14": 62,
    "LG15": 0,
    "LG16": 2,
    "LG17": 36,
@@ -199,7 +199,7 @@
    "LG12a": 36,
    "LG12b": 23,
    "LG13": 15,
-   "LG14": 35,
+   "LG14": 36,
    "LG15": 0,
    "LG16": 9,
    "LG17": 64,
@@ -1906,7 +1906,7 @@
   "code/mover.h": {
    "LG04": 2,
    "LG05": 3,
-   "LG14": 6,
+   "LG14": 5,
    "LG17": 3
   },
   "code/mover_attack.cpp": {},
@@ -2688,6 +2688,9 @@
   },
   "mclib/mech_anim_runtime.h": {},
   "mclib/mech_clip_state.h": {},
+  "mclib/mech_death_policy.h": {
+   "LG14": 1
+  },
   "mclib/mech_grounding.h": {},
   "mclib/mech_skel_import.cpp": {},
   "mclib/mech_skel_import.h": {},
