@@ -1,0 +1,10 @@
+#ifndef WATER_SHORE_LIFT_HGLSL
+#define WATER_SHORE_LIFT_HGLSL
+
+// A live visual bake owns land depth. Only sim terrain needs the old tile-top cover.
+float waterShoreLift(float depthK, float cover, bool bakeLive)
+{
+    return bakeLive ? 0.0f : min(max(depthK, cover), 128.0f);
+}
+
+#endif
