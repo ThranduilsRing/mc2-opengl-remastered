@@ -26,7 +26,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_smoke.py` | 400 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 426 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 430 | `nofocus.spawn` | offscreen |
+| `scripts/screen_shot.py` | 96 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 317 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 108 | `nofocus.spawn` | offscreen |
 | `scripts/test_release_zip_install.py` | 262 | `nofocus.run` | offscreen |
@@ -36,6 +37,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_harness_desktop_safety.py` | 442 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 446 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 497 | `nofocus.run` | offscreen |
+| `scripts/tests/test_host_lease.py` | 91 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 125 | `nofocus.run` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 289 | `nofocus.run` | offscreen |
@@ -43,7 +45,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
-| `tools/mod_smoke.py` | 1011 | `nofocus.run` | offscreen |
+| `tools/mod_smoke.py` | 1021 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 224 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 260 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
 | `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
@@ -57,7 +59,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 489 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/window_cycle.py` | 113 | `nofocus.spawn` | offscreen |
 
-Total engine launch sites: 47
+Total engine launch sites: 49
 
 ## Shell launchers (RULE 9)
 

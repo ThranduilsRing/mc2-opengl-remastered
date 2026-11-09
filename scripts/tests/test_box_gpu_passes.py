@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import box_gpu_passes as gp
 import box_run
+import console_child
 
 
 def line(frame, span, water=None, n=120, dropped=0):
@@ -98,5 +99,5 @@ def test_row_is_wired_in_the_remote_script():
     assert "box_gpu_passes.py compare" in r and "--ref-commit \"$AB_BEFORE\"" in r   # the before arm is stamped with its own commit
     bash = shutil.which("bash")
     if bash:
-        p = subprocess.run([bash, "-n"], input=r.encode(), capture_output=True)
+        p = subprocess.run([bash, "-n"], input=r.encode(), capture_output=True, **console_child.child_kwargs(redirected=True))
         assert p.returncode == 0, p.stderr.decode()

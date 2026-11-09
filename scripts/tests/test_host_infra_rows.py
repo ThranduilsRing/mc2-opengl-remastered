@@ -7,7 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "mc2texcook"))
+sys.path.insert(0, str(ROOT / "scripts"))
 import check_ktx2_valid
+import console_child
 
 
 def test_missing_ktx_is_host_infra_77_never_a_pass(monkeypatch, capsys):
@@ -46,7 +48,8 @@ def test_host_need_returns_77_for_a_missing_tool():
     end = text.index("\n}\n", start) + 3
     fn = text[start:end]
     r = subprocess.run([_bash(), "-c", fn + '\n_host_need definitely-not-a-tool-xyz; echo rc=$?'],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert "HOST_INFRA: definitely-not-a-tool-xyz" in r.stdout and "rc=77" in r.stdout
-    r = subprocess.run([_bash(), "-c", fn + '\n_host_need bash; echo rc=$?'], capture_output=True, text=True)
+    r = subprocess.run([_bash(), "-c", fn + '\n_host_need bash; echo rc=$?'], capture_output=True, text=True,
+                       **console_child.child_kwargs(redirected=True))
     assert "rc=0" in r.stdout

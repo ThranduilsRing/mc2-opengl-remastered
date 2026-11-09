@@ -20,6 +20,9 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT / "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each)
+
 POSES = (("mc2_01", "day"), ("mc2_10", "night"), ("mc2_24", "battle"))
 DURATION = 20
 SKIP_WINDOWS = 2     # warm-up windows (240 frames) dropped
@@ -96,7 +99,8 @@ def run_pose(install, out, mission, duration, skip=SKIP_WINDOWS, ref_commit=None
            "--keep-logs", "--exe", str(Path(install) / ("mc2.exe" if os.name == "nt" else "mc2"))]
     if ref_commit:   # the exe under test is not worktree HEAD (the before arm of an A/B)
         cmd += ["--ref-commit", ref_commit]
-    p = subprocess.run(cmd, env=env, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+    p = subprocess.run(cmd, env=env, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                       **console_child.child_kwargs(redirected=True))
     (d / "run_smoke.out").write_text(p.stdout, encoding="utf-8")
     return p.returncode, parse_log(collect_logs(d, t0), skip)
 
