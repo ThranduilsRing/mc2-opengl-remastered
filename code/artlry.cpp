@@ -940,7 +940,7 @@ void Artillery::updatePresentation()
 		{
 			glm::mat4 	shapeOrigin;
 			
-			glm::vec3 lPosition = bomber->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomber->drawNodeNamePosition("activity_node");
 			
 			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
@@ -996,7 +996,7 @@ void Artillery::updatePresentation()
 		
 		if (bomber && rightContrail && rightContrail->IsExecuted())
 		{
-			glm::vec3 lPosition = bomber->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomber->drawNodeNamePosition("activity_node");
 			
 			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
@@ -1337,7 +1337,7 @@ void Artillery::renderView (const mc2::render_view::RenderView& view)
 
 		if (rightFx)
 		{
-			glm::vec3 lPosition = bomberView->getNodeNamePosition("activity_node");
+			glm::vec3 lPosition = bomberView->drawNodeNamePosition("activity_node");
 			
 			glm::vec3 actualPosition;
 			mc2ToRender(actualPosition, lPosition);
@@ -1617,7 +1617,7 @@ void Artillery::CopyTo (ArtilleryData *data)
 	data->effectId = effectId;
 
 	data->bombRunStarted = bombRunStarted;
-	data->inView = inView;
+	data->inView = false;	// derived: camera visibility, recomputed by recalcBounds; never saved
 	data->iFacePosition = iFacePosition;
 
 	GameObject::CopyTo(data);
@@ -1635,7 +1635,7 @@ void Artillery::Load (ArtilleryData *data)
 	effectId = data->effectId;
 
 	bombRunStarted = data->bombRunStarted;
-	inView = data->inView;
+	inView = false;	// derived: recalcBounds recomputes it on the next update
 	iFacePosition = data->iFacePosition;
 
 	// if we're not a true artillery round, we're a sensor probe.

@@ -2197,7 +2197,9 @@ void GameObject::CopyTo (GameObjectData *data)
 
 	data->collisionFreeFromWID = collisionFreeFromWID;
 	data->collisionFreeTime = collisionFreeTime;
-	data->screenPos = screenPos;
+	// Derived: screenPos is the camera projection of the last bounds test. Saved as zero (like windowsVisible) so the save
+	// does not depend on the camera; Load zeroes it and the next onScreen() recomputes it.
+	data->screenPos.x = data->screenPos.y = data->screenPos.z = data->screenPos.w = 0.0f;
 	// windowsVisible is the turn the camera last saw the object (stamped by the render pass or a camera bounds test) and
 	// Load resets it, so the save carries zero: a saved stamp made the save depend on the camera and on how many sim steps
 	// ran since the last drawn frame.
@@ -2244,7 +2246,7 @@ void GameObject::Load (GameObjectData *data)
 
 	collisionFreeFromWID = data->collisionFreeFromWID;
 	collisionFreeTime = data->collisionFreeTime;
-	screenPos = data->screenPos;
+	screenPos.x = screenPos.y = screenPos.z = screenPos.w = 0.0f;
 	windowsVisible = 0;		//Force back to zero so I don't have to save the turn.
 	explRadius = data->explRadius;
 	explDamage = data->explDamage;

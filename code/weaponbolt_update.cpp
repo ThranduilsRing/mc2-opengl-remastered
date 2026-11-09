@@ -76,9 +76,9 @@ long WeaponBolt::update (void)
 			if (!target->isMech())
 				aim = target->getPositionFromHS(targetHotSpot);
 			else if (targetHotSpot)
-				aim = target->appearance->getHitNodeLeft();
+				aim = target->appearance->simHitNodeLeft();
 			else
-				aim = target->appearance->getHitNodeRight();
+				aim = target->appearance->simHitNodeRight();
 
 			// PPC de-curve: direct-fire bolts do NOT re-track (see flight loop),
 			// so lead the aim ONCE here by the target's velocity over the bolt's
@@ -165,9 +165,9 @@ long WeaponBolt::update (void)
 		else
 		{
 			if (targetHotSpot)
-				setTargetPosition(target->appearance->getHitNodeLeft());
+				setTargetPosition(target->appearance->simHitNodeLeft());
 			else
-				setTargetPosition(target->appearance->getHitNodeRight());
+				setTargetPosition(target->appearance->simHitNodeRight());
 		}
 	}
 		
@@ -232,9 +232,9 @@ long WeaponBolt::update (void)
 					if (target->isMech())
 					{
 						if (targetHotSpot)
-							hotSpot = target->appearance->getHitNodeLeft();
+							hotSpot = target->appearance->simHitNodeLeft();
 						else
-							hotSpot = target->appearance->getHitNodeRight(); 
+							hotSpot = target->appearance->simHitNodeRight(); 
 
 					}
 
@@ -353,9 +353,9 @@ long WeaponBolt::update (void)
 					if (target->isMech())
 					{
 						if (targetHotSpot)
-							hotSpot = target->appearance->getHitNodeLeft();
+							hotSpot = target->appearance->simHitNodeLeft();
 						else
-							hotSpot = target->appearance->getHitNodeRight();
+							hotSpot = target->appearance->simHitNodeRight();
 					}
 
 					emitImpact(boltType, weaponShot, position, hotSpot, targetWID);   // beam end on the target
@@ -656,9 +656,9 @@ void WeaponBolt::updatePresentation()
 			else
 			{
 				if (targetHotSpot)
-					hsPos = target->appearance->getHitNodeLeft();
+					hsPos = target->appearance->simHitNodeLeft();
 				else
-					hsPos = target->appearance->getHitNodeRight(); 
+					hsPos = target->appearance->simHitNodeRight(); 
 			}
 		}
 
@@ -726,9 +726,9 @@ void WeaponBolt::updatePresentation()
 				else
 				{
 					if (targetHotSpot)
-						hotSpot = target->appearance->getHitNodeLeft();
+						hotSpot = target->appearance->simHitNodeLeft();
 					else
-						hotSpot = target->appearance->getHitNodeRight(); 
+						hotSpot = target->appearance->simHitNodeRight(); 
 				}
 			}
 				
@@ -794,9 +794,9 @@ void WeaponBolt::updatePresentation()
 				else
 				{
 					if (targetHotSpot)
-						hotSpot = target->appearance->getHitNodeLeft();
+						hotSpot = target->appearance->simHitNodeLeft();
 					else
-						hotSpot = target->appearance->getHitNodeRight(); 
+						hotSpot = target->appearance->simHitNodeRight(); 
 				}
 			}
 				
@@ -862,9 +862,9 @@ void WeaponBolt::updatePresentation()
 				else
 				{
 					if (targetHotSpot)
-						hotSpot = target->appearance->getHitNodeLeft();
+						hotSpot = target->appearance->simHitNodeLeft();
 					else
-						hotSpot = target->appearance->getHitNodeRight(); 
+						hotSpot = target->appearance->simHitNodeRight(); 
 				}
 			}
 				
