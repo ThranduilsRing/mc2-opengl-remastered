@@ -17,6 +17,7 @@
 #include "../../RenderCore/IblShCoeffs.h"   // V-IBL-STATIC-1: SH-L2 constants
 #include "../../RenderCore/IblShRegistry.h"  // V-IBL-STATIC-2: per-mission SH set
 #include "../../RenderCore/StaticPropTypeDesc.h"  // v0: cross-seam immutable type table
+#include "../../RenderCore/PropLodState.h"        // flat per-instance LOD hysteresis table
 #include "../../RenderCore/KtxLoader.h"    // KTX2 sidecar loading
 #include "../../RenderCore/RenderDebugView.h"  // DEBUG-VIEW-REGISTRY-1
 #include "draw_packet_emitter.h"
@@ -299,7 +300,7 @@ extern std::unordered_map<TG_TypeNodeId, uint32_t>  s_typeIndex;
 // target[0] == the base type; dist[k] is the authored switch distance of LOD k (render units == MC2 units).
 struct PropLodGroup { uint32_t target[3]; float dist[3]; int count; };
 extern std::unordered_map<uint32_t, PropLodGroup> s_lodGroups;
-extern std::unordered_map<uint64_t, uint8_t>      s_lodState;   // per-instance hysteresis memory, keyed by (typeID, position)
+extern PropLodStateMap                            s_lodState;   // per-instance hysteresis memory, keyed by (typeID, position); flat table, no per-instance node lookup
 extern std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable;
 extern bool s_gpuPropsTrace;
 extern unsigned g_regCall[4];
