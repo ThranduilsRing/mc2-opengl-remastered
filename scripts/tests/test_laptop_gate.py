@@ -127,6 +127,7 @@ def test_toolchain_problems_names_each_missing_tool_and_skips_sccache_when_the_c
                    "missing cmake (find_cmake: VS2022 BuildTools or PATH)"]
     assert f"missing SCCACHE_EXE: {tmp_path / 'sccache.exe'}" in laptop_gate.toolchain_problems(cn, {})
     assert laptop_gate.gate_env()["MC2_COMPILE_CACHE"] == "0"
+    assert laptop_gate.gate_env()["MC2_HOST_INFRA_OK"] == "1"   # the laptop (only) reports tool/data-less rows INFRA instead of red
 
 
 def test_published_problems_fails_a_stale_or_unrelated_before_install():

@@ -140,14 +140,14 @@ def _is_canonical_deploy(deploy_dir: str) -> bool:
     Return True if deploy_dir resolves to one of the canonical game deploys
     that must never be written to by the installer.
     """
+    forms = {deploy_dir.replace("\\", "/").lower().rstrip("/")}
     try:
-        resolved = Path(deploy_dir).resolve().as_posix().lower()
+        # the literal absolute spelling too: on a host where A: is a subst drive, resolve() returns the backing path
+        forms.add(os.path.abspath(deploy_dir).replace("\\", "/").lower().rstrip("/"))
+        forms.add(Path(deploy_dir).resolve().as_posix().lower())
     except Exception:
-        resolved = deploy_dir.replace("\\", "/").lower().rstrip("/")
-    for canonical in _CANONICAL_DEPLOY_ROOTS:
-        if resolved == canonical.rstrip("/"):
-            return True
-    return False
+        pass
+    return any(f == canonical.rstrip("/") for f in forms for canonical in _CANONICAL_DEPLOY_ROOTS)
 
 
 # ---------------------------------------------------------------------------

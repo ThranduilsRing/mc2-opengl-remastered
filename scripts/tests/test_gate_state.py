@@ -219,7 +219,9 @@ def test_mod_receipt_replays_only_identical_inputs_and_retained_proof(journal, m
     head = 'changed' if change == 'head' else 'head'
     monkeypatch.setattr(gate, 'git', lambda *a: head)
     result, state = run_state(journal, monkeypatch, steps(base), child, head=head)
-    assert result == int(change == 'failed')
+    assert result == 0   # a red mods row is ADVISORY (non-blocking, owner ruling 2026-11-08), never a gate failure
+    if change == 'failed':
+        assert state.data['stages']['mods']['status'].startswith('ADVISORY: FAIL')
     assert bool(state.reused) == (change in ('none', 'candidate', 'routing'))
     assert bool(seen) == (not state.reused)
     if state.reused:
@@ -419,7 +421,47 @@ def test_infra_reds_get_their_own_status(journal, monkeypatch, outcome, expected
         text = "[mod_smoke] PermissionError: [WinError 32] in use" if outcome == "winerror" else "[SMOKE v1] event=summary result=fail"
         return types.SimpleNamespace(returncode=1, stdout=text)
     gate.FAILED_STAGES.clear()
-    assert run_state(journal, monkeypatch, [("mods", ["mods"], {})], runner)[0] == 1
+    assert run_state(journal, monkeypatch, [("visual", ["visual"], {})], runner)[0] == 1
     assert gate.FAILED_STAGES[0][1].startswith(expected)
     assert gate.stage_passed(gate.FAILED_STAGES[0][1]) is False
     assert gate.infra_status(0, "WinError 32") is None
+
+
+@pytest.mark.parametrize("outcome,original", [("product", "FAIL (1)"), ("winerror", "INFRA (1): WinError 32")])
+def test_red_or_infra_mods_row_is_advisory_not_blocking(journal, monkeypatch, capsys, tmp_path, outcome, original):
+    """Owner ruling 2026-11-08: a red/INFRA mods-slim row never blocks the gate, and is never silently a PASS."""
+    def runner(cmd, **kw):
+        text = "[mod_smoke] PermissionError: [WinError 32] in use" if outcome == "winerror" else "boom"
+        return types.SimpleNamespace(returncode=1, stdout=text)
+    gate.FAILED_STAGES.clear()
+    gate.ROW_RESULTS.clear()
+    assert run_state(journal, monkeypatch, [("mods", ["mods"], {})], runner)[0] == 0
+    assert gate.FAILED_STAGES == []
+    status = gate.ROW_RESULTS["mods"]["status"]
+    assert status == "ADVISORY: " + original and status != "PASS" and gate.stage_passed(status)
+    assert "[merge_gate] ADVISORY mods" in capsys.readouterr().out
+    steps = [("mods", [], {})]
+    assert gate.verdict_of(0, steps) == ("PASS", [])
+    out = tmp_path / "gate-verdict.json"
+    gate.write_verdict([out], head="h", branch="b", verdict="PASS", steps=steps, skipped=[], artifacts={}, timings={}, cleanup_errors=[])
+    assert json.loads(out.read_text())["advisory"] == [dict(name="mods", status="ADVISORY: " + original)]
+    gate.ROW_RESULTS.clear()
+
+
+def test_a_red_non_mods_row_still_blocks_and_a_green_mods_row_stays_pass():
+    assert gate.advisory_status("visual", "FAIL (1)") == "FAIL (1)"
+    assert gate.advisory_status("mods", "PASS") == "PASS"
+    assert gate.advisory_status("mods", "SKIP: x") == "SKIP: x"
+
+
+def test_contracts_host_infra_rows_make_a_named_pass_never_a_bare_pass(journal, monkeypatch):
+    out = "  9 passed, 0 failed\n[HOST_INFRA_ROWS] 2: shadow_bake_init ktx2_valid\n"
+    runner = lambda cmd, **kw: types.SimpleNamespace(returncode=0, stdout=out)
+    gate.FAILED_STAGES.clear()
+    gate.ROW_RESULTS.clear()
+    assert run_state(journal, monkeypatch, [("contracts", ["contracts"], {})], runner)[0] == 0
+    status = gate.ROW_RESULTS["contracts"]["status"]
+    assert status == "PASS (host-INFRA rows: 2: shadow_bake_init ktx2_valid)" and gate.stage_passed(status)
+    assert gate.host_infra_status("no marker", "PASS") == "PASS"
+    assert gate.host_infra_status(out, "FAIL (1)") == "FAIL (1)"
+    gate.ROW_RESULTS.clear()

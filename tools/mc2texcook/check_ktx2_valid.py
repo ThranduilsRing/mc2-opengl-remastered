@@ -48,8 +48,9 @@ def main() -> int:
     args = ap.parse_args()
     ktx = find_ktx()
     if not ktx:
-        print("FAIL ktx2_valid: " + INSTALL_HELP)
-        return 1
+        # 77 = HOST_INFRA: check-contracts.sh fails it on the PC and reports it INFRA (never PASS) only under MC2_HOST_INFRA_OK=1
+        print("HOST_INFRA ktx2_valid: " + INSTALL_HELP)
+        return 77
     files: list[Path] = []
     if args.install:
         files += sorted(Path(args.install).rglob("*.ktx2"))
