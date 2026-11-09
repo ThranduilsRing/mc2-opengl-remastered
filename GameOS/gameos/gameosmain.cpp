@@ -28,6 +28,7 @@
 #include <cstring>
 #include <time.h>
 #include "gameosmain_internal.h"
+#include "utils/timing_math.h"
 
 // sebi 2026-04-22: unhandled-exception filter that symbolizes the stack via
 // DbgHelp (PDB-based). Needed because release/RelWithDebInfo builds otherwise
@@ -1032,6 +1033,7 @@ int main(int argc, char** argv)
         const auto benchFrameStart = mc2::battlebench::output ? mc2::battlebench::Clock::now() : mc2::battlebench::Clock::time_point{};
 
 		uint64_t start_tick = timing::gettickcount();
+		const uint64_t frameClockStart = SDL_GetPerformanceCounter();
         mc2_hitch::BeginFrame(s_hitchFrame);
         // The frame containing mission load is excluded: time the first five
         // complete gameplay frames, with the existing hitch phase breakdown.
@@ -1160,8 +1162,8 @@ int main(int argc, char** argv)
             g_exit |= gosExitGameOS();
         }
 
-		uint64_t end_tick = timing::gettickcount();
-		uint64_t dt = timing::ticks2ms(end_tick - start_tick);
+		const double dt = timing_math::ticks_to_ms_fractional(
+			SDL_GetPerformanceCounter() - frameClockStart, SDL_GetPerformanceFrequency());
 		// S9D: pin the per-frame animation clock too. frameRate feeds
 		// frameLength (= 1/frameRate) in mechcmd2.cpp, which drives ALL mech /
 		// object / GOSFX motion and animation deltas. Without this, fixing

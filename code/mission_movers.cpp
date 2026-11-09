@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "content_error.h"
+#include "spawn_tree_clear.h"
 #include <string>
 #include "mc2fmt.h"
 
@@ -441,6 +442,13 @@ typedef struct _MoverInitData {
             // how it works on Windows... who knows.
 			mover->setOnGUI(true);
 
+			// Campaign player mechs and reinforcements arrive after terrain load.
+			// Resolve their initial footprint with the stock tree contact too.
+			mc2::clearSpawnTrees(*mover,
+				std::span(ObjectManager->terrainObjects, static_cast<size_t>(ObjectManager->numTerrainObjects)),
+				[](auto* tree, auto* spawned) {
+					tree->getObjectType()->handleCollision(tree, spawned);
+				});
 			MC2_WORLD_EVENT("spawn_mover", mover, 0);
 			return(mover->getHandle());
 		}

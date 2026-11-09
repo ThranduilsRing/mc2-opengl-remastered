@@ -22,6 +22,14 @@ inline uint64_t ticks_to_ms(uint64_t ticks, uint64_t freq)
     return (ticks * 1000) / freq;
 }
 
+// Presentation deltas must retain fractions of a millisecond. In particular,
+// a sub-ms frame must not become zero and trigger the legacy 250 ms fallback.
+inline double ticks_to_ms_fractional(uint64_t ticks, uint64_t freq)
+{
+    return freq ? static_cast<double>(ticks) * 1000.0 / static_cast<double>(freq)
+                : static_cast<double>(ticks);
+}
+
 // Frame-elapsed clamp — the gos_GetElapsedTime non-Windows path. Given the
 // previously returned elapsed value `prev` in seconds (prev < 0 means "first
 // call, no prior sample"), the freshly sampled `now` in seconds, and

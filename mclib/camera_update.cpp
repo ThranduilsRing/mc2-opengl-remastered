@@ -3,6 +3,8 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <algorithm>
+#include <chrono>
+#include <vector>
 #include "camera_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
@@ -168,6 +170,31 @@ glm::vec3 Camera::sunDirection (void) const
 
 long Camera::update (void)
 {
+	// Measure the actual cadence of the scripted fly-in, independent of the
+	// fixed sim clock and the clamped presentation delta. Bound storage and
+	// emit each 120-frame window plus the final partial window.
+	{
+		using Clock = std::chrono::steady_clock;
+		static auto previous = Clock::now();
+		static bool wasMovie = false;
+		static std::vector<double> samples;
+		const auto now = Clock::now();
+		if (inMovieMode && wasMovie)
+			samples.push_back(std::chrono::duration<double, std::milli>(now - previous).count());
+		if (!samples.empty() && (samples.size() == 120 || !inMovieMode)) {
+			std::sort(samples.begin(), samples.end());
+			double sum = 0.0;
+			unsigned over50 = 0;
+			for (double ms : samples) { sum += ms; if (ms > 50.0) ++over50; }
+			const size_t n = samples.size();
+			if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[CINEMATIC] frames={} avg_ms={:.3f} p50_ms={:.3f} p95_ms={:.3f} p99_ms={:.3f} max_ms={:.3f} over50={}\n",
+				n, sum / n, samples[(n - 1) / 2], samples[(n - 1) * 95 / 100],
+				samples[(n - 1) * 99 / 100], samples.back(), over50);
+			samples.clear();
+		}
+		previous = now;
+		wasMovie = inMovieMode;
+	}
 	//---------------------------------------------------------
 	// This is the guts.  This routine will be used to
 	// move the camera, cut to different shots, etc.
