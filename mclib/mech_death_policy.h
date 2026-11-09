@@ -1,6 +1,7 @@
 #pragma once
 
 // Values are persisted in MoverData; never renumber existing causes.
+// Kept an unscoped enum: moved out of code/mover.h with its cxx17 LG14 baseline allowance (users store it as int).
 enum DeathCause
 {
     DEBUGGER_DEATH = 0,
