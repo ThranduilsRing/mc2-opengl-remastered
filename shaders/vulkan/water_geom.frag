@@ -152,10 +152,10 @@ PREC float vnoise(PREC vec2 uv){
 // variance moves into the GGX roughness (LEAN-style), so distant water keeps a wide highlight instead of sparkling.
 const int   WAVE_TRAINS = 4;
 const vec4  kWaveTrain[WAVE_TRAINS] = vec4[WAVE_TRAINS](
-    vec4(0.927, 0.375, 600.0, 0.09),   // all within +-8 degrees of the wind so crests stay parallel and readable
-    vec4(0.809, 0.588, 330.0, 0.10),
-    vec4(0.883, 0.469, 190.0, 0.11),
-    vec4(0.839, 0.545, 110.0, 0.11));
+    vec4(0.927, 0.375, 600.0, 0.055),   // all within +-8 degrees of the wind so crests stay parallel and readable
+    vec4(0.809, 0.588, 330.0, 0.06),
+    vec4(0.883, 0.469, 190.0, 0.07),
+    vec4(0.839, 0.545, 110.0, 0.07));
 const float WAVE_G           = 30.0;    // deep-water dispersion in wu/s^2: 760 wu swell ~60 wu/s, 150 wu chop ~27 wu/s
 const float WAVE_RESOLVE_LO  = 2.0;     // pixels per wavelength: at or below -> roughness only
 const float WAVE_RESOLVE_HI  = 6.0;     // pixels per wavelength: at or above -> fully in the normal
@@ -322,7 +322,7 @@ void main(void)
     PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
     PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
                    + waterCol * SKY_AMBIENT * 0.5 * nightSky;
-    PREC float crest = waveCrest * 0.6;
+    PREC float crest = waveCrest * 0.35;
     col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;
     PREC float glint = smoothstep(0.22, 0.45, waveCrest);
     col += glint * GLINT_GAIN * waveLOD * GLINT_TINT * nightSky;
