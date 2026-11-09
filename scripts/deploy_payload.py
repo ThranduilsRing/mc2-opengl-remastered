@@ -2358,7 +2358,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         if not args.classic_assets and not getattr(args, "skip_kit", False):
             inputs = deploy_inputs(src_root)
             reuse, reason = reusable_payload(src_root, target, inputs)
-            if args.full_verify:
+            if getattr(args, "full_verify", False):
                 reuse, reason = False, "explicit full verification"
         log(f"kit {'skipped automatically' if reuse else 'full deploy'}: {reason}")
         previous = read_manifest(target)

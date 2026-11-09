@@ -253,7 +253,7 @@ def release(path, discard=False):
     rc, _, err = git(path, "switch", "--detach", NIFTY)
     if rc:
         sys.exit("release: detach at nifty failed: " + err)
-    dropped = drop_claims(path, info["branch"])
+    dropped = drop_claims(path)
     print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; install, scratch and build tree kept")
     return []
 
