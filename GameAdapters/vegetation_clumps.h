@@ -92,6 +92,12 @@ inline Clump makeClump(int x, int y, uint32_t seed, const ClumpRecipe& recipe,
     }
     return result;
 }
+// MOVE overlay value 3 is ordinary ground in stock maps. The road flag is
+// authoritative; build-only flags overlap runtime pathlocks and are not masks.
+template<class Cell> inline bool clumpStaticOccupied(Cell cell) {
+    return cell.getOffMap() || !cell.getPassable() || cell.getForest() ||
+           cell.getWall() || cell.getGate() || cell.getRoad();
+}
 // The adapter samples these masks at every member, including offset skirts.
 inline bool clumpSurfaceAllowed(bool inBounds, bool water, bool occupied,
                                  float hardCoverage, float slope, bool woody) {

@@ -1,5 +1,23 @@
 #include "save_field_probe.h"
 #include "move.h"
+#include "GameAdapters/vegetation_clumps.h"
+
+TEST_CASE("VegClumps/stock MOVE overlay sentinel is not a road") {
+    MapCell ground{};
+    ground.setPassable(true);
+    ground.setOverlay(3); // 127,188 of 129,600 stock mc2_10 cells carry this value.
+    CHECK_FALSE(mc2::vegetation::clumpStaticOccupied(ground));
+    ground.setPathlock(0, true);
+    CHECK_FALSE(mc2::vegetation::clumpStaticOccupied(ground));
+    for (auto mask : {MAPCELL_ROAD_MASK, MAPCELL_FOREST_MASK, MAPCELL_WALL_MASK,
+                      MAPCELL_GATE_MASK, MAPCELL_OFFMAP_MASK}) {
+        auto obstacle = ground;
+        obstacle.data |= static_cast<unsigned>(mask);
+        CHECK(mc2::vegetation::clumpStaticOccupied(obstacle));
+    }
+    ground.setPassable(false);
+    CHECK(mc2::vegetation::clumpStaticOccupied(ground));
+}
 
 #define LINK_MEMBERS &T::doorIndex, &T::doorSide, &T::cost, &T::openCost
 

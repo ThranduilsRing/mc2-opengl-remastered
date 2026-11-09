@@ -1,5 +1,18 @@
 # Vegetation clumps — 2026-11-08
 
+2026-11-09 proof continuation: box -j16 is explicitly permitted; shared PC
+precheck is skipped. Box production build and deployed vegetation hashes PASS.
+Unit: 3909/3910 pass; unchanged VFX oracle opens a Windows-only mc2.fx path.
+Smoke exposed 967/0 instances on mc2_01/10. Offline stock mc2_10 MOVE decode:
+127188/129600 cells have overlay=3; none have overlay=0. The new mask treated
+all nonzero overlays as obstacles. Fix uses runtime road/wall/gate flags and
+ignores build-only masks (which overlap pathlocks). Regression test:
+VegClumps/stock MOVE overlay sentinel is not a road, using actual MapCell.
+Next: box targeted VegClumps tests + smoke-lite and final lint, three-map A/B
+with exact d63c403c9 baseline (already built on box), inspect all montages,
+dense-pose GPU timestamps, ONE Windows Ninja build of the fixed final tip.
+Full continuation receipts: E:/mc2-archive-2026-10/proofs/vegetation-clumps/STATUS.md.
+
 Owner: "It is sparse and ugly. We need: variety, some bushes and small trees,
 and more clumping. Like small tree plus some bushes plus some grass all on top
 of one another and not all spread out."

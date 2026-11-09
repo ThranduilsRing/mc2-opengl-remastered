@@ -232,10 +232,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     int cr=0,cc=0;
                     land->worldToCell(instPos,cr,cc);
                     // Read-only static masks: never alter movement, LOS or RNG.
-                    occupied = gameMap->getOffMap(cr,cc) || !gameMap->getPassable(cr,cc) ||
-                        gameMap->getForest(cr,cc) || gameMap->getBuildSpecial(cr,cc) ||
-                        gameMap->getBuildGate(cr,cc) || gameMap->getBuildWall(cr,cc) ||
-                        gameMap->getBuildLandBridge(cr,cc) || gameMap->getOverlay(cr,cc) != 0;
+                    occupied = !gameMap->inBounds(cr,cc) ||
+                        clumpStaticOccupied(gameMap->cellAt(cr,cc));
                 }
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
                 const float slope = land->getTerrainAngle(instPos,&normal);
