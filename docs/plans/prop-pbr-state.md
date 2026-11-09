@@ -22,3 +22,9 @@ Local contracts hit WSL insufficient-system-resources (HCS 0x800705aa), not a
 shader failure. Windows Ninja compile started at fb96db293, still pending.
 Box combined proof submission at fb96db293 pending; must repeat build/unit/lint
 at the next tip after the ratchet fix. No runtime pass claimed yet.
+
+Compile correction: TG_TypeShape owns TinyTexture handles, not filename strings.
+Resolve its mcTextureNodeIndex through mc2::textures::name, with safe unknown
+fallback when the service/node is unavailable. Prior box jobs 69/72/75 compile
+the older invalid source; they are not final proof. Final receipts and remaining
+steps will be kept in E:/mc2-archive-2026-10/proofs/prop-pbr/state.md.

@@ -643,8 +643,12 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
         if (packet.owningTypeID >= s_types.size()) continue;
         const auto& type = s_types[packet.owningTypeID];
         std::string_view textureName;
-        if (type.source && type.source->listOfTextures && packet.textureSlot < type.source->numTextures)
-            textureName = type.source->listOfTextures[packet.textureSlot].textureName;
+        if (mc2::textures::ready() && type.source && type.source->listOfTextures && packet.textureSlot < type.source->numTextures) {
+            const auto node = type.source->listOfTextures[packet.textureSlot].mcTextureNodeIndex;
+            if (node != 0xffffffffu) {
+                if (const char* name = mc2::textures::name(node)) textureName = name;
+            }
+        }
         const auto stockClass = RenderCore::stockPropClass(textureName);
         auto [stock, newClass] = stockIds.try_emplace(stockClass, static_cast<int32_t>(materialSources_.table.size()));
         if (newClass) materialSources_.table.push_back(RenderCore::stockPropMaterial(stockClass));
