@@ -646,7 +646,7 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
         if (mc2::textures::ready() && type.source && type.source->listOfTextures && packet.textureSlot < type.source->numTextures) {
             const auto node = type.source->listOfTextures[packet.textureSlot].mcTextureNodeIndex;
             if (node != 0xffffffffu) {
-                if (const char* name = mc2::textures::name(node)) textureName = name;
+                if (const auto* name = mc2::textures::name(node)) textureName = name;
             }
         }
         const auto stockClass = RenderCore::stockPropClass(textureName);
