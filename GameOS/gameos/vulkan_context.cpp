@@ -1013,7 +1013,28 @@ void VulkanContext::beginFrame() {
         }
     }
     frameRing_.beginFrame(f, slotFree);
+    recordPools_.beginFrame(static_cast<uint32_t>(f % kMaxFramesInFlight), slotFree,
+                            [&](uint32_t slot, uint32_t participant) { vkResetCommandPool(device_, recordCmdPools_[slot][participant].get(), 0); });
     if (textures_) { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
+}
+
+VkCommandBuffer VulkanContext::acquireRecordCommandBuffer() {
+    const uint32_t slot = static_cast<uint32_t>(tracker_.frameNo() % kMaxFramesInFlight);
+    return recordPools_.acquire(slot, [&](uint32_t s, uint32_t participant) -> VkCommandBuffer {
+        OwnedCommandPool& pool = recordCmdPools_[s][participant];
+        if (!pool) {
+            VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+            pci.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;   // re-recorded every frame; the whole pool resets when its slot restarts
+            pci.queueFamilyIndex = gfxFamily_;
+            if (!create(pool, device_, [&](VkCommandPool* h) { return vkCreateCommandPool(device_, &pci, nullptr, h); })) return VK_NULL_HANDLE;
+        }
+        VkCommandBufferAllocateInfo ai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        ai.commandPool = pool.get();
+        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        ai.commandBufferCount = 1;
+        VkCommandBuffer cb = VK_NULL_HANDLE;
+        return vkAllocateCommandBuffers(device_, &ai, &cb) == VK_SUCCESS ? cb : VK_NULL_HANDLE;
+    });
 }
 
 void VulkanContext::drainDeferred(std::string_view why) {
@@ -1066,6 +1087,8 @@ void VulkanContext::destroy() {
     if (textureServiceOwner_) { RenderCore::activeTextureService = nullptr; textureServiceOwner_.reset(); }
     lightFeed_.release();
     frameRing_.release();
+    recordPools_.clear();
+    for (auto& slot : recordCmdPools_) for (auto& pool : slot) pool.reset();   // their command buffers go with them
     readbacks_.releaseAll();
     // PRECONDITION: the owners that live outside the context (the shared scene colour / depth / normal images, the present path's shared image, the
     // shadow island's images) were destroyed by the engine shutdown ahead of this call. A resource still alive here would release its image on a device

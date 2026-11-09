@@ -99,6 +99,7 @@ add_executable(mc2_tests
     test_completion_tracker.cpp  # the Vulkan completion tracker: ticket math and frame sealing (offline)
     test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
     test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
+    test_record_pools.cpp  # parallel command recording lanes: per-thread pools, canonical merge order, slot restart (offline)
     test_vfx_draw_plan.cpp  # VFX island draw packing: equal-state merge, additive runs sorted, alpha order kept
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
     test_light_pool_culling.cpp

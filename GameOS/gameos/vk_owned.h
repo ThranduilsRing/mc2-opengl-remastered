@@ -13,6 +13,7 @@
 #include <volk.h>
 #include <cstdio>
 #include <filesystem>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -162,7 +163,9 @@ public:
         if (r == VK_SUCCESS) chain_.adopt(std::move(first));
         return r;
     }
+    // Thread-safe: a pool is externally synchronized, so parallel recorders that allocate sets take this chain's lock (an island's chain is its own).
     VkResult allocate(const VkDescriptorSetAllocateInfo& info, VkDescriptorSet* out, std::string_view file, int line) {
+        std::lock_guard<std::mutex> lock(mu_);
         const auto alloc = [&](OwnedDescriptorPool& pool) {
             VkDescriptorSetAllocateInfo ai = info;
             ai.descriptorPool = pool.get();
@@ -190,6 +193,7 @@ private:
         pci.poolSizeCount = static_cast<uint32_t>(sizes_.size()); pci.pPoolSizes = sizes_.data();
         return createChecked(*pool, device_, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); });
     }
+    std::mutex mu_;
     VkDevice device_ = VK_NULL_HANDLE;
     VkDescriptorPoolCreateFlags flags_ = 0;
     uint32_t maxSets_ = 0;

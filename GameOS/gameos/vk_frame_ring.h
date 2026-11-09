@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <mutex>
 
 #ifdef MC2_VULKAN   // the no-Vulkan unit-test tree (build64-tests) uses only the FrameRing counters above the VK half
 #include <volk.h>
@@ -96,7 +97,9 @@ class FrameRing {
 public:
     // Opens frame `frameNo`. The caller (the context) has already made sure frame F-kSlots completed.
     void beginFrame(uint64_t frameNo, bool restart = true) { core_.beginFrame(frameNo, restart); }
-    // Never blocks. An empty FrameAlloc means the allocation failed (no device memory); callers fail soft.
+    // Never blocks on the GPU. An empty FrameAlloc means the allocation failed (no device memory); callers fail soft.
+    // Any thread while a frame records (parallel recording): the bump, and a growth that replaces the buffer, run under one mutex. Offsets then follow
+    // arrival order, which no output depends on (each caller binds exactly what it was handed).
     FrameAlloc alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align);
     // The buffer the next allocation will come from (created on first use). Dynamic-offset descriptors point at it; a frame that allocated from a
     // different buffer than a set was written for rewrites that set (growth replaces the buffer).
@@ -109,6 +112,7 @@ public:
 
 private:
     bool grow(VulkanContext& ctx, VkDeviceSize perSlot);
+    std::mutex mu_;   // alloc / ensureBuffer: the bump and the growth (buffer_, mapped_, core_ capacity)
     FrameRingCore core_;
     OwnedBuffer buffer_;
     uint8_t* mapped_ = nullptr;
