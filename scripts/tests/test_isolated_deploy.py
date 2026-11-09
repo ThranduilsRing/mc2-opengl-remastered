@@ -228,6 +228,20 @@ def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, m
     extras = iso.kit_seed_members(source, {})
     assert set(extras) == {name, 'cache/content-model/industrial-cook.json',
                            'cache/content-model/model-123.mci'}
+    lean_fixture(source)
+    guard = lean_tool()._load_guard()
+    monkeypatch.setattr(iso, '_load_guard', lambda: guard)
+    monkeypatch.setattr(iso, 'check_space', lambda *a: None)
+    lane = tmp_path / 'lane'
+    assert iso.main(['--from', str(source), '--to', str(lane)]) == 0
+    installed = lane / recipe.relative_to(source)
+    assert installed.samefile(recipe)
+    replacement = installed.with_suffix('.tmp')
+    replacement.write_bytes(b'new recipe')
+    os.replace(replacement, installed)
+    assert recipe.read_bytes() == b'cooked'
+    assert installed.read_bytes() == b'new recipe'
+    assert not (lane / 'cache/content-model/industrial-cook.json').samefile(cache / 'industrial-cook.json')
     path.write_bytes(b'wrong')
     with pytest.raises(ValueError, match='pinned kit'):
         iso.kit_seed_members(source, {})

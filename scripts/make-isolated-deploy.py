@@ -842,10 +842,15 @@ def main(argv=None) -> int:
         # Pinned kit sources are read-only at runtime. --skip-kit excludes
         # them from the deploy write set; a full kit deploy still refuses
         # these shared inodes through the existing exact-payload guard.
+        def immutable_kit_member(rel):
+            # Native recipes publish by atomic replacement; see the isolation
+            # guard's contract. Their JSON receipts remain private.
+            return rel.startswith('mods/') or rel.endswith('.mci')
+
         to_link.extend((r, (src / r).stat().st_size) for r in extras
-                       if r not in known and r.startswith('mods/'))
+                       if r not in known and immutable_kit_member(r))
         to_copy.extend((r, (src / r).stat().st_size) for r in extras
-                       if r not in known and not r.startswith('mods/'))
+                       if r not in known and not immutable_kit_member(r))
     link_bytes = sum(n for _, n in to_link)
     copy_bytes = sum(n for _, n in to_copy)
     out(f'{"warm snapshot" if args.snapshot else "lean verified seed"}: {gb(full_lb + full_cb)} -> {gb(link_bytes + copy_bytes)}; '

@@ -21,7 +21,8 @@ py -3 scripts/deploy_payload.py E:/mc2-installs/<branch> --allow-new-target --ni
 ```
 
 The script refuses cross-volume sources before writing. Stock, static deployed
-payload and verified pinned kit sources link on E:; mutable runtime files and cooked kit receipts
+payload, verified pinned kit sources and content-addressed native recipes link
+on E:; mutable runtime files and cooked kit receipts
 are private copies. Failed links fall back to a copy only after checking its
 additional disk cost, then verify both hashes. The private `.lane-seed.json`
 receipt permits deploy to retain identical payload and atomically privatize
@@ -39,6 +40,11 @@ are checked against expected hashes; unchanged linked files use the verified
 seed inode. `.lane-seed-inventory.json` avoids repeating the stock walk and is
 invalidated by changes to the seed deployment manifest. Excluded cache/mod/debug
 trees are pruned before descent on a cold inventory. `--dry-run` writes no receipt.
+
+Native recipes publish by atomic replacement, as documented by the isolation
+guard. The measured seed has 664 recipes / 1,241,263,585 bytes; linking them
+avoids copying these unchanged bytes for every lane. Cook JSON receipts remain
+private, and an atomic recipe replacement leaves the seed inode untouched.
 
 The merge orchestrator refreshes `_lean-seed` from the verified nifty published
 install after kit changes, using the existing atomic owner-seed path (run from
