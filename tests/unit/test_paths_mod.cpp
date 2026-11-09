@@ -26,6 +26,7 @@
 
 #include "file.h"
 #include "paths.h"
+#include "vfs.h"
 #include "Gates/gate_cold.h"
 #include "Gates/gate_name.h"
 
@@ -157,6 +158,20 @@ void setActiveMod (const char *modId)
 TEST_SUITE("PathsAndMods")
 {
 
+TEST_CASE("VFS key normalization respects explicit view bounds")
+{
+	const char raw[] = {'D', 'A', 'T', 'A', '\\', 'X', 'Y'};
+	const std::string_view bounded(raw, 6);
+	CHECK(NormalizeKey(bounded) == "data/x");
+	CHECK(mc2::vfs::key(bounded) == "data/x");
+	CHECK(NormalizeKey({}).empty());
+	CHECK(mc2::vfs::key({}).empty());
+	const char withNull[] = {'A', '\0', 'B'};
+	CHECK(NormalizeKey(std::string_view(withNull, 3)) == std::string("a\0b", 3));
+	CHECK_FALSE(mc2::vfs::openRead(nullptr).found());
+	CHECK_FALSE(mc2::vfs::openRead("").found());
+}
+
 TEST_CASE("paths.cpp exposes the engine's real path string globals")
 {
 	// Leaf-TU sanity: the globals link and carry their default data/ layout.
@@ -222,6 +237,20 @@ TEST_CASE("mod search is gated: absolute paths and .. are never mod-resolved")
 
 	// Relative under data/ IS mod-resolved (control).
 	CHECK(LookupModOwner(kRelDataPath) != nullptr);
+	CHECK(LookupModOwner(nullptr) == nullptr);
+	CHECK(LookupModOwner("") == nullptr);
+	const std::string padded = std::string(kRelDataPath) + "..ignored";
+	const std::string_view bounded(padded.data(), strlen(kRelDataPath));
+	CHECK(ResolveModFileSource(bounded).path.has_value());
+	CHECK(LookupModAbsolutePath(bounded) != nullptr);
+	CHECK_FALSE(ResolveModFileSource(padded).path.has_value());
+	CHECK(ResolveModFileSource("DATA\\MVH_SCRATCH_DATA\\ENTRY.TXT").path.has_value());
+	for (std::string_view shortPath : {std::string_view{}, std::string_view("d"),
+		std::string_view("data"), std::string_view("C:"), std::string_view("/data/")})
+		CHECK_FALSE(ResolveModFileSource(shortPath).path.has_value());
+	const std::string embeddedNull = std::string(kRelDataPath) + '\0' + "suffix";
+	CHECK_FALSE(ResolveModFileSource(embeddedNull).path.has_value());
+	CHECK(mc2::vfs::candidates(embeddedNull).empty());
 
 	// A traversal attempt is rejected by ShouldSearchMods (contains "..").
 	CHECK(LookupModOwner("data/../data/mvh_scratch_data/entry.txt") == nullptr);

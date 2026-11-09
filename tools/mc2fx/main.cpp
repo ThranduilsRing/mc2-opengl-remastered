@@ -52,16 +52,16 @@ int cmdDump(const char* inPath, const char* outPath, bool full)
         std::fprintf(stderr, "mc2fx: cannot read '%s'\n", inPath);
         return 2;
     }
-    mc2fx::initEngineHeadless();
-    mc2::particles::SpecLibrary* lib = mc2fx::loadBlob(bytes.data(), bytes.size());
-    if (!lib) { std::fprintf(stderr, "mc2fx: load failed\n"); return 4; }
-    std::string out = full ? mc2fx::dumpFullJson(lib) : mc2fx::dumpCatalogJson(lib);
+    std::string error;
+    const auto catalog = mc2::fx::read_catalog(bytes, error);
+    if (!catalog) { std::fprintf(stderr, "mc2fx: %s\n", error.c_str()); return 4; }
+    std::string out = mc2fx::dumpCatalogJson(*catalog, full);
 
     if (outPath) {
         if (!writeFileBytes(outPath, reinterpret_cast<const unsigned char*>(out.data()), out.size())) {
             std::fprintf(stderr, "mc2fx: cannot write '%s'\n", outPath); return 3;
         }
-        std::fprintf(stderr, "mc2fx: dumped %u effects -> %s\n", lib->Count(), outPath);
+        std::fprintf(stderr, "mc2fx: dumped %zu effects -> %s\n", catalog->effects().size(), outPath);
     } else {
         std::fwrite(out.data(), 1, out.size(), stdout);
     }
@@ -75,17 +75,10 @@ int cmdRebuild(const char* inPath, const char* outPath)
         std::fprintf(stderr, "mc2fx: cannot read '%s'\n", inPath);
         return 2;
     }
-    mc2fx::initEngineHeadless();
-    mc2::particles::SpecLibrary* lib = mc2fx::loadBlob(inBytes.data(), inBytes.size());
-    if (!lib) { std::fprintf(stderr, "mc2fx: load failed\n"); return 4; }
-
-    std::vector<unsigned char> outBytes;
-    // Pre-size the Save stream from the input to avoid reallocations (it grows on demand).
-    size_t reserveHint = inBytes.size() * 4 + (1u << 20);
-    if (!mc2fx::saveBlob(lib, outBytes, reserveHint)) {
-        std::fprintf(stderr, "mc2fx: save failed (no terminating size found)\n");
-        return 5;
-    }
+    std::string error;
+    const auto catalog = mc2::fx::read_catalog(inBytes, error);
+    if (!catalog) { std::fprintf(stderr, "mc2fx: %s\n", error.c_str()); return 4; }
+    const auto outBytes = catalog->rebuild();
     if (!writeFileBytes(outPath, outBytes.data(), outBytes.size())) {
         std::fprintf(stderr, "mc2fx: cannot write '%s'\n", outPath); return 3;
     }
@@ -118,7 +111,7 @@ int cmdRebuild(const char* inPath, const char* outPath)
     hexDump("in ", inBytes, ctx);
     hexDump("out", outBytes, ctx);
     std::printf("DIFFER@%zu in=%zu out=%zu\n", firstDiff, inBytes.size(), outBytes.size());
-    return 0;
+    return 6;
 }
 
 int cmdBuild(const char* basePath, const char* patchPath, const char* outPath)
@@ -235,6 +228,7 @@ void usage()
         "mc2fx — gosFX effect blob inspector\n"
         "  mc2fx dump    [--full] <mc2.fx> [out.json]   dump catalog (--full = per-curve values)\n"
         "  mc2fx rebuild <in.fx>  <out.fx>              Load->Save round-trip + byte-compare\n"
+        "  mc2fx compare <in.fx>                       offline native/legacy semantic comparison\n"
         "  mc2fx build   <base.fx> <patch.json> <out.fx> apply JSON edits + re-emit\n"
         "  mc2fx clone   <base.fx> <srcName> <newName> <out.fx>  duplicate+rename an effect\n"
         "  mc2fx new     <base.fx> <type> <newName> <out.fx>     blank effect from a type\n"
@@ -254,6 +248,17 @@ int main(int argc, char** argv)
 {
     if (argc < 3) { usage(); return 1; }
     std::string cmd = argv[1];
+    if (cmd == "compare") {
+        std::vector<unsigned char> bytes;
+        if (!readFileBytes(argv[2], bytes)) return 2;
+        std::string report;
+        const auto catalog = mc2::fx::read_catalog(bytes, report);
+        if (!catalog) { std::fprintf(stderr, "%s\n", report.c_str()); return 4; }
+        mc2fx::initEngineHeadless();
+        const bool equal = mc2fx::compareLegacy(*catalog, bytes, report);
+        std::printf("%s\n", report.c_str());
+        return equal ? 0 : 5;
+    }
     if (cmd == "dump") {
         // dump [--full] <in.fx> [out.json]
         bool full = false;

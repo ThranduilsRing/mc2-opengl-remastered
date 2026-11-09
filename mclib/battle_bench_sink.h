@@ -32,6 +32,8 @@ struct Tick {
 // `cur` holds this frame; beginFrame folds it into `tot` (see battle_bench.h). Wait fields are nanoseconds, main thread only.
 enum class Field : unsigned {
     DrawProps, DrawTerrain, DrawWater, DrawMechDepth, DrawMechColor, DrawLegacy, DrawSky, DrawVfx, DrawShadow,
+    // Local calls overlap mover/static calls; records retain the pre-batch draw census.
+    DrawShadowMover, DrawShadowLocal, ShadowMoverRecords, ShadowLocalMoverRecords,
     WaitSealedNs, WaitSimNs, WaitGpuMainNs,
     ExtractBytes, HeapAllocs,
     WalkVisited, WalkRecalc, WalkGround, WalkTouch, WalkUpdate,
@@ -46,6 +48,7 @@ using enum Field;
 inline constexpr unsigned FieldCount = static_cast<unsigned>(Field::NumFields);
 inline constexpr const char* kFieldNames[FieldCount] = {
     "draws.props", "draws.terrain", "draws.water", "draws.mech_depth", "draws.mech_color", "draws.legacy", "draws.sky", "draws.vfx", "draws.shadow",
+    "draws.shadow_mover", "draws.shadow_local", "shadow.mover_records", "shadow.local_mover_records",
     "wait_sealed_ns", "wait_sim_ns", "wait_gpu_main_ns",
     "extract.bytes", "heap_allocs",
     "walk.visited", "walk.recalc", "walk.ground", "walk.touch", "walk.update",

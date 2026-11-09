@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -55,6 +57,53 @@ def read_manifest(install):
     return files, exe_commit
 
 
+def payload_identity(install):
+    """Verify the executable and every deployed SPIR-V byte before attributing captures."""
+    install = Path(install)
+    files, commit = read_manifest(install)
+    payload = {p: sha for p, sha in files.items()
+               if p == "mc2.exe" or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
+    actual = {p.relative_to(install).as_posix() for p in (install / "shaders/vulkan").rglob("*.spv")}
+    if not re.fullmatch(r"[0-9a-f]{40}", commit or "") or "mc2.exe" not in payload or not actual or actual != set(payload) - {"mc2.exe"}:
+        raise ValueError(f"{install}: unknown or incomplete payload manifest identity")
+    for rel, expected in payload.items():
+        with (install / rel).open("rb") as stream:
+            got = hashlib.file_digest(stream, "sha256").hexdigest()
+        if got != expected:
+            raise ValueError(f"{install}: manifest mismatch for {rel}: {got} != {expected}")
+    fingerprint = exe_commit(install / "mc2.exe")
+    if fingerprint and not commit.startswith(fingerprint):
+        raise ValueError(f"{install}: executable commit mismatches manifest")
+    return dict(commit=commit, payload=payload, manifest=files)
+
+
+def stamp_identity(directory, identity):
+    path = directory / "capture_run.json"
+    sidecar = json.loads(path.read_text()) if path.exists() else {}
+    sidecar["install_identity"] = identity
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
+
+
+def captured_identity(directory):
+    try:
+        sidecar = json.loads((directory / "capture_run.json").read_text())
+        identity = sidecar["install_identity"]
+        payload = identity["payload"]
+        expected = {p: sha for p, sha in identity["manifest"].items()
+                    if p == "mc2.exe" or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
+        if not re.fullmatch(r"[0-9a-f]{40}", identity["commit"]) or "mc2.exe" not in payload or len(payload) < 2:
+            raise ValueError("incomplete payload identity")
+        if payload != expected or any(not re.fullmatch(r"[0-9a-f]{64}", sha) for sha in payload.values()):
+            raise ValueError("mismatched payload identity")
+        captured_exe = sidecar.get("identity", {}).get("exe", {}).get("sha256")
+        if captured_exe and captured_exe != payload["mc2.exe"]:
+            raise ValueError("capture executable mismatches payload identity")
+        return identity
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise ValueError(f"{directory}: unknown or mismatched capture install identity: {exc}") from exc
+
+
 def exe_commit(exe):
     """Commit sha embedded in an exe (build fingerprint), or None."""
     try:
@@ -93,8 +142,11 @@ def commit_order_problem(older, newer, what_older, what_newer):
 
 
 def manifest_mismatches(ma, mb):
-    """Data/shader manifest differences ignoring mc2.exe and shaders/vulkan/*.spv (those are the build under test)."""
-    skip = lambda p: p == "mc2.exe" or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))
+    """Data/shader manifest differences ignoring the build under test: mc2.exe, shaders/vulkan/*.spv and the build outputs
+    that never change a capture's pixels (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a capture).
+    W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in these two and failed."""
+    build_outputs = {"mc2.exe", "mc2.pdb", "mc2_asset_viewer.exe"}
+    skip = lambda p: p in build_outputs or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
     out = [f"only in A: {k}" for k in sorted(ma.keys() - mb.keys())] + [f"only in B: {k}" for k in sorted(mb.keys() - ma.keys())]
@@ -352,6 +404,22 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
     if target.exists():
         target.unlink()
     shutil.copy2(exe, target)
+    # The staged executable is an intentional replacement, with its own manifest row.
+    manifest = dest / MANIFEST
+    with manifest.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.reader(stream))
+    commit = exe_commit(exe)
+    if not commit:
+        sys.exit(f"ab.py: unknown executable identity: {exe}")
+    if len(commit) != 40:
+        commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
+                                         **console_child.child_kwargs(redirected=True)).strip()
+    for row in rows[2:]:
+        if row and row[0] == "mc2.exe":
+            row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
+    manifest.unlink()  # copied installs may share this inode with their source
+    with manifest.open("w", newline="", encoding="utf-8") as stream:
+        csv.writer(stream).writerows(rows)
     return dest
 
 
@@ -389,6 +457,10 @@ def resolve_installs(a, out: Path):
             seed_install(d, a.bookmarks or "", a.install)
         return a.install_a, a.install_b
     if a.exe_a and a.exe_b:
+        try:
+            payload_identity(a.install)
+        except (OSError, ValueError) as exc:
+            sys.exit(f"ab.py: refusing source install: {exc}")
         for e in (a.exe_a, a.exe_b):
             if not Path(e).is_file():
                 sys.exit(f"exe not found: {e}")
@@ -425,7 +497,15 @@ def main(argv=None):
     stamp = time.strftime("%Y%m%d_%H%M%S")
     out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
     if a.compare_only:
-        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops, cross_base=a.allow_base_mismatch)  # capture dirs carry no install identity
+        try:
+            ia, ib = [captured_identity(Path(d)) for d in a.compare_only]
+        except ValueError as exc:
+            sys.exit(f"ab.py: {exc}")
+        bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
+        bad += manifest_mismatches(ia["manifest"], ib["manifest"])
+        if bad and not a.allow_base_mismatch:
+            sys.exit("ab.py: mismatched capture identities: " + "; ".join(bad))
+        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops, cross_base=bool(bad))
         sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")
@@ -438,9 +518,15 @@ def main(argv=None):
         print("[ab] CROSS-BASE (allowed): " + b, flush=True)
     out.mkdir(parents=True, exist_ok=True)
     ia, ib = resolve_installs(a, out)
+    try:
+        identities = [payload_identity(d) for d in (ia, ib)]
+    except (OSError, ValueError) as exc:
+        sys.exit(f"ab.py: refusing capture: {exc}")
     env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
+    stamp_identity(out / "a", identities[0])
     run_capture(ib, a.bookmarks, out / "b", env)
+    stamp_identity(out / "b", identities[1])
     compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()], cross_base=bool(bad))
     sys.exit(1 if getattr(compare, "problems", None) else 0)
 

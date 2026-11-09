@@ -89,6 +89,6 @@ inline bool imageSizePlausible(unsigned long size) { return size <= kMaxInRamIma
 extern int logFileResolve;
 extern unsigned long g_resolveOpens;
 extern unsigned long g_resolveMisses;
-std::string NormalizeKey(const char* p);
+std::string NormalizeKey(std::string_view p);
 void EmitResolveRecord(const char* key, const char* req, const char* layer, const char* path,
                        const std::vector<std::string>* shadowed);
