@@ -9,6 +9,8 @@ from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
 import shutil
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import console_child
@@ -371,8 +373,125 @@ def build_importer(src_root):
     return tool
 
 
-def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL):
-    """Verify installed source, cook native recipes and verify the cache receipt."""
+COOK_CACHE_DEFAULT = "E:/mc2-cook-cache"
+COOK_KEEP_KEYS = 8
+COOK_KEEP_SECONDS = 14 * 86400
+COOK_PROTECT_SECONDS = 24 * 3600
+COOK_LOCK_WAIT = 900
+
+
+def cook_cache_root():
+    return Path(os.environ.get("MC2_COOK_CACHE", COOK_CACHE_DEFAULT))
+
+
+def importer_source_key(src_root, tree=None):
+    """Digest of what the importer is built from (sources + real include closure), not of its exe.
+
+    The exe differs per worktree (embedded paths, PDB stamps), which made every lane miss the shared cook.
+    The include closure comes from `ninja -t deps` in the importer tree; without it, fall back to every
+    mclib/GameOS header (broad but safe)."""
+    root = Path(src_root).resolve()
+    names = {"tools/tg_import_dump/CMakeLists.txt"}
+    names.update(p.relative_to(root).as_posix() for p in (root / "tools/tg_import_dump").glob("*")
+                 if p.suffix in (".cpp", ".h"))
+    cmake = root / "tools/tg_import_dump/CMakeLists.txt"
+    if cmake.is_file():
+        names.update(p for p in re.findall(r"\$\{MC2_ROOT\}/([\w./-]+)", cmake.read_text())
+                     if Path(p).suffix in (".cpp", ".h", ".c", ".hpp"))
+    closure = "broad"
+    try:
+        import configure_ninja as cn
+        if tree is None or not (Path(tree) / ".ninja_deps").is_file():
+            raise OSError("no ninja deps log")
+        out = subprocess.run([cn.NINJA, "-C", str(tree), "-t", "deps"], capture_output=True, text=True,
+                             timeout=120, **console_child.child_kwargs(redirected=True)).stdout
+        found = 0
+        for line in out.splitlines():
+            if not line.startswith("    "):
+                continue
+            try:
+                rel = Path(line.strip()).resolve().relative_to(root)
+            except (ValueError, OSError):
+                continue
+            if rel.parts and rel.parts[0] != "3rdparty" and (root / rel).is_file():
+                names.add(rel.as_posix())
+                found += 1
+        if found:
+            closure = "ninja-deps"
+    except (OSError, ValueError, subprocess.SubprocessError, ImportError):
+        pass
+    if closure == "broad":
+        for d in ("mclib", "GameOS"):
+            names.update(p.relative_to(root).as_posix() for p in (root / d).rglob("*") if p.suffix in (".h", ".hpp"))
+    h = hashlib.sha256()
+    for n in sorted(names):
+        f = root / n
+        if f.is_file():
+            h.update(n.encode() + b"\0" + bytes.fromhex(sha(f)))
+    third = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD:3rdparty/assimp"], capture_output=True,
+                           text=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
+    h.update(b"assimp:" + third.encode())
+    print(f"[deploy_payload] importer source key ({closure}, {len(names)} files)")
+    return h.hexdigest()
+
+
+def prune_cook_cache(root, keep):
+    """Keep the newest COOK_KEEP_KEYS keys; older ones go only when idle beyond the 24 h protect window."""
+    now = time.time()
+    dirs = sorted((d for d in Path(root).iterdir() if d.is_dir()), key=lambda d: d.stat().st_mtime, reverse=True)
+    for i, d in enumerate(dirs):
+        age = now - d.stat().st_mtime
+        if d.name == keep or age < COOK_PROTECT_SECONDS:
+            continue
+        if i >= COOK_KEEP_KEYS or age > COOK_KEEP_SECONDS:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def acquire_cook_lock(lock, ready, wait=COOK_LOCK_WAIT):
+    """One cooker per key. True: caller owns the lock and cooks. False: the holder published, or we timed out."""
+    deadline = time.monotonic() + wait
+    ticker = threading.Event()
+    while True:
+        try:
+            os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return True
+        except FileExistsError:
+            if ready():
+                return False
+            try:
+                if time.time() - os.path.getmtime(lock) > wait:  # stale lock from a dead cooker
+                    os.unlink(lock)
+                    continue
+            except OSError:
+                continue
+            if time.monotonic() > deadline:
+                return False
+            ticker.wait(2)
+
+
+def _model_row(path):
+    return dict(path=path.name, bytes=path.stat().st_size, sha256=sha(path))
+
+
+def _link_or_copy(src, dst):
+    """Install a verified cache file under a private directory entry (never write through a shared inode)."""
+    pending = dst.with_name(dst.name + f'.{os.getpid()}.tmp')
+    try:
+        try:
+            os.link(src, pending)
+        except OSError:  # cross-volume or no hardlinks: private copy
+            shutil.copyfile(src, pending)
+        os.replace(pending, dst)
+    finally:
+        pending.unlink(missing_ok=True)
+
+
+def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL, importer_key=None, cache_root=None):
+    """Verify installed sources and bring cache/content-model up to date, cooking only models with no valid recipe.
+
+    Recipes are keyed per model: sha256(GLB) + importer version (importer source closure + import args).
+    Lookup order per model: the install's own receipt (a seed carries it), the shared cache, then cook that one
+    model and publish it to the shared cache. A model is never recooked because an unrelated file changed."""
     target = Path(target_dir).resolve()
     kit = target / kit_rel
     hashes = HashReceipts(target / '.deploy-receipts.json')
@@ -384,116 +503,135 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
         raise ValueError(f"unpinned kit files in install: {files}; "
                          "safe to delete if not in the kit manifest")
     models = sorted(p for p in paths if p.endswith(".glb"))
-    # Identical small-prop LODs share a content-addressed native recipe.
-    unique_models = len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")})
-    identity = hashlib.sha256((hashes.digest(tool) + json.dumps(manifest, sort_keys=True)
-                               + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
+    model_shas = {r["path"]: r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}
+    version = hashlib.sha256(((importer_key or hashes.digest(tool)) + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
     cache.mkdir(parents=True, exist_ok=True)
     receipt = cache / ("industrial-cook.json" if kit_rel == KIT_REL else "vehicle-cook.json")
-    shared = target.parent / '.cooked-kit' / identity
-    shared_receipt = shared / receipt.name
+    cache_root = Path(cache_root) if cache_root else cook_cache_root()
+    shared_root = cache_root / "models" / version[:16]
+    shared_root.mkdir(parents=True, exist_ok=True)
+    (cache_root / "locks").mkdir(exist_ok=True)
 
-    def publish(previous):
-        # Private copies prevent later in-place lane writes from touching the store.
-        shared.mkdir(parents=True, exist_ok=True)
-        for row in previous['files']:
-            dst = shared / row['path']
-            pending = dst.with_name(dst.name + f'.{os.getpid()}.tmp')
-            try:
-                shutil.copyfile(cache / row['path'], pending)
-                if sha(pending) != row['sha256']:
-                    raise ValueError(f'shared recipe copy mismatch: {dst}')
-                os.replace(pending, dst)
-            finally:
-                pending.unlink(missing_ok=True)
-        pending = shared_receipt.with_name(shared_receipt.name + f'.{os.getpid()}.tmp')
-        pending.write_text(json.dumps(previous, indent=2) + '\n')
-        os.replace(pending, shared_receipt)
+    try:
+        prior = json.loads(receipt.read_text())
+        by_glb = dict(prior["by_glb"]) if prior.get("importer") == version else {}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        by_glb = {}
 
-    for candidate in (receipt, shared_receipt):
+    def installed(row):
         try:
-            previous = json.loads(candidate.read_text())
-            recipes = previous["recipes"]
-            rows = previous["files"]
-            if not (previous["identity"] == identity and isinstance(recipes, dict) and set(recipes) == set(models)
-                    and len(rows) == unique_models
-                    and set(recipes.values()) == {r["path"] for r in rows}
-                    and all(re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']) for row in rows)):
-                continue
-            checked_files(candidate.parent, rows, hashes)
-            if candidate == shared_receipt:
-                for row in rows:
-                    dst = cache / row['path']
-                    pending = dst.with_name(dst.name + f'.{os.getpid()}.tmp')
-                    try:
-                        os.link(shared / row['path'], pending)
-                        os.replace(pending, dst)
-                    finally:
-                        pending.unlink(missing_ok=True)
-                receipt.write_text(json.dumps(previous, indent=2) + '\n')
-            elif not shared_receipt.is_file():
-                publish(previous)
-            hashes.save()
-            print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cached; cook skipped")
-            return
+            checked_files(cache, [row], hashes)
+            return re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']) is not None
         except (OSError, ValueError, KeyError, TypeError):
-            pass
-    # Cookers may overwrite in place; detach every shared recipe before invoking one.
-    for path in cache.glob('model-*.mci'):
-        if path.stat().st_nlink > 1:
-            pending = path.with_name(path.name + f'.{os.getpid()}.tmp')
-            try:
-                shutil.copyfile(path, pending)
-                os.replace(pending, path)
-            finally:
-                pending.unlink(missing_ok=True)
-    # Record the importer's source-to-recipe mapping with the verified inventory.
-    recipes = {}
-    recipes_by_sha = {}
-    model_shas = {r["path"]: r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}
-    outputs = set()
+            return False
+
+    def from_shared(glb_sha):
+        """Verified row from the shared cache, linked into the install, or None."""
+        entry = shared_root / glb_sha
+        try:
+            row = json.loads((entry / "row.json").read_text())
+            if not re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']):
+                return None
+            checked_files(entry, [row], hashes)
+            _link_or_copy(entry / row['path'], cache / row['path'])
+            os.utime(entry)
+            return row
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+
     unique = {}
     for rel in models:
         unique.setdefault(model_shas[rel], rel)
+    rows, todo = {}, {}
+    for glb_sha, rel in unique.items():
+        row = by_glb.get(glb_sha)
+        if row and installed(row):
+            rows[glb_sha] = row
+        elif (row := from_shared(glb_sha)):
+            rows[glb_sha] = row
+        else:
+            todo[glb_sha] = rel
+    reused = len(rows)
 
     def cook_model(item):
-        digest, rel = item
-        result = cooker([str(tool), (kit_rel / rel).as_posix(), *IMPORT_ARGS],
-                        cwd=target, capture_output=True, text=True, timeout=120, env=dict(os.environ, OMP_NUM_THREADS="1"),
-                        **console_child.child_kwargs(redirected=True))
-        if result.returncode:
-            raise ValueError(f"industrial native cook failed: {rel}: {result.stderr[-300:]}")
-        keys = re.findall(r"\[CONTENT_COOK\].*?key=([0-9a-f]{16})", result.stdout + result.stderr)
-        if len(keys) != 1:
-            raise ValueError(f"industrial importer did not report one native recipe: {rel}")
-        return digest, f"model-{keys[0]}.mci"
+        glb_sha, rel = item
+        lock = cache_root / "locks" / f"{version[:16]}-{glb_sha[:24]}.lock"
+        owner = acquire_cook_lock(lock, lambda: (shared_root / glb_sha / "row.json").is_file())
+        try:
+            row = from_shared(glb_sha)  # the previous holder may have published before we locked
+            if row:
+                return glb_sha, row
+            result = cooker([str(tool), (kit_rel / rel).as_posix(), *IMPORT_ARGS],
+                            cwd=target, capture_output=True, text=True, timeout=120,
+                            env=dict(os.environ, OMP_NUM_THREADS="1"),
+                            **console_child.child_kwargs(redirected=True))
+            if result.returncode:
+                raise ValueError(f"industrial native cook failed: {rel}: {result.stderr[-300:]}")
+            keys = re.findall(r"\[CONTENT_COOK\].*?key=([0-9a-f]{16})", result.stdout + result.stderr)
+            if len(keys) != 1:
+                raise ValueError(f"industrial importer did not report one native recipe: {rel}")
+            out = cache / f"model-{keys[0]}.mci"
+            if not out.is_file() or out.stat().st_size == 0:
+                raise ValueError(f"industrial cook produced no recipe: {rel}")
+            row = _model_row(out)
+            entry = shared_root / glb_sha
+            entry.mkdir(parents=True, exist_ok=True)
+            pending = entry / (row['path'] + f'.{os.getpid()}.tmp')
+            try:
+                shutil.copyfile(out, pending)
+                if sha(pending) != row['sha256']:
+                    raise ValueError(f'shared recipe copy mismatch: {pending}')
+                os.replace(pending, entry / row['path'])
+            finally:
+                pending.unlink(missing_ok=True)
+            tmp_row = entry / f'row.json.{os.getpid()}.tmp'
+            tmp_row.write_text(json.dumps(row))
+            os.replace(tmp_row, entry / "row.json")
+            return glb_sha, row
+        finally:
+            if owner:
+                lock.unlink(missing_ok=True)
 
-    jobs = max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text()))
-    with ThreadPoolExecutor(max_workers=jobs) as pool:
-        recipes_by_sha.update(pool.map(cook_model, unique.items()))
-    # The native cache keeps only the newest model-*.mci by mtime (content_ir.cpp kind maxFiles) and a hit never refreshes
-    # its entry, so in a full cache another model's write in this same cook can evict a recipe reported as a hit. Mark
-    # every recipe this cook needs as newest, then re-cook only the evicted ones: their writes now sweep stale entries.
-    for _ in range(3):
-        missing = [item for item in unique.items() if not (cache / recipes_by_sha[item[0]]).is_file()]
-        if not missing:
-            break
-        for name in set(recipes_by_sha.values()):
-            if (cache / name).is_file():
-                os.utime(cache / name)
-        recipes_by_sha.update(map(cook_model, missing))
-    for rel in models:
-        recipes[rel] = recipes_by_sha[model_shas[rel]]
-        outputs.add(cache / recipes[rel])
-    outputs = sorted(outputs)
-    if len(outputs) != unique_models or any(not p.is_file() or p.stat().st_size == 0 for p in outputs):
-        raise ValueError(f"industrial cook incomplete: {len(outputs)} recipes for {unique_models} distinct GLBs")
-    rows = [dict(path=p.name, bytes=p.stat().st_size, sha256=sha(p)) for p in outputs]
-    checked_files(cache, rows)
+    if todo:
+        # Cookers may overwrite in place; detach shared inodes of anything not just verified.
+        keep = {r['path'] for r in rows.values()}
+        for path in cache.glob('model-*.mci'):
+            if path.name not in keep and path.stat().st_nlink > 1:
+                detached = path.with_name(path.name + '.detach')
+                shutil.copyfile(path, detached)
+                os.replace(detached, path)
+        jobs = max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text()))
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            rows.update(pool.map(cook_model, todo.items()))
+        # The native recipe cache keeps only the newest model-*.mci by mtime and a write sweeps older entries, so a later
+        # model's cook can evict a recipe an earlier model just produced. The shared cache holds every cooked recipe:
+        # relink the evicted ones (links never trigger the native sweep); re-cook only if the shared entry is gone too.
+        for _ in range(3):
+            missing = [(g, rel) for g, rel in unique.items() if not (cache / rows[g]['path']).is_file()]
+            if not missing:
+                break
+            for g, rel in missing:
+                rows[g] = from_shared(g) or cook_model((g, rel))[1]
+    # Retire recipes this manifest no longer references (stale cooks never ship).
+    wanted = {r['path'] for r in rows.values()}
+    for path in cache.glob('model-*.mci'):
+        if path.name not in wanted:
+            path.unlink()
+    out_rows = sorted(({k: r[k] for k in ('path', 'bytes', 'sha256')} for r in rows.values()),
+                      key=lambda r: r['path'])
+    if len(out_rows) != len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}):
+        raise ValueError(f"industrial cook incomplete: {len(out_rows)} recipes")
+    checked_files(cache, out_rows)
     checked_files(kit, manifest["files"])
-    previous = dict(identity=identity, recipes=recipes, files=rows)
-    receipt.write_text(json.dumps(previous, indent=2) + "\n")
-    publish(previous)
+    value = dict(identity=version, importer=version, by_glb=rows,
+                 recipes={rel: rows[model_shas[rel]]['path'] for rel in models}, files=out_rows)
+    receipt.write_text(json.dumps(value, indent=2) + "\n")
     hashes.save()
-    print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs cooked")
+    print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs, "
+          f"{reused} reused, {len(todo)} cooked")
+    os.utime(shared_root)
+    try:
+        prune_cook_cache(cache_root / "models", version[:16])
+    except OSError:
+        pass

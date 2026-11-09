@@ -2494,9 +2494,11 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
             phase_started = time.perf_counter()
             with deploy_phase("kit cook", 900):
-                kit_payload.finish(target, kit_manifest, kit_tool)
+                importer_key = kit_payload.importer_source_key(src_root, Path(kit_tool).parent)
+                kit_payload.finish(target, kit_manifest, kit_tool, importer_key=importer_key)
                 if vehicle_manifest:
-                    kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"))
+                    kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"),
+                                       importer_key=importer_key)
             log(f"phase kit cook seconds={kit_prepare_seconds + time.perf_counter() - phase_started:.3f}")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
