@@ -1069,7 +1069,7 @@ void TerrainObject::renderView (const mc2::render_view::RenderView& view) {
 		// static-world-s2: a settled static tree/terrain object with no bars or dust is skipped by the next extracts.
 		if ((getObjectClass() == TREE || getObjectClass() == TERRAINOBJECT) && !view.has(mc2::render_view::Bars) &&
 			!view.has(mc2::render_view::EffectLive0) && !view.effects[0])
-			ObjectManager->noteRenderResident(this, appearance->residentRenderRecipe());
+			if (const auto recipe = appearance->residentRenderRecipe()) ObjectManager->noteRenderResident(this, *recipe);
 		
 		//------------------------------------------------
 		// Render GOSFX (draw info is built only when a dust effect is live: most terrain objects have none)

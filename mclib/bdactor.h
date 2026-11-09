@@ -387,7 +387,7 @@ class BldgAppearance : public ObjectAppearance
 		// Stage 3.D: static-registry overrides (mirror of TreeAppearance).
 		virtual bool IsStaticNow() const override;
 		virtual bool lodFollowsCamera() const override;
-		virtual int32_t residentRenderRecipe() const override;
+		virtual std::optional<int32_t> residentRenderRecipe() const override;
 		uint32_t submittedFrame_ = 0xFFFFFFFFu;   // frame of the last render() that markVisibleChecked accepted
 		virtual void touch() override;
 		virtual void invalidateStaticRegistration() override;
@@ -728,7 +728,7 @@ class TreeAppearance : public ObjectAppearance
 		// Stage 3.C: static-registry overrides
 		virtual bool IsStaticNow() const override;
 		virtual bool lodFollowsCamera() const override;
-		virtual int32_t residentRenderRecipe() const override;
+		virtual std::optional<int32_t> residentRenderRecipe() const override;
 		uint32_t submittedFrame_ = 0xFFFFFFFFu;   // frame of the last render() that markVisibleChecked accepted
 		virtual void touch() override;
 		void selectActiveLOD();  // TREE-OVERRIDE-LOD-MVP: per-frame distance LOD pick (update+touch)
