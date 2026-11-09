@@ -2,7 +2,9 @@
 import base64
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 import tarfile
 from types import SimpleNamespace
@@ -411,7 +413,7 @@ def test_only_game_rows_take_the_lock_cpu_rows_run_first_under_timeout():
 
 def test_exit_trap_clears_the_owner_file_and_lane_lock_serialises_runs():
     r = box_run.REMOTE
-    assert "rm -f /workspace/locks/gpu$GOT.owner" in r and r.index("trap '") < r.index("take_lock()")
+    assert "rm -f /workspace/locks/$SB.owner" in r and r.index("trap '") < r.index("take_lock()")
     assert "exec 8>$L/.lane.lock; flock 8" in r and "8>&-" in r
     assert "CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1" in r
 
@@ -436,3 +438,43 @@ def test_lint_row_is_cpu_only_and_skips_the_build():
     assert 'case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc' in box_run.REMOTE   # taskset 32-63, never the GPU lock
     assert 'ONLY_LINT=1' in box_run.REMOTE and 'if [ -z "$ONLY_LINT" ]; then' in box_run.REMOTE
     assert 'grep -a "LINT FAIL"' in box_run.REMOTE
+
+
+def test_gpu_lock_is_a_counting_semaphore_of_slot_files():
+    r = box_run.REMOTE
+    assert "KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}" in r                       # default 3, cores.env GPU_SLOTS, env override
+    assert "exec 9>>/workspace/locks/gpu$c.s$k; flock -n 9" in r and "SB=gpu$c.s$k" in r
+    assert 'echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/$SB.owner' in r    # owner/row files are per slot
+    assert 'echo "$row" > /workspace/locks/$SB.row' in r
+    assert "gpu=$GPU slot=$SLOT locked lock_wait_secs=" in r                    # the old grep key survives
+    assert "timeout 1 tail -f /dev/null" in r and "timeout 3 tail" not in r      # 1 s poll
+    assert "SB=gpu3" in r                                                         # the gate GPU keeps its one exclusive legacy lock
+    assert "GPU_SLOTS=3" in (Path(box_run.__file__).parent / "box" / "cores.env").read_text()
+
+
+def _slot_harness(tmp_path, k, name):
+    """the real try_slot() from REMOTE against a temp lock dir: prints 'gpu slot' of the slot it got, or 'none'"""
+    r = box_run.REMOTE
+    fn = r[r.index("try_slot() {"):r.index("try_slot\nif [ -z")]
+    script = (f'cand=0; KS={k}; GOT=""; {fn}\n'.replace("/workspace/locks", tmp_path.as_posix())
+              + 'if try_slot; then echo "$GOT $SLOT"; else echo none; fi; [ -n "$HOLD" ] && read -t 5 _x <&0\n')
+    return script
+
+
+def test_try_slot_hands_out_k_slots_then_refuses(tmp_path):
+    import shutil
+    bash = shutil.which("bash")
+    if not bash or not shutil.which("flock"):
+        pytest.skip("bash/flock not available (the live box run covers this)")
+    script = tmp_path / "t.sh"
+    script.write_text(_slot_harness(tmp_path, 2, "x"))
+    procs = []
+    try:
+        got = []
+        for _ in range(3):
+            p = subprocess.Popen([bash, str(script)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env={**os.environ, "HOLD": "1"})
+            got.append(p.stdout.readline().strip()); procs.append(p)   # each holder keeps its flock until stdin closes
+        assert got[:2] == ["0 0", "0 1"] and got[2] == "none"
+    finally:
+        for p in procs:
+            p.stdin.close(); p.wait(timeout=10)

@@ -64,14 +64,17 @@ def gpus(now, problems):
              "mem_mb": int(p[3]) if p[3].isdigit() else None, "mem_total_mb": int(p[4]) if p[4].isdigit() else None}
         e.update(status.gpu_entry(n, now, set(holders)))
         e["procs"] = [{"pid": pid, "name": name, "mem_mb": mem} for b, pid, name, mem in (apps or []) if b == bus]
-        own = f"{sup.LOCKS}/gpu{n}.owner"
-        if os.path.exists(own) and not sup.alive(sup.read_pidfile(own)):
-            try:
-                age = now - os.stat(own).st_mtime
-            except OSError:
-                age = 0
-            if age > HEARTBEAT_MAX_S:
-                problems.append(f"gpu{n}.owner names a dead pid for {int(age)}s (supervisor not reaping?)")
+        for nm in status.slot_names(n):
+            own = f"{sup.LOCKS}/{nm}.owner"
+            if os.path.exists(own) and not sup.alive(sup.read_pidfile(own)):
+                try:
+                    age = now - os.stat(own).st_mtime
+                except OSError:
+                    age = 0
+                if age > HEARTBEAT_MAX_S:
+                    problems.append(f"{nm}.owner names a dead pid for {int(age)}s (supervisor not reaping?)")
+        if e.get("idle_waiter_s") and e["idle_waiter_s"] > 60:
+            problems.append(f"gpu{n}: a lane has waited {e['idle_waiter_s']}s while a slot was free ({e['held']}/{e['k']} held)")
         res.append(e)
     if len(res) < 4:
         problems.append(f"nvidia-smi sees {len(res)} GPUs (want 4)")

@@ -160,6 +160,14 @@ def test_reap_only_dead_and_stale(box):
     assert "reaped " in box.log.read_text() and "owner pid dead" in box.log.read_text()
 
 
+def test_reap_reaps_dead_slot_owner_files(box):
+    L = box.locks
+    (L / "gpu0.s2.owner").write_text("99999 claude/x abcdef12 t\n"); aged(L / "gpu0.s2.owner", 300)
+    (L / "gpu0.s2.row").write_text("smoke-lite\n"); aged(L / "gpu0.s2.row", 300)
+    gone = {Path(p).name for p in sup.reap(time.time(), holders={})}
+    assert gone == {"gpu0.s2.owner", "gpu0.s2.row"}
+
+
 def test_gpu3_guard_stops_intruders_and_fails_closed(box):
     (box.locks / "gpu3").write_text("")
     ino = os.stat(box.locks / "gpu3").st_ino

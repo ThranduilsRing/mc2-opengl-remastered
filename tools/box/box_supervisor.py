@@ -3,7 +3,7 @@
 
 Every 30 s (one tick; `--once` runs one tick and exits):
   workers   restart a dead filler worker (/workspace/filler/worker.sh 0-2) unless /workspace/filler/STOP exists; >5 restarts in 10 min = backoff
-  reap      gpuN.owner / gpuN.row naming a dead pid (older than 60 s), *.want older than 10 min, a quiet file of a dead pid, filler .run markers
+  reap      gpuN.sK.owner / .row (and the legacy gpuN.owner / .row) naming a dead pid (older than 60 s), *.want older than 10 min, a quiet file of a dead pid, filler .run markers
             of dead pids. The gpuN lock files themselves are never removed; a live lock or a live pid is never touched
   gpu3      GPU 3 belongs to gate rows: any process on its bus that does not descend from the live gpu3.owner pid is an intruder. While a gate
             holds the lock, intruders get SIGSTOP (recorded in /workspace/locks/gpu3.stopped) and SIGCONT when the gate ends or this starts.
@@ -202,10 +202,10 @@ def _dead_pid_body(body):
 def reap(now, holders=None):
     gone = []
     holders = status.lock_holders() if holders is None else holders
-    for g in range(4):
-        base = f"{LOCKS}/gpu{g}"
+    for name in [f"gpu{g}" for g in range(4)] + status.all_slot_names():   # legacy single-lock names (old lane scripts) and the slot files
+        base = f"{LOCKS}/{name}"
         try:
-            if os.stat(base).st_ino in holders:   # the GPU lock is held: its row still runs, so its owner/row files stay
+            if os.stat(base).st_ino in holders:   # the slot lock is held: its row still runs, so its owner/row files stay
                 continue
         except OSError:
             pass

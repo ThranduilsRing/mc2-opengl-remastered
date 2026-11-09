@@ -220,9 +220,9 @@ def test_game_cpus_come_from_cores_env_with_old_formula_fallback(tmp_path):
 
 def test_status_build_reads_locks(tmp_path, monkeypatch):
     import status
-    (tmp_path / "gpu1.owner").write_text(f"{os.getpid()} claude_x abcdef0123 2026-11-05T00:00:00+00:00")
-    (tmp_path / "gpu1.row").write_text("smoke-lite\n")
-    (tmp_path / "gpu2.owner").write_text("999999 gone deadbeef00 t")
+    (tmp_path / "gpu1.s0.owner").write_text(f"{os.getpid()} claude_x abcdef0123 2026-11-05T00:00:00+00:00")
+    (tmp_path / "gpu1.s0.row").write_text("smoke-lite\n")
+    (tmp_path / "gpu2.s1.owner").write_text("999999 gone deadbeef00 t")
     monkeypatch.setattr(status, "LOCKS", str(tmp_path))
     monkeypatch.setattr(status, "FILLER", str(tmp_path / "f"))
     monkeypatch.setattr(status, "locked_inodes", lambda: set())
@@ -234,7 +234,27 @@ def test_status_build_reads_locks(tmp_path, monkeypatch):
     assert s["free_gb"] == 20.0 and s["load"] == [1.0, 2.0, 3.0] and sorted(s["gpus"]) == ["0", "1", "2", "3"]
     g1 = s["gpus"]["1"]
     assert (g1["holder"], g1["alive"], g1["row"]) == ("claude_x@abcdef01", True, "smoke-lite")
-    assert s["gpus"]["2"]["alive"] is False and s["gpus"]["0"]["holder"] is None
+    assert s["gpus"]["2"]["alive"] is None and s["gpus"]["0"]["holder"] is None   # a dead owner on a free slot is not shown as the GPU holder
+    assert g1["k"] == 3 and [x["row"] for x in g1["slots"]] == ["smoke-lite", None, None] and g1["held"] == 0 and g1["waiters"] == 0
+    assert s["gpus"]["3"]["k"] == 1 and s["gpus"]["3"]["slots"][0]["holder"] is None   # the gate GPU stays one exclusive slot
+
+
+def test_status_counts_held_slots_and_waiters(tmp_path, monkeypatch):
+    import status
+    monkeypatch.setattr(status, "LOCKS", str(tmp_path))
+    monkeypatch.setattr(status, "FILLER", str(tmp_path / "f"))
+    monkeypatch.setenv("MC2_BOX_GPU_SLOTS", "2")
+    for k in range(2):
+        (tmp_path / f"gpu0.s{k}").write_text("")
+    (tmp_path / "gpu0.want").write_text("")
+    inodes = {os.stat(tmp_path / "gpu0.s1").st_ino}
+    e = status.gpu_entry(0, time.time(), inodes)
+    assert (e["k"], e["held"], e["locked"], e["waiters"]) == (2, 1, True, 1) and e["idle_waiter_s"] == 0   # a waiter with a free slot just started the clock
+    os.utime(tmp_path / ".gpu0.idle_waiter", (time.time() - 90, time.time() - 90))
+    assert status.gpu_entry(0, time.time(), inodes)["idle_waiter_s"] >= 90
+    e = status.gpu_entry(0, time.time(), inodes | {os.stat(tmp_path / "gpu0.s0").st_ino})
+    assert e["held"] == 2 and e["idle_waiter_s"] == 0 and not (tmp_path / ".gpu0.idle_waiter").exists()   # all slots held: waiting is the queue, not a fault
+
 
 
 def test_status_no_id_prints_json(monkeypatch, capsys):
@@ -247,7 +267,7 @@ def test_status_no_id_prints_json(monkeypatch, capsys):
 def test_status_loop_and_row_file_wiring():
     sup = (BOX / "box_supervisor.py").read_text()
     assert "import status" in sup and "status.build(" in sup
-    assert "gpu$GOT.row" in box_run.REMOTE
+    assert "/workspace/locks/$SB.row" in box_run.REMOTE
 
 
 # --- GPU fallback, row log names, refspec -------------------------------------------------------------------------
