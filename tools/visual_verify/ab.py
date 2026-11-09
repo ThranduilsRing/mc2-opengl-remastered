@@ -148,7 +148,8 @@ def manifest_mismatches(ma, mb):
     W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset viewer and
     failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way."""
     build_outputs = {"mc2.exe", "mc2.pdb", "mc2_asset_viewer.exe"}
-    skip = lambda p: p in build_outputs or p.startswith("shaders/vulkan/")
+    # W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way.
+    skip = lambda p: p in build_outputs or p.startswith("shaders/")
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
     out = [f"only in A: {k}" for k in sorted(ma.keys() - mb.keys())] + [f"only in B: {k}" for k in sorted(mb.keys() - ma.keys())]
