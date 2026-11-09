@@ -281,8 +281,10 @@ static bool runRouteSmoke(Unit* unit)
 		&& u->getOrderType() == Unit::ORDER_PATROL && p->getOrderType() == Unit::ORDER_PATROL
 		&& EditorSmokeRouteEq(u->getWaypoints(), route) && EditorSmokeRouteEq(p->getWaypoints(), route);
 	const bool restored = EditorData::initTerrainFromPCV("terrain_gen_out/e0_authored.pak");
-	fprintf(stderr, "[EDITOR_ROUTE v1] steps=%zu gestures=%d undo_redo=%d assigned=%d saved=%d reloaded=%d equal=%d restored=%d waypoints=%zu\n",
+	char detail[224];
+	std::snprintf(detail, sizeof(detail), "[EDITOR_ROUTE v1] steps=%zu gestures=%d undo_redo=%d assigned=%d saved=%d reloaded=%d equal=%d restored=%d waypoints=%zu",
 		steps, ok ? 1 : 0, undoOk ? 1 : 0, assigned ? 1 : 0, saved ? 1 : 0, reloaded ? 1 : 0, equal ? 1 : 0, restored ? 1 : 0, route.size());
+	EditorSmokeDetail(detail);
 	return equal && restored;
 }
 
@@ -414,9 +416,11 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 		const float undoBuildingYaw = placed->appearance()->rotation;
 		const float undoUnitYaw = brainUnit->appearance()->rotation;
 		const bool redone = undoMgr.Redo();
-		fprintf(stderr, "[EDITOR_ROTATE v1] spins=%d turned=%d dirty=%d undo=%d redo=%d building=%.2f->%.2f undo=%.2f now=%.2f unit=%.2f->%.2f undo=%.2f now=%.2f\n",
+		char detail[320];
+		std::snprintf(detail, sizeof(detail), "[EDITOR_ROTATE v1] spins=%d turned=%d dirty=%d undo=%d redo=%d building=%.2f->%.2f undo=%.2f now=%.2f unit=%.2f->%.2f undo=%.2f now=%.2f",
 			buildingSpins, turned, dirty, undone, redone, oldBuildingYaw, buildingYaw, undoBuildingYaw, placed->appearance()->rotation,
 			oldUnitYaw, unitYaw, undoUnitYaw, brainUnit->appearance()->rotation);
+		EditorSmokeDetail(detail);
 		rotateReady = turned && dirty && undone && (buildingSpins || sameYaw(undoBuildingYaw, oldBuildingYaw)) && sameYaw(undoUnitYaw, oldUnitYaw)
 			&& redone && (buildingSpins || sameYaw(placed->appearance()->rotation, buildingYaw)) && sameYaw(brainUnit->appearance()->rotation, unitYaw);
 		mgr->unselectAll();
@@ -440,9 +444,11 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 		&& loadedBrain->getOrderType() == orderType && loadedBrain->getStance() == stance && loadedBrain->getWaypointCount() == waypointCount
 		&& loadedBrain->getWaypoints().back().x == 32.0f && loadedBrain->getWaypoints().back().y == 48.0f;
 	const auto yawMatches = [&](EditorObject* obj, float yaw) { return obj && obj->appearance() && sameYaw(obj->appearance()->rotation, yaw); };
-	fprintf(stderr, "[EDITOR_ROTATE v1] ready=%d removed=%d reloaded_building=%.2f reloaded_unit=%.2f\n", rotateReady, removedRotation,
+	char rotateDetail[160];
+	std::snprintf(rotateDetail, sizeof(rotateDetail), "[EDITOR_ROTATE v1] ready=%d removed=%d reloaded_building=%.2f reloaded_unit=%.2f", rotateReady, removedRotation,
 		loadedObject && loadedObject->appearance() ? loadedObject->appearance()->rotation : -999.0f,
 		loadedBrain && loadedBrain->appearance() ? loadedBrain->appearance()->rotation : -999.0f);
+	EditorSmokeDetail(rotateDetail);
 	EditorSmokePanelFact("rotation", "Rotate", rotateReady && removedRotation && objectReloaded && brainReloaded
 		&& (buildingSpins || yawMatches(loadedObject, buildingYaw)) && yawMatches(loadedBrain, unitYaw));
 	EditorSmokePanelFact("terrain_paint", "PaintMaterial", terrainReady && removedTerrain && reloaded && land->getTerrain(mid, mid) == newType);
