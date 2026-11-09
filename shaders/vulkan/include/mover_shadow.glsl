@@ -84,8 +84,7 @@ float moverVisibility(vec3 worldPos, vec3 N) {
         direction = vec2(direction.x * turn.x - direction.y * turn.y,
                          direction.x * turn.y + direction.y * turn.x);
     }
-    float soft = 1.0 - smoothstep(0.21, 0.57, moverFrame.sun.z);
-    float fadeMax = 0.65 * (0.25 + 0.75 * soft);
-    return mix(visibility / float(count), 1.0, fadeMax * clamp(meanD / 480.0, 0.0, 1.0));
+    // No distance fade: a mover's shadow keeps its darkness from the feet to the tip.
+    return visibility / float(count);
 }
 #endif
