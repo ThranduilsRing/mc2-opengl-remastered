@@ -44,3 +44,13 @@ Auto resolves once, at VK device init, from the physical device-local budget tha
 ## 4. Proof plan and known gaps
 
 Rung: C++ harness/unit for the tier resolver and ladder, shader contract rows, smoke-lite. In-game tier shots, `ab.py` day and night, RGP captures and per-tier VRAM are listed in the lane report with what was and was not obtained.
+
+## 5. Status (2026-11-09 continuation lane)
+
+Shipped on this branch: the `TextureQuality` option (options.cfg, `RenderOptions` row, graphics options window and launcher combo, Auto by device VRAM), the per-tier overlay/road/runway/cement size-cap ladder (`MC2_OverlayTileHiresSize`, kill-switch `MC2_OVERLAY_TILE_HIRES=0`), the `[TEXTURE_TIER]` log tag, and the `resolveTextureTier` plus option-row doctests.
+
+Not shipped, routed to named follow-ups because the content they need does not exist in nifty (no `128/256/1024Overlays` folders, no `_n`/`_orm` tiles, no `data/terrain_layers/*_albedo.ktx2`), so any plumbing would be untestable and would render identically:
+
+- `overlay-pbr-plumbing`: section 2 loader/descriptor/shader work (siblings at `set 1, bindings 1-2`, flat dummies, `OvlPC` flag, `cdShade` override). Must keep `Mc2VkOverlayDraw`, `DecalDrawRange`, `OverlayBatchEntry_` layout-matched and rewrite every per-frame binding on a sampler rebuild.
+- `terrain-albedo-ultra`: author `*_albedo.ktx2` via `tools/mc2texcook/cook_terrain_layers.py` and fold the BC7 sRGB array, world-space weights and colormap macro tint into `TextureTier::Ultra`.
+- Overlap with `claude/asset-r7-ship`: it changes one line in `mclib/terrtxm.cpp` (the `useHires` mod-priority condition) and adds 256Overlays albedo tiles plus a generator. The ladder here already probes 256 on High and Ultra, so its tiles load with no code change; merge the one terrtxm.cpp line by hand.
