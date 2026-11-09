@@ -797,10 +797,11 @@ extern "C" int mc2_vk_vfx_island_run(
             auto page = std::find(pageSets.begin(), pageSets.end(), set);
             if (page == pageSets.end()) {
                 if (pageSets.size() == kSpritePagesPerPool) { indexed = false; break; }
-                const auto resident = std::find_if(s->pages.begin(), s->pages.end(), [&](const auto& entry) { return entry.second.set[par] == set; });
+                const auto resident = std::find_if(s->pages.begin(), s->pages.end(), [&](const auto& entry) { const auto& [pageKey, pageEntry] = entry; return pageEntry.set[par] == set; });
                 if (resident == s->pages.end()) { indexed = false; break; }
                 pageSets.push_back(set);
-                pageImages.push_back({s->samp.get(), resident->second.bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+                const auto& [residentKey, residentPage] = *resident;
+                pageImages.push_back({s->samp.get(), residentPage.bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                 page = pageSets.end() - 1;
             }
             groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend == VFX_ADD_ONE_ONE ? 1u : 0u},
