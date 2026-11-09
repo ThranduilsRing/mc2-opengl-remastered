@@ -388,6 +388,10 @@ void drawOptions() {
             } else if (std::string_view(option.key) == "WaterReflections") {
                 const char* labels[] = {"Off", "Sky only", "Half-res"};
                 ImGui::Combo("Water reflections", &(draft.*option.l), labels, 3);
+            } else if (std::string_view(option.key) == "TextureQuality") {
+                const char* labels[] = {"Auto (by VRAM)", "Low", "Medium", "High", "Ultra"};
+                int idx = std::clamp(static_cast<int>(draft.*option.l) + 1, 0, 4);
+                if (ImGui::Combo("Texture quality", &idx, labels, 5)) draft.*option.l = idx - 1;
             } else ImGui::SliderInt(label, &(draft.*option.l), static_cast<int>(option.lo), static_cast<int>(option.hi));
         } else ImGui::SliderFloat(label, &(draft.*option.f), static_cast<float>(option.lo), static_cast<float>(option.hi));
     }
