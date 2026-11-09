@@ -308,6 +308,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // fence is waited before the slot is rewritten (same contract as the per-parity light buffers).
     mc2vk::OwnedBuffer drawBuf[mc2vk::kMaxFramesInFlight];
     VkDeviceSize       drawBufCap[mc2vk::kMaxFramesInFlight] = {};
+    std::shared_ptr<void> recordCache;   // H8: TerrainRecordState (vulkan_terrain_island_run.cpp); owned here so it dies with the island and its mesh pointers
     // TERRAIN-HIRES-NEAR-DIAG: per-chunk mode-1 meshes whose quad diagonals follow the bake (key: span + block origin),
     // valid for one bake version; cleared (device idle) when the bake changes.
     std::unordered_map<uint64_t, PatchMesh> diagPatchCache;
