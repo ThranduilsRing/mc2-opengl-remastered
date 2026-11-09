@@ -9,9 +9,6 @@
 
 void MechBayScreen::addSelectedMech()
 {
-	// Lane 2 replaces this widget cap with global paged slot mapping.
-	if (forceGroupCount >= ICON_COUNT)
-		return;
 	if ( mechListBox.getCurrentMech() )
 	{
 		if ( !LogisticsData::instance->canAddMechToForceGroup( mechListBox.getCurrentMech() ) )
@@ -242,7 +239,7 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 		pDragMech = pMech;
 
 
-		if ( forceGroupCount >= ICON_COUNT || !LogisticsData::instance->canAddMechToForceGroup( pMech ) )
+		if ( !LogisticsData::instance->canAddMechToForceGroup( pMech ) )
 		{
 			pDragMech = nullptr;
 			return;
@@ -299,7 +296,7 @@ void MechBayScreen::reinitMechs()
 	int count = 0;
 
 	
-	int maxUnits = std::min(12, LogisticsData::instance->getDeploymentCapacity());
+	int maxUnits = 12;
 
 	if ( MPlayer )
 	{
@@ -346,7 +343,7 @@ void MechBayScreen::reinitMechs()
 					forceGroupCount++;
 				}
 				else 
-					LogisticsData::instance->removeMechFromForceGroup(mechElem, true);
+					mechElem->setForceGroup( 0 );
 				
 			}
 		}

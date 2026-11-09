@@ -230,11 +230,6 @@ void PilotReadyScreen::begin()
 			if ( iter->getForceGroup() )
 			{
 				long FG = iter->getForceGroup();
-				// Until lane 2 pages both screens, the UI deploys only visible slots.
-				if (FG > ICON_COUNT || FG > LogisticsData::instance->getDeploymentCapacity()) {
-					LogisticsData::instance->removeMechFromForceGroup(iter, true);
-					continue;
-				}
 				pIcons[FG-1].setMech( iter );
 				if ( iter->getPilot() )
 				{

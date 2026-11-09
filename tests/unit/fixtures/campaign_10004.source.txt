@@ -1,5 +1,0 @@
-campaign_10004.fit is an unmodified pre-change campaign save copied from
-C:/Users/Joe/.mechcommander2/savegame/after_mission_mc2_07.fit on 2026-11-08.
-VersionNumber=10004, InventoryCount=76, PilotCount=108. It has no DeploymentSlot
-fields. It proves that inventory beyond twelve remains readable, using the
-legacy pilot-order reconstruction rather than the new explicit-slot policy.

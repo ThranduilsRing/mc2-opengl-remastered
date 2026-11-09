@@ -10,7 +10,6 @@ LogisticsMissionInfo.cpp			: Implementation of the LogisticsMissionInfo componen
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
-#include "logistics_deployment.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <memory>
@@ -88,7 +87,6 @@ std::expected<void, long> LogisticsMissionInfo::init( FitIniFile& file )
 	campaignName = mc2::str::from_c( file.getFilename() );
 	// read the number of mission groups
 	file.seekBlock("Campaign" );
-	campaignMaxDeployedMechs = logistics_deployment::readCap(file);
 
 	char resultName[256];
 	resultName[0] = 0;
@@ -253,7 +251,6 @@ void LogisticsMissionInfo::readMissionInfo( FitIniFile& file, LogisticsMissionIn
 
 	long result = file.seekBlock( "MissionSettings" );
 	Assert( result == NO_ERR, 0, "Coudln't find the mission settings block in the mission file" );
-	pInfo->maxDeployedMechs = logistics_deployment::readCap(file, campaignMaxDeployedMechs);
 
 	bool bRes = 0;
 

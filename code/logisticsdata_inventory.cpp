@@ -1,8 +1,6 @@
 // LogisticsData: components, mech purchase and sale, force groups, inventory lists and the vehicle pilot (with the infinite-money cheat gate).
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
-#include "logistics_deployment.h"
-#include <algorithm>
 
 
 // Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)
@@ -244,22 +242,25 @@ std::expected<void, int> LogisticsData::addMechToForceGroup( LogisticsMech* pMec
 	if ( !pMech )
 		return std::unexpected(-1);
 
-	if ( !logistics_deployment::validSlot(slot, getDeploymentCapacity()) )
+	if ( slot > 12 )
 		return std::unexpected(-1);
-	for (const auto& mech : inventory)
-		if (mech->getForceGroup() == slot)
-			return std::unexpected(-1);
 
-	// UI inventory entries may represent a deployed variant; select a stored copy.
-	auto candidate = getMechWithoutForceGroup(pMech);
-	if (!candidate || !canAddMechToForceGroup(&candidate->get()))
-		return std::unexpected(-1);
-	pMech = &candidate->get();
-	for (const auto& mech : inventory)
-		if (pMech->getPilot() && mech.get() != pMech && mech->getPilot() == pMech->getPilot())
-			return std::unexpected(-1);
-	pMech->setForceGroup(slot);
-	return {};
+	if ( pMech && !pMech->getForceGroup() )
+	{
+		pMech->setForceGroup( slot );
+		return {};
+	}
+	else // find another of the same variant
+	{
+
+		auto pNewMech = getMechWithoutForceGroup( pMech );
+		if ( pNewMech )
+		{
+			pNewMech->get().setForceGroup( slot );
+			return {};
+		}
+	}
+	return std::unexpected(-1);
 }
 
 std::expected<void, int> LogisticsData::removeMechFromForceGroup( int slot )
@@ -397,16 +398,19 @@ LogisticsData::MechList	LogisticsData::getForceGroup()
 {
 	ensureMechBayDataLoaded("getForceGroup");
 	MechList newList;
+	int count = 0;
+
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
+		if ( count > 11 )
+			break;
+
 		if ( (*iter)->getForceGroup() )
 		{
 			newList.push_back( iter->get() );
+			count++;
 		}
 	}
-	std::sort(newList.begin(), newList.end(), [](LogisticsMech* a, LogisticsMech* b) {
-		return a->getForceGroup() < b->getForceGroup();
-	});
 	return newList;
 }
 
@@ -430,8 +434,11 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, LogisticsPilot* 
 		auto mech = std::make_unique<LogisticsMech>( pVar, count );
 		LogisticsMech* pMech = mech.get();
 		inventory.push_back( std::move(mech) );
-		if (addMechToForceGroup(pMech, ForceGroup) && pPilot && !pPilot->isDead() && !pPilot->isUsed())
-			pMech->setPilot(pPilot);
+		pMech->setForceGroup( ForceGroup );
+		if ( pPilot && !pPilot->isDead() )
+			pMech->setPilot( pPilot );
+		if ( ForceGroup > -1 && ForceGroup < 13 )
+			pMech->setForceGroup( ForceGroup );
 		if ( bSubtractPts )
 			missionInfo->decrementCBills( pMech->getCost() );
 	}
@@ -448,8 +455,10 @@ void	LogisticsData::addMechToInventory( LogisticsVariant* pVar, int addToForceGr
 		auto mech = std::make_unique<LogisticsMech>( pVar, count );
 		LogisticsMech* pMech = mech.get();
 		inventory.push_back( std::move(mech) );
-		if (addMechToForceGroup(pMech, addToForceGroup) && pPilot && !pPilot->isDead() && !pPilot->isUsed())
-			pMech->setPilot(pPilot);
+		if ( addToForceGroup > -1 && addToForceGroup < 13 )
+			pMech->setForceGroup( addToForceGroup );
+		if ( pPilot && !pPilot->isDead() )
+			pMech->setPilot( pPilot );
 		pMech->setColors( baseColor, highlight1, highlight2 );
 		return;
 	}

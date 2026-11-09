@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in logisticsmissioninfo_internal.h.
 #include "logisticsmissioninfo_internal.h"
 #include <utility>
-#include <algorithm>
 #include "mc2str.h"
 #include "objective.h"
 #include "team.h"
@@ -45,13 +44,6 @@ long LogisticsMissionInfo::getAllPurchaseFiles( const char** list, long& maxCoun
 	}
 	maxCount = count;
 	return ( count > maxOut ) ? NEED_BIGGER_ARRAY : 0;
-}
-
-int LogisticsMissionInfo::getMaxDeployedMechs() const
-{
-	if (!groups || currentStage < 0 || currentStage >= groupCount || currentMission == -1)
-		return campaignMaxDeployedMechs;
-	return std::min(campaignMaxDeployedMechs, groups[currentStage].mission(currentMission)->maxDeployedMechs);
 }
 
 long LogisticsMissionInfo::getCurrentDropWeight() const
