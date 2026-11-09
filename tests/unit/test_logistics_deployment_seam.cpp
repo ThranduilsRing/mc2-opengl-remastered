@@ -126,5 +126,19 @@ TEST_CASE("DeploymentProduction/insertion enumeration trimming and inventory pre
     inventory[23]->setPilot(&pilot);
     CHECK_FALSE(logistics.addMechToForceGroup(inventory[23], 12));
     inventory[23]->setPilot(nullptr);
+    inventory[0]->setPilot(&pilot);
     CHECK(logistics.getInventory().size() == 25);
+    // A compatibility failure after staging the new campaign must also roll back.
+    std::string missingChassis = "FITini\r\n[Version]\r\nl VersionNumber = 10005\r\n"
+        "[General]\r\nl VariantCount = 1\r\nl PilotCount = 0\r\nl InventoryCount = 1\r\n"
+        "st CampaignFile = \"data/campaign/campaign.fit\"\r\nl Group = 0\r\n"
+        "l CompletedMissions = 0\r\n[Variant0]\r\nst Chassis = \"removed-mod.csv\"\r\n"
+        "st VariantName = \"Removed mod variant\"\r\n[Inventory0]\r\n"
+        "st Variant = \"Removed mod variant\"\r\nl DeploymentSlot = 1\r\nFITend\r\n";
+    FitIniFile incompatible;
+    REQUIRE(incompatible.open(missingChassis.data(), static_cast<int>(missingChassis.size())) == NO_ERR);
+    CHECK_FALSE(logistics.load(incompatible));
+    CHECK(logistics.getInventory() == inventory);
+    CHECK(inventory[0]->getPilot() == &pilot);
+    incompatible.close();
 }

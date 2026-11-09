@@ -10,6 +10,8 @@ namespace ld = logistics_deployment;
 TEST_CASE("Deployment/capacity and tonnage boundaries")
 {
     CHECK(ld::capacity() == 24);
+    CHECK(ld::capacity(0) == 0);
+    CHECK_FALSE(ld::validSlot(1, ld::capacity(0)));
     for (int slot : {12, 13, 24})
         CHECK(ld::validSlot(slot, ld::capacity()));
     CHECK_FALSE(ld::validSlot(25, ld::capacity()));

@@ -15,7 +15,7 @@ inline constexpr long recordVersion = 10005;
 inline int capacity(int configured = singlePlayerSlots, int players = 0)
 {
     return players > 0 ? std::min(12, 36 / players)
-                       : std::clamp(configured, 1, singlePlayerSlots);
+                       : std::clamp(configured, 0, singlePlayerSlots);
 }
 
 inline bool validSlot(long slot, int cap)

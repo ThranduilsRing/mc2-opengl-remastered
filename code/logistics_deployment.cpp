@@ -71,6 +71,6 @@ int readCap(FitIniFile& file, int fallback)
     long value = fallback;
     if (file.readIdLong("MaxDeployedMechs", value) != NO_ERR)
         return fallback;
-    return static_cast<int>(std::clamp(value, 1L, static_cast<long>(singlePlayerSlots)));
+    return static_cast<int>(std::clamp(value, 0L, static_cast<long>(singlePlayerSlots)));
 }
 } // namespace logistics_deployment

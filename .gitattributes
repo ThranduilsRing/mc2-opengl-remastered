@@ -6,3 +6,5 @@
 tools/box/** text eol=lf
 # Frozen editor goldens are byte references: never normalize their line endings.
 editor/tests/goldens/** -text
+# Preserve the genuine legacy save bytes, including original CRLF and FIT markers.
+tests/unit/fixtures/campaign_10004.fit -text
