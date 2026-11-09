@@ -262,3 +262,52 @@ def test_linked_pinned_kit_safe_only_with_skip_kit(tmp_path):
     print('NTFS hardlink stamp before/after:', before, iso.content_stamp(src / name))
     assert guard.run_check(str(dst), payload_rels=['mc2.exe'])[0] == 'OK'
     assert guard.run_check(str(dst), payload_rels=[name])[0] == 'SHARED'
+
+
+@pytest.mark.parametrize('change', ['none', 'source', 'corrupt', 'full'])
+def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path, monkeypatch, change):
+    iso = lean_tool()
+    seed, lane, repo = (tmp_path / p for p in ('seed', 'lane', 'repo'))
+    lean_fixture(seed)
+    monkeypatch.setattr(iso, 'check_space', lambda *a: None)
+    assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
+    rels = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv']
+    for rel in rels:
+        path = repo / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'fixture')
+        assert (seed / rel).samefile(lane / rel)
+    if change == 'source':
+        (repo / 'runtime.dll').write_bytes(b'updated')
+    if change == 'corrupt':
+        victim = lane / 'runtime.dll'
+        old = victim.stat()
+        victim.write_bytes(b'corrupt')
+        os.utime(victim, ns=(old.st_atime_ns, old.st_mtime_ns))
+    items = [(str(repo / rel), rel, 'exe' if rel == 'mc2.exe' else 'support') for rel in rels]
+    verified = dp.prepare_seed_delta(items, str(lane), full_verify=change == 'full')
+    assert set(verified) == (set() if change == 'full' else set(rels) -
+                             ({'runtime.dll'} if change != 'none' else set()))
+    dp.check_hardlink_isolation([i for i in items if i[1] not in verified], str(lane))
+    monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
+    monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
+    monkeypatch.setattr(dp, 'retire_unowned', lambda *a, **k: None)
+    hashes = dp.deploy(items, str(lane), False, verified=verified)
+    assert set(hashes) == set(rels)
+    for rel in rels:
+        assert (lane / rel).read_bytes() == (repo / rel).read_bytes()
+        assert (lane / rel).samefile(seed / rel) == (rel in verified)
+    if change == 'source':
+        assert (seed / 'runtime.dll').read_bytes() == b'fixture'
+
+
+def test_normal_deploy_keeps_hardlink_refusal(tmp_path):
+    iso = lean_tool()
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    seed.mkdir()
+    (seed / 'mc2.exe').write_bytes(b'exe')
+    iso.build(seed, lane, [('mc2.exe', 3)], [])
+    items = [(str(seed / 'mc2.exe'), 'mc2.exe', 'exe')]
+    assert dp.prepare_seed_delta(items, str(lane)) == {}
+    with pytest.raises(SystemExit):
+        dp.check_hardlink_isolation(items, str(lane))

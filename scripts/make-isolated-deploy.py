@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # scripts/make-isolated-deploy.py
-"""Build a private, hardlink-ISOLATED lane install cheaply.
+"""Build a verified lane install cheaply; detach changed payload on deploy.
 
 WHY THIS EXISTS
 ---------------
@@ -17,8 +17,13 @@ A full MC2 install MEASURES 12.26 GB / 40135 files (mc2-win64-v0.4) and A: had
 exactly the P0 this session already suffered once. But almost all of that is
 data the game only ever READS. So:
 
-    data class    -> os.link()        free, instant, zero bytes
-    mutated class -> real byte copy   private inode, safe to overwrite
+    stock + static manifested payload -> os.link(), no byte copy
+    runtime/user writes                -> real copy, private inode
+
+Lean installs carry .lane-seed.json. deploy_payload uses this receipt to
+retain unchanged shared payload and atomically privatize changed files BEFORE
+the existing isolation guard. A normal install without this receipt retains
+the original guard behavior. Snapshot mode retains the original class split.
 
 Classification is imported from check-hardlink-isolation.py rather than
 restated here, so the two tools cannot drift into disagreeing about what
@@ -44,9 +49,8 @@ FAILURE MODES IT REFUSES TO PAPER OVER
 * Not enough free space for the COPIED bytes. Delegated to
   scripts/check-disk-space.py with the measured figure -- and, per DISK-GUARD-3
   (c5d934d5), a guard that is missing or unrunnable is FATAL, not a warning.
-* A link that fails mid-run for any other reason. Fatal, with the count of
-  what had been written, rather than a quiet copy fallback that changes the
-  cost model out from under the disk guard's already-approved estimate.
+* A failed link requires another disk guard for the increased byte cost,
+  then a verified private copy. Cross-volume full copies remain refused.
 
 Pure stdlib. Examples:
 
@@ -315,7 +319,7 @@ def kit_seed_members(src, seed, use_cache=False):
         if not root.is_dir():
             continue
         if installed.is_file() and installed.read_bytes().replace(b'\r\n', b'\n') != pinned.read_bytes().replace(b'\r\n', b'\n'):
-            fail(f'stale {name} seed kit; refresh the seed from nifty with deploy_payload.py --allow-new-target --ninja', 2)
+            fail(f'stale {name} seed kit; refresh from published nifty using deploy_payload.py --seed-owner-test --seed-source (see docs/plans/lane-install-fast.md)', 2)
         manifest = json.loads(pinned.read_text(encoding='utf-8'))
         check(root, manifest['files'])
         for row in manifest['files']:
@@ -819,12 +823,21 @@ def main(argv=None) -> int:
     seed = None if args.snapshot else verified_seed(src, use_cache=not args.dry_run)
     out(f'timing manifest verification: {time.perf_counter() - started:.3f}s')
     extras = {} if seed is None else kit_seed_members(src, seed, use_cache=not args.dry_run)
-    selection = None if seed is None else {**seed, **extras}
+    selection = None if seed is None else {**seed, **{r.casefold(): row for r, row in extras.items()}}
     full_link, full_copy, full_lb, full_cb = (plan(src, guard) if seed is None else
                                            seed_plan(src, guard, seed, use_cache=not args.dry_run))
     to_link = [(r, n) for r, n in full_link if seed is None or seed_member(r, guard, seed)]
     to_copy = [(r, n) for r, n in full_copy if seed is None or seed_member(r, guard, seed)]
     if seed is not None:
+        # Static deployed bytes are detached by deploy_payload only when they
+        # differ. Runtime/user writes still require private inodes immediately.
+        static = [(r, n) for r, n in to_copy if r.casefold() in seed
+                  and not r.casefold().endswith(('.cfg', '.ini', '.bat', '.cookstamp'))
+                  and not r.casefold().startswith(('cache/', 'data/textures/'))
+                  and r != '.deployed_manifest.csv']
+        to_link.extend(static)
+        static_names = {r for r, _ in static}
+        to_copy = [(r, n) for r, n in to_copy if r not in static_names]
         known = {r for r, _ in to_link + to_copy}
         # Pinned kit sources are read-only at runtime. --skip-kit excludes
         # them from the deploy write set; a full kit deploy still refuses
@@ -864,8 +877,11 @@ def main(argv=None) -> int:
     # This makes the resulting tree a verified source for the next lane, too.
     if seed is not None:
         write_seed_manifest(dst, seed)
+        shared = {r: {'stamp': content_stamp(dst / r), 'sha256': selection[r.casefold()]['sha256']}
+                  for r, _ in to_link if r.casefold() in selection}
+        (dst / '.lane-seed.json').write_text(json.dumps({'shared': shared}), encoding='utf-8')
     out(f"built: {linked} linked, {copied} copied")
-    verdict, _, _ = guard.run_check(str(dst), payload_rels=[r for r, _ in to_copy] + ['.deployed_manifest.csv'])
+    verdict, _, _ = guard.run_check(str(dst), payload_rels=[r for r, _ in to_copy] + ['.deployed_manifest.csv', '.lane-seed.json'])
     if verdict != 'OK':
         fail(f'post-build isolation: {verdict}', 5)
     out(f'timing total: {time.perf_counter() - started:.3f}s')

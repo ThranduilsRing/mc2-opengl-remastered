@@ -20,17 +20,21 @@ Commit, build both targets if deploying, then deploy only the lane delta:
 py -3 scripts/deploy_payload.py E:/mc2-installs/<branch> --allow-new-target --ninja --skip-kit
 ```
 
-The script refuses cross-volume sources before writing. Stock and verified
-pinned kit sources link on E:; mutable runtime files and cooked kit receipts
+The script refuses cross-volume sources before writing. Stock, static deployed
+payload and verified pinned kit sources link on E:; mutable runtime files and cooked kit receipts
 are private copies. Failed links fall back to a copy only after checking its
-additional disk cost, then verify both hashes. Normal full-kit deployment to
-a linked lane remains refused by the existing exact-payload isolation guard.
-Do not bypass it. Kit-changing lanes need a private kit, not `--skip-kit`.
+additional disk cost, then verify both hashes. The private `.lane-seed.json`
+receipt permits deploy to retain identical payload and atomically privatize
+changed shared files before the exact-payload isolation guard. Installs without
+this receipt retain the original guard behavior. Kit-changing lanes omit
+`--skip-kit`; that deliberately retains normal pinned-kit verification/cooking.
 
 Seed verification is cold once, then persisted in `.lane-seed-verification.json`
 and `.lane-kit-verification.json`. Reuse requires file identity, size, mtime,
 and NTFS ChangeTime (not Windows creation time) plus the expected manifest hash.
-Same-size corruption with restored mtime must fail. Copied manifested bytes
+Same-size corruption with restored mtime must fail. Deployment hashes the lane's
+source files, retains identical verified seed bytes, and copies changed payload
+to private inodes. Copied manifested bytes
 are checked against expected hashes; unchanged linked files use the verified
 seed inode. `.lane-seed-inventory.json` avoids repeating the stock walk and is
 invalidated by changes to the seed deployment manifest. Excluded cache/mod/debug

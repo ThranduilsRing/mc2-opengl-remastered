@@ -46,6 +46,7 @@ import ctypes
 import datetime
 import glob
 import hashlib
+import importlib.util
 import json
 import os
 import ntpath
@@ -1262,7 +1263,7 @@ def ensure_terrain_materials(target_dir):
 
 
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
-           full_verify=False):
+           full_verify=False, verified=None):
     """Copy + verify the payload.
 
     `cache` is read_manifest()'s relpath -> (sha256, bytes, mtime_ns). A file
@@ -1284,6 +1285,13 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
+        if verified and rel in verified:
+            # Lane seed: source hash and the verified seed file identity plus
+            # NTFS ChangeTime match. No write, no second read of unchanged bytes.
+            stamp = source_stamp(src)
+            src_hashes[rel] = (verified[rel], os.path.getsize(dst), stamp[1] if stamp else None)
+            skipped += 1
+            continue
         if kind == "kit":
             from kit_payload import contained_path
             dst = str(contained_path(target_dir, rel))
@@ -2161,6 +2169,41 @@ def verdict_exe_refusal(src_root, exe_src, head):
     return None
 
 
+def prepare_seed_delta(items, target, full_verify=False):
+    """Keep verified shared lane bytes; detach changed writes before the guard.
+
+    Only installs made by make-isolated-deploy carry this receipt. Published
+    v0.4 behavior is unchanged. Replacement never writes through a shared inode.
+    """
+    receipt = Path(target) / '.lane-seed.json'
+    if not receipt.is_file():
+        return {}
+    spec = importlib.util.spec_from_file_location('lane_seed', Path(__file__).with_name('make-isolated-deploy.py'))
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    shared = json.loads(receipt.read_text(encoding='utf-8'))['shared']
+    verified = {}
+    for src, rel, kind in items:
+        dst = Path(target) / rel
+        if not dst.is_file() or dst.stat().st_nlink <= 1:
+            continue
+        row = shared.get(rel)
+        if (not full_verify and row and iso.content_stamp(dst) == row['stamp']
+                and Path(src).is_file() and sha256_file(src) == row['sha256']):
+            verified[rel] = row['sha256']
+            continue
+        # The normal deploy still checks the source and copied hash. Privatize
+        # first so its in-place write cannot reach the seed or another lane.
+        tmp = dst.with_name(dst.name + f'.private-{os.getpid()}')
+        try:
+            shutil.copy2(dst, tmp)
+            os.replace(tmp, dst)
+        finally:
+            tmp.unlink(missing_ok=True)
+    log(f'lane seed delta: {len(verified)} unchanged shared payload files retained')
+    return verified
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if getattr(args, "target", None) == "game" and not args.allow_new_target and not getattr(args, "allow_unverified_exe", False):
         why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root))
@@ -2225,12 +2268,13 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # that file was itself hardlinked four ways in the incident. Append it so
     # the guard covers every file this run will write, not just the copied
     # ones.
-    check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")],
+    verified = prepare_seed_delta(items, target, args.full_verify)
+    check_hardlink_isolation([item for item in items if item[1] not in verified] + [(None, MANIFEST_NAME, "manifest")],
                              target)
 
     cache = {} if args.full_verify else read_manifest(target)
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
-                    cache=cache, full_verify=args.full_verify)
+                    cache=cache, full_verify=args.full_verify, verified=verified)
     if kit_manifest:
         try:
             kit_payload.reconcile_stock_textures(target,
