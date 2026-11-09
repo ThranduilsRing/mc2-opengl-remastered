@@ -43,6 +43,9 @@ are checked against expected hashes; unchanged linked files use the verified
 seed inode. `.lane-seed-inventory.json` avoids repeating the stock walk and is
 invalidated by changes to the seed deployment manifest. Excluded cache/mod/debug
 trees are pruned before descent on a cold inventory. `--dry-run` writes no receipt.
+Manifest checks and link/copy operations use at most four I/O workers, bounded
+by the host JOBS limit. Hash checks still precede cache publication, and link
+fallbacks serialize disk reservations including all earlier fallback bytes.
 
 Native recipes publish by atomic replacement, as documented by the isolation
 guard. The measured seed has 664 recipes / 1,241,263,585 bytes; linking them
@@ -83,6 +86,11 @@ Continuation prerequisite: explicit authorization assigns the unused
 E:/mc2-installs/lane-install-fast-final for fresh timing and smoke-lite.
 The legacy link-write fix already landed at a053001a7; its regression tests
 include mission assets, manifest writes and replacement failure isolation.
+At 9bb32cc4b the fresh creation completed in 171.132 s: manifest verification
+78.700 s, kit verification 3.470 s, link/copy stage 86.925 s. This misses 120 s.
+New prerequisite for the next timing: bounded concurrent manifest checks and
+file operations replace those serial stages. This is the final timing attempt
+for this run; if still slow, hand back the measured limit instead of retrying.
 Next: run gate_inputs targeted pytest plus ratchet/lint at the final tip;
 time that fresh install and smoke-lite using the seed executable as the explicit
 fingerprint reference (this tooling lane changes no C++). No build/deploy needed.

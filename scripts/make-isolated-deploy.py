@@ -68,6 +68,7 @@ Pure stdlib. Examples:
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import csv
 import hashlib
 import importlib.util
@@ -77,6 +78,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 import json
 from pathlib import Path
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
@@ -197,6 +199,14 @@ def seed_member(rel, guard, manifest):
     return low.startswith(('data/', 'assets/')) and guard.classify(rel) == 'data'
 
 
+def io_workers():
+    """Bound concurrent filesystem operations by the host's lane CPU budget."""
+    try:
+        return max(1, min(4, int(Path('A:/Games/mc2-ops/JOBS').read_text().strip())))
+    except (OSError, ValueError):
+        return 2
+
+
 def verified_seed(src, use_cache=False):
     """Verify the payload manifest before projecting a source into a lean tree."""
     path = src / '.deployed_manifest.csv'
@@ -214,10 +224,8 @@ def verified_seed(src, use_cache=False):
         cached = json.loads(cache_path.read_text(encoding='utf-8')) if use_cache else {}
     except (OSError, ValueError):
         cached = {}
-    updated = {}
-    for rel, row in manifest.items():
-        if rel.endswith('.pdb'):
-            continue
+    def verify_member(member):
+        rel, row = member
         candidate = (src / row['relpath']).resolve()
         if not candidate.is_relative_to(src.resolve()):
             fail(f'seed manifest path escapes source: {rel}', 2)
@@ -233,7 +241,11 @@ def verified_seed(src, use_cache=False):
             fail(f'seed manifest hash mismatch: {rel}', 2)
         if content_stamp(candidate) != stamp:
             fail(f'seed changed during verification: {rel}', 2)
-        updated[rel] = {'stamp': stamp, 'sha256': digest}
+        return rel, {'stamp': stamp, 'sha256': digest}
+
+    with ThreadPoolExecutor(max_workers=io_workers()) as pool:
+        updated = dict(pool.map(verify_member, ((r, row) for r, row in manifest.items()
+                                              if not r.endswith('.pdb'))))
     # Replace, never write through a potentially shared receipt inode.
     if use_cache:
         pending = cache_path.with_suffix(f'.{os.getpid()}.tmp')
@@ -525,34 +537,38 @@ def check_space(need_bytes: int, target: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def build(src: Path, dst: Path, to_link, to_copy, expected=None) -> tuple[int, int]:
-    linked = copied = 0
     made_dirs: set = set()
-
-    def ensure(rel: str) -> Path:
-        p = dst / rel
-        d = p.parent
+    for rel, _ in to_link + to_copy:
+        d = (dst / rel).parent
         if d not in made_dirs:
             d.mkdir(parents=True, exist_ok=True)
             made_dirs.add(d)
-        return p
+    fallback_lock = threading.Lock()
+    fallback_bytes = 0
+    private_bytes = sum(n for _, n in to_copy)
 
-    for rel, _size in to_link:
-        target = ensure(rel)
+    def link_one(member):
+        nonlocal fallback_bytes
+        rel, size = member
+        target = dst / rel
         try:
             os.link(src / rel, target)
         except OSError as e:
             # Check the new cost before a fallback, including all pending
             # private copies. A cross-volume install is still refused up front.
-            check_space(int((sum(n for _, n in to_copy) + _size) * 1.15), dst)
+            with fallback_lock:
+                fallback_bytes += size
+                check_space(int((private_bytes + fallback_bytes) * 1.15), dst)
             out(f'link unavailable for {rel}: {e}; guarded copy fallback')
             shutil.copy2(src / rel, target)
             if file_sha(target) != file_sha(src / rel):
                 fail(f'fallback copy hash mismatch: {rel}', 4)
-            copied += 1
-            continue
-        linked += 1
-    for rel, _size in to_copy:
-        target = ensure(rel)
+            return False
+        return True
+
+    def copy_one(member):
+        rel, _ = member
+        target = dst / rel
         try:
             shutil.copy2(src / rel, target)
             row = (expected or {}).get(rel.casefold())
@@ -560,10 +576,12 @@ def build(src: Path, dst: Path, to_link, to_copy, expected=None) -> tuple[int, i
                 fail(f'copied manifest hash mismatch: {rel}', 4)
         except OSError as e:
             fail(f"copy failed for {rel}: {e}\n"
-                 f"  {linked} linked / {copied} copied before this point; "
                  f"{dst} is INCOMPLETE -- delete it and re-run.", 4)
-        copied += 1
-    return linked, copied
+
+    with ThreadPoolExecutor(max_workers=io_workers()) as pool:
+        linked = sum(pool.map(link_one, to_link))
+        list(pool.map(copy_one, to_copy))
+    return linked, len(to_link) - linked + len(to_copy)
 
 
 def file_sha(path):

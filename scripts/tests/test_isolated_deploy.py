@@ -207,6 +207,23 @@ def test_copied_file_checked_against_manifest(tmp_path, monkeypatch):
                   {'mc2.exe': {'sha256': hashlib.sha256(b'good').hexdigest()}})
 
 
+def test_parallel_link_fallback_reserves_all_copied_bytes(tmp_path, monkeypatch):
+    iso = lean_tool()
+    src, dst = tmp_path / 'src', tmp_path / 'dst'
+    src.mkdir()
+    members = [(f'file-{n}.bin', 7) for n in range(12)]
+    for rel, _ in members:
+        (src / rel).write_bytes(b'fixture')
+    monkeypatch.setattr(iso.os, 'link', lambda *a: (_ for _ in ()).throw(OSError('unsupported')))
+    reservations = []
+    monkeypatch.setattr(iso, 'check_space', lambda n, p: reservations.append(n))
+    assert iso.build(src, dst, members, []) == (0, len(members))
+    assert reservations == [int(7 * n * 1.15) for n in range(1, 13)]
+    for rel, _ in members:
+        assert (dst / rel).read_bytes() == b'fixture'
+        assert not (src / rel).samefile(dst / rel)
+
+
 def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, monkeypatch):
     iso = lean_tool()
     source, repo = tmp_path / 'src', tmp_path / 'repo'
