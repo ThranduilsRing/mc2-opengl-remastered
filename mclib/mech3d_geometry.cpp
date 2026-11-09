@@ -1172,8 +1172,10 @@ void Mech3DAppearance::publishSimPose (const glm::vec3& xlatPosition, const glm:
     simPose->hitRight = getHitNodeRight();
     simPose->cockpit = getNodeNamePosition("cockpit");
     simPose->shapeNodes.resize(mechShape->GetNumShapes());
+    glm::vec3 xlat = xlatPosition;
+    glm::quat rot = qRotation;
     for (long i = 0; i < mechShape->GetNumShapes(); ++i) {
-        auto node = mechShape->GetTransformedNodePosition(&xlatPosition, &qRotation, i);
+        auto node = mechShape->GetTransformedNodePosition(&xlat, &rot, i);
         simPose->shapeNodes[i] = (node.x == 0 && node.y == 0 && node.z == 0) ? position : node;
     }
     simPoseKey_ = key;
