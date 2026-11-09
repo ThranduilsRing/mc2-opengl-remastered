@@ -2182,7 +2182,7 @@ flags:
     default: ""
     rule: Std
     owner: code
-    doc: "Proof tool: screenshot a front-end screen (<id>[@N]: campaign_missions, logistics, mechbay, ...) after N settled frames (default 30) to MC2_SCREENSHOT_PATH, then exit; loud [SCREEN_SHOT v1] FAIL if never reached or ImGui is not ready."
+    doc: "Proof tool: screenshot a front-end screen (<id>[@N]: campaign_missions, logistics, mechbay, ...) after N settled frames, then exit."
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_CLOCK_TRACE
