@@ -243,7 +243,7 @@ def sccache_server_pids():
     import console_child
     try:
         out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"], capture_output=True, text=True,
-                             timeout=30, **console_child.child_kwargs(redirected=True)).stdout
+                             timeout=15, **console_child.child_kwargs(redirected=True)).stdout
     except (OSError, subprocess.SubprocessError):
         return []
     rows = [ln.replace('"', "").split(",") for ln in out.splitlines()]
