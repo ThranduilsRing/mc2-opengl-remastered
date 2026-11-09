@@ -618,6 +618,7 @@ set(SOURCES
     "code/logisticsdata_modify.cpp"
     "code/logisticsdialog.cpp"
     "code/logisticsmech.cpp"
+    "code/logistics_deployment.cpp"
     "code/logisticsmechdisplay.cpp"
     "code/logisticsmechicon.cpp"
     "code/logisticsmissioninfo.cpp"
@@ -998,6 +999,7 @@ if(MC2_BUILD_TESTS)
         tests/unit/test_authored_movement_fixture.cpp tests/unit/test_globalmap_init_refusal.cpp
         tests/unit/test_combat_retirement_seam.cpp tests/unit/test_movepath_save_padding.cpp
         tests/unit/test_brain_save_policy_seam.cpp
+        tests/unit/test_logistics_deployment_seam.cpp
         tests/unit/test_warrior_pilot_codec.cpp
         tests/unit/test_objtype_init_failure.cpp)
     target_compile_definitions(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)

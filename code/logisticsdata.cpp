@@ -7,6 +7,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 \*************************************************************************************************/
 
 #include "logisticsdata_internal.h"
+#include "logistics_deployment.h"
 #include "mc2fmt.h"
 #include "vfs.h"
 
@@ -18,7 +19,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 //----------------------------------------------------------------------
 // WARNING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //PLEASE CHANGE THIS IF THE SAVEGAME FILE FORMAT CHANGES!!!!!!!!!!!!!
-long SaveGameVersionNumber = 10004;
+long SaveGameVersionNumber = logistics_deployment::recordVersion;
 //----------------------------------------------------------------------
 
 LogisticsData* LogisticsData::instance = nullptr;

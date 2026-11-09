@@ -11,6 +11,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <chrono>
+#include <algorithm>
 
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
@@ -648,16 +649,20 @@ void LogisticsData::removeDeadWeight()
 	int maxDropWeight = getMaxDropWeight();
 	int curDropWeight = getCurrentDropWeight();
 
-	int i = 12;
-	while ( curDropWeight > maxDropWeight )
+	// Include sparse/high slots, even when a new mission lowers its cap.
+	MechList deployed;
+	for (const auto& mech : inventory)
+		if (mech->getForceGroup())
+			deployed.push_back(mech.get());
+	std::sort(deployed.begin(), deployed.end(), [](LogisticsMech* a, LogisticsMech* b) {
+		return a->getForceGroup() < b->getForceGroup();
+	});
+	for (auto iter = deployed.rbegin(); iter != deployed.rend(); ++iter)
 	{
-		LogisticsData::removeMechFromForceGroup( i );
-		i--;
-
-		curDropWeight = getCurrentDropWeight();
-
-		if ( i == 0 )
-			break;
+		if ((*iter)->getForceGroup() > getDeploymentCapacity() || curDropWeight > maxDropWeight) {
+			LogisticsData::removeMechFromForceGroup(*iter, true);
+			curDropWeight = getCurrentDropWeight();
+		}
 	}
 }
 

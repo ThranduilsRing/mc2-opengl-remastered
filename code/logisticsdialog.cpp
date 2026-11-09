@@ -33,6 +33,7 @@ LogisticsDialog.cpp			: Implementation of the LogisticsDialog component.
 #include"gamesound.h"
 #include"UiDefs.h"
 #include "mc2fmt.h"
+#include "logistics_deployment.h"
 
 std::unique_ptr<LogisticsOKDialog> LogisticsOKDialog::s_instance = nullptr;
 std::unique_ptr<LogisticsSaveDialog> LogisticsSaveDialog::s_instance = nullptr;
@@ -825,7 +826,8 @@ static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber
 bool isCorrectVersionCampaignSave(std::string_view path)
 {
 	long version = 0;
-	return quickReadSaveVersion(path, version) && version == SaveGameVersionNumber;
+	return quickReadSaveVersion(path, version) &&
+		(version == SaveGameVersionNumber || version == logistics_deployment::legacyVersion);
 }
 
 bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )

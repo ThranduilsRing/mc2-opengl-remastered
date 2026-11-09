@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
 #include <algorithm>
+#include "logistics_deployment.h"
 
 
 const std::string& LogisticsData::getCurrentMission() const
@@ -84,23 +85,24 @@ int LogisticsData::getCurrentDropWeight() const
 
 }
 
-bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
+int LogisticsData::getDeploymentCapacity() const
 {
-	if ( !pMech )
-		return 0;
-
-	int maxUnits = 12;
-
 #ifndef VIEWER
 	if ( MPlayer )
 	{
 		long playerCount;
 		MPlayer->getPlayers( playerCount );
-		maxUnits = MAX_MULTIPLAYER_MECHS_IN_LOGISTICS/playerCount;
-
-		maxUnits = std::min(maxUnits, 12);
+		return logistics_deployment::capacity(12, std::max(1L, playerCount));
 	}
 #endif
+	return missionInfo ? missionInfo->getMaxDeployedMechs() : logistics_deployment::singlePlayerSlots;
+}
+
+bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
+{
+	if ( !pMech )
+		return false;
+	const int maxUnits = getDeploymentCapacity();
 
 	int fgCount = 0;
 	
@@ -114,11 +116,8 @@ bool	LogisticsData::canAddMechToForceGroup( LogisticsMech* pMech )
 
 	}
 
-	if ( fgCount >= maxUnits )
-		return 0;
-
-
-	return (pMech->getMaxWeight() + getCurrentDropWeight() <= getMaxDropWeight() ) ? 1 : 0;
+	return logistics_deployment::canAdd(fgCount, maxUnits, pMech->getMaxWeight(),
+		getCurrentDropWeight(), getMaxDropWeight());
 }
 
 
