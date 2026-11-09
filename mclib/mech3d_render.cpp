@@ -415,7 +415,7 @@ long Mech3DAppearance::render (long depthFixup)
 	if (!eye) return 0;
     mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
         position.x, position.y, getRadius() * 0.35f,
-        renderAnim_.wakeRequested && !isHelicopter && renderAnim_.currentGestureId != 20,
+        presentedAnimation().wakeRequested && !isHelicopter && presentedAnimation().currentGestureId != 20,
         visible && inView && mc2_vis::meshDrawn(buildVisState()), false);
 	// FX_COUNT one-time init: register the shutdown emit from a code path that
 	// is guaranteed to run (a discardable anon-namespace static can be elided

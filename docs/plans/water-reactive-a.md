@@ -15,4 +15,7 @@ Proof first: WaterReactive/* doctests cover buffer lifecycle, visibility, capaci
 tile culling and the actual shared shader profile (symmetry, support, fade, wakes).
 Next: implementation; box unit/shader/build/smoke and timed day/night A/B; GPU
 cost on box; final lint/precheck and one Windows Ninja build; archive/release.
-Receipts: none yet. Runtime/pixels/performance are unproven.
+Receipts: c0a5df41 box production compile failed on private renderAnim_ access;
+fixed by a const completed-presentation accessor (no class-layout change).
+Evidence: E:/mc2-archive-2026-10/proofs/box/mc2-slot01/c0a5df41/.tails/build.log.
+Runtime/pixels/performance are unproven. Next attempt uses that corrected accessor.

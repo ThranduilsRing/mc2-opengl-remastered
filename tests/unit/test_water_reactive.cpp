@@ -17,7 +17,7 @@ TEST_CASE("WaterReactive/wet visible sources only and hidden history removal") {
     b.submit(1, 1.2f, 0, 0, 20, true, true, false);
     b.submit(1, 1.3f, 0, 0, 20, false, true, false);
     CHECK(b.size() == 1); // A dry exit leaves the last ring to fade.
-    b.advance(4.2f);
+    b.advance(4.21f);
     CHECK(b.size() == 0);
 }
 

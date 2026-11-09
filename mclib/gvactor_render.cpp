@@ -32,7 +32,7 @@ long GVAppearance::render (long depthFixup)
 	TG_MultiShape* drawShape = renderShape ? renderShape.get() : gvShape;
 	const auto visibility = buildVisState();
     mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
-        position.x, position.y, getRadius() * 0.35f, renderAnim_.wakeRequested,
+        position.x, position.y, getRadius() * 0.35f, presentedAnimation().wakeRequested,
         visible && inView && mc2_vis::meshDrawn(visibility), true);
 	mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), visibility);
 	// Sensor contacts keep visible=true while the body fades to alpha zero.
@@ -227,7 +227,7 @@ long GVAppearance::render (long depthFixup)
 			
 			if (!sensorLevel)
 			{
-				if (!renderAnim_.wakeRequested && dustCloud)
+				if (!presentedAnimation().wakeRequested && dustCloud)
 				{
 					gosFX::Effect::DrawInfo drawInfo;
 					drawInfo.m_clipper = theClipper;
