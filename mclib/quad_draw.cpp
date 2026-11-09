@@ -16,8 +16,7 @@
 // thin-emit is gated; pz/pzTri compute, the both-culled cull, and the M2d
 // gos_PushTerrainOverlay decal producer stay UNCONDITIONAL (the live
 // cement-transition/runway/road decal path — §2 WARNING, 9964d5a regression
-// class). MC2_TERRAIN_INDIRECT_THINEMIT_TRACE=1 emits a one-shot lifecycle
-// line so smoke artifacts capture the gate state.
+// class).
 
 // MC2_M2D_PZ_PARITY probe (VPL Step 8b precursor validator). Re-authored per
 // docs/superpowers/reviews/2026-05-15-overlay-pz-scoped-redesign-rereview.md

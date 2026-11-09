@@ -51,7 +51,7 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
 	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
-	if ( mc2::gate::get<"MC2_MECHLAB_GPU_OFF">() || frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
+	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
 		return false;
 	// A gap in panel frames is a new lab visit: the batcher still holds the last mission's (freed) types.
 	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;

@@ -243,8 +243,7 @@ void GuiRuntime::Init() {
     // false) we must NOT enable docking -- a docked window cannot be dragged out
     // and the central dockspace is editor UX. Game ImGui windows float.
     if (s_editorMode) {
-        if (mc2::gate::get<"MC2_EDITOR_DOCK">())
-            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     }
 
     // Auto-dock: make the CODE-defined layout authoritative. With a saved imgui.ini,
@@ -325,7 +324,7 @@ bool GuiRuntime::AutoDockActive() {
 
 static bool dockEnabled() {
     if (!s_editorMode) return false;   // GAME: no editor dockspace -> windows float
-    return mc2::gate::get<"MC2_EDITOR_DOCK">();
+    return true;
 }
 
 // Panels overlay the full native scene; the central node passes input through.

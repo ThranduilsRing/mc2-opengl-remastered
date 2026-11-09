@@ -4,12 +4,9 @@ L(Lead0Kill, "MC2_MATERIAL_GPU", Bool, true, "unclassified", "", "GPU material t
 // history: docs/gate-history.md#MC2_MATERIAL_GPU_SAMPLE
 L(Lead0Kill, "MC2_MATERIAL_GPU_SAMPLE", Bool, true, "props", "", "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26).", passthrough | registry(Feature, "MC2_FEATURE_MATERIAL_GPU_SAMPLE", 10, true) | verified),
 // history: docs/gate-history.md#MC2_MATERIAL_KTX
-L(Lead1, "MC2_MECHLAB_3D_OFF", Bool, false, "code", "", "Kill switch: flat silhouette in the mech lab instead of the posed 3D mech.", verified),
-L(Lead1, "MC2_MECHLAB_GPU_OFF", Bool, false, "code", "", "Kill switch: the mech lab draws its mech with the CPU preview instead of the GPU mech island studio-lit panel pass.", verified),
 L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
 P("MC2_MECH_FILL", Int, 2, "mech", "", "Mech lighting strength, ships ON at 2. Dev A/B override: 0 = original look, 1 = shared swapped sun + sun-sized fill, 2 = plus wrapped N.L and fresnel rim.", clampRange(0, 2) | verified),
 L(Lead1, "MC2_MECH_IMPORT_ANIMATE", Bool, false, "code", "", "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).", verified),
-L(Presence, "MC2_MECH_IMPORT_CLIP_DIAG", Bool, false, "mech", "", "", verified),
 G("MC2_MECH_IMPORT_FORCE_BONE", String, "j_LThigh", "mech", "", "", verified),
 G("MC2_MECH_IMPORT_FORCE_CLIP", String, "", "code", "", "BT2018-SKEL-ENGINE-1B: by default bake the REST (bind) pose.", verified),
 P("MC2_MECH_IMPORT_FORCE_FRAME", Int, 0, "code", "", "", verified),

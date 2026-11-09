@@ -22,9 +22,7 @@
 //   Set =0 to restore the legacy inView-gated behavior (bisect / A-B).
 static bool editorMoverRefreshOn()
 {
-	static int v = -1;
-	if (v < 0) v = mc2::gate::get<"MC2_EDITOR_MOVER_REFRESH">() ? 1 : 0;   // default-on kill switch
-	return v == 1;
+	return true;
 }
 
 void EditorObjectMgr::update()
@@ -118,11 +116,10 @@ void EditorObjectMgr::render()
 	// below captures slots -- by baking each latched prop's correct light slot
 	// (prewarmStaticLightBake sets cachedGpuLightIndex + clears the latch,
 	// bdactor.cpp:4131-4135). Retries each frame until lights are up and all latched
-	// props are baked; then one-shot done. Killswitch MC2_EDITOR_STATIC_PREWARM_OFF.
+	// props are baked; then one-shot done.
 	{
 		static bool s_prewarmDone = false;
-		static const bool s_prewarmOff = mc2::gate::get<"MC2_EDITOR_STATIC_PREWARM_OFF">();
-		if (!s_prewarmDone && !s_prewarmOff && eye && eye->getNumLights() > 0)
+		if (!s_prewarmDone && eye && eye->getNumLights() > 0)
 		{
 			int attempted = 0, baked = 0, remaining = 0;
 			for (auto it = buildings.begin(); it != buildings.end(); it++)

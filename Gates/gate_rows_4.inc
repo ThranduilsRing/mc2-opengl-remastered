@@ -44,7 +44,6 @@ G("MC2_UI_DEFS_IGNORE_PACKAGE_VERSION", Bool, false, "editor", "", "", verified)
 G("MC2_UNIT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated") | verified),
 // history: docs/gate-history.md#MC2_UNIT_PROFILE_DATA
 L(Lead0, "MC2_UNIT_PROFILE_DATA", Bool, false, "unclassified", "", "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).", passthrough | registry(Feature, "MC2_FEATURE_UNIT_PROFILE_DATA", -1, false) | verified),
-L(Lead0Kill, "MC2_UNIT_VISUAL_SNAP", Bool, true, "terrain", "2026-11-24", "UNIT-VISUAL-SNAP-1: draw mech/vehicle models at the visual-bake terrain height (render only); 0 = gameplay height. Retire after three green merge windows.", passthrough | verified),
 G("MC2_VEGETATION_ATLAS", String, "", "gameos", "", "Allow env-var override at runtime too.", passthrough | verified),
 L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough | verified),
 P("MC2_VEGETATION_DENSITY", Int, 25, "code", "", "", verified),

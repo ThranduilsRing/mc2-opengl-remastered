@@ -134,15 +134,10 @@ P("MC2_EDGE_FOG_MAX", Float, 0.0, "post", "", "", verified),  // default not der
 P("MC2_EDGE_FOG_START", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_EDITOR_AUTODOCK", Bool, true, "code", "", "", verified),
 L(Lead0, "MC2_EDITOR_BEAUTY_AUTOAPPLY", Bool, false, "editor", "", "", verified),
-L(Lead0Kill, "MC2_EDITOR_DOCK", Bool, true, "code", "", "", verified),
 P("MC2_EDITOR_FAR_CLIP", Float, 0.0, "code", "", "", verified),  // default not derivable from the tree
 P("MC2_EDITOR_FPS_CAP", Int, 60, "editor", "", "Editor frame-rate cap; <= 0 is uncapped.", passthrough | verified),
-L(Lead0Kill, "MC2_EDITOR_GPU_PICK", Bool, true, "editor", "", "", verified),
 L(Exact1, "MC2_EDITOR_GPU_TIMERS", Bool, false, "editor", "", "", verified),
 L(Exact1, "MC2_EDITOR_MODE", Bool, false, "editor", "", "", verified),
-L(Lead0Kill, "MC2_EDITOR_MOVER_REFRESH", Bool, true, "editor", "", "", verified),
-L(Presence, "MC2_EDITOR_PICK_TRACE", Bool, false, "editor", "", "", verified),
-L(Presence, "MC2_EDITOR_STATIC_PREWARM_OFF", Bool, false, "editor", "", "", verified),
 L(Presence, "MC2_EDITOR_STATIC_PRIME_DIAG", Bool, false, "props", "", "MC2_EDITOR_STATIC_PRIME_DIAG=1 - compact aggregate DrawCmd census at finalize.", verified),
 L(Presence, "MC2_EDITOR_TRACE", Bool, false, "editor", "", "", verified),
 G("MC2_EDITOR_UI_DEFS", Bool, true, "editor", "", "Mission Editor shell overlay is data/defs-first by default.", verified),

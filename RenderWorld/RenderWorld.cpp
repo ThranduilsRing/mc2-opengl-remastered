@@ -688,7 +688,7 @@ bool IsStaticPropPickEnabled() {
 // `[GAMEPLAY_PICK v1] miss kind=StaticProp` line only; the `hit` line
 // is unconditional.
 bool IsStaticPropPickDebugEnabled() {
-    static const bool s_enabled = mc2::gate::get<"MC2_STATIC_PROP_PICK_DEBUG">();
+    static const bool s_enabled = false;
     return s_enabled;
 }
 

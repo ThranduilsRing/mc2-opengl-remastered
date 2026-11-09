@@ -794,7 +794,6 @@ unsigned long g_fboSamples = 0;
 void validateTargetAtPassBegin(RenderCore::RenderPassId id) {
     static const bool enabled = true;
     if (!enabled) return;
-    static const bool s_fatal = mc2::gate::isSet<"MC2_FRAMEGRAPH_AMBIENT_FATAL">();
     // Native destination readiness. The legacy fbo_* dump keys retain their
     // wire format; the samples check real image/present owners, not GL bindings.
     const RenderCore::RenderResourceId fboDecl =
@@ -809,7 +808,6 @@ void validateTargetAtPassBegin(RenderCore::RenderPassId id) {
                 mc2::fmt::print_err("[NATIVE_TARGET_GUARD] phase=begin passId={:d} unavailableTarget={:d}\n", mc2::fmt::as_u32((unsigned)id), mc2::fmt::as_u32((unsigned)fboDecl));
                 fflush(stderr);
             }
-            if (s_fatal) abort();
         }
     }
 }
