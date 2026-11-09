@@ -1190,8 +1190,9 @@ void Terrain::initColorMapLoad() {
 			terrainTextures2->init(colorMapName);
 		else
 			terrainTextures2->init(terrainName);
-		mc2::fmt::print_out("[MISSION] load=TerrainColorMap::init elapsed_ms={:.3f}\n",
-			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - colorMapStart).count());
+		if (mc2_diag::tagRequested("LOAD_TIMING"))
+			mc2::fmt::print_out("[LOAD_TIMING] load=TerrainColorMap::init elapsed_ms={:.3f}\n",
+				std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - colorMapStart).count());
 	}
 }
 

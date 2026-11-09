@@ -1,5 +1,6 @@
 #include "brain_execution_policy.h"
 #include "../GameOS/gameos/vk_render_infra.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <atomic>
 #include <chrono>
 #include "../GameAdapters/SkyRenderAdapter.h"
@@ -1023,8 +1024,9 @@ void Mission::initFinalizeGeometry() {
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
 	const auto vegetationStart = std::chrono::steady_clock::now();
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
-	mc2::fmt::print_out("[MISSION] load=Vegetation::missionLoaded elapsed_ms={:.3f}\n",
-		std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - vegetationStart).count());
+	if (mc2_diag::tagRequested("LOAD_TIMING"))
+		mc2::fmt::print_out("[LOAD_TIMING] load=Vegetation::missionLoaded elapsed_ms={:.3f}\n",
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - vegetationStart).count());
     // Camera activation selects this same source later. Select it before the
     // load barrier so sky/water upload the mission HDRI rather than the boot sky.
     GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));

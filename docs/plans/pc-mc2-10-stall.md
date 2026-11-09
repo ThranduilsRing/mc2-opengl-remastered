@@ -99,3 +99,20 @@ post-fix acceptance or root-cause covering tests have been completed.
 - Next: finish targeted test/contract proofs; commit; run box first and the
   single Windows compile; deploy to retained install and measure mc2_10.
   No causal claim or initialization optimization before those measurements.
+- First change a90031cab: targeted pytest 11/11 PASS; box production build
+  PASS, smoke-lite 2/2 PASS, unit 3905/3906 (same inherited VFX parent failure).
+  Lint correctly rejected the new MISSION line shape. Timings now use the
+  separate LOAD_TIMING diagnostic tag; parser baseline remains untouched.
+  The requested background_launch row no longer exists in this base (zero
+  selected rows, NOT a pass); use log_tag_census for the timing log contract
+  and the targeted background-launch checker pytest for the runner.
+- Actual retained baseline game pid 47908 launched at class 0x4000
+  (BelowNormal), mask 0x3, from an Idle observer, without a debugger.
+  Await its verdict in priority-check-runner.log; foreign lease wait is
+  recorded separately. First Windows game/viewer compile passed; the timer
+  log correction requires a second incremental final-tip compile. Starting
+  Windows compilation before box lint finished caused this avoidable work.
+- Preserve baseline dumps and PDB at
+  E:/mc2-archive-2026-10/crashes/pc-mc2-10-stall-baseline-2026-11-08/.
+  Updated ongoing/final receipts live in the proof folder's state.md and
+  clean-matrix.json, so documentation updates do not invalidate tip identity.
