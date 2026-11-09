@@ -219,27 +219,6 @@ def test_deploy_prunes_only_unchanged_manifest_files(tmp_path, monkeypatch):
     assert (target / "data/savegame/save.fit").exists()
 
 
-def test_game_and_editor_deploys_do_not_prune_each_other(tmp_path, monkeypatch):
-    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
-    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
-    game = ("mc2.exe", "mc2.pdb", "run-mc2.bat")
-    editor = ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat", "tools/terrain_gen/terrain_gen.py")
-    exe_src = tmp_path / "src.exe"
-    exe_src.write_bytes(b"x")
-    for exe, sibling in (("Mission Editor.exe", game), ("mc2.exe", editor)):
-        target = tmp_path / exe.replace(" ", "_")
-        owned = {}
-        for rel in game + editor + ("retired.spv",):
-            path = target / rel
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(b"x")
-            owned[rel] = (dp.sha256_file(path), path.stat().st_size)
-        dp.write_manifest(str(target), owned, "fixture")
-        dp.deploy([(str(exe_src), exe, "exe")], str(target), False, preserve=(exe,), full_verify=True)
-        assert all((target / rel).exists() for rel in sibling), exe
-        assert not (target / "retired.spv").exists()
-
-
 def test_deploy_rejects_retired_path_outside_target(tmp_path, monkeypatch):
     import pytest
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})

@@ -15,6 +15,7 @@
         "MC2_PCH": "ON",
         "MC2_IMGUI": "ON",
         "MC2_EDITOR": "ON",
+        "MC2_EDITOR_IN_ALL": "ON",
         "ENABLE_MC2FX": "ON",
         "ENABLE_MC2FX_PREVIEW": "ON",
         "ENABLE_MC2WEAPON_GUI": "ON",

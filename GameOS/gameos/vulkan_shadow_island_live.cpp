@@ -1187,8 +1187,7 @@ static void record_local_shadows(ShadowIsland* s) {
 
 static bool ensure_island(int size) {
     // A reduced map remains valid for the requested tier; pressure must not cause per-frame rebuilds.
-    // The 1x1 descriptor placeholder (bindMoverShadowDescriptors) never satisfies a real map request.
-    if (const ShadowIsland* parked=parkedIsland(); parked && parked->size<=size && (parked->size>1 || size==1)) return true;
+    if (const ShadowIsland* parked=parkedIsland(); parked && parked->size<=size) return true;
     size=static_cast<int>(mc2vk::infra::shadowTier(static_cast<uint32_t>(size),2));
     if(!size) { setFallback("shadow_residency_budget"); return false; }
     // Lazy init / rebuild on size change.

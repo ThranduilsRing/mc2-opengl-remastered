@@ -382,16 +382,6 @@ void EditorInterface::KillCurBrush()
 //   - tools WITHOUT a toolbar entry (object placement, overlay, terrain, sculpt,
 //     stamp, drop-zone): pass brushId. These ids never equal a tools[].cmdId, so the
 //     highlight check simply never lights up for them — which is correct.
-// Brushes cache mission appearances (BuildingBrush::pCursor), so none may outlive a mission teardown.
-void EditorInterface::dropMissionBrushes()
-{
-	if ( !bThisIsInitialized )
-		return;
-	delete prevBrush;
-	prevBrush = nullptr;
-	setActiveBrush( new SelectionBrush( false, -1 ), IDS_SELECT, ID_OTHER_SELECT );
-}
-
 void EditorInterface::setActiveBrush( Brush* newBrush, int brushId, int menuId )
 {
 	KillCurBrush();
@@ -708,9 +698,6 @@ int	EditorInterface::paintBuildings( int message )
 
 int EditorInterface::Erase()
 {
-	// Route mode: Delete removes the selected waypoint, not the unit.
-	if ( UnitBrainPanel::RouteDeleteSelected() )
-		return true;
 	if ( selecting && ( EditorObjectMgr::instance()->hasSelection() ||
 		land->hasSelection() ) )
 	{

@@ -2,9 +2,11 @@
 * FILENAME: UnitBrainPanel.cpp
 * DESCRIPTION: Editor "AI / Brain / Orders" inspector panel — see header.
 *   Read-only display of what a placed unit DOES today (AI brain script,
-*   pilot, lance/squad) plus the Orders & Stance route tool. Route edits go
-*   through EditorCommands (one undo step each) and persist as the unit's
-*   OrderType/Waypoint keys.
+*   pilot, lance/squad) plus a scaffolded Orders & Stance section ("this is
+*   where this goes") for patrol waypoints + attitude/ROE editing. The edit
+*   controls are intentionally disabled: there is no editor-side persistence
+*   for unit orders/waypoints yet, and runtime order delivery is tied to the
+*   in-flight TECHSCRIPT brain dispatch (MC2_BRAIN_DISPATCH*, default-OFF).
 * DATE: 2026-06-24
 ****************************************************************/
 
@@ -19,7 +21,6 @@
 #include "EditorObjects.h"
 #include "InspectorPanel.h"   // CategoryToken (shared category labelling)
 #include "Action.h"           // ModifyUnitOrderAction + ActionUndoMgr (undo + dirty)
-#include "EditorCommands.h"   // setRoute / assignRoute (route tool verbs)
 #include "Paths.h"            // warriorPath (brain .abl location) + missionPath
 #include "File.h"             // File (raw brain .abl viewer)
 #include "EditorData.h"       // EditorData::getMapName (current mission.fit name)
@@ -43,17 +44,6 @@ bool s_open = false;
 // changed selection or a deleted unit never dangles.
 bool s_placeActive = false;
 long s_placeTargetId = 0;
-
-// Route tool: selected waypoint (by owning unit id) and the in-flight drag/stroke
-// gesture. A gesture edits the unit live and commits ONE setRoute on release.
-long s_selUnitId = 0;
-int s_selWp = -1;
-enum RouteGesture { GESTURE_NONE, GESTURE_DRAG, GESTURE_STROKE };
-RouteGesture s_gesture = GESTURE_NONE;
-int s_gestureOrigType = 0;
-std::vector<glm::vec3> s_gestureOrig;
-const float kRouteHitRadius = 64.0f;    // world units around a waypoint that grab it
-const float kStrokeSpacing = 128.0f;    // one waypoint per tile while drawing a stroke
 
 // Find a Unit by editor id (placement target / re-find). getUnits() is a copy.
 Unit* findUnitById( long id )
@@ -85,44 +75,6 @@ void applyOrderEdit( Unit* unit, Mutate mut )
 	unit->setOrderAuthored( true );   // editor now owns this unit's order -> persisted on save
 	act->commit( unit );
 	ActionUndoMgr::instance->AddAction( act );
-}
-
-// Live (no undo) route edit during a gesture; RouteRelease commits the result.
-void setLiveRoute( Unit* unit, int orderType, const std::vector<glm::vec3>& wps )
-{
-	unit->setOrderType( orderType );
-	unit->clearWaypoints();
-	for ( const glm::vec3& wp : wps )
-		unit->addWaypoint( wp );
-}
-
-// Adding a path implies an order: a None unit becomes a Patrol on its first point.
-int routeOrderType( const Unit* unit )
-{
-	return unit->getOrderType() == Unit::ORDER_NONE ? (int)Unit::ORDER_PATROL : unit->getOrderType();
-}
-
-void selectWaypoint( long unitId, int index )
-{
-	s_selUnitId = unitId;
-	s_selWp = index;
-}
-
-// A new point after waypoint i: the midpoint to the next point, or one stroke
-// spacing further along the last leg.
-glm::vec3 pointAfter( const std::vector<glm::vec3>& wps, size_t i )
-{
-	if ( i + 1 < wps.size() )
-		return ( wps[i] + wps[i + 1] ) * 0.5f;
-	glm::vec3 dir( kStrokeSpacing, 0.0f, 0.0f );
-	if ( i > 0 )
-	{
-		const glm::vec3 leg = wps[i] - wps[i - 1];
-		const float len = sqrtf( leg.x * leg.x + leg.y * leg.y );
-		if ( len > 1e-3f )
-			dir = glm::vec3( leg.x / len * kStrokeSpacing, leg.y / len * kStrokeSpacing, 0.0f );
-	}
-	return wps[i] + dir;
 }
 
 // First selected object from the shared selection list (viewport + Scene
@@ -239,20 +191,8 @@ bool UnitBrainPanel::SmokeProbe()
 
 bool UnitBrainPanel::WaypointPlaceActive()   { return s_placeActive; }
 long UnitBrainPanel::WaypointPlaceTargetId() { return s_placeTargetId; }
-void UnitBrainPanel::BeginWaypointPlace( long unitId )
-{
-	RouteRelease();
-	s_placeActive = true;
-	s_placeTargetId = unitId;
-	if ( s_selUnitId != unitId )
-		selectWaypoint( unitId, -1 );
-}
-void UnitBrainPanel::EndWaypointPlace()
-{
-	RouteRelease();
-	s_placeActive = false;
-	s_placeTargetId = 0;
-}
+void UnitBrainPanel::BeginWaypointPlace( long unitId ) { s_placeActive = true;  s_placeTargetId = unitId; }
+void UnitBrainPanel::EndWaypointPlace()                { s_placeActive = false; s_placeTargetId = 0; }
 
 bool UnitBrainPanel::HandlePlacementClick( float worldX, float worldY, float worldZ )
 {
@@ -264,122 +204,15 @@ bool UnitBrainPanel::HandlePlacementClick( float worldX, float worldY, float wor
 		EndWaypointPlace();
 		return false;
 	}
-	std::vector<glm::vec3> wps = unit->getWaypoints();
-	wps.push_back( glm::vec3( worldX, worldY, worldZ ) );
-	EditorCommands::setRoute( unit, routeOrderType( unit ), wps );
-	selectWaypoint( unit->getID(), (int)wps.size() - 1 );
+	glm::vec3 wp; wp.x = worldX; wp.y = worldY; wp.z = worldZ;
+	applyOrderEdit( unit, [&]() {
+		// Adding a path implies an order — default a None unit to PATROL on first point.
+		if ( unit->getOrderType() == Unit::ORDER_NONE )
+			unit->setOrderType( Unit::ORDER_PATROL );
+		unit->addWaypoint( wp );
+	} );
 	return true;
 }
-
-bool UnitBrainPanel::RoutePress( float worldX, float worldY, float worldZ, bool ctrl, bool alt, bool shift )
-{
-	if ( !s_placeActive )
-		return false;
-	RouteRelease();
-	Unit* unit = findUnitById( s_placeTargetId );
-	if ( !unit )
-	{
-		EndWaypointPlace();
-		return false;
-	}
-	std::vector<glm::vec3> wps = unit->getWaypoints();
-	const glm::vec3 p( worldX, worldY, worldZ );
-	const int hit = EditorCommands::nearestWaypoint( wps, worldX, worldY, kRouteHitRadius );
-	if ( ctrl )
-	{
-		if ( hit >= 0 )
-		{
-			wps.erase( wps.begin() + hit );
-			EditorCommands::setRoute( unit, unit->getOrderType(), wps );
-			selectWaypoint( unit->getID(), -1 );
-		}
-		return true;
-	}
-	if ( alt )
-	{
-		const int at = EditorCommands::insertIndexFor( wps, worldX, worldY, unit->getOrderType() == Unit::ORDER_PATROL );
-		wps.insert( wps.begin() + at, p );
-		EditorCommands::setRoute( unit, routeOrderType( unit ), wps );
-		selectWaypoint( unit->getID(), at );
-		return true;
-	}
-	if ( hit < 0 && !shift )
-		return HandlePlacementClick( worldX, worldY, worldZ );
-
-	s_gestureOrigType = unit->getOrderType();
-	s_gestureOrig = wps;
-	if ( hit >= 0 )
-	{
-		s_gesture = GESTURE_DRAG;
-		selectWaypoint( unit->getID(), hit );
-		return true;
-	}
-	s_gesture = GESTURE_STROKE;
-	wps.push_back( p );
-	setLiveRoute( unit, routeOrderType( unit ), wps );
-	selectWaypoint( unit->getID(), (int)wps.size() - 1 );
-	return true;
-}
-
-bool UnitBrainPanel::RouteGestureActive() { return s_gesture != GESTURE_NONE; }
-
-void UnitBrainPanel::RouteDrag( float worldX, float worldY, float worldZ )
-{
-	Unit* unit = s_gesture != GESTURE_NONE ? findUnitById( s_placeTargetId ) : nullptr;
-	if ( !unit )
-		return;
-	std::vector<glm::vec3> wps = unit->getWaypoints();
-	const glm::vec3 p( worldX, worldY, worldZ );
-	if ( s_gesture == GESTURE_DRAG )
-	{
-		if ( s_selWp < 0 || s_selWp >= (int)wps.size() )
-			return;
-		wps[s_selWp] = p;
-	}
-	else
-	{
-		const float dx = wps.empty() ? kStrokeSpacing : p.x - wps.back().x;
-		const float dy = wps.empty() ? 0.0f : p.y - wps.back().y;
-		if ( dx * dx + dy * dy < kStrokeSpacing * kStrokeSpacing )
-			return;
-		wps.push_back( p );
-		selectWaypoint( unit->getID(), (int)wps.size() - 1 );
-	}
-	setLiveRoute( unit, unit->getOrderType(), wps );
-}
-
-bool UnitBrainPanel::RouteRelease()
-{
-	if ( s_gesture == GESTURE_NONE )
-		return false;
-	s_gesture = GESTURE_NONE;
-	Unit* unit = findUnitById( s_placeTargetId );
-	if ( !unit )
-		return true;
-	const int type = unit->getOrderType();
-	const std::vector<glm::vec3> finalRoute = unit->getWaypoints();
-	if ( type == s_gestureOrigType && finalRoute == s_gestureOrig )
-		return true;   // a plain select, nothing moved
-	setLiveRoute( unit, s_gestureOrigType, s_gestureOrig );
-	EditorCommands::setRoute( unit, type, finalRoute );
-	return true;
-}
-
-bool UnitBrainPanel::RouteDeleteSelected()
-{
-	// Only in route mode, so Delete keeps erasing objects everywhere else.
-	Unit* unit = s_placeActive && s_selWp >= 0 && s_selUnitId == s_placeTargetId ? findUnitById( s_selUnitId ) : nullptr;
-	if ( !unit || s_selWp >= (int)unit->getWaypointCount() )
-		return false;
-	RouteRelease();
-	std::vector<glm::vec3> wps = unit->getWaypoints();
-	wps.erase( wps.begin() + s_selWp );
-	EditorCommands::setRoute( unit, unit->getOrderType(), wps );
-	selectWaypoint( unit->getID(), wps.empty() ? -1 : ( s_selWp > 0 ? s_selWp - 1 : 0 ) );
-	return true;
-}
-
-int UnitBrainPanel::SelectedWaypoint( long unitId ) { return unitId == s_selUnitId ? s_selWp : -1; }
 
 void UnitBrainPanel::Draw()
 {
@@ -585,7 +418,7 @@ void UnitBrainPanel::Draw()
 		static const char* const kOrderNames[] = { "None", "Move (one-way)", "Patrol (loop)" };
 		int orderType = unit->getOrderType();
 		if (ImGui::Combo("Order", &orderType, kOrderNames, 3))
-			EditorCommands::setRoute(unit, orderType, unit->getWaypoints());
+			applyOrderEdit(unit, [&]() { unit->setOrderType(orderType); });
 
 		// Stance / attitude.
 		int stance = unit->getStance();
@@ -610,62 +443,25 @@ void UnitBrainPanel::Draw()
 				UnitBrainPanel::BeginWaypointPlace(obj->getID());
 		}
 		ImGui::SameLine();
+		if (ImGui::Button("Remove Last") && unit->getWaypointCount() > 0)
+			applyOrderEdit(unit, [&]() { unit->removeLastWaypoint(); });
+		ImGui::SameLine();
 		if (ImGui::Button("Clear") && unit->getWaypointCount() > 0)
-			EditorCommands::setRoute(unit, unit->getOrderType(), {});
+			applyOrderEdit(unit, [&]() { unit->clearWaypoints(); });
 
-		// Point list: click a row to select it; Insert After / Delete act on it.
-		std::vector<glm::vec3> wps = unit->getWaypoints();
-		const int sel = UnitBrainPanel::SelectedWaypoint(obj->getID());
-		if (!wps.empty() && ImGui::BeginChild("wplist", ImVec2(0.f, 110.f), true))
+		// Point list.
+		const std::vector<glm::vec3>& wps = unit->getWaypoints();
+		if (!wps.empty() && ImGui::BeginChild("wplist", ImVec2(0.f, 90.f), true))
 		{
 			for (size_t i = 0; i < wps.size(); ++i)
-			{
-				char row[64];
-				snprintf(row, sizeof(row), "%2u:  %.0f, %.0f", (unsigned)i, wps[i].x, wps[i].y);
-				if (ImGui::Selectable(row, sel == (int)i))
-					selectWaypoint(obj->getID(), (int)i);
-			}
+				ImGui::Text("%2u:  %.0f, %.0f", (unsigned)i, wps[i].x, wps[i].y);
 		}
 		if (!wps.empty())
 			ImGui::EndChild();
-		if (sel >= 0 && sel < (int)wps.size())
-		{
-			if (ImGui::Button("Insert After"))
-			{
-				wps.insert(wps.begin() + sel + 1, pointAfter(wps, (size_t)sel));
-				if (EditorCommands::setRoute(unit, unit->getOrderType(), wps))
-					selectWaypoint(obj->getID(), sel + 1);
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Delete Point"))
-			{
-				wps.erase(wps.begin() + sel);
-				if (EditorCommands::setRoute(unit, unit->getOrderType(), wps))
-					selectWaypoint(obj->getID(), wps.empty() ? -1 : (sel > 0 ? sel - 1 : 0));
-			}
-		}
-
-		// N-unit assign: copy this unit's order type + waypoints to every other
-		// selected unit as one undo step.
-		if (selCount > 1 && !unit->getWaypoints().empty())
-		{
-			char label[64];
-			snprintf(label, sizeof(label), "Assign route to %d selected", selCount - 1);
-			if (ImGui::Button(label))
-			{
-				std::vector<Unit*> targets;
-				EditorObjectMgr::EDITOR_OBJECT_LIST selList = mgr->getSelectedObjectList();
-				for (auto it = selList.begin(); it != selList.end(); it++)
-					if (Unit* t = dynamic_cast<Unit*>(*it))
-						targets.push_back(t);
-				EditorCommands::assignRoute(unit, targets);
-			}
-		}
 
 		ImGui::TextDisabled(
-			"Route mode: click appends, drag a point to move it, Alt+click inserts, "
-			"Ctrl+click or Delete removes, Shift+drag draws. Move runs the route "
-			"once; Patrol loops it. The game admits authored routes at mission load.");
+			"Authoring + persistence are live. Units actually executing the "
+			"order in-game is wired later via the brain dispatch.");
 	}
 
 	ImGui::End();

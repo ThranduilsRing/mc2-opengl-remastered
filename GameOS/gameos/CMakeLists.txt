@@ -570,8 +570,6 @@ if(MC2_VULKAN)
     target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
     target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
-    # vulkan_fsr_provider.cpp (shared SOURCES) includes the vendored ffx-api headers, same as gameos.
-    target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/fidelityfx")
     # engine_present_vk.cpp (shared SOURCES) includes imgui headers; gameos_editor was missing the dirs.
     target_include_directories(gameos_editor PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
