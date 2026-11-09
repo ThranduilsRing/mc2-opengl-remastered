@@ -1228,8 +1228,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         us_fence_wait = usSince(tInline0);
     }
     g_health.drawUs = usSince(tRender0);
-    if (s->gpuTimer.supported) rctx.poll();   // resolve() waits on the query results: the deferred batch holding this cb must be on the queue first
-    s->gpuTimer.resolve();   // VK-DRAW-PERF-1: fence signalled -> fold GPU segment times
+    s->gpuTimer.resolve();   // VK-DRAW-PERF-1: non-blocking, folds pools recorded >= 2 frames ago
 
     const bool readbackFired = (g_forbidden.glGetTexImage != f0b) || (g_forbidden.glReadPixels != f0c);
     if (readbackFired) {
