@@ -23,7 +23,7 @@
 #include "world/entity_registry.h"
 #include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
-// Pooled actor ownership (turrets); see spawnTurret.
+// Pooled actor ownership (turrets and gates); see spawnTurret and spawnGate.
 #include "world/actor_pool.h"
 
 #ifndef GAMEOBJ_H
@@ -268,7 +268,8 @@ class GameObjectManager {
 		std::vector<BuildingPtr>		buildingStore;
 		// Turrets: the pool owns the actors and is the one construction path (spawnTurret) for mission setup and save load.
 		mc2::world::ActorPool<Turret>	turretPool;
-		std::vector<GatePtr>			gateStore;
+		// Gates share the same ownership and construction policy as turrets.
+		mc2::world::ActorPool<Gate>	gatePool;
 		std::vector<WeaponBoltPtr>		weaponStore;
 		std::vector<CarnagePtr>			carnageStore;
 		std::vector<ArtilleryPtr>		artilleryStore;
@@ -398,6 +399,9 @@ class GameObjectManager {
 		TurretPtr spawnTurret (GameObjectHandle handle);
 		
 		GatePtr	getGate (long gateIndex);
+
+		// Constructs the next pooled gate and binds it to legacy handle `handle` (objList slot).
+		GatePtr spawnGate (GameObjectHandle handle);
 		
 		WeaponBoltPtr getWeapon (void);				//gets next available weapon.
 

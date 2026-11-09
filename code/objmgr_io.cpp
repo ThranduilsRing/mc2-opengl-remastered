@@ -843,7 +843,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 	if (numGates > 0)
 	{
-		gates = bindPoolArray(gateStore, numGates);
+		gates = gatePool.reset(static_cast<size_t>(numGates));
 		if ( !gates )
 			Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc Gates ");
 	}
@@ -1062,9 +1062,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 			readData.operator()<mc2::save::GateRecord>(data, mc2_saved_objects::kGate);
 			packetNum++;
 
-			GatePtr obj = new Gate; 
-			objList[i] = gates[curGateNum] = obj;
-			objList[i]->setHandle(i);
+			GatePtr obj = spawnGate(i);
+			if (obj != gates[curGateNum])
+				Fatal(curGateNum, " GameObjectManager.Load: gate slot order mismatch ");
 
 			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
 			if (objType)	//We have an object type to copy from!!
