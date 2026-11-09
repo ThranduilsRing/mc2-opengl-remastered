@@ -71,7 +71,7 @@ EXCLUDE = {
 
 PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
           "--tb=no", "-rfE"]
-TIMEOUT_S = 600
+TIMEOUT_S = 1200  # box_hygiene: 479 s alone, over 600 s under precheck load
 
 
 ART_PREFIXES = ("tools/scifi_kit/", "tools/blender_pipeline/", "tools/kit/", "tools/mc2data/", "tools/content_pipeline/", "tools/ase_to_glb.py", "tools/asset_cook/", "tools/material_cook/", "tools/mc2texcook/", "tools/mc2x_import/", "release_assets_src/", "examples/mods/", "mods/", "gameassets/", "data/")
