@@ -80,3 +80,15 @@ TEST_CASE("terrain record cache: a patch without a mesh is dropped from the draw
     CHECK(h.run(c, ps, 7, 10.0f, 10.0f) == 0u);
     CHECK(c.draws().size() == ps.size() - 1);
 }
+
+TEST_CASE("terrain record cache: a patch-set size change invalidates everything and matches a fresh cache") {
+    Cache c; Harness h; auto ps = grid();
+    h.run(c, ps, 7, 10.0f, 10.0f);
+    const uint64_t gen = c.generation();
+    ps.pop_back();
+    CHECK(h.run(c, ps, 7, 10.0f, 10.0f) == ps.size());
+    CHECK(c.generation() == gen + 1);
+    Cache fresh; Harness h2;
+    h2.run(fresh, ps, 7, 10.0f, 10.0f);
+    CHECK(c.draws() == fresh.draws());
+}
