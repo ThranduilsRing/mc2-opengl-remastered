@@ -89,6 +89,7 @@ if [ "${FREE_GB:-0}" -lt "${MC2_BOX_MIN_FREE_GB:-15}" ]; then echo "[box_run] BO
 #@@END_DISK_GUARD@@
 [ -f /workspace/locks/cores.env ] && . /workspace/locks/cores.env   # the one core map (BUILD_CPUS, GPU<n>_CPUS)
 rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
+printf '%s\n' "${ROWS[@]}" > "$OUT/requested.tsv"
 [ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
 BCPUS=${BUILD_CPUS:-32-63}   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
 export GIT_LFS_SKIP_SMUDGE=1
@@ -287,7 +288,7 @@ def seed(repo):
 
 PUEUE = "/workspace/toolchains/pueue/pueue"   # queue: see box-game-runs.md "Queue"
 # copy-back: only *.tsv, *.json and the last 200 lines of each log (the full logs stay on the box)
-BACK = ("cd {out} || exit 0; mkdir -p .tails && for f in *.log; do [ -f \"$f\" ] && tail -n 200 \"$f\" > .tails/$f; done; "
+BACK = ("set -euo pipefail; cd {out}; mkdir -p .tails; for f in *.log; do if [ -f \"$f\" ]; then tail -n 200 \"$f\" > .tails/$f; fi; done; "
         "find . -type f \\( -name '*.tsv' -o -name '*.json' -o -name '*.png' -o -path './.tails/*' \\) | tar cf - -T -")
 
 
@@ -317,10 +318,13 @@ def local_reports(repo, sha8):
 
 def fetch_back(out_remote, local_out):
     # background-launch: allow ssh tar pull, the engine runs on the Linux box
+    for stale in ("rows.tsv", "requested.tsv", "fingerprints.tsv"):
+        (local_out / stale).unlink(missing_ok=True)
     r = subprocess.run([*SSH, BACK.format(out=out_remote)], capture_output=True, **console_child.child_kwargs(redirected=True))
-    if r.stdout:
-        with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:
-            tf.extractall(local_out, filter="data")
+    if r.returncode or not r.stdout:
+        raise OSError(f"copy-back failed (ssh rc={r.returncode}, empty={not bool(r.stdout)})")
+    with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:
+        tf.extractall(local_out, filter="data")
 
 
 def task_state(tid):
@@ -331,8 +335,10 @@ def task_state(tid):
         return "missing", None, ""
     st = t["status"]
     state, body = next(iter(st.items())) if isinstance(st, dict) else (st, None)
-    res = body.get("result") if isinstance(body, dict) else None
-    rc = None if state != "Done" else (0 if res == "Success" else res.get("Failed", 1) if isinstance(res, dict) else 1)
+    # Pueue serializes Done as the result itself ("Success" or {"Failed": n}).
+    # Accept the older nested fixture shape too, but never guess FAIL for an unknown result.
+    res = body.get("result", body) if isinstance(body, dict) else body
+    rc = None if state != "Done" else (0 if res == "Success" else res.get("Failed", RC_BOX_INFRA) if isinstance(res, dict) else RC_BOX_INFRA)
     return state, rc, t.get("label", "")
 
 
@@ -345,7 +351,9 @@ def verdict(rc, codes=()):
     if rc == RC_LOCK_TIMEOUT:
         return "LOCK_TIMEOUT", RC_LOCK_TIMEOUT
     if rc == RC_BOX_INFRA:
-        return "BOX_INFRA", 3
+        return "BOX_INFRA", RC_BOX_INFRA
+    if not codes or (rc != 0 and all(c == "0" for c in codes)):
+        return "BOX_INFRA", RC_BOX_INFRA
     if rc == 0 and all(c == "0" for c in codes):
         return "PASS", 0
     if str(RC_NO_BASELINE) in codes and all(c in ("0", str(RC_NO_BASELINE)) for c in codes):
@@ -355,20 +363,42 @@ def verdict(rc, codes=()):
 
 def task_verdict(tid, repo, wait):
     """ONE line: box_run task=<id> state=<..> rc=<..> rows=<pass>/<total>. --wait blocks, then copies the reports back."""
-    if wait:
-        run([*SSH, f"{PUEUE} wait {tid} >/dev/null 2>&1"])
-    state, rc, label = task_state(tid)
-    parts = label.split(":")   # box_run:<branch>:<sha8>:<group>
-    rows = ""
-    if state == "Done" and len(parts) == 4:
-        local_out = local_reports(repo, parts[2])
-        local_out.mkdir(parents=True, exist_ok=True)
-        fetch_back(f"/workspace/lanes/{parts[1]}/out/{parts[2]}", local_out)
-        tsv = local_out / "rows.tsv"
-        v = row_codes(tsv)
-        rows = f" rows={sum(x == '0' for x in v)}/{len(v)} reports={local_out}"
-    name, code = verdict(rc, row_codes(local_reports(repo, parts[2]) / "rows.tsv") if state == "Done" and len(parts) == 4 else ()) if rc is not None else ("", 2)
-    print(f"[box_run] task={tid} state={state} rc={'-' if rc is None else rc}{rows}" + (f" verdict={name}" if name else ""))
+    state, rc, rows, table, detail = "unknown", None, "", [], ""
+    try:
+        if wait:
+            w = run([*SSH, f"{PUEUE} wait {tid} >/dev/null 2>&1"])
+            if w.returncode:
+                raise OSError(f"pueue wait failed rc={w.returncode}")
+        state, rc, label = task_state(tid)
+        parts = label.split(":")   # box_run:<branch>:<sha8>:<group>
+        name, code = ("", 2)
+        if state == "Done":
+            if len(parts) != 4 or parts[0] != "box_run":
+                raise OSError("task has no box_run report label")
+            local_out = local_reports(repo, parts[2])
+            local_out.mkdir(parents=True, exist_ok=True)
+            fetch_back(f"/workspace/lanes/{parts[1]}/out/{parts[2]}", local_out)
+            tsv = local_out / "rows.tsv"
+            table = [ln.rsplit("\t", 1) for ln in tsv.read_text().splitlines()] if tsv.exists() else []
+            if any(len(r) != 2 or not r[1].isdigit() for r in table):
+                raise OSError("invalid rows.tsv")
+            v = [r[1] for r in table]
+            rows = f" rows={sum(x == '0' for x in v)}/{len(v)} reports={local_out}"
+            name, code = verdict(rc, v)
+            requested = local_out / "requested.tsv"
+            if requested.exists() and code not in (RC_LOCK_TIMEOUT, RC_BOX_INFRA):
+                from collections import Counter
+                missing = Counter(requested.read_text().splitlines()) - Counter(r[0] for r in table)
+                if missing:
+                    raise OSError(f"missing requested rows: {list(missing)}")
+            if name == "BOX_INFRA":
+                detail = "wrapper failed outside rows or row evidence missing"
+        elif state == "missing" or wait:
+            raise OSError(f"task did not complete: {state}")
+    except (OSError, ValueError, tarfile.TarError, subprocess.SubprocessError) as exc:
+        name, code, detail = "BOX_INFRA", RC_BOX_INFRA, str(exc)
+    print(f"[box_run] task={tid} state={state} rc={'-' if rc is None else rc}{rows}" + (f" verdict={name} exit={code}" if name else "")
+          + (f" detail={json.dumps(detail)}" if detail else "") + (f" table={json.dumps(table)}" if name else ""))
     return code
 
 
@@ -453,7 +483,7 @@ def main():
     ap.add_argument("--seed", action="store_true", help="one-time golden install seeding")
     ap.add_argument("--probe", action="store_true", help="exit 0 if the box answers ssh within 15 s (merge_gate picks the box route or the Windows-full fallback with it)")
     ap.add_argument("--queue", action="store_true", help="submit to the box's pueue group (gpuN, or gate with --gate) and print the task id at once instead of blocking")
-    ap.add_argument("--wait", metavar="ID", help="block until queued task ID ends, copy the reports back, print ONE verdict line (exit code = the task's)")
+    ap.add_argument("--wait", metavar="ID", help="wait, fetch reports and print row table: 0 PASS, 1 row FAIL, 4 NO_BASELINE, 76 LOCK_TIMEOUT, 77 BOX_INFRA")
     ap.add_argument("--status", metavar="ID", nargs="?", const="", help="with ID: ONE state line for queued task ID (exit 0 done+ok, 1 failed, 2 queued/running); with no ID: print the box's STATUS.json (GPU lock holders, load, free disk)")
     ap.add_argument("--gpu-strict", action="store_true", help="wait for the --gpu N GPU only; without it a busy GPU N falls back to any free GPU of 0-2 at once")
     ap.add_argument("--cleanup", metavar="BRANCH", help="remove BRANCH's lane on the box (dir, runner script, mirror ref, worktree entry); refuses a lane a live process uses")
@@ -631,8 +661,6 @@ def write_receipt(local_out, sha, branch, rows, rc):
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (subprocess.CalledProcessError, OSError) as exc:
-        if "--gate" not in sys.argv:
-            raise
+    except (subprocess.CalledProcessError, OSError, tarfile.TarError) as exc:
         print(f"BOX_INFRA: box_run could not reach or drive the box: {exc}")
-        sys.exit(3)
+        sys.exit(3 if "--gate" in sys.argv else RC_BOX_INFRA)
