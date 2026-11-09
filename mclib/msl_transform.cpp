@@ -19,11 +19,10 @@ long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *
     BindMaterials();
     // Hierarchy order cached per shape (parents before children). It is rebuilt only when a parent link no longer matches the
     // snapshot the order was built from (shape compaction rebuilds the links).
-    const auto parentIndexOf = [&](long n) -> int {
+    const auto parentIndexOf = [&](long n) {
         const _TG_ShapeRec* p = listOfShapes[n].parentNode;
-        if (!p) return -1;
-        const long d = p - listOfShapes;
-        gosASSERT(d >= 0 && d < numTG_Shapes);
+        const long d = p ? static_cast<long>(p - listOfShapes) : -1L;
+        gosASSERT(d < numTG_Shapes);
         return static_cast<int>(d);
     };
     bool orderOk = static_cast<long>(walkOrder_.size()) == numTG_Shapes && static_cast<long>(walkParent_.size()) == numTG_Shapes;
