@@ -236,7 +236,7 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
             enables += "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";
         }
         _putenv_s("VK_LAYER_ENABLES", enables.c_str());
-        if (!std::getenv("VK_LAYER_DUPLICATE_MESSAGE_LIMIT")) _putenv_s("VK_LAYER_DUPLICATE_MESSAGE_LIMIT", "200");
+        if (!std::getenv("VK_LAYER_DUPLICATE_MESSAGE_LIMIT")) _putenv_s("VK_LAYER_DUPLICATE_MESSAGE_LIMIT", "100000");   // true per-id counts (the default cap of 200 hid every hot class)
         g_amdChecksExpected.store(true, std::memory_order_relaxed);
         return true;
     }
@@ -422,7 +422,8 @@ bool VulkanContext::init(bool wantPresent) {
     // Engine-owned layer settings (not the vkconfig / environment): the duplicate-message cap for every preset, the sync preset's extra-property
     // option, the best-practices switches. They are chained next to the feature list, which stays as the fallback for the same preset.
     const char* const kLayer = "VK_LAYER_KHRONOS_validation";
-    const uint32_t dupLimit = 200, on = 1;
+    const bool presetBPLimit = std::strcmp(valPreset, "best-practices") == 0;
+    const uint32_t dupLimit = presetBPLimit ? 100000u : 200u, on = 1;
     const bool presetSync = std::strcmp(valPreset, "sync") == 0, presetBP = std::strcmp(valPreset, "best-practices") == 0;
     std::vector<VkLayerSettingEXT> lset;
     auto addSetting = [&]<size_t N>(const char (&name)[N], VkLayerSettingTypeEXT type, const uint32_t* v) { lset.push_back({kLayer, name, type, 1, v}); };
