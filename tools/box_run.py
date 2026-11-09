@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: ab:<before-ref> (day + night A/B against HEAD) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -213,23 +213,30 @@ for row in "${ROWS[@]}"; do
     marks=mc2_01_saved_205644,mc2_10_saved_204523
     take_lock
     gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/a" > "$OUT/ab_before.log" 2>&1; rc=$?
+    gr timeout -k 30 1500 python3 tools/box_gpu_passes.py run --install "$I" --out "$ABOUT" --name gpu_passes_base --ref-commit "$AB_BEFORE" > "$OUT/ab_gpu_base.log" 2>&1; gprc=$?   # same lock, same arm: its own fresh log dir
     rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row; exec 9>&-; GOT=""; LOCKED=""
     BUILD_SHA=$SHA; build_install
     if [ "$rc" = 0 ]; then
       take_lock; LOCKED=1
       gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/b" > "$OUT/ab_after.log" 2>&1; rc=$?
+      gr timeout -k 30 1500 python3 tools/box_gpu_passes.py run --install "$I" --out "$ABOUT" --name gpu_passes_tip --ref-commit "$SHA" > "$OUT/ab_gpu_tip.log" 2>&1; gprc2=$?; [ "$gprc" = 0 ] && gprc=$gprc2
       if [ "$rc" = 0 ]; then
         grc python3 tools/visual_verify/ab.py --compare-only "$ABOUT/a" "$ABOUT/b" --out-root "$ABOUT/compare" > "$OUT/ab_compare.log" 2>&1; rc=$?
       fi
     fi
     printf "%s\t%s\n" "$row" "$rc" >> "$OUT/rows.tsv"
     echo "[box_run] row=$row rc=$rc out=$ABOUT"
+    if [ -f "$ABOUT/gpu_passes_base.json" ] && [ -f "$ABOUT/gpu_passes_tip.json" ]; then   # jsons next to rows.tsv, ratios in the run output
+      cp "$ABOUT/gpu_passes_base.json" "$ABOUT/gpu_passes_tip.json" "$OUT/"
+      grc python3 tools/box_gpu_passes.py compare "$OUT/gpu_passes_base.json" "$OUT/gpu_passes_tip.json" --out "$OUT/gpu_passes_ab.txt"
+    else echo "[box_run] gpu-passes A/B: NOT MEASURED (a pass run did not finish; see ab_gpu_base.log / ab_gpu_tip.log)"; fi
+    printf "%s\t%s\n" "ab-gpu-passes" "${gprc:-1}" >> "$OUT/rows.tsv"; [ "${gprc:-1}" = 0 ] || RES=1
     [ "$rc" = 0 ] || RES=1
     continue ;;
   esac
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
-  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
+  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; gpu-passes) TMO=1500;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  QS=""; [ "$GOT" = 3 ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu 3 --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
                  cmd="$QS python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
@@ -247,6 +254,7 @@ for row in "${ROWS[@]}"; do
     unit-san)    # same doctest tier under clang ASan+UBSan in its OWN tree (build64-tests-san); UBSan recovers (all findings listed) and is counted from log_path files
                  SANF="-fsanitize=address,undefined -fno-sanitize=vptr -fsanitize-recover=address -fno-omit-frame-pointer"   # vptr off: the harness links stub subsets of the engine, so typeinfo for Mover/Appearance is never emitted and a vptr check only fails the link
                  cmd="cmake -S tests/unit -B build64-tests-san -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS='-stdlib=libc++ $SANF' -DCMAKE_C_FLAGS='$SANF' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld $SANF' -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests-san -j16 -k 0 mc2_tests && cd build64-tests-san && rm -f \$OUT/ubsan.* \$OUT/asan.* && ASAN_OPTIONS=detect_leaks=0:halt_on_error=0:log_path=\$OUT/asan UBSAN_OPTIONS=print_stacktrace=1:log_path=\$OUT/ubsan ./mc2_tests --no-breaks; rc=\$?; n=\$(cat \$OUT/ubsan.* 2>/dev/null | grep -c 'runtime error'); a=\$(cat \$OUT/asan.* 2>/dev/null | grep -c 'ERROR: AddressSanitizer'); echo \"[san] rc=\$rc ubsan_findings=\$n asan_findings=\$a\"; [ \$rc = 0 ] && [ \$n = 0 ] && [ \$a = 0 ]" ;;
+    gpu-passes)  cmd="python3 tools/box_gpu_passes.py run --install $I --out $OUT --name gpu_passes; rc=\$?; cat $OUT/gpu_passes.txt 2>/dev/null; exit \$rc" ;;   # fixed poses (mc2_01 day, mc2_10 night, mc2_24 battle) off-screen; its own fresh log dir; table in this row's log + $OUT/gpu_passes.json
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
     gpu:*)       cmd="${row#gpu:}" ;;   # arbitrary command that runs the game: takes the lock
@@ -432,6 +440,11 @@ def task_verdict(tid, repo, wait):
     return code
 
 
+def refuse_dirty(rows):
+    """Rows whose numbers would silently describe the committed state while the worktree differs."""
+    return any(r == "gpu-passes" or r.startswith("ab:") for r in rows)
+
+
 def lane_key(abbrev, sha):
     """Lane dir / ref key: the branch name, or detached-<sha8> when HEAD is detached (git prints 'HEAD'), so detached runs never share a dir."""
     return f"detached-{sha[:8]}" if abbrev in ("", "HEAD") else abbrev.replace("/", "_")
@@ -542,7 +555,11 @@ def main():
         ap.error("give at least one row, e.g. smoke-lite")
     if any(r.startswith("ab:") for r in a.rows) and len(a.rows) != 1:
         ap.error("ab:<before-ref> runs alone (builds and captures both arms)")
-    if git("status", "--porcelain", "--untracked-files=no", repo=repo):
+    dirty = git("status", "--porcelain", "--untracked-files=no", repo=repo)
+    if dirty and refuse_dirty(a.rows):
+        print("[box_run] REFUSED: the gpu-passes / ab: rows measure the committed tip only and the worktree has uncommitted changes (the box would time the committed state, not yours). Commit first:\n" + dirty[:600], file=sys.stderr)
+        return 2
+    if dirty:
         print("[box_run] warning: uncommitted changes are NOT sent; the box runs HEAD", file=sys.stderr)
     sha = git("rev-parse", "HEAD", repo=repo)
     branch = lane_key(git("rev-parse", "--abbrev-ref", "HEAD", repo=repo), sha)
@@ -583,7 +600,7 @@ def main():
         sync_nifty(repo)
     # gpu choice
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
-    cap0 = 1 if (any(r.startswith(("capture", "smoke")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
+    cap0 = 1 if (any(r.startswith(("capture", "smoke", "gpu-passes")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
     gpu = a.gpu
     if gpu not in ("auto", "0", "1", "2", "3"):
         print(f"[box_run] --gpu must be 0-2 or auto, got {gpu!r}")
