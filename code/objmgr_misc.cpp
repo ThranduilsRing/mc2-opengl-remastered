@@ -378,7 +378,8 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 											   GameObjectPtr owner,
 											   glm::vec3& position,
 											   float damage,
-											   float radius) 
+											   float radius,
+											   float lightSourceRadius)
 {
 	// Presentation only: impact decals for mines, deaths and airstrikes (bolt impacts emit their own event).
 	impact_presentation::onExplosion(effectId, position, radius);
@@ -403,6 +404,7 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 				explosion->setExplDmg(damage);
 				explosion->setExists(true);
 				explosion->setOwner(owner);
+				explosion->lightSourceRadius = lightSourceRadius > 0.0f ? lightSourceRadius : (owner ? owner->getExtentRadius() : 0.0f);
 				return(explosion);
 			}
 			else if (objectType && (objectType->getObjectClass() == FIRE))

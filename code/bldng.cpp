@@ -1523,7 +1523,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 				// ONLY if the building has no special MAGIC gos FX version!
 				glm::vec3 hitNodePos = appearance->getHitNode();
 				if (!appearance->playDestruction())
-					ObjectManager->createExplosion(BUILDING_EXPLOSION_ID,nullptr,hitNodePos,explDamage,explRadius);
+					ObjectManager->createExplosion(BUILDING_EXPLOSION_ID,nullptr,hitNodePos,explDamage,explRadius,getExtentRadius());
 				else	//Play the sound effect and do splash damage but don't draw any effect.  We are playing a magical GosFX one!!
 					ObjectManager->createExplosion(EMPTY_EXPLOSION_ID,nullptr,hitNodePos,explDamage,explRadius);
 

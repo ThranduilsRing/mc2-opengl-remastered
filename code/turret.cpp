@@ -2158,7 +2158,7 @@ long Turret::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk
 		//-----------------------------------------------------
 		// Now, blow the building up using its type->explosion
 		// (this won't do anything if a building type doesn't have an explosion)
-		ObjectManager->createExplosion(TURRET_EXPLOSION_ID,nullptr,position,explDamage,explRadius);
+		ObjectManager->createExplosion(TURRET_EXPLOSION_ID,nullptr,position,explDamage,explRadius,getExtentRadius());
 		if (CombatLog) {
 			char s[1024];
 			(*std::format_to_n(s, sizeof(s) - 1, "[{:.2f}] turret.destroyed: ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName())).out = '\0');

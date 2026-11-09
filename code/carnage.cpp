@@ -21,6 +21,7 @@
 #include <cstring>
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
+#include "explosion_light.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -706,8 +707,25 @@ void Carnage::updatePresentation()
 				intensity = (static_cast<ExplosionTypePtr>(getObjectType()))->maxIntensity;
 				outRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMaxRadius;
 				inRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightMaxMaxRadius;
+				const auto pool = mc2::explosion_light::scale(static_cast<int>(effectId), lightSourceRadius, intensity, inRadius, outRadius);
+				intensity = pool.intensity;
+				inRadius = pool.inner;
+				outRadius = pool.outer;
 				pointLight->SetIntensity(intensity);
 				pointLight->SetFalloffDistances(inRadius,outRadius);
+				if (mc2_diag::tagEnabled("EXPLOSION_LIGHT")) {
+					const auto rgb = pointLight->GetSourceRGB();
+					char data[768];
+					mc2::fmt::to_buf(data,
+						"{{\"effect\":{},\"rgb\":{},\"maxIntensity\":{},\"sourceRadius\":{},\"inner\":{},\"outer\":{},\"intensity\":{},\"poolRadiance\":[{},{},{}]}}",
+						static_cast<int>(effectId), static_cast<unsigned>(rgb),
+						(static_cast<ExplosionTypePtr>(getObjectType()))->maxIntensity,
+						lightSourceRadius, inRadius, outRadius, pointLight->intensity,
+						static_cast<float>((rgb >> 16) & 255) / 255.0f * pointLight->intensity,
+						static_cast<float>((rgb >> 8) & 255) / 255.0f * pointLight->intensity,
+						static_cast<float>(rgb & 255) / 255.0f * pointLight->intensity);
+					mc2_diag::writeEvent("EXPLOSION_LIGHT", 1, 0, data);
+				}
 
 				lightId = eye->addWorldLight(pointLight);
 				duration = (static_cast<ExplosionTypePtr>(getObjectType()))->duration;
@@ -736,6 +754,10 @@ void Carnage::updatePresentation()
 							((static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMaxRadius - (static_cast<ExplosionTypePtr>(getObjectType()))->lightOutMinRadius) * timeFactor;
 				inRadius = (static_cast<ExplosionTypePtr>(getObjectType()))->lightMinMaxRadius +
 							((static_cast<ExplosionTypePtr>(getObjectType()))->lightMaxMaxRadius - (static_cast<ExplosionTypePtr>(getObjectType()))->lightMinMaxRadius) * timeFactor;
+				const auto pool = mc2::explosion_light::scale(static_cast<int>(effectId), lightSourceRadius, intensity, inRadius, outRadius);
+				intensity = pool.intensity;
+				inRadius = pool.inner;
+				outRadius = pool.outer;
 
 				pointLight->SetIntensity(intensity);
 				pointLight->SetFalloffDistances(inRadius,outRadius);
@@ -901,6 +923,7 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 
 	gosEffect = nullptr;
 	presentationStarted = false;
+	lightSourceRadius = 0.0f;
 	pointLight = nullptr;
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 	
@@ -948,6 +971,7 @@ void Carnage::CopyTo (CarnageData *data)
 void Carnage::Load (CarnageData *data)
 {
 	GameObject::Load(data); 
+	lightSourceRadius = 0.0f; // old save records have no presentation geometry
 
 	carnageType = data->carnageType;
 	ownerWID = data->ownerWID;

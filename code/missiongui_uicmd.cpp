@@ -7,6 +7,19 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "carnage.h"
+#include "weaponfx.h"
+
+extern std::atomic<uint32_t> g_mc2FrameCounter;
+
+namespace {
+// One fixed-frame, damage-free flash for reproducible day/night captures.
+struct ExplosionProbe {
+	unsigned frame = 0;
+	int effect = 0;
+	float x = 0, y = 0, sourceRadius = 0;
+} explosionProbe;
+}
 
 
 //--------------------------------------------------------------------------
@@ -129,6 +142,15 @@
 // as MC2_BOOT_PAUSED above. Registered (Trace).
 void MissionInterfaceManager::processUiCommandChannel()
 {
+	extern std::atomic<uint32_t> g_mc2FrameCounter;
+	if (explosionProbe.frame && g_mc2FrameCounter.load(std::memory_order_relaxed) >= explosionProbe.frame) {
+		if (ObjectManager && land) {
+			glm::vec3 p(explosionProbe.x, explosionProbe.y, 0.0f);
+			p.z = land->getTerrainElevation(p);
+			ObjectManager->createExplosion(explosionProbe.effect, nullptr, p, 0.0f, 0.0f, explosionProbe.sourceRadius);
+		}
+		explosionProbe.frame = 0;
+	}
 	static const std::string s_pathText = mc2::gate::str<"MC2_UI_COMMAND_FILE">();   // "" when unset or empty
 	static const char* s_path = s_pathText.c_str();
 	if (!s_path || !s_path[0])
@@ -210,7 +232,21 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 	const char*& result = c.result;
 	std::string& note = c.note;
 
-	if (line == "toggle_pause") {
+	if (line.compare(0, 10, "explosion ") == 0) {
+		ExplosionProbe probe;
+		if (sscanf(line.c_str(), "explosion %u %d %f %f %f", &probe.frame, &probe.effect,
+			&probe.x, &probe.y, &probe.sourceRadius) != 5 ||
+			(probe.effect != VEHICLE_EXPLOSION_ID && probe.effect != TURRET_EXPLOSION_ID && probe.effect != BUILDING_EXPLOSION_ID) ||
+			!std::isfinite(probe.x) || !std::isfinite(probe.y) || !std::isfinite(probe.sourceRadius) ||
+			probe.sourceRadius <= 0.0f || probe.frame <= g_mc2FrameCounter.load(std::memory_order_relaxed)) {
+			note = "explosion <future render frame> <40|44|45> <x> <y> <source radius in world units>";
+		} else {
+			explosionProbe = probe;
+			result = "ok";
+			note = "damage-free explosion scheduled";
+		}
+	}
+	else if (line == "toggle_pause") {
 		if (eye && eye->inMovieMode) {
 			result = "blocked";
 			note = "movie mode";
