@@ -4,6 +4,7 @@
 #include <cstdio>
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
+#include "fx_fixture_aim.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "score_sort.h"
@@ -619,13 +620,8 @@ bool Mover::weaponInRange (long weaponIndex, float metersToTarget, float buffer)
 
 	MasterComponentPtr weapon = &MasterComponent::masterList[inventory[weaponIndex].masterID];
 
-	float minRange = WeaponRanges[weapon->getWeaponRange()][0] - buffer;
-	float maxRange = WeaponRanges[weapon->getWeaponRange()][1] + buffer;
-	if (metersToTarget < minRange)
-		return(false);
-	if (metersToTarget > maxRange)
-		return(false);
-	return(true);
+	return mc2_fx_aim::weaponRangeAccepts(WeaponRanges[weapon->getWeaponRange()][0], WeaponRanges[weapon->getWeaponRange()][1],
+		metersToTarget, buffer);
 }
 
 long Mover::getWeaponsReady (int* list, int listSize) {

@@ -133,3 +133,52 @@ TEST_CASE("equipment ADD: a pack missile rack keeps the stock missile-type token
     f.ammoToken = "LRM";
     CHECK(buildEquipmentAddCsvLine(f).find(",LRM,0,") != std::string::npos);
 }
+
+// FX-LOOP-AIM: every weapon_* socket a package chassis names must be a node that exists in its GLB (a missing bone
+// silently drops the mount to the legacy round-robin node). Needs the install data (MC2_TEST_INSTALL_DATA).
+#include "stock_data_scan.h"
+
+TEST_CASE("package chassis: bone-name parsing and GLB node lookup") {
+    const std::string json = R"({"nodes": {"joint_torso": "j_Spine2", "weapon_rightarm": "j_RForearm", "weapon_leftarm": "j_LForearm"}})";
+    const auto bones = stockscan::packageWeaponBones(json);
+    REQUIRE(bones.size() == 2);
+    CHECK(bones[0].first == "weapon_rightarm");
+    CHECK(bones[0].second == "j_RForearm");
+    const std::string body = R"({"nodes":[{"name":"j_RForearm"},{"name": "j_LForearm"}]})";
+    std::string glb = "glTF";
+    glb.append(8, '\0');
+    glb.push_back(static_cast<char>(body.size()));
+    glb.append(3, '\0');
+    glb += "JSON" + body;
+    CHECK(stockscan::glbHasNode(glb, "j_RForearm"));
+    CHECK(stockscan::glbHasNode(glb, "j_LForearm"));
+    CHECK_FALSE(stockscan::glbHasNode(glb, "j_Missing"));
+}
+
+TEST_CASE("package chassis: every weapon_* name maps to a bone present in the GLB (needs the install data)") {
+    using namespace stockscan;
+    const fs::path tgl = installDataRoot() / "tgl";
+    if (installDataRoot().empty()) { MESSAGE("MC2_TEST_INSTALL_DATA not found: package scan skipped"); return; }
+    int packages = 0;
+    for (const auto& e : fs::directory_iterator(tgl)) {
+        const std::string fn = e.path().filename().string();
+        if (fn.size() < 13 || fn.compare(fn.size() - 13, 13, ".package.json") != 0) continue;
+        const std::string json = readAll(e.path());
+        const size_t g = json.find("\"sourceGlb\"");
+        REQUIRE(g != std::string::npos);
+        const size_t b = json.find('"', json.find(':', g) + 1);
+        const std::string glbName = json.substr(b + 1, json.find('"', b + 1) - b - 1);
+        const std::string glb = readAll(tgl / glbName);
+        INFO(fn << " -> " << glbName);
+        REQUIRE_FALSE(glb.empty());
+        const auto bones = packageWeaponBones(json);
+        CHECK_FALSE(bones.empty());
+        for (const auto& [socket, bone] : bones) {
+            INFO(fn << " " << socket << " -> " << bone);
+            CHECK(glbHasNode(glb, bone));
+        }
+        ++packages;
+    }
+    MESSAGE("scanned " << packages << " packages");
+    CHECK(packages >= 20);
+}
