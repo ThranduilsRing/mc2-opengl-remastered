@@ -3,7 +3,7 @@
 Owner symptom: "Lane installs are the biggest avoidable cost tonight";
 campaign-globe was "BLOCKED by a 15-min isolated full deploy".
 
-Assignment: slot12, claude/lane-install-fast, base d63c403c9715.
+Assignment: slot12, claude/lane-install-fast, base b26fc9bfe90a.
 No engine changes; no change to the v0.4 deploy payload.
 
 ## Use (proposed installs paragraph for lane-rules section 5)
@@ -26,8 +26,7 @@ on E:; mutable runtime files and cooked kit receipts
 are private copies. Failed links fall back to a copy only after checking its
 additional disk cost, then verify both hashes. The private `.lane-seed.json`
 receipt permits deploy to retain identical payload and atomically privatize
-changed shared files before the exact-payload isolation guard. Installs without
-this receipt retain the original guard behavior. Kit-changing lanes omit
+changed shared files before the exact-payload isolation guard. Kit-changing lanes omit
 `--skip-kit`; that deliberately retains normal pinned-kit verification/cooking.
 Legacy installs under E:/mc2-installs without a seed receipt also detach the
 exact deploy write set when `--allow-new-target` is explicit. This includes
@@ -80,9 +79,13 @@ cache plus the bake-recook-smooth refusal naming 58 shared mission assets.
 The prior full install took 202.737 s; recipe linking at a5e946837 was unmeasured.
 Added regression tests for legacy mission writes, shared manifest detachment,
 replacement failure, warm kit hash reuse and same-size kit corruption.
-Next: commit final code; run gate_inputs targeted pytest plus ratchet/lint;
-time a fresh install and smoke-lite using the seed executable as the explicit
+Continuation prerequisite: explicit authorization assigns the unused
+E:/mc2-installs/lane-install-fast-final for fresh timing and smoke-lite.
+The legacy link-write fix already landed at a053001a7; its regression tests
+include mission assets, manifest writes and replacement failure isolation.
+Next: run gate_inputs targeted pytest plus ratchet/lint at the final tip;
+time that fresh install and smoke-lite using the seed executable as the explicit
 fingerprint reference (this tooling lane changes no C++). No build/deploy needed.
-lane_slot.install_dirs assigns E:/mc2-installs/claude/lane-install-fast as well
-as the existing short-name directory. Use the unused full-branch path for timing;
-preserve the old directory because its prior cleanup was refused.
+Record exact-tip results in the proof directory's STATE.md, then remove only the
+new install after archiving runtime/crash evidence. Preserve the old
+E:/mc2-installs/lane-install-fast because its prior cleanup was refused.
