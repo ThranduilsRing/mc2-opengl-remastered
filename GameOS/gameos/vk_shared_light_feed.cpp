@@ -110,9 +110,9 @@ FrameAlloc SharedLightFeed::acquire(VulkanContext& ctx, const mc2::vkLights::Fee
         std::fflush(stderr);
     }
     if (copies_ == 600 && mc2DiagVerbose()) {   // ~10 s receipt: hits ~= copies when both islands share
-        mc2::fmt::print_err("[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits={:d} fallbacks={:d} bytes/frame={:d}\n",
-            mc2::fmt::as_ulong(hits_), mc2::fmt::as_ulong(fallbacks_), mc2::fmt::as_u64(static_cast<unsigned long long>(bytes_)));
-        mc2::fmt::print_err("[VK_LIGHTFEED_SYNC v1] fastExits={:d} journalSyncs={:d} fullScans={:d} rowsCopied={:d}\n",
+        mc2::fmt::print_err("[VK_LIGHTFEED_DEDUP v1] 600 copies: sharedHits={:d} fallbacks={:d} bytes/frame={:d}"
+            " syncFastExits={:d} syncJournal={:d} syncFullScans={:d} syncRowsCopied={:d}\n",
+            mc2::fmt::as_ulong(hits_), mc2::fmt::as_ulong(fallbacks_), mc2::fmt::as_u64(static_cast<unsigned long long>(bytes_)),
             mc2::fmt::as_u64(static_cast<unsigned long long>(syncStats_.fastExits)),
             mc2::fmt::as_u64(static_cast<unsigned long long>(syncStats_.journalSyncs)),
             mc2::fmt::as_u64(static_cast<unsigned long long>(syncStats_.fullScans)),
