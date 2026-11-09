@@ -144,6 +144,18 @@ _WALL_T0="$(date +%s%N 2>/dev/null | cut -c1-13)"
 PASS_COUNT=0
 FAIL_COUNT=0
 KNOWN_COUNT=0
+# HOST-INFRA (laptop-rows-green): a row whose command cannot run on THIS host (a tool or reference data that genuinely cannot
+# exist there) exits 77 after printing a HOST_INFRA line. It is its own state, never PASS. Without MC2_HOST_INFRA_OK=1 (the
+# farm laptop's gate env only) it fails the board exactly like any other red row, so the PC never weakens.
+INFRA_COUNT=0
+INFRA_NAMES=()
+_host_need() {   # _host_need TOOL...: 77 (HOST_INFRA) when a tool is not on PATH; used as the head of a row's && chain
+    local t; for t in "$@"; do command -v "$t" >/dev/null 2>&1 || { echo "HOST_INFRA: $t is not on this host's PATH"; return 77; }; done
+}
+_host_need_stock() {   # 77 (HOST_INFRA) when no stock mission data (dir, override or deployed mission.fst) exists on this host
+    py -3 -c "import os,sys; sys.path.insert(0,'.'); from tools.mc2data import stock_missions as m; sys.exit(0 if (os.environ.get(m.ENV_OVERRIDE) or os.environ.get('MC2_CODEC_STOCK') or any(os.path.isdir(d) for d in m.CANDIDATE_DIRS) or m.find_deployed_fst()) else 1)" \
+        || { echo "HOST_INFRA: no stock mission data (mc2srcdata-fresh/missions or a deployed mission.fst) on this host"; return 77; }
+}
 
 # Arrays to collect results for the summary table.
 # STRICTLY PARALLEL, all four of them. Anything that appends to NAMES must
@@ -357,6 +369,11 @@ _finish_check() {   # $1 label $2 cmd $3 out $4 rc $5 ms $6 header-already-print
         PASS_COUNT=$((PASS_COUNT + 1))
         RESULTS+=("PASS")
         REASONS+=("")
+    elif [ "$rc" -eq 77 ] && [ "${MC2_HOST_INFRA_OK:-0}" = "1" ] && printf '%s\n' "$out" | grep -q 'HOST_INFRA'; then
+        INFRA_COUNT=$((INFRA_COUNT + 1))
+        INFRA_NAMES+=("$label")
+        RESULTS+=("INFRA")
+        REASONS+=("$(printf '%s\n' "$out" | grep -m1 'HOST_INFRA')")
     else
         FAIL_COUNT=$((FAIL_COUNT + 1))
         RESULTS+=("FAIL")
@@ -855,7 +872,7 @@ fi
 
 run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
 run_nightly "abl_writer_census"              "py -3 tools/abl_writer_census.py --check"
-run_nightly "analyze_dangling"              "py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
+run_nightly "analyze_dangling"              "[ -f \"\${MC2_TOOL_CLANG_CL:-C:/Program Files/LLVM/bin/clang-cl.exe}\" ] || { echo \"HOST_INFRA: clang-cl (LLVM) is not on this host\"; exit 77; }; py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
 run_nightly "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
 run_nightly "container_callsites"       "py -3 tests/analyze/container_callsites.py --check"   # step 4 B2: the compiler-derived EList/SortList/PriorityQueue call-site list; an edited file needs --remap BASE, a converted one --drop
 # (the vk_umbrella_readers rule was retired with the umbrella: the Vulkan scene path is unconditional)
@@ -1494,7 +1511,7 @@ run_nightly "visual_regression_schema"   "py -3 scripts/run_visual.py --validate
 # one.
 # One pytest process per module, 2 at a time, through the per-module result cache (scripts/module_test_cache.py):
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
-run_nightly "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
+run_nightly "mission_codec_golden"       "_host_need_stock && MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_nightly "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
 run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py scripts/tests/test_box_queue.py -q -p no:cacheprovider"
 run_nightly "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
@@ -1506,8 +1523,8 @@ run_nightly "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
 run_nightly "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"
 run_nightly "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
-run_nightly "shadow_bake_init"           "py -3 -B -m pytest scripts/tests/test_shadow_bake_init.py -q -p no:cacheprovider"
-run_nightly "abl_static_alloc"           "py -3 -B -m pytest scripts/tests/test_abl_static_alloc.py -q -p no:cacheprovider"
+run_nightly "shadow_bake_init"           "_host_need clang++ && py -3 -B -m pytest scripts/tests/test_shadow_bake_init.py -q -p no:cacheprovider"
+run_nightly "abl_static_alloc"           "_host_need clang++ && py -3 -B -m pytest scripts/tests/test_abl_static_alloc.py -q -p no:cacheprovider"
 
 # ---------------------------------------------------------------------------
 # TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools
@@ -1562,6 +1579,9 @@ for i in "${!NAMES[@]}"; do
         printf "  %-40s %8ss  PASS%s\n" "$label" "$secs" "$mark"
     elif [ "$result" = "KNOWN" ]; then
         printf "  %-40s %8ss  KNOWN (correct failure, ledger-pinned)%s\n" "$label" "$secs" "$mark"
+    elif [ "$result" = "INFRA" ]; then
+        printf "  %-40s %8ss  INFRA (not run on this host, NOT a pass)%s\n" "$label" "$secs" "$mark"
+        [ -z "${REASONS[$i]:-}" ] || printf "        why> %s\n" "${REASONS[$i]}"
     else
         printf "  %-40s %8ss  FAIL  <---%s\n" "$label" "$secs" "$mark"
         # FAIL-REASON-1: the row itself says what went wrong, so triage --
@@ -1575,6 +1595,10 @@ done
 echo "---------------------------------------------------------------------"
 printf "  %d passed, %d failed, %d known-correct-failure\n" \
     "$PASS_COUNT" "$FAIL_COUNT" "$KNOWN_COUNT"
+if [ "$INFRA_COUNT" -gt 0 ]; then
+    # merge_gate keys on this exact line: the contracts stage becomes 'PASS (host-INFRA rows: ...)', never a bare PASS
+    echo "[HOST_INFRA_ROWS] $INFRA_COUNT: ${INFRA_NAMES[*]}"
+fi
 printf "  summed row time %d.%02ds across %d rows\n" \
     "$((TOTAL_MS / 1000))" "$(((TOTAL_MS % 1000) / 10))" "${#NAMES[@]}"
 _WALL_MS=$(( $(date +%s%N | cut -c1-13) - _WALL_T0 ))

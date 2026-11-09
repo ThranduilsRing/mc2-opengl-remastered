@@ -245,8 +245,28 @@ def infra_status(returncode, output):
     return f"INFRA ({returncode}): {match.group(0)}" if returncode and match else None
 
 
+# Owner ruling 2026-11-08: mods are not critical; a red or INFRA mods row is reported (ADVISORY: <original status>), never blocks, never reads PASS.
+# mods-slim (NON_BLOCKING_STAGES above) keeps its own "ADVISORY <status> (non-blocking ...)" path; this covers the full battery.
+ADVISORY_STAGES = ("mods",)
+ADVISORY_PREFIX = "ADVISORY: "
+
+
+def advisory_status(name, status):
+    """'ADVISORY: <status>' for a non-passing row of a non-blocking stage, else the status unchanged."""
+    return ADVISORY_PREFIX + status if name in ADVISORY_STAGES and not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) else status
+
+
+def host_infra_status(output, status):
+    """A green contracts stage that printed [HOST_INFRA_ROWS] (check-contracts.sh, MC2_HOST_INFRA_OK=1 on the farm laptop) names those rows:
+    'PASS (host-INFRA rows: ...)'. The rows were NOT run; the stage is green only because the host genuinely cannot run them."""
+    for line in (output or "").splitlines():
+        if line.startswith("[HOST_INFRA_ROWS]"):
+            return "PASS (host-INFRA rows: " + line.split("]", 1)[1].strip().replace("|", "/") + ")" if status == "PASS" else status
+    return status
+
+
 def stage_passed(status):
-    return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN"))
+    return status == "PASS" or status.startswith(("REUSED:", "PASS (perf_counter-only WARN", "PASS (host-INFRA rows", ADVISORY_PREFIX))
 
 
 def farm_key(command):
@@ -496,7 +516,7 @@ class GateState:
         offline = name in OFFLINE_STAGES
         if not ((row.get('head') == self.head or (not offline and head_delta_nonruntime(row.get('head'), self.head, name)))
                 and (offline or sha is not None and row.get('exe_sha') == sha)
-                and stage_passed(row.get('status', ''))):
+                and stage_passed(row.get('status', '')) and not row.get('status', '').startswith(ADVISORY_PREFIX)):   # a red advisory row is rerun, never replayed
             return False
         specs = (command, overrides) if name == 'mods' else self.specs.get(name, (command, overrides))
         evidence = row.get('evidence', {})
@@ -1280,6 +1300,7 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
                 skipped={n: reasons.get(n, "not run") for n in skipped},
                 not_run=[n for n, _, _ in steps if n not in ROW_RESULTS and n not in skipped],
                 failed=[dict(name=n, status=s) for n, s in FAILED_STAGES],
+                advisory=[dict(name=n, status=r["status"]) for n, r in ROW_RESULTS.items() if r["status"].startswith(ADVISORY_PREFIX)],
                 artifacts=artifacts, timings={k: round(v, 1) for k, v in timings.items()},
                 cleanup_errors=list(cleanup_errors), written=time.time())
     try:   # a --hotfix direct nifty merge is named in the verdict
@@ -1796,6 +1817,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 scheduler_wait = getattr(result, 'gate_scheduler_wait', 0.0)
                 status = (smoke_report_status(getattr(result, "stdout", "")) or perf_warn_status(getattr(result, "stdout", ""))) if result.returncode == 0 else (
                     infra_status(result.returncode, getattr(result, "stdout", "")) or f"FAIL ({result.returncode})")
+                if name == "contracts":
+                    status = host_infra_status(getattr(result, "stdout", ""), status)
                 mismatch = None
                 if name == "compare-captures" and "--compare-only" in command:
                     cmp_i = command.index("--compare-only")
@@ -1827,10 +1850,13 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 status = "INFRA (3): every red mod timed out loading (mod_smoke rc 3)"   # host/load time, not a mod regression
             if name in NON_BLOCKING_STAGES and not stage_passed(status):
                 status = f"ADVISORY {status} (non-blocking; needs a dedicated fix lane)".replace("|", "/")
-            failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
             if name == 'mods':
                 gate_reuse.mods_end(status == "PASS")
-            elif name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
+            status = advisory_status(name, status)
+            if status.startswith(ADVISORY_PREFIX):
+                print(f"[merge_gate] ADVISORY {name} (non-blocking by owner ruling 2026-11-08): {status[len(ADVISORY_PREFIX):]}", flush=True)
+            failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
+            if name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
                 cache_started = time.monotonic()
                 gate_reuse.save_deployed(command[command.index('--allow-new-target') - 1], ROOT, head)
                 TIMINGS["cache"] = TIMINGS.get("cache", 0.0) + time.monotonic() - cache_started

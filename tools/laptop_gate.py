@@ -167,6 +167,7 @@ def gate_env():
                 # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
                 MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
                 MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
+                MC2_HOST_INFRA_OK="1",   # check-contracts.sh: a row whose tool/data cannot exist here is reported INFRA (never PASS), not red
                 # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
                 MC2_BASH=GIT_BASH)
 
