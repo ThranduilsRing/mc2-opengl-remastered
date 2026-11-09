@@ -298,6 +298,20 @@ TEST_CASE("authored prop detail: failed map never creates a material, absent cha
     CHECK(sources.normal.layers==1);
 }
 
+TEST_CASE("vehicle paint: unmasked object maps share the registered shader body") {
+    ModelOverrideRecord vehicle;
+    CHECK_FALSE(vehicle.usesShaderTeamPaint());
+    ModelOverrideMaterial material;
+    material.normalPath = "lrmc/detail/0_normal.ktx2";
+    material.ormPath = "lrmc/detail/0_orm.ktx2";
+    vehicle.materials.push_back(material);
+    CHECK(vehicle.usesShaderTeamPaint());
+    vehicle.materials[0].albedoPath = "lrmc/albedo.ktx2";
+    CHECK(vehicle.usesShaderTeamPaint());
+    vehicle.materials[0].teamMaskPath = "lrmc/mask.ktx2";
+    CHECK(vehicle.usesShaderTeamPaint());
+}
+
 TEST_CASE("content cook contract: class-scalar slot, BC5 Z rebuild, explicit alpha class") {
     mc2prop::MaterialSources sources;
     ModelOverrideRecord owner;
