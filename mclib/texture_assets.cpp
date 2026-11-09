@@ -32,7 +32,7 @@ namespace mc2::textures {
 std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrTextures& maps) {
     const std::string original(legacy);
     const auto stem = RenderCore::stockPbrStem(legacy);
-    const auto base = std::string("data/textures/") + (vehicle ? "vehicle_pbr/" : "mech_pbr/") + stem;
+    const auto base = RenderCore::stockPbrBase(legacy, vehicle);
     const auto albedo = base + "_albedo.png";
     File probe;
     const bool exists = probe.open(albedo.c_str()) == NO_ERR;

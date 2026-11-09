@@ -5,6 +5,8 @@
 
 #include "texture_decode.h"
 #include "gos_prop_material_cpu.h"
+#include "StockPbr.h"
+#include "TextureService.h"
 #include "../../RenderCore/PropMaterialRows.h"
 #include "utils/Image.h"
 #include <fstream>
@@ -37,6 +39,66 @@ std::vector<uint8_t> tga(int w, int h, int bpp, const std::vector<uint8_t>& bgra
 }
 
 }  // namespace
+
+TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the texture service") {
+    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const std::vector<std::string> mechs = {
+        "anubis", "atlas", "bloodasp", "bushwacker", "catapult", "couger", "cyclops", "enfield",
+        "fireant", "ghoul", "highlander", "hollander", "hunchback", "jagermech", "lauhu", "madcat",
+        "menshen", "raven", "ryoken", "shadowcat", "shayu", "shootist", "starslayer", "thor",
+        "uller", "urbanmech", "vutlure", "werewolf", "wolfhound", "zeus"};
+    const std::vector<std::string> vehicles = {
+        "aerospotter", "ambulance", "armoredcar", "drillson", "hetzer", "hunter", "jeep", "mobilehq",
+        "monsoon", "partisan", "smalltruckmap", "srmc", "storm", "trooptransport", "vedette", "vtolrgb"};
+    RenderCore::TextureService service;
+    uint32_t node = 0;
+    for (const bool vehicle : {false, true}) {
+        const auto& stems = vehicle ? vehicles : mechs;
+        size_t shipped = 0;
+        const auto directory = root / "data/textures" / (vehicle ? "vehicle_pbr" : "mech_pbr");
+        for (const auto& entry : std::filesystem::directory_iterator(directory))
+            if (entry.path().filename().string().ends_with("_albedo.png")) ++shipped;
+        REQUIRE(shipped == stems.size());
+        for (const auto& stem : stems) {
+            const auto legacy = "data/tgl/128/" + stem + (vehicle ? ".tga" : "RGB.tga");
+            const auto base = RenderCore::stockPbrBase(legacy, vehicle);
+            REQUIRE(base == "data/textures/" + std::string(vehicle ? "vehicle_pbr/" : "mech_pbr/") + stem);
+            for (const auto* suffix : {"_albedo.png", "_normal.png", "_orm.png"}) {
+                const auto name = base + suffix;
+                INFO(name);
+                std::ifstream input(root / name, std::ios::binary);
+                REQUIRE(input.is_open());
+                const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(input)), {});
+                REQUIRE(RenderCore::preferStockPbr(!bytes.empty(), false, 100, 100));
+                const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), name.c_str(),
+                    gos_Texture_Solid, gosHint_MipmapFilter0 | gosHint_DontShrink);
+                REQUIRE(decoded);
+                const int edge = stem == "jeep" ? 256 : 512;
+                CHECK(decoded->width == edge);
+                CHECK(decoded->height == edge);
+                CHECK(decoded->pixels.size() == static_cast<size_t>(edge * edge * 4));
+                CHECK(decoded->wantMipmaps);
+                RenderCore::TextureKey key;
+                key.source = RenderCore::makeTextureSourceId("base", name,
+                    RenderCore::textureContentHash(bytes.data(), bytes.size()));
+                key.format = gos_Texture_Solid;
+                key.hints = gosHint_MipmapFilter0 | gosHint_DontShrink;
+                const auto handle = service.acquire(key, ++node);
+                CHECK(service.nodeOf(handle) == node);
+                CHECK(service.acquire(key, node) == handle);
+                auto modKey = key;
+                modKey.source = RenderCore::makeTextureSourceId("mod:own-art", name,
+                    RenderCore::textureContentHash(bytes.data(), bytes.size()));
+                CHECK(service.acquire(modKey, ++node) != handle);
+                CHECK_FALSE(RenderCore::preferStockPbr(true, true, 0, 100));
+                CHECK_FALSE(RenderCore::preferStockPbr(false, false, 100, 100));
+            }
+            std::printf("[STOCK_PBR_OFFLINE] %s/%s albedo normal orm decoded\n",
+                vehicle ? "vehicle" : "mech", stem.c_str());
+        }
+    }
+    CHECK(service.liveCount() == 2 * 3 * (30 + 16));
+}
 
 TEST_CASE("texture decode: mipmaps are opt-in and DisableMipmap wins") {
     CHECK_FALSE(mc2tex::wantsMipmaps(0));

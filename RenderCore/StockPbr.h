@@ -20,6 +20,9 @@ inline std::string stockPbrStem(std::string_view texture) {
         stem.resize(stem.size() - 3);
     return stem;
 }
+inline std::string stockPbrBase(std::string_view texture, bool vehicle) {
+    return std::string("data/textures/") + (vehicle ? "vehicle_pbr/" : "mech_pbr/") + stockPbrStem(texture);
+}
 inline bool preferStockPbr(bool exists, bool legacyMod, int legacyPriority, int pbrPriority) {
     return exists && !(legacyMod && legacyPriority <= pbrPriority);
 }
