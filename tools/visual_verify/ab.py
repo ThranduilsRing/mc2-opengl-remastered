@@ -142,11 +142,13 @@ def commit_order_problem(older, newer, what_older, what_newer):
 
 
 def manifest_mismatches(ma, mb):
-    """Data/shader manifest differences ignoring the build under test: mc2.exe, shaders/vulkan/*.spv and the build outputs
-    that never change a capture's pixels (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a capture).
-    W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in these two and failed."""
+    """Data manifest differences ignoring the build under test: mc2.exe, everything under shaders/vulkan/ (the .spv and the
+    sources they compile from ship together with the exe) and the build outputs that never change a capture's pixels
+    (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a capture).
+    W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset viewer and
+    failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way."""
     build_outputs = {"mc2.exe", "mc2.pdb", "mc2_asset_viewer.exe"}
-    skip = lambda p: p in build_outputs or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))
+    skip = lambda p: p in build_outputs or p.startswith("shaders/vulkan/")
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
     out = [f"only in A: {k}" for k in sorted(ma.keys() - mb.keys())] + [f"only in B: {k}" for k in sorted(mb.keys() - ma.keys())]
