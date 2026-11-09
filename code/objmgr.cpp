@@ -324,16 +324,12 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	if (numGates > 0)
 	{
-		gates = bindPoolArray(gateStore, numGates);
+		gates = gatePool.reset(static_cast<size_t>(numGates));
 		if ( !gates )
 			Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc Gates ");
 			
-		for (i = 0; i < numGates; i++) 
-		{
-			gates[i] = new Gate;
-			gates[i]->setHandle(curHandle);
-			objList[curHandle++] = gates[i];
-		}
+		for (i = 0; i < numGates; i++)
+			spawnGate(curHandle++);
 	}
 
 	//--------------------------------------------------------------
@@ -583,6 +579,19 @@ TurretPtr GameObjectManager::spawnTurret (GameObjectHandle handle)
 	turret->setHandle(handle);
 	objList[handle] = turret;
 	return turret;
+}
+
+//---------------------------------------------------------------------------
+
+GatePtr GameObjectManager::spawnGate (GameObjectHandle handle)
+{
+	const auto id = gatePool.spawn();
+	if (!id)
+		Fatal(handle, " GameObjectManager.spawnGate: gate pool full ");
+	GatePtr gate = gatePool.resolve(id);
+	gate->setHandle(handle);
+	objList[handle] = gate;
+	return gate;
 }
 
 //---------------------------------------------------------------------------
@@ -873,7 +882,7 @@ void GameObjectManager::releasePoolArrays (void)
 	std::vector<TerrainObjectPtr>().swap(terrainObjectStore);
 	std::vector<BuildingPtr>().swap(buildingStore);
 	turretPool.clear();
-	std::vector<GatePtr>().swap(gateStore);
+	gatePool.clear();
 	std::vector<WeaponBoltPtr>().swap(weaponStore);
 	std::vector<CarnagePtr>().swap(carnageStore);
 	std::vector<ArtilleryPtr>().swap(artilleryStore);
@@ -946,14 +955,7 @@ void GameObjectManager::destroy (void)
 	turrets = nullptr;
 
 	//--------------------------------------------------------------
-	if (gates && numGates > 0)
-	{
-		for (i = 0; i < numGates; i++) 
-		{
-            mc2::tick::retireObject(gates[i]);
-			gates[i] = nullptr;
-		}
-	}
+	gatePool.clear();
 	gates = nullptr;
 
 	//--------------------------------------------------------------

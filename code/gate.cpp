@@ -79,13 +79,9 @@ extern bool drawExtents;
 //---------------------------------------------------------------------------
 GameObjectPtr GateType::createInstance (void)
 {
-	GatePtr result = new Gate;
-	if (!result)
-		return nullptr;
-
-	result->init(true, this);
-
-	return(result);
+	// Gates occupy fixed mission/save slots owned by GameObjectManager::spawnGate.
+	// Refuse the legacy unowned factory path (ObjectTypeManager::create fails on null).
+	return nullptr;
 }
 
 //---------------------------------------------------------------------------

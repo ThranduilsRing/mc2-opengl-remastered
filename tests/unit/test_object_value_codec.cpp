@@ -8,6 +8,7 @@
 #include "turret_value_codec.h"
 #include "mech_value_codec.h"
 #include "object_slot_codec.h"
+#include "world/actor_pool.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -75,6 +76,56 @@ REAL_OBJECT_SLOTS("TERR", TerrainRecord, TerrainObjectData, kTerrain)
 REAL_OBJECT_SLOTS("BLDG", BuildingRecord, BuildingData, kBuilding)
 REAL_OBJECT_SLOTS("TURR", TurretRecord, TurretData, kTurret)
 REAL_OBJECT_SLOTS("GATE", GateRecord, GateData, kGate)
+
+TEST_CASE("ActorPool/gate save fixture reload preserves slots and bytes across retirement") {
+    using namespace mc2::save;
+    // Exercise the production gate codec with the shared owning pool, without
+    // needing a mission's terrain/render globals to construct an engine Gate.
+    struct SavedGate {
+        GateRecord record;
+        bool* dead = nullptr;
+        ~SavedGate() { if (dead) *dead = true; }
+    };
+    const auto path = std::filesystem::path(MC2_REPO_ROOT) /
+        "tests/fixtures/saves/object-slots/mc2_24-GATE.bin";
+    std::ifstream in(path, std::ios::binary);
+    REQUIRE(in.good());
+    std::vector<std::pair<std::uint32_t, Bytes>> slots;
+    while (in.peek() != std::char_traits<char>::eof()) {
+        std::uint32_t handle = 0, length = 0;
+        in.read(reinterpret_cast<char*>(&handle), 4);
+        in.read(reinterpret_cast<char*>(&length), 4);
+        REQUIRE(length < 65536);
+        Bytes bytes(length);
+        in.read(reinterpret_cast<char*>(bytes.data()), length);
+        REQUIRE(in.good());
+        slots.emplace_back(handle, std::move(bytes));
+    }
+    REQUIRE_FALSE(slots.empty());
+    bool dead = false;
+    mc2::world::ActorPool<SavedGate> pool;
+    pool.reset(slots.size());
+    const auto old = pool.spawn();
+    pool.resolve(old)->dead = &dead;
+    const auto packet = mc2::tick::retainRenderPacket();
+    pool.reset(slots.size()); // load starts a new session while a frame is live
+    CHECK_FALSE(pool.resolve(old));
+    CHECK_FALSE(dead);
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        const auto id = pool.spawn();
+        REQUIRE(id);
+        CHECK(id.index == i);
+        auto* gate = pool.resolve(id);
+        CHECK(gate == pool.data()[i]);
+        REQUIRE(decodeTaggedRecord(slots[i].second, gate->record, gateTag));
+        CHECK(gate->record.value.handle == slots[i].first);
+        CHECK(encodeTaggedRecord(gate->record, gateTag) == slots[i].second);
+    }
+    CHECK_FALSE(pool.spawn());
+    CHECK_FALSE(pool.resolve(old)); // same index in the new session is still stale
+    mc2::tick::retireRenderPacket(packet);
+    CHECK(dead);
+}
 REAL_OBJECT_SLOTS("ARTY", ArtilleryRecord, ArtilleryData, kArtillery)
 REAL_OBJECT_SLOTS("CARN", CarnageRecord, CarnageData, kCarnage)
 REAL_OBJECT_SLOTS("MECH", MechRecord, MechData, kMech)
