@@ -4,6 +4,8 @@
 #include "weaponbolt_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "cmponent.h"
+#include "../GameOS/gameos/beam_lights.h"
 
 
 // VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
@@ -89,6 +91,16 @@ void WeaponBolt::extractFxPacket (mc2::render_view::RenderList& list)
 	view.bolt.boltAlpha = type->boltAlpha;
 	view.bolt.edgeAlpha = type->edgeAlpha;
 	view.bolt.isBeam = type->isBeam;
+	const int masterId = weaponShot.masterId;
+	view.bolt.energyLight = type->isBeam ||
+		(masterId >= 0 && masterId < MasterComponent::numComponents &&
+		 MasterComponent::masterList[masterId].getForm() == COMPONENT_FORM_WEAPON_ENERGY);
+	view.bolt.lightRemaining = hitTarget ? 0.0f :
+		(type->isBeam ? timeLeft : mc2::beam_lights::kImpactDuration);
+	// A laser reaches its endpoint immediately; PPC reaches it on arrival.
+	view.bolt.impactLightRemaining = type->isBeam
+		? mc2::beam_lights::kImpactDuration - (type->beamDuration - timeLeft)
+		: (hitTarget ? mc2::beam_lights::kImpactDuration - (type->afterHitTime - hitLeft) : 0.0f);
 	view.bolt.gosTextureHandle = gosTextureHandle;
 	view.bolt.mcTextureHandle = mcTextureHandle;
 	view.flags |= mc2::render_view::BoltGeometry;

@@ -1,6 +1,8 @@
 // CPU terrain-lighting inputs and light-grid ownership for native Vulkan consumers.
 #include "gos_terrain_lighting.h"
 #include "light_pool_culling.h"
+#include "beam_lights.h"
+#include "../../code/render_view.h"
 #include "local_light_shadow.h"   // LOCAL-LIGHTS-2: shadow tile selection
 #include "vulkan_shadow_island_live.h"   // mc2_vk_local_shadows_capable
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -854,6 +856,38 @@ void PackAndDispatch() {
             }
         }
 
+    }
+    // Beam lights consume only remaining shared-pool capacity, including the
+    // object prefix. Frozen packets keep this independent of the overlapped tick.
+    if (eye) {
+        mc2::beam_lights::Pool beams;
+        const auto visible = [](const float p[3]) {
+            glm::vec3 point(p[0], p[1], p[2]);
+            Stuff::Vector4D screen;
+            eye->projectForScreenXY(point, screen);
+            const auto res = eye->getScreenRes();
+            constexpr float margin = 160.0f;
+            return screen.w > 0 && screen.x >= -margin && screen.y >= -margin &&
+                screen.x <= res.x + margin && screen.y <= res.y + margin;
+        };
+        for (const auto& fx : mc2::render_view::list().fx) {
+            if (fx.kind != mc2::render_view::FxPacket::Kind::Bolt ||
+                !fx.has(mc2::render_view::Visible) || !fx.has(mc2::render_view::BoltGeometry) ||
+                !fx.bolt.energyLight) continue;
+            const bool impact = fx.has(mc2::render_view::HitTarget);
+            const glm::vec3 start = fx.bolt.isBeam ? fx.position : fx.bolt.laserVertices[2];
+            const glm::vec3 end = impact || fx.bolt.isBeam ? fx.aux[1] : fx.aux[0];
+            const uint32_t rgb = fx.bolt.middleRGB ? fx.bolt.middleRGB :
+                (fx.bolt.frontRGB ? fx.bolt.frontRGB : 0x80bfffu);
+            beams.add({{start.x, start.y, start.z}, {end.x, end.y, end.z},
+                       rgb, fx.bolt.lightRemaining, false}, visible);
+            const auto& hit = fx.aux[1];
+            beams.add({{hit.x, hit.y, hit.z}, {hit.x, hit.y, hit.z},
+                       rgb, fx.bolt.impactLightRemaining, true}, visible);
+        }
+        const uint32_t cap = std::min(s_maxLights, kObjectPoolLights);
+        for (unsigned i = 0; i < beams.count && numLights < cap; ++i)
+            s_lightBuf[numLights++] = beams.lights[i];
     }
     // LIGHT-CLUSTER-PERF-1: bin this frame's pool into the world-space XY grid so
     // the forward consumers loop only over lights whose circle covers the

@@ -53,6 +53,9 @@ struct BoltDraw {
     uint32_t gosTextureHandle = 0xffffffff, mcTextureHandle = 0xffffffff;
     uint8_t boltAlpha = 0, edgeAlpha = 0;
     bool isBeam = false;
+    bool energyLight = false;
+    float lightRemaining = 0;
+    float impactLightRemaining = 0;
 };
 
 struct RenderView {
