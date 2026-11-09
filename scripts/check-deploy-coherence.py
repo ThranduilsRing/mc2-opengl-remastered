@@ -66,11 +66,13 @@ Example:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 import os as _os, sys as _sys  # noqa: E401
 _sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
@@ -103,7 +105,8 @@ def _git(worktree: Path, *args: str) -> str:
     try:
         return subprocess.check_output(
             ["git", "-C", str(worktree), *args],
-            text=True, stderr=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True)).strip()
+            text=True, stderr=subprocess.DEVNULL, timeout=5,
+            **console_child.child_kwargs(redirected=True)).strip()
     except Exception:
         return ""
 
@@ -371,8 +374,47 @@ def check(deploy_dir: Path, worktree: Path, out=sys.stdout) -> int:
          f"{' (dirty)' if manifest.get('git_dirty') else ''} "
          f"({manifest.get('source_worktree', '?')})")
 
-    # Per-file drift vs manifest.
-    for entry in manifest.get("files", []):
+    # A lane receipt records hashes verified before linking and the resulting
+    # inode/size/mtime/NTFS ChangeTime. Reuse only an exact match; changed or
+    # private files still get byte checks. Published installs have no receipt.
+    shared = {}
+    iso = None
+    try:
+        receipt = deploy_dir / '.lane-seed.json'
+        if receipt.is_file():
+            spec = importlib.util.spec_from_file_location(
+                'coherence_seed', Path(__file__).with_name('make-isolated-deploy.py'))
+            iso = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(iso)
+            shared = json.loads(receipt.read_text(encoding='utf-8'))['shared']
+            if not isinstance(shared, dict):
+                shared = {}
+    except (OSError, ValueError, KeyError, TypeError):
+        shared = {}
+
+    def digest(entry):
+        p = deploy_dir / entry.get('path', '')
+        try:
+            if not p.is_file():
+                return None
+            if entry.get('size') is not None and p.stat().st_size != entry['size']:
+                return None
+            row = shared.get(entry.get('path', ''))
+            if (row and row.get('sha256') == entry.get('sha256')
+                    and iso.content_stamp(p) == row.get('stamp')):
+                return row['sha256']
+            return _sha256(p)
+        except OSError:
+            return None
+
+    entries = manifest.get('files', [])
+    # Bound I/O parallelism and git subprocesses inside the smoke caller's
+    # 30-second budget, without narrowing manifest coverage.
+    workers = iso.io_workers() if iso else 2
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        digests = list(pool.map(digest, entries))
+    info(f'checked {len(entries)} manifest files (verified lane receipts or sha256)')
+    for entry, actual_digest in zip(entries, digests):
         rel = entry.get("path", "")
         p = deploy_dir / rel
         if not p.is_file():
@@ -383,7 +425,7 @@ def check(deploy_dir: Path, worktree: Path, out=sys.stdout) -> int:
             warn(f"size drift: {rel} (manifest {entry.get('size')} vs "
                  f"actual {st.st_size}) -- file changed since deploy")
             continue
-        if _sha256(p) != entry.get("sha256"):
+        if actual_digest != entry.get("sha256"):
             warn(f"hash drift: {rel} -- contents changed since deploy "
                  "(stale or out-of-band overwrite)")
             continue

@@ -46,6 +46,7 @@ import ctypes
 import datetime
 import glob
 import hashlib
+import importlib.util
 import json
 import os
 import ntpath
@@ -1410,7 +1411,7 @@ def ensure_terrain_materials(target_dir):
 
 
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
-           full_verify=False, code_only=False):
+           full_verify=False, code_only=False, verified=None):
     """Copy + verify the payload.
 
     Hash receipts retain source and destination metadata plus the hash verified
@@ -1438,6 +1439,13 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     for src, rel, kind in items:
         dst = os.path.join(target_dir, rel)
+        if verified and rel in verified:
+            # Lane seed: source hash and the verified seed file identity plus
+            # NTFS ChangeTime match. No write, no second read of unchanged bytes.
+            stamp = source_stamp(src)
+            src_hashes[rel] = (verified[rel], os.path.getsize(dst), stamp[1] if stamp else None)
+            skipped += 1
+            continue
         if kind == "kit":
             dst = str(contained_path(kit_root, rel, parents=kit_parents))
         if kind == "pdb" and not os.path.isfile(src):
@@ -2325,6 +2333,42 @@ def verdict_exe_refusal(src_root, exe_src, head):
     return None
 
 
+def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
+    """Keep verified shared lane bytes; detach changed writes before the guard.
+
+    Legacy lane installs have no receipt: detach their exact write set when
+    explicitly allowed. Published v0.4 behavior is unchanged. Replacement never
+    writes through a shared inode; the isolation guard still runs afterwards.
+    """
+    receipt = Path(target) / '.lane-seed.json'
+    if not receipt.is_file() and not allow_legacy:
+        return {}
+    spec = importlib.util.spec_from_file_location('lane_seed', Path(__file__).with_name('make-isolated-deploy.py'))
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    shared = json.loads(receipt.read_text(encoding='utf-8'))['shared'] if receipt.is_file() else {}
+    verified = {}
+    for src, rel, kind in items:
+        dst = Path(target) / rel
+        if not dst.is_file() or dst.stat().st_nlink <= 1:
+            continue
+        row = shared.get(rel)
+        if (not full_verify and src is not None and row and iso.content_stamp(dst) == row['stamp']
+                and Path(src).is_file() and sha256_file(src) == row['sha256']):
+            verified[rel] = row['sha256']
+            continue
+        # The normal deploy still checks the source and copied hash. Privatize
+        # first so its in-place write cannot reach the seed or another lane.
+        tmp = dst.with_name(dst.name + f'.private-{os.getpid()}')
+        try:
+            shutil.copy2(dst, tmp)
+            os.replace(tmp, dst)
+        finally:
+            tmp.unlink(missing_ok=True)
+    log(f'lane seed delta: {len(verified)} unchanged shared payload files retained')
+    return verified
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     with deploy_phase("deploy", 1800):
         return _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
@@ -2415,8 +2459,12 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # that file was itself hardlinked four ways in the incident. Append it so
     # the guard covers every file this run will write, not just the copied
     # ones.
+    write_set = items + [(None, MANIFEST_NAME, "manifest")]
+    legacy_lane = (getattr(args, "allow_new_target", False) and
+                   Path(target).resolve().is_relative_to(Path('E:/mc2-installs').resolve()))
     with deploy_phase("hardlink isolation", 300):
-        check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")],
+        verified = prepare_seed_delta(write_set, target, args.full_verify, allow_legacy=legacy_lane)
+        check_hardlink_isolation([item for item in items if item[1] not in verified] + [(None, MANIFEST_NAME, "manifest")],
                                  target)
 
     cache = {} if args.full_verify else read_manifest(target)
@@ -2425,7 +2473,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         preserve.extend(rel for rel in previous if rel.startswith("mods/"))
     with deploy_phase("payload hash copy and verification", 600):
         hashes = deploy(items, target, args.allow_stale_pdb, preserve=preserve,
-                        cache=cache, full_verify=args.full_verify, code_only=reuse)
+                        cache=cache, full_verify=args.full_verify, code_only=reuse, verified=verified)
     if getattr(args, "skip_kit", False):
         hashes = {rel: row for rel, row in previous.items() if rel.startswith("mods/")} | hashes
     if kit_manifest:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # scripts/make-isolated-deploy.py
-"""Build a private, hardlink-ISOLATED lane install cheaply.
+"""Build a verified lane install cheaply; detach changed payload on deploy.
 
 WHY THIS EXISTS
 ---------------
@@ -17,8 +17,13 @@ A full MC2 install MEASURES 12.26 GB / 40135 files (mc2-win64-v0.4) and A: had
 exactly the P0 this session already suffered once. But almost all of that is
 data the game only ever READS. So:
 
-    data class    -> os.link()        free, instant, zero bytes
-    mutated class -> real byte copy   private inode, safe to overwrite
+    stock + static manifested payload -> os.link(), no byte copy
+    runtime/user writes                -> real copy, private inode
+
+Lean installs carry .lane-seed.json. deploy_payload uses this receipt to
+retain unchanged shared payload and atomically privatize changed files BEFORE
+the existing isolation guard. A normal install without this receipt retains
+the original guard behavior. Snapshot mode retains the original class split.
 
 Classification is imported from check-hardlink-isolation.py rather than
 restated here, so the two tools cannot drift into disagreeing about what
@@ -44,9 +49,8 @@ FAILURE MODES IT REFUSES TO PAPER OVER
 * Not enough free space for the COPIED bytes. Delegated to
   scripts/check-disk-space.py with the measured figure -- and, per DISK-GUARD-3
   (c5d934d5), a guard that is missing or unrunnable is FATAL, not a warning.
-* A link that fails mid-run for any other reason. Fatal, with the count of
-  what had been written, rather than a quiet copy fallback that changes the
-  cost model out from under the disk guard's already-approved estimate.
+* A failed link requires another disk guard for the increased byte cost,
+  then a verified private copy. Cross-volume full copies remain refused.
 
 Pure stdlib. Examples:
 
@@ -64,6 +68,7 @@ Pure stdlib. Examples:
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import csv
 import hashlib
 import importlib.util
@@ -74,6 +79,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+import threading
+import json
 from pathlib import Path
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
@@ -95,7 +103,7 @@ _LANE_OK = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
 
 
 def out(msg: str) -> None:
-    print(f"{PREFIX} {msg}")
+    print(f"{PREFIX} {msg}", flush=True)
 
 
 def err(msg: str) -> None:
@@ -138,7 +146,19 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
     """Walk src once. Returns (to_link, to_copy, link_bytes, copy_bytes)."""
     to_link, to_copy = [], []
     link_bytes = copy_bytes = 0
+    parents = set()
+    for rel in seed or ():
+        parents.update(p.as_posix().casefold() for p in Path(rel).parents)
     for dirpath, _dirs, files in os.walk(src):
+        if seed is not None:
+            # Prune BEFORE descending: runtime caches can dwarf the install.
+            base = Path(dirpath).relative_to(src).as_posix()
+            prefix = '' if base == '.' else base + '/'
+            _dirs[:] = [d for d in _dirs if
+                        (prefix + d).casefold() in ('data', 'assets') or
+                        (prefix + d).casefold().startswith(('data/', 'assets/')) or
+                        (prefix + d).casefold() in parents]
+            _dirs[:] = [d for d in _dirs if (prefix + d).casefold() not in ('cache', 'mods')]
         for fn in files:
             p = Path(dirpath) / fn
             rel = p.relative_to(src).as_posix()
@@ -181,7 +201,15 @@ def seed_member(rel, guard, manifest):
     return low.startswith(('data/', 'assets/')) and guard.classify(rel) == 'data'
 
 
-def verified_seed(src):
+def io_workers():
+    """Bound concurrent filesystem operations by the host's lane CPU budget."""
+    try:
+        return max(1, min(4, int(Path('A:/Games/mc2-ops/JOBS').read_text().strip())))
+    except (OSError, ValueError):
+        return 2
+
+
+def verified_seed(src, use_cache=False):
     """Verify the payload manifest before projecting a source into a lean tree."""
     path = src / '.deployed_manifest.csv'
     if not path.is_file():
@@ -193,37 +221,226 @@ def verified_seed(src):
         manifest = {r['relpath'].casefold(): r for r in csv.DictReader(f)}
     if 'mc2.exe' not in manifest:
         fail('lean seed manifest does not contain mc2.exe', 2)
-    for rel, row in manifest.items():
-        if rel.endswith('.pdb'):
-            continue
+    cache_path = src / '.lane-seed-verification.json'
+    try:
+        cached = json.loads(cache_path.read_text(encoding='utf-8')) if use_cache else {}
+    except (OSError, ValueError):
+        cached = {}
+    def verify_member(member):
+        rel, row = member
         candidate = (src / row['relpath']).resolve()
         if not candidate.is_relative_to(src.resolve()):
             fail(f'seed manifest path escapes source: {rel}', 2)
         if not candidate.is_file():
             fail(f'seed manifest file missing: {rel}', 2)
-        with candidate.open('rb') as f:
-            digest = hashlib.file_digest(f, 'sha256').hexdigest()
+        stamp = content_stamp(candidate)
+        old = cached.get(rel, {})
+        if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
+            digest = old['sha256']
+        else:
+            digest = file_sha(candidate)
         if digest != row['sha256']:
             fail(f'seed manifest hash mismatch: {rel}', 2)
-    # Pinned kits and their byte-verified native recipes survive lean projection.
-    # Arbitrary mods and writable runtime caches still stay out of the seed.
-    import kit_payload
-    for kit, name in (('mc2-industrial-kit', 'industrial-cook.json'),
-                      ('mc2-vehicle-kit', 'vehicle-cook.json')):
-        if not any(rel.startswith(f'mods/{kit}/') for rel in manifest):
-            continue
-        receipt = src / 'cache/content-model' / name
-        if not receipt.is_file():
-            continue
-        rows = json.loads(receipt.read_text())['files']
-        if any(not re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']) for row in rows):
-            fail(f'unsafe seed recipe inventory: {receipt}', 2)
-        kit_payload.checked_files(receipt.parent, rows)
-        for path in [receipt, *(receipt.parent / row['path'] for row in rows)]:
-            rel = path.relative_to(src).as_posix()
-            manifest[rel] = dict(relpath=rel, sha256=kit_payload.sha(path),
-                                 bytes=path.stat().st_size, src_commit='', timestamp='', mtime_ns='')
+        if content_stamp(candidate) != stamp:
+            fail(f'seed changed during verification: {rel}', 2)
+        return rel, {'stamp': stamp, 'sha256': digest}
+
+    with ThreadPoolExecutor(max_workers=io_workers()) as pool:
+        updated = dict(pool.map(verify_member, ((r, row) for r, row in manifest.items()
+                                              if not r.endswith('.pdb'))))
+    # Replace, never write through a potentially shared receipt inode.
+    if use_cache:
+        pending = cache_path.with_suffix(f'.{os.getpid()}.tmp')
+        try:
+            pending.write_text(json.dumps(updated), encoding='utf-8')
+            pending.replace(cache_path)
+        finally:
+            pending.unlink(missing_ok=True)
+    # Pinned kits and their verified native recipes enter the seed through kit_seed_members() (W138 merge: it supersedes
+    # the W137 recipe rows that were added here; both carried the same pinned sources + cook receipts).
     return manifest
+
+
+def refresh_link_receipts(src, shared):
+    """Re-stamp seed receipts after our own hard links bumped NTFS ChangeTime.
+
+    Linking changes only the link count/ChangeTime, so every later install would
+    re-hash the whole seed (about 170 s). Accept the new stamp only when the
+    verified entry still matches device, inode, size and mtime; any other drift
+    keeps the old stamp and forces a re-hash.
+    """
+    wanted = {r.casefold(): v['stamp'] for r, v in shared.items()}
+    for name in ('.lane-seed-verification.json', '.lane-kit-verification.json'):
+        path = src / name
+        try:
+            cached = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        changed = False
+        for rel, entry in cached.items():
+            new = wanted.get(rel)
+            if new and entry.get('stamp', [])[:4] == new[:4] and entry['stamp'] != new:
+                entry['stamp'] = new
+                changed = True
+        if changed:
+            pending = path.with_suffix(f'.{os.getpid()}.tmp')
+            try:
+                pending.write_text(json.dumps(cached), encoding='utf-8')
+                pending.replace(path)
+            finally:
+                pending.unlink(missing_ok=True)
+
+
+def restamp_seed(src):
+    """After an install delete (link count down, ChangeTime up) re-stamp the seed."""
+    rels = set()
+    for name in ('.lane-seed-verification.json', '.lane-kit-verification.json'):
+        try:
+            rels.update(json.loads((src / name).read_text(encoding='utf-8')))
+        except (OSError, ValueError):
+            pass
+    shared = {}
+    for rel in rels:
+        try:
+            shared[rel] = {'stamp': content_stamp(src / rel)}
+        except OSError:
+            pass
+    refresh_link_receipts(src, shared)
+    return len(shared)
+
+
+def content_stamp(path):
+    """Include NTFS ChangeTime: Windows st_ctime is the creation time.
+
+    A same-size edit with restored mtime must invalidate a verified hash.
+    Unsupported filesystems/API errors fail closed, never trust mtime alone.
+    """
+    st = path.stat()
+    changed = st.st_ctime_ns
+    if os.name == 'nt':
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        class BasicInfo(ctypes.Structure):
+            _fields_ = [('creation', ctypes.c_longlong), ('access', ctypes.c_longlong),
+                        ('write', ctypes.c_longlong), ('change', ctypes.c_longlong),
+                        ('attributes', wintypes.DWORD)]
+
+        query = ctypes.windll.kernel32.GetFileInformationByHandleEx
+        query.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        query.restype = wintypes.BOOL
+        info = BasicInfo()
+        with path.open('rb') as stream:
+            if not query(msvcrt.get_osfhandle(stream.fileno()), 0, ctypes.byref(info), ctypes.sizeof(info)):
+                raise ctypes.WinError()
+        changed = info.change
+    return [st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, changed]
+
+
+def kit_seed_members(src, seed, use_cache=False):
+    """Carry pinned kits and verified native recipes, never arbitrary caches.
+
+    A changed nifty kit must be deployed into the seed once before new lanes
+    use --skip-kit. This comparison prevents silently seeding an obsolete kit.
+    """
+    import kit_payload
+    extra = {}
+    cache_path = src / '.lane-kit-verification.json'
+    try:
+        cached = json.loads(cache_path.read_text()) if use_cache else {}
+    except (OSError, ValueError):
+        cached = {}
+    if use_cache:
+        try:
+            # The deployed manifest already covers most pinned kit sources.
+            # Reuse that verified hash instead of reading gigabytes twice.
+            cached.update(json.loads((src / '.lane-seed-verification.json').read_text()))
+        except (OSError, ValueError):
+            pass
+    updated = {}
+
+    def check(root, rows):
+        seen = set()
+        for row in rows:
+            path = kit_payload.contained_path(root, row['path'])
+            rel = path.relative_to(src).as_posix().casefold()
+            if rel in seen:
+                raise ValueError(f'duplicate kit member: {rel}')
+            seen.add(rel)
+            stamp = content_stamp(path)
+            prior = cached.get(rel, {})
+            if prior.get('stamp') != stamp or prior.get('sha256') != row['sha256']:
+                kit_payload.checked_files(root, [row])
+            if path.stat().st_size != row['bytes'] or content_stamp(path) != stamp:
+                raise ValueError(f'kit changed during verification: {rel}')
+            updated[rel] = {'stamp': stamp, 'sha256': row['sha256']}
+    for name in ('industrial', 'vehicle'):
+        rel = f'data/kit/{name}-kit.json'
+        installed = src / rel
+        pinned = SCRIPTS.parent / rel
+        root = src / f'mods/mc2-{name}-kit'
+        if not root.is_dir():
+            continue
+        if installed.is_file() and installed.read_bytes().replace(b'\r\n', b'\n') != pinned.read_bytes().replace(b'\r\n', b'\n'):
+            fail(f'stale {name} seed kit; refresh from published nifty using deploy_payload.py --seed-owner-test --seed-source (see docs/plans/lane-install-fast.md)', 2)
+        manifest = json.loads(pinned.read_text(encoding='utf-8'))
+        check(root, manifest['files'])
+        for row in manifest['files']:
+            member = f'mods/mc2-{name}-kit/{row["path"]}'
+            extra[member] = dict(row, relpath=member)
+        receipt = src / f'cache/content-model/{name}-cook.json'
+        if not receipt.is_file():
+            fail(f'seed missing cooked {name} kit: refresh seed with a normal nifty deploy', 2)
+        rows = json.loads(receipt.read_text())['files']
+        check(receipt.parent, rows)
+        for row in rows:
+            member = f'cache/content-model/{row["path"]}'
+            extra[member] = dict(row, relpath=member)
+        extra[receipt.relative_to(src).as_posix()] = {
+            'relpath': receipt.relative_to(src).as_posix(), 'sha256': kit_payload.sha(receipt)}
+    if use_cache:
+        pending = cache_path.with_suffix(f'.{os.getpid()}.tmp')
+        try:
+            pending.write_text(json.dumps(updated), encoding='utf-8')
+            pending.replace(cache_path)
+        finally:
+            pending.unlink(missing_ok=True)
+    return extra
+
+
+def seed_plan(src, guard, seed, use_cache=True):
+    """Inventory stock once per deployed seed revision, never its caches.
+
+    Refreshing a seed from nifty replaces its manifest and invalidates this
+    inventory. Delete the inventory after manually changing unmanifested stock.
+    """
+    cache = src / '.lane-seed-inventory.json'
+    identity = file_sha(src / '.deployed_manifest.csv')
+    try:
+        previous = json.loads(cache.read_text()) if use_cache else {}
+        if previous.get('identity') == identity:
+            links, copies = previous['links'], previous['copies']
+            for rel, size in links + copies:
+                if Path(rel).is_absolute() or '..' in Path(rel).parts or size < 0:
+                    raise ValueError('unsafe seed inventory')
+            # Reclassify, rather than trust a persisted isolation decision.
+            rows = links + copies
+            links = [(r, n) for r, n in rows if guard.classify(r) == 'data']
+            copies = [(r, n) for r, n in rows if guard.classify(r) != 'data']
+            out('reusing stock inventory for this seed manifest')
+            return links, copies, sum(n for _, n in links), sum(n for _, n in copies)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    result = plan(src, guard, seed)
+    if use_cache:
+        pending = cache.with_suffix(f'.{os.getpid()}.tmp')
+        try:
+            pending.write_text(json.dumps(dict(identity=identity, links=result[0], copies=result[1])), encoding='utf-8')
+            pending.replace(cache)
+        finally:
+            pending.unlink(missing_ok=True)
+    return result
 
 
 def same_volume(a: Path, b: Path) -> bool:
@@ -371,40 +588,61 @@ def check_space(need_bytes: int, target: Path) -> None:
 # Build
 # ---------------------------------------------------------------------------
 
-def build(src: Path, dst: Path, to_link, to_copy) -> tuple[int, int]:
-    linked = copied = 0
+def build(src: Path, dst: Path, to_link, to_copy, expected=None) -> tuple[int, int]:
     made_dirs: set = set()
-
-    def ensure(rel: str) -> Path:
-        p = dst / rel
-        d = p.parent
+    for rel, _ in to_link + to_copy:
+        d = (dst / rel).parent
         if d not in made_dirs:
             d.mkdir(parents=True, exist_ok=True)
             made_dirs.add(d)
-        return p
+    fallback_lock = threading.Lock()
+    fallback_bytes = 0
+    private_bytes = sum(n for _, n in to_copy)
 
-    for rel, _size in to_link:
-        target = ensure(rel)
+    def link_one(member):
+        nonlocal fallback_bytes
+        rel, size = member
+        target = dst / rel
         try:
             os.link(src / rel, target)
         except OSError as e:
-            fail(f"hardlink failed for {rel}: {e}\n"
-                 f"  {linked} linked / {copied} copied before this point; "
-                 f"{dst} is INCOMPLETE -- delete it and re-run.\n"
-                 "  Not falling back to a byte copy: that would silently turn "
-                 "a sub-GB operation into a 12 GB one, past a disk guard "
-                 "that already approved the smaller figure.", 4)
-        linked += 1
-    for rel, _size in to_copy:
-        target = ensure(rel)
+            # Check the new cost before a fallback, including all pending
+            # private copies. A cross-volume install is still refused up front.
+            with fallback_lock:
+                fallback_bytes += size
+                check_space(int((private_bytes + fallback_bytes) * 1.15), dst)
+            out(f'link unavailable for {rel}: {e}; guarded copy fallback')
+            shutil.copy2(src / rel, target)
+            if file_sha(target) != file_sha(src / rel):
+                fail(f'fallback copy hash mismatch: {rel}', 4)
+            return False
+        return True
+
+    def copy_one(member):
+        rel, _ = member
+        target = dst / rel
         try:
-            shutil.copyfile(src / rel, target)
+            shutil.copy2(src / rel, target)
+            row = (expected or {}).get(rel.casefold())
+            if row is not None and file_sha(target) != row['sha256']:
+                fail(f'copied manifest hash mismatch: {rel}', 4)
         except OSError as e:
             fail(f"copy failed for {rel}: {e}\n"
-                 f"  {linked} linked / {copied} copied before this point; "
                  f"{dst} is INCOMPLETE -- delete it and re-run.", 4)
-        copied += 1
-    return linked, copied
+
+    with ThreadPoolExecutor(max_workers=io_workers()) as pool:
+        started = time.perf_counter()
+        linked = sum(pool.map(link_one, to_link))
+        out(f'timing link creation (including fallbacks): {time.perf_counter() - started:.3f}s')
+        started = time.perf_counter()
+        list(pool.map(copy_one, to_copy))
+        out(f'timing private copies + changed-file hashes: {time.perf_counter() - started:.3f}s')
+    return linked, len(to_link) - linked + len(to_copy)
+
+
+def file_sha(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def verify(dst: Path, guard) -> None:
@@ -599,12 +837,19 @@ def main(argv=None) -> int:
                     help="report the plan and cost; write nothing")
     ap.add_argument('--snapshot', action='store_true',
                     help='merge-gate snapshot: retain warm caches and the complete source tree')
+    ap.add_argument("--refresh-receipts", action="store_true",
+                    help="re-stamp the --from seed's verification receipts after an install delete")
     ap.add_argument("--selftest", action="store_true",
                     help="prove the tool works; temp dirs only")
     args = ap.parse_args(argv)
 
     if args.selftest:
         return selftest()
+    if args.refresh_receipts:
+        if not args.src:
+            fail("--refresh-receipts needs --from <seed>", 2)
+        print(f'[ISO_DEPLOY] re-stamped {restamp_seed(Path(args.src))} seed receipts')
+        return 0
     if args.lane and args.dst:
         fail("--lane and --to are two ways to say the same thing; pass one.\n"
              f"  --lane {args.lane}  would mean  --to {resolve_lane(args.lane)}",
@@ -654,11 +899,41 @@ def main(argv=None) -> int:
              "would fall back to a byte copy: a 12 GB full install instead of "
              "well under one. Choose a --to on the same volume as --from.", 2)
 
+    started = time.perf_counter()
     out(f"planning: {src}  ->  {dst}")
-    full_link, full_copy, full_lb, full_cb = plan(src, guard)
-    seed = None if args.snapshot else verified_seed(src)
+    seed = None if args.snapshot else verified_seed(src, use_cache=not args.dry_run)
+    out(f'timing manifest verification: {time.perf_counter() - started:.3f}s')
+    kit_started = time.perf_counter()
+    extras = {} if seed is None else kit_seed_members(src, seed, use_cache=not args.dry_run)
+    out(f'timing kit verification: {time.perf_counter() - kit_started:.3f}s')
+    selection = None if seed is None else {**seed, **{r.casefold(): row for r, row in extras.items()}}
+    full_link, full_copy, full_lb, full_cb = (plan(src, guard) if seed is None else
+                                           seed_plan(src, guard, seed, use_cache=not args.dry_run))
     to_link = [(r, n) for r, n in full_link if seed is None or seed_member(r, guard, seed)]
     to_copy = [(r, n) for r, n in full_copy if seed is None or seed_member(r, guard, seed)]
+    if seed is not None:
+        # Static deployed bytes are detached by deploy_payload only when they
+        # differ. Runtime/user writes still require private inodes immediately.
+        static = [(r, n) for r, n in to_copy if r.casefold() in seed
+                  and not r.casefold().endswith(('.cfg', '.ini', '.bat', '.cookstamp'))
+                  and not r.casefold().startswith(('cache/', 'data/textures/'))
+                  and r != '.deployed_manifest.csv']
+        to_link.extend(static)
+        static_names = {r for r, _ in static}
+        to_copy = [(r, n) for r, n in to_copy if r not in static_names]
+        known = {r for r, _ in to_link + to_copy}
+        # Pinned kit sources are read-only at runtime. --skip-kit excludes
+        # them from the deploy write set; a full kit deploy detaches changed
+        # shared inodes before the existing exact-payload guard.
+        def immutable_kit_member(rel):
+            # Native recipes publish by atomic replacement; see the isolation
+            # guard's contract. Their JSON receipts remain private.
+            return rel.startswith('mods/') or rel.endswith('.mci')
+
+        to_link.extend((r, (src / r).stat().st_size) for r in extras
+                       if r not in known and immutable_kit_member(r))
+        to_copy.extend((r, (src / r).stat().st_size) for r in extras
+                       if r not in known and not immutable_kit_member(r))
     link_bytes = sum(n for _, n in to_link)
     copy_bytes = sum(n for _, n in to_copy)
     out(f'{"warm snapshot" if args.snapshot else "lean verified seed"}: {gb(full_lb + full_cb)} -> {gb(link_bytes + copy_bytes)}; '
@@ -682,20 +957,34 @@ def main(argv=None) -> int:
         check_space(int(copy_bytes * 1.15), dst)
 
     dst.mkdir(parents=True, exist_ok=True)
-    linked, copied = build(src, dst, to_link, to_copy)
+    out(f'timing planning + disk guard: {time.perf_counter() - started:.3f}s')
+    copying = time.perf_counter()
+    linked, copied = build(src, dst, to_link, to_copy, selection)
+    out(f'timing links + private copies + changed-file hashes: {time.perf_counter() - copying:.3f}s')
     # The seed is a projection, so retain only the manifest rows it contains.
     # This makes the resulting tree a verified source for the next lane, too.
+    writing = time.perf_counter()
     if seed is not None:
         write_seed_manifest(dst, seed)
+        shared = {r: {'stamp': content_stamp(dst / r), 'sha256': selection[r.casefold()]['sha256']}
+                  for r, _ in to_link if r.casefold() in selection}
+        (dst / '.lane-seed.json').write_text(json.dumps({'shared': shared}), encoding='utf-8')
+        refresh_link_receipts(src, shared)
+    out(f'timing manifest + lane receipt write: {time.perf_counter() - writing:.3f}s')
+    checking = time.perf_counter()
     out(f"built: {linked} linked, {copied} copied")
-    verify(dst, guard)
+    verdict, _, _ = guard.run_check(str(dst), payload_rels=[r for r, _ in to_copy] + ['.deployed_manifest.csv', '.lane-seed.json'])
+    if verdict != 'OK':
+        fail(f'post-build isolation: {verdict}', 5)
+    out(f'timing isolation verification: {time.perf_counter() - checking:.3f}s')
+    out(f'timing total: {time.perf_counter() - started:.3f}s')
 
     out("")
     out(f"ISOLATED INSTALL READY: {dst}")
     out("Next: deploy into it. It is not in deploy_payload's DEPLOY_ALLOWLIST "
         "(that list is about install COUNT, a separate concern), so pass "
         "--allow-new-target:")
-    out(f"  py -3 scripts/deploy_payload.py \"{dst}\" --allow-new-target")
+    out(f"  py -3 scripts/deploy_payload.py \"{dst}\" --allow-new-target --ninja --skip-kit")
     return 0
 
 
