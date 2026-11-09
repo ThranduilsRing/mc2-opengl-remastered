@@ -19,10 +19,12 @@ vec3 propAuthoredColor(SurfaceMaterial s, vec3 poolLight) {
     for (int k=0; k<9; ++k) sh[k] = uFrame.iblSh[k].xyz;
     vec3 ibl = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(nStuff), sh)*uFrame.iblShStrength : vec3(0);
     // Some stock night skies have almost no SH irradiance. Use the mission's
-    // Camera ambient/floor as the environment lower bound (also used by stock
-    // movers), replacing missing SH energy rather than stacking another fill.
+    // Camera ambient/floor and the stock night-dimmed environment bake as a
+    // lower bound, replacing missing SH energy rather than stacking a fill.
     vec3 missionAmbient = propDecodeColor(clamp(max(uFrame.ambientColor.rgb,
         vec3(uFrame.ambientColor.w))/255.0,0.0,1.0)) * 3.14159265 * uFrame.nightDarkness;
+    missionAmbient = max(missionAmbient, propDecodeColor(vMaterialSeed)
+        * (3.14159265 * uFrame.nightDarkness));
     ibl = max(ibl,missionAmbient);
     // No baked vertex-light seed, hemisphere or cutout light floor on top of SH.
     // AO occludes indirect only. Sun shadows and scene tonemap remain in the
@@ -46,7 +48,8 @@ vec3 propAuthoredColor(SurfaceMaterial s, vec3 poolLight) {
     color += (s.baseColor*sun.diffuse + sun.specular) * propNightDirectShare();
     float nightFill = propNightSunWeight(0.0, N);
     color += s.baseColor * diffuseWeight * propDecodeColor(vMaterialSun) * nightFill / 3.14159265;
-    color += s.baseColor * propDecodeColor(poolLight);
+    // Pool attenuation/compression already returns a linear light weight.
+    color += s.baseColor * max(poolLight,vec3(0));
     color += propDecodeColor(vHighlight.rgb);
     return propEncodeColor(color) + vHighlight.rgb*vHighlight.a;
 }
