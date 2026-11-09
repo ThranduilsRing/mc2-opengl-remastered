@@ -16,6 +16,9 @@ Role contract (CONTRACT_VERSION bumps whenever an output byte could change):
   orm         linear BC7 (145)       R=AO, G=roughness, B=metallic, A=authored
                                      coverage (0 = keep the legacy response).
   emissive    sRGB   BC7_SRGB (146)  as base_color, opaque.
+  neural_latent linear BC7 (145)     neural-material latent texels (8 channels as two RGBA
+                                     textures); raw values, plain box mips, no coverage rule.
+                                     Written with -nogpu (deterministic) and cook.json provenance.
 Stock pixels are never re-encoded: a passthrough TextureRef is copied byte-for-byte.
 Block encoding uses the installed DirectXTex texconv (CPU codec, -nogpu, so the
 bytes are deterministic); the KTX2 container is written here. No downloads.
@@ -61,6 +64,7 @@ ROLES = {
     "emissive": Role(True, VK_BC7_SRGB, "BC7_UNORM", "color"),
     "normal": Role(False, VK_BC5_UNORM, "BC5_UNORM", "normal"),
     "orm": Role(False, VK_BC7_UNORM, "BC7_UNORM", "linear"),
+    "neural_latent": Role(False, VK_BC7_UNORM, "BC7_UNORM", "linear"),
 }
 KTX_KIND = cache.CacheKind("tex-", ".ktx2")
 

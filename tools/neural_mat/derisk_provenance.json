@@ -1,0 +1,41 @@
+{
+  "_note": "neural-n2 de-risk sources: MatSynth rows passing the CC0 licence gate only.",
+  "sets": {
+    "acg_concrete_026": {
+      "asset": "Concrete 026 (acg_concrete_026)",
+      "author": "ambientcg",
+      "files": [
+        "MatSynth basecolor",
+        "MatSynth diffuse",
+        "MatSynth displacement",
+        "MatSynth height",
+        "MatSynth metallic",
+        "MatSynth normal",
+        "MatSynth roughness",
+        "MatSynth specular"
+      ],
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "local": "G:/mc2-tmp/neural-n2/ms (scratch; not committed)",
+      "source_url": "https://www.ambientcg.com/view?id=Concrete026"
+    },
+    "tc_metal_029": {
+      "asset": "Metal 0029 (tc_metal_029)",
+      "author": "texturecan",
+      "files": [
+        "MatSynth basecolor",
+        "MatSynth diffuse",
+        "MatSynth displacement",
+        "MatSynth height",
+        "MatSynth metallic",
+        "MatSynth normal",
+        "MatSynth roughness",
+        "MatSynth specular"
+      ],
+      "licence": "CC0 1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "local": "G:/mc2-tmp/neural-n2/ms (scratch; not committed)",
+      "source_url": "https://www.texturecan.com/"
+    }
+  }
+}
