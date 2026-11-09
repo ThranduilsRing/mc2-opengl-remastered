@@ -5,6 +5,9 @@
 
 #include <memory>
 #include "../mclib/texture_assets.h"
+#include "../RenderCore/KtxLoader.h"
+#include "../GameOS/gameos/texture_decode.h"
+#include <filesystem>
 #include"missionbriefingscreen.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include "gos_crashbundle.h"
@@ -386,6 +389,29 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 	FullPathFileName path;
 	path.init( missionPath, missionName, ".pak" );
 
+    const std::string preview = "data/art/missionmaps/" + std::filesystem::path(missionName).stem().string() + ".png";
+    // A campaign's own PAK beats a base preview, just as a mod atlas beats a split icon.
+    if (fileExists(preview.c_str()) && LookupModPriority(preview.c_str()) <= LookupModPriority(path)) {
+        File imageFile;
+        if (imageFile.open(preview.c_str()) == NO_ERR && imageFile.getLength() > 0 && imageFile.getLength() <= 16 * 1024 * 1024) {
+            std::vector<uint8_t> bytes(imageFile.getLength());
+            if (imageFile.read(bytes.data(), static_cast<long>(bytes.size())) == bytes.size()) {
+                auto image = mc2tex::decodeMemory(bytes.data(), bytes.size(), preview.c_str(), gos_Texture_Solid, 0);
+                if (image && image->width == image->height && image->width >= 128 && image->width <= 2048) {
+                    std::vector<DWORD> pixels(static_cast<size_t>(image->width) * image->height);
+                    const int stride = image->layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
+                    for (int y = 0; y < image->height; ++y)
+                        for (int x = 0; x < image->width; ++x) {
+                            const auto* p = image->pixels.data() + (static_cast<size_t>(y) * image->width + x) * stride;
+                            pixels[static_cast<size_t>(image->height - 1 - y) * image->width + x] =
+                                0xff000000u | (static_cast<DWORD>(p[0]) << 16) | (static_cast<DWORD>(p[1]) << 8) | p[2];
+                        }
+                    return mc2::textures::fromPixels(pixels.data(), gos_Texture_Solid, 0, image->width);
+                }
+            }
+        }
+    }
+
     // CreateFile lock-check removed: it used the raw path and bypassed the mod overlay,
     // causing preview to fail for campaign mod .pak files. PacketFile::open handles open failure.
 
@@ -497,7 +523,8 @@ void MissionBriefingScreen::begin()
 
 	long tmpMapTextureHandle = getMissionTGA( missionName.c_str(), true );
 	statics[MAP_INDEX].setTexture( tmpMapTextureHandle );
-	statics[MAP_INDEX].setUVs( 0, 127, 127, 0 );
+	const float mapEdge = statics[MAP_INDEX].getFileHeight() - 1.f;
+	statics[MAP_INDEX].setUVs( 0, mapEdge, mapEdge, 0 );
 	statics[MAP_INDEX].setColor( 0xffffffff );
 	// The legacy statics[MAP_INDEX] is not drawn on the defs page; route the minimap
 	// into the defs map image. getMissionTGA returns an legacy texture manager node (not a

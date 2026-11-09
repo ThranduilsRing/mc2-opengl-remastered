@@ -25,6 +25,7 @@ constexpr int kDamagePages = kDamageSlots / kDamagePerPage;
 std::vector<Icon> damageIcons;
 DWORD damagePages[kDamagePages]{};
 std::map<std::string, AssetScale::Vec2> sourceScale;
+std::map<std::string, int> namedPriority;
 
 struct Pixels { int w = 0, h = 0; DWORD logicalW = 0, logicalH = 0; std::vector<uint32_t> data; };
 Pixels load(std::string path, bool hud = false) {
@@ -137,12 +138,13 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         const auto* info = fastFiles[i]->getFilesInfo();
         for (long j = 0; j < fastFiles[i]->getNumFiles(); ++j) collect(info[j].pfe->name, &loose);
     }
-    std::map<std::string, int> namedPriority;
     for (const auto& path : loose) {
-        const std::string key = "mech/" + std::filesystem::path(path).stem().string();
+        auto relative = path.substr(std::string("data/art/mechicons/").size());
+        relative = relative.substr(0, relative.find_last_of('.'));
+        const std::string key = relative.starts_with("hud/") ? relative : "mech/" + relative;
         const int priority = LookupModPriority(path.c_str());
         if (namedPriority.contains(key) && namedPriority[key] <= priority) continue;
-        auto src = load(path);
+        auto src = load(path, key.starts_with("hud/"));
         if (!src.data.empty()) {
             registry.add(key, src.w, src.h, src.data);
             namedPriority[key] = priority;
@@ -200,7 +202,8 @@ void apply(aObject& widget, const aObject& source, long index, std::string chass
     const std::string sheet = canonical(name ? name : "missing");
     init(sheet, static_cast<int>(source.width()), static_cast<int>(source.height()));
     const std::string named = "mech/" + canonical(std::filesystem::path(chassis).stem().string());
-    const bool individual = registry.find(named) != nullptr;
+    const auto found = namedPriority.find(named);
+    const bool individual = found != namedPriority.end() && namedPriority.at(named) <= LookupModPriority(sheet.c_str()) && registry.find(named);
     const auto& icon = resolve(individual ? named : legacyKey(sheet, index));
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
@@ -213,10 +216,18 @@ void apply(aObject& widget, const aObject& source, long index, std::string chass
 void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height, std::string chassis) {
     init();
     const std::string key = legacyKey(canonical(sheet) + (back ? "/back" : ""), index);
-    const Icon* found = registry.find(key);
+    const auto stem = canonical(std::filesystem::path(chassis).stem().string());
+    const std::string named = "hud/" + canonical(std::filesystem::path(sheet).stem().string()) +
+                              (back ? "/back/" : "/front/") + stem;
+    const auto priority = namedPriority.find(named);
+    const Icon* found = registry.lookup(named, key, priority == namedPriority.end() ? 1000001 : namedPriority.at(named),
+                                       LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
-        found = registry.find("mech/" + canonical(std::filesystem::path(chassis).stem().string()));
+        const std::string bay = "mech/" + stem;
+        const auto bayPriority = namedPriority.find(bay);
+        if (bayPriority != namedPriority.end() && namedPriority.at(bay) <= LookupModPriority(sheet.c_str()))
+            found = registry.find(bay);
         if (!found) found = registry.find(legacyKey("data/art/mc2x_mechicons.tga", index));
     }
     const auto& icon = found ? *found : resolve(key);
@@ -243,6 +254,6 @@ void shutdown() {
         if (page) mc2::textures::releaseOwned(page);
         page = 0;
     }
-    texture = 0; registry = {}; damageIcons.clear(); sourceScale.clear(); warned.clear();
+    texture = 0; registry = {}; damageIcons.clear(); sourceScale.clear(); namedPriority.clear(); warned.clear();
 }
 }

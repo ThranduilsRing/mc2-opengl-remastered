@@ -1550,6 +1550,7 @@ run_nightly "abl_static_alloc"           "_host_need clang++ && py -3 -B -m pyte
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
+run_check "logistics_art"               "py -3 -B tools/test_cook_logistics_art.py -q -p no:cacheprovider"
 run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3 --base \"${MC2_GATE_BASE-claude/nifty-mendeleev}\""
 run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"

@@ -312,7 +312,8 @@ void MechIcon::setDrawBack(bool bSet)
     DWORD* dest = page.pTexture + rect.y * page.Width + rect.x;
     if (!mechicon_package_hud::blit(unit, unitIconX, unitIconY, true, dest, page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY)))
         unit_icons::blit(hudSheet(false), unit->getIconPictureIndex(), true,
-                         reinterpret_cast<uint32_t*>(dest), page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY));
+                         reinterpret_cast<uint32_t*>(dest), page.Width, static_cast<int>(unitIconX), static_cast<int>(unitIconY),
+                         unit->getObjectType() ? unit->getObjectType()->getAppearanceTypeName() : "");
     std::mdspan<DWORD, std::dextents<size_t, 2>> pixels(page.pTexture, page.Height, page.Width);
     // Only the rear torso colours belong in the back paperdoll.
     for (int y = 0; y < unitIconY; ++y)

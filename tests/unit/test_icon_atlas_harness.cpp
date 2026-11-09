@@ -5,6 +5,17 @@
 
 using namespace unit_icons;
 
+TEST_CASE("icon_atlas_harness/named_image_preferred_with_mod_atlas_fallback") {
+    Registry r;
+    REQUIRE(r.add("mech/starslayer", 2, 2, std::vector<uint32_t>(4, 0xff123456)));
+    r.sheet("stock", std::vector<uint32_t>(4, 0xffabcdef), 2, 2, 2, 2);
+    CHECK(r.lookup("mech/Starslayer", "stock:0", 10, 10) == r.find("mech/starslayer"));
+    CHECK(r.lookup("mech/hollander", "stock:0", 10, 10) == r.find("stock:0"));
+    CHECK(r.lookup("mech/starslayer", "stock:0", 10, 1) == r.find("stock:0"));
+    REQUIRE(r.add("hud/mcui_high7/back/starslayer", 2, 2, std::vector<uint32_t>(4, 0xff505050)));
+    CHECK(r.lookup("hud/mcui_high7/back/starslayer", "stock:0", 1, 10)->pixels.front() == 0xff505050);
+}
+
 TEST_CASE("icon_atlas_harness/source_keys_survive_packing") {
     Registry r;
     std::vector<uint32_t> stock(256 * 256);

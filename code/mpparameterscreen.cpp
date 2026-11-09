@@ -683,7 +683,7 @@ void MPParameterScreen::setMission( mc2::czstring fileName, bool resetData )
 
 	long textureHandle = MissionBriefingScreen::getMissionTGA( fileName );
 	statics[15].setTexture( textureHandle );
-	statics[15].setUVs(0, 127, 127, 0 );
+	statics[15].setUVs(0, statics[15].getFileHeight() - 1.f, statics[15].getFileHeight() - 1.f, 0 );
 	statics[15].setColor( 0xffffffff );
 
 	getButton( MAP_INFO )->disable( false );
@@ -842,7 +842,7 @@ void MPParameterScreen::update()
 				if ( textureHandle )
 				{
 					statics[15].setTexture( textureHandle );
-					statics[15].setUVs( 0, 127, 127, 0 );
+					statics[15].setUVs( 0, statics[15].getFileHeight() - 1.f, statics[15].getFileHeight() - 1.f, 0 );
 					statics[15].setColor( 0xffffffff );
 				}
 			}
@@ -1431,7 +1431,7 @@ void MPParameterScreen::setMissionClientOnly( mc2::czstring pNewMapName )
 	if ( textureHandle )
 	{
 		statics[15].setTexture( textureHandle );
-		statics[15].setUVs( 0, 127, 127, 0 );
+		statics[15].setUVs( 0, statics[15].getFileHeight() - 1.f, statics[15].getFileHeight() - 1.f, 0 );
 		statics[15].setColor( 0xffffffff );
 	}
 

@@ -1228,6 +1228,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
+    # Optional cooked logistics overrides; missing art retains the original PAK/atlas.
+    for folder in ("data/art/mechicons", "data/art/missionmaps"):
+        for path in sorted((Path(src_root) / folder).rglob("*.png")):
+            items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
+
     # UI-DEFS-LOCKSTEP-HARDEN-1 (BLACK-MENU-BISECT-1): data/defs/** ships in
     # lockstep with the exe, exactly like shaders/. Since the ui-phase1 merge
     # the front-end menus ARE defs/ui pages; an exe running against a
