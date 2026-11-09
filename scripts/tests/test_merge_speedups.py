@@ -776,10 +776,15 @@ def test_smoke_bookmark_capture_rejects_missing_or_wrong_evidence(tmp_path, monk
     exe = tmp_path / "mc2.exe"
     exe.write_bytes(b"fixture exe")
     monkeypatch.setattr(capture.ms, "identity_block", lambda **kw: {"exe": {"sha256": capture.ms.file_sha256(exe)}})
+    # af725ef72 (box-gpu-pass-row): the shared capture also stamps the install's payload identity (manifest-verified exe and
+    # SPIR-V; test_box_capture_identity.py covers it); this fixture install has no deployed manifest, so stub the reader.
+    payload = {"commit": "a" * 40, "payload": {"mc2.exe": capture.ms.file_sha256(exe)}, "manifest": {}}
+    monkeypatch.setattr(capture, "payload_identity", lambda install: payload if install == exe.parent.resolve() else None)
     capture.smoke_capture([bookmark], "mc2_01", out, True, exe=exe)
     manifest = json.loads((out / "capture_run.json").read_text())
     assert manifest["n_captured"] == manifest["n_requested"] == 1
     assert manifest["identity"]["exe"]["sha256"] == capture.ms.file_sha256(exe)
+    assert manifest["install_identity"] == payload
     png.with_suffix(".json").write_text('{}')
     with pytest.raises(RuntimeError, match="invalid"):
         capture.smoke_capture([bookmark], "mc2_01", out, True)
