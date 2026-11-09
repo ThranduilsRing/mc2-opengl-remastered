@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "recipes",
           "offset": 0,
-          "type": "_286"
+          "type": "_265"
         }
       ],
       "name": "WaterRecipeBuf"
@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "thinRecs",
           "offset": 0,
-          "type": "_269"
+          "type": "_248"
         }
       ],
       "name": "WaterThinBuf"

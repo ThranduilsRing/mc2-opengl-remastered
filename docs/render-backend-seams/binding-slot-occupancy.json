@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 281,
+    "glsl_blocks_with_binding": 280,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -552,7 +552,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 55,
+        "line": 53,
         "role": "WaterVsParams",
         "std": "std140",
         "type": "uniform",
@@ -913,7 +913,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 65,
+        "line": 63,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -1151,7 +1151,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 124,
+        "line": 135,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1838,7 +1838,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 59,
+        "line": 70,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2271,7 +2271,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 36,
+        "line": 34,
         "role": "WaterRecipeBuf",
         "std": "std430",
         "type": "buffer",
@@ -2283,7 +2283,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 62,
+        "line": 73,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2392,7 +2392,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 46,
+        "line": 44,
         "role": "WaterThinBuf",
         "std": "std430",
         "type": "buffer",
@@ -2762,20 +2762,6 @@
         "branch": {
           "1": 0,
           "3": 0
-        }
-      }
-    ],
-    "set1:binding10": [
-      {
-        "side": "glsl",
-        "file": "shaders/vulkan/water_geom.frag",
-        "line": 6,
-        "role": "ShoreVisualHeight",
-        "std": "std430",
-        "type": "buffer",
-        "source": "shaders/vulkan/include/water_shore_animation.glsl",
-        "branch": {
-          "15": 0
         }
       }
     ],
