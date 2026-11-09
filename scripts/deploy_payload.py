@@ -56,6 +56,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
+from contextlib import contextmanager
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 try:
@@ -66,6 +68,141 @@ except ImportError:
 
 MANIFEST_NAME = ".deployed_manifest.csv"
 MANIFEST_VERSION = "v1"
+REUSE_NAME = ".deploy-inputs.json"
+
+
+@contextmanager
+def deploy_phase(name, timeout=600):
+    """Report progress and terminate this deploy's children if a phase stalls."""
+    if not _PSUTIL_OK:
+        fail("bounded deploy phases require psutil (child cleanup on timeout)")
+    started = time.monotonic()
+    done = threading.Event()
+
+    def watch():
+        while not done.wait(min(15, timeout)):
+            elapsed = time.monotonic() - started
+            log(f"phase {name}: running {elapsed:.1f}s / {timeout}s")
+            if elapsed >= timeout:
+                log(f"ERROR: phase {name} timed out after {elapsed:.1f}s")
+                # Only descendants of this deploy, never another lane's processes.
+                children = psutil.Process().children(recursive=True)
+                for child in reversed(children):
+                    try:
+                        child.kill()
+                    except psutil.Error:
+                        pass
+                psutil.wait_procs(children, timeout=5)
+                os._exit(8)
+
+    log(f"phase {name}: start (timeout {timeout}s)")
+    worker = threading.Thread(target=watch, daemon=True)
+    worker.start()
+    try:
+        yield
+    finally:
+        done.set()
+        worker.join()
+        log(f"phase {name}: finished {time.monotonic() - started:.3f}s")
+
+
+def deploy_inputs(src_root):
+    """Hash authored inputs, never the multi-GB kit store or cooked outputs."""
+    roots = ["data", "mods", "assets", "scripts", "tools", "cmake", "CMakeLists.txt",
+             "run-mc2.bat", "run-with-log.bat", "3rdparty/smaa", "3rdparty/cmaa2"]
+    result = subprocess.run(["git", "-C", str(src_root), "ls-files", "-z", "--cached",
+                             "--others", "--exclude-standard", "--", *roots],
+                            capture_output=True, check=True, timeout=30,
+                            **console_child.child_kwargs(redirected=True))
+    names = set(os.fsdecode(p) for p in result.stdout.split(b"\0") if p)
+    # The importer consumes engine sources too; changes to its source closure
+    # invalidate the cook even when the pinned package JSON did not change.
+    cmake = Path(src_root) / "tools/tg_import_dump/CMakeLists.txt"
+    if cmake.is_file():
+        names.update(p for p in re.findall(r"\$\{MC2_ROOT\}/([\w./-]+)", cmake.read_text())
+                     if Path(p).suffix in (".cpp", ".h", ".c", ".hpp"))
+    for directory in ("mclib", "GameOS"):
+        names.update(p.relative_to(src_root).as_posix()
+                     for p in (Path(src_root) / directory).rglob("*.h"))
+    return {name: sha256_file(Path(src_root) / name) for name in sorted(names)} | {
+        "environment": [os.environ.get(k, "") for k in ("MC2_KIT_STORE", "MC2_REF_ROOT")]}
+
+
+def reusable_payload(src_root, target, inputs):
+    """Fail closed on missing inputs, manifests, outputs or sampled byte drift."""
+    import random
+    from kit_payload import contained_path
+    try:
+        saved = json.loads((Path(target) / REUSE_NAME).read_text())
+        if saved["inputs"] != inputs:
+            return False, "authored kit/mod or deploy inputs changed"
+        if saved["manifest"] != sha256_file(Path(target) / MANIFEST_NAME):
+            return False, "payload manifest changed"
+        manifest = read_manifest(target)
+        if not manifest or not saved["outputs"]:
+            return False, "missing payload manifest or output inventory"
+        for rel, stamp in saved["outputs"].items():
+            p = contained_path(target, rel)
+            s = p.stat()
+            if [s.st_size, s.st_mtime_ns, s.st_ctime_ns] != stamp:
+                return False, f"output missing or changed: {rel}"
+        for src, (stamp, expected) in saved["sources"].items():
+            s = Path(src).stat()
+            if [s.st_size, s.st_mtime_ns, s.st_ctime_ns] != stamp:
+                return False, f"kit source changed: {src}"
+        for kit in ("mods/mc2-industrial-kit", "mods/mc2-vehicle-kit"):
+            expected = {rel for rel in saved["outputs"] if rel.startswith(kit + "/")}
+            if expected:
+                actual = {p.relative_to(target).as_posix() for p in (Path(target) / kit).rglob("*")
+                          if p.is_file() and p.name != ".modindex-cache"}
+                if actual != expected:
+                    return False, f"kit inventory changed: {kit}"
+        for src in random.SystemRandom().sample(list(saved["sources"]), min(6, len(saved["sources"]))):
+            content = Path(src).read_bytes()
+            if src.endswith(".mcasset.json"):
+                content = content.replace(b"\r\n", b"\n")
+            if hashlib.sha256(content).hexdigest() != saved["sources"][src][1]:
+                return False, f"sampled kit source mismatch: {src}"
+        # Always include both kit packages and their native recipes. Rotate the
+        # sample so repeated deploys don't leave the same files unchecked.
+        groups = {}
+        for rel in saved["outputs"]:
+            group = rel.split("/", 2)[:2] if rel.startswith("mods/") else rel.split("/")[:1]
+            groups.setdefault("/".join(group), []).append(rel)
+        for paths in groups.values():
+            for rel in random.SystemRandom().sample(paths, min(3, len(paths))):
+                expected = saved["hashes"][rel]
+                if sha256_file(contained_path(target, rel)) != expected:
+                    return False, f"sampled hash mismatch: {rel}"
+        return True, "authored input hashes and recorded payload match; output samples verified"
+    except (OSError, ValueError, KeyError, TypeError):
+        return False, "missing or invalid reuse/manifest evidence"
+
+
+def record_deploy_inputs(target, inputs, hashes, items):
+    """Publish reuse evidence only after the full deploy and all cooks succeed."""
+    from kit_payload import contained_path
+    inventory = {rel: row[0] for rel, row in hashes.items()}
+    for name in ("industrial-cook.json", "vehicle-cook.json"):
+        receipt = Path(target) / "cache/content-model" / name
+        if receipt.is_file():
+            inventory[receipt.relative_to(target).as_posix()] = sha256_file(receipt)
+            for row in json.loads(receipt.read_text())["files"]:
+                inventory["cache/content-model/" + row["path"]] = row["sha256"]
+    outputs = {}
+    for rel in inventory:
+        s = contained_path(target, rel).stat()
+        outputs[rel] = [s.st_size, s.st_mtime_ns, s.st_ctime_ns]
+    sources = {}
+    for src, rel, kind in items:
+        if kind == "kit":
+            s = Path(src).stat()
+            sources[str(src)] = [[s.st_size, s.st_mtime_ns, s.st_ctime_ns], hashes[rel][0]]
+    value = dict(inputs=inputs, manifest=sha256_file(Path(target) / MANIFEST_NAME),
+                 outputs=outputs, hashes=inventory, sources=sources)
+    pending = Path(target) / (REUSE_NAME + ".tmp")
+    pending.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
+    os.replace(pending, Path(target) / REUSE_NAME)
 SHADER_EXTS = (".vert", ".frag", ".tesc", ".tese", ".comp")
 
 # Editor target marker (exe_name match, case-insensitive).
@@ -960,7 +1097,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
 
 
 def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                      require_build=True, build64_root=None):
+                      require_build=True, build64_root=None, code_only=False):
     """Returns list of (src_abspath, target_relpath, kind).
 
     require_build=False (manifest-only): the build outputs may be gone; we
@@ -1044,6 +1181,9 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                     fail(f"cannot read shader source {p}: {e}")
             rel = os.path.relpath(p, src_root).replace(os.sep, "/")
             items.append((p, rel, "shader"))
+
+    if code_only:
+        return items
 
     # Lookup textures are embedded in the exe; deploy notices, not reference sources.
     for tree in ("3rdparty/smaa", "3rdparty/cmaa2"):
@@ -1263,15 +1403,19 @@ def ensure_terrain_materials(target_dir):
 
 
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
-           full_verify=False):
+           full_verify=False, code_only=False):
     """Copy + verify the payload.
 
     Hash receipts retain source and destination metadata plus the hash verified
     at write time. Metadata drift rehashes bytes, including same-size corruption.
     Executables are always hashed on both sides. --full-verify copies everything.
     """
-    src_hashes = ensure_terrain_materials(target_dir)
-    ensure_engine_normal_cooks(target_dir)
+    # Retention must reach retire_unowned(), before it can delete static files.
+    # Shader inventories still belong entirely to the current build.
+    src_hashes = {rel: row for rel, row in (cache or {}).items()
+                  if not rel.startswith(("shaders/", "shaders_vk/"))} if code_only else ensure_terrain_materials(target_dir)
+    if not code_only:
+        ensure_engine_normal_cooks(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}
@@ -2033,7 +2177,8 @@ def main():
     if args.bootstrap_from:
         if not args.allow_new_target:
             fail("--bootstrap-from creates a new install: pass --allow-new-target too")
-        bootstrap_install(args.bootstrap_from, target, exe_name, pdb_name)
+        with deploy_phase("bootstrap seed", 600):
+            bootstrap_install(args.bootstrap_from, target, exe_name, pdb_name)
 
     if not os.path.isdir(target):
         fail(f"target dir does not exist: {target} (refusing to create deploy "
@@ -2045,13 +2190,15 @@ def main():
     log(f"target:      {target}")
 
     wait_s = args.wait if args.wait is not None else float(os.environ.get("MC2_DEPLOY_WAIT_S") or DEFAULT_DEPLOY_WAIT_S)
-    check_locks(target, exe_name, wait_s)
-    lease_held = take_folder_lease(target, wait_s)
+    with deploy_phase("locks and folder lease", max(120, wait_s + 30)):
+        check_locks(target, exe_name, wait_s)
+        lease_held = take_folder_lease(target, wait_s)
     try:
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
                                                                 text=True, **console_child.child_kwargs(redirected=True)).strip()
-            deploy_from_payload(args.from_payload, target, src_root, head)
+            with deploy_phase("published payload", 600):
+                deploy_from_payload(args.from_payload, target, src_root, head)
         else:
             run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
     finally:
@@ -2172,6 +2319,11 @@ def verdict_exe_refusal(src_root, exe_src, head):
 
 
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
+    with deploy_phase("deploy", 1800):
+        return _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
+
+
+def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if getattr(args, "target", None) == "game" and not args.allow_new_target and not getattr(args, "allow_unverified_exe", False):
         why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root))
         if why:
@@ -2195,10 +2347,25 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         log(f"WARNING (dirty build): {msg}")
         src_commit += "-dirty"
 
-    items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                              build64_root=args.build64_root)
+    with deploy_phase("input comparison", 120):
+        inputs = None
+        reuse, reason = False, "explicit full verification or asset override"
+        if not args.classic_assets and not getattr(args, "skip_kit", False):
+            inputs = deploy_inputs(src_root)
+            reuse, reason = reusable_payload(src_root, target, inputs)
+            if args.full_verify:
+                reuse, reason = False, "explicit full verification"
+        log(f"kit {'skipped automatically' if reuse else 'full deploy'}: {reason}")
+        previous = read_manifest(target)
+        old_reuse = json.loads((Path(target) / REUSE_NAME).read_text()) if reuse else None
+        # A failed copy/cook must not leave valid-looking evidence for a retry.
+        (Path(target) / REUSE_NAME).unlink(missing_ok=True)
+    with deploy_phase("payload enumeration", 300):
+        items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
+                                  build64_root=args.build64_root, code_only=reuse)
     if exe_name != "mc2":
-        items.extend(viewer_payload(build_dir, args.build64_root, source_head))
+        with deploy_phase("viewer payload", 120):
+            items.extend(viewer_payload(build_dir, args.build64_root, source_head))
     import kit_payload
     from smoke_lib import render_options_pin
     kit_manifest = None
@@ -2206,16 +2373,17 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     kit_tool = None
     remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
     kit_prepare_started = time.perf_counter()
-    if not args.classic_assets and not args.skip_kit and remastered:
+    if not args.classic_assets and not getattr(args, "skip_kit", False) and not reuse and remastered:
         try:
-            kit_receipts = kit_payload.HashReceipts(Path(target) / '.deploy-receipts.json')
-            kit_manifest, kit_items = kit_payload.payload(src_root, receipts=kit_receipts)
-            items.extend(kit_items)
-            vehicle_manifest, vehicle_items = kit_payload.payload(src_root,
-                Path("data/kit/vehicle-kit.json"), Path("mods/mc2-vehicle-kit"), receipts=kit_receipts)
-            items.extend(vehicle_items)
-            kit_receipts.save()
-            kit_tool = kit_payload.build_importer(src_root)
+            with deploy_phase("kit preparation and importer", 600):
+                kit_receipts = kit_payload.HashReceipts(Path(target) / '.deploy-receipts.json')
+                kit_manifest, kit_items = kit_payload.payload(src_root, receipts=kit_receipts)
+                items.extend(kit_items)
+                vehicle_manifest, vehicle_items = kit_payload.payload(src_root,
+                    Path("data/kit/vehicle-kit.json"), Path("mods/mc2-vehicle-kit"), receipts=kit_receipts)
+                items.extend(vehicle_items)
+                kit_receipts.save()
+                kit_tool = kit_payload.build_importer(src_root)
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
     kit_prepare_seconds = time.perf_counter() - kit_prepare_started
@@ -2243,18 +2411,26 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                              target)
 
     cache = {} if args.full_verify else read_manifest(target)
-    hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
-                    cache=cache, full_verify=args.full_verify)
+    preserve = list(args.preserve)
+    if getattr(args, "skip_kit", False):
+        preserve.extend(rel for rel in previous if rel.startswith("mods/"))
+    with deploy_phase("payload hash copy and verification", 600):
+        hashes = deploy(items, target, args.allow_stale_pdb, preserve=preserve,
+                        cache=cache, full_verify=args.full_verify, code_only=reuse)
+    if getattr(args, "skip_kit", False):
+        hashes = {rel: row for rel, row in previous.items() if rel.startswith("mods/")} | hashes
     if kit_manifest:
         try:
             phase_started = time.perf_counter()
-            kit_payload.reconcile_stock_textures(target,
-                jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
+            with deploy_phase("stock texture receipts", 300):
+                kit_payload.reconcile_stock_textures(target,
+                    jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
             log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
             phase_started = time.perf_counter()
-            kit_payload.finish(target, kit_manifest, kit_tool)
-            if vehicle_manifest:
-                kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"))
+            with deploy_phase("kit cook", 900):
+                kit_payload.finish(target, kit_manifest, kit_tool)
+                if vehicle_manifest:
+                    kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"))
             log(f"phase kit cook seconds={kit_prepare_seconds + time.perf_counter() - phase_started:.3f}")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
@@ -2271,6 +2447,14 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail("INSTALL INCOMPLETE (game would die with 0xC0000135 / missing assets): " + ", ".join(gaps) +
              f"; copy them from a full install (e.g. {GOLDEN_MATERIAL_ROOT})", 7)
     write_manifest(target, hashes, src_commit)
+    if reuse:
+        # Preserve the verified external source inventory across code-only deploys.
+        record_deploy_inputs(target, inputs, hashes, [])
+        value = json.loads((Path(target) / REUSE_NAME).read_text())
+        value["sources"] = old_reuse["sources"]
+        (Path(target) / REUSE_NAME).write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
+    elif kit_manifest and inputs is not None:
+        record_deploy_inputs(target, inputs, hashes, items)
     log("deploy COMPLETE — payload verified, manifest written")
 
     # Post-deploy hygiene scan (Truth-First arc P1 #5/#7): the payload manifest

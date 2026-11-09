@@ -78,6 +78,7 @@ def guard():
 @pytest.mark.parametrize("avail,floor,rc", [(5, None, 77), (14, None, 77), (15, None, 0), (40, None, 0), (20, "30", 77), (20, "10", 0)])
 def test_disk_guard_floor(avail, floor, rc, tmp_path):
     (tmp_path / "df").write_text(f'#!/bin/sh\necho Avail\necho "{avail}G"\n')   # a fake df first on PATH
+    (tmp_path / "df").chmod(0o755)
     env = {"PATH": f"{tmp_path.as_posix()}{os.pathsep}{os.environ['PATH']}"}
     r = bash('unset MC2_BOX_MIN_FREE_GB\n' + (f"export MC2_BOX_MIN_FREE_GB={floor}\n" if floor else "") + guard() + "\necho PASSED", env=env)
     assert r.returncode == rc, r.stdout + r.stderr
