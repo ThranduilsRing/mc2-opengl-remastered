@@ -76,3 +76,17 @@ def test_ripples_are_wind_aligned_world_space_trains_not_noise():
     mean = math.atan2(my, mx)
     for dx, dy, *_ in TRAINS:
         assert abs(math.degrees(math.atan2(dy, dx) - mean)) < 10.0
+
+
+def test_vertex_swell_matches_long_trains_and_is_tiny_and_shore_faded():
+    vs = (ROOT / "shaders/vulkan/water_geom.vert").read_text(encoding="utf-8")
+    sw = [tuple(float(v) for v in m.groups())
+          for m in re.finditer(r"vec4\(([-0-9.]+),\s*([-0-9.]+),\s*([0-9.]+),\s*([0-9.]+)\)",
+                               vs[vs.index("kSwell[SWELL_TRAINS]"):vs.index("SWELL_G =")])]
+    assert len(sw) == 2
+    for s, t in zip(sw, TRAINS):
+        assert s[:3] == t[:3]                      # same direction and wavelength as the fragment trains
+        assert s[2] >= 2.5 * 128.0 * 0.9           # the one-cell mesh can carry it
+    assert 0.5 <= sum(s[3] for s in sw) <= 1.6     # tiny, in world units
+    assert re.search(r"SWELL_G = 30\.0", vs) and _const("WAVE_G") == 30.0
+    assert "smoothstep(8.0, 40.0, WaterThickness)" in vs  # zero in shallow water: no shore z-fight
