@@ -862,7 +862,7 @@ static void record_bake(ShadowIsland* s) {
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
 
 // The static-prop caster draws of a run list: one indirect multi-draw of the opaque packets and one of the alpha-tested ones (alpha pipeline and set 1).
-static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs) {
+static uint32_t draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs) {
     static thread_local std::vector<mc2vk::ShadowDraw> draws;
     draws.clear();
     for (const InstRun& run : runs) {
@@ -878,7 +878,7 @@ static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vec
             draws.push_back(d);
         }
     }
-    s->drawRing.record(cb, s->playout.get(), s->pipe.get(), s->alphaPipe.get(), s->alphaSet, draws);
+    return s->drawRing.record(cb, s->playout.get(), s->pipe.get(), s->alphaPipe.get(), s->alphaSet, draws);
 }
 
 // Appends one depth-only render pass to the frame's command buffer: the static-prop casters, then the mech casters, into `fb`. The light-space matrix goes to
@@ -987,7 +987,7 @@ static void local_draw_static(ShadowIsland* s, VkCommandBuffer cb, const std::ve
     const VkBuffer vertexBuf = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
-    draw_static_runs(s, cb, runs);
+    mc2::battlebench::add(mc2::battlebench::DrawShadowLocal, draw_static_runs(s, cb, runs));
 }
 
 static void local_barrier(VkCommandBuffer cb, VkPipelineStageFlags src, VkAccessFlags srcAccess,
@@ -1164,7 +1164,7 @@ static void record_local_shadows(ShadowIsland* s) {
             static std::vector<uint8_t> tileMask;
             s->mover.runMaskLight(s->mech.runs(), tiles[t].pos, tiles[t].farDistance, tileMask);
             local_tile_viewport(cb, t);
-            s->mech.record(cb, s->parity, dyn, tileMask.data());
+            s->mech.record(cb, s->parity, dyn, tileMask.data(), true);
         }
     }
     vkCmdEndRenderPass(cb);

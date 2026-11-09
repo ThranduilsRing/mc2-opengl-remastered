@@ -110,6 +110,8 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
                   det_clock: bool, show_window: bool,
                   logf, declared_env: "dict | None" = None) -> dict:
     exe = install / "mc2.exe"
+    from ab import payload_identity
+    install_identity = payload_identity(install)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     def log(msg: str) -> None:
@@ -185,6 +187,7 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
     # build fingerprint (the only field that describes the code that ran).
     # Legacy keys stay for back-compat.
     manifest = {
+        "install_identity": install_identity,
         "kind": "visual-verify-capture",
         "schema_v": 2,
         "generated_at": _now_iso(),

@@ -205,6 +205,56 @@ TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     CHECK(mc2::content::cook(asset, ""));
 }
 
+TEST_CASE("ABLExec/stack overflow stops every push with both softfail flags enabled") {
+    CompileFixture fixture;
+    extern bool s_ablArgGuard;
+    extern bool s_ablRuntimeSoftfail;
+    extern int32_t FileNumber;
+    struct RestoreFlags {
+        bool argGuard = s_ablArgGuard;
+        bool softfail = s_ablRuntimeSoftfail;
+        int fileNumber = FileNumber;
+        ~RestoreFlags() {
+            s_ablArgGuard = argGuard;
+            s_ablRuntimeSoftfail = softfail;
+            FileNumber = fileNumber;
+        }
+    } restore;
+    s_ablArgGuard = true;
+    s_ablRuntimeSoftfail = true;
+    FileNumber = -1;  // This direct stack test has no compiled module/source file.
+
+    // Slot zero is the initial stack top; the last slot guards the usable storage.
+    std::array<StackItem, 5> storage{};
+    std::array<unsigned char, sizeof(StackItem)> sentinel;
+    sentinel.fill(0xa5);
+    std::memcpy(&storage.back(), sentinel.data(), sentinel.size());
+    AblExecContext ctx;
+    ctx.stackLimit = &storage.back();
+    AblExecScope scope(ctx);
+    int addressValue = 0;
+    // Each subcase uses the same production push at and beyond the boundary.
+    const auto checkPush = [&](auto pushValue) {
+        ctx.tos = storage.data();
+        pushInteger(11);
+        pushInteger(22);
+        pushValue();
+        CHECK(ctx.tos == &storage[3]);
+        const StackItem boundary = storage[3];
+        bool continued = false;
+        CHECK_THROWS_AS(([&] { pushValue(); continued = true; }()), std::runtime_error);
+        CHECK_FALSE(continued);
+        CHECK(ctx.tos == &storage[3]);
+        CHECK(std::memcmp(&storage[3], &boundary, sizeof(boundary)) == 0);
+        CHECK(std::memcmp(&storage.back(), sentinel.data(), sentinel.size()) == 0);
+    };
+    SUBCASE("integer") { checkPush([] { pushInteger(73); }); CHECK(storage[3].integer == 73); }
+    SUBCASE("real") { checkPush([] { pushReal(3.25f); }); CHECK(storage[3].real == 3.25f); }
+    SUBCASE("byte") { checkPush([] { pushByte('x'); }); CHECK(storage[3].byte == 'x'); }
+    SUBCASE("address") { checkPush([&] { pushAddress(reinterpret_cast<Address>(&addressValue)); }); CHECK(storage[3].address == reinterpret_cast<Address>(&addressValue)); }
+    SUBCASE("boolean") { checkPush([] { pushBoolean(true); }); CHECK(storage[3].integer == 1); }
+}
+
 TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     extern int32_t NumModulesRegistered;
     extern ModuleEntryPtr ModuleRegistry;
