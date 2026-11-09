@@ -55,14 +55,14 @@ extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 namespace mc2vk::infra {
 namespace {
 float effectiveMipBias(bool& provider) {
-    // Provider bias only when a temporal resolve will run (present's condition: AA on, no render-scale composite, and an
+    // Provider bias only when a temporal resolve will run (present's condition: temporal AA, no render-scale composite, and an
     // available provider; each provider probes its own SDK, so this holds before present first prepares it and goes
     // false once a real context or dispatch fails). The provider reports its own bias for the ratio; native keeps
     // log2(renderScale). Vendor-neutral: only the IUpscalerProvider seam is named here.
     mc2vk::registerBuiltinUpscalers();
     const float scale = static_cast<float>(mc2::gate::get<"MC2_RENDER_SCALE">());
     const RenderCore::IUpscalerProvider* up =
-        (scale == 1.0f && mc2::options::current().spatialAA != 0) ? RenderCore::effectiveUpscaler() : nullptr;
+        (scale == 1.0f && mc2::options::current().temporalAA()) ? RenderCore::effectiveUpscaler() : nullptr;
     provider = up != nullptr;
     return up ? up->mipLodBias(scale) : RenderCore::temporal::mipBias(scale, false);
 }

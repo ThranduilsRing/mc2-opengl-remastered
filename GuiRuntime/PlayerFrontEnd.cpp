@@ -383,8 +383,8 @@ void drawOptions() {
         if (option.kind == mc2::options::Kind::Bool) ImGui::Checkbox(label, &(draft.*option.b));
         else if (option.kind == mc2::options::Kind::Long) {
             if (std::string_view(option.key) == "SpatialAA") {
-                const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2"};
-                ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, 4);
+                const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
+                ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "WaterReflections") {
                 const char* labels[] = {"Off", "Sky only", "Half-res"};
                 ImGui::Combo("Water reflections", &(draft.*option.l), labels, 3);
@@ -420,7 +420,7 @@ void drawOptions() {
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
         else if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
     }
-    ImGui::TextWrapped("FSR and MSAA are not implemented. Available AA modes are spatial; no temporal history.");
+    ImGui::TextWrapped("SMAA 1x is the default, without history or jitter. FSR 3.1 native AA is an optional temporal mode.");
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
 }
 

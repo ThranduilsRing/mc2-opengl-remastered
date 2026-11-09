@@ -38,15 +38,15 @@ void draw() {
             if (ImGui::SmallButton("Reset##expo")) pp->exposure_ = 1.0f;
             ImGui::Unindent();
 
-            ImGui::SeparatorText("Spatial anti-aliasing");
-            const char* aaNames[] = {"Off", "SMAA 1x", "FXAA", "CMAA2"};
+            ImGui::SeparatorText("Anti-aliasing");
+            const char* aaNames[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
             int aa = mc2::options::current().spatialAA;
             static bool aaSaveFailed = false;
             if (ImGui::Combo("Anti-aliasing", &aa, aaNames, IM_ARRAYSIZE(aaNames))) {
                 aaSaveFailed = !mc2::options::saveSpatialAA || !mc2::options::saveSpatialAA(aa);
             }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Spatial AA after output processing. HUD and UI stay crisp.\nSMAA 1x is the default; FXAA uses less memory.");
+                ImGui::SetTooltip("SMAA 1x is the default: spatial AA without history or jitter.\nFSR 3.1 is optional temporal AA; FXAA uses less memory.");
             if (aaSaveFailed) ImGui::TextUnformatted("Could not save anti-aliasing setting.");
 
             // view-mode selector.

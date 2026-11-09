@@ -25,7 +25,9 @@ struct RenderOptions {
     bool  postCas          = false;   // contrast-adaptive sharpening on the final image
     float postCasSharpness = 0.5f;
     int   tonemapMode      = 0;       // 0 off, 1 AgX, 2 Hable, 3 Reinhard
-    int   spatialAA        = 1;       // 0 off, 1 SMAA 1x, 2 FXAA, 3 CMAA2; no history or jitter
+    // Keep legacy SpatialAA=1 as SMAA: old files never recorded an explicit FSR choice.
+    int   spatialAA        = 1;       // 0 off, 1 SMAA 1x (default), 2 FXAA, 3 CMAA2, 4 FSR 3.1 native AA (opt-in)
+    bool temporalAA() const { return spatialAA == 4; }
 
     // Shadows and terrain lighting.
     int shadowQuality = 2; // 0 Potato, 1 Medium, 2 High
@@ -78,7 +80,7 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("PostCAS",                       &RenderOptions::postCas),
     detail::floatOpt("PostCASSharpness",              &RenderOptions::postCasSharpness, 0.0, 1.0),
     detail::longOpt ("TonemapMode",                   &RenderOptions::tonemapMode, 0, 3),
-    detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 3),
+    detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 4),
     detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
     detail::longOpt ("BaseQuality", &RenderOptions::baseQuality, 0, 2),
     detail::longOpt ("WaterReflections", &RenderOptions::waterReflections, 0, 2),

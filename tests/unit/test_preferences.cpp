@@ -11,6 +11,30 @@
 namespace {
 using mc2::options::Preferences;
 using mc2::options::RenderOptions;
+TEST_CASE("Preferences/AA fresh and legacy defaults use SMAA; explicit FSR survives reload") {
+    CHECK(RenderOptions{}.spatialAA == 1);
+    CHECK_FALSE(RenderOptions{}.temporalAA());
+    for (int mode = 0; mode <= 4; ++mode) {
+        RenderOptions render;
+        const auto* option = mc2::options::find("SpatialAA");
+        REQUIRE(option);
+        // 1 was the stored default even while present incorrectly forced FSR for every nonzero mode.
+        const auto text = mc2::options::cfg::set("FITini\n[MechCommander2]\nFITend\n", *option, std::to_string(mode));
+        mc2::options::cfg::loadFromText(render, text);
+        CHECK(render.spatialAA == mode);
+        CHECK(render.temporalAA() == (mode == 4));
+        const auto snapshot = mc2::options::preferenceSnapshot(Preferences{}, render);
+        const auto saved = mc2::options::rewritePreferences(text, {}, snapshot);
+        RenderOptions reloaded;
+        mc2::options::cfg::loadFromText(reloaded, saved);
+        CHECK(reloaded.spatialAA == mode);
+        CHECK(reloaded.temporalAA() == (mode == 4));
+    }
+    RenderOptions fresh;
+    mc2::options::cfg::loadFromText(fresh, "FITini\n[MechCommander2]\nFITend\n");
+    CHECK(fresh.spatialAA == 1);
+    CHECK_FALSE(fresh.temporalAA());
+}
 void load(const std::string& text, Preferences& p, RenderOptions& render) {
     FitIniFile file;
     REQUIRE(file.open(text.data(), static_cast<int>(text.size())) == NO_ERR);
