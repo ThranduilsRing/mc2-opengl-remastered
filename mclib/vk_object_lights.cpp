@@ -78,25 +78,12 @@ namespace {
         return h;
     }
 
-    static inline uint64_t fnv1a_64_struct(const void* data, size_t bytes) {
-        // FNV-1a 64-bit. Walk in uint64_t chunks for fewer iterations
-        // (~110 iters for ~900 bytes vs ~900 iters byte-at-a-time).
-        const uint64_t* p64 = static_cast<const uint64_t*>(data);
-        const size_t chunks = bytes / sizeof(uint64_t);
-        const size_t tail   = bytes % sizeof(uint64_t);
-        uint64_t h = 0xcbf29ce484222325ULL;  // FNV offset basis
-        for (size_t i = 0; i < chunks; ++i) {
-            h ^= p64[i];
-            h *= 0x100000001b3ULL;            // FNV prime
-        }
-        if (tail) {
-            const uint8_t* tailp = reinterpret_cast<const uint8_t*>(&p64[chunks]);
-            for (size_t i = 0; i < tail; ++i) {
-                h ^= tailp[i];
-                h *= 0x100000001b3ULL;
-            }
-        }
-        return h;
+    static inline uint64_t lightRowKey(const void* data, size_t bytes) {
+        // LIGHTING-CPU-CUT: the dedup key no longer runs one serial FNV multiply chain
+        // over all 224 words of the row; the vendored unordered_dense byte hash reads it
+        // in independent lanes. The key only indexes the dedup map (never iterated) and
+        // every hit is memcmp-verified, so rows and slot numbers are unchanged.
+        return ankerl::unordered_dense::detail::hash_bytes(data, bytes);
     }
 
     static inline uint64_t fnv1a_64_u32(uint64_t h, uint32_t v) {
@@ -508,7 +495,7 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
     auto& packet = writablePacket();
-    const uint64_t hash = fnv1a_64_struct(light_data, sizeof(TG_HWLightsData));
+    const uint64_t hash = lightRowKey(light_data, sizeof(TG_HWLightsData));
     auto it = packet.dedup.find(hash);
     if (it != packet.dedup.end()) {
         const auto& [dedupHash, dedupSlot] = *it;
