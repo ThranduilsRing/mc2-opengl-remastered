@@ -6,6 +6,28 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include "objectives_panel.h"
+
+namespace {
+float objectivesPanelScale() {
+    if (MPlayer && MPlayer->missionSettings.missionType != MISSION_TYPE_OTHER)
+        return 1.f;
+    int x, y, width, height;
+    gos_ComputeHudCanvasBox(Environment.drawableWidth, Environment.drawableHeight,
+        &x, &y, &width, &height);
+    return mc2::objectives_panel::scaleForCanvasHeight(height);
+}
+
+// Transform the complete queued panel so bitmap text, shadows and artwork
+// share one scale, with no second shrink when a long row crosses the 60% band.
+struct ObjectivesScaleScope {
+    size_t firstDraw = gos_BeginHudPanel();
+    ~ObjectivesScaleScope() {
+        if (!(MPlayer && MPlayer->missionSettings.missionType != MISSION_TYPE_OTHER))
+            gos_EndHudPanel(firstDraw, objectivesPanelScale());
+    }
+};
+}
 
 
 
@@ -648,6 +670,7 @@ void ControlGui::RenderObjectives()
 		}
 
 		// draw little edge pieces
+		const ObjectivesScaleScope panelScale;
 		for ( int i = 0; i < objectiveInfoCount - 3; i++ )
 		{
 			objectiveInfos[i].move( delta, 0 );
@@ -850,7 +873,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 		width = guiFont.width( total );
 		
 		// draw total
-		drawShadowText( 0xffffffff, 0xff000000, guiFont.getTempHandle(), OBJECTIVESTOTALRIGHT - width, yPos, 0, total, 0, 
+		drawShadowText( 0xffffffff, 0xff000000, guiFont.getTempHandle(), OBJECTIVESTOTALRIGHT - width, yPos, 0, total, 0,
 			guiFont.getSize() );
 
 		// draw .............
@@ -881,7 +904,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 
 		float dotFinalLength = dotRealWidth * static_cast<float>((numberOfDots - 2));
 
-		drawShadowText( color, 0xff000000, guiFont.getTempHandle(), OBJECTIVESTOTALRIGHT - width - dotFinalLength, yPos, 0, dots, 
+		drawShadowText( color, 0xff000000, guiFont.getTempHandle(), OBJECTIVESTOTALRIGHT - width - dotFinalLength, yPos, 0, dots,
 			0, guiFont.getSize() );
 	}
 
