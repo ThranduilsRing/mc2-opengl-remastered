@@ -943,6 +943,15 @@ void GameObjectManager::updatePresentationCull() {
     if (gpu_cull::compute_isEnabled()) gpu_cull::compute_emitParitySummary();
 }
 
+// static-world-s2: called from a render visit; the object becomes resident only if presentation has settled it too.
+void GameObjectManager::noteRenderResident (GameObjectPtr obj, int32_t recipe)
+{
+	if (!obj || recipe < 0) return;
+	const long handle = obj->getHandle();
+	if (!mc2::terrainDirtyQueue().setRenderResident(handle)) return;
+	if (GpuStaticPropRegistry::setResident(recipe)) staticResident.add(handle, recipe);
+}
+
 // G7b K3: the render extract. Same membership and order as the draw loops in GameObjectManager::render, read while
 // the sim is quiescent; each object copies what its renderView draws. Pointers stay valid until the next commit
 // (deferred frees), which is after the frame's draw.
