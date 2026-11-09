@@ -97,14 +97,14 @@ L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; 
 T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) total"; T0=$(date +%s); }
 #@@LANE_FLOOR@@
 [ -f /workspace/lanes/EVICTIONS.log ] && grep -F " removed $BR " /workspace/lanes/EVICTIONS.log | tail -1 | sed 's/^/[box_run] this lane dir was removed earlier: /'   # a lane that was evicted sees why
-if [ ! -d $L ]; then   # a NEW lane dir needs room: below the floor, evict the oldest evictable lane dirs (never running, queued in pueue, wanted or recent) first
+{   # new OR existing lane dir: below the floor, evict (branches merged into nifty first, then oldest; never this lane, running, queued in pueue, wanted or recent)
   LFLOOR=${MC2_BOX_LANE_FLOOR_GB:-30}; FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
   if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then
     bash /workspace/mc2-box/lane_cleanup.sh evict "$LFLOOR" "$BR"
     FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
-    if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then echo "[box_run] BOX_INFRA: ${FREE_GB:-0} GB free on /workspace, floor $LFLOOR GB, nothing evictable (holders listed above): not creating lane dir $BR"; exit 77; fi
+    if [ "${FREE_GB:-0}" -lt "$LFLOOR" ]; then echo "[box_run] BOX_INFRA: ${FREE_GB:-0} GB free on /workspace, floor $LFLOOR GB, nothing evictable (holders listed above): not running lane $BR"; exit 77; fi
   fi
-fi
+}
 #@@END_LANE_FLOOR@@
 mkdir -p /workspace/locks $L $OUT
 GOT=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap 'rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row' EXIT   # a dead run must not leave a stale owner file

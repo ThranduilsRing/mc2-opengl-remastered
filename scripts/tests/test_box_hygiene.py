@@ -308,6 +308,23 @@ def test_evict_dry_run_lists_oldest_first_and_spares_the_keep_lane(lanes):
     assert all((w / "lanes" / n).is_dir() for n in names)      # dry run removes nothing
 
 
+def test_evict_takes_branches_merged_into_nifty_before_older_unmerged_ones(lanes):
+    w, m, env = lanes
+    g = lambda *a: subprocess.run(["git", "-C", m.as_posix(), *a], capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
+    tree = subprocess.run(["git", "-C", m.as_posix(), "mktree"], input="", text=True, capture_output=True, check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()   # the empty tree
+    base = g("commit-tree", tree, "-m", "base")
+    tip = g("commit-tree", tree, "-p", base, "-m", "nifty")
+    other = g("commit-tree", tree, "-m", "unmerged")
+    g("update-ref", "refs/lanes/claude_nifty-mendeleev", tip)
+    g("update-ref", "refs/lanes/zz_merged", base)
+    g("update-ref", "refs/lanes/zz_unmerged", other)
+    _touch_lock(w, "zz_unmerged", 20)      # older, but not merged
+    _touch_lock(w, "zz_merged", 3)          # newer, merged into nifty: goes first
+    r = cleanup({**env, "FAKE_FREE_GB": "10"}, "evict", "30", "zz_keep", "--dry-run")
+    names = re.findall(r"removing lane dir (\S+)", r.stdout)
+    assert names.index("zz_merged") < names.index("zz_unmerged"), r.stdout
+
+
 def test_evict_removes_by_name_and_reports_when_nothing_is_left(lanes):
     w, m, env = lanes
     _touch_lock(w, "zz_old", 9)
@@ -420,6 +437,6 @@ def test_status_prints_the_eviction_log_and_the_remote_guards_against_eviction(m
 def test_remote_checks_the_lane_floor_before_creating_the_lane_dir():
     r = box_run.REMOTE
     blk = between(r, "#@@LANE_FLOOR@@", "#@@END_LANE_FLOOR@@")
-    assert "[ ! -d $L ]" in blk and "MC2_BOX_LANE_FLOOR_GB:-30" in blk and "lane_cleanup.sh evict" in blk and "exit 77" in blk
+    assert "[ ! -d $L ]" not in blk and "MC2_BOX_LANE_FLOOR_GB:-30" in blk and "lane_cleanup.sh evict" in blk and "exit 77" in blk
     assert r.index("#@@END_LANE_FLOOR@@") < r.index("mkdir -p /workspace/locks $L $OUT")
     assert "*" not in blk.replace("*/", "")      # no wildcard deletion anywhere in the floor block
