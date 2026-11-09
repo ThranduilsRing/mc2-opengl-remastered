@@ -13,4 +13,28 @@ Next: instrument source/pool numbers and add a fixed-frame explosion debug
 command; capture baseline on box; add class/size scaling and soft compression
 with doctests; final box build/unit/contracts/lint/smoke and day/night captures;
 one Windows Ninja build (mc2 + viewer); inspect montages; cleanup and handback.
-No proofs run yet. No installs or scratch created by this lane yet.
+Baseline code b113e2fa1400 compiled on box. Fixed-frame building probe reports
+RGB 16777215 (white), maxIntensity 1, inner 150, outer 500, radiance [1,1,1].
+Byte normalization and the single intensity multiply are correct. Terrain uses
+the legacy display-color light contract; postprocess multiplies exposure (default
+1) and grades it, rather than tone-mapping the added flash. Do not introduce an
+isolated sRGB decode into that pipeline.
+
+Implemented: class constants and geometry-radius scale; rational intensity and
+reach shoulders; core limited to 5% of reach; same transform on every decay frame.
+For the reference building, peak becomes 0.149333 (pool compression <0.22),
+outer 273.596, core 13.680. Mine and other unrelated effects remain unchanged.
+Source size is presentation-only; older saves use the class reference radius.
+Doctests cover class/size ordering, decay, overdrive, bounds and invalid input.
+Preliminary cxx17 ratchet PASS after replacing diagnostic functional casts.
+
+Baseline capture batch on box (b113e2fa): day/night building flash at render
+triggers 182/186/190, plus vehicle/turret at 182. Debug flash spawns at 180;
+capture freezes sim at the requested trigger, then snapshots the settled pose.
+Archive root E:/mc2-archive-2026-10/proofs/box/mc2-slot12/<sha8>/.
+day.json and night.json proof camera inputs are in proofs/explosion-whiteout and
+the box lane tmp directory. Bookmarks are gitignored, so fixtures stay in proofs.
+
+Next: commit fix, final box build/unit/covering contracts/lint/smoke and matching
+captures, one Windows Ninja compile, inspect montages, archive logs and clean
+lane-owned scratch. No PC install created. Box install is lane-owned/reused.
